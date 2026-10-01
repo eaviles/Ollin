@@ -410,7 +410,7 @@ The named easing curves are Robert Penner's easing equations, published with the
 - [Sketch](../Docs/Core/Sketch.md#temporal-state): the clock properties in one table.
 - [Accessibility](../Docs/Helpers/Accessibility.md): `prefersReducedMotion`, and the color half beside it.
 - [Export](../Docs/Output/Export.md): stills, sequences, video, GIF sizing, and render quality.
-- Appendix B draws this chapter's math, one picture per idea: [Angles and circles](B-JustEnoughMath.md#angles-and-circles), [Fractions, mapping, and wrapping](B-JustEnoughMath.md#fractions-mapping-and-wrapping), [Shaping a value](B-JustEnoughMath.md#shaping-a-value), [Vectors, motion, and forces](B-JustEnoughMath.md#vectors-motion-and-forces).
+- Appendix B draws this chapter's math, one picture per idea: [Angles and circles](B-JustEnoughMath.md#angles-and-circles), [Fractions, mapping, and wrapping](B-JustEnoughMath.md#fractions-mapping-and-wrapping), [Shaping a value](B-JustEnoughMath.md#reading-a-shaping-curve), [Vectors, motion, and forces](B-JustEnoughMath.md#vectors-motion-and-forces).
 - The Melehi homage [`Waves`](../Examples/Recreations/MohamedMelehi/Waves/Sketch.swift): the phase is the clock. The wave is a sine of `t / wavelength - time / seconds`, so it travels one wavelength every `seconds` while the straight run holds still. `loopDuration` is that same number, which is what closes the export loop.
 - Worked examples, all in [`Examples/Motion/`](../Examples/Motion/): `Easing` (four dots racing to a click), `EasingGallery` (all thirty curves), `Springs` (`@Sprung` against a moving target), `Timeline` (a scripted tour of a square, one easing per side), `Sway`, `Beats`, `SineSweep`, and `Orbits`.
 

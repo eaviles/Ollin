@@ -366,7 +366,7 @@ The Game of Life that this chapter's automata grow from is John Horton Conway's,
 - [Simulation fields](../Docs/Drawing/Effects.md#simfield): the `Sim` catalog with every argument, including Lenia, SmoothLife, the excitable media, Wireworld, the sandpile, the forest fire, Schelling's board, and the Ising model.
 - [Percolation](../Docs/Generators/Percolation.md): the crowd game in full, including the outline tracing and reading clusters off any boolean grid.
 - [Coupled oscillators on a lattice](../Docs/Simulation/Oscillators.md#on-a-lattice): the square and hex layouts, `range`, the neighbors a site listens to, and [where the crowd has locked](../Docs/Simulation/Oscillators.md#local-coherence).
-- Appendix B draws this chapter's math: [Local rules, global structure](B-JustEnoughMath.md#local-rules-global-structure).
+- Appendix B draws this chapter's math: [Local rules, global structure](B-JustEnoughMath.md#emergence-local-rules-large-patterns).
 - Worked examples: [`Examples/Simulation/Automata`](../Examples/Simulation/Automata/Sketch.swift) (thirteen rules on a picker, Wireworld, the sandpile, Schelling's board, and the Ising model among them), [`Examples/Patterns/Percolation`](../Examples/Patterns/Percolation/Sketch.swift), and [`Examples/Simulation/Kuramoto`](../Examples/Simulation/Kuramoto/Sketch.swift).
 
 ---

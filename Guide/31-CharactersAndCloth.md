@@ -606,7 +606,7 @@ The soft bodies have an academic line you can follow. Position-based dynamics mo
 ## Go deeper
 
 - [3D physics](../Docs/Simulation/Physics3D.md): the full reference for characters, vehicles (the two-wheeler and the tracked machine's sprocket included), ragdolls, soft bodies, ropes, and buoyancy, with every setting on the suspension and the cloth solver, and what a snapshot keeps for each.
-- Appendix B draws what the solvers are doing: [Vectors, motion, and forces](B-JustEnoughMath.md#vectors-motion-and-forces), and [Local rules, global structure](B-JustEnoughMath.md#local-rules-global-structure) for the constraint relaxation.
+- Appendix B draws what the solvers are doing: [Vectors, motion, and forces](B-JustEnoughMath.md#vectors-motion-and-forces), and [Local rules, global structure](B-JustEnoughMath.md#constraint-propagation) for the constraint relaxation.
 - Worked examples, in [`Examples/3D/Physics/`](../Examples/3D/Physics/): `Stroll` and `Crawler` (a character and a tracked machine), `Joyride` (the vehicle with its parameters live), `Ragdoll` and `Cape` (a figure and the cloth on its back), `Drape`, `Raft`, and `Rigging` (cloth, cloth on water, and ropes), `Chain` (capsule links on ball joints), and `Yard`, which is this sketch with a saved world, an animated figure, and more going on.
 - The Gego homage [`Reticularea`](../Examples/Recreations/Gego/Reticularea/Sketch.swift): a soft body whose mesh the sketch builds rather than loads. It is an irregular net of triangles, held at eight of its vertices and left to hang. Each frame `move(_:to:)` holds those eight points, drifting a little, so the air moves the whole net. `positions` is read back to draw the net as lines.
 
