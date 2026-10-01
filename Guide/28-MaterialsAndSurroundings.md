@@ -77,6 +77,8 @@ material(Material(shading: .physicallyBased, metallic: 1,
                   roughness: 0.4, anisotropy: 0.8))
 ```
 
+A material can also be built from its fields, as here. `shading: .physicallyBased` picks this family, and `metallic: 1` answers the metal-or-not question of the step above with a number.
+
 <img src="Images/28-MaterialsAndSurroundings/BrushedRing.jpg" alt="Four steel objects in a row labeled isotropic, brushed 0.8, turned 90 degrees, and ring. The first sphere has one round highlight; the second shows a bright band wrapped horizontally around it; the third has the same band running vertically; the last is a thick metal ring whose sheen follows the curve of its surface like machining marks" width="680">
 
 The streak is one number. The first two spheres are the same steel, and the band is what `0.8` does to it. The reflections smear the same way, so under an environment a brushed metal drags what it mirrors into stripes. The ring at the end is the ready-made `.brushedMetal` preset. On a curved body the streak follows the surface around, the way a machined ring or a lathed bowl reads. One thing to keep in mind: the streak is stretched *roughness*, so a mirror at roughness `0` has nothing to stretch. Give it a little roughness first. The [`BrushedMetal` example](../Examples/3D/Materials/BrushedMetal/Sketch.swift) sweeps the strength and the rotation side by side.
@@ -98,7 +100,7 @@ drawSphere(radius: 0.9)
 
 The main distinction is `thickness`. At `0` the body is a thin wall, a pane or a soap bubble. What's behind passes through nearly straight, tinted by the `fill` and dimmed at the edges where the surface turns away. Give it a thickness and the body becomes solid, and a sphere's diameter is the natural number. Now the light refracts on the way in and again on the way out. So a solid ball shows the world behind it flipped and gathered, the crystal-ball look. A solid ball is a lens, and a thin wall is a window. The middle sphere in the figure adds the other solid-body argument, `attenuationColor` with an `attenuationDistance`. That's Beer-Lambert absorption under a friendlier name. You say what white light should become after traveling that far inside, and thicker paths get more of it. It is why real bottle glass is palest at its center and deepest green at the rim.
 
-Three more arguments shape the glass. `roughness` frosts the glass, so the view through it blurs into a glow. `ior` sets how strongly the body bends light, and the [glass reference](../Docs/3D/3D.md#glass) lists the values for water, glass, and diamond. And `dispersion` bends each color by a slightly different amount, which is what a prism does. A solid body then fringes what shows through it, and a thin wall shows none of it, because it lets every color through parallel.
+Three more arguments shape the glass. `roughness` frosts the glass, so the view through it blurs into a glow. `ior`, short for index of refraction, sets how strongly the body bends light, and the [glass reference](../Docs/3D/3D.md#glass) lists the values for water, glass, and diamond. And `dispersion` bends each color by a slightly different amount, which is what a prism does. A solid body then fringes what shows through it, and a thin wall shows none of it, because it lets every color through parallel.
 
 <img src="Images/28-MaterialsAndSurroundings/Prism.jpg" alt="Two solid glass balls in front of three thin white bars on a dark wall. The left ball shows the bars turned over inside it in plain white, as bright as they are outside it. The right ball shows the same bars fringed. The wide one has a red edge outside and a yellow edge inside it, the fringe a prism puts on a white edge. The narrow bar at its rim is edged blue on its inner side" width="560">
 
@@ -165,7 +167,7 @@ Put the light behind your subject and this carries the picture. A body about one
 
 The finished sketch is five specimens on a stone slab, each carrying a different part of [Chapter 27](27-Meshes.md) and this chapter. Make `MySketches/Bench.swift`. It comes in three parts: the pictures, the objects they dress, and the frame.
 
-The first part is the pictures, and every one of them is written rather than loaded. A normal map is a height function read for its slopes, which is the recipe from [Chapter 27's normal maps](27-Meshes.md#relief-from-a-picture-normal-maps). A color picture is a function of the tile's own coordinates. Two functions sit under them. `bareness` says how far the paint has worn back to metal at a point. `device` is the height of the wheel cut into the tile.
+The first part is the pictures, and every one of them is written rather than loaded. A normal map is a height function read for its slopes, which is the recipe from [Chapter 27's normal maps](27-Meshes.md#relief-from-a-picture-normal-maps). A color picture is a function of the tile's own coordinates. Two functions sit under them. `bareness` says how far the paint has worn back to metal at a point. `device` is the height of the wheel cut into the tile. A device is a coin maker's word for the design stamped into a face, and the listing borrows it.
 
 ```swift
 import Foundation
@@ -244,7 +246,7 @@ final class Bench: Sketch {
 
 ```
 
-> **Swift note.** Some things here are new. A picture is bytes, four per pixel. `[UInt8](repeating: 0, count:)` makes a list of that many zero bytes, and `UInt8(...)` narrows a number into one of them. `Image(width:height:premultipliedRGBA:)` builds a picture from those bytes. It hands back an optional, forced here with `!` because the sizes match by construction. `import Foundation` brings in `URL` and `FileManager`, which the model's path needs, and `while true` runs a loop until a `return` leaves it. The `// MARK:` lines are comments the editor lists in its jump bar, and nothing more. And `normalMap` takes a function as its last argument, `height: (Double, Double) -> Double`, which turns two numbers into one. It calls it as `height(u + d, v)`.
+> **Swift note.** Some things here are new. A picture is bytes, four per pixel. `[UInt8](repeating: 0, count:)` makes a list of that many zero bytes, and `UInt8(...)` narrows a number into one of them. `Image(width:height:premultipliedRGBA:)` builds a picture from those bytes. Premultiplied means each color channel is already multiplied by its alpha, which is why `picture` multiplies by `c.alpha`. It hands back an optional, forced here with `!` because the sizes match by construction. `import Foundation` brings in `URL` and `FileManager`, which the model's path needs, and `while true` runs a loop until a `return` leaves it. The `// MARK:` lines are comments the editor lists in its jump bar, and nothing more. And `normalMap` takes a function as its last argument, `height: (Double, Double) -> Double`, which turns two numbers into one. It calls it as `height(u + d, v)`.
 
 The second part builds the objects. The slab has no texture coordinates worth having, so its stone is projected onto it three ways. The teal ball carries four maps at once. They are the paint, its scuffs, a metallic-roughness map that says where the paint has gone, and a detail pair for the close look. The tile's wheel is a height map on a flat plane. The small silver form started life as a six-pointed slab, the `star` in the listing. The crystal is the `model.obj` file in the `3D/Geometry/LoadedMesh` example's folder, loaded the way the first listing of [Chapter 27](27-Meshes.md#a-mesh-from-a-file) loaded a duck.
 
@@ -332,7 +334,7 @@ The second part builds the objects. The slab has no texture coordinates worth ha
 
 > **Swift note.** `Mesh(positions: [], indices: [])` is an empty mesh standing in until `setup()` fills the property. The closures handed to `picture` take two arguments, `u` and `v`. Inside one, the sketch's own methods are reached through `self.`. Swift accepts `bareness(u, v)` here too, since the closure runs before `picture` returns. The listing spells `self.` to show whose function it is. `||` and `&&` are *or* and *and*, as in [Chapter 23](23-GridSimulations.md)'s Metal. `? :` is [Chapter 6](06-GridsAndRepetition.md)'s compact if.
 
-The third part is the frame. There is one directional light and one environment, and the environment is doing most of the work, because every finish here is a measured one.
+The third part is the frame. There is one directional light and one environment, and the environment is doing most of the work, because every finish here is a measured one. The light's `softness:` argument wraps its shading a little past the edge where light gives way to shadow, for a gentler falloff.
 
 ```swift
     override func draw() {
