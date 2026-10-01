@@ -373,7 +373,7 @@ The cone on the shelf is not drawn. Grains land, roll down the slope, and stop w
 
 ### Paint that behaves: watercolor
 
-The **watercolor field** is a sheet of rough paper where water flows, carries pigment, and dries the way paint does. Every other field here is a system you seed and watch; this one is a material you paint with. You lay down wet paint, and the physics produces the look, with no filter imitating it. It is for washes, glazes, and blooms. The three-layer simulation is Cassidy Curtis, Sean Anderson, Joshua Seims, Kurt Fleischer, and David Salesin's, from their 1997 paper "Computer-Generated Watercolor". The twelve pigment presets carry the coefficients the paper measured.
+The **watercolor field** is a sheet of rough paper where water flows, carries pigment, and dries the way paint does. Every other field here is a system you seed and watch; this one is a material you paint with. You lay down wet paint, and the physics produces the look, with no filter imitating it. It is the physics behind the look [Chapter 17](17-MarksAndMedia.md#paint-from-geometry-watercolor) built from a shape's geometry. It is for washes, glazes, and blooms. The three-layer simulation is Cassidy Curtis, Sean Anderson, Joshua Seims, Kurt Fleischer, and David Salesin's, from their 1997 paper "Computer-Generated Watercolor". The twelve pigment presets carry the coefficients the paper measured.
 
 <img src="Images/23-GridSimulations/WetPaint.jpg" alt="A simulated watercolor painting: a horizontal ultramarine wash with a darkened edge and rose charged into its middle, a pale backrun bloom with branching ridges where water was dropped, and a vertical yellow band glazed across everything, turning a soft gray where it crosses the blue" width="560">
 

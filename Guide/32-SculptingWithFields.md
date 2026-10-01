@@ -287,7 +287,7 @@ SDF3D.mengerSponge(iterations: 3, size: 2.1)
 SDF3D.mandelbox(scale: -1.5, iterations: 12, size: 2.2)
 ```
 
-So the field estimates its distance instead. It runs the rule a few times from the query point and watches how quickly the point escapes. A point about to be flung far must be far from the set. A point that keeps circling must be near it. That rate becomes a length the tracer can hop by, and everything else in this chapter works unchanged. A fractal melts into a sphere, carves a box, mirrors, and repeats.
+So the field estimates its distance instead. It runs the rule a few times from the query point and watches how quickly the point escapes. That is the escape rate [Chapter 22](22-IteratedForms.md#iteration-without-memory-escape-time-fractals-and-orbit-traps) colored its fractals by, read here as a distance. A point about to be flung far must be far from the set. A point that keeps circling must be near it. That rate becomes a length the tracer can hop by, and everything else in this chapter works unchanged. A fractal melts into a sphere, carves a box, mirrors, and repeats.
 
 `iterations` sets the balance of detail and cost, since every hop runs the rule again. The bulb's `power` is its own shape. Eight is the classic value, and a fractional power is a different bulb, so sweeping it slowly makes it breathe. The box's `scale` plays the same role. The finest detail you can see is set by the tracer, not by the fractal. To look deeper, make the leaf bigger and raise `iterations` rather than moving the camera in. The [`3D/Raymarching/RaymarchedFractals`](../Examples/3D/Raymarching/RaymarchedFractals/Sketch.swift) example puts each one's settings in the inspector.
 

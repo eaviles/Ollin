@@ -6,7 +6,7 @@
 
 Ollin learned from both of these. openFrameworks showed how plain a creative-coding app can be, and OPENRNDR showed what a typed core with layers you compose looks like. So if you've worked in either one, the ideas here won't be new. What you need is where each thing went.
 
-This appendix is shorter than [Appendix C](C-ComingFromP5.md) on purpose, and it covers the big moves only. Each one says what you reach for there and how Ollin does it, usually in two short listings, and then what's different. The everyday calls for shapes, ink, and transforms read much the same in every framework, so Appendix C's tables serve you too. The Swift itself is in [Appendix A](A-JustEnoughSwift.md) and the [Swift quick reference](../Docs/Swift.md).
+This appendix covers the big moves only. Each one says what you reach for there and how Ollin does it, usually in two short listings, and then what's different. The everyday calls for shapes, ink, and transforms read much the same in every framework, so Appendix C's tables serve you too. The Swift itself is in [Appendix A](A-JustEnoughSwift.md) and the [Swift quick reference](../Docs/Swift.md).
 
 ## From openFrameworks
 
@@ -262,16 +262,17 @@ Most of the addons that sketches reach for, and a few core classes, have counter
 
 | openFrameworks | In Ollin | Reference |
 |---|---|---|
-| ofxGui | `@Param` properties, shown in the inspector | [Parameters](../Docs/Helpers/Parameters.md) |
-| ofxOsc | `OSCReceiver` and `OSCSender`, in `OllinOSC` | [OSC](../Docs/Integration/OSC.md) |
-| ofxMidi | `MIDIInput` and `MIDIOutput`, in `OllinMIDI` | [MIDI](../Docs/Integration/MIDI.md) |
-| ofxOpenCv, ofxCv | `OllinVision`, on Apple's Vision framework: faces, hands, bodies, and `ContourDetector` for outlines | [Vision](../Docs/Vision/Vision.md) |
-| ofxBox2d | `World`, in `OllinPhysics`, with Box2D bundled | [Physics](../Docs/Simulation/Physics.md) |
-| ofxSyphon | `SyphonServer` and `SyphonClient`, in `OllinSyphon` | [Syphon](../Docs/Integration/Syphon.md) |
-| ofxFX | the `Filter` catalog, on layers | [Effects](../Docs/Drawing/Effects.md) |
-| ofxAssimpModelLoader | `loadMesh` and `loadScene` | [Scenes](../Docs/3D/Scenes.md) |
-| ofVideoGrabber, ofVideoPlayer | `Camera` in `OllinVision`, `VideoPlayer` in `OllinVideo` | [Vision](../Docs/Vision/Vision.md), [Video](../Docs/Video/Video.md) |
-| ofSoundPlayer, ofSoundStream | `AudioPlayer` to play a file, `AudioInput` and `AudioAnalyzer` to listen, and `Synth` to make sound, in `OllinAudio` | [Audio](../Docs/Helpers/Audio.md), [Synthesis](../Docs/Helpers/Synthesis.md) |
+| ofxGui | `@Param` properties, shown in the inspector | [Parameters](../Docs/Helpers/Parameters.md); [Chapter 1](01-HelloOllin.md#putting-it-together-a-breathing-ring) |
+| ofxOsc | `OSCReceiver` and `OSCSender`, in `OllinOSC` | [OSC](../Docs/Integration/OSC.md); [Chapter 38](38-ControlsAndSignals.md#parameters-from-anywhere-midi-and-osc) |
+| ofxMidi | `MIDIInput` and `MIDIOutput`, in `OllinMIDI` | [MIDI](../Docs/Integration/MIDI.md); [Chapter 38](38-ControlsAndSignals.md#parameters-from-anywhere-midi-and-osc) |
+| ofxOpenCv, ofxCv | `OllinVision`, on Apple's Vision framework: faces, hands, bodies, and `ContourDetector` for outlines | [Vision](../Docs/Vision/Vision.md); [Chapter 34](34-Seeing.md) |
+| ofxBox2d | `World`, in `OllinPhysics`, with Box2D bundled | [Physics](../Docs/Simulation/Physics.md); [Chapter 11](11-ForcesAndPhysics.md) |
+| ofxSyphon | `SyphonServer` and `SyphonClient`, in `OllinSyphon` | [Syphon](../Docs/Integration/Syphon.md); [Chapter 43](43-Performing.md#live-feeds-into-other-apps) |
+| ofxFX | the `Filter` catalog, on layers | [Effects](../Docs/Drawing/Effects.md); [Chapter 19](19-LayersAndEffects.md) |
+| ofxAssimpModelLoader | `loadMesh` and `loadScene` | [Scenes](../Docs/3D/Scenes.md); [Chapter 27](27-Meshes.md) |
+| ofVideoGrabber, ofVideoPlayer | `Camera` in `OllinVision`, `VideoPlayer` in `OllinVideo` | [Vision](../Docs/Vision/Vision.md), [Video](../Docs/Video/Video.md); [Chapter 34](34-Seeing.md) |
+| ofSoundPlayer, ofSoundStream | `AudioPlayer` to play a file, `AudioInput` and `AudioAnalyzer` to listen, and `Synth` to make sound, in `OllinAudio` | [Audio](../Docs/Helpers/Audio.md), [Synthesis](../Docs/Helpers/Synthesis.md); [Chapter 37](37-Listening.md), [Chapter 39](39-MakingSound.md) |
+| ofxDmx | `DMXSender` and `DMXReceiver`, in `OllinDMX` | [DMX](../Docs/Integration/DMX.md); [Chapter 45](45-Installations.md#light-instead-of-pixels-dmx-and-led-maps) |
 
 Here is ofxGui beside its Ollin form, which has no panel code at all:
 
@@ -489,14 +490,14 @@ Anything else is a `Shader` over a layer, kept inside the shape by a mask. In a 
 
 | OPENRNDR module | In Ollin | Reference |
 |---|---|---|
-| orx-fx | the `Filter` catalog | [Effects](../Docs/Drawing/Effects.md) |
-| orx-compositor | `compose { }` | [Effects](../Docs/Drawing/Effects.md#compose) |
-| orx-gui, orx-parameters | `@Param` properties, shown in the inspector | [Parameters](../Docs/Helpers/Parameters.md) |
+| orx-fx | the `Filter` catalog | [Effects](../Docs/Drawing/Effects.md); [Chapter 19](19-LayersAndEffects.md) |
+| orx-compositor | `compose { }` | [Effects](../Docs/Drawing/Effects.md#compose); [Chapter 19](19-LayersAndEffects.md#the-whole-stack-in-one-block-compose) |
+| orx-gui, orx-parameters | `@Param` properties, shown in the inspector | [Parameters](../Docs/Helpers/Parameters.md); [Chapter 1](01-HelloOllin.md#putting-it-together-a-breathing-ring) |
 | orx-olive | the live host, `OllinLive` | [Chapter 1](01-HelloOllin.md) |
-| orx-camera | `cameraControl()` and `cameraShowcase()` | [Camera](../Docs/3D/Camera.md) |
-| orx-noise | `noise`, `simplexNoise`, `fbm`, and the `signed…` forms | [Noise](../Docs/Generators/Noise.md) |
-| orx-shapes | `drawCurve(_:closed:spline:)` with `.hobby`, `convexHull(of:)`, `offset(by:join:)`, `simplified(tolerance:)` | [Geometry](../Docs/Drawing/Geometry.md) |
-| orx-osc, orx-midi, orx-syphon | `OllinOSC`, `OllinMIDI`, `OllinSyphon` | [Integration](../Docs/Integration/README.md) |
+| orx-camera | `cameraControl()` and `cameraShowcase()` | [Camera](../Docs/3D/Camera.md); [Chapter 26](26-3DGently.md) |
+| orx-noise | `noise`, `simplexNoise`, `fbm`, and the `signed…` forms | [Noise](../Docs/Generators/Noise.md); [Chapter 5](05-Noise.md) |
+| orx-shapes | `drawCurve(_:closed:spline:)` with `.hobby`, `convexHull(of:)`, `offset(by:join:)`, `simplified(tolerance:)` | [Geometry](../Docs/Drawing/Geometry.md); [Chapter 15](15-ShapesAsMaterial.md), [Chapter 16](16-CurvesAndFigures.md) |
+| orx-osc, orx-midi, orx-syphon | `OllinOSC`, `OllinMIDI`, `OllinSyphon` | [Integration](../Docs/Integration/README.md); [Chapter 38](38-ControlsAndSignals.md), [Chapter 43](43-Performing.md#live-feeds-into-other-apps) |
 
 Parameters take one line rather than an annotated object registered with a panel. `@DoubleParameter("radius", 10.0, 300.0)` on a settings object, added with `gui.add`, is the same `@Param(10...300)` shown in the openFrameworks half.
 

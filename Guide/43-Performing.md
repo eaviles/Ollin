@@ -185,7 +185,7 @@ In the set, every change came from your hands. A parameter can also follow a pla
 
 ### A value at each moment: keyframes
 
-A **keyframe** is a value placed at a moment. An **automation** moves a parameter from one key to the next along a curve. You write down what a parameter does instead of moving it yourself. A **track** is one parameter's keys. Use an automation for a change that should happen the same way every time. Keyframes come from animation, where a lead artist drew the key poses and others drew the frames between. Here `radius` is a `@Param` of the sketch, and `$radius` is the parameter itself, as in [Chapter 38](38-ControlsAndSignals.md#one-parameter-three-hands-binding-and-smoothing):
+A **keyframe** is a value placed at a moment. An **automation** moves a parameter from one key to the next along a curve. You write down what a parameter does instead of moving it yourself. A **track** is one parameter's keys. The `Timeline` of [Chapter 3](03-MotionAndTime.md#choreography-timeline) is the same idea typed in code; here you place the keys in a panel. Use an automation for a change that should happen the same way every time. Keyframes come from animation, where a lead artist drew the key poses and others drew the frames between. Here `radius` is a `@Param` of the sketch, and `$radius` is the parameter itself, as in [Chapter 38](38-ControlsAndSignals.md#one-parameter-three-hands-binding-and-smoothing):
 
 ```swift
 override func setup() {
