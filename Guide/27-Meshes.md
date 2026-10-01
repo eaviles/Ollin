@@ -10,7 +10,7 @@ A mesh can come from a file and take a picture for its color, or start as a roug
 
 ## A mesh from a file
 
-A generator hands you a shape the framework knows how to build. A file hands you a shape somebody drew. Any model you make in a 3D tool can join a sketch. `loadMesh` reads the common formats (`.usdz`, `.obj`, `.gltf`/`.glb`, `.stl`, `.ply`) into a `Mesh`, materials and textures included:
+A generator, one of the `Mesh` builders from [Chapter 26](26-3DGently.md#a-catalog-of-solids)'s catalog, hands you a shape the framework knows how to build. A file hands you a shape somebody drew. Any model you make in a 3D tool can join a sketch. `loadMesh` reads the common formats (`.usdz`, `.obj`, `.gltf`/`.glb`, `.stl`, `.ply`) into a `Mesh`, materials and textures included:
 
 ```swift
 final class Loaded: Sketch {
@@ -74,9 +74,9 @@ let smooth = cage.subdivided(levels: 2)
 
 <img src="Images/27-Meshes/SubdivisionCage.jpg" alt="Three views of the same extruded five-pointed star: the control cage as a pale cyan wireframe, one level of subdivision as a plump amber star with soft edges, and two levels as a much softer orange form sitting inside the ghosted wireframe of the cage whose points now reach far past it" width="680">
 
-You model the cage, and the smoothness is computed. One level already rounds the slab-sided star. By two the form has melted well inside its cage at the points. The smooth surface eases *toward the averages* of the cage. Points pull in and notches fill out, and the pointy features round off the fastest. If a shape comes out softer than you wanted, the fix is a chunkier cage rather than fewer levels.
+`Profile.star()` is the star outline [Chapter 6](06-GridsAndRepetition.md#drawing-inside-a-shape-withclip) handed to `Shape`, here with its default proportions, and `Mesh.extrude` pushes it into depth. You model the cage, and the smoothness is computed. One level already rounds the slab-sided star. By two the form has melted well inside its cage at the points. The smooth surface eases *toward the averages* of the cage. Points pull in and notches fill out, and the pointy features round off the fastest. If a shape comes out softer than you wanted, the fix is a chunkier cage rather than fewer levels.
 
-Any mesh works as a cage with no preparation: the primitives, an extrusion, a lathe, or a loaded model. `subdivided` welds their shared corners and recovers their intended faces before refining, so a box rounds as one closed surface rather than six drifting plates. Open sheets keep their rims, and a subdivided `plane` smooths along its edge instead of shrinking away from it. Triangle-native meshes like an icosphere or a marching-cubes blob have their own refinement rules a scheme argument away, `subdivided(.loop, levels: 2)`. The [reference page](../Docs/Generators/SubdivisionSurfaces.md) covers when to pick which.
+Any mesh works as a cage with no preparation: the primitives, an extrusion, a lathe, or a loaded model. `subdivided` welds their shared corners and recovers their intended faces before refining, so a box rounds as one closed surface rather than six drifting plates. Open sheets keep their rims, and a subdivided `plane` smooths along its edge instead of shrinking away from it. Triangle-native meshes have their own refinement rules a scheme argument away, `subdivided(.loop, levels: 2)`. An icosphere is one, and so is a blob [Chapter 32](32-SculptingWithFields.md#the-other-way-out-field-to-mesh) turns from a field into a mesh. The [reference page](../Docs/Generators/SubdivisionSurfaces.md) covers when to pick which.
 
 This is `setup()`-shaped work. Each level roughly quadruples the face count, so refine once, keep the mesh, and let `draw()` draw it. Two or three levels is almost always enough.
 
@@ -367,7 +367,7 @@ stage["sculpture"]?.rotate(deltaTime, axis: .unitY)
 drawScene(stage)                               // every node, in its authored place
 ```
 
-Everything unpacks into things you already know. The file's camera is a `Camera3D`, the kind of value `camera(_:)` takes, and its lights are `Light`s. Each node's geometry is a `Mesh`. `drawScene` draws the whole layout where the tool put it. `stage["sculpture"]` reaches one node by name, so a single part moves while the rest holds still. Bring the set over from the design tool, and keep the choreography in the sketch. The tree on the left of the figure is the file as it was saved. Every node has its name, nested the way the tool nested it. `loadMesh` would have folded all of it into one shape. `drawScene` draws it as the middle panel, through the file's own camera and under its own lights. The right panel moves one node by name, `stage["lamp"]`. The lamp's light moves with it, because a light belongs to the node that carries it. Move a group and everything under it, meshes and lights alike, comes along. The `3D/Geometry/LoadedScene` example is a small stage to poke at, and [Scenes](../Docs/3D/Scenes.md) has the details.
+Everything unpacks into things you already know. The file's camera is a `Camera3D`, the kind of value `camera(_:)` takes, and its lights are `Light`s, which `light(_:)` adds to the frame one at a time. A node's `rotate(_:axis:)` turns it by an angle about an axis, here `.unitY`, the world's up axis. Each node's geometry is a `Mesh`. `drawScene` draws the whole layout where the tool put it. `stage["sculpture"]` reaches one node by name, so a single part moves while the rest holds still. Bring the set over from the design tool, and keep the choreography in the sketch. The tree on the left of the figure is the file as it was saved. Every node has its name, nested the way the tool nested it. `loadMesh` would have folded all of it into one shape. `drawScene` draws it as the middle panel, through the file's own camera and under its own lights. The right panel moves one node by name, `stage["lamp"]`. The lamp's light moves with it, because a light belongs to the node that carries it. Move a group and everything under it, meshes and lights alike, comes along. The `3D/Geometry/LoadedScene` example is a small stage to poke at, and [Scenes](../Docs/3D/Scenes.md) has the details.
 
 > **Swift note.** [Chapter 8](08-Words.md)'s `??` hands back the value on its left when it is there. When the left is `nil`, it hands back the value on its right. So the sketch uses the file's camera, and falls back to an orbit without one. The subscript `stage["sculpture"]` also answers an optional, since a file may not hold a node of that name. The `?.` after it skips the rotate when it does not.
 
@@ -395,7 +395,7 @@ The garden rounded its stones from boxes, and the chapter opened on a mesh loade
 
 ### Cutting one solid with another: mesh booleans
 
-A **boolean** combines two solids the way a filled `Shape` combines two outlines on the plane, with the same combinations. It is for the shape that is hard to describe and easy to catch between two shapes that are not. A block with every edge rounded, a plate with a round hole, and a shell with a window cut out are all cuts. The operations are the constructive solid geometry of CAD tools. Ollin computes them by the method Bruce Naylor, John Amanatides, and William Thibault published in 1990. It holds each solid as a tree of its own face planes and sorts the other solid's surface into inside and outside.
+A **boolean** combines two solids the way a filled `Shape` combines two outlines on the plane in [Chapter 15](15-ShapesAsMaterial.md#shape-arithmetic-the-booleans), with the same combinations. It is for the shape that is hard to describe and easy to catch between two shapes that are not. A block with every edge rounded, a plate with a round hole, and a shell with a window cut out are all cuts. The operations are the constructive solid geometry of CAD tools. Ollin computes them by the method Bruce Naylor, John Amanatides, and William Thibault published in 1990. It holds each solid as a tree of its own face planes and sorts the other solid's surface into inside and outside.
 
 ```swift
 let cube = Mesh.box(size: 1.3)
@@ -418,7 +418,7 @@ Before you cut, check these.
 
 **Both sides have to close.** A boolean asks what is inside each solid, so a surface with a hole in it has no answer to give. What comes back is meaningless rather than merely ugly. Most built-in generators close, but a plane, a Möbius strip, and a cylinder without caps do not. If you are unsure, `printCheck()` will tell you, the same examination [Chapter 42](42-MakingItPhysical.md#something-you-can-hold-a-3d-print) runs before it writes a mesh for a printer.
 
-**A cutter has to be the right way out.** Mirroring a mesh turns it inside out. So does swapping two of its coordinates, or scaling an axis by a negative number. An inside-out cutter takes away everything it should have left. Turn it instead:
+**A cutter has to be the right way out.** Mirroring a mesh turns it inside out. So does swapping two of its coordinates, or scaling an axis by a negative number. An inside-out cutter takes away everything it should have left. Turn it instead. `mapPositions` hands you every vertex position and keeps what the closure returns, so swapping two coordinates with one sign flipped is a quarter turn:
 
 ```swift
 let shaft = Mesh.cylinder(radius: 0.2, height: 2)
@@ -429,7 +429,7 @@ block.subtracting(shaft.mapPositions { Vector3($0.y, -$0.x, $0.z) })   // a quar
 
 ### One mesh from several: joined and placed
 
-Not every assembly needs a cut. **Joining** lays several meshes end to end as one mesh, each moved into place first, with no boolean and no change to any surface. It is for parts that only have to draw and cast a shadow together, as one draw call. A body and its wheels, or a table and its legs, are the usual cases. It is the plain merge every modeling tool has. `placed(_:)` bakes a placement into a copy of a part, and `Mesh.joined(_:)` lays the parts end to end:
+Not every assembly needs a cut. **Joining** lays several meshes end to end as one mesh, each moved into place first, with no boolean and no change to any surface. It is for parts that only have to draw and cast a shadow together, as one draw call. A body and its wheels, or a table and its legs, are the usual cases. It is the plain merge every modeling tool has. `placed(_:)` bakes a placement into a copy of a part. The placement is a `MeshInstance`, a position, a rotation as three angles about x, y, and z, and a scale, each with a default. `Mesh.joined(_:)` then lays the parts end to end:
 
 ```swift
 let body = Mesh.box(width: 1, height: 0.5, depth: 2)

@@ -29,7 +29,7 @@ final class FirstSphere: Sketch {
 
 Run it live and drag. The sphere is a shaded ball, and the mouse orbits around it. `cameraShowcase` gives you the camera most 3D sketches want with no wiring at all. It circles the scene slowly on its own, and you can grab it any time. Drag to orbit, scroll to move closer or farther, and right-drag to slide the view. After ten seconds of being left alone it drifts back to the opening shot and resumes. That way a sketch on a wall keeps moving and a curious viewer can always explore. When you'd rather the camera hold still until you move it, `cameraControl()` gives you the same gestures without the automatic orbit.
 
-Notice you set up no lights. Solids are lit by a default rig automatically, so a shape looks three-dimensional from the first frame. We'll take the lights over ourselves in a few pages.
+Notice you set up no lights. Solids are lit by a default rig, a set of lights placed for you, so a shape looks three-dimensional from the first frame. We'll take the lights over ourselves in a few pages.
 
 The camera's home position is three numbers. The picture to keep in mind is an eye moving over a sphere around a target:
 
@@ -46,7 +46,7 @@ Two other cameras place the eye without an orbit. `perspective(eye:target:)` put
 
 ### Keeping your bearings: views, the axis, and the ground grid
 
-Once the camera moves, you need a way back to a known view, and the tools for that come built in. `cameraView(.front)` snaps the camera to a canonical angle, like front, top, left, or isometric, and `resetCamera()` returns to the opening shot. The host apps put the same snaps in a **Camera** menu, ⌘0 through ⌘7. They work on any running sketch without a line of code. Two more calls help while you build. `cameraAxis()` shows a small clickable x-y-z compass, and `groundGrid()` lays a faint reference floor. Both are development chrome, drawn only in the live window and never in an export.
+Once the camera moves, you need a way back to a known view, and the tools for that come built in. `cameraView(.front)` snaps the camera to a canonical angle, like front, top, left, or isometric, and `resetCamera()` returns to the opening shot. The host apps put the same snaps in a **Camera** menu, ⌘0 through ⌘7. They work on any running sketch without a line of code. Two more calls help while you build. `cameraAxis()` shows a small clickable x-y-z compass, and `groundGrid()` lays a faint reference floor. Both are development aids, drawn only in the live window and never in an export.
 
 ## Where things are in the world: Vector3 and world units
 
@@ -56,7 +56,7 @@ The sphere sat at the center of the world, which is where drawing starts. To pla
 let p = Vector3(2, 1, -3)     // 2 right, 1 up, 3 away
 ```
 
-The two types share one surface, called `Vector`. `length`, `normalized`, `distance(to:)`, `lerp(to:_:)`, `limited(to:)`, `projected(onto:)`, the arithmetic and the constants all belong to it. So everything Chapter 10 taught reads the same out here. It also means a helper you write once takes either kind of point:
+The two types share one surface, called `Vector`. `length`, `normalized`, `distance(to:)`, `lerp(to:_:)`, `limited(to:)`, the arithmetic and the constants all belong to it, and so does `projected(onto:)`, which Chapter 10 left to its reference page. So everything Chapter 10 taught reads the same out here. It also means a helper you write once takes either kind of point:
 
 ```swift
 func midpoint<V: Vector>(_ a: V, _ b: V) -> V { a.lerp(to: b, 0.5) }
@@ -73,7 +73,7 @@ Two habits from the canvas need resetting. First, in the world **y goes up**, th
 
 ## Depth that hides things: the depth test
 
-Place a few spheres at different distances and the second new thing appears:
+One sphere showed you the camera. Place a few spheres at different distances and the next new thing appears:
 
 ```swift
 override func draw() {
@@ -108,7 +108,7 @@ The sphere is one solid among many. Each of these is one call, shaded and depth-
 
 The names are what you'd guess: `drawBox(size: 1.5)`, `drawTorus(radius: 0.6, tube: 0.25)`, `drawCone(radius: 0.7, height: 1.5)`, and so on. Past the everyday ones there's also a small shape *factory*. `drawSupershape` and `drawSuperellipsoid` sweep whole families of organic and gem-like forms from a few numbers. `drawExtrude` pushes any flat 2D shape into depth. `drawLathe` revolves a side profile into a vase, and `drawTube` sweeps a tube along any 3D path. The `3D/Geometry/ShapeFactory` example is the tour.
 
-Under every one of these calls is a **`Mesh`**, the shape as a set of triangles. Every 3D surface here is made of them. The `draw*` calls rebuild their mesh every frame, which is fine for a box and wasteful for a dense knot. The pattern for anything heavy is the one you know from images and fonts, build once, draw forever:
+Under every one of these calls is a **`Mesh`**, the shape as a set of triangles. Every 3D surface here is made of them. The `draw*` calls rebuild their mesh every frame, which is fine for a box and wasteful for a dense knot. The pattern for anything heavy is the one you know from images and fonts, build once, draw forever. The `segments` and `sides` below say how finely the knot is cut into triangles, along its length and around its tube:
 
 ```swift
 let knot = Mesh.torusKnot(radius: 0.62, tube: 0.2, segments: 220, sides: 14)
@@ -132,7 +132,7 @@ drawMesh(ball)
 
 <img src="Images/26-3DGently/TrianglesAndNormals.jpg" alt="The same coarse sphere three times on a gray floor against a dark background: a lit coral solid with a many-sided outline, its net of pale blue-gray triangles drawn as see-through lines, and the coral solid again with a short yellow tube standing straight out of every corner" width="680">
 
-The middle ball is the same icosphere as the left one, drawn as its net. A wireframe takes no light, because there is no face to shade. It still takes the depth test, so a solid in front of it hides its lines. `wireframe(false)` goes back to solid, and `withState` scopes it like any other state. It is the look for a form still being worked out, and the finished sketch puts one on a plinth that way.
+The middle ball is the same icosphere as the left one, drawn as its net. An icosphere is a ball made by splitting the twenty faces of an icosahedron, and `subdivisions` is how many times, so 1 is a coarse one. A wireframe takes no light, because there is no face to shade. It still takes the depth test, so a solid in front of it hides its lines. `wireframe(false)` goes back to solid, and `withState` scopes it like any other state. It is the look for a form still being worked out, and the finished sketch puts one on a plinth that way.
 
 The right-hand ball shows the other thing every corner of the net carries. Besides its position, a vertex has a **normal**, the direction the surface faces at that point. The right-hand ball draws each one as a short tube standing straight out of the surface. Hold a ball and push a pin into it, and the pin points along the normal. On a sphere the normals point away from the center. On a box, every face's four corners share the face's own normal. So a corner position holds three normals, one for each face that meets there. For a flat face the normal is the `cross` of two of its edges. Name its corners `a`, `b`, and `c`, running counter-clockwise as you look at the face. Then `(b - a).cross(c - a).normalized` points straight out of it. Shading is a question asked of the normal. How squarely does this point face the light? A normal turned toward the light reads bright and one turned away reads dark. That falloff is what made the first sphere read as a ball. The icosphere's normals point away from its center even where its triangles are flat, which is why a coarse one shades round.
 
@@ -194,7 +194,7 @@ Everything so far wore the default lighting. Taking over is one call before you 
 lightingPreset(.goldenHour)     // one call relights the whole scene
 ```
 
-The six presets (`.standard`, `.threePoint`, `.goldenHour`, `.noir`, `.studio`, `.moonlight`) are each an ambient wash plus a few placed lights, tuned like film rigs. Play with them first, because the mood of a 3D sketch is mostly its light. Put the preset on a parameter and step through them while the scene runs.
+The six presets (`.standard`, `.threePoint`, `.goldenHour`, `.noir`, `.studio`, `.moonlight`) are each an ambient wash plus a few placed lights, tuned like film rigs. A film rig names its lights by their jobs. The key is the main light, the fill lifts the side the key leaves dark, and the rim comes from behind to edge the outline. Play with them first, because the mood of a 3D sketch is mostly its light. Put the preset on a parameter and step through them while the scene runs.
 
 When you're ready to place your own, there are three kinds of light, and one scene can carry all of them:
 
@@ -213,7 +213,7 @@ castShadows()
 
 A **directional** light is the sun, parallel rays from a direction, with no position of its own, lighting everything evenly. A **point** light is a bulb at a place, so each surface catches it from its own direction. It reaches equally far forever unless you give it a `reach:`, which [Chapter 29](29-Landscapes.md#a-courtyard-of-lamps-many-lights) teaches. A **spot** is a point light narrowed to an aimed cone, with a `penumbra` for how soft its edge falls. The `ambientLight` is a flat wash added to every surface so the unlit sides aren't pure black. Each light takes an `intensity`, and in the figure each has its own color so you can see which light does what. The warm key shades everything, the cyan bulb lights the faces turned toward it, and the magenta cone pools on the floor. A small ball marks the bulb, so the bulb passes `castsShadow: false`, and the shadow step says why.
 
-Lights can do two more things, and the reference covers each. A light can be shaped. An **IES profile** gives a point or spot light the measured throw of a real fixture. A **cookie** projects an image through a spot's cone, the way a stage gobo does. The [light shaping reference](../Docs/3D/3D.md#light-shaping-ies-profiles-and-cookies) has the details. The `3D/Lighting/LightShaping` example puts a downlight, a batwing, a wallwasher, and a window over one floor. And since lights are drawing state, one frame can hold several rigs. `withLights` gives a block its own lamps, and `withoutLights` draws it flat. The [light sets reference](../Docs/3D/3D.md#light-sets) covers them, and the `3D/Lighting/LightSets` example is three rooms under three rigs.
+Lights can do two more things, and the reference covers each. A light can be shaped. An **IES profile** gives a point or spot light the measured throw of a real fixture. A **cookie** projects an image through a spot's cone. A stage light does the same through a cut metal plate called a gobo, which throws a pattern onto the set. The [light shaping reference](../Docs/3D/3D.md#light-shaping-ies-profiles-and-cookies) has the details. The `3D/Lighting/LightShaping` example puts a downlight, a batwing, a wallwasher, and a window over one floor. And since lights are drawing state, one frame can hold several rigs. `withLights` gives a block its own lamps, and `withoutLights` draws it flat. The [light sets reference](../Docs/3D/3D.md#light-sets) covers them, and the `3D/Lighting/LightSets` example is three rooms under three rigs.
 
 Two smaller dials finish the surface's response to light. `specular(_:)` sets how strong the highlight is (0 is matte) and `specularSharpness(_:)` how tight. The materials step below sets both at once by name, so you will rarely touch them. The listing above has one more line than the lights, and it is the next step.
 
@@ -317,7 +317,7 @@ drawSphere(radius: 0.62)
 
 There's a further tier, the physically based metals and plastics (`material(.metal(roughness: 0.2))`), that needs surroundings to reflect. [Chapter 28](28-MaterialsAndSurroundings.md#finishes-you-measure-environments-and-physically-based-materials) teaches it, where environments light the scene.
 
-One more thing to keep straight as you combine finishes. Ollin draws several *kinds* of 3D thing, and they reach the screen by different routes, so a finish applies unevenly. Solid meshes are the fullest citizens, taking materials, textures, shadows, and reflections. A wireframe takes none of the light, as the solids step showed. The raymarched fields of [Chapter 32](32-SculptingWithFields.md) take materials, environments, and shadows by a route of their own. Point clouds, which [Chapter 35](35-Depth.md) draws, are dots that always face the camera, and they take neither lighting nor shadows. When something you expected to apply does nothing, the [combining reference](../Docs/3D/Combining.md) is a table of what stacks with what.
+One more thing to keep straight as you combine finishes. Ollin draws several *kinds* of 3D thing, and they reach the screen by different routes, so a finish applies unevenly. Solid meshes are the fullest citizens, taking materials, textures (pictures wrapped onto a surface, [Chapter 27](27-Meshes.md#a-picture-wrapped-around-it-textured)'s first subject), shadows, and reflections. A wireframe takes none of the light, as the solids step showed. The raymarched fields of [Chapter 32](32-SculptingWithFields.md) take materials, environments, and shadows by a route of their own. Point clouds, which [Chapter 35](35-Depth.md) draws, are dots that always face the camera, and they take neither lighting nor shadows. When something you expected to apply does nothing, the [combining reference](../Docs/3D/Combining.md) is a table of what stacks with what.
 
 ## Putting it together: the plaza
 
@@ -438,7 +438,7 @@ The `3D/Lighting/AreaLights` example stages all three shapes over a glossy floor
 
 ### The seam under a resting thing: contact shadows
 
-Even a good shadow map falls short in one place, the line where an object touches the ground. Those are the most important few pixels in the picture. A map has finite resolution, and the bias that keeps its speckle off nudges its shadow slightly away from the caster. The last sliver of contact opens up, and a resting box can read as floating a hair above the floor. A **contact shadow** is the fine dark line that closes that seam. For each pixel the renderer walks a short ray toward each casting light through the scene's own depth. Where something nearby blocks the way, it darkens the pixel. It is for seating anything that rests on anything, and the wider your soft shadows, the more it does. The short screen-space march comes from production game renderers, where it is a standard pass beside the shadow map.
+Even a good shadow map falls short in one place, the line where an object touches the ground. Those are the most important few pixels in the picture. A map has finite resolution, and it needs a small offset, the **bias**, or a surface shadows itself in speckles. That bias nudges its shadow slightly away from the caster. The last sliver of contact opens up, and a resting box can read as floating a hair above the floor. A **contact shadow** is the fine dark line that closes that seam. For each pixel the renderer walks a short ray toward each casting light through the scene's own depth. Where something nearby blocks the way, it darkens the pixel. It is for seating anything that rests on anything, and the wider your soft shadows, the more it does. The short screen-space march comes from production game renderers, where it is a standard pass beside the shadow map.
 
 <img src="Images/26-3DGently/Seated.jpg" alt="An orange box, a blue sphere, and a yellow cylinder resting on a pale floor under wide soft shadows, each base hugged by a fine dark seam that pins it to the ground. A small white sphere hovers at the upper left with only a soft detached blob of shadow on the floor below it, and no seam" width="680">
 
@@ -597,7 +597,7 @@ The plaza built its sculptures from the catalog, and the catalog's `drawExtrude`
 drawText3D("Ollin", size: 2, depth: 0.4)
 ```
 
-One number needs care. `size` is measured in world units, not in the canvas points [`textSize`](08-Words.md) uses. It is the em, so a capital stands about seven tenths of it. Everything else is what you would expect. The current fill colors it, and a material from the materials step finishes it. It sits centered on the origin, so you place it like a box.
+One number needs care. `size` is measured in world units, not in the canvas points [`textSize`](08-Words.md) uses. It is the em, the height a font is measured by, so a capital stands about seven tenths of it. Everything else is what you would expect. The current fill colors it, and a material from the materials step finishes it. It sits centered on the origin, so you place it like a box.
 
 For anything that draws every frame, reach past the convenience call to the two builders under it. `Mesh.text` gives you the whole word as one mesh, built once and kept. `Mesh.textGlyphs` gives you the same word a letter at a time, each letter still in its place. Every letter knows its own center, which is what lets one turn about itself instead of about the word. Translate to the pivot, turn, and translate back, and each letter turns in place:
 
@@ -619,7 +619,7 @@ for (i, glyph) in letters.enumerated() {                        // in draw()
 
 The call exists because extruding the letter shapes yourself goes wrong in two ways. Text is laid out with y growing down the canvas, while the world counts y up, so a hand-rolled word arrives upside down. And a letter's curves are simplified against the size you ask for, so a letter one unit tall comes back as a lump. The call traces the outline large and scales it down, which is why a small letter is still a letter.
 
-A letter with a hole keeps it, since the caps come from the same triangulator every filled shape uses. An extrusion has no map saying where each part of a picture goes, so a plain texture has nothing to hold on to. [Chapter 27](27-Meshes.md#a-picture-from-three-sides-triplanar) projects a picture onto a shape like this from three sides instead.
+A letter with a hole keeps it. Its caps, the flat front and back, are cut into triangles the way every filled shape on the canvas is, hole and all. An extrusion has no map saying where each part of a picture goes, so a plain texture has nothing to hold on to. [Chapter 27](27-Meshes.md#a-picture-from-three-sides-triplanar) projects a picture onto a shape like this from three sides instead.
 
 ## Where this comes from
 
