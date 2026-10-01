@@ -169,7 +169,7 @@ Like `fill` or a transform, `symmetry` is drawing state. So it applies to everyt
   <img src="Images/06-GridsAndRepetition/Kaleidoscope.jpg" alt="Three panels: a single small crooked wedge with a red dot at its tip, the same wedge under eightfold symmetry forming a snowflake, and under mirrored eightfold symmetry forming a denser one with paired reflections" width="680">
 </picture>
 
-The mirrored form is the one to use. A plain rotation copies your wedge around like a pinwheel, and every copy still leans the same way. Mirroring flips alternate copies, so neighbors face each other and the seams between them close. That is the difference between a pinwheel and a kaleidoscope. Doing it by hand means negative scales and reversed winding, a mess you now do not have to write.
+The mirrored form is the one to use. A plain rotation copies your wedge around like a pinwheel, and every copy still leans the same way. Mirroring flips alternate copies, so neighbors face each other and the seams between them close. That is the difference between a pinwheel and a kaleidoscope. Doing it by hand means a negative `scale` on every other copy. That flip also runs each shape's corners the other way round, a mess you now do not have to write.
 
 The folds pivot on the origin as it stands at the call, the top-left corner unless you `translate` first. And because it is drawing state rather than a loop you write, a whole composition folds as easily as a single arm.
 
@@ -290,7 +290,7 @@ Before moving on, make it yours:
 
 ## A cell that is a whole canvas: `withViewBox`
 
-The wall moved the paper into each cell by hand and clipped what it drew there. A clip keeps drawing inside a region. A view box goes one step further and moves the coordinates too, so the block inside believes the region *is* the canvas:
+The wall moved the paper into each cell by hand and clipped what it drew there. A clip keeps drawing inside a region. A view box goes one step further and moves the coordinates too, so the block inside believes the region *is* the canvas. In the listing, `drawPetals()` stands for a drawing of your own, written for the whole canvas, under whatever name you gave it:
 
 ```swift
 for cell in grid(columns: 3, rows: 2, padding: 40).cells {
@@ -306,11 +306,11 @@ for cell in grid(columns: 3, rows: 2, padding: 40).cells {
   <img src="Images/06-GridsAndRepetition/ViewBoxSheet.jpg" alt="Six boxes on one canvas in two rows of three, each holding the same ring of petals under a different seed, each with its own colored wash" width="680">
 </picture>
 
-Inside that block `width` and `height` still report the whole canvas, and `center` is still the middle of it. A circle at `(width / 2, height / 2)` lands in the middle of the cell. That is the point. You hand a sketch written for the whole window to a box, and it runs there unchanged. Here the last call inside the box stands for that whole drawing, under whatever name you gave it.
+Inside that block `width` and `height` still report the whole canvas, and `center` is still the middle of it. A circle at `(width / 2, height / 2)` lands in the middle of the cell. That is the point. You hand a sketch written for the whole window to a box, and it runs there unchanged.
 
 Two more things are quietly remapped so that stays true. `background` fills the box rather than the whole canvas. The canvas belongs to every box at once, and one of them wiping it would take the others with it. And the mouse arrives in the box's own coordinates, so an interactive sketch works in each box separately.
 
-The virtual canvas has the *sketch's* shape, not the box's, so in a box shaped like the canvas everything lands as drawn. When the shapes differ, `fit:` decides, using the same words a picture uses in [Chapter 9](09-Pictures.md). `.contain`, the default, leaves the box showing along two edges, `.cover` fills it and crops, and `.stretch` squashes.
+The virtual canvas has the *sketch's* shape, not the box's, so in a box shaped like the canvas everything lands as drawn. When the shapes differ, the `fit:` argument of `withViewBox` decides, using the same words a picture uses in [Chapter 9](09-Pictures.md). `.contain`, the default, leaves the box showing along two edges, `.cover` fills it and crops, and `.stretch` squashes.
 
 Labels belong outside the block, in canvas coordinates, or they get scaled down with everything else, so a caption under each box stays one size.
 

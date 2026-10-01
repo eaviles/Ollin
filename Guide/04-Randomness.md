@@ -169,7 +169,7 @@ final class SeedScatter: Sketch {
 }
 ```
 
-> **Swift note.** `var centers: [Vector2] = []` declares a property holding a list of points, empty to start. `append` adds one to the end, and `centers[i]` reads the one at position `i`, counting from 0. `func roll()` declares a function of your own on the sketch, called by name. `keyPressed()` is the keyboard's twin of [Chapter 1](01-HelloOllin.md)'s `mousePressed()`, and `keyCode` names the key that fired.
+> **Swift note.** `var centers: [Vector2] = []` declares a property holding a list of points, empty to start. `append` adds one to the end, and `centers[i]` reads the one at position `i`, counting from 0. `func roll()` declares a function of your own on the sketch, called by name. `keyPressed()` is the keyboard's twin of [Chapter 2](02-Color.md#putting-it-together-a-color-field)'s `mousePressed()`, and `keyCode` names the key that fired.
 
 The constellation holds still, with its number under it, and no seed number is written anywhere. `roll()` is a function of your own that does the rolling. `setup()` calls it once, and the right arrow calls it again after `seed(variation + 1)` moves the sketch to the next variation. So one key steps through constellations one seed at a time, and the number under each tells you which one you are looking at.
 
@@ -288,7 +288,7 @@ Run it with `swift run OllinLive MySketches/DisorderGrid.swift` and take it apar
 - `unrest` is the composition. Row 0 computes it as zero, so no nudge is allowed and the squares nest perfectly. The bottom row gets the full `Disorder` parameter, and every row between gets its share. One line decides the sketch's top-to-bottom structure.
 - Each quadrilateral is four corners sitting on the posts of a perfect square, `inset` deep into its cell. Each corner coordinate adds its own stored nudge, a number between -1 and 1, scaled by the row's reach `d`. That is eight rolls per shape, so the squares deform rather than shift. Four `drawLine` calls close the loop, and `quad` counts which shape is being drawn, so the right eight nudges are read.
 - The accent is a gate and a pick working together, from [Letting chance decide](#letting-chance-decide). Eight percent of quadrilaterals trade ink for `randomChoice(accents)`, decided in `roll()`.
-- `drawText` writes the variation into the bottom margin. It draws a line of text with its left end at the x and its baseline at the y. It uses the size and color you give it. [Chapter 8](08-Words.md) is about text, and this is all of it you need here.
+- `drawText` writes the variation into the bottom margin. It draws a line of text with its left end at the x and its baseline at the y, the line the letters stand on. It uses the size and color you give it. [Chapter 8](08-Words.md) is about text, and this is all of it you need here.
 - The arrow keys change the variation. Right steps to the next one and left to the one before. Each key calls `roll()` again, so the grid redraws with new nudges and the label follows.
 - Turn `Disorder` to zero and the grid snaps to perfect order, so the sketch contains its own before picture. The nudges never change with the parameter, only their reach does. So the same tangles grow back in the same places as you turn it up again.
 
