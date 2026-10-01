@@ -406,7 +406,7 @@ One number, `radius`, sets the density. Later chapters start from these points. 
 
 ### Points that never move: `haltonPoints` and `sobolPoints`
 
-A **low-discrepancy sequence** is the second kind of even, and it is not random at all. Each one is a fixed list of positions, computed from an index, so point number 57 is always in the same place. Use it when you keep adding points to something already on screen, because asking for more never moves the ones you already had. The two sequences are John Halton's, from 1960, and Ilya Sobol's, from 1967. Both were invented for numerical integration rather than for drawing.
+A **low-discrepancy sequence** is the second kind of even, and it is not random at all. Each one is a fixed list of positions, computed from an index, so point number 57 is always in the same place. Use it when you keep adding points to something already on screen, because asking for more never moves the ones you already had. The two sequences are John Halton's, from 1960, and Ilya Sobol's, from 1967. Both were invented for numerical integration rather than for drawing. Halton counts the point's index in a base of its own per axis and mirrors the digits about the point, and `base` is that base. Sobol builds its points from binary patterns instead and spreads a little more evenly, with a faint grid in it if you look.
 
 ```swift
 let points = haltonPoints(count: 500)

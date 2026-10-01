@@ -84,7 +84,7 @@ Most shaders repeat this one sentence: measure a distance, shape it with `smooth
 The disc holds still because nothing in it changes. The `info` argument carries the outside world in. These are the four you reach for first:
 
 - `info.time` is seconds, so anything you feed it moves.
-- `info.mouse` is the cursor, in canvas points.
+- `info.mouse` is the cursor, in canvas points. Divide it by `info.resolution` and it is in the pixel's own `0...1` uv.
 - `info.resolution` is the layer's pixel size.
 - `info.frame` is the frame count.
 

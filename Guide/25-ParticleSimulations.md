@@ -240,7 +240,7 @@ Three numbers are tied to each other, and a swarm that looks wrong is usually on
 
 One more, which is not in the original model: `minSpeed`. Left to itself, a steering agent pushed at from every side stops. In a crowd the stopped ones become a wall the rest jam against, until the whole thing sets like concrete. A floor under the speed keeps it moving, on the grounds that a bird cannot hover.
 
-A still frame of a swarm is a picture of where everyone is, not of how they are moving. That is why all three panels above are drawn as trails. Use `noClear()`, then a nearly transparent rectangle over the whole canvas each frame, so old marks fade instead of vanishing. Use a rectangle rather than `background`, which wipes the canvas outright no matter how little alpha its color carries.
+A still frame of a swarm is a picture of where everyone is, not of how they are moving. That is why all three panels above are drawn as trails, with the `noClear()` and wash the drift used. Use a rectangle for the wash rather than `background`, which wipes the canvas outright no matter how little alpha its color carries.
 
 ## Particles as matter: Particle Lenia, SPH fluid, and soft bodies
 

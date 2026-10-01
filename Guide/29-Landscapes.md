@@ -82,7 +82,7 @@ The pillars sat on rings worked out by hand, which is fine for rings. A hillside
 
 The tempting shortcut is the vertex list. It is already a list of points on the surface, so pick a few hundred of them and plant a tree at each. What comes back is visibly wrong. A mesh puts its vertices where its *shape* needs them, not where its *area* is. A flat wall gets four. A rounded corner gets hundreds. The trees end up following the modeler's decisions instead of the ground.
 
-`surfacePoints` picks over the skin instead. A spot is as likely anywhere the surface holds the same area.
+`surfacePoints` picks over the skin instead. It picks a triangle with a chance in proportion to its area, then a point inside it. A spot is as likely anywhere the surface holds the same area.
 
 <img src="Images/29-Landscapes/ScatteredSpots.jpg" alt="Three dark blue globes side by side, each with the same number of small green cone trees: the first crowded at the poles with a bare middle and trees standing in pairs, the second clumped with visible clearings, the third spread evenly all over" width="640">
 
@@ -383,7 +383,7 @@ Then make it yours:
 
 - Change `seed(2_608)`, `noiseSeed(2_608)`, and the erosion's `seed: 2_608` and run it again. You get a different valley, a different clearing, and a different ridge to look at, with no other edit.
 - Raise `floorLevel` to 0.4 for a wider flood plain. The flats spread and the forest retreats uphill, since nothing is placed on the flood plain.
-- Set `world.isCullingEnabled = false` in `setup()` and watch the inspector's frame time while the picture stays the same.
+- Set `world.isCullingEnabled = false` in `setup()`, which draws every copy whether or not the camera can see it, and watch the inspector's frame time while the picture stays the same.
 
 The valley moves only where the wind reaches the near pines and the grass. Keep it as a still, or as a short video for the sway. `swift run OllinLive MySketches/Valley.swift --export valley.png --frame 180` writes the still, and `--export-video valley.mp4 --seconds 8` records the wind.
 
@@ -441,7 +441,7 @@ Neither half of that stores geometry. The field is a layer the GPU wrote. At eac
 let sea = makeOceanField(Ocean(waveHeight: 3, windSpeed: 18, choppiness: 1.3))
 ```
 
-`windSpeed` then decides *which* waves carry that height. It moves the energy between short chop and long swell without changing how tall the sea stands. `choppiness` moves water sideways toward the crests, which makes them narrow and the troughs wide. Past about 1.5 they fold through themselves, which is where the foam comes from. `WaterSurface` is the look on top of all that: the color of the body, what it reflects, and how the sun glitters off it. `drawOcean(sea, water: .dusk)` passes one of its presets.
+`segments` is how finely the grid is cut, and `tiles` is how many times the one patch of waves repeats across the sea, which is how it reaches the horizon. `windSpeed` then decides *which* waves carry that height. It moves the energy between short chop and long swell without changing how tall the sea stands. `choppiness` moves water sideways toward the crests, which makes them narrow and the troughs wide. Past about 1.5 they fold through themselves, which is where the foam comes from. `WaterSurface` is the look on top of all that: the color of the body, what it reflects, and how the sun glitters off it. `drawOcean(sea, water: .dusk)` passes one of its presets.
 
 The motion comes from the waves themselves. Each wave turns at the speed its own wavelength travels at, and long waves travel faster than short ones. That is why a sea reads as a sea rather than as a shaking sheet. Set `loopSeconds` and every wave is nudged to a frequency that closes on that period, so a recording loops with no seam.
 

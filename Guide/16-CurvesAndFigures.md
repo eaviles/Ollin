@@ -254,7 +254,7 @@ for run in envelope(of: rays) { drawPolyline(run.points) }
 
 Each line is a `Ray2`, a start point and a direction. The tangent at a point on a circle runs at a right angle to the spoke that reaches it. That is what the direction above says. `envelope(of:)` hands back the curve as contours, one per unbroken run.
 
-The right-hand panel is the same idea applied to light. Light crosses a cup, bounces off the far wall, and the bounced rays crowd along a bright curve. That curve is their envelope, and it is called a **caustic**. It is the bright curve in the bottom of a mug in sunlight.
+The right-hand panel is the same idea applied to light. Light crosses a cup, bounces off the far wall, and the bounced rays crowd along a bright curve. That curve is their envelope, and it is called a **caustic**. It is the bright curve in the bottom of a mug in sunlight. [Chapter 33](33-TracedLight.md#the-light-the-glass-takes-given-back-caustics) traces the same curve in 3D, from a glass on a sunlit table.
 
 ```swift
 let rays = reflectedRays(off: wall, from: .point(lamp))

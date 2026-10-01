@@ -83,7 +83,7 @@ If a heavy scene stutters while you sketch, `globalIlluminationQuality(.performa
 
 ## The light the glass takes, given back: caustics
 
-The room's glass ball throws a bright spot inside its own shadow. Set a real glass on a sunlit table and look beside it. Inside its shadow there is a bright loop, brighter than the open table around it. The glass did not destroy the light it blocked. It bent that light into one small place. Focused light like that is a **caustic**, and one call turns it on:
+The room's glass ball throws a bright spot inside its own shadow. Set a real glass on a sunlit table and look beside it. Inside its shadow there is a bright loop, brighter than the open table around it. The glass did not destroy the light it blocked. It bent that light into one small place. Focused light like that is a **caustic**. [Chapter 16](16-CurvesAndFigures.md#the-curve-a-family-of-lines-leans-on-envelopes-and-caustics) drew one flat, as the curve a cup's bounced rays lean on. One call turns it on:
 
 ```swift
 environment(.studio.intensified(to: 0.55).backgroundBlurred(0.6))

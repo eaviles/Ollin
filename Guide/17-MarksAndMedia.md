@@ -330,7 +330,7 @@ The monogram's sheet is a wet medium made from dry geometry, outlines bent by ex
 
 ### Pigment from a polygon: drawWatercolor
 
-A **watercolor** pool in Ollin is one irregular polygon, deformed many times over and painted in translucent layers. It is for the look of paint on wet paper. A pool of paint has a dense middle and an edge that wanders, blooming in some places and staying crisp in others. The recipe is Tyler Hobbs's, from his written guide to simulating watercolor with generative art.
+A **watercolor** pool in Ollin is one irregular polygon, deformed many times over and painted in translucent layers. It is for the look of paint on wet paper. A pool of paint has a dense middle and an edge that wanders, blooming in some places and staying crisp in others. The recipe is Tyler Hobbs's, from his written guide to simulating watercolor with generative art. [Chapter 23](23-GridSimulations.md#paint-that-behaves-watercolor) simulates the wet paper itself instead, with the same look coming out of the physics.
 
 Start with one irregular polygon. Split every edge at its midpoint, jump that midpoint a small random distance, and repeat. Each edge carries its own variance and passes a decayed share of it to the two edges it splits into. Some stretches of outline bloom, while others stay nearly straight. That inheritance is what keeps the result from looking like a uniformly fuzzy circle. Paint one such outline at about four percent opacity and almost nothing shows. Stack forty independently deformed copies and the middle saturates while the fringe stays uneven, which is what the eye reads as pigment.
 

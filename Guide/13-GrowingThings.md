@@ -148,7 +148,7 @@ Run it and the veins set out from the bottom edge, fork into every open pocket, 
 
 Three distances shape the result, and they must stand in a particular order. `stepLength` is how far a tip grows per step, and `killRadius` is how close counts as reached. Keep `stepLength` smaller than `killRadius`, or a tip can step right over its goal. Keep `killRadius` well under `influenceRadius`, which is how far an attractor's pull reaches. One thing stops growth before it starts. Growth only begins if some attractor's pull can reach a root. A tree whose crown floats high above its root needs an `influenceRadius` at least as long as the trunk-to-crown gap. The garden's tree needs this.
 
-The last part of the listing is weight. `thicknesses(tipWidth:exponent:)` gives every node a stroke width by the pipe model. Tips are hairline, and every fork is as thick as its children can justify, the way a trunk carries its crown. Each `node` knows its `parent`, so the loop draws one segment from parent to child at the child's width. The `Patterns/Venation` example grows a whole leaf's veins this way, live.
+The last part of the listing is weight. `thicknesses(tipWidth:exponent:)` gives every node a stroke width by the pipe model. `exponent` is that model's power. A parent's width, raised to it, is its children's widths raised to it and added, so at 2 the cross-sections add and a higher power makes the trunk heavier. Tips are hairline, and every fork is as thick as its children can justify, the way a trunk carries its crown. Each `node` knows its `parent`, so the loop draws one segment from parent to child at the child's width. The `Patterns/Venation` example grows a whole leaf's veins this way, live.
 
 ## Growth by chance: diffusion-limited aggregation
 
@@ -181,7 +181,7 @@ Because particles freeze in arrival order, `cluster.particles[i]` froze `i`-th, 
 
 ## Putting it together: a garden
 
-The garden plants three of the chapter's growers in one bed. One `seed(5)` at the top, with a seed of its own for each tuft, makes the whole thing reproducible. Make `MySketches/Garden.swift`:
+The garden plants three of the chapter's growers in one bed. Each grower is a stored property, held with `?` or `!` when `setup()` makes one and in an array when it makes several, as [Appendix A](A-JustEnoughSwift.md#more-about-optionals) explains. One `seed(5)` at the top, with a seed of its own for each tuft, makes the whole thing reproducible. Make `MySketches/Garden.swift`:
 
 ```swift
 import Ollin
@@ -369,7 +369,7 @@ Cutting is one move of several. `split` slices a piece at fractions of its width
 
 ### Growth by voltage: dielectric breakdown
 
-Where DLA's walkers arrive most often is also where an electric field would be strongest. The **dielectric breakdown model** drops the walkers and measures the field directly. Hold the discharge at one voltage and the surroundings at another, solve the field between them, and grow where it is strongest. This is how a spark decides where to go, and it is the physics burned into wood and acrylic as Lichtenberg figures. The physicists Lutz Niemeyer, Luciano Pietronero, and Hans Wiesmann proposed the model in 1984, three years after DLA. It explains why real discharges branch the way they do.
+Where DLA's walkers arrive most often is also where an electric field would be strongest. The **dielectric breakdown model** drops the walkers and measures the field directly. Hold the discharge at one voltage and the surroundings at another, solve the field between them, and grow where it is strongest. Solving the field means working out the voltage every empty cell settles to, given the two you hold. This is how a spark decides where to go, and it is the physics burned into wood and acrylic as Lichtenberg figures. The physicists Lutz Niemeyer, Luciano Pietronero, and Hans Wiesmann proposed the model in 1984, three years after DLA. It explains why real discharges branch the way they do.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/13-GrowingThings/VoltageChooses-dark.jpg">

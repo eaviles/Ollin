@@ -377,7 +377,7 @@ for caught in world.bodiesOverlapping(.sphere(radius: 3.2), at: blast) {
 }
 ```
 
-Those few lines are a blast radius, and the sphere they asked with never existed. The push points away from the blast and a little upward, and it is strongest near the middle. You could build a sensor there and read `touching` instead, and for a standing question, like the tray's, you should. But a sensor has to exist before the moment and be cleared away after. An overlap is a question asked once, anywhere, with a shape made up in that line. `bodiesContaining(point)` asks the same question with no shape at all.
+Those few lines are a blast radius, and the sphere they asked with never existed. `applyImpulse` is a kick: a change of speed handed over in one step, where a force would act over time. The push points away from the blast and a little upward, and it is strongest near the middle. You could build a sensor there and read `touching` instead, and for a standing question, like the tray's, you should. But a sensor has to exist before the moment and be cleared away after. An overlap is a question asked once, anywhere, with a shape made up in that line. `bodiesContaining(point)` asks the same question with no shape at all.
 
 A few habits help. Queries skip sensors unless you pass `includingSensors: true`. They do see soft bodies, so a hanging sheet blocks a ray. `ignoring:` lets something cast from inside itself, which is how a robot looks out past its own body. None of this steps the world, so you can ask once per crate every frame and find everything where you left it.
 
@@ -497,7 +497,7 @@ The [`3D/Physics/Contraption`](../Examples/3D/Physics/Contraption/) example is a
 
 ### Standing on cables: tensegrity
 
-A tensegrity is a structure of struts that never touch. Cables hold them apart. Each strut pushes, the cables around it pull back just as hard, and the structure stands with no strut resting on another. It is for sculpture, masts, and forms that look like they should fall. Kenneth Snelson built them as sculpture, and Buckminster Fuller gave them their name. The six-strut ball is Børge Jessen's icosahedron from 1967. The stacked mast follows Robert Skelton and Mauricio de Oliveira's stacking of prisms from 2009.
+A tensegrity is a structure of struts that never touch. Cables hold them apart. Each strut pushes, the cables around it pull back just as hard, and the structure stands with no strut resting on another. It is for sculpture, masts, and forms that look like they should fall. Kenneth Snelson built them as sculpture, and Buckminster Fuller gave them their name. Gego hung rods on joints with no cables at all, and the homage in Go deeper is that structure in this chapter's world. The six-strut ball is Børge Jessen's icosahedron from 1967. The stacked mast follows Robert Skelton and Mauricio de Oliveira's stacking of prisms from 2009.
 
 <img src="Images/30-WorldsWithWeight/Tensegrity.jpg" alt="Three tensegrities standing on a dark floor: an orange three-strut prism on the left, a yellow six-strut ball in the middle, and a tall teal mast of three stacked prisms on the right. Thin pale cables run between the strut tips, and no strut touches another in the first two." width="680">
 

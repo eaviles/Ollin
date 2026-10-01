@@ -83,6 +83,13 @@ Reaction-diffusion is the Game of Life's continuous cousin, and the engine of th
 
 About half the map is quiet. Patterns grow only in a band where feeding and killing balance, and each regime along that band has its own signature. There are dividing dots, and there are the worm mazes and coral walls the defaults grow. Put `feed` and `kill` on `@Param` parameters and you can walk the map live. The [`Simulation/GrayScott`](../Examples/Simulation/GrayScott/Sketch.swift) example runs the dish at the defaults, a place to start from.
 
+Seeding is drawing, as it was for Life. Watch what one mark becomes:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/23-GridSimulations/Seeding-dark.jpg">
+  <img src="Images/23-GridSimulations/Seeding.jpg" alt="Four dishes seeded with the same ring at different moments, showing its growth: the raw ring, a thickened double ring, a wavy cross, and a labyrinth filling the dish" width="680">
+</picture>
+
 The regime does not have to be one choice for the whole dish. Give the sim two settings, `.reactionDiffusion(feed: 0.046, kill: 0.065, toFeed: 0.055, toKill: 0.062)`, then attach any drawn or generated layer as the field's `modulation` property, `dish.modulation` for a field named `dish`. That layer's brightness picks the spot on the map for every texel: black runs the first pair, white the second. A picture can choose the chemistry, place by place. It stays one simulation, so the two patterns grow into each other instead of meeting at a mask's hard edge. The `Vision/TuringMirror` example draws the camera's person matte, a mask that is white wherever a person stands in the frame, into that layer. The field grows maze walls on your silhouette and spots everywhere else, and it reorganizes as you move.
 
 Here is the same idea with a drawn layer instead of a camera, so the boundary can be looked at:
@@ -93,13 +100,6 @@ Here is the same idea with a drawn layer instead of a camera, so the boundary ca
 </picture>
 
 The disc is the map. Inside it the field runs the maze pair, and outside it the spot pair. Across the soft edge the maze's walls thin out into dots instead of stopping. The right dish is what a mask gives instead: two separate simulations cut along the same circle, and the seam knows nothing about either. Draw the map every frame before you read the field, since a frame with no map runs the plain black-end pair.
-
-Seeding is drawing, as it was for Life. Watch what one mark becomes:
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/23-GridSimulations/Seeding-dark.jpg">
-  <img src="Images/23-GridSimulations/Seeding.jpg" alt="Four dishes seeded with the same ring at different moments, showing its growth: the raw ring, a thickened double ring, a wavy cross, and a labyrinth filling the dish" width="680">
-</picture>
 
 ## Putting it together: the organism
 
@@ -219,7 +219,7 @@ The organism's dish, like every field so far, changes what each cell holds. The 
 
 ### Water you can stir: fluid
 
-The **fluid** sim is an incompressible flow that carries color. Marks inject dye, and `withField`'s `force:` pushes the flow where the marks land, so a moving brush stirs what it paints. It is for smoke, ink in water, and anything that should swirl. The real-time form descends from Jos Stam's 1999 "Stable Fluids" and the GPU formulation Mark Harris popularized:
+The **fluid** sim is an incompressible flow that carries color. Incompressible means it never bunches up or thins out, so whatever flows into a cell flows out of it again. Marks inject dye, and `withField`'s `force:` pushes the flow where the marks land, so a moving brush stirs what it paints. It is for smoke, ink in water, and anything that should swirl. The real-time form descends from Jos Stam's 1999 "Stable Fluids" and the GPU formulation Mark Harris popularized:
 
 <img src="Images/23-GridSimulations/Dye.jpg" alt="A comet of dye stirred by an orbiting brush: a bright yellow head trailing a turbulent tail that fades through orange to deep red" width="560">
 
@@ -248,7 +248,7 @@ The `curl` argument sets how much fine swirling detail the flow keeps. The dissi
 
 ### A pool you can drop things into: ripples
 
-The **ripple pool** is water of a different kind, a surface that goes up and down. It is the 2D wave equation running on a height field, and it is for drops, rings, and reflections that answer the mouse directly. The wave equation is old, and Jean le Rond d'Alembert wrote it down for a vibrating string in 1747. The step here follows Evan Wallace's WebGL Water.
+The **ripple pool** is water of a different kind, a surface that goes up and down. It is the 2D wave equation running on a height field, and it is for drops, rings, and reflections that answer the mouse directly. The wave equation says that every point's height accelerates toward the average of its neighbors, which is all a ripple is. The wave equation is old, and Jean le Rond d'Alembert wrote it down for a vibrating string in 1747. The step here follows Evan Wallace's WebGL Water.
 
 <img src="Images/23-GridSimulations/RipplePool.jpg" alt="A blue pool with three sets of concentric ripples spreading from separate drop points, the rings crossing each other and fading toward the edges" width="560">
 
@@ -285,7 +285,7 @@ This field's raw `image` is not a picture of water. It stores height in the red 
 
 ### The picture dragging its past: self-warp
 
-The **self-warp** field has no chemistry inside it. Its state is the picture itself. It watches what you draw, works out which way every part of it just moved, and carries everything it has already shown along that motion. Whatever moves smears, and whatever holds still stays sharp. It is for trails and ribbons that follow motion without any code naming a velocity. The motion measurement is Bruce Lucas and Takeo Kanade's 1981 least-squares optical flow, run coarse to fine. The history carry is the same step the fluid uses to move its dye.
+The **self-warp** field has no chemistry inside it. Its state is the picture itself. It watches what you draw, works out which way every part of it just moved, and carries everything it has already shown along that motion. Whatever moves smears, and whatever holds still stays sharp. It is for trails and ribbons that follow motion without any code naming a velocity. The motion measurement is Bruce Lucas and Takeo Kanade's 1981 least-squares optical flow, run coarse to fine. The history carry is the same step the fluid uses to move its dye. It is [Chapter 19](19-LayersAndEffects.md#the-canvas-that-remembers-itself-feedback)'s feedback with the motion measured from the picture rather than declared.
 
 <img src="Images/23-GridSimulations/SelfWarp.jpg" alt="Two soft-cored orbs on near-black, an orange one stretched into a long curved ribbon along its orbit and a smaller cyan one trailing a short wake" width="560">
 
@@ -435,11 +435,13 @@ The second kernel is how a drawn mark gets in. Without one, a mark lands the way
 plate = makeSimField(.shader(heatStep, inject: addHeat, substeps: 4), scale: 0.5, edge: .clamped)
 ```
 
+`heatStep` is a kernel shaped like Life's that averages each cell with its neighbors, so heat spreads and cools. `addHeat` is the second kernel, adding to the state wherever a mark landed.
+
 <img src="Images/23-GridSimulations/OwnRule.jpg" alt="A heat plate run by a hand-written kernel: a brush's trail glows pale yellow through magenta and purple on black, spread and cooling, with white arrows showing the heat running down its own slope toward the cold" width="560">
 
 That line carries the other choices a field of your own makes you think about. **`substeps`** runs the kernel that many times a frame, for a rule that should settle faster than once a frame. **`edge`** is what a cell on the border reads when it looks past the field. The default wraps, which is why a glider that leaves Life's right edge comes back on the left. `.clamped` puts walls there. A read past the edge returns the border cell, which for a diffusing quantity is an insulated boundary, so nothing leaks out of this plate. The catalog's neighbor-reading sims honor the same setting, so Life on a clamped field has corners. **`precision`** is how exactly a number keeps. Half float, the 16-bit number a field stores by default, holds a whole number exactly only to about two thousand. So a rule that *counts* wants `.float32`, the 32-bit kind.
 
-Two more things round the kit out. A two-channel state reads as a picture through `.arrows`. That is what drew the white arrows above, from the heat's slope stored in the plate's first two channels. And `snapshot()` reads any field back to the CPU as numbers, every cell's four channels as stored, one frame late. A sketch can then hand a sum or a busiest cell to sound, to text, or to a plotter. The [`Simulation/Wind`](../Examples/Simulation/Wind/Sketch.swift) example puts all of it in one sketch. A wind carries dust, a drag pushes it, and a noise layer handed in as an `input`, a layer the kernel can read beside its own state, stirs it. The edge is switched live, the arrows are drawn over the dust, and the mean speed is read back twice a second.
+Two more things round the kit out. A two-channel state reads as a picture through `.arrows`. That is what drew the white arrows above, from the heat's slope stored in the plate's first two channels. And `snapshot()` reads any field back to the CPU as numbers, every cell's four channels as stored, one frame late. A sketch can then hand a sum or a busiest cell to sound, to text, or to a plotter. The [`Simulation/Wind`](../Examples/Simulation/Wind/Sketch.swift) example puts all of it in one sketch. Below a `SimField` sits the compute path, where a sketch writes the whole kernel and owns the buffers. [`Examples/Compute/ReactionDiffusion`](../Examples/Compute/ReactionDiffusion/Sketch.swift) runs this chapter's chemistry that way, and [`Examples/Compute/CurlField`](../Examples/Compute/CurlField/Sketch.swift) moves a million particles through a swirling field, which [Chapter 25](25-ParticleSimulations.md) takes up. A wind carries dust, a drag pushes it, and a noise layer handed in as an `input`, a layer the kernel can read beside its own state, stirs it. The edge is switched live, the arrows are drawn over the dust, and the mean speed is read back twice a second.
 
 ## Where this comes from
 

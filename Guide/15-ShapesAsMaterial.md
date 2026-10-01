@@ -218,7 +218,7 @@ final class Plate: Sketch {
         let halo = ribbon.offset(by: 14, join: .round)
 
         for (i, cell) in mosaic.cells.enumerated() {
-            let piece = cell.offset(by: -9, join: .miter).subtracting(halo)
+            let piece = cell.offset(by: -9, join: .miter).subtracting(halo)   // .miter keeps the inset's corners sharp
             guard !piece.contours.isEmpty else { continue }
             let hatch = Hatching(spacing: 6.5 + Double(i % 4) * 2,
                                  angle: Double(i) * 0.83)
