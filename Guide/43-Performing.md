@@ -17,7 +17,7 @@ Code can be the performance: you type over the running picture and evaluate each
   <img src="Images/43-Performing/StageDiagram.jpg" alt="An annotated diagram of the performance host: a dark window with a posterized visual letterboxed on the black stage, code lines over it on translucent strips, an Evaluated toast, an error strip along the bottom, and callouts naming each part" width="680">
 </picture>
 
-The loop differs from the live-reload host you have used since [Chapter 1](01-HelloOllin.md). There is no separate editor and no file being watched. You type in the window, into the **buffer**, the text the host holds, and press **⌘↩** to **evaluate** it. Evaluating compiles the buffer, turning the Swift into a program the Mac can run, and swaps the running sketch for the new one. The compile happens in the background while the old sketch keeps drawing. When it succeeds, the new sketch takes over with the clock carried across. A motion driven by `time` then does not jump in the middle of a set.
+The loop differs from the live-reload host you have used since [Chapter 1](01-HelloOllin.md). There is no separate editor and no file being watched. You type in the window, into the **buffer**, the text the host holds, and press **⌘↩** to **evaluate** it. Evaluating compiles the buffer, turning the Swift into a program the Mac can run, and swaps the running sketch for the new one. The compile happens in the background while the old sketch keeps drawing. When it succeeds, the new sketch takes over with the clock carried across. A **set** is one performance from start to end, the word musicians use for it. A motion driven by `time` then does not jump in the middle of one.
 
 The swap happens twice. A plain build goes on stage the moment it compiles. An optimized build, whose code runs faster, follows when it is ready, with the clock carried again. So an edit shows sooner, and the sketch still runs at full speed. [Live coding](../Docs/Tools/LiveCoding.md#the-evaluate-loop) has the numbers, and a flag that keeps to one build. Tuned `@Param` values carry across too, including ones bound over MIDI or OSC.
 
@@ -58,7 +58,7 @@ Quitting the host finishes the movie first, and so does Control-C in the termina
 
 ## A look you come back to: cues
 
-A **cue** is a saved look: every parameter's value at once, under a name. Use cues for the looks a set returns to, called up in a moment. They come from theater, where a cue is a planned change of lights or sound called at a moment in the show. `saveCue("night")` saves one in code, and a name typed into the Cues card under the parameters saves one by hand. `cue("night", over: 2)` brings every parameter back to it over two seconds, and `nextCue()` walks the list of cues in order. A cue can be called from anywhere a sketch reads, such as a key, a beat, or a sensor.
+A take keeps what happened. During a set, you also want a way back to a look you found, in one move. A **cue** is a saved look, every parameter's value at once, under a name. Use cues for the looks a set returns to, called up in a moment. They come from theater, where a cue is a planned change of lights or sound called at a moment in the show. `saveCue("night")` saves one in code, and a name typed into the Cues card under the parameters saves one by hand. `cue("night", over: 2)` brings every parameter back to it over two seconds, and `nextCue()` walks the list of cues in order. A cue can be called from anywhere a sketch reads, such as a key, a beat, or a sensor.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/43-Performing/CalledBack-dark.jpg">
@@ -67,7 +67,7 @@ A **cue** is a saved look: every parameter's value at once, under a name. Use cu
 
 The kind of parameter decides whether it eases or jumps. A number, a color, a point, and a range have values between two settings, so they ease there, slowly at both ends. A switch, a menu choice, and a piece of text have nothing in between. They take the cue's value on the first frame of the fade. So the middle look in the figure is already lit while its dots are still growing. A cue called while another is still fading starts from wherever the parameters are, so a change of mind never snaps back first.
 
-The hosts keep the list of cues in a file beside the sketch, named after it, such as `Finale.cues.json`. So a reload never loses a look. On stage, a MIDI program change, a message that asks for a numbered preset, calls a cue by number. `/ollin/cue` calls one by name, and a pad learned onto **Next cue** steps through the set. [`Examples/Live/Cues`](../Examples/Live/Cues/Sketch.swift) holds five looks on the number keys. [Cues](../Docs/Helpers/Cues.md) has the rest, including `--cue night` for a still at a saved look.
+The hosts keep the list of cues in a file beside the sketch, named after it, such as `Finale.cues.json`. So a reload never loses a look. On stage, a MIDI program change, a message that asks for a numbered preset, calls a cue by number. `/ollin/cue` calls one by name, and a MIDI pad steps through the set, once the host has learned it as its **Next cue** control. [The host on a controller](#the-host-on-a-controller-osc-and-learned-midi) shows how the host learns one. [`Examples/Live/Cues`](../Examples/Live/Cues/Sketch.swift) holds five looks on the number keys. [Cues](../Docs/Helpers/Cues.md) has the rest, including `--cue night` for a still at a saved look.
 
 A cue differs from a parameter's default. The **Save parameters** button above the card writes the values you set into the `@Param` lines, which is where the sketch starts. A cue is where it goes back to.
 
@@ -75,7 +75,7 @@ A cue differs from a parameter's default. The **Save parameters** button above t
 
 The finished sketch is a short performed set. You build the picture above the way an audience would watch it grow, one evaluation at a time. The set uses the performance host and its evaluate loop, a take recorded with ⌘⇧R, cues, and the `Visual` chains of [Chapter 18](18-YourFirstShader.md#patching-without-typing-metal-visual-chains). Each evaluation adds to one chain.
 
-Open the host with a new buffer. It starts with a small sketch of circles. Delete the body of its `draw()`, and type each step into it:
+Open the host with a new buffer. It starts with a small sketch of circles, with one `speed` parameter above its `draw()`. Delete the body of its `draw()`, and type each step into it:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/43-Performing/SetSteps-dark.jpg">
@@ -85,10 +85,10 @@ Open the host with a new buffer. It starts with a small sketch of circles. Delet
 1. Start with bands. Type `drawVisual(.oscillator(frequency: 11, speed: 0.6, colorShift: 0.5))`, press ⌘↩, and drifting bands fill the stage.
 2. Add `@Param(3...12) var segments = 5.0` above `draw()`, and `.kaleidoscope(segments: segments)` to the chain. It folds the bands into a five-sided mandala that still moves, and a `segments` slider appears in the inspector.
 3. Add `@Param(0...0.3) var bend = 0.09` beside it, and `.displaced(by: .noise(scale: 3, speed: 0.25), amount: bend)` to the chain, which bends the fold with noise.
-4. Add `@Param(2...12) var levels = 6.0`, and `.posterized(levels: levels, gamma: 0.75)`. The bent fold hardens into flat contour bands like a screen print.
+4. Add `@Param(2...12) var levels = 6.0`, and `.posterized(levels: levels, gamma: 0.75)`. The bent fold hardens into flat contour bands like a screen print. `gamma` curves the brightness before it is cut into levels, and a value below 1 puts more of the levels in the dark tones.
 5. Add `.rotated(time * 0.03)` and `.colorCycled(time * 0.04)`. The picture turns slowly, and its colors shift a little more every second.
 
-Then play between looks. Open the inspector with ⌘/. In the **Cues** card, save the look as it stands under the name `print`. Drag `segments` to 9, `bend` to 0.25, and `levels` to 3, and the print breaks into more folds, bent further and cut into fewer bands. Save that as `shatter`. Press `print` in the card, and the three sliders ease back over the card's fade while the picture keeps turning. The picture at the top is that look, called back.
+Then play between looks. Open the inspector with ⌘/. In the **Cues** card, save the look as it stands under the name `print`. Drag `segments` to 9, `bend` to 0.25, and `levels` to 3, and the print breaks into more folds, bent further and cut into fewer bands. Save that as `shatter`. Press `print` in the card, and the three sliders ease back while the picture keeps turning. The card's **Fade** field sets how many seconds that takes. The picture at the top is that look, called back.
 
 Save the buffer as `MySketches/Finale.swift`, and the cues are written beside it as `Finale.cues.json`. With the class renamed `Finale` and the starter's unused parameter removed, it is this listing:
 
@@ -207,7 +207,7 @@ Each key carries the curve that *leaves* it, so the last key's curve is never re
   <img src="Images/43-Performing/ParameterOnACurve.jpg" alt="Four panels, each with the same two keys read by a different curve: a straight line, an S, a flat line that jumps at the end, and a steep S shaped by hand. A red line marks one moment on each, and the circle above shows the size the parameter holds there" width="680">
 </picture>
 
-`.linear` is the straight line. `.easeIn`, `.easeOut`, and `.easeInOut` are the eases from [Chapter 3](03-MotionAndTime.md#shaping-time). `.hold` sits still and then jumps. `.bezier(x1:y1:x2:y2:)` is the one you shape by hand. Its two handles bend the timing as well as the value, as they do on a curve in an animation program.
+`.linear` is the straight line. `.easeIn`, `.easeOut`, and `.easeInOut` are the eases from [Chapter 3](03-MotionAndTime.md#shaping-time). `.hold` sits still and then jumps. `.bezier(x1:y1:x2:y2:)` is the one you shape by hand. Its two handles are the control points [Chapter 15](15-ShapesAsMaterial.md#contours-shapes-and-holes) gave a curve. They bend the timing as well as the value, as they do on a curve in an animation program.
 
 A parameter moves along a curve only when it has values in between. A number, a color, a point, or a range has values between two settings, so it follows the curve. A switch, a menu choice, and a piece of text have nothing in between. They step instead, holding each key's value until the next key takes over, so a fill switch on a track blinks rather than fades.
 
@@ -246,7 +246,7 @@ Everything you place lands in a file beside the sketch, named after it, such as 
 
 ### Following another timeline: timecode
 
-The timeline panel runs on the sketch's own clock. In a show, the timeline often belongs to another machine. It may be a video player or deck, a lighting console, or a DAW locked to a film. It may be a show controller, the computer that runs a show's cues. **Timecode** is how such a machine says where it is, as hours, minutes, seconds, and frames. It comes from film and television, where it labels every frame of a recording. Use it to land a change on the exact frame a video reaches. A `TimecodeClock` reads MIDI Time Code, the form timecode takes over MIDI. Here `midi` is a `MIDIInput`, started as in [Chapter 38](38-ControlsAndSignals.md#parameters-from-anywhere-midi-and-osc), with `import OllinMIDI` at the top of the file:
+The timeline panel runs on the sketch's own clock. In a show, the timeline often belongs to another machine. It may be a video player or a deck, the machine a show's video or tape plays from. Or it may be a lighting console, or a DAW locked to a film. It may be a show controller, the computer that runs a show's cues. **Timecode** is how such a machine says where it is, as hours, minutes, seconds, and frames. It comes from film and television, where it labels every frame of a recording. Use it to land a change on the exact frame a video reaches. A `TimecodeClock` reads MIDI Time Code, the form timecode takes over MIDI. Here `midi` is a `MIDIInput`, started as in [Chapter 38](38-ControlsAndSignals.md#parameters-from-anywhere-midi-and-osc), with `import OllinMIDI` at the top of the file:
 
 ```swift
 lazy var timecode = TimecodeClock(from: midi)
@@ -295,7 +295,7 @@ override func setup() {
   <img src="Images/43-Performing/ParameterAsARule.jpg" alt="Two panels. The left one is a wave built from five keyed moments, each marked with a dot, with eased curves between them. The right one is one continuous sine line with the formula that made it printed underneath" width="680">
 </picture>
 
-The rule is in quotation marks, so it is text rather than Swift. Text can arrive while the sketch runs. It can be typed into a field, read out of a file, or changed during a set, and no compile is needed.
+`drive` hands the parameter its rule. The rule is in quotation marks, so it is text rather than Swift. Text can arrive while the sketch runs. It can be typed into a field, read out of a file, or changed during a set, and no compile is needed.
 
 The field is in the inspector. In OllinLive, right-click the diamond of a number or switch that has no track, and choose **Write a Rule**. A field opens under the row. Type the rule and press Return, and the parameter follows it from the next frame. Its diamond turns into a function mark, and its slider dims. Get a character wrong and the row says so, with a mark under the character and the reason beneath. The rule that was running keeps running. A rule written this way lands in the same automation file as the keys, so an export plays it. [Writing a rule in the row](../Docs/Tools/Timeline.md#writing-a-rule-in-the-row) has the details.
 
@@ -359,7 +359,7 @@ VJ apps such as Resolume and VDMX, projection-mapping apps such as MadMapper, an
 
 Syphon works between apps that both speak it. A web page or a video call asks the operating system for a *camera* instead. The virtual camera makes the sketch one. Use it to show a sketch in a video call or on a web page that takes a camera. It is a camera extension, the kind of software camera macOS has supported since 2022.
 
-It needs a one-time setup, because a camera device is a part of the operating system. The device is a macOS **system extension**, installed by the Ollin Camera app, which is built from [`Apps/OllinCameraApp`](../Apps/OllinCameraApp/README.md) in this repository. Launch the app from `/Applications`, and approve the extension in *System Settings ▸ General ▸ Login Items & Extensions ▸ Camera Extensions*. From then on the device exists whether or not a sketch is running. When nothing is publishing, it shows a "no signal" test card. If you publish before installing it, the sketch keeps drawing, and `isAvailable` and `unavailableReason` say what is missing.
+It needs a one-time setup, because a camera device is a part of the operating system. The device is a macOS **system extension**, installed by the Ollin Camera app, which is built from [`Apps/OllinCameraApp`](../Apps/OllinCameraApp/README.md) in this repository. Launch the app from `/Applications`, and approve the extension in *System Settings ▸ General ▸ Login Items & Extensions ▸ Camera Extensions*. From then on the device exists whether or not a sketch is running. When nothing is publishing, it shows a "no signal" test card. If you publish before installing it, the sketch keeps drawing. Keep the value the publishing call below returns, and its `isAvailable` and `unavailableReason` say what is missing.
 
 Then one line in `setup()` publishes to it:
 

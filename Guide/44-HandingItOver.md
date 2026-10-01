@@ -93,7 +93,7 @@ ollin new Pulse --kind menu-bar
 cd Pulse && swift run Pulse
 ```
 
-A strip 56 points wide appears among the status items, the icons at the right end of the menu bar, and starts moving.
+A strip 56 points wide appears among the status items, the icons at the right end of the menu bar, and starts moving. A **point** is the screen's own unit, which a Retina display draws with two pixels across. [Where a point is](../Docs/Concepts/Coordinates.md#points-are-not-pixels) has the rest.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/44-HandingItOver/SmallestCanvas-dark.jpg">
@@ -156,7 +156,7 @@ Waiting a quarter of an hour to judge each change is slow. Work in the window as
 swift run TideApp --export-widget frames --size 360x360
 ```
 
-`TideApp` is the app half of the widget project. The command writes the run into `frames/`, one picture per moment, each named by its moment. The pictures are what the widget will show, drawn by the same code, and once the project is built, the export takes a second. The flag works on any sketch, so you can try a sketch as a widget before you make a project for it.
+`TideApp` is the app half of the widget project. The command writes the run into `frames/`, one picture per moment, each named by its moment. `--size` is the widget's own size in pixels, since a widget is far smaller than a canvas. The pictures are what the widget will show, drawn by the same code, and once the project is built, the export takes a second. The flag works on any sketch, so you can try a sketch as a widget before you make a project for it.
 
 A widget project holds three **targets** rather than one, where a target is one program or library that a package builds. A widget is two programs, the app the system finds it through and the widget itself. Two programs cannot share a folder of sources, so the sketch moves into a library that both of them use. [The reference page](../Docs/Output/Widget.md) has the split, and the one public line that keeps your sketch an ordinary sketch.
 

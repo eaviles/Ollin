@@ -299,7 +299,7 @@ Then make it yours:
 
 - Set `showing` to `"dawn"` to see the morning at any hour.
 - Press Command-K on the running sketch, and drag the corners onto a wall that is not square to the projector. [Fitting a projector: corner pinning](#fitting-a-projector-corner-pinning) shows how.
-- Give it a second display with `displays: .spanning` and a canvas twice as wide. The bars carry on across both screens, because the wall divides one canvas rather than running the sketch twice.
+- Give it a second display with `displays: .spanning`, which [Several displays, one machine](#several-displays-one-machine-spanning) explains, and a canvas twice as wide. The bars carry on across both screens, because the wall divides one canvas rather than running the sketch twice.
 
 Work on it with `swift run OllinLive MySketches/WallOfBars.swift`, which runs it as an ordinary sketch whatever it declares. Before it goes up, set `showing` to nil, so the palette follows the real clock. Then put it up with `OllinRun`, which reads the declaration, and send its log to a file as [The log](#the-log) shows:
 
@@ -376,7 +376,7 @@ override func draw() {
 }
 ```
 
-A frame holds paths in canvas coordinates, the same numbers every drawing call takes. A `Shape` adds its outlines. A laser has no fills, so shade a region with `Hatching`, the way the plotter does.
+A frame holds paths in canvas coordinates, the same numbers every drawing call takes. `drawLaserPreview` draws the stream on the canvas the way the beam will trace it, so you can watch the frame with no projector. A `Shape` adds its outlines. A laser has no fills, so shade a region with `Hatching`, the way the plotter does.
 
 Time is the budget. The point rate divided by the laser's refresh rate is every point a frame can hold. At the default 20,000 points a second and the laser's default 30 frames a second, that is 666 points. Past it, the frame still plays whole but repeats more slowly, and the eye sees it flicker. `laser.stream?.isOverBudget` says when you are past it. Draw less, or set `laser.optimizer.spacing` wider so the points sit farther apart.
 
@@ -572,7 +572,7 @@ override func setup() {
 }
 ```
 
-On launch, the sketch prints `Remote surface: http://your-mac.local:9330`. Open that address in the phone's browser, on the same Wi-Fi. Every `@Param` appears as a touch control, and the kind of control follows the property's type, as it does in the inspector. Sliders take the width of the screen, a `style: .pad` vector becomes an XY pad, and switches, menus, and a color picker cover the rest. The groups match the inspector's. A strip at the top carries the frame rate, the clock, and the frame count. So you can read the sketch's health from the floor.
+On launch, the sketch prints `Remote surface: http://your-mac.local:9330`. Open that address in the phone's browser, on the same Wi-Fi. Every `@Param` appears as a touch control, and the kind of control follows the property's type, as it does in the inspector. Sliders take the width of the screen, and switches, menus, and a color picker cover the rest. A vector parameter declared with `style: .pad` becomes an XY pad, a square you drag a dot around. The groups match the inspector's. A strip at the top carries the frame rate, the clock, and the frame count. So you can read the sketch's health from the floor.
 
 Changes go both ways. Drag a slider on the phone, and the value lands before the next frame, where the inspector's own changes land. Change a parameter on the Mac, and the phone follows. So you can stand in front of the wall, look at the sketch, and turn the speed until it looks right.
 
