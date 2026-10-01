@@ -12,7 +12,7 @@ Light in most 3D frames stops at the first surface it hits, and here you follow 
 
 The room's waxed floor shows the walls in its sheen. A scene's depth layer, from [Chapter 26](26-3DGently.md#what-the-depth-buffer-is-for-ambient-occlusion-and-defocus), can already make a reflection like that, and it is where reflections start.
 
-**`.screenSpaceReflections`** makes a floor glossy by reflecting the scene in it, and it runs on any Mac. It works from the finished picture. For each pixel of the floor, it follows the reflected direction across the picture and its depth layer. It stops where it finds what the floor should show. A picture does not contain the back of anything, though. The true reflection can show a surface the camera cannot see, such as the underside of a ball resting on the floor. There it can only approximate. That shows as a soft zone right at the contact.
+**`.screenSpaceReflections`** makes a floor glossy by reflecting the scene in it, and it runs on any Mac. It is a depth effect like `.defocus`, applied the same way, as `scene.combined(with: scene.depth, .screenSpaceReflections())`. It works from the finished picture. For each pixel of the floor, it follows the reflected direction across the picture and its depth layer. It stops where it finds what the floor should show. A picture does not contain the back of anything, though. The true reflection can show a surface the camera cannot see, such as the underside of a ball resting on the floor. There it can only approximate. That shows as a soft zone right at the contact.
 
 `rayTracedReflections()` makes the reflection another way. Instead of searching the finished picture, it sends a ray off each reflective surface and asks what the ray hits, using the real geometry. Off-screen objects appear, and so do hidden faces. The underside of a ball resting on a mirrored floor appears, because the ray goes there and looks. The traced hit takes the place of what the environment would have given that pixel. A ray that hits nothing shows the sky.
 
@@ -100,7 +100,7 @@ drawSphere(radius: 1.2)               // its bright spot lands inside its own sh
 
 A shadow is where the light could not go, and a caustic is where it went instead. The renderer traces thousands of small parcels of light, called **photons**, from the sun through every glass and every polished metal. It draws each one where it lands. A clear ball throws a tight bright spot. A bottle-green ball throws a green one, because its photons crossed the green glass. A chrome ring lying almost flat folds light into a fan across its middle. You declare nothing, because whatever lets light through or mirrors it casts a caustic.
 
-The call takes two settings. `caustics(intensity: 1.6)` turns the patterns up past physical. `caustics(dispersion: 1)` gives every photon its own wavelength, so a prism's edge fans into a rainbow. Even a plain sphere's spot picks up red and blue fringes. If the patterns look coarse, `causticsQuality(.detail)` traces more photons. Like the other traced light, it needs a Mac that traces and does nothing elsewhere. The [`Caustics` example](../Examples/3D/Lighting/Caustics/Sketch.swift) sets a sunlit table like the figure's, with its ring standing nearly upright, and the space bar to compare.
+The listing also turned the studio environment down, with `.intensified(to: 0.55)`, which scales its light, so the sun does most of the lighting. The call takes two settings. `caustics(intensity: 1.6)` turns the patterns up past physical. `caustics(dispersion: 1)` gives every photon its own wavelength, so a prism's edge fans into a rainbow. Even a plain sphere's spot picks up red and blue fringes. If the patterns look coarse, `causticsQuality(.detail)` traces more photons. Like the other traced light, it needs a Mac that traces and does nothing elsewhere. The [`Caustics` example](../Examples/3D/Lighting/Caustics/Sketch.swift) sets a sunlit table like the figure's, with its ring standing nearly upright, and the space bar to compare.
 
 ## Edges that settle: temporal anti-aliasing
 
@@ -175,7 +175,7 @@ Every ghost in the figure is a hexagon. The iris has six blades, and a ghost is 
 
 None of the ghosts is quite a regular hexagon. Each one comes from following rays through the lens's glass. A curved surface bends rays near its rim a little more than rays near its middle. So a ghost's sides stretch a little, more the further the lamp sits from the middle. Where a ghost ends in a curve, the round barrel of the lens stopped rays the iris let past. A bright rim along one side is a caustic, where neighboring rays landed on top of one another.
 
-The ghosts are one half of a flare. The other half sits on the source itself. In the next figure the lens is opened wider, to f/5.6, and its ghosts spread into a faint round veil around the lamp. A lens near wide open throws ghosts so broad that they read as haze, which leaves the star to see.
+The ghosts are one half of a flare. The other half sits on the source itself. In the next figure the lens is opened wider, to f/5.6 on the photographer's scale, where a smaller f-number means a wider opening. Its ghosts spread into a faint round veil around the lamp. A lens near wide open throws ghosts so broad that they read as haze, which leaves the star to see.
 
 <img src="Images/33-TracedLight/StarPoints.jpg" alt="A dark room with a small bright lamp above a row of pale blue blocks. Six golden arms reach out from the lamp around a blown-out core, each a frayed pair of fine lines. A large faint round disc sits centered on the lamp inside a wider rounded veil, and a short row of faint dots lies to the upper right" width="680">
 
@@ -191,7 +191,7 @@ Each arm is also a close pair of lines, a little frayed. That comes from `wear`,
 
 `amount` scales the flare, and `0` removes it. A flare is a flaw of real lenses. Sometimes you want a strong one, often only a trace, and many sketches want none.
 
-The flare also depends on which lens it comes from. Ollin describes a lens by its **prescription**, the list of its glass surfaces. The surfaces decide how many ghosts there are, where each one sits, and what color it comes out. With no lens named, you get `Lens.standard`, a common design called a double Gauss. Each of its surfaces is coated for a different wavelength, and its iris is closed to f/8. `stopped(to:)` closes any lens's iris to an f-number, and its ghosts shrink and brighten:
+The flare also depends on which lens it comes from. Ollin describes a lens by its **prescription**, the list of its glass surfaces. The surfaces decide how many ghosts there are, where each one sits, and what color it comes out. With no lens named, you get `Lens.standard`, a common design called a double Gauss. Each of its surfaces is coated for a different wavelength, and its iris is closed to f/8. The ghost-chain listing spelled that same lens out, as `.doubleGauss.multicoated()`, and closed it a little further, to f/11. `stopped(to:)` closes any lens's iris to an f-number, and its ghosts shrink and brighten:
 
 ```swift
 lensFlare(amount: 0.6, lens: .heliar.stopped(to: 11))
@@ -199,7 +199,7 @@ lensFlare(amount: 0.6, lens: .heliar.stopped(to: 11))
 
 That asks for a Heliar-type portrait lens from the 1950s, at f/11. The [lens reference](../Docs/3D/LensFlare.md#lens) has `Lens.doubleGauss` uncoated, the coatings, and a wide-screen front group. It also shows how to type in a prescription of your own.
 
-A `LensFlare`'s `sourceSize` describes the scene rather than the lens. It says how big the light is, as the radius of the disc it fills in fractions of the frame height. So the ghost chain's `0.004` is a small lamp. Every point of a wide lamp throws its own copy of each ghost, a little shifted. So a wide lamp gives soft ghosts, and a distant street light gives hard ones. A `LensFlare` also has three extras that the lens's own surfaces don't make. They are a streak from cylindrical glass, dirt on the front element, and a halo. All three are off until you ask, and the [reference](../Docs/3D/LensFlare.md#extras) describes them.
+A `LensFlare`'s `sourceSize` describes the scene rather than the lens. It says how big the light is, as the radius of the disc it fills in fractions of the frame height. So the ghost chain's `0.004` is a small lamp. Every point of a wide lamp throws its own copy of each ghost, a little shifted. So a wide lamp gives soft ghosts, and a distant street light gives hard ones. A `LensFlare` also has three extras that the lens's own surfaces don't make. They are a streak from cylindrical glass, dirt on the front element (the outermost piece of glass), and a halo. All three are off until you ask, and the [reference](../Docs/3D/LensFlare.md#extras) describes them.
 
 A flare's strength follows how much of the source the camera can see. Move something in front of the lamp and the flare fades as the lamp is covered. It does not switch off the moment the lamp's center goes behind. A flare that switched off at once would read as a sticker on the lens.
 
@@ -459,7 +459,7 @@ spray = makeLineSpray(lines, sampling: .perLine(10), passesPerFrame: 5,
 drawLineSpray(spray)
 ```
 
-The `Rendering/LineSpray` example is the sphere of a hundred and fifty rings. The rings are bent by `curlNoise`, the three-coordinate relative of [Chapter 14](14-FieldsAndFlow.md)'s `curlField`. A curl never gathers or drains, so the rings wave as if a current had passed through the sphere, without tearing. The `Rendering/DepthOfField` example does the same from a kernel of its own, with millions of samples a frame over any geometry. The [depth of field page](../Docs/Drawing/DepthOfField.md) has the lens and the rules.
+`sampling: .perLine(10)` gives every line ten points a pass, and the bokeh's `minSize` is the smallest disc a point is drawn as, so a line in focus keeps a little width. The `Rendering/LineSpray` example is the sphere of a hundred and fifty rings. The rings are bent by `curlNoise`, the three-coordinate relative of [Chapter 14](14-FieldsAndFlow.md)'s `curlField`. A curl never gathers or drains, so the rings wave as if a current had passed through the sphere, without tearing. The `Rendering/DepthOfField` example does the same from a kernel of its own, with millions of samples a frame over any geometry. The [depth of field page](../Docs/Drawing/DepthOfField.md) has the lens and the rules.
 
 ## What else reads the motion: a changing mesh, fewer pixels, and fewer frames
 

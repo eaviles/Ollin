@@ -55,13 +55,13 @@ let pace = Vector2(walker.actualVelocity.x, walker.actualVelocity.z).length
 stride += pace * deltaTime * 3.4
 ```
 
-A character is not a body, so on its own the rest of the world cannot see it. It carries a stand-in, `walker.body`, a kinematic capsule kept out of `world.bodies`. The stand-in lets everything else notice it, including the sensors of [Chapter 30](30-WorldsWithWeight.md#a-region-that-counts-what-is-inside-sensors):
+A character is not a body, so on its own the rest of the world cannot see it. It carries a stand-in, `walker.body`, a kinematic capsule kept out of `world.bodies`. A kinematic body is one the world places rather than pushes. It shoves whatever it meets, and nothing in the world moves it back. The stand-in lets everything else notice it, including the sensors of [Chapter 30](30-WorldsWithWeight.md#a-region-that-counts-what-is-inside-sensors):
 
 ```swift
 if lookout.isTouching(walker.body) { /* you're on the platform */ }
 ```
 
-So a sensor built for balls works for people, unchanged. The [`3D/Physics/Stroll`](../Examples/3D/Physics/Stroll/) example is an eroded island with stairs up to a lookout that lights as you arrive.
+`isTouching(_:)` asks a sensor whether one particular thing is inside it right now, where [Chapter 30](30-WorldsWithWeight.md#a-region-that-counts-what-is-inside-sensors)'s `touching` listed everything that was. So a sensor built for balls works for people, unchanged. The [`3D/Physics/Stroll`](../Examples/3D/Physics/Stroll/) example is an eroded island with stairs up to a lookout that lights as you arrive.
 
 ## Something to drive: the vehicle
 
@@ -113,7 +113,7 @@ fill(Color.mix(Color(hex: 0x232B36), Color(hex: 0xF2A93B),
                min(1, wheel.slip)))
 ```
 
-`suspensionFrequency` on each wheel is the spring, in hertz: around 1.5 is a road car, and at 3 it jolts over every bump. `topSpeed` sets the gearing, the speed it reaches on a flat straight in top gear. Turn it down and the car pulls harder off the line and runs out of speed sooner. Both can be changed while you drive, so put them on parameters and drive the same corner three ways. A two-wheeler takes a balancing controller and a raked front fork, and the [reference](../Docs/Simulation/Physics3D.md) has its settings.
+`suspensionFrequency` on each wheel is the spring, in hertz, the number of bounces a second it would make if you pressed it and let go. Around 1.5 is a road car, and at 3 it jolts over every bump. `topSpeed` sets the gearing, the speed it reaches on a flat straight in top gear. Turn it down and the car pulls harder off the line and runs out of speed sooner. Both can be changed while you drive, so put them on parameters and drive the same corner three ways. A two-wheeler takes a balancing controller and a raked front fork, and the [reference](../Docs/Simulation/Physics3D.md) has its settings.
 
 The [`3D/Physics/Joyride`](../Examples/3D/Physics/Joyride/) example is a car over an eroded island like the one in `Stroll`.
 
@@ -390,7 +390,7 @@ In [Chapter 27](27-Meshes.md#motion-the-file-remembers-animations-skins-and-morp
 
 <img src="Images/31-CharactersAndCloth/Ragdolls.jpg" alt="Two identical figures dropped onto a dark floor: the left one lies sprawled, the right one stands upright with its arms out" width="560">
 
-Hand `addRagdoll` a skinned scene loaded as in Chapter 27, and it reads the skeleton. It builds a rigid body for every joint and hangs each one off its parent on a ball joint with a cone-shaped limit:
+Hand `addRagdoll` a skinned scene loaded as in Chapter 27, and it reads the skeleton. It builds a rigid body for every joint and hangs each one off its parent on a ball joint. The joint has a cone-shaped limit, so the limb can swing only so far from where it rests, in any direction:
 
 ```swift
 figure = try! loadScene("figure.gltf")
@@ -427,7 +427,7 @@ figure.apply(ragdoll)                    // where they actually ended up
 
 Push the figure and it resists, gives, and comes back. Keep two copies of the scene. The animation poses one, the target, and the solver poses the other, the one you draw. A `Scene` is a value, like [Chapter 26](26-3DGently.md)'s materials, so `var target = figure` is a separate copy. A figure driven toward the scene it was just posed from has nowhere left to pull.
 
-`strength` is the argument to play with. It is the most torque a joint may use. Set high, it holds the figure in the pose however it is pushed. Set low, the heavy limbs sag out of the pose, and the figure reads as tired rather than switched off.
+`strength` is the argument to play with. It is the most torque, the turning kind of push, that a joint may use. Set high, it holds the figure in the pose however it is pushed. Set low, the heavy limbs sag out of the pose, and the figure reads as tired rather than switched off.
 
 Nothing drives the root, so a powered figure still falls over as a whole. The motors hold its shape, not its place. Make the hips kinematic, with `ragdoll.limbs[0].body.kind = .kinematic`, and it hangs there like a puppet on a hook. The [`3D/Physics/Ragdoll`](../Examples/3D/Physics/Ragdoll/) example does this, and space lets the hips go.
 
@@ -522,7 +522,7 @@ for segment in chain.segments {
 
 That second `rotate` makes the chain. Rolling every other link a quarter turn about the rope's own axis is what makes the links interlock. You can only ask that of something that knows how it is rolled. Three points in a row tell you which way a line is going, and nothing about which way is up. Leaves along a stem, rings on a flag, and beads on a string all use the same move.
 
-Before you build something long, two settings help. `maxStretch: 1` caps how far a rope may reach from what holds it, which stops a heavy one creeping longer under load. Stiffness travels one segment per solver pass, so a long rope divided finely needs more passes than the default five before a high `bend` holds. Forty points over six units wants about twenty.
+Before you build something long, two settings help. `maxStretch: 1` caps how far a rope may reach from what holds it, which stops a heavy one creeping longer under load. Each step, the solver goes over the rope several times, and each of those passes carries stiffness one segment further along. So a long rope divided finely needs more passes than the default five before a high `bend` holds. `iterations:` on `addRope` sets how many. Forty points over six units wants about twenty.
 
 A rope does not collide with itself, so a coil passes through its own turns. It also has no surface for a ray to hit, so `raycast` and the other queries look straight through one. The mouse still finds it. It is a single strand, so a plant with three stems is three ropes. The [`3D/Physics/Rigging`](../Examples/3D/Physics/Rigging/) example has a rope, a chain, and a leafy vine hanging in the same wind.
 
@@ -540,7 +540,7 @@ for contact in world.contacts where contact.phase == .began {
 }
 ```
 
-A contact names `any Colliding3D`, not `Body3D`. Either side may be a cloth, and a cloth is not something you can push with an impulse or hang a joint from. When you want to act on what you found, say which kind you were after:
+A contact names `any Colliding3D`, not `Body3D`. That `any` is Swift's way of saying anything that can collide, whichever kind it turns out to be. Either side may be a cloth, and a cloth is not something you can push with an impulse or hang a joint from. When you want to act on what you found, say which kind you were after:
 
 ```swift
 if let crate = contact.other(than: cloth) as? Body3D {

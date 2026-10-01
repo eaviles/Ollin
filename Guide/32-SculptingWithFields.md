@@ -84,7 +84,7 @@ final class FirstMarch: Sketch {
 
 <img src="Images/32-SculptingWithFields/FirstMarch.jpg" alt="Two spheres melted into a single teal-to-pink body with a smooth crater carved into its upper left, shaded like polished jade" width="560">
 
-The two spheres are not two surfaces joined at a seam. They are one surface, because the field underneath is one function. Building that from triangle meshes would mean cutting both spheres and stitching a new surface between them. The 3D leaves include the mesh primitives, sphere, box, torus, capsule, cylinder, cone, and octahedron, and more, such as an ellipsoid. `line(from:to:radius:)` is a stroke between two points, for sketching limbs and branches for the melt to fill out. Fields and meshes share one scene and hide each other. The [combinators reference](../Docs/Drawing/Combinators.md#fields-3d) has the full catalog.
+The two spheres are not two surfaces joined at a seam. They are one surface, because the field underneath is one function. Building that from triangle meshes would mean cutting both spheres and stitching a new surface between them. The plain shapes a chain starts from are its **leaves**, as `SDF.circle` and `SDF.rect` were above. The 3D leaves include the mesh primitives, sphere, box, torus, capsule, cylinder, cone, and octahedron, and more, such as an ellipsoid. `line(from:to:radius:)` is a stroke between two points, for sketching limbs and branches for the melt to fill out. Fields and meshes share one scene and hide each other. The [combinators reference](../Docs/Drawing/Combinators.md#fields-3d) has the full catalog.
 
 ## How the picture gets made: sphere tracing
 
@@ -97,7 +97,7 @@ A mesh is triangles, and the GPU knows how to draw triangles. A field is a funct
 
 The hops shrink wherever the ray passes close to a surface, and they grow again in open space. No hop is longer than the distance to the nearest surface, so the ray lands on a surface without stepping through it. You can see them tighten as the ray passes over the lower shape. This is called **sphere tracing**. The same number that lets shapes melt steers the rays that draw them.
 
-You get all of this without writing any of it. The setting to know is `raymarchQuality(_:)`. Tracing costs by the pixel, so the live window traces within a resolution budget. With the default setting, exports render at full quality. If a heavy field stutters while you sketch, `raymarchQuality(.performance)` lowers that budget to a quarter of the resolution. An explicit setting applies to exports too.
+You get all of this without writing any of it. The setting to know is `raymarchQuality(_:)`, named for ray marching, the older name for this hop-by-hop tracing. Tracing costs by the pixel, so the live window traces within a resolution budget. With the default setting, exports render at full quality. If a heavy field stutters while you sketch, `raymarchQuality(.performance)` lowers that budget to a quarter of the resolution. An explicit setting applies to exports too.
 
 ## Bending the whole form: distortions
 
@@ -213,7 +213,7 @@ These are [Chapter 15](15-ShapesAsMaterial.md)'s booleans on fields, plus two th
 
 ### Joins like joinery: the machined family
 
-The machined family joins two fields with a shaped seam instead of a melt. It is for forms that should look built rather than poured: a chamfer, steps, a row of columns along the join. These follow hg_sdf, the distance-field library published by the demogroup Mercury. `chamferUnion`, `stairsUnion`, and `columnsUnion` shape the seam. Engrave and groove cut into a surface along another, tongue raises a ridge there, and pipe keeps only a round bead where two surfaces cross. The [combinators reference](../Docs/Drawing/Combinators.md#combining) has the full set, and the [`3D/Raymarching/RaymarchedJoinery`](../Examples/3D/Raymarching/RaymarchedJoinery/Sketch.swift) example builds with them.
+The machined family joins two fields with a shaped seam instead of a melt. It is for forms that should look built rather than poured: a chamfer, steps, a row of columns along the join. A chamfer is a corner cut off flat at an angle. These follow hg_sdf, the distance-field library published by the demogroup Mercury. `chamferUnion`, `stairsUnion`, and `columnsUnion` shape the seam. Engrave and groove cut into a surface along another, tongue raises a ridge there, and pipe keeps only a round bead where two surfaces cross. The [combinators reference](../Docs/Drawing/Combinators.md#combining) has the full set, and the [`3D/Raymarching/RaymarchedJoinery`](../Examples/3D/Raymarching/RaymarchedJoinery/Sketch.swift) example builds with them.
 
 ### Merging ordinary draw calls: the block form
 
@@ -229,7 +229,7 @@ smoothUnion(k: 18) {
 }
 ```
 
-Every analytic region shape can join a block: circles, rectangles, n-gons, and more. That includes shapes the `SDF` type doesn't name, like hearts and trapezoids. Polygons, paths, and filled arcs stay out. `drawNgon(x, y, radius, sides:)` is a regular polygon. Each call's own `fill` becomes its color in the melt.
+Every analytic region shape can join a block: circles, rectangles, n-gons, and more. An analytic shape is one Ollin draws from a formula rather than from a list of points. That includes shapes the `SDF` type doesn't name, like hearts and trapezoids. Polygons, paths, and filled arcs stay out. `drawNgon(x, y, radius, sides:)` is a regular polygon. Each call's own `fill` becomes its color in the melt.
 
 ### Building up and carving away: the sculpt block
 
