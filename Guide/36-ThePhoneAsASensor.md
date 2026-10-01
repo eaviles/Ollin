@@ -58,7 +58,7 @@ device.latestPose               // where the phone is, and which way it looks
 
 The depth and the pose land in the types [Chapter 35](35-Depth.md) used, and the sketch never knows which sensor filled the frame. The `3D/Phone/PhoneWorldScan` example sweeps a room with `latestFrame` and `latestPose` in place of the pretend camera.
 
-The app is built onto the phone from its Xcode project, since an iOS app cannot run from `swift run`. It needs an iPhone with an A12 chip or later on iOS 17 or later. The LiDAR streams need a Pro model, and the face and gaze streams the front TrueDepth camera. The [Record3D](../Docs/3D/Record3D.md) and [Phone](../Docs/3D/Phone.md) references cover the setup, and the `3D/Depth` and `3D/Phone` example groups are live starting points for each stream.
+On the phone, the app runs one of these streams at a time, as a **mode** you tap by name on its screen. Two switches, Hear and Air, run beside whichever mode is on. The app is built onto the phone from its Xcode project, since an iOS app cannot run from `swift run`. It needs an iPhone with an A12 chip or later on iOS 17 or later. The LiDAR streams need a Pro model, and the face and gaze streams the front TrueDepth camera. The [Record3D](../Docs/3D/Record3D.md) and [Phone](../Docs/3D/Phone.md) references cover the setup, and the `3D/Depth` and `3D/Phone` example groups are live starting points for each stream.
 
 ## A pose you can dress in solids: the body
 
@@ -325,7 +325,7 @@ Every surface carries that outline: a convex polygon around everything the phone
 
 ### The light in the room: PhoneLight
 
-The phone also measures how bright and how warm the room is, a few times a second. It does this in every mode that runs the camera through ARKit, which leaves out Selfie, Touch, and Sketch. It is for a sketch whose light follows the room's.
+The phone also measures how bright and how warm the room is, a few times a second. It does this in every mode that runs the camera through ARKit. That leaves out Touch, Selfie, which is the front camera's matte, and Sketch, where the phone shows a sketch the Mac runs. It is for a sketch whose light follows the room's.
 
 ```swift
 ambientLight(device.latestLight?.ambient ?? Color(white: 0.4))
@@ -377,7 +377,7 @@ if let face = device.latestFace {
 }
 ```
 
-The shell is the face mesh drawn under `headTransform`. It stands where the head is and turns the way the head turns. The head points one way. The eyes look another, and both beams land on the same warm bead. Park a creature at that point, or steer a brush with a glance. The blink blendshapes pair with the eyes, so `.eyeBlinkLeft` is the left lid closing over `worldEyePosition(.left)`. The mesh also carries its texture coordinates, the same mapping on every face. A painted mask keeps its place while the face deforms. In the `3D/Phone/PhoneGaze` example, look past the phone and the bead lands where you look.
+`PhoneEye.allCases` is the list of both eyes, `.left` and `.right`, so the loop draws one beam per eye. The shell is the face mesh drawn under `headTransform`. It stands where the head is and turns the way the head turns. The head points one way. The eyes look another, and both beams land on the same warm bead. Park a creature at that point, or steer a brush with a glance. The blink blendshapes pair with the eyes, so `.eyeBlinkLeft` is the left lid closing over `worldEyePosition(.left)`. The mesh also carries its texture coordinates, the same mapping on every face. A painted mask keeps its place while the face deforms. In the `3D/Phone/PhoneGaze` example, look past the phone and the bead lands where you look.
 
 ## The picture from the phone: words, attention, motion, and a known print
 
@@ -385,7 +385,7 @@ A depth frame says where things are. The phone can also read what its picture sh
 
 ### The words on the wall: text
 
-The phone reads text, as [Chapter 34](34-Seeing.md#words-off-a-page-textrecognizer)'s `TextRecognizer` does. It is for a sketch that answers a sign or a label where it hangs. In **Text** mode it runs Apple's on-device recognizer over the rear camera. It streams every line it can make out, a sign, a book spine, or a note on a door. Each line arrives as a `PhoneText` with its string and the reader's confidence. On a LiDAR phone its four corners carry positions in meters, and `worldTransform` folds them into one matrix. Stand a drawing on that matrix and it hangs where the sign hangs.
+The phone reads text, as [Chapter 34](34-Seeing.md#words-off-a-page-textrecognizer)'s `TextRecognizer` does. It is for a sketch that answers a sign or a label where it hangs. In **Text** mode it runs Apple's on-device recognizer over the rear camera. It streams every line it can make out, a sign, a book spine, or a note on a door. Each line arrives as a `PhoneText` with its string and the reader's confidence. On a LiDAR phone its four corners carry positions in meters, and `worldTransform` folds them into one matrix, a transform of the kind `modelTransform(_:)` gave a joint. Stand a drawing on that matrix and it hangs where the sign hangs.
 
 <img src="Images/36-ThePhoneAsASensor/WordsInPlace.jpg" alt="Two staged lines of wire-frame stroke type on a dark ground: the word OLLIN standing upright inside a framed panel on an implied wall, and the word hello lying flat inside its own panel on a small table slab, each panel outlined and facing its own way" width="680">
 
@@ -411,7 +411,7 @@ Where a picture pulls the gaze is the next reading, as [Chapter 34](34-Seeing.md
 
 <img src="Images/36-ThePhoneAsASensor/AttentionAsHeat.jpg" alt="A staged attention reading on a dark panel: two peaks of warm dots, one strong over a bright lamp shape with a white bead at its center, one weaker over a dim poster shape, each with a rounded teal frame whose weight follows the model's confidence" width="680">
 
-In `draw()`, with `rect` the rectangle you draw the phone's camera frame into:
+In `draw()`, with `rect` the rectangle you drew the phone's camera frame into. That frame is `device.latestSaliencyFrame`, the picture the reading was made on, drawn with `drawImage` like any image:
 
 ```swift
 if let attention = device.latestSaliency,
@@ -433,7 +433,7 @@ The phone measures how its picture is moving, too. It is for a sketch that moves
 
 <img src="Images/36-ThePhoneAsASensor/FlowAsField.jpg" alt="A staged flow reading on a dark panel: a grid of short streaks, blue where the picture barely moves and yellow to red where it moves fastest, turning in a ring around the left third and running to the right across the right third. White grains of dust with faint trails behind them have been carried by the same field, wound around the ring and streamed off to the right" width="680">
 
-In `draw()`, with `rect` as before and `dust` a list of points your sketch keeps:
+In `draw()`, with `rect` the rectangle you drew `device.latestFlowFrame` into, the frame the reading was measured on, and `dust` a list of points your sketch keeps:
 
 ```swift
 if let motion = device.latestFlow {
@@ -489,7 +489,7 @@ The phone knows where it is in the room. So it also knows where it is *pointing*
 guard let wand = device.latestWand, wand.isTracked else { return }
 ```
 
-A `PhoneWand` is a place, a direction, and a button. `wand.position` is where the phone is, in the same meters as everything else in this chapter. `wand.ray` is the line out of the back of it, the end you point at things:
+A `PhoneWand` is a place, a direction, and a button. `wand.position` is where the phone is, in the same meters as everything else in this chapter. `wand.ray` is the line out of the back of it, the end you point at things.
 
 Here `balls` is your list of ball centers, and `aimed` remembers which one the beam hits:
 
@@ -543,7 +543,7 @@ The figure spans eight seconds of readings, one window every three quarters of a
 
 An event is a crossing from below. The phone sends its whole judgment, every label with a number, and the Mac decides what counts as loud enough. The threshold is yours, `device.sounds.threshold`, and you can move it while the phone listens. Two sketches reading one phone can disagree about what counts.
 
-`timeSinceHearing(_:)` is the third read, for a mark that fades. It says how long ago a sound was last at or over the threshold, so a sound that keeps going reads near zero. It does not drain. In the `3D/Phone/PhoneSounds` example, every sound that starts rings out in its own place on the canvas, a place found by hashing its name. A room settles into a map of its sounds.
+`timeSinceHearing(_:)` is the third read, for a mark that fades. It says how long ago a sound was last at or over the threshold, so a sound that keeps going reads near zero. It does not drain. In the `3D/Phone/PhoneSounds` example, every sound that starts rings out in its own place on the canvas, a place found by hashing its name. Hashing turns the label's letters into a number that comes out the same every run. A room settles into a map of its sounds.
 
 ### Playing the glass: touches
 

@@ -49,7 +49,7 @@ It starts the camera itself, so a sketch that uses it has no `start()` to call. 
 
 Without that line, a Mac with no camera shows the notice on the left for as long as you leave it running. With it, the picture on the right arrives instead, drawn by the same `drawFrame` call, and the sketch never learns which one it got.
 
-Ollin bundles [twenty pictures and a short film](../Docs/Drawing/SamplePhotos.md) for this. There are four faces, four whole figures, two tables from above, four streets, two landscapes, a page, a pair of hands and two surfaces. So a sketch that reads people has people to read, and the vision examples run on a machine with nothing plugged in. `--photo` on launch takes the picture even where a camera would have worked. Then you can take a screenshot of the window for a sketch that is normally live.
+Ollin bundles [twenty pictures and a short film](../Docs/Drawing/SamplePhotos.md) for this. There are four faces, four whole figures, two tables from above, four streets, two landscapes, a page, a pair of hands and two surfaces. So a sketch that reads people has people to read, and the vision examples run on a machine with nothing plugged in. `--photo` on launch takes the picture even where a camera would have worked. That holds a sketch that is normally live on one still frame, so a screenshot of its window shows the same picture every time.
 
 The film is a feed too. `VideoPlayer` plays a video file. `SampleClip.dance` is the bundled clip, a man dancing on a plain ground in front of a camera that never moves:
 
@@ -135,7 +135,7 @@ if let field = flow.field {
 
 `field` is `nil` until the second analyzed frame, because flow needs a pair. After that you can ask it anywhere. `vector(at:in:)` gives the motion under a point, `samples(in:every:)` a grid of arrows, and `averageFlow(in:)` the whole picture's drift. In the figure the arrows gather on the two arms and thin to almost nothing across the rest of him. His chest and his planted feet are just as present, and nearly still, so the field has next to nothing to report there. Flow reports motion, so a person standing quietly is invisible to it.
 
-Motion can be measured only where the picture has texture. A blank wall or a solid backdrop doesn't read as zero. It reads as noise, because there is nothing to match from one frame to the next. If your scene is mostly flat, give it some texture before trusting the field there. Treat the sizes of the vectors as a signal to scale by a gain of your own, rather than as a calibrated speed. The measured field has its own name, `MotionField`, apart from [Chapter 14](14-FieldsAndFlow.md)'s generative `FlowField`. One is a rule you invent, and the other is motion the camera saw.
+Motion can be measured only where the picture has texture. A blank wall or a solid backdrop doesn't read as zero. It reads as noise, because there is nothing to match from one frame to the next. If your scene is mostly flat, give it some texture before trusting the field there. Treat the sizes of the vectors as a signal rather than as a calibrated speed. Scale them by a gain of your own, a multiplier you pick by eye. The measured field has its own name, `MotionField`, apart from [Chapter 14](14-FieldsAndFlow.md)'s generative `FlowField`. One is a rule you invent, and the other is motion the camera saw.
 
 ## Putting it together: motion paints
 
@@ -238,7 +238,7 @@ if let body = pose.body {
 
 `Examples/Vision/BodyPose3D` draws that side view in an inset beside the feed. The 3D tracker differs from the flat one in two ways. It follows only one person, so `body` is a single optional rather than a list. It also places the whole skeleton every time, guessing at the joints it can't see, rather than leaving them out. There's also `body.height`, an estimate of how tall the person is. `heightEstimation` says whether that came from real depth data or from scaling the skeleton to a standard height. Scaling is all a plain webcam can offer.
 
-These trackers run trained models, programs that learned from many example pictures rather than rules someone wrote. The heavier ones, body pose and the segmenters in [the person as pixels](#the-person-as-pixels-lifting-the-subject), want Apple silicon. Every tracker exposes `isAvailable` and `unavailableReason`, and `drawStatus(reason, style: .warning)` turns the reason into the standard notice on the canvas instead of a silent nothing. Most trackers also read a single picture once, with no feed at all. The one-shot call is asynchronous, so a sketch waits for it with `waitFor`. `try? waitFor(photo) { try await FaceTracker.detect(in: $0) }` hands back the faces in `photo`, an `Image` you loaded.
+These trackers run trained models, programs that learned from many example pictures rather than rules someone wrote. The heavier ones, body pose and the segmenters in [the person as pixels](#the-person-as-pixels-lifting-the-subject), want Apple silicon. Every tracker exposes `isAvailable` and `unavailableReason`, and `drawStatus(reason, style: .warning)` turns the reason into the standard notice on the canvas instead of a silent nothing. Most trackers also read a single picture once, with no feed at all. The one-shot call is asynchronous, meaning its answer arrives a moment later rather than on the spot. `waitFor` holds the sketch until it does and hands the answer back, as [Appendix A](A-JustEnoughSwift.md#swift-youll-see-in-listings) lists. `try? waitFor(photo) { try await FaceTracker.detect(in: $0) }` hands back the faces in `photo`, an `Image` you loaded.
 
 ### The person as pixels: lifting the subject
 
@@ -357,7 +357,7 @@ override func mousePressed() {
 }
 ```
 
-Click something and the sketch follows it. Alongside its box, `trackedObject` carries a `confidence` that falls as the patch is hidden, leaves the frame, or moves too fast to keep up with. Fade an overlay by it, or give up below a threshold and ask for a new box.
+Click something and the sketch follows it. `track(centeredAt:size:in:)` hands the tracker a square 160 points across around the click, mapped through `view`, the rectangle the frame landed in. Alongside its box, `trackedObject` carries a `confidence` that falls as the patch is hidden, leaves the frame, or moves too fast to keep up with. Fade an overlay by it, or give up below a threshold and ask for a new box.
 
 ### Things that fly: TrajectoryTracker
 
@@ -365,7 +365,7 @@ Click something and the sketch follows it. Alongside its box, `trackedObject` ca
 
 <img src="Images/34-Seeing/Trajectory.jpg" alt="Two panels: six frames of a made-up clip overlaid, showing a bright ball rising in six steps, and the same clip's newest frame with orange dots on the sightings, a fitted arc, and a dashed continuation passing through pale rings" width="680">
 
-The dashed line runs past the last sighting. `equationCoefficients` is the fitted parabola in normalized coordinates, `y = c.x · x² + c.y · x + c.z`. Nothing stops you sampling it further, which is a guess about where the thing is going:
+The dashed line runs past the last sighting. `equationCoefficients` is the fitted parabola in normalized coordinates, its three numbers packed as one value, so with `c` holding it, `y = c.x · x² + c.y · x + c.z`. Nothing stops you sampling it further, which is a guess about where the thing is going:
 
 ```swift
 lazy var flights = TrajectoryTracker(camera)
@@ -380,7 +380,7 @@ for arc in flights.trajectories {
 }
 ```
 
-The block samples the right half of the frame, `x` from 0.5 to 1, which suits a flight moving right. For your own, start from the last sighting and step the way it is moving.
+`VisionSpace.point(_:_:in:)` maps a normalized point into the frame's rectangle, the same flip and scale the `in:` helpers do. The block samples the right half of the frame, `x` from 0.5 to 1, which suits a flight moving right. For your own, start from the last sighting and step the way it is moving.
 
 The clip in the figure shows the ball only on its way up. The pale rings are where it went in the frames the tracker never saw, and the dashed curve runs through them. A parabola has only three numbers in it, so a handful of sightings is enough to follow the rest of the flight.
 
@@ -435,7 +435,7 @@ The motion brush needed only what the Mac finds on its own. The entries below ru
 
 ### A click cuts it loose: PointSegmenter
 
-The segmenters in [the person as pixels](#the-person-as-pixels-lifting-the-subject) decide for themselves what the subject is. **`PointSegmenter`** hands that decision to you. Click a thing, any thing, and it comes loose from the picture. The pick is the same `matte` and `cutout` pair, with a `confidence` and a `bounds(in:)` box. A shift-click names a point the mask must not cover, which drops a shadow the pick took along. It runs SAM 2.1, the small version of Nikhila Ravi and colleagues' 2024 model for segmenting whatever a point asks for.
+The segmenters in [the person as pixels](#the-person-as-pixels-lifting-the-subject) decide for themselves what the subject is. **`PointSegmenter`** hands that decision to you. Click a thing, any thing, and it comes loose from the picture. The pick is the same `matte` and `cutout` pair, with a `confidence` and a `bounds(in:)` box. A shift-click names a point the matte must not cover, which drops a shadow the pick took along. It runs SAM 2.1, the small version of Nikhila Ravi and colleagues' 2024 model for segmenting whatever a point asks for.
 
 ```swift
 lazy var picker = PointSegmenter(camera,
@@ -445,7 +445,7 @@ picker.pick(at: Vector2(mouseX, mouseY), in: rect)               // in mousePres
 if let pick = picker.pick { drawImage(pick.cutout, in: rect) }   // in draw()
 ```
 
-The three model files, the frozen frame that makes refining cheap, and `include(_:in:)` are in [the reference](../Docs/Vision/Vision.md#pointsegmenter), and [`PointLift`](../Examples/Vision/PointLift/Sketch.swift) runs that loop, clicks and all.
+The three files behind `encoderURL`, `promptURL`, and `decoderURL`, the frozen frame that makes refining cheap, and `include(_:in:)` are in [the reference](../Docs/Vision/Vision.md#pointsegmenter), and [`PointLift`](../Examples/Vision/PointLift/Sketch.swift) runs that loop, clicks and all.
 
 ### Bringing your own model: ModelTracker
 
@@ -546,7 +546,7 @@ if let frame = camera.frame {
 }
 ```
 
-Set the texture every frame, because each capture arrives as a fresh image. A fresh image uploads to the GPU the first time it is drawn. So there is one upload per new frame, and nothing while the frame holds. That costs little for one surface and adds up across many. So put the feed on the surface that matters, and let the same feed light the rest. The `3D/Materials/LiveSurface` example does that, with the webcam.
+`camera.frame` is the latest capture as an `Image`, or `nil` before the first one arrives. Set the texture every frame, because each capture arrives as a fresh image. A fresh image uploads to the GPU the first time it is drawn. So there is one upload per new frame, and nothing while the frame holds. That costs little for one surface and adds up across many. So put the feed on the surface that matters, and let the same feed light the rest. The `3D/Materials/LiveSurface` example does that, with the webcam.
 
 ## The screen and the past: ScreenCapture and SlitScan
 
@@ -595,7 +595,7 @@ screen.excludesOwnWindows = false
 
 The result is video feedback, which people have made by pointing a camera at a monitor since the 1960s. Here it costs one Boolean. How deep it goes depends on how fast the sketch draws compared with the capture, and it smears and drifts as you move the window. The figure's desktop is made up, and the nesting is what a live one does.
 
-At `scale = 1` a capture arrives at the screen's full resolution, which on a Retina display is twice its size in points. `screen.scale = 0.5` quarters the pixels, and it is the setting to reach for when an effect chain slows down.
+At `scale = 1` a capture arrives at the screen's full resolution. On a Retina display that is twice the screen's size in points, the unit macOS lays windows out in. `screen.scale = 0.5` quarters the pixels, and it is the setting to reach for when an effect chain slows down.
 
 Recording the screen needs the user's consent, and macOS grants that to an application. A sketch run from the terminal has no application of its own. The consent goes to whatever launched it, which is Terminal, iTerm, Ghostty, or whichever terminal you use. The prompt names your terminal, and so does the entry in System Settings. Once you allow it there, every sketch you run from that terminal can capture with no further prompt. That also means everything you run from it can record the screen. Granting it doesn't reach a process already running, so allow it and then start the sketch again. `ScreenCapture.isAvailable` and `unavailableReason` tell you where you stand, and `drawFrame` puts the reason on the canvas for you.
 

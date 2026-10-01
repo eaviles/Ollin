@@ -17,7 +17,7 @@ A **depth camera** measures how far away each point is, as well as its color. Th
   <img src="Images/35-Depth/Anatomy.jpg" alt="Two panels from the pretend depth camera: a color image of a small staged room with a coral ball and teal crate, and its depth map, near surfaces bright and far ones dark, with the intrinsics listed below" width="680">
 </picture>
 
-In Ollin that bundle is one value type, `RGBDFrame`, and one call builds it. Here `color` is an `Image`, `depths` the depth map as a list of numbers, and `intrinsics` the lens numbers:
+In Ollin that bundle is one value type, `RGBDFrame`, and one call builds it. Here `color` is an `Image` and `depths` the depth map as one flat list of numbers. `depthWidth` and `depthHeight` say how many columns and rows that list holds, and `intrinsics` carries the lens numbers:
 
 ```swift
 RGBDFrame(color: color, depth: depths, confidence: nil,
@@ -26,7 +26,7 @@ RGBDFrame(color: color, depth: depths, confidence: nil,
 
 `confidence` can carry the sensor's own rating of each depth pixel, one number per pixel. It is 0 for low, 1 for medium, and 2 for high. A real sensor is least sure along the edges of things. `nil` means there is no rating, so every pixel counts as high.
 
-This chapter's frames come from a pretend depth camera, `StageCamera`. It sits at the end of [`GhostRoom.swift`](Figures/35-Depth/GhostRoom.swift), about ninety lines. Copy it into your sketch file, below your own class, before you try the blocks in this chapter. Those lines march rays through a tiny staged room, [Chapter 32](32-SculptingWithFields.md#how-the-picture-gets-made-sphere-tracing)'s sphere tracing run on the CPU. They fill those arrays, colors from the scene and depths from how far each ray went. It's a pretend camera, but the frame it produces is a real `RGBDFrame`. So everything else in this chapter treats it as it would treat a LiDAR frame. The code does not change when a real one arrives in [Chapter 36](36-ThePhoneAsASensor.md).
+This chapter's frames come from a pretend depth camera, `StageCamera`. It sits at the end of [`GhostRoom.swift`](Figures/35-Depth/GhostRoom.swift), about ninety lines. Copy it into your sketch file, below your own class, before you try the blocks in this chapter. Those lines march rays through a tiny staged room, [Chapter 32](32-SculptingWithFields.md#how-the-picture-gets-made-sphere-tracing)'s sphere tracing run on the CPU. They fill the `color` image and the `depths` list of that call, colors from the scene and depths from how far each ray went. It's a pretend camera, but the frame it produces is a real `RGBDFrame`. So everything else in this chapter treats it as it would treat a LiDAR frame. The code does not change when a real one arrives in [Chapter 36](36-ThePhoneAsASensor.md).
 
 > **Swift note.** `depth` is a plain `[Float]`, row by row from the top left, `0` where the sensor had no answer. Real depth maps are full of those holes, especially along silhouettes, and the calls that read them skip the holes.
 
@@ -39,7 +39,7 @@ One pixel plus one depth is a 3D point. The recipe fits in a sentence. Slide the
   <img src="Images/35-Depth/Unproject.jpg" alt="A diagram of unprojection: a lens at the left with its forward axis running out to the right through the image center, an image plane with a marked pixel, and a dashed ray out through the pixel to a 3D point. A dotted line drops from the point square onto the axis, and a dimension line under the axis marks the depth from the lens to that foot, how far along the forward axis. The recovered-coordinates formula sits below" width="680">
 </picture>
 
-That's called **unprojection**, and the intrinsics are the numbers the recipe needs: `cx` and `cy` the image center, `fx` and `fy` the focal lengths. The depth is measured along the camera's forward axis, not along the ray. The camera looks down its own −z, so the point's `z` is minus the depth. You'll rarely unproject one pixel at a time yourself. `pointCloud()` unprojects every depth pixel it trusts, colors each from the color image, and hands the result back as a `PointCloud`. By default it trusts only pixels rated `.high`, and `minConfidence:` lowers the bar.
+That's called **unprojection**, and the intrinsics are the numbers the recipe needs: `cx` and `cy` the image center, `fx` and `fy` the focal lengths. A focal length is how far the image plane sits in front of the lens, measured in pixels. It sets how fast things shrink with distance. The depth is measured along the camera's forward axis, not along the ray. The camera looks down its own −z, so the point's `z` is minus the depth. You'll rarely unproject one pixel at a time yourself. `pointCloud()` unprojects every depth pixel it trusts, colors each from the color image, and hands the result back as a `PointCloud`. By default it trusts only pixels rated `.high`, and `minConfidence:` lowers the bar.
 
 ```swift
 // in setup(): a capture marches rays on the CPU, so take it once
@@ -54,13 +54,13 @@ drawPointCloud(cloud)
 
 <img src="Images/35-Depth/CloudLift.jpg" alt="The flat frame stood up into a point cloud, viewed from a different angle: the room as scan-line points, with black voids stretching behind the ball and crate, and the original flat frame inset at the top left" width="560">
 
-The cloud sits in the capture camera's own space, in front of it along −z. So the orbit centers on a point at z −2.9. The picture has become geometry you can orbit. Behind the ball and the crate hang black voids, the parts of the room the camera never saw. Every real scan has them, and the next step fills them from more viewpoints.
+The cloud sits in the capture camera's own space, in front of it along −z. So the orbit centers on a point at z −2.9. `drawPointCloud` draws every point as a small disc facing the camera, `pointSize` meters across. The picture has become geometry you can orbit. Behind the ball and the crate hang black voids, the parts of the room the camera never saw. Every real scan has them, and the next step fills them from more viewpoints.
 
-For one point instead of all of them, `frame.unproject(normalized:)` lifts a single image position to its 3D spot in meters. The position is normalized, given as fractions from 0 to 1 across the image, as [Chapter 34](34-Seeing.md#trackers-attach-then-read)'s trackers give theirs. It reads a small window of depths around the position and takes their median, so a stray hole doesn't spoil it. That lifts a tracked 2D skeleton to its true depth, and the [RGBD reference](../Docs/3D/RGBD.md) shows it paired with the body tracker.
+For one point instead of all of them, `frame.unproject(normalized:)` lifts a single image position to its 3D spot in meters. The position is normalized, given as fractions from 0 to 1 across the image, as [Chapter 34](34-Seeing.md#trackers-attach-then-read)'s trackers give theirs. It reads a small window of depths around the position and takes their median, the middle value once they are sorted. So a stray hole doesn't spoil it. That lifts a tracked 2D skeleton to its true depth, and the [RGBD reference](../Docs/3D/RGBD.md) shows it paired with the body tracker.
 
 ## One world from many frames
 
-A single frame is a slice of the world, whatever the lens saw plus voids. The way past that needs one more ingredient, the **pose**: where the camera stood and which way it looked, written as a transform. A frame's cloud is in the camera's own space. Given the cloud and its pose, `WorldCloud`'s `add(_:transformedBy:)` places the points where they are in the room.
+A single frame is a slice of the world, whatever the lens saw plus voids. The way past that needs one more ingredient, the **pose**: where the camera stood and which way it looked, written as a transform. A transform is one value that holds a move and a turn together, the state a `translate` and a `rotate` leave inside `withState`. A frame's cloud is in the camera's own space. Given the cloud and its pose, `WorldCloud`'s `add(_:transformedBy:)` places the points where they are in the room.
 
 `WorldCloud` gathers the placed points. It divides space into small cubes called **voxels**, `voxelSize` meters on a side, and keeps one point in each cube, the most recent. So frames that overlap don't pile up points where they agree:
 
@@ -140,7 +140,7 @@ The ghost room turned each frame into points and let the picture go. A single de
 
 ### Solids behind the scene: drawDepthScene
 
-`drawDepthScene(frame)` draws the color image as the backdrop, and writes the depth map into the depth buffer. A camera built from the frame's own lens, `camera(.intrinsic(...))`, puts your 3D drawing in the same metric space. So the scene hides what you place behind it. It is for putting things into a photographed room, a ball behind a real chair or a creature under a real table. It is [Chapter 26](26-3DGently.md#depth-that-hides-things-the-depth-test)'s depth test, fed from a camera's depth map instead of from solids you drew.
+`drawDepthScene(frame)` draws the color image as the backdrop, and writes the depth map into the depth buffer. A camera built from the frame's own lens, `camera(.intrinsic(...))`, puts your 3D drawing in the same metric space. Metric means measured in meters, so a unit in your drawing is a meter in the room. So the scene hides what you place behind it. It is for putting things into a photographed room, a ball behind a real chair or a creature under a real table. It is [Chapter 26](26-3DGently.md#depth-that-hides-things-the-depth-test)'s depth test, fed from a camera's depth map instead of from solids you drew.
 
 <img src="Images/35-Depth/Inhabit.jpg" alt="The staged room's color frame with six marbles placed into it in meters: three whole, one sliced in half by the crate's edge, and two hidden behind it" width="560">
 
@@ -221,7 +221,7 @@ Both halves are the same walk, seen from straight above. From overhead a wall is
 
 What you get from this is a scan that agrees with itself, which is not the same as a scan in the right place. One match pulls the two ends of a walk together and shares the difference along everything between them. It does most of its work at the point of return. In a small room, nearly every frame can see something already fused. There the frame-by-frame fit has taken most of the drift out before the walk gets back, and there is little left to find.
 
-It has two limits. A place is recognized by standing near it. A scan that has drifted further than `settings.searchRadius` before it comes back is out of its own reach. The match is then refused rather than guessed. And a camera facing one bare wall can slide along that wall and fit it as well at every spot. A match made there would record drift as though it had been measured. Only the fit's own sense of how well it is pinned down can catch that. So a room with things standing about in it is easier to scan than an empty corridor.
+It has two limits. A place is recognized by standing near it. `ScanGraph` looks for an old keyframe within `settings.searchRadius` of the new one, 1.5 meters unless you change it. A scan that has drifted further than that before it comes back is out of its own reach. The match is then refused rather than guessed. And a camera facing one bare wall can slide along that wall and fit it as well at every spot. A match made there would record drift as though it had been measured. Only the fit's own sense of how well it is pinned down can catch that. So a room with things standing about in it is easier to scan than an empty corridor.
 
 Run it for yourself with `swift run --package-path Examples Example-3D-Depth-ClosedLoopScan`, which walks a made-up hall twice side by side with the true walls drawn over both.
 
