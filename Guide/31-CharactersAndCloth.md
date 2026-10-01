@@ -159,7 +159,7 @@ Those two numbers are also what you scroll a drawn track by. `wheels(on:)` hands
 
 ## Cloth that finds its own shape: soft bodies
 
-Everything so far moves as one solid piece. A crate can be anywhere, but it is always crate-shaped. A **soft body** is the other kind of thing. The vertices of its mesh are the simulation, held to each other by springs, so it arrives at a shape rather than carrying one around. It is for cloth, flags, balloons, and anything that sags or drapes.
+Everything so far moves as one solid piece. A crate can be anywhere, but it is always crate-shaped. A **soft body** is the other kind of thing. The vertices of its mesh are the simulation, held to each other by constraints the solver satisfies directly, which behave like springs. So it arrives at a shape rather than carrying one around. It is for cloth, flags, balloons, and anything that sags or drapes.
 
 You build one from any mesh you already know how to draw:
 
@@ -176,7 +176,7 @@ fill(.beige)
 drawSoftBody(cloth)
 ```
 
-`drawSoftBody` draws the mesh the simulation just arrived at. It is the mesh you handed over, with new positions and new normals. Its texture coordinates, its colors, and its material all carry through, and shadows and reflections treat it like any other mesh. `segments: 22` makes a grid of 23 by 23 vertices, so that sheet is 529 particles. Drop it on a sphere and it drapes over it, each particle finding somewhere to be while the springs between them pull.
+`drawSoftBody` draws the mesh the simulation just arrived at. It is the mesh you handed over, with new positions and new normals. Its texture coordinates, its colors, and its material all carry through, and shadows and reflections treat it like any other mesh. `segments: 22` makes a grid of 23 by 23 vertices, so that sheet is 529 particles. Drop it on a sphere and it drapes over it, each particle finding somewhere to be while the constraints between them pull like springs.
 
 <img src="Images/31-CharactersAndCloth/Cloth.jpg" alt="A pale sheet draped over a sphere on a dark floor, beside two teal balls: the left one slumped flat, the right one round" width="560">
 

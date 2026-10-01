@@ -509,7 +509,7 @@ orx-olive and `OllinLive` both keep the window open while you edit. Olive evalua
 swift run OllinLive Pulse.swift
 ```
 
-`extend(…)` is here too. A `SketchExtension` hooks setup and before and after the draw, as an OPENRNDR extension does, and it can also receive each finished frame. It has no hook for when the sketch shuts down. Screenshots and screen recording are run flags, `--export` and `--export-video`, rather than extensions. Syphon reads almost the same in both:
+`extend(…)` is here too. A `SketchExtension` hooks setup and before and after the draw, as an OPENRNDR extension does, and it can also receive each finished frame. [Chapter 44](44-HandingItOver.md#adding-behavior-from-outside-draw-sketchextension) teaches it. It has no hook for when the sketch shuts down. Screenshots and screen recording are run flags, `--export` and `--export-video`, rather than extensions. Syphon reads almost the same in both:
 
 ```kotlin
 extend(SyphonServer("Pulse"))

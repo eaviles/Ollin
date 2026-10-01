@@ -171,7 +171,7 @@ final class Meteors: Sketch {
 
 Read the first line this way. `Meteors` is a new class built on `Sketch`, the framework's base class. `final` says no other class will build on this one in turn, which is the usual choice for a sketch. Properties declared at the top of the class, like `meteors`, are the sketch's memory, because they persist across frames. A `let` inside `draw()` is made and thrown away within one frame.
 
-**`override`** marks a method that replaces one the base class already defines: `setup()`, `draw()`, `mousePressed()`, and the other methods Ollin calls. The compiler checks it. Misspell `draw` as `darw` and the compiler says there's nothing to override. Without that check, the misspelled method would never be called, and nothing would say why. Your own helpers, like `drawMeteor(at:)`, take no `override`.
+**`override`** marks a method that replaces one the base class already defines: `setup()`, `draw()`, `mousePressed()`, and the other methods Ollin calls. The compiler checks it. The same word marks a property the base class defines, as `override var canvasSize: CanvasSize { .size(800, 600) }` does, and the sketch's value wins. Misspell `draw` as `darw` and the compiler says there's nothing to override. Without that check, the misspelled method would never be called, and nothing would say why. Your own helpers, like `drawMeteor(at:)`, take no `override`.
 
 **`self`** is the current instance, and Swift almost never makes you write it. Inside the class, `meteors` means `self.meteors`.
 
@@ -264,6 +264,8 @@ Beyond `+`, `-`, `*`, and `/`, the listings use a few more operators. The compar
 
 | In a listing | What it does | First in |
 |---|---|---|
+| `image[x, y]` | A subscript: square brackets after a value read one entry of it, a list's item or an image's pixel. | [Chapter 9](09-Pictures.md#an-image-you-can-ask-imagex-y) |
+| `.degrees(45)` | An angle written in degrees, which `rotate` converts to the radians it works in. | [Appendix C](C-ComingFromP5.md) |
 | `0x2B2B2B` | A whole number written in base 16, the usual way to write a color. Each pair of digits is one channel, red, green, then blue, from `00` to `FF`. | [Chapter 1](01-HelloOllin.md#your-first-sketch) |
 | `i % n` | The remainder after dividing `i` by `n`. It wraps a count around, so `colors[i % colors.count]` never runs off the end of the list. | [Chapter 1](01-HelloOllin.md#putting-it-together-a-breathing-ring) |
 | `x += 1`, `x -= 1`, `x *= 2` | Change a variable by an amount. `x += 1` is short for `x = x + 1`. | [Chapter 2](02-Color.md#putting-it-together-a-color-field) |

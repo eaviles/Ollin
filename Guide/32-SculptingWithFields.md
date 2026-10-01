@@ -293,7 +293,7 @@ So the field estimates its distance instead. It runs the rule a few times from t
 
 ## The other way out: field to mesh
 
-Molten stays a field from start to finish, traced to pixels every frame. Sometimes you want a field to become an object instead, one you can export, place a hundred times, or hand to a fabricator. `isosurface` does that. It returns an ordinary `Mesh`, so it lights, takes materials and shadows, and exports like anything else you draw.
+Molten stays a field from start to finish, traced to pixels every frame. Sometimes you want a field to become an object instead, one you can export, place a hundred times, or hand to a fabricator. `isosurface` does that. It is the 3D twin of [Chapter 14](14-FieldsAndFlow.md#where-the-field-equals-something-contours)'s contours, a surface where the field reads one value instead of a line. It returns an ordinary `Mesh`, so it lights, takes materials and shadows, and exports like anything else you draw.
 
 ### Soft spheres that add up: metaballs
 

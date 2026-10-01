@@ -54,6 +54,8 @@ Save it as `Pulse.swift`, run `swift run OllinLive Pulse.swift`, and it breathes
 
 ### The sketch and the loop
 
+The loop is [Chapter 1](01-HelloOllin.md)'s subject, and the clock is [Chapter 3](03-MotionAndTime.md)'s.
+
 | p5.js | Ollin | Notes |
 |---|---|---|
 | `function setup()` | `override func setup()` | Processing: `void setup()` |
@@ -126,7 +128,7 @@ The catalog runs well past p5's. It holds stars, rings, hearts, n-gons, and a fe
 | `randomGaussian()` | `randomGaussian()` | also `randomGaussian(mean:deviation:)` |
 | `randomSeed(n)` / `noiseSeed(n)` | same names | `seed(n)` sets both at once ([Chapter 4](04-Randomness.md)) |
 | `noise(x)`, `noise(x, y)`, `noise(x, y, z)` | same | `0...1` in both, same small-steps habit ([Chapter 5](05-Noise.md)) |
-| `noiseDetail(lod, falloff)` | `fbm(x, y, octaves: 4, gain: 0.5)` | layered noise is its own call |
+| `noiseDetail(lod, falloff)` | `fbm(x, y, octaves: 4, gain: 0.5)` | layered noise is its own call; each octave adds finer detail at half the weight |
 
 Two more have no p5 counterpart. `signedNoise` swings `-1...1`, so you drop the `* 2 - 1`. And `noise(x, loop: t)` comes back to its starting value, for seamless loops. [Chapter 5](05-Noise.md) covers both.
 
@@ -147,6 +149,8 @@ Two more have no p5 counterpart. `signedNoise` swings `-1...1`, so you drop the 
 One difference changes how vector code reads. p5's vector methods change the vector in place, so `a.add(b)` alters `a`. Ollin's return new values and leave the inputs alone, so `a + b` reads like the math it does. [Chapter 10](10-Vectors.md) teaches vectors from the start.
 
 ### Everyday math
+
+[Chapter 3](03-MotionAndTime.md) teaches `map` and `lerp`, [Chapter 5](05-Noise.md) the noise, and [Chapter 10](10-Vectors.md) the vectors.
 
 | p5.js | Ollin | Notes |
 |---|---|---|
@@ -183,6 +187,8 @@ One difference changes how vector code reads. p5's vector methods change the vec
 | `loadJSON("data.json")`; Processing: `loadJSONObject` and `loadJSONArray` | `try? loadJSON("data.json")` | it reads at once rather than through a callback, so call it in `setup()`; walk it with `doc?["points"][0]["x"].number` ([Chapter 9](09-Pictures.md#documents-with-a-shape-loadjson)) |
 
 ### Mouse and keyboard
+
+[Chapter 1](01-HelloOllin.md) brings the mouse in, and [Chapter 4](04-Randomness.md) reads the keyboard.
 
 | p5.js | Ollin | Notes |
 |---|---|---|

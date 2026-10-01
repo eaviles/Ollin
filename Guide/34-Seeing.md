@@ -593,7 +593,7 @@ screen.excludesOwnWindows = false
   <img src="Images/34-Seeing/ScreenAsMaterial.jpg" alt="Two panels of a stand-in desktop. Left, a clean capture of a wallpaper with two windows. Right, the same capture with an Ollin sketch window on it showing the same picture, nested four levels deep" width="680">
 </picture>
 
-The result is video feedback, which people have made by pointing a camera at a monitor since the 1960s. Here it costs one Boolean. How deep it goes depends on how fast the sketch draws compared with the capture, and it smears and drifts as you move the window. The figure's desktop is made up, and the nesting is what a live one does.
+The result is video feedback, which people have made by pointing a camera at a monitor since the 1960s. It is the capture-side twin of [Chapter 19](19-LayersAndEffects.md#the-canvas-that-remembers-itself-feedback)'s feedback layer. Here it costs one Boolean. How deep it goes depends on how fast the sketch draws compared with the capture, and it smears and drifts as you move the window. The figure's desktop is made up, and the nesting is what a live one does.
 
 At `scale = 1` a capture arrives at the screen's full resolution. On a Retina display that is twice the screen's size in points, the unit macOS lays windows out in. `screen.scale = 0.5` quarters the pixels, and it is the setting to reach for when an effect chain slows down.
 
