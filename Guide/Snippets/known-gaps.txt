@@ -106,11 +106,11 @@ f9772692a39c  Guide/28-MaterialsAndSurroundings.md:251  cannot find 'picture' in
 5e288f34fe35  Guide/29-Landscapes.md:105  cannot find 'terrain' in scope
 817218f25cab  Guide/29-Landscapes.md:115  cannot find 'stone' in scope
 cc748b059cc6  Guide/29-Landscapes.md:140  cannot convert value of type '(UnboundedRange_) -> ()' to expected argument type 'Camera3D'
-2f8bd49d6684  Guide/29-Landscapes.md:161  expected '}' in class
+be4bf5adc860  Guide/29-Landscapes.md:161  expected '}' in class
 ea2ec72bb301  Guide/29-Landscapes.md:24  cannot find 'land' in scope
-0ff82d1cd076  Guide/29-Landscapes.md:243  cannot find 'floorLevel' in scope
-367fd77f5f81  Guide/29-Landscapes.md:335  extraneous '}' at top level
-8fe3a1525343  Guide/29-Landscapes.md:403  cannot find 'weathered' in scope
+a214a907f54b  Guide/29-Landscapes.md:296  cannot find 'floorLevel' in scope
+659184501264  Guide/29-Landscapes.md:403  extraneous '}' at top level
+8fe3a1525343  Guide/29-Landscapes.md:483  cannot find 'weathered' in scope
 54c56af7fa4c  Guide/29-Landscapes.md:53  cannot find 'seats' in scope
 5fe3d9f427a8  Guide/29-Landscapes.md:89  cannot find 'island' in scope
 2c8bf60e2308  Guide/31-CharactersAndCloth.md:128  errors thrown from here are not handled

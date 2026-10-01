@@ -4,9 +4,9 @@
 
 # 29. Landscapes and multitudes
 
-<img src="Images/29-Landscapes/Valley.jpg" alt="A wide green meadow of individually curved grass blades running to a stand of low-poly pines, with tan hills rising on both sides, a pale scree of boulders on the pass between them, and a clear blue sky above" width="560">
+<img src="Images/29-Landscapes/Valley.jpg" alt="A green meadow of individually curved grass blades on the right, and at the lower left a rippled blue river that comes out of a stand of low-poly pines and runs past the edge of the grass, with tan hills rising on both sides, a pale scree of boulders on the pass between them, and a clear blue sky above" width="560">
 
-A landscape holds more than you could arrange yourself, so you grow the ground from noise and rain and hand the placing to the GPU. Ten thousand copies of a mesh go down in one call, a world is cut to the view, and grass is never built. No tree in the valley above was placed by hand. Rivers, a sea, and a courtyard of lamps that each light only their own corner follow it.
+A landscape holds more than you could arrange yourself, so you grow the ground from noise and rain and hand the placing to the GPU. Ten thousand copies of a mesh go down in one call, a world is cut to the view, and grass is never built. No tree in the valley above was placed by hand, and nobody drew its river: the ground said where the water runs. The river as a map, a sea, and a courtyard of lamps that each light only their own corner follow it.
 
 ## A landscape you grow: heightfields and erosion
 
@@ -154,9 +154,9 @@ The blades shade on the same lit path as every solid. The boulders' cast shadows
 
 ## Putting it together: the valley
 
-The finished sketch is a valley you could stand in. It composes the chapter's steps. The land is grown and weathered, and then read back to find where the camera stands and what it looks at. The far world is scattered over the land's own surface with `surfacePoints` and drawn as one culled `MeshField`. The trees near the camera are an instanced draw the wind can reach, and the meadow is grass that does not exist between frames. Make `MySketches/Valley.swift`. It comes in three parts.
+The finished sketch is a valley you could stand in, on the bank of its river. It composes the chapter's steps. The land is grown and weathered, and then read back to find where the river runs, where the camera stands, and what it looks at. The far world is scattered over the land's own surface with `surfacePoints` and drawn as one culled `MeshField`. The trees near the camera are an instanced draw the wind can reach, and the meadow is grass that does not exist between frames. Two calls come from the section after this one, [Water on the land](#water-on-the-land-rivers-and-the-sea): `drainage()` reads the river off the ground, and `drawOcean` is its water. They are explained there and used here. Make `MySketches/Valley.swift`. It comes in three parts.
 
-The first part grows the ground. Ridged noise across the grid is rained on, then settled by gravity. `.normalized()` stretches the heights to span 0 to 1, before the weathering and after it. Every height below 0.3 is then held at 0.3, through `Heightfield(columns:rows:values:)`, so a meadow has somewhere flat to sit. `coloredMesh` takes a `Ramp` that starts at that flood plain rather than at zero, which keeps the low ground green while the ridges go pale. `ground(atX:z:)` reads the field's height under any world point. `steepness(atX:z:)` compares the heights on either side of it to get the slope.
+The first part grows the ground. Ridged noise across the grid is rained on, then settled by gravity. `.normalized()` stretches the heights to span 0 to 1, before the weathering and after it. `drainage()` then reads where the water runs. `rivers(minFlow:in:)` keeps the reaches that drain at least 3,000 cells. On this ground that is one trunk across the flood plain and a few more at the edges. It is asked before the plain is leveled, because level ground has no downhill and the water would have nowhere to go. Every height below 0.3 is then held at 0.3, through `Heightfield(columns:rows:values:)`, so a meadow has somewhere flat to sit. `carveTheRiver` then cuts a rounded channel under every river point, 0.03 below whatever ground it crosses. The water will be a level held just under the plain. On the plain the channel fills, and anywhere higher it stays a dry cut. `coloredMesh` takes a `Ramp` that starts at that flood plain rather than at zero, which keeps the low ground green while the ridges go pale. `ground(atX:z:)` reads the field's height under any world point. `steepness(atX:z:)` compares the heights on either side of it to get the slope. `riverside(of:)` finds the river point nearest a world point. It says how far that is, which way the river runs there, and which side of it the point is on.
 
 ```swift
 import Ollin
@@ -165,17 +165,23 @@ final class Valley: Sketch {
     let span = 110.0           // world units across the terrain
     let relief = 26.0          // world units from flood plain to ridge
     let floorLevel = 0.3       // heights under this flatten into flood plain
+    let channelDepth = 0.03    // how far the river bed cuts under the ground, in field units
+    let channelRadius = 8      // half the channel's width, in cells
+    var riverLevel: Double { floorLevel - 0.006 }   // where the water stands: just under the plain
 
     var field = Heightfield(columns: 2, rows: 2)
     var land = Mesh(positions: [], indices: [])
+    var river: [River] = []
     let world = MeshField()
-    var meadow = StrandField(width: 44, depth: 44, count: 420_000)
+    var meadow = StrandField(width: 44, depth: 30, count: 300_000)
 
     let pine = Mesh.cone(radius: 0.5, height: 3.2, segments: 9)
     let boulder = Mesh.icosphere(radius: 0.6, subdivisions: 1)
 
     var clearing = Vector2.zero          // where the camera stands, in x/z
     var ridge = Vector2.zero             // what it looks at
+    var meadowCenter = Vector2.zero      // the grass, laid along the river's bank
+    var meadowTurn = 0.0                 // turned to run with the river
     let standReach = 42.0
     var nearSeats: [(x: Double, z: Double, ground: Double, phase: Double)] = []
 
@@ -185,6 +191,7 @@ final class Valley: Sketch {
         growTheLand()
         clearing = findAClearing()
         ridge = findARidge(from: clearing)
+        layTheMeadow()
         dressTheLand()
         meadow.bladeHeight = 0.6
         meadow.heightVariance = 0.5
@@ -208,10 +215,18 @@ final class Valley: Sketch {
         .eroded(.hydraulic(drops: 60_000), seed: 2_608)
         .eroded(.thermal(talus: 0.014, iterations: 30))
         .normalized()
+
+        // Where the water runs, read off the ground before the plain is leveled,
+        // since level ground has no downhill. Only a reach that drains 3,000
+        // cells or more counts as the river; the rest stay the creases they are.
+        let bounds = Rectangle(x: -span / 2, y: -span / 2, width: span, height: span)
+        river = grown.drainage().rivers(minFlow: 3_000, in: bounds)
+
         // Rain carries material downhill and leaves it in the low ground. Holding
         // every height under 0.3 at one level is the flood plain that gets the meadow.
-        field = Heightfield(columns: grown.columns, rows: grown.rows,
-                            values: grown.values.map { max($0, floorLevel) })
+        var heights = grown.values.map { max($0, floorLevel) }
+        carveTheRiver(into: &heights, columns: grown.columns, rows: grown.rows)
+        field = Heightfield(columns: grown.columns, rows: grown.rows, values: heights)
 
         let ramp = Ramp([Color(hex: 0x54703C), Color(hex: 0x5F7340),
                          Color(hex: 0x8A8452), Color(hex: 0xA69378),
@@ -219,6 +234,27 @@ final class Valley: Sketch {
         // The flood plain is the ramp's first color, the highest ridge its last.
         land = field.coloredMesh(width: span, depth: span, height: relief,
                                  ramp, in: floorLevel...1)
+    }
+
+    /// A rounded channel cut under every river point, below whatever ground it
+    /// crosses. On the plain that puts the bed under the water level.
+    func carveTheRiver(into heights: inout [Double], columns: Int, rows: Int) {
+        let ground = heights
+        for reach in river {
+            for p in reach.points {
+                let cx = Int(((p.x / span + 0.5) * Double(columns - 1)).rounded())
+                let cy = Int(((p.y / span + 0.5) * Double(rows - 1)).rounded())
+                for y in max(0, cy - channelRadius) ... min(rows - 1, cy + channelRadius) {
+                    for x in max(0, cx - channelRadius) ... min(columns - 1, cx + channelRadius) {
+                        let dx = Double(x - cx), dy = Double(y - cy)
+                        let d = (dx * dx + dy * dy).squareRoot() / Double(channelRadius)
+                        if d >= 1 { continue }
+                        let i = y * columns + x
+                        heights[i] = min(heights[i], ground[i] - channelDepth * (1 - d * d))
+                    }
+                }
+            }
+        }
     }
 
     /// The ground height under a world x/z, in world units.
@@ -234,21 +270,42 @@ final class Valley: Sketch {
         return sqrt(dx * dx + dz * dz) / (step * 2)
     }
 
+    /// How far a world x/z is from the river, and the river's own direction there.
+    func riverside(of point: Vector2) -> (distance: Double, along: Vector2, bank: Vector2) {
+        var best = (distance: Double.infinity, reach: 0, index: 0)
+        for (r, reach) in river.enumerated() {
+            for (i, p) in reach.points.enumerated() where p.distance(to: point) < best.distance {
+                best = (p.distance(to: point), r, i)
+            }
+        }
+        guard best.distance.isFinite else { return (best.distance, Vector2(1, 0), Vector2(0, 1)) }
+        let points = river[best.reach].points
+        let a = points[max(0, best.index - 12)], b = points[min(points.count - 1, best.index + 12)]
+        let along = (b - a).normalized
+        var bank = Vector2(-along.y, along.x)      // across the river, toward the point
+        if bank.dot(point - points[best.index]) < 0 { bank = -bank }
+        return (best.distance, along, bank)
+    }
+
 ```
 
-The second part reads the field back, which is the step that turns a landscape into a way of placing things. `findAClearing` walks a coarse grid and scores each spot by how much level ground surrounds it. Where the camera stands is something the terrain decides. `findARidge` then picks the highest ground in the middle distance, on the side away from the sun. So the shot faces lit land rather than a silhouette. `dressTheLand` scatters four hundred thousand spots over the land mesh with `surfacePoints`, by area, and passes `scatter: .random`. At this density the pines overlap into one canopy anyway, and the even spacing would take far longer to work out. It keeps the spots that landed somewhere a pine or a boulder belongs, and a spot's normal says how steep the ground is there. Nothing grows on the flood plain or within 42 units of the clearing. Pines take the gentle mid slopes, and stones collect where it is steep.
+The second part reads the field back, which is the step that turns a landscape into a way of placing things. `findAClearing` walks a coarse grid and keeps the spots that stand seven to eleven units from the river. It scores each by how much level ground surrounds it. Where the camera stands is something the terrain decides, and it stands on the bank. `findARidge` then picks the highest ground in the middle distance, on the side away from the sun. So the shot faces lit land rather than a silhouette. `layTheMeadow` turns the grass to run with the river and pushes it onto the camera's side. Its near edge is five and a half units up the bank. The grass is a square patch, and that is how it gets a straight edge along the water. `dressTheLand` scatters four hundred thousand spots over the land mesh with `surfacePoints`, by area, and passes `scatter: .random`. At this density the pines overlap into one canopy anyway, and the even spacing would take far longer to work out. It keeps the spots that landed somewhere a pine or a boulder belongs, and a spot's normal says how steep the ground is there. Nothing grows on the flood plain, in the river, or within 42 units of the clearing. Pines take the gentle mid slopes, and stones collect where it is steep.
 
 The trees near the camera are kept in a list of their own, because they are the ones the wind has to move. They come from darts thrown in a disc around the clearing, since they have to stand near the camera rather than all over the land. They skip steep ground too. The square root of `random(1)` as the distance spreads the darts evenly over the disc. A plain `random` would crowd them at its center.
 
 ```swift
     // MARK: reading the land back
 
-    /// Somewhere flat to stand, found by asking the field instead of guessing.
+    /// Somewhere flat to stand on the river's bank, found by asking the field
+    /// instead of guessing: level ground all around, and the water seven to
+    /// eleven units off.
     func findAClearing() -> Vector2 {
         let floorY = floorLevel * relief
         var best = Vector2.zero, bestScore = -1.0
         for gz in stride(from: -30.0, through: 30.0, by: 3.0) {
             for gx in stride(from: -30.0, through: 30.0, by: 3.0) {
+                let offRiver = riverside(of: Vector2(gx, gz)).distance
+                if offRiver < 7 || offRiver > 11 { continue }
                 var flat = 0.0
                 for k in 0 ..< 60 {
                     let a = Double(k) / 60 * .tau * 7
@@ -279,6 +336,17 @@ The trees near the camera are kept in a list of their own, because they are the 
         return best
     }
 
+    /// The grass is a square patch, so it is turned to run with the river and
+    /// pushed onto the clearing's side of it, its near edge a few units up the
+    /// bank. The camera stands inside it, near that edge.
+    func layTheMeadow() {
+        let side = riverside(of: clearing)
+        guard side.distance.isFinite else { meadowCenter = clearing; return }
+        let riverPoint = clearing - side.bank * side.distance
+        meadowCenter = riverPoint + side.bank * (5.5 + meadow.depth / 2)
+        meadowTurn = -atan2(side.along.y, side.along.x)
+    }
+
     // MARK: what stands on it
 
     func dressTheLand() {
@@ -295,7 +363,7 @@ The trees near the camera are kept in a list of their own, because they are the 
         // serves, where blue noise would take far longer.
         for spot in surfacePoints(on: land, count: 400_000, scatter: .random) {
             let p = spot.position
-            // Nothing grows on the flood plain, and nothing grows on bare rock.
+            // Nothing grows on the flood plain or in the river, and nothing grows on bare rock.
             if p.y < floorY + 0.5 { continue }
             if Vector2(p.x, p.z).distance(to: clearing) < standReach { continue }
             if spot.normal.y > 0.78 && p.y < relief * 0.66 {
@@ -328,9 +396,9 @@ The trees near the camera are kept in a list of their own, because they are the 
 
 ```
 
-> **Swift note.** `nearSeats` holds tuples with named parts, `(x:, z:, ground:, phase:)`, so a seat reads as `seat.x` rather than `seat.0`. [Chapter 27](27-Meshes.md#putting-it-together-the-raked-garden)'s stones were the same kind of tuple. `var best = Vector2.zero, bestScore = -1.0` declares two variables on one line, as [Chapter 11](11-ForcesAndPhysics.md) did with constants. `stride(from:through:by:)` counts from one value to another in steps and includes the last, as [Chapter 14](14-FieldsAndFlow.md)'s stride did. The `to:` form stops short of it. `continue` skips to the next spot, as in [Chapter 11](11-ForcesAndPhysics.md).
+> **Swift note.** `nearSeats` holds tuples with named parts, `(x:, z:, ground:, phase:)`, so a seat reads as `seat.x` rather than `seat.0`. [Chapter 27](27-Meshes.md#putting-it-together-the-raked-garden)'s stones were the same kind of tuple. `var best = Vector2.zero, bestScore = -1.0` declares two variables on one line, as [Chapter 11](11-ForcesAndPhysics.md) did with constants. `stride(from:through:by:)` counts from one value to another in steps and includes the last, as [Chapter 14](14-FieldsAndFlow.md)'s stride did. The `to:` form stops short of it. `continue` skips to the next spot, as in [Chapter 11](11-ForcesAndPhysics.md). `riverside(of:)` returns a tuple with named parts too, so its caller reads `side.bank`. The `guard` on `isFinite` is the way out for a field with no river at all, which another seed could grow.
 
-The third part is the frame. It draws the land, then the meadow, then the whole far world in one call, then rebuilds the near stand from scratch. Everything in that last loop is a placement, so the gust never touches a vertex.
+The third part is the frame. It draws the land, then the river, then the meadow, then the whole far world in one call, then rebuilds the near stand from scratch. The river is an ocean with its waves nearly still, moved down to the water level and as wide as the terrain. The ground hides it everywhere but in the channel, the one place the ground dips below it. The meadow is moved to its center and turned with `rotateY` before it is drawn. Everything in that last loop is a placement, so the gust never touches a vertex.
 
 ```swift
     // MARK: the frame
@@ -349,8 +417,19 @@ The third part is the frame. It draws the land, then the meadow, then the whole 
         specular(0.04)
         drawMesh(land)
 
+        // The river is a sea at the valley's scale: a barely stirred surface held
+        // just under the flood plain, so it shows only where the channel dips below it.
+        let stream = makeOceanField(Ocean(waveHeight: 0.06, windSpeed: 1.5, choppiness: 0.4,
+                                          patchSize: span, smallestWave: 0.15, seed: 2_608),
+                                    resolution: 512)
         withState {
-            translate(clearing.x, ground(atX: clearing.x, z: clearing.y), clearing.y)
+            translate(0, riverLevel * relief, 0)
+            drawOcean(stream, segments: 512, water: .open)
+        }
+
+        withState {
+            translate(meadowCenter.x, floorLevel * relief, meadowCenter.y)
+            rotateY(meadowTurn)
             drawStrands(meadow)
         }
 
@@ -377,19 +456,20 @@ The third part is the frame. It draws the land, then the meadow, then the whole 
 }
 ```
 
-The valley holds 420,000 blades of grass, a far world scattered from 400,000 spots, and a stand of pines near the camera. All of it comes from one `Heightfield` and four draw calls. No object's position is typed in. Move the seed and the valley moves with it, camera included. Nothing in the sketch knows where anything is until it asks the ground.
+The valley holds 300,000 blades of grass, a far world scattered from 400,000 spots, a near stand of pines, and a river. All of it comes from one `Heightfield` and five draw calls. No object's position is typed in, and nobody drew the river. The ground said where it runs, the camera went to its bank, and the grass stopped at its edge. Move the seed and the valley moves with it, river and camera included. Nothing in the sketch knows where anything is until it asks the ground.
 
 Then make it yours:
 
-- Change `seed(2_608)`, `noiseSeed(2_608)`, and the erosion's `seed: 2_608` and run it again. You get a different valley, a different clearing, and a different ridge to look at, with no other edit.
-- Raise `floorLevel` to 0.4 for a wider flood plain. The flats spread and the forest retreats uphill, since nothing is placed on the flood plain.
+- Change `seed(2_608)`, `noiseSeed(2_608)`, and the erosion's `seed: 2_608` and run it again. You get a different valley, a different river, a different clearing on its bank, and a different ridge to look at, with no other edit.
+- Raise `floorLevel` to 0.4 for a wider flood plain. The flats spread and the forest retreats uphill, since nothing is placed on the flood plain. The river rises with the plain, since `riverLevel` is read from it.
+- `channelRadius` and `channelDepth` are the river's width and depth, in cells and in field units. Double both for a river the valley is about. `minFlow` is where a river begins: take it down to 1,500 in `growTheLand` and the creeks that feed the trunk get channels and water of their own. At this seed one of them then crosses the meadow, which is a limit worth seeing. The river is read from the ground, and the camera keeps off every reach. The grass is still a straight-edged patch laid along the nearest one.
 - Set `world.isCullingEnabled = false` in `setup()`, which draws every copy whether or not the camera can see it, and watch the inspector's frame time while the picture stays the same.
 
-The valley moves only where the wind reaches the near pines and the grass. Keep it as a still, or as a short video for the sway. `swift run OllinLive MySketches/Valley.swift --export valley.png --frame 180` writes the still, and `--export-video valley.mp4 --seconds 8` records the wind.
+The valley moves where the wind reaches the near pines and the grass, and on the river. Keep it as a still, or as a short video for the sway. `swift run OllinLive MySketches/Valley.swift --export valley.png --frame 180` writes the still, and `--export-video valley.mp4 --seconds 8` records the wind.
 
 ## Water on the land: rivers and the sea
 
-The valley's rain carved the drainage into the ground and then left no water behind. Water belongs to the land in other ways too. The finished ground can be asked where its rivers run. And a sea is a surface of its own, made from the waves on it rather than from a height at every point.
+The valley's river was two calls, used before they were explained. This section explains them. The finished ground can be asked where its rivers run, and the answer is a map rather than a mesh. And a sea is a surface of its own, made from the waves on it rather than from a height at every point. The valley's river was that surface with its waves nearly still.
 
 ### Where the water goes: drainage
 
