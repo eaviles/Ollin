@@ -29,9 +29,9 @@ drawPoints(fitted(cloud, in: canvasRectangle.inset(by: .all(80))), size: 1.5)
 
 Here is why the game draws a fern. Every one of the four rules *shrinks* the plane. So wherever your dot started, a few jumps later that starting position has been squashed down to nothing and forgotten. What is left is the one set of points that the four rules, taken together, map onto itself. The dot cannot leave that set and cannot stay away from it, so given enough jumps it traces the set out. The set is called the **attractor**, and the collection of rules is an **iterated function system**.
 
-The picture also explains what the weights are for. The four rules are not picked with equal probability. The one that draws the main body is picked 85 percent of the time, which keeps the fine tip as well drawn as the base. Ollin ships `.barnsleyFern`, `.sierpinskiTriangle`, and `.sierpinskiCarpet`, and a system of your own is six numbers per rule plus a weight.
+The picture also explains what the weights are for. The four rules are not picked with equal probability. The one that draws the main body is picked 85 percent of the time, which keeps the fine tip as well drawn as the base. Ollin ships `.barnsleyFern`, `.sierpinskiTriangle`, and `.sierpinskiCarpet`. The Sierpinski triangle is a triangle made of three half-size copies of itself, and the carpet is its square cousin. A system of your own is six numbers per rule plus a weight.
 
-Three practical notes come with the call. `drawPoints` puts one dot at every point in the list, `size` pixels across. The points arrive in the system's own coordinates rather than in canvas pixels, and `fitted` scales and centers them into any rectangle you name. The fern also needs its y negated, because it grows upward while the canvas counts downward. The points come from the sketch's own random generator, so `seed` from [Chapter 4](04-Randomness.md#seeds-randomness-you-can-keep) makes the same cloud every run.
+`ifsPoints(_:count:)` plays that game for the system you name, for that many jumps, and hands back the marks as a list of points. Three practical notes come with the call. `drawPoints` puts one dot at every point in the list, `size` pixels across. The points arrive in the system's own coordinates rather than in canvas pixels, and `fitted` scales and centers them into any rectangle you name. The fern also needs its y negated, because it grows upward while the canvas counts downward. The points come from the sketch's own random generator, so `seed` from [Chapter 4](04-Randomness.md#seeds-randomness-you-can-keep) makes the same cloud every run.
 
 ## A formula that folds the plane: chaotic maps
 
@@ -50,7 +50,7 @@ fill(Color(red: 0.55, green: 0.75, blue: 1.0, alpha: 0.12))
 drawPoints(fitted(trail, in: bounds.inset(by: .all(80))), size: 1)
 ```
 
-`next` applies the formula once, and the loop is the whole iteration. `map.orbit(count:)` does the same loop in one call. The points live within about plus or minus two, so `fitted` places them the way it placed the fern. The low alpha is what makes a **density plate**: one dot is nearly invisible, and where the orbit returns often the dots stack. Turn the alpha up to 1 and the same points flatten into a silhouette.
+`next` applies the formula once, and the loop is the whole iteration. In the comment, `x'` and `y'` are the next point's coordinates, worked out from the current `x` and `y`. `map.orbit(count:)` does the same loop in one call. The points live within about plus or minus two, so `fitted` places them the way it placed the fern. The low alpha is what makes a **density plate**: one dot is nearly invisible, and where the orbit returns often the dots stack. Turn the alpha up to 1 and the same points flatten into a silhouette.
 
 For a plate with millions of visits, let the canvas keep every frame's dots. Call `noClear()` in `setup()`, as [Chapter 12](12-FlocksAndSwarms.md#roaming-wander-and-trails-from-noclear) did for its trails. Then draw each frame's new points with `blendMode(.add)` from [Chapter 19](19-LayersAndEffects.md#how-new-paint-meets-old-blend-modes). With that mode, a faint dot adds its light to what is under it rather than painting over it. Draw tens of thousands of new points a frame at a very low alpha. After a few seconds each plate holds well over a million visits:
 
@@ -86,7 +86,7 @@ fill(Color(hex: 0xE8C97D, alpha: 0.55))
 drawPoints(inversionLimitSet(of: mirrors, count: 26_000), size: 1.4)
 ```
 
-The five centers sit on a circle of radius `ring`, a fifth of a turn apart. A radius of `ring * sin(.pi / 5)` is what makes each one touch the next. Since the circles are in canvas coordinates, the dust needs no fitting. It lands among the mirrors that produced it. Tangency decides the picture: circles that touch give lace, separated circles give scattered dust, and overlapping ones tear the lace apart. The points come from the sketch's random generator, like the fern's, so a seed pins them.
+The five centers sit on a circle of radius `ring`, a fifth of a turn apart. A radius of `ring * sin(.pi / 5)` is what makes each one touch the next. `inversionLimitSet(of:count:)` plays that game with the mirrors you hand it, for that many jumps, and hands back the dust as points. Since the circles are in canvas coordinates, the dust needs no fitting. It lands among the mirrors that produced it. Tangency decides the picture: circles that touch give lace, separated circles give scattered dust, and overlapping ones tear the lace apart. The points come from the sketch's random generator, like the fern's, so a seed pins them.
 
 ## A group drawn as one curve: Kleinian limit sets
 
@@ -249,7 +249,7 @@ drawCircles(schottkyCircles(pairing: pairings, minRadius: 0.4, maxDepth: 60))
 
 `maxDepth` caps the generations, and `minRadius` stops a branch once its circle is too small to see, since everything below it nests inside. Whether that picture comes out full or nearly empty depends on one thing. When a pairing's two circles *touch*, its map holds the point where they touch perfectly still. Near that point it barely shrinks anything at all. So the orbit keeps handing back large circles generation after generation. They pile into the fan you can see at the left and right of the third panel. Separate that pair, even a little, and every application shrinks harder. The lace thins to a dust, with the same code and the same four circles.
 
-So `schottkyCuspedPairs` builds its four circles as two touching pairs, and that also tells you which dial to reach for when you want motion. `lean` swings each pair around its own tangency point, so the pair goes on touching however far it swings. The picture stays full while the figure opens and closes. `twist` rotates a pairing off that setting, which gives spirals instead and thins the lace as it goes. `SchottkyPreset` names five landmark arrangements of the four circles: `.kissing`, `.leaning`, `.cusped`, `.spiral`, and `.dust`. `schottkyCircles(.kissing, in:)` takes one in place of the pairings.
+So `schottkyCuspedPairs` builds its four circles as two touching pairs, and that also tells you which dial to reach for when you want motion. Its two other arguments are `lean` and `twist`. `lean` swings each pair around its own tangency point, so the pair goes on touching however far it swings. The picture stays full while the figure opens and closes. `twist` rotates a pairing off that setting, which gives spirals instead and thins the lace as it goes. `SchottkyPreset` names five landmark arrangements of the four circles: `.kissing`, `.leaning`, `.cusped`, `.spiral`, and `.dust`. `schottkyCircles(.kissing, in:)` takes one in place of the pairings.
 
 What comes back is `[Circle]`, not a cloud of points. A Möbius map sends a circle to a circle, so nothing has to be flattened on the way. The lace exports as circles, so a pen plotter draws it with the same round strokes you see on screen.
 
@@ -285,7 +285,7 @@ let plate = map.bifurcationImage(width: 800, height: 452, samplesPerColumn: 12_0
 
 Each column of the image is one position of the dial, and `samplesPerColumn` is how many settled orbit points it plots. Twelve thousand, six times the default, fills the band of chaos to a smooth gray.
 
-The diagram reads left to right like a story. At low `r` the population settles to one steady value, a single line. At 3 the line forks, and the orbit flips between two values forever. The forks come faster and faster until, just past 3.57, they never stop coming and the orbit never repeats again. Nothing random was added anywhere in this picture. Chaos here is a dial turned too far. The pale slots inside the gray are windows where order briefly returns. The wide one near 3.83 holds the entire diagram again in miniature. Sweep `over: 3.82...3.87` and see.
+The diagram reads left to right like a story. At low `r` the population settles to one steady value, a single line. At 3 the line forks, and the orbit flips between two values forever. The forks come faster and faster until, just past 3.57, they never stop coming and the orbit never repeats again. Nothing random was added anywhere in this picture. Chaos here is a dial turned too far. The pale slots inside the gray are windows where order briefly returns. The wide one near 3.83 holds the entire diagram again in miniature. Sweep `over: 3.82...3.87`, the argument that sets the range of `r` the image covers, and see.
 
 Two companions go with the diagram. The call `cobweb(at:steps:)` traces one orbit as the classic staircase between the map's curve and the diagonal. Use it to *watch* a single dial position. The other, `lyapunovExponent(at:)`, scores one, where negative means settling and positive means chaos. The [`Examples/Patterns/Bifurcation`](../Examples/Patterns/Bifurcation/Sketch.swift) example prints the diagram with the exponent traced beneath it, dipping below zero at every window.
 
@@ -303,7 +303,7 @@ let room = Billiard(.circle(Circle(center: middle, radius: 380)))
 drawPolyline(room.path(from: start, heading: 0.7, bounces: 400))
 ```
 
-Nothing changes across those four panels except the wall, and the pictures are not related.
+`middle` is the canvas center and `start` is the point the ball is let go from, both points the sketch declares itself. Nothing changes across those four panels except the wall, and the pictures are not related.
 
 A **circle** keeps a hole. Each straight run between two bounces is a chord. A bounce turns the path about the radius, which leaves untouched how far the chord passes from the middle. So every chord of the path misses the middle by the same distance. The path wraps a smaller circle it can never enter, and that circle is the hole. Every chord is the same length as every other, too, and each bounce moves the ball the same way around the rim. So a turn that is a whole fraction of a circle closes exactly into a star.
 
@@ -318,7 +318,7 @@ Billiard(.stadium(center: middle, straight: 380, radius: 240))
 Billiard(.polygon(walls), obstacles: [Circle(center: middle, radius: 150)])
 ```
 
-Where a ball is let go matters as much as the room. In a circle it decides how big the hole is, and a ball let go at the exact middle leaves no hole at all. `room.contains(start)` is the first thing to ask, since the middle of a room with a post in it is inside the post.
+`walls` is a list of a polygon's corners, the sketch's own as well. Where a ball is let go matters as much as the room. In a circle it decides how big the hole is, and a ball let go at the exact middle leaves no hole at all. `room.contains(start)` is the first thing to ask, since the middle of a room with a post in it is inside the post.
 
 ### The classic chaos machine: DoublePendulum
 
@@ -329,7 +329,7 @@ A **double pendulum** is two weights on two rigid arms, hinged end to end, with 
   <img src="Images/22-IteratedForms/PendulumFan.jpg" alt="Two panels: one double pendulum over its looping twelve-second trace, and sixteen pendulums that started a ten-thousandth of a radian apart, fanned out in every direction after eight seconds" width="680">
 </picture>
 
-This machine is *deterministic*. `advance()` moves one 60 fps frame on in fixed substeps, so a run is a pure function of where you started. The same start replays the same tangle every time. Start a second pendulum a ten-thousandth of a radian away, though, and within a few seconds the two are doing completely different things. That gap between perfectly repeatable and impossible to predict is what chaos means. The stadium and the gray band of the logistic map show the same gap. A fan of near-identical pendulums is the cheapest way to watch it happen. [`Examples/Motion/DoublePendulum`](../Examples/Motion/DoublePendulum/Sketch.swift) draws one: twenty-four pendulums that swing as one line, then pull apart.
+This machine is *deterministic*. `advance()` moves one 60 fps frame on in fixed substeps, several equal small steps of the equations per frame. So a run depends only on where you started. The same start replays the same tangle every time. Start a second pendulum a ten-thousandth of a radian away, though, and within a few seconds the two are doing completely different things. That gap between perfectly repeatable and impossible to predict is what chaos means. The stadium and the gray band of the logistic map show the same gap. A fan of near-identical pendulums is the cheapest way to watch it happen. [`Examples/Motion/DoublePendulum`](../Examples/Motion/DoublePendulum/Sketch.swift) draws one: twenty-four pendulums that swing as one line, then pull apart.
 
 ## Iteration at every pixel: escape time, Newton's basins, and domain coloring
 
@@ -337,7 +337,7 @@ Every orbit so far was plotted where it went, one wandering point at a time. The
 
 ### Iteration without memory: escape-time fractals and orbit traps
 
-The **escape-time fractals** run one small loop at every pixel: square the number you have, add a fixed one, and repeat. Some starting points stay near home forever. Others eventually run away, and the only thing the picture records is **how many steps that took**. That count, turned into a color, is the fractal, and the regions that never escape are the set itself, painted in `interior`. They are for the boundary between the two, which holds detail at every zoom. Gaston Julia worked out the mathematics in 1918, and Benoit Mandelbrot first plotted the set that carries his name in 1980.
+The **escape-time fractals** run one small loop at every pixel: square the number you have, add a fixed one, and repeat. Some starting points stay near home forever. Others eventually run away, and the only thing the picture records is **how many steps that took**. That count, turned into a color, is the fractal, and the regions that never escape are the set itself, painted in one flat color, the `interior:` argument. They are for the boundary between the two, which holds detail at every zoom. Gaston Julia worked out the mathematics in 1918, and Benoit Mandelbrot first plotted the set that carries his name in 1980.
 
 The loop treats a pixel's position as one number. You can add two of these by adding their coordinates, the way [Chapter 10](10-Vectors.md) added arrows. Squaring one is the new move. It squares the point's distance from the middle and doubles its angle around it. So a point inside the circle of radius 1 around the middle spirals inward when squared, and a point outside flies out. The fixed number added each time drags the orbit somewhere new. That is all the loop needs. The complex-plane entry, at the end of this family, draws the rule and hands it to a shader.
 
@@ -354,7 +354,7 @@ The first two panels are the same loop, differing only in which of its two numbe
 
 So the red mark matters. It sits at the point the code writes as `Vector2(-0.79, 0.15)`, and the middle panel is the Julia set for that `c`. Move the mark and you get a different Julia set. The rule of thumb is that points near the Mandelbrot set's *edge* give the richest ones. Deep inside gives a plain blob, far outside gives dust. Every Julia set is a portrait of one point of the Mandelbrot set.
 
-To mark a `c` on the set, ask the generator for its framing. Every generator that paints the plane hands it back as `plane`. Its `canvasPoint(of:in:)` says where a number lands in the rectangle the picture was drawn in. So a mark on a `c`, a root, or a zero never redoes the arithmetic:
+To mark a `c` on the set, hold the generator in a name and ask it for its framing. `Generator` is the type behind `.mandelbrot()` and the rest. Every generator that paints the plane hands it back as `plane`. Its `canvasPoint(of:in:)` says where a number lands in the rectangle the picture was drawn in. So a mark on a `c`, a root, or a zero never redoes the arithmetic:
 
 ```swift
 let set = Generator.mandelbrot()
@@ -408,11 +408,11 @@ renderer.accumulate(samples: 20_000)
 drawImage(renderer.image(), in: canvasRectangle)
 ```
 
-The `iterations` list does the coloring. Give it a single cap and the plate develops in gray. Give it three and the red, green, and blue channels expose at different orbit lengths, so color reads as orbit depth. A plate this deep resolves over many frames, the same way the flame does. Feed the `Renderer` a slice of samples per frame and let the figure rise. [`Examples/Patterns/Buddhabrot`](../Examples/Patterns/Buddhabrot/Sketch.swift) leaves one running.
+The `iterations:` argument of `Buddhabrot`, the list of caps the listing's comment names, does the coloring. Give it a single cap and the plate develops in gray. Give it three and the red, green, and blue channels expose at different orbit lengths, so color reads as orbit depth. A plate this deep resolves over many frames, the same way the flame does. Feed the `Renderer` a slice of samples per frame and let the figure rise. [`Examples/Patterns/Buddhabrot`](../Examples/Patterns/Buddhabrot/Sketch.swift) leaves one running.
 
 ### Where it lands: Newton's basins
 
-Escape time asks an orbit when it left. **Newton's method** asks where it ends up. The method is the step many numeric solvers take. Guess a root, which is a place where a function comes out as zero. Slide down the tangent line, the straight line that touches the curve at your guess, and guess again. Near a root it lands in a few steps. `.newton` runs that step from every pixel and colors the pixel by the root it reaches, so every root owns a **basin**. The basins are for their borders, where the method cannot make up its mind. Arthur Cayley asked what those borders look like in 1879, for a cubic, a formula built from powers of z up to the third. The color plates in Heinz-Otto Peitgen and Peter H. Richter's *The Beauty of Fractals* (1986) are where most people first saw the answer.
+Escape time asks an orbit when it left. **Newton's method** asks where it ends up. The method is the step many numeric solvers take. Guess a root, which is a place where a function comes out as zero. Slide down the tangent line, the straight line that touches the curve at your guess, and guess again. Near a root it lands in a few steps. `.newton` runs that step from every pixel and colors the pixel by the root it reaches, so every root owns a **basin**. The basins are for their borders, where the method cannot make up its mind. Arthur Cayley asked what those borders look like in 1879, for a cubic, a formula built from powers of z, the pixel's number, up to the third. The color plates in Heinz-Otto Peitgen and Peter H. Richter's *The Beauty of Fractals* (1986) are where most people first saw the answer.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/22-IteratedForms/NewtonBasins-dark.jpg">
@@ -429,7 +429,7 @@ You place the roots yourself, up to eight. The palette spreads around them in or
 
 The middle panel changes the step. `relaxation` scales it. Below 1 the method creeps and the basins fatten. Above 1 it overshoots, and the basins spiral and throw off islands. Five roots at 1.3 is what the panel shows. Feed the dial a slow sine and the whole plane breathes. [`Examples/Effects/NewtonBasins`](../Examples/Effects/NewtonBasins/Sketch.swift) holds the dial still and sends its roots along orbits of their own instead.
 
-The right panel is the warning. Newton's method is not promised to land. For the cubic z³ - 2z + 2, the step sends 0 to 1 and 1 back to 0. That cycle pulls in everything near it. Those pixels are painted `trapped`: a large dark pool at 0 and a small one at 1. With a plain polynomial and the dial at 1, pools are rare. Move the dial and they open everywhere.
+The right panel is the warning. Newton's method is not promised to land. For the cubic z³ - 2z + 2, the step sends 0 to 1 and 1 back to 0. That cycle pulls in everything near it. Those pixels are painted `trapped`: a large dark pool at 0 and a small one at 1. With a plain polynomial, a formula built only from powers of z, and the dial at 1, pools are rare. Move the dial and they open everywhere.
 
 ### A picture of a function: domain coloring
 
@@ -456,7 +456,7 @@ You place them yourself, which is what lets you rearrange the field:
 
 Move a zero and the whole field reorganizes around it. Repeat a point for a double zero. Leave the poles out and you have a polynomial. There are named functions too: `.power`, `.exponential`, `.sine`, `.tangent`, and `.logarithm`. A fractional `.power` and the `.logarithm` both leave a **branch cut**, a line where the colors jump. The answer there had to pick one of two equally good values.
 
-The size you set aside can come back as shading. `.modulus`, the default, ramps from dark to light between one doubling of the value and the next, which draws contour rings. `.conformal` rules the direction the same way, and the two rulings cross. That is the right panel, and close to each wheel its tiles are little squares. The squares are not a coincidence. A function like this one turns and stretches small shapes but never shears them, and the grid is that fact made visible.
+The size you set aside can come back as shading. `.modulus`, the default, ramps from dark to light between one doubling of the value and the next, which draws contour rings. `.conformal` rules the direction the same way, and the two rulings cross. That is the right panel, and close to each wheel its tiles are little squares. The squares are not a coincidence. A function like this one turns and stretches small shapes but never shears them, which would push one side past the other. The grid is that fact made visible.
 
 `phase` turns the palette around the wheel without recomputing anything, so `phase: time * 0.05` costs nothing and the color drifts forever. [`Examples/Effects/DomainColoring`](../Examples/Effects/DomainColoring/Sketch.swift) swims a pair of zeros around a pair of poles. The field pours from one arrangement into the next, and nothing was animated except two points.
 
@@ -464,9 +464,9 @@ The size you set aside can come back as shading. `.modulus`, the default, ramps 
 
 The generator paints the named functions and a rational one. A function of your own is a shader, and a shader works with `float2` points. Add two points and you add their coordinates. Nothing in a shader says what it means to *multiply* two of them, and there is no single answer. Escape time and Newton's method both lean on one particular answer, and the shader library carries it in its `complex` section.
 
-The **complex plane** reads a point as a number, `x + y·i`, where `i` is the square root of minus one. Multiplying two of these multiplies their lengths and **adds their angles**, and the rest of this entry follows from that one rule. It is for writing a function of the plane yourself, and for seeing why the squaring step of escape time behaves as it does. The arithmetic here follows the textbook, with one shader function per operation, after Harley Turan's walkthrough of it in GLSL.
+The **complex plane** reads a point as a number, `x + y·i`, where `i` is the square root of minus one. The `x` part is called the real part and the `y` part the imaginary part, and [Appendix B](B-JustEnoughMath.md#numbers-that-turn-complex-multiplication) draws the plane. Multiplying two of these multiplies their lengths and **adds their angles**, and the rest of this entry follows from that one rule. It is for writing a function of the plane yourself, and for seeing why the squaring step of escape time behaves as it does. The arithmetic here follows the textbook, with one shader function per operation, after Harley Turan's walkthrough of it in GLSL.
 
-`cmul(z, z)` sends every point to twice its angle, so the plane wraps around the origin twice. It also squares the length, so a point outside the circle of radius 1 moves farther out and a point inside it moves in. That is the step escape time repeats at every pixel, with a fixed number added each time. `cmul(z, cpolar(1.0, a))` turns the whole plane by `a`. The other functions build on the same rule: `cdiv`, `cexp`, `clog`, `cpow`, `csin`, and their relatives. Each name matches a function on the CPU value [`Complex`](../Docs/Helpers/Complex.md). A number you work out in `draw()` therefore means the same thing in a shader. The three tiles below are three such functions painted this way:
+`cmul(z, z)` sends every point to twice its angle, so the plane wraps around the origin twice. It also squares the length, so a point outside the circle of radius 1 moves farther out and a point inside it moves in. That is the step escape time repeats at every pixel, with a fixed number added each time. `cpolar(1.0, a)` builds the number of length 1 at angle `a`, so `cmul(z, cpolar(1.0, a))` turns the whole plane by `a`. The other functions build on the same rule: `cdiv`, `cexp`, `clog`, `cpow`, `csin`, and their relatives. Each name matches a function on the CPU value [`Complex`](../Docs/Helpers/Complex.md). A number you work out in `draw()` therefore means the same thing in a shader. The three tiles below are three such functions painted this way:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/22-IteratedForms/ComplexPlane-dark.jpg">
@@ -484,7 +484,7 @@ float4 shade(float2 uv, ShaderInfo info) {
 
 Two helpers do the framing and the coloring. `complexPlane` reads the layer as a piece of the plane, with `center` in the middle and `span` units across the shorter side. The imaginary axis points up, since a `uv` runs down the canvas and mathematics runs up. `domainColor` paints the answer the way the generator did, with the direction picking the hue. The `2` asks for both rulings, the size and the direction drawn as bands, and `0.7` sets how dark they go.
 
-The left tile is `cmul(z, z)`, the wheel twice around, which is what adding the angles looks like. The right tile is `cexp(z)`, the exponential function, ruled both ways. Its rulings come out straight, because the answer's size depends only on x and its angle only on y. The middle tile is the shader above, with `p` and `q` held at the angles 0.6 and 2.9 instead of turning with time. Two families of circles are drawn over it. The family nested around each point comes from `draw()`, worked out with `Complex`:
+The left tile is `cmul(z, z)`, the wheel twice around, which is what adding the angles looks like. The right tile is `cexp(z)`, the exponential function, ruled both ways. Its rulings come out straight, because the answer's size depends only on x and its angle only on y. The middle tile is the shader above, with `p` and `q` held at the angles 0.6 and 2.9 instead of turning with time. Two families of circles are drawn over it. The family nested around each point comes from `draw()`, worked out with `Complex`. `Complex(magnitude:argument:)` builds a number from its length and its angle, which mathematics calls its argument:
 
 ```swift
 let p = Complex(magnitude: 0.8, argument: 0.6)

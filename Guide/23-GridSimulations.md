@@ -12,7 +12,7 @@ A simulation field is a grid of cells on the GPU, and every frame each cell chan
 
 [Chapter 19](19-LayersAndEffects.md)'s feedback layer was the first taste of a picture fed its transformed self back in, frame after frame. A simulation field replaces "transform the whole picture" with something more local. Every cell of the field computes its next value *from its neighbors*, all at once, every frame. It is [Chapter 18](18-YourFirstShader.md)'s per-pixel function with one addition, memory.
 
-In Ollin that is a `SimField`. Like `Feedback`, it persists, so make it once and keep it. You never write the kernel for the built-in ones. Pick a `Sim`, draw into the field to seed it, and composite its `image`:
+In Ollin that is a `SimField`. Like `Feedback`, it persists, so make it once and keep it. You never write the kernel, the small program every cell runs each step, for the built-in ones. Pick a `Sim`, draw into the field to seed it, and composite its `image`:
 
 ```swift
 var life: SimField?
@@ -27,7 +27,7 @@ override func draw() {
 }
 ```
 
-The field is made on the first frame and held in a property, so every later frame steps the same field. `withField` works like [Chapter 19](19-LayersAndEffects.md#a-drawing-you-can-hold-render-targets)'s `withTarget`, and what a drawn mark *means* depends on the simulation. For the Game of Life, white means alive.
+The field is made on the first frame and held in a property, so every later frame steps the same field. The step runs when the frame reads the field's `image`, after your marks have landed. The `scale` argument sets the field's own resolution, and the next section says how to pick it. `withField` works like [Chapter 19](19-LayersAndEffects.md#a-drawing-you-can-hold-render-targets)'s `withTarget`, and what a drawn mark *means* depends on the simulation. For the Game of Life, white means alive.
 
 ## The Game of Life: a first field
 
@@ -55,7 +55,7 @@ withField(life) {
 
 <img src="Images/23-GridSimulations/LifeField.jpg" alt="A Game of Life field ninety generations after a random soup: scattered still lifes, blinkers, and small debris in crisp white cells on black" width="560">
 
-The `scale: 0.08` matters, because a sim field's `scale` sets its internal resolution. For a cellular automaton one texel is one cell, so a low scale gives cells you can see. For the other sims, a lower scale means broader, cheaper features.
+The `scale: 0.08` matters, because a sim field's `scale` sets its internal resolution. A texel is one square of the field's own grid, the way a pixel is one square of the screen's. For a cellular automaton one texel is one cell, so a low scale gives cells you can see. For the other sims, a lower scale means broader, cheaper features.
 
 ## A field is data: gradientMap, levels, and relight
 
@@ -70,7 +70,7 @@ let inks = Ramp([Color(hex: 0x06131F), Color(hex: 0x3FA893)])
 drawImage(life.filtered(.gradientMap(inks)).image, 0, 0)
 ```
 
-Filters chain, so `.filtered(.levels(blackPoint: 0.16, whitePoint: 0.42)).filtered(.gradientMap(inks))` runs one after the other. The organism at the end of the spine stacks all three. The `.threshold` filter is there for hard ink. The raw `image` stays the view to reach for when a field is doing something you did not expect.
+Filters chain, so `.filtered(.levels(blackPoint: 0.16, whitePoint: 0.42)).filtered(.gradientMap(inks))` runs one after the other. The organism, the finished sketch after the next step, stacks all three. The `.threshold` filter is there for hard ink. The raw `image` stays the view to reach for when a field is doing something you did not expect.
 
 ## Two chemicals: reaction-diffusion
 
@@ -83,7 +83,7 @@ Reaction-diffusion is the Game of Life's continuous cousin, and the engine of th
 
 About half the map is quiet. Patterns grow only in a band where feeding and killing balance, and each regime along that band has its own signature. There are dividing dots, and there are the worm mazes and coral walls the defaults grow. Put `feed` and `kill` on `@Param` parameters and you can walk the map live. The [`Simulation/GrayScott`](../Examples/Simulation/GrayScott/Sketch.swift) example runs the dish at the defaults, a place to start from.
 
-The regime does not have to be one choice for the whole dish. Give the sim two settings, `.reactionDiffusion(feed: 0.046, kill: 0.065, toFeed: 0.055, toKill: 0.062)`, then attach any drawn or generated layer as `dish.modulation`. That layer's brightness picks the spot on the map for every texel: black runs the first pair, white the second. A picture can choose the chemistry, place by place. It stays one simulation, so the two patterns grow into each other instead of meeting at a mask's hard edge. The `Vision/TuringMirror` example draws the camera's person matte into that layer. The field grows maze walls on your silhouette and spots everywhere else, and it reorganizes as you move.
+The regime does not have to be one choice for the whole dish. Give the sim two settings, `.reactionDiffusion(feed: 0.046, kill: 0.065, toFeed: 0.055, toKill: 0.062)`, then attach any drawn or generated layer as the field's `modulation` property, `dish.modulation` for a field named `dish`. That layer's brightness picks the spot on the map for every texel: black runs the first pair, white the second. A picture can choose the chemistry, place by place. It stays one simulation, so the two patterns grow into each other instead of meeting at a mask's hard edge. The `Vision/TuringMirror` example draws the camera's person matte, a mask that is white wherever a person stands in the frame, into that layer. The field grows maze walls on your silhouette and spots everywhere else, and it reorganizes as you move.
 
 Here is the same idea with a drawn layer instead of a camera, so the boundary can be looked at:
 
@@ -244,7 +244,7 @@ override func draw() {
 }
 ```
 
-The `curl` argument sets how much fine swirling detail the flow keeps. The dissipation arguments set how fast motion and color fade. A mouse delta makes a good `force`.
+The `curl` argument sets how much fine swirling detail the flow keeps. The dissipation arguments set how fast motion and color fade. How far the mouse moved since the last frame makes a good `force`.
 
 ### A pool you can drop things into: ripples
 
@@ -425,7 +425,7 @@ float4 shade(float2 uv, ShaderInfo info) {
 """))
 ```
 
-> **Metal note.** `for (int dy = -1; dy <= 1; dy++)` is a counted loop written the C way. It has a starting value, a condition to keep going, and a step. Here the step is `dy++`, which adds one. `||` means or and `&&` means and, `!=` is not equal as in [Chapter 17](17-MarksAndMedia.md), and `condition ? 1.0 : 0.0` is the compact if from [Chapter 6](06-GridsAndRepetition.md). `step(0.5, x)` is [Chapter 18](18-YourFirstShader.md)'s step, 0 below the threshold and 1 above it, and `.r` reads the state's first channel.
+> **Metal note.** `for (int dy = -1; dy <= 1; dy++)` is a counted loop written the C way. It has a starting value, a condition to keep going, and a step. Here the step is `dy++`, which adds one. `||` means or and `&&` means and, `!=` is not equal as in [Chapter 17](17-MarksAndMedia.md), and `condition ? 1.0 : 0.0` is the compact if from [Chapter 6](06-GridsAndRepetition.md). `step(0.5, x)` is [Chapter 3](03-MotionAndTime.md#shaping-time)'s step, 0 below the threshold and 1 above it, and `.r` reads the state's first channel.
 
 It matches the built-in `.gameOfLife()` cell for cell, which is how you know the readers mean what they say. The state is *data*: nothing you return is treated as a color, and nothing you read has been. A cell can hold a temperature, a velocity, a count, whatever four numbers your rule needs.
 
@@ -437,9 +437,9 @@ plate = makeSimField(.shader(heatStep, inject: addHeat, substeps: 4), scale: 0.5
 
 <img src="Images/23-GridSimulations/OwnRule.jpg" alt="A heat plate run by a hand-written kernel: a brush's trail glows pale yellow through magenta and purple on black, spread and cooling, with white arrows showing the heat running down its own slope toward the cold" width="560">
 
-That line carries the two other choices a field of your own makes you think about. **`edge`** is what a cell on the border reads when it looks past the field. The default wraps, which is why a glider that leaves Life's right edge comes back on the left. `.clamped` puts walls there. A read past the edge returns the border cell, which for a diffusing quantity is an insulated boundary, so nothing leaks out of this plate. The catalog's neighbor-reading sims honor the same setting, so Life on a clamped field has corners. **`precision`** is how exactly a number keeps. Half float, the default, holds a whole number exactly only to about two thousand, so a rule that *counts* wants `.float32`.
+That line carries the other choices a field of your own makes you think about. **`substeps`** runs the kernel that many times a frame, for a rule that should settle faster than once a frame. **`edge`** is what a cell on the border reads when it looks past the field. The default wraps, which is why a glider that leaves Life's right edge comes back on the left. `.clamped` puts walls there. A read past the edge returns the border cell, which for a diffusing quantity is an insulated boundary, so nothing leaks out of this plate. The catalog's neighbor-reading sims honor the same setting, so Life on a clamped field has corners. **`precision`** is how exactly a number keeps. Half float, the 16-bit number a field stores by default, holds a whole number exactly only to about two thousand. So a rule that *counts* wants `.float32`, the 32-bit kind.
 
-Two more things round the kit out. A two-channel state reads as a picture through `.arrows`. That is what drew the white arrows above, from the heat's slope stored in the plate's first two channels. And `snapshot()` reads any field back to the CPU as numbers, every cell's four channels as stored, one frame late. A sketch can then hand a sum or a busiest cell to sound, to text, or to a plotter. The [`Simulation/Wind`](../Examples/Simulation/Wind/Sketch.swift) example puts all of it in one sketch. A wind carries dust, a drag pushes it, and a noise layer handed in as an `input` stirs it. The edge is switched live, the arrows are drawn over the dust, and the mean speed is read back twice a second.
+Two more things round the kit out. A two-channel state reads as a picture through `.arrows`. That is what drew the white arrows above, from the heat's slope stored in the plate's first two channels. And `snapshot()` reads any field back to the CPU as numbers, every cell's four channels as stored, one frame late. A sketch can then hand a sum or a busiest cell to sound, to text, or to a plotter. The [`Simulation/Wind`](../Examples/Simulation/Wind/Sketch.swift) example puts all of it in one sketch. A wind carries dust, a drag pushes it, and a noise layer handed in as an `input`, a layer the kernel can read beside its own state, stirs it. The edge is switched live, the arrows are drawn over the dust, and the mean speed is read back twice a second.
 
 ## Where this comes from
 
