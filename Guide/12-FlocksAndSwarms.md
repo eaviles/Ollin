@@ -191,7 +191,7 @@ Separation alone spaces them evenly, but every heading is private. Add alignment
 
 ## The flock, assembled: `Boids`
 
-You could build all of that from `Vehicle` and three loops. It would become slow at a few hundred creatures, because "look at every neighbor" naively means comparing everyone against everyone. Ollin ships the assembled version as `Boids`. It holds the three rules, the perception and personal-space radii, and the edge-turning. Its neighbor search only compares true neighbors, so hundreds of boids stay cheap. It is another stepper you hold:
+You could build all of that from `Vehicle` and three loops. It would become slow at a few hundred creatures, because "look at every neighbor" naively means comparing everyone against everyone. Ollin ships the assembled version as `Boids`. It holds the three rules, the perception and personal-space radii, and the edge-turning. That last one is the push back from the edges that `contain` gave the wanderers, with a `margin` of its own. Its neighbor search only compares true neighbors, so hundreds of boids stay cheap. It is another stepper you hold:
 
 ```swift
 var flock: Boids!
@@ -208,7 +208,7 @@ override func draw() {
 }
 ```
 
-The three rule weights (`flock.separation`, `flock.alignment`, `flock.cohesion`) and the two radii are ordinary properties, and tuning them is tuning the flock's temperament. Raise separation and the flock loosens into a crowd keeping polite distance. Raise cohesion and it balls up. Shrink `perceptionRadius` and big flocks fragment into many small ones. There is no right setting. The finished sketch below puts all three on parameters so you can search for your own.
+`drawBoids` draws every boid as a triangle along its heading, in the current `fill`, the way `drawVehicle` drew one creature. The three rule weights (`flock.separation`, `flock.alignment`, `flock.cohesion`) and the two radii are ordinary properties, and tuning them is tuning the flock's temperament. Raise separation and the flock loosens into a crowd keeping polite distance. Raise cohesion and it balls up. Shrink `perceptionRadius` and big flocks fragment into many small ones. There is no right setting. The finished sketch below puts all three on parameters so you can search for your own.
 
 > **Swift note.** `Boids!` declares a property that starts empty and is filled in `setup()`, before anything reads it. The `!` says the sketch promises it will be there, so `flock.step()` needs no unwrapping. The finished sketch below uses the plainer `Boids?` with a `guard let` instead, which fails safely if the promise is ever broken.
 
@@ -233,7 +233,7 @@ for i in points.indices {
 }
 ```
 
-Passing the point's *index* rather than its position leaves the point itself out of its own answer. That is what this kind of loop always wants. It answers two other questions too: `nearest(to:)` for the single closest point, and `indices(in:)` for everything inside a rectangle. Build it fresh each frame when the points move. That costs one pass over them, which is small next to the work it saves.
+Passing the point's *index* rather than its position leaves the point itself out of its own answer. That is what this kind of loop always wants. The distance comes back squared, because the search skips the square root to stay cheap. Compare it with a squared radius and the question is the same. It answers two other questions too: `nearest(to:)` for the single closest point, and `indices(in:)` for everything inside a rectangle. Build it fresh each frame when the points move. That costs one pass over them, which is small next to the work it saves.
 
 ## Putting it together: the living flock
 
