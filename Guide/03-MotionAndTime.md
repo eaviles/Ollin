@@ -81,7 +81,7 @@ One more idea falls out of the circle picture. Suppose a second point starts its
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/03-MotionAndTime/Phase-dark.jpg">
-  <img src="Images/03-MotionAndTime/Phase.jpg" alt="Two identical sine waves, one shifted right by a bracketed phase; below, a row of dots each with a growing head start forming a wave in space" width="680">
+  <img src="Images/03-MotionAndTime/Phase.jpg" alt="Two identical sine waves, one running ahead of the other by a bracketed phase, the head start; below, a row of dots each with a growing head start forming a wave in space" width="680">
 </picture>
 
 The move that matters is giving *neighbors different head starts*. Give each dot in a row a phase proportional to its position, then look at any single instant. A wave appears across space, even though no dot is doing anything but its own private swing:

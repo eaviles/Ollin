@@ -12,7 +12,6 @@ var scene: RenderTarget!
 var page: RenderTarget!
 var wall: RenderTarget!
 var horizon: RenderTarget!
-var field: RenderTarget!
 // `layer` is the chapter's stand-in for "a layer you have". It is also
 // `Sketch.layer { }`, the compose DSL, so it has to be declared here or the
 // fragments resolve to the function.

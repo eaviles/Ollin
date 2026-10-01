@@ -1,7 +1,8 @@
 // figure: frame=0 themed
 //
-// Guide diagram: phase. Top: the same wave twice, one copy started a little
-// later; the horizontal shift between them is the phase. Bottom: a row of
+// Guide diagram: phase. Top: the same wave twice, one copy with a head start,
+// so it runs a little ahead; the horizontal shift between them is the phase,
+// added inside sin as the chapter's listing adds it. Bottom: a row of
 // dots running the same swing, each with a slightly bigger head start, read
 // at one instant: a wave appears in space.
 import Ollin
@@ -21,7 +22,7 @@ final class Phase: Sketch {
     override func draw() {
         background(paper)
 
-        // Top: two traces, the accent one lagging by `phase`.
+        // Top: two traces, the accent one ahead by `phase`.
         let left = 80.0, right = 800.0
         let midY = 150.0, swing = 62.0
         let turns = 2.0
@@ -37,7 +38,7 @@ final class Phase: Sketch {
             var points: [Vector2] = []
             var a = 0.0
             while a <= .tau * turns {
-                points.append(Vector2(traceX(a), midY - sin(a - shift) * swing))
+                points.append(Vector2(traceX(a), midY - sin(a + shift) * swing))
                 a += 0.02
             }
             return points
@@ -51,7 +52,7 @@ final class Phase: Sketch {
 
         // The shift between matching crests, bracketed.
         let crestA = traceX(.tau * 0.25)
-        let crestB = traceX(.tau * 0.25 + phase)
+        let crestB = traceX(.tau * 0.25 - phase)
         let bracketY = midY - swing - 22
         stroke(ink)
         strokeWeight(2)
@@ -62,9 +63,9 @@ final class Phase: Sketch {
         fill(ink)
         textSize(21)
         textAlign(.left, .middle)
-        drawText("phase: the head start", crestB + 16, bracketY)
+        drawText("phase: the head start", crestA + 16, bracketY)
         textAlign(.left, .top)
-        drawText("the same wave, started a little later", left + 4, midY + swing + 20)
+        drawText("the same wave, started a little further along", left + 4, midY + swing + 20)
 
         // Bottom: one instant of 24 swings with growing head starts, the count
         // and the step of the chapter's listing.
@@ -78,7 +79,7 @@ final class Phase: Sketch {
             let x = left + 24 + Double(i) / 23 * (right - left - 48)
             let headStart = Double(i) * 0.4
             fill(ink)
-            drawCircle(x, rowY - sin(snapshot - headStart) * rowSwing, 9)
+            drawCircle(x, rowY - sin(snapshot + headStart) * rowSwing, 9)
         }
         fill(ink)
         textAlign(.center, .top)
