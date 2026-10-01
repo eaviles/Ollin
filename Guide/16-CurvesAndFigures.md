@@ -25,7 +25,7 @@ drawCurve(dots, spline: .hobby(tension: 2))           // pulled toward the strai
 drawCurve(dots, closed: true, spline: .hobby)         // a loop you can fill
 ```
 
-Two settings shape the fit. `tension` pulls the curve toward the straight lines between the points. A tension of 1 is the natural fit, and 2 hugs the lines. `curl` says how the ends of an open curve bend. A curl of 1 gives an end the same bend as its neighbor, and 0 lets it run straight out. When you want the Béziers themselves, `HobbySpline(through:)` is the typed form. Its `segments` are the cubic curves the fit chose, control points included, and its `path` is the same curve as a `Path`.
+Two settings shape the fit. `tension` pulls the curve toward the straight lines between the points. A tension of 1 is the natural fit, and 2 hugs the lines. `curl` says how the ends of an open curve bend. A curl of 1 gives an end the same bend as its neighbor, and 0 lets it run straight out. The fit is made of cubic curves, the kind [Chapter 15](15-ShapesAsMaterial.md#contours-shapes-and-holes) drew with two control points. Bézier is their usual name. When you want those Béziers themselves, `HobbySpline(through:)` is the typed form. Its `segments` are the cubic curves the fit chose, control points included, and its `path` is the same curve as a `Path`. That is the type [Chapter 15](15-ShapesAsMaterial.md#contours-shapes-and-holes)'s `drawShape { p in }` hands you as `p`.
 
 ## Curves you can write down: the classic curves
 
@@ -64,13 +64,13 @@ Harmonograph(x: [.init(frequency: 3)],
 
 **Harmonographs** were Victorian drawing machines: pendulums swinging under a pen, drawing while they slowly died away. Ollin's takes a list of pendulums per axis, each with its own amplitude, frequency, phase, and damping. Frequencies that nearly match are where the good tangles come from.
 
-The last panel shows a smoothing rather than a formula. `smoothed(iterations:)` is George Chaikin's corner cutting, from 1974. Each pass replaces every corner with two points partway along its edges. Two or three passes turn a rough polygon into a soft curve. Open contours keep their exact endpoints, so a line still starts and ends where you put it.
+The last panel shows a smoothing rather than a formula. Any `Contour` or `Shape` answers `smoothed(iterations:)`, which is George Chaikin's corner cutting, from 1974. Each pass replaces every corner with two points partway along its edges. Two or three passes turn a rough polygon into a soft curve. Open contours keep their exact endpoints, so a line still starts and ends where you put it.
 
 One habit applies to all of them. The curves come back in their own coordinates, and the way to fit one to your canvas is `fitted(points, in: rect)`, which scales the points. `scale()` would scale your stroke width along with the geometry, which is rarely what you want on a drawing made of lines.
 
 ## A walk that comes home: spirolaterals
 
-The curves above each have a formula. A spirolateral has a rule instead, and the rule is short enough to say out loud. Step one length, turn a quarter turn, step two lengths, turn again, and keep going up to some number. Then start the run over.
+The curves above each have a formula. A spirolateral has a rule instead, and the rule is short enough to say out loud. Step one length, turn a quarter turn, step two lengths, turn again, and keep going up to some number. Then start the run over. In the call, `order` is that number and `step` is the one length, in points.
 
 ```swift
 let figure = spirolateral(order: 7, step: 26)
@@ -90,7 +90,7 @@ One warning before you animate it. The turn has to be an exact fraction of a ful
 
 ## A corner a car could take: clothoids
 
-Chaikin's corner cutting rounds a corner, and for most drawings that is all the rounding they need. A road engineer asks a second question of a rounded corner: whether the turning is smooth. For an arc it is not. An arc is a smooth outline, and it is also a corner where the bend arrives all at once. Along the straight you are not turning at all. One step later you are turning at `1 / radius`, and nothing happened in between.
+Chaikin's corner cutting rounds a corner, and for most drawings that is all the rounding they need. A road engineer asks a second question of a rounded corner: whether the turning is smooth. For an arc it is not. An arc is a smooth outline, and it is also a corner where the bend arrives all at once. Along the straight you are not turning at all. One step later you are turning at `1 / radius`, and nothing happened in between. That fraction is how hard a circle bends, and the chapter calls it curvature. A tight circle bends hard, and a wide one barely bends.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/16-CurvesAndFigures/ClothoidCorner-dark.jpg">
@@ -263,7 +263,7 @@ drawCaustic(off: wall, from: .point(lamp))
 
 `.point(lamp)` is the light, a `LightSource` that is either a point or a parallel beam from a direction. `reflectedRays` bounces it off the wall's points and hands back the rays, and `drawCaustic` draws their envelope in one call.
 
-Two answers tell you whether your picture came out right. A circle lit from far away draws a **nephroid**, with two cusps, reaching from half the radius out to the mirror. A circle lit from a point on its own rim draws a **cardioid**, with one. The caustics of a circle were worked out in the seventeenth century, with Ehrenfried Walther von Tschirnhaus and Christiaan Huygens among the names attached. A source at the center gives no curve at all, since every ray comes straight back.
+Two answers tell you whether your picture came out right. A circle lit from far away draws a **nephroid**, with two cusps, reaching from half the radius out to the mirror. A cusp is a sharp point where the curve turns back on itself. A circle lit from a point on its own rim draws a **cardioid**, with one. The caustics of a circle were worked out in the seventeenth century, with Ehrenfried Walther von Tschirnhaus and Christiaan Huygens among the names attached. A source at the center gives no curve at all, since every ray comes straight back.
 
 One trap makes a picture look broken rather than wrong. Hand in only the stretch of wall the light reaches. A whole circle has two families of bounces, the near side and the far side, and they lean on different curves. Filtering a ring down to the lit part also has to keep it unbroken. If the lit stretch wraps around the end of your array, the two ends land next to each other. The lines between them are then not rays.
 
@@ -281,7 +281,7 @@ The result differs from moving every point sideways. Where the front curves back
 
 ### Circles on circles: Fourier epicycles
 
-Where an envelope built a curve out of lines, epicycles build one out of circles. Any closed outline, however irregular, is a sum of circles. Each spins at a whole-number rate, centered on the tip of the one before it. That is Fourier's idea applied to a drawing. It is for rebuilding an outline as a machine you can watch, or for simplifying one while keeping it smooth. The construction goes back through Fourier to the Greek astronomers, who used circles turning on circles to explain the wandering of the planets. Ollin does the decomposition for you.
+Where an envelope built a curve out of lines, epicycles build one out of circles. Any closed outline, however irregular, is a sum of circles. Each spins at a whole-number rate, centered on the tip of the one before it. That is Fourier's idea, that any repeating curve is a sum of simple waves, applied to a drawing. [Appendix B](B-JustEnoughMath.md#circles-on-circles-fourier) draws it. It is for rebuilding an outline as a machine you can watch, or for simplifying one while keeping it smooth. The construction goes back through Fourier to the Greek astronomers, who used circles turning on circles to explain the wandering of the planets. Ollin does the decomposition for you.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/16-CurvesAndFigures/EpicycleTerms-dark.jpg">
@@ -294,7 +294,7 @@ drawPolygon(chain.path(samples: 600, terms: 64).points)   // the reconstruction
 drawEpicycles(chain, at: phase, terms: 64)                // the construction itself
 ```
 
-`terms` is the dial, and it takes the largest circles first. That ordering is what makes the figure above work. Three circles already give the outline's rough shape, because the big circles were always doing most of the work, and the rest add detail. At the full term count the reconstruction is exact.
+`samples` is how many evenly spaced points the outline is read at before the circles are fitted. `terms` is the dial, and it takes the largest circles first. That ordering is what makes the figure above work. Three circles already give the outline's rough shape, because the big circles were always doing most of the work, and the rest add detail. At the full term count the reconstruction is exact.
 
 There are two ways to use it. `path(samples:terms:)` hands you the traced outline as geometry, so an outline rebuilt from too few terms is a smooth simplification of it. `point(at:terms:)` gives one position, which is what you animate. `drawEpicycles` draws the nest of circles and spokes at a moment, so the machine is visible. The `Motion/Epicycles` example traces a whale that way, with the pen leaving a fading trail.
 

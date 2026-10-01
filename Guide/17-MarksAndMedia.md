@@ -27,7 +27,7 @@ drawPolyline(curve)
   <img src="Images/17-MarksAndMedia/MarkWidth.jpg" alt="The same S-curve drawn three ways at one stroke weight: an even line, a taper that swells in the middle and vanishes at both ends, and a calligraphic nib that thickens and thins as the curve turns" width="680">
 </picture>
 
-Two practical notes follow. The width is read at every point of the path, measured along the path's length. A shape with four points changes width in four steps, so sample your curves densely enough to give the profile somewhere to go. And the analytic shapes (`drawCircle`, `drawRect`, and the rest of that family) carry a single width by construction. So a profile does nothing to them on their own. Profiles are for paths.
+Two practical notes follow. The width is read at every point of the path, measured along the path's length. A shape with four points changes width in four steps, so sample your curves densely enough to give the profile somewhere to go. And the analytic shapes are drawn from a formula rather than a list of points (`drawCircle`, `drawRect`, and the rest of that family). They carry a single width by construction. So a profile does nothing to them on their own. Profiles are for paths.
 
 The profile survives export. Run the sketch with `--export-svg` and a profiled stroke is written as the region it covers, rather than a line with one width attribute. What the plotter draws is what you saw.
 
@@ -61,7 +61,7 @@ StrokeDynamics(width: .pressure(light: 0.1),      // press for a fat mark
                opacity: .speed(fast: 0.4))        // hurry for a faint one
 ```
 
-An axis you do not name is not driven. `.speed(fast:)` and `.pressure(light:)` on their own are shorthands for the everyday brush, and they drive width only.
+An axis you do not name is not driven. `.speed(fast:)` and `.pressure(light:)` on their own are shorthands for the everyday brush, and they drive width only. The number is the fraction of `strokeWeight` left at a fast pace or the lightest touch, so `fast: 0.15` thins a quick stroke to 0.15 of its weight.
 
 `.pressure` needs a device that can feel it. A Force Touch trackpad can, and so can a pen tablet. A plain mouse cannot, and it reports full force while the button is down. So a pressure brush on a mouse comes out at a single weight, and it still draws. `pressureIsAvailable` tells you which you have. Ask it in `mousePressed()` rather than `setup()`, because the answer arrives with the first press:
 
@@ -86,7 +86,7 @@ let angle = stylus.tiltIsAvailable ? atan2(stylus.tilt.y, stylus.tilt.x) + .pi /
 
 `stylus.tiltIsAvailable` is the same kind of answer `pressureIsAvailable` is. It latches on once a pen has been used, so lifting the stylus out of range does not take the pen path away mid-stroke. Under a mouse everything in `stylus` is zero and false, so a sketch written for a stylus still runs. [`Examples/Input/Pen`](../Examples/Input/Pen/Sketch.swift) is a chisel nib that reads all of it, with a panel that says what the tablet is sending.
 
-Three more practical notes follow. A mark is an ordinary value, so finishing one is `strokes.append(mark)` and `mark.clear()`. The `smoothing` argument matters, because raw frame-to-frame speed is far too jumpy to drive a width directly. The default sits where a mark feels deliberate without lagging the pointer. And profiles compose with dynamics rather than competing, so `strokeProfile(.taper(start: 1))` still gives a dynamic mark a clean lift-off at the end. [`Examples/Shapes/Brushwork`](../Examples/Shapes/Brushwork/Sketch.swift) is a canvas to drag around in, and [Marks](../Docs/Drawing/Marks.md) has the rest.
+Three more practical notes follow. A mark is an ordinary value, so finishing one is `strokes.append(mark)` and `mark.clear()`. `StrokeMark` also takes a `smoothing:` argument, and it matters, because raw frame-to-frame speed is far too jumpy to drive a width directly. The default sits where a mark feels deliberate without lagging the pointer. And profiles compose with dynamics rather than competing, so `strokeProfile(.taper(start: 1))` still gives a dynamic mark a clean lift-off at the end. [`Examples/Shapes/Brushwork`](../Examples/Shapes/Brushwork/Sketch.swift) is a canvas to drag around in, and [Marks](../Docs/Drawing/Marks.md) has the rest.
 
 ## Stamps along the path: brushes
 
@@ -183,7 +183,7 @@ bath.swirl(at: center, strength: 400, falloff: 96)
 
 `tine` pulls one stylus along a line, and that is the stroke that drags a bull's-eye into a heart. `comb` pulls a whole row of teeth spaced `spacing` apart. It feathers rows of drops into the pattern marblers call nonpareil. Keep a comb's `falloff` well under its tooth spacing, or the teeth blur together into one broad shear. The circular `tine` drags the stylus around a ring. `swirl` stirs a vortex that spins hardest at its middle, which is the tight curl at the heart of French-curl papers. A swirl centered on a bull's-eye does nothing, because spinning concentric circles about their shared center maps every circle onto itself. So stir off-center, as the fourth panel does.
 
-`bath.add(shape, color:)` floats an outline you already have, so text outlines can go into the bath and get combed with their counters intact. The bath itself uses no randomness, so the same operations always produce the same sheet. Randomize the drop positions with the sketch's seeded `random` and the sheet still comes back from its seed.
+`bath.add(shape, color:)` floats an outline you already have, so text outlines can go into the bath and get combed. Their counters, the holes inside an O or an A, stay intact. The bath itself uses no randomness, so the same operations always produce the same sheet. Randomize the drop positions with the sketch's seeded `random` and the sheet still comes back from its seed.
 
 ```swift
 noStroke()
@@ -194,7 +194,7 @@ Later drops sit above earlier ones, and drawing runs oldest first, so the stack 
 
 ## Putting it together: the monogram
 
-The monogram writes a pair of initials into the heart of a marbled sheet, and it composes every step above. The sheet comes first, poured with the bath's own moves. A scatter of stones is dropped and combed down and back up into a feathered ground. A bull's-eye goes over it, with a core of paper color. One `tine` pulled down through the eye bends every ring into a heart. Then the initials are written into that pale core, one pen line at a time. Each line is a `StrokeMark` recorded by a pretend hand, drawn through a broad nib over a spray of gold. So the dynamics, the profile, and the brush all write. A dotted rule from `strokeDash` frames the sheet. Make `MySketches/Monogram.swift`:
+The monogram writes a pair of initials into the heart of a marbled sheet, and it composes every step above. The sheet comes first, poured with the bath's own moves. A scatter of stones, which is what marblers call plain drops, goes down first and is combed down and back up into a feathered ground. A bull's-eye goes over it, with a core of paper color. One `tine` pulled down through the eye bends every ring into a heart. Then the initials are written into that pale core, one pen line at a time. Each line is a `StrokeMark` recorded by a pretend hand, drawn through a broad nib over a spray of gold. So the dynamics, the profile, and the brush all write. A dotted rule from `strokeDash` frames the sheet. Make `MySketches/Monogram.swift`:
 
 ```swift
 import Ollin
