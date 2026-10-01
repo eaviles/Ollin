@@ -167,7 +167,29 @@ override func draw() {
 
 Making the layer every frame is cheap, because Ollin reuses the GPU textures behind layers from frame to frame instead of allocating new ones. A new layer starts transparent, so there's no `ofClear` to call.
 
-The two differ in what they keep between frames, since a layer keeps nothing from the frame before. For a buffer that keeps the last frame's picture, as a trails buffer does, make a `Feedback` once in `setup()` with `makeFeedback()`. Then `withFeedback` hands you that picture to draw back in, faded or moved, before the new marks go on top. [Chapter 19](19-LayersAndEffects.md) builds both. The effect chains ofxFX gives you are the `Filter` catalog there: blurs, bloom, color grading, and many more, each one a value you name.
+The two differ in what they keep between frames, since a layer keeps nothing from the frame before. For a buffer that keeps the last frame's picture, as a trails buffer does, make a `Feedback` once in `setup()` with `makeFeedback()`. Then `withFeedback` hands you that picture to draw back in, faded or moved, before the new marks go on top:
+
+```swift
+var trails: Feedback!
+
+override func setup() {
+    trails = makeFeedback()
+}
+
+override func draw() {
+    background(.black)
+    withFeedback(trails) { previous in
+        tint(Color(white: 1, alpha: 0.92))   // last frame, a little fainter
+        drawImage(previous, 0, 0)
+        noTint()
+        fill(.orange)
+        drawCircle(mouseX, mouseY, 16)       // the new mark on top
+    }
+    drawImage(trails.image, 0, 0)
+}
+```
+
+[Chapter 19](19-LayersAndEffects.md) builds both. The effect chains ofxFX gives you are the `Filter` catalog there: blurs, bloom, color grading, and many more, each one a value you name.
 
 ### Shaders: one function, in Metal
 
