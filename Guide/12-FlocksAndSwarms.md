@@ -4,9 +4,9 @@
 
 # 12. Flocks and swarms
 
-<img src="Images/12-FlocksAndSwarms/Flock.jpg" alt="Hundreds of small triangles sweeping across a dark canvas in bands of color, each band a sub-flock sharing one direction, with soft trails fading behind them" width="560">
+<img src="Images/12-FlocksAndSwarms/Flock.jpg" alt="Hundreds of small triangles sweeping across a dark canvas in bands of color, each band a sub-flock sharing one direction, with soft trails fading behind them, and one large pale triangle riding inside the coral band" width="560">
 
-Give a few hundred creatures something to want, let each watch only its neighbors, and a flock appears with nobody in charge. You build one creature that chases, stops, and roams, then give every creature the same three rules about its neighbors. The flock above leaves trails that fade instead of being erased. Other crowds run by a rule come after it: chases that draw curves, walkers that make room, and fireflies falling into step.
+Give a few hundred creatures something to want, let each watch only its neighbors, and a flock appears with nobody in charge. You build one creature that chases, stops, and roams, then give every creature the same three rules about its neighbors. The flock above leaves trails that fade instead of being erased. The pale shape inside it is one creature on its own, hunting a boid. Other crowds run by a rule come after it: chases that draw curves, walkers that make room, and fireflies falling into step.
 
 Before we start, one word about names. The field calls these creatures *autonomous agents*, a name from decades before "agent" came to mean software with a chat window. It is the name Daniel Shiffman's chapter on them carries. This guide will say creature, boid, and flock. *Boid* is Craig Reynolds' own word, from the flock he first animated in 1986.
 
@@ -151,7 +151,7 @@ Two behaviors are stacked here, and that is the point of forces that compose. `w
 
 The trails are the `noClear` at work. `background(...)` runs once, in `setup()`, to lay the ground. Then every frame paints the same color over the whole canvas at one percent opacity. Each old triangle fades a little further, and the string of them behind a creature reads as a tail that lasts ten seconds or so. The alpha is the trail's length. Raise it to `0.16` and the tails shorten to a fraction of a second. Lower it to `0.003` and they last half a minute. The finished sketch uses this same trick, and [Chapter 19](19-LayersAndEffects.md) takes the persistent canvas much further, into accumulation and long-exposure looks.
 
-The rest of the behavior shelf works the same way, so a list will do. `pursue` and `evade` chase and dodge a *moving* target. They aim where it will be rather than where it is, the way a cat cuts off a mouse. `follow(path:)` keeps a creature inside a corridor along a polyline, correcting only when it strays. `follow(_ field:)` follows the flow fields coming in [Chapter 14](14-FieldsAndFlow.md). `separate(from:)` keeps personal space within a group, and the flock's first rule below is built on it. The `Motion/Steering` example runs most of the shelf in one scene, and the [steering reference](../Docs/Generators/Steering.md) has every argument.
+The rest of the behavior shelf works the same way, so a list will do. `pursue` and `evade` chase and dodge a *moving* target. They aim where it will be rather than where it is, the way a cat cuts off a mouse. The finished sketch's predator is one `pursue`. `follow(path:)` keeps a creature inside a corridor along a polyline, correcting only when it strays. `follow(_ field:)` follows the flow fields coming in [Chapter 14](14-FieldsAndFlow.md). `separate(from:)` keeps personal space within a group, and the flock's first rule below is built on it. The `Motion/Steering` example runs most of the shelf in one scene, and the [steering reference](../Docs/Generators/Steering.md) has every argument.
 
 ## Three rules make a flock: separation, alignment, and cohesion
 
@@ -237,7 +237,7 @@ Passing the point's *index* rather than its position leaves the point itself out
 
 ## Putting it together: the living flock
 
-The sketch at the top of the chapter composes three of the steps. The assembled flock runs with its three rule weights on parameters, and the trails fade the way the wanderers' did. Make `MySketches/Flock.swift`:
+The sketch at the top of the chapter composes four of the steps. The assembled flock runs with its three rule weights on parameters, and the trails fade the way the wanderers' did. One `Vehicle` from the start of the chapter hunts through it with `pursue`. Make `MySketches/Flock.swift`:
 
 ```swift
 import Ollin
@@ -248,6 +248,7 @@ final class Flock: Sketch {
     @Param("Cohesion", 0...3) var cohesion = 0.9
 
     var flock: Boids?
+    var predator: Vehicle?
 
     override func setup() {
         background(Color(hex: 0x0D1017))
@@ -256,14 +257,21 @@ final class Flock: Sketch {
                       maxSpeed: 3.6 * scale, maxForce: 0.15 * scale,
                       perceptionRadius: 60 * scale, separationRadius: 24 * scale,
                       margin: 90 * scale)
+        predator = Vehicle(at: bounds.center,
+                           maxSpeed: 3.2 * scale, maxForce: 0.1 * scale)
     }
 
     override func draw() {
-        guard let flock else { return }
+        guard let flock, let predator else { return }
         flock.separation = separation
         flock.alignment = alignment
         flock.cohesion = cohesion
         flock.step()
+
+        // The predator hunts the first boid, aiming where it will be.
+        predator.applyForce(predator.pursue(flock.positions[0],
+                                            velocity: flock.velocities[0]))
+        predator.step()
 
         // Fade the last frame a little instead of erasing it: trails.
         noStroke()
@@ -283,21 +291,26 @@ final class Flock: Sketch {
                              Vector2(-size * 0.65, -size * 0.5))
             }
         }
+
+        fill(Color(hex: 0xF2EEE4).withAlpha(0.9))
+        drawVehicle(predator, size: 40 * scale)
     }
 }
 ```
 
-Each boid is a triangle rotated to its heading with [Chapter 6](06-GridsAndRepetition.md)'s transforms. `drawTriangle` takes its three corners, drawn here around the origin so `rotate` turns the whole shape. `.pi` is half a turn, so the hue's sum runs `0...tau` around the wheel. Its hue comes *from* the heading, so color is information. Boids flying the same way share a color. Every band of color in the image is a sub-flock that has agreed on a direction. The fade is `0.16` here where the wanderers used `0.01`. So the tails are short, and the bands read as motion rather than as a drawing of where the flock has been. The flock's speeds and radii are scaled by `scale`, [Chapter 1](01-HelloOllin.md)'s factor, the shorter canvas edge over 1000, so they follow the canvas size. Here is a few seconds of it organizing itself from a random scatter:
+Each boid is a triangle rotated to its heading with [Chapter 6](06-GridsAndRepetition.md)'s transforms. `drawTriangle` takes its three corners, drawn here around the origin so `rotate` turns the whole shape. `.pi` is half a turn, so the hue's sum runs `0...tau` around the wheel. Its hue comes *from* the heading, so color is information. Boids flying the same way share a color. Every band of color in the image is a sub-flock that has agreed on a direction. The fade is `0.16` here where the wanderers used `0.01`. So the tails are short, and the bands read as motion rather than as a drawing of where the flock has been. The flock's speeds and radii are scaled by `scale`, [Chapter 1](01-HelloOllin.md)'s factor, the shorter canvas edge over 1000, so they follow the canvas size.
+
+The pale triangle is the predator, one `Vehicle` with a single behavior. Each frame it applies `pursue` on the first boid, fed that boid's position and velocity, so it aims where the boid will be. It is a little slower than a boid, so it gains only when the band turns and it can cut the corner. The flock never flees it. The three rules look at neighbors and nothing else, so no boid knows the predator exists, the way no boid knows the flock does. Here is a few seconds of the flock alone, organizing itself from a random scatter:
 
 <img src="Images/12-FlocksAndSwarms/FlockMotion.gif" alt="An animated flock of colored triangles starting scattered and gathering into swirling sub-flocks, each group sharing a color that shifts as it turns" width="480">
 
-> **Swift note.** `guard let flock else { return }` is the `guard let` [Chapter 9](09-Pictures.md) used, unwrapping the optional into a constant of the same name. The flock is a `var` rather than a `let` handle because `setup()` fills it in after the sketch is made.
+> **Swift note.** `guard let flock, let predator else { return }` is the `guard let` [Chapter 9](09-Pictures.md) used, unwrapping each optional into a constant of the same name, two at once here. Both are `var` rather than `let` handles because `setup()` fills them in after the sketch is made, once `bounds` and `scale` are known.
 
 Then make it yours:
 
 - Drag the three parameters while it runs. Somewhere around high cohesion and low separation the flock balls up into a swirling knot. High separation with low everything else dissolves it into a polite crowd. Find the edge between flock and crowd.
 - Give the flock somewhere to go. Setting `flock.field = curlField(scale: 0.003)` with a small `flock.fieldStrength` sends the whole society drifting along an invisible current (a preview of [Chapter 14](14-FieldsAndFlow.md)).
-- Add a predator, one `Vehicle` that pursues the flock's first boid with `creature.pursue(flock.positions[0], velocity: flock.velocities[0])`, drawn large and pale. All the forces compose.
+- Give the predator a little `wander` beside its `pursue`, weighted small, so it loses the trail now and then and finds it again. All the forces compose.
 - Swap the triangle for a short line along the velocity, and the sketch stops reading as creatures and starts reading as brushstrokes.
 
 A flock is motion, so keep it as a few seconds of video:
