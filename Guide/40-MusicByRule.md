@@ -46,7 +46,7 @@ Keeping the clock outside the counter lets the same code follow other clocks. `t
 
 ## Hits spread evenly: Euclidean rhythms with `Rhythm`
 
-A `Rhythm` decides which steps play. Ask it for a number of strikes over a number of steps, and it spreads them as evenly as whole steps allow. A **strike** is a step that sounds. Read a rhythm at a step and it answers true or false, so it goes inside the loop over steps:
+A `Rhythm` decides which steps play. Ask it for a number of strikes over a number of steps, and it spreads them as evenly as whole steps allow. A **strike** is a step that sounds. Read a rhythm at a step and it answers true or false, so it goes inside the loop over steps. The step number wraps, so step 16 of a sixteen-step rhythm reads as step 0 again, and the counter can climb forever:
 
 ```swift
 let rhythm = Rhythm(5, in: 16)
@@ -123,7 +123,7 @@ synth.play(pentatonic.snap(Pitch(40 + mouseY / 12)))
 
 ## Chords from the key: `Chord` and `Arpeggio`
 
-A chord can be named by its root and its kind, as `Chord("A3", .minorSeventh)`. A **seventh chord** is a triad with a fourth note, a third above its fifth. A chord can also be built out of a scale by taking every other note. On C major:
+A scale hands back one note at a time. A **chord** is several notes sounded together, and [the pitch primer](#notes-as-numbers-a-pitch-primer) built one as a triad. A `Chord` can be named by its root and its kind, as `Chord("A3", .minorSeventh)`. A **seventh chord** is a triad with a fourth note, a third above its fifth. A chord can also be built out of a scale by taking every other note. On C major:
 
 ```swift
 let major = Scale(.major, root: "C3")
@@ -162,7 +162,7 @@ synth.play(pentatonic[melody.next() ?? 0])
 
 The motif here is a list of degrees. `loops: true` treats it as a phrase that comes round again, so its last note leads back to its first. `start(at: 0)` places the chain at 0, so the first `next()` answers with what followed 0 in the motif. `next()` answers nil only when the chain has learned nothing, so `?? 0` falls back to the root.
 
-`order` is how far back the chain looks. At 1, the default, each element depends only on the one before it. At 2 it looks at the last two, which follows the motif more closely and invents less. The chain is seeded, and it keeps its own random generator rather than borrowing the sketch's. So adding one does not change anything else you were drawing at random, and the same seed plays the same line.
+`order:`, one more argument of the initializer, is how far back the chain looks. At 1, the default, each element depends only on the one before it. At 2 it looks at the last two, which follows the motif more closely and invents less. The chain is seeded, and it keeps its own random generator rather than borrowing the sketch's. So adding one does not change anything else you were drawing at random, and the same seed plays the same line.
 
 ## Chords that come out of a key: `Progression`
 
@@ -180,7 +180,7 @@ for step in chordSteps.steps(upTo: time * 2) {
 }
 ```
 
-Degrees survive a change of key. `I vi IV V` names the same progression in every key, and each chord's kind comes from the scale. Ollin ignores the case of a numeral, since the scale decides major or minor.
+Four calls in the fragment are new. `pitches(at:)` is the chord at a step as a list of pitches, and `play(chord:for:)` sounds all of them at once. `root(at:)` is the root of that chord, the note it is built on, and `transposed(by: -12)` moves it down an octave, twelve semitones. Degrees survive a change of key. `I vi IV V` names the same progression in every key, and each chord's kind comes from the scale. Ollin ignores the case of a numeral, since the scale decides major or minor.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/40-MusicByRule/Changes-dark.jpg">
@@ -474,7 +474,7 @@ drums[13] = StepSequencer.Step(42, probability: 0.5)             // plays half t
   <img src="Images/40-MusicByRule/Sequencer.jpg" alt="Three blocks. Top: one bar of sixteen steps as dots, three rows for straight, swing 0.58, and swing 0.67, the offbeat dots pushed right of their ticks by a growing amount while the first dot of each pair stays on its tick. Middle: one lane over four bars as rows of cells, one cell shorter for a low velocity, one cell drawn as an outline on two of the four bars where a chance step stayed quiet, and one cell split into three narrow strikes for a ratchet. Bottom: two pitch ladders, the first climbing C4 E4 G4 with a B4 joining the ladder after a marked step, the second running up and down over two octaves" width="680">
 </picture>
 
-Read the top block across. Swing moves only the offbeats, each by the same fraction. At 0.67 the offbeat lands on the last third of its pair, which is the shuffle. The first step of each pair never moves, so the bar keeps its grid however far it leans. The middle block is one lane over four bars. Each cell is as tall as its velocity, so the short one is a soft step. The chance step shows as an outline on the bars where it stayed quiet, and the ratchet is three strikes in the time of one. The chance comes from the sequencer's seed. The same seed plays the same bars the same way, so a pattern left partly to chance still repeats.
+Read the top block across. Swing moves only the offbeats, each by the same fraction. At 0.67 the offbeat lands on the last third of its pair, which is the shuffle. The first step of each pair never moves, so the bar keeps its grid however far it leans. The middle block is one lane over four bars. Each cell is as tall as its velocity, so the short one is a soft step. The chance step shows as an outline on the bars where it stayed quiet, and the ratchet is three strikes in the time of one. The chance comes from the sequencer's own `seed`, a property you set beside `swing` in `setup()`. The same seed plays the same bars the same way, so a pattern left partly to chance still repeats.
 
 A sequencer's notes can go to a file without being played. `events(upTo:)` hands back `ScheduledNote` values, each a note with the beat it starts on, and the short form `MIDIFile(_:tempo:name:)` takes them as one track. Ask a fresh sequencer for one bar of four beats at a time, up to just before the next bar starts. A sequencer that has been playing live has moved its count on. This writes eight bars:
 
@@ -580,7 +580,7 @@ for step in counter.steps(upTo: time * 2) {
 }
 ```
 
-The same call reads a line across a terrain as heights, or a row of a picture as brightness. With a `Heightfield` named `land` from [Chapter 29](29-Landscapes.md) and an `Image` named `photo`, those are `Sonification(land, row: 32)` and `Sonification(photo, row: 200)`. It answers a step number and owns no clock, like every type in this chapter, so the counter you already have drives it.
+The same call reads a line across a terrain as heights, or a row of a picture as brightness. With a `Heightfield` named `land` from [Chapter 29](29-Landscapes.md) and an `Image` named `photo`, those are `Sonification(land, row: 32)` and `Sonification(photo, row: 200)`. It answers a step number and owns no clock, like every type in this chapter, so the counter you already have drives it. The `tempo:` in the `play` call only turns each note's length in beats into seconds.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/40-MusicByRule/Sonification-dark.jpg">
@@ -644,7 +644,7 @@ A file carries more than notes. Control changes, the pitch wheel, the instrument
 
 A synth can sound from a point in the 3D scene, heard from the camera. Use it for a sound that belongs to something on screen, so it moves when the thing or the camera moves. The panning comes from Apple's audio engine, with the sketch's own camera as the listener.
 
-This fragment goes in `draw()` of a 3D sketch. `cameraShowcase` is the orbiting camera of [Chapter 26](26-3DGently.md#a-camera-and-a-sphere), and `activeCamera` is that camera, nil until one is set:
+This fragment goes in `draw()` of a 3D sketch. `cameraShowcase` is the orbiting camera of [Chapter 26](26-3DGently.md#a-camera-and-a-sphere). `.autoOrbit()` turns it on its own, with no mouse, and `activeCamera` is that camera, nil until one is set:
 
 ```swift
 cameraShowcase(.autoOrbit())

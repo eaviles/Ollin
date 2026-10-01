@@ -24,7 +24,7 @@ swift run OllinLive MySketches/YourSketch.swift --export poster.png --frame 200
 swift run --package-path Examples Example-Basic-HelloCircle --export-sequence /tmp/out --seconds 5 --fps 60
 ```
 
-`--export` writes one frame as a PNG, or as HEIC when the file name ends in `.heic`. `--export-sequence` writes every frame as a numbered PNG, ready for a video editor. `--fps` sets how many frames make a second of the file. It takes a number, a fraction such as `30000/1001`, or the name of a broadcast rate, which the [Export reference](../Docs/Output/Export.md#frame-rates) lists. An export draws at the best render quality, `.detail`, since a file has no frame rate to protect. `--render-quality` lowers it when you want a fast draft.
+`--export` writes one frame as a PNG, or as HEIC when the file name ends in `.heic`. `--export-sequence` writes every frame as a numbered PNG, ready for a video editor. `--fps` sets how many frames make a second of the file. It takes a number, a fraction such as `30000/1001`, or the name of a broadcast rate, which the [Export reference](../Docs/Output/Export.md#frame-rates) lists. An export draws at the best render quality, `.detail`, since a file has no frame rate to protect. That is the top of the three quality tiers [Chapter 26](26-3DGently.md#what-the-depth-buffer-is-for-ambient-occlusion-and-defocus) gave its depth effects. `--render-quality` lowers it when you want a fast draft.
 
 The right side of the map, the window and the feeds that other apps read live, belongs to [Chapter 43](43-Performing.md#live-feeds-into-other-apps).
 
@@ -58,7 +58,7 @@ The canvas can also be a sheet of paper. `CanvasSize` has named sheets, such as 
 override var canvasSize: CanvasSize { .a4 }
 ```
 
-A vector export maps one canvas pixel to one PDF point, 1/72 of an inch, so the exported page *is* that sheet. `.a4.dpi(300)` draws the pixels at 300 dots per inch for a raster export, and the PDF page stays A4. [Canvas](../Docs/Core/Canvas.md#export-size) lists every named sheet.
+A vector export is the SVG or PDF of [Lines for a pen](#lines-for-a-pen-svg-and-pdf). It maps one canvas pixel to one PDF point, 1/72 of an inch, so the exported page *is* that sheet. `.a4.dpi(300)` draws the pixels at 300 dots per inch for a raster export, and the PDF page stays A4. [Canvas](../Docs/Core/Canvas.md#export-size) lists every named sheet.
 
 ## Motion: video and GIF
 
@@ -101,7 +101,7 @@ A finished picture should reach people who cannot see it. Somebody using a scree
 describe("A bay at noon, with a small boat crossing the water.")
 ```
 
-That sentence becomes the canvas's accessible name, the text a screen reader reads for it. Turn on VoiceOver with ⌘F5 and the window reads it out.
+That sentence becomes the canvas's accessible name, the text a screen reader reads for it. Turn on VoiceOver, the Mac's own screen reader, with ⌘F5, and the window reads it out.
 
 A sketch with things in it can name them. Here `sun` and `boat` are the points the two are drawn at, and each box is the rectangle around one:
 
@@ -130,7 +130,7 @@ The words travel with the work. An exported SVG carries them as `<title>` and `<
 
 ## The recipe in the file
 
-Every PNG, SVG, PDF, and video Ollin writes carries a small **recipe** in its metadata, the part of a file that describes the file. The recipe holds the seeds the run used, the value of every `@Param`, and which frame at which rate produced it. It also holds the git commit the code was at, marked dirty if you had uncommitted edits. Read it back with a metadata tool such as ExifTool, which reads the recipe out of the file:
+Every PNG, SVG, PDF, and video Ollin writes carries a small **recipe** in its metadata, the part of a file that describes the file. The recipe holds the seeds the run used, the value of every `@Param`, and which frame at which rate produced it. It also holds the git commit the code was at, the snapshot of your files git keeps, marked dirty if you had uncommitted edits. Read it back with a metadata tool such as ExifTool, which reads the recipe out of the file:
 
 ```sh
 exiftool -Description poster.png
@@ -343,7 +343,7 @@ swift run OllinLive MySketches/Plaza.swift --export-sequence /tmp/frames --secon
 
 A compositing program holding the depth channel can add fog after the render, at a distance it picks, or throw the background out of focus. A grade, an adjustment of exposure and color, can pull the exposure down. It then finds the shape of a highlight that the PNG clipped to a flat white disk. None of it needs a new render.
 
-The cost is size. The file is uncompressed, so a 1080-pixel square frame with depth is about 14 MB, and a sequence of them is large. Export the moments you need rather than every frame. Surface normals and per-object masks are not in the file. Ollin shades in one pass and keeps no buffer of geometry to write them from. `Examples/Export/LinearFrame` is a lane of glossy spheres under one hard lamp. Its highlights reach ten times over white, and its depth runs from about three units to the far plane.
+The cost is size. The file is uncompressed, so a 1080-pixel square frame with depth is about 14 MB, and a sequence of them is large. Export the moments you need rather than every frame. Surface normals and per-object masks are not in the file. Ollin shades in one pass and keeps no buffer of geometry to write them from. `Examples/Export/LinearFrame` is a lane of glossy spheres under one hard lamp. Its highlights reach ten times over white. Its depth runs from about three units to the far plane, the camera's `far` distance, past which nothing is drawn.
 
 ### Brighter than white: HDR output
 
@@ -462,7 +462,7 @@ swift run OllinLive MySketches/YourSketch.swift --export-web page.html --seconds
 
 The recorder writes down the shape records the renderer would have received each frame. Nothing is rendered on the Mac, so nothing that depends on the Mac's GPU lands in the file. The page draws those records with the framework's own shape shader, rewritten from Metal to GLSL. GLSL is the shader language of WebGL2, the browser's graphics interface. The GLSL import of [Chapter 18](18-YourFirstShader.md#somebody-elses-shader-glsl-import) does the same kind of rewriting in the other direction. A frame on the page matches the frame `--export` gives, to within a few levels.
 
-A sketch that declares `loopDuration` records one lap with no length given, and the page wraps it without a seam. On a lap, each motion is fitted to the sine waves it is made of. The page then works it out at any moment from a few numbers. A parameter can be driven by a formula, a rule written as text in [Chapter 43](43-Performing.md#writing-the-parameter-as-a-rule-formulas). It crosses as the formula, worked out on the page's own clock. What fits neither travels as samples, and the page blends between them.
+A sketch that declares `loopDuration` records one lap with no length given, and the page wraps it without a seam. On a lap, each motion repeats, so it can be fitted to a few sine waves that add up to it. That is the sum of waves [Chapter 21](21-PicturesYouSolve.md#a-picture-read-as-waves-the-fourier-transform) read a picture as. The page then works it out at any moment from a few numbers. A parameter can be driven by a formula, a rule written as text in [Chapter 43](43-Performing.md#writing-the-parameter-as-a-rule-formulas). It crosses as the formula, worked out on the page's own clock. What fits neither travels as samples, and the page blends between them.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/41-FinishingASketch/PageFromRecords-dark.jpg">
@@ -471,7 +471,7 @@ A sketch that declares `loopDuration` records one lap with no length given, and 
 
 The figure follows one ring of circles across. On the left is the frame the Mac renders. In the middle is what the recorder wrote instead of pixels, twelve circles a frame. The parts that never change are stored once, and the three that move are kept as columns. The sketch declared a lap, so each column is fitted to sines. On the right is the page, with the three parameters the exporter could wire, offered as a slider and two color wells. The size on the arrow is the page's measured weight, and most of it is the player and its shaders rather than the ring.
 
-The first form is one file you can open, host, or place in another page with an `iframe`. The second, `--inline`, is the canvas and one script block with no page around them, to paste into a page you already have. The script leaves a handle on the canvas, `canvas.ollin`, that plays, pauses, and seeks. A reader whose system asks for less motion sees the first frame, still.
+The first form is one file you can open, host, or place in another page with an `iframe`. That is the HTML tag that puts one page inside another. The second, `--inline`, is the canvas and one script block with no page around them, to paste into a page you already have. The script leaves a handle on the canvas, `canvas.ollin`, that plays, pauses, and seeks. A reader whose system asks for less motion sees the first frame, still.
 
 The sketch's parameters cross as controls. After recording, the exporter tries each `@Param` at a few other values, records again, and checks that what moved changed along a straight line. Each parameter that passes is offered as a slider, a stepper, a checkbox, or a color well. A parameter that changes what is drawn, or moves a number some other way, stays at its recorded value. The exporter says which and why.
 

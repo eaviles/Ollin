@@ -19,7 +19,7 @@ swift run OllinLive MySketches/Plate.swift --export-gcode plot.gcode
 swift run OllinLive MySketches/Plate.swift --export-gcode cut.gcode --gcode-machine laser
 ```
 
-A machine needs real units, so the export asks for a physical width. The flag maps the canvas to 150 mm wide unless `--gcode-width` says otherwise. In code, `GCode(.plotter(), width: 150)` carries the finer settings: the pen lift, a laser's power and passes, a router's depth per pass. A named sheet saves the arithmetic. `GCode(.plotter(), paper: .a4)` fits the drawing inside an A4 page with ten millimeters clear on every side. On the command line, `--gcode-paper a4` does the same. Only line work travels. A stroke is drawn along its centerline, and a fill gives its outline, with `--hatch` shading fills as it does for the SVG of [Chapter 41](41-FinishingASketch.md#lines-for-a-pen-svg-and-pdf).
+A machine needs real units, so the export asks for a physical width. The flag maps the canvas to 150 mm wide unless `--gcode-width` says otherwise. In code, `GCode(.plotter(), width: 150)` is the settings value that `OllinApp.exportGCode(_:to:settings:)` takes. It carries the finer settings: the pen lift, a laser's power and passes, a router's depth per pass. A named sheet saves the arithmetic. `GCode(.plotter(), paper: .a4)` fits the drawing inside an A4 page with ten millimeters clear on every side. On the command line, `--gcode-paper a4` does the same. Only line work travels. A stroke is drawn along its centerline, and a fill gives its outline, with `--hatch` shading fills as it does for the SVG of [Chapter 41](41-FinishingASketch.md#lines-for-a-pen-svg-and-pdf).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/42-MakingItPhysical/OnTheSheet-dark.jpg">
@@ -39,7 +39,7 @@ The planner is public. `GCode.toolpath(_:in:)` returns the route as plain contou
 
 ## A 3D scene on the plotter: `lineDrawing(of:)`
 
-A vector file has nowhere to put a lit surface, so everything [Chapter 26](26-3DGently.md) and [Chapter 27](27-Meshes.md) drew stops at the raster. `lineDrawing(of:)` takes the same meshes and the same camera and hands back 2D paths. They are the lines a draftsman would draw, with everything the surfaces hide taken out. Use it to send a 3D scene to a pen. It follows the conventions of technical drawing, where hidden edges are left out or dashed. The figure shows one scene both ways:
+A vector file has nowhere to put a lit surface, so everything [Chapter 26](26-3DGently.md) and [Chapter 27](27-Meshes.md) drew stops at the raster, the pixel picture. `lineDrawing(of:)` takes the same meshes and the same camera and hands back 2D paths. They are the lines a draftsman would draw, with everything the surfaces hide taken out. Use it to send a 3D scene to a pen. It follows the conventions of technical drawing, where hidden edges are left out or dashed. The figure shows one scene both ways:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/42-MakingItPhysical/SceneAsLines-dark.jpg">
@@ -57,7 +57,7 @@ for line in lineDrawing(of: meshes).paths {
 }
 ```
 
-Three kinds of line are kept. The **silhouette** is where a surface turns away from the camera, the outline of a ball or a cylinder. A **crease** is where two faces meet at more than `creaseAngle`, the edge of a cube or the rim of a cap. A **boundary** is where a surface ends. The triangles inside a smooth surface are left out, which is why the ball is a circle rather than a net. Lower the crease angle and gentler ridges show. At 0 every edge is kept, which is a wireframe.
+Three kinds of line are kept. The **silhouette** is where a surface turns away from the camera, the outline of a ball or a cylinder. A **crease** is where two faces meet at more than `creaseAngle`, the edge of a cube or the rim of a cap. `creaseAngle:` is an argument of `lineDrawing(of:creaseAngle:)`, 30 degrees unless you set it. A **boundary** is where a surface ends. The triangles inside a smooth surface are left out, which is why the ball is a circle rather than a net. Lower the crease angle and gentler ridges show. At 0 every edge is kept, which is a wireframe.
 
 Everything handed to one call hides everything else in it, which is why it takes a list of meshes. `Mesh.transformed(by:)` puts each one where it belongs first, taking the same `MeshInstance` the instanced draws take. Two separate calls are two drawings that know nothing of each other, and the near one will not hide the far one.
 
@@ -65,7 +65,7 @@ The paths are ordinary line work, so `--export-svg` and `--export-gcode` both ta
 
 ## Printing one ink at a time: separations
 
-A pen draws a sketch's lines, and a press prints its colors. A risograph, a stencil printer that prints one ink at a time, or a screen-printing press lays down one ink per pass. It needs a separate grayscale plate for each ink, each a **spot ink**, one named ink mixed before printing. Use separations to print a sketch in a few chosen inks. The method is the standard one in prepress, where each ink acts as a colored filter over the paper. Each ink gets a **master**, a grayscale image where black means full ink and white means bare paper. The press runs the paper through once per master, and the inks stack up.
+A pen draws a sketch's lines, and a press prints its colors. A risograph, a stencil printer that prints one ink at a time, or a screen-printing press lays down one ink per pass. It needs a separate grayscale plate for each ink, each a **spot ink**, one named ink mixed before printing. Use separations to print a sketch in a few chosen inks. The method is the standard one in prepress, the work of readying a picture for a press. There each ink acts as a colored filter over the paper. Each ink gets a **master**, a grayscale image where black means full ink and white means bare paper. The press runs the paper through once per master, and the inks stack up.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/42-MakingItPhysical/Separations-dark.jpg">
@@ -82,7 +82,7 @@ Declare that on your sketch and export with `--export-separations`. You get one 
 
 For a color no single ink can make, Ollin searches for the mix of ink coverages whose overprint comes closest. It measures closeness the way the eye does, in the same perceptual space [Chapter 2](02-Color.md)'s color mixing uses. Draw in an ink's own color and it separates without loss. Anything else, gradients and photographs included, lands on the nearest mix those inks can reach.
 
-A press cannot hold a dot smaller than about two percent coverage, so anything fainter drops to bare paper. `separation.halftoned(pitch:)` turns each plate into dots `pitch` apart, as in [Chapter 9](09-Pictures.md)'s halftone. It turns each ink's grid of dots to its own angle. The inks then overprint into a small rosette rather than a moiré, the wavy stripes two grids make. `PrintSeparation.screenAngles(for:)` says which angle each ink got, and `separation.dithered()` is the grainier choice. [Print separations](../Docs/Output/PrintSeparations.md) has the ink catalog, with the measured colors of the standard risograph inks, and the screening details.
+A press cannot hold a dot smaller than about two percent coverage, so anything fainter drops to bare paper. Here `separation` is the `PrintSeparation` that `separated(into:)` handed back, and `separation.halftoned(pitch:)` turns each plate into dots `pitch` apart, as in [Chapter 9](09-Pictures.md)'s halftone. It turns each ink's grid of dots to its own angle. The inks then overprint into a small rosette rather than a moiré, the wavy stripes two grids make. `PrintSeparation.screenAngles(for:)` says which angle each ink got, and `separation.dithered()` is the grainier choice. [Print separations](../Docs/Output/PrintSeparations.md) has the ink catalog, with the measured colors of the standard risograph inks, and the screening details.
 
 ## Something you can hold: a 3D print
 
@@ -108,7 +108,7 @@ let check = sculpture.printCheck()
 print(check.summary)        // "9360 triangles, 60.00 x 52.50 x 26.02 units: ready to print"
 ```
 
-`printCheck()` reports whether the surface closes, and whether neighboring triangles agree on which side is outside. It also reports whether the shape is inside out, and how big the file says it is. When something is wrong, `problems` says so in words. A mesh that fails is still written, with a note, because an open surface is fine to draw and only a print needs it sealed.
+`printCheck()` reports whether the surface closes, and whether neighboring triangles agree on which side is outside. It also reports whether the shape is inside out, and how big the file says it is. When something is wrong, `check.problems` says so in words. A mesh that fails is still written, with a note, because an open surface is fine to draw and only a print needs it sealed.
 
 A shape that closes by construction saves the repair. The metaballs and isosurfaces of [Chapter 32](32-SculptingWithFields.md#the-other-way-out-field-to-mesh) close, since a field has an inside. So do the solid primitives and a tube swept with `closed: true`. A plane, or a lathe without caps, does not.
 
@@ -189,8 +189,8 @@ Here is what needs a closer look:
 
 - **The knot.** `knotMesh()` places 240 points on an unseen ring shaped like a doughnut, a torus. The path circles the ring's center `windings` times and its tube `turns` times, which ties it into a torus knot. `signedNoise(0, loop: u)` is [Chapter 5](05-Noise.md#coming-home-the-loop-argument)'s `loop:` argument in one dimension, and the 0, 4, and 8 pick a different stretch of noise for each axis. The wobble comes home when `u` reaches 1, so the path ends where it began. `Mesh.tube(along:radius:sides:closed:)` is `drawTube` as a mesh you keep. `closed: true` joins the two ends, so the surface closes and can print.
 - **One knot in every run.** `seed(1207)` fixes the wobble. Each export is a run of its own, and without the seed the plot and the plates would each get a different knot.
-- **Colors a press can read.** [Chapter 26](26-3DGently.md#light-presets-and-the-kinds-of-light)'s `withoutLights` draws the body flat, in the pink ink's own color, so the separation reads it as solid pink. Lit, its shading would come back as grays on the plates. `pen` is a 0.7 mm pen at the 190 millimeters a square canvas gets on A4. G-code ignores stroke weight, so this width is for the screen and the plates, to show what the pen will draw. `strokeCap(.round)` gives every dash round ends, the mark a round pen tip leaves.
-- **Lines that turn with the body.** `lineDrawing(of: knot)` reads the same camera and the same `rotateY` that `drawMesh` does. The `hidden` stretches are drawn first, dashed, and `noStrokeDash()` puts the line back whole for `paths`.
+- **Colors a press can read.** [Chapter 26](26-3DGently.md#light-presets-and-the-kinds-of-light)'s `withoutLights` draws the body flat, in the pink ink's own color, so the separation reads it as solid pink. Lit, its shading would come back as grays on the plates. `shortSide` is the shorter side of the canvas, the `unit` [Chapter 41](41-FinishingASketch.md#putting-it-together-the-contour-chart)'s chart worked out as `min(width, height)`. So `pen` is a 0.7 mm pen at the 190 millimeters a square canvas gets on A4. G-code ignores stroke weight, so this width is for the screen and the plates, to show what the pen will draw. `strokeCap(.round)` gives every dash round ends, the mark a round pen tip leaves.
+- **Lines that turn with the body.** `lineDrawing(of: knot)` reads the same camera and the same `rotateY` that `drawMesh` does. The `hidden` stretches are drawn first, dashed. `strokeDash(.dashes(_:gap:))` is [Chapter 17](17-MarksAndMedia.md#a-line-with-gaps-strokedash)'s dash pattern written as one dash length and one gap, and `noStrokeDash()` puts the line back whole for `paths`.
 - **The print.** `keyPressed()` builds the knot again without the turn, and `normalized(scale: millimeters)` fits its longest side to the parameter. It prints what `printCheck()` found and writes `knot.3mf`.
 
 The lines are drawn in multiply, which [Chapter 19](19-LayersAndEffects.md#how-new-paint-meets-old-blend-modes) described as stacking color like layered ink. Where a blue line lies over the pink, the screen shows the dark purple the two inks make together. `--export-separations` reads each pixel's color back into inks, and that purple comes back as full pink and full blue. So the pink plate stays solid under every line. Drawn in the normal mode, a line over the knot would be plain blue, and the pink plate would have a gap under it. Two passes through a press never line up perfectly, so bare paper would show at the edge of every line.
@@ -235,7 +235,7 @@ try? OllinApp.exportEmbroidery(sketch, to: "leaf.dst", settings: Embroidery(widt
 swift run --package-path Examples Example-Export-Embroidery --export-embroidery leaf.dst
 ```
 
-Three things change on the way from pixels to thread. A stroke becomes a **running stitch**, a line of needle holes no farther apart than `stitchLength`, with every corner hit. A fill becomes rows of running stitch across it, `fillSpacing` apart and joined end to end, so the thread stays down. And every color becomes its own thread, in the order you drew them. A `.dst` file holds no colors, only stitches, jumps, and the stops between threads, so you load each thread when the machine asks for it. What you drew later is sewn later and lies on top.
+Three things change on the way from pixels to thread. A stroke becomes a **running stitch**, a line of needle holes no farther apart than `stitchLength`, a setting on `Embroidery` beside the width, with every corner hit. A fill becomes rows of running stitch across it, `fillSpacing` apart and joined end to end, so the thread stays down. And every color becomes its own thread, in the order you drew them. A `.dst` file holds no colors, only stitches, jumps, and the stops between threads, so you load each thread when the machine asks for it. What you drew later is sewn later and lies on top.
 
 The width is yours to give, as for G-code, because a hoop has real millimeters. Between two paths the thread is sewn across when the gap is short, and carried over in a jump when it is not. The planner reorders the paths within each thread to keep those jumps short. [Embroidery](../Docs/Output/Embroidery.md) has the settings and what to check before you sew.
 
@@ -264,7 +264,7 @@ The width is yours to give here too. Strokes arrive as lines and polylines along
 
 ## More for the press: proofs and process plates
 
-The knot went to the press as two spot inks. A press can also mix every color from four standard inks, and a profile describes what that press does. The profile shows the print on screen before you print, and it splits a picture into the four plates.
+The knot went to the press as two spot inks. A press can also mix every color from four standard inks, cyan, magenta, yellow, and black, CMYK for short. A profile describes what that press does. The profile shows the print on screen before you print, and it splits a picture into the four plates.
 
 ### Seeing the print before you print it: soft proofs
 
@@ -315,7 +315,7 @@ The knot left as one mesh, written for a printer. A whole 3D scene can leave too
 swift run --package-path Examples Example-3D-Geometry-Solids --export-usdz solids.usdz
 ```
 
-Double-click the file and Quick Look, the Mac's preview, opens it, and a message shows it too. On an iPhone, tap the AR button, and the camera view shows the scene standing on the floor in front of you. It stands at the size the file gives it. An app for Apple's headset can use it as a model directly. The stills and videos of [Chapter 41](41-FinishingASketch.md) and the drawings above are pictures of the sketch from one camera. A model holds the scene itself, and whoever opens it picks their own angle.
+Double-click the file and Quick Look, the Mac's preview, opens it, and a message shows it too. On an iPhone, tap the AR button, for augmented reality, and the camera view shows the scene standing on the floor in front of you. It stands at the size the file gives it. An app for Apple's headset can use it as a model directly. The stills and videos of [Chapter 41](41-FinishingASketch.md) and the drawings above are pictures of the sketch from one camera. A model holds the scene itself, and whoever opens it picks their own angle.
 
 Any `Scene` writes the same way, including one you loaded or built by hand. A frame becomes a scene when you ask for one. Here `scene` is a `Scene` and `sketch` an instance of your sketch, and `try?` skips a failed write:
 
