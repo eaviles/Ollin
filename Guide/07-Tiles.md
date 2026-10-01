@@ -394,7 +394,22 @@ for tile in penroseTiling(.rhombs, tileEdge: 36) {
 
 There is no randomness in it. The variety is the geometry's own. The **spectre** is the single shape from 2023, and mathematicians called the search for it the einstein problem, "one stone". `spectreTiling(tileEdge:curve:)` grows a patch. Give `curve` about `0.5` and the edges bend, so the tile cannot even be flipped over. Each tile flags the rare `isOdd` misfits that sit rotated 30° from all the others, which are the accent marks the pattern wants.
 
-Two more relatives are on the [aperiodic tilings](../Docs/Drawing/AperiodicTilings.md) page. **Wang tiles** (`wangTiling`) are the squares with colored edges that started the subject, which may only sit together where the colors agree. Run the other way, with a seeded fill over a small friendly set, the edge rule turns independent random picks into one connected quilt. And **girih patterns** (`girihPattern`) take the Truchet doorway idea somewhere older. From the midpoint of every tile edge, two rays walk into the tile at a chosen angle and stop where they meet another. Keep the crossings, erase the tiles, and an Islamic star pattern remains. The method is E. H. Hankin's polygons in contact, formalized for the computer by Craig Kaplan. The five traditional girih tiles decorate buildings from medieval Isfahan to Istanbul. The method works over *any* edge-to-edge polygons, your hex grid's cells included. The contact angle is one dial that morphs the design from spiky to woven:
+Two more relatives are on the [aperiodic tilings](../Docs/Drawing/AperiodicTilings.md) page. **Wang tiles** (`wangTiling`) are the squares with colored edges that started the subject, which may only sit together where the colors agree. Run the other way, with a seeded fill over a small friendly set, the edge rule turns independent random picks into one connected quilt:
+
+```swift
+if let quilt = wangTiling(WangTiling.completeSet(colors: 2), columns: 12, rows: 12) {
+    drawWangTiling(quilt, colors: [.navy, .orange])
+}
+```
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/07-Tiles/EdgeRules-dark.jpg">
+  <img src="Images/07-Tiles/EdgeRules.jpg" alt="Two panels: a ten by six grid of Wang tiles, each square cut into four triangles colored sand and teal, with every pair of touching edges the same color; and a Penrose kite and dart sharing one edge, where the orange arc from each tile meets the other at a marked point on that edge while the two teal arcs end on the outer edges" width="680">
+</picture>
+
+The left panel is that quilt, each square cut into four triangles so its edge colors show. The right panel is the Penrose rule up close. A kite and a dart share an edge, and the arc from each side reaches that edge at the same point, so the curve carries on. Place the dart so the ends miss and the tiling is illegal.
+
+**Girih patterns** (`girihPattern`) take the Truchet doorway idea somewhere older. From the midpoint of every tile edge, two rays walk into the tile at a chosen angle and stop where they meet another. Keep the crossings, erase the tiles, and an Islamic star pattern remains. The method is E. H. Hankin's polygons in contact, formalized for the computer by Craig Kaplan. The five traditional girih tiles decorate buildings from medieval Isfahan to Istanbul. The method works over *any* edge-to-edge polygons, your hex grid's cells included. The contact angle is one dial that morphs the design from spiky to woven:
 
 ```swift
 let cells = hexGrid(columns: 9, rows: 8).cells.map(\.corners)
