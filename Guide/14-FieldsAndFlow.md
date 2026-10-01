@@ -159,6 +159,7 @@ The method is easy to picture. Sample the field on a grid, then look at one litt
 For a map you want many levels, and there is a form for that:
 
 ```swift
+let terrain: (Vector2) -> Double = { p in fbm(p.x * 0.006, p.y * 0.006, octaves: 4) }
 let levels = Array(stride(from: 0.3, through: 0.75, by: 0.045))
 for (i, group) in isolines(at: levels, in: bounds, field: terrain).enumerated() {
     strokeWeight(i % 5 == 0 ? 2 : 0.8)      // heavy every fifth, like a printed map
