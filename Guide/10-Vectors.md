@@ -111,6 +111,13 @@ That pair of lines moves toward anything, and it works at any distance because t
 
 `distance(to:)` and `limited(to:)` complete the kit. `a.distance(to: b)` measures between two points (it is `(a - b).length`). And `v.limited(to: maxSpeed)` caps an arrow's length while keeping its heading. The chasers in this chapter and the flock in [Chapter 12](12-FlocksAndSwarms.md) run under these caps. A speed cannot grow without bound, and a correction cannot overshoot.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/10-Vectors/Limited-dark.jpg">
+  <img src="Images/10-Vectors/Limited.jpg" alt="Two panels: on the left a long dark arrow from a dot reaches past a faint circle labeled the cap; on the right the same arrow is drawn faint and a shorter orange arrow on the same heading ends on the circle" width="680">
+</picture>
+
+The circle is the cap. An arrow that reaches past it is cut back to the circle on the same heading, and one already inside comes back unchanged.
+
 For drawing, `v.angle` is the arrow's direction as a single number, ready for [Chapter 6](06-GridsAndRepetition.md)'s `rotate`, so a shape can face where it is going. Its inverse builds an arrow from scratch with `Vector2(angle: a, length: 10)`.
 
 ## Position, velocity, acceleration
