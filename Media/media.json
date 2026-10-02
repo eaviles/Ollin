@@ -438,6 +438,10 @@
       "Recreations/RyszardWiniarski/Obszar",
       "Recreations/RyszardWiniarski/LosowanieDwiemaKostkami"
     ],
+    "Recreations/SalouaRaoudaChoucair": [
+      "Recreations/SalouaRaoudaChoucair/Poem",
+      "Recreations/SalouaRaoudaChoucair/Duals"
+    ],
     "Recreations/SolLeWitt": [
       "Recreations/SolLeWitt/FiftyPoints",
       "Recreations/SolLeWitt/ArcsCirclesGrids"
@@ -8888,6 +8892,50 @@
       "stillSmall": "examples/Recreations/RyszardWiniarski/Obszar/still-640.jpg?v=c16d4630",
       "width": 1080
     },
+    "Recreations/SalouaRaoudaChoucair/Duals": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 16.0,
+      "frame": 576,
+      "motion": 7.334,
+      "sound": false,
+      "source": "826e7490c49ece2a",
+      "rendered": "2026-10-02",
+      "bytes": {
+        "loop": 1869478,
+        "loopSmall": 390865,
+        "still": 43543,
+        "stillSmall": 16306
+      },
+      "loop": "examples/Recreations/SalouaRaoudaChoucair/Duals/loop.mp4?v=9db30c1e",
+      "loopSmall": "examples/Recreations/SalouaRaoudaChoucair/Duals/loop-640.mp4?v=b20e6bbb",
+      "still": "examples/Recreations/SalouaRaoudaChoucair/Duals/still.jpg?v=86955ca5",
+      "stillSmall": "examples/Recreations/SalouaRaoudaChoucair/Duals/still-640.jpg?v=8e53c25f",
+      "seed": 1
+    },
+    "Recreations/SalouaRaoudaChoucair/Poem": {
+      "width": 1080,
+      "height": 1350,
+      "length": "lap",
+      "seconds": 24.0,
+      "frame": 792,
+      "motion": 15.401,
+      "sound": false,
+      "source": "5bc82c18f5bf57c9",
+      "rendered": "2026-10-02",
+      "bytes": {
+        "loop": 2339742,
+        "loopSmall": 494919,
+        "still": 48309,
+        "stillSmall": 20514
+      },
+      "loop": "examples/Recreations/SalouaRaoudaChoucair/Poem/loop.mp4?v=e1d6453f",
+      "loopSmall": "examples/Recreations/SalouaRaoudaChoucair/Poem/loop-640.mp4?v=de782c73",
+      "still": "examples/Recreations/SalouaRaoudaChoucair/Poem/still.jpg?v=c839adc0",
+      "stillSmall": "examples/Recreations/SalouaRaoudaChoucair/Poem/still-640.jpg?v=350555ec",
+      "seed": 1
+    },
     "Recreations/SolLeWitt/ArcsCirclesGrids": {
       "width": 1800,
       "height": 1000,
@@ -11559,8 +11607,8 @@
       ]
     },
     "3D/Depth": {
-      "image": "groups/3D-Depth.jpg?v=3b1cc6c5",
-      "imageSmall": "groups/3D-Depth-640.jpg?v=a2607e78",
+      "image": "groups/3D-Depth.jpg?v=64209b7c",
+      "imageSmall": "groups/3D-Depth-640.jpg?v=9f3a63a8",
       "of": [
         "3D/Depth/DepthCompositing",
         "3D/Depth/ClosedLoopScan",
@@ -11668,8 +11716,8 @@
       ]
     },
     "Compute": {
-      "image": "groups/Compute.jpg?v=6b925b8b",
-      "imageSmall": "groups/Compute-640.jpg?v=3598dc09",
+      "image": "groups/Compute.jpg?v=b0311571",
+      "imageSmall": "groups/Compute-640.jpg?v=cbbed8a4",
       "of": [
         "Compute/ReactionDiffusion",
         "Compute/CurlField",
@@ -11687,8 +11735,8 @@
       ]
     },
     "Effects": {
-      "image": "groups/Effects.jpg?v=31f9d827",
-      "imageSmall": "groups/Effects-640.jpg?v=fcc855ce",
+      "image": "groups/Effects.jpg?v=a42c38fa",
+      "imageSmall": "groups/Effects-640.jpg?v=800bb77d",
       "of": [
         "Effects/Droste",
         "Effects/DiffusionCurves",
@@ -11753,7 +11801,7 @@
       ]
     },
     "Motion": {
-      "image": "groups/Motion.jpg?v=8adfab5b",
+      "image": "groups/Motion.jpg?v=1446921e",
       "imageSmall": "groups/Motion-640.jpg?v=d405aefc",
       "of": [
         "Motion/Mandala",
@@ -11783,7 +11831,7 @@
       ]
     },
     "Randomness": {
-      "image": "groups/Randomness.jpg?v=2b9cacea",
+      "image": "groups/Randomness.jpg?v=5f86e3ef",
       "imageSmall": "groups/Randomness-640.jpg?v=7f0bd6fe",
       "of": [
         "Randomness/Variations",
@@ -11794,7 +11842,7 @@
     },
     "Recreations": {
       "image": "groups/Recreations.jpg?v=85af6f4f",
-      "imageSmall": "groups/Recreations-640.jpg?v=96c0051c",
+      "imageSmall": "groups/Recreations-640.jpg?v=a68626bc",
       "of": [
         "Recreations/OsamuSato/Totem",
         "Recreations/JaredTarbell/Substrate",
@@ -11812,7 +11860,7 @@
     },
     "Recreations/BridgetRiley": {
       "image": "groups/Recreations-BridgetRiley.jpg?v=b60256e3",
-      "imageSmall": "groups/Recreations-BridgetRiley-640.jpg?v=6e87eeab",
+      "imageSmall": "groups/Recreations-BridgetRiley-640.jpg?v=a2555ef2",
       "of": [
         "Recreations/BridgetRiley/Current",
         "Recreations/BridgetRiley/Fragment3"
@@ -11950,6 +11998,14 @@
         "Recreations/RyszardWiniarski/LosowanieDwiemaKostkami"
       ]
     },
+    "Recreations/SalouaRaoudaChoucair": {
+      "image": "groups/Recreations-SalouaRaoudaChoucair.jpg?v=b9573c35",
+      "imageSmall": "groups/Recreations-SalouaRaoudaChoucair-640.jpg?v=c63b6730",
+      "of": [
+        "Recreations/SalouaRaoudaChoucair/Poem",
+        "Recreations/SalouaRaoudaChoucair/Duals"
+      ]
+    },
     "Recreations/SolLeWitt": {
       "image": "groups/Recreations-SolLeWitt.jpg?v=cce123ae",
       "imageSmall": "groups/Recreations-SolLeWitt-640.jpg?v=edcbd044",
@@ -11987,7 +12043,7 @@
       ]
     },
     "Recreations/WaldemarCordeiro": {
-      "image": "groups/Recreations-WaldemarCordeiro.jpg?v=c8969403",
+      "image": "groups/Recreations-WaldemarCordeiro.jpg?v=a825e3fe",
       "imageSmall": "groups/Recreations-WaldemarCordeiro-640.jpg?v=64142fc3",
       "of": [
         "Recreations/WaldemarCordeiro/Derivadas",
@@ -11995,8 +12051,8 @@
       ]
     },
     "Rendering": {
-      "image": "groups/Rendering.jpg?v=f3af69d0",
-      "imageSmall": "groups/Rendering-640.jpg?v=f6cb8109",
+      "image": "groups/Rendering.jpg?v=44f925ed",
+      "imageSmall": "groups/Rendering-640.jpg?v=9e014439",
       "of": [
         "Rendering/Grassland",
         "Rendering/MeshField",
@@ -12025,8 +12081,8 @@
       ]
     },
     "Simulation": {
-      "image": "groups/Simulation.jpg?v=1f3b0fd6",
-      "imageSmall": "groups/Simulation-640.jpg?v=02bc7a98",
+      "image": "groups/Simulation.jpg?v=11cc938d",
+      "imageSmall": "groups/Simulation-640.jpg?v=65db53d6",
       "of": [
         "Simulation/GrayScott",
         "Simulation/Physarum",
@@ -12053,8 +12109,8 @@
       ]
     },
     "Vision": {
-      "image": "groups/Vision.jpg?v=4f5465a3",
-      "imageSmall": "groups/Vision-640.jpg?v=cbe152e5",
+      "image": "groups/Vision.jpg?v=d29e5cd3",
+      "imageSmall": "groups/Vision-640.jpg?v=dd4a2bb3",
       "of": [
         "Vision/BodyPose",
         "Vision/HandTracking",

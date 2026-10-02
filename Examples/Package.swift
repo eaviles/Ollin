@@ -969,6 +969,11 @@ let package = Package(
         // columns with the ground showing between them, after Alma Thomas.
         example("Recreations/AlmaThomas/Rings"),
         example("Recreations/AlmaThomas/Columns"),
+        // The modular sculptures: a block cut by a rule into verses that are
+        // lifted apart and set back, and a block cut once into two parts that
+        // slide apart and lock, after Saloua Raouda Choucair.
+        example("Recreations/SalouaRaoudaChoucair/Poem"),
+        example("Recreations/SalouaRaoudaChoucair/Duals"),
         // A photograph read to seven levels and printed as struck characters,
         // then derived three times, each degree its own sheet, after Waldemar
         // Cordeiro and Giorgio Moscati.
