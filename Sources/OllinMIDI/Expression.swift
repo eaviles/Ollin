@@ -145,6 +145,9 @@ struct ExpressionEngine: Sendable {
 
     private(set) var zones: [MPEZone] = []
     private var channels = [Channel](repeating: Channel(), count: 17)
+    /// The channel whose wheel moved last, which is the one "any channel"
+    /// reads; nil until a bend arrives.
+    private var lastBendChannel: Int?
     private var held: [Key: Held] = [:]
     private var counter = 0
 
@@ -208,6 +211,7 @@ struct ExpressionEngine: Sendable {
             channels[channel].pressure = pressure
         case .pitchBend(let value):
             channels[channel].bend = value
+            lastBendChannel = channel
         case .controlChange(let controller, let value):
             control(controller, value: value, channel: channel)
         default:
@@ -324,8 +328,25 @@ struct ExpressionEngine: Sendable {
         }
     }
 
+    /// The wheel on `channel`, or on the channel that bent last for nil, as
+    /// a fraction of its travel (see `wheel(_:)`). Zero until a bend arrives,
+    /// since a wheel rests at its center.
+    func wheel(channel: Int?) -> Double {
+        guard let channel = channel ?? lastBendChannel, (1...16).contains(channel) else { return 0 }
+        return Self.wheel(channels[channel].bend)
+    }
+
     /// A fourteen-bit bend as a fraction of the range, `-1...1` about 8192.
     private static func normalized(_ bend: Int) -> Double {
         Double(bend - 8192) / 8192
+    }
+
+    /// A fourteen-bit bend as a fraction of the wheel's travel: -1 fully down,
+    /// 0 at rest, 1 fully up. The wire puts 8192 steps below the rest and 8191
+    /// above it, so each side is divided by its own count and both ends reach
+    /// one exactly; a value outside the fourteen bits is held to the ends.
+    static func wheel(_ bend: Int) -> Double {
+        let offset = Double(Swift.min(Swift.max(bend, 0), 16383) - 8192)
+        return offset < 0 ? offset / 8192 : offset / 8191
     }
 }

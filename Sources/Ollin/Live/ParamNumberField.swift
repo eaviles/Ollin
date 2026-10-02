@@ -78,6 +78,152 @@ enum ParamNumberText {
     }
 }
 
+/// How a value box moves under the hand: how far a point of drag takes it,
+/// the marks Shift lands it on, and the step an arrow key takes.
+///
+/// A plain drag covers the range in about a sidebar track's length, and a
+/// stepped box no slower than a step per eight points, so a whole number over
+/// 0...10000 crosses its range in the drag a slider takes. Shift keeps that pace and lands on round marks, four to
+/// forty of them across the range, so it steps through the range instead of
+/// running to an end. An arrow goes to the next mark on its grid: the declared
+/// step, or a tenth of Shift's mark on a free box; Shift's mark under Shift;
+/// a tenth again under Option, where there is no step to keep.
+struct ParamStepping: Equatable {
+    /// What a modifier key asks of a drag or an arrow: Option is `fine`,
+    /// Shift is `coarse`.
+    enum Pace: Equatable {
+        case plain, fine, coarse
+    }
+
+    let range: ClosedRange<Double>
+    /// The declared step, on a grid from the range's lower end, or nil.
+    let step: Double?
+
+    /// About how long a sidebar track is, in points.
+    static let trackPoints = 250.0
+    /// The slowest a stepped box drags: this many points to a step.
+    static let pointsPerStep = 8.0
+
+    init(range: ClosedRange<Double>, step: Double? = nil) {
+        self.range = range
+        self.step = step.flatMap { $0 > 0 && $0.isFinite ? $0 : nil }
+    }
+
+    private var span: Double { range.upperBound - range.lowerBound }
+
+    /// Value per point of plain drag.
+    var perPoint: Double {
+        guard span > 0, span.isFinite else { return 0 }
+        let track = span / Self.trackPoints
+        guard let step else { return track }
+        return Swift.max(track, step / Self.pointsPerStep)
+    }
+
+    /// The distance between Shift's marks: the power of ten (in whole steps on
+    /// a stepped box) that leaves four to forty of them across the range, and
+    /// never less than the step.
+    var coarse: Double {
+        let unitless = step ?? 1
+        guard span > 0, span.isFinite, let power = Self.powerOfTen(atOrUnder: span / (4 * unitless)) else {
+            return unitless
+        }
+        return step.map { $0 * Swift.max(1, power) } ?? power
+    }
+
+    /// The distance an arrow takes: the declared step, or a tenth of Shift's
+    /// mark on a free box.
+    var unit: Double { step ?? coarse / 10 }
+
+    /// The value after a drag `points` long from `base`, at `pace`.
+    func dragged(from base: Double, points: Double, pace: Pace) -> Double {
+        let rate = pace == .fine ? perPoint / 10 : perPoint
+        let moved = base + points * rate
+        switch pace {
+        case .coarse:
+            return clamped(onGrid(moved, size: coarse, origin: coarseOrigin, rounding: .toNearestOrAwayFromZero))
+        case .plain, .fine:
+            if let step {
+                return clamped(onGrid(moved, size: step, origin: range.lowerBound, rounding: .toNearestOrAwayFromZero))
+            }
+            return ParamNumberText.dragged(moved, perPoint: rate, in: range)
+        }
+    }
+
+    /// The value after an arrow key from `value`, `direction` up (positive)
+    /// or down: the next mark on the pace's grid strictly past the value, held
+    /// to the range. A value already on a mark, binary noise and all, moves a
+    /// whole mark.
+    func nudged(_ value: Double, by direction: Int, pace: Pace) -> Double {
+        guard direction != 0 else { return value }
+        let size: Double, origin: Double
+        switch pace {
+        case .plain: (size, origin) = (unit, step == nil ? 0 : range.lowerBound)
+        case .fine: (size, origin) = (step ?? unit / 10, step == nil ? 0 : range.lowerBound)
+        case .coarse: (size, origin) = (coarse, coarseOrigin)
+        }
+        guard size > 0, size.isFinite, value.isFinite else { return clamped(value) }
+        let marks = (value - origin) / size
+        let tolerance = 1e-9 * Swift.max(1, abs(marks))
+        let next = direction > 0 ? (marks + tolerance).rounded(.down) + 1
+                                 : (marks - tolerance).rounded(.up) - 1
+        return clamped(Self.decimal(origin + next * size, size: size, origin: origin))
+    }
+
+    /// Where Shift's marks count from: zero when zero is on the step's grid
+    /// (or there is no step), so the marks are round numbers, and otherwise
+    /// the range's lower end, where the step's own grid starts.
+    private var coarseOrigin: Double {
+        guard let step else { return 0 }
+        let fromFloor = -range.lowerBound / step
+        return abs(fromFloor - fromFloor.rounded()) < 1e-9 ? 0 : range.lowerBound
+    }
+
+    private func clamped(_ value: Double) -> Double {
+        Swift.min(Swift.max(value, range.lowerBound), range.upperBound)
+    }
+
+    private func onGrid(_ value: Double, size: Double, origin: Double,
+                        rounding: FloatingPointRoundingRule) -> Double {
+        guard size > 0, size.isFinite, value.isFinite else { return value }
+        let marks = ((value - origin) / size).rounded(rounding)
+        return Self.decimal(origin + marks * size, size: size, origin: origin)
+    }
+
+    /// `pow(10, floor(log10(x)))`, or nil for a value with no logarithm.
+    private static func powerOfTen(atOrUnder x: Double) -> Double? {
+        guard x > 0, x.isFinite else { return nil }
+        return pow(10, floor(log10(x)))
+    }
+
+    /// `value` as the decimal a grid of `size` from `origin` names, so three
+    /// marks of 0.1 read 0.3 rather than 0.30000000000000004.
+    private static func decimal(_ value: Double, size: Double, origin: Double) -> Double {
+        let digits = Swift.max(fractionDigits(size), fractionDigits(origin))
+        return Double(String(format: "%.\(digits)f", value)) ?? value
+    }
+
+    /// How many decimals `x` takes, up to twelve.
+    private static func fractionDigits(_ x: Double) -> Int {
+        guard x.isFinite else { return 0 }
+        for digits in 0...12 {
+            let scaled = x * pow(10, Double(digits))
+            if abs(scaled - scaled.rounded()) < 1e-6 * Swift.max(1, abs(scaled)) { return digits }
+        }
+        return 12
+    }
+}
+
+/// What the parameters list says after a save, and when it stops: a value
+/// turned by hand, or put back, makes the sentence describe values that are no
+/// longer the ones showing, so it goes.
+struct ParamSaveNote: Equatable {
+    private(set) var text: String?
+
+    mutating func saved(_ sentence: String?) { text = sentence }
+
+    mutating func changed() { text = nil }
+}
+
 /// A value box being typed in. While the keys are in the box, its text belongs
 /// to the person typing: nothing the row learns (a clamp, a step, the sketch
 /// moving the value) is written back into it, since a clamp written back would

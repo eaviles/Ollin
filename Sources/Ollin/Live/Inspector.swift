@@ -812,9 +812,11 @@ public struct ParametersListView: View {
     /// The folded groups currently open. Seeded from what the sketch remembers,
     /// and re-seeded when a reload or a host switch hands the view new parameters.
     @State private var openFoldedGroups: Set<String>
-    /// What the last save said, kept until the next one: a refusal names the
-    /// parameter it could not write, which is worth reading twice.
-    @State private var saveMessage: String?
+    /// What the last save said, kept until a value is turned by hand or put
+    /// back: a refusal names the parameter it could not write, which is worth
+    /// reading twice, but once a value moves the sentence describes values
+    /// that are no longer the ones showing.
+    @State private var saveNote = ParamSaveNote()
 
     public init(parameters: [ParamHandle],
                 sketchName: String? = nil,
@@ -831,6 +833,17 @@ public struct ParametersListView: View {
     }
 
     private var palette: OllinInspector.Palette { .resolve(scheme) }
+
+    /// The host's reset, which also takes the save's sentence away, wherever
+    /// it is pressed from (a row's mark or menu, a group card, the footer).
+    private var noteClearingReset: ParamResetAction? {
+        reset.map { reset in
+            ParamResetAction(tuned: reset.tuned) { names in
+                saveNote.changed()
+                reset.perform(names)
+            }
+        }
+    }
 
     /// The ids of the rows whose `show(when:_:)` rule currently fails.
     package nonisolated static func hiddenIDs(in parameters: [ParamHandle]) -> Set<String> {
@@ -897,7 +910,7 @@ public struct ParametersListView: View {
                 }
                 if save != nil || reset != nil { footer }
             }
-            .environment(\.paramReset, reset)
+            .environment(\.paramReset, noteClearingReset)
             // The visibility poll, on the rows' own 100ms sync-pull cadence.
             // Keyed on the handle identities so a reload's fresh params restart
             // it (the old task would keep reading the swapped-out sketch's parameters).
@@ -1002,7 +1015,7 @@ public struct ParametersListView: View {
             ForEach(Array(handles.enumerated()), id: \.element.id) { index, handle in
                 if index > 0 { Hairline(palette: palette) }
                 ParamRow(handle: handle, palette: palette, iconGutter: gutter,
-                         onChange: { onChange(handle.name, $0) })
+                         onChange: { saveNote.changed(); onChange(handle.name, $0) })
                     .id(ObjectIdentifier(handle.param))   // reset state on reload
             }
         }
@@ -1014,7 +1027,7 @@ public struct ParametersListView: View {
     /// untouched card keeps its plain header.
     @ViewBuilder private func groupReset(_ tuned: [String]) -> some View {
         if let reset, !tuned.isEmpty {
-            Button("Reset") { reset.perform(tuned) }
+            Button("Reset") { noteClearingReset?.perform(tuned) }
                 .buttonStyle(.plain)
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(OllinInspector.accent)
@@ -1038,22 +1051,21 @@ public struct ParametersListView: View {
             HStack(spacing: 8) {
                 if let save {
                     Button(save.title) {
-                        saveMessage = save.perform()
+                        saveNote.saved(save.perform())
                     }
                     .help("Write the parameters you changed into the @Param lines they were declared on.")
                 }
                 if let reset {
                     Button("Reset all") {
-                        saveMessage = nil
-                        reset.perform(nil)
+                        noteClearingReset?.perform(nil)
                     }
                     .help("Put every parameter back to the value its @Param line declares. The sketch keeps running, with no reload and no setup().")
                 }
             }
             .buttonStyle(.bordered)
 
-            if let saveMessage {
-                Text(saveMessage)
+            if let text = saveNote.text {
+                Text(text)
                     .font(.system(size: 10.5))
                     .foregroundStyle(palette.textTertiary)
                     .multilineTextAlignment(.center)
@@ -1344,9 +1356,10 @@ struct KeyframeDiamond: View {
 }
 
 /// An editable mono value pill that also *scrubs*: drag horizontally across it
-/// to change the value (hold Option for a fine adjust, Shift for a coarse one),
-/// or click once to type. The pill shows the resize cursor so the drag invites
-/// itself.
+/// to change the value (hold Option for a fine adjust, Shift to step on round
+/// marks), or click once to type, and then the up and down arrows step it (with
+/// the same two keys). How far each of those goes is `ParamStepping`'s. The
+/// pill shows the resize cursor so the drag invites itself.
 ///
 /// Typing follows `ParamNumberEdit`: the text is the typist's until Return,
 /// Tab, or a click away commits it (clamped to `range`), and Escape puts the
@@ -1358,12 +1371,8 @@ struct KeyframeDiamond: View {
 /// `isInteracting` so the owning row parks its sync pull.
 private struct ScrubbableField: View {
     @Binding var value: Double
-    /// Value change per dragged point at normal speed.
-    let perPoint: Double
-    /// Snap scrubbed values to multiples of this (from `snapOrigin`), if given.
-    let snap: Double?
-    let snapOrigin: Double
-    let range: ClosedRange<Double>
+    /// The range, the step, and how far a drag or an arrow moves the value.
+    let stepping: ParamStepping
     @Binding var isInteracting: Bool
     let palette: OllinInspector.Palette
     /// A tiny leading tag inside the pill (the "x"/"y" of a vector field).
@@ -1404,6 +1413,12 @@ private struct ScrubbableField: View {
                 // Return commits and keeps the keys, so the next value can be
                 // typed straight over the last.
                 .onSubmit(commit)
+                // The arrows step the value from whatever the box holds, a
+                // number half typed included, and keep the keys.
+                .onKeyPress(keys: [.upArrow, .downArrow]) { press in
+                    nudge(press.key == .upArrow ? 1 : -1, pace: Self.pace(press.modifiers))
+                    return .handled
+                }
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 3)
@@ -1437,12 +1452,24 @@ private struct ScrubbableField: View {
                 // The field hands back the text it already shows as it takes
                 // or gives up the keys; only a real edit starts a draft.
                 guard text != edit.text(for: value) else { return }
-                if let shown = edit.type(text, over: value, in: range, accepts: previews) { value = shown }
+                if let shown = edit.type(text, over: value, in: stepping.range, accepts: previews) { value = shown }
             })
     }
 
     private func commit() {
-        if let committed = edit.commit(in: range) { value = committed }
+        if let committed = edit.commit(in: stepping.range) { value = committed }
+    }
+
+    /// An arrow: what was typed so far is committed first, so "12" and an up
+    /// arrow is the next mark past 12.
+    private func nudge(_ direction: Int, pace: ParamStepping.Pace) {
+        let start = edit.commit(in: stepping.range) ?? value
+        value = stepping.nudged(start, by: direction, pace: pace)
+    }
+
+    /// Option refines, Shift takes round marks; Option wins when both are held.
+    private static func pace(_ modifiers: EventModifiers) -> ParamStepping.Pace {
+        modifiers.contains(.option) ? .fine : modifiers.contains(.shift) ? .coarse : .plain
     }
 
     /// The transparent layer that owns the drag. It sits over the text field
@@ -1471,22 +1498,17 @@ private struct ScrubbableField: View {
                             isInteracting = true
                         }
                         guard let base = scrubBase else { return }
-                        // Option refines the drag, Shift accelerates it. A
-                        // finger carries no modifier, so a touch drag runs at
-                        // the plain rate.
+                        // Option refines the drag, Shift steps it on round
+                        // marks. A finger carries no modifier, so a touch drag
+                        // runs at the plain rate.
                         #if os(macOS)
                         let flags = NSEvent.modifierFlags
-                        let gain = flags.contains(.option) ? 0.1 : flags.contains(.shift) ? 10.0 : 1.0
+                        let pace: ParamStepping.Pace = flags.contains(.option) ? .fine
+                            : flags.contains(.shift) ? .coarse : .plain
                         #else
-                        let gain = 1.0
+                        let pace = ParamStepping.Pace.plain
                         #endif
-                        var v = base + drag.translation.width * perPoint * gain
-                        if let snap, snap > 0 {
-                            v = snapOrigin + ((v - snapOrigin) / snap).rounded() * snap
-                            value = Swift.min(Swift.max(v, range.lowerBound), range.upperBound)
-                        } else {
-                            value = ParamNumberText.dragged(v, perPoint: perPoint * gain, in: range)
-                        }
+                        value = stepping.dragged(from: base, points: drag.translation.width, pace: pace)
                     }
                     .onEnded { _ in
                         scrubBase = nil
@@ -1767,17 +1789,14 @@ private struct SliderParamRow: View {
         }
     }
 
-    /// Value change per point of drag: the scrub's rate, and the grid the slider
-    /// lands on (a sidebar track is about this many points long).
-    private var perPoint: Double {
-        (control.range.upperBound - control.range.lowerBound) / 250
-    }
+    private var stepping: ParamStepping { ParamStepping(range: control.range, step: control.step) }
+
+    /// Value change per point of drag: the scrub's rate, and the grid an
+    /// unstepped slider lands on (a sidebar track is about that many points long).
+    private var perPoint: Double { stepping.perPoint }
 
     private var valueField: some View {
-        ScrubbableField(
-            value: $value, perPoint: perPoint,
-            snap: control.step, snapOrigin: control.range.lowerBound,
-            range: control.range, isInteracting: $isEditingField, palette: palette)
+        ScrubbableField(value: $value, stepping: stepping, isInteracting: $isEditingField, palette: palette)
     }
 
     @ViewBuilder private var slider: some View {
@@ -2004,20 +2023,18 @@ private struct StepperParamRow: View {
         _lastKnown = State(initialValue: current)
     }
 
-    private var doubleRange: ClosedRange<Double> {
-        Double(control.range.lowerBound)...Double(control.range.upperBound)
+    private var stepping: ParamStepping {
+        ParamStepping(range: Double(control.range.lowerBound)...Double(control.range.upperBound),
+                      step: Double(control.step))
     }
 
     var body: some View {
         ControlRow(handle: handle, palette: palette, iconGutter: iconGutter) {
             HStack(spacing: 2) {
-                stepButton("minus", by: -control.step, disabled: Int(value) <= control.range.lowerBound)
-                ScrubbableField(
-                    value: $value,
-                    perPoint: Double(control.step) / 8,   // ~8 points of drag per step
-                    snap: Double(control.step), snapOrigin: Double(control.range.lowerBound),
-                    range: doubleRange, isInteracting: $isEditingField, palette: palette)
-                stepButton("plus", by: control.step, disabled: Int(value) >= control.range.upperBound)
+                stepButton("minus", direction: -1, disabled: Int(value) <= control.range.lowerBound)
+                ScrubbableField(value: $value, stepping: stepping,
+                                isInteracting: $isEditingField, palette: palette)
+                stepButton("plus", direction: 1, disabled: Int(value) >= control.range.upperBound)
             }
         }
         .onChange(of: value) { _, newValue in
@@ -2041,10 +2058,10 @@ private struct StepperParamRow: View {
         }
     }
 
-    private func stepButton(_ symbol: String, by delta: Int, disabled: Bool) -> some View {
+    /// A step down or up. Held, it repeats at the system's key-repeat pace.
+    private func stepButton(_ symbol: String, direction: Int, disabled: Bool) -> some View {
         Button {
-            value = Swift.min(Swift.max(value + Double(delta), doubleRange.lowerBound),
-                              doubleRange.upperBound)
+            value = stepping.nudged(value, by: direction, pace: .plain)
         } label: {
             SwiftUI.Image(systemName: symbol)
                 .font(.system(size: 10, weight: .semibold))
@@ -2055,6 +2072,7 @@ private struct StepperParamRow: View {
                     .strokeBorder(palette.fieldStroke, lineWidth: 0.5))
         }
         .buttonStyle(.plain)
+        .buttonRepeatBehavior(.enabled)
         .disabled(disabled)
     }
 }
@@ -2332,13 +2350,11 @@ private struct VectorParamRow: View {
         HStack(spacing: 6) {
             ScrubbableField(
                 value: $x,
-                perPoint: (control.xRange.upperBound - control.xRange.lowerBound) / 250,
-                snap: nil, snapOrigin: 0, range: control.xRange,
+                stepping: ParamStepping(range: control.xRange),
                 isInteracting: $isEditingX, palette: palette, prefix: "x")
             ScrubbableField(
                 value: $y,
-                perPoint: (control.yRange.upperBound - control.yRange.lowerBound) / 250,
-                snap: nil, snapOrigin: 0, range: control.yRange,
+                stepping: ParamStepping(range: control.yRange),
                 isInteracting: $isEditingY, palette: palette, prefix: "y")
         }
     }
@@ -2398,21 +2414,18 @@ private struct Vector3ParamRow: View {
                 KeyframeDiamond(handle: handle, palette: palette)
                 ScrubbableField(
                     value: $x,
-                    perPoint: (control.xRange.upperBound - control.xRange.lowerBound) / 250,
-                    snap: nil, snapOrigin: 0, range: control.xRange,
+                    stepping: ParamStepping(range: control.xRange),
                     isInteracting: $isEditingX, palette: palette, prefix: "x")
                 ScrubbableField(
                     value: $y,
-                    perPoint: (control.yRange.upperBound - control.yRange.lowerBound) / 250,
-                    snap: nil, snapOrigin: 0, range: control.yRange,
+                    stepping: ParamStepping(range: control.yRange),
                     isInteracting: $isEditingY, palette: palette, prefix: "y")
             }
             HStack(spacing: 6) {
                 Spacer(minLength: 0)
                 ScrubbableField(
                     value: $z,
-                    perPoint: (control.zRange.upperBound - control.zRange.lowerBound) / 250,
-                    snap: nil, snapOrigin: 0, range: control.zRange,
+                    stepping: ParamStepping(range: control.zRange),
                     isInteracting: $isEditingZ, palette: palette, prefix: "z")
             }
         }
@@ -2527,8 +2540,7 @@ private struct RectangleParamRow: View {
                        editing index: Int, prefix: String) -> some View {
         ScrubbableField(
             value: value,
-            perPoint: (range.upperBound - range.lowerBound) / 250,
-            snap: nil, snapOrigin: 0, range: range,
+            stepping: ParamStepping(range: range),
             isInteracting: $editing[index], palette: palette, prefix: prefix)
     }
 
@@ -2622,8 +2634,7 @@ private struct InsetsParamRow: View {
     private func field(_ value: Binding<Double>, editing index: Int, prefix: String) -> some View {
         ScrubbableField(
             value: value,
-            perPoint: (control.edgeRange.upperBound - control.edgeRange.lowerBound) / 250,
-            snap: nil, snapOrigin: 0, range: control.edgeRange,
+            stepping: ParamStepping(range: control.edgeRange),
             isInteracting: $editing[index], palette: palette, prefix: prefix)
     }
 
@@ -2723,14 +2734,12 @@ private struct RangeParamRow: View {
         HStack(spacing: 6) {
             ScrubbableField(
                 value: $lower,
-                perPoint: (control.outer.upperBound - control.outer.lowerBound) / 250,
-                snap: nil, snapOrigin: 0, range: control.outer,
+                stepping: ParamStepping(range: control.outer),
                 isInteracting: $isEditingLower, palette: palette, prefix: "min",
                 previews: { $0 <= upper })
             ScrubbableField(
                 value: $upper,
-                perPoint: (control.outer.upperBound - control.outer.lowerBound) / 250,
-                snap: nil, snapOrigin: 0, range: control.outer,
+                stepping: ParamStepping(range: control.outer),
                 isInteracting: $isEditingUpper, palette: palette, prefix: "max",
                 previews: { $0 >= lower })
         }

@@ -247,7 +247,7 @@ A tuned value lives in the running process, so it is gone when you quit the host
 
 Only the parameters you moved are written. A parameter nobody touched keeps whatever the file says, so editing a default by hand still takes effect. Everything around the value stays as you wrote it. The attribute, the range, the label, the spacing, and a comment at the end of the line all survive. The value is the only text that changes, because the file is scanned rather than written out again.
 
-Some parameters cannot be written, and the line under the button names the first one. A default the sketch computes has no literal value to replace:
+Some parameters cannot be written, and the line under the button names the first one. The line stays until you turn a value or put one back, since after that it describes values that are no longer the ones showing. A default the sketch computes has no literal value to replace:
 
 ```swift
 @Param(0...900) var radius = side / 3    // "radius is set to side / 3, so there is no value to replace."
@@ -273,7 +273,9 @@ From code, `$radius.reset()` puts one parameter back, and `resetParameters()` pu
 
 ### Scrubbing values
 
-Every numeric value box scrubs. Drag horizontally across it to change the value, as professional inspectors do. Hold **Option** while dragging for a fine adjustment at a tenth of the speed, or **Shift** for a coarse one at ten times the speed. A plain click starts typing instead. What you type stays as you typed it until you press Return or Tab, or click away. Only then is it clamped to the range. Meanwhile, a number already inside the range shows on the canvas as you type. In a box that runs from 10 to 30, typing 20 shows 20, never 10 after the first key. **Escape** puts back the value you started from. A click on the inspector's empty surface ends the typing. The slider, the box, and the scrub all drive the same parameter.
+Every numeric value box scrubs. Drag horizontally across it to change the value, as professional inspectors do. A drag about a sidebar's width covers the whole range, even a count from 0 to 10,000. A whole number with a short range moves a step every eight points. Hold **Option** while dragging for a fine adjustment at a tenth of the speed. Hold **Shift** to step on round marks at the same speed. In a box from 10 to 375 the marks fall every 10, and from 0 to 1 every 0.1. Shift leaves four to forty marks across the range, so it steps through the range rather than running to an end. A plain click starts typing instead.
+
+While you type in a box, the **up and down arrows** step it to the next mark. A mark is the declared step, or a tenth of Shift's mark in a box with no step. Shift takes Shift's marks, and Option a tenth again where the box has no step to keep. An arrow starts from the number you have typed so far, so typing 12 and pressing up gives 13. A whole number's **−** and **+** buttons repeat while you hold them. What you type stays as you typed it until you press Return or Tab, or click away. Only then is it clamped to the range. Meanwhile, a number already inside the range shows on the canvas as you type. In a box that runs from 10 to 30, typing 20 shows 20, never 10 after the first key. **Escape** puts back the value you started from. A click on the inspector's empty surface ends the typing. The slider, the box, and the scrub all drive the same parameter.
 
 A box shows a value without trailing zeros or a thousands separator: `175`, `0.25`, `25000`. A drag lands on round values, so a slider leaves `2.4` rather than a long fraction. The save button writes the same digits the box shows.
 
@@ -306,6 +308,7 @@ The projected value (`$radius`) is the parameter object itself, and it is what t
 ```swift
 osc.bind("/radius", to: $radius)            // an OSC address (OllinOSC)
 midi.bind(controlChange: 7, to: $radius)    // a MIDI CC knob (OllinMIDI)
+midi.bindPitchBend(to: $lean)               // the pitch wheel, its rest at the midpoint
 ```
 
 Each incoming value is mapped into the parameter's range and assigned, so a bound parameter updates on its own as messages arrive. The inspector control, the binding, and plain assignment in code all drive the same value, and the most recent write wins. Bindings target `Double` parameters. The `from:` input ranges and the other details are on the [OSC](../Integration/OSC.md#binding-to-a-param) and [MIDI](../Integration/MIDI.md#binding-to-a-param) pages.

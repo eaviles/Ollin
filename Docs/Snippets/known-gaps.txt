@@ -844,8 +844,8 @@ abf53e647a2d  Docs/Helpers/Parameters.md:174  cannot find type 'Opacity' in scop
 c0829da400f9  Docs/Helpers/Parameters.md:216  cannot find '$toonBands' in scope
 c0df20275b80  Docs/Helpers/Parameters.md:243  invalid redeclaration of 'radius'
 1bd9827ae463  Docs/Helpers/Parameters.md:252  cannot find 'side' in scope
-ae1f33524b53  Docs/Helpers/Parameters.md:306  cannot find 'osc' in scope
-d5eb0c2ff7b4  Docs/Helpers/Parameters.md:321  cannot find '$radius' in scope
+a954d343551e  Docs/Helpers/Parameters.md:308  cannot find 'osc' in scope
+d5eb0c2ff7b4  Docs/Helpers/Parameters.md:324  cannot find '$radius' in scope
 1c6c8dbec021  Docs/Helpers/Parameters.md:91  property wrappers are not yet supported in top-level code
 c79734a3b2fe  Docs/Helpers/Sonification.md:101  cannot find 'reading' in scope
 c1fdf39373c0  Docs/Helpers/Sonification.md:114  cannot find 'confidence' in scope
@@ -919,23 +919,25 @@ d7796974210e  Docs/Integration/Link.md:109  value of type '(UnsafePointer<CChar>
 5bd88c4dbca3  Docs/Integration/Link.md:70  value of type '(UnsafePointer<CChar>?, UnsafePointer<CChar>?) -> Int32' (aka '(Optional<UnsafePointer<Int8>>, Optional<UnsafePointer<Int8>>) -> Int32') has no member 'tempo'
 a52e2bd97757  Docs/Integration/Link.md:90  value of type '(UnsafePointer<CChar>?, UnsafePointer<CChar>?) -> Int32' (aka '(Optional<UnsafePointer<Int8>>, Optional<UnsafePointer<Int8>>) -> Int32') has no member 'tempo'
 e351de54086a  Docs/Integration/Link.md:96  value of type '(UnsafePointer<CChar>?, UnsafePointer<CChar>?) -> Int32' (aka '(Optional<UnsafePointer<Int8>>, Optional<UnsafePointer<Int8>>) -> Int32') has no member 'isPlaying'
-ac1bbc556674  Docs/Integration/MIDI.md:105  cannot find 'midi' in scope
-c9eb55c85c1a  Docs/Integration/MIDI.md:111  cannot find 'midi' in scope
-4b13b642dca5  Docs/Integration/MIDI.md:117  cannot find 'midi' in scope
-5a8b66a9cc02  Docs/Integration/MIDI.md:138  expected '{' in body of function declaration
-8c24eb50dea9  Docs/Integration/MIDI.md:148  cannot find 'midi' in scope
-9c84b9ce0054  Docs/Integration/MIDI.md:172  cannot convert value of type '()' to expected argument type 'Int'
-d6a82f4e607c  Docs/Integration/MIDI.md:193  cannot find 'midi' in scope
-82131413f3c3  Docs/Integration/MIDI.md:207  cannot find type 'PlayingNote' in scope
-1b93dfad6978  Docs/Integration/MIDI.md:238  expected '{' in body of function declaration
-31b20ced319c  Docs/Integration/MIDI.md:278  value of type '() -> clock_t' (aka '() -> UInt') has no member 'beats'
-35fedd6a3b30  Docs/Integration/MIDI.md:293  expected '{' in body of function declaration
-cd506c6783d2  Docs/Integration/MIDI.md:338  cannot find 'timecode' in scope
-987e475e3f82  Docs/Integration/MIDI.md:356  expected '{' in body of function declaration
-29df67a1ddf0  Docs/Integration/MIDI.md:377  cannot find 'level' in scope
+ac1bbc556674  Docs/Integration/MIDI.md:106  cannot find 'midi' in scope
+c9eb55c85c1a  Docs/Integration/MIDI.md:112  cannot find 'midi' in scope
+20a721da29ef  Docs/Integration/MIDI.md:118  cannot find 'midi' in scope
+4b13b642dca5  Docs/Integration/MIDI.md:126  cannot find 'midi' in scope
+5a8b66a9cc02  Docs/Integration/MIDI.md:147  expected '{' in body of function declaration
+8c24eb50dea9  Docs/Integration/MIDI.md:157  cannot find 'midi' in scope
+5dbdc1e3952b  Docs/Integration/MIDI.md:170  expected '{' in body of function declaration
+9c84b9ce0054  Docs/Integration/MIDI.md:205  cannot convert value of type '()' to expected argument type 'Int'
+d6a82f4e607c  Docs/Integration/MIDI.md:226  cannot find 'midi' in scope
+82131413f3c3  Docs/Integration/MIDI.md:240  cannot find type 'PlayingNote' in scope
+1b93dfad6978  Docs/Integration/MIDI.md:271  expected '{' in body of function declaration
+31b20ced319c  Docs/Integration/MIDI.md:311  value of type '() -> clock_t' (aka '() -> UInt') has no member 'beats'
+35fedd6a3b30  Docs/Integration/MIDI.md:326  expected '{' in body of function declaration
+cd506c6783d2  Docs/Integration/MIDI.md:371  cannot find 'timecode' in scope
+987e475e3f82  Docs/Integration/MIDI.md:389  expected '{' in body of function declaration
+29df67a1ddf0  Docs/Integration/MIDI.md:410  cannot find 'level' in scope
 d239cd3c7705  Docs/Integration/MIDI.md:53  cannot find 'message' in scope
 7f26d708f6c2  Docs/Integration/MIDI.md:69  cannot find 'message' in scope
-09b99eed83af  Docs/Integration/MIDI.md:84  expected '{' in body of function declaration
+e8ff70162566  Docs/Integration/MIDI.md:84  expected '{' in body of function declaration
 e4f65cafbb75  Docs/Integration/OSC.md:107  cannot find 'osc' in scope
 ec3cf3dba0c3  Docs/Integration/OSC.md:115  cannot find 'osc' in scope
 831fac54d6a5  Docs/Integration/OSC.md:136  expected '{' in body of function declaration

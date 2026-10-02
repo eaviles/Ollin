@@ -224,4 +224,40 @@ import Testing
         #expect(Set(notes.map(\.id)).count == 3)
         #expect(notes[0].id != notes[1].id)
     }
+
+    /// The wheel read as a fraction of its travel: the rest position is zero,
+    /// and each end is exactly one, though the fourteen bits put 8192 steps
+    /// below the rest and 8191 above it.
+    @Test func theWheelReadsAsAFractionOfItsTravel() {
+        #expect(ExpressionEngine.wheel(8192) == 0)
+        #expect(ExpressionEngine.wheel(0) == -1)
+        #expect(ExpressionEngine.wheel(16383) == 1)
+        #expect(ExpressionEngine.wheel(4096) == -0.5)
+        #expect(abs(ExpressionEngine.wheel(8192 + 4096) - 4096.0 / 8191) < 1e-12)
+        // Out of the fourteen bits a value is held to the ends.
+        #expect(ExpressionEngine.wheel(-5) == -1 && ExpressionEngine.wheel(20000) == 1)
+    }
+
+    /// A channel's wheel rests at zero until it moves, one channel's bend is
+    /// not another's, any channel reads the one that moved last, and a reset
+    /// of the channel's controllers puts its wheel back to rest.
+    @Test func eachChannelHasItsOwnWheel() {
+        var engine = ExpressionEngine()
+        #expect(engine.wheel(channel: nil) == 0)
+        #expect(engine.wheel(channel: 1) == 0)
+
+        engine.apply(message(.pitchBend(value: 16383), channel: 2))
+        #expect(engine.wheel(channel: 2) == 1)
+        #expect(engine.wheel(channel: 1) == 0)
+        #expect(engine.wheel(channel: nil) == 1)
+
+        engine.apply(message(.pitchBend(value: 0), channel: 5))
+        #expect(engine.wheel(channel: nil) == -1)
+        #expect(engine.wheel(channel: 2) == 1)
+
+        engine.apply(message(.controlChange(controller: 121, value: 0), channel: 5))
+        #expect(engine.wheel(channel: 5) == 0)
+        #expect(engine.wheel(channel: nil) == 0)
+        #expect(engine.wheel(channel: 2) == 1)
+    }
 }

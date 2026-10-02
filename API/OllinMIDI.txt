@@ -6,13 +6,17 @@ final class MIDIInput: Sendable
   func availableSources() -> [MIDIEndpoint]
   func bind(controlChange: Int, to: Param<Double>, channel: Int? = default, from: ClosedRange<Double> = default)
   func bind(controlChange: Int, to: Param<Tempo>, channel: Int? = default, from: ClosedRange<Double> = default)
+  func bindPitchBend(to: Param<Double>, channel: Int? = default, travel: ClosedRange<Double> = default)
+  func bindPitchBend(to: Param<Tempo>, channel: Int? = default, travel: ClosedRange<Double> = default)
   func controlValue(_: Int, channel: Int? = default) -> Int?
   func controlValue(_: Int, default: Int, channel: Int? = default) -> Int
   func isNoteOn(_: Int, channel: Int? = default) -> Bool
   func messages() -> [MIDIMessage]
+  func pitchBend(channel: Int? = default) -> Double
   func start() throws
   func stop()
   func unbind(controlChange: Int, channel: Int? = default)
+  func unbindPitchBend(channel: Int? = default)
   init(name: String = default)
   var heldNotes: [HeldNote] { get }
   var isRunning: Bool { get }

@@ -8435,8 +8435,15 @@ so a user type can conform by mapping onto an existing control kind. `icon:` /
 `group:` put an SF Symbol on the row and split the list into titled group
 cards (declaration order; ungrouped first).
 
-Numeric value boxes scrub (drag to change, Option fine, Shift coarse, click to
-type). Two SwiftUI gotchas were real bugs: any Text sharing a scrub pill's
+Numeric value boxes scrub (drag to change, Option fine, Shift on round marks,
+click to type, and the arrows step a box being typed in). How far each goes is
+one pure value, `ParamStepping`, so every box (slider pill, stepper, vector,
+rectangle, insets, range ends) moves by the same rules and the tests read them
+without a window. Shift used to multiply a rate that already covered the range
+in a track's length, so it ran to an end in about 25 points; it now keeps that
+rate and lands on marks instead. The arrows are an `onKeyPress` on the text
+field, which a real key event through the panel reaches (the box test sends one
+through `NSWindow.sendEvent`, and a missing handler turns it red). Two SwiftUI gotchas were real bugs: any Text sharing a scrub pill's
 HStack must be `.fixedSize()`, or the paired-pill (Vector2) row compresses it
 to zero width and it silently vanishes; and `.segmented`'s ViewThatFits needs
 the label `.fixedSize()`-pinned (an un-pinned truncatable label never wraps)

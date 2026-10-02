@@ -91,8 +91,9 @@ func availableSources() -> [MIDIEndpoint]    // the connected devices: `name`, `
 func controlValue(_ controller: Int, channel: Int? = nil) -> Int?
 func controlValue(_ controller: Int, default: Int, channel: Int? = nil) -> Int
 
-// 2. State of a note right now (held keys/pads)
+// 2. State of a note right now (held keys/pads), and where the pitch wheel is
 func isNoteOn(_ note: Int, channel: Int? = nil) -> Bool
+func pitchBend(channel: Int? = nil) -> Double   // -1 fully down, 0 at rest, 1 fully up
 
 // 3. Everything since the last call, in order (discrete events)
 func messages() -> [MIDIMessage]
@@ -111,6 +112,14 @@ let radius = Double(midi.controlValue(7, default: 0)) / 127 * 300
 ```swift
 if midi.isNoteOn(60) { sustain() }
 ```
+
+**The pitch wheel** reads as a fraction of its travel: -1 fully down, 0 at rest, and 1 fully up. It reads 0 until the wheel moves, since a wheel springs back to its center. Without a `channel` it reads the channel whose wheel moved last:
+
+```swift
+rotate(midi.pitchBend() * .pi / 4)   // the wheel leans the drawing up to 45° each way
+```
+
+That is the whole channel's wheel. On a controller that bends each note on its own, each note's bend is in [`heldNotes`](#per-note-expression-mpe).
 
 **The event queue**, for discrete events such as struck notes, transport, and clock. `messages()` returns everything received since the last call, in arrival order, and then clears the queue. Call it once per frame:
 
@@ -155,6 +164,30 @@ override func setup() {
 ```
 
 A bound parameter updates on its own as messages arrive, so you do not read it each frame. The same parameter still works from the inspector slider and from code. Whichever source moved it most recently sets the value.
+
+**The pitch wheel binds the same way**, about its rest:
+
+```swift
+func bindPitchBend(to param: Param<Double>, channel: Int? = nil,
+                   travel: ClosedRange<Double> = -1...1)
+func unbindPitchBend(channel: Int? = nil)
+```
+
+`travel` is the part of the wheel's travel that spans the parameter's range, on the scale `pitchBend()` reads. By default it is the whole travel. The wheel at rest then holds the parameter at the middle of its range, and each end of the wheel reaches that end of the range. Pass `0...1` and only an upward bend moves the parameter, from the bottom of its range at rest to the top. A bend outside `travel` holds the parameter at its end. `to:` takes a `Param<Tempo>` here too.
+
+```swift
+let midi = MIDIInput()
+@Param(-30...30) var lean = 0.0
+@Param(0...1) var glow = 0.0
+
+override func setup() {
+    try? midi.start()
+    midi.bindPitchBend(to: $lean)                   // at rest 0, the ends -30 and 30
+    midi.bindPitchBend(to: $glow, channel: 2, travel: 0...1)
+}
+```
+
+The wheel sends fourteen bits: 8,192 steps below its rest and 8,191 above. The binding divides each side by its own count, so the rest lands exactly on the midpoint and both ends reach the range's ends.
 
 **Smoothing the moves.** Give the `@Param` a `smoothing:`, and the value glides to each new position instead of jumping. Smoothing is a property of the parameter, so it applies whether the value comes from MIDI, OSC, or a drag of the inspector slider:
 

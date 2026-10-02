@@ -92,6 +92,109 @@ struct ParamNumberFieldTests {
         #expect(ParamNumberText.dragged(2.428, perPoint: 0.1, in: 2.37...2.43) <= 2.43)
     }
 
+    // MARK: How far a box moves
+
+    /// A whole number drags at a step per eight points on a small range, as it
+    /// always did, and covers a large range in a track's length rather than in
+    /// thousands of points.
+    @Test func aWholeNumberDragsAtARateThatFollowsItsRange() {
+        let small = ParamStepping(range: 0...10, step: 1)
+        #expect(small.perPoint == 1.0 / 8)
+        let large = ParamStepping(range: 0...10_000, step: 1)
+        #expect(large.perPoint == 40)
+        #expect(large.dragged(from: 0, points: 250, pace: .plain) == 10_000)
+        #expect(large.dragged(from: 5_000, points: 10, pace: .plain) == 5_400)
+        // Option is a tenth of the pace, and it still lands on whole steps.
+        #expect(large.dragged(from: 5_000, points: 10, pace: .fine) == 5_040)
+        #expect(small.dragged(from: 3, points: 41, pace: .plain) == 8)
+        // A free number keeps the track-length rate it had.
+        #expect(ParamStepping(range: 10...375).perPoint == 365.0 / 250)
+    }
+
+    /// Shift lands a drag on round marks, four to forty of them across the
+    /// range, at the plain rate, so it steps through the range instead of
+    /// running to an end in a few points.
+    @Test func shiftStepsThroughTheRangeRatherThanRunningToAnEnd() {
+        let free = ParamStepping(range: 0...1)
+        #expect(free.coarse == 0.1)
+        #expect(free.dragged(from: 0.437, points: 10, pace: .coarse) == 0.5)
+        #expect(free.dragged(from: 0.437, points: 30, pace: .coarse) == 0.6)
+        #expect(free.dragged(from: 0.437, points: -30, pace: .coarse) == 0.3)
+        // Twenty-five points under Shift used to be the whole range.
+        #expect(free.dragged(from: 0.5, points: 25, pace: .coarse) == 0.6)
+        #expect(free.dragged(from: 0.5, points: 400, pace: .coarse) == 1)
+
+        let wide = ParamStepping(range: 10...375)
+        #expect(wide.coarse == 10)
+        #expect(wide.dragged(from: 175, points: 20, pace: .coarse) == 200)
+        #expect(wide.dragged(from: 370, points: 20, pace: .coarse) == 375)
+
+        let whole = ParamStepping(range: 0...10_000, step: 1)
+        #expect(whole.coarse == 1_000)
+        #expect(whole.dragged(from: 4_321, points: 20, pace: .coarse) == 5_000)
+        // A small whole range has no coarser round number than its step.
+        #expect(ParamStepping(range: 0...10, step: 1).coarse == 1)
+        // A step that is not a power of ten takes Shift in whole steps.
+        let threes = ParamStepping(range: 0...300, step: 3)
+        #expect(threes.coarse == 30)
+        #expect(threes.dragged(from: 0, points: 300, pace: .coarse) == 300)
+    }
+
+    /// An arrow takes a box to the next mark on its grid: a tenth of Shift's
+    /// mark on a free box, the declared step on a stepped one, Shift's mark
+    /// under Shift, and a tenth again under Option where the box has no step
+    /// to keep.
+    @Test func anArrowStepsToTheNextMarkOnTheGrid() {
+        let free = ParamStepping(range: 0...1)
+        #expect(free.unit == 0.01)
+        #expect(free.nudged(0.437, by: 1, pace: .plain) == 0.44)
+        #expect(free.nudged(0.437, by: -1, pace: .plain) == 0.43)
+        #expect(free.nudged(0.44, by: 1, pace: .plain) == 0.45)
+        #expect(free.nudged(0.437, by: 1, pace: .coarse) == 0.5)
+        #expect(free.nudged(0.5, by: -1, pace: .coarse) == 0.4)
+        #expect(free.nudged(0.437, by: 1, pace: .fine) == 0.438)
+        // Binary noise on a mark still counts as the mark.
+        #expect(free.nudged(0.1 + 0.2, by: 1, pace: .plain) == 0.31)
+        // An arrow at an end stays there, and one past a mark lands on the end.
+        #expect(free.nudged(1, by: 1, pace: .plain) == 1)
+        #expect(ParamStepping(range: 10...375).nudged(370, by: 1, pace: .coarse) == 375)
+        #expect(ParamStepping(range: 10...375).nudged(375, by: -1, pace: .coarse) == 370)
+
+        let count = ParamStepping(range: 50...500, step: 10)
+        #expect(count.unit == 10)
+        #expect(count.nudged(120, by: 1, pace: .plain) == 130)
+        #expect(count.nudged(120, by: 1, pace: .fine) == 130)
+        #expect(count.coarse == 100)
+        // Zero sits on this grid, so Shift's marks are the round hundreds.
+        #expect(count.nudged(120, by: 1, pace: .coarse) == 200)
+        #expect(count.nudged(200, by: -1, pace: .coarse) == 100)
+        // Where zero is off the step's grid, the marks count from the floor.
+        #expect(ParamStepping(range: 5...455, step: 10).nudged(120, by: 1, pace: .coarse) == 205)
+        #expect(count.nudged(495, by: -1, pace: .plain) == 490)
+
+        let quarters = ParamStepping(range: 0...10, step: 0.25)
+        #expect(quarters.nudged(2.5, by: 1, pace: .plain) == 2.75)
+        #expect(quarters.nudged(2.6, by: -1, pace: .plain) == 2.5)
+
+        // A range with no width has nowhere to go, and says so without a NaN.
+        let none = ParamStepping(range: 4...4)
+        #expect(none.nudged(4, by: 1, pace: .plain) == 4)
+        #expect(none.dragged(from: 4, points: 50, pace: .coarse) == 4)
+    }
+
+    /// The save's sentence goes once a value is turned by hand or put back,
+    /// since it describes the values before that.
+    @Test func whatASaveSaidGoesWithTheNextEdit() {
+        var note = ParamSaveNote()
+        #expect(note.text == nil)
+        note.saved("Saved 3 values into Sketch.swift.")
+        #expect(note.text == "Saved 3 values into Sketch.swift.")
+        note.changed()
+        #expect(note.text == nil)
+        note.saved(nil)
+        #expect(note.text == nil)
+    }
+
     // MARK: Typing
 
     /// Types `text` one key at a time over a box holding `start`, the way the
@@ -223,6 +326,21 @@ struct ParamNumberBoxTests {
         return editor
     }
 
+    /// An arrow key as the keyboard sends it, through the panel's own event
+    /// path, so whatever the box does with it is what a person would get.
+    private func press(_ arrow: Arrow, _ modifiers: NSEvent.ModifierFlags = [], on panel: NSWindow) throws {
+        let characters = arrow == .up ? "\u{F700}" : "\u{F701}"
+        let event = try #require(NSEvent.keyEvent(
+            with: .keyDown, location: .zero, modifierFlags: modifiers.union([.numericPad, .function]),
+            timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: panel.windowNumber,
+            context: nil, characters: characters, charactersIgnoringModifiers: characters,
+            isARepeat: false, keyCode: arrow == .up ? 126 : 125))
+        panel.sendEvent(event)
+        settle(0.15)
+    }
+
+    enum Arrow { case up, down }
+
     private func type(_ text: String, into editor: NSTextView) {
         for key in text {
             editor.insertText(String(key), replacementRange: editor.selectedRange())
@@ -274,5 +392,52 @@ struct ParamNumberBoxTests {
         panel.makeFirstResponder(nil)
         settle()
         #expect(sketch.band == 20...90)
+    }
+
+    /// The arrows step a box being typed in: to the next mark on its grid,
+    /// Shift's round marks under Shift, from a number half typed, and never
+    /// past an end.
+    @Test func theArrowsStepABoxToItsNextMark() throws {
+        let sketch = Boxes()
+        let stats = FrameStats()
+        let controller = StatsPanelController()
+        controller.sync(visible: true, sketch: sketch, stats: stats)
+        settle(0.4)
+        defer { controller.close() }
+        let panel = try #require(controller.window)
+        panel.makeKey()
+        let content = try #require(panel.contentView)
+        let fields = textFields(under: content)
+        try #require(fields.count >= 5)
+        let radiusBox = fields[1], countBox = fields[2]
+
+        // 10...375 has Shift's marks every 10, and an arrow every 1.
+        var editor = try startTyping(in: radiusBox, on: panel)
+        try press(.up, on: panel)
+        #expect(sketch.radius == 176)
+        try press(.up, .shift, on: panel)
+        #expect(sketch.radius == 180)
+        try press(.down, .shift, on: panel)
+        #expect(sketch.radius == 170)
+        #expect(radiusBox.stringValue == "170" || editor.string == "170")
+
+        // A number half typed is where the arrow starts.
+        editor.selectAll(nil)
+        type("12", into: editor)
+        try press(.up, on: panel)
+        #expect(sketch.radius == 13)
+        try press(.down, .shift, on: panel)
+        try press(.down, .shift, on: panel)
+        #expect(sketch.radius == 10, "an arrow went past the range's floor")
+
+        // A stepped whole number takes its step, and Shift the round hundreds.
+        editor = try startTyping(in: countBox, on: panel)
+        try press(.up, on: panel)
+        #expect(sketch.count == 130)
+        try press(.up, .shift, on: panel)
+        #expect(sketch.count == 200)
+        panel.makeFirstResponder(nil)
+        settle()
+        #expect(countBox.stringValue == "200")
     }
 }

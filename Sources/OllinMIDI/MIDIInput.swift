@@ -34,9 +34,11 @@ import os
 ///
 /// ```swift
 /// @Param(20...400, smoothing: .eased(0.3)) var radius = 120
+/// @Param(-30...30) var lean = 0.0
 /// override func setup() {
 ///     try? midi.start()
 ///     midi.bind(controlChange: 7, to: $radius)   // CC 0…127 mapped into 20…400
+///     midi.bindPitchBend(to: $lean)               // the wheel at rest is the midpoint
 /// }
 /// ```
 ///
@@ -70,6 +72,8 @@ public final class MIDIInput: @unchecked Sendable {
         var expression = ExpressionEngine()
         var inbox: [MIDIMessage] = []
         var bindings: [ControlKey: ParamBinding] = [:]
+        /// The wheel's bindings by channel, 0 for any channel.
+        var bendBindings: [Int: ParamBinding] = [:]
         var listeners: [@Sendable (MIDIMessage, Double) -> Void] = []
         var exclusiveListeners: [@Sendable ([UInt8], Double) -> Void] = []
     }
@@ -193,6 +197,23 @@ public final class MIDIInput: @unchecked Sendable {
         state.withLock { $0.expression.isNoteOn(note, channel: channel) }
     }
 
+    /// Where the pitch wheel is, as a fraction of its travel: -1 fully down,
+    /// 0 at rest, 1 fully up. Pass `channel` (1…16) to read one channel; omit
+    /// it for the channel whose wheel moved last. It reads 0 until a bend
+    /// arrives, since a wheel springs back to its center, and a reset of the
+    /// channel's controllers puts it back there.
+    ///
+    /// ```swift
+    /// let lean = midi.pitchBend()          // -1...1
+    /// rotate(lean * .pi / 4)
+    /// ```
+    ///
+    /// This is the whole channel's wheel. On a controller that gives each
+    /// note a channel of its own, each note's bend is in ``heldNotes``.
+    public func pitchBend(channel: Int? = nil) -> Double {
+        state.withLock { $0.expression.wheel(channel: channel) }
+    }
+
     // MARK: Reading, held notes and their expression
 
     /// Every note held right now, oldest first, each with its bend, pressure,
@@ -276,6 +297,44 @@ public final class MIDIInput: @unchecked Sendable {
     public func unbind(controlChange controller: Int, channel: Int? = nil) {
         let key = ControlKey(channel: channel ?? 0, controller: controller)
         state.withLock { $0.bindings[key] = nil }
+    }
+
+    /// Drives a `@Param` from the pitch wheel. `travel` is the part of the
+    /// wheel's travel that spans the parameter's range, on the scale
+    /// `pitchBend()` reads: -1 fully down, 0 at rest, 1 fully up. The whole
+    /// travel by default, so the wheel at rest holds the parameter at its
+    /// midpoint and each end of the travel reaches that end of the range.
+    /// Give the param `smoothing:` and the wheel glides it rather than steps
+    /// it. Pass `channel` (1…16) to bind one channel only.
+    ///
+    /// ```swift
+    /// @Param(-30...30) var lean = 0.0
+    /// midi.bindPitchBend(to: $lean)                   // rest is 0, the ends are ±30
+    /// midi.bindPitchBend(to: $glow, travel: 0...1)    // only an upward bend moves it
+    /// ```
+    ///
+    /// A bend outside `travel` maps past the range and the parameter holds
+    /// it to its end.
+    public func bindPitchBend(to param: Param<Double>, channel: Int? = nil,
+                              travel: ClosedRange<Double> = -1...1) {
+        let binding = ParamBinding(input: travel, output: param.range) { param.wrappedValue = $0 }
+        state.withLock { $0.bendBindings[channel ?? 0] = binding }
+    }
+
+    /// Binds the pitch wheel to a `Tempo` parameter, mapped into its range in
+    /// beats per minute; at rest the tempo sits at the range's midpoint. The
+    /// beats per bar stay what the declaration gave them.
+    public func bindPitchBend(to param: Param<Tempo>, channel: Int? = nil,
+                              travel: ClosedRange<Double> = -1...1) {
+        let binding = ParamBinding(input: travel, output: param.range) {
+            param.wrappedValue = Tempo($0, beatsPerBar: param.wrappedValue.beatsPerBar)
+        }
+        state.withLock { $0.bendBindings[channel ?? 0] = binding }
+    }
+
+    /// Removes a binding previously set with `bindPitchBend(to:channel:travel:)`.
+    public func unbindPitchBend(channel: Int? = nil) {
+        state.withLock { $0.bendBindings[channel ?? 0] = nil }
     }
 
     // MARK: Listening (module-internal)
@@ -392,6 +451,10 @@ public final class MIDIInput: @unchecked Sendable {
                     let wildcard = ControlKey(channel: 0, controller: controller)
                     if let binding = state.bindings[exact] ?? state.bindings[wildcard] {
                         collected.append((binding, Double(value)))
+                    }
+                case .pitchBend(let value):
+                    if let binding = state.bendBindings[message.channel] ?? state.bendBindings[0] {
+                        collected.append((binding, ExpressionEngine.wheel(value)))
                     }
                 default:
                     break

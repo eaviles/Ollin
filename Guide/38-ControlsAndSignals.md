@@ -116,7 +116,7 @@ override func setup() {
 }
 ```
 
-`$radius` with the dollar sign is the parameter itself rather than its value, the handle a binding holds on to.
+`$radius` with the dollar sign is the parameter itself rather than its value, the handle a binding holds on to. A keyboard's pitch wheel binds the same way, with `midi.bindPitchBend(to: $radius)`, and the wheel at rest holds the parameter at the middle of its range.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/38-ControlsAndSignals/BindingFlow-dark.jpg">

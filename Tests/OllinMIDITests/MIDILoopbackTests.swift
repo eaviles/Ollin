@@ -125,6 +125,65 @@ extension CoreMIDILoopback {
             #expect(value?.beatsPerBar == 3)
         }
 
+        /// The wheel bound to a parameter: at rest it reads the parameter's
+        /// midpoint, and each end of its travel reaches that end of the range.
+        /// The reading `pitchBend()` gives is the same fraction.
+        @Test func pitchBendDrivesAParamAboutItsMidpoint() async {
+            guard let (output, input) = await makePair() else { return }   // soft-skip
+            defer { output.close(); input.stop() }
+
+            let parameter = Param(wrappedValue: 7.0, 20...400)
+            input.bindPitchBend(to: parameter.projectedValue)
+
+            output.pitchBend(16383)
+            let top = await waitFor { parameter.wrappedValue == 400 ? parameter.wrappedValue : nil }
+            #expect(top == 400)
+            #expect(input.pitchBend() == 1)
+
+            output.pitchBend(0)
+            let bottom = await waitFor { parameter.wrappedValue == 20 ? parameter.wrappedValue : nil }
+            #expect(bottom == 20)
+            #expect(input.pitchBend() == -1)
+
+            output.pitchBend(8192)
+            let rest = await waitFor { parameter.wrappedValue == 210 ? parameter.wrappedValue : nil }
+            #expect(rest == 210)
+            #expect(input.pitchBend() == 0)
+        }
+
+        /// A binding on one channel leaves another channel's wheel alone, an
+        /// input range of half the travel spends the whole parameter on it, a
+        /// tempo keeps its beats per bar, and an unbound wheel moves nothing.
+        @Test func pitchBendBindsByChannelAndRange() async {
+            guard let (output, input) = await makePair() else { return }   // soft-skip
+            defer { output.close(); input.stop() }
+
+            let level = Param(wrappedValue: 0.5, 0...1)
+            input.bindPitchBend(to: level.projectedValue, channel: 3, travel: 0...1)
+            let tempo = Param(wrappedValue: Tempo(120, beatsPerBar: 3), 60...180)
+            input.bindPitchBend(to: tempo.projectedValue, channel: 4)
+
+            output.pitchBend(16383, channel: 2)                 // not the bound channel
+            output.pitchBend(8192 + 4096, channel: 4)           // tempo, half way up
+            let bpm = await waitFor { tempo.wrappedValue.beatsPerMinute > 149 ? tempo.wrappedValue : nil }
+            #expect(abs((bpm?.beatsPerMinute ?? 0) - (120 + 60 * 4096.0 / 8191)) < 1e-9)
+            #expect(bpm?.beatsPerBar == 3)
+            #expect(level.wrappedValue == 0.5, "a bend on channel 2 reached the channel 3 binding")
+
+            output.pitchBend(8192, channel: 3)                  // rest is the bottom of 0...1
+            let floor = await waitFor { level.wrappedValue == 0 ? level.wrappedValue : nil }
+            #expect(floor == 0)
+            output.pitchBend(16383, channel: 3)
+            let full = await waitFor { level.wrappedValue == 1 ? level.wrappedValue : nil }
+            #expect(full == 1)
+
+            input.unbindPitchBend(channel: 3)
+            output.pitchBend(8192, channel: 3)
+            _ = await waitFor { input.pitchBend(channel: 3) == 0 ? true : nil }
+            #expect(input.pitchBend(channel: 3) == 0)
+            #expect(level.wrappedValue == 1, "an unbound wheel still moved the parameter")
+        }
+
         /// Timecode crosses the link both ways it travels: eight quarter frames
         /// land a `TimecodeClock` on the frame they spell plus the frame the set
         /// took, and a full-frame exclusive (the two-packet path through the

@@ -31,7 +31,6 @@ These are near-term, fairly self-contained pieces. Each one is small and well-sc
 
 - **More SDF shapes, when a good fit appears.** A candidate is any canonical form parameterized by a size and a ratio or two. Such a shape drops into the instanced-SDF path as four small touch-points: a shape tag, a builder, a distance function, and a fragment case.
 - **Drawing part of an image.** `drawImage` takes a source rectangle inside the image. A sprite sheet, a tile set, or a film strip then draws one frame at a time, with no cropping first.
-- **Pitch bend bound to a parameter.** A parameter binds to a MIDI control change. The pitch wheel is the other continuous control on most keyboards, and it binds the same way.
 - **Smoothing that keeps the points.** An outline can be smoothed by a moving average over a window of its neighbors, keeping one point for each point it had, so a traced or resampled ring loses its facets without doubling its size.
 - **Even spacing at large counts.** A `surfacePoints` scatter of hundreds of thousands of points, such as a forest over a whole valley, keeps its even spacing without a long wait in `setup()`.
 
