@@ -4,7 +4,7 @@
 
 ## Integration
 
-| [![DMXLoopback](https://media.ollin.art/examples/Integration/DMXLoopback/still-640.jpg?v=479b4033)](DMXLoopback/) | [![LaserPreview](https://media.ollin.art/examples/Integration/LaserPreview/still-640.jpg?v=d7597429)](LaserPreview/) | [![MIDILoopback](https://media.ollin.art/examples/Integration/MIDILoopback/still-640.jpg?v=af43d088)](MIDILoopback/) | [![OSCLoopback](https://media.ollin.art/examples/Integration/OSCLoopback/still-640.jpg?v=5a5bc5fc)](OSCLoopback/) |
+| [![DMXLoopback](https://media.ollin.art/examples/Integration/DMXLoopback/still-640.jpg?v=479b4033)](DMXLoopback/) | [![LaserPreview](https://media.ollin.art/examples/Integration/LaserPreview/still-640.jpg?v=f0a54584)](LaserPreview/) | [![MIDILoopback](https://media.ollin.art/examples/Integration/MIDILoopback/still-640.jpg?v=af43d088)](MIDILoopback/) | [![OSCLoopback](https://media.ollin.art/examples/Integration/OSCLoopback/still-640.jpg?v=5a5bc5fc)](OSCLoopback/) |
 |---|---|---|---|
 | [DMXLoopback](DMXLoopback/) | [LaserPreview](LaserPreview/) | [MIDILoopback](MIDILoopback/) | [OSCLoopback](OSCLoopback/) |
 | [![TUIOSurface](https://media.ollin.art/examples/Integration/TUIOSurface/still-640.jpg?v=feb1fa97)](TUIOSurface/) | [![VirtualCamera](https://media.ollin.art/examples/Integration/VirtualCamera/still-640.jpg?v=1abb1500)](VirtualCamera/) |  |  |

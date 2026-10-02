@@ -5387,25 +5387,25 @@
     },
     "Integration/LaserPreview": {
       "bytes": {
-        "loop": 3079260,
-        "loopSmall": 638660,
-        "still": 118332,
-        "stillSmall": 43717
+        "loop": 3081652,
+        "loopSmall": 640408,
+        "still": 118068,
+        "stillSmall": 43647
       },
       "frame": 480,
       "height": 1080,
-      "length": "10s",
-      "loop": "examples/Integration/LaserPreview/loop.mp4?v=beb7fd2c",
-      "loopSmall": "examples/Integration/LaserPreview/loop-640.mp4?v=97a59f6e",
+      "length": "10.0s",
+      "loop": "examples/Integration/LaserPreview/loop.mp4?v=82d2cc37",
+      "loopSmall": "examples/Integration/LaserPreview/loop-640.mp4?v=49577b62",
       "motion": 1.989,
-      "rendered": "2026-09-26",
+      "rendered": "2026-10-02",
       "seconds": 10.0,
       "seed": 1,
       "sound": false,
-      "source": "d86d0033bf2e566c",
+      "source": "2279fb567ca76e98",
       "staged": "no projector: the beam's path is drawn and nothing goes out",
-      "still": "examples/Integration/LaserPreview/still.jpg?v=a5f1cc31",
-      "stillSmall": "examples/Integration/LaserPreview/still-640.jpg?v=d7597429",
+      "still": "examples/Integration/LaserPreview/still.jpg?v=d611a7de",
+      "stillSmall": "examples/Integration/LaserPreview/still-640.jpg?v=f0a54584",
       "width": 1080
     },
     "Integration/MIDILoopback": {
