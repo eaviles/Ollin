@@ -29,13 +29,12 @@
 # by the same rule as the media (`example-devices.zsh`); a sketch that reads
 # a camera takes the bundled photograph (`--photo`), as it does for its media.
 #
-# Two kinds of example cannot come back yet, and are said to be so rather
-# than counted as failures. A sketch that draws the world as it is at the
-# moment it runs (a live feed, today's weather) is held back: two runs are
-# two moments. A sketch that reads a detector (`import OllinVision`) is run,
-# and a difference is reported as filed, because a detector's reading lands
-# in an export at a wall-clock moment rather than on the export's clock
-# (DESIGN-NOTES.md, *A detector in step with the export*).
+# A sketch that draws the world as it is at the moment it runs (a live feed,
+# today's weather) cannot come back, and is held back rather than counted as
+# a failure: two runs are two moments. A sketch that reads a detector is
+# checked like any other, since an export analyzes every frame its sources
+# offer on the export's own clock, models loaded first. The one detector that
+# does not answer the same frames the same way twice is held back too.
 #
 # A pass over every example is about an hour on the M2, one GPU job at a
 # time, so this is a milestone check rather than a preflight gate. `--keep
@@ -64,10 +63,11 @@ LIVE_WORLD=(Data/Edits Data/Outside)
 # The loopbacks whose far end answers over UDP, so a frame draws whichever
 # packet had landed by then, a different one each run.
 OVER_UDP=(Integration/DMXLoopback Integration/OSCLoopback)
-# The ones too slow to reach the media's frame here, with the frame they are
-# checked at instead. Watercolor takes about four seconds a frame.
-typeset -A EARLY_FRAME
-EARLY_FRAME=(Shapes/Watercolor 2)
+# The ones whose detector does not answer the same frames the same way twice:
+# Vision's trajectory request fits its arcs a few millionths differently from
+# run to run on identical frames and timestamps, and over a long run that
+# changes which sightings join an arc.
+NOT_EXACT=(Vision/TrajectoryTracking)
 
 frame_override=""
 keep=""
@@ -151,10 +151,9 @@ print(f"{n} pixels ({share:.2f}%), up to {int(delta.max())} levels, "
 EOF
 }
 
-same=0 differed=0 failed=0 held=0 filed=0
+same=0 differed=0 failed=0 held=0
 differing=()
 failing=()
-filing=()
 
 record() {
   [[ -n $log ]] && print -r -- "$1	$2	$3" >> $log
@@ -197,15 +196,9 @@ check() {
     (( same += 1 ))
     return
   fi
-  if grep -q '^import OllinVision$' $sketch; then
-    echo "  differs at frame $frame, as filed (a detector's reading): $verdict"
-    record $name filed "frame $frame: $verdict"
-    filing+=($name); (( filed += 1 ))
-  else
-    echo "  DIFFERS at frame $frame: $verdict"
-    record $name differs "frame $frame: $verdict"
-    differing+=($name); (( differed += 1 ))
-  fi
+  echo "  DIFFERS at frame $frame: $verdict"
+  record $name differs "frame $frame: $verdict"
+  differing+=($name); (( differed += 1 ))
   if [[ -n $keep ]]; then
     local stem=$keep/${name//\//-}
     cp $OUT/first.png $stem-first.png
@@ -216,19 +209,11 @@ check() {
 # The frame an example's still is taken at.
 frame_of() {
   [[ -n $frame_override ]] && { echo $frame_override; return; }
-  [[ -n ${EARLY_FRAME[$1]} ]] && { echo ${EARLY_FRAME[$1]}; return; }
   python3 - "$MANIFEST" "$1" "$FRAME_DEFAULT" <<'EOF'
 import json, sys
 rows = json.load(open(sys.argv[1])).get("examples", {})
 print(rows.get(sys.argv[2], {}).get("frame", sys.argv[3]))
 EOF
-}
-
-# What makes a detector's frame come back: it loads on another thread, so
-# the still is settled the way its media is.
-extra_for() {
-  grep -q '^import OllinVision$' $1 && echo "--settle 120"
-  return 0
 }
 
 if (( selftest )); then
@@ -291,7 +276,7 @@ fi
 
 for sketch in $files; do
   echo "=== ${sketch:t}"
-  check ${sketch:t} $sketch ${frame_override:-$FRAME_DEFAULT} $(extra_for $sketch)
+  check ${sketch:t} $sketch ${frame_override:-$FRAME_DEFAULT}
 done
 
 for example in $list; do
@@ -300,6 +285,7 @@ for example in $list; do
   waiting=$(held_back $example)
   (( ${LIVE_WORLD[(Ie)$example]} )) && waiting="draws the world as it is while it runs"
   (( ${OVER_UDP[(Ie)$example]} )) && waiting="draws the packet that had landed by then"
+  (( ${NOT_EXACT[(Ie)$example]} )) && waiting="its detector fits a few millionths differently each run"
   if [[ -n $waiting ]]; then
     echo "--- $example: $waiting"
     record $example held "$waiting"
@@ -307,11 +293,10 @@ for example in $list; do
     continue
   fi
   echo "=== $example"
-  check $example $sketch $(frame_of $example) $(extra_for $sketch)
+  check $example $sketch $(frame_of $example)
 done
 
-echo "determinism: $same the same, $differed differed, $failed drew nothing, $held held back, $filed differed as filed"
+echo "determinism: $same the same, $differed differed, $failed drew nothing, $held held back"
 (( differed )) && echo "  differed: ${differing[*]}"
 (( failed )) && echo "  drew nothing: ${failing[*]}"
-(( filed )) && echo "  differed as filed: ${filing[*]}"
 (( differed == 0 && failed == 0 ))

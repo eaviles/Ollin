@@ -73,7 +73,7 @@ final class Rings: Sketch {
 - **`frameCount`** is 1 during the first `draw()`. **`deltaTime`** is the step since the last frame: 0 on the first frame in a window, exactly `1 / fps` in an export.
 - **`loopProgress(over:phase:)`** runs from 0 up to 1 over the given seconds and wraps. **`pingPong(over:phase:)`** goes 0 to 1 and back.
 - **`loopDuration`** declares the length of one lap. It does not change `time`. It tells `--export-loop` how many frames make exactly one lap, and makes a web export loop.
-- **`noLoop()`** stops the window's timer after the current frame. Exports ignore it and draw every frame they advance through. **`redraw()`** draws one more frame of a stopped sketch, from an input hook.
+- **`noLoop()`** stops the window's timer after the current frame. Exports hold that frame too, so a frame asked for past it is the frame it stopped on, drawn once. **`redraw()`** draws one more frame of a stopped sketch, from an input hook.
 - **`isExporting`** is true through the whole of an export, `setup()` included, and false in a window: work spread over live frames is done at once when it is true.
 - **`random()`** returns 0 up to but not including 1, `random(a, b)` a up to b, and `randomGaussian()` has mean 0 and deviation 1.
 - **`seed(n)`** fixes both `random` and `noise` and sets `variation`. `randomSeed` and `noiseSeed` fix one each. A sketch that never seeds gets a different variation at every launch.

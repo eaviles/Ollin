@@ -213,16 +213,22 @@ extension OllinApp {
         let size = sketch.canvasSizeForRun()
         sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
         sketch.runSetup()
-        let recorder = SpatialRecorder()
+        // Every frame is recorded and the last one kept, because the frame
+        // written is either the one asked for or the one a `noLoop()` sketch
+        // stopped on, which a window holds from then on; which one it is, is
+        // known only once its draw has run.
+        var recorder = SpatialRecorder()
         for k in 0...max(0, frame) {                 // advance so frame N is correct
             // Nothing here touches the GPU, but the sketch's own draw() may, and
             // this drive never returns to a run loop that would drain what it
             // asked the device for.
             autoreleasepool {
                 sketch.advance(time: Double(k) / fps, deltaTime: 1 / fps, frameRate: fps)
-                sketch.drawer.spatialRecorder = (k == frame) ? recorder : nil
+                recorder = SpatialRecorder()
+                sketch.drawer.spatialRecorder = recorder
                 sketch.performDraw()
             }
+            if sketch.exportHoldsFrame { break }
         }
         sketch.drawer.spatialRecorder = nil
         if !sketch.drawer.placedDecals.isEmpty {

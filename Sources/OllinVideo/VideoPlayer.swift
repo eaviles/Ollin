@@ -135,6 +135,9 @@ public final class VideoPlayer: FrameSource, VideoFeed, ClipPlayback {
     }
     private var tapPump: VideoFrameTapPump?
     private var tapOutput: AVPlayerItemVideoOutput?
+    /// The decoded frame the tap was last handed under a headless drive, so
+    /// a frame the playhead holds across two export frames is handed once.
+    private var lastTappedBuffer: CVPixelBuffer?
 
     /// The soundtrack tap (`AudioTapSource`). Installing one attaches a
     /// processing tap to the player item's audio mix and delivers mono PCM
@@ -456,13 +459,29 @@ extension VideoPlayer: @MainActor FrameAdvancing {
         // Created here as well as on the first `frame` read, so `duration` and
         // `size` are filled in before the sketch first draws.
         _ = ensureHeadlessReader()
-        guard let duration = headlessDuration, duration > 0, virtualTime >= duration else { return }
-        if loops {
-            virtualTime.formTruncatingRemainder(dividingBy: duration)
-        } else {
-            virtualTime = duration
-            virtualPlaying = false
+        if let duration = headlessDuration, duration > 0, virtualTime >= duration {
+            if loops {
+                virtualTime.formTruncatingRemainder(dividingBy: duration)
+            } else {
+                virtualTime = duration
+                virtualPlaying = false
+            }
         }
+        tapHeadlessFrame()
+    }
+
+    /// The analysis tap under a headless drive. The player is not playing, so
+    /// the pump that feeds the tap live has nothing to hand on; the frame
+    /// under the virtual playhead goes to the tap instead, once each time it
+    /// changes, from the thread driving the export, so a tracker reading the
+    /// video answers on the same frames in every run.
+    private func tapHeadlessFrame() {
+        guard let frameTap, let buffer = headlessReader?.pixelBuffer(at: virtualTime),
+              buffer !== lastTappedBuffer else { return }
+        lastTappedBuffer = buffer
+        let ciImage = CIImage(cvPixelBuffer: buffer)
+        guard let cgImage = ciContext.createCGImage(ciImage, from: ciImage.extent) else { return }
+        frameTap(cgImage)
     }
 }
 

@@ -1581,7 +1581,7 @@ final class SpatialHash: Sendable
   let origin: Vector2
   let sortedIndices: ComputeBuffer<UInt32>
   let worldSize: Vector2
-final class StillFrames: FrameSource, VideoFeed, Sendable
+final class StillFrames: FrameAdvancing, FrameSource, VideoFeed, Sendable
   func start()
   init(_: Image, rate: Double = default)
   let picture: Image

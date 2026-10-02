@@ -362,13 +362,27 @@ extension OllinApp {
         let skipFrames = max(0, Int((skipSeconds * fps).rounded()))
         let wallStart = CACurrentMediaTime()
 
+        // The frame a sketch that stopped its loop is holding, once rendered.
+        var held: StereoFrame?
         for k in 0 ..< (skipFrames + frames) {
             // Both eyes' readbacks, and everything the frame drew, are done with at
             // the end of the iteration; this drive never reaches a run loop that
             // would drain them, so a long clip would otherwise hold every frame.
             try autoreleasepool {
-                sketch.advance(time: Double(k) / fps, deltaTime: 1 / fps, frameRate: fps)
-                sketch.performDraw()
+                // A sketch that has stopped its loop (`noLoop()`) holds the frame it
+                // last drew, as a window does: nothing is drawn again, and every
+                // frame written from then on is that one, rendered once.
+                let holding = k > 0 && sketch.exportHoldsFrame
+                if holding {
+                    if k < skipFrames { return }
+                    if let held {
+                        try write(held, k - skipFrames)
+                        return
+                    }
+                } else {
+                    sketch.advance(time: Double(k) / fps, deltaTime: 1 / fps, frameRate: fps)
+                    sketch.performDraw()
+                }
                 let unrendered = ExportError(.unrendered, path: path, frame: max(0, k - skipFrames),
                                              problem: "frame \(max(0, k - skipFrames)) did not come back from the GPU")
 
@@ -434,6 +448,7 @@ extension OllinApp {
                     return                            // the pool is the iteration, so leaving it is `continue`
                 }
                 guard let frame else { throw unrendered }
+                if sketch.exportHoldsFrame { held = frame }
                 let done = k - skipFrames + 1
                 try write(frame, done - 1)
 

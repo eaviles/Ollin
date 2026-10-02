@@ -1,9 +1,11 @@
 import CoreGraphics
 
 /// The receiving end of a frame source's tap: called with each new frame as
-/// the source produces it, on the source's own background thread or queue —
-/// not the main thread. A consumer hands the frame across to wherever it does
-/// its work; it must not touch main-thread state directly.
+/// the source produces it, on the source's own background thread or queue.
+/// A source that follows an export's clock (a still feed, a video's virtual
+/// playhead) calls it on the thread driving the export instead, which is the
+/// main thread. A consumer hands the frame across to wherever it does its
+/// work; it must not touch main-thread state directly.
 public typealias FrameTap = @Sendable (CGImage) -> Void
 
 /// A producer of CPU image frames a consumer can tap — the live camera, a

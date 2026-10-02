@@ -249,6 +249,8 @@ override func setup() {
 }
 ```
 
+Every export holds the frame the same way the window does. Called in `setup()`, the first frame is the picture, whatever frame the export asks for. Called inside a later `draw()`, that frame is the picture from then on. A still export writes it, and a video, a GIF, or a PNG sequence writes it for every frame after the loop stopped. Nothing is drawn again. So a draw that rolls the sketch's dice exports the picture the window shows, and a slow still costs one draw, not one per frame. A replayed take is the exception. A take is written down only on frames the window drew, so its replay draws every frame it holds.
+
 <a name="redraw"></a>
 
 #### redraw
@@ -257,7 +259,7 @@ override func setup() {
 redraw()
 ```
 
-Draws one more frame of a sketch that has stopped looping, then holds again. An input hook is the usual caller. A still sketch that changes on a click or a key asks for the one frame that shows the change, and costs nothing between them. Several calls before that frame is drawn ask for it once. While the loop runs it does nothing, since the next frame is coming anyway. Inside `setup()` or `draw()` it does nothing either, because that frame is the one being drawn. An export ignores it, because an export draws every frame it writes.
+Draws one more frame of a sketch that has stopped looping, then holds again. An input hook is the usual caller. A still sketch that changes on a click or a key asks for the one frame that shows the change, and costs nothing between them. Several calls before that frame is drawn ask for it once. While the loop runs it does nothing, since the next frame is coming anyway. Inside `setup()` or `draw()` it does nothing either, because that frame is the one being drawn. An export ignores it, because nothing in an export asks for a frame. It holds the last frame drawn, and a replayed take draws every frame the window drew.
 
 ```swift
 var marks: [Vector2] = []

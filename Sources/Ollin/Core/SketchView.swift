@@ -2874,9 +2874,11 @@ public enum OllinApp {
         // returned: a running mean settles before the still is taken.
         let settle = max(1, exportSettle)
         var drawSeconds = 0.0                        // the last draw's own time, reported with its render
-        for k in 0...target {                        // advance so frame N is correct
-            let draws = k == target ? settle : 1
-            for pass in 0..<draws {
+        var k = 0                                    // advance so frame N is correct
+        var captured = false
+        while !captured {
+            var pass = 0
+            repeat {
                 // Every drawn frame is drained: a buffer a frame asks the device
                 // for arrives autoreleased, and this drive never returns to the run
                 // loop that would otherwise empty the pool. `HeadlessDrainTests`.
@@ -2886,6 +2888,10 @@ public enum OllinApp {
                     let drawStart = CACurrentMediaTime()
                     sketch.performDraw()
                     drawSeconds = CACurrentMediaTime() - drawStart
+                    // The frame asked for is the one captured, and so is the frame
+                    // after which a `noLoop()` sketch holds: a window shows that frame
+                    // from then on, so the frames after it have nothing to draw.
+                    if pass == 0 { captured = k == target || sketch.exportHoldsFrame }
                     var rendered = true
                     if sketch.drawer.accumulates {
                         accumulated = renderer.accumulatedImage(of: sketch.drawer, viewport: viewport,
@@ -2903,7 +2909,7 @@ public enum OllinApp {
                         // A stateful compute sim must run on the GPU every frame to evolve;
                         // the intermediate frames we don't capture still need their steps
                         // executed (only the final frame is rendered + read back below).
-                        if k < target { renderer.stepCompute(sketch.drawer) }
+                        if !captured { renderer.stepCompute(sketch.drawer) }
                     }
                     // A frame that rendered reports its timing, as a live frame does.
                     if rendered {
@@ -2911,7 +2917,9 @@ public enum OllinApp {
                                             fps: fps, drawSeconds: drawSeconds)
                     }
                 }
-            }
+                pass += 1
+            } while captured && pass < settle
+            k += 1
         }
         if sketch.drawer.accumulates { return accumulated }
         if sketch.drawer.usesFeedback || settle > 1 { return fedBack }
@@ -3168,7 +3176,13 @@ public enum OllinApp {
         let skipFrames = max(0, Int((skipSeconds * clock).rounded()))
         let wallStart = CACurrentMediaTime()
         var written = 0                                   // 0-based index handed to `write`
+        // The last frame that came back from the GPU, kept past its pool so a
+        // sketch that stops its loop can be written from it (see below).
+        var lastRendered: (buffer: MTLBuffer, bytesPerRow: Int)?
         for k in 0..<(skipFrames + drawnFrames) {
+            // A sketch that has stopped its loop (`noLoop()`) holds the frame it
+            // last drew, as a window does; the rest of the file is that frame.
+            if sketch.exportHoldsFrame && k > 0 { break }
             // Every drawn frame is drained: a buffer a frame asks the device for
             // arrives autoreleased, and this drive never returns to the run loop that
             // would otherwise empty the pool, so without this a long export grows by
@@ -3235,6 +3249,7 @@ public enum OllinApp {
                     // field evolves into the first captured frame.
                     renderer.stepCompute(sketch.drawer)
                 }
+                if let rendered { lastRendered = rendered }
 
                 if k < skipFrames {                           // warmup: built the pile, don't write
                     FileHandle.standardError.write(Data(
@@ -3279,6 +3294,31 @@ public enum OllinApp {
                                   done, drawnFrames, done * 100 / drawnFrames, renderFPS)
                 FileHandle.standardError.write(Data(line.utf8))
             }
+        }
+        // The held frame fills the file. One a warmup drew without rendering
+        // (its picture is its clock alone) is rendered once here; nothing is
+        // drawn again either way.
+        if sketch.exportHoldsFrame, written < frames {
+            let accumulates = sketch.drawer.accumulates
+            guard let held = lastRendered ?? (accumulates
+                ? renderer.accumulatedFrame(of: sketch.drawer, viewport: viewport, width: width, height: height)
+                : renderer.renderedFrame(of: sketch.drawer, viewport: viewport, width: width, height: height))
+            else {
+                throw ExportError(.unrendered, path: path, frame: written,
+                                  problem: "frame \(written) did not come back from the GPU")
+            }
+            while written < frames {
+                try autoreleasepool {
+                    try write(RenderedFrame(renderer: renderer, buffer: held.buffer,
+                                            bytesPerRow: held.bytesPerRow,
+                                            width: width, height: height,
+                                            transparent: sketch.drawer.hasTransparentBackground), written)
+                }
+                written += 1
+            }
+            FileHandle.standardError.write(Data(String(
+                format: "\r  rendering %d/%d (100%%), held after the loop stopped    ",
+                drawnFrames, drawnFrames).utf8))
         }
         FileHandle.standardError.write(Data("\n".utf8))
         // A gap that could not be filled leaves the file short, and a short file

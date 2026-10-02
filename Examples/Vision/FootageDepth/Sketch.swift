@@ -10,9 +10,9 @@ import OllinVision
 /// flyers down the pole and hold still where the picture does. The pass runs
 /// in the background the first time (a progress bar counts it up, a second or
 /// two a window) and is cached, so the next launch opens at once. Export it
-/// (`--export-video`) and the lines land on the same frames every time, which
-/// a live tracker over a playing clip cannot promise. Pass a path on launch to
-/// read your own clip:
+/// (`--export-video`) and every frame has its map from the first one, where a
+/// tracker reading the clip as it plays settles over its first second. Pass a
+/// path on launch to read your own clip:
 ///
 /// ```
 /// swift run Example-Vision-FootageDepth /path/to/your/clip.mp4
@@ -66,10 +66,12 @@ final class FootageDepth: Sketch {
     /// A readable file path passed on launch overrides the bundled clip.
     private func makePlayer() -> VideoPlayer? {
         // A flag's own value (an export path, say) is not a clip: skip each
-        // flag and the argument that follows it.
+        // flag and the argument that follows it. Neither is a sketch file,
+        // which a host that compiles this one passes on its own command line.
         let arguments = Array(CommandLine.arguments.dropFirst())
         var isDirectory: ObjCBool = false
-        for (i, argument) in arguments.enumerated() where !argument.hasPrefix("-") {
+        for (i, argument) in arguments.enumerated()
+        where !argument.hasPrefix("-") && !argument.hasSuffix(".swift") {
             if i > 0, arguments[i - 1].hasPrefix("-") { continue }
             if FileManager.default.fileExists(atPath: argument, isDirectory: &isDirectory),
                !isDirectory.boolValue {

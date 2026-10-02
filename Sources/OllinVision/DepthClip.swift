@@ -10,11 +10,10 @@ import os
 /// A recording's depth, read ahead of time: the whole clip through the video
 /// depth model's published inference, its result kept on disk, and every
 /// frame's map answered by clip time. `DepthTracker` reads a feed as it plays,
-/// one frame at a time, and reads nothing during a headless export, since
-/// its frames pump on the live clock. `DepthClip` is the other way round: it
-/// reads the file once, in windows of 32 frames the way the model was
-/// trained to be read, so the answer is the model at its best, the same on
-/// every run, and there for an export.
+/// one frame at a time, an export's frames included. `DepthClip` is the other
+/// way round: it reads the file once, in windows of 32 frames the way the
+/// model was trained to be read, so the answer is the model at its best, the
+/// same on every run, and there for an export.
 ///
 /// ```swift
 /// let player = try VideoPlayer(resource: "walk", withExtension: "mp4", in: .module)

@@ -444,6 +444,17 @@ extension OllinApp {
         sketch.drawer.recordsWebSources = true
         var bound = WebWeightBound(samplesMovingColumns: samplesMovingColumns)
         for k in 0 ..< (skip + frames) {
+            // A sketch that has stopped its loop (`noLoop()`) holds the frame it
+            // last drew, as a window does, and the renderer is handed nothing
+            // more, so the recording ends there: a page of one frame holds it
+            // still. A sketch held during the skip is recorded at that frame.
+            if k > 0 && sketch.exportHoldsFrame {
+                if recorded.isEmpty {
+                    each(skip)
+                    recorded.append(try recorder.capture(sketch.drawer, frame: 0, width: width, height: height))
+                }
+                break
+            }
             // A recording is one long synchronous run with no run loop under it,
             // so each frame drains what it drew: a sketch's own device buffers,
             // and the pictures this frame encoded on the way into the page.

@@ -107,20 +107,20 @@ Draw any overlays into the same rectangle, so that they line up with the picture
 
 ### Pixels and analysis
 
-For **live analysis**, attach a [vision tracker](../Vision/Vision.md) directly. `VideoPlayer` is a [frame source](../Vision/Vision.md#frame-sources), so every tracker accepts it where it accepts a camera, and analyzes the footage as it plays. Decoded frames reach the analyzer off the GPU path, so drawing stays as fast as a texture draw:
+For **live analysis**, attach a [vision tracker](../Vision/Vision.md) directly. `VideoPlayer` is a [frame source](../Vision/Vision.md#frame-sources), so every tracker accepts it where it accepts a camera, and analyzes the footage as it plays. Decoded frames reach the analyzer off the GPU path, so drawing stays as fast as a texture draw. During an export, each new frame under the playhead is analyzed before the frame that shows it is drawn. So every run reads the same frames:
 
 ```swift
 let player = try VideoPlayer(path: "/path/to/clip.mp4")
 lazy var contours = ContourDetector(player)   // traces the clip as it plays
 ```
 
-For **depth over a recording**, use [`DepthClip`](../Vision/Vision.md#depthclip) instead. It reads the whole file ahead of time and answers by clip time. Because of that, it keeps working under an export, where a live tracker reads nothing.
+For **depth over a recording**, use [`DepthClip`](../Vision/Vision.md#depthclip) instead. It reads the whole file ahead of time, in the windows the model was trained on, and answers by clip time. So an export has every frame's map from its first frame, where a tracker reading as the clip plays settles over its first second.
 
 ```swift
 func snapshot() -> Image?
 ```
 
-For **one-shot pixel access**, `frame` is a live GPU texture, so the CPU paths on it (`image[x, y]`, `cgImage`) do nothing. When you need the pixels, take a `snapshot()`. That is a CPU-backed copy of the current frame, and it supports all of those paths. Use it to sample colors, or to feed a tracker's still-image `detect(in:)`. A snapshot costs a GPU→CPU copy, so take one only when you need it, not on every frame. Every few frames is plenty. Under a headless export it follows the same virtual playhead the frame does, so `seek(to:)` and then `snapshot()` hands back exactly the moment you asked for. That is how a still-image `detect(in:)` gets a frame of a clip offline, where a live tracker reads nothing.
+For **one-shot pixel access**, `frame` is a live GPU texture, so the CPU paths on it (`image[x, y]`, `cgImage`) do nothing. When you need the pixels, take a `snapshot()`. That is a CPU-backed copy of the current frame, and it supports all of those paths. Use it to sample colors, or to feed a tracker's still-image `detect(in:)`. A snapshot costs a GPU→CPU copy, so take one only when you need it, not on every frame. Every few frames is plenty. Under a headless export it follows the same virtual playhead the frame does, so `seek(to:)` and then `snapshot()` hands back exactly the moment you asked for. That is how a still-image `detect(in:)` gets any frame of a clip on demand, in a window or in an export.
 
 ```swift
 // OCR over a paused frame:

@@ -16,7 +16,7 @@ Save what a sketch draws. The output comes in four families:
   <img src="../../Guide/Images/41-FinishingASketch/ExportMap.jpg" alt="A diagram with a box labeled your sketch in the middle, arrows fanning left to five file outputs (still, sequence, video, GIF, SVG) and right to three live feeds (the window, Syphon, virtual camera)" width="680">
 </picture>
 
-Export runs the sketch *headlessly*. It calls `setup()`, advances the clock to the frame you ask for, runs `draw()`, and writes the result. No window opens, so the same call works from a script or a render farm.
+Export runs the sketch *headlessly*. It calls `setup()`, advances the clock to the frame you ask for, runs `draw()`, and writes the result. No window opens, so the same call works from a script or a render farm. A sketch that stops its loop is held where it stopped, as a window holds it. After [`noLoop()`](../Core/Sketch.md#noLoop), the frame it stopped on is the picture from then on, drawn once.
 
 Most exports are reached by a command-line flag on any example's executable. The same work is available as functions on `OllinApp` when you drive the export yourself. A loose sketch file has no target of its own, so you run it through the live host, `OllinLive`, which takes the same flags. `OllinLive` compiles the file and runs the export headlessly instead of opening a window:
 

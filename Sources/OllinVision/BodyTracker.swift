@@ -117,10 +117,16 @@ public final class BodyTracker: VisionTracking, @unchecked Sendable {
     /// answer from a cold model.
     private static let coldAttempts = 3
 
+    /// Whether a frame on an export's clock has already warmed the model.
+    private static let isWarmedForExport = OSAllocatedUnfairLock(initialState: false)
+
     /// Detect body pose in a still image, once.
     public static func detect(in image: Image) async throws -> [Body] {
+        try await detect(in: image.currentCGImage())
+    }
+
+    private static func detect(in cgImage: CGImage) async throws -> [Body] {
         let request = DetectHumanBodyPoseRequest()
-        let cgImage = image.currentCGImage()
 
         // Vision loads its 2D body-pose model on the first request that needs
         // it, and requests that arrive while it loads come back with no
@@ -151,6 +157,20 @@ public final class BodyTracker: VisionTracking, @unchecked Sendable {
     }
 
     // MARK: VisionTracking
+
+    /// On an export's clock the model is warmed on the first frame before it
+    /// is read: while it loads, it answers that nobody is there (see
+    /// `detect(in:)`), and how many frames an export spent on that answer
+    /// would follow how fast it ran. Once per process, as the load is.
+    func prepare(for cgImage: CGImage) async {
+        guard status.isAvailable else { return }
+        let warmed = Self.isWarmedForExport.withLock { warmed in
+            defer { warmed = true }
+            return warmed
+        }
+        guard !warmed else { return }
+        _ = try? await Self.detect(in: cgImage)
+    }
 
     func analyze(_ cgImage: CGImage, size: CGSize) async {
         // Once the model is known unavailable on this Mac, stop calling perform —

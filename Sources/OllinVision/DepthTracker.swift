@@ -291,6 +291,13 @@ public final class DepthTracker: VisionTracking, @unchecked Sendable {
         }
     }
 
+    /// On an export's clock the model is loaded before the first frame is
+    /// read, rather than letting frames pass by while it loads.
+    func prepare(for cgImage: CGImage) async {
+        guard status.isAvailable else { return }
+        await ensureLoading().value
+    }
+
     // MARK: Loading
 
     /// The one background load, started by the first frame.

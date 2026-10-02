@@ -58,6 +58,8 @@ public final class ConceptTracker: VisionTracking, @unchecked Sendable {
         /// Phrases waiting for their one-time text encoding.
         var pendingPhrases: [String] = []
         var encoding = false
+        /// The background run encoding `pendingPhrases`, while one runs.
+        var encodingTask: Task<Void, Never>?
         /// The latest frame's normalized image embedding.
         var imageEmbedding: [Float]?
         /// The concept scores over the latest analyzed frame, strongest first.
@@ -286,27 +288,58 @@ public final class ConceptTracker: VisionTracking, @unchecked Sendable {
             return missing
         }
         guard !fresh.isEmpty else { return }
+        // A phrase first asked for during an export is encoded before the
+        // call returns, so its score starts on the frame that asked, the same
+        // frame in every run.
+        if Thread.isMainThread && OllinApp.isExporting {
+            waitOnMainThread { [weak self] in await self?.encodeEverythingPending() }
+            rescoreFromCache()
+            return
+        }
         drainEncodings()
     }
 
     private func drainEncodings() {
-        let shouldStart = lock.withLockUnchecked { state -> Bool in
-            guard !state.encoding, !state.pendingPhrases.isEmpty else { return false }
+        lock.withLockUnchecked { state in
+            guard !state.encoding, !state.pendingPhrases.isEmpty else { return }
             state.encoding = true
-            return true
-        }
-        guard shouldStart else { return }
-        Task.detached { [weak self] in
-            guard let self else { return }
-            await self.ensureLoading().value
-            while let phrase = self.lock.withLockUnchecked({ state -> String? in
-                state.pendingPhrases.isEmpty ? nil : state.pendingPhrases.removeFirst()
-            }) {
-                _ = try? self.encodePhrase(phrase)
+            state.encodingTask = Task.detached { [weak self] in
+                guard let self else { return }
+                await self.ensureLoading().value
+                self.encodePending()
+                self.lock.withLockUnchecked { state in
+                    state.encoding = false
+                    state.encodingTask = nil
+                }
+                self.rescoreFromCache()
             }
-            self.lock.withLockUnchecked { $0.encoding = false }
-            self.rescoreFromCache()
         }
+    }
+
+    /// Encode every phrase waiting, one at a time, on the calling task.
+    private func encodePending() {
+        while let phrase = lock.withLockUnchecked({ state -> String? in
+            state.pendingPhrases.isEmpty ? nil : state.pendingPhrases.removeFirst()
+        }) {
+            _ = try? encodePhrase(phrase)
+        }
+    }
+
+    /// The models loaded and every phrase asked for so far encoded, including
+    /// one a background run had taken but not finished.
+    private func encodeEverythingPending() async {
+        await ensureLoading().value
+        encodePending()
+        if let running = lock.withLockUnchecked({ $0.encodingTask }) {
+            await running.value
+        }
+    }
+
+    /// On an export's clock the encoders are loaded, and every phrase asked
+    /// for so far encoded, before the first frame is scored.
+    func prepare(for cgImage: CGImage) async {
+        guard status.isAvailable else { return }
+        await encodeEverythingPending()
     }
 
     /// A frame may not arrive for a while (or ever, on the still path); when

@@ -48,6 +48,20 @@ final class FrameStore: @unchecked Sendable {
 /// behind its own lock and is `Sendable`.
 protocol VisionTracking: AnyObject, Sendable {
     func analyze(_ cgImage: CGImage, size: CGSize) async
+
+    /// Have whatever the first analysis needs ready: a model loaded, a model
+    /// warmed past the answers it gives while it loads. Awaited before every
+    /// analysis on an export's clock, and only there, where a frame that passes
+    /// by while a model loads would be a frame some runs read and others did
+    /// not; a tracker that stamps its frames with a time learns here that the
+    /// next one is on that clock. The live path never waits for it: there,
+    /// frames pass by while a model loads, so the source's other trackers are
+    /// not held up behind the load.
+    func prepare(for cgImage: CGImage) async
+}
+
+extension VisionTracking {
+    func prepare(for cgImage: CGImage) async {}
 }
 
 /// The availability surface every tracker shares: whether its Vision request
@@ -165,8 +179,14 @@ final class VisionStatus: @unchecked Sendable {
 @MainActor
 enum SourceAnalyzers {
 
+    /// The source is remembered beside its analyzer, and both weakly: a key
+    /// is an address, and a source made where a freed one stood has the same
+    /// address. An analyzer can outlive its source (a tap a source's own thread
+    /// still holds keeps it), so the address alone would hand a new source the
+    /// old analyzer, and the new source would never be tapped at all.
     private struct WeakRef {
         weak var analyzer: VisionAnalyzer?
+        weak var source: AnyObject?
     }
     private static var table: [ObjectIdentifier: WeakRef] = [:]
 
@@ -174,11 +194,13 @@ enum SourceAnalyzers {
     /// source's tap) on first use.
     static func analyzer(for source: any FrameSource) -> VisionAnalyzer {
         observeTerminationOnce()
-        table = table.filter { $0.value.analyzer != nil }
+        table = table.filter { $0.value.analyzer != nil && $0.value.source != nil }
         let key = ObjectIdentifier(source)
-        if let existing = table[key]?.analyzer { return existing }
+        if let entry = table[key], entry.source === source, let existing = entry.analyzer {
+            return existing
+        }
         let analyzer = VisionAnalyzer()
-        table[key] = WeakRef(analyzer: analyzer)
+        table[key] = WeakRef(analyzer: analyzer, source: source)
         source.frameTap = makeFrameTap(analyzer)
         return analyzer
     }
@@ -217,6 +239,13 @@ private func makeFrameTap(_ analyzer: VisionAnalyzer) -> FrameTap {
 /// frame is never dropped (the source publishes every one) — only the analysis
 /// is throttled, which is what keeps a sketch responsive while a model runs.
 ///
+/// An export is the other way round. Its frames are drawn on a clock of their
+/// own, so a reading that lands whenever the analysis happens to finish lands
+/// on a different frame in every run. A frame offered on the main thread while
+/// an export drives the sketch (a source following the export's clock offers
+/// it there) is analyzed before the drive moves on: every tracker, every
+/// frame, models loaded first, nothing dropped.
+///
 /// `@unchecked Sendable`: all mutable state lives under `lock`, and the trackers
 /// it drives are themselves `Sendable`.
 final class VisionAnalyzer: @unchecked Sendable {
@@ -228,27 +257,58 @@ final class VisionAnalyzer: @unchecked Sendable {
     private struct State {
         var trackers: [Weak] = []
         var processing = false
+        /// The newest frame the source offered, for a tracker that joins
+        /// during an export: it reads that frame at once rather than starting
+        /// blank until the source's next one.
+        var latest: FrameBox?
     }
     private let lock = OSAllocatedUnfairLock(initialState: State())
 
+    /// Entered for each background analysis and left when it ends, so an
+    /// export's first frame can wait out one the live path started before
+    /// the drive began, and its answer cannot land after the export's own.
+    private let inFlight = DispatchGroup()
+
     /// Add a tracker. Held weakly, so dropping it from the sketch unregisters it.
+    /// During an export, the tracker reads the source's newest frame before
+    /// this returns.
     func register(_ tracker: any VisionTracking) {
-        lock.withLock { state in
+        let latest = lock.withLock { state in
             state.trackers.removeAll { $0.tracker == nil || $0.tracker === tracker }
             state.trackers.append(Weak(tracker: tracker))
+            return state.latest
+        }
+        if let latest, Self.followsExportClock {
+            analyzeInExport(latest, trackers: [tracker])
         }
     }
 
     /// Offer a frame for analysis. Returns immediately; if no analysis is in
     /// flight and at least one tracker is live, it kicks one off on a detached
     /// task and the frame is processed in the background. Otherwise the frame is
-    /// dropped.
+    /// dropped. During an export, on the main thread, the frame is analyzed
+    /// before this returns instead.
     func submit(_ box: FrameBox) {
         guard !processIsTerminating.withLock({ $0 }) else { return }
+        if Self.followsExportClock {
+            let trackers: [any VisionTracking] = lock.withLock { state in
+                state.latest = box
+                state.trackers.removeAll { $0.tracker == nil }
+                return state.trackers.compactMap { $0.tracker }
+            }
+            analyzeInExport(box, trackers: trackers)
+            return
+        }
+        // Entered under the lock that claims the analysis, so an export's
+        // first frame either sees this one in flight and waits for it, or
+        // comes after it has ended.
+        let inFlight = inFlight
         let trackers: [any VisionTracking] = lock.withLock { state in
+            state.latest = box
             state.trackers.removeAll { $0.tracker == nil }
             guard !state.processing, !state.trackers.isEmpty else { return [] }
             state.processing = true
+            inFlight.enter()
             return state.trackers.compactMap { $0.tracker }
         }
         guard !trackers.isEmpty else { return }
@@ -261,6 +321,31 @@ final class VisionAnalyzer: @unchecked Sendable {
                 await tracker.analyze(box.cgImage, size: box.size)
             }
             self?.lock.withLock { $0.processing = false }
+            inFlight.leave()
+        }
+    }
+
+    /// Whether a frame offered now belongs to an export's clock: the export
+    /// flag is up, and the offer comes from the thread that drives it, which
+    /// is the only thread that flag is believed on. A benchmark run is
+    /// headless too, but its frames stand in for a window's, so it keeps the
+    /// live path.
+    private static var followsExportClock: Bool {
+        Thread.isMainThread && OllinApp.isExporting
+    }
+
+    /// One frame through `trackers`, each model loaded first, with the main
+    /// thread held until the last answer is published. An analysis the live
+    /// path started before the export began finishes first, so it can never
+    /// land on top of this one.
+    private func analyzeInExport(_ box: FrameBox, trackers: [any VisionTracking]) {
+        guard !trackers.isEmpty else { return }
+        inFlight.wait()
+        waitOnMainThread {
+            for tracker in trackers {
+                await tracker.prepare(for: box.cgImage)
+                await tracker.analyze(box.cgImage, size: box.size)
+            }
         }
     }
 
@@ -280,4 +365,18 @@ final class VisionAnalyzer: @unchecked Sendable {
             await tracker.analyze(box.cgImage, size: box.size)
         }
     }
+}
+
+/// Run `work` on a detached task and hold the calling thread until it ends.
+/// Only the main thread, during an export, ever waits here: it is no worker of
+/// the cooperative pool, so parking it cannot starve the task it waits for,
+/// and nothing a tracker's analysis or a model's load awaits runs on the main
+/// actor. A free function, so the closure carries no actor isolation.
+func waitOnMainThread(_ work: @escaping @Sendable () async -> Void) {
+    let done = DispatchSemaphore(value: 0)
+    Task.detached(priority: .userInitiated) {
+        await work()
+        done.signal()
+    }
+    done.wait()
 }

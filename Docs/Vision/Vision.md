@@ -159,6 +159,8 @@ Trackers attached to the same source share one analysis engine, so the source is
 
 A type of your own can be a frame source too. Conform to `FrameSource`: hold the closure, and call it with each new `CGImage` from whatever thread produces them. Every tracker then accepts it. `Examples/Vision/TrajectoryTracking` does exactly that, because its "camera" is a small ball-launching simulation that the example renders itself.
 
+**In an export, the trackers read on the export's clock.** A window analyzes whatever frame is newest when the last analysis ends. So its readings land when the machine gets to them. An export draws its frames on a clock of its own. A reading that landed by wall-clock time would land on a different frame in every run. So during an export, every frame a source offers is analyzed before the frame that offered it is drawn. A tracker's model is loaded before its first frame, rather than letting frames pass while it loads. A tracker made during the export, a `lazy` one included, reads the source's newest frame before its first use returns. The sources follow that clock themselves. A still feed publishes four times a second of the sketch's `time`, whether it is `Camera.orStill` under `--photo` or a `StillFrames`. A [`VideoPlayer`](../Video/Video.md) hands its tap each new frame under the playhead. Both need to be stored on the sketch, which is where `drawFrame` reads them from anyway. The same seed then draws the same picture at any frame, with no `--settle` to wait out a model. A frame source of your own runs on the wall clock unless the sketch steps it. Start its thread only when `isExporting` is false. When it is true, advance the source to `time` at the top of `draw()`, as `TrajectoryTracking` does.
+
 <a name="nocamera"></a>
 
 ### When there is no camera
@@ -202,7 +204,7 @@ StillFrames(_ picture: Image, rate: Double = 4)
     func start()
 ```
 
-It publishes the picture over and over rather than once, four times a second by default. That is because an analyzer drops frames it cannot keep up with, as every tracker does, so a source that published a single frame could have that one frame dropped and never be read at all. Four times a second is far below what a camera asks of the same analyzer.
+It publishes the picture over and over rather than once, four times a second by default. That is because an analyzer drops frames it cannot keep up with, as every tracker does, so a source that published a single frame could have that one frame dropped and never be read at all. Four times a second is far below what a camera asks of the same analyzer. During an export it publishes at `rate` times a second of the sketch's clock instead, starting on the first frame. A held clock, like a `--settle` draw, publishes nothing.
 
 <a name="facetracker"></a>
 
@@ -1148,7 +1150,7 @@ override func draw() {
 
 The pass runs once, in the background, at a second or two a window on an M2. So a 30-second clip takes about a minute. `progress` counts it up, and `isReady` flips when every frame is there. The result is cached under `~/Library/Caches/Ollin/DepthClips`, keyed on the clip and the model, so the next run opens at once.
 
-Two things are particular to it. The first is the export. A tracker attached to a player analyzes nothing during a headless export, because its frames arrive on the live clock. `DepthClip` reads the file instead. Under `--export-video`, the pass runs before the first frame renders, and frame `k` always carries the map of the clip frame it shows. Create it by the end of `setup()`, as a stored property, so the export finds it. The second is the scale. The depth is relative, nearer and farther, on one scale for the whole clip. `range` names the model values that read as `0` and `1`: the first and ninety-ninth percentiles over every frame. It never moves, so nothing re-scales as the clip plays.
+Two things are particular to it. The first is the export. A `DepthTracker` on a player reads each frame as the export reaches it, one at a time, the way it reads a live feed. `DepthClip` reads the whole file instead, in the windows the model was trained on. Under `--export-video`, the pass runs before the first frame renders, and frame `k` always carries the map of the clip frame it shows. Create it by the end of `setup()`, as a stored property, so the export finds it. The second is the scale. The depth is relative, nearer and farther, on one scale for the whole clip. `range` names the model values that read as `0` and `1`: the first and ninety-ninth percentiles over every frame. It never moves, so nothing re-scales as the clip plays.
 
 The pass is checked against the published inference. The converter writes the upstream pass over a fixed clip beside the package, and the tests compare the Swift pass to it. Frames are read squashed to the model's landscape input, as `DepthTracker` reads them. `Scripts/fetch-models.sh` builds the package beside the streaming one, in the same one-time Python step, and the model needs Apple silicon. `Examples/Vision/FootageDepth` draws a clip's depth as contour lines, with the pass counting up the first time. Its clip is the bundled footage of the *Voladores de Papantla*, flyers circling down a pole on ropes.
 

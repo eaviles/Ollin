@@ -59,12 +59,6 @@
 # A sketch that pins its own seed keeps it, since `seed(_:)` in `setup()`
 # comes after the flag.
 #
-# A sketch with a detector in it also needs wall-clock time before its first
-# useful frame, since the model is prepared on another thread and the drawing
-# has nothing to draw until it lands. `--settle` redraws the captured frame
-# until it does, and the clip skips a couple of seconds ahead for the same
-# reason, or the picture is a photograph with nothing found in it.
-#
 # The master is ProRes, so each deliverable is encoded once from clean pixels
 # and never from an already compressed file; it is deleted as soon as the two
 # clips are out. The clips are H.264 High 4.0 at yuv420p tagged bt709, which
@@ -232,22 +226,11 @@ for example in $list; do
   [[ $want_seconds == "-" ]] && want_seconds=$SECONDS_DEFAULT
   [[ $want_frame == "-" ]] && want_frame=$STILL_FRAME_DEFAULT
 
-  # A detector loads on another thread, so the drawing has nothing to show
-  # until it has: settle the still and skip the clip past the wait. A held
-  # draw costs milliseconds, and the barcode reader needed more than 120 of
-  # them before its first answer landed.
-  settle=()
-  skip=()
-  if grep -q '^import OllinVision$' $folder/Sketch.swift; then
-    settle=(--settle 600)
-    skip=(--skip 3)
-  fi
-
   # A sketch that carries light past white films in HDR, and the page's clip
   # is standard range: encoded without a tone map it plays dim and gray. Its
   # picture is already the standard-range one, so it keeps that and no clip.
   if grep -q 'colorOutput: ColorOutput { \.extended }' $folder/Sketch.swift; then
-    render $BIN/$target --export $OUT/$key.png --frame $want_frame --photo --seed $SEED $settle || true
+    render $BIN/$target --export $OUT/$key.png --frame $want_frame --photo --seed $SEED || true
     [[ -f $OUT/$key.png ]] || { echo "  nothing to show" >&2; continue; }
     size=$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 $OUT/$key.png)
     echo "  films in HDR, so a picture and no clip"
@@ -258,10 +241,10 @@ for example in $list; do
 
   master=$OUT/$key.mov
   if grep -q 'loopDuration' $folder/Sketch.swift; then
-    render $BIN/$target --export-loop $master --codec proRes422 --fps $FPS --photo --seed $SEED $skip || true
+    render $BIN/$target --export-loop $master --codec proRes422 --fps $FPS --photo --seed $SEED || true
     length=lap
   else
-    render $BIN/$target --export-video $master --seconds $want_seconds --fps $FPS --codec proRes422 --photo --seed $SEED $skip || true
+    render $BIN/$target --export-video $master --seconds $want_seconds --fps $FPS --codec proRes422 --photo --seed $SEED || true
     length=${want_seconds}s
   fi
   # A render that ran out of time is killed part way and leaves a file that
@@ -273,7 +256,7 @@ for example in $list; do
   if [[ -z $size ]]; then
     echo "  no film came back, so a picture instead"
     rm -f $master
-    render $BIN/$target --export $OUT/$key.png --frame $want_frame --photo --seed $SEED $settle || true
+    render $BIN/$target --export $OUT/$key.png --frame $want_frame --photo --seed $SEED || true
     if [[ ! -f $OUT/$key.png ]]; then
       echo "  could not be drawn at all" >&2
       python3 $ROOT/Scripts/media-manifest.py skip $MANIFEST "$example" "could not be drawn on this machine" "$digest"
@@ -293,7 +276,7 @@ for example in $list; do
   still_only=0
   [[ $(echo "$motion < $MOTION_FLOOR" | bc -l) == 1 && -z $sound ]] && still_only=1
 
-  render $BIN/$target --export $OUT/$key.png --frame $want_frame --photo --seed $SEED $settle || true
+  render $BIN/$target --export $OUT/$key.png --frame $want_frame --photo --seed $SEED || true
   if (( still_only )); then
     rm -f $master
     [[ -f $OUT/$key.png ]] || { echo "  nothing to show" >&2; continue; }

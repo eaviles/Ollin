@@ -254,7 +254,7 @@ Then make it yours:
 - Keep more of the dance. Change the 36 to 600, and each trail holds a much longer stretch of the movement behind it.
 - Turn the camera by hand. Set `azimuth: mouseX / width * .tau`, and moving the mouse turns the view around the dancer.
 
-The sketch reads a playing film through a live tracker, so record the window rather than exporting it. `swift run OllinLive MySketches/SolidDancer.swift --record` records the window from the first frame until you quit. A tracker reads nothing during an export, so an export would draw the floor and no dancer. For an export, step the film yourself. Seek to each frame with `seek(to:)`, take a `snapshot()`, and measure it with `BodyTracker3D.detect(in:)` through `waitFor`. Each measurement takes a fraction of a second, so the export runs slowly, and it lands the same every time.
+The sketch reads a playing film through a tracker, and an export reads it the same way. Each frame of the film is measured before the frame that shows it is drawn. So `--export-video` draws the dancer from the same frames every run. Each measurement takes a fraction of a second, so the export runs slower than the window. To keep a run as the window showed it, `swift run OllinLive MySketches/SolidDancer.swift --record` records the window from the first frame until you quit.
 
 ## The room from the phone: its mesh, its surfaces, and its light
 

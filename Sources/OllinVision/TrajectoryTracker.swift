@@ -115,6 +115,12 @@ public final class TrajectoryTracker: VisionTracking, @unchecked Sendable {
         /// increasing even if two frames land on the same clock tick.
         var lastSeconds: Double = -1
         var result: [DetectedTrajectory] = []
+        /// Whether the next frame arrives on an export's clock (`prepare(for:)`
+        /// says so just before it), whether the request's frames so far were
+        /// stamped on that clock, and how many it has stamped.
+        var nextOnExportClock = false
+        var stampsExportFrames = false
+        var exportFrames = 0
     }
     private let lock = OSAllocatedUnfairLock(initialState: State())
     private let status = VisionStatus("trajectory detection")
@@ -157,6 +163,7 @@ public final class TrajectoryTracker: VisionTracking, @unchecked Sendable {
             state.startUptime = nil
             state.lastSeconds = -1
             state.result = []
+            state.exportFrames = 0
         }
     }
 
@@ -185,10 +192,26 @@ public final class TrajectoryTracker: VisionTracking, @unchecked Sendable {
 
     // MARK: VisionTracking
 
+    /// The frame about to be analyzed is on an export's clock, where the
+    /// moment it arrives says nothing about when it happened. Such frames are
+    /// stamped as consecutive frames a thirtieth of a second apart, the rate
+    /// `detect(across:)` assumes, so the arcs found depend on the frames alone.
+    func prepare(for cgImage: CGImage) async {
+        lock.withLock { $0.nextOnExportClock = true }
+    }
+
     func analyze(_ cgImage: CGImage, size: CGSize) async {
         guard status.isAvailable else { return }
 
         let (request, seconds): (DetectTrajectoriesRequest, Double) = lock.withLock { state in
+            let onExportClock = state.nextOnExportClock
+            state.nextOnExportClock = false
+            // Frames stamped on one clock and then the other would run time
+            // backward, so a change of clock starts the request over.
+            if state.request != nil, state.stampsExportFrames != onExportClock {
+                state.request = nil
+                state.lastSeconds = -1
+            }
             if state.request == nil {
                 let request = DetectTrajectoriesRequest(trajectoryLength: minObservationCount)
                 if let minObjectRadius {
@@ -198,10 +221,18 @@ public final class TrajectoryTracker: VisionTracking, @unchecked Sendable {
                     request.objectMaximumNormalizedRadius = Float(maxObjectRadius)
                 }
                 state.request = request
+                state.stampsExportFrames = onExportClock
                 state.startUptime = ProcessInfo.processInfo.systemUptime
+                state.exportFrames = 0
             }
-            let elapsed = ProcessInfo.processInfo.systemUptime - state.startUptime!
-            let seconds = max(elapsed, state.lastSeconds + 0.001)
+            let stamp: Double
+            if onExportClock {
+                stamp = Double(state.exportFrames) / 30
+                state.exportFrames += 1
+            } else {
+                stamp = ProcessInfo.processInfo.systemUptime - state.startUptime!
+            }
+            let seconds = max(stamp, state.lastSeconds + 0.001)
             state.lastSeconds = seconds
             return (state.request!, seconds)
         }

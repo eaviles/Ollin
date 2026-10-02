@@ -17,25 +17,35 @@ import os
 /// source of frames, including one you write yourself. The overlay draws each
 /// detected arc (dots), its fitted path (solid), and the parabola extended
 /// ahead of the ball (faint) — detection is classical, so it runs on any Mac.
+///
+/// A window lets the launcher run on its own thread. An export draws on a
+/// clock of its own, so there the sketch steps the launcher to `time` before
+/// each frame instead, and every step reaches the tracker before the frame is
+/// drawn: the same arcs land on the same frames in every run.
 @main
 final class TrajectoryTracking: Sketch {
     let feed = BallFeed()
-    lazy var tracker = TrajectoryTracker(feed, minObservationCount: 8)
+    var tracker: TrajectoryTracker!
 
     /// Arcs linger a moment after their last sighting, fading out, so the
-    /// overlay doesn't flicker frame to frame.
+    /// overlay doesn't flicker frame to frame. Kept in the order they were
+    /// first seen, since overlapping arcs drawn in another order are another
+    /// picture, and a dictionary's order changes from run to run.
     struct Trail {
         var trajectory: DetectedTrajectory
         var lastSeen: Double
     }
-    var trails: [UUID: Trail] = [:]
+    var trails: [Trail] = []
     let linger = 1.2
 
     override func setup() {
-        feed.start()
+        // Attached before the first frame, so the tracker sees every one.
+        tracker = TrajectoryTracker(feed, minObservationCount: 8)
+        if !isExporting { feed.start() }
     }
 
     override func draw() {
+        if isExporting { feed.advance(to: time) }
         background(Color(white: 0.06))
 
         guard let view = drawFrame(feed) else { return }
@@ -43,11 +53,16 @@ final class TrajectoryTracking: Sketch {
         // Fold this frame's detections into the lingering trails, keyed by the
         // arc's stable identity, and drop the ones gone stale.
         for trajectory in tracker.trajectories {
-            trails[trajectory.id] = Trail(trajectory: trajectory, lastSeen: time)
+            let trail = Trail(trajectory: trajectory, lastSeen: time)
+            if let known = trails.firstIndex(where: { $0.trajectory.id == trajectory.id }) {
+                trails[known] = trail
+            } else {
+                trails.append(trail)
+            }
         }
-        trails = trails.filter { time - $0.value.lastSeen < linger }
+        trails.removeAll { time - $0.lastSeen >= linger }
 
-        for trail in trails.values {
+        for trail in trails {
             let arc = trail.trajectory
             let fade = (1 - (time - trail.lastSeen) / linger) * arc.confidence
 
@@ -103,6 +118,8 @@ final class TrajectoryTracking: Sketch {
 /// thread — the same contracts `Camera` and `VideoPlayer` fulfill: `FrameSource`
 /// so the tracker can tap it, `VideoFeed` so `drawFrame` can draw it. The
 /// tracker taps it without knowing (or caring) that the "camera" is made up.
+/// Under an export the thread never starts, and the sketch steps it with
+/// `advance(to:)` from the thread drawing the frames.
 @MainActor
 final class BallFeed: FrameSource, VideoFeed {
 
@@ -152,6 +169,13 @@ final class BallFeed: FrameSource, VideoFeed {
         thread.stackSize = 4 << 20
         thread.start()
     }
+
+    /// Take every step the launcher would have taken by `time` seconds, at
+    /// its 30 a second, on the calling thread: how an export runs it, on the
+    /// export's clock rather than the wall's.
+    func advance(to time: Double) {
+        while Double(engine.steps) <= time * 30 { engine.step() }
+    }
 }
 
 /// A frame crossing threads; the `CGImage` is immutable once made.
@@ -159,9 +183,10 @@ private struct RenderedFrame: @unchecked Sendable {
     let image: CGImage
 }
 
-/// The simulation + renderer. All mutable state is owned by the feed's thread
-/// (`step()` is only ever called there); the locked boxes are the two hand-offs
-/// out — the latest frame to the main thread, the tap to whoever analyzes.
+/// The simulation + renderer. All mutable state is owned by whichever thread
+/// steps it, the feed's own or, under an export, the one drawing the frames,
+/// never both; the locked boxes are the two hand-offs out: the latest frame
+/// to the main thread, the tap to whoever analyzes.
 private final class BallEngine: @unchecked Sendable {
 
     let tapStore = OSAllocatedUnfairLock<FrameTap?>(initialState: nil)
@@ -173,6 +198,8 @@ private final class BallEngine: @unchecked Sendable {
     }
     private var balls: [Ball] = []
     private var frameCount = 0
+    /// How many steps the launcher has taken.
+    var steps: Int { frameCount }
     /// The launcher's own dice, seeded, so every run lobs the same balls.
     private var dice = SplitMix64(seed: 1969)
     private let width = Int(BallFeed.size.x)

@@ -10,9 +10,15 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ### Changed
 
+- **An export holds a sketch that stopped its loop, the way the window does.** After `noLoop()`, every export used to call `draw()` for every frame up to the one asked for, so a draw that rolled the sketch's dice exported a picture the window never showed, and a slow still took one draw per frame (the Watercolor example, about four seconds a draw, took half an hour to reach eight seconds). Now the frame the loop stopped on is the picture from then on: a still at any later frame is that frame, drawn once, and a video, a GIF, or a PNG sequence writes it for every frame after the stop. A web page of a sketch stopped in `setup()` is one frame, held still. A replayed take still draws every frame it holds. [Sketch](Docs/Core/Sketch.md#noLoop)
+
 - **A closed contour's walk wraps.** `Contour.point(at:)`, `tangent(at:)`, `normal(at:)`, and `piece(from:to:)` used to clamp a fraction to `0...1` on every contour, so a clock passed to a closed one stopped at the start after one lap. On a closed contour they now wrap it, the way a closed `Curve3D` does: `point(at: 1.25)` is a quarter of the way round again, and `piece(from: 1.9, to: 2.1)` is `piece(from: 0.9, to: 0.1)`. An open contour still clamps, and fractions inside `0...1` read exactly as before. [Geometry](Docs/Drawing/Geometry.md#contour-questions)
 
 - **A tube's rings ride the new frames.** `Mesh.tube(along:)`, and the helix and torus knot built on it, now place their rings on `Curve3D`'s frames. They are worked out by double reflection, which is accurate to the fourth order where the old transport was second order (on a helix at 64 points a turn, its twist was 0.006 radians off after one turn, and now it is 0.000002). A closed tube spreads its leftover turn by length rather than by point. On the built-in helix and torus knot the rings turn by under two degrees about the path, and the first ring starts where it always did. [3D](Docs/3D/3D.md#solid-primitives)
+
+### Fixed
+
+- **A sketch that reads a detector exports the same picture every run.** A tracker's reading used to land whenever its analysis finished, so which frame showed it followed how fast the export ran: seven examples exported a different picture each time, and in most of the rest the detector never answered at all (DepthCloud stayed on its loading notice, BodyPose found nobody). During an export, every frame a source offers is now analyzed before the frame is drawn, each tracker's model is loaded before its first frame, and a tracker made during the export reads the newest frame at once. A still feed publishes on the export's clock, and a playing `VideoPlayer` hands each new frame to its trackers, where before they read nothing in an export. `--settle` no longer has to wait out a model. One detector is still not exact: Vision's trajectory request fits its arcs a few millionths differently from run to run, so a long `TrajectoryTracker` export can find a different arc. [Vision](Docs/Vision/Vision.md#frame-sources)
 
 ## [0.13.0] - 2026-10-02
 

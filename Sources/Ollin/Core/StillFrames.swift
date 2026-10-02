@@ -32,6 +32,12 @@ import os
 /// drops frames it is too busy to take, and a source that published a single
 /// frame could have that one frame dropped and never be read at all. A few
 /// times a second is far below what a camera asks of the same analyzer.
+///
+/// During an export the picture is published on the export's clock instead,
+/// `rate` times a second of the sketch's `time`, from the thread that drives
+/// the export, so a tracker reading it answers on the same frames in every
+/// run. That needs the feed stored on the sketch (as a property, optional or
+/// not), which is where `drawFrame` reads it from anyway.
 @MainActor
 public final class StillFrames: FrameSource, VideoFeed {
 
@@ -48,7 +54,13 @@ public final class StillFrames: FrameSource, VideoFeed {
     public var frameTap: FrameTap? {
         didSet {
             let tap = frameTap
-            tapStore.withLock { $0 = tap }
+            // Tapped by an exporting sketch (a tracker made in its `setup()`):
+            // the export's clock publishes from here on, and the thread falls
+            // silent before it can hand the new tap a frame of its own.
+            if Thread.isMainThread && OllinApp.isExporting && !followsExport {
+                followExportClock(true)
+            }
+            publishing.withLock { $0.tap = tap }
             // Hand the picture over at once rather than waiting for the next
             // turn of the publishing thread. A still has its frame ready before
             // anything asks, so an analyzer installed later should not have to
@@ -64,9 +76,21 @@ public final class StillFrames: FrameSource, VideoFeed {
     /// The picture's pixel dimensions (`VideoFeed`).
     public var frameSize: Vector2? { picture.size }
 
-    private let tapStore = OSAllocatedUnfairLock<FrameTap?>(initialState: nil)
+    /// What the publishing thread reads each time round: the tap, and whether
+    /// an export's clock has taken the publishing over.
+    private struct Publishing {
+        var tap: FrameTap?
+        var followsExport = false
+    }
+    private let publishing = OSAllocatedUnfairLock(initialState: Publishing())
     private let cgImage: SendableFrame
     private var isPublishing = false
+
+    /// The export's clock as this feed has counted it, and how many times
+    /// the picture has been published on it.
+    private var exportClock = 0.0
+    private var exportPublishes = 0
+    private var followsExport = false
 
     /// Publish `picture`, `rate` times a second once `start()` is called.
     public init(_ picture: Image, rate: Double = 4) {
@@ -77,23 +101,70 @@ public final class StillFrames: FrameSource, VideoFeed {
 
     /// Begin publishing the picture to whatever has tapped this feed. Calling it
     /// again does nothing. There is no stop: a still feed holds one picture and
-    /// a thread that sleeps between frames.
+    /// a thread that sleeps between frames, and the thread ends once the feed
+    /// is gone.
     public func start() {
         guard !isPublishing else { return }
         isPublishing = true
-        let store = tapStore
+        // Started by an exporting sketch's `setup()`: the export's clock
+        // publishes from its first frame, and the thread starts silent.
+        if Thread.isMainThread && OllinApp.isExporting { followExportClock(true) }
+        let store = publishing
         let frame = cgImage
         let interval = 1.0 / rate
-        let thread = Thread {
-            while true {
+        // Weak, so the thread does not keep the feed, or through its tap an
+        // analyzer and its trackers, alive once the sketch has let it go.
+        let thread = Thread { [weak self] in
+            while self != nil {
                 let next = Date(timeIntervalSinceNow: interval)
-                store.withLock { $0 }?(frame.cgImage)
+                // The tap is called inside the lock, so an export taking the
+                // publishing over either waits for this frame's hand-off or
+                // stops it, and never has one arrive after it took over.
+                store.withLockUnchecked { state in
+                    if !state.followsExport { state.tap?(frame.cgImage) }
+                }
                 Thread.sleep(until: next)
             }
         }
         thread.name = "co.eavl.ollin.stillframes"
         thread.stackSize = 1 << 20
         thread.start()
+    }
+}
+
+// MARK: Export clock
+
+/// The per-frame pass that steps `@Eased` and a video's virtual playhead also
+/// publishes the picture while an export runs, `rate` times a second of the
+/// sketch's clock, starting on the first frame. A held clock (a settle draw)
+/// publishes nothing, so the frames an analyzer reads are a function of the
+/// clock alone. In a window the pass hands the publishing back to the thread.
+extension StillFrames: @MainActor FrameAdvancing {
+    package func advance(by dt: Double) {
+        guard OllinApp.isExporting else {
+            if followsExport { followExportClock(false) }
+            return
+        }
+        if !followsExport { followExportClock(true) }
+        // A sum of frame steps falls a hair short of the moment it should
+        // reach (fifteen sixtieths add up to just under a quarter), so the
+        // moment is reached within a nanosecond rather than past it, or every
+        // publish would land a frame late.
+        if exportClock >= Double(exportPublishes) / rate - 1e-9 {
+            exportPublishes += 1
+            publishing.withLock { $0.tap }?(cgImage.cgImage)
+        }
+        exportClock += dt
+    }
+
+    /// Hand the publishing to the export's clock, or back to the thread. The
+    /// count starts over each way, so an export that follows a window starts
+    /// on its own first frame.
+    private func followExportClock(_ follows: Bool) {
+        followsExport = follows
+        exportClock = 0
+        exportPublishes = 0
+        publishing.withLock { $0.followsExport = follows }
     }
 }
 

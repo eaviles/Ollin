@@ -71,7 +71,7 @@ override func draw() {
 
 `try!` is safe here because the clip ships with Ollin. For a file of your own, `VideoPlayer(path:)` takes its path. Declare `var film: VideoPlayer?` and set it with `try?` inside `setup()`, and a missing file leaves it `nil` instead of stopping the sketch. The frames arrive on the GPU, so drawing them costs almost nothing, and `drawFrame` letterboxes them the same way.
 
-While you build a sketch that reads people, rehearse it on footage. Standing in front of the camera for every change is tiring, and no two takes move the same way. A clip moves the same way every run, so the change you just made is the only thing that changed. Swap the camera back in once the sketch reads the film well. A tracker reads a clip only while it plays in the live window. During an export it reads nothing, because its frames arrive on the live clock.
+While you build a sketch that reads people, rehearse it on footage. Standing in front of the camera for every change is tiring, and no two takes move the same way. A clip moves the same way every run, so the change you just made is the only thing that changed. Swap the camera back in once the sketch reads the film well. A tracker reads a clip in an export too. Each frame under the playhead is read before the frame that shows it is drawn, so every run reads the same frames.
 
 ## Trackers: attach, then read
 
@@ -202,7 +202,7 @@ Then make it yours:
 
 To rehearse the brush without standing up, swap `camera` for the film from [When there is no camera](#when-there-is-no-camera-stills-and-footage), with `film.play()` in place of `camera.start()`. The dancer then paints a picture like the one at the top of the chapter, flipped left for right by `mirrored: true`. When the clip loops back to its start, the jump reads as one burst of motion, and `flow.reset()` right after the jump clears it.
 
-This sketch paints from what happens in front of it, so keep it live. A tracker reads nothing during an export, so the usual export flags have no motion to paint with. To keep a painting, record the window with the Mac's own screen recording, Shift-Command-5. Or send the sketch to another app while it runs, as [Chapter 43](43-Performing.md#live-feeds-into-other-apps) shows.
+This sketch paints from what happens in front of it, so keep a live painting by recording the window. Use the Mac's own screen recording, Shift-Command-5. Or send the sketch to another app while it runs, as [Chapter 43](43-Performing.md#live-feeds-into-other-apps) shows. Rehearsed on the film, it exports too. An export hands the tracker each frame of the film before it draws the frame that shows it. So every run paints from the same frames.
 
 ## Reading people: poses, landmarks, and segmentation
 
@@ -477,7 +477,7 @@ The anchor and `reset()`, the slow `range`, and the build step the model needs a
 
 ### A clip read whole for an export: DepthClip
 
-A recording can be read whole instead of as it plays. An export needs that, because a tracker over a playing clip reads nothing under `--export-video`. **`DepthClip`** takes a `VideoPlayer` and runs its file through the video depth model once, in the 32-frame windows it was trained on. Each window is fitted to the one before, so the clip sits on one scale. The pass is kept on disk, and then `map` and `value(at:in:)` answer for the frame under the playhead, the tracker's own calls.
+A recording can be read whole instead of as it plays. A `DepthTracker` over a playing clip reads it a frame at a time, an export's frames included, and settles over its first second. **`DepthClip`** takes a `VideoPlayer` and runs its file through the video depth model once, in the 32-frame windows it was trained on. So an export has every frame's map from its first frame. Each window is fitted to the one before, so the clip sits on one scale. The pass is kept on disk, and then `map` and `value(at:in:)` answer for the frame under the playhead, the tracker's own calls.
 
 ```swift
 var depth: DepthClip?

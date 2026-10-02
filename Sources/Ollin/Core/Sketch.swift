@@ -537,7 +537,9 @@ open class Sketch {
     /// ask for it once. While the loop runs it does nothing, since the next
     /// frame is coming anyway, and inside `setup()` or `draw()` it does
     /// nothing either, since that frame is the one being drawn. An export
-    /// draws every frame it writes, so it ignores the call too.
+    /// holds the frame a stopped sketch last drew, as a window does, and a
+    /// replayed take draws every frame the window drew when it was recorded,
+    /// so neither has a frame to ask for.
     ///
     /// ```swift
     /// override func setup() { noLoop() }
@@ -568,6 +570,13 @@ open class Sketch {
     /// ``isVectorExporting`` is the narrower question, true only while the
     /// frame is recorded as vector line work.
     public var isExporting: Bool { OllinApp.isExporting }
+
+    /// Whether an export holds the frame this sketch last drew instead of
+    /// drawing another: the loop has stopped (`noLoop()`), which is when a
+    /// window stops drawing and shows that frame from then on. A replayed
+    /// take is the exception, since a take is written down only on frames a
+    /// window drew, so its replay draws every frame it holds.
+    var exportHoldsFrame: Bool { !isLooping && takePlayer == nil }
 
     // MARK: Accumulation
 
