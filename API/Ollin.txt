@@ -2199,8 +2199,11 @@ open class Sketch: Sendable
   func drawStar(center: Vector2, outerRadius: Double, innerRadius: Double, points: Int, file: StaticString = default, line: Int = default, column: Int = default)
   func drawStatus(_: String, style: StatusStyle = default, in: Rectangle? = default)
   func drawStrands(_: StrandField)
+  func drawStrip(between: [Vector3], and: [Vector3], colors: [Color] = default, closed: Bool = default)
   func drawSuperellipsoid(radius: Double = default, e1: Double = default, e2: Double = default, segments: Int = default, rings: Int = default)
   func drawSupershape(radius: Double = default, m: Double = default, n1: Double = default, n2: Double = default, n3: Double = default, segments: Int = default, rings: Int = default)
+  func drawSweep(_: Shape, along: Curve3D, scale: (Double) -> Double = default, twist: (Double) -> Double = default, capped: Bool = default)
+  func drawSweep(_: [Vector2], along: Curve3D, scale: (Double) -> Double = default, twist: (Double) -> Double = default, capped: Bool = default)
   func drawTenPrint(in: Rectangle? = default, columns: Int, rows: Int, probability: Double = default)
   func drawTensegrity(_: Tensegrity, strutRadius: Double = default, cableRadius: Double = default)
   func drawTetrahedron(radius: Double = default)
@@ -3514,6 +3517,23 @@ struct CuesCardView: Sendable, View
   static func fade(in: Foundation.UserDefaults = default) -> Double
   static let fadeKey: String
   var body: some SwiftUI.View { get }
+struct Curve3D: Equatable, Sendable
+  func frame(at: Double) -> Curve3D.Frame
+  func point(at: Double) -> Vector3
+  func resampled(spacing: Double) -> Curve3D
+  init(_: [Vector3], closed: Bool = default)
+  init(curveThrough: [Vector3], closed: Bool = default, segments: Int = default)
+  let frames: [Curve3D.Frame]
+  let isClosed: Bool
+  let length: Double
+  let points: [Vector3]
+  struct Frame: Equatable, Sendable
+    func point(_: Vector2) -> Vector3
+    let binormal: Vector3
+    let normal: Vector3
+    let position: Vector3
+    let tangent: Vector3
+    var rotation: Rotation3D { get }
 struct DXF: Equatable, Sendable
   func drafting(_: [Contour], in: Rectangle) -> Drafting
   func text(_: [Contour], in: Rectangle) -> String
@@ -4921,8 +4941,11 @@ struct Mesh: Sendable
   static func roundedBox(size: Double, radius: Double = default, segments: Int = default) -> Mesh
   static func roundedBox(width: Double = default, height: Double = default, depth: Double = default, radius: Double = default, segments: Int = default) -> Mesh
   static func sphere(radius: Double = default, segments: Int = default, rings: Int = default) -> Mesh
+  static func strip(between: [Vector3], and: [Vector3], colors: [Color] = default, closed: Bool = default) -> Mesh
   static func superellipsoid(radius: Double = default, e1: Double = default, e2: Double = default, segments: Int = default, rings: Int = default) -> Mesh
   static func supershape(radius: Double = default, m: Double = default, n1: Double = default, n2: Double = default, n3: Double = default, segments: Int = default, rings: Int = default) -> Mesh
+  static func sweep(_: Shape, along: Curve3D, scale: (Double) -> Double = default, twist: (Double) -> Double = default, capped: Bool = default) -> Mesh
+  static func sweep(_: [Vector2], along: Curve3D, scale: (Double) -> Double = default, twist: (Double) -> Double = default, capped: Bool = default) -> Mesh
   static func tetrahedron(radius: Double = default) -> Mesh
   static func text(_: String, font: OutlineFont = default, size: Double = default, depth: Double = default, align: HorizontalTextAlign = default) -> Mesh
   static func textGlyphs(_: String, font: OutlineFont = default, size: Double = default, depth: Double = default, align: HorizontalTextAlign = default) -> [Mesh]
@@ -5211,6 +5234,16 @@ struct OverlappingWFC: Sendable
   static let maxColors: Int
   static let maxPatterns: Int
   var patternCount: Int { get }
+struct Pace: Equatable, Sendable
+  func fraction(at: Double) -> Double
+  func parameter(at: Double) -> Double
+  init(byAreaBetween: (Double) -> Vector3, and: (Double) -> Vector3, over: ClosedRange<Double>, resolution: Int = default)
+  init(byAreaBetween: (Double) -> Vector3, and: (Double) -> Vector3, period: Double, resolution: Int = default)
+  init(byLengthOf: (Double) -> V, over: ClosedRange<Double>, resolution: Int = default)
+  init(byLengthOf: (Double) -> V, period: Double, resolution: Int = default)
+  let isPeriodic: Bool
+  let range: ClosedRange<Double>
+  let total: Double
 struct Palette: ParamValue, BidirectionalCollection, Collection, Equatable, RandomAccessCollection, Sendable, Sequence
   func color(at: Double) -> Color
   func confusions(tolerance: Double = default) -> [ColorConfusion]

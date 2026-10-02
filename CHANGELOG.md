@@ -4,6 +4,16 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ## [Unreleased]
 
+### Added
+
+- **Sweeps and strips.** `Curve3D` is a path through space, open or closed, kept as points or threaded smoothly through a few with `Curve3D(curveThrough:closed:segments:)`. It walks by length (`point(at:)`, `frame(at:)`) and carries a frame at every point that turns with the path and never twists about it, so `rotate(frame.rotation)` faces a rider the way the path runs. `Mesh.sweep(_:along:scale:twist:capped:)` (and `drawSweep`) carries a `Shape` along it, sized and turned by functions of the fraction along, with hard edges kept at sharp corners, walls facing out whichever way the outlines run, capped ends, and uvs. `Mesh.strip(between:and:colors:closed:)` (and `drawStrip`) is the ribbon between two lines, one color a rung, with normals from the strip itself. `Pace` walks a curve given as a function at one speed (`Pace(byLengthOf:period:)`), or the strip between two such curves at one rate of area (`Pace(byAreaBetween:and:period:)`), and keeps counting periods so a loop never jumps. [Sweeps and strips](Docs/3D/Sweeps.md)
+
+### Changed
+
+- **A closed contour's walk wraps.** `Contour.point(at:)`, `tangent(at:)`, `normal(at:)`, and `piece(from:to:)` used to clamp a fraction to `0...1` on every contour, so a clock passed to a closed one stopped at the start after one lap. On a closed contour they now wrap it, the way a closed `Curve3D` does: `point(at: 1.25)` is a quarter of the way round again, and `piece(from: 1.9, to: 2.1)` is `piece(from: 0.9, to: 0.1)`. An open contour still clamps, and fractions inside `0...1` read exactly as before. [Geometry](Docs/Drawing/Geometry.md#contour-questions)
+
+- **A tube's rings ride the new frames.** `Mesh.tube(along:)`, and the helix and torus knot built on it, now place their rings on `Curve3D`'s frames. They are worked out by double reflection, which is accurate to the fourth order where the old transport was second order (on a helix at 64 points a turn, its twist was 0.006 radians off after one turn, and now it is 0.000002). A closed tube spreads its leftover turn by length rather than by point. On the built-in helix and torus knot the rings turn by under two degrees about the path, and the first ring starts where it always did. [3D](Docs/3D/3D.md#solid-primitives)
+
 ## [0.13.0] - 2026-10-02
 
 ### Changed

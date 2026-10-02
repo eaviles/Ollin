@@ -138,7 +138,7 @@ All of it is one API with the same conventions throughout.
 
 - **Made to be left running.** [Installation mode](Docs/Output/Installation.md) fills the screen, hides the pointer, and keeps the display awake. The clock survives display sleep and long runs; `@Saved` state survives a relaunch. A watch restarts a crashed piece, a schedule gives it the building's hours, and projection calibration and edge blending fit one canvas across displays or projectors.
 
-Everything above ships in this repository. [The catalog](Docs/README.md#the-catalog) is the full capability map, with a reference page for each area. Beyond drawing and shaders, browse [sixty-nine generative techniques](Docs/Generators/README.md), [simulation and physics](Docs/Simulation/README.md), the [opt-in 3D layer](Docs/3D/README.md), [on-device perception](Docs/Vision/Vision.md), [data](Docs/Helpers/Data.md), [sound](Docs/Helpers/Audio.md), and [control surfaces and rig integration](Docs/Integration/README.md).
+Everything above ships in this repository. [The catalog](Docs/README.md#the-catalog) is the full capability map, with a reference page for each area. Beyond drawing and shaders, browse [seventy generative techniques](Docs/Generators/README.md), [simulation and physics](Docs/Simulation/README.md), the [opt-in 3D layer](Docs/3D/README.md), [on-device perception](Docs/Vision/Vision.md), [data](Docs/Helpers/Data.md), [sound](Docs/Helpers/Audio.md), and [control surfaces and rig integration](Docs/Integration/README.md).
 
 ## Live reload
 

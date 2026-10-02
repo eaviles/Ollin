@@ -17,10 +17,10 @@
 | [SkinnedScene](SkinnedScene/) | [SolidType](SolidType/) | [Solids](Solids/) | [SpatialExport](SpatialExport/) |
 | [![SpatialVideo](https://media.ollin.art/examples/3D/Geometry/SpatialVideo/still-640.jpg?v=4909ec0c)](SpatialVideo/) | [![StrangeAttractor](https://media.ollin.art/examples/3D/Geometry/StrangeAttractor/still-640.jpg?v=58701d72)](StrangeAttractor/) | [![SubdivisionSurfaces](https://media.ollin.art/examples/3D/Geometry/SubdivisionSurfaces/still-640.jpg?v=c0a24636)](SubdivisionSurfaces/) | [![SurfaceFromPoints](https://media.ollin.art/examples/3D/Geometry/SurfaceFromPoints/still-640.jpg?v=1f71c874)](SurfaceFromPoints/) |
 | [SpatialVideo](SpatialVideo/) | [StrangeAttractor](StrangeAttractor/) | [SubdivisionSurfaces](SubdivisionSurfaces/) | [SurfaceFromPoints](SurfaceFromPoints/) |
-| [![SurfaceScatter](https://media.ollin.art/examples/3D/Geometry/SurfaceScatter/still-640.jpg?v=9ce4eb54)](SurfaceScatter/) | [![Terrain](https://media.ollin.art/examples/3D/Geometry/Terrain/still-640.jpg?v=ad2260c6)](Terrain/) | [![TexturedMesh](https://media.ollin.art/examples/3D/Geometry/TexturedMesh/still-640.jpg?v=b0c35cde)](TexturedMesh/) | [![Transforms](https://media.ollin.art/examples/3D/Geometry/Transforms/still-640.jpg?v=e2fc0089)](Transforms/) |
-| [SurfaceScatter](SurfaceScatter/) | [Terrain](Terrain/) | [TexturedMesh](TexturedMesh/) | [Transforms](Transforms/) |
-| [![Wireframe](https://media.ollin.art/examples/3D/Geometry/Wireframe/still-640.jpg?v=e69ea91c)](Wireframe/) |  |  |  |
-| [Wireframe](Wireframe/) |  |  |  |
+| [![SurfaceScatter](https://media.ollin.art/examples/3D/Geometry/SurfaceScatter/still-640.jpg?v=9ce4eb54)](SurfaceScatter/) | [![SweptKnot](https://media.ollin.art/examples/3D/Geometry/SweptKnot/still-640.jpg?v=06b63ade)](SweptKnot/) | [![Terrain](https://media.ollin.art/examples/3D/Geometry/Terrain/still-640.jpg?v=ad2260c6)](Terrain/) | [![TexturedMesh](https://media.ollin.art/examples/3D/Geometry/TexturedMesh/still-640.jpg?v=b0c35cde)](TexturedMesh/) |
+| [SurfaceScatter](SurfaceScatter/) | [SweptKnot](SweptKnot/) | [Terrain](Terrain/) | [TexturedMesh](TexturedMesh/) |
+| [![Transforms](https://media.ollin.art/examples/3D/Geometry/Transforms/still-640.jpg?v=e2fc0089)](Transforms/) | [![Wireframe](https://media.ollin.art/examples/3D/Geometry/Wireframe/still-640.jpg?v=e69ea91c)](Wireframe/) |  |  |
+| [Transforms](Transforms/) | [Wireframe](Wireframe/) |  |  |
 
 This group covers meshes, point clouds, and the 3D transform stack.
 
@@ -48,6 +48,7 @@ This group covers meshes, point clouds, and the 3D transform stack.
 | [SubdivisionSurfaces](SubdivisionSurfaces/) | A coarse low-poly cage refined into a smooth solid (`mesh.subdivided(_:levels:)`). |
 | [SurfaceFromPoints](SurfaceFromPoints/) | A surface rebuilt from points, two ways. A knot is sampled into a bare point cloud and then reconstructed from that cloud. |
 | [HopfFibration](HopfFibration/) | A sphere's worth of circles. No two of them meet, and every two of them are linked exactly once. |
+| [SweptKnot](SweptKnot/) | A star swept round a trefoil knot, turning as it goes (`Mesh.sweep` along a `Curve3D`), carriages riding the knot's frames, and a striped ribbon (`Mesh.strip`) whose rungs a `Pace` can space by area. |
 | [LoadedScene](LoadedScene/) | A whole authored scene drawn in place, opening on its own camera and lights. F swaps the glTF stage for its USD version, a sculpture court lit by UsdLux, through the same loadScene call. |
 | [SceneExplorer](SceneExplorer/) | A read-only viewer for a scene file. Point it at a glTF or USD scene and look around it, part by part. |
 | [AnimatedScene](AnimatedScene/) | A scene file's authored animation played back, with keyframe tracks posing named nodes. F swaps the glTF orrery for a USD kinetic mobile, whose timeSamples play the same way. |

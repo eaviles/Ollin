@@ -389,9 +389,9 @@ Tracks like the orrery's move whole nodes, rigid pieces on a hierarchy. A file c
 
 Loading a scene keeps the file in charge, which is what you want while the model is still moving. **Writing the scene as source** turns the file into a sketch whose `draw()` places every node itself. It is for a layout that has settled, which you now want to change as code rather than in the design tool. It is one of the project generators of the `ollin` command [Chapter 1](01-HelloOllin.md#a-shorter-way-to-run-things) set up. `ollin new Yard --from-scene yard.usdz` writes the project. Its `draw()` has the camera, the lights, and a `withState` block for every node, while the meshes are still read from the file. [Bringing a scene over](../Docs/Tools/SceneImport.md) shows the result beside the scene it draws, and says what carries over and what stays behind.
 
-## More ways to make a mesh: cuts, joins, shadow art, growth, and the Hopf fibration
+## More ways to make a mesh: cuts, joins, shadow art, growth, sweeps, and the Hopf fibration
 
-The garden rounded its stones from boxes, and the chapter opened on a mesh loaded from a file. There are more ways to get a mesh. One can be cut with a second solid or joined out of parts. One can be carved from the shadows you want it to throw, or grown from a rule until it folds. And one comes from a formula for a shape that does not fit in the room.
+The garden rounded its stones from boxes, and the chapter opened on a mesh loaded from a file. There are more ways to get a mesh. One can be cut with a second solid or joined out of parts. One can be carved from the shadows you want it to throw, or grown from a rule until it folds. One can be a flat shape carried along a path. And one comes from a formula for a shape that does not fit in the room.
 
 ### Cutting one solid with another: mesh booleans
 
@@ -500,17 +500,49 @@ There is a fourth driver, `.chemical`, that runs [Chapter 23](23-GridSimulations
 
 Growth is slow on purpose. A form takes hundreds of steps, and stepping once a frame lets you watch it develop. `maxVertices` is the ceiling that keeps it interactive, and it also decides how far a form gets before it settles.
 
+### A shape along a path: sweeps and strips
+
+A **sweep** carries a flat shape along a path through space and joins the copies into a solid. It makes the molding round a picture frame, a rope, or a horn that tapers and turns. Every modeling tool has one. The idea goes back to the generalized cylinders Thomas Binford described for computer vision in 1971.
+
+The path is a `Curve3D`: a list of 3D points, or a smooth curve through a few of them with `Curve3D(curveThrough:)`. `drawSweep` lays the shape across the path at every point:
+
+```swift
+let rail = Curve3D(curveThrough: [Vector3(-2, 0, 0), Vector3(-1, 1, 0.5),
+                                  Vector3(1, 0.5, -0.5), Vector3(2, 1.5, 0)])
+drawSweep(Profile.star(points: 5, outerRadius: 0.3, innerRadius: 0.15), along: rail,
+          scale: { 1 - 0.7 * $0 }, twist: { $0 * .pi })
+```
+
+`scale` and `twist` are read with the fraction of the way along, from 0 to 1. Here the star shrinks toward the end and turns half a turn.
+
+Without a `twist`, the shape should not turn at all. The obvious way to carry it is the curve's own frame: the way the path runs, and the way it bends. That frame turns over wherever the bend changes side, and the shape turns over with it. `Curve3D` carries its frames forward by two reflections at each step instead, a method Wenping Wang and colleagues published in 2008. Those frames turn exactly as far as the path bends, and never about the path itself.
+
+<img src="Images/27-Meshes/FramesThatDoNotTwist.jpg" alt="Two copies of the same flat ribbon laid along the same S-shaped path, each with one edge orange and the other blue. On the left, labeled the curve's own frame, the orange edge is on top through the first bend, then the ribbon pinches and turns over in the middle, so the orange edge runs underneath through the second bend. On the right, labeled Curve3D's frames, the ribbon runs smoothly through both bends with the orange edge on top the whole way" width="560">
+
+A **strip** is the ribbon between two lines in space, where rung `i` joins the two lines' `i`th points. `drawStrip` builds it with one color for each rung, the way a hand-built ribbon mesh is usually made. Rungs at even steps of a curve's parameter bunch up where the curve slows down. `Pace` spaces them evenly by length, or for a strip by area:
+
+```swift
+func lower(_ t: Double) -> Vector3 { Vector3(cos(t), 0, sin(t)) * (2 + cos(2 * t)) }
+func upper(_ t: Double) -> Vector3 { lower(t) * 0.8 + Vector3(0, 0.6, 0) }
+let pace = Pace(byAreaBetween: lower, and: upper, period: .tau)
+let ts = (0..<180).map { pace.parameter(at: Double($0) / 180) }
+drawStrip(between: ts.map(lower), and: ts.map(upper), closed: true)
+```
+
+Each rung of that ribbon now covers the same area, however the two loops bend. The [sweeps and strips page](../Docs/3D/Sweeps.md) has the rest, and [`Examples/3D/Geometry/SweptKnot`](../Examples/3D/Geometry/SweptKnot/Sketch.swift) sweeps a star round a knot with carriages riding it.
+
 ### A shape from four dimensions: the Hopf fibration
 
 One more mesh cannot be modeled at all, because the thing it draws does not fit in the room. The **Hopf fibration** is a sphere's worth of circles from four-dimensional space. No two of them meet, and every two of them are linked. Drawn as tubes, it makes a sculpture of linked rings. Heinz Hopf described it in 1931. `hopfFibers` hands them back as paths for `drawTube`, and `hopfBases` arranges the sphere's points so the linking can be seen. The [Hopf fibration page](../Docs/3D/HopfFibration.md) draws it and explains the three details that make it read, and [`Examples/3D/Geometry/HopfFibration`](../Examples/3D/Geometry/HopfFibration/Sketch.swift) turns it.
 
 ## Where this comes from
 
-Normal mapping descends from Jim Blinn's 1978 bump mapping, which perturbed the shading normal instead of the surface. The tangent-space map is how that idea reached every real-time engine. Moving the surface itself is displacement mapping, from Robert Cook's 1984 paper on shade trees. Parallax occlusion mapping is the marching read of the same picture, from Zoe Brawley and Natalya Tatarchuk's 2004 chapter in *ShaderX3*. Triplanar projection is the three-axis world projection Ryan Geiss wrote up for terrain in *GPU Gems 3*. The detail pair blends onto the base with the reoriented normal mapping of Colin Barré-Brisebois and Stephen Hill. Subdivision surfaces are Edwin Catmull and James Clark's 1978 scheme for quads and Charles Loop's 1987 one for triangles. Character modeling has run on the pair ever since. Projected decals follow the box projection of the real-time decal literature, notably Tiago Sousa and Jean Geffroy's 2016 talk on idTech 6. Loading a scene follows the glTF specification Khronos publishes and the structure of Pixar's OpenUSD. The cuts, shadow art, growth, and the Hopf fibration name their own sources. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+Normal mapping descends from Jim Blinn's 1978 bump mapping, which perturbed the shading normal instead of the surface. The tangent-space map is how that idea reached every real-time engine. Moving the surface itself is displacement mapping, from Robert Cook's 1984 paper on shade trees. Parallax occlusion mapping is the marching read of the same picture, from Zoe Brawley and Natalya Tatarchuk's 2004 chapter in *ShaderX3*. Triplanar projection is the three-axis world projection Ryan Geiss wrote up for terrain in *GPU Gems 3*. The detail pair blends onto the base with the reoriented normal mapping of Colin Barré-Brisebois and Stephen Hill. Subdivision surfaces are Edwin Catmull and James Clark's 1978 scheme for quads and Charles Loop's 1987 one for triangles. Character modeling has run on the pair ever since. Projected decals follow the box projection of the real-time decal literature, notably Tiago Sousa and Jean Geffroy's 2016 talk on idTech 6. Loading a scene follows the glTF specification Khronos publishes and the structure of Pixar's OpenUSD. The cuts, shadow art, growth, sweeps, and the Hopf fibration name their own sources. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
 - [3D](../Docs/3D/3D.md): the full reference for every map (`normalMapped`, `surfaceMapped`, `parallaxMapped`, `displaced`, `triplanarTextured`, `detailMapped`, decals), with the exact envelope of each.
+- [Sweeps and strips](../Docs/3D/Sweeps.md): `Curve3D` and its frames, everything a sweep does with a shape (holes, sharp corners, caps, uvs), the strip's colors and normals, and `Pace` by length or by area, with what each costs.
 - [The Hopf fibration](../Docs/3D/HopfFibration.md): the base sets, taking the color from the base point, the straight one, and what it costs to draw.
 - [Scenes](../Docs/3D/Scenes.md): the whole `loadScene` reference, what carries over from a glTF file (nodes, cameras, punctual lights, animations, skins, and morph targets) and from a USD file (nodes, cameras, its UsdLux lights, its transform animation, and its UsdSkel skins and blend shapes), how intensities are normalized, and building a `Scene` in code.
 - [Bringing a scene over](../Docs/Tools/SceneImport.md): `ollin new --from-scene` writes the sketch instead of loading the file, so the camera, the lights and every placement become source you own. What it leaves behind, and why, is listed there.
@@ -520,7 +552,7 @@ Normal mapping descends from Jim Blinn's 1978 bump mapping, which perturbed the 
 - [Mesh growth](../Docs/Generators/MeshGrowth.md): the differential-growth and reaction-diffusion forms, their arguments and properties, and how to keep a growth stable.
 - The Felguérez homage [`EspacioMultiple`](../Examples/Recreations/ManuelFelguerez/EspacioMultiple/Sketch.swift) pushes the flat outlines of a painting into slabs with `drawExtrude`, each to its own height. Then it pulls the slabs apart into a standing sculpture, so one point list is the painting, the relief and the sculpture.
 - The Bonačić homage [`GFE164`](../Examples/Recreations/VladimirBonacic/GFE164/Sketch.swift): 1,024 tubes of four lengths as two instanced draws. The tubes are lit, and their glass ends are drawn inside `withoutLights`, so each lit glass is its own light. One point light for every block of sixteen tubes carries the color of what is lit there onto the tubes around it. A copy's color multiplies the `fill`, so the fill goes back to white first.
-- Worked examples, in [`Examples/3D/`](../Examples/3D/): `Geometry/LoadedMesh` and `Geometry/LoadedScene`, `Materials/NormalMaps`, `Materials/SurfaceMaps`, `Materials/Parallax`, `Materials/Triplanar`, `Materials/Detail`, `Materials/Decals`, `Geometry/AnimatedScene`, and `Geometry/SkinnedScene`.
+- Worked examples, in [`Examples/3D/`](../Examples/3D/): `Geometry/LoadedMesh` and `Geometry/LoadedScene`, `Materials/NormalMaps`, `Materials/SurfaceMaps`, `Materials/Parallax`, `Materials/Triplanar`, `Materials/Detail`, `Materials/Decals`, `Geometry/AnimatedScene`, `Geometry/SkinnedScene`, and `Geometry/SweptKnot`.
 
 ---
 

@@ -34,15 +34,17 @@ public extension Contour {
         return total
     }
 
-    /// The point a fraction `t` (`0...1`, clamped) of the way along the
-    /// contour *by walked length*, so it lands mid-stroke even when the points
-    /// are spaced unevenly. A closed contour's walk includes the closing
-    /// segment, so `t` near 1 sits just before the start again.
+    /// The point a fraction `t` of the way along the contour *by walked
+    /// length*, so it lands mid-stroke even when the points are spaced
+    /// unevenly. A closed contour's walk includes the closing segment, so `t`
+    /// near 1 sits just before the start again, and it wraps `t`: `1.25` is a
+    /// quarter of the way round again, so a clock can run straight into it.
+    /// An open contour clamps `t` to `0...1`.
     func point(at t: Double) -> Vector2 {
         guard let first = points.first else { return .zero }
         let total = length
         guard total > 0 else { return first }
-        var remaining = Swift.min(Swift.max(t, 0), 1) * total
+        var remaining = walkFraction(t) * total
         var walk = Array(points.dropFirst())
         if isClosed { walk.append(first) }
         var previous = first
@@ -56,6 +58,14 @@ public extension Contour {
             previous = point
         }
         return walk[walk.count - 1]
+    }
+
+    /// A fraction along the walk as the walk reads it: wrapped round a closed
+    /// contour, clamped to `0...1` on an open one (and for a fraction that is
+    /// not a number).
+    internal func walkFraction(_ t: Double) -> Double {
+        if isClosed && t.isFinite { return t - t.rounded(.down) }
+        return Swift.min(Swift.max(t, 0), 1)
     }
 
     /// The point halfway along the contour (`point(at: 0.5)`): a handy anchor

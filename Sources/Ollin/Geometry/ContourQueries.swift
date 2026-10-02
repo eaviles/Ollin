@@ -21,16 +21,17 @@ public extension Contour {
         public let otherFraction: Double
     }
 
-    /// The direction of travel a fraction `t` (`0...1`, clamped) of the way
-    /// along the contour, as a unit vector: the direction of the segment
-    /// `point(at: t)` lands on. At a vertex it is the segment arriving there,
-    /// and at `t = 0` the first one. A contour with no length answers `.zero`.
+    /// The direction of travel a fraction `t` of the way along the contour,
+    /// as a unit vector: the direction of the segment `point(at: t)` lands on.
+    /// At a vertex it is the segment arriving there, and at `t = 0` the first
+    /// one. `t` wraps on a closed contour and clamps to `0...1` on an open
+    /// one, as `point(at:)` reads it. A contour with no length answers `.zero`.
     func tangent(at t: Double) -> Vector2 {
         let walk = segments()
         guard let total = walk.last.map({ $0.start + $0.length }), total > 0 else {
             return .zero
         }
-        let target = Swift.min(Swift.max(t, 0), 1) * total
+        let target = walkFraction(t) * total
         for segment in walk where target <= segment.start + segment.length {
             return segment.direction
         }
@@ -68,27 +69,39 @@ public extension Contour {
         return points.first.map { $0.distance(to: point) } ?? .infinity
     }
 
-    /// The stretch of the contour between two fractions (each `0...1`,
-    /// clamped), as an open contour that starts at `point(at: start)` and
-    /// ends at `point(at: end)`, keeping every vertex in between.
+    /// The stretch of the contour between two fractions, as an open contour
+    /// that starts at `point(at: start)` and ends at `point(at: end)`, keeping
+    /// every vertex in between. The fractions are read as `point(at:)` reads
+    /// them: wrapped on a closed contour, clamped to `0...1` on an open one.
     ///
-    /// On a closed contour the piece always runs forward and wraps through the
-    /// starting point when `end` is smaller than `start`, so
-    /// `piece(from: 0.9, to: 0.1)` is the fifth of a ring around its seam, and
-    /// `piece(from: 0, to: 1)` is the whole loop opened at its start. On an
-    /// open contour an `end` before `start` walks backward, the piece reversed.
+    /// On a closed contour the piece always runs forward, at most once round,
+    /// and wraps through the starting point when it has to, so
+    /// `piece(from: 0.9, to: 0.1)` is the fifth of a ring around its seam and
+    /// `piece(from: 1.9, to: 2.1)` is the same fifth. Two fractions a whole
+    /// number of laps apart, `piece(from: 0, to: 1)` or
+    /// `piece(from: 0.3, to: 1.3)`, give the whole loop opened at the start.
+    /// On an open contour an `end` before `start` walks backward, the piece
+    /// reversed.
     func piece(from start: Double, to end: Double) -> Contour {
-        let a = Swift.min(Swift.max(start, 0), 1)
-        let b = Swift.min(Swift.max(end, 0), 1)
         let total = length
         guard points.count >= 2, total > 0 else {
             return Contour(points.first.map { [$0] } ?? [], closed: false)
         }
-        if !isClosed && b < a {
-            return piece(from: b, to: a).reversed()
+        let a = walkFraction(start)
+        var span: Double
+        if isClosed && start.isFinite && end.isFinite {
+            let laps = end - start
+            span = laps - laps.rounded(.down)
+            if span == 0 && laps != 0 { span = 1 }
+        } else {
+            let b = walkFraction(end)
+            if !isClosed && b < a {
+                return piece(from: b, to: a).reversed()
+            }
+            span = b - a
+            if isClosed && span < 0 { span += 1 }
         }
-        var span = b - a
-        if isClosed && span < 0 { span += 1 }
+        let b = a + span
         let from = a * total, to = from + span * total
         // Each vertex sits at its walked distance; a closed loop is laid out
         // twice so a piece through the seam reads straight across it.

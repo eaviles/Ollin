@@ -33,6 +33,9 @@ struct MeshTests {
             ("tube", .tube(along: [Vector3(0, 0, 0), Vector3(0, 1, 0), Vector3(1, 1, 0)], radius: 0.1, sides: 6)),
             ("extrude", .extrude(Profile.star(points: 5, outerRadius: 1, innerRadius: 0.5), depth: 0.5)),
             ("lathe", .lathe([Vector2(0.1, -0.5), Vector2(0.5, 0), Vector2(0.1, 0.5)], segments: 16)),
+            ("sweep", .sweep(Profile.star(points: 5, outerRadius: 0.15, innerRadius: 0.07), along: Curve3D(curveThrough: [Vector3(0, 0, 0), Vector3(1, 1, 0), Vector3(2, 0, 1), Vector3(3, 1, 1)]), scale: { 1 - 0.5 * $0 })),
+            ("strip", .strip(between: [Vector3(0, 0, 0), Vector3(1, 0, 0), Vector3(2, 0, 1)],
+                             and: [Vector3(0, 1, 0), Vector3(1, 1, 0.5), Vector3(2, 1, 1)])),
         ]
         for (name, mesh) in meshes {
             #expect(!mesh.isEmpty, "\(name) should not be empty")
@@ -80,6 +83,9 @@ struct MeshTests {
                                  depth: 0.5)),
             ("superellipsoid", .superellipsoid(radius: 1, e1: 0.5, e2: 0.5,
                                                segments: 24, rings: 12)),
+            ("sweep", .sweep(Profile.star(points: 5, outerRadius: 0.15, innerRadius: 0.07), along: Curve3D(curveThrough: [Vector3(0, 0, 0), Vector3(1, 1, 0), Vector3(2, 0, 1), Vector3(3, 1, 1)]), twist: { $0 })),
+            ("sweep loop", .sweep(Profile.ellipse(radiusX: 0.2, radiusY: 0.1, segments: 16),
+                                  along: Curve3D(curveThrough: [Vector3(1, 0, 0), Vector3(0, 1, 0.5), Vector3(-1, 0, 0), Vector3(0, -1, -0.5)], closed: true))),
         ]
         for (name, mesh) in meshes {
             let welded = mesh.welded()
@@ -163,6 +169,11 @@ struct MeshTests {
                              segments: 16)),
             ("extrude", .extrude(Profile.star(points: 5, outerRadius: 1, innerRadius: 0.5),
                                  depth: 0.5)),
+            ("sweep", .sweep(Profile.star(points: 5, outerRadius: 0.15, innerRadius: 0.07), along: Curve3D(curveThrough: [Vector3(0, 0, 0), Vector3(1, 1, 0), Vector3(2, 0, 1), Vector3(3, 1, 1)]), scale: { 1 - 0.5 * $0 }, twist: { $0 })),
+            ("sweep loop", .sweep(Profile.ellipse(radiusX: 0.2, radiusY: 0.1, segments: 16),
+                                  along: Curve3D(curveThrough: [Vector3(1, 0, 0), Vector3(0, 1, 0.5), Vector3(-1, 0, 0), Vector3(0, -1, -0.5)], closed: true))),
+            ("strip", .strip(between: [Vector3(0, 0, 0), Vector3(1, 0, 0), Vector3(2, 0, 1)],
+                             and: [Vector3(0, 1, 0), Vector3(1, 1, 0.5), Vector3(2, 1, 1)])),
         ]
         for (name, mesh) in meshes {
             var faces = 0, disagreeing = 0

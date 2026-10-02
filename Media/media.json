@@ -1499,6 +1499,28 @@
       "stillSmall": "examples/3D/Geometry/SurfaceScatter/still-640.jpg?v=9ce4eb54",
       "width": 1080
     },
+    "3D/Geometry/SweptKnot": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 19.601,
+      "sound": false,
+      "source": "1cd39f7f6da692f8",
+      "rendered": "2026-10-02",
+      "bytes": {
+        "loop": 2422997,
+        "loopSmall": 548835,
+        "still": 96575,
+        "stillSmall": 37740
+      },
+      "loop": "examples/3D/Geometry/SweptKnot/loop.mp4?v=a47ec548",
+      "loopSmall": "examples/3D/Geometry/SweptKnot/loop-640.mp4?v=ab3bc89d",
+      "still": "examples/3D/Geometry/SweptKnot/still.jpg?v=9a21cd77",
+      "stillSmall": "examples/3D/Geometry/SweptKnot/still-640.jpg?v=06b63ade",
+      "seed": 1
+    },
     "3D/Geometry/Terrain": {
       "bytes": {
         "loop": 1688663,

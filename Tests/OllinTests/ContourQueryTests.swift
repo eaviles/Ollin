@@ -55,6 +55,29 @@ import Ollin
         }
     }
 
+    /// A closed outline's walk wraps, the way a closed `Curve3D`'s does, so a
+    /// clock runs straight round it: a fraction a whole number of laps away
+    /// lands on the same point and runs the same way, and a piece a whole
+    /// number of laps along is the same piece. An open outline clamps.
+    @Test func aClosedWalkWrapsAndAnOpenOneClamps() {
+        let loop = Self.loop
+        for t in [0.0, 0.13, 0.5, 0.87] {
+            for laps in [-2.0, -1.0, 1.0, 3.0] {
+                #expect((loop.point(at: t + laps) - loop.point(at: t)).length < 1e-9)
+                #expect((loop.tangent(at: t + laps) - loop.tangent(at: t)).length < 1e-12)
+            }
+        }
+        #expect(loop.piece(from: 1.9, to: 2.1).points == loop.piece(from: 0.9, to: 0.1).points)
+        // Whole laps apart is the whole loop, opened where it starts.
+        let whole = loop.piece(from: 0.3, to: 1.3)
+        #expect(abs(whole.length - loop.length) < 1e-9)
+        #expect((whole.points[0] - loop.point(at: 0.3)).length < 1e-9)
+        let wave = Self.wave
+        #expect(wave.point(at: 1.25) == wave.point(at: 1))
+        #expect(wave.point(at: -0.5) == wave.point(at: 0))
+        #expect(wave.tangent(at: 7) == wave.tangent(at: 1))
+    }
+
     @Test func theNormalIsTheTangentTurnedToTheRightOfTravel() {
         // Walking right along the top of a clockwise square, the right hand
         // points down the canvas, into the square.

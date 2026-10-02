@@ -462,11 +462,13 @@ Contour(_ points: [Vector2], closed: Bool = true)
 Contour(curveThrough points: [Vector2], closed: Bool = true, spline: Spline = .catmullRom)   // smooth curve through the points
 
 var length: Double              // distance along the segments (closed: plus the return leg)
-func point(at t: Double) -> Vector2   // the point a fraction t (0...1) along, by walked length
+func point(at t: Double) -> Vector2   // the point a fraction t along, by walked length (wraps when closed)
 var midpoint: Vector2           // point(at: 0.5)
 func resampled(spacing: Double) -> Contour   // points respaced evenly along the walk
 func contains(_ point: Vector2) -> Bool      // is the point inside the outline?
 ```
+
+`point(at:)` walks a contour's own points by length. On an open contour it clamps `t` to `0...1`. A closed one wraps it, so `1.25` is a quarter of the way round again and `point(at: time * 0.1)` runs round the loop for good. `tangent(at:)`, `normal(at:)`, and `piece(from:to:)` read their fractions the same way. A curve you write as a function instead, such as a Lissajous figure, is walked at one speed by a `Pace`, and the same walk in space is a `Curve3D`. Both are on [Sweeps and strips](../3D/Sweeps.md).
 
 A contour is a run of points, and it says so: it is a `RandomAccessCollection` of its `Vector2`s, so the standard library reaches it without a detour through `points`.
 
@@ -526,7 +528,7 @@ drawArrow(from: foot, to: foot + path.normal(at: t) * 50)
 
 A contour is straight between its points, so the tangent is the direction of the segment `point(at: t)` lands on. At a vertex it is the segment arriving there. The normal is `tangent(at: t).perpendicular`, a quarter turn clockwise as the canvas shows it, so it points to the right of the direction of travel. On an outline wound clockwise on the canvas, that is inward, and `reversed()` flips it.
 
-`piece(from:to:)` cuts out the stretch between two fractions as an open contour. It starts at `point(at: start)`, ends at `point(at: end)`, and keeps every vertex in between, so its length is the difference of the fractions times the whole length. On a closed outline the piece always runs forward. It wraps through the start when `end` is smaller, so `piece(from: 0.9, to: 0.1)` is the fifth of a ring around its seam. On an open one, an `end` before `start` walks backward.
+`piece(from:to:)` cuts out the stretch between two fractions as an open contour. It starts at `point(at: start)`, ends at `point(at: end)`, and keeps every vertex in between, so its length is the difference of the fractions times the whole length. On a closed outline the piece always runs forward, at most once round. It wraps through the start when it has to, so `piece(from: 0.9, to: 0.1)` is the fifth of a ring around its seam, and so is `piece(from: 1.9, to: 2.1)`. Two fractions a whole number of laps apart give the whole loop. On an open one, an `end` before `start` walks backward.
 
 `crossings(with:)` finds every place two outlines meet, sorted along the one you asked. Each `Contour.Crossing` carries its `point` and a fraction along both walks: `fraction` on this outline and `otherFraction` on the other. Either outline can then be cut at the crossing with `piece(from:to:)`.
 

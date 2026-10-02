@@ -2228,6 +2228,32 @@ open class Sketch {
         drawer.drawMesh(.tube(along: path, radius: radius, sides: sides, closed: closed))
     }
 
+    /// Draw a 2D `shape` carried along a 3D `path`, sized by `scale` and turned
+    /// by `twist` (each read at the fraction along the path), the ends capped
+    /// on an open path. See `Mesh.sweep(_:along:scale:twist:capped:)`.
+    public func drawSweep(_ shape: Shape, along path: Curve3D,
+                          scale: (Double) -> Double = { _ in 1 },
+                          twist: (Double) -> Double = { _ in 0 },
+                          capped: Bool = true) {
+        drawer.drawMesh(.sweep(shape, along: path, scale: scale, twist: twist, capped: capped))
+    }
+
+    /// Draw a closed outline carried along a 3D `path`. See
+    /// `Mesh.sweep(_:along:scale:twist:capped:)`.
+    public func drawSweep(_ outline: [Vector2], along path: Curve3D,
+                          scale: (Double) -> Double = { _ in 1 },
+                          twist: (Double) -> Double = { _ in 0 },
+                          capped: Bool = true) {
+        drawer.drawMesh(.sweep(outline, along: path, scale: scale, twist: twist, capped: capped))
+    }
+
+    /// Draw a ribbon between two lines in space, rung `i` joining `first[i]`
+    /// to `second[i]`, one color a rung. See `Mesh.strip(between:and:colors:closed:)`.
+    public func drawStrip(between first: [Vector3], and second: [Vector3],
+                          colors: [Color] = [], closed: Bool = false) {
+        drawer.drawMesh(.strip(between: first, and: second, colors: colors, closed: closed))
+    }
+
     /// Draw a Möbius strip centered at the model origin — a band with a half-twist.
     public func drawMobius(radius: Double = 0.5, width: Double = 0.3,
                            segments: Int = 140, sides: Int = 12) {

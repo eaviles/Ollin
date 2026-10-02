@@ -126,6 +126,7 @@ fbf920eccea7  Docs/3D/Scenes.md:179  cannot find 'scene' in scope
 46b3aaaa1676  Docs/3D/Scenes.md:87  cannot find 'stage' in scope
 41d4c4f9c184  Docs/3D/Strands.md:11  cannot convert value of type '(UnboundedRange_) -> ()' to expected argument type 'Camera3D'
 0f2d9a50c363  Docs/3D/Strands.md:42  unary operator cannot be separated from its operand
+1a03c91d853b  Docs/3D/Sweeps.md:32  cannot find 'knot' in scope
 5d8b350196a0  Docs/Concepts/Values.md:13  cannot find 'x' in scope
 a692fef14436  Docs/Concepts/Values.md:37  cannot find 'x' in scope
 ec1d089a4772  Docs/Core/Automation.md:127  cannot find '$radius' in scope
@@ -329,23 +330,23 @@ ff6c8a6ce068  Docs/Drawing/Geometry.md:397  cannot find 'thumbnails' in scope
 b75f4ac15c49  Docs/Drawing/Geometry.md:420  cannot infer contextual base in reference to member 'all'
 23b6891ea8c2  Docs/Drawing/Geometry.md:440  cannot convert value of type 'Vector2.Type' to expected argument type 'Vector2'
 754645c0ed85  Docs/Drawing/Geometry.md:45  expected ',' separator
-e472a0d6d590  Docs/Drawing/Geometry.md:460  expected ',' separator
-52354cad80b1  Docs/Drawing/Geometry.md:504  expected '{' in body of function declaration
-d557b13beb41  Docs/Drawing/Geometry.md:552  expected '{' in body of function declaration
-4fdce137d56e  Docs/Drawing/Geometry.md:588  expected ',' separator
-fae7a0c26a4e  Docs/Drawing/Geometry.md:618  cannot find 'shape' in scope
-ad8b1f537c9c  Docs/Drawing/Geometry.md:625  cannot find 'shape' in scope
-e2d750ef54f7  Docs/Drawing/Geometry.md:631  cannot find 'shape' in scope
-a852c71bbd89  Docs/Drawing/Geometry.md:657  use of 'randomPoints' refers to instance method rather than global function 'randomPoints(in:count:using:)' in module 'Ollin'
-1eb6f12247fb  Docs/Drawing/Geometry.md:668  expected '{' in body of function declaration
-c02c77676873  Docs/Drawing/Geometry.md:682  cannot find 'star' in scope
-c4ec6c299218  Docs/Drawing/Geometry.md:694  expected '{' in body of function declaration
-a1b0bb4e8556  Docs/Drawing/Geometry.md:700  cannot find 'blob' in scope
-7fa1c7078690  Docs/Drawing/Geometry.md:718  expected '{' in body of function declaration
-a70a7ea27883  Docs/Drawing/Geometry.md:725  function produces expected type '[Vector2]'; did you mean to call it with '()'?
-eb39bc6e25d9  Docs/Drawing/Geometry.md:738  expected '{' in body of function declaration
-ef0ca3825a40  Docs/Drawing/Geometry.md:752  expected ',' separator
-0551b7294c44  Docs/Drawing/Geometry.md:794  cannot convert value of type '[Vector2].Type' to expected argument type '[Vector2]'
+f898a9fe80fd  Docs/Drawing/Geometry.md:460  expected ',' separator
+52354cad80b1  Docs/Drawing/Geometry.md:506  expected '{' in body of function declaration
+d557b13beb41  Docs/Drawing/Geometry.md:554  expected '{' in body of function declaration
+4fdce137d56e  Docs/Drawing/Geometry.md:590  expected ',' separator
+fae7a0c26a4e  Docs/Drawing/Geometry.md:620  cannot find 'shape' in scope
+ad8b1f537c9c  Docs/Drawing/Geometry.md:627  cannot find 'shape' in scope
+e2d750ef54f7  Docs/Drawing/Geometry.md:633  cannot find 'shape' in scope
+a852c71bbd89  Docs/Drawing/Geometry.md:659  use of 'randomPoints' refers to instance method rather than global function 'randomPoints(in:count:using:)' in module 'Ollin'
+1eb6f12247fb  Docs/Drawing/Geometry.md:670  expected '{' in body of function declaration
+c02c77676873  Docs/Drawing/Geometry.md:684  cannot find 'star' in scope
+c4ec6c299218  Docs/Drawing/Geometry.md:696  expected '{' in body of function declaration
+a1b0bb4e8556  Docs/Drawing/Geometry.md:702  cannot find 'blob' in scope
+7fa1c7078690  Docs/Drawing/Geometry.md:720  expected '{' in body of function declaration
+a70a7ea27883  Docs/Drawing/Geometry.md:727  function produces expected type '[Vector2]'; did you mean to call it with '()'?
+eb39bc6e25d9  Docs/Drawing/Geometry.md:740  expected '{' in body of function declaration
+ef0ca3825a40  Docs/Drawing/Geometry.md:754  expected ',' separator
+0551b7294c44  Docs/Drawing/Geometry.md:796  cannot convert value of type '[Vector2].Type' to expected argument type '[Vector2]'
 336a733604c7  Docs/Drawing/GlyphMosaic.md:29  expected ',' separator
 cb89fe7408d3  Docs/Drawing/GlyphMosaic.md:41  cannot find 'picture' in scope
 f7a401ec53bc  Docs/Drawing/GlyphMosaic.md:53  expected ',' separator

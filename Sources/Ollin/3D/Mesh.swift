@@ -962,74 +962,26 @@ extension Mesh {
     /// Sweep a circular tube of `radius` along a polyline `path`, with `sides`
     /// around the cross-section — the basis for `helix` and `torusKnot`, and a
     /// general way to thicken any 3D curve (a `PointCloud`-style path, a sampled
-    /// `Path`) into a solid. Uses a parallel-transport (rotation-minimizing) frame
-    /// so the tube doesn't twist along the curve; `closed` joins the last ring back
-    /// to the first and unwinds the loop's holonomy so there's no seam.
+    /// `Path`) into a solid. Its rings ride the same frames as a `Curve3D`
+    /// (rotation-minimizing, by double reflection), so the tube doesn't twist
+    /// along the curve; `closed` joins the last ring back to the first and
+    /// unwinds the loop's leftover turn so there's no seam. For any other
+    /// cross-section, or one that turns or tapers on the way, see
+    /// `sweep(_:along:scale:twist:capped:)`.
     public static func tube(along path: [Vector3], radius: Double = 0.1,
                             sides: Int = 12, closed: Bool = false) -> Mesh {
         let n = path.count
         guard n >= 2 else { return Mesh(positions: [], indices: []) }
         let sds = max(sides, 3)
 
-        // Tangent at each point (central difference; wraps for a closed loop).
-        var tangents = [Vector3](repeating: .unitZ, count: n)
-        for i in 0..<n {
-            let t: Vector3
-            if closed {
-                t = path[(i + 1) % n] - path[(i - 1 + n) % n]
-            } else if i == 0 {
-                t = path[1] - path[0]
-            } else if i == n - 1 {
-                t = path[n - 1] - path[n - 2]
-            } else {
-                t = path[i + 1] - path[i - 1]
-            }
-            tangents[i] = t.normalized
-        }
-
-        // Parallel-transport a normal along the curve.
-        var normals = [Vector3](repeating: .zero, count: n)
-        var binormals = [Vector3](repeating: .zero, count: n)
-        var up = Vector3.unitY
-        if abs(tangents[0].dot(up)) > 0.99 { up = .unitX }
-        var nrm = tangents[0].cross(up).normalized
-        normals[0] = nrm
-        binormals[0] = tangents[0].cross(nrm).normalized
-        for i in 1..<n {
-            let t0 = tangents[i - 1], t1 = tangents[i]
-            let axis = t0.cross(t1)
-            let sinA = axis.length
-            if sinA > 1e-8 {
-                let angle = atan2(sinA, max(-1, min(1, t0.dot(t1))))
-                nrm = rotate(nrm, around: axis / sinA, by: angle)
-            }
-            nrm = (nrm - t1 * nrm.dot(t1)).normalized   // keep it perpendicular to the tangent
-            normals[i] = nrm
-            binormals[i] = t1.cross(nrm).normalized
-        }
-
-        // On a closed loop the transported frame generally doesn't line up with
-        // where it started (a "holonomy" twist), so the last ring meets the first
-        // at a visible seam. Measure that mismatch and unwind it evenly along the
-        // loop, so the frame closes smoothly. (Open curves have no seam to fix.)
-        if closed, n > 2 {
-            // Continue the transport across the closing segment (point n-1 → 0) and
-            // measure the leftover angle between that frame and the starting normal,
-            // in the plane perpendicular to the first tangent.
-            var wrap = normals[n - 1]
-            let axis = tangents[n - 1].cross(tangents[0])
-            let s = axis.length
-            if s > 1e-8 {
-                wrap = rotate(wrap, around: axis / s, by: atan2(s, max(-1, min(1, tangents[n - 1].dot(tangents[0])))))
-            }
-            wrap = (wrap - tangents[0] * wrap.dot(tangents[0])).normalized
-            let theta = atan2(wrap.dot(binormals[0]), wrap.dot(normals[0]))
-            for i in 0..<n {
-                let correction = -theta * Double(i) / Double(n)
-                normals[i] = rotate(normals[i], around: tangents[i], by: correction)
-                binormals[i] = tangents[i].cross(normals[i]).normalized
-            }
-        }
+        // The first ring starts off the tangent crossed with world up (or with
+        // x when the path starts straight up or down).
+        let curve = Curve3D(path, closed: closed, startNormal: { tangent in
+            let up = abs(tangent.dot(.unitY)) > 0.99 ? Vector3.unitX : .unitY
+            return tangent.cross(up).normalized
+        })
+        let normals = curve.frames.map(\.normal)
+        let binormals = curve.frames.map(\.binormal)
 
         var b = Builder()
         let stride = sds + 1
