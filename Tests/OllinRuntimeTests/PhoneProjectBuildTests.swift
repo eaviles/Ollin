@@ -19,7 +19,7 @@ private let xcodegenInstalled: Bool = {
 /// the framework compiles for the phone cold once ever rather than once per
 /// run. The time limit is the hang backstop for a wedged subprocess, and the
 /// build is waited on asynchronously so that backstop can act: a blocking
-/// wait cannot be cancelled, and on a three-core runner it parked one of the
+/// wait cannot be canceled, and on a three-core runner it parked one of the
 /// three cooperative threads for the ten minutes the build took, with every
 /// other suite queued behind that thread.
 @Suite("The phone project builds", .serialized, .timeLimit(.minutes(15)))
@@ -68,7 +68,7 @@ struct PhoneProjectBuildTests {
     /// Runs `command` and returns its status and everything it printed. The
     /// process is waited on through its termination handler, so no thread is
     /// parked, and its output goes to a file rather than a pipe, so a child
-    /// that outlives it holds nothing open. Cancelling the task (the suite's
+    /// that outlives it holds nothing open. Canceling the task (the suite's
     /// time limit) terminates the process, which is what resumes the wait.
     private static func run(_ command: [String], in directory: URL) async throws -> (status: Int32, output: String) {
         let output = directory.appendingPathComponent("\(command[0])-\(UUID().uuidString).log")

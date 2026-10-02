@@ -24,7 +24,7 @@ final class Keys: Sketch {
         background(.black)
 
         // The held movement keys as one read: `moveAxis` folds WASD and the
-        // arrows into a single -1...1 direction, opposite keys cancelling.
+        // arrows into a single -1...1 direction, opposite keys canceling.
         let speed = 7 * scale
         x += moveAxis.x * speed
         y += moveAxis.y * speed

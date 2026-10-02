@@ -218,7 +218,7 @@ import Testing
                                        over: 150...1700)
         let last = Self.peakFrequency(walked[Int(1.5 * Self.rate) ..< Int(1.9 * Self.rate)],
                                       over: 150...1700)
-        #expect(last > first + 500, "travelling, it climbs: \(first) then \(last)")
+        #expect(last > first + 500, "traveling, it climbs: \(first) then \(last)")
     }
 
     @Test func aScrubMovesANoteThatIsAlreadySounding() {
@@ -242,7 +242,7 @@ import Testing
     }
 
     @Test func theSoundComesRoundRatherThanRunningOut() {
-        // A cloud loops: travelling past the end of a short sound reads the
+        // A cloud loops: traveling past the end of a short sound reads the
         // start of it again, rather than going quiet part way through a note.
         let source = Self.textured(count: Int(0.4 * Self.rate))
         let cloud = GrainCloud(size: 0.03, density: 60, positionJitter: 0.05, speed: 1)

@@ -14,7 +14,7 @@ Ollin's StrokeFont (single-line / plotter text) and loaded at runtime by the
 The .jhf distribution may be used by anyone for any purpose, commercial or
 otherwise, provided that these acknowledgements are distributed with the font
 data, and that the data is not converted into the format distributed by the
-U.S. NTIS. The acknowledgements, as the distribution words them:
+U.S. NTIS. The acknowledgments, as the distribution words them:
 
   - The Hershey Fonts were originally created by Dr. A. V. Hershey while
     working at the U. S. National Bureau of Standards.
@@ -30,5 +30,5 @@ Provenance:
   - Distribution: the widely mirrored Hershey data in .jhf form
     (e.g. https://github.com/kamalmostafa/hershey-fonts and
      https://paulbourke.net/dataformats/hershey/)
-  - Terms: the two acknowledgements above travel with the data; see
+  - Terms: the two acknowledgments above travel with the data; see
     THIRD-PARTY-NOTICES.md at the repository root.

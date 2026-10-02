@@ -348,7 +348,7 @@ struct TrackedVehicle3DTests {
     }
 
     /// The same on a wheeled car, where it is the differentials that rebuild:
-    /// with slick front tyres, a car switched to front drive after it was built
+    /// with slick front tires, a car switched to front drive after it was built
     /// goes nowhere, and its twin left on rear drive keeps its legs. (This is
     /// the construction-time routing test, run through the live path.)
     @Test func switchingWhichAxleDrivesReRoutesTheTorque() throws {

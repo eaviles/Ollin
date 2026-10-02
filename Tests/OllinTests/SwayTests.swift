@@ -112,7 +112,7 @@ struct SwayTests {
 
     /// The sine has no corners at the ends, where the triangle has two: over the
     /// first slice of a lap the smooth one has barely left the low end while the
-    /// straight one is already travelling at its one speed.
+    /// straight one is already traveling at its one speed.
     @Test func theSineLeavesTheEndSlowlyAndTheTriangleDoesNot() {
         let early = 4.0 * 0.04
         let sine = samples([early]) { $0.sway(over: 4, shape: .sine) }[0]

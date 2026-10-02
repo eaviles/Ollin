@@ -246,7 +246,7 @@ void cjolt_body_set_position(CJoltWorld *world, CJoltBodyID body, const float po
 void cjolt_body_set_rotation(CJoltWorld *world, CJoltBodyID body, const float quat[4],
                              bool activate);
 /// Stands a body somewhere facing some way in one call. This is not the same
-/// as setting the two separately: the solver holds a body by its centre of
+/// as setting the two separately: the solver holds a body by its center of
 /// mass, so a position written against the old orientation lands wrong for a
 /// body whose shape sits off its own origin (a ragdoll limb, a compound part).
 void cjolt_body_set_pose(CJoltWorld *world, CJoltBodyID body, const float pos[3],
@@ -735,7 +735,7 @@ float cjolt_vehicle_get_track_speed(const CJoltVehicle *vehicle, int32_t side);
 /// Opaque ragdoll handle: a tree of rigid bodies, one per skeleton joint, hung
 /// off each other by swing-twist constraints. Its bodies are ordinary bodies
 /// (they collide, report contacts, and can be picked), but they are created and
-/// destroyed as a set, share a collision group so neighbouring limbs don't
+/// destroyed as a set, share a collision group so neighboring limbs don't
 /// fight, and can be driven together toward a pose.
 typedef struct CJoltRagdoll CJoltRagdoll;
 
@@ -843,7 +843,7 @@ typedef struct {
     int32_t vertex;
     /// Up to four joints, as indices into the description's inverse-bind list,
     /// and how much of the particle each one carries. A weight of 0 ends the
-    /// list; the weights are normalised for you.
+    /// list; the weights are normalized for you.
     uint32_t joints[4];
     float weights[4];
     /// How far the simulated particle may get from the skinned position, in
@@ -887,7 +887,7 @@ typedef struct {
     /// Inverse stiffness of the stretch and shear springs, in m/N. 0 is
     /// inextensible; larger is stretchier.
     float compliance;
-    /// Inverse stiffness of the fold-resisting constraints between neighbouring
+    /// Inverse stiffness of the fold-resisting constraints between neighboring
     /// faces, in m/N. Negative switches them off entirely, which is the limp
     /// cloth every fabric wants.
     float bendCompliance;
@@ -959,7 +959,7 @@ CJoltSoftBody *cjolt_soft_body_create(CJoltWorld *world,
                                       const CJoltSoftBodyDesc *desc);
 void cjolt_soft_body_destroy(CJoltWorld *world, CJoltSoftBody *body);
 
-/// The body id the soft body occupies, so a ray cast hit can be recognised.
+/// The body id the soft body occupies, so a ray cast hit can be recognized.
 CJoltBodyID cjolt_soft_body_get_id(const CJoltSoftBody *body);
 int32_t cjolt_soft_body_vertex_count(const CJoltSoftBody *body);
 
@@ -986,7 +986,7 @@ int32_t cjolt_soft_body_rod_count(const CJoltSoftBody *body);
 /// geometry posed by one of these rotations lies along the rod. Both things the
 /// solver does to the rod list on the way in are undone here: it reorders the
 /// rods to solve them in parallel, and it may swap a rod's two ends so that
-/// neighbouring rods point the same way. The caller therefore sees the rods it
+/// neighboring rods point the same way. The caller therefore sees the rods it
 /// asked for, pointing the way it asked for.
 int32_t cjolt_soft_body_get_rod_rotations(const CJoltWorld *world,
                                           const CJoltSoftBody *body, float *out,
@@ -1119,7 +1119,7 @@ typedef struct CJoltQueryHit {
     /// The body's outward surface normal there (unit length).
     float normal[3];
     /// How far along the query the touch is: the distance from a ray's origin,
-    /// or how far a swept shape travelled before it landed.
+    /// or how far a swept shape traveled before it landed.
     float distance;
 } CJoltQueryHit;
 

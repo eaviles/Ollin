@@ -118,7 +118,7 @@ extension ExtensionSeam {
         @Suite("{{NAME}}")
         struct {{NAME}}Tests {
 
-            @Test func theSpiralStartsAtTheCentreAndEndsAtTheRadius() {
+            @Test func theSpiralStartsAtTheCenterAndEndsAtTheRadius() {
                 let center = Vector2(100, 100)
                 let points = spiralPoints(center: center, radius: 50, turns: 2, steps: 64)
 
@@ -186,8 +186,8 @@ extension ExtensionSeam {
         float4 shade(float2 uv, ShaderInfo info) {
             float4 color = sample(info, uv);
 
-            float2 fromCentre = uv * 2.0 - 1.0;
-            float falloff = 1.0 - param(info, 0) * dot(fromCentre, fromCentre) * 0.5;
+            float2 fromCenter = uv * 2.0 - 1.0;
+            float falloff = 1.0 - param(info, 0) * dot(fromCenter, fromCenter) * 0.5;
 
             color.rgb *= clamp(falloff, 0.0, 1.0);
             return color;

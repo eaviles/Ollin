@@ -61,7 +61,7 @@ struct StrokeInput {
     var speed: Double        // canvas points per second, smoothed
     var pressure: Double     // 0...1, smoothed
     var direction: Vector2   // unit heading
-    var distance: Double     // points travelled so far
+    var distance: Double     // points traveled so far
 }
 ```
 

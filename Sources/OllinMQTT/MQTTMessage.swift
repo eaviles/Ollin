@@ -19,7 +19,7 @@ public enum MQTTQoS: Int, Sendable, Hashable, CaseIterable {
 
 /// The message a broker publishes on a client's behalf when that client drops off
 /// without saying goodbye. It is handed over at connection time and sits at the
-/// broker until it is either needed or cancelled by a clean disconnect, which is
+/// broker until it is either needed or canceled by a clean disconnect, which is
 /// what makes it the way an installation announces its own failure.
 public struct MQTTWill: Sendable, Hashable {
 

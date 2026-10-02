@@ -99,7 +99,7 @@ Two at dusk, and the only wide pictures here. Everything else is a square or an 
 - **`.headland`** is a headland at dusk over the water at Loreto, with cardón cacti in silhouette along a dark shore. One hard dark mass and one smooth wide gradient in the same frame, which is the pairing a threshold, an edge finder, or a tone curve reads clearest. It is the only silhouette in the set.
 - **`.boats`** is small boats moored off Cozumel under a pink sky, turquoise water below a dead straight horizon. The calm one. Almost none of it is near black and it varies far more in color than in brightness, which is what gradient-domain compositing wants under a patch, and the water is the widest plain band in the whole set.
 
-The `boats` frame is the one thing here chosen by a filter's own requirement rather than by eye. A seamless clone measures its correction around the patch's rim and spreads it inward, so a rim laid across a hard edge drags that edge into the patch. This picture keeps its brightness in a narrow band while its color runs from grey-violet to pink, which is exactly the ground a clone wants.
+The `boats` frame is the one thing here chosen by a filter's own requirement rather than by eye. A seamless clone measures its correction around the patch's rim and spreads it inward, so a rim laid across a hard edge drags that edge into the patch. This picture keeps its brightness in a narrow band while its color runs from gray-violet to pink, which is exactly the ground a clone wants.
 
 <a name="page"></a>
 

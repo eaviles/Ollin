@@ -80,7 +80,7 @@ struct EvolutionTests {
         // more than half because the genomes are allowed to curl right round, which is
         // the whole point of them: a route past a wall is a curl.
         var rng = SplitMix64(seed: 5)
-        var walkTravelled = 0.0, walkWalked = 0.0
+        var walkTraveled = 0.0, walkWalked = 0.0
         for _ in 0..<count {
             var sum = SIMD2<Float>.zero, length = 0.0
             for _ in 0..<genes {
@@ -89,13 +89,13 @@ struct EvolutionTests {
                 sum += step
                 length += 1
             }
-            walkTravelled += Double(simd_length(sum))
+            walkTraveled += Double(simd_length(sum))
             walkWalked += length
         }
         #expect(traveled / walked > 0.4,
                 "opening genomes traveled \(traveled / walked) of their own length")
-        #expect(traveled / walked > (walkTravelled / walkWalked) * 2.2,
-                "arcs \(traveled / walked) against a random walk's \(walkTravelled / walkWalked)")
+        #expect(traveled / walked > (walkTraveled / walkWalked) * 2.2,
+                "arcs \(traveled / walked) against a random walk's \(walkTraveled / walkWalked)")
     }
 
     // MARK: Metal-gated: the mechanism against its counterfactuals

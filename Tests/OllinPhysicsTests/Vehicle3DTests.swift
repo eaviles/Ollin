@@ -15,7 +15,7 @@ struct Vehicle3DTests {
 
     /// A four-wheeled car on a flat floor, with every parameter a test might want to
     /// vary. `drive` picks which axle the engine turns; `frontGrip` lets a test
-    /// make the front tyres slick, which is how "the engine turns *these*
+    /// make the front tires slick, which is how "the engine turns *these*
     /// wheels" is pinned without changing anything else.
     static func car(in world: World3D, at position: Vector3 = Vector3(0, 1, 0),
                     drive: Drive = .rear, topSpeed: Double = 30,
@@ -122,7 +122,7 @@ struct Vehicle3DTests {
     }
 
     /// The counterfactual that pins *which* wheels the engine turns: with the
-    /// front tyres made slick, a front-driven car spins them and crawls while
+    /// front tires made slick, a front-driven car spins them and crawls while
     /// the same car driven from the back pulls away. Nothing else differs.
     @Test func theEngineTurnsTheWheelsMarkedDriven() throws {
         let (frontWorld, frontDriven) = standing(drive: .front, frontGrip: 0.02)

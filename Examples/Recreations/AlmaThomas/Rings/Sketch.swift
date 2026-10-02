@@ -27,7 +27,7 @@ import Ollin
 /// spectrum from the core outward, and the last color goes on in rings until
 /// it fills the corners. `Resurrection` sets its core in the middle and its
 /// rings run green, blue, violet, red, orange and out into yellow; `The
-/// Eclipse` sets a dark core up and to the right and its rings run grey,
+/// Eclipse` sets a dark core up and to the right and its rings run gray,
 /// blue, indigo, red, orange and out into yellow, so the light seems to move
 /// off the canvas the way the moon moved across the sun.
 ///

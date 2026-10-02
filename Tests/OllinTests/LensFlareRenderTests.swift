@@ -421,10 +421,10 @@ struct LensFlareRenderProbes {
     @Test(.enabled(if: Snapshot.hasMetal))
     func askingForNoFlareLeavesTheFrameUntouched() throws {
         let never = try unflared(.none)
-        let cancelled = try OllinApp.image(of: FlareProbe.make(occluder: .none,
+        let canceled = try OllinApp.image(of: FlareProbe.make(occluder: .none,
                                                                        flare: true, cancel: true),
                                                     frame: 1)
-        #expect(never == pixels(of: cancelled))
+        #expect(never == pixels(of: canceled))
     }
 }
 

@@ -87,7 +87,7 @@ let local = piece.mapPositions { $0 - middle }           // 3D
 let shard = world.addBody(.hull(local.positions), at: here + middle)
 ```
 
-Give each piece the parent's velocity plus a push away from the break, and the cloud keeps travelling while it spreads. Read everything the pieces inherit **before** the parent leaves the world: [`World.remove(_:)`](../Simulation/Physics.md#rigid-bodies) and [`World3D.remove(_:)`](../Simulation/Physics3D.md) spend the body they take.
+Give each piece the parent's velocity plus a push away from the break, and the cloud keeps traveling while it spreads. Read everything the pieces inherit **before** the parent leaves the world: [`World.remove(_:)`](../Simulation/Physics.md#rigid-bodies) and [`World3D.remove(_:)`](../Simulation/Physics3D.md) spend the body they take.
 
 Working sketches: [`Examples/Physics/Burst`](../../Examples/Physics/Burst/Sketch.swift) and [`Examples/3D/Physics/Burst`](../../Examples/3D/Physics/Burst/Sketch.swift), one in each dimension. [Chapter 11](../../Guide/11-ForcesAndPhysics.md#breaking-things) teaches the 2D one from scratch.
 

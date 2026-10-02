@@ -69,7 +69,7 @@ struct ViewControlTests {
     }
 
     /// Letting go ends the drag, so the next press does not jump the view by
-    /// however far the pointer travelled in between.
+    /// however far the pointer traveled in between.
     @Test func lettingGoEndsTheDrag() {
         let sketch = probe()
         frame(sketch, at: Vector2(100, 100), pressed: true)

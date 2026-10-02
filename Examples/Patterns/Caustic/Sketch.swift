@@ -95,7 +95,7 @@ final class Caustic_Example: Sketch {
     }
 
     /// The stretch of wall the light reaches, kept as one unbroken run. A ray
-    /// arrives at a lit point travelling away from the middle, since it crossed the
+    /// arrives at a lit point traveling away from the middle, since it crossed the
     /// cup to get there.
     private func litArc(of ring: [Vector2], from source: LightSource,
                         around middle: Vector2) -> [Vector2] {

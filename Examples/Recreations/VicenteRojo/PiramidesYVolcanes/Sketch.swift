@@ -62,9 +62,9 @@ final class PiramidesYVolcanes: Sketch {
         var strands: Int
     }
 
-    /// Read off the four prints, in their order: the grey pyramid with its
+    /// Read off the four prints, in their order: the gray pyramid with its
     /// one magenta stream, the sand one with red, green, and blue streams
-    /// outlined twice, the ochre one with its filled streams, and the grey
+    /// outlined twice, the ochre one with its filled streams, and the gray
     /// and ochre mountain with streams of several strands.
     private static let looks: [Look] = [
         Look(stone: Color(hex: 0xA3A3A6), ink: Color(hex: 0x505056),

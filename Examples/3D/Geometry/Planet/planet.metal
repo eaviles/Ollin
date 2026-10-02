@@ -202,7 +202,7 @@ kernel void planet_surface(texture2d<float, access::read> src [[texture(0)]],
     // The cold end is not one thing. A cold country with rain on it is forest,
     // the widest band of trees there is, and only the cold country without rain
     // is the bare ground that reads as tundra. Collapsing both into one color is
-    // what leaves a planet with a grey lid.
+    // what leaves a planet with a gray lid.
     float3 cold = mix(tundra, taiga, smoothstep(0.26, 0.44, wet));
     ground = mix(ground, cold, smoothstep(0.46, 0.18, warmth));
 

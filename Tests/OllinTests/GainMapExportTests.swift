@@ -184,7 +184,7 @@ struct GainMapExportTests {
     }
 
     @Test("a wide sketch writes a wide still with no map")
-    func wideOutputKeepsItsColours() throws {
+    func wideOutputKeepsItsColors() throws {
         // A wide-gamut frame has floats but nothing above white, so it takes the
         // same picture-building path as an extended one and simply gets no map.
         let sketch = Core()

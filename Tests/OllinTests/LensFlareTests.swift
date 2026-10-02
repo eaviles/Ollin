@@ -273,7 +273,7 @@ struct LensFlareTests {
     /// reflection in it, and the reflections are where a chain of matrices goes
     /// wrong. It did, once. The leg between the two reflections passed *through*
     /// the inner surface before reflecting off it and mixed two conventions for
-    /// a ray travelling back toward the front, and every ghost came out in the
+    /// a ray traveling back toward the front, and every ghost came out in the
     /// wrong place at the wrong size with nothing to say so.
     @Test func everyGhostAgreesWithRealRays() {
         for lens in [Lens.heliar, Lens.doubleGauss] {

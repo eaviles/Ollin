@@ -561,7 +561,7 @@ private struct LensStack {
     /// is the leg between the two reflections.
     ///
     /// One convention holds through the whole chain: a height is a real height,
-    /// and a slope is measured along the way the ray is travelling. So a ray
+    /// and a slope is measured along the way the ray is traveling. So a ray
     /// running back toward the front covers a positive distance, and the surface
     /// it meets is the same sphere seen from behind: its radius changes sign and
     /// its two media change places. (Undoing the forward refraction instead, by
@@ -810,7 +810,7 @@ extension Lens {
         let light = wavelength ?? 550
 
         // Meet interface `i`, then reflect there or pass through it. `forward`
-        // says which way the ray is travelling, which decides the two media.
+        // says which way the ray is traveling, which decides the two media.
         func meet(_ i: Int, reflecting: Bool, forward: Bool) -> Bool {
             let face = interfaces[i]
             var normal: SIMD3<Double>
@@ -914,7 +914,7 @@ func coatedReflectance(angle: Double, wavelength: Double, designWavelength: Doub
     let sin1 = sin0 * n0 / n1
     let sin2 = sin0 * n0 / n2
     // Past the critical angle nothing crosses into the far medium: the light
-    // turns around whole, and a coating that works by cancelling the reflection
+    // turns around whole, and a coating that works by canceling the reflection
     // off the far face has nothing to cancel.
     guard abs(sin1) <= 1, abs(sin2) <= 1 else { return 1 }
     let theta0 = angle, theta1 = asin(sin1), theta2 = asin(sin2)

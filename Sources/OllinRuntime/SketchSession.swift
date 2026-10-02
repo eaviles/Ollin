@@ -290,7 +290,7 @@ public final class SketchSession {
         let twoSpeed = landsPlainBuildFirst && loader.optimization == .speed
         // Supersede any in-flight compile so a newer evaluation always wins:
         // two evaluations within one swiftc run otherwise race, and a slower
-        // older compile could land last and swap in stale code. Cancelling
+        // older compile could land last and swap in stale code. Canceling
         // the task refuses both of its builds; the detached compiles run to
         // completion and nobody reads them.
         compileTask?.cancel()

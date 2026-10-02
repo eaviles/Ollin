@@ -83,7 +83,7 @@ ecbd4c6ff46d  Docs/3D/Phone.md:505  cannot find 'cameraCloud' in scope
 d4aeba848259  Docs/3D/Phone.md:592  cannot find 'scan' in scope
 f6f39e6371ff  Docs/3D/Phone.md:612  cannot find 'device' in scope
 64961a44b09d  Docs/3D/Phone.md:620  cannot find 'device' in scope
-47be1ad501f5  Docs/3D/Phone.md:634  unary operator cannot be separated from its operand
+16fc91318be5  Docs/3D/Phone.md:634  unary operator cannot be separated from its operand
 3ada032ec232  Docs/3D/Phone.md:649  cannot find 'device' in scope
 4b39ac917156  Docs/3D/Phone.md:665  cannot find 'device' in scope
 5f30c7ac01bb  Docs/3D/Phone.md:677  cannot find 'device' in scope
@@ -181,7 +181,7 @@ d8147ec3af4e  Docs/Drawing/Color.md:191  cannot find 'sky' in scope
 04196cfd36c7  Docs/Drawing/Color.md:211  cannot find 'beat' in scope
 a289bd896621  Docs/Drawing/Color.md:229  cannot find 'x' in scope
 9e7fb1cec3a6  Docs/Drawing/Color.md:238  cannot find 'palette' in scope
-47ccf99dc7f7  Docs/Drawing/Color.md:250  cannot find 'base' in scope
+b75171f5e36c  Docs/Drawing/Color.md:250  cannot find 'base' in scope
 105cb16feaaa  Docs/Drawing/Color.md:267  'module' is inaccessible due to 'internal' protection level
 a5908cabee46  Docs/Drawing/Color.md:27  cannot convert value of type 'Double.Type' to expected argument type 'Double'
 512f523c5b16  Docs/Drawing/Color.md:322  cannot find 'photo' in scope
@@ -303,7 +303,7 @@ a8f0d552b0f0  Docs/Drawing/Effects.md:614  cannot find 'marks' in scope
 eb9d4c173b18  Docs/Drawing/Envelopes.md:105  expected ',' separator
 3ba94f2cae8b  Docs/Drawing/Envelopes.md:112  cannot find 'shore' in scope
 6959c47ac423  Docs/Drawing/Envelopes.md:41  expected ',' separator
-4425b7396c04  Docs/Drawing/Envelopes.md:64  expected ',' separator
+8af32cc93544  Docs/Drawing/Envelopes.md:64  expected ',' separator
 30eb1c469ae0  Docs/Drawing/Envelopes.md:85  expected ',' separator
 61c79db77675  Docs/Drawing/Envelopes.md:9  cannot find 'circlePoints' in scope
 8c4a9eb512d2  Docs/Drawing/Epicycles.md:46  expected ',' separator
@@ -397,7 +397,7 @@ d71e48938d96  Docs/Drawing/Marks.md:193  cannot find 'mark' in scope
 58c9a0902d7b  Docs/Drawing/Marks.md:208  cannot find 'path' in scope
 6d34b3f5c9bf  Docs/Drawing/Marks.md:231  cannot find 'points' in scope
 95baf2fffa33  Docs/Drawing/Marks.md:265  cannot find 'points' in scope
-240e292f2328  Docs/Drawing/Marks.md:57  initializer requires a body
+2ef161a02aa2  Docs/Drawing/Marks.md:57  initializer requires a body
 7de869ba2111  Docs/Drawing/Marks.md:74  unary operator cannot be separated from its operand
 470cc29b31b7  Docs/Drawing/Marks.md:96  cannot convert value of type '()' to expected argument type 'StrokeResponse'
 5f44068876aa  Docs/Drawing/Morphing.md:47  cannot convert value of type 'Shape.Type' to expected argument type 'Shape'

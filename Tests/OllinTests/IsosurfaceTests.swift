@@ -304,7 +304,7 @@ struct IsosurfaceTests {
     }
 
     /// A negative ball carves rather than joins.
-    @Test func aNegativeBallCarvesIntoItsNeighbour() {
+    @Test func aNegativeBallCarvesIntoItsNeighbor() {
         var field = Metaballs()
         field.add(at: .zero, radius: 60)
         let solid = field.value(at: Vector3(30, 0, 0))

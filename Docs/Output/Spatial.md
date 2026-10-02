@@ -163,7 +163,7 @@ Everything else about the camera is untouched, so a pair renders through the ord
 ### How big is a world unit
 
 ```sh
---meters-per-unit 0.01     # the sketch draws in centimetres
+--meters-per-unit 0.01     # the sketch draws in centimeters
 ```
 
 The file records the distance between the eyes that shot it, in real units. A player scales the depth it shows from that distance. `metersPerUnit` is the same declaration the model exporter takes, and the same rule applies. Nothing is scaled on the way out, and the value only says how to read the numbers already there. A scene drawn in meters uses the default of 1.

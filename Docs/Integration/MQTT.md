@@ -215,7 +215,7 @@ Each message's number is mapped from the incoming range into the parameter's own
 
 The **MQTTRoom** example (`Examples/Integration/MQTTRoom`) draws every topic it hears as a dial, and publishes a wave of its own, so a bare broker with nothing else on it already shows the round trip. Widen its `filter` parameter to `#` to watch a whole house at once.
 
-Inside the library, `OllinMQTTTests` runs a broker of its own in the test process and drives a whole session against it over the loopback: connecting, both service levels, retained values, the will on a cut socket, the heartbeat, reconnection, and the resend that follows one. That broker exists because the interesting cases cannot be asked of a real one. A real broker will not cut a socket on request, sit on an acknowledgement, or refuse a connection with a chosen code. Those tests do **not** cover any particular broker's own behavior, which only a real one can check.
+Inside the library, `OllinMQTTTests` runs a broker of its own in the test process and drives a whole session against it over the loopback: connecting, both service levels, retained values, the will on a cut socket, the heartbeat, reconnection, and the resend that follows one. That broker exists because the interesting cases cannot be asked of a real one. A real broker will not cut a socket on request, sit on an acknowledgment, or refuse a connection with a chosen code. Those tests do **not** cover any particular broker's own behavior, which only a real one can check.
 
 ---
 

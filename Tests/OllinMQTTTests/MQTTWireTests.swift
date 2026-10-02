@@ -31,18 +31,18 @@ struct MQTTWireTests {
                                        will: MQTTWill(topic: "sketch/status", text: "gone",
                                                       qos: .atLeastOnce, retains: true),
                                        username: "edgardo", password: "secret")))
-        roundTrip(.connectAcknowledgement(sessionPresent: true, code: 0))
-        roundTrip(.connectAcknowledgement(sessionPresent: false, code: 5))
+        roundTrip(.connectAcknowledgment(sessionPresent: true, code: 0))
+        roundTrip(.connectAcknowledgment(sessionPresent: false, code: 5))
         roundTrip(.publish(MQTTPublish(topic: "home/kitchen/temperature", payload: Data("21.4".utf8))))
         roundTrip(.publish(MQTTPublish(topic: "home/lamp/set", payload: Data("ON".utf8),
                                        qos: .atLeastOnce, retains: true,
                                        isDuplicate: true, id: 4242)))
-        roundTrip(.publishAcknowledgement(id: 7))
+        roundTrip(.publishAcknowledgment(id: 7))
         roundTrip(.subscribe(id: 1, filters: [("home/+/temperature", .atMostOnce),
                                               ("home/#", .atLeastOnce)]))
-        roundTrip(.subscribeAcknowledgement(id: 1, codes: [0, 1, 0x80]))
+        roundTrip(.subscribeAcknowledgment(id: 1, codes: [0, 1, 0x80]))
         roundTrip(.unsubscribe(id: 2, filters: ["home/#"]))
-        roundTrip(.unsubscribeAcknowledgement(id: 2))
+        roundTrip(.unsubscribeAcknowledgment(id: 2))
         roundTrip(.ping)
         roundTrip(.pingResponse)
         roundTrip(.disconnect)

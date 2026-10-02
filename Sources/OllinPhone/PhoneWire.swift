@@ -46,7 +46,7 @@ public enum PhoneWire {
 
     /// Defensive upper bound on a single payload, so a garbage header can't steer
     /// a huge read (a body pose is well under a kilobyte; motion is 60 bytes).
-    /// Both framings hold to it, so it is also what bounds a picture travelling
+    /// Both framings hold to it, so it is also what bounds a picture traveling
     /// down the cable in one reference frame.
     public static let maxPayloadBytes = 1 << 20
 }

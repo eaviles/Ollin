@@ -238,7 +238,7 @@ struct TextureFilteringTests {
 
     /// The even case, and the whole point: tiled forty times across 256 pixels,
     /// one level is black-and-white noise that averages to the wrong tone, and
-    /// the chain reads as the flat grey the checker actually is.
+    /// the chain reads as the flat gray the checker actually is.
     @Test(.enabled(if: Snapshot.hasMetal))
     func aTiledPlaneStopsBoiling() throws {
         let smooth = spread(try OllinApp.image(of: { let s = Wall(); s.texture = Self.loaded(); return s }(), frame: 1))
@@ -321,7 +321,7 @@ struct TextureFilteringTests {
     /// The long thin footprint, answered. A pixel on a receding floor covers many
     /// texels along the view and few across it, and one level has to be picked for
     /// the long side, so the picture goes soft in *both* directions and the far
-    /// band flattens to the checker's own grey. Sixteen readings taken along that
+    /// band flattens to the checker's own gray. Sixteen readings taken along that
     /// long axis average only what the pixel really covers, so the rows stay
     /// apart. The same band of the same frame reads a spread of 0.51 with one
     /// reading and 8.20 with sixteen, which is what makes a threshold between them

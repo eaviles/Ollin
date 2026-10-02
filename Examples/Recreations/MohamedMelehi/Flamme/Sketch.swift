@@ -1,7 +1,7 @@
 //  Recreation after Mohamed Melehi - Flamme (1975, cellulose paint on wood,
 //  109.5 x 95.5 cm), shown in New Waves at The Mosaic Rooms, London (2019),
 //  read beside the untitled panel of 1980 (cellulose paint on wood, 84 x 84
-//  cm) where the same wave rises out of a wall of grey stripes, and the
+//  cm) where the same wave rises out of a wall of gray stripes, and the
 //  Volcanique pair of 1985. A homage, not a reproduction, and not affiliated
 //  with or endorsed by the artist or his estate.
 //  https://www.lawrieshabibi.com/exhibitions/78-new-waves-mohamed-melehi-and-the-casablanca-art-mohamed-melehi-at-the-mosaic-rooms-london/overview/

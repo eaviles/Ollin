@@ -96,7 +96,7 @@ struct PlanetMapTests {
     ///
     /// The measure is the blue share of each land color. Everything that grows, and
     /// sand with it, keeps blue near an eighth of its total; stone and tundra sit
-    /// near a quarter, because they are grey. So the share of land reading grey is
+    /// near a quarter, because they are gray. So the share of land reading gray is
     /// one number, and it separates cleanly: 0.27 as the maps stand, against 0.46
     /// with the height ramp put back the way it saturated. A colorless world also
     /// costs the greenery, so that is checked too, though it is the weaker signal.
@@ -111,7 +111,7 @@ struct PlanetMapTests {
             guard height.texels[i].r >= Self.sea else { continue }
             let c = surface.texels[i]
             let sum = c.r + c.g + c.b
-            // Ice is not ground, and it is grey by nature, so it is left out.
+            // Ice is not ground, and it is gray by nature, so it is left out.
             guard sum > 1e-4, max(c.r, max(c.g, c.b)) <= 0.55 else { continue }
             land += 1
             if c.g > c.r && c.g > c.b { green += 1 }
@@ -121,7 +121,7 @@ struct PlanetMapTests {
 
         let greenShare = Double(green) / Double(land)
         let stonyShare = Double(stony) / Double(land)
-        #expect(stonyShare < 0.38, "\(stonyShare) of the land is bare grey")
+        #expect(stonyShare < 0.38, "\(stonyShare) of the land is bare gray")
         #expect(greenShare > 0.30, "only \(greenShare) of the land grows anything")
     }
 

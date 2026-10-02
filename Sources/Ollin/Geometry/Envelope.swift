@@ -74,11 +74,11 @@ private func crossing(_ a: Ray2, _ b: Ray2) -> Vector2? {
 public enum LightSource: Equatable, Sendable {
     /// A single point, throwing rays in every direction.
     case point(Vector2)
-    /// Rays all travelling the same way, as from a source far enough off to have
+    /// Rays all traveling the same way, as from a source far enough off to have
     /// no direction of its own. The value is the angle they travel at.
     case parallel(Double)
 
-    /// The direction a ray from this source arrives at `point` travelling in.
+    /// The direction a ray from this source arrives at `point` traveling in.
     public func direction(reaching point: Vector2) -> Vector2 {
         switch self {
         case .point(let origin): return point - origin
@@ -185,7 +185,7 @@ public extension Sketch {
     }
 }
 
-/// The wavefront a front becomes after travelling `distance`, by Huygens'
+/// The wavefront a front becomes after traveling `distance`, by Huygens'
 /// construction: every point of the front sends out a wavelet, and the new front
 /// is the curve those wavelets lean on.
 ///
@@ -201,7 +201,7 @@ public extension Sketch {
 /// wavelets rather than on the front. They are dropped here, by the rule the
 /// construction is made of: **a point of the new front is exactly `distance` from
 /// the old one and no nearer to any part of it.** That is what turns a folded
-/// offset into a real wavefront, and it is why a front travelling into a hollow
+/// offset into a real wavefront, and it is why a front traveling into a hollow
 /// eventually loses pieces and comes to a point.
 ///
 /// A positive distance travels along the front's own normal (its left, following

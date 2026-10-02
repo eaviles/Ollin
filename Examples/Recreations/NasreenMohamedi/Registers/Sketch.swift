@@ -19,7 +19,7 @@ import Ollin
 /// The ruled sheets of the 1970s (Nasreen Mohamedi, Baroda). She drew on
 /// small square sheets with the instruments of an architect's office, a
 /// ruling pen and a fine technical pen for the ink, a hard pencil for the
-/// graphite, the inks often watered down to a grey. A sheet is a stack of
+/// graphite, the inks often watered down to a gray. A sheet is a stack of
 /// horizontals from edge to edge, and what changes across it is only the
 /// interval and the weight. The lines gather toward one line, which is drawn
 /// heavy, and open out from it, so a field of nothing but parallels reads as

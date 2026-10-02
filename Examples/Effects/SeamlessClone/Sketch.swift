@@ -23,7 +23,7 @@ import OllinSamplePhotos
 /// The correction is measured around the rim and spread inward, so a rim laid
 /// across a hard edge spreads that edge into the patch and the whole thing blows
 /// out. This picture keeps its brightness in a narrow band while its color runs
-/// from grey-violet to pink, which is what a clone is for, and the frame here is
+/// from gray-violet to pink, which is what a clone is for, and the frame here is
 /// the left square of it, since the sun in the right third is the one hard thing
 /// in it. Both slabs stay well above the horizon for the same reason.
 ///
@@ -96,7 +96,7 @@ final class SeamlessClone_Example: Sketch {
         // Both slabs stay in the sky, well above the horizon. The rim is where
         // the correction is measured, so a rim laid across a hard edge spreads
         // that edge inward and the patch blows out. The sky is the quiet ground
-        // this picture offers, and it still runs from grey-violet on the left to
+        // this picture offers, and it still runs from gray-violet on the left to
         // the sun's pink on the right, which is the color the clone has to take.
         let leftAt = Vector2(width * 0.27, height * 0.30 + drift * height * 0.10)
         let rightAt = Vector2(width * 0.73, height * 0.30 + drift * height * 0.10)

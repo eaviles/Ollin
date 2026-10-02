@@ -189,9 +189,9 @@ redistributed inside this repository.
 - **Used for:** the bundled default stroke (single-line) font (`StrokeFont.builtin`, "Hershey Sans" / `futural`), loaded at runtime from its `.jhf` by the stroke-font parser and drawn by `drawText`.
 - **Location in this repo:** [`Sources/Ollin/Resources/futural.jhf`](Sources/Ollin/Resources/futural.jhf) (provenance in [`Sources/Ollin/Resources/Hershey-NOTICE.txt`](Sources/Ollin/Resources/Hershey-NOTICE.txt))
 - **Upstream:** the Hershey font data in James Hurt's `.jhf` form, as widely mirrored (e.g. https://github.com/kamalmostafa/hershey-fonts and https://paulbourke.net/dataformats/hershey/)
-- **License:** the glyph data is in the public domain. The `.jhf` distribution may be used by anyone for any purpose, provided two acknowledgements travel with the font data and the data is never converted to the format the U.S. NTIS distributes. Ollin ships the `.jhf` form unchanged in format.
+- **License:** the glyph data is in the public domain. The `.jhf` distribution may be used by anyone for any purpose, provided two acknowledgments travel with the font data and the data is never converted to the format the U.S. NTIS distributes. Ollin ships the `.jhf` form unchanged in format.
 
-The acknowledgements the distribution requires, as it words them:
+The acknowledgments the distribution requires, as it words them:
 
 > The Hershey Fonts were originally created by Dr. A. V. Hershey while working
 > at the U. S. National Bureau of Standards.
@@ -200,7 +200,7 @@ The acknowledgements the distribution requires, as it words them:
 > James Hurt, Cognition, Inc., 900 Technology Park Drive, Billerica, MA 01821
 > (mit-eddie!ci-dandelion!hurt).
 
-A note on the history: Hershey drew the faces at the U.S. Naval Weapons Laboratory in Dahlgren, Virginia, around 1967 (NWL Report 2101, *Calligraphy for Computers*), and the National Bureau of Standards published the data in 1976. The first acknowledgement is kept as the distribution requires it.
+A note on the history: Hershey drew the faces at the U.S. Naval Weapons Laboratory in Dahlgren, Virginia, around 1967 (NWL Report 2101, *Calligraphy for Computers*), and the National Bureau of Standards published the data in 1976. The first acknowledgment is kept as the distribution requires it.
 
 ---
 

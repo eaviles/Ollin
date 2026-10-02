@@ -112,7 +112,7 @@ public struct LaserOptimizer: Sendable {
             // The frame repeats, so the last path travels back to the first:
             // the loop then has no seam to hide.
             let next = paths[(i + 1) % paths.count].points[0]
-            travel += travelling(from: end, to: next, into: &points)
+            travel += traveling(from: end, to: next, into: &points)
         }
 
         return LaserStream(points: points, canvas: frame.canvas,
@@ -204,7 +204,7 @@ public struct LaserOptimizer: Sendable {
     /// Walk the beam from one path's exit to the next path's entry with it off.
     /// The ends are already held by the blanking dwell, so only the points
     /// strictly between them are laid down. Returns the field distance moved.
-    private func travelling(from a: Vector2, to b: Vector2,
+    private func traveling(from a: Vector2, to b: Vector2,
                             into points: inout [LaserPoint]) -> Double {
         let length = (b - a).length
         guard length > 1e-9 else { return 0 }

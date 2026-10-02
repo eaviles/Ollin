@@ -138,7 +138,7 @@ package enum SourceEdit {
     /// A shape that carries its own angles (an arc's `start:` and `stop:`) has
     /// them moved by that much. A shape placed by two or more points has those
     /// points swung about their own middle, so a line turns where it lies
-    /// rather than travelling. An angle is written to at least three decimals,
+    /// rather than traveling. An angle is written to at least three decimals,
     /// because a whole radian is most of a quarter turn.
     package static func turning(_ source: String, line: Int, column: Int,
                                 move: SourceMove, by angle: Double) throws -> String {

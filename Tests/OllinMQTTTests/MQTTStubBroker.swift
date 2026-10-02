@@ -9,7 +9,7 @@ import os
 /// It exists because `mosquitto` is not installed on the machine these tests run
 /// on, and because a real broker cannot be asked to do the things the interesting
 /// tests need: cut a socket without warning so a will fires, sit on an
-/// acknowledgement so a resend can be seen, refuse a connection with a chosen
+/// acknowledgment so a resend can be seen, refuse a connection with a chosen
 /// code. It keeps retained values, fans a publish out to every matching
 /// subscription (the publisher included, which is what makes a round trip a round
 /// trip), and answers a heartbeat.
@@ -35,7 +35,7 @@ final class MQTTStubBroker: @unchecked Sendable {
         var publishes: [MQTTPublish] = []
         var subscribed: [(filter: String, qos: MQTTQoS)] = []
         var unsubscribed: [String] = []
-        var acknowledgements: [UInt16] = []
+        var acknowledgments: [UInt16] = []
         var pings = 0
         var goodbyes = 0
         var willsFired: [MQTTMessage] = []
@@ -51,7 +51,7 @@ final class MQTTStubBroker: @unchecked Sendable {
 
     private struct Settings: Sendable {
         var refusalCode: UInt8 = 0
-        var holdsAcknowledgements = false
+        var holdsAcknowledgments = false
         var grantedQoS: UInt8?
     }
 
@@ -63,9 +63,9 @@ final class MQTTStubBroker: @unchecked Sendable {
 
     /// When true, a quality-of-service 1 publish is recorded but never
     /// acknowledged, which is how the resend test is set up.
-    var holdsAcknowledgements: Bool {
-        get { settings.withLock { $0.holdsAcknowledgements } }
-        set { settings.withLock { $0.holdsAcknowledgements = newValue } }
+    var holdsAcknowledgments: Bool {
+        get { settings.withLock { $0.holdsAcknowledgments } }
+        set { settings.withLock { $0.holdsAcknowledgments = newValue } }
     }
 
     // MARK: Lifecycle
@@ -113,7 +113,7 @@ final class MQTTStubBroker: @unchecked Sendable {
     var publishes: [MQTTPublish] { record.withLock { $0.publishes } }
     var subscribed: [(filter: String, qos: MQTTQoS)] { record.withLock { $0.subscribed } }
     var unsubscribed: [String] { record.withLock { $0.unsubscribed } }
-    var acknowledgements: [UInt16] { record.withLock { $0.acknowledgements } }
+    var acknowledgments: [UInt16] { record.withLock { $0.acknowledgments } }
     var pings: Int { record.withLock { $0.pings } }
     var goodbyes: Int { record.withLock { $0.goodbyes } }
     var willsFired: [MQTTMessage] { record.withLock { $0.willsFired } }
@@ -183,13 +183,13 @@ final class MQTTStubBroker: @unchecked Sendable {
             session.will = connect.will
             let code = settings.withLock { $0.refusalCode }
             if code == 0 {
-                write(.connectAcknowledgement(sessionPresent: false, code: code), to: session)
+                write(.connectAcknowledgment(sessionPresent: false, code: code), to: session)
             } else {
-                // Close only once the refusal is actually on the wire: cancelling a
+                // Close only once the refusal is actually on the wire: canceling a
                 // connection with a send still queued loses it, and the client then
                 // sees a closed socket with no reason in it.
                 session.connection.send(
-                    content: MQTTPacket.connectAcknowledgement(sessionPresent: false, code: code).encode(),
+                    content: MQTTPacket.connectAcknowledgment(sessionPresent: false, code: code).encode(),
                     completion: .contentProcessed { _ in
                         self.queue.asyncAfter(deadline: .now() + 0.05) {
                             self.close(session, cleanly: true)
@@ -200,8 +200,8 @@ final class MQTTStubBroker: @unchecked Sendable {
         case .publish(let publish):
             record.withLock { $0.publishes.append(publish) }
             if publish.qos == .atLeastOnce, let id = publish.id {
-                if !settings.withLock({ $0.holdsAcknowledgements }) {
-                    write(.publishAcknowledgement(id: id), to: session)
+                if !settings.withLock({ $0.holdsAcknowledgments }) {
+                    write(.publishAcknowledgment(id: id), to: session)
                 }
             }
             deliver(publish)
@@ -213,7 +213,7 @@ final class MQTTStubBroker: @unchecked Sendable {
                 record.withLock { $0.subscribed.append(entry) }
                 codes.append(settings.withLock { $0.grantedQoS } ?? UInt8(entry.qos.rawValue))
             }
-            write(.subscribeAcknowledgement(id: id, codes: codes), to: session)
+            write(.subscribeAcknowledgment(id: id, codes: codes), to: session)
             // A fresh subscription is handed the value every matching topic holds,
             // which is the one piece of broker behavior a sketch leans on at start.
             let retained = retainedStore.withLock { $0 }
@@ -232,10 +232,10 @@ final class MQTTStubBroker: @unchecked Sendable {
                 session.subscriptions[filter] = nil
                 record.withLock { $0.unsubscribed.append(filter) }
             }
-            write(.unsubscribeAcknowledgement(id: id), to: session)
+            write(.unsubscribeAcknowledgment(id: id), to: session)
 
-        case .publishAcknowledgement(let id):
-            record.withLock { $0.acknowledgements.append(id) }
+        case .publishAcknowledgment(let id):
+            record.withLock { $0.acknowledgments.append(id) }
 
         case .ping:
             record.withLock { $0.pings += 1 }

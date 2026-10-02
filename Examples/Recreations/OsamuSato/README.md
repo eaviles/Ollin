@@ -26,7 +26,7 @@ Learn more:
   swift run Example-Recreations-OsamuSato-Totem
   ```
 
-- [**Alphabet**](Alphabet/): a type-specimen sheet of A–Z and 0–9 in a square-module font, after the shape-built alphabets of the book's "Squares" chapter. Each glyph is a 5×7 grid of `drawRect` squares. The squares shimmer on a travelling wave, and a red accent sweeps through the glyphs.
+- [**Alphabet**](Alphabet/): a type-specimen sheet of A–Z and 0–9 in a square-module font, after the shape-built alphabets of the book's "Squares" chapter. Each glyph is a 5×7 grid of `drawRect` squares. The squares shimmer on a traveling wave, and a red accent sweeps through the glyphs.
 
   ```sh
   swift run Example-Recreations-OsamuSato-Alphabet

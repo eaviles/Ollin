@@ -36,7 +36,7 @@ fragment float4 ollin_fx_mask(PresentOut in [[stage_in]],
 }
 
 // displace: offset the base's sample by the aux read as a vector field — red/green
-// recentred from [0,1] to [-amount, amount] (mid-gray = no shift). params[0].x is
+// recentered from [0,1] to [-amount, amount] (mid-gray = no shift). params[0].x is
 // the max shift as a fraction of the layer. The classic displacement map: feed it
 // noise or a gradient for ripples, smearing, and refraction.
 fragment float4 ollin_fx_displace(PresentOut in [[stage_in]],
@@ -632,7 +632,7 @@ fragment float4 ollin_fx_depth_of_field(PresentOut in [[stage_in]],
     float4 fg = fgColor / fgTotal;
     // Resolve the far side first (the sharp center blended toward its own bokeh by how
     // defocused it is), then composite the near field *over* that by its coverage.
-    // Folding both into one `mix(centre, mix(bg, fg, a), max(dof, a))` applies the
+    // Folding both into one `mix(center, mix(bg, fg, a), max(dof, a))` applies the
     // coverage twice, so a half-covered sharp subject keeps a quarter more of its sharp
     // self than it should: the crescent the near field exists to remove.
     //

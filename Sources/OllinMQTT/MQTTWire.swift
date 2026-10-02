@@ -8,13 +8,13 @@ import Foundation
 /// never asks for that level, so a broker may never send one.
 enum MQTTPacketKind: UInt8, Sendable {
     case connect = 1
-    case connectAcknowledgement = 2
+    case connectAcknowledgment = 2
     case publish = 3
-    case publishAcknowledgement = 4
+    case publishAcknowledgment = 4
     case subscribe = 8
-    case subscribeAcknowledgement = 9
+    case subscribeAcknowledgment = 9
     case unsubscribe = 10
-    case unsubscribeAcknowledgement = 11
+    case unsubscribeAcknowledgment = 11
     case ping = 12
     case pingResponse = 13
     case disconnect = 14
@@ -30,19 +30,19 @@ enum MQTTPacket: Sendable, Equatable {
     case connect(MQTTConnect)
     /// The broker's answer: whether a session was resumed, and the return code
     /// (`0` accepted, anything else refused).
-    case connectAcknowledgement(sessionPresent: Bool, code: UInt8)
+    case connectAcknowledgment(sessionPresent: Bool, code: UInt8)
     /// A message on a topic, in either direction.
     case publish(MQTTPublish)
-    /// The acknowledgement of a quality-of-service 1 publish.
-    case publishAcknowledgement(id: UInt16)
+    /// The acknowledgment of a quality-of-service 1 publish.
+    case publishAcknowledgment(id: UInt16)
     /// A subscription request: one or more filters, each with the level asked for.
     case subscribe(id: UInt16, filters: [(filter: String, qos: MQTTQoS)])
     /// The broker's answer: one return code per filter, in the order asked.
-    case subscribeAcknowledgement(id: UInt16, codes: [UInt8])
+    case subscribeAcknowledgment(id: UInt16, codes: [UInt8])
     /// Dropping subscriptions.
     case unsubscribe(id: UInt16, filters: [String])
     /// The broker's answer to a drop.
-    case unsubscribeAcknowledgement(id: UInt16)
+    case unsubscribeAcknowledgment(id: UInt16)
     /// The keep-alive heartbeat a client sends when the line has gone quiet.
     case ping
     /// The broker's answer to the heartbeat.
@@ -54,16 +54,16 @@ enum MQTTPacket: Sendable, Equatable {
     static func == (lhs: MQTTPacket, rhs: MQTTPacket) -> Bool {
         switch (lhs, rhs) {
         case (.connect(let a), .connect(let b)): return a == b
-        case (.connectAcknowledgement(let a, let b), .connectAcknowledgement(let c, let d)):
+        case (.connectAcknowledgment(let a, let b), .connectAcknowledgment(let c, let d)):
             return a == c && b == d
         case (.publish(let a), .publish(let b)): return a == b
-        case (.publishAcknowledgement(let a), .publishAcknowledgement(let b)): return a == b
+        case (.publishAcknowledgment(let a), .publishAcknowledgment(let b)): return a == b
         case (.subscribe(let a, let f), .subscribe(let b, let g)):
             return a == b && f.count == g.count && zip(f, g).allSatisfy { $0.filter == $1.filter && $0.qos == $1.qos }
-        case (.subscribeAcknowledgement(let a, let f), .subscribeAcknowledgement(let b, let g)):
+        case (.subscribeAcknowledgment(let a, let f), .subscribeAcknowledgment(let b, let g)):
             return a == b && f == g
         case (.unsubscribe(let a, let f), .unsubscribe(let b, let g)): return a == b && f == g
-        case (.unsubscribeAcknowledgement(let a), .unsubscribeAcknowledgement(let b)): return a == b
+        case (.unsubscribeAcknowledgment(let a), .unsubscribeAcknowledgment(let b)): return a == b
         case (.ping, .ping), (.pingResponse, .pingResponse), (.disconnect, .disconnect): return true
         default: return false
         }
@@ -124,8 +124,8 @@ extension MQTTPacket {
             if let password = connect.password { body.appendMQTTString(password) }
             return MQTTPacket.frame(.connect, flags: 0, body: body)
 
-        case .connectAcknowledgement(let sessionPresent, let code):
-            return MQTTPacket.frame(.connectAcknowledgement, flags: 0,
+        case .connectAcknowledgment(let sessionPresent, let code):
+            return MQTTPacket.frame(.connectAcknowledgment, flags: 0,
                                     body: Data([sessionPresent ? 1 : 0, code]))
 
         case .publish(let publish):
@@ -138,10 +138,10 @@ extension MQTTPacket {
             body.append(publish.payload)
             return MQTTPacket.frame(.publish, flags: header, body: body)
 
-        case .publishAcknowledgement(let id):
+        case .publishAcknowledgment(let id):
             var body = Data()
             body.appendMQTTBig(id)
-            return MQTTPacket.frame(.publishAcknowledgement, flags: 0, body: body)
+            return MQTTPacket.frame(.publishAcknowledgment, flags: 0, body: body)
 
         case .subscribe(let id, let filters):
             var body = Data()
@@ -154,11 +154,11 @@ extension MQTTPacket {
             // a broker must treat any other value as a protocol error.
             return MQTTPacket.frame(.subscribe, flags: 0x02, body: body)
 
-        case .subscribeAcknowledgement(let id, let codes):
+        case .subscribeAcknowledgment(let id, let codes):
             var body = Data()
             body.appendMQTTBig(id)
             body.append(contentsOf: codes)
-            return MQTTPacket.frame(.subscribeAcknowledgement, flags: 0, body: body)
+            return MQTTPacket.frame(.subscribeAcknowledgment, flags: 0, body: body)
 
         case .unsubscribe(let id, let filters):
             var body = Data()
@@ -166,10 +166,10 @@ extension MQTTPacket {
             for filter in filters { body.appendMQTTString(filter) }
             return MQTTPacket.frame(.unsubscribe, flags: 0x02, body: body)
 
-        case .unsubscribeAcknowledgement(let id):
+        case .unsubscribeAcknowledgment(let id):
             var body = Data()
             body.appendMQTTBig(id)
-            return MQTTPacket.frame(.unsubscribeAcknowledgement, flags: 0, body: body)
+            return MQTTPacket.frame(.unsubscribeAcknowledgment, flags: 0, body: body)
 
         case .ping: return MQTTPacket.frame(.ping, flags: 0, body: Data())
         case .pingResponse: return MQTTPacket.frame(.pingResponse, flags: 0, body: Data())
@@ -228,10 +228,10 @@ extension MQTTPacket {
             if connectFlags & 0x40 != 0 { connect.password = try reader.string() }
             packet = .connect(connect)
 
-        case .connectAcknowledgement:
+        case .connectAcknowledgment:
             let present = try reader.byte()
             let code = try reader.byte()
-            packet = .connectAcknowledgement(sessionPresent: present & 0x01 != 0, code: code)
+            packet = .connectAcknowledgment(sessionPresent: present & 0x01 != 0, code: code)
 
         case .publish:
             guard let qos = MQTTQoS(rawValue: Int((flags >> 1) & 0x03)) else {
@@ -243,8 +243,8 @@ extension MQTTPacket {
                                           retains: flags & 0x01 != 0,
                                           isDuplicate: flags & 0x08 != 0, id: id))
 
-        case .publishAcknowledgement:
-            packet = .publishAcknowledgement(id: try reader.big())
+        case .publishAcknowledgment:
+            packet = .publishAcknowledgment(id: try reader.big())
 
         case .subscribe:
             guard flags == 0x02 else { throw MQTTWireError.badReservedFlags }
@@ -260,9 +260,9 @@ extension MQTTPacket {
             guard !filters.isEmpty else { throw MQTTWireError.emptyPayload }
             packet = .subscribe(id: id, filters: filters)
 
-        case .subscribeAcknowledgement:
+        case .subscribeAcknowledgment:
             let id = try reader.big()
-            packet = .subscribeAcknowledgement(id: id, codes: [UInt8](reader.rest()))
+            packet = .subscribeAcknowledgment(id: id, codes: [UInt8](reader.rest()))
 
         case .unsubscribe:
             guard flags == 0x02 else { throw MQTTWireError.badReservedFlags }
@@ -272,8 +272,8 @@ extension MQTTPacket {
             guard !filters.isEmpty else { throw MQTTWireError.emptyPayload }
             packet = .unsubscribe(id: id, filters: filters)
 
-        case .unsubscribeAcknowledgement:
-            packet = .unsubscribeAcknowledgement(id: try reader.big())
+        case .unsubscribeAcknowledgment:
+            packet = .unsubscribeAcknowledgment(id: try reader.big())
 
         case .ping: packet = .ping
         case .pingResponse: packet = .pingResponse

@@ -176,7 +176,7 @@ The built-in rules expect a convex piece and hand back convex pieces, so a run t
 
 ### Where this comes from
 
-George Stiny and James Gips introduced shape grammars in 1971, as a way of specifying paintings and sculpture by rule. The lattice grammar here follows Stiny's 1977 study of Chinese ice-ray window designs. That study is where the balanced cut between two edges and the size limit come from. Stiny wrote it from the catalogue Daniel Sheets Dye made of the lattices themselves. The split rules are the same idea put to work on buildings. Ollin's version is written from the published rules, and credited in [`ATTRIBUTION.md`](../../ATTRIBUTION.md).
+George Stiny and James Gips introduced shape grammars in 1971, as a way of specifying paintings and sculpture by rule. The lattice grammar here follows Stiny's 1977 study of Chinese ice-ray window designs. That study is where the balanced cut between two edges and the size limit come from. Stiny wrote it from the catalog Daniel Sheets Dye made of the lattices themselves. The split rules are the same idea put to work on buildings. Ollin's version is written from the published rules, and credited in [`ATTRIBUTION.md`](../../ATTRIBUTION.md).
 
 ### Example
 

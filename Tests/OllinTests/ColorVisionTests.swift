@@ -77,7 +77,7 @@ struct ColorVisionTests {
 
     /// A severity the table does not hold interpolates its two neighbors, the
     /// approximation the model's authors describe.
-    @Test func anUntabulatedSeverityInterpolatesItsNeighbours() {
+    @Test func anUntabulatedSeverityInterpolatesItsNeighbors() {
         let low = ColorVision(.deuteranomaly, severity: 0.8).matrix
         let high = ColorVision(.deuteranomaly, severity: 0.9).matrix
         let middle = ColorVision(.deuteranomaly, severity: 0.85).matrix

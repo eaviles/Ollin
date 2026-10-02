@@ -252,7 +252,7 @@ struct FrameInterpolationTests {
         view.isPaused = true
         view.enableSetNeedsDisplay = true
 
-        /// The refreshes a runner would take, labelled by what each one showed.
+        /// The refreshes a runner would take, labeled by what each one showed.
         func walk(_ sketch: InterpolationProbe, refreshes: Int) -> [String] {
             var pattern: [String] = []
             for frame in 0..<refreshes {

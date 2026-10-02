@@ -2961,7 +2961,7 @@ it), so every pre-glass frame is bit-identical. The moving parts:
   inside**; it returns a distance rather than a failure, because the caller's
   fallback is the very mistake the march exists to prevent, and a budget that runs
   out answers with what it marched, bounded by the body's own extent. **The rings
-  were invisible to a patch mean** (the centre patch matched the mesh to 0.6/255
+  were invisible to a patch mean** (the center patch matched the mesh to 0.6/255
   through them) and only a per-pixel comparison sees them, which is why the probe
   compares the two bodies pixel by pixel over a **disc that stops a few pixels
   short of the rim** rather than a square: a square's corners reach the
@@ -8682,7 +8682,7 @@ since its frame is the same width wherever you measure it.
 **The file's five load-bearing numbers.** MV-HEVC alone gives a two-layer video
 that plays in stereo; the system calls it *spatial* only with
 `HasLeftStereoEyeView`, `HasRightStereoEyeView`, `HorizontalFieldOfView`
-(millidegrees), `StereoCameraBaseline` (micrometres), and
+(millidegrees), `StereoCameraBaseline` (micrometers), and
 `HorizontalDisparityAdjustment` all present. Drop any one and
 `AVAssetPlaybackAssistant` reports `.stereoMultiviewVideo` but not
 `.spatialVideo`, which is why the near-neighbor options are not the test. The

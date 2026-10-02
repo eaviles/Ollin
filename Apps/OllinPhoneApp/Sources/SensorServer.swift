@@ -87,7 +87,7 @@ final class SensorServer: @unchecked Sendable {
             [weak self] data, _, isComplete, error in
             guard let self else { return }
             if let data, !data.isEmpty { self.take(data, from: conn) }
-            // A connection replaced by a newer one has been cancelled; stop reading it.
+            // A connection replaced by a newer one has been canceled; stop reading it.
             guard self.connections[ObjectIdentifier(conn)] != nil else { return }
             if isComplete || error != nil {
                 conn.cancel()

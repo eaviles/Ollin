@@ -41,7 +41,7 @@ Up on the keys becomes -z, away from a camera that looks down the z axis. The sa
 Three numbers decide what the scenery does to it. The values below are the defaults, and `.degrees(50)` turns degrees into the radians every angle here uses. The way to learn each number is to break it:
 
 ```swift
-walker.stepHeight = 0.4           // the tallest step it walks up: a kerb, a stair
+walker.stepHeight = 0.4           // the tallest step it walks up: a curb, a stair
 walker.maxSlope = .degrees(50)    // the steepest hill it can climb
 walker.pushStrength = 100         // how hard it can shove a crate, in newtons
 ```

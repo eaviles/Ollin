@@ -31,11 +31,11 @@ package enum HeadlessBrowser {
 
     package struct Failure: Error, CustomStringConvertible {
         package var description: String
-        /// The browser did not exit on its own: it was signalled, which here
+        /// The browser did not exit on its own: it was signaled, which here
         /// means its time ran out. A run that ends this way is worth one more
         /// try at a longer budget, since a machine that was merely busy will
         /// finish the second time and a page that truly hangs will not.
-        package var wasSignalled = false
+        package var wasSignaled = false
     }
 
     /// The flags every run carries. No `--user-data-dir` on purpose: with one,
@@ -131,7 +131,7 @@ package enum HeadlessBrowser {
         let first = budget(timeout, launch: capability.launchSeconds)
         do {
             return try await dom(of: html, flags: flags, timeout: first)
-        } catch let failure as Failure where failure.wasSignalled {
+        } catch let failure as Failure where failure.wasSignaled {
             return try await dom(of: html, flags: flags, timeout: min(900, first * 4))
         }
     }
@@ -159,7 +159,7 @@ package enum HeadlessBrowser {
         process.standardOutput = handle
         process.standardError = FileHandle.nullDevice
 
-        let ending: (status: Int32, signalled: Bool) = try await withCheckedThrowingContinuation { continuation in
+        let ending: (status: Int32, signaled: Bool) = try await withCheckedThrowingContinuation { continuation in
             process.terminationHandler = { finished in
                 continuation.resume(returning: (finished.terminationStatus,
                                                 finished.terminationReason == .uncaughtSignal))
@@ -184,7 +184,7 @@ package enum HeadlessBrowser {
         guard !text.isEmpty else {
             throw Failure(description: String(format: "the browser wrote nothing (exit status %d, %.0fs allowed)",
                                               ending.status, timeout),
-                          wasSignalled: ending.signalled)
+                          wasSignaled: ending.signaled)
         }
         return text
     }

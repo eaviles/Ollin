@@ -9742,7 +9742,7 @@ private final class SubdivisionScene: Sketch {
 
 /// Three perfect mazes, one per carving algorithm, each with its longest path
 /// traced through. Seeded and `time`-free, so the mazes are deterministic.
-/// A lit room: two coloured walls, a bar to cast a shadow, and one lamp.
+/// A lit room: two colored walls, a bar to cast a shadow, and one lamp.
 private final class Light2DScene: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
 

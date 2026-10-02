@@ -85,7 +85,7 @@ public final class MQTTClient: @unchecked Sendable {
         var inbox: [MQTTMessage] = []
         var subscriptions: [String: MQTTQoS] = [:]
         var bindings: [String: ParamBinding] = [:]
-        /// Quality-of-service 1 publishes still waiting for their acknowledgement,
+        /// Quality-of-service 1 publishes still waiting for their acknowledgment,
         /// in the order they were sent, so a reconnection resends them in order.
         var unacknowledged: [(id: UInt16, publish: MQTTPublish)] = []
         var nextID: UInt16 = 1
@@ -518,7 +518,7 @@ public final class MQTTClient: @unchecked Sendable {
 
     private func handle(_ packet: MQTTPacket) {
         switch packet {
-        case .connectAcknowledgement(_, let code):
+        case .connectAcknowledgment(_, let code):
             guard code == 0 else {
                 state.withLock {
                     $0.failure = MQTTClient.refusal(code)
@@ -535,20 +535,20 @@ public final class MQTTClient: @unchecked Sendable {
 
         case .publish(let publish):
             if publish.qos == .atLeastOnce, let id = publish.id {
-                send(.publishAcknowledgement(id: id))
+                send(.publishAcknowledgment(id: id))
             }
             deliver(MQTTMessage(topic: publish.topic, payload: publish.payload,
                                 qos: publish.qos, isRetained: publish.retains,
                                 isDuplicate: publish.isDuplicate))
 
-        case .publishAcknowledgement(let id):
+        case .publishAcknowledgment(let id):
             state.withLock { $0.unacknowledged.removeAll { $0.id == id } }
 
         case .ping:
             // A broker has no business sending one, but answering costs nothing.
             send(.pingResponse)
 
-        case .pingResponse, .subscribeAcknowledgement, .unsubscribeAcknowledgement:
+        case .pingResponse, .subscribeAcknowledgment, .unsubscribeAcknowledgment:
             break
 
         case .disconnect:

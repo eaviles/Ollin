@@ -123,7 +123,7 @@ public enum VoiceSource: Sendable, Hashable, Codable {
     /// the ``Synth``. See ``Wavetable``.
     case wavetable(WavetableScan)
     /// Short pieces cut out of a sound and piled up, where the sound is read
-    /// at one speed and travelled through at another. The sound itself lives
+    /// at one speed and traveled through at another. The sound itself lives
     /// on the ``Synth``. See ``GrainCloud``.
     case granular(GrainCloud)
 

@@ -587,7 +587,7 @@ scan.mesh { surface in ... }         // Mesh, painted a color per triangle
 
 It also carries what you need to frame the room and report on it. Those are `chunks`, `chunkCount`, `vertexCount`, `triangleCount`, `bounds`, `center`, `isEmpty`, and `foundSurfaces`, which lists the labels the scan has actually produced. A chunk is a `PhoneSceneChunk`, one block of the room as ARKit maintains it, and it holds the raw arrays: `positions` in world meters, `normals` paired with them by index, `indices`, `surfaces` (what the phone thinks each triangle is, one per triangle, empty when the scan carries no classification), and its own `triangleCount`.
 
-A label is a `PhoneSurface`: `wall`, `floor`, `ceiling`, `table`, `seat`, `window`, `door`, or `unclassified`. ARKit decides what a surface is only once it has seen enough of it, so **early in a scan almost everything is `unclassified`**. That is expected behaviour, not a fault. A sketch that depends on labels should say so while the room fills in. `foundSurfaces` tells you which labels are available.
+A label is a `PhoneSurface`: `wall`, `floor`, `ceiling`, `table`, `seat`, `window`, `door`, or `unclassified`. ARKit decides what a surface is only once it has seen enough of it, so **early in a scan almost everything is `unclassified`**. That is expected behavior, not a fault. A sketch that depends on labels should say so while the room fills in. `foundSurfaces` tells you which labels are available.
 
 ```swift
 // A floor you could stand something on, and the rest of the room behind it.
@@ -638,7 +638,7 @@ room.upright                         // [PhonePlane], walls
 room.planes(of: .table, .seat)       // [PhonePlane], only these labels
 room.largest                         // PhonePlane?, the most surface, by real area
 room.largest(of: .table)             // PhonePlane?, the biggest of a label
-room.floor                           // PhonePlane?, the labelled floor, or the lowest flat one
+room.floor                           // PhonePlane?, the labeled floor, or the lowest flat one
 room.mesh { surface in ... }         // Mesh, every surface painted by what it is
 ```
 

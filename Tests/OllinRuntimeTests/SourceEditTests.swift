@@ -281,7 +281,7 @@ struct SourceEditTests {
 
     // MARK: Turning it
 
-    /// A line swings about its own middle rather than travelling: both ends
+    /// A line swings about its own middle rather than traveling: both ends
     /// move, and the middle stays where it was.
     @Test func bothEndsSwingAboutTheMiddle() throws {
         let out = try turned("drawLine(0, 0, 100, 0)", call: "drawLine",

@@ -235,10 +235,10 @@ struct HuygensTests {
         }
     }
 
-    /// A front travelling into its own hollow loses the pieces that fold over. The
-    /// fold begins exactly when the front has travelled the radius the curve bends
+    /// A front traveling into its own hollow loses the pieces that fold over. The
+    /// fold begins exactly when the front has traveled the radius the curve bends
     /// at, so a shorter trip keeps everything and a longer one does not.
-    @Test func aFrontTravellingIntoAHollowLosesTheFoldedPieces() {
+    @Test func aFrontTravelingIntoAHollowLosesTheFoldedPieces() {
         // y = 70 cos(x / 70) bends at a radius of 70 where it turns over, so that
         // is where the fold starts.
         let front = (0 ... 200).map { i -> Vector2 in

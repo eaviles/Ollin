@@ -849,7 +849,7 @@ struct GeneratedProjectBuildTests {
 
     /// Runs `command` in `directory`, waited on through its termination
     /// handler so no thread is parked, with its output in a file rather than a
-    /// pipe so a child that outlives it holds nothing open. Cancelling the
+    /// pipe so a child that outlives it holds nothing open. Canceling the
     /// task (the suite's time limit) terminates the process, which is what
     /// resumes the wait. The shape `PhoneProjectBuildTests` uses.
     static func runDetached(_ command: [String], in directory: URL) async throws -> (status: Int32, output: String) {

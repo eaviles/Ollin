@@ -251,7 +251,7 @@ The wrapping `palette[i]` goes further than that: it takes any integer, where it
 Palette.complementary(of: base)                         // base + opposite
 Palette.splitComplementary(of: base, spread: 1.0 / 12)  // base + the pair flanking its opposite
 Palette.triadic(of: base)                               // thirds of the wheel
-Palette.analogous(of: base, count: 3, spread: 1.0 / 12) // neighbours centered on base
+Palette.analogous(of: base, count: 3, spread: 1.0 / 12) // neighbors centered on base
 ```
 
 **Built-in sets.** The eight ColorBrewer qualitative palettes ship as data. They are `.set1`, `.set2`, `.set3`, `.paired`, `.pastel1`, `.pastel2`, `.dark2`, and `.accent`. They are credited under [Influences & attribution](../../ATTRIBUTION.md#color).

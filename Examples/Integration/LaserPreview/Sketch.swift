@@ -91,7 +91,7 @@ final class LaserPreview: Sketch {
                 "\(stream.points.count) points a frame, \(stream.pointBudget) in the budget",
                 String(format: "%.0f frames a second at %d points a second",
                        stream.refreshRate, stream.pointsPerSecond),
-                String(format: "drawn %.2f, travelled dark %.2f",
+                String(format: "drawn %.2f, traveled dark %.2f",
                        stream.drawnLength, stream.travelLength)
             ]
             for (i, line) in lines.enumerated() {

@@ -649,7 +649,7 @@ At these lengths the envelope is most of the character. The same sound through a
 
 #### Things worth knowing
 
-- **The sound loops.** A cloud travelling past the end comes round to the start, so position 1 is position 0 and a note does not go quiet part way through.
+- **The sound loops.** A cloud traveling past the end comes round to the start, so position 1 is position 0 and a note does not go quiet part way through.
 - **Loudness rises with the square root of the density.** Grains land on each other at random, so what adds is power rather than amplitude: four times as many is twice as loud.
 - **A strict clock is a pitch.** With `timingJitter` at 0 the grains arrive on a clock, and a frozen cloud repeats the same piece of sound at that rate. The output is then periodic at `density` hertz, whatever the sound was. That is a real instrument rather than a fault, and turning `timingJitter` up is how you stop hearing it.
 - **A cloud drops grains rather than waiting for room.** A note may have 48 sounding at once. Past that a new one is dropped, the same bargain everything on the audio thread makes. A cloud dense enough to reach it is already a texture, and one missing grain in it cannot be heard.

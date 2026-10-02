@@ -366,7 +366,7 @@ struct ParametricLSystemTests {
     /// Widths come back as multiples of the stroke weight, scaled so the widest
     /// is exactly one, and a width set before anything is drawn belongs to the
     /// segment about to leave that point.
-    @Test func widthsAreCarriedAndNormalisedToTheWidest() {
+    @Test func widthsAreCarriedAndNormalizedToTheWidest() {
         let system = ParametricLSystem(axiom: "!(4)F(1)!(2)F(1)", rules: [], angle: 90)
         let marks = system.marks(iterations: 0, step: 1, start: .zero, heading: 0)
         #expect(marks.count == 1)

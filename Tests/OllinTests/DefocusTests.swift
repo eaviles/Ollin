@@ -19,7 +19,7 @@ struct DefocusTests {
     /// over the background: this scene came back with a ~12% dip at the edge of the
     /// near spread.
     @Test(.enabled(if: Snapshot.hasMetal))
-    func nearSpreadInventsNoColour() throws {
+    func nearSpreadInventsNoColor() throws {
         let image = try OllinApp.image(of: NearSpreadProbe(), frame: 1)
         let px = pixels(of: image)
         var darkest = 255

@@ -403,7 +403,7 @@ static inline float ollin_flare_bare(float cos0, float n0, float n2) {
 // What a quarter-wave coated interface reflects at an angle and a wavelength: the
 // reflections off the coating's two faces, interfered per polarization over the
 // path between them. It runs into the bare value as the angle nears the critical
-// one, since the cancellation needs a wave travelling on into the far glass.
+// one, since the cancellation needs a wave traveling on into the far glass.
 static inline float ollin_flare_coated(float cos0, float wavelength, float design,
                                        float n0, float n2) {
     float bare = ollin_flare_bare(cos0, n0, n2);

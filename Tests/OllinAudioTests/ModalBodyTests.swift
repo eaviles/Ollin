@@ -20,7 +20,7 @@ import Testing
     /// A round shape's tones come in pairs, because a pattern with lobes round
     /// the rim fits at any rotation and two of those are independent, so every
     /// tone but the ones with no rotation at all is there twice. That is a real
-    /// property of a real drum, not an artefact, and the list below carries it.
+    /// property of a real drum, not an artifact, and the list below carries it.
     @Test func aRoundShapeRingsLikeADrumhead() {
         let body = ModalBody(shape: Self.circle(radius: 100), modes: 6, resolution: 44)
         // The zeros again, each repeated as many times as it occurs: the first

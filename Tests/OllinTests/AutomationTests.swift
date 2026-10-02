@@ -14,7 +14,7 @@ struct AutomationTests {
 
     // MARK: Curves
 
-    private static let travelling: [Automation.Curve] = [
+    private static let traveling: [Automation.Curve] = [
         .linear, .easeIn, .easeOut, .easeInOut,
         .bezier(x1: 0.42, y1: 0, x2: 0.58, y2: 1),
         .bezier(x1: 0.9, y1: 0.05, x2: 0.1, y2: 0.95),
@@ -24,7 +24,7 @@ struct AutomationTests {
     /// back on the way. A curve that failed this would read as a parameter that
     /// jumps or backs up mid move.
     @Test func curvesRunFromZeroToOneWithoutTurningBack() {
-        for curve in Self.travelling {
+        for curve in Self.traveling {
             #expect(abs(curve.shape(0) - 0) < 1e-6, "\(curve) leaves 0")
             #expect(abs(curve.shape(1) - 1) < 1e-6, "\(curve) arrives at 1")
             var previous = -Double.infinity
@@ -38,7 +38,7 @@ struct AutomationTests {
 
     /// Progress outside `0...1` clamps rather than running off the curve.
     @Test func progressOutsideTheSpanClamps() {
-        for curve in Self.travelling {
+        for curve in Self.traveling {
             #expect(curve.shape(-3) == curve.shape(0))
             #expect(curve.shape(4) == curve.shape(1))
         }
@@ -110,7 +110,7 @@ struct AutomationTests {
     /// A key reads back as exactly itself, whatever curve leaves it. A blend
     /// that failed to short-circuit its ends would miss this by a hair.
     @Test func aKeyReadsBackAsItself() {
-        for curve in Self.travelling + [.hold] {
+        for curve in Self.traveling + [.hold] {
             let track = Automation.Track(name: "n", keys: [
                 .init(at: 0, .number(-3), curve: curve),
                 .init(at: 1.5, .number(7), curve: curve),

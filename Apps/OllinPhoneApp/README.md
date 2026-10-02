@@ -20,7 +20,7 @@ a 3D body skeleton, a face mesh with its 52 expression blendshapes, the 21-joint
 hand skeletons in view (up to 4, in metric world space on a LiDAR phone), the lines
 of readable text in view (their corners lifted the same way), a
 world-facing RGBD depth frame (a point cloud, with the camera's 6DoF pose), a person
-matte, the reconstructed room as a labelled triangle surface, and the flat planes in
+matte, the reconstructed room as a labeled triangle surface, and the flat planes in
 that room.
 Each body joint carries a position, an orientation, and a camera-observed flag; the
 body also carries its world anchor and the person's estimated scale.

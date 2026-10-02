@@ -101,7 +101,7 @@ final class SlowMotionProbe: Sketch {
         fill(Color(hex: 0xDED8CE))
         drawRect(0, height * 0.5 - 1.5, width, 3)
         fill(Color(hex: 0x1E4FD8))
-        let travelled = min(1, time * 8)
-        drawCircle(width * (0.14 + 0.72 * travelled), height * 0.5, 13)
+        let traveled = min(1, time * 8)
+        drawCircle(width * (0.14 + 0.72 * traveled), height * 0.5, 13)
     }
 }

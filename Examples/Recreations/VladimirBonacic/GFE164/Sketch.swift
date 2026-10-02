@@ -188,7 +188,7 @@ final class GFE164: Sketch {
 
     let room = Color(hex: 0x070708)
     let tubeColor = Color(hex: 0x5A301F)
-    let frameGreys = [Color(hex: 0x24211F), Color(hex: 0x3A3532), Color(hex: 0x534C47), Color(hex: 0x70675F)]
+    let frameGrays = [Color(hex: 0x24211F), Color(hex: 0x3A3532), Color(hex: 0x534C47), Color(hex: 0x70675F)]
     let indicatorOff = Color(hex: 0x2A1712)
     let indicatorOn = Color(hex: 0xFF8A4C)
     /// The sixteen glasses. The article gives their number, not their colors;
@@ -317,7 +317,7 @@ final class GFE164: Sketch {
         let inset = pitch * 0.17
         for square in Self.squares {
             let corner = Vector2(face.x + Double(square.column) * pitch, face.y + Double(square.row) * pitch)
-            fill(frameGreys[square.depth])
+            fill(frameGrays[square.depth])
             drawRect(corner: corner + Vector2(0.5, 0.5), width: pitch - 1, height: pitch - 1)
             fill(glassColor(square))
             drawRect(corner: corner + Vector2(inset, inset), width: pitch - 2 * inset, height: pitch - 2 * inset)

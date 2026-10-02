@@ -29,12 +29,12 @@ import simd
 /// ```
 ///
 /// In the snippet these are in scope:
-/// - `value` (`float4`) — this cell's current value (read).
-/// - `result` (`float4`) — what to write, pre-initialised to `value` (write).
-/// - `tap(dx, dy)` (`float4`) — the source field at integer offset `(dx, dy)`, with
+/// - `value` (`float4`): this cell's current value (read).
+/// - `result` (`float4`): what to write, pre-initialized to `value` (write).
+/// - `tap(dx, dy)` (`float4`): the source field at integer offset `(dx, dy)`, with
 ///   **toroidal wrap** (the edges join), for neighbor stencils.
-/// - `gid` (`uint2`) — this cell's coordinate; `size` (`uint2`) — the field size.
-/// - `u` (`OllinComputeUniforms` — `u.time`/`u.dt`/`u.frameCount`/…) and `custom`
+/// - `gid` (`uint2`): this cell's coordinate; `size` (`uint2`): the field size.
+/// - `u` (`OllinComputeUniforms`: `u.time`/`u.dt`/`u.frameCount`/…) and `custom`
 ///   (`float4`, the live parameters from `stepSimulation(_:custom:)`), both read-only.
 /// - the shader-library helpers (`hash12`, `valueNoise`, `srgbToLinear`, …).
 ///

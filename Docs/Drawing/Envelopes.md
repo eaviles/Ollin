@@ -64,7 +64,7 @@ Pass `closed: true` when the family comes back to where it started, which crosse
 ```swift
 enum LightSource {
     case point(Vector2)      // throwing rays in every direction
-    case parallel(Double)    // all travelling at this angle, from far off
+    case parallel(Double)    // all traveling at this angle, from far off
 }
 
 reflectedRays(off curve: [Vector2], from source: LightSource,
@@ -115,7 +115,7 @@ for step in stride(from: 30.0, through: 400, by: 30) {
 }
 ```
 
-This is not the same as moving every point sideways. Where the front curves back on itself, the sideways move folds over. It crosses itself, and **those folded pieces sit inside their neighbors' wavelets rather than on the front**. The construction drops them, because of the rule it is made of. A point of the new front is exactly `distance` from the old front, and no nearer to any part of it. That rule is what turns a folded offset into a real wavefront. It is also why a front travelling into a hollow eventually tears and comes to a point. The tear starts exactly when the front has travelled the radius the curve bends at, which is where a curved mirror's focus is.
+This is not the same as moving every point sideways. Where the front curves back on itself, the sideways move folds over. It crosses itself, and **those folded pieces sit inside their neighbors' wavelets rather than on the front**. The construction drops them, because of the rule it is made of. A point of the new front is exactly `distance` from the old front, and no nearer to any part of it. That rule is what turns a folded offset into a real wavefront. It is also why a front traveling into a hollow eventually tears and comes to a point. The tear starts exactly when the front has traveled the radius the curve bends at, which is where a curved mirror's focus is.
 
 A positive distance travels along the front's own normal, so a ring built by increasing angle grows. A negative distance goes the other way. The result is a list of runs, because a front breaks into pieces as it travels.
 

@@ -81,7 +81,7 @@ final class Waves: Sketch {
     private func paints(for look: Look) -> Paints {
         switch look {
         case .spectrum:
-            // The rainbow order of the 1975 panels: yellow, ochre, red, blue, green on grey.
+            // The rainbow order of the 1975 panels: yellow, ochre, red, blue, green on gray.
             return Paints(ground: Color(hex: 0x9AA1AD), shares: [
                 Share(color: Color(hex: 0xF2C11C), count: 3),
                 Share(color: Color(hex: 0xD79A1E), count: 2),
@@ -102,7 +102,7 @@ final class Waves: Sketch {
                 Share(color: Color(hex: 0x1E2A6A), count: 1),
             ])
         case .volcanic:
-            // Orange, white and grey under a sky.
+            // Orange, white and gray under a sky.
             return Paints(ground: Color(hex: 0x6FB6E8), shares: [
                 Share(color: Color(hex: 0xF07A1A), count: 2),
                 Share(color: Color(hex: 0xF4EFE4), count: 2),

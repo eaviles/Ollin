@@ -752,22 +752,22 @@ fragment float4 ollin_fx_antialias(PresentOut in [[stage_in]],
     float endA = ollin_aa_luma(src.sample(samp, pA, level(0))) - lPair;
     float endB = ollin_aa_luma(src.sample(samp, pB, level(0))) - lPair;
     bool doneA = abs(endA) >= endContrast, doneB = abs(endB) >= endContrast;
-    float travelled = 1.0, reachA = 1.0, reachB = 1.0, stride = 1.0;
+    float traveled = 1.0, reachA = 1.0, reachB = 1.0, stride = 1.0;
     for (int i = 1; i < steps; ++i) {
         if (doneA && doneB) break;
         stride = (i < 4) ? 1.0 : min(stride * 2.0, 4.0);
-        travelled += stride;
+        traveled += stride;
         if (!doneA) {
             pA -= alongUV * stride;
             endA = ollin_aa_luma(src.sample(samp, pA, level(0))) - lPair;
             doneA = abs(endA) >= endContrast;
-            reachA = travelled;
+            reachA = traveled;
         }
         if (!doneB) {
             pB += alongUV * stride;
             endB = ollin_aa_luma(src.sample(samp, pB, level(0))) - lPair;
             doneB = abs(endB) >= endContrast;
-            reachB = travelled;
+            reachB = traveled;
         }
     }
 
@@ -2705,12 +2705,12 @@ static inline float ollin_field_value(float4 c, float mode) {
 }
 
 // Seed: find where the layer crosses `threshold` and store the crossing point itself,
-// not the pixel that holds it. Each pixel looks at its four axial neighbours; where the
+// not the pixel that holds it. Each pixel looks at its four axial neighbors; where the
 // two sides fall on opposite sides of the threshold the crossing lies a fraction of a
 // texel away, and that fraction is what a linear interpolation between the two values
 // reads off. For a hard mask it lands half a texel out, which is the true edge of a
 // hard-edged shape; for an antialiased one it follows the coverage. Snapping to the pixel
-// centre instead biases every measurement by up to half a pixel and steps the whole field
+// center instead biases every measurement by up to half a pixel and steps the whole field
 // along the pixel grid, which is visible the moment the field drives an outline.
 // params[0] = (threshold, source mode, -, -)
 fragment float2 ollin_field_seed(PresentOut in [[stage_in]],
@@ -2740,7 +2740,7 @@ fragment float2 ollin_field_seed(PresentOut in [[stage_in]],
 }
 
 // Flood: one rung of the ladder. The pixel keeps the nearest seed position among its own
-// and the eight neighbours `step` texels away, so a seed reaches the whole layer in a
+// and the eight neighbors `step` texels away, so a seed reaches the whole layer in a
 // number of passes that grows with the logarithm of its size rather than its width.
 // params[0] = (step in texels, -, -, -)
 fragment float2 ollin_field_flood(PresentOut in [[stage_in]],

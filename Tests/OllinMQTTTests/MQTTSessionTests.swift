@@ -163,7 +163,7 @@ struct MQTTSessionTests {
 
         // Coming the other way, the client acknowledges what the broker delivered.
         _ = try await waitFor { client.message("home/lamp/set") }
-        let acknowledged = try await waitFor { broker.acknowledgements.isEmpty ? nil : broker.acknowledgements }
+        let acknowledged = try await waitFor { broker.acknowledgments.isEmpty ? nil : broker.acknowledgments }
         #expect(!acknowledged.isEmpty)
         #expect(client.message("home/lamp/set")?.qos == .atLeastOnce)
     }
@@ -302,12 +302,12 @@ struct MQTTSessionTests {
         let (broker, client) = try await makePair()
         defer { client.disconnect(); broker.stop() }
 
-        broker.holdsAcknowledgements = true
+        broker.holdsAcknowledgments = true
         client.publish("home/lamp/set", "ON", qos: .atLeastOnce)
         let first = try await waitFor { broker.publishes.first { $0.topic == "home/lamp/set" } }
         #expect(!first.isDuplicate)
 
-        broker.holdsAcknowledgements = false
+        broker.holdsAcknowledgments = false
         broker.dropClients()
         _ = try await waitFor(timeout: 8) { client.connectionCount >= 2 ? true : nil }
 

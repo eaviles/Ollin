@@ -8,7 +8,7 @@
 #
 # Splitting a chapter renumbers every chapter after it, and the number is
 # carried by more surfaces than anyone can hold in their head: the file itself,
-# both asset trees, the breadcrumb, the H1, two footer links per neighbour, the
+# both asset trees, the breadcrumb, the H1, two footer links per neighbor, the
 # contents list, the status table, the coverage matrix, Appendix D's table
 # per chapter, the section pointers in CAPABILITIES.md, and the chapter links
 # in the changelog's old entries. Doing that by hand
@@ -236,7 +236,7 @@ if readme.exists():
 # The failure this catches is invisible otherwise, because no gate reads a
 # figure's drawn text: Seeing moved 21 to 30 across four commits while the card
 # in two of its figures went on saying "chapter 21", and a third went on
-# labelling the flow field as Chapter 12's when the prose beside it said 14.
+# labeling the flow field as Chapter 12's when the prose beside it said 14.
 DRAWN = re.compile(r'"([^"]*\b[Cc]hapter \d+[^"]*)"')
 drawn = []
 

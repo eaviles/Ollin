@@ -72,7 +72,7 @@ public struct Combine: Sendable {
         /// by the aux's `channel` value, optionally inverted.
         case mask(channel: MaskChannel, inverted: Bool)
         /// Push the base's pixels around: offset each sample by the aux's red/green
-        /// recentred to `±amount` (a fraction of the layer), the classic displacement map.
+        /// recentered to `±amount` (a fraction of the layer), the classic displacement map.
         case displace(amount: Double)
         /// Smear the base along the aux read as a direction field: each pixel is the
         /// average of the base along the streamline through it, `length` of the
