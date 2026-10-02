@@ -21,7 +21,7 @@
 | [Star](Star/) | [StraightSkeleton](StraightSkeleton/) | [StrokeAlignment](StrokeAlignment/) | [StrokeJoinsAndCaps](StrokeJoinsAndCaps/) |
 | [![StrokeProfiles](https://media.ollin.art/examples/Shapes/StrokeProfiles/still-640.jpg?v=c2ed6e7d)](StrokeProfiles/) | [![Superellipse](https://media.ollin.art/examples/Shapes/Superellipse/still-640.jpg?v=5d1a3834)](Superellipse/) | [![Supershape](https://media.ollin.art/examples/Shapes/Supershape/still-640.jpg?v=5ce79b23)](Supershape/) | [![Triangles](https://media.ollin.art/examples/Shapes/Triangles/still-640.jpg?v=0c166e76)](Triangles/) |
 | [StrokeProfiles](StrokeProfiles/) | [Superellipse](Superellipse/) | [Supershape](Supershape/) | [Triangles](Triangles/) |
-| [![Watercolor](https://media.ollin.art/examples/Shapes/Watercolor/still-640.jpg?v=c3443111)](Watercolor/) |  |  |  |
+| [![Watercolor](https://media.ollin.art/examples/Shapes/Watercolor/still-640.jpg?v=00315999)](Watercolor/) |  |  |  |
 | [Watercolor](Watercolor/) |  |  |  |
 
 These examples cover the shape-drawing vocabulary. They show every primitive and the stroke and hollow modes. They also show two ways to compose shapes: boolean set operations on filled outlines, and SDF combinators that merge distance fields.

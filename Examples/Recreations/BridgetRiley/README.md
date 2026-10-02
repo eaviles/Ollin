@@ -4,7 +4,7 @@
 
 ## Bridget Riley
 
-| [![Current](https://media.ollin.art/examples/Recreations/BridgetRiley/Current/still-640.jpg?v=514967fc)](Current/) | [![Fragment3](https://media.ollin.art/examples/Recreations/BridgetRiley/Fragment3/still-640.jpg?v=bf51efdf)](Fragment3/) |  |  |
+| [![Current](https://media.ollin.art/examples/Recreations/BridgetRiley/Current/still-640.jpg?v=121d4eca)](Current/) | [![Fragment3](https://media.ollin.art/examples/Recreations/BridgetRiley/Fragment3/still-640.jpg?v=bf51efdf)](Fragment3/) |  |  |
 |---|---|---|---|
 | [Current](Current/) | [Fragment3](Fragment3/) |  |  |
 

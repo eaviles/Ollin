@@ -4,7 +4,7 @@
 
 ## Compute
 
-| [![CurlField](https://media.ollin.art/examples/Compute/CurlField/still-640.jpg?v=074c89a0)](CurlField/) | [![NeighborSearch](https://media.ollin.art/examples/Compute/NeighborSearch/still-640.jpg?v=437d677f)](NeighborSearch/) | [![ReactionDiffusion](https://media.ollin.art/examples/Compute/ReactionDiffusion/still-640.jpg?v=5685b4e6)](ReactionDiffusion/) |  |
+| [![CurlField](https://media.ollin.art/examples/Compute/CurlField/still-640.jpg?v=49f78447)](CurlField/) | [![NeighborSearch](https://media.ollin.art/examples/Compute/NeighborSearch/still-640.jpg?v=437d677f)](NeighborSearch/) | [![ReactionDiffusion](https://media.ollin.art/examples/Compute/ReactionDiffusion/still-640.jpg?v=5685b4e6)](ReactionDiffusion/) |  |
 |---|---|---|---|
 | [CurlField](CurlField/) | [NeighborSearch](NeighborSearch/) | [ReactionDiffusion](ReactionDiffusion/) |  |
 

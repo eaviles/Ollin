@@ -4,7 +4,7 @@
 
 ## Depth
 
-| [![ClosedLoopScan](https://media.ollin.art/examples/3D/Depth/ClosedLoopScan/still-640.jpg?v=1ea29b94)](ClosedLoopScan/) | [![DepthCloud](https://media.ollin.art/examples/3D/Depth/DepthCloud/still-640.jpg?v=1e4b1d83)](DepthCloud/) | [![DepthCompositing](https://media.ollin.art/examples/3D/Depth/DepthCompositing/still-640.jpg?v=52ae3f2f)](DepthCompositing/) |  |
+| [![ClosedLoopScan](https://media.ollin.art/examples/3D/Depth/ClosedLoopScan/still-640.jpg?v=1ea29b94)](ClosedLoopScan/) | [![DepthCloud](https://media.ollin.art/examples/3D/Depth/DepthCloud/still-640.jpg?v=65230d5e)](DepthCloud/) | [![DepthCompositing](https://media.ollin.art/examples/3D/Depth/DepthCompositing/still-640.jpg?v=52ae3f2f)](DepthCompositing/) |  |
 |---|---|---|---|
 | [ClosedLoopScan](ClosedLoopScan/) | [DepthCloud](DepthCloud/) | [DepthCompositing](DepthCompositing/) |  |
 

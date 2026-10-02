@@ -588,20 +588,26 @@
       "width": 1080
     },
     "3D/Depth/DepthCloud": {
-      "bytes": {
-        "still": 589581,
-        "stillSmall": 149180
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
-      "length": "still",
-      "motion": 0.0,
-      "rendered": "2026-09-26",
-      "source": "3c5058c0bc0f481e",
-      "still": "examples/3D/Depth/DepthCloud/still.jpg?v=46d22759",
-      "stillBecause": "holds still",
-      "stillSmall": "examples/3D/Depth/DepthCloud/still-640.jpg?v=1e4b1d83",
-      "width": 1080
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 39.503,
+      "sound": false,
+      "source": "63a03acb5687b56e",
+      "rendered": "2026-10-02",
+      "bytes": {
+        "loop": 8070111,
+        "loopSmall": 2689807,
+        "still": 620868,
+        "stillSmall": 156259
+      },
+      "loop": "examples/3D/Depth/DepthCloud/loop.mp4?v=9b8d7814",
+      "loopSmall": "examples/3D/Depth/DepthCloud/loop-640.mp4?v=c8b5d279",
+      "still": "examples/3D/Depth/DepthCloud/still.jpg?v=5ac8bfc2",
+      "stillSmall": "examples/3D/Depth/DepthCloud/still-640.jpg?v=65230d5e",
+      "seed": 1
     },
     "3D/Depth/DepthCompositing": {
       "bytes": {
@@ -1420,24 +1426,26 @@
       "width": 1080
     },
     "3D/Geometry/StrangeAttractor": {
-      "bytes": {
-        "loop": 7938278,
-        "loopSmall": 3926639,
-        "still": 842836,
-        "stillSmall": 238084
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
-      "length": "10s",
-      "loop": "examples/3D/Geometry/StrangeAttractor/loop.mp4?v=874adf69",
-      "loopSmall": "examples/3D/Geometry/StrangeAttractor/loop-640.mp4?v=f2d01281",
-      "motion": 23.776,
-      "rendered": "2026-09-10",
+      "length": "10.0s",
       "seconds": 10.0,
-      "source": "da3d4ac04400248b",
-      "still": "examples/3D/Geometry/StrangeAttractor/still.jpg?v=afea5db9",
-      "stillSmall": "examples/3D/Geometry/StrangeAttractor/still-640.jpg?v=58701d72",
-      "width": 1080
+      "frame": 480,
+      "motion": 23.776,
+      "sound": false,
+      "source": "094e1778fec82d72",
+      "rendered": "2026-10-02",
+      "bytes": {
+        "loop": 7929312,
+        "loopSmall": 2561028,
+        "still": 842838,
+        "stillSmall": 238091
+      },
+      "loop": "examples/3D/Geometry/StrangeAttractor/loop.mp4?v=917b7b5d",
+      "loopSmall": "examples/3D/Geometry/StrangeAttractor/loop-640.mp4?v=0c14fc2a",
+      "still": "examples/3D/Geometry/StrangeAttractor/still.jpg?v=a23fbb10",
+      "stillSmall": "examples/3D/Geometry/StrangeAttractor/still-640.jpg?v=6f0cec84",
+      "seed": 1
     },
     "3D/Geometry/SubdivisionSurfaces": {
       "bytes": {
@@ -3079,25 +3087,26 @@
       "width": 1080
     },
     "Audio/ChladniResonance": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10.0s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 59.265,
+      "sound": false,
+      "source": "902d5078de6e2b7c",
+      "rendered": "2026-10-02",
       "bytes": {
-        "loop": 8204344,
-        "loopSmall": 6421331,
+        "loop": 8203163,
+        "loopSmall": 2693578,
         "still": 344404,
         "stillSmall": 79408
       },
-      "frame": 480,
-      "height": 1080,
-      "length": "10.0s",
-      "loop": "examples/Audio/ChladniResonance/loop.mp4?v=93a0a5b5",
-      "loopSmall": "examples/Audio/ChladniResonance/loop-640.mp4?v=1db2033b",
-      "motion": 58.878,
-      "rendered": "2026-09-10",
-      "seconds": 10.0,
-      "sound": false,
-      "source": "902d5078de6e2b7c",
+      "loop": "examples/Audio/ChladniResonance/loop.mp4?v=00a5f7c7",
+      "loopSmall": "examples/Audio/ChladniResonance/loop-640.mp4?v=22f63b0a",
       "still": "examples/Audio/ChladniResonance/still.jpg?v=e4fe1868",
       "stillSmall": "examples/Audio/ChladniResonance/still-640.jpg?v=7ea709c5",
-      "width": 1080
+      "seed": 1
     },
     "Audio/ChordSymbols": {
       "bytes": {
@@ -3998,26 +4007,26 @@
       "width": 1080
     },
     "Compute/CurlField": {
-      "bytes": {
-        "loop": 8049854,
-        "loopSmall": 22283012,
-        "still": 1871611,
-        "stillSmall": 514381
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "10.0s",
-      "loop": "examples/Compute/CurlField/loop.mp4?v=e9b132d5",
-      "loopSmall": "examples/Compute/CurlField/loop-640.mp4?v=16c84d78",
-      "motion": 15.061,
-      "rendered": "2026-09-26",
       "seconds": 10.0,
-      "seed": 1,
+      "frame": 480,
+      "motion": 15.061,
       "sound": false,
       "source": "798621ba396837d2",
-      "still": "examples/Compute/CurlField/still.jpg?v=e5043b42",
-      "stillSmall": "examples/Compute/CurlField/still-640.jpg?v=074c89a0",
-      "width": 1080
+      "rendered": "2026-10-02",
+      "bytes": {
+        "loop": 8044510,
+        "loopSmall": 2686966,
+        "still": 1871451,
+        "stillSmall": 514331
+      },
+      "loop": "examples/Compute/CurlField/loop.mp4?v=db626839",
+      "loopSmall": "examples/Compute/CurlField/loop-640.mp4?v=397003ef",
+      "still": "examples/Compute/CurlField/still.jpg?v=d2a883e4",
+      "stillSmall": "examples/Compute/CurlField/still-640.jpg?v=49f78447",
+      "seed": 1
     },
     "Compute/NeighborSearch": {
       "bytes": {
@@ -4391,25 +4400,26 @@
       "width": 1080
     },
     "Effects/FilmLook": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10.0s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 3.804,
+      "sound": false,
+      "source": "b9ba6724c6775b6a",
+      "rendered": "2026-10-02",
       "bytes": {
-        "loop": 8110347,
-        "loopSmall": 9419380,
+        "loop": 8109964,
+        "loopSmall": 2709068,
         "still": 356263,
         "stillSmall": 100834
       },
-      "frame": 480,
-      "height": 1080,
-      "length": "10s",
-      "loop": "examples/Effects/FilmLook/loop.mp4?v=2e823e59",
-      "loopSmall": "examples/Effects/FilmLook/loop-640.mp4?v=862efd7d",
-      "motion": 3.804,
-      "rendered": "2026-09-13",
-      "seconds": 10.0,
-      "sound": false,
-      "source": "b9ba6724c6775b6a",
+      "loop": "examples/Effects/FilmLook/loop.mp4?v=2f3dd61d",
+      "loopSmall": "examples/Effects/FilmLook/loop-640.mp4?v=bb05e0d7",
       "still": "examples/Effects/FilmLook/still.jpg?v=b208085b",
       "stillSmall": "examples/Effects/FilmLook/still-640.jpg?v=85248d4e",
-      "width": 1080
+      "seed": 1
     },
     "Effects/FilterCatalog": {
       "bytes": {
@@ -4933,24 +4943,26 @@
       "width": 1080
     },
     "Images/Autostereogram": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 3.545,
+      "sound": false,
+      "source": "644d9f4cb7f9851a",
+      "rendered": "2026-10-02",
       "bytes": {
-        "loop": 12427796,
-        "loopSmall": 10649159,
+        "loop": 12417776,
+        "loopSmall": 4031039,
         "still": 1350617,
         "stillSmall": 323480
       },
-      "frame": 480,
-      "height": 1080,
-      "length": "lap",
-      "loop": "examples/Images/Autostereogram/loop.mp4?v=3751e8d6",
-      "loopSmall": "examples/Images/Autostereogram/loop-640.mp4?v=76da088b",
-      "motion": 3.545,
-      "rendered": "2026-09-10",
-      "seconds": 10.0,
-      "source": "644d9f4cb7f9851a",
+      "loop": "examples/Images/Autostereogram/loop.mp4?v=28138187",
+      "loopSmall": "examples/Images/Autostereogram/loop-640.mp4?v=088ce1a1",
       "still": "examples/Images/Autostereogram/still.jpg?v=b0cfb268",
       "stillSmall": "examples/Images/Autostereogram/still-640.jpg?v=a02b4c97",
-      "width": 1080
+      "seed": 1
     },
     "Images/Dropped": {
       "bytes": {
@@ -4985,64 +4997,70 @@
       "width": 1080
     },
     "Images/GlyphMosaic": {
-      "bytes": {
-        "loop": 7976894,
-        "loopSmall": 5519298,
-        "still": 542367,
-        "stillSmall": 166761
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "lap",
-      "loop": "examples/Images/GlyphMosaic/loop.mp4?v=e37e0db0",
-      "loopSmall": "examples/Images/GlyphMosaic/loop-640.mp4?v=53a769d7",
-      "motion": 26.808,
-      "rendered": "2026-09-10",
       "seconds": 10.0,
+      "frame": 480,
+      "motion": 26.808,
+      "sound": false,
       "source": "649e699155d4e2ef",
-      "still": "examples/Images/GlyphMosaic/still.jpg?v=06db6660",
-      "stillSmall": "examples/Images/GlyphMosaic/still-640.jpg?v=56f962ea",
-      "width": 1080
+      "rendered": "2026-10-02",
+      "bytes": {
+        "loop": 7979428,
+        "loopSmall": 2698562,
+        "still": 542483,
+        "stillSmall": 166741
+      },
+      "loop": "examples/Images/GlyphMosaic/loop.mp4?v=5867e68a",
+      "loopSmall": "examples/Images/GlyphMosaic/loop-640.mp4?v=8910d71d",
+      "still": "examples/Images/GlyphMosaic/still.jpg?v=f38cc5f5",
+      "stillSmall": "examples/Images/GlyphMosaic/still-640.jpg?v=cf14986b",
+      "seed": 1
     },
     "Images/Halftone": {
-      "bytes": {
-        "loop": 9495074,
-        "loopSmall": 7125478,
-        "still": 826262,
-        "stillSmall": 267732
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "lap",
-      "loop": "examples/Images/Halftone/loop.mp4?v=54688a6a",
-      "loopSmall": "examples/Images/Halftone/loop-640.mp4?v=e4ab7169",
-      "motion": 25.928,
-      "rendered": "2026-09-10",
       "seconds": 10.0,
+      "frame": 480,
+      "motion": 25.928,
+      "sound": false,
       "source": "2b8cb74f53ffe195",
-      "still": "examples/Images/Halftone/still.jpg?v=fd9c66ee",
+      "rendered": "2026-10-02",
+      "bytes": {
+        "loop": 9468341,
+        "loopSmall": 3169036,
+        "still": 826275,
+        "stillSmall": 267732
+      },
+      "loop": "examples/Images/Halftone/loop.mp4?v=e9f2ceb1",
+      "loopSmall": "examples/Images/Halftone/loop-640.mp4?v=c872adce",
+      "still": "examples/Images/Halftone/still.jpg?v=e611761a",
       "stillSmall": "examples/Images/Halftone/still-640.jpg?v=d453baa5",
-      "width": 1080
+      "seed": 1
     },
     "Images/LuminanceMelt": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10.0s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 29.524,
+      "sound": false,
+      "source": "bb03b7fb848e6d46",
+      "rendered": "2026-10-02",
       "bytes": {
-        "loop": 7886948,
-        "loopSmall": 3145125,
+        "loop": 7895282,
+        "loopSmall": 2579982,
         "still": 437141,
         "stillSmall": 150901
       },
-      "frame": 480,
-      "height": 1080,
-      "length": "10s",
-      "loop": "examples/Images/LuminanceMelt/loop.mp4?v=27fe65de",
-      "loopSmall": "examples/Images/LuminanceMelt/loop-640.mp4?v=3ff351d3",
-      "motion": 29.524,
-      "rendered": "2026-09-10",
-      "seconds": 10.0,
-      "source": "bb03b7fb848e6d46",
+      "loop": "examples/Images/LuminanceMelt/loop.mp4?v=4d5a8cb7",
+      "loopSmall": "examples/Images/LuminanceMelt/loop-640.mp4?v=64734bd0",
       "still": "examples/Images/LuminanceMelt/still.jpg?v=bdffe040",
       "stillSmall": "examples/Images/LuminanceMelt/still-640.jpg?v=97bd1adb",
-      "width": 1080
+      "seed": 1
     },
     "Images/PhotoMosaic": {
       "bytes": {
@@ -5349,24 +5367,26 @@
       "width": 760
     },
     "Installation/Unattended": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 3.226,
+      "sound": false,
+      "source": "55a3b76b39191b42",
+      "rendered": "2026-10-02",
       "bytes": {
-        "loop": 48326782,
-        "loopSmall": 10050961,
+        "loop": 48317344,
+        "loopSmall": 10051890,
         "still": 281935,
         "stillSmall": 118008
       },
-      "frame": 480,
-      "height": 1080,
-      "length": "lap",
-      "loop": "examples/Installation/Unattended/loop.mp4?v=2a93f1fb",
-      "loopSmall": "examples/Installation/Unattended/loop-640.mp4?v=92476a6f",
-      "motion": 3.226,
-      "rendered": "2026-09-10",
-      "seconds": 10.0,
-      "source": "55a3b76b39191b42",
+      "loop": "examples/Installation/Unattended/loop.mp4?v=874421d0",
+      "loopSmall": "examples/Installation/Unattended/loop-640.mp4?v=4862c8cb",
       "still": "examples/Installation/Unattended/still.jpg?v=3d862b26",
       "stillSmall": "examples/Installation/Unattended/still-640.jpg?v=e221aa84",
-      "width": 1080
+      "seed": 1
     },
     "Installation/Watched": {
       "bytes": {
@@ -5596,24 +5616,26 @@
       "width": 1080
     },
     "Motion/Attractor": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10.0s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 31.898,
+      "sound": false,
+      "source": "081b106211e09b3a",
+      "rendered": "2026-10-02",
       "bytes": {
-        "loop": 8073172,
-        "loopSmall": 14636845,
-        "still": 469948,
+        "loop": 8055495,
+        "loopSmall": 2711512,
+        "still": 469867,
         "stillSmall": 163940
       },
-      "frame": 480,
-      "height": 1080,
-      "length": "10s",
-      "loop": "examples/Motion/Attractor/loop.mp4?v=2a2450ab",
-      "loopSmall": "examples/Motion/Attractor/loop-640.mp4?v=05c28780",
-      "motion": 31.898,
-      "rendered": "2026-09-10",
-      "seconds": 10.0,
-      "source": "081b106211e09b3a",
-      "still": "examples/Motion/Attractor/still.jpg?v=0f1abff0",
+      "loop": "examples/Motion/Attractor/loop.mp4?v=aa68f20d",
+      "loopSmall": "examples/Motion/Attractor/loop-640.mp4?v=9ec79d87",
+      "still": "examples/Motion/Attractor/still.jpg?v=b893da90",
       "stillSmall": "examples/Motion/Attractor/still-640.jpg?v=df51de68",
-      "width": 1080
+      "seed": 1
     },
     "Motion/Automation": {
       "bytes": {
@@ -5896,24 +5918,26 @@
       "width": 1080
     },
     "Motion/Mandala": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10.0s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 46.465,
+      "sound": false,
+      "source": "294b8309f9e33e7f",
+      "rendered": "2026-10-02",
       "bytes": {
-        "loop": 8049362,
-        "loopSmall": 3590680,
-        "still": 422072,
+        "loop": 8043217,
+        "loopSmall": 2700437,
+        "still": 422058,
         "stillSmall": 175719
       },
-      "frame": 480,
-      "height": 1080,
-      "length": "10s",
-      "loop": "examples/Motion/Mandala/loop.mp4?v=b6db919d",
-      "loopSmall": "examples/Motion/Mandala/loop-640.mp4?v=018ad196",
-      "motion": 46.466,
-      "rendered": "2026-09-10",
-      "seconds": 10.0,
-      "source": "294b8309f9e33e7f",
-      "still": "examples/Motion/Mandala/still.jpg?v=72f79eeb",
+      "loop": "examples/Motion/Mandala/loop.mp4?v=c01b81ac",
+      "loopSmall": "examples/Motion/Mandala/loop-640.mp4?v=8473213f",
+      "still": "examples/Motion/Mandala/still.jpg?v=596e7da4",
       "stillSmall": "examples/Motion/Mandala/still-640.jpg?v=c30846af",
-      "width": 1080
+      "seed": 1
     },
     "Motion/Morphing": {
       "bytes": {
@@ -5936,26 +5960,26 @@
       "width": 1080
     },
     "Motion/Myriad": {
-      "bytes": {
-        "loop": 8038823,
-        "loopSmall": 6382517,
-        "still": 1123803,
-        "stillSmall": 351471
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "10.0s",
-      "loop": "examples/Motion/Myriad/loop.mp4?v=17966477",
-      "loopSmall": "examples/Motion/Myriad/loop-640.mp4?v=bf137b31",
-      "motion": 45.115,
-      "rendered": "2026-09-26",
       "seconds": 10.0,
-      "seed": 1,
+      "frame": 480,
+      "motion": 45.115,
       "sound": false,
-      "source": "2a13e9d8d696fcb8",
-      "still": "examples/Motion/Myriad/still.jpg?v=0e0d1fcf",
-      "stillSmall": "examples/Motion/Myriad/still-640.jpg?v=5e2fd116",
-      "width": 1080
+      "source": "e84d9fcf25b70d6a",
+      "rendered": "2026-10-02",
+      "bytes": {
+        "loop": 8062248,
+        "loopSmall": 2693365,
+        "still": 1123777,
+        "stillSmall": 351475
+      },
+      "loop": "examples/Motion/Myriad/loop.mp4?v=41f7145a",
+      "loopSmall": "examples/Motion/Myriad/loop-640.mp4?v=9b6dcad6",
+      "still": "examples/Motion/Myriad/still.jpg?v=221a752c",
+      "stillSmall": "examples/Motion/Myriad/still-640.jpg?v=6ccbe883",
+      "seed": 1
     },
     "Motion/NBody": {
       "bytes": {
@@ -6311,24 +6335,26 @@
       "width": 1080
     },
     "Patterns/Caustic": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 7.934,
+      "sound": false,
+      "source": "0c4b007e9ebe550e",
+      "rendered": "2026-10-02",
       "bytes": {
-        "loop": 11043627,
-        "loopSmall": 3259023,
+        "loop": 11049525,
+        "loopSmall": 3047562,
         "still": 291637,
         "stillSmall": 92477
       },
-      "frame": 480,
-      "height": 1080,
-      "length": "lap",
-      "loop": "examples/Patterns/Caustic/loop.mp4?v=ca8d2e65",
-      "loopSmall": "examples/Patterns/Caustic/loop-640.mp4?v=af09e3d6",
-      "motion": 7.934,
-      "rendered": "2026-09-10",
-      "seconds": 10.0,
-      "source": "d498b2683d5254bd",
+      "loop": "examples/Patterns/Caustic/loop.mp4?v=3a9634ff",
+      "loopSmall": "examples/Patterns/Caustic/loop-640.mp4?v=96a59298",
       "still": "examples/Patterns/Caustic/still.jpg?v=83fe1571",
       "stillSmall": "examples/Patterns/Caustic/still-640.jpg?v=5a5f4a85",
-      "width": 1080
+      "seed": 1
     },
     "Patterns/ChaoticMaps": {
       "bytes": {
@@ -6351,24 +6377,26 @@
       "width": 1080
     },
     "Patterns/Chladni": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 62.568,
+      "sound": false,
+      "source": "e88a4385c7fce3fd",
+      "rendered": "2026-10-02",
       "bytes": {
-        "loop": 23723798,
-        "loopSmall": 25512352,
+        "loop": 23716714,
+        "loopSmall": 7864904,
         "still": 469869,
         "stillSmall": 112501
       },
-      "frame": 480,
-      "height": 1080,
-      "length": "lap",
-      "loop": "examples/Patterns/Chladni/loop.mp4?v=b8bc5636",
-      "loopSmall": "examples/Patterns/Chladni/loop-640.mp4?v=1d2275e3",
-      "motion": 62.568,
-      "rendered": "2026-09-10",
-      "seconds": 10.0,
-      "source": "e88a4385c7fce3fd",
+      "loop": "examples/Patterns/Chladni/loop.mp4?v=7cae4acf",
+      "loopSmall": "examples/Patterns/Chladni/loop-640.mp4?v=02cc497a",
       "still": "examples/Patterns/Chladni/still.jpg?v=49681df1",
       "stillSmall": "examples/Patterns/Chladni/still-640.jpg?v=bf741ca8",
-      "width": 1080
+      "seed": 1
     },
     "Patterns/CirclePacking": {
       "bytes": {
@@ -6407,24 +6435,26 @@
       "width": 1080
     },
     "Patterns/ContourMap": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 9.42,
+      "sound": false,
+      "source": "06c0c1f589223b52",
+      "rendered": "2026-10-02",
       "bytes": {
-        "loop": 9562489,
-        "loopSmall": 3652279,
+        "loop": 9572158,
+        "loopSmall": 3190511,
         "still": 297183,
         "stillSmall": 94960
       },
-      "frame": 480,
-      "height": 1080,
-      "length": "lap",
-      "loop": "examples/Patterns/ContourMap/loop.mp4?v=f24118fe",
-      "loopSmall": "examples/Patterns/ContourMap/loop-640.mp4?v=ffdd7746",
-      "motion": 9.42,
-      "rendered": "2026-09-10",
-      "seconds": 10.0,
-      "source": "06c0c1f589223b52",
-      "still": "examples/Patterns/ContourMap/still.jpg?v=08c862a1",
+      "loop": "examples/Patterns/ContourMap/loop.mp4?v=c5800106",
+      "loopSmall": "examples/Patterns/ContourMap/loop-640.mp4?v=cfed8654",
+      "still": "examples/Patterns/ContourMap/still.jpg?v=5c6106d6",
       "stillSmall": "examples/Patterns/ContourMap/still-640.jpg?v=3502881e",
-      "width": 1080
+      "seed": 1
     },
     "Patterns/Cracks": {
       "bytes": {
@@ -6690,24 +6720,26 @@
       "width": 1080
     },
     "Patterns/Guilloche": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10.0s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 17.149,
+      "sound": false,
+      "source": "d7482075d69ecc2f",
+      "rendered": "2026-10-02",
       "bytes": {
-        "loop": 8013106,
-        "loopSmall": 3066705,
+        "loop": 8009935,
+        "loopSmall": 2664259,
         "still": 560447,
         "stillSmall": 187084
       },
-      "frame": 480,
-      "height": 1080,
-      "length": "10s",
-      "loop": "examples/Patterns/Guilloche/loop.mp4?v=7cf6f9e0",
-      "loopSmall": "examples/Patterns/Guilloche/loop-640.mp4?v=f67a21b0",
-      "motion": 17.149,
-      "rendered": "2026-09-10",
-      "seconds": 10.0,
-      "source": "1eaf4a188d651b28",
+      "loop": "examples/Patterns/Guilloche/loop.mp4?v=cabfdd23",
+      "loopSmall": "examples/Patterns/Guilloche/loop-640.mp4?v=395cd50d",
       "still": "examples/Patterns/Guilloche/still.jpg?v=4823c427",
       "stillSmall": "examples/Patterns/Guilloche/still-640.jpg?v=cd78b87d",
-      "width": 1080
+      "seed": 1
     },
     "Patterns/HexGrid": {
       "bytes": {
@@ -7219,24 +7251,26 @@
       "width": 1080
     },
     "Patterns/Schottky": {
-      "bytes": {
-        "loop": 18608339,
-        "loopSmall": 13220849,
-        "still": 346149,
-        "stillSmall": 114469
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "lap",
-      "loop": "examples/Patterns/Schottky/loop.mp4?v=3ec350ef",
-      "loopSmall": "examples/Patterns/Schottky/loop-640.mp4?v=5a423e9d",
-      "motion": 14.746,
-      "rendered": "2026-09-10",
       "seconds": 10.0,
+      "frame": 480,
+      "motion": 14.746,
+      "sound": false,
       "source": "c10f09364aa1d997",
-      "still": "examples/Patterns/Schottky/still.jpg?v=af5b7614",
-      "stillSmall": "examples/Patterns/Schottky/still-640.jpg?v=7ca90920",
-      "width": 1080
+      "rendered": "2026-10-02",
+      "bytes": {
+        "loop": 18602387,
+        "loopSmall": 6209714,
+        "still": 346093,
+        "stillSmall": 114446
+      },
+      "loop": "examples/Patterns/Schottky/loop.mp4?v=2cfdba11",
+      "loopSmall": "examples/Patterns/Schottky/loop-640.mp4?v=ae6e6fa7",
+      "still": "examples/Patterns/Schottky/still.jpg?v=6bbcb5df",
+      "stillSmall": "examples/Patterns/Schottky/still-640.jpg?v=ec24ca49",
+      "seed": 1
     },
     "Patterns/SelfAvoidingWalk": {
       "bytes": {
@@ -7415,24 +7449,26 @@
       "width": 1080
     },
     "Patterns/TenPrint": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 6.603,
+      "sound": false,
+      "source": "240bb371c613df15",
+      "rendered": "2026-10-02",
       "bytes": {
-        "loop": 9467459,
-        "loopSmall": 3066738,
+        "loop": 9461724,
+        "loopSmall": 3064218,
         "still": 921676,
         "stillSmall": 317030
       },
-      "frame": 480,
-      "height": 1080,
-      "length": "lap",
-      "loop": "examples/Patterns/TenPrint/loop.mp4?v=907f788f",
-      "loopSmall": "examples/Patterns/TenPrint/loop-640.mp4?v=3782c396",
-      "motion": 6.603,
-      "rendered": "2026-09-10",
-      "seconds": 10.0,
-      "source": "240bb371c613df15",
+      "loop": "examples/Patterns/TenPrint/loop.mp4?v=5c9793d0",
+      "loopSmall": "examples/Patterns/TenPrint/loop-640.mp4?v=703497c5",
       "still": "examples/Patterns/TenPrint/still.jpg?v=874b6083",
       "stillSmall": "examples/Patterns/TenPrint/still-640.jpg?v=11c4a1b4",
-      "width": 1080
+      "seed": 1
     },
     "Patterns/TextureSynthesis": {
       "bytes": {
@@ -7823,26 +7859,26 @@
       "width": 1080
     },
     "Randomness/Gaussian": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10.0s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 9.919,
+      "sound": false,
+      "source": "2913135a202651fa",
+      "rendered": "2026-10-02",
       "bytes": {
-        "loop": 8100640,
-        "loopSmall": 4853836,
+        "loop": 8102994,
+        "loopSmall": 2716893,
         "still": 162714,
         "stillSmall": 66624
       },
-      "frame": 480,
-      "height": 1080,
-      "length": "10.0s",
-      "loop": "examples/Randomness/Gaussian/loop.mp4?v=34c174e9",
-      "loopSmall": "examples/Randomness/Gaussian/loop-640.mp4?v=c9b52b1c",
-      "motion": 9.919,
-      "rendered": "2026-09-26",
-      "seconds": 10.0,
-      "seed": 1,
-      "sound": false,
-      "source": "2913135a202651fa",
-      "still": "examples/Randomness/Gaussian/still.jpg?v=24ece2c7",
+      "loop": "examples/Randomness/Gaussian/loop.mp4?v=5ada7ab4",
+      "loopSmall": "examples/Randomness/Gaussian/loop-640.mp4?v=ac19c9f7",
+      "still": "examples/Randomness/Gaussian/still.jpg?v=ca5cb636",
       "stillSmall": "examples/Randomness/Gaussian/still-640.jpg?v=c4e90af6",
-      "width": 1080
+      "seed": 1
     },
     "Randomness/NoiseField": {
       "bytes": {
@@ -7909,26 +7945,26 @@
       "width": 1080
     },
     "Randomness/Ring": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10.0s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 6.456,
+      "sound": false,
+      "source": "4e32f616ea549c89",
+      "rendered": "2026-10-02",
       "bytes": {
-        "loop": 8100317,
-        "loopSmall": 3707068,
+        "loop": 8101343,
+        "loopSmall": 2715028,
         "still": 120949,
         "stillSmall": 49127
       },
-      "frame": 480,
-      "height": 1080,
-      "length": "10.0s",
-      "loop": "examples/Randomness/Ring/loop.mp4?v=c2a47704",
-      "loopSmall": "examples/Randomness/Ring/loop-640.mp4?v=2ebd5709",
-      "motion": 6.456,
-      "rendered": "2026-09-26",
-      "seconds": 10.0,
-      "seed": 1,
-      "sound": false,
-      "source": "4e32f616ea549c89",
+      "loop": "examples/Randomness/Ring/loop.mp4?v=24ce6d36",
+      "loopSmall": "examples/Randomness/Ring/loop-640.mp4?v=b478cbff",
       "still": "examples/Randomness/Ring/still.jpg?v=785e966a",
       "stillSmall": "examples/Randomness/Ring/still-640.jpg?v=915f39b9",
-      "width": 1080
+      "seed": 1
     },
     "Randomness/TilingNoise": {
       "bytes": {
@@ -8033,24 +8069,26 @@
       "width": 1080
     },
     "Recreations/BridgetRiley/Current": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10.0s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 14.852,
+      "sound": false,
+      "source": "461a3a24b6f8a3af",
+      "rendered": "2026-10-02",
       "bytes": {
-        "loop": 7954072,
-        "loopSmall": 3960906,
+        "loop": 7938043,
+        "loopSmall": 2632948,
         "still": 566151,
         "stillSmall": 184791
       },
-      "frame": 480,
-      "height": 1080,
-      "length": "10s",
-      "loop": "examples/Recreations/BridgetRiley/Current/loop.mp4?v=044dfb63",
-      "loopSmall": "examples/Recreations/BridgetRiley/Current/loop-640.mp4?v=0cd9624a",
-      "motion": 14.852,
-      "rendered": "2026-09-10",
-      "seconds": 10.0,
-      "source": "461a3a24b6f8a3af",
+      "loop": "examples/Recreations/BridgetRiley/Current/loop.mp4?v=f23d0bd5",
+      "loopSmall": "examples/Recreations/BridgetRiley/Current/loop-640.mp4?v=65efb422",
       "still": "examples/Recreations/BridgetRiley/Current/still.jpg?v=84441a39",
-      "stillSmall": "examples/Recreations/BridgetRiley/Current/still-640.jpg?v=514967fc",
-      "width": 1080
+      "stillSmall": "examples/Recreations/BridgetRiley/Current/still-640.jpg?v=121d4eca",
+      "seed": 1
     },
     "Recreations/BridgetRiley/Fragment3": {
       "bytes": {
@@ -8851,25 +8889,26 @@
       "width": 1080
     },
     "Recreations/SolLeWitt/ArcsCirclesGrids": {
+      "width": 1800,
+      "height": 1000,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 10.236,
+      "sound": false,
+      "source": "c26ea60d70490d59",
+      "rendered": "2026-10-02",
       "bytes": {
-        "loop": 18498359,
-        "loopSmall": 10971099,
+        "loop": 18496176,
+        "loopSmall": 6187519,
         "still": 358079,
         "stillSmall": 107420
       },
-      "frame": 480,
-      "height": 1000,
-      "length": "lap",
-      "loop": "examples/Recreations/SolLeWitt/ArcsCirclesGrids/loop.mp4?v=c5e33c45",
-      "loopSmall": "examples/Recreations/SolLeWitt/ArcsCirclesGrids/loop-640.mp4?v=bb65ac1e",
-      "motion": 10.236,
-      "rendered": "2026-09-13",
-      "seconds": 10.0,
-      "sound": false,
-      "source": "816fc892a78c0adc",
+      "loop": "examples/Recreations/SolLeWitt/ArcsCirclesGrids/loop.mp4?v=0d477992",
+      "loopSmall": "examples/Recreations/SolLeWitt/ArcsCirclesGrids/loop-640.mp4?v=b0e89e28",
       "still": "examples/Recreations/SolLeWitt/ArcsCirclesGrids/still.jpg?v=fc69424a",
       "stillSmall": "examples/Recreations/SolLeWitt/ArcsCirclesGrids/still-640.jpg?v=2133da44",
-      "width": 1800
+      "seed": 1
     },
     "Recreations/SolLeWitt/FiftyPoints": {
       "bytes": {
@@ -8925,26 +8964,26 @@
       "width": 1080
     },
     "Recreations/VicenteRojo/MexicoBajoLaLluvia": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10.0s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 16.357,
+      "sound": false,
+      "source": "ed3e36da58d1e459",
+      "rendered": "2026-10-02",
       "bytes": {
-        "loop": 7973915,
-        "loopSmall": 3087603,
+        "loop": 7969903,
+        "loopSmall": 2718064,
         "still": 675954,
         "stillSmall": 242054
       },
-      "frame": 480,
-      "height": 1080,
-      "length": "10.0s",
-      "loop": "examples/Recreations/VicenteRojo/MexicoBajoLaLluvia/loop.mp4?v=1be28d73",
-      "loopSmall": "examples/Recreations/VicenteRojo/MexicoBajoLaLluvia/loop-640.mp4?v=a14bf8a1",
-      "motion": 16.357,
-      "rendered": "2026-09-26",
-      "seconds": 10.0,
-      "seed": 1,
-      "sound": false,
-      "source": "ed3e36da58d1e459",
+      "loop": "examples/Recreations/VicenteRojo/MexicoBajoLaLluvia/loop.mp4?v=c75738a9",
+      "loopSmall": "examples/Recreations/VicenteRojo/MexicoBajoLaLluvia/loop-640.mp4?v=cd8c6015",
       "still": "examples/Recreations/VicenteRojo/MexicoBajoLaLluvia/still.jpg?v=4221357d",
       "stillSmall": "examples/Recreations/VicenteRojo/MexicoBajoLaLluvia/still-640.jpg?v=74a11f6a",
-      "width": 1080
+      "seed": 1
     },
     "Recreations/VicenteRojo/Negaciones": {
       "bytes": {
@@ -9124,25 +9163,26 @@
       "width": 1080
     },
     "Recreations/WaldemarCordeiro/Gente": {
-      "bytes": {
-        "loop": 30589680,
-        "loopSmall": 10650723,
-        "still": 175045,
-        "stillSmall": 33900
-      },
-      "frame": 30,
+      "width": 1920,
       "height": 1080,
       "length": "lap",
-      "loop": "examples/Recreations/WaldemarCordeiro/Gente/loop.mp4?v=c2a16fc5",
-      "loopSmall": "examples/Recreations/WaldemarCordeiro/Gente/loop-640.mp4?v=14097364",
-      "motion": 67.671,
-      "rendered": "2026-09-25",
       "seconds": 10.0,
+      "frame": 30,
+      "motion": 67.671,
       "sound": false,
       "source": "83b336f88f4b2316",
-      "still": "examples/Recreations/WaldemarCordeiro/Gente/still.jpg?v=40f84689",
+      "rendered": "2026-10-02",
+      "bytes": {
+        "loop": 30575710,
+        "loopSmall": 9121240,
+        "still": 174999,
+        "stillSmall": 33900
+      },
+      "loop": "examples/Recreations/WaldemarCordeiro/Gente/loop.mp4?v=c5c1d3c4",
+      "loopSmall": "examples/Recreations/WaldemarCordeiro/Gente/loop-640.mp4?v=ca3a98cb",
+      "still": "examples/Recreations/WaldemarCordeiro/Gente/still.jpg?v=a43d6803",
       "stillSmall": "examples/Recreations/WaldemarCordeiro/Gente/still-640.jpg?v=c720d5ae",
-      "width": 1920
+      "seed": 1
     },
     "Rendering/Accumulation": {
       "bytes": {
@@ -9194,24 +9234,26 @@
       "width": 1080
     },
     "Rendering/Grassland": {
-      "bytes": {
-        "loop": 8076605,
-        "loopSmall": 6432375,
-        "still": 383650,
-        "stillSmall": 98945
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
-      "length": "10s",
-      "loop": "examples/Rendering/Grassland/loop.mp4?v=9e2f60a3",
-      "loopSmall": "examples/Rendering/Grassland/loop-640.mp4?v=bfbdff00",
-      "motion": 13.247,
-      "rendered": "2026-09-10",
+      "length": "10.0s",
       "seconds": 10.0,
+      "frame": 480,
+      "motion": 13.247,
+      "sound": false,
       "source": "16e6735eacfc7a92",
-      "still": "examples/Rendering/Grassland/still.jpg?v=cf071bba",
-      "stillSmall": "examples/Rendering/Grassland/still-640.jpg?v=5b003151",
-      "width": 1080
+      "rendered": "2026-10-02",
+      "bytes": {
+        "loop": 8074679,
+        "loopSmall": 2714944,
+        "still": 383666,
+        "stillSmall": 98965
+      },
+      "loop": "examples/Rendering/Grassland/loop.mp4?v=1591a59d",
+      "loopSmall": "examples/Rendering/Grassland/loop-640.mp4?v=5441e014",
+      "still": "examples/Rendering/Grassland/still.jpg?v=617bf30a",
+      "stillSmall": "examples/Rendering/Grassland/still-640.jpg?v=1f28408d",
+      "seed": 1
     },
     "Rendering/InstancedMesh": {
       "bytes": {
@@ -9272,24 +9314,26 @@
       "width": 1080
     },
     "Rendering/RetainedBatch": {
-      "bytes": {
-        "loop": 30581160,
-        "loopSmall": 14889490,
-        "still": 432935,
-        "stillSmall": 103659
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "lap",
-      "loop": "examples/Rendering/RetainedBatch/loop.mp4?v=ef0e2d75",
-      "loopSmall": "examples/Rendering/RetainedBatch/loop-640.mp4?v=0f8a2a36",
-      "motion": 4.204,
-      "rendered": "2026-09-10",
       "seconds": 10.0,
-      "source": "cd0ebbe6d88e2b7d",
-      "still": "examples/Rendering/RetainedBatch/still.jpg?v=1b81804c",
-      "stillSmall": "examples/Rendering/RetainedBatch/still-640.jpg?v=e534f740",
-      "width": 1080
+      "frame": 480,
+      "motion": 4.204,
+      "sound": false,
+      "source": "563df8ba72b82a98",
+      "rendered": "2026-10-02",
+      "bytes": {
+        "loop": 30576710,
+        "loopSmall": 10199339,
+        "still": 432968,
+        "stillSmall": 103657
+      },
+      "loop": "examples/Rendering/RetainedBatch/loop.mp4?v=bcb42ab5",
+      "loopSmall": "examples/Rendering/RetainedBatch/loop-640.mp4?v=ca7e0649",
+      "still": "examples/Rendering/RetainedBatch/still.jpg?v=c21f837c",
+      "stillSmall": "examples/Rendering/RetainedBatch/still-640.jpg?v=ed95b587",
+      "seed": 1
     },
     "Rendering/ToneMapping": {
       "bytes": {
@@ -10161,41 +10205,43 @@
       "width": 1080
     },
     "Shapes/Watercolor": {
-      "bytes": {
-        "still": 70714,
-        "stillSmall": 28088
-      },
-      "frame": 2,
+      "width": 1080,
       "height": 1080,
       "length": "still",
-      "motion": 0.0,
-      "rendered": "2026-09-26",
-      "seed": 1,
-      "source": "9f762914907d8aab",
-      "still": "examples/Shapes/Watercolor/still.jpg?v=f6d81433",
       "stillBecause": "holds still",
-      "stillSmall": "examples/Shapes/Watercolor/still-640.jpg?v=c3443111",
-      "width": 1080
+      "frame": 2,
+      "motion": 0.0,
+      "source": "9f762914907d8aab",
+      "rendered": "2026-10-02",
+      "bytes": {
+        "still": 70557,
+        "stillSmall": 28090
+      },
+      "still": "examples/Shapes/Watercolor/still.jpg?v=083601e2",
+      "stillSmall": "examples/Shapes/Watercolor/still-640.jpg?v=00315999",
+      "seed": 1
     },
     "Simulation/Attractor": {
-      "bytes": {
-        "loop": 7976092,
-        "loopSmall": 3739022,
-        "still": 329109,
-        "stillSmall": 79529
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
-      "length": "10s",
-      "loop": "examples/Simulation/Attractor/loop.mp4?v=a515d4c4",
-      "loopSmall": "examples/Simulation/Attractor/loop-640.mp4?v=f6a98ec5",
-      "motion": 6.944,
-      "rendered": "2026-09-10",
+      "length": "10.0s",
       "seconds": 10.0,
-      "source": "4092eb8298e09050",
-      "still": "examples/Simulation/Attractor/still.jpg?v=77839dab",
-      "stillSmall": "examples/Simulation/Attractor/still-640.jpg?v=31fb728b",
-      "width": 1080
+      "frame": 480,
+      "motion": 6.877,
+      "sound": false,
+      "source": "da1bf660c7c15c2c",
+      "rendered": "2026-10-02",
+      "bytes": {
+        "loop": 8051647,
+        "loopSmall": 2647741,
+        "still": 327723,
+        "stillSmall": 79106
+      },
+      "loop": "examples/Simulation/Attractor/loop.mp4?v=2e5adc66",
+      "loopSmall": "examples/Simulation/Attractor/loop-640.mp4?v=d9557b85",
+      "still": "examples/Simulation/Attractor/still.jpg?v=e6a9f427",
+      "stillSmall": "examples/Simulation/Attractor/still-640.jpg?v=ae42832f",
+      "seed": 1
     },
     "Simulation/Automata": {
       "bytes": {
@@ -10362,46 +10408,48 @@
       "width": 1080
     },
     "Simulation/MultiScaleTuring": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10.0s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 22.809,
+      "sound": false,
+      "source": "5ec0d6b29a863b7a",
+      "rendered": "2026-10-02",
       "bytes": {
-        "loop": 7885159,
-        "loopSmall": 3659472,
+        "loop": 7877215,
+        "loopSmall": 2686552,
         "still": 326144,
         "stillSmall": 134723
       },
-      "frame": 480,
-      "height": 1080,
-      "length": "10.0s",
-      "loop": "examples/Simulation/MultiScaleTuring/loop.mp4?v=58231ebc",
-      "loopSmall": "examples/Simulation/MultiScaleTuring/loop-640.mp4?v=7148b529",
-      "motion": 22.809,
-      "rendered": "2026-09-26",
-      "seconds": 10.0,
-      "seed": 1,
-      "sound": false,
-      "source": "5ec0d6b29a863b7a",
+      "loop": "examples/Simulation/MultiScaleTuring/loop.mp4?v=0edb8c1e",
+      "loopSmall": "examples/Simulation/MultiScaleTuring/loop-640.mp4?v=52f3c90d",
       "still": "examples/Simulation/MultiScaleTuring/still.jpg?v=74898725",
       "stillSmall": "examples/Simulation/MultiScaleTuring/still-640.jpg?v=cfb07dfe",
-      "width": 1080
+      "seed": 1
     },
     "Simulation/ParticleFluid": {
-      "bytes": {
-        "loop": 7952310,
-        "loopSmall": 3611891,
-        "still": 370948,
-        "stillSmall": 74450
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
-      "length": "10s",
-      "loop": "examples/Simulation/ParticleFluid/loop.mp4?v=666ea8b7",
-      "loopSmall": "examples/Simulation/ParticleFluid/loop-640.mp4?v=a5e4bb22",
-      "motion": 77.793,
-      "rendered": "2026-09-10",
+      "length": "10.0s",
       "seconds": 10.0,
-      "source": "b0b91b5d5536a8cd",
-      "still": "examples/Simulation/ParticleFluid/still.jpg?v=2980a3eb",
-      "stillSmall": "examples/Simulation/ParticleFluid/still-640.jpg?v=51fb013b",
-      "width": 1080
+      "frame": 480,
+      "motion": 77.715,
+      "sound": false,
+      "source": "cb3b406859dbce5d",
+      "rendered": "2026-10-02",
+      "bytes": {
+        "loop": 7959330,
+        "loopSmall": 2383710,
+        "still": 374653,
+        "stillSmall": 75198
+      },
+      "loop": "examples/Simulation/ParticleFluid/loop.mp4?v=5076a95e",
+      "loopSmall": "examples/Simulation/ParticleFluid/loop-640.mp4?v=84b57b30",
+      "still": "examples/Simulation/ParticleFluid/still.jpg?v=971ffb5b",
+      "stillSmall": "examples/Simulation/ParticleFluid/still-640.jpg?v=032f1471",
+      "seed": 1
     },
     "Simulation/ParticleLenia": {
       "bytes": {
@@ -10426,26 +10474,26 @@
       "width": 1080
     },
     "Simulation/ParticleLife": {
-      "bytes": {
-        "loop": 8051257,
-        "loopSmall": 11660645,
-        "still": 786805,
-        "stillSmall": 293166
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "10.0s",
-      "loop": "examples/Simulation/ParticleLife/loop.mp4?v=f4d85863",
-      "loopSmall": "examples/Simulation/ParticleLife/loop-640.mp4?v=e85534a7",
-      "motion": 26.771,
-      "rendered": "2026-09-26",
       "seconds": 10.0,
-      "seed": 1,
+      "frame": 480,
+      "motion": 27.066,
       "sound": false,
       "source": "b8b9b66f8037800c",
-      "still": "examples/Simulation/ParticleLife/still.jpg?v=4692d1ee",
-      "stillSmall": "examples/Simulation/ParticleLife/still-640.jpg?v=e7ad20ea",
-      "width": 1080
+      "rendered": "2026-10-02",
+      "bytes": {
+        "loop": 8052206,
+        "loopSmall": 2689820,
+        "still": 738220,
+        "stillSmall": 277990
+      },
+      "loop": "examples/Simulation/ParticleLife/loop.mp4?v=1f23abd6",
+      "loopSmall": "examples/Simulation/ParticleLife/loop-640.mp4?v=6c4a81f8",
+      "still": "examples/Simulation/ParticleLife/still.jpg?v=8726de5d",
+      "stillSmall": "examples/Simulation/ParticleLife/still-640.jpg?v=c1380fb7",
+      "seed": 1
     },
     "Simulation/Physarum": {
       "bytes": {
@@ -10492,26 +10540,26 @@
       "width": 1080
     },
     "Simulation/PrimordialParticles": {
-      "bytes": {
-        "loop": 8079606,
-        "loopSmall": 8791413,
-        "still": 554488,
-        "stillSmall": 221431
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "10.0s",
-      "loop": "examples/Simulation/PrimordialParticles/loop.mp4?v=f68b1647",
-      "loopSmall": "examples/Simulation/PrimordialParticles/loop-640.mp4?v=33313099",
-      "motion": 10.855,
-      "rendered": "2026-09-26",
       "seconds": 10.0,
-      "seed": 1,
+      "frame": 480,
+      "motion": 11.03,
       "sound": false,
       "source": "2b8de75d066d0b60",
-      "still": "examples/Simulation/PrimordialParticles/still.jpg?v=1a72e0a4",
-      "stillSmall": "examples/Simulation/PrimordialParticles/still-640.jpg?v=3cbd7faa",
-      "width": 1080
+      "rendered": "2026-10-02",
+      "bytes": {
+        "loop": 8082634,
+        "loopSmall": 2711252,
+        "still": 545841,
+        "stillSmall": 217034
+      },
+      "loop": "examples/Simulation/PrimordialParticles/loop.mp4?v=f9b72956",
+      "loopSmall": "examples/Simulation/PrimordialParticles/loop-640.mp4?v=d1790490",
+      "still": "examples/Simulation/PrimordialParticles/still.jpg?v=623f1ef3",
+      "stillSmall": "examples/Simulation/PrimordialParticles/still-640.jpg?v=7303fb24",
+      "seed": 1
     },
     "Simulation/Ripples": {
       "bytes": {
@@ -10578,26 +10626,26 @@
       "width": 1080
     },
     "Simulation/Swarm": {
-      "bytes": {
-        "loop": 8067962,
-        "loopSmall": 14025508,
-        "still": 764955,
-        "stillSmall": 243227
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "10.0s",
-      "loop": "examples/Simulation/Swarm/loop.mp4?v=22b88272",
-      "loopSmall": "examples/Simulation/Swarm/loop-640.mp4?v=bf76d09f",
-      "motion": 29.668,
-      "rendered": "2026-09-26",
       "seconds": 10.0,
-      "seed": 1,
+      "frame": 480,
+      "motion": 28.825,
       "sound": false,
       "source": "2b24dca5bddbc732",
-      "still": "examples/Simulation/Swarm/still.jpg?v=e5e5304e",
-      "stillSmall": "examples/Simulation/Swarm/still-640.jpg?v=b86d1a05",
-      "width": 1080
+      "rendered": "2026-10-02",
+      "bytes": {
+        "loop": 8140589,
+        "loopSmall": 2691068,
+        "still": 750138,
+        "stillSmall": 237960
+      },
+      "loop": "examples/Simulation/Swarm/loop.mp4?v=986a7ca9",
+      "loopSmall": "examples/Simulation/Swarm/loop-640.mp4?v=0e72d97d",
+      "still": "examples/Simulation/Swarm/still.jpg?v=c465d983",
+      "stillSmall": "examples/Simulation/Swarm/still-640.jpg?v=bff20f17",
+      "seed": 1
     },
     "Simulation/SwarmChemistry": {
       "bytes": {
@@ -11006,20 +11054,21 @@
       "width": 1080
     },
     "Vision/BodyPose": {
-      "bytes": {
-        "still": 156594,
-        "stillSmall": 44934
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "still",
-      "motion": 0.0,
-      "rendered": "2026-09-10",
-      "source": "d6fd2ca69a2a0abb",
-      "still": "examples/Vision/BodyPose/still.jpg?v=1876432f",
       "stillBecause": "holds still",
-      "stillSmall": "examples/Vision/BodyPose/still-640.jpg?v=32fb207e",
-      "width": 1080
+      "frame": 480,
+      "motion": 0.0,
+      "source": "d6fd2ca69a2a0abb",
+      "rendered": "2026-10-02",
+      "bytes": {
+        "still": 174104,
+        "stillSmall": 50886
+      },
+      "still": "examples/Vision/BodyPose/still.jpg?v=93b42e8f",
+      "stillSmall": "examples/Vision/BodyPose/still-640.jpg?v=777a8012",
+      "seed": 1
     },
     "Vision/BodyPose3D": {
       "bytes": {
@@ -11038,41 +11087,48 @@
       "width": 1080
     },
     "Vision/ContourTrace": {
-      "bytes": {
-        "still": 22168,
-        "stillSmall": 8260
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
-      "length": "still",
-      "motion": 0.67,
-      "rendered": "2026-09-10",
-      "source": "63dd818d44819cb7",
-      "still": "examples/Vision/ContourTrace/still.jpg?v=4deb98ab",
-      "stillBecause": "holds still",
-      "stillSmall": "examples/Vision/ContourTrace/still-640.jpg?v=5246c208",
-      "width": 1080
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 2.908,
+      "sound": false,
+      "source": "2ad12eef015854b4",
+      "rendered": "2026-10-02",
+      "bytes": {
+        "loop": 2124244,
+        "loopSmall": 544872,
+        "still": 49614,
+        "stillSmall": 20504
+      },
+      "loop": "examples/Vision/ContourTrace/loop.mp4?v=58b08bce",
+      "loopSmall": "examples/Vision/ContourTrace/loop-640.mp4?v=acb1b946",
+      "still": "examples/Vision/ContourTrace/still.jpg?v=35200625",
+      "stillSmall": "examples/Vision/ContourTrace/still-640.jpg?v=f2f34b95",
+      "seed": 1
     },
     "Vision/DepthContours": {
-      "bytes": {
-        "loop": 2061019,
-        "loopSmall": 771126,
-        "still": 215905,
-        "stillSmall": 73860
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "10.0s",
-      "loop": "examples/Vision/DepthContours/loop.mp4?v=4b0fc257",
-      "loopSmall": "examples/Vision/DepthContours/loop-640.mp4?v=11a34a03",
-      "motion": 8.304,
-      "rendered": "2026-09-10",
       "seconds": 10.0,
+      "frame": 480,
+      "motion": 3.17,
       "sound": false,
-      "source": "bad9b856c185602c",
-      "still": "examples/Vision/DepthContours/still.jpg?v=23e55a94",
-      "stillSmall": "examples/Vision/DepthContours/still-640.jpg?v=2d4e1ebc",
-      "width": 1080
+      "source": "4b959c2dc80f28c7",
+      "rendered": "2026-10-02",
+      "bytes": {
+        "loop": 2343005,
+        "loopSmall": 905705,
+        "still": 372252,
+        "stillSmall": 135586
+      },
+      "loop": "examples/Vision/DepthContours/loop.mp4?v=08a9fce4",
+      "loopSmall": "examples/Vision/DepthContours/loop-640.mp4?v=39489f88",
+      "still": "examples/Vision/DepthContours/still.jpg?v=71a6c609",
+      "stillSmall": "examples/Vision/DepthContours/still-640.jpg?v=4eb197bf",
+      "seed": 1
     },
     "Vision/DepthRelief": {
       "bytes": {
@@ -11128,73 +11184,77 @@
       "width": 1080
     },
     "Vision/FaceAlign": {
-      "bytes": {
-        "still": 321323,
-        "stillSmall": 124044
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "still",
-      "motion": 0.0,
-      "rendered": "2026-09-10",
-      "source": "9655fe7f1f812099",
-      "still": "examples/Vision/FaceAlign/still.jpg?v=598882f1",
       "stillBecause": "holds still",
-      "stillSmall": "examples/Vision/FaceAlign/still-640.jpg?v=ebd47caf",
-      "width": 1080
+      "frame": 480,
+      "motion": 0.0,
+      "source": "ec971d45f6a96f02",
+      "rendered": "2026-10-02",
+      "bytes": {
+        "still": 285128,
+        "stillSmall": 105769
+      },
+      "still": "examples/Vision/FaceAlign/still.jpg?v=84038216",
+      "stillSmall": "examples/Vision/FaceAlign/still-640.jpg?v=aa104cb2",
+      "seed": 1
     },
     "Vision/FaceTracking": {
-      "bytes": {
-        "still": 320687,
-        "stillSmall": 123862
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "still",
-      "motion": 0.0,
-      "rendered": "2026-09-10",
-      "source": "f679f685f3f705ce",
-      "still": "examples/Vision/FaceTracking/still.jpg?v=54b0d982",
       "stillBecause": "holds still",
-      "stillSmall": "examples/Vision/FaceTracking/still-640.jpg?v=21dacec3",
-      "width": 1080
+      "frame": 480,
+      "motion": 0.0,
+      "source": "f679f685f3f705ce",
+      "rendered": "2026-10-02",
+      "bytes": {
+        "still": 341396,
+        "stillSmall": 130835
+      },
+      "still": "examples/Vision/FaceTracking/still.jpg?v=a42cbade",
+      "stillSmall": "examples/Vision/FaceTracking/still-640.jpg?v=953ea086",
+      "seed": 1
     },
     "Vision/FootageDepth": {
-      "bytes": {
-        "loop": 5347913,
-        "loopSmall": 1691515,
-        "still": 206606,
-        "stillSmall": 77498
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "10.0s",
-      "loop": "examples/Vision/FootageDepth/loop.mp4?v=2871e3f1",
-      "loopSmall": "examples/Vision/FootageDepth/loop-640.mp4?v=545c499b",
-      "motion": 11.966,
-      "rendered": "2026-09-10",
       "seconds": 10.0,
+      "frame": 480,
+      "motion": 13.72,
       "sound": false,
-      "source": "5d0bd1ad05eb2f56",
-      "still": "examples/Vision/FootageDepth/still.jpg?v=3ca3ee88",
-      "stillSmall": "examples/Vision/FootageDepth/still-640.jpg?v=6f2705fc",
-      "width": 1080
+      "source": "716b1b4724db8187",
+      "rendered": "2026-10-02",
+      "bytes": {
+        "loop": 5649317,
+        "loopSmall": 1782485,
+        "still": 206604,
+        "stillSmall": 77498
+      },
+      "loop": "examples/Vision/FootageDepth/loop.mp4?v=cc7bd93c",
+      "loopSmall": "examples/Vision/FootageDepth/loop-640.mp4?v=fce7bcf2",
+      "still": "examples/Vision/FootageDepth/still.jpg?v=800c16d0",
+      "stillSmall": "examples/Vision/FootageDepth/still-640.jpg?v=a9eb3add",
+      "seed": 1
     },
     "Vision/HandTracking": {
-      "bytes": {
-        "still": 79299,
-        "stillSmall": 27924
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "still",
-      "motion": 0.0,
-      "rendered": "2026-09-10",
-      "source": "a7865b96ef408184",
-      "still": "examples/Vision/HandTracking/still.jpg?v=65c33d90",
       "stillBecause": "holds still",
-      "stillSmall": "examples/Vision/HandTracking/still-640.jpg?v=55b0c7f6",
-      "width": 1080
+      "frame": 480,
+      "motion": 0.0,
+      "source": "5f3969c8530d8b33",
+      "rendered": "2026-10-02",
+      "bytes": {
+        "still": 106782,
+        "stillSmall": 38162
+      },
+      "still": "examples/Vision/HandTracking/still.jpg?v=6c4f3c4a",
+      "stillSmall": "examples/Vision/HandTracking/still-640.jpg?v=8983e317",
+      "seed": 1
     },
     "Vision/Lift": {
       "bytes": {
@@ -11218,20 +11278,21 @@
       "width": 1080
     },
     "Vision/ObjectDetection": {
-      "bytes": {
-        "still": 410812,
-        "stillSmall": 146956
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "still",
-      "motion": 0.0,
-      "rendered": "2026-09-10",
-      "source": "fb24212270696712",
-      "still": "examples/Vision/ObjectDetection/still.jpg?v=7a687220",
       "stillBecause": "holds still",
-      "stillSmall": "examples/Vision/ObjectDetection/still-640.jpg?v=62ce77e1",
-      "width": 1080
+      "frame": 480,
+      "motion": 0.033,
+      "source": "fb24212270696712",
+      "rendered": "2026-10-02",
+      "bytes": {
+        "still": 426742,
+        "stillSmall": 153261
+      },
+      "still": "examples/Vision/ObjectDetection/still.jpg?v=4427d112",
+      "stillSmall": "examples/Vision/ObjectDetection/still-640.jpg?v=c29d5039",
+      "seed": 1
     },
     "Vision/ObjectTracking": {
       "bytes": {
@@ -11325,25 +11386,26 @@
       "width": 1080
     },
     "Vision/SceneLabels": {
-      "bytes": {
-        "loop": 1035678,
-        "loopSmall": 392526,
-        "still": 241161,
-        "stillSmall": 93758
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "10.0s",
-      "loop": "examples/Vision/SceneLabels/loop.mp4?v=2d042123",
-      "loopSmall": "examples/Vision/SceneLabels/loop-640.mp4?v=5194c90e",
-      "motion": 1.967,
-      "rendered": "2026-09-10",
       "seconds": 10.0,
+      "frame": 480,
+      "motion": 1.813,
       "sound": false,
-      "source": "a0061e1d469a1ae0",
-      "still": "examples/Vision/SceneLabels/still.jpg?v=c0e1b47f",
-      "stillSmall": "examples/Vision/SceneLabels/still-640.jpg?v=927007a2",
-      "width": 1080
+      "source": "1f0b5a203c5ff638",
+      "rendered": "2026-10-02",
+      "bytes": {
+        "loop": 1038671,
+        "loopSmall": 393221,
+        "still": 263104,
+        "stillSmall": 104647
+      },
+      "loop": "examples/Vision/SceneLabels/loop.mp4?v=0dfb9158",
+      "loopSmall": "examples/Vision/SceneLabels/loop-640.mp4?v=f839b5ac",
+      "still": "examples/Vision/SceneLabels/still.jpg?v=a3e2ad4a",
+      "stillSmall": "examples/Vision/SceneLabels/still-640.jpg?v=75214c89",
+      "seed": 1
     },
     "Vision/StyleMirror": {
       "bytes": {
@@ -11362,79 +11424,82 @@
       "width": 1080
     },
     "Vision/TextScan": {
-      "bytes": {
-        "still": 267830,
-        "stillSmall": 89223
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "still",
-      "motion": 0.0,
-      "rendered": "2026-09-10",
-      "source": "968397b4fedeb425",
-      "still": "examples/Vision/TextScan/still.jpg?v=6dbb381b",
       "stillBecause": "holds still",
-      "stillSmall": "examples/Vision/TextScan/still-640.jpg?v=ef249668",
-      "width": 1080
+      "frame": 480,
+      "motion": 0.0,
+      "source": "968397b4fedeb425",
+      "rendered": "2026-10-02",
+      "bytes": {
+        "still": 663660,
+        "stillSmall": 218469
+      },
+      "still": "examples/Vision/TextScan/still.jpg?v=0dd8a42d",
+      "stillSmall": "examples/Vision/TextScan/still-640.jpg?v=4aeb1801",
+      "seed": 1
     },
     "Vision/TrajectoryTracking": {
-      "bytes": {
-        "loop": 588568,
-        "loopSmall": 128524,
-        "still": 57995,
-        "stillSmall": 20503
-      },
-      "frame": 900,
+      "width": 1080,
       "height": 1080,
       "length": "10.0s",
-      "loop": "examples/Vision/TrajectoryTracking/loop.mp4?v=86b9eec5",
-      "loopSmall": "examples/Vision/TrajectoryTracking/loop-640.mp4?v=ba8797f3",
-      "motion": 1.263,
-      "rendered": "2026-09-26",
       "seconds": 10.0,
-      "seed": 1,
+      "frame": 900,
+      "motion": 2.321,
       "sound": false,
-      "source": "009e0dd6d8ae72d0",
-      "still": "examples/Vision/TrajectoryTracking/still.jpg?v=cc11d397",
-      "stillSmall": "examples/Vision/TrajectoryTracking/still-640.jpg?v=fa9a5977",
-      "width": 1080
+      "source": "740fc1cc0a1ec7cf",
+      "rendered": "2026-10-02",
+      "bytes": {
+        "loop": 778926,
+        "loopSmall": 195189,
+        "still": 53724,
+        "stillSmall": 18831
+      },
+      "loop": "examples/Vision/TrajectoryTracking/loop.mp4?v=610aeb5a",
+      "loopSmall": "examples/Vision/TrajectoryTracking/loop-640.mp4?v=b6e6ef07",
+      "still": "examples/Vision/TrajectoryTracking/still.jpg?v=137a57a3",
+      "stillSmall": "examples/Vision/TrajectoryTracking/still-640.jpg?v=2d329a3d",
+      "seed": 1
     },
     "Vision/TugOfWords": {
-      "bytes": {
-        "loop": 1110669,
-        "loopSmall": 434984,
-        "still": 268292,
-        "stillSmall": 103574
-      },
-      "frame": 480,
-      "height": 1080,
-      "length": "10.0s",
-      "loop": "examples/Vision/TugOfWords/loop.mp4?v=0f6bc7c4",
-      "loopSmall": "examples/Vision/TugOfWords/loop-640.mp4?v=6daa6b71",
-      "motion": 1.08,
-      "rendered": "2026-09-10",
-      "seconds": 10.0,
-      "sound": false,
-      "source": "1c5b8d12c9ebf5dc",
-      "still": "examples/Vision/TugOfWords/still.jpg?v=cb4e5e66",
-      "stillSmall": "examples/Vision/TugOfWords/still-640.jpg?v=f983a1ce",
-      "width": 1080
-    },
-    "Vision/TuringMirror": {
-      "bytes": {
-        "still": 214444,
-        "stillSmall": 84575
-      },
-      "frame": 2400,
+      "width": 1080,
       "height": 1080,
       "length": "still",
-      "motion": 0.0,
-      "rendered": "2026-09-10",
-      "source": "dd0d552f05042897",
-      "still": "examples/Vision/TuringMirror/still.jpg?v=0b88a180",
       "stillBecause": "holds still",
-      "stillSmall": "examples/Vision/TuringMirror/still-640.jpg?v=5313816d",
-      "width": 1080
+      "frame": 480,
+      "motion": 0.495,
+      "source": "7ae4798a3f517efc",
+      "rendered": "2026-10-02",
+      "bytes": {
+        "still": 269108,
+        "stillSmall": 104907
+      },
+      "still": "examples/Vision/TugOfWords/still.jpg?v=1cfb6790",
+      "stillSmall": "examples/Vision/TugOfWords/still-640.jpg?v=be8238fc",
+      "seed": 1
+    },
+    "Vision/TuringMirror": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 2400,
+      "motion": 1.509,
+      "sound": false,
+      "source": "79c0a5167f437734",
+      "rendered": "2026-10-02",
+      "bytes": {
+        "loop": 1336369,
+        "loopSmall": 291334,
+        "still": 583707,
+        "stillSmall": 223729
+      },
+      "loop": "examples/Vision/TuringMirror/loop.mp4?v=74e16ac6",
+      "loopSmall": "examples/Vision/TuringMirror/loop-640.mp4?v=94e976a6",
+      "still": "examples/Vision/TuringMirror/still.jpg?v=ee5891fc",
+      "stillSmall": "examples/Vision/TuringMirror/still-640.jpg?v=9cff1ac2",
+      "seed": 1
     },
     "Vision/WebcamFeed": {
       "bytes": {
