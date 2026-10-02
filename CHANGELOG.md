@@ -4,6 +4,8 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-10-02
+
 ### Changed
 
 - **The inspector's number boxes step.** Holding Shift while dragging a value box used to move it ten times faster, which ran it to an end of its range in about 25 points; Shift now keeps the plain speed and lands on round marks (every 10 in a box from 10 to 375, every 0.1 from 0 to 1). A whole number drags at a speed that follows its range, so a count over 0 to 10,000 crosses it in the drag a slider takes instead of in thousands of points. While a box is being typed in, the up and down arrows step it to its next mark, with Shift and Option for bigger and smaller steps, starting from what has been typed. A whole number's minus and plus buttons repeat while held, and the line a save leaves under the button goes once a value is turned again. [Parameters](Docs/Helpers/Parameters.md#scrubbing)
@@ -594,7 +596,8 @@ The first tagged release. Ollin grew in one repository from May 2026 to this tag
 
 - Tags begin at 0.1.0. A breaking change or a new feature bumps the minor, a fix bumps the patch, and each release names its breaking renames in this file. Deprecation shims and a settled surface arrive at 1.0. Until then, pin `.upToNextMinor(from: "0.1.0")`.
 
-[Unreleased]: https://github.com/eaviles/Ollin/compare/0.12.0...HEAD
+[Unreleased]: https://github.com/eaviles/Ollin/compare/0.13.0...HEAD
+[0.13.0]: https://github.com/eaviles/Ollin/compare/0.12.0...0.13.0
 [0.12.0]: https://github.com/eaviles/Ollin/compare/0.11.0...0.12.0
 [0.11.0]: https://github.com/eaviles/Ollin/compare/0.10.0...0.11.0
 [0.10.0]: https://github.com/eaviles/Ollin/compare/0.9.0...0.10.0
