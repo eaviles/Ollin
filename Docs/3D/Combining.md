@@ -70,7 +70,7 @@ Shadows (with [`castShadows()`](./3D.md#shadows)), the two reflection systems, a
 | | Casts shadows | Receives shadows | Appears in ray-traced reflections | Can mirror the scene (ray-traced) | Appears in screen-space reflections | Gathers bounce light (GI) |
 | --- | --- | --- | --- | --- | --- | --- |
 | Solid / textured meshes | yes | yes | yes | yes, with a PBR material | yes | yes |
-| Instanced meshes, mesh fields | yes (not for a point light on a ray-tracing GPU) | yes | no | no | yes | yes |
+| Instanced meshes, mesh fields | yes | yes | yes (a mesh field within its traced-copy budget) | no | yes | yes |
 | Strand fields | no | yes | no | no | yes | yes |
 | Wireframe meshes | no | no | no | no | yes (their visible edges) | no |
 | Point clouds | no | no | no | no | yes | no |
@@ -79,9 +79,9 @@ Shadows (with [`castShadows()`](./3D.md#shadows)), the two reflection systems, a
 
 Those differences, spelled out:
 
-- **Geometry drawn in bulk is shaded, but not traced.** The ray-tracing acceleration structure holds solid mesh batches only. Instanced meshes, mesh fields and strand fields are absent from it, so they never appear inside a traced mirror. On a ray-tracing GPU a point light's shadow doesn't see them either, because that shadow is traced too. Their shadows from directional and spot lights are ordinary shadow maps, and those work normally. Strand fields receive shadows without casting any, which is what keeps a field of grass affordable.
+- **Copies are traced, and strands are not.** The ray-tracing acceleration structure holds every solid mesh and every [instanced copy](./Instancing.md#applies), whichever form placed it. A mesh field's copies join it while the field stays within its `tracedCopyBudget` (20,000 by default). So copies appear inside a traced mirror and cast a traced point or area shadow. A copy can't act as a traced mirror itself, because the reflection pass reads solid mesh batches only. Strand fields are absent from the structure, so they never appear inside a traced mirror. They also cast no shadow of any kind, which is what keeps a field of grass affordable, but they do receive shadows.
 
-- **Screen-space reflections mirror the *picture*, so everything visible appears in them**, point clouds and wireframes included. Ray-traced reflections trace the *mesh geometry*, so only solid meshes appear inside a traced mirror image.
+- **Screen-space reflections mirror the *picture*, so everything visible appears in them**, point clouds and wireframes included. Ray-traced reflections trace the *mesh geometry*, so only solid meshes and their copies appear inside a traced mirror image.
 - **A raymarched field can show traced reflections on its own surface** if you give it a PBR finish. It doesn't *appear* in another object's traced reflection, though, because it isn't part of the mesh index the rays test. If you need a merged-blob sculpture visible in a chrome sphere, build it from meshes instead. One honest limit sits at the field's silhouette. A field traces its reflections one ray per pixel, while a mesh's traced reflections are supersampled and averaged. Right at the rim the mirror image compresses into the last pixel or two. So a field's edge can carry a single bright fleck where a mesh's edge stays averaged. It only shows where the reflected scene is bright.
 - **Bounce light travels through meshes only, but it lands on fields too.** The probe rays bounce off the mesh geometry. So a field neither reflects bounce light onto its neighbors nor blocks it. A field's own surface still gathers the probes' light like any mesh. A surface seen *inside* a traced mirror keeps its direct-only shading, the same mirror-interior envelope that glass and the layered lobes have.
 
