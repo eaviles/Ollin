@@ -357,6 +357,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("point-cloud-3d",
                  note: "A static 3D heightfield through a fixed camera. Pins the 3D camera, the depth-tested point pipeline, and the instanced disc splats.",
                  make: { PointCloud3DScene() }),
+    SnapshotCase("lines-3d",
+                 note: "Lines through a fixed camera: a floor grid and the axes, a white line behind a lit box (hidden where the box covers it) and one through it, a helix colored point by point with round joins, a line in world units thinning as it recedes, and a translucent one. Pins the projection, the stroke expander laid on it, the depth each vertex keeps, the core-and-fringe split, and the depth pull. No time.",
+                 make: { Lines3DScene() }),
     SnapshotCase("strange-attractor-3d",
                  note: "A Lorenz orbit, RK4-integrated and splatted through a fixed camera. Pins the attractor math, the speed coloring, and the additive point cloud.",
                  make: { StrangeAttractorScene() }),
@@ -1283,6 +1286,45 @@ private final class PointCloud3DScene: Sketch {
             }
         }
         drawPointCloud(cloud)
+    }
+}
+
+/// Lines in 3D through a fixed camera: the helpers, occlusion by a box both ways,
+/// a color per point, a weight in world units, and translucent ink. No `time`.
+private final class Lines3DScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.06))
+        camera(.orbiting(target: Vector3(0, 0.4, 0), radius: 6,
+                         azimuth: 0.7, elevation: 0.35, fieldOfView: .pi / 3.4))
+        stroke(Color(white: 0.35))
+        strokeWeight(1)
+        drawGrid(size: 6, divisions: 12)
+        strokeWeight(2)
+        drawAxes(length: 1.6)
+        fill(Color(red: 0.85, green: 0.55, blue: 0.2))
+        withState { translate(0, 0.5, 0); drawBox(size: 1) }
+        stroke(.white)
+        strokeWeight(3)
+        strokeCap(.round)
+        drawLine(Vector3(-2.5, 0.5, -1.2), Vector3(2.5, 0.5, -1.2))
+        drawLine(Vector3(-2.5, 0.8, 0), Vector3(2.5, 0.8, 0))
+        var helix: [Vector3] = [], colors: [Color] = []
+        for i in 0 ... 160 {
+            let t = Double(i) / 160
+            helix.append(Vector3(cos(t * 10 * .pi) * 1.3, 0.1 + t * 1.8, sin(t * 10 * .pi) * 1.3))
+            colors.append(Color(hue: t, saturation: 0.75, brightness: 1))
+        }
+        strokeJoin(.round)
+        drawPolyline(helix, colors: colors)
+        strokeWeight(0.06, in: .world)
+        stroke(Color(red: 0.4, green: 0.8, blue: 1))
+        drawLine(Vector3(2.2, 0.05, 2.5), Vector3(2.2, 0.05, -3))
+        strokeWeight(6)
+        strokeJoin(.miter)
+        stroke(Color(red: 1, green: 0.3, blue: 0.5, alpha: 0.5))
+        drawPolyline([Vector3(-2.4, 1.6, 1), Vector3(-1.4, 2.2, 0), Vector3(-0.6, 1.5, 1.2)])
     }
 }
 

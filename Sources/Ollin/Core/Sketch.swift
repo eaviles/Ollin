@@ -2278,6 +2278,68 @@ open class Sketch {
         drawer.drawMesh(.strip(between: first, and: second, colors: colors, closed: closed))
     }
 
+    // MARK: Lines in 3D
+
+    /// Draw a line between two points in the 3D scene, through the active camera.
+    ///
+    /// The line takes the current `stroke`, `strokeWeight`, `strokeCap`, and
+    /// `strokeJoin`, exactly like a 2D line, and the weight is measured on the
+    /// canvas by default, so it stays the same width near the camera and far from
+    /// it (`strokeWeight(_:in:)` takes a weight in world units). Every point of it
+    /// keeps its depth: a solid in front of the line hides it, and the line hides
+    /// what lies behind it. The 3D `translate`/`rotate`/`scale` move it like any
+    /// other 3D drawing.
+    ///
+    /// ```swift
+    /// camera(Camera3D(eye: Vector3(3, 2, 4), target: .zero))
+    /// stroke(.white)
+    /// strokeWeight(2)
+    /// drawLine(Vector3(-1, 0, 0), Vector3(1, 1, -1))
+    /// ```
+    ///
+    /// Needs a camera set earlier in the frame, like `drawMesh`.
+    public func drawLine(_ a: Vector3, _ b: Vector3) {
+        drawer.drawPolyline3D([a, b], closed: false, canvas: canvasPoints)
+    }
+    /// `drawLine(_:_:)` with the two 3D points as scalar coordinates.
+    public func drawLine(_ x1: Double, _ y1: Double, _ z1: Double,
+                         _ x2: Double, _ y2: Double, _ z2: Double) {
+        drawer.drawPolyline3D([Vector3(x1, y1, z1), Vector3(x2, y2, z2)], closed: false,
+                              canvas: canvasPoints)
+    }
+    /// Draw a line through a run of points in the 3D scene, joined at every
+    /// corner by the current `strokeJoin`; `closed` joins the last point back to
+    /// the first. Otherwise exactly `drawLine(_:_:)`: the 2D stroke's look, a
+    /// weight on the canvas, and a depth at every point.
+    public func drawPolyline(_ points: [Vector3], closed: Bool = false) {
+        drawer.drawPolyline3D(points, closed: closed, canvas: canvasPoints)
+    }
+    /// `drawPolyline(_:closed:)` with a color for each point in place of the
+    /// stroke color, blended along each segment between its two ends. The count
+    /// has to match the points; a list that does not is set aside, with a note,
+    /// and the line takes the stroke color.
+    public func drawPolyline(_ points: [Vector3], colors: [Color], closed: Bool = false) {
+        drawer.drawPolyline3D(points, colors: colors, closed: closed, canvas: canvasPoints)
+    }
+    /// Draw the three axes from the model origin, `length` along each: x in red,
+    /// y in green, z in blue, at the current `strokeWeight`. A bearing for a
+    /// scene being built, and, under a 3D `translate` or `rotate`, a picture of
+    /// where that transform has put things.
+    public func drawAxes(length: Double = 1) {
+        drawer.drawAxes(length: length, canvas: canvasPoints)
+    }
+    /// Draw a square grid on the ground, the plane y = 0, centered on the model
+    /// origin: `size` across, cut into `divisions` cells along each side, in the
+    /// current `stroke` and `strokeWeight`. Unlike `groundGrid(_:)`, which shows a
+    /// reference plane in the live window only, this grid is part of the picture
+    /// and exports with it. Rotate or translate it in 3D to stand it up as a wall.
+    public func drawGrid(size: Double = 10, divisions: Int = 10) {
+        drawer.drawGrid(size: size, divisions: divisions, canvas: canvasPoints)
+    }
+
+    /// The canvas size in points, the viewport a line in 3D is projected into.
+    private var canvasPoints: SIMD2<Float> { SIMD2<Float>(Float(width), Float(height)) }
+
     /// Draw a Möbius strip centered at the model origin — a band with a half-twist.
     public func drawMobius(radius: Double = 0.5, width: Double = 0.3,
                            segments: Int = 140, sides: Int = 12) {
@@ -2773,7 +2835,15 @@ open class Sketch {
     /// Stroke with a `Paint` — a flat color or a gradient carried as one value.
     public func stroke(_ paint: Paint) { drawer.stroke(paint) }
     public func noStroke() { drawer.noStroke() }
-    public func strokeWeight(_ weight: Double) { drawer.strokeWeight(weight) }
+    /// Set the stroke's width. A 2D stroke reads it in the drawing's own units,
+    /// which `scale` widens. A line drawn with 3D points reads it in `units`:
+    /// canvas points by default, the same width near the camera and far from it,
+    /// or `.world`, the scene's own units, so the line thins as it recedes. The
+    /// unit is stated with the width every time, so a later `strokeWeight(2)` is
+    /// back in canvas points. See `StrokeUnits`.
+    public func strokeWeight(_ weight: Double, in units: StrokeUnits = .screen) {
+        drawer.strokeWeight(weight, in: units)
+    }
     /// Draw region shapes as a constant-width band along their outline instead of
     /// a solid interior (the `fill` color paints the band; an active `stroke`
     /// borders both edges). `width` is the band thickness, centered on the edge.

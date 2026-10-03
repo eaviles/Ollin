@@ -243,6 +243,13 @@ final class MetalRenderer {
         static func pointCloud(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
             PipelineKey(vertex: "ollin_point_vertex", fragment: "ollin_point_fragment", blend: blend, depthFormat: depth)
         }
+        // lines through the 3D camera, expanded on the CPU and projected per vertex;
+        // with a depth attachment the fragment writes the line's pulled depth
+        static func lines3D(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
+            PipelineKey(vertex: "ollin_line_vertex",
+                        fragment: depth == nil ? "ollin_line_fragment" : "ollin_line_depth_fragment",
+                        blend: blend, depthFormat: depth)
+        }
         // solid 3D triangle mesh (depth-tested, lit by the material model)
         static func mesh(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
             PipelineKey(vertex: "ollin_mesh_vertex", fragment: "ollin_mesh_fragment", blend: blend, depthFormat: depth)
@@ -503,6 +510,7 @@ final class MetalRenderer {
             case .glyphAtlas: return .glyphAtlas(blend, depth: depth)
             case .particles:  return .points(blend, depth: depth, light: light)
             case .points3D:   return .pointCloud(blend, depth: depth)
+            case .lines3D:    return .lines3D(blend, depth: depth)
             case .mesh3D:
                 return grid          ? .grid(blend, depth: depth)
                      : wireframe     ? .meshWireframe(blend, depth: depth)
@@ -771,6 +779,10 @@ final class MetalRenderer {
     /// advanced with `frameIndex` like the others.
     var pointBuffers: [MTLBuffer?] = Array(repeating: nil, count: MetalRenderer.maxFramesInFlight)
     var pointExportBuffer: MTLBuffer?
+    /// Ring + export buffers for the lines drawn through the 3D camera: each
+    /// frame's core vertices, then its fringe vertices, in one buffer.
+    var lineBuffers: [MTLBuffer?] = Array(repeating: nil, count: MetalRenderer.maxFramesInFlight)
+    var lineExportBuffer: MTLBuffer?
 
     /// Parallel ring + export buffer for solid 3D mesh vertices (`OllinMeshVertex`),
     /// advanced with `frameIndex` like the others.
@@ -2100,7 +2112,9 @@ final class MetalRenderer {
             instancedMesh: drawer.instancedMeshVertices.isEmpty ? nil
                 : instancedMeshBuffer(at: frameIndex, for: drawer.instancedMeshVertices.count),
             meshInstance: drawer.meshInstances.isEmpty ? nil
-                : meshInstanceBuffer(at: frameIndex, for: drawer.meshInstances.count))
+                : meshInstanceBuffer(at: frameIndex, for: drawer.meshInstances.count),
+            line: drawer.lineVertexCount == 0 ? nil
+                : lineBuffer(at: frameIndex, for: drawer.lineVertexCount))
         beginStatefulEncode(drawer)
         // The frame's temporal sub-pixel jitter (zero when neither temporal AA
         // nor the upscaler is on): the live path cycles the sequence by frame
@@ -2226,7 +2240,7 @@ final class MetalRenderer {
                renderSize: SIMD2<Float>(Float(renderWidth), Float(renderHeight)), into: geomEncoder,
                triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf,
                imageBuffer: buffers.image, glyphBuffer: buffers.glyph,
-               pointBuffer: buffers.point, meshBuffer: buffers.mesh,
+               pointBuffer: buffers.point, meshBuffer: buffers.mesh, lineBuffer: buffers.line,
                instancedMeshBuffer: buffers.instancedMesh,
                meshInstanceBuffer: buffers.meshInstance,
                    sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
@@ -2390,6 +2404,7 @@ final class MetalRenderer {
                glyphBuffer: glyphBuffer(at: frameIndex, for: drawer.glyphVertices.count),
                pointBuffer: pointBuffer(at: frameIndex, for: drawer.points.count),
                meshBuffer: meshBuffer(at: frameIndex, for: tracedMeshVertexCount(drawer)),
+               lineBuffer: lineBuffer(at: frameIndex, for: drawer.lineVertexCount),
                sdfGroupBuffer: sdfGroupBuffer(at: frameIndex, for: drawer.sdfGroups.count),
                sdfNodeBuffer: sdfNodeBuffer(at: frameIndex, for: drawer.sdfNodes.count),
                sdf3DGroupBuffer: sdf3DGroupBuffer(at: frameIndex, for: drawer.sdf3DGroups.count),
@@ -2488,6 +2503,7 @@ final class MetalRenderer {
                glyphBuffer: exportGlyphBuffer(for: drawer.glyphVertices.count),
                pointBuffer: exportPointBuffer(for: drawer.points.count),
                meshBuffer: exportMeshBuffer(for: tracedMeshVertexCount(drawer)),
+               lineBuffer: exportLineBuffer(for: drawer.lineVertexCount),
                sdfGroupBuffer: exportSDFGroupBuffer(for: drawer.sdfGroups.count),
                sdfNodeBuffer: exportSDFNodeBuffer(for: drawer.sdfNodes.count),
                sdf3DGroupBuffer: exportSDF3DGroupBuffer(for: drawer.sdf3DGroups.count),
@@ -2757,7 +2773,9 @@ final class MetalRenderer {
             instancedMesh: drawer.instancedMeshVertices.isEmpty ? nil
                 : exportInstancedMeshBuffer(for: drawer.instancedMeshVertices.count),
             meshInstance: drawer.meshInstances.isEmpty ? nil
-                : exportMeshInstanceBuffer(for: drawer.meshInstances.count))
+                : exportMeshInstanceBuffer(for: drawer.meshInstances.count),
+            line: drawer.lineVertexCount == 0 ? nil
+                : exportLineBuffer(for: drawer.lineVertexCount))
         beginStatefulEncode(drawer)
         // Global illumination, historyless: the volume fits this frame's own bounds and
         // K whole trace+blend iterations converge the field within the frame (seed = the
@@ -2872,7 +2890,7 @@ final class MetalRenderer {
                 encode(drawer, viewport: viewport, attachment: SIMD2<Float>(Float(width), Float(height)), into: encoder,
                        triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf,
                        imageBuffer: buffers.image, glyphBuffer: buffers.glyph,
-                       pointBuffer: buffers.point, meshBuffer: buffers.mesh,
+                       pointBuffer: buffers.point, meshBuffer: buffers.mesh, lineBuffer: buffers.line,
                instancedMeshBuffer: buffers.instancedMesh,
                meshInstanceBuffer: buffers.meshInstance,
                        sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
@@ -2929,7 +2947,7 @@ final class MetalRenderer {
             encode(drawer, viewport: viewport, attachment: SIMD2<Float>(Float(width), Float(height)), into: encoder,
                    triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf,
                    imageBuffer: buffers.image, glyphBuffer: buffers.glyph,
-                   pointBuffer: buffers.point, meshBuffer: buffers.mesh,
+                   pointBuffer: buffers.point, meshBuffer: buffers.mesh, lineBuffer: buffers.line,
                instancedMeshBuffer: buffers.instancedMesh,
                meshInstanceBuffer: buffers.meshInstance,
                        sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
@@ -3055,7 +3073,9 @@ final class MetalRenderer {
             instancedMesh: drawer.instancedMeshVertices.isEmpty ? nil
                 : exportInstancedMeshBuffer(for: drawer.instancedMeshVertices.count),
             meshInstance: drawer.meshInstances.isEmpty ? nil
-                : exportMeshInstanceBuffer(for: drawer.meshInstances.count))
+                : exportMeshInstanceBuffer(for: drawer.meshInstances.count),
+            line: drawer.lineVertexCount == 0 ? nil
+                : exportLineBuffer(for: drawer.lineVertexCount))
         var totalMs = 0.0, counted = 0
         for i in 0..<iterations {
             let pass = MTLRenderPassDescriptor()
@@ -3166,7 +3186,7 @@ final class MetalRenderer {
             encode(drawer, viewport: viewport, attachment: SIMD2<Float>(Float(width), Float(height)), into: encoder,
                    triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf,
                    imageBuffer: buffers.image, glyphBuffer: buffers.glyph,
-                   pointBuffer: buffers.point, meshBuffer: buffers.mesh,
+                   pointBuffer: buffers.point, meshBuffer: buffers.mesh, lineBuffer: buffers.line,
                instancedMeshBuffer: buffers.instancedMesh,
                meshInstanceBuffer: buffers.meshInstance,
                    sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,

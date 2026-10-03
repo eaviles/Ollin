@@ -85,10 +85,10 @@ noStroke()                              // following shapes have no outline
 #### strokeWeight
 
 ```swift
-strokeWeight(_ weight: Double)
+strokeWeight(_ weight: Double, in units: StrokeUnits = .screen)
 ```
 
-Outline thickness in points.
+Outline thickness in points. `units` matters only to a [line drawn with 3D points](../3D/Lines.md#a-weight-on-screen-or-in-the-world): `.screen` keeps it the same width at every distance, `.world` reads the weight in the scene's units so the line thins as it recedes.
 
 ```swift
 stroke(.black)

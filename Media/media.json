@@ -1094,6 +1094,28 @@
       "stillSmall": "examples/3D/Geometry/Fabrication/still-640.jpg?v=aca68699",
       "width": 1080
     },
+    "3D/Geometry/FieldLines": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 5.905,
+      "sound": false,
+      "source": "196113c607553005",
+      "rendered": "2026-10-03",
+      "bytes": {
+        "loop": 7995167,
+        "loopSmall": 1616620,
+        "still": 257473,
+        "stillSmall": 85967
+      },
+      "loop": "examples/3D/Geometry/FieldLines/loop.mp4?v=fd588baf",
+      "loopSmall": "examples/3D/Geometry/FieldLines/loop-640.mp4?v=6937880a",
+      "still": "examples/3D/Geometry/FieldLines/still.jpg?v=e28a41e7",
+      "stillSmall": "examples/3D/Geometry/FieldLines/still-640.jpg?v=39549fc6",
+      "seed": 1
+    },
     "3D/Geometry/HopfFibration": {
       "bytes": {
         "loop": 8035639,

@@ -94,6 +94,8 @@ enum GeometryKind {
     case glyphAtlas   // SDF-atlas text quads in `glyphVertices`, sampling `atlas`
     case particles    // instanced GPU-particle discs reading a compute buffer
     case points3D     // instanced 3D point-cloud splats in `points`, through the camera
+    case lines3D      // lines through the camera, expanded on screen: `lineCoreVertices`
+                      // then `lineFringeVertices`, addressed by the batch's explicit ranges
     case mesh3D       // solid triangle-mesh geometry in `meshVertices`, through the camera
     case meshInstanced // one mesh drawn many times: local-space vertices in
                        // `instancedMeshVertices`, per-copy placements in `meshInstances`
@@ -173,6 +175,16 @@ struct GeometryBatch {
     var instancedVertexCount: Int = 0
     var meshInstanceStart: Int = 0
     var meshInstanceCount: Int = 0
+    /// The vertex runs of a `.lines3D` batch: the solid core in `lineCoreVertices`,
+    /// drawn first and writing depth, then the anti-aliasing fringe in
+    /// `lineFringeVertices`, which tests depth but writes none (so something drawn
+    /// later behind a line still fills the line's soft edge). Explicit counts, grown
+    /// as consecutive line calls join the open batch, since no other batch records
+    /// a start in these arrays.
+    var lineCoreStart: Int = 0
+    var lineCoreCount: Int = 0
+    var lineFringeStart: Int = 0
+    var lineFringeCount: Int = 0
     /// The retained field for a `.meshField` batch (`nil` otherwise), plus the
     /// 3D CTM at draw time (composed onto every copy by the cull kernel and the
     /// field vertex shader; identity when the field is drawn untransformed).
@@ -327,6 +339,10 @@ final class Drawer {
     // `nil` is the whole path, so every stroke that does not ask for a dash
     // takes exactly the path it always did.
     var strokeDashPattern: StrokeDash?
+    // How a line through the 3D camera measures `strokeWidth`, set with it by
+    // `strokeWeight(_:in:)`: canvas points by default, or world units that shrink
+    // with distance.
+    var strokeUnitsMode: StrokeUnits = .screen
     var currentMaterial = Material()    // 3D mesh surface finish (shading model + specular/rim/subsurface/iridescence); see material(_:)
     private var wireframeEnabled = false        // 3D mesh: draw triangle edges only (see wireframe)
     private var currentMatcap: Image?           // 3D mesh: a matcap sphere texture replacing the lit look (see matcap(_:))
@@ -435,6 +451,13 @@ final class Drawer {
     /// 3D point-cloud splats recorded this frame (see `drawPointCloud`). World-space
     /// points drawn through `camera3D`; each is one instanced camera-facing quad.
     private(set) var points: [OllinPoint] = []
+
+    /// Lines through the camera recorded this frame (see `drawLine3D`), split by
+    /// coverage: triangles whose three corners are fully covered (the core, which
+    /// writes depth) and the rest (the fringe, which only tests it). Each run is
+    /// addressed by its `.lines3D` batch's explicit start and count.
+    var lineCoreVertices: [OllinLineVertex] = []
+    var lineFringeVertices: [OllinLineVertex] = []
 
     /// Solid 3D mesh vertices recorded this frame (see `drawMesh`). The model
     /// matrix and its normal matrix are baked in CPU-side, so these are world-space
@@ -2042,7 +2065,7 @@ final class Drawer {
     /// Tracks whether `modelMatrix` is still the identity, so `drawPointCloud` can
     /// skip the per-point matrix multiply when no 3D transform is active (every
     /// existing 3D sketch, so their geometry stays byte-identical).
-    private var modelIsIdentity = true
+    private(set) var modelIsIdentity = true
 
     /// Saved (transform + style) snapshots for `pushState()`/`popState()` / `withState`.
     private var stateStack: [SavedState] = []
@@ -2066,6 +2089,7 @@ final class Drawer {
         var strokeOpacityShape: StrokeProfile
         var strokeBrushShape: Brush?
         var strokeDashPattern: StrokeDash?
+        var strokeUnitsMode: StrokeUnits
         var currentMaterial: Material
         var wireframeEnabled: Bool
         var currentMatcap: Image?
@@ -2133,6 +2157,8 @@ final class Drawer {
         imageVertices.removeAll(keepingCapacity: true)
         glyphVertices.removeAll(keepingCapacity: true)
         points.removeAll(keepingCapacity: true)
+        lineCoreVertices.removeAll(keepingCapacity: true)
+        lineFringeVertices.removeAll(keepingCapacity: true)
         meshVertices.removeAll(keepingCapacity: true)
         instancedMeshVertices.removeAll(keepingCapacity: true)
         meshInstances.removeAll(keepingCapacity: true)
@@ -2185,7 +2211,10 @@ final class Drawer {
     func stroke(_ gradient: Gradient) { strokePaint = .gradient(gradient); strokeSet = true }
     func stroke(_ paint: Paint) { strokePaint = paint; strokeSet = true }
     func noStroke() { strokePaint = nil }
-    func strokeWeight(_ weight: Double) { strokeWidth = max(0, weight) }
+    func strokeWeight(_ weight: Double, in units: StrokeUnits = .screen) {
+        strokeWidth = max(0, weight)
+        strokeUnitsMode = units
+    }
     func pointSize(_ size: Double) { pointDiameter = max(0, size) }
     func pointMarker(_ marker: PointMarker) { self.marker = marker }
 
@@ -4266,6 +4295,8 @@ final class Drawer {
         imageVertices.removeAll(keepingCapacity: true)
         glyphVertices.removeAll(keepingCapacity: true)
         points.removeAll(keepingCapacity: true)
+        lineCoreVertices.removeAll(keepingCapacity: true)
+        lineFringeVertices.removeAll(keepingCapacity: true)
         meshVertices.removeAll(keepingCapacity: true)
         instancedMeshVertices.removeAll(keepingCapacity: true)
         meshInstances.removeAll(keepingCapacity: true)
@@ -4581,6 +4612,7 @@ final class Drawer {
                                      strokeOpacityShape: strokeOpacityShape,
                                      strokeBrushShape: strokeBrushShape,
                                      strokeDashPattern: strokeDashPattern,
+                                     strokeUnitsMode: strokeUnitsMode,
                                      currentMaterial: currentMaterial,
                                      wireframeEnabled: wireframeEnabled,
                                      currentMatcap: currentMatcap,
@@ -4618,6 +4650,7 @@ final class Drawer {
         strokeOpacityShape = s.strokeOpacityShape
         strokeBrushShape = s.strokeBrushShape
         strokeDashPattern = s.strokeDashPattern
+        strokeUnitsMode = s.strokeUnitsMode
         currentMaterial = s.currentMaterial
         wireframeEnabled = s.wireframeEnabled
         currentMatcap = s.currentMatcap

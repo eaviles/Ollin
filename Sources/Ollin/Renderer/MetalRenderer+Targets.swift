@@ -3118,7 +3118,7 @@ extension MetalRenderer {
         encode(drawer, viewport: viewport, attachment: SIMD2<Float>(Float(width), Float(height)), into: enc,
                triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf,
                imageBuffer: buffers.image, glyphBuffer: buffers.glyph,
-               pointBuffer: buffers.point, meshBuffer: buffers.mesh,
+               pointBuffer: buffers.point, meshBuffer: buffers.mesh, lineBuffer: buffers.line,
                instancedMeshBuffer: buffers.instancedMesh,
                meshInstanceBuffer: buffers.meshInstance,
                sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,

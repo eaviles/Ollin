@@ -197,6 +197,113 @@ fragment float4 ollin_point_fragment(PointOut in [[stage_in]]) {
     return float4(srgbToLinear(in.color.rgb), a);
 }
 
+// MARK: - Lines in 3D
+//
+// A line through the camera was projected and expanded on the CPU by the stroke
+// expander, so its joins, caps, and anti-aliasing fringe are the 2D stroke's. Each
+// vertex carries the world point of the path vertex it was laid out around and
+// its offset from that point's projection, in canvas points: the vertex shader
+// projects the point through this pass's camera (a stereo eye, a jittered
+// projection) and moves the result by the offset on screen, which keeps the
+// point's depth and the expander's width. Coverage and the offset are
+// interpolated without the perspective divide, so the fringe ramps across a pixel
+// the way the 2D fringe does however steeply the line recedes; the color and the
+// depth keep the divide, so they change along the line where the line actually is.
+
+struct LineOut {
+    float4 position [[position]];
+    float4 color;                                // rgb = sRGB stroke color, a = paint alpha
+    float coverage [[center_no_perspective]];    // the fringe's coverage, screen-linear
+    float2 offset [[center_no_perspective]];     // canvas points from the centerline
+    float viewDepth;                             // view z of the centerline under this pixel
+    float4 depthRows [[flat]];                   // the projection's z and w rows (z, 1 terms)
+    float unitsPerPoint [[flat]];                // view units per canvas point at w = 1
+};
+
+vertex LineOut ollin_line_vertex(uint vid [[vertex_id]],
+                                 const device OllinLineVertex *vertices [[buffer(0)]],
+                                 constant Uniforms3D &u [[buffer(2)]]) {
+    OllinLineVertex v = vertices[vid];
+    float4 viewPos = u.view * float4(v.position.xyz, 1.0);
+    float4 clip = u.projection * viewPos;
+    // The offset in canvas points (y down) as an NDC step, scaled by w so it
+    // survives the perspective divide unchanged.
+    float2 step = float2(v.offset.x * 2.0 / u.viewport.x, -v.offset.y * 2.0 / u.viewport.y);
+    LineOut out;
+    out.position = float4(clip.xy + step * clip.w, clip.z, clip.w);
+    out.color = v.color;
+    out.coverage = v.coverage;
+    out.offset = v.offset;
+    out.viewDepth = viewPos.z;
+    // Clip z and w read only the view depth (a stereo eye's shear and a jitter
+    // move x and y), so two pairs of terms carry the whole depth mapping.
+    out.depthRows = float4(u.projection[2][2], u.projection[3][2],
+                           u.projection[2][3], u.projection[3][3]);
+    out.unitsPerPoint = 2.0 / (u.projection[1][1] * u.viewport.y);
+    return out;
+}
+
+// The 2D fringe's arithmetic: coverage remapped to perceptual alpha, the paint's
+// own alpha kept linear.
+static inline float4 ollin_line_color(LineOut in) {
+    float3 lin = srgbToLinear(in.color.rgb);
+    float a = in.color.a * perceptualCoverage(clamp(in.coverage, 0.0, 1.0));
+    return float4(lin, a);
+}
+
+// A pass with no depth attachment (the accumulating canvas) draws the line over.
+fragment float4 ollin_line_fragment(LineOut in [[stage_in]]) {
+    return ollin_line_color(in);
+}
+
+// How far a line's depth is pulled toward the eye. A line drawn on a surface
+// shares the surface's depth only along its centerline: across its width the
+// surface tilts away while the line holds one depth, so on a floor seen at a low
+// angle the outer half of the line sinks into it. The surface's depth departs
+// from the line's in step with the distance from the centerline, so the pull
+// grows with that distance too, at `kLineDepthSlope`: the cotangent of the lowest
+// angle a surface can be seen at and still keep the line (10 is about 6 degrees).
+// The pull follows the distance out to `kLineDepthReach` points and no farther,
+// which keeps a line up to three points wide whole on such a floor; past that a
+// wide line's outer edge may sink into a grazing floor rather than every wide
+// line showing through whatever stands just in front of it. `kLineDepthBase` is
+// the pull at the centerline, settling a line drawn exactly on a surface in the
+// line's favor whichever was drawn first. All three are shares of the distance,
+// so the pull looks the same near and far; what it costs is that a line that
+// close behind a surface (a few percent of its distance at most) shows through.
+constant float kLineDepthSlope = 10.0;
+constant float kLineDepthReach = 2.0;
+constant float kLineDepthBase = 0.0005;
+
+// The depth a fragment writes holds for every sample of its pixel, while the
+// surface under it is tested sample by sample, half a pixel either side of the
+// pixel's center. So the distance the pull is measured over starts half a point
+// out: without it the samples on the near side of a pixel beat the line even at
+// its centerline, which reads as pale flecks inside solid ink on a grazing floor.
+constant float kLineSampleReach = 0.5;
+
+struct LineDepthOut {
+    float4 color [[color(0)]];
+    float depth [[depth(any)]];
+};
+
+// The pull is worked out per pixel rather than per vertex: a long segment
+// receding from the camera is a sliver whose two ends sit at very different
+// distances, and a pulled depth set at its corners and blended across it comes
+// out short on one side. The centerline's view depth under the pixel is exact
+// (the ribbon is planar in view space), so the depth written here is too.
+fragment LineDepthOut ollin_line_depth_fragment(LineOut in [[stage_in]]) {
+    float4 rows = in.depthRows;
+    float w = rows.z * in.viewDepth + rows.w;       // the centerline's distance (1 if orthographic)
+    float reach = min(length(in.offset) + kLineSampleReach, kLineDepthReach);
+    float share = kLineDepthBase + reach * in.unitsPerPoint * kLineDepthSlope;
+    float z = in.viewDepth + share * w;              // toward the eye, which looks down -z
+    LineDepthOut out;
+    out.color = ollin_line_color(in);
+    out.depth = clamp((rows.x * z + rows.y) / (rows.z * z + rows.w), 0.0, 1.0);
+    return out;
+}
+
 // MARK: - 3D solid mesh (triangles)
 //
 // Solid triangle geometry (the box/sphere/… primitives) drawn through the camera

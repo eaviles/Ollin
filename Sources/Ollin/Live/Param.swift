@@ -876,6 +876,7 @@ public extension ParamChoices {
 extension BlendMode: ParamOption {}
 extension StrokeCap: ParamOption {}
 extension StrokeJoin: ParamOption {}
+extension StrokeUnits: ParamOption {}
 extension Colormap: ParamOption {}
 extension Turmite.Preset: ParamOption {}
 extension RenderQuality: ParamOption {}

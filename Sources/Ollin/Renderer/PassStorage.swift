@@ -66,6 +66,8 @@ extension Drawer {
                 total += batch.particleBuffer != nil
                     ? batch.particleCount * 2
                     : ((next?.pointStart ?? points.count) - batch.pointStart) * 2
+            case .lines3D:
+                total += (batch.lineCoreCount + batch.lineFringeCount) / 3
             case .mesh3D:
                 total += ((next?.meshStart ?? meshVertices.count) - batch.meshStart) / 3
             case .meshInstanced:

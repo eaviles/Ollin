@@ -359,6 +359,23 @@ typedef struct {
     float _pad2;
 } OllinPoint;
 
+// One vertex of a line drawn through the 3D camera (`ollin_line_vertex`). The
+// line was projected and expanded on the CPU by the same stroke expander every
+// 2D stroke goes through, and each vertex keeps the world point of the path
+// vertex it was laid out around plus its offset from that point's projection,
+// in canvas points. The vertex shader projects the world point through the
+// pass's own camera and adds the offset on screen, so the vertex takes that
+// point's depth, follows a stereo eye or a jittered projection, and keeps the
+// width the expander gave it. Stride 48: float4 @0, float2 @16, two floats @24,
+// float4 @32.
+typedef struct {
+    simd_float4 position;   // world-space xyz of the path vertex (w unused)
+    simd_float2 offset;     // canvas points from that vertex's projection (x right, y down)
+    float coverage;         // anti-aliasing coverage, 1 in the core, 0 at the outer edge
+    float _pad0;            // pads the color to its 16-byte row
+    simd_float4 color;      // straight sRGB rgb + the paint's own alpha
+} OllinLineVertex;
+
 // One vertex of a solid 3D mesh (the triangle-mesh pipeline, `ollin_mesh_vertex`),
 // drawn through `Camera3D` with depth testing. A primitive (box/sphere/…) is a unit
 // `Mesh` placed by the model matrix; like the point cloud, the model matrix bakes

@@ -563,6 +563,23 @@ extension MetalRenderer {
         return pointBuffers[index]
     }
 
+    /// The ring buffer for this frame's lines through the 3D camera (core then
+    /// fringe), grown on demand like the others.
+    func lineBuffer(at index: Int, for count: Int) -> MTLBuffer? {
+        let needed = max(count, 1) * MemoryLayout<OllinLineVertex>.stride
+        if let buffer = lineBuffers[index], buffer.length >= needed { return buffer }
+        lineBuffers[index] = device.makeBuffer(length: needed + needed / 2, options: .storageModeShared)
+        return lineBuffers[index]
+    }
+
+    /// The off-screen export buffer for the lines through the 3D camera.
+    func exportLineBuffer(for count: Int) -> MTLBuffer? {
+        let needed = max(count, 1) * MemoryLayout<OllinLineVertex>.stride
+        if let buffer = lineExportBuffer, buffer.length >= needed { return buffer }
+        lineExportBuffer = device.makeBuffer(length: needed + needed / 2, options: .storageModeShared)
+        return lineExportBuffer
+    }
+
     /// The off-screen export buffer for point-cloud splats, grown on demand.
     func exportPointBuffer(for count: Int) -> MTLBuffer? {
         let needed = max(count, 1) * MemoryLayout<OllinPoint>.stride

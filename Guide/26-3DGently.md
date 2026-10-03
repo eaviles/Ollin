@@ -561,6 +561,8 @@ The three calls divide the job, and each does one part of it:
 
 The rings keep their size. All three have the same 96-point radius, because a 2D mark keeps its canvas size. Depth changes what hides it, not how big it is. That's usually what you want from a label, readable at any distance and correctly occluded. It also means a sprite drawn this way stays the same size at any distance.
 
+A flat mark has one depth for all of it. A line that runs through the scene needs a depth at every point, so `drawLine` and `drawPolyline` also take `Vector3` points. Each point goes through the camera, and the line is laid on the canvas the way a 2D stroke is. Every point keeps its own depth. A pillar hides the part of a line behind it, and the line hides what lies behind it. The weight stays in canvas points, like the rings' radius, unless you ask for `strokeWeight(0.05, in: .world)`, which thins the line as it recedes. `drawAxes()` and `drawGrid()` are built from these lines, the exported cousins of the bearings tools from the start of the chapter. The [lines in 3D reference](../Docs/3D/Lines.md) has the rest, and the [FieldLines](../Examples/3D/Geometry/FieldLines/) example draws a planet's magnetic field this way.
+
 Like the camera itself, all of this is per-frame, so it goes in `draw()` after the camera. Without a camera it quietly does nothing. A depth map from a camera can take 2D marks the same way, which [Chapter 35](35-Depth.md#drawing-inside-the-picture-a-depth-frame-as-a-stage) uses. The [depth compositing reference](../Docs/3D/DepthCompositing.md) covers both kinds of scene side by side.
 
 ### What the depth buffer is for: ambient occlusion and defocus

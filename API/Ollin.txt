@@ -721,6 +721,9 @@ enum StrokeJoin: ParamOption, ParamValue, CaseIterable, Equatable, Hashable, Sen
   case bevel
   case miter
   case round
+enum StrokeUnits: ParamOption, ParamValue, CaseIterable, Equatable, Hashable, Sendable
+  case screen
+  case world
 enum Subdivision
   enum Style: Equatable, Hashable, Sendable
     case binary
@@ -2039,6 +2042,7 @@ open class Sketch: Sendable
   func drawAttractor(_: ChaoticMap, count: Int = default, settle: Int = default)
   func drawAttractor(_: StrangeAttractor, count: Int = default, settle: Int = default, size: Double = default)
   func drawAutostereogram(of: Image, in: Rectangle? = default, settings: Autostereogram = default, pattern: Image? = default, seed: Int = default)
+  func drawAxes(length: Double = default)
   func drawBatch(_: Batch)
   func drawBezier(_: Double, _: Double, _: Double, _: Double, _: Double, _: Double)
   func drawBezier(_: Vector2, _: Vector2, _: Vector2)
@@ -2087,6 +2091,7 @@ open class Sketch: Sendable
   func drawGirih(over: [[Vector2]], angle: Double = default)
   func drawGlyphMosaic(_: Image, columns: Int = default, characters: String = default, in: Rectangle? = default, inverted: Bool = default, colored: Bool = default, glyphScale: Double = default)
   func drawGraph(_: ForceLayout, nodeRadius: Double = default)
+  func drawGrid(size: Double = default, divisions: Int = default)
   func drawGround(size: Double = default, at: Double = default, thickness: Double = default, color: Color? = default, material: Material? = default)
   func drawHalftone(_: Image, pitch: Double = default, angle: Double = default, in: Rectangle? = default, inverted: Bool = default, colored: Bool = default)
   func drawHeart(_: Double, _: Double, _: Double, file: StaticString = default, line: Int = default, column: Int = default)
@@ -2115,8 +2120,10 @@ open class Sketch: Sendable
   func drawLSystem(_: LSystem, iterations: Int, in: Rectangle? = default, padding: Double = default)
   func drawLSystem(_: ParametricLSystem, iterations: Int, in: Rectangle? = default, padding: Double = default, tapered: Bool = default)
   func drawLathe(_: [Vector2], segments: Int = default)
+  func drawLine(_: Double, _: Double, _: Double, _: Double, _: Double, _: Double)
   func drawLine(_: Double, _: Double, _: Double, _: Double, file: StaticString = default, line: Int = default, column: Int = default)
   func drawLine(_: Vector2, _: Vector2, file: StaticString = default, line: Int = default, column: Int = default)
+  func drawLine(_: Vector3, _: Vector3)
   func drawLineSpray(_: LineSpray)
   func drawMarbling(_: Marbling)
   func drawMark(_: StrokeMark)
@@ -2168,6 +2175,8 @@ open class Sketch: Sendable
   func drawPoints(_: [Vector2], size: Double)
   func drawPolygon(_: [Vector2])
   func drawPolyline(_: [Vector2], closed: Bool = default)
+  func drawPolyline(_: [Vector3], closed: Bool = default)
+  func drawPolyline(_: [Vector3], colors: [Color], closed: Bool = default)
   func drawPowerDiagram(of: [Circle], in: Rectangle? = default)
   func drawPyramid(width: Double = default, depth: Double = default, height: Double = default)
   func drawRect(_: Double, _: Double, _: Double, _: Double, cornerRadii: CornerRadii, file: StaticString = default, line: Int = default, column: Int = default)
@@ -2571,7 +2580,7 @@ open class Sketch: Sendable
   func strokeJoin(_: StrokeJoin)
   func strokeProfile(_: (Double) -> Double)
   func strokeProfile(_: StrokeProfile)
-  func strokeWeight(_: Double)
+  func strokeWeight(_: Double, in: StrokeUnits = default)
   func subdivide(in: Rectangle? = default, minSize: Double, maxDepth: Int = default, chance: Double = default, fraction: ClosedRange<Double> = default, style: Subdivision.Style = default) -> [Subdivision.Cell]
   func subtract(_: () -> Void)
   func surfacePoints(on: Mesh, count: Int, scatter: SurfaceScatter = default) -> [SurfaceSample]

@@ -496,6 +496,7 @@ extension OllinApp {
         switch kind {
         case .particles: return "drawParticles"
         case .points3D: return "drawPointCloud"
+        case .lines3D: return "drawLine or drawPolyline with 3D points"
         case .depthScene: return "drawDepthScene"
         case .mesh3D, .meshInstanced, .meshField, .strands, .ocean:
             return "3D drawing (a mesh, a field, strands, the ocean)"

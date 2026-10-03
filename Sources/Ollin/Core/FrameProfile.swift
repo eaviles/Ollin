@@ -106,7 +106,7 @@ public struct FrameProfile: Sendable, Equatable {
         drawCalls += 1
         switch kind {
         case .triangles:  triangleVertices += n
-        case .fringe:     fringeVertices += n
+        case .fringe, .lines3D: fringeVertices += n   // a line in 3D is a fringe stroke too
         case .sdf:        sdfInstances += n
         case .sdfGroup, .sdfGroup3D: fieldQuads += n
         case .image, .depthScene: imageVertices += n

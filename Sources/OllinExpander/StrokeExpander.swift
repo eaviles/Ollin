@@ -146,6 +146,20 @@ package enum StrokeExpander {
                                fringe fw: Double, ctmScale: Double,
                                join: StrokeExpanderJoin, cap: StrokeExpanderCap,
                                emit: (StrokeVertex) -> Void) {
+        expand(pts, closed: closed, halfWidths: hws, colors: cols, fringe: fw, ctmScale: ctmScale,
+               join: join, cap: cap) { vertex, _ in emit(vertex) }
+    }
+
+    /// `expand`, also handing over the path vertex each emitted vertex was built
+    /// from: every cross-section, join, and cap is laid out around one point of
+    /// the path, so each emitted vertex belongs to exactly one. A caller that
+    /// expanded a projection of the path uses it to give each vertex the depth of
+    /// the point it came from.
+    package static func expand(_ pts: [Point2D], closed: Bool,
+                               halfWidths hws: [Double], colors cols: [SIMD4<Float>],
+                               fringe fw: Double, ctmScale: Double,
+                               join: StrokeExpanderJoin, cap: StrokeExpanderCap,
+                               emit: (StrokeVertex, Int) -> Void) {
         let n = pts.count
         guard n >= 2, hws.count == n, cols.count == n else { return }
         let miterLimit = Self.miterLimit
@@ -176,12 +190,13 @@ package enum StrokeExpander {
 
         let innerMiter = innerCrossings(pts, closed: closed, halfWidth: outerHalf)
 
-        // A fringe vertex: position, AA coverage, and the path color at this point.
-        typealias FV = StrokeVertex
+        // A fringe vertex: position, AA coverage, the path color at this point, and
+        // the path vertex it was laid out around.
+        typealias FV = (position: SIMD2<Float>, coverage: Float, color: SIMD4<Float>, source: Int)
         func tri(_ a: FV, _ b: FV, _ d: FV) {
-            emit(a)
-            emit(b)
-            emit(d)
+            emit((a.position, a.coverage, a.color), a.source)
+            emit((b.position, b.coverage, b.color), b.source)
+            emit((d.position, d.coverage, d.color), d.source)
         }
         func quad(_ a: FV, _ b: FV, _ d: FV, _ e: FV) { tri(a, b, d); tri(a, d, e) }
         // The five points across the stroke at one path vertex, outer edge to outer
@@ -198,7 +213,7 @@ package enum StrokeExpander {
         func crossAt(_ i: Int, _ p: Point2D, _ dirA: Point2D, _ dirB: Point2D,
                      _ s: Float, _ col: SIMD4<Float>) -> Cross {
             func at(_ d: Point2D, _ off: Double) -> FV {
-                ((p + d * off).simd2, covU(i, off) * s, col)
+                ((p + d * off).simd2, covU(i, off) * s, col, i)
             }
             let outer = outerHalf(i), core = coreHalf(i)
             return Cross(outA: at(dirA, outer), coreA: at(dirA, core), center: at(dirA, 0),
@@ -246,11 +261,11 @@ package enum StrokeExpander {
             // Both segments meeting here were expanded at this vertex's width, so the
             // join is the constant-width join solved at that one local width.
             let coreHalf = coreHalf(v), outerHalf = outerHalf(v), coreCov = coreCov(v)
-            let center:  FV = (curr.simd2, centerCov(v), col)
-            let inCore:  FV = ((curr + p0 * (side * coreHalf)).simd2, coreCov, col)
-            let inEdge:  FV = ((curr + p0 * (side * outerHalf)).simd2, 0, col)
-            let outCore: FV = ((curr + p1 * (side * coreHalf)).simd2, coreCov, col)
-            let outEdge: FV = ((curr + p1 * (side * outerHalf)).simd2, 0, col)
+            let center:  FV = (curr.simd2, centerCov(v), col, v)
+            let inCore:  FV = ((curr + p0 * (side * coreHalf)).simd2, coreCov, col, v)
+            let inEdge:  FV = ((curr + p0 * (side * outerHalf)).simd2, 0, col, v)
+            let outCore: FV = ((curr + p1 * (side * coreHalf)).simd2, coreCov, col, v)
+            let outEdge: FV = ((curr + p1 * (side * outerHalf)).simd2, 0, col, v)
             func bevel() {
                 tri(center, inCore, outCore)                // inner core wedge
                 quad(inCore, inEdge, outEdge, outCore)      // fringe band across the bevel
@@ -260,8 +275,8 @@ package enum StrokeExpander {
                 let cosHalf = bl > 1e-6 ? (b.x * p0.x + b.y * p0.y) / bl : 0
                 guard cosHalf > 1e-4, 1 / cosHalf <= miterLimit else { return false }
                 let m = b / bl                              // unit bisector of the normals
-                let miterCore: FV = ((curr + m * (side * coreHalf / cosHalf)).simd2, coreCov, col)
-                let miterEdge: FV = ((curr + m * (side * outerHalf / cosHalf)).simd2, 0, col)
+                let miterCore: FV = ((curr + m * (side * coreHalf / cosHalf)).simd2, coreCov, col, v)
+                let miterEdge: FV = ((curr + m * (side * outerHalf / cosHalf)).simd2, 0, col, v)
                 tri(center, inCore, miterCore); tri(center, miterCore, outCore)
                 quad(inCore, inEdge, miterEdge, miterCore)
                 quad(miterCore, miterEdge, outEdge, outCore)
@@ -277,10 +292,10 @@ package enum StrokeExpander {
                 for s in 1...steps {
                     let ang = a0 + sweep * Double(s) / Double(steps)
                     let curD = Point2D(cos(ang), sin(ang))
-                    let inA: FV = ((curr + prevD * coreHalf).simd2, coreCov, col)
-                    let inB: FV = ((curr + curD  * coreHalf).simd2, coreCov, col)
-                    let edA: FV = ((curr + prevD * outerHalf).simd2, 0, col)
-                    let edB: FV = ((curr + curD  * outerHalf).simd2, 0, col)
+                    let inA: FV = ((curr + prevD * coreHalf).simd2, coreCov, col, v)
+                    let inB: FV = ((curr + curD  * coreHalf).simd2, coreCov, col, v)
+                    let edA: FV = ((curr + prevD * outerHalf).simd2, 0, col, v)
+                    let edB: FV = ((curr + curD  * outerHalf).simd2, 0, col, v)
                     tri(center, inA, inB)                   // core fan wedge
                     quad(inA, edA, edB, inB)                // fringe band along the arc
                     prevD = curD
@@ -321,9 +336,9 @@ package enum StrokeExpander {
                     let aθ = base + .pi * (Double(s) / Double(steps)) * sweep
                     let bθ = base + .pi * (Double(s + 1) / Double(steps)) * sweep
                     let da = Point2D(cos(aθ), sin(aθ)), db = Point2D(cos(bθ), sin(bθ))
-                    let inA: FV = ((p + da * coreHalf).simd2, coreCov, col), inB: FV = ((p + db * coreHalf).simd2, coreCov, col)
-                    let edA: FV = ((p + da * outerHalf).simd2, 0, col), edB: FV = ((p + db * outerHalf).simd2, 0, col)
-                    tri((p.simd2, centerCov, col), inA, inB)
+                    let inA: FV = ((p + da * coreHalf).simd2, coreCov, col, i), inB: FV = ((p + db * coreHalf).simd2, coreCov, col, i)
+                    let edA: FV = ((p + da * outerHalf).simd2, 0, col, i), edB: FV = ((p + db * outerHalf).simd2, 0, col, i)
+                    tri((p.simd2, centerCov, col, i), inA, inB)
                     quad(inA, edA, edB, inB)
                 }
             }

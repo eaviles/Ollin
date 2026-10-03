@@ -43,6 +43,7 @@ extension MetalRenderer {
         var sdf3DNode: MTLBuffer?
         var instancedMesh: MTLBuffer?
         var meshInstance: MTLBuffer?
+        var line: MTLBuffer? = nil
     }
 
     /// Fill every effects layer this frame, ahead of the main pass: render each
@@ -136,7 +137,7 @@ extension MetalRenderer {
             // size; a fraction-res layer's smaller attachment just downsamples.
             encode(drawer, viewport: SIMD2(Float(target.width), Float(target.height)), into: enc,
                    triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf, imageBuffer: buffers.image,
-                   glyphBuffer: buffers.glyph, pointBuffer: buffers.point, meshBuffer: buffers.mesh,
+                   glyphBuffer: buffers.glyph, pointBuffer: buffers.point, meshBuffer: buffers.mesh, lineBuffer: buffers.line,
                    instancedMeshBuffer: buffers.instancedMesh,
                    meshInstanceBuffer: buffers.meshInstance,
                    sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
@@ -206,7 +207,7 @@ extension MetalRenderer {
             guard let enc = countedEncoder(cb, pass) else { continue }
             encode(drawer, viewport: SIMD2(Float(target.width), Float(target.height)), into: enc,
                    triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf, imageBuffer: buffers.image,
-                   glyphBuffer: buffers.glyph, pointBuffer: buffers.point, meshBuffer: buffers.mesh,
+                   glyphBuffer: buffers.glyph, pointBuffer: buffers.point, meshBuffer: buffers.mesh, lineBuffer: buffers.line,
                    instancedMeshBuffer: buffers.instancedMesh,
                    meshInstanceBuffer: buffers.meshInstance,
                    sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
@@ -246,7 +247,7 @@ extension MetalRenderer {
             guard let enc = countedEncoder(cb, pass) else { continue }
             encode(drawer, viewport: SIMD2(Float(target.width), Float(target.height)), into: enc,
                    triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf, imageBuffer: buffers.image,
-                   glyphBuffer: buffers.glyph, pointBuffer: buffers.point, meshBuffer: buffers.mesh,
+                   glyphBuffer: buffers.glyph, pointBuffer: buffers.point, meshBuffer: buffers.mesh, lineBuffer: buffers.line,
                    instancedMeshBuffer: buffers.instancedMesh,
                    meshInstanceBuffer: buffers.meshInstance,
                    sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
@@ -311,7 +312,7 @@ extension MetalRenderer {
             if let enc = countedEncoder(cb, pass) {
                 encode(drawer, viewport: SIMD2(Float(target.width), Float(target.height)), into: enc,
                        triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf, imageBuffer: buffers.image,
-                       glyphBuffer: buffers.glyph, pointBuffer: buffers.point, meshBuffer: buffers.mesh,
+                       glyphBuffer: buffers.glyph, pointBuffer: buffers.point, meshBuffer: buffers.mesh, lineBuffer: buffers.line,
                    instancedMeshBuffer: buffers.instancedMesh,
                    meshInstanceBuffer: buffers.meshInstance,
                    sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
@@ -2925,6 +2926,7 @@ extension MetalRenderer {
                         triangleBuffer: MTLBuffer?, sdfBuffer: MTLBuffer?,
                         imageBuffer: MTLBuffer?, glyphBuffer: MTLBuffer?,
                         pointBuffer: MTLBuffer?, meshBuffer: MTLBuffer?,
+                        lineBuffer: MTLBuffer? = nil,
                         instancedMeshBuffer: MTLBuffer? = nil,
                         meshInstanceBuffer: MTLBuffer? = nil,
                         sdfGroupBuffer: MTLBuffer? = nil, sdfNodeBuffer: MTLBuffer? = nil,
@@ -3005,6 +3007,20 @@ extension MetalRenderer {
         if !drawer.meshInstances.isEmpty, let meshInstanceBuffer {
             drawer.meshInstances.withUnsafeBytes { raw in
                 meshInstanceBuffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
+            }
+        }
+        // The lines through the camera: every core vertex of the frame, then every
+        // fringe vertex, so a batch finds its fringe past the whole core run.
+        let lineStride = MemoryLayout<OllinLineVertex>.stride
+        if drawer.lineVertexCount > 0, let lineBuffer {
+            drawer.lineCoreVertices.withUnsafeBytes { raw in
+                guard let base = raw.baseAddress else { return }
+                lineBuffer.contents().copyMemory(from: base, byteCount: raw.count)
+            }
+            drawer.lineFringeVertices.withUnsafeBytes { raw in
+                guard let base = raw.baseAddress else { return }
+                (lineBuffer.contents() + drawer.lineCoreVertices.count * lineStride)
+                    .copyMemory(from: base, byteCount: raw.count)
             }
         }
         if !groups.isEmpty, let sdfGroupBuffer {
@@ -3520,7 +3536,8 @@ extension MetalRenderer {
                 // z-test + write; a plain 2D batch leaves depth alone. The depth
                 // scene and 3D batches set their own clip-z (a fragment SV_Depth and
                 // the camera projection), so only plain 2D batches feed `clipDepth`.
-                let wantsDepth = depthFormat != nil && (batch.kind == .points3D || batch.kind == .mesh3D
+                let wantsDepth = depthFormat != nil && (batch.kind == .points3D || batch.kind == .lines3D
+                    || batch.kind == .mesh3D
                     || batch.kind == .meshInstanced || batch.kind == .meshField
                     || batch.kind == .strands || batch.kind == .ocean
                     || batch.kind == .depthScene || batch.kind == .sdfGroup3D || batch.depth != nil)
@@ -3559,8 +3576,8 @@ extension MetalRenderer {
                                                  : (wantsDepth ? depthTestState : noDepthState))
                 }
                 if depthFormat != nil,
-                   batch.kind != .points3D && batch.kind != .mesh3D && batch.kind != .meshInstanced
-                    && batch.kind != .meshField && batch.kind != .strands && batch.kind != .ocean
+                   batch.kind != .points3D && batch.kind != .lines3D && batch.kind != .mesh3D
+                    && batch.kind != .meshInstanced && batch.kind != .meshField && batch.kind != .strands && batch.kind != .ocean
                     && batch.kind != .depthScene && batch.kind != .sdfGroup3D {
                     uniforms.clipDepth = batch.depth ?? 0
                     encoder.setVertexBytes(&uniforms, length: MemoryLayout<Uniforms>.stride, index: 1)
@@ -3765,6 +3782,32 @@ extension MetalRenderer {
                 encoder.setVertexBuffer(pointBuffer, offset: batch.pointStart * pointStride, index: 0)
                 profile.countDraw(batch.kind, count)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6, instanceCount: count)
+            case .lines3D:
+                // Lines through the camera: the core first, under the depth state set
+                // above (test and write), then the fringe, which tests depth but writes
+                // none, so its soft edge never stops something drawn later behind it.
+                // Both read the camera constants bound at index 2.
+                guard drawer.camera3D != nil, let lineBuffer else { continue }
+                encoder.setRenderPipelineState(state)
+                if batch.lineCoreCount > 0 {
+                    encoder.setVertexBuffer(lineBuffer, offset: batch.lineCoreStart * lineStride, index: 0)
+                    profile.countDraw(batch.kind, batch.lineCoreCount)
+                    encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: batch.lineCoreCount)
+                }
+                if batch.lineFringeCount > 0 {
+                    if depthFormat != nil {
+                        if hasStencil, batch.clipLevel > 0 {
+                            encoder.setDepthStencilState(
+                                clipDepthStencilState(ClipStateKey(depth: .testNoWrite, stencil: .equal)))
+                        } else {
+                            encoder.setDepthStencilState(depthTestNoWriteState)
+                        }
+                    }
+                    let start = drawer.lineCoreVertices.count + batch.lineFringeStart
+                    encoder.setVertexBuffer(lineBuffer, offset: start * lineStride, index: 0)
+                    profile.countDraw(batch.kind, batch.lineFringeCount)
+                    encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: batch.lineFringeCount)
+                }
             case .mesh3D:
                 // Path-traced export: the traced layer stands in for every solid mesh
                 // batch (composited once, at the first, so draw order against the 2D
