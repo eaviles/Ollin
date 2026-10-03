@@ -848,6 +848,15 @@ final class Drawer {
     /// motion from the depth buffer, per-object motion from `withMotion` blocks.
     private(set) var motionBlurEnabled = false
 
+    /// The canvas depth of field this frame (see `depthOfField`), nil when off.
+    /// Per-frame state like `motionBlurEnabled`; the lens itself is the camera's.
+    struct DepthOfFieldSetting: Equatable {
+        var focusRange: Double
+        var maxBlur: Double
+        var quality: RenderQuality
+    }
+    private(set) var depthOfFieldSetting: DepthOfFieldSetting?
+
     /// The blur's shutter: the fraction of a frame interval the virtual shutter
     /// stays open, so 0.5 is the film-standard 180-degree shutter (a streak half
     /// the frame-to-frame travel), 1 a full-interval smear, and values past 1 an
@@ -2757,6 +2766,18 @@ final class Drawer {
     /// Stop motion-blurring (the default). Per-frame state.
     func noMotionBlur() { motionBlurEnabled = false }
 
+    /// Blur the 3D frame by its own depth through the camera's lens this frame
+    /// (`Camera3D.aperture`, `focusDistance`, `apertureBlades`), holding
+    /// `focusRange` world units either side of the focus sharp and capping the
+    /// blur at `maxBlur` canvas points. Per-frame state like the motion blur.
+    func depthOfField(focusRange: Double = 0, maxBlur: Double = 48, quality: RenderQuality = .default) {
+        depthOfFieldSetting = DepthOfFieldSetting(focusRange: max(0, focusRange),
+                                                  maxBlur: max(0, maxBlur), quality: quality)
+    }
+
+    /// Stop the canvas depth of field (the default). Per-frame state.
+    func noDepthOfField() { depthOfFieldSetting = nil }
+
     /// Set the global-illumination quality to a hardware-relative tier (the renderer picks
     /// the rays per probe for the GPU, and the headless convergence depth). Persistent
     /// (set once, in `setup()` or `draw()`).
@@ -4435,6 +4456,7 @@ final class Drawer {
         frameInterpolationEnabled = false
         motionBlurEnabled = false
         motionBlurShutter = 0.5
+        depthOfFieldSetting = nil
         lensFlareSetting = nil
         // Atmosphere is per-frame like the lights (the quality setting persists).
         fogColor = nil

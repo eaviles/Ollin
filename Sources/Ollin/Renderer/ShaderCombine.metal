@@ -499,24 +499,19 @@ static inline float ollin_dof_aperture(float angle, float2 dir, float blades,
     return reach;
 }
 
-fragment float4 ollin_fx_depth_of_field(PresentOut in [[stage_in]],
-                                        texture2d<float> base [[texture(0)]],
-                                        texture2d<float> cocMap [[texture(1)]],
-                                        sampler samp [[sampler(0)]],
-                                        constant float4 *params [[buffer(0)]]) {
-    float focus = params[0].x, maxBlur = params[0].z;
-    float2 texel = params[1].xy;
-    // The bokeh tap budget (resolved from the `.defocus` quality on the CPU side); falls
-    // back to the default if a caller leaves the slot empty.
-    float budget = params[1].z >= 1.0 ? params[1].z : float(OLLIN_DOF_TAPS);
-
-    // No blur asked for (or a degenerate layer): pass the base through untouched, so
-    // the op is a cheap no-op at maxBlur 0 and snapshot-safe in that case.
-    if (maxBlur < 0.5) return base.sample(samp, in.uv);
+// The bokeh gather both depth-of-field passes share: `.defocus` over a layer, with
+// one reach for the whole layer (`maxBlur`), and the canvas pass, which hands each
+// pixel the reach of the widest blur that can land on it. `cocMap` carries the
+// prepass's (scatter size, depth, receive size); depth only has to order the
+// same way `focus` does, so a normalized depth and a distance both serve.
+static inline float4 ollin_dof_gather(float2 uv, texture2d<float> base, texture2d<float> cocMap,
+                                      sampler samp, float focus, float maxBlur, float2 texel,
+                                      float budget, float bladesParam, float rotationParam,
+                                      float catsEyeParam) {
 
     // This pixel's depth and the blur size it *receives* (seam-dilated), the reference
     // every tap is measured against. Both come from the pre-pass above.
-    float4 centerInfo = cocMap.sample(samp, in.uv);
+    float4 centerInfo = cocMap.sample(samp, uv);
     float centerDepth = centerInfo.y;
     float centerSize  = centerInfo.z;
 
@@ -540,9 +535,9 @@ fragment float4 ollin_fx_depth_of_field(PresentOut in [[stage_in]],
     // corners, so the rim goes out with it and the tap spacing widens to match: the
     // tap count stays at the budget and the corners are not cut off. A round opening
     // reaches exactly 1, which is what leaves that case byte-identical.
-    float blades = floor(max(0.0, params[0].w) + 0.5);
-    float rotation = params[2].x;
-    float catsEye = saturate(params[2].y);
+    float blades = floor(max(0.0, bladesParam) + 0.5);
+    float rotation = rotationParam;
+    float catsEye = saturate(catsEyeParam);
     float apertureReach = blades >= 3.0
         ? sqrt(M_PI_F / (blades * sin(M_PI_F / blades) * cos(M_PI_F / blades)))
         : 1.0;
@@ -551,7 +546,7 @@ fragment float4 ollin_fx_depth_of_field(PresentOut in [[stage_in]],
     // opening: nothing in the middle, most in the corners. The clip stops short of a
     // full pinch, since an opening squeezed to a line passes no light at all.
     float2 halfLayer = 0.5 / texel;
-    float2 fromCenter = (in.uv - 0.5) / texel;
+    float2 fromCenter = (uv - 0.5) / texel;
     float fieldLength = length(fromCenter);
     float2 fieldDir = fieldLength > 1e-4 ? fromCenter / fieldLength : float2(1.0, 0.0);
     float pinch = catsEye * saturate(fieldLength / max(length(halfLayer), 1e-4)) * 0.9;
@@ -563,7 +558,7 @@ fragment float4 ollin_fx_depth_of_field(PresentOut in [[stage_in]],
     bool shaped = blades >= 3.0 || catsEye > 0.0;
     float radScale = max(0.5, rim * rim / (budget * 2.0));          // ≈ `budget` taps to the rim
     int maxIters = int(budget * 2.0);                               // safety cap (the break ends it first)
-    float4 centerColor = base.sample(samp, in.uv);
+    float4 centerColor = base.sample(samp, uv);
     // Both fields seed with the center texel, so a field no tap reaches resolves to the
     // center rather than to a phantom sample. Seeding the near field with black instead
     // (the obvious "nothing here yet" value) leaves its running average converging *from*
@@ -589,9 +584,9 @@ fragment float4 ollin_fx_depth_of_field(PresentOut in [[stage_in]],
         if (radius >= rim) break;
         float a = float(i) * goldenAngle;
         float2 dir = float2(cos(a), sin(a));
-        float2 uv = clamp(in.uv + dir * radius * texel, 0.0, 1.0);
-        float4 s = base.sample(samp, uv);
-        float4 tap = cocMap.sample(samp, uv);
+        float2 tapUV = clamp(uv + dir * radius * texel, 0.0, 1.0);
+        float4 s = base.sample(samp, tapUV);
+        float4 tap = cocMap.sample(samp, tapUV);
         float sd = tap.y;
         float sSize = tap.x;                                 // the size it *scatters* by
         bool isNear = sd < focus;                            // nearer than the focal plane
@@ -648,6 +643,371 @@ fragment float4 ollin_fx_depth_of_field(PresentOut in [[stage_in]],
                                   : saturate(fgCoverage / max(fgTotal * nearArea * nearArea, 1e-4));
     float dofStrength = smoothstep(0.5, 1.5, centerSize);
     return mix(mix(centerColor, bg, dofStrength), fg, fgAlpha);
+}
+
+fragment float4 ollin_fx_depth_of_field(PresentOut in [[stage_in]],
+                                        texture2d<float> base [[texture(0)]],
+                                        texture2d<float> cocMap [[texture(1)]],
+                                        sampler samp [[sampler(0)]],
+                                        constant float4 *params [[buffer(0)]]) {
+    float focus = params[0].x, maxBlur = params[0].z;
+    float2 texel = params[1].xy;
+    // The bokeh tap budget (resolved from the `.defocus` quality on the CPU side); falls
+    // back to the default if a caller leaves the slot empty.
+    float budget = params[1].z >= 1.0 ? params[1].z : float(OLLIN_DOF_TAPS);
+
+    // No blur asked for (or a degenerate layer): pass the base through untouched, so
+    // the op is a cheap no-op at maxBlur 0 and snapshot-safe in that case.
+    if (maxBlur < 0.5) return base.sample(samp, in.uv);
+    return ollin_dof_gather(in.uv, base, cocMap, samp, focus, maxBlur, texel, budget,
+                            params[0].w, params[2].x, params[2].y);
+}
+
+// MARK: Depth of field on the canvas, through the camera's lens
+//
+// `depthOfField()` blurs the finished 3D frame by its own depth the way a thin lens
+// of radius R focused at s would: a point at distance d spreads over a disc of radius
+// R * F * |1/s - 1/d| pixels, F being the focal length in pixels. That grows without
+// bound toward the camera and approaches R * F / s far away, which is the shape a
+// photograph has and a ramp in normalized depth does not. An optional band s +- range
+// is held sharp, the blur then growing from the band's near or far edge by the same
+// rule. Five passes: the prepass (blur sizes from the depth buffer), a tile maximum
+// and its 3x3 neighbor maximum (the widest blur that can reach each tile, the widest
+// in front of the focus, how far the tile's colors spread), the gather, run per pixel
+// only as far as anything can reach it, so a mostly sharp frame costs little and a
+// small blur keeps its taps close, and a 3x3 median over what came out blurred.
+//
+// params[0] = (near, far, F px, R world), params[1] = (s, range, maxBlur px, tile k),
+// params[2] = (texel.xy, budget, blades).
+
+// Distance along the view axis. The backdrop (depth 1: the clear color, the
+// environment, and 2D drawing with nothing 3D behind it) reads as the far plane,
+// where a lens puts the sky. It has to: the gather keeps light in balance only
+// when every pixel around a blurred highlight carries a real blur size, and a
+// backdrop held sharp would let a far highlight keep its full brightness while
+// it spreads (measured: twice its light).
+static inline float ollin_lens_distance(depth2d<float> depthTex, sampler samp, float2 uv,
+                                        float near, float far) {
+    constexpr sampler nearest(filter::nearest, address::clamp_to_edge);
+    float z = depthTex.sample(nearest, uv);   // never a blend of two surfaces' depths
+    return (near * far) / max(1e-6, far - z * (far - near));
+}
+
+static inline float ollin_lens_coc(float d, float F, float R, float s, float range, float maxBlur) {
+    if (abs(d - s) <= range) return 0.0;
+    float edge = d < s ? max(s - range, 1e-4) : s + range;
+    return min(R * F * abs(1.0 / edge - 1.0 / max(d, 1e-4)), maxBlur);
+}
+
+// The canvas prepass: the blur size, the distance, and the blur size again where the
+// pixel stands in front of the focus (0 elsewhere), read from the canvas depth buffer
+// as distance along the view axis. Unlike the layer prepass it keeps each pixel's own
+// size, with no minimum over its neighbors: that filter is for a drawn depth map,
+// whose silhouettes carry in-between depths, and the canvas depth is resolved to the
+// nearest surface in each pixel, so it has none. Kept, it would hand a thin object
+// its background's size (a near line held to the far plane's blur) and weigh the
+// background beside every edge more heavily than the edge itself.
+fragment float4 ollin_fx_lens_dof_prepass(PresentOut in [[stage_in]],
+                                          depth2d<float> depthTex [[texture(0)]],
+                                          sampler samp [[sampler(0)]],
+                                          constant float4 *params [[buffer(0)]]) {
+    float near = params[0].x, far = params[0].y, F = params[0].z, R = params[0].w;
+    float s = params[1].x, range = params[1].y, maxBlur = params[1].z;
+    float d = ollin_lens_distance(depthTex, samp, in.uv, near, far);
+    float own = ollin_lens_coc(d, F, R, s, range, maxBlur);
+    return float4(own, d, d < s ? own : 0.0, 1.0);
+}
+
+// For each k x k tile: the widest blur, how far its colors spread (the largest
+// difference in any channel), and the widest blur in front of the focus.
+// params[1].w = k.
+fragment float4 ollin_fx_lens_dof_tilemax(PresentOut in [[stage_in]],
+                                          texture2d<float> cocMap [[texture(0)]],
+                                          texture2d<float> base [[texture(1)]],
+                                          constant float4 *params [[buffer(0)]]) {
+    uint k = uint(params[1].w);
+    uint2 origin = uint2(in.position.xy) * k;
+    uint2 limit = uint2(cocMap.get_width(), cocMap.get_height());
+    float widest = 0.0, widestNear = 0.0;
+    float4 low = float4(INFINITY), high = float4(-INFINITY);
+    for (uint y = 0; y < k; y++) {
+        for (uint x = 0; x < k; x++) {
+            uint2 at = origin + uint2(x, y);
+            if (at.x < limit.x && at.y < limit.y) {
+                float4 coc = cocMap.read(at);
+                widest = max(widest, coc.x);
+                widestNear = max(widestNear, coc.z);
+                float4 c = base.read(at);
+                low = min(low, c);
+                high = max(high, c);
+            }
+        }
+    }
+    float4 spread = max(high - low, 0.0);
+    return float4(widest, max(max(spread.r, spread.g), max(spread.b, spread.a)), widestNear, 1.0);
+}
+
+// The widest of each over a tile and its eight neighbors: a blur no wider than one
+// tile reaches no further than the next one.
+fragment float4 ollin_fx_lens_dof_neighbormax(PresentOut in [[stage_in]],
+                                              texture2d<float> tiles [[texture(0)]]) {
+    int2 here = int2(in.position.xy);
+    int2 limit = int2(tiles.get_width(), tiles.get_height()) - 1;
+    float3 widest = float3(0.0);
+    for (int y = -1; y <= 1; y++) {
+        for (int x = -1; x <= 1; x++) {
+            widest = max(widest, tiles.read(uint2(clamp(here + int2(x, y), int2(0), limit))).xyz);
+        }
+    }
+    return float4(widest, 1.0);
+}
+
+// The canvas gather, written as a scatter: every tap q is a disc of light of radius
+// c_q, and it lands on this pixel with the density 1 / (pi c_q^2) wherever its disc
+// covers it, times the area the tap stands for. So a small, sharp highlight keeps
+// its light as it opens into a disc (its light divided by the disc's area), and a
+// thin line in focus keeps its own weight against a blurred background, which an
+// average of the taps that reach (the layer gather above) gives away whenever the
+// neighbors' blurs differ in size.
+//
+// Three layers, by distance against this pixel's own (within a hundredth of it is
+// the same surface). What stands in front of this pixel and in front of the focus
+// spreads over it: its densities add up to how much of this pixel it covers, and it
+// composites over the rest by that much, so a defocused foreground turns into a
+// veil with the subject showing through. Under it is this pixel's own surface. When
+// that surface is itself in front of the focus it is a veil too, covering the pixel
+// by its share of the disc nothing in front takes, against the holes the scene
+// behind shows through within its blur, so the inside of a blurred bar composites
+// the same way as the pixels beside it; otherwise it
+// joins what stands behind, normalized by their densities together. Splitting at the
+// focal plane alone fails twice: a subject in focus bulges a little in front of the
+// plane and counts as foreground behind a blurred bar, leaving the bar nothing to show
+// through, and two foregrounds at different distances mix by their densities rather
+// than one hiding the other. A surface behind this pixel is hidden by it past this
+// pixel's own blur, so a sharp edge keeps the background's blur from reaching across
+// it (at twice, as the layer gather allows, a line in focus lost a quarter of its
+// light to the dark pixels one step away).
+//
+// The taps follow the expanding golden-angle spiral, each standing for an equal
+// area, out to `reach`: as far as anything can land on this pixel from. Every tap
+// reads one whole pixel, color and blur alike: a filtered read between a sharp line
+// and the background behind it invents a blur size neither has and throws the line's
+// color that far (measured: a glow 10 px out from a line in focus).
+//
+// What a blurred foreground lets through is a guess: the frame holds one surface per
+// pixel, and what stands behind a foreground is missing from it. The guess is the
+// scene that shows around the foreground, within its blur. A lens looking past the
+// top of a ball at a floor hidden behind it sees that floor; this sees what shows
+// beside the ball instead.
+
+// How much the scene behind a foreground counts where its own blur does not reach
+// the pixel. Against a layered thin-lens reference (a blurred bar over a checker), a
+// quarter kept the inside of the bar continuous with the pixels beside it: RMS error
+// 0.035, against 0.037 at a tenth and 0.042 at full weight, which shows the edge.
+constant float kDofRevealWeight = 0.25;
+// How far the spiral moves from pixel to pixel, in tap spacings (see the gather).
+constant float kDofJitter = 1.0;
+
+static inline float4 ollin_lens_gather(float2 uv, texture2d<float> base, texture2d<float> cocMap,
+                                       sampler samp, float focus, float lensScale, float reach,
+                                       float2 texel, float budget, float bladesParam) {
+    const float goldenAngle = 2.399963229728653;
+    float blades = floor(max(0.0, bladesParam) + 0.5);
+    float apertureReach = blades >= 3.0
+        ? sqrt(M_PI_F / (blades * sin(M_PI_F / blades) * cos(M_PI_F / blades)))
+        : 1.0;
+    float rim = reach * apertureReach;
+    int maxIters = int(budget * 2.0);
+
+    constexpr sampler whole(filter::nearest, address::clamp_to_edge);
+    float4 center = cocMap.sample(whole, uv);
+    float ownDepth = center.y;
+    float ownBlur = max(center.x, 0.5);
+    // The spiral runs in one zone, or in two when a wider blur nearby sets the reach
+    // well past this pixel's own: half the taps out to its own blur, where a small
+    // bright source has to be found, and the rest over the ring beyond, where only a
+    // wide blur in front lands. One zone spread to the far reach would hit a source
+    // of a few pixels about once, and the disc it opens into would come out grainy.
+    float inner = min(rim, (ownBlur + 1.0) * apertureReach);
+    bool zoned = inner < rim * 0.8;
+    float innerTaps = zoned ? budget * 0.5 : budget;
+    float radScale = max(0.25, (zoned ? inner * inner : rim * rim) / (innerTaps * 2.0));
+    float outerScale = max(0.5, (rim * rim - inner * inner) / ((budget - innerTaps + 1.0) * 2.0));
+    float tapArea = 2.0 * M_PI_F * radScale;          // each tap stands for its own annulus
+    float limit = zoned ? inner : rim;
+    float start = 0.0;                                 // r^2 where the zone begins
+    float4 here = base.sample(whole, uv);
+    // This pixel's own light, over its own disc (all of it while the disc is
+    // smaller than the pixel), in its own surface's layer.
+    bool hereInFront = ownDepth < focus;
+    float ownLensBlur = lensScale * abs(1.0 / focus - 1.0 / max(ownDepth, 1e-4));
+    float hereWeight = min(1.0, 1.0 / (M_PI_F * ownBlur * ownBlur));
+    float4 front = float4(0.0); float frontWeight = 0.0;
+    float4 own = here * hereWeight; float ownWeight = hereWeight;
+    float4 back = float4(0.0); float backWeight = 0.0;
+    // How much of this pixel's own disc its surface takes, and how much shows what
+    // stands behind it, as areas. What stands in front takes the rest and is the veil's.
+    float ownCover = min(1.0, M_PI_F * ownBlur * ownBlur), holeCover = 0.0;
+    // Distances run between pixel centers: each tap is snapped to the pixel it reads,
+    // and a tap that lands on this pixel is passed over (its light is `here`). A
+    // sharp neighbor then never reaches across: measured from the spiral's own
+    // radius instead, a tap a fraction of a pixel out read the line beside a pixel
+    // with the weight of a sharp point and took the pixel over.
+    float2 size = 1.0 / texel;
+    float2 hereCenter = floor(uv * size) + 0.5;
+    // The whole spiral is moved by up to half a tap's spacing, by an amount that is a
+    // fixed function of the pixel's position. Unmoved, the taps that find a small
+    // source shift slowly from one pixel to the next and leave smooth blotches in the
+    // disc it opens into; moved, they leave a grain a pixel across, which the median
+    // after the gather takes out. Every export of a frame is still the same.
+    float n1 = fract(52.9829189 * fract(dot(hereCenter, float2(0.06711056, 0.00583715))));
+    float n2 = fract(52.9829189 * fract(dot(hereCenter + float2(47.0, 17.0), float2(0.06711056, 0.00583715))));
+    float2 jitter = (float2(n1, n2) - 0.5) * sqrt(tapArea) * kDofJitter;
+    // Tap j of a zone sits at the middle of its own annulus, r^2 = start + 2 s (j + 1/2),
+    // so each stands for the same area right down to the center. Stepped instead, by
+    // s / r at a time, the first step from a small radius overshoots and the ring of
+    // neighbors one pixel out is barely sampled: measured, a thin line kept 95% of its
+    // light at a step of a quarter pixel and 100% placed this way.
+    int j = 0;
+    for (int i = 0; i < maxIters; i++, j++) {
+        float radius = sqrt(start + 2.0 * radScale * (float(j) + 0.5));
+        if (radius >= limit) {
+            if (limit >= rim) break;
+            start = inner * inner;
+            radScale = outerScale;
+            tapArea = 2.0 * M_PI_F * radScale;
+            limit = rim;
+            j = 0;
+            radius = sqrt(start + radScale);
+        }
+        float a = float(i) * goldenAngle;
+        float2 dir = float2(cos(a), sin(a));
+        float2 tapCenter = floor(hereCenter + dir * radius + jitter) + 0.5;
+        float2 offset = tapCenter - hereCenter;
+        if (offset.x == 0.0 && offset.y == 0.0) continue;
+        float2 tapUV = clamp(tapCenter * texel, 0.0, 1.0);
+        float4 s = base.sample(whole, tapUV);
+        float4 tap = cocMap.sample(whole, tapUV);
+        float depth = tap.y;
+        float blur = max(tap.x, 0.5);
+        bool nearer = depth < ownDepth * 0.99, farther = depth > ownDepth * 1.01;
+        bool inFront = nearer && depth < focus;
+        // A surface behind this pixel is hidden by it past this pixel's own blur.
+        if (farther && !hereInFront) blur = min(blur, ownBlur);
+        // Behind a foreground, a farther tap is another surface only when its blur
+        // differs too: a surface turning away, as a ball does at its edge, changes
+        // distance fast and its blur hardly at all, and counted as another surface
+        // it would show through its own edge. The blurs compared are the lens's own,
+        // before `maxBlur` caps them, which would make a near bar and the backdrop
+        // behind it the same.
+        bool behind = farther;
+        if (hereInFront && farther) {
+            float lensBlur = lensScale * abs(1.0 / focus - 1.0 / max(depth, 1e-4));
+            behind = abs(lensBlur - ownLensBlur) > max(1.0, 0.1 * ownLensBlur);
+        }
+        float distance = length(offset);
+        if (blades >= 3.0) {
+            float2 along = offset / distance;
+            distance /= max(ollin_dof_aperture(atan2(along.y, along.x), along, blades, 0.0,
+                                               float2(1.0, 0.0), 0.0), 1e-3);
+        }
+        float cover = smoothstep(distance - 0.5, distance + 0.5, blur);
+        float w = cover * tapArea / (M_PI_F * blur * blur);
+        if (behind && hereInFront) {
+            // This pixel is a blurred foreground, and what stands behind it is hidden.
+            // Whatever of the scene behind shows within this pixel's own blur is a
+            // hole in its surface's cover. The scene behind lands as it would
+            // anywhere, by its own blur; past that, and as far as this pixel's own
+            // blur reaches, it stands in at a fraction of the weight, so the nearest
+            // of it decides what shows through and the middle of a wide foreground
+            // still finds something.
+            float hole = smoothstep(distance - 0.5, distance + 0.5, ownBlur) * tapArea;
+            holeCover += hole;
+            w = max(w, kDofRevealWeight * hole / (M_PI_F * ownBlur * ownBlur));
+        }
+        if (inFront) { front += s * w; frontWeight += w; }
+        else if (behind || !hereInFront) { back += s * w; backWeight += w; }
+        else {
+            own += s * w; ownWeight += w;
+            ownCover += smoothstep(distance - 0.5, distance + 0.5, ownBlur) * tapArea;
+        }
+    }
+    float4 surface;
+    if (hereInFront) {
+        // The surface covers this pixel by its share of the disc that nothing in front
+        // takes: its own area against the holes in it. Counted as one minus the
+        // holes instead, the part of the surface nearer than this pixel covers it
+        // twice, once in the veil and once here, and the inside of a blurred ball's
+        // edge came out a step more opaque than the outside: an outline. As a share,
+        // the veil's cover X and the surface's Y / (1 - X) add up to X + Y. And a
+        // surface nearly in focus still covers its own pixel whole.
+        float4 hidden = backWeight > 1e-6 ? back / backWeight : own / ownWeight;
+        surface = mix(hidden, own / ownWeight, ownCover / (ownCover + holeCover));
+    } else {
+        surface = (back + own) / (backWeight + ownWeight);
+    }
+    float4 veil = frontWeight > 1e-6 ? front / frontWeight : surface;
+    return mix(surface, veil, saturate(frontWeight));
+}
+
+// A 3x3 median over what the gather blurred, per channel (the exchange network that
+// finds the fifth of nine with nineteen comparisons). What grain the gather leaves is
+// a pixel or two across, and a median takes it out without growing a highlight, as a
+// maximum would. It applies by how blurred the pixel itself is, so a line in focus is
+// never touched.
+static inline void ollin_lens_sort2(thread float4 &a, thread float4 &b) {
+    float4 t = min(a, b); b = max(a, b); a = t;
+}
+
+fragment float4 ollin_fx_lens_dof_median(PresentOut in [[stage_in]],
+                                         texture2d<float> gathered [[texture(0)]],
+                                         texture2d<float> cocMap [[texture(1)]]) {
+    uint2 pixel = uint2(in.position.xy);
+    float4 here = gathered.read(pixel);
+    float coc = cocMap.read(pixel).x;
+    if (coc < 1.0) return here;
+    int2 limit = int2(gathered.get_width(), gathered.get_height()) - 1;
+    float4 v[9];
+    for (int y = -1; y <= 1; y++) {
+        for (int x = -1; x <= 1; x++) {
+            v[(y + 1) * 3 + (x + 1)] = gathered.read(uint2(clamp(int2(pixel) + int2(x, y), int2(0), limit)));
+        }
+    }
+    ollin_lens_sort2(v[1], v[2]); ollin_lens_sort2(v[4], v[5]); ollin_lens_sort2(v[7], v[8]);
+    ollin_lens_sort2(v[0], v[1]); ollin_lens_sort2(v[3], v[4]); ollin_lens_sort2(v[6], v[7]);
+    ollin_lens_sort2(v[1], v[2]); ollin_lens_sort2(v[4], v[5]); ollin_lens_sort2(v[7], v[8]);
+    ollin_lens_sort2(v[0], v[3]); ollin_lens_sort2(v[5], v[8]); ollin_lens_sort2(v[4], v[7]);
+    ollin_lens_sort2(v[3], v[6]); ollin_lens_sort2(v[1], v[4]); ollin_lens_sort2(v[2], v[5]);
+    ollin_lens_sort2(v[4], v[7]); ollin_lens_sort2(v[4], v[2]); ollin_lens_sort2(v[6], v[4]);
+    ollin_lens_sort2(v[4], v[2]);
+    return mix(here, v[4], saturate(coc - 1.0));
+}
+
+// The canvas pass: the scatter gather above, run as far as anything can land on this
+// pixel from. That is its own blur, or the widest blur in front of the focus nearby
+// when that is wider: a tap behind this pixel is held to this pixel's blur, and one
+// nearer but behind the focus is less blurred than this pixel is. A pixel nothing
+// reaches keeps itself, and so does one whose neighborhood holds a single color (a
+// plain backdrop, most often): every tap would read that color, and any weighting of
+// it is itself.
+fragment float4 ollin_fx_lens_depth_of_field(PresentOut in [[stage_in]],
+                                             texture2d<float> base [[texture(0)]],
+                                             texture2d<float> cocMap [[texture(1)]],
+                                             texture2d<float> reachMap [[texture(2)]],
+                                             sampler samp [[sampler(0)]],
+                                             constant float4 *params [[buffer(0)]]) {
+    float s = params[1].x;
+    uint k = uint(params[1].w);
+    float2 texel = params[2].xy;
+    float budget = params[2].z;
+    uint2 tile = min(uint2(in.position.xy) / k,
+                     uint2(reachMap.get_width() - 1, reachMap.get_height() - 1));
+    float3 tiles = reachMap.read(tile).xyz;
+    constexpr sampler whole(filter::nearest, address::clamp_to_edge);
+    float reach = min(tiles.x, max(cocMap.sample(whole, in.uv).x, tiles.z));
+    if (reach < 0.5 || tiles.y < 1e-4) return base.sample(samp, in.uv);
+    return ollin_lens_gather(in.uv, base, cocMap, samp, s, params[0].w * params[0].z,
+                             reach + 1.0, texel, budget, params[2].w);
 }
 
 // depth normalize: turn a 3D render target's resolved clip-space depth into the gray

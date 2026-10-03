@@ -348,6 +348,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("scene-defocus-3d",
                  note: "A 3D scene drawn into a render target, defocused by the target's own depth buffer (scene.depth) with the focal plane on the middle sphere. Pins the 3D-in-target path: the target's depth attachment + resolve, the depth normalize pass (clip-space depth linearized over near/far, encoded for the perceptual DoF decode), and the depth layer feeding .defocus as the aux.",
                  make: { SceneDefocus3DScene() }),
+    SnapshotCase("depth-of-field-3d",
+                 note: "A lit scene blurred on the main canvas by depthOfField() through the camera's lens: a near sphere spread into a veil over a ball in focus, a far row of glowing beads opening into hexagonal discs (six iris blades), a floor going soft both ways from the focus, and a band held sharp by focusRange. Pins the canvas pass: the depth read as distance, the thin-lens blur size, the tile reach, the scatter gather's three layers and its hidden-surface clamp. DepthOfFieldTests pins the measured behavior a mean-difference comparison averages away.",
+                 make: { CanvasDepthOfFieldScene() }),
     SnapshotCase("ssao-3d",
                  note: "A packed block field on a ground plane, ambient-occluded by the scene's own depth (scene.depth). Pins the ambient-occlusion combine: the view-space position + normal reconstructed from the depth (no normal buffer), the camera geometry stamped on the depth layer, and the spiral obscurance gather darkening crevices and contacts while flat faces stay clean.",
                  make: { AmbientOcclusionScene() }),
@@ -1375,6 +1378,42 @@ private final class SceneDefocus3DScene: Sketch {
         // foreground spreads over it and the background blurs behind.
         drawImage(scene.combined(with: scene.depth,
                                  .defocus(focus: 0.36, range: 0.07, maxBlur: 20)).image, 0, 0)
+    }
+}
+
+private final class CanvasDepthOfFieldScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        var lens = Camera3D.perspective(eye: Vector3(0, 1.2, 6), target: Vector3(0, 0.3, 0),
+                                        fieldOfView: .pi / 4, near: 0.5, far: 40)
+        lens.aperture = 0.25
+        lens.focusDistance = 6
+        lens.apertureBlades = 6
+        camera(lens)
+        depthOfField(focusRange: 0.3, maxBlur: 24)
+        light(.directional(.white, direction: Vector3(-0.4, -1, -0.6), intensity: 2.5))
+        ambientLight(Color(white: 0.25))
+        for z in -14 ..< 5 {
+            for x in -6 ..< 6 {
+                fill(Color(white: (x + z) & 1 == 0 ? 0.7 : 0.3))
+                withState { translate(Double(x) + 0.5, -0.6, Double(z) + 0.5); drawBox(width: 1, height: 0.05, depth: 1) }
+            }
+        }
+        fill(Color(red: 0.9, green: 0.4, blue: 0.2))
+        withState { translate(0, 0.3, 0); drawSphere(radius: 0.8) }
+        fill(Color(red: 0.25, green: 0.5, blue: 1))
+        withState { translate(-0.9, 0.5, 3.6); drawSphere(radius: 0.35) }
+        withoutLights {
+            for i in 0 ..< 7 {
+                fill(Color(hue: Double(i) / 7, saturation: 0.5, brightness: 1))
+                withState {
+                    translate(-3 + Double(i), 1.4, -9)
+                    drawMesh(Mesh.sphere(radius: 0.1).glowing(12))
+                }
+            }
+        }
     }
 }
 

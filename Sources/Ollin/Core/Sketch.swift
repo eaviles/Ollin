@@ -1726,6 +1726,44 @@ open class Sketch {
     /// Works on any Metal GPU. Call `noMotionBlur()` to turn it back off.
     public func motionBlur(shutter: Double = 0.5) { drawer.motionBlur(shutter: shutter) }
 
+    /// Blur the 3D frame by its own depth, the way the camera's lens would: the
+    /// lens is the camera's `aperture` (a radius in world units), `focusDistance`
+    /// (from the eye along the view axis, the target's distance when nil), and
+    /// `apertureBlades`, the settings the path-traced export reads. A point at
+    /// distance d spreads over a disc whose radius grows with |1/focus - 1/d|, so
+    /// the blur grows quickly toward the camera and levels off far away, and a
+    /// highlight brighter than its surroundings opens into a disc of the iris's
+    /// shape, keeping its light. A blurred foreground turns into a veil with the
+    /// subject showing through it. `focusRange` holds that many world units either
+    /// side of the focus sharp, which no real lens does, for a whole subject in
+    /// focus; the blur then grows from the band's edge. `maxBlur` caps the blur's
+    /// radius in canvas points, and `quality` sets how many samples smooth it.
+    ///
+    /// ```swift
+    /// var lens = Camera3D.orbiting(target: .zero, radius: 2.3, azimuth: 0.4, elevation: 0.3)
+    /// lens.aperture = 0.05
+    /// lens.focusDistance = 1.8
+    /// camera(lens)
+    /// depthOfField(focusRange: 0.5)
+    /// ```
+    ///
+    /// It runs on the finished frame after temporal anti-aliasing and before
+    /// motion blur, so all three work together, and an export carries it
+    /// deterministically. Per-frame state like the lights and camera, so call it
+    /// in `draw()`; it applies to the main canvas and needs a perspective camera
+    /// with an aperture above 0 (a note says so otherwise). The backdrop (the
+    /// clear color, the environment, and 2D drawing with no 3D behind it) stands
+    /// at the far plane and blurs as the farthest thing in the scene, and 2D drawn
+    /// over the scene takes the blur of the surface under it. Call
+    /// `noDepthOfField()` to turn it back off.
+    public func depthOfField(focusRange: Double = 0, maxBlur: Double = 48,
+                             quality: RenderQuality = .default) {
+        drawer.depthOfField(focusRange: focusRange, maxBlur: maxBlur, quality: quality)
+    }
+
+    /// Stop blurring the 3D frame by its depth (the default).
+    public func noDepthOfField() { drawer.noDepthOfField() }
+
     /// Stop motion-blurring (the default).
     public func noMotionBlur() { drawer.noMotionBlur() }
 

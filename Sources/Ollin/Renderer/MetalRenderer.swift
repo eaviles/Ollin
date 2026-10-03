@@ -2065,7 +2065,8 @@ final class MetalRenderer {
                 geomPass.depthAttachment.clearDepth = 1.0
                 geomPass.depthAttachment.storeAction = .dontCare
                 passDepthFormat = depthPixelFormat
-                if taaActive || blurActive || fxActive || interpolationActive || lensFlareActive(drawer) {
+                if taaActive || blurActive || fxActive || interpolationActive || lensFlareActive(drawer)
+                    || depthOfFieldActive(drawer) {
                     if mainDepthResolve?.width != renderWidth || mainDepthResolve?.height != renderHeight {
                         mainDepthResolve = makeDepthResolve(width: renderWidth, height: renderHeight)
                     }
@@ -2323,7 +2324,15 @@ final class MetalRenderer {
         // the upscaler it runs at the full output size, reading the
         // render-resolution depth and mover velocity by normalized coordinates
         // (the mover's pixel values rescaled by `moverScale`).
-        let blurred = applyMotionBlur(drawer, resolved: stabilized,
+        // Depth of field goes on the settled frame, after the temporal resolve
+        // (its gather is a fixed pattern, so the history has nothing to clean up
+        // and the resolve's clamp never fights a blur it did not see) and before
+        // the motion blur (a moving defocused shape streaks as one soft shape).
+        let focused = applyDepthOfField(drawer, resolved: stabilized, depth: mainDepthResolve,
+                                        into: commandBuffer, width: width, height: height,
+                                        pointScale: viewport.y > 0 ? Float(height) / viewport.y : 1,
+                                        pooled: true)
+        let blurred = applyMotionBlur(drawer, resolved: focused,
                                       depth: blurActive ? mainDepthResolve : nil,
                                       moverVelocity: blurMover, meshBuffer: meshBuf,
                                       into: commandBuffer, width: width, height: height,
@@ -2732,7 +2741,7 @@ final class MetalRenderer {
             // Slow motion out of made frames reads the same resolved depth the
             // blur and the flare do, so it joins them rather than adding a pass.
             if motionBlurActive(drawer) || lensFlareActive(drawer) || exportMadeFrames
-                || capturesLinearFrame,
+                || capturesLinearFrame || depthOfFieldActive(drawer),
                let resolve = makeDepthResolve(width: width, height: height) {
                 pass.depthAttachment.resolveTexture = resolve
                 pass.depthAttachment.storeAction = .multisampleResolve
@@ -2949,7 +2958,10 @@ final class MetalRenderer {
             // after-TAA slot); the depth resolve holds the last jittered pass's
             // depth, at most half a pixel off, which the average's own tolerance
             // already accepts. Untouched when the blur is off.
-            let blurred = applyMotionBlur(drawer, resolved: sampled, depth: sceneDepthResolve,
+            let focused = applyDepthOfField(drawer, resolved: sampled, depth: sceneDepthResolve,
+                                            into: commandBuffer, width: outWidth, height: outHeight,
+                                            pointScale: 1, pooled: false)
+            let blurred = applyMotionBlur(drawer, resolved: focused, depth: sceneDepthResolve,
                                           moverVelocity: nil, meshBuffer: meshBuf,
                                           into: commandBuffer, width: outWidth, height: outHeight,
                                           pooled: false)
@@ -2997,7 +3009,10 @@ final class MetalRenderer {
             let sampled = encodeSupersampleResolve(scattered, scale: scale,
                                                    width: outWidth, height: outHeight,
                                                    into: commandBuffer)
-            let blurred = applyMotionBlur(drawer, resolved: sampled, depth: sceneDepthResolve,
+            let focused = applyDepthOfField(drawer, resolved: sampled, depth: sceneDepthResolve,
+                                            into: commandBuffer, width: outWidth, height: outHeight,
+                                            pointScale: 1, pooled: false)
+            let blurred = applyMotionBlur(drawer, resolved: focused, depth: sceneDepthResolve,
                                           moverVelocity: nil, meshBuffer: meshBuf,
                                           into: commandBuffer, width: outWidth, height: outHeight,
                                           pooled: false)
@@ -3113,7 +3128,7 @@ final class MetalRenderer {
                 passDepthFormat = depthPixelFormat
                 // Temporal AA and motion blur (the live one-update shape): resolve the
                 // depth for reprojection, so the benchmark carries the live frame's cost.
-                if taaActive || blurActive {
+                if taaActive || blurActive || depthOfFieldActive(drawer) {
                     if mainDepthResolve?.width != width || mainDepthResolve?.height != height {
                         mainDepthResolve = makeDepthResolve(width: width, height: height)
                     }
@@ -3232,7 +3247,10 @@ final class MetalRenderer {
                                              velocity: velocity,
                                              jitter: taaJitter, into: cb,
                                              width: width, height: height)
-            let blurred = applyMotionBlur(drawer, resolved: stabilized,
+            let focused = applyDepthOfField(drawer, resolved: stabilized, depth: mainDepthResolve,
+                                            into: cb, width: width, height: height,
+                                            pointScale: 1, pooled: false)
+            let blurred = applyMotionBlur(drawer, resolved: focused,
                                           depth: blurActive ? mainDepthResolve : nil,
                                           moverVelocity: velocity, meshBuffer: meshBuf,
                                           into: cb, width: width, height: height,

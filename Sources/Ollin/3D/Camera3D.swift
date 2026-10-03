@@ -49,10 +49,11 @@ public struct Camera3D: Equatable, Sendable {
     /// Perspective or orthographic, with its parameter.
     public var projection: Projection
 
-    /// The thin-lens aperture radius in world units, read by the path-traced export
-    /// (`--path-traced`) for real depth of field: 0 (the default) is a pinhole and
-    /// everything is sharp; larger values blur away from the focus plane. The live
-    /// raster view ignores it (screen-space defocus stays the live-preview blur).
+    /// The thin-lens aperture radius in world units: 0 (the default) is a pinhole
+    /// and everything is sharp; larger values blur away from the focus plane. Read
+    /// by the path-traced export (`--path-traced`) and by `depthOfField()`, which
+    /// blurs the raster frame by its depth through this lens; without that call the
+    /// live view stays pinhole-sharp.
     public var aperture: Double = 0
     /// How many blades the iris has, which decides the shape of the opening light
     /// passes through: `0` (the default) is a round iris, and 5 to 11 is what a
@@ -60,12 +61,14 @@ public struct Camera3D: Equatable, Sendable {
     /// point of light: the out-of-focus highlights the path-traced export renders
     /// through `aperture`, every ghost `lensFlare()` puts on the frame, and the
     /// highlights of a scene defocused by its own depth in the live view
-    /// (`.defocus`, which reads this unless the call names a blade count itself).
-    /// One setting drives all three, so they cannot disagree about what lens this is.
+    /// (`depthOfField()`, and `.defocus` unless the call names a blade count
+    /// itself). One setting drives them all, so they cannot disagree about what
+    /// lens this is.
     public var apertureBlades: Int = 0
-    /// The distance from the camera at which the path-traced export focuses, along
-    /// the view axis. `nil` (the default) focuses on the `target`, so an orbiting
-    /// camera keeps its subject sharp with no extra bookkeeping.
+    /// The distance from the camera at which the lens focuses, along the view
+    /// axis, for the path-traced export and `depthOfField()`. `nil` (the default)
+    /// focuses on the `target`, so an orbiting camera keeps its subject sharp with
+    /// no extra bookkeeping.
     public var focusDistance: Double? = nil
 
     /// How far this camera has already stepped sideways off the center line of a

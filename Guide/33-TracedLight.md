@@ -6,7 +6,7 @@
 
 <img src="Images/33-TracedLight/LamplitRoom.jpg" alt="A room lit by one pendant lamp that flares in the lens: a waxed brown floor, a terracotta wall and a teal one, a glass ball on a white plinth focusing the lamp into a bright spot inside its own shadow, and a red ball beside it" width="560">
 
-Light in most 3D frames stops at the first surface it hits, and here you follow it off mirrors, between walls, and through glass. Then comes what the camera does with each frame: edges settle, a moving ball streaks, and a lamp flares in the lens. Each is a line or two added to a scene, and together they make the lamplit room above. Past it come the path-traced still, mirror tunnels, the shape of a blur, and ways to draw fewer pixels and frames.
+Light in most 3D frames stops at the first surface it hits, and here you follow it off mirrors, between walls, and through glass. Then comes what the camera does with each frame: edges settle, a moving ball streaks, and a lamp flares in the lens. Each is a line or two added to a scene, and together they make the lamplit room above. Past it come the path-traced still, mirror tunnels, the shape of a blur, the frame through the camera's lens, and ways to draw fewer pixels and frames.
 
 ## Mirrors that see off screen: ray-traced reflections
 
@@ -417,7 +417,7 @@ The [`SpecularAntialias` example](../Examples/3D/Effects/SpecularAntialias/Sketc
 
 ## The blur a lens makes: bokeh and depth of field from light
 
-The room's six blades shaped its ghosts and its star. The same opening shapes a blur. Out of focus, a point of light spreads into a picture of the opening its light came through. [Chapter 26](26-3DGently.md#what-the-depth-buffer-is-for-ambient-occlusion-and-defocus)'s `.defocus` blurs a scene by its depth, and it can take that opening's shape. A blur can also be built another way, from samples of light that each pass through a lens.
+The room's six blades shaped its ghosts and its star. The same opening shapes a blur. Out of focus, a point of light spreads into a picture of the opening its light came through. [Chapter 26](26-3DGently.md#what-the-depth-buffer-is-for-ambient-occlusion-and-defocus)'s `.defocus` blurs a scene by its depth, and it can take that opening's shape. `depthOfField()` blurs the whole frame through the camera's own lens. A blur can also be built another way, from samples of light that each pass through a lens.
 
 ### The shape of a blur: bokeh
 
@@ -436,6 +436,24 @@ let focused = scene.combined(with: scene.depth,
 ```
 
 Leave `blades` out, and a scene defocused by its own depth takes the count from the camera that drew it. So one line, `lens.apertureBlades = 6`, shapes this blur, the flare ghosts of [the lens flare](#light-in-the-camera-lens-flare), and the path-traced export together. Name `blades` at the call only for a blur no camera knows about, such as one over a depth ramp you drew by hand. The blur gathers a fixed number of samples. A light smaller than the space between them shows the pattern of the gather instead of a clean edge. So keep a light a few pixels across, or raise `quality`.
+
+### The frame through the camera's lens: depthOfField()
+
+`.defocus` blurs a layer by a depth layer you hand it. `depthOfField()` blurs the main canvas itself, by its own depth, through the camera's lens. It is for a 3D scene that should read as photographed, with one distance sharp and the rest soft, while the window keeps running. How far each point spreads is the circle of confusion Michael Potmesil and Indranil Chakravarty worked out for a camera lens in 1981. The blur gathers each pixel's neighbors as if each one scattered its light into a disc, as Jorge Jimenez described in 2014. A small lamp then keeps its light as it opens.
+
+<img src="Images/33-TracedLight/ThroughTheLens.jpg" alt="Five balls standing on a wooden floor at five distances, with the lens focused on the red one in the middle: the red ball and the floor around it are sharp, the teal ball nearest the camera is soft and spreads past its own edge over the floor, the yellow one is a little soft, the green and violet ones behind soften, and a string of small lamps along the back opens into six-sided discs" width="680">
+
+The lens is the camera's own. Give it an `aperture`, a radius in world units, and call `depthOfField()` in `draw()`. It focuses on the target unless `focusDistance` says otherwise:
+
+```swift
+var lens = Camera3D.perspective(eye: Vector3(-1.6, 0.75, 4.6), target: Vector3(0.2, 0.35, 0))
+lens.aperture = 0.14          // 0 is a pinhole, sharp everywhere
+lens.apertureBlades = 6       // six-sided lamps, as in the room
+camera(lens)
+depthOfField()
+```
+
+The nearest ball turns into a veil over the floor, and the lamps along the back open into hexagons. `focusRange` holds a band sharp either side of the focus, for a whole subject in focus. The blur runs after the edge average and before the motion blur, so the lamplit room could carry all three. The frame holds one surface per pixel, so what a blurred foreground hides is guessed from what shows around it.
 
 ### A lens made of samples: depth of field from light
 
@@ -529,7 +547,7 @@ The camera's side is written the same way. Temporal anti-aliasing is written fro
 ## Go deeper
 
 - [Depth effects](../Docs/Drawing/Effects.md#combined): `.screenSpaceReflections` and `.defocus`, with the iris `blades` and `catsEye` that shape a blur.
-- [The traced and temporal tiers](../Docs/3D/3D.md): ray-traced and glossy reflections and their depth, the global-illumination probe field, temporal anti-aliasing with `withMotion` and `drawMesh(_:previous:)`, specular anti-aliasing, motion blur, temporal upscaling, and frame interpolation, each with what it needs and what it costs.
+- [The traced and temporal tiers](../Docs/3D/3D.md): ray-traced and glossy reflections and their depth, the global-illumination probe field, temporal anti-aliasing with `withMotion` and `drawMesh(_:previous:)`, specular anti-aliasing, [depth of field](../Docs/3D/3D.md#depth-of-field), motion blur, temporal upscaling, and frame interpolation, each with what it needs and what it costs.
 - [Lights](../Docs/3D/3D.md#lights) and [which sources flare](../Docs/3D/LensFlare.md#sources): the spot light the room hangs, and a glowing body drawn where a light sits.
 - [Caustics](../Docs/3D/Caustics.md): what casts and what receives, the emitting light's priority, dispersion, the quality setting, and how the photon chain works.
 - [Lens flare](../Docs/3D/LensFlare.md): the lens as a stack of glass surfaces, the bundled prescriptions and writing your own, the iris and its blades, which sources flare, and how a flare follows what the camera can see.
