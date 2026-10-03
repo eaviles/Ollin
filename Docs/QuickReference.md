@@ -188,7 +188,7 @@ A packaged sketch runs with `swift run <Target> <flags>`, and a single file with
 | `--settle N` | Draws each written frame N times with the clock held. A `LineSpray` and an `Accumulator` need it to converge. Anti-aliasing over time and path tracing don't. |
 | `--render-quality` | `performance`, `default`, or `detail`: the sampling budgets for soft shadows, depth of field, and ambient occlusion. Exports default to `detail`. |
 | `--render-scale N` | Draws each frame N times larger and averages it down. It smooths fills and polygons; shapes and strokes are already smooth. |
-| `--bench` | Times 600 frames and reports the cost per frame, without writing anything. `--gpu` adds the GPU's side. |
+| `--bench` | Times 600 frames and reports the cost per frame, without writing anything. `--gpu` adds the GPU's side. It measures the window's quality tier; an export lifts `.default` to `.detail`, so add `--render-quality detail` to time what an export pays. |
 
 [Export](./Output/Export.md) has every flag.
 
