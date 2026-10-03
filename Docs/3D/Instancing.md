@@ -37,6 +37,7 @@ As a reference point, take a 12,400-pillar field, lit and shadowed, at 1080² in
 - [Instances from a compute kernel](#compute) - GPU-resident placements
 - [A field that culls itself](#meshfield) - `MeshField`, a retained world that the GPU culls copy by copy
 - [What applies to a copy](#applies)
+- [Copies that move: withMotion](#motion) - each copy streaks along its own path
 - [Notes](#notes)
 
 <a id="meshinstance"></a>
@@ -124,7 +125,23 @@ The following do not apply to a copy yet, by design. Each one arrives with a lat
 - **Textures and surface maps.** A textured mesh draws untextured, though its base color still tints. Wireframe and matcap fall back to the solid look, with a one-time note.
 - **A glowing copy is not a light in the path-traced export.** It glows, and its light does reach the scene. But the tracer never aims at it. The tracer's [light table](../Output/PathTraced.md) weighs each glowing triangle by its area in the world. A copy's triangles are not placed in the world. So expect more grain than a plain emissive mesh gives.
 - **The screen-space pre-passes.** Contact shadows, ambient-occlusion normals, and subsurface scattering skip the copies.
-- **Motion vectors.** Copies are not `withMotion` movers, so temporal anti-aliasing covers them through its depth reprojection instead.
+- **Motion for copies from a compute buffer or a field.** Copies drawn from a `[MeshInstance]` list inside `withMotion` move as movers (see below). Copies placed by a compute buffer, and a `MeshField`'s copies, keep the camera's motion only, with a one-time note: their placements never pass through the CPU, so last frame's would have to be kept on the GPU.
+
+<a id="motion"></a>
+### Copies that move: withMotion
+
+Wrap the instanced draw in `withMotion` and every copy is followed from its place last frame to its place now, so [temporal anti-aliasing](3D.md#temporal-antialiasing) keeps each copy's edges and [motion blur](3D.md#motion-blur) streaks each copy along its own path. It is one draw still, and a copy writes the same motion it would write drawn as a mover of its own.
+
+```swift
+motionBlur()
+withMotion("beads") {
+    drawMesh(bead, instances: beads)   // each bead streaks along its own ring
+}
+```
+
+Ollin keeps the block's placement list from one frame to the next and matches the copies by their place in it: copy 3 this frame moved from where copy 3 was last frame. So keep the order stable, as `drawMesh(_:previous:)` asks of its vertices. A frame whose copy count differs from the last one's cannot be matched, so its copies take the camera's motion alone for that frame, and the new count is followed from the next. A copy's tint and the transform stack around the draw are part of the placement as usual: a field moved by `translate` streaks whole. It applies to the main canvas, like every mover, and to the list form; a compute buffer's copies and a field's keep the camera's motion.
+
+Every instanced draw, mover or not, also hides what stands behind it in the motion pass, so a mover behind a field of copies does not streak through them.
 
 <a id="notes"></a>
 ### Notes

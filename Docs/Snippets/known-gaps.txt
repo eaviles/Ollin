@@ -48,9 +48,9 @@ d51768b50cfe  Docs/3D/DepthCompositing.md:70  cannot find 'distance' in scope
 d3c80cc947f0  Docs/3D/DepthCompositing.md:83  cannot find 'orbCenter' in scope
 205ca78097b5  Docs/3D/DepthCompositing.md:99  cannot find 'cameraFrame' in scope
 efb8bedfd031  Docs/3D/HopfFibration.md:30  cannot find 'color' in scope
-31879e132211  Docs/3D/Instancing.md:116  cannot find 'field' in scope
-b812ed7cfc27  Docs/3D/Instancing.md:63  cannot find type 'OllinMeshInstance' in scope
-fec8f6d8ac5d  Docs/3D/Instancing.md:82  cannot find 'stone' in scope
+31879e132211  Docs/3D/Instancing.md:117  cannot find 'field' in scope
+b812ed7cfc27  Docs/3D/Instancing.md:64  cannot find type 'OllinMeshInstance' in scope
+fec8f6d8ac5d  Docs/3D/Instancing.md:83  cannot find 'stone' in scope
 6ccc50251577  Docs/3D/LensFlare.md:15  cannot convert value of type '(UnboundedRange_) -> ()' to expected argument type 'Camera3D'
 43a39c2cea5f  Docs/3D/LensFlare.md:204  cannot convert value of type '(UnboundedRange_) -> ()' to expected argument type 'Vector3'
 6b1f01db2204  Docs/3D/LineDrawing.md:40  cannot find 'mesh' in scope

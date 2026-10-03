@@ -467,7 +467,7 @@ The room drew its ball and its lamp inside `withMotion`, so the edge average and
 
 ### A mesh that changes shape: drawMesh(_:previous:)
 
-`withMotion` remembers a block's placement, which covers anything that moves as one piece. A mesh that changes shape has no single placement. A ribbon you rebuild every frame, a marching-cubes surface, or a cloth moves vertex by vertex. The edge average and the blur read motion as a small arrow per pixel, called a **motion vector**. It says how far that bit of surface moved on screen since the last frame. Brian Karis's temporal average and Morgan McGuire's blur filter both read it. For a changing mesh, it comes from each vertex's last position. Here `ribbon` is a mesh your sketch rebuilds each frame:
+`withMotion` remembers a block's placement, which covers anything that moves as one piece, and every copy of an instanced draw inside the block. A mesh that changes shape has no single placement. A ribbon you rebuild every frame, a marching-cubes surface, or a cloth moves vertex by vertex. The edge average and the blur read motion as a small arrow per pixel, called a **motion vector**. It says how far that bit of surface moved on screen since the last frame. Brian Karis's temporal average and Morgan McGuire's blur filter both read it. For a changing mesh, it comes from each vertex's last position. Here `ribbon` is a mesh your sketch rebuilds each frame:
 
 ```swift
 drawMesh(ribbon, previous: lastPositions)   // last frame's positions, same count and order

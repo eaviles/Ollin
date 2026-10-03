@@ -433,6 +433,27 @@ vertex VelocityOut ollin_mesh_velocity_deform_vertex(uint vid [[vertex_id]],
     return out;
 }
 
+// The instanced form (`drawMesh(_:instances:)` inside `withMotion`): the base
+// mesh arrives in local space, and each copy carries this frame's matrix
+// (buffer 4, the instanced pass's own placements) and last frame's (buffer 5,
+// the same copy's matrix one frame back, matched by its place in the list), so
+// every copy writes its own motion in one draw.
+vertex VelocityOut ollin_mesh_velocity_instanced_vertex(uint vid [[vertex_id]],
+                                                        uint iid [[instance_id]],
+                                                        const device OllinMeshVertex *verts [[buffer(0)]],
+                                                        constant Uniforms3D &u [[buffer(2)]],
+                                                        constant OllinVelocityUniforms &vu [[buffer(3)]],
+                                                        const device OllinMeshInstance *instances [[buffer(4)]],
+                                                        const device float4x4 *previous [[buffer(5)]]) {
+    float4 local = float4(verts[vid].position.xyz, 1.0);
+    float4 wp = instances[iid].model * local;
+    VelocityOut out;
+    out.position = u.projection * (u.view * wp);
+    out.curClip = out.position;
+    out.prevClip = vu.previousViewProjection * (previous[iid] * local);
+    return out;
+}
+
 fragment float4 ollin_mesh_velocity_fragment(VelocityOut in [[stage_in]],
                                              constant Uniforms3D &u [[buffer(2)]]) {
     if (in.prevClip.w <= 0.0) { return float4(OLLIN_VELOCITY_NONE, 0.0, 0.0, 0.0); }

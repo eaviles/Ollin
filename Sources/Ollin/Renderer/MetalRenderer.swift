@@ -423,6 +423,18 @@ final class MetalRenderer {
             PipelineKey(vertex: "ollin_mesh_vertex", fragment: "",
                         depthFormat: depth, isVelocity: true, isVelocityOccluder: true)
         }
+        // the same two for instanced copies: a mover's copies each carried back
+        // through last frame's matrix for that copy, and every other instanced
+        // draw rasterized for depth alone through the instanced vertex
+        static func meshVelocityInstanced(depth: MTLPixelFormat) -> PipelineKey {
+            PipelineKey(vertex: "ollin_mesh_velocity_instanced_vertex",
+                        fragment: "ollin_mesh_velocity_fragment",
+                        depthFormat: depth, isVelocity: true)
+        }
+        static func meshVelocityInstancedOccluder(depth: MTLPixelFormat) -> PipelineKey {
+            PipelineKey(vertex: "ollin_mesh_instanced_vertex", fragment: "",
+                        depthFormat: depth, isVelocity: true, isVelocityOccluder: true)
+        }
         // depth-scene backdrop: a textured quad that also writes per-pixel depth from
         // a depth map (premultiplied color, like the image path; outputs [[depth]]).
         static func depthScene(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
@@ -1457,6 +1469,12 @@ final class MetalRenderer {
     /// slot must never be rewritten while a frame still in flight reads it.
     var velocityPreviousBuffers = [MTLBuffer?](repeating: nil, count: 2 * MetalRenderer.maxFramesInFlight)
     var velocityPreviousCursor = 0
+    /// The velocity pass's own upload of the frame's instanced copies (base
+    /// meshes, this frame's placements, and last frame's for the movers), one
+    /// ring slot per encode like the previous-position ring above, so a slot is
+    /// never rewritten under a frame still reading it.
+    var velocityInstancedBuffers = [MTLBuffer?](repeating: nil, count: 2 * MetalRenderer.maxFramesInFlight)
+    var velocityInstancedCursor = 0
     /// The temporal upscaler's persistent state (the live on-screen path): the
     /// platform scaler object (whose accumulation history lives inside it), the
     /// sizes it was built for, its full-screen motion fill and full-resolution

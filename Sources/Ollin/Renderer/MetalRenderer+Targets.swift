@@ -1591,7 +1591,7 @@ extension MetalRenderer {
                              meshBuffer: MTLBuffer?, width: Int, height: Int,
                              previousViewProjection: simd_float4x4) -> MTLTexture? {
         guard let camera = drawer.camera3D, let meshBuffer,
-              !drawer.moverRanges.isEmpty,
+              drawer.hasMovers,
               let velPipe = try? pipeline(.meshVelocity(depth: depthPixelFormat)),
               let occPipe = try? pipeline(.meshVelocityOccluder(depth: depthPixelFormat))
         else { return nil }
@@ -1607,6 +1607,22 @@ extension MetalRenderer {
             else { return nil }
             deformPipe = pipe
             previousBuffer = buffer
+        }
+        // Instanced copies on the main canvas: every instanced draw occludes, and
+        // a mover's copies (`drawMesh(_:instances:)` inside `withMotion`) write
+        // their own motion. Their base meshes, placements, and last frame's
+        // placements upload together into this encode's own ring slot.
+        let instancedRuns = drawer.batches.indices.filter {
+            drawer.batches[$0].kind == .meshInstanced && drawer.batches[$0].target == nil
+        }
+        var instanced: (buffer: MTLBuffer, instances: Int, previous: Int,
+                        occluder: MTLRenderPipelineState, mover: MTLRenderPipelineState)?
+        if !instancedRuns.isEmpty {
+            guard let occluder = try? pipeline(.meshVelocityInstancedOccluder(depth: depthPixelFormat)),
+                  let mover = try? pipeline(.meshVelocityInstanced(depth: depthPixelFormat)),
+                  let upload = velocityInstancedBuffer(drawer)
+            else { return nil }
+            instanced = (upload.buffer, upload.instances, upload.previous, occluder, mover)
         }
         let target: (tex: MTLTexture, depth: MTLTexture, w: Int, h: Int)
         if let cached = velocityCache, cached.w == width, cached.h == height {
@@ -1673,6 +1689,31 @@ extension MetalRenderer {
                 enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: end - cursor)
             }
         }
+        // The instanced draws that are not movers, depth only: a list's copies from
+        // the upload, a compute buffer's straight from that buffer.
+        let instanceStride = MemoryLayout<OllinMeshInstance>.stride
+        if let instanced {
+            let moving = Set(drawer.instancedMoverRanges.map(\.instanceStart))
+            enc.setRenderPipelineState(instanced.occluder)
+            for i in instancedRuns {
+                let batch = batches[i]
+                guard batch.instancedVertexCount > 0 else { continue }
+                var copies = batch.meshInstanceCount
+                if let gpu = batch.particleBuffer {
+                    guard batch.particleCount > 0, let buffer = gpu.realizedBuffer(for: device) else { continue }
+                    enc.setVertexBuffer(buffer, offset: 0, index: 4)
+                    copies = batch.particleCount
+                } else {
+                    guard copies > 0, !moving.contains(batch.meshInstanceStart) else { continue }
+                    enc.setVertexBuffer(instanced.buffer,
+                                        offset: instanced.instances + batch.meshInstanceStart * instanceStride,
+                                        index: 4)
+                }
+                enc.setVertexBuffer(instanced.buffer, offset: batch.instancedVertexStart * meshStride, index: 0)
+                enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: batch.instancedVertexCount,
+                                   instanceCount: copies)
+            }
+        }
         // Phase 2: the movers, each carried back through last frame's matrices,
         // or, for a mesh that changed shape, through its own previous positions
         // (the pipeline switches only where the kind changes; ranges of one kind
@@ -1695,8 +1736,59 @@ extension MetalRenderer {
             }
             enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: r.count)
         }
+        // The instanced movers: each copy through this frame's matrix and last
+        // frame's, in one draw a run. The camera's own motion rides the two
+        // view·projections, so `previousOfCurrent` stays the identity here.
+        if let instanced, !drawer.instancedMoverRanges.isEmpty {
+            enc.setRenderPipelineState(instanced.mover)
+            var vu = OllinVelocityUniforms(previousViewProjection: previousViewProjection,
+                                           previousOfCurrent: matrix_identity_float4x4)
+            enc.setVertexBytes(&vu, length: MemoryLayout<OllinVelocityUniforms>.stride, index: 3)
+            for r in drawer.instancedMoverRanges {
+                enc.setVertexBuffer(instanced.buffer, offset: r.vertexStart * meshStride, index: 0)
+                enc.setVertexBuffer(instanced.buffer, offset: instanced.instances + r.instanceStart * instanceStride,
+                                    index: 4)
+                enc.setVertexBuffer(instanced.buffer,
+                                    offset: instanced.previous + r.previousStart * MemoryLayout<simd_float4x4>.stride,
+                                    index: 5)
+                enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: r.vertexCount,
+                                   instanceCount: r.instanceCount)
+            }
+        }
         enc.endEncoding()
         return target.tex
+    }
+
+    /// This encode's ring slot for the instanced copies the velocity pass draws:
+    /// the frame's instanced base vertices from the start, then its placements,
+    /// then last frame's placements of the movers' copies, each region starting
+    /// on a 256-byte boundary. Returns the slot and the two later offsets.
+    private func velocityInstancedBuffer(_ drawer: Drawer) -> (buffer: MTLBuffer, instances: Int, previous: Int)? {
+        func aligned(_ n: Int) -> Int { (n + 255) & ~255 }
+        let vertexBytes = drawer.instancedMeshVertices.count * MemoryLayout<OllinMeshVertex>.stride
+        let instanceBytes = drawer.meshInstances.count * MemoryLayout<OllinMeshInstance>.stride
+        let previousBytes = drawer.moverPreviousInstances.count * MemoryLayout<simd_float4x4>.stride
+        let instances = aligned(vertexBytes)
+        let previous = aligned(instances + instanceBytes)
+        let needed = max(previous + previousBytes, 256)
+        let index = velocityInstancedCursor
+        velocityInstancedCursor = (index + 1) % velocityInstancedBuffers.count
+        if velocityInstancedBuffers[index].map({ $0.length < needed }) ?? true {
+            velocityInstancedBuffers[index] = device.makeBuffer(length: needed + needed / 2,
+                                                                options: .storageModeShared)
+        }
+        guard let buffer = velocityInstancedBuffers[index] else { return nil }
+        let base = buffer.contents()
+        drawer.instancedMeshVertices.withUnsafeBytes { raw in
+            if let from = raw.baseAddress { base.copyMemory(from: from, byteCount: raw.count) }
+        }
+        drawer.meshInstances.withUnsafeBytes { raw in
+            if let from = raw.baseAddress { (base + instances).copyMemory(from: from, byteCount: raw.count) }
+        }
+        drawer.moverPreviousInstances.withUnsafeBytes { raw in
+            if let from = raw.baseAddress { (base + previous).copyMemory(from: from, byteCount: raw.count) }
+        }
+        return (buffer, instances, previous)
     }
 
     /// This encode's ring slot for the deforming movers' previous world
@@ -1909,7 +2001,7 @@ extension MetalRenderer {
         let aspect = height > 0 ? Double(width) / Double(height) : 1
         let curVP = camera.projectionMatrix(aspect: aspect) * camera.viewMatrix
         let prevVP = previous.projectionMatrix(aspect: aspect) * previous.viewMatrix
-        if prevVP == curVP && drawer.moverRanges.isEmpty { return resolved }
+        if prevVP == curVP && !drawer.hasMovers { return resolved }
 
         let mover = moverVelocity ?? encodeMoverVelocity(
             drawer, into: cb, meshBuffer: meshBuffer,

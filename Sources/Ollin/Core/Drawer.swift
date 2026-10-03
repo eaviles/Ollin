@@ -547,6 +547,36 @@ final class Drawer {
     /// recorder through the ordinary `drawMesh(_:)` body; nil on every other draw.
     private var pendingPreviousPositions: [Vector3]?
 
+    /// One declared mover's instanced draw this frame (`drawMesh(_:instances:)`
+    /// inside `withMotion`): its base-mesh run in `instancedMeshVertices`, its
+    /// copies in `meshInstances`, and where last frame's placement of each copy
+    /// starts in `moverPreviousInstances`, copy *i* matched to copy *i*. The
+    /// velocity pass draws each copy twice over, through this frame's matrix and
+    /// last frame's. Recorded in draw order, like `moverRanges`.
+    struct InstancedMoverRange {
+        var vertexStart: Int
+        var vertexCount: Int
+        var instanceStart: Int
+        var instanceCount: Int
+        var previousStart: Int
+    }
+
+    /// Instanced mover ranges recorded this frame, in draw order; reset each frame.
+    private(set) var instancedMoverRanges: [InstancedMoverRange] = []
+
+    /// Last frame's placement of every copy of this frame's instanced movers, one
+    /// world matrix a copy, indexed by `InstancedMoverRange.previousStart`.
+    private(set) var moverPreviousInstances: [simd_float4x4] = []
+
+    /// Each instanced mover's copy placements from the frame it was last drawn,
+    /// under the same keys as `moverHistory` and pruned the same way. A frame
+    /// whose copy count differs from the one before keeps no motion: the copies
+    /// cannot be matched, so the list starts over.
+    private var instancedMoverHistory: [MoverKey: (models: [simd_float4x4], frame: UInt64)] = [:]
+
+    /// Whether this frame declared any mover the velocity pass draws.
+    var hasMovers: Bool { !moverRanges.isEmpty || !instancedMoverRanges.isEmpty }
+
     /// Each mover key's model matrix from the frame it was last drawn. Persists
     /// across frames (it *is* the cross-frame memory); entries not refreshed for
     /// a frame are pruned in `beginFrame`, so a mover that skips a frame starts
@@ -2168,6 +2198,8 @@ final class Drawer {
         // fresh occurrence key, and unmatched entries prune next frame.)
         moverRanges.removeAll(keepingCapacity: true)
         moverPreviousPositions.removeAll(keepingCapacity: true)
+        instancedMoverRanges.removeAll(keepingCapacity: true)
+        moverPreviousInstances.removeAll(keepingCapacity: true)
         sdfGroups.removeAll(keepingCapacity: true)
         sdfNodes.removeAll(keepingCapacity: true)
         sdf3DGroups.removeAll(keepingCapacity: true)
@@ -3837,6 +3869,38 @@ final class Drawer {
         }
         appendInstancedMeshBatch(mesh, vertexRange: vertexRange,
                                  instanceStart: iStart, instanceCount: instances.count)
+        recordInstancedMover(vertexRange: vertexRange, instanceStart: iStart,
+                             instanceCount: instances.count)
+    }
+
+    /// The instanced draw's tail hook, the copies' side of `recordMoverRange`:
+    /// inside a `withMotion` block, keep this frame's copy placements under the
+    /// block's key, and when last frame drew the same number of copies under it,
+    /// record each copy's move from its old matrix to its new one. Copies are
+    /// matched by their place in the list, so the order is the sketch's to keep
+    /// stable. A changed count, a first sighting, or a skipped frame records no
+    /// motion this frame (the resolve's fallback handles it) and starts the
+    /// history over. Main canvas only, like every mover.
+    private func recordInstancedMover(vertexRange: (start: Int, count: Int),
+                                      instanceStart: Int, instanceCount: Int) {
+        guard !moverStack.isEmpty, currentTarget == nil, instanceCount > 0 else { return }
+        let top = moverStack.count - 1
+        let key = MoverKey(source: moverStack[top].source,
+                           occurrence: moverStack[top].occurrence,
+                           draw: moverStack[top].draws)
+        moverStack[top].draws += 1
+        let models = meshInstances[instanceStart ..< instanceStart + instanceCount].map(\.model)
+        let previous = instancedMoverHistory[key]
+        instancedMoverHistory[key] = (models: models, frame: moverFrame)
+        guard moverFrame > 0, let previous, previous.frame == moverFrame - 1,
+              previous.models.count == instanceCount else { return }
+        let previousStart = moverPreviousInstances.count
+        moverPreviousInstances.append(contentsOf: previous.models)
+        instancedMoverRanges.append(InstancedMoverRange(vertexStart: vertexRange.start,
+                                                        vertexCount: vertexRange.count,
+                                                        instanceStart: instanceStart,
+                                                        instanceCount: instanceCount,
+                                                        previousStart: previousStart))
     }
 
     /// The GPU-resident sibling: draw `count` copies whose `OllinMeshInstance`
@@ -3854,6 +3918,9 @@ final class Drawer {
             return
         }
         currentTarget?.needsDepth = true
+        if !moverStack.isEmpty {
+            noteOnce("withMotion streaks instanced copies placed from a [MeshInstance] list; copies placed by a compute buffer keep the camera's motion only.")
+        }
         let vertexRange = appendInstancedBaseMesh(mesh)
         appendInstancedMeshBatch(mesh, vertexRange: vertexRange,
                                  instanceStart: 0, instanceCount: 0,
@@ -3994,6 +4061,9 @@ final class Drawer {
                 }
             }
             return
+        }
+        if !moverStack.isEmpty {
+            noteOnce("withMotion streaks instanced copies placed from a [MeshInstance] list; a MeshField's copies keep the camera's motion only.")
         }
         if batches.contains(where: { $0.kind == .meshField && $0.field === field }) {
             noteOnce("a MeshField can be drawn once per frame (its cull results live on the field); place more copies in it instead of drawing it twice.")
@@ -4324,11 +4394,17 @@ final class Drawer {
         if recordsSourceSites { sourcePickTargets.removeAll(keepingCapacity: true) }
         moverRanges.removeAll(keepingCapacity: true)
         moverPreviousPositions.removeAll(keepingCapacity: true)
+        instancedMoverRanges.removeAll(keepingCapacity: true)
+        moverPreviousInstances.removeAll(keepingCapacity: true)
         moverOccurrence.removeAll(keepingCapacity: true)
         moverStack.removeAll(keepingCapacity: true)
         if !moverHistory.isEmpty {
             let cutoff = moverFrame - 1
             moverHistory = moverHistory.filter { $0.value.frame >= cutoff }
+        }
+        if !instancedMoverHistory.isEmpty {
+            let cutoff = moverFrame - 1
+            instancedMoverHistory = instancedMoverHistory.filter { $0.value.frame >= cutoff }
         }
         // Lights are per-frame like the camera (set in `draw()` each frame). They
         // reset here but *not* in `background()`, which only wipes geometry mid-frame
@@ -4732,6 +4808,7 @@ extension Drawer {
             "bakedGradients": bakedGradients.count,
             "oceanAmplitudes": oceanAmplitudes.count,
             "moverHistory": moverHistory.count,
+            "instancedMoverHistory": instancedMoverHistory.count,
             "drawerNotes": drawerNotes.count,
             "batchRecordingNotes": batchRecordingNotes.count,
             "stateStack": stateStack.count,

@@ -6,6 +6,8 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ### Added
 
+- **Instanced copies that move.** `drawMesh(_:instances:)` inside `withMotion` follows every copy from where it was last frame to where it is now, so temporal anti-aliasing keeps each copy's edges and motion blur streaks each copy along its own path, in one draw. Copies are matched by their place in the list; a frame whose copy count changed keeps the camera's motion alone for those copies. Copies placed by a compute buffer and a `MeshField`'s keep the camera's motion, with a note. [Instancing](Docs/3D/Instancing.md#motion)
+
 - **Lines in 3D.** `drawLine` and `drawPolyline` take `Vector3` points and draw a line through the camera with the 2D stroke's weight, joins, caps, and soft edge, and `drawPolyline(_:colors:closed:)` gives every point its own color. Every point keeps its depth, so a solid in front hides the line and the line hides what lies behind it, whichever is drawn first. The weight is in canvas points, the same at every distance, unless `strokeWeight(0.05, in: .world)` asks for the scene's units, which thin the line as it recedes. `drawAxes(length:)` and `drawGrid(size:divisions:)` are built from the same lines and export with the picture. An SVG export carries the line as the 2D polyline the camera made of it. New example: [`Examples/3D/Geometry/FieldLines`](Examples/3D/Geometry/FieldLines/). [Lines in 3D](Docs/3D/Lines.md)
 
 - **Drawing part of an image.** `drawImage` takes a source rectangle in the image's own pixels, so one cell of a sprite sheet, a tile of a tile set, or a frame of a film strip draws with no cropping first: `drawImage(sheet, x, y, width, height, sourceX, sourceY, sourceWidth, sourceHeight)`, or `drawImage(sheet, in: box, source: cell)`. The draw reads only inside the part, so a cell drawn at its own size or larger looks exactly like the same cell cropped out first, and a magnified sprite never picks up the border of the one beside it. A web page of the sketch does the same. [Images](Docs/Drawing/Images.md#part)
@@ -29,6 +31,8 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 - **A tube's rings ride the new frames.** `Mesh.tube(along:)`, and the helix and torus knot built on it, now place their rings on `Curve3D`'s frames. They are worked out by double reflection, which is accurate to the fourth order where the old transport was second order (on a helix at 64 points a turn, its twist was 0.006 radians off after one turn, and now it is 0.000002). A closed tube spreads its leftover turn by length rather than by point. On the built-in helix and torus knot the rings turn by under two degrees about the path, and the first ring starts where it always did. [3D](Docs/3D/3D.md#solid-primitives)
 
 ### Fixed
+
+- **A mover behind instanced copies no longer streaks through them.** The motion pass that temporal anti-aliasing and motion blur read drew only plain meshes in front of a mover, so a `withMotion` mover behind a field of instanced copies wrote its motion through them. Every instanced draw now hides what stands behind it there.
 
 - **An EXR's coverage stays at one.** Additive marks sum their alpha along with their light, so an opaque canvas lit by two added coats wrote an alpha of 3 into `--export-exr`, which a compositor reads as a pixel covered three times over. The alpha channel now stops at 1; the light itself stays as it summed. [Export](Docs/Output/Export.md#linear-frames-exr)
 
