@@ -65,7 +65,9 @@ let badge = makeRenderTarget(width: 256, height: 256)
 
 Make a target inside `draw()`. It is a per-frame handle. Ollin pools the GPU texture behind it and reuses it across frames, so making one each frame does not allocate.
 
-`makeRenderTarget(scale:precision:)` also takes a `precision`. The default is `.float16` (`rgba16Float`). Use `.float32` (`rgba32Float`) for a layer whose values are sums rather than a picture. Half float stops moving once a step falls under about one part in a thousand of the value. Single precision costs twice the memory, and a filter over the layer still writes a half-float layer.
+`makeRenderTarget(scale:precision:)` also takes a `precision`. The default is `.float16`, which is `rgba16Float`. Use `.float32` (`rgba32Float`) for a layer whose values are sums or measurements rather than a picture. Half float stops moving once a step falls under about one part in a thousand of the value. Single precision costs twice the memory.
+
+**Precision follows the layer through a chain.** A filter or a combine over a `.float32` layer writes a `.float32` layer. Every pass inside it works in single precision, and so does the next filter after it. Half float holds a distance past 1,024 pixels only to the nearest whole pixel, so a [measured distance field](DistanceFields.md) wants this: in single precision the distance keeps its fraction to the end of the chain. A half-float layer's chain stays half float. The base of a combine sets the precision, whatever the aux holds.
 
 <a id="withtarget"></a>
 ### withTarget(_:_:)
@@ -590,6 +592,20 @@ A gradient needs a direction and two ends. This needs neither, which is why the 
 be shaped by where the marks are rather than by a line between two stops. See
 `Examples/Effects/DiffusionCurves`.
 
+The fill takes its colors from the sources' edges, so what sits at the edge of a mark is
+what spreads. That matters when the sources are cut out of something soft. Marks keyed
+out of a glow with `.lumaKey(low:)` have rims at about the key level by construction,
+since the key is where they begin, and the field comes out near that level too, dim,
+however bright the centers are. Key one layer for *where* the sources are, and take
+their color from a second layer drawn at full strength, masked by that key, so the
+edges carry the color you meant:
+
+```swift
+let key = glow.filtered(.lumaKey(low: 0.3))                    // where the sources are
+let sources = paint.combined(with: key, .mask(channel: .alpha)) // what color they are
+drawImage(sources.filtered(.diffuse()).image, 0, 0)
+```
+
 The solve is the frame's cost, about 24 ms of GPU at 1080 square on an M2, and it runs
 every frame while the marks move. When they do not move, solve once instead. Hold the
 filtered layer in a property, fill it in `setup()`, and draw it each frame like any other
@@ -712,7 +728,7 @@ override func draw() {
 
 - `withFeedback(_:_:)` hands the previous frame in as the closure parameter. The `withTarget(feedback) { … }` form works too, reading last frame by name with `feedback.previous` inside.
 - `feedback.previous` is last frame's content, and `feedback.image` is this frame's, for compositing.
-- `feedback.filtered(_:)` runs this frame's result through a `Filter` like any layer, so you can bloom the trails or recolor them through a gradient map. The state the loop carries forward stays untouched.
+- `feedback.filtered(_:)` runs this frame's result through a `Filter` like any layer, so you can bloom the trails or recolor them through a gradient map. `feedback.combined(with:_:)` makes it the base of a [`Combine`](#combined), so the trails can be masked, displaced, or mixed by another layer. The state the loop carries forward stays untouched either way. An `Accumulator` and a `SimField` take both calls too.
 - `makeFeedback(precision: .float32)` keeps the pair in single-precision float, for a loop that carries a long sum of faint light. Half float stops moving once each frame's contribution falls under one part in a thousand of the total. For a sum that should converge rather than grow, an [`Accumulator`](./Accumulation.md#accumulator) keeps the sum in single precision and divides by the passes for you.
 - Call `background(_:)` **before** the block. On the canvas it resets the whole frame, so calling it after would wipe the layer's geometry, as it would for any other `withTarget` layer. Inside the block, `background(_:)` clears the feedback layer alone.
 - See the `Effects/Feedback` example for a spiralling tunnel.
@@ -822,7 +838,7 @@ override func draw() {
 
 - `withField(field, force:) { … }` draws into the field's state, scoped like `withTarget`, and an empty block lets the field evolve untouched. `force`, in canvas points per frame, is the velocity a `.fluid` receives where the marks land, and the single-field sims ignore it.
 - `field.modulation` attaches a layer whose brightness re-tunes the sim per texel, for the sims that support one, which today is `.reactionDiffusion` above. Set it once and draw into the layer each frame. Attach a drawn or generated layer, not a `filtered(_:)` output. Filters resolve after the sims each frame, so a filtered map would always be a frame stale.
-- `field.image` is the evolved field, and `field.filtered(_:)` recolors or post-processes it like any layer.
+- `field.image` is the evolved field, and `field.filtered(_:)` recolors or post-processes it like any layer. `field.combined(with:_:)` makes it the base of a [`Combine`](#combined), masked or displaced by another layer. Both keep the field stepping.
 - `scale` sets the field's internal resolution: lower it for broader reaction-diffusion features, chunkier automaton cells, and a cheaper, softer fluid.
 - `edge` is what a cell on the border reads when its rule looks past the field. The default, `.wrapping`, makes the field a torus, so a glider that leaves on the right comes back on the left. `.clamped` is walls: a read past the edge returns the border cell, which insulates a diffusing quantity and frames an automaton. `FieldEdge(wrapsX: true, wrapsY: false)` wraps one axis only. The sims that read their neighbors honor it (reaction-diffusion, predator-prey, Life, Lenia, SmoothLife, the state automata, Ising, and a kernel of your own), and the ones whose physics fix their boundary keep it whatever the field says (ripples, the sandpile, the falling sand, Schelling's board, and the fluid, Turing, watercolor, and self-warp pipelines). Settable live.
 - `precision` is how exactly the state keeps a number: half float by default, which holds a whole number exactly only to 2048, and `.float32` for a state that counts, sums, or carries an id.

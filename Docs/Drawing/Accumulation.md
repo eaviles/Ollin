@@ -21,6 +21,10 @@ A pile only ever grows. Some pictures should *converge* as samples arrive instea
 <a id="noclear"></a>
 ### noClear()
 
+```swift
+noClear(precision: LayerPrecision = .float16)
+```
+
 Stop clearing the canvas each frame. From this point on, every frame draws on top of the accumulated result of all the frames before it. Most sketches call it once in `setup()`.
 
 ```swift
@@ -40,6 +44,14 @@ override func draw() {
 Your `draw()` still records only that frame's *new* marks, because the geometry resets every frame as usual. What persists is the rendered canvas those marks accumulate onto.
 
 Pair it with `blendMode(.add)` for the classic look. Each mark then adds a little light, so dense regions glow toward white while sparse ones hold a dim tint. Ollin blends in linear light, so the sum is physically correct. See the `Rendering/Accumulation` example, where slow pens leave faint traces that deepen where they cross again.
+
+`precision` is how many bits the canvas keeps per channel. Half float, the default, keeps about three digits. That is plenty for paint and for light that builds quickly. A long exposure of very faint marks wants `.float32`: half float stops adding a mark once it is under about a thousandth of what the pixel already holds, so the pile levels off short of its true brightness. Single precision keeps adding at twice the memory. In a test pile seeded at linear 0.25 that took eight marks of 0.00005 each frame, half float held 0.25 for three hundred frames and single precision reached 0.37, the sum the arithmetic predicts. Changing the precision starts a fresh pile, as a change of canvas size does.
+
+```swift
+override func setup() {
+    noClear(precision: .float32)     // ten thousand faint passes still add up
+}
+```
 
 <a id="reset"></a>
 ### background as the reset
@@ -86,7 +98,7 @@ override func draw() {
 
 - `withAccumulator(_:passes:_:)` draws one pass of samples into the layer and adds it into the sum. The layer is a transient surface that the renderer clears every frame. A block that draws several passes' worth of samples declares that with `passes:`, so the mean divides by the right count. Set `blendMode(.add)` inside the block so the samples sum as light, and draw particles with [`style: .light`](./DepthOfField.md#light), the radiometric deposit.
 - `light.image` is the mean as an `Image`, in linear light. `light.sum` is the raw sum in single-precision float, and `light.passes` is the count, for a shader that divides on its own.
-- `light.developed(exposure:ground:)` prints the mean through [`Filter.develop`](./DepthOfField.md#develop). The mean is scaled by `exposure`, rolled off through the Reinhard curve, and laid on `ground`. That ground is added after the curve, as a display color. `light.filtered(_:)` runs any other filter over the mean.
+- `light.developed(exposure:ground:)` prints the mean through [`Filter.develop`](./DepthOfField.md#develop). The mean is scaled by `exposure`, rolled off through the Reinhard curve, and laid on `ground`. That ground is added after the curve, as a display color. `light.filtered(_:)` runs any other filter over the mean, and `light.combined(with:_:)` makes the mean the base of a [`Combine`](./Effects.md#combined).
 - `light.reset()` starts the average over. Call it when the scene, the camera, or the lens moved, because the samples drawn before no longer describe the picture. `LineSpray` calls it for you.
 - The sum lives in single-precision float whatever the layer's other settings are. A value that only grows then keeps every bit that half float would drop. The mean is served in half float, like any layer. An accumulator is **persistent**, the way `Feedback` is, so make it once in `setup()` and hold it.
 
@@ -96,6 +108,6 @@ Exposure is a print setting. It scales the mean once the mean has converged, so 
 ### Notes
 
 - **A pile brightens, but a mean converges.** A static scene drawn additively onto a `noClear` canvas keeps getting brighter until it saturates to white. That happens because the surface holds a sum, whatever the tone map does afterward. Keep such a scene moving, with a slow rotation, drifting particles, or a sweep. Light then flows across the canvas and reaches a steady glow. The other option is an [`Accumulator`](#accumulator). Its picture is the sum *divided by the passes*, so it settles at the same brightness however long it runs.
-- **Float precision.** The accumulation surface composites in linear half float. A faint sample, well below 1/255, adds up instead of quantizing away while the pixel is still dark, and light can build past full brightness. Use [`toneMap(_:)`](../Drawing/HDR.md) to roll that built-up light off smoothly rather than clipping it. Half float keeps about three digits, though. A sample stops counting once it falls under roughly one part in a thousand of what the pixel already holds, so a long exposure of faint strokes on a `noClear` canvas stops brightening. For a long sum, draw the pile into a `Feedback` layer made with `makeFeedback(precision: .float32)`. An accumulator keeps its own sum in single precision.
+- **Float precision.** The accumulation surface composites in linear half float. A faint sample, well below 1/255, adds up instead of quantizing away while the pixel is still dark, and light can build past full brightness. Use [`toneMap(_:)`](../Drawing/HDR.md) to roll that built-up light off smoothly rather than clipping it. Half float keeps about three digits, though. A sample stops counting once it falls under roughly one part in a thousand of what the pixel already holds, so a long exposure of faint strokes on a half-float canvas stops brightening. For a long sum, ask for single precision with `noClear(precision: .float32)`, or draw the pile into a `Feedback` layer made with `makeFeedback(precision: .float32)`. An accumulator keeps its own sum in single precision.
 - **Window resizing resets it.** The persistent surface is sized to the window, so resizing reallocates it and starts the accumulation over.
 - **Export works the same way.** The headless still (`--export --frame N`) drives the accumulation across frames just like the live window. The sequence, video, and GIF exports do the same. What you export therefore matches what you see.

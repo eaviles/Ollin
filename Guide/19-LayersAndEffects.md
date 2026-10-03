@@ -141,6 +141,8 @@ Each frame draws only 2,600 dots, each at an alpha of 0.045, barely visible alon
 
 While accumulating, `background(_:)` is the reset, so call it on the frame you want to wipe, or never. And a still additive scene only brightens, toward white, for as long as it runs, so keep something moving.
 
+The pile can also run out of digits. The canvas keeps about three. A mark under a thousandth of what a pixel already holds adds nothing, so a very long exposure of very faint marks levels off. `noClear(precision: .float32)` keeps about seven, at twice the memory, and the faint marks go on adding up.
+
 ## Brighter than the screen: toneMap
 
 That `toneMap(.aces, exposure: 1.5)` line in the sandpainting needs explaining, because it solves a problem you now have. Additive light does not stop at full brightness. Three overlapping lamps sum to three times what the screen can show. Ollin composites every frame in a high-precision format that keeps those too-bright values. Then `toneMap(_:)` decides what happens when the frame finally meets the screen. The default clips every too-bright value to white, which is simple and abrupt:

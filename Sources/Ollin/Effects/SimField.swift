@@ -201,6 +201,15 @@ public class SimField {
         return writeLayer.filtered(filter)
     }
 
+    /// The field's current state as the base of a two-input `Combine`, with
+    /// `aux` as the second input, returning a new layer as
+    /// ``RenderTarget/combined(with:_:)`` does. Like `filtered(_:)`, reading the
+    /// field this way keeps it stepping.
+    public func combined(with aux: RenderTarget, _ op: Combine) -> RenderTarget {
+        drawer?.ensureFieldSteps(self)
+        return writeLayer.combined(with: aux, op)
+    }
+
     /// The field's current state, read back to the CPU as a `FieldSnapshot`: every
     /// cell's four channels exactly as stored, `pixelWidth` by `pixelHeight`. Called
     /// from `draw()`, it holds the state the last frame left (this frame's step has

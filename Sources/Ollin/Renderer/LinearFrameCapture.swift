@@ -27,6 +27,10 @@ extension MetalRenderer {
     /// once the GPU has finished.
     struct LinearCapture {
         let color: MTLBuffer
+        /// Whether `color` holds single-precision components (a `.float32`
+        /// accumulation surface), which `finishLinearCapture` narrows to the
+        /// half floats a `LinearFrame` carries.
+        var colorIsSingle = false
         /// The resolved scene depth, still at the render's own size, which a
         /// supersampled export makes larger than the canvas.
         let depth: MTLBuffer?
@@ -41,7 +45,8 @@ extension MetalRenderer {
     func beginLinearCapture(_ color: MTLTexture, depth: MTLTexture?,
                             into commandBuffer: MTLCommandBuffer,
                             width: Int, height: Int) -> LinearCapture? {
-        let colorBytesPerRow = width * 8                    // rgba16Float
+        let single = color.pixelFormat == .rgba32Float
+        let colorBytesPerRow = width * (single ? 16 : 8)    // rgba32Float or rgba16Float
         let colorBytes = colorBytesPerRow * height
         guard width > 0, height > 0,
               let colorBuffer = device.makeBuffer(length: colorBytes, options: .storageModeShared),
@@ -69,19 +74,38 @@ extension MetalRenderer {
             }
         }
         blit.endEncoding()
-        return LinearCapture(color: colorBuffer, depth: depthBuffer,
+        return LinearCapture(color: colorBuffer, colorIsSingle: single, depth: depthBuffer,
                              depthWidth: depthWidth, depthHeight: depthHeight)
     }
 
     /// Turn a finished capture into a `LinearFrame`: the color buffer travels as
     /// it is (the renderer's own half-float bytes, so nothing is converted), and
-    /// the depth buffer becomes distance from the eye. Call only after the
-    /// command buffer has completed.
+    /// the depth buffer becomes distance from the eye. A single-precision pile is
+    /// narrowed to half floats here, the one form a `LinearFrame` holds (nil
+    /// only if the buffer for that cannot be made). Call only after the command
+    /// buffer has completed.
     func finishLinearCapture(_ capture: LinearCapture, drawer: Drawer,
-                             width: Int, height: Int) -> LinearFrame {
-        LinearFrame(width: width, height: height, color: capture.color,
-                    depth: eyeDistances(capture, camera: drawer.camera3D,
-                                        width: width, height: height))
+                             width: Int, height: Int) -> LinearFrame? {
+        let color: MTLBuffer
+        if capture.colorIsSingle {
+            guard let narrowed = halfFloats(of: capture.color, count: width * height * 4) else { return nil }
+            color = narrowed
+        } else {
+            color = capture.color
+        }
+        return LinearFrame(width: width, height: height, color: color,
+                           depth: eyeDistances(capture, camera: drawer.camera3D,
+                                               width: width, height: height))
+    }
+
+    /// `count` single-precision components narrowed to half floats in a new
+    /// shared buffer, in the same order.
+    private func halfFloats(of buffer: MTLBuffer, count: Int) -> MTLBuffer? {
+        guard let out = device.makeBuffer(length: count * 2, options: .storageModeShared) else { return nil }
+        let source = buffer.contents().bindMemory(to: Float.self, capacity: count)
+        let target = out.contents().bindMemory(to: Float16.self, capacity: count)
+        for i in 0..<count { target[i] = Float16(source[i]) }
+        return out
     }
 
     /// The depth buffer read as distance from the eye, canvas-sized.

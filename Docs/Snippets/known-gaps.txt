@@ -37,8 +37,9 @@ f0ec15e3ed0a  Docs/3D/3D.md:89  cannot find 'a' in scope
 a5b3460feb06  Docs/3D/3D.md:960  cannot find 'e' in scope
 1fbb55b7ead2  Docs/3D/Atmosphere.md:13  cannot convert value of type '(UnboundedRange_) -> ()' to expected argument type 'Camera3D'
 c58bc0d079e5  Docs/3D/Atmosphere.md:94  cannot find 'gobo' in scope
-1eefcecfecc2  Docs/3D/Camera.md:134  cannot find 'stage' in scope
-57855206ca07  Docs/3D/Camera.md:147  cannot find 'locked' in scope
+1eefcecfecc2  Docs/3D/Camera.md:140  cannot find 'stage' in scope
+57855206ca07  Docs/3D/Camera.md:153  cannot find 'locked' in scope
+780f77dfcd62  Docs/3D/Camera.md:64  cannot find 'distance' in scope
 81e956ba5271  Docs/3D/Caustics.md:13  cannot convert value of type '(UnboundedRange_) -> ()' to expected argument type 'Camera3D'
 011012edb95c  Docs/3D/Caustics.md:75  cannot find 'triangle' in scope
 b33f1f70c329  Docs/3D/DepthCompositing.md:119  cannot find 'device' in scope
@@ -147,7 +148,8 @@ c4f9e4f56eb7  Docs/Core/Sketch.md:369  'canvasSize' has already been overridden
 a44d249678b0  Docs/Core/Sketch.md:393  consecutive statements on a line must be separated by ';'
 a5c2f1d106c9  Docs/Core/Variations.md:104  cannot find 'MySketch' in scope
 57d474d715d6  Docs/Core/Variations.md:127  unary operator cannot be separated from its operand
-1c021458eb56  Docs/Drawing/Accumulation.md:72  cannot find 'samples' in scope
+07a5a0c7f12a  Docs/Drawing/Accumulation.md:24  cannot convert value of type '()' to expected argument type 'LayerPrecision'
+1c021458eb56  Docs/Drawing/Accumulation.md:84  cannot find 'samples' in scope
 5ff62c226df1  Docs/Drawing/Anamorphosis.md:109  cannot find 'mirror' in scope
 b7f3f4d2132a  Docs/Drawing/Anamorphosis.md:38  cannot convert value of type 'Vector2.Type' to expected argument type 'Vector2'
 25d93404f30d  Docs/Drawing/Anamorphosis.md:66  cannot find 'mirror' in scope
@@ -290,17 +292,18 @@ b774992b6378  Docs/Drawing/Drawing.md:938  expected ',' separator
 1545ca2f9764  Docs/Drawing/Drawing.md:958  expected ',' separator
 0375abf145ad  Docs/Drawing/Drawing.md:979  expected ',' separator
 6d78937929ce  Docs/Drawing/Drawing.md:999  expected ',' separator
-f9dd3d125f11  Docs/Drawing/Effects.md:107  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-8528c8e05574  Docs/Drawing/Effects.md:133  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-287a7fa55e41  Docs/Drawing/Effects.md:161  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-5aa234bd9c13  Docs/Drawing/Effects.md:224  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-cfebd0c142fa  Docs/Drawing/Effects.md:243  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-0cf1d8be56d4  Docs/Drawing/Effects.md:268  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-69cf570bc684  Docs/Drawing/Effects.md:329  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-314af6ac5659  Docs/Drawing/Effects.md:578  cannot find 'horizon' in scope
-a8f0d552b0f0  Docs/Drawing/Effects.md:614  cannot find 'marks' in scope
-09c8e57cb7b7  Docs/Drawing/Effects.md:94  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'image'
-63ea4c842664  Docs/Drawing/Effects.md:944  cannot find 'photo' in scope
+f9dd3d125f11  Docs/Drawing/Effects.md:109  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+8528c8e05574  Docs/Drawing/Effects.md:135  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+287a7fa55e41  Docs/Drawing/Effects.md:163  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+5aa234bd9c13  Docs/Drawing/Effects.md:226  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+cfebd0c142fa  Docs/Drawing/Effects.md:245  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+0cf1d8be56d4  Docs/Drawing/Effects.md:270  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+69cf570bc684  Docs/Drawing/Effects.md:331  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+314af6ac5659  Docs/Drawing/Effects.md:581  cannot find 'horizon' in scope
+1c1c7cea776b  Docs/Drawing/Effects.md:603  cannot find 'glow' in scope
+a8f0d552b0f0  Docs/Drawing/Effects.md:631  cannot find 'marks' in scope
+09c8e57cb7b7  Docs/Drawing/Effects.md:96  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'image'
+63ea4c842664  Docs/Drawing/Effects.md:961  cannot find 'photo' in scope
 eb9d4c173b18  Docs/Drawing/Envelopes.md:105  expected ',' separator
 3ba94f2cae8b  Docs/Drawing/Envelopes.md:112  cannot find 'shore' in scope
 6959c47ac423  Docs/Drawing/Envelopes.md:41  expected ',' separator
@@ -361,21 +364,23 @@ dc15f6dcd5a0  Docs/Drawing/Hitomezashi.md:27  expected expression in list of exp
 c71f36a28e16  Docs/Drawing/Hitomezashi.md:58  cannot find 'design' in scope
 1ac5bada7447  Docs/Drawing/Hitomezashi.md:81  cannot convert value of type 'Grid.Type' to expected argument type 'Grid'
 c08f2809d334  Docs/Drawing/HyperbolicTiling.md:28  expected expression in list of expressions
-f94ff80acb61  Docs/Drawing/Images.md:109  cannot find 'photo' in scope
-4507491660ae  Docs/Drawing/Images.md:128  expected ',' separator
-d90bc5345e62  Docs/Drawing/Images.md:135  cannot find 'photo' in scope
-b21ad741863f  Docs/Drawing/Images.md:147  cannot find 'photo' in scope
-bc2ff2e9c0e7  Docs/Drawing/Images.md:158  expected ',' separator
-99267671422d  Docs/Drawing/Images.md:175  'module' is inaccessible due to 'internal' protection level
-1efdc2a60c83  Docs/Drawing/Images.md:183  cannot find 'SamplePhoto' in scope
-640f69da89f7  Docs/Drawing/Images.md:189  cannot find 'SamplePhoto' in scope
-44ba9ded0b5e  Docs/Drawing/Images.md:204  cannot find 'image' in scope
-fe26816299c3  Docs/Drawing/Images.md:41  expected ',' separator
-f103bfdcb835  Docs/Drawing/Images.md:48  cannot find 'photo' in scope
-2b3ebe4e45eb  Docs/Drawing/Images.md:58  expected ',' separator
-bc8a508250af  Docs/Drawing/Images.md:67  cannot find 'logo' in scope
-89be05f65157  Docs/Drawing/Images.md:75  cannot find 'logo' in scope
-4f5c3328c770  Docs/Drawing/Images.md:91  expected ',' separator
+f94ff80acb61  Docs/Drawing/Images.md:110  cannot find 'photo' in scope
+900071b8f7fc  Docs/Drawing/Images.md:129  expected ',' separator
+873aa380af2f  Docs/Drawing/Images.md:137  cannot find 'walk' in scope
+4507491660ae  Docs/Drawing/Images.md:159  expected ',' separator
+d90bc5345e62  Docs/Drawing/Images.md:166  cannot find 'photo' in scope
+b21ad741863f  Docs/Drawing/Images.md:178  cannot find 'photo' in scope
+bc2ff2e9c0e7  Docs/Drawing/Images.md:189  expected ',' separator
+99267671422d  Docs/Drawing/Images.md:206  'module' is inaccessible due to 'internal' protection level
+1efdc2a60c83  Docs/Drawing/Images.md:214  cannot find 'SamplePhoto' in scope
+640f69da89f7  Docs/Drawing/Images.md:220  cannot find 'SamplePhoto' in scope
+44ba9ded0b5e  Docs/Drawing/Images.md:235  cannot find 'image' in scope
+fe26816299c3  Docs/Drawing/Images.md:42  expected ',' separator
+f103bfdcb835  Docs/Drawing/Images.md:49  cannot find 'photo' in scope
+2b3ebe4e45eb  Docs/Drawing/Images.md:59  expected ',' separator
+bc8a508250af  Docs/Drawing/Images.md:68  cannot find 'logo' in scope
+89be05f65157  Docs/Drawing/Images.md:76  cannot find 'logo' in scope
+4f5c3328c770  Docs/Drawing/Images.md:92  expected ',' separator
 89c6089e7cbf  Docs/Drawing/Knotwork.md:36  expected expression in list of expressions
 0fd5f0a6fe8a  Docs/Drawing/Knotwork.md:64  expected expression in list of expressions
 3228d64e7e10  Docs/Drawing/Kolam.md:31  expected expression in list of expressions

@@ -158,7 +158,13 @@ extension OllinApp {
                          recipe: String?) -> EXRWritten? {
         let count = frame.width * frame.height * 4
         let halves = frame.color.contents().bindMemory(to: UInt16.self, capacity: count)
-        let rgba = [UInt16](UnsafeBufferPointer(start: halves, count: count))
+        var rgba = [UInt16](UnsafeBufferPointer(start: halves, count: count))
+        // Coverage stops at one, but additive marks sum their alpha with their
+        // light: two added coats on an opaque canvas hold 3 there, which a
+        // compositor would read as a pixel covered three times over. The light
+        // itself stays as it summed.
+        let one = Float16(1).bitPattern
+        for i in stride(from: 3, to: count, by: 4) where Float16(bitPattern: rgba[i]) > 1 { rgba[i] = one }
         let file = OpenEXRFile(width: frame.width, height: frame.height, rgba: rgba,
                               depth: frame.depth, comments: recipe)
         let data = file.encoded()

@@ -59,6 +59,12 @@ cameraShowcase(.sway(amplitude: 0.4, period: 30), radius: 8, elevation: 0.3)
 
 The `target` / `radius` / `elevation` / `fieldOfView` arguments frame the opening shot on the first call. The idle return glides back to that shot.
 
+**A parameter in the framing does nothing live.** The framing applies on the first call, so a `@Param` passed as `radius` or `elevation` changes nothing when you tune it in the window, and `resetCamera()` goes back to the first call's framing too. An export applies `--param` before its first frame, so the export does frame with the value, and the window and the file disagree. The same holds for `cameraControl` and `cameraMove`. For a framing you want to tune, pose the camera from the clock instead, which reads the parameters every frame at the cost of the viewer's grab:
+
+```swift
+camera(.orbiting(radius: distance, azimuth: loopProgress(over: 20) * .tau, elevation: tilt))
+```
+
 <a id="control"></a>
 ### Interactive control
 

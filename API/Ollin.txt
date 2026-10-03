@@ -145,6 +145,7 @@
   static func buildExpression(_: [ComposeLayer]) -> [ComposeLayer]
   static func buildOptional(_: [ComposeLayer]?) -> [ComposeLayer]
 class SimField
+  func combined(with: RenderTarget, _: Combine) -> RenderTarget
   func filtered(_: Filter) -> RenderTarget
   func snapshot() -> FieldSnapshot?
   let height: Int
@@ -869,6 +870,7 @@ extension SwiftUICore.EnvironmentValues
 extension SwiftUICore.View
   func endsTypingOnBackgroundTap() -> some SwiftUI.View
 final class Accumulator
+  func combined(with: RenderTarget, _: Combine) -> RenderTarget
   func developed(exposure: Double, ground: Color = default) -> RenderTarget
   func filtered(_: Filter) -> RenderTarget
   func reset()
@@ -1119,6 +1121,7 @@ final class Evolution: Sendable
   var tournament: Int { get set }
   var trialDuration: Double? { get set }
 final class Feedback
+  func combined(with: RenderTarget, _: Combine) -> RenderTarget
   func filtered(_: Filter) -> RenderTarget
   let height: Int
   let precision: LayerPrecision
@@ -2100,10 +2103,12 @@ open class Sketch: Sendable
   func drawIcosphere(radius: Double = default, subdivisions: Int = default)
   func drawImage(_: Image, _: Double, _: Double)
   func drawImage(_: Image, _: Double, _: Double, _: Double, _: Double)
+  func drawImage(_: Image, _: Double, _: Double, _: Double, _: Double, _: Double, _: Double, _: Double, _: Double)
   func drawImage(_: Image, _: Double, _: Double, _: Double, _: Double, fit: ImageFit)
   func drawImage(_: Image, corner: Vector2)
   func drawImage(_: Image, in: Rectangle)
   func drawImage(_: Image, in: Rectangle, fit: ImageFit)
+  func drawImage(_: Image, in: Rectangle, source: Rectangle)
   func drawKlein(scale: Double = default, segments: Int = default, sides: Int = default)
   func drawKnotwork(in: Rectangle? = default, columns: Int, rows: Int, mirrors: [Kolam.Mirror] = default, weight: Double = default, cordColor: Color = default, rounding: Int = default)
   func drawKolam(in: Rectangle? = default, columns: Int, rows: Int, mirrors: [Kolam.Mirror] = default, rounding: Int = default)
@@ -2382,7 +2387,7 @@ open class Sketch: Sendable
   func neighborStep(_: ComputeKernel, over: SpatialHash, reading: ComputeBuffer<COllinShaders.OllinParticle>, writing: ComputeBuffer<COllinShaders.OllinParticle>, params: ComputeParams = default)
   func noAerialPerspective()
   func noCaustics()
-  func noClear()
+  func noClear(precision: LayerPrecision = default)
   func noContactShadows()
   func noDepth()
   func noDescription()

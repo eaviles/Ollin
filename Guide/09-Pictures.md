@@ -203,6 +203,15 @@ A round shape in the picture is the fastest way to tell which one you are lookin
 
 Cropping costs nothing here. `.cover` does not clip the drawing. It reads a smaller part of the picture instead. So a covered photograph costs the same one quad and one texture read as a stretched one.
 
+You can name that part yourself. A **sprite sheet** keeps the frames of an animation side by side in one picture. Four more numbers pick one frame out, measured in the picture's own pixels:
+
+```swift
+let frame = frameCount / 4 % 8                       // eight 64-pixel frames in a row
+drawImage(walk, 100, 100, 128, 128, Double(frame) * 64, 0, 64, 64)
+```
+
+The first four numbers are the box, as before, and the last four are the part of `walk` to draw into it. The draw reads only inside that part, so a frame drawn twice its size never shows a sliver of the frame beside it. [`Examples/Images/SpriteSheet`](../Examples/Images/SpriteSheet/Sketch.swift) paints a sheet of eight coins in `setup()` and turns three coins from it at three sizes. The [Images](../Docs/Drawing/Images.md#part) reference has the `Rectangle` form and what happens when a frame is drawn smaller than itself.
+
 ### Making it narrower without squashing it: seam carving
 
 The three answers above keep every pixel and change how the picture sits in the box. A fourth changes the picture's own shape, and tries hard to leave the looking alone.

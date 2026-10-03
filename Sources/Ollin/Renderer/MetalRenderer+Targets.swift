@@ -4173,9 +4173,9 @@ extension MetalRenderer {
     /// layer a transmissive surface reads (`sceneThroughGlass()`), where the mips are
     /// the roughness blur rather than a minification aid. The pass resolves level 0 and
     /// a blit fills the rest of the chain; `.private`, since it never leaves the GPU.
-    func makeFloatResolveMipped(width: Int, height: Int) -> MTLTexture? {
+    func makeFloatResolveMipped(width: Int, height: Int, format: MTLPixelFormat? = nil) -> MTLTexture? {
         let desc = MTLTextureDescriptor.texture2DDescriptor(
-            pixelFormat: linearFormat, width: width, height: height, mipmapped: true)
+            pixelFormat: format ?? linearFormat, width: width, height: height, mipmapped: true)
         desc.usage = [.renderTarget, .shaderRead]
         desc.storageMode = .private
         return device.makeTexture(descriptor: desc)

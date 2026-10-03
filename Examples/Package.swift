@@ -609,6 +609,7 @@ let package = Package(
         example("Images/SeamCarve", [.samplePhotos]),
         example("Images/SingleLine", [.samplePhotos]),
         example("Images/SlitScan"),
+        example("Images/SpriteSheet"),
         example("Images/SpanningTree", [.samplePhotos]),
         example("Images/StringArt", [.samplePhotos]),
         example("Audio/Synth", [.audio]),

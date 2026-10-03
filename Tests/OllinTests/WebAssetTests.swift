@@ -54,6 +54,44 @@ import OllinWebGate
         }
     }
 
+    /// A sheet of four 16-pixel cells, each its own ramp, so a cell that read
+    /// its neighbor would show that neighbor's colors along its border.
+    static func sheet() -> Image {
+        let sheet = Image(width: 32, height: 32, color: .white)
+        for y in 0 ..< 32 {
+            for x in 0 ..< 32 {
+                let cell = (x / 16) + 2 * (y / 16), u = Double(x % 16) / 15, v = Double(y % 16) / 15
+                sheet[x, y] = [Color(red: 1, green: u * 0.6, blue: v * 0.3, alpha: 1),
+                               Color(red: u * 0.3, green: 0.9, blue: v * 0.5, alpha: 1),
+                               Color(red: v * 0.4, green: u * 0.4, blue: 1, alpha: 1),
+                               Color(red: 0.1, green: 0.1, blue: 0.1 + u * 0.3, alpha: 1)][cell]
+            }
+        }
+        return sheet
+    }
+
+    /// The sheet's cells drawn one at a time, four times their size, and one
+    /// turning: a page that read past a cell would put a band of its
+    /// neighbor's color down every edge.
+    final class Sprites: Sketch {
+        override var canvasSize: CanvasSize { .square(240) }
+        let sheet = WebAssetTests.sheet()
+        override func draw() {
+            background(Color(hex: 0xF0EEE8))
+            for cell in 0 ..< 4 {
+                let sx = Double(cell % 2) * 16, sy = Double(cell / 2) * 16
+                drawImage(sheet, 10 + Double(cell) * 56, 10, 52, 52, sx, sy, 16, 16)
+            }
+            drawImage(sheet, in: Rectangle(x: 10, y: 70, width: 96, height: 96),
+                      source: Rectangle(x: 16, y: 16, width: 16, height: 16))
+            withState {
+                translate(170, 170)
+                rotate(time * 0.5)
+                drawImage(sheet, -40, -40, 80, 80, 16, 0, 16, 16)
+            }
+        }
+    }
+
     /// Two images with the same pixels, one of them edited on the third frame.
     final class Repainted: Sketch {
         override var canvasSize: CanvasSize { .square(120) }
@@ -225,7 +263,7 @@ import OllinWebGate
         #expect(g.quadCount == 6 && g.instanceCount == 0 && g.vertexCount == 0)
         var blends: [Int] = []
         for (i, item) in g.canvas.enumerated() {
-            guard case let .image(source, quad, count, blend) = item else { Issue.record("\(item)"); continue }
+            guard case let .image(source, quad, count, blend, _) = item else { Issue.record("\(item)"); continue }
             #expect(source == .picture(0) && quad == i && count == 1)
             blends.append(blend)
         }
@@ -241,13 +279,33 @@ import OllinWebGate
         #expect(WebTrack(recording).stable)
     }
 
+    @Test func aSourceRectangleCrossesAsTheBoundsOfItsPart() throws {
+        // Every cell carries the part of the texture it may read, in texture
+        // coordinates; a whole picture's item keeps its five fields.
+        let recording = try OllinApp.recordWebFrames(of: Sprites(), frames: 1, fps: 30)
+        var bounds: [SIMD4<Float>] = []
+        for item in recording.frames[0].graph.canvas {
+            guard case let .image(source, _, _, _, held) = item else { continue }
+            #expect(source == .picture(0))
+            if let held { bounds.append(held) }
+        }
+        #expect(bounds.count == 6)
+        #expect(bounds.first == SIMD4(0, 0, 0.5, 0.5))
+        #expect(bounds[4] == SIMD4(0.5, 0.5, 1, 1))
+        let pictured = try OllinApp.recordWebFrames(of: Pictured(), frames: 1, fps: 30)
+        for item in pictured.frames[0].graph.canvas {
+            guard case let .image(_, _, _, _, held) = item else { continue }
+            #expect(held == nil, "a whole picture, a smaller one and a cover crop read the whole texture")
+        }
+    }
+
     @Test func anEditedPictureIsASecondAssetAndEqualPixelsAreOne() throws {
         let recording = try OllinApp.recordWebFrames(of: Repainted(), frames: 5, fps: 30)
         // Two images with the same pixels are one asset; the edit on the third
         // frame makes a second, and the graph changes with it.
         #expect(recording.pictures.count == 2)
         func sources(_ k: Int) -> [WebImageSource] {
-            recording.frames[k].graph.canvas.compactMap { if case let .image(s, _, _, _) = $0 { return s } else { return nil } }
+            recording.frames[k].graph.canvas.compactMap { if case let .image(s, _, _, _, _) = $0 { return s } else { return nil } }
         }
         #expect(sources(0) == [.picture(0), .picture(0)])
         #expect(sources(1) == [.picture(0), .picture(0)])
@@ -406,7 +464,7 @@ import OllinWebGate
         for item in g.canvas {
             switch item {
             case .glyphs: order.append("glyphs")
-            case .image(.picture(0), _, 1, _): order.append("picture")
+            case .image(.picture(0), _, 1, _, _): order.append("picture")
             case .shapes: order.append("shape")
             default: order.append("?")
             }
@@ -463,6 +521,7 @@ import OllinWebGate
             ("Graded (linear, radial, along the path, a gradient stroke, a moving ramp)", { Graded() }, 6, 3),
             ("Swept (a conic disk and ring, a conic on a split fan, a tab, four radii, a per-corner leaf)", { Swept() }, 1, 0),
             ("Batched (text and a picture in a recording, turning)", { Batched() }, 4, 2),
+            ("Sprites (cells of a sheet four times their size, one turning)", { Sprites() }, 4, 2),
         ]
         for (k, c) in cases.enumerated() {
             let recording = try OllinApp.recordWebFrames(of: c.make(), frames: c.frames, fps: 30)

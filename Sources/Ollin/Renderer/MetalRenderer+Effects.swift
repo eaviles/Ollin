@@ -406,7 +406,11 @@ extension MetalRenderer {
         // Filter and combine ops share one list, resolved in record order so an op's
         // inputs (filled earlier in this loop, or by the geometry/generator passes
         // above) are ready before it runs.
+        defer { filterChainFormat = nil }
         for output in drawer.filterOps {
+            // Every pass of this op works in its output's precision, which follows
+            // the layer it reads (a `.float32` source keeps float32 to the end).
+            filterChainFormat = output.pixelFormat == linearFormat ? nil : output.pixelFormat
             switch output.origin {
             case let .filter(input, filter):
                 guard let src = input.texture else { continue }
@@ -2335,6 +2339,9 @@ extension MetalRenderer {
                                       into cb: MTLCommandBuffer,
                                       format: MTLPixelFormat? = nil,
                                       sampler: MTLSamplerState? = nil) {
+        // The pipeline is built against the texture it writes, whatever format that
+        // is, so a pass in a single-precision chain never meets a half-float pipeline.
+        let format = format ?? (output.pixelFormat == linearFormat ? nil : output.pixelFormat)
         guard let state = try? pipeline(.effect(fragment, format: format)) else { return }
         let pass = MTLRenderPassDescriptor()
         pass.colorAttachments[0].texture = output
@@ -2363,6 +2370,7 @@ extension MetalRenderer {
                                   format: MTLPixelFormat? = nil,
                                   sampler: MTLSamplerState? = nil,
                                   extraRows: [SIMD4<Float>] = []) {
+        let format = format ?? (output.pixelFormat == linearFormat ? nil : output.pixelFormat)
         let (state, hash) = userShaderState(for: shader, variant: variant, format: format)
         guard let state else {
             if let err = userShaderErrors[hash] {
@@ -2815,7 +2823,7 @@ extension MetalRenderer {
     /// Acquire a single-sample linear-float intermediate for a filter result.
     func acquireFilterTexture(width: Int, height: Int, pooled: Bool,
                               format: MTLPixelFormat? = nil) -> MTLTexture? {
-        let format = format ?? linearFormat
+        let format = format ?? filterChainFormat ?? linearFormat
         guard pooled else { return makeFilterTexture(width: width, height: height, format: format) }
         let slot = filterTexNext; filterTexNext += 1
         var pool = filterTexPool[frameIndex]
@@ -2941,7 +2949,11 @@ extension MetalRenderer {
                                       inverseViewProjection: simd_float4x4)? = nil,
                         skippingTransmissive: Bool = false,
                         target passTarget: RenderTarget? = nil,
-                        taaJitter: SIMD2<Float> = .zero) {
+                        taaJitter: SIMD2<Float> = .zero,
+                        // The canvas's own color format when it is not the shared
+                        // linear one (a single-precision accumulation surface). A
+                        // layer pass takes its format from `passTarget` instead.
+                        canvasColorFormat: MTLPixelFormat? = nil) {
         let vertices = drawer.vertices
         let instances = drawer.sdfInstances
         let imageVertices = drawer.imageVertices
@@ -3025,11 +3037,12 @@ extension MetalRenderer {
         } ?? (attachment ?? viewport)
         let pixelScale = SIMD2<Float>(viewport.x > 0 ? attachmentSize.x / viewport.x : 1,
                                       viewport.y > 0 ? attachmentSize.y / viewport.y : 1)
-        // A single-precision layer builds every pipeline drawn into it against its
-        // own format; the canvas and half-float layers leave the key untouched.
-        let passColorFormat: MTLPixelFormat? = passTarget.flatMap {
+        // A single-precision layer (or accumulation surface) builds every pipeline
+        // drawn into it against its own format; the canvas and half-float layers
+        // leave the key untouched.
+        let passColorFormat: MTLPixelFormat? = passTarget.map {
             $0.pixelFormat == linearFormat ? nil : $0.pixelFormat
-        }
+        } ?? canvasColorFormat
         var uniforms = Uniforms(viewport: viewport, clipDepth: 0,
                                 batchTransformed: 0,
                                 batchTransform: matrix_identity_float3x3,
@@ -3700,6 +3713,8 @@ extension MetalRenderer {
                 encoder.setVertexBuffer(imageBuffer, offset: batch.imageStart * imageStride, index: 0)
                 encoder.setFragmentTexture(texture, index: 0)
                 encoder.setFragmentSamplerState(imageSampler, index: 0)
+                var bounds = batch.imageBounds ?? MetalRenderer.wholeImage
+                encoder.setFragmentBytes(&bounds, length: MemoryLayout<SIMD4<Float>>.stride, index: 0)
                 profile.countDraw(batch.kind, count)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
             case .glyphAtlas:
@@ -4181,6 +4196,8 @@ extension MetalRenderer {
                 encoder.setVertexBuffer(buffer, offset: run.imageStart * imageStride, index: 0)
                 encoder.setFragmentTexture(texture, index: 0)
                 encoder.setFragmentSamplerState(imageSampler, index: 0)
+                var bounds = run.imageBounds ?? MetalRenderer.wholeImage
+                encoder.setFragmentBytes(&bounds, length: MemoryLayout<SIMD4<Float>>.stride, index: 0)
                 profile.countDraw(run.kind, count)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
             case .glyphAtlas:

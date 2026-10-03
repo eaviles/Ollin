@@ -99,4 +99,17 @@ public final class Feedback {
     /// effects substrate every layer uses. The filter reads the written result; the
     /// persistent state the loop carries forward stays untouched.
     public func filtered(_ filter: Filter) -> RenderTarget { writeLayer.filtered(filter) }
+
+    /// This frame's written content as the base of a two-input `Combine`, with
+    /// `aux` as the second input: mask the trails by another layer, displace them
+    /// by a field, mix them with a scene. Returns a new layer to composite or
+    /// filter further, exactly as ``RenderTarget/combined(with:_:)`` does; the
+    /// persistent state the loop carries forward stays untouched.
+    ///
+    /// ```swift
+    /// drawImage(trails.combined(with: lit, .mask(channel: .alpha)).image, 0, 0)
+    /// ```
+    public func combined(with aux: RenderTarget, _ op: Combine) -> RenderTarget {
+        writeLayer.combined(with: aux, op)
+    }
 }

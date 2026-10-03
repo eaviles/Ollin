@@ -167,6 +167,72 @@ struct DistanceFieldTests {
         #expect(wrong == 0, "\(wrong) of \(checked) pixels took the wrong dot's color")
     }
 
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aSinglePrecisionLayerMeasuresFarDistancesToAFractionOfAPixel() throws {
+        // The field of one dot, read 1,400 to 1,408 pixels away on a 1080 by 1920
+        // canvas. Half float spaces its values a whole pixel apart there, so a field
+        // stored in it is off by up to half a pixel in a pattern that follows the
+        // rounding, which is what draws a ragged far isoline. A `.float32` layer keeps
+        // single precision through the field, and through the shader that reads it.
+        let half = try farResiduals(.float16)
+        let single = try farResiduals(.float32)
+        #expect(half.count > 200 && single.count > 200, "expected a band worth reading")
+        let halfSpread = Self.deviation(half), singleSpread = Self.deviation(single)
+        // Rounding to whole pixels scatters a uniform half pixel either way, 0.29 of
+        // spread; what single precision leaves is the dither and the flood's own
+        // occasional pick of a seed a little past the nearest (a few tenths, always
+        // long), about 0.1 here.
+        #expect(halfSpread > 0.22, "half float read \(halfSpread) px of scatter, expected its rounding")
+        #expect(singleSpread < 0.15, "single precision read \(singleSpread) px of scatter")
+        #expect(halfSpread > 2 * singleSpread)
+        // A blur after the field keeps the chain's precision: half float rounds the
+        // blurred field again, single precision carries it through.
+        let blurredHalf = Self.deviation(try farResiduals(.float16, blurred: true))
+        let blurredSingle = Self.deviation(try farResiduals(.float32, blurred: true))
+        #expect(blurredHalf > 0.22, "half float through a blur read \(blurredHalf) px of scatter")
+        #expect(blurredSingle < 0.15, "single precision through a blur read \(blurredSingle) px of scatter")
+    }
+
+    @Test func precisionFollowsTheLayerThroughAChain() {
+        // A filter or a combine over a `.float32` layer is `.float32` itself, however
+        // long the chain, and a half-float chain stays half float.
+        let drawer = Drawer()
+        let single = RenderTarget(width: 64, height: 64, scale: 1, drawer: drawer, precision: .float32)
+        let half = RenderTarget(width: 64, height: 64, scale: 1, drawer: drawer)
+        let chained = single.filtered(.distanceField()).filtered(.gaussianBlur(radius: 2))
+        #expect(chained.precision == .float32)
+        #expect(single.combined(with: half, .mask()).precision == .float32)
+        #expect(half.combined(with: single, .mask()).precision == .float16)
+        #expect(half.filtered(.distanceField()).filtered(.gaussianBlur(radius: 2)).precision == .float16)
+    }
+
+    /// The measured distance minus the true distance from the dot's edge, at every
+    /// sampled pixel inside the band, with the mean taken out (it is the fixed fraction
+    /// of a pixel the drawn edge sits from the nominal radius, not the precision).
+    private func farResiduals(_ precision: LayerPrecision, blurred: Bool = false) throws -> [Double] {
+        let probe = FarField(precision: precision)
+        probe.blurred = blurred
+        let image = try OllinApp.image(of: probe, frame: 0)
+        let data = pixels(of: image)
+        var residuals: [Double] = []
+        for y in stride(from: 0, to: image.height, by: 3) {
+            for x in stride(from: 0, to: image.width, by: 3) {
+                let p = Vector2(Double(x) + 0.5, Double(y) + 0.5)
+                let truth = (p - FarField.center).length - FarField.radius
+                guard truth > FarField.band + 0.75, truth < FarField.band + FarField.width - 0.75 else { continue }
+                // A shader returns display values, so the byte is the ramp itself.
+                let t = Double(data[(y * image.width + x) * 4]) / 255
+                residuals.append(FarField.band + t * FarField.width - truth)
+            }
+        }
+        let mean = residuals.reduce(0, +) / Double(max(1, residuals.count))
+        return residuals.map { $0 - mean }
+    }
+
+    private static func deviation(_ values: [Double]) -> Double {
+        (values.reduce(0) { $0 + $1 * $1 } / Double(max(1, values.count))).squareRoot()
+    }
+
     @Test func theParametersAreHeldToTheirRange() {
         // A negative threshold would make every pixel of a layer inside the shape, and a
         // maxDistance under a pixel would ask for a ladder with no rungs in it.
@@ -179,6 +245,45 @@ struct DistanceFieldTests {
         #expect(maxDistance == 1)
         guard case let .distanceField(_, _, unbounded) = Filter.distanceField().kind else { return }
         #expect(unbounded == nil, "no maxDistance means measure the whole layer")
+    }
+}
+
+/// One dot in the corner of a portrait layer in the given precision, measured, and
+/// the measurement between `band` and `band + width` pixels written as a gray ramp
+/// by a shader that reads the field's raw distance.
+private final class FarField: Sketch {
+    static let center = Vector2(60, 60)
+    static let radius = 40.0
+    static let band = 1400.0
+    static let width = 8.0
+    var precision: LayerPrecision = .float16
+    /// Whether the field passes through a small blur before the shader reads it.
+    var blurred = false
+
+    convenience init(precision: LayerPrecision) {
+        self.init()
+        self.precision = precision
+    }
+
+    override var canvasSize: CanvasSize { .size(1080, 1920) }
+
+    override func draw() {
+        background(.black)
+        let marks = makeRenderTarget(precision: precision)
+        withTarget(marks) {
+            noStroke()
+            fill(.white)
+            drawCircle(center: FarField.center, radius: FarField.radius)
+        }
+        let band = Shader("""
+        float4 shade(float2 uv, ShaderInfo info) {
+            float t = clamp((sampleRaw(info, uv).r - \(FarField.band)) / \(FarField.width), 0.0, 1.0);
+            return float4(t, t, t, 1.0);
+        }
+        """)
+        var field = marks.filtered(.distanceField())
+        if blurred { field = field.filtered(.gaussianBlur(radius: 1.5)) }
+        drawImage(field.filtered(.shader(band)).image, 0, 0)
     }
 }
 

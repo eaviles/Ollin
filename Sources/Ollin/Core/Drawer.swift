@@ -131,6 +131,14 @@ struct GeometryBatch {
     /// its own batch (one texture per draw call), so it never merges with a
     /// neighbor.
     var image: Image?
+    /// The part of `image` an `.image` batch may read, in texture coordinates
+    /// (`minU, minV, maxU, maxV`), for a draw that names a source rectangle. The
+    /// fragment holds its sample half a texel inside this box, so a magnified
+    /// sprite never filters in a texel of its neighbor on the sheet. `nil` reads
+    /// the whole texture, which is every other image draw (a `.cover` crop
+    /// included: a photograph continues past its crop, so blending across that
+    /// edge is the right reading).
+    var imageBounds: SIMD4<Float>?
     /// The SDF atlas page a `.glyphAtlas` batch samples, `nil` otherwise. A run of
     /// `drawText` calls with nothing drawn between them and the same page and pass
     /// state is one batch (every glyph samples the same page, and each quad
@@ -362,6 +370,13 @@ final class Drawer {
     /// `background(_:)` while it's on wipes the pile (the long-exposure reset),
     /// reported through `backgroundSetThisFrame`.
     private(set) var accumulates: Bool = false
+
+    /// How many bits the accumulation surface keeps per channel while
+    /// `accumulates` is on (`noClear(precision:)`): half float by default, or
+    /// single precision for a pile built from samples too faint for half float
+    /// to keep adding. A mode like `accumulates`; the renderer starts a fresh
+    /// surface when it changes.
+    private(set) var accumulationPrecision: LayerPrecision = .float16
 
     /// How the linear-float frame is mapped to the 8-bit display in the present
     /// pass (see `toneMap` / `ToneMap`). A frame-wide mode, not per-shape state:
@@ -1437,8 +1452,9 @@ final class Drawer {
     /// Open a fresh `.image` batch carrying `image` as its texture. Unlike
     /// `ensureBatch`, this always appends — each image draw binds its own texture,
     /// so two consecutive images can't share a batch. Resets `currentKind` so a
-    /// following triangle/SDF primitive reopens its own batch.
-    func beginImageBatch(_ image: Image) {
+    /// following triangle/SDF primitive reopens its own batch. `bounds` is the
+    /// part of the texture the draw may read (`GeometryBatch.imageBounds`).
+    func beginImageBatch(_ image: Image, bounds: SIMD4<Float>? = nil) {
         currentKind = .image
         currentBatchBlend = currentBlend
         currentBatchDepth = currentDepth
@@ -1451,7 +1467,8 @@ final class Drawer {
                                      meshStart: meshVertices.count,
                                      sdfGroupStart: sdfGroups.count,
                                      sdf3DGroupStart: sdf3DGroups.count,
-                                     blendMode: currentBlend, image: image, depth: currentDepth,
+                                     blendMode: currentBlend, image: image, imageBounds: bounds,
+                                     depth: currentDepth,
                                      target: currentTarget, clipLevel: activeClipLevel))
     }
 
@@ -1739,14 +1756,17 @@ final class Drawer {
         default: break
         }
         noteSubPixelSpread(filter)
+        // Precision follows the layer read: a filter over a single-precision layer
+        // keeps single precision, so a chain never quantizes what its source kept.
         let output = RenderTarget(width: input.width, height: input.height, scale: input.scale,
-                                  drawer: self, origin: .filter(input: input, filter: filter))
+                                  drawer: self, origin: .filter(input: input, filter: filter),
+                                  precision: input.precision)
         filterOps.append(output)
         return output
     }
 
     /// Record a combine of `base` with `aux`, returning the output layer the renderer
-    /// will fill. Output follows `base`'s size/resolution. Recorded into the same op
+    /// will fill. Output follows `base`'s size, resolution and precision. Recorded into the same op
     /// list as filters: in record order, so both inputs (which must already exist to
     /// be referenced, and whose own filter/combine ops were appended earlier) are
     /// resolved before this op runs.
@@ -1764,7 +1784,8 @@ final class Drawer {
             }
         }
         let output = RenderTarget(width: base.width, height: base.height, scale: base.scale,
-                                  drawer: self, origin: .combine(base: base, aux: aux, op: op))
+                                  drawer: self, origin: .combine(base: base, aux: aux, op: op),
+                                  precision: base.precision)
         filterOps.append(output)
         return output
     }
@@ -2139,8 +2160,12 @@ final class Drawer {
     /// surface across frames (progressive refinement, long-exposure stills,
     /// paint-on-canvas). Pairs with `blendMode(.add)` for light-accumulation
     /// ("sandpainting") sketches. Call `background(_:)` to wipe the pile, or
-    /// `clearEachFrame()` to return to the default.
-    func noClear() { accumulates = true }
+    /// `clearEachFrame()` to return to the default. `precision` picks the
+    /// surface's bits per channel (`accumulationPrecision`).
+    func noClear(precision: LayerPrecision = .float16) {
+        accumulates = true
+        accumulationPrecision = precision
+    }
 
     /// Return to clearing the canvas every frame (the default).
     func clearEachFrame() { accumulates = false }

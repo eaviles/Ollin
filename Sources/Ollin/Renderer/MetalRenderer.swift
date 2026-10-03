@@ -1168,6 +1168,11 @@ final class MetalRenderer {
         Array(repeating: [], count: MetalRenderer.maxFramesInFlight)
     var targetTexNext = 0
     var filterTexNext = 0
+    /// The format a filter or combine op's passes acquire their textures in while
+    /// it runs: its output layer's (`RenderTarget.precision`, which follows the
+    /// layer it reads), nil for the shared linear format. Set only around each op
+    /// in the filter list, so a frame filter or a simulation step never sees it.
+    var filterChainFormat: MTLPixelFormat?
     var fieldTexNext = 0
     var satTexNext = 0
     var targetDepthNext = 0
@@ -1787,15 +1792,20 @@ final class MetalRenderer {
     /// frame clears) when the size changes or the sketch calls `background(_:)`.
     /// Reusing the same MSAA target keeps the existing pipelines (no new sample-count
     /// variant) and preserves edge anti-aliasing while accumulating. The targets are
-    /// linear half float, so faint additive samples (below 1/255) sum instead of
-    /// quantizing away while a pixel is dark; once a sample falls under roughly one
-    /// part in a thousand of what the pixel holds it stops counting, which is why a
-    /// long sum belongs in a `.float32` feedback layer. `accumResolve`
+    /// linear half float by default, so faint additive samples (below 1/255) sum
+    /// instead of quantizing away while a pixel is dark; once a sample falls under
+    /// roughly one part in a thousand of what the pixel holds it stops counting,
+    /// which is what `noClear(precision: .float32)` is for: both targets in
+    /// `rgba32Float`, and every pipeline drawn onto them keyed on that format
+    /// (`accumFormat`, `canvasColorFormat`). `accumResolve`
     /// holds the raw linear pile; the present pass (and a frame grab) tone-maps it
     /// into display bytes, so a consumer never sees the raw HDR float.
     private var accumTarget: MTLTexture?
     private var accumResolve: MTLTexture?
     private var accumSize = (width: 0, height: 0)
+    /// The format the accumulation targets were made in: the drawer's
+    /// `accumulationPrecision` when they were last allocated.
+    private var accumFormat: MTLPixelFormat = .rgba16Float
     /// The display texture the headless accumulation export tone-maps the pile
     /// into and reads back, made when that path first runs at a size.
     private var accumExportDisplay: MTLTexture?
@@ -1805,6 +1815,11 @@ final class MetalRenderer {
     /// Also samples the gradient strip (the same filtering is exactly what a LUT
     /// row wants), and every screen-space pass in the effect chain.
     let imageSampler: MTLSamplerState?
+
+    /// The bounds an image draw binds when it reads the whole picture (no source
+    /// rectangle): a box whose minimum lies past its maximum, which the image
+    /// fragment reads as "nothing to hold the sample inside".
+    static let wholeImage = SIMD4<Float>(1, 1, 0, 0)
 
     /// The same sampler for a picture that lies on a *surface*, where the pixel's
     /// footprint on the picture is a real shape rather than one texel. A floor
@@ -2380,7 +2395,8 @@ final class MetalRenderer {
                sdf3DGroupBuffer: sdf3DGroupBuffer(at: frameIndex, for: drawer.sdf3DGroups.count),
                sdf3DNodeBuffer: sdf3DNodeBuffer(at: frameIndex, for: drawer.sdf3DNodes.count),
                depthFormat: nil,   // 3D + accumulation isn't supported in M1
-               stencil: passHasStencil)
+               stencil: passHasStencil,
+               canvasColorFormat: accumCanvasFormat)
         encoder.endEncoding()
 
         // Present: tone-map the resolved float pile into the drawable. (The pile
@@ -2477,7 +2493,8 @@ final class MetalRenderer {
                sdf3DGroupBuffer: exportSDF3DGroupBuffer(for: drawer.sdf3DGroups.count),
                sdf3DNodeBuffer: exportSDF3DNodeBuffer(for: drawer.sdf3DNodes.count),
                depthFormat: nil,   // 3D + accumulation isn't supported in M1
-               stencil: passHasStencil)
+               stencil: passHasStencil,
+               canvasColorFormat: accumCanvasFormat)
         encoder.endEncoding()
 
         // The linear pile itself is what a linear-light export wants (a piling
@@ -2510,6 +2527,13 @@ final class MetalRenderer {
         return (readbackBuffer, bytesPerRow)
     }
 
+    /// The canvas color format the accumulating encode builds its pipelines
+    /// against: nil (the shared linear format) for a half-float pile, the
+    /// pile's own format otherwise.
+    private var accumCanvasFormat: MTLPixelFormat? {
+        accumFormat == linearFormat ? nil : accumFormat
+    }
+
     /// Wipe the accumulated canvas on the next accumulating frame — for a live
     /// reload, so a freshly swapped-in sketch starts from a clean surface rather
     /// than inheriting the previous sketch's pile (the fresh-restart reload model).
@@ -2522,15 +2546,19 @@ final class MetalRenderer {
     /// accumulated pile. Always resolves to `accumResolve` and stores the samples
     /// back so they persist to the next frame.
     private func accumulationPass(_ drawer: Drawer, width: Int, height: Int) -> MTLRenderPassDescriptor? {
-        if accumSize != (width, height) || accumTarget == nil || accumResolve == nil {
+        let format = drawer.accumulationPrecision.pixelFormat
+        if accumSize != (width, height) || accumTarget == nil || accumResolve == nil
+            || accumFormat != format {
             // The MSAA target is `.private` (never memoryless) so its samples
             // persist across frames; both it and the resolve are linear float so
-            // faint additive samples accumulate without quantizing away.
-            guard let msaa = makeFloatMSAA(width: width, height: height, storage: .private),
-                  let resolve = makeFloatResolve(width: width, height: height) else { return nil }
+            // faint additive samples accumulate without quantizing away. A change
+            // of precision starts a fresh pile, as a change of size does.
+            guard let msaa = makeFloatMSAA(width: width, height: height, storage: .private, format: format),
+                  let resolve = makeFloatResolve(width: width, height: height, format: format) else { return nil }
             accumTarget = msaa
             accumResolve = resolve
             accumSize = (width, height)
+            accumFormat = format
             accumNeedsClear = true         // fresh memory: clear before the first load
         }
         guard let msaa = accumTarget, let resolve = accumResolve else { return nil }
@@ -3198,10 +3226,12 @@ final class MetalRenderer {
         guard let texture = takeGrabTexture(width: grab.width, height: grab.height) else { return }
 
         var presentSource = source
-        if source.pixelFormat == linearFormat,
+        if source.pixelFormat == linearFormat || source.pixelFormat == .rgba32Float,
            source.width > grab.width || source.height > grab.height {
-            if grabMipped?.width != source.width || grabMipped?.height != source.height {
-                grabMipped = makeFloatResolveMipped(width: source.width, height: source.height)
+            if grabMipped?.width != source.width || grabMipped?.height != source.height
+                || grabMipped?.pixelFormat != source.pixelFormat {
+                grabMipped = makeFloatResolveMipped(width: source.width, height: source.height,
+                                                    format: source.pixelFormat)
             }
             if let mipped = grabMipped, let blit = commandBuffer.makeBlitCommandEncoder() {
                 blit.copy(from: source, sourceSlice: 0, sourceLevel: 0,

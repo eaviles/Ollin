@@ -588,7 +588,22 @@ open class Sketch {
     /// samples that sum over time. Call `background(_:)` to wipe the accumulated
     /// canvas (the long-exposure reset), or `clearEachFrame()` to return to the
     /// default of a fresh frame each time. Typically called once in `setup()`.
-    public func noClear() { drawer.noClear() }
+    ///
+    /// `precision` picks how many bits the surface keeps per channel. Half
+    /// float, the default, is plenty for paint and for light that builds
+    /// quickly. A sum of many faint samples wants `.float32`: half float stops
+    /// adding a sample once it falls under about a thousandth of what the pixel
+    /// already holds, so a long exposure of faint marks levels off short of its
+    /// true brightness, while single precision keeps adding (at twice the
+    /// memory). Changing the precision starts a fresh pile.
+    ///
+    /// ```swift
+    /// override func setup() {
+    ///     noClear(precision: .float32)       // ten thousand faint passes still add up
+    ///     blendMode(.add)
+    /// }
+    /// ```
+    public func noClear(precision: LayerPrecision = .float16) { drawer.noClear(precision: precision) }
 
     /// Return to clearing the canvas every frame (the default), undoing `noClear()`.
     public func clearEachFrame() { drawer.clearEachFrame() }
@@ -3525,6 +3540,45 @@ open class Sketch {
     /// Draw `image` stretched into `rect` — the `Rectangle` form of `drawImage`.
     public func drawImage(_ image: Image, in rect: Rectangle) {
         drawer.drawImage(image, in: rect)
+    }
+
+    /// Draw part of `image` into a `width`×`height` box with its top-left at
+    /// `(x, y)`. The last four numbers are the part to read, in the image's own
+    /// pixels measured from its top-left: `sourceX`, `sourceY`, `sourceWidth`,
+    /// `sourceHeight`. One cell of a sprite sheet, a tile of a tile set, or a
+    /// frame of a film strip draws this way with no cropping first.
+    ///
+    /// The draw reads only inside the part, so a cell drawn larger than it is
+    /// never picks up the border of the cell beside it, and a cell drawn at its
+    /// own size or larger looks exactly like the same cell cropped out first.
+    /// Drawn smaller, the picture's smaller levels average across cell edges;
+    /// a sheet with a few pixels of space between its cells keeps those edges
+    /// clean too. The part of the rectangle that runs off the picture draws
+    /// nothing.
+    ///
+    /// ```swift
+    /// let frame = frameCount / 4 % 8                  // eight 64-pixel frames in a row
+    /// drawImage(walk, 100, 100, 128, 128, Double(frame) * 64, 0, 64, 64)
+    /// ```
+    public func drawImage(_ image: Image, _ x: Double, _ y: Double, _ width: Double, _ height: Double,
+                          _ sourceX: Double, _ sourceY: Double,
+                          _ sourceWidth: Double, _ sourceHeight: Double) {
+        drawer.drawImage(image, in: Rectangle(x: x, y: y, width: width, height: height),
+                         sourcePixels: Rectangle(x: sourceX, y: sourceY,
+                                                 width: sourceWidth, height: sourceHeight))
+    }
+
+    /// Draw the part of `image` inside `source`, a rectangle in the image's own
+    /// pixels measured from its top-left, stretched into `rect`. The `Rectangle`
+    /// form of ``Sketch/drawImage(_:_:_:_:_:_:_:_:_:)``, with the same promise:
+    /// the draw reads only inside `source`.
+    ///
+    /// ```swift
+    /// let tile = Rectangle(x: Double(column) * 16, y: Double(row) * 16, width: 16, height: 16)
+    /// drawImage(tiles, in: Rectangle(x: x, y: y, width: 48, height: 48), source: tile)
+    /// ```
+    public func drawImage(_ image: Image, in rect: Rectangle, source: Rectangle) {
+        drawer.drawImage(image, in: rect, sourcePixels: source)
     }
 
     // MARK: Layered effects

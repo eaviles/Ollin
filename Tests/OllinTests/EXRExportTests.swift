@@ -125,13 +125,27 @@ struct EXRExportTests {
     // MARK: Sketches
 
     /// A flat canvas: one ground color, and an optional pair of overlapping white
-    /// disks summed together so the frame runs above white.
+    /// disks summed together so the frame runs above white. With `piles` set, the
+    /// canvas is a pile in that precision instead: linear 0.5 on the first frame
+    /// and 0.0002 added on every frame after it.
     private final class Flat: Sketch {
         var ground = Color(white: 0.5)
         var sums = false
         var translucent = false
+        var piles: LayerPrecision?
         override var canvasSize: CanvasSize { .square(64) }
+        override func setup() {
+            if let piles { noClear(precision: piles) }
+        }
         override func draw() {
+            if piles != nil {
+                if frameCount == 1 { background(Color(white: 0.7354)) }   // linear 0.5
+                blendMode(.add)
+                noStroke()
+                fill(Color(white: 1, alpha: 0.0002))
+                drawRect(0, 0, width, height)
+                return
+            }
             background(ground)
             noStroke()
             if sums {
@@ -234,6 +248,23 @@ struct EXRExportTests {
         #expect(abs(blue - 128) <= 2, "the PNG byte was \(blue)")
     }
 
+    @Test func aSinglePrecisionPileIsWrittenAtItsSum() throws {
+        // A `.float32` canvas pile is narrowed to the file's half floats once, at
+        // the end, so the file holds the sum the pile reached rather than where a
+        // half-float pile would have stalled.
+        for (precision, expected) in [(LayerPrecision.float32, 0.54), (.float16, 0.5)] {
+            let url = scratch("pile-\(precision)")
+            defer { try? FileManager.default.removeItem(at: url) }
+            let pile = Flat()
+            pile.piles = precision
+            try OllinApp.exportEXR(pile, to: url.path, frame: 199)
+            let file = try parse(url)
+            #expect(abs(file.at("R", x: 2, y: 2) - expected) < 0.002,
+                    "\(precision): the file held \(file.at("R", x: 2, y: 2)), expected \(expected)")
+            #expect(file.at("A", x: 2, y: 2) == 1)
+        }
+    }
+
     @Test func lightAboveWhiteSurvivesTheFileAndClipsInThePNG() throws {
         let url = scratch("peak")
         let png = url.deletingPathExtension().appendingPathExtension("png")
@@ -258,6 +289,9 @@ struct EXRExportTests {
         // one coat of white reads as exactly white.
         let single = file.at("R", x: 9, y: 32)
         #expect(single > 0.98 && single < 1.02, "one coat read \(single)")
+        // The coverage stays one wherever the light summed: the added coats sum
+        // their alpha too, and a file holding that sum would say three times covered.
+        #expect(file.at("A", x: 32, y: 32) == 1 && file.at("A", x: 9, y: 32) == 1)
 
         let source = try #require(CGImageSourceCreateWithURL(png as CFURL, nil))
         let image = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))

@@ -953,14 +953,27 @@ struct WebShaders {
     /// bottom-up; a picture's as uploaded, its first row at the top, the way
     /// the Mac's texture holds it), the straight tint linearized and applied so
     /// the result stays premultiplied.
+    ///
+    /// A draw with a source rectangle holds its read half a texel inside the
+    /// part (`bounds`, whose minimum past its maximum means the whole texture),
+    /// with the level chosen from the quad's own coordinates, as the Mac does.
     static let imageFragmentTail = """
     uniform sampler2D tex;
     uniform float vflip;
+    uniform vec4 bounds;
     in vec2 vUV;
     in vec4 vTint;
     out vec4 fragColor;
     void main() {
-        vec4 c = texture(tex, vec2(vUV.x, mix(vUV.y, 1.0 - vUV.y, vflip)));
+        vec4 c;
+        if (bounds.x <= bounds.z) {
+            vec2 halfTexel = 0.5 / vec2(textureSize(tex, 0));
+            vec2 mid = 0.5 * (bounds.xy + bounds.zw);
+            vec2 uv = clamp(vUV, min(bounds.xy + halfTexel, mid), max(bounds.zw - halfTexel, mid));
+            c = textureGrad(tex, vec2(uv.x, mix(uv.y, 1.0 - uv.y, vflip)), dFdx(vUV), dFdy(vUV));
+        } else {
+            c = texture(tex, vec2(vUV.x, mix(vUV.y, 1.0 - vUV.y, vflip)));
+        }
         c.rgb *= srgbToLinear(vTint.rgb);
         c *= vTint.a;
         fragColor = c;
@@ -2084,7 +2097,7 @@ enum WebPlayer {
       var pViewport = gl.getUniformLocation(present, 'viewport');
       var pExposure = gl.getUniformLocation(present, 'exposure');
       var pToneMap = gl.getUniformLocation(present, 'toneMapMode');
-      var image = null, iViewport, iTex, iFlip, iFlipV;
+      var image = null, iViewport, iTex, iFlip, iFlipV, iBounds;
       function imageProgram() {
         if (image) return image;
         image = program(IMAGE_VS, IMAGE_FS);
@@ -2092,6 +2105,7 @@ enum WebPlayer {
         iTex = gl.getUniformLocation(image, 'tex');
         iFlip = gl.getUniformLocation(image, 'ollin_flip');
         iFlipV = gl.getUniformLocation(image, 'vflip');
+        iBounds = gl.getUniformLocation(image, 'bounds');
         return image;
       }
       // Atlas text: the image quad's vertex stage under the glyph fragment.
@@ -2848,7 +2862,7 @@ enum WebPlayer {
       // `count` textured quads from quad `quad`: a layer's (its rows turned
       // over, premultiplied), a picture's (as uploaded, premultiplied), or the
       // glyphs of atlas text (the glyph fragment, straight alpha).
-      function drawQuads(quad, count, tex, blend, kind, w, h, quadOffset, flip) {
+      function drawQuads(quad, count, tex, blend, kind, w, h, quadOffset, flip, item) {
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, tex);
         if (kind === 'glyph') {
@@ -2862,6 +2876,9 @@ enum WebPlayer {
           gl.uniform2f(iViewport, w, h);
           gl.uniform1f(iFlip, flip);
           gl.uniform1f(iFlipV, kind === 'layer' ? 1 : 0);
+          // A source rectangle's bounds follow the item's count; none reads it all.
+          if (item && item.length >= 9) gl.uniform4f(iBounds, item[5], item[6], item[7], item[8]);
+          else gl.uniform4f(iBounds, 1, 1, 0, 0);
           gl.uniform1i(iTex, 0);
           setBlend(blend, false);
         }
@@ -3010,9 +3027,9 @@ enum WebPlayer {
           }
           var count = item[4] || 1, qo = g.instances * F;
           if (item[0] === 'a') { drawQuads(item[2], count, atlases[item[1]] || blank, item[3] || 0, 'glyph', w, h, qo, flip); continue; }
-          if (item[0] === 'm') { drawQuads(item[2], count, pictures[item[1]] || blank, item[3] || 0, 'picture', w, h, qo, flip); continue; }
+          if (item[0] === 'm') { drawQuads(item[2], count, pictures[item[1]] || blank, item[3] || 0, 'picture', w, h, qo, flip, item); continue; }
           var tex = item[0] === 'p' ? (previous[item[1]] || blank) : (results[item[1]] || blank);
-          drawQuads(item[2], count, tex, item[3] || 0, 'layer', w, h, qo, flip);
+          drawQuads(item[2], count, tex, item[3] || 0, 'layer', w, h, qo, flip, item);
         }
         gl.disable(gl.BLEND);
         if (ms) resolve(surface);

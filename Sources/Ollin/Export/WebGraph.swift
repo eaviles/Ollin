@@ -187,8 +187,10 @@ enum WebDrawItem: Hashable {
     case sources(start: Int, floats: Int, count: Int, fringe: Bool, blend: Int)
     /// A layer or a picture composited as `count` textured quads (six vertices
     /// each, from quad `quad`; more than one when symmetry replicated the
-    /// draw), under a blend mode (`WebBlend`).
-    case image(source: WebImageSource, quad: Int, count: Int, blend: Int)
+    /// draw), under a blend mode (`WebBlend`). `bounds` is the part of the
+    /// texture a draw with a source rectangle may read (`minU, minV, maxU,
+    /// maxV`), nil for a draw that reads all of it.
+    case image(source: WebImageSource, quad: Int, count: Int, blend: Int, bounds: SIMD4<Float>? = nil)
     /// `count` glyph quads of atlas text (from quad `quad`, the tint carrying
     /// the fill), sampling atlas `atlas` of the recording, under a blend mode.
     case glyphs(atlas: Int, quad: Int, count: Int, blend: Int)
@@ -774,7 +776,8 @@ final class WebGraphRecorder {
                             let source = try imageSource(image)
                             let start = quadCount
                             let count = try appendQuads(slice, transform: batch.retainedTransform, call: "drawImage")
-                            items.append(.image(source: source, quad: start, count: count, blend: runBlend))
+                            items.append(.image(source: source, quad: start, count: count, blend: runBlend,
+                                                bounds: run.imageBounds))
                         case .glyphAtlas:
                             guard let atlas = run.atlas else { continue }
                             let end = next?.glyphStart ?? recording.glyphVertices.count
@@ -809,7 +812,8 @@ final class WebGraphRecorder {
                     let source = try imageSource(image)
                     let start = quadCount
                     let count = try appendQuads(slice, transform: nil, call: "drawImage")
-                    items.append(.image(source: source, quad: start, count: count, blend: blend))
+                    items.append(.image(source: source, quad: start, count: count, blend: blend,
+                                        bounds: batch.imageBounds))
                 case .glyphAtlas:
                     // Atlas text: one quad per glyph, the tint its fill, sampling
                     // the font's page, which the recording carries once at the end.
@@ -1197,11 +1201,14 @@ extension WebGraph {
                 case let .shapes(start, count, blend): return ["s", start, count, blend]
                 case let .triangles(start, count, fringe, blend): return ["t", start, count, fringe ? 1 : 0, blend]
                 case let .sources(start, floats, count, fringe, blend): return ["x", start, floats, count, fringe ? 1 : 0, blend]
-                case let .image(source, quad, count, blend):
+                case let .image(source, quad, count, blend, bounds):
+                    // A source rectangle's bounds ride after the count, so a
+                    // whole-picture item keeps the five fields it always had.
+                    let held: [Any] = bounds.map { [$0.x, $0.y, $0.z, $0.w] } ?? []
                     switch source {
-                    case .layer(let i): return ["i", i, quad, blend, count]
-                    case .previous(let i): return ["p", i, quad, blend, count]
-                    case .picture(let i): return ["m", i, quad, blend, count]
+                    case .layer(let i): return ["i", i, quad, blend, count] + held
+                    case .previous(let i): return ["p", i, quad, blend, count] + held
+                    case .picture(let i): return ["m", i, quad, blend, count] + held
                     }
                 case let .glyphs(atlas, quad, count, blend):
                     return ["a", atlas, quad, blend, count]

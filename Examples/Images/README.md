@@ -11,10 +11,10 @@
 | [Halftone](Halftone/) | [LuminanceMelt](LuminanceMelt/) | [PhotoMosaic](PhotoMosaic/) | [PixelField](PixelField/) |
 | [![PixelSort](https://media.ollin.art/examples/Images/PixelSort/still-640.jpg?v=a03fd15a)](PixelSort/) | [![SeamCarve](https://media.ollin.art/examples/Images/SeamCarve/still-640.jpg?v=a5c915bf)](SeamCarve/) | [![SingleLine](https://media.ollin.art/examples/Images/SingleLine/still-640.jpg?v=47ebfb44)](SingleLine/) | [![SlitScan](https://media.ollin.art/examples/Images/SlitScan/still-640.jpg?v=0aa946a5)](SlitScan/) |
 | [PixelSort](PixelSort/) | [SeamCarve](SeamCarve/) | [SingleLine](SingleLine/) | [SlitScan](SlitScan/) |
-| [![SpanningTree](https://media.ollin.art/examples/Images/SpanningTree/still-640.jpg?v=7674d7bc)](SpanningTree/) | [![StringArt](https://media.ollin.art/examples/Images/StringArt/still-640.jpg?v=36d57253)](StringArt/) |  |  |
-| [SpanningTree](SpanningTree/) | [StringArt](StringArt/) |  |  |
+| [![SpanningTree](https://media.ollin.art/examples/Images/SpanningTree/still-640.jpg?v=7674d7bc)](SpanningTree/) | [![SpriteSheet](https://media.ollin.art/examples/Images/SpriteSheet/still-640.jpg?v=0cbf5226)](SpriteSheet/) | [![StringArt](https://media.ollin.art/examples/Images/StringArt/still-640.jpg?v=36d57253)](StringArt/) |  |
+| [SpanningTree](SpanningTree/) | [SpriteSheet](SpriteSheet/) | [StringArt](StringArt/) |  |
 
-These examples load, draw, tint, and author raster images through the `Image` value type, `drawImage`, `tint`, and the `Image[x, y]` pixel subscript. They also cover the image-as-input renderings, which turn a picture into glyphs, streaks, halftone dots, a single line, a branching tree of veins, a wound thread, or a molten field.
+These examples load, draw, tint, and author raster images through the `Image` value type, `drawImage` (whole, fitted, or one cell of a sheet), `tint`, and the `Image[x, y]` pixel subscript. They also cover the image-as-input renderings, which turn a picture into glyphs, streaks, halftone dots, a single line, a branching tree of veins, a wound thread, or a molten field.
 
 | Example | What it shows |
 |---|---|
@@ -30,6 +30,7 @@ These examples load, draw, tint, and author raster images through the `Image` va
 | [SeamCarve](SeamCarve/Sketch.swift) | a photographed alley made narrower in two ways, with the removed seams drawn over the source: carved, so the sky goes and the walls keep their width, and squeezed on mouse hold, so they lean (`Image.seamCarved`, `seamMap`, `seams`) |
 | [SingleLine](SingleLine/Sketch.swift) | a bundled profile photograph drawn by one unbroken line that appears and then unwinds, built from stipple points joined by a traveling-salesman tour, and plotter-ready through `--export-svg` (`singleLine(of:points:)`, `cutoff`) |
 | [SlitScan](SlitScan/Sketch.swift) | time spread across space over a painted feed: the classic left-to-right scan, radial time on mouse hold, and the live source shown as an inset (`SlitScan`, `push`, `image(delay:)`) |
+| [SpriteSheet](SpriteSheet/Sketch.swift) | eight frames of a turning coin painted pixel by pixel into one sheet, the sheet shown with the frame being drawn outlined, and three coins turned from it at half, once, and twice its size, each frame drawn straight from its cell (`drawImage` with a source rectangle) |
 | [SpanningTree](SpanningTree/Sketch.swift) | a bundled profile photograph's stipple points joined by the minimum spanning tree, so the dots become veins drawn chain by chain in plotting order, and plotter-ready through `--export-svg` (`spanningTree(of:points:)`) |
 | [StringArt](StringArt/Sketch.swift) | a bundled profile photograph wound from one continuous thread over 200 rim pins, where each chord is chosen greedily for the darkness it still covers, and the winding builds up live (`StringArt`, `step`, `thread`) |
 

@@ -165,6 +165,32 @@ struct LightAccumulationTests {
         #expect(abs(climbed - 0.54) < 0.01, "single float should reach 0.54, read \(climbed)")
     }
 
+    /// The canvas pile does the same: `noClear()` stalls a faint sum at half
+    /// float's spacing, and `noClear(precision: .float32)` keeps adding to the
+    /// value the arithmetic predicts.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func singlePrecisionPileKeepsAdding() throws {
+        let half = try OllinApp.image(of: PileSumSketch(precision: .float16), frame: 199)
+        let single = try OllinApp.image(of: PileSumSketch(precision: .float32), frame: 199)
+        let stalled = centerLinear(of: half)
+        let climbed = centerLinear(of: single)
+        #expect(abs(stalled - 0.5) < 0.01, "a half-float pile should hold 0.5, read \(stalled)")
+        #expect(abs(climbed - 0.54) < 0.01, "a single-precision pile should reach 0.54, read \(climbed)")
+    }
+
+    /// Ten thousand passes a frame too faint for half float, the long exposure
+    /// the precision exists for: the mean of a pile of faint additive squares
+    /// lands on the sum the arithmetic predicts in single precision, and short
+    /// of it in half float.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aLongFaintExposureReachesItsSum() throws {
+        let expected = 0.25 + 300.0 * 8 * 0.00005          // 0.37
+        let half = centerLinear(of: try OllinApp.image(of: FaintPileSketch(precision: .float16), frame: 299))
+        let single = centerLinear(of: try OllinApp.image(of: FaintPileSketch(precision: .float32), frame: 299))
+        #expect(abs(single - expected) < 0.01, "single precision read \(single), expected \(expected)")
+        #expect(expected - half > 0.05, "half float should fall well short of \(expected), read \(half)")
+    }
+
     /// The develop filter prints the reference recipe: exposure, Reinhard, then the
     /// ground added as a display value.
     @Test(.enabled(if: Snapshot.hasMetal))
@@ -770,6 +796,53 @@ private final class FeedbackSumSketch: Sketch {
             drawRect(0, 0, width, height)
         }
         drawImage(sum.image, 0, 0)
+    }
+}
+
+/// The canvas itself as the pile: seeded at linear 0.5 on the first frame, then
+/// 0.0002 added every frame on top of what the canvas kept.
+@MainActor
+private final class PileSumSketch: Sketch {
+    var precision: LayerPrecision = .float16
+    override var canvasSize: CanvasSize { .square(32) }
+
+    convenience init(precision: LayerPrecision) {
+        self.init()
+        self.precision = precision
+    }
+
+    override func setup() { noClear(precision: precision) }
+
+    override func draw() {
+        if frameCount == 1 { background(Color(white: 0.7354)) }   // sRGB 0.7354 is linear 0.5
+        blendMode(.add)
+        noStroke()
+        fill(Color(white: 1, alpha: 0.0002))
+        drawRect(0, 0, width, height)
+    }
+}
+
+/// A canvas seeded at linear 0.25 that takes eight squares of 0.00005 every
+/// frame: each one under half of half float's spacing at that brightness
+/// (0.00024 between 0.25 and 0.5), so half float rounds every one of them away.
+@MainActor
+private final class FaintPileSketch: Sketch {
+    var precision: LayerPrecision = .float16
+    override var canvasSize: CanvasSize { .square(32) }
+
+    convenience init(precision: LayerPrecision) {
+        self.init()
+        self.precision = precision
+    }
+
+    override func setup() { noClear(precision: precision) }
+
+    override func draw() {
+        if frameCount == 1 { background(Color(linear: SIMD3(repeating: 0.25))) }
+        blendMode(.add)
+        noStroke()
+        fill(Color(white: 1, alpha: 0.00005))
+        for _ in 0 ..< 8 { drawRect(0, 0, width, height) }
     }
 }
 

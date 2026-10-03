@@ -31,20 +31,21 @@ c68684592154  Guide/07-Tiles.md:81  cannot find 'strands' in scope
 ee269dd9487b  Guide/08-Words.md:102  cannot find 'passage' in scope
 23e899676c54  Guide/09-Pictures.md:166  cannot find 'pictures' in scope
 399caa239353  Guide/09-Pictures.md:196  cannot find 'photo' in scope
-678b6b363dab  Guide/09-Pictures.md:217  cannot find 'picture' in scope
-ed123e551581  Guide/09-Pictures.md:227  cannot find 'picture' in scope
-8ca70252f031  Guide/09-Pictures.md:238  cannot find 'picture' in scope
-cd4b2fbdddc6  Guide/09-Pictures.md:287  cannot find 'photo' in scope
-94e632809a2c  Guide/09-Pictures.md:324  cannot find 'picture' in scope
-c3c5db53cc82  Guide/09-Pictures.md:343  cannot find 'target' in scope
-edc50590a5d1  Guide/09-Pictures.md:359  cannot find 'picture' in scope
+f1200033a436  Guide/09-Pictures.md:208  cannot find 'walk' in scope
+678b6b363dab  Guide/09-Pictures.md:226  cannot find 'picture' in scope
+ed123e551581  Guide/09-Pictures.md:236  cannot find 'picture' in scope
+8ca70252f031  Guide/09-Pictures.md:247  cannot find 'picture' in scope
+cd4b2fbdddc6  Guide/09-Pictures.md:296  cannot find 'photo' in scope
+94e632809a2c  Guide/09-Pictures.md:333  cannot find 'picture' in scope
+c3c5db53cc82  Guide/09-Pictures.md:352  cannot find 'target' in scope
 5b3e1eedfb8d  Guide/09-Pictures.md:36  cannot find 'photo' in scope
-843a4fdf6a3f  Guide/09-Pictures.md:377  cannot find 'picture' in scope
-42f5e59331ce  Guide/09-Pictures.md:402  cannot find 'picture' in scope
-4bda4ace2c1f  Guide/09-Pictures.md:422  cannot find 'depthMap' in scope
-7363ccd01a5f  Guide/09-Pictures.md:447  'module' is inaccessible due to 'internal' protection level
-9335f3c2f125  Guide/09-Pictures.md:466  cannot find 'table' in scope
-aec7ca7fcac8  Guide/09-Pictures.md:481  'module' is inaccessible due to 'internal' protection level
+edc50590a5d1  Guide/09-Pictures.md:368  cannot find 'picture' in scope
+843a4fdf6a3f  Guide/09-Pictures.md:386  cannot find 'picture' in scope
+42f5e59331ce  Guide/09-Pictures.md:411  cannot find 'picture' in scope
+4bda4ace2c1f  Guide/09-Pictures.md:431  cannot find 'depthMap' in scope
+7363ccd01a5f  Guide/09-Pictures.md:456  'module' is inaccessible due to 'internal' protection level
+9335f3c2f125  Guide/09-Pictures.md:475  cannot find 'table' in scope
+aec7ca7fcac8  Guide/09-Pictures.md:490  'module' is inaccessible due to 'internal' protection level
 ae33653cb376  Guide/09-Pictures.md:70  cannot find 'c' in scope
 7856a82b5957  Guide/10-Vectors.md:105  cannot find 'target' in scope
 d7900de9175f  Guide/10-Vectors.md:180  cannot find 'target' in scope

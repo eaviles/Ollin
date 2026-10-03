@@ -5208,6 +5208,28 @@
       "stillSmall": "examples/Images/SpanningTree/still-640.jpg?v=7674d7bc",
       "width": 1080
     },
+    "Images/SpriteSheet": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 477,
+      "motion": 2.35,
+      "sound": false,
+      "source": "05a776e96922c7e5",
+      "rendered": "2026-10-03",
+      "bytes": {
+        "loop": 931463,
+        "loopSmall": 252883,
+        "still": 87606,
+        "stillSmall": 35035
+      },
+      "loop": "examples/Images/SpriteSheet/loop.mp4?v=9f56d86d",
+      "loopSmall": "examples/Images/SpriteSheet/loop-640.mp4?v=28999d3a",
+      "still": "examples/Images/SpriteSheet/still.jpg?v=ee8de755",
+      "stillSmall": "examples/Images/SpriteSheet/still-640.jpg?v=0cbf5226",
+      "seed": 1
+    },
     "Images/StringArt": {
       "bytes": {
         "loop": 5294900,

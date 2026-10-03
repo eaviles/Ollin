@@ -107,6 +107,13 @@ public final class Accumulator {
     /// same effects substrate every layer uses. The running state stays untouched.
     public func filtered(_ filter: Filter) -> RenderTarget { meanLayer.filtered(filter) }
 
+    /// The mean as the base of a two-input `Combine`, with `aux` as the second
+    /// input, returning a new layer as ``RenderTarget/combined(with:_:)`` does.
+    /// The running state stays untouched.
+    public func combined(with aux: RenderTarget, _ op: Combine) -> RenderTarget {
+        meanLayer.combined(with: aux, op)
+    }
+
     /// The mean printed as a picture: scaled by `exposure`, rolled off by the
     /// Reinhard curve, and laid on `ground`, which is added after the curve as a
     /// display color (see `Filter.develop(exposure:ground:)`). Composite the

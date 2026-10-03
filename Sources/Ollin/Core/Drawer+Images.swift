@@ -20,7 +20,14 @@ extension Drawer {
     /// works in picture coordinates and never in texture ones. The default reads
     /// all of it. A crop is how `.cover` shows a rectangle's worth of a picture
     /// without a clip pass, and it costs nothing: the quad is the same quad.
-    func drawImage(_ image: Image, in rect: Rectangle, source: Rectangle = Rectangle(x: 0, y: 0, width: 1, height: 1)) {
+    ///
+    /// `keepsToSource` holds every read inside `source` (see
+    /// `GeometryBatch.imageBounds`): what a sprite on a sheet wants, where the
+    /// texels past the crop belong to another picture. A crop of one picture
+    /// leaves it off, since there the picture simply continues.
+    func drawImage(_ image: Image, in rect: Rectangle,
+                   source: Rectangle = Rectangle(x: 0, y: 0, width: 1, height: 1),
+                   keepsToSource: Bool = false) {
         guard rect.width > 0, rect.height > 0, image.width > 0, image.height > 0 else { return }
         if let recorder = svgRecorder {
             recorder.skippedImages += 1   // raster has no place in a vector file
@@ -41,7 +48,10 @@ extension Drawer {
         let tr = imageVertex(x1, y0, uRight, vTop, tint)
         let br = imageVertex(x1, y1, uRight, vBot, tint)
         let bl = imageVertex(x0, y1, uLeft, vBot, tint)
-        beginImageBatch(image)
+        let bounds: SIMD4<Float>? = keepsToSource
+            ? SIMD4(min(uLeft, uRight), min(vTop, vBot), max(uLeft, uRight), max(vTop, vBot))
+            : nil
+        beginImageBatch(image, bounds: bounds)
         // Symmetry replicas extend this same batch (one texture, many quads).
         replicated { imageVertices.append(contentsOf: [tl, tr, br, tl, br, bl]) }
     }
@@ -160,6 +170,32 @@ extension Drawer {
 }
 
 extension Drawer {
+    /// Draw the part of `image` inside `source`, measured in the image's own
+    /// pixels from its top-left, into `rect`: one cell of a sprite sheet, a tile
+    /// of a tile set, a frame of a film strip. Reads only inside `source`, so a
+    /// cell drawn larger than it is never picks up its neighbor's border; drawn
+    /// at its own size or larger, it reads exactly as the same cell cropped out
+    /// first would. The part of `source` that runs off the picture draws
+    /// nothing, as if the picture were surrounded by empty space: the rest
+    /// lands where it would have, in the matching part of `rect`.
+    func drawImage(_ image: Image, in rect: Rectangle, sourcePixels source: Rectangle) {
+        let w = Double(image.width), h = Double(image.height)
+        let sx = min(source.x, source.x + source.width), sw = abs(source.width)
+        let sy = min(source.y, source.y + source.height), sh = abs(source.height)
+        guard w > 0, h > 0, sw > 0, sh > 0 else { return }
+        let x0 = min(max(sx, 0), w), x1 = min(max(sx + sw, 0), w)
+        let y0 = min(max(sy, 0), h), y1 = min(max(sy + sh, 0), h)
+        guard x1 > x0, y1 > y0 else { return }
+        // The same cut, carried to the destination.
+        let left = rect.x + (x0 - sx) / sw * rect.width
+        let right = rect.x + (x1 - sx) / sw * rect.width
+        let top = rect.y + (y0 - sy) / sh * rect.height
+        let bottom = rect.y + (y1 - sy) / sh * rect.height
+        drawImage(image, in: Rectangle(x: left, y: top, width: right - left, height: bottom - top),
+                  source: Rectangle(x: x0 / w, y: y0 / h, width: (x1 - x0) / w, height: (y1 - y0) / h),
+                  keepsToSource: true)
+    }
+
     /// Draw `image` into `rect` under an ``ImageFit``. `.contain` shrinks the
     /// destination to the picture's own aspect ratio and reads all of it;
     /// `.cover` keeps the destination and reads a centered crop instead, which

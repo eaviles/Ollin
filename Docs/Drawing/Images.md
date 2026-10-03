@@ -30,6 +30,7 @@ final class Photo: Sketch {
 - [loadImage](#loadimage) - load from a path or URL
 - [drawImage](#drawimage) - draw at native size, scaled, or into a rectangle
 - [Fitting a picture to a box](#fit) - `.stretch`, `.contain`, `.cover`
+- [Part of a picture](#part) - one cell of a sprite sheet, a tile, or a frame of a strip
 - [tint](#tint) - recolor and fade images as you draw them
 - [Image](#image) - the value type, loading from data or a bundle, `resized`, and `cropped`
 - [Pixels](#pixels) - author or sample an image pixel by pixel
@@ -120,6 +121,36 @@ A round shape in the picture is the quickest way to tell the three apart. `.stre
 `Rectangle` offers the same arithmetic when you want the box rather than the drawing. Call [`Rectangle(fitting:in:)`](Geometry.md#rectangle) for the box `.contain` uses, and `Rectangle(covering:in:)` for the box `.cover` uses. Both keep the picture's proportions and both stay centered, but the first sits inside the container and the second runs past it.
 
 Worked example: [`Images/Fit`](../../Examples/Images/Fit/Sketch.swift).
+
+<a name="part"></a>
+
+### Part of a picture
+
+```swift
+drawImage(_ image: Image, _ x: Double, _ y: Double, _ width: Double, _ height: Double,
+          _ sourceX: Double, _ sourceY: Double, _ sourceWidth: Double, _ sourceHeight: Double)
+drawImage(_ image: Image, in rect: Rectangle, source: Rectangle)
+```
+
+A sprite sheet keeps many pictures in one image: the frames of an animation in a row, the tiles of a map in a grid. The last four numbers, or the `source` rectangle, name the part to draw, in the image's own pixels measured from its top-left. That part is drawn into the box the first numbers give, at whatever size the box is, and nothing is cropped first.
+
+```swift
+let frame = frameCount / 4 % 8                       // eight 64-pixel frames in a row
+drawImage(walk, 100, 100, 128, 128, Double(frame) * 64, 0, 64, 64)
+
+let tile = Rectangle(x: Double(column) * 16, y: Double(row) * 16, width: 16, height: 16)
+drawImage(tiles, in: Rectangle(x: x, y: y, width: 48, height: 48), source: tile)
+```
+
+**The draw reads only inside the part.** Drawing a picture larger than itself blends neighboring pixels to fill the space between them. At the edge of a cell, the neighbor belongs to the next frame, so a magnified sprite would pick up a thin line of the cell beside it. The source rectangle holds the read half a pixel inside its own edges, the way a picture's own edge is held, so a cell drawn at its own size or larger looks exactly like the same cell cropped out with [`cropped(x:y:width:height:)`](#image) and drawn whole. Drawn smaller than itself, a picture reads its [smaller copies](#drawimage), and those average across the edges between cells. A sheet that leaves a few pixels of space around each cell keeps those clean too.
+
+The part of the rectangle that runs off the picture draws nothing, as if the picture were surrounded by empty space. The part that is on it lands where it would have, so a source rectangle half past the right edge fills the left half of the box.
+
+`cropped` makes a new image on the CPU. A source rectangle costs nothing extra: the same quad reads a smaller part of the texture. So a sheet of a hundred frames is one texture however many of them you draw. Any `Image` works as the sheet, a layer's `image` included. A [web page](../Output/Web.md) of the sketch holds each read inside its part the same way.
+
+`.cover` above reads a part of the picture too, but there the picture simply continues past the part it shows, so it blends across that edge as a photograph should.
+
+Worked example: [`Images/SpriteSheet`](../../Examples/Images/SpriteSheet/Sketch.swift).
 
 <a name="tint"></a>
 

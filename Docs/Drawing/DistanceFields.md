@@ -185,6 +185,18 @@ distance it has to carry, so a shorter distance is genuinely less work. On an M2
 square, a field measured over the whole canvas costs about 4.9 ms of GPU time, and one capped
 at 64 pixels costs about 2.9 ms.
 
+**Far distances want a single-precision layer.** The field is written into a layer of the
+same precision as the one it measures, and a half-float layer holds a distance between 512
+and 1,024 pixels only to the nearest half pixel, and past 1,024 to the nearest whole one. A
+contour cut far from the shapes then comes out ragged. Draw the marks into
+`makeRenderTarget(precision: .float32)` and the field keeps its fraction, as does every
+filter after it: on a 1080 by 1920 canvas, distances read 1,400 pixels from a dot scatter
+about 0.1 of a pixel from the true ones in single precision, against 0.29 in half float.
+
+```swift
+let marks = makeRenderTarget(precision: .float32)   // the field, and the chain after it, in float32
+```
+
 <a name="how-it-works"></a>
 
 ### How it works

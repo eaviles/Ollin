@@ -110,7 +110,7 @@ The sequence form writes `frame-00001.exr`, `frame-00002.exr`, and so on, from t
 | Channel | Type | What it is |
 |---|---|---|
 | `R`, `G`, `B` | half | The light the renderer composited, in linear light with Rec. 709 primaries, premultiplied by the coverage in `A`. Free to run above 1, which is where a highlight lives. |
-| `A` | half | The frame's own coverage, the same alpha [transparent output](#transparent-output) writes into a PNG. 1 everywhere on an opaque canvas. |
+| `A` | half | The frame's own coverage, the same alpha [transparent output](#transparent-output) writes into a PNG. 1 everywhere on an opaque canvas, and never above 1: additive marks sum their alpha along with their light, and the file stops it at 1. |
 | `Z` | float | Distance from the eye in the sketch's own world units, for a frame drawn through a 3D camera. A pixel nothing drew to carries the camera's far distance. |
 
 A flat sketch writes no `Z`. Its depth buffer holds a sort key rather than a distance, and a compositor reading that as depth would be wrong about the whole frame.

@@ -188,9 +188,23 @@ vertex ImageOut ollin_image_vertex(uint vertexID [[vertex_id]],
 
 fragment float4 ollin_image_fragment(ImageOut in [[stage_in]],
                                      texture2d<float> tex [[texture(0)]],
-                                     sampler samp [[sampler(0)]]) {
+                                     sampler samp [[sampler(0)]],
+                                     constant float4 &bounds [[buffer(0)]]) {
     // The texture is sRGB, so the sample is already linear and premultiplied.
-    float4 c = tex.sample(samp, in.uv);
+    float4 c;
+    if (bounds.x <= bounds.z) {
+        // A part of the picture (a source rectangle): the read is held half a texel
+        // inside the part's edges, so the filter never reaches a neighbor's texels,
+        // which is the reading a picture cropped out first gets from its own clamped
+        // edge. The level is chosen from the quad's own coordinates, since the held
+        // ones stop moving at the edge and would ask for the sharpest level there.
+        float2 half_texel = 0.5 / float2(tex.get_width(), tex.get_height());
+        float2 mid = 0.5 * (bounds.xy + bounds.zw);
+        float2 uv = clamp(in.uv, min(bounds.xy + half_texel, mid), max(bounds.zw - half_texel, mid));
+        c = tex.sample(samp, uv, gradient2d(dfdx(in.uv), dfdy(in.uv)));
+    } else {
+        c = tex.sample(samp, in.uv);
+    }
     // Apply the straight-alpha tint to a premultiplied color: scale the color by
     // the tint's (linearized) RGB, and scale the whole texel (color and alpha) by
     // the tint's alpha, so the result stays premultiplied. White opaque = no
