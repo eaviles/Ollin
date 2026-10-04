@@ -1453,118 +1453,140 @@ clamping (Karis, Pedersen-Playdead), and a stochastic-SSR spatial resolve
 (Frostbite, AMD FidelityFX SSSR). Credited in the README; written from the
 technique.
 
-### Depth of field (the `.defocus` gather)
+### Depth of field (the shared gather)
 
-`.defocus` is a single-pass circle-of-confusion bokeh gather with near/far field
-separation (the architecture from the Catlike Coding DoF tutorial; the per-field
-gather is Gustafsson's running-average form, Tuxedo Labs, studied via LYGIA's
-`sample/dof`, whose Prosperity license is why it was reimplemented, not ported).
-The aux is read perceptually as a depth map (`linearToSrgb(luma)`, matching the
-depth-feed read so the gray a sketch draws is the depth).
+Both depth-of-field passes run one gather: `depthOfField()` on the canvas and
+`.defocus` over a layer (`ollin_lens_gather` and the `ollin_fx_lens_*` passes in
+`ShaderCombine.metal`; `applyDepthOfField` and the `.defocus` arm of
+`applyCombine` encode them). Each feeds it a prepass of its own and a law of its
+own. The canvas prepass reads the frame's resolved depth (nearest sample per
+pixel) and sizes a blur by the thin lens, `R F |1/s - 1/d|`, with `F` in the
+texture's own pixels. The layer prepass reads the aux depth map perceptually
+(`linearToSrgb(luma)`, matching the depth-feed read, so the gray a sketch draws is
+the depth) and sizes it by the ramp: zero inside `focus +- range`, growing with
+the distance from the band to `maxBlur` at the map's ends (the earlier ramp reached
+`maxBlur` one `range` past the band, so a narrow band made a masked blur). Five passes follow in either case: the prepass
+writes `(blur, depth, blur in front of the focus)`; a `k x k` tile pass takes the
+widest blur, the widest blur in front of the focus, and the tile's color spread;
+a 3x3 neighbor max turns that into how far anything can reach each tile; the
+gather; and a 3x3 median where the pixel itself is blurred. A pixel nothing
+reaches, or whose neighborhood holds one flat color, keeps itself. The two laws
+share the gather through `DofLaw`: a signed blur, negative in front of the focus,
+affine in the inverse of the distance for the lens and in the depth on the ramp,
+and a sameness of depth that is a hundredth of the distance for the canvas and a
+hundredth of the whole range for a normalized map, where a ratio means nothing
+near zero.
 
-It runs as **two passes**. A pre-pass (`ollin_fx_dof_prepass`) reduces the depth
-map to three per-pixel numbers, `(scatter, depth, receive)`, and the gather then
-reads those instead of the depth, so a tap costs one texture sample and no math.
-Moving the seam dilation into that pass as well took its 8 taps out of the
-per-pixel loop; the whole change measures **~35% faster** at 192 taps (M2,
-1080x1080, three runs each back to back: 22.0 ms before, 14.2 ms after).
+**The gather is a scatter written as a gather.** Each tap is a disc of light of
+its own blur radius `c`, landing on the pixel with the density `1 / (pi c^2)`
+times the area the tap stands for, wherever the disc covers the pixel (a
+smoothstep half a pixel either side of the rim). The spiral is equal-area per tap
+(tap `j` sits at `r^2 = start + 2 s (j + 1/2)`, the middle of its own annulus, so
+the ring of neighbors one pixel out is sampled as well as any other), and it runs
+in two zones when a wide blur in front of the focus sets the reach past the
+pixel's own: half the taps out to its own blur, where a small source has to be
+found, the rest over the ring beyond. So a small highlight keeps its light as it
+opens into a disc, and a thin line in focus keeps its weight against a blurred
+background. An average of the taps that reach, which is what the layer's earlier
+running-average gather was, gives both away: measured on the study scenes, a near
+highlight kept 27% of its light and peaked at six times its mean, a near bar kept
+half its light, a thin bar in focus 4%. Taps read whole pixels (a filtered read
+between a line and its background invents a blur size neither has), distances run
+between pixel centers, and the pixel's own light is its own term. The whole spiral
+is moved per pixel by up to half a tap spacing, by a fixed function of position so
+exports repeat; unmoved, the taps that find a small source shift slowly from pixel
+to pixel and leave smooth blotches the median cannot see, moved, they leave a
+grain a pixel across that the median takes out.
 
-The two sizes are deliberately different, and each answers the *same* problem from
-one side. A depth map's silhouettes are anti-aliased, so every outline carries a
-sub-pixel band of in-between depth:
+**Three layers by distance against the pixel's own, and a share.** A tap nearer
+than the pixel and in front of the focus is a veil: its densities add up to how
+much of the pixel it covers, and it composites over the rest by that much. The
+pixel's own surface, when it is itself in front of the focus, covers the pixel by
+its share of the disc nothing in front takes, its own area against the holes the
+scene behind shows within its blur; counted as one minus the holes instead, a
+curved surface's nearer part counted twice, once in the veil and once here, and a
+blurred ball's edge came out a step more opaque than its outside, an outline.
+Behind the focus the pixel's own surface joins what stands behind it, normalized
+by density, and a farther tap is held to the pixel's own blur so a sharp edge
+keeps the background's blur from crossing it. A tap at another distance is
+another surface only when its signed blur lands off the line the pixel's own
+surface draws across the screen: a plane is affine in inverse depth, so the blur
+extrapolates exactly along the gentler of the pixel's two one-sided differences on
+each axis. Without that line a floor running toward the eye read its own farther
+taps as holes, harmless while what filled them was the same floor and a dark
+smear once the hidden layer did. Splitting at the focal plane alone fails twice,
+a subject in focus bulging a little in front of the plane counting as foreground,
+and two foregrounds at different distances mixing rather than one hiding the
+other, which is why the sort is against each pixel's own distance.
 
-- **Receive** is the max over a small ring (the seam dilation). Where that band
-  sweeps through `focus` it leaves a ~1px in-focus ring tracing each defocused
-  mark, which reads as a thin dotted circle; taking a pixel's own blur as the
-  neighborhood max consumes it, while a real in-focus subject is thick enough to
-  keep its near-zero size.
-- **Scatter** is the min over the immediate neighborhood. Where the band instead
-  lands in the *fully defocused* range it flings the color beneath it across the
-  entire blur radius, and because the whole rim shares one depth it cuts off at
-  one radius too: a perfectly in-focus object came out ringed by a faint,
-  hard-edged, concentrically ridged halo of its own color (7 to 10% of the
-  object's brightness against a dark backdrop, out to `maxBlur`). A rim texel
-  always has a low-blur neighbor on the object side, so the min erases it, while
-  a genuinely defocused region keeps its size. The radius is 2px, not 1, so the
-  erased band is wider than the gather's bilinear footprint, which would otherwise
-  average half the rim's size straight back in.
+**The hidden layer** is the canvas's answer to what a blurred foreground hides.
+The frame holds one surface per pixel, so the 3D scene is drawn a second time
+keeping only what lies behind the first layer (`encodeHiddenLayerPass`, a depth
+peel against the main pass's resolved depth under its own jitter, through `encode`
+with its `peel` argument), and the gather reads that layer under a pixel in front
+of the focus. The peel is a function-constant variant of every 3D fragment
+(`kOllinPeel`, `ollin_peel_rejects`): a fragment stays out when it is no farther
+behind the first layer than a hundredth of its distance plus what its own slope
+carries across a pixel and a half (a sphere's rim reads behind its own nearest
+sample by the depth its slope spans within the pixel), and a face turned away from
+the eye stays out where the kind has an inside. It runs only when something
+stands in front of the focus, and only over the pixels those meshes cover: each
+mesh batch and list-placed instanced batch carries a world box, the near ones'
+projected corners scissor the pass, and a kind with no box counts as near and
+everywhere. In the gather a hidden tap is known when it lies behind its tap's own
+surface (an unpeeled kind stands there as itself, and a frame without the pass
+binds the frame itself, so both read as unknown and the stand-in guess holds);
+under the pixel's own surface it is behind that surface whatever its distance
+says (under floor boards the layer holds the next boards' lit sides within a
+percent of the top, and sorted as the surface itself they darkened the floor),
+and it joins the holes' light only when its mean inverse distance stands in front
+of the holes' own content (a ball's top against the backdrop with the floor hidden
+behind it, yes; a gap between boards showing the next board's side, no); whatever
+share of that light the layer does not take, the holes' own stand-in fills, kept
+aside for the purpose, so a pixel never falls back to its own color there (a near
+ball behind a nearer one kept a hard notch inside the nearer one's rim before).
+Behind the focus the layer is read only under a veil tap, since what a near ball
+hides scatters past its rim onto the scene beside it, and never under a tap behind
+the focus: added to that side's averaged model it took a far bar to 93% of its
+light. Against an accumulation-buffer lens on a floor scene
+(512 pinhole renders of the same raster through `Camera3D.intrinsic`, the eye moved
+over the aperture and the principal point shifted so the focal plane holds, the one
+reference that shares the raster's shading) the green cast where a ball's top meets
+the horizon fell from +0.0137 to +0.0036 and the whole frame from 0.0064 to 0.0050
+RMS. A raymarched field draws into the layer as itself, and a one-sided surface
+seen from its back stays out of it (DESIGN-NOTES, 3D mode).
 
-Each tap is sorted by whether it is nearer than focus (foreground) or not, into
-two accumulators, each a Gustafsson running average:
-`acc += mix(acc/tot, sample, reach); tot += 1`, where `reach` tests whether a
-tap's own blur spans its distance. A non-reaching tap adds the current average
-rather than zero, so every tap counts. This both kills grain (no variance from a
-varying effective sample count, so no per-pixel jitter is needed) and blends
-overlapping bokeh. Three details of the accumulation are load-bearing:
+**The layer prepass resolves a drawn map's rim to its nearer side.** A depth map's
+silhouettes are anti-aliased, so every outline carries a sub-pixel band of
+in-between depth, which a canvas depth resolved to the nearest sample never has.
+A pixel whose depth lies strictly between the nearest and the farthest within two
+pixels of it, past one gray level so a smooth ramp is untouched, takes the nearest.
+Left in, the band flung the color under it across its own in-between blur, a
+hard-edged halo around a sharp object, and where it crossed the focus it stayed
+sharp as a one-pixel ring around every defocused mark. The earlier prepass
+answered both with two sizes, a neighborhood max the pixel received by and a
+radius-2 min it scattered by, and the max consumed a thin line in focus along with
+the seam. That seam was the most stubborn artifact in the effect, and the lesson is
+general: an artifact that survives every change to subsystem X is not in X. It
+survived every gather rewrite because it lived in the depth, and a debug
+visualization of the prepass channels made it visible in one render. Returning an
+intermediate raw out of a pass is worth reaching for early; the hidden layer's
+own floor regression was found the same way, by rendering the layer itself.
 
-- **Both fields seed with the center texel.** Seeding the near field with black
-  instead (the obvious "nothing here yet" value) leaves its running average
-  converging *from* black, weighted `1/(taps+1)` per reaching tap, so a partly
-  covered foreground composites that bias over the background. A uniformly white
-  layer with a near disc in its depth map came back with a ~12% dark ring.
-- **Alpha is gathered with the color.** The layers are premultiplied, so
-  blurring rgb past a sharp alpha stops the result being premultiplied at all: a
-  shape on a transparent layer kept a razor silhouette however much blur was
-  asked for. An opaque layer is unaffected either way.
-- **A tap behind this pixel is occlusion-clamped** to twice this pixel's own blur
-  (Gustafsson's clamp). Without it a heavily defocused backdrop pours over a
-  barely defocused midground for the full `maxBlur`, whatever the midground's own
-  blur: a square with a 4.8px circle of confusion lost 30px of its edge to a 48px
-  backdrop. Two comparably defocused regions are each within 2x the other, so
-  overlapping bokeh still merges instead of hard-cutting along a silhouette.
-
-**Near/far separation is the load-bearing idea**, and it is the thing a plain
-single-pass gather cannot do. The far side resolves first (the sharp center
-blended toward its own bokeh by how defocused it is), then the foreground field
-composites *over* that by its coverage, so a defocused foreground spreads over
-and hides an in-focus subject behind it instead of leaving a sharp crescent, and
-an in-focus subject otherwise stays crisp and correctly occludes what is behind
-it. Folding the two into one `mix(center, mix(bg, fg, a), max(dof, a))` applies
-the coverage twice and leaves a half-covered sharp subject a quarter more of its
-sharp self than it should have.
-
-Two rules make the foreground's own silhouette soften on **both** sides of itself,
-which is the half that is easy to get wrong (it blurred outward and stayed razor
-sharp inward, stepping 40% of the way to the background in a single pixel):
-
-- **A pixel under a near blur lets the background field gather from anywhere
-  inside that blur** (`nearReveal`). Otherwise nothing sits behind the foreground
-  for it to become transparent against, since the in-focus scene around it never
-  "reaches". What a foreground truly hides cannot be recovered from one image;
-  standing its neighborhood in for it is the usual approximation and reads right.
-- **Foreground coverage is an area fraction of that near blur, not of the whole
-  gather disc.** The spiral is equal-area per tap, so taps inside radius `r` number
-  `total * (r/maxBlur)^2`; normalizing by the disc instead (with a constant fudge
-  to make up the difference) pins the alpha at 1 well inside the silhouette, which
-  is exactly what kept the inner edge hard. Normalized properly the alpha passes
-  through the silhouette mid-ramp and falls off over the foreground's own blur
-  radius either side.
-
-An expanding golden-angle spiral (`radius += radScale/radius`, with `radScale`
-proportional to `maxBlur` squared) packs rings denser toward the rim so the bokeh
-edge is smooth without jitter.
-
-**The shape of the opening is a parameter of that gather, not a second path.** An
+**The shape of the opening is a parameter of the gather, not a second path.** An
 out-of-focus point of light is a picture of the opening its light came through, so
-`blades` / `irisAngle` / `catsEye` enter at exactly one place: the reach test. The
-circular test asks whether a tap's own blur spans its distance. The general test
-asks the same question in units of how far the opening reaches *that way*
-(`ollin_dof_aperture`), so the distance is divided by that reach and the ~1px soft
-edge is divided by it too, which is what keeps the edge about a pixel wide on screen
-whether the opening runs near or far in that direction. A round opening reaches
-exactly 1 everywhere, so it is byte-identical: the whole snapshot suite and all 49
-Guide probe figures passed unrecorded.
-
-Two decisions inside that helper are worth keeping:
+`blades` / `irisAngle` / `catsEye` enter at exactly one place: the reach test asks
+whether a tap's disc spans its distance in units of how far the opening reaches
+*that way* (`ollin_dof_aperture`), so the distance is divided by that reach. A
+round opening with no cat's eye reaches 1 everywhere and takes the arithmetic the
+canvas takes. Two decisions inside that helper are worth keeping:
 
 - **A polygon is taken at the *area* of the round opening it replaces**, not at its
   radius: `R = sqrt(pi / (n sin(pi/n) cos(pi/n)))`, from `n R^2 sin(2 pi / n) / 2 =
   pi`. So changing the blade count changes the shape of a highlight and not how
   large it reads, which is the behavior a blade *slider* wants. The cost is that the
-  corners now poke past `maxBlur`, so the gather's rim goes out to `maxBlur * R` and
-  the tap spacing widens with it (the tap count stays at the budget). The
-  foreground-coverage normalization moves to that same rim, or a near field would
-  read its area against the wrong disc.
+  corners poke past `maxBlur`, so the tile size and the gather's rim go out to
+  `maxBlur * R`.
 - **Cat's eye is the aperture intersected with two discs pushed apart** by `pinch`
   along the line to the middle of the frame, `pinch` growing with the pixel's
   distance from that middle and capped at 0.9 so an opening never closes entirely.
@@ -1574,11 +1596,8 @@ Two decisions inside that helper are worth keeping:
   Solving `|t u -/+ pinch f| <= 1` for the larger root gives the reach in closed
   form, `sqrt(pinch^2 c^2 + 1 - pinch^2) - pinch |c|` with `c` the cosine between
   the tap direction and the line to the middle, so it costs one dot product and one
-  square root per tap. The reach is `1 - pinch` along that line and
-  `sqrt(1 - pinch^2)` across it, and since the second is always the larger the lemon
-  lies the long way around the frame, as a real one does. It changes *shape* only;
-  the gather normalizes by its accumulated weight, so nothing darkens (`.vignette`
-  is the filter for that).
+  square root per tap. It changes *shape* only; the gather normalizes by its
+  accumulated weight, so nothing darkens (`.vignette` is the filter for that).
 
 **`blades` defaults to the camera, not to round.** `DepthReconstruction` already
 carries the camera geometry stamped on a 3D target's depth layer for the ambient
@@ -1588,62 +1607,32 @@ occlusion and reflection combines, so it carries `apertureBlades` too, and
 highlights together. A hand-drawn depth ramp carries no camera and stays round
 unless the call names a count itself.
 
-**The round path pays nothing, and that took one branch.** Folding the general form
-into the loop unconditionally cost **19.6 ms against 14.7 ms** at 192 taps (M2,
-1080x1080, old and new alternated back to back), which is a 33% tax on every sketch
-that never asked for an iris: a divide, two multiplies and a call per tap add up over
-192 of them. The shaping now sits behind a `shaped` test hoisted out of the loop, read
-off the *settings* (`blades >= 3 || catsEye > 0`) rather than off the per-pixel pinch,
-so it is one answer for the whole pass and the round branch runs exactly the
-instructions it ran before: **14.4 ms against 14.7 ms**, parity within the noise. An
-opening that *is* shaped costs about a third more GPU time (15.1 ms to 20.1 ms at the
-`Effects/Defocus` example's settings, 66 fps to 50 fps), which is the right shape for an
-opt-in.
+**The envelope is the tap budget.** The spiral is equal-area per tap, so the
+spacing between taps is `sqrt(pi / budget)` of the rim: about 13% at `.default`
+(192 taps) and 8% at `.detail` (512). A source smaller than that spacing is found
+by some taps and missed by others; the moved spiral and the median even most of
+that out, and at `.performance` a small source's disc can still look grainy. A
+regular polygon's corners stick out by `1 - cos(pi/n)` of the rim, 13.4% for a
+hexagon, so at `.default` a hexagon's corners sit at the sampling limit, which is
+why the Guide figure uses five blades at `.detail`. `quality` is a `RenderQuality`
+tier the renderer resolves to a per-GPU tap budget (`resolveDofTaps`); the budget,
+not the radius, is what it controls. The budget was tuned with data from
+`Scripts/benchmark.sh dof` (`DofBenchmarkTests` sweeps tap counts via the internal
+`dofTapsOverride` hook and the effects-aware `benchmarkGPUMilliseconds`); take the
+numbers back to back on a cool machine, since single runs drift by 50% under
+thermal load, which is enough to invert an A/B.
 
-**The envelope is the tap budget, and it is worth stating plainly.** The spiral is
-equal-area per tap, so the spacing between taps is `sqrt(pi / budget)` of the rim:
-about 13% at `.default` (192 taps) and 8% at `.detail` (512). A source smaller than
-that spacing is hit or missed rather than resolved, and comes out showing the
-spiral instead of a clean edge. Meanwhile a regular polygon's corners stick out by
-`1 - cos(pi/n)` of the rim: 50% for a triangle, 19% for a pentagon, 13.4% for a
-hexagon. So at `.default` a hexagon's corners sit exactly at the sampling limit,
-which is why a low blade count reads and a high one does not, and why the Guide
-figure uses five blades at `.detail`. The scalloped rim and the faint dark core an
-HDR point source shows are the **pre-existing** gather's (the center hole starts at
-`radScale`), verified by rendering the same scene at `blades: 0`; the aperture
-neither causes nor cures them.
-
-The seam was the most stubborn artifact in this effect, and the lesson is general:
-an artifact that survives every change to subsystem X is not in X. The seam
-survived every gather rewrite because it lived in the CoC/depth, not in the
-gather; a debug visualization of the in-focus map (returning
-`1 - centerCoC/maxBlur`) made it visible directly. Returning the pre-pass channels
-raw out of the gather is the same move and worth reaching for early.
-
-This works on smooth/continuous depth (a gradient or a depth feed) and on
-hard-edged discrete per-object depths with overlapping objects. `quality` is a
-`RenderQuality` tier that the renderer resolves to a per-GPU bokeh tap budget
-(`resolveDofTaps`); the tap budget, not the blur radius, is what `quality`
-controls, so `.detail` is creamier and `.performance` is faster, while `maxBlur`
-is the blur amount.
-
-The tap budget was tuned with data from `Scripts/benchmark.sh dof`
-(`DofBenchmarkTests` sweeps tap counts via the internal `dofTapsOverride` hook and
-the effects-aware `benchmarkGPUMilliseconds`). Take the numbers back to back on a
-cool machine: single runs drift by 50% under thermal load, which is enough to
-invert an A/B. On an M2 at 1080x1080 the `.default` tier (192 taps) measures
-~14 ms and holds 60 fps. The shader's `OLLIN_DOF_TAPS` constant is the fallback
-default when no budget is passed. The `Effects/Defocus` example racks focus
-through orbs at discrete per-object depths (a moderate count, so dense occlusion
-stays readable), and its snapshot pins the overlapping hard-depth case.
-
-The pixel snapshots passed within tolerance across every one of the fixes above,
+The pixel snapshots pass within tolerance across every one of the fixes above,
 because a mean-per-channel comparison averages away defects that live in a band
-around each silhouette, which is where all of them live. `DefocusTests` pins them
-directly instead: a near spread invents no color, a sharp subject rejects the
-backdrop, a lightly defocused midground keeps its edge, a foreground silhouette
-softens on both sides, transparency blurs its coverage, and `maxBlur` 0 is a
-pass-through. Reach for a behavioral probe here, not a whole-frame diff.
+around each silhouette, which is where all of them live. `DefocusTests` and
+`DepthOfFieldTests` pin them directly instead: a near spread invents no color, a
+sharp subject rejects the backdrop, a lightly defocused midground keeps its edge,
+a foreground silhouette softens on both sides, transparency blurs its coverage,
+`maxBlur` 0 is a pass-through, a bar spreads by the thin lens and keeps its light,
+a highlight opens into an even disc, a blurred ball has no outline, and the floor
+hidden behind a blurred ball's top shows through it. Reach for a behavioral probe
+here, not a whole-frame diff, and measure a change against a reference that
+shares the raster's shading before trusting a number.
 
 ---
 

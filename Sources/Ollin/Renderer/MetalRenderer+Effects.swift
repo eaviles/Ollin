@@ -1530,35 +1530,46 @@ extension MetalRenderer {
                                  params: [SIMD4(Float(amount), Float(threshold), 0, 0)], into: cb)
             return out
         case let .defocus(focus, range, maxBlur, quality, blades, irisAngle, catsEye):
-            // maxBlur is in layer pixels; the gather works in texels, so at this
-            // layer's resolution one is the other (the texel-size row keeps the disk
-            // round on a non-square layer). The third texel slot carries the resolved
-            // bokeh tap budget for the gather.
-            //
-            // Two passes: a pre-pass reduces the aux depth to per-pixel circle-of-
-            // confusion sizes (the size a pixel scatters by, min-filtered so an
-            // anti-aliased silhouette can't fling the color under it across the whole
-            // blur radius, and the size it receives, seam-dilated), then the bokeh
-            // gather reads that instead of the raw depth. It costs one fullscreen pass
-            // and takes the dilation's 8 taps back out of the per-pixel gather.
-            //
-            // The shape of the opening goes in the spare slots: the blade count falls back
-            // to the camera that drew the depth layer, so a scene defocused by its own
-            // depth uses the same iris its flare ghosts and its path-traced export do.
-            // A hand-drawn depth map carries no camera, so it stays round until the call
-            // names a blade count itself.
+            // The canvas depth of field's own gather over a layer (`applyDepthOfField`
+            // runs the same five passes), fed by the layer prepass, which reads the aux
+            // depth map and resolves its anti-aliased rims to their nearer side, and
+            // the ramp law: zero blur inside `focus +- range`, growing with the
+            // distance from the band to reach `maxBlur` (in layer pixels, which at
+            // this resolution are the gather's texels) at the map's ends. The tile passes bound how far each pixel gathers,
+            // and the median after the gather takes out the disc grain the moved
+            // spiral leaves. The shape of the opening goes in the spare slots: the
+            // blade count falls back to the camera that drew the depth layer, so a
+            // scene defocused by its own depth uses the same iris its flare ghosts
+            // and its path-traced export do; a hand-drawn depth map carries no camera,
+            // so it stays round until the call names a blade count itself. `maxBlur`
+            // under half a pixel is a pass-through, so the op is free to leave in.
+            guard maxBlur >= 0.5 else { return base }
             let taps = Float(resolveDofTaps(quality))
-            let irisBlades = blades ?? depth?.apertureBlades ?? 0
-            let texel = SIMD4<Float>(1 / Float(width), 1 / Float(height), taps, 0)
-            let dof = SIMD4(Float(focus), Float(range), Float(maxBlur), Float(max(0, irisBlades)))
-            let iris = SIMD4(Float(irisAngle), Float(catsEye), 0, 0)
+            let irisBlades = Double(max(0, blades ?? depth?.apertureBlades ?? 0))
+            let irisReach = irisBlades >= 3 ? (Double.pi / (irisBlades * sin(.pi / irisBlades) * cos(.pi / irisBlades))).squareRoot() : 1
+            let k = max(8, Int((Double(maxBlur + 1) * irisReach).rounded(.up)) + 1)
+            let tilesW = (width + k - 1) / k, tilesH = (height + k - 1) / k
+            let lens = SIMD4<Float>(0, 1, 0, 0)
+            let band = SIMD4<Float>(Float(focus), Float(range), Float(maxBlur), Float(k))
+            let shape = SIMD4<Float>(1 / Float(width), 1 / Float(height), taps, Float(irisBlades))
+            let law = SIMD4<Float>(0, 1, Float(irisAngle), Float(catsEye))
             guard let coc = acquireFilterTexture(width: width, height: height, pooled: pooled),
+                  let tileMax = acquireFilterTexture(width: tilesW, height: tilesH, pooled: pooled),
+                  let reach = acquireFilterTexture(width: tilesW, height: tilesH, pooled: pooled),
+                  let gathered = acquireFilterTexture(width: width, height: height, pooled: pooled),
                   let out = acquireFilterTexture(width: width, height: height, pooled: pooled)
             else { return nil }
-            encodeEffectFragment("ollin_fx_dof_prepass", inputs: [aux], output: coc,
-                                 params: [dof, texel], into: cb)
-            encodeEffectFragment("ollin_fx_depth_of_field", inputs: [base, coc], output: out,
-                                 params: [dof, texel, iris], into: cb)
+            encodeEffectFragment("ollin_fx_lens_dof_layer_prepass", inputs: [aux], output: coc,
+                                 params: [lens, band, shape], into: cb)
+            encodeEffectFragment("ollin_fx_lens_dof_tilemax", inputs: [coc, base], output: tileMax,
+                                 params: [lens, band], into: cb)
+            encodeEffectFragment("ollin_fx_lens_dof_neighbormax", inputs: [tileMax], output: reach,
+                                 params: [band], into: cb)
+            encodeEffectFragment("ollin_fx_lens_depth_of_field",
+                                 inputs: [base, coc, reach, base, coc], output: gathered,
+                                 params: [lens, band, shape, law], into: cb)
+            encodeEffectFragment("ollin_fx_lens_dof_median", inputs: [gathered, coc], output: out,
+                                 params: [lens, band, shape], into: cb)
             return out
         case let .ambientOcclusion(radius, intensity, bias, quality):
             // Two passes: a hemisphere-kernel occlusion estimate (rebuilding view-space

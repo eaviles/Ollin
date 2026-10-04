@@ -106,7 +106,7 @@ extension MetalRenderer {
     /// Turn a 3D render target's resolved clip-space depth into a sampleable gray
     /// layer (0 near … 1 far): one fullscreen pass that linearizes the depth over the
     /// camera's near/far and encodes it so the perceptual depth-of-field decode reads
-    /// back exactly that value (so `ollin_fx_depth_of_field` needs no change). A nil
+    /// back exactly that value (so the gather needs no change). A nil
     /// camera (a non-metric depth scene wrote normalized depth itself) passes through.
     func normalizeDepth(_ depth: MTLTexture, camera: Camera3D?,
                                 width: Int, height: Int,
