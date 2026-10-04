@@ -19,6 +19,9 @@ struct ExportMetadata {
     var noiseSeed: Int?
     var params: [(name: String, value: ParamStored)]
     var gitHash: String?
+    /// The framework's own commit, with `-dirty` the same way (`frameworkHash`);
+    /// `nil` where it cannot be read.
+    var frameworkHash: String? = nil
     var frame: Int?
     var fps: Double?
     /// The ink names of a print-separation export, in print order; `nil`
@@ -52,6 +55,7 @@ struct ExportMetadata {
                        noiseSeed: sketch.recordedNoiseSeed,
                        params: sketch.parameters().map { ($0.name, $0.param.stored) },
                        gitHash: ExportMetadata.workingTreeHash,
+                       frameworkHash: ExportMetadata.frameworkHash,
                        frame: frame, fps: fps,
                        captureCommit: ExportMetadata.capturedCommit,
                        settle: OllinApp.exportSettle)
@@ -81,6 +85,7 @@ struct ExportMetadata {
             fields.append("\"printingCondition\":\(jsonString(printingCondition))")
         }
         if let gitHash { fields.append("\"git\":\(jsonString(gitHash))") }
+        if let frameworkHash { fields.append("\"ollin\":\(jsonString(frameworkHash))") }
         if let captureCommit { fields.append("\"capture\":\(jsonString(captureCommit))") }
         if let frame { fields.append("\"frame\":\(frame)") }
         if let fps { fields.append("\"fps\":\(jsonNumber(fps))") }
@@ -105,6 +110,7 @@ struct ExportMetadata {
         var fields: [String] = ["\"tool\":\"Ollin\""]
         fields.append("\"seeds\":[\(seeds.map(String.init).joined(separator: ","))]")
         if let hash = workingTreeHash { fields.append("\"git\":\(jsonString(hash))") }
+        if let hash = frameworkHash { fields.append("\"ollin\":\(jsonString(hash))") }
         if let capture = capturedCommit { fields.append("\"capture\":\(jsonString(capture))") }
         fields.append("\"frame\":\(frame)")
         fields.append("\"fps\":\(jsonNumber(fps))")
@@ -122,6 +128,7 @@ struct ExportMetadata {
         fields.append("\"values\":[\(values.map { jsonNumber($0) }.joined(separator: ","))]")
         fields.append("\"seed\":\(seed)")
         if let hash = workingTreeHash { fields.append("\"git\":\(jsonString(hash))") }
+        if let hash = frameworkHash { fields.append("\"ollin\":\(jsonString(hash))") }
         if let capture = capturedCommit { fields.append("\"capture\":\(jsonString(capture))") }
         fields.append("\"frame\":\(frame)")
         fields.append("\"fps\":\(jsonNumber(fps))")
@@ -134,12 +141,36 @@ struct ExportMetadata {
     /// or video export reuses the answer for every frame.
     /// A phone or a tablet runs no other program, so there is nothing to ask
     /// and the field stays out of the metadata.
-    static let workingTreeHash: String? = {
+    static let workingTreeHash: String? = gitState(in: nil)
+
+    /// The framework's own commit, the same way, read in the directory this
+    /// source file was compiled from: the checkout a sketch depends on by path,
+    /// or the package checkout SwiftPM made for a dependency by URL, which sits
+    /// at the tag's commit. A sketch that depends on the framework by path can
+    /// change its frame with no change of its own, so its own commit alone does
+    /// not reproduce a frame; `nil` when that directory is gone (a binary built
+    /// elsewhere) or is not a repository.
+    static let frameworkHash: String? = {
+        let directory = URL(fileURLWithPath: #filePath).deletingLastPathComponent().path
+        #if os(macOS)
+        guard FileManager.default.fileExists(atPath: directory) else { return nil }
+        #endif
+        return gitState(in: directory)
+    }()
+
+    /// The short git commit of `directory` (the process's working directory when
+    /// nil), with a `-dirty` suffix when the tree has uncommitted changes; `nil`
+    /// outside a repository (or without git). Each is looked up once per process,
+    /// so a sequence or video export reuses the answer for every frame. A phone
+    /// or a tablet runs no other program, so there is nothing to ask and the
+    /// field stays out of the metadata.
+    private static func gitState(in directory: String?) -> String? {
         #if os(macOS)
         func git(_ arguments: [String]) -> String? {
             let process = Process()
             process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
             process.arguments = ["git"] + arguments
+            if let directory { process.currentDirectoryURL = URL(fileURLWithPath: directory) }
             let out = Pipe()
             process.standardOutput = out
             process.standardError = Pipe()   // a non-repo directory stays quiet
@@ -154,9 +185,10 @@ struct ExportMetadata {
         let dirty = git(["status", "--porcelain"]).map { !$0.isEmpty } ?? false
         return dirty ? hash + "-dirty" : hash
         #else
+        _ = directory
         return nil
         #endif
-    }()
+    }
 
     /// The commit `--capture-source` wrote the uncommitted working tree into,
     /// which turns the `-dirty` marker above from a dead end into something a

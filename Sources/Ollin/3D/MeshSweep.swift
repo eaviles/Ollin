@@ -419,7 +419,9 @@ public extension Mesh {
             }
         }
         normals = normals.map { $0.lengthSquared > 0 && $0.lengthSquared.isFinite ? $0.normalized : .unitZ }
-        return Mesh(positions: positions, normals: normals, indices: indices, uvs: uvs, colors: vertexColors)
+        var mesh = Mesh(positions: positions, normals: normals, indices: indices, uvs: uvs, colors: vertexColors)
+        mesh.isClosed = false
+        return mesh
     }
 }
 

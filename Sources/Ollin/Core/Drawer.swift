@@ -220,6 +220,11 @@ struct GeometryBatch {
     /// state. `gridParams` carries its cell size / axis colors / fade. Live host chrome.
     var meshGrid = false
     var gridParams = OllinGridParams()
+    /// Whether the meshes of a `.mesh3D` or `.meshInstanced` batch are closed
+    /// surfaces (`Mesh.isClosed`, read as closed when unknown): the hidden layer
+    /// turns a closed shape's back faces away as its inside, and keeps an open
+    /// surface's. A change opens a fresh batch, like a finish change.
+    var meshClosed = true
     /// The matcap sphere texture for a `.mesh3D` batch — sampled by the view-space
     /// normal, selecting the matcap pipeline. When set, the whole look comes from this
     /// texture and lighting/material/shadow are bypassed. `nil` for a lit mesh. A matcap
@@ -1150,6 +1155,7 @@ final class Drawer {
     /// The surface finish of the currently-open *solid* mesh batch, so a `material(_:)`
     /// change opens a fresh batch (the finish is bound once per batch as a uniform).
     private var currentBatchMaterial = Material()
+    private var currentBatchMeshClosed = true
 
     // MARK: Clipping (withClip)
 
@@ -1575,7 +1581,8 @@ final class Drawer {
     /// rather than merging into this one.
     private func beginMeshBatch(material: MeshMaterial?, finish: OllinMaterial,
                                 wireframe: Bool = false, matcap: Image? = nil,
-                                grid: Bool = false, gridParams: OllinGridParams = OllinGridParams()) {
+                                grid: Bool = false, gridParams: OllinGridParams = OllinGridParams(),
+                                closed: Bool = true) {
         currentBatchLightSet = resolveLightSet()
         batches.append(GeometryBatch(kind: .mesh3D, vertexStart: vertices.count,
                                      instanceStart: sdfInstances.count,
@@ -1591,6 +1598,7 @@ final class Drawer {
                                      gridParams: gridParams, matcap: matcap,
                                      target: currentTarget, clipLevel: activeClipLevel,
                                      lightSet: currentBatchLightSet))
+        batches[batches.count - 1].meshClosed = closed
         currentKind = nil
     }
 
@@ -1598,11 +1606,12 @@ final class Drawer {
     /// meshes merge into one batch as long as the blend, depth, and surface finish are
     /// unchanged — the finish is bound per batch as one uniform, so a change in
     /// `material(_:)` breaks the batch (like a blend-mode change does).
-    private func ensureSolidMeshBatch(_ m: Material) {
+    private func ensureSolidMeshBatch(_ m: Material, closed: Bool = true) {
         let set = resolveLightSet()
         if currentKind == .mesh3D, currentBatchBlend == currentBlend,
            currentBatchDepth == currentDepth, currentBatchMaterial == m,
-           currentBatchClip == activeClipLevel, currentBatchLightSet == set {
+           currentBatchClip == activeClipLevel, currentBatchLightSet == set,
+           currentBatchMeshClosed == closed {
             return
         }
         currentKind = .mesh3D
@@ -1611,6 +1620,7 @@ final class Drawer {
         currentBatchDepth = currentDepth
         currentBatchMaterial = m
         currentBatchClip = activeClipLevel
+        currentBatchMeshClosed = closed
         batches.append(GeometryBatch(kind: .mesh3D, vertexStart: vertices.count,
                                      instanceStart: sdfInstances.count,
                                      imageStart: imageVertices.count,
@@ -1623,6 +1633,7 @@ final class Drawer {
                                      finish: m.gpuMaterial(), target: currentTarget,
                                      clipLevel: activeClipLevel,
                                      lightSet: currentBatchLightSet))
+        batches[batches.count - 1].meshClosed = closed
     }
 
     /// Open a new `.sdfGroup3D` batch when the blend, depth, or surface finish changes;
@@ -3731,10 +3742,11 @@ final class Drawer {
             || detailColorMapped || detailNormalMapped
             || triplanar || ((emissiveOn || selfGlow) && (uvsAligned || material?.texture == nil))
         let writesUV = textured || (surfaceMapped && uvsAligned)
+        let closed = mesh.isClosed ?? true
         if wireframe {
-            beginMeshBatch(material: nil, finish: OllinMaterial(), wireframe: true)
+            beginMeshBatch(material: nil, finish: OllinMaterial(), wireframe: true, closed: closed)
         } else if let matcap {
-            beginMeshBatch(material: nil, finish: OllinMaterial(), matcap: matcap)
+            beginMeshBatch(material: nil, finish: OllinMaterial(), matcap: matcap, closed: closed)
         } else if surfaceMapped {
             // The gates are carried in the finish like `normalScale` below; the mesh
             // material's own metallic/roughness fold in as the map's factors
@@ -3786,7 +3798,7 @@ final class Drawer {
                     finish.emissiveIntensity = Float(mat.emissiveIntensity)
                 }
             }
-            beginMeshBatch(material: material, finish: finish)
+            beginMeshBatch(material: material, finish: finish, closed: closed)
         } else if textured {
             // The map's strength is carried in the per-batch finish uniform: it's
             // per-mesh state (the drawing-state `material(_:)` knows nothing of
@@ -3797,9 +3809,9 @@ final class Drawer {
                 finish.normalScale = Float(mat.normalScale)
             }
             if let mat = material { finish.uvWrap = mat.wrap.gpuValue }
-            beginMeshBatch(material: material, finish: finish)
+            beginMeshBatch(material: material, finish: finish, closed: closed)
         } else {
-            ensureSolidMeshBatch(currentMaterial)
+            ensureSolidMeshBatch(currentMaterial, closed: closed)
         }
         let m = modelMatrix
         let nm = modelIsIdentity ? matrix_identity_float3x3 : m.normalMatrix
@@ -4107,6 +4119,7 @@ final class Drawer {
                                      finish: currentMaterial.gpuMaterial(),
                                      target: currentTarget, clipLevel: activeClipLevel,
                                      lightSet: currentBatchLightSet))
+        batches[batches.count - 1].meshClosed = mesh.isClosed ?? true
         currentKind = nil
     }
 

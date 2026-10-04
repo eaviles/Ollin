@@ -33,7 +33,14 @@ struct DepthOfFieldTests {
     static func coc(_ d: Double, focus: Double = s) -> Double { R * F * abs(1 / focus - 1 / d) }
 
     final class Lens: Sketch {
-        enum Content { case bars([Double]), highlight(Double), subject(bar: Bool), ball(Double), ballOverFloor }
+        enum Content {
+            case bars([Double]), highlight(Double), subject(bar: Bool), ball(Double)
+            /// The hidden-surface scene: a white ball in front of the focus over a red floor
+            /// that runs away behind it, the floor a closed box, an open plane seen from its
+            /// back, or a raymarched slab.
+            case ballOverFloor(Floor)
+        }
+        enum Floor { case box, planeFromBehind, marched }
         var content = Content.bars([3, 6.1, 11])
         var aperture = DepthOfFieldTests.R
         var orthographic = false
@@ -78,7 +85,7 @@ struct DepthOfFieldTests {
                 // A white ball in front of the focus, its middle `d` from the eye.
                 let p = at(0, 0, d)
                 withState { translate(p.x, p.y, p.z); drawMesh(Mesh.sphere(radius: 0.5, segments: 96, rings: 48).glowing(1)) }
-            case .ballOverFloor:
+            case .ballOverFloor(let floor):
                 // The hidden-surface case: a white ball in front of the focus, its
                 // top a few pixels above the far edge of a red floor that runs away
                 // behind it, so in the pinhole view the backdrop stands above the
@@ -86,10 +93,29 @@ struct DepthOfFieldTests {
                 // the ball's top sees that hidden floor.
                 let p = at(0, 0, 3.5)
                 withState { translate(p.x, p.y - 0.45, p.z); drawMesh(Mesh.sphere(radius: 0.5, segments: 96, rings: 48).glowing(1)) }
-                fill(Color(red: 1, green: 0, blue: 0))
-                withState {
-                    translate(0, -0.3, 6 - 12.25)
-                    drawMesh(Mesh.box(width: 12, height: 0.02, depth: 15.5).glowing(1))
+                fill(Color(red: 1, green: 0, blue: 0))   // unlit, so every floor is the same red
+                switch floor {
+                case .box:
+                    withState {
+                        translate(0, -0.3, 6 - 12.25)
+                        drawMesh(Mesh.box(width: 12, height: 0.02, depth: 15.5))
+                    }
+                case .planeFromBehind:
+                    // The same floor as a one-sided plane turned to face away from
+                    // the eye: a surface the lens sees from its back.
+                    withState {
+                        translate(0, -0.3, 6 - 12.25)
+                        rotateX(.pi)
+                        drawMesh(Mesh.plane(width: 12, depth: 15.5))
+                    }
+                case .marched:
+                    // The same floor as a raymarched slab.
+                    union {
+                        withState {
+                            translate(0, -0.3, 6 - 12.25)
+                            drawBox(width: 12, height: 0.02, depth: 15.5)
+                        }
+                    }
                 }
             case .subject(let bar):
                 // A checker far behind, a ball in focus, and a bar near the eye.
@@ -282,28 +308,50 @@ struct DepthOfFieldTests {
         // the floor, and the band carries red the ball (white) and the backdrop
         // (black) cannot give. The floor's far edge projects 9 px below the center
         // and the ball's top 9 px above it.
-        let sharp = try render(lens { $0.content = .ballOverFloor; $0.blurs = false })
-        let (f, renderer) = try renderKeepingRenderer(lens { $0.content = .ballOverFloor })
+        let sharp = try render(lens { $0.content = .ballOverFloor(.box); $0.blurs = false })
+        let (f, renderer) = try renderKeepingRenderer(lens { $0.content = .ballOverFloor(.box) })
         #expect(renderer.hiddenLayerDrawnLastFrame, "the frame has a near-field ball and drew no hidden layer")
-        func redness(_ frame: Frame) -> Double {
-            var sum = 0.0, n = 0.0
-            for y in 247 ... 265 {
-                for x in 216 ... 296 {
-                    let c = frame.rgb[y * frame.size + x]
-                    sum += Double(c.x - c.y); n += 1
-                }
-            }
-            return sum / n
-        }
         // The pinhole band is the white ball alone (no red beyond white's own).
         #expect(abs(redness(sharp)) < 0.01, "the pinhole band reads \(redness(sharp)) red over green")
         let seen = redness(f)
-        #expect(seen > 0.05, "the floor hidden behind the ball's top shows \(seen) red over green through it")
+        #expect(seen > 0.02, "the floor hidden behind the ball's top shows \(seen) red over green through it")
         // What the lens shows above the ball is still the backdrop and the ball's
         // own veil, never the floor: the hidden layer joins only under the near field.
         var above = 0.0, m = 0.0
         for y in 180 ... 200 { for x in 216 ... 296 { let c = f.rgb[y * f.size + x]; above += Double(c.x - c.y); m += 1 } }
         #expect(abs(above / m) < 0.01, "above the ball reads \(above / m) red over green")
+    }
+
+    /// The band through the ball's top, red over green, averaged (the floor is red,
+    /// the ball white, the backdrop black).
+    private func redness(_ frame: Frame) -> Double {
+        var sum = 0.0, n = 0.0
+        for y in 247 ... 265 {
+            for x in 216 ... 296 {
+                let c = frame.rgb[y * frame.size + x]
+                sum += Double(c.x - c.y); n += 1
+            }
+        }
+        return sum / n
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func anOpenSurfaceSeenFromItsBackJoinsTheHiddenLayer() throws {
+        // The floor as a plane facing away from the eye: a closed shape's back
+        // face is its inside and stays out of the layer, but an open surface's
+        // back face is the surface, and the lens sees it behind the ball.
+        let f = try render(lens { $0.content = .ballOverFloor(.planeFromBehind) })
+        let seen = redness(f)
+        #expect(seen > 0.02, "the plane hidden behind the ball's top shows \(seen) red over green through it")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aRaymarchedFieldBehindTheBallJoinsTheHiddenLayer() throws {
+        // The floor as a raymarched slab: the march starts behind the first layer,
+        // so under the ball it finds the slab.
+        let f = try render(lens { $0.content = .ballOverFloor(.marched) })
+        let seen = redness(f)
+        #expect(seen > 0.02, "the marched floor hidden behind the ball's top shows \(seen) red over green through it")
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))

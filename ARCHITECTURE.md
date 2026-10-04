@@ -1555,8 +1555,10 @@ light. Against an accumulation-buffer lens on a floor scene
 over the aperture and the principal point shifted so the focal plane holds, the one
 reference that shares the raster's shading) the green cast where a ball's top meets
 the horizon fell from +0.0137 to +0.0036 and the whole frame from 0.0064 to 0.0050
-RMS. A raymarched field draws into the layer as itself, and a one-sided surface
-seen from its back stays out of it (DESIGN-NOTES, 3D mode).
+RMS. A raymarched field peels by marching from behind the first layer's distance,
+walking out of its own body first where the field is that layer; a mesh carries
+whether it is closed (the generators' word, unknown read as closed), so a plane or
+a strip seen from its back joins the layer while a sphere's inside stays out.
 
 **The layer prepass resolves a drawn map's rim to its nearer side.** A depth map's
 silhouettes are anti-aliased, so every outline carries a sub-pixel band of

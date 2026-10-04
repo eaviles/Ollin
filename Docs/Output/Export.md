@@ -522,7 +522,7 @@ From the command line, an export flag that fails prints the sentence and exits w
 Every export carries the recipe to regenerate itself, embedded as one compact JSON line:
 
 ```json
-{"tool":"Ollin","seed":42,"params":{"radius":120},"git":"8167de3","frame":0,"fps":60}
+{"tool":"Ollin","seed":42,"params":{"radius":120},"git":"8167de3","ollin":"dde11f8a","frame":0,"fps":60}
 ```
 
 The fields are:
@@ -532,7 +532,7 @@ The fields are:
 - the short git commit of the directory the export ran in,
 - and the frame and fps that produced the file.
 
-When `randomSeed` and `noiseSeed` were set individually, they appear as separate fields instead. A `-dirty` suffix marks uncommitted changes, and the commit field is absent outside a repository. Every sketch starts from a seed, so even an unseeded run records the number that reproduces it. Each format keeps the recipe in a different place:
+When `randomSeed` and `noiseSeed` were set individually, they appear as separate fields instead. `git` is the sketch package's commit and `ollin` the framework's, read from the checkout the sketch depends on (a package SwiftPM fetched sits at its tag's commit); a sketch that depends on the framework by path can change its frame with no change of its own, so the pair is what reproduces a frame. A `-dirty` suffix marks uncommitted changes on either, and a commit field is absent where its repository cannot be read. Every sketch starts from a seed, so even an unseeded run records the number that reproduces it. Each format keeps the recipe in a different place:
 
 | Format | Where |
 |---|---|

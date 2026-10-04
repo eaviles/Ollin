@@ -42,18 +42,18 @@ if ! grep -q '^<canvas class="ollin-sketch"' "$page"; then
     exit 1
 fi
 
-# The page's recipe says how the ring was made, and one of its fields is the
-# commit the export ran at. That field is about the machine rather than the
-# sketch, and it moves on every commit, so keeping it would rewrite this
-# recording each time the repository moved and put the working tree's state on
-# a public page. The rest of the recipe stays: the tool, the pinned seed, and
-# the parameter values are what reproduce the ring. Nothing on the page reads
-# any of it.
-if ! sed -i '' 's/,\\"git\\":\\"[^\\]*\\"//' "$page"; then
-    echo "site-hero: could not take the commit out of the page's recipe" >&2
+# The page's recipe says how the ring was made, and two of its fields are the
+# commits the export ran at, the sketch package's (`git`) and the framework's
+# (`ollin`). Those fields are about the machine rather than the sketch, and
+# they move on every commit, so keeping them would rewrite this recording each
+# time the repository moved and put the working tree's state on a public page.
+# The rest of the recipe stays: the tool, the pinned seed, and the parameter
+# values are what reproduce the ring. Nothing on the page reads any of it.
+if ! sed -i '' -e 's/,\\"git\\":\\"[^\\]*\\"//' -e 's/,\\"ollin\\":\\"[^\\]*\\"//' "$page"; then
+    echo "site-hero: could not take the commits out of the page's recipe" >&2
     exit 1
 fi
-if grep -q '\\"git\\":' "$page"; then
+if grep -q -e '\\"git\\":' -e '\\"ollin\\":' "$page"; then
     echo "site-hero: the page still carries a commit in its recipe" >&2
     exit 1
 fi

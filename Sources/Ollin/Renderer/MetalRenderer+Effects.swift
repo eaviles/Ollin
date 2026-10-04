@@ -3553,15 +3553,17 @@ extension MetalRenderer {
                 if meshGrid { continue }
                 let cullsBackFaces: Bool
                 switch batch.kind {
-                case .mesh3D: cullsBackFaces = !meshWireframe
-                case .meshInstanced, .meshField: cullsBackFaces = true
+                case .mesh3D: cullsBackFaces = !meshWireframe && batch.meshClosed
+                case .meshInstanced: cullsBackFaces = batch.meshClosed
+                case .meshField: cullsBackFaces = true
                 case .points3D, .lines3D, .strands, .ocean, .depthScene: cullsBackFaces = false
                 default: cullsBackFaces = false
                 }
                 let honors: Bool
                 switch batch.kind {
                 case .mesh3D: honors = !meshWireframe
-                case .meshInstanced, .meshField, .points3D, .lines3D, .strands, .ocean, .depthScene:
+                case .meshInstanced, .meshField, .points3D, .lines3D, .strands, .ocean, .depthScene,
+                     .sdfGroup3D:
                     honors = true
                 default: honors = false
                 }
@@ -3676,7 +3678,7 @@ extension MetalRenderer {
                 // Half-res tier: the fields were already sphere-traced into the half-res
                 // color+depth in the pre-pass, and all of them composite in one upsample at
                 // the first field batch (depth still decides mesh occlusion), so skip the rest.
-                if let hf = halfResField {
+                if let hf = halfResField, peel == nil {
                     if compositedHalfResFields { continue }
                     compositedHalfResFields = true
                     var upKey = PipelineKey.raymarchUpsample(depth: depthFormat ?? depthPixelFormat)

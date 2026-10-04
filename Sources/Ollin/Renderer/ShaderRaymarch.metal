@@ -723,6 +723,10 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
                                                  , texture2d<float> giDepthTex [[texture(14)]]
                                                  , texture2d<float> giOffsetsTex [[texture(15)]]
 #endif
+                                                 // The hidden layer's peel (`kOllinPeel`): the first layer's
+                                                 // depth and the rule, as the mesh fragments take them.
+                                                 , constant OllinPeel &peel [[buffer(10), function_constant(kOllinPeel)]]
+                                                 , depth2d<float> peelDepth [[texture(29), function_constant(kOllinPeel)]]
                                                  ) {
     RaymarchFragOut miss;
     miss.color = float4(0.0);
@@ -777,12 +781,76 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
     float minRatio = 1.0e9;
     float tNear = t0;
     int steps = int(u.raymarchSteps.x);
+    // Set while a peeled march is still within a pixel's footprint of the face it just
+    // left: a near-miss is not recorded until the ray has once been clear of the field,
+    // or the face just left reads as a grazing hairline over the whole first layer.
+    bool clearing = false;
+    // The hidden layer: the march starts behind the first layer at this pixel, past the
+    // same tolerance the mesh peel allows (a hundredth of the distance, plus what the
+    // surface's own slope carries across the rule's pixels), and when that point lies
+    // inside the field's own body, which it does wherever the field is the first
+    // layer, the march first walks out of the body by the field's own distance and
+    // only then looks for the next entry. So a field's inside never joins the layer,
+    // and what joins is the surface behind the first one, the field's own or another
+    // kind's. A pixel whose first layer is the backdrop holds nothing behind it, and
+    // the march would miss there as the main pass did, so it is left alone.
+    if (kOllinPeel) {
+        float z = peelDepth.read(uint2(in.position.xy));
+        if (z < 1.0) {
+            float near = peel.lens.x, far = peel.lens.y;
+            float dFirst = near * far / max(1e-6, far - z * (far - near));
+            // The ray's own parameter at a distance along the view axis: the view z of
+            // `ro + rd t` is linear in t, and the camera looks down -z.
+            float zr0 = (u.view * float4(ro, 1.0)).z;
+            float zrd = (u.view * float4(rd, 0.0)).z;
+            float perUnit = -1.0 / min(zrd, -1e-6);                 // t per unit of distance
+            float tFirst = (dFirst + zr0) * perUnit;
+            float3 pFirst = ro + rd * tFirst;
+            float facing = dot(ollin_sdf3d_normal(pFirst, g, nodes), -rd);
+            float f = clamp(abs(facing), 0.05, 1.0);
+            float slope = sqrt(max(0.0, 1.0 - f * f)) / f;
+            float tolerance = dFirst * peel.lens.w + peel.rule.x * (dFirst / peel.lens.z) * slope;
+            float tStart = (dFirst + tolerance + zr0) * perUnit;
+            // A first layer that stands before the field's box is another kind's, and
+            // the march runs from the box as the main pass does: the field's first
+            // surface there lies behind that layer. Past the box's start the march
+            // begins at the first layer's own point, and when that lies inside the
+            // field's body (the field is the first layer) it walks out first. Inside
+            // the body the field's distance is to the nearest wall, which for a thin
+            // slab seen at a grazing angle is a hundredth of the way out, so each step
+            // is at least four pixels' footprint: the exit lands within that of where
+            // it is, and a surface closer behind it than that is the layer's loss.
+            // The march then runs clearing (below) until the face just left is a
+            // footprint away.
+            if (tStart > t0) {
+                t = tStart;
+                float4 dump = float4(0.0);
+                for (int i = 0; i < steps; i++) {
+                    if (t > t1) break;
+                    float d = ollin_sdf3d_world(ro + rd * t, g, nodes, dump);
+                    if (d >= OLLIN_RAYMARCH_EPS) break;
+                    float footprint = 4.0 * kPixel * (orthographic ? 1.0 : max(t, 1e-3));
+                    t += max(-d, footprint) * OLLIN_RAYMARCH_STEP_SCALE;
+                }
+                clearing = true;
+            }
+        }
+    }
     for (int i = 0; i < steps; i++) {
         if (t > t1) break;
         float3 pw = ro + rd * t;
         float d = ollin_sdf3d_world(pw, g, nodes, col);
         if (d < OLLIN_RAYMARCH_EPS) { hit = true; break; }
-        float ratio = d / max((orthographic ? 1.0 : t) * kPixel, 1e-6);
+        float footprint = (orthographic ? 1.0 : t) * kPixel;
+        float ratio = d / max(footprint, 1e-6);
+        if (clearing) {
+            // Leaving the peeled face at a grazing angle: a step of at least the
+            // footprint, since the field's distance alone closes the gap by the
+            // angle's sine each step, and no near-miss recorded until clear.
+            if (ratio >= 1.0) clearing = false;
+            t += max(d, footprint) * OLLIN_RAYMARCH_STEP_SCALE;
+            continue;
+        }
         if (ratio < minRatio) { minRatio = ratio; tNear = t; }
         t += d * OLLIN_RAYMARCH_STEP_SCALE;
     }

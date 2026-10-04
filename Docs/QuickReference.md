@@ -244,7 +244,7 @@ Each of these gives a wrong or empty picture and no error.
 - **Judge speed in a release build.** `swift run` builds the framework for debugging, which runs several times slower. Use `swift run -c release`, or `ollin`, which runs a release host and compiles the sketch optimized. `--bench` gives numbers.
 - **Read parameters into locals before a hot loop.** A `@Param` read takes a lock and clamps, about 40 ns against under one for a plain property, so seven reads per vertex over 160,000 vertices cost about 45 ms a frame. See [Parameters](./Helpers/Parameters.md).
 - **Judge motion in a sequence, not a still.** Anything that needs earlier frames (motion blur, trails, a pile, a settling picture) shows properly only a few frames in. A short `--export-sequence` shows it.
-- **Compare pixels, not bytes.** Every exported PNG carries its recipe in its description: the seed, every parameter, the commit, the frame, and the frame rate. Two files with the same pixels differ when any of those do, so compare the pictures, for instance with `compare -metric AE a.png b.png null:` from ImageMagick.
+- **Compare pixels, not bytes.** Every exported PNG carries its recipe in its description: the seed, every parameter, the sketch's commit and the framework's, the frame, and the frame rate. Two files with the same pixels differ when any of those do, so compare the pictures, for instance with `compare -metric AE a.png b.png null:` from ImageMagick.
 - **Fix the seed before comparing two runs.** Call `seed(n)` in `setup()` or pass `--seed N`, or every run is a new variation.
 
 ---

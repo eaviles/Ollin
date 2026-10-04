@@ -55,6 +55,13 @@ public struct Mesh: Sendable {
     /// fill them in (generated with MikkTSpace when the file authors none), or
     /// call `generatingTangents()` after a rebuild that dropped them.
     public var tangents: [MeshTangent]
+    /// Whether the mesh is a closed surface (every edge shared by two triangles,
+    /// an inside and an outside), when the generator that made it knows: `false`
+    /// for a plane, a strip, an open tube; `nil` where nothing says (a loaded or
+    /// hand-built mesh), which the renderer reads as closed. The canvas depth of
+    /// field's hidden layer keeps a closed shape's inside out of the layer by
+    /// turning away its back faces, and keeps an open surface's back face in.
+    var isClosed: Bool? = nil
 
     /// A mesh from explicit arrays. `normals` should match `positions` by index
     /// (defaulting empty leaves the surface flat-normaled toward +z); `indices`
@@ -397,7 +404,9 @@ public extension Mesh {
                 b.gridQuad(a, down, down + 1, a + 1)
             }
         }
-        return b.mesh()
+        var mesh = b.mesh()
+        mesh.isClosed = false
+        return mesh
     }
 
     /// A torus (ring/doughnut) centered at the origin, lying in the x–z plane:
@@ -1000,7 +1009,9 @@ extension Mesh {
                            UInt32(a1 + j + 1), UInt32(a1 + j))
             }
         }
-        return b.mesh()
+        var mesh = b.mesh()
+        mesh.isClosed = closed
+        return mesh
     }
 
     /// Rotate `v` around a unit `axis` by `angle` radians (Rodrigues' formula).
@@ -1052,7 +1063,9 @@ extension Mesh {
                            UInt32(i1 * vCount + j1), UInt32(i1 * vCount + j))
             }
         }
-        return b.mesh()
+        var mesh = b.mesh()
+        mesh.isClosed = uClosed && vClosed
+        return mesh
     }
 
     /// The 12 icosahedron vertices (unit-ish, golden-ratio coordinates), normalized

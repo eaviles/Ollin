@@ -13,6 +13,15 @@ import Testing
 @MainActor
 struct ExportMetadataTests {
 
+    /// The recipe names the framework's own commit beside the sketch package's:
+    /// run from this repository, both read the same tree.
+    @Test func theRecipeNamesTheFrameworkCommit() throws {
+        let meta = ExportMetadata.capture(from: Sketch(), frame: 0, fps: 60)
+        let tree = try #require(ExportMetadata.workingTreeHash)
+        #expect(meta.frameworkHash == tree)
+        #expect(meta.recipe.contains("\"ollin\":\"\(tree)\""))
+    }
+
     final class Seeded: Sketch {
         override var canvasSize: CanvasSize { .square(100) }
         @Param(0...300) var radius = 80.0
