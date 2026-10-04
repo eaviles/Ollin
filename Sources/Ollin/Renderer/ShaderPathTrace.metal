@@ -763,9 +763,18 @@ kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
         float3 ro = nearH.xyz / nearH.w;
         float3 rd = normalize(farH.xyz / farH.w - ro);
         if (pt.lens.x > 0.0) {
-            // Thin lens: focus on the plane `lens.y` along the view axis, offset the
-            // origin over the aperture disk, and re-aim at the shared focus point.
-            float t = pt.lens.y / max(dot(rd, forward), 1e-4);
+            // Thin lens: the focus plane stands `lens.y` from the eye along the view
+            // axis, and the ray starts on the near plane, `n` from the eye, so the
+            // focus point is `lens.y - n` on from there. The opening sits in the
+            // eye's own plane (the eye itself for a perspective camera, the ray's own
+            // foot in that plane for an orthographic one, `lens.w`): the origin moves
+            // over it, re-aims at the shared focus point, and walks back out to the
+            // near plane, so a point `d` from the eye spreads by `R |1 - d / s|` as
+            // the raster lens and the thin-lens formula have it. Measured from the
+            // near point with the opening there, the focus landed a near plane too
+            // far and the blur ran `s / (s - n)` too wide.
+            float n = dot(ro - pt.cameraPosition.xyz, forward);
+            float t = max(pt.lens.y - n, 1e-3) / max(dot(rd, forward), 1e-4);
             float3 fp = ro + rd * t;
             float3 lt, lb;
             ollin_pt_basis(forward, lt, lb);
@@ -789,8 +798,10 @@ kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
                 float lphi = 6.28318530718 * u0.w;
                 lp = float2(lr * cos(lphi), lr * sin(lphi));
             }
-            ro += lt * lp.x + lb * lp.y;
-            rd = normalize(fp - ro);
+            float3 opening = (pt.lens.w > 0.5 ? ro - forward * n : pt.cameraPosition.xyz)
+                + lt * lp.x + lb * lp.y;
+            rd = normalize(fp - opening);
+            ro = opening + rd * (n / max(dot(rd, forward), 1e-4));
         }
 
         float3 radiance = float3(0.0);

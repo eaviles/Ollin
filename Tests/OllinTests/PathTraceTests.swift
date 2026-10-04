@@ -185,6 +185,55 @@ struct PathTraceTests {
         #expect(diff < Snapshot.tolerance, "mean difference \(diff)")
     }
 
+    /// The traced lens focuses at `focusDistance` from the eye, not a near plane
+    /// farther: of two thin bright bars, one at the focus and one a near plane
+    /// beyond it, the one at the focus stays sharp and the other blurs.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func theTracedLensFocusesAtTheDistanceFromTheEye() throws {
+        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: 64, denoises: false)
+        defer { OllinApp.pathTracedExport = nil }
+        let image = try #require(try OllinApp.image(of: FocusProbe(), frame: 1))
+        let d = pixels(of: image)
+        // The brightest column of each bar's row band, in the green channel.
+        func peak(from x0: Int, to x1: Int) -> Int {
+            var best = 0
+            for x in x0 ... x1 {
+                var sum = 0
+                for y in 100 ... 156 { sum += Int(d[(y * image.width + x) * 4 + 1]) }
+                best = max(best, sum)
+            }
+            return best
+        }
+        let atFocus = peak(from: 60, to: 100), beyond = peak(from: 156, to: 196)
+        #expect(atFocus > beyond * 3 / 2,
+                "the bar at the focus peaks at \(atFocus), the one a near plane beyond it at \(beyond)")
+    }
+
+    /// Two thin bright bars in a black scene: one at the focus, 6 from the eye, and
+    /// one at 7, where a lens focused a near plane too far would land.
+    final class FocusProbe: Sketch {
+        override var canvasSize: CanvasSize { .square(256) }
+        override func draw() {
+            background(.black)
+            var cam = Camera3D.perspective(eye: Vector3(0, 0, 6), target: .zero,
+                                           fieldOfView: .pi / 4, near: 1, far: 20)
+            cam.aperture = 0.5
+            cam.focusDistance = 6
+            camera(cam)
+            let F = 128 / tan(Double.pi / 8)   // the focal length in pixels
+            // Dim enough that a blurred bar's spread shows below white: a bright
+            // one would saturate sharp and blurred alike.
+            fill(.white)
+            for (px, d) in [(-48.0, 6.0), (48.0, 7.0)] {
+                let w = 1.5 * d / F, h = 120 * d / F
+                withState {
+                    translate(px * d / F, 0, 6 - d)
+                    drawMesh(Mesh.box(width: w, height: h, depth: 0.02).glowing(0.2))
+                }
+            }
+        }
+    }
+
     /// The snapshot's scene: one of everything the tracer claims (an area panel,
     /// metal and dielectric and legacy finishes, an environment stand-in via flat
     /// ambient, the thin lens) at a small canvas so the suite stays quick.

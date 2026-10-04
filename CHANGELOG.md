@@ -42,6 +42,7 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ### Fixed
 
+- **The traced lens focuses where `focusDistance` says.** The path tracer focused `focusDistance` past the near plane rather than from the eye, and placed its opening on the near plane, which widened the blur by `s / (s - near)`; the focus is now measured from the eye and the opening sits at the eye, as the canvas lens and the thin-lens formula have it. Every traced frame with an aperture changes.
 - **A mover behind instanced copies no longer streaks through them.** The motion pass that temporal anti-aliasing and motion blur read drew only plain meshes in front of a mover, so a `withMotion` mover behind a field of instanced copies wrote its motion through them. Every instanced draw now hides what stands behind it there.
 
 - **An EXR's coverage stays at one.** Additive marks sum their alpha along with their light, so an opaque canvas lit by two added coats wrote an alpha of 3 into `--export-exr`, which a compositor reads as a pixel covered three times over. The alpha channel now stops at 1; the light itself stays as it summed. [Export](Docs/Output/Export.md#linear-frames-exr)

@@ -1245,8 +1245,11 @@ typedef struct {
                                    // world units (sized from the scene scale, the
                                    // rtReflectionBias rule)
     simd_float4 lens;              // x = aperture radius (world units; 0 = pinhole, no
-                                   // depth of field), y = focus distance along the view
-                                   // axis (world units), z/w unused
+                                   // depth of field), y = focus distance from the eye
+                                   // along the view axis (world units), z = blade
+                                   // count (under 3 is round), w = 1 for an
+                                   // orthographic camera (the opening sits at each
+                                   // ray's own foot in the eye's plane)
     simd_float4 miss;              // rgb = linear radiance a bounced ray that leaves the
                                    // scene picks up when no environment is bound (the
                                    // flat ambient, so an ambient-lit scene keeps its
