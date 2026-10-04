@@ -1,6 +1,8 @@
 @testable import Ollin
 import Testing
 import CoreGraphics
+import Foundation
+import ImageIO
 
 /// Correctness probes for the offline path-traced export (`--path-traced`).
 ///
@@ -1028,6 +1030,135 @@ struct PathTraceTests {
         let a = try #require(pathTracedGrain(.room, samples: 12, denoises: true))
         let b = try #require(pathTracedGrain(.room, samples: 12, denoises: true))
         #expect(pixels(of: a) == pixels(of: b))
+    }
+
+    // MARK: - Adaptive sampling
+
+    /// Export one traced still to a file and read it back with the trace's part of
+    /// its recipe, which is where the frame's own account of itself lives: the
+    /// settings it ran under and, under a threshold, the mean count its pixels
+    /// reached. The image comes back through the file too, so every frame a probe
+    /// compares has taken the same route.
+    private func pathTracedStill(_ sketch: Sketch, _ settings: PathTracing) throws
+        -> (image: CGImage, traced: [String: Any]) {
+        OllinApp.pathTracedExport = settings
+        defer { OllinApp.pathTracedExport = nil }
+        let path = ollinTempPath("ollin-pt-adaptive-\(UUID().uuidString).png")
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        try OllinApp.export(sketch, to: path, frame: 1)
+        // Read through the bytes, not the URL: an image source decodes from its file
+        // when the image is first drawn, and the file is gone by then.
+        let bytes = try Data(contentsOf: URL(fileURLWithPath: path))
+        let source = try #require(CGImageSourceCreateWithData(bytes as CFData, nil))
+        let image = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
+        let props = try #require(CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any])
+        let png = try #require(props[kCGImagePropertyPNGDictionary] as? [CFString: Any])
+        let text = try #require(png[kCGImagePropertyPNGDescription] as? String)
+        let recipe = try #require(try JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: Any])
+        let traced = try #require(recipe["pathTraced"] as? [String: Any])
+        return (image, traced)
+    }
+
+    /// The stop is asked for, never assumed: a count with no threshold traces every
+    /// pixel to that count, and the minimum a pixel takes before it may stop follows
+    /// the square root of the count, rounded up to the eight-sample check step and
+    /// never under one step, unless the sketch names one.
+    @Test func theStopIsOffUnlessAskedForAndTheMinimumFollowsTheSquareRoot() {
+        #expect(PathTracing(samplesPerPixel: 8).noiseThreshold == 0)
+        #expect(PathTracing(samplesPerPixel: 8).isAdaptive == false)
+        #expect(PathTracing(samplesPerPixel: 128, noiseThreshold: 0.01).firstCheck == 16)
+        #expect(PathTracing(samplesPerPixel: 4096, noiseThreshold: 0.01).firstCheck == 64)
+        #expect(PathTracing(samplesPerPixel: 64, noiseThreshold: 0.01).firstCheck == 8)
+        #expect(PathTracing(samplesPerPixel: 20, noiseThreshold: 0.01).firstCheck == 8)
+        #expect(PathTracing(samplesPerPixel: 4, noiseThreshold: 0.01).firstCheck == 4)
+        #expect(PathTracing(samplesPerPixel: 128, noiseThreshold: 0.01, minSamplesPerPixel: 40).firstCheck == 40)
+        #expect(PathTracing(samplesPerPixel: 128, noiseThreshold: 0.01, minSamplesPerPixel: 500).firstCheck == 128)
+        // One sample has no spread to read, so a count of one is never adaptive.
+        #expect(PathTracing(samplesPerPixel: 1, noiseThreshold: 0.01).isAdaptive == false)
+    }
+
+    /// The headline claim, in the terms the published stopping conditions use: the
+    /// same error for fewer samples. Under a threshold the pixels that have settled
+    /// (the black margins, the evenly lit floor) stop, so the frame spends fewer
+    /// samples than its cap; measured against a converged reference it then sits
+    /// closer to the truth than a fixed render of the same mean count, since the
+    /// samples it kept went where the grain was. A tight threshold reaches the full
+    /// count's own error for a fraction of its samples, and a loose one spends
+    /// less and errs more, which is what makes the threshold the dial. The recipe
+    /// is read for the count, which is also what pins that the recipe carries it.
+    /// Measured when written (160 pixels square, the cap 256, against 2048): at
+    /// 0.005 the pixels reached a mean of 140 for an error of 0.77 against the full
+    /// count's 0.75 and 1.01 at a fixed 140; at 0.02 a mean of 38 for 1.31 against
+    /// 1.87 at a fixed 38.
+    @Test(.enabled(if: Snapshot.hasRaytracing))
+    func adaptiveSamplingSpendsTheCountWhereTheGrainIs() throws {
+        let cap = 256
+        func traced(_ threshold: Double) throws -> (image: CGImage, mean: Double, traced: [String: Any]) {
+            let still = try pathTracedStill(GrainProbe.make(.room),
+                                            PathTracing(samplesPerPixel: cap, noiseThreshold: threshold))
+            let mean = try #require(still.traced["meanSamples"] as? Double)
+            return (still.image, mean, still.traced)
+        }
+        let loose = try traced(0.02)
+        #expect(loose.traced["samples"] as? Int == cap)
+        #expect(loose.traced["depth"] as? Int == 8)
+        #expect(loose.traced["noise"] as? Double == 0.02)
+        #expect(loose.traced["minSamples"] as? Int == 16)
+        #expect(loose.mean > 16 && loose.mean < Double(cap) * 0.3,
+                "the pixels reached a mean of \(loose.mean) of \(cap)")
+
+        let reference = try pathTracedStill(GrainProbe.make(.room), PathTracing(samplesPerPixel: 2048))
+        // The pictures carry ink, or every distance below would be a vacuous zero.
+        #expect(pixels(of: reference.image).contains { $0 > 40 })
+        let fixed = try pathTracedStill(GrainProbe.make(.room),
+                                        PathTracing(samplesPerPixel: Int(loose.mean.rounded())))
+        #expect(fixed.traced["meanSamples"] == nil)
+        #expect(fixed.traced["noise"] == nil)
+        let looseError = rootMeanSquare(loose.image, reference.image)
+        let fixedError = rootMeanSquare(fixed.image, reference.image)
+        #expect(looseError < fixedError * 0.85,
+                "adaptive at a mean of \(loose.mean): \(looseError); fixed at the same count: \(fixedError)")
+
+        // The dial: a tighter threshold spends more and errs less, and at 0.005 it
+        // reaches the full count's error for well under its samples.
+        let tight = try traced(0.005)
+        let full = try pathTracedStill(GrainProbe.make(.room), PathTracing(samplesPerPixel: cap))
+        let tightError = rootMeanSquare(tight.image, reference.image)
+        let fullError = rootMeanSquare(full.image, reference.image)
+        #expect(tight.mean > loose.mean && tight.mean < Double(cap) * 0.7,
+                "tight mean \(tight.mean), loose mean \(loose.mean)")
+        #expect(tightError < looseError, "tight \(tightError), loose \(looseError)")
+        #expect(tightError < fullError * 1.1,
+                "adaptive at 0.005 \(tightError) against the full count's \(fullError)")
+    }
+
+    /// The frame is a pure function of its index: the stop reads a threshold off
+    /// the running sums, so a last bit that followed the clock would move whole
+    /// pixels. The host cuts each round of samples into dispatches by GPU time,
+    /// and the kernel adds its samples onto the sums in sample order so the cut
+    /// cannot show; the probe forces two cuts and asks for the same bytes, for a
+    /// fixed count and under the stop alike.
+    @Test(.enabled(if: Snapshot.hasRaytracing))
+    func theTracedFrameIsTheSameBytesUnderAnyCut() throws {
+        defer { OllinApp.pathTraceChunkSize = nil }
+        let fixed = PathTracing(samplesPerPixel: 24)
+        OllinApp.pathTraceChunkSize = 1
+        let fixedByOne = try pathTracedStill(GrainProbe.make(.room), fixed)
+        OllinApp.pathTraceChunkSize = 7
+        let fixedBySeven = try pathTracedStill(GrainProbe.make(.room), fixed)
+        #expect(pixels(of: fixedByOne.image) == pixels(of: fixedBySeven.image))
+
+        let adaptive = PathTracing(samplesPerPixel: 48, noiseThreshold: 0.03)
+        OllinApp.pathTraceChunkSize = 1
+        let byOne = try pathTracedStill(GrainProbe.make(.room), adaptive)
+        OllinApp.pathTraceChunkSize = 5
+        let byFive = try pathTracedStill(GrainProbe.make(.room), adaptive)
+        OllinApp.pathTraceChunkSize = nil
+        let byTime = try pathTracedStill(GrainProbe.make(.room), adaptive)
+        #expect(pixels(of: byOne.image) == pixels(of: byFive.image))
+        #expect(pixels(of: byOne.image) == pixels(of: byTime.image))
+        #expect(byOne.traced["meanSamples"] as? Double == byFive.traced["meanSamples"] as? Double)
+        #expect(byOne.traced["meanSamples"] as? Double == byTime.traced["meanSamples"] as? Double)
     }
 
     // MARK: - A light that declines to throw

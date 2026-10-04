@@ -2750,6 +2750,17 @@ public enum OllinApp {
     /// stay raster (a sheet of tiles at minutes per tile helps nobody).
     public static var pathTracedExport: PathTracing?
 
+    /// What the last rendered frame's trace reported about itself, set by the
+    /// headless drives after every frame (nil when the frame was not traced) and
+    /// read by the export that writes that frame's recipe right after. Nothing
+    /// else reads it, so a vector export never picks up a traced frame's account.
+    static var lastPathTraceReport: PathTraceReport?
+
+    /// Forces the trace to cut every round of samples into dispatches of this many,
+    /// in place of the cut it sizes by GPU time. Nil in every run; the test that
+    /// pins a traced frame as the same bytes under any cut sets it.
+    static var pathTraceChunkSize: Int?
+
     /// How many samples across a canvas pixel an export renders: 1 (the default)
     /// draws the frame at canvas size, 2 draws it twice as wide and twice as tall
     /// and averages each 2x2 block back into one pixel, and so on up to 4. The
@@ -2921,6 +2932,9 @@ public enum OllinApp {
             } while captured && pass < settle
             k += 1
         }
+        // The trace's own account of the frame, for the recipe the caller writes
+        // next; nil for a frame that was not traced.
+        defer { lastPathTraceReport = renderer.lastPathTraceReport }
         if sketch.drawer.accumulates { return accumulated }
         if sketch.drawer.usesFeedback || settle > 1 { return fedBack }
         let image = renderer.image(of: sketch.drawer, viewport: viewport, width: width, height: height)
@@ -2963,7 +2977,9 @@ public enum OllinApp {
     public static func export(_ sketch: Sketch, to path: String, frame: Int = 0, fps: FrameRate = 60,
                               quality: RenderQuality = .detail) throws {
         let cgImage = try renderStill(sketch, frame: frame, fps: fps, quality: quality, for: path)
-        let recipe = ExportMetadata.capture(from: sketch, frame: frame, fps: fps.framesPerSecond).recipe
+        var meta = ExportMetadata.capture(from: sketch, frame: frame, fps: fps.framesPerSecond)
+        meta.pathTracing = lastPathTraceReport
+        let recipe = meta.recipe
         let size = "\(cgImage.width)×\(cgImage.height)"
         switch URL(fileURLWithPath: path).pathExtension.lowercased() {
         case "heic", "heif":
@@ -3038,6 +3054,7 @@ public enum OllinApp {
             // file's recipe names the sketch-clock frame it shows.
             var meta = ExportMetadata.capture(from: sketch, frame: skipFrames + index, fps: clock)
             meta.slowMotion = motion
+            meta.pathTracing = frame.pathTrace
             let recipe = meta.recipe
             let name = String(format: writesEXR ? "frame-%05d.exr" : "frame-%05d.png",
                               startFrame + index)
@@ -3109,6 +3126,10 @@ public enum OllinApp {
         /// which the EXR sequence writes. Nil unless the render was asked to
         /// keep it (`capturesLinear`).
         var linear: MetalRenderer.LinearFrame? { renderer.lastLinearFrame }
+
+        /// What this frame's trace reported about itself, for the file's recipe;
+        /// nil when the frame was not traced.
+        var pathTrace: PathTraceReport? { renderer.lastPathTraceReport }
     }
 
     /// Drive `sketch` headlessly at a **fixed timestep** (`time = frame/fps`,
@@ -3179,6 +3200,9 @@ public enum OllinApp {
         // The last frame that came back from the GPU, kept past its pool so a
         // sketch that stops its loop can be written from it (see below).
         var lastRendered: (buffer: MTLBuffer, bytesPerRow: Int)?
+        // The mean sample count each traced frame reached under adaptive sampling,
+        // for the one line that says what the run saved once it is done.
+        var tracedMeans: [Double] = []
         for k in 0..<(skipFrames + drawnFrames) {
             // A sketch that has stopped its loop (`noLoop()`) holds the frame it
             // last drew, as a window does; the rest of the file is that frame.
@@ -3284,6 +3308,9 @@ public enum OllinApp {
                                         transparent: sketch.drawer.hasTransparentBackground), written)
                     written += 1
                 }
+                if let mean = renderer.lastPathTraceReport?.meanSamplesPerPixel {
+                    tracedMeans.append(mean)
+                }
 
                 // A single rewriting progress line: pct done · render throughput.
                 // It counts what the sketch draws, which is what the time is going
@@ -3321,6 +3348,13 @@ public enum OllinApp {
                 drawnFrames, drawnFrames).utf8))
         }
         FileHandle.standardError.write(Data("\n".utf8))
+        // Adaptive sampling's account of the run: what the pixels took against the
+        // count they could have, which is what says how much the stop saved.
+        if !tracedMeans.isEmpty, let cap = renderer.lastPathTraceReport?.settings.samplesPerPixel {
+            let mean = tracedMeans.reduce(0, +) / Double(tracedMeans.count)
+            print(String(format: "Ollin: path tracing settled at a mean of %.1f of %d samples a pixel (%.0f%% of the full count)",
+                         mean, cap, mean * 100 / Double(max(cap, 1))))
+        }
         // A gap that could not be filled leaves the file short, and a short file
         // that says nothing is the worst way to find out.
         if motion?.source == .made, written < frames {
@@ -3648,10 +3682,27 @@ public extension OllinApp {
             // its strength from the trace's own measured variance, so it smooths a
             // thin render hard and a nearly converged one only a little. Off unless
             // asked for: the plain flag renders the estimate the tracer arrived at.
+            // `--pt-noise X` lets a pixel stop early once the grain it is left with
+            // falls under X (0.01 is about one level in 255), the count then being
+            // the most a pixel traces; `--pt-min N` is the fewest it takes before
+            // it may stop. Each wants a number, and a flag that is not one stops the
+            // run here rather than rendering something other than what was asked.
+            func number(_ flag: String, _ usage: String) -> Double? {
+                guard let j = args.firstIndex(of: flag) else { return nil }
+                guard j + 1 < args.count, let value = Double(args[j + 1]), value.isFinite, value >= 0 else {
+                    FileHandle.standardError.write(Data("usage: \(usage)\n".utf8))
+                    exit(1)
+                }
+                return value
+            }
+            let noise = number("--pt-noise", "--pt-noise X, X the grain a pixel may be left with (0.01 is about one level in 255)")
+            let minSamples = number("--pt-min", "--pt-min N, N the fewest samples a pixel takes before it may stop")
             pathTracedExport = PathTracing(
                 samplesPerPixel: n ?? PathTracing.tierSamples(for: renderQuality),
                 maxDepth: depth ?? 8,
-                denoises: args.contains("--denoise"))
+                denoises: args.contains("--denoise"),
+                noiseThreshold: noise ?? 0,
+                minSamplesPerPixel: minSamples.flatMap { $0.int(rounded: .toNearestOrEven) })
         }
         // `--seed N` reseeds the sketch before its `setup()` on every export
         // path, so a variation found in the inspector or on a contact sheet

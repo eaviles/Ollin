@@ -1278,6 +1278,20 @@ typedef struct {
                                    // w = 1 when the render will be denoised, which
                                    // is what tells the kernel to fill the two guide
                                    // layers (they are a one-pixel stand-in otherwise)
+    simd_float4 adaptive;          // adaptive sampling: x = the noise a pixel may stop
+                                   // at (0 = every pixel traces the full count, and the
+                                   // statistics layer is a one-pixel stand-in), y = the
+                                   // fewest samples a pixel takes before the first check
+                                   // (dispatches from that index on read the open flags),
+                                   // z = the luma of the backdrop behind a primary miss
+                                   // (the clear color's, linear), w = 1 when the
+                                   // environment draws as the backdrop, so a primary
+                                   // miss reads the environment's luma along its ray
+    simd_uint4 open;               // x = how many pixels this dispatch runs over when it
+                                   // runs over the compacted list of open pixels (one
+                                   // thread per entry, the entry naming the pixel);
+                                   // 0 = the dispatch covers the whole grid, one thread
+                                   // per pixel. y/z/w unused.
 } OllinPathTraceUniforms;
 
 // One emissive triangle for the traced export's mesh-light sampling: the CPU lays the

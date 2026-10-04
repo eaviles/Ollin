@@ -103,6 +103,8 @@ public extension CommandFlag {
         .init("--made-frames", .run, .nothing, "fill the slow motion with frames built between the drawn ones"),
         .init("--path-traced", .run, .optionalValue("samples"), "render offline with a path tracer"),
         .init("--pt-depth", .run, .value("N"), "the longest light path the tracer follows"),
+        .init("--pt-noise", .run, .value("X"), "let a pixel stop once its grain falls under X (0.01 is about a level in 255)"),
+        .init("--pt-min", .run, .value("N"), "the fewest samples a pixel takes before it may stop"),
         .init("--denoise", .run, .nothing, "filter the grain out of a path-traced render"),
         .init("--quality", .run, .value("0..1"), "the encoder's quality"),
         .init("--bitrate", .run, .value("MBPS"), "the encoder's bitrate"),

@@ -47,6 +47,13 @@ struct ExportMetadata {
     /// single draw and is left out of the recipe.
     var settle: Int = 1
 
+    /// What the frame's path trace reported about itself, set by the exports a
+    /// trace can reach (the still, the sequence, the video, the EXR) after their
+    /// render; `nil` for a frame that was not traced, which leaves the recipe as
+    /// it was. The settings reproduce the frame; the count reached is the
+    /// frame's own account of what adaptive sampling spent.
+    var pathTracing: PathTraceReport? = nil
+
     /// Capture the recipe from `sketch` as it stands: the last seeds applied,
     /// every `@Param`'s current value, and the working tree's git commit.
     @MainActor
@@ -99,6 +106,24 @@ struct ExportMetadata {
         // Said only when it changes the picture: a frame drawn several times with
         // the clock held is not the frame a single draw would give.
         if settle > 1 { fields.append("\"settle\":\(settle)") }
+        // A traced frame names what it was traced with, in the flags' own terms:
+        // the sample count (the cap under adaptive sampling), the depth, the
+        // filter when it ran, and under adaptive sampling the noise it stopped at,
+        // the minimum every pixel took, and the mean count the pixels reached,
+        // to a tenth.
+        if let pathTracing {
+            let s = pathTracing.settings
+            var traced = ["\"samples\":\(s.samplesPerPixel)", "\"depth\":\(s.maxDepth)"]
+            if s.denoises { traced.append("\"denoised\":true") }
+            if s.isAdaptive {
+                traced.append("\"noise\":\(jsonNumber(s.noiseThreshold))")
+                traced.append("\"minSamples\":\(pathTracing.minSamplesPerPixel)")
+                if let mean = pathTracing.meanSamplesPerPixel {
+                    traced.append("\"meanSamples\":\(jsonNumber((mean * 10).rounded() / 10))")
+                }
+            }
+            fields.append("\"pathTraced\":{\(traced.joined(separator: ","))}")
+        }
         return "{\(fields.joined(separator: ","))}"
     }
 

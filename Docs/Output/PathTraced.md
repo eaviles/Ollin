@@ -92,6 +92,24 @@ Two things to know about it:
 - **A real sparkle reads softer.** A rough metal catching a small bright source makes true glitter, and the filter cannot tell that from grain. When the sparkle is the subject, leave the filter off and raise the sample count.
 - **One sample has nothing to measure.** `--path-traced 1` has no spread to read, so the filter does not run.
 
+### Fewer samples where the picture has settled
+
+Not every pixel needs the whole count. The black around a subject settles in a few samples, a sharp and evenly lit face in a few more, and only a blurred or glossy region needs them all. `--pt-noise` lets each pixel stop on its own once the grain it is left with falls under a figure, and the sample count becomes the most a pixel may trace:
+
+```sh
+swift run --package-path Examples Example-3D-Effects-PathTraced --export out.png --path-traced 512 --pt-noise 0.04
+```
+
+The figure is the standard error of the brightness a pixel shows, divided by the square root of that brightness. The square root follows the eye, which reads a step in a shadow as larger than the same step on a lit face, so one figure means about the same everywhere in the frame. At 0.01 a settled pixel's standard error is about one level in 255 at any brightness, which is a final still's figure, and one that few pixels of a real scene reach under a few hundred samples. At 0.04 it is about four levels, the grain a frame at a few hundred samples already shows, and the everyday figure; a pixel that settles there took about a quarter of the samples it would at 0.01. Above white, where a tone map compresses the picture, the figure is a share of the brightness itself.
+
+The tracer reads the spread of each pixel's own samples, the same measurement the grain filter uses. Every pixel takes a minimum first, the square root of the count rounded up to eight (16 at 128, 64 at 4096), then the open pixels take eight more at a time and are checked between. A pixel still sampling keeps its eight neighbors sampling, so an edge or a highlight one pixel has found pulls its neighbors along. `--pt-min N` raises the minimum, which is the setting to reach for when a scene's grain is rare and bright, a small source caught by a glossy surface: a pixel's first samples can miss such a path and read as settled, and no measurement of the samples it has can count the one it has not seen yet.
+
+What the stop buys is measured two ways, since the samples it saves are not all alike. On the example scene at 1080 by 1080, against a 2048-sample render, a cap of 512 at `--pt-noise 0.04` reached a mean of 217 samples a pixel and read 29.2 dB, where a fixed 224 read 26.7 dB: at equal samples the stop is two and a half decibels ahead, because its samples went where the grain was. In time it took 88 s against the fixed count's 104, and a fixed render given the same 88 s (432 samples) read 28.9 dB, so at equal time the stop is a quarter of a decibel ahead. The time follows the samples only loosely because the pixels that settle first are the cheap ones, the margins and the matte floor whose paths end early, while the glass, the mirror floor, and the blurred regions stay open and cost the most per sample. At 0.08 the mean was 143 for 64 s and 28.0 dB (a fixed 312 at 62 s read 27.8), and at 0.02 the mean was 306 for the full count's time and picture. On a smaller study, a floor and a sphere under one small panel at a cap of 256, 0.005 reached a mean of 140 for the error of the full count, and the same mean spent evenly erred a third more.
+
+The saving depends on the picture. A scene that is grain from edge to edge settles only its margins: two thousand small polished beads on black, each a mirror of a studio with hot lamps in it, are a field of rare bright paths, and a pixel that catches one every few hundred samples has a spread no count under thousands brings under the figure. There the stop settles the black around the subject at any threshold, the mean says so (87 of a cap of 128), and the time does not move, since the margins were nearly free to begin with. A render like that wants the grain filter and the count, not the stop.
+
+The frame stays a pure function of its index. The checks fall at fixed sample counts whatever the GPU's timing, and the samples are added in order, so the same command renders the same bytes and a sequence cannot flicker from the stop. The still's recipe records what the trace was given and what it spent: the count, the depth, the filter, the noise figure, the minimum, and the mean samples a pixel reached, to a tenth. A sequence records them for every frame, a video records the settings alone, and the sequence and video exports end with one line that says the mean reached over the run.
+
 ### Determinism and the programmatic surface
 
 Sampling is a pure function of the pixel, the sample index, and the bounce. The filter is a pure function of what the sampling left behind. So the same command renders the same bytes, and a video export cannot flicker. You can also set the mode in code, with the same options the flag carries:
@@ -100,6 +118,12 @@ Sampling is a pure function of the pixel, the sample index, and the bounce. The 
 OllinApp.pathTracedExport = PathTracing(samplesPerPixel: 512, maxDepth: 8, denoises: true)  // the flag's `--denoise`
 try OllinApp.export(sketch, to: "out.png", frame: 120)
 OllinApp.pathTracedExport = nil
+```
+
+`noiseThreshold` is the flag's `--pt-noise` and `minSamplesPerPixel` its `--pt-min`; `nil`, the default, is the square root of the count:
+
+```swift
+OllinApp.pathTracedExport = PathTracing(samplesPerPixel: 512, noiseThreshold: 0.01, minSamplesPerPixel: 32)
 ```
 
 ### See also

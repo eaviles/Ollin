@@ -1064,6 +1064,11 @@ final class MetalRenderer {
     /// it on (a minutes-long render should say where it is); the sequence and video
     /// drivers turn it off and keep their own per-frame line instead.
     var pathTraceReportsProgress = true
+    /// What the last frame's trace reported about itself (its settings, the minimum
+    /// it resolved, the mean count its pixels reached under adaptive sampling), for
+    /// the export's recipe. Reset at the top of every frame's pass, so a frame that
+    /// was not traced (the mode off, no traceable scene, a GPU that cannot) reads nil.
+    var lastPathTraceReport: PathTraceReport?
     /// Export-only spatial supersampling: the frame is drawn `renderScale` times
     /// across the canvas, then averaged back down to canvas size in linear light,
     /// ahead of the tone map. 1 (the default, and always the live window) renders

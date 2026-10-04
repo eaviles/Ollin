@@ -3153,8 +3153,7 @@ extension MetalRenderer {
                                contactShadow: MTLTexture? = nil,
                                gi: GIResolved? = nil,
                                caustics: MTLTexture? = nil,
-                               pathTraced: (color: MTLTexture, depth: MTLTexture,
-                                            invSamples: Float)? = nil)
+                               pathTraced: PathTracedLayer? = nil)
         -> (texture: MTLTexture, depth: MTLTexture,
             viewProjection: simd_float4x4, inverseViewProjection: simd_float4x4)? {
         guard drawer.sceneThroughGlassEnabled else { return nil }

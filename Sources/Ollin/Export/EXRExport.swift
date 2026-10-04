@@ -232,7 +232,9 @@ extension OllinApp {
         guard let linear = renderer.lastLinearFrame else {
             throw ExportError(.unrendered, path: path, frame: 0, problem: "the frame kept no linear canvas to write")
         }
-        let recipe = ExportMetadata.capture(from: sketch, frame: frame, fps: fps.framesPerSecond).recipe
+        var meta = ExportMetadata.capture(from: sketch, frame: frame, fps: fps.framesPerSecond)
+        meta.pathTracing = renderer.lastPathTraceReport
+        let recipe = meta.recipe
         guard let written = writeEXR(linear, to: path, recipe: recipe) else {
             throw ExportError(.unwritable, path: path, frame: 0, problem: "the EXR could not be written")
         }

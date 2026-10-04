@@ -2956,7 +2956,7 @@ extension MetalRenderer {
                         contactShadow: MTLTexture? = nil,
                         gi: GIResolved? = nil,
                         caustics: MTLTexture? = nil,
-                        pathTraced: (color: MTLTexture, depth: MTLTexture, invSamples: Float)? = nil,
+                        pathTraced: PathTracedLayer? = nil,
                         sceneBehind: (texture: MTLTexture, depth: MTLTexture,
                                       viewProjection: simd_float4x4,
                                       inverseViewProjection: simd_float4x4)? = nil,
@@ -3476,8 +3476,7 @@ extension MetalRenderer {
         // took (the traced image covers all of them, so draw order against the 2D
         // content around them holds); this flag skips the rest.
         var pathTracedComposited = false
-        func compositePathTraced(_ layer: (color: MTLTexture, depth: MTLTexture,
-                                           invSamples: Float)) {
+        func compositePathTraced(_ layer: PathTracedLayer) {
             guard !pathTracedComposited else { return }
             encodePathTraceComposite(layer, into: encoder, uniforms3D: uniforms3D,
                                      depthFormat: depthFormat, hasStencil: hasStencil)

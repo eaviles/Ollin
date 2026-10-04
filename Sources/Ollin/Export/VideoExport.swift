@@ -274,6 +274,11 @@ public extension OllinApp {
                 // applied there (writer metadata must be set before writing).
                 var meta = ExportMetadata.capture(from: sketch, fps: clock)
                 meta.slowMotion = motion
+                // The file has one recipe, written before its second frame exists,
+                // so it carries the trace's settings and not a count reached, which
+                // is one frame's figure and not the file's.
+                meta.pathTracing = frame.pathTrace
+                meta.pathTracing?.meanSamplesPerPixel = nil
                 let recipe = meta.recipe
                 let description = AVMutableMetadataItem()
                 description.identifier = .commonIdentifierDescription

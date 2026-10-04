@@ -13,15 +13,37 @@ import COllinShaders   // OllinPathTraceUniforms / OllinLighting, shared with th
 // frame's single command buffer (a minutes-long buffer risks the GPU watchdog and
 // reports no progress), and the accel/offsets rings it fills are re-filled by the
 // frame's own shadow pass afterwards, which is only safe once the trace is done.
+
+/// The traced layer the geometry pass composites: the radiance sum with its hit
+/// count, the primary depth, and how the sum becomes a mean, which is one reciprocal
+/// for the whole frame under a fixed count and a per-pixel count (the statistics
+/// layer's z channel) under adaptive sampling.
+struct PathTracedLayer {
+    let color: MTLTexture
+    let depth: MTLTexture
+    let invSamples: Float
+    let counts: MTLTexture?
+}
+
 extension MetalRenderer {
 
     /// Trace the frame's mesh scene into an accumulation layer (radiance sum + hit
     /// coverage) and a primary-depth texture, fully synchronously. Returns nil when
     /// the mode is off, the device cannot trace, or the frame has no traceable scene
     /// (no camera or no solid meshes); the caller then renders pure raster.
-    func encodePathTracePass(_ drawer: Drawer, width: Int, height: Int)
-        -> (color: MTLTexture, depth: MTLTexture, invSamples: Float)? {
+    ///
+    /// Under adaptive sampling (`PathTracing.noiseThreshold` above 0) the samples
+    /// run in rounds at fixed indices: every pixel takes the minimum, then a check
+    /// reads each pixel's own statistics and closes the settled ones, a pixel still
+    /// open keeps its eight neighbors open, and the open pixels take the next eight
+    /// samples, until the count is reached or nothing is open. The decisions are
+    /// made at the same sample indices whatever the GPU's timing, and the kernel adds
+    /// its samples onto the running sums in sample order, so the frame is the same
+    /// bytes however the host cut the rounds into dispatches; `OllinApp.pathTraceChunkSize`
+    /// forces one cut for the test that pins it.
+    func encodePathTracePass(_ drawer: Drawer, width: Int, height: Int) -> PathTracedLayer? {
         pathTracedCopyBatches = []
+        lastPathTraceReport = nil
         guard let settings = pathTracing else { return nil }
         guard rayTracedShadows else {
             Self.warnedNoPathTraceGPU.withLock { warned in
@@ -89,6 +111,11 @@ extension MetalRenderer {
         }
 
         let total = max(1, settings.samplesPerPixel)
+        // Adaptive sampling: the samples every pixel takes before the first check,
+        // and the step between checks. A fixed count is one round of the whole.
+        let adaptive = settings.isAdaptive
+        let minSamples = adaptive ? settings.firstCheck : total
+        let checkStep = PathTracing.checkStep
 
         // The accumulation (radiance sum, hit count) and primary-depth layers.
         let accumDesc = MTLTextureDescriptor.texture2DDescriptor(
@@ -114,6 +141,37 @@ extension MetalRenderer {
         guideDesc.storageMode = .private
         guard let guideColor = device.makeTexture(descriptor: guideDesc),
               let guideSurface = device.makeTexture(descriptor: guideDesc) else { return nil }
+
+        // The adaptive layers: each pixel's statistics (the sum of the squared
+        // brightness it showed, the backdrop luma behind its misses, its own count),
+        // the open flags the check writes, and the compacted list of open pixels the
+        // dilation fills for the next dispatches to run over. Under a fixed count the
+        // textures are a single pixel and the list a single entry, none of it touched.
+        let statsDesc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .rgba32Float, width: adaptive ? width : 1,
+            height: adaptive ? height : 1, mipmapped: false)
+        statsDesc.usage = [.shaderRead, .shaderWrite]
+        statsDesc.storageMode = .private
+        let flagDesc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .r8Uint, width: adaptive ? width : 1,
+            height: adaptive ? height : 1, mipmapped: false)
+        flagDesc.usage = [.shaderRead, .shaderWrite]
+        flagDesc.storageMode = .private
+        guard let stats = device.makeTexture(descriptor: statsDesc),
+              let openFlags = device.makeTexture(descriptor: flagDesc),
+              let openList = device.makeBuffer(
+                  length: MemoryLayout<UInt32>.stride * (adaptive ? width * height : 1),
+                  options: .storageModePrivate),
+              let openCount = device.makeBuffer(length: MemoryLayout<UInt32>.stride,
+                                                options: .storageModeShared) else { return nil }
+        var converge: MTLComputePipelineState? = nil
+        var dilate: MTLComputePipelineState? = nil
+        if adaptive {
+            guard let c = try? libraryComputePipeline("ollin_pt_converge"),
+                  let d = try? libraryComputePipeline("ollin_pt_dilate") else { return nil }
+            converge = c
+            dilate = d
+        }
 
         // Per-dispatch constants. The camera frame comes from the same uniforms
         // builder the raster pass uses (unjittered), so the traced framing matches
@@ -154,6 +212,15 @@ extension MetalRenderer {
                                      max(scene.emissivePower, 1e-6),
                                      scene.anyTransmission ? 1 : 0,
                                      wantsGuides ? 1 : 0)
+        // The adaptive stop measures the brightness the viewer sees, so behind a
+        // primary miss it needs the backdrop the composite leaves showing: the
+        // environment along the ray when it draws as the skybox, else the clear
+        // color (linear luma; the fragment reads the environment itself).
+        let drawsSkybox = lighting.iblEnabled != 0 && (drawer.environment?.showsBackground ?? false)
+        pt.adaptive = SIMD4<Float>(adaptive ? Float(settings.noiseThreshold) : 0,
+                                   Float(minSamples),
+                                   Float(drawer.backgroundColor.luminance),
+                                   drawsSkybox ? 1 : 0)
 
         let envTexture = (lighting.iblEnabled != 0 ? currentIBL?.equirect : nil) ?? whiteStandIn()
         let shapingArray = shapingStandIn()
@@ -169,13 +236,28 @@ extension MetalRenderer {
             ensureBRDFLUT(commandBuffer: lutCB)
             lutCB.commit()
         }
+        // Under adaptive sampling the loop also runs in rounds: the first ends at the
+        // minimum and each later one `checkStep` on, a check between rounds closes
+        // the settled pixels and lists the open ones, and from then on a dispatch
+        // runs over that list (one thread per open pixel) rather than the grid, so a
+        // settled pixel costs nothing. The round's samples are still cut into
+        // dispatches by GPU time. The sum of open pixels times the samples each round
+        // adds is the frame's total, so the mean count needs no readback of the layer.
+        let forcedChunk = OllinApp.pathTraceChunkSize
         var done = 0
-        var chunk = 2
+        var chunk = forcedChunk ?? 2
+        var roundEnd = minSamples
+        var openPixels = width * height
+        var compacted = false
+        var samplesTaken = 0.0
+        let grid = MTLSize(width: width, height: height, depth: 1)
+        let group = MTLSize(width: 8, height: 8, depth: 1)
         while done < total {
-            let n = min(chunk, total - done)
+            let n = min(chunk, roundEnd - done)
             guard let cb = commandQueue.makeCommandBuffer(),
                   let enc = cb.makeComputeCommandEncoder() else { return nil }
             pt.window = SIMD4<UInt32>(UInt32(width), UInt32(height), UInt32(done), UInt32(n))
+            pt.open = SIMD4<UInt32>(compacted ? UInt32(openPixels) : 0, 0, 0, 0)
             enc.setComputePipelineState(pipeline)
             enc.setBytes(&pt, length: MemoryLayout<OllinPathTraceUniforms>.stride, index: 0)
             enc.setBytes(&lighting, length: MemoryLayout<OllinLighting>.stride, index: 1)
@@ -198,20 +280,59 @@ extension MetalRenderer {
             enc.setTexture(guideColor, index: 5)
             enc.setTexture(guideSurface, index: 6)
             enc.setTexture(iblBRDFLUT, index: 7)
-            enc.dispatchThreads(MTLSize(width: width, height: height, depth: 1),
-                                threadsPerThreadgroup: MTLSize(width: 8, height: 8, depth: 1))
+            enc.setTexture(stats, index: 8)
+            enc.setBuffer(openList, offset: 0, index: 13)
+            if compacted {
+                enc.dispatchThreads(MTLSize(width: openPixels, height: 1, depth: 1),
+                                    threadsPerThreadgroup: MTLSize(width: 64, height: 1, depth: 1))
+            } else {
+                enc.dispatchThreads(grid, threadsPerThreadgroup: group)
+            }
             enc.endEncoding()
             cb.commit()
             cb.waitUntilCompleted()
             done += n
+            samplesTaken += Double(openPixels) * Double(n)
             let gpuTime = cb.gpuEndTime - cb.gpuStartTime
-            if gpuTime > 0 {
+            if forcedChunk == nil, gpuTime > 0 {
                 chunk = max(1, min(64, Int(Double(n) * 1.0 / gpuTime + 0.5)))
             }
             if pathTraceReportsProgress {
-                let line = String(format: "\r  path tracing %d/%d samples (%d%%)    ",
-                                  done, total, done * 100 / total)
+                let settled = adaptive
+                    ? String(format: ", %d%% of pixels settled", 100 - openPixels * 100 / max(1, width * height))
+                    : ""
+                let line = String(format: "\r  path tracing %d/%d samples (%d%%)%@    ",
+                                  done, total, done * 100 / total, settled)
                 FileHandle.standardError.write(Data(line.utf8))
+            }
+            // The end of a round: read every pixel's statistics, close the settled
+            // ones, keep an open pixel's neighbors open, list and count what is
+            // left. Nothing open ends the frame here; the pixels all hold their
+            // counts.
+            if adaptive, done == roundEnd, done < total,
+               let converge, let dilate {
+                guard let checkCB = commandQueue.makeCommandBuffer(),
+                      let check = checkCB.makeComputeCommandEncoder() else { return nil }
+                openCount.contents().storeBytes(of: UInt32(0), as: UInt32.self)
+                var threshold = SIMD4<Float>(Float(settings.noiseThreshold), 0, 0, 0)
+                check.setComputePipelineState(converge)
+                check.setBytes(&threshold, length: MemoryLayout<SIMD4<Float>>.stride, index: 0)
+                check.setTexture(accum, index: 0)
+                check.setTexture(stats, index: 1)
+                check.setTexture(openFlags, index: 2)
+                check.dispatchThreads(grid, threadsPerThreadgroup: group)
+                check.setComputePipelineState(dilate)
+                check.setBuffer(openList, offset: 0, index: 0)
+                check.setBuffer(openCount, offset: 0, index: 1)
+                check.setTexture(openFlags, index: 0)
+                check.dispatchThreads(grid, threadsPerThreadgroup: group)
+                check.endEncoding()
+                checkCB.commit()
+                checkCB.waitUntilCompleted()
+                openPixels = min(width * height, Int(openCount.contents().load(as: UInt32.self)))
+                compacted = true
+                if openPixels == 0 { break }
+                roundEnd = min(total, roundEnd + checkStep)
             }
         }
         if pathTraceReportsProgress {
@@ -221,7 +342,11 @@ extension MetalRenderer {
             encodePathTraceDenoise(accum: accum, guideColor: guideColor,
                                    guideSurface: guideSurface, width: width, height: height)
         }
-        return (accum, depthTex, 1 / Float(total))
+        lastPathTraceReport = PathTraceReport(
+            settings: settings, minSamplesPerPixel: minSamples,
+            meanSamplesPerPixel: adaptive ? samplesTaken / Double(max(1, width * height)) : nil)
+        return PathTracedLayer(color: accum, depth: depthTex, invSamples: 1 / Float(total),
+                               counts: adaptive ? stats : nil)
     }
 
     /// Filter the grain out of the finished accumulation, in place, so the composite
@@ -304,7 +429,7 @@ extension MetalRenderer {
     /// blend; uncovered pixels leave the backdrop), depth-tested and writing the
     /// primary depth so the un-traced 3D kinds still occlude correctly. The batch
     /// loop re-sets pipeline and depth state per batch, so nothing leaks.
-    func encodePathTraceComposite(_ layer: (color: MTLTexture, depth: MTLTexture, invSamples: Float),
+    func encodePathTraceComposite(_ layer: PathTracedLayer,
                                   into encoder: MTLRenderCommandEncoder,
                                   uniforms3D: Uniforms3D?,
                                   depthFormat: MTLPixelFormat?, hasStencil: Bool) {
@@ -314,10 +439,13 @@ extension MetalRenderer {
         encoder.setRenderPipelineState(pipe)
         encoder.setDepthStencilState(depthTestState)
         encoder.setFragmentBytes(&u3, length: MemoryLayout<Uniforms3D>.stride, index: 0)
-        var params = SIMD4<Float>(layer.invSamples, 0, 0, 0)
+        // Under a fixed count every pixel divides by the same reciprocal; under
+        // adaptive sampling each divides by its own count, read from the layer.
+        var params = SIMD4<Float>(layer.invSamples, layer.counts != nil ? 1 : 0, 0, 0)
         encoder.setFragmentBytes(&params, length: MemoryLayout<SIMD4<Float>>.stride, index: 1)
         encoder.setFragmentTexture(layer.color, index: 0)
         encoder.setFragmentTexture(layer.depth, index: 1)
+        encoder.setFragmentTexture(layer.counts ?? whiteStandIn(), index: 2)
         profile.drawCalls += 1
         encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
     }

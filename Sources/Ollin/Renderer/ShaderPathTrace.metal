@@ -53,6 +53,10 @@ static inline uint4 ollin_pt_hash4(uint4 v) {
     return v;
 }
 
+// The brightness weights every pixel statistic here reads (the grain filter's and the
+// adaptive stop's), so the two measure the same quantity.
+constant float3 ollin_pt_luma = float3(0.2126, 0.7152, 0.0722);
+
 // Four uniform floats in [0,1) for one (pixel, sample, dimension) tuple.
 static inline float4 ollin_pt_rand4(uint2 gid, uint sampleIndex, uint dim) {
     uint4 h = ollin_pt_hash4(uint4(gid.x, gid.y, sampleIndex, dim));
@@ -662,11 +666,30 @@ static inline float3 ollin_pt_direct(OllinPTHit h, float3 wo, float eps,
 // MARK: - The trace kernel
 
 // One thread per pixel; each dispatch integrates `window.w` samples starting at
-// `window.z` and adds their radiance sum (rgb) and hit count (a) into the running
-// accumulation, so the composite's divide by the total yields the mean. The first
-// dispatch also writes the primary depth (the pixel-center pinhole hit, projected),
-// which is what lets the un-traced 3D kinds raster over the composite correctly.
-kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
+// `window.z` and adds their radiance (rgb) and hit (a) one sample at a time onto the
+// running accumulation, so the composite's divide by the count yields the mean. The
+// first dispatch also writes the primary depth (the pixel-center pinhole hit,
+// projected), which is what lets the un-traced 3D kinds raster over the composite
+// correctly.
+//
+// The sums grow sample by sample from the value the texture already holds, never as
+// a chunk total added at the end: the host cuts the sample range into dispatches by
+// GPU time, and a sum grouped by those cuts rounds differently from one grouped
+// another way, so the frame's last bits would follow the clock. Added in sample
+// order from the running value, the rounding is the same whatever the cuts, which is
+// what lets the adaptive stop below read a threshold off the sums and still render
+// the same bytes every run.
+//
+// Adaptive sampling (`adaptive.x > 0`): from the first check on, a dispatch runs
+// over the compacted list of open pixels rather than the grid (`open.x` entries, one
+// thread each), so a settled pixel costs no lane at all; a dispatch over the grid
+// would keep a settled pixel's lane busy for as long as any pixel in its SIMD group
+// still traces, and the time saved would be a fraction of the samples saved. Every
+// sample also adds the square of the brightness the viewer would see (the radiance's
+// luma on a hit, the backdrop's behind a miss), the backdrop luma it saw behind
+// misses, and one to the pixel's own count, in `stats`, which is what the
+// convergence check below reads.
+kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
                            constant OllinPathTraceUniforms &pt [[buffer(0)]],
                            constant OllinLighting &light [[buffer(1)]],
                            instance_acceleration_structure accel [[buffer(3)]],
@@ -686,8 +709,22 @@ kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
                            // The split-sum BRDF LUT, for the specular lobe's
                            // multiple-scattering energy compensation (`ollin_pbr_ess`);
                            // baked before the first dispatch, never a stand-in.
-                           texture2d<float> brdfLUT [[texture(7)]]) {
-    if (gid.x >= pt.window.x || gid.y >= pt.window.y) return;
+                           texture2d<float> brdfLUT [[texture(7)]],
+                           // Adaptive sampling: each pixel's own statistics (a
+                           // one-pixel stand-in under a fixed count), and the list of
+                           // open pixels a compacted dispatch runs over (each entry
+                           // y * width + x; unread by a dispatch over the grid).
+                           texture2d<float, access::read_write> stats [[texture(8)]],
+                           const device uint *openList [[buffer(13)]]) {
+    uint2 gid = lane;
+    if (pt.open.x > 0u) {
+        if (lane.x >= pt.open.x) return;
+        uint packed = openList[lane.x];
+        gid = uint2(packed % pt.window.x, packed / pt.window.x);
+    } else if (gid.x >= pt.window.x || gid.y >= pt.window.y) {
+        return;
+    }
+    bool adaptive = pt.adaptive.x > 0.0;
     float eps = pt.cameraPosition.w;
     uint maxDepth = max(pt.counts.y, 1u);
     // Environment importance sampling is on when the tables were built (counts.z
@@ -733,22 +770,18 @@ kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
             d = clamp(clip.z / max(clip.w, 1e-6), 0.0, 1.0);
         }
         depthOut.write(float4(d, 0.0, 0.0, 0.0), gid);
-        accum.write(float4(0.0), gid);
-        if (wantsGuides) {
-            guideColor.write(float4(0.0), gid);
-            guideSurface.write(float4(0.0), gid);
-        }
     }
 
-    float3 sumRadiance = float3(0.0);
-    float sumCoverage = 0.0;
-    // The guide sums: the first surface's own color and normal (which carry no path
-    // noise), how far away it is, and the square of each sample's brightness, which
-    // is what lets the denoiser measure the grain it has to remove.
-    float3 sumAlbedo = float3(0.0);
-    float3 sumNormal = float3(0.0);
-    float sumDistance = 0.0;
-    float sumLumaSq = 0.0;
+    // The running sums, continued from the texture (the first dispatch starts them
+    // at zero): radiance and hit count; the guides, which are the first surface's own
+    // color and normal (they carry no path noise), how far away it is, and the square
+    // of each sample's brightness, which is what lets the denoiser measure the grain
+    // it has to remove; and the adaptive statistics.
+    bool first = pt.window.z == 0u;
+    float4 acc = first ? float4(0.0) : accum.read(gid);
+    float4 accColor = (wantsGuides && !first) ? guideColor.read(gid) : float4(0.0);
+    float4 accSurface = (wantsGuides && !first) ? guideSurface.read(gid) : float4(0.0);
+    float4 accStats = (adaptive && !first) ? stats.read(gid) : float4(0.0);
 
     for (uint s = 0; s < pt.window.w; s++) {
         uint sampleIndex = pt.window.z + s;
@@ -1167,26 +1200,112 @@ kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
                                                        light.fogParams.x, light.fogParams.y));
                 radiance = radiance * T + light.fogColor.rgb * (1.0 - T);
             }
-            sumRadiance += radiance;
-            sumCoverage += 1.0;
+            acc += float4(radiance, 1.0);
             if (wantsGuides) {
-                sumAlbedo += firstAlbedo;
-                sumNormal += firstNormal;
-                sumDistance += primaryDist;
-                float luma = dot(radiance, float3(0.2126, 0.7152, 0.0722));
-                sumLumaSq += luma * luma;
+                float luma = dot(radiance, ollin_pt_luma);
+                accColor += float4(firstAlbedo, luma * luma);
+                accSurface += float4(firstNormal, primaryDist);
             }
+        }
+        if (adaptive) {
+            // The brightness the viewer sees for this sample: the traced radiance
+            // on a hit, and behind a miss the backdrop the composite leaves showing,
+            // the environment along the ray when it draws as the skybox or the clear
+            // color otherwise. Measured on what is shown, a silhouette's own grain
+            // against a bright sky counts and the same edge over black does not.
+            float seen;
+            float behind = 0.0;
+            if (covered) {
+                seen = dot(radiance, ollin_pt_luma);
+            } else {
+                behind = pt.adaptive.w > 0.5
+                    ? dot(ollin_pt_env(eyeDir, light, pt, equirect, pt.miss.w), ollin_pt_luma)
+                    : pt.adaptive.z;
+                seen = behind;
+            }
+            accStats += float4(seen * seen, behind, 1.0, 0.0);
         }
     }
 
-    float4 prev = accum.read(gid);
-    accum.write(prev + float4(sumRadiance, sumCoverage), gid);
+    accum.write(acc, gid);
     if (wantsGuides) {
-        float4 prevC = guideColor.read(gid);
-        guideColor.write(prevC + float4(sumAlbedo, sumLumaSq), gid);
-        float4 prevS = guideSurface.read(gid);
-        guideSurface.write(prevS + float4(sumNormal, sumDistance), gid);
+        guideColor.write(accColor, gid);
+        guideSurface.write(accSurface, gid);
     }
+    if (adaptive) stats.write(accStats, gid);
+}
+
+// MARK: - Adaptive sampling
+
+// Whether a pixel has settled, read off its own samples: the standard error of the
+// brightness it shows (the spread of its samples over their count, divided again by
+// the count and square-rooted), against the square root of that brightness, or the
+// brightness itself above 1. The square root follows the eye's near-logarithmic
+// response, so one threshold reads about the same in a shadow and on a lit face: at
+// 0.01 the standard error is about one level in 255 at any brightness, and a region
+// brighter than white is held to the same share of its own value. A pixel still
+// open writes 1, a settled one 0. `params.x` is the threshold. A pixel that has
+// taken fewer than two samples has no spread to read and stays open.
+kernel void ollin_pt_converge(uint2 gid [[thread_position_in_grid]],
+                              constant float4 &params [[buffer(0)]],
+                              texture2d<float, access::read> accum [[texture(0)]],
+                              texture2d<float, access::read> stats [[texture(1)]],
+                              texture2d<uint, access::write> active [[texture(2)]]) {
+    if (gid.x >= accum.get_width() || gid.y >= accum.get_height()) return;
+    float4 a = accum.read(gid);
+    float4 s = stats.read(gid);
+    float n = s.z;
+    bool open = true;
+    if (n >= 2.0) {
+        // The sum of what each sample showed: the hits' luma (the radiance sum is
+        // linear in the samples, so its luma is their lumas' sum) plus the backdrop
+        // behind the misses.
+        float sum = dot(a.rgb, ollin_pt_luma) + s.y;
+        float mean = sum / n;
+        // The unbiased spread (over one less than the count), then the variance of
+        // the mean itself.
+        float spread = max(s.x / n - mean * mean, 0.0) * (n / (n - 1.0));
+        float standardError = sqrt(spread / n);
+        float scale = mean < 1.0 ? sqrt(max(mean, 0.0)) : mean;
+        float error = standardError / (1e-4 + scale);
+        open = error >= params.x;
+    }
+    active.write(uint4(open ? 1u : 0u, 0u, 0u, 0u), gid);
+}
+
+// A pixel still open keeps its eight neighbors open too, so a feature one pixel has
+// found and its neighbor has not yet seen (the edge of a highlight, a rare bright
+// path) keeps the neighbor sampling. The pass writes the open pixels into a
+// compacted list for the next dispatches to run over, and counts them: each SIMD
+// group reserves one range of the list with a single atomic add and its lanes fill
+// the range in lane order. The order of the list is whatever the groups' adds made
+// it, which is fine, since a pixel's sums depend on its own samples alone and not on
+// which thread adds them. Every thread reaches the group sum, so a thread outside
+// the picture contributes a zero rather than returning.
+kernel void ollin_pt_dilate(uint2 gid [[thread_position_in_grid]],
+                            texture2d<uint, access::read> active [[texture(0)]],
+                            device uint *openList [[buffer(0)]],
+                            device atomic_uint *openCount [[buffer(1)]]) {
+    int w = int(active.get_width()), h = int(active.get_height());
+    bool inside = int(gid.x) < w && int(gid.y) < h;
+    uint open = 0u;
+    if (inside) {
+        for (int dy = -1; dy <= 1 && open == 0u; dy++) {
+            for (int dx = -1; dx <= 1; dx++) {
+                int2 p = int2(gid) + int2(dx, dy);
+                if (p.x < 0 || p.y < 0 || p.x >= w || p.y >= h) continue;
+                if (active.read(uint2(p)).x != 0u) { open = 1u; break; }
+            }
+        }
+    }
+    uint before = simd_prefix_exclusive_sum(open);
+    uint total = simd_sum(open);
+    uint base = 0u;
+    if (simd_is_first() && total > 0u) {
+        base = atomic_fetch_add_explicit(openCount, total, memory_order_relaxed);
+    }
+    base = simd_broadcast_first(base);
+    if (open != 0u) openList[base + before] = gid.y * uint(w) + gid.x;
 }
 
 // MARK: - The denoiser
@@ -1215,8 +1334,6 @@ kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
 // The chain runs prepare, then the wavelet a few times over two textures in turn,
 // then finish, which writes the result back into the accumulation in the units the
 // composite already reads. A pixel no sample covered stays untouched throughout.
-
-constant float3 ollin_pt_luma = float3(0.2126, 0.7152, 0.0722);
 
 // Turn the running sums into the per-pixel values the filter reads: the mean
 // radiance divided by the surface color (the light alone), the surface color and
@@ -1343,7 +1460,8 @@ kernel void ollin_pt_denoise_finish(uint2 gid [[thread_position_in_grid]],
 // mean, premultiplied by coverage (so silhouette edges blend over the backdrop and the
 // 2D content under them), writing the primary depth so the un-traced 3D kinds still
 // occlude and are occluded correctly. Pixels no sample covered leave the backdrop
-// untouched. `params.x` = 1 / total samples.
+// untouched. `params.x` = 1 / total samples; under adaptive sampling (`params.y` =
+// 1) each pixel divides by its own count instead, read from the statistics layer.
 struct OllinPTCompositeOut {
     float4 color [[color(0)]];
     float depth [[depth(any)]];
@@ -1353,15 +1471,17 @@ fragment OllinPTCompositeOut ollin_pt_composite_fragment(OllinSkyboxOut in [[sta
                                                          constant Uniforms3D &u [[buffer(0)]],
                                                          constant float4 &params [[buffer(1)]],
                                                          texture2d<float> accum [[texture(0)]],
-                                                         texture2d<float> depthTex [[texture(1)]]) {
+                                                         texture2d<float> depthTex [[texture(1)]],
+                                                         texture2d<float> counts [[texture(2)]]) {
     uint2 px = uint2(in.position.xy);
     float4 sum = accum.read(px);
-    float coverage = sum.a * params.x;
+    float inv = params.y > 0.5 ? 1.0 / max(counts.read(px).z, 1.0) : params.x;
+    float coverage = sum.a * inv;
     if (coverage <= 0.0) discard_fragment();
     OllinPTCompositeOut out;
     // The mean radiance already carries the coverage (misses added nothing), so it
     // *is* the premultiplied color; alpha is the coverage itself.
-    out.color = float4(sum.rgb * params.x, coverage);
+    out.color = float4(sum.rgb * inv, coverage);
     out.depth = depthTex.read(px).x;
     return out;
 }

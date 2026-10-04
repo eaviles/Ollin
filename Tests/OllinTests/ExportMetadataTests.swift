@@ -22,6 +22,24 @@ struct ExportMetadataTests {
         #expect(meta.recipe.contains("\"ollin\":\"\(tree)\""))
     }
 
+    /// A traced frame's recipe names what it was traced with, in the flags' terms,
+    /// and only what applied: a fixed count says its count and depth, a filtered
+    /// one adds the filter, an adaptive one adds the noise it stopped at, the
+    /// minimum every pixel took, and the mean count reached, to a tenth. A frame
+    /// that was not traced says nothing.
+    @Test func theRecipeNamesWhatATracedFrameSpent() {
+        var meta = ExportMetadata.capture(from: Sketch(), frame: 0, fps: 60)
+        #expect(!meta.recipe.contains("pathTraced"))
+        meta.pathTracing = PathTraceReport(settings: PathTracing(samplesPerPixel: 128, maxDepth: 4),
+                                           minSamplesPerPixel: 128, meanSamplesPerPixel: nil)
+        #expect(meta.recipe.contains(#""pathTraced":{"samples":128,"depth":4}"#))
+        meta.pathTracing = PathTraceReport(
+            settings: PathTracing(samplesPerPixel: 128, maxDepth: 4, denoises: true, noiseThreshold: 0.01),
+            minSamplesPerPixel: 16, meanSamplesPerPixel: 41.26)
+        #expect(meta.recipe.contains(
+            #""pathTraced":{"samples":128,"depth":4,"denoised":true,"noise":0.01,"minSamples":16,"meanSamples":41.3}"#))
+    }
+
     final class Seeded: Sketch {
         override var canvasSize: CanvasSize { .square(100) }
         @Param(0...300) var radius = 80.0
