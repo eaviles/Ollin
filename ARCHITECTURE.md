@@ -1506,9 +1506,11 @@ its share of the disc nothing in front takes, its own area against the holes the
 scene behind shows within its blur; counted as one minus the holes instead, a
 curved surface's nearer part counted twice, once in the veil and once here, and a
 blurred ball's edge came out a step more opaque than its outside, an outline.
-Behind the focus the pixel's own surface joins what stands behind it, normalized
-by density, and a farther tap is held to the pixel's own blur so a sharp edge
-keeps the background's blur from crossing it. A tap at another distance is
+Behind the focus the same share holds, with a farther tap held to the pixel's own
+blur so a sharp edge keeps the background's blur from crossing it, and a nearer
+surface at or behind the focus is a second veil composited over by its cover
+(averaged by density instead, a bar a tenth as blurred as the backdrop behind it
+kept 93% of its light). A tap at another distance is
 another surface only when its signed blur lands off the line the pixel's own
 surface draws across the screen: a plane is affine in inverse depth, so the blur
 extrapolates exactly along the gentler of the pixel's two one-sided differences on

@@ -719,7 +719,7 @@ static inline float4 ollin_lens_gather(float2 uv, texture2d<float> base, texture
     float ownSignedBlur = ollin_lens_signed_blur(ownDepth, law);
     float ownLensBlur = abs(ownSignedBlur);
     float2 blurSlope = float2(0.0);
-    if (hereInFront) {
+    {
         float4 l = cocMap.sample(whole, uv - float2(texel.x, 0.0));
         float4 r = cocMap.sample(whole, uv + float2(texel.x, 0.0));
         float4 u = cocMap.sample(whole, uv - float2(0.0, texel.y));
@@ -734,6 +734,12 @@ static inline float4 ollin_lens_gather(float2 uv, texture2d<float> base, texture
     float4 front = float4(0.0); float frontWeight = 0.0;
     float4 own = here * hereWeight; float ownWeight = hereWeight;
     float4 back = float4(0.0); float backWeight = 0.0;
+    // Behind the focus, a surface nearer than this pixel (at or behind the focus
+    // itself) hides what is behind it as a veil of its own: its densities add up to
+    // how much of the pixel it covers, and it composites over the rest by that much.
+    // Averaged with the rest by density instead, a bar a tenth as blurred as the
+    // backdrop behind it kept 93% of its light.
+    float4 mid = float4(0.0); float midWeight = 0.0;
     // The hidden layer's light landing behind this pixel, kept apart from the holes'
     // own until the loop is done: it joins what the holes show only when it stands in
     // front of what the holes show themselves (below). With it, the mean inverse
@@ -817,12 +823,14 @@ static inline float4 ollin_lens_gather(float2 uv, texture2d<float> base, texture
         // The blurs compared are the lens's own, before `maxBlur` caps them, which
         // would make a near bar and the backdrop behind it the same.
         bool behind = farther;
-        if (hereInFront && (farther || nearer)) {
+        bool nearerSurface = nearer;
+        if (farther || nearer) {
             float lensBlur = ollin_lens_signed_blur(depth, law);
             float expected = ownSignedBlur + dot(blurSlope, offset);
             bool another = abs(lensBlur - expected) > max(1.0, 0.1 * ownLensBlur);
             behind = farther && another;
             inFront = inFront && another;
+            nearerSurface = nearer && another;
         }
         float distance = length(offset);
         if (shaped) {
@@ -852,8 +860,13 @@ static inline float4 ollin_lens_gather(float2 uv, texture2d<float> base, texture
             else if (stand > w) { revealBack += s * (stand - w); revealWeight += stand - w; }
         }
         if (inFront) { front += s * w; frontWeight += w; }
-        else if (behind || !hereInFront) { back += s * w; backWeight += w; }
-        else {
+        else if (!hereInFront && nearerSurface) { mid += s * w; midWeight += w; }
+        else if (behind) {
+            back += s * w; backWeight += w;
+            // Behind the focus, what the surface behind shows within this pixel's
+            // own blur is a hole in its surface's cover, the near side's own share.
+            if (!hereInFront) holeCover += smoothstep(distance - 0.5, distance + 0.5, ownBlur) * tapArea;
+        } else {
             own += s * w; ownWeight += w;
             ownCover += smoothstep(distance - 0.5, distance + 0.5, ownBlur) * tapArea;
         }
@@ -927,7 +940,12 @@ static inline float4 ollin_lens_gather(float2 uv, texture2d<float> base, texture
         float4 hidden = backWeight > 1e-6 ? back / backWeight : own / ownWeight;
         surface = mix(hidden, own / ownWeight, ownCover / (ownCover + holeCover));
     } else {
-        surface = (back + own) / (backWeight + ownWeight);
+        // The same share: this pixel's own surface against the holes that show what
+        // stands behind it, then a nearer surface at or behind the focus over that
+        // by its cover, then the near field's veil over everything.
+        float4 shown = backWeight > 1e-6 ? back / backWeight : own / ownWeight;
+        surface = mix(shown, own / ownWeight, ownCover / (ownCover + holeCover));
+        if (midWeight > 1e-6) surface = mix(surface, mid / midWeight, saturate(midWeight));
     }
     float4 veil = frontWeight > 1e-6 ? front / frontWeight : surface;
     return mix(surface, veil, saturate(frontWeight));
