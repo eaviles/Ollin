@@ -160,6 +160,7 @@ _ollin() {
             '--pt-depth[the longest light path the tracer follows]:N:' \
             '--pt-noise[let a pixel stop once its grain falls under X (0.01 is about a level in 255)]:X:' \
             '--pt-min[the fewest samples a pixel takes before it may stop]:N:' \
+            '--pt-clamp[the most light bounced twice or more may add to a sample, in units of white (a bias; the recipe says what it dropped)]:X:' \
             '--denoise[filter the grain out of a path-traced render]' \
             '--quality[the encoder'\''s quality]:0..1:' \
             '--bitrate[the encoder'\''s bitrate]:MBPS:' \

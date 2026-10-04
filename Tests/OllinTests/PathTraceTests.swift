@@ -433,6 +433,23 @@ struct PathTraceTests {
         return Double(sum) / Double(max(count, 1))
     }
 
+    /// The fireflies in a region: how many of its pixels read more than `above`
+    /// levels over the region's median green, which is what a rare bright path
+    /// leaves and ordinary sampling noise does not.
+    private func regionOutliers(_ image: CGImage, x0: Double, x1: Double,
+                                y0: Double, y1: Double, above: Int) -> Int {
+        let d = pixels(of: image)
+        var values: [Int] = []
+        for py in Int(Double(image.height) * y0)..<Int(Double(image.height) * y1) {
+            for px in Int(Double(image.width) * x0)..<Int(Double(image.width) * x1) {
+                values.append(Int(d[(py * image.width + px) * 4 + 1]))
+            }
+        }
+        guard !values.isEmpty else { return 0 }
+        let median = values.sorted()[values.count / 2]
+        return values.filter { $0 > median + above }.count
+    }
+
     /// Relative luminance noise over a region: per-pixel green-channel standard
     /// deviation over the mean (the mesh-light variance probe).
     private func regionRelativeNoise(_ image: CGImage, x0: Double, x1: Double,
@@ -1075,6 +1092,135 @@ struct PathTraceTests {
         #expect(PathTracing(samplesPerPixel: 128, noiseThreshold: 0.01, minSamplesPerPixel: 500).firstCheck == 128)
         // One sample has no spread to read, so a count of one is never adaptive.
         #expect(PathTracing(samplesPerPixel: 1, noiseThreshold: 0.01).isAdaptive == false)
+    }
+
+    /// The firefly scene: a matte floor beside a polished ball under a small, very
+    /// hot lamp. The floor's direct light comes through the lamp's own strategy and
+    /// is smooth; what speckles it is the lamp seen through the ball, a path the
+    /// floor's bounce finds every few hundred samples and that no light strategy can
+    /// aim at. The lit plane is the other case: a matte floor under a directional
+    /// light with nothing else in the scene, so no bounce ever carries light.
+    final class FireflyProbe: Sketch {
+        enum Kind { case causticFloor, litPlane }
+        var kind: Kind = .causticFloor
+
+        override var canvasSize: CanvasSize { .square(160) }
+
+        static func make(_ kind: Kind) -> FireflyProbe {
+            let p = FireflyProbe()
+            p.kind = kind
+            return p
+        }
+
+        override func draw() {
+            background(.black)
+            switch kind {
+            case .causticFloor:
+                camera(Camera3D(eye: Vector3(0, 1.6, 3.6), target: Vector3(0, 0.1, 0)))
+                fill(Color(white: 0.7))
+                material(Material())
+                withState {
+                    translate(0, -0.3, 0)
+                    drawBox(width: 8, height: 0.2, depth: 8)
+                }
+                withState {
+                    translate(-0.9, 0.5, 0)
+                    // Glossy rather than a mirror: the wider lobe catches the lamp
+                    // from more of the floor, so the caustic's fireflies are many.
+                    material(.metal(roughness: 0.25))
+                    fill(.white)
+                    drawSphere(radius: 0.7)
+                }
+                withState {
+                    // A mesh light, so the floor's own light comes through the lamp's
+                    // strategy and is smooth; a `.glowing` surface has no strategy and
+                    // would speckle the floor with one-bounce hits the bound leaves alone.
+                    translate(1.6, 1.9, 0.4)
+                    // The color decodes as sRGB, so 8 is about 130 times white: the
+                    // floor's direct light reads a quarter of white and the caustic's
+                    // hits a hundred times that.
+                    var lamp = Mesh.sphere(radius: 0.12)
+                    lamp.material = MeshMaterial(emissiveColor: Color(white: 8))
+                    drawMesh(lamp)
+                }
+            case .litPlane:
+                camera(Camera3D(eye: Vector3(0, 1.6, 3.6), target: Vector3(0, 0.1, 0)))
+                directionalLight(Color(white: 0.9), direction: Vector3(-0.4, -1, -0.3))
+                fill(Color(white: 0.7))
+                material(Material())
+                withState {
+                    translate(0, -0.3, 0)
+                    drawBox(width: 8, height: 0.2, depth: 8)
+                }
+            }
+        }
+    }
+
+    /// A bound on what twice-bounced light may add to a sample takes the fireflies
+    /// out of a polished scene: on the floor beside the ball, speckled by the lamp
+    /// seen through the ball, the pixels far above the floor's level fall by more
+    /// than half at the same count while the floor's own sampling noise stays, the
+    /// recipe names the bound and the share of the frame's light it took, and that
+    /// share is small (the fireflies are rare light) and above zero (something was
+    /// taken, which is the bias the flag accepts). With the dots gone the
+    /// per-pixel stop reads the floor sooner, so under a threshold the bounded
+    /// frame settles at a lower mean count than the unbounded one.
+    @Test(.enabled(if: Snapshot.hasRaytracing))
+    func aBoundOnABounceCutsTheFirefliesAndSaysWhatItTook() throws {
+        // The floor just in front of the ball, which sees the ball large and the
+        // lamp's reflection in it often.
+        let floor = (x0: 0.05, x1: 0.40, y0: 0.66, y1: 0.93)
+        let plain = try pathTracedStill(FireflyProbe.make(.causticFloor), PathTracing(samplesPerPixel: 48))
+        let bounded = try pathTracedStill(FireflyProbe.make(.causticFloor),
+                                          PathTracing(samplesPerPixel: 48, maxBounceLight: 2))
+        #expect(plain.traced["clamp"] == nil)
+        #expect(plain.traced["clampDropped"] == nil)
+        #expect(bounded.traced["clamp"] as? Double == 2)
+        let dropped = try #require(bounded.traced["clampDropped"] as? Double)
+        #expect(dropped > 0 && dropped < 0.1, "the bound took \(dropped) of the light")
+        // The fireflies: pixels far above the floor's own level. The floor's
+        // ordinary sampling noise (the lamp's area, sampled) stays either way, so
+        // the whole spread falls by less than the outliers do.
+        let plainOutliers = regionOutliers(plain.image, x0: floor.x0, x1: floor.x1, y0: floor.y0, y1: floor.y1, above: 24)
+        let boundedOutliers = regionOutliers(bounded.image, x0: floor.x0, x1: floor.x1, y0: floor.y0, y1: floor.y1, above: 24)
+        #expect(plainOutliers >= 10, "the unbounded floor shows \(plainOutliers) fireflies; the probe needs some to read")
+        #expect(boundedOutliers * 2 < plainOutliers,
+                "fireflies on the floor: \(plainOutliers) unbounded, \(boundedOutliers) bounded")
+        let plainNoise = regionRelativeNoise(plain.image, x0: floor.x0, x1: floor.x1, y0: floor.y0, y1: floor.y1)
+        let boundedNoise = regionRelativeNoise(bounded.image, x0: floor.x0, x1: floor.x1, y0: floor.y0, y1: floor.y1)
+        #expect(boundedNoise < plainNoise * 0.75, "the floor's grain: \(plainNoise) unbounded, \(boundedNoise) bounded")
+        // The floor keeps its light: the bound takes the rare bright paths, not the
+        // direct light, so the region's mean moves by a few percent at most.
+        let plainMean = regionMean(plain.image, x0: floor.x0, x1: floor.x1, y0: floor.y0, y1: floor.y1)
+        let boundedMean = regionMean(bounded.image, x0: floor.x0, x1: floor.x1, y0: floor.y0, y1: floor.y1)
+        #expect(abs(boundedMean - plainMean) < max(plainMean * 0.08, 3),
+                "the floor's mean: \(plainMean) unbounded, \(boundedMean) bounded")
+
+        let stopPlain = try pathTracedStill(FireflyProbe.make(.causticFloor),
+                                            PathTracing(samplesPerPixel: 128, noiseThreshold: 0.04))
+        let stopBounded = try pathTracedStill(FireflyProbe.make(.causticFloor),
+                                              PathTracing(samplesPerPixel: 128, noiseThreshold: 0.04,
+                                                          maxBounceLight: 2))
+        let meanPlain = try #require(stopPlain.traced["meanSamples"] as? Double)
+        let meanBounded = try #require(stopBounded.traced["meanSamples"] as? Double)
+        #expect(meanBounded < meanPlain, "the stop reached a mean of \(meanPlain) unbounded, \(meanBounded) bounded")
+    }
+
+    /// The bound never touches what the eye sees directly: a floor under a
+    /// directional light with nothing to bounce off renders the same bytes under
+    /// any bound, and the recipe says the bound took nothing.
+    @Test(.enabled(if: Snapshot.hasRaytracing))
+    func theBoundLeavesTheFirstHitAlone() throws {
+        let plain = try pathTracedStill(FireflyProbe.make(.litPlane), PathTracing(samplesPerPixel: 16))
+        let bounded = try pathTracedStill(FireflyProbe.make(.litPlane),
+                                          PathTracing(samplesPerPixel: 16, maxBounceLight: 0.01))
+        #expect(pixels(of: plain.image).contains { $0 > 60 })
+        #expect(pixels(of: plain.image) == pixels(of: bounded.image))
+        #expect(bounded.traced["clampDropped"] as? Double == 0)
+        // And the bound is off unless asked for.
+        #expect(PathTracing(samplesPerPixel: 8).isBounded == false)
+        #expect(PathTracing(samplesPerPixel: 8, maxBounceLight: 4).isBounded)
+        #expect(PathTracing(samplesPerPixel: 8, maxBounceLight: -1).maxBounceLight == 0)
     }
 
     /// The headline claim, in the terms the published stopping conditions use: the

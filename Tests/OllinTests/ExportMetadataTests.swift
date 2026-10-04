@@ -38,6 +38,12 @@ struct ExportMetadataTests {
             minSamplesPerPixel: 16, meanSamplesPerPixel: 41.26)
         #expect(meta.recipe.contains(
             #""pathTraced":{"samples":128,"depth":4,"denoised":true,"noise":0.01,"minSamples":16,"meanSamples":41.3}"#))
+        // A bounded frame adds the bound and the share of its light the bound took,
+        // to a hundredth of a percent.
+        meta.pathTracing = PathTraceReport(
+            settings: PathTracing(samplesPerPixel: 128, maxDepth: 4, maxBounceLight: 4),
+            minSamplesPerPixel: 128, meanSamplesPerPixel: nil, lightDropped: 0.012345)
+        #expect(meta.recipe.contains(#""pathTraced":{"samples":128,"depth":4,"clamp":4,"clampDropped":0.0123}"#))
     }
 
     final class Seeded: Sketch {

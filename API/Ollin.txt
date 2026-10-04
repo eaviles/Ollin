@@ -5453,8 +5453,9 @@ struct Path: Equatable, Sendable
   var contour: Contour { get }
   var shape: Shape { get }
 struct PathTracing: Equatable, Sendable
-  init(samplesPerPixel: Int = default, maxDepth: Int = default, denoises: Bool = default, noiseThreshold: Double = default, minSamplesPerPixel: Int? = default)
+  init(samplesPerPixel: Int = default, maxDepth: Int = default, denoises: Bool = default, noiseThreshold: Double = default, minSamplesPerPixel: Int? = default, maxBounceLight: Double = default)
   var denoises: Bool { get set }
+  var maxBounceLight: Double { get set }
   var maxDepth: Int { get set }
   var minSamplesPerPixel: Int? { get set }
   var noiseThreshold: Double { get set }

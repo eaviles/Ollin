@@ -53,18 +53,41 @@ public struct PathTracing: Equatable, Sendable {
     /// and read as settled.
     public var minSamplesPerPixel: Int?
 
+    /// The most light that has bounced twice or more may add to a sample, in units
+    /// of white (`--pt-clamp`). 0, the default, is no bound. Above 0, light that
+    /// scattered at least twice on its way to the eye (a lamp's reflection in a
+    /// ball seen again on the floor, a bright wall lighting a shelf, a highlight
+    /// passed from one polished bead to the next) is held to this value in its
+    /// brightest channel, scaled down whole so its color holds. What one bounce
+    /// shows, a lamp in a mirror, a window on a glossy floor, the lamps a surface
+    /// faces, is direct light and is never touched. A polished scene's grain is
+    /// made of the twice-bounced paths, a hot source caught every few hundred
+    /// samples, which no count brings down and which the per-pixel stop cannot
+    /// read past; bounded, the grain is gone at a few hundred samples and the stop
+    /// can settle. The price is the light the bound takes, which dims the
+    /// brightest inter-reflections and is a bias: the frame's recipe records the
+    /// share of its light the bound dropped, and a bound that drops more than a
+    /// percent or two is darkening the picture rather than cleaning it. 4 to 10
+    /// is the usual range.
+    public var maxBounceLight: Double
+
     public init(samplesPerPixel: Int = 256, maxDepth: Int = 8, denoises: Bool = false,
-                noiseThreshold: Double = 0, minSamplesPerPixel: Int? = nil) {
+                noiseThreshold: Double = 0, minSamplesPerPixel: Int? = nil,
+                maxBounceLight: Double = 0) {
         self.samplesPerPixel = max(1, samplesPerPixel)
         self.maxDepth = max(1, maxDepth)
         self.denoises = denoises
         self.noiseThreshold = noiseThreshold.isFinite ? max(0, noiseThreshold) : 0
         self.minSamplesPerPixel = minSamplesPerPixel.map { max(1, $0) }
+        self.maxBounceLight = maxBounceLight.isFinite ? max(0, maxBounceLight) : 0
     }
 
     /// Whether pixels may stop early: a threshold above zero and more than one
     /// sample to spread over.
     var isAdaptive: Bool { noiseThreshold > 0 && samplesPerPixel > 1 }
+
+    /// Whether the light a bounce adds to a sample is bounded.
+    var isBounded: Bool { maxBounceLight > 0 }
 
     /// The samples every pixel takes before the first convergence check: the named
     /// minimum as given, or the square root of the count rounded up to a multiple
@@ -103,4 +126,7 @@ struct PathTraceReport: Equatable, Sendable {
     /// The mean number of samples a pixel took, over the whole frame; `nil` under a
     /// fixed count, where every pixel took `settings.samplesPerPixel`.
     var meanSamplesPerPixel: Double?
+    /// The share of the frame's light the bounce bound took off (0 to 1); `nil`
+    /// with no bound.
+    var lightDropped: Double? = nil
 }

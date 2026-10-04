@@ -57,6 +57,34 @@ static inline uint4 ollin_pt_hash4(uint4 v) {
 // adaptive stop's), so the two measure the same quantity.
 constant float3 ollin_pt_luma = float3(0.2126, 0.7152, 0.0722);
 
+// Add one contribution to a sample's radiance. With `bound` set, the light is held
+// to `limit` in its brightest channel, scaled down whole so its color holds, and the
+// luma taken off is counted in `dropped`, which the kernel sums per pixel so the
+// frame can say what share of its light the bound took. The host sets the bound
+// (`PathTracing.maxBounceLight`, `--pt-clamp`) and the sites apply it to light that
+// has scattered at least twice on its way to the eye: an emitter or the environment
+// met two or more bounces out (`depth > 1`), and a light strategy run at a bounce
+// vertex (`depth > 0`). What one scattering shows, a lamp in a mirror, a window on a
+// glossy floor, is direct light and keeps its value; measured on a scene of two
+// thousand polished beads mirroring a lit studio, bounding that too took half the
+// frame's light for under a decibel. A hot source caught two bounces out every few
+// hundred samples is what a pixel's grain is made of on such a scene, and no count
+// brings it down; bounded, the sample's spread falls to what the stop can read and
+// the grain filter can smooth, at the cost of the light the bound takes, which is a
+// bias and is reported.
+static inline void ollin_pt_add(thread float3 &radiance, thread float &dropped,
+                                float3 L, bool bound, float limit) {
+    if (bound) {
+        float peak = max(L.x, max(L.y, L.z));
+        if (peak > limit) {
+            float3 kept = L * (limit / peak);
+            dropped += dot(L - kept, ollin_pt_luma);
+            L = kept;
+        }
+    }
+    radiance += L;
+}
+
 // Four uniform floats in [0,1) for one (pixel, sample, dimension) tuple.
 static inline float4 ollin_pt_rand4(uint2 gid, uint sampleIndex, uint dim) {
     uint4 h = ollin_pt_hash4(uint4(gid.x, gid.y, sampleIndex, dim));
@@ -725,6 +753,9 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
         return;
     }
     bool adaptive = pt.adaptive.x > 0.0;
+    // The bound on what one bounce may add to a sample (0 = none).
+    float bounceLimit = pt.cone.z;
+    bool bounded = bounceLimit > 0.0;
     float eps = pt.cameraPosition.w;
     uint maxDepth = max(pt.counts.y, 1u);
     // Environment importance sampling is on when the tables were built (counts.z
@@ -781,7 +812,7 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
     float4 acc = first ? float4(0.0) : accum.read(gid);
     float4 accColor = (wantsGuides && !first) ? guideColor.read(gid) : float4(0.0);
     float4 accSurface = (wantsGuides && !first) ? guideSurface.read(gid) : float4(0.0);
-    float4 accStats = (adaptive && !first) ? stats.read(gid) : float4(0.0);
+    float4 accStats = ((adaptive || bounded) && !first) ? stats.read(gid) : float4(0.0);
 
     for (uint s = 0; s < pt.window.w; s++) {
         uint sampleIndex = pt.window.z + s;
@@ -839,6 +870,7 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
 
         float3 radiance = float3(0.0);
         float3 throughput = float3(1.0);
+        float dropped = 0.0;      // the luma the bounce bound took off this sample
         bool covered = false;
         float primaryDist = 0.0;
         float3 eye = ro;
@@ -889,8 +921,9 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
                         float omegaTexel = 2.0 * 3.14159265 * 3.14159265 / max(texels, 1.0);
                         lod = clamp(0.5 * log2(1.0 / (prevPdf * omegaTexel)), 0.0, 10.0);
                     }
-                    radiance += throughput * ollin_pt_env(rd, light, pt, equirect, lod)
-                              * (w * aoPrev);
+                    ollin_pt_add(radiance, dropped,
+                                 throughput * ollin_pt_env(rd, light, pt, equirect, lod) * (w * aoPrev),
+                                 bounded && depth > 1, bounceLimit);
                 }
                 break;
             }
@@ -982,13 +1015,15 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
                     float pdfSA = (lum / pt.meshLights.y) * hitDist * hitDist / cosL;
                     wE = ollin_pt_mis(prevPdf, pdfSA);
                 }
-                radiance += throughput * mapped.emissive * wE;
+                ollin_pt_add(radiance, dropped, throughput * mapped.emissive * wE,
+                             bounded && depth > 1, bounceLimit);
             }
             // The surface's own color glowing (`emissiveIntensity`): no
             // next-event strategy ever aims at this share, so it is credited
             // whole wherever a path lands on it.
             if (any(mapped.selfEmissive > float3(0.0))) {
-                radiance += throughput * mapped.selfEmissive;
+                ollin_pt_add(radiance, dropped, throughput * mapped.selfEmissive,
+                             bounded && depth > 1, bounceLimit);
             }
 
             if (glassVertex) {
@@ -1083,11 +1118,13 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
             if (depth > 0) hNEE.s.rough = max(hNEE.s.rough, 0.25);
 
             // The lights the surface sees directly.
-            radiance += throughput * ollin_pt_direct(hNEE, -rd, eps, accel, light,
-                                                     gid, sampleIndex, dim,
-                                                     iesProfiles, cookies,
-                                                     verts, geoOffsets, geoMats,
-                                                     pt.meshLights.z > 0.5);
+            ollin_pt_add(radiance, dropped,
+                         throughput * ollin_pt_direct(hNEE, -rd, eps, accel, light,
+                                                      gid, sampleIndex, dim,
+                                                      iesProfiles, cookies,
+                                                      verts, geoOffsets, geoMats,
+                                                      pt.meshLights.z > 0.5),
+                         bounded && depth > 0, bounceLimit);
             dim += uint(light.lightCount) + 1u;
 
             // The emissive meshes' own strategy: one triangle drawn by its share
@@ -1096,10 +1133,12 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
             // mesh lights its room without waiting for a lucky bounce.
             if (pt.meshLights.x > 0.5) {
                 float4 ue = ollin_pt_rand4(gid, sampleIndex, dim++);
-                radiance += throughput * ollin_pt_mesh_light(hNEE, -rd, eps, accel,
-                                                             verts, geoOffsets,
-                                                             geoMats, emTris,
-                                                             geoTextures, pt, ue);
+                ollin_pt_add(radiance, dropped,
+                             throughput * ollin_pt_mesh_light(hNEE, -rd, eps, accel,
+                                                              verts, geoOffsets,
+                                                              geoMats, emTris,
+                                                              geoTextures, pt, ue),
+                             bounded && depth > 0, bounceLimit);
             }
 
             // The environment's own strategy: one sample drawn by the equirect's
@@ -1125,9 +1164,11 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
                     if (any(visE > float3(0.0))) {
                         float3 f = ollin_pt_bsdf(hNEE, -rd, wiE);
                         float w = ollin_pt_mis(envPdf, ollin_pt_bsdf_pdf(hNEE, -rd, wiE));
-                        radiance += throughput * f * visE
-                                  * ollin_pt_env(wiE, light, pt, equirect, pt.miss.w)
-                                  * (NoLE / envPdf * w * mapped.ao);
+                        ollin_pt_add(radiance, dropped,
+                                     throughput * f * visE
+                                     * ollin_pt_env(wiE, light, pt, equirect, pt.miss.w)
+                                     * (NoLE / envPdf * w * mapped.ao),
+                                     bounded && depth > 0, bounceLimit);
                     }
                 }
             }
@@ -1225,6 +1266,7 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
             }
             accStats += float4(seen * seen, behind, 1.0, 0.0);
         }
+        if (bounded) accStats.w += dropped;
     }
 
     accum.write(acc, gid);
@@ -1232,7 +1274,7 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
         guideColor.write(accColor, gid);
         guideSurface.write(accSurface, gid);
     }
-    if (adaptive) stats.write(accStats, gid);
+    if (adaptive || bounded) stats.write(accStats, gid);
 }
 
 // MARK: - Adaptive sampling

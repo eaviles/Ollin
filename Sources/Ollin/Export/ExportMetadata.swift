@@ -122,6 +122,15 @@ struct ExportMetadata {
                     traced.append("\"meanSamples\":\(jsonNumber((mean * 10).rounded() / 10))")
                 }
             }
+            // The bound on a bounce's light, and the share of the frame's light it
+            // took, to a hundredth of a percent: the bias the flag accepts, written
+            // down where the frame can be read against it.
+            if s.isBounded {
+                traced.append("\"clamp\":\(jsonNumber(s.maxBounceLight))")
+                if let dropped = pathTracing.lightDropped {
+                    traced.append("\"clampDropped\":\(jsonNumber((dropped * 10000).rounded() / 10000))")
+                }
+            }
             fields.append("\"pathTraced\":{\(traced.joined(separator: ","))}")
         }
         return "{\(fields.joined(separator: ","))}"

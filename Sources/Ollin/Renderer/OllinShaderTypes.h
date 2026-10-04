@@ -1269,7 +1269,11 @@ typedef struct {
                                    // width), y = the spread added per unit of travel
                                    // (the perspective pixel angle). A hit's base-color
                                    // read samples the mip whose texel footprint matches
-                                   // x + y * distance. z/w unused.
+                                   // x + y * distance. z = the most light that has
+                                   // scattered twice or more may add to a sample, in
+                                   // units of white (0 = no bound; the statistics
+                                   // layer's w then sums what the bound took off each
+                                   // pixel's samples). w unused.
     simd_float4 meshLights;        // x = emissive-triangle count (0 = no mesh lights,
                                    // the gate), y = the triangles' total power
                                    // (emissive luminance x area, the area-pdf

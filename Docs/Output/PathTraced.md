@@ -110,6 +110,20 @@ The saving depends on the picture. A scene that is grain from edge to edge settl
 
 The frame stays a pure function of its index. The checks fall at fixed sample counts whatever the GPU's timing, and the samples are added in order, so the same command renders the same bytes and a sequence cannot flicker from the stop. The still's recipe records what the trace was given and what it spent: the count, the depth, the filter, the noise figure, the minimum, and the mean samples a pixel reached, to a tenth. A sequence records them for every frame, a video records the settings alone, and the sequence and video exports end with one line that says the mean reached over the run.
 
+### A bound on what one bounce may carry
+
+Some grain no count removes. On a polished scene, a bead or a floor that mirrors a studio with hot lamps in it, a pixel's samples are mostly ordinary and now and then one catches a lamp through a bounce and carries hundreds of times the light of the rest. That one sample is a bright dot, a firefly, and the pixel's spread stays enormous however many samples it takes: the stop above never settles it, and the grain filter chases dots that move from frame to frame. `--pt-clamp` bounds what any bounce may add to a sample:
+
+```sh
+swift run --package-path Examples Example-3D-Effects-PathTraced --export out.png --path-traced 256 --pt-clamp 4
+```
+
+The number is in units of white. Light that has bounced twice or more on its way to the eye, a lamp's reflection in a ball seen again on the floor, a bright wall lighting a shelf, a highlight passed from one polished bead to the next, is held to that value in its brightest channel, scaled down whole so its color holds. What one bounce shows, a lamp in a mirror, a window on a glossy floor, the lamps a surface faces, is direct light and is never touched, so a scene with nothing to bounce light between renders the same bytes under any bound. The limit applies to each contribution, not to a sample's total, so a path that carries several bounces of ordinary light keeps all of it.
+
+It is a bias, and the frame says what it cost. The tracer sums, per pixel, the light the bound took off, and the still's recipe records the bound and the share of the frame's light it dropped (`"clamp":4,"clampDropped":0.0083`), to a hundredth of a percent; a sequence or video export ends with one line that says the mean over the run. A share of a percent or two is a cleaner picture whose brightest reflections dimmed by less than the grain they carried. Several percent is a darker one, and the bound should rise. 4 to 10 is the usual range, the higher end for a scene lit by a small sun through a mirror. With the dots gone, the spread the stop reads falls to what the pixel's ordinary samples have, so `--pt-noise` can settle such a scene where it could not before, and the two flags are made to run together. In code it is `PathTracing.maxBounceLight`.
+
+What the bound does depends on where a scene's grain comes from, and the recipe's share is the test. On a scene of two thousand polished beads mirroring a lit studio, a bound of 4 at 128 samples took 7.5 percent of the frame's light (9.3 at 2, 5.5 at 8) and moved the picture by a tenth of a decibel against a 1024-sample render, and under `--pt-noise 0.04` the pixels settled at the same mean of 86 with or without it. That scene's grain is one-bounce light, the studio's lamps caught by each bead's glossy finish, which the bound rightly leaves alone; a share of several percent beside no change in the grain is how a render says so, and what it wants is the count, the grain filter, or a better estimator for that light, not a bound.
+
 ### Determinism and the programmatic surface
 
 Sampling is a pure function of the pixel, the sample index, and the bounce. The filter is a pure function of what the sampling left behind. So the same command renders the same bytes, and a video export cannot flicker. You can also set the mode in code, with the same options the flag carries:
@@ -124,6 +138,12 @@ OllinApp.pathTracedExport = nil
 
 ```swift
 OllinApp.pathTracedExport = PathTracing(samplesPerPixel: 512, noiseThreshold: 0.01, minSamplesPerPixel: 32)
+```
+
+`maxBounceLight` is the flag's `--pt-clamp`, and 0, the default, is no bound:
+
+```swift
+OllinApp.pathTracedExport = PathTracing(samplesPerPixel: 256, noiseThreshold: 0.04, maxBounceLight: 4)
 ```
 
 ### See also

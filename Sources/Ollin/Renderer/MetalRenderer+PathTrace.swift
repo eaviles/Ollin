@@ -116,6 +116,9 @@ extension MetalRenderer {
         let adaptive = settings.isAdaptive
         let minSamples = adaptive ? settings.firstCheck : total
         let checkStep = PathTracing.checkStep
+        // The bound on what one bounce may add to a sample; the statistics layer
+        // then also sums, per pixel, the light the bound took off.
+        let bounded = settings.isBounded
 
         // The accumulation (radiance sum, hit count) and primary-depth layers.
         let accumDesc = MTLTextureDescriptor.texture2DDescriptor(
@@ -148,8 +151,8 @@ extension MetalRenderer {
         // dilation fills for the next dispatches to run over. Under a fixed count the
         // textures are a single pixel and the list a single entry, none of it touched.
         let statsDesc = MTLTextureDescriptor.texture2DDescriptor(
-            pixelFormat: .rgba32Float, width: adaptive ? width : 1,
-            height: adaptive ? height : 1, mipmapped: false)
+            pixelFormat: .rgba32Float, width: adaptive || bounded ? width : 1,
+            height: adaptive || bounded ? height : 1, mipmapped: false)
         statsDesc.usage = [.shaderRead, .shaderWrite]
         statsDesc.storageMode = .private
         let flagDesc = MTLTextureDescriptor.texture2DDescriptor(
@@ -207,7 +210,8 @@ extension MetalRenderer {
         let o0 = unproject(cx, cy, 0), o1 = unproject(cx + 1, cy, 0)
         let d0 = simd_normalize(unproject(cx, cy, 1) - o0)
         let d1 = simd_normalize(unproject(cx + 1, cy, 1) - o1)
-        pt.cone = SIMD4<Float>(simd_length(o1 - o0), simd_length(d1 - d0), 0, 0)
+        pt.cone = SIMD4<Float>(simd_length(o1 - o0), simd_length(d1 - d0),
+                               bounded ? Float(settings.maxBounceLight) : 0, 0)
         pt.meshLights = SIMD4<Float>(Float(scene.emissiveCount),
                                      max(scene.emissivePower, 1e-6),
                                      scene.anyTransmission ? 1 : 0,
@@ -338,15 +342,54 @@ extension MetalRenderer {
         if pathTraceReportsProgress {
             FileHandle.standardError.write(Data("\n".utf8))
         }
+        // What the bound took, read before the filter rewrites the accumulation.
+        let lightDropped = bounded
+            ? boundedLightShare(accum: accum, stats: stats, width: width, height: height) : nil
         if wantsGuides {
             encodePathTraceDenoise(accum: accum, guideColor: guideColor,
                                    guideSurface: guideSurface, width: width, height: height)
         }
         lastPathTraceReport = PathTraceReport(
             settings: settings, minSamplesPerPixel: minSamples,
-            meanSamplesPerPixel: adaptive ? samplesTaken / Double(max(1, width * height)) : nil)
+            meanSamplesPerPixel: adaptive ? samplesTaken / Double(max(1, width * height)) : nil,
+            lightDropped: lightDropped)
         return PathTracedLayer(color: accum, depth: depthTex, invSamples: 1 / Float(total),
                                counts: adaptive ? stats : nil)
+    }
+
+    /// The share of the frame's light the bounce bound took off: the luma the kernel
+    /// summed per pixel as it bounded each sample (the statistics layer's fourth
+    /// channel) against the luma the accumulation kept, both read back once the
+    /// trace is done. nil when the readback cannot be made.
+    private func boundedLightShare(accum: MTLTexture, stats: MTLTexture,
+                                   width: Int, height: Int) -> Double? {
+        let bytesPerRow = width * MemoryLayout<SIMD4<Float>>.stride
+        let length = bytesPerRow * height
+        guard let kept = device.makeBuffer(length: length, options: .storageModeShared),
+              let taken = device.makeBuffer(length: length, options: .storageModeShared),
+              let cb = commandQueue.makeCommandBuffer(),
+              let blit = cb.makeBlitCommandEncoder() else { return nil }
+        let size = MTLSize(width: width, height: height, depth: 1)
+        let origin = MTLOrigin(x: 0, y: 0, z: 0)
+        blit.copy(from: accum, sourceSlice: 0, sourceLevel: 0, sourceOrigin: origin, sourceSize: size,
+                  to: kept, destinationOffset: 0, destinationBytesPerRow: bytesPerRow,
+                  destinationBytesPerImage: length)
+        blit.copy(from: stats, sourceSlice: 0, sourceLevel: 0, sourceOrigin: origin, sourceSize: size,
+                  to: taken, destinationOffset: 0, destinationBytesPerRow: bytesPerRow,
+                  destinationBytesPerImage: length)
+        blit.endEncoding()
+        cb.commit()
+        cb.waitUntilCompleted()
+        let n = width * height
+        let k = kept.contents().bindMemory(to: SIMD4<Float>.self, capacity: n)
+        let t = taken.contents().bindMemory(to: SIMD4<Float>.self, capacity: n)
+        var keptLuma = 0.0, droppedLuma = 0.0
+        for i in 0 ..< n {
+            keptLuma += Double(0.2126 * k[i].x + 0.7152 * k[i].y + 0.0722 * k[i].z)
+            droppedLuma += Double(t[i].w)
+        }
+        let total = keptLuma + droppedLuma
+        return total > 0 ? droppedLuma / total : 0
     }
 
     /// Filter the grain out of the finished accumulation, in place, so the composite

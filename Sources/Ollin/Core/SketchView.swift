@@ -3201,8 +3201,10 @@ public enum OllinApp {
         // sketch that stops its loop can be written from it (see below).
         var lastRendered: (buffer: MTLBuffer, bytesPerRow: Int)?
         // The mean sample count each traced frame reached under adaptive sampling,
-        // for the one line that says what the run saved once it is done.
+        // and the share of its light each frame's bounce bound took, for the one
+        // line that says what the run saved, and what it cost, once it is done.
         var tracedMeans: [Double] = []
+        var tracedDrops: [Double] = []
         for k in 0..<(skipFrames + drawnFrames) {
             // A sketch that has stopped its loop (`noLoop()`) holds the frame it
             // last drew, as a window does; the rest of the file is that frame.
@@ -3311,6 +3313,9 @@ public enum OllinApp {
                 if let mean = renderer.lastPathTraceReport?.meanSamplesPerPixel {
                     tracedMeans.append(mean)
                 }
+                if let dropped = renderer.lastPathTraceReport?.lightDropped {
+                    tracedDrops.append(dropped)
+                }
 
                 // A single rewriting progress line: pct done · render throughput.
                 // It counts what the sketch draws, which is what the time is going
@@ -3354,6 +3359,11 @@ public enum OllinApp {
             let mean = tracedMeans.reduce(0, +) / Double(tracedMeans.count)
             print(String(format: "Ollin: path tracing settled at a mean of %.1f of %d samples a pixel (%.0f%% of the full count)",
                          mean, cap, mean * 100 / Double(max(cap, 1))))
+        }
+        if !tracedDrops.isEmpty, let bound = renderer.lastPathTraceReport?.settings.maxBounceLight {
+            let dropped = tracedDrops.reduce(0, +) / Double(tracedDrops.count)
+            print(String(format: "Ollin: the bounce bound of %g took %.2f%% of the light, on average over the run",
+                         bound, dropped * 100))
         }
         // A gap that could not be filled leaves the file short, and a short file
         // that says nothing is the worst way to find out.
@@ -3685,8 +3695,10 @@ public extension OllinApp {
             // `--pt-noise X` lets a pixel stop early once the grain it is left with
             // falls under X (0.01 is about one level in 255), the count then being
             // the most a pixel traces; `--pt-min N` is the fewest it takes before
-            // it may stop. Each wants a number, and a flag that is not one stops the
-            // run here rather than rendering something other than what was asked.
+            // it may stop; `--pt-clamp X` is the most light bounced twice or more may
+            // add to a sample, in units of white, a bias the recipe states the cost of. Each
+            // wants a number, and a flag that is not one stops the run here rather
+            // than rendering something other than what was asked.
             func number(_ flag: String, _ usage: String) -> Double? {
                 guard let j = args.firstIndex(of: flag) else { return nil }
                 guard j + 1 < args.count, let value = Double(args[j + 1]), value.isFinite, value >= 0 else {
@@ -3697,12 +3709,14 @@ public extension OllinApp {
             }
             let noise = number("--pt-noise", "--pt-noise X, X the grain a pixel may be left with (0.01 is about one level in 255)")
             let minSamples = number("--pt-min", "--pt-min N, N the fewest samples a pixel takes before it may stop")
+            let clamp = number("--pt-clamp", "--pt-clamp X, X the most light bounced twice or more may add to a sample, in units of white")
             pathTracedExport = PathTracing(
                 samplesPerPixel: n ?? PathTracing.tierSamples(for: renderQuality),
                 maxDepth: depth ?? 8,
                 denoises: args.contains("--denoise"),
                 noiseThreshold: noise ?? 0,
-                minSamplesPerPixel: minSamples.flatMap { $0.int(rounded: .toNearestOrEven) })
+                minSamplesPerPixel: minSamples.flatMap { $0.int(rounded: .toNearestOrEven) },
+                maxBounceLight: clamp ?? 0)
         }
         // `--seed N` reseeds the sketch before its `setup()` on every export
         // path, so a variation found in the inspector or on a contact sheet
