@@ -4274,20 +4274,20 @@
       "length": "10.0s",
       "seconds": 10.0,
       "frame": 480,
-      "motion": 5.193,
+      "motion": 5.215,
       "sound": false,
       "source": "70ec866e06c4ccc3",
       "rendered": "2026-10-04",
       "bytes": {
-        "loop": 1350387,
-        "loopSmall": 323236,
-        "still": 116222,
-        "stillSmall": 44288
+        "loop": 1350226,
+        "loopSmall": 319501,
+        "still": 112138,
+        "stillSmall": 43345
       },
-      "loop": "examples/Effects/Defocus/loop.mp4?v=711e3b63",
-      "loopSmall": "examples/Effects/Defocus/loop-640.mp4?v=821813a3",
-      "still": "examples/Effects/Defocus/still.jpg?v=bdc3f11c",
-      "stillSmall": "examples/Effects/Defocus/still-640.jpg?v=01845449",
+      "loop": "examples/Effects/Defocus/loop.mp4?v=9992634e",
+      "loopSmall": "examples/Effects/Defocus/loop-640.mp4?v=df80ae06",
+      "still": "examples/Effects/Defocus/still.jpg?v=a5029aee",
+      "stillSmall": "examples/Effects/Defocus/still-640.jpg?v=a8d798ae",
       "seed": 1
     },
     "Effects/DiffusionCurves": {

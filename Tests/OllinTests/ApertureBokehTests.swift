@@ -80,6 +80,42 @@ struct ApertureBokehTests {
         #expect(stated > round)
     }
 
+    /// The barrel changes the shape of a blur and never its light: a disc defocused
+    /// through the clipped opening carries the light the sharp disc had, as it does
+    /// through a round one. Dividing by the round opening's area, the gather let a
+    /// pinched disc carry only the clipped share of its light.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func theBarrelKeepsTheLight() throws {
+        let sharp = try LinearLuminanceFrame(of: BarrelDiscProbe.make(catsEye: 1, maxBlur: 0)).total
+        let round = try LinearLuminanceFrame(of: BarrelDiscProbe.make(catsEye: 0)).total
+        let clipped = try LinearLuminanceFrame(of: BarrelDiscProbe.make(catsEye: 1)).total
+        #expect(abs(round - sharp) < sharp * 0.01, "round \(round) against sharp \(sharp)")
+        #expect(abs(clipped - sharp) < sharp * 0.01, "clipped \(clipped) against sharp \(sharp)")
+    }
+
+    /// Under the barrel a near disc's silhouette still falls as softly as its blur
+    /// allows. With the clipped share of the light lost, the disc kept its whole color
+    /// inside its silhouette (normalized by its own weights) and covered the backdrop by
+    /// only that share outside: a step at the silhouette of everything near, growing
+    /// toward the frame's edges.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func theBarrelLeavesNoStepAtASilhouette() throws {
+        // The disc stands at (480, 300), so the barrel clips its opening along x, the
+        // line to the frame's middle, and the walk down the column through its center
+        // crosses the silhouette at y = 350 where the opening is nearly whole.
+        let frame = try LinearLuminanceFrame(of: BarrelDiscProbe.make(catsEye: 1))
+        let column = (300 ..< 420).map { frame.at(480, $0) }
+        let inside = column[0]
+        var steepest = 0.0
+        for i in 1 ..< column.count { steepest = max(steepest, abs(column[i] - column[i - 1]) / inside) }
+        // A disc blur of radius r spreads an edge over 2r, at most 2 / (pi r) a pixel.
+        // Allowed: two and a half times that for the opening's shortest reach, which
+        // the pinch leaves at (1 - p) of the blur, p being 0.9 of the way out to the corner.
+        let shortest = 40.0 * (1 - 0.9 * 180 / hypot(300.0, 300.0))
+        #expect(steepest < 2.5 * 2 / (.pi * shortest),
+                "the silhouette steps by \(steepest) a pixel; a blur of \(shortest) px falls by at most \(2 / (.pi * shortest))")
+    }
+
     // MARK: Readback helpers
 
     /// The largest difference between two images at any one channel, in 0...255. A mean
@@ -223,5 +259,37 @@ private final class SceneProbe: Sketch {
         }
         drawImage(scene.combined(with: scene.depth,
                                  .defocus(focus: 1, range: 0.05, maxBlur: 70)).image, 0, 0)
+    }
+}
+
+/// A white disc of radius 50 at (480, 300) over black, at the near end of its depth
+/// map with the backdrop at the far end, focus 0.5, range 0.05: the disc blurs by the
+/// full `maxBlur` (40 px, so it reaches 570 and never the frame's edge), and the
+/// barrel's pinch there is 0.9 of 180 / 424 at a `catsEye` of 1.
+private final class BarrelDiscProbe: Sketch {
+    var catsEye = 0.0
+    var maxBlur = 40.0
+
+    static func make(catsEye: Double, maxBlur: Double = 40) -> BarrelDiscProbe {
+        let probe = BarrelDiscProbe()
+        probe.catsEye = catsEye; probe.maxBlur = maxBlur
+        return probe
+    }
+
+    override var canvasSize: CanvasSize { .square(600) }
+    override func draw() {
+        noLoop()
+        compose {
+            layer {
+                background(.black)
+                noStroke(); fill(.white)
+                drawCircle(480, 300, 50)
+            }
+            .defocused(by: aside {
+                background(.white)
+                noStroke(); fill(.black)
+                drawCircle(480, 300, 50)
+            }, focus: 0.5, range: 0.05, maxBlur: maxBlur, catsEye: catsEye)
+        }
     }
 }

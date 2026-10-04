@@ -90,6 +90,29 @@ struct DefocusTests {
         #expect(graded >= 20)
     }
 
+    /// A flat disc in front of the focus over a far backdrop comes out as a lens shows
+    /// it: every point of it spread into a disc of its own blur, so its brightness at
+    /// each radius is the share of that blur disc lying on it, whole from one blur
+    /// inside the silhouette, half at the silhouette, gone one blur outside. Read at
+    /// the map's near end, where the disc blurs as much as the backdrop, and in
+    /// between, where it blurs less, since the composite sorts the two apart. The
+    /// profile is the mean over every angle, so a flaw has to be radial to show, which
+    /// an outline, a swelling, or a lost share of the light all are.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aDiscFollowsTheLensAtEveryRadius() throws {
+        for depth in [0.0, 0.2] {
+            let probe = DiscProbe.make(depth: depth)
+            let lo = probe.focus - probe.range
+            let blur = probe.maxBlur * min(1, (lo - depth) / lo)
+            let profile = try LinearLuminanceFrame(of: probe).radialProfile(center: (300, 300), maxRadius: 200)
+            for r in stride(from: 20, through: 200, by: 4) {
+                let expected = lensDiscCover(subject: probe.radius, kernel: blur, at: Double(r))
+                #expect(abs(profile[r] - expected) < 0.015,
+                        "depth \(depth), \(r) px out: \(profile[r]) against the lens's \(expected)")
+            }
+        }
+    }
+
     /// `maxBlur` 0 is a pass-through, so the op is free to leave in a sketch.
     @Test(.enabled(if: Snapshot.hasMetal))
     func zeroBlurPassesThrough() throws {
@@ -211,6 +234,37 @@ private final class NearEdgeProbe: Sketch {
                 noStroke(); fill(Color(white: 0.0))       // near
                 drawCircle(300, 300, 90)
             }, focus: 0.5, range: 0.05, maxBlur: 60)
+        }
+    }
+}
+
+/// A white disc of radius 100 at `depth` in the map over black at the far end, focus
+/// 0.5, range 0.05, maxBlur 48: at depth 0 the disc blurs by the full 48, at 0.2 by
+/// 26.7, and the backdrop by 48 either way.
+private final class DiscProbe: Sketch {
+    var depth = 0.0
+    let focus = 0.5, range = 0.05, maxBlur = 48.0, radius = 100.0
+
+    static func make(depth: Double) -> DiscProbe {
+        let probe = DiscProbe()
+        probe.depth = depth
+        return probe
+    }
+
+    override var canvasSize: CanvasSize { .square(600) }
+    override func draw() {
+        noLoop()
+        compose {
+            layer {
+                background(.black)
+                noStroke(); fill(.white)
+                drawCircle(300, 300, radius)
+            }
+            .defocused(by: aside {
+                background(.white)
+                noStroke(); fill(Color(white: depth))
+                drawCircle(300, 300, radius)
+            }, focus: focus, range: range, maxBlur: maxBlur)
         }
     }
 }

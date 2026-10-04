@@ -44,6 +44,7 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ### Fixed
 
+- **The barrel keeps the light.** A `.defocus` with a `catsEye` above zero let a blurred disc carry only the clipped opening's share of its light, so a near disc kept its whole color inside its silhouette and covered the backdrop by that share outside, a step at the silhouette and a halo too faint, growing toward the frame's edges (on the `Effects/Defocus` example's largest disc, a fifth of its brightness across four pixels). The gather and the sprite draw now divide by the area of the opening as the barrel leaves it, so the clipped opening changes a disc's shape and never its light, as the reference said. A `catsEye` of 0 is byte for byte what it was; a picture made with one above it moves.
 - **The traced lens focuses where `focusDistance` says.** The path tracer focused `focusDistance` past the near plane rather than from the eye, and placed its opening on the near plane, which widened the blur by `s / (s - near)`; the focus is now measured from the eye and the opening sits at the eye, as the canvas lens and the thin-lens formula have it. Every traced frame with an aperture changes.
 - **A mover behind instanced copies no longer streaks through them.** The motion pass that temporal anti-aliasing and motion blur read drew only plain meshes in front of a mover, so a `withMotion` mover behind a field of instanced copies wrote its motion through them. Every instanced draw now hides what stands behind it there.
 

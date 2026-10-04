@@ -35,6 +35,8 @@ struct DepthOfFieldTests {
     final class Lens: Sketch {
         enum Content {
             case bars([Double]), highlight(Double), subject(bar: Bool), ball(Double)
+            /// A flat white disc facing the eye, 100 px across at its distance.
+            case disc(Double)
             /// The hidden-surface scene: a white ball in front of the focus over a red floor
             /// that runs away behind it, the floor a closed box, an open plane seen from its
             /// back, or a raymarched slab.
@@ -103,6 +105,15 @@ struct DepthOfFieldTests {
                 // A white ball in front of the focus, its middle `d` from the eye.
                 let p = at(0, 0, d)
                 withState { translate(p.x, p.y, p.z); drawMesh(Mesh.sphere(radius: 0.5, segments: 96, rings: 48).glowing(1)) }
+            case .disc(let d):
+                // A flat disc facing the eye, 100 px across at `d`: a cylinder a hair
+                // thick, turned to stand on the view axis.
+                let p = at(0, 0, d)
+                let r = 100 * d / DepthOfFieldTests.F
+                withState {
+                    translate(p.x, p.y, p.z); rotateX(.pi / 2)
+                    drawMesh(Mesh.cylinder(radius: r, height: 0.002, segments: 256).glowing(1))
+                }
             case .ballOverFloor(let floor):
                 // The hidden-surface case: a white ball in front of the focus, its
                 // top a few pixels above the far edge of a red floor that runs away
@@ -339,6 +350,24 @@ struct DepthOfFieldTests {
             let cover = (ball - seen) / (ball - bar)
             #expect(abs(cover - expected(Double(x - 196))) < 0.08,
                     "at \(x): the bar covers \(cover), the lens \(expected(Double(x - 196)))")
+        }
+    }
+
+    /// A flat disc in front of the focus over the backdrop comes out as the lens shows
+    /// it: whole from one blur inside its silhouette, half at the silhouette, gone
+    /// one blur outside, the overlap of two circles in between (`lensDiscCover`).
+    /// The radial mean over every angle, against the disc's own inside level.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aDiscFollowsTheLensAtEveryRadius() throws {
+        let d = 3.5
+        let profile = try LinearLuminanceFrame(of: lens { $0.content = .disc(d) })
+            .radialProfile(center: (256, 256), maxRadius: 160)
+        let inside = (20 ... 40).reduce(0.0) { $0 + profile[$1] } / 21
+        let r = Self.coc(d)
+        for x in stride(from: 20, through: 160, by: 4) {
+            let expected = lensDiscCover(subject: 100, kernel: r, at: Double(x))
+            #expect(abs(profile[x] / inside - expected) < 0.015,
+                    "\(x) px out: \(profile[x] / inside) against the lens's \(expected)")
         }
     }
 

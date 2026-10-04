@@ -482,6 +482,35 @@ static inline float ollin_dof_aperture(float angle, float2 dir, float blades,
     return reach;
 }
 
+// The area of the opening as the barrel leaves it, as a share of the round opening's.
+// A bladed opening is cut at the round one's own area, so with no pinch the share is
+// one. Pinched, a round opening is the overlap of two discs pushed 2 p apart,
+// (2 acos p - 2 p sqrt(1 - p^2)) / pi of the whole; a bladed one is read by walking
+// its rim (the area inside a rim r(a) is the integral of r^2 / 2 over the angle).
+// Every density the gather and the sprite draw use divides by this area times the
+// blur squared, so a point's light is the same whatever shape its disc takes.
+// Divided by the round disc's area instead, a pinched disc carried only its clipped
+// share of the light: outside a near disc's silhouette the veil covered by that
+// share, while inside, normalized by its own weights, the disc kept its whole
+// color, which drew a step at every near silhouette away from the middle of the
+// frame (measured on a disc blurred by 35 px with a pinch of 0.27: 0.19 of its
+// brightness across four pixels at the silhouette, the halo outside a third too
+// faint; both gone with the share).
+static inline float ollin_dof_opening_share(float blades, float rotation, float2 fieldDir, float pinch) {
+    if (pinch <= 0.0) return 1.0;
+    if (blades < 3.0) {
+        return (2.0 * acos(pinch) - 2.0 * pinch * sqrt(max(0.0, 1.0 - pinch * pinch))) / M_PI_F;
+    }
+    const int steps = 64;
+    float sum = 0.0;
+    for (int i = 0; i < steps; i++) {
+        float a = (float(i) + 0.5) * (2.0 * M_PI_F / float(steps));
+        float r = ollin_dof_aperture(a, float2(cos(a), sin(a)), blades, rotation, fieldDir, pinch);
+        sum += r * r;
+    }
+    return sum / float(steps);   // (1/2) sum r^2 da over pi, with da = 2 pi / steps
+}
+
 // MARK: Depth of field on the canvas, through the camera's lens
 //
 // `depthOfField()` blurs the finished 3D frame by its own depth the way a thin lens
@@ -688,6 +717,10 @@ static inline float4 ollin_lens_gather(float2 uv, texture2d<float> base, texture
     float2 fieldDir = fieldLength > 1e-4 ? fromCenter / fieldLength : float2(1.0, 0.0);
     float pinch = saturate(catsEye) * saturate(fieldLength / max(length(halfLayer), 1e-4)) * 0.9;
     bool shaped = blades >= 3.0 || pinch > 0.0;
+    // The area of a disc of unit blur through this opening, pi for a whole one:
+    // what every density below divides by, so a tap's light is the same light
+    // whatever shape the barrel leaves its disc.
+    float openingArea = M_PI_F * ollin_dof_opening_share(blades, rotation, fieldDir, pinch);
 
     constexpr sampler whole(filter::nearest, address::clamp_to_edge);
     float4 center = cocMap.sample(whole, uv);
@@ -730,7 +763,7 @@ static inline float4 ollin_lens_gather(float2 uv, texture2d<float> base, texture
         float bd = ollin_lens_signed_blur(d.y, law) - ownSignedBlur;
         blurSlope = float2(abs(bl) < abs(br) ? -bl : br, abs(bu) < abs(bd) ? -bu : bd);
     }
-    float hereWeight = min(1.0, 1.0 / (M_PI_F * ownBlur * ownBlur));
+    float hereWeight = min(1.0, 1.0 / (openingArea * ownBlur * ownBlur));
     float4 front = float4(0.0); float frontWeight = 0.0;
     float4 own = here * hereWeight; float ownWeight = hereWeight;
     float4 back = float4(0.0); float backWeight = 0.0;
@@ -759,14 +792,14 @@ static inline float4 ollin_lens_gather(float2 uv, texture2d<float> base, texture
         float4 hCenter = hiddenCoc.sample(whole, uv);
         if (ollin_lens_farther(hCenter.y, ownDepth, law)) {
             float hBlur = max(hCenter.x, 0.5);
-            float hw = min(1.0, 1.0 / (M_PI_F * hBlur * hBlur));
+            float hw = min(1.0, 1.0 / (openingArea * hBlur * hBlur));
             hiddenBack += hidden.sample(whole, uv) * hw; hiddenBackWeight += hw;
             hiddenInverse += hw / max(hCenter.y, 1e-4);
         }
     }
     // How much of this pixel's own disc its surface takes, and how much shows what
     // stands behind it, as areas. What stands in front takes the rest and is the veil's.
-    float ownCover = min(1.0, M_PI_F * ownBlur * ownBlur), holeCover = 0.0;
+    float ownCover = min(1.0, openingArea * ownBlur * ownBlur), holeCover = 0.0;
     // Distances run between pixel centers: each tap is snapped to the pixel it reads,
     // and a tap that lands on this pixel is passed over (its light is `here`). A
     // sharp neighbor then never reaches across: measured from the spiral's own
@@ -839,7 +872,7 @@ static inline float4 ollin_lens_gather(float2 uv, texture2d<float> base, texture
                                                fieldDir, pinch), 1e-3);
         }
         float cover = smoothstep(distance - 0.5, distance + 0.5, blur);
-        float w = cover * tapArea / (M_PI_F * blur * blur);
+        float w = cover * tapArea / (openingArea * blur * blur);
         // The hidden layer at this tap, when the frame drew one and it lies behind
         // the tap's own surface. The backdrop hides nothing and is known to.
         float4 hTap = hiddenCoc.sample(whole, tapUV);
@@ -855,7 +888,7 @@ static inline float4 ollin_lens_gather(float2 uv, texture2d<float> base, texture
             float hole = smoothstep(distance - 0.5, distance + 0.5, ownBlur) * tapArea;
             holeCover += hole;
             holeInverse += hole / max(depth, 1e-4); holeWeight += hole;
-            float stand = kDofRevealWeight * hole / (M_PI_F * ownBlur * ownBlur);
+            float stand = kDofRevealWeight * hole / (openingArea * ownBlur * ownBlur);
             if (!known) w = max(w, stand);
             else if (stand > w) { revealBack += s * (stand - w); revealWeight += stand - w; }
         }
@@ -892,7 +925,7 @@ static inline float4 ollin_lens_gather(float2 uv, texture2d<float> base, texture
             // this pixel's own blur, the rule every tap keeps there.
             if (hFarther && !hereInFront) hBlur = min(hBlur, ownBlur);
             float hCover = smoothstep(distance - 0.5, distance + 0.5, hBlur);
-            float hw = hCover * tapArea / (M_PI_F * hBlur * hBlur);
+            float hw = hCover * tapArea / (openingArea * hBlur * hBlur);
             if (inFront && !hFarther) {
                 // Under a veil tap, the layer can be this pixel's own surface
                 // continuing behind the veil, or something nearer still.
@@ -1133,6 +1166,7 @@ struct LensSpriteOut {
     float spread [[flat]];        // the half-width of the disc's edge, in pixels
     float2 fieldDir [[flat]];
     float pinch [[flat]];         // the cat's eye at the sprite's center
+    float openingArea [[flat]];   // the area of a unit disc through that opening
 };
 
 // One quad per slot, as wide as the disc (stretched to the corners of a bladed iris)
@@ -1148,7 +1182,7 @@ vertex LensSpriteOut ollin_lens_sprites_vertex(uint vid [[vertex_id]], uint iid 
         out.position = float4(0.0, 0.0, 2.0, 1.0);   // clipped: no fragments
         out.local = float2(0.0);
         out.energy = float3(0.0); out.blur = 0.0; out.depth = 0.0; out.spread = 0.5;
-        out.fieldDir = float2(1.0, 0.0); out.pinch = 0.0;
+        out.fieldDir = float2(1.0, 0.0); out.pinch = 0.0; out.openingArea = M_PI_F;
         return out;
     }
     float2 texel = params[2].xy;
@@ -1173,12 +1207,14 @@ vertex LensSpriteOut ollin_lens_sprites_vertex(uint vid [[vertex_id]], uint iid 
     float fieldLength = length(fromCenter);
     out.fieldDir = fieldLength > 1e-4 ? fromCenter / fieldLength : float2(1.0, 0.0);
     out.pinch = saturate(params[4].z) * saturate(fieldLength / max(length(halfLayer), 1e-4)) * 0.9;
+    out.openingArea = M_PI_F * ollin_dof_opening_share(blades, params[4].y, out.fieldDir, out.pinch);
     return out;
 }
 
 // The disc: the gather's own coverage (the edge either side of the blur radius,
-// through the same iris) at the gather's own density, 1 / (pi r^2) of the source's
-// light per pixel. What stands nearer than the source covers the disc by the share
+// through the same iris) at the gather's own density, the source's light over the
+// disc's area (pi r^2 through a whole opening, the barrel's share of it through a
+// pinched one). What stands nearer than the source covers the disc by the share
 // of its own blur disc at this pixel: when this pixel's surface is the nearer one,
 // the share of a ring at that surface's blur around it that is nearer too (all of it
 // deep inside the surface, half at its edge, and all of it for a sharp surface, whose
@@ -1220,7 +1256,7 @@ fragment float4 ollin_lens_sprites_fragment(LensSpriteOut in [[stage_in]],
         }
         veil = float(nearer) / 9.0;
     }
-    float density = cover * (1.0 - veil) / (M_PI_F * in.blur * in.blur);
+    float density = cover * (1.0 - veil) / (in.openingArea * in.blur * in.blur);
     return float4(in.energy * density, 0.0);
 }
 
