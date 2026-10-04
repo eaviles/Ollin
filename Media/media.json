@@ -795,24 +795,26 @@
       "width": 1080
     },
     "3D/Effects/SceneDefocus": {
-      "bytes": {
-        "loop": 1060530,
-        "loopSmall": 206057,
-        "still": 48008,
-        "stillSmall": 18801
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
-      "length": "10s",
-      "loop": "examples/3D/Effects/SceneDefocus/loop.mp4?v=8be9d81c",
-      "loopSmall": "examples/3D/Effects/SceneDefocus/loop-640.mp4?v=a9f55175",
-      "motion": 16.132,
-      "rendered": "2026-09-10",
+      "length": "10.0s",
       "seconds": 10.0,
+      "frame": 480,
+      "motion": 16.207,
+      "sound": false,
       "source": "aeaaf3e51f1f615d",
-      "still": "examples/3D/Effects/SceneDefocus/still.jpg?v=d733d1b6",
-      "stillSmall": "examples/3D/Effects/SceneDefocus/still-640.jpg?v=7fa5dce5",
-      "width": 1080
+      "rendered": "2026-10-04",
+      "bytes": {
+        "loop": 1088655,
+        "loopSmall": 218730,
+        "still": 49322,
+        "stillSmall": 19564
+      },
+      "loop": "examples/3D/Effects/SceneDefocus/loop.mp4?v=694e5834",
+      "loopSmall": "examples/3D/Effects/SceneDefocus/loop-640.mp4?v=fb8af59d",
+      "still": "examples/3D/Effects/SceneDefocus/still.jpg?v=d69e35ec",
+      "stillSmall": "examples/3D/Effects/SceneDefocus/still-640.jpg?v=78c21d48",
+      "seed": 1
     },
     "3D/Effects/ScreenSpaceReflections": {
       "bytes": {
@@ -4267,24 +4269,26 @@
       "width": 1080
     },
     "Effects/Defocus": {
-      "bytes": {
-        "loop": 1201668,
-        "loopSmall": 293858,
-        "still": 116731,
-        "stillSmall": 42094
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
-      "length": "10s",
-      "loop": "examples/Effects/Defocus/loop.mp4?v=e5555f07",
-      "loopSmall": "examples/Effects/Defocus/loop-640.mp4?v=35568253",
-      "motion": 7.886,
-      "rendered": "2026-09-10",
+      "length": "10.0s",
       "seconds": 10.0,
+      "frame": 480,
+      "motion": 5.193,
+      "sound": false,
       "source": "70ec866e06c4ccc3",
-      "still": "examples/Effects/Defocus/still.jpg?v=72a97917",
-      "stillSmall": "examples/Effects/Defocus/still-640.jpg?v=acf95e95",
-      "width": 1080
+      "rendered": "2026-10-04",
+      "bytes": {
+        "loop": 1350387,
+        "loopSmall": 323236,
+        "still": 116222,
+        "stillSmall": 44288
+      },
+      "loop": "examples/Effects/Defocus/loop.mp4?v=711e3b63",
+      "loopSmall": "examples/Effects/Defocus/loop-640.mp4?v=821813a3",
+      "still": "examples/Effects/Defocus/still.jpg?v=bdc3f11c",
+      "stillSmall": "examples/Effects/Defocus/still-640.jpg?v=01845449",
+      "seed": 1
     },
     "Effects/DiffusionCurves": {
       "bytes": {
