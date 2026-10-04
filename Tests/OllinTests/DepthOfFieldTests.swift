@@ -13,9 +13,12 @@ import Testing
 /// focus), keeping its light; a highlight opens into an even disc rather than a
 /// sharp core in a halo; a subject in focus keeps its edge against a blurred
 /// background; a defocused foreground turns into a veil over the subject behind
-/// it; the band `focusRange` holds stays sharp and `maxBlur` caps the rest; the
-/// pass runs beside temporal anti-aliasing and motion blur; a pinhole or an
-/// orthographic camera leaves the frame alone; and an export repeats itself.
+/// it; what a blurred foreground hides is read from a second layer of the scene
+/// rather than guessed from what shows beside it, and that layer is drawn only
+/// when something stands in the near field and only where it stands; the band
+/// `focusRange` holds stays sharp and `maxBlur` caps the rest; the pass runs
+/// beside temporal anti-aliasing and motion blur; a pinhole or an orthographic
+/// camera leaves the frame alone; and an export repeats itself.
 @Suite
 @MainActor
 struct DepthOfFieldTests {
@@ -30,7 +33,7 @@ struct DepthOfFieldTests {
     static func coc(_ d: Double, focus: Double = s) -> Double { R * F * abs(1 / focus - 1 / d) }
 
     final class Lens: Sketch {
-        enum Content { case bars([Double]), highlight(Double), subject(bar: Bool), ball(Double) }
+        enum Content { case bars([Double]), highlight(Double), subject(bar: Bool), ball(Double), ballOverFloor }
         var content = Content.bars([3, 6.1, 11])
         var aperture = DepthOfFieldTests.R
         var orthographic = false
@@ -75,6 +78,19 @@ struct DepthOfFieldTests {
                 // A white ball in front of the focus, its middle `d` from the eye.
                 let p = at(0, 0, d)
                 withState { translate(p.x, p.y, p.z); drawMesh(Mesh.sphere(radius: 0.5, segments: 96, rings: 48).glowing(1)) }
+            case .ballOverFloor:
+                // The hidden-surface case: a white ball in front of the focus, its
+                // top a few pixels above the far edge of a red floor that runs away
+                // behind it, so in the pinhole view the backdrop stands above the
+                // ball's top and the floor is hidden behind it. A lens looking past
+                // the ball's top sees that hidden floor.
+                let p = at(0, 0, 3.5)
+                withState { translate(p.x, p.y - 0.45, p.z); drawMesh(Mesh.sphere(radius: 0.5, segments: 96, rings: 48).glowing(1)) }
+                fill(Color(red: 1, green: 0, blue: 0))
+                withState {
+                    translate(0, -0.3, 6 - 12.25)
+                    drawMesh(Mesh.box(width: 12, height: 0.02, depth: 15.5).glowing(1))
+                }
             case .subject(let bar):
                 // A checker far behind, a ball in focus, and a bar near the eye.
                 let tile = 32.0, d = 16.0
@@ -112,6 +128,11 @@ struct DepthOfFieldTests {
     }
 
     private func render(_ sketch: Lens, frame: Int = 0) throws -> Frame {
+        try renderKeepingRenderer(sketch, frame: frame).frame
+    }
+
+    /// The frame, and the renderer that drew it (for what it reports of the pass).
+    private func renderKeepingRenderer(_ sketch: Lens, frame: Int = 0) throws -> (frame: Frame, renderer: MetalRenderer) {
         let renderer = try OllinApp.headlessRenderer(for: sketch)
         OllinApp.isRenderingHeadless = true
         defer { OllinApp.isRenderingHeadless = false }
@@ -122,7 +143,7 @@ struct DepthOfFieldTests {
         let halfs = linear.color.contents().bindMemory(to: Float16.self, capacity: n * 4)
         var rgb = [SIMD3<Float>](repeating: .zero, count: n)
         for i in 0 ..< n { rgb[i] = SIMD3(Float(halfs[i * 4]), Float(halfs[i * 4 + 1]), Float(halfs[i * 4 + 2])) }
-        return Frame(size: linear.width, rgb: rgb)
+        return (Frame(size: linear.width, rgb: rgb), renderer)
     }
 
     private func lens(_ configure: (Lens) -> Void = { _ in }) -> Lens {
@@ -251,6 +272,57 @@ struct DepthOfFieldTests {
         for x in 1 ..< profile.count { steepest = max(steepest, abs(profile[x] - profile[x - 1]) / inside) }
         let r = Self.coc(d)
         #expect(steepest < 2.5 * 2 / (.pi * r), "the cover steps by \(steepest) a pixel; a blur of \(r) px falls by at most \(2 / (.pi * r))")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aBlurredBallShowsTheFloorHiddenBehindIt() throws {
+        // The ball's top band stands over the backdrop in the pinhole view, with
+        // the red floor hidden behind it. Read from the frame alone, what shows
+        // through the ball there is the backdrop; read from the hidden layer, it is
+        // the floor, and the band carries red the ball (white) and the backdrop
+        // (black) cannot give. The floor's far edge projects 9 px below the center
+        // and the ball's top 9 px above it.
+        let sharp = try render(lens { $0.content = .ballOverFloor; $0.blurs = false })
+        let (f, renderer) = try renderKeepingRenderer(lens { $0.content = .ballOverFloor })
+        #expect(renderer.hiddenLayerDrawnLastFrame, "the frame has a near-field ball and drew no hidden layer")
+        func redness(_ frame: Frame) -> Double {
+            var sum = 0.0, n = 0.0
+            for y in 247 ... 265 {
+                for x in 216 ... 296 {
+                    let c = frame.rgb[y * frame.size + x]
+                    sum += Double(c.x - c.y); n += 1
+                }
+            }
+            return sum / n
+        }
+        // The pinhole band is the white ball alone (no red beyond white's own).
+        #expect(abs(redness(sharp)) < 0.01, "the pinhole band reads \(redness(sharp)) red over green")
+        let seen = redness(f)
+        #expect(seen > 0.05, "the floor hidden behind the ball's top shows \(seen) red over green through it")
+        // What the lens shows above the ball is still the backdrop and the ball's
+        // own veil, never the floor: the hidden layer joins only under the near field.
+        var above = 0.0, m = 0.0
+        for y in 180 ... 200 { for x in 216 ... 296 { let c = f.rgb[y * f.size + x]; above += Double(c.x - c.y); m += 1 } }
+        #expect(abs(above / m) < 0.01, "above the ball reads \(above / m) red over green")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func theHiddenLayerIsDrawnOnlyWhenAndWhereTheNearFieldIs() throws {
+        // Nothing in front of the focus: no second pass at all.
+        let (_, far) = try renderKeepingRenderer(lens { $0.content = .bars([6.1, 11]) })
+        #expect(!far.hiddenLayerDrawnLastFrame, "a frame with nothing in the near field drew the hidden layer")
+        // A ball in front of the focus: the pass, over the ball's own pixels and a
+        // margin, not the whole frame (the ball is 88 px across at its distance).
+        let (_, near) = try renderKeepingRenderer(lens { $0.content = .ball(3.5) })
+        #expect(near.hiddenLayerDrawnLastFrame, "a frame with a near-field ball drew no hidden layer")
+        let extent = near.hiddenLayerExtentLastFrame
+        #expect(extent.width < Self.size / 2 && extent.height < Self.size / 2,
+                "the layer covered \(extent.width) by \(extent.height) of \(Self.size)")
+        #expect(extent.x <= 256 - 88 && extent.x + extent.width >= 256 + 88,
+                "the layer's columns \(extent.x) to \(extent.x + extent.width) miss the ball")
+        // The pinhole camera draws none either (the pass belongs to the lens).
+        let (_, pinhole) = try renderKeepingRenderer(lens { $0.content = .ball(3.5); $0.aperture = 0 })
+        #expect(!pinhole.hiddenLayerDrawnLastFrame)
     }
 
     // MARK: The settings

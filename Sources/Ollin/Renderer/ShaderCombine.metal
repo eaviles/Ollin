@@ -794,21 +794,31 @@ fragment float4 ollin_fx_lens_dof_neighbormax(PresentOut in [[stage_in]],
 // and the background behind it invents a blur size neither has and throws the line's
 // color that far (measured: a glow 10 px out from a line in focus).
 //
-// What a blurred foreground lets through is a guess: the frame holds one surface per
-// pixel, and what stands behind a foreground is missing from it. The guess is the
-// scene that shows around the foreground, within its blur. A lens looking past the
-// top of a ball at a floor hidden behind it sees that floor; this sees what shows
-// beside the ball instead.
+// What a blurred foreground hides is read from the hidden layer when the frame drew
+// one: the scene drawn a second time keeping only what lies behind the first layer
+// (`encodeHiddenLayerPass`), so a lens looking past the top of a ball at a floor
+// hidden behind it finds that floor, as the lens does, rather than the backdrop
+// beside the ball. The layer is known at a tap when it lies behind the tap's own
+// surface; a kind drawn without the peel stands there as itself, and a frame with no
+// second pass binds the frame itself, so both read as unknown and the tap stands in
+// for what it hides as before. A known hidden tap lands for a pixel in front of the
+// focus, under a tap in front of the pixel and under the pixel's own surface's taps,
+// where the cover share decides how much of the layer shows. A pixel behind the
+// focus keeps the averaged model and reads nothing of the layer: adding a hidden
+// surface there dilutes a nearer one's light. The backdrop hides nothing.
 
 // How much the scene behind a foreground counts where its own blur does not reach
-// the pixel. Against a layered thin-lens reference (a blurred bar over a checker), a
-// quarter kept the inside of the bar continuous with the pixels beside it: RMS error
-// 0.035, against 0.037 at a tenth and 0.042 at full weight, which shows the edge.
+// the pixel, with no hidden layer to read. Against a layered thin-lens reference (a
+// blurred bar over a checker), a quarter kept the inside of the bar continuous with
+// the pixels beside it: RMS error 0.035, against 0.037 at a tenth and 0.042 at full
+// weight, which shows the edge.
 constant float kDofRevealWeight = 0.25;
 // How far the spiral moves from pixel to pixel, in tap spacings (see the gather).
 constant float kDofJitter = 1.0;
 
 static inline float4 ollin_lens_gather(float2 uv, texture2d<float> base, texture2d<float> cocMap,
+                                       texture2d<float> hidden, texture2d<float> hiddenCoc,
+                                       bool hasHidden, float far,
                                        sampler samp, float focus, float lensScale, float reach,
                                        float2 texel, float budget, float bladesParam) {
     const float goldenAngle = 2.399963229728653;
@@ -840,11 +850,48 @@ static inline float4 ollin_lens_gather(float2 uv, texture2d<float> base, texture
     // This pixel's own light, over its own disc (all of it while the disc is
     // smaller than the pixel), in its own surface's layer.
     bool hereInFront = ownDepth < focus;
-    float ownLensBlur = lensScale * abs(1.0 / focus - 1.0 / max(ownDepth, 1e-4));
+    // The lens's own blur before `maxBlur` caps it, signed (negative in front of the
+    // focus), which is affine in the inverse of the distance: a plane extrapolates it
+    // exactly across the screen, so a tap on the same plane as this pixel is told
+    // from another surface by how far its blur lands from the plane's own line.
+    // The line's slope is the gentler of this pixel's two one-sided differences on
+    // each axis, so a pixel beside an edge takes its own surface's slope, not the jump.
+    float ownSignedBlur = lensScale * (1.0 / focus - 1.0 / max(ownDepth, 1e-4));
+    float ownLensBlur = abs(ownSignedBlur);
+    float2 blurSlope = float2(0.0);
+    if (hereInFront) {
+        float4 l = cocMap.sample(whole, uv - float2(texel.x, 0.0));
+        float4 r = cocMap.sample(whole, uv + float2(texel.x, 0.0));
+        float4 u = cocMap.sample(whole, uv - float2(0.0, texel.y));
+        float4 d = cocMap.sample(whole, uv + float2(0.0, texel.y));
+        float bl = lensScale * (1.0 / focus - 1.0 / max(l.y, 1e-4)) - ownSignedBlur;
+        float br = lensScale * (1.0 / focus - 1.0 / max(r.y, 1e-4)) - ownSignedBlur;
+        float bu = lensScale * (1.0 / focus - 1.0 / max(u.y, 1e-4)) - ownSignedBlur;
+        float bd = lensScale * (1.0 / focus - 1.0 / max(d.y, 1e-4)) - ownSignedBlur;
+        blurSlope = float2(abs(bl) < abs(br) ? -bl : br, abs(bu) < abs(bd) ? -bu : bd);
+    }
     float hereWeight = min(1.0, 1.0 / (M_PI_F * ownBlur * ownBlur));
     float4 front = float4(0.0); float frontWeight = 0.0;
     float4 own = here * hereWeight; float ownWeight = hereWeight;
     float4 back = float4(0.0); float backWeight = 0.0;
+    // The hidden layer's light landing behind this pixel, kept apart from the holes'
+    // own until the loop is done: it joins what the holes show only when it stands in
+    // front of what the holes show themselves (below). With it, the mean inverse
+    // distance of each, by the weight it landed with.
+    float4 hiddenBack = float4(0.0); float hiddenBackWeight = 0.0, hiddenInverse = 0.0;
+    float holeInverse = 0.0, holeWeight = 0.0;
+    // What this pixel's own surface hides, when it is a blurred foreground and the
+    // frame drew the hidden layer: the layer's own light over its own disc, in what
+    // stands behind (its share of the pixel is the cover below).
+    if (hasHidden && hereInFront) {
+        float4 hCenter = hiddenCoc.sample(whole, uv);
+        if (hCenter.y > ownDepth * 1.01) {
+            float hBlur = max(hCenter.x, 0.5);
+            float hw = min(1.0, 1.0 / (M_PI_F * hBlur * hBlur));
+            hiddenBack += hidden.sample(whole, uv) * hw; hiddenBackWeight += hw;
+            hiddenInverse += hw / max(hCenter.y, 1e-4);
+        }
+    }
     // How much of this pixel's own disc its surface takes, and how much shows what
     // stands behind it, as areas. What stands in front takes the rest and is the veil's.
     float ownCover = min(1.0, M_PI_F * ownBlur * ownBlur), holeCover = 0.0;
@@ -894,16 +941,21 @@ static inline float4 ollin_lens_gather(float2 uv, texture2d<float> base, texture
         bool inFront = nearer && depth < focus;
         // A surface behind this pixel is hidden by it past this pixel's own blur.
         if (farther && !hereInFront) blur = min(blur, ownBlur);
-        // Behind a foreground, a farther tap is another surface only when its blur
-        // differs too: a surface turning away, as a ball does at its edge, changes
-        // distance fast and its blur hardly at all, and counted as another surface
-        // it would show through its own edge. The blurs compared are the lens's own,
-        // before `maxBlur` caps them, which would make a near bar and the backdrop
-        // behind it the same.
+        // Behind a foreground, a tap at another distance is another surface only
+        // when its blur lands off the line this pixel's own surface draws across the
+        // screen (the slope above): a surface turning away, as a ball does at its
+        // edge, changes distance fast and its blur hardly at all, and a floor running
+        // toward the eye changes both fast but along its own line; counted as another
+        // surface, either would show what stands behind it through its own body.
+        // The blurs compared are the lens's own, before `maxBlur` caps them, which
+        // would make a near bar and the backdrop behind it the same.
         bool behind = farther;
-        if (hereInFront && farther) {
-            float lensBlur = lensScale * abs(1.0 / focus - 1.0 / max(depth, 1e-4));
-            behind = abs(lensBlur - ownLensBlur) > max(1.0, 0.1 * ownLensBlur);
+        if (hereInFront && (farther || nearer)) {
+            float lensBlur = lensScale * (1.0 / focus - 1.0 / max(depth, 1e-4));
+            float expected = ownSignedBlur + dot(blurSlope, offset);
+            bool another = abs(lensBlur - expected) > max(1.0, 0.1 * ownLensBlur);
+            behind = farther && another;
+            inFront = inFront && another;
         }
         float distance = length(offset);
         if (blades >= 3.0) {
@@ -913,17 +965,22 @@ static inline float4 ollin_lens_gather(float2 uv, texture2d<float> base, texture
         }
         float cover = smoothstep(distance - 0.5, distance + 0.5, blur);
         float w = cover * tapArea / (M_PI_F * blur * blur);
+        // The hidden layer at this tap, when the frame drew one and it lies behind
+        // the tap's own surface. The backdrop hides nothing and is known to.
+        float4 hTap = hiddenCoc.sample(whole, tapUV);
+        bool known = hasHidden && (hTap.y > tap.y * 1.01 || tap.y >= far * 0.99);
         if (behind && hereInFront) {
             // This pixel is a blurred foreground, and what stands behind it is hidden.
             // Whatever of the scene behind shows within this pixel's own blur is a
             // hole in its surface's cover. The scene behind lands as it would
             // anywhere, by its own blur; past that, and as far as this pixel's own
-            // blur reaches, it stands in at a fraction of the weight, so the nearest
-            // of it decides what shows through and the middle of a wide foreground
-            // still finds something.
+            // blur reaches, it stands in at a fraction of the weight when nothing is
+            // known of what is hidden, so the nearest of it decides what shows
+            // through and the middle of a wide foreground still finds something.
             float hole = smoothstep(distance - 0.5, distance + 0.5, ownBlur) * tapArea;
             holeCover += hole;
-            w = max(w, kDofRevealWeight * hole / (M_PI_F * ownBlur * ownBlur));
+            holeInverse += hole / max(depth, 1e-4); holeWeight += hole;
+            if (!known) w = max(w, kDofRevealWeight * hole / (M_PI_F * ownBlur * ownBlur));
         }
         if (inFront) { front += s * w; frontWeight += w; }
         else if (behind || !hereInFront) { back += s * w; backWeight += w; }
@@ -931,6 +988,53 @@ static inline float4 ollin_lens_gather(float2 uv, texture2d<float> base, texture
             own += s * w; ownWeight += w;
             ownCover += smoothstep(distance - 0.5, distance + 0.5, ownBlur) * tapArea;
         }
+        // The hidden tap lands for a pixel in front of the focus, under a tap in
+        // front of the pixel or under its own surface, where the cover share decides
+        // how much of it shows. Behind the focus it stays out: that side averages
+        // its layers by density, and a hidden surface added there dilutes a nearer
+        // one's light (a far bar kept 93% of its light with the backdrop behind it
+        // joining, over 95% without). It is sorted by distance like any other
+        // tap, with no turning-away rule, since the peel already kept the first
+        // layer's own surface out of it.
+        bool hiddenLands = known && hereInFront && !behind;
+        if (hiddenLands) {
+            float4 hs = hidden.sample(whole, tapUV);
+            float hDepth = hTap.y;
+            float hBlur = max(hTap.x, 0.5);
+            float hCover = smoothstep(distance - 0.5, distance + 0.5, hBlur);
+            float hw = hCover * tapArea / (M_PI_F * hBlur * hBlur);
+            bool hNearer = hDepth < ownDepth * 0.99, hFarther = hDepth > ownDepth * 1.01;
+            if (inFront && !hFarther) {
+                // Under a veil tap, the layer can be this pixel's own surface
+                // continuing behind the veil, or something nearer still.
+                if (hNearer && hDepth < focus) { front += hs * hw; frontWeight += hw; }
+                else {
+                    own += hs * hw; ownWeight += hw;
+                    ownCover += smoothstep(distance - 0.5, distance + 0.5, ownBlur) * tapArea;
+                }
+            } else {
+                // Under this pixel's own surface, the layer is behind that surface
+                // whatever its distance says (a board's lit side just under the
+                // next board's top reads within a percent of it), so it is never
+                // the surface itself.
+                hiddenBack += hs * hw; hiddenBackWeight += hw;
+                hiddenInverse += hw / max(hDepth, 1e-4);
+            }
+        }
+    }
+    // What a hole in this pixel's surface shows is what a lens ray through it meets
+    // first: the hidden layer behind the surface when that lies in front of the
+    // holes' own content (a ball's top against the backdrop, with the floor hidden
+    // behind it), or the holes' own content when that comes first (a gap between
+    // floor boards shows the next board's side; the backdrop under the boards is
+    // behind it and never reached). Decided by the mean inverse distance of each,
+    // with a soft edge, so the layer joins the holes' light only where it is what
+    // they show.
+    if (hiddenBackWeight > 1e-6) {
+        float meanHole = holeWeight > 1e-6 ? holeInverse / holeWeight : 0.0;
+        float meanHidden = hiddenInverse / hiddenBackWeight;
+        float shows = meanHole < 1e-6 ? 1.0 : smoothstep(meanHole * 0.9, meanHole * 1.1, meanHidden);
+        back += hiddenBack * shows; backWeight += hiddenBackWeight * shows;
     }
     float4 surface;
     if (hereInFront) {
@@ -990,10 +1094,15 @@ fragment float4 ollin_fx_lens_dof_median(PresentOut in [[stage_in]],
 // reaches keeps itself, and so does one whose neighborhood holds a single color (a
 // plain backdrop, most often): every tap would read that color, and any weighting of
 // it is itself.
+// Textures 3 and 4 are the hidden layer and its blur map (the prepass run over its
+// depth), or the frame and its own map again when no second pass ran, which
+// params[3].x says; the gather then reads every hidden tap as unknown.
 fragment float4 ollin_fx_lens_depth_of_field(PresentOut in [[stage_in]],
                                              texture2d<float> base [[texture(0)]],
                                              texture2d<float> cocMap [[texture(1)]],
                                              texture2d<float> reachMap [[texture(2)]],
+                                             texture2d<float> hidden [[texture(3)]],
+                                             texture2d<float> hiddenCoc [[texture(4)]],
                                              sampler samp [[sampler(0)]],
                                              constant float4 *params [[buffer(0)]]) {
     float s = params[1].x;
@@ -1006,7 +1115,8 @@ fragment float4 ollin_fx_lens_depth_of_field(PresentOut in [[stage_in]],
     constexpr sampler whole(filter::nearest, address::clamp_to_edge);
     float reach = min(tiles.x, max(cocMap.sample(whole, in.uv).x, tiles.z));
     if (reach < 0.5 || tiles.y < 1e-4) return base.sample(samp, in.uv);
-    return ollin_lens_gather(in.uv, base, cocMap, samp, s, params[0].w * params[0].z,
+    return ollin_lens_gather(in.uv, base, cocMap, hidden, hiddenCoc, params[3].x > 0.5, params[0].y,
+                             samp, s, params[0].w * params[0].z,
                              reach + 1.0, texel, budget, params[2].w);
 }
 

@@ -239,7 +239,9 @@ struct DepthSceneOut {
 fragment DepthSceneOut ollin_depthscene_fragment(ImageOut in [[stage_in]],
                                                  texture2d<float> colorTex [[texture(0)]],
                                                  texture2d<float> depthTex [[texture(1)]],
-                                                 sampler samp [[sampler(0)]]) {
+                                                 sampler samp [[sampler(0)]],
+                                                 constant OllinPeel &peel [[buffer(10), function_constant(kOllinPeel)]],
+                                                 depth2d<float> peelDepth [[texture(29), function_constant(kOllinPeel)]]) {
     DepthSceneOut out;
     out.color = colorTex.sample(samp, in.uv);   // sRGB texture → already linear, premultiplied
     if (in.tint.a > 0.5) {
@@ -253,6 +255,11 @@ fragment DepthSceneOut ollin_depthscene_fragment(ImageOut in [[stage_in]],
         // by default), then map to clip-space depth (Metal NDC, 0 near … 1 far).
         float v = linearToSrgb(depthTex.sample(samp, in.uv).rrr).x;
         out.depth = (in.tint.r > 0.5) ? (1.0 - v) : v;
+    }
+    // The hidden layer keeps only what lies behind the first layer, tested on the
+    // depth the map gives (a picture has no slope of its own).
+    if (kOllinPeel && ollin_peel_rejects(in.position.xy, out.depth, 1.0, peelDepth, peel)) {
+        discard_fragment();
     }
     return out;
 }

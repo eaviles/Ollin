@@ -250,6 +250,40 @@ struct GeometryBatch {
     /// it was the identity, so the encode keeps the flag-gated shader branch
     /// untaken and the replay is byte-identical to the recording.
     var retainedTransform: matrix_float3x3?
+    /// The world-space box around everything a `.mesh3D` batch or a list-placed
+    /// `.meshInstanced` batch drew (each mesh's own box through the matrix that
+    /// placed it, unioned as the batch grows), so a pass that cares where the
+    /// frame's geometry stands can ask without reading the vertices: the canvas
+    /// depth of field draws its hidden layer only when a mesh reaches into the
+    /// near field, and only over the pixels those meshes cover. `nil` where no
+    /// box is known (a kind placed on the GPU, a replayed batch), which such a
+    /// pass reads as "anywhere".
+    var worldBounds: Box3?
+}
+
+/// `box` through `m` (the box around its eight moved corners), unioned onto
+/// `bounds` where there is one.
+func unionWorldBounds(_ bounds: Box3?, _ box: Box3, through m: simd_float4x4?) -> Box3 {
+    var lo = Vector3(.infinity, .infinity, .infinity), hi = -lo
+    for i in 0 ..< 8 {
+        let c = Vector3(i & 1 == 0 ? box.min.x : box.max.x,
+                        i & 2 == 0 ? box.min.y : box.max.y,
+                        i & 4 == 0 ? box.min.z : box.max.z)
+        let p: Vector3
+        if let m {
+            let w = m * SIMD4<Float>(Float(c.x), Float(c.y), Float(c.z), 1)
+            p = Vector3(Double(w.x), Double(w.y), Double(w.z))
+        } else {
+            p = c
+        }
+        lo = Vector3(Swift.min(lo.x, p.x), Swift.min(lo.y, p.y), Swift.min(lo.z, p.z))
+        hi = Vector3(Swift.max(hi.x, p.x), Swift.max(hi.y, p.y), Swift.max(hi.z, p.z))
+    }
+    guard let bounds else { return Box3(min: lo, max: hi) }
+    return Box3(min: Vector3(Swift.min(bounds.min.x, lo.x), Swift.min(bounds.min.y, lo.y),
+                             Swift.min(bounds.min.z, lo.z)),
+                max: Vector3(Swift.max(bounds.max.x, hi.x), Swift.max(bounds.max.y, hi.y),
+                             Swift.max(bounds.max.z, hi.z)))
 }
 
 extension GeometryKind {
@@ -3769,6 +3803,13 @@ final class Drawer {
         }
         let m = modelMatrix
         let nm = modelIsIdentity ? matrix_identity_float3x3 : m.normalMatrix
+        // Where this mesh stands in the world, onto the batch's box (see
+        // `GeometryBatch.worldBounds`).
+        if !batches.isEmpty {
+            let last = batches.count - 1
+            batches[last].worldBounds = unionWorldBounds(batches[last].worldBounds, mesh.bounds,
+                                                         through: modelIsIdentity ? nil : m)
+        }
         // The vertex color: for a wireframe, the edge (stroke) color; otherwise the
         // current fill tinted by the material's base color (white = the fill unchanged,
         // so a material-less mesh's color is exactly the fill, and a base-color-only
@@ -3882,14 +3923,34 @@ final class Drawer {
         let vertexRange = appendInstancedBaseMesh(mesh)
         let iStart = meshInstances.count
         meshInstances.reserveCapacity(iStart + instances.count)
+        // Where the copies stand in the world (see `GeometryBatch.worldBounds`): the
+        // base mesh's bounding sphere through each placement, which costs one
+        // matrix product a copy where the eight corners would cost eight.
+        let base = mesh.bounds
+        let center = base.center
+        let radius = base.size.lengthSquared.squareRoot() * 0.5
+        var lo = Vector3(.infinity, .infinity, .infinity), hi = -lo
         for inst in instances {
             var gi = OllinMeshInstance()
             gi.model = modelIsIdentity ? inst.matrix : modelMatrix * inst.matrix
             gi.color = inst.color?.simd4 ?? SIMD4<Float>(1, 1, 1, 1)
             meshInstances.append(gi)
+            let mm = gi.model
+            let c = mm * SIMD4<Float>(Float(center.x), Float(center.y), Float(center.z), 1)
+            func axis(_ c: SIMD4<Float>) -> Float { simd_length(SIMD3<Float>(c.x, c.y, c.z)) }
+            let scale = Double(Swift.max(axis(mm.columns.0), Swift.max(axis(mm.columns.1), axis(mm.columns.2))))
+            let r = radius * scale
+            lo = Vector3(Swift.min(lo.x, Double(c.x) - r), Swift.min(lo.y, Double(c.y) - r),
+                         Swift.min(lo.z, Double(c.z) - r))
+            hi = Vector3(Swift.max(hi.x, Double(c.x) + r), Swift.max(hi.y, Double(c.y) + r),
+                         Swift.max(hi.z, Double(c.z) + r))
         }
         appendInstancedMeshBatch(mesh, vertexRange: vertexRange,
                                  instanceStart: iStart, instanceCount: instances.count)
+        if let last = batches.indices.last, batches[last].kind == .meshInstanced,
+           batches[last].meshInstanceStart == iStart, batches[last].meshInstanceCount == instances.count {
+            batches[last].worldBounds = Box3(min: lo, max: hi)
+        }
         recordInstancedMover(vertexRange: vertexRange, instanceStart: iStart,
                              instanceCount: instances.count)
     }

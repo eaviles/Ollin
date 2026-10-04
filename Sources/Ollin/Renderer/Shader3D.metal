@@ -183,7 +183,9 @@ vertex PointOut ollin_point_vertex(uint vid [[vertex_id]],
     return out;
 }
 
-fragment float4 ollin_point_fragment(PointOut in [[stage_in]]) {
+fragment float4 ollin_point_fragment(PointOut in [[stage_in]],
+                                     constant OllinPeel &peel [[buffer(10), function_constant(kOllinPeel)]],
+                                     depth2d<float> peelDepth [[texture(29), function_constant(kOllinPeel)]]) {
     float fillCov, strokeCov;
     diskCoverage(in.local, float2(in.radius), 0.0, 0.0, 0.0, fillCov, strokeCov);
     float a = in.color.a * fillCov;
@@ -193,6 +195,11 @@ fragment float4 ollin_point_fragment(PointOut in [[stage_in]]) {
     // rectangles where dense dots overlap. Discarding writes neither color nor
     // depth, so only the disc itself participates in occlusion.
     if (a <= 0.0) { discard_fragment(); }
+    // The hidden layer keeps only what lies behind the first layer (a splat faces
+    // the eye, so it has no slope of its own).
+    if (kOllinPeel && ollin_peel_rejects(in.position.xy, in.position.z, 1.0, peelDepth, peel)) {
+        discard_fragment();
+    }
     // Linearize the sRGB tone and emit straight-alpha into the linear float target.
     return float4(srgbToLinear(in.color.rgb), a);
 }
@@ -292,7 +299,9 @@ struct LineDepthOut {
 // distances, and a pulled depth set at its corners and blended across it comes
 // out short on one side. The centerline's view depth under the pixel is exact
 // (the ribbon is planar in view space), so the depth written here is too.
-fragment LineDepthOut ollin_line_depth_fragment(LineOut in [[stage_in]]) {
+fragment LineDepthOut ollin_line_depth_fragment(LineOut in [[stage_in]],
+                                                constant OllinPeel &peel [[buffer(10), function_constant(kOllinPeel)]],
+                                                depth2d<float> peelDepth [[texture(29), function_constant(kOllinPeel)]]) {
     float4 rows = in.depthRows;
     float w = rows.z * in.viewDepth + rows.w;       // the centerline's distance (1 if orthographic)
     float reach = min(length(in.offset) + kLineSampleReach, kLineDepthReach);
@@ -301,6 +310,11 @@ fragment LineDepthOut ollin_line_depth_fragment(LineOut in [[stage_in]]) {
     LineDepthOut out;
     out.color = ollin_line_color(in);
     out.depth = clamp((rows.x * z + rows.y) / (rows.z * z + rows.w), 0.0, 1.0);
+    // The hidden layer keeps only what lies behind the first layer, tested on the
+    // depth the line writes (a ribbon faces the eye, so it has no slope of its own).
+    if (kOllinPeel && ollin_peel_rejects(in.position.xy, out.depth, 1.0, peelDepth, peel)) {
+        discard_fragment();
+    }
     return out;
 }
 
@@ -5668,7 +5682,9 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
                                     texture2d<float> sceneBehindTex [[texture(27)]],
                                     // Its resolved depth (tex 28), the lens walk's ground; the same stand-in
                                     // rule.
-                                    depth2d<float> sceneBehindDepthTex [[texture(28)]]
+                                    depth2d<float> sceneBehindDepthTex [[texture(28)]],
+                                    constant OllinPeel &peel [[buffer(10), function_constant(kOllinPeel)]],
+                                    depth2d<float> peelDepth [[texture(29), function_constant(kOllinPeel)]]
 #if OLLIN_RT_SHADOWS
                                     , instance_acceleration_structure shadowAccel [[buffer(3)]]
                                     // The flat mesh buffer + its per-geometry base-vertex offsets, so a
@@ -5694,6 +5710,13 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
                                     , texture2d<float> causticsTex [[texture(25)]]
 #endif
                                     ) {
+    // The hidden layer keeps only what lies behind the first layer, and never a
+    // face turned away from the eye (the inside of a closed shape).
+    if (kOllinPeel && ollin_peel_rejects(in.position.xy, in.position.z,
+            dot(normalize(in.normal), normalize(light.cameraPosition.xyz - in.worldPos)),
+            peelDepth, peel)) {
+        discard_fragment();
+    }
     // Linearize the surface color so the present pass's sRGB re-encode lands the
     // on-screen pixel at the fill color, then shade + shadow it through the shared
     // tail (which returns it flat unchanged when no light is set).
@@ -6059,7 +6082,9 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
                                              texture2d<float> sceneBehindTex [[texture(27)]],
                                              // Its resolved depth (tex 28), the lens walk's ground; the same stand-in
                                              // rule.
-                                             depth2d<float> sceneBehindDepthTex [[texture(28)]]
+                                             depth2d<float> sceneBehindDepthTex [[texture(28)]],
+                                             constant OllinPeel &peel [[buffer(10), function_constant(kOllinPeel)]],
+                                             depth2d<float> peelDepth [[texture(29), function_constant(kOllinPeel)]]
 #if OLLIN_RT_SHADOWS
                                              , instance_acceleration_structure shadowAccel [[buffer(3)]]
                                              , const device OllinMeshVertex *meshVerts [[buffer(6)]]
@@ -6075,6 +6100,13 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
                                              , texture2d<float> causticsTex [[texture(25)]]
 #endif
                                              ) {
+    // The hidden layer keeps only what lies behind the first layer, and never a
+    // face turned away from the eye (the inside of a closed shape).
+    if (kOllinPeel && ollin_peel_rejects(in.position.xy, in.position.z,
+            dot(normalize(in.normal), normalize(light.cameraPosition.xyz - in.worldPos)),
+            peelDepth, peel)) {
+        discard_fragment();
+    }
     // The base-color texture is sRGB, so the sample comes back already linear and
     // premultiplied. The milestone contract is opaque textures, so rgb is the
     // straight base color; tint it by the linearized baked vertex color
@@ -6266,6 +6298,8 @@ fragment float4 ollin_mesh_nm_fragment(MeshTexturedNMOut in [[stage_in]],
                                        // Its resolved depth (tex 28), the lens walk's ground; the same stand-in
                                        // rule.
                                        depth2d<float> sceneBehindDepthTex [[texture(28)]],
+                                       constant OllinPeel &peel [[buffer(10), function_constant(kOllinPeel)]],
+                                       depth2d<float> peelDepth [[texture(29), function_constant(kOllinPeel)]],
                                        texture2d<float> normalMapTex [[texture(17)]]
 #if OLLIN_RT_SHADOWS
                                        , instance_acceleration_structure shadowAccel [[buffer(3)]]
@@ -6282,6 +6316,13 @@ fragment float4 ollin_mesh_nm_fragment(MeshTexturedNMOut in [[stage_in]],
                                        , texture2d<float> causticsTex [[texture(25)]]
 #endif
                                        ) {
+    // The hidden layer keeps only what lies behind the first layer, and never a
+    // face turned away from the eye (the inside of a closed shape).
+    if (kOllinPeel && ollin_peel_rejects(in.position.xy, in.position.z,
+            dot(normalize(in.normal), normalize(light.cameraPosition.xyz - in.worldPos)),
+            peelDepth, peel)) {
+        discard_fragment();
+    }
     float4 tex = ollin_sample_wrapped(baseColorTex, samp, in.uv, mat.uvWrap);
     float3 base = tex.rgb * srgbToLinear(in.color.rgb);
     float alpha = in.color.a * tex.a;
@@ -6612,6 +6653,8 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
                                          // Its resolved depth (tex 28), the lens walk's ground; the same stand-in
                                          // rule.
                                          depth2d<float> sceneBehindDepthTex [[texture(28)]],
+                                         constant OllinPeel &peel [[buffer(10), function_constant(kOllinPeel)]],
+                                         depth2d<float> peelDepth [[texture(29), function_constant(kOllinPeel)]],
                                          texture2d<float> normalMapTex [[texture(17)]],
                                          texture2d<float> mrTex [[texture(18)]],
                                          texture2d<float> occlusionTex [[texture(19)]],
@@ -6636,6 +6679,13 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
                                          , texture2d<float> causticsTex [[texture(25)]]
 #endif
                                          ) {
+    // The hidden layer keeps only what lies behind the first layer, and never a
+    // face turned away from the eye (the inside of a closed shape).
+    if (kOllinPeel && ollin_peel_rejects(in.position.xy, in.position.z,
+            dot(normalize(in.normal), normalize(light.cameraPosition.xyz - in.worldPos)),
+            peelDepth, peel)) {
+        discard_fragment();
+    }
     // Parallax occlusion first: with a height map bound (and the tangent basis
     // the drawer verified), shift the uv every map below reads to where the
     // eye ray meets the carved relief. Gated on `mat.parallax`, zero on every
@@ -6916,6 +6966,8 @@ struct MeshMatcapOut {
     float4 position [[position]];
     float2 uv;        // sphere lookup from the view-space normal
     float4 color;     // baked tint (fill); alpha = opacity
+    float3 viewNormal;   // the view-space normal and position, for the hidden layer's
+    float3 viewPos;      // facing test (the fragment has no camera of its own)
 };
 
 vertex MeshMatcapOut ollin_mesh_matcap_vertex(uint vid [[vertex_id]],
@@ -6923,10 +6975,13 @@ vertex MeshMatcapOut ollin_mesh_matcap_vertex(uint vid [[vertex_id]],
                                               constant Uniforms3D &u [[buffer(2)]]) {
     OllinMeshVertex v = verts[vid];
     MeshMatcapOut out;
-    out.position = u.projection * (u.view * float4(v.position.xyz, 1.0));
+    float4 viewPos = u.view * float4(v.position.xyz, 1.0);
+    out.position = u.projection * viewPos;
+    out.viewPos = viewPos.xyz;
     // View-space normal: the world normal rotated into camera space (upper 3×3 of the
-    // view matrix — a rigid camera transform, so no normal matrix needed).
+    // view matrix, a rigid camera transform, so no normal matrix needed).
     float3 vn = normalize(float3x3(u.view[0].xyz, u.view[1].xyz, u.view[2].xyz) * v.normal.xyz);
+    out.viewNormal = vn;
     // Sphere lookup: xy → 0…1, with v flipped for the top-left texture origin (a normal
     // pointing up should read the top of the matcap).
     out.uv = float2(vn.x, -vn.y) * 0.5 + 0.5;
@@ -6936,7 +6991,16 @@ vertex MeshMatcapOut ollin_mesh_matcap_vertex(uint vid [[vertex_id]],
 
 fragment float4 ollin_mesh_matcap_fragment(MeshMatcapOut in [[stage_in]],
                                            texture2d<float> matcap [[texture(0)]],
-                                           sampler samp [[sampler(0)]]) {
+                                           sampler samp [[sampler(0)]],
+                                           constant OllinPeel &peel [[buffer(10), function_constant(kOllinPeel)]],
+                                           depth2d<float> peelDepth [[texture(29), function_constant(kOllinPeel)]]) {
+    // The hidden layer keeps only what lies behind the first layer, and never a
+    // face turned away from the eye (the inside of a closed shape); the eye is the
+    // view space's origin.
+    if (kOllinPeel && ollin_peel_rejects(in.position.xy, in.position.z,
+            dot(normalize(in.viewNormal), normalize(-in.viewPos)), peelDepth, peel)) {
+        discard_fragment();
+    }
     // The matcap is an sRGB texture, so the sample comes back already linear; tint it by
     // the linearized fill and output straight-alpha linear into the float target.
     float4 tex = matcap.sample(samp, in.uv);

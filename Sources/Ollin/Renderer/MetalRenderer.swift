@@ -138,6 +138,12 @@ final class MetalRenderer {
         /// A clip-write pipeline (the stencil-clipping push/pop): rasterizes into the
         /// stencil only, with the color write mask empty and blending off.
         var isClipWrite = false
+        /// The hidden layer's variant of a 3D pipeline (the canvas depth of field's
+        /// second pass): the same shaders built with the peel constant set, so the
+        /// fragment takes the first layer's depth and discards what is not behind
+        /// it. Part of the key because it is a different compiled function; every
+        /// ordinary pipeline leaves it false.
+        var peel = false
         /// A mesh pipeline (Metal 3 [[object]]/[[mesh]] stages) when `mesh` is
         /// non-empty: `object` + `mesh` name the two stages, `vertex` is unused
         /// (""), and the factory builds an MTLMeshRenderPipelineDescriptor.
@@ -1157,6 +1163,21 @@ final class MetalRenderer {
     var sceneBehindDepthResolveTex: MTLTexture?
     var sceneBehindResolveTex: MTLTexture?
     var sceneBehindSize = (width: 0, height: 0)
+
+    /// The hidden layer of the canvas depth of field (`encodeHiddenLayerPass`): the
+    /// 3D scene drawn once more keeping only what lies behind the first layer, into
+    /// the main pass's MSAA color format and depth, both resolved for the gather to
+    /// read. Cached by size, rewritten whole each frame a near-field blur is on
+    /// screen. `.private`, so nothing round-trips to the CPU.
+    var hiddenLayerMSAATex: MTLTexture?
+    var hiddenLayerDepthTex: MTLTexture?
+    var hiddenLayerDepthResolveTex: MTLTexture?
+    var hiddenLayerResolveTex: MTLTexture?
+    var hiddenLayerSize = (width: 0, height: 0)
+    /// Whether the last frame drew the hidden layer, and the pixels it drew (the
+    /// scissor the near field's bounds gave it); what the tests read.
+    var hiddenLayerDrawnLastFrame = false
+    var hiddenLayerExtentLastFrame = MTLScissorRect(x: 0, y: 0, width: 0, height: 0)
 
     /// How far into the frame the scene-behind read fades out, in uv. A screen-space
     /// lookup knows only what the camera drew, so rather than smearing the border pixel
@@ -2279,6 +2300,22 @@ final class MetalRenderer {
                sceneBehind: sceneBehind,
                taaJitter: taaJitter)
         geomEncoder.endEncoding()
+        // The hidden layer for the depth of field: the scene drawn once more
+        // keeping only what lies behind the first layer, over the pixels the near
+        // field covers, after the main pass whose resolved depth it peels against
+        // and under the same jitter. nil, and the gather keeps its guess, when
+        // nothing reaches into the near field.
+        let hiddenLayer = encodeHiddenLayerPass(
+            drawer, into: commandBuffer, viewport: viewport, buffers: buffers,
+            width: renderWidth, height: renderHeight, firstDepth: mainDepthResolve,
+            shadowMap: renderedShadow.twoD, shadowCube: renderedShadow.cube,
+            shadowAccel: renderedShadow.accel,
+            reflectAccel: renderedShadow.reflectAccel,
+            reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
+            halfResField: halfResField, halfResFieldShadow: halfResFieldShadow,
+            deferredReflection: deferredReflection,
+            contactShadow: contactShadow, gi: gi, caustics: caustics,
+            sceneBehind: sceneBehind, taaJitter: taaJitter)
 
         // The subsurface-scattering diffusion (returns `resolve` untouched when no
         // material asked for it), then the temporal-AA accumulation resolve (which
@@ -2329,6 +2366,7 @@ final class MetalRenderer {
         // and the resolve's clamp never fights a blur it did not see) and before
         // the motion blur (a moving defocused shape streaks as one soft shape).
         let focused = applyDepthOfField(drawer, resolved: stabilized, depth: mainDepthResolve,
+                                        hidden: hiddenLayer,
                                         into: commandBuffer, width: width, height: height,
                                         pointScale: viewport.y > 0 ? Float(height) / viewport.y : 1,
                                         pooled: true)
@@ -2949,6 +2987,23 @@ final class MetalRenderer {
                                      into: commandBuffer)
                 swap(&accFront, &accBack)
             }
+            // The hidden layer for the depth of field: the scene drawn once more
+            // keeping only what lies behind the first layer, over the pixels the near
+            // field covers, after the main pass whose resolved depth it peels against
+            // and under the same jitter. nil, and the gather keeps its guess, when
+            // nothing reaches into the near field.
+            let hiddenLayer = encodeHiddenLayerPass(
+                drawer, into: commandBuffer, viewport: viewport, buffers: buffers,
+                width: width, height: height, firstDepth: sceneDepthResolve,
+                shadowMap: renderedShadow.twoD, shadowCube: renderedShadow.cube,
+                shadowAccel: renderedShadow.accel,
+                reflectAccel: renderedShadow.reflectAccel,
+                reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
+                halfResField: halfResField, halfResFieldShadow: halfResFieldShadow,
+                deferredReflection: deferredReflection,
+                contactShadow: contactShadow, gi: gi, caustics: caustics,
+                pathTraced: pathTraced,
+                sceneBehind: sceneBehind, taaJitter: taaJitterNDC(index: taaSamples - 1, width: width, height: height))
             // Down to the canvas first (nothing at all at scale 1), so everything
             // below measures in canvas pixels exactly as it does at 1x.
             let sampled = encodeSupersampleResolve(accFront, scale: scale,
@@ -2959,6 +3014,7 @@ final class MetalRenderer {
             // depth, at most half a pixel off, which the average's own tolerance
             // already accepts. Untouched when the blur is off.
             let focused = applyDepthOfField(drawer, resolved: sampled, depth: sceneDepthResolve,
+                                            hidden: hiddenLayer,
                                             into: commandBuffer, width: outWidth, height: outHeight,
                                             pointScale: 1, pooled: false)
             let blurred = applyMotionBlur(drawer, resolved: focused, depth: sceneDepthResolve,
@@ -2997,6 +3053,23 @@ final class MetalRenderer {
                    pathTraced: pathTraced,
                    sceneBehind: sceneBehind)
             encoder.endEncoding()
+            // The hidden layer for the depth of field: the scene drawn once more
+            // keeping only what lies behind the first layer, over the pixels the near
+            // field covers, after the main pass whose resolved depth it peels against
+            // and under the same jitter. nil, and the gather keeps its guess, when
+            // nothing reaches into the near field.
+            let hiddenLayer = encodeHiddenLayerPass(
+                drawer, into: commandBuffer, viewport: viewport, buffers: buffers,
+                width: width, height: height, firstDepth: sceneDepthResolve,
+                shadowMap: renderedShadow.twoD, shadowCube: renderedShadow.cube,
+                shadowAccel: renderedShadow.accel,
+                reflectAccel: renderedShadow.reflectAccel,
+                reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
+                halfResField: halfResField, halfResFieldShadow: halfResFieldShadow,
+                deferredReflection: deferredReflection,
+                contactShadow: contactShadow, gi: gi, caustics: caustics,
+                pathTraced: pathTraced,
+                sceneBehind: sceneBehind, taaJitter: .zero)
 
             // Tone-map the resolved float frame (after the subsurface-scattering
             // diffusion, the motion blur, and the whole-frame postProcess filters)
@@ -3010,6 +3083,7 @@ final class MetalRenderer {
                                                    width: outWidth, height: outHeight,
                                                    into: commandBuffer)
             let focused = applyDepthOfField(drawer, resolved: sampled, depth: sceneDepthResolve,
+                                            hidden: hiddenLayer,
                                             into: commandBuffer, width: outWidth, height: outHeight,
                                             pointScale: 1, pooled: false)
             let blurred = applyMotionBlur(drawer, resolved: focused, depth: sceneDepthResolve,
@@ -3236,6 +3310,22 @@ final class MetalRenderer {
                    gi: gi,
                    taaJitter: taaJitter)
             encoder.endEncoding()
+            // The hidden layer for the depth of field: the scene drawn once more
+            // keeping only what lies behind the first layer, over the pixels the near
+            // field covers, after the main pass whose resolved depth it peels against
+            // and under the same jitter. nil, and the gather keeps its guess, when
+            // nothing reaches into the near field.
+            let hiddenLayer = encodeHiddenLayerPass(
+                drawer, into: cb, viewport: viewport, buffers: buffers,
+                width: width, height: height, firstDepth: mainDepthResolve,
+                shadowMap: renderedShadow.twoD, shadowCube: renderedShadow.cube,
+                shadowAccel: renderedShadow.accel,
+                reflectAccel: renderedShadow.reflectAccel,
+                reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
+                halfResField: halfResField, halfResFieldShadow: halfResFieldShadow,
+                deferredReflection: deferredReflection,
+                contactShadow: contactShadow, gi: gi, caustics: nil,
+                sceneBehind: nil, taaJitter: taaJitter)
             let scattered = applySubsurfaceScattering(drawer, resolved: resolveTexture, meshBuffer: meshBuf,
                                                       into: cb, width: width, height: height, pooled: false,
                                                       taaJitter: taaJitter)
@@ -3248,6 +3338,7 @@ final class MetalRenderer {
                                              jitter: taaJitter, into: cb,
                                              width: width, height: height)
             let focused = applyDepthOfField(drawer, resolved: stabilized, depth: mainDepthResolve,
+                                            hidden: hiddenLayer,
                                             into: cb, width: width, height: height,
                                             pointScale: 1, pooled: false)
             let blurred = applyMotionBlur(drawer, resolved: focused,

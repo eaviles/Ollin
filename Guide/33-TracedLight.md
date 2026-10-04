@@ -453,7 +453,7 @@ camera(lens)
 depthOfField()
 ```
 
-The nearest ball turns into a veil over the floor, and the lamps along the back open into hexagons. `focusRange` holds a band sharp either side of the focus, for a whole subject in focus. The blur runs after the edge average and before the motion blur, so the lamplit room could carry all three. The frame holds one surface per pixel, so what a blurred foreground hides is guessed from what shows around it.
+The nearest ball turns into a veil over the floor, and the lamps along the back open into hexagons. `focusRange` holds a band sharp either side of the focus, for a whole subject in focus. The blur runs after the edge average and before the motion blur, so the lamplit room could carry all three. What a blurred foreground hides is read from a second drawing of the scene behind it. The nearest ball's halo over the horizon then carries the floor the ball hides, not the dark above it.
 
 ### A lens made of samples: depth of field from light
 

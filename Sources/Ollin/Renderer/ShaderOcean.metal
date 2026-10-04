@@ -204,7 +204,14 @@ vertex OceanOut ollin_ocean_vertex(uint vid [[vertex_id]],
 fragment float4 ollin_ocean_fragment(OceanOut in [[stage_in]],
                                      constant OllinOceanParams &o [[buffer(0)]],
                                      texture2d<float> field [[texture(0)]],
-                                     texture2d<float> environment [[texture(1)]]) {
+                                     texture2d<float> environment [[texture(1)]],
+                                     constant OllinPeel &peel [[buffer(10), function_constant(kOllinPeel)]],
+                                     depth2d<float> peelDepth [[texture(29), function_constant(kOllinPeel)]]) {
+    // The hidden layer keeps only what lies behind the first layer (the water's
+    // slope is read below, per pixel, so the test takes none).
+    if (kOllinPeel && ollin_peel_rejects(in.position.xy, in.position.z, 1.0, peelDepth, peel)) {
+        discard_fragment();
+    }
     constexpr sampler wrapped(filter::linear, address::repeat);
     constexpr sampler equirectSampler(filter::linear, mip_filter::linear,
                                       s_address::repeat, t_address::clamp_to_edge);

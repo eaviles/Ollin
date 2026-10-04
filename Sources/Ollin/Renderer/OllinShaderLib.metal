@@ -1838,3 +1838,38 @@ static inline float2 ollin_hopalong(float2 p, float a, float b, float c) {
     _p = (STATE) + (0.5 * _h) * _k2;            float3 _k3 = (DERIV); \
     _p = (STATE) + _h * _k3;                    float3 _k4 = (DERIV); \
     (STATE) += (_h / 6.0) * (_k1 + 2.0 * _k2 + 2.0 * _k3 + _k4); }
+
+// MARK: - The hidden layer's peel
+//
+// The canvas depth of field draws the 3D scene a second time keeping only what lies
+// behind the first layer, so its gather can read what a blurred foreground hides
+// instead of guessing it from what shows beside the foreground. A pipeline built
+// with the constant set takes the first layer's resolved depth at fragment texture
+// 29 and the rule at fragment buffer 10, and a fragment that fails the test is
+// discarded before it shades. Left unset (every ordinary pipeline), the constant
+// reads false and the arguments and the test are not there at all.
+constant bool kOllinPeelSet [[function_constant(15)]];
+constant bool kOllinPeel = is_function_constant_defined(kOllinPeelSet) && kOllinPeelSet;
+
+// Whether a fragment at `pixel` writing `depthValue` (its depth-buffer value) stays
+// out of the hidden layer. It stays out when it is the first layer's own surface: no
+// farther behind the first layer's distance than a relative tolerance, plus how far
+// its own slope carries its depth across `rule.x` pixels, since a surface seen nearly
+// edge-on changes depth by many pixels' worth inside one pixel and the first layer's
+// nearest sample sits anywhere in the pixel, so the surface's own fragments read
+// behind it by that much. `facing` is the cosine between the surface normal and the
+// direction to the eye, or 1 where the surface has none; a face turned away is a
+// closed shape's inside, which a lens looking past the shape never sees, and stays
+// out when `rule.y` says so.
+static inline bool ollin_peel_rejects(float2 pixel, float depthValue, float facing,
+                                      depth2d<float> first, constant OllinPeel &peel) {
+    if (peel.rule.y > 0.5 && facing <= 0.0) return true;
+    float z = first.read(uint2(pixel));
+    float near = peel.lens.x, far = peel.lens.y;
+    float dFirst = near * far / max(1e-6, far - z * (far - near));
+    float dHere = near * far / max(1e-6, far - depthValue * (far - near));
+    float f = clamp(abs(facing), 0.05, 1.0);
+    float slope = sqrt(max(0.0, 1.0 - f * f)) / f;           // depth per pixel, in pixels
+    float tolerance = dFirst * peel.lens.w + peel.rule.x * (dHere / peel.lens.z) * slope;
+    return dHere <= dFirst + tolerance;
+}

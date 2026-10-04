@@ -223,8 +223,30 @@ extension MetalRenderer {
                                 premultiplied: key.premultiplied, blend: key.blend,
                                 depthFormat: key.depthFormat, singleSample: key.singleSample,
                                 stencilFormat: key.stencilFormat, clipWrite: key.isClipWrite,
-                                colorFormat: key.colorFormat)
+                                colorFormat: key.colorFormat, peel: key.peel)
     }
+
+    /// The fragment function a geometry pipeline draws through: the plain one, or,
+    /// for the hidden layer's variant, the same function built with the peel
+    /// constant (`kOllinPeelSet`, index 15) set, which brings its peel arguments
+    /// and its test into being. Every geometry fragment is made through the
+    /// specializing call, with no value set for the plain one: a function that
+    /// names a function constant at all, even only to ask whether it is defined,
+    /// cannot be built the plain way (Metal refuses the pipeline), and a function
+    /// that names none builds the same either way.
+    private func fragmentFunction(named name: String, peel: Bool,
+                                  using library: MTLLibrary) throws -> MTLFunction {
+        let constants = MTLFunctionConstantValues()
+        if peel {
+            var on = true
+            constants.setConstantValue(&on, type: .bool, index: MetalRenderer.peelConstantIndex)
+        }
+        return try library.makeFunction(name: name, constantValues: constants)
+    }
+
+    /// The function constant index the hidden layer's peel is set at
+    /// (`kOllinPeelSet` in OllinShaderLib.metal).
+    static let peelConstantIndex = 15
 
     /// A shadow pass pipeline. Two shapes share this factory: the **2D map**
     /// (directional/spot, `ollin_mesh_shadow_vertex`) is depth-only — no fragment, no
@@ -325,11 +347,12 @@ extension MetalRenderer {
                               singleSample: Bool = false,
                               stencilFormat: MTLPixelFormat? = nil,
                               clipWrite: Bool = false,
-                              colorFormat: MTLPixelFormat? = nil) throws -> MTLRenderPipelineState {
-        guard let vertexFunction = library.makeFunction(name: vertex),
-              let fragmentFunction = library.makeFunction(name: fragment) else {
+                              colorFormat: MTLPixelFormat? = nil,
+                              peel: Bool = false) throws -> MTLRenderPipelineState {
+        guard let vertexFunction = library.makeFunction(name: vertex) else {
             throw RendererError.shaderFunctions
         }
+        let fragmentFunction = try self.fragmentFunction(named: fragment, peel: peel, using: library)
 
         let descriptor = MTLRenderPipelineDescriptor()
         descriptor.vertexFunction = vertexFunction
@@ -379,10 +402,11 @@ extension MetalRenderer {
     private func makeMeshPipeline(_ key: PipelineKey,
                                   using library: MTLLibrary) throws -> MTLRenderPipelineState {
         guard let objectFunction = library.makeFunction(name: key.object),
-              let meshFunction = library.makeFunction(name: key.mesh),
-              let fragmentFunction = library.makeFunction(name: key.fragment) else {
+              let meshFunction = library.makeFunction(name: key.mesh) else {
             throw RendererError.shaderFunctions
         }
+        let fragmentFunction = try self.fragmentFunction(named: key.fragment, peel: key.peel,
+                                                         using: library)
         let descriptor = MTLMeshRenderPipelineDescriptor()
         descriptor.objectFunction = objectFunction
         descriptor.meshFunction = meshFunction

@@ -108,6 +108,21 @@ typedef struct {
                                // `viewport.y * 1` is exact). .y unused.
 } Uniforms3D;
 
+// The hidden layer's peel (the canvas depth of field's second layer): the test a
+// fragment passes to join the scene drawn once more behind the first layer. Bound
+// at fragment buffer index 10, beside the first layer's resolved depth at fragment
+// texture 29, only to the pipelines built with the peel constant set
+// (`kOllinPeel` in OllinShaderLib.metal), so every other pipeline is untouched.
+typedef struct {
+    simd_float4 lens;   // x near, y far, z the focal length in this pass's pixels,
+                        // w the relative tolerance: a fragment this close behind
+                        // the first layer is the first layer's own surface
+    simd_float4 rule;   // x the pixels a fragment's own slope may carry its depth
+                        // across before it counts as behind, y 1 when a face turned
+                        // away from the eye stays out (a closed shape's inside),
+                        // zw unused
+} OllinPeel;
+
 // The mover-velocity pass (temporal AA): per-draw constants bound at vertex
 // buffer index 3, beside the frame's `Uniforms3D` at 2. `previousViewProjection`
 // is last frame's unjittered view·projection (the temporal history's own

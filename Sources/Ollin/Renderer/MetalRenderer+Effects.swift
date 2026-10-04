@@ -2955,7 +2955,15 @@ extension MetalRenderer {
                         // The canvas's own color format when it is not the shared
                         // linear one (a single-precision accumulation surface). A
                         // layer pass takes its format from `passTarget` instead.
-                        canvasColorFormat: MTLPixelFormat? = nil) {
+                        canvasColorFormat: MTLPixelFormat? = nil,
+                        // The hidden layer's pass (the canvas depth of field's
+                        // second layer): the first layer's resolved depth and the
+                        // peel's rule. Every 3D kind with a peel variant draws
+                        // through it, keeping only what lies behind that depth; a
+                        // kind without one draws as it does on the canvas, and the
+                        // live grid and a mesh's ink line stay out. nil (every
+                        // other pass) leaves the loop unchanged.
+                        peel: (depth: MTLTexture, params: OllinPeel)? = nil) {
         let vertices = drawer.vertices
         let instances = drawer.sdfInstances
         let imageVertices = drawer.imageVertices
@@ -3077,6 +3085,10 @@ extension MetalRenderer {
             encoder.setVertexBytes(&u3, length: MemoryLayout<Uniforms3D>.stride, index: 2)
             uniforms3D = u3   // the raymarch fragment also reads it (the ray + depth + step budget)
         }
+        // The hidden layer's peel: the first layer's depth, bound once for every
+        // peel variant in the pass (fragment texture 29); the rule is bound per
+        // batch below, since whether a face turned away stays out is the kind's.
+        if let peel { encoder.setFragmentTexture(peel.depth, index: 29) }
 
         // Every device-side decision a lighting uniform needs, applied the same way
         // to the frame's own light set and to each scoped one (see `Drawer.LightState`).
@@ -3521,6 +3533,34 @@ extension MetalRenderer {
             // to declare the stencil format, clipped or not.
             if hasStencil { pipelineKey.stencilFormat = .stencil8 }
             if let passColorFormat { pipelineKey.colorFormat = passColorFormat }
+            // The hidden layer's pass: the 3D kinds with a peel variant draw through
+            // it, with the rule bound per batch (a closed mesh's faces turned away
+            // stay out; blades, splats, lines, water, and a depth scene have no
+            // inside to keep out). The live grid is chrome and stays out whole, and
+            // so does the ink line below, which rings the first layer's silhouette.
+            if let peel {
+                if meshGrid { continue }
+                let cullsBackFaces: Bool
+                switch batch.kind {
+                case .mesh3D: cullsBackFaces = !meshWireframe
+                case .meshInstanced, .meshField: cullsBackFaces = true
+                case .points3D, .lines3D, .strands, .ocean, .depthScene: cullsBackFaces = false
+                default: cullsBackFaces = false
+                }
+                let honors: Bool
+                switch batch.kind {
+                case .mesh3D: honors = !meshWireframe
+                case .meshInstanced, .meshField, .points3D, .lines3D, .strands, .ocean, .depthScene:
+                    honors = true
+                default: honors = false
+                }
+                if honors {
+                    pipelineKey.peel = true
+                    var rule = peel.params
+                    rule.rule.y = cullsBackFaces ? 1 : 0
+                    encoder.setFragmentBytes(&rule, length: MemoryLayout<OllinPeel>.stride, index: 10)
+                }
+            }
             guard let state = try? pipeline(pipelineKey) else { continue }
             // In a depth pass (active camera): 3D batches z-test + write depth. A 2D
             // batch that opted into a depth (`depth(at:)`) does too: its constant
@@ -3936,7 +3976,7 @@ extension MetalRenderer {
                 // counter-clockwise seen from outside, which is what makes `.front`
                 // the faces toward the eye. Nothing else in the frame culls, so the
                 // cull mode goes back to none before the next batch.
-                if batch.finish.outline.w > 0, !meshWireframe, !meshGrid, !meshMatcap {
+                if batch.finish.outline.w > 0, !meshWireframe, !meshGrid, !meshMatcap, peel == nil {
                     var outlineKey = PipelineKey.meshOutline(batch.blendMode, depth: depthFormat)
                     if hasStencil { outlineKey.stencilFormat = .stencil8 }
                     if let passColorFormat { outlineKey.colorFormat = passColorFormat }
