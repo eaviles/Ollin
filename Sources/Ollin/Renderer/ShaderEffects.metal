@@ -33,6 +33,15 @@ vertex PresentOut ollin_present_vertex(uint vid [[vertex_id]]) {
     return out;
 }
 
+// The overlay pass's first draw: the finished frame, texel for texel, into every
+// sample of the pass, so the overlay's geometry composites over it as the canvas
+// geometry does over the clear, whatever its blend mode.
+fragment float4 ollin_fx_copy(PresentOut in [[stage_in]],
+                              texture2d<float> source [[texture(0)]],
+                              sampler s [[sampler(0)]]) {
+    return source.sample(s, in.uv);
+}
+
 // OLLIN_LIB_BEGIN present
 // ACES filmic tone-map (Krzysztof Narkowicz's fitted curve, written from the
 // published approximation): rolls highlights off smoothly instead of clipping.

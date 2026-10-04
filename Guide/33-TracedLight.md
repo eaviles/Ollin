@@ -455,6 +455,17 @@ depthOfField()
 
 The nearest ball turns into a veil over the floor, and the lamps along the back open into hexagons. `focusRange` holds a band sharp either side of the focus, for a whole subject in focus. The blur runs after the edge average and before the motion blur, so the lamplit room could carry all three. What a blurred foreground hides is read from a second drawing of the scene behind it. The nearest ball's halo over the horizon then carries the floor the ball hides, not the dark above it.
 
+A caption over the room would blur with the floor under it, since the pass reads only depth. `withOverlay` holds its block back and draws it after the lens, the edge average, the motion blur, and the frame filters, so a readout stays sharp over all of them:
+
+```swift
+withOverlay {
+    fill(.white)
+    drawText("f/1.4", 24, height - 24)
+}
+```
+
+The block lands over everything else in the frame whatever order it was called in, a blend mode inside it reads the finished picture, and over a canvas that piles up (`noClear()`) it is drawn each frame without joining the pile.
+
 ### A lens made of samples: depth of field from light
 
 `.defocus` blurs a finished frame by reading each pixel's depth. A second route builds the blur out of light. [Chapter 25](25-ParticleSimulations.md#a-million-grains-gpu-particles) drew a million grains with `style: .light` into [Chapter 19](19-LayersAndEffects.md#converging-instead-of-brightening-the-running-mean)'s `Accumulator`, and the picture converged instead of brightening. Send each sample through a lens on its way in, and the running mean converges to a photograph with depth of field. It is for scenes made of many thin lines or points, where each sample can carry its own blur. It follows Anders Hoff's depth-of-field essays at inconvergent.net, and Domenico Bruzzese's Blurry library was read for its shape.

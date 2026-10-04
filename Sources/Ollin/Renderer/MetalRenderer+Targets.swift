@@ -1614,6 +1614,7 @@ extension MetalRenderer {
         // placements upload together into this encode's own ring slot.
         let instancedRuns = drawer.batches.indices.filter {
             drawer.batches[$0].kind == .meshInstanced && drawer.batches[$0].target == nil
+                && !drawer.batches[$0].overlay
         }
         var instanced: (buffer: MTLBuffer, instances: Int, previous: Int,
                         occluder: MTLRenderPipelineState, mover: MTLRenderPipelineState)?

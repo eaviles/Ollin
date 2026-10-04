@@ -2658,6 +2658,7 @@ open class Sketch: Sendable
   func withLights(_: [Light], ambient: Color? = default, _: () -> Void)
   func withMotion(_: String, _: () -> Void)
   func withMotion(file: String = default, line: Int = default, _: () -> Void)
+  func withOverlay(_: () -> Void)
   func withState(_: () -> Void)
   func withState(at: Vector2, rotation: Double = default, scale: Double = default, _: () -> Void)
   func withState(at: Vector3, _: () -> Void)

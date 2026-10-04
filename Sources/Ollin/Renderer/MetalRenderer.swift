@@ -138,6 +138,10 @@ final class MetalRenderer {
         /// A clip-write pipeline (the stencil-clipping push/pop): rasterizes into the
         /// stencil only, with the color write mask empty and blending off.
         var isClipWrite = false
+        /// An effect drawn inside a multisampled geometry pass rather than a pass of
+        /// its own (the overlay pass's copy of the finished frame): the view's
+        /// sample count, and the pass's depth and stencil formats declared.
+        var effectMultisample = false
         /// The hidden layer's variant of a 3D pipeline (the canvas depth of field's
         /// second pass): the same shaders built with the peel constant set, so the
         /// fragment takes the first layer's depth and discards what is not behind
@@ -471,6 +475,13 @@ final class MetalRenderer {
         static func effect(_ fragment: String, format: MTLPixelFormat? = nil) -> PipelineKey {
             PipelineKey(vertex: "ollin_present_vertex", fragment: fragment,
                         isEffect: true, effectFormat: format)
+        }
+        /// An effect drawn into a multisampled geometry pass with these attachments.
+        static func effectInPass(_ fragment: String, format: MTLPixelFormat?,
+                                 depthFormat: MTLPixelFormat?, stencilFormat: MTLPixelFormat?) -> PipelineKey {
+            PipelineKey(vertex: "ollin_present_vertex", fragment: fragment,
+                        depthFormat: depthFormat, isEffect: true, effectFormat: format,
+                        stencilFormat: stencilFormat, effectMultisample: true)
         }
         // depth-only shadow pass (mesh geometry from the light's point of view)
         static let meshShadow = PipelineKey(vertex: "ollin_mesh_shadow_vertex",
@@ -1178,6 +1189,15 @@ final class MetalRenderer {
     /// scissor the near field's bounds gave it); what the tests read.
     var hiddenLayerDrawnLastFrame = false
     var hiddenLayerExtentLastFrame = MTLScissorRect(x: 0, y: 0, width: 0, height: 0)
+
+    /// The overlay pass's targets (`applyOverlay`): the multisample color and
+    /// depth at the finished frame's size and format, kept across frames like the
+    /// hidden layer's. Whether the last frame drew the pass is what the tests read.
+    var overlayMSAATex: MTLTexture?
+    var overlayDepthTex: MTLTexture?
+    var overlaySize = (width: 0, height: 0)
+    var overlayFormat: MTLPixelFormat = .invalid
+    var overlayDrawnLastFrame = false
 
     /// How far into the frame the scene-behind read fades out, in uv. A screen-space
     /// lookup knows only what the camera drew, so rather than smearing the border pixel
@@ -2381,8 +2401,12 @@ final class MetalRenderer {
         let flared = applyLensFlare(drawer, resolved: blurred, depth: mainDepthResolve,
                                     into: commandBuffer, width: width, height: height,
                                     pooled: true)
-        let presented = applyFrameFilters(drawer, resolved: flared, width: width, height: height,
-                                          into: commandBuffer, pooled: true)
+        let filtered = applyFrameFilters(drawer, resolved: flared, width: width, height: height,
+                                         into: commandBuffer, pooled: true)
+        // The overlay, over everything the frame did to itself. Untouched when
+        // the frame drew none.
+        let presented = applyOverlay(drawer, resolved: filtered, viewport: viewport,
+                                     buffers: buffers, into: commandBuffer, pooled: true)
         // Frame interpolation keeps this frame back one refresh and shows the
         // frame that belongs between it and the one before. Returns nil (and
         // holds nothing) whenever it is not running, and then the drawable
@@ -2478,20 +2502,37 @@ final class MetalRenderer {
                stencil: passHasStencil,
                canvasColorFormat: accumCanvasFormat)
         encoder.endEncoding()
+        // The overlay goes over the pile without joining it: what is shown is a
+        // copy of the pile with the overlay drawn on, and the pile keeps summing.
+        let shown = applyOverlay(
+            drawer, resolved: resolve, viewport: viewport,
+            buffers: GeometryBuffers(
+                triangle: vertexBuffer(at: frameIndex, for: drawer.vertices.count),
+                sdf: sdfBuffer(at: frameIndex, for: drawer.sdfInstances.count),
+                image: imageBuffer(at: frameIndex, for: drawer.imageVertices.count),
+                glyph: glyphBuffer(at: frameIndex, for: drawer.glyphVertices.count),
+                point: pointBuffer(at: frameIndex, for: drawer.points.count),
+                mesh: meshBuffer(at: frameIndex, for: tracedMeshVertexCount(drawer)),
+                sdfGroup: sdfGroupBuffer(at: frameIndex, for: drawer.sdfGroups.count),
+                sdfNode: sdfNodeBuffer(at: frameIndex, for: drawer.sdfNodes.count),
+                sdf3DGroup: sdf3DGroupBuffer(at: frameIndex, for: drawer.sdf3DGroups.count),
+                sdf3DNode: sdf3DNodeBuffer(at: frameIndex, for: drawer.sdf3DNodes.count),
+                line: lineBuffer(at: frameIndex, for: drawer.lineVertexCount)),
+            into: commandBuffer, pooled: true)
 
         // Present: tone-map the resolved float pile into the drawable. (The pile
         // itself stays in linear float, so faint samples keep summing next frame.)
         if let presentEncoder = countedEncoder(commandBuffer, presentPass(into: drawable.texture), caller: "present") {
-            encodePresent(from: resolve, drawer: drawer, into: presentEncoder, projected: true)
+            encodePresent(from: shown, drawer: drawer, into: presentEncoder, projected: true)
             presentEncoder.endEncoding()
         }
         commandBuffer.present(drawable)
-        encodeExtraDisplays(also, from: resolve, drawer: drawer, into: commandBuffer)
+        encodeExtraDisplays(also, from: shown, drawer: drawer, into: commandBuffer)
         // The pile keeps its size while a grab is armed (resizing it would wipe
         // the drawing), so a grab of an accumulating sketch is the pile brought
         // to the canvas size, sharper or softer as the window is.
         if let grab {
-            encodeFrameGrab(grab, from: resolve, drawer: drawer, into: commandBuffer)
+            encodeFrameGrab(grab, from: shown, drawer: drawer, into: commandBuffer)
         } else {
             releaseFrameGrabStorage()
         }
@@ -2578,15 +2619,31 @@ final class MetalRenderer {
                canvasColorFormat: accumCanvasFormat)
         encoder.endEncoding()
 
+        // The overlay over the pile, without joining it (see the live path).
+        let shown = applyOverlay(
+            drawer, resolved: resolve, viewport: viewport,
+            buffers: GeometryBuffers(
+                triangle: exportVertexBuffer(for: drawer.vertices.count),
+                sdf: exportSDFBuffer(for: drawer.sdfInstances.count),
+                image: exportImageBuffer(for: drawer.imageVertices.count),
+                glyph: exportGlyphBuffer(for: drawer.glyphVertices.count),
+                point: exportPointBuffer(for: drawer.points.count),
+                mesh: exportMeshBuffer(for: tracedMeshVertexCount(drawer)),
+                sdfGroup: exportSDFGroupBuffer(for: drawer.sdfGroups.count),
+                sdfNode: exportSDFNodeBuffer(for: drawer.sdfNodes.count),
+                sdf3DGroup: exportSDF3DGroupBuffer(for: drawer.sdf3DGroups.count),
+                sdf3DNode: exportSDF3DNodeBuffer(for: drawer.sdf3DNodes.count),
+                line: exportLineBuffer(for: drawer.lineVertexCount)),
+            into: commandBuffer, pooled: false)
         // The linear pile itself is what a linear-light export wants (a piling
         // canvas draws no 3D, so it carries no depth).
         let linearCapture = capturesLinearFrame
-            ? beginLinearCapture(resolve, depth: nil, into: commandBuffer,
+            ? beginLinearCapture(shown, depth: nil, into: commandBuffer,
                                  width: width, height: height)
             : nil
         // Tone-map the float pile into the sRGB display texture, then read that back.
         if let presentEncoder = countedEncoder(commandBuffer, presentPass(into: display)) {
-            encodePresent(from: resolve, drawer: drawer, into: presentEncoder,
+            encodePresent(from: shown, drawer: drawer, into: presentEncoder,
                           keepsAlpha: drawer.hasTransparentBackground)
             presentEncoder.endEncoding()
         }
@@ -2943,7 +3000,7 @@ final class MetalRenderer {
         // export never upscales (it renders full-resolution), and the supersample
         // is the deterministic full-quality equivalent of the live scaler.
         let taaSamples = headlessTemporalAAActive(drawer) ? resolveTAASamples() : 1
-        let presented: MTLTexture
+        let drawn: MTLTexture
         if taaSamples > 1,
            var accFront = makeFloatResolve(width: width, height: height),
            var accBack = makeFloatResolve(width: width, height: height) {
@@ -3026,8 +3083,8 @@ final class MetalRenderer {
             let flared = applyLensFlare(drawer, resolved: blurred, depth: sceneDepthResolve,
                                         into: commandBuffer, width: outWidth, height: outHeight,
                                         pooled: false)
-            presented = applyFrameFilters(drawer, resolved: flared, width: outWidth, height: outHeight,
-                                          into: commandBuffer, pooled: false)
+            drawn = applyFrameFilters(drawer, resolved: flared, width: outWidth, height: outHeight,
+                                      into: commandBuffer, pooled: false)
         } else {
             guard let encoder = countedEncoder(commandBuffer, pass, caller: "canvas (headless supersample)") else { return nil }
             encode(drawer, viewport: viewport, attachment: SIMD2<Float>(Float(width), Float(height)), into: encoder,
@@ -3093,9 +3150,12 @@ final class MetalRenderer {
             let flared = applyLensFlare(drawer, resolved: blurred, depth: sceneDepthResolve,
                                         into: commandBuffer, width: outWidth, height: outHeight,
                                         pooled: false)
-            presented = applyFrameFilters(drawer, resolved: flared, width: outWidth, height: outHeight,
-                                          into: commandBuffer, pooled: false)
+            drawn = applyFrameFilters(drawer, resolved: flared, width: outWidth, height: outHeight,
+                                      into: commandBuffer, pooled: false)
         }
+        // The overlay, over everything the frame did to itself.
+        let presented = applyOverlay(drawer, resolved: drawn, viewport: viewport,
+                                     buffers: buffers, into: commandBuffer, pooled: false)
         // A slow-motion export that fills its gaps with made frames keeps this
         // frame's picture and depth, so the frame between this one and the next
         // can be built from the pair. Does nothing for every other export.
@@ -3346,8 +3406,10 @@ final class MetalRenderer {
                                           moverVelocity: velocity, meshBuffer: meshBuf,
                                           into: cb, width: width, height: height,
                                           pooled: false)
-            let presented = applyFrameFilters(drawer, resolved: blurred, width: width,
-                                              height: height, into: cb, pooled: false)
+            let filtered = applyFrameFilters(drawer, resolved: blurred, width: width,
+                                             height: height, into: cb, pooled: false)
+            let presented = applyOverlay(drawer, resolved: filtered, viewport: viewport,
+                                         buffers: buffers, into: cb, pooled: false)
             if let presentEncoder = countedEncoder(cb, presentPass(into: displayTexture)) {
                 encodePresent(from: presented, drawer: drawer, into: presentEncoder)
                 presentEncoder.endEncoding()

@@ -40,6 +40,7 @@ override func draw() {
 - [depth](#depth) - a 3D scene's depth buffer as a layer (feed `.defocus` / `.ambientOcclusion` / `.screenSpaceReflections`)
 - [generate / Generator](#generate) - procedural pattern sources
 - [postProcess](#postprocess) - filter the whole frame
+- [withOverlay](#withoverlay) - draw over the finished frame, after every pass
 - [feedback / withFeedback](#feedback) - a layer that remembers itself (trails, tunnels)
 - [simField / Sim](#simfield) - a layer that runs a simulation (reaction-diffusion, Game of Life, fluid, the self-warp motion feedback)
 - [Sim.shader](#simfield-shader) - a simulation of your own: a kernel you write, the inject, the field's edge and precision, arrows, readback
@@ -691,6 +692,28 @@ override func draw() {
 ```
 
 Call it in `draw()`, and multiple calls chain in order.
+
+<a id="withoverlay"></a>
+### withOverlay(_:)
+
+Draw over the **finished frame**. Everything in the block is held back and drawn after the frame's own passes: the [temporal anti-aliasing](../3D/3D.md#temporal-antialiasing), the [depth of field](../3D/3D.md#depth-of-field), the [motion blur](../3D/3D.md#motion-blur), the [lens flare](../3D/LensFlare.md), and the `postProcess` filters. A caption, a frame, or a readout drawn here stays sharp and untinted whatever the scene under it does:
+
+```swift
+override func draw() {
+    background(.black)
+    var lens = Camera3D.perspective(eye: Vector3(0, 1, 5), target: .zero)
+    lens.aperture = 0.12         // a lens with an opening blurs by depth
+    camera(lens)
+    depthOfField()
+    drawMesh(Mesh.sphere(radius: 0.6))   // the scene, blurred by its depth
+    withOverlay {
+        fill(.white)
+        drawText("f/1.4", 24, height - 24)   // sharp over the blurred scene
+    }
+}
+```
+
+Everything in the block lands above everything outside it, in the block's own call order, however the calls were interleaved. It is scoped like `withState`: drawing state and transforms carry in, and any change is restored on exit. A blend mode in the block blends against the finished frame, so a `.multiply` darkens the picture under it. A `withClip` inside clips the overlay alone. The overlay carries its own depth, cleared, so a 3D shape drawn here sorts against the others in the block and sits over the scene without joining its shadows or its lens. Over the [accumulation surface](../Drawing/Accumulation.md) of `noClear()` the overlay is drawn over the pile each frame and never joins it, which is how a readout sits over a drawing that keeps piling up. Inside a `withTarget` block it draws into the layer, since a layer has no passes to draw after. A vector export writes it after everything else.
 
 <a id="feedback"></a>
 ### makeFeedback(scale:) and withFeedback(_:_:)

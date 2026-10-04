@@ -328,8 +328,12 @@ extension MetalRenderer {
         let descriptor = MTLRenderPipelineDescriptor()
         descriptor.vertexFunction = vertexFunction
         descriptor.fragmentFunction = fragmentFunction
-        descriptor.rasterSampleCount = 1
+        descriptor.rasterSampleCount = key.effectMultisample ? sampleCount : 1
         descriptor.colorAttachments[0].pixelFormat = key.effectFormat ?? linearFormat
+        if key.effectMultisample {
+            if let depthFormat = key.depthFormat { descriptor.depthAttachmentPixelFormat = depthFormat }
+            if let stencilFormat = key.stencilFormat { descriptor.stencilAttachmentPixelFormat = stencilFormat }
+        }
         return try device.makeRenderPipelineState(descriptor: descriptor)
     }
 

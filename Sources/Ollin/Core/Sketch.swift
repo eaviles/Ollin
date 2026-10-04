@@ -3717,6 +3717,31 @@ open class Sketch {
         drawer.withTarget(target, body)
     }
 
+    /// Draw `body` over the finished frame. The block's drawing is held back and
+    /// drawn after the frame's own passes (the temporal anti-aliasing, the depth
+    /// of field, the motion blur, the lens flare, and the `postProcess` filters),
+    /// so a caption, a frame, or a readout drawn here stays sharp and untinted
+    /// whatever the scene under it does, and over an accumulating canvas
+    /// (`noClear()`) it never joins the pile. Everything in the block lands above
+    /// everything outside it, in the block's own call order, however the calls
+    /// were interleaved. Scoped like `withState { }`: drawing state and transforms
+    /// carry in and any change is restored on exit. A blend mode blends against
+    /// the finished frame, a `withClip` inside clips the overlay alone, and the
+    /// overlay carries its own depth, cleared, so a 3D shape drawn here sorts
+    /// against the others in the block and sits over the scene without joining
+    /// its shadows or its lens.
+    ///
+    /// ```swift
+    /// depthOfField()
+    /// withOverlay {
+    ///     fill(.white)
+    ///     drawText("f/1.4", 24, height - 24)   // sharp over the blurred room
+    /// }
+    /// ```
+    public func withOverlay(_ body: () -> Void) {
+        drawer.withOverlay(body)
+    }
+
     /// Fill a full-canvas layer with a procedural pattern (see `Generator`),
     /// returning it as a `RenderTarget` you can draw (`gen.image`), filter
     /// (`gen.filtered(_:)`), or feed into another effect. Call it inside `draw()`.

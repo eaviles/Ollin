@@ -61,7 +61,7 @@ extension MetalRenderer {
         var minX = Double.infinity, minY = Double.infinity, maxX = -Double.infinity, maxY = -Double.infinity
         var any = false
         let whole = MTLScissorRect(x: 0, y: 0, width: width, height: height)
-        for batch in drawer.batches where batch.target == nil {
+        for batch in drawer.batches where batch.target == nil && !batch.overlay {
             switch batch.kind {
             case .mesh3D:
                 if batch.meshWireframe || batch.meshGrid { continue }

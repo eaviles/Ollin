@@ -83,6 +83,9 @@ enum SVGCommand {
 /// an SVG export is in flight (`Drawer.svgRecorder`).
 final class SVGRecorder {
     var commands: [SVGCommand] = []
+    /// The commands a `withOverlay` block recorded, written after `commands` so
+    /// the overlay sits over everything in the document as it does on the canvas.
+    var overlayCommands: [SVGCommand] = []
     /// `drawImage` calls dropped from the vector output (raster has no place in an
     /// SVG/plotter file); surfaced as a comment so the omission is visible.
     var skippedImages = 0
@@ -665,7 +668,8 @@ extension OllinApp {
             if sketch.exportHoldsFrame { break }
         }
         sketch.drawer.svgRecorder = nil
-        let commands = hatching.map { applyHatching(recorder.commands, $0) } ?? recorder.commands
+        let drawn = recorder.commands + recorder.overlayCommands
+        let commands = hatching.map { applyHatching(drawn, $0) } ?? drawn
         return VectorRecording(commands: commands, background: sketch.drawer.backgroundColor,
                                width: size.width, height: size.height,
                                pointWidth: size.pointSize.width, pointHeight: size.pointSize.height,

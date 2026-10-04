@@ -710,7 +710,13 @@ final class WebGraphRecorder {
         }
         func items(for surface: RenderTarget?) throws -> [WebDrawItem] {
             var items: [WebDrawItem] = []
-            for (i, batch) in batches.enumerated() where batch.target === surface {
+            // The canvas draws its overlay runs after the rest, whatever order the
+            // calls came in, as the overlay pass does; a layer has none.
+            let order = surface == nil
+                ? batches.indices.filter { !batches[$0].overlay } + batches.indices.filter { batches[$0].overlay }
+                : Array(batches.indices)
+            for i in order where batches[i].target === surface {
+                let batch = batches[i]
                 if batch.kind == .clipPush || batch.kind == .clipPop || batch.clipLevel > 0 { throw refuse("withClip") }
                 if batch.depth != nil { throw refuse("depth(at:)") }
                 let blend = WebBlend.index(of: batch.blendMode)

@@ -234,6 +234,11 @@ struct GeometryBatch {
     /// main canvas. Set while inside a `withTarget` block, so the renderer routes the
     /// run into that target's texture in a pass before the main one (see `RenderTarget`).
     var target: RenderTarget?
+    /// Whether this run belongs to the overlay (`withOverlay`): drawn over the
+    /// finished frame after its passes, in a pass of its own, so the canvas pass
+    /// skips it and the overlay pass draws nothing else. Set over the whole range
+    /// a block recorded when the outermost block closes.
+    var overlay = false
     /// The clip-nesting level this run draws at (see `withClip`). 0 = unclipped (the
     /// default, byte-identical). For a content batch it's the stencil reference the
     /// run tests `equal` against; for a `.clipPush` batch it's the level the push
@@ -1109,6 +1114,15 @@ final class Drawer {
     var viewBoxCanvases: [Vector2] = []
     /// The target drawing currently lands in, if any (the innermost active block).
     var currentTarget: RenderTarget? { targetStack.last?.target }
+    /// How many `withOverlay` blocks are open. While any is, drawing records as
+    /// the canvas's and is tagged for the overlay pass (`GeometryBatch.overlay`)
+    /// when the outermost closes.
+    private var overlayDepth = 0
+    /// Whether drawing is inside a `withOverlay` block.
+    var isDrawingOverlay: Bool { overlayDepth > 0 }
+    /// Whether any run this frame belongs to the overlay, so the renderer can
+    /// skip the overlay pass when nothing was drawn there.
+    private(set) var hasOverlay = false
     /// Geometry targets drawn into this frame, in first-use order; the renderer
     /// fills each before the main pass that samples it.
     private(set) var renderTargets: [RenderTarget] = []
@@ -1167,6 +1181,9 @@ final class Drawer {
     private struct ClipFrame {
         let vertices: [OllinVertex]
         let target: RenderTarget?
+        /// Whether the clip was pushed inside the overlay: the overlay is a surface
+        /// of its own for clipping, with its own stencil levels.
+        let overlay: Bool
     }
     /// The open clip regions, innermost last. Scoped by `withClip`, so frames for
     /// the current surface are always a suffix of the stack.
@@ -1189,7 +1206,7 @@ final class Drawer {
     private func recomputeClipLevel() {
         var n = 0
         for frame in clipStack.reversed() {
-            if frame.target === currentTarget { n += 1 } else { break }
+            if frame.target === currentTarget, frame.overlay == isDrawingOverlay { n += 1 } else { break }
         }
         activeClipLevel = n
     }
@@ -1210,7 +1227,7 @@ final class Drawer {
         }
         if svgRecorder != nil {
             svgRecorder?.commands.append(.clipPush(shape: shape, transform: transform))
-            clipStack.append(ClipFrame(vertices: [], target: currentTarget))
+            clipStack.append(ClipFrame(vertices: [], target: currentTarget, overlay: isDrawingOverlay))
             recomputeClipLevel()
             return
         }
@@ -1228,7 +1245,7 @@ final class Drawer {
             }
             clipVertices.append(OllinVertex(position: position, color: SIMD4<Float>()))
         }
-        clipStack.append(ClipFrame(vertices: clipVertices, target: currentTarget))
+        clipStack.append(ClipFrame(vertices: clipVertices, target: currentTarget, overlay: isDrawingOverlay))
         recomputeClipLevel()
         if let target = currentTarget {
             target.needsStencil = true
@@ -1240,7 +1257,8 @@ final class Drawer {
 
     /// Lift the innermost clip region again (the end of a `withClip` block).
     func popClip() {
-        guard let last = clipStack.last, last.target === currentTarget else { return }
+        guard let last = clipStack.last, last.target === currentTarget,
+              last.overlay == isDrawingOverlay else { return }
         let level = activeClipLevel
         clipStack.removeLast()
         recomputeClipLevel()
@@ -1766,6 +1784,64 @@ final class Drawer {
         recomputeClipLevel() // back on the enclosing surface's clip level
     }
 
+    /// Draw `body` over the finished frame (see `Sketch.withOverlay`): its runs are
+    /// tagged for the overlay pass, which the renderer draws after the frame's own
+    /// passes, in call order among themselves and after everything else however
+    /// the calls were interleaved. Nestable (an inner block is part of the outer);
+    /// a fresh batch is forced at each boundary so overlay and canvas geometry
+    /// never merge, and clipping is per surface, so the block starts unclipped and
+    /// a clip inside it clips the overlay alone. Scoped like `withState`. Inside a
+    /// layer block the overlay has nothing to draw after (a layer has no passes),
+    /// and inside a recording a block is surface-neutral, so in both the body
+    /// draws as the surrounding content, noted once.
+    func withOverlay(_ body: () -> Void) {
+        if isRecordingBatch {
+            noteBatchRecording("withOverlay inside makeBatch { } is not recorded as an overlay (the block draws as the batch's own content); draw the overlay where the batch is drawn instead.")
+            body()
+            return
+        }
+        if currentTarget != nil {
+            noteOnce("withOverlay inside a layer block draws into the layer, which has no passes to draw after; draw the overlay on the canvas instead.")
+            body()
+            return
+        }
+        // A vector export is one surface written in call order, so the block's
+        // commands are held aside and written after the rest, where the pass
+        // puts them.
+        if let recorder = svgRecorder {
+            let held = SVGRecorder()
+            svgRecorder = held
+            overlayDepth += 1
+            recomputeClipLevel()
+            pushState()
+            body()
+            popState()
+            overlayDepth -= 1
+            recomputeClipLevel()
+            svgRecorder = recorder
+            recorder.overlayCommands.append(contentsOf: held.commands + held.overlayCommands)
+            recorder.skippedImages += held.skippedImages
+            return
+        }
+        let start = batches.count
+        overlayDepth += 1
+        currentKind = nil      // the first draw in the overlay opens a fresh batch
+        recomputeClipLevel()   // clipping is per surface: the overlay starts unclipped
+        pushState()
+        body()
+        popState()
+        overlayDepth -= 1
+        currentKind = nil      // and the next canvas draw opens its own
+        recomputeClipLevel()
+        // A `background` inside the block drops every run before it, the block's
+        // start among them, so the range is clamped to what is left.
+        let from = min(start, batches.count)
+        if overlayDepth == 0, batches.count > from {
+            for i in from ..< batches.count { batches[i].overlay = true }
+            hasOverlay = true
+        }
+    }
+
     /// Redirect `body` into a persistent `Feedback` layer's write surface, handing
     /// it last frame's content as `prev`. The block lands in the layer's back buffer
     /// (cleared transparent each frame unless `background(_:)` sets it); the renderer
@@ -2259,6 +2335,7 @@ final class Drawer {
         sdf3DGroups.removeAll(keepingCapacity: true)
         sdf3DNodes.removeAll(keepingCapacity: true)
         batches.removeAll(keepingCapacity: true)
+        hasOverlay = false   // the overlay's runs went with the rest
         webSources.removeAll(keepingCapacity: true)
         currentKind = nil
         currentBatchDepth = nil
@@ -4455,6 +4532,8 @@ final class Drawer {
     /// Drop last frame's geometry but keep drawing state. Called once per frame
     /// by the runner before `Sketch.draw()`.
     func beginFrame() {
+        hasOverlay = false
+        overlayDepth = 0     // a block left open by an early exit closes with the frame
         vertices.removeAll(keepingCapacity: true)
         sdfInstances.removeAll(keepingCapacity: true)
         imageVertices.removeAll(keepingCapacity: true)

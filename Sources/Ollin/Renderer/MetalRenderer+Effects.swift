@@ -2962,6 +2962,9 @@ extension MetalRenderer {
                                       inverseViewProjection: simd_float4x4)? = nil,
                         skippingTransmissive: Bool = false,
                         target passTarget: RenderTarget? = nil,
+                        // The overlay pass draws only the runs a `withOverlay` block
+                        // tagged, and every other pass skips them.
+                        overlay passOverlay: Bool = false,
                         taaJitter: SIMD2<Float> = .zero,
                         // The canvas's own color format when it is not the shared
                         // linear one (a single-precision accumulation surface). A
@@ -3487,6 +3490,7 @@ extension MetalRenderer {
             // skips target-tagged runs, and a target pass skips everything but its
             // own. `next` stays the globally-next batch so the buffer range is right.
             if batch.target !== passTarget { continue }
+            if batch.overlay != passOverlay { continue }
             // The scene-behind pre-pass draws the frame with the glass taken out, so a
             // refracted read finds what stands behind the body rather than the body
             // itself. Off (the default) this never fires and the loop is unchanged.
