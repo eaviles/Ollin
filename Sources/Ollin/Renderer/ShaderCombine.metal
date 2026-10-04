@@ -1024,6 +1024,206 @@ fragment float4 ollin_fx_lens_depth_of_field(PresentOut in [[stage_in]],
                              params[3].z, params[3].w);
 }
 
+// MARK: Small bright sources as discs of their own
+//
+// A source only a few pixels across is found by some of a pixel's taps and missed by
+// others, and the disc it opens into comes out grainy where the taps are few. Such a
+// source is taken out of the gather's input and drawn afterwards as a disc of its own,
+// scattered rather than gathered. One thread per block of the frame reads the block's
+// pixels: a pixel blurred by `leastBlur` or more, brighter than `ratio` times the mean
+// of a ring four pixels out around it with at most two of the ring's eight samples
+// bright and never two opposite ones (a line through the pixel lights the opposite
+// pair, a dot of five pixels lights at most two side by side from its rim, a dot of
+// seven lights more), hands the light above the ring's mean to
+// the block's sprite and keeps the mean. The sprite sits at the light-weighted center
+// of what it took, with its light-weighted blur and distance; a block that took
+// nothing leaves an empty slot the draw culls. One slot per block in block order, never
+// an append cursor: an additive draw rounds by its order, and the same frame has to
+// come out the same from run to run. The light is in balance: the gather spreads the
+// mean, the sprite spreads the rest.
+// params[0..2] as the gather's; params[3] = (least blur, ratio, floor, block);
+// params[4] = (ramp law, the iris's turn, its cat's eye, 0), read by the draw.
+constant int2 kLensRing[8] = { int2(4, 0), int2(-4, 0), int2(0, 4), int2(0, -4),
+                               int2(3, 3), int2(-3, 3), int2(3, -3), int2(-3, -3) };
+constant float2 kLensRingDir[8] = { float2(1.0, 0.0), float2(-1.0, 0.0), float2(0.0, 1.0), float2(0.0, -1.0),
+                                    float2(0.7071, 0.7071), float2(-0.7071, 0.7071),
+                                    float2(0.7071, -0.7071), float2(-0.7071, -0.7071) };
+
+kernel void ollin_lens_sprites_collect(texture2d<float, access::read> base [[texture(0)]],
+                                       texture2d<float, access::read> cocMap [[texture(1)]],
+                                       texture2d<float, access::write> flattened [[texture(2)]],
+                                       device OllinLensSprite *sprites [[buffer(0)]],
+                                       constant float4 *params [[buffer(1)]],
+                                       uint2 block [[thread_position_in_grid]]) {
+    uint2 size = uint2(base.get_width(), base.get_height());
+    uint n = max(1u, uint(params[3].w));
+    uint2 blocks = (size + n - 1) / n;
+    if (block.x >= blocks.x || block.y >= blocks.y) return;
+    float leastBlur = params[3].x, ratio = params[3].y, floorLuma = params[3].z;
+    float focus = params[1].x;
+    int2 limit = int2(size) - 1;
+    float3 energy = float3(0.0);
+    float2 moment = float2(0.0);
+    float blurSum = 0.0, depthSum = 0.0, weight = 0.0, spreadSum = 0.0;
+    for (uint by = 0; by < n; by++) {
+        for (uint bx = 0; bx < n; bx++) {
+            uint2 p = block * n + uint2(bx, by);
+            if (p.x >= size.x || p.y >= size.y) continue;
+            float4 c = base.read(p);
+            float4 lens = cocMap.read(p);
+            float L = ollin_luma(c.rgb);
+            float4 out = c;
+            if (lens.x >= leastBlur && L > floorLuma) {
+                // The ring's mean is of its dim samples: a bright one is the source
+                // itself (its own far side, from a rim pixel), and counting it would
+                // leave a share of the source's light to the gather, which spreads a
+                // few pixels' worth as grainily as it spreads the whole.
+                float3 ring = float3(0.0);
+                int bright = 0;
+                uint brightMask = 0;
+                for (int i = 0; i < 8; i++) {
+                    float3 s = base.read(uint2(clamp(int2(p) + kLensRing[i], int2(0), limit))).rgb;
+                    if (ollin_luma(s) > L / ratio) { bright++; brightMask |= 1u << i; } else { ring += s; }
+                }
+                float3 mean = ring / float(8 - bright);
+                // Two bright samples are a source's own far side from one of its rim
+                // pixels when they lie side by side, and a line through the pixel
+                // when they lie opposite (the pairs 0-1, 2-3, 4-7, 5-6 of the ring).
+                bool opposite = (brightMask & 3u) == 3u || (brightMask & 12u) == 12u
+                    || (brightMask & 144u) == 144u || (brightMask & 96u) == 96u;
+                if (bright <= 2 && !opposite && L > ratio * ollin_luma(mean) + floorLuma) {
+                    float3 excess = max(c.rgb - mean, 0.0);
+                    out.rgb = c.rgb - excess;
+                    float e = ollin_luma(excess);
+                    float2 at = float2(p) + 0.5;
+                    energy += excess;
+                    moment += e * at;
+                    spreadSum += e * dot(at, at);
+                    blurSum += e * lens.x;
+                    depthSum += e * lens.y;
+                    weight += e;
+                }
+            }
+            flattened.write(out, p);
+        }
+    }
+    OllinLensSprite s;
+    if (weight > 0.0) {
+        float depth = depthSum / weight;
+        float2 center = moment / weight;
+        // How far the light it took stands from its center (its radius of
+        // gyration): the disc's edge is softened by it, since a source of some
+        // width blurs into a disc with an edge that wide.
+        float spread = sqrt(max(0.0, spreadSum / weight - dot(center, center)));
+        s.place = float4(center, blurSum / weight, depth);
+        s.energy = float4(energy, spread);
+    } else {
+        s.place = float4(0.0);
+        s.energy = float4(0.0);
+    }
+    sprites[block.y * blocks.x + block.x] = s;
+}
+
+struct LensSpriteOut {
+    float4 position [[position]];
+    float2 local;                 // offset from the sprite's center, in pixels
+    float3 energy [[flat]];
+    float blur [[flat]];
+    float depth [[flat]];
+    float spread [[flat]];        // the half-width of the disc's edge, in pixels
+    float2 fieldDir [[flat]];
+    float pinch [[flat]];         // the cat's eye at the sprite's center
+};
+
+// One quad per slot, as wide as the disc (stretched to the corners of a bladed iris)
+// and a pixel and a half of edge; an empty slot is clipped away. params[4] =
+// (ramp law, the iris's turn, its cat's eye, 0), the row the layer filter fills and
+// the canvas pass leaves at zero.
+vertex LensSpriteOut ollin_lens_sprites_vertex(uint vid [[vertex_id]], uint iid [[instance_id]],
+                                               const device OllinLensSprite *sprites [[buffer(0)]],
+                                               constant float4 *params [[buffer(1)]]) {
+    OllinLensSprite s = sprites[iid];
+    LensSpriteOut out;
+    if (!any(s.energy.xyz > 0.0) || s.place.z < 0.5) {
+        out.position = float4(0.0, 0.0, 2.0, 1.0);   // clipped: no fragments
+        out.local = float2(0.0);
+        out.energy = float3(0.0); out.blur = 0.0; out.depth = 0.0; out.spread = 0.5;
+        out.fieldDir = float2(1.0, 0.0); out.pinch = 0.0;
+        return out;
+    }
+    float2 texel = params[2].xy;
+    float blades = floor(max(0.0, params[2].w) + 0.5);
+    float reach = blades >= 3.0
+        ? sqrt(M_PI_F / (blades * sin(M_PI_F / blades) * cos(M_PI_F / blades)))
+        : 1.0;
+    // The disc's edge: half a pixel of its own, plus the width of the source it
+    // came from (a uniform source of radius a has a radius of gyration a / sqrt 2).
+    float spread = 0.5 + 1.4142 * s.energy.w;
+    float extent = s.place.z * reach + spread + 1.0;
+    float2 corner = float2((vid & 1u) ? 1.0 : -1.0, (vid & 2u) ? 1.0 : -1.0);
+    float2 px = s.place.xy + corner * extent;
+    out.position = float4(px.x * texel.x * 2.0 - 1.0, 1.0 - px.y * texel.y * 2.0, 0.0, 1.0);
+    out.local = corner * extent;
+    out.energy = s.energy.xyz;
+    out.blur = s.place.z;
+    out.depth = s.place.w;
+    out.spread = spread;
+    float2 halfLayer = 0.5 / texel;
+    float2 fromCenter = s.place.xy - halfLayer;
+    float fieldLength = length(fromCenter);
+    out.fieldDir = fieldLength > 1e-4 ? fromCenter / fieldLength : float2(1.0, 0.0);
+    out.pinch = saturate(params[4].z) * saturate(fieldLength / max(length(halfLayer), 1e-4)) * 0.9;
+    return out;
+}
+
+// The disc: the gather's own coverage (the edge either side of the blur radius,
+// through the same iris) at the gather's own density, 1 / (pi r^2) of the source's
+// light per pixel. What stands nearer than the source covers the disc by the share
+// of its own blur disc at this pixel: when this pixel's surface is the nearer one,
+// the share of a ring at that surface's blur around it that is nearer too (all of it
+// deep inside the surface, half at its edge, and all of it for a sharp surface, whose
+// blur is under a pixel and which cuts the disc at its silhouette); when it is not,
+// the share of a ring at the widest blur in front nearby whose samples are nearer and
+// blurred enough to reach this pixel, which is a near veil spilling past its edge.
+// Added to the frame.
+fragment float4 ollin_lens_sprites_fragment(LensSpriteOut in [[stage_in]],
+                                            texture2d<float> cocMap [[texture(0)]],
+                                            texture2d<float> reachMap [[texture(1)]],
+                                            constant float4 *params [[buffer(1)]]) {
+    float distance = length(in.local);
+    float blades = floor(max(0.0, params[2].w) + 0.5);
+    bool ramp = params[4].x > 0.5;
+    float rotation = params[4].y;
+    if ((blades >= 3.0 || in.pinch > 0.0) && distance > 1e-3) {
+        float2 along = in.local / distance;
+        distance /= max(ollin_dof_aperture(atan2(along.y, along.x), along, blades, rotation,
+                                           in.fieldDir, in.pinch), 1e-3);
+    }
+    float cover = smoothstep(distance - in.spread, distance + in.spread, in.blur);
+    if (cover <= 0.0) discard_fragment();
+    uint2 pixel = uint2(in.position.xy);
+    int2 limit = int2(cocMap.get_width(), cocMap.get_height()) - 1;
+    uint k = max(1u, uint(params[1].w));
+    uint2 tile = min(pixel / k, uint2(reachMap.get_width() - 1, reachMap.get_height() - 1));
+    float nearReach = reachMap.read(tile).z;
+    float nearerDepth = ramp ? in.depth - 0.01 : in.depth * 0.99;
+    float4 here = cocMap.read(pixel);
+    bool ownNearer = here.y < nearerDepth;
+    float radius = ownNearer ? here.x : nearReach;
+    float veil = ownNearer ? 1.0 : 0.0;
+    if (radius >= 1.0) {
+        int nearer = ownNearer ? 1 : 0;
+        for (int i = 0; i < 8; i++) {
+            int2 at = clamp(int2(pixel) + int2(round(radius * kLensRingDir[i])), int2(0), limit);
+            float4 lens = cocMap.read(uint2(at));
+            if (lens.y < nearerDepth && (ownNearer || lens.x >= radius * 0.99)) nearer++;
+        }
+        veil = float(nearer) / 9.0;
+    }
+    float density = cover * (1.0 - veil) / (M_PI_F * in.blur * in.blur);
+    return float4(in.energy * density, 0.0);
+}
+
 // depth normalize: turn a 3D render target's resolved clip-space depth into the gray
 // depth layer the depth-of-field combine reads (0 near … 1 far). params[0] =
 // (near, far, perspective?). A perspective (and the intrinsic pinhole) projection

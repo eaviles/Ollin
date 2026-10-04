@@ -208,7 +208,7 @@ extension MetalRenderer {
             d.fragmentFunction = f
             d.rasterSampleCount = key.isFlareTrace ? MetalRenderer.flareTraceSamples : 1
             let color = d.colorAttachments[0]!
-            color.pixelFormat = linearFormat
+            color.pixelFormat = key.effectFormat ?? linearFormat
             color.isBlendingEnabled = true
             color.rgbBlendOperation = .add
             color.alphaBlendOperation = .add

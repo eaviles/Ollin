@@ -390,6 +390,13 @@ final class MetalRenderer {
         static let causticsSplat = PipelineKey(vertex: "ollin_caustics_splat_vertex",
                                                fragment: "ollin_caustics_splat_fragment",
                                                isCausticSplat: true)
+        /// The canvas depth of field's small bright sources, drawn as discs of their
+        /// own and added to the finished blur: the splat's additive pipeline, into
+        /// the pass's own format.
+        static func lensSprites(format: MTLPixelFormat?) -> PipelineKey {
+            PipelineKey(vertex: "ollin_lens_sprites_vertex", fragment: "ollin_lens_sprites_fragment",
+                        effectFormat: format, isCausticSplat: true)
+        }
         // lens flare ghosts followed ray by ray: a bent grid per ghost, added into the
         // single-sample float layer the ghosts are gathered on. The same additive,
         // depthless target the caustics splat draws into, so the same pipeline shape.
@@ -1233,6 +1240,16 @@ final class MetalRenderer {
         Array(repeating: [], count: MetalRenderer.maxFramesInFlight)
     var targetTexNext = 0
     var filterTexNext = 0
+    /// The canvas depth of field's sprite slots (`OllinLensSprite`, one per block of
+    /// the frame), one buffer per ring slot like the filter textures, so a frame in
+    /// flight never reads a list the next frame is writing.
+    var lensSpritePool: [(buffer: MTLBuffer, slots: Int)?] = Array(repeating: nil, count: MetalRenderer.maxFramesInFlight)
+    /// Whether the canvas depth of field draws its small bright sources as discs of
+    /// their own; off, every source gathers. A test's A/B switch, on everywhere else.
+    var lensSpritesEnabled = true
+    /// The last frame's sprite list and its block grid, for a test to read back
+    /// (a headless list is shared storage for that; a live one is private).
+    var lastLensSprites: (list: MTLBuffer, slots: Int, blocksW: Int)?
     /// The format a filter or combine op's passes acquire their textures in while
     /// it runs: its output layer's (`RenderTarget.precision`, which follows the
     /// layer it reads), nil for the shared linear format. Set only around each op
@@ -3070,10 +3087,15 @@ final class MetalRenderer {
             // after-TAA slot); the depth resolve holds the last jittered pass's
             // depth, at most half a pixel off, which the average's own tolerance
             // already accepts. Untouched when the blur is off.
-            let focused = applyDepthOfField(drawer, resolved: sampled, depth: sceneDepthResolve,
-                                            hidden: hiddenLayer,
-                                            into: commandBuffer, width: outWidth, height: outHeight,
-                                            pointScale: 1, pooled: false)
+            // A traced frame came through the camera's lens already (the trace
+            // follows the rays through the opening), so the canvas pass stands down
+            // rather than blur the blur.
+            let focused = pathTraced != nil
+                ? sampled
+                : applyDepthOfField(drawer, resolved: sampled, depth: sceneDepthResolve,
+                                    hidden: hiddenLayer,
+                                    into: commandBuffer, width: outWidth, height: outHeight,
+                                    pointScale: 1, pooled: false)
             let blurred = applyMotionBlur(drawer, resolved: focused, depth: sceneDepthResolve,
                                           moverVelocity: nil, meshBuffer: meshBuf,
                                           into: commandBuffer, width: outWidth, height: outHeight,
@@ -3139,10 +3161,15 @@ final class MetalRenderer {
             let sampled = encodeSupersampleResolve(scattered, scale: scale,
                                                    width: outWidth, height: outHeight,
                                                    into: commandBuffer)
-            let focused = applyDepthOfField(drawer, resolved: sampled, depth: sceneDepthResolve,
-                                            hidden: hiddenLayer,
-                                            into: commandBuffer, width: outWidth, height: outHeight,
-                                            pointScale: 1, pooled: false)
+            // A traced frame came through the camera's lens already (the trace
+            // follows the rays through the opening), so the canvas pass stands down
+            // rather than blur the blur.
+            let focused = pathTraced != nil
+                ? sampled
+                : applyDepthOfField(drawer, resolved: sampled, depth: sceneDepthResolve,
+                                    hidden: hiddenLayer,
+                                    into: commandBuffer, width: outWidth, height: outHeight,
+                                    pointScale: 1, pooled: false)
             let blurred = applyMotionBlur(drawer, resolved: focused, depth: sceneDepthResolve,
                                           moverVelocity: nil, meshBuffer: meshBuf,
                                           into: commandBuffer, width: outWidth, height: outHeight,

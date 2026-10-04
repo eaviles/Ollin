@@ -39,6 +39,9 @@ struct DepthOfFieldTests {
             /// that runs away behind it, the floor a closed box, an open plane seen from its
             /// back, or a raymarched slab.
             case ballOverFloor(Floor)
+            /// A small highlight behind the focus with a sharp dark bar in front of
+            /// its right half, at the focus.
+            case highlightBehindBar(Double)
         }
         enum Floor { case box, planeFromBehind, marched }
         var content = Content.bars([3, 6.1, 11])
@@ -47,6 +50,8 @@ struct DepthOfFieldTests {
         var blurs = true
         var focusRange = 0.0
         var maxBlur = 64.0
+        var quality = RenderQuality.default
+        var highlightRadius = 2.5
         var temporal = false
         override var canvasSize: CanvasSize { .square(DepthOfFieldTests.size) }
 
@@ -67,7 +72,7 @@ struct DepthOfFieldTests {
                 camera(lens)
             }
             if temporal { temporalAntialiasing(); motionBlur() }
-            if blurs { depthOfField(focusRange: focusRange, maxBlur: maxBlur) }
+            if blurs { depthOfField(focusRange: focusRange, maxBlur: maxBlur, quality: quality) }
             noLights()
             fill(.white)
             switch content {
@@ -80,7 +85,20 @@ struct DepthOfFieldTests {
                 }
             case .highlight(let d):
                 let p = at(0, 0, d)
+                withState { translate(p.x, p.y, p.z); drawMesh(Mesh.sphere(radius: highlightRadius * d / DepthOfFieldTests.F).glowing(40)) }
+            case .highlightBehindBar(let d):
+                let p = at(0, 0, d)
                 withState { translate(p.x, p.y, p.z); drawMesh(Mesh.sphere(radius: 2.5 * d / DepthOfFieldTests.F).glowing(40)) }
+                // The bar: 8 px wide at the focus, its left edge 4 px right of the
+                // highlight's center, so it stands over the disc's right half.
+                let s = DepthOfFieldTests.s
+                let b = at(8, 0, s)
+                fill(Color(white: 0.2))
+                withState {
+                    translate(b.x, b.y, b.z)
+                    drawMesh(Mesh.box(width: 8 * s / DepthOfFieldTests.F, height: 150 * s / DepthOfFieldTests.F,
+                                      depth: 0.02))
+                }
             case .ball(let d):
                 // A white ball in front of the focus, its middle `d` from the eye.
                 let p = at(0, 0, d)
@@ -240,6 +258,48 @@ struct DepthOfFieldTests {
         // An even disc's mean over its own area: a sharp core left in a halo peaks far above it.
         let mean = total / (Double.pi * r * r)
         #expect(peak / mean < 2, "peak \(peak) against a mean of \(mean)")
+    }
+
+    /// At the lowest tier the taps are few, and a small highlight drawn as a disc of
+    /// its own keeps its light and its evenness all the same.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aSmallHighlightIsEvenAtTheLowestTier() throws {
+        let d = 9.0
+        let sharp = try render(lens { $0.content = .highlight(d); $0.blurs = false })
+        let blurred = try render(lens { $0.content = .highlight(d); $0.quality = .performance })
+        var total = 0.0, sharpTotal = 0.0, moment = 0.0, peak = 0.0
+        var inside = [Double]()
+        let coc = Self.coc(d)
+        for y in 196 ... 316 {
+            for x in 196 ... 316 {
+                let v = max(blurred.lum(x, y), 0)
+                total += v
+                sharpTotal += max(sharp.lum(x, y), 0)
+                let r2 = Double((x - 256) * (x - 256) + (y - 256) * (y - 256))
+                moment += v * r2
+                peak = max(peak, v)
+                if r2 < (coc - 2) * (coc - 2) { inside.append(v) }
+            }
+        }
+        let r = sqrt(2 * moment / total)
+        #expect(abs(r - coc) < 1, "radius \(r) against the lens's \(coc)")
+        #expect(total / sharpTotal > 0.95 && total / sharpTotal < 1.05, "kept \(total / sharpTotal) of its light")
+        let mean = total / (Double.pi * r * r)
+        #expect(peak / mean < 1.3, "peak \(peak) against a mean of \(mean)")
+        // Inside the disc the light is even: no pixel more than a quarter from the mean.
+        let insideMean = inside.reduce(0, +) / Double(inside.count)
+        let spread = inside.map { abs($0 - insideMean) }.max() ?? 0
+        #expect(spread / insideMean < 0.25, "the disc's interior strays \(spread / insideMean) of its mean")
+    }
+
+    /// A sharp bar in focus in front of a far highlight cuts its disc at the bar's
+    /// own edge: the disc shows on one side and not over the bar.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aSharpBarCutsTheDiscOfAHighlightBehindIt() throws {
+        let f = try render(lens { $0.content = .highlightBehindBar(11) })
+        let overBar = f.lum(266, 256), beside = f.lum(246, 256)
+        #expect(beside > 0.5, "the disc's uncovered side reads \(beside)")
+        #expect(overBar < 0.15, "the disc reads \(overBar) over the bar in front of it")
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))

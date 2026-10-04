@@ -1611,11 +1611,41 @@ occlusion and reflection combines, so it carries `apertureBlades` too, and
 highlights together. A hand-drawn depth ramp carries no camera and stays round
 unless the call names a count itself.
 
-**The envelope is the tap budget.** The spiral is equal-area per tap, so the
-spacing between taps is `sqrt(pi / budget)` of the rim: about 13% at `.default`
-(192 taps) and 8% at `.detail` (512). A source smaller than that spacing is found
-by some taps and missed by others; the moved spiral and the median even most of
-that out, and at `.performance` a small source's disc can still look grainy. A
+**The envelope is the tap budget, and the smallest sources leave it.** The spiral
+is equal-area per tap, so the spacing between taps is `sqrt(pi / budget)` of the
+rim: about 13% at `.default` (192 taps) and 8% at `.detail` (512). A source
+smaller than that spacing is found by some taps and missed by others; the moved
+spiral and the median even most of that out, and a point-sized source was still
+lost almost whole (a one-pixel lamp kept 0.2% of its light at `.performance`, 64%
+at `.default`). So a small bright source is taken out of the gather's input and
+drawn afterwards as a disc of its own (`ollin_lens_sprites_collect`, one thread per
+2x2 block, and `ollin_lens_sprites_vertex`/`_fragment`, one additive quad per
+block in block order, never an append cursor, so the draw's rounding is the same
+from run to run). A pixel qualifies when it is blurred by three pixels or more and
+brighter than three times the mean of the dim samples on a ring four pixels out,
+with at most two bright samples on the ring and never an opposite pair: a dot of
+five pixels passes from every one of its pixels (its rim sees its own far side
+side by side), a line through the pixel lights the opposite pair and fails, and a
+dot of seven lights more and gathers as before. The pixel keeps the ring's dim
+mean and hands the rest to its block's sprite, which sits at the light-weighted
+center of what the block took, with its light-weighted blur, distance, and radius
+of gyration; the gather spreads the mean, the sprite spreads the rest at the
+gather's own density, `1 / (pi r^2)`, so the light stays in balance (a five-pixel
+highlight kept 99.5% of its light at `.performance` against 94.5% gathered, and
+its disc's interior stayed within 2% of flat). The disc's edge is softened by
+`sqrt 2` times the radius of gyration, since a source of some width blurs into a
+disc with an edge that wide; the ring's mean is of its dim samples only, since a
+bright one is the source's own far side and counting it left a tenth of the light
+to gather as blotches. What stands nearer than a source covers its disc by the
+share of a ring at the occluder's own blur whose samples are nearer: all of it
+deep inside the occluder, half at its edge, and all of it for a sharp occluder,
+which cuts the disc at its silhouette (a sharp bar in front of a far highlight
+leaves the disc on one side and nothing over the bar). The `.defocus` layer
+filter runs the same collect and draw under its ramp law and iris. Measured on
+400 lamps at 1080 by 1080 on an M2, the pass costs nothing the clock can see: the
+frame read 0.3 to 1 ms faster with it at both tiers, within the run-to-run
+spread, since a flattened frame lets more of the gather pass over a flat
+neighborhood than the collect and the draw cost. A
 regular polygon's corners stick out by `1 - cos(pi/n)` of the rim, 13.4% for a
 hexagon, so at `.default` a hexagon's corners sit at the sampling limit, which is
 why the Guide figure uses five blades at `.detail`. `quality` is a `RenderQuality`

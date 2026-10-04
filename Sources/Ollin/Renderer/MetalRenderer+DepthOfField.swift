@@ -271,15 +271,101 @@ extension MetalRenderer {
             hiddenColor = hidden.color
             hiddenCoc = layerCoc
         }
-        encodeEffectFragment("ollin_fx_lens_dof_tilemax", inputs: [coc, resolved], output: tileMax,
+        // Small bright sources come out of the gather's input and are drawn after
+        // it as discs of their own (`ollin_lens_sprites_collect`): one slot per
+        // 2x2 block, in block order. The gather reads the flattened frame.
+        let sprites = lensSpritesEnabled
+            ? encodeLensSpriteCollect(resolved: resolved, coc: coc, width: width, height: height,
+                                      params: [lens, band, shape], iris: .zero, into: cb, pooled: pooled)
+            : nil
+        let gatherBase = sprites?.flattened ?? resolved
+        encodeEffectFragment("ollin_fx_lens_dof_tilemax", inputs: [coc, gatherBase], output: tileMax,
                              params: [lens, band], into: cb)
         encodeEffectFragment("ollin_fx_lens_dof_neighbormax", inputs: [tileMax], output: reach,
                              params: [band], into: cb)
         encodeEffectFragment("ollin_fx_lens_depth_of_field",
-                             inputs: [resolved, coc, reach, hiddenColor, hiddenCoc], output: gathered,
+                             inputs: [gatherBase, coc, reach, hiddenColor, hiddenCoc], output: gathered,
                              params: [lens, band, shape, hidden != nil ? layers : layers], into: cb)
         encodeEffectFragment("ollin_fx_lens_dof_median", inputs: [gathered, coc], output: output,
                              params: [lens, band, shape], into: cb)
+        if let sprites {
+            encodeLensSprites(sprites, coc: coc, reach: reach, output: output,
+                              params: [lens, band, shape], into: cb)
+        }
         return output
+    }
+
+    /// The sprite collect: the frame's small bright sources taken out of a copy of
+    /// the frame (`flattened`, what the gather then reads) and listed one slot per
+    /// `block` x `block` pixels. `params` are the gather's first three rows; the
+    /// fourth is the rule (the least blur a source needs, the ratio to its ring, the
+    /// floor under the ring, the block) and the fifth, `iris`, what the draw needs
+    /// of the law and the opening (the ramp law, the iris's turn, its cat's eye;
+    /// zero for the canvas). nil when the pass cannot run, and the gather reads the
+    /// frame itself.
+    func encodeLensSpriteCollect(resolved: MTLTexture, coc: MTLTexture, width: Int, height: Int,
+                                 params: [SIMD4<Float>], iris: SIMD4<Float>,
+                                 into cb: MTLCommandBuffer, pooled: Bool)
+        -> (flattened: MTLTexture, list: MTLBuffer, slots: Int, params: [SIMD4<Float>])? {
+        let block = 2
+        let blocksW = (width + block - 1) / block, blocksH = (height + block - 1) / block
+        let slots = blocksW * blocksH
+        let rule = SIMD4<Float>(3, 3, 0.05, Float(block))
+        guard let flattened = acquireFilterTexture(width: width, height: height, pooled: pooled),
+              let list = acquireLensSpriteBuffer(slots: slots, pooled: pooled),
+              let collect = try? libraryComputePipeline("ollin_lens_sprites_collect"),
+              let encoder = cb.makeComputeCommandEncoder() else { return nil }
+        let all = params + [rule, iris]
+        encoder.setComputePipelineState(collect)
+        encoder.setTexture(resolved, index: 0)
+        encoder.setTexture(coc, index: 1)
+        encoder.setTexture(flattened, index: 2)
+        encoder.setBuffer(list, offset: 0, index: 0)
+        all.withUnsafeBytes { encoder.setBytes($0.baseAddress!, length: $0.count, index: 1) }
+        let tew = collect.threadExecutionWidth
+        let groupWidth = max(1, min(blocksW, tew))
+        let groupHeight = max(1, min(blocksH, collect.maxTotalThreadsPerThreadgroup / tew))
+        profile.computeDispatches += 1
+        encoder.dispatchThreads(MTLSize(width: blocksW, height: blocksH, depth: 1),
+                                threadsPerThreadgroup: MTLSize(width: groupWidth, height: groupHeight, depth: 1))
+        encoder.endEncoding()
+        lastLensSprites = (list, slots, blocksW)
+        return (flattened, list, slots, all)
+    }
+
+    /// The sprites drawn over the finished blur, one additive quad per slot (the
+    /// empty ones clipped away), the disc cut by whatever stands nearer than its
+    /// source (`ollin_lens_sprites_fragment` reads the blur map and the tiles).
+    func encodeLensSprites(_ sprites: (flattened: MTLTexture, list: MTLBuffer, slots: Int, params: [SIMD4<Float>]),
+                           coc: MTLTexture, reach: MTLTexture, output: MTLTexture,
+                           params: [SIMD4<Float>], into cb: MTLCommandBuffer) {
+        let format: MTLPixelFormat? = output.pixelFormat == linearFormat ? nil : output.pixelFormat
+        guard let state = try? pipeline(.lensSprites(format: format)) else { return }
+        let pass = MTLRenderPassDescriptor()
+        pass.colorAttachments[0].texture = output
+        pass.colorAttachments[0].loadAction = .load
+        pass.colorAttachments[0].storeAction = .store
+        guard let enc = countedEncoder(cb, pass, caller: "lens sprites") else { return }
+        enc.setRenderPipelineState(state)
+        enc.setVertexBuffer(sprites.list, offset: 0, index: 0)
+        sprites.params.withUnsafeBytes {
+            enc.setVertexBytes($0.baseAddress!, length: $0.count, index: 1)
+            enc.setFragmentBytes($0.baseAddress!, length: $0.count, index: 1)
+        }
+        enc.setFragmentTexture(coc, index: 0)
+        enc.setFragmentTexture(reach, index: 1)
+        enc.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4, instanceCount: sprites.slots)
+        enc.endEncoding()
+    }
+
+    /// A sprite list of at least `slots` entries, from this frame's ring slot when
+    /// pooled (grown on demand, never shrunk) or fresh for a headless frame.
+    func acquireLensSpriteBuffer(slots: Int, pooled: Bool) -> MTLBuffer? {
+        let length = max(1, slots) * MemoryLayout<OllinLensSprite>.stride
+        guard pooled else { return device.makeBuffer(length: length, options: .storageModeShared) }
+        if let entry = lensSpritePool[frameIndex], entry.slots >= slots { return entry.buffer }
+        guard let buffer = device.makeBuffer(length: length, options: .storageModePrivate) else { return nil }
+        lensSpritePool[frameIndex] = (buffer, slots)
+        return buffer
     }
 }

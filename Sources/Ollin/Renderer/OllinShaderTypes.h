@@ -1177,6 +1177,17 @@ typedef struct {
     simd_float4 dPdv;       // xyz = the other half-axis (∂p′/∂v · Δv); w unused
 } OllinPhoton;
 
+// A small bright source the canvas depth of field draws as a disc of its own
+// (`ollin_lens_sprites_*`): one slot per block of the frame, in block order, so the
+// additive draw comes out the same from run to run. Stride 32.
+typedef struct {
+    simd_float4 place;   // xy = the source's center in pixels, z = its blur radius in
+                         // pixels, w = its distance along the view axis
+    simd_float4 energy;  // rgb = the light taken out of the gather's input (linear,
+                         // summed over the block's pixels), w = how far that light
+                         // stands from the center (its radius of gyration), in pixels
+} OllinLensSprite;
+
 // Per-geometry material data for the photon trace: what a photon needs to know at a
 // hit that the baked `OllinMeshVertex` w slots (metalness/roughness) don't carry.
 // One entry per acceleration-structure geometry, parallel to the base-vertex

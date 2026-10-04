@@ -453,7 +453,7 @@ camera(lens)
 depthOfField()
 ```
 
-The nearest ball turns into a veil over the floor, and the lamps along the back open into hexagons. `focusRange` holds a band sharp either side of the focus, for a whole subject in focus. The blur runs after the edge average and before the motion blur, so the lamplit room could carry all three. What a blurred foreground hides is read from a second drawing of the scene behind it. The nearest ball's halo over the horizon then carries the floor the ball hides, not the dark above it.
+The nearest ball turns into a veil over the floor, and the lamps along the back open into hexagons, each drawn as a disc of its own: a light only a few pixels across would slip between the gather's samples, so it is scattered instead, and its disc comes out even at every quality. `focusRange` holds a band sharp either side of the focus, for a whole subject in focus. The blur runs after the edge average and before the motion blur, so the lamplit room could carry all three. What a blurred foreground hides is read from a second drawing of the scene behind it. The nearest ball's halo over the horizon then carries the floor the ball hides, not the dark above it.
 
 A caption over the room would blur with the floor under it, since the pass reads only depth. `withOverlay` holds its block back and draws it after the lens, the edge average, the motion blur, and the frame filters, so a readout stays sharp over all of them:
 
