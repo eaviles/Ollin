@@ -105,8 +105,14 @@ extension MetalRenderer {
         // alone, which handles a uniform field exactly.
         var envTables: MTLBuffer? = nil
         var envTableLOD: Float = 0
+        // The lobe strategy's reads take the tracer's own copy of the equirect, its
+        // mip chain weighted by latitude (built beside the tables, cached with them);
+        // the table strategy and the backdrop keep the original, so a flat scene's
+        // bytes do not move.
+        var envFiltered: MTLTexture? = nil
         if lighting.iblEnabled != 0, let equirect = currentIBL?.equirect {
             envTables = envSamplingTables(for: equirect)
+            envFiltered = ptEnvTableCache[ObjectIdentifier(equirect)]?.filtered
             envTableLOD = max(0, log2(Float(equirect.width) / Float(Self.envGridW)))
         }
 
@@ -285,6 +291,7 @@ extension MetalRenderer {
             enc.setTexture(guideSurface, index: 6)
             enc.setTexture(iblBRDFLUT, index: 7)
             enc.setTexture(stats, index: 8)
+            enc.setTexture(envFiltered ?? envTexture, index: 9)
             enc.setBuffer(openList, offset: 0, index: 13)
             if compacted {
                 enc.dispatchThreads(MTLSize(width: openPixels, height: 1, depth: 1),
@@ -560,9 +567,56 @@ extension MetalRenderer {
         }
         if let buffer {
             if ptEnvTableCache.count >= Self.maxEnvironmentTables { ptEnvTableCache.removeAll() }
-            ptEnvTableCache[key] = (texture: equirect, tables: buffer)
+            ptEnvTableCache[key] = (texture: equirect, tables: buffer,
+                                    filtered: latitudeWeightedCopy(of: equirect))
         }
         return buffer
+    }
+
+    /// The tracer's own copy of an equirect, its mip chain weighted by latitude
+    /// (`ollin_pt_env_mip`): the plain box chain weighs every texel alike, so a
+    /// coarse level counts the poles as if they were as wide as the equator and a
+    /// read there comes out dark (6% on the bundled interior at the top levels, exact
+    /// to a tenth of a percent through level 6). The base level is a plain copy, each
+    /// level above it averages its four source texels by the sine of their own
+    /// latitude, and the lobe strategy reads this copy at the footprint's level. nil
+    /// when it cannot be built, and the kernel then reads the original.
+    private func latitudeWeightedCopy(of equirect: MTLTexture) -> MTLTexture? {
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: equirect.pixelFormat, width: equirect.width, height: equirect.height,
+            mipmapped: true)
+        desc.usage = [.shaderRead, .shaderWrite]
+        desc.storageMode = .private
+        guard let copy = device.makeTexture(descriptor: desc),
+              let pipe = try? libraryComputePipeline("ollin_pt_env_mip"),
+              let cb = commandQueue.makeCommandBuffer(),
+              let blit = cb.makeBlitCommandEncoder() else { return nil }
+        blit.copy(from: equirect, sourceSlice: 0, sourceLevel: 0,
+                  sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+                  sourceSize: MTLSize(width: equirect.width, height: equirect.height, depth: 1),
+                  to: copy, destinationSlice: 0, destinationLevel: 0,
+                  destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
+        blit.endEncoding()
+        guard let enc = cb.makeComputeCommandEncoder() else { return nil }
+        enc.setComputePipelineState(pipe)
+        for level in 1 ..< copy.mipmapLevelCount {
+            guard let source = copy.makeTextureView(pixelFormat: copy.pixelFormat, textureType: .type2D,
+                                                    levels: (level - 1) ..< level, slices: 0 ..< 1),
+                  let target = copy.makeTextureView(pixelFormat: copy.pixelFormat, textureType: .type2D,
+                                                    levels: level ..< (level + 1), slices: 0 ..< 1)
+            else { return nil }
+            var dims = SIMD4<UInt32>(UInt32(target.width), UInt32(target.height),
+                                     UInt32(source.width), UInt32(source.height))
+            enc.setBytes(&dims, length: MemoryLayout<SIMD4<UInt32>>.stride, index: 0)
+            enc.setTexture(source, index: 0)
+            enc.setTexture(target, index: 1)
+            enc.dispatchThreads(MTLSize(width: target.width, height: target.height, depth: 1),
+                                threadsPerThreadgroup: MTLSize(width: 8, height: 8, depth: 1))
+        }
+        enc.endEncoding()
+        cb.commit()
+        cb.waitUntilCompleted()
+        return copy
     }
 
     /// One printed note per process when `--path-traced` runs on a GPU that cannot

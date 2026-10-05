@@ -30,8 +30,9 @@
 //
 // Implemented from the published techniques: the GGX distribution of visible normals
 // for specular sampling, the balance of lobe probabilities for the combined estimator,
-// Russian roulette for unbiased termination, and a counter-based integer hash for the
-// sample stream (see ATTRIBUTION.md's Techniques list).
+// Russian roulette for unbiased termination, a counter-based integer hash for the
+// sample stream, and a ray cone carried along the path for the footprint the
+// environment is read at (see ATTRIBUTION.md's Techniques list).
 
 // What this segment builds on. The resolver reads each one in ahead of this file
 // and only once, so the segment list itself carries no order (see ShaderIncludes).
@@ -152,9 +153,10 @@ static inline float ollin_pt_fresnel_dielectric(float cosI, float eta) {
 // The environment's radiance along `dir`, in display-linear units: the equirect at
 // the frame's rotation times the normalization-times-intensity scale (the skybox /
 // IBL exposure), or the flat ambient when no environment is bound.
-// `lod` 0 is the sharp full-resolution read (the lobe strategy, so mirrors stay
-// crisp); the environment strategy reads the same filtered level its tables were
-// built from, so one lamp texel far brighter than its table cell cannot spike.
+// The lobe strategy reads the level its footprint asks for (`ollin_pt_env_lod`,
+// 0 for a flat mirror seen pinhole-sharp); the environment strategy reads the same
+// filtered level its tables were built from, so one lamp texel far brighter than
+// its table cell cannot spike.
 static inline float3 ollin_pt_env(float3 dir, constant OllinLighting &light,
                                   constant OllinPathTraceUniforms &pt,
                                   texture2d<float> equirect, float lod) {
@@ -195,6 +197,30 @@ kernel void ollin_pt_env_reduce(uint2 gid [[thread_position_in_grid]],
         max(dot(c, float3(0.2126, 0.7152, 0.0722)), 0.0) * sinT + 1e-6;
 }
 
+// The tracer's own copy of the environment, its mip chain weighted by latitude:
+// the equirect's plain box chain averages texels by uv area, so a coarse level
+// weighs the poles as if they were as wide as the equator, and a read at the top
+// levels, which is what a wide footprint asks for (a defocused polished bead, a
+// surface seen at its rim), came out 6% dark on the bundled interior (exact to a
+// tenth of a percent through level 6, measured). Each level here averages its four
+// source texels by the sine of their own latitude, so every level's mean over
+// directions is the base level's. One dispatch per level, `dims` the destination
+// level's size (xy) and the source level's (zw, which clamps the read where a
+// 2:1 chain's last levels are a single row); the base level is a plain copy.
+kernel void ollin_pt_env_mip(uint2 gid [[thread_position_in_grid]],
+                             constant uint4 &dims [[buffer(0)]],
+                             texture2d<float, access::read> source [[texture(0)]],
+                             texture2d<float, access::write> level [[texture(1)]]) {
+    if (gid.x >= dims.x || gid.y >= dims.y) return;
+    uint2 s0 = min(uint2(gid.x * 2u, gid.y * 2u), uint2(dims.z - 1u, dims.w - 1u));
+    uint2 s1 = min(s0 + 1u, uint2(dims.z - 1u, dims.w - 1u));
+    float w0 = sin(3.14159265 * (float(s0.y) + 0.5) / float(dims.w));
+    float w1 = sin(3.14159265 * (float(s1.y) + 0.5) / float(dims.w));
+    float4 sum = (source.read(s0) + source.read(uint2(s1.x, s0.y))) * w0
+               + (source.read(uint2(s0.x, s1.y)) + source.read(s1)) * w1;
+    level.write(sum / max(2.0 * (w0 + w1), 1e-6), gid);
+}
+
 // Draw one direction from the environment's own distribution: binary-search the row
 // marginal, then the row's conditional, remap the residuals inside the cell (free
 // stratification), and return the equirect-space direction plus its solid-angle pdf.
@@ -226,6 +252,104 @@ static inline float ollin_pt_env_pdf(float3 worldDir, float3x3 rot, uint W, uint
     uint col = min(uint(uv.x * float(W)), W - 1);
     uint row = min(uint(uv.y * float(H)), H - 1);
     return tables[H + H * W + row * W + col];
+}
+
+// MARK: - The ray cone
+//
+// A pixel is a bundle of rays, not one, and the environment a bounced ray brings back
+// is what that bundle sees: on a curved polished surface a pixel's footprint spans a
+// range of normals, so its reflections fan out over a cone of directions wider than
+// the pixel itself, by twice the normal's turn across the footprint. One sample reads
+// one direction of that cone, and where the environment holds a small lamp the
+// samples that land on it are the fireflies a count never settles: two thousand
+// polished beads fourteen pixels wide, each mirroring a lit studio, read 21 dB from
+// their own thousand-sample render at 128, every strategy's weight already right.
+// The cure is to read the environment at the footprint the pixel integrates, the
+// same prefiltering the surface maps already get: a cone (a width and a spread
+// angle) travels with the ray, widens by the pixel's own angle per unit of travel,
+// and at each reflection by the surface's curvature under the footprint; the
+// environment is then read at the mip whose texel matches the cone's solid angle
+// beside the sampled lobe's own. A flat mirror seen pinhole-sharp keeps a cone under
+// a texel and reads the base level, byte for byte what it read before.
+//
+// The curvature is the mean of the three edge curvatures the triangle's vertex
+// normals imply, which is exact on a sphere (the signed radius of the circle through
+// two vertices with their normals); the cone's spread grows by twice the curvature
+// times the footprint, foreshortened by the arrival angle. A thin lens starts the
+// cone at the opening's full width, converging to the pixel's footprint at the focus
+// distance and spreading past it (the width goes through zero at the focus, so its
+// magnitude is the circle of confusion), and the opening's angular size from the
+// focus plane joins the spread in quadrature at the read, which is the blur an
+// in-focus flat mirror shows of the far scene behind it. Signed throughout: a
+// concave surface narrows the cone. The footprint is an underestimate where the
+// bundle is anisotropic (the three curvatures are averaged, never bounded), which is
+// the side a Monte Carlo tracer wants, since the samples still average what the
+// filter leaves. Only the environment reads use the cone's curvature; the surface
+// maps keep their footprint of pixel width plus spread times distance.
+
+// The mean edge curvature of the hit triangle, in world units, signed so a convex
+// surface (normals fanning apart) is positive. `base` is the triangle's first vertex
+// in the flat buffer; a copy's vertices are in its mesh's own space and take the
+// copy's placement (positions by the object-to-world transform, normals by its
+// inverse transpose, which is the world-to-object transform's transpose, as the hit
+// fetch applies it). The viewed side decides the sign: a back face is concave.
+static inline float ollin_pt_curvature(thread intersection_query<triangle_data, instancing> &q,
+                                       const device OllinMeshVertex *verts,
+                                       uint base, bool copied, bool backface) {
+    float3 P0 = verts[base].position.xyz;
+    float3 P1 = verts[base + 1u].position.xyz;
+    float3 P2 = verts[base + 2u].position.xyz;
+    float3 N0 = verts[base].normal.xyz;
+    float3 N1 = verts[base + 1u].normal.xyz;
+    float3 N2 = verts[base + 2u].normal.xyz;
+    if (copied) {
+        float4x3 o2w = q.get_committed_object_to_world_transform();
+        float4x3 w2o = q.get_committed_world_to_object_transform();
+        P0 = o2w * float4(P0, 1.0);
+        P1 = o2w * float4(P1, 1.0);
+        P2 = o2w * float4(P2, 1.0);
+        N0 = normalize(float3(dot(w2o[0], N0), dot(w2o[1], N0), dot(w2o[2], N0)));
+        N1 = normalize(float3(dot(w2o[0], N1), dot(w2o[1], N1), dot(w2o[2], N1)));
+        N2 = normalize(float3(dot(w2o[0], N2), dot(w2o[1], N2), dot(w2o[2], N2)));
+    }
+    float3 e01 = P1 - P0, e12 = P2 - P1, e20 = P0 - P2;
+    float k = (dot(N1 - N0, e01) / max(dot(e01, e01), 1e-12)
+             + dot(N2 - N1, e12) / max(dot(e12, e12), 1e-12)
+             + dot(N0 - N2, e20) / max(dot(e20, e20), 1e-12)) * (1.0 / 3.0);
+    return backface ? -k : k;
+}
+
+// The cone widened by a lobe a direction was drawn from: the sample stands for the
+// solid angle one over its pdf (filtered importance sampling's footprint), folded
+// into the spread in quadrature as the full angle of a disc of that solid angle,
+// the sign kept. A delta lobe adds nothing; a cosine lobe opens the cone to the
+// hemisphere. Carried in the cone rather than read once, the footprint also reaches
+// the next curved surface, where its width is what the curvature fans out.
+static inline float ollin_pt_widen(float spread, float pdf) {
+    float lobe = 2.0 * sqrt(1.0 / (3.14159265 * max(pdf, 1e-12)));
+    float s = sqrt(spread * spread + lobe * lobe);
+    return spread < 0.0 ? -s : s;
+}
+
+// The mip an environment read takes: the cone's solid angle (its spread with the
+// lens opening's angle in quadrature, as a cone's, so a spread past a hemisphere
+// saturates at the sphere) plus `omegaExtra`, a footprint not yet folded into the
+// cone, over the equirect's mean texel, halved in log2 for a level. The read goes
+// no coarser than the level whose cell is a sixteenth of the turn (22.5 degrees,
+// level 6 of a 1024-wide chain): past that the sample no longer stands for its own
+// direction, since the lobe's Fresnel and cosine vary across the cell while the
+// read averages the room before they weigh it, and a bead field under a lens read
+// 9 percent bright between its beads at the chain's top against 2 at this cell,
+// for 2 percent more spread (measured).
+static inline float ollin_pt_env_lod(float coneSpread, float lensSpread, float omegaExtra,
+                                     texture2d<float> equirect) {
+    float texels = float(equirect.get_width()) * float(equirect.get_height());
+    float omegaTexel = 2.0 * 3.14159265 * 3.14159265 / max(texels, 1.0);
+    float spread = sqrt(coneSpread * coneSpread + lensSpread * lensSpread);
+    float omega = 2.0 * 3.14159265 * (1.0 - cos(min(0.5 * spread, 3.14159265))) + omegaExtra;
+    float top = min(float(equirect.get_num_mip_levels()) - 1.0,
+                    log2(max(float(equirect.get_width()) / 16.0, 1.0)));
+    return clamp(0.5 * log2(omega / omegaTexel), 0.0, max(top, 0.0));
 }
 
 // The power heuristic (exponent 2): credits a direction to whichever sampling
@@ -743,7 +867,12 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
                            // open pixels a compacted dispatch runs over (each entry
                            // y * width + x; unread by a dispatch over the grid).
                            texture2d<float, access::read_write> stats [[texture(8)]],
-                           const device uint *openList [[buffer(13)]]) {
+                           const device uint *openList [[buffer(13)]],
+                           // The tracer's own copy of the equirect, its mip chain
+                           // weighted by latitude (`ollin_pt_env_mip`), for the lobe
+                           // strategy's reads at the footprint's level; the table
+                           // strategy and the backdrop read the original.
+                           texture2d<float> equirectFiltered [[texture(9)]]) {
     uint2 gid = lane;
     if (pt.open.x > 0u) {
         if (lane.x >= pt.open.x) return;
@@ -884,6 +1013,18 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
                                 // halves of the pairing scale together, which is
                                 // what keeps the combined estimator consistent)
         float pathDist = 0.0;   // distance traveled so far (grows the texture ray cone)
+        // The ray cone (see `ollin_pt_curvature`): the pixel's width at the near
+        // plane and its angle per unit of travel, both signed; a thin lens opens the
+        // width to the whole opening and turns the spread inward toward the focus
+        // distance, and keeps the opening's angle from there for the read.
+        float coneWidth = pt.cone.x;
+        float coneSpread = pt.cone.y;
+        float lensSpread = 0.0;
+        if (pt.lens.x > 0.0) {
+            lensSpread = 2.0 * pt.lens.x / max(pt.lens.y, 1e-3);
+            coneWidth += 2.0 * pt.lens.x;
+            coneSpread -= lensSpread;
+        }
         float3 firstAlbedo = float3(1.0);   // the first surface's own color, and
         float3 firstNormal = float3(0.0);   // the direction it faces (the guides)
         float4 medium = float4(0.0);   // inside a solid glass body: its attenuation
@@ -911,18 +1052,20 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
                                                                  pt.counts.w, envTables))
                         : 1.0;
                     // Filtered importance sampling: read the environment at the mip
-                    // whose texel footprint matches the sampled lobe's solid angle
-                    // (≈ 1/pdf), so a rough bounce integrates a matched blur instead
-                    // of speckling on lamp texels, while a mirror bounce (huge pdf)
-                    // stays at the sharp base level.
+                    // whose texel footprint matches what this sample stands for, the
+                    // ray cone as the scatters widened it (the sampled lobe's solid
+                    // angle, ≈ 1/pdf, folded in at each one), so a rough bounce
+                    // integrates a matched blur instead of speckling on lamp texels,
+                    // a pixel's worth of a curved mirror reads the cone its
+                    // reflections fan over, and a flat mirror seen pinhole-sharp (a
+                    // delta lobe, a cone under a texel) stays at the sharp base level.
                     float lod = 0.0;
-                    if (light.iblEnabled != 0 && prevPdf > 0.0) {
-                        float texels = float(equirect.get_width()) * float(equirect.get_height());
-                        float omegaTexel = 2.0 * 3.14159265 * 3.14159265 / max(texels, 1.0);
-                        lod = clamp(0.5 * log2(1.0 / (prevPdf * omegaTexel)), 0.0, 10.0);
+                    if (light.iblEnabled != 0) {
+                        lod = ollin_pt_env_lod(coneSpread, lensSpread, 0.0, equirectFiltered);
                     }
                     ollin_pt_add(radiance, dropped,
-                                 throughput * ollin_pt_env(rd, light, pt, equirect, lod) * (w * aoPrev),
+                                 throughput * ollin_pt_env(rd, light, pt, equirectFiltered, lod)
+                                 * (w * aoPrev),
                                  bounded && depth > 1, bounceLimit);
                 }
                 break;
@@ -940,6 +1083,14 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
             float hitDist = q.get_committed_distance();
             if (depth == 0) { covered = true; primaryDist = hitDist; }
             pathDist += hitDist;
+            // The cone at this hit: its width here, and the spread a reflection off
+            // this surface adds, twice the curvature times the footprint (the width
+            // foreshortened by the arrival angle, held off grazing).
+            coneWidth += coneSpread * hitDist;
+            float curvature = ollin_pt_curvature(q, verts, lookup.base, h.copied, backface);
+            float footprint = abs(coneWidth) / max(abs(dot(h.Ng, rd)), 0.1);
+            float spreadGain = 2.0 * curvature * footprint;
+            float normalSpread = curvature * footprint * 0.28867513;
 
             // Inside a solid glass body, the segment just traveled pays its
             // Beer-Lambert absorption (`attenuation` is what white becomes after
@@ -1094,7 +1245,8 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
                 }
                 if (!(thin && crossed))
                     throughput *= ollin_pt_smith_g1(max(abs(dot(h.s.N, wi)), 1e-4), a);
-                prevPdf = 1e6;      // effectively a delta lobe (sharp env mip on a miss)
+                if (!crossed) coneSpread += spreadGain;   // a crossing keeps the cone
+                prevPdf = 1e6;      // effectively a delta lobe (it widens the cone by nothing)
                 prevNEE = false;
                 if (depth >= 3) {
                     float p = clamp(max(throughput.x, max(throughput.y, throughput.z)),
@@ -1117,9 +1269,35 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
             OllinPTHit hNEE = h;
             if (depth > 0) hNEE.s.rough = max(hNEE.s.rough, 0.25);
 
-            // The lights the surface sees directly.
+            // The lights the surface sees directly, through the lobe its footprint
+            // fans over: the normals under the footprint spread by the curvature
+            // times its width, evenly, so their standard deviation is that turn over
+            // root twelve, and the physically-based lobe widens by it as a lobe
+            // widens under a normal distribution (alpha squared plus twice the
+            // variance), the specular anti-aliasing the raster path runs. A delta
+            // light on a near-delta lobe is otherwise a spike one sample in a few
+            // hundred aligns with and then carries whole, the grain no count
+            // settles; widened, the highlight is the pixel's share of it. The light
+            // list has no sampling pair, so the widening costs the pairing nothing;
+            // the environment, the mesh lights, and the continuation keep the sharp
+            // lobe, and read the environment at the footprint instead (the cone).
+            // A flat surface (zero curvature) is untouched.
+            OllinPTHit hDirect = hNEE;
+            if (h.physical && normalSpread > 0.0) {
+                float a2 = hDirect.s.rough * hDirect.s.rough * hDirect.s.rough * hDirect.s.rough
+                         + 2.0 * normalSpread * normalSpread;
+                hDirect.s.rough = min(sqrt(sqrt(a2)), 1.0);
+                // Priced as widened: the single-scatter lobe loses energy as it
+                // widens (two fifths of it at roughness 1), and the compensation
+                // the sharp lobe was priced at would leave that loss in the
+                // highlight (measured as 4% of a bead field's light).
+                float3 F0d = mix(float3(h.mat.f0), h.s.albedo, h.s.metal);
+                float NoVd = max(dot(h.s.N, -rd), 1e-4);
+                hDirect.energyComp = ollin_pbr_energy_comp(
+                    F0d, ollin_pbr_ess(brdfLUT, NoVd, hDirect.s.rough));
+            }
             ollin_pt_add(radiance, dropped,
-                         throughput * ollin_pt_direct(hNEE, -rd, eps, accel, light,
+                         throughput * ollin_pt_direct(hDirect, -rd, eps, accel, light,
                                                       gid, sampleIndex, dim,
                                                       iesProfiles, cookies,
                                                       verts, geoOffsets, geoMats,
@@ -1164,6 +1342,13 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
                     if (any(visE > float3(0.0))) {
                         float3 f = ollin_pt_bsdf(hNEE, -rd, wiE);
                         float w = ollin_pt_mis(envPdf, ollin_pt_bsdf_pdf(hNEE, -rd, wiE));
+                        // The table's draw reads the level its tables were built
+                        // from, never the cone's: its importance matches the sharp
+                        // lamp cell, and a draw read blurred would carry little while
+                        // the blur's skirt sat in cells the table rarely draws, so a
+                        // finite count came up short (13% of the bead scene's light
+                        // at 128, measured). The footprint reaches this strategy
+                        // through the lobe instead, widened at the hit below.
                         ollin_pt_add(radiance, dropped,
                                      throughput * f * visE
                                      * ollin_pt_env(wiE, light, pt, equirect, pt.miss.w)
@@ -1212,6 +1397,7 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
             // one above, so unmapped scenes are untouched).
             if (dot(wi, h.Ng) <= 0.0) break;
             throughput *= weight;
+            coneSpread = ollin_pt_widen(coneSpread + spreadGain, prevPdf);
             prevNEE = true;
             aoPrev = mapped.ao;
 

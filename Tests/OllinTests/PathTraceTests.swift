@@ -1384,4 +1384,102 @@ struct PathTraceTests {
         #expect(openShadowPatch - castShadowPatch > 40,
                 "the flag moved the patch only \(openShadowPatch - castShadowPatch) levels")
     }
+
+    // MARK: - A pixel's worth of a curved surface
+
+    /// Small polished beads under a studio, and a flat polished mirror under the
+    /// same, for the footprint the tracer reads the environment at: a bead five
+    /// pixels across fans each pixel's reflections over a wide cone of directions,
+    /// a flat mirror turns none.
+    final class FootprintProbe: Sketch {
+        enum Kind { case beads, mirror }
+        var kind: Kind = .beads
+
+        override var canvasSize: CanvasSize { .square(256) }
+
+        static func make(_ kind: Kind) -> FootprintProbe {
+            let p = FootprintProbe()
+            p.kind = kind
+            return p
+        }
+
+        let bead = Mesh.sphere(radius: 1, segments: 24, rings: 12)
+
+        override func draw() {
+            background(.black)
+            camera(Camera3D(eye: Vector3(0, 0, 4), target: .zero))
+            // The studio lights and reflects; the backdrop stays the black background.
+            environment(.interior.lightingOnly())
+            fill(Color(white: 200 / 255))
+            material(.polishedMetal)
+            switch kind {
+            case .beads:
+                var copies: [MeshInstance] = []
+                for j in 0 ..< 6 {
+                    for i in 0 ..< 6 {
+                        copies.append(MeshInstance(position: Vector3((Double(i) - 2.5) * 0.5,
+                                                                     (Double(j) - 2.5) * 0.5, 0),
+                                                   scale: 0.08))
+                    }
+                }
+                drawMesh(bead, instances: copies)
+            case .mirror:
+                withState {
+                    rotateX(.pi / 2)
+                    drawMesh(Mesh.plane(width: 2.4, depth: 2.4))
+                }
+            }
+        }
+    }
+
+    private func footprint(_ kind: FootprintProbe.Kind, samples: Int) -> CGImage? {
+        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: samples, denoises: false)
+        defer { OllinApp.pathTracedExport = nil }
+        return try? OllinApp.image(of: FootprintProbe.make(kind), frame: 1)
+    }
+
+    /// Root-mean-square difference between two renders over the pixels the second
+    /// lights, all three channels, in 8-bit levels, with that pixel count.
+    private func rmsDifference(_ a: CGImage, _ b: CGImage) -> (rms: Double, lit: Int) {
+        let da = pixels(of: a), db = pixels(of: b)
+        var sum = 0.0, lit = 0
+        for i in stride(from: 0, to: db.count, by: 4) {
+            guard max(db[i], db[i + 1], db[i + 2]) > 8 else { continue }
+            lit += 1
+            for c in 0 ..< 3 {
+                let d = Double(da[i + c]) - Double(db[i + c])
+                sum += d * d
+            }
+        }
+        return ((sum / Double(max(lit * 3, 1))).squareRoot(), lit)
+    }
+
+    /// Small polished beads mirror the studio, and each pixel's footprint on a bead
+    /// fans its reflections over a wide cone of directions, so a sample that reads
+    /// one direction of that cone sharp catches a lamp one time in a few hundred and
+    /// then carries it whole, the grain no count settles. The tracer reads the
+    /// environment at the footprint instead, so a thin render sits close to a full
+    /// one: 32 samples against 512, the RMS over the beads' pixels under 14 levels
+    /// (10.2 measured; the sharp read sat at 19.7).
+    @Test(.enabled(if: Snapshot.hasRaytracing))
+    func aPolishedBeadFieldConvergesAtItsFootprint() throws {
+        let thin = try #require(footprint(.beads, samples: 32))
+        let full = try #require(footprint(.beads, samples: 512))
+        let (rms, lit) = rmsDifference(thin, full)
+        #expect(lit > 400, "the beads cover \(lit) pixels")
+        #expect(rms < 14, "RMS \(rms) over \(lit) bead pixels at 32 against 512 samples")
+    }
+
+    /// A flat polished mirror reads the environment as it did before the footprint
+    /// read existed: its footprint turns no normals, so the cone stays under a texel
+    /// and the lobe's own level is what the read takes. The reference was recorded
+    /// before the cone, and the frame must still match it.
+    @Test(.enabled(if: Snapshot.hasRaytracing))
+    func aFlatMirrorReadsTheEnvironmentAsBefore() throws {
+        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: 48, denoises: false)
+        defer { OllinApp.pathTracedExport = nil }
+        let diff = try Snapshot.meanDifference(of: FootprintProbe.make(.mirror),
+                                               against: "path-traced-mirror", frame: 1)
+        #expect(diff < Snapshot.tolerance, "mean difference \(diff)")
+    }
 }

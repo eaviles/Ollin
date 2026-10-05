@@ -1110,7 +1110,8 @@ final class MetalRenderer {
     /// the identity cannot be handed to another texture while the tables built
     /// from this one are kept; and the cache is bounded, because an environment
     /// that changes every frame (a live feed) makes a new texture every frame.
-    var ptEnvTableCache: [ObjectIdentifier: (texture: MTLTexture, tables: MTLBuffer)] = [:]
+    var ptEnvTableCache: [ObjectIdentifier: (texture: MTLTexture, tables: MTLBuffer,
+                                              filtered: MTLTexture?)] = [:]
     /// The most environments `ptEnvTableCache` keeps tables for at once.
     static let maxEnvironmentTables = 4
     lazy var shadowSampler: MTLSamplerState? = {
