@@ -217,6 +217,8 @@ final class Tower: Sketch {
 
 The pattern is the same as for particles. You build the world in `setup()`, and then in `draw()` you call `advance(by:)` and draw from `world.bodies`. You can keep each body's look, its color and its drawn size, in `userData`, and then draw it from its `position` and `angle`.
 
+**A number the solver cannot hold is refused at the bridge.** A value that is not a number, an infinity, or a magnitude past a billion units never reaches the solver. A rigid body's position, angle, velocity, or spin set to one keeps what it had. A force or an impulse made of one does nothing. The world's `gravity` and `unitsPerMeter` keep theirs, and `addBody(at:)` given such a position places the body at the origin. Each prints one note naming the call, once per world. The [3D world](Physics3D.md) does the same.
+
 **Adding bodies**
 
 ```swift

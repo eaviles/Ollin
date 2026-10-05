@@ -95,7 +95,9 @@ public final class Vehicle3D {
     /// Asking for the other direction while the vehicle is still rolling
     /// brakes first and only takes the new direction once it has stopped,
     /// which is how a car with an automatic gearbox behaves.
-    public var throttle: Double = 0
+    public var throttle: Double = 0 {
+        didSet { if !world.holds(throttle, "vehicle.throttle") { throttle = oldValue } }
+    }
 
     /// Which way the wheels are turned, `-1` hard left … `1` hard right. How
     /// far that actually turns them is each wheel's `maxSteerAngle`.
@@ -104,16 +106,22 @@ public final class Vehicle3D {
     /// slower the inside band runs: half lock stops it, and full lock runs it
     /// backwards, which spins the machine on the spot. It needs throttle to do
     /// any of that, the way a real one does.
-    public var steering: Double = 0
+    public var steering: Double = 0 {
+        didSet { if !world.holds(steering, "vehicle.steering") { steering = oldValue } }
+    }
 
     /// The brake pedal, `0…1`. Slows every wheel that has `brakeTorque`; on a
     /// tracked machine it slows both bands, which is the only brake it has.
-    public var brake: Double = 0
+    public var brake: Double = 0 {
+        didSet { if !world.holds(brake, "vehicle.brake") { brake = oldValue } }
+    }
 
     /// The hand brake, `0…1`. Locks the wheels that have `handBrakeTorque`
     /// (the rear pair, normally), which is what makes a car slide. A tracked
     /// machine has one brake, so this pulls the same one.
-    public var handBrake: Double = 0
+    public var handBrake: Double = 0 {
+        didSet { if !world.holds(handBrake, "vehicle.handBrake") { handBrake = oldValue } }
+    }
 
     // MARK: The machine
 
@@ -121,7 +129,10 @@ public final class Vehicle3D {
     /// spins the wheels sooner rather than accelerating harder: grip is the
     /// ceiling, not power.
     public var engineTorque: Double {
-        didSet { cjolt_vehicle_set_engine_torque(handle, Float(max(1, engineTorque))) }
+        didSet {
+            guard world.holds(engineTorque, "vehicle.engineTorque") else { engineTorque = oldValue; return }
+            cjolt_vehicle_set_engine_torque(handle, Float(max(1, engineTorque)))
+        }
     }
 
     /// The speed the gearing tops out at, in world units per second: top gear
@@ -130,7 +141,10 @@ public final class Vehicle3D {
     /// promise, since drag and hills keep it under. Lowering it gears the
     /// vehicle down, which gives it more pull at low speed.
     public var topSpeed: Double {
-        didSet { cjolt_vehicle_set_top_speed(handle, world.meters(from: topSpeed)) }
+        didSet {
+            guard world.holds(topSpeed, "vehicle.topSpeed") else { topSpeed = oldValue; return }
+            cjolt_vehicle_set_top_speed(handle, world.meters(from: topSpeed))
+        }
     }
 
     /// How the wheels find the ground. `.cylinder` (the default) is the
@@ -159,14 +173,20 @@ public final class Vehicle3D {
     /// (the default) lets it roll over like any other body; a value around
     /// `.pi / 3` keeps a car on its wheels through anything.
     public var maxTilt: Double? {
-        didSet { cjolt_vehicle_set_max_pitch_roll(handle, Float(maxTilt ?? .pi)) }
+        didSet {
+            if let maxTilt, !world.holds(maxTilt, "vehicle.maxTilt") { self.maxTilt = oldValue; return }
+            cjolt_vehicle_set_max_pitch_roll(handle, Float(maxTilt ?? .pi))
+        }
     }
 
     /// How stiffly the two wheels of an axle are tied together, in newtons per
     /// meter: the outside wheel's compression lifts the inside one, which is
     /// what keeps a vehicle flat through a corner. `0` unties them.
     public var antiRollStiffness: Double = 1000 {
-        didSet { cjolt_vehicle_set_anti_roll(handle, Float(max(0, antiRollStiffness))) }
+        didSet {
+            guard world.holds(antiRollStiffness, "vehicle.antiRollStiffness") else { antiRollStiffness = oldValue; return }
+            cjolt_vehicle_set_anti_roll(handle, Float(max(0, antiRollStiffness)))
+        }
     }
 
     // MARK: Where it is and what it is doing
@@ -784,6 +804,8 @@ public final class Wheel3D {
     /// the grip takes effect on the next one.
     private func pushSettings() {
         guard let vehicle else { return }
+        guard vehicle.world.accepts(complaint, "a wheel's settings",
+                                    else: "the solver keeps the settings it had") else { return }
         var settings = desc(world: vehicle.world)
         withUnsafePointer(to: &settings) {
             cjolt_vehicle_set_wheel_settings(vehicle.handle, index, $0)
@@ -818,5 +840,20 @@ public final class Wheel3D {
         desc.maxHandBrakeTorque = Float(max(0, handBrakeTorque) * torqueScale)
         desc.grip = Float(max(0, grip))
         return desc
+    }
+}
+
+extension Wheel3D {
+    /// What is wrong with a number in the wheel's settings, for a note, or
+    /// `nil` when the solver holds every one of them.
+    var complaint: String? {
+        if let wrong = SolverNumber.complaint(position) { return wrong }
+        let numbers = [radius, width, maxSteerAngle, casterAngle, suspensionLength,
+                       suspensionTravel, suspensionFrequency, suspensionDamping,
+                       brakeTorque, handBrakeTorque, grip]
+        for number in numbers {
+            if let wrong = SolverNumber.complaint(number) { return wrong }
+        }
+        return nil
     }
 }

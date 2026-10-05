@@ -223,13 +223,17 @@ they do not nest a structure ten thousand deep. `DeepInputTests` hands each
 reader that recurses such an input directly, on a thread with a 512 KB stack,
 the size a background thread or a task gets, where the main thread's eight
 megabytes would hide a recursion a background load dies of. The limits are
-measured there: a scene nests at most 64 levels (glTF's
-`GLTFDocument.maxNodeDepth` and USD's `USDStage.maxDepth`), and a scene at that
-depth reads with half the stack to spare in a debug build, because another
-compiler's frames are larger: with three percent to spare on the desk, the
-runner's compiler overflowed it. A walk the test adds to read a scene keeps its
-pending nodes on a list, or the test measures itself; a formula
-is at most 1,024 tokens nested 64 deep. The include resolver stops at 32,
+measured there: a scene nests at most 256 levels (`Scene.maxDepth`, which
+glTF's `GLTFDocument.maxNodeDepth` and USD's `USDStage.maxDepth` read), and a
+scene at that depth is parsed, built, walked, merged, written out, and dropped
+on 256 KB, half a background thread's stack. Every walk of a scene keeps its
+pending nodes on a list, so the stack a level costs is the runtime's own
+release of the nested nodes when the scene is dropped, about 440 bytes, which
+no walk removes and which is the same under any compiler of Ollin's code (a
+limit set by a walk's frames was not: with three percent to spare on the desk,
+the runner's compiler overflowed it). A walk the test adds to read a scene
+keeps its pending nodes on a list, or the test measures itself; a USD value
+nests at most 64 levels; a formula is at most 1,024 tokens nested 64 deep. The include resolver stops at 32,
 which `ShaderIncludeTests.aNestTooDeepIsBounded` pins in `OllinTests`, since
 its chain never came near the stack. A
 file that names another file (a model's buffer, a material's picture, a

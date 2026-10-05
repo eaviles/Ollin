@@ -4396,44 +4396,39 @@ final class Drawer {
         // matrix of this call, not the walk's composed one.
         let root = modelMatrix
         let rootIsIdentity = modelIsIdentity
-        for node in scene.nodes {
-            drawSceneNode(node, scene: scene, worlds: worlds,
-                          root: root, rootIsIdentity: rootIsIdentity)
-        }
-    }
-
-    private func drawSceneNode(_ node: SceneNode, scene: Scene,
-                               worlds: [Int: simd_float4x4]?,
-                               root: simd_float4x4, rootIsIdentity: Bool) {
-        let saved = modelMatrix
-        let savedIdentity = modelIsIdentity
-        modelMatrix = modelMatrix * node.localTransform
-        modelIsIdentity = false
-        if let mesh = node.mesh {
-            let shaped = node.morphedMesh() ?? mesh
-            if let si = node.skinIndex, let worlds {
-                if scene.skins.indices.contains(si),
-                   let posed = node.skinnedMesh(shaped, skin: scene.skins[si],
-                                                worlds: worlds) {
-                    modelMatrix = root
-                    modelIsIdentity = rootIsIdentity
-                    drawNodeMesh(posed, node: node)
-                    modelMatrix = saved * node.localTransform
-                    modelIsIdentity = false
+        // The nodes wait on a list with the model matrix their parent
+        // composed, parents before children and siblings in order, so the
+        // depth of the tree never reaches the call stack; each node's matrix
+        // is set from its parent's rather than pushed and popped around its
+        // children, and the call's own is put back at the end.
+        var pending: [(node: SceneNode, parent: simd_float4x4)] = scene.nodes.reversed().map { ($0, root) }
+        while let (node, parent) = pending.popLast() {
+            let model = parent * node.localTransform
+            modelMatrix = model
+            modelIsIdentity = false
+            if let mesh = node.mesh {
+                let shaped = node.morphedMesh() ?? mesh
+                if let si = node.skinIndex, let worlds {
+                    if scene.skins.indices.contains(si),
+                       let posed = node.skinnedMesh(shaped, skin: scene.skins[si],
+                                                    worlds: worlds) {
+                        modelMatrix = root
+                        modelIsIdentity = rootIsIdentity
+                        drawNodeMesh(posed, node: node)
+                        modelMatrix = model
+                        modelIsIdentity = false
+                    } else {
+                        noteOnce("a skinned node's skin or vertex weights don't line up; drawing \"\(node.name)\" undeformed.")
+                        drawNodeMesh(shaped, node: node)
+                    }
                 } else {
-                    noteOnce("a skinned node's skin or vertex weights don't line up; drawing \"\(node.name)\" undeformed.")
                     drawNodeMesh(shaped, node: node)
                 }
-            } else {
-                drawNodeMesh(shaped, node: node)
             }
+            pending.append(contentsOf: node.children.reversed().map { ($0, model) })
         }
-        for child in node.children {
-            drawSceneNode(child, scene: scene, worlds: worlds,
-                          root: root, rootIsIdentity: rootIsIdentity)
-        }
-        modelMatrix = saved
-        modelIsIdentity = savedIdentity
+        modelMatrix = root
+        modelIsIdentity = rootIsIdentity
     }
 
     /// Draw a node's shaped (morphed and posed) mesh: one `drawMesh` per

@@ -119,45 +119,190 @@ public struct Scene: Sendable {
         var lo = Vector3(.infinity, .infinity, .infinity)
         var hi = Vector3(-.infinity, -.infinity, -.infinity)
         var any = false
-        // Nodes wait on a list rather than on the call stack, since a
-        // recursive walk here takes about 6.6 KB of stack a level in a debug
-        // build, which a background thread's half megabyte only just holds
-        // at the depth limit. The order does not change a bounding box.
-        var pending = nodes.map { ($0, matrix_identity_float4x4) }
-        while let (node, parent) = pending.popLast() {
-            let world = parent * node.localTransform
-            if let mesh = node.mesh, !mesh.isEmpty {
-                let b = mesh.bounds
-                // The world AABB of the local AABB: transform its 8 corners.
-                for corner in 0..<8 {
-                    let c = Vector3(corner & 1 == 0 ? b.min.x : b.max.x,
-                                    corner & 2 == 0 ? b.min.y : b.max.y,
-                                    corner & 4 == 0 ? b.min.z : b.max.z)
-                    let w = world * SIMD4<Float>(Float(c.x), Float(c.y), Float(c.z), 1)
-                    let p = Vector3(Double(w.x), Double(w.y), Double(w.z))
-                    lo = Vector3(Swift.min(lo.x, p.x), Swift.min(lo.y, p.y), Swift.min(lo.z, p.z))
-                    hi = Vector3(Swift.max(hi.x, p.x), Swift.max(hi.y, p.y), Swift.max(hi.z, p.z))
-                    any = true
-                }
+        Scene.visitWorlds(nodes, parent: matrix_identity_float4x4) { node, world in
+            guard let mesh = node.mesh, !mesh.isEmpty else { return }
+            let b = mesh.bounds
+            // The world AABB of the local AABB: transform its 8 corners.
+            for corner in 0..<8 {
+                let c = Vector3(corner & 1 == 0 ? b.min.x : b.max.x,
+                                corner & 2 == 0 ? b.min.y : b.max.y,
+                                corner & 4 == 0 ? b.min.z : b.max.z)
+                let w = world * SIMD4<Float>(Float(c.x), Float(c.y), Float(c.z), 1)
+                let p = Vector3(Double(w.x), Double(w.y), Double(w.z))
+                lo = Vector3(Swift.min(lo.x, p.x), Swift.min(lo.y, p.y), Swift.min(lo.z, p.z))
+                hi = Vector3(Swift.max(hi.x, p.x), Swift.max(hi.y, p.y), Swift.max(hi.z, p.z))
+                any = true
             }
-            pending.append(contentsOf: node.children.map { ($0, world) })
         }
         return any ? Box3(min: lo, max: hi) : .zero
     }
 
-    // MARK: - Cameras and lights attached to nodes
+    // MARK: - Walking the tree
 
-    /// Walk the tree depth-first, handing each node its composed world
-    /// transform. Package-visible: the physics satellite walks it to bake
-    /// static colliders from a scene's meshes.
-    package static func visitWorlds(_ nodes: [SceneNode], parent: simd_float4x4,
-                                    _ body: (SceneNode, simd_float4x4) -> Void) {
-        for node in nodes {
-            let world = parent * node.localTransform
-            body(node, world)
-            visitWorlds(node.children, parent: world, body)
+    /// How deep a loaded scene's node tree may nest; what a file nests further
+    /// is read to this depth and the rest left out. Every walk of a scene
+    /// keeps the nodes still to visit on a list rather than on the call stack,
+    /// and both scene readers build their trees the same way, so no code of
+    /// Ollin's spends stack on a level. What does is the runtime's own
+    /// release of a nested value: dropping a tree frees each node's children
+    /// from inside the node's own release, about 440 bytes a level in the
+    /// standard library's frames, on whatever thread drops it last. So the
+    /// number is a product choice checked against that cost: a chain rig a
+    /// few hundred joints long is deeper than any model a person authors, a
+    /// file past it is broken or hostile, and `DeepInputTests` reads, walks,
+    /// writes, and drops a scene at this depth on a thread with half the
+    /// stack a background thread gets, with room to spare.
+    package static let maxDepth = 256
+
+    /// Visit every node, parents before children and siblings in authored
+    /// order, handing each what `body` returned for its parent (`root` for a
+    /// root node): a composed world transform, the nearest enclosing joint,
+    /// whatever a walk carries down. The nodes still to visit wait on a list,
+    /// so the depth of the tree never reaches the call stack.
+    package static func walk<Inherited>(_ nodes: [SceneNode], from root: Inherited,
+                                        _ body: (SceneNode, Inherited) -> Inherited) {
+        var pending: [(node: SceneNode, inherited: Inherited)] = nodes.reversed().map { ($0, root) }
+        while let (node, inherited) = pending.popLast() {
+            let next = body(node, inherited)
+            pending.append(contentsOf: node.children.reversed().map { ($0, next) })
         }
     }
+
+    /// `walk(_:from:_:)` for a visit that hands nothing down.
+    package static func walk(_ nodes: [SceneNode], _ body: (SceneNode) -> Void) {
+        walk(nodes, from: ()) { node, _ in body(node) }
+    }
+
+    /// Walk the tree, parents before children, handing each node its composed
+    /// world transform. Package-visible: the physics satellite walks it to
+    /// bake static colliders from a scene's meshes.
+    package static func visitWorlds(_ nodes: [SceneNode], parent: simd_float4x4,
+                                    _ body: (SceneNode, simd_float4x4) -> Void) {
+        walk(nodes, from: parent) { node, parent in
+            let world = parent * node.localTransform
+            body(node, world)
+            return world
+        }
+    }
+
+    /// The first node `test` accepts, parents before children, or `nil`.
+    static func first(in nodes: [SceneNode], where test: (SceneNode) -> Bool) -> SceneNode? {
+        var pending = Array(nodes.reversed())
+        while let node = pending.popLast() {
+            if test(node) { return node }
+            pending.append(contentsOf: node.children.reversed())
+        }
+        return nil
+    }
+
+    /// Mutate the first node `test` accepts (parents before children) in
+    /// place, without recursion: the node is found by its index path, then
+    /// each node on that path is taken out of its parent, the last one handed
+    /// to `body`, and the chain put back from the bottom up. Nothing is
+    /// copied: a node leaves its parent by a swap, so every array stays
+    /// uniquely held and the write never touches a sibling. `false` when no
+    /// node matched.
+    @discardableResult
+    static func mutateFirst(in nodes: inout [SceneNode], where test: (SceneNode) -> Bool,
+                            _ body: (inout SceneNode) -> Void) -> Bool {
+        // The walk remembers each visited node's parent and index, so the
+        // path to a hit is read back from them rather than built per visit.
+        struct Visit { var parent: Int?; var index: Int }
+        var visits: [Visit] = []
+        var pending: [(node: SceneNode, parent: Int?, index: Int)] =
+            nodes.indices.reversed().map { (nodes[$0], nil, $0) }
+        var hit: Int?
+        while let (node, parent, index) = pending.popLast() {
+            let slot = visits.count
+            visits.append(Visit(parent: parent, index: index))
+            if test(node) { hit = slot; break }
+            pending.append(contentsOf: node.children.indices.reversed().map { (node.children[$0], slot, $0) })
+        }
+        guard var slot = hit else { return false }
+        var path: [Int] = []
+        while true {
+            path.append(visits[slot].index)
+            guard let parent = visits[slot].parent else { break }
+            slot = parent
+        }
+        path.reverse()
+        mutate(&nodes, at: path, body)
+        return true
+    }
+
+    /// Mutate the node at `path` (an index at each level from the roots) in
+    /// place, the way `mutateFirst` does.
+    static func mutate(_ nodes: inout [SceneNode], at path: [Int], _ body: (inout SceneNode) -> Void) {
+        guard let first = path.first, nodes.indices.contains(first) else { return }
+        var chain: [SceneNode] = []
+        var taken = SceneNode()
+        swap(&taken, &nodes[first])
+        chain.append(taken)
+        taken = SceneNode()
+        for index in path.dropFirst() {
+            let top = chain.count - 1
+            guard chain[top].children.indices.contains(index) else { break }
+            swap(&taken, &chain[top].children[index])
+            chain.append(taken)
+            taken = SceneNode()
+        }
+        body(&chain[chain.count - 1])
+        while var done = chain.popLast() {
+            if chain.isEmpty {
+                swap(&done, &nodes[first])
+            } else {
+                swap(&done, &chain[chain.count - 1].children[path[chain.count]])
+            }
+        }
+    }
+
+    /// Mutate every node in place, parents before children and siblings in
+    /// authored order, handing each what `body` returned for its parent. The
+    /// walk takes each node out of its parent by a swap while its subtree is
+    /// visited and puts it back after, so nothing is copied and nothing
+    /// recurses.
+    static func mutateAll<Inherited>(_ nodes: inout [SceneNode], from root: Inherited,
+                                     _ body: (inout SceneNode, Inherited) -> Inherited) {
+        // A frame: the node taken out of its parent, the next child to visit,
+        // what its children inherit, and the slot it goes back into.
+        var frames: [(node: SceneNode, next: Int, inherited: Inherited, slot: Int)] = []
+        var nextRoot = 0
+        var taken = SceneNode()
+        while true {
+            if frames.isEmpty {
+                guard nextRoot < nodes.count else { return }
+                swap(&taken, &nodes[nextRoot])
+                let inherited = body(&taken, root)
+                frames.append((taken, 0, inherited, nextRoot))
+                taken = SceneNode()
+                nextRoot += 1
+                continue
+            }
+            let top = frames.count - 1
+            if frames[top].next < frames[top].node.children.count {
+                let index = frames[top].next
+                frames[top].next += 1
+                swap(&taken, &frames[top].node.children[index])
+                let inherited = body(&taken, frames[top].inherited)
+                frames.append((taken, 0, inherited, index))
+                taken = SceneNode()
+            } else {
+                var done = frames.removeLast()
+                if frames.isEmpty {
+                    swap(&done.node, &nodes[done.slot])
+                } else {
+                    swap(&done.node, &frames[frames.count - 1].node.children[done.slot])
+                }
+            }
+        }
+    }
+
+    /// `mutateAll(_:from:_:)` for a visit that hands nothing down.
+    static func mutateAll(_ nodes: inout [SceneNode], _ body: (inout SceneNode) -> Void) {
+        mutateAll(&nodes, from: ()) { node, _ in body(&node) }
+    }
+
+    // MARK: - Cameras and lights attached to nodes
 
     /// The authored lights resolved through the tree's current transforms, in
     /// traversal order (each node's spec emits through its composed world).
@@ -190,43 +335,27 @@ public struct Scene: Sendable {
     /// (specs arrive from the loaders carrying the file's raw brightness).
     static func normalizeLightSpecs(in nodes: inout [SceneNode]) {
         var kindMax: [Light.Kind: Double] = [:]
-        func scan(_ ns: [SceneNode]) {
-            for n in ns {
-                if let s = n.lightSpec {
-                    kindMax[s.kind] = Swift.max(kindMax[s.kind] ?? 0, s.intensity)
-                }
-                scan(n.children)
+        walk(nodes) { node in
+            if let s = node.lightSpec {
+                kindMax[s.kind] = Swift.max(kindMax[s.kind] ?? 0, s.intensity)
             }
         }
-        scan(nodes)
         guard !kindMax.isEmpty else { return }
-        func apply(_ ns: inout [SceneNode]) {
-            for i in ns.indices {
-                if let s = ns[i].lightSpec {
-                    let peak = kindMax[s.kind] ?? 0
-                    ns[i].lightSpec?.intensity = peak > 0 ? s.intensity / peak : 1
-                }
-                apply(&ns[i].children)
+        mutateAll(&nodes) { node in
+            if let s = node.lightSpec {
+                let peak = kindMax[s.kind] ?? 0
+                node.lightSpec?.intensity = peak > 0 ? s.intensity / peak : 1
             }
         }
-        apply(&nodes)
     }
 
     private static func find(_ name: String, in nodes: [SceneNode]) -> SceneNode? {
-        for node in nodes {
-            if node.name == name { return node }
-            if let hit = find(name, in: node.children) { return hit }
-        }
-        return nil
+        first(in: nodes) { $0.name == name }
     }
 
     private static func replace(_ name: String, in nodes: inout [SceneNode],
                                 with newNode: SceneNode) -> Bool {
-        for i in nodes.indices {
-            if nodes[i].name == name { nodes[i] = newNode; return true }
-            if replace(name, in: &nodes[i].children, with: newNode) { return true }
-        }
-        return false
+        mutateFirst(in: &nodes, where: { $0.name == name }) { $0 = newNode }
     }
 }
 

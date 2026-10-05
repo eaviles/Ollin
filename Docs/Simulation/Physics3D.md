@@ -104,6 +104,8 @@ world.removeAll()
 
 `density` is relative, and 1 is the default material, so a denser body shoves a lighter one. `friction` runs from 0, which is slick, to 1, which is grippy. `restitution` defaults to the world's own `restitution`.
 
+**A number the solver cannot hold is refused at the bridge.** The solver keeps single precision and stops simulating sensibly a few kilometers from its origin. So every number a sketch hands it is checked where it crosses over: a value that is not a number, an infinity, or a magnitude past a billion units never reaches it. A property keeps what it had, so `body.velocity = Vector3(.nan, 0, 0)` leaves the velocity alone. A force or an impulse made of one does nothing, and `advance(by:)` skips the step. A creation argument falls back to its default: `addBody(at:)` given such a position places the body at the origin, and a collider carrying one becomes a sphere of one unit. Each prints one note naming the call, once per world. A sketch whose arithmetic went wrong reads why in the console instead of stopping inside the solver. The calls that already throw for what they cannot build (`addVehicle`, `addSoftBody`, `addRope`, `addRagdoll`, `addTensegrity`) throw `PhysicsError.unbuildable` naming the number instead. A limit that means none, such as a motor's `strength: .infinity`, still passes. A [snapshot](#saving-and-loading) refuses the same numbers from a file.
+
 <a name="body3d"></a>
 
 ### Body3D

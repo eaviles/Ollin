@@ -104,6 +104,7 @@ public final class Body3D {
             return world.units(from: out.0, out.1, out.2)
         }
         set {
+            guard world.holds(newValue, "body.position") else { return }
             withFloats3(world.meters(from: newValue)) {
                 cjolt_body_set_position(world.handle, id, $0, true)
             }
@@ -124,6 +125,7 @@ public final class Body3D {
             return Rotation3D(x: Double(q.0), y: Double(q.1), z: Double(q.2), w: Double(q.3))
         }
         set {
+            guard world.holds(newValue, "body.rotation") else { return }
             withFloats4((Float(newValue.x), Float(newValue.y), Float(newValue.z),
                          Float(newValue.w))) {
                 cjolt_body_set_rotation(world.handle, id, $0, true)
@@ -154,6 +156,7 @@ public final class Body3D {
             return world.units(from: out.0, out.1, out.2)
         }
         set {
+            guard world.holds(newValue, "body.velocity") else { return }
             withFloats3(world.meters(from: newValue)) {
                 cjolt_body_set_linear_velocity(world.handle, id, $0)
             }
@@ -167,6 +170,7 @@ public final class Body3D {
             return Vector3(Double(out.0), Double(out.1), Double(out.2))
         }
         set {
+            guard world.holds(newValue, "body.angularVelocity") else { return }
             withFloats3((Float(newValue.x), Float(newValue.y), Float(newValue.z))) {
                 cjolt_body_set_angular_velocity(world.handle, id, $0)
             }
@@ -235,7 +239,10 @@ public final class Body3D {
     /// ```
     public var gravityScale: Double {
         get { Double(cjolt_body_get_gravity_factor(world.handle, id)) }
-        set { cjolt_body_set_gravity_factor(world.handle, id, Float(newValue)) }
+        set {
+            guard world.holds(newValue, "body.gravityScale") else { return }
+            cjolt_body_set_gravity_factor(world.handle, id, Float(newValue))
+        }
     }
 
     /// Whether the solver checks the body's whole path each step rather than
@@ -265,14 +272,20 @@ public final class Body3D {
     /// needs both of them low.
     public var friction: Double {
         get { Double(cjolt_body_get_friction(world.handle, id)) }
-        set { cjolt_body_set_friction(world.handle, id, Float(newValue)) }
+        set {
+            guard world.holds(newValue, "body.friction") else { return }
+            cjolt_body_set_friction(world.handle, id, Float(newValue))
+        }
     }
 
     /// How much speed survives a bounce off this body, `0` dead … `1` lively.
     /// Defaults to the world's `restitution` unless `addBody` was given its own.
     public var restitution: Double {
         get { Double(cjolt_body_get_restitution(world.handle, id)) }
-        set { cjolt_body_set_restitution(world.handle, id, Float(newValue)) }
+        set {
+            guard world.holds(newValue, "body.restitution") else { return }
+            cjolt_body_set_restitution(world.handle, id, Float(newValue))
+        }
     }
 
     /// Whether the body is awake (a settled body sleeps until touched).
@@ -353,6 +366,7 @@ public final class Body3D {
     /// Push the body's center of mass with a steady force (units/s² · mass),
     /// accumulated for the next `advance(by:)`. Use for thrust, wind, attraction.
     public func applyForce(_ force: Vector3) {
+        guard world.holds(force, "applyForce") else { return }
         withFloats3(world.meters(from: force)) {
             cjolt_body_add_force(world.handle, id, $0)
         }
@@ -361,6 +375,7 @@ public final class Body3D {
     /// Kick the body's center of mass with an instantaneous impulse (a sudden
     /// change in velocity · mass): a hit, a launch.
     public func applyImpulse(_ impulse: Vector3) {
+        guard world.holds(impulse, "applyImpulse") else { return }
         withFloats3(world.meters(from: impulse)) {
             cjolt_body_add_impulse(world.handle, id, $0)
         }
@@ -368,6 +383,7 @@ public final class Body3D {
 
     /// Apply a torque (spin) about each axis through the center of mass.
     public func applyTorque(_ torque: Vector3) {
+        guard world.holds(torque, "applyTorque") else { return }
         let scale = 1 / (world.unitsPerMeter * world.unitsPerMeter)
         withFloats3((Float(torque.x * scale), Float(torque.y * scale),
                      Float(torque.z * scale))) {
@@ -600,5 +616,48 @@ extension Collider3D {
         var n = 4
         while n < target && n < 1024 { n *= 2 }
         return n
+    }
+}
+
+extension Collider3D {
+    /// What is wrong with a number in the collider, for a note, or `nil` when
+    /// the solver holds every one of them. A compound is read part by part.
+    var complaint: String? {
+        switch self {
+        case .sphere(let radius):
+            return SolverNumber.complaint(radius)
+        case .box(let width, let height, let depth):
+            return SolverNumber.complaint(width) ?? SolverNumber.complaint(height)
+                ?? SolverNumber.complaint(depth)
+        case .capsule(let height, let radius), .cylinder(let height, let radius),
+             .cone(let height, let radius):
+            return SolverNumber.complaint(height) ?? SolverNumber.complaint(radius)
+        case .taperedCapsule(let height, let top, let bottom),
+             .taperedCylinder(let height, let top, let bottom):
+            return SolverNumber.complaint(height) ?? SolverNumber.complaint(top)
+                ?? SolverNumber.complaint(bottom)
+        case .hull(let points):
+            return SolverNumber.complaint(in: points)
+        case .mesh(let mesh):
+            return SolverNumber.complaint(in: mesh.positions)
+        case .heightfield(let field, let width, let depth, let height):
+            if let wrong = SolverNumber.complaint(width) ?? SolverNumber.complaint(depth)
+                ?? SolverNumber.complaint(height) {
+                return wrong
+            }
+            for value in field.values {
+                if let wrong = SolverNumber.complaint(value) { return wrong }
+            }
+            return nil
+        case .compound(let parts):
+            for part in parts {
+                if let wrong = part.collider.complaint ?? SolverNumber.complaint(part.position)
+                    ?? SolverNumber.complaint(part.angle) ?? SolverNumber.axisComplaint(part.axis)
+                    ?? SolverNumber.complaint(part.density) {
+                    return wrong
+                }
+            }
+            return nil
+        }
     }
 }

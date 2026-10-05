@@ -168,4 +168,62 @@ struct RigidBodyTests {
         #expect(abs(gap - 2 * half) < 10)
         #expect(upper.velocity.length < 30)   // the stack is at rest
     }
+
+    // MARK: Numbers the solver holds
+
+    /// A number the 2D solver cannot hold is refused at the bridge: the body
+    /// keeps what it had and the world notes it once. Before the check, every
+    /// one of these asserted inside the solver in a debug build.
+    @Test func aRigidBodyRefusesANumberTheSolverCannotHold() {
+        let world = World()
+        let body = world.addBody(.box(width: 40, height: 40), at: Vector2(100, 100))
+        let position = body.position
+        for v in [Double.nan, .infinity, -.infinity, 1e30] {
+            body.position = Vector2(v, 100)
+            body.angle = v
+            body.velocity = Vector2(0, v)
+            body.angularVelocity = v
+            body.applyForce(Vector2(v, 0))
+            body.applyImpulse(Vector2(0, v))
+            body.applyTorque(v)
+        }
+        #expect(body.position == position)
+        #expect(body.angle == 0)
+        #expect(body.velocity == .zero)
+        #expect(body.angularVelocity == 0)
+        run(world, steps: 30, dt: 1.0 / 60)
+        #expect(SolverNumber.holds(body.position))
+        #expect(abs(body.position.x - 100) < 1e-6)
+        for what in ["body.position", "body.angle", "body.velocity", "body.angularVelocity",
+                     "applyForce", "applyImpulse", "applyTorque"] {
+            #expect(world.worldNotes.contains { $0.hasPrefix("\(what) was given") }, Comment(rawValue: what))
+        }
+    }
+
+    @Test func theRigidWorldRefusesANumberTheSolverCannotHold() {
+        let world = World()
+        world.gravity = Vector2(0, .nan)
+        #expect(world.gravity == Vector2(0, 980))
+        world.unitsPerMeter = 0
+        #expect(world.unitsPerMeter == 100)
+        let atNaN = world.addBody(.box(width: 40, height: 40), at: Vector2(.nan, 100))
+        #expect(atNaN.position == .zero)
+        let anchor = world.addBody(.box(width: 40, height: 40), at: Vector2(300, 100), kind: .static)
+        let bob = world.addBody(.circle(radius: 10), at: Vector2(300, 250))
+        let made = world.joints.count
+        world.connect(anchor, bob, .distance(from: Vector2(.nan, 100), to: Vector2(300, 250),
+                                             length: .infinity))
+        #expect(world.joints.count == made + 1)
+        let grab = world.grab(bob, at: Vector2(.infinity, 0))
+        #expect(grab.target == bob.position)
+        grab.target = Vector2(.nan, 0)
+        #expect(grab.target == bob.position)
+        world.advance(by: .nan)
+        run(world, steps: 30, dt: 1.0 / 60)
+        for body in world.bodies { #expect(SolverNumber.holds(body.position)) }
+        for what in ["world.gravity", "world.unitsPerMeter", "addBody(at:)", "connect's anchor",
+                     "connect's length", "grab(_:at:)", "joint.target", "advance(by:)"] {
+            #expect(world.worldNotes.contains { $0.hasPrefix("\(what) was given") }, Comment(rawValue: what))
+        }
+    }
 }

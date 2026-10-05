@@ -87,6 +87,7 @@ public final class Joint3D {
     /// the structural joints.
     public var target: Vector3 = .zero {
         didSet {
+            guard world.holds(target, "joint.target") else { target = oldValue; return }
             if isGrab { world.dragGrab(self) }
         }
     }
@@ -102,6 +103,8 @@ public final class Joint3D {
     public func drive(at velocity: Double, strength: Double = .infinity) {
         guard let scale = motorScale(.velocity, "drive(at:)") else { return }
         guard let constraint else { return }
+        guard world.holds(velocity, "drive(at:)"),
+              world.holds(strength, "drive(at:)'s strength", orUnbounded: true) else { return }
         cjolt_constraint_set_motor(world.handle, constraint, CJOLT_MOTOR_VELOCITY,
                                    Float(velocity * scale), 0, 0, Float(strength))
     }
@@ -116,6 +119,10 @@ public final class Joint3D {
                       damping: Double = 1, strength: Double = .infinity) {
         guard let scale = motorScale(.position, "drive(to:)") else { return }
         guard let constraint else { return }
+        guard world.holds(target, "drive(to:)"),
+              world.holds(frequency, "drive(to:)'s frequency"),
+              world.holds(damping, "drive(to:)'s damping"),
+              world.holds(strength, "drive(to:)'s strength", orUnbounded: true) else { return }
         cjolt_constraint_set_motor(world.handle, constraint, CJOLT_MOTOR_POSITION,
                                    Float(target * scale), Float(frequency),
                                    Float(damping), Float(strength))
@@ -142,6 +149,11 @@ public final class Joint3D {
             world.noteOnce("drive(toward:) points a .swingTwist joint; ignoring.")
             return
         }
+        guard world.holdsAxis(direction, "drive(toward:)"),
+              world.holds(twist, "drive(toward:)'s twist"),
+              world.holds(frequency, "drive(toward:)'s frequency"),
+              world.holds(damping, "drive(toward:)'s damping"),
+              world.holds(strength, "drive(toward:)'s strength", orUnbounded: true) else { return }
         let unit = direction.normalized
         withFloats3((Float(unit.x), Float(unit.y), Float(unit.z))) {
             cjolt_constraint_set_orientation_motor(world.handle, constraint, $0,
@@ -163,6 +175,7 @@ public final class Joint3D {
     /// the shoulder that does not flop. Default 0 (free).
     public var friction: Double = 0 {
         didSet {
+            guard world.holds(friction, "joint.friction") else { friction = oldValue; return }
             guard let constraint else { return }
             cjolt_constraint_set_friction(world.handle, constraint,
                                           Float(max(0, friction)))
@@ -174,6 +187,8 @@ public final class Joint3D {
     /// door stop). `frequency` 0 restores the hard stop.
     public func softenLimits(frequency: Double, damping: Double = 1) {
         guard let constraint else { return }
+        guard world.holds(frequency, "softenLimits' frequency"),
+              world.holds(damping, "softenLimits' damping") else { return }
         cjolt_constraint_set_limit_spring(world.handle, constraint,
                                           Float(frequency), Float(damping))
     }
@@ -442,5 +457,39 @@ public enum JointLink3D: Sendable {
     /// usually written down.
     public static func gear(teeth: Int, and other: Int) -> JointLink3D {
         .gear(ratio: Double(other) / Double(max(teeth, 1)))
+    }
+}
+
+extension JointKind3D {
+    /// What is wrong with a number in the joint, for a note, or `nil` when the
+    /// solver holds every one of them.
+    var complaint: String? {
+        func range(_ limits: ClosedRange<Double>?) -> String? {
+            guard let limits else { return nil }
+            return SolverNumber.complaint(limits.lowerBound) ?? SolverNumber.complaint(limits.upperBound)
+        }
+        switch self {
+        case .revolute(let at, let axis, let limits), .prismatic(let at, let axis, let limits):
+            return SolverNumber.complaint(at) ?? SolverNumber.axisComplaint(axis) ?? range(limits)
+        case .ball(let at):
+            return SolverNumber.complaint(at)
+        case .swingTwist(let at, let axis, let swing, let twist):
+            return SolverNumber.complaint(at) ?? SolverNumber.axisComplaint(axis)
+                ?? SolverNumber.complaint(swing) ?? range(twist)
+        case .distance(let from, let to, let length, let stiffness),
+             .cable(let from, let to, let length, let stiffness):
+            return SolverNumber.complaint(from) ?? SolverNumber.complaint(to)
+                ?? length.flatMap(SolverNumber.complaint) ?? SolverNumber.complaint(stiffness)
+        case .weld:
+            return nil
+        case .path(let points, _, _):
+            return SolverNumber.complaint(in: points)
+        case .pulley(let from, let over, let and, let to, let ratio, _):
+            return SolverNumber.complaint(from) ?? SolverNumber.complaint(over)
+                ?? SolverNumber.complaint(and) ?? SolverNumber.complaint(to)
+                ?? SolverNumber.complaint(ratio)
+        case .allowing(_, let at, let travel, let rotation):
+            return SolverNumber.complaint(at) ?? range(travel) ?? range(rotation)
+        }
     }
 }

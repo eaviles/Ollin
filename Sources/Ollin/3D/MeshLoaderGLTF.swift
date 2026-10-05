@@ -49,15 +49,19 @@ extension Mesh {
         // The format gives every node one parent at most and forbids cycles; a
         // file may still hold either, so each node is walked once, and never
         // deeper than `GLTFDocument.maxNodeDepth`.
+        // The nodes still to visit wait on a list, parents before children
+        // and siblings in order, so the depth a file nests never reaches the
+        // call stack.
         var visited = Set<Int>()
-        func visit(_ ni: Int, parent: simd_float4x4, depth: Int) {
+        var pending: [(node: Int, parent: simd_float4x4, depth: Int)] =
+            doc.rootNodes.reversed().map { ($0, matrix_identity_float4x4, 0) }
+        while let (ni, parent, depth) = pending.popLast() {
             guard ni >= 0, ni < nodes.count, depth < GLTFDocument.maxNodeDepth,
-                  visited.insert(ni).inserted else { return }
+                  visited.insert(ni).inserted else { continue }
             let world = parent * nodes[ni].localMatrix
             if let m = nodes[ni].mesh { instances.append((m, world)) }
-            for c in nodes[ni].children ?? [] { visit(c, parent: world, depth: depth + 1) }
+            for c in (nodes[ni].children ?? []).reversed() { pending.append((c, world, depth + 1)) }
         }
-        for r in doc.rootNodes { visit(r, parent: matrix_identity_float4x4, depth: 0) }
 
         let meshes = gltf.meshes ?? []
         var positions: [Vector3] = []
@@ -259,14 +263,11 @@ struct GLTFDocument {
         self.baseDir = baseDir
     }
 
-    /// How deep a node tree may nest before the rest of it is left out. Every
-    /// walk of a loaded scene (its bounds, the world transforms, the posing,
-    /// the draw) recurses once per level, and in a debug build the heaviest
-    /// takes about six and a half kilobytes a level, so this is the depth that
-    /// fits the half megabyte of stack a background thread or a task gets
-    /// (measured in `DeepInputTests`). A file that nests further would run that
-    /// stack out; no model a person authors comes near it.
-    static let maxNodeDepth = 64
+    /// How deep a node tree may nest before the rest of it is left out: the
+    /// depth every loaded scene shares (`Scene.maxDepth`, a product choice,
+    /// since no walk of a scene and neither reader puts the tree's depth on
+    /// the call stack).
+    static let maxNodeDepth = Scene.maxDepth
 
     /// A primitive's triangle list with every triangle that names a vertex the
     /// primitive does not have left out, and with it any stray index past the

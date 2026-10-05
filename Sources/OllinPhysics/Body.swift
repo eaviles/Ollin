@@ -48,27 +48,39 @@ public final class Body {
     /// The body's center, in sketch points.
     public var position: Vector2 {
         get { world.points(from: b2Body_GetPosition(id)) }
-        set { b2Body_SetTransform(id, world.meters(from: newValue), b2Body_GetRotation(id)) }
+        set {
+            guard world.holds(newValue, "body.position") else { return }
+            b2Body_SetTransform(id, world.meters(from: newValue), b2Body_GetRotation(id))
+        }
     }
 
     /// The body's orientation, in radians. Positive is clockwise on screen (the
     /// y-down convention Ollin's `rotate(_:)` already uses).
     public var angle: Double {
         get { Double(b2Rot_GetAngle(b2Body_GetRotation(id))) }
-        set { b2Body_SetTransform(id, b2Body_GetPosition(id), b2MakeRot(Float(newValue))) }
+        set {
+            guard world.holds(newValue, "body.angle") else { return }
+            b2Body_SetTransform(id, b2Body_GetPosition(id), b2MakeRot(Float(newValue)))
+        }
     }
 
     /// Linear velocity, in points per second. (A real velocity, unlike a
     /// `Particle`'s per-step Verlet displacement.)
     public var velocity: Vector2 {
         get { world.points(from: b2Body_GetLinearVelocity(id)) }
-        set { b2Body_SetLinearVelocity(id, world.meters(from: newValue)) }
+        set {
+            guard world.holds(newValue, "body.velocity") else { return }
+            b2Body_SetLinearVelocity(id, world.meters(from: newValue))
+        }
     }
 
     /// Spin rate, in radians per second.
     public var angularVelocity: Double {
         get { Double(b2Body_GetAngularVelocity(id)) }
-        set { b2Body_SetAngularVelocity(id, Float(newValue)) }
+        set {
+            guard world.holds(newValue, "body.angularVelocity") else { return }
+            b2Body_SetAngularVelocity(id, Float(newValue))
+        }
     }
 
     /// The body's mass (from its shapes' density and area). Read-only.
@@ -84,17 +96,20 @@ public final class Body {
     /// Push the body's center of mass with a steady force (points/s² · mass),
     /// accumulated for the next `advance(by:)`. Use for thrust, wind, attraction.
     public func applyForce(_ force: Vector2) {
+        guard world.holds(force, "applyForce") else { return }
         b2Body_ApplyForceToCenter(id, world.meters(from: force), true)
     }
 
     /// Kick the body's center of mass with an instantaneous impulse (a sudden
     /// change in velocity · mass) — a hit, a launch.
     public func applyImpulse(_ impulse: Vector2) {
+        guard world.holds(impulse, "applyImpulse") else { return }
         b2Body_ApplyLinearImpulseToCenter(id, world.meters(from: impulse), true)
     }
 
     /// Apply a torque (spin) about the center of mass.
     public func applyTorque(_ torque: Double) {
+        guard world.holds(torque, "applyTorque") else { return }
         b2Body_ApplyTorque(id, Float(torque), true)
     }
 }
@@ -134,4 +149,28 @@ public enum Collider {
     /// because the solver itself is not forgiving here: handed nine corners it
     /// builds nothing, and the body would have no collider and no mass at all.
     case polygon([Vector2])
+}
+
+extension JointKind {
+    /// The joint with every number the solver cannot hold replaced, with a
+    /// note: an anchor by the body's own center, a length by the distance
+    /// between the anchors, a stiffness by 1, an axis by the x axis.
+    func held(by world: World, a: Body, b: Body) -> JointKind {
+        switch self {
+        case .revolute(let at):
+            return .revolute(at: world.held(at, "connect's anchor", or: a.position))
+        case .distance(let from, let to, let length, let stiffness):
+            return .distance(from: world.held(from, "connect's anchor", or: a.position),
+                             to: world.held(to, "connect's anchor", or: b.position),
+                             length: world.held(length, "connect's length"),
+                             stiffness: world.held(stiffness, "connect's stiffness", or: 1))
+        case .weld:
+            return .weld
+        case .prismatic(let at, let axis):
+            let direction = world.accepts(SolverNumber.axisComplaint(axis), "connect's axis",
+                                          else: "using the x axis") ? axis : Vector2(1, 0)
+            return .prismatic(at: world.held(at, "connect's anchor", or: a.position),
+                              axis: direction)
+        }
+    }
 }

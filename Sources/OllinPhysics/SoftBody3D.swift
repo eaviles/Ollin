@@ -672,13 +672,16 @@ public class SoftBody3D {
     /// ```swift
     /// raft.density = 0.3
     /// ```
-    public var density: Double = 1
+    public var density: Double = 1 {
+        didSet { if !world.holds(density, "softBody.density") { density = oldValue } }
+    }
 
     /// How hard the gas inside a closed surface pushes out, in gravities: 0 is a
     /// limp bag, 1 just holds its own weight up, and 2 to 4 reads as a firm ball
     /// that still dents. Meaningless on an open sheet, which has no inside.
     public var pressure: Double = 0 {
         didSet {
+            guard world.holds(pressure, "softBody.pressure") else { pressure = oldValue; return }
             guard !isDestroyed, isClosed else { return }
             cjolt_soft_body_set_pressure(world.handle, handle,
                                          Float(max(0, pressure) * pressureScale))
@@ -699,6 +702,7 @@ public class SoftBody3D {
     /// which is what stops the two from flickering against each other.
     public var vertexRadius: Double = 0 {
         didSet {
+            guard world.holds(vertexRadius, "softBody.vertexRadius") else { vertexRadius = oldValue; return }
             guard !isDestroyed else { return }
             cjolt_soft_body_set_vertex_radius(world.handle, handle,
                                               Float(max(0, vertexRadius) / world.unitsPerMeter))
@@ -733,7 +737,8 @@ public class SoftBody3D {
     /// it was free. The surface hanging off it is dragged along rather than
     /// snapped, which is what makes a corner follow the mouse.
     public func move(_ vertex: Int, to target: Vector3) {
-        guard let particle = particle(for: vertex), !isDestroyed else { return }
+        guard let particle = particle(for: vertex), !isDestroyed,
+              world.holds(target, "move(_:to:)") else { return }
         let meters = world.meters(from: target)
         var point = (meters.0, meters.1, meters.2)
         withUnsafeBytes(of: &point) { bytes in
@@ -761,7 +766,7 @@ public class SoftBody3D {
     /// particles. This is how wind is applied: impulses do not reach a body
     /// whose velocity lives per particle.
     public func applyForce(_ force: Vector3) {
-        guard !isDestroyed else { return }
+        guard !isDestroyed, world.holds(force, "applyForce") else { return }
         let meters = world.meters(from: force)
         var value = (meters.0, meters.1, meters.2)
         withUnsafeBytes(of: &value) { bytes in
@@ -817,6 +822,7 @@ public class SoftBody3D {
     /// surface out or reins it in while it runs. `1` is what it was built with.
     public var swayScale: Double = 1 {
         didSet {
+            guard world.holds(swayScale, "softBody.swayScale") else { swayScale = oldValue; return }
             guard !isDestroyed, isSkinned else { return }
             cjolt_soft_body_set_skin_slack(world.handle, handle, Float(max(0, swayScale)))
         }

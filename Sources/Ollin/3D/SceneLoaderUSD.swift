@@ -93,12 +93,7 @@ extension Scene {
     /// the map this way still draws, with its geometry normals and a one-time
     /// note at draw).
     private static func attachUSDTangents(in nodes: inout [SceneNode]) {
-        // The recursion holds nothing but the index; the work on one node is
-        // its own call, so its locals are not on the stack of every level.
-        for i in nodes.indices {
-            attachUSDTangents(to: &nodes[i])
-            attachUSDTangents(in: &nodes[i].children)
-        }
+        Scene.mutateAll(&nodes) { attachUSDTangents(to: &$0) }
     }
 
     private static func attachUSDTangents(to node: inout SceneNode) {
@@ -243,11 +238,7 @@ extension Scene {
     @discardableResult
     static func withNode(sourceIndex: Int, in nodes: inout [SceneNode],
                          _ body: (inout SceneNode) -> Void) -> Bool {
-        for i in nodes.indices {
-            if nodes[i].sourceIndex == sourceIndex { body(&nodes[i]); return true }
-            if withNode(sourceIndex: sourceIndex, in: &nodes[i].children, body) { return true }
-        }
-        return false
+        mutateFirst(in: &nodes, where: { $0.sourceIndex == sourceIndex }, body)
     }
 
     // MARK: - Cameras
@@ -810,11 +801,14 @@ extension Scene {
     }
 
     private static func firstPreviewSurface(in prim: USDPrim) -> USDPrim? {
-        if prim.attribute("info:id")?.authoredValue?.usdToken == "UsdPreviewSurface" {
-            return prim
-        }
-        for child in prim.children {
-            if let hit = firstPreviewSurface(in: child) { return hit }
+        // The prims still to look at wait on a list, parents before
+        // children, so a shader network's depth never reaches the call stack.
+        var pending = [prim]
+        while let prim = pending.popLast() {
+            if prim.attribute("info:id")?.authoredValue?.usdToken == "UsdPreviewSurface" {
+                return prim
+            }
+            pending.append(contentsOf: prim.children.reversed())
         }
         return nil
     }

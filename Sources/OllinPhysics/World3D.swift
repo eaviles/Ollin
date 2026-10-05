@@ -36,6 +36,7 @@ public final class World3D {
     /// second². The default pulls down the y-up world at earth strength.
     public var gravity: Vector3 = Vector3(0, -9.8, 0) {
         didSet {
+            guard holds(gravity, "world.gravity") else { gravity = oldValue; return }
             let g = meters(from: gravity)
             cjolt_world_set_gravity(handle, g.0, g.1, g.2)
         }
@@ -45,7 +46,10 @@ public final class World3D {
     /// default) lets them fall forever. The floor is a wide static slab, so
     /// bodies can still slide off its far edges.
     public var ground: Double? {
-        didSet { rebuildGround() }
+        didSet {
+            if let level = ground, !holds(level, "world.ground") { ground = oldValue; return }
+            rebuildGround()
+        }
     }
 
     /// Water filling the world below a level, or `nil` (the default) for a dry
@@ -56,17 +60,27 @@ public final class World3D {
     /// world.water = Water(level: 0)
     /// ```
     public var water: Water? {
-        didSet { if water != oldValue { waterMoved = true } }
+        didSet {
+            if let water, !accepts(water.complaint, "world.water", else: "ignoring it") {
+                self.water = oldValue
+                return
+            }
+            if water != oldValue { waterMoved = true }
+        }
     }
 
     /// Default restitution `0…1` for the ground and for bodies that don't pass
     /// their own: how much speed survives a bounce. Kept low so stacks settle.
-    public var restitution: Double = 0.2
+    public var restitution: Double = 0.2 {
+        didSet { if !holds(restitution, "world.restitution") { restitution = oldValue } }
+    }
 
     /// The largest timestep a single `advance(by:)` will integrate, in seconds.
     /// `deltaTime` can spike after a stall or while a window is dragged;
     /// clamping keeps one long frame from launching everything off-screen.
-    public var maxTimestep: Double = 1.0 / 30
+    public var maxTimestep: Double = 1.0 / 30 {
+        didSet { if !holds(maxTimestep, "world.maxTimestep") { maxTimestep = oldValue } }
+    }
 
     /// World units per simulated meter. The solver is tuned for bodies roughly
     /// 0.1…10 m, and Ollin's 3D scenes already draw at that scale, so the
@@ -74,7 +88,15 @@ public final class World3D {
     /// larger numeric scale (a 100-unit box at `unitsPerMeter: 100` is 1 m).
     /// Set it before adding bodies; existing bodies keep their created size.
     public var unitsPerMeter: Double = 1 {
-        didSet { rebuildGround() }
+        didSet {
+            guard holds(unitsPerMeter, "world.unitsPerMeter"),
+                  accepts(unitsPerMeter > 0 ? nil : "a value of zero or less",
+                          "world.unitsPerMeter", else: "ignoring it") else {
+                unitsPerMeter = oldValue
+                return
+            }
+            rebuildGround()
+        }
     }
 
     /// Every rigid body in the simulation, in the order added. The slab behind
@@ -258,6 +280,22 @@ public final class World3D {
                  velocity: Vector3 = .zero,
                  angularVelocity: Vector3 = .zero,
                  asleep: Bool = false) -> Body3D {
+        // A sketch's own numbers are checked here, where they cross into the
+        // solver: one it cannot hold falls back to the parameter's default
+        // with a note, and a collider carrying one becomes a unit sphere.
+        let position = held(position, "addBody(at:)", or: .zero)
+        let angle = held(angle, "addBody's angle", or: 0)
+        let axis = heldAxis(axis, "addBody's axis")
+        let density = held(density, "addBody's density", or: 1)
+        let friction = held(friction, "addBody's friction", or: 0.5)
+        let restitution = held(restitution, "addBody's restitution")
+        let mass = held(mass, "addBody's mass")
+        let centerOfMass = held(centerOfMass, "addBody's centerOfMass", or: .zero)
+        let gravityScale = held(gravityScale, "addBody's gravityScale", or: 1)
+        let velocity = held(velocity, "addBody's velocity", or: .zero)
+        let angularVelocity = held(angularVelocity, "addBody's angularVelocity", or: .zero)
+        let collider = accepts(collider.complaint, "addBody's collider",
+                               else: "using a sphere of one unit") ? collider : .sphere(radius: 1)
         var desc = CJoltBodyDesc()
         let p = meters(from: position)
         desc.position = (p.0, p.1, p.2)
@@ -386,6 +424,14 @@ public final class World3D {
                              mass: Double = 70,
                              pushStrength: Double = 100,
                              group: CollisionGroup = .default) -> Character3D {
+        let position = held(position, "addCharacter(at:)", or: .zero)
+        let radius = held(radius, "addCharacter's radius", or: 0.3)
+        let height = held(height, "addCharacter's height", or: 1.8)
+        let stepHeight = held(stepHeight, "addCharacter's stepHeight", or: 0.4)
+        let stickToFloorDistance = held(stickToFloorDistance, "addCharacter's stickToFloorDistance", or: 0.5)
+        let maxSlope = held(maxSlope, "addCharacter's maxSlope", or: 50 * .pi / 180)
+        let mass = held(mass, "addCharacter's mass", or: 70)
+        let pushStrength = held(pushStrength, "addCharacter's pushStrength", or: 100)
         let character = Character3D(world: self, radius: radius, height: height,
                                     position: position, stepHeight: stepHeight,
                                     stickToFloorDistance: stickToFloorDistance,
@@ -453,6 +499,20 @@ public final class World3D {
                            group: CollisionGroup = .default) throws -> Vehicle3D {
         guard !wheels.isEmpty else {
             throw PhysicsError.unbuildable("a vehicle needs at least one wheel")
+        }
+        try check(position, "addVehicle(at:)")
+        try check(mass, "addVehicle's mass")
+        try check(engineTorque, "addVehicle's engineTorque")
+        try check(topSpeed, "addVehicle's topSpeed")
+        try check(centerOfMass, "addVehicle's centerOfMass")
+        try check(angle, "addVehicle's angle")
+        try checkAxis(axis, "addVehicle's axis")
+        try check(friction, "addVehicle's friction")
+        try check(maxLeanAngle, "addVehicle's maxLeanAngle")
+        for wheel in wheels {
+            if let complaint = wheel.complaint {
+                throw PhysicsError.unbuildable("a wheel of addVehicle was given \(complaint)")
+            }
         }
         if isTracked, balances {
             noteOnce("a tracked machine does not lean; ignoring balances")
@@ -524,6 +584,12 @@ public final class World3D {
                            mass: Double = 70,
                            friction: Double = 0.5,
                            group: CollisionGroup = .default) throws -> Ragdoll3D {
+        try check(position, "addRagdoll(at:)")
+        try check(swing, "addRagdoll's swing")
+        try check(twist.lowerBound, "addRagdoll's twist")
+        try check(twist.upperBound, "addRagdoll's twist")
+        try check(mass, "addRagdoll's mass")
+        try check(friction, "addRagdoll's friction")
         guard !scene.skeleton().isEmpty else {
             throw PhysicsError.unbuildable("addRagdoll needs a scene with a skin (a skeleton "
                                            + "posing a mesh); this one has none")
@@ -624,6 +690,22 @@ public final class World3D {
                             backStop: Double? = nil,
                             maxStretch: Double? = nil,
                             group: CollisionGroup = .default) throws -> SoftBody3D {
+        if let complaint = SolverNumber.complaint(in: mesh.positions) {
+            throw PhysicsError.unbuildable("addSoftBody's mesh has a vertex that is \(complaint)")
+        }
+        try check(position, "addSoftBody(at:)")
+        try check(angle, "addSoftBody's angle")
+        try check(axis, "addSoftBody's axis")
+        try check(mass, "addSoftBody's mass")
+        try check(stiffness, "addSoftBody's stiffness")
+        try check(bend, "addSoftBody's bend")
+        try check(pressure, "addSoftBody's pressure")
+        try check(damping, "addSoftBody's damping")
+        try check(friction, "addSoftBody's friction")
+        try check(restitution, "addSoftBody's restitution")
+        try check(vertexRadius, "addSoftBody's vertexRadius")
+        try check(backStop, "addSoftBody's backStop")
+        try check(maxStretch, "addSoftBody's maxStretch")
         let direction = axis.lengthSquared > 1e-18 ? axis.normalized : Vector3(0, 1, 0)
         let turn = simd_quatd(angle: angle,
                               axis: simd_double3(direction.x, direction.y, direction.z))
@@ -739,6 +821,20 @@ public final class World3D {
                         pinned: ((Vector3) -> Bool)? = nil,
                         maxStretch: Double? = nil,
                         group: CollisionGroup = .default) throws -> Rope3D {
+        if let complaint = SolverNumber.complaint(in: points) {
+            throw PhysicsError.unbuildable("addRope was given a point that is \(complaint)")
+        }
+        try check(position, "addRope(at:)")
+        try check(angle, "addRope's angle")
+        try check(axis, "addRope's axis")
+        try check(radius, "addRope's radius")
+        try check(mass, "addRope's mass")
+        try check(stiffness, "addRope's stiffness")
+        try check(bend, "addRope's bend")
+        try check(damping, "addRope's damping")
+        try check(friction, "addRope's friction")
+        try check(restitution, "addRope's restitution")
+        try check(maxStretch, "addRope's maxStretch")
         let direction = axis.lengthSquared > 1e-18 ? axis.normalized : Vector3(0, 1, 0)
         let turn = simd_quatd(angle: angle,
                               axis: simd_double3(direction.x, direction.y, direction.z))
@@ -821,6 +917,12 @@ public final class World3D {
                               stiffness: Double = 1, density: Double = 1,
                               friction: Double = 0.6,
                               group: CollisionGroup = .default) throws -> Tensegrity3D {
+        try check(position, "addTensegrity(at:)")
+        try check(strutRadius, "addTensegrity's strutRadius")
+        try check(prestress, "addTensegrity's prestress")
+        try check(stiffness, "addTensegrity's stiffness")
+        try check(density, "addTensegrity's density")
+        try check(friction, "addTensegrity's friction")
         guard let built = Tensegrity3D(world: self, structure: structure,
                                        position: position, strutRadius: strutRadius,
                                        prestress: prestress, stiffness: stiffness,
@@ -902,6 +1004,12 @@ public final class World3D {
         // standing the bodies back here to make the joint, then moving them on.
         let poseA = Pose3D(of: a)
         let poseB = b.map { Pose3D(of: $0) } ?? .identity
+        // A joint with a number the solver cannot hold is not made: the one
+        // handed back is inert (no constraint behind it) and not the world's.
+        guard accepts(kind.complaint, "connect's joint", else: "the joint was not made") else {
+            return Joint3D(world: self, constraint: nil, a: a.id, b: worldEnd(b), kind: kind,
+                           connectPoseA: poseA, connectPoseB: poseB)
+        }
         var desc = CJoltConstraintDesc()
         // A track is the one kind that carries a list rather than a handful of
         // numbers, so its points go in a buffer the create call borrows.
@@ -1108,6 +1216,10 @@ public final class World3D {
             ratio = abs(travel) > 1e-9 ? 2 * .pi / travel : 0
         }
 
+        guard holds(ratio, "connect's link") else {
+            return Joint3D(world: self, constraint: nil, a: a.a, b: a.b,
+                           alsoTouches: [b.a, b.b], linking: (a, b), link: link)
+        }
         let constraint = cjolt_constraint_link(handle, a.constraint, b.constraint,
                                                type, Float(ratio))
         if constraint == nil {
@@ -1128,6 +1240,7 @@ public final class World3D {
     /// sugar `grabBody(at:in:)` / `dragGrab(_:to:)` wraps this and the ray.)
     @discardableResult
     public func grab(_ body: Body3D, at point: Vector3) -> Joint3D {
+        let point = held(point, "grab(_:at:)", or: body.position)
         var constraint: OpaquePointer?
         withFloats3(meters(from: point)) {
             constraint = cjolt_grab_begin(handle, body.id, $0)
@@ -1197,6 +1310,7 @@ public final class World3D {
     /// Advance the simulation by `dt` seconds (clamped to `maxTimestep`). Call
     /// once per frame with `deltaTime`.
     public func advance(by dt: Double) {
+        guard holds(dt, "advance(by:)") else { return }
         let clamped = min(max(dt, 0), maxTimestep)
         // A skipped step leaves the last one's contacts standing rather than
         // silently emptying them, so a paused frame reads what a paused world
@@ -1299,7 +1413,7 @@ public final class World3D {
     /// Messages printed once per world for calls a joint can't honor (a motor
     /// on a ball joint, say), keyed by message so each prints once rather than
     /// every frame.
-    private var worldNotes = Set<String>()
+    private(set) var worldNotes = Set<String>()
     func noteOnce(_ message: String) {
         guard !worldNotes.contains(message) else { return }
         worldNotes.insert(message)

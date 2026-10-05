@@ -1615,13 +1615,12 @@ private struct SnapshotReader {
         return pattern
     }
 
-    /// The largest magnitude a saved world's numbers may have: a billion
-    /// units. The solver keeps single precision and stops simulating sensibly
-    /// kilometers from its origin, and it checks, in a debug build by stopping
-    /// the process, that nothing it holds passes 1e15 meters, so a number past
-    /// this (or one that is not a number, or an infinity) is refused here
+    /// The largest magnitude a saved world's numbers may have: what the solver
+    /// holds (`SolverNumber.largestMagnitude`, a billion units), the one
+    /// definition the world's own checks at the bridge read too, so a number
+    /// past it, or one that is not a number, or an infinity, is refused here
     /// rather than restored.
-    static let largestMagnitude = 1e9
+    static let largestMagnitude = SolverNumber.largestMagnitude
 
     /// A number as the writer wrote it, held to `largestMagnitude`.
     mutating func f64() throws -> Double {

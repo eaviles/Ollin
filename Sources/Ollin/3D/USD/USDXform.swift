@@ -253,14 +253,18 @@ extension USDStage {
     /// The same walk, with each prim's absolute path, which is what a
     /// relationship names it by.
     func visitPrims(_ body: (USDPrim, String, simd_double4x4) -> Void) {
-        func walk(_ prim: USDPrim, parentPath: String, parent: simd_double4x4) {
-            guard prim.specifier != .class else { return }
+        // The prims still to visit wait on a list, parents before children
+        // and siblings in authored order, so the depth a stage nests never
+        // reaches the call stack.
+        var pending: [(prim: USDPrim, parentPath: String, parent: simd_double4x4)] =
+            prims.reversed().map { ($0, "", matrix_identity_double4x4) }
+        while let (prim, parentPath, parent) = pending.popLast() {
+            guard prim.specifier != .class else { continue }
             let (local, resets) = prim.localXform()
             let world = resets ? local : parent * local
             let path = parentPath + "/" + prim.name
             body(prim, path, world)
-            for child in prim.children { walk(child, parentPath: path, parent: world) }
+            pending.append(contentsOf: prim.children.reversed().map { ($0, path, world) })
         }
-        for prim in prims { walk(prim, parentPath: "", parent: matrix_identity_double4x4) }
     }
 }

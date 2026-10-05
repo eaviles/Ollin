@@ -54,8 +54,12 @@ extension Scene {
 
         var entries: [USDBakedTrack] = []
         var end = 0.0
-        func walk(_ prim: USDPrim, parentPath: String) {
-            if prim.specifier == .class { return }
+        // The prims still to visit wait on a list, parents before children
+        // and siblings in authored order, so the depth a stage nests never
+        // reaches the call stack.
+        var pending: [(prim: USDPrim, parentPath: String)] = stage.prims.reversed().map { ($0, "") }
+        while let (prim, parentPath) = pending.popLast() {
+            if prim.specifier == .class { continue }
             let path = parentPath + "/" + prim.name
             let times = animatedSampleTimes(prim)
             if !times.isEmpty {
@@ -85,9 +89,8 @@ extension Scene {
                                              rest: decomposeTRS(prim.localXform().matrix)))
                 end = Swift.max(end, seconds[seconds.count - 1])
             }
-            for child in prim.children { walk(child, parentPath: path) }
+            pending.append(contentsOf: prim.children.reversed().map { ($0, path) })
         }
-        for prim in stage.prims { walk(prim, parentPath: "") }
         guard !entries.isEmpty else { return nil }
         return (end, entries)
     }

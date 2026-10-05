@@ -13,9 +13,11 @@ final class USDTextParser {
 
     private let bytes: [UInt8]
     private var i = 0
-    /// How many prims, blocks, and values the cursor is inside. Each level is
-    /// a call deeper, so a file nested past `USDStage.maxDepth` is refused
-    /// rather than read until the stack runs out.
+    /// How many metadata blocks and values the cursor is inside. Each of
+    /// those levels is a call deeper, so a value nested past
+    /// `USDStage.maxValueDepth` is refused rather than read until the stack
+    /// runs out. Prims are not counted here: `parsePrim` keeps the open ones
+    /// on a list of its own and bounds them by `USDStage.maxDepth`.
     private var nesting = 0
 
     init(text: String) {
@@ -57,10 +59,39 @@ final class USDTextParser {
 
     // MARK: - Prims
 
+    /// A prim statement with everything under it. The prims still open wait
+    /// on a list rather than on the call stack: a `def` inside a body opens a
+    /// new one on the list, and its closing brace hands it to the one below,
+    /// so a stage nests to `USDStage.maxDepth` whatever the stack holds, and
+    /// one past that is refused.
     private func parsePrim() throws -> USDPrim {
-        nesting += 1
-        defer { nesting -= 1 }
-        guard nesting <= USDStage.maxDepth else { throw error("nested deeper than \(USDStage.maxDepth) levels") }
+        var open: [USDPrim] = [try parsePrimHead()]
+        while true {
+            skipTrivia()
+            let top = open.count - 1
+            guard !atEnd else { throw error("unterminated prim body for '\(open[top].name)'") }
+            if peek() == UInt8(ascii: "}") {
+                i += 1  // consume '}'
+                let done = open.removeLast()
+                guard !open.isEmpty else { return done }
+                open[open.count - 1].children.append(done)
+            } else if peek() == UInt8(ascii: ";") {
+                // A `;` is a statement separator, interchangeable with a newline.
+                i += 1
+            } else if let word = peekIdentifier(), word == "def" || word == "over" || word == "class" {
+                guard open.count < USDStage.maxDepth else {
+                    throw error("nested deeper than \(USDStage.maxDepth) levels")
+                }
+                open.append(try parsePrimHead())
+            } else {
+                try parsePrimBodyStatement(into: &open[top])
+            }
+        }
+    }
+
+    /// A prim's head: the specifier, the type name, the quoted name, and the
+    /// metadata block, through the `{` that opens its body.
+    private func parsePrimHead() throws -> USDPrim {
         let specifier: USDSpecifier
         if match("def") { specifier = .def }
         else if match("over") { specifier = .over }
@@ -88,25 +119,13 @@ final class USDTextParser {
             skipTrivia()
         }
         try expect("{")
-        skipTrivia()
-        while peek() != UInt8(ascii: "}") {
-            guard !atEnd else { throw error("unterminated prim body for '\(name)'") }
-            // A `;` is a statement separator, interchangeable with a newline.
-            if peek() == UInt8(ascii: ";") {
-                i += 1
-            } else {
-                try parsePrimBodyStatement(into: &prim)
-            }
-            skipTrivia()
-        }
-        i += 1  // consume '}'
         return prim
     }
 
+    /// One statement of a prim body other than a child prim, which
+    /// `parsePrim` opens on its own list.
     private func parsePrimBodyStatement(into prim: inout USDPrim) throws {
         switch peekIdentifier() {
-        case "def", "over", "class":
-            prim.children.append(try parsePrim())
         case "variantSet":
             try skipVariantSet()
         case "reorder":
@@ -291,7 +310,7 @@ final class USDTextParser {
     private func parseMetadataBlock() throws -> [String: USDValue] {
         nesting += 1
         defer { nesting -= 1 }
-        guard nesting <= USDStage.maxDepth else { throw error("nested deeper than \(USDStage.maxDepth) levels") }
+        guard nesting <= USDStage.maxValueDepth else { throw error("a value nested deeper than \(USDStage.maxValueDepth) levels") }
         try expect("(")
         var result: [String: USDValue] = [:]
         skipTrivia()
@@ -338,7 +357,7 @@ final class USDTextParser {
     private func skipCompositionValue() throws {
         nesting += 1
         defer { nesting -= 1 }
-        guard nesting <= USDStage.maxDepth else { throw error("nested deeper than \(USDStage.maxDepth) levels") }
+        guard nesting <= USDStage.maxValueDepth else { throw error("a value nested deeper than \(USDStage.maxValueDepth) levels") }
         skipTrivia()
         switch peek() {
         case UInt8(ascii: "["):
@@ -490,7 +509,7 @@ final class USDTextParser {
     private func parseTupleComponents() throws -> [Double] {
         nesting += 1
         defer { nesting -= 1 }
-        guard nesting <= USDStage.maxDepth else { throw error("nested deeper than \(USDStage.maxDepth) levels") }
+        guard nesting <= USDStage.maxValueDepth else { throw error("a value nested deeper than \(USDStage.maxValueDepth) levels") }
         try expect("(")
         var components: [Double] = []
         skipTrivia()
@@ -513,7 +532,7 @@ final class USDTextParser {
     private func parseArray(declaredType: String?) throws -> USDValue {
         nesting += 1
         defer { nesting -= 1 }
-        guard nesting <= USDStage.maxDepth else { throw error("nested deeper than \(USDStage.maxDepth) levels") }
+        guard nesting <= USDStage.maxValueDepth else { throw error("a value nested deeper than \(USDStage.maxValueDepth) levels") }
         try expect("[")
         skipTrivia()
 
@@ -617,7 +636,7 @@ final class USDTextParser {
     private func parseDictionary() throws -> [String: USDValue] {
         nesting += 1
         defer { nesting -= 1 }
-        guard nesting <= USDStage.maxDepth else { throw error("nested deeper than \(USDStage.maxDepth) levels") }
+        guard nesting <= USDStage.maxValueDepth else { throw error("a value nested deeper than \(USDStage.maxValueDepth) levels") }
         try expect("{")
         var result: [String: USDValue] = [:]
         skipTrivia()

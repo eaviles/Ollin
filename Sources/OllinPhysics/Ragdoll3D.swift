@@ -227,6 +227,9 @@ public final class Ragdoll3D {
     public func drive(toward scene: Scene, frequency: Double = 20,
                       damping: Double = 1, strength: Double = .infinity) {
         guard let handle, let worlds = jointWorlds(of: scene) else { return }
+        guard world.holds(frequency, "drive(toward:)'s frequency"),
+              world.holds(damping, "drive(toward:)'s damping"),
+              world.holds(strength, "drive(toward:)'s strength", orUnbounded: true) else { return }
         if kind == .kinematic {
             let matrices = poseMatrices(from: worlds)
             matrices.withUnsafeBufferPointer {
@@ -286,6 +289,9 @@ public final class Ragdoll3D {
                       twist: ClosedRange<Double> = -0.3...0.3) {
         guard let handle, let index = limbs.firstIndex(where: { $0.name == name })
         else { return }
+        guard world.holds(swing, "limit's swing"),
+              world.holds(twist.lowerBound, "limit's twist"),
+              world.holds(twist.upperBound, "limit's twist") else { return }
         jointLimits[index] = RagdollLimit(swing: swing, twist: twist)
         cjolt_ragdoll_set_limits(handle, Int32(index),
                                  Float(min(max(swing, 0), .pi)),
@@ -296,7 +302,7 @@ public final class Ragdoll3D {
     /// Shove the whole figure: the same impulse (N·s) added to every limb, so
     /// it leaves in one piece rather than tearing apart.
     public func applyImpulse(_ impulse: Vector3) {
-        guard let handle else { return }
+        guard let handle, world.holds(impulse, "ragdoll.applyImpulse") else { return }
         let scale = 1 / world.unitsPerMeter
         withFloats3((Float(impulse.x * scale), Float(impulse.y * scale),
                      Float(impulse.z * scale))) {

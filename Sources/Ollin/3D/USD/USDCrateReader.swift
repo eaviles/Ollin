@@ -299,20 +299,45 @@ final class USDCrateReader {
             }
         }
 
-        let rootPrims = orderedChildren(of: rootPathIndex, by: rootChildNames)
-        var built = Set<Int>()
-        for index in rootPrims {
-            if let prim = try buildPrim(at: index, depth: 0, built: &built) { stage.prims.append(prim) }
-        }
+        stage.prims = try buildPrims(orderedChildren(of: rootPathIndex, by: rootChildNames))
         return stage
     }
 
-    /// One prim and everything under it. A path is built once, however many
-    /// times the traversal listed it under a parent (a file can list a path
-    /// under itself), and the tree stops at `USDStage.maxDepth`.
-    private func buildPrim(at pathIndex: Int, depth: Int, built: inout Set<Int>) throws -> USDPrim? {
-        guard depth < USDStage.maxDepth, built.insert(pathIndex).inserted,
-              let spec = specs[pathIndex], spec.type == SpecType.prim else { return nil }
+    /// The prims at `indexes` with everything under them. The tree is walked
+    /// with a list of its own, in the order a depth-first walk takes, each
+    /// prim's own fields read as it is reached, and the prims put together
+    /// children first, so the depth a file nests never reaches the call
+    /// stack. A path is built once, however many times the traversal listed
+    /// it under a parent (a file can list a path under itself), and the tree
+    /// stops at `USDStage.maxDepth`.
+    private func buildPrims(_ indexes: [Int]) throws -> [USDPrim] {
+        struct Pending { var prim: USDPrim; var children: [Int] = [] }
+        var built = Set<Int>()
+        var pending: [Pending] = []
+        var roots: [Int] = []
+        var stack: [(index: Int, depth: Int, owner: Int?)] = indexes.reversed().map { ($0, 0, nil) }
+        while let item = stack.popLast() {
+            guard item.depth < USDStage.maxDepth, built.insert(item.index).inserted,
+                  let spec = specs[item.index], spec.type == SpecType.prim else { continue }
+            let (prim, childIndexes) = try buildPrim(at: item.index, spec: spec)
+            let id = pending.count
+            pending.append(Pending(prim: prim))
+            if let owner = item.owner { pending[owner].children.append(id) } else { roots.append(id) }
+            for child in childIndexes.reversed() {
+                stack.append((child, item.depth + 1, id))
+            }
+        }
+        // A prim's children always follow it, so walking back from the end
+        // finishes every child before its parent takes it.
+        for id in pending.indices.reversed() where !pending[id].children.isEmpty {
+            pending[id].prim.children = pending[id].children.map { pending[$0].prim }
+        }
+        return roots.map { pending[$0].prim }
+    }
+
+    /// One prim without its children: its fields and its properties, with
+    /// the indexes of its child prims in authored order.
+    private func buildPrim(at pathIndex: Int, spec: Spec) throws -> (USDPrim, children: [Int]) {
         var prim = USDPrim(name: paths[pathIndex].element)
         var childNames: [String]?
         var propertyNames: [String]?
@@ -352,10 +377,7 @@ final class USDCrateReader {
         }
 
         let childIndexes = childOrder[pathIndex].filter { !paths[$0].isProperty }
-        for index in orderedByName(childIndexes, names: childNames) {
-            if let child = try buildPrim(at: index, depth: depth + 1, built: &built) { prim.children.append(child) }
-        }
-        return prim
+        return (prim, orderedByName(childIndexes, names: childNames))
     }
 
     private func buildAttribute(name: String, fieldSetIndex: Int) throws -> USDAttribute {

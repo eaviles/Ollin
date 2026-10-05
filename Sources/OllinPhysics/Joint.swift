@@ -28,6 +28,7 @@ public final class Joint {
     /// structural joints.
     public var target: Vector2 = .zero {
         didSet {
+            guard world.holds(target, "joint.target") else { target = oldValue; return }
             if isGrab { b2MouseJoint_SetTarget(id, world.meters(from: target)) }
         }
     }

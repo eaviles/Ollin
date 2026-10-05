@@ -120,21 +120,20 @@ extension Scene {
     private static func walkPrims(
         _ stage: USDStage,
         _ body: (USDPrim, String, simd_double4x4, String?) -> Void) {
-        func walk(_ prim: USDPrim, parentPath: String, parent: simd_double4x4,
-                  inherited: String?) {
-            guard prim.specifier != .class else { return }
+        // The prims still to visit wait on a list, parents before children
+        // and siblings in authored order, so the depth a stage nests never
+        // reaches the call stack.
+        var pending: [(prim: USDPrim, parentPath: String, parent: simd_double4x4, inherited: String?)] =
+            stage.prims.reversed().map { ($0, "", matrix_identity_double4x4, nil) }
+        while let (prim, parentPath, parent, inherited) = pending.popLast() {
+            guard prim.specifier != .class else { continue }
             let path = parentPath + "/" + prim.name
             let (local, resets) = prim.localXform()
             let world = resets ? local : parent * local
             let animSource = prim.relationship("skel:animationSource")?.targets.first
                 ?? inherited
             body(prim, path, world, animSource)
-            for child in prim.children {
-                walk(child, parentPath: path, parent: world, inherited: animSource)
-            }
-        }
-        for prim in stage.prims {
-            walk(prim, parentPath: "", parent: matrix_identity_double4x4, inherited: nil)
+            pending.append(contentsOf: prim.children.reversed().map { ($0, path, world, animSource) })
         }
     }
 

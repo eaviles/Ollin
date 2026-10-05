@@ -50,15 +50,11 @@ extension Scene {
     /// placement calls.
     package var importLosses: SceneImportLosses {
         var losses = SceneImportLosses(animations: animations.count)
-        func visit(_ nodes: [SceneNode]) {
-            for node in nodes {
-                if node.skinIndex != nil { losses.skinnedNodes += 1 }
-                if !node.morphTargets.isEmpty { losses.morphedNodes += 1 }
-                if node.meshParts.count > 1 { losses.multiMaterialNodes += 1 }
-                visit(node.children)
-            }
+        Scene.walk(nodes) { node in
+            if node.skinIndex != nil { losses.skinnedNodes += 1 }
+            if !node.morphTargets.isEmpty { losses.morphedNodes += 1 }
+            if node.meshParts.count > 1 { losses.multiMaterialNodes += 1 }
         }
-        visit(nodes)
         return losses
     }
 }

@@ -75,20 +75,28 @@ public final class Character3D {
     /// the world's business). It holds until changed, so a character told to
     /// walk keeps walking; set it every frame from the keys. `walk(at:)` and
     /// `walk(x:z:)` are the sugar for it.
-    public var desiredVelocity: Vector3 = .zero
+    public var desiredVelocity: Vector3 = .zero {
+        didSet { if !world.holds(desiredVelocity, "walk(at:)") { desiredVelocity = oldValue } }
+    }
 
     /// The steepest slope the character can walk up, in radians. Anything
     /// steeper holds it (`groundState` reads `.onSteepSlope`) but can't be
     /// climbed. The default of 50° clears a normal ramp and stops a wall.
     public var maxSlope: Double = 50 * .pi / 180 {
-        didSet { cjolt_character_set_max_slope(handle, Float(maxSlope)) }
+        didSet {
+            guard world.holds(maxSlope, "character.maxSlope") else { maxSlope = oldValue; return }
+            cjolt_character_set_max_slope(handle, Float(maxSlope))
+        }
     }
 
     /// The tallest step the character walks up without jumping, in world
     /// units: a stair, a curb, a ledge. `0` turns stepping off, and the
     /// character stops at anything it can't slide over.
     public var stepHeight: Double {
-        didSet { cjolt_character_set_step_height(handle, world.meters(from: stepHeight)) }
+        didSet {
+            guard world.holds(stepHeight, "character.stepHeight") else { stepHeight = oldValue; return }
+            cjolt_character_set_step_height(handle, world.meters(from: stepHeight))
+        }
     }
 
     /// How far the character may be pulled back down onto a floor it would
@@ -97,6 +105,10 @@ public final class Character3D {
     /// that stickiness off.
     public var stickToFloorDistance: Double {
         didSet {
+            guard world.holds(stickToFloorDistance, "character.stickToFloorDistance") else {
+                stickToFloorDistance = oldValue
+                return
+            }
             cjolt_character_set_stick_to_floor(handle,
                                                world.meters(from: stickToFloorDistance))
         }
@@ -105,14 +117,20 @@ public final class Character3D {
     /// The character's weight in kilograms: what it presses down with onto a
     /// dynamic body it stands on (a raft sinks, a seesaw tips).
     public var mass: Double = 70 {
-        didSet { cjolt_character_set_mass(handle, Float(max(0, mass))) }
+        didSet {
+            guard world.holds(mass, "character.mass") else { mass = oldValue; return }
+            cjolt_character_set_mass(handle, Float(max(0, mass)))
+        }
     }
 
     /// The hardest the character can shove a dynamic body sideways, in
     /// newtons. `0` makes it unable to push at all: crates become immovable
     /// walls it has to walk around.
     public var pushStrength: Double = 100 {
-        didSet { cjolt_character_set_max_strength(handle, Float(max(0, pushStrength))) }
+        didSet {
+            guard world.holds(pushStrength, "character.pushStrength") else { pushStrength = oldValue; return }
+            cjolt_character_set_max_strength(handle, Float(max(0, pushStrength)))
+        }
     }
 
     /// Which collision group the character walks in. It filters what the
@@ -227,6 +245,7 @@ public final class Character3D {
     /// granted only if the character is on the ground then, so calling it
     /// every frame while a key is held gives a hop each time it lands.
     public func jump(_ speed: Double = 4) {
+        guard world.holds(speed, "jump") else { return }
         pendingJump = speed
     }
 
@@ -246,6 +265,7 @@ public final class Character3D {
             return world.units(from: out.0, out.1, out.2)
         }
         set {
+            guard world.holds(newValue, "character.position") else { return }
             withFloats3(world.meters(from: newValue)) {
                 cjolt_character_set_position(handle, $0)
             }
@@ -264,6 +284,7 @@ public final class Character3D {
             return world.units(from: out.0, out.1, out.2)
         }
         set {
+            guard world.holds(newValue, "character.velocity") else { return }
             withFloats3(world.meters(from: newValue)) {
                 cjolt_character_set_velocity(handle, $0)
             }

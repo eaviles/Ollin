@@ -344,3 +344,19 @@ extension World3D {
         }
     }
 }
+
+extension Water {
+    /// What is wrong with a number in the water, for a note, or `nil` when the
+    /// solver holds every one of them.
+    var complaint: String? {
+        if let wrong = SolverNumber.complaint(flow) { return wrong }
+        var numbers = [level, density, linearDrag, angularDrag]
+        if let waves {
+            numbers += [waves.amplitude, waves.wavelength, waves.speed, waves.heading]
+        }
+        for number in numbers {
+            if let wrong = SolverNumber.complaint(number) { return wrong }
+        }
+        return nil
+    }
+}

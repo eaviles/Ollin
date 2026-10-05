@@ -30,12 +30,9 @@ extension Scene {
     /// Hand-built nodes carry no source index, so they can't act as joints.
     package func nodeWorldTransforms() -> [Int: simd_float4x4] {
         var worlds: [Int: simd_float4x4] = [:]
-        func visit(_ node: SceneNode, parent: simd_float4x4) {
-            let world = parent * node.localTransform
+        Scene.visitWorlds(nodes, parent: matrix_identity_float4x4) { node, world in
             if let si = node.sourceIndex { worlds[si] = world }
-            for child in node.children { visit(child, parent: world) }
         }
-        for node in nodes { visit(node, parent: matrix_identity_float4x4) }
         return worlds
     }
 }

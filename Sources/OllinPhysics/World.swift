@@ -46,13 +46,17 @@ public final class World {
     /// Constant acceleration applied to every (unpinned) particle, in points per
     /// second². The default pulls down the screen (y-down). Set `.zero` for a
     /// free-floating, gravity-less field.
-    public var gravity: Vector2 = Vector2(0, 980)
+    public var gravity: Vector2 = Vector2(0, 980) {
+        didSet { if !holds(gravity, "world.gravity") { gravity = oldValue } }
+    }
 
     /// Velocity damping applied each step, `0…1` — a stand-in for air friction.
     /// `0` conserves motion (bodies drift forever); a small value bleeds energy
     /// so things settle. Verlet has no separate velocity to scale, so this
     /// shrinks the implicit `position - previous` gap.
-    public var drag: Double = 0.01
+    public var drag: Double = 0.01 {
+        didSet { if !holds(drag, "world.drag") { drag = oldValue } }
+    }
 
     /// How many relaxation passes run per step. Higher holds springs and
     /// contacts together under stress (a tall stack, a stiff cloth); lower is
@@ -70,7 +74,9 @@ public final class World {
 
     /// Wall restitution, `0…1`: how much speed a particle keeps when it bounces
     /// off `bounds`. `0` sticks, `1` bounces with no loss.
-    public var restitution: Double = 0.5
+    public var restitution: Double = 0.5 {
+        didSet { if !holds(restitution, "world.restitution") { restitution = oldValue } }
+    }
 
     /// When `true`, particles with a positive `radius` push apart as solid disks,
     /// broad-phased through a spatial hash so it scales to thousands of bodies.
@@ -83,19 +89,42 @@ public final class World {
     /// `deltaTime` can spike after a stall or while a window is dragged; clamping
     /// keeps one long frame from launching everything off-screen. The simulation
     /// runs a little slow through a hitch rather than exploding.
-    public var maxTimestep: Double = 1.0 / 30
+    public var maxTimestep: Double = 1.0 / 30 {
+        didSet { if !holds(maxTimestep, "world.maxTimestep") { maxTimestep = oldValue } }
+    }
 
     /// Sketch points (the unit particles use) per simulated meter for the rigid
     /// `Body` sub-system. Box2D is tuned for objects roughly 0.1–10 m, so the
     /// default of 100 puts a 100-point shape at 1 m — its sweet spot. The Verlet
     /// particle/spring side works directly in points and ignores this.
-    public var unitsPerMeter: Double = 100
+    public var unitsPerMeter: Double = 100 {
+        didSet {
+            guard holds(unitsPerMeter, "world.unitsPerMeter"),
+                  accepts(unitsPerMeter > 0 ? nil : "a value of zero or less",
+                          "world.unitsPerMeter", else: "ignoring it") else {
+                unitsPerMeter = oldValue
+                return
+            }
+        }
+    }
 
     /// Every rigid `Body` in the simulation, in the order added.
     public private(set) var bodies: [Body] = []
 
     /// Every `Joint` between rigid bodies, in the order added.
     public private(set) var joints: [Joint] = []
+
+    // MARK: One-time notes
+
+    /// Messages printed once per world for a call the solver cannot take (a
+    /// number that is not one), keyed by message so each prints once rather
+    /// than every frame.
+    private(set) var worldNotes = Set<String>()
+    func noteOnce(_ message: String) {
+        guard !worldNotes.contains(message) else { return }
+        worldNotes.insert(message)
+        print("Ollin: \(message)")
+    }
 
     /// The timestep used on the previous `advance(by:)`, for time-corrected Verlet (so a
     /// variable frame rate doesn't change how fast things move).
@@ -178,7 +207,7 @@ public final class World {
     /// particle, then relaxes springs, contacts, and bounds. A `dt` of `0` (a
     /// paused or first frame) is a no-op; a large `dt` is clamped to `maxTimestep`.
     public func advance(by dt: Double) {
-        guard dt > 0 else { return }
+        guard holds(dt, "advance(by:)"), dt > 0 else { return }
         let h = Swift.min(dt, maxTimestep)
 
         for particle in particles {
@@ -333,6 +362,13 @@ public final class World {
     public func addBody(_ collider: Collider, at position: Vector2,
                         kind: Body.Kind = .dynamic, density: Double = 1,
                         friction: Double = 0.3, restitution: Double? = nil) -> Body {
+        // A sketch's own numbers are checked here, where they cross into the
+        // solver: one it cannot hold falls back to the parameter's default
+        // with a note.
+        let position = held(position, "addBody(at:)", or: .zero)
+        let density = held(density, "addBody's density", or: 1)
+        let friction = held(friction, "addBody's friction", or: 0.3)
+        let restitution = held(restitution, "addBody's restitution")
         let worldId = ensureRigidWorld()
 
         var bodyDef = b2DefaultBodyDef()
@@ -390,6 +426,9 @@ public final class World {
     /// connecting.
     @discardableResult
     public func connect(_ a: Body, _ b: Body, _ kind: JointKind) -> Joint {
+        // A joint with a number the solver cannot hold is made where the
+        // bodies are instead, with a note: a 2D joint has to exist once asked for.
+        let kind = kind.held(by: self, a: a, b: b)
         let worldId = ensureRigidWorld()
         let jointId: b2JointId
 
@@ -447,6 +486,7 @@ public final class World {
     /// let go.
     @discardableResult
     public func grab(_ body: Body, at point: Vector2) -> Joint {
+        let point = held(point, "grab(_:at:)", or: body.position)
         let worldId = ensureRigidWorld()
         var def = b2DefaultMouseJointDef()
         def.bodyIdA = mouseGround(in: worldId)

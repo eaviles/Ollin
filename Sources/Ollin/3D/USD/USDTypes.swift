@@ -10,12 +10,18 @@ import Foundation
 /// composition, no schema knowledge, no unit handling. Interpretation belongs
 /// to the layers above.
 struct USDStage: Equatable {
-    /// How deep prims and values may nest: the scene depth glTF keeps too
-    /// (`GLTFDocument.maxNodeDepth`). Both readers and every walk of the tree
-    /// recurse once per level, and this is the depth that fits a background
-    /// thread's half megabyte of stack in a debug build; no scene a person
-    /// authors comes near it.
-    static let maxDepth = 64
+    /// How deep prims may nest: the depth every loaded scene shares
+    /// (`Scene.maxDepth`, the one glTF keeps too). Both readers build the
+    /// prim tree with a list of their own and every walk of it keeps its
+    /// pending prims on one, so the number is a product choice rather than a
+    /// stack measurement; a stage past it is refused.
+    static let maxDepth = Scene.maxDepth
+
+    /// How deep a value may nest inside a prim or a layer's metadata: a
+    /// dictionary in a dictionary, a tuple in an array. The value readers do
+    /// recurse once per level, and nothing a person authors nests a value
+    /// past a handful, so a file past this is refused.
+    static let maxValueDepth = 64
 
     /// Layer metadata from the header block: `defaultPrim`, `upAxis`,
     /// `metersPerUnit`, `timeCodesPerSecond`, and whatever else was authored.

@@ -64,7 +64,7 @@ extension Scene {
         // that carries the closest enclosing joint slot down each branch.
         var parentOf: [Int: Int] = [:]
         var nameOf: [Int: String] = [:]
-        func visit(_ node: SceneNode, enclosing: Int?) {
+        Scene.walk(nodes, from: Int?.none) { node, enclosing in
             var enclosingNext = enclosing
             if let source = node.sourceIndex {
                 nameOf[source] = node.name
@@ -73,9 +73,8 @@ extension Scene {
                     enclosingNext = slot
                 }
             }
-            for child in node.children { visit(child, enclosing: enclosingNext) }
+            return enclosingNext
         }
-        for node in nodes { visit(node, enclosing: nil) }
 
         return skin.joints.enumerated().map { slot, source in
             SceneSkeletonJoint(
@@ -95,8 +94,7 @@ extension Scene {
     package func skinnedVertices() -> [SceneSkinnedVertex] {
         guard !skins.isEmpty else { return [] }
         var out: [SceneSkinnedVertex] = []
-        func visit(_ node: SceneNode) {
-            defer { for child in node.children { visit(child) } }
+        Scene.walk(nodes) { node in
             guard node.skinIndex == 0, let mesh = node.mesh else { return }
             let n = mesh.positions.count
             guard node.vertexJoints.count == n, node.vertexWeights.count == n else { return }
@@ -107,7 +105,6 @@ extension Scene {
                                               weights: node.vertexWeights[i]))
             }
         }
-        for node in nodes { visit(node) }
         return out
     }
 
@@ -124,7 +121,7 @@ extension Scene {
     /// dividing it out would shrink the mesh.
     package mutating func setJointWorlds(_ worlds: [Int: simd_float4x4]) {
         guard !worlds.isEmpty else { return }
-        func visit(_ node: inout SceneNode, parent: simd_float4x4) {
+        Scene.mutateAll(&nodes, from: matrix_identity_float4x4) { node, parent in
             var world = parent * node.localTransform
             if let source = node.sourceIndex, let posed = worlds[source] {
                 world = Scene.keepingScale(of: world, pose: posed)
@@ -136,9 +133,8 @@ extension Scene {
                 // node back to its authored translation.
                 if node.trs != nil { node.trs = Scene.components(of: node.localTransform) }
             }
-            for i in node.children.indices { visit(&node.children[i], parent: world) }
+            return world
         }
-        for i in nodes.indices { visit(&nodes[i], parent: matrix_identity_float4x4) }
     }
 
     /// `pose`'s rotation and translation with `current`'s scale: the columns

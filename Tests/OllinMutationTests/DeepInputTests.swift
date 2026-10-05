@@ -9,7 +9,14 @@ import OllinMutation
 /// harness cannot reach (its edits never nest a structure ten thousand deep),
 /// so each reader that recurses is handed such an input directly, on a thread
 /// with the half-megabyte stack a secondary thread gets, where the main
-/// thread's eight would hide a recursion a background load would die of.
+/// thread's eight would hide a recursion a background load would die of. A
+/// scene at the depth limit is read on half of that, 256 KB, which is what
+/// keeps the limit a product choice: every walk of a scene and both scene
+/// readers keep their pending work on a list, and the one cost left per
+/// level, the runtime's own release of the nested nodes when the scene is
+/// dropped (about 440 bytes a level, the standard library's frames), is the
+/// same whatever the compiler lays out, so the read fits with half the
+/// background thread's stack to spare.
 ///
 /// Beside it, the file a file names: a model whose buffer, a material whose
 /// picture, or a shader whose include is a device reads only regular files, so
@@ -22,15 +29,17 @@ struct DeepInputTests {
         var value = ""
     }
 
-    /// Runs `body` on a thread with a 512 KB stack and returns what it said.
-    static func onSmallStack(_ body: @escaping @Sendable () -> String) async -> String {
+    /// Runs `body` on a thread with a stack of `bytes` (a background thread's
+    /// 512 KB unless a case asks for less) and returns what it said.
+    static func onSmallStack(bytes: Int = 512 * 1024,
+                             _ body: @escaping @Sendable () -> String) async -> String {
         let outcome = Outcome()
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
             let thread = Thread {
                 outcome.value = body()
                 done.resume()
             }
-            thread.stackSize = 512 * 1024
+            thread.stackSize = bytes
             thread.start()
         }
         return outcome.value
@@ -74,7 +83,9 @@ struct DeepInputTests {
 
     @Test func aModelNestedPastItsLimitStopsThere() async {
         let depth = 5_000
-        let said = await Self.onSmallStack {
+        // Read on half a background thread's stack: the walks keep their
+        // pending nodes on a list, so the limit's depth costs no stack.
+        let said = await Self.onSmallStack(bytes: 256 * 1024) {
             var nodes: [String] = []
             for i in 0..<depth {
                 nodes.append(i + 1 < depth ? #"{"children": [\#(i + 1)], "translation": [0, 1, 0]}"# : #"{"mesh": 0}"#)
@@ -91,12 +102,13 @@ struct DeepInputTests {
                                          baseDirectory: URL(fileURLWithPath: NSTemporaryDirectory())) else { return "unread" }
             let scene = Scene.loadGLTFScene(doc)
             _ = Mesh.loadGLTF(doc)
+            // Measured from a list too, or the test would measure itself.
             var deepest = 0
-            func measure(_ node: SceneNode, _ level: Int) {
+            var pending = (scene?.nodes ?? []).map { ($0, 1) }
+            while let (node, level) = pending.popLast() {
                 deepest = max(deepest, level)
-                for child in node.children { measure(child, level + 1) }
+                pending.append(contentsOf: node.children.map { ($0, level + 1) })
             }
-            for node in scene?.nodes ?? [] { measure(node, 1) }
             // Read at the limit the way a sketch reads a scene.
             var inconsistent = 0
             if let scene { ModelFileMutationTests.read(scene, inconsistent: &inconsistent) }
@@ -106,24 +118,42 @@ struct DeepInputTests {
     }
 
     @Test func aStageAtItsLimitLoadsAndReads() async {
-        let said = await Self.onSmallStack {
+        // Read on half a background thread's stack, the way the glTF case is.
+        let said = await Self.onSmallStack(bytes: 256 * 1024) {
             // The deepest stage the reader takes, a mesh at the bottom: parsed,
-            // built into a scene, walked, and merged, all on the small stack.
-            // The limit counts values as well as prims, so the mesh's array of
-            // points and each point in it take the last two levels.
-            let depth = USDStage.maxDepth - 1
+            // built into a scene, walked, merged, and written out again, all
+            // on the small stack. Values nest under a limit of their own, so
+            // the mesh's array of points costs the prim tree nothing.
+            let depth = USDStage.maxDepth
             let mesh = #"def Mesh "m" { point3f[] points = [(0, 0, 0), (1, 0, 0), (0, 1, 0)] int[] faceVertexCounts = [3] int[] faceVertexIndices = [0, 1, 2] }"#
-            let text = "#usda 1.0\n" + String(repeating: #"def Xform "a" { double3 xformOp:translate = (0, 1, 0) uniform token[] xformOpOrder = ["xformOp:translate"] "#, count: depth - 2)
-                + mesh + String(repeating: " }", count: depth - 2)
+            let text = "#usda 1.0\n" + String(repeating: #"def Xform "a" { double3 xformOp:translate = (0, 1, 0) uniform token[] xformOpOrder = ["xformOp:translate"] "#, count: depth - 1)
+                + mesh + String(repeating: " }", count: depth - 1)
             guard let scene = Scene.loadUSDScene(data: Data(text.utf8), fileURL: URL(fileURLWithPath: "/tmp/deep.usda")) else {
                 return "unread"
             }
             var inconsistent = 0
             ModelFileMutationTests.read(scene, inconsistent: &inconsistent)
             guard let merged = Mesh.merged(scene) else { return "no mesh" }
-            return "\(merged.triangleCount)"
+            // The bottom mesh sits `depth` levels down, raised one unit by
+            // each of the `depth - 1` transforms above it and reaching one
+            // unit of its own, and the whole scene writes out again from the
+            // same stack.
+            let bottom = scene.bounds
+            var writer = USDSceneWriter()
+            let written = writer.layer(for: scene)
+            return "\(merged.triangleCount) \(Int(bottom.max.y.rounded())) \(written.utf8.count > depth * 40)"
         }
-        #expect(said == "1")
+        #expect(said == "1 \(USDStage.maxDepth) true", "\(said)")
+    }
+
+    @Test func aStageOnePastItsLimitIsRefused() async {
+        let said = await Self.onSmallStack {
+            let depth = USDStage.maxDepth + 1
+            let text = "#usda 1.0\n" + String(repeating: #"def Xform "a" {"#, count: depth)
+                + String(repeating: "}", count: depth)
+            do { _ = try USDStage.load(data: Data(text.utf8)); return "read" } catch { return "refused" }
+        }
+        #expect(said == "refused")
     }
 
     @Test func aStageNestedPastItsLimitIsRefused() async {

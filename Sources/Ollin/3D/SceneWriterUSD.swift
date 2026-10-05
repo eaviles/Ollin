@@ -82,9 +82,7 @@ struct USDSceneWriter {
         // Materials scope is written out below it.
         var body = ""
         var used = Set<String>()
-        for node in scene.nodes {
-            body += primitiveTree(node, at: "/\(root)", depth: 1, used: &used)
-        }
+        body += primitiveTrees(scene.nodes, at: "/\(root)", depth: 1, used: &used)
         for (i, camera) in scene.cameras.enumerated() {
             body += cameraPrim(camera, name: unique("camera\(i)", in: &used), depth: 1)
         }
@@ -122,40 +120,68 @@ struct USDSceneWriter {
 
     // MARK: - Nodes and meshes
 
-    /// One node and its children, as an Xform holding a Mesh when it has
-    /// geometry. A node's per-material slices become one Mesh prim each, which
-    /// is how `drawScene` draws them too.
-    private mutating func primitiveTree(_ node: SceneNode, at parent: String, depth: Int,
-                                        used: inout Set<String>) -> String {
-        let pad = String(repeating: " ", count: depth)
-        let name = unique(Self.identifier(node.name, fallback: "node"), in: &used)
-        let path = "\(parent)/\(name)"
-        var out = "\(pad)def Xform \"\(name)\"\n\(pad){\n"
-
-        if node.localTransform != matrix_identity_float4x4 {
-            out += "\(pad) matrix4d xformOp:transform = \(matrix(node.localTransform))\n"
-            out += "\(pad) uniform token[] xformOpOrder = [\"xformOp:transform\"]\n"
+    /// The nodes and everything under them, each an Xform holding a Mesh when
+    /// it has geometry (a node's per-material slices become one Mesh prim
+    /// each, which is how `drawScene` draws them too). Written with a list of
+    /// its own: a node's opening lines go out when it is reached and its
+    /// closing brace when its subtree is done, so the depth of the tree never
+    /// reaches the call stack. Sibling names are made unique within their
+    /// parent, in authored order; the roots share `used` with the cameras and
+    /// lights written beside them.
+    private mutating func primitiveTrees(_ nodes: [SceneNode], at parent: String, depth: Int,
+                                         used: inout Set<String>) -> String {
+        enum Step {
+            case open(SceneNode, parent: String, depth: Int, name: String)
+            case close(depth: Int)
         }
+        var out = ""
+        var pending: [Step] = []
+        var named: [Step] = []
+        for node in nodes {
+            named.append(.open(node, parent: parent, depth: depth,
+                               name: unique(Self.identifier(node.name, fallback: "node"), in: &used)))
+        }
+        pending.append(contentsOf: named.reversed())
+        while let step = pending.popLast() {
+            switch step {
+            case .close(let depth):
+                out += "\(String(repeating: " ", count: depth))}\n"
+            case .open(let node, let parent, let depth, let name):
+                let pad = String(repeating: " ", count: depth)
+                let path = "\(parent)/\(name)"
+                out += "\(pad)def Xform \"\(name)\"\n\(pad){\n"
 
-        if let mesh = node.mesh, !mesh.isEmpty {
-            var inner = Set<String>()
-            if node.meshParts.isEmpty || node.partsVertexCount != mesh.positions.count {
-                out += meshPrim(mesh, indices: mesh.indices, material: mesh.material,
-                                name: unique("mesh", in: &inner), at: path, depth: depth + 1)
-            } else {
-                for (i, part) in node.meshParts.enumerated() {
-                    out += meshPrim(mesh, indices: part.indices, material: part.material,
-                                    name: unique("mesh\(i)", in: &inner), at: path,
-                                    depth: depth + 1)
+                if node.localTransform != matrix_identity_float4x4 {
+                    out += "\(pad) matrix4d xformOp:transform = \(matrix(node.localTransform))\n"
+                    out += "\(pad) uniform token[] xformOpOrder = [\"xformOp:transform\"]\n"
                 }
+
+                if let mesh = node.mesh, !mesh.isEmpty {
+                    var inner = Set<String>()
+                    if node.meshParts.isEmpty || node.partsVertexCount != mesh.positions.count {
+                        out += meshPrim(mesh, indices: mesh.indices, material: mesh.material,
+                                        name: unique("mesh", in: &inner), at: path, depth: depth + 1)
+                    } else {
+                        for (i, part) in node.meshParts.enumerated() {
+                            out += meshPrim(mesh, indices: part.indices, material: part.material,
+                                            name: unique("mesh\(i)", in: &inner), at: path,
+                                            depth: depth + 1)
+                        }
+                    }
+                }
+
+                pending.append(.close(depth: depth))
+                var childNames = Set<String>()
+                named.removeAll(keepingCapacity: true)
+                for child in node.children {
+                    named.append(.open(child, parent: path, depth: depth + 1,
+                                       name: unique(Self.identifier(child.name, fallback: "node"),
+                                                    in: &childNames)))
+                }
+                pending.append(contentsOf: named.reversed())
             }
         }
-
-        var childNames = Set<String>()
-        for child in node.children {
-            out += primitiveTree(child, at: path, depth: depth + 1, used: &childNames)
-        }
-        return out + "\(pad)}\n"
+        return out
     }
 
     /// A mesh prim: its points, its triangles, and whatever per-vertex data it

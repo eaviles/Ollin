@@ -229,14 +229,9 @@ extension Scene {
 
     private static func apply(_ track: SceneAnimation.Track, at time: Double,
                               in nodes: inout [SceneNode]) -> Bool {
-        for i in nodes.indices {
-            if nodes[i].sourceIndex == track.nodeIndex {
-                nodes[i].apply(track, at: time)
-                return true
-            }
-            if apply(track, at: time, in: &nodes[i].children) { return true }
+        mutateFirst(in: &nodes, where: { $0.sourceIndex == track.nodeIndex }) {
+            $0.apply(track, at: time)
         }
-        return false
     }
 }
 
