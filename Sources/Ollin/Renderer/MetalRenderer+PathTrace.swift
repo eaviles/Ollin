@@ -66,6 +66,13 @@ extension MetalRenderer {
     /// and what the frame holds afterwards is kept as the next frame's history. The
     /// first frame of a run, with no history at this size for this drawer, traces the
     /// history's worth of samples itself so the sequence starts settled.
+    ///
+    /// Under a time budget (`PathTracing.secondsPerFrame` above 0) the loop stops at
+    /// the sample where the wall clock runs out, past the floor the settings name,
+    /// sizing its last dispatch to the time left from the time the last one took per
+    /// sample. The kernel adds samples in order onto the running sums and reads
+    /// nothing of the count, so the frame the clock leaves is a fixed render of the
+    /// count it reached, byte for byte, and the report says what that count was.
     func encodePathTracePass(_ drawer: Drawer, width: Int, height: Int) -> PathTracedLayer? {
         pathTracedCopyBatches = []
         lastPathTraceReport = nil
@@ -167,6 +174,12 @@ extension MetalRenderer {
         let adaptive = settings.isAdaptive
         let minSamples = adaptive ? settings.firstCheck : total
         let checkStep = PathTracing.checkStep
+        // The time budget: the seconds the trace may take (the history's worth of
+        // them on the first frame of a reusing run, which traces that worth of
+        // samples), and the samples it takes before the clock may stop it.
+        let budgeted = settings.isBudgeted
+        let timeBudget = settings.timeBudget(tracingTheHistory: reusing && history == nil)
+        let timeFloor = budgeted ? min(total, settings.timeFloor) : total
         // The bound on what one bounce may add to a sample; the statistics layer
         // then also sums, per pixel, the light the bound took off.
         let bounded = settings.isBounded
@@ -312,8 +325,33 @@ extension MetalRenderer {
         var samplesTaken = 0.0
         let grid = MTLSize(width: width, height: height, depth: 1)
         let group = MTLSize(width: 8, height: 8, depth: 1)
+        // The budget's clock: wall time, since that is what a sequence's hours are
+        // made of, and the wall seconds the last dispatch took per sample, which
+        // sizes the next one to the time left. The first dispatch has no estimate
+        // and runs as sized.
+        func now() -> Double { Double(DispatchTime.now().uptimeNanoseconds) / 1e9 }
+        let traceStart = now()
+        var secondsPerSample: Double? = nil
         while done < total {
-            let n = min(chunk, roundEnd - done)
+            var n = min(chunk, roundEnd - done)
+            if budgeted {
+                if done < timeFloor {
+                    // Up to the floor the clock is not asked; the dispatch stops at
+                    // the floor so the question is asked exactly there.
+                    n = min(n, timeFloor - done)
+                } else {
+                    let left = timeBudget - (now() - traceStart)
+                    if left <= 0 { break }
+                    if let per = secondsPerSample, per > 0 {
+                        // Size the dispatch to the time left, to the nearest sample;
+                        // under half a sample's worth is the end.
+                        let fit = left / per
+                        if fit < 0.5 { break }
+                        n = min(n, max(1, Int(min(fit.rounded(), Double(n)))))
+                    }
+                }
+            }
+            let chunkStart = now()
             guard let cb = commandQueue.makeCommandBuffer(),
                   let enc = cb.makeComputeCommandEncoder() else { return nil }
             pt.window = SIMD4<UInt32>(UInt32(width), UInt32(height), UInt32(done), UInt32(n))
@@ -358,12 +396,16 @@ extension MetalRenderer {
             if forcedChunk == nil, gpuTime > 0 {
                 chunk = max(1, min(64, Int(Double(n) * 1.0 / gpuTime + 0.5)))
             }
+            secondsPerSample = (now() - chunkStart) / Double(n)
             if pathTraceReportsProgress {
                 let settled = adaptive
                     ? String(format: ", %d%% of pixels settled", 100 - openPixels * 100 / max(1, width * height))
                     : ""
-                let line = String(format: "\r  path tracing %d/%d samples (%d%%)%@    ",
-                                  done, total, done * 100 / total, settled)
+                let line = budgeted
+                    ? String(format: "\r  path tracing %d samples, %.1f of %g s%@    ",
+                             done, now() - traceStart, timeBudget, settled)
+                    : String(format: "\r  path tracing %d/%d samples (%d%%)%@    ",
+                             done, total, done * 100 / total, settled)
                 FileHandle.standardError.write(Data(line.utf8))
             }
             // The end of a round: read every pixel's statistics, close the settled
@@ -396,6 +438,7 @@ extension MetalRenderer {
                 roundEnd = min(total, roundEnd + checkStep)
             }
         }
+        let traceEnd = now()
         if pathTraceReportsProgress {
             FileHandle.standardError.write(Data("\n".utf8))
         }
@@ -423,11 +466,18 @@ extension MetalRenderer {
             encodePathTraceDenoise(accum: accum, guideColor: guideColor,
                                    guideSurface: guideSurface, width: width, height: height)
         }
+        // What the frame reached: the count under a fixed render, or where the
+        // clock (or, under the stop, an empty open list) ended the loop. The
+        // composite divides a fixed render by it, so a budgeted frame is a mean over
+        // the samples it took and not over the count it was offered.
+        let reached = max(1, done)
         lastPathTraceReport = PathTraceReport(
-            settings: settings, minSamplesPerPixel: minSamples,
+            settings: settings, minSamplesPerPixel: min(minSamples, reached),
             meanSamplesPerPixel: adaptive ? samplesTaken / Double(max(1, width * height)) : nil,
-            lightDropped: lightDropped, carriedSamplesPerPixel: carried)
-        return PathTracedLayer(color: accum, depth: depthTex, invSamples: 1 / Float(total),
+            lightDropped: lightDropped, carriedSamplesPerPixel: carried,
+            reachedSamplesPerPixel: budgeted ? reached : nil,
+            secondsTraced: budgeted ? traceEnd - traceStart : nil)
+        return PathTracedLayer(color: accum, depth: depthTex, invSamples: 1 / Float(reached),
                                counts: adaptive || reusing ? stats : nil)
     }
 

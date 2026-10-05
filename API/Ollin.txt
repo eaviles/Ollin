@@ -5453,7 +5453,7 @@ struct Path: Equatable, Sendable
   var contour: Contour { get }
   var shape: Shape { get }
 struct PathTracing: Equatable, Sendable
-  init(samplesPerPixel: Int = default, maxDepth: Int = default, denoises: Bool = default, noiseThreshold: Double = default, minSamplesPerPixel: Int? = default, maxBounceLight: Double = default, reusedFrames: Int = default)
+  init(samplesPerPixel: Int = default, maxDepth: Int = default, denoises: Bool = default, noiseThreshold: Double = default, minSamplesPerPixel: Int? = default, maxBounceLight: Double = default, reusedFrames: Int = default, secondsPerFrame: Double = default)
   var denoises: Bool { get set }
   var maxBounceLight: Double { get set }
   var maxDepth: Int { get set }
@@ -5461,6 +5461,7 @@ struct PathTracing: Equatable, Sendable
   var noiseThreshold: Double { get set }
   var reusedFrames: Int { get set }
   var samplesPerPixel: Int { get set }
+  var secondsPerFrame: Double { get set }
 struct Percolation: Equatable, Hashable, Sendable
   func cellRects(of: Int, in: Rectangle) -> [Rectangle]
   func cluster(_: Int) -> [(column: Int, row: Int)]

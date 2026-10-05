@@ -107,10 +107,10 @@ struct ExportMetadata {
         // the clock held is not the frame a single draw would give.
         if settle > 1 { fields.append("\"settle\":\(settle)") }
         // A traced frame names what it was traced with, in the flags' own terms:
-        // the sample count (the cap under adaptive sampling), the depth, the
-        // filter when it ran, and under adaptive sampling the noise it stopped at,
-        // the minimum every pixel took, and the mean count the pixels reached,
-        // to a tenth.
+        // the sample count (the cap under adaptive sampling or a time budget), the
+        // depth, the filter when it ran, and under adaptive sampling the noise it
+        // stopped at, the minimum every pixel took, and the mean count the pixels
+        // reached, to a tenth.
         if let pathTracing {
             let s = pathTracing.settings
             var traced = ["\"samples\":\(s.samplesPerPixel)", "\"depth\":\(s.maxDepth)"]
@@ -138,6 +138,15 @@ struct ExportMetadata {
                 traced.append("\"reuse\":\(s.reusedFrames)")
                 if let carried = pathTracing.carriedSamplesPerPixel {
                     traced.append("\"carriedSamples\":\(jsonNumber((carried * 10).rounded() / 10))")
+                }
+            }
+            // The time budget, and the count the clock let the frame reach: a
+            // budgeted frame is a fixed render of that count, so it reproduces with
+            // `--path-traced <reachedSamples>` in place of the budget.
+            if s.isBudgeted {
+                traced.append("\"seconds\":\(jsonNumber(s.secondsPerFrame))")
+                if let reached = pathTracing.reachedSamplesPerPixel {
+                    traced.append("\"reachedSamples\":\(reached)")
                 }
             }
             fields.append("\"pathTraced\":{\(traced.joined(separator: ","))}")

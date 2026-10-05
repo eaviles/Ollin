@@ -89,9 +89,25 @@ public struct PathTracing: Equatable, Sendable {
     /// carries 256, and the grain stops moving from frame to frame.
     public var reusedFrames: Int
 
+    /// The most time a frame's trace may take, in seconds (`--pt-seconds`). 0, the
+    /// default, is no budget: every frame traces to its count. Above 0, the trace
+    /// stops at the sample where the time runs out, so the count follows the scene
+    /// (a fast scene reaches more, a slow one fewer) and a sequence fits the hours
+    /// it has, while `samplesPerPixel` stays the most a pixel traces. The frame it
+    /// leaves is a fixed render of the count it reached, byte for byte, and the
+    /// recipe records that count beside the budget, so the frame reproduces with the
+    /// count in place of the budget. `minSamplesPerPixel` is a floor the clock may
+    /// not cut under. Under `reusedFrames` the first frame of a run, which traces
+    /// the history's worth itself, gets the history's worth of time, and a sequence
+    /// is then no longer the same bytes twice, since each frame's count follows the
+    /// clock. The budget covers the tracing alone; the scene's setup, the filter,
+    /// and the file add a fraction of a second to a frame.
+    public var secondsPerFrame: Double
+
     public init(samplesPerPixel: Int = 256, maxDepth: Int = 8, denoises: Bool = false,
                 noiseThreshold: Double = 0, minSamplesPerPixel: Int? = nil,
-                maxBounceLight: Double = 0, reusedFrames: Int = 0) {
+                maxBounceLight: Double = 0, reusedFrames: Int = 0,
+                secondsPerFrame: Double = 0) {
         self.samplesPerPixel = max(1, samplesPerPixel)
         self.maxDepth = max(1, maxDepth)
         self.denoises = denoises
@@ -99,6 +115,7 @@ public struct PathTracing: Equatable, Sendable {
         self.minSamplesPerPixel = minSamplesPerPixel.map { max(1, $0) }
         self.maxBounceLight = maxBounceLight.isFinite ? max(0, maxBounceLight) : 0
         self.reusedFrames = max(0, reusedFrames)
+        self.secondsPerFrame = secondsPerFrame.isFinite ? max(0, secondsPerFrame) : 0
     }
 
     /// Whether pixels may stop early: a threshold above zero and more than one
@@ -110,6 +127,23 @@ public struct PathTracing: Equatable, Sendable {
 
     /// Whether a frame carries the earlier frames' samples.
     var isReusing: Bool { reusedFrames > 0 }
+
+    /// Whether the clock may end a frame's trace before its count.
+    var isBudgeted: Bool { secondsPerFrame > 0 }
+
+    /// The time a frame's trace may take: the budget, or the history's worth of it
+    /// for the first frame of a reusing run, which traces that worth of samples
+    /// itself so the sequence starts settled. Infinite with no budget.
+    func timeBudget(tracingTheHistory: Bool) -> Double {
+        guard isBudgeted else { return .infinity }
+        return secondsPerFrame * (tracingTheHistory && isReusing ? Double(max(1, reusedFrames)) : 1)
+    }
+
+    /// The fewest samples a budgeted frame takes before the clock may stop it: the
+    /// named minimum, else one dispatch's worth, either clamped to the count. (The
+    /// per-pixel stop's own first check is `firstCheck`, which the budget never
+    /// moves.)
+    var timeFloor: Int { min(samplesPerPixel, max(1, minSamplesPerPixel ?? 1)) }
 
     /// The most samples a pixel carries under reuse, its own and the carried
     /// together: the history's worth at the count.
@@ -159,4 +193,11 @@ struct PathTraceReport: Equatable, Sendable {
     /// samples were carried in, its own and the carried together, over the whole
     /// frame; `nil` when no frames are reused.
     var carriedSamplesPerPixel: Double? = nil
+    /// Under a time budget, the count the clock let the frame reach: the most any
+    /// pixel traced, and the count a fixed render reproduces the frame at; `nil`
+    /// with no budget, where it is the count.
+    var reachedSamplesPerPixel: Int? = nil
+    /// Under a time budget, the wall-clock seconds the trace took; `nil` with no
+    /// budget.
+    var secondsTraced: Double? = nil
 }

@@ -279,6 +279,8 @@ public extension OllinApp {
                 // is one frame's figure and not the file's.
                 meta.pathTracing = frame.pathTrace
                 meta.pathTracing?.meanSamplesPerPixel = nil
+                meta.pathTracing?.reachedSamplesPerPixel = nil
+                meta.pathTracing?.secondsTraced = nil
                 let recipe = meta.recipe
                 let description = AVMutableMetadataItem()
                 description.identifier = .commonIdentifierDescription

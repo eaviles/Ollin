@@ -107,6 +107,7 @@ public extension CommandFlag {
         .init("--pt-min", .run, .value("N"), "the fewest samples a pixel takes before it may stop"),
         .init("--pt-clamp", .run, .value("X"), "the most light bounced twice or more may add to a sample, in units of white (a bias; the recipe says what it dropped)"),
         .init("--pt-reuse", .run, .optionalValue("frames"), "carry up to N earlier frames' samples into each frame of a sequence (8 when bare)"),
+        .init("--pt-seconds", .run, .value("S"), "the most seconds a frame's trace may take; the count follows the scene, and the recipe records the one reached"),
         .init("--denoise", .run, .nothing, "filter the grain out of a path-traced render"),
         .init("--quality", .run, .value("0..1"), "the encoder's quality"),
         .init("--bitrate", .run, .value("MBPS"), "the encoder's bitrate"),

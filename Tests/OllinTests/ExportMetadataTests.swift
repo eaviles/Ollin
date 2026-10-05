@@ -50,6 +50,15 @@ struct ExportMetadataTests {
             settings: PathTracing(samplesPerPixel: 32, maxDepth: 4, reusedFrames: 8),
             minSamplesPerPixel: 32, meanSamplesPerPixel: nil, carriedSamplesPerPixel: 231.46)
         #expect(meta.recipe.contains(#""pathTraced":{"samples":32,"depth":4,"reuse":8,"carriedSamples":231.5}"#))
+        // A budgeted frame names the budget and the count the clock let it reach,
+        // which is the count a fixed render reproduces it at; a video's recipe
+        // carries the budget alone, the count being one frame's figure.
+        meta.pathTracing = PathTraceReport(
+            settings: PathTracing(samplesPerPixel: 4096, maxDepth: 4, secondsPerFrame: 10),
+            minSamplesPerPixel: 131, meanSamplesPerPixel: nil, reachedSamplesPerPixel: 131, secondsTraced: 10.03)
+        #expect(meta.recipe.contains(#""pathTraced":{"samples":4096,"depth":4,"seconds":10,"reachedSamples":131}"#))
+        meta.pathTracing?.reachedSamplesPerPixel = nil
+        #expect(meta.recipe.contains(#""pathTraced":{"samples":4096,"depth":4,"seconds":10}"#))
     }
 
     final class Seeded: Sketch {

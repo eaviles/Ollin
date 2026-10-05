@@ -3201,12 +3201,15 @@ public enum OllinApp {
         // sketch that stops its loop can be written from it (see below).
         var lastRendered: (buffer: MTLBuffer, bytesPerRow: Int)?
         // The mean sample count each traced frame reached under adaptive sampling,
-        // the share of its light each frame's bounce bound took, and the mean count
-        // each frame held once the earlier frames' samples were carried in, for the
+        // the share of its light each frame's bounce bound took, the mean count
+        // each frame held once the earlier frames' samples were carried in, and the
+        // count and the seconds each frame reached under a time budget, for the
         // lines that say what the run saved, and what it cost, once it is done.
         var tracedMeans: [Double] = []
         var tracedDrops: [Double] = []
         var tracedCarried: [Double] = []
+        var tracedReached: [Int] = []
+        var tracedSeconds: [Double] = []
         for k in 0..<(skipFrames + drawnFrames) {
             // A sketch that has stopped its loop (`noLoop()`) holds the frame it
             // last drew, as a window does; the rest of the file is that frame.
@@ -3321,6 +3324,11 @@ public enum OllinApp {
                 if let carried = renderer.lastPathTraceReport?.carriedSamplesPerPixel {
                     tracedCarried.append(carried)
                 }
+                if let reached = renderer.lastPathTraceReport?.reachedSamplesPerPixel,
+                   let seconds = renderer.lastPathTraceReport?.secondsTraced {
+                    tracedReached.append(reached)
+                    tracedSeconds.append(seconds)
+                }
 
                 // A single rewriting progress line: pct done · render throughput.
                 // It counts what the sketch draws, which is what the time is going
@@ -3374,8 +3382,23 @@ public enum OllinApp {
         // samples were carried in, against what each frame traced.
         if !tracedCarried.isEmpty, let settings = renderer.lastPathTraceReport?.settings, settings.isReusing {
             let carried = tracedCarried.reduce(0, +) / Double(tracedCarried.count)
-            print(String(format: "Ollin: path tracing carried a mean of %.1f samples a pixel over the run, %d traced a frame, up to %d frames' worth",
-                         carried, settings.samplesPerPixel, settings.reusedFrames))
+            // Under a budget a frame traced what the clock allowed, so the line
+            // names the mean reached rather than the cap.
+            let traced = tracedReached.isEmpty
+                ? "\(settings.samplesPerPixel) traced a frame"
+                : String(format: "a mean of %.1f traced a frame",
+                         Double(tracedReached.reduce(0, +)) / Double(tracedReached.count))
+            print(String(format: "Ollin: path tracing carried a mean of %.1f samples a pixel over the run, %@, up to %d frames' worth",
+                         carried, traced, settings.reusedFrames))
+        }
+        // The budget's account: the counts the clock let the frames reach, and the
+        // time a frame took against the budget it had, so a lap can be planned
+        // from the run that measured it.
+        if !tracedReached.isEmpty, let settings = renderer.lastPathTraceReport?.settings, settings.isBudgeted {
+            let mean = Double(tracedReached.reduce(0, +)) / Double(tracedReached.count)
+            let seconds = tracedSeconds.reduce(0, +) / Double(tracedSeconds.count)
+            print(String(format: "Ollin: path tracing reached %d to %d samples a pixel (a mean of %.1f) in a mean of %.1f s a frame, under a budget of %g s",
+                         tracedReached.min() ?? 0, tracedReached.max() ?? 0, mean, seconds, settings.secondsPerFrame))
         }
         // A gap that could not be filled leaves the file short, and a short file
         // that says nothing is the worst way to find out.
@@ -3710,9 +3733,10 @@ public extension OllinApp {
             // it may stop; `--pt-clamp X` is the most light bounced twice or more may
             // add to a sample, in units of white, a bias the recipe states the cost of;
             // `--pt-reuse [N]` carries up to N earlier frames' samples into each frame
-            // of a sequence (8 when bare). Each wants a number, and a flag that is not
-            // one stops the run here rather than rendering something other than what
-            // was asked.
+            // of a sequence (8 when bare); `--pt-seconds S` is the most seconds a
+            // frame's trace may take, the count then following the scene under the
+            // cap. Each wants a number, and a flag that is not one stops the run here
+            // rather than rendering something other than what was asked.
             func number(_ flag: String, _ usage: String) -> Double? {
                 guard let j = args.firstIndex(of: flag) else { return nil }
                 guard j + 1 < args.count, let value = Double(args[j + 1]), value.isFinite, value >= 0 else {
@@ -3724,6 +3748,7 @@ public extension OllinApp {
             let noise = number("--pt-noise", "--pt-noise X, X the grain a pixel may be left with (0.01 is about one level in 255)")
             let minSamples = number("--pt-min", "--pt-min N, N the fewest samples a pixel takes before it may stop")
             let clamp = number("--pt-clamp", "--pt-clamp X, X the most light bounced twice or more may add to a sample, in units of white")
+            let seconds = number("--pt-seconds", "--pt-seconds S, S the most seconds a frame's trace may take")
             // The count after `--pt-reuse` is optional (the next word may be another
             // flag); a word that is a number but not a count is the one shape refused.
             var reuse = 0
@@ -3737,14 +3762,19 @@ public extension OllinApp {
                     reuse = value.int(rounded: .toNearestOrEven) ?? 8
                 }
             }
+            // Under a budget a bare count is the detail tier's, whatever the quality:
+            // the clock is what decides, and a final still's count is the ceiling a
+            // fast scene may converge to first; a named count stays the cap.
+            let budgeted = (seconds ?? 0) > 0
             pathTracedExport = PathTracing(
-                samplesPerPixel: n ?? PathTracing.tierSamples(for: renderQuality),
+                samplesPerPixel: n ?? PathTracing.tierSamples(for: budgeted ? .detail : renderQuality),
                 maxDepth: depth ?? 8,
                 denoises: args.contains("--denoise"),
                 noiseThreshold: noise ?? 0,
                 minSamplesPerPixel: minSamples.flatMap { $0.int(rounded: .toNearestOrEven) },
                 maxBounceLight: clamp ?? 0,
-                reusedFrames: reuse)
+                reusedFrames: reuse,
+                secondsPerFrame: seconds ?? 0)
         }
         // `--seed N` reseeds the sketch before its `setup()` on every export
         // path, so a variation found in the inspector or on a contact sheet

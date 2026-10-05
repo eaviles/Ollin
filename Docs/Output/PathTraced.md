@@ -148,9 +148,30 @@ Measured on a scene of two thousand polished beads sweeping under a still camera
 
 What it costs is that a frame is then a function of the frames before it. The same command renders the same sequence byte for byte, since every step is a pure function of what the earlier frames left. A still of one frame rendered on its own has no history and traces the history's worth itself, so it reproduces the sequence's settledness and not its bytes; the recipe says which it was (`"reuse":8`) and the mean count a pixel held once the earlier frames were carried in (`"carriedSamples":231.5`), and a sequence or video export ends with one line that says the mean over the run. What the reuse cannot know is a change of light with no change of surface that stays under the frame's own grain, a shadow's soft edge creeping a pixel a frame, which it follows a few standard errors at a time rather than at once; the count sets that grain, and a higher count follows faster. In code it is `PathTracing.reusedFrames`.
 
+### A time budget a frame
+
+Sometimes the hours are what is fixed. A sequence has to be done by morning, or a still has the minute you can spare, and the count a scene needs to fill that time is not known until it has been traced. `--pt-seconds` gives each frame a time in place of a count:
+
+```sh
+swift run --package-path Examples Example-3D-Effects-PathTraced --export out.png --path-traced --pt-seconds 10
+swift run --package-path Examples Example-3D-Effects-PathTraced --export-video out.mov --seconds 4 --path-traced --pt-seconds 10 --pt-reuse 8
+```
+
+The number is the most seconds a frame's trace may take. The tracer runs its samples in dispatches of about a second of GPU work. Under a budget it sizes each one to the time left, from the time the last one took per sample, so a frame ends within about one sample's worth of its budget rather than one dispatch's. The count follows the scene. The example scene reaches 50 samples in ten seconds at its full path depth and 93 at a depth of 2, and a sequence whose camera moves from an open view into a closed room keeps its time a frame while its count falls. A count beside the flag is still the most a pixel traces, and a frame that reaches it stops there with time to spare. The bare flag's count under a budget is the detail tier's 4096 whatever the quality, since the clock is what decides and a final still's count is the one a fast scene may converge to first. `--pt-min N` is a floor the clock may not cut under, for a sequence that must never fall below a grain whatever a hard frame costs. The budget covers the tracing alone. The scene's setup, the grain filter, and the file add a fraction of a second to a frame.
+
+The frame the clock leaves is a fixed render of the count it reached, byte for byte. The samples are added in order onto running sums and nothing in a sample reads the count, so stopping at 50 samples leaves exactly the frame `--path-traced 50` renders. The recipe records the budget and that count (`"seconds":10,"reachedSamples":50`), so a frame you liked reproduces from its count in place of its budget, with the depth, the threshold, the minimum, and the bound as the recipe gives them. Under `--pt-noise` the clock cuts the rounds where it falls, and the frame is the stop's own frame at that count as the cap, with the same mean in the recipe. The stop's first check falls at the square root of the cap, 64 under the bare flag's 4096, so a budget that ends a frame under that count never checks, and `--pt-min 16` brings the first check forward. A sequence or video export ends with one line that says the counts the frames reached, least to most and the mean, and the mean time a frame took against its budget. That line is the number a long render is planned from.
+
+Under `--pt-reuse` the first frame of a run traces the whole history's worth of samples itself, so it gets the history's worth of time. Eight frames carried at ten seconds is an eighty-second first frame, and the sequence starts as settled as it goes on at the same proportional cost. A budget costs a reusing sequence its reproducibility. Each frame's count follows the clock, and a frame is a function of the frames before it, so the same command no longer renders the same sequence twice. Every frame's recipe records the count it reached, but a reusing sequence reproduces only from a fixed count.
+
+Measured on the example scene at 1080 by 1080 on an M2, from launch to file. A fixed 128 samples took 29.5 s. `--pt-seconds 10` traced 50 samples in 9.9 s and took 10.7 s in all, the scene's setup and the write being the rest, and `--path-traced 50` then rendered the same bytes. The same ten seconds at `--pt-depth 2` reached 93 samples. Under `--pt-noise 0.04` they reached the same 50 with no pixel settled, the first check being at 64. A sequence of three frames at `--pt-seconds 5 --pt-reuse 4` traced 101 samples in its first frame, in twenty seconds, and 25 in each frame after, in five. It ended with the line that says so:
+
+```
+Ollin: path tracing reached 25 to 101 samples a pixel (a mean of 50.3) in a mean of 10.0 s a frame, under a budget of 5 s
+```
+
 ### Determinism and the programmatic surface
 
-Sampling is a pure function of the pixel, the sample index, and the bounce. The filter is a pure function of what the sampling left behind. So the same command renders the same bytes, and a video export cannot flicker. Under `--pt-reuse` a frame is a pure function of the frames before it as well, so a sequence is still the same bytes twice while a frame of it rendered alone is not. You can also set the mode in code, with the same options the flag carries:
+Sampling is a pure function of the pixel, the sample index, and the bounce. The filter is a pure function of what the sampling left behind. So the same command renders the same bytes, and a video export cannot flicker. Under `--pt-reuse` a frame is a pure function of the frames before it as well, so a sequence is still the same bytes twice while a frame of it rendered alone is not. Under `--pt-seconds` the count follows the clock, so a frame is the same bytes as a fixed render of the count its recipe records rather than of the same command twice. You can also set the mode in code, with the same options the flag carries:
 
 ```swift
 OllinApp.pathTracedExport = PathTracing(samplesPerPixel: 512, maxDepth: 8, denoises: true)  // the flag's `--denoise`
@@ -176,6 +197,12 @@ OllinApp.pathTracedExport = PathTracing(samplesPerPixel: 256, noiseThreshold: 0.
 OllinApp.pathTracedExport = PathTracing(samplesPerPixel: 32, reusedFrames: 8)
 try OllinApp.exportSequence(sketch, to: "frames", frames: 240, fps: 60)
 OllinApp.pathTracedExport = nil
+```
+
+`secondsPerFrame` is the flag's `--pt-seconds`, and 0, the default, is no budget; `samplesPerPixel` stays the most a pixel traces:
+
+```swift
+OllinApp.pathTracedExport = PathTracing(samplesPerPixel: 4096, secondsPerFrame: 10)
 ```
 
 ### See also

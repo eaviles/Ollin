@@ -162,6 +162,7 @@ _ollin() {
             '--pt-min[the fewest samples a pixel takes before it may stop]:N:' \
             '--pt-clamp[the most light bounced twice or more may add to a sample, in units of white (a bias; the recipe says what it dropped)]:X:' \
             '--pt-reuse[carry up to N earlier frames'\'' samples into each frame of a sequence (8 when bare)]::frames:' \
+            '--pt-seconds[the most seconds a frame'\''s trace may take; the count follows the scene, and the recipe records the one reached]:S:' \
             '--denoise[filter the grain out of a path-traced render]' \
             '--quality[the encoder'\''s quality]:0..1:' \
             '--bitrate[the encoder'\''s bitrate]:MBPS:' \
