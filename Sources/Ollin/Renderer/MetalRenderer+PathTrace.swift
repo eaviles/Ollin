@@ -25,6 +25,24 @@ struct PathTracedLayer {
     let counts: MTLTexture?
 }
 
+/// What a reusing traced sequence carries from one frame to the next
+/// (`PathTracing.reusedFrames`): the previous frame's sums once the frames before
+/// it were carried in (the radiance and hit count, the two guide layers), and per
+/// pixel the count it held and the view depth of its primary hit (`meta`: x and y),
+/// at the size they were made at and for the drawer that made them.
+struct PathTraceHistory {
+    let accum: MTLTexture
+    let guideColor: MTLTexture
+    let guideSurface: MTLTexture
+    let meta: MTLTexture
+    let width: Int
+    let height: Int
+    let drawer: ObjectIdentifier
+    /// Which traced frame of the run this history came out of (0 for the first), so
+    /// the next frame takes the next stretch of each pixel's random stream.
+    let frameIndex: Int
+}
+
 extension MetalRenderer {
 
     /// Trace the frame's mesh scene into an accumulation layer (radiance sum + hit
@@ -41,10 +59,20 @@ extension MetalRenderer {
     /// its samples onto the running sums in sample order, so the frame is the same
     /// bytes however the host cut the rounds into dispatches; `OllinApp.pathTraceChunkSize`
     /// forces one cut for the test that pins it.
+    ///
+    /// Under reuse (`PathTracing.reusedFrames` above 0) the traced sums are then
+    /// joined by the previous frame's, carried to where each pixel was
+    /// (`encodePathTraceReuse`), before the filter runs and the composite reads them,
+    /// and what the frame holds afterwards is kept as the next frame's history. The
+    /// first frame of a run, with no history at this size for this drawer, traces the
+    /// history's worth of samples itself so the sequence starts settled.
     func encodePathTracePass(_ drawer: Drawer, width: Int, height: Int) -> PathTracedLayer? {
         pathTracedCopyBatches = []
         lastPathTraceReport = nil
-        guard let settings = pathTracing else { return nil }
+        guard let settings = pathTracing else {
+            pathTraceHistory = nil
+            return nil
+        }
         guard rayTracedShadows else {
             Self.warnedNoPathTraceGPU.withLock { warned in
                 if !warned {
@@ -116,7 +144,24 @@ extension MetalRenderer {
             envTableLOD = max(0, log2(Float(equirect.width) / Float(Self.envGridW)))
         }
 
-        let total = max(1, settings.samplesPerPixel)
+        // Reuse across a sequence: the history the previous frame left, if it is
+        // this run's own (the same size, the same drawer); the first frame of a run
+        // traces the whole history's worth itself. With the mode off nothing is kept.
+        let reusing = settings.isReusing
+        let history: PathTraceHistory? = {
+            guard reusing, let kept = pathTraceHistory, kept.width == width, kept.height == height,
+                  kept.drawer == ObjectIdentifier(drawer) else { return nil }
+            return kept
+        }()
+        pathTraceHistory = nil
+        let total = max(1, settings.samplesPerPixel) * (reusing && history == nil ? max(1, settings.reusedFrames) : 1)
+        // Each frame of a reusing run traces its own stretch of every pixel's random
+        // stream, the stretches disjoint (a frame never traces more than the cap), or
+        // every frame would retrace the same paths and the carried history would
+        // average identical samples. Outside reuse the offset is 0 and the stream is
+        // what it always was.
+        let frameIndex = (history?.frameIndex ?? -1) + 1
+        let streamOffset = reusing ? UInt32(clamping: frameIndex * settings.carriedCap) : 0
         // Adaptive sampling: the samples every pixel takes before the first check,
         // and the step between checks. A fixed count is one round of the whole.
         let adaptive = settings.isAdaptive
@@ -125,6 +170,9 @@ extension MetalRenderer {
         // The bound on what one bounce may add to a sample; the statistics layer
         // then also sums, per pixel, the light the bound took off.
         let bounded = settings.isBounded
+        // Whether the statistics layer is kept at all: the stop reads it, the bound
+        // writes to it, and reuse wants every pixel's own count in it.
+        let keepsStats = adaptive || bounded || reusing
 
         // The accumulation (radiance sum, hit count) and primary-depth layers.
         let accumDesc = MTLTextureDescriptor.texture2DDescriptor(
@@ -141,8 +189,10 @@ extension MetalRenderer {
         // The denoiser's guide layers, filled by the trace itself: the first hit's
         // own color plus the running square of each sample's brightness (which is
         // what measures the grain), and the first hit's normal plus its distance.
-        // With the filter off they are a single pixel the kernel never writes.
-        let wantsGuides = settings.denoises && total > 1
+        // Reuse reads the same layers (the spread, the facing), so it fills them too.
+        // With neither asked for they are a single pixel the kernel never writes.
+        let denoises = settings.denoises && total > 1
+        let wantsGuides = denoises || reusing
         let guideDesc = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .rgba32Float, width: wantsGuides ? width : 1,
             height: wantsGuides ? height : 1, mipmapped: false)
@@ -157,8 +207,8 @@ extension MetalRenderer {
         // dilation fills for the next dispatches to run over. Under a fixed count the
         // textures are a single pixel and the list a single entry, none of it touched.
         let statsDesc = MTLTextureDescriptor.texture2DDescriptor(
-            pixelFormat: .rgba32Float, width: adaptive || bounded ? width : 1,
-            height: adaptive || bounded ? height : 1, mipmapped: false)
+            pixelFormat: .rgba32Float, width: keepsStats ? width : 1,
+            height: keepsStats ? height : 1, mipmapped: false)
         statsDesc.usage = [.shaderRead, .shaderWrite]
         statsDesc.storageMode = .private
         let flagDesc = MTLTextureDescriptor.texture2DDescriptor(
@@ -267,7 +317,7 @@ extension MetalRenderer {
             guard let cb = commandQueue.makeCommandBuffer(),
                   let enc = cb.makeComputeCommandEncoder() else { return nil }
             pt.window = SIMD4<UInt32>(UInt32(width), UInt32(height), UInt32(done), UInt32(n))
-            pt.open = SIMD4<UInt32>(compacted ? UInt32(openPixels) : 0, 0, 0, 0)
+            pt.open = SIMD4<UInt32>(compacted ? UInt32(openPixels) : 0, reusing ? 1 : 0, streamOffset, 0)
             enc.setComputePipelineState(pipeline)
             enc.setBytes(&pt, length: MemoryLayout<OllinPathTraceUniforms>.stride, index: 0)
             enc.setBytes(&lighting, length: MemoryLayout<OllinLighting>.stride, index: 1)
@@ -349,19 +399,168 @@ extension MetalRenderer {
         if pathTraceReportsProgress {
             FileHandle.standardError.write(Data("\n".utf8))
         }
-        // What the bound took, read before the filter rewrites the accumulation.
+        // What the bound took, read before anything rewrites the accumulation: the
+        // frame's own share, before the carried light joins it.
         let lightDropped = bounded
             ? boundedLightShare(accum: accum, stats: stats, width: width, height: height) : nil
-        if wantsGuides {
+        // The earlier frames' samples, carried in over the traced sums; what the
+        // frame then holds is the next frame's history, kept before the filter
+        // touches the accumulation.
+        var carried: Double? = nil
+        if reusing {
+            guard let next = encodePathTraceReuse(
+                drawer, camera: camera, settings: settings, history: history, frameIndex: frameIndex,
+                accum: accum, guideColor: guideColor, guideSurface: guideSurface, stats: stats,
+                depth: depthTex, meshBuffer: meshBuffer, viewProjection: pt.viewProjection,
+                inverseViewProjection: pt.inverseViewProjection,
+                lens: SIMD4<Float>(pt.lens.x, pt.lens.y, pt.cone.x, pt.cone.y),
+                orthographic: pt.lens.w > 0.5,
+                width: width, height: height) else { return nil }
+            pathTraceHistory = next
+            carried = meanCount(stats: stats, width: width, height: height)
+        }
+        if denoises {
             encodePathTraceDenoise(accum: accum, guideColor: guideColor,
                                    guideSurface: guideSurface, width: width, height: height)
         }
         lastPathTraceReport = PathTraceReport(
             settings: settings, minSamplesPerPixel: minSamples,
             meanSamplesPerPixel: adaptive ? samplesTaken / Double(max(1, width * height)) : nil,
-            lightDropped: lightDropped)
+            lightDropped: lightDropped, carriedSamplesPerPixel: carried)
         return PathTracedLayer(color: accum, depth: depthTex, invSamples: 1 / Float(total),
-                               counts: adaptive ? stats : nil)
+                               counts: adaptive || reusing ? stats : nil)
+    }
+
+    /// Carry the previous frame's samples into this one (`PathTracing.reusedFrames`):
+    /// run the raster's own mover-velocity pass for the frame's declared movers, then
+    /// the reuse kernel over the traced sums, which follows each pixel back, reads
+    /// the history there against this pixel's surface and spread, adds what passes up
+    /// to the history's worth, and writes the next frame's history. Returns that
+    /// history, or nil when a resource cannot be made. With no history (the first
+    /// frame of a run) the kernel only writes one.
+    private func encodePathTraceReuse(_ drawer: Drawer, camera: Camera3D, settings: PathTracing,
+                                      history: PathTraceHistory?, frameIndex: Int,
+                                      accum: MTLTexture, guideColor: MTLTexture,
+                                      guideSurface: MTLTexture, stats: MTLTexture,
+                                      depth: MTLTexture, meshBuffer: MTLBuffer,
+                                      viewProjection: simd_float4x4,
+                                      inverseViewProjection: simd_float4x4,
+                                      lens: SIMD4<Float>, orthographic: Bool,
+                                      width: Int, height: Int) -> PathTraceHistory? {
+        guard let pipeline = try? libraryComputePipeline("ollin_pt_reuse"),
+              let cb = commandQueue.makeCommandBuffer() else { return nil }
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .rgba32Float, width: width, height: height, mipmapped: false)
+        desc.usage = [.shaderRead, .shaderWrite]
+        desc.storageMode = .private
+        guard let nextAccum = device.makeTexture(descriptor: desc),
+              let nextColor = device.makeTexture(descriptor: desc),
+              let nextSurface = device.makeTexture(descriptor: desc),
+              let nextMeta = device.makeTexture(descriptor: desc) else { return nil }
+
+        // The previous frame's camera, as the velocity fill reads it (unjittered, the
+        // same projection builder); with none the frame's own stands in, and the
+        // history is absent anyway.
+        let aspect = Double(width) / Double(height)
+        let previous = drawer.previousCamera3D
+        let previousVP = previous.map { $0.projectionMatrix(aspect: aspect) * $0.viewMatrix }
+            ?? viewProjection
+        // Where the frame's declared movers were: the raster's own pass, nil when
+        // the frame declared none (the camera's motion then stands for every pixel).
+        // Only once there is a history to follow back into.
+        let mover: MTLTexture? = history == nil ? nil
+            : encodeMoverVelocity(drawer, into: cb, meshBuffer: meshBuffer,
+                                  width: width, height: height, previousViewProjection: previousVP)
+
+        // The view axis of a camera frame: the center ray's direction, read off the
+        // inverse view-projection the way the trace kernel reads it.
+        func viewAxis(_ invVP: simd_float4x4) -> SIMD3<Float> {
+            let c0 = invVP * SIMD4<Float>(0, 0, 0, 1)
+            let c1 = invVP * SIMD4<Float>(0, 0, 1, 1)
+            return simd_normalize(SIMD3(c1.x, c1.y, c1.z) / c1.w - SIMD3(c0.x, c0.y, c0.z) / c0.w)
+        }
+        func eye(_ camera: Camera3D) -> SIMD3<Float> {
+            SIMD3(Float(camera.eye.x), Float(camera.eye.y), Float(camera.eye.z))
+        }
+        var ru = OllinPathTraceReuseUniforms()
+        ru.inverseViewProjection = inverseViewProjection
+        ru.previousViewProjection = previousVP
+        ru.eye = SIMD4(eye(camera), mover != nil ? 1 : 0)
+        ru.forward = SIMD4(viewAxis(inverseViewProjection), history != nil ? 1 : 0)
+        ru.previousEye = SIMD4(eye(previous ?? camera), 0)
+        ru.previousForward = SIMD4(viewAxis(simd_inverse(previousVP)), 0)
+        ru.params = SIMD4<Float>(Float(settings.carriedCap), Self.reuseSpreadTolerance,
+                                 Self.reuseDepthTolerance, Self.reuseFacingTolerance)
+        ru.lens = lens
+        ru.window = SIMD4<UInt32>(UInt32(width), UInt32(height), orthographic ? 1 : 0, 0)
+
+        guard let enc = cb.makeComputeCommandEncoder() else { return nil }
+        let standIn = whiteStandIn()
+        enc.setComputePipelineState(pipeline)
+        enc.setBytes(&ru, length: MemoryLayout<OllinPathTraceReuseUniforms>.stride, index: 0)
+        enc.setTexture(accum, index: 0)
+        enc.setTexture(guideColor, index: 1)
+        enc.setTexture(guideSurface, index: 2)
+        enc.setTexture(stats, index: 3)
+        enc.setTexture(depth, index: 4)
+        enc.setTexture(history?.accum ?? standIn, index: 5)
+        enc.setTexture(history?.guideColor ?? standIn, index: 6)
+        enc.setTexture(history?.guideSurface ?? standIn, index: 7)
+        enc.setTexture(history?.meta ?? standIn, index: 8)
+        enc.setTexture(mover ?? standIn, index: 9)
+        enc.setTexture(nextAccum, index: 10)
+        enc.setTexture(nextColor, index: 11)
+        enc.setTexture(nextSurface, index: 12)
+        enc.setTexture(nextMeta, index: 13)
+        enc.dispatchThreads(MTLSize(width: width, height: height, depth: 1),
+                            threadsPerThreadgroup: MTLSize(width: 8, height: 8, depth: 1))
+        enc.endEncoding()
+        cb.commit()
+        cb.waitUntilCompleted()
+        return PathTraceHistory(accum: nextAccum, guideColor: nextColor, guideSurface: nextSurface,
+                                meta: nextMeta, width: width, height: height,
+                                drawer: ObjectIdentifier(drawer), frameIndex: frameIndex)
+    }
+
+    /// How many standard errors the carried light may sit from the frame's own
+    /// estimate before it is pulled to that distance. Three: a history that holds
+    /// the truth sits within three of a frame's own noisy mean all but a few times in
+    /// a thousand, so a still scene keeps nearly all of it (measured: the same error
+    /// with the pull off), while a history the surface tests let through at the
+    /// wrong place is held to the frame's own grain (a panning camera's probe read
+    /// 1.76 levels of error against 2.32 with the pull off and 2.89 for the frame
+    /// alone).
+    static let reuseSpreadTolerance: Float = 3
+    /// The depth a history texel may differ from where this pixel expects it, as a
+    /// share of the view depth, before the local change opens it.
+    static let reuseDepthTolerance: Float = 0.02
+    /// The facing the history interpolated at a pixel's spot may differ from the
+    /// pixel's own by, as a distance between unit normals (0.03 is about two
+    /// degrees), before either side's own sampling error and the local change open
+    /// it. Light follows the facing, so a surface that turned under its motion
+    /// vector is dropped here while one that only moved is kept.
+    static let reuseFacingTolerance: Float = 0.03
+
+    /// The mean count the frame's pixels hold (the statistics layer's z channel),
+    /// read back once the reuse has run. nil when the readback cannot be made.
+    private func meanCount(stats: MTLTexture, width: Int, height: Int) -> Double? {
+        let bytesPerRow = width * MemoryLayout<SIMD4<Float>>.stride
+        let length = bytesPerRow * height
+        guard let buffer = device.makeBuffer(length: length, options: .storageModeShared),
+              let cb = commandQueue.makeCommandBuffer(),
+              let blit = cb.makeBlitCommandEncoder() else { return nil }
+        blit.copy(from: stats, sourceSlice: 0, sourceLevel: 0, sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+                  sourceSize: MTLSize(width: width, height: height, depth: 1),
+                  to: buffer, destinationOffset: 0, destinationBytesPerRow: bytesPerRow,
+                  destinationBytesPerImage: length)
+        blit.endEncoding()
+        cb.commit()
+        cb.waitUntilCompleted()
+        let n = width * height
+        let p = buffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: n)
+        var sum = 0.0
+        for i in 0 ..< n { sum += Double(p[i].z) }
+        return sum / Double(max(1, n))
     }
 
     /// The share of the frame's light the bounce bound took off: the luma the kernel

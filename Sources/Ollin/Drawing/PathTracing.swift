@@ -71,15 +71,34 @@ public struct PathTracing: Equatable, Sendable {
     /// is the usual range.
     public var maxBounceLight: Double
 
+    /// How many earlier frames' samples a pixel may carry into its own, across a
+    /// sequence (`--pt-reuse`). 0, the default, is none: every frame is traced on
+    /// its own. Above 0, each frame finds where every pixel was in the frame before
+    /// (a mover's own motion, from `withMotion`, or the camera's through the depth),
+    /// takes the samples that frame had gathered there, and adds them to its own, up
+    /// to this many frames' worth of the count. A pixel whose surface changed, another
+    /// object, a different depth or facing, starts over, and a pixel whose light
+    /// changed by more than its own grain allows pulls the carried light to within
+    /// that grain, so a reflection sliding over a polished surface, a shadow sweeping
+    /// a floor, or a lamp that moved is followed rather than smeared. The first frame
+    /// of a run has no frame before it and traces the whole history's worth itself,
+    /// so a sequence starts as settled as it goes on. A frame is then a function of
+    /// the frames before it: the same command renders the same sequence byte for
+    /// byte, and a still of one frame rendered alone has no history and traces that
+    /// worth itself. 8 is the usual figure: a sequence at 32 samples a frame then
+    /// carries 256, and the grain stops moving from frame to frame.
+    public var reusedFrames: Int
+
     public init(samplesPerPixel: Int = 256, maxDepth: Int = 8, denoises: Bool = false,
                 noiseThreshold: Double = 0, minSamplesPerPixel: Int? = nil,
-                maxBounceLight: Double = 0) {
+                maxBounceLight: Double = 0, reusedFrames: Int = 0) {
         self.samplesPerPixel = max(1, samplesPerPixel)
         self.maxDepth = max(1, maxDepth)
         self.denoises = denoises
         self.noiseThreshold = noiseThreshold.isFinite ? max(0, noiseThreshold) : 0
         self.minSamplesPerPixel = minSamplesPerPixel.map { max(1, $0) }
         self.maxBounceLight = maxBounceLight.isFinite ? max(0, maxBounceLight) : 0
+        self.reusedFrames = max(0, reusedFrames)
     }
 
     /// Whether pixels may stop early: a threshold above zero and more than one
@@ -88,6 +107,13 @@ public struct PathTracing: Equatable, Sendable {
 
     /// Whether the light a bounce adds to a sample is bounded.
     var isBounded: Bool { maxBounceLight > 0 }
+
+    /// Whether a frame carries the earlier frames' samples.
+    var isReusing: Bool { reusedFrames > 0 }
+
+    /// The most samples a pixel carries under reuse, its own and the carried
+    /// together: the history's worth at the count.
+    var carriedCap: Int { max(1, reusedFrames) * samplesPerPixel }
 
     /// The samples every pixel takes before the first convergence check: the named
     /// minimum as given, or the square root of the count rounded up to a multiple
@@ -129,4 +155,8 @@ struct PathTraceReport: Equatable, Sendable {
     /// The share of the frame's light the bounce bound took off (0 to 1); `nil`
     /// with no bound.
     var lightDropped: Double? = nil
+    /// Under reuse, the mean count a pixel's picture held once the earlier frames'
+    /// samples were carried in, its own and the carried together, over the whole
+    /// frame; `nil` when no frames are reused.
+    var carriedSamplesPerPixel: Double? = nil
 }

@@ -1069,6 +1069,12 @@ final class MetalRenderer {
     /// the export's recipe. Reset at the top of every frame's pass, so a frame that
     /// was not traced (the mode off, no traceable scene, a GPU that cannot) reads nil.
     var lastPathTraceReport: PathTraceReport?
+    /// What a reusing traced sequence (`PathTracing.reusedFrames`) carries from one
+    /// frame to the next: the previous frame's blended sums and, per pixel, the
+    /// count it held and its primary view depth. nil before the first traced frame
+    /// of a run, whenever the mode is off, and after a frame at another size or for
+    /// another drawer, so a run never reads a history that is not its own.
+    var pathTraceHistory: PathTraceHistory?
     /// Export-only spatial supersampling: the frame is drawn `renderScale` times
     /// across the canvas, then averaged back down to canvas size in linear light,
     /// ahead of the tone map. 1 (the default, and always the live window) renders

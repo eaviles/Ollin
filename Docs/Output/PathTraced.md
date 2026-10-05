@@ -132,9 +132,25 @@ The tracer reads the surroundings at the footprint instead. A cone travels with 
 
 There is nothing to set. A flat mirror seen pinhole-sharp keeps a cone under a texel and reads the base level as it always did. A rough surface's lobe already asked for a coarse level, and a matte one is untouched. What changes is a polished surface that is small on the canvas, curved, or out of focus. The measurement is the scene that asked for it, two thousand polished beads mirroring a lit interior at 1080 by 1080. The per-sample spread over the subject fell by 71 percent. A 128-sample render moved from 18.0 to 19.3 dB against a sharp 1024-sample render, and it sits 23.7 dB from its own 1024 where the sharp pair sat 18. The mean held within two percent of the sharp render in every region, which is the sharp 128's own distance from it. The price is a bias of that order. The read averages the surroundings over the footprint before the lobe weighs them, so where the room's bright side lines up with one end of a bead's footprint the bead reads a percent or two off, and a lamp's reflection a pixel wide softens to two. The footprint is an underestimate where a surface curves one way more than the other, since the three edge curvatures are averaged. That is the side a Monte Carlo tracer wants, because the samples still average what the filter leaves. A glass surface keeps the cone through a crossing, so a lens in the scene does not widen it.
 
+### Earlier frames carried: reuse across a sequence
+
+A frame of a sequence is mostly last frame's light. Under a still camera and a slow sweep, almost every pixel shows the surface it showed a frame ago, lit as it was, and tracing it again from nothing throws that away. `--pt-reuse` carries the earlier frames' samples into each frame:
+
+```sh
+swift run --package-path Examples Example-3D-Effects-PathTraced --export-video out.mov --seconds 4 --path-traced 32 --pt-reuse 8
+```
+
+The number is how many frames' worth a pixel may carry, 8 when the flag stands alone. Each frame finds where every pixel was in the frame before, by the motion the sketch declared for its movers (`withMotion`, instanced copies included) or by the camera's own motion through the pixel's depth, and reads the earlier frame's samples there. Under a lens a blurred pixel's light comes from its whole circle of confusion, so such a pixel follows the movers inside that circle rather than the one under its center. Those samples join only if they belong to the same surface, at the depth this pixel expects and facing the same way, both tolerances opening where the surface itself turns or recedes fast across the pixel's neighbors. Light follows the facing rather than the surface point, so the history found at the spot must also face the pixel's way, within about two degrees plus what the pixel's own grain allows: a ball turning in place carries its surface around while its image of the room and its shading stay put, so a bead that slides carries while one that spins falls back to its own frame. What passes is trusted by spread: the carried light may sit a few standard errors from the frame's own estimate, the two spreads together, and is pulled to that distance when it sits further. So a surface a mover uncovers starts over, a reflection that moved is followed rather than smeared, and a still floor carries the whole history. Each frame traces its own stretch of every pixel's random stream, so the carried samples are new ones and not the same paths again. The carried sums add to the frame's own up to the history's worth at the count, and from then on the picture is a running mean over the last frames' worth. A sequence at 32 samples a frame with 8 frames carried shows the grain of 256, and that grain holds still from frame to frame, which is the flicker a sequence of independent frames has and this one does not.
+
+The first frame of a run has no frame before it, so it traces the whole history's worth itself, and the sequence starts as settled as it goes on. The grain filter, when asked for, runs over the carried frame and reads its spread, so it filters less as the history deepens. The per-pixel stop and the bounce bound apply to each frame's own samples as before.
+
+Measured on a scene of two thousand polished beads sweeping under a still camera with a lens, at 1080 by 1080 and a path depth of 4, against a 1024-sample render: 32 samples a frame with 8 frames carried took 57 s for twelve frames where 128 alone took 136, the frames sat 20.6 dB apart where 128 alone sat 19.9 and 32 alone 18.7, and each frame read 22.0 dB on the subject where 32 alone read 20.3 and 128 alone 24.1. So a sequence is steadier than one at four times the count, at under half the time, and each frame on its own sits between the two counts. The history is read between pixels every frame a surface moves, so a lamp's speck a pixel wide on a moving bead softens into its neighbors over the frames, and in a file that clips at white that reads a little brighter than the sharp render. And a blurred field of movers at different rates, the far half of a sweep under a lens, is followed by their mean motion and smears along it; where a sequence shows that, a lower count of carried frames trades some steadiness for less smear, and `--pt-reuse 4` is the figure to try first.
+
+What it costs is that a frame is then a function of the frames before it. The same command renders the same sequence byte for byte, since every step is a pure function of what the earlier frames left. A still of one frame rendered on its own has no history and traces the history's worth itself, so it reproduces the sequence's settledness and not its bytes; the recipe says which it was (`"reuse":8`) and the mean count a pixel held once the earlier frames were carried in (`"carriedSamples":231.5`), and a sequence or video export ends with one line that says the mean over the run. What the reuse cannot know is a change of light with no change of surface that stays under the frame's own grain, a shadow's soft edge creeping a pixel a frame, which it follows a few standard errors at a time rather than at once; the count sets that grain, and a higher count follows faster. In code it is `PathTracing.reusedFrames`.
+
 ### Determinism and the programmatic surface
 
-Sampling is a pure function of the pixel, the sample index, and the bounce. The filter is a pure function of what the sampling left behind. So the same command renders the same bytes, and a video export cannot flicker. You can also set the mode in code, with the same options the flag carries:
+Sampling is a pure function of the pixel, the sample index, and the bounce. The filter is a pure function of what the sampling left behind. So the same command renders the same bytes, and a video export cannot flicker. Under `--pt-reuse` a frame is a pure function of the frames before it as well, so a sequence is still the same bytes twice while a frame of it rendered alone is not. You can also set the mode in code, with the same options the flag carries:
 
 ```swift
 OllinApp.pathTracedExport = PathTracing(samplesPerPixel: 512, maxDepth: 8, denoises: true)  // the flag's `--denoise`
@@ -152,6 +168,14 @@ OllinApp.pathTracedExport = PathTracing(samplesPerPixel: 512, noiseThreshold: 0.
 
 ```swift
 OllinApp.pathTracedExport = PathTracing(samplesPerPixel: 256, noiseThreshold: 0.04, maxBounceLight: 4)
+```
+
+`reusedFrames` is the flag's `--pt-reuse`, and 0, the default, carries nothing; it takes effect across the frames of one `exportSequence` or `exportVideo` run:
+
+```swift
+OllinApp.pathTracedExport = PathTracing(samplesPerPixel: 32, reusedFrames: 8)
+try OllinApp.exportSequence(sketch, to: "frames", frames: 240, fps: 60)
+OllinApp.pathTracedExport = nil
 ```
 
 ### See also

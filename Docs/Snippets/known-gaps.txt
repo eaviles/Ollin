@@ -1022,7 +1022,8 @@ ab8b301ea87b  Docs/Output/Fabrication.md:62  cannot find 'sculpture' in scope
 12359ddcd771  Docs/Output/Installation.md:409  cannot find 'worldPoint' in scope
 a40222f7916b  Docs/Output/MenuBar.md:30  '@main' attribute cannot be applied to this declaration
 826ef6fcd6ec  Docs/Output/MenuBar.md:48  cannot find 'Pulse' in scope
-79619800883b  Docs/Output/PathTraced.md:99  cannot find 'sketch' in scope
+79619800883b  Docs/Output/PathTraced.md:155  cannot find 'sketch' in scope
+1929c6458bd3  Docs/Output/PathTraced.md:175  cannot find 'sketch' in scope
 b13f0cfd765a  Docs/Output/PrintColor.md:140  cannot find 'sketch' in scope
 ceadd572010a  Docs/Output/PrintColor.md:23  cannot find 'url' in scope
 79f5c5017900  Docs/Output/PrintColor.md:54  cannot find 'artwork' in scope

@@ -885,6 +885,10 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
     // The bound on what one bounce may add to a sample (0 = none).
     float bounceLimit = pt.cone.z;
     bool bounded = bounceLimit > 0.0;
+    // Whether the frame carries the earlier frames' samples (`ollin_pt_reuse`),
+    // which wants every pixel's own count in the statistics layer.
+    bool reusing = pt.open.y > 0u;
+    bool keepsStats = adaptive || bounded || reusing;
     float eps = pt.cameraPosition.w;
     uint maxDepth = max(pt.counts.y, 1u);
     // Environment importance sampling is on when the tables were built (counts.z
@@ -941,10 +945,14 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
     float4 acc = first ? float4(0.0) : accum.read(gid);
     float4 accColor = (wantsGuides && !first) ? guideColor.read(gid) : float4(0.0);
     float4 accSurface = (wantsGuides && !first) ? guideSurface.read(gid) : float4(0.0);
-    float4 accStats = ((adaptive || bounded) && !first) ? stats.read(gid) : float4(0.0);
+    float4 accStats = (keepsStats && !first) ? stats.read(gid) : float4(0.0);
 
     for (uint s = 0; s < pt.window.w; s++) {
-        uint sampleIndex = pt.window.z + s;
+        // The sample's place in the pixel's random stream. Under reuse each frame
+        // of a sequence takes its own stretch of the stream (`open.z`, the frame's
+        // offset), or every frame would retrace the same paths and the carried
+        // history would average identical samples.
+        uint sampleIndex = pt.window.z + s + pt.open.z;
         uint dim = 0;
 
         // Camera ray: sub-pixel jitter, then the thin lens when an aperture is set.
@@ -1451,6 +1459,8 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
                 seen = behind;
             }
             accStats += float4(seen * seen, behind, 1.0, 0.0);
+        } else if (reusing) {
+            accStats.z += 1.0;
         }
         if (bounded) accStats.w += dropped;
     }
@@ -1460,7 +1470,7 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
         guideColor.write(accColor, gid);
         guideSurface.write(accSurface, gid);
     }
-    if (adaptive || bounded) stats.write(accStats, gid);
+    if (keepsStats) stats.write(accStats, gid);
 }
 
 // MARK: - Adaptive sampling
@@ -1534,6 +1544,315 @@ kernel void ollin_pt_dilate(uint2 gid [[thread_position_in_grid]],
     }
     base = simd_broadcast_first(base);
     if (open != 0u) openList[base + before] = gid.y * uint(w) + gid.x;
+}
+
+// MARK: - Reuse across a sequence
+
+// A frame of a sequence carries the samples the frames before it gathered at the
+// same point of the scene (`--pt-reuse`, `PathTracing.reusedFrames`). Each pixel is
+// followed back to where it was in the previous frame, by the motion the raster's
+// own velocity pass wrote for a declared mover or by the camera's motion through the
+// pixel's depth, and the previous frame's sums are read there through the four
+// texels around the spot. A texel joins only if it held the same surface: its view
+// depth where this pixel expects it and its facing within a tolerance, both opened
+// by how much the surface changes across this pixel's own neighbors, since a read
+// between texels spans a texel's worth of change. What passes is carried light, and
+// it is trusted by spread: the carried mean may sit a few standard errors from the
+// frame's own estimate (the two spreads together, so a history that has caught a
+// rare bright path keeps it) and is pulled to that distance when it sits further,
+// which is what follows a reflection sliding over a polished surface or a shadow
+// sweeping a floor rather than smearing it. The sums then add, capped at the
+// history's worth, and the result is written back over the frame's own sums (the
+// composite divides by the carried count) and out as the next frame's history.
+// The first frame of a run has no history and only writes one.
+
+// The surface a pixel shows, as a world point: the center ray's pinhole hit where it
+// has one, else, for a pixel whose center ray misses while its jittered samples hit
+// (a silhouette, or a blurred edge under the lens), the samples' mean hit distance
+// along the center ray. Classing such a pixel as a miss let it hold still and carry
+// its edge light along as a moving edge passed it, a stripe a frame. False for a
+// pixel with no hit at all, which is the backdrop and matches only another miss.
+static inline bool ollin_pt_pixel_point(float2 px, float d, float hits, float distSum,
+                                        float2 res, float4x4 invVP, thread float3 &wp) {
+    float2 ndc = float2((px.x + 0.5) / res.x * 2.0 - 1.0, 1.0 - (px.y + 0.5) / res.y * 2.0);
+    if (d < 1.0) {
+        float4 h = invVP * float4(ndc, d, 1.0);
+        wp = h.xyz / h.w;
+        return true;
+    }
+    if (hits > 0.0) {
+        float4 nearH = invVP * float4(ndc, 0.0, 1.0);
+        float4 farH = invVP * float4(ndc, 1.0, 1.0);
+        float3 ro = nearH.xyz / nearH.w;
+        wp = ro + normalize(farH.xyz / farH.w - ro) * (distSum / hits);
+        return true;
+    }
+    return false;
+}
+
+// The standard error of a pixel's mean facing, read off its own normal sum: the sum
+// of `hits` unit normals has length `hits` when they all agree and shortens as they
+// spread (to first order by half the squared spread), so the spread is the root of
+// twice the shortfall, and the mean's error is that over the root of the count. A
+// pixel on a small curved surface, or one whose lens samples land on several
+// surfaces, reads a wide spread and a loose facing test; a flat face reads none.
+static inline float ollin_pt_facing_error(float3 normalSum, float hits) {
+    if (hits <= 0.0) return 0.0;
+    float coherence = clamp(length(normalSum) / hits, 0.0, 1.0);
+    return sqrt(max(2.0 * (1.0 - coherence), 0.0)) / sqrt(hits);
+}
+
+kernel void ollin_pt_reuse(uint2 gid [[thread_position_in_grid]],
+                           constant OllinPathTraceReuseUniforms &ru [[buffer(0)]],
+                           texture2d<float, access::read_write> accum [[texture(0)]],
+                           texture2d<float, access::read_write> guideColor [[texture(1)]],
+                           texture2d<float, access::read_write> guideSurface [[texture(2)]],
+                           texture2d<float, access::read_write> stats [[texture(3)]],
+                           texture2d<float, access::read> depthTex [[texture(4)]],
+                           // The previous frame's history (one-pixel stand-ins on
+                           // the first frame of a run, never read).
+                           texture2d<float, access::read> histAccum [[texture(5)]],
+                           texture2d<float, access::read> histColor [[texture(6)]],
+                           texture2d<float, access::read> histSurface [[texture(7)]],
+                           texture2d<float, access::read> histMeta [[texture(8)]],
+                           // The raster's mover-velocity texture (previous minus
+                           // current, pixels, y-down; the sentinel where no mover
+                           // wrote), a stand-in when the frame declared no mover.
+                           texture2d<float, access::read> mover [[texture(9)]],
+                           // The next frame's history.
+                           texture2d<float, access::write> nextAccum [[texture(10)]],
+                           texture2d<float, access::write> nextColor [[texture(11)]],
+                           texture2d<float, access::write> nextSurface [[texture(12)]],
+                           texture2d<float, access::write> nextMeta [[texture(13)]]) {
+    int w = int(ru.window.x), h = int(ru.window.y);
+    if (int(gid.x) >= w || int(gid.y) >= h) return;
+    float2 res = float2(w, h);
+    float4 acc = accum.read(gid);
+    float4 color = guideColor.read(gid);
+    float4 surface = guideSurface.read(gid);
+    float4 st = stats.read(gid);
+    float n = max(st.z, 1.0);
+    float d = depthTex.read(gid).x;
+    float3 eye = ru.eye.xyz, forward = ru.forward.xyz;
+    // The surface this pixel shows, as a world point, and its view depth: along
+    // the view axis from the eye, the same number under a perspective and an
+    // orthographic camera; the backdrop reads as a far sentinel.
+    float3 wp = float3(0.0);
+    bool covered = ollin_pt_pixel_point(float2(gid), d, acc.a, surface.w, res,
+                                        ru.inverseViewProjection, wp);
+    float z = covered ? dot(wp - eye, forward) : 1e30;
+
+    if (ru.forward.w > 0.5) {
+        // Where this pixel was last frame, and how deep it sat there. A mover's own
+        // word wins where the velocity pass wrote one (its previous depth is not
+        // known, so the pixel's own stands in); everywhere else the surface point
+        // reprojects through the previous camera, which gives both. A backdrop
+        // pixel holds still.
+        float2 motion = float2(0.0);
+        float zExpected = z;
+        bool moverWrote = false;
+        if (ru.eye.w > 0.5) {
+            // Under a lens, a pixel's light arrives from its whole circle of
+            // confusion, and a blurred mover's light spreads far past the pinhole
+            // footprint the velocity pass wrote its motion at, so a blurred pixel
+            // follows the mean motion of the movers inside its circle (a 5 by 5
+            // sampling of it); a sharp pixel reads its own word. Followed at zero
+            // motion instead, a defocused bead sweeping across the frame left a
+            // trail of its blurred light a frame long.
+            float coc = 0.0;
+            if (ru.lens.x > 0.0 && covered) {
+                float depthHere = max(z, 1e-3);
+                bool orthographic = ru.window.z != 0u;
+                float disc = ru.lens.x * abs(ru.lens.y - depthHere)
+                    / (orthographic ? max(ru.lens.y, 1e-3) : depthHere);
+                float footprint = orthographic ? ru.lens.z : ru.lens.y * ru.lens.w;
+                coc = disc / max(footprint, 1e-6);
+            }
+            if (coc > 0.75) {
+                float2 sum = float2(0.0);
+                float count = 0.0;
+                for (int j = -2; j <= 2; j++) {
+                    for (int i = -2; i <= 2; i++) {
+                        int2 p = int2(float2(gid) + float2(i, j) * (coc * 0.5) + 0.5);
+                        if (p.x < 0 || p.y < 0 || p.x >= w || p.y >= h) continue;
+                        float2 v = mover.read(uint2(p)).xy;
+                        if (v.x > 0.5 * OLLIN_VELOCITY_NONE) { sum += v; count += 1.0; }
+                    }
+                }
+                if (count > 0.0) { motion = sum / count; moverWrote = true; }
+            } else {
+                float2 v = mover.read(gid).xy;
+                if (v.x > 0.5 * OLLIN_VELOCITY_NONE) { motion = v; moverWrote = true; }
+            }
+        }
+        bool reachable = true;
+        if (!moverWrote && covered) {
+            float4 clip = ru.previousViewProjection * float4(wp, 1.0);
+            if (clip.w > 0.0) {
+                float2 pndc = clip.xy / clip.w;
+                float2 pUV = float2(pndc.x * 0.5 + 0.5, 0.5 - pndc.y * 0.5);
+                motion = (pUV - (float2(gid) + 0.5) / res) * res;
+                zExpected = dot(wp - ru.previousEye.xyz, ru.previousForward.xyz);
+            } else {
+                reachable = false;   // behind the previous camera: nothing to carry
+            }
+        }
+
+        // This pixel's own facing, and how much the surface turns and recedes
+        // across its covered neighbors (each read by the same rule as the pixel):
+        // the per-texel tolerances below open by that change, so a curved or grazing
+        // surface, where one texel over is already another depth and another normal,
+        // still matches itself, while a flat face stays strict.
+        bool hasNormal = acc.a > 0.0 && dot(surface.xyz, surface.xyz) > 1e-12;
+        float3 nCur = hasNormal ? normalize(surface.xyz) : float3(0.0);
+        float depthChange = 0.0, normalChange = 0.0;
+        if (covered) {
+            const int2 steps[4] = { int2(1, 0), int2(-1, 0), int2(0, 1), int2(0, -1) };
+            for (int k = 0; k < 4; k++) {
+                int2 p = int2(gid) + steps[k];
+                if (p.x < 0 || p.y < 0 || p.x >= w || p.y >= h) continue;
+                uint2 up = uint2(p);
+                float4 aN = accum.read(up);
+                float4 sN = guideSurface.read(up);
+                float3 wpN;
+                if (!ollin_pt_pixel_point(float2(p), depthTex.read(up).x, aN.a, sN.w, res,
+                                          ru.inverseViewProjection, wpN)) continue;
+                depthChange = max(depthChange, abs(dot(wpN - eye, forward) - z));
+                if (hasNormal && dot(sN.xyz, sN.xyz) > 1e-12) {
+                    normalChange = max(normalChange, distance(nCur, normalize(sN.xyz)));
+                }
+            }
+        }
+
+        // The four texels around the spot, each read against this pixel's surface
+        // before it may join, weighted as a bilinear read would weight them.
+        // Coverage is part of the signal: a texel joins unless its share of hits
+        // disagrees with the pixel's by more than 0.6, which still turns away a
+        // surface that arrived (a covered pixel over empty history) or left (an
+        // empty pixel over a covered history) while a silhouette pixel keeps the
+        // empty texel in its footprint, so the bilinear mix gives it the partial
+        // coverage it had rather than a renormalized full one. Turning away every
+        // texel whose hit state differed from the pixel's selected for luck: in a
+        // sparsely covered blurred field most texels have no hit by chance at a few
+        // dozen samples, the survivors were the bright ones, and the field read 5%
+        // bright, more the more it carried; a sharp bead fattened the same way.
+        // The depth and facing tests apply where both the pixel and the texel hit.
+        float4 hAcc = float4(0.0), hColor = float4(0.0), hSurface = float4(0.0);
+        float hN = 0.0, sumW = 0.0;
+        if (reachable) {
+            float2 prev = float2(gid) + 0.5 + motion - 0.5;
+            float2 base = floor(prev);
+            float2 f = prev - base;
+            float coverageHere = acc.a / n;
+            float depthTol = ru.params.z * max(abs(zExpected), 1e-3) + 2.0 * depthChange;
+            // The same-surface test per texel, loose: a texel of a curved surface a
+            // step over faces another way by the local change.
+            float normalTol = 0.16 + 4.0 * normalChange;
+            for (int j = 0; j < 2; j++) {
+                for (int i = 0; i < 2; i++) {
+                    int2 p = int2(base) + int2(i, j);
+                    if (p.x < 0 || p.y < 0 || p.x >= w || p.y >= h) continue;
+                    float bw = (i == 0 ? 1.0 - f.x : f.x) * (j == 0 ? 1.0 - f.y : f.y);
+                    if (bw <= 1e-6) continue;
+                    uint2 up = uint2(p);
+                    float4 meta = histMeta.read(up);
+                    if (meta.x <= 0.0) continue;
+                    float4 ha = histAccum.read(up);
+                    float coverageThere = ha.a / meta.x;
+                    if (abs(coverageThere - coverageHere) > 0.6) continue;
+                    // A pixel with no hit at all keeps the bar higher: a texel
+                    // that was a quarter covered is a silhouette that moved past,
+                    // and carrying it into the empty pixel behind draws its edge
+                    // again a frame late.
+                    if (!covered && coverageThere > 0.15) continue;
+                    bool coveredH = meta.y < 1e29;
+                    float4 hs = float4(0.0);
+                    if (covered && coveredH) {
+                        if (abs(meta.y - zExpected) > depthTol) continue;
+                        hs = histSurface.read(up);
+                        if (hasNormal && dot(hs.xyz, hs.xyz) > 1e-12
+                            && distance(nCur, normalize(hs.xyz)) > normalTol) continue;
+                    } else if (coveredH) {
+                        hs = histSurface.read(up);
+                    }
+                    hAcc += ha * bw;
+                    hColor += histColor.read(up) * bw;
+                    hSurface += hs * bw;
+                    hN += meta.x * bw;
+                    sumW += bw;
+                }
+            }
+        }
+
+        if (sumW > 1e-4 && hN > 0.0) {
+            float inv = 1.0 / sumW;
+            hAcc *= inv; hColor *= inv; hSurface *= inv; hN *= inv;
+            // Light follows the facing, not the material point: a ball that turns
+            // in place carries its surface points around while its shading and its
+            // mirror image of the room stay put, so a mover's motion fetches the
+            // wrong light there, and the spread test cannot tell it from a rare path
+            // the frame has not caught yet. The one cue is the facing: a point that
+            // only moved keeps its normal, a point that turned does not. So the
+            // history interpolated at the spot must face this pixel's way within
+            // about two degrees plus what either side's own sampling noise allows
+            // (the error of each mean facing, read off its normal sum; a pixel on a
+            // small curved surface, or one whose lens samples land on several
+            // surfaces, reads a wide one) and the interpolation's own slack on a
+            // curved surface (a quarter of the squared change to a neighbor). The
+            // per-texel test above stays loose on purpose: it only asks whether a
+            // texel is the same surface at all.
+            if (covered && hasNormal && dot(hSurface.xyz, hSurface.xyz) > 1e-12) {
+                float tolerance = ru.params.w
+                    + 3.0 * (ollin_pt_facing_error(surface.xyz, acc.a)
+                             + ollin_pt_facing_error(hSurface.xyz, hAcc.a))
+                    + 0.25 * normalChange * normalChange;
+                if (distance(nCur, normalize(hSurface.xyz)) > tolerance) {
+                    hN = 0.0;
+                }
+            }
+        }
+        if (hN > 0.0) {
+            // Trust by spread. The frame's own estimate carries a standard error
+            // read off its samples, and so does the carried one; the carried mean
+            // may sit `params.y` of their combined error away and is pulled to that
+            // distance beyond it, per channel toward the frame's own mean. A pixel
+            // with one sample has no spread to read and is taken as uncertain by
+            // its whole brightness. The carried spread follows its mean down, so a
+            // pulled history stops claiming the grain its old level had.
+            float3 meanC = acc.rgb / n;
+            float3 meanH = hAcc.rgb / hN;
+            float lumaC = dot(meanC, ollin_pt_luma), lumaH = dot(meanH, ollin_pt_luma);
+            float varC = n > 1.5 ? max(color.a / n - lumaC * lumaC, 0.0) * (n / (n - 1.0))
+                                 : lumaC * lumaC;
+            float varH = hN > 1.5 ? max(hColor.a / hN - lumaH * lumaH, 0.0) * (hN / (hN - 1.0))
+                                  : lumaH * lumaH;
+            float tol = ru.params.y * sqrt(varC / n + varH / hN);
+            float3 pulled = clamp(meanH, meanC - tol, meanC + tol);
+            float lumaP = dot(pulled, ollin_pt_luma);
+            float ratio = lumaH > 1e-8 ? lumaP / lumaH : 1.0;
+            hAcc.rgb = pulled * hN;
+            hColor.a *= ratio * ratio;
+            // The cap: the history's worth at the count. Past it the carried sums
+            // scale down so the whole holds exactly the cap, which from then on is a
+            // running mean over the last frames' worth.
+            float cap = max(ru.params.x, n);
+            float s = (n + hN > cap) ? (cap - n) / hN : 1.0;
+            acc += hAcc * s;
+            color += hColor * s;
+            surface += hSurface * s;
+            n += hN * s;
+            st.z = n;
+            accum.write(acc, gid);
+            guideColor.write(color, gid);
+            guideSurface.write(surface, gid);
+            stats.write(st, gid);
+        }
+    }
+
+    nextAccum.write(acc, gid);
+    nextColor.write(color, gid);
+    nextSurface.write(surface, gid);
+    nextMeta.write(float4(n, z, 0.0, 0.0), gid);
 }
 
 // MARK: - The denoiser

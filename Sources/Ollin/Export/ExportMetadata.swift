@@ -131,6 +131,15 @@ struct ExportMetadata {
                     traced.append("\"clampDropped\":\(jsonNumber((dropped * 10000).rounded() / 10000))")
                 }
             }
+            // The frames reused, and the mean count a pixel held once they were
+            // carried in, to a tenth: a frame of a reusing sequence is a function of
+            // the frames before it, and the recipe says so.
+            if s.isReusing {
+                traced.append("\"reuse\":\(s.reusedFrames)")
+                if let carried = pathTracing.carriedSamplesPerPixel {
+                    traced.append("\"carriedSamples\":\(jsonNumber((carried * 10).rounded() / 10))")
+                }
+            }
             fields.append("\"pathTraced\":{\(traced.joined(separator: ","))}")
         }
         return "{\(fields.joined(separator: ","))}"

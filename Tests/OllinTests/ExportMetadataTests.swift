@@ -44,6 +44,12 @@ struct ExportMetadataTests {
             settings: PathTracing(samplesPerPixel: 128, maxDepth: 4, maxBounceLight: 4),
             minSamplesPerPixel: 128, meanSamplesPerPixel: nil, lightDropped: 0.012345)
         #expect(meta.recipe.contains(#""pathTraced":{"samples":128,"depth":4,"clamp":4,"clampDropped":0.0123}"#))
+        // A reusing frame names the frames reused and the mean count its pixels
+        // held once they were carried in, to a tenth.
+        meta.pathTracing = PathTraceReport(
+            settings: PathTracing(samplesPerPixel: 32, maxDepth: 4, reusedFrames: 8),
+            minSamplesPerPixel: 32, meanSamplesPerPixel: nil, carriedSamplesPerPixel: 231.46)
+        #expect(meta.recipe.contains(#""pathTraced":{"samples":32,"depth":4,"reuse":8,"carriedSamples":231.5}"#))
     }
 
     final class Seeded: Sketch {

@@ -1295,8 +1295,54 @@ typedef struct {
                                    // runs over the compacted list of open pixels (one
                                    // thread per entry, the entry naming the pixel);
                                    // 0 = the dispatch covers the whole grid, one thread
-                                   // per pixel. y/z/w unused.
+                                   // per pixel. y = 1 when the frame carries the earlier
+                                   // frames' samples (`ollin_pt_reuse`), so every
+                                   // pixel's count is kept in the statistics layer and
+                                   // the guide layers are filled; z = the frame's offset
+                                   // into each pixel's random stream (0 outside reuse),
+                                   // so the frames of a sequence trace disjoint sample
+                                   // sets; w unused.
 } OllinPathTraceUniforms;
+
+// Per-frame constants for the traced sequence's reuse pass (`--pt-reuse`,
+// `ollin_pt_reuse`): this frame's camera and the previous frame's, so a pixel can
+// be followed back to where it was, and the tolerances the previous frame's
+// surface and light are read against before their samples are carried in.
+typedef struct {
+    simd_float4x4 inverseViewProjection;   // this frame, clip -> world (the primary
+                                           // depth layer's own frame, unjittered)
+    simd_float4x4 previousViewProjection;  // the previous frame's world -> clip: the
+                                           // camera's own motion, for every pixel no
+                                           // mover wrote
+    simd_float4 eye;              // xyz = this frame's eye; w = 1 when a mover-velocity
+                                  // texture is bound (0 = the camera term stands for
+                                  // every pixel)
+    simd_float4 forward;          // xyz = this frame's view axis (unit); w = 1 when a
+                                  // history is bound (0 = the first frame of a run,
+                                  // which only writes the next history)
+    simd_float4 previousEye;      // xyz = the previous frame's eye; w unused
+    simd_float4 previousForward;  // xyz = the previous frame's view axis; w unused
+    simd_float4 params;           // x = the most samples a pixel carries (the history's
+                                  // cap, frames x count), y = how many standard errors
+                                  // the carried light may sit from the frame's own
+                                  // estimate before it is pulled to that distance,
+                                  // z = the depth tolerance as a share of the view
+                                  // depth (opened by the local change across the
+                                  // pixel's neighbors), w = the base facing tolerance
+                                  // for the interpolated history, as a distance
+                                  // between unit normals (opened by either side's
+                                  // sampling error and the local change)
+    simd_float4 lens;             // x = aperture radius (world units; 0 = pinhole),
+                                  // y = focus distance from the eye along the view
+                                  // axis, z = the pixel footprint at the eye (world
+                                  // units; the orthographic pixel width), w = the
+                                  // pixel angle (the perspective spread per unit of
+                                  // travel): together they give each pixel's circle of
+                                  // confusion in pixels, the footprint a blurred
+                                  // pixel's light arrives from
+    simd_uint4 window;            // x = canvas width, y = height, z = 1 for an
+                                  // orthographic camera; w unused
+} OllinPathTraceReuseUniforms;
 
 // One emissive triangle for the traced export's mesh-light sampling: the CPU lays the
 // emissive geometries' triangles out with a running power CDF (power = emissive
