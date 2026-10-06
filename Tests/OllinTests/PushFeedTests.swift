@@ -2,6 +2,7 @@ import Foundation
 import os
 import Testing
 @testable import Ollin
+import OllinTestSupport
 
 /// A stand-in server that streams server-sent events through the feed's own
 /// `URLSession`, so the suite drives the whole connection with no socket, no
@@ -9,7 +10,11 @@ import Testing
 ///
 /// Each test claims its own path. A path holds one script per connection, so
 /// a test can say what the first dial gets and what the redial gets.
-final class StreamStub: URLProtocol {
+///
+/// Unchecked, like the carrier below: what the stub shares across threads is
+/// under its own lock, and `client` is read where the session reads it, on the
+/// delayed block that ends a connection.
+final class StreamStub: URLProtocol, @unchecked Sendable {
 
     enum Step: Sendable {
         /// Answer with this status, called a stream of events.
@@ -108,8 +113,14 @@ final class StreamStub: URLProtocol {
 
     private func end(after delay: Double,
                      _ terminal: @escaping @Sendable (StreamStub, URLProtocolClient) -> Void) {
-        DispatchQueue.global().asyncAfter(deadline: .now() + delay) { [weak self] in
-            guard let self, let client = self.client else { return }
+        // The stub holds itself for the beat. The session owns a protocol only
+        // while it loads, and a stub released before the delay fired would
+        // never end its connection: the stream would stay open, the feed would
+        // wait on its own 60-second idle redial, and a test's 20-second wait
+        // for a redial a second away would read that as a feed that never
+        // redialed (the runner's one flake here).
+        DispatchQueue.global().asyncAfter(deadline: .now() + delay) {
+            guard let client = self.client else { return }
             guard !self.stopped.withLock({ $0 }) else { return }
             terminal(self, client)
         }
@@ -224,32 +235,9 @@ final class ScriptedCarrier: @unchecked Sendable {
 @Suite(.timeLimit(.minutes(5)))
 struct PushFeedTests {
 
-    struct Timeout: Error {}
-
-    /// Polls `probe` until it returns a non-nil value or the timeout elapses.
-    ///
-    /// Every stream probe below asks `>=`, never `==`, and never for a value
-    /// the feed only passes through. A full run resumes this task up to 74
-    /// seconds after the connection it is watching already opened (measured),
-    /// and the session's own 60-second request timeout redials an idle stream
-    /// in the meantime, so by the first poll the counters have moved on: 4
-    /// updates where the test wanted 2, three dials where it wanted two, a
-    /// failure already reset by the redial that cleared it. Nothing is slow
-    /// there. The test is late, and an equality question has no answer once
-    /// it is.
-    ///
-    /// The loop probes *before* it reads the clock, for the same reason. A task
-    /// this starved can wake past its own deadline having never looked once,
-    /// and a deadline test placed first then throws while the value it wanted
-    /// is sitting there. That is what the sibling suite failed on, thirteen
-    /// tests at once, with the stub's answer already in hand.
+    /// `OllinTestSupport.waitFor` with this suite's budget: a stream inside a full run, which has handed a task back 74 s late (measured).
     func waitFor<T>(timeout: Double = 20.0, _ probe: () -> T?) async throws -> T {
-        let deadline = Date().addingTimeInterval(timeout)
-        while true {
-            if let value = probe() { return value }
-            if Date() >= deadline { throw Timeout() }
-            try await Task.sleep(nanoseconds: 5_000_000)   // 5 ms
-        }
+        try await OllinTestSupport.waitFor(timeout: timeout, probe)
     }
 
     func parse(_ chunks: [String]) -> ServerSentEventParser.Reading {

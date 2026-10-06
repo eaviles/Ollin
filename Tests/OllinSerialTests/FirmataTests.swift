@@ -2,6 +2,7 @@ import Foundation
 import Testing
 import Ollin
 @testable import OllinSerial
+import OllinTestSupport
 
 /// Firmata over the port, checked against the published protocol: every
 /// message the board is sent has the bytes the spec gives, the parser turns
@@ -93,17 +94,9 @@ struct FirmataTests {
 
     // MARK: Over a wire
 
-    struct Timeout: Error {}
-
-    /// Polls `probe` until it answers or the timeout elapses; the probe runs
-    /// before the clock is read.
+    /// `OllinTestSupport.waitFor` with this suite's budget: a pty pair carrying a protocol with a handshake.
     func waitFor<T>(timeout: Double = 5.0, _ probe: () -> T?) async throws -> T {
-        let deadline = Date().addingTimeInterval(timeout)
-        while true {
-            if let value = probe() { return value }
-            if Date() >= deadline { throw Timeout() }
-            try await Task.sleep(nanoseconds: 5_000_000)
-        }
+        try await OllinTestSupport.waitFor(timeout: timeout, probe)
     }
 
     /// The fake board's end of a pty pair, reading raw bytes.
@@ -112,12 +105,15 @@ struct FirmataTests {
         let path: String
         private var collected: [UInt8] = []
 
+        /// The kernel handed out no pseudoterminal pair, which is the one way this fails.
+        struct NoPseudoterminal: Error {}
+
         init() throws {
             let descriptor = posix_openpt(O_RDWR | O_NOCTTY)
             guard descriptor >= 0, grantpt(descriptor) == 0, unlockpt(descriptor) == 0,
                   let name = ptsname(descriptor) else {
                 if descriptor >= 0 { close(descriptor) }
-                throw Timeout()
+                throw NoPseudoterminal()
             }
             var settings = termios()
             if tcgetattr(descriptor, &settings) == 0 {

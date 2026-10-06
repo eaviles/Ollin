@@ -2,6 +2,7 @@ import Foundation
 import Testing
 import Ollin
 @testable import OllinOSC
+import OllinTestSupport
 
 /// End-to-end checks over real UDP on `127.0.0.1`: an `OSCSender` to an
 /// `OSCReceiver`, exercising the polling cache, the message-queue drain, and
@@ -9,22 +10,6 @@ import Ollin
 /// independent and can run in parallel. No GPU, so they run in CI too.
 @Suite
 struct OSCLoopbackTests {
-
-    struct Timeout: Error {}
-
-    /// Polls `probe` until it returns a non-nil value or the timeout elapses.
-    ///
-    /// The probe comes before the clock is read: a starved task can wake past
-    /// its own deadline having never looked, and giving up then throws over a
-    /// message that already arrived.
-    func waitFor<T>(timeout: Double = 3.0, _ probe: () -> T?) async throws -> T {
-        let deadline = Date().addingTimeInterval(timeout)
-        while true {
-            if let value = probe() { return value }
-            if Date() >= deadline { throw Timeout() }
-            try await Task.sleep(nanoseconds: 5_000_000)   // 5 ms
-        }
-    }
 
     /// Brings up a sender→receiver pair on a fresh loopback port, with the link
     /// confirmed live (a warmup message has made the round trip and been drained).

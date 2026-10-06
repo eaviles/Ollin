@@ -3,9 +3,10 @@ import Foundation
 import Ollin
 @testable import OllinVision
 
-/// The saliency model is neural, so every model-touching test soft-skips where
-/// the compute device is missing (the segmenter-test pattern); the clamp math
-/// is exercised against a real observation once the model demonstrably runs.
+/// The saliency model is neural, so every model-touching test carries a trait
+/// that refuses it where the compute device is missing (the segmenter-test
+/// pattern); the clamp math is exercised against a real observation once the
+/// model demonstrably runs.
 @Suite struct SaliencyTrackerTests {
 
     /// A bright disk on a dark ground — the same fixture the subject-lift test
@@ -28,14 +29,18 @@ import Ollin
     /// The attention model's reading of `diskImage()`, made once for the
     /// suite: three tests ask the same still request (two read it, and the
     /// live-wiring test only needs to know the model runs here), so the model
-    /// runs once. `nil` where the model cannot run (the soft-skip).
+    /// runs once. `nil` where the model cannot run, which `modelRuns` reports as
+    /// the skip it is.
     private static let attention = Task<Saliency?, Never> {
         try? await SaliencyTracker.detect(in: SaliencyTrackerTests().diskImage())
     }
 
-    @Test func attentionCentersOnTheDisk() async throws {
-        // Soft-skip: `try?` flattens, so nil covers "model can't run here".
-        guard let saliency = await Self.attention.value else { return }
+    private static let modelRuns: ConditionTrait = .enabled("the saliency model has no compute device here") {
+        await SaliencyTrackerTests.attention.value != nil
+    }
+
+    @Test(modelRuns) func attentionCentersOnTheDisk() async throws {
+        let saliency = try #require(await Self.attention.value)
         #expect(saliency.heatMap.width > 0 && saliency.heatMap.height > 0)
         // The eye goes to the disk: more heat under its center than in a corner.
         let center = saliency.salience(at: Vector2(160, 120), in: diskRect)
@@ -48,7 +53,7 @@ import Ollin
                 > heat[0, 0].alpha)
     }
 
-    @Test func queriesReadTheRightPartOfThePicture() async throws {
+    @Test(modelRuns) func queriesReadTheRightPartOfThePicture() async throws {
         // The disk sits OFF-center, in the picture's top quarter, and
         // objectness boxes it: the query surface must put the heat *inside*
         // that box, not in its vertical mirror. Pins the **top-down** indexing
@@ -65,10 +70,10 @@ import Ollin
                 image[x, y] = Color(red: 1.0, green: 0.6, blue: 0.1)
             }
         }
-        guard let saliency = try? await SaliencyTracker.detect(in: image,
-                                                               mode: .objectness) else { return }
+        let saliency = try await SaliencyTracker.detect(in: image,
+                                                               mode: .objectness)
         // Lenient on detection (the model decides), strict on orientation.
-        guard let region = saliency.regions.first else { return }
+        let region = try #require(saliency.regions.first)
         let box = region.bounds(in: diskRect)
         let mirrored = Rectangle(x: box.x, y: 240 - box.y - box.height,
                                  width: box.width, height: box.height)
@@ -87,8 +92,8 @@ import Ollin
         #expect(meanSalience(in: box) > meanSalience(in: mirrored) * 3)
     }
 
-    @Test func edgeQueriesClampInsteadOfTrapping() async throws {
-        guard let saliency = await Self.attention.value else { return }
+    @Test(modelRuns) func edgeQueriesClampInsteadOfTrapping() async throws {
+        let saliency = try #require(await Self.attention.value)
         // The optical-flow regression, re-pinned here: Vision's nearest-neighbor
         // pixel lookup traps when a coordinate rounds past the last pixel, so
         // any of these would crash without the clamp.
@@ -99,12 +104,12 @@ import Ollin
         _ = saliency.salience(at: Vector2(320, 240), in: diskRect)
     }
 
-    @Test func objectnessBoxesTheDisk() async throws {
-        guard let saliency = try? await SaliencyTracker.detect(in: diskImage(),
-                                                               mode: .objectness) else { return }
+    @Test(modelRuns) func objectnessBoxesTheDisk() async throws {
+        let saliency = try await SaliencyTracker.detect(in: diskImage(),
+                                                               mode: .objectness)
         // Lenient on count (the model decides what stands out), strict on
         // placement: when regions come back, one must cover the disk's center.
-        guard !saliency.regions.isEmpty else { return }
+        try #require(!saliency.regions.isEmpty)
         let covers = saliency.regions.contains { region in
             let b = region.bounds(in: diskRect)
             return b.x <= 160 && 160 <= b.x + b.width
@@ -114,11 +119,10 @@ import Ollin
     }
 
     @MainActor
-    @Test func liveWiringPublishesHeatMapRegionsAndQueries() async throws {
-        // Gate on the still path: only run the live assertion where the model
-        // demonstrably maps this exact frame (elsewhere this is the soft-skip).
+    @Test(modelRuns) func liveWiringPublishesHeatMapRegionsAndQueries() async throws {
+        // Gated on the still path: the live assertion runs only where the
+        // model demonstrably maps this exact frame.
         let image = diskImage()
-        guard await Self.attention.value != nil else { return }
 
         // The camera-free live path: a hand-driven source standing in for the
         // capture queue, exactly like the frame-source tests.

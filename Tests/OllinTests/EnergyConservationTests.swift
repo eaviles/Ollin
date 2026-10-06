@@ -75,10 +75,6 @@ struct EnergyConservationTests {
                             bytesPerRow: w * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
                             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
         ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
-        func linear(_ b: UInt8) -> Double {
-            let c = Double(b) / 255
-            return c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4)
-        }
         var discSum = 0.0, bgSum = 0.0
         var discN = 0, bgN = 0
         let cx = Double(w) / 2, cy = Double(h) / 2

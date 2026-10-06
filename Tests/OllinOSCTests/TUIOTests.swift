@@ -2,6 +2,7 @@ import Foundation
 import Testing
 import Ollin
 @testable import OllinOSC
+import OllinTestSupport
 
 /// The TUIO decoder over the OSC receiver: what a tracker's frame does to the
 /// surface a sketch reads. Most of it runs with no socket at all, by handing the
@@ -259,20 +260,6 @@ struct TUIOTests {
     }
 
     // MARK: Over the wire
-
-    struct Timeout: Error {}
-
-    /// Polls `probe` until it answers or the timeout elapses. The probe comes
-    /// before the clock is read: a starved task can wake past its own deadline
-    /// having never looked.
-    func waitFor<T>(timeout: Double = 3.0, _ probe: () -> T?) async throws -> T {
-        let deadline = Date().addingTimeInterval(timeout)
-        while true {
-            if let value = probe() { return value }
-            if Date() >= deadline { throw Timeout() }
-            try await Task.sleep(nanoseconds: 5_000_000)
-        }
-    }
 
     @Test func aTrackerReachesTheSurfaceOverUDP() async throws {
         let surface = TUIOReceiver(port: 0)

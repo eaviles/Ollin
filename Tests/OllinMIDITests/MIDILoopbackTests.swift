@@ -2,6 +2,7 @@ import Foundation
 import Testing
 import Ollin
 @testable import OllinMIDI
+import OllinTestSupport
 
 /// Both Core MIDI loopback suites live under this one, which is what keeps them
 /// off each other's link.
@@ -20,36 +21,52 @@ import Ollin
 /// trait can fix: don't run the suite in two checkouts at once. The rest of the
 /// rule is in Tests/README.md.)
 @Suite(.serialized)
-struct CoreMIDILoopback {}
+struct CoreMIDILoopback {
+
+    /// Whether a virtual source reaches an input here, asked once for both
+    /// suites. Core MIDI's server and its virtual-source routing are not in
+    /// every sandbox, and a suite that cannot bring the link up refuses itself
+    /// by this trait rather than passing tests that touched nothing. The probe
+    /// is the warmup `makePair()` runs: open a source and an input, send a
+    /// controller until it lands, close both.
+    static let linkComesUp = Task<Bool, Never> {
+        let output = MIDIOutput(name: "OllinMIDIProbe")
+        let input = MIDIInput(name: "OllinMIDIProbeIn")
+        defer { output.close(); input.stop() }
+        do {
+            try output.openVirtual(named: "OllinMIDIProbe Loopback")
+            try input.start()
+        } catch {
+            return false
+        }
+        let connected = try? await waitFor { () -> Bool? in
+            output.controlChange(1, value: 1)
+            return input.controlValue(1) != nil ? true : nil
+        }
+        return connected == true
+    }
+
+    static let linkTrait: ConditionTrait = .enabled("Core MIDI's virtual-source link does not come up here") {
+        await CoreMIDILoopback.linkComesUp.value
+    }
+}
 
 extension CoreMIDILoopback {
 
     /// End-to-end over Core MIDI in-process: a `MIDIOutput` virtual source feeding
     /// a `MIDIInput`, exercising the polling cache, the event drain, and `@Param`
     /// binding. It needs the Core MIDI server (and virtual-source routing), which
-    /// isn't guaranteed in every sandbox, so it soft-skips when the link can't be
-    /// brought up, and the parser tests are the always-on CI guard. Run on a real Mac
-    /// it verifies the whole pipe.
+    /// isn't guaranteed in every sandbox, so every test here carries
+    /// `CoreMIDILoopback.linkTrait` and the suite refuses itself where the link
+    /// cannot be brought up; the parser tests are the always-on CI guard. Run on
+    /// a real Mac it verifies the whole pipe.
     @Suite(.serialized)
     struct MIDILoopbackTests {
 
-        /// Polls `probe` until non-nil or the timeout elapses.
-        ///
-        /// The probe comes before the clock is read: a starved task can wake past
-        /// its own deadline having never looked, and giving up then reports nothing
-        /// arrived over a message that already did.
-        func waitFor<T>(timeout: Double = 3.0, _ probe: () -> T?) async -> T? {
-            let deadline = Date().addingTimeInterval(timeout)
-            while true {
-                if let value = probe() { return value }
-                if Date() >= deadline { return nil }
-                try? await Task.sleep(nanoseconds: 5_000_000)   // 5 ms
-            }
-        }
-
         /// Brings up a virtual-source output and an input connected to it, with the
-        /// link confirmed live (a warmup CC has made it across). Returns `nil` to
-        /// signal a soft-skip when Core MIDI isn't available.
+        /// link confirmed live (a warmup CC has made it across). `nil` when the
+        /// link does not come up, which `linkTrait` has already ruled out for
+        /// every test here, so a test requires the pair.
         func makePair() async -> (output: MIDIOutput, input: MIDIInput)? {
             let output = MIDIOutput(name: "OllinMIDITest")
             let input = MIDIInput(name: "OllinMIDITestIn")
@@ -61,7 +78,7 @@ extension CoreMIDILoopback {
             }
             // The input connects to the new virtual source on a setup-change
             // notification, which is async, so resend the warmup until it lands.
-            let connected = await waitFor { () -> Bool? in
+            let connected = try? await waitFor { () -> Bool? in
                 output.controlChange(1, value: 1)
                 return input.controlValue(1) != nil ? true : nil
             }
@@ -73,54 +90,54 @@ extension CoreMIDILoopback {
             return (output, input)
         }
 
-        @Test func controlChangeReachesTheCache() async {
-            guard let (output, input) = await makePair() else { return }   // soft-skip
+        @Test(CoreMIDILoopback.linkTrait) func controlChangeReachesTheCache() async throws {
+            let (output, input) = try #require(await makePair())
             defer { output.close(); input.stop() }
 
             output.controlChange(7, value: 99)
-            let value = await waitFor { input.controlValue(7) == 99 ? 99 : nil }
+            let value = try? await waitFor { input.controlValue(7) == 99 ? 99 : nil }
             #expect(value == 99)
         }
 
-        @Test func notesDrainInOrderAndTrackHeldState() async {
-            guard let (output, input) = await makePair() else { return }   // soft-skip
+        @Test(CoreMIDILoopback.linkTrait) func notesDrainInOrderAndTrackHeldState() async throws {
+            let (output, input) = try #require(await makePair())
             defer { output.close(); input.stop() }
 
             output.noteOn(60, velocity: 100)
-            _ = await waitFor { input.isNoteOn(60) ? true : nil }
+            _ = try? await waitFor { input.isNoteOn(60) ? true : nil }
             #expect(input.isNoteOn(60))
 
             output.noteOff(60)
-            _ = await waitFor { input.isNoteOn(60) ? nil : true }
+            _ = try? await waitFor { input.isNoteOn(60) ? nil : true }
             #expect(!input.isNoteOn(60))
 
             let notes = input.messages().compactMap { $0.note }
             #expect(notes.contains(60))
         }
 
-        @Test func bindingDrivesAParam() async {
-            guard let (output, input) = await makePair() else { return }   // soft-skip
+        @Test(CoreMIDILoopback.linkTrait) func bindingDrivesAParam() async throws {
+            let (output, input) = try #require(await makePair())
             defer { output.close(); input.stop() }
 
             let parameter = Param(wrappedValue: 0.0, 0...100)   // no smoothing → instant
             input.bind(controlChange: 20, to: parameter.projectedValue)   // 0…127 → 0…100
 
             output.controlChange(20, value: 127)
-            let value = await waitFor { parameter.wrappedValue >= 99.9 ? parameter.wrappedValue : nil }
+            let value = try? await waitFor { parameter.wrappedValue >= 99.9 ? parameter.wrappedValue : nil }
             #expect((value ?? 0) > 99)
         }
 
         /// A tempo binds the way a number does, into its range in beats per
         /// minute, and the knob never touches the beats per bar.
-        @Test func bindingDrivesATempoParam() async {
-            guard let (output, input) = await makePair() else { return }   // soft-skip
+        @Test(CoreMIDILoopback.linkTrait) func bindingDrivesATempoParam() async throws {
+            let (output, input) = try #require(await makePair())
             defer { output.close(); input.stop() }
 
             let tempo = Param(wrappedValue: Tempo(90, beatsPerBar: 3), 60...160)
             input.bind(controlChange: 21, to: tempo.projectedValue)   // 0…127 → 60…160 bpm
 
             output.controlChange(21, value: 127)
-            let value = await waitFor { tempo.wrappedValue.beatsPerMinute >= 159.9 ? tempo.wrappedValue : nil }
+            let value = try? await waitFor { tempo.wrappedValue.beatsPerMinute >= 159.9 ? tempo.wrappedValue : nil }
             #expect((value?.beatsPerMinute ?? 0) > 159)
             #expect(value?.beatsPerBar == 3)
         }
@@ -128,25 +145,25 @@ extension CoreMIDILoopback {
         /// The wheel bound to a parameter: at rest it reads the parameter's
         /// midpoint, and each end of its travel reaches that end of the range.
         /// The reading `pitchBend()` gives is the same fraction.
-        @Test func pitchBendDrivesAParamAboutItsMidpoint() async {
-            guard let (output, input) = await makePair() else { return }   // soft-skip
+        @Test(CoreMIDILoopback.linkTrait) func pitchBendDrivesAParamAboutItsMidpoint() async throws {
+            let (output, input) = try #require(await makePair())
             defer { output.close(); input.stop() }
 
             let parameter = Param(wrappedValue: 7.0, 20...400)
             input.bindPitchBend(to: parameter.projectedValue)
 
             output.pitchBend(16383)
-            let top = await waitFor { parameter.wrappedValue == 400 ? parameter.wrappedValue : nil }
+            let top = try? await waitFor { parameter.wrappedValue == 400 ? parameter.wrappedValue : nil }
             #expect(top == 400)
             #expect(input.pitchBend() == 1)
 
             output.pitchBend(0)
-            let bottom = await waitFor { parameter.wrappedValue == 20 ? parameter.wrappedValue : nil }
+            let bottom = try? await waitFor { parameter.wrappedValue == 20 ? parameter.wrappedValue : nil }
             #expect(bottom == 20)
             #expect(input.pitchBend() == -1)
 
             output.pitchBend(8192)
-            let rest = await waitFor { parameter.wrappedValue == 210 ? parameter.wrappedValue : nil }
+            let rest = try? await waitFor { parameter.wrappedValue == 210 ? parameter.wrappedValue : nil }
             #expect(rest == 210)
             #expect(input.pitchBend() == 0)
         }
@@ -154,8 +171,8 @@ extension CoreMIDILoopback {
         /// A binding on one channel leaves another channel's wheel alone, an
         /// input range of half the travel spends the whole parameter on it, a
         /// tempo keeps its beats per bar, and an unbound wheel moves nothing.
-        @Test func pitchBendBindsByChannelAndRange() async {
-            guard let (output, input) = await makePair() else { return }   // soft-skip
+        @Test(CoreMIDILoopback.linkTrait) func pitchBendBindsByChannelAndRange() async throws {
+            let (output, input) = try #require(await makePair())
             defer { output.close(); input.stop() }
 
             let level = Param(wrappedValue: 0.5, 0...1)
@@ -165,21 +182,21 @@ extension CoreMIDILoopback {
 
             output.pitchBend(16383, channel: 2)                 // not the bound channel
             output.pitchBend(8192 + 4096, channel: 4)           // tempo, half way up
-            let bpm = await waitFor { tempo.wrappedValue.beatsPerMinute > 149 ? tempo.wrappedValue : nil }
+            let bpm = try? await waitFor { tempo.wrappedValue.beatsPerMinute > 149 ? tempo.wrappedValue : nil }
             #expect(abs((bpm?.beatsPerMinute ?? 0) - (120 + 60 * 4096.0 / 8191)) < 1e-9)
             #expect(bpm?.beatsPerBar == 3)
             #expect(level.wrappedValue == 0.5, "a bend on channel 2 reached the channel 3 binding")
 
             output.pitchBend(8192, channel: 3)                  // rest is the bottom of 0...1
-            let floor = await waitFor { level.wrappedValue == 0 ? level.wrappedValue : nil }
+            let floor = try? await waitFor { level.wrappedValue == 0 ? level.wrappedValue : nil }
             #expect(floor == 0)
             output.pitchBend(16383, channel: 3)
-            let full = await waitFor { level.wrappedValue == 1 ? level.wrappedValue : nil }
+            let full = try? await waitFor { level.wrappedValue == 1 ? level.wrappedValue : nil }
             #expect(full == 1)
 
             input.unbindPitchBend(channel: 3)
             output.pitchBend(8192, channel: 3)
-            _ = await waitFor { input.pitchBend(channel: 3) == 0 ? true : nil }
+            _ = try? await waitFor { input.pitchBend(channel: 3) == 0 ? true : nil }
             #expect(input.pitchBend(channel: 3) == 0)
             #expect(level.wrappedValue == 1, "an unbound wheel still moved the parameter")
         }
@@ -188,8 +205,8 @@ extension CoreMIDILoopback {
         /// land a `TimecodeClock` on the frame they spell plus the frame the set
         /// took, and a full-frame exclusive (the two-packet path through the
         /// event list) locates it outright.
-        @Test func timecodeCrossesTheLink() async {
-            guard let (output, input) = await makePair() else { return }   // soft-skip
+        @Test(CoreMIDILoopback.linkTrait) func timecodeCrossesTheLink() async throws {
+            let (output, input) = try #require(await makePair())
             defer { output.close(); input.stop() }
 
             let clock = TimecodeClock(from: input)
@@ -204,14 +221,14 @@ extension CoreMIDILoopback {
             // `isReceiving` is a one-second window, so it is read in the same probe
             // that sees the frame land: a starved run can hand the task back
             // seconds after the wait returned, with the window already closed.
-            let landed = await waitFor { clock.timecode.map { ($0, clock.isReceiving) } }
+            let landed = try? await waitFor { clock.timecode.map { ($0, clock.isReceiving) } }
             #expect(landed?.0.frameRate == .fps25)
             #expect(landed?.0 == code.advanced(byFrames: 1))
             #expect(landed?.1 == true)
 
             let parked = Timecode(hours: 9, minutes: 0, seconds: 0, frames: 0, frameRate: .fps30)
             output.send(timecode: parked)
-            let located = await waitFor { clock.timecode == parked ? parked : nil }
+            let located = try? await waitFor { clock.timecode == parked ? parked : nil }
             #expect(located == parked)
             #expect(clock.frameRate == .fps30)
         }
@@ -220,12 +237,12 @@ extension CoreMIDILoopback {
         /// lays the input out, and then a bend on one note's channel, a press on
         /// another's, and a slide on the first reach only the note each was sent
         /// for. Each message is sent once; the wait only reads.
-        @Test func expressionReachesOneNote() async {
-            guard let (output, input) = await makePair() else { return }   // soft-skip
+        @Test(CoreMIDILoopback.linkTrait) func expressionReachesOneNote() async throws {
+            let (output, input) = try #require(await makePair())
             defer { output.close(); input.stop() }
 
             output.send(mpeZone: .lower())
-            let zones = await waitFor { input.mpeZones == [.lower()] ? input.mpeZones : nil }
+            let zones = try? await waitFor { input.mpeZones == [.lower()] ? input.mpeZones : nil }
             #expect(zones == [.lower()])
 
             output.noteOn(60, velocity: 100, channel: 2)
@@ -234,7 +251,7 @@ extension CoreMIDILoopback {
             output.channelPressure(127, channel: 3)
             output.controlChange(74, value: 0, channel: 2)
 
-            let notes = await waitFor { () -> [HeldNote]? in
+            let notes = try? await waitFor { () -> [HeldNote]? in
                 let held = input.heldNotes
                 guard held.count == 2, held[0].pitchBend > 11.9, held[1].pressure == 1, held[0].slide == 0
                 else { return nil }

@@ -2,6 +2,7 @@ import Foundation
 import Testing
 import Ollin
 @testable import OllinOSC
+import OllinTestSupport
 
 // The namespace, the wire, and the apply path, socket-free: the tree built
 // from a real sketch's parameters, one HTTP request answered as bytes, and
@@ -293,20 +294,6 @@ private final class QueryProbeSketch: Sketch {
     }
 
     // MARK: Over the wire
-
-    struct Timeout: Error {}
-
-    /// Polls `probe` until it returns a value or the timeout elapses; the probe
-    /// runs before the clock is read, so a late wakeup still sees an answer
-    /// that already arrived.
-    func waitFor<T>(timeout: Double = 3.0, _ probe: () -> T?) async throws -> T {
-        let deadline = Date().addingTimeInterval(timeout)
-        while true {
-            if let value = probe() { return value }
-            if Date() >= deadline { throw Timeout() }
-            try await Task.sleep(nanoseconds: 5_000_000)
-        }
-    }
 
     /// A port another program holds is said, not printed, and is not the end:
     /// `isRunning` stays false with the reason in a sentence, and `start()`

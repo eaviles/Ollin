@@ -1,5 +1,57 @@
 import CoreGraphics
+import Foundation
 @testable import Ollin
+
+// MARK: - Reading a rendered frame
+
+/// The bytes of a rendered frame: RGBA, eight bits a channel, premultiplied,
+/// rows from the top, so pixel `(x, y)` starts at `(y * width + x) * 4`.
+///
+/// Every drawing probe reads its frame through this one readback. The frame
+/// `OllinApp.image(of:)` hands back is an 8-bit device-RGB image, and drawing
+/// that into a device-RGB or an sRGB context gives the same bytes (measured
+/// 2026-10-06 over a full ramp, no byte differs), so the color space named
+/// here is a formality and no probe needs its own copy of these lines.
+func pixels(of image: CGImage) -> [UInt8] {
+    let w = image.width, h = image.height
+    var bytes = [UInt8](repeating: 0, count: w * h * 4)
+    bytes.withUnsafeMutableBytes { raw in
+        guard let context = CGContext(data: raw.baseAddress, width: w, height: h, bitsPerComponent: 8,
+                                      bytesPerRow: w * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return }
+        context.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
+    }
+    return bytes
+}
+
+/// A rendered frame read back once, with its size kept beside the bytes, for a
+/// probe that addresses pixels by position.
+struct Pixels {
+    let bytes: [UInt8]
+    let width: Int
+    let height: Int
+
+    init(_ image: CGImage) {
+        bytes = pixels(of: image)
+        width = image.width
+        height = image.height
+    }
+
+    /// The red channel at `(x, y)`, which on a gray picture is its gray.
+    func gray(_ x: Int, _ y: Int) -> Int { Int(bytes[(y * width + x) * 4]) }
+
+    /// Channel `c` (0 red, 1 green, 2 blue, 3 alpha) at `(x, y)`.
+    func channel(_ c: Int, _ x: Int, _ y: Int) -> Int { Int(bytes[(y * width + x) * 4 + c]) }
+}
+
+/// An sRGB byte as linear light, 0...1: the transfer curve undone, which is
+/// where light adds and where every energy claim in the probes is measured.
+func linear(_ byte: UInt8) -> Double {
+    let v = Double(byte) / 255
+    return v <= 0.04045 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4)
+}
+
+// MARK: - Reading ink
 
 /// Reading a rendered frame as coats of translucent ink.
 ///
@@ -33,14 +85,7 @@ struct InkProbe {
         let w = image.width, h = image.height
         width = w
         height = h
-        var raw = [UInt8](repeating: 0, count: w * h * 4)
-        raw.withUnsafeMutableBytes { buffer in
-            let ctx = CGContext(data: buffer.baseAddress, width: w, height: h,
-                                bitsPerComponent: 8, bytesPerRow: w * 4,
-                                space: CGColorSpaceCreateDeviceRGB(),
-                                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
-            ctx?.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
-        }
+        let raw = pixels(of: image)
         bytes = raw
         var histogram: [Int: Int] = [:]
         for i in stride(from: 0, to: w * h * 4, by: 4) where Int(raw[i]) < paperBelow {

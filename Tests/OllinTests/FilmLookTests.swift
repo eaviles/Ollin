@@ -32,16 +32,6 @@ import Foundation
 @MainActor
 struct FilmLookTests {
 
-    private func pixels(of image: CGImage) -> [UInt8] {
-        let w = image.width, h = image.height
-        var data = [UInt8](repeating: 0, count: w * h * 4)
-        let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
-                            bytesPerRow: w * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
-                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-        ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
-        return data
-    }
-
     private func render(_ scene: FilmProbe.Scene, _ filter: Filter?) throws -> [UInt8] {
         pixels(of: try OllinApp.image(of: FilmProbe.make(scene, filter: filter), frame: 1))
     }

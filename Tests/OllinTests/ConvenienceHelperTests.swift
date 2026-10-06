@@ -195,20 +195,6 @@ struct ConvenienceHelperTests {
 
     // MARK: Rendered A/B: the sugar must equal the block it replaces
 
-    /// The raw RGBA bytes of a rendered frame, for byte-identical comparison.
-    private func bytes(of image: CGImage) -> [UInt8] {
-        let w = image.width, h = image.height
-        var out = [UInt8](repeating: 0, count: w * h * 4)
-        out.withUnsafeMutableBytes { raw in
-            let ctx = CGContext(data: raw.baseAddress, width: w, height: h,
-                                bitsPerComponent: 8, bytesPerRow: w * 4,
-                                space: CGColorSpaceCreateDeviceRGB(),
-                                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
-            ctx?.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
-        }
-        return out
-    }
-
     private final class StyledLabel: Sketch {
         var oneCall = true
         override var canvasSize: CanvasSize { .square(256) }
@@ -239,8 +225,8 @@ struct ConvenienceHelperTests {
     @Test func styledTextEqualsThePreambleItReplaces() throws {
         let one = StyledLabel()
         let block = StyledLabel(); block.oneCall = false
-        let a = bytes(of: try OllinApp.image(of: one))
-        let b = bytes(of: try OllinApp.image(of: block))
+        let a = pixels(of: try OllinApp.image(of: one))
+        let b = pixels(of: try OllinApp.image(of: block))
         #expect(a == b)
     }
 
@@ -286,8 +272,8 @@ struct ConvenienceHelperTests {
     @Test func withStateAtEqualsTheSpelledOutBlock() throws {
         let one = Placed()
         let block = Placed(); block.oneCall = false
-        #expect(bytes(of: try OllinApp.image(of: one))
-             == bytes(of: try OllinApp.image(of: block)))
+        #expect(pixels(of: try OllinApp.image(of: one))
+             == pixels(of: try OllinApp.image(of: block)))
     }
 
     private final class Arrow: Sketch {
@@ -320,8 +306,8 @@ struct ConvenienceHelperTests {
     @Test func arrowEqualsItsSpelledOutParts() throws {
         let one = Arrow()
         let parts = Arrow(); parts.oneCall = false
-        #expect(bytes(of: try OllinApp.image(of: one))
-             == bytes(of: try OllinApp.image(of: parts)))
+        #expect(pixels(of: try OllinApp.image(of: one))
+             == pixels(of: try OllinApp.image(of: parts)))
     }
 
     private final class NoStrokeArrow: Sketch {
@@ -338,7 +324,7 @@ struct ConvenienceHelperTests {
     @Test func arrowWithNoStrokeDrawsNothing() throws {
         let with = NoStrokeArrow()
         let without = NoStrokeArrow(); without.drawsArrow = false
-        #expect(bytes(of: try OllinApp.image(of: with))
-             == bytes(of: try OllinApp.image(of: without)))
+        #expect(pixels(of: try OllinApp.image(of: with))
+             == pixels(of: try OllinApp.image(of: without)))
     }
 }

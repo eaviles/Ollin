@@ -349,7 +349,7 @@ struct SketchConvenienceTests {
         let source = try #require(CGImageSourceCreateWithData(png as CFData, nil))
         #expect(CGImageSourceGetType(source) as String? == UTType.png.identifier)
         let image = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
-        return (image.width, image.height, WebExportTests.rgba(of: image))
+        return (image.width, image.height, OllinTests.pixels(of: image))
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))

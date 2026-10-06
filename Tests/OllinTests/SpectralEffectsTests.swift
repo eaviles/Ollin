@@ -122,25 +122,13 @@ struct SpectralEffectsTests {
     // MARK: Probes
 
     private func pixel(_ image: CGImage, x: Int, y: Int) -> (r: Int, g: Int, b: Int) {
-        let px = pixels(of: image)
+        let px = Pixels(image)
         let i = (y * px.width + x) * 4
         return (Int(px.bytes[i]), Int(px.bytes[i + 1]), Int(px.bytes[i + 2]))
     }
 
-    private func pixels(of image: CGImage) -> (bytes: [UInt8], width: Int, height: Int) {
-        let w = image.width, h = image.height
-        var data = [UInt8](repeating: 0, count: w * h * 4)
-        let space = CGColorSpaceCreateDeviceRGB()
-        let info = CGImageAlphaInfo.premultipliedLast.rawValue
-        if let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
-                               bytesPerRow: w * 4, space: space, bitmapInfo: info) {
-            ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
-        }
-        return (data, w, h)
-    }
-
     private func maxDifference(_ a: CGImage, _ b: CGImage) -> Int {
-        let pa = pixels(of: a), pb = pixels(of: b)
+        let pa = Pixels(a), pb = Pixels(b)
         var worst = 0
         for i in 0 ..< min(pa.bytes.count, pb.bytes.count) {
             worst = max(worst, abs(Int(pa.bytes[i]) - Int(pb.bytes[i])))

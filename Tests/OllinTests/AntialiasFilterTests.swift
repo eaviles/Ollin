@@ -163,20 +163,8 @@ struct AntialiasFilterTests {
 
     // MARK: Readback helpers
 
-    private func pixels(of image: CGImage) -> (bytes: [UInt8], width: Int, height: Int) {
-        let w = image.width, h = image.height
-        var data = [UInt8](repeating: 0, count: w * h * 4)
-        let space = CGColorSpaceCreateDeviceRGB()
-        let info = CGImageAlphaInfo.premultipliedLast.rawValue
-        if let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
-                               bytesPerRow: w * 4, space: space, bitmapInfo: info) {
-            ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
-        }
-        return (data, w, h)
-    }
-
     private func maxDifference(_ a: CGImage, _ b: CGImage) -> Int {
-        let pa = pixels(of: a), pb = pixels(of: b)
+        let pa = Pixels(a), pb = Pixels(b)
         var worst = 0
         for i in 0 ..< min(pa.bytes.count, pb.bytes.count) {
             worst = max(worst, abs(Int(pa.bytes[i]) - Int(pb.bytes[i])))
@@ -187,7 +175,7 @@ struct AntialiasFilterTests {
     /// The green channel of one pixel, back in linear light. The present pass encodes
     /// for display, and coverage only adds up to a distance in the space it was
     /// blended in.
-    private func linearValue(_ px: (bytes: [UInt8], width: Int, height: Int),
+    private func linearValue(_ px: Pixels,
                              x: Int, y: Int) -> Double {
         let v = Double(px.bytes[(y * px.width + x) * 4 + 1]) / 255
         return v <= 0.04045 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4)
@@ -198,7 +186,7 @@ struct AntialiasFilterTests {
     /// crosses it at; a least-squares line through those rows is where they should be.
     private func edgeWander(_ image: CGImage, window: ClosedRange<Int> = 40 ... 215,
                             columns: ClosedRange<Int> = 36 ... 220) -> Double {
-        let px = pixels(of: image)
+        let px = Pixels(image)
         let rows = columns.map { x in
             window.reduce(0.0) { $0 + linearValue(px, x: x, y: $1) }
         }
@@ -209,7 +197,7 @@ struct AntialiasFilterTests {
     /// coverage across the window is the sub-pixel column the edge crosses it at.
     private func columnWander(_ image: CGImage, window: ClosedRange<Int> = 40 ... 215,
                               rows: ClosedRange<Int> = 36 ... 220) -> Double {
-        let px = pixels(of: image)
+        let px = Pixels(image)
         let cols = rows.map { y in
             window.reduce(0.0) { $0 + linearValue(px, x: $1, y: y) }
         }
@@ -220,7 +208,7 @@ struct AntialiasFilterTests {
     /// tones a ramp has and a staircase does not. The plateaus are the two ends of the
     /// image's own tone range, so the count needs no knowledge of the colors used.
     private func inBetweenTones(_ image: CGImage) -> Int {
-        let px = pixels(of: image)
+        let px = Pixels(image)
         var lowest = 255, highest = 0
         for y in 40 ... 215 {
             for x in 36 ... 220 {

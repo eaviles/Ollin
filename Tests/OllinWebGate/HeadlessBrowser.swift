@@ -94,6 +94,21 @@ package enum HeadlessBrowser {
         await capability.value.flags != nil
     }
 
+    /// How many pages one launch carries, as same-origin frames of one
+    /// document. Eight on a browser with a GPU, where launching the browser is
+    /// most of what a page costs (about five seconds here under a full run,
+    /// against a second or two to draw a page), so a family of twenty cases
+    /// that took twenty launches takes three. One under the software renderer,
+    /// where drawing the page is the cost (a page that takes two seconds on a
+    /// GPU has taken 230 s and 450 s on the runner) and the time limit has to
+    /// stay the hang guard it is: eight such pages in one launch would need a
+    /// budget no hang could be told from.
+    package static var pagesPerLaunch: Int {
+        get async {
+            await capability.value.flags?.contains("--use-angle=swiftshader") == true ? 1 : 8
+        }
+    }
+
     /// How long a page may take here, given what the probe measured.
     ///
     /// `base` is what the work costs at a desk, which is the only number a

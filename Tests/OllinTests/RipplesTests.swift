@@ -64,20 +64,9 @@ struct RipplesTests {
         var centerRed = 0.0
     }
 
-    private func bytes(of image: CGImage) -> (bytes: [UInt8], width: Int, height: Int) {
-        let w = image.width, h = image.height
-        var data = [UInt8](repeating: 0, count: w * h * 4)
-        let space = CGColorSpaceCreateDeviceRGB()
-        let info = CGImageAlphaInfo.premultipliedLast.rawValue
-        if let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
-                               bytesPerRow: w * 4, space: space, bitmapInfo: info) {
-            ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
-        }
-        return (data, w, h)
-    }
-
     private func channelStats(of image: CGImage) -> Stats {
-        let (data, w, h) = bytes(of: image)
+        let px = Pixels(image)
+        let (data, w, h) = (px.bytes, px.width, px.height)
         var stats = Stats()
         for i in stride(from: 0, to: data.count, by: 4) {
             stats.peakRed = max(stats.peakRed, Double(data[i]) / 255)
@@ -90,7 +79,8 @@ struct RipplesTests {
 
     /// The farthest lit height pixel from the drop point: the ring front.
     private func ringRadius(of image: CGImage) -> Double {
-        let (data, w, h) = bytes(of: image)
+        let px = Pixels(image)
+        let (data, w, h) = (px.bytes, px.width, px.height)
         var radius = 0.0
         for y in 0 ..< h {
             for x in 0 ..< w where data[(y * w + x) * 4] > 24 {

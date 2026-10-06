@@ -2,6 +2,7 @@ import Foundation
 import Ollin
 import Testing
 @testable import OllinRemote
+import OllinTestSupport
 
 // Socket-free on purpose: every test here exercises the wire layer as pure
 // functions (bytes in, bytes out) or the apply path through a real sketch's
@@ -244,19 +245,6 @@ private final class RemoteProbeSketch: Sketch {
         remote.stop()
         #expect(!remote.isRunning)
         #expect(remote.boundPort == nil, "a stopped server has no port")
-    }
-
-    private struct WaitTimeout: Error {}
-
-    /// Probe first, then read the clock, so a task handed back late still
-    /// sees an answer that is already there.
-    private func waitFor<T>(timeout: Double = 3.0, _ probe: () -> T?) async throws -> T {
-        let deadline = Date().addingTimeInterval(timeout)
-        while true {
-            if let value = probe() { return value }
-            guard Date() < deadline else { throw WaitTimeout() }
-            try await Task.sleep(for: .milliseconds(20))
-        }
     }
 
     @Test func aResetMessagePutsParametersBackAndTellsTheHost() throws {

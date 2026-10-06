@@ -46,7 +46,7 @@ struct LensDistortionTests {
         for c in cases {
             let filter = Filter.lensDistortion(amount: c.amount, quartic: c.quartic, fillsFrame: c.fills)
             let image = try OllinApp.image(of: DotsProbe.make(filter), frame: 1)
-            let px = pixels(of: image)
+            let px = Pixels(image)
             // The scale the pass worked out, read off the same packing the GPU got.
             let pass = try #require(filter.singlePass(width: 256, height: 256, resolve: { $0 }))
             let scale = Double(pass.params[0].w), far = Double(pass.params[1].z)
@@ -96,10 +96,10 @@ struct LensDistortionTests {
         func cornerIsEmpty(_ filter: Filter) throws -> Bool {
             let image = try OllinApp.image(of: FieldProbe.make(filter), frame: 1)
             // The present pass dithers, so a black pixel reads 0 or 1.
-            return green(pixels(of: image), x: 1, y: 1) <= 1
+            return green(Pixels(image), x: 1, y: 1) <= 1
         }
         func borderIsWhole(_ filter: Filter) throws -> Bool {
-            let px = pixels(of: try OllinApp.image(of: FieldProbe.make(filter), frame: 1))
+            let px = Pixels(try OllinApp.image(of: FieldProbe.make(filter), frame: 1))
             for i in 0 ..< 128 {
                 for (x, y) in [(i, 0), (i, 127), (0, i), (127, i)]
                 where abs(green(px, x: x, y: y) - field) > 2 {
@@ -117,32 +117,20 @@ struct LensDistortionTests {
         #expect(try borderIsWhole(.lensDistortion(amount: 0, quartic: 0.4, fillsFrame: true)))
         // The filled barrel keeps the middle of the picture: the fill is a
         // scale, not a crop to nothing.
-        let filled = pixels(of: try OllinApp.image(
+        let filled = Pixels(try OllinApp.image(
             of: FieldProbe.make(.lensDistortion(amount: 0.3, fillsFrame: true)), frame: 1))
         #expect(abs(green(filled, x: 64, y: 64) - field) <= 2)
     }
 
     // MARK: Pixels
 
-    private func pixels(of image: CGImage) -> (bytes: [UInt8], width: Int, height: Int) {
-        let w = image.width, h = image.height
-        var data = [UInt8](repeating: 0, count: w * h * 4)
-        let space = CGColorSpaceCreateDeviceRGB()
-        let info = CGImageAlphaInfo.premultipliedLast.rawValue
-        if let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
-                               bytesPerRow: w * 4, space: space, bitmapInfo: info) {
-            ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
-        }
-        return (data, w, h)
-    }
-
-    private func green(_ px: (bytes: [UInt8], width: Int, height: Int), x: Int, y: Int) -> Int {
+    private func green(_ px: Pixels, x: Int, y: Int) -> Int {
         Int(px.bytes[(y * px.width + x) * 4 + 1])
     }
 
     /// The brightness-weighted centroid of the pixels within `radius` of `point`,
     /// or nil when nothing bright is there.
-    private func centroid(_ px: (bytes: [UInt8], width: Int, height: Int),
+    private func centroid(_ px: Pixels,
                           near point: Vector2, within radius: Int) -> Vector2? {
         var sum = Vector2(0, 0), weight = 0.0
         let cx = Int(point.x.rounded()), cy = Int(point.y.rounded())
@@ -157,7 +145,7 @@ struct LensDistortionTests {
     }
 
     private func maxDifference(_ a: CGImage, _ b: CGImage) -> Int {
-        let pa = pixels(of: a), pb = pixels(of: b)
+        let pa = Pixels(a), pb = Pixels(b)
         var worst = 0
         for i in 0 ..< min(pa.bytes.count, pb.bytes.count) {
             worst = max(worst, abs(Int(pa.bytes[i]) - Int(pb.bytes[i])))

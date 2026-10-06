@@ -39,16 +39,6 @@ struct AnisotropyPackingTests {
 @MainActor
 struct AnisotropyRenderProbes {
 
-    private func pixels(of image: CGImage) -> [UInt8] {
-        let w = image.width, h = image.height
-        var data = [UInt8](repeating: 0, count: w * h * 4)
-        let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
-                            bytesPerRow: w * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
-                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-        ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
-        return data
-    }
-
     /// The bright region's pixel extent along x and y: the bounding box of every
     /// pixel whose green channel clears `threshold`, over the sphere's disc.
     private func extents(_ image: CGImage, threshold: Int = 110) -> (x: Int, y: Int) {

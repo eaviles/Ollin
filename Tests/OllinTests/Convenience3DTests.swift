@@ -76,19 +76,6 @@ struct Convenience3DTests {
 
     // MARK: Rendered A/B: the 3D sugar equals the block it replaces
 
-    private func bytes(of image: CGImage) -> [UInt8] {
-        let w = image.width, h = image.height
-        var out = [UInt8](repeating: 0, count: w * h * 4)
-        out.withUnsafeMutableBytes { raw in
-            let ctx = CGContext(data: raw.baseAddress, width: w, height: h,
-                                bitsPerComponent: 8, bytesPerRow: w * 4,
-                                space: CGColorSpaceCreateDeviceRGB(),
-                                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
-            ctx?.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
-        }
-        return out
-    }
-
     private final class Ground: Sketch {
         var oneCall = true
         override var canvasSize: CanvasSize { .square(256) }
@@ -117,8 +104,8 @@ struct Convenience3DTests {
     @Test func groundEqualsTheSpelledOutSlab() throws {
         let one = Ground()
         let block = Ground(); block.oneCall = false
-        #expect(bytes(of: try OllinApp.image(of: one))
-             == bytes(of: try OllinApp.image(of: block)))
+        #expect(pixels(of: try OllinApp.image(of: one))
+             == pixels(of: try OllinApp.image(of: block)))
     }
 
     private final class WorldLabel: Sketch {
@@ -143,8 +130,8 @@ struct Convenience3DTests {
     @Test func worldLabelEqualsProjectPlusText() throws {
         let one = WorldLabel()
         let manual = WorldLabel(); manual.oneCall = false
-        #expect(bytes(of: try OllinApp.image(of: one))
-             == bytes(of: try OllinApp.image(of: manual)))
+        #expect(pixels(of: try OllinApp.image(of: one))
+             == pixels(of: try OllinApp.image(of: manual)))
     }
 
     // MARK: Point-cloud measurements

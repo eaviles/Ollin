@@ -411,13 +411,4 @@ import OllinPhone
         return url
     }
 
-    /// Encode a request, split the framed bytes back into header + payload the way
-    /// the phone's reader does, and decode: the full trip down the cable.
-    private func roundTrip(_ request: PhoneRequest) -> PhoneRequest? {
-        let data = PhoneWire.encode(request)
-        guard let header = PhoneRequestHeader.parse(data) else { return nil }
-        let start = data.startIndex + PhoneWire.headerByteCount
-        let payload = data.subdata(in: start ..< data.endIndex)
-        return PhoneWire.decode(header: header, payload: payload)
-    }
 }

@@ -34,15 +34,6 @@ struct SceneLoaderTests {
         return buffer.base64EncodedString()
     }
 
-    /// Write a glTF string to a temp file and load it as a `Scene`, cleaning up.
-    private func loadScene(_ json: String) throws -> Ollin.Scene? {
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("ollin-\(ProcessInfo.processInfo.globallyUniqueString).gltf")
-        try json.write(to: url, atomically: true, encoding: .utf8)
-        defer { try? FileManager.default.removeItem(at: url) }
-        return try? Scene(contentsOf: url)
-    }
-
     /// The main fixture: a "rig" root translated (1,0,0) carrying the triangle
     /// mesh on a child "part" at (0,2,0) and a point light at (0,5,0); a camera
     /// node at (0,1,5) looking down -z; a spot rotated -90 deg about y (so it
@@ -89,7 +80,7 @@ struct SceneLoaderTests {
     // MARK: The node tree
 
     @Test func gltfSceneKeepsHierarchyAndNames() throws {
-        let scene = try #require(try loadScene(stageJSON))
+        let scene = try #require(loadGLTFScene(stageJSON))
         #expect(scene.name == "TestStage")
         #expect(scene.nodes.count == 5)
 
@@ -111,7 +102,7 @@ struct SceneLoaderTests {
     }
 
     @Test func sceneBoundsComposeNodeTransforms() throws {
-        let scene = try #require(try loadScene(stageJSON))
+        let scene = try #require(loadGLTFScene(stageJSON))
         // rig (1,0,0) + part (0,2,0) place the unit triangle at x 1...2, y 2...3.
         let b = scene.bounds
         #expect(abs(b.min.x - 1) < 1e-5 && abs(b.max.x - 2) < 1e-5)
@@ -122,7 +113,7 @@ struct SceneLoaderTests {
     // MARK: Cameras
 
     @Test func gltfSceneResolvesPerspectiveCamera() throws {
-        let scene = try #require(try loadScene(stageJSON))
+        let scene = try #require(loadGLTFScene(stageJSON))
         #expect(scene.cameras.count == 1)
         let cam = try #require(scene.camera)
         #expect((cam.eye - Vector3(0, 1, 5)).length < 1e-5)
@@ -147,7 +138,7 @@ struct SceneLoaderTests {
                        "orthographic": {"xmag": 3, "ymag": 2, "znear": 0.5, "zfar": 20}}]
         }
         """
-        let scene = try #require(try loadScene(json))
+        let scene = try #require(loadGLTFScene(json))
         let cam = try #require(scene.camera)
         guard case .orthographic(let height) = cam.projection else {
             Issue.record("expected an orthographic projection"); return
@@ -161,7 +152,7 @@ struct SceneLoaderTests {
     // MARK: Lights
 
     @Test func gltfSceneResolvesPunctualLights() throws {
-        let scene = try #require(try loadScene(stageJSON))
+        let scene = try #require(loadGLTFScene(stageJSON))
         #expect(scene.lights.count == 4)
 
         // The point light rides its node's *world* transform: rig (1,0,0) + (0,5,0).
@@ -197,7 +188,7 @@ struct SceneLoaderTests {
     // MARK: Lights and cameras ride their nodes
 
     @Test func lightsFollowAMovedNode() throws {
-        var scene = try #require(try loadScene(stageJSON))
+        var scene = try #require(loadGLTFScene(stageJSON))
         // Moving the light's carrier moves the resolved light: the "warm"
         // point rides rig/warm, so lifting "rig" lifts it.
         scene["rig"]?.position = Vector3(3, 1, 0)
@@ -209,14 +200,14 @@ struct SceneLoaderTests {
     }
 
     @Test func camerasFollowAMovedNode() throws {
-        var scene = try #require(try loadScene(stageJSON))
+        var scene = try #require(loadGLTFScene(stageJSON))
         scene["camNode"]?.position = Vector3(2, 1, 5)
         let cam = try #require(scene.camera)
         #expect((cam.eye - Vector3(2, 1, 5)).length < 1e-5)
     }
 
     @Test func anAppliedAnimationMovesALightsNode() throws {
-        var scene = try #require(try loadScene(stageJSON))
+        var scene = try #require(loadGLTFScene(stageJSON))
         // A translation track targeting the "warm" carrier (file node 3): the
         // authored (0,5,0) slides to (0,5,4) at t=1, and the resolved light
         // (under "rig" at (1,0,0)) follows the posed tree.
@@ -231,7 +222,7 @@ struct SceneLoaderTests {
     }
 
     @Test func settingLightsFreezesThemToTheHandSetArray() throws {
-        var scene = try #require(try loadScene(stageJSON))
+        var scene = try #require(loadGLTFScene(stageJSON))
         // Tweaking one in place is a set: the array becomes yours, fixed in
         // world space, and stops following the nodes.
         scene.lights[0].intensity = 0.25
@@ -252,15 +243,6 @@ struct SceneLoaderTests {
     }
 
     // MARK: The USD reader
-
-    /// Write a USD text fixture to a temp file and load it as a `Scene`.
-    private func loadUSDScene(_ usda: String) throws -> Ollin.Scene? {
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("ollin-\(ProcessInfo.processInfo.globallyUniqueString).usda")
-        try usda.write(to: url, atomically: true, encoding: .utf8)
-        defer { try? FileManager.default.removeItem(at: url) }
-        return try? Scene(contentsOf: url)
-    }
 
     /// The USD sibling of the glTF stage: a "rig" root translated (1,0,0)
     /// carrying a unit-quad mesh on a child "part" at (0,2,0) with a preview-
@@ -326,7 +308,7 @@ struct SceneLoaderTests {
     }
 
     @Test func usdSceneKeepsHierarchyAndLocalMeshes() throws {
-        let scene = try #require(try loadUSDScene(courtUSDA))
+        let scene = try #require(loadUSDScene(courtUSDA))
 
         // The tree shape survives: "part" rides "rig", not flattened away, and
         // each keeps its authored local translation.
@@ -358,7 +340,7 @@ struct SceneLoaderTests {
     }
 
     @Test func usdSceneResolvesPerspectiveCamera() throws {
-        let scene = try #require(try loadUSDScene(courtUSDA))
+        let scene = try #require(loadUSDScene(courtUSDA))
         #expect(scene.cameras.count == 1)
         let cam = try #require(scene.camera)
         #expect((cam.eye - Vector3(0, 1, 5)).length < 1e-5)
@@ -393,7 +375,7 @@ struct SceneLoaderTests {
             uniform token[] xformOpOrder = ["xformOp:translate"]
         }
         """
-        let scene = try #require(try loadUSDScene(usda))
+        let scene = try #require(loadUSDScene(usda))
         let cam = try #require(scene.camera)
         guard case .orthographic(let height) = cam.projection else {
             Issue.record("expected an orthographic projection"); return
@@ -407,7 +389,7 @@ struct SceneLoaderTests {
     @Test func usdSceneCarriesItsAuthoredLight() throws {
         // The authored SphereLight arrives as a point `Light` while its prim
         // keeps its place in the tree as a grouping node.
-        let scene = try #require(try loadUSDScene(courtUSDA))
+        let scene = try #require(loadUSDScene(courtUSDA))
         #expect(scene.lights.count == 1)
         #expect(scene.lights.first?.kind == .point)
         #expect(scene.lights.first?.intensity == 1)
@@ -497,7 +479,7 @@ struct SceneLoaderTests {
     }
 
     @Test func usdSceneResolvesUsdLuxLights() throws {
-        let scene = try #require(try loadUSDScene(lightsUSDA))
+        let scene = try #require(loadUSDScene(lightsUSDA))
         #expect(scene.lights.count == 7)
 
         // The sphere light rides its prim's *world* transform: rig (1,0,0) +
@@ -554,7 +536,7 @@ struct SceneLoaderTests {
     }
 
     @Test func usdLightsFollowAMovedNode() throws {
-        var scene = try #require(try loadUSDScene(lightsUSDA))
+        var scene = try #require(loadUSDScene(lightsUSDA))
         // The UsdLux prims are nodes too: lifting "rig" carries its sphere
         // light, and the rest of the rig keeps resolving.
         scene["rig"]?.position = Vector3(2, 1, 0)
@@ -641,7 +623,7 @@ struct SceneLoaderTests {
     @Test func usdSceneKeepsAuthoredChildOrder() throws {
         // Children arrive in the file's own order, never alphabetized, each
         // node carrying real per-prim identity.
-        let scene = try #require(try loadUSDScene("""
+        let scene = try #require(loadUSDScene("""
         #usda 1.0
         (
             defaultPrim = "Root"
@@ -689,7 +671,7 @@ struct SceneLoaderTests {
         // visibility = "invisible" hides its subtree (nodes stay, nothing
         // renders, its lights stay dark); a guide/proxy purpose skips
         // rendering the same way.
-        let scene = try #require(try loadUSDScene("""
+        let scene = try #require(loadUSDScene("""
         #usda 1.0
         (
             defaultPrim = "Root"
@@ -747,7 +729,7 @@ struct SceneLoaderTests {
         // Two quads sharing an edge with faceVarying texture coordinates:
         // the mesh expands to one vertex per corner so the seam's corners
         // keep their own values (v flips to the top-left convention).
-        let scene = try #require(try loadUSDScene("""
+        let scene = try #require(loadUSDScene("""
         #usda 1.0
         (
             defaultPrim = "Root"
@@ -779,7 +761,7 @@ struct SceneLoaderTests {
     @Test func usdVertexAttributesStayOnAuthoredPoints() throws {
         // Vertex-interpolated texture coordinates need no expansion: the
         // mesh keeps its authored points shared.
-        let scene = try #require(try loadUSDScene("""
+        let scene = try #require(loadUSDScene("""
         #usda 1.0
         (
             defaultPrim = "Root"
@@ -896,7 +878,7 @@ struct SceneLoaderTests {
     // MARK: Value semantics
 
     @Test func nodeReturnsACopyAndSubscriptMutatesInPlace() throws {
-        let scene = try #require(try loadScene(stageJSON))
+        let scene = try #require(loadGLTFScene(stageJSON))
         var copy = try #require(scene.node("part"))
         copy.position += Vector3(0, 5, 0)
         // Mutating the copy leaves the scene untouched...
@@ -963,7 +945,7 @@ struct SceneLoaderTests {
     }
 
     @Test func gltfMultiMaterialMeshSplitsIntoParts() throws {
-        let scene = try #require(try loadScene(duoJSON()))
+        let scene = try #require(loadGLTFScene(duoJSON()))
         let node = try #require(scene.node("duo"))
         let mesh = try #require(node.mesh)
 
@@ -981,7 +963,7 @@ struct SceneLoaderTests {
 
     @Test func gltfSharedMaterialPrimitivesCarryNoParts() throws {
         // Both primitives wear material 0: one look, so nothing to split.
-        let scene = try #require(try loadScene(duoJSON(secondMaterial: 0)))
+        let scene = try #require(loadGLTFScene(duoJSON(secondMaterial: 0)))
         let node = try #require(scene.node("duo"))
         #expect(node.mesh != nil)
         #expect(node.meshParts.isEmpty)
@@ -1058,7 +1040,7 @@ struct SceneLoaderTests {
     }
 
     @Test func usdMaterialSubsetsSplitIntoParts() throws {
-        let scene = try #require(try loadUSDScene(sheetUSDA()))
+        let scene = try #require(loadUSDScene(sheetUSDA()))
         let node = try #require(scene.node("sheet"))
         let mesh = try #require(node.mesh)
 
@@ -1081,7 +1063,7 @@ struct SceneLoaderTests {
     @Test func usdSubsetCoveringAllFacesOverridesTheBaseBinding() throws {
         // One subset claims every face: its material wins for the whole
         // surface (the mesh's own display color never shows).
-        let scene = try #require(try loadUSDScene("""
+        let scene = try #require(loadUSDScene("""
         #usda 1.0
         (
             defaultPrim = "Stage"
@@ -1131,7 +1113,7 @@ struct SceneLoaderTests {
     @Test func usdNonMaterialBindSubsetsAreIgnored() throws {
         // A physics (or any non-materialBind) family doesn't partition
         // materials: the mesh stays whole.
-        let scene = try #require(try loadUSDScene(sheetUSDA(family: "physicsCollision")))
+        let scene = try #require(loadUSDScene(sheetUSDA(family: "physicsCollision")))
         let node = try #require(scene.node("sheet"))
         #expect(node.mesh != nil)
         #expect(node.meshParts.isEmpty)

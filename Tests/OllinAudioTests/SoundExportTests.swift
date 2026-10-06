@@ -6,7 +6,7 @@ import Testing
 /// An export has no speakers and no clock, so an instrument writes its notes
 /// down instead and renders them at the end. What is checked here is that the
 /// sound lands where the picture asked for it, that it comes out the same way
-/// twice, and that a sketch making no sound is left exactly as it was.
+/// twice, and that an instrument that made no sound renders silence.
 @Suite(.serialized) struct SoundExportTests {
 
     static let sampleRate = 44100.0
@@ -53,9 +53,14 @@ import Testing
     @MainActor
     @Test func aSketchThatPlayedNothingExportsNothing() {
         let synth = Synth(.pluck)
-        // A track was never asked for, so nothing renders and the file stays
-        // the file it would have been.
+        // Nothing was asked for during the frames, so the instrument has no
+        // notes written down, and what it renders into the soundtrack is
+        // silence. (The exporter declares a track for every instrument a
+        // sketch holds, played or not, since a track has to exist before the
+        // first frame is written; what this instrument puts on it is nothing.)
         #expect(!synth.hasExportAudio)
+        let samples = record(synth, notes: [], seconds: 1)
+        #expect(samples.allSatisfy { $0 == 0 }, "an instrument that played nothing rendered sound")
     }
 
     @MainActor

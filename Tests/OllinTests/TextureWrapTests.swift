@@ -53,16 +53,6 @@ struct TextureWrapTests {
         }
     }
 
-    private func pixels(of image: CGImage) -> [UInt8] {
-        let w = image.width, h = image.height
-        var data = [UInt8](repeating: 0, count: w * h * 4)
-        let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
-                            bytesPerRow: w * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
-                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-        ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
-        return data
-    }
-
     /// The mean of one channel over a fractional region of the frame.
     private func regionMean(_ image: CGImage, x0: Double, x1: Double,
                             y0: Double = 0.4, y1: Double = 0.6, channel: Int = 1) -> Double {

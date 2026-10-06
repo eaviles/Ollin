@@ -9,8 +9,9 @@ import Ollin
 
 /// The failure paths and the coordinate math are always-on; the real-model
 /// tests run only where the matching model has been downloaded
-/// (`Scripts/fetch-models.sh`) — or, for the style model, trained in Create ML —
-/// soft-skipping elsewhere (CI never fetches the weights).
+/// (`Scripts/fetch-models.sh`) or, for the style model, trained in Create ML,
+/// and refuse themselves by an `.enabled` trait elsewhere (CI never fetches the
+/// weights), so a run reports what it skipped.
 @Suite struct ModelTrackerTests {
 
     /// The repo root, located from this file so the tests don't depend on the
@@ -183,8 +184,8 @@ import Ollin
     /// optical-flow lesson, re-applied here). The full-color `image` surface
     /// is read off the same observation and must match the map it was
     /// decoded from.
-    @Test func depthModelProducesAQueryableMap() async throws {
-        guard Self.depthModelIsFetched else { return }
+    @Test(.enabled(if: ModelTrackerTests.depthModelIsFetched, "the depth model is not fetched (Scripts/fetch-models.sh)"))
+    func depthModelProducesAQueryableMap() async throws {
         let tracker = ModelTracker(modelAt: Self.depthModelURL)
         let image = gradientScene(width: 320, height: 240)
         let output = try await tracker.detect(in: image)
@@ -252,8 +253,8 @@ import Ollin
     /// person in the bundled clip's opening scene — the end-to-end pin for the
     /// fetched model + the labeled-box decode. (Later in the same clip the
     /// flying dancers read as "kite" and "bird" — the model's age, honestly.)
-    @Test func detectorFindsThePersonInRealFootage() async throws {
-        guard Self.isFetched(Self.detectorModelURL) else { return }
+    @Test(.enabled(if: ModelTrackerTests.isFetched(ModelTrackerTests.detectorModelURL), "the detector model is not fetched (Scripts/fetch-models.sh)"))
+    func detectorFindsThePersonInRealFootage() async throws {
         let frame = try await Self.clipFrame(at: 6)
         let tracker = ModelTracker(modelAt: Self.detectorModelURL)
         let output = try await tracker.detect(in: Image(cgImage: frame))
@@ -270,8 +271,8 @@ import Ollin
     /// The classifier surface over a drawn digit: a thick ring on black — a
     /// "0" in the form MNIST was trained on — through the same still path the
     /// DigitReader example uses.
-    @Test func digitClassifierReadsADrawnZero() async throws {
-        guard Self.isFetched(Self.digitModelURL) else { return }
+    @Test(.enabled(if: ModelTrackerTests.isFetched(ModelTrackerTests.digitModelURL), "the digit model is not fetched (Scripts/fetch-models.sh)"))
+    func digitClassifierReadsADrawnZero() async throws {
         let pad = Image(width: 280, height: 280, color: .black)
         let c = 140.0
         for y in 0..<280 {
@@ -293,8 +294,8 @@ import Ollin
     /// back at the model's size with the style's hues, not a gray map. Gated on
     /// the locally *trained* model (the StyleMirror example's instructions),
     /// not a fetched one.
-    @Test func styleModelPaintsInColor() async throws {
-        guard Self.isFetched(Self.styleModelURL) else { return }
+    @Test(.enabled(if: ModelTrackerTests.isFetched(ModelTrackerTests.styleModelURL), "the style model is not trained (Create ML)"))
+    func styleModelPaintsInColor() async throws {
         let frame = try await Self.clipFrame(at: 6)
         let tracker = ModelTracker(modelAt: Self.styleModelURL)
         let output = try await tracker.detect(in: Image(cgImage: frame))
@@ -320,8 +321,8 @@ import Ollin
     /// (the flyers are in the picture's top half, so their centroid must read
     /// in the normalized upper half — the regression shape that caught the
     /// mirrored point queries elsewhere in the catalog).
-    @Test func segmenterLabelsThePersonPixelsInRealFootage() async throws {
-        guard Self.isFetched(Self.segmentationModelURL) else { return }
+    @Test(.enabled(if: ModelTrackerTests.isFetched(ModelTrackerTests.segmentationModelURL), "the segmentation model is not fetched (Scripts/fetch-models.sh)"))
+    func segmenterLabelsThePersonPixelsInRealFootage() async throws {
         let frame = try await Self.clipFrame(at: 1)
         let tracker = ModelTracker(modelAt: Self.segmentationModelURL)
         let output = try await tracker.detect(in: Image(cgImage: frame))
@@ -388,8 +389,8 @@ import Ollin
 
     /// The compile cache hands back the same stable path for the same source —
     /// what keeps every launch after the first in milliseconds.
-    @Test func compileCacheIsStable() async throws {
-        guard Self.depthModelIsFetched else { return }
+    @Test(.enabled(if: ModelTrackerTests.depthModelIsFetched, "the depth model is not fetched (Scripts/fetch-models.sh)"))
+    func compileCacheIsStable() async throws {
         let first = try await ModelTracker.compiledModelURL(for: Self.depthModelURL)
         let second = try await ModelTracker.compiledModelURL(for: Self.depthModelURL)
         #expect(first == second)
@@ -401,8 +402,8 @@ import Ollin
     /// loads in the background, and the surfaces publish. Reads `map` and
     /// `image` in the poll loop because each surface's first read arms
     /// its own conversion.
-    @Test @MainActor func liveWiringPublishes() async throws {
-        guard Self.depthModelIsFetched else { return }
+    @Test(.enabled(if: ModelTrackerTests.depthModelIsFetched, "the depth model is not fetched (Scripts/fetch-models.sh)")) @MainActor
+    func liveWiringPublishes() async throws {
         let source = FrameSourceTests.ManualFrameSource()
         let tracker = ModelTracker(source, modelAt: Self.depthModelURL)
         let frame = gradientScene(width: 160, height: 120)

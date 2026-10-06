@@ -6,8 +6,9 @@ import Ollin
 @testable import OllinVision
 
 /// The matte/cutout conversions are deterministic byte work, so they're checked
-/// exactly; the models themselves are smoke-tested with the soft-skip the other
-/// neural trackers use (they need a compute device some test environments lack).
+/// exactly; the models themselves are smoke-tested behind the trait the other
+/// neural trackers use, which refuses the test where the compute device they
+/// need is missing.
 @Suite struct SegmenterTests {
 
     /// A grayscale CGImage from explicit byte values, the shape Vision's matte
@@ -120,14 +121,20 @@ import Ollin
         #expect(SegmentationImages.grayBytes(from: gray, width: 2, height: 2) == [0, 64, 128, 255])
     }
 
-    // MARK: Models (soft-skip where the compute device is missing)
+    // MARK: Models (refused where the compute device is missing)
 
-    @Test func blankImageSegmentsToAnEmptyPersonMatte() async throws {
-        let image = Image(width: 64, height: 64, color: .black)
-        // Soft-skip: the segmentation model needs a compute device some headless
-        // test environments lack; a throw there isn't a code failure. (`try?`
-        // flattens the optional, so nil covers both the skip and a nil result.)
-        guard let segmentation = try? await PersonSegmenter.detect(in: image) else { return }
+    /// The person model over a blank frame, made once: `nil` where the model
+    /// has no compute device, which `personModelRuns` reports as the skip it is.
+    private static let blankPerson = Task<Segmentation?, Never> {
+        try? await PersonSegmenter.detect(in: Image(width: 64, height: 64, color: .black))
+    }
+
+    private static let personModelRuns: ConditionTrait = .enabled("the person segmentation model has no compute device here") {
+        await SegmenterTests.blankPerson.value != nil
+    }
+
+    @Test(personModelRuns) func blankImageSegmentsToAnEmptyPersonMatte() async throws {
+        let segmentation = try #require(await Self.blankPerson.value)
         #expect(segmentation.matte.width > 0)
         #expect(segmentation.cutout.width == 64)
         // No person anywhere: the matte's center stays transparent.
@@ -153,27 +160,28 @@ import Ollin
     /// suite: the still test reads it and the live-wiring test only needs to
     /// know the model lifts this frame here, so the model runs once. `try?`
     /// flattens, so `nil` covers both "the model cannot run here" and "the
-    /// model judged nothing salient" (the soft-skip).
+    /// model judged nothing salient", and `subjectLifts` reports either as the
+    /// skip it is.
     private static let subject = Task<Segmentation?, Never> {
         try? await SubjectSegmenter.detect(in: SegmenterTests().diskImage())
     }
 
-    @Test func syntheticDiskLiftsAsASubject() async throws {
-        // Lenient soft-skip: `try?` flattens, so nil covers both "model can't run
-        // here" and "the model judged nothing salient" — assert only when
-        // something lifted.
-        guard let segmentation = await Self.subject.value else { return }
+    private static let subjectLifts: ConditionTrait = .enabled("the subject model did not lift the disk here") {
+        await SegmenterTests.subject.value != nil
+    }
+
+    @Test(subjectLifts) func syntheticDiskLiftsAsASubject() async throws {
+        let segmentation = try #require(await Self.subject.value)
         #expect(segmentation.cutout.width == 320)
         let center = segmentation.matte[segmentation.matte.width / 2, segmentation.matte.height / 2]
         #expect(center.alpha > 0.5)
     }
 
     @MainActor
-    @Test func liveWiringPublishesMatteCutoutAndCount() async throws {
-        // Gate on the still path: only run the live assertion where the model
-        // demonstrably lifts this exact frame (elsewhere this is the soft-skip).
+    @Test(subjectLifts) func liveWiringPublishesMatteCutoutAndCount() async throws {
+        // Gated on the still path: the live assertion runs only where the
+        // model demonstrably lifts this exact frame.
         let image = diskImage()
-        guard await Self.subject.value != nil else { return }
 
         // The camera-free live path: a hand-driven source standing in for the
         // capture queue, exactly like the frame-source tests.

@@ -10,12 +10,6 @@ import Ollin
 
     private let sets = [Data([0x40, 0x01, 0x0C]), Data([0x42, 0x01, 0x01, 0x01]), Data([0x44, 0x01])]
 
-    private func roundTrip(_ request: PhoneRequest) -> PhoneRequest? {
-        let data = PhoneWire.encode(request)
-        guard let header = PhoneRequestHeader.parse(data) else { return nil }
-        return PhoneWire.decode(header: header, payload: data.dropFirst(PhoneWire.headerByteCount))
-    }
-
     @Test func aKeyframeTravelsWithItsParameterSets() {
         let picture = PhonePicture(width: 1080, height: 1920, isKeyframe: true, parameterSets: sets,
                                    data: Data((0..<3000).map { UInt8($0 & 0xFF) }))

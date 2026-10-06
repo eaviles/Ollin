@@ -21,16 +21,6 @@ import Testing
 @MainActor
 struct USDSkinningTests {
 
-    /// Write a usda string to a temp file and load it as a `Scene` (the
-    /// native walk plus the skinning attach).
-    private func loadUSDScene(_ usda: String) throws -> Ollin.Scene? {
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("ollin-\(ProcessInfo.processInfo.globallyUniqueString).usda")
-        try usda.write(to: url, atomically: true, encoding: .utf8)
-        defer { try? FileManager.default.removeItem(at: url) }
-        return try? Scene(contentsOf: url)
-    }
-
     /// A two-joint arm: a 2-unit column of 8 points, the bottom ring bound to
     /// `Base` and the top ring to `Base/Tip` (elementSize 1), the tip bending
     /// 90 degrees about z over one second, plus one sparse blend shape
@@ -141,7 +131,7 @@ struct USDSkinningTests {
     // MARK: The synthesized skeleton
 
     @Test func skeletonSynthesizesJointNodes() throws {
-        let scene = try #require(try loadUSDScene(arm))
+        let scene = try #require(loadUSDScene(arm))
         // The container carries the Skeleton prim's name; joints nest by
         // their path hierarchy, each based at its local rest transform.
         let container = try #require(scene.node("Skel"))
@@ -157,7 +147,7 @@ struct USDSkinningTests {
     }
 
     @Test func deformingMeshKeepsAuthoredPointsIndexed() throws {
-        let scene = try #require(try loadUSDScene(arm))
+        let scene = try #require(loadUSDScene(arm))
         let node = try #require(scene.node("Arm"))
         let mesh = try #require(node.mesh)
         // The rebuilt mesh is the authored 8 points, not an expanded copy,
@@ -172,7 +162,7 @@ struct USDSkinningTests {
     // MARK: The skinning math
 
     @Test func bindPoseIsTheAuthoredMesh() throws {
-        let scene = try #require(try loadUSDScene(arm))
+        let scene = try #require(loadUSDScene(arm))
         let posed = try posedArm(scene, at: 0)
         let original = try #require(scene.node("Arm")?.mesh)
         for (a, b) in zip(posed.positions, original.positions) {
@@ -185,7 +175,7 @@ struct USDSkinningTests {
         // swings to the left. Point 5 (0.2, 2, 0.2): the inverse bind takes it
         // to (0.2, 1, 0.2) in tip space, the rotation sends it to
         // (-1, 0.2, 0.2), the translation lands it at (-1, 1.2, 0.2).
-        let scene = try #require(try loadUSDScene(arm))
+        let scene = try #require(loadUSDScene(arm))
         #expect(scene.animations.first?.duration == 1)
         let posed = try posedArm(scene, at: 1)
         #expect((posed.positions[5] - Vector3(-1, 1.2, 0.2)).length < 1e-4)
@@ -201,7 +191,7 @@ struct USDSkinningTests {
             double3 xformOp:translate = (3, 0, 0)
                     uniform token[] xformOpOrder = ["xformOp:translate"]
             """)
-        let scene = try #require(try loadUSDScene(moved))
+        let scene = try #require(loadUSDScene(moved))
         let posed = try posedArm(scene, at: 0)
         #expect((posed.positions[1] - Vector3(3.2, 0, 0.2)).length < 1e-4)
     }
@@ -213,7 +203,7 @@ struct USDSkinningTests {
             jointIndices: "[0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1]",
             jointWeights: "[1, 0, 1, 0, 1, 0, 1, 0, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]",
             elementSize: 2)
-        let scene = try #require(try loadUSDScene(blended))
+        let scene = try #require(loadUSDScene(blended))
         let posed = try posedArm(scene, at: 1)
         // Base leaves point 5 at (0.2, 2, 0.2); Tip sends it to (-1, 1.2, 0.2).
         #expect((posed.positions[5] - Vector3(-0.4, 1.6, 0.2)).length < 1e-4)
@@ -223,7 +213,7 @@ struct USDSkinningTests {
         // One shared element rides every point: the whole mesh follows Tip.
         let rigid = armUSDA(jointIndices: "[1]", jointWeights: "[1]",
                             interpolation: "constant")
-        let scene = try #require(try loadUSDScene(rigid))
+        let scene = try #require(loadUSDScene(rigid))
         let posed = try posedArm(scene, at: 1)
         // Point 1 bulges first to (0.5, 0, 0.2) (morphs apply before the
         // skin), sits at (0.5, -1, 0.2) in tip space, rotates to
@@ -240,7 +230,7 @@ struct USDSkinningTests {
         let remapped = armUSDA(
             meshExtras: "uniform token[] skel:joints = [\"Base/Tip\", \"Base\"]",
             jointIndices: "[1, 1, 1, 1, 0, 0, 0, 0]")
-        let scene = try #require(try loadUSDScene(remapped))
+        let scene = try #require(loadUSDScene(remapped))
         let posed = try posedArm(scene, at: 1)
         #expect((posed.positions[5] - Vector3(-1, 1.2, 0.2)).length < 1e-4)
         #expect((posed.positions[1] - Vector3(0.5, 0, 0.2)).length < 1e-5)
@@ -249,7 +239,7 @@ struct USDSkinningTests {
     // MARK: Blend shapes
 
     @Test func sparseOffsetsLandOnTheirPoints() throws {
-        let scene = try #require(try loadUSDScene(arm))
+        let scene = try #require(loadUSDScene(arm))
         let node = try #require(scene.node("Arm"))
         #expect(node.weights == [0])
         let target = try #require(node.morphTargets.first)
@@ -262,7 +252,7 @@ struct USDSkinningTests {
     @Test func weightsChannelDrivesTheTargetsByName() throws {
         // The blendShapeWeights ramp 0 to 1 over the second; halfway the
         // bulge is half applied.
-        let scene = try #require(try loadUSDScene(arm))
+        let scene = try #require(loadUSDScene(arm))
         var posed = scene
         let animation = try #require(posed.animations.first)
         posed.apply(animation, at: 0.5)
@@ -292,7 +282,7 @@ struct USDSkinningTests {
 
                 def Mesh "Arm" (
             """)
-        let scene = try #require(try loadUSDScene(combined))
+        let scene = try #require(loadUSDScene(combined))
         #expect(scene.animations.count == 1)
         let animation = try #require(scene.animations.first)
         #expect(animation.duration == 2)

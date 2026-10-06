@@ -2,6 +2,7 @@ import Foundation
 import Testing
 import Ollin
 @testable import OllinMQTT
+import OllinTestSupport
 
 /// A whole session against the in-process broker on the loopback: connecting,
 /// subscribing, both service levels, retained values, the will, the heartbeat,
@@ -12,20 +13,9 @@ import Ollin
 @Suite
 struct MQTTSessionTests {
 
-    struct Timeout: Error {}
-
-    /// Polls `probe` until it returns a value or the timeout elapses.
-    ///
-    /// The probe comes before the clock is read: a starved task can wake past its
-    /// own deadline having never looked, and giving up then throws over a message
-    /// that already arrived.
+    /// `OllinTestSupport.waitFor` with this suite's budget: a broker in the process, over the loopback, with keep-alives measured in seconds.
     func waitFor<T>(timeout: Double = 5.0, _ probe: () -> T?) async throws -> T {
-        let deadline = Date().addingTimeInterval(timeout)
-        while true {
-            if let value = probe() { return value }
-            if Date() >= deadline { throw Timeout() }
-            try await Task.sleep(nanoseconds: 5_000_000)   // 5 ms
-        }
+        try await OllinTestSupport.waitFor(timeout: timeout, probe)
     }
 
     /// A broker listening on a loopback port of its own.

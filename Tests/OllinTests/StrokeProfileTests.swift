@@ -163,7 +163,7 @@ struct StrokeProfileTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func aTaperThinsTowardItsEnd() throws {
         let image = try OllinApp.image(of: TaperTipProbe())
-        let px = pixels(of: image)
+        let px = Pixels(image)
         // The mark runs along y = 64 from x = 20, tapering to nothing at x = 200.
         #expect(px.gray(128, 64) <= 12)                  // middle: solid
         // Ink laid down in a column: summed, not peaked, because the middle of a
@@ -187,7 +187,7 @@ struct StrokeProfileTests {
     func aUniformStrokeIsUnchangedByTheProfilePath() throws {
         let a = try OllinApp.image(of: UniformStrokeProbe())
         // A 6px stroke covers its full width: the center is solid ink.
-        #expect(pixels(of: a).gray(128, 64) <= 12)
+        #expect(Pixels(a).gray(128, 64) <= 12)
     }
 }
 
@@ -200,25 +200,6 @@ private func signedArea(_ points: [Vector2]) -> Double {
         area += a.x * b.y - b.x * a.y
     }
     return area / 2
-}
-
-private struct Pixels {
-    var bytes: [UInt8]
-    var width: Int
-    func gray(_ x: Int, _ y: Int) -> Int { Int(bytes[(y * width + x) * 4]) }
-}
-
-private func pixels(of image: CGImage) -> Pixels {
-    let w = image.width, h = image.height
-    var bytes = [UInt8](repeating: 0, count: w * h * 4)
-    bytes.withUnsafeMutableBytes { raw in
-        let ctx = CGContext(data: raw.baseAddress, width: w, height: h,
-                            bitsPerComponent: 8, bytesPerRow: w * 4,
-                            space: CGColorSpaceCreateDeviceRGB(),
-                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
-        ctx?.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
-    }
-    return Pixels(bytes: bytes, width: w)
 }
 
 private final class TaperTipProbe: Sketch {

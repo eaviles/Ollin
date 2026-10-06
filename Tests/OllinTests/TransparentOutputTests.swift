@@ -117,7 +117,7 @@ struct TransparentOutputTests {
         try OllinApp.export(sketch, to: path)
         let source = try #require(CGImageSourceCreateWithURL(URL(fileURLWithPath: path) as CFURL, nil))
         let read = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
-        let bytes = try #require(FrameGrabTests.rgba(of: read))
+        let bytes = pixels(of: read)
         let at = { (x: Int, y: Int) -> (r: Int, a: Int) in
             let i = (y * read.width + x) * 4
             return (Int(bytes[i]), Int(bytes[i + 3]))
@@ -134,7 +134,7 @@ struct TransparentOutputTests {
         try OllinApp.exportGIF(Disk(), to: path, frames: 2, fps: 10)
         let source = try #require(CGImageSourceCreateWithURL(URL(fileURLWithPath: path) as CFURL, nil))
         let read = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
-        let bytes = try #require(FrameGrabTests.rgba(of: read))
+        let bytes = pixels(of: read)
         let alpha = { (x: Int, y: Int) -> Int in Int(bytes[(y * read.width + x) * 4 + 3]) }
         #expect(alpha(4, 4) == 0)
         #expect(alpha(64, 64) == 255)

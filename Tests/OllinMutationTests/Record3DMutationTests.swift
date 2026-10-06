@@ -5,6 +5,7 @@ import ImageIO
 import Testing
 import UniformTypeIdentifiers
 import OllinMutation
+import OllinTestSupport
 @testable import OllinRecord3D
 
 /// The Record3D USB stream frame (a 104-byte header, then a JPEG, an LZFSE
@@ -14,57 +15,16 @@ import OllinMutation
 
     static let colorWidth = 8, colorHeight = 6
 
-    static func header(rgb: Int, depth: Int, conf: Int, misc: Int) -> [UInt8] {
-        var h = [UInt8](repeating: 0, count: 104)
-        func u32(_ off: Int, _ v: UInt32) {
-            h[off] = UInt8(v & 0xFF); h[off + 1] = UInt8((v >> 8) & 0xFF)
-            h[off + 2] = UInt8((v >> 16) & 0xFF); h[off + 3] = UInt8((v >> 24) & 0xFF)
-        }
-        func f32(_ off: Int, _ v: Float) { u32(off, v.bitPattern) }
-        u32(0, 0x0100_0000)
-        u32(40, UInt32(rgb)); u32(44, UInt32(depth)); u32(48, UInt32(conf)); u32(52, UInt32(misc))
-        f32(60, 5.5); f32(64, 5.5); f32(68, 4); f32(72, 3)
-        f32(76, 0); f32(80, 0); f32(84, 0); f32(88, 1)
-        f32(92, 0.1); f32(96, 0.2); f32(100, 0.3)
-        return h
-    }
-
-    static func jpeg() -> [UInt8] {
-        let context = CGContext(data: nil, width: colorWidth, height: colorHeight, bitsPerComponent: 8,
-                                bytesPerRow: colorWidth * 4, space: CGColorSpaceCreateDeviceRGB(),
-                                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-        context.setFillColor(red: 0.2, green: 0.5, blue: 0.9, alpha: 1)
-        context.fill(CGRect(x: 0, y: 0, width: colorWidth, height: colorHeight))
-        let image = context.makeImage()!
-        let data = NSMutableData()
-        let destination = CGImageDestinationCreateWithData(data, UTType.jpeg.identifier as CFString, 1, nil)!
-        CGImageDestinationAddImage(destination, image, nil)
-        CGImageDestinationFinalize(destination)
-        return [UInt8](data as Data)
-    }
-
-    static func lzfse(_ bytes: [UInt8]) -> [UInt8] {
-        let capacity = bytes.count * 2 + 4096
-        var out = [UInt8](repeating: 0, count: capacity)
-        let written = out.withUnsafeMutableBufferPointer { dst in
-            bytes.withUnsafeBufferPointer { src in
-                compression_encode_buffer(dst.baseAddress!, capacity, src.baseAddress!, bytes.count,
-                                          nil, COMPRESSION_LZFSE)
-            }
-        }
-        return Array(out.prefix(written))
-    }
-
     static func seeds() -> [[UInt8]] {
         let depth: [Float] = (0..<48).map { 0.5 + Float($0) * 0.01 }
         var depthBytes: [UInt8] = []
         for value in depth { withUnsafeBytes(of: value.bitPattern.littleEndian) { depthBytes.append(contentsOf: $0) } }
         let confidence = [UInt8](repeating: 2, count: 48)
-        let color = jpeg()
-        let depthBlob = lzfse(depthBytes), confidenceBlob = lzfse(confidence)
-        let whole = header(rgb: color.count, depth: depthBlob.count, conf: confidenceBlob.count, misc: 2)
+        let color = Record3DFrameBytes.jpeg(width: Self.colorWidth, height: Self.colorHeight)
+        let depthBlob = Record3DFrameBytes.lzfse(depthBytes), confidenceBlob = Record3DFrameBytes.lzfse(confidence)
+        let whole = Record3DFrameBytes.header(rgb: color.count, depth: depthBlob.count, conf: confidenceBlob.count, misc: 2)
             + color + depthBlob + confidenceBlob + [0x7B, 0x7D]
-        let bare = header(rgb: color.count, depth: depthBlob.count, conf: 0, misc: 0) + color + depthBlob
+        let bare = Record3DFrameBytes.header(rgb: color.count, depth: depthBlob.count, conf: 0, misc: 0) + color + depthBlob
         return [whole, bare]
     }
 
@@ -82,7 +42,8 @@ import OllinMutation
     }
 
     @Test func theCodecAlone() {
-        let seeds = [Self.lzfse([UInt8](repeating: 9, count: 200)), Self.lzfse(Array(0..<255)), Self.jpeg()]
+        let seeds = [Record3DFrameBytes.lzfse([UInt8](repeating: 9, count: 200)), Record3DFrameBytes.lzfse(Array(0..<255)),
+                     Record3DFrameBytes.jpeg(width: Self.colorWidth, height: Self.colorHeight)]
         let report = MutationRun.run("record3d-codec", seeds: seeds, count: 400) { bytes in
             let data = Data(bytes)
             let inflated = Record3DCodec.lzfseDecompress(data)

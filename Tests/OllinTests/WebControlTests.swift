@@ -347,33 +347,6 @@ import OllinWebGate
 
     // MARK: The page against the Mac
 
-    /// The page's pixels at `frame` with `settings` applied through the handle
-    /// before the frame is shown.
-    static func pagePixels(_ page: String, frame: Int, settings: String) async throws -> CGImage {
-        let probe = """
-        <pre id="r0">PENDING</pre>
-        <script>
-        (function () {
-          var out = document.getElementById('r0');
-          try {
-            var player = window.ollin;
-            if (!player) { out.textContent = 'FAIL no player'; return; }
-            player.pause();
-            (player.ready || Promise.resolve()).then(function () {
-              \(settings)
-              player.showFrame(\(frame));
-              out.textContent = player.canvas.toDataURL('image/png');
-            }).catch(function (e) { out.textContent = 'FAIL ' + e; });
-          } catch (e) { out.textContent = 'FAIL ' + e; }
-        })();
-        </script>
-        """
-        let html = "<!doctype html><html><body>\n" + page + "\n" + probe + "\n</body></html>"
-        let dom = try await HeadlessBrowser.dom(of: html)
-        let report = try #require(HeadlessBrowser.text(of: "r0", in: dom))
-        return try WebExportTests.image(fromDataURL: report)
-    }
-
     /// The Mac's frame with `overrides` applied the way `--param` applies them.
     static func reference(_ make: () -> Sketch, frame: Int, fps: Double, overrides: [String: String]) throws -> CGImage {
         let saved = OllinApp.paramOverrides
@@ -406,10 +379,12 @@ import OllinWebGate
              "player.set('radius', 140); player.reset();",
              [:]),
         ]
-        for c in cases {
+        let pages = try cases.map { c in
             let recording = try OllinApp.recordWebFrames(of: c.make(), frames: c.frames, fps: 10)
-            let page = try OllinApp.webPage(of: recording, form: .inline)
-            let played = try await Self.pagePixels(page, frame: c.probe, settings: c.settings)
+            return WebExportTests.PageProbe(page: try OllinApp.webPage(of: recording, form: .inline),
+                                            frame: c.probe, settings: c.settings)
+        }
+        for (c, played) in zip(cases, try await WebExportTests.pagePixels(pages)) {
             let reference = try Self.reference(c.make, frame: c.probe, fps: 10, overrides: c.overrides)
             let difference = try WebExportTests.meanDifference(played, reference)
             print("web page control against the Mac: \(c.name) frame \(c.probe), mean difference \(String(format: "%.3f", difference))")
@@ -423,7 +398,7 @@ import OllinWebGate
         // value must read as different, or the gate above proves nothing.
         let recording = try OllinApp.recordWebFrames(of: Dial(), frames: 4, fps: 10)
         let page = try OllinApp.webPage(of: recording, form: .inline)
-        let moved = try await Self.pagePixels(page, frame: 1, settings: "player.set('radius', 140);")
+        let moved = try await WebExportTests.pagePixels(page, frame: 1, settings: "player.set('radius', 140);")
         let recorded = try OllinApp.image(of: Dial(), frame: 1, fps: 10)
         let difference = try WebExportTests.meanDifference(moved, recorded)
         #expect(difference > Snapshot.tolerance, "mean difference \(difference)")

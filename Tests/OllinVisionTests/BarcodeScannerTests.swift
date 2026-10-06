@@ -31,7 +31,7 @@ import Foundation
 
     @Test func readsAGeneratedQRCode() async throws {
         let payload = "https://ollin.example/hello"
-        guard let image = qrImage(payload) else { return }   // soft-skip if generation fails
+        let image = try #require(qrImage(payload), "Core Image did not generate the code")
         let codes = try await BarcodeScanner.detect(in: image)
         #expect(codes.contains { $0.payload == payload })
         if let qr = codes.first(where: { $0.payload == payload }) {

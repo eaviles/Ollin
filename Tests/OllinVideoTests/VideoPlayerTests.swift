@@ -6,14 +6,78 @@ import Metal
 import Ollin
 import os
 @testable import OllinVideo
+import OllinTestSupport
 
 /// Exercised against a tiny clip written on the spot with AVAssetWriter, so the
-/// tests need no bundled asset. Steps that depend on the environment (a video
-/// encoder, a Metal device, a decode pipeline that runs headless) soft-skip
-/// rather than fail, so CI stays green for environmental reasons while a real
-/// Mac runs everything.
+/// tests need no bundled asset. What depends on the environment (a video
+/// encoder, a Metal device, a decode pipeline that runs headless, an audio
+/// route the headless player delivers through) is probed once and named in
+/// an `.enabled` trait, so a machine without it reports the skip rather than a
+/// pass that checked nothing, and a real Mac runs everything.
 @MainActor
 @Suite struct VideoPlayerTests {
+
+    nonisolated static var hasMetal: Bool { MTLCreateSystemDefaultDevice() != nil }
+
+    /// Whether a clip can be written and read back here: the encoder writes
+    /// one, a player loads it headless and reports its duration. Asked once.
+    static let clipPlaysHere = Task<Bool, Never> { @MainActor in
+        guard let url = await VideoPlayerTests().writeTestClip() else { return false }
+        defer { try? FileManager.default.removeItem(at: url) }
+        guard let player = try? VideoPlayer(url: url) else { return false }
+        return (try? await waitFor(timeout: 5) { player.duration }) != nil
+    }
+
+    static let clipTrait: ConditionTrait = .enabled("no video encoder, or no headless decode, here") {
+        await VideoPlayerTests.clipPlaysHere.value
+    }
+
+    /// The repository's bundled musical clip, for the soundtrack tap.
+    static let musicClip = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()   // VideoPlayerTests.swift
+        .deletingLastPathComponent()   // OllinVideoTests
+        .deletingLastPathComponent()   // Tests
+        .appendingPathComponent("Examples/Video/SoundReactive/voladores-fandanguito.mp4")
+
+    /// The bundled clip playing near-silent into a tap, with what the tap has
+    /// heard so far; the player is left playing for the test to stop.
+    struct Heard: Sendable {
+        let player: VideoPlayer
+        let delivered: OSAllocatedUnfairLock<(blocks: Int, samples: Int, rate: Double, peak: Float)>
+    }
+
+    /// The bundled clip played once into a tap: `nil` where nothing was
+    /// delivered in five seconds, which is how a headless process with no audio
+    /// route reads, and which `audioDelivers` reports as the skip it is.
+    /// (`isMuted = true` would stop audio processing entirely and starve the
+    /// tap, which is why the volume is turned down instead.)
+    static let heard = Task<Heard?, Never> { @MainActor in
+        guard FileManager.default.fileExists(atPath: musicClip.path),
+              let player = try? VideoPlayer(url: musicClip) else { return nil }
+        let delivered = OSAllocatedUnfairLock(initialState: (blocks: 0, samples: 0, rate: 0.0, peak: Float(0)))
+        player.volume = 0.01
+        player.audioTap = { samples, rate in
+            let count = samples.count
+            var peak: Float = 0
+            for sample in samples { peak = max(peak, abs(sample)) }
+            let blockPeak = peak
+            delivered.withLock {
+                $0 = ($0.blocks + 1, $0.samples + count, rate, max($0.peak, blockPeak))
+            }
+        }
+        player.play()
+        guard (try? await waitFor(timeout: 5) { delivered.withLock { $0.blocks > 3 ? $0 : nil } }) != nil else {
+            player.pause()
+            return nil
+        }
+        // The clip is music behind a short fade-in; give the peak a moment to climb.
+        _ = try? await waitFor(timeout: 5) { delivered.withLock { $0.peak > 0.05 ? $0 : nil } }
+        return Heard(player: player, delivered: delivered)
+    }
+
+    static let audioDelivers: ConditionTrait = .enabled("the bundled clip is missing, or the headless player delivers no audio here") {
+        await VideoPlayerTests.heard.value != nil
+    }
 
     /// Writes a 64×64, 1-second (12 frames at 12 fps) H.264 clip. Each frame
     /// is the solid color `color` returns for its index (a saturated orange by
@@ -75,42 +139,22 @@ import os
         return url
     }
 
-    /// Polls `read` every 50 ms until it returns a value or `seconds` elapse.
-    ///
-    /// The read comes before the clock: a starved task can wake past its own
-    /// deadline having never looked once, and returning `nil` then reports a
-    /// frame that never arrived while the frame is sitting there. Here that
-    /// reads as a soft skip rather than a failure, which is worse, since the
-    /// test then passes having checked nothing.
-    private func waitFor<T>(seconds: Double, _ read: () -> T?) async -> T? {
-        let deadline = Date(timeIntervalSinceNow: seconds)
-        while true {
-            if let value = read() { return value }
-            if Date() >= deadline { return nil }
-            try? await Task.sleep(for: .milliseconds(50))
-        }
-    }
-
-    @Test func metadataLoads() async throws {
-        guard let url = await writeTestClip() else { return }   // soft-skip: no encoder
+    @Test(clipTrait) func metadataLoads() async throws {
+        let url = try #require(await writeTestClip())
         defer { try? FileManager.default.removeItem(at: url) }
         let player = try VideoPlayer(url: url)
-        guard let duration = await waitFor(seconds: 5, { player.duration }) else {
-            return   // soft-skip: metadata never loaded headless
-        }
+        let duration = try await waitFor(timeout: 5) { player.duration }
         #expect(abs(duration - 1.0) < 0.25)
         #expect(player.size == Vector2(64, 64))
         #expect(!player.isPlaying)
     }
 
-    @Test func snapshotDecodesPixels() async throws {
-        guard let url = await writeTestClip() else { return }   // soft-skip: no encoder
+    @Test(clipTrait) func snapshotDecodesPixels() async throws {
+        let url = try #require(await writeTestClip())
         defer { try? FileManager.default.removeItem(at: url) }
         let player = try VideoPlayer(url: url)
         player.play()
-        guard let snapshot = await waitFor(seconds: 5, { player.snapshot() }) else {
-            return   // soft-skip: decode never produced a frame headless
-        }
+        let snapshot = try await waitFor(timeout: 5) { player.snapshot() }
         #expect(snapshot.width == 64)
         #expect(snapshot.height == 64)
         // The clip is solid orange: red high, blue low.
@@ -119,24 +163,21 @@ import os
         #expect(pixel.blue < 0.4)
     }
 
-    @Test func frameWrapsAMetalTexture() async throws {
-        guard MTLCreateSystemDefaultDevice() != nil else { return }   // soft-skip: no Metal
-        guard let url = await writeTestClip() else { return }
+    @Test(clipTrait, .enabled(if: VideoPlayerTests.hasMetal, "needs Metal")) func frameWrapsAMetalTexture() async throws {
+        let url = try #require(await writeTestClip())
         defer { try? FileManager.default.removeItem(at: url) }
         let player = try VideoPlayer(url: url)
         player.loops = true
         player.play()
-        guard let frame = await waitFor(seconds: 5, { player.frame }) else {
-            return   // soft-skip: decode never produced a frame headless
-        }
+        let frame = try await waitFor(timeout: 5) { player.frame }
         #expect(frame.width == 64)
         #expect(frame.height == 64)
         // While playing (looped), the same frame keeps drawing between decodes.
         #expect(player.frame != nil)
     }
 
-    @Test func frameTapDeliversCPUFrames() async throws {
-        guard let url = await writeTestClip() else { return }   // soft-skip: no encoder
+    @Test(clipTrait) func frameTapDeliversCPUFrames() async throws {
+        let url = try #require(await writeTestClip())
         defer { try? FileManager.default.removeItem(at: url) }
         let player = try VideoPlayer(url: url)
         // Count deliveries and remember the last frame's size (CGImage isn't
@@ -148,9 +189,7 @@ import os
         }
         player.loops = true
         player.play()
-        guard await waitFor(seconds: 5, { seen.withLock { $0.count > 0 ? $0 : nil } }) != nil else {
-            return   // soft-skip: decode never produced a frame headless
-        }
+        _ = try await waitFor(timeout: 5) { seen.withLock { $0.count > 0 ? $0 : nil } }
         let final = seen.withLock { $0 }
         #expect(final.width == 64)
         #expect(final.height == 64)
@@ -203,28 +242,25 @@ import os
     /// deterministically: frame `k` at `fps` shows the clip at `k / fps`
     /// seconds, and `loops` wraps. Each clip frame is a distinct blue level,
     /// so the rendered pixel identifies exactly which frame was pulled.
-    @Test func headlessExportPullsDeterministicFrames() async throws {
-        guard MTLCreateSystemDefaultDevice() != nil else { return }   // soft-skip: no Metal
+    @Test(clipTrait, .enabled(if: VideoPlayerTests.hasMetal, "needs Metal")) func headlessExportPullsDeterministicFrames() async throws {
         // Clip frame k (12 fps) is blue = 10 + k*20 over black.
-        guard let url = await writeTestClip(color: { (blue: UInt8(10 + $0 * 20), green: 0, red: 0) })
-        else { return }                                               // soft-skip: no encoder
+        let url = try #require(await writeTestClip(color: { (blue: UInt8(10 + $0 * 20), green: 0, red: 0) }))
         defer { try? FileManager.default.removeItem(at: url) }
 
-        func exportedBlue(atFrame frame: Int) -> Double? {
+        func exportedBlue(atFrame frame: Int) throws -> Double {
             let sketch = VideoExportProbeSketch()
             sketch.player = try? VideoPlayer(url: url)
-            guard let cgImage = try? OllinApp.image(of: sketch, frame: frame, fps: 60) else { return nil }
-            return Image(cgImage: cgImage)[32, 32].blue
+            return Image(cgImage: try OllinApp.image(of: sketch, frame: frame, fps: 60))[32, 32].blue
         }
 
         // Sketch frame 33 → 0.55 s → clip frame 6 → blue 130.
-        guard let mid = exportedBlue(atFrame: 33) else { return }     // soft-skip: render failed
+        let mid = try exportedBlue(atFrame: 33)
         #expect(abs(mid - 130.0 / 255.0) < 0.03)
         // Sketch frame 3 → 0.05 s → clip frame 0 → blue 10.
-        guard let early = exportedBlue(atFrame: 3) else { return }
+        let early = try exportedBlue(atFrame: 3)
         #expect(abs(early - 10.0 / 255.0) < 0.03)
         // Sketch frame 93 → 1.55 s → wrapped past the 1 s clip → frame 6 again.
-        guard let wrapped = exportedBlue(atFrame: 93) else { return }
+        let wrapped = try exportedBlue(atFrame: 93)
         #expect(abs(wrapped - mid) < 0.01)
     }
 
@@ -234,11 +270,9 @@ import os
     /// still-image detector needs offline and what three of the Guide's
     /// figures read the bundled film with. The process-global flag is set and
     /// cleared with no suspension in between, so no other test can see it up.
-    @Test func headlessSnapshotFollowsTheSeek() async throws {
-        guard MTLCreateSystemDefaultDevice() != nil else { return }   // soft-skip: no Metal
+    @Test(clipTrait, .enabled(if: VideoPlayerTests.hasMetal, "needs Metal")) func headlessSnapshotFollowsTheSeek() async throws {
         // Clip frame k (12 fps) is blue = 10 + k*20 over black.
-        guard let url = await writeTestClip(color: { (blue: UInt8(10 + $0 * 20), green: 0, red: 0) })
-        else { return }                                               // soft-skip: no encoder
+        let url = try #require(await writeTestClip(color: { (blue: UInt8(10 + $0 * 20), green: 0, red: 0) }))
         defer { try? FileManager.default.removeItem(at: url) }
         let player = try VideoPlayer(url: url)
 
@@ -249,66 +283,37 @@ import os
         let first = player.snapshot()
         OllinApp.isRenderingHeadless = false
 
-        // Required rather than soft-skipped: past the two guards above, a nil
-        // here means the headless path stopped decoding at the playhead, which
-        // is the thing this pins.
+        // Required: past the trait, a nil here means the headless path stopped
+        // decoding at the playhead, which is the thing this pins.
         let atSix = try #require(sixth)
         let atOne = try #require(first)
         #expect(abs(atSix[32, 32].blue - 130.0 / 255) < 0.03)
         #expect(abs(atOne[32, 32].blue - 30.0 / 255) < 0.03)
     }
 
-    /// End-to-end soundtrack tap: play the repository's bundled musical clip
-    /// and expect mono PCM with real signal energy to arrive through
-    /// `audioTap`. Runs off the example's own asset via a repo-relative path;
-    /// soft-skips where the clip is missing or the environment won't play.
-    @Test func audioTapDeliversSoundtrack() async throws {
-        let repoRoot = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()   // VideoPlayerTests.swift
-            .deletingLastPathComponent()   // OllinVideoTests
-            .deletingLastPathComponent()   // Tests
-        let clip = repoRoot.appendingPathComponent(
-            "Examples/Video/SoundReactive/voladores-fandanguito.mp4")
-        guard FileManager.default.fileExists(atPath: clip.path) else { return }   // soft-skip
-
-        let player = try VideoPlayer(url: clip)
-        // Near-silent output keeps the test quiet; the tap hears the pre-volume
-        // signal regardless. (`isMuted = true` would stop audio processing
-        // entirely and starve the tap, which is why it isn't used here.)
-        player.volume = 0.01
-        let delivered = OSAllocatedUnfairLock(initialState: (blocks: 0, samples: 0, rate: 0.0, peak: Float(0)))
-        player.audioTap = { samples, rate in
-            let count = samples.count
-            var peak: Float = 0
-            for sample in samples { peak = max(peak, abs(sample)) }
-            let blockPeak = peak
-            delivered.withLock {
-                $0 = ($0.blocks + 1, $0.samples + count, rate, max($0.peak, blockPeak))
-            }
-        }
-        player.play()
-        guard await waitFor(seconds: 5, { delivered.withLock { $0.blocks > 3 ? $0 : nil } }) != nil
-        else { return }   // soft-skip: no audio delivery headless
+    /// End-to-end soundtrack tap: the repository's bundled musical clip, played
+    /// once by the probe above, delivers mono PCM with real signal energy
+    /// through `audioTap`. The probe's trait refuses this where the clip is
+    /// missing or the headless player delivers nothing.
+    @Test(audioDelivers) func audioTapDeliversSoundtrack() async throws {
+        let heard = try #require(await Self.heard.value)
+        defer { heard.player.pause() }
+        let final = heard.delivered.withLock { $0 }
         // The clip is music (behind a short fade-in), not silence; the tap
-        // should come to hear it even while the player is muted.
-        guard await waitFor(seconds: 5, { delivered.withLock { $0.peak > 0.05 ? $0 : nil } }) != nil
-        else {
-            Issue.record("audio delivered but stayed silent (peak \(delivered.withLock { $0.peak }))")
-            return
-        }
-        let final = delivered.withLock { $0 }
+        // should come to hear it even while the player is turned down.
+        #expect(final.peak > 0.05, "audio delivered but stayed silent (peak \(final.peak))")
         #expect(final.rate > 8000)
         #expect(final.samples > 1024)
 
         // Removing the consumer stops delivery.
-        player.audioTap = nil
-        let atRemoval = delivered.withLock { $0.blocks }
+        heard.player.audioTap = nil
+        let atRemoval = heard.delivered.withLock { $0.blocks }
         try? await Task.sleep(for: .milliseconds(300))
-        #expect(delivered.withLock { $0.blocks } == atRemoval)
+        #expect(heard.delivered.withLock { $0.blocks } == atRemoval)
     }
 
-    @Test func headlessPlaybackStateIsVirtual() async throws {
-        guard let url = await writeTestClip() else { return }   // soft-skip: no encoder
+    @Test(clipTrait) func headlessPlaybackStateIsVirtual() async throws {
+        let url = try #require(await writeTestClip())
         defer { try? FileManager.default.removeItem(at: url) }
         OllinApp.isRenderingHeadless = true
         defer { OllinApp.isRenderingHeadless = false }
@@ -336,11 +341,11 @@ import os
         #expect(player.currentTime == 0)
     }
 
-    @Test func fittedRectLetterboxes() async throws {
-        guard let url = await writeTestClip() else { return }
+    @Test(clipTrait) func fittedRectLetterboxes() async throws {
+        let url = try #require(await writeTestClip())
         defer { try? FileManager.default.removeItem(at: url) }
         let player = try VideoPlayer(url: url)
-        guard await waitFor(seconds: 5, { player.size }) != nil else { return }
+        _ = try await waitFor(timeout: 5) { player.size }
         // A square video in a wide container: full height, centered horizontally.
         let rect = player.fittedRectangle(in: Rectangle(x: 0, y: 0, width: 200, height: 100))
         #expect(rect == Rectangle(x: 50, y: 0, width: 100, height: 100))

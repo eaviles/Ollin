@@ -27,15 +27,6 @@ struct TAATests {
         return (data, w, h)
     }
 
-    /// sRGB byte → linear light. Averaging (and therefore judging) anti-aliasing
-    /// must happen in linear light: the renderer's MSAA resolve and the TAA average
-    /// both work there, and a gamma-space reference reads systematically dark at
-    /// bright-on-dark edges (the measure-coverage-in-linear-light rule).
-    private func linear(_ v: UInt8) -> Double {
-        let s = Double(v) / 255
-        return s <= 0.04045 ? s / 12.92 : pow((s + 0.055) / 1.055, 2.4)
-    }
-
     /// The image's RGB as linear-light values (alpha dropped; the frames are opaque).
     private func linearRGB(_ image: CGImage) -> [Double] {
         let (data, w, h) = pixels(image)

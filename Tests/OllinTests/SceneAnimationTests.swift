@@ -105,15 +105,6 @@ struct SceneAnimationTests {
         """
     }
 
-    /// Write a glTF string to a temp file and load it as a `Scene`, cleaning up.
-    private func loadScene(_ json: String) throws -> Ollin.Scene? {
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("ollin-\(ProcessInfo.processInfo.globallyUniqueString).gltf")
-        try json.write(to: url, atomically: true, encoding: .utf8)
-        defer { try? FileManager.default.removeItem(at: url) }
-        return try? Scene(contentsOf: url)
-    }
-
     /// The local x axis of a node's transform, for checking applied rotations.
     private func xAxis(_ node: SceneNode?) -> SIMD3<Float> {
         let c = node?.localTransform.columns.0 ?? SIMD4<Float>()
@@ -123,7 +114,7 @@ struct SceneAnimationTests {
     // MARK: Parsing
 
     @Test func animationsParseGroupedAndNamed() throws {
-        let scene = try #require(try loadScene(animatedJSON))
+        let scene = try #require(loadGLTFScene(animatedJSON))
         // "ghost" holds only a morph-weights channel, so it parses to nothing.
         #expect(scene.animations.count == 1)
         let anim = try #require(scene.animation("moves"))
@@ -139,7 +130,7 @@ struct SceneAnimationTests {
     // MARK: Sampler math (hand-computed pins)
 
     @Test func linearRotationSlerpsHalfway() throws {
-        var scene = try #require(try loadScene(animatedJSON))
+        var scene = try #require(loadGLTFScene(animatedJSON))
         let anim = try #require(scene.animation("moves"))
         // Identity to 90 deg about y over [0, 2]: at t=1 the pose is 45 deg, so
         // the local +x axis lands at (cos 45, 0, -sin 45).
@@ -151,7 +142,7 @@ struct SceneAnimationTests {
     }
 
     @Test func cubicSplineMatchesHandComputedHermite() throws {
-        var scene = try #require(try loadScene(animatedJSON))
+        var scene = try #require(loadGLTFScene(animatedJSON))
         let anim = try #require(scene.animation("moves"))
         // Keys at t 0 and 2: v0=(0,0,0) out-tangent (1,0,0), v1=(4,0,0)
         // in-tangent 0. At t=1 (segment factor 0.5, duration 2):
@@ -168,7 +159,7 @@ struct SceneAnimationTests {
     }
 
     @Test func stepHoldsUntilTheNextKey() throws {
-        var scene = try #require(try loadScene(animatedJSON))
+        var scene = try #require(loadGLTFScene(animatedJSON))
         let anim = try #require(scene.animation("moves"))
         // Keys at t 0 (identity) and 1 (90 deg): just before 1 it still holds
         // the first key; at 1 it lands the second exactly.
@@ -179,7 +170,7 @@ struct SceneAnimationTests {
     }
 
     @Test func outsideTheKeyframeRangeClampsToTheNearestKey() throws {
-        var scene = try #require(try loadScene(animatedJSON))
+        var scene = try #require(loadGLTFScene(animatedJSON))
         let anim = try #require(scene.animation("moves"))
         // The "late" track starts at t=1 (5,0,0) and ends at t=2 (7,0,0):
         // before its first key it holds the first value, after the last the
@@ -193,7 +184,7 @@ struct SceneAnimationTests {
     }
 
     @Test func normalizedShortRotationDecodes() throws {
-        var scene = try #require(try loadScene(animatedJSON))
+        var scene = try #require(loadGLTFScene(animatedJSON))
         let anim = try #require(scene.animation("moves"))
         // The quantized track stores the same 90-degree end key as normalized
         // signed shorts (23170/32767 per component), decoded by the spec's
@@ -226,8 +217,8 @@ struct SceneAnimationTests {
     // MARK: Apply semantics
 
     @Test func applyIsAbsoluteNotAdditive() throws {
-        var once = try #require(try loadScene(animatedJSON))
-        var wandered = try #require(try loadScene(animatedJSON))
+        var once = try #require(loadGLTFScene(animatedJSON))
+        var wandered = try #require(loadGLTFScene(animatedJSON))
         let anim = try #require(once.animation("moves"))
         once.apply(anim, at: 0.75)
         // A different sampling history must land on the identical pose.
@@ -239,7 +230,7 @@ struct SceneAnimationTests {
     }
 
     @Test func matrixAuthoredNodesStayUntouched() throws {
-        var scene = try #require(try loadScene(animatedJSON))
+        var scene = try #require(loadGLTFScene(animatedJSON))
         let anim = try #require(scene.animation("moves"))
         let before = try #require(scene.node("boxed")?.localTransform)
         // A channel targets "boxed", but a matrix-authored node has no TRS
@@ -249,7 +240,7 @@ struct SceneAnimationTests {
     }
 
     @Test func handSetPositionSurvivesARotationOnlyTrack() throws {
-        var scene = try #require(try loadScene(animatedJSON))
+        var scene = try #require(loadGLTFScene(animatedJSON))
         let anim = try #require(scene.animation("moves"))
         // Nudge the stepped node by hand, then animate: its track only rotates,
         // so the hand-set translation must ride through the rebuild.

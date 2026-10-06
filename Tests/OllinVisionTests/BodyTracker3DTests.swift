@@ -7,12 +7,19 @@ import Ollin
 /// checked directly on a hand-built body.
 @Suite struct BodyTracker3DTests {
 
-    @Test func blankImageHasNoBody() async throws {
-        let image = Image(width: 128, height: 128, color: .white)
-        // Soft-skip: the model needs a compute device some setups lack in a
-        // headless test process; a throw there isn't a code failure. It runs
-        // for real where the device is available.
-        guard let body = try? await BodyTracker3D.detect(in: image) else { return }
+    /// The model over a blank frame, made once: `nil` where it has no compute
+    /// device, which `modelRuns` reports as the skip it is. The detection is an
+    /// optional of its own (no body), so the outer optional is the probe's.
+    private static let blank = Task<Body3D??, Never> {
+        try? await BodyTracker3D.detect(in: Image(width: 128, height: 128, color: .white))
+    }
+
+    private static let modelRuns: ConditionTrait = .enabled("the 3D body model has no compute device here") {
+        await BodyTracker3DTests.blank.value != nil
+    }
+
+    @Test(modelRuns) func blankImageHasNoBody() async throws {
+        let body = try #require(await Self.blank.value)
         #expect(body == nil)
     }
 

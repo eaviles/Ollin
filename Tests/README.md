@@ -316,10 +316,48 @@ descriptor store, read by `isOpen` on the test's thread while the read queue
 writes it) was reported at both lines with both stacks, and the helper exited
 nonzero; the committed tree reports nothing.
 
+## What the suites share
+
+A helper that more than one suite needs lives once, where every suite that
+needs it can reach it, and a test file never carries a copy of one: copies
+drift (sixty readbacks had grown three return shapes and two color spaces), and
+a rule written into sixty bodies is checked in none of them. Three homes:
+
+- **`OllinTests`'s own support files**, for what only the drawing suites read.
+  `InkProbeSupport.swift` carries the one readback, `pixels(of:)` (a frame's
+  RGBA bytes, rows from the top), `Pixels` (the same with its size beside it,
+  and `gray(_:_:)` and `channel(_:_:_:)` to address a pixel), and `linear(_:)`
+  (an sRGB byte as linear light), beside the `InkProbe` that reads ink coats
+  through it. `SceneFixtureSupport.swift` reads a USD or a glTF fixture written
+  as text straight into a `Scene` through the loaders' in-memory halves, with
+  no file written and nothing to remove. `HeadlessFlagSupport.swift` and
+  `TempPathSupport.swift` are the older two.
+- **`OllinTestSupport`**, a regular target under `Tests/`, for what crosses
+  targets, since a test target may depend on a library target and never on
+  another test target (the `OllinWebGate` precedent): `waitFor(timeout:_:)` and
+  its `Timeout`, the poll that probes before it reads the clock, and
+  `Record3DFrameBytes`, the header, the JPEG, and the LZFSE maps of a synthetic
+  RGBD frame that the decoder's suite and the mutation harness both build. A
+  suite whose budget is not the three-second default keeps a one-line
+  forwarder that names its own and why (the feeds' twenty seconds under a full
+  run, the Link session's fifteen over multicast), so every call reads the same
+  and the rule has one body.
+- **A target's own shared file**, for what only its suites use:
+  `OllinPhoneTests/PhoneWireSupport.swift` holds the wire's two round trips.
+
+Measured once so that no suite has to again (2026-10-06): the frame
+`OllinApp.image(of:)` returns is an 8-bit device-RGB image, and drawing it into
+a device-RGB or an sRGB context gives identical bytes over a full ramp, so the
+readback's color space is a formality and the copies' split on it never read a
+different picture.
+
 ## Adding a test
 
 - **Does it need a device?** Put an `.enabled(if:)` probe on it, so it refuses
   itself wherever the device is absent.
+- **Does it read a rendered frame, or wait for something?** `pixels(of:)` and
+  `Pixels` from the test support, and `waitFor` from `OllinTestSupport`, never a
+  readback or a poll of its own (the section above).
 - **Does it measure elapsed time?** Probe before reading the clock, and poll `>=`.
 - **Is it `@MainActor`?** Don't hop to it from a suite that is not.
 - **Does it write a file?** `ollinTempPath` in the test support, never a fixed

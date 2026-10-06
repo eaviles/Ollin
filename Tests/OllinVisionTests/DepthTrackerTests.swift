@@ -6,8 +6,8 @@ import Ollin
 
 /// The failure path and the range-following math are always-on; the
 /// real-model tests run only where the video depth model has been built
-/// (`Scripts/fetch-models.sh`), soft-skipping elsewhere (CI never fetches the
-/// weights).
+/// (`Scripts/fetch-models.sh`), refusing themselves elsewhere (CI never fetches
+/// the weights).
 @Suite struct DepthTrackerTests {
 
     static let modelURL = ModelTrackerTests.model("VideoDepthAnythingSmallF16.mlpackage")

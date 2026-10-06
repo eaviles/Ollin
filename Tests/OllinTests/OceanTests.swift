@@ -166,7 +166,7 @@ struct OceanTests {
         let scale = 0.4 / max(0.001, ocean.waveHeight)
         let image = try OllinApp.image(
             of: SeaProbe.make(ocean, channel: 1, scale: scale, resolution: resolution), frame: 1)
-        let px = pixels(of: image)
+        let px = Pixels(image)
         return HeightField(bytes: px.bytes, width: px.width, height: px.height, scale: scale)
     }
 
@@ -201,20 +201,8 @@ struct OceanTests {
         return total
     }
 
-    private func pixels(of image: CGImage) -> (bytes: [UInt8], width: Int, height: Int) {
-        let w = image.width, h = image.height
-        var data = [UInt8](repeating: 0, count: w * h * 4)
-        let space = CGColorSpaceCreateDeviceRGB()
-        let info = CGImageAlphaInfo.premultipliedLast.rawValue
-        if let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
-                               bytesPerRow: w * 4, space: space, bitmapInfo: info) {
-            ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
-        }
-        return (data, w, h)
-    }
-
     private func brightest(_ image: CGImage) -> Int {
-        let px = pixels(of: image)
+        let px = Pixels(image)
         var worst = 0
         for i in stride(from: 0, to: px.bytes.count, by: 4) {
             worst = max(worst, Int(px.bytes[i + 1]))
@@ -223,7 +211,7 @@ struct OceanTests {
     }
 
     private func maxDifference(_ a: CGImage, _ b: CGImage) -> Int {
-        let pa = pixels(of: a), pb = pixels(of: b)
+        let pa = Pixels(a), pb = Pixels(b)
         var worst = 0
         for i in 0 ..< min(pa.bytes.count, pb.bytes.count) {
             worst = max(worst, abs(Int(pa.bytes[i]) - Int(pb.bytes[i])))

@@ -3,8 +3,8 @@ import Foundation
 import Ollin
 @testable import OllinVision
 
-/// The classifier model is neural, so the runs that need it soft-skip where the
-/// compute device is missing (the segmentation tests' pattern); the vocabulary
+/// The classifier model is neural, so the runs that need it refuse themselves
+/// where the compute device is missing (the segmentation tests' pattern); the vocabulary
 /// and the decode invariants are checked for real.
 @Suite struct ImageClassifierTests {
 
@@ -25,9 +25,13 @@ import Ollin
     /// The whole vocabulary scored over `diskImage()`, made once for the
     /// suite: the still test reads it and the live-wiring test only needs to
     /// know the model runs here, so the model runs once. `nil` where the model
-    /// cannot run (the soft-skip).
+    /// cannot run, which `modelRuns` reports as the skip it is.
     private static let wholeVocabulary = Task<[Classification]?, Never> {
         try? await ImageClassifier.detect(in: ImageClassifierTests().diskImage(), minConfidence: 0)
+    }
+
+    private static let modelRuns: ConditionTrait = .enabled("the classifier model has no compute device here") {
+        await ImageClassifierTests.wholeVocabulary.value != nil
     }
 
     @Test func nameOpensUnderscores() {
@@ -43,30 +47,26 @@ import Ollin
         #expect(labels.contains("people"))
     }
 
-    @Test func stillDetectScoresTheWholeVocabularySorted() async throws {
-        // Soft-skip: the model needs a compute device some test environments
-        // lack; a throw there isn't a code failure.
-        guard let all = await Self.wholeVocabulary.value else { return }
+    @Test(modelRuns) func stillDetectScoresTheWholeVocabularySorted() async throws {
+        let all = try #require(await Self.wholeVocabulary.value)
         // The request scores the entire vocabulary, strongest first.
         #expect(all.count > 1000)
         #expect(zip(all, all.dropFirst()).allSatisfy { $0.confidence >= $1.confidence })
         #expect(all.allSatisfy { (0.0...1.0).contains($0.confidence) })
     }
 
-    @Test func detectCutsAtTheConfidenceFloor() async throws {
-        guard let labels = try? await ImageClassifier.detect(in: diskImage(),
-                                                             minConfidence: 0.05) else { return }
+    @Test(modelRuns) func detectCutsAtTheConfidenceFloor() async throws {
+        let labels = try await ImageClassifier.detect(in: diskImage(), minConfidence: 0.05)
         #expect(labels.allSatisfy { $0.confidence >= 0.05 })
         // The floor keeps the meaningful few, not the ~1,300-label tail.
         #expect(labels.count < 100)
     }
 
     @MainActor
-    @Test func liveWiringPublishesLabels() async throws {
-        // Gate on the still path: only run the live assertion where the model
-        // demonstrably runs (elsewhere this is the soft-skip).
+    @Test(modelRuns) func liveWiringPublishesLabels() async throws {
+        // Gated on the still path: the live assertion runs only where the
+        // model demonstrably runs.
         let image = diskImage()
-        guard await Self.wholeVocabulary.value != nil else { return }
 
         // The camera-free live path: a hand-driven source standing in for the
         // capture queue. Floor 0 so publishing doesn't depend on what the model

@@ -49,7 +49,7 @@ struct FourierTests {
     func aGratingLandsAtItsOwnFrequency() throws {
         let image = try OllinApp.image(of: PatternProbe.make(.spectrum, cycles: 8),
                                                 frame: 1)
-        let px = pixels(of: image)
+        let px = Pixels(image)
         let center = px.width / 2
         let peaks = brightestOffCenter(px, count: 2, center: center)
         for peak in peaks {
@@ -67,7 +67,7 @@ struct FourierTests {
     func aTurnedGratingLandsOnTheOtherAxis() throws {
         let image = try OllinApp.image(
             of: PatternProbe.make(.spectrum, cycles: 8, vertical: true), frame: 1)
-        let px = pixels(of: image)
+        let px = Pixels(image)
         let center = px.width / 2
         for peak in brightestOffCenter(px, count: 2, center: center) {
             #expect(peak.x == center, "a vertical grating should stay on the middle column, got x = \(peak.x)")
@@ -83,7 +83,7 @@ struct FourierTests {
     func aFlatFieldIsOneSpotInTheMiddle() throws {
         let image = try OllinApp.image(of: PatternProbe.make(.spectrum, cycles: 0),
                                                 frame: 1)
-        let px = pixels(of: image)
+        let px = Pixels(image)
         let center = px.width / 2
         let middle = gray(px, x: center, y: center)
         #expect(middle > 200, "the flat part of the picture should light the middle (\(middle))")
@@ -99,24 +99,12 @@ struct FourierTests {
 
     // MARK: Helpers
 
-    private func pixels(of image: CGImage) -> (bytes: [UInt8], width: Int, height: Int) {
-        let w = image.width, h = image.height
-        var data = [UInt8](repeating: 0, count: w * h * 4)
-        let space = CGColorSpaceCreateDeviceRGB()
-        let info = CGImageAlphaInfo.premultipliedLast.rawValue
-        if let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
-                               bytesPerRow: w * 4, space: space, bitmapInfo: info) {
-            ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
-        }
-        return (data, w, h)
-    }
-
-    private func gray(_ px: (bytes: [UInt8], width: Int, height: Int), x: Int, y: Int) -> Int {
+    private func gray(_ px: Pixels, x: Int, y: Int) -> Int {
         Int(px.bytes[(y * px.width + x) * 4 + 1])
     }
 
     private func maxDifference(_ a: CGImage, _ b: CGImage) -> Int {
-        let pa = pixels(of: a), pb = pixels(of: b)
+        let pa = Pixels(a), pb = Pixels(b)
         var worst = 0
         for i in 0 ..< min(pa.bytes.count, pb.bytes.count) {
             worst = max(worst, abs(Int(pa.bytes[i]) - Int(pb.bytes[i])))
@@ -126,7 +114,7 @@ struct FourierTests {
 
     /// The `count` brightest pixels that are not the middle one, each from its own
     /// neighborhood, so one broad peak is reported once rather than nine times.
-    private func brightestOffCenter(_ px: (bytes: [UInt8], width: Int, height: Int),
+    private func brightestOffCenter(_ px: Pixels,
                                     count: Int, center: Int) -> [(x: Int, y: Int, v: Int)] {
         var found: [(x: Int, y: Int, v: Int)] = []
         for y in 0 ..< px.height {

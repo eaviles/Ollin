@@ -297,7 +297,15 @@ struct USDParserTests {
     /// The system shaderball (a crate 0.9 flattened layer in a stored zip)
     /// opens and yields real geometry, and every mesh's vertex count matches
     /// Model I/O's read of the same package.
-    @Test(.enabled(if: FileManager.default.fileExists(atPath: USDParserTests.shaderballURL.path)))
+    /// Whether Model I/O reads the system shaderball here, asked once: the
+    /// ground truth below is its read, and a toolchain whose Model I/O cannot
+    /// open the file has no truth to offer.
+    static let modelIOReadsTheShaderball: Bool = {
+        guard FileManager.default.fileExists(atPath: shaderballURL.path) else { return false }
+        return MDLAsset(url: shaderballURL).count > 0
+    }()
+
+    @Test(.enabled(if: USDParserTests.modelIOReadsTheShaderball, "Model I/O cannot read the system shaderball here"))
     func usdzReadsTheSystemShaderball() throws {
         let stage = try USDStage.load(contentsOf: Self.shaderballURL)
         #expect(!stage.prims.isEmpty)
@@ -336,7 +344,7 @@ struct USDParserTests {
                 theirs[object.name, default: []].append(mesh.vertexCount)
             }
         }
-        guard !theirs.isEmpty else { return }  // soft-skip if Model I/O can't read it
+        try #require(!theirs.isEmpty, "Model I/O read the asset for the trait and no meshes for the test")
         for (name, counts) in theirs {
             #expect(ours[name]?.sorted() == counts.sorted(),
                     "face-vertex counts for '\(name)' disagree with Model I/O")

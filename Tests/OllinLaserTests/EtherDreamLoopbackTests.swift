@@ -4,6 +4,7 @@ import os
 import Testing
 import Ollin
 @testable import OllinLaser
+import OllinTestSupport
 
 /// The whole streaming loop end to end over real TCP on `127.0.0.1`, against a
 /// stand-in DAC written here from the same published protocol: the handshake,
@@ -13,18 +14,9 @@ import Ollin
 @Suite
 struct EtherDreamLoopbackTests {
 
-    struct Timeout: Error {}
-
-    /// The probe comes before the clock is read: a starved task can wake past
-    /// its own deadline having never looked, and giving up then throws over an
-    /// answer that is already there.
+    /// `OllinTestSupport.waitFor` with this suite's budget: the stand-in DAC answers over a socket, a few round trips a frame.
     func waitFor<T>(timeout: Double = 5.0, _ probe: () -> T?) async throws -> T {
-        let deadline = Date().addingTimeInterval(timeout)
-        while true {
-            if let value = probe() { return value }
-            if Date() >= deadline { throw Timeout() }
-            try await Task.sleep(nanoseconds: 5_000_000)
-        }
+        try await OllinTestSupport.waitFor(timeout: timeout, probe)
     }
 
     /// Waits until the DAC has read a run of blanked points longer than any the

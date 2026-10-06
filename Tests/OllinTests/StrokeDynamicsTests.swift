@@ -225,7 +225,7 @@ struct StrokeDynamicsTests {
         lineProbe.drawsMark = false
         let mark = try OllinApp.image(of: markProbe)
         let line = try OllinApp.image(of: lineProbe)
-        #expect(pixels(of: mark).bytes == pixels(of: line).bytes)
+        #expect(Pixels(mark).bytes == Pixels(line).bytes)
     }
 
     /// The headline behavior: ink follows the hand. The probe's mark is walked
@@ -235,7 +235,7 @@ struct StrokeDynamicsTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func aFastStrokeLaysDownLessInk() throws {
         let image = try OllinApp.image(of: PacedMarkProbe())
-        let px = pixels(of: image)
+        let px = Pixels(image)
         // Ink in a column, summed: a thick mark is saturated in the middle, so a
         // peak reading cannot see it thinning.
         func ink(_ x: Int) -> Int { (0..<128).reduce(0) { $0 + 255 - px.gray(x, $1) } }
@@ -254,7 +254,7 @@ struct StrokeDynamicsTests {
         let probe = PacedMarkProbe()
         probe.fadesOpacity = true
         let image = try OllinApp.image(of: probe)
-        let px = pixels(of: image)
+        let px = Pixels(image)
         func darkest(_ x: Int) -> Int { (0..<128).map { px.gray(x, $0) }.min() ?? 255 }
         /// The mark's width at a column, measured at half its own darkness. A
         /// plain "any ink at all" count would shrink as the mark fades, since a
@@ -370,22 +370,3 @@ private final class VectorMarkProbe: Sketch {
 }
 
 // MARK: - Pixel helpers
-
-private struct Pixels {
-    var bytes: [UInt8]
-    var width: Int
-    func gray(_ x: Int, _ y: Int) -> Int { Int(bytes[(y * width + x) * 4]) }
-}
-
-private func pixels(of image: CGImage) -> Pixels {
-    let w = image.width, h = image.height
-    var bytes = [UInt8](repeating: 0, count: w * h * 4)
-    bytes.withUnsafeMutableBytes { raw in
-        let ctx = CGContext(data: raw.baseAddress, width: w, height: h,
-                            bitsPerComponent: 8, bytesPerRow: w * 4,
-                            space: CGColorSpaceCreateDeviceRGB(),
-                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
-        ctx?.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
-    }
-    return Pixels(bytes: bytes, width: w)
-}

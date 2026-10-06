@@ -72,16 +72,6 @@ struct ComplexPlaneFramingTests {
 
     // MARK: Reading pixels
 
-    private func pixels(of image: CGImage) -> [UInt8] {
-        let w = image.width, h = image.height
-        var data = [UInt8](repeating: 0, count: w * h * 4)
-        let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
-                            bytesPerRow: w * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
-                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-        ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
-        return data
-    }
-
     private func rgb(_ data: [UInt8], _ x: Int, _ y: Int) -> (Int, Int, Int) {
         let i = (y * Self.size + x) * 4
         return (Int(data[i]), Int(data[i + 1]), Int(data[i + 2]))

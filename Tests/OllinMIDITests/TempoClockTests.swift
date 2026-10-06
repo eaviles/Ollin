@@ -1,11 +1,12 @@
 import Foundation
 import Testing
 @testable import OllinMIDI
+import OllinTestSupport
 
 /// The tempo/position math behind `TempoClock`, driven with synthetic
 /// timestamps so every scenario is deterministic: no Core MIDI, no real clock,
 /// runs everywhere including CI. The one end-to-end loopback test lives at the
-/// bottom and soft-skips where Core MIDI isn't available.
+/// bottom and refuses itself where Core MIDI isn't available.
 @Suite
 struct TempoEngineTests {
 
@@ -157,43 +158,30 @@ struct TempoEngineTests {
 extension CoreMIDILoopback {
 
     /// End-to-end over Core MIDI in-process: a `MIDIOutput` virtual source feeding
-    /// a `TempoClock` through a `MIDIInput`. Soft-skips when Core MIDI isn't
-    /// available (the engine tests above are the always-on guard). It sits under
+    /// a `TempoClock` through a `MIDIInput`. It carries `CoreMIDILoopback.linkTrait`
+    /// and refuses itself where Core MIDI isn't available (the engine tests
+    /// above are the always-on guard). It sits under
     /// `CoreMIDILoopback` for the reason that suite's own comment gives: the
     /// endpoints are machine-global, so this suite and `MIDILoopbackTests` cannot
     /// run at the same time.
     @Suite(.serialized)
     struct TempoClockLoopbackTests {
 
-        /// The probe comes before the clock is read: a starved task can wake past
-        /// its own deadline having never looked, and giving up then reports nothing
-        /// arrived over a value that is already there.
-        func waitFor<T>(timeout: Double = 3.0, _ probe: () -> T?) async -> T? {
-            let deadline = Date().addingTimeInterval(timeout)
-            while true {
-                if let value = probe() { return value }
-                if Date() >= deadline { return nil }
-                try? await Task.sleep(nanoseconds: 5_000_000)   // 5 ms
-            }
-        }
-
-        @Test func followsAClockTrainAcrossTheLoopback() async {
+        @Test(CoreMIDILoopback.linkTrait) func followsAClockTrainAcrossTheLoopback() async throws {
             let output = MIDIOutput(name: "OllinTempoTest")
             let input = MIDIInput(name: "OllinTempoTestIn")
-            do {
-                try output.openVirtual(named: "OllinTempoTest Loopback")
-                try input.start()
-            } catch { return }   // soft-skip
+            try output.openVirtual(named: "OllinTempoTest Loopback")
+            try input.start()
             defer { output.close(); input.stop() }
             let clock = TempoClock(from: input)
 
             // The input connects to the new virtual source asynchronously; resend
             // a warmup CC until the link is live.
-            let connected = await waitFor { () -> Bool? in
+            let connected = try? await waitFor { () -> Bool? in
                 output.controlChange(1, value: 1)
                 return input.controlValue(1) != nil ? true : nil
             }
-            guard connected == true else { return }   // soft-skip
+            try #require(connected == true, "the warmup never crossed the link the trait said was up")
 
             output.send(MIDIMessage(.start))
 
@@ -212,7 +200,7 @@ extension CoreMIDILoopback {
                 try? await Task.sleep(nanoseconds: 10_000_000)
             }
             let sent = 60 / (24 * max(Date().timeIntervalSince(started) / 30, 1e-6))
-            let advanced = await waitFor { clock.beatCount >= 1 ? true : nil }
+            let advanced = try? await waitFor { clock.beatCount >= 1 ? true : nil }
             #expect(advanced == true)
             #expect(clock.isPlaying)
             #expect(clock.tempo > 1 && clock.tempo < 1000,

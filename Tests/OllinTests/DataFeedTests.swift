@@ -2,6 +2,7 @@ import Foundation
 import os
 import Testing
 @testable import Ollin
+import OllinTestSupport
 
 /// A stand-in server for the feed's own `URLSession`. It records what was asked
 /// and answers with whatever the test set, so the suite drives every branch of
@@ -108,24 +109,9 @@ final class StubServer: URLProtocol {
 @Suite
 struct DataFeedTests {
 
-    struct Timeout: Error {}
-
-    /// Polls `probe` until it returns a non-nil value or the timeout elapses.
-    ///
-    /// The probe comes *before* the clock is read, and that order is the whole
-    /// helper. A test body on the concurrency pool can be starved past its own
-    /// deadline without having looked once, and a deadline test placed first
-    /// then throws while the answer it was waiting for is already sitting in
-    /// the feed. Measured on 2026-08-29: thirteen tests here threw `Timeout`
-    /// together inside a 3,107-test run, every one of them with the stub's
-    /// answer in hand.
+    /// `OllinTestSupport.waitFor` with this suite's budget: a feed inside a full run, which has handed a task back 74 s late (measured).
     func waitFor<T>(timeout: Double = 20.0, _ probe: () -> T?) async throws -> T {
-        let deadline = Date().addingTimeInterval(timeout)
-        while true {
-            if let value = probe() { return value }
-            if Date() >= deadline { throw Timeout() }
-            try await Task.sleep(nanoseconds: 5_000_000)   // 5 ms
-        }
+        try await OllinTestSupport.waitFor(timeout: timeout, probe)
     }
 
     /// A stub answering on its own path, with a feed pointed at it. The

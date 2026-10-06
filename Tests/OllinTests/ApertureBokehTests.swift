@@ -122,7 +122,7 @@ struct ApertureBokehTests {
     /// is the wrong reading here: the shape of a highlight moves a few thousand pixels
     /// on a mostly black frame, which any average buries.
     private func difference(_ a: CGImage, _ b: CGImage) -> Double {
-        let pa = pixels(of: a), pb = pixels(of: b)
+        let pa = Pixels(a), pb = Pixels(b)
         guard pa.bytes.count == pb.bytes.count else { return .infinity }
         var worst = 0.0
         for i in 0 ..< pa.bytes.count {
@@ -158,28 +158,17 @@ struct ApertureBokehTests {
 
     /// The edge frames already rendered this run, so an opening several probes measure
     /// (the round one, the hexagon turned to a corner) is rendered once.
-    private static var edges: [EdgeKey: (bytes: [UInt8], width: Int, height: Int)] = [:]
+    private static var edges: [EdgeKey: Pixels] = [:]
 
-    private func edgeFrame(_ probe: EdgeProbe) throws -> (bytes: [UInt8], width: Int, height: Int) {
+    private func edgeFrame(_ probe: EdgeProbe) throws -> Pixels {
         let key = EdgeKey(blades: probe.blades, irisAngle: probe.irisAngle, catsEye: probe.catsEye,
                           edgeAt: probe.edgeAt, horizontal: probe.horizontal)
         if let known = Self.edges[key] { return known }
-        let px = pixels(of: try OllinApp.image(of: probe, frame: 1))
+        let px = Pixels(try OllinApp.image(of: probe, frame: 1))
         Self.edges[key] = px
         return px
     }
 
-    private func pixels(of image: CGImage) -> (bytes: [UInt8], width: Int, height: Int) {
-        let w = image.width, h = image.height
-        var data = [UInt8](repeating: 0, count: w * h * 4)
-        let space = CGColorSpaceCreateDeviceRGB()
-        let info = CGImageAlphaInfo.premultipliedLast.rawValue
-        if let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
-                               bytesPerRow: w * 4, space: space, bitmapInfo: info) {
-            ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
-        }
-        return (data, w, h)
-    }
 }
 
 // MARK: Probe sketch

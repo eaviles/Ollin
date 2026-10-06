@@ -47,7 +47,7 @@ struct DispersionTests {
         let image = try OllinApp.image(
             of: FlatProbe.make(.chromaticAberration(amount: 0.05, spectral: true,
                                                     quality: .detail)), frame: 1)
-        let px = pixels(of: image)
+        let px = Pixels(image)
         // Read well inside the field, away from the frame edge the sampler clamps at.
         let (r, g, b) = channels(px, x: 128, y: 128)
         #expect(abs(r - g) <= 1 && abs(g - b) <= 1, "flat field came back \(r),\(g),\(b)")
@@ -209,26 +209,14 @@ struct DispersionTests {
         return image
     }
 
-    private func pixels(of image: CGImage) -> (bytes: [UInt8], width: Int, height: Int) {
-        let w = image.width, h = image.height
-        var data = [UInt8](repeating: 0, count: w * h * 4)
-        let space = CGColorSpaceCreateDeviceRGB()
-        let info = CGImageAlphaInfo.premultipliedLast.rawValue
-        if let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
-                               bytesPerRow: w * 4, space: space, bitmapInfo: info) {
-            ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
-        }
-        return (data, w, h)
-    }
-
-    private func channels(_ px: (bytes: [UInt8], width: Int, height: Int), x: Int, y: Int)
+    private func channels(_ px: Pixels, x: Int, y: Int)
         -> (Int, Int, Int) {
         let i = (y * px.width + x) * 4
         return (Int(px.bytes[i]), Int(px.bytes[i + 1]), Int(px.bytes[i + 2]))
     }
 
     private func maxDifference(_ a: CGImage, _ b: CGImage) -> Int {
-        let pa = pixels(of: a), pb = pixels(of: b)
+        let pa = Pixels(a), pb = Pixels(b)
         var worst = 0
         for i in 0 ..< min(pa.bytes.count, pb.bytes.count) {
             worst = max(worst, abs(Int(pa.bytes[i]) - Int(pb.bytes[i])))
@@ -237,7 +225,7 @@ struct DispersionTests {
     }
 
     private func differenceAt(_ a: CGImage, _ b: CGImage, x: Int, y: Int) -> Int {
-        let pa = pixels(of: a), pb = pixels(of: b)
+        let pa = Pixels(a), pb = Pixels(b)
         var worst = 0
         for c in 0 ..< 3 {
             let i = (y * pa.width + x) * 4 + c
@@ -248,20 +236,20 @@ struct DispersionTests {
 
     /// The largest red-minus-blue anywhere in a short vertical run: a warm fringe.
     private func strongestRedOverBlue(_ image: CGImage, x: Int, y: ClosedRange<Int>) -> Int {
-        let px = pixels(of: image)
+        let px = Pixels(image)
         return y.map { channels(px, x: x, y: $0) }.map { $0.0 - $0.2 }.max() ?? 0
     }
 
     /// The same the other way: a cool fringe.
     private func strongestBlueOverRed(_ image: CGImage, x: Int, y: ClosedRange<Int>) -> Int {
-        let px = pixels(of: image)
+        let px = Pixels(image)
         return y.map { channels(px, x: x, y: $0) }.map { $0.2 - $0.0 }.max() ?? 0
     }
 
     /// How many pixels along a scanline carry a color cast (red and blue disagreeing
     /// by more than a dither step): the width of the split, in pixels.
     private func fringeWidthAcross(_ image: CGImage, y: Int, from x0: Int, to x1: Int) -> Int {
-        let px = pixels(of: image)
+        let px = Pixels(image)
         return (x0 ... x1).filter { x in
             let c = channels(px, x: x, y: y); return abs(c.0 - c.2) > 8
         }.count
@@ -269,7 +257,7 @@ struct DispersionTests {
 
     /// The same measurement down a column.
     private func fringeWidthDown(_ image: CGImage, x: Int, from y0: Int, to y1: Int) -> Int {
-        let px = pixels(of: image)
+        let px = Pixels(image)
         return (y0 ... y1).filter { y in
             let c = channels(px, x: x, y: y); return abs(c.0 - c.2) > 8
         }.count
@@ -279,7 +267,7 @@ struct DispersionTests {
     /// range down a column: how sharp that channel's edge is.
     private func transitionWidth(_ image: CGImage, channel: Int, x: Int,
                                  from y0: Int, to y1: Int) -> Int {
-        let px = pixels(of: image)
+        let px = Pixels(image)
         let run = (y0 ... y1).map { y -> Int in
             let c = channels(px, x: x, y: y)
             return [c.0, c.1, c.2][channel]

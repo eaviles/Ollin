@@ -309,7 +309,7 @@ struct SlowMotionTests {
     /// how the file was encoded cannot be read as a difference in the picture.
     private func maxDifference(_ a: CGImage, _ b: CGImage) -> Int {
         guard a.width == b.width, a.height == b.height else { return 255 }
-        guard let left = bytes(of: a), let right = bytes(of: b) else { return 255 }
+        let left = pixels(of: a), right = pixels(of: b)
         var worst = 0
         for i in 0..<left.count {
             worst = max(worst, abs(Int(left[i]) - Int(right[i])))
@@ -319,25 +319,11 @@ struct SlowMotionTests {
 
     /// The average channel difference between two images, 0…255.
     private func meanDifference(_ a: CGImage, _ b: CGImage) -> Double {
-        guard a.width == b.width, a.height == b.height,
-              let left = bytes(of: a), let right = bytes(of: b) else { return 255 }
+        guard a.width == b.width, a.height == b.height else { return 255 }
+        let left = pixels(of: a), right = pixels(of: b)
         var total = 0
         for i in 0..<left.count { total += abs(Int(left[i]) - Int(right[i])) }
         return Double(total) / Double(left.count)
     }
 
-    private func bytes(of image: CGImage) -> [UInt8]? {
-        let width = image.width, height = image.height
-        var pixels = [UInt8](repeating: 0, count: width * height * 4)
-        let ok = pixels.withUnsafeMutableBytes { raw -> Bool in
-            guard let context = CGContext(data: raw.baseAddress, width: width, height: height,
-                                          bitsPerComponent: 8, bytesPerRow: width * 4,
-                                          space: CGColorSpace(name: CGColorSpace.sRGB)!,
-                                          bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
-            else { return false }
-            context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
-            return true
-        }
-        return ok ? pixels : nil
-    }
 }

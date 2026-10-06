@@ -12,7 +12,7 @@ import Darwin
 /// Exercises the phone sensor-stream wire format (the framing header plus the
 /// motion, body-pose, face, depth, segmentation, and hand-pose payload codecs) with
 /// encode/decode round-trips (GPU-free, CI-safe), plus a live-device test that
-/// soft-skips when no phone is streaming.
+/// refuses itself when no phone is streaming.
 @Suite(.timeLimit(.minutes(1))) struct PhoneWireTests {
 
     // MARK: Round-trips
@@ -384,14 +384,20 @@ import Darwin
         #expect(PhoneWire.decode(header: header, payload: Data([1, 0, 0, 0])) == nil)
     }
 
-    // MARK: Live device (soft-skips without a streaming phone)
+    // MARK: Live device (refused without a streaming phone)
 
-    @Test func streamsFromConnectedDevice() {
-        let devices = (try? USBMux.listDevices()) ?? []
-        guard !devices.isEmpty else { return }     // nothing attached — skip
-        let fd: Int32
-        do { fd = try USBMux.connect(toPort: PhoneDevice.streamPort) }
-        catch { return }                            // attached but the app isn't serving — skip
+    /// Whether a phone is attached and the capture app is serving its stream:
+    /// the connection the test makes, made once and closed.
+    static var phoneIsStreaming: Bool {
+        guard let devices = try? USBMux.listDevices(), !devices.isEmpty,
+              let fd = try? USBMux.connect(toPort: PhoneDevice.streamPort) else { return false }
+        close(fd)
+        return true
+    }
+
+    @Test(.enabled(if: PhoneWireTests.phoneIsStreaming, "no phone is streaming over USB here"))
+    func streamsFromConnectedDevice() throws {
+        let fd = try USBMux.connect(toPort: PhoneDevice.streamPort)
         defer { close(fd) }
         var timeout = timeval(tv_sec: 4, tv_usec: 0)
         setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, socklen_t(MemoryLayout<timeval>.size))
@@ -413,13 +419,4 @@ import Darwin
         attitude: SIMD4<Float>(0, 0, 0, 1), gravity: SIMD3<Float>(0, 0, -1),
         rotationRate: .zero, userAcceleration: .zero, timestamp: 0)
 
-    /// Encode a message, split the framed bytes back into header + payload the way
-    /// the reader does, and decode — the full wire trip.
-    private func roundTrip(_ message: PhoneMessage) -> PhoneMessage? {
-        let data = PhoneWire.encode(message)
-        guard let header = PhoneHeader.parse(data) else { return nil }
-        let start = data.startIndex + PhoneWire.headerByteCount
-        let payload = data.subdata(in: start ..< data.endIndex)
-        return PhoneWire.decode(header: header, payload: payload)
-    }
 }

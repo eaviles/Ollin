@@ -7,11 +7,18 @@ import Metal
 
 /// The publish client's testable surface: the connection failure path (always
 /// on — no camera required), the GPU letterbox pass (gated on a Metal device),
-/// and a real end-to-end push when the Ollin Camera extension is installed
-/// (soft-skips where it isn't, e.g. CI).
+/// and a real end-to-end push when the Ollin Camera extension is installed,
+/// behind a trait that refuses it where it isn't (CI).
 @Suite(.timeLimit(.minutes(1))) struct VirtualCameraTests {
 
     static var hasMetal: Bool { MTLCreateSystemDefaultDevice() != nil }
+
+    /// Whether the extension's device is here to connect to. A connection the
+    /// probe makes closes itself when it goes.
+    static var cameraIsInstalled: Bool {
+        if case .failure(.deviceNotFound) = SinkConnection.connect(toDeviceNamed: "Ollin Camera") { return false }
+        return true
+    }
 
     /// Always-on: connecting to a camera that doesn't exist must fail cleanly,
     /// with the user-actionable install hint.
@@ -70,14 +77,13 @@ import Metal
 
     /// Soft-gated end-to-end: when the Ollin Camera extension is installed (a
     /// dev Mac with the device half set up), connect to its sink stream and
-    /// hand it one real frame. Where the device doesn't exist (CI), the
-    /// connect fails with `.deviceNotFound` and the test records a skip-style
-    /// pass instead.
-    @Test func publishesToInstalledCamera() throws {
+    /// hand it one real frame. Where the device doesn't exist (CI), the trait
+    /// refuses the test and the run reports the skip.
+    @Test(.enabled(if: VirtualCameraTests.cameraIsInstalled, "the Ollin Camera extension is not installed here"))
+    func publishesToInstalledCamera() throws {
         switch SinkConnection.connect(toDeviceNamed: "Ollin Camera") {
         case .failure(.deviceNotFound):
-            // Not installed here — nothing to assert against.
-            return
+            Issue.record("The camera the trait found is gone.")
         case .failure(let error):
             Issue.record("The camera exists but connecting failed: \(error).")
         case .success(let connection):

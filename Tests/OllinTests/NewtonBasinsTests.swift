@@ -25,19 +25,6 @@ struct NewtonBasinsTests {
     /// The three cube roots of one, counter-clockwise from the real axis.
     static let cubeRoots = [Vector2(1, 0), Vector2(-0.5, 0.8660254), Vector2(-0.5, -0.8660254)]
 
-    /// The generator's pixels as sRGB bytes, row-major from the top.
-    private func pixels(of image: CGImage) -> [UInt8] {
-        let w = image.width, h = image.height
-        var data = [UInt8](repeating: 0, count: w * h * 4)
-        data.withUnsafeMutableBytes { buf in
-            let ctx = CGContext(data: buf.baseAddress, width: w, height: h, bitsPerComponent: 8,
-                                bytesPerRow: w * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
-                                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-            ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
-        }
-        return data
-    }
-
     /// Which stop (or -1 for the trapped black) each pixel is nearest.
     private func basins(_ probe: NewtonProbe) throws -> (map: [Int], n: Int, rgb: [UInt8]) {
         let image = try OllinApp.image(of: probe, frame: 1)

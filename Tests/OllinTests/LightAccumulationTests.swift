@@ -8,7 +8,7 @@ import COllinShaders
 /// Light accumulation: the radiometric particle style, the running mean an
 /// `Accumulator` keeps, the single-precision layers, the print filter, the camera a
 /// kernel projects through, and the ball scatter. The CPU checks run everywhere;
-/// the renders are Metal-gated and soft-skip without a GPU.
+/// the renders are Metal-gated and refuse themselves without a GPU.
 @Suite
 @MainActor
 struct LightAccumulationTests {
@@ -571,22 +571,6 @@ struct LightAccumulationTests {
     }
 
     // MARK: Support
-
-    private func pixels(of image: CGImage) -> [UInt8] {
-        let w = image.width, h = image.height
-        var bytes = [UInt8](repeating: 0, count: w * h * 4)
-        let space = CGColorSpaceCreateDeviceRGB()
-        let info = CGImageAlphaInfo.premultipliedLast.rawValue
-        guard let ctx = CGContext(data: &bytes, width: w, height: h, bitsPerComponent: 8,
-                                  bytesPerRow: w * 4, space: space, bitmapInfo: info) else { return bytes }
-        ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
-        return bytes
-    }
-
-    private func linear(_ byte: UInt8) -> Double {
-        let c = Double(byte) / 255
-        return c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4)
-    }
 
     /// The sum of linear luminance over every pixel (the light the frame holds).
     /// Whether two renders are the same picture, byte for byte.

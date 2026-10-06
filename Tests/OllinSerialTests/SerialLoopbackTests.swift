@@ -2,6 +2,7 @@ import Foundation
 import Testing
 import Ollin
 @testable import OllinSerial
+import OllinTestSupport
 
 /// End-to-end checks over a pty pair: the replica side opens as a real
 /// `SerialPort` (a pty is a tty, so the whole termios path runs), while the
@@ -11,20 +12,9 @@ import Ollin
 @Suite
 struct SerialLoopbackTests {
 
-    struct Timeout: Error {}
-
-    /// Polls `probe` until it returns a non-nil value or the timeout elapses.
-    ///
-    /// The probe comes before the clock is read: a starved task can wake past
-    /// its own deadline having never looked, and giving up then throws over an
-    /// answer that is already there.
+    /// `OllinTestSupport.waitFor` with this suite's budget: a pty pair, where the EOF disconnect takes the kernel a moment.
     func waitFor<T>(timeout: Double = 5.0, _ probe: () -> T?) async throws -> T {
-        let deadline = Date().addingTimeInterval(timeout)
-        while true {
-            if let value = probe() { return value }
-            if Date() >= deadline { throw Timeout() }
-            try await Task.sleep(nanoseconds: 5_000_000)   // 5 ms
-        }
+        try await OllinTestSupport.waitFor(timeout: timeout, probe)
     }
 
     /// One pty pair: the manager descriptor the test reads and writes, and
@@ -33,6 +23,9 @@ struct SerialLoopbackTests {
         let manager: Int32
         let path: String
 
+        /// The kernel handed out no pseudoterminal pair, which is the one way this fails.
+        struct NoPseudoterminal: Error {}
+
         init() throws {
             let descriptor = posix_openpt(O_RDWR | O_NOCTTY)
             guard descriptor >= 0,
@@ -40,7 +33,7 @@ struct SerialLoopbackTests {
                   unlockpt(descriptor) == 0,
                   let name = ptsname(descriptor) else {
                 if descriptor >= 0 { close(descriptor) }
-                throw Timeout()
+                throw NoPseudoterminal()
             }
             // Raw on the manager side and non-blocking reads, so nothing the
             // port writes echoes back and the test can poll for it.

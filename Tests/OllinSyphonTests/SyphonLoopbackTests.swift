@@ -4,6 +4,7 @@ import Foundation
 import Ollin
 @testable import OllinSyphon
 import CSyphon
+import OllinTestSupport
 
 /// Syphon has no wire format we author (it's IOSurface + Mach under the hood), so
 /// the testable surface is thin. These exercise the receive side — discovery and
@@ -12,22 +13,37 @@ import CSyphon
 ///
 /// The loopback needs a Metal device, so it's gated to skip on a GPU-less box.
 /// Discovery is asynchronous (Mach/distributed notifications) and not guaranteed
-/// in every sandbox, so it *soft-skips* if the published source never surfaces;
-/// the missing-source test is the always-on guard. Run on a real Mac it goes
-/// end to end.
+/// in every sandbox, so a probe publishes once and looks for itself, and the
+/// loopback refuses itself where the source never surfaces; the missing-source
+/// test is the always-on guard. Run on a real Mac it goes end to end.
 @MainActor
 @Suite struct SyphonLoopbackTests {
 
     nonisolated static var hasMetal: Bool { MTLCreateSystemDefaultDevice() != nil }
 
-    /// Poll `probe` until it returns non-nil or `timeout` elapses.
-    func waitFor<T>(timeout: Double = 4.0, _ probe: () -> T?) async -> T? {
-        let start = Date()
-        while Date().timeIntervalSince(start) < timeout {
-            if let value = probe() { return value }
-            try? await Task.sleep(nanoseconds: 50_000_000)   // 50 ms
-        }
-        return nil
+    /// Whether a published source surfaces in discovery here, asked once: a
+    /// server under a unique name publishes one frame, and the client's listing
+    /// is polled for it.
+    static let announcementsSurface = Task<Bool, Never> { @MainActor in
+        guard let device = MTLCreateSystemDefaultDevice(),
+              let queue = device.makeCommandQueue(), let commandBuffer = queue.makeCommandBuffer() else { return false }
+        let name = "Ollin Probe \(UUID().uuidString.prefix(8))"
+        let server = SyphonMetalServer(name: name, device: device, options: nil)
+        defer { server.stop() }
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .bgra8Unorm_srgb, width: 8, height: 8, mipmapped: false)
+        desc.usage = [.renderTarget, .shaderRead]
+        desc.storageMode = .private
+        guard let texture = device.makeTexture(descriptor: desc) else { return false }
+        server.publishFrameTexture(texture, on: commandBuffer,
+                                   imageRegion: NSRect(x: 0, y: 0, width: 8, height: 8), flipped: false)
+        commandBuffer.commit()
+        await commandBuffer.completed()
+        return (try? await waitFor(timeout: 4, { SyphonClient.availableServers().first { $0.name == name } })) != nil
+    }
+
+    static let discoveryTrait: ConditionTrait = .enabled("a published source does not surface in discovery here") {
+        await SyphonLoopbackTests.announcementsSurface.value
     }
 
     /// A source that is not there is said, not swallowed: the client stands
@@ -40,8 +56,8 @@ import CSyphon
         #expect(reason.contains("ollin-no-such-source") && reason.contains("ollin-no-such-app"), Comment(rawValue: reason))
     }
 
-    @Test(.enabled(if: SyphonLoopbackTests.hasMetal))
-    func publishedSourceIsDiscoveredAndDelivered() async {
+    @Test(.enabled(if: SyphonLoopbackTests.hasMetal), discoveryTrait)
+    func publishedSourceIsDiscoveredAndDelivered() async throws {
         let device = MTLCreateSystemDefaultDevice()!
         let name = "Ollin Test \(UUID().uuidString.prefix(8))"
         let server = SyphonMetalServer(name: name, device: device, options: nil)
@@ -65,17 +81,15 @@ import CSyphon
         }
         publishOnce()
 
-        // Soft-skip if the environment doesn't surface the announcement.
-        guard await waitFor({ SyphonClient.availableServers().first { $0.name == name } }) != nil else {
-            return
-        }
+        // The probe saw its own source surface, so this one has to.
+        _ = try await waitFor(timeout: 4, { SyphonClient.availableServers().first { $0.name == name } })
 
         let client = SyphonClient(named: name)
         defer { client.disconnect() }
-        #expect(await waitFor({ client.isConnected ? true : nil }) == true)
+        #expect((try? await waitFor(timeout: 4, { client.isConnected ? true : nil })) == true)
 
         // Keep publishing and confirm a frame comes back as an Image of the right size.
-        let frame = await waitFor { () -> Image? in
+        let frame = try? await waitFor(timeout: 4) { () -> Image? in
             publishOnce()
             return client.frame
         }

@@ -114,7 +114,7 @@ struct WatercolorSimTests {
             let sketch = WatercolorProbeSketch()
             sketch.script = [.paint(frame: 1, at: Vector2(64, 64), radius: 30, pigment: 0, load: 0.5, water: 1),
                              .dry(frame: 40)]
-            return bytes(of: try OllinApp.image(of: sketch, frame: frame)).bytes
+            return pixels(of: try OllinApp.image(of: sketch, frame: frame))
         }
         let just = try frameBytes(50)
         let later = try frameBytes(140)
@@ -166,27 +166,16 @@ struct WatercolorSimTests {
             let sketch = WatercolorProbeSketch()
             sketch.script = [.paint(frame: 1, at: Vector2(50, 60), radius: 28, pigment: 0, load: 0.5, water: 1),
                              .paint(frame: 20, at: Vector2(80, 70), radius: 16, pigment: 1, load: 0.6, water: 0.8)]
-            return bytes(of: try OllinApp.image(of: sketch, frame: 90)).bytes
+            return pixels(of: try OllinApp.image(of: sketch, frame: 90))
         }
         #expect(try run() == run())
     }
 
     // MARK: Readback helpers
 
-    private func bytes(of image: CGImage) -> (bytes: [UInt8], width: Int, height: Int) {
-        let w = image.width, h = image.height
-        var data = [UInt8](repeating: 0, count: w * h * 4)
-        let space = CGColorSpaceCreateDeviceRGB()
-        let info = CGImageAlphaInfo.premultipliedLast.rawValue
-        if let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
-                               bytesPerRow: w * 4, space: space, bitmapInfo: info) {
-            ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
-        }
-        return (data, w, h)
-    }
-
     private func luminances(of image: CGImage) -> [Double] {
-        let (data, w, h) = bytes(of: image)
+        let px = Pixels(image)
+        let (data, w, h) = (px.bytes, px.width, px.height)
         var lum = [Double](repeating: 0, count: w * h)
         for p in 0 ..< w * h {
             let i = p * 4

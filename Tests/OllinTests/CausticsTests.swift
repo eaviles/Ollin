@@ -13,16 +13,6 @@ import CoreGraphics
 @MainActor
 struct CausticRenderProbes {
 
-    private func pixels(of image: CGImage) -> [UInt8] {
-        let w = image.width, h = image.height
-        var data = [UInt8](repeating: 0, count: w * h * 4)
-        let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
-                            bytesPerRow: w * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
-                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-        ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
-        return data
-    }
-
     /// Mean of one channel over a fractional region (top-left origin).
     private func mean(_ data: [UInt8], width: Int, height: Int, channel: Int,
                       x: ClosedRange<Double>, y: ClosedRange<Double>) -> Double {

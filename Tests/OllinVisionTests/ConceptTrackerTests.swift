@@ -6,8 +6,8 @@ import Ollin
 
 /// The tokenizer goldens and the failure paths are gated only on the fetched
 /// vocabulary; the real-model tests also need the paired encoders
-/// (`Scripts/fetch-models.sh`), soft-skipping elsewhere (CI never fetches the
-/// weights).
+/// (`Scripts/fetch-models.sh`), and refuse themselves by an `.enabled` trait
+/// elsewhere (CI never fetches the weights).
 @Suite struct ConceptTrackerTests {
 
     static let vocabURL = ModelTrackerTests.model("bpe_simple_vocab_16e6.txt")
@@ -59,8 +59,8 @@ import Ollin
     /// phrases, casing and extra spaces, contractions, accented words,
     /// digits and punctuation, an emoji's multi-byte split, and words long
     /// enough to break into many pieces.
-    @Test func tokenizerMatchesTheReference() throws {
-        guard Self.vocabIsFetched else { return }
+    @Test(.enabled(if: ConceptTrackerTests.vocabIsFetched, "the vocabulary is not fetched (Scripts/fetch-models.sh)"))
+    func tokenizerMatchesTheReference() throws {
         let tokenizer = try PhraseTokenizer(vocabularyAt: Self.vocabURL)
         let goldens: [(String, [Int32])] = [
             ("a photo of a cat", [49406, 320, 1125, 539, 320, 2368, 49407]),
@@ -86,8 +86,8 @@ import Ollin
         }
     }
 
-    @Test func tokenizerShapeAndTruncation() throws {
-        guard Self.vocabIsFetched else { return }
+    @Test(.enabled(if: ConceptTrackerTests.vocabIsFetched, "the vocabulary is not fetched (Scripts/fetch-models.sh)"))
+    func tokenizerShapeAndTruncation() throws {
         let tokenizer = try PhraseTokenizer(vocabularyAt: Self.vocabURL)
         #expect(tokenizer.vocabularySize == 49408)
         #expect(tokenizer.startToken == 49406)
@@ -112,8 +112,8 @@ import Ollin
     /// phrase first, the shares sum to 1, and `similarity` agrees with the
     /// ranking. A wrong tokenizer, a wrong embedding decode, or a broken
     /// normalization all fail this.
-    @Test func aRedPictureRanksTheRedPhraseFirst() async throws {
-        guard Self.modelsAreFetched else { return }
+    @Test(.enabled(if: ConceptTrackerTests.modelsAreFetched, "the paired encoders are not fetched (Scripts/fetch-models.sh)"))
+    func aRedPictureRanksTheRedPhraseFirst() async throws {
         let tracker = Self.tracker(concepts: ["a plain red picture",
                                               "a plain blue picture"])
         let red = Image(width: 256, height: 256,
@@ -129,8 +129,8 @@ import Ollin
 
     /// Real footage: the flying dancers' scene prefers a matching phrase over
     /// an absurd one, through the same still path.
-    @Test func realFootagePrefersTheMatchingPhrase() async throws {
-        guard Self.modelsAreFetched else { return }
+    @Test(.enabled(if: ConceptTrackerTests.modelsAreFetched, "the paired encoders are not fetched (Scripts/fetch-models.sh)"))
+    func realFootagePrefersTheMatchingPhrase() async throws {
         let frame = try await ModelTrackerTests.clipFrame(at: 6)
         let tracker = Self.tracker(concepts: ["people performing on a tall pole",
                                               "a bowl of soup on a table"])
@@ -141,8 +141,8 @@ import Ollin
 
     /// The embedding surface: unit length, and a phrase sits closer to its
     /// paraphrase than to an unrelated phrase.
-    @Test func embeddingsAreUnitLengthAndMeaningful() async throws {
-        guard Self.modelsAreFetched else { return }
+    @Test(.enabled(if: ConceptTrackerTests.modelsAreFetched, "the paired encoders are not fetched (Scripts/fetch-models.sh)"))
+    func embeddingsAreUnitLengthAndMeaningful() async throws {
         let tracker = Self.tracker()
         let cat = try await tracker.embedding(of: "a photo of a cat")
         let kitten = try await tracker.embedding(of: "a picture of a kitten")
@@ -159,8 +159,8 @@ import Ollin
     /// The live path over a hand-fired frame source: the models load in the
     /// background, frames flow, the scores publish, and a phrase added
     /// mid-run joins the scoring on a later frame.
-    @Test @MainActor func liveWiringPublishesAndFollowsNewPhrases() async throws {
-        guard Self.modelsAreFetched else { return }
+    @Test(.enabled(if: ConceptTrackerTests.modelsAreFetched, "the paired encoders are not fetched (Scripts/fetch-models.sh)")) @MainActor
+    func liveWiringPublishesAndFollowsNewPhrases() async throws {
         let source = FrameSourceTests.ManualFrameSource()
         let tracker = ConceptTracker(source,
                                      imageModelAt: Self.imageModelURL,

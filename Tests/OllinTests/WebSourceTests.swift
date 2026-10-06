@@ -439,10 +439,11 @@ import OllinExpander
             ("Restyled (a join that changes)", { Restyled() }, 4, 3),
             ("Dense (a still spiral of 6000 points)", { Dense() }, 2, 0),
         ]
-        for c in cases {
+        let pages = try cases.map { c in
             let recording = try OllinApp.recordWebFrames(of: c.make(), frames: c.frames, fps: 30, controls: false)
-            let page = try OllinApp.webPage(of: recording, form: .inline)
-            let played = try await WebExportTests.pagePixels(page, frame: c.probe)
+            return WebExportTests.PageProbe(page: try OllinApp.webPage(of: recording, form: .inline), frame: c.probe)
+        }
+        for (c, played) in zip(cases, try await WebExportTests.pagePixels(pages)) {
             let reference = try OllinApp.image(of: c.make(), frame: c.probe, fps: 30)
             let difference = try WebExportTests.meanDifference(played, reference)
             let far = WebTriangleTests.farFraction(played, reference)

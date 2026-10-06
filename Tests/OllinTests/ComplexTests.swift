@@ -194,19 +194,6 @@ struct ComplexShaderTests {
         return Complex(u * 4, -v * 4)
     }
 
-    private func bytes(of image: CGImage) -> [UInt8] {
-        let w = image.width, h = image.height
-        var data = [UInt8](repeating: 0, count: w * h * 4)
-        data.withUnsafeMutableBytes { buffer in
-            let context = CGContext(data: buffer.baseAddress, width: w, height: h,
-                                    bitsPerComponent: 8, bytesPerRow: w * 4,
-                                    space: CGColorSpace(name: CGColorSpace.sRGB)!,
-                                    bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-            context.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
-        }
-        return data
-    }
-
     private func encoded(_ value: Double) -> Int {
         Int((min(max(value / 8 * 0.5 + 0.5, 0), 1) * 255).rounded())
     }
@@ -221,7 +208,7 @@ struct ComplexShaderTests {
         let image = try OllinApp.image(of: probe)
         let size = image.width
         #expect(size == 32)
-        let data = bytes(of: image)
+        let data = pixels(of: image)
         var bad: [String] = []
         for row in 0 ..< size {
             for col in 0 ..< size {
@@ -291,7 +278,7 @@ struct ComplexShaderTests {
             }
         }
         let image = try OllinApp.image(of: Wheel())
-        let data = bytes(of: image)
+        let data = pixels(of: image)
         var lightness: [Double] = []
         var hues: [Double] = []
         for i in 0 ..< 12 {

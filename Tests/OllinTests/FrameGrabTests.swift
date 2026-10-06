@@ -155,7 +155,7 @@ struct FrameGrabTests {
 
     /// Mean absolute difference over the color bytes of two images of one size.
     private func meanDifference(_ a: CGImage, _ b: CGImage) throws -> Double {
-        let (pa, pb) = (try #require(Self.rgba(of: a)), try #require(Self.rgba(of: b)))
+        let (pa, pb) = (pixels(of: a), pixels(of: b))
         try #require(pa.count == pb.count)
         var sum = 0
         for i in stride(from: 0, to: pa.count, by: 4) {
@@ -166,7 +166,7 @@ struct FrameGrabTests {
     }
 
     private func brightness(_ image: CGImage, x: Int, y: Int) throws -> Int {
-        let bytes = try #require(Self.rgba(of: image))
+        let bytes = pixels(of: image)
         let i = (y * image.width + x) * 4
         return (Int(bytes[i]) + Int(bytes[i + 1]) + Int(bytes[i + 2])) / 3
     }
@@ -344,15 +344,6 @@ struct FrameGrabTests {
         return ctx.makeImage()!
     }()
 
-    static func rgba(of image: CGImage) -> [UInt8]? {
-        let w = image.width, h = image.height
-        guard let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8,
-                                  bytesPerRow: w * 4, space: CGColorSpaceCreateDeviceRGB(),
-                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
-        ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
-        guard let ptr = ctx.data else { return nil }
-        return Array(UnsafeRawBufferPointer(start: ptr, count: w * h * 4))
-    }
 }
 
 private final class Recorder: SketchExtension {

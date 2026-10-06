@@ -5,8 +5,9 @@ import Ollin
 @testable import OllinVision
 
 /// The failure paths and the bounds mapping are always-on; the real-model
-/// tests need the three fetched model parts (`Scripts/fetch-models.sh`),
-/// soft-skipping elsewhere (CI never fetches the weights).
+/// tests need the three fetched model parts (`Scripts/fetch-models.sh`) and
+/// refuse themselves by an `.enabled` trait elsewhere (CI never fetches the
+/// weights).
 @Suite struct PointSegmenterTests {
 
     static let imageEncoderURL = ModelTrackerTests.model("SAM2_1SmallImageEncoderFLOAT16.mlpackage")
@@ -99,8 +100,8 @@ import Ollin
     ///
     /// The disc's pick also carries the cutout: the frame's own pixels under
     /// the mask and transparency elsewhere, at frame resolution.
-    @Test func aClickPicksTheThingUnderIt() async throws {
-        guard Self.modelsAreFetched else { return }
+    @Test(.enabled(if: PointSegmenterTests.modelsAreFetched, "the three model parts are not fetched (Scripts/fetch-models.sh)"))
+    func aClickPicksTheThingUnderIt() async throws {
         let scene = Self.scene()
         let segmenter = Self.segmenter()
         let pixels = Rectangle(x: 0, y: 0, width: 512, height: 512)
@@ -137,8 +138,8 @@ import Ollin
     /// The label plumbing: a background point rides along without turning
     /// into a second foreground point. If the labels were swapped or lost,
     /// the mask would grow toward the avoided corner and this bound breaks.
-    @Test func anAvoidedPointStaysOutOfThePick() async throws {
-        guard Self.modelsAreFetched else { return }
+    @Test(.enabled(if: PointSegmenterTests.modelsAreFetched, "the three model parts are not fetched (Scripts/fetch-models.sh)"))
+    func anAvoidedPointStaysOutOfThePick() async throws {
         let scene = Self.scene()
         let segmenter = Self.segmenter()
         let disc = try #require(try await segmenter.detect(
@@ -152,8 +153,8 @@ import Ollin
     /// The live path over a hand-fired frame source: frames flow, a pick
     /// answers asynchronously, a refine lands against the frozen frame's
     /// cached encoding, and `clear()` empties the surface.
-    @Test @MainActor func liveWiringAnswersPicksAndClears() async throws {
-        guard Self.modelsAreFetched else { return }
+    @Test(.enabled(if: PointSegmenterTests.modelsAreFetched, "the three model parts are not fetched (Scripts/fetch-models.sh)")) @MainActor
+    func liveWiringAnswersPicksAndClears() async throws {
         let source = FrameSourceTests.ManualFrameSource()
         let segmenter = PointSegmenter(source,
                                        imageEncoderAt: Self.imageEncoderURL,

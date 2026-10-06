@@ -7,13 +7,20 @@ import OllinSamplePhotos
 /// model is checked directly.
 @Suite struct BodyTrackerTests {
 
-    @Test func blankImageHasNoBodies() async throws {
-        let image = Image(width: 128, height: 128, color: .white)
-        // Soft-skip: the body-pose model needs a compute device that some setups
-        // lack in a headless test process (e.g. Intel Macs with no Neural Engine,
-        // "No available compute device"). A throw there isn't a code failure; it
-        // runs for real where a device is available.
-        guard let bodies = try? await BodyTracker.detect(in: image) else { return }
+    /// The model over a blank frame, made once: `nil` where the body-pose model
+    /// has no compute device (a headless process on a Mac with no Neural
+    /// Engine says "No available compute device"), which `modelRuns` reports
+    /// as the skip it is.
+    private static let blank = Task<[Body]?, Never> {
+        try? await BodyTracker.detect(in: Image(width: 128, height: 128, color: .white))
+    }
+
+    private static let modelRuns: ConditionTrait = .enabled("the body-pose model has no compute device here") {
+        await BodyTrackerTests.blank.value != nil
+    }
+
+    @Test(modelRuns) func blankImageHasNoBodies() async throws {
+        let bodies = try #require(await Self.blank.value)
         #expect(bodies.isEmpty)
     }
 
@@ -23,10 +30,7 @@ import OllinSamplePhotos
     /// body-pose model loads on the first request that needs it and answers
     /// requests that arrive while it loads with nothing, which four at once
     /// reliably provoked.
-    @Test func everyFigurePhotographYieldsItsBody() async throws {
-        // Soft-skip where the model has no compute device, as above.
-        guard (try? await BodyTracker.detect(in: SamplePhoto.reaching.load())) != nil else { return }
-
+    @Test(modelRuns) func everyFigurePhotographYieldsItsBody() async throws {
         // The wrestler's ankles are behind the ring rope, so the bar is most of
         // the skeleton rather than all of it.
         for photo in [SamplePhoto.reaching, .wrestler, .dancer, .handstand] {

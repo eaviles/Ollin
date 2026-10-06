@@ -11,16 +11,6 @@ import CoreGraphics
 @MainActor
 struct LensFlareRenderProbes {
 
-    private func pixels(of image: CGImage) -> [UInt8] {
-        let w = image.width, h = image.height
-        var data = [UInt8](repeating: 0, count: w * h * 4)
-        let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
-                            bytesPerRow: w * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
-                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-        ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
-        return data
-    }
-
     /// The frame drawn with no flare, per occluder, as bytes. With the flare off, nothing
     /// a probe hands the flare (the lens, the stop, the star, the source size, the amount)
     /// reaches the picture, so every probe's frame without a flare over one occluder is the
@@ -94,10 +84,6 @@ struct LensFlareRenderProbes {
             occluder: .none, flare: true, sourceSize: sourceSize, amount: 0.12,
             lens: stopped), frame: 1)
         let a = pixels(of: on), b = try unflared(.none)
-        func linear(_ byte: UInt8) -> Double {
-            let v = Double(byte) / 255
-            return v <= 0.04045 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4)
-        }
         var total = 0.0, peak = 0.0, covered = 0, across = 0.0, up = 0.0
         let width = on.width
         var rises = [Double](repeating: 0, count: a.count / 4)
@@ -190,10 +176,6 @@ struct LensFlareRenderProbes {
         let without = try OllinApp.image(of: FlareProbe.make(
             occluder: occluder, flare: true, lens: lens), frame: 1)
         let a = pixels(of: with), b = pixels(of: without)
-        func linear(_ byte: UInt8) -> Double {
-            let v = Double(byte) / 255
-            return v <= 0.04045 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4)
-        }
         var rise = [Double](repeating: 0, count: a.count / 4)
         for i in stride(from: 0, to: a.count, by: 4) {
             rise[i / 4] = (0..<3).map { max(0, linear(a[i + $0]) - linear(b[i + $0])) }.max() ?? 0

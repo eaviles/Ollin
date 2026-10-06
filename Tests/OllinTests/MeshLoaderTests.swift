@@ -413,11 +413,11 @@ struct MeshLoaderTests {
     // MARK: Model I/O (USD round-trip)
 
     /// Round-trip a box through Model I/O: build one, export to USD, and read it
-    /// back through the native USD reader. Soft-skips if this toolchain can't
-    /// export USD.
-    @Test func modelIORoundTripsABox() throws {
+    /// back through the native USD reader. Refuses itself where this toolchain
+    /// can't export USD.
+    @Test(.enabled(if: MDLAsset.canExportFileExtension("usdc"), "this toolchain cannot export USD"))
+    func modelIORoundTripsABox() throws {
         #if canImport(ModelIO)
-        guard MDLAsset.canExportFileExtension("usdc") else { return }
         let allocator = MDLMeshBufferDataAllocator()
         let box = MDLMesh(boxWithExtent: SIMD3<Float>(2, 2, 2),
                           segments: SIMD3<UInt32>(1, 1, 1),

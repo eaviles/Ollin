@@ -168,15 +168,6 @@ struct SceneSkinningTests {
         """
     }
 
-    /// Write a glTF string to a temp file and load it as a `Scene`, cleaning up.
-    private func loadScene(_ json: String) throws -> Ollin.Scene? {
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("ollin-\(ProcessInfo.processInfo.globallyUniqueString).gltf")
-        try json.write(to: url, atomically: true, encoding: .utf8)
-        defer { try? FileManager.default.removeItem(at: url) }
-        return try? Scene(contentsOf: url)
-    }
-
     private func near(_ a: Vector3, _ b: Vector3, _ tolerance: Double = 1e-5) -> Bool {
         abs(a.x - b.x) < tolerance && abs(a.y - b.y) < tolerance && abs(a.z - b.z) < tolerance
     }
@@ -184,7 +175,7 @@ struct SceneSkinningTests {
     // MARK: Skins
 
     @Test func skinParsesJointsBindMatricesAndVertexAttributes() throws {
-        let scene = try #require(try loadScene(skinnedJSON()))
+        let scene = try #require(loadGLTFScene(skinnedJSON()))
         #expect(scene.skins.count == 1)
         #expect(scene.skins[0].joints == [0, 1])
         #expect(scene.skins[0].inverseBind.count == 2)
@@ -200,7 +191,7 @@ struct SceneSkinningTests {
     @Test func bindPoseSkinsToTheAuthoredShape() throws {
         // Unposed, every joint matrix is world x inverseBind = identity, so the
         // skinned mesh must come back at its authored positions.
-        let scene = try #require(try loadScene(skinnedJSON()))
+        let scene = try #require(loadGLTFScene(skinnedJSON()))
         let bar = try #require(scene.node("bar"))
         let mesh = try #require(bar.mesh)
         let posed = try #require(bar.skinnedMesh(mesh, skin: scene.skins[0],
@@ -214,7 +205,7 @@ struct SceneSkinningTests {
         // Joint 1 bent 90 degrees about z. Hand-derived: a top-row vertex
         // (0.1, 2, 0) maps through T(0,1,0) R90z T(0,-1,0) to (-1, 1.1, 0); a
         // middle-row vertex blends that matrix 50/50 with joint 0's identity.
-        var scene = try #require(try loadScene(skinnedJSON()))
+        var scene = try #require(loadGLTFScene(skinnedJSON()))
         let anim = try #require(scene.animation("bend"))
         scene.apply(anim, at: 1)
         let bar = try #require(scene.node("bar"))
@@ -229,8 +220,8 @@ struct SceneSkinningTests {
     }
 
     @Test func skinnedPosingIsDeterministic() throws {
-        var a = try #require(try loadScene(skinnedJSON()))
-        var b = try #require(try loadScene(skinnedJSON()))
+        var a = try #require(loadGLTFScene(skinnedJSON()))
+        var b = try #require(loadGLTFScene(skinnedJSON()))
         let anim = try #require(a.animation("bend"))
         a.apply(anim, at: 0.7)
         b.apply(try #require(b.animation("bend")), at: 0.7)
@@ -248,8 +239,8 @@ struct SceneSkinningTests {
         // The format's rule: a skinned mesh's placement comes entirely from its
         // joints. Two files differing only in the skinned node's own translation
         // must render byte-identically, and the bend must actually move pixels.
-        let offset = try #require(try loadScene(skinnedJSON(barTranslation: [5, 0, 0])))
-        let centered = try #require(try loadScene(skinnedJSON(barTranslation: [0, 0, 0])))
+        let offset = try #require(loadGLTFScene(skinnedJSON(barTranslation: [5, 0, 0])))
+        let centered = try #require(loadGLTFScene(skinnedJSON(barTranslation: [0, 0, 0])))
         let a = try OllinApp.image(of: SkinnedBarProbe.make(offset, bend: 1), frame: 1)
         let b = try OllinApp.image(of: SkinnedBarProbe.make(centered, bend: 1), frame: 1)
         #expect(rgba(a) == rgba(b))
@@ -260,7 +251,7 @@ struct SceneSkinningTests {
     // MARK: Morph targets
 
     @Test func morphTargetsParseWithSparseDeltas() throws {
-        let scene = try #require(try loadScene(morphJSON))
+        let scene = try #require(loadGLTFScene(morphJSON))
         let plain = try #require(scene.node("plain"))
         #expect(plain.morphTargets.count == 2)
         #expect(plain.morphTargets[0].positionDeltas == [Vector3(0, 0, 1), Vector3(0, 0, 1), Vector3(0, 0, 1)])
@@ -271,14 +262,14 @@ struct SceneSkinningTests {
     }
 
     @Test func morphWeightDefaultsAndNodeOverride() throws {
-        let scene = try #require(try loadScene(morphJSON))
+        let scene = try #require(loadGLTFScene(morphJSON))
         // "plain" takes the mesh's authored defaults; "posed" carries its own.
         #expect(scene.node("plain")?.weights == [0.25, 0.5])
         #expect(scene.node("posed")?.weights == [1, 0])
     }
 
     @Test func morphedMeshMatchesHandComputedBlend() throws {
-        let scene = try #require(try loadScene(morphJSON))
+        let scene = try #require(loadGLTFScene(morphJSON))
         let plain = try #require(scene.node("plain"))
         let morphed = try #require(plain.morphedMesh())
         // v = base + 0.25 * target0 + 0.5 * target1.
@@ -291,13 +282,13 @@ struct SceneSkinningTests {
     }
 
     @Test func allZeroWeightsLeaveTheMeshUntouched() throws {
-        var scene = try #require(try loadScene(morphJSON))
+        var scene = try #require(loadGLTFScene(morphJSON))
         scene["plain"]?.weights = [0, 0]
         #expect(scene.node("plain")?.morphedMesh() == nil)
     }
 
     @Test func weightsAnimationDrivesNodeWeights() throws {
-        var scene = try #require(try loadScene(morphJSON))
+        var scene = try #require(loadGLTFScene(morphJSON))
         let anim = try #require(scene.animation("blend"))
         #expect(anim.duration == 1)
         scene.apply(anim, at: 0.5)

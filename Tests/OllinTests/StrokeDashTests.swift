@@ -292,7 +292,7 @@ struct StrokeDashTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func gapsStayBlankAndDashesInk() throws {
         let image = try OllinApp.image(of: DashedLineProbe())
-        let px = pixels(of: image)
+        let px = Pixels(image)
         // Dashes of 40 with gaps of 20 from x = 20: ink on 20...60, 80...120, 140...180, 200...220.
         for x in [30, 50, 90, 110, 150, 170, 210] { #expect(px.gray(x, 64) <= 12, "ink at \(x)") }
         for x in [66, 74, 126, 134, 186, 194, 230] { #expect(px.gray(x, 64) >= 250, "paper at \(x)") }
@@ -303,7 +303,7 @@ struct StrokeDashTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func aDashedCircleIsARingWithGaps() throws {
         let image = try OllinApp.image(of: DashedCircleProbe())
-        let px = pixels(of: image)
+        let px = Pixels(image)
         var ink = 0, paper = 0
         for k in 0..<360 {
             let a = Double(k) / 360 * 2 * .pi
@@ -319,7 +319,7 @@ struct StrokeDashTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func aProfileTapersAcrossTheGaps() throws {
         let image = try OllinApp.image(of: TaperedDashesProbe())
-        let px = pixels(of: image)
+        let px = Pixels(image)
         func ink(_ x: Int) -> Int { (30..<98).reduce(0) { $0 + 255 - px.gray(x, $1) } }
         #expect(ink(40) > ink(100))
         #expect(ink(100) > ink(160))
@@ -329,25 +329,6 @@ struct StrokeDashTests {
 }
 
 // MARK: - Helpers
-
-private struct Pixels {
-    var bytes: [UInt8]
-    var width: Int
-    func gray(_ x: Int, _ y: Int) -> Int { Int(bytes[(y * width + x) * 4]) }
-}
-
-private func pixels(of image: CGImage) -> Pixels {
-    let w = image.width, h = image.height
-    var bytes = [UInt8](repeating: 0, count: w * h * 4)
-    bytes.withUnsafeMutableBytes { raw in
-        let ctx = CGContext(data: raw.baseAddress, width: w, height: h,
-                            bitsPerComponent: 8, bytesPerRow: w * 4,
-                            space: CGColorSpaceCreateDeviceRGB(),
-                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
-        ctx?.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
-    }
-    return Pixels(bytes: bytes, width: w)
-}
 
 private final class DashedLineProbe: Sketch {
     override var canvasSize: CanvasSize { .size(256, 128) }

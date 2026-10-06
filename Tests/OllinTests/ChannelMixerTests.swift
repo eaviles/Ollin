@@ -52,7 +52,7 @@ struct ChannelMixerTests {
         let patch = (r: 0.88, g: 0.44, b: 0.23)
         let image = try OllinApp.image(
             of: PatchProbe.make(patch, .channelMixer(.gray)), frame: 1)
-        let (r, g, b) = channels(pixels(of: image), x: 64, y: 64)
+        let (r, g, b) = channels(Pixels(image), x: 64, y: 64)
         #expect(abs(r - g) <= 1 && abs(g - b) <= 1, "the gray came back \(r),\(g),\(b)")
         let luma = 0.2126 * Color.srgbToLinear(patch.r) + 0.7152 * Color.srgbToLinear(patch.g)
             + 0.0722 * Color.srgbToLinear(patch.b)
@@ -61,7 +61,7 @@ struct ChannelMixerTests {
         // A recipe that is not the display's: all red is the red channel's own value.
         let redFilter = try OllinApp.image(
             of: PatchProbe.make(patch, .channelMixer(.gray(red: 1, green: 0, blue: 0))), frame: 1)
-        let (fr, fg, fb) = channels(pixels(of: redFilter), x: 64, y: 64)
+        let (fr, fg, fb) = channels(Pixels(redFilter), x: 64, y: 64)
         let red = Int((patch.r * 255).rounded())
         #expect(abs(fr - red) <= 1 && abs(fg - red) <= 1 && abs(fb - red) <= 1,
                 "the red-filter gray came back \(fr),\(fg),\(fb) for a red of \(red)")
@@ -74,8 +74,8 @@ struct ChannelMixerTests {
         let plain = try OllinApp.image(of: PatchProbe.make(patch, nil), frame: 1)
         let swapped = try OllinApp.image(
             of: PatchProbe.make(patch, .channelMixer(.swapping(.red, .blue))), frame: 1)
-        let (r, g, b) = channels(pixels(of: plain), x: 64, y: 64)
-        let (sr, sg, sb) = channels(pixels(of: swapped), x: 64, y: 64)
+        let (r, g, b) = channels(Pixels(plain), x: 64, y: 64)
+        let (sr, sg, sb) = channels(Pixels(swapped), x: 64, y: 64)
         #expect(abs(sr - b) <= 1 && abs(sg - g) <= 1 && abs(sb - r) <= 1,
                 "\(r),\(g),\(b) swapped came back \(sr),\(sg),\(sb)")
     }
@@ -86,7 +86,7 @@ struct ChannelMixerTests {
     func anOffsetAddsInLinearLight() throws {
         let image = try OllinApp.image(
             of: PatchProbe.make((r: 0, g: 0, b: 0), .channelMixer(ColorMatrix(red: [1, 0, 0, 0, 0.25]))), frame: 1)
-        let (r, g, b) = channels(pixels(of: image), x: 64, y: 64)
+        let (r, g, b) = channels(Pixels(image), x: 64, y: 64)
         let expected = Int((Color.linearToSrgb(0.25) * 255).rounded())
         #expect(abs(r - expected) <= 2 && g <= 1 && b <= 1, "an offset of 0.25 came back \(r),\(g),\(b)")
     }
@@ -97,7 +97,7 @@ struct ChannelMixerTests {
     func theAlphaRowScalesCoverage() throws {
         let image = try OllinApp.image(
             of: DiscsProbe.make(.channelMixer(ColorMatrix(alpha: [0, 0, 0, 0.5]))), frame: 1)
-        let (r, g, b) = channels(pixels(of: image), x: 64, y: 64)   // inside the opaque white disc
+        let (r, g, b) = channels(Pixels(image), x: 64, y: 64)   // inside the opaque white disc
         let expected = Int((Color.linearToSrgb(0.5) * 255).rounded())
         #expect(abs(r - expected) <= 2 && abs(g - expected) <= 2 && abs(b - expected) <= 2,
                 "half alpha came back \(r),\(g),\(b) for \(expected)")
@@ -105,26 +105,14 @@ struct ChannelMixerTests {
 
     // MARK: Pixels
 
-    private func pixels(of image: CGImage) -> (bytes: [UInt8], width: Int, height: Int) {
-        let w = image.width, h = image.height
-        var data = [UInt8](repeating: 0, count: w * h * 4)
-        let space = CGColorSpaceCreateDeviceRGB()
-        let info = CGImageAlphaInfo.premultipliedLast.rawValue
-        if let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
-                               bytesPerRow: w * 4, space: space, bitmapInfo: info) {
-            ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
-        }
-        return (data, w, h)
-    }
-
-    private func channels(_ px: (bytes: [UInt8], width: Int, height: Int), x: Int, y: Int)
+    private func channels(_ px: Pixels, x: Int, y: Int)
         -> (Int, Int, Int) {
         let i = (y * px.width + x) * 4
         return (Int(px.bytes[i]), Int(px.bytes[i + 1]), Int(px.bytes[i + 2]))
     }
 
     private func maxDifference(_ a: CGImage, _ b: CGImage) -> Int {
-        let pa = pixels(of: a), pb = pixels(of: b)
+        let pa = Pixels(a), pb = Pixels(b)
         var worst = 0
         for i in 0 ..< min(pa.bytes.count, pb.bytes.count) {
             worst = max(worst, abs(Int(pa.bytes[i]) - Int(pb.bytes[i])))

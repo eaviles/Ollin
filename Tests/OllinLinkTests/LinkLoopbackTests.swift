@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 @testable import OllinLink
+import OllinTestSupport
 
 /// End-to-end over real UDP multicast on `127.0.0.1`: two clocks in this
 /// process must discover each other, converge into one session, follow tempo
@@ -15,19 +16,9 @@ import Testing
 @Suite(.serialized)
 struct LinkLoopbackTests {
 
-    struct Timeout: Error {}
-
-    /// Polls `probe` until it returns a value or the timeout elapses. The
-    /// probe comes before the clock is read: a starved task can wake past its
-    /// own deadline having never looked, and giving up then would throw over
-    /// an answer already in hand.
+    /// `OllinTestSupport.waitFor` with this suite's budget: two sessions converging over real multicast.
     func waitFor<T>(timeout: Double = 15.0, _ probe: () -> T?) async throws -> T {
-        let deadline = Date().addingTimeInterval(timeout)
-        while true {
-            if let value = probe() { return value }
-            if Date() >= deadline { throw Timeout() }
-            try await Task.sleep(nanoseconds: 10_000_000)   // 10 ms
-        }
+        try await OllinTestSupport.waitFor(timeout: timeout, probe)
     }
 
     /// A running clock says whether it is on any network at all: loopback

@@ -21,7 +21,7 @@ struct DefocusTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func nearSpreadInventsNoColor() throws {
         let image = try OllinApp.image(of: NearSpreadProbe(), frame: 1)
-        let px = pixels(of: image)
+        let px = Pixels(image)
         var darkest = 255
         for i in stride(from: 0, to: px.bytes.count, by: 4) {
             darkest = min(darkest, Int(px.bytes[i]))
@@ -124,22 +124,10 @@ struct DefocusTests {
 
     // MARK: Readback helpers
 
-    private func pixels(of image: CGImage) -> (bytes: [UInt8], width: Int, height: Int) {
-        let w = image.width, h = image.height
-        var data = [UInt8](repeating: 0, count: w * h * 4)
-        let space = CGColorSpaceCreateDeviceRGB()
-        let info = CGImageAlphaInfo.premultipliedLast.rawValue
-        if let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
-                               bytesPerRow: w * 4, space: space, bitmapInfo: info) {
-            ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
-        }
-        return (data, w, h)
-    }
-
     /// One channel along one scanline, plus its minimum.
     private func channelRun(of image: CGImage, channel: Int, y: Int, from x0: Int, to x1: Int)
         -> (values: [Int], min: Int?) {
-        let px = pixels(of: image)
+        let px = Pixels(image)
         var out: [Int] = []
         for x in x0 ... min(x1, px.width - 1) {
             out.append(Int(px.bytes[(y * px.width + x) * 4 + channel]))

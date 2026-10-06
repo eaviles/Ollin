@@ -277,13 +277,4 @@ import Ollin
         abs(a.x - b.x) < tolerance && abs(a.y - b.y) < tolerance && abs(a.z - b.z) < tolerance
     }
 
-    /// Encode a message, split the framed bytes back into header + payload the way
-    /// the reader does, and decode: the full wire trip.
-    private func roundTrip(_ message: PhoneMessage) -> PhoneMessage? {
-        let data = PhoneWire.encode(message)
-        guard let header = PhoneHeader.parse(data) else { return nil }
-        let start = data.startIndex + PhoneWire.headerByteCount
-        let payload = data.subdata(in: start ..< data.endIndex)
-        return PhoneWire.decode(header: header, payload: payload)
-    }
 }

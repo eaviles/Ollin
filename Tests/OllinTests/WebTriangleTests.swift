@@ -304,7 +304,7 @@ import OllinWebGate
     /// light moves few pixels but moves them far, which a mean over the whole
     /// picture barely sees.
     static func farFraction(_ a: CGImage, _ b: CGImage, past levels: Int = 32) -> Double {
-        let x = WebExportTests.rgba(of: a), y = WebExportTests.rgba(of: b)
+        let x = pixels(of: a), y = pixels(of: b)
         var far = 0
         for i in stride(from: 0, to: min(x.count, y.count), by: 4) {
             var worst = 0
@@ -331,10 +331,11 @@ import OllinWebGate
             // `WebSourceTests.thePageExpandsTheStrokesAndFillsTheMacDrew`, on the
             // same `Growing` sketch at the same frame.
         ]
-        for c in cases {
+        let pages = try cases.map { c in
             let recording = try OllinApp.recordWebFrames(of: c.make(), frames: c.frames, fps: 30)
-            let page = try OllinApp.webPage(of: recording, form: .inline)
-            let played = try await WebExportTests.pagePixels(page, frame: c.probe)
+            return WebExportTests.PageProbe(page: try OllinApp.webPage(of: recording, form: .inline), frame: c.probe)
+        }
+        for (c, played) in zip(cases, try await WebExportTests.pagePixels(pages)) {
             let reference = try OllinApp.image(of: c.make(), frame: c.probe, fps: 30)
             let difference = try WebExportTests.meanDifference(played, reference)
             let far = Self.farFraction(played, reference)

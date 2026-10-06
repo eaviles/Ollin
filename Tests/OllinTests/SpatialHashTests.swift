@@ -7,7 +7,7 @@ import COllinShaders   // OllinParticle
 
 /// The GPU spatial-hash neighbor search and the artificial-life sims built on it. The
 /// grid math and struct layout run everywhere; the counting-sort correctness and the
-/// sims' evolution are Metal-gated and soft-skip without a GPU (`Snapshot.hasMetal`).
+/// sims' evolution are Metal-gated and refuse themselves without a GPU (`Snapshot.hasMetal`).
 ///
 /// The scatter lists a cell's particles in whatever order the GPU's threads arrive;
 /// a run that can repeat then ranks them into index order, and a live frame keeps
@@ -258,13 +258,7 @@ struct SpatialHashTests {
     }
 
     private func maxLuma(of image: CGImage) -> Double {
-        let w = image.width, h = image.height
-        var bytes = [UInt8](repeating: 0, count: w * h * 4)
-        let space = CGColorSpaceCreateDeviceRGB()
-        let info = CGImageAlphaInfo.premultipliedLast.rawValue
-        guard let ctx = CGContext(data: &bytes, width: w, height: h, bitsPerComponent: 8,
-                                  bytesPerRow: w * 4, space: space, bitmapInfo: info) else { return 0 }
-        ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
+        let bytes = pixels(of: image)
         var peak: UInt8 = 0
         for i in stride(from: 0, to: bytes.count, by: 4) {
             peak = max(peak, bytes[i], bytes[i + 1], bytes[i + 2])

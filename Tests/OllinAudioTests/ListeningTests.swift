@@ -234,18 +234,21 @@ import Testing
 
     /// The one end-to-end speech check, over audio the test speaks to itself:
     /// the system's own synthesizer writes the samples, and the recognizer
-    /// reads them back. Soft-skips where no voice is installed.
+    /// reads them back. Refuses itself where no English voice is installed.
     @MainActor
-    @Test func transcribesASpokenSentence() async throws {
+    @Test(SpokenSamples.voiceTrait) func transcribesASpokenSentence() async throws {
         let sentence = "the quick brown fox jumps over the lazy dog"
-        guard let spoken = await SpokenSamples.make(sentence) else { return }   // soft-skip: no voice
+        let spoken = try #require(await SpokenSamples.make(sentence))
         let heard = try await SpeechListener.transcribe(spoken.samples,
                                                         sampleRate: spoken.sampleRate,
                                                         locale: Locale(identifier: "en_US"))
         let words = heard.lowercased()
             .components(separatedBy: CharacterSet.alphanumerics.inverted)
             .filter { !$0.isEmpty }
-        guard !words.isEmpty else { return }   // soft-skip: no model installed here
+        // An empty transcript is the recognizer having no on-device model for
+        // the locale, which no probe can ask about short of recognizing: the
+        // one judgment-shaped skip this suite keeps.
+        guard !words.isEmpty else { return }
         #expect(words.joined(separator: " ").contains("quick brown fox"))
         #expect(words.contains("lazy"))
     }
@@ -255,8 +258,8 @@ import Testing
     /// filling in. Fed by the same self-spoken audio, pushed through a plain
     /// `AudioTapSource` the way a microphone's engine would.
     @MainActor
-    @Test func aTapSourceReachesTheRecognizer() async throws {
-        guard let spoken = await SpokenSamples.make("hello there") else { return }   // soft-skip
+    @Test(SpokenSamples.voiceTrait) func aTapSourceReachesTheRecognizer() async throws {
+        let spoken = try #require(await SpokenSamples.make("hello there"))
         let source = StubTapSource()
         let listener = SpeechListener(of: source, locale: Locale(identifier: "en_US"))
         defer { listener.detach() }
@@ -265,7 +268,8 @@ import Testing
         for _ in 0..<40 where !listener.isListening {
             try? await Task.sleep(for: .milliseconds(250))
         }
-        guard listener.isListening, let tap = source.audioTap else { return }   // soft-skip
+        try #require(listener.isListening, "the recognizer never started listening")
+        let tap = try #require(source.audioTap)
 
         spoken.samples.withUnsafeBufferPointer { all in
             var offset = 0
@@ -299,9 +303,14 @@ import Testing
 }
 
 /// Speech the test makes for itself, so nothing recorded has to be committed to
-/// the repository. `nil` when no voice is installed.
+/// the repository. `nil` when no voice is installed, which `voiceTrait` refuses
+/// a test over before it asks.
 @MainActor
 enum SpokenSamples {
+
+    nonisolated static var hasVoice: Bool { AVSpeechSynthesisVoice(language: "en-US") != nil }
+
+    nonisolated static let voiceTrait: ConditionTrait = .enabled(if: hasVoice, "no English voice is installed here")
 
     static func make(_ text: String, timeout: Double = 20) async -> (samples: [Float], sampleRate: Double)? {
         guard let voice = AVSpeechSynthesisVoice(language: "en-US") else { return nil }

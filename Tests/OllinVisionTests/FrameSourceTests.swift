@@ -6,12 +6,13 @@ import Foundation
 import Ollin
 import OllinVideo
 @testable import OllinVision
+import OllinTestSupport
 
 /// The frame-source seam: trackers attaching to any `FrameSource`, not just the
 /// camera. A hand-driven source exercises the tap → analyzer → tracker path
 /// with no capture hardware, and the video test runs a tracker over a playing
-/// `VideoPlayer` end to end (soft-skipping where the environment can't encode
-/// or decode video, like the rest of the video tests).
+/// `VideoPlayer` end to end, behind the trait that refuses it where the
+/// environment can't encode or decode video (`ExportClockTests.clipTrait`).
 @MainActor
 @Suite struct FrameSourceTests {
 
@@ -51,20 +52,6 @@ import OllinVideo
         return image.currentCGImage()
     }
 
-    /// Polls `read` every 50 ms until it returns a value or `seconds` elapse.
-    ///
-    /// The read comes before the clock: a starved task can wake past its own
-    /// deadline having never looked once, and returning `nil` then reports a
-    /// result that never arrived while the result is sitting there.
-    private func waitFor<T>(seconds: Double, _ read: () -> T?) async -> T? {
-        let deadline = Date(timeIntervalSinceNow: seconds)
-        while true {
-            if let value = read() { return value }
-            if Date() >= deadline { return nil }
-            try? await Task.sleep(for: .milliseconds(50))
-        }
-    }
-
     @Test func trackerRunsOverAManualSource() async throws {
         let source = ManualFrameSource()
         let detector = ContourDetector(source)
@@ -93,20 +80,20 @@ import OllinVideo
         #expect(first !== elsewhere)
     }
 
-    @Test func contoursTraceAPlayingVideo() async throws {
-        guard let url = await writeDiskClip() else { return }   // soft-skip: no encoder
+    @Test(ExportClockTests.clipTrait) func contoursTraceAPlayingVideo() async throws {
+        let url = try #require(await writeDiskClip())
         defer { try? FileManager.default.removeItem(at: url) }
         let player = try VideoPlayer(url: url)
         let detector = ContourDetector(player)
         player.loops = true
         player.play()
 
-        // Decode proof first, through the player's own display output — if the
-        // headless environment can't decode at all, soft-skip rather than fail.
-        guard await waitFor(seconds: 5, { player.snapshot() }) != nil else { return }
+        // Decode proof first, through the player's own display output: the
+        // trait said a clip decodes here, so a frame has to come.
+        _ = try await OllinTestSupport.waitFor(timeout: 5) { player.snapshot() }
 
         // The tap output decodes the same frames; the disk must trace.
-        let found = await waitFor(seconds: 10) { detector.count >= 1 ? true : nil }
+        let found = try? await OllinTestSupport.waitFor(timeout: 10) { detector.count >= 1 ? true : nil }
         #expect(found == true, "a high-contrast disk in the footage should produce contours")
     }
 

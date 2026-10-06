@@ -76,18 +76,6 @@ struct ManyLightsTests {
 
     // MARK: - Helpers
 
-    private func rgba(of image: CGImage) -> [UInt8] {
-        let w = image.width, h = image.height
-        var data = [UInt8](repeating: 0, count: w * h * 4)
-        let info = CGImageAlphaInfo.premultipliedLast.rawValue
-        if let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
-                               bytesPerRow: w * 4, space: CGColorSpaceCreateDeviceRGB(),
-                               bitmapInfo: info) {
-            ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
-        }
-        return data
-    }
-
     private func pixel(_ data: [UInt8], _ width: Int, _ x: Int, _ y: Int) -> (r: Int, g: Int, b: Int) {
         let i = (y * width + x) * 4
         return (Int(data[i]), Int(data[i + 1]), Int(data[i + 2]))
@@ -175,7 +163,7 @@ struct ManyLightsTests {
         guard let a = try? OllinApp.image(of: culled), let b = try? OllinApp.image(of: plain) else {
             Issue.record("headless render failed"); return
         }
-        let x = rgba(of: a), y = rgba(of: b)
+        let x = pixels(of: a), y = pixels(of: b)
         #expect(x.count == y.count)
         var worst = 0
         for i in x.indices { worst = max(worst, abs(Int(x[i]) - Int(y[i]))) }
@@ -197,7 +185,7 @@ struct ManyLightsTests {
             for i in bytes.indices where i % 4 != 3 && bytes[i] > 24 { n += 1 }
             return n
         }
-        let litMany = litChannels(rgba(of: a)), litFew = litChannels(rgba(of: b))
+        let litMany = litChannels(pixels(of: a)), litFew = litChannels(pixels(of: b))
         #expect(litMany > litFew * 2, "sixty-four lamps lit \(litMany) channels, eight lit \(litFew)")
     }
 
@@ -235,7 +223,7 @@ struct ManyLightsTests {
         }
         func litChannels(_ sketch: Sketch) -> Int {
             guard let image = try? OllinApp.image(of: sketch) else { return 0 }
-            let bytes = rgba(of: image)
+            let bytes = pixels(of: image)
             var n = 0
             for i in bytes.indices where i % 4 != 3 && bytes[i] > 24 { n += 1 }
             return n
@@ -276,7 +264,7 @@ struct ManyLightsTests {
         func litChannels(_ lamps: Int) -> Int {
             let scene = FieldScene(); scene.lamps = lamps; scene.quality = quality
             guard let image = try? OllinApp.image(of: scene) else { return 0 }
-            let bytes = rgba(of: image)
+            let bytes = pixels(of: image)
             var n = 0
             for i in bytes.indices where i % 4 != 3 && bytes[i] > 24 { n += 1 }
             return n
@@ -387,7 +375,7 @@ struct ManyLightsTests {
         guard let image = boundedLampFrame() else {
             Issue.record("headless render failed"); return
         }
-        let data = rgba(of: image)
+        let data = pixels(of: image)
         let w = image.width, mid = w / 2
         // The lamp hangs 1.5 above the floor with a reach of 8, so the floor under it
         // takes the window at a sixth of the way out and the pool's edge is a ring of
@@ -403,7 +391,7 @@ struct ManyLightsTests {
         guard let far = try? OllinApp.image(of: unbounded) else {
             Issue.record("headless render failed"); return
         }
-        let lit = pixel(rgba(of: far), w, mid, 8)
+        let lit = pixel(pixels(of: far), w, mid, 8)
         #expect(lit.r > 0, "the unbounded lamp left the same place black (\(lit))")
     }
 
@@ -414,7 +402,7 @@ struct ManyLightsTests {
         guard let image = boundedLampFrame() else {
             Issue.record("headless render failed"); return
         }
-        let data = rgba(of: image)
+        let data = pixels(of: image)
         let w = image.width, mid = w / 2
         var last = 256
         for step in stride(from: 0, to: mid - 4, by: 4) {

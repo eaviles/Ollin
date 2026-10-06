@@ -523,16 +523,19 @@ import OllinWebGate
             ("Batched (text and a picture in a recording, turning)", { Batched() }, 4, 2),
             ("Sprites (cells of a sheet four times their size, one turning)", { Sprites() }, 4, 2),
         ]
-        for (k, c) in cases.enumerated() {
+        let pages = try cases.map { c in
             let recording = try OllinApp.recordWebFrames(of: c.make(), frames: c.frames, fps: 30)
-            let page = try OllinApp.webPage(of: recording, form: .inline)
-            let played = try await WebExportTests.pagePixels(page, frame: c.probe)
+            return WebExportTests.PageProbe(page: try OllinApp.webPage(of: recording, form: .inline), frame: c.probe)
+        }
+        let playedPages = try await WebExportTests.pagePixels(pages)
+        for (k, c) in cases.enumerated() {
+            let played = playedPages[k]
             let reference = try OllinApp.image(of: c.make(), frame: c.probe, fps: 30)
             if let dump = ProcessInfo.processInfo.environment["OLLIN_WEB_DUMP"] {
                 // The two pictures on disk, for a look at a difference.
                 Self.dump(played, to: "\(dump)/case\(k)-page.png")
                 Self.dump(reference, to: "\(dump)/case\(k)-mac.png")
-                try page.write(toFile: "\(dump)/case\(k).html", atomically: true, encoding: .utf8)
+                try pages[k].page.write(toFile: "\(dump)/case\(k).html", atomically: true, encoding: .utf8)
             }
             let difference = try WebExportTests.meanDifference(played, reference)
             let far = WebTriangleTests.farFraction(played, reference)

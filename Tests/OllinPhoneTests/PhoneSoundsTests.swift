@@ -208,11 +208,4 @@ import OllinPhone
 
     // MARK: Helpers
 
-    private func roundTrip(_ message: PhoneMessage) -> PhoneMessage? {
-        let data = PhoneWire.encode(message)
-        guard let header = PhoneHeader.parse(data) else { return nil }
-        let start = data.startIndex + PhoneWire.headerByteCount
-        let payload = data.subdata(in: start ..< data.endIndex)
-        return PhoneWire.decode(header: header, payload: payload)
-    }
 }

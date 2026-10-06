@@ -8,7 +8,7 @@ import Ollin
 /// across the overlap, padding and trimming) and the pass file are always-on,
 /// driven by a window runner of the test's own. The real-model test runs only
 /// where the clip window package and the reference file have been built
-/// (`Scripts/fetch-models.sh`), soft-skipping elsewhere (CI never fetches the
+/// (`Scripts/fetch-models.sh`), refusing itself elsewhere (CI never fetches the
 /// weights), and checks the whole pass against the upstream inference's
 /// result on the same clip.
 @Suite struct DepthClipTests {

@@ -22,16 +22,6 @@ import Foundation
 @MainActor
 struct HatchingFilterTests {
 
-    private func pixels(of image: CGImage) -> [UInt8] {
-        let w = image.width, h = image.height
-        var data = [UInt8](repeating: 0, count: w * h * 4)
-        let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
-                            bytesPerRow: w * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
-                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-        ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
-        return data
-    }
-
     private func channel(_ image: CGImage, _ c: Int) -> [UInt8] {
         let data = pixels(of: image)
         return (0 ..< image.width * image.height).map { data[$0 * 4 + c] }
@@ -39,11 +29,6 @@ struct HatchingFilterTests {
 
     private func render(_ subject: HatchProbe.Subject, filter: Filter?, size: Int = 160) throws -> CGImage {
         try OllinApp.image(of: HatchProbe.make(subject, filter: filter, size: size), frame: 1)
-    }
-
-    private func linear(_ byte: UInt8) -> Double {
-        let v = Double(byte) / 255
-        return v <= 0.04045 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4)
     }
 
     /// The share of the light a black ink took out of white paper, which is the

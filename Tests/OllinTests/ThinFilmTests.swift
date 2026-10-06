@@ -127,16 +127,6 @@ private enum FilmReference {
 @MainActor
 struct ThinFilmRenderProbes {
 
-    private func pixels(of image: CGImage) -> [UInt8] {
-        let w = image.width, h = image.height
-        var data = [UInt8](repeating: 0, count: w * h * 4)
-        let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
-                            bytesPerRow: w * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
-                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-        ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
-        return data
-    }
-
     /// The mean color over a disc of the canvas, as three 0…255 channels.
     private func mean(_ image: CGImage, radius: Double, at center: (Double, Double) = (0.5, 0.5))
         -> SIMD3<Double> {

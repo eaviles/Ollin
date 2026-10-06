@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 @testable import Ollin
+import OllinTestSupport
 
 /// `Weather`: the forecast document read into a reading, the lookup of a
 /// place by name, the two chained reads an export makes before `start()`
@@ -13,17 +14,9 @@ import Testing
 @Suite
 struct WeatherTests {
 
-    struct Timeout: Error {}
-
-    /// Probes before reading the clock, so a starved test never gives up with
-    /// the answer already in hand.
+    /// `OllinTestSupport.waitFor` with this suite's budget: a feed inside a full run, which has handed a task back 74 s late (measured).
     func waitFor<T>(timeout: Double = 20.0, _ probe: () -> T?) async throws -> T {
-        let deadline = Date().addingTimeInterval(timeout)
-        while true {
-            if let value = probe() { return value }
-            if Date() >= deadline { throw Timeout() }
-            try await Task.sleep(nanoseconds: 5_000_000)
-        }
+        try await OllinTestSupport.waitFor(timeout: timeout, probe)
     }
 
     /// One forecast answer as the service writes it: local times, an offset,

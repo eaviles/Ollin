@@ -907,7 +907,7 @@ let package = Package(
         .testTarget(
             name: "OllinTests",
             dependencies: ["Ollin", "COllinShaders", "OllinProjects", "OllinSceneImport",
-                           "OllinShaderText", "OllinWebGate", "OllinExpander"],
+                           "OllinShaderText", "OllinWebGate", "OllinExpander", "OllinTestSupport"],
             resources: [.copy("References")]
         ),
         // DSP correctness for the audio analyzer: feed synthesized signals and
@@ -922,7 +922,7 @@ let package = Package(
         // in-process UDP loopback. GPU-independent, so it runs in CI too.
         .testTarget(
             name: "OllinOSCTests",
-            dependencies: ["OllinOSC"]
+            dependencies: ["OllinOSC", "OllinTestSupport"]
         ),
         // DMX correctness: golden-byte encodes against the published packet
         // layouts, decode round-trips, malformed input rejected without
@@ -934,7 +934,7 @@ let package = Package(
         // map speaks (`Vector2`, `Rectangle`, `Color`).
         .testTarget(
             name: "OllinDMXTests",
-            dependencies: ["Ollin", "OllinDMX"]
+            dependencies: ["Ollin", "OllinDMX", "OllinTestSupport"]
         ),
         // Laser correctness: the optimizer's rules measured on the stream it
         // produces (spacing, corners kept, dwell counts, travel ordering, the
@@ -945,7 +945,7 @@ let package = Package(
         // GPU-independent, so it runs in CI.
         .testTarget(
             name: "OllinLaserTests",
-            dependencies: ["Ollin", "OllinLaser"]
+            dependencies: ["Ollin", "OllinLaser", "OllinTestSupport"]
         ),
         // MIDI correctness: MIDI 1.0 / UMP parse+encode round-trips (every message
         // kind, malformed/non-1.0 words rejected without trapping); Core MIDI-free,
@@ -953,7 +953,7 @@ let package = Package(
         // skips when it's unavailable.
         .testTarget(
             name: "OllinMIDITests",
-            dependencies: ["OllinMIDI"]
+            dependencies: ["OllinMIDI", "OllinTestSupport"]
         ),
         // Link correctness: wire round-trips pinned against a real captured
         // packet, the pure timing math (phase encoding, timeline continuity),
@@ -963,7 +963,7 @@ let package = Package(
         // GPU-independent, so it runs in CI too.
         .testTarget(
             name: "OllinLinkTests",
-            dependencies: ["OllinLink"]
+            dependencies: ["OllinLink", "OllinTestSupport"]
         ),
         // MQTT correctness: wire round-trips for every packet kind against the
         // published layouts, the remaining-length field at its boundaries, the
@@ -973,7 +973,7 @@ let package = Package(
         // in-process broker on the loopback. GPU-independent, so it runs in CI.
         .testTarget(
             name: "OllinMQTTTests",
-            dependencies: ["Ollin", "OllinMQTT"]
+            dependencies: ["Ollin", "OllinMQTT", "OllinTestSupport"]
         ),
         // Haptics correctness, hardware-free on purpose: the pattern algebra
         // (composing, moving, scaling, reversing), the trackpad plan as a pure
@@ -992,7 +992,7 @@ let package = Package(
         // disconnect all run against a live descriptor with no hardware.
         .testTarget(
             name: "OllinSerialTests",
-            dependencies: ["Ollin", "OllinSerial"]
+            dependencies: ["Ollin", "OllinSerial", "OllinTestSupport"]
         ),
         // Remote correctness, socket-free on purpose: the HTTP head parse, the
         // WebSocket accept key and frame codec (pure functions), the descriptor
@@ -1000,7 +1000,7 @@ let package = Package(
         // applied through beforeDraw. The wire pieces never open a port here.
         .testTarget(
             name: "OllinRemoteTests",
-            dependencies: ["Ollin", "OllinRemote"]
+            dependencies: ["Ollin", "OllinRemote", "OllinTestSupport"]
         ),
         // Room correctness, network-free on purpose: the frame codec and its
         // refusals (pure functions over bytes), the service name rules, the clock
@@ -1026,7 +1026,7 @@ let package = Package(
         // tracker running over a playing VideoPlayer.
         .testTarget(
             name: "OllinVisionTests",
-            dependencies: ["Ollin", "OllinVision", "OllinVideo", "OllinSamplePhotos"]
+            dependencies: ["Ollin", "OllinVision", "OllinVideo", "OllinSamplePhotos", "OllinTestSupport"]
         ),
         // Syphon correctness: a directory smoke test (always on) plus a
         // Metal-gated in-process publish→discover→receive loopback that
@@ -1034,7 +1034,7 @@ let package = Package(
         // sandbox). Uses the vendored CSyphon to stand up the publisher.
         .testTarget(
             name: "OllinSyphonTests",
-            dependencies: ["Ollin", "OllinSyphon", "CSyphon"]
+            dependencies: ["Ollin", "OllinSyphon", "CSyphon", "OllinTestSupport"]
         ),
         // Virtual-camera publish client: the connect failure path (always on),
         // the GPU letterbox pass (Metal-gated), and a soft-gated end-to-end
@@ -1049,7 +1049,7 @@ let package = Package(
         // or decode, so it never fails CI for environmental reasons.
         .testTarget(
             name: "OllinVideoTests",
-            dependencies: ["Ollin", "OllinVideo"]
+            dependencies: ["Ollin", "OllinVideo", "OllinTestSupport"]
         ),
         // Screen capture: the source-matching rules (pure, and the part a sketch
         // actually writes) plus the permission surface, then an end-to-end
@@ -1084,7 +1084,7 @@ let package = Package(
         // runs in CI with no committed binary asset.
         .testTarget(
             name: "OllinRecord3DTests",
-            dependencies: ["Ollin", "OllinRecord3D", "OllinUSBMux"]
+            dependencies: ["Ollin", "OllinRecord3D", "OllinUSBMux", "OllinTestSupport"]
         ),
         // Phone sensor-stream wire format: encode/decode round-trips for the motion
         // and body-pose messages (GPU-free, CI-safe), plus a live-gated test that
@@ -1115,6 +1115,17 @@ let package = Package(
         .target(
             name: "OllinWebGate",
             path: "Tests/OllinWebGate"
+        ),
+        // What more than one test target shares, and a test target cannot
+        // import another test target: the poll that probes before it reads
+        // the clock (`waitFor`, with its `Timeout`), and the bytes of a
+        // synthetic RGBD stream frame that both the decoder's suite and the
+        // mutation harness build. A regular target under `Tests/` for the
+        // same reason as the gate above, with nothing of Ollin's in it, so it
+        // builds in a second and no suite's dependency graph grows.
+        .target(
+            name: "OllinTestSupport",
+            path: "Tests/OllinTestSupport"
         ),
         // The seeded mutation harness the byte decoders run under: truncations,
         // bit flips, splices, and length fields pushed to their extremes, a seed
@@ -1152,7 +1163,7 @@ let package = Package(
             dependencies: ["OllinMutation", "Ollin", "OllinOSC", "OllinMQTT", "OllinLink", "OllinPhone",
                            "OllinRoom", "OllinRemote", "OllinMIDI", "OllinDMX", "OllinRecord3D",
                            "OllinUSBMux", "OllinSerial", "OllinBluetooth", "OllinAudio", "OllinPhysics",
-                           "OllinProjects", "OllinShaderText"]
+                           "OllinProjects", "OllinShaderText", "OllinTestSupport"]
         ),
         // The Metal-to-GLSL rewriter: each rule pinned on a small source, and the
         // shader helper library translated whole and compiled in a headless

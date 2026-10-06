@@ -25,16 +25,6 @@ struct AreaShadowTests {
     /// the unshadowed set and the default-count shadow both probes read are traced once.
     private static var renders: [Setting: [UInt8]] = [:]
 
-    private func pixels(of image: CGImage) -> [UInt8] {
-        let w = image.width, h = image.height
-        var data = [UInt8](repeating: 0, count: w * h * 4)
-        let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
-                            bytesPerRow: w * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
-                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-        ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
-        return data
-    }
-
     private func luminance(_ d: [UInt8], _ i: Int) -> Double {
         0.2126 * Double(d[i * 4]) + 0.7152 * Double(d[i * 4 + 1]) + 0.0722 * Double(d[i * 4 + 2])
     }

@@ -144,14 +144,14 @@ struct BlackHoleLensTests {
             let spread = tan(ring) * Double(side / 2) / 80
             let picture = LensPicture(side: side, r0: r0, spread: spread)
             let image = try OllinApp.image(of: picture, frame: 0)
-            let pixels = try #require(Pixels(image))
+            let pixels = Pixels(image)
             var sum = 0.0, weighted = 0.0
             for y in 0 ..< side {
                 for x in 0 ..< side {
                     let dx = Double(x) + 0.5 - Double(side) / 2, dy = Double(y) + 0.5 - Double(side) / 2
                     let rho = (dx * dx + dy * dy).squareRoot()
                     guard rho > 40, rho < 120 else { continue }
-                    let w = pixels.linearGreen(x, y)
+                    let w = linear(UInt8(pixels.channel(1, x, y)))   // the green, back in linear light
                     sum += w
                     weighted += w * rho
                 }
@@ -537,28 +537,5 @@ private final class LensPicture: Sketch {
             4,
         ], file: LensProbe.folder.appendingPathComponent("Sketch.swift").path)
         drawImage(generate(lens).image, 0, 0)
-    }
-}
-
-/// An image's pixels as 8-bit RGBA, read back through a known format.
-private struct Pixels {
-    let width: Int
-    let bytes: [UInt8]
-
-    init?(_ image: CGImage) {
-        width = image.width
-        var data = [UInt8](repeating: 0, count: image.width * image.height * 4)
-        guard let space = CGColorSpace(name: CGColorSpace.sRGB),
-              let context = CGContext(data: &data, width: image.width, height: image.height,
-                                      bitsPerComponent: 8, bytesPerRow: image.width * 4, space: space,
-                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
-        context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
-        bytes = data
-    }
-
-    /// The green channel at (x, y), top-left origin, back in linear light.
-    func linearGreen(_ x: Int, _ y: Int) -> Double {
-        let v = Double(bytes[(y * width + x) * 4 + 1]) / 255
-        return v <= 0.04045 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4)
     }
 }

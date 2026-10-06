@@ -20,16 +20,6 @@ struct USDAnimationTests {
         try USDStage.load(data: Data(usda.utf8))
     }
 
-    /// Write a usda string to a temp file and load it as a `Scene` (the
-    /// native walk plus the raw-tree lights/animation read).
-    private func loadUSDScene(_ usda: String) throws -> Ollin.Scene? {
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("ollin-\(ProcessInfo.processInfo.globallyUniqueString).usda")
-        try usda.write(to: url, atomically: true, encoding: .utf8)
-        defer { try? FileManager.default.removeItem(at: url) }
-        return try? Scene(contentsOf: url)
-    }
-
     // MARK: The timebase
 
     @Test func timeCodesPerSecondScalesTimeCodesToSeconds() throws {
@@ -261,7 +251,7 @@ struct USDAnimationTests {
         // The whole path: Scene(contentsOf:) picks up the animation, apply
         // poses the named node on the sketch clock. 0..180 deg about y over
         // 2 s; at 0.5 s the sampler slerps a quarter of the arc, 45 deg.
-        let scene = try #require(try loadUSDScene("""
+        let scene = try #require(loadUSDScene("""
         #usda 1.0
         (
             defaultPrim = "Root"
@@ -303,7 +293,7 @@ struct USDAnimationTests {
         // Two prims named "arm" in different branches, the *second* one
         // animated: the track lands on exactly the prim that authored the
         // samples (name binding could only ever reach the first match).
-        let scene = try #require(try loadUSDScene("""
+        let scene = try #require(loadUSDScene("""
         #usda 1.0
         (
             defaultPrim = "Root"

@@ -2,6 +2,7 @@ import AVFoundation
 import CoreGraphics
 import Foundation
 import Ollin
+import OllinTestSupport
 import OllinVideo
 import Testing
 @testable import OllinVision
@@ -175,8 +176,8 @@ import Testing
     /// the tap instead, once each time it changes. A twelve-frames-a-second
     /// clip read for one second at sixty is twelve frames, the same twelve in
     /// every run.
-    @Test func aVideoIsReadOnTheExportsClock() async throws {
-        guard let url = await Self.writeClip() else { return }   // soft-skip: no encoder
+    @Test(clipTrait) func aVideoIsReadOnTheExportsClock() async throws {
+        let url = try #require(await Self.writeClip())
         defer { try? FileManager.default.removeItem(at: url) }
         var runs: [[Int]] = []
         for _ in 0 ..< 2 {
@@ -191,7 +192,21 @@ import Testing
 
     /// Twenty-four frames of gray at twelve a second, each a shade apart so
     /// every decoded frame is its own.
-    private static func writeClip() async -> URL? {
+    /// Whether a clip written here plays back headless: the encoder writes one
+    /// and a player decodes a frame of it. Asked once for the suites that read
+    /// a clip, and named in `clipTrait`.
+    static let clipPlaysHere = Task<Bool, Never> { @MainActor in
+        guard let url = await writeClip() else { return false }
+        defer { try? FileManager.default.removeItem(at: url) }
+        guard let player = try? VideoPlayer(url: url) else { return false }
+        return (try? await OllinTestSupport.waitFor(timeout: 5) { player.snapshot() }) != nil
+    }
+
+    static let clipTrait: ConditionTrait = .enabled("no video encoder, or no headless decode, here") {
+        await ExportClockTests.clipPlaysHere.value
+    }
+
+    static func writeClip() async -> URL? {
         let side = 64
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("ollin-export-clock-\(UUID().uuidString).mp4")

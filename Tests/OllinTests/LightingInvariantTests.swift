@@ -38,10 +38,6 @@ struct LightingInvariantTests {
                             bytesPerRow: w * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
                             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
         ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
-        func linear(_ b: UInt8) -> Double {
-            let c = Double(b) / 255
-            return c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4)
-        }
         var lin = [Double](repeating: 0, count: w * h * 3)
         for p in 0..<(w * h) {
             for c in 0..<3 { lin[p * 3 + c] = linear(data[p * 4 + c]) }

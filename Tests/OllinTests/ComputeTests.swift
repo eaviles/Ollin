@@ -7,7 +7,7 @@ import simd
 
 /// Compute-shader core: the GPU-free plumbing (param packing, source composition,
 /// the hash key, ping-pong) runs everywhere; the real kernel run is Metal-gated and
-/// soft-skips on a machine without a GPU (CI is fine — `Snapshot.hasMetal`).
+/// refuses itself on a machine without a GPU (CI is fine, `Snapshot.hasMetal`).
 @Suite
 @MainActor
 struct ComputeTests {

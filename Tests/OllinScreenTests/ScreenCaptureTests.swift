@@ -144,7 +144,8 @@ import Ollin
 
 /// The permission surface always answers, and the end-to-end capture runs only
 /// where the screen-recording permission is actually in place. It is a consent a
-/// machine cannot grant itself, so this soft-skips rather than failing CI.
+/// machine cannot grant itself, so each capture test carries an `.enabled` trait
+/// and refuses itself there rather than failing CI.
 @MainActor
 @Suite struct ScreenCaptureTests {
 

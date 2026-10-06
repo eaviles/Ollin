@@ -120,10 +120,19 @@ import OllinWebGate
 
     // MARK: Support
 
+    /// One page to read back: the page itself, the frame to show, and any
+    /// settings to run through the handle before it is shown.
+    struct PageProbe {
+        var page: String
+        var frame: Int
+        var settings = ""
+    }
+
     /// The page's pixels at `frame`, read back through the browser: the inline
     /// fragment inside a bare page, or the standalone file, with a probe that
-    /// shows the frame and writes the canvas as a PNG data URL into the DOM.
-    static func probe(_ page: String, frame: Int) -> String {
+    /// runs `settings` through the handle, shows the frame, and writes the
+    /// canvas as a PNG data URL into the DOM.
+    static func probe(_ page: String, frame: Int, settings: String = "") -> String {
         let probe = """
         <pre id="r0">PENDING</pre>
         <script>
@@ -136,6 +145,7 @@ import OllinWebGate
             // A page with pictures or atlas text draws its first frame once
             // the browser has decoded them; the probe waits the same way.
             (player.ready || Promise.resolve()).then(function () {
+              \(settings)
               player.showFrame(\(frame));
               out.textContent = player.canvas.toDataURL('image/png');
             }).catch(function (e) { out.textContent = 'FAIL ' + e; });
@@ -157,32 +167,80 @@ import OllinWebGate
         return try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
     }
 
-    static func rgba(of image: CGImage) -> [UInt8] {
-        let w = image.width, h = image.height
-        var bytes = [UInt8](repeating: 0, count: w * h * 4)
-        let space = CGColorSpace(name: CGColorSpace.sRGB)!
-        bytes.withUnsafeMutableBytes { raw in
-            let context = CGContext(data: raw.baseAddress, width: w, height: h, bitsPerComponent: 8,
-                                    bytesPerRow: w * 4, space: space,
-                                    bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-            context.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
-        }
-        return bytes
-    }
-
     /// Mean absolute difference per byte, 0...255, of two same-sized images.
     static func meanDifference(_ a: CGImage, _ b: CGImage) throws -> Double {
         try #require(a.width == b.width && a.height == b.height, "\(a.width)x\(a.height) against \(b.width)x\(b.height)")
-        let x = rgba(of: a), y = rgba(of: b)
+        let x = pixels(of: a), y = pixels(of: b)
         var sum = 0
         for i in x.indices { sum += abs(Int(x[i]) - Int(y[i])) }
         return Double(sum) / Double(x.count)
     }
 
-    static func pagePixels(_ page: String, frame: Int) async throws -> CGImage {
-        let dom = try await HeadlessBrowser.dom(of: probe(page, frame: frame))
+    static func pagePixels(_ page: String, frame: Int, settings: String = "") async throws -> CGImage {
+        let dom = try await HeadlessBrowser.dom(of: probe(page, frame: frame, settings: settings))
         let report = try #require(HeadlessBrowser.text(of: "r0", in: dom))
         return try image(fromDataURL: report)
+    }
+
+    /// The pixels of several pages, through as few browser launches as the
+    /// machine allows.
+    ///
+    /// On a browser with a GPU the pages ride together, up to
+    /// `HeadlessBrowser.pagesPerLaunch` of them as same-origin frames of one
+    /// document, each with the probe `pagePixels(_:frame:settings:)` would have
+    /// given it; the document copies every frame's report into its own DOM
+    /// once every frame has loaded, which the parent's load event waits for.
+    /// Under the software renderer every page keeps a launch of its own, for
+    /// the reason the gate gives.
+    static func pagePixels(_ probes: [PageProbe]) async throws -> [CGImage] {
+        var images: [CGImage] = []
+        let perLaunch = await HeadlessBrowser.pagesPerLaunch
+        var start = 0
+        while start < probes.count {
+            let batch = Array(probes[start ..< min(start + perLaunch, probes.count)])
+            start += batch.count
+            if batch.count == 1 {
+                images.append(try await pagePixels(batch[0].page, frame: batch[0].frame, settings: batch[0].settings))
+                continue
+            }
+            let dom = try await HeadlessBrowser.dom(of: framed(batch), timeout: 90 * Double(batch.count))
+            for index in batch.indices {
+                let report = try #require(HeadlessBrowser.text(of: "r\(index)", in: dom),
+                                          "frame \(index) of \(batch.count) left no report")
+                images.append(try image(fromDataURL: report))
+            }
+        }
+        return images
+    }
+
+    /// A document holding every probed page as a frame of its own, with a
+    /// report slot per frame that the document fills once they have all
+    /// loaded. A frame's own report sits in its `r0`; the attribute that
+    /// carries the frame's source escapes its quotes, so the outer reader
+    /// never mistakes one for the document's.
+    static func framed(_ probes: [PageProbe]) -> String {
+        var html = "<!doctype html><html><body>\n"
+        for index in probes.indices { html += "<pre id=\"r\(index)\">PENDING</pre>\n" }
+        for (index, entry) in probes.enumerated() {
+            let source = probe(entry.page, frame: entry.frame, settings: entry.settings)
+                .replacingOccurrences(of: "&", with: "&amp;")
+                .replacingOccurrences(of: "\"", with: "&quot;")
+            html += "<iframe id=\"f\(index)\" srcdoc=\"\(source)\" width=\"1200\" height=\"1200\"></iframe>\n"
+        }
+        html += """
+        <script>
+        window.addEventListener('load', function () {
+          for (var i = 0; i < \(probes.count); i++) {
+            var frame = document.getElementById('f' + i);
+            var doc = frame && frame.contentDocument;
+            var report = doc && doc.getElementById('r0');
+            document.getElementById('r' + i).textContent = report ? report.textContent : 'FAIL no frame document';
+          }
+        });
+        </script>
+        </body></html>
+        """
+        return html
     }
 
     // MARK: The recorder
@@ -605,10 +663,11 @@ import OllinWebGate
             ("Moving", { Moving() }, 20, 30, 12),
             ("Driven, live", { Driven() }, 30, 30, 17),
         ]
-        for c in cases {
+        let pages = try cases.map { c in
             let recording = try OllinApp.recordWebFrames(of: c.make(), frames: c.frames, fps: c.fps)
-            let page = try OllinApp.webPage(of: recording, form: .inline)
-            let played = try await Self.pagePixels(page, frame: c.probe)
+            return PageProbe(page: try OllinApp.webPage(of: recording, form: .inline), frame: c.probe)
+        }
+        for (c, played) in zip(cases, try await Self.pagePixels(pages)) {
             let reference = try OllinApp.image(of: c.make(), frame: c.probe, fps: FrameRate(c.fps))
             let difference = try Self.meanDifference(played, reference)
             // Printed on every run, so a drift shows before it crosses the line.
@@ -663,9 +722,11 @@ import OllinWebGate
     @Test(.enabled("a browser with WebGL2 is needed") { await HeadlessBrowser.hasWebGL2() })
     func theTwoFormsDrawTheSamePixels() async throws {
         let recording = try OllinApp.recordWebFrames(of: Ring(), frames: 30, fps: 30)
-        let inline = try await Self.pagePixels(try OllinApp.webPage(of: recording, form: .inline), frame: 17)
-        let standalone = try await Self.pagePixels(try OllinApp.webPage(of: recording, form: .standalone), frame: 17)
-        #expect(Self.rgba(of: inline) == Self.rgba(of: standalone))
+        let both = try await Self.pagePixels([
+            PageProbe(page: try OllinApp.webPage(of: recording, form: .inline), frame: 17),
+            PageProbe(page: try OllinApp.webPage(of: recording, form: .standalone), frame: 17),
+        ])
+        #expect(pixels(of: both[0]) == pixels(of: both[1]))
     }
 
     @Test(.enabled("a browser with WebGL2 is needed") { await HeadlessBrowser.hasWebGL2() })
