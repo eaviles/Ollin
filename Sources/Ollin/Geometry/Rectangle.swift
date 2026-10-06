@@ -4,7 +4,7 @@ import Foundation
 /// `corner` (its top-left point) plus a `width` and `height`.
 ///
 /// Like `Vector2`, `Rectangle` is a value you pass around and compose, not just
-/// a draw call — it's the typed currency the `Drawer`'s `rect` takes, with the
+/// a draw call: it's the typed currency the `Drawer`'s `rect` takes, with the
 /// bare scalar `drawRect(x, y, width, height)` as sugar over it.
 public struct Rectangle: Equatable, Hashable, Sendable, Codable {
     /// Top-left corner (smallest x, smallest y).
@@ -30,7 +30,7 @@ public struct Rectangle: Equatable, Hashable, Sendable, Codable {
     }
 
     /// Build the largest rectangle of `size`'s aspect ratio centered inside
-    /// `container` — the letterboxed box to draw an image or video frame into
+    /// `container`, the letterboxed box to draw an image or video frame into
     /// without stretching it. A degenerate `size` or `container` yields
     /// `container` unchanged.
     public init(fitting size: Vector2, in container: Rectangle) {
@@ -66,6 +66,13 @@ public struct Rectangle: Equatable, Hashable, Sendable, Codable {
     public var topRight: Vector2 { Vector2(corner.x + width, corner.y) }
     public var bottomRight: Vector2 { Vector2(corner.x + width, corner.y + height) }
     public var bottomLeft: Vector2 { Vector2(corner.x, corner.y + height) }
+
+    /// The four corners as a closed outline, top left first and clockwise as
+    /// the canvas shows it, so a rectangle can join the outlines a `Shape`, a
+    /// boolean, or `regions(enclosedBy:)` takes.
+    public var contour: Contour {
+        Contour([topLeft, topRight, bottomRight, bottomLeft], closed: true)
+    }
 
     /// Whether `point` lies inside the rectangle (the boundary counts as
     /// inside).

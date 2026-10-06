@@ -175,6 +175,7 @@ The reference is the authority on what exists and how it behaves; the guide teac
 - [Fractals](Docs/Generators/Fractals.md): `IFS` chaos games, `FractalFlame` renders, circle-inversion limit sets, and Kleinian limit-set curves, plus the `fitted` placement helper
 - [Chaotic maps & bifurcation](Docs/Generators/Bifurcation.md): `IteratedMap`, the one-dimensional route to chaos: the logistic, sine, tent, and Gauss families, orbits and cobweb staircases, the bifurcation diagram as dots or a density image…
 - [Single line](Docs/Generators/SingleLine.md): `singleLine`, one continuous tour through an image's stipple (TSP art), returned as a plotter-friendly `Contour`
+- [Hilbert order](Docs/Generators/HilbertOrder.md): `hilbertOrder` / `hilbertSorted` / `hilbertIndex`, points sorted by their place along a space-filling curve: one line through a stipple by a single sort, the local relative of the…
 - [Ant colony](Docs/Generators/AntColony.md): `AntColony`, a colony that lays pheromone trails and narrows a web of possible routes down to a short tour.
 - [Spanning tree](Docs/Generators/SpanningTree.md): `spanningTree`, the minimum spanning tree of an image's stipple: the branching, vein-like relative of the single line
 - [String art](Docs/Generators/StringArt.md): `StringArt`, one continuous thread wound over rim pins until the crossings reproduce a picture (a stateful stepper)
@@ -314,7 +315,7 @@ The reference is the authority on what exists and how it behaves; the guide teac
 
 ## The project
 
-- [Examples](Examples/README.md): 603 runnable sketches by category, each with its whole source
+- [Examples](Examples/README.md): 605 runnable sketches by category, each with its whole source
 - [Ollin architecture & internals](ARCHITECTURE.md)
 - [Ollin: the shipped-capability inventory](CAPABILITIES.md)
 - [Changelog](CHANGELOG.md)

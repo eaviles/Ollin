@@ -32,6 +32,7 @@
   - [Set operations](#shape-booleans)
   - [Offsetting](#shape-offset)
   - [Stroke as shape](#shape-stroked)
+- [The regions a drawing encloses](#regions)
 - [Convex hull](#convex-hull)
 - [Path](#path)
 - [HobbySpline](#hobby)
@@ -313,6 +314,7 @@ Rectangle(covering size: Vector2, in container: Rectangle)
 
 - **Properties:** `corner`, `width`, `height`, `x`, `y`, `center`.
 - **Corners:** `topLeft`, `topRight`, `bottomRight`, `bottomLeft`.
+- **Outline:** `contour`, the four corners as a closed `Contour`, top left first and clockwise, ready for a `Shape`, a boolean, or [`regions(enclosedBy:)`](#regions).
 - **Test:** `contains(_ point: Vector2)` (the boundary counts as inside).
 - **Inset:** `inset(by: Insets)`, the rectangle shrunk inward by a per-edge margin (see [`Grid`](#grid)).
 - **Normalized coordinates:** `point(u:v:)` is the point at 0…1 fractions of the rectangle, so `point(u: 0.5, v: 0.5)` is `center`, and values outside 0…1 land proportionally outside. Its inverse is `uv(of:)`. The canvas-wide sugar is [`uv(u, v)`](../Core/Canvas.md#uv).
@@ -444,6 +446,7 @@ Circle(x: Double, y: Double, radius: Double)
 
 - **Properties:** `center`, `radius`, `x`, `y`, `diameter`, `bounds` (the bounding `Rectangle`).
 - **Test:** `contains(_ point: Vector2)`.
+- **Outline:** `contour(segments:)`, the circle as a closed `Contour` of straight pieces, starting at the right and running clockwise. Left to its default, the count follows the radius so no piece strays more than a tenth of a unit from the circle (8 pieces for a tiny ring, up to 256), the same limit `rounded(_:)` flattens an arc to. That is the outline a `Shape`, a boolean, or [`regions(enclosedBy:)`](#regions) takes.
 
 ```swift
 let dot = Circle(center: center, radius: 60)
@@ -730,6 +733,43 @@ drawShape(ribbon.subtracting(stencil))
 ```
 
 The `Examples/Shapes/InkRibbon` sketch strokes a drifting brush line and insets contour bands inside it.
+
+<a name="regions"></a>
+
+### The regions a drawing encloses
+
+Overlapping lines, circles, and outlines wall a page into patches, and `regions(enclosedBy:)` hands back every patch as its own `Shape`, the way a coloring book has one region for every patch its lines close off:
+
+```swift
+func regions(enclosedBy contours: [Contour]) -> [Shape]
+func regions(enclosedBy shapes: [Shape]) -> [Shape]      // every contour of every shape
+```
+
+The outlines are read as drawn. Where two of them cross, or one crosses itself, both are cut there, and the pieces form a map whose faces are the regions. Two overlapping circles give three (the lens and the two crescents), a grid of lines gives its cells, a page of scribbles gives every patch a pen could color without crossing a line. Every region's outline lies on the input lines, so the regions together cover exactly what the lines wall off and no two overlap. A patch of bare page ringed by several circles is a region as much as the circles' lenses are.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/15-ShapesAsMaterial/EnclosedRegions-dark.jpg">
+  <img src="../../Guide/Images/15-ShapesAsMaterial/EnclosedRegions.jpg" alt="Three panels. On the left three overlapping circles and a line through them, every patch they wall off filled with its own tint. In the middle a ring of five circles around bare page, the ringed middle filled in orange and a small circle inside one of them shown as a hole. On the right a circle with two strokes over it: one crosses it and cuts it in two, the other ends inside it and is drawn in orange, walling nothing off" width="680">
+</picture>
+
+```swift
+let discs = (0 ..< 5).map { i in
+    Circle(center: Vector2(540, 540) + Vector2(angle: Double(i) / 5 * .tau, length: 180),
+           radius: 260).contour()
+}
+let page = regions(enclosedBy: discs + [canvasRectangle.contour])
+noStroke()
+for region in page {
+    fill(Color(hue: noise(region.centroid.x * 0.003, region.centroid.y * 0.003), saturation: 0.5, brightness: 0.95))
+    drawShape(region)
+}
+```
+
+A region inside another is a region of its own and also a hole in the one around it: a small circle inside a large one gives the disc and the ring, and the ring's `Shape` carries the disc as a hole. An open line counts where it crosses something and is dropped where it leads nowhere. A stroke whose end hangs loose inside a region walls nothing off, a line that crosses a circle cuts it in two, and lines that run along each other share their stretch as one edge. A `Circle` becomes an outline with [`contour(segments:)`](#circle) and a `Rectangle` with [`contour`](#rectangle); any `Shape`'s contours go in as they are.
+
+The regions come back in reading order, by the top of each one's bounds and then its left edge, and the same outlines give the same regions in the same order. A drawing that moves changes which regions exist from frame to frame, so key a region's color by something of its own, such as its `centroid`, rather than by its place in the list. Each region is marked `.evenOdd`, with its outer boundary and its holes wound in opposite directions.
+
+The work is a sweep over the segments for the crossings and then one walk round every face, so a drawing of a few thousand segments is comfortable every frame and one of a few hundred thousand belongs in `setup()`. Points closer together than a billionth of the drawing's extent are read as one. The `Examples/Shapes/ColoringBook` sketch finds the regions of a drifting drawing every frame and fills each with a crayon keyed to its center.
 
 <a name="convex-hull"></a>
 

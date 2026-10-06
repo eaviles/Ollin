@@ -18,6 +18,7 @@
 - [`Fractals`](./Fractals.md) - `IFS` chaos games, `FractalFlame` renders, circle-inversion limit sets, and Kleinian limit-set curves, plus the `fitted` placement helper
 - [`Chaotic maps & bifurcation`](./Bifurcation.md) - `IteratedMap`, the one-dimensional route to chaos. It covers the logistic, sine, tent, and Gauss families, orbits and cobweb staircases, the bifurcation diagram as dots or as a density image, and Lyapunov exponents
 - [`Single line`](./SingleLine.md) - `singleLine`, TSP art: one continuous tour through the stipple of an image, returned as a `Contour` that suits a plotter
+- [`Hilbert order`](./HilbertOrder.md) - `hilbertOrder` and `hilbertSorted`, points sorted by their place along a space-filling curve: one line through a stipple by a single sort, neighbors kept together
 - [`Ant colony`](./AntColony.md) - `AntColony`, a colony that lays pheromone trails and narrows a web of possible routes down to a short tour. The picture is the search itself, not only the tour it finds
 - [`Spanning tree`](./SpanningTree.md) - `spanningTree`, the minimum spanning tree of the stipple of an image, the branching, vein-like counterpart of the single line
 - [`String art`](./StringArt.md) - `StringArt`, one continuous thread wound around pins on a rim until its crossings reproduce a picture (a stateful stepper)

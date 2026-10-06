@@ -41,9 +41,7 @@ This tier is a set of classic generative-art building blocks. Each one emits vec
 
 - **Segments, arcs, and ellipses as values.** Line segments, arcs, and ellipses join `Circle` and `Rectangle` as values, each able to produce an outline and to report where it crosses another.
 - **Bending outlines.** These edits warp a shape along a curve and pull an outline toward a point while its ends stay fixed. They also smooth an outline without losing its corners, and split it where it bends sharply. Fitting a few cubic curves through a dense trace belongs here too. All of it builds on the questions a `Contour` answers: the tangent and normal at a fraction, the nearest point, and the piece between two fractions.
-- **The regions a drawing encloses.** Overlapping lines, circles, and outlines are split at every crossing, and each enclosed region comes back as its own `Shape`. Every region can then take its own fill, like a page in a coloring book.
 - **A shape bent into a curved patch.** A shape maps into a four-sided region whose sides are curves, such as lettering on a waving banner. This is the curved counterpart of `Rectangle.point(u:v:)`.
-- **Points in the order of a space-filling curve.** Points sort by their place along a Hilbert curve, so neighbors in the list sit near each other on the page. That gives one continuous line through a stipple, and it orders a large set with a single sort.
 - **Packing rectangles.** Rectangles of given sizes pack into a bin, for a contact sheet of photos at their own proportions, a collage, or a texture atlas.
 - **A turtle you drive from code.** A turtle moves forward, turns, lifts and lowers its pen, and returns to a saved position. Its path comes back as `Contour`s. The L-system turtle reads a string, and this one takes calls, for Logo-style drawing.
 

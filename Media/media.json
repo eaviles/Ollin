@@ -5070,6 +5070,28 @@
       "stillSmall": "examples/Images/Halftone/still-640.jpg?v=d453baa5",
       "seed": 1
     },
+    "Images/HilbertLine": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 1.627,
+      "sound": false,
+      "source": "eb7b963b22978fd5",
+      "rendered": "2026-10-06",
+      "bytes": {
+        "loop": 2067415,
+        "loopSmall": 502619,
+        "still": 195171,
+        "stillSmall": 60204
+      },
+      "loop": "examples/Images/HilbertLine/loop.mp4?v=f3de6d60",
+      "loopSmall": "examples/Images/HilbertLine/loop-640.mp4?v=aedcc15a",
+      "still": "examples/Images/HilbertLine/still.jpg?v=4351f60b",
+      "stillSmall": "examples/Images/HilbertLine/still-640.jpg?v=bfb9f963",
+      "seed": 1
+    },
     "Images/LuminanceMelt": {
       "width": 1080,
       "height": 1080,
@@ -9772,6 +9794,28 @@
       "still": "examples/Shapes/Clipping/still.jpg?v=6d1e901a",
       "stillSmall": "examples/Shapes/Clipping/still-640.jpg?v=deba1c50",
       "width": 1080
+    },
+    "Shapes/ColoringBook": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 46.881,
+      "sound": false,
+      "source": "608578a4291a5557",
+      "rendered": "2026-10-06",
+      "bytes": {
+        "loop": 8507692,
+        "loopSmall": 1995835,
+        "still": 146628,
+        "stillSmall": 57182
+      },
+      "loop": "examples/Shapes/ColoringBook/loop.mp4?v=a94d6fac",
+      "loopSmall": "examples/Shapes/ColoringBook/loop-640.mp4?v=98b47796",
+      "still": "examples/Shapes/ColoringBook/still.jpg?v=784a7e83",
+      "stillSmall": "examples/Shapes/ColoringBook/still-640.jpg?v=beed1f4c",
+      "seed": 1
     },
     "Shapes/Combinators": {
       "bytes": {

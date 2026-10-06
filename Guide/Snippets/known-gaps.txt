@@ -39,13 +39,13 @@ cd4b2fbdddc6  Guide/09-Pictures.md:296  cannot find 'photo' in scope
 94e632809a2c  Guide/09-Pictures.md:333  cannot find 'picture' in scope
 c3c5db53cc82  Guide/09-Pictures.md:352  cannot find 'target' in scope
 5b3e1eedfb8d  Guide/09-Pictures.md:36  cannot find 'photo' in scope
-edc50590a5d1  Guide/09-Pictures.md:368  cannot find 'picture' in scope
-843a4fdf6a3f  Guide/09-Pictures.md:386  cannot find 'picture' in scope
-42f5e59331ce  Guide/09-Pictures.md:411  cannot find 'picture' in scope
-4bda4ace2c1f  Guide/09-Pictures.md:431  cannot find 'depthMap' in scope
-7363ccd01a5f  Guide/09-Pictures.md:456  'module' is inaccessible due to 'internal' protection level
-9335f3c2f125  Guide/09-Pictures.md:475  cannot find 'table' in scope
-aec7ca7fcac8  Guide/09-Pictures.md:490  'module' is inaccessible due to 'internal' protection level
+6973e2fc08f1  Guide/09-Pictures.md:368  cannot find 'picture' in scope
+843a4fdf6a3f  Guide/09-Pictures.md:389  cannot find 'picture' in scope
+42f5e59331ce  Guide/09-Pictures.md:414  cannot find 'picture' in scope
+4bda4ace2c1f  Guide/09-Pictures.md:434  cannot find 'depthMap' in scope
+7363ccd01a5f  Guide/09-Pictures.md:459  'module' is inaccessible due to 'internal' protection level
+9335f3c2f125  Guide/09-Pictures.md:478  cannot find 'table' in scope
+aec7ca7fcac8  Guide/09-Pictures.md:493  'module' is inaccessible due to 'internal' protection level
 ae33653cb376  Guide/09-Pictures.md:70  cannot find 'c' in scope
 7856a82b5957  Guide/10-Vectors.md:105  cannot find 'target' in scope
 d7900de9175f  Guide/10-Vectors.md:180  cannot find 'target' in scope
@@ -57,13 +57,12 @@ c75eb2a20310  Guide/12-FlocksAndSwarms.md:389  cannot find 'crowd' in scope
 750461323d36  Guide/14-FieldsAndFlow.md:280  cannot find 'x' in scope
 bac6f70b2c26  Guide/15-ShapesAsMaterial.md:110  cannot find 'circles' in scope
 6c9bb524bf9e  Guide/15-ShapesAsMaterial.md:158  cannot find 'blob' in scope
-45fd2bf76c06  Guide/15-ShapesAsMaterial.md:296  cannot find 'path' in scope
-124acc641125  Guide/15-ShapesAsMaterial.md:308  cannot find 'road' in scope
-1c47a7d408ef  Guide/15-ShapesAsMaterial.md:385  cannot find 'square' in scope
-3152d9b01a08  Guide/15-ShapesAsMaterial.md:436  cannot find 'island' in scope
-941d99f289b2  Guide/15-ShapesAsMaterial.md:447  value of type '[Contour]' has no member 'maxInset'
-ff3aae35a44a  Guide/15-ShapesAsMaterial.md:475  cannot find 'art' in scope
-e94aaf6380fc  Guide/15-ShapesAsMaterial.md:521  unary operator cannot be separated from its operand
+45fd2bf76c06  Guide/15-ShapesAsMaterial.md:292  cannot find 'path' in scope
+124acc641125  Guide/15-ShapesAsMaterial.md:304  cannot find 'road' in scope
+1c47a7d408ef  Guide/15-ShapesAsMaterial.md:409  cannot find 'square' in scope
+3152d9b01a08  Guide/15-ShapesAsMaterial.md:460  cannot find 'island' in scope
+941d99f289b2  Guide/15-ShapesAsMaterial.md:471  value of type '[Contour]' has no member 'maxInset'
+e94aaf6380fc  Guide/15-ShapesAsMaterial.md:537  unary operator cannot be separated from its operand
 e428f7fa87a3  Guide/15-ShapesAsMaterial.md:62  cannot find 'circle' in scope
 c68765b0c991  Guide/15-ShapesAsMaterial.md:75  cannot convert value of type '@MainActor (Double, Double, Double, Double) -> Double' to expected argument type '[Vector2]'
 c8a055fb7cf3  Guide/16-CurvesAndFigures.md:291  cannot convert value of type 'Shape' to expected argument type 'Contour'

@@ -1896,6 +1896,9 @@ func guilloche(rings: Int, innerRadius: Double, outerRadius: Double, bumps: Int,
 func guilloche(rings: Int, innerRadius: Double, outerRadius: Double, rosettes: [Rosette], twist: Double = default, samples: Int? = default) -> [Contour]
 func halton(_: Int, base: Int = default) -> Double
 func haltonPoints(count: Int, in: Rectangle, bases: (Int, Int) = default, startIndex: Int = default) -> [Vector2]
+func hilbertIndex(of: Vector2, in: Rectangle, level: Int = default) -> Int
+func hilbertOrder(of: [Vector2], level: Int = default) -> [Int]
+func hilbertSorted(_: [Vector2], level: Int = default) -> [Vector2]
 func hopfBases(latitudes: Int, perCircle: Int, spanning: ClosedRange<Double> = default) -> [Vector3]
 func hopfBases(spiralCount: Int) -> [Vector3]
 func hopfFiber(over: Vector3, segments: Int = default, reach: Double = default) -> HopfFiber
@@ -1935,6 +1938,8 @@ func reconstructSurface(of: PointCloud, spacing: Double? = default, resolution: 
 func reconstructSurface(of: [Vector3], spacing: Double? = default, resolution: Int = default, orientedToward: [Vector3] = default, maxGap: Double? = default, neighbors: Int = default, fitting: SurfaceFitting = default, keepingLargestComponent: Bool = default) -> Mesh
 func reflectedRays(off: [Vector2], from: LightSource, closed: Bool = default) -> [Ray2]
 func refractedRays(through: [Vector2], from: LightSource, ior: Double, closed: Bool = default) -> [Ray2]
+func regions(enclosedBy: [Contour]) -> [Shape]
+func regions(enclosedBy: [Shape]) -> [Shape]
 func relaxCircles(_: [Circle], in: Rectangle? = default, iterations: Int = default, padding: Double = default) -> [Circle]
 func rose(n: Int, d: Int = default, radius: Double, samples: Int? = default) -> Contour
 func schottkyCircles(_: KleinianPreset, in: Rectangle, viewpoint: Vector2? = default, minRadius: Double = default, maxDepth: Int = default) -> [Circle]
@@ -3104,6 +3109,7 @@ struct ChaoticMap: Sendable
   var start: Vector2 { get set }
 struct Circle: Equatable, Hashable, Sendable
   func contains(_: Vector2) -> Bool
+  func contour(segments: Int? = default) -> Contour
   init(center: Vector2, radius: Double)
   init(x: Double, y: Double, radius: Double)
   let center: Vector2
@@ -5673,6 +5679,7 @@ struct Rectangle: ParamValue, Decodable, Encodable, Equatable, Hashable, Sendabl
   var bottomLeft: Vector2 { get }
   var bottomRight: Vector2 { get }
   var center: Vector2 { get }
+  var contour: Contour { get }
   var topLeft: Vector2 { get }
   var topRight: Vector2 { get }
   var x: Double { get }

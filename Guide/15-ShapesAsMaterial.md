@@ -6,7 +6,7 @@
 
 <img src="Images/15-ShapesAsMaterial/Plate.jpg" alt="A plotter-style plate: a mosaic of hatched Voronoi cells in dark ink, each hatched at its own angle, parting around a wavy terracotta ribbon filled with crosshatch, all on cream paper" width="560">
 
-Shapes become material once you hold them in a variable and edit them before you draw. This chapter cuts shapes with other shapes, grows and shrinks them, divides a scatter into territories, and hatches the results for a pen. Everything in the plate above is line work a pen plotter could draw, and its section ends by exporting it for one. Past the plate, outlines answer questions, shapes pack and arrive from files, and line work can tell a blade where to score and cut.
+Shapes become material once you hold them in a variable and edit them before you draw. This chapter cuts shapes with other shapes, grows and shrinks them, divides a scatter into territories, and hatches the results for a pen. Everything in the plate above is line work a pen plotter could draw, and its section ends by exporting it for one. Past the plate, outlines answer questions and give up the regions they enclose, shapes pack and arrive from files, and line work can tell a blade where to score and cut.
 
 ## Shapes you can hold
 
@@ -274,9 +274,9 @@ The way to keep this sketch is as a file for the pen. `swift run OllinLive MySke
 
 **A test plot.** Before the full plate, plot a strip on the same paper with the same pen. Give it the hatch at three spacings and one outline. Check the tone, and check whether the ink bleeds or the pen skips on the sheet. Then change the spacing in the sketch, never the pen. To make the file a true sheet rather than a scaled drawing, declare the canvas as a paper size. Then export the same recording as a PDF. [Chapter 41](41-FinishingASketch.md#sized-for-the-output-fractions-of-the-canvas-and-paper-sizes) covers paper-sized canvases, and the rest of the export surface.
 
-## More from a held outline: contour questions and points in a shape
+## More from a held outline: contour questions, enclosed regions, and points in a shape
 
-The plate held its shapes to cut, grow, and hatch them, and a held outline can do more than that. It can tell you where its line goes, and it can keep a scatter of points inside itself. The plate asks neither of it.
+The plate held its shapes to cut, grow, and hatch them, and a held outline can do more than that. It can tell you where its line goes, hand back every patch its lines wall off, and keep a scatter of points inside itself. The plate asks none of it.
 
 ### Asking an outline where it goes: contour questions
 
@@ -312,6 +312,34 @@ Each one carries its `point`, and how far along each line it sits (`fraction` on
 The middle panel asks a loop about itself with `crossings()`. Walk once round and you pass through every crossing twice. Call every second pass "under" and cut a short gap out of the line there, and the loop weaves like a knot. The alternation always works out, because a closed curve passes an even number of crossings between its two visits to one. So every crossing gets one over and one under. The `Shapes/OverUnder` example tangles its loop a little differently every frame and weaves it again.
 
 The right panel shows three edits. `simplified(tolerance:)` thins a dense trace, like a mouse stroke or a traced edge, to the points it needs. Every original point stays within the tolerance of what is left. `rounded(_:)` turns every corner into an arc, and `chamfered(_:)` cuts every corner flat. Both stop where two corners would run into each other, so a radius that is too big still gives a clean shape. The [geometry reference](../Docs/Drawing/Geometry.md#contour-questions) lists the rest, including `reversed()` and the same edits on a whole `Shape`.
+
+### The regions a drawing encloses: `regions(enclosedBy:)`
+
+Draw a few circles and a line across them, and the page is walled into patches. There are the lenses where circles overlap, the crescents left over, and the halves a line cuts. A coloring book is exactly that. `regions(enclosedBy:)` hands back every patch as its own `Shape`, so each can take a fill of its own.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/EnclosedRegions-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/EnclosedRegions.jpg" alt="Three panels. On the left three overlapping circles and a line through them, every patch they wall off filled with its own tint. In the middle a ring of five circles around bare page, the ringed middle filled in orange and a small circle inside one of them shown as a hole. On the right a circle with two strokes over it: one crosses it and cuts it in two, the other ends inside it and is drawn in orange, walling nothing off" width="680">
+</picture>
+
+```swift
+let crayons = Palette(Color(hex: 0xE8553E), Color(hex: 0xF2A93B), Color(hex: 0x3B8EA5), Color(hex: 0x6DB36D))
+let discs = (0 ..< 3).map { i in
+    Circle(center: Vector2(540, 540) + Vector2(angle: Double(i) / 3 * .tau, length: 150), radius: 240).contour()
+}
+let cut = Contour([Vector2(60, 900), Vector2(1020, 180)], closed: false)
+noStroke()
+for (i, patch) in regions(enclosedBy: discs + [cut]).enumerated() {
+    fill(crayons[i % crayons.count])
+    drawShape(patch)
+}
+```
+
+The left panel is that call. The outlines are read as drawn. Every line is cut where it meets another, or itself, and the pieces form a map whose faces are the regions. A `Circle` becomes an outline with `contour()`, a `Rectangle` with `contour`, and any `Shape`'s contours go in as they are. Every region's outline lies on the lines you drew. Together the regions cover exactly what the lines wall off, and no two overlap.
+
+The middle panel shows two things worth knowing. A patch of bare page ringed by circles is a region too. The lines wall it off as much as they wall off the lenses. A circle drawn inside another gives two regions, the small disc and the ring around it. The ring's `Shape` carries the disc as a hole. The right panel is the rule for open lines. A stroke that crosses a circle cuts it in two. A stroke whose end hangs loose inside it walls nothing off and is left out.
+
+The regions come back in reading order, top to bottom and left to right. The same drawing gives the same regions in the same order. A drawing that moves changes which regions exist from frame to frame. So key a patch's color by something of its own, its `centroid` say, rather than by its place in the list. [`Examples/Shapes/ColoringBook`](../Examples/Shapes/ColoringBook/Sketch.swift) does that. Its circles and strokes drift, and every patch is found again each frame. A crayon is picked by a slow noise field read at the patch's center, so a patch keeps its color while the lines move. The [geometry reference](../Docs/Drawing/Geometry.md#regions) has the form that takes shapes, and the cost.
 
 ### Chance inside an outline: points in a shape
 
@@ -531,7 +559,7 @@ Both patterns come out as ordinary geometry, like everything else in this chapte
 
 ## Where this comes from
 
-The territories are named for Georgy Voronoy and the triangulation for Boris Delaunay, mathematicians a century apart from the generative artists who adopted them. The settling pass is Stuart Lloyd's algorithm from 1957 signal processing. Grow-until-touching circle packing entered the generative canon through Jared Tarbell's work in the early 2000s. The shape booleans and offsets are powered by Angus Johnson's Clipper2 library, one of the bundled libraries credited in full in the project notices. The power diagram is Franz Aurenhammer's, from 1987.
+The territories are named for Georgy Voronoy and the triangulation for Boris Delaunay, mathematicians a century apart from the generative artists who adopted them. The settling pass is Stuart Lloyd's algorithm from 1957 signal processing. Grow-until-touching circle packing entered the generative canon through Jared Tarbell's work in the early 2000s. The shape booleans and offsets are powered by Angus Johnson's Clipper2 library, one of the bundled libraries credited in full in the project notices. The regions a drawing encloses are traced through the doubly connected edge list, the map of a plane cut into faces that Mark de Berg, Otfried Cheong, Marc van Kreveld, and Mark Overmars set out in *Computational Geometry: Algorithms and Applications* (2008). The power diagram is Franz Aurenhammer's, from 1987.
 
 The circle foam is the oldest idea in the chapter by far. Apollonius of Perga asked which circle touches three given circles, around 200 BC. René Descartes worked out the arithmetic relating their sizes, in a 1643 letter to Princess Elisabeth of Bohemia. That is why the relation carries his name. The circles on the number line are Lester Ford's, from a 1938 paper about approximating numbers with fractions. The sequence under them is named for John Farey, who noticed the mediant rule in 1816. Charles Haros had published the same thing in 1802, and Augustin-Louis Cauchy supplied the proof Farey did not.
 
@@ -558,7 +586,7 @@ The skeleton is Harry Blum's medial axis, proposed in 1967 as a way to describe 
 - The Rojo homage [`PiramidesYVolcanes`](../Examples/Recreations/VicenteRojo/PiramidesYVolcanes/Sketch.swift): a stream of lava is one middle line with a closed outline drawn a fixed distance either side, round at both ends. Two or three outlines at even distances make a band outlined twice or three times. The middle line never turns tighter than the band's half width, which keeps every outline from crossing itself.
 - The Sato homage [`TotemBuilder`](../Examples/Recreations/OsamuSato/TotemBuilder/Sketch.swift): a figure made of circles and circles cut by circles. A crescent is `drawMoon`, a disk with a disk taken out of it, and an eye is `drawVesica`, the overlap of two disks. Everything but the tail is built on one side and reflected to the other.
 - Appendix B draws this chapter's math, one picture per idea: [Randomness](B-JustEnoughMath.md#chance-is-lumpy), [Shapes as regions](B-JustEnoughMath.md#shapes-as-regions).
-- Worked examples: [`Examples/Shapes/Booleans`](../Examples/Shapes/Booleans/Sketch.swift), [`Examples/Patterns/Topography`](../Examples/Patterns/Topography/Sketch.swift), [`Examples/Shapes/InkRibbon`](../Examples/Shapes/InkRibbon/Sketch.swift), [`Examples/Patterns/Voronoi`](../Examples/Patterns/Voronoi/Sketch.swift), [`Examples/Patterns/Delaunay`](../Examples/Patterns/Delaunay/Sketch.swift) (the triangle half of the same pair, reading its own adjacency back), [`Examples/Patterns/CirclePacking`](../Examples/Patterns/CirclePacking/Sketch.swift), [`Examples/Shapes/SVGImport`](../Examples/Shapes/SVGImport/Sketch.swift), [`Examples/Shapes/Hulls`](../Examples/Shapes/Hulls/Sketch.swift), [`Examples/Shapes/MedialAxis`](../Examples/Shapes/MedialAxis/Sketch.swift), [`Examples/Shapes/StraightSkeleton`](../Examples/Shapes/StraightSkeleton/Sketch.swift), and [`Examples/Patterns/CreasePattern`](../Examples/Patterns/CreasePattern/Sketch.swift) (a Miura sheet folding and unfolding beside its pattern, with the cut sheet a switch away).
+- Worked examples: [`Examples/Shapes/Booleans`](../Examples/Shapes/Booleans/Sketch.swift), [`Examples/Patterns/Topography`](../Examples/Patterns/Topography/Sketch.swift), [`Examples/Shapes/InkRibbon`](../Examples/Shapes/InkRibbon/Sketch.swift), [`Examples/Patterns/Voronoi`](../Examples/Patterns/Voronoi/Sketch.swift), [`Examples/Patterns/Delaunay`](../Examples/Patterns/Delaunay/Sketch.swift) (the triangle half of the same pair, reading its own adjacency back), [`Examples/Patterns/CirclePacking`](../Examples/Patterns/CirclePacking/Sketch.swift), [`Examples/Shapes/SVGImport`](../Examples/Shapes/SVGImport/Sketch.swift), [`Examples/Shapes/Hulls`](../Examples/Shapes/Hulls/Sketch.swift), [`Examples/Shapes/MedialAxis`](../Examples/Shapes/MedialAxis/Sketch.swift), [`Examples/Shapes/StraightSkeleton`](../Examples/Shapes/StraightSkeleton/Sketch.swift), [`Examples/Shapes/ColoringBook`](../Examples/Shapes/ColoringBook/Sketch.swift) (a drifting drawing whose every patch is found and filled again each frame), and [`Examples/Patterns/CreasePattern`](../Examples/Patterns/CreasePattern/Sketch.swift) (a Miura sheet folding and unfolding beside its pattern, with the cut sheet a switch away).
 
 ---
 
