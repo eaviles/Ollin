@@ -371,6 +371,58 @@ struct DepthOfFieldTests {
         }
     }
 
+    /// A ball in front of the focus comes out as the lens shows it. The reference is
+    /// the thin lens's own geometry, with nothing of the gather in it: at each radius
+    /// from the ball's center, the share of lens points whose ray through that
+    /// pixel's point on the focal plane meets the sphere, the integral the
+    /// accumulation lens renders. Spread by its own blur alone, the rim (nearer than
+    /// the center, so blurred wider than the lens blurs the silhouette) read a
+    /// thirtieth too opaque outside and a twentieth too transparent inside; the
+    /// Jacobian of the blur's slope in each tap's weight, and the surface's share read
+    /// as that density, close it.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aBlurredBallsEdgeFollowsTheLens() throws {
+        let d = 3.5, ball = 0.5
+        let profile = try LinearLuminanceFrame(of: lens { $0.content = .ball(d) })
+            .radialProfile(center: (256, 256), maxRadius: 150)
+        let inside = (20 ... 40).reduce(0.0) { $0 + profile[$1] } / 21
+        let silhouette = Self.F * ball / (d * d - ball * ball).squareRoot()
+        var worst = 0.0
+        for x in stride(from: Int(silhouette - 30), through: Int(silhouette + Self.coc(d) + 4), by: 2) {
+            let expected = Self.thinLensSphereCover(pixelRadius: Double(x), sphereDistance: d, sphereRadius: ball)
+            let error = abs(profile[x] / inside - expected)
+            worst = max(worst, error)
+            #expect(error < 0.02, "\(x) px out: \(profile[x] / inside) against the lens's \(expected)")
+        }
+        // Measured 0.017 at its worst, 15 to 20 px inside the rim; 0.072 on the old
+        // gather, outside the rim.
+        #expect(worst < 0.02, "the ball's edge sits \(worst) from the lens at its worst")
+    }
+
+    /// The thin lens's own cover of a sphere on the view axis, at a pixel
+    /// `pixelRadius` from its center: the share of points on the lens (radius `R`,
+    /// at the eye) whose ray through the pixel's point on the focal plane (the plane
+    /// `s` from the eye, held still as the lens point moves, which is what keeps the
+    /// focus sharp) passes within the sphere's radius of its center. 4096 lens points
+    /// on a Vogel disc.
+    static func thinLensSphereCover(pixelRadius x: Double, sphereDistance d: Double, sphereRadius: Double) -> Double {
+        let focal = SIMD3<Double>(x * s / F, 0, -s)          // the pixel's point on the focal plane
+        let center = SIMD3<Double>(0, 0, -d)
+        let n = 4096
+        var hits = 0
+        for i in 0 ..< n {
+            let rr = R * ((Double(i) + 0.5) / Double(n)).squareRoot()
+            let a = Double(i) * 2.399963229728653
+            let p = SIMD3<Double>(rr * cos(a), rr * sin(a), 0)
+            let dir = simd_normalize(focal - p)
+            let toCenter = center - p
+            let along = simd_dot(toCenter, dir)
+            let miss = simd_length(toCenter - along * dir)
+            if miss < sphereRadius { hits += 1 }
+        }
+        return Double(hits) / Double(n)
+    }
+
     @Test(.enabled(if: Snapshot.hasMetal))
     func aBlurredBallHasNoOutline() throws {
         // Across the edge of a ball in front of the focus, its cover falls smoothly:

@@ -1554,6 +1554,7 @@ extension MetalRenderer {
             let shape = SIMD4<Float>(1 / Float(width), 1 / Float(height), taps, Float(irisBlades))
             let law = SIMD4<Float>(0, 1, Float(irisAngle), Float(catsEye))
             guard let coc = acquireFilterTexture(width: width, height: height, pooled: pooled),
+                  let slopes = acquireFilterTexture(width: width, height: height, pooled: pooled),
                   let tileMax = acquireFilterTexture(width: tilesW, height: tilesH, pooled: pooled),
                   let reach = acquireFilterTexture(width: tilesW, height: tilesH, pooled: pooled),
                   let gathered = acquireFilterTexture(width: width, height: height, pooled: pooled),
@@ -1561,12 +1562,15 @@ extension MetalRenderer {
             else { return nil }
             encodeEffectFragment("ollin_fx_lens_dof_layer_prepass", inputs: [aux], output: coc,
                                  params: [lens, band, shape], into: cb)
+            // The blur's slope across each surface, for the gather's Jacobian.
+            encodeEffectFragment("ollin_fx_lens_dof_slope", inputs: [coc], output: slopes,
+                                 params: [lens], into: cb)
             encodeEffectFragment("ollin_fx_lens_dof_tilemax", inputs: [coc, base], output: tileMax,
                                  params: [lens, band], into: cb)
             encodeEffectFragment("ollin_fx_lens_dof_neighbormax", inputs: [tileMax], output: reach,
                                  params: [band], into: cb)
             encodeEffectFragment("ollin_fx_lens_depth_of_field",
-                                 inputs: [base, coc, reach, base, coc], output: gathered,
+                                 inputs: [base, coc, reach, base, coc, slopes, slopes], output: gathered,
                                  params: [lens, band, shape, law], into: cb)
             encodeEffectFragment("ollin_fx_lens_dof_median", inputs: [gathered, coc], output: out,
                                  params: [lens, band, shape], into: cb)

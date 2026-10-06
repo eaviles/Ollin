@@ -253,6 +253,7 @@ extension MetalRenderer {
         let shape = SIMD4<Float>(1 / Float(width), 1 / Float(height), taps, Float(max(0, camera.apertureBlades)))
         let layers = SIMD4<Float>(hidden != nil ? 1 : 0, 0, 0, 0)
         guard let coc = acquireFilterTexture(width: width, height: height, pooled: pooled),
+              let slopes = acquireFilterTexture(width: width, height: height, pooled: pooled),
               let tileMax = acquireFilterTexture(width: tilesW, height: tilesH, pooled: pooled),
               let reach = acquireFilterTexture(width: tilesW, height: tilesH, pooled: pooled),
               let gathered = acquireFilterTexture(width: width, height: height, pooled: pooled),
@@ -260,15 +261,22 @@ extension MetalRenderer {
         else { return resolved }
         encodeEffectFragment("ollin_fx_lens_dof_prepass", inputs: [depth], output: coc,
                              params: [lens, band, shape], into: cb)
+        // The blur's slope across each surface, for the gather's Jacobian.
+        encodeEffectFragment("ollin_fx_lens_dof_slope", inputs: [coc], output: slopes,
+                             params: [lens], into: cb)
         // The hidden layer's blur sizes, from its own depth through the same
-        // prepass; without a layer the frame stands in for it, and every hidden
-        // tap reads as unknown.
-        var hiddenColor = resolved, hiddenCoc = coc
-        if let hidden, let layerCoc = acquireFilterTexture(width: width, height: height, pooled: pooled) {
+        // prepass, and their slopes; without a layer the frame stands in for it,
+        // and every hidden tap reads as unknown.
+        var hiddenColor = resolved, hiddenCoc = coc, hiddenSlopes = slopes
+        if let hidden, let layerCoc = acquireFilterTexture(width: width, height: height, pooled: pooled),
+           let layerSlopes = acquireFilterTexture(width: width, height: height, pooled: pooled) {
             encodeEffectFragment("ollin_fx_lens_dof_prepass", inputs: [hidden.depth], output: layerCoc,
                                  params: [lens, band, shape], into: cb)
+            encodeEffectFragment("ollin_fx_lens_dof_slope", inputs: [layerCoc], output: layerSlopes,
+                                 params: [lens], into: cb)
             hiddenColor = hidden.color
             hiddenCoc = layerCoc
+            hiddenSlopes = layerSlopes
         }
         // Small bright sources come out of the gather's input and are drawn after
         // it as discs of their own (`ollin_lens_sprites_collect`): one slot per
@@ -283,8 +291,8 @@ extension MetalRenderer {
         encodeEffectFragment("ollin_fx_lens_dof_neighbormax", inputs: [tileMax], output: reach,
                              params: [band], into: cb)
         encodeEffectFragment("ollin_fx_lens_depth_of_field",
-                             inputs: [gatherBase, coc, reach, hiddenColor, hiddenCoc], output: gathered,
-                             params: [lens, band, shape, hidden != nil ? layers : layers], into: cb)
+                             inputs: [gatherBase, coc, reach, hiddenColor, hiddenCoc, slopes, hiddenSlopes],
+                             output: gathered, params: [lens, band, shape, layers], into: cb)
         encodeEffectFragment("ollin_fx_lens_dof_median", inputs: [gathered, coc], output: output,
                              params: [lens, band, shape], into: cb)
         if let sprites {
