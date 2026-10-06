@@ -87,7 +87,7 @@ FPS=60
 STILL_FRAME_DEFAULT=480      # eight seconds at sixty
 SEED=1                       # the one variation every render of an example draws
 MOTION_FLOOR=1.0
-RENDER_LIMIT=300             # seconds before a sketch is given up on and drawn as one frame
+RENDER_LIMIT=${RENDER_LIMIT:-300}   # seconds before a sketch is given up on and drawn as one frame; a long lap on a busy machine is run with a larger figure
 
 # Which examples need something plugged in (`held_back`), shared with the
 # other scripts that run every example alone.
@@ -293,9 +293,15 @@ for example in $list; do
   ffmpeg -y -loglevel error -i $master -vf $(cap 1080) -c:v libx264 -profile:v high -level 4.0 \
     -crf 20 -preset slow -pix_fmt yuv420p -color_primaries bt709 -color_trc bt709 \
     -colorspace bt709 -maxrate 6M -bufsize 12M -g 120 $audio -movflags +faststart $OUT/$key-loop.mp4
+  # The grid's clip plays under the pointer, so it is held to 2 Mbit/s and to
+  # about 3 MB in all: a lap longer than twelve seconds lowers its rate to
+  # fit, since a long lap at the full rate was 6 to 10 MB on a phone.
+  duration=$(ffprobe -v error -show_entries format=duration -of csv=p=0 $master 2>/dev/null)
+  small_rate=$(python3 -c "import sys; d=float(sys.argv[1] or 10); print(f'{min(2.0, 24.0 / max(d, 1)):.3f}')" "$duration")
   ffmpeg -y -loglevel error -i $master -vf $(cap 640) -r 30 -c:v libx264 -profile:v high -level 4.0 \
     -crf 24 -preset slow -pix_fmt yuv420p -color_primaries bt709 -color_trc bt709 \
-    -colorspace bt709 -maxrate 2M -bufsize 4M -g 60 -an -movflags +faststart $OUT/$key-loop-640.mp4
+    -colorspace bt709 -maxrate ${small_rate}M -bufsize $(python3 -c "print(f'{2 * float(\"$small_rate\"):.3f}')")M \
+    -g 60 -an -movflags +faststart $OUT/$key-loop-640.mp4
   make_stills
   rm -f $master
 
