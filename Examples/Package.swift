@@ -985,5 +985,10 @@ let package = Package(
         // A crowd printed on continuous-form paper at four degrees of
         // contrast, hung side by side, after Waldemar Cordeiro.
         example("Recreations/WaldemarCordeiro/Gente", [.samplePhotos]),
+        // The Ondulaciones of 1975 and 1976, a ribbon of hard-edge bands that
+        // wraps disc after disc in concentric arcs, and the fields cut by
+        // circles of 1973, after Kazuya Sakai.
+        example("Recreations/KazuyaSakai/Ondulaciones"),
+        example("Recreations/KazuyaSakai/RightOff"),
     ]
 )

@@ -8494,6 +8494,50 @@
       "stillSmall": "examples/Recreations/JosefAlbers/Homage/still-640.jpg?v=443362bd",
       "width": 1080
     },
+    "Recreations/KazuyaSakai/Ondulaciones": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 4.503,
+      "sound": false,
+      "source": "89e926d05affa823",
+      "rendered": "2026-10-06",
+      "bytes": {
+        "loop": 684013,
+        "loopSmall": 148232,
+        "still": 151905,
+        "stillSmall": 57200
+      },
+      "loop": "examples/Recreations/KazuyaSakai/Ondulaciones/loop.mp4?v=93dfe623",
+      "loopSmall": "examples/Recreations/KazuyaSakai/Ondulaciones/loop-640.mp4?v=b701de5f",
+      "still": "examples/Recreations/KazuyaSakai/Ondulaciones/still.jpg?v=f2e79655",
+      "stillSmall": "examples/Recreations/KazuyaSakai/Ondulaciones/still-640.jpg?v=06b63208",
+      "seed": 1
+    },
+    "Recreations/KazuyaSakai/RightOff": {
+      "width": 764,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 5.346,
+      "sound": false,
+      "source": "b5de6bb879460ba5",
+      "rendered": "2026-10-06",
+      "bytes": {
+        "loop": 1213767,
+        "loopSmall": 282042,
+        "still": 90151,
+        "stillSmall": 36411
+      },
+      "loop": "examples/Recreations/KazuyaSakai/RightOff/loop.mp4?v=6cb432fe",
+      "loopSmall": "examples/Recreations/KazuyaSakai/RightOff/loop-640.mp4?v=79614454",
+      "still": "examples/Recreations/KazuyaSakai/RightOff/still.jpg?v=1986c45c",
+      "stillSmall": "examples/Recreations/KazuyaSakai/RightOff/still-640.jpg?v=5c206a4b",
+      "seed": 1
+    },
     "Recreations/ManfredMohr/CubicLimit": {
       "bytes": {
         "loop": 8061700,
