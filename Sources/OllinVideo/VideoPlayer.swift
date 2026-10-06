@@ -152,7 +152,7 @@ public final class VideoPlayer: FrameSource, VideoFeed, ClipPlayback {
     public var audioTap: AudioTap? {
         didSet {
             if let audioTapStorage {
-                audioTapStorage.handler.withLock { [audioTap] in $0 = audioTap }
+                audioTapStorage.handler.withLock { [audioTap] in $0.value = audioTap }
             } else if audioTap != nil {
                 installAudioTap()
             }
@@ -168,7 +168,7 @@ public final class VideoPlayer: FrameSource, VideoFeed, ClipPlayback {
         guard !audioTapInstallStarted else { return }
         audioTapInstallStarted = true
         let storage = VideoAudioTapStorage()
-        storage.handler.withLock { [audioTap] in $0 = audioTap }
+        storage.handler.withLock { [audioTap] in $0.value = audioTap }
         audioTapStorage = storage
         guard let item = player.currentItem else { return }
         Task {

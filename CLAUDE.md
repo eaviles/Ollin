@@ -134,7 +134,7 @@ A few load-bearing rules recur across the satellites, so they're stated once her
 - **`resource:in:` can't default `in:` to `.module`** — a default arg resolves to *Ollin's* bundle, not the caller's; every font / image / mesh / model loader makes `in:` explicit.
 - **Never replace a GPU texture in place** — an in-flight frame may still be reading the old one; allocate a fresh texture when the bytes change.
 - **Satellites can't depend on each other** — a shared seam (`RGBDFrame`, `SegmentationImages`, `FrameSource`, `AudioTapSource`, the `OllinUSBMux` tunnel) lives in the `Ollin` core, often `package`-access.
-- **Background-producer → main-reader handoff** is uniformly an `@unchecked Sendable` producer with an `OSAllocatedUnfairLock` handoff (audio analyzer, OSC/MIDI receivers, Vision analyzer, phone readers all share this shape).
+- **Background-producer → main-reader handoff** is uniformly an `@unchecked Sendable` producer with an `OSAllocatedUnfairLock` handoff (audio analyzer, OSC/MIDI receivers, Vision analyzer, phone readers all share this shape). **The lock's state is never a bare closure:** a function type as the state is reabstracted on every `withLock`, two thunk frames a read in debug and release builds alike, and a tap read per audio block or camera frame overflowed its thread's stack in minutes (2026-10-06). A closure under a lock sits in `Held<Value>` (`Sources/Ollin/Core/Held.swift`), which keeps its stored representation; an array of closures is already safe.
 
 **Today** — the shipped surface by area. Every name below is a bold bullet heading in [`CAPABILITIES.md`](CAPABILITIES.md); go there for the invariants:
 

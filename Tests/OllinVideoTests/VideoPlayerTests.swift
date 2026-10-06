@@ -39,22 +39,30 @@ import OllinTestSupport
         .deletingLastPathComponent()   // Tests
         .appendingPathComponent("Examples/Video/SoundReactive/voladores-fandanguito.mp4")
 
-    /// The bundled clip playing near-silent into a tap, with what the tap has
-    /// heard so far; the player is left playing for the test to stop.
+    /// What one play of the bundled clip delivered through a tap, and whether
+    /// removing the tap stopped the delivery.
     struct Heard: Sendable {
-        let player: VideoPlayer
-        let delivered: OSAllocatedUnfairLock<(blocks: Int, samples: Int, rate: Double, peak: Float)>
+        var blocks = 0
+        var samples = 0
+        var rate = 0.0
+        var peak: Float = 0
+        var stoppedOnRemoval = false
     }
 
-    /// The bundled clip played once into a tap: `nil` where nothing was
-    /// delivered in five seconds, which is how a headless process with no audio
-    /// route reads, and which `audioDelivers` reports as the skip it is.
-    /// (`isMuted = true` would stop audio processing entirely and starve the
-    /// tap, which is why the volume is turned down instead.)
+    /// The bundled clip played once, near-silent, into a tap for a few seconds,
+    /// then the tap removed and the player stopped and let go: `nil` where
+    /// nothing was delivered in five seconds, which is how a headless process
+    /// with no audio route reads, and which `audioDelivers` reports as the skip
+    /// it is. The player lives only inside this probe, the way it lived only
+    /// inside the test before: a player kept playing for the life of the
+    /// process overflowed the tap thread's stack on the runner. (`isMuted =
+    /// true` would stop audio processing entirely and starve the tap, which is
+    /// why the volume is turned down instead.)
     static let heard = Task<Heard?, Never> { @MainActor in
         guard FileManager.default.fileExists(atPath: musicClip.path),
               let player = try? VideoPlayer(url: musicClip) else { return nil }
-        let delivered = OSAllocatedUnfairLock(initialState: (blocks: 0, samples: 0, rate: 0.0, peak: Float(0)))
+        defer { player.pause() }
+        let delivered = OSAllocatedUnfairLock(initialState: Heard())
         player.volume = 0.01
         player.audioTap = { samples, rate in
             let count = samples.count
@@ -62,17 +70,24 @@ import OllinTestSupport
             for sample in samples { peak = max(peak, abs(sample)) }
             let blockPeak = peak
             delivered.withLock {
-                $0 = ($0.blocks + 1, $0.samples + count, rate, max($0.peak, blockPeak))
+                $0.blocks += 1
+                $0.samples += count
+                $0.rate = rate
+                $0.peak = max($0.peak, blockPeak)
             }
         }
         player.play()
-        guard (try? await waitFor(timeout: 5) { delivered.withLock { $0.blocks > 3 ? $0 : nil } }) != nil else {
-            player.pause()
-            return nil
-        }
+        guard (try? await waitFor(timeout: 5) { delivered.withLock { $0.blocks > 3 ? true : nil } }) != nil else { return nil }
         // The clip is music behind a short fade-in; give the peak a moment to climb.
-        _ = try? await waitFor(timeout: 5) { delivered.withLock { $0.peak > 0.05 ? $0 : nil } }
-        return Heard(player: player, delivered: delivered)
+        _ = try? await waitFor(timeout: 5) { delivered.withLock { $0.peak > 0.05 ? true : nil } }
+        // Removing the consumer stops delivery.
+        player.audioTap = nil
+        let atRemoval = delivered.withLock { $0.blocks }
+        try? await Task.sleep(for: .milliseconds(300))
+        return delivered.withLock { heard in
+            heard.stoppedOnRemoval = heard.blocks == atRemoval
+            return heard
+        }
     }
 
     static let audioDelivers: ConditionTrait = .enabled("the bundled clip is missing, or the headless player delivers no audio here") {
@@ -293,23 +308,17 @@ import OllinTestSupport
 
     /// End-to-end soundtrack tap: the repository's bundled musical clip, played
     /// once by the probe above, delivers mono PCM with real signal energy
-    /// through `audioTap`. The probe's trait refuses this where the clip is
-    /// missing or the headless player delivers nothing.
+    /// through `audioTap`, and removing the tap stops the delivery. The probe's
+    /// trait refuses this where the clip is missing or the headless player
+    /// delivers nothing.
     @Test(audioDelivers) func audioTapDeliversSoundtrack() async throws {
         let heard = try #require(await Self.heard.value)
-        defer { heard.player.pause() }
-        let final = heard.delivered.withLock { $0 }
         // The clip is music (behind a short fade-in), not silence; the tap
         // should come to hear it even while the player is turned down.
-        #expect(final.peak > 0.05, "audio delivered but stayed silent (peak \(final.peak))")
-        #expect(final.rate > 8000)
-        #expect(final.samples > 1024)
-
-        // Removing the consumer stops delivery.
-        heard.player.audioTap = nil
-        let atRemoval = heard.delivered.withLock { $0.blocks }
-        try? await Task.sleep(for: .milliseconds(300))
-        #expect(heard.delivered.withLock { $0.blocks } == atRemoval)
+        #expect(heard.peak > 0.05, "audio delivered but stayed silent (peak \(heard.peak))")
+        #expect(heard.rate > 8000)
+        #expect(heard.samples > 1024)
+        #expect(heard.stoppedOnRemoval)
     }
 
     @Test(clipTrait) func headlessPlaybackStateIsVirtual() async throws {

@@ -171,14 +171,14 @@ public final class ScreenCapture: FrameSource, VideoFeed {
     public var frameTap: FrameTap? {
         didSet {
             let tap = frameTap
-            tapStore.withLock { $0 = tap }
+            tapStore.withLock { $0.value = tap }
         }
     }
 
     // MARK: Private state
 
     private let store = ScreenFrameStore()
-    private let tapStore = OSAllocatedUnfairLock<FrameTap?>(initialState: nil)
+    private let tapStore = OSAllocatedUnfairLock<Held<FrameTap?>>(initialState: Held(nil))
     private let queue = DispatchQueue(label: "co.eavl.ollin.screen.capture")
 
     // The stream and its output have to be held: a stream nobody references is
@@ -529,12 +529,12 @@ private final class ScreenStreamOutput: NSObject, SCStreamOutput, SCStreamDelega
                                         @unchecked Sendable {
 
     private let store: ScreenFrameStore
-    private let tapStore: OSAllocatedUnfairLock<FrameTap?>
+    private let tapStore: OSAllocatedUnfairLock<Held<FrameTap?>>
     private let onStop: @Sendable (any Error) -> Void
     private lazy var context = CIContext()
 
     init(store: ScreenFrameStore,
-         tapStore: OSAllocatedUnfairLock<FrameTap?>,
+         tapStore: OSAllocatedUnfairLock<Held<FrameTap?>>,
          onStop: @escaping @Sendable (any Error) -> Void) {
         self.store = store
         self.tapStore = tapStore
@@ -551,7 +551,7 @@ private final class ScreenStreamOutput: NSObject, SCStreamOutput, SCStreamDelega
               let buffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         store.store(buffer)
         // The CPU copy is made only when something is analyzing the feed.
-        guard let tap = tapStore.withLock({ $0 }) else { return }
+        guard let tap = tapStore.withLock({ $0.value }) else { return }
         let ciImage = CIImage(cvPixelBuffer: buffer)
         guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else { return }
         tap(cgImage)

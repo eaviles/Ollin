@@ -1,4 +1,5 @@
 import AVFoundation
+import Ollin
 import os
 
 // MARK: - The samples in hand
@@ -172,14 +173,14 @@ extension CustomEffect: Codable {
 /// closure out keeps reference counting off the audio thread, and makes one
 /// runner placed twice in a chain touch its state one block at a time.
 final class CustomEffectRunner: @unchecked Sendable {
-    private let lock: OSAllocatedUnfairLock<(AudioBlock) -> Void>
+    private let lock: OSAllocatedUnfairLock<Held<(AudioBlock) -> Void>>
 
     init(_ process: @escaping (AudioBlock) -> Void) {
-        lock = OSAllocatedUnfairLock(uncheckedState: process)
+        lock = OSAllocatedUnfairLock(uncheckedState: Held(process))
     }
 
     func run(_ block: AudioBlock) {
-        lock.withLockUnchecked { process in process(block) }
+        lock.withLockUnchecked { process in process.value(block) }
     }
 }
 

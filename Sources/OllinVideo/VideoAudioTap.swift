@@ -18,7 +18,7 @@ final class VideoAudioTapStorage: @unchecked Sendable {
 
     /// The current consumer, written from the main thread, read per process
     /// callback on the audio thread.
-    let handler = OSAllocatedUnfairLock<AudioTap?>(initialState: nil)
+    let handler = OSAllocatedUnfairLock<Held<AudioTap?>>(initialState: Held(nil))
 
     // Audio-thread-only state (the tap serializes prepare/process/unprepare).
     private var sampleRate: Double = 0
@@ -39,7 +39,7 @@ final class VideoAudioTapStorage: @unchecked Sendable {
     /// one interleaved buffer) down to mono and hands it to the consumer.
     func deliver(_ list: UnsafeMutablePointer<AudioBufferList>, frames: Int) {
         guard frames > 0, let mono, let baseAddress = mono.baseAddress,
-              let handler = handler.withLock({ $0 }) else { return }
+              let handler = handler.withLock({ $0.value }) else { return }
         let count = min(frames, mono.count)
         vDSP_vclr(baseAddress, 1, vDSP_Length(count))
 

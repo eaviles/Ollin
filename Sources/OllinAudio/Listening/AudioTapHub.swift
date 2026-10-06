@@ -142,14 +142,14 @@ struct PCMBox: @unchecked Sendable {
 /// `AudioTap` is `@Sendable` by declaration. The down-mix scratch is touched
 /// only from the tap callback, which the engine calls serially.
 final class AudioTapRelay: @unchecked Sendable {
-    private let stored = OSAllocatedUnfairLock<AudioTap?>(initialState: nil)
+    private let stored = OSAllocatedUnfairLock<Held<AudioTap?>>(initialState: Held(nil))
     private var scratch = UnsafeMutableBufferPointer<Float>.allocate(capacity: 0)
 
     deinit { scratch.deallocate() }
 
     var tap: AudioTap? {
-        get { stored.withLock { $0 } }
-        set { stored.withLock { $0 = newValue } }
+        get { stored.withLock { $0.value } }
+        set { stored.withLock { $0.value = newValue } }
     }
 
     /// Forward a buffer, if anything is listening, as the mono the seam
@@ -159,7 +159,7 @@ final class AudioTapRelay: @unchecked Sendable {
     /// Called on the audio thread, where the scratch is grown at most once per
     /// buffer size rather than allocated per callback.
     func deliver(_ buffer: AVAudioPCMBuffer) {
-        guard let tap = stored.withLock({ $0 }), let channels = buffer.floatChannelData else {
+        guard let tap = stored.withLock({ $0.value }), let channels = buffer.floatChannelData else {
             return
         }
         let frames = Int(buffer.frameLength)

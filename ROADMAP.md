@@ -55,6 +55,7 @@ This tier is a set of classic generative-art building blocks. Each one emits vec
 - **Layer styles.** A layer gets a drop shadow, an inner or outer glow, a bevel, or an outline, each read from its alpha. They build on the distance field the effects already measure.
 - **Measuring color.** Helpers measure the perceptual distance between two colors, find the palette entry nearest a color, and build a histogram of an image. Ramps can also drift in hue, cooler in the shadows and warmer in the light.
 - **Slopes of a fitted field.** `RadialBasis` reports its gradient beside its value. Small numerical derivative helpers cover any function a sketch writes.
+- **Noise in three dimensions that loops.** `noise(x, y, z, loop:)` joins the one- and two-dimensional looping forms, so a point cloud or a volume evolving over a lap returns to where it started.
 
 See the [design notes](DESIGN-NOTES.md#technique-and-algorithm-helpers).
 
@@ -72,6 +73,7 @@ A Mac has no depth camera, no inertial sensors, and no spare Neural Engine for l
 
 - **Soft bodies that meet themselves.** Cloth drapes, folds, and holds air. But a folded sheet passes through its own layers, and two sheets pass through each other. That happens because self-collision and cloth-against-cloth are gaps in the solver underneath, not in the API over it. Tearing is further out still. It needs a shared vertex split and a rebuilt constraint set in the middle of a simulation, which that solver cannot do at all. Both wait on the library growing them. When it does, they land as more capability on the shipped `SoftBody3D` surface. A filled jelly held by tetrahedra is *not* on this list. It was built and measured against the `pressure` a closed surface already takes, and the `pressure` form did better. A hair tier is not on the list either. The solver's hair module accepts no force, collides only with convex hulls, and needs an authored groom. The rod family already exposed carries more simulated strands in a frame than that module does. See [`DESIGN-NOTES.md`](DESIGN-NOTES.md).
 - **Lofting.** A surface lofts through a series of cross-sections placed along a 3D path, each a `Shape` of its own, so a bottle can run from a square foot to a round neck.
+- **Hidden-line solids.** A mesh draws with its faces in the fill and only its feature edges in the stroke, the creases sharper than an angle, so a box reads as twelve inked edges over an opaque body and near solids hide the edges of far ones. It works under instancing, in one draw, and composes with depth of field, motion blur, and temporal anti-aliasing like any solid.
 - **Volume rendering.** A 3D grid of density draws as a glowing or light-absorbing cloud. It suits smoke from a simulation, a scanned volume, or 3D noise.
 
 

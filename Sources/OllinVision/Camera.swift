@@ -54,10 +54,10 @@ public final class Camera: FrameSource, VideoFeed {
     public var frameTap: FrameTap? {
         didSet {
             let tap = frameTap
-            tapStore.withLock { $0 = tap }
+            tapStore.withLock { $0.value = tap }
         }
     }
-    private let tapStore = OSAllocatedUnfairLock<FrameTap?>(initialState: nil)
+    private let tapStore = OSAllocatedUnfairLock<Held<FrameTap?>>(initialState: Held(nil))
 
     private var delegate: CameraCaptureDelegate?
     private var configured = false
@@ -249,10 +249,10 @@ private final class CameraCaptureDelegate: NSObject,
     AVCaptureVideoDataOutputSampleBufferDelegate, @unchecked Sendable {
 
     private let store: FrameStore
-    private let tapStore: OSAllocatedUnfairLock<FrameTap?>
+    private let tapStore: OSAllocatedUnfairLock<Held<FrameTap?>>
     private let context = CIContext()
 
-    init(store: FrameStore, tapStore: OSAllocatedUnfairLock<FrameTap?>) {
+    init(store: FrameStore, tapStore: OSAllocatedUnfairLock<Held<FrameTap?>>) {
         self.store = store
         self.tapStore = tapStore
     }
@@ -264,7 +264,7 @@ private final class CameraCaptureDelegate: NSObject,
         let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
         guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else { return }
         store.store(FrameBox(cgImage))
-        if let tap = tapStore.withLock({ $0 }) { tap(cgImage) }
+        if let tap = tapStore.withLock({ $0.value }) { tap(cgImage) }
     }
 }
 

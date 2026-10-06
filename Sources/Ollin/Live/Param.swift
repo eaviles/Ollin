@@ -1089,7 +1089,7 @@ public final class Param<Value: ParamValue>: @unchecked Sendable, FrameAdvancing
     /// The show-rule, type-erased over its source parameter, or `nil` while the row
     /// always shows. Behind its own lock: `setup()` writes it once, and the
     /// inspector reads it on the main thread while the value lock stays busy.
-    private let showRule = OSAllocatedUnfairLock<(@Sendable () -> Bool)?>(initialState: nil)
+    private let showRule = OSAllocatedUnfairLock<Held<(@Sendable () -> Bool)?>>(initialState: Held(nil))
 
     /// The value kind's constraint payload: the range and optional step for a
     /// numeric parameter, `Void` for the kinds that need none.
@@ -1185,13 +1185,13 @@ public final class Param<Value: ParamValue>: @unchecked Sendable, FrameAdvancing
     /// swaps both out together. Calling this again replaces the rule.
     public func show<Other: ParamValue>(when other: Param<Other>,
                                         _ rule: @escaping @Sendable (Other) -> Bool) {
-        showRule.withLock { $0 = { rule(other.wrappedValue) } }
+        showRule.withLock { $0.value = { rule(other.wrappedValue) } }
     }
 
     /// Whether the inspector should show this parameter's row right now: `true`
     /// unless a `show(when:_:)` rule is set and currently fails.
     public var isShown: Bool {
-        guard let rule = showRule.withLock({ $0 }) else { return true }
+        guard let rule = showRule.withLock({ $0.value }) else { return true }
         return rule()
     }
 
