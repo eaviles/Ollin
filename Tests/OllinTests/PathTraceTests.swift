@@ -189,8 +189,10 @@ struct PathTraceTests {
 
     /// The traced lens focuses at `focusDistance` from the eye, not a near plane
     /// farther: of two thin bright bars, one at the focus and one a near plane
-    /// beyond it, the one at the focus stays sharp and the other blurs.
-    @Test(.enabled(if: Snapshot.hasMetal))
+    /// beyond it, the one at the focus stays sharp and the other blurs. A device
+    /// that cannot trace renders the raster frame under the flag, whose camera is
+    /// a pinhole, so there is nothing to measure there.
+    @Test(.enabled(if: Snapshot.hasRaytracing))
     func theTracedLensFocusesAtTheDistanceFromTheEye() throws {
         OllinApp.pathTracedExport = PathTracing(samplesPerPixel: 64, denoises: false)
         defer { OllinApp.pathTracedExport = nil }
