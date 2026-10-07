@@ -280,32 +280,34 @@ struct LightingInvariantTests {
         region.reduce(0.0) { $0 + f.luma($1 % f.width, $1 / f.width) }
     }
 
-    /// A lens only moves light: what the caustic adds to the floor is at most what the
-    /// ball's shadow took from it, measured over the floor outside the ball's own
-    /// silhouette, through a Reinhard present unrolled on readback so the focused
-    /// spot is counted whole rather than clipped at white. More would be light the
-    /// photons made up, and a real glass ball returns less than it takes (two Fresnel
-    /// passes lose about a twelfth head on, more toward the rim).
+    /// A lens only moves light: what the caustic adds to the floor is what the ball's
+    /// shadow took from it, less what the glass reflects away, measured over the floor
+    /// outside the ball's own silhouette through a Reinhard present unrolled on
+    /// readback so the focused spot is counted whole rather than clipped at white.
+    /// A clear glass ball passes at most 0.92 (two Fresnel passes head on) and, by the
+    /// full Fresnel equations averaged over its disc, 0.84; more would be light the
+    /// photons made up, much less light they lost. A point light runs a little higher
+    /// (0.90): it has no falloff, so a photon carries its cone's light at the length
+    /// of the path it took, and a refracted path is a few percent longer than the
+    /// straight line to the shadow it fills. A light's reach thins both alike.
     ///
-    /// Measured 2026-10-06 and filed: the caustic adds 1.5 times what the shadow took
-    /// (125.6 against 83.7 in summed linear luma), so the deposit runs half again over
-    /// physical before the Fresnel loss is counted, and a clipped 8-bit read had shown
-    /// only 1.08 of it. The known issue below is the standing nomination; it fails
-    /// the day the deposit is brought under the shadow, which is when it comes off.
-    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
-    func aLensFocusesNoMoreLightThanItsShadowTook() throws {
-        let bare = try renderUnrolled(CausticInvariantProbe.make(.noBall))
-        let shadowed = try renderUnrolled(CausticInvariantProbe.make(.ballNoCaustics))
-        let focused = try renderUnrolled(CausticInvariantProbe.make(.ballCaustics))
+    /// Measured 2026-10-06 and pinned as a known issue until the review of
+    /// 2026-10-07: the caustic added 1.5 times what the shadow took. The stages are
+    /// in `CausticEnergyTests`.
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing),
+          arguments: CausticInvariantProbe.Light.allCases)
+    func aLensGivesBackWhatItsShadowTookLessItsReflection(_ light: CausticInvariantProbe.Light) throws {
+        let bare = try renderUnrolled(CausticInvariantProbe.make(.noBall, light: light))
+        let shadowed = try renderUnrolled(CausticInvariantProbe.make(.ballNoCaustics, light: light))
+        let focused = try renderUnrolled(CausticInvariantProbe.make(.ballCaustics, light: light))
         let region = try floorRegion()
         let removed = sum(bare, over: region) - sum(shadowed, over: region)
         let added = sum(focused, over: region) - sum(shadowed, over: region)
         #expect(removed > 1, "the ball cast no shadow to speak of: \(removed)")
-        #expect(added > 0.1, "the caustic landed nothing: \(added)")
-        withKnownIssue("the caustic deposits more light than its shadow takes (measured 1.5x, 2026-10-06)") {
-            #expect(added <= removed * 1.02,
-                    "the caustic added \(added) where the shadow had only taken \(removed)")
-        }
+        #expect(added <= removed * 0.92,
+                "the caustic added \(added) where the shadow had only taken \(removed)")
+        #expect(added >= removed * 0.78,
+                "the caustic added only \(added) of the \(removed) the shadow took")
     }
 
     /// A caustic is light added: nowhere does turning it on darken the floor.
@@ -544,13 +546,18 @@ private final class GIInvariantProbe: Sketch {
 /// low on one side so the ball's silhouette sits on the screen above the floor it
 /// shades rather than over it. The mask variant draws the ball alone, white under
 /// ambient light, so a test can read the silhouette off the picture.
-private final class CausticInvariantProbe: Sketch {
+final class CausticInvariantProbe: Sketch {
     enum Kind { case noBall, ballNoCaustics, ballCaustics, ballDispersed, ballMask }
+    /// The light over the ball: the sun, a lamp straight above it, or the same lamp
+    /// given a reach that thins its light to about a ninth at the floor.
+    enum Light: CaseIterable, Sendable { case directional, point, pointWithReach }
     var kind: Kind = .ballCaustics
+    var light = Light.directional
 
-    static func make(_ kind: Kind) -> CausticInvariantProbe {
+    static func make(_ kind: Kind, light: Light = .directional) -> CausticInvariantProbe {
         let p = CausticInvariantProbe()
         p.kind = kind
+        p.light = light
         return p
     }
 
@@ -565,7 +572,14 @@ private final class CausticInvariantProbe: Sketch {
             noLights()
             ambientLight(.white)
         } else {
-            directionalLight(.white, direction: Vector3(-0.05, -1, 0.02), intensity: 1.5)
+            switch light {
+            case .directional:
+                directionalLight(.white, direction: Vector3(-0.05, -1, 0.02), intensity: 1.5)
+            case .point:
+                pointLight(.white, at: Vector3(0, 6.5, 0.05), intensity: 1.5)
+            case .pointWithReach:
+                pointLight(.white, at: Vector3(0, 6.5, 0.05), intensity: 1.5, reach: 9)
+            }
             castShadows()
         }
         switch kind {

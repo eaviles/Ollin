@@ -44,7 +44,7 @@ caustics(intensity: 1, dispersion: 0.5)     // split refracted light by waveleng
 noCaustics()                                // back off (the default)
 ```
 
-- `intensity` scales the brightness of every pattern. `1` is physical brightness. Where nothing focuses, the caustic adds back exactly the light that the glass removed from the direct path.
+- `intensity` scales the brightness of every pattern. `1` is physical brightness. Where nothing focuses, the caustic adds back exactly the light that the glass removed from the direct path, less what the glass reflects: a clear pane gives back 92% of the light its shadow took, and a clear ball about 84%, since it reflects more toward its rim.
 - `dispersion` splits refracted photons by wavelength, from `0` (no split) to `1` (a full rainbow). See [Dispersion](#dispersion).
 
 Caustics need a ray-tracing GPU (Apple silicon), an active 3D camera, and a light. Without all three, the call does nothing. If no material in the frame casts, the feature does no work and costs nothing.
@@ -56,7 +56,7 @@ Casting is automatic. The renderer reads it from the materials in the frame:
 
 - **Transmissive surfaces cast refractive caustics.** This means any mesh drawn with [`Material.glass`](./3D.md#materials). Photons refract at each interface, weighted by Fresnel, so a pane seen at a grazing angle reflects more light than it passes. The photons take the glass's `fill` as a tint. Inside a solid, they darken by its `attenuationColor` over the distance they travel, so bottle-green glass throws a bottle-green spot. A photon that meets total internal reflection bounces inside the solid and continues.
 - **Mirror-polished metals cast reflective caustics.** A physically based metal with a roughness below about `0.25` reflects its photons onward, tinted by the metal's color.
-- **Everything else receives.** The first rough opaque surface that a photon reaches gets the light, shaded with that surface's own color and finish. A matte surface takes the light as diffuse. A glossier surface streaks it toward the eye, in the same way that it streaks its lights.
+- **Everything else receives.** The first rough opaque surface that a photon reaches gets the light, shaded with that surface's own color and finish, exactly as the surface shades a light that falls on it directly. A matte surface takes the light as diffuse. A glossier surface streaks it toward the eye, in the same way that it streaks its lights.
 
 A photon that never crosses a caster is dropped. Light that goes straight from the sun to the floor is the direct lighting the scene already has. Caustics never add that light a second time.
 
@@ -64,6 +64,8 @@ A photon that never crosses a caster is dropped. Light that goes straight from t
 ### The light that emits
 
 One light emits the photons. The renderer chooses it the same way the [shadow system](./3D.md#shadows) chooses its caster. The renderer uses the `castShadows()` caster if it is a directional, spot, or point light. Otherwise it uses the first directional light, then the first spot light, then the first point light. A directional sun emits a patch of parallel photons fitted over the casting geometry. A spot light emits over its own cone. A point light emits over the cone that covers the casters, so no photon is wasted on empty sky.
+
+A point or spot light lights every surface with its full intensity, however far away the surface is, unless you give it a `reach`. Its photons follow the same rule. Each one carries the light the lamp would have laid at the end of the path that photon took. A mirror therefore throws exactly the light of the lamp's mirror image. A `reach` thins the photons the way it thins the lamp's direct light.
 
 Caustics work well with `castShadows()`. The glass's shadow goes dark and the focused spot lands *inside* it, which is exactly how a glass on a sunlit table looks.
 
@@ -98,6 +100,7 @@ The technique is photon mapping, in its adaptive real-time form (see `ATTRIBUTIO
 - **Screen-space apply.** Caustics land only on what the camera sees directly. A caustic on a surface that is seen only in a mirror, or only through glass, does not appear there.
 - **Sharp caustics from rough glass.** Photon paths treat every caster as polished, because roughness does not widen the differentials. So a frosted glass still throws a sharp pattern. The *view* through the glass is frosted, but the light it casts is not.
 - **One caster light** per frame emits photons. The other lights shade normally.
+- **A spot light's profile and cookie** shape its direct light, not its photons, so a patterned spot throws the caustic of a plain one.
 - **Glass refracts, metal reflects.** A glass surface's own specular reflection does not spawn a second family of photons. Tracing both would double the cost. Only a mirror-polished metal's reflection spawns photons.
 - **Area lights** (rect/disk/tube) do not emit photons yet. The soft-caustics extension is a follow-up.
 - The example is [`Examples/3D/Lighting/Caustics`](../../Examples/3D/Lighting/Caustics/Sketch.swift). Run it with `swift run --package-path Examples Example-3D-Lighting-Caustics`.

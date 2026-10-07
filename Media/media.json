@@ -1680,24 +1680,26 @@
       "width": 1080
     },
     "3D/Lighting/Caustics": {
-      "bytes": {
-        "loop": 3057655,
-        "loopSmall": 371633,
-        "still": 73392,
-        "stillSmall": 25270
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
-      "length": "10s",
-      "loop": "examples/3D/Lighting/Caustics/loop.mp4?v=ab77746c",
-      "loopSmall": "examples/3D/Lighting/Caustics/loop-640.mp4?v=dc75ea40",
-      "motion": 2.186,
-      "rendered": "2026-09-10",
+      "length": "10.0s",
       "seconds": 10.0,
+      "frame": 480,
+      "motion": 2.095,
+      "sound": false,
       "source": "03520c8da0465cd4",
-      "still": "examples/3D/Lighting/Caustics/still.jpg?v=8a7ad772",
-      "stillSmall": "examples/3D/Lighting/Caustics/still-640.jpg?v=7e80ac52",
-      "width": 1080
+      "rendered": "2026-10-07",
+      "bytes": {
+        "loop": 1569849,
+        "loopSmall": 257910,
+        "still": 70211,
+        "stillSmall": 24381
+      },
+      "loop": "examples/3D/Lighting/Caustics/loop.mp4?v=0ec93ac3",
+      "loopSmall": "examples/3D/Lighting/Caustics/loop-640.mp4?v=59999452",
+      "still": "examples/3D/Lighting/Caustics/still.jpg?v=10b487a7",
+      "stillSmall": "examples/3D/Lighting/Caustics/still-640.jpg?v=8a01033c",
+      "seed": 1
     },
     "3D/Lighting/GlobalIllumination": {
       "bytes": {
@@ -11774,8 +11776,8 @@
       ]
     },
     "3D/Effects": {
-      "image": "groups/3D-Effects.jpg?v=905882ec",
-      "imageSmall": "groups/3D-Effects-640.jpg?v=44b6976b",
+      "image": "groups/3D-Effects.jpg?v=ca4bf74e",
+      "imageSmall": "groups/3D-Effects-640.jpg?v=44e0d392",
       "of": [
         "3D/Effects/PathTraced",
         "3D/Effects/ScreenSpaceReflections",
@@ -11804,8 +11806,8 @@
       ]
     },
     "3D/Lighting": {
-      "image": "groups/3D-Lighting.jpg?v=dd86209e",
-      "imageSmall": "groups/3D-Lighting-640.jpg?v=9ab2ae97",
+      "image": "groups/3D-Lighting.jpg?v=1726a866",
+      "imageSmall": "groups/3D-Lighting-640.jpg?v=572379a3",
       "of": [
         "3D/Lighting/AreaLights",
         "3D/Lighting/Caustics",

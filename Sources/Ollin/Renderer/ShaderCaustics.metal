@@ -158,12 +158,16 @@ kernel void ollin_caustics_leafcounts(const device float *density [[buffer(0)]],
                                       device uint *leafCounts [[buffer(1)]],
                                       const device atomic_uint *totals [[buffer(2)]],
                                       constant OllinCausticsUniforms &cu [[buffer(3)]],
+                                      device float *leafWeights [[buffer(4)]],
                                       uint2 gid [[thread_position_in_grid]]) {
     uint edge = cu.counts.x;
     if (gid.x >= edge || gid.y >= edge) return;
     uint i = gid.y * edge + gid.x;
     float want;
     uint k;
+    // The flux scale a texel's photons carry: 1 wherever the texel emits for
+    // certain, since its k * k sub-cells then tile it whatever k came out.
+    float weight = 1.0;
     if (cu.counts2.z != 0) {
         want = float(cu.counts.z) / float(edge * edge);
         k = uint(floor(sqrt(max(want, 0.0))));
@@ -195,9 +199,18 @@ kernel void ollin_caustics_leafcounts(const device float *density [[buffer(0)]],
         float fi = float(cu.counts2.y % 4096u);
         float2 hp = float2(gid) + float2(fi * 17.0, fi * 41.0);
         if (hash12(hp) < (want - lo) / max(hi - lo, 1.0)) k += 1;
+        // Below one ray the coin decides whether the texel emits at all, and a
+        // texel that emits on a fraction `want` of frames would deliver that
+        // fraction of its light on average: its one photon carries the whole
+        // cell, so it carries 1 / want of it, and every frame's caustic is the
+        // light the uniform plan would land, in expectation (measured before:
+        // a frame fell 17% short while the map settled). The floor on the map
+        // bounds the scale.
+        if (want < 1.0) weight = 1.0 / max(want, 1e-3);
     }
     k = min(k, 64u);                       // cap: 4096 rays per texel
     leafCounts[i] = k * k;
+    leafWeights[i] = weight;
 }
 
 // Build one quadtree level from the level below (or, for the deepest level,
@@ -284,7 +297,8 @@ struct CausticGBufOut {
 
 struct CausticGBufFragOut {
     float4 normal [[color(0)]];     // world-space normal; alpha 1 = surface present
-    float4 material [[color(1)]];   // x = metalness, y = roughness
+    float4 material [[color(1)]];   // x = metalness, y = roughness, z = 1 physically based,
+                                    // w = the dielectric's normal-incidence reflectance
     float4 albedo [[color(2)]];     // the baked vertex color (straight sRGB, like the fragment)
 };
 
@@ -301,10 +315,18 @@ vertex CausticGBufOut ollin_caustics_gbuffer_vertex(uint vid [[vertex_id]],
     return out;
 }
 
-fragment CausticGBufFragOut ollin_caustics_gbuffer_fragment(CausticGBufOut in [[stage_in]]) {
+// `receiver` is the batch's finish as the splat needs it: x = 1 for the
+// physically based model, whose direct light is Lambert over pi plus the
+// microfacet lobe, and 0 for the others, whose direct light is the albedo times
+// the light with no pi and no lobe; y = its normal-incidence reflectance (from
+// its index). The splat shades a footprint the way the receiver shades its own
+// lights, so a caustic and the shadow it fills agree.
+fragment CausticGBufFragOut ollin_caustics_gbuffer_fragment(CausticGBufOut in [[stage_in]],
+                                                            constant float2 &receiver [[buffer(0)]]) {
     CausticGBufFragOut out;
     out.normal = float4(normalize(in.worldNormal), 1.0);
-    out.material = float4(clamp(in.metalness, 0.0, 1.0), clamp(in.roughness, 0.0, 1.0), 0.0, 1.0);
+    out.material = float4(clamp(in.metalness, 0.0, 1.0), clamp(in.roughness, 0.0, 1.0),
+                          receiver.x, receiver.y);
     out.albedo = float4(in.color.rgb, 1.0);
     return out;
 }
@@ -357,6 +379,7 @@ kernel void ollin_caustics_trace(constant OllinCausticsUniforms &cu [[buffer(0)]
                                  const device uint *geoOffsets [[buffer(7)]],
                                  instance_acceleration_structure accel [[buffer(8)]],
                                  const device OllinCausticGeo *geoMats [[buffer(9)]],
+                                 const device float *leafWeights [[buffer(10)]],
                                  texture2d<float> prevCaustics [[texture(0)]],
                                  uint tid [[thread_position_in_grid]]) {
     // Every thread owns photon slot `tid` and empties it first, so a thread that
@@ -382,6 +405,7 @@ kernel void ollin_caustics_trace(constant OllinCausticsUniforms &cu [[buffer(0)]
     }
     uint edge = cu.counts.x;
     uint count = leafCounts[texel.y * edge + texel.x];
+    float emitWeight = leafWeights[texel.y * edge + texel.x];
     uint k = max(1u, uint(round(sqrt(float(count)))));
     uint2 sub = uint2(sampleIdx % k, sampleIdx / k);
     // The sample's uv in the emission square, jittered inside its own sub-cell
@@ -447,6 +471,8 @@ kernel void ollin_caustics_trace(constant OllinCausticsUniforms &cu [[buffer(0)]
     // 4. Walk the scene.
     float eps = cu.lightParams.y;
     float firstHitArea = 0.0;
+    float firstDistance = 0.0;                        // the light to the first hit
+    float pathLength = 0.0;                           // the light to here, every segment
     uint maxBounces = cu.counts.w;
     bool inside = false;
     float interiorStart = 0.0;
@@ -479,14 +505,17 @@ kernel void ollin_caustics_trace(constant OllinCausticsUniforms &cu [[buffer(0)]
         float3 hitPu = Tu - (dot(Tu, n) / DdotN) * D;
         float3 hitPv = Tv - (dot(Tv, n) / DdotN) * D;
         float3 hitP = P + D * t;
+        pathLength += t;
 
         if (bounce == 0) {
             // The photon's share of the light is the *beam cross-section* through
             // its emission cell: the first hit's surface footprint times the
             // incidence cosine. Without the cosine a grazing silhouette ray reads
             // its stretched surface patch as extra energy and the caustic grows a
-            // skirt of over-bright spikes.
-            firstHitArea = length(cross(hitPu, hitPv)) * fabs(DdotN);
+            // skirt of over-bright spikes. A texel the plan let emit on only
+            // some frames scales its share by the inverse of that chance.
+            firstHitArea = length(cross(hitPu, hitPv)) * fabs(DdotN) * emitWeight;
+            firstDistance = t;
             if (firstHitArea <= 0.0) return;
         }
 
@@ -546,9 +575,14 @@ kernel void ollin_caustics_trace(constant OllinCausticsUniforms &cu [[buffer(0)]
             dDu = ollin_caustics_refract_dD(D, n, dDu, dnu, eta, ci, ct);
             dDv = ollin_caustics_refract_dD(D, n, dDv, dnv, eta, ci, ct);
             // Fresnel transmission at this interface (Schlick on the CPU-packed
-            // convention: f0 from the index ratio).
+            // convention: f0 from the index ratio). Schlick's curve is written for
+            // the angle on the side of the lower index, which is the incident one
+            // on the way in and the refracted one on the way out: read at the
+            // inside angle, the exit reflects too little, and a glass ball handed
+            // on 0.878 of the light it caught where the full Fresnel equations
+            // pass 0.836 (0.848 with the outside angle at both interfaces).
             float f0 = pow((eta - 1.0) / (eta + 1.0), 2.0);
-            float F = f0 + (1.0 - f0) * pow(1.0 - ci, 5.0);
+            float F = f0 + (1.0 - f0) * pow(1.0 - (inside ? ct : ci), 5.0);
             tint *= gm.refractive.x * (1.0 - F);
             if (inside) {
                 // Leaving the solid: apply the interior's Beer-Lambert tint.
@@ -612,6 +646,19 @@ kernel void ollin_caustics_trace(constant OllinCausticsUniforms &cu [[buffer(0)]
             }
         }
         float3 flux = cu.lightColor.xyz * spotAtten * firstHitArea * tint * cu.params.x;
+        if (lightKind != 0) {
+            // A point or spot light has no distance falloff: it lights every surface
+            // with its full intensity, so the light inside a cone of directions grows
+            // with the square of the distance it has gone, and the beam's cross-section
+            // at the first hit undercounts what the cone carries to a receiver farther
+            // on. A photon carries its cone's light at the length of the path it took
+            // (the distance to a mirror's virtual source), which is what the direct
+            // light would have laid on the same footprint unobstructed; without it a
+            // lamp's ball returned 0.35 of the light its shadow took. A light with a
+            // reach thins inside it the way its direct light does, at that distance.
+            float grow = pathLength / max(firstDistance, 1e-4);
+            flux *= grow * grow * ollin_light_reach(pathLength, cu.params.z);
+        }
         if (max(flux.x, max(flux.y, flux.z)) < cu.params.w * firstHitArea) return;
         if (tid < cu.counts2.x) {
             OllinPhoton ph;
@@ -720,6 +767,7 @@ fragment float4 ollin_caustics_splat_fragment(CausticSplatOut in [[stage_in]],
                                               texture2d<float> materialTex [[texture(1)]],
                                               texture2d<float> albedoTex [[texture(2)]],
                                               depth2d<float> depthTex [[texture(3)]],
+                                              texture2d<float> brdfLUT [[texture(4)]],
                                               constant OllinCausticsUniforms &cu [[buffer(1)]],
                                               constant OllinLighting &light [[buffer(2)]]) {
     float r2 = dot(in.local, in.local);
@@ -740,29 +788,37 @@ fragment float4 ollin_caustics_splat_fragment(CausticSplatOut in [[stage_in]],
     float ndl = dot(n, L);
     if (ndl <= 0.0) discard_fragment();
     // The kernel (1 - r^2) integrates to area * pi/2 over the ellipse, so this
-    // weight makes the whole splat deliver exactly the photon's flux.
+    // weight makes the whole splat deliver exactly the photon's flux. The
+    // footprint lies on the receiving surface, so flux over its area is the
+    // irradiance the surface receives, the incidence cosine already in it: a
+    // direct light's `color * NdotL`, never to be multiplied by NdotL again.
     float w = (1.0 - r2) * (2.0 / M_PI_F) * in.invArea;
-    float3 E = in.power * w;                          // irradiance density at this pixel
-    float2 mr = materialTex.read(px).xy;
+    float3 E = in.power * w;                          // irradiance at this pixel
+    float4 mat = materialTex.read(px);
     float3 albedo = srgbToLinear(albedoTex.read(px).rgb);
-    // Diffuse in the house convention (albedo * E * NdotL, like the direct lights),
-    // faded by metalness; plus a GGX lobe toward the camera so a glossy receiver
+    if (mat.z < 0.5) {
+        // A receiver of the other shading models takes its lights as the albedo
+        // times the light, with no pi and no lobe, and so takes its caustic.
+        return float4(albedo * E, 0.0);
+    }
+    // The physically based receiver shades its caustic as it shades a direct
+    // light, through the same terms: Lambert over pi kept by what the Fresnel
+    // term leaves and faded by metalness, plus the microfacet lobe toward the
+    // camera with its multiple-scattering compensation, so a glossy receiver
     // streaks its caustic the way it streaks its lights.
-    float3 diffuse = albedo * (1.0 - mr.x);
+    float metal = mat.x;
+    float rough = clamp(mat.y, 0.045, 1.0);
     float3 V = normalize(light.cameraPosition.xyz - in.worldCenter);
     float3 H = normalize(L + V);
-    float ndv = max(dot(n, V), 1e-3);
+    float ndv = max(dot(n, V), 1e-4);
     float ndh = max(dot(n, H), 0.0);
-    float ldh = max(dot(L, H), 0.0);
-    float rough = clamp(mr.y, 0.045, 1.0);
-    float a2 = rough * rough * rough * rough;     // alpha^2, alpha = perceptual^2
-    float dn = ndh * ndh * (a2 - 1.0) + 1.0;
-    float Dg = a2 / (M_PI_F * dn * dn);
-    float Vg = 0.5 / (ndl * sqrt(ndv * ndv * (1.0 - a2) + a2)
-                    + ndv * sqrt(ndl * ndl * (1.0 - a2) + a2) + 1e-4);
-    float3 F0 = mix(float3(0.04), albedo, mr.x);
-    float3 F = F0 + (1.0 - F0) * pow(1.0 - ldh, 5.0);
-    float3 color = (diffuse + Dg * Vg * F) * E * ndl;
+    float vdh = max(dot(V, H), 0.0);
+    float3 F0 = mix(float3(mat.w), albedo, metal);
+    float3 F = ollin_pbr_F_Schlick(vdh, F0);
+    float3 spec = ollin_pbr_D_GGX(ndh, rough) * ollin_pbr_V_SmithGGX(ndv, ndl, rough) * F
+                * ollin_pbr_energy_comp(F0, ollin_pbr_ess(brdfLUT, ndv, rough));
+    float3 diffuse = (1.0 - F) * (1.0 - metal) * albedo * (1.0 / M_PI_F);
+    float3 color = (diffuse + spec) * E;
     return float4(color, 0.0);
 }
 

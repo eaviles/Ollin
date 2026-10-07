@@ -1406,8 +1406,8 @@ typedef struct {
                              // z = max footprint edge, screen px; w = min footprint edge, px
     simd_float4 feedback;    // x = target projected footprint area (px²); y = the variance
                              // gain g; z = the density blend's temporal weight wt; w unused
-    simd_float4 params;      // x = intensity; y = dispersion 0…1; z = the splat depth bias
-                             // (NDC); w = the photon energy cull threshold
+    simd_float4 params;      // x = intensity; y = dispersion 0…1; z = a point or spot
+                             // caster's reach (0 = none); w = the photon energy cull threshold
     simd_uint4  counts;      // x = density-map edge, texels; y = quadtree depth (log2 edge);
                              // z = the frame's ray budget; w = max bounces
     simd_uint4  counts2;     // x = photon capacity; y = the jitter seed (the frame index

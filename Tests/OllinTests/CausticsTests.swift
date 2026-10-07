@@ -104,7 +104,10 @@ struct CausticRenderProbes {
                                                    channel: 1, x: 0.40...0.60, y: 0.55...0.75)
         let addedRed = channelMean(dG, 0) - mean(dOff, width: off.width, height: off.height,
                                                  channel: 0, x: 0.40...0.60, y: 0.55...0.75)
-        #expect(addedGreen > 6, "expected a green caustic: added green \(addedGreen)")
+        // At physical brightness the green addition is about 5 levels over a red
+        // one under half a level (2026-10-07); the floor was 6 while the caustic
+        // shaded a physically based floor at pi times its light.
+        #expect(addedGreen > 3, "expected a green caustic: added green \(addedGreen)")
         #expect(addedGreen - addedRed > 3,
                 "expected the addition to lean green: green \(addedGreen), red \(addedRed)")
     }

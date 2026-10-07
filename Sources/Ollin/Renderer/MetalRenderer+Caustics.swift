@@ -163,7 +163,8 @@ extension MetalRenderer {
         ensureCausticsBuffers(edge: edge, budget: budget, treeNodes: treeNodes, into: cb)
         guard let density = causticsDensity, let feedback = causticsFeedback,
               let totals = causticsTotals, let quadtree = causticsQuadtree,
-              let leafCounts = causticsLeafCounts, let photons = causticsPhotons,
+              let leafCounts = causticsLeafCounts, let leafWeights = causticsLeafWeights,
+              let photons = causticsPhotons,
               let args = causticsArgs else { return nil }
 
         var cu = OllinCausticsUniforms()
@@ -219,8 +220,10 @@ extension MetalRenderer {
         // footprint past it is culled, not clamped); w = the min width, px.
         cu.lightParams = SIMD4(caster.kind == 2 ? caster.cosOuter : 0, eps, 48, 1)
         cu.feedback = SIMD4(48, 4, 0.35, 0)
+        // z = a point or spot caster's reach (0 = none), the window its photons
+        // thin inside the way its direct light does.
         cu.params = SIMD4(Float(drawer.causticsIntensity), Float(drawer.causticsDispersion),
-                          0, 0.004)
+                          caster.kind == 0 ? 0 : caster.position.w, 0.004)
         cu.counts = SIMD4(UInt32(edge), UInt32(depth), UInt32(budget), 8)
         let uniformEmission = supersample || !causticsDensityValid
         // The frame index seeds the photons' jitter. Live, a new seed every frame
@@ -244,7 +247,8 @@ extension MetalRenderer {
         guard let gbuf = causticsGBuf,
               let gbufPipe = try? pipeline(.causticsGBuffer(depth: depthPixelFormat)),
               let splatPipe = try? pipeline(.causticsSplat),
-              let target = acquireFilterTexture(width: width, height: height, pooled: pooled)
+              let target = acquireFilterTexture(width: width, height: height, pooled: pooled,
+                                                format: .rgba32Float)
         else { return nil }
 
         let pass = MTLRenderPassDescriptor()
@@ -273,6 +277,8 @@ extension MetalRenderer {
             let end = i + 1 < batches.count ? batches[i + 1].meshStart : meshVertices.count
             let count = end - batch.meshStart
             guard count > 0 else { continue }
+            var receiver = SIMD2<Float>(batch.finish.shadingModel == 3 ? 1 : 0, batch.finish.f0)
+            enc.setFragmentBytes(&receiver, length: MemoryLayout<SIMD2<Float>>.stride, index: 0)
             enc.setVertexBuffer(meshBuffer, offset: batch.meshStart * meshStride, index: 0)
             enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
         }
@@ -316,6 +322,7 @@ extension MetalRenderer {
         compute.setBuffer(density, offset: 0, index: 0)
         compute.setBuffer(leafCounts, offset: 0, index: 1)
         compute.setBuffer(totals, offset: 0, index: 2)
+        compute.setBuffer(leafWeights, offset: 0, index: 4)
         compute.dispatchThreads(MTLSize(width: edge, height: edge, depth: 1),
                                 threadsPerThreadgroup: mapGroup)
         compute.setComputePipelineState(treePipe)
@@ -345,6 +352,7 @@ extension MetalRenderer {
         useTracedScene(compute, accel)
         compute.setAccelerationStructure(accel, bufferIndex: 8)
         compute.setBuffer(geoMats, offset: 0, index: 9)
+        compute.setBuffer(leafWeights, offset: 0, index: 10)
         compute.setTexture(prevResolved, index: 0)
         compute.dispatchThreads(MTLSize(width: budget, height: 1, depth: 1),
                                 threadsPerThreadgroup: MTLSize(width: 64, height: 1, depth: 1))
@@ -376,6 +384,9 @@ extension MetalRenderer {
         splat.setFragmentTexture(gbuf.material, index: 1)
         splat.setFragmentTexture(gbuf.albedo, index: 2)
         splat.setFragmentTexture(gbuf.depth, index: 3)
+        // The microfacet lobe's energy table, which every physically based frame
+        // bakes before this pass; a frame with no such receiver never reads it.
+        splat.setFragmentTexture(iblBRDFLUT ?? gbuf.albedo, index: 4)
         splat.drawPrimitives(type: .triangleStrip, indirectBuffer: args, indirectBufferOffset: 0)
         splat.endEncoding()
 
@@ -433,6 +444,7 @@ extension MetalRenderer {
         causticsQuadtree = device.makeBuffer(length: max(1, treeNodes) * 16,
                                              options: .storageModePrivate)
         causticsLeafCounts = device.makeBuffer(length: texels * 4, options: .storageModePrivate)
+        causticsLeafWeights = device.makeBuffer(length: texels * 4, options: .storageModePrivate)
         causticsPhotons = device.makeBuffer(length: budget * MemoryLayout<OllinPhoton>.stride,
                                             options: .storageModePrivate)
         causticsArgs = device.makeBuffer(length: 16, options: .storageModePrivate)

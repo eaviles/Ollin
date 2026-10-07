@@ -404,6 +404,7 @@ final class MetalRenderer {
         // against the caustics G-buffer's depth, so the pass carries no depth.
         static let causticsSplat = PipelineKey(vertex: "ollin_caustics_splat_vertex",
                                                fragment: "ollin_caustics_splat_fragment",
+                                               effectFormat: .rgba32Float,
                                                isCausticSplat: true)
         /// The canvas depth of field's small bright sources, drawn as discs of their
         /// own and added to the finished blur: the splat's additive pipeline, into
@@ -1620,6 +1621,7 @@ final class MetalRenderer {
     var causticsTotals: MTLBuffer?       // 1 uint: the density map's fixed-point sum
     var causticsQuadtree: MTLBuffer?     // uint4 per node, levels 0..depth-1 breadth-first
     var causticsLeafCounts: MTLBuffer?   // uint per texel (a perfect square)
+    var causticsLeafWeights: MTLBuffer?  // float per texel: the flux scale its photons carry
     var causticsPhotons: MTLBuffer?      // OllinPhoton records (capacity = ray budget)
     var causticsArgs: MTLBuffer?         // MTLDrawPrimitivesIndirectArguments (GPU-reset)
     /// The emission-map edge the buffers were sized for (a quality change reallocates).
