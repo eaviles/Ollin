@@ -19,9 +19,11 @@ import Ollin
 /// The pattern's sharpness comes from how each light path focused, not from a
 /// blur pass, so the hot spot under a sphere stays a point while the ring's fan
 /// stays a fine curve. `dispersion:` splits refracted paths by wavelength for
-/// prism rainbows; `causticsQuality(_:)` trades photons for frame rate. Needs a
-/// ray-tracing GPU (Apple silicon), a camera, and a light. **Hold the space bar**
-/// to switch the caustics off and compare: the shadows go back to plain darkness.
+/// prism rainbows; `causticsQuality(_:)` trades photons for frame rate. This
+/// sketch sets `intensity: 1.6`, past the physical `1`, so the patterns stand
+/// out. Needs a ray-tracing GPU (Apple silicon), a camera, and a light. **Hold
+/// the space bar** to switch the caustics off and compare: the shadows go back
+/// to plain darkness.
 @main
 final class Caustics: Sketch {
 
@@ -34,7 +36,10 @@ final class Caustics: Sketch {
         directionalLight(.white, direction: Vector3(-0.35, -1, -0.2), intensity: 2.2)
         castShadows()
         rayTracedReflections()   // the glass shows the actual scene through itself
-        if !isKeyDown(" ") { caustics() }
+        // Turned up past physical for the demo: at 1 a pane gives back the light
+        // its shadow took, less what the glass reflects, and the patterns read
+        // quieter on a floor this bright.
+        if !isKeyDown(" ") { caustics(intensity: 1.6) }
 
         // A matte floor: the screen the light patterns land on.
         withState {

@@ -1685,20 +1685,20 @@
       "length": "10.0s",
       "seconds": 10.0,
       "frame": 480,
-      "motion": 2.095,
+      "motion": 2.119,
       "sound": false,
-      "source": "03520c8da0465cd4",
+      "source": "618e38f2f8b27576",
       "rendered": "2026-10-07",
       "bytes": {
-        "loop": 1569849,
-        "loopSmall": 257910,
-        "still": 70211,
-        "stillSmall": 24381
+        "loop": 1633170,
+        "loopSmall": 268524,
+        "still": 72291,
+        "stillSmall": 24903
       },
-      "loop": "examples/3D/Lighting/Caustics/loop.mp4?v=0ec93ac3",
-      "loopSmall": "examples/3D/Lighting/Caustics/loop-640.mp4?v=59999452",
-      "still": "examples/3D/Lighting/Caustics/still.jpg?v=10b487a7",
-      "stillSmall": "examples/3D/Lighting/Caustics/still-640.jpg?v=8a01033c",
+      "loop": "examples/3D/Lighting/Caustics/loop.mp4?v=5941cddd",
+      "loopSmall": "examples/3D/Lighting/Caustics/loop-640.mp4?v=414f938b",
+      "still": "examples/3D/Lighting/Caustics/still.jpg?v=783ce233",
+      "stillSmall": "examples/3D/Lighting/Caustics/still-640.jpg?v=aed12531",
       "seed": 1
     },
     "3D/Lighting/GlobalIllumination": {
@@ -11806,8 +11806,8 @@
       ]
     },
     "3D/Lighting": {
-      "image": "groups/3D-Lighting.jpg?v=1726a866",
-      "imageSmall": "groups/3D-Lighting-640.jpg?v=572379a3",
+      "image": "groups/3D-Lighting.jpg?v=1b8b02ce",
+      "imageSmall": "groups/3D-Lighting-640.jpg?v=c7355c05",
       "of": [
         "3D/Lighting/AreaLights",
         "3D/Lighting/Caustics",

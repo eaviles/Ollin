@@ -103,4 +103,4 @@ The technique is photon mapping, in its adaptive real-time form (see `ATTRIBUTIO
 - **A spot light's profile and cookie** shape its direct light, not its photons, so a patterned spot throws the caustic of a plain one.
 - **Glass refracts, metal reflects.** A glass surface's own specular reflection does not spawn a second family of photons. Tracing both would double the cost. Only a mirror-polished metal's reflection spawns photons.
 - **Area lights** (rect/disk/tube) do not emit photons yet. The soft-caustics extension is a follow-up.
-- The example is [`Examples/3D/Lighting/Caustics`](../../Examples/3D/Lighting/Caustics/Sketch.swift). Run it with `swift run --package-path Examples Example-3D-Lighting-Caustics`.
+- The example is [`Examples/3D/Lighting/Caustics`](../../Examples/3D/Lighting/Caustics/Sketch.swift), turned up to `intensity: 1.6` so its patterns stand out. Run it with `swift run --package-path Examples Example-3D-Lighting-Caustics`.
