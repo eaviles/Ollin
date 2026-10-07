@@ -46,10 +46,13 @@ static inline float ditherTriangle(float2 fragCoord) {
 // ground carries no noise into a video encoder), and a value near an end never
 // leans on the clamp, which pushed it inward. At an end the reach is 0.3 of a
 // level, under the 0.4 at which the 8-bit sRGB encode already rounds black up
-// (measured on Apple silicon).
+// (measured on Apple silicon). Where the reach is a whole level the step is
+// added as it is, never multiplied by 1: the compiler reorders that product,
+// and the reordered rounding moved one value in five hundred by a level.
 static inline float3 ditherEncoded(float3 enc, float2 fragCoord) {
     float3 reach = clamp(min(enc, 1.0 - enc) * 255.0 + 0.3, 0.0, 1.0);
-    return clamp(enc + ditherTriangle(fragCoord) * reach * (1.0 / 255.0), 0.0, 1.0);
+    float3 step = float3(ditherTriangle(fragCoord) * (1.0 / 255.0));
+    return clamp(enc + select(step * reach, step, reach >= 1.0), 0.0, 1.0);
 }
 
 // Apply the dither to a linear straight-alpha color in 8-bit sRGB output space,
