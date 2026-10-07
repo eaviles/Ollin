@@ -384,6 +384,29 @@ selfAvoidingWalk(cellSize: 22)
 
 Each call hands back the walk's points as a `[Vector2]`, which `drawPolyline` draws in one call. All three draw from the seeded `random`, so the same seed gives the same journey. [Walks](../Docs/Generators/Walks.md) has every argument, and the [`Walk`](../Examples/Randomness/Walk/Sketch.swift) example is the hand-written walk with a click that starts a fresh one.
 
+### A roll that remembers the last one: `MarkovChain`
+
+A random walk is the simplest case of a wider idea: where it goes next depends only on where it is now. A **Markov chain** makes that the whole rule. The odds of the next pick depend on the last pick, or on the last few. The mathematician Andrey Markov described these chains in 1906. In 1913 he tried one on words, counting how often a vowel followed a vowel in Pushkin's *Eugene Onegin*.
+
+What a chain is for is habits. Count what followed what in some source, and the chain makes new sequences with the same habits. The philosopher Hiroshi Kawano did that in Tokyo in 1964. He counted the colors in pictures he admired, gave the counts to a computer, and painted what it printed. In his designs a run of color seldom turns straight into another color. It ends in black first.
+
+```swift
+var paints = MarkovChain<String>(order: 1, seed: variation)
+paints.learn("red", after: ["red"], times: 9)     // red mostly carries on
+paints.learn("black", after: ["red"])             // and ends in black
+paints.learn("white", after: ["black"], times: 3)
+paints.learn("red", after: ["black"])
+paints.learn("white", after: ["white"], times: 6)
+paints.learn("black", after: ["white"])
+let ink: [String: Color] = ["red": Color(hex: 0xD33126), "black": .black, "white": .white]
+for i in 0 ..< 40 {
+    fill(ink[paints.next() ?? "white"] ?? .white)
+    drawRect(Double(i) * 27, 520, 27, 40)
+}
+```
+
+Each `learn(_:after:times:)` writes one line of the table: after this, that came next, so many times. `next()` picks by those counts, and `order` is how many picks back the chain reads. It keeps its own seeded generator, so adding one never moves the sketch's other rolls. The [`HiroshiKawano/Design`](../Examples/Recreations/HiroshiKawano/Design/Sketch.swift) homage walks a 40 by 39 grid at order 2, with counts taken cell by cell off two of his sheets. [Chapter 40](40-MusicByRule.md#what-comes-next-a-markovchain) uses the same chain to pick notes, and [a choice that remembers](../Docs/Generators/Random.md#markovchain) is the reference.
+
 ## Chance spread evenly: blue noise and low-discrepancy sequences
 
 The finished sketch puts every square in its place and lets chance nudge it. The opposite job comes up as often: points placed by chance, but spread evenly. Plain `random` placement clumps and leaves bare patches, as the strip in [Letting chance decide](#letting-chance-decide) showed, because independent rolls have no memory of each other. Two techniques give an even scatter, and they differ in one way that decides which you want.
@@ -455,7 +478,7 @@ A scored search can only find what its score was written to want. A search judge
 
 ## Where this comes from
 
-The grammar of this chapter is the founding grammar of computer art. Vera Molnár began making combinatorial drawings by hand in 1959, with what she called her *machine imaginaire*. She followed rules as a machine would, with dice standing in for the computer she did not yet have. She spent six decades applying precise doses of chance to grids of squares. Her phrase "1% of disorder" is the finished sketch's entire recipe. This guide's repository carries two homages to her plotter work in [`Examples/Recreations/VeraMolnar`](../Examples/Recreations/VeraMolnar/). Georg Nees's *Schotter*, from the late 1960s, is a column of squares tumbling from order into rubble. It set the order-above, chaos-below composition this chapter's finished sketch borrows. Making chance by arithmetic goes back to John von Neumann's middle-square method of the late 1940s. Ollin's generator is SplitMix64 (Guy L. Steele Jr., Doug Lea, and Christine H. Flood, 2014). `randomGaussian` uses George Marsaglia's polar method (1964). The family sections name their own sources as they go: Pearson, Lévy and Mandelbrot, Orr and Flory, Bridson, Halton, Sobol, and Sims. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The grammar of this chapter is the founding grammar of computer art. Vera Molnár began making combinatorial drawings by hand in 1959, with what she called her *machine imaginaire*. She followed rules as a machine would, with dice standing in for the computer she did not yet have. She spent six decades applying precise doses of chance to grids of squares. Her phrase "1% of disorder" is the finished sketch's entire recipe. This guide's repository carries two homages to her plotter work in [`Examples/Recreations/VeraMolnar`](../Examples/Recreations/VeraMolnar/). Georg Nees's *Schotter*, from the late 1960s, is a column of squares tumbling from order into rubble. It set the order-above, chaos-below composition this chapter's finished sketch borrows. Making chance by arithmetic goes back to John von Neumann's middle-square method of the late 1940s. Ollin's generator is SplitMix64 (Guy L. Steele Jr., Doug Lea, and Christine H. Flood, 2014). `randomGaussian` uses George Marsaglia's polar method (1964). The family sections name their own sources as they go: Pearson, Lévy and Mandelbrot, Orr and Flory, Markov and Kawano, Bridson, Halton, Sobol, and Sims. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
@@ -463,6 +486,7 @@ The grammar of this chapter is the founding grammar of computer art. Vera Molná
 - [Variations](../Docs/Core/Variations.md): `variation` and the seed-exploration tools in full, including contact sheets (`--export-grid`) and re-rendering a keeper (`--seed`).
 - [Why a run repeats](../Docs/Concepts/Determinism.md): one screen on the seed and the export's fixed clock, and the habits that break a repeat.
 - [Walks](../Docs/Generators/Walks.md): the hand-rolled walk from this chapter, shipped and seeded, plus two relatives that each change one rule. `levyFlight` mostly shuffles and occasionally leaps, and `selfAvoidingWalk` refuses to cross its own path.
+- [A choice that remembers](../Docs/Generators/Random.md#markovchain): `MarkovChain` from a drawing sketch, with a table declared by hand. The [Composition](../Docs/Helpers/Composition.md#markovchain) page covers learning one from a sequence and reading its counts back.
 - [Blue noise](../Docs/Generators/BlueNoise.md): `poissonDisk` in full, feeding its points to the tessellators, and calling it outside a sketch.
 - [Low-discrepancy sampling](../Docs/Generators/LowDiscrepancy.md): Halton bases, Sobol, `startIndex`, and the scalar `halton`.
 - [Breeding by hand](../Docs/Simulation/Evolution.md#population): `Population` and `Genome` in full, the mutation rate, keeping the picks, and why the pool never touches the sketch's `random`.
@@ -472,6 +496,7 @@ The grammar of this chapter is the founding grammar of computer art. Vera Molná
 - The Molnár homages in [`Examples/Recreations/VeraMolnar/`](../Examples/Recreations/VeraMolnar/): `DesOrdres` (seeded disorder scrubbed by the mouse) and `Interruptions` (a field of tilted ticks). The gaps in `Interruptions` come from the noise you meet in [Chapter 5](05-Noise.md).
 - The LeWitt homage [`FiftyPoints`](../Examples/Recreations/SolLeWitt/FiftyPoints/Sketch.swift): an instruction from 1971 that asks for fifty points "at random" and "evenly distributed" at once. Plain chance cannot give both, so the drafter keeps the farthest of a handful of throws for each point.
 - The Winiarski homages in [`Examples/Recreations/RyszardWiniarski/`](../Examples/Recreations/RyszardWiniarski/): `Obszar` is the program behind his areas. A coin or a die decides every square of a grid, starting from a drawn corner. Under the grid the sketch writes the rule and the count of black against what the distribution promised. `LosowanieDwiemaKostkami` lays black and white runs whose lengths are the sums of two dice, so the histogram of two dice is painted out as bars.
+- The Kawano homages in [`Examples/Recreations/HiroshiKawano/`](../Examples/Recreations/HiroshiKawano/): `Design` walks a grid of five gouaches with a Markov chain of order 2, each cell chosen from what followed the last two in counts taken off his 1964 sheets. `ArtificialMondrian` lets two small chains decide where the lines of his 1969 series run and whether each one runs on through a crossing, then colors the closed regions at random.
 - The Sharif homages in [`Examples/Recreations/HassanSharif/`](../Examples/Recreations/HassanSharif/): `DotsLinesForms` picks a pair of numbered points for every column of a table. It draws what the rule makes of them three times over. The picks are written on a draft paper beside the sheet, which is how a picked number stays readable in the picture. `AngularLines` picks six of twenty-five crossings for every cell, without repeating, then picks one of the finished lines to paint large. In `OctoberLines`, chance draws one wavy cut down a table of numbers. The rule does everything after that: the digit sums, the repeats dropped, and the bands of lines. So the same seed is the same wall. In `BodyAndSquares`, chance picks five squares of a grid for a body's head, hands, and feet. Then the body has to find a way to lie on them. A pick the body cannot reach is struck out and picked again, which is chance with a physical check on it.
 - The Bonačić homage [`DynamicObject`](../Examples/Recreations/VladimirBonacic/DynamicObject/Sketch.swift): the other answer to chance, from an artist who distrusted it. It is a square of lamps that looks like noise but is not. Each pattern is the one before multiplied by x in a finite field. So it can be read, set by hand, and predicted, yet it takes more than 270 years to repeat.
 - The Bonačić homage [`Random63`](../Examples/Recreations/VladimirBonacic/Random63/Sketch.swift): his one work built on chance. Each of its sixty-three bulbs is switched by a random source of its own. The sketch hangs them beside the same bulbs driven by a field. On the field's panel every bulb blinks one sequence, a tick behind the next. The left half lights up alone every sixty-three ticks. On the other panel, no two bulbs agree.

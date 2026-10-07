@@ -639,18 +639,19 @@ b603758b765e  Docs/Generators/Polyominoes.md:24  cannot find type 'Cell' in scop
 d3fe3995c966  Docs/Generators/Polyominoes.md:67  expected '{' in body of function declaration
 ab7e012a71fa  Docs/Generators/Polyominoes.md:73  cannot find 'piece' in scope
 13b924352d3f  Docs/Generators/Polyominoes.md:85  expected ',' separator
-5e04a9b57049  Docs/Generators/Random.md:104  expected ',' separator
-2be403eae386  Docs/Generators/Random.md:116  cannot find 'palette' in scope
-fb4f62830a44  Docs/Generators/Random.md:126  expected ',' separator
-93267df2dfd9  Docs/Generators/Random.md:132  cannot find 'palette' in scope
-d94faad4c27d  Docs/Generators/Random.md:143  expected ',' separator
-22af6d1a2ac4  Docs/Generators/Random.md:157  expected ',' separator
-2d014c6541ba  Docs/Generators/Random.md:187  cannot find 'palette' in scope
-76d77e8db9f4  Docs/Generators/Random.md:199  reference to member 'solve' cannot be resolved without a contextual type
-792947ff89bb  Docs/Generators/Random.md:27  expected ',' separator
-9d8d63608afc  Docs/Generators/Random.md:46  expected type before '->'
-1c51516556c8  Docs/Generators/Random.md:67  expected expression in list of expressions
-0661df9d7da2  Docs/Generators/Random.md:82  expected type before '->'
+5e04a9b57049  Docs/Generators/Random.md:105  expected ',' separator
+2be403eae386  Docs/Generators/Random.md:117  cannot find 'palette' in scope
+fb4f62830a44  Docs/Generators/Random.md:127  expected ',' separator
+93267df2dfd9  Docs/Generators/Random.md:133  cannot find 'palette' in scope
+5b8434d1e1c9  Docs/Generators/Random.md:142  cannot find type 'Element' in scope
+d94faad4c27d  Docs/Generators/Random.md:170  expected ',' separator
+22af6d1a2ac4  Docs/Generators/Random.md:184  expected ',' separator
+2d014c6541ba  Docs/Generators/Random.md:214  cannot find 'palette' in scope
+76d77e8db9f4  Docs/Generators/Random.md:226  reference to member 'solve' cannot be resolved without a contextual type
+792947ff89bb  Docs/Generators/Random.md:28  expected ',' separator
+9d8d63608afc  Docs/Generators/Random.md:47  expected type before '->'
+1c51516556c8  Docs/Generators/Random.md:68  expected expression in list of expressions
+0661df9d7da2  Docs/Generators/Random.md:83  expected type before '->'
 fd24309c1943  Docs/Generators/ShadowArt.md:40  expected ',' separator
 51ce8472de9c  Docs/Generators/ShadowArt.md:62  cannot find type 'Side' in scope
 81c164e78112  Docs/Generators/ShadowArt.md:9  cannot find 'ring' in scope

@@ -580,21 +580,6 @@ struct MIDIFile: Equatable, Hashable, Sendable
   var tempoChanges: [MIDIFile.TempoChange] { get set }
   var timeSignatures: [MIDIFile.TimeSignature] { get set }
   var tracks: [MIDIFile.Track] { get set }
-struct MarkovChain<Element where Element : Hashable, Element : Sendable>: Sendable
-  func continuations(after: [Element]) -> [(element: Element, probability: Double)]
-  init(learning: [Element], order: Int = default, seed: Int = default, loops: Bool = default)
-  init(order: Int = default, seed: Int = default)
-  let order: Int
-  mutating func learn(_: [Element], loops: Bool = default)
-  mutating func next() -> Element?
-  mutating func next(_: Int) -> [Element]
-  mutating func reset()
-  mutating func start(at: Element)
-  mutating func start(with: [Element])
-  var context: [Element] { get }
-  var continuations: [(element: Element, probability: Double)] { get }
-  var isEmpty: Bool { get }
-  var vocabulary: [Element] { get }
 struct ModalBody: Decodable, Encodable, Equatable, Hashable, Sendable
   func frequency(of: Int, playing: Pitch) -> Double
   init(modes: [ModalBody.Mode], decay: Double = default, damping: Double = default, hardness: Double = default)

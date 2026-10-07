@@ -368,7 +368,7 @@ Three rules decide what happens when the notes change:
 
 ### MarkovChain
 
-A `MarkovChain` learns from a sequence what tends to follow what. Then, when you ask it for elements, it gives you new ones with the same habits.
+A `MarkovChain` learns from a sequence what tends to follow what. Then, when you ask it for elements, it gives you new ones with the same habits. It lives in the core, beside `Tempo`, so it needs no `import OllinAudio`, and it picks colors or lengths as readily as notes.
 
 ```swift
 var melody = MarkovChain<Int>(seed: 4)
@@ -384,6 +384,16 @@ The chain shows its work: `vocabulary` is every element it has seen, in the orde
 `order` is how far back it looks. At order 1, each element is chosen from what followed the one before it. At order 2, it looks at the last two elements, which tracks the source more closely and invents less. When it has never seen the current context, it falls back to a shorter one. If that fails too, it falls back to how often each element appeared at all, so it always has an answer.
 
 `loops: true` says the sequence repeats, so what follows the last element is the first. Use it for a repeating figure. Without it, the chain can walk off the end of what it was shown and then has to fall back.
+
+What it knows can also be declared instead of shown. `learn(_:after:times:)` records that a context was followed by an element, a number of times. So a table of counts becomes a chain with no sequence behind it, whether you counted it off a picture or wrote it by hand. Each call counts as that many occurrences in a learned sequence would. The counts also land under every shorter tail of the context, so an unseen context backs off to them:
+
+```swift
+var paints = MarkovChain<String>(order: 2, seed: 3)
+paints.learn("yellow", after: ["white", "black"], times: 24)
+paints.learn("white", after: ["red", "black"], times: 17)
+```
+
+The [Hiroshi Kawano recreations](../../Examples/Recreations/HiroshiKawano/) are built that way. `Design` declares three tables counted cell by cell off two of his 1964 designs and walks a grid with them. `ArtificialMondrian` declares two small chains of its own: one for the gaps between lines, and one for whether a line runs on through a crossing.
 
 Learning the same phrase twice counts it twice, which is how you make one phrase more likely than another. `continuations` reads the learned counts back as probabilities, most likely first, so a sketch can draw the chain as well as play it:
 

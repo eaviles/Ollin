@@ -2,8 +2,9 @@ import Foundation
 
 /// A sequence that carries on the way a sequence it was shown carried on.
 ///
-/// Show it a melody and it learns what tends to follow what; ask it for notes
-/// and it gives you new ones with the same habits.
+/// Show it a melody, a row of colors, or a run of lengths and it learns what
+/// tends to follow what; ask it for more and it gives you new ones with the
+/// same habits.
 ///
 /// ```swift
 /// var chain = MarkovChain(learning: [0, 2, 4, 2, 0, 7, 4, 2], seed: 7)
@@ -15,6 +16,10 @@ import Foundation
 /// tracks the source more closely and invents less. When a context has never
 /// been seen it falls back to a shorter one, and finally to how often each
 /// element appeared at all, so it always has an answer.
+///
+/// What it knows can be declared as well as shown: `learn(_:after:times:)`
+/// records one transition a number of times, so a table of counts, read off a
+/// picture or written by hand, becomes a chain with no sequence behind it.
 ///
 /// It is seeded, so the same chain fed the same seed produces the same
 /// sequence, and it keeps its own generator rather than drawing on the
@@ -31,14 +36,14 @@ public struct MarkovChain<Element: Hashable & Sendable>: Sendable {
     public private(set) var context: [Element] = []
 
     private var table: [[Element]: Transitions] = [:]
-    private var random: CompositionRandom
+    private var random: SplitMix64
     private let seed: Int
 
     /// An empty chain, ready to be shown something.
     public init(order: Int = 1, seed: Int = 0) {
         self.order = max(1, order)
         self.seed = seed
-        self.random = CompositionRandom(seed: seed)
+        self.random = Self.generator(seed: seed)
     }
 
     /// A chain that has already been shown a sequence.
@@ -81,15 +86,39 @@ public struct MarkovChain<Element: Hashable & Sendable>: Sendable {
         }
     }
 
-    private mutating func record(_ context: [Element], leadsTo element: Element) {
+    /// Records that `context` was followed by `element`, `times` times.
+    ///
+    /// This is how a chain is declared rather than shown: a table of counts
+    /// goes in one transition at a time, with no sequence behind it. Each call
+    /// counts exactly as that many occurrences in a learned sequence would, so
+    /// the counts land under every shorter tail of `context` too, the empty one
+    /// included, and a context the walk cannot match backs off to them. Only
+    /// the last `order` elements of `context` are read, and a `times` below 1
+    /// records nothing.
+    ///
+    /// ```swift
+    /// var colors = MarkovChain<String>(order: 2, seed: 3)
+    /// colors.learn("yellow", after: ["white", "black"], times: 24)
+    /// colors.learn("white", after: ["red", "black"], times: 17)
+    /// ```
+    public mutating func learn(_ element: Element, after context: [Element], times: Int = 1) {
+        guard times > 0 else { return }
+        if !vocabulary.contains(element) { vocabulary.append(element) }
+        let tail = Array(context.suffix(order))
+        for length in 0...tail.count {
+            record(Array(tail.suffix(length)), leadsTo: element, times: times)
+        }
+    }
+
+    private mutating func record(_ context: [Element], leadsTo element: Element, times: Int = 1) {
         var transitions = table[context] ?? Transitions()
         if let slot = transitions.successors.firstIndex(of: element) {
-            transitions.counts[slot] += 1
+            transitions.counts[slot] += times
         } else {
             transitions.successors.append(element)
-            transitions.counts.append(1)
+            transitions.counts.append(times)
         }
-        transitions.total += 1
+        transitions.total += times
         table[context] = transitions
     }
 
@@ -141,7 +170,7 @@ public struct MarkovChain<Element: Hashable & Sendable>: Sendable {
     /// randomness so the same walk comes out again.
     public mutating func reset() {
         context = []
-        random = CompositionRandom(seed: seed)
+        random = Self.generator(seed: seed)
     }
 
     // MARK: Reading it
@@ -180,12 +209,17 @@ public struct MarkovChain<Element: Hashable & Sendable>: Sendable {
     }
 
     private mutating func choose(from transitions: Transitions) -> Element {
-        var roll = Int(random.next(below: UInt64(transitions.total)))
+        var roll = Int(random.next() % UInt64(transitions.total))
         for (index, count) in transitions.counts.enumerated() {
             roll -= count
             if roll < 0 { return transitions.successors[index] }
         }
         return transitions.successors[transitions.successors.count - 1]
+    }
+
+    /// SplitMix64 started one step past the seed.
+    private static func generator(seed: Int) -> SplitMix64 {
+        SplitMix64(seed: UInt64(bitPattern: Int64(seed)) &+ 0x9E37_79B9_7F4A_7C15)
     }
 
     /// What followed one context, kept in the order the successors were first
@@ -194,33 +228,5 @@ public struct MarkovChain<Element: Hashable & Sendable>: Sendable {
         var successors: [Element] = []
         var counts: [Int] = []
         var total = 0
-    }
-}
-
-/// The seeded generator the composition types keep to themselves.
-///
-/// Small, allocation free, and deliberately not the sketch's own randomness, so
-/// that adding a chain or an arpeggio cannot move anything else a sketch rolls.
-struct CompositionRandom: Sendable {
-    private var state: UInt64
-
-    init(seed: Int) {
-        state = UInt64(bitPattern: Int64(seed)) &+ 0x9E37_79B9_7F4A_7C15
-    }
-
-    mutating func next() -> UInt64 {
-        state &+= 0x9E37_79B9_7F4A_7C15
-        var z = state
-        z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
-        z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
-        return z ^ (z >> 31)
-    }
-
-    mutating func next(below bound: UInt64) -> UInt64 {
-        bound > 0 ? next() % bound : 0
-    }
-
-    mutating func nextUnit() -> Double {
-        Double(next() >> 11) * (1.0 / 9_007_199_254_740_992.0)
     }
 }

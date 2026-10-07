@@ -508,6 +508,14 @@
     ],
     "Web": [
       "Web/BreathingRing"
+    ],
+    "Recreations/HiroshiKawano": [
+      "Recreations/HiroshiKawano/Design",
+      "Recreations/HiroshiKawano/ArtificialMondrian"
+    ],
+    "Recreations/KazuyaSakai": [
+      "Recreations/KazuyaSakai/Ondulaciones",
+      "Recreations/KazuyaSakai/RightOff"
     ]
   },
   "examples": {
@@ -8454,6 +8462,50 @@
       "stillSmall": "examples/Recreations/HassanSharif/OctoberLines/still-640.jpg?v=53b76f4f",
       "width": 1620
     },
+    "Recreations/HiroshiKawano/ArtificialMondrian": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 655,
+      "motion": 42.47,
+      "sound": false,
+      "source": "70b42186908a0930",
+      "rendered": "2026-10-07",
+      "bytes": {
+        "loop": 779567,
+        "loopSmall": 128933,
+        "still": 56079,
+        "stillSmall": 29162
+      },
+      "loop": "examples/Recreations/HiroshiKawano/ArtificialMondrian/loop.mp4?v=4b213475",
+      "loopSmall": "examples/Recreations/HiroshiKawano/ArtificialMondrian/loop-640.mp4?v=2625107b",
+      "still": "examples/Recreations/HiroshiKawano/ArtificialMondrian/still.jpg?v=0335a8fe",
+      "stillSmall": "examples/Recreations/HiroshiKawano/ArtificialMondrian/still-640.jpg?v=1ab01368",
+      "seed": 1
+    },
+    "Recreations/HiroshiKawano/Design": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 768,
+      "motion": 24.028,
+      "sound": false,
+      "source": "0e10b4a1c0ff9095",
+      "rendered": "2026-10-07",
+      "bytes": {
+        "loop": 1376523,
+        "loopSmall": 432034,
+        "still": 138984,
+        "stillSmall": 65106
+      },
+      "loop": "examples/Recreations/HiroshiKawano/Design/loop.mp4?v=ae445480",
+      "loopSmall": "examples/Recreations/HiroshiKawano/Design/loop-640.mp4?v=f761f43d",
+      "still": "examples/Recreations/HiroshiKawano/Design/still.jpg?v=f2aaf57f",
+      "stillSmall": "examples/Recreations/HiroshiKawano/Design/still-640.jpg?v=4d005352",
+      "seed": 1
+    },
     "Recreations/JaredTarbell/Substrate": {
       "bytes": {
         "loop": 3868855,
@@ -12068,6 +12120,14 @@
         "Recreations/HassanSharif/BodyAndSquares"
       ]
     },
+    "Recreations/HiroshiKawano": {
+      "image": "groups/Recreations-HiroshiKawano.jpg?v=0a2b7cb6",
+      "imageSmall": "groups/Recreations-HiroshiKawano-640.jpg?v=6be3303d",
+      "of": [
+        "Recreations/HiroshiKawano/Design",
+        "Recreations/HiroshiKawano/ArtificialMondrian"
+      ]
+    },
     "Recreations/JaredTarbell": {
       "image": "groups/Recreations-JaredTarbell.jpg?v=f7e68731",
       "imageSmall": "groups/Recreations-JaredTarbell-640.jpg?v=1f6afc52",
@@ -12087,6 +12147,14 @@
       "imageSmall": "groups/Recreations-JosefAlbers-640.jpg?v=2ba8a030",
       "of": [
         "Recreations/JosefAlbers/Homage"
+      ]
+    },
+    "Recreations/KazuyaSakai": {
+      "image": "groups/Recreations-KazuyaSakai.jpg?v=cf28a4fe",
+      "imageSmall": "groups/Recreations-KazuyaSakai-640.jpg?v=db452603",
+      "of": [
+        "Recreations/KazuyaSakai/Ondulaciones",
+        "Recreations/KazuyaSakai/RightOff"
       ]
     },
     "Recreations/ManfredMohr": {

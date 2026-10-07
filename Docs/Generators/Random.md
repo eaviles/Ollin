@@ -14,6 +14,7 @@
 - [randomVector, in a ring](#randomvector-ring)
 - [randomChoice](#randomChoice)
 - [shuffled](#shuffled)
+- [MarkovChain, a choice that remembers](#markovchain)
 - [randomSeed](#randomSeed)
 - [seed](#seed)
 - [randomness](#randomness)
@@ -133,6 +134,32 @@ The elements of `array` in a random order. The order comes from the sketch's see
 randomSeed(9)
 let order = shuffled(palette)   // the same reordering every run
 ```
+
+<a name="markovchain"></a>
+
+#### MarkovChain, a choice that remembers
+
+```swift
+MarkovChain<Element>(order: Int = 1, seed: Int = 0)
+mutating func learn(_ element: Element, after context: [Element], times: Int = 1)
+mutating func next() -> Element?
+```
+
+A choice that depends on the choices before it. A `MarkovChain` holds, for each run of recent picks, how often each element came next, and `next()` picks from those counts. `order` is how many recent picks it looks at. You can show it a sequence to learn from, or declare the counts directly with `learn(_:after:times:)`. A declared table can be counted off a picture or written by hand. This builds a palette where a color rarely follows another color directly, so a black usually sits between them:
+
+```swift
+var paints = MarkovChain<String>(order: 1, seed: variation)
+paints.learn("red", after: ["red"], times: 9)      // a color mostly carries on
+paints.learn("black", after: ["red"])              // and ends in black
+paints.learn("blue", after: ["blue"], times: 9)
+paints.learn("black", after: ["blue"])
+paints.learn("black", after: ["black"], times: 2)  // black hands over to either color
+paints.learn("red", after: ["black"])
+paints.learn("blue", after: ["black"])
+let next = paints.next() ?? "black"
+```
+
+The chain keeps its own generator, seeded by `seed`, so adding one never moves the sketch's other rolls. It is the same type the music helpers use to pick notes. [`MarkovChain`](../Helpers/Composition.md#markovchain) on the Composition page covers learning from a sequence, falling back to shorter contexts, and reading the counts back. The [Hiroshi Kawano recreations](../../Examples/Recreations/HiroshiKawano/) walk a grid of colors with a table counted off his 1964 designs.
 
 ### Seeding
 

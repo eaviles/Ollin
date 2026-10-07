@@ -991,5 +991,11 @@ let package = Package(
         // circles of 1973, after Kazuya Sakai.
         example("Recreations/KazuyaSakai/Ondulaciones"),
         example("Recreations/KazuyaSakai/RightOff"),
+        // The Markov-chain designs of 1964, a grid of five gouaches decided
+        // cell by cell from the two before, and the Artificial Mondrian
+        // series of 1969, lines of chance lengths closing into colored
+        // regions, after Hiroshi Kawano.
+        example("Recreations/HiroshiKawano/Design"),
+        example("Recreations/HiroshiKawano/ArtificialMondrian"),
     ]
 )

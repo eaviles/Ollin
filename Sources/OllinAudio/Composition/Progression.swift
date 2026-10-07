@@ -1,4 +1,5 @@
 import Foundation
+import Ollin
 
 /// A cycle of chords, built out of a key.
 ///
