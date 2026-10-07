@@ -184,6 +184,23 @@ final class LiveSession {
         startWatching()
         print("OllinLive: compiling \(displayName) …")
         compileAndApply()
+        // A sketch kept in a folder of its target, below the target's own,
+        // has files above it that compile with it, so the target's folder is
+        // watched instead. Asked off the main thread: it can read the manifest.
+        let path = sketchPath
+        Task.detached { [weak self] in
+            guard let directory = (try? SketchTarget.containing(file: path))?.directory else { return }
+            await self?.watchTarget(directory)
+        }
+    }
+
+    /// Watch `directory`, the folder of the target the sketch is in, when the
+    /// sketch's own folder is below it.
+    private func watchTarget(_ directory: String) {
+        let own = SketchTarget.resolved((sketchPath as NSString).deletingLastPathComponent)
+        guard own != directory, SketchTarget.isInside(own, directory) else { return }
+        watcher?.stop()
+        startWatching(directory)
     }
 
     /// Called by the detail view once the renderer's `SketchRunner` exists (after
@@ -282,8 +299,8 @@ final class LiveSession {
         return summary
     }
 
-    private func startWatching() {
-        var dirs = [(sketchPath as NSString).deletingLastPathComponent]
+    private func startWatching(_ folder: String? = nil) {
+        var dirs = [folder ?? (sketchPath as NSString).deletingLastPathComponent]
         if let shaderDir {                    // also watch the shader folder
             dirs.append(shaderDir)
         }

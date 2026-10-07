@@ -10,7 +10,9 @@ import OllinRuntime
 /// recompile → `dlopen` → instantiate → render — end to end (Metal required).
 /// Two further phases cover the directly-executable hashbang form: a
 /// `#!/usr/bin/env ollin` sketch must compile and render, and a broken one
-/// must still report diagnostics at the original line numbers.
+/// must still report diagnostics at the original line numbers. The last
+/// covers a sketch split across a SwiftPM target: an edit to the helper file
+/// reaches the render, and the one file alone still cannot compile.
 enum SelfTest {
     @MainActor
     static func run() -> Never {
@@ -128,11 +130,89 @@ enum SelfTest {
             }
         }
 
+        let helperChanged = targetPhase(in: dir)
+
         print("OllinLive selftest: PASS: the edited sketch recompiled, loaded, and "
             + "rendered differently (\(a.count) vs \(b.count) bytes), the unoptimized "
-            + "compile rendered the same bytes, and the hashbang form compiled with "
-            + "exact diagnostic lines.")
+            + "compile rendered the same bytes, the hashbang form compiled with "
+            + "exact diagnostic lines, and an edit to a target's helper file reached "
+            + "the render (\(helperChanged) bytes of the frame changed).")
         exit(0)
+    }
+
+    /// A sketch whose radius lives in a second file of its target: the folder
+    /// resolves to the sketch, the target compiles whole, an edit to the
+    /// helper alone changes the picture, and the same sketch compiled alone
+    /// cannot find the helper, which is the gap the target scope closes.
+    @MainActor
+    private static func targetPhase(in dir: String) -> Int {
+        let package = (dir as NSString).appendingPathComponent("Project")
+        let sources = (package as NSString).appendingPathComponent("Sources/Breath")
+        try? FileManager.default.removeItem(atPath: package)
+        try! FileManager.default.createDirectory(atPath: sources, withIntermediateDirectories: true)
+        try! """
+        // swift-tools-version: 6.0
+        import PackageDescription
+        let package = Package(name: "Breath", targets: [.executableTarget(name: "Breath")])
+        """.write(toFile: (package as NSString).appendingPathComponent("Package.swift"),
+                  atomically: true, encoding: .utf8)
+        let sketchFile = (sources as NSString).appendingPathComponent("Sketch.swift")
+        try! """
+        import Ollin
+        @main
+        final class Breath: Sketch {
+            override func draw() {
+                background(.white)
+                fill(.black)
+                drawCircle(width / 2, height / 2, radius())
+            }
+        }
+        """.write(toFile: sketchFile, atomically: true, encoding: .utf8)
+        let helper = (sources as NSString).appendingPathComponent("Radius.swift")
+        func writeHelper(_ radius: Int) {
+            try! "func radius() -> Double { \(radius) }\n"
+                .write(toFile: helper, atomically: true, encoding: .utf8)
+        }
+
+        print("OllinLive selftest: a package folder resolves to its sketch file …")
+        let chosen: String
+        do {
+            chosen = try SketchChoice.resolve(package, target: nil).sketchPath
+        } catch {
+            fail("the package folder did not resolve: \(error)")
+        }
+        guard SketchTarget.resolved(chosen) == SketchTarget.resolved(sketchFile) else {
+            fail("the package folder resolved to \(chosen)")
+        }
+
+        func render(_ name: String) -> Data {
+            let path = (dir as NSString).appendingPathComponent(name)
+            switch SketchLoader(sketchPath: chosen, scope: .target).load() {
+            case .success(let sketch):
+                do { try OllinApp.export(sketch, to: path) } catch { fail("\(name): \(error)") }
+            case .failure(let error):
+                fail("\(name) did not compile with its target: \(error)")
+            }
+            guard let decoded = pixels(path) else { fail("could not decode \(name)") }
+            return decoded
+        }
+        print("OllinLive selftest: the target compiles whole; edit the helper file only …")
+        writeHelper(40)
+        let small = render("helper-40.png")
+        writeHelper(240)
+        let large = render("helper-240.png")
+        guard small != large else { fail("an edit to the helper file did not reach the render") }
+
+        print("OllinLive selftest: the sketch compiled alone cannot find its helper …")
+        switch SketchLoader(sketchPath: chosen).compile() {
+        case .success:
+            fail("the sketch compiled without its helper file, so the phase proves nothing")
+        case .failure(let error):
+            guard "\(error)".contains("cannot find 'radius' in scope") else {
+                fail("the file-alone compile failed for another reason: \(error)")
+            }
+        }
+        return zip(small, large).filter { $0 != $1 }.count
     }
 
     /// The decoded pixels of a PNG, for comparing two exports whose bytes

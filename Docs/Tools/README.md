@@ -5,7 +5,7 @@
 ## Tools
 
 - [`Project generator`](./ProjectGenerator.md) - `ollin new` and `ollin generate`: a ready-to-run sketch folder from a few questions. Each template runs for real in the window, so you can watch it before you pick one
-- [`Single-file sketches`](./SingleFile.md) - the `ollin` command: run one `.swift` file as a sketch from any directory, with no package needed
+- [`Single-file sketches`](./SingleFile.md) - the `ollin` command: run one `.swift` file as a sketch from any directory, with no package needed, or a package's sketch with every file of it reloading
 - [`The sketch on the phone`](./OnThePhone.md) - `ollin phone`: run the sketch on a paired iPhone or iPad. Every save installs it again, and its clock and parameters carry across, and the parameters stay live on the Mac
 - [`Live coding`](./LiveCoding.md) - the OllinLiveCoding performance host: write and evaluate sketch code live, with the code shown over the visuals
 - [`Bringing a shader over`](./ShaderImport.md) - `ollin new --from-shader`: translate a GLSL fragment shader into Metal, and get a project built around it

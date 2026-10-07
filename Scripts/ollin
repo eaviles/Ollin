@@ -3,6 +3,8 @@
 # Scripts/ollin: run a single .swift file as a sketch, from anywhere.
 #
 #   ollin Dots.swift                                # live window, hot-reload on save
+#   ollin Garden/                                   # a package's sketch target, every file of it
+#   ollin                                           # the same, for the package you are in
 #   ollin Dots.swift --installation                 # put it up: its own window, left running
 #   ollin Dots.swift --export-gif dots.gif --seconds 4   # headless export, same flags
 #   ollin new Dots.swift                            # write a starter sketch
@@ -12,7 +14,9 @@
 # One .swift file is the whole sketch: no package, no target, no project. The
 # file compiles against this repo's built framework and runs in the live host
 # (edit + save hot-swaps it into the running window), and every export flag a
-# packaged sketch takes works on the loose file too. A sketch that starts with
+# packaged sketch takes works on the loose file too. A sketch that has grown
+# into a SwiftPM target compiles with every file of that target, and a save to
+# any of them reloads it; a package's folder runs the sketch target in it. A sketch that starts with
 # `#!/usr/bin/env ollin` and is `chmod +x` runs directly: `./Dots.swift`.
 #
 # The script finds the repo from its own (symlink-resolved) location, so
@@ -28,7 +32,14 @@ repo="${self:h:h}"
 
 usage() {
     cat <<'EOF'
-usage: ollin <path/to/Sketch.swift> [flags]   run the sketch (live window)
+usage: ollin <path/to/Sketch.swift> [flags]   run the sketch (live window); a
+                                              sketch in a package target compiles
+                                              with every file of the target
+       ollin <package folder> [--target <name>] [flags]
+                                              run the package's sketch target
+                                              (--target picks one of several)
+       ollin [flags]                          the same, for the package this
+                                              directory is in
        ollin <path/to/Sketch.swift> --installation
                                               put it up: the sketch owns the
                                               window, so everything it declares
@@ -294,6 +305,16 @@ cmd_phone() {
     exec swift run -c "${OLLIN_CONFIG:-debug}" --package-path "$repo" OllinTether "${sketch:A}" "$@"
 }
 
+# Whether this directory, or one above it, holds a Package.swift.
+inside_package() {
+    local dir="$PWD"
+    while true; do
+        [[ -f "$dir/Package.swift" ]] && return 0
+        [[ "$dir" == "/" ]] && return 1
+        dir="${dir:h}"
+    done
+}
+
 case "${1:-}" in
     new)
         shift; cmd_new "$@" ;;
@@ -315,21 +336,25 @@ case "${1:-}" in
         shift; cmd_install "$@" ;;
     help|--help|-h)
         usage ;;
-    "")
-        usage >&2; exit 2 ;;
     *)
         config="release"
-        if [[ "$1" == "--debug" ]]; then
+        if [[ "${1:-}" == "--debug" ]]; then
             config="debug"
             shift
         fi
-        sketch="${1:-}"
-        if [[ -z "$sketch" ]]; then
-            usage >&2; exit 2
+        # Nothing named: the package this directory is in, when it is in one.
+        # The host reads the folder (the package's sketch target, or the one
+        # this folder is inside), so the folder goes as it is, not its root.
+        if [[ $# -eq 0 || "$1" == -* ]]; then
+            if ! inside_package; then
+                usage >&2; exit 2
+            fi
+            set -- "$PWD" "$@"
         fi
+        sketch="$1"
         shift
-        if [[ ! -f "$sketch" ]]; then
-            echo "ollin: file not found: $sketch" >&2
+        if [[ ! -e "$sketch" ]]; then
+            echo "ollin: nothing at $sketch" >&2
             exit 2
         fi
         # Which host: the live one, or the one that hands the sketch its own

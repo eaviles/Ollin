@@ -174,7 +174,7 @@ Some names from other frameworks mean something else here, or nothing. `ollin ap
 
 ### The command line
 
-A packaged sketch runs with `swift run <Target> <flags>`, and a single file with `ollin Sketch.swift <flags>`. With no flag the sketch opens in a window. With an export flag it renders without one and exits.
+A packaged sketch runs with `swift run <Target> <flags>`, and a single file with `ollin Sketch.swift <flags>`. `ollin <package folder> <flags>` runs a package's sketch the way the single file runs, every file of its target compiled together. With no flag the sketch opens in a window. With an export flag it renders without one and exits.
 
 | Flag | What it does |
 | --- | --- |

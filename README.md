@@ -148,7 +148,7 @@ To keep a window open while you edit, run a sketch through OllinLive from the re
 swift run OllinLive Examples/Basic/HelloCircle/Sketch.swift
 ```
 
-Save an edit in your editor and Ollin recompiles just that file, then swaps it into the running window. If it doesn't compile, the error shows and the old sketch keeps running. A standalone file started with `ollin dots.swift` uses this same host. A reload starts the sketch fresh by default, or carries `time` and `frameCount` across it so an animation doesn't jump back to the start.
+Save an edit in your editor and Ollin recompiles just the sketch, then swaps it into the running window. If it doesn't compile, the error shows and the old sketch keeps running. A standalone file started with `ollin dots.swift` uses this same host. So does a sketch that has grown into a package: `ollin MySketch` compiles every file of its target, and a save to any of them reloads the window. A reload starts the sketch fresh by default, or carries `time` and `frameCount` across it so an animation doesn't jump back to the start.
 
 [`@Param` properties](Docs/Helpers/Parameters.md) become typed inspector controls: sliders, steppers, toggles, menus, color wells, palette and gradient strips. They keep their tuned values across reloads. Hold Command over a shape drawn with plain numbers to [move, resize, or rotate it](Docs/Tools/DragToEdit.md); the handles write the new numbers into your source.
 

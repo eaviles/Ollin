@@ -10,6 +10,8 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 - **Noise in three dimensions that loops.** `noise(x, y, z, loop:)`, with `signedNoise`, `fbm`, `signedFbm`, `ridgedFbm`, and `turbulence` in the same form, reads a volume that changes over a lap and comes back to exactly where it started, so a point cloud's drift or a cloud's density closes a seamless export. It reads a five-axis field, three for the point and two for the circle the lap tours, scaled to spread like `noise(x, y, z)` so a sketch keeps its contrast when it moves to the looping form. [Noise](Docs/Generators/Noise.md#loop)
 
+- **Live reload for a sketch that is a package.** The live window compiles a sketch inside a SwiftPM target with every other `.swift` file of that target, so helpers can live in files of their own and a save to any of them reloads the window, where before a helper moved into a second file stopped the live route with `cannot find ... in scope`. `ollin MySketch` runs a package's sketch by its folder, a bare `ollin` runs the package you are in, and `--target <name>` picks one sketch of several. The compile reads `Package.swift` for the target's language mode, defines, features, and resources, so a picture in a processed `Images/` folder loads through `.module` in the live window as it does under `swift run`. A sketch that imports another target of its package, or another package, still needs `swift run`, and the error says so. `OllinRun` (the `--installation` host) and `OllinLiveCoding` take a package's folder too. [Single-file sketches](Docs/Tools/SingleFile.md#growing-into-a-package)
+
 ## [0.14.0] - 2026-10-06
 
 ### Added

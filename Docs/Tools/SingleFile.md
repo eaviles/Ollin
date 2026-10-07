@@ -4,13 +4,14 @@
 
 ## Single-file sketches
 
-One `.swift` file can be a whole sketch, with no package to set up, no target to declare, and no project folder. The `ollin` command runs that file in the live window from any directory. The same command exports the file headlessly, with the same flags a packaged sketch takes. It also writes the starter file, so you never type the boilerplate.
+One `.swift` file can be a whole sketch, with no package to set up, no target to declare, and no project folder. The `ollin` command runs that file in the live window from any directory. The same command exports the file headlessly, with the same flags a packaged sketch takes. It also writes the starter file, so you never type the boilerplate. When the sketch grows into a package, the same command runs the package, and a save to any of its files reloads the window.
 
 ```sh
 ollin new dots.swift        # write a starter sketch
 ollin dots.swift            # run it: live window, hot-reload on save
 ./dots.swift                # the file is directly executable too
 ollin dots.swift --export-gif dots.gif --seconds 4
+ollin MySketch              # a package's folder: its sketch, every file of it
 ```
 
 ### Contents
@@ -21,6 +22,7 @@ ollin dots.swift --export-gif dots.gif --seconds 4
 - [Exports and flags](#exports-and-flags)
 - [Assets and satellite libraries](#assets-and-satellite-libraries)
 - [Growing into a package](#growing-into-a-package)
+- [Where the live route stops](#where-the-live-route-stops)
 - [How it works](#how-it-works)
 
 ---
@@ -117,8 +119,42 @@ The satellite libraries are all available. `import OllinAudio`, `import OllinMID
 
 ### Growing into a package
 
-The sketch file is the artifact, and it stays portable. When an idea outgrows one file, move that same file into a SwiftPM executable target that depends on `Ollin`. Delete the hashbang line, and the file builds unchanged, because `@main` already makes it the entry point. The single-file form is not a dialect of its own.
+The sketch file is the artifact, and it stays portable. When an idea outgrows one file, `ollin new MySketch` writes a package around a sketch (see [the project generator](ProjectGenerator.md)). You can also move the same file into a SwiftPM executable target that depends on `Ollin`. Delete the hashbang line, and the file builds unchanged, because `@main` already makes it the entry point. The single-file form is not a dialect of its own.
+
+The live window comes along. Name the sketch file, the package's folder, or nothing at all from inside the folder:
+
+```sh
+ollin MySketch/Sources/MySketch/Sketch.swift   # the sketch file
+ollin MySketch                                 # the package's folder
+cd MySketch && ollin                           # the package this directory is in
+```
+
+All three run the same sketch. A sketch in a package target compiles with every `.swift` file of that target. Helpers can move into files of their own, in folders if you like, and a save to any of them reloads the window. A file you add joins the next compile. Naming a helper file runs the target's sketch and says so. When a package holds several sketch targets, the folder form lists them and `--target` picks one:
+
+```sh
+ollin . --target Garden
+```
+
+The live compile reads `Package.swift` for what the package build does with the target. That covers the files it leaves out or names, the language mode, the defines and features in its Swift settings, and its resources. A folder the manifest processes is laid out the way the package's bundle lays it out. `Image(resource:withExtension:in:)` with `.module` then finds a picture in `Images/` on the live route, as it does under `swift run`. A target that declares no resources keeps the loose file's arrangement, where `.module` is the sketch's own folder.
+
+A folder of loose sketches, each with its own `@main`, stays a folder of loose files. Only a file inside a target's folder compiles with its neighbors. A sketch kept loose inside a package, outside every target, still compiles alone.
+
+### Where the live route stops
+
+The live window compiles the sketch's own target against Ollin and its libraries, which the host already carries. It does not build anything else the package resolves, and these cases need `swift run`:
+
+- **Another target of the same package.** A sketch that imports a library target beside it, such as code shared by several sketches, does not compile live. The error names the module and says why.
+- **Another package.** A dependency on any package other than Ollin is out of reach the same way.
+
+Two more differences are smaller:
+
+- **`main.swift` is left out.** A target started by a `main.swift` runs live without that file. The host makes the sketch itself, and top-level code does not compile into the library the host loads. Anything `main.swift` declares for the other files belongs in a file of its own.
+- **A target whose entry point is an app** is never offered by its folder. A SwiftUI app with a sketch inside it is that app's target, not a sketch's. Name the file that declares the sketch to run it live.
+
+[Dragging a shape](DragToEdit.md) and saving tuned parameters write the sketch's own file. A shape drawn by a helper in another file is outlined, and a drag on it says which file drew it and leaves it alone.
 
 ### How it works
 
-`ollin` finds its own repository through the symlink, builds the host there if anything changed, and hands your file to that host. The flags decide which host it is. The live host runs the sketch normally, and the host that gives the sketch its own window takes over when you ask for an installation. Only your file is compiled against the built framework, which is what makes a save quick, because your sketch recompiles and the framework never does. A headless flag skips the window entirely.
+`ollin` finds its own repository through the symlink, builds the host there if anything changed, and hands your file to that host. The flags decide which host it is. The live host runs the sketch normally, and the host that gives the sketch its own window takes over when you ask for an installation. Only your sketch is compiled against the built framework, the one file or the files of its target. That is what makes a save quick: your sketch recompiles and the framework never does. A headless flag skips the window entirely.
+
+For a sketch in a package, the host asks SwiftPM to read `Package.swift` once and keeps the answer until the manifest changes. The read evaluates the manifest and nothing more, so no dependency is fetched. It runs apart from the package's own build folder, so a `swift build` running in the package does not hold a save up.

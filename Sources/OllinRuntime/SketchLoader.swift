@@ -1,8 +1,9 @@
 import Foundation
 import Ollin
 
-/// Compiles a single sketch `.swift` file into a `.dylib` and loads the `Sketch`
-/// instance out of it. Each `load()` produces a fresh dylib at a unique path, so
+/// Compiles a sketch `.swift` file into a `.dylib` and loads the `Sketch`
+/// instance out of it: the one file, or every file of the SwiftPM target it
+/// sits in (`Scope`). Each `load()` produces a fresh dylib at a unique path, so
 /// `dlopen` returns a new image rather than a cached one — that fresh-image swap
 /// is the mechanism behind live reload, and the way the examples gallery embeds
 /// a selected sketch.
@@ -45,9 +46,28 @@ public struct SketchLoader: Sendable {
         }
     }
 
-    public init(sketchPath: String, optimization: Optimization = .speed) {
+    /// What a compile takes in besides the sketch file. `.file` (the default)
+    /// is the one file and nothing else, which is what a host that compiles
+    /// files it chose itself wants (the gallery's examples, the Guide's
+    /// figures). `.target` compiles every file of the SwiftPM target the
+    /// sketch sits in, under the target's Swift settings and with its
+    /// declared resources where `Bundle.module` looks, so a sketch split into
+    /// several files runs live as the package build runs it; a file in no
+    /// package's target compiles alone, as under `.file`. The hosts that run
+    /// what a person names use `.target`. See `SketchTarget`.
+    public var scope: Scope
+
+    public enum Scope: Sendable {
+        /// The sketch file alone.
+        case file
+        /// Every file of the target the sketch file sits in, when it sits in one.
+        case target
+    }
+
+    public init(sketchPath: String, optimization: Optimization = .speed, scope: Scope = .file) {
         self.sketchPath = sketchPath
         self.optimization = optimization
+        self.scope = scope
     }
 
     /// What to compile: the file at `sketchPath`, or an in-memory buffer standing
@@ -56,7 +76,8 @@ public struct SketchLoader: Sendable {
     /// writes the text into the per-compile work directory under the sketch's own
     /// file name, so diagnostics carry the same file name and exact line numbers
     /// while the real file on disk stays untouched; the generated `Bundle.module`
-    /// still points at `sketchPath`'s directory, so co-located assets resolve.
+    /// still points at `sketchPath`'s directory (or a target's resources), so
+    /// co-located assets resolve. A target's other files compile from disk.
     public enum Input: Sendable {
         case file
         case source(String)
@@ -65,6 +86,9 @@ public struct SketchLoader: Sendable {
     public enum LoadError: Error, CustomStringConvertible, Sendable {
         case unreadable(String)
         case noSketchClass(String)
+        /// The package around a `.target` compile has a `Package.swift` that
+        /// cannot be read; SwiftPM's own words.
+        case packageUnreadable(String)
         case compileFailed(String)
         case loadFailed(String)
 
@@ -73,6 +97,7 @@ public struct SketchLoader: Sendable {
             case .unreadable(let p): return "couldn't read sketch file: \(p)"
             case .noSketchClass(let p):
                 return "no `class …: Sketch` declaration found in \(p)"
+            case .packageUnreadable(let message): return message
             case .compileFailed(let log): return "compile failed —\n\(log)"
             case .loadFailed(let msg): return "load failed — \(msg)"
             }
@@ -130,7 +155,24 @@ public struct SketchLoader: Sendable {
         // below), leaving the file on disk untouched.
         let hasShebang = source.hasPrefix("#!")
         if hasShebang { source = "//" + source.dropFirst(2) }
-        guard let className = Self.sketchClassName(in: source) else {
+
+        // The target the file sits in, when the scope asks for it: its other
+        // files compile beside this one, under its settings.
+        var target: SketchTarget?
+        if scope == .target {
+            do {
+                target = try SketchTarget.containing(file: sketchPath)
+            } catch {
+                return .failure(.packageUnreadable(error.description))
+            }
+        }
+        let thisFile = SketchTarget.resolved(sketchPath)
+        let siblings = target?.swiftSources().filter { $0 != thisFile } ?? []
+        // The class the factory builds: declared in this file, or, in a
+        // target, in one of its other files.
+        guard let className = Self.sketchClassName(in: source) ?? siblings.lazy.compactMap({
+            (try? String(contentsOfFile: $0, encoding: .utf8)).flatMap(Self.sketchClassName(in:))
+        }).first else {
             return .failure(.noSketchClass(sketchPath))
         }
 
@@ -158,19 +200,38 @@ public struct SketchLoader: Sendable {
         // compile — it binds to Ollin's *internal* one — and a font/image sketch
         // that bundles a resource can't load it. Pointed at the source directory,
         // a flat-directory `Bundle` finds the file by name.
-        let sketchDir = escapedForSwiftLiteral(
-            (sketchPath as NSString).deletingLastPathComponent)
+        //
+        // A target that declares resources gets the bundle the package build
+        // would make instead: its resources laid out in the work directory as
+        // the build lays them out (a processed folder flattened), as links back
+        // to the files. The folder beside the sketch would miss everything
+        // under a processed folder, since a bundle looks a name up at its top.
+        var bundleDir = (sketchPath as NSString).deletingLastPathComponent
+        if let target, target.declaresBundledResources {
+            bundleDir = (work as NSString).appendingPathComponent("Resources")
+            do {
+                try target.linkResources(into: bundleDir)
+            } catch {
+                return .failure(.loadFailed("couldn't lay out the target's resources: \(error)"))
+            }
+        }
+        // Both declarations are `nonisolated` and the address crosses the
+        // isolation boundary as a plain integer, so the shim compiles in every
+        // language mode and under a target's main-actor default isolation:
+        // a pointer is not `Sendable`, which the Swift 6 mode a package asks
+        // for refuses.
         let factory = """
         import Foundation
         import Ollin
         extension Bundle {
-            static let module: Bundle = Bundle(path: "\(sketchDir)") ?? .main
+            nonisolated static let module: Bundle = Bundle(path: "\(escapedForSwiftLiteral(bundleDir))") ?? .main
         }
         @_cdecl("ollin_make_sketch")
-        public func ollin_make_sketch() -> UnsafeMutableRawPointer {
-            MainActor.assumeIsolated {
-                Unmanaged.passRetained(\(className)()).toOpaque()
+        nonisolated public func ollin_make_sketch() -> UnsafeMutableRawPointer {
+            let address = MainActor.assumeIsolated {
+                UInt(bitPattern: Unmanaged.passRetained(\(className)()).toOpaque())
             }
+            return UnsafeMutableRawPointer(bitPattern: address)!
         }
         """
         do {
@@ -202,14 +263,37 @@ public struct SketchLoader: Sendable {
         let dylibPath = (work as NSString).appendingPathComponent("sketch.dylib")
         var args = Self.compileArguments(
             dylibPath: dylibPath, moduleName: "OllinRuntimeSketch_\(token)",
-            sources: [sourceFile, factoryPath], optimization: optimization)
+            sources: [sourceFile] + siblings + [factoryPath], optimization: optimization,
+            flags: target?.compilerFlags(debug: optimization == .none) ?? [])
         args += moduleArguments()
         let result = Self.run("/usr/bin/xcrun", args)
         guard result.status == 0 else {
             let log = result.stderr.isEmpty ? result.stdout : result.stderr
-            return .failure(.compileFailed(log.trimmingCharacters(in: .whitespacesAndNewlines)))
+            var message = log.trimmingCharacters(in: .whitespacesAndNewlines)
+            if let target, let note = Self.unreachableDependencyNote(in: message, target: target) {
+                message += "\n\n" + note
+            }
+            return .failure(.compileFailed(message))
         }
         return .success(dylibPath)
+    }
+
+    /// A sentence for a compile that failed on a module the target depends on
+    /// in its manifest, or `nil` when the failure is anything else. The live
+    /// compile reaches the framework and its libraries, which the host carries,
+    /// and nothing the package resolves for itself: another target of the
+    /// package, or another package's library. That limit would otherwise read
+    /// as a missing install.
+    static func unreachableDependencyNote(in log: String, target: SketchTarget) -> String? {
+        guard let match = log.range(of: #"no such module '[^']+'"#, options: .regularExpression) else {
+            return nil
+        }
+        let module = log[match].dropFirst("no such module '".count).dropLast()
+        guard target.dependencies.contains(String(module)) else { return nil }
+        return "\(module) is a dependency of the target \(target.name) in Package.swift. "
+            + "A live run compiles the target's own files against Ollin and its libraries, "
+            + "and does not build another target or another package; run this one with "
+            + "`swift run \(target.name)`."
     }
 
     /// The `swiftc` line a sketch compile starts from, before the module search
@@ -223,20 +307,25 @@ public struct SketchLoader: Sendable {
     /// `-Onone`, and a sketch compiled that way ran its CPU work several
     /// times slower under the live window than under a release build.
     ///
-    /// `-wmo` puts the two sources (the sketch and the factory shim) through
-    /// one frontend job. Without it the driver starts one job per file, and
+    /// `-wmo` puts the sources (the sketch, a target's other files, and the
+    /// factory shim) through one frontend job. Without it the driver starts one job per file, and
     /// each loads the framework's module on its own, which is most of what a
     /// small sketch's compile costs. Measured here on the loader's own line:
     /// a 20-line sketch went from 1.00 s to 0.57 s plain and 0.95 s to 0.61 s
     /// optimized, a 470-line one from 0.96 s to 0.74 s and 1.48 s to 1.09 s.
+    ///
+    /// `flags` are a target's own Swift settings (`SketchTarget.compilerFlags`),
+    /// which go after the level so a target's unsafe flags are read last.
     static func compileArguments(dylibPath: String, moduleName: String,
                                  sources: [String],
-                                 optimization: Optimization) -> [String] {
+                                 optimization: Optimization,
+                                 flags: [String] = []) -> [String] {
         var args = [
             "swiftc", "-emit-library", "-o", dylibPath,
             "-module-name", moduleName,
             optimization.flag, "-wmo",
         ]
+        args += flags
         args += sources
         args += ["-Xlinker", "-undefined", "-Xlinker", "dynamic_lookup"]
         return args
@@ -499,19 +588,16 @@ public struct SketchLoader: Sendable {
     }
 
     /// The name of the first `class …: Sketch` in the source (allowing a leading
-    /// `final` and trailing protocol conformances after `Sketch`).
+    /// `final` and trailing protocol conformances after `Sketch`). Comments and
+    /// string literals are not read, so a class a doc comment or a template
+    /// string names is not taken for the file's own.
     package static func sketchClassName(in source: String) -> String? {
-        let pattern = #"class\s+(\w+)\s*:\s*[^{]*\bSketch\b"#
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
-        let range = NSRange(source.startIndex..., in: source)
-        guard let match = regex.firstMatch(in: source, range: range),
-              let nameRange = Range(match.range(at: 1), in: source) else { return nil }
-        return String(source[nameRange])
+        SketchDeclarations(source).classes.first?.name
     }
 
     /// Run a process to completion, draining stdout and stderr concurrently so a
     /// verbose compiler error can't fill a pipe buffer and deadlock us.
-    private static func run(_ launchPath: String, _ args: [String])
+    static func run(_ launchPath: String, _ args: [String])
         -> (status: Int32, stdout: String, stderr: String) {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: launchPath)

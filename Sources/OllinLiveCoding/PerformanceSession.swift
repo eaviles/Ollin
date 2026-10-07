@@ -59,6 +59,10 @@ final class PerformanceSession {
     /// The text the sketch on stage was built from. A shape's site names a
     /// line of that text, so it is the only text a drag may edit.
     @ObservationIgnored private var sourceOnStage: String?
+    /// The other files of the sketch's target as the stage was built from
+    /// them (each path, then its text), empty for a sketch in no target. The
+    /// buffer is one file of the compile; these are the rest, read from disk.
+    @ObservationIgnored private var siblingsOnStage: String?
     /// Where the crash net lives; the real support folder unless a headless
     /// test hands over a scratch one.
     @ObservationIgnored private let supportDirectory: URL
@@ -143,7 +147,7 @@ final class PerformanceSession {
         editor.completion.request = { [weak self] in
             guard let self else { return nil }
             let path = self.effectivePath
-            let loader = SketchLoader(sketchPath: path, optimization: self.optimization)
+            let loader = SketchLoader(sketchPath: path, optimization: self.optimization, scope: .target)
             return (path, loader.completionArguments(sourceFile: path))
         }
         refreshTitle()
@@ -213,14 +217,25 @@ final class PerformanceSession {
         // The classification is made here, against the text on stage, because
         // this is the only place both texts exist. A first evaluation and a
         // deliberate fresh one have no run to carry.
-        let change: SourceRegions.SourceChange? = fresh
+        var change: SourceRegions.SourceChange? = fresh
             ? nil : sourceOnStage.map { SourceRegions.change(from: $0, to: text) }
+        // The reading of what changed covers the buffer only. A sketch in a
+        // target compiles with the target's other files from disk, and an
+        // edit to one of those is a change the reading never saw, so the run
+        // carries on only when they stand as the stage was built from them.
+        // Recorded as the change itself, so the toast says the run restarted.
+        let siblings = siblingText()
+        if let reading = change, reading.keepsTheRun, siblings != siblingsOnStage {
+            change = .restarts("another file of the sketch's target changed since the stage was built")
+        }
+        let keepRun = change?.keepsTheRun ?? false
         let block = editor.evaluatedRegion()?.name
-        let loader = SketchLoader(sketchPath: effectivePath, optimization: optimization)
+        let loader = SketchLoader(sketchPath: effectivePath, optimization: optimization, scope: .target)
         core.evaluate(loader, input: .source(text), keepClock: fresh ? false : nil,
-                      keepRun: change?.keepsTheRun ?? false) { [weak self] sketch in
+                      keepRun: keepRun) { [weak self] sketch in
             guard let self else { return }
             self.sourceOnStage = text
+            self.siblingsOnStage = siblings
             self.lastChange = change
             self.lastBlock = block
             self.diagnostics = []
@@ -241,6 +256,18 @@ final class PerformanceSession {
             }
             self.editor.setDiagnostics(self.diagnostics.filter { $0.severity == .error })
         }
+    }
+
+    /// The other files of the target the document sits in, each path then
+    /// its text, read as they stand; empty for an untitled buffer or a file in
+    /// no target.
+    private func siblingText() -> String {
+        guard let path = fileURL?.path,
+              let target = try? SketchTarget.containing(file: path) else { return "" }
+        let buffer = SketchTarget.resolved(path)
+        return target.swiftSources().filter { $0 != buffer }.map { file in
+            file + "\n" + ((try? String(contentsOfFile: file, encoding: .utf8)) ?? "")
+        }.joined(separator: "\n")
     }
 
     // MARK: - Recording

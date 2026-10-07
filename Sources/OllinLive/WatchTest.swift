@@ -35,8 +35,28 @@ enum WatchTest {
         guard let swiftPath = observedPaths.first(where: { $0.hasSuffix(".swift") }) else {
             fail("watcher fired but reported no .swift path: \(observedPaths)")
         }
+
+        // A target's files sit in folders of their own below the sketch, and
+        // a save there must reload it too: the watch reaches every level.
+        let nested = (dir as NSString).appendingPathComponent("Shapes")
+        try? FileManager.default.createDirectory(atPath: nested, withIntermediateDirectories: true)
+        let helper = (nested as NSString).appendingPathComponent("Ring.swift")
+        // Drain whatever the folder's creation reported before the save.
+        _ = fired.wait(timeout: .now() + 0.5)
+        observed.withLock { $0 = [] }
+        DispatchQueue.global().asyncAfter(deadline: .now() + 0.3) {
+            try? "// a helper".write(toFile: helper, atomically: true, encoding: .utf8)
+        }
+        var sawHelper = false
+        let deadline = Date().addingTimeInterval(5)
+        repeat {
+            sawHelper = observed.withLock { $0.contains { $0.hasSuffix("Shapes/Ring.swift") } }
+            if sawHelper { break }
+            _ = fired.wait(timeout: .now() + 0.5)
+        } while Date() < deadline
+        guard sawHelper else { fail("a save in a folder below the watched one went unreported") }
         watcher.stop()
-        print("OllinLive watchtest: PASS — observed atomic save of \(swiftPath)")
+        print("OllinLive watchtest: PASS: observed atomic saves of \(swiftPath) and of a file a folder below")
         exit(0)
     }
 

@@ -15,7 +15,10 @@ import OllinRuntime
 /// parse check. Then the two-speed evaluation through the shared engine: the
 /// plain build lands first and the optimized one replaces it, both timed
 /// against the single optimized build, and the two builds render the same
-/// bytes, so the second swap can never be seen.
+/// bytes, so the second swap can never be seen. Last, a sketch in a package
+/// target: the buffer compiles with the target's other files from disk, and
+/// an edit to one of those restarts the run rather than carrying it, since
+/// the reading of what changed never saw it.
 enum SelfTest {
     @MainActor
     static func run() -> Never {
@@ -201,14 +204,88 @@ enum SelfTest {
         Task { @MainActor in
             await checkTwoSpeed(loader: loader, dir: dir)
             checkCarryingTheRun(loader: loader)
+            await checkATargetsOtherFiles(dir: dir)
             print("OllinLiveCoding selftest passed: buffer compile, swap render "
                 + "(\(a.count) vs \(b.count) bytes), diagnostics, completion, "
-                + "the two-speed evaluation, and carrying the run across an edit "
-                + "all check out.")
+                + "the two-speed evaluation, carrying the run across an edit, "
+                + "and a target's other files all check out.")
             exit(0)
         }
         RunLoop.main.run()   // pumped until the check above exits
         exit(1)
+    }
+
+    /// A sketch in a package target, evaluated through the host's own session:
+    /// the buffer compiles with the helper file beside it (the helper's value
+    /// reaches the sketch on stage), a body edit with the helper untouched is
+    /// read as one, and the same edit after the helper changed on disk is a
+    /// restart, both in what the swap does and in what the toast says.
+    @MainActor
+    private static func checkATargetsOtherFiles(dir: String) async {
+        print("OllinLiveCoding selftest: a sketch in a package target …")
+        let package = (dir as NSString).appendingPathComponent("Project")
+        let sources = (package as NSString).appendingPathComponent("Sources/Probe")
+        try? FileManager.default.removeItem(atPath: package)
+        try! FileManager.default.createDirectory(atPath: sources, withIntermediateDirectories: true)
+        try! """
+        // swift-tools-version: 6.0
+        import PackageDescription
+        let package = Package(name: "Probe", targets: [.executableTarget(name: "Probe")])
+        """.write(toFile: (package as NSString).appendingPathComponent("Package.swift"),
+                  atomically: true, encoding: .utf8)
+        let sketchFile = (sources as NSString).appendingPathComponent("Sketch.swift")
+        let helper = (sources as NSString).appendingPathComponent("Helper.swift")
+        func sketch(_ radius: Int) -> String {
+            """
+            import Ollin
+            @main
+            final class Probe: Sketch {
+                @Param(0...10) var mark = helperMark
+                override func draw() { background(.white); drawCircle(width / 2, height / 2, \(radius)) }
+            }
+            """
+        }
+        func writeHelper(_ mark: Int) {
+            try! "let helperMark = \(mark).0\n".write(toFile: helper, atomically: true, encoding: .utf8)
+        }
+        try! sketch(50).write(toFile: sketchFile, atomically: true, encoding: .utf8)
+        writeHelper(3)
+
+        let session = PerformanceSession(
+            fileURL: URL(fileURLWithPath: sketchFile), landsPlainBuildFirst: false,
+            supportDirectory: URL(fileURLWithPath: (dir as NSString).appendingPathComponent("Support")))
+        func settle() async {
+            for _ in 0..<600 where session.core.phase == .compiling {
+                try? await Task.sleep(for: .milliseconds(100))
+            }
+            guard case .idle = session.core.phase else { fail("the evaluation failed: \(session.core.phase)") }
+        }
+        func mark() -> Double? {
+            guard let handle = session.core.currentSketch?.parameters().first(where: { $0.name == "mark" }),
+                  case .number(let value) = handle.param.stored else { return nil }
+            return value
+        }
+
+        session.start()
+        await settle()
+        guard mark() == 3 else { fail("the helper file's value did not reach the stage (\(mark() ?? .nan))") }
+
+        session.editor.replaceBuffer(with: sketch(60))
+        session.evaluate()
+        await settle()
+        guard session.lastChange?.keepsTheRun == true, session.evaluationSummary != "restarted" else {
+            fail("a body edit with the helper untouched was not read as one: \(String(describing: session.lastChange))")
+        }
+
+        writeHelper(7)
+        session.editor.replaceBuffer(with: sketch(70))
+        session.evaluate()
+        await settle()
+        guard mark() == 7 else { fail("the edited helper did not reach the stage (\(mark() ?? .nan))") }
+        guard session.lastChange?.keepsTheRun == false, session.evaluationSummary == "restarted" else {
+            fail("an edit to the helper carried the run: \(String(describing: session.lastChange))")
+        }
+        print("  the helper compiled with the buffer, and an edit to it restarted the run")
     }
 
     /// Two-speed evaluation, headless through `SketchSession` with no runner

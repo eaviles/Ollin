@@ -79,6 +79,7 @@ A swap always brings a fresh instance, because the code lives in a new library a
 - `setup()` itself changed, or anything `setup()` calls, however far down. Editing `setup()` is asking for `setup()` to run, and a swap that skips it could never show that.
 - `setup()` builds state the swap cannot carry: it names a stored property that is not `@Saved`. A sketch whose particles are made in `setup()` would come back with none of them, so it restarts instead.
 - ⌘⇧↩, the first evaluation of a session, and the first after opening another file.
+- One of the other files of the sketch's package target changed since the stage was built. The reading covers the editor's text only, so a change it never saw restarts the run.
 
 Whitespace, comments and a rewrapped signature are not declaration changes, so writing a note above `draw()` costs nothing.
 
@@ -127,6 +128,8 @@ The `.swift` file is the artifact, and nothing writes it but you:
 - **A crash loses nothing.** The buffer saves itself to a recovery file on every evaluation. It saves again at intervals while it has unsaved changes. If the app stops during a set, the next launch of the *same* document offers to restore what it recovered. A clean save clears the recovery file.
 
 Assets that sit beside the `.swift` file, such as an image or a `.metal` file, resolve against the open file's folder. `OllinLive` resolves them the same way. An untitled buffer has no folder yet, so save it first if the sketch needs assets. A `.metal` file you edit beside the sketch is picked up on the next ⌘↩.
+
+A sketch file that sits in a package's target compiles with the target's other files, as it does under `OllinLive`. The editor holds the sketch file, and the other files come from disk as they stand at ⌘↩. A helper edited in another editor lands with the next evaluation. `swift run OllinLiveCoding <package folder>` opens the package's sketch file, with `--target` to pick one of several. [Growing into a package](SingleFile.md#growing-into-a-package) covers what the compile reads from the manifest, and where it stops.
 
 ### Performance chrome
 

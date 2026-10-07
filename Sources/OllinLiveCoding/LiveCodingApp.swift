@@ -31,19 +31,20 @@ struct LiveCodingApp: App {
         if arguments.contains("--dragtest") { DragTest.run() }        // headless; exits
         if arguments.contains("--controltest") { ControlTest.run() }  // headless; exits
 
-        // A path argument opens that sketch; none starts an untitled buffer
-        // from the template.
+        // A path argument opens that sketch, and a package's folder the
+        // sketch target in it (`--target` picks one of several); none starts
+        // an untitled buffer from the template.
         var fileURL: URL?
-        if let pathArg = arguments.first(where: { !$0.hasPrefix("-") }) {
-            let path = (pathArg as NSString).isAbsolutePath
-                ? pathArg
-                : (FileManager.default.currentDirectoryPath as NSString).appendingPathComponent(pathArg)
-            guard FileManager.default.fileExists(atPath: path) else {
-                FileHandle.standardError.write(
-                    Data("OllinLiveCoding: file not found: \(path)\n".utf8))
+        let named = SketchChoice.arguments(arguments)
+        if let pathArg = named.path {
+            do {
+                let choice = try SketchChoice.resolve(pathArg, target: named.target)
+                if let note = choice.note { print("OllinLiveCoding: \(note)") }
+                fileURL = URL(fileURLWithPath: choice.sketchPath)
+            } catch {
+                FileHandle.standardError.write(Data("OllinLiveCoding: \(error)\n".utf8))
                 exit(2)
             }
-            fileURL = URL(fileURLWithPath: path)
         }
 
         // `--no-optimize` compiles the buffer plain (asserts fire, backtraces

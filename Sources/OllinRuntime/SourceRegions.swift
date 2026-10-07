@@ -358,6 +358,25 @@ package enum SourceRegions {
         return kind == .method ? "\(name)()" : String(name)
     }
 
+    /// `text` with every comment and string literal blanked to spaces, its
+    /// newlines kept, so a pattern run over it finds code alone, at the same
+    /// offsets and on the same lines: a class named in a doc comment or inside
+    /// a template string is not a class the file declares.
+    package static func code(in text: String) -> String {
+        let u = Array(text.utf16)
+        var out = u
+        var i = 0
+        while i < u.count {
+            guard let past = pastStringOrComment(u, i, u.count) else {
+                i += 1
+                continue
+            }
+            for k in i..<past where u[k] != 0x0A { out[k] = 0x20 }
+            i = max(past, i + 1)
+        }
+        return String(decoding: out, as: UTF16.self)
+    }
+
     // MARK: - Reading bytes
 
     private static func isSpace(_ c: UInt16) -> Bool {

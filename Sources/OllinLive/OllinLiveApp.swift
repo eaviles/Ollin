@@ -5,9 +5,12 @@ import OllinRuntime
 // OllinLive — the live-reload host.
 //
 //   swift run OllinLive <path/to/Sketch.swift>
+//   swift run OllinLive <package folder> [--target <name>]
 //
 // Opens a window for the sketch, watches the file, and hot-swaps the running
-// sketch on save without closing the window. A SwiftUI `App` owns the window;
+// sketch on save without closing the window. A sketch in a SwiftPM target
+// compiles with every other file of that target, and a save to any of them
+// reloads it; a package folder runs the sketch target inside it. A SwiftUI `App` owns the window;
 // the sketch renders in the detail pane and a sidebar inspector shows reload
 // status (live FPS + parameters land next).
 @main
@@ -33,16 +36,22 @@ struct OllinLiveApp: App {
         if arguments.contains("--dragtest") { DragTest.run() }      // headless; exits
         if arguments.contains("--savetest") { SaveTest.run() }      // headless; exits
 
-        guard let pathArg = arguments.first(where: { !$0.hasPrefix("-") }) else {
-            FileHandle.standardError.write(
-                Data("usage: swift run OllinLive <path/to/Sketch.swift>\n".utf8))
+        let named = SketchChoice.arguments(arguments)
+        guard let pathArg = named.path else {
+            FileHandle.standardError.write(Data(
+                "usage: swift run OllinLive <path/to/Sketch.swift | package folder> [--target <name>]\n".utf8))
             exit(2)
         }
-        let sketchPath = (pathArg as NSString).isAbsolutePath
-            ? pathArg
-            : (FileManager.default.currentDirectoryPath as NSString).appendingPathComponent(pathArg)
-        guard FileManager.default.fileExists(atPath: sketchPath) else {
-            FileHandle.standardError.write(Data("OllinLive: file not found — \(sketchPath)\n".utf8))
+        // A file runs as it is; a package's folder runs the sketch target in
+        // it (`--target` picks one of several). Read once, here, so a folder
+        // that holds no sketch, or several, says so before a window opens.
+        let sketchPath: String
+        do {
+            let choice = try SketchChoice.resolve(pathArg, target: named.target)
+            sketchPath = choice.sketchPath
+            if let note = choice.note { print("OllinLive: \(note)") }
+        } catch {
+            FileHandle.standardError.write(Data("OllinLive: \(error)\n".utf8))
             exit(2)
         }
 
@@ -103,7 +112,7 @@ struct OllinLiveApp: App {
         let optimization: SketchLoader.Optimization =
             arguments.contains("--no-optimize") ? .none : .speed
         let handled = OllinApp.handleCommandLine(arguments, makeSketch: {
-            switch SketchLoader(sketchPath: sketchPath, optimization: optimization).load() {
+            switch SketchLoader(sketchPath: sketchPath, optimization: optimization, scope: .target).load() {
             case .success(let sketch):
                 if let automation { sketch.automation = automation }
                 if let cueSheet { sketch.cueSheet = cueSheet }
@@ -151,7 +160,7 @@ struct OllinLiveApp: App {
             takeRecordURL = nil
         }
         let session = LiveSession(
-            loader: SketchLoader(sketchPath: sketchPath, optimization: optimization),
+            loader: SketchLoader(sketchPath: sketchPath, optimization: optimization, scope: .target),
             sketchPath: sketchPath,
             displayName: pathArg, keepClock: keepClock, recordOnLaunch: record,
             takeRecordOnLaunch: takeRecordURL, replayOnLaunch: replayTake,

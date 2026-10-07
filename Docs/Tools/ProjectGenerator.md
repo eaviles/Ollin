@@ -161,13 +161,16 @@ MySketch/
     Images/               # with --with images
 ```
 
-Run it with `swift run MySketch` from inside the folder. To edit it and see each save land without the window closing, open the same file through the live host instead:
+Run it with `swift run MySketch` from inside the folder. To see each save land without the window closing, open it through the live host instead, by its folder or by the sketch file:
 
 ```sh
-ollin Sources/MySketch/Sketch.swift
+ollin                                 # from inside the folder
+ollin Sources/MySketch/Sketch.swift   # the same, by the file
 ```
 
-Everything the sketch loads lives beside it in `Sources/MySketch/`. A folder the generator made is already declared in the manifest. A picture you drop into `Images/` is then reachable by name, with no manifest edit:
+Everything the sketch loads lives beside it in `Sources/MySketch/`, and so does any code you split out of it. A second `.swift` file there compiles with the sketch in the live window, as it does under `swift run`, and a save to either file reloads it. [Growing into a package](SingleFile.md#growing-into-a-package) says what else the live window reads from the manifest, and [where it stops](SingleFile.md#where-the-live-route-stops).
+
+A folder the generator made is already declared in the manifest. A picture you drop into `Images/` is then reachable by name, with no manifest edit, under `swift run` and in the live window alike:
 
 ```swift
 let picture = try? Image(resource: "photo", withExtension: "jpg", in: .module)

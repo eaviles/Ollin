@@ -8325,6 +8325,61 @@ regexes the `class ...: Sketch` name and compiles a sibling
 `@_cdecl("ollin_make_sketch")` factory file alongside the user's source, so
 the user file is untouched and its `@main` is harmless under `-emit-library`.
 
+### A sketch that is a package's target
+
+A loader set to `.target` (the three hosts that run what a person names; the
+gallery, the Guide figures and the generator preview keep `.file`) asks
+whether the sketch file sits in a target's folder, and if so compiles the
+target's other `.swift` files into the same dylib under the target's Swift
+settings. `SketchTarget` is that answer: the nearest `Package.swift` above the
+file, read through `swift package dump-package`, and the regular or
+executable target whose folder holds the file, the deepest when folders nest.
+Four decisions carry it:
+
+- **The manifest read has its own scratch folder.** SwiftPM locks a package's
+  `.build` for the length of a build, and a `dump-package` sharing it waited
+  out a whole `swift build` (32 s, measured); under
+  `$TMPDIR/OllinRuntime-manifest` it answers in 0.25 s whatever runs in the
+  package, and nothing is written into the person's project. `dump-package`
+  evaluates the manifest only, so no dependency is fetched. The answer is
+  cached per root until `Package.swift`'s modification date moves, behind a
+  lock held across the read so two compiles asking at once read once; the
+  hosts' first compile pays the read and every later one a `stat`.
+- **The file list is walked on every compile** rather than cached, so a file
+  added since the last save joins the next. The walk mirrors SwiftPM's:
+  hidden entries, `exclude:`, and resource paths skipped, `sources:` honored.
+  `main.swift` is left out, because a library compile refuses its top-level
+  code and the factory shim is the entry point there.
+- **Paths are compared in one spelling, `realpath`'s.** Foundation's
+  `resolvingSymlinksInPath` strips a leading `/private`, while the folder walk
+  keeps it, so the sketch file came back from the walk under a second name
+  and compiled twice ("filename used twice"); a path that does not exist
+  keeps its missing tail on the resolved part that does.
+- **The bundle is the package's.** A target that declares resources gets
+  `Bundle.module` pointed at `<work>/Resources`, where each resource is
+  linked as the build lays it out (a processed folder flattened, `.lproj` and
+  copied folders whole, the first name winning): `url(forResource:)` looks at
+  a bundle's top level only, so the sketch's folder, the loose file's bundle,
+  never found a picture in a processed `Images/`. Links rather than copies,
+  so an edited picture reaches `setup()` when an asset save re-runs it.
+
+The settings become flags the way SwiftPM passes them (`-swift-version`, `-D`,
+the feature flags, `-default-isolation`, `-strict-memory-safety`, the Swift
+tool's unsafe flags), with platform conditions other than macOS dropped and a
+configuration condition following the compile's own level. Compiling a
+package's code in its own Swift 6 mode exposed the old factory shim, which
+returned a pointer out of `MainActor.assumeIsolated`; the shim now hands the
+address across as a `UInt` and declares both members `nonisolated`, so it
+compiles in every mode and under main-actor default isolation.
+
+What a folder offers (`SketchChoice.resolve`) is read with comments and
+strings blanked (`SourceRegions.code(in:)`): a target is a sketch's when a
+`Sketch` subclass in it carries `@main`, or when one exists and no other
+`@main` does (a library target an app beside it runs, a target a `main.swift`
+starts). A target whose `@main` is something else, such as this repository's
+own hosts with their test sketches, is never offered; naming its sketch file
+still runs it.
+
 ### The loose file on a wall (`OllinRun`)
 
 `swift run OllinRun <file>` uses the same loader for the opposite purpose. It

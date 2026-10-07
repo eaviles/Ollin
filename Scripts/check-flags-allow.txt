@@ -9,3 +9,5 @@
 --json-output   devicectl's, when ollin phone reads a build's result
 --terminate-existing   devicectl's, when ollin phone relaunches the app
 --quiet   xcodegen's, when ollin phone writes the phone project
+--package-path   swift package's, when a host reads the manifest of a sketch's package
+--scratch-path   swift package's, the folder that read keeps apart from the package's own build

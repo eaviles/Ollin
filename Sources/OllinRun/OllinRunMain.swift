@@ -5,7 +5,7 @@ import OllinRuntime
 
 // OllinRun: the host that gives one loose `.swift` file its own window.
 //
-//   swift run OllinRun <path/to/Sketch.swift> [flags]
+//   swift run OllinRun <path/to/Sketch.swift | package folder> [flags]
 //   ollin <path/to/Sketch.swift> --installation
 //
 // The live host owns its window, and the sketch is a guest in it: chrome
@@ -41,15 +41,20 @@ enum OllinRunHost {
         let arguments = Array(CommandLine.arguments.dropFirst())
         if arguments.contains("--selftest") { RunSelfTest.run() }   // headless; exits
 
-        guard let pathArgument = arguments.first(where: { !$0.hasPrefix("-") }) else {
-            fail("usage: swift run OllinRun <path/to/Sketch.swift> [--installation]", code: 2)
+        let named = SketchChoice.arguments(arguments)
+        guard let pathArgument = named.path else {
+            fail("usage: swift run OllinRun <path/to/Sketch.swift | package folder> "
+                 + "[--target <name>] [--installation]", code: 2)
         }
-        let sketchPath = (pathArgument as NSString).isAbsolutePath
-            ? pathArgument
-            : (FileManager.default.currentDirectoryPath as NSString)
-                .appendingPathComponent(pathArgument)
-        guard FileManager.default.fileExists(atPath: sketchPath) else {
-            fail("OllinRun: file not found: \(sketchPath)", code: 2)
+        // The live host's reading of the same argument: a file as it is, a
+        // package's folder as the sketch target in it.
+        let sketchPath: String
+        do {
+            let choice = try SketchChoice.resolve(pathArgument, target: named.target)
+            sketchPath = choice.sketchPath
+            if let note = choice.note { print("OllinRun: \(note)") }
+        } catch {
+            fail("OllinRun: \(error)", code: 2)
         }
 
         // The export flags work here for the same reason they work in the live
@@ -75,11 +80,12 @@ enum OllinRunHost {
     /// Compile the file and build the sketch out of it, or say why not and
     /// stop. The loader is the live host's: the sketch is compiled into a fresh
     /// dylib whose Ollin symbols bind to this process, so the loaded object
-    /// really is an `Ollin.Sketch`.
+    /// really is an `Ollin.Sketch`, and with every other file of the target it
+    /// sits in, as on the live host.
     @MainActor
     private static func load(_ sketchPath: String,
                              optimization: SketchLoader.Optimization) -> Sketch {
-        switch SketchLoader(sketchPath: sketchPath, optimization: optimization).load() {
+        switch SketchLoader(sketchPath: sketchPath, optimization: optimization, scope: .target).load() {
         case .success(let sketch):
             return sketch
         case .failure(let error):

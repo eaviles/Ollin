@@ -228,6 +228,7 @@ _ollin() {
             '--debug[run a debug build of the host]' \
             '--keep-clock[carry the clock across a reload]' \
             '--no-optimize[compile the sketch plain, for debugging it]' \
+            '--target[which of a package'\''s sketch targets to run]:name:' \
             '*:file:_files'
           ;;
       esac

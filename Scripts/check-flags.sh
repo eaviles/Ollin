@@ -39,6 +39,7 @@ readers=(
     Sources/Ollin/Core/Installation.swift
     Sources/Ollin/Core/Checkpoint.swift
     Sources/OllinLive/OllinLiveApp.swift
+    Sources/OllinRuntime/SketchTarget.swift
     Sources/OllinRun/OllinRunMain.swift
     Sources/OllinLiveCoding/LiveCodingApp.swift
     Sources/OllinTether/TetherMain.swift

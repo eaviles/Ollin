@@ -56,4 +56,22 @@ struct SketchCompileArgumentsTests {
             #expect(args.contains("/tmp/work/__OllinFactory.swift"))
         }
     }
+
+    /// A target's own settings ride between the level and the sources, so a
+    /// compile of a sketch in a package builds under the language mode and
+    /// the defines the package build does.
+    @Test func aTargetsFlagsComeAfterTheLevelAndBeforeTheSources() {
+        let args = SketchLoader.compileArguments(
+            dylibPath: "/tmp/work/sketch.dylib", moduleName: "OllinRuntimeSketch_1",
+            sources: ["/tmp/work/Sketch.swift", "/p/Sources/T/Helper.swift", "/tmp/work/__OllinFactory.swift"],
+            optimization: .speed, flags: ["-swift-version", "6", "-DGARDEN"])
+        let level = args.firstIndex(of: "-O")!
+        let mode = args.firstIndex(of: "-swift-version")!
+        let define = args.firstIndex(of: "-DGARDEN")!
+        let source = args.firstIndex(of: "/tmp/work/Sketch.swift")!
+        #expect(level < mode && mode < define && define < source)
+        #expect(args.contains("/p/Sources/T/Helper.swift"))
+        // Without a target, nothing new: no language mode is imposed.
+        #expect(!arguments(.speed).contains("-swift-version"))
+    }
 }

@@ -197,6 +197,7 @@ public extension CommandFlag {
         .init("--debug", .run, .nothing, "run a debug build of the host"),
         .init("--keep-clock", .run, .nothing, "carry the clock across a reload"),
         .init("--no-optimize", .run, .nothing, "compile the sketch plain, for debugging it"),
+        .init("--target", .run, .value("name"), "which of a package's sketch targets to run"),
     ]
 
     // MARK: Making something

@@ -301,7 +301,7 @@ The reference is the authority on what exists and how it behaves; the guide teac
 ## Tools
 
 - [The project generator](Docs/Tools/ProjectGenerator.md): `ollin new` and `ollin generate`: a ready-to-run sketch folder from a few questions, with templates you can watch running before you pick one
-- [Single-file sketches](Docs/Tools/SingleFile.md): the `ollin` command: run one `.swift` file as a sketch from anywhere, no package needed
+- [Single-file sketches](Docs/Tools/SingleFile.md): the `ollin` command: run one `.swift` file as a sketch from anywhere, no package needed, or a package's sketch with every file of it reloading
 - [The sketch on the phone](Docs/Tools/OnThePhone.md): `ollin phone`: the sketch on a paired iPhone or iPad.
 - [Live coding](Docs/Tools/LiveCoding.md): the OllinLiveCoding performance host: write and evaluate sketch code live, with the code shown over the visuals
 - [Bringing a shader over](Docs/Tools/ShaderImport.md): `ollin new --from-shader`: translate a GLSL fragment shader into Metal and get a project around it
