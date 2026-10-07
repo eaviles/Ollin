@@ -67,7 +67,12 @@ extension Drawer {
                     ? batch.particleCount * 2
                     : ((next?.pointStart ?? points.count) - batch.pointStart) * 2
             case .lines3D:
-                total += (batch.lineCoreCount + batch.lineFringeCount) / 3
+                if let edges = batch.edgeSet {
+                    let copies = batch.particleBuffer != nil ? batch.particleCount : batch.meshInstanceCount
+                    total += edges.edges.count * 2 * copies
+                } else {
+                    total += (batch.lineCoreCount + batch.lineFringeCount) / 3
+                }
             case .mesh3D:
                 total += ((next?.meshStart ?? meshVertices.count) - batch.meshStart) / 3
             case .meshInstanced:

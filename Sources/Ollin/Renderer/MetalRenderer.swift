@@ -260,6 +260,21 @@ final class MetalRenderer {
                         fragment: depth == nil ? "ollin_line_fragment" : "ollin_line_depth_fragment",
                         blend: blend, depthFormat: depth)
         }
+        // a mesh's feature edges, placed per copy and laid out on screen in the
+        // vertex shader; with a depth attachment this is the core, which writes
+        // the pulled depth, and `meshEdgesFringe` follows it with the soft edge
+        static func meshEdges(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
+            PipelineKey(vertex: "ollin_edge_vertex",
+                        fragment: depth == nil ? "ollin_edge_fragment" : "ollin_edge_core_fragment",
+                        blend: blend, depthFormat: depth)
+        }
+        // the feature edges' fringe: the same key as the core's with the fringe
+        // fragment, which tests the pulled depth under a state that writes none
+        static func meshEdgesFringe(_ core: PipelineKey) -> PipelineKey {
+            var key = core
+            key.fragment = "ollin_edge_fringe_fragment"
+            return key
+        }
         // solid 3D triangle mesh (depth-tested, lit by the material model)
         static func mesh(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
             PipelineKey(vertex: "ollin_mesh_vertex", fragment: "ollin_mesh_fragment", blend: blend, depthFormat: depth)
@@ -535,7 +550,8 @@ final class MetalRenderer {
                              depth: MTLPixelFormat? = nil, textured: Bool = false,
                              wireframe: Bool = false, matcap: Bool = false,
                              grid: Bool = false, normalMapped: Bool = false,
-                             surfaceMapped: Bool = false, light: Bool = false) -> PipelineKey {
+                             surfaceMapped: Bool = false, light: Bool = false,
+                             edges: Bool = false) -> PipelineKey {
             switch kind {
             case .triangles:  return .solid(blend, depth: depth)
             case .fringe:     return .fringe(blend, depth: depth)
@@ -546,7 +562,7 @@ final class MetalRenderer {
             case .glyphAtlas: return .glyphAtlas(blend, depth: depth)
             case .particles:  return .points(blend, depth: depth, light: light)
             case .points3D:   return .pointCloud(blend, depth: depth)
-            case .lines3D:    return .lines3D(blend, depth: depth)
+            case .lines3D:    return edges ? .meshEdges(blend, depth: depth) : .lines3D(blend, depth: depth)
             case .mesh3D:
                 return grid          ? .grid(blend, depth: depth)
                      : wireframe     ? .meshWireframe(blend, depth: depth)

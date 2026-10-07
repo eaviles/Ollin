@@ -2285,10 +2285,12 @@ open class Sketch: Sendable
   func everyFrames(_: Int) -> Bool
   func extend(_: any SketchExtension)
   func extractPalette(from: Image, count: Int = default, seed: Int = default) -> Palette
+  func fbm(_: Double, _: Double, _: Double, loop: Double, radius: Double = default, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
   func fbm(_: Double, _: Double, _: Double, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
   func fbm(_: Double, _: Double, loop: Double, radius: Double = default, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
   func fbm(_: Double, _: Double, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
   func fbm(_: Double, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
+  func featureEdges(creaseAngle: Double = default)
   func fill(_: Color)
   func fill(_: Gradient)
   func fill(_: Paint)
@@ -2408,6 +2410,7 @@ open class Sketch: Sendable
   func noDepthOfField()
   func noDescription()
   func noEnvironment()
+  func noFeatureEdges()
   func noFill()
   func noFog()
   func noFrameInterpolation()
@@ -2435,6 +2438,7 @@ open class Sketch: Sendable
   func noise(_: Double) -> Double
   func noise(_: Double, _: Double) -> Double
   func noise(_: Double, _: Double, _: Double) -> Double
+  func noise(_: Double, _: Double, _: Double, loop: Double, radius: Double = default) -> Double
   func noise(_: Double, _: Double, loop: Double, radius: Double = default) -> Double
   func noise(_: Double, loop: Double, radius: Double = default) -> Double
   func noise(loop: Double, radius: Double = default) -> Double
@@ -2494,6 +2498,7 @@ open class Sketch: Sendable
   func resetCamera(animated: Bool = default, duration: Double = default)
   func resetParameters(named: [String]? = default)
   func resetView()
+  func ridgedFbm(_: Double, _: Double, _: Double, loop: Double, radius: Double = default, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
   func ridgedFbm(_: Double, _: Double, _: Double, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
   func ridgedFbm(_: Double, _: Double, loop: Double, radius: Double = default, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
   func ridgedFbm(_: Double, _: Double, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
@@ -2525,6 +2530,7 @@ open class Sketch: Sendable
   func shapeGrammar(_: ShapeGrammar, generations: Int) -> [ShapeGrammar.Piece]
   func showPointer()
   func shuffled(_: [T]) -> [T]
+  func signedFbm(_: Double, _: Double, _: Double, loop: Double, radius: Double = default, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
   func signedFbm(_: Double, _: Double, _: Double, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
   func signedFbm(_: Double, _: Double, loop: Double, radius: Double = default, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
   func signedFbm(_: Double, _: Double, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
@@ -2532,6 +2538,7 @@ open class Sketch: Sendable
   func signedNoise(_: Double) -> Double
   func signedNoise(_: Double, _: Double) -> Double
   func signedNoise(_: Double, _: Double, _: Double) -> Double
+  func signedNoise(_: Double, _: Double, _: Double, loop: Double, radius: Double = default) -> Double
   func signedNoise(_: Double, _: Double, loop: Double, radius: Double = default) -> Double
   func signedNoise(_: Double, loop: Double, radius: Double = default) -> Double
   func signedNoise(loop: Double, radius: Double = default) -> Double
@@ -2630,6 +2637,7 @@ open class Sketch: Sendable
   func triangleGrid(columns: Int, rows: Int, padding: Insets = default, gutter: Double = default) -> TriangleGrid
   func truchet(in: Rectangle? = default, columns: Int, rows: Int, tile: Truchet.Tile = default) -> [Contour]
   func tubeLight(_: Color, from: Vector3, to: Vector3, radius: Double = default, intensity: Double = default, specular: Color? = default, reach: Double? = default)
+  func turbulence(_: Double, _: Double, _: Double, loop: Double, radius: Double = default, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
   func turbulence(_: Double, _: Double, _: Double, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
   func turbulence(_: Double, _: Double, loop: Double, radius: Double = default, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
   func turbulence(_: Double, _: Double, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
@@ -5112,6 +5120,7 @@ struct NoiseFields: Sendable
   func curlNoise(_: Double, _: Double, _: Double) -> Vector3
   func curlNoise(_: Vector2) -> Vector2
   func curlNoise(_: Vector3) -> Vector3
+  func fbm(_: Double, _: Double, _: Double, loop: Double, radius: Double = default, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
   func fbm(_: Double, _: Double, _: Double, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
   func fbm(_: Double, _: Double, loop: Double, radius: Double = default, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
   func fbm(_: Double, _: Double, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
@@ -5119,13 +5128,16 @@ struct NoiseFields: Sendable
   func noise(_: Double) -> Double
   func noise(_: Double, _: Double) -> Double
   func noise(_: Double, _: Double, _: Double) -> Double
+  func noise(_: Double, _: Double, _: Double, loop: Double, radius: Double = default) -> Double
   func noise(_: Double, _: Double, loop: Double, radius: Double = default) -> Double
   func noise(_: Double, loop: Double, radius: Double = default) -> Double
   func noise(loop: Double, radius: Double = default) -> Double
+  func ridgedFbm(_: Double, _: Double, _: Double, loop: Double, radius: Double = default, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
   func ridgedFbm(_: Double, _: Double, _: Double, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
   func ridgedFbm(_: Double, _: Double, loop: Double, radius: Double = default, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
   func ridgedFbm(_: Double, _: Double, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
   func ridgedFbm(_: Double, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
+  func signedFbm(_: Double, _: Double, _: Double, loop: Double, radius: Double = default, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
   func signedFbm(_: Double, _: Double, _: Double, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
   func signedFbm(_: Double, _: Double, loop: Double, radius: Double = default, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
   func signedFbm(_: Double, _: Double, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
@@ -5133,6 +5145,7 @@ struct NoiseFields: Sendable
   func signedNoise(_: Double) -> Double
   func signedNoise(_: Double, _: Double) -> Double
   func signedNoise(_: Double, _: Double, _: Double) -> Double
+  func signedNoise(_: Double, _: Double, _: Double, loop: Double, radius: Double = default) -> Double
   func signedNoise(_: Double, _: Double, loop: Double, radius: Double = default) -> Double
   func signedNoise(_: Double, loop: Double, radius: Double = default) -> Double
   func signedNoise(loop: Double, radius: Double = default) -> Double
@@ -5146,6 +5159,7 @@ struct NoiseFields: Sendable
   func simplexNoise(_: Double, _: Double, _: Double) -> Double
   func tilingFbm(_: Double, _: Double, detail: Double = default, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
   func tilingNoise(_: Double, _: Double, detail: Double = default) -> Double
+  func turbulence(_: Double, _: Double, _: Double, loop: Double, radius: Double = default, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
   func turbulence(_: Double, _: Double, _: Double, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
   func turbulence(_: Double, _: Double, loop: Double, radius: Double = default, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
   func turbulence(_: Double, _: Double, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double

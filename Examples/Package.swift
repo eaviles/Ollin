@@ -216,6 +216,7 @@ let package = Package(
         example("3D/Geometry/HopfFibration"),
         example("3D/Geometry/SweptKnot"),
         example("3D/Geometry/FieldLines"),
+        example("3D/Geometry/HiddenLines"),
         example("3D/Geometry/Ocean"),
         // The maps are baked by compute kernels in their own .metal file, and the
         // star field by a fragment shader in another; both ship as flat copies.

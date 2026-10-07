@@ -318,6 +318,224 @@ fragment LineDepthOut ollin_line_depth_fragment(LineOut in [[stage_in]],
     return out;
 }
 
+// MARK: - Feature edges (hidden-line solids)
+//
+// A mesh's feature edges drawn over its faces as lines (`featureEdges`): each
+// edge is a round-capped segment on the canvas, placed here per copy through
+// the copy's matrix, so ten thousand boxes are one instanced draw beside their
+// solid draw. Coverage is the 2D fringe's ramp worked out per pixel from the
+// distance to the projected segment, which is the expander's profile along the
+// sides and a round cap at each end, so three edges meeting at a box's corner
+// close into one. The depth is the line path's pulled depth, taken at the
+// nearest point of the segment, so a near solid hides a far edge and a face
+// never hides its own. Like the line path, the core writes depth and the
+// fringe only tests it.
+
+struct EdgeOut {
+    float4 position [[position]];
+    float2 canvas [[center_no_perspective]];   // this fragment, in canvas points
+    float4 ends [[flat]];                      // the projected ends, canvas points
+    float2 halfWidths [[flat]];                // the half width at each end, canvas points
+    float2 viewDepths [[flat]];                // view z at each end
+    float4 color [[flat]];                     // rgb = sRGB stroke color, a = paint alpha
+    float4 depthRows [[flat]];                 // the projection's z and w rows (z, 1 terms)
+    float unitsPerPoint [[flat]];              // view units per canvas point at w = 1
+};
+
+// The anti-aliasing fringe, in canvas points: the 2D stroke's.
+constant float kEdgeFringe = 1.0;
+
+// The instanced mesh's normal transform, defined with its vertex function below.
+static inline float3 ollin_instance_normal(float3x3 lin, float3 n);
+
+vertex EdgeOut ollin_edge_vertex(uint vid [[vertex_id]],
+                                 uint iid [[instance_id]],
+                                 const device OllinMeshEdge *edges [[buffer(0)]],
+                                 constant Uniforms3D &u [[buffer(2)]],
+                                 const device OllinMeshInstance *copies [[buffer(4)]],
+                                 constant OllinEdgeStyle &style [[buffer(5)]]) {
+    OllinMeshEdge e = edges[vid / 6];
+    float4x4 model = copies[iid].model;
+    EdgeOut out;
+    out.color = style.color;
+    out.depthRows = float4(u.projection[2][2], u.projection[3][2],
+                           u.projection[2][3], u.projection[3][3]);
+    out.unitsPerPoint = 2.0 / (u.projection[1][1] * u.viewport.y);
+    out.canvas = float2(0.0);
+    out.ends = float4(0.0);
+    out.halfWidths = float2(0.0);
+    out.viewDepths = float2(-1.0);
+    // A corner that draws nothing: past the far plane, so the triangle clips away.
+    out.position = float4(0.0, 0.0, 2.0, 1.0);
+
+    float4 va = u.view * (model * float4(e.a.xyz, 1.0));
+    float4 vb = u.view * (model * float4(e.b.xyz, 1.0));
+    bool perspective = u.projection[2][3] != 0.0;
+
+    // Whether this edge shows on this copy. The faces' normals go to view space
+    // by the adjugate of the model's linear part (the instanced mesh's own
+    // transform), its sign kept so a mirrored copy faces the way it looks.
+    int kind = int(e.a.w + 0.5);
+    float2 outward = float2(0.0);
+    if (kind != 0) {
+        float3x3 lin = float3x3(model[0].xyz, model[1].xyz, model[2].xyz);
+        float turn = dot(lin[0], cross(lin[1], lin[2])) < 0.0 ? -1.0 : 1.0;
+        float3x3 viewLin = float3x3(u.view[0].xyz, u.view[1].xyz, u.view[2].xyz);
+        float3 n0 = viewLin * ollin_instance_normal(lin, e.normal0.xyz) * turn;
+        float3 n1 = viewLin * ollin_instance_normal(lin, e.normal1.xyz) * turn;
+        float3 toEye = perspective ? -(va.xyz + vb.xyz) * 0.5 : float3(0.0, 0.0, 1.0);
+        bool front0 = dot(n0, toEye) > 0.0, front1 = dot(n1, toEye) > 0.0;
+        bool shows = kind == 1 ? (front0 || front1 || style.closed < 0.5) : (front0 != front1);
+        if (!shows) return out;
+        // A curved surface's silhouette runs beside a face seen nearly edge on,
+        // whose depth comes toward the eye faster across the line's width than
+        // any pull keeps up with, so the line is set just outside the contour:
+        // both faces lean outward there, and their normals on the canvas say
+        // which side that is (view y up, canvas y down).
+        if (kind == 2) {
+            float3 lean = n0 + n1;
+            outward = float2(lean.x, -lean.y);
+        }
+    }
+
+    // Cut at the near plane (Metal's clip z runs 0 there), never dragged
+    // around behind the eye.
+    float4 ca = u.projection * va, cb = u.projection * vb;
+    float da = ca.z - 1e-6 * abs(ca.w), db = cb.z - 1e-6 * abs(cb.w);
+    if (da < 0.0 && db < 0.0) return out;
+    if (da < 0.0) {
+        float t = da / (da - db);
+        ca = mix(ca, cb, t);
+        va = mix(va, vb, t);
+    } else if (db < 0.0) {
+        float t = db / (db - da);
+        cb = mix(cb, ca, t);
+        vb = mix(vb, va, t);
+    }
+
+    float2 pa = float2((ca.x / ca.w + 1.0) * 0.5 * u.viewport.x, (1.0 - ca.y / ca.w) * 0.5 * u.viewport.y);
+    float2 pb = float2((cb.x / cb.w + 1.0) * 0.5 * u.viewport.x, (1.0 - cb.y / cb.w) * 0.5 * u.viewport.y);
+    float ha = style.halfWidth, hb = style.halfWidth;
+    if (style.worldUnits > 0.5) {
+        // A weight in the world: the copy's own scale, then the projection's.
+        float scale = (length(model[0].xyz) + length(model[1].xyz) + length(model[2].xyz)) / 3.0;
+        float pointsPerUnit = u.projection[1][1] * u.viewport.y * 0.5;
+        ha *= scale * pointsPerUnit / max(ca.w, 1e-9);
+        hb *= scale * pointsPerUnit / max(cb.w, 1e-9);
+    }
+
+    // The quad that covers the segment's capsule. The pass draws into the
+    // multisampled target, and a fragment's color reaches only the samples its
+    // quad covers, so the quad has to hold every sample of a pixel it shades in
+    // full. For the fringe its half width reaches the ramp's outer edge at the
+    // wider end, where coverage is zero, as the CPU line's fringe does. For the
+    // core it reaches past the core's edge by more than half a pixel's diagonal,
+    // so a pixel with whole coverage at its center is whole in every sample.
+    float2 along = pb - pa;
+    float length2 = dot(along, along);
+    float2 dir = length2 > 1e-12 ? along * rsqrt(length2) : float2(1.0, 0.0);
+    float2 side = float2(-dir.y, dir.x);
+    float2 shiftA = float2(0.0), shiftB = float2(0.0);
+    if (any(outward != 0.0)) {
+        float2 away = dot(outward, side) >= 0.0 ? side : -side;
+        shiftA = away * ha;
+        shiftB = away * hb;
+    }
+    float reach = style.core > 0.5 ? max(ha, hb) - 0.5 * kEdgeFringe + 0.75
+                                   : max(ha, hb) + 0.5 * kEdgeFringe;
+    // Two triangles, corners 0 1 2 and 2 1 3: 0 and 1 at the first end, 2 and 3
+    // at the second, each corner taking its own end's clip depth.
+    uint corner = vid % 6;
+    uint c = corner < 3 ? corner : (corner == 3 ? 2u : (corner == 4 ? 1u : 3u));
+    bool second = c >= 2;
+    // The corner's place from its end's projection, the silhouette's shift
+    // included, so the quad and the line it carries move together.
+    float2 offset = (second ? shiftB : shiftA)
+                  + (second ? dir : -dir) * reach + ((c & 1u) == 0u ? side : -side) * reach;
+    float4 clip = second ? cb : ca;
+    float2 step = float2(offset.x * 2.0 / u.viewport.x, -offset.y * 2.0 / u.viewport.y);
+    out.position = float4(clip.xy + step * clip.w, clip.z, clip.w);
+    out.canvas = (second ? pb : pa) + offset;
+    out.ends = float4(pa + shiftA, pb + shiftB);
+    out.halfWidths = float2(ha, hb);
+    out.viewDepths = float2(va.z, vb.z);
+    return out;
+}
+
+// How much of a pixel the edge covers, the 2D fringe's ramp across the
+// distance from the segment, and where along the segment that distance is
+// measured from (0 at the first end, 1 at the second).
+static inline float ollin_edge_cover(EdgeOut in, thread float &distance, thread float &along) {
+    float2 a = in.ends.xy, b = in.ends.zw;
+    float2 ab = b - a;
+    float length2 = dot(ab, ab);
+    along = length2 > 1e-12 ? clamp(dot(in.canvas - a, ab) / length2, 0.0, 1.0) : 0.0;
+    distance = length(in.canvas - (a + ab * along));
+    float halfWidth = mix(in.halfWidths.x, in.halfWidths.y, along);
+    return clamp((halfWidth + kEdgeFringe * 0.5 - distance) / kEdgeFringe, 0.0, 1.0);
+}
+
+static inline float4 ollin_edge_color(float4 color, float cover) {
+    return float4(srgbToLinear(color.rgb), color.a * perceptualCoverage(cover));
+}
+
+// The line path's pulled depth (see `ollin_line_depth_fragment`), at the point
+// of the segment nearest this pixel. Inverse view depth runs straight across
+// the canvas under a perspective, so the depth there is exact, the caps' too.
+static inline float ollin_edge_depth(EdgeOut in, float distance, float along) {
+    float4 rows = in.depthRows;
+    bool perspective = rows.z != 0.0;
+    float za = in.viewDepths.x, zb = in.viewDepths.y;
+    float z = perspective ? 1.0 / mix(1.0 / za, 1.0 / zb, along) : mix(za, zb, along);
+    float w = rows.z * z + rows.w;
+    float reach = min(distance + kLineSampleReach, kLineDepthReach);
+    float share = kLineDepthBase + reach * in.unitsPerPoint * kLineDepthSlope;
+    float pulled = z + share * w;
+    return clamp((rows.x * pulled + rows.y) / (rows.z * pulled + rows.w), 0.0, 1.0);
+}
+
+// A pass with no depth attachment (the accumulating canvas) draws the edge over.
+fragment float4 ollin_edge_fragment(EdgeOut in [[stage_in]]) {
+    float distance, along;
+    float cover = ollin_edge_cover(in, distance, along);
+    if (cover <= 0.0) discard_fragment();
+    return ollin_edge_color(in.color, cover);
+}
+
+// The core: whole coverage only, writing the pulled depth.
+fragment LineDepthOut ollin_edge_core_fragment(EdgeOut in [[stage_in]],
+                                               constant OllinPeel &peel [[buffer(10), function_constant(kOllinPeel)]],
+                                               depth2d<float> peelDepth [[texture(29), function_constant(kOllinPeel)]]) {
+    float distance, along;
+    float cover = ollin_edge_cover(in, distance, along);
+    if (cover < 1.0) discard_fragment();
+    LineDepthOut out;
+    out.color = ollin_edge_color(in.color, 1.0);
+    out.depth = ollin_edge_depth(in, distance, along);
+    if (kOllinPeel && ollin_peel_rejects(in.position.xy, out.depth, 1.0, peelDepth, peel)) {
+        discard_fragment();
+    }
+    return out;
+}
+
+// The fringe: partial coverage only, tested against the pulled depth with the
+// depth write off (the pass's depth state), so its soft edge never stops
+// something drawn later behind it.
+fragment LineDepthOut ollin_edge_fringe_fragment(EdgeOut in [[stage_in]],
+                                                 constant OllinPeel &peel [[buffer(10), function_constant(kOllinPeel)]],
+                                                 depth2d<float> peelDepth [[texture(29), function_constant(kOllinPeel)]]) {
+    float distance, along;
+    float cover = ollin_edge_cover(in, distance, along);
+    if (cover <= 0.0 || cover >= 1.0) discard_fragment();
+    LineDepthOut out;
+    out.color = ollin_edge_color(in.color, cover);
+    out.depth = ollin_edge_depth(in, distance, along);
+    if (kOllinPeel && ollin_peel_rejects(in.position.xy, out.depth, 1.0, peelDepth, peel)) {
+        discard_fragment();
+    }
+    return out;
+}
+
 // MARK: - 3D solid mesh (triangles)
 //
 // Solid triangle geometry (the box/sphere/… primitives) drawn through the camera

@@ -3546,7 +3546,8 @@ extension MetalRenderer {
                                                    matcap: meshMatcap, grid: meshGrid,
                                                    normalMapped: meshNormalMapped,
                                                    surfaceMapped: meshSurfaceMapped,
-                                                   light: batch.particleStyle == .light)
+                                                   light: batch.particleStyle == .light,
+                                                   edges: batch.edgeSet != nil)
             // A stencil-carrying pass (clipping active) needs every pipeline in it
             // to declare the stencil format, clipped or not.
             if hasStencil { pipelineKey.stencilFormat = .stencil8 }
@@ -3843,6 +3844,59 @@ extension MetalRenderer {
                 profile.countDraw(batch.kind, count)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6, instanceCount: count)
             case .lines3D:
+                // A mesh's feature edges: the edge set at vertex buffer 0, the copies
+                // the solid draw placed at 4 (its run of the frame's placements, or a
+                // kernel's buffer), the stroke at 5, six vertices an edge for every
+                // copy. The core first, under the depth state set above, then the
+                // fringe with the same geometry under a state that writes no depth.
+                if let edgeSet = batch.edgeSet {
+                    guard drawer.camera3D != nil, let edges = edgeSet.metalBuffer(for: device) else { continue }
+                    let copies: Int
+                    if let gpuBuffer = batch.particleBuffer {
+                        guard batch.particleCount > 0,
+                              let ib = gpuBuffer.realizedBuffer(for: device) else { continue }
+                        encoder.setVertexBuffer(ib, offset: 0, index: 4)
+                        copies = batch.particleCount
+                    } else {
+                        guard batch.meshInstanceCount > 0, let meshInstanceBuffer else { continue }
+                        encoder.setVertexBuffer(meshInstanceBuffer,
+                                                offset: batch.meshInstanceStart * meshInstanceStride,
+                                                index: 4)
+                        copies = batch.meshInstanceCount
+                    }
+                    encoder.setVertexBuffer(edges, offset: 0, index: 0)
+                    var style = batch.edgeStyle
+                    let vertexCount = edgeSet.edges.count * 6
+                    // A weight of a point or less on the canvas has no solid core
+                    // (the ramp never reaches full coverage), so its core pass would
+                    // only rasterize quads to discard them; a weight in the world
+                    // can have a core near and none far, and draws both.
+                    let hasCore = style.worldUnits > 0.5 || style.halfWidth > 0.5
+                    if depthFormat == nil || hasCore {
+                        style.core = depthFormat == nil ? 0 : 1
+                        encoder.setVertexBytes(&style, length: MemoryLayout<OllinEdgeStyle>.stride, index: 5)
+                        encoder.setRenderPipelineState(state)
+                        profile.countDraw(batch.kind, vertexCount * copies)
+                        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertexCount,
+                                               instanceCount: copies)
+                    }
+                    if depthFormat != nil,
+                       let fringe = try? pipeline(PipelineKey.meshEdgesFringe(pipelineKey)) {
+                        style.core = 0
+                        encoder.setVertexBytes(&style, length: MemoryLayout<OllinEdgeStyle>.stride, index: 5)
+                        if hasStencil, batch.clipLevel > 0 {
+                            encoder.setDepthStencilState(
+                                clipDepthStencilState(ClipStateKey(depth: .testNoWrite, stencil: .equal)))
+                        } else {
+                            encoder.setDepthStencilState(depthTestNoWriteState)
+                        }
+                        encoder.setRenderPipelineState(fringe)
+                        profile.countDraw(batch.kind, vertexCount * copies)
+                        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertexCount,
+                                               instanceCount: copies)
+                    }
+                    continue
+                }
                 // Lines through the camera: the core first, under the depth state set
                 // above (test and write), then the fringe, which tests depth but writes
                 // none, so its soft edge never stops something drawn later behind it.

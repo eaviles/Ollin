@@ -146,6 +146,7 @@ The reference is the authority on what exists and how it behaves; the guide teac
 - [The Hopf fibration](Docs/3D/HopfFibration.md): a sphere's worth of circles, where no two circles meet and every two are linked exactly once. `hopfFibers` returns them as `[Vector3]` paths for `drawTube`, and `hopfBases`…
 - [Sweeps and strips](Docs/3D/Sweeps.md): `Mesh.sweep` carries a `Shape` along a `Curve3D`, a path through space whose frames turn with it and never twist about it, sizing and turning the shape on the way. `Mesh.strip` is…
 - [Lines in 3D](Docs/3D/Lines.md): `drawLine` and `drawPolyline` over `Vector3` draw a line between points in space through the camera, with the 2D stroke's weight, joins, caps, and soft edge, and a color per point…
+- [Hidden-line solids](Docs/3D/HiddenLines.md): `featureEdges(creaseAngle:)` draws a mesh's faces in the fill and over them only its creases, its boundary, and its silhouette in the stroke, at `strokeWeight` in canvas points.
 - [Strand fields](Docs/3D/Strands.md): grass that a mesh pipeline grows inside the draw call itself. `StrandField` + `drawStrands` draw half a million bending, swaying blades with no vertex or instance buffer anywhere.
 - [The ocean](Docs/3D/Ocean.md): a sea built the way the ocean is measured. `makeOceanField` writes a wave spectrum, and one inverse Fourier transform turns it into the moving surface. `drawOcean` draws it as…
 - [Combining 3D features](Docs/3D/Combining.md): the practical map of what works with what: which geometry takes lights, materials, matcaps, and environment light; what casts, receives, and appears in shadows and reflections…
@@ -315,7 +316,7 @@ The reference is the authority on what exists and how it behaves; the guide teac
 
 ## The project
 
-- [Examples](Examples/README.md): 607 runnable sketches by category, each with its whole source
+- [Examples](Examples/README.md): 608 runnable sketches by category, each with its whole source
 - [Ollin architecture & internals](ARCHITECTURE.md)
 - [Ollin: the shipped-capability inventory](CAPABILITIES.md)
 - [Changelog](CHANGELOG.md)

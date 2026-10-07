@@ -181,7 +181,7 @@ extension LineDrawing {
     /// Which vertices are the same point: a mesh drawn with hard edges holds a
     /// copy of a corner per face, and without this every edge would look like a
     /// boundary and be drawn.
-    private static func weld(_ positions: [Vector3]) -> [Int] {
+    static func weld(_ positions: [Vector3]) -> [Int] {
         var low = Vector3(.infinity, .infinity, .infinity)
         var high = Vector3(-.infinity, -.infinity, -.infinity)
         for p in positions {

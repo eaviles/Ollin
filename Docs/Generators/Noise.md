@@ -69,7 +69,8 @@ drawCircle(width / 2 + dx, height / 2, 30)
 noise(loop: Double, radius: Double = 1) -> Double
 noise(_ x: Double, loop: Double, radius: Double = 1) -> Double
 noise(_ x: Double, _ y: Double, loop: Double, radius: Double = 1) -> Double
-signedNoise(/* same three forms */) -> Double
+noise(_ x: Double, _ y: Double, _ z: Double, loop: Double, radius: Double = 1) -> Double
+signedNoise(/* same four forms */) -> Double
 ```
 
 Noise that loops. As `loop` runs `0...1`, the sample follows a closed circle through the field and lands exactly where it started. A drift driven by `loop:` therefore returns to its starting value every lap, which is what a seamless GIF needs. A growing input never does that, because `noise(x, y, time * 0.1)` walks a straight line through the field and never comes back. Feed `loop:` looping progress instead:
@@ -86,7 +87,18 @@ let sway = signedNoise(x * 0.002, loop: lap) * 40    // a looping offset
 let bump = noise(2.5, loop: angle / .tau, radius: 0.8)   // seamless around a circle
 ```
 
-Under the hood, the loop uses extra noise dimensions, and the two-coordinate form samples a 4D field. That is the standard construction for a looping animation. Exports and snapshots stay deterministic, because `loop` wraps, so `loop: 0` and `loop: 1` are the same sample bit for bit.
+A whole volume loops the same way. `noise(x, y, z, loop:)` is the field a point cloud, a swarm, or a block of boxes reads at its own place in space, and it comes back to where it started every lap:
+
+```swift
+let points = (0 ..< 400).map { _ in Vector3(random(-5, 5), random(-5, 5), random(-5, 5)) }
+let lap = loopProgress(over: 12)
+for p in points {
+    let drift = signedNoise(p.x * 0.2, p.y * 0.2, p.z * 0.2, loop: lap)   // a volume that returns
+    withState { translate(p + Vector3(0, drift, 0)); drawSphere(radius: 0.05) }
+}
+```
+
+Under the hood, the loop uses extra noise dimensions: the circle a lap follows takes two axes of its own beside the point's. So the two-coordinate form samples a 4D field and the three-coordinate form a 5D one. That is the standard construction for a looping animation, and nothing is blended between two reads, so the field keeps one character all the way round. The 5D field is scaled to spread like the 3D one: moving a sketch from `noise(x, y, z)` to its looping form keeps its contrast. Exports and snapshots stay deterministic, because `loop` wraps, so `loop: 0` and `loop: 1` are the same sample bit for bit.
 
 <a name="fbm"></a>
 
@@ -94,7 +106,7 @@ Under the hood, the loop uses extra noise dimensions, and the two-coordinate for
 
 ```swift
 fbm(_ x[, _ y[, _ z]], octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double
-fbm(_ x, _ y, loop: Double, radius: Double = 1, octaves: Int = 4, ...) -> Double
+fbm(_ x, _ y[, _ z], loop: Double, radius: Double = 1, octaves: Int = 4, ...) -> Double
 signedFbm(/* the same forms */) -> Double
 ```
 
@@ -234,8 +246,8 @@ For cellular *geometry*, meaning polygonal cells you can stroke, offset, or clip
 ```swift
 ridgedFbm(_ x[, _ y[, _ z]], octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double
 turbulence(/* the same forms */) -> Double
-ridgedFbm(_ x, _ y, loop: Double, radius: Double = 1, ...) -> Double
-turbulence(_ x, _ y, loop: Double, radius: Double = 1, ...) -> Double
+ridgedFbm(_ x, _ y[, _ z], loop: Double, radius: Double = 1, ...) -> Double
+turbulence(_ x, _ y[, _ z], loop: Double, radius: Double = 1, ...) -> Double
 ```
 
 Two classic reshapings of `fbm`. They take the same parameters, and both return `0...1`:
@@ -249,7 +261,7 @@ let cloud = turbulence(x * 0.005, y * 0.005)          // billowy, creased
 let range = ridgedFbm(x * 0.004, 2.5, loop: loopProgress(over: 10))
 ```
 
-Both have the 2D looping form (see [`loop:`](#loop)), so a drifting landscape can return to its start every lap.
+Both have the 2D and 3D looping forms (see [`loop:`](#loop)), so a drifting landscape, or a cloud's volume, can return to its start every lap.
 
 <a name="warpedFbm"></a>
 

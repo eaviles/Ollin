@@ -1118,6 +1118,28 @@
       "stillSmall": "examples/3D/Geometry/FieldLines/still-640.jpg?v=39549fc6",
       "seed": 1
     },
+    "3D/Geometry/HiddenLines": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 18.97,
+      "sound": false,
+      "source": "7caa31a03429fbf7",
+      "rendered": "2026-10-07",
+      "bytes": {
+        "loop": 12535599,
+        "loopSmall": 3149274,
+        "still": 436939,
+        "stillSmall": 132974
+      },
+      "loop": "examples/3D/Geometry/HiddenLines/loop.mp4?v=ee518cbd",
+      "loopSmall": "examples/3D/Geometry/HiddenLines/loop-640.mp4?v=8f40a2fc",
+      "still": "examples/3D/Geometry/HiddenLines/still.jpg?v=b63a33f4",
+      "stillSmall": "examples/3D/Geometry/HiddenLines/still-640.jpg?v=534ecaec",
+      "seed": 1
+    },
     "3D/Geometry/HopfFibration": {
       "bytes": {
         "loop": 8035639,

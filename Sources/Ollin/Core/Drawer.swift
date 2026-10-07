@@ -185,6 +185,12 @@ struct GeometryBatch {
     var lineCoreCount: Int = 0
     var lineFringeStart: Int = 0
     var lineFringeCount: Int = 0
+    /// A mesh's feature edges (`featureEdges`), carried by a `.lines3D` batch in
+    /// place of expanded vertices: the mesh's edge set (its GPU buffer made once),
+    /// the stroke the edges take, and the copies they ride, which are the solid
+    /// draw's own (its run in `meshInstances`, or its buffer in `particleBuffer`).
+    var edgeSet: FeatureEdgeSet?
+    var edgeStyle = OllinEdgeStyle()
     /// The retained field for a `.meshField` batch (`nil` otherwise), plus the
     /// 3D CTM at draw time (composed onto every copy by the cull kernel and the
     /// field vertex shader; identity when the field is drawn untransformed).
@@ -389,6 +395,11 @@ final class Drawer {
     var strokeUnitsMode: StrokeUnits = .screen
     var currentMaterial = Material()    // 3D mesh surface finish (shading model + specular/rim/subsurface/iridescence); see material(_:)
     private var wireframeEnabled = false        // 3D mesh: draw triangle edges only (see wireframe)
+    /// 3D mesh: the crease angle under `featureEdges(creaseAngle:)`, or nil when
+    /// meshes draw without their edges (the default).
+    var featureEdgeAngle: Double?
+    /// The edge sets of the meshes drawn under `featureEdges`, found once a mesh.
+    var featureEdgeCache = FeatureEdgeCache()
     private var currentMatcap: Image?           // 3D mesh: a matcap sphere texture replacing the lit look (see matcap(_:))
     var currentFont: ActiveFont = .outline(.systemMedium)   // active text font (see textFont / drawText)
     var textPixelSize: Double = 24               // rendered glyph height in points (see textSize)
@@ -2252,6 +2263,7 @@ final class Drawer {
         var strokeUnitsMode: StrokeUnits
         var currentMaterial: Material
         var wireframeEnabled: Bool
+        var featureEdgeAngle: Double?
         var currentMatcap: Image?
         var currentFont: ActiveFont
         var textPixelSize: Double
@@ -3982,6 +3994,14 @@ final class Drawer {
             meshVertices.append(v)
         }
         recordMoverRange(from: moverStart, wireframe: wireframe, mesh: mesh)
+        if featureEdgeAngle != nil, !wireframe {
+            var placement = OllinMeshInstance()
+            placement.model = modelIsIdentity ? matrix_identity_float4x4 : m
+            placement.color = SIMD4<Float>(1, 1, 1, 1)
+            meshInstances.append(placement)
+            recordFeatureEdges(of: mesh, copies: .list(start: meshInstances.count - 1, count: 1),
+                               bounds: unionWorldBounds(nil, mesh.bounds, through: modelIsIdentity ? nil : m))
+        }
     }
 
     /// Draw `mesh` once per placement in `instances`, as ONE instanced GPU draw:
@@ -4042,6 +4062,8 @@ final class Drawer {
         }
         recordInstancedMover(vertexRange: vertexRange, instanceStart: iStart,
                              instanceCount: instances.count)
+        recordFeatureEdges(of: mesh, copies: .list(start: iStart, count: instances.count),
+                           bounds: Box3(min: lo, max: hi))
     }
 
     /// The instanced draw's tail hook, the copies' side of `recordMoverRange`:
@@ -4096,6 +4118,7 @@ final class Drawer {
         appendInstancedMeshBatch(mesh, vertexRange: vertexRange,
                                  instanceStart: 0, instanceCount: 0,
                                  gpuInstances: instanceBuffer, gpuCount: count)
+        recordFeatureEdges(of: mesh, copies: .buffer(instanceBuffer, count: count), bounds: nil)
     }
 
     /// The shared gates of an instanced mesh draw (the `drawMesh` set): batch
@@ -4221,6 +4244,9 @@ final class Drawer {
         }
         // SVG export is 2D vector only; a shaded solid has no vector outline.
         if svgRecorder != nil { return }
+        if featureEdgeAngle != nil {
+            noteOnce("a mesh field draws its faces without feature edges (the GPU culls its copies, and the edges have no cull of their own yet); drawMesh(_:instances:) draws copies with their edges.")
+        }
         if let spatialRecorder {
             // Spatial export walks the field's CPU-side placements: each copy as
             // the mesh plus the matrix that placed it, like a loop of drawMesh.
@@ -4471,7 +4497,7 @@ final class Drawer {
 
     /// The edge color for a wireframe mesh: the current solid `stroke`, falling back to
     /// the fill color when there's no stroke (so the net is always visible).
-    private var meshStrokeColor: Color {
+    var meshStrokeColor: Color {
         switch strokePaint {
         case .color(let c): return c
         case .gradient, .none: return meshSurfaceColor
@@ -4861,6 +4887,7 @@ final class Drawer {
                                      strokeUnitsMode: strokeUnitsMode,
                                      currentMaterial: currentMaterial,
                                      wireframeEnabled: wireframeEnabled,
+                                     featureEdgeAngle: featureEdgeAngle,
                                      currentMatcap: currentMatcap,
                                      currentFont: currentFont, textPixelSize: textPixelSize,
                                      textAlignH: textAlignH, textAlignV: textAlignV,
@@ -4899,6 +4926,7 @@ final class Drawer {
         strokeUnitsMode = s.strokeUnitsMode
         currentMaterial = s.currentMaterial
         wireframeEnabled = s.wireframeEnabled
+        featureEdgeAngle = s.featureEdgeAngle
         currentMatcap = s.currentMatcap
         currentFont = s.currentFont
         textPixelSize = s.textPixelSize

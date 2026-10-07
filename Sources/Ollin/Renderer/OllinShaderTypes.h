@@ -443,6 +443,33 @@ typedef struct {
     simd_float4 color;     // straight RGBA multiplier on the surface color
 } OllinMeshInstance;
 
+// One feature edge of a mesh drawn under `featureEdges(creaseAngle:)`
+// (`ollin_edge_vertex`): its two ends in the mesh's own space and the normals
+// of the faces on either side, so the vertex shader places it through each
+// copy's matrix (the `OllinMeshInstance` run of the solid draw) and decides
+// there whether it shows: a boundary always, a crease unless both of its faces
+// turn away on a closed mesh (the mesh's own front hides it then), and an edge
+// inside a smooth surface only where it is the silhouette, one face toward the
+// eye and one away. The edges of a mesh are found once on the CPU; a copy costs
+// the GPU six vertices an edge and the CPU nothing. Stride 64 (four 16-byte
+// rows).
+typedef struct {
+    simd_float4 a;          // xyz: one end, mesh space; w: kind (0 boundary, 1 crease, 2 smooth)
+    simd_float4 b;          // xyz: the other end, mesh space; w unused
+    simd_float4 normal0;    // the first face's normal, mesh space; w unused
+    simd_float4 normal1;    // the second face's normal (a boundary repeats the first); w unused
+} OllinMeshEdge;
+
+// The constants of one feature-edge draw: the stroke it takes and how wide.
+// Stride 32 (two 16-byte rows).
+typedef struct {
+    simd_float4 color;      // straight sRGB rgb + the paint's own alpha
+    float halfWidth;        // half the stroke weight: canvas points, or world units
+    float worldUnits;       // 1 when the weight is in world units (`strokeWeight(_:in: .world)`)
+    float closed;           // 1 when the mesh is closed, so a crease that turns away is skipped
+    float core;             // 1 for the core pass, whose quad need only cover the solid core
+} OllinEdgeStyle;
+
 // One entry of a `MeshField` (one distinct mesh and its run of copies), read by
 // the field's GPU cull + encode kernels and by the CPU build. The field's base
 // vertices concatenate into one buffer; `vertexStart`/`vertexCount` are this

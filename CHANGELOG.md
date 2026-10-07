@@ -4,6 +4,12 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ## [Unreleased]
 
+### Added
+
+- **Hidden-line solids.** `featureEdges(creaseAngle:)` draws a mesh the way a draughtsman draws a solid: the faces in the fill as always, and over them only the lines that describe the form, in the stroke at `strokeWeight`. Those are the creases where two faces meet past the angle, the boundary where a surface ends, and the silhouette, worked out for every copy from where it is seen. A box gives its twelve edges and no diagonals, a sphere its outline, and near solids hide the edges of far ones. The weight is in canvas points, a hairline on every copy at any distance, or in world units under `strokeWeight(_:in: .world)`. Under `drawMesh(_:instances:)` every copy's edges are one more GPU draw placed by the same matrices, so ten thousand boxes cost what their faces cost plus a few milliseconds of GPU time and no CPU time; a mesh's edges are found once and kept while it is drawn. `noFeatureEdges()` turns it off. New example: [`Examples/3D/Geometry/HiddenLines`](Examples/3D/Geometry/HiddenLines/). [Hidden-line solids](Docs/3D/HiddenLines.md)
+
+- **Noise in three dimensions that loops.** `noise(x, y, z, loop:)`, with `signedNoise`, `fbm`, `signedFbm`, `ridgedFbm`, and `turbulence` in the same form, reads a volume that changes over a lap and comes back to exactly where it started, so a point cloud's drift or a cloud's density closes a seamless export. It reads a five-axis field, three for the point and two for the circle the lap tours, scaled to spread like `noise(x, y, z)` so a sketch keeps its contrast when it moves to the looping form. [Noise](Docs/Generators/Noise.md#loop)
+
 ## [0.14.0] - 2026-10-06
 
 ### Added

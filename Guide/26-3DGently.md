@@ -476,9 +476,9 @@ The `anisotropy` argument runs −1…1 and sets how strongly the haze throws li
 
 The beam march has a quality dial like the shadows do, `volumetricQuality` with three tiers. The default already does the right thing, frame-rate-safe live, lifted to full quality on export.
 
-## More finishes: the cartoon look and matcaps
+## More finishes: the cartoon look, hidden lines, and matcaps
 
-The plaza gave each sculpture a finish by name, from the material library. Some looks go further than a material can. A cartoon inks a line around a shape and lights it from the eye. A matcap paints the whole look, light and all, into one picture.
+The plaza gave each sculpture a finish by name, from the material library. Some looks go further than a material can. A cartoon inks a line around a shape and lights it from the eye. A draughtsman inks only the edges a solid has. A matcap paints the whole look, light and all, into one picture.
 
 ### The cartoon look: outlines, and a light that follows the camera
 
@@ -509,6 +509,25 @@ headlight(Color(white: 0.5), intensity: 0.4)                    // a fill that f
 ```
 
 It throws no shadow, and it needs none. Seen from the eye, every shadow a headlight would cast hides behind the thing that casts it. World space stays the default for everything else. A sun, a sky, and a product shot all want the light to stay put while you move. Reach for the camera's frame when the light belongs to the view, which is the cartoon's case and the fill's case.
+
+### A draughtsman's drawing: hidden-line solids
+
+A technical drawing of a solid has no shading at all. It shows only the edges a hand would ink. A crease is where two faces meet at an angle, a boundary is where a surface ends, and the silhouette is where it turns away. Whatever the solid hides is left out. Getting a computer to draw that was one of the first problems in computer graphics. Lawrence Roberts worked on it at MIT in 1963, and Arthur Appel gave it its classic form in 1967. In 2004 Morgan McGuire and John Hughes moved the choice of edges onto the graphics card, and Ollin draws it their way.
+
+`featureEdges()` is drawing state like `outline`. From that call on, a mesh draws its faces in the fill as usual. Over them it draws only those three kinds of edge, in the stroke at `strokeWeight`:
+
+```swift
+fill(.white)                        // the faces: the paper's color
+stroke(Color(white: 0.1))
+strokeWeight(1)                     // a hairline, near or far
+featureEdges()                      // creases, boundaries, and silhouettes
+drawBox(size: 1)
+drawSphere(radius: 0.6)
+```
+
+<img src="../Docs/Images/HiddenLines.jpg" alt="Line work on white paper: a box, a cylinder, a sphere drawn as a plain circle, a cone, and a torus drawn as two rings, in front of a block of small turned boxes, each inked only along its own edges, the near boxes hiding the edges of the ones behind" width="680">
+
+The box gives its twelve edges and none of the diagonals its square faces are made of. The ball gives its outline, worked out from wherever it is seen, and none of its facets. A crease counts once its faces meet at more than 30 degrees, and `featureEdges(creaseAngle:)` moves that line. The faces are solid, so a near shape hides the edges of a far one. That is the "hidden" in the name. The weight is in canvas points, like the outline's, so a hairline stays a hairline at any distance. With `drawMesh(_:instances:)` every copy's edges come in one more draw, and the [`HiddenLines`](../Examples/3D/Geometry/HiddenLines/Sketch.swift) example turns ten thousand boxes that way at full speed. `noFeatureEdges()` turns it off. For the same drawing as paths a pen plotter can follow, [Chapter 42](42-MakingItPhysical.md#a-3d-scene-on-the-plotter-linedrawingof) has `lineDrawing(of:)`.
 
 ### Shading from a picture: matcaps
 
@@ -635,6 +654,7 @@ The camera-on-an-orbit model is the shared convention of 3D tools everywhere, fr
 - Lens and grounding effects: draw a 3D scene into a render target and its depth layer feeds the combine effects [Chapter 21](21-PicturesYouSolve.md) introduced, `.defocus` for camera-like depth of field, `.ambientOcclusion` to darken contacts and crevices, `.screenSpaceReflections` for glossy floors on any Mac. See [Effects](../Docs/Drawing/Effects.md#combined) and the `3D/Effects/SceneDefocus` example.
 - [Shadows in full](../Docs/3D/3D.md#shadows): how each caster kind works, the soft-shadow quality dials, and the frustum fitting you never have to touch.
 - [Atmosphere](../Docs/3D/Atmosphere.md): the full fog and volumetric-light reference, what participates and what sits out, and the quality dial's exact step counts.
+- [Hidden-line solids](../Docs/3D/HiddenLines.md): which edges a mesh draws under `featureEdges`, how they hide and are hidden, the weight on screen or in the world, and what ten thousand copies cost, with the [`HiddenLines`](../Examples/3D/Geometry/HiddenLines/Sketch.swift) example.
 - [The 26 built-in matcaps](../Docs/3D/3D.md#the-built-in-matcaps), listed by family, plus `Matcap.shaded` for baking one from a color.
 - Appendix B draws this chapter's math, one picture per idea: [Where things are](B-JustEnoughMath.md#the-3d-world-frame), [Moving the paper](B-JustEnoughMath.md#small-moves-compound), [Into three dimensions](B-JustEnoughMath.md#into-three-dimensions).
 - Worked examples: [`Examples/3D/Geometry/Solids`](../Examples/3D/Geometry/Solids/Sketch.swift), [`Examples/3D/Geometry/ShapeFactory`](../Examples/3D/Geometry/ShapeFactory/Sketch.swift), [`Examples/3D/Geometry/Transforms`](../Examples/3D/Geometry/Transforms/Sketch.swift), [`Examples/3D/Lighting/LightingPresets`](../Examples/3D/Lighting/LightingPresets/Sketch.swift), [`Examples/3D/Lighting/Shadows`](../Examples/3D/Lighting/Shadows/Sketch.swift), [`Examples/3D/Materials/Materials`](../Examples/3D/Materials/Materials/Sketch.swift), [`Examples/3D/Materials/Matcap`](../Examples/3D/Materials/Matcap/Sketch.swift), and [`Examples/3D/Lighting/AreaLights`](../Examples/3D/Lighting/AreaLights/Sketch.swift).

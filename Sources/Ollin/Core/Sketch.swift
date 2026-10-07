@@ -1492,6 +1492,43 @@ open class Sketch {
     /// generated primitive or a loaded model).
     public func wireframe(_ on: Bool = true) { drawer.wireframe(on) }
 
+    /// Draw subsequent meshes as hidden-line solids: the faces in the current
+    /// `fill`, shaded as usual, and over them only the lines that describe the
+    /// form, in the current `stroke` at `strokeWeight`. Those lines are the
+    /// mesh's **creases**, where two faces meet at more than `creaseAngle`
+    /// (radians); its **boundary**, where the surface ends; and its
+    /// **silhouette**, where the surface turns away from the eye. A box gives
+    /// its twelve edges and no diagonals, a sphere its outline.
+    ///
+    /// ```swift
+    /// background(.white)
+    /// fill(.white)                 // the faces: the paper's color
+    /// stroke(.black)
+    /// strokeWeight(1)              // one point on screen, near or far
+    /// featureEdges()
+    /// drawMesh(.box(size: 1), instances: copies)
+    /// ```
+    ///
+    /// The faces write depth, so a near solid hides the edges of a far one and
+    /// a face never hides its own. The weight is in canvas points, a hairline
+    /// on every copy whatever its size, or in the world under
+    /// `strokeWeight(_:in: .world)`. Under `drawMesh(_:instances:)` the edges of
+    /// every copy are one more GPU draw beside the solids', placed by the same
+    /// matrices, so ten thousand boxes cost what their faces cost; the edges of
+    /// a mesh are found once and kept while it is drawn. `noStroke()` leaves the
+    /// edges out; `wireframe()` wins over this, and a mesh field draws its
+    /// faces only.
+    /// The edges are lines, not geometry: they cast no shadow and a path-traced
+    /// export draws them over its picture. `lineDrawing(of:)` is the same idea
+    /// as vector paths for a plotter. Drawing state, saved by `withState`.
+    public func featureEdges(creaseAngle: Double = .pi / 6) {
+        drawer.featureEdges(creaseAngle: creaseAngle)
+    }
+
+    /// Draw subsequent meshes without their feature edges (the default).
+    /// Drawing state, saved by `withState`.
+    public func noFeatureEdges() { drawer.noFeatureEdges() }
+
     /// Wrap subsequent meshes in a *matcap* — a sphere texture (`Matcap.chrome`, any
     /// matcap `Image`, or a `Matcap.shaded(…)`) sampled by the view-space normal — so
     /// the whole look comes from the image and the scene lights and `material(_:)` are
