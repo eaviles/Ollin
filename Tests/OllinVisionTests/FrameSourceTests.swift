@@ -90,7 +90,7 @@ import OllinTestSupport
 
         // Decode proof first, through the player's own display output: the
         // trait said a clip decodes here, so a frame has to come.
-        _ = try await OllinTestSupport.waitFor(timeout: 5) { player.snapshot() }
+        _ = try await OllinTestSupport.waitFor(timeout: 30) { player.snapshot() }
 
         // The tap output decodes the same frames; the disk must trace.
         let found = try? await OllinTestSupport.waitFor(timeout: 10) { detector.count >= 1 ? true : nil }

@@ -193,13 +193,14 @@ import Testing
     /// Twenty-four frames of gray at twelve a second, each a shade apart so
     /// every decoded frame is its own.
     /// Whether a clip written here plays back headless: the encoder writes one
-    /// and a player decodes a frame of it. Asked once for the suites that read
-    /// a clip, and named in `clipTrait`.
+    /// and a player decodes a frame of it, given the thirty seconds a software
+    /// decode under the runner's load has needed. Asked once for the suites
+    /// that read a clip, and named in `clipTrait`.
     static let clipPlaysHere = Task<Bool, Never> { @MainActor in
         guard let url = await writeClip() else { return false }
         defer { try? FileManager.default.removeItem(at: url) }
         guard let player = try? VideoPlayer(url: url) else { return false }
-        return (try? await OllinTestSupport.waitFor(timeout: 5) { player.snapshot() }) != nil
+        return (try? await OllinTestSupport.waitFor(timeout: 30) { player.snapshot() }) != nil
     }
 
     static let clipTrait: ConditionTrait = .enabled("no video encoder, or no headless decode, here") {

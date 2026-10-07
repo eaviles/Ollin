@@ -19,13 +19,19 @@ import OllinTestSupport
 
     nonisolated static var hasMetal: Bool { MTLCreateSystemDefaultDevice() != nil }
 
+    /// How long a headless decode may take to hand over a frame. A desk
+    /// answers in a frame's time; the runner, decoding in software beside the
+    /// two drawing shards, has taken past five seconds, and a test that the
+    /// trait below let run has to wait for the picture rather than the clock.
+    static let decodeBudget = 30.0
+
     /// Whether a clip can be written and read back here: the encoder writes
-    /// one, a player loads it headless and reports its duration. Asked once.
+    /// one, a player loads it headless and decodes a frame of it. Asked once.
     static let clipPlaysHere = Task<Bool, Never> { @MainActor in
         guard let url = await VideoPlayerTests().writeTestClip() else { return false }
         defer { try? FileManager.default.removeItem(at: url) }
         guard let player = try? VideoPlayer(url: url) else { return false }
-        return (try? await waitFor(timeout: 5) { player.duration }) != nil
+        return (try? await waitFor(timeout: decodeBudget) { player.snapshot() }) != nil
     }
 
     static let clipTrait: ConditionTrait = .enabled("no video encoder, or no headless decode, here") {
@@ -158,7 +164,7 @@ import OllinTestSupport
         let url = try #require(await writeTestClip())
         defer { try? FileManager.default.removeItem(at: url) }
         let player = try VideoPlayer(url: url)
-        let duration = try await waitFor(timeout: 5) { player.duration }
+        let duration = try await waitFor(timeout: Self.decodeBudget) { player.duration }
         #expect(abs(duration - 1.0) < 0.25)
         #expect(player.size == Vector2(64, 64))
         #expect(!player.isPlaying)
@@ -169,7 +175,7 @@ import OllinTestSupport
         defer { try? FileManager.default.removeItem(at: url) }
         let player = try VideoPlayer(url: url)
         player.play()
-        let snapshot = try await waitFor(timeout: 5) { player.snapshot() }
+        let snapshot = try await waitFor(timeout: Self.decodeBudget) { player.snapshot() }
         #expect(snapshot.width == 64)
         #expect(snapshot.height == 64)
         // The clip is solid orange: red high, blue low.
@@ -184,7 +190,7 @@ import OllinTestSupport
         let player = try VideoPlayer(url: url)
         player.loops = true
         player.play()
-        let frame = try await waitFor(timeout: 5) { player.frame }
+        let frame = try await waitFor(timeout: Self.decodeBudget) { player.frame }
         #expect(frame.width == 64)
         #expect(frame.height == 64)
         // While playing (looped), the same frame keeps drawing between decodes.
@@ -204,7 +210,7 @@ import OllinTestSupport
         }
         player.loops = true
         player.play()
-        _ = try await waitFor(timeout: 5) { seen.withLock { $0.count > 0 ? $0 : nil } }
+        _ = try await waitFor(timeout: Self.decodeBudget) { seen.withLock { $0.count > 0 ? $0 : nil } }
         let final = seen.withLock { $0 }
         #expect(final.width == 64)
         #expect(final.height == 64)
@@ -354,7 +360,7 @@ import OllinTestSupport
         let url = try #require(await writeTestClip())
         defer { try? FileManager.default.removeItem(at: url) }
         let player = try VideoPlayer(url: url)
-        _ = try await waitFor(timeout: 5) { player.size }
+        _ = try await waitFor(timeout: Self.decodeBudget) { player.size }
         // A square video in a wide container: full height, centered horizontally.
         let rect = player.fittedRectangle(in: Rectangle(x: 0, y: 0, width: 200, height: 100))
         #expect(rect == Rectangle(x: 50, y: 0, width: 100, height: 100))
