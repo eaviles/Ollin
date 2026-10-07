@@ -880,8 +880,7 @@ struct WebShaders {
             c = toneMapACES(c);
         }
         vec2 fragCoord = vec2(gl_FragCoord.x, viewport.y - gl_FragCoord.y);
-        vec3 enc = linearToSrgb(c);
-        enc = clamp(enc + ditherTriangle(fragCoord) * (1.0 / 255.0), 0.0, 1.0);
+        vec3 enc = ditherEncoded(linearToSrgb(c), fragCoord);
         fragColor = vec4(enc, 1.0);
     }
     """

@@ -85,8 +85,7 @@ static inline float3 ollin_present_map(float3 c, float a, constant OllinPresentU
 static inline float4 ollin_present_finish(float3 c, float a, float2 fragCoord,
                                           constant OllinPresentUniforms &u) {
     if (u.keepsAlpha == 0) return finalizeColor(float4(c, 1.0), fragCoord);
-    float3 enc = linearToSrgb(c);
-    enc = clamp(enc + ditherTriangle(fragCoord) * (1.0 / 255.0), 0.0, 1.0) * a;
+    float3 enc = ditherEncoded(linearToSrgb(c), fragCoord) * a;
     return float4(srgbToLinear(enc), a);
 }
 

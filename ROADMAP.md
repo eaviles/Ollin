@@ -32,6 +32,7 @@ These are near-term, fairly self-contained pieces. Each one is small and well-sc
 - **More SDF shapes, when a good fit appears.** A candidate is any canonical form parameterized by a size and a ratio or two. Such a shape drops into the instanced-SDF path as four small touch-points: a shape tag, a builder, a distance function, and a fragment case.
 - **Smoothing that keeps the points.** An outline can be smoothed by a moving average over a window of its neighbors, keeping one point for each point it had, so a traced or resampled ring loses its facets without doubling its size.
 - **Even spacing at large counts.** A `surfacePoints` scatter of hundreds of thousands of points, such as a forest over a whole valley, keeps its even spacing without a long wait in `setup()`.
+- **Pictures drawn crisp when enlarged.** A small image, such as pixel art, a low-resolution canvas, or a photo dithered to two levels, draws at any whole-number scale with hard cell edges instead of blended ones, with no upscaled copy made on the CPU.
 
 See the [design notes](DESIGN-NOTES.md#small-pieces).
 

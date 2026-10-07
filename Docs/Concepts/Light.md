@@ -19,7 +19,7 @@ Shaders therefore convert the colors you give them into linear light, and every 
 Once a frame is finished, one pass turns that canvas into the image on screen. The pass does three things, in this order:
 
 1. **Tone-maps.** Values above 1 roll off toward white instead of being cut flat. `toneMap(_:)` chooses the shape of that roll.
-2. **Dithers.** A pattern fixed to the pixel position breaks up the step between neighboring output levels, so a smooth ramp does not band.
+2. **Dithers.** A pattern fixed to the pixel position breaks up the step between neighboring output levels, so a smooth ramp does not band. The pattern moves a value by at most one level, and less within a level of black or white, so it never pushes past either end. Exact black stays 0 and exact white stays 255, so a picture of only black and white exports as only black and white.
 3. **Encodes to sRGB** and writes to the display.
 
 That is the only point where a frame is reduced to eight bits per channel. Exports run the same pass, which is why an exported file matches the window.

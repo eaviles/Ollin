@@ -12,6 +12,7 @@ final class HiddenLines: Sketch {
     override var canvasSize: CanvasSize { .size(880, 400) }
 
     override func draw() {
+        seed(3)
         background(.white)
         camera(.perspective(eye: Vector3(0.4, 2.5, 6.0), target: Vector3(0, 0.9, -1.6), fieldOfView: .pi / 5.0))
         noLights()

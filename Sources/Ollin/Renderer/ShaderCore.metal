@@ -40,12 +40,23 @@ static inline float ditherTriangle(float2 fragCoord) {
     return hash12(fragCoord) - hash12(fragCoord + 17.0);
 }
 
-// Apply ~1 LSB of dither to a linear straight-alpha color in 8-bit sRGB output
-// space, returning linear (the sRGB target re-encodes, so the round-trip lands
-// the dither exactly where the quantization happens).
+// The dither on an encoded color: up to one level each way, scaled down within
+// a level of black or white so it never reaches past that end. Exact black and
+// exact white stay exact (a picture of only 0 and 1 stays two-level, and a black
+// ground carries no noise into a video encoder), and a value near an end never
+// leans on the clamp, which pushed it inward. At an end the reach is 0.3 of a
+// level, under the 0.4 at which the 8-bit sRGB encode already rounds black up
+// (measured on Apple silicon).
+static inline float3 ditherEncoded(float3 enc, float2 fragCoord) {
+    float3 reach = clamp(min(enc, 1.0 - enc) * 255.0 + 0.3, 0.0, 1.0);
+    return clamp(enc + ditherTriangle(fragCoord) * reach * (1.0 / 255.0), 0.0, 1.0);
+}
+
+// Apply the dither to a linear straight-alpha color in 8-bit sRGB output space,
+// returning linear (the sRGB target re-encodes, so the round-trip lands the
+// dither exactly where the quantization happens).
 static inline float4 finalizeColor(float4 linearColor, float2 fragCoord) {
-    float3 enc = linearToSrgb(linearColor.rgb);
-    enc = clamp(enc + ditherTriangle(fragCoord) * (1.0 / 255.0), 0.0, 1.0);
+    float3 enc = ditherEncoded(linearToSrgb(linearColor.rgb), fragCoord);
     return float4(srgbToLinear(enc), linearColor.a);
 }
 
