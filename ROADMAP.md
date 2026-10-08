@@ -31,6 +31,7 @@ These are near-term, fairly self-contained pieces. Each one is small and well-sc
 
 - **More SDF shapes, when a good fit appears.** A candidate is any canonical form parameterized by a size and a ratio or two. Such a shape drops into the instanced-SDF path as four small touch-points: a shape tag, a builder, a distance function, and a fragment case.
 - **Pictures drawn crisp when enlarged.** A small image, such as pixel art, a low-resolution canvas, or a photo dithered to two levels, draws at any whole-number scale with hard cell edges instead of blended ones, with no upscaled copy made on the CPU.
+- **Captions that stay still over the scene.** `drawCaption` draws a label over the finished frame, so a lens blur, a motion streak, or a bloom underneath never reaches the text.
 
 See the [design notes](DESIGN-NOTES.md#small-pieces).
 
@@ -119,7 +120,6 @@ These are ways a sketch leaves the window:
 - **The rest of the sketch on the web page.** The [page export](Docs/Output/Web.md) already carries these parts of a sketch. It carries the analytic shapes, strokes and fills, text and pictures, and the composed and raymarched fields. It also carries the layered effects and the parameters as controls, and it expands strokes and fills on the page from the points the sketch gave. Some things stay with the video export. Those are the effects that are a solve or a ladder on the Mac, lit meshes, ray tracing, and compute work. Pictures that arrive as a texture every frame stay there too. This is not a browser runtime for the framework. That stays out, and the platform stance in `CLAUDE.md` says why.
 - **A sketch over the desktop.** The sketch runs in a transparent window that floats above other windows. Clicks pass through wherever the sketch drew nothing, so a piece can stay on screen while you work.
 - **A second window.** One sketch draws two views, such as the projector's picture and a control view on the laptop. Two cameras on one world are another case.
-- **Motion blur from sub-frames in an export.** An export renders several moments across the shutter for each frame and averages them. Any sketch gets motion blur this way, 2D and shader work included.
 
 See the [design notes](DESIGN-NOTES.md#new-output-surfaces).
 

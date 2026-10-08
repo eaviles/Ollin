@@ -1944,11 +1944,14 @@ extension MetalRenderer {
     // MARK: - Motion blur
 
     /// Whether motion blur runs this frame: the sketch asked (with a nonzero
-    /// shutter) and a 3D camera is active. Notes once when asked without a
-    /// camera (a 2D frame has no depth to read motion from, and its content
-    /// holds still by design).
+    /// shutter), a 3D camera is active, and no export is averaging subframes.
+    /// Notes once when asked without a camera (a 2D frame has no depth to read
+    /// motion from, and its content holds still by design).
     func motionBlurActive(_ drawer: Drawer) -> Bool {
         guard drawer.motionBlurEnabled, drawer.motionBlurShutter > 0 else { return false }
+        // An export drawing subframes is already averaging the shutter, so the
+        // canvas blur stands down rather than streak the streak.
+        guard subframe == nil else { return false }
         guard drawer.camera3D != nil else {
             drawer.noteOnce("motionBlur() applies to the 3D scene; without an active camera the frame is unchanged.")
             return false
@@ -1958,8 +1961,8 @@ extension MetalRenderer {
 
     /// Reconstruction taps per pixel along the dominant velocity, resolved from
     /// the frame-wide automatic quality (the temporal-AA sample rule: no
-    /// per-feature parameter; export's automatic `.detail` lifts it). Odd, so the
-    /// tap comb is symmetric about the center pixel.
+    /// per-feature parameter; export's automatic `.detail` lifts it). Odd: the
+    /// center pixel and (S - 1) / 2 pairs of taps either side of it.
     func resolveMotionBlurSamples() -> Int {
         switch effectiveQuality(.default) {
         case .performance: return 9

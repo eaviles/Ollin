@@ -2925,6 +2925,26 @@ extension MetalRenderer {
         return output
     }
 
+    /// Fold one moment of a subframe average into the running mean, each moment
+    /// weighted 1/count, and hand back the mean so far: the finished average once
+    /// the last moment is in. The first moment clears the sum. The mean is single
+    /// precision and sized to the canvas, rebuilt when the canvas changes size.
+    func foldSubframe(_ frame: MTLTexture, step: Subframe, into cb: MTLCommandBuffer,
+                      width: Int, height: Int) -> MTLTexture? {
+        if subframeMean?.front.width != width || subframeMean?.front.height != height {
+            guard let a = makeFilterTexture(width: width, height: height, format: .rgba32Float),
+                  let b = makeFilterTexture(width: width, height: height, format: .rgba32Float)
+            else { return nil }
+            subframeMean = (a, b)
+        }
+        guard let (front, back) = subframeMean else { return nil }
+        if step.index == 0 { clearFloatTexture(front, into: cb) }
+        encodeEffectFragment("ollin_fx_weighted_sum", inputs: [front, frame], output: back,
+                             params: [SIMD4(1 / Float(step.count), 0, 0, 0)], into: cb)
+        subframeMean = (back, front)
+        return back
+    }
+
     /// Upload `drawer`'s recorded geometry and issue its draws into `encoder`,
     /// one per batch in call order so triangles and SDF shapes composite
     /// front-to-back as the sketch drew them. Shared by the on-screen and

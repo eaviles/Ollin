@@ -2787,6 +2787,30 @@ public enum OllinApp {
     /// adding through the held draws, so it brightens N times faster there.
     public static var exportSettle = 1
 
+    /// How many moments across the shutter each exported frame is drawn at,
+    /// averaged in linear light: `--subframes N`. The motion blur a camera
+    /// records, made the slow way, so it blurs anything a sketch draws (2D and
+    /// shaders included) at N times the render cost. The shutter is centered on
+    /// the frame's instant and stays open for `exportShutter` of a frame
+    /// interval. Every moment is a draw: `time` moves through the shutter,
+    /// `deltaTime` is the time since the last draw (so a simulation stepped by
+    /// `deltaTime` stays exact), and `frameCount` counts each draw, so motion
+    /// counted in frames runs N times as fast. A picture the GPU carries from
+    /// one draw to the next (a `noClear()` pile, a feedback layer, an
+    /// accumulator, a simulation field) is refused with its name, and the
+    /// sketch's own `motionBlur(shutter:)` stands down, since the moments are
+    /// the blur. 1 (the default) draws each frame once at its instant.
+    public static var exportSubframes = 1
+
+    /// The fraction of a frame interval the shutter stays open under
+    /// `exportSubframes`: `--shutter F`. nil (the default) takes the shutter the
+    /// sketch asks of its canvas blur (`motionBlur(shutter:)`), else 0.5, the
+    /// half-open shutter of film.
+    public static var exportShutter: Double? = nil
+
+    /// The shutter the last subframe export drew with, for its recipe.
+    static var lastSubframeShutter: Double?
+
     /// The renderer a headless render draws through, on the system's GPU. Its
     /// failure carries the renderer's own message, since the usual cause is a
     /// shader that stopped compiling, and "no Metal device" would hide it.
@@ -2853,8 +2877,8 @@ public enum OllinApp {
             renderer.automaticQuality = quality
             renderer.pathTracing = pathTracedExport
             renderer.renderScale = exportRenderScale
-            guard let image = renderImage(of: sketch, frame: frame, fps: fps.framesPerSecond,
-                                          renderer: renderer) else {
+            guard let image = try renderImage(of: sketch, frame: frame, fps: fps.framesPerSecond,
+                                              renderer: renderer, path: path) else {
                 throw ExportError(.unrendered, path: path, frame: 0,
                                   problem: "frame \(max(0, frame)) did not come back from the GPU")
             }
@@ -2867,7 +2891,12 @@ public enum OllinApp {
     /// pipelines) across every tile instead of rebuilding per seed. The caller
     /// owns `isRenderingHeadless` and the renderer's quality fallback.
     static func renderImage(of sketch: Sketch, frame: Int, fps: Double,
-                            renderer: MetalRenderer) -> CGImage? {
+                            renderer: MetalRenderer, path: String = "") throws -> CGImage? {
+        // Under `--subframes` the frame asked for is several moments averaged.
+        if exportSubframes > 1 {
+            return try renderSubframeImage(of: sketch, frame: frame, fps: fps,
+                                           renderer: renderer, path: path)
+        }
         let size = sketch.canvasSizeForRun()
         sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
         sketch.runSetup()
@@ -3194,9 +3223,17 @@ public enum OllinApp {
         renderer.exportMadeFrames = motion?.source == .made
         defer { renderer.endExportMadeFrames() }
 
+        if let conflict = subframeConflict(for: sketch, slowMotion: motion) {
+            throw ExportError(.unsupported, path: path, problem: conflict)
+        }
+        defer { renderer.subframe = nil }
+
         let skipFrames = max(0, Int((skipSeconds * clock).rounded()))
         let wallStart = CACurrentMediaTime()
         var written = 0                                   // 0-based index handed to `write`
+        // The sketch time of the last draw, for the `deltaTime` a subframe
+        // moment measures from it.
+        var lastDrawTime: Double?
         // The last frame that came back from the GPU, kept past its pool so a
         // sketch that stops its loop can be written from it (see below).
         var lastRendered: (buffer: MTLBuffer, bytesPerRow: Int)?
@@ -3220,65 +3257,112 @@ public enum OllinApp {
             // every frame's readback and by whatever the sketch itself allocated,
             // until the machine is swapping. `HeadlessDrainTests` pins it.
             try autoreleasepool {
-                sketch.advance(time: Double(k) / clock, deltaTime: 1 / clock, frameRate: clock)
-                var drawStart = CACurrentMediaTime()
-                sketch.performDraw()                          // run every frame so state settles
-                var drawSeconds = CACurrentMediaTime() - drawStart
-
-                // Whether the interpolator can work on this sketch at all is only
-                // knowable once it has drawn, so it is asked at the first frame,
-                // before a single file has been written.
-                if k == 0, motion?.source == .made,
-                   let refusal = renderer.madeFrameRefusal(sketch.drawer) {
-                    throw ExportError(.unsupported, path: path, problem:
-                        "\(refusal). Drop the made frames (--made-frames) and every frame is drawn instead, which costs more time and is never worse")
-                }
-
-                // A picture that carries from frame to frame on the GPU has to be
-                // rendered through the warmup too, or the first written frame starts
-                // from nothing while the sketch's own state is `--skip` seconds on:
-                // the `noClear` pile, and any layer that persists (a feedback, an
-                // accumulator or a line spray's running mean, a simulation field,
-                // reflection history), which is what `usesFeedback` asks. A picture
-                // that is its clock alone skips the render.
-                let accumulates = sketch.drawer.accumulates
                 var rendered: (buffer: MTLBuffer, bytesPerRow: Int)?
-                if accumulates || sketch.drawer.usesFeedback || k >= skipFrames {
-                    rendered = accumulates
-                        ? renderer.accumulatedFrame(of: sketch.drawer, viewport: viewport, width: width, height: height)
-                        : renderer.renderedFrame(of: sketch.drawer, viewport: viewport, width: width, height: height)
-                    // Every rendered frame reports its timing to the extensions, a
-                    // warmup frame and a settle draw included, as a live frame does.
-                    reportHeadlessFrame(sketch, renderer: renderer, deltaTime: 1 / clock,
-                                        fps: clock, drawSeconds: drawSeconds)
-                    // A written frame settles: the same moment drawn again `exportSettle`
-                    // times with the clock held (no `deltaTime`, the frame count moving
-                    // on so the renderer steps its persistent layers), and the last
-                    // draw is the one written. Warmup frames are drawn once.
-                    if k >= skipFrames {
-                        for _ in 1..<max(1, exportSettle) {
-                            // A settle draw reads back like any other, so a frame held
-                            // for eight of them would carry eight readbacks at once;
-                            // `rendered` holds the one that is kept, which is what lets
-                            // the pass before it go here rather than at the frame's end.
-                            autoreleasepool {
-                                sketch.advance(time: Double(k) / clock, deltaTime: 0, frameRate: clock)
-                                drawStart = CACurrentMediaTime()
-                                sketch.performDraw()
-                                drawSeconds = CACurrentMediaTime() - drawStart
-                                rendered = accumulates
-                                    ? renderer.accumulatedFrame(of: sketch.drawer, viewport: viewport, width: width, height: height)
-                                    : renderer.renderedFrame(of: sketch.drawer, viewport: viewport, width: width, height: height)
-                                reportHeadlessFrame(sketch, renderer: renderer, deltaTime: 0,
-                                                    fps: clock, drawSeconds: drawSeconds)
+                if k >= skipFrames, let shutter = subframeShutter(for: sketch) {
+                    // A written frame under `--subframes`: the moments across its
+                    // shutter, each drawn and folded into the mean, the last one
+                    // presenting it. The warmup frames before it were drawn once.
+                    lastSubframeShutter = shutter.shutter
+                    let instant = Double(k) / clock
+                    for i in 0..<shutter.count {
+                        let time = shutter.time(ofMoment: i, at: instant, rate: clock)
+                        let deltaTime = lastDrawTime.map { time - $0 } ?? shutter.spacing(rate: clock)
+                        // Each moment reads back like a frame, so it gets its own pool.
+                        let holds: Bool = try autoreleasepool {
+                            sketch.advance(time: time, deltaTime: deltaTime, frameRate: clock)
+                            let drawStart = CACurrentMediaTime()
+                            sketch.performDraw()
+                            let drawSeconds = CACurrentMediaTime() - drawStart
+                            if let refusal = subframeRefusal(sketch.drawer, count: shutter.count) {
+                                throw ExportError(.unsupported, path: path, problem: refusal)
                             }
+                            // A sketch that stops its loop holds this moment as its
+                            // frame, which has nothing left to blur.
+                            let holds = sketch.exportHoldsFrame
+                            renderer.subframe = holds ? nil
+                                : MetalRenderer.Subframe(index: i, count: shutter.count)
+                            let frame = renderer.renderedFrame(of: sketch.drawer, viewport: viewport,
+                                                               width: width, height: height)
+                            renderer.subframe = nil
+                            guard frame != nil else {
+                                throw ExportError(.unrendered, path: path, frame: written,
+                                                  problem: "moment \(i) of frame \(written) did not come back from the GPU")
+                            }
+                            reportHeadlessFrame(sketch, renderer: renderer, deltaTime: deltaTime,
+                                                fps: clock, drawSeconds: drawSeconds)
+                            if holds || i == shutter.count - 1 { rendered = frame }
+                            return holds
                         }
+                        lastDrawTime = time
+                        if holds { break }
                     }
                 } else {
-                    // A warmup frame with no persistent picture: not captured, but a
-                    // stateful compute sim still needs its steps run on the GPU so the
-                    // field evolves into the first captured frame.
-                    renderer.stepCompute(sketch.drawer)
+                    sketch.advance(time: Double(k) / clock, deltaTime: 1 / clock, frameRate: clock)
+                    var drawStart = CACurrentMediaTime()
+                    sketch.performDraw()                          // run every frame so state settles
+                    var drawSeconds = CACurrentMediaTime() - drawStart
+                    lastDrawTime = Double(k) / clock
+                    // A warmup frame under `--subframes` says what the export cannot
+                    // carry before any frame is written.
+                    if exportSubframes > 1,
+                       let refusal = subframeRefusal(sketch.drawer, count: exportSubframes) {
+                        throw ExportError(.unsupported, path: path, problem: refusal)
+                    }
+
+                    // Whether the interpolator can work on this sketch at all is only
+                    // knowable once it has drawn, so it is asked at the first frame,
+                    // before a single file has been written.
+                    if k == 0, motion?.source == .made,
+                       let refusal = renderer.madeFrameRefusal(sketch.drawer) {
+                        throw ExportError(.unsupported, path: path, problem:
+                            "\(refusal). Drop the made frames (--made-frames) and every frame is drawn instead, which costs more time and is never worse")
+                    }
+
+                    // A picture that carries from frame to frame on the GPU has to be
+                    // rendered through the warmup too, or the first written frame starts
+                    // from nothing while the sketch's own state is `--skip` seconds on:
+                    // the `noClear` pile, and any layer that persists (a feedback, an
+                    // accumulator or a line spray's running mean, a simulation field,
+                    // reflection history), which is what `usesFeedback` asks. A picture
+                    // that is its clock alone skips the render.
+                    let accumulates = sketch.drawer.accumulates
+                    if accumulates || sketch.drawer.usesFeedback || k >= skipFrames {
+                        rendered = accumulates
+                            ? renderer.accumulatedFrame(of: sketch.drawer, viewport: viewport, width: width, height: height)
+                            : renderer.renderedFrame(of: sketch.drawer, viewport: viewport, width: width, height: height)
+                        // Every rendered frame reports its timing to the extensions, a
+                        // warmup frame and a settle draw included, as a live frame does.
+                        reportHeadlessFrame(sketch, renderer: renderer, deltaTime: 1 / clock,
+                                            fps: clock, drawSeconds: drawSeconds)
+                        // A written frame settles: the same moment drawn again `exportSettle`
+                        // times with the clock held (no `deltaTime`, the frame count moving
+                        // on so the renderer steps its persistent layers), and the last
+                        // draw is the one written. Warmup frames are drawn once.
+                        if k >= skipFrames {
+                            for _ in 1..<max(1, exportSettle) {
+                                // A settle draw reads back like any other, so a frame held
+                                // for eight of them would carry eight readbacks at once;
+                                // `rendered` holds the one that is kept, which is what lets
+                                // the pass before it go here rather than at the frame's end.
+                                autoreleasepool {
+                                    sketch.advance(time: Double(k) / clock, deltaTime: 0, frameRate: clock)
+                                    drawStart = CACurrentMediaTime()
+                                    sketch.performDraw()
+                                    drawSeconds = CACurrentMediaTime() - drawStart
+                                    rendered = accumulates
+                                        ? renderer.accumulatedFrame(of: sketch.drawer, viewport: viewport, width: width, height: height)
+                                        : renderer.renderedFrame(of: sketch.drawer, viewport: viewport, width: width, height: height)
+                                    reportHeadlessFrame(sketch, renderer: renderer, deltaTime: 0,
+                                                        fps: clock, drawSeconds: drawSeconds)
+                                }
+                            }
+                        }
+                    } else {
+                        // A warmup frame with no persistent picture: not captured, but a
+                        // stateful compute sim still needs its steps run on the GPU so the
+                        // field evolves into the first captured frame.
+                        renderer.stepCompute(sketch.drawer)
+                    }
                 }
                 if let rendered { lastRendered = rendered }
 
@@ -3671,6 +3755,55 @@ public extension OllinApp {
                 exit(1)
             }
             exportSettle = n
+        }
+        // `--subframes N [--shutter F]` draws each exported frame at N moments
+        // across the shutter and averages them (see `exportSubframes`).
+        // Pre-parsed like the render scale, so it applies to whichever export
+        // flag follows.
+        if let i = args.firstIndex(of: "--subframes") {
+            guard i + 1 < args.count, let n = Int(args[i + 1]), n >= 1 else {
+                FileHandle.standardError.write(Data(
+                    "usage: --subframes N [--shutter F], N the moments drawn per written frame (1 draws each frame once)\n".utf8))
+                exit(1)
+            }
+            if args.contains("--settle") {
+                FileHandle.standardError.write(Data(
+                    "--subframes cannot settle: --settle draws one moment several times and --subframes draws several moments once each\n".utf8))
+                exit(1)
+            }
+            // A take carries one frame of input per drawn frame, and the
+            // moments draw each frame several times.
+            if args.contains("--replay") || args.contains("--record-take") {
+                FileHandle.standardError.write(Data(
+                    "--subframes cannot replay or record a take: a take carries one frame of input per drawn frame, and the moments draw each frame several times\n".utf8))
+                exit(1)
+            }
+            if args.contains("--made-frames") {
+                FileHandle.standardError.write(Data(
+                    "--subframes cannot use --made-frames: a made frame is built from the motion between two frames drawn once each\n".utf8))
+                exit(1)
+            }
+            // The vector, spatial, and web exports take their own paths, so say
+            // so rather than doing nothing.
+            let takesIt = ["--export", "--export-exr", "--export-sequence", "--export-video",
+                           "--export-gif", "--export-loop", "--export-grid", "--export-sweep"]
+            if !takesIt.contains(where: args.contains) {
+                FileHandle.standardError.write(Data(
+                    "note: --subframes applies to \(takesIt.joined(separator: ", ")); nothing here reads it\n".utf8))
+            }
+            exportSubframes = n
+        }
+        if let i = args.firstIndex(of: "--shutter") {
+            guard i + 1 < args.count, let f = Double(args[i + 1]), f.isFinite, f >= 0 else {
+                FileHandle.standardError.write(Data(
+                    "usage: --shutter F, F the fraction of a frame the shutter stays open (0.5 is film's half-open shutter, 1 a fully open one)\n".utf8))
+                exit(1)
+            }
+            if !args.contains("--subframes") {
+                FileHandle.standardError.write(Data(
+                    "note: --shutter spreads the moments of --subframes; without it nothing reads the shutter\n".utf8))
+            }
+            exportShutter = f
         }
         // `--slow-motion N` writes a file that plays N times slower than the
         // sketch ran: the clock steps N times finer, the file keeps its `--fps`,

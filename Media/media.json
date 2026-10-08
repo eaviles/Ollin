@@ -747,24 +747,26 @@
       "width": 1080
     },
     "3D/Effects/MotionBlur": {
-      "bytes": {
-        "loop": 1144328,
-        "loopSmall": 234540,
-        "still": 36623,
-        "stillSmall": 14327
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
-      "length": "10s",
-      "loop": "examples/3D/Effects/MotionBlur/loop.mp4?v=80ae0195",
-      "loopSmall": "examples/3D/Effects/MotionBlur/loop-640.mp4?v=a4b27ab1",
-      "motion": 9.816,
-      "rendered": "2026-09-10",
+      "length": "10.0s",
       "seconds": 10.0,
-      "source": "88f32459519177d5",
-      "still": "examples/3D/Effects/MotionBlur/still.jpg?v=7885f3cd",
-      "stillSmall": "examples/3D/Effects/MotionBlur/still-640.jpg?v=33b9dfa5",
-      "width": 1080
+      "frame": 480,
+      "motion": 9.78,
+      "sound": false,
+      "source": "4b53f4bfbd7d7ad1",
+      "rendered": "2026-10-08",
+      "bytes": {
+        "loop": 1112747,
+        "loopSmall": 228039,
+        "still": 36122,
+        "stillSmall": 14218
+      },
+      "loop": "examples/3D/Effects/MotionBlur/loop.mp4?v=1ecfaaed",
+      "loopSmall": "examples/3D/Effects/MotionBlur/loop-640.mp4?v=2bbd4a11",
+      "still": "examples/3D/Effects/MotionBlur/still.jpg?v=d12fd5ab",
+      "stillSmall": "examples/3D/Effects/MotionBlur/still-640.jpg?v=5567b2f1",
+      "seed": 1
     },
     "3D/Effects/PathTraced": {
       "bytes": {

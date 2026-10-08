@@ -2555,33 +2555,32 @@ fragment float4 ollin_fx_supersample_resolve(PresentOut in [[stage_in]],
 // magnitude clamped to [0.5px, k]), a tile pyramid reducing that to each
 // k-pixel tile's dominant velocity (the per-tile max, then the 3x3 neighbor
 // max, so a mover's blur can reach every pixel its streak covers), and the
-// reconstruction gather: S taps along the neighborhood's dominant velocity,
-// each classified continuously by relative depth and blurriness (cone /
-// cylinder / soft depth compare), so a moving surface streaks past its own
-// silhouette, a sharp background stays sharp behind it, and a blurry
-// foreground lets the background it uncovers show through. Velocities are
-// pixels; camera-space depth goes in the fill's z as small negative values (the
-// published convention: nearer is larger). The per-pixel gather jitter is a
-// pure function of pixel position (the dither's rule), so exports reproduce.
+// reconstruction, a scatter-as-you-gather pass (the published improved
+// sample contribution over the same tile pyramid): taps along the
+// neighborhood's dominant velocity, each weighed by whether its streak reaches
+// this pixel (a tap in front) or this pixel's streak reaches it (a tap behind),
+// so a moving surface streaks past its own silhouette, a sharp background stays
+// sharp behind it, and a blurry foreground lets the background it uncovers show
+// through. Velocities are pixels; camera-space depth goes in the fill's z as
+// small negative values (the published convention: nearer is larger). The
+// per-pixel gather jitter is a pure function of pixel position (the dither's
+// rule), so exports reproduce.
 
-// Is X inside Y's own point-spread (a tap can only contribute where its blur
-// reaches)? The max keeps a zero-velocity tap from dividing by zero: 1 - d/0
-// would be -inf (clamped fine), but d = 0 over len = 0 would be NaN.
-static inline float ollin_mb_cone(float dist, float len) {
-    return clamp(1.0 - dist / max(len, 1e-3), 0.0, 1.0);
+// Is the tap behind this pixel (x) or in front of it (y)? Continuous over a soft
+// extent in world units, and the two halves always sum to one, which is what
+// keeps a tap's weight at most one and the gradients across a silhouette even.
+// Camera-space z is negative ahead, so zc - zs > 0 puts the tap farther away.
+static inline float2 ollin_mb_depth_cmp(float zc, float zs, float extent) {
+    float d = (zc - zs) / extent;
+    return saturate(0.5 + float2(d, -d));
 }
 
-// Do X and Y blur together (both inside each other's velocity spread)? The
-// epsilon keeps smoothstep's edges apart when a tap's velocity is zero
-// (edge0 == edge1 divides by zero at the boundary).
-static inline float ollin_mb_cylinder(float dist, float len) {
-    return 1.0 - smoothstep(0.95 * len, 1.05 * len + 1e-3, dist);
-}
-
-// Is zb closer to the camera than za (continuously, over a soft extent in
-// world units)? Camera-space z is negative ahead, so closer = larger.
-static inline float ollin_mb_soft_depth(float za, float zb, float extent) {
-    return clamp(1.0 - (za - zb) / extent, 0.0, 1.0);
+// Does each spread reach a tap `offset` steps away? x for this pixel's spread,
+// y for the tap's, both converted from pixels to steps. The first step is free
+// (max(offset - 1, 0)), since the mirrored taps sit as close as half a step to
+// the center and a spread of a step must still reach them.
+static inline float2 ollin_mb_spread_cmp(float offset, float2 spread, float pxToSteps) {
+    return saturate(pxToSteps * spread - max(offset - 1.0, 0.0));
 }
 
 // Pass 1, the velocity fill: one full-screen velocity per pixel, in pixels,
@@ -2725,21 +2724,29 @@ fragment float4 ollin_mb_neighbormax(PresentOut in [[stage_in]],
     return float4(best, 0.0, 0.0);
 }
 
-// Pass 4, the reconstruction: gather S taps along the neighborhood's dominant
-// velocity and weigh each by the published three-case classification. Case 1:
-// a blurry tap in front of this pixel streaks over it (its cone says whether
-// its blur reaches this far). Case 2: this pixel is itself blurry, so any tap
-// behind it estimates the background its streak uncovers. Case 3: both blur
-// together and lie inside each other's spread. The center pixel opens the sum
-// at 1/max(its own velocity, 0.5px), the inverse-magnitude weight that keeps a
-// sharp pixel heavy and a fast one light; alpha is gathered with the color (the
-// frame is premultiplied linear). All classifications are continuous, so no
-// sorting and no ordering between taps. The gather jitter de-bands the tap
-// comb; a whole-neighborhood dominant velocity under half a pixel returns the
-// frame untouched.
+// Pass 4, the reconstruction: scatter as you gather, along the neighborhood's
+// dominant velocity. A tap counts by the published improved sample contribution:
+// the depth compare splits it into behind and in front (summing to one), a tap
+// behind counts where this pixel's own spread reaches it (the background its
+// streak uncovers, estimated from the visible background nearby), and a tap in
+// front counts where the tap's spread reaches this pixel (a foreground streaking
+// over it). The weights are not renormalized: their mean over the taps is the
+// share of the shutter the streaks spent here, and the pixel's own color fills
+// the rest. That makes every result a convex combination of what was there (a
+// streak never outshines its source) and keeps a lone mover's light where a
+// renormalized gather keeps a pixel inside it at full value while adding the
+// ramps outside. Taps come in pairs, k + 1/2 + jitter steps either side, so
+// none lands on the center and the comb stays symmetric about it. The published
+// form goes on to give both taps of a pair the nearer, faster one's weight (a
+// mirrored background reconstruction, blurring the visible background beside a
+// streak as much as the one it uncovers); measured against the subframe
+// export, that smeared a still column beside a fast sphere and moved the streak
+// further from the reference, so it is left out. alpha is gathered with the
+// color (the frame is premultiplied linear). A whole-neighborhood dominant
+// velocity under half a pixel returns the frame untouched.
 //
 // params[0] = (texel.x, texel.y, k, S); params[1] = (soft depth extent,
-// tile texel.x, tile texel.y, 0).
+// tile texel.x, tile texel.y, 0). S is odd: (S - 1) / 2 pairs.
 fragment float4 ollin_mb_reconstruct(PresentOut in [[stage_in]],
                                      texture2d<float> color [[texture(0)]],
                                      texture2d<float> fill [[texture(1)]],
@@ -2749,39 +2756,41 @@ fragment float4 ollin_mb_reconstruct(PresentOut in [[stage_in]],
     constexpr sampler csamp(filter::nearest, address::clamp_to_edge);
     float2 texel = params[0].xy;
     float k = params[0].z;
-    int S = int(params[0].w);
+    int pairs = max(1, (int(params[0].w) - 1) / 2);
     float extent = params[1].x;
     float2 X = in.position.xy;
     float4 cx = color.sample(csamp, in.uv);
     float2 tileUV = (floor(X / k) + 0.5) * params[1].yz;
     float2 vN = nmax.sample(csamp, tileUV).xy;
-    if (length(vN) <= 0.5 + 1e-3) { return cx; }
+    float lenN = length(vN);
+    if (lenN <= 0.5 + 1e-3) { return cx; }
 
     float4 fx = fill.sample(csamp, in.uv);
     float zx = fx.z;
     float lenX = length(fx.xy);
-    float weight = 1.0 / max(lenX, 0.5);
-    float4 sum = cx * weight;
+    // A step is the spacing between neighboring taps; the farthest pair sits
+    // the neighborhood's whole spread away.
+    float2 dir = vN / lenN;
+    float stepPx = lenN / float(pairs);
+    float pxToSteps = 1.0 / stepPx;
     float j = hash12(X) - 0.5;
-    int center = (S - 1) / 2;
-    for (int i = 0; i < S; i++) {
-        if (i == center) { continue; }   // the center tap opened the sum
-        // Evenly placed taps along +/- vN, the whole comb jittered together.
-        float t = mix(-1.0, 1.0, (float(i) + j + 1.0) / (float(S) + 1.0));
-        float2 Y = floor(X + vN * t) + 0.5;   // snap to the tap's pixel center
-        float2 Yuv = Y * texel;
-        float4 fy = fill.sample(csamp, Yuv);
-        float dist = length(Y - X);
-        float front = ollin_mb_soft_depth(zx, fy.z, extent);   // tap in front of X
-        float behind = ollin_mb_soft_depth(fy.z, zx, extent);  // tap behind X
-        float alpha = front * ollin_mb_cone(dist, length(fy.xy))
-                    + behind * ollin_mb_cone(dist, lenX)
-                    + ollin_mb_cylinder(dist, length(fy.xy))
-                    * ollin_mb_cylinder(dist, lenX) * 2.0;
-        weight += alpha;
-        sum += alpha * color.sample(csamp, Yuv);
+    float4 sumColor = 0.0;
+    float sumWeight = 0.0;
+    for (int i = 0; i < pairs; i++) {
+        float offset = float(i) + 0.5 + j;
+        float2 Y1 = floor(X - dir * offset * stepPx) + 0.5;   // snap to the tap's pixel center
+        float2 Y2 = floor(X + dir * offset * stepPx) + 0.5;
+        float4 f1 = fill.sample(csamp, Y1 * texel);
+        float4 f2 = fill.sample(csamp, Y2 * texel);
+        float w1 = dot(ollin_mb_depth_cmp(zx, f1.z, extent),
+                       ollin_mb_spread_cmp(offset, float2(lenX, length(f1.xy)), pxToSteps));
+        float w2 = dot(ollin_mb_depth_cmp(zx, f2.z, extent),
+                       ollin_mb_spread_cmp(offset, float2(lenX, length(f2.xy)), pxToSteps));
+        sumColor += w1 * color.sample(csamp, Y1 * texel) + w2 * color.sample(csamp, Y2 * texel);
+        sumWeight += w1 + w2;
     }
-    return sum / weight;
+    float taps = float(2 * pairs);
+    return sumColor / taps + (1.0 - sumWeight / taps) * cx;
 }
 
 // MARK: - Separable subsurface scattering (the diffusion blur)

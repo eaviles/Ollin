@@ -37,7 +37,7 @@ struct LinearLuminanceFrame {
         OllinApp.isRenderingHeadless = true
         defer { OllinApp.isRenderingHeadless = false }
         renderer.capturesLinearFrame = true
-        _ = OllinApp.renderImage(of: sketch, frame: 0, fps: 60, renderer: renderer)
+        _ = try OllinApp.renderImage(of: sketch, frame: 0, fps: 60, renderer: renderer)
         let linear = try #require(renderer.lastLinearFrame)
         let n = linear.width * linear.height
         let halfs = linear.color.contents().bindMemory(to: Float16.self, capacity: n * 4)

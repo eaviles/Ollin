@@ -139,19 +139,53 @@ struct FrameInvariantTests {
     /// A streak spreads a mover's light along its travel and makes none: the blurred
     /// frame's total is the sharp frame's.
     ///
-    /// Measured 2026-10-06 and filed: a 24-pixel box crossing at 20 pixels a frame
-    /// gains 5% of its light at the default shutter and 25% at a full one. The
-    /// reconstruction filter gathers, so a pixel inside the box keeps the box's full
-    /// value while the ramps outside are added on; a scatter would dim the interior
-    /// by the share of the exposure the box spent elsewhere. The known issue is the
-    /// standing nomination and fails the day the streak conserves.
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func theStreakConservesLight() throws {
-        let on = total(try render(BlurInvariantProbe.make(blur: true), frame: 2))
+    /// Measured 2026-10-06: the renormalized gather the blur first shipped with kept a
+    /// pixel inside a 24-pixel box at the box's full value while adding the ramps
+    /// outside, and gained 5% of the box's light at the default shutter and 25% at a
+    /// full one. Since 2026-10-08 the taps' weights are not renormalized: their mean is
+    /// the share of the shutter the streak spent at a pixel and the pixel's own color
+    /// fills the rest, which holds the light within a fifth of a percent.
+    @Test(.enabled(if: Snapshot.hasMetal), arguments: [0.5, 1.0])
+    func theStreakConservesLight(shutter: Double) throws {
+        let on = total(try render(BlurInvariantProbe.make(blur: true, shutter: shutter), frame: 2))
         let off = total(try render(BlurInvariantProbe.make(blur: false), frame: 2))
         #expect(off > 100, "the mover drew nothing: \(off)")
-        withKnownIssue("the motion blur gains light: 25% at a full shutter (measured 2026-10-06)") {
-            #expect(abs(on / off - 1) < 0.02, "the blur changed the frame's light by \(on / off)")
+        #expect(abs(on / off - 1) < 0.01, "the blur changed the frame's light by \(on / off)")
+    }
+
+    /// The blur is held to the streak itself: the export that draws each frame at
+    /// moments across the shutter and averages them (`--subframes`). Region by region
+    /// (the plateau inside the box, the ramps inside and outside its edges, the ground
+    /// beyond), the canvas blur stays within 2% of the box's value of that reference on
+    /// average. The renormalized gather missed the inner ramps by 20% of the box's
+    /// value at either shutter.
+    @Test(.enabled(if: Snapshot.hasMetal), arguments: [0.5, 1.0])
+    func theStreakMatchesTheSubframeReference(shutter: Double) throws {
+        let sharp = try SubframeExportTests.render(StreakProbe.make(blur: false, shutter: shutter), frame: 3)
+        let post = try SubframeExportTests.render(StreakProbe.make(blur: true, shutter: shutter), frame: 3)
+        let reference = try SubframeExportTests.render(StreakProbe.make(blur: false, shutter: shutter),
+                                                       frame: 3, subframes: 40, shutter: shutter)
+        let rows = 88..<104
+        let value = sharp.column(StreakProbe.left(at: 3) + 12, rows: rows)
+        #expect(value > 0.1, "the box drew nothing: \(value)")
+        // The box's edges at the instant, and how far the shutter carries each.
+        let left = Double(StreakProbe.left(at: 3)), right = left + 24
+        let reach = 10 * shutter
+        var error: [String: (sum: Double, count: Int)] = [:]
+        for x in 0..<sharp.width {
+            let px = Double(x) + 0.5
+            let region: String
+            if px < left - reach || px > right + reach { region = "the ground beyond" }
+            else if px < left || px > right { region = "the outer ramps" }
+            else if px < left + reach || px > right - reach { region = "the inner ramps" }
+            else { region = "the plateau" }
+            let e = abs(post.column(x, rows: rows) - reference.column(x, rows: rows))
+            error[region, default: (0, 0)].sum += e
+            error[region, default: (0, 0)].count += 1
+        }
+        for (region, e) in error {
+            let mean = e.sum / Double(e.count)
+            #expect(mean < 0.02 * value, "\(region) strayed \(mean / value) of the box's value from the reference")
         }
     }
 
@@ -228,10 +262,12 @@ private final class TAAInvariantProbe: Sketch {
 /// or off, the frame read at the second export frame so there is a previous one.
 private final class BlurInvariantProbe: Sketch {
     var blur = true
+    var shutter = 1.0
 
-    static func make(blur: Bool) -> BlurInvariantProbe {
+    static func make(blur: Bool, shutter: Double = 1) -> BlurInvariantProbe {
         let p = BlurInvariantProbe()
         p.blur = blur
+        p.shutter = shutter
         return p
     }
 
@@ -240,11 +276,45 @@ private final class BlurInvariantProbe: Sketch {
     override func draw() {
         background(.black)
         ortho(eye: Vector3(0, 0, 100), target: .zero, height: 192, near: 1, far: 200)
-        if blur { motionBlur(shutter: 1) }
+        if blur { motionBlur(shutter: shutter) }
         fill(Color(white: 0.6))
         withMotion {
             withState {
                 translate(20 * Double(frameCount) - 40, 0, 0)
+                drawBox(width: 24, height: 24, depth: 2)
+            }
+        }
+    }
+}
+
+/// The same crossing driven by the clock rather than the frame count, so the
+/// subframe export can draw it between frames: 20 pixels a frame at 60 frames a
+/// second, its edges on whole pixels at every frame's instant.
+private final class StreakProbe: Sketch {
+    var blur = true
+    var shutter = 1.0
+
+    static func make(blur: Bool, shutter: Double) -> StreakProbe {
+        let p = StreakProbe()
+        p.blur = blur
+        p.shutter = shutter
+        return p
+    }
+
+    /// The box's left edge, in canvas pixels, at frame `n`'s instant.
+    static func left(at n: Int) -> Int { 96 + 20 * n - 40 - 12 }
+
+    override var canvasSize: CanvasSize { .square(192) }
+
+    override func draw() {
+        background(.black)
+        ortho(eye: Vector3(0, 0, 100), target: .zero, height: 192, near: 1, far: 200)
+        if blur { motionBlur(shutter: shutter) }
+        noStroke()
+        fill(Color(white: 0.6))
+        withMotion {
+            withState {
+                translate(1200 * time - 40, 0, 0)
                 drawBox(width: 24, height: 24, depth: 2)
             }
         }

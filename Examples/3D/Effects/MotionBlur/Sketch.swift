@@ -70,6 +70,10 @@ final class MotionBlur: Sketch {
             drawBox(width: 13, height: 0.12, depth: 13)
         }
 
-        drawCaption("motionBlur(shutter: \(String(format: "%.2f", shutter))) \(blur ? "on" : "off")")
+        // The caption goes over the finished frame, so the floor's streak under
+        // it leaves the text alone.
+        withOverlay {
+            drawCaption("motionBlur(shutter: \(String(format: "%.2f", shutter))) \(blur ? "on" : "off")")
+        }
     }
 }

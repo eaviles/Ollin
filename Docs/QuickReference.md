@@ -188,6 +188,7 @@ A packaged sketch runs with `swift run <Target> <flags>`, and a single file with
 | `--settle N` | Draws each written frame N times with the clock held. A `LineSpray` and an `Accumulator` need it to converge. Anti-aliasing over time and path tracing don't. |
 | `--render-quality` | `performance`, `default`, or `detail`: the sampling budgets for soft shadows, depth of field, and ambient occlusion. Exports default to `detail`. |
 | `--render-scale N` | Draws each frame N times larger and averages it down. It smooths fills and polygons; shapes and strokes are already smooth. |
+| `--subframes N` | Draws each frame at N moments across the shutter and averages them: motion blur for anything the sketch draws, 2D included. `--shutter F` sets the opening (0.5 when left out). |
 | `--bench` | Times 600 frames and reports the cost per frame, without writing anything. `--gpu` adds the GPU's side. It measures the window's quality tier; an export lifts `.default` to `.detail`, so add `--render-quality detail` to time what an export pays. |
 
 [Export](./Output/Export.md) has every flag.
@@ -227,6 +228,7 @@ Each of these gives a wrong or empty picture and no error.
 - **A far contour of a distance field measured on a half-float layer.** Past 1,024 pixels a half float holds a distance only to the nearest whole pixel, so a contour cut there comes out ragged. Draw the marks into `makeRenderTarget(precision: .float32)`; the field and every filter after it keep single precision.
 - **A still at frame 0.** `--export` draws frame 0 unless told otherwise, and nothing came before it: motion blur is off and a trail or a pile holds one frame. Pick a later frame with `--frame N`. A `LineSpray` or an `Accumulator` is the exception: `--settle N` redraws the frame with the clock held, so it converges even at frame 0.
 - **Motion driven by `frameCount` under `--settle`.** The clock holds for the extra draws but `frameCount` keeps counting, so a camera driven by it moves and restarts the converging picture. Drive motion from `time`.
+- **Motion driven by `frameCount` under `--subframes`.** Every moment is a draw, so a fixed step once per `draw()` runs N times as fast and does not blur. Drive it from `time`, or step it by `deltaTime`.
 - **Values tuned in the inspector, in an export.** The export uses the values in the source. Save them first, or pass `--param`.
 - **Values the command line reads loosely.** A `--param` outside the declared range is clamped, an unknown `--render-quality` becomes `detail`, and an `--fps` that does not parse becomes the default. None of them says so.
 - **`Filter.grain` in the shadows.** It adds noise and clips it, which lifts black. `.filmGrain` leaves black and white alone, though its grain still shows most in near-black tones.

@@ -99,6 +99,8 @@ public extension CommandFlag {
         .init("--render-quality", .run, .value("performance|default|detail"), "how hard the render works"),
         .init("--render-scale", .run, .value("N"), "draw each frame N times across and average it down"),
         .init("--settle", .run, .value("N"), "draw each written frame N times with the clock held"),
+        .init("--subframes", .run, .value("N"), "draw each frame at N moments across the shutter and average them (motion blur)"),
+        .init("--shutter", .run, .value("F"), "the fraction of a frame the shutter stays open for --subframes (0.5 when unsaid)"),
         .init("--slow-motion", .run, .value("N"), "write a file that plays N times slower than the run"),
         .init("--made-frames", .run, .nothing, "fill the slow motion with frames built between the drawn ones"),
         .init("--path-traced", .run, .optionalValue("samples"), "render offline with a path tracer"),

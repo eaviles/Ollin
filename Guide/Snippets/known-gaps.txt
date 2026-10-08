@@ -21,7 +21,7 @@
 bb59795f7264  Guide/02-Color.md:326  cannot find 'blue' in scope
 c896c6da23a4  Guide/02-Color.md:67  cannot find 'blue' in scope
 04660022f6ba  Guide/02-Color.md:89  cannot find 'ink' in scope
-2ab302b50dae  Guide/04-Randomness.md:433  cannot find 'pool' in scope
+2ab302b50dae  Guide/04-Randomness.md:456  cannot find 'pool' in scope
 34bad064ce01  Guide/04-Randomness.md:63  cannot find 'colors' in scope
 b455e4f737c2  Guide/06-GridsAndRepetition.md:295  cannot find 'drawPetals' in scope
 60af001c8df1  Guide/06-GridsAndRepetition.md:377  cannot find 'spiral' in scope
@@ -48,13 +48,13 @@ c3c5db53cc82  Guide/09-Pictures.md:352  cannot find 'target' in scope
 aec7ca7fcac8  Guide/09-Pictures.md:493  'module' is inaccessible due to 'internal' protection level
 ae33653cb376  Guide/09-Pictures.md:70  cannot find 'c' in scope
 7856a82b5957  Guide/10-Vectors.md:105  cannot find 'target' in scope
-d7900de9175f  Guide/10-Vectors.md:180  cannot find 'target' in scope
+d7900de9175f  Guide/10-Vectors.md:187  cannot find 'target' in scope
 5f55cca8347f  Guide/10-Vectors.md:93  cannot find 'home' in scope
-766fbe6bd4ab  Guide/11-ForcesAndPhysics.md:306  cannot convert value of type '@MainActor (Vector2, World3D) -> (body: Body3D, point: Vector3)?' to expected argument type 'Body'
-903bd8f5d681  Guide/11-ForcesAndPhysics.md:314  cannot convert value of type '@MainActor (Vector2, World3D) -> (body: Body3D, point: Vector3)?' to expected argument type 'Body'
+766fbe6bd4ab  Guide/11-ForcesAndPhysics.md:308  cannot convert value of type '@MainActor (Vector2, World3D) -> (body: Body3D, point: Vector3)?' to expected argument type 'Body'
+903bd8f5d681  Guide/11-ForcesAndPhysics.md:316  cannot convert value of type '@MainActor (Vector2, World3D) -> (body: Body3D, point: Vector3)?' to expected argument type 'Body'
 ffa12e764a7d  Guide/12-FlocksAndSwarms.md:17  cannot find 'position' in scope
-c75eb2a20310  Guide/12-FlocksAndSwarms.md:389  cannot find 'crowd' in scope
-750461323d36  Guide/14-FieldsAndFlow.md:280  cannot find 'x' in scope
+c75eb2a20310  Guide/12-FlocksAndSwarms.md:402  cannot find 'crowd' in scope
+750461323d36  Guide/14-FieldsAndFlow.md:281  cannot find 'x' in scope
 bac6f70b2c26  Guide/15-ShapesAsMaterial.md:110  cannot find 'circles' in scope
 6c9bb524bf9e  Guide/15-ShapesAsMaterial.md:158  cannot find 'blob' in scope
 45fd2bf76c06  Guide/15-ShapesAsMaterial.md:292  cannot find 'path' in scope
@@ -65,8 +65,8 @@ bac6f70b2c26  Guide/15-ShapesAsMaterial.md:110  cannot find 'circles' in scope
 e94aaf6380fc  Guide/15-ShapesAsMaterial.md:537  unary operator cannot be separated from its operand
 e428f7fa87a3  Guide/15-ShapesAsMaterial.md:62  cannot find 'circle' in scope
 c68765b0c991  Guide/15-ShapesAsMaterial.md:75  cannot convert value of type '@MainActor (Double, Double, Double, Double) -> Double' to expected argument type '[Vector2]'
-c8a055fb7cf3  Guide/16-CurvesAndFigures.md:291  cannot convert value of type 'Shape' to expected argument type 'Contour'
-fff55af49a8c  Guide/16-CurvesAndFigures.md:310  cannot find 'ring' in scope
+c8a055fb7cf3  Guide/16-CurvesAndFigures.md:300  cannot convert value of type 'Shape' to expected argument type 'Contour'
+fff55af49a8c  Guide/16-CurvesAndFigures.md:319  cannot find 'ring' in scope
 c6308b0590b1  Guide/17-MarksAndMedia.md:163  cannot find 'navy' in scope
 6aff37f70683  Guide/17-MarksAndMedia.md:177  cannot find 'bath' in scope
 1e41fd025294  Guide/17-MarksAndMedia.md:188  cannot find 'bath' in scope
@@ -82,27 +82,27 @@ cd36a2d9f010  Guide/21-PicturesYouSolve.md:17  cannot convert value of type 'Ren
 2065dd8af5c4  Guide/21-PicturesYouSolve.md:250  cannot convert value of type 'RenderTarget' to expected argument type 'Image'
 a1896233ab91  Guide/21-PicturesYouSolve.md:320  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
 8f074282df6a  Guide/21-PicturesYouSolve.md:67  cannot find 'bands' in scope
-70e92ab22ab8  Guide/22-IteratedForms.md:453  reference to member 'domainColoring' cannot be resolved without a contextual type
-291fdafb6fdf  Guide/27-Meshes.md:107  cannot find 'paint' in scope
-68f2b1e342d8  Guide/27-Meshes.md:123  cannot find 'ribbon' in scope
-cdcf169eea19  Guide/27-Meshes.md:137  cannot find 'base' in scope
-9154907c71d0  Guide/27-Meshes.md:162  cannot find 'grown' in scope
-a23ac04ffc12  Guide/27-Meshes.md:172  cannot find 'u' in scope
-52bcf0d25836  Guide/27-Meshes.md:189  cannot find 'boulder' in scope
-a5a1becd18ce  Guide/27-Meshes.md:208  cannot find 'dropPoint' in scope
-12f405514567  Guide/27-Meshes.md:240  cannot find 'stage' in scope
-d8b410a46463  Guide/27-Meshes.md:257  cannot find 'stage' in scope
-11169c9041c5  Guide/27-Meshes.md:302  cannot find 'block' in scope
-43b2fc3f26eb  Guide/27-Meshes.md:332  cannot find 'ring' in scope
-65a493466831  Guide/27-Meshes.md:351  cannot find 'growth' in scope
-c3a7d05cd766  Guide/27-Meshes.md:364  cannot find 'ball' in scope
-a3cc26d6c8f4  Guide/27-Meshes.md:42  cannot find 'teal' in scope
-464ad97ecd6f  Guide/27-Meshes.md:52  cannot find 'planks' in scope
-176ac6a236e1  Guide/27-Meshes.md:91  cannot find 'dents' in scope
-2fc02e91a351  Guide/28-MaterialsAndSurroundings.md:170  expected '}' in class
+70e92ab22ab8  Guide/22-IteratedForms.md:473  reference to member 'domainColoring' cannot be resolved without a contextual type
+9154907c71d0  Guide/27-Meshes.md:110  cannot find 'grown' in scope
+a23ac04ffc12  Guide/27-Meshes.md:120  cannot find 'u' in scope
+52bcf0d25836  Guide/27-Meshes.md:137  cannot find 'boulder' in scope
+a5a1becd18ce  Guide/27-Meshes.md:156  cannot find 'dropPoint' in scope
+176ac6a236e1  Guide/27-Meshes.md:308  cannot find 'dents' in scope
+291fdafb6fdf  Guide/27-Meshes.md:324  cannot find 'paint' in scope
+68f2b1e342d8  Guide/27-Meshes.md:340  cannot find 'ribbon' in scope
+12f405514567  Guide/27-Meshes.md:361  cannot find 'stage' in scope
+d8b410a46463  Guide/27-Meshes.md:378  cannot find 'stage' in scope
+11169c9041c5  Guide/27-Meshes.md:423  cannot find 'block' in scope
+a3cc26d6c8f4  Guide/27-Meshes.md:44  cannot find 'teal' in scope
+43b2fc3f26eb  Guide/27-Meshes.md:453  cannot find 'ring' in scope
+65a493466831  Guide/27-Meshes.md:472  cannot find 'growth' in scope
+c3a7d05cd766  Guide/27-Meshes.md:485  cannot find 'ball' in scope
+464ad97ecd6f  Guide/27-Meshes.md:54  cannot find 'planks' in scope
+cdcf169eea19  Guide/27-Meshes.md:89  cannot find 'base' in scope
+2fc02e91a351  Guide/28-MaterialsAndSurroundings.md:172  expected '}' in class
 3846f3d9c837  Guide/28-MaterialsAndSurroundings.md:23  cannot find 'ball' in scope
-f9772692a39c  Guide/28-MaterialsAndSurroundings.md:251  cannot find 'picture' in scope
-1bf5a69793ab  Guide/28-MaterialsAndSurroundings.md:337  extraneous '}' at top level
+f9772692a39c  Guide/28-MaterialsAndSurroundings.md:253  cannot find 'picture' in scope
+1bf5a69793ab  Guide/28-MaterialsAndSurroundings.md:339  extraneous '}' at top level
 5e288f34fe35  Guide/29-Landscapes.md:105  cannot find 'terrain' in scope
 817218f25cab  Guide/29-Landscapes.md:115  cannot find 'stone' in scope
 cc748b059cc6  Guide/29-Landscapes.md:140  cannot convert value of type '(UnboundedRange_) -> ()' to expected argument type 'Camera3D'
@@ -123,8 +123,8 @@ f1146c1aef18  Guide/31-CharactersAndCloth.md:395  errors thrown from here are no
 e568d6de03cc  Guide/31-CharactersAndCloth.md:575  errors thrown from here are not handled
 2a1c012c6ce3  Guide/31-CharactersAndCloth.md:592  errors thrown from here are not handled
 5e7d649a0114  Guide/31-CharactersAndCloth.md:70  errors thrown from here are not handled
-505abdd13984  Guide/32-SculptingWithFields.md:200  cannot find 'a' in scope
-17e800a28a86  Guide/32-SculptingWithFields.md:268  cannot find 'cluster' in scope
+505abdd13984  Guide/32-SculptingWithFields.md:202  cannot find 'a' in scope
+17e800a28a86  Guide/32-SculptingWithFields.md:270  cannot find 'cluster' in scope
 e3f4153e6ffa  Guide/34-Seeing.md:127  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
 34315703fb6f  Guide/34-Seeing.md:228  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
 d958e7e8da2f  Guide/34-Seeing.md:247  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'

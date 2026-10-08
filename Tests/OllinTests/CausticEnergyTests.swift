@@ -50,7 +50,7 @@ struct CausticEnergyTests {
         defer { OllinApp.isRenderingHeadless = false }
         renderer.automaticQuality = .detail
         renderer.capturesLinearFrame = true
-        _ = OllinApp.renderImage(of: sketch, frame: 1, fps: 60, renderer: renderer)
+        _ = try OllinApp.renderImage(of: sketch, frame: 1, fps: 60, renderer: renderer)
         let linear = try #require(renderer.lastLinearFrame)
         let count = linear.width * linear.height
         let halves = linear.color.contents().bindMemory(to: Float16.self, capacity: count * 4)

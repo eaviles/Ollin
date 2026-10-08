@@ -1104,6 +1104,25 @@ final class MetalRenderer {
     var capturesLinearFrame = false
     /// The frame kept by the last render under `capturesLinearFrame`.
     var lastLinearFrame: LinearFrame?
+    /// One moment of an export's subframe average (`--subframes`), set by the
+    /// drive around each moment's render. The moment's linear frame (after the
+    /// overlay, before the tone map) is folded into a running mean, and only the
+    /// last moment presents that mean and reads it back; a moment before the
+    /// last leaves its read-back buffer unwritten, so the drive keeps the last
+    /// moment's alone. The canvas motion blur stands down while it is set, since
+    /// the moments are the blur. nil (the default, and always the live window)
+    /// renders each frame once, as before.
+    var subframe: Subframe?
+    /// Where a moment sits in its frame's subframe average.
+    struct Subframe: Equatable {
+        let index: Int
+        let count: Int
+        var isLast: Bool { index == count - 1 }
+    }
+    /// The running subframe mean, in single precision so many half-float
+    /// moments add without losing their low bits, ping-ponged because a pass
+    /// cannot read the texture it writes.
+    var subframeMean: (front: MTLTexture, back: MTLTexture)?
     /// Whether the clamp notice was printed, so a sequence says it once, not per frame.
     private var reportedRenderScaleClamp = false
     /// The same, for the notice that a piling canvas does not take the supersample.
@@ -3220,15 +3239,29 @@ final class MetalRenderer {
                          meshBuffer: meshBuf, into: commandBuffer,
                          inputWidth: width, inputHeight: height,
                          outputWidth: outWidth, outputHeight: outHeight)
+        // A moment of a subframe average folds in here, after everything the
+        // frame did to itself and before the tone map, so the mean is taken in
+        // linear light; only the last moment goes on to the present.
+        var shown = presented
+        if let subframe {
+            guard let mean = foldSubframe(presented, step: subframe, into: commandBuffer,
+                                          width: outWidth, height: outHeight) else { return nil }
+            guard subframe.isLast else {
+                commitHeadless(commandBuffer, encodeStart: encodeStart)
+                return (readback, bytesPerRow)
+            }
+            shown = mean
+        }
         // A linear-light export keeps what the present pass is about to read: the
         // frame one step before the tone map, the dither, and the 8-bit
-        // quantization. Nothing is copied unless an export asked.
+        // quantization. Nothing is copied unless an export asked. Under subframes
+        // the color is the mean and the depth the last moment's.
         let linearCapture = capturesLinearFrame
-            ? beginLinearCapture(presented, depth: sceneDepthResolve, into: commandBuffer,
+            ? beginLinearCapture(shown, depth: sceneDepthResolve, into: commandBuffer,
                                  width: outWidth, height: outHeight)
             : nil
         guard let presentEncoder = countedEncoder(commandBuffer, presentPass(into: displayTexture)) else { return nil }
-        encodePresent(from: presented, drawer: drawer, into: presentEncoder,
+        encodePresent(from: shown, drawer: drawer, into: presentEncoder,
                       keepsAlpha: drawer.hasTransparentBackground)
         presentEncoder.endEncoding()
 

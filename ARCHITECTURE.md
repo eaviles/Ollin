@@ -4425,15 +4425,20 @@ clamp: the camera-baseline-fill prerequisite exists once this runs. Passes 2
 and 3 reduce that field to each k-pixel tile's largest velocity, then each
 tile's 3x3-neighborhood largest, so every pixel knows about any mover whose
 streak can reach it (velocities are clamped to k, one tile, so 3x3 suffices).
-Pass 4 gathers S taps along the neighborhood's dominant velocity and weighs
-each by the paper's three continuous cases: a blurry tap in *front* of the
-pixel streaks over it (its cone says whether its spread reaches this far), a
-tap *behind* a blurry pixel estimates the background the streak uncovers, and
-two taps blurring together share a cylinder weight. All classification is
-continuous (soft depth compare over an extent, cones and cylinders over
-distances), so there is no sorting and no tap ordering; the center pixel opens
-the sum at the inverse of its own velocity magnitude, which is what keeps a
-sharp pixel heavy and a fast one light. k is resolution-relative
+Pass 4 is a scatter-as-you-gather reconstruction (the improved sample
+contribution published as a successor to the original gather, over the same
+tile pyramid): (S - 1) / 2 pairs of taps, k + 1/2 + jitter steps either side
+of the pixel along the neighborhood's dominant velocity, so none lands on the
+center. A soft depth compare splits each tap into *behind* and *in front*, the
+two halves summing to one; a tap behind counts where the pixel's own spread
+reaches it (the background its streak uncovers, estimated from the visible
+background nearby), a tap in front counts where the tap's spread reaches the
+pixel (a foreground streaking over it). The weights are **not renormalized**:
+their mean over the taps is the share of the shutter the streaks spent at this
+pixel, and the pixel's own color fills the rest, `sum/N + (1 - weight/N) *
+center`. Every result is a convex combination of what was read (the
+never-outshines invariant by construction), and a lone mover keeps its light.
+There is no sorting and no tap ordering. k is resolution-relative
 (`height/36`, clamped 16...64, reproducing the published 20 px at 720 tall)
 and S resolves 9/15/27 from the frame-wide automatic quality (the TAA
 no-per-parameter rule, so export's automatic `.detail` lifts it).
@@ -4465,21 +4470,85 @@ reconstruction's early-out copies each pixel through by nearest-sample read,
 which is value-exact. Frame 0 has no previous camera and returns unblurred by
 definition. The backdrop rule is deliberate: a pixel at depth exactly 1 (2D
 drawing, the clear color, the environment skybox) writes zero velocity, the
-temporal resolve's own background treatment, so captions and overlays never
-smear under a camera move; the cost is that the sky does not streak under a
-pan, the documented envelope. The soft-depth extent is 1% of the eye-to-target
+temporal resolve's own background treatment, so 2D drawing over the backdrop
+never smears under a camera move (over the 3D scene it takes the motion of
+the surface under it; see below); the cost is that the sky does not streak
+under a pan, the documented envelope. The soft-depth extent is 1% of the eye-to-target
 distance (the `sceneScale` proxy the sparkle cells and RT bias already use),
 not a fixed world constant: the published 1mm-10cm figures assume meter-scale
 scenes, and a tuned screen-space constant hiding a scale assumption is the
 subsurface-scattering lesson repeated.
 
-Degenerate-input guards in the shaders are epsilon-shaped rather than
-branched: a zero-velocity tap's cone divides by a floored magnitude (else
-0/0), the cylinder's smoothstep edges are held apart (edge0 == edge1 divides
-by zero at the boundary), and a tap that rounds onto the center pixel
-contributes benignly instead of NaN-ing the sum. The gather jitter is
-`hash12` of the pixel position, the dither's position-pure rule, so two
-renders of one frame are byte-identical and video exports cannot shimmer.
+Degenerate inputs need no guard in the gather: the depth compare's halves are
+saturated sums that never divide, a spread compare multiplies a velocity by
+the taps per pixel of a neighborhood whose velocity passed the half-pixel
+early-out, and a tap that rounds onto the center pixel counts like any other.
+The gather jitter is `hash12` of the pixel position, the dither's
+position-pure rule, so two renders of one frame are byte-identical and video
+exports cannot shimmer.
+
+**The reference, and the review that replaced the first gather (2026-10-08).**
+The blur first shipped with the original three-case gather, which
+renormalizes: the taps' weights and an inverse-velocity center weight are
+divided out at the end, so a pixel inside a mover keeps nearly its full value
+while the ramps beside it are added on. The deep-review triage measured the
+gain (a 24-pixel box at 20 pixels a frame: +5% of its light at the default
+shutter, +25% at a full one), and a 1D model of that gather reproduced it to
+the tenth of a percent (+4.8%, +25.2%) where the scatter-as-you-gather form
+came within 0.3%. The oracle is the subframe export (below): the same box
+drawn at forty moments across the shutter and averaged is the analytic streak
+to within a hundredth of the box's value. Against it, region by region, the
+old gather missed the inner ramps by about 20% of the box's value at either
+shutter (signed: +0.40 and +0.85 of a row's light); the new one stays under
+2% in every region and within 0.2% of the light. On the example scene (three
+orbiting spheres, a turning camera) the error around the movers fell 2 to 3
+times (RMSE 0.019 to 0.009 on the fast sphere, 0.011 to 0.004 on the other
+two, at the default shutter). Three findings ride with it:
+
+- *The mirrored background reconstruction was measured and left out.* The
+  published form gives both taps of a pair the nearer, faster one's weight, so
+  the visible background beside a streak blurs like the one it uncovers. On a
+  black ground it changes nothing; on stripes it raised the outer ramps' error
+  at a full shutter from 0.0005 to 0.008; on the example it smeared a still
+  column beside the fast sphere and took that sphere's error from 0.020 to
+  0.035, worse than the old gather. The reference shows the visible
+  background sharp, so the plainer form is the closer one.
+- *An edge pixel half covered by a mover can keep the background's velocity.*
+  The mover pass rasterizes one sample a pixel while the color is
+  multisampled, so a pixel whose center falls just outside the mover carries
+  the mover's partial color with no motion. With edges on pixel centers this
+  costs about 1% of a 24-pixel box's light on the leading side; with edges on
+  whole pixels the streak holds to 0.16%. A multisampled velocity resolve is
+  the fix, filed rather than built.
+- *2D drawing over the 3D scene takes the scene's motion.* The velocity fill
+  reads the depth under a pixel, and 2D drawing writes none, so a caption over
+  a moving floor streaks with the floor. The old gather's center weight hid it
+  at small spreads, which the new one blurs as the true box they are (the
+  floor itself matches the reference either way). `withOverlay` is the
+  answer, and the example's caption uses it.
+
+**The subframe export.** `--subframes N` (`OllinApp.exportSubframes`, with
+`--shutter` / `OllinApp.exportShutter`) is the accumulation buffer: each
+written frame is drawn at N moments across a shutter centered on the frame's
+instant, each moment at the middle of its share of the opening
+(`SubframeShutter`), and the moments are averaged in linear light. The fold
+sits in `renderedFrame` after the overlay and before the linear capture and
+the present: a moment's frame is added into a single-precision running mean
+(`foldSubframe`, ping-ponged through `ollin_fx_weighted_sum` at 1/N), a
+moment before the last commits without presenting, and the last presents the
+mean, so the one 8-bit quantization point stays where it is. The drives
+(`renderSubframeImage` for a still, the moment loop in `renderFrames`) treat
+every moment as a draw: `time` steps through the opening, `deltaTime` is the
+time since the previous draw (a simulation stepped by it stays exact), and
+`frameCount` counts each draw, the rule `--settle` and drawn slow motion keep
+(ruled 2026-10-08), which is also what keeps the renderer's per-frame
+machinery (sample streams, the repeat-encode stamp) seeing distinct frames. A
+moment before time 0 is drawn at 0. The shutter is read before each frame
+from the sketch's last `motionBlur(shutter:)`, so a sketch's own setting
+carries, and the canvas blur stands down while a moment is drawn
+(`motionBlurActive`). A picture the GPU carries from draw to draw would step N
+times a frame, so it is refused by name after the first draw that shows it
+(`subframeRefusal`, ruled 2026-10-08).
 
 Verification (`MotionBlurTests`, 12, over 1:1 orthographic scenes so
 expectations are exact pixels): streak-direction twins (a horizontal mover
@@ -4492,7 +4561,17 @@ backdrop stillness under a pan, and two-render determinism. The neighbor-max
 skip, velocity-axis swap, and mover-texture drop sabotages each read red
 exactly where expected (the mover drop failing the mover streak while the
 camera streak stays green). The snapshot `motion-blur` pins the whole chain at
-frame 2 on any Metal GPU.
+frame 2 on any Metal GPU. `FrameInvariantTests` holds the light
+(`theStreakConservesLight`, within 1% at shutters 0.5 and 1) and the region
+error against the subframe reference (`theStreakMatchesTheSubframeReference`,
+under 2% of the box's value), both red under a planted renormalization and a
+reversed depth compare. `SubframeExportTests` (9) holds the reference to the
+analytic streak column by column, a flat shape's light, a still picture
+byte-identical, the clock of every moment, the first frame at time 0, the
+sketch's shutter carrying, the canvas blur standing down, the refusal by
+name, and the recipe; five plants (the fold's weight, a trailing shutter, the
+blur not standing down, the feedback refusal, the clamp at zero) each read
+red.
 
 ---
 

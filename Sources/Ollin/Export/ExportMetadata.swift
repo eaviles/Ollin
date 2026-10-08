@@ -47,6 +47,12 @@ struct ExportMetadata {
     /// single draw and is left out of the recipe.
     var settle: Int = 1
 
+    /// Moments averaged per written frame (`OllinApp.exportSubframes`) and the
+    /// shutter they were spread across, read at capture time; 1 is the ordinary
+    /// single draw and leaves both out of the recipe.
+    var subframes: Int = 1
+    var shutter: Double? = nil
+
     /// What the frame's path trace reported about itself, set by the exports a
     /// trace can reach (the still, the sequence, the video, the EXR) after their
     /// render; `nil` for a frame that was not traced, which leaves the recipe as
@@ -65,7 +71,9 @@ struct ExportMetadata {
                        frameworkHash: ExportMetadata.frameworkHash,
                        frame: frame, fps: fps,
                        captureCommit: ExportMetadata.capturedCommit,
-                       settle: OllinApp.exportSettle)
+                       settle: OllinApp.exportSettle,
+                       subframes: OllinApp.exportSubframes,
+                       shutter: OllinApp.exportSubframes > 1 ? OllinApp.lastSubframeShutter : nil)
     }
 
     /// The recipe as one compact JSON line, e.g.
@@ -106,6 +114,12 @@ struct ExportMetadata {
         // Said only when it changes the picture: a frame drawn several times with
         // the clock held is not the frame a single draw would give.
         if settle > 1 { fields.append("\"settle\":\(settle)") }
+        // The same for a frame averaged over moments across its shutter: the
+        // count and the shutter they spread over are both part of the picture.
+        if subframes > 1 {
+            fields.append("\"subframes\":\(subframes)")
+            if let shutter { fields.append("\"shutter\":\(jsonNumber(shutter))") }
+        }
         // A traced frame names what it was traced with, in the flags' own terms:
         // the sample count (the cap under adaptive sampling or a time budget), the
         // depth, the filter when it ran, and under adaptive sampling the noise it

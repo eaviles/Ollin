@@ -154,6 +154,8 @@ _ollin() {
             '--render-quality[how hard the render works]:performance|default|detail:' \
             '--render-scale[draw each frame N times across and average it down]:N:' \
             '--settle[draw each written frame N times with the clock held]:N:' \
+            '--subframes[draw each frame at N moments across the shutter and average them (motion blur)]:N:' \
+            '--shutter[the fraction of a frame the shutter stays open for --subframes (0.5 when unsaid)]:F:' \
             '--slow-motion[write a file that plays N times slower than the run]:N:' \
             '--made-frames[fill the slow motion with frames built between the drawn ones]' \
             '--path-traced[render offline with a path tracer]::samples:' \

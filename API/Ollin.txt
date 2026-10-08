@@ -433,6 +433,8 @@ enum OllinApp: Sendable
   static var defaultWindowSize: CoreFoundation.CGSize { get }
   static var exportRenderScale: Int { get set }
   static var exportSettle: Int { get set }
+  static var exportShutter: Double? { get set }
+  static var exportSubframes: Int { get set }
   static var pathTracedExport: PathTracing? { get set }
   struct StillExport: Equatable, Hashable, Sendable
     let keepsHighlights: Bool

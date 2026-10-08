@@ -228,7 +228,7 @@ extension OllinApp {
         renderer.pathTracing = pathTracedExport
         renderer.renderScale = exportRenderScale
         renderer.capturesLinearFrame = true
-        _ = renderImage(of: sketch, frame: frame, fps: fps.framesPerSecond, renderer: renderer)
+        _ = try renderImage(of: sketch, frame: frame, fps: fps.framesPerSecond, renderer: renderer, path: path)
         guard let linear = renderer.lastLinearFrame else {
             throw ExportError(.unrendered, path: path, frame: 0, problem: "the frame kept no linear canvas to write")
         }

@@ -203,11 +203,12 @@ extension OllinApp {
             // One pool per tile: a sheet is one synchronous run of as many whole
             // renders as it has cells, and each tile's frames, its readback and
             // its own image are finished with the moment it is on the sheet.
-            let drawn = autoreleasepool { () -> Bool in
+            let drawn = try autoreleasepool { () throws -> Bool in
                 let sketch = index == 0 ? first : make()
                 tile.prepare(sketch)
                 renderer.resetAccumulation()   // a `noClear()` pile must not leak across tiles
-                guard let image = renderImage(of: sketch, frame: frame, fps: fps, renderer: renderer) else {
+                guard let image = try renderImage(of: sketch, frame: frame, fps: fps, renderer: renderer,
+                                                  path: path) else {
                     return false
                 }
                 let column = index % cols, row = index / cols

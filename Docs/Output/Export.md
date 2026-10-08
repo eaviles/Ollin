@@ -392,6 +392,35 @@ OllinApp.exportSettle = 40
 try OllinApp.exportVideo(sketch, to: "turn.mp4", frames: 300, fps: 30)
 ```
 
+### Motion blur from subframes
+
+A camera's shutter stays open for part of each frame, and anything that moves while it is open smears. `--subframes N` makes that picture the slow way. It draws each exported frame at N moments across the open shutter and averages them in linear light:
+
+```sh
+swift run --package-path Examples Example-3D-Effects-MotionBlur --export-video streak.mp4 --seconds 4 --subframes 16
+swift run --package-path Examples Example-Motion-Orbits --export still.png --frame 60 --subframes 32 --shutter 1
+```
+
+It blurs anything a sketch draws: 2D shapes, text, layers, and shaders as well as a 3D scene. It costs N times the render time. [`motionBlur()`](../3D/3D.md#motion-blur) is cheap enough for the live window, but it works on the 3D scene alone and builds the streak from one frame's picture. The subframe average is the streak itself, which is why `motionBlur()` is measured against it.
+
+**The shutter.** `--shutter F` is the share of a frame interval the shutter stays open: 0.5 is the half-open shutter of film, and 1 is open the whole frame. Left out, it is the shutter the sketch gives `motionBlur(shutter:)`, or 0.5 if the sketch gives none. The opening is centered on the frame's own instant, as the streak of `motionBlur()` is, so trading one for the other moves nothing. The moments sit evenly across the opening.
+
+**How many moments.** Each moment is a separate picture. Something that moves more than about a pixel between two moments shows up as separate copies rather than a smooth streak. So take N at least as large as the distance, in pixels, that the fastest thing travels while the shutter is open. A ball crossing 20 pixels a frame under a 0.5 shutter travels 10 pixels, so it wants 10 moments or more.
+
+**Every moment is a draw.** `time` steps through the opening, and `deltaTime` is the time since the draw before, so a simulation stepped by `deltaTime` stays exact. `frameCount` counts every draw, as it does under `--settle` and slow motion. So motion counted in frames, a fixed step once per `draw()`, runs N times as fast. Write it against `time` or `deltaTime` and it blurs instead. The first frame is half blurred: the run begins at time 0, so the moments that would fall before it are drawn at 0.
+
+**What stands down, and what is refused.** The sketch's own `motionBlur()` stands down, since the moments are the blur. A picture the GPU carries from one draw to the next steps once per draw: a piling canvas (`noClear`), a feedback layer, an `Accumulator` or a `LineSpray`, a simulation field, and the history of screen-space reflections. N moments would run it N times as fast, so the export refuses such a sketch before it writes anything, and the message names what stopped it. A take cannot be replayed or recorded, and `--settle` and `--made-frames` do not combine with it.
+
+It applies to `--export`, `--export-exr`, `--export-sequence`, `--export-video`, `--export-gif`, `--export-loop`, `--export-grid`, and `--export-sweep`. Slow motion drawn on a finer clock combines with it, and the shutter is then a share of the finer frame. The recipe each file carries records `"subframes"` and `"shutter"`. A linear-light export (`--export-exr`, or `--exr` on a sequence) writes the averaged color beside the depth of the last moment.
+
+In code the same controls are `OllinApp.exportSubframes` and `OllinApp.exportShutter`, set before the export call:
+
+```swift
+OllinApp.exportSubframes = 16
+OllinApp.exportShutter = 0.5     // nil takes the sketch's own shutter, else 0.5
+try OllinApp.exportVideo(sketch, to: "streak.mp4", frames: 240, fps: 60)
+```
+
 ### Vector: SVG
 
 Write one frame's geometry as an SVG document instead of pixels:

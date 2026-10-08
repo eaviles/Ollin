@@ -385,9 +385,9 @@ The picture inside that file is the PNG's picture, so any viewer can open it. Be
 
 The left panel is the picture inside the file, clamped at white, and the lamp's flat plateau is where everything above 1.0 went. The right panel is a gain map, drawn in shades of one gray. It is black where the frame stayed in range, and it gets brighter the further above white a pixel went. A display with headroom multiplies the two together, and the plateau turns back into a lamp. Run [`Examples/Rendering/ColorOutput`](../Examples/Rendering/ColorOutput/Sketch.swift) on a recent Mac laptop to see it, and turn the screen brightness down while you look.
 
-## More ways to leave as motion: transparency, broadcast rates, slow motion, and settled frames
+## More ways to leave as motion: transparency, broadcast rates, slow motion, settled frames, and subframes
 
-The chart leaves as one lap of a GIF, and it could leave as an `h264` video. Other settings change what a video holds. A clip can keep a see-through background, or keep a broadcast's frame rate to the fraction. It can run slower than the sketch did, or wait for a picture to settle before each frame is written.
+The chart leaves as one lap of a GIF, and it could leave as an `h264` video. Other settings change what a video holds. A clip can keep a see-through background, or keep a broadcast's frame rate to the fraction. It can run slower than the sketch did, or wait for a picture to settle before each frame is written. Each frame can also hold the smear a camera's open shutter leaves.
 
 ### Leaving the background behind: transparent video
 
@@ -450,6 +450,19 @@ swift run --package-path Examples Example-Rendering-LineSpray --export-video tur
 ```
 
 The clock does not move during the held draws. A camera driven by `time` stays put while the mean settles, and then the clock steps on. It costs N times a plain export. The [export reference](../Docs/Output/Export.md#settled-frames) has what it refuses, and why a `noClear` canvas that piles up is the one thing it does not settle.
+
+### Blurred the slow way: subframes
+
+A camera's shutter stays open for part of each frame, and whatever moves while it is open smears. `motionBlur()` from [Chapter 33](33-TracedLight.md#the-streak-a-shutter-leaves-motion-blur) works out that smear from one frame, and only for a 3D scene. An export has time to do it the slow way. `--subframes N` draws each frame at N moments while the shutter is open and averages the pictures:
+
+```sh
+swift run OllinLive MySketches/YourSketch.swift --export-video streak.mp4 --seconds 4 --subframes 16
+swift run OllinLive MySketches/YourSketch.swift --export still.png --frame 60 --subframes 32 --shutter 1
+```
+
+This is the accumulation buffer that Paul Haeberli and Kurt Akeley described in 1990. It blurs anything the sketch draws, flat shapes and text as well as a 3D scene, and it costs N times the render time. `--shutter` is the same share of a frame that `motionBlur(shutter:)` takes, 0.5 when you leave it out. Take N at least as many as the pixels the fastest thing crosses while the shutter is open, or the streak breaks into separate copies.
+
+Every moment is a real draw. `time` steps through the opening, and `deltaTime` is the time since the draw before, so motion written against the clock smears as it should. `frameCount` counts every moment, so a position moved by a fixed step once per `draw()` runs N times too fast. A picture that carries from one draw to the next, such as a `noClear` pile or a feedback trail, would also run N times too fast, so the export refuses it and names it. The [export reference](../Docs/Output/Export.md#motion-blur-from-subframes) has the rest.
 
 ## A page that plays it: the web export
 
