@@ -224,6 +224,31 @@ Chaikin's corner cutting rounds a path one pass at a time. Each pass replaces ev
 
 It pairs with anything that emits raw line-work: a random walk, [streamlines](../Generators/FlowField.md), [L-system](../Generators/LSystem.md) turtle paths, or hand-placed zigzags. Example: `Shapes/CornerCutting`.
 
+<a name="moving-average"></a>
+
+#### Smoothing that keeps the points
+
+```swift
+Contour.smoothed(neighbors: Int, weights: SmoothingWeights = .gaussian) -> Contour
+Shape.smoothed(neighbors: Int, weights: SmoothingWeights = .gaussian) -> Shape
+
+enum SmoothingWeights { case gaussian, box }
+```
+
+A moving average: each point moves to the average of itself and `neighbors` points on either side, so the window is `2 * neighbors + 1` points wide. It gives back **one point for each point it had, in the same order**. That is the difference from corner cutting, which doubles the count every pass. Reach for it when something is keyed to a point's index. That might be a color per point, a phase that travels around a ring, or the matching point on a second ring. A ring that was resampled or traced off a picture loses its facets and its jitter and stays in step with all of those.
+
+```swift
+let ring = Contour((0 ..< 120).map { i in
+    Vector2(angle: Double(i) / 120 * .tau, length: 200 + random(-6, 6))
+}, closed: true)
+let soft = ring.smoothed(neighbors: 3)                 // the bell, seven points wide
+let flat = ring.smoothed(neighbors: 3, weights: .box)  // every point counts the same
+```
+
+`.gaussian` weighs the window with a bell whose standard deviation is half the window, so the nearer a neighbor is, the more it counts. Over the same window it smooths more gently than `.box`, the plain average, and shrinks a curve less. A closed contour's window wraps around the seam. An **open contour keeps its two end points exactly**. Its window reaches past an end by mirroring the curve through that end point. So the points beside an end are smoothed as fully as the rest, and a straight run stays straight. A window that would meet itself around a closed contour, or run past both ends of an open one, stops there. `neighbors: 0` returns the contour as it was. The `Shape` form smooths every contour and keeps the winding rule.
+
+Any average pulls a curve toward the inside of its bends. A circle of 64 points smoothed over three neighbors either side comes back 1.9% smaller under `.box` and 0.95% smaller under `.gaussian`. The factor is the same for every point of an evenly spaced circle, so scale about the centroid afterward when the size matters.
+
 ---
 
 #### Where this comes from

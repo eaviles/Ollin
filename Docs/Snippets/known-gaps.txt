@@ -210,6 +210,7 @@ f488fa76404d  Docs/Drawing/CreasePattern.md:76  cannot find 'placed' in scope
 4ba18e5f9e26  Docs/Drawing/Curves.md:149  initializer requires a body
 b0b753e19af5  Docs/Drawing/Curves.md:176  '>' is not a postfix unary operator
 1af9b6950ae4  Docs/Drawing/Curves.md:218  expected type before '->'
+357502a694bd  Docs/Drawing/Curves.md:231  expected type before '->'
 b4e319db50dc  Docs/Drawing/Curves.md:41  expected type before '->'
 b37a8b2335f9  Docs/Drawing/Curves.md:53  expected type before '->'
 8971faf1bee4  Docs/Drawing/Curves.md:66  expected type before '->'

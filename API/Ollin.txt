@@ -685,6 +685,9 @@ enum SeamDirection: Equatable, Hashable, Sendable
 enum SeamEnergy: Equatable, Hashable, Sendable
   case forward
   case gradient
+enum SmoothingWeights: CaseIterable, Equatable, Hashable, Sendable
+  case box
+  case gaussian
 enum Spectre
   enum Metatile: CaseIterable, Equatable, Hashable, Sendable
     case delta
@@ -3447,6 +3450,7 @@ struct Contour: Tweenable, BidirectionalCollection, Collection, Equatable, Rando
   func rounded(_: Double) -> Contour
   func simplified(tolerance: Double) -> Contour
   func smoothed(iterations: Int = default) -> Contour
+  func smoothed(neighbors: Int, weights: SmoothingWeights = default) -> Contour
   func stroked(width: Double, join: StrokeJoin = default, cap: StrokeCap = default) -> Shape
   func tangent(at: Double) -> Vector2
   init(_: [Vector2], closed: Bool = default)
@@ -6025,6 +6029,7 @@ struct Shape: Tweenable, BidirectionalCollection, Collection, Equatable, RandomA
   func separated() -> [Shape]
   func simplified(tolerance: Double) -> Shape
   func smoothed(iterations: Int = default) -> Shape
+  func smoothed(neighbors: Int, weights: SmoothingWeights = default) -> Shape
   func stroked(width: Double, join: StrokeJoin = default, cap: StrokeCap = default) -> Shape
   func subtracting(_: Shape) -> Shape
   func symmetricDifference(_: Shape) -> Shape

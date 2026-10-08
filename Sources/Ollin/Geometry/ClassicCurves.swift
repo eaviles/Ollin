@@ -210,6 +210,105 @@ public extension Shape {
     }
 }
 
+/// How `smoothed(neighbors:weights:)` weighs the points in a window.
+public enum SmoothingWeights: Sendable, Hashable, CaseIterable {
+    /// A bell centered on the point, with a standard deviation of half the
+    /// window: the nearer a neighbor, the more it counts, and the farthest
+    /// counts about a seventh as much as the point itself. Over the same
+    /// window it smooths more gently than a box and shrinks a curve less.
+    case gaussian
+    /// Every point in the window counts the same: the plain moving average.
+    case box
+}
+
+public extension Contour {
+    /// Each point moved to the average of itself and `neighbors` points on
+    /// either side, so the outline loses its facets and its jitter while
+    /// keeping one point for each point it had. The count and the order stay,
+    /// so anything keyed to a point's index (a color, a phase, a partner on
+    /// another ring) stays in step.
+    ///
+    /// ```swift
+    /// let ring = Contour((0 ..< 120).map { i in
+    ///     Vector2(angle: Double(i) / 120 * .tau, length: 200 + random(-6, 6))
+    /// }, closed: true)
+    /// drawPolyline(ring.smoothed(neighbors: 3).points, closed: true)
+    /// ```
+    ///
+    /// A closed contour's window wraps around the seam. An open contour keeps
+    /// its two end points where they are, and its window reaches past an end by
+    /// mirroring the curve through that end point, so the points near an end
+    /// are smoothed as fully as the rest and a straight run stays straight.
+    ///
+    /// Any average pulls a curve toward the inside of its bends: a circle of
+    /// 64 points smoothed over 3 neighbors either side shrinks by 1.9% under
+    /// `.box` and 0.95% under `.gaussian`. Scale about the centroid afterward
+    /// if the size matters.
+    ///
+    /// - Parameters:
+    ///   - neighbors: How many points on each side join the average, so the
+    ///     window is `2 * neighbors + 1` points wide. Zero or less returns the
+    ///     contour unchanged. A window that would meet itself around a closed
+    ///     contour, or run past both ends of an open one, stops there.
+    ///   - weights: `.gaussian` (the default) or `.box`.
+    func smoothed(neighbors: Int, weights: SmoothingWeights = .gaussian) -> Contour {
+        let n = points.count
+        let reach = Swift.min(neighbors, isClosed ? (n - 1) / 2 : n - 1)
+        guard reach > 0, n >= 3 else { return self }
+        let kernel = smoothingKernel(reach: reach, weights: weights)
+        let p = points
+        var out = [Vector2](repeating: .zero, count: n)
+        for i in 0 ..< n {
+            var x = 0.0, y = 0.0
+            for k in -reach ... reach {
+                let q: Vector2
+                let j = i + k
+                if isClosed {
+                    q = p[(j % n + n) % n]
+                } else if j < 0 {
+                    q = p[0] * 2 - p[-j]
+                } else if j >= n {
+                    q = p[n - 1] * 2 - p[2 * (n - 1) - j]
+                } else {
+                    q = p[j]
+                }
+                let w = kernel[k + reach]
+                x += q.x * w
+                y += q.y * w
+            }
+            out[i] = Vector2(x, y)
+        }
+        if !isClosed {
+            out[0] = p[0]
+            out[n - 1] = p[n - 1]
+        }
+        return Contour(out, closed: isClosed)
+    }
+}
+
+public extension Shape {
+    /// The count-keeping moving average applied to every contour (see
+    /// `Contour.smoothed(neighbors:weights:)`), keeping the `winding` rule.
+    func smoothed(neighbors: Int, weights: SmoothingWeights = .gaussian) -> Shape {
+        Shape(contours: contours.map { $0.smoothed(neighbors: neighbors, weights: weights) },
+              winding: winding)
+    }
+}
+
+/// The `2 * reach + 1` weights of a window, summing to one.
+private func smoothingKernel(reach: Int, weights: SmoothingWeights) -> [Double] {
+    var kernel: [Double]
+    switch weights {
+    case .box:
+        kernel = [Double](repeating: 1, count: 2 * reach + 1)
+    case .gaussian:
+        let sigma = Double(reach) / 2
+        kernel = (-reach ... reach).map { k in exp(-Double(k * k) / (2 * sigma * sigma)) }
+    }
+    let total = kernel.reduce(0, +)
+    return kernel.map { $0 / total }
+}
+
 private func chaikinPass(_ points: [Vector2], closed: Bool) -> [Vector2] {
     let n = points.count
     guard n >= 2 else { return points }

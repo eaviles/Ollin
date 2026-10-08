@@ -7250,6 +7250,48 @@ seeded `Sketch` sugar; the even-but-organic scatter and the seed set the
 tessellators and packing consume. Example `Patterns/BlueNoise`; snapshot
 `blue-noise`.
 
+Even spacing on a surface (`Geometry/BlueNoiseThinning.swift`, behind
+`surfacePoints(..., scatter: .blueNoise)`) is weighted sample elimination:
+five times the wanted count is drawn by area, each candidate is weighed by how
+closely its neighbors press on it, and the heaviest is dropped until the count
+is left. Nearly all of the time is the neighbor search, and its shape follows
+from where the points lie. They lie on a surface, so a dense grid over the
+bounding box (what the pass first walked, through `PointGrid3`) is nearly all
+empty: 33 million cells for 400,000 points on the Guide's valley, 264 MB of
+offsets, and every query a miss. The pass now sorts the candidates cell by
+cell (three stable radix passes over the cell coordinates, x, then y, then z)
+and finds each occupied cell's nine row runs once, through a hash used only
+while they are found. A neighbor walk is then nine ranges of the sorted
+points. **The walk visits exactly what the dense walk visited, in the same
+order** (cells in (z, y, x) order, input order within a cell). That order
+fixes how each weight's sum rounds, and the drop sequence follows the
+rounding, so it is what lets `BlueNoiseThinningTests` hold the pass to the
+dense one, kept there verbatim, point for point.
+
+The queue keeps one entry per live candidate. A weight that falls is not
+pushed again; a top entry whose weight is out of date goes back in at its true
+weight. Weights only fall, so an entry is never lighter than its candidate,
+and a top that is still true is the heaviest there is. The old heap pushed on
+every change: 19.6 million pushes and a peak of 5.2 million entries at 400,000
+points, where this one holds 2 million and re-inserts 6.9 million times.
+
+Measured on the valley's 2 million candidates in a release build on the M2:
+12.6 s before (3.3 s weighing, 9.2 s eliminating) and 3.6 s after (0.3 s
+sorting and finding runs, 0.5 s weighing, about 1.3 s in the queue and 1.2 s
+updating neighbors), with the same survivors. Inside the framework the whole
+`surfacePoints` call went from 13.4 s to 4.7 s, a second of which is drawing
+the candidates by area, and in a debug build the pass alone went from 181 s
+to 20 s. Four alternatives were measured
+and not kept: a radix heap over the weights' ordered bits (94 million bucket
+moves, no faster), each candidate's coordinates and weight packed into one
+record, the weights alone in a 16 MB array to stay in cache (neither faster),
+and the indexed queue that sifts a lighter weight down in place, which runs
+slower than a lazy one in a release build past 100,000 points. What is left is
+memory latency. Drops come in weight order from all over the terrain, so each
+drop's neighborhood is a fresh set of misses, where a weighing walk in cell
+order finds its neighbors already in cache, and costs a third as much per
+point.
+
 Low-discrepancy sampling (`Geometry/Sampling.swift`): `halton(_:base:)` (the
 radical inverse) plus `haltonPoints(count:in:bases:startIndex:)` /
 `sobolPoints(count:in:startIndex:)` give even coverage as an ordered stream:

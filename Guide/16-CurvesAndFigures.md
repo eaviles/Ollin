@@ -66,6 +66,15 @@ Harmonograph(x: [.init(frequency: 3)],
 
 The last panel shows a smoothing rather than a formula. Any `Contour` or `Shape` answers `smoothed(iterations:)`, which is George Chaikin's corner cutting, from 1974. Each pass replaces every corner with two points partway along its edges. Two or three passes turn a rough polygon into a soft curve. Open contours keep their exact endpoints, so a line still starts and ends where you put it.
 
+Corner cutting doubles the points on every pass, which is fine for a line you only draw. Sometimes something else is keyed to the points: a color per point, a phase that runs around a ring, a partner on a second ring. Then the count has to stay. `smoothed(neighbors:)` is a moving average, and it keeps every point in its place in the order. Each point moves to the average of itself and that many neighbors on either side. A bell weighs the window, so near neighbors count most, unless you pass `weights: .box`. An open contour keeps its two ends.
+
+```swift
+let ring = Contour((0 ..< 120).map { i in
+    Vector2(angle: Double(i) / 120 * .tau, length: 200 + random(-6, 6))
+}, closed: true)
+let soft = ring.smoothed(neighbors: 3)   // still 120 points, the jitter gone
+```
+
 One habit applies to all of them. The curves come back in their own coordinates, and the way to fit one to your canvas is `fitted(points, in: rect)`, which scales the points. `scale()` would scale your stroke width along with the geometry, which is rarely what you want on a drawing made of lines.
 
 ## A walk that comes home: spirolaterals
