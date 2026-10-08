@@ -2992,6 +2992,11 @@ extension MetalRenderer {
                         // tagged, and every other pass skips them.
                         overlay passOverlay: Bool = false,
                         taaJitter: SIMD2<Float> = .zero,
+                        // Which of an export's temporal-AA passes this is, and how
+                        // many there are: a traced shadow then traces its share of
+                        // one sample set (see `OllinLighting.shadowPass`). nil, every
+                        // pass outside that loop, traces the whole set.
+                        taaPass: (index: Int, count: Int)? = nil,
                         // The canvas's own color format when it is not the shared
                         // linear one (a single-precision accumulation surface). A
                         // layer pass takes its format from `passTarget` instead.
@@ -3221,6 +3226,7 @@ extension MetalRenderer {
             // or structure to read).
             finalizeShadowCasters(drawer, &lighting, renderedMap: shadowMap != nil,
                                   renderedCube: shadowCube != nil, traced: shadowAccel != nil)
+            if let taaPass, taaPass.count > 1 { shareTracedShadows(&lighting, pass: taaPass) }
             // Ray-traced reflections: a physically-based metal traces the caster accel for its
             // reflection (replacing the IBL prefilter sample). The flag gates it; off → the
             // byte-identical IBL-prefilter path. The renderer owns the hardware check, so this is

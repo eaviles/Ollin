@@ -3120,7 +3120,8 @@ final class MetalRenderer {
                        caustics: caustics,
                        pathTraced: pathTraced,
                        sceneBehind: sceneBehind,
-                       taaJitter: jitter)
+                       taaJitter: jitter,
+                       taaPass: (s, taaSamples))
                 encoder.endEncoding()
                 let scattered = applySubsurfaceScattering(drawer, resolved: resolveTexture,
                                                           meshBuffer: meshBuf, into: commandBuffer,

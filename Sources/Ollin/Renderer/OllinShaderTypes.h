@@ -1182,6 +1182,16 @@ typedef struct {
     int   sceneLightCount;        // lights in the device buffer (0 = the inline path)
     int   lightTileStride;        // uints per tile in the list buffer: one count word
                                   // followed by up to `sceneLightCount` indices.
+    // A traced shadow spread over an export's temporal-AA passes. The export draws
+    // the scene once per jitter offset and averages, so each pass traces its share
+    // of one sample set rather than the whole set again: pass `shadowPass` of
+    // `shadowPassCount` takes samples p, p + count, p + 2·count, … of a set
+    // `samples · count` long (each traced caster's `samples` already divided by
+    // the count, rounded up). A count of 0 or 1 is one pass tracing the whole set,
+    // which is every frame outside that loop. These fill the tail padding, so the
+    // stride is unchanged.
+    int   shadowPass;
+    int   shadowPassCount;
 } OllinLighting;
 
 // The per-tile light cull (`ollin_light_cull`). One thread per screen tile: it

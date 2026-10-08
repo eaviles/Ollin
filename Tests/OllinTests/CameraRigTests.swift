@@ -18,19 +18,23 @@ struct CameraRigTests {
 
     private func fresh(radius: Double = 10, elevation: Double = 0.3) -> CameraRig {
         let rig = CameraRig()
-        rig.seed(target: .zero, radius: radius, elevation: elevation, fieldOfView: .pi / 3)
+        rig.frame(target: .zero, radius: radius, elevation: elevation, fieldOfView: .pi / 3)
         return rig
     }
 
-    /// The first seed wins; a later one is ignored, so passing framing every frame
-    /// does not snap the pose.
-    @Test func seedOnce() {
+    /// The first framing opens the shot; a later, different one moves the home
+    /// without snapping the pose, so a reset goes to the latest framing.
+    @Test func laterFramingMovesTheHomeNotThePose() {
         let rig = CameraRig()
-        rig.seed(target: Vector3(1, 2, 3), radius: 8, azimuth: 0.5, elevation: 0.4, fieldOfView: .pi / 3)
+        rig.frame(target: Vector3(1, 2, 3), radius: 8, azimuth: 0.5, elevation: 0.4, fieldOfView: .pi / 3)
         #expect(rig.radius == 8)
         #expect(rig.azimuth == 0.5)
-        rig.seed(target: .zero, radius: 99, elevation: 0, fieldOfView: .pi / 4)
+        rig.frame(target: .zero, radius: 99, elevation: 0, fieldOfView: .pi / 4)
         #expect(rig.radius == 8)
+        #expect(rig.home.radius == 99)
+        rig.requestView(.reset, animated: false, duration: 0)
+        #expect(rig.radius == 99)
+        #expect(rig.target == .zero)
     }
 
     /// A turntable move advances the azimuth a full turn over its period.
@@ -117,6 +121,23 @@ struct CameraRigTests {
         let framed = rig.azimuth
         rig.updateMove(.turntable(period: 100), dt: dt)   // slow, so frame 1 barely moves
         #expect(abs(rig.azimuth - framed) < 0.05)
+    }
+
+    /// Frame, drift, frame again, drift again: a move resumed after the hands
+    /// departs from where the hands left the camera, not from where it first
+    /// started, even when it is the same move.
+    @Test func aResumedMoveDepartsFromTheHandsAgain() {
+        let rig = fresh()
+        let breathe = CameraMove.handheld(amount: 0)              // holds its base exactly
+        for _ in 0..<10 { rig.updateMove(breathe, dt: dt) }
+        rig.updateControl(input: input(left: true), dt: dt, viewportHeight: height)
+        var x = 500.0
+        for _ in 0..<30 { x += 5; rig.updateControl(input: input(x: x, left: true), dt: dt, viewportHeight: height) }
+        for _ in 0..<300 { rig.updateControl(input: input(x: x), dt: dt, viewportHeight: height) }
+        let framed = rig.azimuth
+        #expect(abs(framed) > 0.5)
+        rig.updateMove(breathe, dt: dt)
+        #expect(abs(rig.azimuth - framed) < 1e-12)
     }
 
     // MARK: Interactive move (auto-orbit the viewer can take over)
@@ -327,7 +348,7 @@ struct CameraRigTests {
                                        fieldOfView: 0.9, near: 0.25, far: 60)
         let pose = cam.orbitPose
         let rig = CameraRig()
-        rig.seed(target: pose.target, radius: pose.radius, azimuth: pose.azimuth,
+        rig.frame(target: pose.target, radius: pose.radius, azimuth: pose.azimuth,
                  elevation: pose.elevation, fieldOfView: pose.fieldOfView,
                  orthographic: pose.orthographic)
         let made = rig.makeCamera(near: cam.near, far: cam.far)
@@ -349,7 +370,7 @@ struct CameraRigTests {
         let pose = cam.orbitPose
         #expect(pose.orthographic)
         let rig = CameraRig()
-        rig.seed(target: pose.target, radius: pose.radius, azimuth: pose.azimuth,
+        rig.frame(target: pose.target, radius: pose.radius, azimuth: pose.azimuth,
                  elevation: pose.elevation, fieldOfView: pose.fieldOfView,
                  orthographic: pose.orthographic)
         guard case .orthographic(let h) = rig.makeCamera(near: 0.1, far: 100).projection else {
@@ -357,8 +378,158 @@ struct CameraRigTests {
         }
         #expect(abs(h - 5) < 1e-9)
 
-        // The seed's flag lands once: a later seed can't flip it back.
-        rig.seed(target: .zero, radius: 3, elevation: 0, fieldOfView: .pi / 3)
+        // The framing's flag lands once: a later framing can't flip it back.
+        rig.frame(target: .zero, radius: 3, elevation: 0, fieldOfView: .pi / 3)
         #expect(rig.isOrthographic)
+    }
+
+    // MARK: The framing follows the call's arguments
+
+    /// Hand `rig` the framing for one frame, `radius` and `fieldOfView` the parts
+    /// a test changes.
+    private func frame(_ rig: CameraRig, radius: Double = 10, elevation: Double = 0.3,
+                       fieldOfView: Double = .pi / 3) {
+        rig.frame(target: .zero, radius: radius, elevation: elevation, fieldOfView: fieldOfView)
+    }
+
+    /// The same framing every frame changes nothing: under every move, a rig
+    /// handed its framing on every frame poses exactly as one handed it once.
+    @Test func aConstantFramingMovesNothing() {
+        let moves: [CameraMove] = [.turntable(period: 8), .pushIn(), .tilt(to: 0.9),
+                                   .orbitAndRise(), .reveal(), .handheld(), .sway()]
+        for move in moves {
+            let everyFrame = fresh(), once = fresh()
+            for _ in 0..<200 {
+                frame(everyFrame)
+                everyFrame.updateMove(move, dt: dt)
+                once.updateMove(move, dt: dt)
+                #expect(everyFrame.azimuth == once.azimuth)
+                #expect(everyFrame.elevation == once.elevation)
+                #expect(everyFrame.radius == once.radius)
+                #expect(everyFrame.fieldOfView == once.fieldOfView)
+            }
+        }
+    }
+
+    /// Under a move, a changed radius glides the move's base there and lands on
+    /// it exactly, while the turn the move adds keeps time with a rig that was
+    /// framed at that radius all along.
+    @Test func aMoveGlidesToAChangedRadius() {
+        let move = CameraMove.turntable(period: 8)
+        let tuned = fresh(radius: 10), framedThere = fresh(radius: 14)
+        for n in 0..<240 {
+            frame(tuned, radius: n < 30 ? 10 : 14)
+            tuned.updateMove(move, dt: dt)
+            framedThere.updateMove(move, dt: dt)
+            if n == 30 { #expect(tuned.radius > 10 && tuned.radius < 11) }   // gliding, not cut
+            if n == 66 { #expect(tuned.radius > 13.8 && tuned.radius < 14) }  // most of the way at 0.6 s
+        }
+        #expect(tuned.radius == 14)
+        #expect(tuned.azimuth == framedThere.azimuth)
+        #expect(tuned.elevation == framedThere.elevation)
+        #expect(tuned.home.radius == 14)
+    }
+
+    /// A finite move's eased part rides on the gliding base: a push-in retuned
+    /// mid-move ends at the new radius times its factor, as a push-in framed
+    /// there from the start does.
+    @Test func aPushInFollowsItsRetunedBase() {
+        let move = CameraMove.pushIn(by: 0.5, in: 2)
+        let tuned = fresh(radius: 10), framedThere = fresh(radius: 6)
+        for n in 0..<300 {
+            frame(tuned, radius: n < 20 ? 10 : 6)
+            tuned.updateMove(move, dt: dt)
+            framedThere.updateMove(move, dt: dt)
+        }
+        #expect(tuned.radius == 3)
+        #expect(framedThere.radius == 3)
+    }
+
+    /// Only the parts whose argument changed glide: a move that departed from a
+    /// hand-framed angle keeps that angle when only the distance is retuned.
+    @Test func onlyAChangedPartGlides() {
+        let rig = fresh(radius: 10)
+        rig.updateControl(input: input(left: true), dt: dt, viewportHeight: height)
+        var x = 500.0
+        for _ in 0..<30 { x += 5; rig.updateControl(input: input(x: x, left: true), dt: dt, viewportHeight: height) }
+        for _ in 0..<300 { rig.updateControl(input: input(x: x), dt: dt, viewportHeight: height) }
+        let handAngle = rig.azimuth
+        #expect(abs(handAngle) > 0.5)
+
+        let still = CameraMove.turntable(period: 0)              // a move that adds no turn
+        for n in 0..<240 {
+            frame(rig, radius: n < 10 ? 10 : 12)
+            rig.updateMove(still, dt: dt)
+        }
+        #expect(rig.radius == 12)
+        #expect(abs(rig.azimuth - handAngle) < 1e-12)
+    }
+
+    /// Under the controller, a changed framing moves the camera while it still
+    /// rests at home; once the viewer has moved it, the change moves only the
+    /// home (the pose stays exactly where a rig whose framing never changed
+    /// keeps it), and a reset goes there.
+    @Test func theControllerFollowsUntilTheViewerTakesIt() {
+        let rig = fresh(radius: 10)
+        for n in 0..<180 {
+            frame(rig, radius: n < 10 ? 10 : 12)
+            rig.updateControl(input: input(), dt: dt, viewportHeight: height)
+        }
+        #expect(abs(rig.radius - 12) < 1e-6)
+
+        let twin = fresh(radius: 12)
+        for r in [rig, twin] {
+            for _ in 0..<5 { frame(r, radius: 12); r.updateControl(input: input(scroll: 3), dt: dt, viewportHeight: height) }
+        }
+        for _ in 0..<180 {
+            frame(rig, radius: 20)
+            rig.updateControl(input: input(), dt: dt, viewportHeight: height)
+            frame(twin, radius: 12)
+            twin.updateControl(input: input(), dt: dt, viewportHeight: height)
+        }
+        #expect(rig.radius < 11.5)                               // dollied in
+        #expect(abs(rig.radius - twin.radius) < 1e-6)            // and held there
+        rig.requestView(.reset, animated: false, duration: 0)
+        #expect(rig.radius == 20)                                 // the home moved
+    }
+
+    /// The viewer never changes the lens, so a changed field of view glides there
+    /// under the controller even after the viewer has taken the camera.
+    @Test func theLensFollowsUnderEveryDriver() {
+        let rig = fresh(radius: 10)
+        for _ in 0..<5 { frame(rig); rig.updateControl(input: input(scroll: 3), dt: dt, viewportHeight: height) }
+        for _ in 0..<240 {
+            frame(rig, fieldOfView: .pi / 4)
+            rig.updateControl(input: input(), dt: dt, viewportHeight: height)
+        }
+        #expect(rig.fieldOfView == .pi / 4)
+    }
+
+    /// The showcase: a changed framing glides the auto-orbit while it drives;
+    /// while the viewer holds the camera it moves only where the idle return
+    /// goes, and the return lands on the new framing's orbit.
+    @Test func theShowcaseReturnsToTheLatestFraming() {
+        let rig = fresh(radius: 10), twin = fresh(radius: 12)
+        func step(_ r: CameraRig, _ inp: CameraInput, radius: Double) {
+            frame(r, radius: radius)
+            interactive(r, inp, idleTimeout: 1, returnDuration: 1)
+        }
+        for n in 0..<180 {
+            step(rig, input(), radius: n < 10 ? 10 : 12)
+            step(twin, input(), radius: 12)
+        }
+        #expect(rig.radius == 12)                                 // the orbit followed
+
+        for _ in 0..<5 {                                          // the viewer takes both
+            step(rig, input(scroll: 3), radius: 12)
+            step(twin, input(scroll: 3), radius: 12)
+        }
+        for _ in 0..<50 {                                         // within the idle wait
+            step(rig, input(), radius: 16)
+            step(twin, input(), radius: 12)
+        }
+        #expect(abs(rig.radius - twin.radius) < 1e-6)            // the viewer's pose holds
+        for _ in 0..<240 { step(rig, input(), radius: 16) }       // the wait, then the return
+        #expect(abs(rig.radius - 16) < 1e-9)
     }
 }

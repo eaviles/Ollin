@@ -877,6 +877,35 @@ extension MetalRenderer {
         }
     }
 
+    /// Share every traced caster's rays out among an export's temporal-AA passes.
+    /// The export draws the scene once per jitter offset and averages the passes,
+    /// and the points a caster samples on the light are fixed, so tracing the whole
+    /// budget in each pass would trace the same points `count` times over (16
+    /// passes of 16 rays at `.detail` on a software-ray-tracing GPU is 256 rays a
+    /// pixel for 16 places on the light). Each pass traces its share of one set
+    /// instead: the budget divided by the pass count, rounded up so the set is
+    /// never shorter than the budget, and at least one ray, with the pass telling
+    /// the fragment which share is its own. Slot 0 and the single-caster field
+    /// divide together, so they agree.
+    func shareTracedShadows(_ lighting: inout OllinLighting, pass: (index: Int, count: Int)) {
+        let count = Int32(pass.count)
+        func share(_ rays: Int32) -> Int32 { max(1, (rays + count - 1) / count) }
+        var casters = shadowCasters(lighting)
+        guard casters.contains(where: { $0.kind == 2 }) else { return }
+        for k in casters.indices where casters[k].kind == 2 {
+            casters[k].samples = share(casters[k].samples)
+        }
+        if lighting.shadowKind == 2 { lighting.shadowSamples = share(lighting.shadowSamples) }
+        withUnsafeMutablePointer(to: &lighting.shadowCasters) { tuplePtr in
+            tuplePtr.withMemoryRebound(to: OllinShadowCaster.self,
+                                       capacity: Int(OLLIN_MAX_SHADOW_CASTERS)) { buf in
+                for (slot, c) in casters.enumerated() { buf[slot] = c }
+            }
+        }
+        lighting.shadowPass = Int32(pass.index)
+        lighting.shadowPassCount = count
+    }
+
     /// Resolve the soft-shadow quality intent to a PCSS **tap budget** for the directional/spot
     /// 2D maps (shared between the blocker search and the variable-kernel PCF). Unlike the
     /// ray-traced path, these are cheap texture samples that run on every GPU, so the budget is

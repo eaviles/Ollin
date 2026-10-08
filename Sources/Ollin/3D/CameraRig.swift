@@ -16,8 +16,8 @@ struct CameraInput {
 /// A canonical camera angle for inspecting a 3D scene, the way a modeling tool's
 /// numpad snaps the viewport to a known orientation.
 ///
-/// `reset` returns to the sketch's opening framing (its center, distance, and
-/// angle); the six axis views look straight down each axis (each flattens the
+/// `reset` returns to the sketch's framing (the center, distance, and angle its
+/// camera call passes); the six axis views look straight down each axis (each flattens the
 /// scene to two axes); and `isometric` is the three-quarter view that shows all
 /// three axes at once (the angle where they foreshorten equally). The axis and
 /// isometric views keep the current center and distance and only swing the orbit
@@ -26,6 +26,17 @@ public enum CameraView: String, Sendable, CaseIterable {
     case reset
     case front, back, left, right, top, bottom
     case isometric
+}
+
+/// The framing a camera call passes: where the camera looks, from how far, from
+/// what angle, and through what lens. The rig keeps the last one it was handed as
+/// its home, the view `resetCamera()` and an idle return go back to.
+struct CameraFraming: Equatable {
+    var target: Vector3
+    var radius: Double
+    var azimuth: Double
+    var elevation: Double
+    var fieldOfView: Double
 }
 
 /// Owns the canonical orbit pose (target, radius, azimuth, elevation, field of
@@ -97,13 +108,45 @@ final class CameraRig {
     // MARK: Cinematic-move state
 
     private var activeMove: CameraMove?
+    /// The move's own clock, which reads the time of the frame being posed: a
+    /// move poses from it first and advances it after, the order `time` keeps,
+    /// so frame N of an export shows the move at N/fps at any frame rate.
     private var moveClock: Double = 0
     private var baseAzimuth = 0.0
     private var baseElevation = 0.0
     private var baseRadius = 0.0
     private var baseTarget = Vector3.zero
-    private var radiusTimeline: Timeline<Double>?
-    private var elevationTimeline: Timeline<Double>?
+    /// Set when a snap lands after a finite move (or an orbit's rise) has played
+    /// out: the snapped pose is the move's resting state from then on, so its
+    /// eased part no longer applies and a later snap does not replay it.
+    private var easedPartHeld = false
+
+    // MARK: Following a changed framing
+
+    /// Where each part of a running move's base is gliding after the framing
+    /// changed, `nil` for a part that has arrived or never moved. Only the parts
+    /// whose argument changed glide, so a move that departed from a hand-framed
+    /// pose keeps the angle the hands left when only the distance is retuned.
+    private var baseGoalTarget: Vector3?
+    private var baseGoalRadius: Double?
+    private var baseGoalAzimuth: Double?
+    private var baseGoalElevation: Double?
+    /// The lens a changed `fieldOfView` glides to. The viewer never changes the
+    /// lens, so it follows the framing under every driver.
+    private var goalFieldOfView: Double?
+
+    /// Whether the controller's pose is still the home it was framed at: true
+    /// from the first call and after a reset, false once the viewer moves the
+    /// camera or snaps it to another view. While it holds, a changed framing
+    /// moves the camera; after that it moves only the home.
+    private var restsAtHome = true
+
+    /// How fast a part of the pose follows a changed framing (1/s), under a
+    /// percent off in about 0.6 s, the length of a `cameraView` glide. It is an
+    /// exponential approach rather than an eased glide because a parameter
+    /// dragged in the inspector changes the framing every frame, and an eased
+    /// glide that restarts every frame never leaves its flat start.
+    private let homeGlideRate = 8.0
 
     /// A private smooth field for the handheld drift, seeded independently of the
     /// sketch's `noise()` so a handheld move neither reads nor disturbs it.
@@ -113,7 +156,7 @@ final class CameraRig {
 
     /// `updateInteractiveMove` is a small state machine over the two halves above:
     /// the move plays (`driving`) until the viewer touches the camera (`manual`),
-    /// and after an idle stretch it eases back to the opening shot (`returning`).
+    /// and after an idle stretch it eases back to the home framing (`returning`).
     private enum InteractivePhase { case driving, manual, returning }
     private var interactivePhase: InteractivePhase = .driving
     private var idleClock = 0.0
@@ -130,33 +173,80 @@ final class CameraRig {
     private var returnToAzimuth: Double?
     private var returnMoveAzimuth = 0.0
 
-    /// The opening framing captured at `seed()`, so the idle return glides back to
-    /// the shot the sketch framed rather than wherever the viewer left the camera.
-    private var anchorTarget = Vector3.zero
-    private var anchorRadius = 10.0
-    private var anchorAzimuth = 0.0
-    private var anchorElevation = 0.3
+    /// The framing the sketch's last camera call passed: where a reset and the
+    /// idle return go back to, rather than wherever the viewer left the camera.
+    private(set) var home = CameraFraming(target: .zero, radius: 10, azimuth: 0,
+                                          elevation: 0.3, fieldOfView: .pi / 3)
 
-    /// Seed the starting pose once. The first `cameraControl()` / `cameraMove()`
-    /// call wins; later calls keep whatever the controller or move has reached, so
-    /// passing framing arguments every frame does not snap the pose back.
-    /// `orthographic` sets the projection's starting state (an authored ortho
-    /// camera opens flat); the axis widget's toggle owns it from then on.
-    func seed(target: Vector3, radius: Double, azimuth: Double = 0,
-              elevation: Double, fieldOfView: Double, orthographic: Bool = false) {
-        guard !seeded else { return }
-        seeded = true
-        self.target = target
-        self.radius = radius
-        self.azimuth = azimuth
-        self.elevation = elevation
-        self.fieldOfView = fieldOfView
-        isOrthographic = orthographic
-        anchorTarget = target
-        anchorRadius = radius
-        anchorAzimuth = azimuth
-        anchorElevation = elevation
+    /// Take this frame's framing from the camera call. The first call opens the
+    /// shot on it. After that it is the rig's home, and an argument that changed
+    /// moves the home there: a running move's base glides after it, a controller
+    /// the viewer has not moved glides after it, and a controller the viewer has
+    /// moved stays where the viewer left it (the next reset goes to the new
+    /// home). Arguments that stay the same change nothing, so a sketch passing
+    /// constants every frame sees no difference. `orthographic` sets the
+    /// projection's starting state (an authored ortho camera opens flat); the
+    /// axis widget's toggle owns it from then on.
+    func frame(_ framing: CameraFraming, orthographic: Bool = false) {
+        guard seeded else {
+            seeded = true
+            target = framing.target
+            radius = framing.radius
+            azimuth = framing.azimuth
+            elevation = framing.elevation
+            fieldOfView = framing.fieldOfView
+            isOrthographic = orthographic
+            home = framing
+            return
+        }
+        guard framing != home else { return }
+        let old = home
+        home = framing
+        if framing.fieldOfView != old.fieldOfView { goalFieldOfView = framing.fieldOfView }
+        if framing.target != old.target {
+            baseGoalTarget = framing.target
+            if restsAtHome { goalTarget = framing.target }
+        }
+        if framing.radius != old.radius {
+            baseGoalRadius = framing.radius
+            if restsAtHome { goalRadius = framing.radius }
+        }
+        if framing.azimuth != old.azimuth {
+            baseGoalAzimuth = framing.azimuth
+            if restsAtHome { goalAzimuth = framing.azimuth }
+        }
+        if framing.elevation != old.elevation {
+            baseGoalElevation = framing.elevation
+            if restsAtHome { goalElevation = clampedElevation(framing.elevation) }
+        }
     }
+
+    /// The labeled form of `frame(_:orthographic:)`, the shape the camera calls
+    /// pass their arguments in.
+    func frame(target: Vector3, radius: Double, azimuth: Double = 0,
+               elevation: Double, fieldOfView: Double, orthographic: Bool = false) {
+        frame(CameraFraming(target: target, radius: radius, azimuth: azimuth,
+                            elevation: elevation, fieldOfView: fieldOfView),
+              orthographic: orthographic)
+    }
+
+    /// Move one part of the pose toward the goal a changed framing set, landing
+    /// exactly and clearing the goal once it is within a hair, so a settled
+    /// glide leaves the very value an export framed with.
+    private func follow(_ value: inout Double, _ goal: inout Double?, _ f: Double) {
+        guard let g = goal else { return }
+        value += (g - value) * f
+        if abs(g - value) <= 1e-9 * Swift.max(1, abs(g)) { value = g; goal = nil }
+    }
+
+    private func follow(_ value: inout Vector3, _ goal: inout Vector3?, _ f: Double) {
+        guard let g = goal else { return }
+        value = value.lerp(to: g, f)
+        if (g - value).length <= 1e-9 * Swift.max(1, g.length) { value = g; goal = nil }
+    }
+
+    /// The share of the way to a changed framing one frame of `dt` covers.
+    private func followShare(_ dt: Double) -> Double { 1 - exp(-homeGlideRate * dt) }
 
     // MARK: Interactive control
 
@@ -176,6 +266,8 @@ final class CameraRig {
         let isOrbit = input.leftPressed && !panModifier
         let isPan = input.rightPressed || (input.leftPressed && panModifier)
         let interacting = isOrbit || isPan
+        if interacting || input.scrollDeltaY != 0 { restsAtHome = false }
+        follow(&fieldOfView, &goalFieldOfView, followShare(dt))
 
         // Seed the reference point when a drag starts, so the first frame has no
         // delta (otherwise an earlier hover position would snap the camera), and a
@@ -256,16 +348,23 @@ final class CameraRig {
 
     // MARK: Cinematic moves
 
-    /// Advance the active cinematic `move` by `dt` seconds, writing the pose. When a
-    /// different move is handed in, its clock restarts and it departs from the
-    /// current pose (so moves chain smoothly).
+    /// Pose the active cinematic `move` at its clock, then advance the clock by
+    /// `dt` seconds. A move handed in fresh starts its clock at zero, so its first
+    /// frame shows it at its start; a different move, or any move taking over from
+    /// the controller, departs from the current pose (so moves chain smoothly, and
+    /// framing by hand between two runs of the same move is kept).
     func updateMove(_ move: CameraMove, dt: Double) {
+        let takesOverFromTheHands = lastMode == .control
         lastMode = .move
-        if move != activeMove { startMove(move) }
-        moveClock += dt
-        radiusTimeline?.advance(by: dt)
-        elevationTimeline?.advance(by: dt)
+        if move != activeMove || takesOverFromTheHands { startMove(move) }
+        let f = followShare(dt)
+        follow(&baseTarget, &baseGoalTarget, f)
+        follow(&baseRadius, &baseGoalRadius, f)
+        follow(&baseAzimuth, &baseGoalAzimuth, f)
+        follow(&baseElevation, &baseGoalElevation, f)
+        follow(&fieldOfView, &goalFieldOfView, f)
         apply(move, clock: moveClock)
+        moveClock += dt
     }
 
     private func startMove(_ move: CameraMove) {
@@ -275,32 +374,50 @@ final class CameraRig {
         baseElevation = elevation
         baseRadius = radius
         baseTarget = target
-        radiusTimeline = nil
-        elevationTimeline = nil
+        easedPartHeld = false
+        // The move departs from the pose as it stands, which already answers any
+        // framing change still on its way.
+        baseGoalTarget = nil
+        baseGoalRadius = nil
+        baseGoalAzimuth = nil
+        baseGoalElevation = nil
+    }
 
-        switch move.kind {
-        case let .pushIn(factor, duration, curve), let .pullOut(factor, duration, curve):
-            radiusTimeline = Timeline(baseRadius).to(baseRadius * factor, in: duration, curve: curve)
-        case let .tilt(to, duration, curve):
-            elevationTimeline = Timeline(baseElevation).to(to, in: duration, curve: curve)
-        case let .orbitAndRise(_, rise, duration):
-            elevationTimeline = Timeline(baseElevation).to(baseElevation + rise, in: duration, curve: .easeInOut)
-        case let .reveal(duration, curve):
-            radiusTimeline = Timeline(baseRadius * 0.45).to(baseRadius, in: duration, curve: curve)
-            let low = Swift.max(0.05, baseElevation * 0.35)
-            elevationTimeline = Timeline(low).to(baseElevation, in: duration, curve: curve)
-        case .turntable, .sway, .handheld:
-            break
-        }
+    /// A finite move's eased value at `clock`: `from` until it starts, `to` once
+    /// its `duration` has run.
+    private func eased(_ from: Double, _ to: Double, _ duration: Double,
+                       _ curve: Easing, _ clock: Double) -> Double {
+        guard duration > 0 else { return to }
+        if clock <= 0 { return from }
+        if clock >= duration { return to }
+        return Double.lerp(from, to, curve(clock / duration))
     }
 
     private func apply(_ move: CameraMove, clock: Double) {
-        // Start from the departure pose; any finite eased property overrides via its
-        // timeline, any cyclic property via the clock below.
+        // Start from the base pose; a finite eased part overrides it by the clock,
+        // and so does any cyclic part below. Read from the base every frame, so a
+        // base that glides after a changed framing carries the whole move with it.
         azimuth = baseAzimuth
-        elevation = elevationTimeline?.value ?? baseElevation
-        radius = radiusTimeline?.value ?? baseRadius
+        elevation = baseElevation
+        radius = baseRadius
         target = baseTarget
+
+        if !easedPartHeld {
+            switch move.kind {
+            case let .pushIn(factor, duration, curve), let .pullOut(factor, duration, curve):
+                radius = eased(baseRadius, baseRadius * factor, duration, curve, clock)
+            case let .tilt(to, duration, curve):
+                elevation = eased(baseElevation, to, duration, curve, clock)
+            case let .orbitAndRise(_, rise, duration):
+                elevation = eased(baseElevation, baseElevation + rise, duration, .easeInOut, clock)
+            case let .reveal(duration, curve):
+                radius = eased(baseRadius * 0.45, baseRadius, duration, curve, clock)
+                let low = Swift.max(0.05, baseElevation * 0.35)
+                elevation = eased(low, baseElevation, duration, curve, clock)
+            case .turntable, .sway, .handheld:
+                break
+            }
+        }
 
         switch move.kind {
         case let .turntable(period):
@@ -317,7 +434,7 @@ final class CameraRig {
             elevation = baseElevation + breath.signedValue(t + 64) * amount
             radius = baseRadius * (1 + breath.signedValue(t + 128) * amount)
         case .pushIn, .pullOut, .tilt, .reveal:
-            break   // radius / elevation already taken from the timelines
+            break   // radius / elevation already taken from the eased part
         }
     }
 
@@ -329,7 +446,7 @@ final class CameraRig {
 
     /// Play `move` as an auto-orbit the viewer can grab. A drag / dolly / pan hands
     /// off to the interactive controller; after `idleTimeout` seconds of no input the
-    /// pose eases back over `returnDuration` seconds to the opening framing and the
+    /// pose eases back over `returnDuration` seconds to the home framing and the
     /// move resumes. Reuses `updateMove` and `updateControl` for the two halves, so
     /// it adds only the phase bookkeeping and the return blend.
     func updateInteractiveMove(_ move: CameraMove, input: CameraInput, dt: Double,
@@ -370,8 +487,8 @@ final class CameraRig {
         return isOrbit || isPan || input.scrollDeltaY != 0
     }
 
-    /// Snapshot the viewer's pose, restart the move from the *opening* framing (so the
-    /// blend's destination is the original shot, still orbiting), then hold the
+    /// Snapshot the viewer's pose, restart the move from the *home* framing (so the
+    /// blend's destination is the sketch's own shot, still orbiting), then hold the
     /// displayed pose at the viewer's pose; the return blends in from there.
     private func beginReturn(to move: CameraMove) {
         returnFromAzimuth = azimuth
@@ -379,11 +496,12 @@ final class CameraRig {
         returnFromRadius = radius
         returnFromTarget = target
 
-        target = anchorTarget
-        radius = anchorRadius
-        elevation = anchorElevation
-        azimuth = anchorAzimuth
-        startMove(move)                  // base = opening framing, clock 0
+        target = home.target
+        radius = home.radius
+        elevation = home.elevation
+        azimuth = home.azimuth
+        startMove(move)                  // base = the home framing, clock 0
+        lastMode = .move                 // so the return's moves keep that base
 
         azimuth = returnFromAzimuth       // restore the displayed pose to the viewer's
         elevation = returnFromElevation
@@ -395,7 +513,7 @@ final class CameraRig {
         interactivePhase = .returning
     }
 
-    /// Ease from the viewer's pose toward the opening-shot orbit; when the blend
+    /// Ease from the viewer's pose toward the home framing's orbit; when the blend
     /// completes the move owns the pose again. The move keeps advancing underneath,
     /// so the destination is a live orbit, not a frozen frame.
     private func advanceReturn(_ move: CameraMove, dt: Double, returnDuration: Double) {
@@ -403,7 +521,7 @@ final class CameraRig {
         let t = returnDuration > 0 ? Swift.min(returnClock / returnDuration, 1) : 1
         let e = easeInOut(t)
 
-        updateMove(move, dt: dt)          // the opening-framing pose, still orbiting
+        updateMove(move, dt: dt)          // the home framing's pose, still orbiting
         let moveAzimuth = azimuth, moveElevation = elevation
         let moveRadius = radius, moveTarget = target
 
@@ -465,7 +583,7 @@ final class CameraRig {
     /// equally (45° around, `asin(1/√3)` up).
     private static let isoElevation = asin(1.0 / sqrt(3.0))
 
-    /// Begin a snap to a canonical inspection angle. `reset` restores the opening
+    /// Begin a snap to a canonical inspection angle. `reset` restores the home
     /// framing (target, radius, and angle); the others keep the current target and
     /// radius and only swing the orbit angle. `animated: false` (or a non-positive
     /// `duration`) cuts instantly.
@@ -477,10 +595,10 @@ final class CameraRig {
 
         switch view {
         case .reset:
-            toTarget = anchorTarget
-            toRadius = anchorRadius
-            toAzimuth = anchorAzimuth
-            toElevation = anchorElevation
+            toTarget = home.target
+            toRadius = home.radius
+            toAzimuth = home.azimuth
+            toElevation = home.elevation
         case .front:  toAzimuth = 0;          toElevation = 0
         case .back:   toAzimuth = .pi;        toElevation = 0
         case .right:  toAzimuth = .pi / 2;    toElevation = 0
@@ -490,6 +608,7 @@ final class CameraRig {
         case .isometric: toAzimuth = .pi / 4; toElevation = CameraRig.isoElevation
         }
         toElevation = clampedElevation(toElevation)
+        restsAtHome = view == .reset
 
         if !animated || duration <= 0 {
             target = toTarget; radius = toRadius
@@ -548,8 +667,7 @@ final class CameraRig {
                 baseElevation = elevation
                 baseRadius = radius
                 baseTarget = target
-                radiusTimeline = nil
-                elevationTimeline = nil
+                easedPartHeld = true
             } else if let move = activeMove,
                       case let .orbitAndRise(period, _, duration) = move.kind,
                       moveClock >= duration {
@@ -561,13 +679,12 @@ final class CameraRig {
                 baseElevation = elevation
                 baseRadius = radius
                 baseTarget = target
-                radiusTimeline = nil
-                elevationTimeline = nil
+                easedPartHeld = true
             } else {
                 activeMove = nil          // updateMove re-bases from the snapped pose
             }
         case .showcase:
-            interactivePhase = .manual    // hold the snapped view, then idle-return to the opening shot
+            interactivePhase = .manual    // hold the snapped view, then idle-return to the home framing
             idleClock = 0
             lastMode = .none
         }

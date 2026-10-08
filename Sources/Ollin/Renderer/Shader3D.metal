@@ -1486,8 +1486,14 @@ static inline float traceShadowRay(float3 origin, float3 target, float eps,
 // uniform count keeps every lane in lockstep. Four samples over a small disk read smooth
 // and hold 60fps even there, and a hardware-RT GPU has ample headroom for the same (a
 // per-hardware ray budget is a clean future refinement). Same swap-point as `shadowFactorCube`.
+//
+// Under an export's temporal-AA passes the disk is one set shared out among them: pass
+// `pass` of `passes` traces samples pass, pass + passes, … of the `samples · passes`-point
+// disk, so the averaged passes have traced every point of it once and each pass alone
+// still spans the whole disk. One pass (`passes` ≤ 1) is the whole disk, as before.
 static inline float shadowFactorRayTraced(float3 worldPos, float3 n, float3 lightPos,
                                           float lightRadius, float eps, int samples,
+                                          int pass, int passes,
                                           instance_acceleration_structure accel) {
     float3 origin = worldPos + n * eps;            // lift off the surface (self-hit guard)
     float3 dir = normalize(lightPos - origin);
@@ -1496,11 +1502,15 @@ static inline float shadowFactorRayTraced(float3 worldPos, float3 n, float3 ligh
     float3 bitangent = cross(dir, tangent);
     intersection_params params = ollin_rt_params(true);
     int n_samples = max(samples, 1);               // rays/pixel (the resolved quality tier)
+    int stride = max(passes, 1);
+    int first = stride > 1 ? pass : 0;
+    float total = float(n_samples * stride);
     float lit = 0.0;
     for (int i = 0; i < n_samples; i++) {
-        float fi = (float(i) + 0.5) / float(n_samples);
+        int k = first + i * stride;                // this ray's place in the whole disk
+        float fi = (float(k) + 0.5) / total;
         float rr = sqrt(fi) * lightRadius;
-        float th = float(i) * 2.39996323;          // golden angle
+        float th = float(k) * 2.39996323;          // golden angle
         float3 t = lightPos + tangent * (cos(th) * rr) + bitangent * (sin(th) * rr);
         lit += traceShadowRay(origin, t, eps, accel, params);
     }
@@ -1516,38 +1526,52 @@ static inline float shadowFactorRayTraced(float3 worldPos, float3 n, float3 ligh
 // pairs of the R2 low-discrepancy lattice for a rect, each point with its mirror
 // through the center, so any budget stays balanced; the golden-angle Vogel disk,
 // laid in the panel's own plane, for a disk) keep the result reproducible like the
-// point path.
+// point path. Under an export's temporal-AA passes each pass traces its share of one
+// set `samples · passes` long, as the point path does; the rect's set keeps its order
+// (the center first for an odd length, then each pair's +p and −p), so the passes
+// together trace every pair whole.
 static inline float shadowFactorRayTracedArea(float3 worldPos, float3 n, OllinLight L,
                                               float scale, float eps, int samples,
+                                              int pass, int passes,
                                               instance_acceleration_structure accel) {
     float3 origin = worldPos + n * eps;            // lift off the surface (self-hit guard)
     intersection_params params = ollin_rt_params(true);
     int n_samples = max(samples, 1);               // rays/pixel (the resolved quality tier)
+    int stride = max(passes, 1);
+    int first = stride > 1 ? pass : 0;
+    int total = n_samples * stride;
     float lit = 0.0;
     if (L.kind == 4) {
         // Disk: Vogel samples in the panel's own plane (axisA/axisB span it).
         float radius = L.axisA.w * scale;
         for (int i = 0; i < n_samples; i++) {
-            float fi = (float(i) + 0.5) / float(n_samples);
+            int k = first + i * stride;            // this ray's place in the whole disk
+            float fi = (float(k) + 0.5) / float(total);
             float rr = sqrt(fi) * radius;
-            float th = float(i) * 2.39996323;      // golden angle
+            float th = float(k) * 2.39996323;      // golden angle
             float3 t = L.position.xyz + L.axisA.xyz * (cos(th) * rr)
                                       + L.axisB.xyz * (sin(th) * rr);
             lit += traceShadowRay(origin, t, eps, accel, params);
         }
     } else {
         // Rect: the R2 lattice over the panel, emitted as +p / -p pairs about the
-        // center (an odd budget adds the center itself), so the sample set's mean
-        // sits on the panel center at any count.
-        int pairs = n_samples / 2;
-        if (n_samples % 2 == 1) lit += traceShadowRay(origin, L.position.xyz, eps, accel, params);
-        for (int i = 0; i < pairs; i++) {
-            float u = fract(0.25 + float(i) * 0.7548776662) * 2.0 - 1.0;
-            float v = fract(0.25 + float(i) * 0.5698402910) * 2.0 - 1.0;
+        // center (an odd length adds the center itself, first), so the sample set's
+        // mean sits on the panel center at any count.
+        bool odd = total % 2 == 1;
+        for (int i = 0; i < n_samples; i++) {
+            int k = first + i * stride;            // this ray's place in the whole set
+            if (odd && k == 0) {
+                lit += traceShadowRay(origin, L.position.xyz, eps, accel, params);
+                continue;
+            }
+            int j = odd ? k - 1 : k;
+            int pair = j / 2;
+            float u = fract(0.25 + float(pair) * 0.7548776662) * 2.0 - 1.0;
+            float v = fract(0.25 + float(pair) * 0.5698402910) * 2.0 - 1.0;
             float3 offset = L.axisA.xyz * (L.axisA.w * scale * u)
                           + L.axisB.xyz * (L.axisB.w * scale * v);
-            lit += traceShadowRay(origin, L.position.xyz + offset, eps, accel, params);
-            lit += traceShadowRay(origin, L.position.xyz - offset, eps, accel, params);
+            float side = (j % 2 == 0) ? 1.0 : -1.0;
+            lit += traceShadowRay(origin, L.position.xyz + offset * side, eps, accel, params);
         }
     }
     return lit / float(n_samples);
@@ -1566,11 +1590,13 @@ static inline float meshRTShadowOne(float3 worldPos, float3 normal,
     OllinLight caster = light.lights[sc.lightIndex];
     if (caster.kind >= 3) {
         return shadowFactorRayTracedArea(worldPos, normalize(normal), caster,
-                                         sc.depthB, sc.texelWorld, sc.samples, accel);
+                                         sc.depthB, sc.texelWorld, sc.samples,
+                                         light.shadowPass, light.shadowPassCount, accel);
     }
     return shadowFactorRayTraced(worldPos, normalize(normal),
                                  caster.position.xyz,
-                                 sc.depthB, sc.texelWorld, sc.samples, accel);
+                                 sc.depthB, sc.texelWorld, sc.samples,
+                                 light.shadowPass, light.shadowPassCount, accel);
 }
 
 // The ray-traced shadow factor of every caster in the frame, one per slot, shared by the

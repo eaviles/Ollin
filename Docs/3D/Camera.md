@@ -13,7 +13,7 @@ This page covers both. Each is opt-in, and each reuses the orbit pose ([`Camera3
   <img src="../../Guide/Images/26-3DGently/Orbit.jpg" alt="A diagram of the orbiting camera: a small camera body on a gray ring around a dark knot, with a dashed sight line labeled radius, a ground arc labeled azimuth, and a climbing arc labeled elevation" width="680">
 </picture>
 
-Most sketches use [`cameraShowcase(_:)`](#showcase), which **combines the two**. It orbits on its own, and it also lets the viewer grab the camera and explore. When the viewer stops, it eases back to the opening shot.
+Most sketches use [`cameraShowcase(_:)`](#showcase), which **combines the two**. It orbits on its own, and it also lets the viewer grab the camera and explore. When the viewer stops, it eases back to the sketch's shot.
 
 Each is a single call you make in `draw()`, like `camera(...)`. A sketch that calls neither keeps its own camera untouched. Both write the same pose, so handing off between hand-framing and a move continues smoothly from wherever you left it.
 
@@ -33,7 +33,7 @@ Each is a single call you make in `draw()`, like `camera(...)`. A sketch that ca
 <a id="showcase"></a>
 ### Showcase camera (the usual default)
 
-`cameraShowcase(_:)` is the call most 3D sketches want. The camera **orbits on its own**, and the viewer can **take it over** at any time. Drag to orbit, scroll to dolly, and right-drag or shift / option-drag to pan. After a period of no input, the camera **eases back to the opening shot** and resumes orbiting. So a sketch keeps moving unattended on a wall or in a gallery, and a viewer can still explore it.
+`cameraShowcase(_:)` is the call most 3D sketches want. The camera **orbits on its own**, and the viewer can **take it over** at any time. Drag to orbit, scroll to dolly, and right-drag or shift / option-drag to pan. After a period of no input, the camera **eases back to the sketch's shot** and resumes orbiting. So a sketch keeps moving unattended on a wall or in a gallery, and a viewer can still explore it.
 
 ```swift
 override func draw() {
@@ -43,7 +43,7 @@ override func draw() {
 }
 ```
 
-It combines the interactive half ([`cameraControl()`](#control)) and the cinematic half ([`cameraMove(_:)`](#moves)). The move plays until you touch the camera. Your input then drives the camera for as long as you keep moving it. After that, the idle return glides back over `returnDuration` seconds, and the move carries on. The return goes to the *opening* framing (its `target` / `radius` / `elevation`), not to wherever you left the camera. The gestures are the same as in [interactive control](#control) below.
+It combines the interactive half ([`cameraControl()`](#control)) and the cinematic half ([`cameraMove(_:)`](#moves)). The move plays until you touch the camera. Your input then drives the camera for as long as you keep moving it. After that, the idle return glides back over `returnDuration` seconds, and the move carries on. The return goes to the sketch's framing (its `target` / `radius` / `elevation`), not to wherever you left the camera. The gestures are the same as in [interactive control](#control) below.
 
 The motion defaults to `.autoOrbit()`, which is a slow product-shot turntable. To use a specific motion, pass any [`CameraMove`](#catalog):
 
@@ -55,15 +55,9 @@ cameraShowcase(.sway(amplitude: 0.4, period: 30), radius: 8, elevation: 0.3)
 | --- | --- | --- |
 | `move` | `.autoOrbit()` | the automatic motion (any `CameraMove`) |
 | `idleReturn` | `10` | seconds of no input before the return begins |
-| `returnDuration` | `4` | how many seconds the eased glide back to the opening shot takes |
+| `returnDuration` | `4` | how many seconds the eased glide back to the framed shot takes |
 
-The `target` / `radius` / `elevation` / `fieldOfView` arguments frame the opening shot on the first call. The idle return glides back to that shot.
-
-**A parameter in the framing does nothing live.** The framing applies on the first call, so a `@Param` passed as `radius` or `elevation` changes nothing when you tune it in the window, and `resetCamera()` goes back to the first call's framing too. An export applies `--param` before its first frame, so the export does frame with the value, and the window and the file disagree. The same holds for `cameraControl` and `cameraMove`. For a framing you want to tune, pose the camera from the clock instead, which reads the parameters every frame at the cost of the viewer's grab:
-
-```swift
-camera(.orbiting(radius: distance, azimuth: loopProgress(over: 20) * .tau, elevation: tilt))
-```
+The `target` / `radius` / `elevation` / `fieldOfView` arguments frame the shot, and the idle return glides back to it. The first call opens on them. A later call that changes one glides the orbit there over about half a second. So a `@Param` passed as `radius` or `elevation` tunes the window the way an export frames it. While the viewer holds the camera, a change moves only where the idle return goes. Passing the same values every frame changes nothing. The same holds for `cameraControl` and `cameraMove`.
 
 <a id="control"></a>
 ### Interactive control
@@ -78,7 +72,7 @@ override func draw() {
 }
 ```
 
-The `target` / `radius` / `azimuth` / `elevation` / `fieldOfView` arguments frame the *opening* shot. They apply on the first call only, and after that the viewer owns the pose. So passing the same framing every frame does not interfere with the interaction or snap the camera back.
+The `target` / `radius` / `azimuth` / `elevation` / `fieldOfView` arguments are the camera's home. The first call opens on them, and `resetCamera()` goes back to them. A later call that changes one moves the home, and the camera glides there too until the viewer takes it. After that the viewer owns the pose, and only the next reset goes to the new home. Passing the same framing every frame changes nothing, so it does not interfere with the interaction or snap the camera back. The lens has no gesture, so a changed `fieldOfView` always glides.
 
 | Gesture | Action |
 | --- | --- |
@@ -110,7 +104,9 @@ override func draw() {
 }
 ```
 
-As with `cameraControl()`, the `target` / `radius` / `elevation` / `fieldOfView` arguments frame the shot on the first call. After that the move owns the pose. Angles are in radians, which matches the rest of the camera API.
+The `target` / `radius` / `elevation` / `fieldOfView` arguments frame the shot the move turns around. A later call that changes one glides the shot there while the move keeps playing, and a constant changes nothing. Angles are in radians, which matches the rest of the camera API.
+
+A move's clock starts at zero on the first frame it runs. Frame N of an export shows the move at N / fps seconds, the same moment `time` reads. So two exports at different frame rates agree wherever their frames fall on the same time.
 
 <a id="catalog"></a>
 ### The move catalog
@@ -135,7 +131,7 @@ cameraMove(.orbitAndRise(period: 12, rise: 0.5, in: 6), radius: 7)
 <a id="from-authored"></a>
 ### Opening on an authored camera
 
-All three calls take a `from:` form. It seeds the opening shot from any `Camera3D` instead of from the framing arguments. It fits a [loaded scene's](./Scenes.md#cameras) authored camera well, so you open on the exact shot composed in the design tool. From there you hand the viewer the orbit, or you let a move drift from it.
+All three calls take a `from:` form. It frames the shot from any `Camera3D` instead of from the framing arguments. It fits a [loaded scene's](./Scenes.md#cameras) authored camera well, so you open on the exact shot composed in the design tool. From there you hand the viewer the orbit, or you let a move drift from it.
 
 ```swift
 cameraControl(from: stage.camera ?? .orbiting(radius: 6))     // the authored view, explorable
@@ -143,7 +139,7 @@ cameraShowcase(from: stage.camera ?? .orbiting(radius: 6))    // ...or auto-orbi
 cameraMove(.handheld(amount: 0.05), from: stage.camera!)      // ...or breathing on it
 ```
 
-The rig decomposes the camera into its orbit pose. The camera's `target` becomes the pivot, the eye's offset becomes the radius and the angles, and its field of view carries over. An orthographic camera opens the rig flat, and the axis widget's Ortho toggle switches it back to perspective. The orthographic frame height maps to the matching field of view at the target distance, so the shot shows the authored extent. `near`/`far` default to the camera's own clip range. Like the framing arguments, `from:` seeds the rig on the *first* call only, and the idle return and `.reset` glide back to it. Two things do not carry over. The rig orbits y-up, so an authored camera roll is dropped. A camera that looks straight up or down clamps to just off the pole.
+The rig decomposes the camera into its orbit pose. The camera's `target` becomes the pivot, the eye's offset becomes the radius and the angles, and its field of view carries over. An orthographic camera opens the rig flat, and the axis widget's Ortho toggle switches it back to perspective. The orthographic frame height maps to the matching field of view at the target distance, so the shot shows the authored extent. `near`/`far` default to the camera's own clip range. Like the framing arguments, the authored pose is the home, and the idle return and `.reset` glide back to it. A later call with the camera posed elsewhere moves the shot there. Two things do not carry over. The rig orbits y-up, so an authored camera roll is dropped. A camera that looks straight up or down clamps to just off the pole.
 
 <a id="compose"></a>
 ### Composing: frame, then drift
@@ -169,13 +165,13 @@ While you build a 3D scene, it helps to look at it from a known angle, the way a
 ```swift
 cameraView(.front)                  // look straight down +Z
 cameraView(.isometric)              // the three-quarter, all three axes at once
-resetCamera()                       // back to the opening framing
+resetCamera()                       // back to the sketch's framing
 cameraView(.top, animated: false)   // cut instantly instead of gliding
 ```
 
 The views:
 
-- `.reset` returns to the sketch's opening framing (its center, distance, and angle). That is the shot the first `cameraShowcase` / `cameraControl` / `cameraMove` call set. `resetCamera()` is a shorthand for it.
+- `.reset` returns to the sketch's framing (its center, distance, and angle). That is the shot the latest `cameraShowcase` / `cameraControl` / `cameraMove` call passed. `resetCamera()` is a shorthand for it.
 - `.front` / `.back` / `.left` / `.right` / `.top` / `.bottom` look straight down each axis. Each one flattens the scene to two axes. They keep the current center and distance, and they only swing the orbit angle.
 - `.isometric` is the three-quarter view: 45° around, and tilted so that the three axes foreshorten equally. It is the one angle that shows all three axes at once. Pair it with the axis widget's Ortho toggle for a textbook isometric look.
 

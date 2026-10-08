@@ -4168,6 +4168,27 @@ renders are byte-identical, and an export beside a running window can't
 double-step the on-screen accumulation. The benchmark path takes the live
 shape (cost parity).
 
+**A traced shadow inside those passes traces its share of one set.** A traced
+point or area caster samples fixed points on the light (the Vogel disk, the
+antithetic R2 pairs), so tracing the whole budget in every jittered pass traced
+the same points N times: 16 passes of 16 rays at `.detail` on a software-RT GPU
+were 256 rays a pixel for 16 places on the light, 25 s a frame on 1,000 spheres at
+1080×1920. `encode(taaPass:)` hands the pass to `resolvedLighting`, where
+`shareTracedShadows` divides each traced caster's count by N (rounded up, so the set
+is never shorter than the budget, and at least one ray) and sets
+`OllinLighting.shadowPass`/`shadowPassCount`; the fragment then traces samples
+p, p + N, p + 2N, … of the set `count · N` long. Interleaving rather than
+blocking keeps each pass spread over the whole light, and pairs the Vogel radius
+(rising with the index) with the jitter's radical inverse, a Hammersley-like
+pairing. The frame then costs the set, 2.3 s on that scene, and looks the same: the
+penumbra keeps its 16 steps, 0.8 dB further from a 64-point render than the old
+frame, which had paired every point with every sub-pixel offset. The other shape
+in the design note, turning the disk per pass at the old count, would have bought a
+smoother penumbra at the old cost; the cost was the complaint. The rect set keeps
+its order (an odd length's center first, then each pair's +p and −p), and a pass
+count is always even, so the passes trace every pair whole. One pass is the old
+loop exactly, so every frame outside the export's loop is byte-identical.
+
 Three live defects were found and fixed by frame-diff measurement (the
 static-trellis scene in an OllinLive window, screencapture bursts diffed
 frame-to-frame, statistics at the scale of the question), and each is now a
@@ -8940,7 +8961,7 @@ spatial).
 ## Camera rig: showcase orbit, view snaps, and scene chrome
 
 `cameraShowcase(_:)` (the default the 3D examples use) is an auto-orbit the viewer can
-take over, easing back to the opening shot when left alone. It adds no new camera
+take over, easing back to the sketch's framing when left alone. It adds no new camera
 math: it is a small state machine in `CameraRig` (`Sources/Ollin/3D/CameraRig.swift`)
 that orchestrates the two halves that already exist: the cinematic-move driver
 (`updateMove`/`startMove`/`apply`) and the damped interactive controller
@@ -8956,16 +8977,16 @@ runs one of:
 - `manual`: calls `updateControl`. Each input frame zeroes the idle clock; each
   idle frame accumulates it. At `idleTimeout` (10s default) it begins the return.
 - `returning`: eases the displayed pose from where the viewer left it toward the
-  *opening* orbit, then hands back to `driving`.
+  *home* orbit, then hands back to `driving`.
 
-**Reset to the original shot, not resume-in-place.** The opening framing (target,
-radius, elevation, azimuth) is captured once in `seed()` as the `anchor*` fields,
-separate from the live pose the controller mutates. When the return begins,
-`beginReturn` snapshots the viewer's pose (`returnFrom*`), restarts the move at the
-anchor framing (`startMove` with the pose temporarily set to the anchor, so the
-move's base is the opening shot), then restores the displayed pose to the viewer's
-so the blend starts there with no jump. `advanceReturn` advances the move (a *live*
-orbit at the opening framing) and blends `returnFrom → movePose` by a Hermite
+**Reset to the sketch's shot, not resume-in-place.** The framing the last camera
+call passed (target, radius, azimuth, elevation, field of view) is the rig's
+`home`, a `CameraFraming` kept apart from the live pose the controller mutates.
+When the return begins, `beginReturn` snapshots the viewer's pose (`returnFrom*`),
+restarts the move at the home framing (`startMove` with the pose temporarily set to
+it, so the move's base is the sketch's shot), then restores the displayed pose to
+the viewer's so the blend starts there with no jump. `advanceReturn` advances the
+move (a *live* orbit at the home framing) and blends `returnFrom → movePose` by a Hermite
 `easeInOut(returnClock/returnDuration)` (4s default). Hermite is flat at both ends,
 so the orbit's angular velocity ramps from rest to full, the "progressive" return.
 Azimuth blends along the shortest arc (`lerpAngle`) so a viewer who spun several
@@ -8980,8 +9001,36 @@ snapshot paths are pixel-identical to a plain cinematic move, and `cameraMove` /
 `camera` themselves are untouched, so every existing 3D snapshot is unaffected
 (`cameraShowcase` is a *new* opt-in call, not a behavior change to the old ones). The
 state machine is exercised by CPU units in `CameraRigTests` (interrupt, idle return
-to the anchor framing, seam continuity, mid-return cancel), since a snapshot cannot
+to the home framing, seam continuity, mid-return cancel), since a snapshot cannot
 drive synthetic input events.
+
+**The framing follows the call.** Every camera call hands the rig its framing through
+`frame(_:orthographic:)`. The first call opens the shot on it; after that it is the
+`home`, and an argument that changed moves the home there. What else moves depends on
+who owns the pose. A running move (or the showcase's auto-orbit) modulates a base pose,
+and each base part whose argument changed glides to it (`baseGoal*`), so a push-in
+retuned mid-move ends at the new radius times its factor and a move that departed from
+a hand-framed angle keeps that angle when only the distance changes. The controller
+glides after the framing only while it still rests at home (`restsAtHome`: true from
+the first call and after a reset, false once the viewer orbits, pans, dollies, or snaps
+to another view); after that only the home moves, for the next reset. The lens has no
+gesture, so a changed `fieldOfView` glides under every driver. The glide is an
+exponential approach at `homeGlideRate` (8/s, under a percent off in about 0.6 s, the
+`cameraView` glide), not an eased one, because a parameter dragged in the inspector
+changes the framing every frame and an eased glide restarted every frame never leaves
+its flat start; each part lands exactly once it is within 1e-9, so a settled window
+holds the very value an export frames with. Unchanged arguments do nothing at all,
+which keeps a sketch passing constants byte-identical (`aConstantFramingMovesNothing`).
+`startMove` clears the base goals: a new move departs from the pose as it stands.
+
+**A move's clock reads the frame being posed.** `updateMove` poses at `moveClock` and
+advances it after, the order `time` keeps, so a move's first frame is its start and
+export frame N shows the move at N/fps at any frame rate (`CameraClockTests`, 30 and
+60 fps). Advancing first put every exported frame one step ahead, and two exports of
+one frame at different `--fps` differed. The eased part of a finite move is computed
+from the base at the clock each frame (`eased`), not held in a `Timeline` built at
+`startMove`, so a gliding base carries it; `easedPartHeld` is what a snap after a
+finished move sets so the snapped pose stays the move's resting state.
 
 `activeCamera` (on `Sketch`) returns the resolved `Camera3D` for the frame, so a
 sketch that places geometry relative to the camera (e.g. `DepthCompositing` seats
@@ -8994,8 +9043,8 @@ references (studied, not ported): spherical azimuth/elevation with a
 `2 * pi * delta / height` rotate, a multiplicative `pow(0.97)` dolly, a
 `2 * radius * tan(fov/2) / height` pan, all `deltaTime`-corrected for
 frame-rate independence, with exponential damping toward an input-driven goal
-plus a capped release-momentum flick. Both halves seed the framing on the first
-call only and compose over the current pose (`CameraRig.lastMode` re-syncs the
+plus a capped release-momentum flick. Both halves take their framing as the
+home (see *The framing follows the call*) and compose over the current pose (`CameraRig.lastMode` re-syncs the
 controller's goal after a move), so "frame by hand, then drift" is one call
 after another, and the rig clamps elevation off the poles.
 
@@ -9007,16 +9056,16 @@ splits into radius / azimuth (`atan2(x, z)`, inverting `Camera3D.orbiting`
 exactly, round-trip-pinned) / elevation (`asin(y/r)`), and the projection maps
 to a field of view. An orthographic camera converts its frame height to the
 equivalent fov at the target distance (`2 * atan(h / 2r)`) and seeds
-`isOrthographic` through a `seed(orthographic:)` parameter that lands only
-when the seed takes, so the shot shows the authored extent, the axis widget's
+`isOrthographic` through a `frame(orthographic:)` parameter that lands only
+on the first call, so the shot shows the authored extent, the axis widget's
 projection toggle still owns the flag afterward, and flipping projections
 holds the scale (the existing `makeCamera` convention). `near`/`far` default
 to the camera's own clip range, read every frame rather than seeded. What
 doesn't carry, by design: the rig is y-up, so authored roll drops, and a
-straight-down camera clamps just off the pole. The overloads call `seed`
-first, then forward to the plain forms (whose own `seed` is then a no-op),
-so every downstream behavior (anchor capture, idle return, view snaps) sees
-the authored framing as the opening shot.
+straight-down camera clamps just off the pole. The overloads hand the rig the
+authored pose as their framing and run the same driver the plain forms do, so
+every downstream behavior (the home, the idle return, view snaps) sees the
+authored framing as the sketch's shot.
 
 The rig is a plain `let` on `Sketch` advanced explicitly, *not*
 `FrameAdvancing`: the Mirror-collection cache behind `FrameAdvancing` only sees

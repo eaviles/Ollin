@@ -1035,14 +1035,20 @@ open class Sketch {
     /// instead of keyframing the camera by hand. Each move is a way to look at an
     /// object on a turntable (`.turntable`, `.pushIn`, `.tilt`, `.orbitAndRise`, …),
     /// modulating the orbit pose around `target`. The `target`/`radius`/`elevation`/
-    /// `fieldOfView` arguments frame the shot on the first call; after that the move
-    /// owns the pose (and a preceding `cameraControl()` frames it instead). Call it
-    /// each `draw()`, like `camera(...)`.
+    /// `fieldOfView` arguments frame the shot: the first call opens on them, and a
+    /// later call that changes one glides the shot there, so a `@Param` passed in
+    /// tunes the window the way an export frames it. Passing the same values every
+    /// frame changes nothing (and a preceding `cameraControl()` frames the shot the
+    /// move departs from). Call it each `draw()`, like `camera(...)`.
     public func cameraMove(_ move: CameraMove, target: Vector3 = .zero, radius: Double = 10,
                            elevation: Double = 0.3, fieldOfView: Double = .pi / 3,
                            near: Double = 0.1, far: Double = 1000) {
+        cameraRig.frame(target: target, radius: radius, elevation: elevation, fieldOfView: fieldOfView)
+        runCameraMove(move, near: near, far: far)
+    }
+
+    private func runCameraMove(_ move: CameraMove, near: Double, far: Double) {
         cameraRig.driver = .move
-        cameraRig.seed(target: target, radius: radius, elevation: elevation, fieldOfView: fieldOfView)
         cameraRig.updateMove(move, dt: deltaTime)
         cameraRig.applyViewSnap(dt: deltaTime)
         camera(cameraRig.makeCamera(near: near, far: far))
@@ -1054,17 +1060,23 @@ open class Sketch {
     /// little spin. Opt-in, like `lights()`: call it each `draw()` and it sets the
     /// camera for the frame; a sketch that never calls it keeps its own camera.
     ///
-    /// The `target`/`radius`/`azimuth`/`elevation`/`fieldOfView` arguments frame the
-    /// starting shot on the *first* call only; after that the viewer (or a
-    /// `cameraMove(_:)` you switch to) owns the pose, so passing them every frame
-    /// does not fight the interaction.
+    /// The `target`/`radius`/`azimuth`/`elevation`/`fieldOfView` arguments are the
+    /// camera's home: the first call opens on them, and `resetCamera()` goes back
+    /// to them. A later call that changes one moves the home, and the camera
+    /// glides there too until the viewer takes it; after that the viewer owns the
+    /// pose and only the next reset goes to the new home. Passing the same framing
+    /// every frame changes nothing, so it never fights the interaction.
     public func cameraControl(target: Vector3 = .zero, radius: Double = 10,
                               azimuth: Double = 0, elevation: Double = 0.3,
                               fieldOfView: Double = .pi / 3,
                               near: Double = 0.1, far: Double = 1000) {
+        cameraRig.frame(target: target, radius: radius, azimuth: azimuth,
+                        elevation: elevation, fieldOfView: fieldOfView)
+        runCameraControl(near: near, far: far)
+    }
+
+    private func runCameraControl(near: Double, far: Double) {
         cameraRig.driver = .control
-        cameraRig.seed(target: target, radius: radius, azimuth: azimuth,
-                       elevation: elevation, fieldOfView: fieldOfView)
         let input = CameraInput(mouseX: mouseX, mouseY: mouseY,
                                 leftPressed: mouseIsPressed, rightPressed: rightMouseIsPressed,
                                 modifiers: modifiers, scrollDeltaY: scrollDeltaY)
@@ -1077,22 +1089,31 @@ open class Sketch {
     /// The camera orbits on its own; the moment the viewer drags to orbit, scrolls to
     /// dolly, or right/modifier-drags to pan, the automatic motion yields and they
     /// drive. After `idleReturn` seconds of no input the camera eases back over
-    /// `returnDuration` seconds to the opening framing and the orbit resumes, so a
+    /// `returnDuration` seconds to the sketch's framing and the orbit resumes, so a
     /// sketch is alive on its own yet always explorable. Opt-in, like `cameraMove`/
     /// `cameraControl`: call it each `draw()`; a sketch that never calls it keeps its
     /// own camera.
     ///
-    /// The `target`/`radius`/`elevation`/`fieldOfView` arguments frame the opening
-    /// shot on the *first* call only, and are where the idle return glides back to.
-    /// `move` defaults to `.autoOrbit()`, a gentle slow turntable; pass a tuned
-    /// `.turntable`/`.sway`/… to keep a specific motion.
+    /// The `target`/`radius`/`elevation`/`fieldOfView` arguments frame the shot and
+    /// are where the idle return glides back to. The first call opens on them; a
+    /// later call that changes one glides the orbit there (or, while the viewer
+    /// holds the camera, moves where the return goes), so a `@Param` passed in
+    /// tunes the window the way an export frames it. `move` defaults to
+    /// `.autoOrbit()`, a gentle slow turntable; pass a tuned `.turntable`/`.sway`/…
+    /// to keep a specific motion.
     public func cameraShowcase(_ move: CameraMove = .autoOrbit(),
                             target: Vector3 = .zero, radius: Double = 10,
                             elevation: Double = 0.3, fieldOfView: Double = .pi / 3,
                             near: Double = 0.1, far: Double = 1000,
                             idleReturn: Double = 10, returnDuration: Double = 4) {
+        cameraRig.frame(target: target, radius: radius, elevation: elevation, fieldOfView: fieldOfView)
+        runCameraShowcase(move, near: near, far: far,
+                          idleReturn: idleReturn, returnDuration: returnDuration)
+    }
+
+    private func runCameraShowcase(_ move: CameraMove, near: Double, far: Double,
+                                   idleReturn: Double, returnDuration: Double) {
         cameraRig.driver = .showcase
-        cameraRig.seed(target: target, radius: radius, elevation: elevation, fieldOfView: fieldOfView)
         let input = CameraInput(mouseX: mouseX, mouseY: mouseY,
                                 leftPressed: mouseIsPressed, rightPressed: rightMouseIsPressed,
                                 modifiers: modifiers, scrollDeltaY: scrollDeltaY)
@@ -1105,54 +1126,55 @@ open class Sketch {
 
     /// Run a cinematic `move` opening on an authored camera's framing: the shot
     /// starts at `camera`'s own pose (its target, distance, angle, and field of
-    /// view, e.g. a loaded scene's `scene.camera`), then the move owns it. Seeds
-    /// on the *first* call only, like the plain form's framing arguments.
-    /// `near`/`far` default to the camera's own clip range. The rig orbits y-up,
-    /// so an authored roll is dropped.
+    /// view, e.g. a loaded scene's `scene.camera`), then the move owns it. A later
+    /// call with a camera posed elsewhere moves the shot there, like the plain
+    /// form's framing arguments. `near`/`far` default to the camera's own clip
+    /// range. The rig orbits y-up, so an authored roll is dropped.
     public func cameraMove(_ move: CameraMove, from camera: Camera3D,
                            near: Double? = nil, far: Double? = nil) {
-        seedCameraRig(from: camera)
-        cameraMove(move, near: near ?? camera.near, far: far ?? camera.far)
+        frameCameraRig(from: camera)
+        runCameraMove(move, near: near ?? camera.near, far: far ?? camera.far)
     }
 
     /// Hand the viewer the camera, opening on an authored camera's framing: the
     /// view starts at `camera`'s own pose (e.g. a loaded scene's `scene.camera`)
     /// and the viewer orbits, dollies, and pans from there. The one-call form of
-    /// "open on the authored shot, then let them explore". Seeds on the *first*
-    /// call only; `near`/`far` default to the camera's own clip range. The rig
-    /// orbits y-up, so an authored roll is dropped.
+    /// "open on the authored shot, then let them explore". The authored pose is
+    /// the home, as the plain form's framing arguments are; `near`/`far` default
+    /// to the camera's own clip range. The rig orbits y-up, so an authored roll
+    /// is dropped.
     public func cameraControl(from camera: Camera3D,
                               near: Double? = nil, far: Double? = nil) {
-        seedCameraRig(from: camera)
-        cameraControl(near: near ?? camera.near, far: far ?? camera.far)
+        frameCameraRig(from: camera)
+        runCameraControl(near: near ?? camera.near, far: far ?? camera.far)
     }
 
     /// The interactive orbit, opening on an authored camera's framing: `move`
     /// plays from `camera`'s own pose (e.g. a loaded scene's `scene.camera`),
     /// the viewer can take over any time, and the idle return glides back to
-    /// the authored shot. Seeds on the *first* call only; `near`/`far` default
-    /// to the camera's own clip range. The rig orbits y-up, so an authored
-    /// roll is dropped.
+    /// the authored shot. The authored pose is the home, as the plain form's
+    /// framing arguments are; `near`/`far` default to the camera's own clip
+    /// range. The rig orbits y-up, so an authored roll is dropped.
     public func cameraShowcase(_ move: CameraMove = .autoOrbit(), from camera: Camera3D,
                                near: Double? = nil, far: Double? = nil,
                                idleReturn: Double = 10, returnDuration: Double = 4) {
-        seedCameraRig(from: camera)
-        cameraShowcase(move, near: near ?? camera.near, far: far ?? camera.far,
-                       idleReturn: idleReturn, returnDuration: returnDuration)
+        frameCameraRig(from: camera)
+        runCameraShowcase(move, near: near ?? camera.near, far: far ?? camera.far,
+                          idleReturn: idleReturn, returnDuration: returnDuration)
     }
 
-    /// Seed the rig's opening pose from an authored camera (the first call
-    /// wins, matching the plain forms' framing arguments).
-    private func seedCameraRig(from camera: Camera3D) {
+    /// Frame the rig on an authored camera's pose, the way the plain forms frame
+    /// it on their arguments.
+    private func frameCameraRig(from camera: Camera3D) {
         let pose = camera.orbitPose
-        cameraRig.seed(target: pose.target, radius: pose.radius, azimuth: pose.azimuth,
-                       elevation: pose.elevation, fieldOfView: pose.fieldOfView,
-                       orthographic: pose.orthographic)
+        cameraRig.frame(target: pose.target, radius: pose.radius, azimuth: pose.azimuth,
+                        elevation: pose.elevation, fieldOfView: pose.fieldOfView,
+                        orthographic: pose.orthographic)
     }
 
     /// Snap the camera to a canonical inspection angle, the way a modeling tool's
     /// numpad jumps the viewport to a known view. `.reset` returns to the sketch's
-    /// opening framing; the six axis views (`.front`/`.back`/`.left`/`.right`/`.top`/
+    /// framing; the six axis views (`.front`/`.back`/`.left`/`.right`/`.top`/
     /// `.bottom`) look straight down each axis; and `.isometric` is the three-quarter
     /// view that shows all three axes at once. The axis and isometric views keep the
     /// current center and distance and only swing the orbit angle.
@@ -1166,9 +1188,9 @@ open class Sketch {
         cameraRig.requestView(view, animated: animated, duration: duration)
     }
 
-    /// Return the camera to the sketch's opening framing (its center, distance, and
-    /// angle), as set by the first `cameraShowcase`/`cameraControl`/`cameraMove`
-    /// call. Sugar for `cameraView(.reset)`.
+    /// Return the camera to the sketch's framing (its center, distance, and
+    /// angle), as the latest `cameraShowcase`/`cameraControl`/`cameraMove` call
+    /// passed it. Sugar for `cameraView(.reset)`.
     public func resetCamera(animated: Bool = true, duration: Double = 0.6) {
         cameraView(.reset, animated: animated, duration: duration)
     }
@@ -1903,8 +1925,11 @@ open class Sketch {
     public func glossyReflections(_ on: Bool = true) { drawer.glossyReflections(on) }
 
     /// Set the soft-shadow ray count to an **exact** value (1…64), the hardware-independent
-    /// alternative to `shadowQuality` — for fine control, pushing past the presets on a fast
-    /// GPU, or a render that should look identical across machines. Persistent.
+    /// alternative to `shadowQuality`: for fine control, pushing past the presets on a fast
+    /// GPU, or a render that should look identical across machines. Under an export's
+    /// temporal anti-aliasing a traced caster's count is shared out among the passes (each
+    /// traces its share, at least one ray), so it is how many points on the light the frame
+    /// traces in all. Persistent.
     public func shadowSamples(_ count: Int) { drawer.shadowSamples(count) }
 
     /// Set the caustics quality (how many photons each frame traces, and how finely
