@@ -266,6 +266,7 @@ let package = Package(
         example("3D/Effects/AmbientOcclusion"),
         example("3D/Effects/ScreenSpaceReflections"),
         example("3D/Effects/Atmosphere"),
+        example("3D/Effects/Volumes"),
         example("3D/Effects/ContactShadows"),
         example("3D/Effects/MotionBlur"),
         example("3D/Effects/LensFlare"),

@@ -234,6 +234,7 @@ Each of these gives a wrong or empty picture and no error.
 - **`Filter.grain` in the shadows.** It adds noise and clips it, which lifts black. `.filmGrain` leaves black and white alone, though its grain still shows most in near-black tones.
 - **A `@Param` icon that is not an SF Symbol.** The row shows an empty space where the icon goes.
 - **3D on a `noClear()` canvas.** Nothing is sorted by depth and nothing casts a shadow.
+- **A volume, and the 2D drawn after it.** `drawVolume` with no camera set draws nothing. With one, every volume composites over the frame's whole drawing once it is done, so a caption drawn later in `draw()` lies under the cloud. Draw the caption in `withOverlay { }`. See [Volumes](./3D/Volumes.md#in-front-of-and-behind).
 - **A `@Param` in a camera rig's framing.** `cameraShowcase`, `cameraControl` and `cameraMove` read `target`, `radius`, `elevation` and `fieldOfView` on their first call only, so tuning such a parameter in the window moves nothing, while an export frames with it. Pose the camera from the clock with `camera(.orbiting(…))` for a framing you tune. See [Camera](./3D/Camera.md).
 - **A texture on a mesh with no texture coordinates.** The texture is ignored, and the mesh draws in its base color.
 - **`redraw()`, `copyFrame()`, `chooseFiles`, and `pointerShape` in an export.** There is no window, so each does nothing. A `redraw()` inside `draw()` asks for nothing either: that frame is the one being drawn.

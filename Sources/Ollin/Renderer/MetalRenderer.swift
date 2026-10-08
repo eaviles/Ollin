@@ -175,6 +175,15 @@ final class MetalRenderer {
             PipelineKey(vertex: "ollin_ibl_skybox_vertex", fragment: "ollin_fog_air_fragment",
                         premultiplied: true, depthFormat: depth)
         }
+        // the volume composite (`drawVolume`): a fullscreen triangle, scissored to
+        // the box, marching the grid over a pass's resolved color after the pass
+        // ends; single-sample, no depth attachment (it reads the resolved depth),
+        // premultiplied source-over. `color` names a single-precision layer's
+        // format and is nil for the shared linear one.
+        static func volume(color: MTLPixelFormat? = nil) -> PipelineKey {
+            PipelineKey(vertex: "ollin_volume_vertex", fragment: "ollin_volume_fragment",
+                        premultiplied: true, colorFormat: color, singleSample: true)
+        }
         // the path-traced export composite: a fullscreen draw of the traced layer into
         // the geometry pass in place of the raster mesh batches, premultiplied by its
         // coverage (silhouette edges blend over the backdrop) and writing the primary
@@ -643,6 +652,14 @@ final class MetalRenderer {
     /// cached per source too, so several entries in one source share one compile.
     struct ComputeKey: Hashable { let sourceHash: UInt64; let entry: String }
     var computePipelines: [ComputeKey: MTLComputePipelineState] = [:]
+    /// What each geometry pass with volumes resolved for them (keyed by its
+    /// target, nil for the canvas), taken by the composite that follows it.
+    var volumePassLights: [ObjectIdentifier?: VolumePassLight] = [:]
+    /// The light-transmittance grids, kept while the volume and light they
+    /// were computed for hold still (`used` is the composite they last served).
+    var volumeLightCache: [VolumeLightKey: (texture: MTLTexture, used: UInt64)] = [:]
+    var volumeLightGeneration: UInt64 = 0
+    var volumeLightStandIn: MTLTexture?
     var computeLibraries: [UInt64: MTLLibrary] = [:]
     /// The same pipelines keyed by the kernel's own source alone, for a kernel
     /// written in the sketch's source (`ComputeKernel.quickHash`): the library
@@ -2173,7 +2190,7 @@ final class MetalRenderer {
                 geomPass.depthAttachment.storeAction = .dontCare
                 passDepthFormat = depthPixelFormat
                 if taaActive || blurActive || fxActive || interpolationActive || lensFlareActive(drawer)
-                    || depthOfFieldActive(drawer) {
+                    || depthOfFieldActive(drawer) || drawer.hasVolumes(for: nil) {
                     if mainDepthResolve?.width != renderWidth || mainDepthResolve?.height != renderHeight {
                         mainDepthResolve = makeDepthResolve(width: renderWidth, height: renderHeight)
                     }
@@ -2412,6 +2429,12 @@ final class MetalRenderer {
         let scattered = applySubsurfaceScattering(drawer, resolved: resolve, meshBuffer: meshBuf,
                                                   into: commandBuffer, width: renderWidth, height: renderHeight,
                                                   pooled: true, taaJitter: taaJitter)
+        // The volumes, over the finished solids and under everything the frame
+        // does to itself after: each temporal sample shifts their start offsets
+        // so the resolve averages the march's grain away.
+        encodeVolumes(drawer, target: nil, color: scattered, depth: mainDepthResolve,
+                      phase: (taaActive || fxActive) ? volumeJitterPhase(jitterIndex) : 0,
+                      into: commandBuffer)
         // The temporal upscaler replaces TAA's own resolve when it runs (the
         // scaler *is* the jittered accumulation, and it bridges the render size
         // back to the drawable's full size); otherwise the plain TAA chain.
@@ -2902,7 +2925,7 @@ final class MetalRenderer {
             // Slow motion out of made frames reads the same resolved depth the
             // blur and the flare do, so it joins them rather than adding a pass.
             if motionBlurActive(drawer) || lensFlareActive(drawer) || exportMadeFrames
-                || capturesLinearFrame || depthOfFieldActive(drawer),
+                || capturesLinearFrame || depthOfFieldActive(drawer) || drawer.hasVolumes(for: nil),
                let resolve = makeDepthResolve(width: width, height: height) {
                 pass.depthAttachment.resolveTexture = resolve
                 pass.depthAttachment.storeAction = .multisampleResolve
@@ -3103,6 +3126,8 @@ final class MetalRenderer {
                                                           meshBuffer: meshBuf, into: commandBuffer,
                                                           width: width, height: height,
                                                           pooled: false, taaJitter: jitter)
+                encodeVolumes(drawer, target: nil, color: scattered, depth: sceneDepthResolve,
+                              phase: volumeJitterPhase(s), into: commandBuffer)
                 // acc += sample / N (ping-ponged; a linear-light mean, unbiased).
                 encodeEffectFragment("ollin_fx_weighted_sum", inputs: [accFront, scattered],
                                      output: accBack,
@@ -3205,6 +3230,8 @@ final class MetalRenderer {
             let scattered = applySubsurfaceScattering(drawer, resolved: resolveTexture, meshBuffer: meshBuf,
                                                       into: commandBuffer, width: width, height: height,
                                                       pooled: false)
+            encodeVolumes(drawer, target: nil, color: scattered, depth: sceneDepthResolve,
+                          phase: 0, into: commandBuffer)
             // Down to the canvas first (nothing at all at scale 1), so everything
             // below measures in canvas pixels exactly as it does at 1x.
             let sampled = encodeSupersampleResolve(scattered, scale: scale,
@@ -3352,7 +3379,7 @@ final class MetalRenderer {
                 passDepthFormat = depthPixelFormat
                 // Temporal AA and motion blur (the live one-update shape): resolve the
                 // depth for reprojection, so the benchmark carries the live frame's cost.
-                if taaActive || blurActive || depthOfFieldActive(drawer) {
+                if taaActive || blurActive || depthOfFieldActive(drawer) || drawer.hasVolumes(for: nil) {
                     if mainDepthResolve?.width != width || mainDepthResolve?.height != height {
                         mainDepthResolve = makeDepthResolve(width: width, height: height)
                     }
@@ -3479,6 +3506,8 @@ final class MetalRenderer {
             let scattered = applySubsurfaceScattering(drawer, resolved: resolveTexture, meshBuffer: meshBuf,
                                                       into: cb, width: width, height: height, pooled: false,
                                                       taaJitter: taaJitter)
+            encodeVolumes(drawer, target: nil, color: scattered, depth: mainDepthResolve,
+                          phase: taaActive ? volumeJitterPhase(i) : 0, into: cb)
             // The mover-velocity pass, so the benchmark pays what a live frame pays.
             let velocity = encodeVelocityPass(drawer, into: cb, meshBuffer: meshBuf,
                                               width: width, height: height)

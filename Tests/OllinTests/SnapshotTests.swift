@@ -864,6 +864,12 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("inked-solids",
                  note: "A sphere, a box, and a torus in the toon material with a 3 px ink line, lit by the three-point rig read relativeTo(.camera). Pins the inverted-hull outline pass (the screen-pixel push along the normal, the front-face cull with counter-clockwise winding, the depth test against the surfaces it rings, the corner notch a hard-edged box opens) and the camera-relative resolve through the packer (the rig's key, fill, and rim placed around the eye). Fixed camera, no time, deterministic.",
                  make: { InkedSolidsScene() }),
+    SnapshotCase("volume-plume",
+                 note: "A seeded noise plume over a floor under a spot light with castShadows() on, a ball hanging inside it. Pins the volume composite end to end: the march through the grid in the frame's resolved depth (the ball veiled by the smoke in front of it only, the floor ending the march), the exact per-step integral, single scattering of the spot's cone with its 2D-map shadow (the ball's shadow through the smoke), the precomputed light-transmittance grid (the plume shading itself), and the ambient. Fixed camera, no time, seeded grid; runs on any Metal GPU.",
+                 make: { VolumePlumeScene() }),
+    SnapshotCase("volume-glow",
+                 note: "A glowing, absorbing ball of noise with a dark ring passing through it, over black: pins the emission integral under absorption (the deep glow dimmed by the medium in front), the march ending at the ring wherever it is nearer, the volume's own colors in linear light, and a second, overlapping volume composited farthest first. Fixed camera, no time, seeded grid; runs on any Metal GPU.",
+                 make: { VolumeGlowScene() }),
 ]
 
 /// The ray-tracing-gated snapshots: on a ray-tracing GPU a point caster resolves to the RT
@@ -10883,5 +10889,68 @@ private final class RoundedCorners: Sketch {
         fill(Color(hex: 0xE07A5F))
         drawSDF(SDF.rect(width: 44, height: 60, cornerRadii: .top(20)).at(218, 190)
             .smoothUnion(SDF.circle(radius: 16).at(218, 226), k: 10))
+    }
+}
+
+/// A seeded noise plume lit by a spot, with a ball inside it.
+private final class VolumePlumeScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    private let plume: Volume = {
+        let noise = Volume.noise(width: 32, height: 40, depth: 32, frequency: 3, octaves: 4, seed: 11)
+        return Volume(width: 32, height: 40, depth: 32) { u, v, w in
+            let fromAxis = Vector2(u - 0.5, w - 0.5).length / (0.2 + 0.2 * v)
+            let floor = 0.4 + 0.3 * fromAxis * fromAxis
+            return max(0, noise.value(u: u, v: v, w: w) - floor) * 5 * min(1, (1 - v) * 3)
+        }
+    }()
+
+    override func draw() {
+        background(Color(hex: 0x101318))
+        camera(Camera3D(eye: Vector3(0, 2.2, 7), target: Vector3(0, 1.6, 0), near: 0.5, far: 40,
+                        projection: .perspective(fieldOfView: .pi / 4)))
+        ambientLight(Color(hex: 0x1E2633))
+        castShadows()
+        spotLight(Color(hex: 0xFFE2C0), at: Vector3(0.6, 6.2, 0.8),
+                  direction: Vector3(-0.6, -4.6, -0.8), coneAngle: 0.45, penumbra: 0.3, intensity: 2)
+        noStroke()
+        fill(Color(hex: 0x3A3F47))
+        withState { translate(0, -0.05, 0); drawBox(width: 12, height: 0.1, depth: 12) }
+        fill(Color(hex: 0xC9A27A))
+        withState { translate(0.1, 2.6, 0.1); drawSphere(radius: 0.35) }
+        withState {
+            translate(0, 1.6, 0)
+            drawVolume(plume, width: 2.4, height: 3.2, depth: 2.4,
+                       medium: Medium(density: 2.5, color: Color(white: 0.8), anisotropy: 0.3))
+        }
+    }
+}
+
+/// A glowing ball of noise with a dark ring through it, and a faint second
+/// volume behind.
+private final class VolumeGlowScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    private let ball: Volume = {
+        let noise = Volume.noise(width: 32, height: 32, depth: 32, frequency: 4, octaves: 3, seed: 3)
+        return Volume(width: 32, height: 32, depth: 32) { u, v, w in
+            let r = Vector3(u, v, w).distance(to: Vector3(0.5, 0.5, 0.5)) * 2
+            return max(0, 1 - r) * (0.4 + noise.value(u: u, v: v, w: w))
+        }
+    }()
+
+    override func draw() {
+        background(.black)
+        camera(Camera3D(eye: Vector3(0, 0.6, 5), target: .zero, near: 0.5, far: 40,
+                        projection: .perspective(fieldOfView: .pi / 4)))
+        ambientLight(Color(white: 0.05))
+        noStroke()
+        fill(Color(hex: 0x202024))
+        withState { rotateX(1.1); drawTorus(radius: 0.9, tube: 0.12) }
+        withState {
+            translate(1.2, 0.6, -3)
+            drawVolume(ball, size: 2.5, medium: .nebula)
+        }
+        drawVolume(ball, size: 2.4,
+                   medium: Medium(density: 1.6, color: .black, glow: Color(hex: 0xFF8A3D),
+                                  glowIntensity: 2.5))
     }
 }

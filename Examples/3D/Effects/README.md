@@ -11,8 +11,8 @@
 | [LensFlare](LensFlare/) | [MotionBlur](MotionBlur/) | [PathTraced](PathTraced/) | [RayTracedReflections](RayTracedReflections/) |
 | [![SceneDefocus](https://media.ollin.art/examples/3D/Effects/SceneDefocus/still-640.jpg?v=1299ef05)](SceneDefocus/) | [![ScreenSpaceReflections](https://media.ollin.art/examples/3D/Effects/ScreenSpaceReflections/still-640.jpg?v=e167c52e)](ScreenSpaceReflections/) | [![SpecularAntialias](https://media.ollin.art/examples/3D/Effects/SpecularAntialias/still-640.jpg?v=fc004d3a)](SpecularAntialias/) | [![TemporalAA](https://media.ollin.art/examples/3D/Effects/TemporalAA/still-640.jpg?v=e0b0f49e)](TemporalAA/) |
 | [SceneDefocus](SceneDefocus/) | [ScreenSpaceReflections](ScreenSpaceReflections/) | [SpecularAntialias](SpecularAntialias/) | [TemporalAA](TemporalAA/) |
-| [![Upscaling](https://media.ollin.art/examples/3D/Effects/Upscaling/still-640.jpg?v=6140b5b2)](Upscaling/) |  |  |  |
-| [Upscaling](Upscaling/) |  |  |  |
+| [![Upscaling](https://media.ollin.art/examples/3D/Effects/Upscaling/still-640.jpg?v=6140b5b2)](Upscaling/) | [![Volumes](https://media.ollin.art/examples/3D/Effects/Volumes/still-640.jpg?v=7b3957df)](Volumes/) |  |  |
+| [Upscaling](Upscaling/) | [Volumes](Volumes/) |  |  |
 
 This group covers the scene-wide realism passes over the 3D frame.
 
@@ -24,6 +24,7 @@ This group covers the scene-wide realism passes over the 3D frame.
 | [RayTracedReflections](RayTracedReflections/) | Metals mirroring the actual scene, off-screen geometry included and with none of SSR's streaks. Rough surfaces spread their rays for a glossy result, and there is a `reflectionBounces` parameter. Needs a ray-tracing GPU and an environment. |
 | [ContactShadows](ContactShadows/) | The fine dark seam that seats an object on the surface it stands on. |
 | [Atmosphere](Atmosphere/) | Fog as a cue for distance and height, and physical aerial perspective, both over one colonnade. Hold space to switch. |
+| [Volumes](Volumes/) | A column of smoke drawn from a box of density samples, rising past a ball whose shadow cuts a shaft down through it. The `medium` parameter turns it to cloud, fire, ink, or a glowing nebula. |
 | [MotionBlur](MotionBlur/) | The streak a real camera's open shutter leaves on something moving. |
 | [TemporalAA](TemporalAA/) | Edges refined past MSAA by accumulating jittered frames. |
 | [SpecularAntialias](SpecularAntialias/) | Highlights smaller than their pixel, held still instead of crawling. |

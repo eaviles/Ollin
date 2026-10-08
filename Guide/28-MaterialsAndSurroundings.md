@@ -6,7 +6,7 @@
 
 <img src="Images/28-MaterialsAndSurroundings/Bench.jpg" alt="Five objects on a mottled stone bench under warm interior light: a pale translucent crystal on a black lacquered plinth, a small silver star with rounded points, a teal ball whose paint has worn through to gold in patches, a flat tile with a wheel carved into it, and a cream egg resting on a rust-red cushion, with a faint stamped mark on the stone at the left" width="560">
 
-A few numbers a physicist would ask for can make a mesh metal, glass, or skin. A finish set with them looks right in any light, so you start with the light that comes from a scene's surroundings. Each object on the bench shows a different technique, from the worn paint of [Chapter 27](27-Meshes.md) to an egg that carries light under its surface. Clouds, the haze over distant ground, and the thin film follow the bench.
+A few numbers a physicist would ask for can make a mesh metal, glass, or skin. A finish set with them looks right in any light, so you start with the light that comes from a scene's surroundings. Each object on the bench shows a different technique, from the worn paint of [Chapter 27](27-Meshes.md) to an egg that carries light under its surface. Clouds, the haze over distant ground, smoke you place in the scene, and the thin film follow the bench.
 
 ## Finishes you measure: environments and physically based materials
 
@@ -438,7 +438,7 @@ The bench holds still, so keep it as a still. `swift run OllinLive MySketches/Be
 
 ## More surroundings: clouds and distant air
 
-The bench lit its specimens with a bundled interior. Outdoors, a computed sky can carry more than a sun. It can carry weather that lights the whole scene, and it can hand its sun to the air between you and far ground.
+The bench lit its specimens with a bundled interior. Outdoors, a computed sky can carry more than a sun. It can carry weather that lights the whole scene, and it can hand its sun to the air between you and far ground. A cloud can also come down out of the sky and sit in the scene itself.
 
 ### Weather in the sky: clouds
 
@@ -465,6 +465,22 @@ aerialPerspective()
 <img src="Images/28-MaterialsAndSurroundings/DistantAir.jpg" alt="A file of dark ridgelines stepping away under a pale sky, each silhouette a step paler and bluer than the one in front, the farthest melting into the horizon, the air brightening toward the sun on the right" width="680">
 
 With a `.sky` environment it follows the sky's own sun, rotation and all, so dropping the sun to the horizon reddens the haze by itself. `density` is how much air the scene spans, and left unset it sizes itself to the camera framing. `haziness` trades the crisp blue of a clear day for the gray veil and sun halo of a humid one. It replaces `fog` for the frame, since the last call wins, and Chapter 26's volumetric beams show in it as they show in fog. The `3D/Effects/Atmosphere` example puts all of it on parameters (hold space to switch over from fog).
+
+### A cloud in the scene: volumes
+
+The sky's clouds stay overhead. **A volume** is a cloud you place in the scene. It is a box of density samples that light passes through, drawn as smoke, mist, fire, or ink. It is for anything with a thickness rather than a surface, like a plume from a chimney, steam over a cup, or a glowing gas. Solids sit inside it, and the medium in front of them veils them. The model is the one Nelson Max set out in 1995 for drawing clouds and medical scans. Along each view ray the medium takes light away, gives back the light it scatters toward the eye, and adds its own glow.
+
+<img src="Images/28-MaterialsAndSurroundings/SmokeColumn.jpg" alt="A column of pale smoke rising from a dark stone pedestal under a lamp straight above it. A small tan ball hangs inside the column, part of it veiled by the smoke in front, and its shadow cuts a dark shaft down through the smoke to a dark disc on the pedestal's top" width="680">
+
+```swift
+let smoke = Volume(width: 36, height: 48, depth: 36) { u, v, w in
+    let fromAxis = Vector2(u - 0.5, w - 0.5).length
+    return max(0, fbm(u * 3, v * 3, w * 3) - 0.4 - fromAxis)
+}
+drawVolume(smoke, width: 2.8, height: 4.2, depth: 2.8, medium: .smoke)
+```
+
+The function runs once for each sample, with `u`, `v`, and `w` between 0 and 1 across the box, so the sketch's own `fbm` shapes the cloud. `Volume.noise` fills a grid with noise across every core, which is fast enough to refill a small one every frame. The `medium` says what fills the box. Its `density` is how thickly it blocks light, its `color` is the share of light it scatters back, and its `glow` is light of its own. The presets are `.smoke`, `.cloud`, `.fire`, `.ink`, and `.nebula`. The light reaching each point has crossed the medium on its way there, so a cloud shades itself. A solid between the lamp and the smoke cuts a dark shaft through it. The `3D/Effects/Volumes` example sends up a column from noise that repeats, with a ball hanging in it.
 
 ## More finishes you measure: the thin film
 
@@ -500,6 +516,7 @@ The measured finishes are the Cook-Torrance microfacet model. Their form is the 
 
 - [Environment lighting](../Docs/3D/3D.md#environment-lighting): all twenty curated environments listed by mood, which eight are bundled offline, `highResolution` backdrops, loading your own `.exr` or `.hdr`, where downloads cache, and the full procedural-sky arguments.
 - [Atmosphere](../Docs/3D/Atmosphere.md): `aerialPerspective` with its `density` and `haziness`, how it follows a `.sky` environment's sun, and how it trades places with `fog`.
+- [Volumes](../Docs/3D/Volumes.md): building a `Volume` from a function, a list, or noise; every `Medium` dial and preset; which lights scatter and which shadows fall into the medium; and what a march costs.
 - [Physically based materials](../Docs/3D/3D.md#materials): the metallic-roughness model in full, plus the ready-made metals and dielectrics and how they combine with the stylized finishes.
 - [Glass](../Docs/3D/3D.md#glass): every transmission argument with its units, the environment requirement, and the edges spelled out.
 - [Subsurface scattering](../Docs/3D/3D.md#subsurface-scattering): the three scattering arguments, the presets, and the envelope; worked example [`Examples/3D/Materials/Subsurface`](../Examples/3D/Materials/Subsurface/Sketch.swift) (hold space to compare against the plain surfaces).

@@ -2264,6 +2264,8 @@ open class Sketch: Sendable
   func drawVesica(_: Double, _: Double, _: Double, _: Double, cornerRadius: Double = default, file: StaticString = default, line: Int = default, column: Int = default)
   func drawVesica(center: Vector2, width: Double, height: Double, cornerRadius: Double = default, file: StaticString = default, line: Int = default, column: Int = default)
   func drawVisual(_: Visual)
+  func drawVolume(_: Volume, size: Double = default, medium: Medium = default)
+  func drawVolume(_: Volume, width: Double, height: Double, depth: Double, medium: Medium = default)
   func drawVoronoi(_: [Vector2], in: Rectangle? = default)
   func drawWFC(_: [[Int]], in: Rectangle? = default, padding: Insets = default, gutter: Double = default, tile: (Int, Rectangle) -> Void)
   func drawWangTiling(_: WangTiling, colors: [Color], in: Rectangle? = default)
@@ -4939,6 +4941,19 @@ struct MedialAxis: Equatable, Sendable
     let radii: [Double]
     var contour: Contour { get }
   var contours: [Contour] { get }
+struct Medium: ParamChoices, ParamValue, Equatable, Hashable, Sendable
+  init(density: Double = default, color: Color = default, glow: Color = default, glowIntensity: Double = default, anisotropy: Double = default)
+  static let cloud: Medium
+  static let fire: Medium
+  static let ink: Medium
+  static let nebula: Medium
+  static let smoke: Medium
+  static var paramChoices: [(name: String, value: Medium)] { get }
+  var anisotropy: Double { get set }
+  var color: Color { get set }
+  var density: Double { get set }
+  var glow: Color { get set }
+  var glowIntensity: Double { get set }
 struct Mesh: Sendable
   func colored(by: (Vector3, Vector3) -> Color) -> Mesh
   func colored(from: PointCloud) -> Mesh
@@ -6737,6 +6752,18 @@ struct Visual
   static func shape(sides: Double = default, radius: Double = default, smoothing: Double = default) -> Visual
   static func solid(_: Color) -> Visual
   static func voronoi(scale: Double = default, speed: Double = default, blending: Double = default) -> Visual
+struct Volume: Equatable, Sendable
+  func value(u: Double, v: Double, w: Double) -> Double
+  init(width: Int, height: Int, depth: Int, _: (Double, Double, Double) -> Double)
+  init(width: Int, height: Int, depth: Int, repeating: Double = default)
+  init(width: Int, height: Int, depth: Int, values: [Double])
+  let depth: Int
+  let height: Int
+  let width: Int
+  static func ==(_: Volume, _: Volume) -> Bool
+  static func noise(width: Int, height: Int, depth: Int, frequency: Double = default, octaves: Int = default, seed: Int = default) -> Volume
+  static func noise(width: Int, height: Int, depth: Int, loop: Double, radius: Double = default, frequency: Double = default, octaves: Int = default, seed: Int = default) -> Volume
+  subscript(_: Int, _: Int, _: Int) -> Double { get set }
 struct Voronoi: Sendable
   func cell(_: Int) -> Shape
   func centroid(_: Int) -> Vector2

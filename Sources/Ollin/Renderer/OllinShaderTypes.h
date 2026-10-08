@@ -331,6 +331,34 @@ typedef struct {
     float _pad1;                // pads the stride to 144 (16-aligned)
 } SDF3DGroupInstance;
 
+// One `drawVolume` call, read by the volume composite (ShaderVolume.metal): where
+// the grid's box sits and what the medium in it does to light. The grid is a 3D
+// texture bound beside this, and each lit light's transmittance through the grid
+// (`ollin_volume_light_kernel`) another, so the struct carries no samples.
+// Distances along a view ray stay in world units: the march walks the world ray
+// and maps each sample into the box, so a scaled box is a longer path through the
+// same medium, and `density` is extinction per world unit at a grid value of 1.
+#define OLLIN_VOLUME_MAX_LIT 4
+typedef struct {
+    simd_float4x4 model;          // the unit box [-0.5, 0.5]^3 -> world (the draw's
+                                  // transform times its width, height, and depth)
+    simd_float4x4 inverseModel;   // world -> the unit box
+    simd_float4 grid;             // xyz = samples per axis (as floats); w = the march
+                                  // step in unit-box lengths (half the finest spacing)
+    simd_float4 medium;           // x = density (extinction per world unit at value 1),
+                                  // y = anisotropy (Henyey-Greenstein g), z = the march's
+                                  // start offset phase (0 except under temporal sampling,
+                                  // where each sample shifts it), w = the step budget
+    simd_float4 scatter;          // rgb = the linear scattering color (each channel the
+                                  // share of the extinguished light scattered back out);
+                                  // w = 1 when the lights and ambient are read at all
+    simd_float4 glow;             // rgb = the linear glow times its intensity, emitted
+                                  // per world unit at a grid value of 1; w unused
+    simd_float4 litLights;        // the light-list index each light-transmittance texture
+                                  // (fragment textures 4 to 7) belongs to, -1 for none;
+                                  // a light past these four scatters unshadowed by the grid
+} OllinVolumeDraw;
+
 // The light-space matrices for rendering a raymarched 3D field into the directional/spot 2D
 // shadow map (`ollin_raymarch_shadow_fragment`): the field is sphere-traced from the light's
 // point of view, and the hit's depth is written through `lightViewProjection`, so meshes

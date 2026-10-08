@@ -480,6 +480,9 @@ final class Drawer {
     var sdfNodes: [SDFNode] = []
     var sdf3DGroups: [SDF3DGroupInstance] = []
     var sdf3DNodes: [SDFNode3D] = []
+    /// The volumes drawn this frame (`drawVolume`), in call order. They sit
+    /// outside `batches`: each composites over its pass's finished geometry.
+    var volumeDraws: [VolumeDraw] = []
 
     /// The open scoped-combine blocks (`smoothUnion { … }` etc.). While the stack is
     /// non-empty, SDF region draw calls are captured as `SDF` leaves into the innermost
@@ -2346,6 +2349,7 @@ final class Drawer {
         sdfNodes.removeAll(keepingCapacity: true)
         sdf3DGroups.removeAll(keepingCapacity: true)
         sdf3DNodes.removeAll(keepingCapacity: true)
+        volumeDraws.removeAll(keepingCapacity: true)
         batches.removeAll(keepingCapacity: true)
         hasOverlay = false   // the overlay's runs went with the rest
         webSources.removeAll(keepingCapacity: true)
@@ -4569,6 +4573,7 @@ final class Drawer {
         sdfNodes.removeAll(keepingCapacity: true)
         sdf3DGroups.removeAll(keepingCapacity: true)
         sdf3DNodes.removeAll(keepingCapacity: true)
+        volumeDraws.removeAll(keepingCapacity: true)
         combineStack.removeAll(keepingCapacity: true)   // close any block left open by an early exit
         combineGroupTransform = nil
         combineGroupModel = nil

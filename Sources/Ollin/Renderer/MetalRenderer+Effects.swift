@@ -145,6 +145,8 @@ extension MetalRenderer {
                    depthFormat: depthResolve != nil ? depthPixelFormat : nil,
                    stencil: passHasStencil, gi: gi, target: target)
             enc.endEncoding()
+            encodeVolumes(drawer, target: target, color: tex.resolve, depth: depthResolve,
+                          phase: 0, into: cb)
             target.texture = tex.resolve
             // Expose the scene's depth as a gray layer when the sketch read `.depth`:
             // linearize the clip-space depth over the camera's near/far into 0…1,
@@ -3013,7 +3015,9 @@ extension MetalRenderer {
         let groups3D = drawer.sdf3DGroups
         let nodes3D = drawer.sdf3DNodes
         let batches = drawer.batches
-        guard !batches.isEmpty else { return }
+        // A pass holding only a volume still resolves its lighting for it.
+        guard !batches.isEmpty || (peel == nil && !passOverlay && !skippingTransmissive
+                                   && drawer.hasVolumes(for: passTarget)) else { return }
 
         if !vertices.isEmpty, let triangleBuffer {
             vertices.withUnsafeBytes { raw in
@@ -3295,6 +3299,13 @@ extension MetalRenderer {
         }
         let shadowTexture = shadowMap ?? ensureDummyShadowMap()
         let shadowCubeTexture = shadowCube ?? ensureDummyPointShadowMap()
+        // The volumes that composite over this pass once it ends read the same
+        // lighting, shadow map, and camera (the hidden layer, the overlay, and the
+        // pass behind the glass are not the pass a volume draws over).
+        if peel == nil, !passOverlay, !skippingTransmissive {
+            keepVolumeLight(drawer, target: passTarget, lighting: lighting, sets: setLighting,
+                            shadowMap: shadowTexture, uniforms3D: uniforms3D)
+        }
         // When the mesh fragments are compiled with RT shadows, an acceleration structure
         // is always part of their signature, so bind the real one this frame or a dummy
         // Skybox backdrop: when the environment shows as the scene's background, fill the

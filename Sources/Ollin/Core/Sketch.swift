@@ -3061,6 +3061,27 @@ open class Sketch {
     public func drawSDF3D(_ sdf: SDF3D) {
         drawer.drawSDF3D(sdf)
     }
+    /// Draw a density grid as a cloud filling a cube `size` world units on each
+    /// edge, centered at the model origin: smoke, fog in a box, a glowing
+    /// nebula, a scanned volume. The `medium` says what it is made of (how
+    /// thickly it blocks light, the color it scatters the scene's lights in, its
+    /// own glow); see `Volume` for building the grid. Requires an active camera.
+    /// The cloud composites over the frame's finished solids through their
+    /// depth, so a solid inside it is veiled by what lies in front and hides what
+    /// lies behind, whichever was drawn first.
+    ///
+    /// ```swift
+    /// drawVolume(smoke, size: 4, medium: .smoke)
+    /// ```
+    public func drawVolume(_ volume: Volume, size: Double = 1, medium: Medium = Medium()) {
+        drawer.drawVolume(volume, width: size, height: size, depth: size, medium: medium)
+    }
+    /// Draw a density grid as a cloud filling a `width` x `height` x `depth` box
+    /// centered at the model origin; see `drawVolume(_:size:medium:)`.
+    public func drawVolume(_ volume: Volume, width: Double, height: Double, depth: Double,
+                           medium: Medium = Medium()) {
+        drawer.drawVolume(volume, width: width, height: height, depth: depth, medium: medium)
+    }
 
     // MARK: SDF-combinator blocks (sugar over `SDF` + `drawSDF`, and `SDF3D` + `drawSDF3D`)
     //

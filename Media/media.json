@@ -908,6 +908,28 @@
       "stillSmall": "examples/3D/Effects/Upscaling/still-640.jpg?v=6140b5b2",
       "width": 1080
     },
+    "3D/Effects/Volumes": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 4.859,
+      "sound": false,
+      "source": "f38b4278072e9456",
+      "rendered": "2026-10-08",
+      "bytes": {
+        "loop": 973554,
+        "loopSmall": 167936,
+        "still": 35869,
+        "stillSmall": 14514
+      },
+      "loop": "examples/3D/Effects/Volumes/loop.mp4?v=38cd573e",
+      "loopSmall": "examples/3D/Effects/Volumes/loop-640.mp4?v=001ced38",
+      "still": "examples/3D/Effects/Volumes/still.jpg?v=f20c10dd",
+      "stillSmall": "examples/3D/Effects/Volumes/still-640.jpg?v=7b3957df",
+      "seed": 1
+    },
     "3D/Environments/Cloudscape": {
       "bytes": {
         "loop": 812062,

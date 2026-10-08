@@ -709,6 +709,9 @@ final class WebGraphRecorder {
             }
         }
         func items(for surface: RenderTarget?) throws -> [WebDrawItem] {
+            // A volume composites over a pass's resolved depth, which the page
+            // has no counterpart for; a cloud crosses as video.
+            if drawer.hasVolumes(for: surface) { throw refuse("drawVolume") }
             var items: [WebDrawItem] = []
             // The canvas draws its overlay runs after the rest, whatever order the
             // calls came in, as the overlay pass does; a layer has none.
