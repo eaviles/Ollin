@@ -477,6 +477,84 @@ import OllinWebGate
         }
     }
 
+    /// Shapes in a layer, the layer's distance field read back through a ramp.
+    final class Measured: Sketch {
+        override var canvasSize: CanvasSize { .square(160) }
+        override func draw() {
+            background(.black)
+            let marks = makeRenderTarget()
+            withTarget(marks) {
+                noStroke(); fill(.white)
+                drawCircle(56, 70, 30 + sin(time) * 6)
+                drawRect(center: Vector2(108, 92), width: 44, height: 64)
+            }
+            drawImage(marks.filtered(.distanceField(maxDistance: 48))
+                          .filtered(.fieldMap(.viridis, from: -24, to: 48, repeating: true)).image, 0, 0)
+        }
+    }
+
+    /// The layer the style probes draw into: a disc, a box, and a star, so a
+    /// style meets a curve, a corner, and a thin point.
+    @MainActor static func styledShapes(_ sketch: Sketch, phase: Double) -> RenderTarget {
+        let layer = sketch.makeRenderTarget()
+        sketch.withTarget(layer) {
+            sketch.noStroke()
+            sketch.fill(Color(hex: 0x3D7EDB)); sketch.drawRect(center: Vector2(62, 64), width: 70, height: 54)
+            sketch.fill(Color(hex: 0xF2B134)); sketch.drawCircle(98 + sin(phase) * 6, 92, 30)
+            sketch.fill(Color(hex: 0xE8E2D6))
+            sketch.drawStar(center: Vector2(48, 118), outerRadius: 22, innerRadius: 9, points: 5)
+        }
+        return layer
+    }
+
+    final class Outlined: Sketch {
+        override var canvasSize: CanvasSize { .square(160) }
+        override func draw() {
+            background(Color(hex: 0xC9CED6))
+            let layer = WebEffectsTests.styledShapes(self, phase: time)
+            drawImage(layer.filtered(.outline(width: 3, color: Color(hex: 0x7A1F2B), align: .inside))
+                          .filtered(.outline(width: 4, color: .black)).image, 0, 0)
+        }
+    }
+
+    final class Shadowed: Sketch {
+        override var canvasSize: CanvasSize { .square(160) }
+        override func draw() {
+            background(Color(hex: 0xC9CED6))
+            let layer = WebEffectsTests.styledShapes(self, phase: time)
+            drawImage(layer.filtered(.innerShadow(offset: Vector2(3, 4), radius: 4))
+                          .filtered(.dropShadow(offset: Vector2(6, 7.5), radius: 6)).image, 0, 0)
+        }
+    }
+
+    final class Glowing: Sketch {
+        override var canvasSize: CanvasSize { .square(160) }
+        override func draw() {
+            background(Color(hex: 0x14161C))
+            let layer = WebEffectsTests.styledShapes(self, phase: time)
+            drawImage(layer.filtered(.innerGlow(radius: 10, color: Color(hex: 0xFFF2C0)))
+                          .filtered(.outerGlow(radius: 18, color: Color(hex: 0xFF4FD8))).image, 0, 0)
+        }
+    }
+
+    final class Beveled: Sketch {
+        override var canvasSize: CanvasSize { .square(160) }
+        override func draw() {
+            background(Color(hex: 0xC9CED6))
+            let layer = WebEffectsTests.styledShapes(self, phase: time)
+            drawImage(layer.filtered(.bevel(width: 8, angle: -2.2 + sin(time) * 0.4)).image, 0, 0)
+        }
+    }
+
+    final class Chiseled: Sketch {
+        override var canvasSize: CanvasSize { .square(160) }
+        override func draw() {
+            background(Color(hex: 0xC9CED6))
+            let layer = WebEffectsTests.styledShapes(self, phase: time)
+            drawImage(layer.filtered(.bevel(width: 6, depth: 1.5, profile: .chiseled)).image, 0, 0)
+        }
+    }
+
     final class Diffused: Sketch {
         override var canvasSize: CanvasSize { .square(120) }
         override func draw() {
@@ -626,6 +704,36 @@ import OllinWebGate
         #expect(g.paramFloats == 8)
     }
 
+    @Test func aDistanceFieldAndTheLayerStylesAreThePagesOwn() throws {
+        func filterNodes(_ sketch: Sketch) throws -> [WebPassNode] {
+            let recording = try OllinApp.recordWebFrames(of: sketch, frames: 2, fps: 30)
+            return recording.frames[0].graph.layers.compactMap { layer -> WebPassNode? in
+                if case let .filter(_, node) = layer.kind { return node }
+                return nil
+            }
+        }
+        // The field is the page's ladder, the map behind it one translated pass.
+        let measured = try OllinApp.recordWebFrames(of: Measured(), frames: 2, fps: 30)
+        let measuredKinds = measured.frames[0].graph.layers.compactMap { layer -> String? in
+            if case let .filter(_, node) = layer.kind { return node.fragment }
+            return nil
+        }
+        #expect(measuredKinds == [WebPassNode.field, "ollin_fx_field_map"])
+        #expect(measured.frames[0].graph.fragmentRows
+                == ["ollin_field_seed": 1, "ollin_field_flood": 1, "ollin_field_resolve": 1, "ollin_fx_field_map": 1])
+        // A style is its preparation then its own fragment, which binds the rows
+        // after the preparation's one.
+        let outlined = try filterNodes(Outlined())
+        #expect(outlined.map(\.fragment) == [WebPassNode.styled(WebPassNode.field, then: "ollin_fx_outline"),
+                                             WebPassNode.styled(WebPassNode.field, then: "ollin_fx_outline")])
+        #expect(outlined.allSatisfy { $0.paramRows == 3 })
+        let shadowed = try filterNodes(Shadowed())
+        #expect(shadowed.map(\.fragment) == [WebPassNode.styled(WebPassNode.blur, then: "ollin_fx_shadow"),
+                                             WebPassNode.styled(WebPassNode.blur, then: "ollin_fx_shadow")])
+        let rows = try OllinApp.recordWebFrames(of: Beveled(), frames: 2, fps: 30).frames[0].graph.fragmentRows
+        #expect(rows == ["ollin_field_seed": 1, "ollin_field_flood": 1, "ollin_field_resolve": 1, "ollin_fx_bevel": 4])
+    }
+
     @Test func refusesWhatThePageCannotRunAndNamesIt() throws {
         func refusal(_ sketch: Sketch, frames: Int = 2) -> WebExportRefusal? {
             do { _ = try OllinApp.recordWebFrames(of: sketch, frames: frames, fps: 30); return nil }
@@ -708,6 +816,12 @@ import OllinWebGate
             ("Mixed", { Mixed() }, 4, 2),
             ("Distorted", { Distorted() }, 6, 4),
             ("Pinned", { Pinned() }, 4, 2),
+            ("Measured", { Measured() }, 4, 2),
+            ("Outlined", { Outlined() }, 4, 2),
+            ("Shadowed", { Shadowed() }, 4, 2),
+            ("Glowing", { Glowing() }, 4, 2),
+            ("Beveled", { Beveled() }, 4, 2),
+            ("Chiseled", { Chiseled() }, 4, 2),
         ]
         var worst: [String] = []
         let pages = try cases.map { c in

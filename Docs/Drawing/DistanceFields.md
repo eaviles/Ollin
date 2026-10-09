@@ -17,7 +17,8 @@ combines like any other layer.
 A measured field turns many effects into one line of arithmetic. You can grow or shrink a
 shape, outline it at any offset, draw its contour lines, find which shape is nearest, or
 soften a shadow by distance. Each of those needs to know a distance, and none of them is easy
-to answer without a field.
+to answer without a field. The [layer styles](LayerStyles.md) are built on it: an outline, a
+glow, and a bevel each read this field off the layer they style.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/21-PicturesYouSolve/MeasuredField-dark.jpg">
@@ -196,6 +197,10 @@ about 0.1 of a pixel from the true ones in single precision, against 0.29 in hal
 ```swift
 let marks = makeRenderTarget(precision: .float32)   // the field, and the chain after it, in float32
 ```
+
+The field crosses to a [web page](../Output/Web.md). The page runs the same seed, flood, and
+resolve, carried to GLSL, over 32-bit float layers of its own, so `.fieldMap` and the layer
+styles cross behind it.
 
 <a name="how-it-works"></a>
 

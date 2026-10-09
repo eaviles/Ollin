@@ -101,6 +101,14 @@ marks.filtered(.distanceField(maxDistance: 64))
 
 Past that distance the field reads flat, with a zero direction, which is its way of saying nothing is within reach.
 
+Some uses of the field are common enough to have a filter of their own. These are the layer styles, each read off the layer's alpha. An outline is a band cut from this field. A glow is a falloff read along it, and a bevel lights its slope. Two shadows blur the layer instead, and each style chains like any other filter:
+
+```swift
+let styled = marks.filtered(.bevel(width: 12)).filtered(.outline(width: 5, color: .black))
+```
+
+[`Examples/Effects/LayerStyles`](../Examples/Effects/LayerStyles/Sketch.swift) stacks them on a word under a moving light, and [Layer styles](../Docs/Drawing/LayerStyles.md) has each one and how they stack.
+
 ## Light that works itself out: `.light`
 
 The measured field is the hard half of a bigger trick, and the trick is what throws the lighthouse's beams. Draw a scene into one layer and some lamps into another, and ask what light reaches every pixel.

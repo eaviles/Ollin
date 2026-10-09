@@ -295,16 +295,17 @@ b774992b6378  Docs/Drawing/Drawing.md:938  expected ',' separator
 6d78937929ce  Docs/Drawing/Drawing.md:999  expected ',' separator
 f9dd3d125f11  Docs/Drawing/Effects.md:110  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
 8528c8e05574  Docs/Drawing/Effects.md:136  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-287a7fa55e41  Docs/Drawing/Effects.md:164  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-5aa234bd9c13  Docs/Drawing/Effects.md:227  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-cfebd0c142fa  Docs/Drawing/Effects.md:246  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-0cf1d8be56d4  Docs/Drawing/Effects.md:271  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-69cf570bc684  Docs/Drawing/Effects.md:332  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-314af6ac5659  Docs/Drawing/Effects.md:582  cannot find 'horizon' in scope
-1c1c7cea776b  Docs/Drawing/Effects.md:604  cannot find 'glow' in scope
-a8f0d552b0f0  Docs/Drawing/Effects.md:632  cannot find 'marks' in scope
+de01af674fc3  Docs/Drawing/Effects.md:147  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+287a7fa55e41  Docs/Drawing/Effects.md:172  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+5aa234bd9c13  Docs/Drawing/Effects.md:235  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+cfebd0c142fa  Docs/Drawing/Effects.md:254  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+0cf1d8be56d4  Docs/Drawing/Effects.md:279  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+69cf570bc684  Docs/Drawing/Effects.md:340  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+314af6ac5659  Docs/Drawing/Effects.md:590  cannot find 'horizon' in scope
+1c1c7cea776b  Docs/Drawing/Effects.md:612  cannot find 'glow' in scope
+a8f0d552b0f0  Docs/Drawing/Effects.md:640  cannot find 'marks' in scope
 09c8e57cb7b7  Docs/Drawing/Effects.md:97  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'image'
-63ea4c842664  Docs/Drawing/Effects.md:984  cannot find 'photo' in scope
+63ea4c842664  Docs/Drawing/Effects.md:992  cannot find 'photo' in scope
 eb9d4c173b18  Docs/Drawing/Envelopes.md:105  expected ',' separator
 3ba94f2cae8b  Docs/Drawing/Envelopes.md:112  cannot find 'shore' in scope
 6959c47ac423  Docs/Drawing/Envelopes.md:41  expected ',' separator
@@ -387,6 +388,11 @@ bc8a508250af  Docs/Drawing/Images.md:68  cannot find 'logo' in scope
 0fd5f0a6fe8a  Docs/Drawing/Knotwork.md:64  expected expression in list of expressions
 3228d64e7e10  Docs/Drawing/Kolam.md:31  expected expression in list of expressions
 2e78963f3643  Docs/Drawing/Kolam.md:49  expected expression in list of expressions
+52c5f1b5b6cb  Docs/Drawing/LayerStyles.md:103  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+405a692f1fb2  Docs/Drawing/LayerStyles.md:120  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+0a20f75c7534  Docs/Drawing/LayerStyles.md:59  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+be2f14badf3d  Docs/Drawing/LayerStyles.md:75  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+c688967ded07  Docs/Drawing/LayerStyles.md:88  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
 97680c91e2c8  Docs/Drawing/Light.md:92  cannot find 'scene' in scope
 451a7dfb0e72  Docs/Drawing/LocalAverages.md:55  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
 759585e59cf7  Docs/Drawing/LocalAverages.md:68  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'

@@ -215,10 +215,15 @@ enum WebImageSource: Hashable {
 }
 
 /// One fragment pass: the fragment by name, what it reads at texture 0
-/// onward, and its rows in the vector. Two names are the page's own passes
-/// rather than translated fragments: the Gaussian blur (its row is the sigma)
-/// and the bloom (sigma, threshold, intensity), which the page runs as its
-/// bright pass, its blur, and its add-back.
+/// onward, and its rows in the vector. Some names are the page's own passes
+/// rather than translated fragments: the Gaussian blur (its row is the sigma),
+/// the bloom (sigma, threshold, intensity), which the page runs as its bright
+/// pass, its blur, and its add-back, and the measured distance field (the
+/// field's row), which it runs as the seed, the flood ladder, and the resolve.
+/// A layer style is a page pass with a translated fragment after it, named
+/// `<page pass>:<fragment>`: the page prepares the field or the blur from its
+/// first row, then runs the fragment over the layer and that preparation with
+/// the rows after it.
 struct WebPassNode: Hashable {
     var fragment: String
     var inputs: [WebPassInput]
@@ -228,12 +233,26 @@ struct WebPassNode: Hashable {
     static let blur = "ollin_web_blur"
     static let bloom = "ollin_web_bloom"
     static let halation = "ollin_web_halation"
+    static let field = "ollin_web_field"
+    /// The translated fragments the field runs: the seed, a flood per rung, and
+    /// the resolve, each binding the one row.
+    static let fieldFragments = ["ollin_field_seed", "ollin_field_flood", "ollin_field_resolve"]
     /// The translated fragments a page-owned pass runs beside its own blur.
     static let bloomFragments = ["ollin_fx_brightpass", "ollin_fx_bloom_combine"]
     /// The halation's: the same bright pass, then its own add-back, which
     /// binds two rows (the amount, then the tint).
     static let halationFragments = ["ollin_fx_brightpass", "ollin_fx_halation_combine"]
     var isPageOwned: Bool { fragment.hasPrefix("ollin_web_") }
+
+    /// A page pass followed by a translated fragment (`prepared:fragment`).
+    static func styled(_ prepared: String, then fragment: String) -> String { prepared + ":" + fragment }
+
+    /// The page pass that prepares, and the translated fragment that follows it,
+    /// of a styled name; `nil` for any other.
+    var styledParts: (prepared: String, fragment: String)? {
+        guard isPageOwned, let colon = fragment.firstIndex(of: ":") else { return nil }
+        return (String(fragment[..<colon]), String(fragment[fragment.index(after: colon)...]))
+    }
 }
 
 enum WebPassInput: Hashable {
@@ -968,6 +987,25 @@ final class WebGraphRecorder {
                     let r = rows([SIMD4(Float(max(0.1, radius)), Float(threshold), Float(amount), 0), tint])
                     layer.kind = .filter(input: li, WebPassNode(fragment: WebPassNode.halation, inputs: [.layer(0)],
                                                                 paramOffset: r.offset, paramRows: r.rows))
+                } else if case let .distanceField(source, threshold, maxDistance) = filter.kind {
+                    // The page runs the Mac's own seed, flood, and resolve over the same ladder.
+                    let field = MeasuredField(source: source, threshold: threshold, maxDistance: maxDistance,
+                                              width: pw, height: ph)
+                    let r = rows([field.row])
+                    layer.kind = .filter(input: li, WebPassNode(fragment: WebPassNode.field, inputs: [.layer(0)],
+                                                                paramOffset: r.offset, paramRows: r.rows))
+                } else if let styled = filter.styledPass(width: pw, height: ph) {
+                    // A layer style: the page prepares the field or the blur from the first
+                    // row, then runs the style's own fragment with the rows after it.
+                    let prepared: String, first: SIMD4<Float>
+                    switch styled.preparation {
+                    case .field(let field): prepared = WebPassNode.field; first = field.row
+                    case .blur(let sigma): prepared = WebPassNode.blur; first = SIMD4(Float(sigma), 0, 0, 0)
+                    }
+                    let r = rows([first] + styled.pass.params)
+                    layer.kind = .filter(input: li,
+                                         WebPassNode(fragment: WebPassNode.styled(prepared, then: styled.pass.fragment),
+                                                     inputs: [.layer(0)], paramOffset: r.offset, paramRows: r.rows))
                 } else {
                     throw refuse("the \(Self.caseName(filter.kind)) filter")
                 }
@@ -1282,6 +1320,17 @@ extension WebGraph {
                 for (name, count) in zip(WebPassNode.halationFragments, [1, 2]) {
                     rows[name] = max(rows[name] ?? 0, count)
                 }
+                return
+            }
+            if let styled = n.styledParts {
+                if styled.prepared == WebPassNode.field {
+                    for name in WebPassNode.fieldFragments { rows[name] = max(rows[name] ?? 0, 1) }
+                }
+                rows[styled.fragment] = max(rows[styled.fragment] ?? 0, n.paramRows - 1)
+                return
+            }
+            if n.fragment == WebPassNode.field {
+                for name in WebPassNode.fieldFragments { rows[name] = max(rows[name] ?? 0, 1) }
                 return
             }
             if n.isPageOwned { return }

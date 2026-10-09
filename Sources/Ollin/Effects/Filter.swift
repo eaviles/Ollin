@@ -140,6 +140,22 @@ public struct Filter: Sendable {
         }
     }
 
+    /// The cross-section a `bevel` raises its band into: `rounded` climbs as a
+    /// quarter sine, steepest at the edge and meeting the flat top level, the soft
+    /// pillowed edge; `chiseled` climbs as one straight ramp, the cut edge, with a
+    /// crease where the ramp meets the top.
+    public enum BevelProfile: Sendable, CaseIterable {
+        case rounded, chiseled
+
+        /// The shader's profile index (kept in step with `ollin_fx_bevel`).
+        var rawIndex: Float {
+            switch self {
+            case .rounded:  return 0
+            case .chiseled: return 1
+            }
+        }
+    }
+
     /// The concrete operations the renderer knows how to run. Internal: a sketch
     /// builds a `Filter` through the static factories below, never this directly.
     enum Kind: Sendable {
@@ -427,6 +443,20 @@ public struct Filter: Sendable {
         /// an eighth of the layer). A pixel goes dark where it sits `bias` below that
         /// local average.
         case adaptiveThreshold(window: Double?, bias: Double, inverted: Bool)
+
+        // Layer styles --------------------------------------------------------
+        /// A band of paint `width` pixels wide along the layer's edge, placed by
+        /// `align`; the paint is linear rgb with its opacity.
+        case outline(width: Double, color: SIMD4<Float>, align: StrokeAlign)
+        /// The layer's alpha blurred by `radius`, moved by `offset`, and painted
+        /// under the layer, or (`inside`) read inverted and held inside it.
+        case shadow(offset: Vector2, radius: Double, color: SIMD4<Float>, inside: Bool)
+        /// Paint fading over `radius` pixels from the layer's edge, outward and
+        /// under it, or (`inside`) inward over it.
+        case glow(radius: Double, color: SIMD4<Float>, inside: Bool)
+        /// The band `width` pixels in from the edge raised into a lit slope.
+        case bevel(width: Double, depth: Double, profile: BevelProfile, angle: Double,
+                   elevation: Double, highlight: SIMD4<Float>, shadow: SIMD4<Float>)
     }
 
     let kind: Kind
@@ -1696,6 +1726,131 @@ public struct Filter: Sendable {
                                          inverted: Bool = false) -> Filter {
         Filter(kind: .adaptiveThreshold(window: window.map { max(1, $0) },
                                         bias: bias, inverted: inverted))
+    }
+}
+
+// MARK: - Layer styles
+
+extension Filter {
+
+    /// Draw a band of `color` along the layer's edge, `width` pixels wide: outside
+    /// the shape by default, or inside it, or centered on it (`align`), the way a
+    /// shape's stroke can sit.
+    ///
+    /// ```swift
+    /// let title = makeRenderTarget()
+    /// withTarget(title) { fill(.white); textSize(220); drawText("Ollin", 120, 620) }
+    /// drawImage(title.filtered(.outline(width: 8, color: .black)).image, 0, 0)
+    /// ```
+    ///
+    /// The edge is the layer's own, read from its alpha: the band is measured off the
+    /// distance field of where the alpha crosses one half, so it follows whatever was
+    /// drawn, letters and photographs as well as shapes, and its width is exact to a
+    /// fraction of a pixel. Outside, the band is laid under the layer; inside, it
+    /// paints over the layer within its coverage; so the layer's own antialiased edge
+    /// is composited once and no seam opens between the two. The color's alpha is the
+    /// band's opacity, and a band narrower than a pixel fades with its width, so a
+    /// width of 0 or a clear color leaves the layer exactly as it was.
+    ///
+    /// Outside corners come out rounded (a distance field's offset of a corner is an
+    /// arc), and anything thinner than the band inside the shape fills solid.
+    public static func outline(width: Double = 4, color: Color = .black,
+                               align: StrokeAlign = .outside) -> Filter {
+        Filter(kind: .outline(width: max(0, width), color: color.linearRGBA, align: align))
+    }
+
+    /// Lay a shadow under the layer: its alpha blurred by `radius` pixels (the same
+    /// Gaussian `gaussianBlur` runs), moved by `offset` pixels, and painted in
+    /// `color`, whose alpha is the shadow's opacity.
+    ///
+    /// ```swift
+    /// let card = makeRenderTarget()
+    /// withTarget(card) { fill(.white); drawRect(center: Vector2(540, 540), width: 520, height: 320) }
+    /// drawImage(card.filtered(.dropShadow(offset: Vector2(0, 18), radius: 24)).image, 0, 0)
+    /// ```
+    ///
+    /// The offset is in the canvas's own directions, so a positive `y` drops the
+    /// shadow down the page. The shadow shows only where the layer is not opaque, so a
+    /// shadow of a translucent layer shows through it as it would under glass, and
+    /// the part moved past the canvas's edge is gone rather than smeared along it.
+    /// A clear `color` leaves the layer exactly as it was.
+    public static func dropShadow(offset: Vector2 = Vector2(8, 8), radius: Double = 12,
+                                  color: Color = Color(white: 0, alpha: 0.5)) -> Filter {
+        Filter(kind: .shadow(offset: offset, radius: max(0, radius),
+                             color: color.linearRGBA, inside: false))
+    }
+
+    /// Shade the layer from inside its own edge, as if it were cut into the page and
+    /// lit from the other side: what the layer does *not* cover, blurred by `radius`
+    /// pixels and moved by `offset`, painted in `color` within the layer's coverage.
+    ///
+    /// The shadow falls along the edges the offset points away from, so the
+    /// default, down and to the right, darkens the top and left of the shape the way
+    /// a light from the upper left would. Past the canvas's edge counts as empty, so
+    /// a shape cut off by the edge takes a shadow along that edge too. A clear
+    /// `color` leaves the layer exactly as it was.
+    public static func innerShadow(offset: Vector2 = Vector2(6, 6), radius: Double = 8,
+                                   color: Color = Color(white: 0, alpha: 0.6)) -> Filter {
+        Filter(kind: .shadow(offset: offset, radius: max(0, radius),
+                             color: color.linearRGBA, inside: true))
+    }
+
+    /// Give the layer a halo: `color` laid under it at full strength on its edge,
+    /// fading to nothing `radius` pixels out.
+    ///
+    /// ```swift
+    /// drawImage(sign.filtered(.outerGlow(radius: 40, color: Color(hex: 0xFF4FD8))).image, 0, 0)
+    /// ```
+    ///
+    /// The glow follows the measured distance from the layer's edge rather than a blur
+    /// of it, so it keeps its strength right up to the edge of a thin line or a small
+    /// letter, where a blurred glow is thin and faint, and it reaches exactly `radius`
+    /// whatever the shape. It falls off as the square of the share of the radius left
+    /// to cross, which starts steep and ends without a visible rim. The color's alpha
+    /// is its strength, and a clear color or a radius of 0 leaves the layer exactly as
+    /// it was. For a glow added in light rather than laid under, `bloom` is the filter.
+    public static func outerGlow(radius: Double = 24, color: Color = .white) -> Filter {
+        Filter(kind: .glow(radius: max(0, radius), color: color.linearRGBA, inside: false))
+    }
+
+    /// Light the layer from inside its edge: `color` painted over the layer at full
+    /// strength on its edge, fading to nothing `radius` pixels in.
+    ///
+    /// It falls off as `outerGlow` does, measured inward, and stays within the
+    /// layer's coverage, so the edge keeps its antialiasing. A clear color or a radius
+    /// of 0 leaves the layer exactly as it was.
+    public static func innerGlow(radius: Double = 16, color: Color = .white) -> Filter {
+        Filter(kind: .glow(radius: max(0, radius), color: color.linearRGBA, inside: true))
+    }
+
+    /// Raise the layer's edge into a lit slope: the band `width` pixels in from the
+    /// edge climbs to the flat top, and a light from `angle` at `elevation` brightens
+    /// the slopes that face it toward `highlight` and darkens the ones that turn away
+    /// toward `shadow`.
+    ///
+    /// ```swift
+    /// drawImage(badge.filtered(.bevel(width: 14, profile: .chiseled)).image, 0, 0)
+    /// ```
+    ///
+    /// The slope is built from the distance field measured off the layer's alpha, so
+    /// it follows letters and photographs as well as shapes, and a part of the shape
+    /// narrower than twice the width rises to a ridge rather than a flat top. `depth`
+    /// is how high the slope climbs for its width: 1 is a 45° ramp for `.chiseled`,
+    /// and `.rounded` starts a little steeper and eases into the top. `angle` is where
+    /// the light comes from, in radians in the canvas's directions (the default is the
+    /// upper left), and `elevation` how far above the layer it stands (0 grazing,
+    /// π/2 straight overhead), the conventions `relight` uses. The flat top and
+    /// everything outside the band are left as they were, and each color's alpha is
+    /// that side's strength, so a clear pair, a width of 0, or a depth of 0 leaves
+    /// the whole layer exactly as it was.
+    public static func bevel(width: Double = 10, depth: Double = 1,
+                             profile: BevelProfile = .rounded,
+                             angle: Double = -.pi * 0.75, elevation: Double = .pi / 5,
+                             highlight: Color = Color(white: 1, alpha: 0.75),
+                             shadow: Color = Color(white: 0, alpha: 0.6)) -> Filter {
+        Filter(kind: .bevel(width: max(0, width), depth: max(0, depth), profile: profile,
+                            angle: angle, elevation: min(max(elevation, 0), .pi / 2),
+                            highlight: highlight.linearRGBA, shadow: shadow.linearRGBA))
     }
 }
 

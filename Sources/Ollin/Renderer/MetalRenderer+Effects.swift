@@ -516,6 +516,25 @@ extension MetalRenderer {
             return encodeSinglePass(single, layers: [input], width: width, height: height,
                                     into: cb, pooled: pooled)
         }
+        // A layer style: the field or the blur it reads, then its composite over the layer.
+        if let styled = filter.styledPass(width: width, height: height) {
+            let prepared: MTLTexture?
+            switch styled.preparation {
+            case .field(let field):
+                prepared = measuredDistanceField(of: input, field, width: width, height: height,
+                                                 into: cb, pooled: pooled)
+            case .blur(let sigma):
+                prepared = acquireFilterTexture(width: width, height: height, pooled: pooled)
+                if let prepared {
+                    let blur = MPSImageGaussianBlur(device: device, sigma: Float(sigma))
+                    blur.edgeMode = .clamp
+                    blur.encode(commandBuffer: cb, sourceTexture: input, destinationTexture: prepared)
+                }
+            }
+            guard let prepared else { return nil }
+            return encodeSinglePass(styled.pass, layers: [input, prepared], width: width, height: height,
+                                    into: cb, pooled: pooled)
+        }
         // One fragment pass into a fresh output texture (the common shape).
         func pass(_ fragment: String, _ inputs: [MTLTexture], _ params: [SIMD4<Float>]) -> MTLTexture? {
             guard let output = acquireFilterTexture(width: width, height: height, pooled: pooled) else { return nil }
@@ -835,6 +854,9 @@ extension MetalRenderer {
              .lensDistortion, .cornerPin, .channelMixer,
              .flutedGlass, .water, .paperTexture, .melt, .fieldMap, .arrows:
             return nil
+        // Every layer style was encoded from its `styledPass` description above.
+        case .outline, .shadow, .glow, .bevel:
+            return nil
         }
     }
 
@@ -967,23 +989,27 @@ extension MetalRenderer {
                                        source: Filter.FieldSource, threshold: Double,
                                        maxDistance: Double?, into cb: MTLCommandBuffer,
                                        pooled: Bool) -> MTLTexture? {
-        let diagonal = (Double(width) * Double(width) + Double(height) * Double(height)).squareRoot()
-        let far = maxDistance.map { min($0, diagonal) } ?? diagonal
+        measuredDistanceField(of: input, MeasuredField(source: source, threshold: threshold,
+                                                      maxDistance: maxDistance,
+                                                      width: width, height: height),
+                              width: width, height: height, into: cb, pooled: pooled)
+    }
+
+    /// The ladder itself, over a field described as data (`MeasuredField`, the same
+    /// description the web page runs).
+    private func measuredDistanceField(of input: MTLTexture, _ field: MeasuredField,
+                                       width: Int, height: Int, into cb: MTLCommandBuffer,
+                                       pooled: Bool) -> MTLTexture? {
         guard let front = acquireFieldTexture(width: width, height: height, pooled: pooled),
               let back = acquireFieldTexture(width: width, height: height, pooled: pooled),
               let output = acquireFilterTexture(width: width, height: height, pooled: pooled)
         else { return nil }
 
-        var rung = 1
-        while Double(2 * rung - 1) < far { rung *= 2 }
-        var steps = [1]                                   // the 1+ of 1+JFA
-        while rung >= 1 { steps.append(rung); rung /= 2 }
-
-        let cut = SIMD4<Float>(Float(threshold), source.rawIndex, Float(far), 0)
+        let cut = field.row
         encodeEffectFragment("ollin_field_seed", inputs: [input], output: front,
                              params: [cut], into: cb, format: .rg32Float)
         var read = front, write = back
-        for step in steps {
+        for step in field.steps {                         // the 1+ of 1+JFA, then the ladder
             encodeEffectFragment("ollin_field_flood", inputs: [read], output: write,
                                  params: [SIMD4<Float>(Float(step), 0, 0, 0)],
                                  into: cb, format: .rg32Float)

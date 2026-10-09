@@ -318,7 +318,93 @@ extension Filter {
         // hold, stays with the renderer.
         case .shader, .gaussianBlur, .bloom, .halation, .softProof, .fourier, .inverseFourier, .spectrum,
              .liquidMetal, .heatmap, .gemSmoke, .diffuse, .distanceField, .boxBlur,
-             .adaptiveThreshold, .xdog, .brushwork, .shock, .hatching:
+             .adaptiveThreshold, .xdog, .brushwork, .shock, .hatching,
+             .outline, .shadow, .glow, .bevel:
+            return nil
+        }
+    }
+}
+
+/// A distance field measured out of a layer, as data: the value cut (the
+/// threshold and which channel it reads), and how far the measurement carries.
+/// The renderer runs it as a seed pass, a flood per rung of the ladder, and a
+/// resolve; the page runs the same three fragments through the same ladder.
+struct MeasuredField: Equatable {
+    var source: Filter.FieldSource
+    var threshold: Double
+    /// The farthest distance measured, in pixels: the caller's cap, or the
+    /// layer's diagonal when it set none.
+    var reach: Double
+
+    init(source: Filter.FieldSource, threshold: Double, maxDistance: Double?, width: Int, height: Int) {
+        let diagonal = (Double(width) * Double(width) + Double(height) * Double(height)).squareRoot()
+        self.source = source
+        self.threshold = threshold
+        self.reach = maxDistance.map { min($0, diagonal) } ?? diagonal
+    }
+
+    /// The row the seed and resolve passes bind.
+    var row: SIMD4<Float> { SIMD4(Float(threshold), source.rawIndex, Float(reach), 0) }
+
+    /// The flood's step sizes: one step-1 pass, then the smallest power of two
+    /// whose ladder reaches `reach` (a rung of `k` followed by every halving of it
+    /// carries a seed `2k - 1` texels), halving down to 1.
+    var steps: [Int] {
+        var rung = 1
+        while Double(2 * rung - 1) < reach { rung *= 2 }
+        var steps = [1]
+        while rung >= 1 { steps.append(rung); rung /= 2 }
+        return steps
+    }
+}
+
+/// A layer style as data: what it prepares from the layer, and the one pass
+/// that composites the style over the layer, reading the layer at texture 0 and
+/// the prepared texture at texture 1.
+struct StyledPass: Equatable {
+    enum Preparation: Equatable {
+        /// The distance field of the layer's alpha.
+        case field(MeasuredField)
+        /// The layer blurred by a Gaussian of this sigma, in pixels.
+        case blur(sigma: Double)
+    }
+    var preparation: Preparation
+    var pass: EffectPass
+}
+
+extension Filter {
+    /// The preparation and composite this filter is when it is a layer style, at
+    /// a layer of `width` by `height` pixels, or `nil` for every other filter.
+    func styledPass(width: Int, height: Int) -> StyledPass? {
+        // The field is measured only as far as the style reads it, plus room for
+        // the antialiasing ramp, which keeps a thin outline's ladder short.
+        func field(reaching distance: Double) -> StyledPass.Preparation {
+            .field(MeasuredField(source: .alpha, threshold: 0.5, maxDistance: max(1, distance + 2),
+                                 width: width, height: height))
+        }
+        func pass(_ fragment: String, _ params: [SIMD4<Float>]) -> EffectPass {
+            EffectPass(fragment: fragment, inputs: [.layer(0), .layer(1)], params: params)
+        }
+        switch kind {
+        case let .outline(width, color, align):
+            let code: Float = align == .center ? 0 : (align == .inside ? 1 : 2)
+            return StyledPass(preparation: field(reaching: align == .center ? width / 2 : width),
+                              pass: pass("ollin_fx_outline", [SIMD4(Float(width), code, 0, 0), color]))
+        case let .glow(radius, color, inside):
+            return StyledPass(preparation: field(reaching: radius),
+                              pass: pass("ollin_fx_glow", [SIMD4(Float(radius), inside ? 1 : 0, 0, 0), color]))
+        case let .bevel(width, depth, profile, angle, elevation, highlight, shadow):
+            // The slope's stencil reads two pixels past the band.
+            return StyledPass(preparation: field(reaching: width + 3),
+                              pass: pass("ollin_fx_bevel",
+                                         [SIMD4(Float(width), Float(depth), profile.rawIndex, 0),
+                                          SIMD4(Float(angle), Float(elevation), 0, 0),
+                                          highlight, shadow]))
+        case let .shadow(offset, radius, color, inside):
+            return StyledPass(preparation: .blur(sigma: max(0.1, radius)),
+                              pass: pass("ollin_fx_shadow",
+                                         [SIMD4(Float(offset.x), Float(offset.y), inside ? 1 : 0, 0), color]))
+        default:
             return nil
         }
     }

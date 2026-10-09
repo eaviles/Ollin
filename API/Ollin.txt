@@ -3814,6 +3814,9 @@ struct FileError: LocalizedError, CustomStringConvertible, Equatable, Error, Sen
   var description: String { get }
   var errorDescription: String? { get }
 struct Filter: Sendable
+  enum BevelProfile: CaseIterable, Equatable, Hashable, Sendable
+    case chiseled
+    case rounded
   enum Dispersion: Equatable, Sendable
     case axial
     case edges
@@ -3859,6 +3862,7 @@ struct Filter: Sendable
   static func adaptiveThreshold(window: Double? = default, bias: Double = default, inverted: Bool = default) -> Filter
   static func antialias(amount: Double = default, threshold: Double = default, quality: RenderQuality = default) -> Filter
   static func arrows(spacing: Double = default, scale: Double = default, color: Color = default, width: Double = default) -> Filter
+  static func bevel(width: Double = default, depth: Double = default, profile: Filter.BevelProfile = default, angle: Double = default, elevation: Double = default, highlight: Color = default, shadow: Color = default) -> Filter
   static func bilateral(radius: Double = default, sigma: Double = default) -> Filter
   static func bloom(threshold: Double = default, amount: Double = default, radius: Double = default) -> Filter
   static func boxBlur(radius: Double = default) -> Filter
@@ -3880,6 +3884,7 @@ struct Filter: Sendable
   static func distanceField(from: Filter.FieldSource = default, threshold: Double = default, maxDistance: Double? = default) -> Filter
   static func dither(dark: Color, light: Color, bias: Double = default, pixelSize: Double = default) -> Filter
   static func dither(levels: Double = default, pixelSize: Double = default) -> Filter
+  static func dropShadow(offset: Vector2 = default, radius: Double = default, color: Color = default) -> Filter
   static func droste(inner: Double = default, twist: Double = default, zoom: Double = default, center: Vector2 = default, angle: Double = default) -> Filter
   static func duotone(dark: Color, light: Color, amount: Double = default) -> Filter
   static func edges(amount: Double = default) -> Filter
@@ -3901,6 +3906,8 @@ struct Filter: Sendable
   static func halftone(scale: Double = default, angle: Double = default) -> Filter
   static func hatching(spacing: Double = default, length: Double = default, directions: Int = default, foreground: Color = default, background: Color = default) -> Filter
   static func heatmap(colors: [Color] = default, contour: Double = default, innerGlow: Double = default, outerGlow: Double = default, angle: Double = default, noise: Double = default, phase: Double = default) -> Filter
+  static func innerGlow(radius: Double = default, color: Color = default) -> Filter
+  static func innerShadow(offset: Vector2 = default, radius: Double = default, color: Color = default) -> Filter
   static func inverseFourier() -> Filter
   static func invert(amount: Double = default) -> Filter
   static func iridescence(amount: Double = default, scale: Double = default, bands: Double = default, shift: Double = default) -> Filter
@@ -3917,6 +3924,8 @@ struct Filter: Sendable
   static func motionBlur(angle: Double = default, distance: Double = default) -> Filter
   static func normalMap(amount: Double = default) -> Filter
   static func oilPaint(radius: Double = default) -> Filter
+  static func outerGlow(radius: Double = default, color: Color = default) -> Filter
+  static func outline(width: Double = default, color: Color = default, align: StrokeAlign = default) -> Filter
   static func paperTexture(paper: Color = default, shading: Color = default, contrast: Double = default, roughness: Double = default, fiber: Double = default, crumples: Double = default, folds: Double = default, drops: Double = default, seed: Double = default) -> Filter
   static func perturb(amount: Double = default, scale: Double = default, phase: Double = default) -> Filter
   static func pixelate(size: Double = default, channel: Filter.PixelChannel = default, tint: Color? = default) -> Filter

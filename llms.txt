@@ -127,6 +127,7 @@ The reference is the authority on what exists and how it behaves; the guide teac
 - [Strange attractors & chaotic maps](Docs/Drawing/Attractors.md): chaotic systems as points.
 - [SDF combinators](Docs/Drawing/Combinators.md): compose signed-distance fields so shapes *merge* instead of stacking: smooth union/subtract/intersect and morph, round/onion, and domain mirror/tile.
 - [Measured distance fields](Docs/Drawing/DistanceFields.md): measure a distance field back out of a drawn layer with `Filter.distanceField`: how far every pixel is from the nearest edge, and in which direction. `Filter.fieldMap` reads it…
+- [Layer styles](Docs/Drawing/LayerStyles.md): a layer given an edge of its own, read from its alpha: `.outline` inside, outside, or centered on the edge, `.dropShadow` and `.innerShadow`, `.outerGlow` and `.innerGlow` that…
 - [The frequency domain](Docs/Drawing/Fourier.md): a picture read as a sum of waves instead of a grid of pixels. `Filter.fourier` writes the spectrum on the GPU and `.inverseFourier` reads it back.
 - [Light in a flat sketch](Docs/Drawing/Light.md): `Combine.light` computes the light that reaches every pixel of a flat scene.
 - [Local averages](Docs/Drawing/LocalAverages.md): the average of the neighborhood around every pixel at a fixed cost, over a summed-area table. `Filter.boxBlur` costs the same at any radius, and `Filter.adaptiveThreshold` cuts a…
@@ -317,7 +318,7 @@ The reference is the authority on what exists and how it behaves; the guide teac
 
 ## The project
 
-- [Examples](Examples/README.md): 611 runnable sketches by category, each with its whole source
+- [Examples](Examples/README.md): 612 runnable sketches by category, each with its whole source
 - [Ollin architecture & internals](ARCHITECTURE.md)
 - [Ollin: the shipped-capability inventory](CAPABILITIES.md)
 - [Changelog](CHANGELOG.md)

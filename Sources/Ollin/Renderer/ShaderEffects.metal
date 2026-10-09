@@ -2700,7 +2700,17 @@ fragment float4 ollin_fx_corner_pin(PresentOut in [[stage_in]],
 // pass is sub-pixel accuracy, and a half float spaces integers a whole unit apart past
 // 1024, which would quantize the measurement back onto the pixel grid. Every tap is a
 // `read`, never a `sample`: these are exact texel lookups, and a filtered fetch would
-// average two unrelated positions into a third place that has no seed at all.
+// average two unrelated positions into a third place that has no seed at all. A tap past
+// the border reads the nearest texel inside it, through `ollin_field_tap`. Each pass
+// returns a `float4` (the field targets keep the first two components) so the page can
+// run the same fragments over its own float targets.
+
+// A texel at `p`, clamped onto the texture. A clamped tap is still a real position (the
+// flood keeps the nearest of them), so the border needs no branch.
+static inline float4 ollin_field_tap(texture2d<float> t, int2 p) {
+    int2 last = int2(int(t.get_width()) - 1, int(t.get_height()) - 1);
+    return t.read(uint2(clamp(p, int2(0), last)));
+}
 
 // The value the threshold cuts. Modes match `Filter.FieldSource.rawIndex`.
 static inline float ollin_field_value(float4 c, float mode) {
@@ -2721,10 +2731,9 @@ static inline float ollin_field_value(float4 c, float mode) {
 // center instead biases every measurement by up to half a pixel and steps the whole field
 // along the pixel grid, which is visible the moment the field drives an outline.
 // params[0] = (threshold, source mode, -, -)
-fragment float2 ollin_field_seed(PresentOut in [[stage_in]],
+fragment float4 ollin_field_seed(PresentOut in [[stage_in]],
                                  texture2d<float> src [[texture(0)]],
                                  constant float4 *params [[buffer(0)]]) {
-    constexpr sampler nearest(coord::pixel, address::clamp_to_edge, filter::nearest);
     float threshold = params[0].x;
     float mode = params[0].y;
     int2 p = int2(in.position.xy);
@@ -2737,28 +2746,27 @@ fragment float2 ollin_field_seed(PresentOut in [[stage_in]],
     for (int i = 0; i < 4; ++i) {
         // Clamping at the border reads this pixel again, which cannot cross its own
         // threshold, so the layer's outer edge is not an edge the field measures to.
-        float n = ollin_field_value(src.sample(nearest, here + float2(axes[i])), mode);
+        float n = ollin_field_value(ollin_field_tap(src, p + axes[i]), mode);
         if ((n >= threshold) == inside) { continue; }        // no crossing this way
         float drop = v - n;
         float t = (abs(drop) > 1e-6) ? (v - threshold) / drop : 0.5;
         t = clamp(t, 0.0, 1.0);
         if (t < bestT) { bestT = t; best = here + float2(axes[i]) * t; }
     }
-    return best;
+    return float4(best, 0.0, 0.0);
 }
 
 // Flood: one rung of the ladder. The pixel keeps the nearest seed position among its own
 // and the eight neighbors `step` texels away, so a seed reaches the whole layer in a
 // number of passes that grows with the logarithm of its size rather than its width.
 // params[0] = (step in texels, -, -, -)
-fragment float2 ollin_field_flood(PresentOut in [[stage_in]],
+fragment float4 ollin_field_flood(PresentOut in [[stage_in]],
                                   texture2d<float> src [[texture(0)]],
                                   constant float4 *params [[buffer(0)]]) {
-    // Reading through a clamped nearest sampler rather than bounds-checking each of the
-    // nine taps: it is the same answer (a clamped tap hands back a seed position that is
-    // real, and the pass keeps the nearest of them) and about 15% less GPU time, since a
-    // ladder this long is bound by how fast it can read.
-    constexpr sampler nearest(coord::pixel, address::clamp_to_edge, filter::nearest);
+    // Clamping each tap onto the texture rather than bounds-checking it: the same answer
+    // (a clamped tap hands back a seed position that is real, and the pass keeps the
+    // nearest of them) for less GPU time, since a ladder this long is bound by how fast
+    // it can read.
     int step = int(params[0].x);
     int2 p = int2(in.position.xy);
     float2 here = float2(p) + 0.5;
@@ -2767,13 +2775,13 @@ fragment float2 ollin_field_flood(PresentOut in [[stage_in]],
     for (int j = -1; j <= 1; ++j) {
         for (int i = -1; i <= 1; ++i) {
             if (i == 0 && j == 0) { continue; }
-            float2 s = src.sample(nearest, here + float2(i * step, j * step)).xy;
+            float2 s = ollin_field_tap(src, p + int2(i * step, j * step)).xy;
             if (s.x < 0.0) { continue; }
             float d = distance_squared(here, s);
             if (d < bestD) { bestD = d; best = s; }
         }
     }
-    return best;
+    return float4(best, 0.0, 0.0);
 }
 
 // Resolve: the flooded positions read out as the field a sketch uses. Red is the distance
@@ -2822,6 +2830,206 @@ fragment float4 ollin_fx_field_map(PresentOut in [[stage_in]],
     t = repeats ? fract(t) : clamp(t, 0.0, 1.0);
     float4 c = lut.sample(samp, float2(t, 0.5));
     return ollin_premul(c.rgb, c.a);
+}
+
+// MARK: - Layer styles
+//
+// A layer's own edge given an outline, a glow, a shadow, or a bevel. Each style reads the
+// layer and one prepared texture beside it: the distance field measured from the layer's
+// alpha (the outline, both glows, the bevel) or the layer blurred (both shadows). Every
+// style is one of two composites, both in premultiplied linear light:
+//
+//   under   paint laid beneath the layer, showing only where the layer is not opaque
+//           (an outer outline, an outer glow, a drop shadow)
+//   inside  the layer's own color moved toward a paint, within the layer's coverage
+//           (an inner outline, an inner glow, an inner shadow, a bevel's light and shade)
+//
+// Both are written so a weight of zero hands back the layer's own bytes: `c + 0` is `c`.
+// A style that reaches a pixel at all reaches it through these two, so the layer's
+// antialiased edge is composited once, by the coverage it already has, and no seam opens
+// between the layer and what was laid under or over it.
+
+// Paint laid under a premultiplied layer `c`, `k` of it.
+static inline float4 ollin_style_under(float4 c, float3 paint, float k) {
+    return c + float4(paint, 1.0) * (k * (1.0 - c.a));
+}
+
+// The layer's color moved `k` of the way toward `paint`, inside its own coverage.
+static inline float4 ollin_style_inside(float4 c, float3 paint, float k) {
+    return c + (float4(paint * c.a, c.a) - c) * k;
+}
+
+// A strength that fades in over the first pixel of a style's reach, so a reach of zero
+// leaves the layer's own bytes.
+static inline float ollin_style_fade(float reach) {
+    return clamp(reach, 0.0, 1.0);
+}
+
+// The scale that keeps a band's ink equal to its width below a pixel, the way a thin
+// stroke's is kept. A band's outer edge is a one-pixel ramp off the measured distance and
+// its inner edge is the layer's own antialiased edge, so across a box-filtered edge a band
+// `w` wide carries w^2/2 + w/2 + 1/6 - w^3/6 of ink: `w` exactly from a pixel up, but a
+// sixth of a pixel at a width of zero. Dividing that out conserves the ink, and a band of
+// zero width draws nothing at all.
+static inline float ollin_style_band_ink(float width) {
+    float w = clamp(width, 0.0, 1.0);
+    return 6.0 * w / (1.0 + 3.0 * w + 3.0 * w * w - w * w * w);
+}
+
+// Outline: a band of paint `width` pixels wide along the layer's edge, outside it, inside
+// it, or centered on it, each side's edge antialiased off the measured distance.
+// params[0] = (width, align: 0 center 1 inside 2 outside, -, -); params[1] = paint (linear
+// rgb, opacity)
+fragment float4 ollin_fx_outline(PresentOut in [[stage_in]],
+                                 texture2d<float> src [[texture(0)]],
+                                 texture2d<float> field [[texture(1)]],
+                                 constant float4 *params [[buffer(0)]]) {
+    uint2 p = uint2(in.position.xy);
+    float4 c = src.read(p);
+    float d = field.read(p).r;
+    float width = max(params[0].x, 0.0);
+    float align = params[0].y;
+    float3 paint = params[1].rgb;
+    float opacity = params[1].a;
+    if (align > 1.5) {
+        float k = clamp(width - d + 0.5, 0.0, 1.0) * ollin_style_band_ink(width) * opacity;
+        return ollin_style_under(c, paint, k);
+    }
+    if (align > 0.5) {
+        float k = clamp(d + width + 0.5, 0.0, 1.0) * ollin_style_band_ink(width) * opacity;
+        return ollin_style_inside(c, paint, k);
+    }
+    // Centered: half the width on each side of the edge, each half its own band.
+    float half_width = 0.5 * width;
+    float ink = ollin_style_band_ink(half_width) * opacity;
+    float4 inner = ollin_style_inside(c, paint, clamp(d + half_width + 0.5, 0.0, 1.0) * ink);
+    return ollin_style_under(inner, paint, clamp(half_width - d + 0.5, 0.0, 1.0) * ink);
+}
+
+// Glow: paint fading with the distance from the edge, as the square of the share of
+// `radius` still left to cross, so it starts at full strength on the edge and reaches
+// nothing at `radius` without a visible end. Outside, it is laid under the layer; inside,
+// it tints the layer inward from its edge.
+// params[0] = (radius, inside 0/1, -, -); params[1] = paint (linear rgb, opacity)
+fragment float4 ollin_fx_glow(PresentOut in [[stage_in]],
+                              texture2d<float> src [[texture(0)]],
+                              texture2d<float> field [[texture(1)]],
+                              constant float4 *params [[buffer(0)]]) {
+    uint2 p = uint2(in.position.xy);
+    float4 c = src.read(p);
+    float d = field.read(p).r;
+    float radius = max(params[0].x, 0.0);
+    bool inside = params[0].y > 0.5;
+    float3 paint = params[1].rgb;
+    float ink = params[1].a * ollin_style_fade(radius);
+    float across = inside ? -d : d;
+    float left = 1.0 - clamp(across / max(radius, 1e-4), 0.0, 1.0);
+    float k = left * left * ink;
+    return inside ? ollin_style_inside(c, paint, k) : ollin_style_under(c, paint, k);
+}
+
+// How steeply a bevel climbs at `s` pixels in from the edge, as rise over run: a quarter
+// sine (rounded), steepest at the edge and level where it meets the top, or a straight ramp
+// (chiseled), whose crease with the top is antialiased over the pixel it falls in. Just
+// outside the edge the slope is the edge's own, so the antialiased rim takes the edge's
+// light rather than none.
+static inline float ollin_bevel_slope(float s, float width, float depth, bool chiseled) {
+    float t = max(s, 0.0) / max(width, 1e-4);
+    if (chiseled) { return depth * clamp(width - s + 0.5, 0.0, 1.0); }
+    return (t >= 1.0) ? 0.0 : depth * (M_PI_F * 0.5) * cos(t * M_PI_F * 0.5);
+}
+
+// Bevel: the band `width` pixels in from the edge raised into a slope and lit.
+//
+// The slope's steepness is the profile's, read at the pixel's measured distance; its
+// direction is the gradient of that distance taken by a Sobel stencil two pixels wide,
+// never the field's direction channel. The field is the distance to a row of discrete edge
+// points, so both its direction and the gradient across one pixel turn by up to a pixel's
+// width over the distance (about ten degrees three pixels in, measured 7 degrees RMS on a
+// disc, which draws as radial streaks once the light divides it out); the wider stencil
+// averages along the edge and holds the error under one degree (2.5 at worst). Where two
+// edges meet at a ridge the averaged gradient shrinks, so the slope levels off across the
+// ridge the way a sampled height does.
+//
+// The light comes from `angle` (canvas convention, y down) raised `elevation` above the
+// layer. A slope turned toward it moves toward the highlight by how much more light it
+// takes than the flat top does, reaching the full highlight facing the light; one turned
+// away moves toward the shadow by how much less, reaching the full shadow when it takes
+// none. The flat top keeps the layer's own bytes.
+// params[0] = (width, depth, profile: 0 rounded 1 chiseled, -); params[1] = (angle,
+// elevation, -, -); params[2] = highlight (linear rgb, opacity); params[3] = shadow
+fragment float4 ollin_fx_bevel(PresentOut in [[stage_in]],
+                               texture2d<float> src [[texture(0)]],
+                               texture2d<float> field [[texture(1)]],
+                               constant float4 *params [[buffer(0)]]) {
+    int2 p = int2(in.position.xy);
+    float4 c = src.read(uint2(p));
+    float width = max(params[0].x, 0.0);
+    float depth = max(params[0].y, 0.0);
+    bool chiseled = params[0].z > 0.5;
+    float d = field.read(uint2(p)).r;
+    float slope = ollin_bevel_slope(-d, width, depth, chiseled) * ollin_style_fade(width);
+    // On the flat top, or under no paint, there is nothing to light.
+    if (slope <= 0.0 || c.a <= 0.0) { return c; }
+    float2 g = float2(0.0);
+    const int2 taps[8] = { int2(-2, -2), int2(0, -2), int2(2, -2), int2(-2, 0),
+                           int2(2, 0), int2(-2, 2), int2(0, 2), int2(2, 2) };
+    const float2 weights[8] = { float2(-1, -1), float2(0, -2), float2(1, -1), float2(-2, 0),
+                                float2(2, 0), float2(-1, 1), float2(0, 2), float2(1, 1) };
+    for (int i = 0; i < 8; ++i) { g += weights[i] * ollin_field_tap(field, p + taps[i]).r; }
+    g /= 16.0;                                   // the stencil's weight times its four-pixel span
+    float reach = length(g);
+    if (reach <= 0.0) { return c; }
+    // The distance grows outward, so its gradient is the outward direction; a ridge's
+    // shorter gradient levels the slope there.
+    float2 outward = g / max(reach, 1.0);
+    float3 n = normalize(float3(outward * slope, 1.0));
+    float angle = params[1].x, elevation = params[1].y;
+    float ce = cos(elevation);
+    float3 L = float3(cos(angle) * ce, sin(angle) * ce, sin(elevation));
+    float facing = dot(n, L);
+    float toward = clamp((facing - L.z) / max(1.0 - L.z, 1e-4), 0.0, 1.0);
+    float away = clamp((L.z - facing) / max(L.z, 1e-4), 0.0, 1.0);
+    float4 out = ollin_style_inside(c, params[2].rgb, toward * params[2].a);
+    return ollin_style_inside(out, params[3].rgb, away * params[3].a);
+}
+
+// The alpha of the blurred layer at pixel position `q` (pixel units, y down), read
+// bilinearly from four texels with nothing past the border, so a whole-pixel offset lands
+// on one texel exactly and the shadow slides off the canvas rather than smearing its edge.
+static inline float ollin_style_alpha_at(texture2d<float> t, float2 q) {
+    float2 g = q - 0.5;
+    float2 base = floor(g);
+    float2 w = g - base;
+    int2 corner = int2(base);
+    int2 size = int2(int(t.get_width()), int(t.get_height()));
+    float a = 0.0;
+    for (int j = 0; j < 2; ++j) {
+        for (int i = 0; i < 2; ++i) {
+            int2 at = corner + int2(i, j);
+            if (at.x < 0 || at.y < 0 || at.x >= size.x || at.y >= size.y) { continue; }
+            float weight = (i == 0 ? 1.0 - w.x : w.x) * (j == 0 ? 1.0 - w.y : w.y);
+            a += weight * t.read(uint2(at)).a;
+        }
+    }
+    return a;
+}
+
+// Shadow: the layer's blurred alpha, moved by `offset` pixels and painted. A drop shadow
+// lies under the layer; an inner shadow is the same blur read the other way round (what
+// the layer does not cover, blurred and moved), held inside the layer.
+// params[0] = (offset x, offset y, inside 0/1, -); params[1] = paint (linear rgb, opacity)
+fragment float4 ollin_fx_shadow(PresentOut in [[stage_in]],
+                                texture2d<float> src [[texture(0)]],
+                                texture2d<float> blurred [[texture(1)]],
+                                constant float4 *params [[buffer(0)]]) {
+    uint2 p = uint2(in.position.xy);
+    float4 c = src.read(p);
+    float a = ollin_style_alpha_at(blurred, in.position.xy - params[0].xy);
+    bool inside = params[0].z > 0.5;
+    float3 paint = params[1].rgb;
+    if (inside) { return ollin_style_inside(c, paint, (1.0 - a) * params[1].a); }
+    return ollin_style_under(c, paint, a * params[1].a);
 }
 
 // MARK: - Summed-area tables

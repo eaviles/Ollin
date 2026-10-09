@@ -18,6 +18,9 @@ package enum WebShaderCompat {
         case select = "ollin_select"
         case saturate = "ollin_saturate"
         case fma = "ollin_fma"
+        /// Metal's squared distance and length, which GLSL leaves to a dot product.
+        case distanceSquared = "ollin_distance_squared"
+        case lengthSquared = "ollin_length_squared"
         /// `as_type<float>` from an integer, where GLSL has one function per width.
         case bitsToFloat = "ollin_bits_to_float"
         /// The vector comparisons GLSL spells as calls. Each takes a scalar or a
@@ -88,6 +91,20 @@ package enum WebShaderCompat {
             vec2 ollin_fma(vec2 a, vec2 b, vec2 c) { return a * b + c; }
             vec3 ollin_fma(vec3 a, vec3 b, vec3 c) { return a * b + c; }
             vec4 ollin_fma(vec4 a, vec4 b, vec4 c) { return a * b + c; }
+            """
+        case .distanceSquared:
+            return """
+            float ollin_distance_squared(float a, float b) { return (a - b) * (a - b); }
+            float ollin_distance_squared(vec2 a, vec2 b) { return dot(a - b, a - b); }
+            float ollin_distance_squared(vec3 a, vec3 b) { return dot(a - b, a - b); }
+            float ollin_distance_squared(vec4 a, vec4 b) { return dot(a - b, a - b); }
+            """
+        case .lengthSquared:
+            return """
+            float ollin_length_squared(float a) { return a * a; }
+            float ollin_length_squared(vec2 a) { return dot(a, a); }
+            float ollin_length_squared(vec3 a) { return dot(a, a); }
+            float ollin_length_squared(vec4 a) { return dot(a, a); }
             """
         case .bitsToFloat:
             return """
@@ -169,6 +186,8 @@ package enum WebShaderCompat {
         "fmin": "min", "fmax": "max",
         "powr": "pow",
         "mad": "ollin_fma",
+        "distance_squared": "ollin_distance_squared",
+        "length_squared": "ollin_length_squared",
     ]
 
     /// Names with no GLSL ES 3.00 form worth writing out. Each becomes a note in

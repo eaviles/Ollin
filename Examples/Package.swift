@@ -133,6 +133,7 @@ let package = Package(
         example("Effects/SoapFilm"),
         example("Effects/MeshGradient"),
         example("Effects/DistanceField"),
+        example("Effects/LayerStyles"),
         example("Effects/Light"),
         example("Effects/Dispersion"),
         example("Simulation/GrayScott"),

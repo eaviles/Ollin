@@ -44,6 +44,9 @@ struct WebFragmentTranslatorTests {
         "ollin_fx_channel_mixer", "ollin_fx_fluted_glass", "ollin_fx_water",
         "ollin_fx_paper_texture", "ollin_fx_melt", "ollin_fx_field_map", "ollin_fx_arrows",
         "ollin_fx_brightpass", "ollin_fx_bloom_combine", "ollin_fx_halation_combine",
+        // The measured field's ladder, and the layer styles that read it or a blur.
+        "ollin_field_seed", "ollin_field_flood", "ollin_field_resolve",
+        "ollin_fx_outline", "ollin_fx_glow", "ollin_fx_bevel", "ollin_fx_shadow",
         // Combines
         "ollin_fx_mask", "ollin_fx_displace", "ollin_fx_lic", "ollin_fx_mix", "ollin_fx_paint_mix",
         // Generators

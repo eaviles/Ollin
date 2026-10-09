@@ -140,6 +140,14 @@ layer.filtered(.halation(threshold: 0.8, radius: 24))
 layer.filtered(.bilateral(radius: 6, sigma: 0.18))
 ```
 
+#### Layer styles
+
+- **`.outline(width:color:align:)`**, **`.dropShadow(offset:radius:color:)`**, **`.innerShadow(offset:radius:color:)`**, **`.outerGlow(radius:color:)`**, **`.innerGlow(radius:color:)`**, and **`.bevel(width:depth:profile:angle:elevation:highlight:shadow:)`** give a layer an edge of its own, read from its alpha. Each is one filter, and chained styles stack in the order they run. [Layer styles](LayerStyles.md) covers each one, how they stack, and how exact they are.
+
+```swift
+layer.filtered(.bevel(width: 14)).filtered(.outline(width: 6, color: .black)).filtered(.dropShadow())
+```
+
 #### Color & tone
 
 - **`.colorGrade(brightness:contrast:saturation:hue:)`** the everyday grade. It takes an additive `brightness` and a `contrast` that pivots on mid-gray. It also takes a `saturation` (0 = gray, >1 = punchier) and a `hue` rotation in **turns** (0…1 wraps the wheel). All four default to no change, so pass only the ones you want.

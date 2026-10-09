@@ -266,10 +266,68 @@ enum SiteHero {
           gl.drawArrays(gl.TRIANGLES, 0, 3);
         }
       }
-      // The three passes the page owns: the blur, and the bloom and the
-      // halation as bright pass, blur, and their own add-back (the halation's
-      // binds the amount and then the tint).
+      // The measured distance field: the Mac's seed, a flood per rung of the
+      // same ladder, and its resolve. The ladder holds positions, which want
+      // 32-bit floats (a half float spaces whole pixels a unit apart past
+      // 1024), so it runs over its own pair of two-channel float surfaces read
+      // texel by texel; where the GPU cannot draw into those it falls back to
+      // the page's own surfaces and measures coarser far out.
+      var fieldFloat = !!gl.getExtension('EXT_color_buffer_float');
+      var fieldPool = [];
+      function acquireField(w, h) {
+        if (!fieldFloat) return acquire(w, h);
+        for (var i = 0; i < fieldPool.length; i++) {
+          var f = fieldPool[i];
+          if (!f.busy && f.w === w && f.h === h) { f.busy = true; return f; }
+        }
+        var tex = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RG32F, w, h);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        var fbo = gl.createFramebuffer();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+        var ok = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        if (!ok) { fieldFloat = false; return acquire(w, h); }
+        var made = { tex: tex, fbo: fbo, w: w, h: h, busy: true };
+        fieldPool.push(made);
+        return made;
+      }
+      // rows: (threshold, source, reach, -); the steps follow `MeasuredField`.
+      function runField(input, rows, out) {
+        var reach = rows[2], rung = 1, steps = [1];
+        while (2 * rung - 1 < reach) rung *= 2;
+        while (rung >= 1) { steps.push(rung); rung = Math.floor(rung / 2); }
+        var cut = [rows[0], rows[1], rows[2], 0];
+        var front = acquireField(out.w, out.h), back = acquireField(out.w, out.h);
+        runFragment('ollin_field_seed', [input], cut, front);
+        var read = front, write = back;
+        for (var i = 0; i < steps.length; i++) {
+          runFragment('ollin_field_flood', [read.tex], [steps[i], 0, 0, 0], write);
+          var t = read; read = write; write = t;
+        }
+        runFragment('ollin_field_resolve', [read.tex, input], cut, out);
+        front.busy = false; back.busy = false;
+      }
+      // The passes the page owns: the blur; the bloom and the halation as
+      // bright pass, blur, and their own add-back (the halation's binds the
+      // amount and then the tint); the distance field; and a layer style, a
+      // field or a blur from the first row and then the style's translated
+      // fragment over the layer and it, with the rows after.
       function runOwned(name, input, rows, out) {
+        var colon = name.indexOf(':');
+        if (colon > 0) {
+          var prepared = acquire(out.w, out.h);
+          if (name.slice(0, colon) === 'ollin_web_field') runField(input, rows, prepared);
+          else runBlur(input, rows[0], prepared);
+          runFragment(name.slice(colon + 1), [input, prepared.tex], rows.subarray(4), out);
+          return;
+        }
+        if (name === 'ollin_web_field') { runField(input, rows, out); return; }
         if (name === 'ollin_web_blur') { runBlur(input, rows[0], out); return; }
         var bright = acquire(out.w, out.h), blurred = acquire(out.w, out.h);
         runFragment('ollin_fx_brightpass', [input], [rows[1], 0, 0, 0], bright);

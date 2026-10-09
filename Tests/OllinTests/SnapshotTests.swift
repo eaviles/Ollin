@@ -537,6 +537,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("measured-field",
                  note: "A disc, a stroked polyline and a small square drawn into one layer, then the distance field measured back off it and read three ways in one picture: contour bands repeating out from every edge, the shapes grown by a fixed distance, and each pixel taking the color found at its own nearest edge. Pins the sub-pixel seed placement (the bands sit where they sit), the flood ladder, the signed resolve, and the direction channel through a user shader. No rng and no time, so it is deterministic.",
                  make: { MeasuredFieldScene() }),
+    SnapshotCase("layer-styles",
+                 note: "One layer (a box, a disc that overlaps it, and a star) styled six ways in a grid: an outside outline, a drop shadow, an inner shadow, an outer glow, an inner glow, and a rounded bevel. Pins each style's composite over the layer's antialiased edge, the measured field the outline, glows, and bevels read, the blur and offset the shadows read, and the bevel's light model. No rng and no time, so it is deterministic.",
+                 make: { LayerStylesScene() }),
     SnapshotCase("luminance-melt",
                  note: "A painted tonal study (gradient plus a bright disk) poured through the luminance melt at a fixed phase. Pins the two-level domain warp, the shared displacement (field warp and image liquify from one vector), the luminance steer into the field, the four-stop sRGB ramp, and the highlight bloom. No rng and no time, so it is deterministic.",
                  make: { LuminanceMeltScene() }),
@@ -3751,6 +3754,34 @@ private final class LuminanceMeltScene: Sketch {
 /// Three marks in a layer, the distance field measured off them, and three readings of
 /// that one field laid over each other: cells from the direction, bands from the
 /// distance, and the shapes grown by a fixed amount. No `time` and no rng.
+private final class LayerStylesScene: Sketch {
+    override var canvasSize: CanvasSize { .size(384, 256) }
+
+    override func draw() {
+        background(Color(hex: 0xC9CED6))
+        let styles: [Filter] = [
+            .outline(width: 3, color: Color(hex: 0x1B1F2A)),
+            .dropShadow(offset: Vector2(5, 6), radius: 5),
+            .innerShadow(offset: Vector2(3, 4), radius: 3),
+            .outerGlow(radius: 14, color: Color(hex: 0xFF4FD8)),
+            .innerGlow(radius: 9, color: Color(hex: 0xFFF2C0)),
+            .bevel(width: 7),
+        ]
+        for (i, style) in styles.enumerated() {
+            let ox = Double(i % 3) * 128, oy = Double(i / 3) * 128
+            let layer = makeRenderTarget()
+            withTarget(layer) {
+                noStroke()
+                fill(Color(hex: 0x3D7EDB)); drawRect(corner: Vector2(ox + 22, oy + 30), width: 58, height: 44)
+                fill(Color(hex: 0xF2B134)); drawCircle(ox + 82, oy + 78, 26)
+                fill(Color(hex: 0xE8E2D6))
+                drawStar(center: Vector2(ox + 38, oy + 96), outerRadius: 18, innerRadius: 7, points: 5)
+            }
+            drawImage(layer.filtered(style).image, 0, 0)
+        }
+    }
+}
+
 private final class MeasuredFieldScene: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
 

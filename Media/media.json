@@ -4661,6 +4661,28 @@
       "stillSmall": "examples/Effects/InkDrawing/still-640.jpg?v=a00a9949",
       "width": 1080
     },
+    "Effects/LayerStyles": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 2.384,
+      "sound": false,
+      "source": "646c0660d83fd5b2",
+      "rendered": "2026-10-08",
+      "bytes": {
+        "loop": 1888463,
+        "loopSmall": 373666,
+        "still": 97910,
+        "stillSmall": 37266
+      },
+      "loop": "examples/Effects/LayerStyles/loop.mp4?v=0f83dda8",
+      "loopSmall": "examples/Effects/LayerStyles/loop-640.mp4?v=0d19ccdd",
+      "still": "examples/Effects/LayerStyles/still.jpg?v=20151b5d",
+      "stillSmall": "examples/Effects/LayerStyles/still-640.jpg?v=06cc5e20",
+      "seed": 1
+    },
     "Effects/Layers": {
       "bytes": {
         "loop": 4996342,
