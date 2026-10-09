@@ -73,9 +73,11 @@ extension Filter {
         case .sepia(let amount):
             return pass("ollin_fx_sepia", [f(amount, 0, 0, 0)])
         case .colorVision(let vision):
-            let m = vision.matrix
+            let (first, second, separator) = vision.transforms
+            let rows = { (m: simd_double3x3) in
+                (0..<3).map { r in f(m[0][r], m[1][r], m[2][r], 0) } }
             return pass("ollin_fx_color_vision",
-                        [f(m[0], m[1], m[2], 0), f(m[3], m[4], m[5], 0), f(m[6], m[7], m[8], 0)])
+                        rows(first) + rows(second) + [f(separator.x, separator.y, separator.z, 0)])
         case .channelMixer(let rows):
             return pass("ollin_fx_channel_mixer", rows)
         case let .duotone(dark, light, amount):

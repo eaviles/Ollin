@@ -415,9 +415,11 @@ fragment float4 ollin_fx_sepia(PresentOut in [[stage_in]],
     return ollin_premul(mix(c, clamp(sep, 0.0, 1.0), params[0].x), s.a);
 }
 
-// colorVision: show the layer as one kind of color vision sees it. The three
-// rows of the transform arrive in params[0..2].xyz. They weight the power of the
-// display primaries, so they belong in linear light, which is what a layer
+// colorVision: show the layer as one kind of color vision sees it. Rows 0..2
+// hold the transform for colors on the positive side of the separator in row 6,
+// rows 3..5 the one for its negative side, the two halves of the dichromat's
+// surface, each blended with the identity by severity. They weight the power of
+// the display primaries, so they belong in linear light, which is what a layer
 // already holds: nothing is decoded on the way in. Only the low end is clamped,
 // since a layer may legitimately carry values above one for the tone map.
 fragment float4 ollin_fx_color_vision(PresentOut in [[stage_in]],
@@ -426,9 +428,9 @@ fragment float4 ollin_fx_color_vision(PresentOut in [[stage_in]],
                                       constant float4 *params [[buffer(0)]]) {
     float4 s = src.sample(samp, in.uv);
     float3 c = ollin_unpremul(s);
-    float3 seen = float3(dot(params[0].xyz, c),
-                         dot(params[1].xyz, c),
-                         dot(params[2].xyz, c));
+    float3 one = float3(dot(params[0].xyz, c), dot(params[1].xyz, c), dot(params[2].xyz, c));
+    float3 two = float3(dot(params[3].xyz, c), dot(params[4].xyz, c), dot(params[5].xyz, c));
+    float3 seen = dot(params[6].xyz, c) >= 0.0 ? one : two;
     return ollin_premul(max(seen, 0.0), s.a);
 }
 

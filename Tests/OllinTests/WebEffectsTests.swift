@@ -382,6 +382,27 @@ import OllinWebGate
         }
     }
 
+    /// Four flat quadrants through the blue-yellow dichromat's sight: pure green
+    /// and pure blue leave the display range there and come back in toward their
+    /// own gray, and the red lands on the other half of that kind's surface, so a
+    /// page that took the wrong half or skipped the fit moves a whole quadrant.
+    final class Simulated: Sketch {
+        override var canvasSize: CanvasSize { .square(120) }
+        override func draw() {
+            background(.black)
+            let layer = makeRenderTarget()
+            withTarget(layer) {
+                noStroke()
+                let colors: [UInt32] = [0x00FF00, 0x0000FF, 0xC8321E, 0xFFD020]
+                for (i, hex) in colors.enumerated() {
+                    fill(Color(hex: hex))
+                    drawRect(Double(i % 2) * 60, Double(i / 2) * 60, 60, 60)
+                }
+            }
+            drawImage(layer.filtered(.colorVision(.tritanopia)).image, 0, 0)
+        }
+    }
+
     /// A lamp on a gray ground through halation, the third pass the page
     /// owns, then through film grain, a single pass whose pattern moves with
     /// the frame.
@@ -811,6 +832,7 @@ import OllinWebGate
             ("Quenched", { Quenched() }, 8, 6),
             ("Wrapped", { Wrapped() }, 8, 5),
             ("Posted", { Posted() }, 4, 2),
+            ("Simulated", { Simulated() }, 2, 1),
             ("Blurred and bloomed", { Blurred() }, 4, 2),
             ("Filmed", { Filmed() }, 4, 2),
             ("Mixed", { Mixed() }, 4, 2),

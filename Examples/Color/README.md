@@ -4,7 +4,7 @@
 
 ## Color
 
-| [![ColorVision](https://media.ollin.art/examples/Color/ColorVision/still-640.jpg?v=576f2f37)](ColorVision/) | [![ColorWaves](https://media.ollin.art/examples/Color/ColorWaves/still-640.jpg?v=c29d2429)](ColorWaves/) | [![Colormaps](https://media.ollin.art/examples/Color/Colormaps/still-640.jpg?v=4e06b898)](Colormaps/) | [![Dithering](https://media.ollin.art/examples/Color/Dithering/still-640.jpg?v=0d647cc9)](Dithering/) |
+| [![ColorVision](https://media.ollin.art/examples/Color/ColorVision/still-640.jpg?v=75f0fb48)](ColorVision/) | [![ColorWaves](https://media.ollin.art/examples/Color/ColorWaves/still-640.jpg?v=c29d2429)](ColorWaves/) | [![Colormaps](https://media.ollin.art/examples/Color/Colormaps/still-640.jpg?v=4e06b898)](Colormaps/) | [![Dithering](https://media.ollin.art/examples/Color/Dithering/still-640.jpg?v=0d647cc9)](Dithering/) |
 |---|---|---|---|
 | [ColorVision](ColorVision/) | [ColorWaves](ColorWaves/) | [Colormaps](Colormaps/) | [Dithering](Dithering/) |
 | [![Gradients](https://media.ollin.art/examples/Color/Gradients/still-640.jpg?v=ce8739f0)](Gradients/) | [![HSBWheel](https://media.ollin.art/examples/Color/HSBWheel/still-640.jpg?v=ec947957)](HSBWheel/) | [![Harmonies](https://media.ollin.art/examples/Color/Harmonies/still-640.jpg?v=4908872e)](Harmonies/) | [![Look](https://media.ollin.art/examples/Color/Look/still-640.jpg?v=b880cd24)](Look/) |

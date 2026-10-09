@@ -231,7 +231,7 @@ if !myPalette.isColorblindSafe() {
 }
 ```
 
-The rule underneath all of this is short. Red and green do look alike to a protanope, and the pair is often still fine, because one is much darker than the other. What merges is two colors of the same lightness that differ only in hue. Distances here are measured in OKLab, the same space a mix works in, where black to white is 1. A red and a green matched for lightness sit 0.281 apart for average vision, and 0.014 apart under the worst kind. So vary lightness, not only hue, and give a shape or a label to anything that color alone is carrying.
+The rule underneath all of this is short. Red and green do look alike to a protanope, and the pair is often still fine, because one is much darker than the other. What merges is two colors of the same lightness that differ only in hue. Distances here are measured in OKLab, the same space a mix works in, where black to white is 1. A red and a green matched for lightness sit 0.281 apart for average vision, and 0.013 apart under the worst kind. So vary lightness, not only hue, and give a shape or a label to anything that color alone is carrying.
 
 ## A recipe borrowed early: random
 

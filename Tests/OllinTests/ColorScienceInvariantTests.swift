@@ -1,4 +1,5 @@
 @testable import Ollin
+import simd
 import Testing
 
 /// Invariants of the color science that hold whatever the implementation: a proof is a
@@ -93,18 +94,20 @@ struct ColorScienceInvariantTests {
     /// maps every color onto a surface of colors they see as themselves: simulating
     /// an already simulated color must leave it where it is.
     ///
-    /// Measured 2026-10-06 and filed: the published severity-1 matrices are not
-    /// projections. The red-green pair are rank two but their square differs from
-    /// them by up to 0.06, which moves a blue by 0.064 (protan) and 0.031 (deutan)
-    /// in OKLab on a second pass; the tritan matrix is not even rank two (a third
-    /// singular value of 0.16, its square off by 0.33) and moves a purple by 0.072.
-    /// The known issue keeps the statement and fails the day a projection model
-    /// stands at severity 1.
-    @Test(arguments: [ColorVision.Kind.protanomaly, .deuteranomaly, .tritanomaly])
-    func aDichromatSimulationIsIdempotent(kind: ColorVision.Kind) {
+    /// Exact for every color whose simulation stays in the display range, since
+    /// 2026-10-08. The table it replaced was not a projection (a blue moved 0.064 in
+    /// OKLab on a second pass, a purple 0.072 under the tritan kind). A result that
+    /// leaves the range is clamped, which moves it off the surface, but mostly along
+    /// the missing cone's response, so a second pass moves what the simulated viewer
+    /// sees by a bounded amount (measured at most 0.044, in their two cone responses
+    /// with white at 1); the bound holds the clamp to that.
+    @Test(arguments: [(ColorVision.Kind.protanomaly, 0), (.deuteranomaly, 1), (.tritanomaly, 2)])
+    func aDichromatSimulationIsIdempotent(kind: ColorVision.Kind, missing: Int) {
         let vision = ColorVision(kind, severity: 1)
-        var worst = 0.0
-        var worstColor = Color.black
+        let white = cones((1, 1, 1))
+        var worstInRange = 0.0, worstSeen = 0.0
+        var inRange = 0
+        var at = Color.black
         let steps = 6
         for ri in 0...steps {
             for gi in 0...steps {
@@ -113,25 +116,40 @@ struct ColorScienceInvariantTests {
                                   blue: Double(bi) / Double(steps))
                     let once = c.simulated(vision)
                     let twice = once.simulated(vision)
-                    let d = distance(once, twice)
-                    if d > worst { worst = d; worstColor = c }
+                    let raw = vision.applied(toLinear: Color.srgbToLinear(c.red), Color.srgbToLinear(c.green),
+                                             Color.srgbToLinear(c.blue))
+                    if min(raw.0, raw.1, raw.2) >= 0 && max(raw.0, raw.1, raw.2) <= 1 {
+                        inRange += 1
+                        let d = distance(once, twice)
+                        if d > worstInRange { worstInRange = d; at = c }
+                    } else {
+                        let a = cones((Color.srgbToLinear(once.red), Color.srgbToLinear(once.green),
+                                       Color.srgbToLinear(once.blue)))
+                        let b = cones((Color.srgbToLinear(twice.red), Color.srgbToLinear(twice.green),
+                                       Color.srgbToLinear(twice.blue)))
+                        var seen = 0.0
+                        for k in 0..<3 where k != missing {
+                            seen += ((a[k] - b[k]) / white[k]) * ((a[k] - b[k]) / white[k])
+                        }
+                        worstSeen = max(worstSeen, seen.squareRoot())
+                    }
                 }
             }
         }
-        withKnownIssue("the published matrices are not projections (0.03 to 0.07 OKLab on a second pass, measured 2026-10-06)") {
-            #expect(worst < 0.02, "\(kind) moved \(worstColor) by \(worst) on a second pass")
-        }
+        #expect(inRange > 150, "only \(inRange) colors stayed in range")
+        #expect(worstInRange < 1e-9, "\(kind) moved \(at) by \(worstInRange) on a second pass")
+        #expect(worstSeen < 0.05, "\(kind) moved what its viewer sees by \(worstSeen) on a second pass")
     }
 
     /// Severity is a dial from the viewer's own sight to the dichromat's: at any step
     /// a color lies between where it started and where severity 1 puts it, never
     /// beyond either.
     ///
-    /// Holds for the red-green kinds. Measured 2026-10-06 and filed for the tritan
-    /// kind: its published intermediate matrices wander (the red row passes 1.1 at
-    /// severity 0.6 with a negative green term), so at severity 0.2 a red and a cyan
-    /// are moved by 0.023 where severity 1 moves them by under 0.004. The known
-    /// issue is scoped to that kind and fails the day its path is monotone.
+    /// Held since 2026-10-09 for every kind. The tritan path of the table it replaced
+    /// wandered (at severity 0.2 a red and a cyan moved 0.023 where severity 1 moved
+    /// them under 0.004). The path is a straight line in linear light, so the only
+    /// give is the clamp: a violet whose protan end leaves the display range bends
+    /// 0.008 past that clamped end at severity 0.45, under a just-noticeable step.
     @Test(arguments: [ColorVision.Kind.protanomaly, .deuteranomaly, .tritanomaly])
     func aPartialSeverityNeverOvershootsTheEnds(kind: ColorVision.Kind) {
         let full = ColorVision(kind, severity: 1)
@@ -146,8 +164,127 @@ struct ColorScienceInvariantTests {
                 if past > overshoot { overshoot = past; at = swatch }
             }
         }
-        withKnownIssue("the tritan path is not monotone in severity (measured 2026-10-06)", {
-            #expect(overshoot <= 0.01, "\(kind) took \(at) \(overshoot) past the reach of severity 1")
-        }, when: { kind == .tritanomaly })
+        #expect(overshoot <= 0.01, "\(kind) took \(at) \(overshoot) past the reach of severity 1")
+    }
+
+    /// The cone responses of linear sRGB, Smith and Pokorny's fundamentals over the
+    /// Judd-Vos corrected primaries, as the review that accompanies the reference
+    /// implementation prints them (Burrus, 2021), times 100. Written here rather than
+    /// borrowed, so the check below does not lean on the code it checks. They were
+    /// built from primaries rounded to six places, so they sit 2.5e-6 (relative) from
+    /// the full-precision derivation the code makes, which sets the bound below.
+    private static let conesFromLinearRGB: [[Double]] = [
+        [17.88240413, 43.51609057, 4.11934969],
+        [3.45564232, 27.15538246, 3.86713084],
+        [0.02995656, 0.18430896, 1.46708614],
+    ]
+
+    private func cones(_ c: (Double, Double, Double)) -> [Double] {
+        Self.conesFromLinearRGB.map { $0[0] * c.0 + $0[1] * c.1 + $0[2] * c.2 }
+    }
+
+    /// A dichromat confuses colors that differ only in the missing cone's response,
+    /// so a color and its simulation must differ in nothing else: the two cones the
+    /// viewer has respond to both alike. Checked on the model across the cube, and
+    /// on the displayed color wherever the result needed no fit.
+    @Test(arguments: [(ColorVision.Kind.protanomaly, 0), (.deuteranomaly, 1), (.tritanomaly, 2)])
+    func aColorAndItsSimulationShareAConfusionLine(kind: ColorVision.Kind, missing: Int) {
+        let vision = ColorVision(kind)
+        var worst = 0.0
+        var shown = 0
+        let steps = 6
+        for ri in 0...steps {
+            for gi in 0...steps {
+                for bi in 0...steps {
+                    let c = (Double(ri) / Double(steps), Double(gi) / Double(steps), Double(bi) / Double(steps))
+                    let before = cones(c)
+                    let after = cones(vision.applied(toLinear: c.0, c.1, c.2))
+                    for k in 0..<3 where k != missing {
+                        worst = max(worst, abs(after[k] - before[k]) / max(before[k], 1))
+                    }
+                    let color = Color(red: Color.linearToSrgb(c.0), green: Color.linearToSrgb(c.1),
+                                      blue: Color.linearToSrgb(c.2))
+                    let raw = vision.applied(toLinear: c.0, c.1, c.2)
+                    guard min(raw.0, raw.1, raw.2) >= 0, max(raw.0, raw.1, raw.2) <= 1 else { continue }
+                    let seen = color.simulated(vision)
+                    let lit = cones((Color.srgbToLinear(seen.red), Color.srgbToLinear(seen.green),
+                                     Color.srgbToLinear(seen.blue)))
+                    for k in 0..<3 where k != missing {
+                        worst = max(worst, abs(lit[k] - before[k]) / max(before[k], 1))
+                    }
+                    shown += 1
+                }
+            }
+        }
+        #expect(shown > 100, "too few colors stayed in range to check the displayed path")
+        #expect(worst < 1e-5, "\(kind) moved a kept cone's response by \(worst)")
+    }
+
+    /// The transforms against the worked values printed by the public-domain
+    /// reference implementation of Brettel, Viénot and Mollon's 1997 half-planes
+    /// (Burrus, 2021, from the same published measurements), rounded there to five
+    /// places. The reference also rounded its anchor lights
+    /// before using them (660 nm's Z, 1.19e-5 in the table, became 1e-5), which moves
+    /// the tritan second half by up to 1.6e-5 from the full table the code reads; the
+    /// bound allows the two roundings and nothing more.
+    @Test func theTransformsMatchThePublishedWorkedValues() {
+        func matches(_ m: simd_double3x3, _ rows: [Double], _ label: String) {
+            for r in 0..<3 {
+                for c in 0..<3 {
+                    #expect(abs(m[c][r] - rows[r * 3 + c]) < 2.5e-5, "\(label) row \(r) column \(c): \(m[c][r])")
+                }
+            }
+        }
+        let protan = ColorVision.protanopia.transforms
+        matches(protan.first, [0.14980, 1.19548, -0.34528, 0.10764, 0.84864, 0.04372,
+                               0.00384, -0.00540, 1.00156], "protan, first half")
+        matches(protan.second, [0.14570, 1.16172, -0.30742, 0.10816, 0.85291, 0.03892,
+                                0.00386, -0.00524, 1.00139], "protan, second half")
+        let deutan = ColorVision.deuteranopia.transforms
+        matches(deutan.first, [0.36477, 0.86381, -0.22858, 0.26294, 0.64245, 0.09462,
+                               -0.02006, 0.02728, 0.99278], "deutan, first half")
+        matches(deutan.second, [0.37298, 0.88166, -0.25464, 0.25954, 0.63506, 0.10540,
+                                -0.01980, 0.02784, 0.99196], "deutan, second half")
+        let tritan = ColorVision.tritanopia.transforms
+        matches(tritan.first, [1.01277, 0.13548, -0.14826, -0.01243, 0.86812, 0.14431,
+                               0.07589, 0.80500, 0.11911], "tritan, first half")
+        matches(tritan.second, [0.93678, 0.18979, -0.12657, 0.06154, 0.81526, 0.12320,
+                                -0.37562, 1.12767, 0.24796], "tritan, second half")
+        for (separator, printed, label) in [(protan.separator, SIMD3(0.00048, 0.00393, -0.00441), "protan"),
+                                            (deutan.separator, SIMD3(-0.00281, -0.00611, 0.00892), "deutan"),
+                                            (tritan.separator, SIMD3(0.03901, -0.02788, -0.01113), "tritan")] {
+            #expect(simd_length(separator - printed) < 1e-5, "\(label) separator \(separator)")
+        }
+    }
+
+    /// Each surface is two half-planes, so it has a seam: a color on the separator
+    /// lands on the gray axis whichever half takes it (no step across the seam), and
+    /// the projection never carries a color across it (which is what makes a second
+    /// projection pick the same half).
+    @Test(arguments: [ColorVision.Kind.protanomaly, .deuteranomaly, .tritanomaly])
+    func theHalvesMeetOnTheSeparatorAndNothingCrossesIt(kind: ColorVision.Kind) {
+        let (first, second, n) = ColorVision(kind).transforms
+        // Two directions in the separating plane: gray, and one across it.
+        let gray = SIMD3<Double>(1, 1, 1)
+        let across = simd_normalize(simd_cross(n, gray))
+        for (a, b) in [(0.2, 0.1), (0.5, -0.2), (0.9, 0.05)] {
+            let onSeam = gray * a + across * b
+            #expect(abs(simd_dot(n, onSeam)) < 1e-12)
+            #expect(simd_length(first * onSeam - second * onSeam) < 1e-12)
+            let landed = first * onSeam
+            #expect(abs(landed.x - landed.y) < 1e-12 && abs(landed.y - landed.z) < 1e-12,
+                    "\(onSeam) landed off the gray axis at \(landed)")
+        }
+        let steps = 6
+        for ri in 0...steps {
+            for gi in 0...steps {
+                for bi in 0...steps {
+                    let c = SIMD3(Double(ri), Double(gi), Double(bi)) / Double(steps)
+                    let side = simd_dot(n, c)
+                    let projected = side >= 0 ? first * c : second * c
+                    #expect(side * simd_dot(n, projected) >= -1e-15, "\(kind) carried \(c) across the seam")
+                }
+            }
+        }
     }
 }

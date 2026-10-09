@@ -98,7 +98,7 @@ The three kinds are named after the cone whose response is shifted:
 | `.deuteranomaly` | middle wavelength | the most common kind |
 | `.tritanomaly` | short wavelength, nearest blue | rare, and usually acquired |
 
-A `ColorVision(_:severity:)` is one of those kinds at a `severity`, and `applied(to:)` is what puts it on a color. Severity runs from 0 to 1. At 0 nothing changes. At 1 the cone is missing rather than shifted, which is dichromacy. `.protanopia`, `.deuteranopia` and `.tritanopia` are the three kinds at full severity. Any value between is anomalous trichromacy, which is the more common case.
+A `ColorVision(_:severity:)` is one of those kinds at a `severity`, and `Color.simulated(_:)` is what puts it on a color. Severity runs from 0 to 1. At 0 nothing changes. At 1 the cone is missing rather than shifted, which is dichromacy. `.protanopia`, `.deuteranopia` and `.tritanopia` are the three kinds at full severity. Any value between is anomalous trichromacy, which is the more common case. A color simulated at severity 0.5 moves half the way toward where the dichromat sees it.
 
 ```swift
 ColorVision.deuteranopia            // the cone is gone
@@ -136,7 +136,7 @@ if !myPalette.isColorblindSafe() { /* pick again */ }
 
 Each pair also carries the `vision` that brings the two together, which is the kind to say out loud when the check reports one. `confusions()` with no argument checks all three kinds at full severity. Either way the worst pair comes first, so the first entry is the one to fix.
 
-**Lightness is what keeps a pair apart.** The check measures the whole distance, lightness as well as hue, because a person judges both. To somebody with protanopia, red and green look alike in hue, but one is darker than the other, so the pair is still usable. Two colors of the same lightness that differ only in hue are the ones that merge. A red and a green matched for lightness measure 0.281 apart for average vision and 0.014 apart under the worst kind. Move them apart in lightness, and the same two hues stay 0.601 apart.
+**Lightness is what keeps a pair apart.** The check measures the whole distance, lightness as well as hue, because a person judges both. To somebody with protanopia, red and green look alike in hue, but one is darker than the other, so the pair is still usable. Two colors of the same lightness that differ only in hue are the ones that merge. A red and a green matched for lightness measure 0.281 apart for average vision and 0.013 apart under the worst kind. Move them apart in lightness, and the same two hues stay 0.601 apart.
 
 So the practical rule is to vary lightness as well as hue. Give a shape or a label to anything that color alone tells apart.
 
@@ -146,17 +146,23 @@ So the practical rule is to vary lightness as well as hue. Give a shape or a lab
 fill(Palette.colorblindSafe[i])
 ```
 
-`Palette.colorblindSafe` is the eight colors that Okabe and Ito published for color universal design. It is the usual choice when a sketch needs categories anybody can follow. Its closest pair under the worst kind is 0.076 apart. A familiar six-color chart set falls to 0.007 under the same test.
+`Palette.colorblindSafe` is the eight colors that Okabe and Ito published for color universal design. It is the usual choice when a sketch needs categories anybody can follow. Its closest pair under the worst kind is 0.078 apart. A familiar six-color chart set falls to 0.013 under the same test.
 
 ### The tolerance
 
-The default tolerance of 0.06 comes from measurement. It sits between the 0.076 and the 0.007 above, with room on either side. Pass your own tolerance if a sketch needs a stricter or looser threshold.
+The default tolerance of 0.06 comes from measurement. It sits between the 0.078 and the 0.013 above, with room on either side. Pass your own tolerance if a sketch needs a stricter or looser threshold.
 
 ### What the model is
 
-The simulation uses the physiologically based model of Machado, Oliveira and Fernandes (2009). That model treats color vision deficiency as a shift in a cone's spectral absorption. A color is linearized, multiplied by a 3x3 matrix chosen by kind and severity, and encoded back. The published table gives a matrix at every 0.1 of severity. A value in between interpolates between its two neighbors, which is the approximation the model's authors describe.
+A dichromat has two kinds of cone where most people have three. So every color they can tell apart sits on a surface. Colors that differ only in the missing cone's response look the same to them. The simulation moves a color along that cone's axis until it lands on the surface. A color already on the surface stays where it is, so simulating twice gives the same color as simulating once.
 
-The matrices weight the power of the display primaries, so they belong in linear light. Applying them to display values instead is a common mistake, and it gives a visibly different color.
+The surface comes from Brettel, Viénot and Mollon (1997). It is two half-planes meeting along the grays. Each holds one light that people with that kind of vision see the same as everybody else. Those lights were measured on people with one eye of each kind. For protanopia and deuteranopia those lights are 475 nm blue and 575 nm yellow, and for tritanopia 485 nm cyan and 660 nm red. The model is built from the sRGB primaries and Smith and Pokorny's cone sensitivities. The display's white is the neutral axis, so white and every gray come back unchanged.
+
+A severity below 1 moves each color that share of the way toward where the dichromat sees it, in a straight line in linear light. This is the usual way to simulate anomalous trichromacy, and it is an approximation rather than a measurement.
+
+The surface reaches past the colors a display can show, so a result outside the range is clamped channel by channel. The clamp moves a color mostly along the missing cone's response, which is the one direction that viewer cannot see. Over the display's colors it changes what they see far less than moving the color back onto the surface would. A color that was clamped can move a little if you simulate it a second time.
+
+The model weights the power of the display primaries, so it belongs in linear light. Applying it to display values instead is a common mistake, and it gives a visibly different color. If your code already works in linear light, `applied(toLinear:_:_:)` takes a linear triple and returns the model's own result, before the clamp.
 
 A simulation is a working aid, not a report of somebody's experience. It shows where a design depends on a difference that disappears for a viewer with that kind of vision. It does not tell you what that person sees.
 

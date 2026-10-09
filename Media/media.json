@@ -3826,20 +3826,21 @@
       "width": 1080
     },
     "Color/ColorVision": {
-      "bytes": {
-        "still": 183784,
-        "stillSmall": 73667
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1330,
       "length": "still",
-      "motion": 0.0,
-      "rendered": "2026-09-10",
-      "source": "70deb447e8dcc064",
-      "still": "examples/Color/ColorVision/still.jpg?v=6cfe40e6",
       "stillBecause": "holds still",
-      "stillSmall": "examples/Color/ColorVision/still-640.jpg?v=576f2f37",
-      "width": 1080
+      "frame": 480,
+      "motion": 0.0,
+      "source": "7d78efb339fb54b9",
+      "rendered": "2026-10-09",
+      "bytes": {
+        "still": 182056,
+        "stillSmall": 72836
+      },
+      "still": "examples/Color/ColorVision/still.jpg?v=843b781f",
+      "stillSmall": "examples/Color/ColorVision/still-640.jpg?v=75f0fb48",
+      "seed": 1
     },
     "Color/ColorWaves": {
       "bytes": {

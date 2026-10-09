@@ -2,11 +2,11 @@ import Foundation
 import Ollin
 import Testing
 
-/// The color-vision simulation is a table of published matrices plus two
-/// decisions that are easy to get wrong and invisible once wrong: which color
-/// space the matrix belongs in, and what a severity between two tabulated steps
-/// means. These pin both, and pin the behavior the whole feature exists for,
-/// which is that colors a designer picked apart can arrive on top of each other.
+/// The color-vision simulation is a published projection plus two decisions
+/// that are easy to get wrong and invisible once wrong: which color space it
+/// belongs in, and what a severity short of dichromacy means. These pin both,
+/// and pin the behavior the whole feature exists for, which is that colors a
+/// designer picked apart can arrive on top of each other.
 @Suite
 struct ColorVisionTests {
 
@@ -40,34 +40,27 @@ struct ColorVisionTests {
         return ((x.a - y.a) * (x.a - y.a) + (x.b - y.b) * (x.b - y.b)).squareRoot()
     }
 
-    // MARK: - The published table
+    // MARK: - Severity
 
-    /// The severity-1 matrices are the published dichromacy ones. If a
-    /// transcription slipped, this is where it shows.
-    @Test func theTableHoldsThePublishedDichromacyMatrices() {
-        let protan = ColorVision.protanopia.matrix
-        #expect(abs(protan[0] - 0.152286) < 1e-9)
-        #expect(abs(protan[1] - 1.052583) < 1e-9)
-        #expect(abs(protan[2] - -0.204868) < 1e-9)
-
-        let deutan = ColorVision.deuteranopia.matrix
-        #expect(abs(deutan[0] - 0.367322) < 1e-9)
-        #expect(abs(deutan[1] - 0.860646) < 1e-9)
-        #expect(abs(deutan[2] - -0.227968) < 1e-9)
-
-        let tritan = ColorVision.tritanopia.matrix
-        #expect(abs(tritan[0] - 1.255528) < 1e-9)
-        #expect(abs(tritan[1] - -0.076749) < 1e-9)
-        #expect(abs(tritan[2] - -0.178779) < 1e-9)
+    private func seen(_ vision: ColorVision, _ c: (Double, Double, Double)) -> (Double, Double, Double) {
+        vision.applied(toLinear: c.0, c.1, c.2)
     }
+
+    private func gap(_ a: (Double, Double, Double), _ b: (Double, Double, Double)) -> Double {
+        max(abs(a.0 - b.0), abs(a.1 - b.1), abs(a.2 - b.2))
+    }
+
+    private static let linearSamples: [(Double, Double, Double)] = [
+        (1, 0, 0), (0, 1, 0), (0, 0, 1), (0.8, 0.6, 0.1), (0.05, 0.4, 0.9), (0.3, 0.3, 0.3),
+    ]
 
     /// Severity 0 is the identity for every kind, so `.normal` cannot tint
     /// anything by accident.
     @Test func severityZeroIsTheIdentity() {
         for kind in ColorVision.Kind.allCases {
-            let m = ColorVision(kind, severity: 0).matrix
-            let identity = [1.0, 0, 0, 0, 1, 0, 0, 0, 1]
-            for i in 0..<9 { #expect(abs(m[i] - identity[i]) < 1e-6) }
+            for c in Self.linearSamples {
+                #expect(gap(seen(ColorVision(kind, severity: 0), c), c) < 1e-12)
+            }
         }
         for color in [Color.red, .green, .blue, .white, .black, Color(hex: 0x3A7BD5)] {
             #expect(color.simulated(.normal) == color)
@@ -75,18 +68,21 @@ struct ColorVisionTests {
         }
     }
 
-    /// A severity the table does not hold interpolates its two neighbors, the
-    /// approximation the model's authors describe.
-    @Test func anUntabulatedSeverityInterpolatesItsNeighbors() {
-        let low = ColorVision(.deuteranomaly, severity: 0.8).matrix
-        let high = ColorVision(.deuteranomaly, severity: 0.9).matrix
-        let middle = ColorVision(.deuteranomaly, severity: 0.85).matrix
-        for i in 0..<9 {
-            #expect(abs(middle[i] - (low[i] + high[i]) / 2) < 1e-9)
+    /// A severity short of dichromacy moves a color part of the way, along the
+    /// straight line in linear light from where it starts to where severity 1
+    /// puts it.
+    @Test func aPartialSeverityIsThatShareOfTheWayInLinearLight() {
+        for kind in ColorVision.Kind.allCases {
+            for c in Self.linearSamples {
+                let end = seen(ColorVision(kind), c)
+                for severity in [0.15, 0.5, 0.85] {
+                    let part = seen(ColorVision(kind, severity: severity), c)
+                    let line = (c.0 + (end.0 - c.0) * severity, c.1 + (end.1 - c.1) * severity,
+                                c.2 + (end.2 - c.2) * severity)
+                    #expect(gap(part, line) < 1e-12, "\(kind) at \(severity) left the line for \(c)")
+                }
+            }
         }
-        // A tabulated severity is the table entry itself, not an interpolation.
-        let exact = ColorVision(.deuteranomaly, severity: 0.9).matrix
-        for i in 0..<9 { #expect(exact[i] == high[i]) }
     }
 
     /// Severity is clamped rather than extrapolated, so a parameter dragged past
@@ -94,35 +90,31 @@ struct ColorVisionTests {
     @Test func severityIsClamped() {
         #expect(ColorVision(.protanomaly, severity: 4).severity == 1)
         #expect(ColorVision(.protanomaly, severity: -2).severity == 0)
-        let past = ColorVision(.protanomaly, severity: 9).matrix
-        let one = ColorVision.protanopia.matrix
-        for i in 0..<9 { #expect(past[i] == one[i]) }
+        for c in Self.linearSamples {
+            #expect(gap(seen(ColorVision(.protanomaly, severity: 9), c), seen(.protanopia, c)) == 0)
+        }
     }
 
     // MARK: - The color space it belongs in
 
-    /// The matrix weights the power of the display primaries, so it belongs in
-    /// linear light. This pins the shipped answer against a hand-computed
-    /// linear-light reference, and against the same matrix applied to display
-    /// values, which is the common mistake and a visibly different color.
-    @Test func theMatrixIsAppliedInLinearLightNotToDisplayValues() {
+    /// The projection weights the power of the display primaries, so it belongs
+    /// in linear light. This pins the shipped answer against the model applied
+    /// to the linearized color by hand, and against the same model applied to
+    /// display values, which is the common mistake and a visibly different color.
+    @Test func theModelIsAppliedInLinearLightNotToDisplayValues() {
         let source = Color(hex: 0xC81E1E)
         let vision = ColorVision.deuteranopia
-        let m = vision.matrix
 
-        let lr = toLinear(source.red), lg = toLinear(source.green), lb = toLinear(source.blue)
-        let reference = Color(
-            red: toDisplay(min(max(m[0] * lr + m[1] * lg + m[2] * lb, 0), 1)),
-            green: toDisplay(min(max(m[3] * lr + m[4] * lg + m[5] * lb, 0), 1)),
-            blue: toDisplay(min(max(m[6] * lr + m[7] * lg + m[8] * lb, 0), 1)))
+        let (r, g, b) = vision.applied(toLinear: toLinear(source.red), toLinear(source.green),
+                                       toLinear(source.blue))
+        #expect(min(r, g, b) >= 0 && max(r, g, b) <= 1, "the reference needs a result in range")
+        let reference = Color(red: toDisplay(r), green: toDisplay(g), blue: toDisplay(b))
 
         let shipped = source.simulated(vision)
         #expect(distance(shipped, reference) < 1e-9)
 
-        let wrong = Color(
-            red: min(max(m[0] * source.red + m[1] * source.green + m[2] * source.blue, 0), 1),
-            green: min(max(m[3] * source.red + m[4] * source.green + m[5] * source.blue, 0), 1),
-            blue: min(max(m[6] * source.red + m[7] * source.green + m[8] * source.blue, 0), 1))
+        let (wr, wg, wb) = vision.applied(toLinear: source.red, source.green, source.blue)
+        let wrong = Color(red: min(max(wr, 0), 1), green: min(max(wg, 0), 1), blue: min(max(wb, 0), 1))
         #expect(distance(shipped, wrong) > 0.05)
     }
 
@@ -130,7 +122,8 @@ struct ColorVisionTests {
 
     /// Red against green is the pair the commonest kinds cannot hold apart, and
     /// the tritan twin is what shows the collapse belongs to the kind rather
-    /// than to the simulation flattening everything.
+    /// than to the simulation flattening everything. Measured on the hue plane:
+    /// 23% of the gap survives protanopia, 7.6% deuteranopia, 78% tritanopia.
     @Test func redAndGreenCollapseForTheRedGreenKindsAndNotForTheOther() {
         let apart = chroma(.red, .green)
 
@@ -152,7 +145,8 @@ struct ColorVisionTests {
     }
 
     /// Blue against yellow is the pair the rare kind loses, and the red-green
-    /// kinds keep. The mirror of the test above.
+    /// kinds keep. The mirror of the test above: 22% of the gap survives
+    /// tritanopia, 95% protanopia, 87% deuteranopia.
     @Test func blueAndYellowCollapseForTheRareKindAndNotForTheOthers() {
         let apart = chroma(.blue, .yellow)
         let tritan = chroma(Color.blue.simulated(.tritanopia),
@@ -177,13 +171,14 @@ struct ColorVisionTests {
         }
     }
 
-    /// Gray has nothing for a cone shift to disagree about, so it comes back
-    /// where it started whatever the kind.
+    /// Gray has nothing for a missing cone to disagree about: the gray axis lies
+    /// on every dichromat's surface, so a gray comes back exactly where it
+    /// started whatever the kind.
     @Test func grayIsUnchangedByEveryKind() {
         for kind in ColorVision.Kind.allCases {
             for level in [0.0, 0.25, 0.5, 0.75, 1.0] {
                 let gray = Color(red: level, green: level, blue: level)
-                #expect(distance(gray, gray.simulated(ColorVision(kind))) < 0.02)
+                #expect(distance(gray, gray.simulated(ColorVision(kind))) < 1e-9)
             }
         }
     }
@@ -194,17 +189,47 @@ struct ColorVisionTests {
         #expect(source.simulated(.protanopia).alpha == 0.42)
     }
 
-    /// The transform can land outside the display range, and a channel that
-    /// does is clamped rather than wrapped.
-    @Test func aResultOutsideTheDisplayRangeIsClamped() {
-        for kind in ColorVision.Kind.allCases {
+    /// A dichromat's surface reaches outside the display range, and a result
+    /// that does is clamped channel by channel. The clamp moves it mostly along
+    /// the missing cone's response, which the simulated viewer cannot see: the
+    /// two cones they have respond to the clamped color within 0.07 of how they
+    /// respond to the model's own result (white responds 1), where pulling it
+    /// toward a gray of its own lightness instead moved them by up to 0.78.
+    @Test func aResultOutsideTheDisplayRangeIsClampedWherePeopleWithThatKindCannotSee() {
+        // The cone responses of linear sRGB (Smith and Pokorny over the
+        // corrected primaries), written out so the check stands apart.
+        let cones: [[Double]] = [[17.88240413, 43.51609057, 4.11934969],
+                                 [3.45564232, 27.15538246, 3.86713084],
+                                 [0.02995656, 0.18430896, 1.46708614]]
+        func response(_ c: (Double, Double, Double)) -> [Double] {
+            cones.map { $0[0] * c.0 + $0[1] * c.1 + $0[2] * c.2 }
+        }
+        let white = response((1, 1, 1))
+        var clamped = 0
+        for (kind, missing) in [(ColorVision.Kind.protanomaly, 0), (.deuteranomaly, 1), (.tritanomaly, 2)] {
+            let vision = ColorVision(kind)
             for source in [Color.red, .green, .blue, .cyan, .magenta, .yellow, .white] {
-                let seen = source.simulated(ColorVision(kind))
-                #expect(seen.red >= 0 && seen.red <= 1)
-                #expect(seen.green >= 0 && seen.green <= 1)
-                #expect(seen.blue >= 0 && seen.blue <= 1)
+                let shown = source.simulated(vision)
+                #expect(shown.red >= 0 && shown.red <= 1)
+                #expect(shown.green >= 0 && shown.green <= 1)
+                #expect(shown.blue >= 0 && shown.blue <= 1)
+
+                let raw = vision.applied(toLinear: toLinear(source.red), toLinear(source.green),
+                                         toLinear(source.blue))
+                guard min(raw.0, raw.1, raw.2) < 0 || max(raw.0, raw.1, raw.2) > 1 else { continue }
+                clamped += 1
+                let a = response(raw)
+                let b = response((toLinear(shown.red), toLinear(shown.green), toLinear(shown.blue)))
+                var seen = 0.0
+                for k in 0..<3 where k != missing {
+                    seen += ((a[k] - b[k]) / white[k]) * ((a[k] - b[k]) / white[k])
+                }
+                #expect(seen.squareRoot() < 0.07, "\(kind) moved what it sees in \(source) by \(seen.squareRoot())")
             }
         }
+        #expect(clamped > 0, "no color here left the range, so the clamp went unchecked")
+        let green = ColorVision.tritanopia.applied(toLinear: 0, 1, 0)
+        #expect(green.2 > 1.1)
     }
 
     // MARK: - The collections
@@ -237,10 +262,15 @@ struct ColorVisionTests {
 @Suite
 struct ColorblindPaletteTests {
 
-    /// The published safe set passes at the shipped tolerance, under every kind.
+    /// The published safe set passes at the shipped tolerance, under every kind,
+    /// and its closest pair sits where the docs say (0.078, under deuteranopia),
+    /// which is one side of the calibration.
     @Test func thePublishedSafeSetIsSafe() {
         #expect(Palette.colorblindSafe.count == 8)
         #expect(Palette.colorblindSafe.isColorblindSafe())
+        let closest = Palette.colorblindSafe.confusions(tolerance: 1).first
+        #expect(abs((closest?.distance ?? 0) - 0.078) < 0.0005, "closest pair at \(String(describing: closest))")
+        #expect(closest?.vision.kind == .deuteranomaly)
         for kind in ColorVision.Kind.allCases {
             #expect(Palette.colorblindSafe.confusions(under: ColorVision(kind)).isEmpty)
         }
@@ -257,7 +287,7 @@ struct ColorblindPaletteTests {
         #expect(worst?.first == 1)                       // orange
         #expect(worst?.second == 2)                      // green
         #expect(worst?.vision.kind == .protanomaly)
-        #expect((worst?.distance ?? 1) < 0.02)
+        #expect(abs((worst?.distance ?? 1) - 0.013) < 0.0005, "worst pair at \(String(describing: worst))")
     }
 
     /// The report is ordered worst pair first, so the first entry is the one to
@@ -277,7 +307,7 @@ struct ColorblindPaletteTests {
     ///
     /// The two colors below were measured rather than picked by eye. At matched
     /// lightness the red and the green sit 0.281 apart for average vision and
-    /// 0.014 apart under the worst kind. Pull them apart in lightness and the
+    /// 0.013 apart under the worst kind. Pull them apart in lightness and the
     /// same two hues stay 0.601 apart under every kind.
     @Test func lightnessIsWhatSavesAPairThatSharesAHueAxis() {
         let flat = Palette([Color(hex: 0xD75734), Color(hex: 0x30A030)])
@@ -322,15 +352,45 @@ struct ColorVisionRenderProbes {
     }
 
     /// The filter lands where `Color.simulated(_:)` says it should, for every
-    /// kind. One model, reached two ways.
+    /// kind, at full and partial severity. One model, reached two ways. Pure
+    /// green and blue leave the display range under every kind (blue's red falls
+    /// to -0.31 under protanopia, green's blue reaches 1.13 under tritanopia), so
+    /// they pin the clamp on both paths, and between the three patches every kind
+    /// uses both halves of its surface.
     @Test(.enabled(if: Snapshot.hasMetal))
     func theFilterAgreesWithTheColorCall() throws {
-        let patch = Color(hex: 0xC8321E)
-        for kind in ColorVision.Kind.allCases {
-            let vision = ColorVision(kind)
-            let image = try OllinApp.image(of: ColorVisionProbe.make(patch: patch, vision: vision),
-                                                    frame: 1)
-            #expect(apart(center(of: image), patch.simulated(vision)) < 0.01)
+        for patch in [Color(hex: 0xC8321E), Color(hex: 0x00FF00), Color(hex: 0x0000FF)] {
+            for kind in ColorVision.Kind.allCases {
+                for severity in [1.0, 0.5] {
+                    let vision = ColorVision(kind, severity: severity)
+                    let image = try OllinApp.image(of: ColorVisionProbe.make(patch: patch, vision: vision),
+                                                   frame: 1)
+                    let gap = apart(center(of: image), patch.simulated(vision))
+                    #expect(gap < 0.01, "\(patch) under \(kind) at \(severity) is \(gap) from the Color call")
+                }
+            }
+        }
+    }
+
+    /// A layer brighter than white keeps its range through the filter: only the
+    /// low end is clamped, so the tone map still sees the light the sketch drew.
+    /// Read in linear light before the present pass, against the model applied
+    /// to the same linear color with its low end clamped.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aPixelBrighterThanWhiteKeepsItsRange() throws {
+        func linear(_ c: Double) -> Double {
+            c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4)
+        }
+        let patch = Color(red: 1.4, green: 1.2, blue: 0.3)
+        let frame = try LayerStyleTests.render(ColorVisionProbe.make(patch: patch, vision: .tritanopia))
+        let x = frame.width / 2, y = frame.height / 2
+        let drawn = (frame.value(x, y, 0), frame.value(x, y, 1), frame.value(x, y, 2))
+        let raw = ColorVision.tritanopia.applied(toLinear: linear(patch.red), linear(patch.green),
+                                                 linear(patch.blue))
+        let want = (max(raw.0, 0), max(raw.1, 0), max(raw.2, 0))
+        #expect(max(want.0, want.1, want.2) > 1.2, "the patch should simulate past white")
+        for (got, wanted) in [(drawn.0, want.0), (drawn.1, want.1), (drawn.2, want.2)] {
+            #expect(abs(got - wanted) <= wanted * 0.003 + 0.002, "filter \(drawn), model \(want)")
         }
     }
 

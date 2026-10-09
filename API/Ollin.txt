@@ -3323,7 +3323,6 @@ struct ColorVision: Equatable, Hashable, Sendable
   static let protanopia: ColorVision
   static let tritanopia: ColorVision
   var kind: ColorVision.Kind { get set }
-  var matrix: [Double] { get }
   var severity: Double { get set }
 struct Combine: Sendable
   enum FieldEncoding: Equatable, Sendable
