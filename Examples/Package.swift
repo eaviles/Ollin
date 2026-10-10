@@ -999,5 +999,11 @@ let package = Package(
         // regions, after Hiroshi Kawano.
         example("Recreations/HiroshiKawano/Design"),
         example("Recreations/HiroshiKawano/ArtificialMondrian"),
+        // The Structures of 1964 on, half-discs placed by a computer under
+        // rules of color and shape continuing across a side, and the Lines
+        // of 1973 on, chains of tangents and arcs whose every number was
+        // drawn from chance, after Zdeněk Sýkora.
+        example("Recreations/ZdenekSykora/Structure"),
+        example("Recreations/ZdenekSykora/Lines"),
     ]
 )

@@ -516,6 +516,10 @@
     "Recreations/KazuyaSakai": [
       "Recreations/KazuyaSakai/Ondulaciones",
       "Recreations/KazuyaSakai/RightOff"
+    ],
+    "Recreations/ZdenekSykora": [
+      "Recreations/ZdenekSykora/Structure",
+      "Recreations/ZdenekSykora/Lines"
     ]
   },
   "examples": {
@@ -9469,6 +9473,50 @@
       "stillSmall": "examples/Recreations/WaldemarCordeiro/Gente/still-640.jpg?v=c720d5ae",
       "seed": 1
     },
+    "Recreations/ZdenekSykora/Lines": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 1836,
+      "motion": 19.38,
+      "sound": false,
+      "source": "5d11f517013ec34b",
+      "rendered": "2026-10-10",
+      "bytes": {
+        "loop": 3360616,
+        "loopSmall": 950981,
+        "still": 229969,
+        "stillSmall": 92234
+      },
+      "loop": "examples/Recreations/ZdenekSykora/Lines/loop.mp4?v=9a7465cb",
+      "loopSmall": "examples/Recreations/ZdenekSykora/Lines/loop-640.mp4?v=dbdd264e",
+      "still": "examples/Recreations/ZdenekSykora/Lines/still.jpg?v=588def80",
+      "stillSmall": "examples/Recreations/ZdenekSykora/Lines/still-640.jpg?v=cc5a2028",
+      "seed": 1
+    },
+    "Recreations/ZdenekSykora/Structure": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 1530,
+      "motion": 25.134,
+      "sound": false,
+      "source": "6af47fe3ca8d6d87",
+      "rendered": "2026-10-10",
+      "bytes": {
+        "loop": 2811696,
+        "loopSmall": 805804,
+        "still": 226002,
+        "stillSmall": 94603
+      },
+      "loop": "examples/Recreations/ZdenekSykora/Structure/loop.mp4?v=ea19a42e",
+      "loopSmall": "examples/Recreations/ZdenekSykora/Structure/loop-640.mp4?v=2b684e68",
+      "still": "examples/Recreations/ZdenekSykora/Structure/still.jpg?v=98cb7a46",
+      "stillSmall": "examples/Recreations/ZdenekSykora/Structure/still-640.jpg?v=66774c06",
+      "seed": 1
+    },
     "Rendering/Accumulation": {
       "bytes": {
         "still": 210362,
@@ -12398,6 +12446,14 @@
       "imageSmall": "groups/Web-640.jpg?v=fd88be70",
       "of": [
         "Web/BreathingRing"
+      ]
+    },
+    "Recreations/ZdenekSykora": {
+      "image": "groups/Recreations-ZdenekSykora.jpg?v=ff984a02",
+      "imageSmall": "groups/Recreations-ZdenekSykora-640.jpg?v=d76f49c7",
+      "of": [
+        "Recreations/ZdenekSykora/Structure",
+        "Recreations/ZdenekSykora/Lines"
       ]
     }
   },
