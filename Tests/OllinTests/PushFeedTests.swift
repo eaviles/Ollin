@@ -137,6 +137,7 @@ final class ScriptedCarrier: @unchecked Sendable {
 
     final class Transport: PushTransport, @unchecked Sendable {
         let deliver: @Sendable (PushTransportEvent) -> Void
+        private let opening: @Sendable () -> Void
 
         private struct Log: Sendable {
             var sent: [String] = []
@@ -145,55 +146,71 @@ final class ScriptedCarrier: @unchecked Sendable {
         }
         private let log = OSAllocatedUnfairLock(initialState: Log())
 
-        init(deliver: @escaping @Sendable (PushTransportEvent) -> Void) {
+        init(deliver: @escaping @Sendable (PushTransportEvent) -> Void,
+             opening: @escaping @Sendable () -> Void) {
             self.deliver = deliver
+            self.opening = opening
         }
 
         var sent: [String] { log.withLock { $0.sent } }
         var wasOpened: Bool { log.withLock { $0.opened } }
         var wasClosed: Bool { log.withLock { $0.closed } }
 
-        func open() { log.withLock { $0.opened = true } }
+        func open() {
+            log.withLock { $0.opened = true }
+            opening()
+        }
         func close() { log.withLock { $0.closed = true } }
         func send(_ text: String) { log.withLock { $0.sent.append(text) } }
     }
 
-    private struct Dialled {
+    private struct Dialed {
         var made: [Transport] = []
         var waiting: [(index: Int, resume: CheckedContinuation<Transport, Never>)] = []
     }
-    private let dialled = OSAllocatedUnfairLock(initialState: Dialled())
+    private let dialed = OSAllocatedUnfairLock(initialState: Dialed())
 
-    var transports: [Transport] { dialled.withLock { $0.made } }
+    var transports: [Transport] { dialed.withLock { $0.made } }
 
     var factory: PushTransportFactory {
-        { [dialled] request, deliver in
-            let transport = Transport(deliver: deliver)
-            let due: [(CheckedContinuation<Transport, Never>, Transport)] = dialled.withLock { state in
-                state.made.append(transport)
-                let count = state.made.count
-                let ready = state.waiting.filter { $0.index < count }
-                state.waiting.removeAll { $0.index < count }
-                return ready.map { ($0.resume, state.made[$0.index]) }
+        { [dialed] request, deliver in
+            let transport = Transport(deliver: deliver) {
+                // A dial is handed to the test once the feed has opened it,
+                // never when it is made: the feed stores a transport after the
+                // factory returns and opens it after that, and a live socket
+                // reports nothing before `open()`. Handing it over at creation
+                // let a test deliver `.opened` to a feed still holding no
+                // transport, and the greeting went nowhere.
+                let due: [(CheckedContinuation<Transport, Never>, Transport)] = dialed.withLock { state in
+                    let ready = state.waiting.filter { ScriptedCarrier.isOpen($0.index, in: state.made) }
+                    state.waiting.removeAll { ScriptedCarrier.isOpen($0.index, in: state.made) }
+                    return ready.map { ($0.resume, state.made[$0.index]) }
+                }
+                // Resumed outside the lock: a continuation runs its caller, and
+                // that caller reaching back into the carrier would deadlock.
+                for (resume, transport) in due { resume.resume(returning: transport) }
             }
-            // Resumed outside the lock: a continuation runs its caller, and
-            // that caller reaching back into the carrier would deadlock.
-            for (resume, transport) in due { resume.resume(returning: transport) }
+            dialed.withLock { $0.made.append(transport) }
             return transport
         }
     }
 
-    /// The transport of the `index`th dial, awaited rather than polled.
+    private static func isOpen(_ index: Int, in made: [Transport]) -> Bool {
+        index < made.count && made[index].wasOpened
+    }
+
+    /// The transport of the `index`th dial, once the feed has opened it,
+    /// awaited rather than polled.
     ///
     /// A redial is a dispatch timer, and a full run can leave one unserviced
     /// for far longer than it asked to wait, so a deadline over it measures how
-    /// busy the machine is rather than whether the feed redialled. This resumes
-    /// the moment the feed dials, however late that is; the suite's time limit
-    /// is what catches a feed that never does.
+    /// busy the machine is rather than whether the feed redialed. This resumes
+    /// the moment the feed opens the dial, however late that is; the suite's
+    /// time limit is what catches a feed that never does.
     func dial(_ index: Int) async -> Transport {
         await withCheckedContinuation { continuation in
-            let already: Transport? = dialled.withLock { state in
-                if index < state.made.count { return state.made[index] }
+            let already: Transport? = dialed.withLock { state in
+                if ScriptedCarrier.isOpen(index, in: state.made) { return state.made[index] }
                 state.waiting.append((index, continuation))
                 return nil
             }
