@@ -1,6 +1,8 @@
 @testable import Ollin
 import Testing
 import CoreGraphics
+import Metal
+import MetalKit
 
 /// Invariants of the passes that run over a finished frame: the tone map, the dither
 /// at the 8-bit encode, the jittered anti-aliasing average, and the motion blur. Each
@@ -134,6 +136,62 @@ struct FrameInvariantTests {
         #expect(abs(on / off - 1) < 0.01, "the jittered average changed the frame's light by \(on / off)")
     }
 
+    /// The live resolve leaves still, unjittered content alone: 2D drawn into a 3D
+    /// canvas is the same in every frame (no jitter reaches it), so with the camera
+    /// still the window shows it exactly as the plain frame does, as the docs promise.
+    /// Read off the live loop the window runs, one renderer and one drawable over
+    /// sixty-four refreshes.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func stillTwoDPassesThroughTheLiveResolve() throws {
+        let plain = try liveColumns(LiveHairlineInvariantProbe.make(taa: false))
+        #expect(plain == [0, 0, 255, 0, 0], "the plain frame's hairline read \(plain)")
+        let resolved = try liveColumns(LiveHairlineInvariantProbe.make(taa: true))
+        withKnownIssue("the live resolve's 3 by 3 Gaussian runs over every pixel, jittered or not: a still hairline reads 85, 219, 111 across three columns, measured 2026-10-09") {
+            for (i, (a, b)) in zip(resolved, plain).enumerated() {
+                #expect(abs(a - b) <= 2, "with the live resolve, column \(62 + i) read \(a) where the plain frame reads \(b)")
+            }
+        }
+    }
+
+    /// Five columns of one row around the hairline, green channel, as the window shows
+    /// them after sixty-four live refreshes.
+    private func liveColumns(_ sketch: LiveHairlineInvariantProbe) throws -> [Int] {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let renderer = try MetalRenderer(device: device, pixelFormat: ollinColorPixelFormat,
+                                         sampleCount: ollinPreferredSampleCount(device))
+        let size = 128
+        let view = MTKView(frame: CGRect(x: 0, y: 0, width: size, height: size), device: device)
+        view.colorPixelFormat = ollinColorPixelFormat
+        view.framebufferOnly = false
+        view.drawableSize = CGSize(width: size, height: size)
+        view.isPaused = true
+        view.enableSetNeedsDisplay = true
+        sketch.setCanvasSize(width: Double(size), height: Double(size))
+        sketch.setup()
+        var texture: MTLTexture?
+        for frame in 0..<64 {
+            sketch.advance(time: Double(frame) / 60, deltaTime: 1.0 / 60, frameRate: 60)
+            sketch.performDraw()
+            let drawable = try #require(view.currentDrawable)
+            renderer.render(sketch.drawer, viewport: SIMD2<Float>(Float(size), Float(size)), in: view)
+            texture = drawable.texture
+        }
+        let shown = try #require(texture)
+        let buffer = try #require(device.makeBuffer(length: size * size * 4, options: .storageModeShared))
+        let commands = try #require(renderer.commandQueue.makeCommandBuffer())
+        let blit = try #require(commands.makeBlitCommandEncoder())
+        blit.copy(from: shown, sourceSlice: 0, sourceLevel: 0, sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+                  sourceSize: MTLSize(width: size, height: size, depth: 1), to: buffer,
+                  destinationOffset: 0, destinationBytesPerRow: size * 4,
+                  destinationBytesPerImage: size * size * 4)
+        blit.endEncoding()
+        commands.commit()
+        commands.waitUntilCompleted()
+        let bytes = buffer.contents().assumingMemoryBound(to: UInt8.self)
+        // The drawable is BGRA; row 100 lies below the box, the hairline in column 64.
+        return (62...66).map { Int(bytes[(100 * size + $0) * 4 + 1]) }
+    }
+
     // MARK: Motion blur
 
     /// A streak spreads a mover's light along its travel and makes none: the blurred
@@ -202,6 +260,131 @@ struct FrameInvariantTests {
         }
         let a = brightest(on), b = brightest(off)
         #expect(a <= b + 1, "the streak reached \(a) where the mover was \(b) at its brightest")
+    }
+
+    // MARK: Depth of field from light
+
+    /// The total light of a developed spray, the Reinhard print unrolled and the
+    /// exposure divided out.
+    private func sprayLight(_ sketch: SprayInvariantProbe) throws -> (total: Double, frame: Frame) {
+        let f = try render(sketch, frame: 7)
+        var sum = 0.0
+        for i in 0..<(f.width * f.height * 4) where i % 4 != 3 {
+            let v = min(toLinear(Double(f.bytes[i]) / 255), 0.998)
+            sum += v / (1 - v)
+        }
+        return (sum / sketch.exposure, f)
+    }
+
+    /// Every point carries its share of its line's light, wherever the lens throws it:
+    /// a dot's developed light is the same at any point count when it is out of focus,
+    /// and the same in focus as out of it.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aSprayedDotKeepsItsLightAtAnyCountAndFocus() throws {
+        let counts = [100, 1_000, 16_000]
+        var defocused: [Double] = []
+        var focused: [Double] = []
+        for points in counts {
+            defocused.append(try sprayLight(SprayInvariantProbe.make(points: points, focus: 2, exposure: 2)).total)
+            focused.append(try sprayLight(SprayInvariantProbe.make(points: points, focus: 8, exposure: 2)).total)
+        }
+        let mean = defocused.reduce(0, +) / Double(defocused.count)
+        #expect(mean > 0.05, "the defocused dot developed \(mean)")
+        for (points, light) in zip(counts, defocused) {
+            #expect(abs(light / mean - 1) < 0.05,
+                    "out of focus, \(points) points developed \(light) against the counts' mean \(mean)")
+        }
+        withKnownIssue("an in-focus dot develops 2.6 times its defocused light at 100 points and 0.03 times at 16,000, measured 2026-10-09") {
+            for (points, (inFocus, outOfFocus)) in zip(counts, zip(focused, defocused)) {
+                #expect(abs(inFocus / outOfFocus - 1) < 0.05,
+                        "at \(points) points the dot in focus developed \(inFocus / outOfFocus) of itself out of focus")
+            }
+        }
+    }
+
+    /// A flat aperture blurs a point into the thin lens's circle of confusion: under a
+    /// pinhole, a point displaced within its own depth plane by strength times |d - f|
+    /// over the aperture lands on a disc of radius strength * |d - f| / d in tangent
+    /// units, 96 pixels a unit at this camera. The radius is read from the mark's RMS
+    /// spread (a uniform 48-gon's second moment is 0.4986 of its circumradius squared).
+    @Test(.enabled(if: Snapshot.hasMetal), arguments: [4.0, 6.0, 12.0, 16.0])
+    func aFlatAperturesBlurIsTheThinLensCircle(distance: Double) throws {
+        let expected = 0.25 * abs(distance - 8) / distance * 96
+        // An exposure that keeps the spread disc well above the 8-bit floor.
+        let exposure = 3.6 * expected * expected
+        let probe = SprayInvariantProbe.make(points: 4_000, focus: 8, exposure: exposure,
+                                             distance: distance, strength: 0.25,
+                                             aperture: .blades(count: 48, rotation: 0))
+        let f = try sprayLight(probe).frame
+        var weight = 0.0, sx = 0.0, sy = 0.0
+        var lights = [Double](repeating: 0, count: f.width * f.height)
+        for y in 0..<f.height {
+            for x in 0..<f.width {
+                var v = 0.0
+                for c in 0..<3 {
+                    let l = min(toLinear(Double(f.byte(x, y, c)) / 255), 0.998)
+                    v += l / (1 - l)
+                }
+                lights[y * f.width + x] = v
+                weight += v; sx += v * Double(x); sy += v * Double(y)
+            }
+        }
+        let cx = sx / weight, cy = sy / weight
+        var moment = 0.0
+        for y in 0..<f.height {
+            for x in 0..<f.width {
+                let dx = Double(x) - cx, dy = Double(y) - cy
+                moment += lights[y * f.width + x] * (dx * dx + dy * dy)
+            }
+        }
+        let radius = (moment / weight / 0.4986).squareRoot()
+        #expect(abs(radius / expected - 1) < 0.03,
+                "a dot at \(distance) blurred to \(radius) px where the thin lens gives \(expected)")
+    }
+
+    // MARK: The lens's coatings
+
+    /// A coated glass surface reflects what a single thin film does: the exact
+    /// one-layer form, r = (r01 + r12 e^(2i delta)) / (1 + r01 r12 e^(2i delta)) per
+    /// polarization with delta = 2 pi n1 d cos(theta1) / lambda, written here with the
+    /// coating's own index and quarter-wave thickness, for the bundled glasses both ways
+    /// through the surface and across the visible.
+    @Test func aCoatedSurfaceReflectsWhatAThinFilmDoes() {
+        func single(_ angle: Double, _ wavelength: Double, _ n0: Double, _ n2: Double) -> Double? {
+            let n1 = max((n0 * n2).squareRoot(), 1.38)
+            let d = 550 / 4 / n1
+            let s0 = sin(angle), s1 = s0 * n0 / n1, s2 = s0 * n0 / n2
+            guard s1 < 1, s2 < 1 else { return nil }
+            let c0 = cos(angle), c1 = (1 - s1 * s1).squareRoot(), c2 = (1 - s2 * s2).squareRoot()
+            let delta = 2 * Double.pi * n1 * d * c1 / wavelength
+            let (er, ei) = (cos(2 * delta), sin(2 * delta))
+            func reflect(_ r01: Double, _ r12: Double) -> Double {
+                let numR = r01 + r12 * er, numI = r12 * ei
+                let denR = 1 + r01 * r12 * er, denI = r01 * r12 * ei
+                return (numR * numR + numI * numI) / (denR * denR + denI * denI)
+            }
+            let s = reflect((n0 * c0 - n1 * c1) / (n0 * c0 + n1 * c1), (n1 * c1 - n2 * c2) / (n1 * c1 + n2 * c2))
+            let p = reflect((n1 * c0 - n0 * c1) / (n1 * c0 + n0 * c1), (n2 * c1 - n1 * c2) / (n2 * c1 + n1 * c2))
+            return (s + p) / 2
+        }
+        var cases: [(Double, Double, Double, Double, Double)] = []   // angle, nm, n0, n2, exact
+        for glass in [1.5, 1.67, 1.9] {
+            for nm in [400.0, 550, 700] {
+                for degrees in [0.0, 20, 40, 60] {
+                    if let r = single(degrees * .pi / 180, nm, 1, glass) { cases.append((degrees, nm, 1, glass, r)) }
+                    if let r = single(degrees * .pi / 180, nm, glass, 1) { cases.append((degrees, nm, glass, 1, r)) }
+                }
+            }
+        }
+        #expect(cases.count > 40, "only \(cases.count) cases lay below the critical angle")
+        withKnownIssue("the coating's two-beam form weights the inner reflection by t01 squared and blends toward bare Fresnel off the axis: 0.0086 against the exact 0.0043 head on at 1.67, 0.0226 against 0.0069 leaving 1.67 glass at 20 degrees, measured 2026-10-09") {
+            for (degrees, nm, n0, n2, exact) in cases {
+                let coated = coatedReflectance(angle: degrees * .pi / 180, wavelength: nm,
+                                               designWavelength: 550, n0: n0, n2: n2)
+                #expect(abs(coated - exact) <= max(0.02 * exact, 1e-5),
+                        "from \(n0) into \(n2) at \(degrees) degrees and \(nm) nm the coating reflected \(coated) where a thin film reflects \(exact)")
+            }
+        }
     }
 }
 
@@ -318,5 +501,72 @@ private final class StreakProbe: Sketch {
                 drawBox(width: 24, height: 24, depth: 2)
             }
         }
+    }
+}
+
+/// A gray box in a 3D canvas with a one-pixel white 2D line down column 64, the camera
+/// still, temporal anti-aliasing on or off.
+private final class LiveHairlineInvariantProbe: Sketch {
+    var taa = true
+
+    static func make(taa: Bool) -> LiveHairlineInvariantProbe {
+        let p = LiveHairlineInvariantProbe()
+        p.taa = taa
+        return p
+    }
+
+    override var canvasSize: CanvasSize { .square(128) }
+
+    override func draw() {
+        background(.black)
+        perspective(eye: Vector3(0, 0, 4), target: .zero, fieldOfView: .pi / 3.2, near: 0.5, far: 30)
+        noLights()
+        if taa { temporalAntialiasing() }
+        withState { fill(Color(white: 0.25)); drawBox(width: 0.6, height: 0.6, depth: 0.2) }
+        stroke(.white)
+        strokeWeight(1)
+        drawLine(64.5, 8, 64.5, 120)
+    }
+}
+
+/// One dot of light on the camera's axis, sprayed through a lens and developed, so its
+/// mark is the lens's blur of a point.
+private final class SprayInvariantProbe: Sketch {
+    var points = 1_000
+    var focus = 8.0
+    var exposure = 1.0
+    var distance = 8.0
+    var strength = 0.1
+    var aperture: Aperture = .round
+    private var spray: LineSpray!
+
+    static func make(points: Int, focus: Double, exposure: Double, distance: Double = 8,
+                     strength: Double = 0.1, aperture: Aperture = .round) -> SprayInvariantProbe {
+        let p = SprayInvariantProbe()
+        p.points = points
+        p.focus = focus
+        p.exposure = exposure
+        p.distance = distance
+        p.strength = strength
+        p.aperture = aperture
+        return p
+    }
+
+    override var canvasSize: CanvasSize { .square(192) }
+
+    override func setup() {
+        randomSeed(7)
+        let dot = Vector3(0, 0, -distance)
+        spray = makeLineSpray([SprayLine(from: dot, to: dot, light: SIMD3(repeating: 1))],
+                              sampling: .perLine(points), passesPerFrame: 4,
+                              bokeh: Bokeh(focalDistance: focus, strength: strength,
+                                           minSize: 0.0005, aperture: aperture))
+    }
+
+    override func draw() {
+        background(.black)
+        camera(.perspective(eye: .zero, target: Vector3(0, 0, -1), fieldOfView: .pi / 2))
+        drawLineSpray(spray)
+        drawImage(spray.developed(exposure: exposure).image, 0, 0)
     }
 }
