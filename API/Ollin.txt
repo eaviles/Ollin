@@ -221,6 +221,9 @@ enum CaptionEdge: Equatable, Hashable, Sendable
 enum CellNeighborhood: Equatable, Hashable, Sendable
   case moore
   case vonNeumann
+enum ColorDistance: CaseIterable, Equatable, Hashable, Sendable
+  case ciede2000
+  case oklab
 enum ColorOutput: String, CaseIterable, Equatable, Hashable, RawRepresentable, Sendable
   case extended
   case standard
@@ -1223,6 +1226,7 @@ final class Image
   func dithered(_: Dither = default, levels: Int, amount: Double = default, serpentine: Bool = default) -> Image
   func dithered(_: Dither = default, to: Palette, amount: Double = default, serpentine: Bool = default) -> Image
   func gamutMask(_: SoftProof) -> Image
+  func histogram(of: Histogram.Channel = default, bins: Int = default, in: Rectangle? = default) -> Histogram
   func mosaic(of: [Image], columns: Int, rows: Int, maxUses: Int? = default) -> PhotoMosaic
   func outOfGamutFraction(_: SoftProof) -> Double
   func pixelSorted(_: PixelSortDirection = default, by: PixelSortKey = default, threshold: ClosedRange<Double> = default, reversed: Bool = default) -> Image
@@ -1887,6 +1891,7 @@ func concaveHull(of: [Vector2], concavity: Double = default) -> [Vector2]
 func convexHull(of: [Vector2]) -> [Vector2]
 func convexHull(of: [Vector3]) -> Mesh
 func deBruijnSequence(symbols: Int, window: Int) -> [Int]
+func derivative(at: Double, step: Double? = default, function: (Double) -> Double) -> Double
 func dist(_: Double, _: Double, _: Double, _: Double) -> Double
 func elementaryCA(rule: Int, width: Int, generations: Int, from: [Bool]? = default, wraps: Bool = default) -> [[Bool]]
 func envelope(of: [Ray2], closed: Bool = default) -> [Contour]
@@ -1897,6 +1902,8 @@ func fitted(_: [Vector2], in: Rectangle) -> [Vector2]
 func fordCircles(order: Int, in: Rectangle, interval: ClosedRange<Double> = default) -> [FordCircle]
 func fract(_: Double) -> Double
 func fractions(_: Int, inclusive: Bool = default) -> [Double]
+func gradient(at: Vector2, step: Double? = default, field: (Vector2) -> Double) -> Vector2
+func gradient(at: Vector3, step: Double? = default, field: (Vector3) -> Double) -> Vector3
 func guilloche(rings: Int, innerRadius: Double, outerRadius: Double, bumps: Int, amplitude: Double, twist: Double = default, samples: Int? = default) -> [Contour]
 func guilloche(rings: Int, innerRadius: Double, outerRadius: Double, rosettes: [Rosette], twist: Double = default, samples: Int? = default) -> [Contour]
 func halton(_: Int, base: Int = default) -> Double
@@ -3063,6 +3070,12 @@ struct Buddhabrot: Sendable
   var gamma: Double { get set }
   var iterations: [Int] { get set }
   var window: Rectangle { get set }
+struct CIELab: Equatable, Sendable
+  init(_: Color)
+  init(l: Double, a: Double, b: Double)
+  var a: Double { get set }
+  var b: Double { get set }
+  var l: Double { get set }
 struct Camera3D: Equatable, Sendable
   enum Projection: Equatable, Sendable
     case intrinsic(CameraIntrinsics)
@@ -3183,10 +3196,12 @@ struct Clouds: Equatable, Hashable, Sendable
   var tallness: Double { get set }
 struct Color: ParamValue, RadialBasisValue, Decodable, Encodable, Equatable, Hashable, Sendable
   func darker(by: Double = default) -> Color
+  func distance(to: Color, measure: ColorDistance = default) -> Double
   func lighter(by: Double = default) -> Color
   func mixed(with: Color, _: Double, in: ColorSpace = default) -> Color
   func simulated(_: ColorVision) -> Color
   func withAlpha(_: Double) -> Color
+  init(_: CIELab, alpha: Double = default)
   init(_: OKHSL, alpha: Double = default)
   init(_: OKLCH, alpha: Double = default)
   init(_: OKLab, alpha: Double = default)
@@ -4345,6 +4360,17 @@ struct HexGrid: BidirectionalCollection, Collection, Equatable, Hashable, Random
   var cells: [HexGrid.Cell] { get }
   var endIndex: Int { get }
   var startIndex: Int { get }
+struct Histogram: Equatable, Sendable
+  enum Channel: CaseIterable, Equatable, Hashable, Sendable
+    case alpha
+    case blue
+    case green
+    case lightness
+    case red
+  func percentile(_: Double) -> Double
+  let channel: Histogram.Channel
+  let counts: [Int]
+  let total: Int
 struct Hitomezashi: Equatable, Sendable
   init(grid: Grid, probability: Double = default, using: R)
   init(grid: Grid, rowBits: [Bool], columnBits: [Bool])
@@ -5331,6 +5357,8 @@ struct Palette: ParamValue, BidirectionalCollection, Collection, Equatable, Rand
   func confusions(tolerance: Double = default) -> [ColorConfusion]
   func confusions(under: ColorVision, tolerance: Double = default) -> [ColorConfusion]
   func isColorblindSafe(tolerance: Double = default) -> Bool
+  func nearest(to: Color, measure: ColorDistance = default) -> Color?
+  func nearestIndex(to: Color, measure: ColorDistance = default) -> Int?
   func ramp(in: ColorSpace = default) -> Ramp
   func simulated(_: ColorVision) -> Palette
   init(_: Color...)
@@ -5349,6 +5377,7 @@ struct Palette: ParamValue, BidirectionalCollection, Collection, Equatable, Rand
   static func palettes(resource: String, withExtension: String? = default, in: Foundation.Bundle) throws -> [Palette]
   static func palettes(url: Foundation.URL, format: PaletteFormat = default) throws -> [Palette]
   static func restored(_: ParamStored) -> Palette?
+  static func shades(of: Color, count: Int = default, lightness: ClosedRange<Double> = default, hueDrift: Double = default) -> Palette
   static func splitComplementary(of: Color, spread: Double = default) -> Palette
   static func stored(_: Palette) -> ParamStored
   static func triadic(of: Color) -> Palette
@@ -5678,6 +5707,8 @@ struct RadialBasis<Point, Value where Point : RadialBasisPoint, Value : RadialBa
     case multiquadric(scale: Double)
     case thinPlate
   func callAsFunction(_: Point) -> Value
+  func derivative(at: Point, along: Point) -> Value
+  func gradient(at: Point) -> Point
   func value(at: Point) -> Value
   init?(points: [Point], values: [Value], kernel: RadialBasis<Point, Value>.Kernel = default, smoothing: Double = default)
   let kernel: RadialBasis<Point, Value>.Kernel
@@ -5691,6 +5722,7 @@ struct Ramp: ParamValue, Equatable, Hashable, Sendable
   static func clamped(_: Ramp, by: Ramp.Constraints) -> Ramp
   static func control(for: Param<Ramp>) -> ParamControl
   static func restored(_: ParamStored) -> Ramp?
+  static func shades(of: Color, lightness: ClosedRange<Double> = default, hueDrift: Double = default) -> Ramp
   static func stored(_: Ramp) -> ParamStored
   struct Stop: Equatable, Hashable, Sendable
     init(position: Double, color: Color)

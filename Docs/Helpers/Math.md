@@ -15,6 +15,7 @@ Ollin has a small and growing set of the familiar creative-coding math functions
 - [Dividing a whole](#dividing): `fractions`, `angles`
 - [polar](#polar)
 - [spherical](#spherical): the same in 3D, and a vector's `azimuth` and `elevation`
+- [Slopes](#slopes): `derivative`, `gradient`
 - [Primes](#primes)
 - [Constants and angle units](#constants)
 
@@ -212,6 +213,49 @@ let toMoon = moon - planet
 let heading = toMoon.azimuth                           // which way it lies, seen from above
 let rise = toMoon.elevation                            // how far above the planet's level
 ```
+
+<a name="slopes"></a>
+
+### Slopes
+
+```swift
+derivative(at x: Double, step: Double? = nil, function: (Double) -> Double) -> Double
+gradient(at point: Vector2, step: Double? = nil, field: (Vector2) -> Double) -> Vector2
+gradient(at point: Vector3, step: Double? = nil, field: (Vector3) -> Double) -> Vector3
+```
+
+These measure how fast a function you wrote changes. `derivative` gives the slope of a
+function of one number. `gradient` gives the direction a field over the plane or over space
+climbs fastest. Its length is how steep the climb is. The perpendicular to a
+plane gradient runs along the field's contour, which is how a particle circles a hill of
+noise rather than climbing it.
+
+```swift
+let tilt = atan(derivative(at: 300) { x in 120 * sin(x * 0.01) })      // a curve's angle
+
+var p = Vector2(540, 540)
+let uphill = gradient(at: p) { q in noise(q.x * 0.004, q.y * 0.004) }
+p += uphill.perpendicular.normalized * 1.5                             // along the contour
+```
+
+Each one reads the function a small step to either side and divides the rise by the run.
+That is a central difference. Its error falls with the square of the step, so it is exact
+for any quadratic and very close for anything smooth. When `step` is `nil`, the step is sized
+from the point itself, about six millionths of its largest coordinate (or of 1 near zero).
+That suits a smooth function computed in `Double`. Give a larger `step` for a function with
+fine grain of its own, such as noise over many octaves or a sampled image. Set it at about
+the size of the detail you want to ignore.
+
+The 3D form is how an implicit surface gets its normal. The gradient of a signed distance
+points straight out of the surface:
+
+```swift
+let ball = { (q: Vector3) in q.length - 1 }
+let normal = gradient(at: Vector3(0.6, 0.8, 0)) { ball($0) }.normalized
+```
+
+A [fitted field](../Drawing/Fitting.md#slopes) has exact slopes of its own, which need no
+step.
 
 <a name="primes"></a>
 

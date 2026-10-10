@@ -449,6 +449,25 @@ A field is a rule that answers a question at *every* point of the plane. "How br
 
 To trace a line through a direction field, ask the field which way at your position, take a small step that way, and repeat. That loop is Euler integration, and its one parameter is the step size. Big steps cut corners where the field bends, while small steps follow it closely but need more questions. Every streamline in [Chapter 14](14-FieldsAndFlow.md) is this loop running until it's told to stop.
 
+### A number field's slope: the gradient
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/B-JustEnoughMath/Slope-dark.jpg">
+  <img src="Images/B-JustEnoughMath/Slope.jpg" alt="Thin contour lines of two hills and a hollow, with orange arrows on a grid. The arrows point in toward each hilltop and out of the hollow, cross every contour at a right angle, and are longest where the contours crowd together" width="680">
+</picture>
+
+A number field has a direction field hidden inside it, its **gradient**: at each point, the way uphill, with a length that says how steep. The arrows in the picture are that gradient. They cross every contour at a right angle, and they are longest where the contours crowd, because crowded contours mean the height changes fast. Turn an arrow a quarter turn and it runs along the contour instead. That is how a walker circles a hill rather than climbing it.
+
+You can measure the gradient of any field you can ask. Step a little to the right and a little to the left, and divide the difference in height by the distance between the two steps. Then do the same up and down. That is a central difference, and `gradient(at:field:)` does it for you:
+
+```swift
+let p = Vector2(540, 540)
+let uphill = gradient(at: p) { q in noise(q.x * 0.004, q.y * 0.004) }
+let around = uphill.perpendicular          // along the contour
+```
+
+`derivative(at:function:)` is the same idea for a function of one number, its slope. A [fitted field](14-FieldsAndFlow.md#a-field-you-pin-down-yourself-radial-basis-functions) knows its slope exactly and needs no step. The `Motion/ContourWalkers` example walks both kinds.
+
 ### Optical flow: a measured field
 
 <picture>

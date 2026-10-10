@@ -22,6 +22,7 @@ the setting that is least wrong.
 - [A field through scattered values](#radial-basis)
 - [Choosing a kernel](#kernels)
 - [Fields of vectors, and warps](#warps)
+- [The slope of a field](#slopes)
 - [Smoothing](#smoothing)
 - [Finding a handful of numbers](#minimize)
 - [What each one costs](#costs)
@@ -97,6 +98,43 @@ When you read every point of a shape through the warp, the shape bends. When you
 grid through it, you get the classic rubber-sheet picture. Each pinned place lands exactly
 on its target, because the field interpolates the values you gave.
 
+<a id="slopes"></a>
+### The slope of a field
+
+A fitted field can tell you how fast it changes, not only what it is. For a field of numbers,
+`gradient(at:)` returns the direction the field climbs fastest, as a vector whose length is
+how steep the climb is. The perpendicular to it runs along the field's contour, so a particle
+can climb a fitted surface or circle on it:
+
+```swift
+let height = RadialBasis(points: [Vector2(200, 300), Vector2(800, 260), Vector2(500, 800)],
+                         values: [0.9, 0.2, 0.6])!
+var walker = Vector2(540, 540)
+let uphill = height.gradient(at: walker)
+walker += uphill.perpendicular.normalized * 2    // one step along the contour
+```
+
+`derivative(at:along:)` works on every field, whatever its values are. It says how the value
+changes as the point moves along a direction. A unit direction gives the rate per unit of
+distance, and a longer one scales the answer with its length. For a warp, the derivatives
+along the two axes are the warp's Jacobian. It says how a small square at that point is
+stretched and turned:
+
+```swift
+let warp = RadialBasis(points: [Vector2(300, 300), Vector2(780, 320), Vector2(540, 800)],
+                       values: [Vector2(340, 280), Vector2(760, 360), Vector2(540, 760)])!
+let p = Vector2(540, 540)
+let dx = warp.derivative(at: p, along: Vector2(1, 0))
+let dy = warp.derivative(at: p, along: Vector2(0, 1))
+let stretch = dx.x * dy.y - dx.y * dy.x          // area grows by this factor here
+```
+
+Both are exact, because each kernel has a closed-form derivative, and a read costs about the
+same as reading the value. At a known point, the linear kernel's cone has no single slope,
+and the answer there leaves that point's own bump out. For a function you wrote yourself
+rather than fitted, the [numerical helpers](../Helpers/Math.md#slopes) measure the same
+slope by sampling.
+
 <a id="smoothing"></a>
 ### Smoothing
 
@@ -155,7 +193,8 @@ point sat in. When that matters, start the walk from several places and keep the
 number of points. A few hundred points fit in milliseconds. For tens of thousands of points,
 this is the wrong tool. Reading the field afterward costs one term per point, on every read.
 So for a large fit read over a whole canvas, the reading is the expensive half. Fit once
-in `setup()`, and read in `draw()`.
+in `setup()`, and read in `draw()`. A slope read (`gradient(at:)` or `derivative(at:along:)`)
+costs about the same as a value read.
 
 **Minimizing** measures the slope rather than deriving it. It does this by trying each
 parameter a little to either side of where it stands. So your cost function is called about

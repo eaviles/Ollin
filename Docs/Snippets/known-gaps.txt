@@ -174,27 +174,30 @@ eef3567df64a  Docs/Drawing/Clothoid.md:194  expected type before '->'
 4ca3490a3729  Docs/Drawing/Clothoid.md:34  cannot convert value of type '()' to expected argument type 'Vector2'
 d0dda05019df  Docs/Drawing/Clothoid.md:77  cannot find 'curve' in scope
 bf2a06ada4bf  Docs/Drawing/Clothoid.md:89  expected type before '->'
-0960d237620b  Docs/Drawing/Color.md:106  cannot find 'ink' in scope
-3b585d8db480  Docs/Drawing/Color.md:119  consecutive statements on a line must be separated by ';'
-acd0630dbda0  Docs/Drawing/Color.md:131  cannot find 'brand' in scope
-ddbe57709497  Docs/Drawing/Color.md:147  expected ',' separator
-53df4ad44e2c  Docs/Drawing/Color.md:159  cannot find 'ink' in scope
-bc263aff0c18  Docs/Drawing/Color.md:174  cannot find 'energy' in scope
-d8147ec3af4e  Docs/Drawing/Color.md:191  cannot find 'sky' in scope
-04196cfd36c7  Docs/Drawing/Color.md:211  cannot find 'beat' in scope
-a289bd896621  Docs/Drawing/Color.md:229  cannot find 'x' in scope
-9e7fb1cec3a6  Docs/Drawing/Color.md:238  cannot find 'palette' in scope
-b75171f5e36c  Docs/Drawing/Color.md:250  cannot find 'base' in scope
-105cb16feaaa  Docs/Drawing/Color.md:267  'module' is inaccessible due to 'internal' protection level
-a5908cabee46  Docs/Drawing/Color.md:27  cannot convert value of type 'Double.Type' to expected argument type 'Double'
-512f523c5b16  Docs/Drawing/Color.md:322  cannot find 'photo' in scope
-fa294f1f47c0  Docs/Drawing/Color.md:376  cannot find 'photo' in scope
-d6862f064245  Docs/Drawing/Color.md:395  cannot find 't' in scope
-0d4d6656f396  Docs/Drawing/Color.md:417  cannot find 'x' in scope
-c708de778678  Docs/Drawing/Color.md:59  cannot find 'userString' in scope
-3340ea233772  Docs/Drawing/Color.md:72  cannot find 'base' in scope
-a47e065ecf70  Docs/Drawing/Color.md:91  cannot find 'albedo' in scope
-2c556ffcbf3d  Docs/Drawing/Color.md:99  cannot find 'ink' in scope
+2c556ffcbf3d  Docs/Drawing/Color.md:102  cannot find 'ink' in scope
+0960d237620b  Docs/Drawing/Color.md:109  cannot find 'ink' in scope
+3b585d8db480  Docs/Drawing/Color.md:122  consecutive statements on a line must be separated by ';'
+acd0630dbda0  Docs/Drawing/Color.md:134  cannot find 'brand' in scope
+f71a08bdd26d  Docs/Drawing/Color.md:152  consecutive statements on a line must be separated by ';'
+5921d5e2f639  Docs/Drawing/Color.md:171  cannot find 'someColor' in scope
+ddbe57709497  Docs/Drawing/Color.md:212  expected ',' separator
+53df4ad44e2c  Docs/Drawing/Color.md:224  cannot find 'ink' in scope
+bc263aff0c18  Docs/Drawing/Color.md:239  cannot find 'energy' in scope
+d8147ec3af4e  Docs/Drawing/Color.md:256  cannot find 'sky' in scope
+04196cfd36c7  Docs/Drawing/Color.md:276  cannot find 'beat' in scope
+a289bd896621  Docs/Drawing/Color.md:294  cannot find 'x' in scope
+a5908cabee46  Docs/Drawing/Color.md:30  cannot convert value of type 'Double.Type' to expected argument type 'Double'
+9e7fb1cec3a6  Docs/Drawing/Color.md:303  cannot find 'palette' in scope
+b75171f5e36c  Docs/Drawing/Color.md:315  cannot find 'base' in scope
+5738daba25dd  Docs/Drawing/Color.md:332  cannot find 'base' in scope
+105cb16feaaa  Docs/Drawing/Color.md:361  'module' is inaccessible due to 'internal' protection level
+512f523c5b16  Docs/Drawing/Color.md:416  cannot find 'photo' in scope
+fa294f1f47c0  Docs/Drawing/Color.md:470  cannot find 'photo' in scope
+d6862f064245  Docs/Drawing/Color.md:489  cannot find 't' in scope
+0d4d6656f396  Docs/Drawing/Color.md:511  cannot find 'x' in scope
+c708de778678  Docs/Drawing/Color.md:62  cannot find 'userString' in scope
+3340ea233772  Docs/Drawing/Color.md:75  cannot find 'base' in scope
+a47e065ecf70  Docs/Drawing/Color.md:94  cannot find 'albedo' in scope
 688be5dd137a  Docs/Drawing/Combinators.md:135  cannot find 'a' in scope
 48a73e312322  Docs/Drawing/Combinators.md:152  cannot find 'a' in scope
 37573516968f  Docs/Drawing/Combinators.md:172  cannot find 'field' in scope
@@ -316,9 +319,9 @@ eb9d4c173b18  Docs/Drawing/Envelopes.md:105  expected ',' separator
 9f884814864f  Docs/Drawing/Epicycles.md:55  expected '{' in struct
 629928630e9f  Docs/Drawing/Epicycles.md:70  cannot find 'epicycles' in scope
 e7f00e72aff0  Docs/Drawing/Epicycles.md:86  expected ',' separator
-38ff5f8581a2  Docs/Drawing/Fitting.md:108  cannot find 'samples' in scope
-886cada6cd4c  Docs/Drawing/Fitting.md:122  cannot find 'marks' in scope
-0ece64b5f13f  Docs/Drawing/Fitting.md:91  cannot find 'pins' in scope
+38ff5f8581a2  Docs/Drawing/Fitting.md:146  cannot find 'samples' in scope
+886cada6cd4c  Docs/Drawing/Fitting.md:160  cannot find 'marks' in scope
+0ece64b5f13f  Docs/Drawing/Fitting.md:92  cannot find 'pins' in scope
 cf65e5c6f914  Docs/Drawing/Fourier.md:73  cannot find 'plate' in scope
 4089dff1acc6  Docs/Drawing/Geometry.md:177  cannot convert value of type 'Double.Type' to expected argument type 'Double'
 0bdba7d24932  Docs/Drawing/Geometry.md:229  cannot convert value of type 'Double.Type' to expected argument type 'Double'
@@ -845,17 +848,18 @@ eb3d4457c490  Docs/Helpers/MIDIFiles.md:135  errors thrown from here are not han
 9c3561da79ed  Docs/Helpers/MIDIFiles.md:147  errors thrown from here are not handled
 f915388f1eb2  Docs/Helpers/MIDIFiles.md:176  cannot find 'synth' in scope
 8f3726bdcd34  Docs/Helpers/MIDIFiles.md:54  'module' is inaccessible due to 'internal' protection level
-545d4e2f1553  Docs/Helpers/Math.md:114  cannot find 'angle' in scope
-7b68eee41292  Docs/Helpers/Math.md:128  cannot find 'palette' in scope
-0714efb3d0bc  Docs/Helpers/Math.md:136  expected ',' separator
-fc35f42a451a  Docs/Helpers/Math.md:169  expected ',' separator
-922b46b911bc  Docs/Helpers/Math.md:188  expected ',' separator
-3e45647bc875  Docs/Helpers/Math.md:220  expected ',' separator
-b3812f188f90  Docs/Helpers/Math.md:25  expected ',' separator
-8e6813ce40f8  Docs/Helpers/Math.md:45  expected ',' separator
-1af5b1655501  Docs/Helpers/Math.md:61  expected ',' separator
-eaee9918e7ae  Docs/Helpers/Math.md:67  cannot find 'progress' in scope
-7dfe97ef7006  Docs/Helpers/Math.md:77  expected ',' separator
+545d4e2f1553  Docs/Helpers/Math.md:115  cannot find 'angle' in scope
+7b68eee41292  Docs/Helpers/Math.md:129  cannot find 'palette' in scope
+0714efb3d0bc  Docs/Helpers/Math.md:137  expected ',' separator
+fc35f42a451a  Docs/Helpers/Math.md:170  expected ',' separator
+922b46b911bc  Docs/Helpers/Math.md:189  expected ',' separator
+0fe6809c9fd1  Docs/Helpers/Math.md:221  expected ',' separator
+b3812f188f90  Docs/Helpers/Math.md:26  expected ',' separator
+3e45647bc875  Docs/Helpers/Math.md:264  expected ',' separator
+8e6813ce40f8  Docs/Helpers/Math.md:46  expected ',' separator
+1af5b1655501  Docs/Helpers/Math.md:62  expected ',' separator
+eaee9918e7ae  Docs/Helpers/Math.md:68  cannot find 'progress' in scope
+7dfe97ef7006  Docs/Helpers/Math.md:78  expected ',' separator
 62c82222d99f  Docs/Helpers/Parameters.md:106  cannot find 'radius' in scope
 7e61c6f57b45  Docs/Helpers/Parameters.md:131  unary operator cannot be separated from its operand
 8b0cd896963b  Docs/Helpers/Parameters.md:146  property wrappers are not yet supported in top-level code

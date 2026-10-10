@@ -52,8 +52,6 @@ This tier is a set of classic generative-art building blocks. Each one emits vec
 - **A soft body from any shape.** The 2D physics world turns a `Shape` into a ring of particles that keeps its area, bends, and collides outline against outline. The `Physics/Blobs` example builds its bodies by hand from springs, and this makes one body a single call.
 - **Finding boxes and neighbors in 3D.** A bounds index answers which of many boxes contain a point, which overlap a rectangle, and which overlap each other. A 3D form of `SpatialIndex` answers its neighbor questions for point clouds and swarms in space.
 - **Matching two sets at the least total cost.** This finds the pairing between two sets of points with the least total distance. Particles can then gather into the letters of a word along the shortest total path, and outlines can pair the same way.
-- **Measuring color.** Helpers measure the perceptual distance between two colors, find the palette entry nearest a color, and build a histogram of an image. Ramps can also drift in hue, cooler in the shadows and warmer in the light.
-- **Slopes of a fitted field.** `RadialBasis` reports its gradient beside its value. Small numerical derivative helpers cover any function a sketch writes.
 
 See the [design notes](DESIGN-NOTES.md#technique-and-algorithm-helpers).
 

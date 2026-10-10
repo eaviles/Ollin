@@ -289,6 +289,8 @@ override func setup() {
 }
 ```
 
+Reading the whole picture can also mean counting it. `photo.histogram(of: .lightness)` sorts its pixels into bins by how light they look, darkest first. `percentile(0.02)` and `percentile(0.98)` give its working black and white, the two ends a levels adjustment starts from. The `Color/Shades` example draws one under a photograph snapped to a palette, and the [Color](../Docs/Drawing/Color.md#measuring) reference has the channels and the rest.
+
 ### Fewer colors than the picture needs: dithering
 
 Dithering puts a picture back together in fewer colors than it has. It scatters the colors you do have so that the eye reads the tones in between. It is for a poster in five inks, a screen with a small palette, and the look of old print and old computers. The two families here are Bryce Bayer's ordered matrix of 1973 and the error diffusion Robert Floyd and Louis Steinberg published in 1976. Once you have a palette, one call does it:

@@ -298,6 +298,8 @@ You can let the field miss its values a little. `smoothing:` trades hitting ever
 RadialBasis(points: samples, values: readings, smoothing: 0.05)
 ```
 
+A fitted field also knows its own slope. `gradient(at:)` points uphill, and its length is how steep the climb is there. The perpendicular to it runs along the contour, so a walker that steps along it circles a hill, and one turned a little uphill spirals in to the top. The `Motion/ContourWalkers` example does exactly that. For a field you wrote yourself, `gradient(at:field:)` measures the same slope by sampling a small step to either side. [Appendix B](B-JustEnoughMath.md#a-number-fields-slope-the-gradient) draws how.
+
 One habit keeps it cheap. Fitting solves a system that grows with the cube of how many points you give it. Reading the field costs one term per point every single time. Fit in `setup()`, read in `draw()`. Six points read over a whole canvas costs nothing you can measure. Six thousand is a different program. The `Shapes/Scattered` example shows a field, a warp, and a circle recovered from marks.
 
 ## Where this comes from

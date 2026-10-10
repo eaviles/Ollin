@@ -11,8 +11,8 @@
 | [Gradients](Gradients/) | [HSBWheel](HSBWheel/) | [Harmonies](Harmonies/) | [Look](Look/) |
 | [![Mixing](https://media.ollin.art/examples/Color/Mixing/still-640.jpg?v=9d733025)](Mixing/) | [![PaletteFile](https://media.ollin.art/examples/Color/PaletteFile/still-640.jpg?v=baf88afa)](PaletteFile/) | [![PaletteFromImage](https://media.ollin.art/examples/Color/PaletteFromImage/still-640.jpg?v=3f3d36fc)](PaletteFromImage/) | [![PrintSeparation](https://media.ollin.art/examples/Color/PrintSeparation/still-640.jpg?v=4aad09ce)](PrintSeparation/) |
 | [Mixing](Mixing/) | [PaletteFile](PaletteFile/) | [PaletteFromImage](PaletteFromImage/) | [PrintSeparation](PrintSeparation/) |
-| [![SoftProof](https://media.ollin.art/examples/Color/SoftProof/still-640.jpg?v=768b9eef)](SoftProof/) | [![Swatchbook](https://media.ollin.art/examples/Color/Swatchbook/still-640.jpg?v=581862c5)](Swatchbook/) |  |  |
-| [SoftProof](SoftProof/) | [Swatchbook](Swatchbook/) |  |  |
+| [![Shades](https://media.ollin.art/examples/Color/Shades/still-640.jpg?v=911b8d0e)](Shades/) | [![SoftProof](https://media.ollin.art/examples/Color/SoftProof/still-640.jpg?v=768b9eef)](SoftProof/) | [![Swatchbook](https://media.ollin.art/examples/Color/Swatchbook/still-640.jpg?v=581862c5)](Swatchbook/) |  |
+| [Shades](Shades/) | [SoftProof](SoftProof/) | [Swatchbook](Swatchbook/) |  |
 
 These examples cover palettes, colormaps, and color driven by a value or by time.
 
@@ -30,6 +30,7 @@ These examples cover palettes, colormaps, and color driven by a value or by time
 | [PaletteFile](PaletteFile/Sketch.swift) | palettes read from disk: a CSV file that holds six palettes, and a file with one hex color per line that holds one palette, loaded with no format declared |
 | [PaletteFromImage](PaletteFromImage/Sketch.swift) | a palette built by clustering a bundled photograph's pixels, a woman before a wall of marigolds, most-used color first |
 | [PrintSeparation](PrintSeparation/Sketch.swift) | a sunrise poster split into three spot-ink printing masters, with a halftoned overprint preview and a view parameter that switches between them |
+| [Shades](Shades/Sketch.swift) | four colors taken from a photograph of woven blankets, each grown into a ramp of shades whose hue warms in the light and cools in the shadow, the photograph snapped cell by cell to the nearest shade, and the lightness histograms of both |
 | [SoftProof](SoftProof/Sketch.swift) | a poster converted into a press profile and back before it is printed, so the colors the ink cannot reproduce show up changed on screen, next to the gamut check and the process plates |
 | [Swatchbook](Swatchbook/Sketch.swift) | the built-in qualitative `Palette` sets drawn as labeled swatch rows, with a highlight driven by a wrapping index |
 

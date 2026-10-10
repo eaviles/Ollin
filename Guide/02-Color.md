@@ -6,7 +6,7 @@
 
 <img src="Images/02-Color/ColorField.jpg" alt="A quilt of square cells on a near-black ground, teal at the top left, the violet base through the middle, magenta at the bottom right, each cell jittered a step off its diagonal neighbors" width="560">
 
-Color is the first thing a viewer reads in a sketch, and plain arithmetic mixes it to mud. Here you learn the tools that keep it clean, from thinking in hue to palettes grown from one color and gradients used as paint. The color field at the top is built on one harmony and redraws as a fresh variation on every click. A section after it mixes colors the way paint does.
+Color is the first thing a viewer reads in a sketch, and plain arithmetic mixes it to mud. Here you learn the tools that keep it clean, from thinking in hue to palettes grown from one color and gradients used as paint. The color field at the top is built on one harmony and redraws as a fresh variation on every click. Later sections mix like paint, measure how far apart two colors look, and shade one color the way a painter does.
 
 Everything here builds on [Chapter 1](01-HelloOllin.md); keep working the same way, one file under `OllinLive`, saving as you go. Put the swinging yellow circle from [It moves on its own](01-HelloOllin.md#it-moves-on-its-own) back into `FirstCircle.swift`, because this chapter colors it.
 
@@ -341,16 +341,53 @@ Spectrum.blackbody(6500)      // and as a curve: roughly daylight
 
 Run `Color(wavelength:)` from 400 to 700 nanometers and it sweeps a physical rainbow. A hue wheel gives you a different rainbow. `blackbody` is why a candle is orange and a hot star is blue, from one number in kelvin. `Color(kelvin:)` gives the same tint without the spectrum behind it. Three GPU effects also work wavelength by wavelength instead of channel by channel. They are `.thinFilm` for the colors in a soap bubble and `.diffraction` for the rainbow split off a grating. The third, `.paintMix`, runs the paint mixing above over a whole picture at once. The [Spectral color](../Docs/Drawing/Spectrum.md) reference has all of it.
 
+## Measuring color, and shades that drift
+
+The field chose its colors by eye, and that is usually right. Two more tools help when a sketch needs numbers instead. One shades a color so it reads as lit. The other says how far apart two colors look. The field has no use for either. A photograph snapped to a palette does, and so does a flat shape that should look like it has a light on it.
+
+### Shades that drift: `Palette.shades`
+
+A **hue-shifted ramp** is a run of shades of one color whose hue turns as it goes. It warms toward the light and cools into the shadow. It is for pixel-art palettes, for a flat shape that should read as lit, and for a livelier gradient map. Painters have long kept their lights warm and their shadows cool, and pixel artists made a rule of it. Raymond Schlitter's Pixelblog set the rule out step by step in 2018.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/02-Color/ShadesThatDrift-dark.jpg">
+  <img src="Images/02-Color/ShadesThatDrift.jpg" alt="Five rows of six swatches each, built twice. On the left each row keeps one hue from near black to near white. On the right the same rows turn: the red warms to peach in the light and cools to crimson in the dark, the green lightens toward yellow and darkens toward teal, the blue rises to sky and sinks to indigo. The base color is ringed in every row" width="680">
+</picture>
+
+A ramp that only darkens and lightens one hue reads flat, like the left half of the picture. The right half is the same rows with the hue turned:
+
+```swift
+let skin = Palette.shades(of: Color(hex: 0xC8875E), count: 6)
+let sea = Ramp.shades(of: Color(hex: 0x2A7F8F), hueDrift: 1.0 / 12)
+```
+
+The walk runs in OKLCH, the lightness-and-hue form from [Hues that weigh the same](#hues-that-weigh-the-same-lightness). Lightness steps evenly from dark to light, and the base color is always one of the swatches, at the place its own lightness gives it. That is the ringed swatch in each row. The hue turns toward yellow as the shades lighten and away from yellow as they darken, by `hueDrift` turns at each end. So a red warms toward orange and cools toward crimson, and a blue rises toward sky and sinks toward indigo. Chroma eases off at both ends, because a very dark or very light shade at full strength looks heavy or loud. A negative drift does the reverse, with cool lights and warm shadows, which reads as moonlight.
+
+### How far apart two colors look: `distance(to:)`
+
+A **color distance** is one number for how different two colors look. It is for picking the swatch nearest a color and for checking that two inks will not be confused. It also tells you when a change is too small to see. The idea of a space where equal distances look equal goes back to the CIE's CIELAB of 1976. The formula print shops quote today is its correction, CIEDE2000, published by M. Ronnier Luo, Guihua Cui, and Bryan Rigg in 2001.
+
+```swift
+let ink = Color(hex: 0x2F3A4A), paper = Color(hex: 0x353F4C)
+let apart = ink.distance(to: paper)                          // 0.019: just apart
+let delta = ink.distance(to: paper, measure: .ciede2000)     // 2.19 on the press's scale
+fill(Palette.set2.nearest(to: ink) ?? ink)                    // the swatch that looks most like it
+```
+
+The default measures in OKLab, the space this chapter mixes in. On its scale black to white is 1. Two colors about 0.02 apart are just distinguishable side by side, and this ink and paper sit right there. It is the same scale the [palette check](#will-everybody-see-it) uses for its tolerance. `.ciede2000` asks the same question on the scale a print shop uses, where about 1 is just visible and 2.3 is the usual threshold. Its numbers come from CIELAB, the space swatch books and printers write colors in, and `CIELab` brings those numbers into a sketch. `nearest(to:)` answers with the palette entry that looks most like a color, and `nearestIndex(to:)` answers with its position, for when the entries stand for inks or threads.
+
+The `Color/Shades` example puts the two together. It takes the four colors a photograph is mostly made of and grows a drifting ramp from each. Then it snaps every cell of the photograph to the nearest swatch. Under it, a histogram of the picture's lightness shows what the snapping did to its tones.
+
 ## Where this comes from
 
-The hue wheel goes back to Isaac Newton, who bent the spectrum into a circle in *Opticks* in 1704. The twelve-hue wheel with harmonies read as angles on it is from Johannes Itten's *The Art of Color*, from 1961. The OKLab family, OKLab, OKLCH, and OKHSL, is the work of Björn Ottosson. He published it openly in 2020 and 2021, and OKLab and OKLCH are now part of the CSS color standard. That is why "mix in OKLab" is advice you'll meet across modern tools. Paint mixing follows Paul Kubelka and Franz Munk's 1931 layer optics. It works over reflectance curves built by the method Agatha Mallett and Cem Yuksel published in 2019. The built-in qualitative palettes are Cynthia Brewer's ColorBrewer sets, designed for map readability and used far beyond maps. The colormaps come from the scientific-visualization world. Viridis and its relatives are from matplotlib, by Stéfan van der Walt and Nathaniel Smith, and turbo is from Google. The cosine palette formula is Inigo Quilez's, a name that will keep coming up in this guide. The eight colors of `Palette.colorblindSafe` are Masataka Okabe and Kei Ito's, published in 2008 for color universal design. Full credits live in the project's [attribution notes](../ATTRIBUTION.md#color).
+The hue wheel goes back to Isaac Newton, who bent the spectrum into a circle in *Opticks* in 1704. The twelve-hue wheel with harmonies read as angles on it is from Johannes Itten's *The Art of Color*, from 1961. The OKLab family, OKLab, OKLCH, and OKHSL, is the work of Björn Ottosson. He published it openly in 2020 and 2021, and OKLab and OKLCH are now part of the CSS color standard. That is why "mix in OKLab" is advice you'll meet across modern tools. Paint mixing follows Paul Kubelka and Franz Munk's 1931 layer optics. It works over reflectance curves built by the method Agatha Mallett and Cem Yuksel published in 2019. The built-in qualitative palettes are Cynthia Brewer's ColorBrewer sets, designed for map readability and used far beyond maps. The colormaps come from the scientific-visualization world. Viridis and its relatives are from matplotlib, by Stéfan van der Walt and Nathaniel Smith, and turbo is from Google. The cosine palette formula is Inigo Quilez's, a name that will keep coming up in this guide. The eight colors of `Palette.colorblindSafe` are Masataka Okabe and Kei Ito's, published in 2008 for color universal design. CIELAB is the CIE's space of 1976. CIEDE2000 is M. Ronnier Luo, Guihua Cui, and Bryan Rigg's formula of 2001. Ollin's is checked against the test pairs Gaurav Sharma, Wencheng Wu, and Edul Dalal published in 2005. Shading by hue drift is pixel-art practice, set out in Raymond Schlitter's Pixelblog in 2018. Full credits live in the project's [attribution notes](../ATTRIBUTION.md#color).
 
 ## Go deeper
 
 - [Color](../Docs/Drawing/Color.md): the complete reference, including color temperature (`Color(kelvin:)`) and the string-hex grammar.
 - [Light and color](../Docs/Concepts/Light.md): one screen on why the middle of a frame is linear light, and what the last pass does to it before the screen.
 - Appendix B draws this chapter's math, one picture per idea: [Fractions, mapping, and wrapping](B-JustEnoughMath.md#t-the-fraction-along-lerp-and-map), [Color and light as numbers](B-JustEnoughMath.md#numeric-vs-perceptual-mixing).
-- Worked examples, all in [`Examples/Color/`](../Examples/Color/): `Mixing` (the six spaces side by side), `Harmonies`, `Swatchbook`, `PaletteFile`, `PaletteFromImage`, `Colormaps`, `HSBWheel`, `Gradients`, `Dithering`, and `ColorVision`.
+- Worked examples, all in [`Examples/Color/`](../Examples/Color/): `Mixing` (the six spaces side by side), `Harmonies`, `Swatchbook`, `PaletteFile`, `PaletteFromImage`, `Colormaps`, `HSBWheel`, `Gradients`, `Dithering`, `ColorVision`, and `Shades` (drifting ramps from a photograph's colors, the photograph snapped to them).
 - [Accessibility](../Docs/Helpers/Accessibility.md): the color-vision simulation, the palette check, and the reduce-motion setting.
 - The Schuh homages in [`Examples/Recreations/OwenSchuh/`](../Examples/Recreations/OwenSchuh/): both pages use color as a code. A digit is one step of a ten-step scale, so a number can be read off the picture. Colored this way, a page of arithmetic comes out as a piece of cloth.
 - The Melehi homage [`Waves`](../Examples/Recreations/MohamedMelehi/Waves/Sketch.swift): a palette handed out by shares. Each color declares how many of every cycle's bands it gets, and a weighted round robin deals them in the palette's order. A rainbow keeps its order, and the share decides how often a color comes back.

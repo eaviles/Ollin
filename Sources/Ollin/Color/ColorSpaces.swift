@@ -244,6 +244,123 @@ public struct OKHSL: Equatable, Sendable {
     }
 }
 
+// MARK: - CIELAB
+
+/// A color in CIELAB (CIE 1976 L\*a\*b\*), the space printers, swatch books, and
+/// color-difference formulas are written in.
+///
+/// `l` is lightness from 0 (black) to 100 (white); `a` runs green → red and `b`
+/// runs blue → yellow, each within about `-128...128` for colors a screen or a
+/// press can make. The white it is measured against is **D50**, the convention
+/// of ICC profiles and of image editors, so the numbers a printed swatch or a
+/// color picker gives come in as they are. sRGB's own white (D65)
+/// is carried over by the Bradford adaptation, which is what lands sRGB white
+/// on exactly `(100, 0, 0)`.
+///
+/// Use it to bring measured numbers in and to compare colors with the
+/// CIEDE2000 formula (`Color.distance(to:measure:)`). For mixing and generated
+/// color, `OKLab` is the better space: it blends more evenly and keeps hue
+/// steadier as chroma changes.
+///
+/// ```swift
+/// let swatch = Color(CIELab(l: 54.3, a: 80.8, b: 69.9))   // a vivid red, by its numbers
+/// let lab = CIELab(swatch)
+/// ```
+public struct CIELab: Equatable, Sendable {
+    public var l: Double
+    public var a: Double
+    public var b: Double
+
+    public init(l: Double, a: Double, b: Double) {
+        self.l = l
+        self.a = a
+        self.b = b
+    }
+
+    /// Convert a color to CIELAB (D50). Alpha stays on the `Color`. A color
+    /// outside sRGB (a component past 0…1) converts as the light it stands for.
+    public init(_ color: Color) {
+        let r = Color.srgbToLinear(color.red)
+        let g = Color.srgbToLinear(color.green)
+        let bl = Color.srgbToLinear(color.blue)
+        let w = CIELab.whiteD50
+        let x = (CIELab.toXYZ[0] * r + CIELab.toXYZ[1] * g + CIELab.toXYZ[2] * bl) / w.x
+        let y = CIELab.toXYZ[3] * r + CIELab.toXYZ[4] * g + CIELab.toXYZ[5] * bl
+        let z = (CIELab.toXYZ[6] * r + CIELab.toXYZ[7] * g + CIELab.toXYZ[8] * bl) / w.z
+        let fx = CIELab.f(x), fy = CIELab.f(y), fz = CIELab.f(z)
+        self.init(l: 116 * fy - 16, a: 500 * (fx - fy), b: 200 * (fy - fz))
+    }
+
+    /// The light this value names, as linear sRGB, components unclamped.
+    var linearRGB: SIMD3<Double> {
+        let fy = (l + 16) / 116
+        let fx = fy + a / 500
+        let fz = fy - b / 200
+        let w = CIELab.whiteD50
+        let x = CIELab.fInverse(fx) * w.x
+        let y = l > CIELab.kappa * CIELab.epsilon ? fy * fy * fy : l / CIELab.kappa
+        let z = CIELab.fInverse(fz) * w.z
+        let m = CIELab.fromXYZ
+        return SIMD3(m[0] * x + m[1] * y + m[2] * z,
+                     m[3] * x + m[4] * y + m[5] * z,
+                     m[6] * x + m[7] * y + m[8] * z)
+    }
+
+    // The CIE's exact constants for the cube-root curve and its linear toe.
+    private static let epsilon = 216.0 / 24389
+    private static let kappa = 24389.0 / 27
+
+    private static func f(_ t: Double) -> Double {
+        t > epsilon ? Foundation.cbrt(t) : (kappa * t + 16) / 116
+    }
+
+    private static func fInverse(_ f: Double) -> Double {
+        let cube = f * f * f
+        return cube > epsilon ? cube : (116 * f - 16) / kappa
+    }
+
+    /// D50 as chromaticity (0.3457, 0.3585), normalized to Y = 1.
+    private static let whiteD50 = (x: 0.3457 / 0.3585, z: (1 - 0.3457 - 0.3585) / 0.3585)
+
+    /// Linear sRGB to XYZ under D50, row-major: the sRGB primaries and white to
+    /// XYZ, then the Bradford adaptation from D65 to D50, both derived from the
+    /// published chromaticities.
+    private static let toXYZ: [Double] = [
+        0.4360657468742694, 0.3851515095901598, 0.14307841996513873,
+        0.2224931771105651, 0.7168870130944823, 0.06061980979495234,
+        0.01392392146316938, 0.09708132423141015, 0.7140993568158809,
+    ]
+
+    /// The inverse of `toXYZ`.
+    private static let fromXYZ: [Double] = {
+        let m = toXYZ
+        let c00 = m[4] * m[8] - m[5] * m[7], c01 = m[5] * m[6] - m[3] * m[8]
+        let c02 = m[3] * m[7] - m[4] * m[6]
+        let det = m[0] * c00 + m[1] * c01 + m[2] * c02
+        return [c00 / det, (m[2] * m[7] - m[1] * m[8]) / det, (m[1] * m[5] - m[2] * m[4]) / det,
+                c01 / det, (m[0] * m[8] - m[2] * m[6]) / det, (m[2] * m[3] - m[0] * m[5]) / det,
+                c02 / det, (m[1] * m[6] - m[0] * m[7]) / det, (m[0] * m[4] - m[1] * m[3]) / det]
+    }()
+}
+
+public extension Color {
+    /// Create a color from CIELAB (D50). A value outside the sRGB gamut, which a
+    /// vivid printed or measured swatch often is, maps back the way an `OKLab`
+    /// one does: chroma reduced at constant lightness and hue, so it stays the
+    /// same color, as vivid as the screen can show.
+    init(_ lab: CIELab, alpha: Double = 1.0) {
+        let rgb = lab.linearRGB
+        let eps = 1e-6
+        if (-eps...1 + eps).contains(rgb.x), (-eps...1 + eps).contains(rgb.y),
+           (-eps...1 + eps).contains(rgb.z) {
+            self.init(linear: min(max(rgb.x, 0), 1), green: min(max(rgb.y, 0), 1),
+                      blue: min(max(rgb.z, 0), 1), alpha: alpha)
+        } else {
+            self.init(OKLab(linearRed: rgb.x, green: rgb.y, blue: rgb.z), alpha: alpha)
+        }
+    }
+}
+
 // MARK: - Derived colors
 
 // Each helper works in OKLCH, so a step in lightness is a step the eye sees as

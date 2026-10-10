@@ -60,13 +60,8 @@ public extension Image {
     /// Transparent pixels count for nothing rather than for black, so a cell that
     /// is half a cut-out shape averages the shape's color.
     func averageColor(in region: Rectangle? = nil) -> Color {
-        guard let pixels = premultipliedPixels() else { return .clear }
-        let box = region ?? Rectangle(x: 0, y: 0, width: Double(width), height: Double(height))
-        let x0 = Swift.max(0, Int(box.x.rounded(.down)))
-        let y0 = Swift.max(0, Int(box.y.rounded(.down)))
-        let x1 = Swift.min(width, Int((box.x + box.width).rounded(.up)))
-        let y1 = Swift.min(height, Int((box.y + box.height).rounded(.up)))
-        guard x1 > x0, y1 > y0 else { return .clear }
+        guard let pixels = premultipliedPixels(),
+              let (x0, y0, x1, y1) = pixelSpan(of: region) else { return .clear }
 
         var red = 0.0, green = 0.0, blue = 0.0, alpha = 0.0
         for y in y0 ..< y1 {

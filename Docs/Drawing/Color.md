@@ -10,10 +10,13 @@
 
 - [Color](#color)
 - [OKLab, OKLCH, OKHSL](#oklab)
+- [CIELAB](#cielab)
+- [Measuring color](#measuring): `distance(to:)`, `nearest(to:)`, `histogram(of:)`
 - [Mixing](#mixing)
 - [Ramp](#ramp)
 - [Gradient paint](#gradient)
 - [Palette](#palette)
+- [Shades whose hue drifts](#shades)
 - [Loading palettes from a file](#palette-files)
 - [Extracting a palette from an image](#palette-extraction)
 - [Dithering an image to a palette](#dithering)
@@ -140,6 +143,68 @@ lch.h += 0.5                 // the complementary hue, same lightness and chroma
 let complement = Color(lch)  // or, in one word, brand.complement
 ```
 
+<a name="cielab"></a>
+
+### CIELAB
+
+`CIELab` is the space printers, swatch books, and color-difference formulas are written in. `l` runs from 0 (black) to 100 (white), `a` runs from green to red, and `b` runs from blue to yellow. It converts to and from `Color` like the OKLab family:
+
+```swift
+CIELab(l:a:b:)    CIELab(_ color: Color)    Color(_ lab: CIELab, alpha: Double = 1)
+```
+
+The white it measures against is D50. ICC profiles, CSS's `lab()`, and image editors use that white too. So the Lab numbers printed on a swatch or shown in a color picker come in as they are. sRGB white converts to exactly `(100, 0, 0)`. A vivid printed or measured color is often outside sRGB. It maps back the way an OKLab color does, with its chroma reduced at constant lightness and hue.
+
+```swift
+let terracotta = Color(CIELab(l: 55, a: 32, b: 40))     // a swatch, by its numbers
+let lab = CIELab(terracotta)
+```
+
+Use `CIELab` to bring measured numbers in and to compare colors with CIEDE2000, below. For mixing and for generated color, OKLab is still the better space, because it blends more evenly and holds hue steadier as chroma changes.
+
+<a name="measuring"></a>
+
+### Measuring color
+
+**How different two colors look.** `distance(to:)` measures it, 0 for the same color and more the further apart they look. Alpha is not compared.
+
+```swift
+someColor.distance(to: other, measure: ColorDistance = .oklab) -> Double
+```
+
+The default `.oklab` is the straight-line distance in OKLab. On that scale black to white is 1, and about 0.02 is a difference most people just see with the two side by side. The palette checks under [color vision](../Helpers/Accessibility.md#whether-a-palette-holds-apart) measure their `tolerance` on the same scale. `.ciede2000` is the CIE's 2000 color-difference formula, ΔE00. On its scale about 1 is just visible and 2.3 is a commonly quoted threshold, and print and textile tolerances are written in it. It corrects CIELAB's unevenness in the blues and among near-grays. The two scales differ, so a tolerance written for one does not carry to the other.
+
+```swift
+let ink = Color(hex: 0x2F3A4A), paper = Color(hex: 0x353F4C)
+if ink.distance(to: paper) < 0.05 { stroke(.white) }       // too close to read: outline it
+let delta = ink.distance(to: paper, measure: .ciede2000)
+```
+
+Sharma, Wu, and Dalal published 34 test pairs in 2005 for checking implementations. Ollin's CIEDE2000 matches all of them to the four decimals they are printed with.
+
+**The palette entry nearest a color.** `nearest(to:)` returns the swatch that looks most like a color. `nearestIndex(to:)` returns its position instead, for when the entries stand for something, such as a plate to print with. Both are `nil` for an empty palette, a tie goes to the earlier entry, and both take the same `measure:`.
+
+```swift
+let sampled = Color(red: 0.8, green: 0.45, blue: 0.3)
+fill(Palette.set2.nearest(to: sampled) ?? sampled)          // snap to the palette
+let plate = Palette.set2.nearestIndex(to: sampled)          // which swatch it was
+```
+
+Snapping each cell of a picture this way posterizes it to the palette. [Dithering](#dithering) is the same snap with each pixel's error carried to its neighbors, which keeps the picture's tones.
+
+**An image's histogram.** `histogram(of:bins:in:)` counts a picture's pixels by one channel. The channels are `.red`, `.green`, `.blue`, `.alpha`, and `.lightness`, which is OKLab's `l` and the default. The result is a `Histogram` with `counts` per bin, darkest first, and `total`, the number of pixels counted. `percentile(_:)` gives the value below which a share of the pixels lie. So `0.5` is the median, and the values at `0.02` and `0.98` are a picture's working black and white, with a few stray pixels ignored.
+
+```swift
+let photo = Image(width: 64, height: 64, color: Color(hex: 0x8E6B4F))
+let h = photo.histogram(of: .lightness, bins: 64)
+for (i, n) in h.counts.enumerated() {
+    drawRect(Double(i) * 8, 400, 7, -Double(n) / Double(h.total) * 300)
+}
+let floor = h.percentile(0.02), ceiling = h.percentile(0.98)    // auto levels
+```
+
+Bin `i` of `n` holds the values from `i / n` up to `(i + 1) / n`, so 256 bins hold one 8-bit level each. The region is in pixels, and it covers the same pixels as `averageColor(in:)`. Every pixel inside it counts once, so `total` is the region's pixel count. Color is read with the alpha divided out, and a fully transparent pixel counts at 0. The count runs on the CPU, so a texture-backed image (a live feed or a layer) gives an empty histogram. Count once in `setup()`, or when the picture changes, rather than in every frame.
+
 <a name="mixing"></a>
 
 ### Mixing
@@ -257,6 +322,35 @@ Palette.analogous(of: base, count: 3, spread: 1.0 / 12) // neighbors centered on
 **Built-in sets.** The eight ColorBrewer qualitative palettes ship as data. They are `.set1`, `.set2`, `.set3`, `.paired`, `.pastel1`, `.pastel2`, `.dark2`, and `.accent`. They are credited under [Influences & attribution](../../ATTRIBUTION.md#color).
 
 The `Harmonies` example follows a drifting base color through all four builders. `Swatchbook` lays out the built-in sets.
+
+<a name="shades"></a>
+
+### Shades whose hue drifts
+
+A ramp that only darkens and lightens one hue reads flat. Painters and pixel artists turn the hue as they go: the lights warm toward yellow and the shadows cool toward blue or purple. `shades(of:)` builds that ramp from one base color, as a continuous `Ramp` or as a `Palette` of swatches:
+
+```swift
+Ramp.shades(of: base, lightness: 0.2...0.95, hueDrift: 1.0 / 12) -> Ramp
+Palette.shades(of: base, count: 5, lightness: 0.2...0.95, hueDrift: 1.0 / 12) -> Palette
+```
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/02-Color/ShadesThatDrift-dark.jpg">
+  <img src="../../Guide/Images/02-Color/ShadesThatDrift.jpg" alt="Five rows of six swatches each, built twice. On the left each row keeps one hue from near black to near white. On the right the same rows turn: the red warms to peach in the light and cools to crimson in the dark, the green lightens toward yellow and darkens toward teal, the blue rises to sky and sinks to indigo. The base color is ringed in every row" width="680">
+</picture>
+
+The walk is in OKLCH. Lightness runs evenly between the two ends of `lightness` and through the base, which sits at the place its own lightness gives it. The hue turns toward yellow as the shades lighten and away from yellow as they darken, by `hueDrift` turns at each end. The lights stop turning if they reach yellow first. Away from yellow is toward blue or purple for every hue except yellow itself, whose shadows turn toward orange. Chroma eases to half the base's at the two ends, since a shade that dark or light reads heavy or loud at full strength. A negative `hueDrift` reverses the drift, cooling the lights and warming the shadows, and `0` keeps one hue throughout.
+
+```swift
+let skin = Palette.shades(of: Color(hex: 0xC8875E), count: 6)
+for (i, color) in skin.enumerated() {
+    fill(color)
+    drawRect(80 + Double(i) * 150, 400, 140, 140)
+}
+postProcess(.gradientMap(Ramp.shades(of: Color(hex: 0x2A7F8F))))   // the frame's tones, shaded
+```
+
+The palette always includes the base itself. The other swatches step evenly in lightness on either side of it. The idea is credited under [Influences & attribution](../../ATTRIBUTION.md#color).
 
 <a name="palette-files"></a>
 

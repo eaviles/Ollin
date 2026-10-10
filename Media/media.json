@@ -4055,6 +4055,23 @@
       "stillSmall": "examples/Color/PrintSeparation/still-640.jpg?v=4aad09ce",
       "width": 1080
     },
+    "Color/Shades": {
+      "width": 1080,
+      "height": 1080,
+      "length": "still",
+      "stillBecause": "holds still",
+      "frame": 480,
+      "motion": 0.0,
+      "source": "8b9f7678f35279cd",
+      "rendered": "2026-10-10",
+      "bytes": {
+        "still": 161273,
+        "stillSmall": 64575
+      },
+      "still": "examples/Color/Shades/still.jpg?v=e8f6e607",
+      "stillSmall": "examples/Color/Shades/still-640.jpg?v=911b8d0e",
+      "seed": 1
+    },
     "Color/SoftProof": {
       "bytes": {
         "loop": 994012,
@@ -5829,6 +5846,28 @@
       "stillBecause": "holds still",
       "stillSmall": "examples/Motion/Beats/still-640.jpg?v=0d0c4001",
       "width": 1080
+    },
+    "Motion/ContourWalkers": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 16.178,
+      "sound": false,
+      "source": "8516dba7a11297ad",
+      "rendered": "2026-10-10",
+      "bytes": {
+        "loop": 7587605,
+        "loopSmall": 2082311,
+        "still": 275548,
+        "stillSmall": 95791
+      },
+      "loop": "examples/Motion/ContourWalkers/loop.mp4?v=e96bbef6",
+      "loopSmall": "examples/Motion/ContourWalkers/loop-640.mp4?v=df0fb5a1",
+      "still": "examples/Motion/ContourWalkers/still.jpg?v=11be9771",
+      "stillSmall": "examples/Motion/ContourWalkers/still-640.jpg?v=d9031557",
+      "seed": 1
     },
     "Motion/DerivedCurves": {
       "bytes": {

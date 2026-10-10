@@ -85,6 +85,27 @@ public struct RadialBasis<Point: RadialBasisPoint, Value: RadialBasisValue>: Sen
             case .gaussian(let c): return exp(-(r * r) / max(c * c, 1e-12))
             }
         }
+
+        /// The bump's slope at distance `r` divided by `r`, the factor that turns
+        /// the offset from a point into the bump's gradient there. Each is the
+        /// closed-form derivative of the shape above. At a known point the offset
+        /// is zero, and the gradient is taken as zero with it: the limit for thin
+        /// plate, whose factor alone runs off as `log r`, and for the linear cone
+        /// a choice, since its tip has no single slope.
+        func slopeOverDistance(_ r: Double) -> Double {
+            switch self {
+            case .thinPlate: return r < 1e-12 ? 0 : 2 * log(r) + 1
+            case .linear: return r < 1e-12 ? 0 : 1 / r
+            case .cubic: return 3 * r
+            case .multiquadric(let c): return 1 / (r * r + c * c).squareRoot()
+            case .inverseMultiquadric(let c):
+                let q = r * r + c * c
+                return -1 / (q * q.squareRoot())
+            case .gaussian(let c):
+                let c2 = max(c * c, 1e-12)
+                return -2 / c2 * exp(-(r * r) / c2)
+            }
+        }
     }
 
     /// The points the field was fitted through.
@@ -226,6 +247,85 @@ public struct RadialBasis<Point: RadialBasisPoint, Value: RadialBasisValue>: Sen
 
     /// `field(point)`, the same as ``value(at:)``.
     public func callAsFunction(_ point: Point) -> Value { value(at: point) }
+
+    /// How fast the field changes as `point` moves along `direction`: the
+    /// first-order change for a step of `direction`, so a unit direction gives
+    /// the rate per unit distance. Exact, from each bump's own derivative, and
+    /// about as costly as one ``value(at:)``.
+    ///
+    /// Works for every kind of value. For a warp (a field of vectors) the
+    /// derivatives along the two axes are the columns of its Jacobian, which say
+    /// how a small square at `point` is stretched and turned. For a field of
+    /// colors the answer is a rate per component, negative where one falls, to
+    /// read as numbers rather than to draw with.
+    ///
+    /// ```swift
+    /// let warp = RadialBasis(points: pins, values: targets)!
+    /// let dx = warp.derivative(at: p, along: Vector2(1, 0))
+    /// let dy = warp.derivative(at: p, along: Vector2(0, 1))
+    /// let stretch = dx.x * dy.y - dx.y * dy.x        // area grows by this factor
+    /// ```
+    ///
+    /// The linear kernel's cones have no single slope at a known point, and
+    /// the answer there leaves that point's own bump out.
+    public func derivative(at point: Point, along direction: Point) -> Value {
+        let slope = partials(at: point)
+        var parts = [Double](repeating: 0, count: Value.channelCount)
+        for c in 0 ..< parts.count {
+            for axis in 0 ..< Point.axisCount {
+                parts[c] += slope[c][axis] * direction.component(axis)
+            }
+        }
+        return Value(channels: parts)
+    }
+
+    /// The field's partial derivatives at `point`, one row per channel and one
+    /// entry per axis.
+    ///
+    /// In the fit's own units the value is the sum of `w φ(|x − p| / s)` plus the
+    /// tail, so each bump adds `w φ'(r) / r · (x − p) / s²` and the tail adds its
+    /// own weight over `s`.
+    private func partials(at point: Point) -> [[Double]] {
+        let channels = Value.channelCount
+        let axes = Point.axisCount
+        var slope = [[Double]](repeating: [Double](repeating: 0, count: axes), count: channels)
+        let inverseSquare = 1 / (spacing * spacing)
+        var offset = [Double](repeating: 0, count: axes)
+        for (i, fittedPoint) in points.enumerated() {
+            let factor = fitted.slopeOverDistance(fittedPoint.distance(to: point) / spacing)
+            if factor == 0 { continue }
+            for axis in 0 ..< axes {
+                offset[axis] = (point.component(axis) - fittedPoint.component(axis)) * inverseSquare
+            }
+            for c in 0 ..< channels {
+                let weight = weights[c][i] * factor
+                for axis in 0 ..< axes { slope[c][axis] += weight * offset[axis] }
+            }
+        }
+        let n = points.count
+        for c in 0 ..< channels {
+            for axis in 0 ..< axes { slope[c][axis] += weights[c][n + 1 + axis] / spacing }
+        }
+        return slope
+    }
+}
+
+public extension RadialBasis where Value == Double, Point: RadialBasisValue {
+    /// The direction the field climbs fastest at `point`, its length the rate
+    /// of that climb per unit distance. Exact, from each bump's own derivative.
+    ///
+    /// A height field's gradient is the way uphill, and the perpendicular to it
+    /// runs along the contour, so particles can climb a fitted surface or
+    /// circle on it.
+    ///
+    /// ```swift
+    /// let height = RadialBasis(points: peaks, values: heights)!
+    /// let uphill = height.gradient(at: p)
+    /// p += uphill.perpendicular.normalized * 2       // follow the contour
+    /// ```
+    func gradient(at point: Point) -> Point {
+        Point(channels: partials(at: point)[0])
+    }
 }
 
 // MARK: - What can be a point, and what can be a value
