@@ -56,6 +56,14 @@ import OllinTestSupport
         #expect(reason.contains("ollin-no-such-source") && reason.contains("ollin-no-such-app"), Comment(rawValue: reason))
     }
 
+    /// How long each step of the loopback waits. On a desk every step lands
+    /// within a few milliseconds, and the wait returns on the first probe that
+    /// sees it, so a long deadline costs a pass nothing. The announcement
+    /// travels through the machine's notification daemon and reaches this
+    /// process on the main run loop, and on a loaded CI runner it twice took
+    /// longer than 4 s twenty minutes into the run.
+    static let patience = 30.0
+
     @Test(.enabled(if: SyphonLoopbackTests.hasMetal), discoveryTrait)
     func publishedSourceIsDiscoveredAndDelivered() async throws {
         let device = MTLCreateSystemDefaultDevice()!
@@ -82,14 +90,14 @@ import OllinTestSupport
         publishOnce()
 
         // The probe saw its own source surface, so this one has to.
-        _ = try await waitFor(timeout: 4, { SyphonClient.availableServers().first { $0.name == name } })
+        _ = try await waitFor(timeout: Self.patience, { SyphonClient.availableServers().first { $0.name == name } })
 
         let client = SyphonClient(named: name)
         defer { client.disconnect() }
-        #expect((try? await waitFor(timeout: 4, { client.isConnected ? true : nil })) == true)
+        #expect((try? await waitFor(timeout: Self.patience, { client.isConnected ? true : nil })) == true)
 
         // Keep publishing and confirm a frame comes back as an Image of the right size.
-        let frame = try? await waitFor(timeout: 4) { () -> Image? in
+        let frame = try? await waitFor(timeout: Self.patience) { () -> Image? in
             publishOnce()
             return client.frame
         }
