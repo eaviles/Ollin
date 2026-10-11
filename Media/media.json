@@ -9911,6 +9911,28 @@
       "stillSmall": "examples/Shaders/ShaderFilter/still-640.jpg?v=2f2995ce",
       "width": 1080
     },
+    "Shaders/ShaderPaint": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 27.704,
+      "sound": false,
+      "source": "d0675b8ea0105888",
+      "rendered": "2026-10-11",
+      "bytes": {
+        "loop": 3006046,
+        "loopSmall": 861620,
+        "still": 163859,
+        "stillSmall": 69666
+      },
+      "loop": "examples/Shaders/ShaderPaint/loop.mp4?v=48900d63",
+      "loopSmall": "examples/Shaders/ShaderPaint/loop-640.mp4?v=60bb9a3a",
+      "still": "examples/Shaders/ShaderPaint/still.jpg?v=c86a7184",
+      "stillSmall": "examples/Shaders/ShaderPaint/still-640.jpg?v=ec1d468b",
+      "seed": 1
+    },
     "Shaders/VisualCatalog": {
       "bytes": {
         "loop": 1070868,

@@ -134,7 +134,7 @@ The reference is the authority on what exists and how it behaves; the guide teac
 
 ## Shaders
 
-- [User-supplied shaders](Docs/Shaders/Shaders.md): write your own fragment shader (`Shader` + a `shade(uv, info)` function) and run it through the effect graph as a generator, filter, or combine.
+- [User-supplied shaders](Docs/Shaders/Shaders.md): write your own fragment shader (`Shader` + a `shade(uv, info)` function) and run it through the effect graph as a generator, filter, or combine, or as the paint a shape is filled…
 - [Visual chains](Docs/Shaders/Visuals.md): compose animated imagery by chaining a `Visual`: sources (oscillator, noise, voronoi, shape) pass through warps, color moves, blends, and modulations.
 - [The shader library](Docs/Shaders/ShaderLibrary.md): reference for the helper functions a fragment shader or compute kernel can call: color/OKLab, hashes, value/gradient/curl noise, the 2D signed-distance catalog (`smin`…
 - [Compute & GPU particles](Docs/Shaders/Compute.md): GPU compute over buffers and textures. `Particles` updates and draws a million particles on the GPU each frame (the "sandpainting" engine), and `Simulation` runs…
@@ -318,7 +318,7 @@ The reference is the authority on what exists and how it behaves; the guide teac
 
 ## The project
 
-- [Examples](Examples/README.md): 616 runnable sketches by category, each with its whole source
+- [Examples](Examples/README.md): 617 runnable sketches by category, each with its whole source
 - [Ollin architecture & internals](ARCHITECTURE.md)
 - [Ollin: the shipped-capability inventory](CAPABILITIES.md)
 - [Changelog](CHANGELOG.md)

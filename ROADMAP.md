@@ -136,7 +136,6 @@ These are deeper uses of the Metal core and Apple displays. All are opt-in, so t
 
 - **Dolby Vision.** Dynamic per-scene HDR metadata, in contrast to the static HDR10 metadata a video carries, which describes the whole file at once. It needs the licensed encoder path rather than AVFoundation's plain HDR writer, so it is a licensing question before it is an API one.
 - **A traced shape redrawn in a new color.** A shape traced once and drawn every frame is triangulated and stroked again each time. Keeping that work, and letting a replay take a new fill and stroke color, makes a screen of hundreds of kept outlines cost what it costs to draw them.
-- **A shader as paint.** A `Shader` fills or strokes a 2D shape, computed per pixel in the shape's own coordinates. The same shader can be a mesh's surface material. Pictures, patterns, and noise then become fills, with no clipping by hand.
 
 See the [design notes](DESIGN-NOTES.md#rendering-and-color-frontier).
 

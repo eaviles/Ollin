@@ -22,6 +22,17 @@ import COllinShaders
 /// (`layer.filtered(.shader(s))`, read with `sample(info, uv)`), two make it a
 /// *combine* (`a.combined(with: b, .shader(s))`, read with `sample` + `sampleAux`).
 ///
+/// The same value is also *paint*: `fill(shader)` and `stroke(shader)` run it at
+/// every pixel a shape covers, with `uv` running 0...1 across the shape's own
+/// bounding box (so it turns with the shape under a transform) and three more
+/// fields in `info`: `position`, the pixel in canvas points; `distance`, the
+/// signed distance to the shape's edge in the shape's own units (negative
+/// inside); and `along`, the 0...1 fraction along a stroke. Coverage is applied
+/// after `shade` returns, so a shader-painted edge is as sharp as a flat one. A
+/// mesh under `fill(shader)` draws with the shader as its surface texture, read
+/// at the mesh's uvs. Everything below applies to the paint form too: the
+/// library is spliced in, `params` travel, and a compile error names your line.
+///
 /// Those two return straight sRGB, the space the shader works in. `sampleRaw(info, uv)`
 /// and `sampleAuxRaw(info, uv)` return the layer's stored values untouched, which is
 /// what a layer holding *data* needs: a measured `.distanceField` keeps a distance in
@@ -33,13 +44,13 @@ import COllinShaders
 /// compile error is reported at the file and line you wrote the shader in (the
 /// sketch's own `.swift` for an inline string, the `.metal` file for a resource),
 /// so the reported `file:line` is clickable in an IDE.
-public struct Shader: Sendable {
+public struct Shader: Hashable, Sendable {
 
     /// Which sections of Ollin's shader library to splice into the shader before
     /// it compiles. Every helper is dead-code-eliminated if unused, so on the GPU
     /// the choice costs nothing; it only trims *compile* time, which matters when
     /// many shaders compile or hot-reload at once. The default splices everything.
-    public struct Modules: OptionSet, Sendable {
+    public struct Modules: OptionSet, Hashable, Sendable {
         public let rawValue: Int
         public init(rawValue: Int) { self.rawValue = rawValue }
         /// Cosine palette and the OKLab / OKLCH perceptual color conversions.

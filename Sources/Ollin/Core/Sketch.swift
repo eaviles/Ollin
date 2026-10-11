@@ -2924,7 +2924,14 @@ open class Sketch {
     /// shapes evaluate it per pixel; the tessellated paths (`drawPolygon`,
     /// `drawShape`, curves) shade it across their vertices.
     public func fill(_ gradient: Gradient) { drawer.fill(gradient) }
-    /// Fill with a `Paint` — a flat color or a gradient carried as one value.
+    /// Fill with a shader: its `shade(uv, info)` runs at every pixel a shape
+    /// covers, `uv` 0...1 across the shape's own bounding box, with the pixel's
+    /// canvas position, its signed distance to the edge, and (on a stroke) its
+    /// fraction along the path in `info`. Coverage is applied after, so the edge
+    /// is as sharp as a flat fill's. A mesh takes the shader as its surface
+    /// texture, read at its uvs. See `Shader`.
+    public func fill(_ shader: Shader) { drawer.fill(shader) }
+    /// Fill with a `Paint`: a flat color, a gradient, or a shader carried as one value.
     public func fill(_ paint: Paint) { drawer.fill(paint) }
     public func noFill() { drawer.noFill() }
     public func stroke(_ color: Color) { drawer.stroke(color) }
@@ -2932,7 +2939,10 @@ open class Sketch {
     /// start-to-end along lines, curves, and stroked paths, and sweeps around
     /// region shapes' outlines.
     public func stroke(_ gradient: Gradient) { drawer.stroke(gradient) }
-    /// Stroke with a `Paint` — a flat color or a gradient carried as one value.
+    /// Stroke with a shader (see `fill(_ shader:)`): `info.along` runs 0...1 along
+    /// the stroke and `info.distance` across it, zero on the outline.
+    public func stroke(_ shader: Shader) { drawer.stroke(shader) }
+    /// Stroke with a `Paint`: a flat color, a gradient, or a shader carried as one value.
     public func stroke(_ paint: Paint) { drawer.stroke(paint) }
     public func noStroke() { drawer.noStroke() }
     /// Set the stroke's width. A 2D stroke reads it in the drawing's own units,

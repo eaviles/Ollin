@@ -4,7 +4,7 @@
 
 ## User-supplied shaders
 
-Write your own **fragment shader** and run it through Ollin's effect graph. You supply a small Metal function, and Ollin wraps it into a full GPU pass. You get the speed of a hand-written shader without writing the pipeline boilerplate, and you get clear errors when something doesn't compile.
+Write your own **fragment shader** and run it through Ollin's effect graph, or hand it to `fill(_:)` and `stroke(_:)` as the paint a shape is drawn with. You supply a small Metal function, and Ollin wraps it into a full GPU pass. You get the speed of a hand-written shader without writing the pipeline boilerplate, and you get clear errors when something doesn't compile.
 
 ```swift
 let plasma = Shader("""
@@ -28,6 +28,7 @@ override func draw() {
 
 - [The contract: `shade(uv, info)`](#the-contract)
 - [Generator, filter, combine](#generator-filter-combine)
+- [A shader as paint](#a-shader-as-paint)
 - [`ShaderInfo` and params](#shaderinfo-and-params)
 - [The shader library](#the-shader-library)
 - [Inline source or a `.metal` file](#inline-source-or-a-metal-file)
@@ -96,9 +97,25 @@ Read that layer with `sampleAux`, not the raw form: a byte image is stored the w
 
 ---
 
+## A shader as paint
+
+The same `Shader` is paint. `fill(shader)` and `stroke(shader)` run `shade` at every pixel a shape covers, with `uv` across the shape's own bounding box rather than the layer, and three more fields in `info`: `position` (the pixel in canvas points), `distance` (the signed distance to the shape's edge in its own units, negative inside; across a stroke, zero on its centerline), and `along` (the `0...1` fraction along a stroke). Coverage is applied after `shade` returns, so the edge stays sharp, and a mesh takes the shader as its surface texture. The contract is the same: return straight sRGB, read `params` with `param(info, i)`, and the library is spliced in.
+
+```swift
+fill(Shader("""
+float4 shade(float2 uv, ShaderInfo info) {
+    float edge = smoothstep(0.0, -6.0, info.distance);          // a soft rim, 6 units in
+    return float4(palette(uv.x, float3(0.5), float3(0.5), float3(1.0), float3(0.0, 0.33, 0.67)) * edge, 1.0);
+}
+"""))
+drawStar(300, 300, 120, 50, points: 6)
+```
+
+[Color § A shader as paint](../Drawing/Color.md#shader-paint) has the whole account: the box, the three fields path by path, what shares a run, and what a vector or web export does with one.
+
 ## `ShaderInfo` and params
 
-As well as the per-frame fields, you can pass your own floats and read them with `param(info, i)`:
+As well as the per-frame fields (and, under a paint, `info.position`, `info.distance`, and `info.along`), you can pass your own floats and read them with `param(info, i)`:
 
 ```swift
 let warp = Shader(metalSource, params: [0.3, 1.2, 6.0])
@@ -210,6 +227,7 @@ To try a shader without launching a sketch at all, hand the file to [`ollin chec
 
 ### See also
 
+- [A shader as paint](../Drawing/Color.md#shader-paint): `fill(shader)` / `stroke(shader)`, the shape-box `uv`, and `info.position` / `info.distance` / `info.along`
 - [Checking a shader](../Tools/ShaderCheck.md): compile a `.metal` file from the command line and see what it reads
 - [Layered effects](../Drawing/Effects.md): the off-screen layers, filters, and `compose { }` your shader plugs into
 - [Compute & GPU particles](./Compute.md): runtime-compiled compute kernels, the sibling page for buffer and texture work

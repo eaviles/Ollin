@@ -475,6 +475,8 @@ enum OllinVersion
 enum Paint: Equatable, Hashable, Sendable
   case color(Color)
   case gradient(Gradient)
+  case shader(Shader)
+  var shader: Shader? { get }
   var solidColor: Color? { get }
 enum PaletteFormat: Equatable, Hashable, Sendable
   case ase
@@ -2308,6 +2310,7 @@ open class Sketch: Sendable
   func fill(_: Color)
   func fill(_: Gradient)
   func fill(_: Paint)
+  func fill(_: Shader)
   func flowField(scale: Double = default, turns: Double = default, z: Double = default) -> FlowField
   func fog(_: Color, density: Double = default, heightFalloff: Double = default)
   func fog(_: Fog)
@@ -2600,6 +2603,7 @@ open class Sketch: Sendable
   func stroke(_: Color)
   func stroke(_: Gradient)
   func stroke(_: Paint)
+  func stroke(_: Shader)
   func strokeAlign(_: StrokeAlign)
   func strokeBrush(_: Brush)
   func strokeCap(_: StrokeCap)
@@ -6039,10 +6043,10 @@ struct SeamMap: Sendable
   let width: Int
   var size: Int { get }
   var sizes: ClosedRange<Int> { get }
-struct Shader: Sendable
+struct Shader: Equatable, Hashable, Sendable
   init(_: String, params: [Float] = default, using: Shader.Modules = default, file: String = default, line: Int = default)
   init(resource: String, in: Foundation.Bundle, params: [Float] = default, using: Shader.Modules = default, file: String = default, line: Int = default)
-  struct Modules: Equatable, ExpressibleByArrayLiteral, OptionSet, RawRepresentable, Sendable, SetAlgebra
+  struct Modules: Equatable, ExpressibleByArrayLiteral, Hashable, OptionSet, RawRepresentable, Sendable, SetAlgebra
     init(rawValue: Int)
     let rawValue: Int
     static let all: Shader.Modules

@@ -1,18 +1,36 @@
 import Foundation
 import simd
 
-/// What `fill(_:)` and `stroke(_:)` paint with: a flat `Color` or a `Gradient`.
-/// The color and gradient overloads cover most call sites; `Paint` itself is for
-/// passing either around as one value (a palette of paints, a paint parameter).
+/// What `fill(_:)` and `stroke(_:)` paint with: a flat `Color`, a `Gradient`, or
+/// a `Shader` run per pixel in the shape's own coordinates. The color, gradient,
+/// and shader overloads cover most call sites; `Paint` itself is for passing any
+/// of them around as one value (a palette of paints, a paint parameter).
 public enum Paint: Equatable, Hashable, Sendable {
     case color(Color)
     case gradient(Gradient)
+    /// A shader as paint: its `shade(uv, info)` runs at every pixel the shape
+    /// covers, with `uv` running 0...1 across the shape's own bounding box and
+    /// `info.position`, `info.distance`, and `info.along` saying where the pixel
+    /// is on the canvas, how far it is from the shape's edge, and how far along
+    /// a stroke. Coverage is applied after, so the shape's edge stays as sharp
+    /// as a flat fill's. See `Shader`.
+    case shader(Shader)
 
-    /// The flat color, or `nil` for a gradient.
+    /// The flat color, or `nil` for a gradient or a shader.
     public var solidColor: Color? {
         if case .color(let c) = self { return c }
         return nil
     }
+
+    /// The shader, or `nil` for a color or a gradient.
+    public var shader: Shader? {
+        if case .shader(let s) = self { return s }
+        return nil
+    }
+
+    /// What a shader paint becomes where no program runs per pixel (a vector
+    /// export, an embroidery file): middle gray, one tone standing for the shape.
+    static let shaderStandIn = Color(white: 0.5)
 }
 
 /// A gradient paint: a `Ramp` of colors laid over a geometry: a line between

@@ -175,6 +175,7 @@ let package = Package(
         example("Shaders/HelloShader", resources: [.copy("ripple.metal")]),
         example("Shaders/ShaderFilter"),
         example("Shaders/ShaderBlend"),
+        example("Shaders/ShaderPaint"),
         example("Shaders/VisualSynth"),
         // The Visual chain's catalog: sources, warps, color, combines, and
         // modulations, a family at a time.

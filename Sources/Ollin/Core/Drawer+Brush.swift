@@ -69,17 +69,17 @@ extension Drawer {
         strokeOpacityShape = .uniform
 
         // A stamp's own alpha multiplies the stroke's, so a translucent brush and a
-        // faint moment compound the way a second pass of ink would. A gradient
-        // paints each stamp in drawing space, so it already reads the right color
-        // where the stamp lands; what it cannot do is take the opacity, which would
-        // mean rewriting its ramp.
+        // faint moment compound the way a second pass of ink would. A gradient or
+        // a shader paints each stamp in drawing space, so it already reads the
+        // right color where the stamp lands; what it cannot do is take the opacity,
+        // which would mean rewriting its ramp or its code.
         var warnedAboutGradientOpacity = false
         func inked(_ opacity: Double) -> Paint {
             guard opacity < 1 else { return paint }
             guard case .color(let c) = paint else {
                 if !warnedAboutGradientOpacity {
                     warnedAboutGradientOpacity = true
-                    noteOnce("A brush varies opacity only over a solid stroke color; a gradient stroke stamps at the ramp's own alpha.")
+                    noteOnce("A brush varies opacity only over a solid stroke color; a gradient or shader stroke stamps at the paint's own alpha.")
                 }
                 return paint
             }

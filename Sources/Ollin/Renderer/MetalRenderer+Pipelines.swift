@@ -773,7 +773,11 @@ extension MetalRenderer {
                                         variant: UserShaderVariant,
                                         sourceName: String = "Shader",
                                         sourceStartLine: Int = 1) -> (source: String, userLineOffset: Int) {
-        let lib = userShaderLibraryText(modules)
+        // A paint runs inside the shape fragments, so its library carries the two
+        // 2D segments that define them (and the distance catalog they read).
+        let lib = variant == .paint
+            ? userShaderLibraryText(modules.union(.sdf)) + "\n" + paintSegmentsText()
+            : userShaderLibraryText(modules)
         let name = sourceName.isEmpty ? "Shader" : sourceName
         let escaped = name
             .replacingOccurrences(of: "\\", with: "\\\\")
@@ -808,9 +812,33 @@ extension MetalRenderer {
     /// Forget the composed library text, so the next user shader reads it again.
     static func dropUserShaderLibraryText() {
         userShaderLibraryTexts.removeAll()
+        paintSegments = nil
     }
 
     private static var userShaderLibraryTexts: [Int: String] = [:]
+
+    /// The two 2D segments a paint shader's library carries beside the helper
+    /// library: `ShaderCore.metal` (the triangle and fringe vertex stages and their
+    /// varyings) and `ShaderShapes.metal` (the SDF vertex stage, the coverage and
+    /// distance catalog, `resolvePaint`). Their quoted `#include` lines are
+    /// dropped, since the library they name is already in the composed source
+    /// ahead of them and the runtime compiler has no include path; the angle
+    /// includes (`<metal_mesh>`) stay. Read once and kept, like the library text.
+    static func paintSegmentsText() -> String {
+        if let cached = paintSegments { return cached }
+        var out = ""
+        for name in ["ShaderCore", "ShaderShapes"] {
+            guard let url = OllinResources.bundle.url(forResource: name, withExtension: "metal"),
+                  let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
+            let kept = text.split(separator: "\n", omittingEmptySubsequences: false)
+                .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("#include \"") }
+            out += kept.joined(separator: "\n") + "\n"
+        }
+        paintSegments = out
+        return out
+    }
+
+    private static var paintSegments: String?
 
     /// Keep only the requested sections of the shader library, by the
     /// `// OLLIN_LIB_BEGIN <module>` / `// OLLIN_LIB_END <module>` markers. Unmarked
@@ -865,6 +893,11 @@ extension MetalRenderer {
         switch variant {
         case .generator:
             layerFields = ""
+            sampleReaders = ""
+        case .paint:
+            // Where the pixel is on the canvas, how far it is from the shape's edge
+            // (its own units, negative inside), and how far along a stroke (0...1).
+            layerFields = "    float2 position; float distance; float along;\n"
             sampleReaders = ""
         case .filter:
             layerFields = "    texture2d<float> in0; sampler in0samp;\n"
@@ -992,10 +1025,11 @@ extension MetalRenderer {
     /// `ShaderInfo` from the uniforms, call the user's `shade`, and convert its
     /// straight sRGB result to the premultiplied linear an Ollin layer composites in.
     private static func userShaderWrapperTail(_ variant: UserShaderVariant) -> String {
+        if variant == .paint { return paintWrapperTail }
         let textureParams: String
         let layerAssign: String
         switch variant {
-        case .generator:
+        case .generator, .paint:
             textureParams = ""
             layerAssign = ""
         case .filter:
@@ -1047,6 +1081,139 @@ extension MetalRenderer {
             for (uint i = 0u; i < OLLIN_SHADER_PARAM_ROWS; ++i) info.params[i] = ollin_params[i];
         \(layerAssign)\(finish)}
         """
+    }
+
+    /// The generated fragments of a paint library, one per 2D path, each the twin
+    /// of the framework fragment it stands in for with the shader's `shade` in
+    /// the paint's place. The vertex stages are the framework's own (`ollin_vertex`,
+    /// `ollin_fringe_vertex`, `ollin_sdf_vertex`), compiled into this library from
+    /// the spliced segments, so a paint batch's geometry is placed exactly as a
+    /// plain one's. Under a shader paint a triangle or fringe vertex's `color` is
+    /// (u, v, along, distance) and `aa.y` the stroke's opacity (see OllinVertex);
+    /// an SDF instance's uv is its local point over the box `size` spans, and its
+    /// edge distance is `ollin_sdf_signed_edge`. Coverage is applied after
+    /// `shade` returns, as the plain fragments apply it after their paint, so a
+    /// constant shader draws what a flat color draws, byte for byte. The user's
+    /// `params` arrive at fragment buffer 0 and the per-frame uniforms at 1.
+    private static let paintWrapperTail = """
+    static inline ShaderInfo ollin_paint_info(constant float4 *params,
+                                              constant OllinShaderUniforms &u,
+                                              float2 position, float distance, float along) {
+        ShaderInfo info;
+        info.resolution = u.resolution;
+        info.mouse = u.mouse;
+        info.time = u.time;
+        info.deltaTime = u.deltaTime;
+        info.frame = u.frame;
+        info.paramCount = u.paramCount;
+        for (uint i = 0u; i < OLLIN_SHADER_PARAM_ROWS; ++i) info.params[i] = params[i];
+        info.position = position;
+        info.distance = distance;
+        info.along = along;
+        return info;
+    }
+    // A fill on the triangle path: `shade` in place of the vertex color.
+    fragment float4 ollin_paint_fragment(VertexOut in [[stage_in]],
+                                         constant float4 *ollin_params [[buffer(0)]],
+                                         constant OllinShaderUniforms &ollin_u [[buffer(1)]]) {
+        ShaderInfo info = ollin_paint_info(ollin_params, ollin_u, in.canvas, in.color.w, in.color.z);
+        float4 c = shade(in.color.xy, info);
+        return float4(srgbToLinear(c.rgb), c.a);
+    }
+    // A stroke on the fringe path: the shader's alpha times the opacity profile
+    // and the perceptual coverage, the two channels kept apart as the plain
+    // fringe fragment keeps them.
+    fragment float4 ollin_paint_fringe_fragment(FringeVertexOut in [[stage_in]],
+                                                constant float4 *ollin_params [[buffer(0)]],
+                                                constant OllinShaderUniforms &ollin_u [[buffer(1)]]) {
+        ShaderInfo info = ollin_paint_info(ollin_params, ollin_u, in.canvas, in.color.w, in.color.z);
+        float4 c = shade(in.color.xy, info);
+        float a = c.a * in.opacity * perceptualCoverage(clamp(in.coverage, 0.0, 1.0));
+        return float4(srgbToLinear(c.rgb), a);
+    }
+    // An analytic shape: the slot (or both) whose kind is 5 is shaded, the other
+    // resolved as the plain fragment resolves it, then the same composite.
+    fragment float4 ollin_paint_sdf_fragment(SDFOut in [[stage_in]],
+                                             texture2d<float> gradients [[texture(0)]],
+                                             sampler gradientSampler [[sampler(0)]],
+                                             constant float4 *ollin_params [[buffer(0)]],
+                                             constant OllinShaderUniforms &ollin_u [[buffer(1)]]) {
+        float2 p = in.local;
+        float fillCov = 0.0;
+        float strokeCov = 0.0;
+        float pathT = 0.0;
+        bool wantsPath = in.fillKind == 3u || in.strokeKind == 3u || in.strokeKind == 5u;
+        ollin_sdf_coverage(in.shape, in.align, p, in.size, in.param0, in.param1, in.param2,
+                           in.strokeWidth, in.extra, in.bandWidth, wantsPath,
+                           fillCov, strokeCov, pathT);
+        float2 uv = p / max(in.size * 2.0, float2(1e-6)) + 0.5;
+        float edge = ollin_sdf_signed_edge(in.shape, p, in.size, in.param0, in.param1, in.param2,
+                                           in.extra, in.bandWidth);
+        float4 fillPaint;
+        if (in.fillKind == 5u) {
+            ShaderInfo info = ollin_paint_info(ollin_params, ollin_u, in.canvas, edge, 0.0);
+            float4 c = shade(uv, info);
+            fillPaint = float4(srgbToLinear(c.rgb), c.a);
+        } else {
+            fillPaint = resolvePaint(in.fillColor, in.fillKind, in.fillRow, p, pathT, gradients, gradientSampler);
+        }
+        float4 strokePaint;
+        if (in.strokeKind == 5u) {
+            ShaderInfo info = ollin_paint_info(ollin_params, ollin_u, in.canvas, edge, pathT);
+            float4 c = shade(uv, info);
+            strokePaint = float4(srgbToLinear(c.rgb), c.a);
+        } else {
+            strokePaint = resolvePaint(in.strokeColor, in.strokeKind, in.strokeRow, p, pathT, gradients, gradientSampler);
+        }
+        float fillA = fillPaint.a * fillCov;
+        float strokeA = strokePaint.a * strokeCov;
+        float3 premul = strokePaint.rgb * strokeA + fillPaint.rgb * fillA * (1.0 - strokeA);
+        float a = strokeA + fillA * (1.0 - strokeA);
+        if (a <= 0.0) { discard_fragment(); }
+        return float4(premul / a, a);
+    }
+    """
+
+    /// The pipeline a batch drawn under `fill(shader)` / `stroke(shader)` takes:
+    /// the shader's paint library (compiled once per composed source, like every
+    /// user shader) built against `key`'s blend, depth, stencil, and color format,
+    /// with the framework's own vertex stage for the batch's path and the paint
+    /// fragment for it. Cached per shader and key. `nil` when the shader does not
+    /// compile; the error is recorded and reported like a layer shader's, and the
+    /// batch is skipped, so a broken paint draws nothing rather than something else.
+    func paintPipeline(for shader: Shader, kind: GeometryKind,
+                       key: PipelineKey) -> MTLRenderPipelineState? {
+        let (library, hash) = userShaderLibrary(for: shader, variant: .paint)
+        guard let library else {
+            reportUserShaderError(hash)
+            return nil
+        }
+        let cacheKey = PaintPipelineKey(hash: hash, key: key)
+        if let state = paintPipelines[cacheKey] { return state }
+        let vertex: String, fragment: String
+        switch kind {
+        case .sdf: (vertex, fragment) = ("ollin_sdf_vertex", "ollin_paint_sdf_fragment")
+        case .fringe: (vertex, fragment) = ("ollin_fringe_vertex", "ollin_paint_fringe_fragment")
+        default: (vertex, fragment) = ("ollin_vertex", "ollin_paint_fragment")
+        }
+        do {
+            let state = try makePipeline(vertex: vertex, fragment: fragment, using: library,
+                                         premultiplied: false, blend: key.blend,
+                                         depthFormat: key.depthFormat,
+                                         stencilFormat: key.stencilFormat,
+                                         colorFormat: key.colorFormat, peel: key.peel)
+            paintPipelines[cacheKey] = state
+            return state
+        } catch {
+            // The library compiled, so this is the pipeline build itself; say so
+            // once, against the shader's own file.
+            let message = "\(shader.diagnosticSourceName):\(shader.diagnosticStartLine): "
+                + "the paint pipeline could not be built: \((error as NSError).localizedDescription)"
+            userShaderErrors[hash] = ShaderCompileError(message: message,
+                                                        raw: (error as NSError).localizedDescription)
+            reportUserShaderError(hash)
+            return nil
+        }
     }
 
     /// Tidy a Metal compiler diagnostic for a user shader: relabel and rebase the

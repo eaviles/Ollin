@@ -10,13 +10,51 @@ import OllinExpander
 extension Drawer {
     // MARK: Tessellation helpers
 
+    /// The box a shader paint's uv spans: the painted shape's bounds in its own
+    /// drawing space, so uv 0...1 runs across the shape and turns with it under a
+    /// transform (the SDF path reads the same box from its instance `size`). An
+    /// open stroke (a line, a polyline, a curve) has no interior, so its box is
+    /// the stroke's footprint, its points inflated by half the width; a closed
+    /// outline's box is the outline's, the box its fill reads too.
+    struct PaintBox {
+        var origin: Vector2
+        var size: Vector2
+
+        static func around(_ points: [Vector2], inflate: Double = 0) -> PaintBox {
+            guard let first = points.first else { return PaintBox(origin: .zero, size: Vector2(1, 1)) }
+            var lo = first, hi = first
+            for p in points.dropFirst() {
+                lo = Vector2(min(lo.x, p.x), min(lo.y, p.y))
+                hi = Vector2(max(hi.x, p.x), max(hi.y, p.y))
+            }
+            lo = lo - Vector2(inflate, inflate)
+            hi = hi + Vector2(inflate, inflate)
+            // A flat axis keeps a finite span, so uv on it reads 0 rather than NaN.
+            return PaintBox(origin: lo, size: Vector2(max(hi.x - lo.x, 1e-9), max(hi.y - lo.y, 1e-9)))
+        }
+
+        /// `p` in the box's 0...1 frame.
+        func uv(_ p: Vector2) -> SIMD2<Float> {
+            SIMD2(Float((p.x - origin.x) / size.x), Float((p.y - origin.y) / size.y))
+        }
+    }
+
+    /// What a fill on this path reads as its edge distance: it has no measured
+    /// edge (its vertices all sit on the outline), so a shader sees it far inside.
+    static let farInside: Float = -1e6
+
     /// A paint resolved for CPU-side, per-vertex evaluation on the tessellated
     /// path. A solid paint returns its constant; a gradient samples its baked
     /// LUT row at the vertex position (linear/radial) or path parameter
     /// (along-path), so the tessellated path paints the same colors the SDF
-    /// fragment derives analytically.
+    /// fragment derives analytically; a shader paint carries no color at all but
+    /// the shape-local uv, the fraction along a stroke, and the edge distance,
+    /// which the shader's own pipeline reads (see `OllinVertex`).
     enum VertexPaint {
         case solid(SIMD4<Float>)
+        /// A shader paint over `box` (the shape's bounds; `nil` lets the stroke
+        /// path work the box out from the run it expands).
+        case shader(Shader, box: PaintBox?)
         case linear(origin: Vector2, dir: Vector2, invLen2: Double, baked: BakedGradient)
         case radial(center: Vector2, invRadius: Double, baked: BakedGradient)
         /// Along-path paint: stroked paths pass their arc-length fraction; fills
@@ -34,20 +72,33 @@ extension Drawer {
             switch self {
             case .along(let center, _): return (center, -.pi / 2)
             case .conic(let center, let startAngle, _): return (center, startAngle)
-            case .solid, .linear, .radial: return nil
+            case .solid, .linear, .radial, .shader: return nil
             }
         }
 
+        /// Whether the paint varies along a path and so wants the path subdivided
+        /// (a shader's uv is affine in position, so it interpolates exactly as is).
         var isGradient: Bool {
-            if case .solid = self { return false }
-            return true
+            switch self {
+            case .solid, .shader: return false
+            default: return true
+            }
         }
 
-        /// The paint color at a vertex position.
+        /// The shader, for a shader paint.
+        var shader: Shader? {
+            if case .shader(let s, _) = self { return s }
+            return nil
+        }
+
+        /// The paint color at a vertex position (a shader paint's uv and edge data).
         func color(at p: Vector2) -> SIMD4<Float> {
             switch self {
             case .solid(let c):
                 return c
+            case .shader(_, let box):
+                let uv = (box ?? PaintBox(origin: p, size: Vector2(1, 1))).uv(p)
+                return SIMD4<Float>(uv.x, uv.y, 0, Drawer.farInside)
             case .linear(let origin, let dir, let invLen2, let baked):
                 return baked.sample(((p.x - origin.x) * dir.x + (p.y - origin.y) * dir.y) * invLen2)
             case .radial(let center, let invRadius, let baked):
@@ -77,20 +128,30 @@ extension Drawer {
         }
 
         /// The paint color for a stroked-path vertex: along-path paint reads the
-        /// arc-length fraction `t`; the others read the position like a fill.
+        /// arc-length fraction `t`; the others read the position like a fill. A
+        /// shader paint carries `t` as `along`, and the offset it sits from the
+        /// path is zero here (the expander fills it in per emitted vertex).
         func color(at p: Vector2, pathT t: Double) -> SIMD4<Float> {
             if case .along(_, let baked) = self { return baked.sample(t) }
+            if case .shader(_, let box) = self {
+                let uv = (box ?? PaintBox(origin: p, size: Vector2(1, 1))).uv(p)
+                return SIMD4<Float>(uv.x, uv.y, Float(t), 0)
+            }
             return color(at: p)
         }
     }
 
     /// Resolve `paint` for per-vertex evaluation. `anchor` is the center an
     /// along-path gradient sweeps around when the geometry has no path parameter
-    /// (a fill's conic fallback); it's only evaluated in that case.
-    func vertexPaint(_ paint: Paint, anchor: @autoclosure () -> Vector2) -> VertexPaint {
+    /// (a fill's conic fallback), and `bounds` the box a shader paint's uv spans;
+    /// each is only evaluated for the paint that reads it.
+    func vertexPaint(_ paint: Paint, anchor: @autoclosure () -> Vector2,
+                     bounds: @autoclosure () -> PaintBox? = nil) -> VertexPaint {
         switch paint {
         case .color(let c):
             return .solid(c.simd4)
+        case .shader(let s):
+            return .shader(s, box: bounds())
         case .gradient(let g):
             let baked = gradientRow(for: g.ramp).baked
             switch g.geometry {
@@ -117,6 +178,17 @@ extension Drawer {
     /// ramp end its own piece is on, and each piece fans out from the cut.
     /// Every other paint emits the three corners as they are.
     func emitTriangle(_ a: Vector2, _ b: Vector2, _ c: Vector2, paint: VertexPaint) {
+        if case .shader(let shader, _) = paint {
+            // The run this triangle joins carries the shader (see `ensureBatch`);
+            // uv is affine in position, so the corners interpolate it exactly.
+            let saved = currentPaintShader
+            currentPaintShader = shader
+            emit(a.simd2, color: paint.color(at: a))
+            emit(b.simd2, color: paint.color(at: b))
+            emit(c.simd2, color: paint.color(at: c))
+            currentPaintShader = saved
+            return
+        }
         guard let (center, startAngle) = paint.sweep else {
             emit(a.simd2, color: paint.color(at: a))
             emit(b.simd2, color: paint.color(at: b))
@@ -178,6 +250,18 @@ extension Drawer {
 
     /// The center of `points`' bounding box — the conic anchor for an
     /// along-path fill on tessellated geometry.
+    /// Twice the signed area of the polygon `points` close: positive when the
+    /// points run clockwise on the screen (y down), the order most outlines are
+    /// drawn in, which puts the left normal of travel on the inside.
+    static func signedArea(_ points: [Vector2]) -> Double {
+        var sum = 0.0
+        for i in points.indices {
+            let a = points[i], b = points[(i + 1) % points.count]
+            sum += a.x * b.y - b.x * a.y
+        }
+        return sum
+    }
+
     static func boundsCenter(_ points: [Vector2]) -> Vector2 {
         guard let first = points.first else { return .zero }
         var lo = first, hi = first
@@ -220,9 +304,10 @@ extension Drawer {
     /// fringe fragment remaps to perceptual alpha), while `color` carries the
     /// stroke's rgb and its own paint alpha — the two kept separate so a translucent
     /// stroke composites at its true opacity.
-    private func emitFringe(_ position: SIMD2<Float>, cov: Float, color: SIMD4<Float>) {
+    private func emitFringe(_ position: SIMD2<Float>, cov: Float, opacity: Float = 0,
+                            color: SIMD4<Float>) {
         ensureBatch(.fringe)
-        let aa = SIMD2<Float>(cov, 0)
+        let aa = SIMD2<Float>(cov, opacity)
         if transformIsIdentity {
             vertices.append(OllinVertex(position: position, aa: aa, color: color))
         } else {
@@ -323,6 +408,9 @@ extension Drawer {
         // the two share one measurement of the path.
         let varyingOpacity = !strokeOpacityShape.isUniform
         var cols = [SIMD4<Float>](repeating: .zero, count: n)
+        // The opacity profile per path vertex, kept beside the color for a shader
+        // paint, whose vertex has no alpha of its own to fold it into.
+        var opacityAt = [Float](repeating: 1, count: n)
         if case .solid(let c) = paint, !varyingOpacity {
             for i in 0..<n { cols[i] = c }
         } else {
@@ -336,7 +424,11 @@ extension Drawer {
                 // The paint's own alpha stays whole and the recorded opacity scales
                 // it, so a translucent brush and a faint moment multiply the way a
                 // second pass of ink would.
-                if varyingOpacity { color.w *= Float(strokeOpacityShape(t)) }
+                if varyingOpacity {
+                    let opacity = Float(strokeOpacityShape(t))
+                    color.w *= opacity
+                    opacityAt[i] = opacity
+                }
                 cols[i] = color
             }
         }
@@ -356,12 +448,33 @@ extension Drawer {
         let scale = ctmScale
         let local = pts.map { Point2D($0.x, $0.y) }
         let start = vertices.count
-        StrokeExpander.expand(local, closed: closed,
-                              halfWidths: hws, colors: cols, fringe: fw, ctmScale: scale,
-                              join: join, cap: cap) { v in
-            emitFringe(v.position, cov: v.coverage, color: v.color)
+        if case .shader(let shader, let box) = paint {
+            // A shader stroke: each expanded vertex carries its own uv over the box
+            // (the outline's, or this run's footprint), its path vertex's fraction
+            // along the run, and its signed offset from the centerline, negative
+            // inside a closed outline (the expander signs it toward the left normal,
+            // which is inside on a clockwise outline, the usual drawing order), with
+            // the opacity profile beside the coverage in `aa.y`.
+            let box = box ?? PaintBox.around(pts, inflate: closed ? 0 : (hws.max() ?? 0) + fw / 2)
+            let inward: Float = closed && Drawer.signedArea(pts) > 0 ? -1 : 1
+            let saved = currentPaintShader
+            currentPaintShader = shader
+            StrokeExpander.expand(local, closed: closed,
+                                  halfWidths: hws, colors: cols, fringe: fw, ctmScale: scale,
+                                  join: join, cap: cap) { v, source in
+                let uv = box.uv(Vector2(Double(v.position.x), Double(v.position.y)))
+                emitFringe(v.position, cov: v.coverage, opacity: opacityAt[source],
+                           color: SIMD4<Float>(uv.x, uv.y, cols[source].z, v.offset * inward))
+            }
+            currentPaintShader = saved
+        } else {
+            StrokeExpander.expand(local, closed: closed,
+                                  halfWidths: hws, colors: cols, fringe: fw, ctmScale: scale,
+                                  join: join, cap: cap) { v in
+                emitFringe(v.position, cov: v.coverage, color: v.color)
+            }
         }
-        if recordsWebSources {
+        if recordsWebSources, paint.shader == nil {
             // One color when the paint is solid and the opacity does not vary;
             // one half-width when no profile is on.
             var single: SIMD4<Float>? = nil
@@ -420,8 +533,13 @@ extension Drawer {
     func appendStrokedPath(_ points: [Vector2], closed: Bool,
                                    half: Double, paint: VertexPaint) {
         // Emits only triangles into one batch; symmetry replicates the whole
-        // stroke as a range copy (see `replicated`).
+        // stroke as a range copy (see `replicated`). A shader paint's run carries
+        // its shader; its quads read the path vertex's uv at both ends, so across
+        // a glyph outline's thin stroke the uv is the path's, and the offset zero.
+        let saved = currentPaintShader
+        if let shader = paint.shader { currentPaintShader = shader }
         replicated { appendStrokedPathSingle(points, closed: closed, half: half, paint: paint) }
+        currentPaintShader = saved
     }
 
     private func appendStrokedPathSingle(_ points: [Vector2], closed: Bool,

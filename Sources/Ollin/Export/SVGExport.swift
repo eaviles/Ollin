@@ -143,12 +143,14 @@ func applyHatching(_ commands: [SVGCommand], _ options: Hatching) -> [SVGCommand
     return out
 }
 
-/// A paint's representative color for tone decisions: the color itself, or a
-/// gradient's ramp midpoint.
+/// A paint's representative color for tone decisions: the color itself, a
+/// gradient's ramp midpoint, or middle gray for a shader (a vector document
+/// has no per-pixel program, so it stands for the shape as ink of one tone).
 private func paintTone(_ paint: Paint) -> Color {
     switch paint {
     case .color(let c): return c
     case .gradient(let g): return g.ramp.color(at: 0.5)
+    case .shader: return Paint.shaderStandIn
     }
 }
 
@@ -492,7 +494,7 @@ private func svgElement(_ c: RecordedSVG, _ ids: [Gradient: String]) -> String {
 
 /// A paint as an SVG paint value: a color, or a gradient def reference. An
 /// unregistered gradient (an along-path paint that had no path) falls back to
-/// its ramp midpoint.
+/// its ramp midpoint, and a shader to middle gray (`Paint.shaderStandIn`).
 private func paintValue(_ paint: Paint, _ ids: [Gradient: String]) -> String {
     switch paint {
     case .color(let c):
@@ -500,6 +502,8 @@ private func paintValue(_ paint: Paint, _ ids: [Gradient: String]) -> String {
     case .gradient(let g):
         if let id = ids[g] { return "url(#\(id))" }
         return svgColor(g.ramp.color(at: 0.5))
+    case .shader:
+        return svgColor(Paint.shaderStandIn)
     }
 }
 

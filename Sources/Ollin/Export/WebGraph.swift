@@ -741,6 +741,9 @@ final class WebGraphRecorder {
                 let batch = batches[i]
                 if batch.kind == .clipPush || batch.kind == .clipPop || batch.clipLevel > 0 { throw refuse("withClip") }
                 if batch.depth != nil { throw refuse("depth(at:)") }
+                // A shader paint is a program of its own per shape, which the page's
+                // shape pipelines do not carry; the export stops and names the call.
+                if batch.paintShader != nil { throw refuse("fill(Shader) or stroke(Shader) (a shader as paint)") }
                 let blend = WebBlend.index(of: batch.blendMode)
                 switch batch.kind {
                 case .sdf:
@@ -774,6 +777,9 @@ final class WebGraphRecorder {
                     // The recording's rows are its own table, renumbered like a frame's.
                     let recordingRows = recording.gradientRows.map { gradientRow($0) }
                     for (j, run) in inner.enumerated() {
+                        if run.paintShader != nil {
+                            throw refuse("fill(Shader) or stroke(Shader) (a shader as paint) inside drawBatch")
+                        }
                         let next = j + 1 < inner.count ? inner[j + 1] : nil
                         let runBlend = WebBlend.index(of: run.blendMode)
                         switch run.kind {

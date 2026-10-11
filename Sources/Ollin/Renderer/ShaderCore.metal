@@ -73,6 +73,8 @@ static inline float4 finalizeColor(float4 linearColor, float2 fragCoord) {
 struct VertexOut {
     float4 position [[position]];
     float4 color;
+    float2 canvas;       // the vertex in canvas points (after a replay transform), read
+                         // by the shader-paint fragment as `info.position`; unread here
 };
 
 vertex VertexOut ollin_vertex(uint vertexID [[vertex_id]],
@@ -97,6 +99,7 @@ vertex VertexOut ollin_vertex(uint vertexID [[vertex_id]],
     VertexOut out;
     out.position = float4(ndc, uniforms.clipDepth, 1.0);
     out.color = v.color;
+    out.canvas = p;
     return out;
 }
 
@@ -122,6 +125,7 @@ vertex VertexOut ollin_clip_cover_vertex(uint vertexID [[vertex_id]]) {
     VertexOut out;
     out.position = float4(corners[vertexID], 0.0, 1.0);
     out.color = float4(0.0);
+    out.canvas = float2(0.0);
     return out;
 }
 
@@ -135,8 +139,12 @@ vertex VertexOut ollin_clip_cover_vertex(uint vertexID [[vertex_id]]) {
 // translucent strokes composite correctly), the two channels kept separate.
 struct FringeVertexOut {
     float4 position [[position]];
-    float4 color;        // rgb = sRGB stroke color, a = paint alpha
+    float4 color;        // rgb = sRGB stroke color, a = paint alpha (a shader paint
+                         // carries (u, v, along, distance) here instead; see OllinVertex)
     float coverage;      // AA fringe coverage; perceptualCoverage applied per-pixel
+    float opacity;       // a stroke opacity profile's value, read by the shader-paint
+                         // fragment alone (the plain path folds it into color.a)
+    float2 canvas;       // the vertex in canvas points, the shader-paint `info.position`
 };
 
 vertex FringeVertexOut ollin_fringe_vertex(uint vertexID [[vertex_id]],
@@ -157,6 +165,8 @@ vertex FringeVertexOut ollin_fringe_vertex(uint vertexID [[vertex_id]],
     out.position = float4(ndc, uniforms.clipDepth, 1.0);
     out.color = v.color;
     out.coverage = v.aa.x;
+    out.opacity = v.aa.y;
+    out.canvas = p;
     return out;
 }
 

@@ -275,6 +275,13 @@ struct GeometryBatch {
     /// box is known (a kind placed on the GPU, a replayed batch), which such a
     /// pass reads as "anywhere".
     var worldBounds: Box3?
+    /// The shader a `.sdf`, `.triangles`, or `.fringe` run is painted with
+    /// (`fill(shader)` / `stroke(shader)`): the run draws through that shader's
+    /// paint pipeline, its vertices or instances carrying the shape-local uv and
+    /// the edge distance where a color would go (see `OllinVertex`). `nil` for a
+    /// run painted by colors and gradients. A change of shader opens a fresh
+    /// batch, like a blend-mode change, so one run never carries two.
+    var paintShader: Shader?
 }
 
 /// `box` through `m` (the box around its eight moved corners), unioned onto
@@ -1112,6 +1119,20 @@ final class Drawer {
     /// The 2D depth of the currently-open batch, so a `depth(at:)`/`noDepth()`
     /// change opens a fresh batch even when kind and blend are unchanged.
     var currentBatchDepth: Float? = nil
+    /// The shader paint of the currently-open batch, so a change of shader (or a
+    /// step between a shader paint and a plain one) opens a fresh batch even when
+    /// kind, blend, and depth are unchanged: one run draws through one pipeline.
+    var currentBatchPaintShader: Shader? = nil
+    /// The shader the primitive being recorded is painted with, set around its
+    /// emission by the paint sites (`appendSDF`, `emitTriangle`, the fringe
+    /// expander) and read by `ensureBatch`; `nil` under a color or a gradient.
+    var currentPaintShader: Shader? = nil
+    /// The shaders baked this frame as mesh surfaces (`paintBake(_:)`), one layer
+    /// each however many meshes read it; per frame, like the layers themselves.
+    private var paintBakes: [Shader: RenderTarget] = [:]
+    /// The side, in pixels, of the square layer a shader fill is baked into for a
+    /// mesh to read as its texture.
+    static let paintBakeSize = 1024
 
     // MARK: Effects layers (render targets, per-frame)
 
@@ -1420,6 +1441,7 @@ final class Drawer {
         let savedBatchDepth = currentBatchDepth
         let savedBatchClip = currentBatchClip
         let savedBatchLightSet = currentBatchLightSet
+        let savedBatchPaintShader = currentBatchPaintShader
         var savedTargets: [TargetFrame] = []
         var savedClips: [ClipFrame] = []
         swap(&savedTargets, &targetStack)
@@ -1429,6 +1451,7 @@ final class Drawer {
         currentKind = nil
         currentBatchClip = 0
         currentBatchLightSet = 0
+        currentBatchPaintShader = nil
         isRecordingBatch = true
         pushState()
         transform = matrix_identity_float3x3
@@ -1462,6 +1485,7 @@ final class Drawer {
         currentBatchDepth = savedBatchDepth
         currentBatchClip = savedBatchClip
         currentBatchLightSet = savedBatchLightSet
+        currentBatchPaintShader = savedBatchPaintShader
         return recorded
     }
 
@@ -1556,20 +1580,22 @@ final class Drawer {
         return (index, baked)
     }
 
-    /// Open a new batch when the geometry kind, the blend mode, the 2D depth, *or*
-    /// the clip level changes; a no-op while all four are unchanged, so it's cheap
-    /// to call per primitive.
+    /// Open a new batch when the geometry kind, the blend mode, the 2D depth, the
+    /// clip level, *or* the shader paint changes; a no-op while all five are
+    /// unchanged, so it's cheap to call per primitive.
     func ensureBatch(_ kind: GeometryKind) {
         let set = kind.readsLighting ? resolveLightSet() : 0
         guard currentKind != kind || currentBatchBlend != currentBlend
             || currentBatchDepth != currentDepth
             || currentBatchClip != activeClipLevel
-            || currentBatchLightSet != set else { return }
+            || currentBatchLightSet != set
+            || currentBatchPaintShader != currentPaintShader else { return }
         currentKind = kind
         currentBatchLightSet = set
         currentBatchBlend = currentBlend
         currentBatchDepth = currentDepth
         currentBatchClip = activeClipLevel
+        currentBatchPaintShader = currentPaintShader
         batches.append(GeometryBatch(kind: kind, vertexStart: vertices.count,
                                      instanceStart: sdfInstances.count,
                                      imageStart: imageVertices.count,
@@ -1580,7 +1606,8 @@ final class Drawer {
                                      sdf3DGroupStart: sdf3DGroups.count,
                                      blendMode: currentBlend, depth: currentDepth,
                                      target: currentTarget, clipLevel: activeClipLevel,
-                                     lightSet: currentBatchLightSet))
+                                     lightSet: currentBatchLightSet,
+                                     paintShader: currentPaintShader))
     }
 
     /// Open a fresh `.image` batch carrying `image` as its texture. Unlike
@@ -2492,10 +2519,12 @@ final class Drawer {
 
     func fill(_ color: Color) { fillPaint = .color(color) }
     func fill(_ gradient: Gradient) { fillPaint = .gradient(gradient) }
+    func fill(_ shader: Shader) { fillPaint = .shader(shader) }
     func fill(_ paint: Paint) { fillPaint = paint }
     func noFill() { fillPaint = nil }
     func stroke(_ color: Color) { strokePaint = .color(color); strokeSet = true }
     func stroke(_ gradient: Gradient) { strokePaint = .gradient(gradient); strokeSet = true }
+    func stroke(_ shader: Shader) { strokePaint = .shader(shader); strokeSet = true }
     func stroke(_ paint: Paint) { strokePaint = paint; strokeSet = true }
     func noStroke() { strokePaint = nil }
     func strokeWeight(_ weight: Double, in units: StrokeUnits = .screen) {
@@ -3824,6 +3853,9 @@ final class Drawer {
             return
         }
         currentTarget?.needsDepth = true   // 3D in a target → that pass carries depth
+        // A shader fill is the mesh's surface: baked this frame and read as its
+        // base texture, so it takes the textured path below like any picture.
+        let mesh = paintedForShaderFill(mesh)
         // Wireframe draws the triangle edges only (the faces are see-through), so it
         // ignores the texture and lighting; otherwise a texture maps when matching UVs
         // are present, else a flat base-color surface. Wireframe and textured meshes
@@ -4243,6 +4275,9 @@ final class Drawer {
             return false
         }
         guard camera3D != nil, !mesh.isEmpty else { return false }
+        if fillPaint?.shader != nil {
+            noteOnce("fill(shader) paints a mesh through its texture, and an instanced mesh draws untextured; the copies draw white.")
+        }
         if !combineStack.isEmpty {
             if !warnedMeshInCombine {
                 print("Ollin: a mesh inside a combine block is ignored unless it's an SDF-able primitive (drawSphere/drawBox/drawRoundedBox/drawCylinder/drawCone/drawTorus/drawCapsule/drawOctahedron); a 3D combine merges those analytic fields.")
@@ -4593,13 +4628,46 @@ final class Drawer {
 
     /// The base color baked into a mesh's vertices: the current solid `fill`, or
     /// white for a gradient/`noFill` (mesh surfaces take a solid color — gradient
-    /// paint isn't supported on the 3D path). It's the surface color, flat without
-    /// lights and the diffuse color when lit.
+    /// paint isn't supported on the 3D path) and for a shader, whose picture
+    /// reaches the mesh as its texture instead (`paintBake(_:)`). It's the surface
+    /// color, flat without lights and the diffuse color when lit.
     private var meshSurfaceColor: Color {
         switch fillPaint {
         case .color(let c): return c
-        case .gradient, .none: return .white
+        case .gradient, .shader, .none: return .white
         }
+    }
+
+    /// The layer `shader` is baked into this frame for a mesh to read as its base
+    /// texture: a square generator pass at `paintBakeSize`, made once per frame
+    /// per shader however many meshes read it, and filled before any geometry
+    /// pass (generators go first), so a mesh in any layer samples this frame's
+    /// picture. A texture is what every pass a mesh is drawn by reads (the lit
+    /// fragment, a reflection hit, the tracer, a USD export), which is why the
+    /// shader reaches a mesh as one rather than as a fragment of its own.
+    private func paintBake(_ shader: Shader) -> RenderTarget {
+        if let baked = paintBakes[shader] { return baked }
+        let baked = generate(.shader(shader), width: Drawer.paintBakeSize,
+                             height: Drawer.paintBakeSize, scale: 1)
+        paintBakes[shader] = baked
+        return baked
+    }
+
+    /// `mesh` with a shader fill applied as its base texture (the shader baked
+    /// this frame), or the mesh as it is under a color or gradient fill. A mesh
+    /// with no uvs has nowhere to read the picture, so it draws white, like a
+    /// gradient fill, and says so once.
+    private func paintedForShaderFill(_ mesh: Mesh) -> Mesh {
+        guard let shader = fillPaint?.shader else { return mesh }
+        guard mesh.uvs.count == mesh.positions.count else {
+            noteOnce("fill(shader) paints a mesh through its uvs; this mesh has none and draws white.")
+            return mesh
+        }
+        var painted = mesh
+        var material = painted.material ?? MeshMaterial()
+        material.texture = paintBake(shader).image
+        painted.material = material
+        return painted
     }
 
     /// The current solid `fill` color (white for a gradient or `noFill`), for
@@ -4612,7 +4680,7 @@ final class Drawer {
     var meshStrokeColor: Color {
         switch strokePaint {
         case .color(let c): return c
-        case .gradient, .none: return meshSurfaceColor
+        case .gradient, .shader, .none: return meshSurfaceColor
         }
     }
 
@@ -4687,6 +4755,9 @@ final class Drawer {
         combineGroupModel = nil
         warnedMeshInCombine = false
         batches.removeAll(keepingCapacity: true)
+        currentPaintShader = nil
+        currentBatchPaintShader = nil
+        paintBakes.removeAll(keepingCapacity: true)
         webSources.removeAll(keepingCapacity: true)
         dispatches.removeAll(keepingCapacity: true)
         currentKind = nil

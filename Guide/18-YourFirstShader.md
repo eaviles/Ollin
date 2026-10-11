@@ -290,9 +290,9 @@ Three things follow from working on the image alone:
 
 It takes three arguments, and two of them matter most. `threshold` is the contrast an edge needs before the filter touches it at all. Raising it leaves faint edges alone, and lowering it reaches them. `amount` is how much of the result to keep. `amount: 0` hands the layer back as it came, which makes an A and B comparison free. `quality` is how far the pass may follow one edge. [`Examples/Effects/Antialias`](../Examples/Effects/Antialias/Sketch.swift) sets the two side by side.
 
-## Other ways to a shader: chains, GLSL import, a shared helper, and a check
+## Other ways to a shader: chains, GLSL import, a shared helper, a check, and paint
 
-The aurora was typed as Metal in a string. Three more ways lead to a shader without starting from an empty string, and one command checks a file before any sketch draws it. A chain composes per-pixel imagery in Swift with no Metal at all. A shader written for the web comes over by one command. A helper you want in two shaders lives in a file of its own. And `ollin check` compiles a file on its own.
+The aurora was typed as Metal in a string. Three more ways lead to a shader without starting from an empty string, one command checks a file before any sketch draws it, and one more place takes a shader you already have: the fill of a shape. A chain composes per-pixel imagery in Swift with no Metal at all. A shader written for the web comes over by one command. A helper you want in two shaders lives in a file of its own. `ollin check` compiles a file on its own. And `fill(shader)` runs one inside a circle, a star, or a stroke, in the shape's own coordinates.
 
 ### Patching without typing Metal: Visual chains
 
@@ -368,6 +368,27 @@ Ripple.metal: ok
 
 Errors come back at your own line numbers. The report also says what the shader is, read from the layers it samples: a generator reads none, a filter one, and a combine two. It lists the parameters it reads and the files it pulled in. [Checking a shader](../Docs/Tools/ShaderCheck.md) covers naming the shape yourself with `--as` and the gap in a parameter list it calls out. It also covers several files at once, which exits nonzero if any of them failed, for a script.
 
+### Paint, not a layer: fill and stroke with a shader
+
+A **shader as paint** is a `Shader` handed to `fill` or `stroke` in place of a color. Every shader so far filled a layer, a rectangle the size of the canvas that you then drew somewhere. The paint form skips the layer. `shade` runs at every pixel the shape covers and nowhere else, so the shape clips the picture for you, and the edge stays as sharp as a flat fill's. It is for a pattern, a grain, or a glow that belongs to one shape, and for a stroke that changes along its length. [Chapter 2](02-Color.md)'s gradients are the same idea with a fixed program; this one is yours.
+
+```swift
+let rings = Shader("""
+float4 shade(float2 uv, ShaderInfo info) {
+    float band = 0.5 + 0.5 * cos(-info.distance / 16.0 * 6.2831853 - info.time);
+    return float4(mix(float3(0.1, 0.15, 0.4), float3(1.0, 0.85, 0.5), band), 1.0);
+}
+""")
+fill(rings)
+drawCircle(160, 230, 120)
+```
+
+<picture>
+  <img src="Images/18-YourFirstShader/ShaderPaint.jpg" alt="Three shapes painted by shaders on a dark ground: a disk ringed in gold and blue from its edge inward, a turned five-pointed star striped diagonally in coral and cream in its own frame, and a thick teal ribbon whose light pulses along it and fades toward its edges" width="680">
+</picture>
+
+Two things change inside `shade`. `uv` runs across the shape's own box rather than the canvas, and it turns with the shape. The star's stripes are the star's: rotate it and they rotate. And `info` gains three fields. `info.distance` is how far the pixel is from the shape's edge, in the shape's own units, negative inside. That is what the disk's rings count. `info.along` is the fraction along a stroke, 0 at its start and 1 at its end, which is what the ribbon's pulse travels. `info.position` is the pixel on the canvas, the same for every shape, so a grain read from it continues across neighbors instead of restarting in each. The constant shader draws what the constant color draws, byte for byte. A shader that does not compile draws nothing and reports the line. [`Examples/Shaders/ShaderPaint`](../Examples/Shaders/ShaderPaint/Sketch.swift) uses all four. The [reference](../Docs/Drawing/Color.md#shader-paint) has the rest: a mesh takes the shader as its surface, a vector export writes the shape in gray, and a web page export stops and names the call.
+
 ## Where this comes from
 
 Shaders come out of computer graphics research and the demoscene, and two projects taught creative coders to write them. *The Book of Shaders*, by Patricio Gonzalez Vivo and Jen Lowe, taught the per-pixel model. Its heart is this chapter's distance-and-smoothstep sentence. Shadertoy, built by Inigo Quilez and Pol Jeremias, made shaders a shared, remixable culture. Quilez's articles are the source of many techniques in Ollin's shader library, the cosine `palette` and the `sd*` distance functions among them. Chapter 5's `fbm` layers Ken Perlin's noise, and the shader library's `fbm` layers the simpler value noise The Book of Shaders teaches. The generators, the anti-aliasing filter, the chains, and the import after the aurora name their own sources. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
@@ -376,6 +397,7 @@ Shaders come out of computer graphics research and the demoscene, and two projec
 
 - [Chladni figures](../Docs/Generators/Chladni.md): the mode numbers, the closed form behind the plate, and the arguments the pattern takes. The [`Patterns/Chladni`](../Examples/Patterns/Chladni/Sketch.swift) example sweeps the modes, and [`Audio/ChladniResonance`](../Examples/Audio/ChladniResonance/Sketch.swift) drives them from a live signal.
 - [User shaders](../Docs/Shaders/Shaders.md): the full contract, filters and combines that read layers, `.metal` file loading, and the error model.
+- [A shader as paint](../Docs/Drawing/Color.md#shader-paint): `fill(shader)` and `stroke(shader)`, the shape-box `uv`, `info.position`, `info.distance`, and `info.along`, what shares a draw call, and what a vector or web export does with one.
 - [Bringing a shader over](../Docs/Tools/ShaderImport.md): `ollin new --from-shader` translates a GLSL fragment shader into Metal and writes the project around it, with the `mod` rounding difference, the flipped vertical axis, and the license header explained.
 - [Checking a shader](../Docs/Tools/ShaderCheck.md): `ollin check` on the command line, with what it reports, naming the shape yourself, and checking several files at once.
 - [The shader library](../Docs/Shaders/ShaderLibrary.md): every spliced-in helper with its signature, and the `using:` option that splices in only the sections you name.
@@ -383,7 +405,7 @@ Shaders come out of computer graphics research and the demoscene, and two projec
 - [Visual chains](../Docs/Shaders/Visuals.md): all sources, warps, color ops, combines, and modulations.
 - [Compute](../Docs/Shaders/Compute.md): the sibling world where kernels update buffers of particles instead of pixels, waiting in [Chapter 25](25-ParticleSimulations.md).
 - Appendix B draws this chapter's math, one picture per idea: [Where things are](B-JustEnoughMath.md#normalized-coordinates-01-anywhere), [Per-pixel thinking and distance](B-JustEnoughMath.md#per-pixel-thinking-and-distance).
-- Worked examples: [`Examples/Shaders/HelloShader`](../Examples/Shaders/HelloShader/Sketch.swift) (inline and hot-reloading `.metal`-file forms), [`Examples/Shaders/ShaderFilter`](../Examples/Shaders/ShaderFilter/Sketch.swift), [`Examples/Shaders/VisualSynth`](../Examples/Shaders/VisualSynth/Sketch.swift), [`Examples/Shaders/VisualCatalog`](../Examples/Shaders/VisualCatalog/Sketch.swift) (every chain family on one contact sheet), [`Examples/Effects/GeneratorCatalog`](../Examples/Effects/GeneratorCatalog/Sketch.swift), and [`Examples/Shaders/BlackHole`](../Examples/Shaders/BlackHole/Sketch.swift) (the heaviest shader in the set, split across two files).
+- Worked examples: [`Examples/Shaders/HelloShader`](../Examples/Shaders/HelloShader/Sketch.swift) (inline and hot-reloading `.metal`-file forms), [`Examples/Shaders/ShaderFilter`](../Examples/Shaders/ShaderFilter/Sketch.swift), [`Examples/Shaders/ShaderPaint`](../Examples/Shaders/ShaderPaint/Sketch.swift) (a shader as the fill and the stroke), [`Examples/Shaders/VisualSynth`](../Examples/Shaders/VisualSynth/Sketch.swift), [`Examples/Shaders/VisualCatalog`](../Examples/Shaders/VisualCatalog/Sketch.swift) (every chain family on one contact sheet), [`Examples/Effects/GeneratorCatalog`](../Examples/Effects/GeneratorCatalog/Sketch.swift), and [`Examples/Shaders/BlackHole`](../Examples/Shaders/BlackHole/Sketch.swift) (the heaviest shader in the set, split across two files).
 
 ---
 

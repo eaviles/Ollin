@@ -112,6 +112,8 @@ private struct PDFPainter {
                 ctx.clip(using: rule)
                 drawGradient(g)
                 ctx.restoreGState()
+            case .shader:
+                break   // resolved to a color above
             }
         }
         if let stroke = command.style.stroke {
@@ -133,6 +135,8 @@ private struct PDFPainter {
                 ctx.clip()
                 drawGradient(g)
                 ctx.restoreGState()
+            case .shader:
+                break   // resolved to a color above
             }
         }
     }
@@ -140,8 +144,9 @@ private struct PDFPainter {
     /// A paint with the inexpressible cases resolved: an along-path gradient
     /// that kept no path (an ellipse/rect outline sweep) and a conic gradient
     /// (a PDF shading has no sweep) fall back to the ramp's midpoint color,
-    /// the same fallback the SVG serializer uses.
+    /// and a shader to middle gray, the same fallbacks the SVG serializer uses.
     private func resolved(_ paint: Paint) -> Paint {
+        if case .shader = paint { return .color(Paint.shaderStandIn) }
         if case .gradient(let g) = paint {
             switch g.geometry {
             case .alongPath, .conic: return .color(g.ramp.color(at: 0.5))

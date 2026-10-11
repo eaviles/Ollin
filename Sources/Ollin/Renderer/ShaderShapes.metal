@@ -27,8 +27,12 @@
 // read corners / control points from param0/param1/param2 (see SDFInstance).
 // The shape tag occupies the low byte; bits 8-9 carry the stroke alignment
 // (0 center, 1 inside, 2 outside) and bits 10-12 / 13-15 the fill / stroke
-// paint kind (0 solid, 1 linear, 2 radial, 3 along-path, 4 conic; see
-// resolvePaint), so the vertex shader masks before the switch.
+// paint kind (0 solid, 1 linear, 2 radial, 3 along-path, 4 conic, 5 a user
+// shader; see resolvePaint), so the vertex shader masks before the switch. Kind
+// 5 is drawn by a pipeline compiled with that shader (the paint variant of the
+// user-shader wrapper, MetalRenderer+Pipelines.swift), whose fragment calls
+// `shade` for the slot and this file's coverage for the rest; the fragment
+// below never sees it in a frame, and paints a flat gray if it ever does.
 
 struct SDFOut {
     float4 position [[position]];
@@ -44,9 +48,11 @@ struct SDFOut {
     float bandWidth;
     float fillRow;        // gradient-strip row for a gradient fill / stroke
     float strokeRow;
+    float2 canvas;        // the fragment in canvas points, read by the shader-paint
+                          // fragment as `info.position`; unread by the one below
     uint  shape [[flat]]; // constant per instance; never interpolate an integer tag
     uint  align [[flat]]; // stroke alignment: 0 center, 1 inside, 2 outside
-    uint  fillKind [[flat]];   // paint kind: 0 solid, 1 linear, 2 radial, 3 along-path, 4 conic
+    uint  fillKind [[flat]];   // paint kind: 0 solid, 1 linear, 2 radial, 3 along-path, 4 conic, 5 shader
     uint  strokeKind [[flat]];
 };
 
@@ -95,6 +101,7 @@ vertex SDFOut ollin_sdf_vertex(uint vid [[vertex_id]],
     out.bandWidth = inst.bandWidth;
     out.fillRow = inst.fillGradient;
     out.strokeRow = inst.strokeGradient;
+    out.canvas = sketch.xy;
     out.shape = inst.shape & 0xFFu;   // strip the alignment/paint bits for the tag switch
     out.align = shapeAlign;
     out.fillKind = (inst.shape >> 10) & 0x7u;
@@ -306,6 +313,49 @@ static float ollin_sdf_distance(uint shape, float2 p, float2 size,
     default:     // 0: ellipse / circle
         return sdEllipse(p, size);
     }
+}
+
+// The signed distance from the local point `p` to the painted edge of one
+// analytic shape, in the shape's own units, negative inside: what a shader paint
+// reads as `info.distance`. The region shapes read `ollin_sdf_distance`, onioned
+// into their band when the shape is hollow (`bandWidth` > 0, the same fold
+// regionFill applies); the open marks have no interior, so their edge is the
+// rim of the ink they lay: the capsule and the Bezier (a line and a curve) are
+// their centerline distance less the cap radius in `extra`, and the arcs are the
+// pie wedge or the circular segment the fill paints (the open arc's stroke rides
+// the segment's curved side). The slots are decoded exactly as the coverage
+// switch below decodes them; a new shape joins both.
+static float ollin_sdf_signed_edge(uint shape, float2 p, float2 size,
+                                   float2 param0, float2 param1, float2 param2,
+                                   float extra, float bandWidth) {
+    float d;
+    switch (shape) {
+    case 2u: {   // capsule (a line): param0 = half-segment vector, extra = cap radius
+        float2 pa = p + param0;
+        float2 ba = param0 * 2.0;
+        float h = clamp(dot(pa, ba) / max(dot(ba, ba), 1e-12), 0.0, 1.0);
+        return length(pa - ba * h) - extra;
+    }
+    case 3u:
+    case 4u:
+    case 5u: {   // arcs: the same canonical frame the coverage uses
+        float2 q = float2(p.x * param1.x - p.y * param1.y,
+                          p.x * param1.y + p.y * param1.x);
+        float ra = size.x;
+        float2 sc = param0;
+        if (shape == 5u) { return sdPie(q, sc, ra); }
+        return max(length(q) - ra, ra * sc.y - q.y);
+    }
+    case 28u: {  // quadratic Bezier stroke: extra = half stroke width
+        float t = 0.0;
+        return sdBezier(p, param0, param1, param2, t) - extra;
+    }
+    default:
+        d = ollin_sdf_distance(shape, p, size, param0, param1, param2, extra);
+        break;
+    }
+    if (bandWidth > 0.0) { d = abs(d) - bandWidth * 0.5; }
+    return d;
 }
 
 // Fill and stroke coverage of one analytic shape at the local point `p`, read
@@ -620,6 +670,10 @@ static void ollin_sdf_coverage(uint shape, uint align, float2 p, float2 size,
 static float4 resolvePaint(float4 slot, uint kind, float row, float2 p, float pathT,
                            texture2d<float> gradients, sampler gradientSampler) {
     if (kind == 0u) { return float4(srgbToLinear(slot.rgb), slot.a); }
+    // A shader slot (kind 5) is shaded by the paint pipeline, never here; a
+    // frame that reaches this fragment with one paints it a flat middle gray
+    // rather than reading the strip at a row that was never baked.
+    if (kind == 5u) { return float4(float3(srgbToLinear(0.5)), 1.0); }
     float t;
     if (kind == 1u) {            // linear: slot = (start.xy, end.xy)
         float2 d = slot.zw - slot.xy;

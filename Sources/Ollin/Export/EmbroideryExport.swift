@@ -389,6 +389,7 @@ func paintColor(_ paint: Paint) -> Color? {
     switch paint {
     case .color(let c): color = c
     case .gradient(let g): color = g.ramp.color(at: 0.5)
+    case .shader: color = Paint.shaderStandIn
     }
     return color.alpha > 0 ? color : nil
 }

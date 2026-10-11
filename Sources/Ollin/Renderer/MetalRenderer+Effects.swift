@@ -2417,14 +2417,7 @@ extension MetalRenderer {
         let format = format ?? (output.pixelFormat == linearFormat ? nil : output.pixelFormat)
         let (state, hash) = userShaderState(for: shader, variant: variant, format: format)
         guard let state else {
-            if let err = userShaderErrors[hash] {
-                currentUserShaderError = err   // surfaced to the host after the frame
-                if !printedShaderErrorHashes.contains(hash) {
-                    FileHandle.standardError.write(Data(
-                        "Ollin: shader compile failed\n\(err.message)\n".utf8))
-                    printedShaderErrorHashes.insert(hash)
-                }
-            }
+            reportUserShaderError(hash)
             return
         }
 
@@ -2453,14 +2446,43 @@ extension MetalRenderer {
         enc.endEncoding()
     }
 
-    /// The compiled pipeline for a user shader, built and cached on first use (keyed by
-    /// the composed-source hash, returned alongside). Returns `(nil, hash)` on a compile
-    /// error, recording it in `userShaderErrors[hash]` so it isn't retried every frame.
-    private func userShaderState(for shader: Shader,
-                                 variant: UserShaderVariant,
-                                 format: MTLPixelFormat? = nil) -> (MTLRenderPipelineState?, UInt64) {
-        // The output format is part of the pipeline, so a kernel over a `.float32`
-        // field and the same kernel over a half-float one are two states.
+    /// Bind what a paint fragment reads beside its geometry: the shader's `params`
+    /// at fragment buffer 0 and the per-frame uniforms at 1 (`resolution` is the
+    /// pass's pixel size, the rest the frame's clock and cursor), the same two
+    /// bindings a layer shader gets.
+    func bindPaint(_ shader: Shader, resolution: SIMD2<Float>, into encoder: MTLRenderCommandEncoder) {
+        var u = OllinShaderUniforms(
+            resolution: resolution,
+            mouse: frameComputeUniforms.mouse,
+            time: frameComputeUniforms.time,
+            deltaTime: frameComputeUniforms.dt,
+            frame: frameComputeUniforms.frameCount,
+            paramCount: UInt32(min(shader.params.count, Int(OLLIN_SHADER_PARAM_COUNT))))
+        let params = shader.paddedParams
+        params.withUnsafeBytes { encoder.setFragmentBytes($0.baseAddress!, length: $0.count, index: 0) }
+        encoder.setFragmentBytes(&u, length: MemoryLayout<OllinShaderUniforms>.stride, index: 1)
+    }
+
+    /// Surface a user shader's recorded compile error (`userShaderErrors[hash]`) the
+    /// way every user-shader pass does: to the host's pull channel after the frame,
+    /// and to stderr once per source. Nothing to say when no error is recorded.
+    func reportUserShaderError(_ hash: UInt64) {
+        guard let err = userShaderErrors[hash] else { return }
+        currentUserShaderError = err   // surfaced to the host after the frame
+        if !printedShaderErrorHashes.contains(hash) {
+            FileHandle.standardError.write(Data(
+                "Ollin: shader compile failed\n\(err.message)\n".utf8))
+            printedShaderErrorHashes.insert(hash)
+        }
+    }
+
+    /// The compiled library for a user shader under `variant`, built and cached on
+    /// first use (keyed by the composed-source hash, returned alongside). Returns
+    /// `(nil, hash)` on a compile error, recording it in `userShaderErrors[hash]` so
+    /// it isn't retried every frame. `format` joins the key for the layer variants,
+    /// whose pipeline it is part of; a paint's pipelines are keyed on their own.
+    func userShaderLibrary(for shader: Shader, variant: UserShaderVariant,
+                           format: MTLPixelFormat? = nil) -> (MTLLibrary?, UInt64) {
         let format = format ?? linearFormat
         // Composing the source splices the whole shared library in, a few hundred
         // kilobytes, and hashing that on every encode is what a simulation's
@@ -2473,7 +2495,7 @@ extension MetalRenderer {
         let quick = "\(variant)|\(format.rawValue)|\(shader.modules.rawValue)|\(sourceName)|\(startLine)|"
             + shader.resourcePath + "|" + shader.source
         if let hash = userShaderHashes[quick] {
-            if let p = userShaderPipelines[hash] { return (p, hash) }
+            if let lib = userShaderLibraries[hash] { return (lib, hash) }
             if userShaderErrors[hash] != nil { return (nil, hash) }
         }
         let resolved = resolveUserShaderSource(shader)
@@ -2482,7 +2504,7 @@ extension MetalRenderer {
             sourceName: sourceName, sourceStartLine: startLine)
         let hash = MetalRenderer.fnv1a(composed + "\n// format \(format.rawValue)")
         userShaderHashes[quick] = hash
-        if let p = userShaderPipelines[hash] { return (p, hash) }
+        if let lib = userShaderLibraries[hash] { return (lib, hash) }
         if userShaderErrors[hash] != nil { return (nil, hash) }   // cached failure
         // An include the resolver could not honor is reported as the shader's error
         // before the compiler sees the source, since what follows would only be a pile
@@ -2493,13 +2515,45 @@ extension MetalRenderer {
             return (nil, hash)
         }
         do {
-            let lib: MTLLibrary
-            if let cached = userShaderLibraries[hash] { lib = cached }
-            else { lib = try device.makeLibrary(source: composed, options: ollinShaderCompileOptions()); userShaderLibraries[hash] = lib }
+            let lib = try device.makeLibrary(source: composed, options: ollinShaderCompileOptions())
+            // Every variant's wrapper calls the user's `shade`, so a library with
+            // none compiled only because nothing reached for it: say what is missing.
+            let entry = variant == .paint ? "ollin_paint_fragment" : "ollin_user_fragment"
+            guard lib.makeFunction(name: entry) != nil else {
+                userShaderErrors[hash] = ShaderCompileError(
+                    message: "\(sourceName):\(startLine): the shader has no "
+                        + "shade(float2 uv, ShaderInfo info) function.", raw: "")
+                return (nil, hash)
+            }
+            userShaderLibraries[hash] = lib
+            return (lib, hash)
+        } catch {
+            let cleaned = MetalRenderer.cleanShaderDiagnostics(
+                (error as NSError).localizedDescription, userLineOffset: offset,
+                sourceName: sourceName, sourceStartLine: startLine)
+            userShaderErrors[hash] = ShaderCompileError(
+                message: cleaned, raw: (error as NSError).localizedDescription)
+            return (nil, hash)
+        }
+    }
+
+    /// The compiled pipeline for a user shader's layer pass, built from its library
+    /// and cached by the same hash. Returns `(nil, hash)` when the library did not
+    /// compile (the error is already recorded) or the pipeline could not be built.
+    private func userShaderState(for shader: Shader,
+                                 variant: UserShaderVariant,
+                                 format: MTLPixelFormat? = nil) -> (MTLRenderPipelineState?, UInt64) {
+        // The output format is part of the pipeline, so a kernel over a `.float32`
+        // field and the same kernel over a half-float one are two states.
+        let format = format ?? linearFormat
+        let (lib, hash) = userShaderLibrary(for: shader, variant: variant, format: format)
+        if let p = userShaderPipelines[hash] { return (p, hash) }
+        guard let lib else { return (nil, hash) }
+        do {
             guard let vfn = lib.makeFunction(name: "ollin_user_vertex"),
                   let ffn = lib.makeFunction(name: "ollin_user_fragment") else {
                 userShaderErrors[hash] = ShaderCompileError(
-                    message: "\(sourceName):\(startLine): the shader has no "
+                    message: "\(shader.diagnosticSourceName):\(shader.diagnosticStartLine): the shader has no "
                         + "shade(float2 uv, ShaderInfo info) function.", raw: "")
                 return (nil, hash)
             }
@@ -2512,11 +2566,10 @@ extension MetalRenderer {
             userShaderPipelines[hash] = state
             return (state, hash)
         } catch {
-            let cleaned = MetalRenderer.cleanShaderDiagnostics(
-                (error as NSError).localizedDescription, userLineOffset: offset,
-                sourceName: sourceName, sourceStartLine: startLine)
             userShaderErrors[hash] = ShaderCompileError(
-                message: cleaned, raw: (error as NSError).localizedDescription)
+                message: "\(shader.diagnosticSourceName):\(shader.diagnosticStartLine): "
+                    + "the shader's pipeline could not be built: \((error as NSError).localizedDescription)",
+                raw: (error as NSError).localizedDescription)
             return (nil, hash)
         }
     }
@@ -2528,6 +2581,7 @@ extension MetalRenderer {
         MetalRenderer.dropUserShaderLibraryText()
         userShaderLibraries.removeAll()
         userShaderPipelines.removeAll()
+        paintPipelines.removeAll()
         userShaderErrors.removeAll()
         userShaderSources.removeAll()
         userShaderHashes.removeAll()
@@ -3572,7 +3626,8 @@ extension MetalRenderer {
                 if let handle = batch.retained {
                     encodeRetained(handle, reference: batch, drawer: drawer,
                                    loopUniforms: uniforms, into: encoder,
-                                   depthFormat: depthFormat, hasStencil: hasStencil, colorFormat: passColorFormat)
+                                   depthFormat: depthFormat, hasStencil: hasStencil, colorFormat: passColorFormat,
+                                   resolution: attachmentSize)
                 }
                 continue
             }
@@ -3645,7 +3700,18 @@ extension MetalRenderer {
                     encoder.setFragmentBytes(&rule, length: MemoryLayout<OllinPeel>.stride, index: 10)
                 }
             }
-            guard let state = try? pipeline(pipelineKey) else { continue }
+            // A batch painted by a shader draws through that shader's own pipeline
+            // for its path; one that does not compile is skipped (and reported), so
+            // a broken paint draws nothing rather than the vertex data as a color.
+            let state: MTLRenderPipelineState
+            if let paintShader = batch.paintShader,
+               batch.kind == .sdf || batch.kind == .triangles || batch.kind == .fringe {
+                guard let paint = paintPipeline(for: paintShader, kind: batch.kind, key: pipelineKey) else { continue }
+                state = paint
+            } else {
+                guard let plain = try? pipeline(pipelineKey) else { continue }
+                state = plain
+            }
             // In a depth pass (active camera): 3D batches z-test + write depth. A 2D
             // batch that opted into a depth (`depth(at:)`) does too: its constant
             // clip-z is fed to the 2D vertex shader so it occludes / is occluded by
@@ -3714,6 +3780,9 @@ extension MetalRenderer {
                 guard count > 0, let triangleBuffer else { continue }
                 encoder.setRenderPipelineState(state)
                 encoder.setVertexBuffer(triangleBuffer, offset: batch.vertexStart * vertexStride, index: 0)
+                if let paintShader = batch.paintShader {
+                    bindPaint(paintShader, resolution: attachmentSize, into: encoder)
+                }
                 profile.countDraw(batch.kind, count)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
             case .sdf:
@@ -3726,6 +3795,9 @@ extension MetalRenderer {
                 // texture at the same index.
                 encoder.setFragmentTexture(strip, index: 0)
                 encoder.setFragmentSamplerState(imageSampler, index: 0)
+                if let paintShader = batch.paintShader {
+                    bindPaint(paintShader, resolution: attachmentSize, into: encoder)
+                }
                 profile.countDraw(batch.kind, count)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6, instanceCount: count)
             case .sdfGroup:
@@ -4333,7 +4405,9 @@ extension MetalRenderer {
                                 drawer: Drawer, loopUniforms: Uniforms,
                                 into encoder: MTLRenderCommandEncoder,
                                 depthFormat: MTLPixelFormat?, hasStencil: Bool,
-                                colorFormat: MTLPixelFormat? = nil) {
+                                colorFormat: MTLPixelFormat? = nil,
+                                // The pass's pixel size, a shader paint's `info.resolution`.
+                                resolution: SIMD2<Float> = .zero) {
         let resources = handle.gpuResources(for: device)
         var u = loopUniforms
         if depthFormat != nil { u.clipDepth = reference.depth ?? 0 }
@@ -4355,7 +4429,17 @@ extension MetalRenderer {
             var key = PipelineKey.forBatch(run.kind, run.blendMode, depth: depthFormat)
             if hasStencil { key.stencilFormat = .stencil8 }
             if let colorFormat { key.colorFormat = colorFormat }
-            guard let state = try? pipeline(key) else { continue }
+            // A recorded run painted by a shader replays through that shader's
+            // pipeline, as it drew (see the main loop).
+            let state: MTLRenderPipelineState
+            if let paintShader = run.paintShader,
+               run.kind == .sdf || run.kind == .triangles || run.kind == .fringe {
+                guard let paint = paintPipeline(for: paintShader, kind: run.kind, key: key) else { continue }
+                state = paint
+            } else {
+                guard let plain = try? pipeline(key) else { continue }
+                state = plain
+            }
             // Depth/stencil per the main loop's rules, at the reference batch's
             // clip level and depth: point-cloud runs z-test + write, 2D runs do
             // only when the replay was depth-placed. Untouched when the pass
@@ -4380,6 +4464,9 @@ extension MetalRenderer {
                 guard count > 0, let buffer = resources.triangle else { continue }
                 encoder.setRenderPipelineState(state)
                 encoder.setVertexBuffer(buffer, offset: run.vertexStart * vertexStride, index: 0)
+                if let paintShader = run.paintShader {
+                    bindPaint(paintShader, resolution: resolution, into: encoder)
+                }
                 profile.countDraw(run.kind, count)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
             case .sdf:
@@ -4393,6 +4480,9 @@ extension MetalRenderer {
                 // image batch.
                 encoder.setFragmentTexture(strip, index: 0)
                 encoder.setFragmentSamplerState(imageSampler, index: 0)
+                if let paintShader = run.paintShader {
+                    bindPaint(paintShader, resolution: resolution, into: encoder)
+                }
                 profile.countDraw(run.kind, count)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6, instanceCount: count)
             case .sdfGroup:

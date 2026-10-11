@@ -70,7 +70,9 @@ extension Drawer {
         strokePaint = nil
         body()
         strokePaint = saved
-        appendFringeStroke(outline(), closed: true, paint: vertexPaint(stroke, anchor: anchor))
+        let points = outline()
+        appendFringeStroke(points, closed: true,
+                           paint: vertexPaint(stroke, anchor: anchor, bounds: .around(points)))
     }
 
     /// A circle or ellipse outline placed at `c`, sampled as finely as the arc
@@ -692,26 +694,30 @@ extension Drawer {
     }
 
     /// One paint encoded for an `SDFInstance` color slot: a solid color as-is
-    /// (kind 0), or a gradient's geometry (made relative to the shape center, so
+    /// (kind 0), a gradient's geometry (made relative to the shape center, so
     /// the fragment evaluates it against `in.local` and it moves with the CTM), with
-    /// the paint kind for the shape-tag bits and the ramp's strip row.
+    /// the paint kind for the shape-tag bits and the ramp's strip row, or a shader
+    /// (kind 5), whose slot carries nothing: the shader is the batch's pipeline.
     private struct EncodedPaint {
         var slot: SIMD4<Float>
-        var kind: UInt32      // 0 solid, 1 linear, 2 radial, 3 along-path, 4 conic
+        var kind: UInt32      // 0 solid, 1 linear, 2 radial, 3 along-path, 4 conic, 5 shader
         var row: Float
 
         static let none = EncodedPaint(slot: SIMD4<Float>(repeating: 0), kind: 0, row: 0)
 
         /// Whether the paint reads a position rather than a path: a solid, a
         /// linear, a radial, or a conic, which the merged fields and the 3D
-        /// fields can paint (an along-path needs a path they do not have).
-        var isPositional: Bool { kind != 3 }
+        /// fields can paint (an along-path needs a path they do not have, and a
+        /// shader a pipeline of its own).
+        var isPositional: Bool { kind != 3 && kind != 5 }
     }
 
     private func encodePaint(_ paint: Paint, center: Vector2) -> EncodedPaint {
         switch paint {
         case .color(let c):
             return EncodedPaint(slot: c.simd4, kind: 0, row: 0)
+        case .shader:
+            return EncodedPaint(slot: SIMD4<Float>(repeating: 0), kind: 5, row: 0)
         case .gradient(let g):
             let row = Float(gradientRow(for: g.ramp).index)
             switch g.geometry {
@@ -766,6 +772,24 @@ extension Drawer {
         let weight = strokeWidth ?? self.strokeWidth
         let hasStroke = stroke != nil && weight > 0
         guard fill != nil || hasStroke else { return }
+        // A shader paint draws through its own pipeline, so the run this shape
+        // joins carries that shader. A shape whose fill and stroke are two
+        // different shaders is recorded twice, the fill under one and the stroke
+        // over it under the other, which composites as the one instance would.
+        let fillShader = fill?.shader
+        let strokeShader = hasStroke ? stroke?.shader : nil
+        if let fillShader, let strokeShader, fillShader != strokeShader {
+            appendSDF(shape: shape, center: center, size: size, fill: fill, stroke: nil,
+                      strokeWidth: strokeWidth, extra: extra, param0: param0, param1: param1,
+                      param2: param2, applyHollow: applyHollow)
+            appendSDF(shape: shape, center: center, size: size, fill: nil, stroke: stroke,
+                      strokeWidth: strokeWidth, extra: extra, param0: param0, param1: param1,
+                      param2: param2, applyHollow: applyHollow)
+            return
+        }
+        let savedPaintShader = currentPaintShader
+        currentPaintShader = fillShader ?? strokeShader
+        defer { currentPaintShader = savedPaintShader }
         // Where this shape was written, for a host that lets a pointer drag it.
         // A shape with nothing to draw never gets here, so it can't be picked.
         if recordsSourceSites {
@@ -1318,8 +1342,9 @@ extension Drawer {
 
         if let fill = fillPaint {
             // Anchored on the arc center, so an along-path fill sweeps the same
-            // conic the SDF arc evaluates.
-            let vp = vertexPaint(fill, anchor: center)
+            // conic the SDF arc evaluates; a shader reads the box of what is drawn.
+            let vp = vertexPaint(fill, anchor: center,
+                                 bounds: .around(mode == .pie ? [center] + pts : pts))
             replicated {
                 let start = vertices.count
                 switch mode {
@@ -1349,7 +1374,8 @@ extension Drawer {
         // shapes match what the vector recorder above writes, so a rendered arc and
         // an exported one trace the same outline.
         if let stroke = strokePaint, strokeWidth > 0 {
-            let vp = vertexPaint(stroke, anchor: center)
+            let vp = vertexPaint(stroke, anchor: center,
+                                 bounds: .around(mode == .pie ? [center] + pts : pts))
             switch mode {
             case .open:  appendFringeStroke(pts, closed: false, paint: vp)
             case .chord: appendFringeStroke(pts, closed: true, paint: vp)
@@ -1400,10 +1426,11 @@ extension Drawer {
             svgRecord(closed ? .polygon(points) : .polyline(points), fill: nil, stroke: stroke)
             return
         }
-        // The full stroke (solid / translucent / gradient) renders through the
-        // high-quality fringe expander — joins per strokeJoin, smooth at any angle.
+        // The full stroke (solid / translucent / gradient / shader) renders through
+        // the high-quality fringe expander: joins per strokeJoin, smooth at any angle.
         appendFringeStroke(points, closed: closed,
-                           paint: vertexPaint(stroke, anchor: points[0]))
+                           paint: vertexPaint(stroke, anchor: points[0],
+                                              bounds: .around(points, inflate: closed ? 0 : strokeWidth / 2)))
     }
 
     /// Stroke a recorded `StrokeMark`: the path it traveled, drawn at the width
@@ -1460,7 +1487,8 @@ extension Drawer {
             return
         }
         appendFringeStroke(points, closed: false,
-                           paint: vertexPaint(strokePaint ?? stroke, anchor: points[0]))
+                           paint: vertexPaint(strokePaint ?? stroke, anchor: points[0],
+                                              bounds: .around(points, inflate: strokeWidth / 2)))
     }
 
     /// An axis-aligned `Rectangle`. Recorded as a single SDF instance (a box

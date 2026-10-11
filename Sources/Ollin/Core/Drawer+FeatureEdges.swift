@@ -173,6 +173,9 @@ extension Drawer {
         case .gradient(let g):
             noteOnce("feature edges take one color; a gradient stroke draws them in the color at the middle of its ramp.")
             color = g.ramp.color(at: 0.5)
+        case .shader:
+            noteOnce("feature edges take one color; a shader stroke draws them white.")
+            color = .white
         }
         if strokeDashPattern != nil || strokeBrushShape != nil || !strokeProfileShape.isUniform {
             noteOnce("strokeDash, strokeBrush, and strokeProfile shape 2D strokes; a mesh's feature edges draw whole, at one weight.")

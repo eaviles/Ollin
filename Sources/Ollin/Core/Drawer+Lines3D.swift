@@ -70,9 +70,15 @@ extension Drawer {
         let viewProjection = SIMD4x4(projection * camera.viewMatrix)
 
         // The paint for each point, read where the point lands on the canvas, or
-        // by its distance along the line for an along-path gradient.
-        let paint = perPoint == nil ? vertexPaint(stroke, anchor: Vector2(Double(viewport.x) / 2,
-                                                                          Double(viewport.y) / 2)) : nil
+        // by its distance along the line for an along-path gradient. A line in
+        // space has its own pipeline, which a shader paint does not reach.
+        var linePaint = stroke
+        if case .shader = stroke {
+            noteOnce("a line with 3D points takes a color or a gradient; a shader stroke draws it white.")
+            linePaint = .color(.white)
+        }
+        let paint = perPoint == nil ? vertexPaint(linePaint, anchor: Vector2(Double(viewport.x) / 2,
+                                                                             Double(viewport.y) / 2)) : nil
         let model = modelMatrix
         let identity = modelIsIdentity
         var line: [LinePoint] = []

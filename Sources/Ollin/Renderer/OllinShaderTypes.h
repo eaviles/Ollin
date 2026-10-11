@@ -53,10 +53,15 @@ typedef simd_ushort4 OllinHalf4;
 // reads `aa.x` as the AA coverage interpolant, with the stroke's own paint alpha
 // in `color.a` — so a fringe vertex carries rgb + paint-alpha + coverage as three
 // independent channels (the fragment applies perceptualCoverage to coverage only).
+// Under a *shader* paint the vertex carries no color at all: `color` is
+// (u, v, along, distance), the shape-box uv, the 0…1 fraction along a stroke, and
+// the signed distance to the shape's edge in its own units, and `aa.y` is the
+// stroke's opacity profile (1 when none), the shader's own alpha standing in for
+// the paint alpha. The stride stays 32 either way.
 typedef struct {
     simd_float2 position;   // sketch-space, points, top-left origin, y-down
-    simd_float2 aa;         // fringe pipeline: x = AA coverage 0…1 (y reserved); ignored elsewhere
-    simd_float4 color;      // straight (non-premultiplied) RGBA, 0...1 (fringe: a = paint alpha)
+    simd_float2 aa;         // fringe pipeline: x = AA coverage 0…1, y = opacity (shader paint); ignored elsewhere
+    simd_float4 color;      // straight (non-premultiplied) RGBA, 0...1 (fringe: a = paint alpha; shader paint: u, v, along, distance)
 } OllinVertex;
 
 // Per-frame constants, shared by both pipelines.
@@ -172,12 +177,15 @@ typedef struct {
 //
 // Gradient paints reuse the existing slots rather than widening the struct: when
 // a paint-kind field in `shape` (bits 10-12 for fill, 13-15 for stroke; 0 solid,
-// 1 linear, 2 radial, 3 along-path, 4 conic) is non-zero, the matching color
-// slot is reinterpreted as gradient *geometry* relative to `center` (linear
-// packs (start.xy, end.xy), radial packs (center.xy, radius, unused), conic
-// packs (center.xy, start angle, unused)), and `fillGradient`/`strokeGradient`
-// carry the paint's row in the gradient strip texture the ramp was baked into
-// (see BakedGradient). Nothing reads the tag above bit 15.
+// 1 linear, 2 radial, 3 along-path, 4 conic, 5 a user shader) is non-zero, the
+// matching color slot is reinterpreted as gradient *geometry* relative to
+// `center` (linear packs (start.xy, end.xy), radial packs (center.xy, radius,
+// unused), conic packs (center.xy, start angle, unused)), and
+// `fillGradient`/`strokeGradient` carry the paint's row in the gradient strip
+// texture the ramp was baked into (see BakedGradient). A shader slot (kind 5)
+// carries nothing: the shader itself is the batch's pipeline, compiled from the
+// user's source, and reads the shape's box from `size`. Nothing reads the tag
+// above bit 15.
 typedef struct {
     simd_float3x3 transform;   // local sketch space -> sketch space (the CTM)
     simd_float2 center;        // shape center, local sketch space

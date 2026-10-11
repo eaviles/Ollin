@@ -681,7 +681,16 @@ final class MetalRenderer {
     /// What a user `Shader` is compiled as: the three effect-graph shapes, and the two
     /// kernels of a `Sim.shader` field (the step over the state, the inject that lays
     /// this frame's marks onto it), whose wrapper reads the state as data.
-    enum UserShaderVariant { case generator, filter, combine, simStep, simInject }
+    /// What a user shader is compiled as: a layer pass by how many layers it reads
+    /// (`generator`/`filter`/`combine`), a simulation kernel (`simStep`/`simInject`),
+    /// or `paint`: the shader run inside the SDF, triangle, and fringe fragments
+    /// for a shape drawn under `fill(shader)` / `stroke(shader)`, whose library
+    /// carries the three paint pipelines (`paintPipeline(for:kind:key:)`).
+    enum UserShaderVariant { case generator, filter, combine, simStep, simInject, paint }
+    /// A paint pipeline: one shader's compiled library (by its composed hash) built
+    /// against one geometry pipeline's blend, depth, stencil, and color format.
+    struct PaintPipelineKey: Hashable { let hash: UInt64; let key: PipelineKey }
+    var paintPipelines: [PaintPipelineKey: MTLRenderPipelineState] = [:]
     /// The samplers a simulation field's edge rule binds for its step passes, keyed by
     /// `FieldEdge` (bit 0 wraps x, bit 1 wraps y): the image sampler's filtering with
     /// the address mode the field asked for, so a tap past the border wraps or clamps
@@ -3723,6 +3732,7 @@ extension MetalRenderer {
             "simSamplers": simSamplers.count,
             "userShaderLibraries": userShaderLibraries.count,
             "userShaderPipelines": userShaderPipelines.count,
+            "paintPipelines": paintPipelines.count,
             "userShaderErrors": userShaderErrors.count,
             "userShaderSources": userShaderSources.count,
             "printedShaderErrors": printedShaderErrorHashes.count,

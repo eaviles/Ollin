@@ -76,6 +76,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
                  make: { MixedPipelines() }),
     SnapshotCase("user-shader", note: "A user-supplied generator shader.",
                  make: { UserShaderGenerator() }),
+    SnapshotCase("shader-paint",
+                 note: "A user shader as paint on the SDF, triangle, and fringe paths: uv over each shape's box, the edge distance, the fraction along a stroke, and the canvas position.",
+                 make: { ShaderPaintScene() }),
     SnapshotCase("visual-chain", frame: 30,
                  note: "A fluent Visual chain across all five op families, reading one layer.",
                  make: { VisualChainScene() }),
@@ -5801,6 +5804,72 @@ private final class UserShaderGenerator: Sketch {
 
     override func draw() {
         drawImage(generate(shader).image, 0, 0)
+    }
+}
+
+/// A user shader as paint on every 2D path at once: the shape-box uv on an SDF
+/// rectangle and a turned star, the edge distance on a circle and a hollow ring,
+/// the fraction along a stroked polyline and a dashed outline, the canvas
+/// position across a polygon fill and outline text, with a plain-color shape in
+/// the middle of the run so the batch split is pinned too.
+private final class ShaderPaintScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    private let uvPaint = Shader("""
+    float4 shade(float2 uv, ShaderInfo info) {
+        float s = step(0.5, fract((uv.x + uv.y) * 6.0));
+        return float4(mix(float3(0.9, 0.3, 0.2), float3(1.0, 0.9, 0.7), s), 1.0);
+    }
+    """)
+    private let edgePaint = Shader("""
+    float4 shade(float2 uv, ShaderInfo info) {
+        float ring = 0.5 + 0.5 * cos(-info.distance * 0.8);
+        return float4(mix(float3(0.1, 0.2, 0.5), float3(0.9, 0.85, 0.5), ring), 1.0);
+    }
+    """)
+    private let alongPaint = Shader("""
+    float4 shade(float2 uv, ShaderInfo info) {
+        float t = fract(info.along * 4.0);
+        float across = 1.0 - smoothstep(0.0, 4.0, abs(info.distance));
+        return float4(t, across, 1.0 - t, 1.0);
+    }
+    """)
+    private let positionPaint = Shader("""
+    float4 shade(float2 uv, ShaderInfo info) {
+        float n = fbm(info.position / 40.0);
+        return float4(float3(0.3 + 0.7 * n), 1.0);
+    }
+    """)
+
+    override func draw() {
+        background(Color(hex: 0x101418))
+        noStroke()
+        fill(positionPaint)
+        drawPolygon([Vector2(10, 20), Vector2(120, 10), Vector2(110, 120), Vector2(20, 110)])
+        textSize(64)
+        textAlign(.center, .middle)
+        drawText("Ab", 190, 60)
+        fill(uvPaint)
+        drawRect(20, 140, 90, 60, cornerRadius: 8)
+        withState {
+            translate(190, 170)
+            rotate(0.5)
+            drawStar(0, 0, 50, 22, points: 5)
+        }
+        fill(.white)
+        drawCircle(128, 128, 14)
+        fill(edgePaint)
+        drawCircle(70, 225, 26)
+        hollow(10)
+        drawCircle(128, 225, 26)
+        solid()
+        noFill()
+        strokeWeight(10)
+        stroke(alongPaint)
+        drawPolyline([Vector2(150, 236), Vector2(190, 212), Vector2(230, 240)])
+        strokeDash([14, 8])
+        strokeWeight(6)
+        drawCircle(128, 128, 36)
     }
 }
 

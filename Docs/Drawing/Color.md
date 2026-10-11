@@ -15,6 +15,7 @@
 - [Mixing](#mixing)
 - [Ramp](#ramp)
 - [Gradient paint](#gradient)
+- [A shader as paint](#shader-paint)
 - [Palette](#palette)
 - [Shades whose hue drifts](#shades)
 - [Loading palettes from a file](#palette-files)
@@ -279,6 +280,39 @@ fill(paint)
 ```
 
 The analytic SDF shapes (circles, rects, stars, lines, …) evaluate a gradient per pixel, so the result is exact at any size. The tessellated shapes (`drawPolygon`, `drawShape`, elliptical arcs, and outline text) shade across their vertices instead. Gradient strokes subdivide automatically, so the ramp follows the path. A fill is sampled only at its outline points, so a radial gradient centered *inside* a large polygon does not show its bullseye there. Where that matters, use an SDF shape. Vector export maps linear and radial gradients to native SVG gradients. An along-path stroke exports as short solid runs, and an along-path fill falls back to the color at the ramp's midpoint. A conic paint falls back the same way, since neither SVG nor PDF has a sweep. On the tessellated path a sweeping paint has a seam, the ray where the ramp wraps, and a triangle that crosses it is cut there so the seam stays a line.
+
+<a name="shader-paint"></a>
+
+### A shader as paint
+
+A [`Shader`](../Shaders/Shaders.md) is paint too. `fill(_:)` and `stroke(_:)` take one anywhere they take a color, and its `shade(uv, info)` then runs at every pixel the shape covers. That holds on every shape and every path: the analytic shapes, polygons and `Shape`s, strokes, curves, and outline text. The shape clips the picture, and coverage is applied after the shader returns, so a shader-painted edge is as sharp as a flat one. A shader that returns one color draws exactly what that color draws.
+
+```swift
+let rings = Shader("""
+float4 shade(float2 uv, ShaderInfo info) {
+    float band = 0.5 + 0.5 * cos(-info.distance / 12.0 * 6.2831853 - info.time);
+    return float4(mix(float3(0.1, 0.15, 0.4), float3(1.0, 0.85, 0.5), band), 1.0);
+}
+""")
+fill(rings)
+drawCircle(300, 300, 140)                         // rings counting inward from the edge
+stroke(rings)
+drawPolyline([Vector2(80, 600), Vector2(500, 520)])   // the same rings across the stroke, from its centerline
+```
+
+<picture>
+  <img src="../../Guide/Images/18-YourFirstShader/ShaderPaint.jpg" alt="Three shapes painted by shaders on a dark ground: a disk ringed in gold and blue from its edge inward, a turned five-pointed star striped diagonally in coral and cream in its own frame, and a thick teal ribbon whose light pulses along it and fades toward its edges" width="680">
+</picture>
+
+Inside `shade`, `uv` runs `0...1` across the shape's own bounding box, so `(0, 0)` is the box's top-left corner and `(1, 1)` its bottom-right. The box turns and scales with the shape under the transform stack, so a pattern drawn in `uv` is the shape's own, like a texture on it. The box is the outline's for a closed shape and its fill alike; an open stroke (a line, a polyline, a curve) has no interior, so its box is the stroke's footprint. `info` carries the layer fields a generator gets (`time`, `mouse`, `resolution`, `params`) and three more:
+
+- `info.position` is the pixel in canvas points, the same for every shape, so a grain or a pattern read from it continues across neighboring shapes, and a rotated shape does not turn it.
+- `info.distance` is the signed distance to the shape's edge, in the shape's own units: zero on the outline, negative inside, positive outside. On a stroke it runs across the stroke, zero on the centerline, negative toward the inside of a closed outline. It is exact on the analytic shapes and on a stroke away from its folds: a stroked path is expanded segment by segment, so on the inside of a bend tighter than half the width, where the ribbon folds over itself, each piece reads its own segment's distance. A polygon's or a `Shape`'s *fill* has no measured edge, so there it reads far inside everywhere.
+- `info.along` is the fraction `0...1` along a stroke, by arc length from its start, the same `t` an `.alongPath` gradient reads; a fill reads 0.
+
+Each shader compiles once, on first use, and its pipeline is cached by the source text, so a `Shader` rebuilt every frame with new `params` costs nothing. Shapes painted by the same shader draw as one run. A shape between them painted another way, or by another shader, opens a new run, so a frame that alternates many shaders over many shapes pays a draw call per change. A shape whose fill and stroke are two different shaders draws its fill and then its stroke over it, as it would with one.
+
+A **mesh** under `fill(shader)` takes the shader as its surface. The picture is baked each frame into a square layer the mesh reads as its base texture at its uvs, which is what reaches every pass a texture reaches: the lit surface, a reflection, the path tracer, a USD export. A mesh with no uvs draws white, like a gradient fill, and says so once. Where a shader cannot run, the shape still draws. A vector export (SVG, PDF, embroidery) writes it in middle gray, since a document has no program per pixel. A web page export stops and names the call. Atlas text painted by a shader takes the outline path. A line drawn with 3D points and a mesh's feature edges take one color and draw white under a shader stroke. A shader that does not compile draws nothing and reports the error at your line, the way a layer shader does. `Paint.shader(_:)` carries one as a value beside `.color` and `.gradient`, and `Paint.shader` reads it back.
 
 <a name="palette"></a>
 

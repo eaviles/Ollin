@@ -28,8 +28,9 @@ extension Drawer {
         case .bitmap(let font):  drawBitmapText(string, x, y, font: font)
         case .outline(let font):
             // The atlas path is opt-in and raster, so SVG export keeps the vector
-            // outline path; everything else honors `textMode`.
-            if textRenderMode == .atlas, svgRecorder == nil {
+            // outline path, and a shader fill takes the outline path too (the atlas
+            // quads carry a tint, not a shader); everything else honors `textMode`.
+            if textRenderMode == .atlas, svgRecorder == nil, fillPaint?.shader == nil {
                 drawAtlasText(string, x, y, font: font)
             } else {
                 drawOutlineText(string, x, y, font: font)
@@ -191,9 +192,10 @@ extension Drawer {
         }
 
         // One paint resolution for the whole run; an along-path fill sweeps
-        // around the text anchor.
-        let fillVP = fillPaint.map { vertexPaint($0, anchor: Vector2(x, y)) }
-        let strokeVP = strokePaint.map { vertexPaint($0, anchor: Vector2(x, y)) }
+        // around the text anchor, and a shader's uv spans the run's outlines.
+        let runBox = { PaintBox.around(placed.flatMap { g in g.localContours.flatMap { $0.points.map { $0 + g.origin } } }) }
+        let fillVP = fillPaint.map { vertexPaint($0, anchor: Vector2(x, y), bounds: runBox()) }
+        let strokeVP = strokePaint.map { vertexPaint($0, anchor: Vector2(x, y), bounds: runBox()) }
         for glyph in placed {
             // Emoji carry their own colors, so they are drawn as pictures and take
             // neither the fill nor the stroke.
@@ -1037,7 +1039,7 @@ extension Drawer {
             return
         }
         if let fill = fillPaint {
-            let vp = vertexPaint(fill, anchor: Drawer.boundsCenter(points))
+            let vp = vertexPaint(fill, anchor: Drawer.boundsCenter(points), bounds: .around(points))
             replicated {
                 let start = vertices.count
                 // The fan from the first vertex, in the shared expander's order.
@@ -1053,7 +1055,8 @@ extension Drawer {
         }
         if let stroke = strokePaint, strokeWidth > 0 {
             appendFringeStroke(points, closed: true,
-                               paint: vertexPaint(stroke, anchor: Drawer.boundsCenter(points)))
+                               paint: vertexPaint(stroke, anchor: Drawer.boundsCenter(points),
+                                                  bounds: .around(points)))
         }
     }
 
@@ -1080,8 +1083,12 @@ extension Drawer {
             svgRecord(.path(shape), fill: fillPaint, stroke: strokePaint)
             return
         }
+        // Every contour of the shape, its fill and its strokes, reads one box, so a
+        // shader paints the outline where it paints the region under it.
+        let shapeBox = { PaintBox.around(shape.contours.flatMap(\.points)) }
         if let fill = fillPaint {
-            let vp = vertexPaint(fill, anchor: Drawer.boundsCenter(shape.contours.flatMap(\.points)))
+            let vp = vertexPaint(fill, anchor: Drawer.boundsCenter(shape.contours.flatMap(\.points)),
+                                 bounds: shapeBox())
             let triangles = shape.triangulatedFill()
             replicated {
                 let start = vertices.count
@@ -1102,7 +1109,7 @@ extension Drawer {
         if let stroke = strokePaint, strokeWidth > 0 {
             for contour in shape.contours where contour.points.count >= 2 {
                 appendFringeStroke(contour.points, closed: contour.isClosed,
-                                   paint: vertexPaint(stroke, anchor: contour.points[0]))
+                                   paint: vertexPaint(stroke, anchor: contour.points[0], bounds: shapeBox()))
             }
         }
     }
