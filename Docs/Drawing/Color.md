@@ -154,7 +154,7 @@ let complement = Color(lch)  // or, in one word, brand.complement
 CIELab(l:a:b:)    CIELab(_ color: Color)    Color(_ lab: CIELab, alpha: Double = 1)
 ```
 
-The white it measures against is D50. ICC profiles, CSS's `lab()`, and image editors use that white too. So the Lab numbers printed on a swatch or shown in a color picker come in as they are. sRGB white converts to exactly `(100, 0, 0)`. A vivid printed or measured color is often outside sRGB. It maps back the way an OKLab color does, with its chroma reduced at constant lightness and hue.
+The white it measures against is D50. ICC profiles, CSS's `lab()`, and image editors use that white too. So the Lab numbers printed on a swatch or shown in a color picker come in as they are. sRGB white converts to exactly `(100, 0, 0)`. A vivid printed or measured color is often outside sRGB. It maps back the way an OKLab color does, with its chroma reduced at constant OKLab lightness and hue (which moves L* by about a unit and the Lab hue by a few degrees).
 
 ```swift
 let terracotta = Color(CIELab(l: 55, a: 32, b: 40))     // a swatch, by its numbers

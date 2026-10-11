@@ -76,11 +76,11 @@ d6f8fdb72cba  Guide/17-MarksAndMedia.md:68  cannot assign to value: 'mark' is a 
 4467bb8d08b2  Guide/20-PicturesRestyled.md:293  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
 1d6986f2d7b4  Guide/20-PicturesRestyled.md:316  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
 d557820db6d8  Guide/20-PicturesRestyled.md:57  'module' is inaccessible due to 'internal' protection level
-45ff58c66642  Guide/21-PicturesYouSolve.md:108  cannot convert value of type '[Vector2]' to expected argument type 'RenderTarget'
-2c8e3afaeaef  Guide/21-PicturesYouSolve.md:124  cannot convert value of type '[Vector2]' to expected argument type 'RenderTarget'
+45ff58c66642  Guide/21-PicturesYouSolve.md:116  cannot convert value of type '[Vector2]' to expected argument type 'RenderTarget'
+2c8e3afaeaef  Guide/21-PicturesYouSolve.md:132  cannot convert value of type '[Vector2]' to expected argument type 'RenderTarget'
 cd36a2d9f010  Guide/21-PicturesYouSolve.md:17  cannot convert value of type 'RenderTarget?' to expected argument type 'Contour'
-2065dd8af5c4  Guide/21-PicturesYouSolve.md:250  cannot convert value of type 'RenderTarget' to expected argument type 'Image'
-a1896233ab91  Guide/21-PicturesYouSolve.md:320  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
+2065dd8af5c4  Guide/21-PicturesYouSolve.md:258  cannot convert value of type 'RenderTarget' to expected argument type 'Image'
+a1896233ab91  Guide/21-PicturesYouSolve.md:328  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
 8f074282df6a  Guide/21-PicturesYouSolve.md:67  cannot find 'bands' in scope
 70e92ab22ab8  Guide/22-IteratedForms.md:473  reference to member 'domainColoring' cannot be resolved without a contextual type
 9154907c71d0  Guide/27-Meshes.md:110  cannot find 'grown' in scope

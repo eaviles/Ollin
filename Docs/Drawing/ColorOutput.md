@@ -30,7 +30,7 @@ A sketch that sets nothing stays on `.standard`, which is byte-for-byte what Oll
 | Setting | Gamut | Range | Drawable |
 | --- | --- | --- | --- |
 | `.standard` | sRGB | 0…1 | 8-bit sRGB, dithered. The default. |
-| `.wide` | Display P3 | 0…1 | 16-bit float. Colors outside sRGB reach the screen, and gradients stop banding. |
+| `.wide` | Display P3 | 0…1 | 16-bit float. Colors outside sRGB reach the screen, and gradients stop banding on it. |
 | `.extended` | Display P3 | above 1 | 16-bit float, with headroom asked of the system. Values over 1.0 show as highlights brighter than white. |
 
 Each setting includes the one before it, so `.extended` is `.wide` plus the range.
@@ -77,7 +77,7 @@ Two things follow from this, and both are worth knowing before you use `.extende
 
 | Export | `.standard` | `.wide` | `.extended` |
 | --- | --- | --- | --- |
-| `--export` (PNG) | 8-bit sRGB | 16-bit Display P3 | 16-bit Display P3, highlights clipped to white |
+| `--export` (PNG) | 8-bit sRGB | 8-bit linear Display P3 | 8-bit linear Display P3, highlights clipped to white |
 | `--export` (HEIC) | 8-bit sRGB | 8-bit Display P3 | Display P3 **plus an ISO gain map**: the highlights are kept |
 | `--export-video` | Rec. 709 | P3-D65 | **HDR10**: Rec. 2020 primaries, PQ transfer, 10-bit HEVC |
 | `--export-gif` | sRGB | converted to sRGB | converted to sRGB |
@@ -98,7 +98,7 @@ The file guarantees three things:
 
 - The picture inside it is the PNG. A reader that knows nothing of gain maps shows the frame clamped at white.
 - The map's ceiling is the frame's own brightest value, so a small highlight keeps its brightness. A lamp core covers a fraction of a percent of the canvas. A map whose ceiling comes from frame statistics loses a highlight that small.
-- The map holds a gain per channel, so a bright amber core stays amber. Reconstruction is accurate to about one percent, and the 8-bit picture under the map sets that floor.
+- The map holds a gain per channel, so a bright amber core stays amber. Reconstruction is accurate to about two percent across a highlight and the field around it; at a highlight's edge the half-resolution map is off by far more.
 
 The gain map is written in ISO 21496-1, the cross-vendor gain-map standard, not in a private format that only one viewer reads.
 

@@ -1,6 +1,10 @@
+import Foundation
+import ImageIO
 @testable import Ollin
 import Testing
+import AVFoundation
 import CoreGraphics
+import CoreImage
 import Metal
 import MetalKit
 
@@ -386,6 +390,189 @@ struct FrameInvariantTests {
             }
         }
     }
+
+    // MARK: Survey B (2026-10-11): what the files keep
+
+    /// A measured gap stands as a known issue only where it was measured; the
+    /// statement runs plain everywhere else.
+    private func pinned(_ reason: Comment, when active: Bool = true, _ body: () -> Void) {
+        if active { withKnownIssue(reason, body) } else { body() }
+    }
+
+    /// The bytes of an image file as its decoder hands them over (a PNG with
+    /// alpha arrives straight, not premultiplied), with the row's width and
+    /// the component depth.
+    private func file(_ path: String) -> (bytes: [UInt8], width: Int, bits: Int, profile: String)? {
+        guard let source = CGImageSourceCreateWithURL(URL(fileURLWithPath: path) as CFURL, nil),
+              let image = CGImageSourceCreateImageAtIndex(source, 0, nil),
+              let data = image.dataProvider?.data as Data? else { return nil }
+        let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [String: Any] ?? [:]
+        return ([UInt8](data), image.width, image.bitsPerComponent, props["ProfileName"] as? String ?? "?")
+    }
+
+    /// One component along the middle row of a file, at the column centers
+    /// of `columns` equal columns.
+    private func middleRow(of path: String, columns: Int) -> [Int]? {
+        guard let f = file(path) else { return nil }
+        let bpp = f.bits / 8 * 4
+        let width = f.width
+        return (0..<columns).map { c in
+            let x = c * (width / columns) + width / columns / 2
+            let i = (8 * width + x) * bpp
+            return f.bits == 16 ? Int(UInt16(f.bytes[i]) | UInt16(f.bytes[i + 1]) << 8) : Int(f.bytes[i])
+        }
+    }
+
+    private func temporary(_ name: String) -> String { ollinTempURL("ollin-frame-\(name)").path }
+
+    /// The dither is unbiased at every alpha: a see-through frame's flat fill
+    /// whose stored byte lands between two codes averages to the fraction it
+    /// asked for, as an opaque one does.
+    ///
+    /// Measured 2026-10-11 and filed: the dither is added to the straight
+    /// encoded value and then scaled by the alpha on the way into the
+    /// premultiplied store, so at alpha 0.2 it is a fifth of a level and
+    /// cannot straddle a code: a field asked for at 28.56 stores 29 in every
+    /// pixel.
+    @Test func theDitherIsUnbiasedAtEveryAlpha() throws {
+        func toDisplay(_ c: Double) -> Double { c <= 0.0031308 ? c * 12.92 : 1.055 * pow(c, 1 / 2.4) - 0.055 }
+        // A white whose premultiplied byte at alpha 0.2 sits 0.56 past a code.
+        var white = 0.5
+        for _ in 0..<80 {
+            let byte = toDisplay(Color.srgbToLinear(white)) * 0.2 * 255
+            white += byte < 28.56 ? 0.0005 : -0.0005
+        }
+        let expected = toDisplay(Color.srgbToLinear(white)) * 0.2 * 255
+        let sketch = SeeThroughProbe.make(alpha: 0.2, white: white)
+        let frame = try render(sketch)
+        var sum = 0
+        for y in 0..<frame.height { for x in 0..<frame.width { sum += frame.byte(x, y, 0) } }
+        let mean = Double(sum) / Double(frame.width * frame.height)
+        pinned("the dither is scaled by the pixel's alpha, so a translucent field stores one code (measured 2026-10-11)") {
+            #expect(abs(mean - expected) < 0.1, "a field asked for at \(expected) averaged \(mean)")
+        }
+    }
+
+    /// A see-through frame keeps its levels: sixty-four grays drawn at alpha
+    /// 0.1 are sixty-four values in the file.
+    ///
+    /// Measured 2026-10-11 and filed: the frame is stored premultiplied in
+    /// eight bits, so a fill at alpha 0.1 has 25.5 codes to land on and the
+    /// file, written straight, keeps 26 distinct values of the 64 drawn.
+    @Test func aSeeThroughFrameKeepsItsLevels() throws {
+        let path = temporary("levels.png")
+        try OllinApp.export(SeeThroughProbe.make(alpha: 0.1, columns: 64), to: path)
+        let values = try #require(middleRow(of: path, columns: 64))
+        pinned("a translucent pixel is quantized premultiplied, so a tenth-alpha fill keeps 26 levels (measured 2026-10-11)") {
+            #expect(Set(values).count >= 60, "\(Set(values).count) distinct values of 64 drawn")
+        }
+    }
+
+    /// An eight-bit file of a wide frame is dithered as an eight-bit file of
+    /// a standard one is: a slow gradient across three codes lands on
+    /// hundreds of short runs, never on a few bands.
+    ///
+    /// Measured 2026-10-11 and filed: the float present carries no dither
+    /// and the eight-bit sinks after it (the HEIC, the video frame, the
+    /// recording) quantize without one, so the same gradient that gives the
+    /// standard PNG 471 runs gives the wide HEIC 4 and the wide video frame
+    /// 3. The wide PNG is 8-bit too, with a linear profile (filed beside it).
+    @Test func anEightBitFileOfAWideFrameIsDithered() throws {
+        func runs(_ values: [Int]) -> Int {
+            var runs = 1
+            for i in 1..<values.count where values[i] != values[i - 1] { runs += 1 }
+            return runs
+        }
+        let standard = temporary("standard.png")
+        try OllinApp.export(GradientProbe.make(output: .standard), to: standard)
+        #expect(runs(try #require(middleRow(of: standard, columns: 1024))) > 100)
+        let heic = temporary("wide.heic")
+        try OllinApp.export(GradientProbe.make(output: .wide), to: heic)
+        let wideRuns = runs(try #require(middleRow(of: heic, columns: 1024)))
+        pinned("an eight-bit file of a wide frame is quantized without a dither (measured 2026-10-11)") {
+            #expect(wideRuns > 100, "the wide HEIC's gradient lands on \(wideRuns) runs")
+        }
+    }
+
+    /// A wide PNG keeps sixteen bits, as the reference says.
+    ///
+    /// Measured 2026-10-11 and filed: the file is written at eight bits a
+    /// component under a linear Display P3 profile, which collapses the dark
+    /// end (a gradient at linear 0.2 spans two codes).
+    @Test func aWidePNGKeepsSixteenBits() throws {
+        let path = temporary("wide16.png")
+        try OllinApp.export(GradientProbe.make(output: .wide), to: path)
+        let f = try #require(file(path))
+        pinned("a wide PNG is written at eight bits with a linear profile (measured 2026-10-11)") {
+            #expect(f.bits == 16, "the wide PNG holds \(f.bits) bits a component under the \(f.profile) profile")
+        }
+    }
+
+    /// An HDR export declares its mastering: the track's format carries the
+    /// mastering display color volume and the content light level, which is
+    /// what HDR10 is beyond PQ and Rec. 2020. (Read 2026-10-11: a 1000 cd/m²
+    /// peak on P3 primaries and a D65 white, MaxCLL 1000 and MaxFALL 400,
+    /// in the track's own boxes, where a frame's side data shows nothing.)
+    @Test func anHDRExportDeclaresItsMastering() async throws {
+        let path = temporary("hdr.mov")
+        try OllinApp.exportVideo(GradientProbe.make(output: .extended), to: path, frames: 2, fps: 30, codec: .hevc)
+        let asset = AVURLAsset(url: URL(fileURLWithPath: path))
+        let track = try #require(try await asset.loadTracks(withMediaType: .video).first)
+        let desc = try #require(try await track.load(.formatDescriptions).first)
+        let ext = CMFormatDescriptionGetExtensions(desc) as? [String: Any] ?? [:]
+        #expect(ext["CVImageBufferTransferFunction"] as? String == "SMPTE_ST_2084_PQ")
+        let mastering = ext[kCMFormatDescriptionExtension_MasteringDisplayColorVolume as String]
+        let lightLevel = ext[kCMFormatDescriptionExtension_ContentLightLevelInfo as String]
+        #expect(mastering != nil, "no mastering display color volume in the track")
+        #expect(lightLevel != nil, "no content light level in the track")
+    }
+
+    /// A gain map keeps a highlight's edge: the frame rebuilt from the base
+    /// and the map matches the rendered one within 5% at every pixel of a
+    /// small highlight, its edge and the three pixels around it included.
+    ///
+    /// Measured 2026-10-11 and filed: inside the highlight and over the dim
+    /// field the rebuild is within 2.4%, but at the highlight's edge and the
+    /// three pixels around it the error reaches 38%, since the map is written
+    /// at half resolution in chroma and re-encoded lossily, and a highlight's
+    /// edge is exactly where the gain changes by a stop.
+    @Test func aGainMapKeepsAHighlightsEdge() throws {
+        let sketch = GradientProbe.make(output: .extended)
+        sketch.highlight = true
+        let image = try OllinApp.image(of: sketch)
+        let context = GainMap.makeContext()
+        let space = try #require(CGColorSpace(name: CGColorSpace.extendedLinearDisplayP3))
+        let width = image.width, height = image.height
+        func pixels(_ ci: CIImage) -> [Float] {
+            var out = [Float](repeating: 0, count: width * height * 4)
+            out.withUnsafeMutableBytes { buffer in
+                context.render(ci, toBitmap: buffer.baseAddress!, rowBytes: width * 16,
+                               bounds: CGRect(x: 0, y: 0, width: width, height: height), format: .RGBAf, colorSpace: space)
+            }
+            return out
+        }
+        let frame = pixels(CIImage(cgImage: image))
+        let url = URL(fileURLWithPath: temporary("edge.heic"))
+        _ = try OllinApp.exportHEIC(image, to: url.path)
+        let rebuilt = pixels(try #require(CIImage(contentsOf: url, options: [.expandToHDR: true])))
+        var worstInside = 0.0, worstEdge = 0.0
+        for y in 0..<height {
+            for x in 0..<width {
+                let i = (y * width + x) * 4
+                for c in 0..<3 {
+                    let f = Double(frame[i + c]), g = Double(rebuilt[i + c])
+                    let relative = abs(g - f) / max(f, 0.05)
+                    let inside = x >= 514 && x < 518 && y >= 6 && y < 10
+                    let nearEdge = !inside && x >= 509 && x < 523
+                    if inside { worstInside = max(worstInside, relative) } else if nearEdge { worstEdge = max(worstEdge, relative) }
+                }
+            }
+        }
+        #expect(worstInside < 0.05, "the rebuilt highlight is \(worstInside) off inside")
+        pinned("a gain map's rebuild is 38% off at a highlight's edge (measured 2026-10-11)") {
+            #expect(worstEdge < 0.05, "the rebuilt highlight is \(worstEdge) off at its edge")
+        }
+    }
 }
 
 // MARK: - The probe scenes
@@ -568,5 +755,69 @@ private final class SprayInvariantProbe: Sketch {
         camera(.perspective(eye: .zero, target: Vector3(0, 0, -1), fieldOfView: .pi / 2))
         drawLineSpray(spray)
         drawImage(spray.developed(exposure: exposure).image, 0, 0)
+    }
+
+}
+
+/// A see-through canvas: sixty-four gray columns at one alpha, or one flat
+/// fill.
+private final class SeeThroughProbe: Sketch {
+    var alpha = 0.1
+    var columns = 0
+    var white = 0.5
+
+    static func make(alpha: Double, columns: Int = 0, white: Double = 0.5) -> SeeThroughProbe {
+        let p = SeeThroughProbe()
+        p.alpha = alpha
+        p.columns = columns
+        p.white = white
+        return p
+    }
+
+    override var canvasSize: CanvasSize { .size(256, 16) }
+
+    override func draw() {
+        background(Color(white: 0, alpha: 0))
+        noStroke()
+        if columns > 0 {
+            let w = 256.0 / Double(columns)
+            for c in 0..<columns {
+                fill(Color(white: Double(c) / Double(columns - 1), alpha: alpha))
+                drawRect(Double(c) * w, 0, w, 16)
+            }
+        } else {
+            fill(Color(white: white, alpha: alpha))
+            drawRect(0, 0, 256, 16)
+        }
+    }
+}
+
+/// A slow gray gradient over three encoded codes, 1024 columns wide, under
+/// any color output; with `highlight` on, an 8-pixel block well above white
+/// sits in the middle.
+private final class GradientProbe: Sketch {
+    var output: ColorOutput = .standard
+    var highlight = false
+
+    static func make(output: ColorOutput) -> GradientProbe {
+        let p = GradientProbe()
+        p.output = output
+        return p
+    }
+
+    override var colorOutput: ColorOutput { output }
+    override var canvasSize: CanvasSize { .size(1024, 16) }
+
+    override func draw() {
+        background(.black)
+        noStroke()
+        for x in 0..<1024 {
+            fill(Color(white: 0.200 + 0.012 * Double(x) / 1023))
+            drawRect(Double(x), 0, 1, 16)
+        }
+        if highlight {
+            fill(Color(linear: 4, green: 2.2, blue: 0.72))
+            drawRect(512, 4, 8, 8)
+        }
     }
 }

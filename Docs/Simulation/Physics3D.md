@@ -88,7 +88,7 @@ world.restitution = 0.2                    // default restitution (ground + bodi
 world.advance(by: deltaTime)             // once per frame
 ```
 
-`ground` is a wide static slab whose top face sits at the level you give it. The default is `nil`, which lets bodies fall forever. `advance(by:)` clamps the step to `maxTimestep`, which is 1/30 s, so a stalled frame cannot launch the scene. It runs one collision pass for every ~60 Hz of simulated time.
+`ground` is a wide static slab whose top face sits at the level you give it. The default is `nil`, which lets bodies fall forever. `advance(by:)` clamps the step to `maxTimestep`, which is 1/30 s, so a stalled frame cannot launch the scene. It runs one collision pass per 1/60 s of simulated time, rounding up, so a frame a hair longer than that takes two.
 
 You manage bodies and joints the way the 2D world manages its own:
 
@@ -102,7 +102,7 @@ world.remove(crate)      // removes its joints too
 world.removeAll()
 ```
 
-`density` is relative, and 1 is the default material, so a denser body shoves a lighter one. `friction` runs from 0, which is slick, to 1, which is grippy. `restitution` defaults to the world's own `restitution`.
+`density` is relative, and 1 is the default material, so a denser body shoves a lighter one. `friction` runs from 0, which is slick, to 1, which is grippy. `restitution` defaults to the world's own `restitution`, and the ground carries the world's value, so a body bounces off it with the larger of the two.
 
 **A number the solver cannot hold is refused at the bridge.** The solver keeps single precision and stops simulating sensibly a few kilometers from its origin. So every number a sketch hands it is checked where it crosses over: a value that is not a number, an infinity, or a magnitude past a billion units never reaches it. A property keeps what it had, so `body.velocity = Vector3(.nan, 0, 0)` leaves the velocity alone. A force or an impulse made of one does nothing, and `advance(by:)` skips the step. A creation argument falls back to its default: `addBody(at:)` given such a position places the body at the origin, and a collider carrying one becomes a sphere of one unit. Each prints one note naming the call, once per world. A sketch whose arithmetic went wrong reads why in the console instead of stopping inside the solver. The calls that already throw for what they cannot build (`addVehicle`, `addSoftBody`, `addRope`, `addRagdoll`, `addTensegrity`) throw `PhysicsError.unbuildable` naming the number instead. A limit that means none, such as a motor's `strength: .infinity`, still passes. A [snapshot](#saving-and-loading) refuses the same numbers from a file.
 
@@ -121,12 +121,17 @@ body.rotationAngle            // radians about…
 body.rotationAxis             // …this unit axis (the same pose, read as a pair)
 
 body.velocity                 // units per second, get/set
-body.angularVelocity          // radians per second about each axis
+body.angularVelocity          // radians per second about each axis, up to a quarter turn a step
 body.mass                     // from collider volume × density (0 when static or kinematic)
 body.kind                     // switch .dynamic / .static / .kinematic live
 body.friction                 // 0 slick … 1 grippy, get/set
 body.restitution              // how much speed survives a bounce, get/set
 body.isAwake                  // settled bodies sleep until touched
+```
+
+Every body loses 5% of its speed and of its spin each second, the solver's own damping, so nothing coasts forever and a thrown ball lands a little short of the parabola.
+
+```swift
 
 body.applyForce(Vector3(0, 40, 0))      // steady, accumulated for next step
 body.applyImpulse(Vector3(2, 0, 0))     // instantaneous kick
@@ -1218,7 +1223,7 @@ The waterline is not something you tune. A body of density `d` settles with frac
 | `flow` | a current, in units per second, that carries everything afloat along. |
 | `waves` | a rolling swell, or `nil` for a flat calm. |
 
-Drag is worth a moment, because it is the difference between water and a trampoline. With `linearDrag: 0`, a crate dropped in bounces about its waterline and never stops. The default `0.5` reads like water, so the crate dips, comes back up, and settles within a second or two.
+Drag is worth a moment, because it is the difference between water and a trampoline. With `linearDrag: 0`, a crate dropped in bounces about its waterline and loses only the solver's own few percent a second. The default `0.5` reads like water, so the crate dips, comes back up, and settles within a second or two.
 
 **A swell.** `Water.Waves` gives the surface a shape, and it carries whatever is floating on it:
 

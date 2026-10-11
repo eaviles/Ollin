@@ -14,20 +14,20 @@
 # names its prose establishes; it is spliced into every probe from that page.
 
 59a8691ecc04  Docs/3D/3D.md:1003  overriding declaration requires an 'override' keyword
-76ba2c72194a  Docs/3D/3D.md:1371  cannot find 'ribbon' in scope
+76ba2c72194a  Docs/3D/3D.md:1373  cannot find 'ribbon' in scope
 f120c3e411c4  Docs/3D/3D.md:138  cannot find 'x' in scope
-344f7f4b3cc6  Docs/3D/3D.md:1581  cannot convert value of type '@MainActor (Int, Int, Insets, Double, Grid.Distribution) -> Grid' to expected argument type 'Image'
-b315a31afeb9  Docs/3D/3D.md:1604  cannot find 'planks' in scope
-e0187f40506d  Docs/3D/3D.md:1649  cannot find 'rockColor' in scope
-677c77a8c73e  Docs/3D/3D.md:1667  cannot find 'h' in scope
-d51355214a9e  Docs/3D/3D.md:1694  cannot find 'paint' in scope
-e74d2eeb069f  Docs/3D/3D.md:1711  cannot find 'ribbon' in scope
-2a67d7fc8d2c  Docs/3D/3D.md:1733  cannot find 'brickColor' in scope
-5193d7f3850b  Docs/3D/3D.md:1749  cannot find 'reliefImage' in scope
-124899510ce1  Docs/3D/3D.md:1769  cannot find 'rock' in scope
-d1a6a8c0f0eb  Docs/3D/3D.md:1800  cannot find 'rock' in scope
-5809ee8f07b9  Docs/3D/3D.md:1824  cannot use instance member 'loadImage' within property initializer; property initializers run before 'self' is available
-945a0d5a84a5  Docs/3D/3D.md:1870  cannot find 'blob' in scope
+344f7f4b3cc6  Docs/3D/3D.md:1583  cannot convert value of type '@MainActor (Int, Int, Insets, Double, Grid.Distribution) -> Grid' to expected argument type 'Image'
+b315a31afeb9  Docs/3D/3D.md:1606  cannot find 'planks' in scope
+e0187f40506d  Docs/3D/3D.md:1651  cannot find 'rockColor' in scope
+677c77a8c73e  Docs/3D/3D.md:1669  cannot find 'h' in scope
+d51355214a9e  Docs/3D/3D.md:1696  cannot find 'paint' in scope
+e74d2eeb069f  Docs/3D/3D.md:1713  cannot find 'ribbon' in scope
+2a67d7fc8d2c  Docs/3D/3D.md:1735  cannot find 'brickColor' in scope
+5193d7f3850b  Docs/3D/3D.md:1751  cannot find 'reliefImage' in scope
+124899510ce1  Docs/3D/3D.md:1771  cannot find 'rock' in scope
+d1a6a8c0f0eb  Docs/3D/3D.md:1802  cannot find 'rock' in scope
+5809ee8f07b9  Docs/3D/3D.md:1826  cannot use instance member 'loadImage' within property initializer; property initializers run before 'self' is available
+945a0d5a84a5  Docs/3D/3D.md:1872  cannot find 'blob' in scope
 7d5e1e905641  Docs/3D/3D.md:192  cannot find 'x' in scope
 f6d0fb32d6d9  Docs/3D/3D.md:231  cannot find 'block' in scope
 ad56e3965bd1  Docs/3D/3D.md:434  'module' is inaccessible due to 'internal' protection level
@@ -37,9 +37,8 @@ f0ec15e3ed0a  Docs/3D/3D.md:90  cannot find 'a' in scope
 a5b3460feb06  Docs/3D/3D.md:962  cannot find 'e' in scope
 1fbb55b7ead2  Docs/3D/Atmosphere.md:13  cannot convert value of type '(UnboundedRange_) -> ()' to expected argument type 'Camera3D'
 c58bc0d079e5  Docs/3D/Atmosphere.md:94  cannot find 'gobo' in scope
-1eefcecfecc2  Docs/3D/Camera.md:140  cannot find 'stage' in scope
-57855206ca07  Docs/3D/Camera.md:153  cannot find 'locked' in scope
-780f77dfcd62  Docs/3D/Camera.md:64  cannot find 'distance' in scope
+1eefcecfecc2  Docs/3D/Camera.md:136  cannot find 'stage' in scope
+57855206ca07  Docs/3D/Camera.md:149  cannot find 'locked' in scope
 81e956ba5271  Docs/3D/Caustics.md:13  cannot convert value of type '(UnboundedRange_) -> ()' to expected argument type 'Camera3D'
 011012edb95c  Docs/3D/Caustics.md:77  cannot find 'triangle' in scope
 b33f1f70c329  Docs/3D/DepthCompositing.md:119  cannot find 'device' in scope
@@ -174,30 +173,30 @@ eef3567df64a  Docs/Drawing/Clothoid.md:194  expected type before '->'
 4ca3490a3729  Docs/Drawing/Clothoid.md:34  cannot convert value of type '()' to expected argument type 'Vector2'
 d0dda05019df  Docs/Drawing/Clothoid.md:77  cannot find 'curve' in scope
 bf2a06ada4bf  Docs/Drawing/Clothoid.md:89  expected type before '->'
-2c556ffcbf3d  Docs/Drawing/Color.md:102  cannot find 'ink' in scope
-0960d237620b  Docs/Drawing/Color.md:109  cannot find 'ink' in scope
-3b585d8db480  Docs/Drawing/Color.md:122  consecutive statements on a line must be separated by ';'
-acd0630dbda0  Docs/Drawing/Color.md:134  cannot find 'brand' in scope
-f71a08bdd26d  Docs/Drawing/Color.md:152  consecutive statements on a line must be separated by ';'
-5921d5e2f639  Docs/Drawing/Color.md:171  cannot find 'someColor' in scope
-ddbe57709497  Docs/Drawing/Color.md:212  expected ',' separator
-53df4ad44e2c  Docs/Drawing/Color.md:224  cannot find 'ink' in scope
-bc263aff0c18  Docs/Drawing/Color.md:239  cannot find 'energy' in scope
-d8147ec3af4e  Docs/Drawing/Color.md:256  cannot find 'sky' in scope
-04196cfd36c7  Docs/Drawing/Color.md:276  cannot find 'beat' in scope
-a289bd896621  Docs/Drawing/Color.md:294  cannot find 'x' in scope
-a5908cabee46  Docs/Drawing/Color.md:30  cannot convert value of type 'Double.Type' to expected argument type 'Double'
-9e7fb1cec3a6  Docs/Drawing/Color.md:303  cannot find 'palette' in scope
-b75171f5e36c  Docs/Drawing/Color.md:315  cannot find 'base' in scope
-5738daba25dd  Docs/Drawing/Color.md:332  cannot find 'base' in scope
-105cb16feaaa  Docs/Drawing/Color.md:361  'module' is inaccessible due to 'internal' protection level
-512f523c5b16  Docs/Drawing/Color.md:416  cannot find 'photo' in scope
-fa294f1f47c0  Docs/Drawing/Color.md:470  cannot find 'photo' in scope
-d6862f064245  Docs/Drawing/Color.md:489  cannot find 't' in scope
-0d4d6656f396  Docs/Drawing/Color.md:511  cannot find 'x' in scope
-c708de778678  Docs/Drawing/Color.md:62  cannot find 'userString' in scope
-3340ea233772  Docs/Drawing/Color.md:75  cannot find 'base' in scope
-a47e065ecf70  Docs/Drawing/Color.md:94  cannot find 'albedo' in scope
+2c556ffcbf3d  Docs/Drawing/Color.md:103  cannot find 'ink' in scope
+0960d237620b  Docs/Drawing/Color.md:110  cannot find 'ink' in scope
+3b585d8db480  Docs/Drawing/Color.md:123  consecutive statements on a line must be separated by ';'
+acd0630dbda0  Docs/Drawing/Color.md:135  cannot find 'brand' in scope
+f71a08bdd26d  Docs/Drawing/Color.md:153  consecutive statements on a line must be separated by ';'
+5921d5e2f639  Docs/Drawing/Color.md:172  cannot find 'someColor' in scope
+ddbe57709497  Docs/Drawing/Color.md:213  expected ',' separator
+53df4ad44e2c  Docs/Drawing/Color.md:225  cannot find 'ink' in scope
+bc263aff0c18  Docs/Drawing/Color.md:240  cannot find 'energy' in scope
+d8147ec3af4e  Docs/Drawing/Color.md:257  cannot find 'sky' in scope
+04196cfd36c7  Docs/Drawing/Color.md:277  cannot find 'beat' in scope
+a5908cabee46  Docs/Drawing/Color.md:31  cannot convert value of type 'Double.Type' to expected argument type 'Double'
+a289bd896621  Docs/Drawing/Color.md:328  cannot find 'x' in scope
+9e7fb1cec3a6  Docs/Drawing/Color.md:337  cannot find 'palette' in scope
+b75171f5e36c  Docs/Drawing/Color.md:349  cannot find 'base' in scope
+5738daba25dd  Docs/Drawing/Color.md:366  cannot find 'base' in scope
+105cb16feaaa  Docs/Drawing/Color.md:395  'module' is inaccessible due to 'internal' protection level
+512f523c5b16  Docs/Drawing/Color.md:450  cannot find 'photo' in scope
+fa294f1f47c0  Docs/Drawing/Color.md:504  cannot find 'photo' in scope
+d6862f064245  Docs/Drawing/Color.md:523  cannot find 't' in scope
+0d4d6656f396  Docs/Drawing/Color.md:545  cannot find 'x' in scope
+c708de778678  Docs/Drawing/Color.md:63  cannot find 'userString' in scope
+3340ea233772  Docs/Drawing/Color.md:76  cannot find 'base' in scope
+a47e065ecf70  Docs/Drawing/Color.md:95  cannot find 'albedo' in scope
 688be5dd137a  Docs/Drawing/Combinators.md:135  cannot find 'a' in scope
 48a73e312322  Docs/Drawing/Combinators.md:152  cannot find 'a' in scope
 37573516968f  Docs/Drawing/Combinators.md:172  cannot find 'field' in scope
@@ -224,11 +223,11 @@ b785ec4fb130  Docs/Drawing/DepthOfField.md:133  cannot find 'samples' in scope
 381fce610bdb  Docs/Drawing/DepthOfField.md:54  cannot find 'a' in scope
 94548f0a96c2  Docs/Drawing/DepthOfField.md:72  cannot find 'spray' in scope
 8c1e355373f1  Docs/Drawing/DepthOfField.md:95  cannot find 'spray' in scope
-671a77e4a4db  Docs/Drawing/DistanceFields.md:106  cannot find 'field' in scope
-f217cb6898e7  Docs/Drawing/DistanceFields.md:140  cannot find 'field' in scope
-20760d26b2ab  Docs/Drawing/DistanceFields.md:154  cannot find 'marks' in scope
-b2388a221e5e  Docs/Drawing/DistanceFields.md:176  cannot find 'marks' in scope
-674cbdf10ab3  Docs/Drawing/DistanceFields.md:92  cannot find 'marks' in scope
+671a77e4a4db  Docs/Drawing/DistanceFields.md:107  cannot find 'field' in scope
+f217cb6898e7  Docs/Drawing/DistanceFields.md:141  cannot find 'field' in scope
+20760d26b2ab  Docs/Drawing/DistanceFields.md:155  cannot find 'marks' in scope
+b2388a221e5e  Docs/Drawing/DistanceFields.md:177  cannot find 'marks' in scope
+674cbdf10ab3  Docs/Drawing/DistanceFields.md:93  cannot find 'marks' in scope
 2e4e9c502369  Docs/Drawing/Drawing.md:1019  expected ',' separator
 690fd7f321e9  Docs/Drawing/Drawing.md:103  expected ',' separator
 6a8858a2e0a2  Docs/Drawing/Drawing.md:1041  expected ',' separator
@@ -881,7 +880,7 @@ ce617da83e59  Docs/Helpers/Synthesis.md:112  expected '{' in body of function de
 0325ad3f60c8  Docs/Helpers/Synthesis.md:153  cannot find 'synth' in scope
 46b862c2cf56  Docs/Helpers/Synthesis.md:234  cannot find 'synth' in scope
 2d7bb8d6c187  Docs/Helpers/Synthesis.md:286  cannot find 'synth' in scope
-99c65b5ae548  Docs/Helpers/Synthesis.md:382  cannot find 'synth' in scope
+1e785ce1ed68  Docs/Helpers/Synthesis.md:382  cannot find 'synth' in scope
 83821c3e07c3  Docs/Helpers/Synthesis.md:398  cannot find 'synth' in scope
 c1f052f4e696  Docs/Helpers/Synthesis.md:458  cannot find 'synth' in scope
 64ddc96c1f99  Docs/Helpers/Synthesis.md:482  'module' is inaccessible due to 'internal' protection level
@@ -1070,9 +1069,9 @@ b1d2e70e3760  Docs/Shaders/Compute.md:193  cannot find 'generator' in scope
 e2eef799045a  Docs/Shaders/Compute.md:324  cannot use instance member 'makeSpatialHash' within property initializer; property initializers run before 'self' is available
 0da43f988b6b  Docs/Shaders/Compute.md:36  '@main' attribute cannot be applied to this declaration
 c9f48908e8ff  Docs/Shaders/ShaderLibrary.md:13  cannot find 'source' in scope
-fb6fa9118c0f  Docs/Shaders/Shaders.md:103  cannot find 'metalSource' in scope
-a938ccb90b53  Docs/Shaders/Shaders.md:137  cannot find 'metalSource' in scope
-ce9030c22f3b  Docs/Shaders/Shaders.md:147  'module' is inaccessible due to 'internal' protection level
+fb6fa9118c0f  Docs/Shaders/Shaders.md:120  cannot find 'metalSource' in scope
+a938ccb90b53  Docs/Shaders/Shaders.md:154  cannot find 'metalSource' in scope
+ce9030c22f3b  Docs/Shaders/Shaders.md:164  'module' is inaccessible due to 'internal' protection level
 67f26bb524cc  Docs/Shaders/Visuals.md:104  cannot find 'driver' in scope
 a25c12e1a098  Docs/Shaders/Visuals.md:146  cannot find 'chain' in scope
 d6df8fe7b65e  Docs/Shaders/Visuals.md:42  cannot find 'target' in scope
@@ -1089,92 +1088,93 @@ bed84b18142a  Docs/Simulation/Fluids.md:95  cannot find 'fluid' in scope
 c4ca46e5bfe3  Docs/Simulation/Physics.md:123  cannot find 'world' in scope
 c4ea2e26698f  Docs/Simulation/Physics.md:129  expected '{' to start getter definition
 d5ed456ba6e5  Docs/Simulation/Physics.md:148  cannot find 'p' in scope
-d0d6a4486422  Docs/Simulation/Physics.md:159  cannot find 'world' in scope
+bffdb40ad03e  Docs/Simulation/Physics.md:159  cannot find 'world' in scope
 eb45be4f0ffa  Docs/Simulation/Physics.md:171  expected '{' to start getter definition
 d580cf59d5a2  Docs/Simulation/Physics.md:224  expected '{' to start getter definition
-5164ed729934  Docs/Simulation/Physics.md:255  expected '{' to start getter definition
+a416a704afc4  Docs/Simulation/Physics.md:255  expected '{' to start getter definition
 6253db349910  Docs/Simulation/Physics.md:287  expected '{' in body of function declaration
 86b94c265567  Docs/Simulation/Physics.md:304  cannot find 'world' in scope
 ebf89e121588  Docs/Simulation/Physics.md:326  cannot find 'world' in scope
 a68dec35c447  Docs/Simulation/Physics.md:349  cannot find 'rim' in scope
 49989805e9fd  Docs/Simulation/Physics.md:70  expected '{' to start getter definition
-756218a29c46  Docs/Simulation/Physics3D.md:1015  cannot find 'banner' in scope
-a4bb3c3eb9e1  Docs/Simulation/Physics3D.md:1021  cannot find 'world' in scope
-0d0af9ed7cd9  Docs/Simulation/Physics3D.md:1040  cannot find 'raft' in scope
-03f3f086ea1e  Docs/Simulation/Physics3D.md:1061  cannot find 'world' in scope
-f800d4a84057  Docs/Simulation/Physics3D.md:1085  cannot find 'world' in scope
-a49b57cb0897  Docs/Simulation/Physics3D.md:1100  cannot find 'vine' in scope
-e477e4a22c18  Docs/Simulation/Physics3D.md:1111  cannot find 'chain' in scope
-885024abe204  Docs/Simulation/Physics3D.md:1137  cannot find 'world' in scope
-1247d362602b  Docs/Simulation/Physics3D.md:115  value of type '@MainActor (Vector2, World3D) -> (body: Body3D, point: Vector3)?' has no member 'position'
-45f3af9ecc3f  Docs/Simulation/Physics3D.md:1153  cannot find 'cape' in scope
-6c967a731f05  Docs/Simulation/Physics3D.md:1193  cannot find 'world' in scope
-cc09bf811a57  Docs/Simulation/Physics3D.md:1199  cannot find 'world' in scope
-b79fb1ed7e14  Docs/Simulation/Physics3D.md:1225  cannot find 'world' in scope
-17d27515f7e2  Docs/Simulation/Physics3D.md:1232  cannot find 'world' in scope
-6f73212f90db  Docs/Simulation/Physics3D.md:1258  cannot find 'world' in scope
-39c7c5e9333b  Docs/Simulation/Physics3D.md:1268  cannot find 'world' in scope
-b588709ca7c0  Docs/Simulation/Physics3D.md:1275  cannot find 'world' in scope
-5f32ffe4e0fd  Docs/Simulation/Physics3D.md:1304  cannot find 'world' in scope
-218a1812284f  Docs/Simulation/Physics3D.md:1326  cannot find 'world' in scope
-531ba2893ae7  Docs/Simulation/Physics3D.md:1337  cannot find 'world' in scope
-faf77566cc74  Docs/Simulation/Physics3D.md:1372  cannot find 'world' in scope
-e2cc71140483  Docs/Simulation/Physics3D.md:1400  cannot find 'world' in scope
-41ea676e013d  Docs/Simulation/Physics3D.md:1418  cannot find 'world' in scope
-051e1114d5bb  Docs/Simulation/Physics3D.md:1432  cannot find 'world' in scope
-68e9d5e140e2  Docs/Simulation/Physics3D.md:144  cannot find 'world' in scope
-d4a0dbf5b164  Docs/Simulation/Physics3D.md:1443  cannot find 'world' in scope
-8fee1a37e2c2  Docs/Simulation/Physics3D.md:157  cannot infer contextual base in reference to member 'all'
-85eb21177c8d  Docs/Simulation/Physics3D.md:171  cannot find 'balloon' in scope
-9e452047d32d  Docs/Simulation/Physics3D.md:178  cannot find 'world' in scope
-72161b5e4aef  Docs/Simulation/Physics3D.md:191  cannot find 'mesh' in scope
-68e2584a5d1e  Docs/Simulation/Physics3D.md:213  cannot find 'world' in scope
-71fb2d9b4d0d  Docs/Simulation/Physics3D.md:231  cannot find 'world' in scope
-29d9e26407ec  Docs/Simulation/Physics3D.md:243  cannot find 'world' in scope
-7faa2659eef1  Docs/Simulation/Physics3D.md:256  cannot find 'world' in scope
-b9ce26196419  Docs/Simulation/Physics3D.md:269  cannot find 'world' in scope
-28398ee1ddcb  Docs/Simulation/Physics3D.md:293  cannot find 'world' in scope
-0e9e5c052b0b  Docs/Simulation/Physics3D.md:306  cannot find 'mill' in scope
-c0ee9aeeab6f  Docs/Simulation/Physics3D.md:314  cannot find 'door' in scope
-ac0c55cc42e4  Docs/Simulation/Physics3D.md:322  cannot find 'hinge' in scope
-4de59f3f885b  Docs/Simulation/Physics3D.md:331  cannot find 'neck' in scope
-f85203ef245a  Docs/Simulation/Physics3D.md:346  cannot find 'world' in scope
-acbc0dd17e61  Docs/Simulation/Physics3D.md:364  cannot find 'world' in scope
-85ef251a7d7b  Docs/Simulation/Physics3D.md:370  cannot find 'world' in scope
-936275d7580e  Docs/Simulation/Physics3D.md:380  cannot find 'world' in scope
-8c4eea21626a  Docs/Simulation/Physics3D.md:394  cannot find 'world' in scope
-aabfd4611ab0  Docs/Simulation/Physics3D.md:406  cannot find 'world' in scope
-43919ac2aec2  Docs/Simulation/Physics3D.md:415  cannot find 'world' in scope
-91b1fe1b34f3  Docs/Simulation/Physics3D.md:425  cannot find 'world' in scope
-f753b0aa5fce  Docs/Simulation/Physics3D.md:434  cannot find 'contact' in scope
-938941dc6e7a  Docs/Simulation/Physics3D.md:445  cannot find 'contact' in scope
-7ae2737557da  Docs/Simulation/Physics3D.md:453  cannot find 'ball' in scope
-4763fc671d94  Docs/Simulation/Physics3D.md:463  cannot find 'contact' in scope
-8a5601b5e7fe  Docs/Simulation/Physics3D.md:475  cannot find 'world' in scope
-49bd6bd56a8c  Docs/Simulation/Physics3D.md:488  cannot find 'world' in scope
-18d62222b348  Docs/Simulation/Physics3D.md:506  cannot find 'world' in scope
-2eb8e73e80bd  Docs/Simulation/Physics3D.md:517  cannot find 'world' in scope
-b90ac77c05ba  Docs/Simulation/Physics3D.md:531  cannot find 'world' in scope
-1d90f10a3081  Docs/Simulation/Physics3D.md:546  cannot find 'world' in scope
-98f3bd5f477b  Docs/Simulation/Physics3D.md:576  cannot find 'world' in scope
-546e3f5a4dc2  Docs/Simulation/Physics3D.md:588  cannot find 'world' in scope
-a84bb796be37  Docs/Simulation/Physics3D.md:599  cannot find 'world' in scope
-3579917d6daa  Docs/Simulation/Physics3D.md:610  cannot find 'world' in scope
-975d40f3d6fc  Docs/Simulation/Physics3D.md:685  cannot find 'walker' in scope
-ac5e7a80f3a3  Docs/Simulation/Physics3D.md:694  cannot find 'lookout' in scope
-249aee1e2122  Docs/Simulation/Physics3D.md:714  errors thrown from here are not handled
-9881daefdba2  Docs/Simulation/Physics3D.md:787  cannot find 'car' in scope
-700c012def75  Docs/Simulation/Physics3D.md:826  cannot find 'world' in scope
-eeea97d1d4fd  Docs/Simulation/Physics3D.md:848  cannot find 'world' in scope
-38e4d744020d  Docs/Simulation/Physics3D.md:863  cannot find 'crawler' in scope
-f80131552307  Docs/Simulation/Physics3D.md:892  cannot find 'world' in scope
-805f2e28a82f  Docs/Simulation/Physics3D.md:915  cannot find 'ragdoll' in scope
-760fc0332382  Docs/Simulation/Physics3D.md:927  cannot find 'target' in scope
-9ecccded5c73  Docs/Simulation/Physics3D.md:942  cannot find 'world' in scope
-00aae249a703  Docs/Simulation/Physics3D.md:949  cannot find 'world' in scope
+756218a29c46  Docs/Simulation/Physics3D.md:1020  cannot find 'banner' in scope
+a4bb3c3eb9e1  Docs/Simulation/Physics3D.md:1026  cannot find 'world' in scope
+0d0af9ed7cd9  Docs/Simulation/Physics3D.md:1045  cannot find 'raft' in scope
+03f3f086ea1e  Docs/Simulation/Physics3D.md:1066  cannot find 'world' in scope
+f800d4a84057  Docs/Simulation/Physics3D.md:1090  cannot find 'world' in scope
+a49b57cb0897  Docs/Simulation/Physics3D.md:1105  cannot find 'vine' in scope
+e477e4a22c18  Docs/Simulation/Physics3D.md:1116  cannot find 'chain' in scope
+885024abe204  Docs/Simulation/Physics3D.md:1142  cannot find 'world' in scope
+42eb9f447f46  Docs/Simulation/Physics3D.md:115  value of type '@MainActor (Vector2, World3D) -> (body: Body3D, point: Vector3)?' has no member 'position'
+45f3af9ecc3f  Docs/Simulation/Physics3D.md:1158  cannot find 'cape' in scope
+6c967a731f05  Docs/Simulation/Physics3D.md:1198  cannot find 'world' in scope
+cc09bf811a57  Docs/Simulation/Physics3D.md:1204  cannot find 'world' in scope
+b79fb1ed7e14  Docs/Simulation/Physics3D.md:1230  cannot find 'world' in scope
+17d27515f7e2  Docs/Simulation/Physics3D.md:1237  cannot find 'world' in scope
+6f73212f90db  Docs/Simulation/Physics3D.md:1263  cannot find 'world' in scope
+39c7c5e9333b  Docs/Simulation/Physics3D.md:1273  cannot find 'world' in scope
+b588709ca7c0  Docs/Simulation/Physics3D.md:1280  cannot find 'world' in scope
+5f32ffe4e0fd  Docs/Simulation/Physics3D.md:1309  cannot find 'world' in scope
+218a1812284f  Docs/Simulation/Physics3D.md:1331  cannot find 'world' in scope
+e088d7da566c  Docs/Simulation/Physics3D.md:134  value of type '@MainActor (Vector2, World3D) -> (body: Body3D, point: Vector3)?' has no member 'applyForce'
+531ba2893ae7  Docs/Simulation/Physics3D.md:1342  cannot find 'world' in scope
+faf77566cc74  Docs/Simulation/Physics3D.md:1377  cannot find 'world' in scope
+e2cc71140483  Docs/Simulation/Physics3D.md:1405  cannot find 'world' in scope
+41ea676e013d  Docs/Simulation/Physics3D.md:1423  cannot find 'world' in scope
+051e1114d5bb  Docs/Simulation/Physics3D.md:1437  cannot find 'world' in scope
+d4a0dbf5b164  Docs/Simulation/Physics3D.md:1448  cannot find 'world' in scope
+68e9d5e140e2  Docs/Simulation/Physics3D.md:149  cannot find 'world' in scope
+8fee1a37e2c2  Docs/Simulation/Physics3D.md:162  cannot infer contextual base in reference to member 'all'
+85eb21177c8d  Docs/Simulation/Physics3D.md:176  cannot find 'balloon' in scope
+9e452047d32d  Docs/Simulation/Physics3D.md:183  cannot find 'world' in scope
+72161b5e4aef  Docs/Simulation/Physics3D.md:196  cannot find 'mesh' in scope
+68e2584a5d1e  Docs/Simulation/Physics3D.md:218  cannot find 'world' in scope
+71fb2d9b4d0d  Docs/Simulation/Physics3D.md:236  cannot find 'world' in scope
+29d9e26407ec  Docs/Simulation/Physics3D.md:248  cannot find 'world' in scope
+7faa2659eef1  Docs/Simulation/Physics3D.md:261  cannot find 'world' in scope
+b9ce26196419  Docs/Simulation/Physics3D.md:274  cannot find 'world' in scope
+28398ee1ddcb  Docs/Simulation/Physics3D.md:298  cannot find 'world' in scope
+0e9e5c052b0b  Docs/Simulation/Physics3D.md:311  cannot find 'mill' in scope
+c0ee9aeeab6f  Docs/Simulation/Physics3D.md:319  cannot find 'door' in scope
+ac0c55cc42e4  Docs/Simulation/Physics3D.md:327  cannot find 'hinge' in scope
+4de59f3f885b  Docs/Simulation/Physics3D.md:336  cannot find 'neck' in scope
+f85203ef245a  Docs/Simulation/Physics3D.md:351  cannot find 'world' in scope
+acbc0dd17e61  Docs/Simulation/Physics3D.md:369  cannot find 'world' in scope
+85ef251a7d7b  Docs/Simulation/Physics3D.md:375  cannot find 'world' in scope
+936275d7580e  Docs/Simulation/Physics3D.md:385  cannot find 'world' in scope
+8c4eea21626a  Docs/Simulation/Physics3D.md:399  cannot find 'world' in scope
+aabfd4611ab0  Docs/Simulation/Physics3D.md:411  cannot find 'world' in scope
+43919ac2aec2  Docs/Simulation/Physics3D.md:420  cannot find 'world' in scope
+91b1fe1b34f3  Docs/Simulation/Physics3D.md:430  cannot find 'world' in scope
+f753b0aa5fce  Docs/Simulation/Physics3D.md:439  cannot find 'contact' in scope
+938941dc6e7a  Docs/Simulation/Physics3D.md:450  cannot find 'contact' in scope
+7ae2737557da  Docs/Simulation/Physics3D.md:458  cannot find 'ball' in scope
+4763fc671d94  Docs/Simulation/Physics3D.md:468  cannot find 'contact' in scope
+8a5601b5e7fe  Docs/Simulation/Physics3D.md:480  cannot find 'world' in scope
+49bd6bd56a8c  Docs/Simulation/Physics3D.md:493  cannot find 'world' in scope
+18d62222b348  Docs/Simulation/Physics3D.md:511  cannot find 'world' in scope
+2eb8e73e80bd  Docs/Simulation/Physics3D.md:522  cannot find 'world' in scope
+b90ac77c05ba  Docs/Simulation/Physics3D.md:536  cannot find 'world' in scope
+1d90f10a3081  Docs/Simulation/Physics3D.md:551  cannot find 'world' in scope
+98f3bd5f477b  Docs/Simulation/Physics3D.md:581  cannot find 'world' in scope
+546e3f5a4dc2  Docs/Simulation/Physics3D.md:593  cannot find 'world' in scope
+a84bb796be37  Docs/Simulation/Physics3D.md:604  cannot find 'world' in scope
+3579917d6daa  Docs/Simulation/Physics3D.md:615  cannot find 'world' in scope
+975d40f3d6fc  Docs/Simulation/Physics3D.md:690  cannot find 'walker' in scope
+ac5e7a80f3a3  Docs/Simulation/Physics3D.md:699  cannot find 'lookout' in scope
+249aee1e2122  Docs/Simulation/Physics3D.md:719  errors thrown from here are not handled
+9881daefdba2  Docs/Simulation/Physics3D.md:792  cannot find 'car' in scope
+700c012def75  Docs/Simulation/Physics3D.md:831  cannot find 'world' in scope
+eeea97d1d4fd  Docs/Simulation/Physics3D.md:853  cannot find 'world' in scope
+38e4d744020d  Docs/Simulation/Physics3D.md:868  cannot find 'crawler' in scope
+f80131552307  Docs/Simulation/Physics3D.md:897  cannot find 'world' in scope
+805f2e28a82f  Docs/Simulation/Physics3D.md:920  cannot find 'ragdoll' in scope
+760fc0332382  Docs/Simulation/Physics3D.md:932  cannot find 'target' in scope
+9ecccded5c73  Docs/Simulation/Physics3D.md:947  cannot find 'world' in scope
 7d9cf5626b39  Docs/Simulation/Physics3D.md:95  cannot find 'world' in scope
-b2f4a4fbb63c  Docs/Simulation/Physics3D.md:970  cannot find 'world' in scope
-ce33e138b1e4  Docs/Simulation/Physics3D.md:987  cannot find 'cloth' in scope
+00aae249a703  Docs/Simulation/Physics3D.md:954  cannot find 'world' in scope
+b2f4a4fbb63c  Docs/Simulation/Physics3D.md:975  cannot find 'world' in scope
+ce33e138b1e4  Docs/Simulation/Physics3D.md:992  cannot find 'cloth' in scope
 d6f918371d6d  Docs/Simulation/Swarm.md:70  cannot find 'prey' in scope
 ac82ff8cc8b3  Docs/Simulation/Watercolor.md:71  cannot find 'paint' in scope
 8be07018e588  Docs/Swift.md:198  cannot find 'particles' in scope

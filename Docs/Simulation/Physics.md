@@ -98,8 +98,8 @@ var maxTimestep: Double = 1.0 / 30       // clamp on dt, for stability
 ```
 
 - **`gravity`** is a constant acceleration on every unpinned particle. Set it to `.zero` for a weightless field where everything floats freely.
-- **`drag`** stands in for air friction. At `0` motion is conserved, so things drift forever. A small value removes energy, so things settle.
-- **`bounds`** keeps particles inside a rectangle, and it accounts for each particle's `radius`. `restitution` then sets how much speed a particle keeps when it hits a wall. At `0` the particle sticks, and at `1` it loses nothing.
+- **`drag`** stands in for air friction. At `0` motion is conserved, so things drift forever. A small value removes energy, so things settle. It is taken once a step, so at 60 Hz the default of `0.01` removes 45% of a particle's speed in a second, and a higher frame rate settles things faster.
+- **`bounds`** keeps particles inside a rectangle, and it accounts for each particle's `radius`. `restitution` then sets how much speed a particle keeps when it hits a wall. At `0` the particle sticks, and at `1` it loses nothing at the wall, though `drag` still takes its share in flight.
 - **`particlesCollide`** turns on disk-against-disk separation. The broad phase runs through a spatial hash, so it scales to thousands of bodies. It is off by default for two reasons. A cloth should not have its own points collide, and the check costs a pass every frame. Turn it on for packings and piles. Points with `radius == 0` never collide.
 - **`iterations`** is how many relaxation passes the solver runs to hold springs and collisions together. More passes make stiff stacks and tight packings firmer, and the cost grows linearly with the count.
 
@@ -158,7 +158,7 @@ p.push(Vector2(8, 0))            // now flick it to the right
 
 ```swift
 let s = world.connect(a, b)        // holds their current distance
-s.stiffness = 0.4                  // springy instead of rigid
+s.stiffness = 0.4                  // gives a little, over a few steps
 ```
 
 A `Spring` is a link that tries to hold two particles at a fixed distance from each other. It can stand for a cloth thread, a chain segment, or a soft-body strut.
@@ -231,7 +231,7 @@ var bodies: [Body] { get }
 ```
 
 - **`collider`** is the body's shape (described below). **`kind`** is how the body moves. `.dynamic` (the default) is moved by forces. `.static` never moves, so use it for walls, the ground, or a hinge anchor. `.kinematic` moves only by a velocity you set.
-- **`density`** sets the mass, so heavier bodies push lighter ones. **`friction`** is surface grip, from `0` (slippery) to `1` (grippy). **`restitution`** is bounciness, `0…1`. It defaults to the world's `restitution`.
+- **`density`** sets the mass, so heavier bodies push lighter ones. **`friction`** is surface grip, from `0` (slippery) to `1` (grippy). **`restitution`** is bounciness, `0…1`. It defaults to the world's `restitution`, and the walls carry the world's value too, so a body bounces off them with the larger of the two.
 
 <a name="collider"></a>
 
@@ -256,7 +256,7 @@ Geometry is given in body-local points, centered on the body's origin. The body'
 var position: Vector2          // center, in points
 var angle: Double              // orientation, radians (clockwise, y-down)
 var velocity: Vector2          // points per second (a real velocity)
-var angularVelocity: Double    // radians per second
+var angularVelocity: Double    // radians per second, up to a quarter turn a step
 var mass: Double { get }
 var kind: Body.Kind            // .dynamic / .static / .kinematic
 var userData: Any?
@@ -270,7 +270,7 @@ The `Forces` example shows all three calls in one windy yard. It also has a `.ki
 
 **Shared rules and units**
 
-The rigid side reads the settings you already made on the world. It takes `gravity` unchanged and uses `bounds` as walls. It applies `restitution` to the walls and as the default contact restitution, and it damps bodies with `drag`. It also runs on the same `advance(by:)`. One parameter belongs to the rigid side alone:
+The rigid side reads the settings you already made on the world. It takes `gravity` unchanged and uses `bounds` as walls. It applies `restitution` to the walls and as the default contact restitution, and it damps bodies with `drag` as a loss per second rather than per step. Both reach a body or the walls when they are made, so set them before adding bodies. It also runs on the same `advance(by:)`. One parameter belongs to the rigid side alone:
 
 ```swift
 var unitsPerMeter: Double = 100
@@ -315,7 +315,7 @@ See the `RigidBodies` and `Chain` examples for complete sketches. The first is a
 
 ### How the solver works
 
-Each step first integrates every particle forward. The integration is time-corrected Verlet, so an uneven frame rate does not change how fast things move. The step then runs a few **relaxation** passes. Each pass pulls springs back toward their length, pushes overlapping disks apart, and keeps everything inside `bounds`. Every constraint is solved by moving *positions*, so the velocity follows on its own. A bounce, a spring's recoil, and a collision all only move points, and the implicit Verlet velocity carries the result into the next frame. Many cloth and soft-body demos on the web use the same approach. `Particle` is the one place where Ollin uses reference semantics instead of value types. That lets a spring or a collision move the same shared point in place.
+Each step first integrates every particle forward. The integration is time-corrected Verlet, so an uneven frame rate does not change how fast things move (the share `drag` takes each step is the exception). The step then runs a few **relaxation** passes. Each pass pulls springs back toward their length, pushes overlapping disks apart, and keeps everything inside `bounds`. Every constraint is solved by moving *positions*, so the velocity follows on its own. A bounce, a spring's recoil, and a collision all only move points, and the implicit Verlet velocity carries the result into the next frame. Many cloth and soft-body demos on the web use the same approach. `Particle` is the one place where Ollin uses reference semantics instead of value types. That lets a spring or a collision move the same shared point in place.
 
 <a name="soft-bodies"></a>
 

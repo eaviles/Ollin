@@ -287,4 +287,95 @@ struct ColorScienceInvariantTests {
             }
         }
     }
+
+    // MARK: Survey B (2026-10-11): the gamut map and the press
+
+    /// A measured gap stands as a known issue only where it was measured; the
+    /// statement runs plain everywhere else.
+    private func pinned(_ reason: Comment, when active: Bool = true, _ body: () -> Void) {
+        if active { withKnownIssue(reason, body) } else { body() }
+    }
+
+    /// OKLab to linear sRGB as published (Ottosson 2020), written here so the
+    /// boundary the map is held to does not come from the code that maps.
+    private static func linearFromOKLab(_ L: Double, _ a: Double, _ b: Double) -> (Double, Double, Double) {
+        let l_ = L + 0.3963377774 * a + 0.2158037573 * b
+        let m_ = L - 0.1055613458 * a - 0.0638541728 * b
+        let s_ = L - 0.0894841775 * a - 1.2914855480 * b
+        let l = l_ * l_ * l_, m = m_ * m_ * m_, s = s_ * s_ * s_
+        return (4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+                -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+                -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s)
+    }
+
+    private static func inside(_ rgb: (Double, Double, Double), by slack: Double) -> Bool {
+        rgb.0 >= -slack && rgb.0 <= 1 + slack && rgb.1 >= -slack && rgb.1 <= 1 + slack
+            && rgb.2 >= -slack && rgb.2 <= 1 + slack
+    }
+
+    /// The gamut map keeps a color's hue and lands on the boundary: a chroma
+    /// asked past what sRGB holds comes back with its hue within a ten
+    /// thousandth of a turn, inside the gamut, and within 0.006 of the true
+    /// boundary found by bisection on the published matrices (the cusp is a
+    /// published fit, weakest in the blue corner, where the shortfall sits).
+    @Test func theGamutMapKeepsHueAndReachesTheBoundary() {
+        var worstShort = 0.0, worstHue = 0.0, worstOutside = 0.0
+        var at = (h: 0.0, l: 0.0)
+        for hi in 0..<120 {
+            let h = Double(hi) / 120
+            for li in 1..<38 {
+                let l = 0.025 * Double(li)
+                let back = OKLCH(Color(OKLCH(l: l, c: 1.0, h: h)))
+                var dh = abs(back.h - h)
+                if dh > 0.5 { dh = 1 - dh }
+                worstHue = max(worstHue, dh)
+                let mapped = Self.linearFromOKLab(back.l, back.c * cos(2 * .pi * back.h), back.c * sin(2 * .pi * back.h))
+                worstOutside = max(worstOutside, max(-mapped.0, -mapped.1, -mapped.2, mapped.0 - 1, mapped.1 - 1, mapped.2 - 1))
+                var lo = 0.0, hiC = 1.0
+                for _ in 0..<40 {
+                    let mid = (lo + hiC) / 2
+                    if Self.inside(Self.linearFromOKLab(l, mid * cos(2 * .pi * h), mid * sin(2 * .pi * h)), by: 1e-9) { lo = mid } else { hiC = mid }
+                }
+                if lo - back.c > worstShort { worstShort = lo - back.c; at = (h, l) }
+            }
+        }
+        #expect(worstHue < 1e-4, "the map moved a hue by \(worstHue) of a turn")
+        #expect(worstOutside < 1e-4, "the map landed \(worstOutside) outside the gamut")
+        #expect(worstShort < 0.006, "the map landed \(worstShort) chroma short of the boundary at hue \(at.h), lightness \(at.l)")
+    }
+
+    /// A pixel darker than every ink separates to the darkest ink alone: solid
+    /// black takes solid black and leaves the other plates empty.
+    ///
+    /// Measured 2026-10-11 and filed: once the first ink's transmittance is
+    /// zero every later ink's score is flat, and the tie breaks toward solid,
+    /// so black pulls solid coverage onto the pink plate (and onto every ink
+    /// after a solid black, in either order); a mid gray separates to black
+    /// alone as it should.
+    @Test func aBlackPixelSeparatesToBlackAlone() {
+        let separation = flat(.black).separated(into: [.black, .fluorescentPink])
+        #expect(separation.layers[0].averageInk > 0.98)
+        pinned("a pixel darker than the first ink reaches pulls solid coverage onto every later ink (measured 2026-10-11)") {
+            #expect(separation.layers[1].averageInk < 0.02, "pink at \(separation.layers[1].averageInk) under solid black")
+        }
+        let gray = flat(Color(white: 0.5)).separated(into: [.black, .fluorescentPink])
+        #expect(gray.layers[1].averageInk < 0.02, "pink at \(gray.layers[1].averageInk) under a mid gray")
+    }
+
+    /// An absolute proof shows the paper, and the generic press's stock is
+    /// warm (its media white sits on the yellow side of neutral), so an
+    /// absolute proof of white is at least as red as it is blue.
+    ///
+    /// Measured 2026-10-11 and filed: white proofs to (195, 210, 226), a cyan
+    /// cast, because the forward leg carries the source profile's D65 white
+    /// into the press's D50 connection as if it were a color; the paper
+    /// simulation's own white reads (238, 220, 185), far yellower than the
+    /// profile's media white for the same reason on the return leg.
+    @Test(.enabled(if: SoftProof(.genericCMYK).destination.isUsable))
+    func anAbsoluteProofOfWhiteShowsTheStocksWarmth() {
+        let shown = mean(flat(.white).softProofed(SoftProof(.genericCMYK, intent: .absolute)))
+        pinned("an absolute proof of white comes out cyan (measured 2026-10-11)") {
+            #expect(shown.r >= shown.b - 2, "white proofs to \(shown)")
+        }
+    }
 }

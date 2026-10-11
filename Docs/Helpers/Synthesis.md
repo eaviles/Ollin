@@ -241,7 +241,7 @@ synth.voice = Voice(plucked: string)
 |---|---|
 | `position` | where along the string it is plucked, `0...1` |
 | `hardness` | how hard the pluck is, `0...1`, from a fingertip to a plectrum |
-| `decay` | how long the note takes to fade, in seconds at the note being played |
+| `decay` | how long the note takes to fade, in seconds. Exact at low notes; a high note rings shorter than this, since the loop filter takes a share of its own (a steel string's 3.6 s is under a second at MIDI 93) |
 | `damping` | how much sooner the top goes than the bottom, `0...1` |
 
 **`position` is the one that sounds least like a setting.** A string held at a point cannot move there. Every harmonic with a node at that point is therefore missing. Plucking at `0.5` loses every even harmonic and comes out hollow. Plucking near the end keeps them all and comes out thin and nasal. A quarter of the way along is roughly where a guitar is played. `Examples/Audio/Strings` lets you click a string wherever you want to pluck it.
@@ -334,7 +334,7 @@ synth.pressure = 0.7          // and keep moving it while the note sounds
 | `.violin` | bright and a little edgy |
 | `.cello` | broader and darker, bowed further from the bridge |
 | `.bowed` | a light bow a long way up the string, soft and almost breathy |
-| `.ponticello` | right next to the bridge: glassy, with the fundamental thinned out |
+| `.ponticello` | right next to the bridge: glassy, with the fundamental thinned out, and at low notes the string jumps to its second or third mode |
 
 The string is the same string as before. The difference is that a pluck happens once and a bow keeps happening.
 
@@ -344,7 +344,7 @@ One nonlinearity is what makes it sound bowed. Rosin grips harder when the bow a
 |---|---|
 | `position` | where the bow sits, `0...1` from the bridge. Small is thin and bright, which is what *sul ponticello* means |
 | `force` | how hard it presses. More force keeps the string stuck for longer in each cycle, which is louder and harder-edged |
-| `decay` | how long the string would ring if the bow were lifted |
+| `decay` | the loss inside the string's loop, which colors a sounding note. It is not a ring-out: a bow at pressure 0 rests on the string and mutes it within a tenth of a second |
 | `damping` | how much sooner the bright part goes than the low part |
 
 Two things fall out of the model rather than being settings, and both are worth knowing:
@@ -364,7 +364,7 @@ synth.pressure = 0.8
 |---|---|
 | `.clarinet` | hollow and woody |
 | `.reed` | bitten tight, so it is thin and pure, with almost nothing above the third harmonic |
-| `.hollow` | a loose lip on a long tube, dark and full of air |
+| `.hollow` | a loose lip on a long tube, full of air |
 
 A column of air in a tube resonates, and a reed at one end keeps feeding it. The same pressure that drives the reed also pushes it shut, and that feedback is what makes the whole thing sound.
 
@@ -380,10 +380,10 @@ The tube is stopped at the reed and open at the far end, and that one fact is mo
 #### Driving them
 
 ```swift
-synth.pressure = 0.3 + 0.5 * abs(sin(time * 2))
+synth.pressure = 0.6 + 0.4 * abs(sin(time * 2))
 ```
 
-`pressure` is `0...1`, read once every block of a few milliseconds, and shared by every note the instrument is playing. That is right for one bow and one breath. At zero there is nothing to hear, because nothing is driving the model. The sources that are set going once (a wave, a plucked string, a struck body) ignore it entirely. Adding it changed nothing that already worked. A note pressed on its own ([`press`](#expression)) is driven by that instead, from the first press on, which is what a surface with a finger on every note wants.
+`pressure` is `0...1`, read once every block of a few milliseconds, and shared by every note the instrument is playing. That is right for one bow and one breath. At zero there is nothing to hear, because nothing is driving the model. A tube also needs a minimum breath before it speaks, about 0.6 for the clarinet, 0.4 for the reedy one, and 0.7 for the hollow tube, and below that it is silent. The sources that are set going once (a wave, a plucked string, a struck body) ignore it entirely. Adding it changed nothing that already worked. A note pressed on its own ([`press`](#expression)) is driven by that instead, from the first press on, which is what a surface with a finger on every note wants.
 
 This is the control an envelope cannot give you. An envelope is decided when the note starts, while `pressure` is whatever you are doing right now.
 
@@ -683,7 +683,7 @@ Placing survives an [export](#sound-in-an-export). The moves are written down as
 |---|---|
 | `place(at:heardFrom:)` | where the sound is, and where it is heard from |
 | `position` | where it is, or nil if it has not been placed |
-| `hearingDistance` | the distance over which it fades, in scene units |
+| `hearingDistance` | the distance over which it fades, in scene units. An export reads it once, when its soundtrack starts |
 | `unplace()` | back to being heard from everywhere at once |
 
 **The first call rebuilds the instrument's audio chain**, so make it before the first note if you can. Placing a sound is a different shape of graph rather than a setting on one. One stream has to arrive at something that knows where the ears are, and leave it as two. Once placed, an instrument stays placed.
@@ -707,7 +707,7 @@ That works because the renderer takes events and gives back samples, and it has 
 What to know:
 
 - **`--export-video` and `--export-loop` carry sound.** GIF has no way to hold any, and the still and vector exports are one frame.
-- **An instrument has to be a property of the sketch**, in the usual place, so it can be found. One made and thrown away inside `draw()` cannot be found.
+- **An instrument has to be a property of the sketch**, in the usual place, so it can be found. One made and thrown away inside `draw()` cannot be found, and neither can one held inside an array or a struct: keep each instrument as a property of its own.
 - **A note's length travels in beats of real time, not samples**, so the file is written at its own rate. The hardware rate does not decide it.
 - **Delay and reverb are in the file**, because the export runs the same effects the output had.
 - **A placed sound is placed in the export too.** Where it was and where it was heard from are written down each frame. The notes travel the same way, and the soundtrack is rendered through a listener afterwards. So a sound that walks past you live walks past you in the file. Place from the first frame, because the chain is fixed when the soundtrack machine is built. An instrument that starts playing before it is placed says so, rather than quietly coming out centered.
@@ -820,7 +820,7 @@ Delay(time: 0.25, feedback: 0.4, mix: 0.3, damping: 6000)
 
 | Setting | What it does |
 |---|---|
-| `time` | seconds before the first repeat |
+| `time` | seconds before the first repeat, up to 2 |
 | `feedback` | how much of each repeat feeds the next, `0...0.95`. Higher runs longer |
 | `mix` | how much of the result is the echo rather than the sound, `0...1` |
 | `damping` | where the repeats start losing their top, in Hz. Lower makes each repeat duller than the last, the way a real echo is |
@@ -916,7 +916,7 @@ Where the four above move the sound, these three watch how loud it is and act on
 | Level | What it does | Settings |
 |---|---|---|
 | `Compressor` | above `threshold`, lets the sound through at a fraction of what it does: a `ratio` of 4 means four decibels over arrive as one. What that buys is a narrower sound rather than a quieter one, so `makeupGain` brings the whole thing back up with the loud parts still held. `knee` is how wide the bend at the threshold is, and a wide one starts working before the threshold, which is what makes a compressor hard to hear working | `threshold`, `ratio`, `attack`, `release`, `knee`, `makeupGain` |
-| `Limiter` | a promise rather than a shape: whatever arrives, nothing leaves above `ceiling`. It turns the level down the instant a peak asks for it, so a single loud note ducks the sound around it for a `release` rather than tearing. The last thing in a chain | `ceiling`, `release` |
+| `Limiter` | a promise rather than a shape: whatever arrives, nothing leaves above `ceiling`. It turns the level down on the sample that asks for it, so a single loud note ducks the sound around it for a `release`; a wave that crosses the ceiling is flattened to it on the way, since there is no lookahead. The last thing in a chain | `ceiling`, `release` |
 | `Gate` | below `threshold`, turns the sound down by `depth`, which takes hiss, hum, and room out of the gaps. `hold` is how long it stays open after the level drops, which is what keeps a decaying note from being chopped off | `threshold`, `attack`, `hold`, `release`, `depth` |
 
 `attack` is how long the holding down takes and `release` how long the letting go takes, both in seconds, and between them they are most of what a compressor sounds like. A fast attack flattens every transient, and a slow release breathes. The level is read from both sides at once, so a loud note on one side pulls the other down with it and the image stays where you put it.

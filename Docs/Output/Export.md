@@ -95,7 +95,7 @@ For an ordinary sketch, that is the same picture in a smaller file. For a sketch
 
 ### Linear frames: EXR
 
-Every other still export ends at the same place. The frame is tone-mapped into the range a screen can show, then dithered, then quantized to eight bits per channel. That is the right file to look at and the wrong one to work on. `--export-exr` writes the frame one step earlier, in linear light, as an OpenEXR file:
+Every other still export ends at the same place. The frame is tone-mapped into the range a screen can show, then dithered, then quantized to eight bits per channel (a `.wide` or `.extended` frame skips the dither on its way to an eight-bit file). That is the right file to look at and the wrong one to work on. `--export-exr` writes the frame one step earlier, in linear light, as an OpenEXR file:
 
 ```sh
 swift run --package-path Examples Example-Export-LinearFrame --export-exr /tmp/frame.exr
@@ -246,7 +246,7 @@ An `extended` (HDR) clip carries no alpha channel, and `hevcWithAlpha` on such a
 
 A sketch that plays sound carries that sound into the video. Nothing needs to be switched on. If the sketch holds an instrument and plays it, `--export-video` and `--export-loop` write an audio track beside the picture. A sketch that holds no instrument writes exactly the file it always wrote, with no audio track.
 
-The sound reproduces the way the picture does. The exporters drive the sketch on a fixed clock with nothing playing aloud, and the notes are written down as the frames are drawn. Then the soundtrack is rendered through the same code that would have fed the speakers. Export twice, and the audio comes back identical sample for sample.
+The sound reproduces the way the picture does. The exporters drive the sketch on a fixed clock with nothing playing aloud, and the notes are written down as the frames are drawn. Then the soundtrack is rendered through the same code that would have fed the speakers, with one difference: the mixed soundtrack bends anything above 0.7 so that several instruments at once never clip, and a single instrument that loud meets the same bend. Export twice, and the audio comes back identical sample for sample.
 
 A sound the sketch [placed in the scene](../Helpers/Synthesis.md#placing-a-sound) is placed in the file as well. The position of each instrument, and the position it was heard from, are written down alongside the notes. So something that moves past you on screen also moves past you in the audio.
 
