@@ -72,7 +72,16 @@ struct ModalVoice {
         // the strike is divided by what it is being spread across.
         let level = total > 1e-9 ? min(max(0, velocity), 1) / total : 0
         pushLength = 2 + Int((1 - body.hardness) * (1 - body.hardness) * 0.012 * sampleRate)
-        pushHeight = level
+        // The push below is a raised cosine of that length, whose area is half
+        // its length, and it is divided by that area. A tone the push is short
+        // against then rings at `level` whatever the hardness, and a longer
+        // push reaches fewer tones rather than pushing the same tones harder:
+        // hardness is the color of a strike and never its loudness. The
+        // division also takes the loudness off the sample rate, since the push
+        // is a length of time and so 9% more samples at 48 kHz. Undivided, a
+        // soft strike was its length in samples times too loud, and every
+        // preset but the hardest sat on the renderer's ceiling at its attack.
+        pushHeight = level * 2 / Double(pushLength)
         pushLeft = pushLength
     }
 

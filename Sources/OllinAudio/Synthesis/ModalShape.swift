@@ -82,7 +82,7 @@ public struct StruckShape: Sendable {
         struckAt point: Vector2? = nil,
         decay: Double = 2.0,
         damping: Double = 1.0,
-        hardness: Double = 0.7
+        hardness: Double = 0.85
     ) -> ModalBody {
         let gains = gains(struckAt: point ?? middle)
         return ModalBody(
@@ -130,7 +130,7 @@ public extension ModalBody {
         resolution: Int = 40,
         decay: Double = 2.0,
         damping: Double = 1.0,
-        hardness: Double = 0.7
+        hardness: Double = 0.85
     ) {
         if let measured = StruckShape(shape, modes: modes, resolution: resolution) {
             self = measured.body(struckAt: struckAt, decay: decay,

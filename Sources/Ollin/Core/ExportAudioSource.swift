@@ -36,34 +36,20 @@ package protocol TransportMutable: AnyObject {
 
 public extension Sketch {
     /// The live sound makers this sketch is holding, found the way the export
-    /// sources below are: by looking at the sketch's own stored properties.
+    /// sources below are: by looking through what the sketch holds.
     internal func transportMutables() -> [TransportMutable] {
-        var found: [TransportMutable] = []
-        var mirror: Mirror? = Mirror(reflecting: self)
-        while let current = mirror {
-            for child in current.children {
-                if let mutable = child.value as? TransportMutable { found.append(mutable) }
-            }
-            mirror = current.superclassMirror
-        }
-        return found
+        heldObjects(of: (any TransportMutable).self)
     }
 
     /// The sound sources this sketch is holding, for the offline exporters.
     ///
-    /// Found by looking at the sketch's own stored properties, the same way
-    /// eased and sprung values are found, so an instrument held in the usual
-    /// place is picked up with nothing to declare.
+    /// Found by looking through what the sketch holds, the same way eased and
+    /// sprung values are found (`heldObjects(of:)`): a stored property, and an
+    /// instrument inside a struct, an array, an optional, a dictionary, or an
+    /// object of the sketch's own, so an instrument is picked up wherever the
+    /// sketch's own structure keeps it, with nothing to declare.
     internal func exportAudioSources() -> [ExportAudioSource] {
-        var found: [ExportAudioSource] = []
-        var mirror: Mirror? = Mirror(reflecting: self)
-        while let current = mirror {
-            for child in current.children {
-                if let source = child.value as? ExportAudioSource { found.append(source) }
-            }
-            mirror = current.superclassMirror
-        }
-        return found
+        heldObjects(of: (any ExportAudioSource).self)
     }
 
     /// The next stretch of this sketch's soundtrack, mixed, up to `seconds`.

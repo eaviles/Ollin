@@ -3494,26 +3494,26 @@
       "width": 1080
     },
     "Audio/Sequencer": {
-      "bytes": {
-        "loop": 1171670,
-        "loopSmall": 297806,
-        "still": 87548,
-        "stillSmall": 37401
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "10.0s",
-      "loop": "examples/Audio/Sequencer/loop.mp4?v=fa8d275c",
-      "loopSmall": "examples/Audio/Sequencer/loop-640.mp4?v=25bb4c85",
-      "motion": 4.917,
-      "rendered": "2026-09-26",
       "seconds": 10.0,
-      "seed": 1,
+      "frame": 480,
+      "motion": 4.917,
       "sound": true,
       "source": "dcf157a2153bfbcf",
-      "still": "examples/Audio/Sequencer/still.jpg?v=57a9d137",
-      "stillSmall": "examples/Audio/Sequencer/still-640.jpg?v=060bd8d9",
-      "width": 1080
+      "rendered": "2026-10-11",
+      "bytes": {
+        "loop": 1177525,
+        "loopSmall": 295918,
+        "still": 87552,
+        "stillSmall": 37409
+      },
+      "loop": "examples/Audio/Sequencer/loop.mp4?v=6c34591f",
+      "loopSmall": "examples/Audio/Sequencer/loop-640.mp4?v=888f985c",
+      "still": "examples/Audio/Sequencer/still.jpg?v=fe7c9b01",
+      "stillSmall": "examples/Audio/Sequencer/still-640.jpg?v=610d3aeb",
+      "seed": 1
     },
     "Audio/Shaping": {
       "bytes": {
@@ -3559,46 +3559,48 @@
       "width": 1080
     },
     "Audio/SoundInAnExport": {
-      "bytes": {
-        "loop": 1620659,
-        "loopSmall": 278625,
-        "still": 25679,
-        "stillSmall": 10620
-      },
-      "frame": 480,
+      "width": 720,
       "height": 720,
       "length": "lap",
-      "loop": "examples/Audio/SoundInAnExport/loop.mp4?v=d8d22e5d",
-      "loopSmall": "examples/Audio/SoundInAnExport/loop-640.mp4?v=85c0bbfc",
-      "motion": 1.881,
-      "rendered": "2026-09-10",
       "seconds": 10.0,
+      "frame": 480,
+      "motion": 1.881,
       "sound": true,
-      "source": "772b32fd75928690",
-      "still": "examples/Audio/SoundInAnExport/still.jpg?v=d5a99ae6",
-      "stillSmall": "examples/Audio/SoundInAnExport/still-640.jpg?v=7ecb82cc",
-      "width": 720
+      "source": "1bd084c839816d6d",
+      "rendered": "2026-10-11",
+      "bytes": {
+        "loop": 1623717,
+        "loopSmall": 279996,
+        "still": 25680,
+        "stillSmall": 10621
+      },
+      "loop": "examples/Audio/SoundInAnExport/loop.mp4?v=cf7fc1ad",
+      "loopSmall": "examples/Audio/SoundInAnExport/loop-640.mp4?v=4d946e3e",
+      "still": "examples/Audio/SoundInAnExport/still.jpg?v=5e611afe",
+      "stillSmall": "examples/Audio/SoundInAnExport/still-640.jpg?v=7cac126c",
+      "seed": 1
     },
     "Audio/Spatial": {
-      "bytes": {
-        "loop": 1475307,
-        "loopSmall": 244675,
-        "still": 56551,
-        "stillSmall": 22539
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "10.0s",
-      "loop": "examples/Audio/Spatial/loop.mp4?v=b5ec9152",
-      "loopSmall": "examples/Audio/Spatial/loop-640.mp4?v=2a62db91",
-      "motion": 2.488,
-      "rendered": "2026-09-10",
       "seconds": 10.0,
+      "frame": 480,
+      "motion": 2.53,
       "sound": true,
-      "source": "c4ed0c32409c4603",
-      "still": "examples/Audio/Spatial/still.jpg?v=ba15e936",
-      "stillSmall": "examples/Audio/Spatial/still-640.jpg?v=cdd4286a",
-      "width": 1080
+      "source": "9335aaac4e11d93b",
+      "rendered": "2026-10-11",
+      "bytes": {
+        "loop": 1640522,
+        "loopSmall": 281552,
+        "still": 57186,
+        "stillSmall": 22828
+      },
+      "loop": "examples/Audio/Spatial/loop.mp4?v=ce30fcfb",
+      "loopSmall": "examples/Audio/Spatial/loop-640.mp4?v=74ec54e4",
+      "still": "examples/Audio/Spatial/still.jpg?v=3c0bccd6",
+      "stillSmall": "examples/Audio/Spatial/still-640.jpg?v=ae4b06ce",
+      "seed": 1
     },
     "Audio/Spectral": {
       "bytes": {
@@ -3665,26 +3667,26 @@
       "width": 1080
     },
     "Audio/StruckShapes": {
-      "bytes": {
-        "loop": 1030139,
-        "loopSmall": 197579,
-        "still": 75421,
-        "stillSmall": 30116
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "10.0s",
-      "loop": "examples/Audio/StruckShapes/loop.mp4?v=05adae71",
-      "loopSmall": "examples/Audio/StruckShapes/loop-640.mp4?v=dab5abd5",
-      "motion": 0.826,
-      "rendered": "2026-09-26",
       "seconds": 10.0,
-      "seed": 1,
+      "frame": 480,
+      "motion": 0.826,
       "sound": true,
-      "source": "0a7adbad94cfe16f",
-      "still": "examples/Audio/StruckShapes/still.jpg?v=5d924d88",
-      "stillSmall": "examples/Audio/StruckShapes/still-640.jpg?v=48946ff2",
-      "width": 1080
+      "source": "107962b9bd885e6d",
+      "rendered": "2026-10-11",
+      "bytes": {
+        "loop": 1028651,
+        "loopSmall": 198892,
+        "still": 75407,
+        "stillSmall": 30117
+      },
+      "loop": "examples/Audio/StruckShapes/loop.mp4?v=2f779822",
+      "loopSmall": "examples/Audio/StruckShapes/loop-640.mp4?v=2f5109be",
+      "still": "examples/Audio/StruckShapes/still.jpg?v=65307a0b",
+      "stillSmall": "examples/Audio/StruckShapes/still-640.jpg?v=0d655f41",
+      "seed": 1
     },
     "Audio/Synth": {
       "bytes": {

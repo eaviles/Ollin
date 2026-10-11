@@ -300,27 +300,69 @@ struct SoundInvariantTests {
     /// sound should hold nothing at 1.4 or 3.4 times the note, which are not
     /// among its partials.
     ///
-    /// Measured 2026-10-11 and filed: the strike's push is a raised cosine whose
-    /// area grows with its length, and nothing divides it out, so every preset
-    /// but `.wood` drives the renderer's soft clip at its attack (the bell sits
-    /// above 0.95 for 56% of its first second, glass 92%, the drum 6%) and the
-    /// clip's intermodulation puts lines at 1.4 and 3.4 times the note 7 dB
-    /// under the bell's prime. At hardness 1 (a push two samples long) the same
-    /// bell peaks at 0.59 and those lines sit 50 dB down.
-    @Test(arguments: [("bell", ModalBody.bell), ("glass", .glass), ("drum", .drum), ("wood", .wood)])
+    /// The strike's push is a raised cosine whose length grows as the hardness
+    /// falls, divided by its own area, so a softer strike reaches fewer tones
+    /// rather than pushing the same tones harder. Before that division every
+    /// preset but `.wood` drove the renderer's soft clip at its attack (the bell
+    /// sat above 0.95 for 56% of its first second, glass 92%, the drum 6%) and
+    /// the clip's intermodulation put lines at 1.4 and 3.4 times the note 7 dB
+    /// under the bell's prime.
+    @Test(arguments: [("bell", ModalBody.bell), ("glass", .glass), ("drum", .drum), ("wood", .wood),
+                      ("bar", .bar), ("plate", .plate)])
     func aStruckBodyIsASumOfTones(name: String, body: ModalBody) {
         let s = render(Voice(struck: body, envelope: Self.flat, gain: 1), midi: 60, seconds: 1.5, velocity: 0.9)
         let first = s[0..<Int(1.0 * Self.sampleRate)]
         let onTheCeiling = Double(first.filter { abs($0) > 0.95 }.count) / Double(first.count)
-        pinned("the strike's push is not normalized by its area, so the bell, glass, and drum presets clip at their attack (measured 2026-10-11)", when: name != "wood") {
-            #expect(onTheCeiling < 0.01, "\(name) sat on the ceiling \(onTheCeiling * 100)% of its first second")
-            if name == "bell" {
-                let slice = s[Int(0.1 * Self.sampleRate)..<Int(0.6 * Self.sampleRate)]
-                let prime = magnitude(slice, hz: 2 * 261.63)
-                let foreign = max(magnitude(slice, hz: 1.4 * 261.63), magnitude(slice, hz: 3.4 * 261.63))
-                #expect(20 * log10(foreign / prime) < -40, "a line \(20 * log10(foreign / prime)) dB under the prime at a frequency the bell has no partial at")
-            }
+        #expect(onTheCeiling < 0.01, "\(name) sat on the ceiling \(onTheCeiling * 100)% of its first second")
+        if name == "bell" {
+            let slice = s[Int(0.1 * Self.sampleRate)..<Int(0.6 * Self.sampleRate)]
+            let prime = magnitude(slice, hz: 2 * 261.63)
+            let foreign = max(magnitude(slice, hz: 1.4 * 261.63), magnitude(slice, hz: 3.4 * 261.63))
+            #expect(20 * log10(foreign / prime) < -40, "a line \(20 * log10(foreign / prime)) dB under the prime at a frequency the bell has no partial at")
         }
+    }
+
+    /// `hardness` is the color of a strike and not its level: a soft mallet
+    /// reaches fewer of the tones, so the sound is darker, and it is never
+    /// louder than a hard one. And a strike is a length of time, so it is as
+    /// loud at 48 kHz as at 44.1, where a push counted in samples was 9%
+    /// louder at the higher rate.
+    @Test(arguments: [("bell", ModalBody.bell), ("glass", .glass), ("drum", .drum), ("bar", .bar), ("plate", .plate)])
+    func aSofterStrikeIsDarkerAndNeverLouder(name: String, body: ModalBody) {
+        func peak(_ s: [Float]) -> Double { Double(s.map { abs($0) }.max() ?? 0) }
+        func brightness(_ s: [Float]) -> Double {
+            // The highest partial against the first, over the attack.
+            let slice = s[0..<Int(0.2 * Self.sampleRate)]
+            let modes = body.modes
+            let low = magnitude(slice, hz: 261.63 * modes[0].ratio)
+            let high = magnitude(slice, hz: 261.63 * modes[modes.count - 1].ratio)
+            return high / low
+        }
+        var soft = body, hard = body
+        soft.hardness = 0.2
+        hard.hardness = 1.0
+        let softly = render(Voice(struck: soft, envelope: Self.flat, gain: 1), midi: 60, seconds: 0.5, velocity: 0.9)
+        let hardly = render(Voice(struck: hard, envelope: Self.flat, gain: 1), midi: 60, seconds: 0.5, velocity: 0.9)
+        #expect(peak(softly) <= peak(hardly) * 1.02,
+                "\(name) struck softly peaked at \(peak(softly)) against \(peak(hardly)) struck hard")
+        #expect(brightness(softly) < brightness(hardly) * 0.5,
+                "\(name) struck softly kept \(brightness(softly) / brightness(hardly)) of the hard strike's top partial")
+
+        // The same note at two sample rates, read over the first tenth of a
+        // second so the fade compares like with like.
+        func level(at rate: Double) -> Double {
+            let events = EventRing()
+            let renderer = SynthRenderer(voice: Voice(struck: body, envelope: Self.flat, gain: 1),
+                                         polyphony: 4, sampleRate: rate, events: events, seed: 5)
+            renderer.gain = 1
+            events.push(SynthEvent(kind: .noteOn, pitch: 60, velocity: 0.9))
+            let count = Int(0.1 * rate)
+            var samples = [Float](repeating: 0, count: count)
+            samples.withUnsafeMutableBufferPointer { renderer.render(into: $0, frameCount: count) }
+            return rms(samples[0..<count])
+        }
+        let ratio = level(at: 48000) / level(at: 44100)
+        #expect(abs(ratio - 1) < 0.03, "\(name) played at \(ratio) of its level when rendered at 48 kHz")
     }
 
     /// `decay` is how long the note takes to fade at the note being played, so
@@ -554,26 +596,41 @@ struct SoundInvariantTests {
         }
     }
 
-    /// A sketch holding its instruments inside a struct, an array, or an
-    /// optional still exports them: the finder reads what the sketch holds,
-    /// not only what it holds directly.
+    /// A sketch holding its instruments inside a struct, an array, an
+    /// optional, a dictionary, or an object of its own still exports them:
+    /// the finder reads what the sketch holds, not only what it holds
+    /// directly, and an instrument held twice is one instrument.
     ///
-    /// Measured 2026-10-11 and filed: only a direct stored property or an
-    /// optional is found; three synths inside structs in an array and one in a
-    /// bare array are not, so the Spatial example's three chimes are missing
-    /// from its own exported soundtrack.
+    /// Until 2026-10-11 only a direct stored property or an optional was
+    /// found; three synths inside structs in an array and one in a bare array
+    /// were not, so the Spatial example's three chimes were missing from its
+    /// own exported soundtrack.
     final class NestedInstruments: Sketch {
         struct Post { let synth: Synth }
+        @MainActor final class Band {
+            let drums: Synth
+            init() { drums = Synth(.drum) }
+        }
         var posts: [Post] = []
         var walker: Synth!
         var inArray: [Synth] = []
         var optional: Synth?
+        var byName: [String: Synth] = [:]
+        var band: Band!
+        var twice: Synth?
+        /// A great many plain values beside them, which the finder must not
+        /// read one by one.
+        var points: [Vector2] = []
         override var canvasSize: CanvasSize { .square(16) }
         override func setup() {
             posts = [Post(synth: Synth(.bell)), Post(synth: Synth(.bell)), Post(synth: Synth(.bell))]
             walker = Synth(.bell)
             inArray = [Synth(.bell)]
             optional = Synth(.bell)
+            byName = ["lead": Synth(.pluck)]
+            band = Band()
+            twice = walker
+            points = (0..<1_000_000).map { Vector2(Double($0), 0) }
         }
         override func draw() {}
     }
@@ -582,93 +639,125 @@ struct SoundInvariantTests {
     @Test func anInstrumentInsideAnArrayReachesTheExport() {
         let sketch = NestedInstruments()
         sketch.runSetup()
-        let found = sketch.exportAudioSources().count
-        pinned("instruments inside an array or a struct are not found by the export (measured 2026-10-11)") {
-            #expect(found == 6, "found \(found) of the sketch's 6 instruments")
+        let started = Date()
+        let found = sketch.exportAudioSources()
+        let took = Date().timeIntervalSince(started)
+        #expect(found.count == 8, "found \(found.count) of the sketch's 8 instruments")
+        // The three direct ones come first, in the order the sketch declares
+        // them, so a sketch with two instruments mixes exactly as it did.
+        #expect(found.first === sketch.walker)
+        #expect(took < 2, "reading the sketch took \(took) s beside a million points")
+        // And every one is advanced, so a note it plays on a late frame is
+        // written down at that frame and not at zero.
+        exporting {
+            for frame in 0..<30 {
+                sketch.advance(time: Double(frame) / 60, deltaTime: 1.0 / 60, frameRate: 60)
+                sketch.performDraw()
+            }
+            sketch.posts[2].synth.play(72, velocity: 0.9, for: 0.2)
         }
+        #expect(abs((sketch.posts[2].synth.recorded.first?.at ?? -1) - 29.0 / 60) < 1e-9,
+                "the chime inside the array wrote its note at \(sketch.posts[2].synth.recorded.first?.at ?? -1)")
     }
 
     /// A note asked for on a frame starts on that frame's first sample: the
     /// exporter advances the sketch and then draws it, and the note the draw
-    /// asks for belongs to the time the frame is stamped with.
+    /// asks for belongs to the time the frame is stamped with, on the first
+    /// frame and on every one after it.
     ///
-    /// Measured 2026-10-11 and filed: the export clock is advanced before the
-    /// draw, so a note asked for on frame 0 starts at sample 736 (one frame at
-    /// 60 fps) while the picture is stamped at 0; every note lands one frame
-    /// late, 42 ms at 24 fps.
-    final class PlaysOnFirstDraw: Sketch {
+    /// Until 2026-10-11 the export clock was only ever stepped, before the
+    /// draw, so a note asked for on frame 0 started at sample 736 (one frame
+    /// at 60 fps) while the picture was stamped at 0; every note landed one
+    /// frame late, 42 ms at 24 fps.
+    final class PlaysOnOneFrame: Sketch {
         var synth: Synth!
-        var played = false
+        var onFrame = 0
         override var canvasSize: CanvasSize { .square(16) }
         override func setup() { synth = Synth(.bell) }
         override func draw() {
-            if !played { played = true; synth.play(72, velocity: 0.9, for: 0.5) }
+            if frameCount == onFrame + 1 { synth.play(72, velocity: 0.9, for: 0.5) }
         }
     }
 
     @MainActor
-    @Test func aNoteAskedForOnAFrameStartsOnThatFrame() {
+    @Test(arguments: [0, 10])
+    func aNoteAskedForOnAFrameStartsOnThatFrame(frame: Int) {
         var onset = -1
         exporting {
-            let sketch = PlaysOnFirstDraw()
+            let sketch = PlaysOnOneFrame()
+            sketch.onFrame = frame
             sketch.runSetup()
-            // The exporter's own order: advance, then draw.
-            sketch.advance(time: 0, deltaTime: 1.0 / 60, frameRate: 60)
-            sketch.performDraw()
+            // The exporter's own order: advance, then draw, every frame.
+            for k in 0...frame {
+                sketch.advance(time: Double(k) / 60, deltaTime: 1.0 / 60, frameRate: 60)
+                sketch.performDraw()
+            }
             let s = sketch.synth.renderExportAudio(upTo: 1, sampleRate: Self.sampleRate)
             onset = s.firstIndex { abs($0) > 1e-4 }.map { $0 / 2 } ?? -1
         }
-        pinned("a note lands one frame late in an export (measured 2026-10-11)") {
-            #expect(onset >= 0 && onset < 32, "the frame-0 note starts at sample \(onset)")
-        }
+        let expected = Int(Double(frame) / 60 * Self.sampleRate)
+        #expect(onset >= expected && onset < expected + 32,
+                "the frame-\(frame) note starts at sample \(onset), where the frame starts at \(expected)")
     }
 
-    /// A change of `hearingDistance` while an export runs is heard: a note
-    /// placed 12 units away after the range was widened to start at 0.2 is
-    /// five times quieter than one under the default range starting at 1.
+    /// A change of `hearingDistance` while an export runs is heard from the
+    /// frame that made it: a note placed 12 units away after the range was
+    /// widened to start at 0.2 is five times quieter than one under the default
+    /// range starting at 1, and a note before the change is as it was.
     ///
-    /// Measured 2026-10-11 and filed: the offline machine reads the range once
-    /// when it is built, after the first frame, so a range set later (by a
-    /// parameter, a cue, or the Spatial example's own slider) is ignored in
-    /// the file while the live window honors it at once.
+    /// Until 2026-10-11 the offline machine read the range once when it was
+    /// built, after the first frame, so a range set later (by a parameter, a
+    /// cue, or the Spatial example's own slider) was ignored in the file while
+    /// the live window honored it at once.
     @MainActor
     @Test func aHearingDistanceChangedMidExportIsHeard() {
-        func secondNoteLevel(changing: Bool) -> Double {
+        /// Two notes on a placed instrument, the second after frame 30, with
+        /// the range `before` to start with and `after` from frame 30 on.
+        func notes(before: ClosedRange<Double>, after: ClosedRange<Double>) -> (first: Double, second: Double) {
             let synth = Synth(.bell)
-            synth.hearingDistance = changing ? 1...50 : 0.2...50
+            synth.hearingDistance = before
             var samples: [Float] = []
             exporting {
                 var frame = 0
                 while frame < 90 {
-                    if changing && frame == 30 { synth.hearingDistance = 0.2...50 }
+                    if frame == 30 { synth.hearingDistance = after }
                     synth.place(at: Vector3(0, 0, -12), heardFrom: Self.listener())
                     if frame == 0 { synth.play(72, velocity: 0.9, for: 0.3) }
                     if frame == 45 { synth.play(72, velocity: 0.9, for: 0.5) }
                     synth.advance(by: 1.0 / 60)
+                    // The machine is built after the first frame, as an
+                    // export builds it.
                     if frame == 0 { _ = synth.renderExportAudio(upTo: 1.0 / 60, sampleRate: Self.sampleRate) }
                     frame += 1
                 }
                 samples = synth.renderExportAudio(upTo: 1.5, sampleRate: Self.sampleRate)
             }
-            let start = Int(0.8 * Self.sampleRate), end = Int(1.4 * Self.sampleRate)
-            var acc = 0.0
-            for f in start..<end { let v = Double(samples[f * 2]); acc += v * v }
-            return (acc / Double(end - start)).squareRoot()
+            func level(from: Double, to: Double) -> Double {
+                let start = Int(from * Self.sampleRate), end = Int(to * Self.sampleRate)
+                var acc = 0.0
+                for f in start..<end { let v = Double(samples[f * 2]); acc += v * v }
+                return (acc / Double(end - start)).squareRoot()
+            }
+            return (level(from: 0.05, to: 0.35), level(from: 0.8, to: 1.4))
         }
-        let changed = secondNoteLevel(changing: true), fromTheStart = secondNoteLevel(changing: false)
-        pinned("a hearing range changed after the first frame does not reach the export (measured 2026-10-11)") {
-            #expect(abs(changed / fromTheStart - 1) < 0.05, "the changed range played the note at \(changed / fromTheStart) of the range set from the start")
-        }
+        let near = notes(before: 1...50, after: 1...50)
+        let wide = notes(before: 0.2...50, after: 0.2...50)
+        let changed = notes(before: 1...50, after: 0.2...50)
+        #expect(wide.second < near.second * 0.3, "widening the range to 0.2 left the note at \(wide.second / near.second) of its level")
+        #expect(abs(changed.second / wide.second - 1) < 0.05,
+                "the range changed at frame 30 played the later note at \(changed.second / wide.second) of the range set from the start")
+        #expect(abs(changed.first / near.first - 1) < 0.05,
+                "the range changed at frame 30 played the earlier note at \(changed.first / near.first) of what it was before the change")
     }
 
     /// Taking a sound out of space puts it back where it started: as loud as
-    /// one that was never placed, in both ears.
+    /// one that was never placed, in both ears, and placing it again puts it
+    /// back in the scene.
     ///
-    /// Measured 2026-10-11 and filed: `unplace()` moves the source to the
-    /// listener's own position, where the offline pan plays it at half level
-    /// in each ear (0.50 of never placed; a source one unit ahead plays at
-    /// 0.71), so an instrument placed once and unplaced is 6 dB down for the
-    /// rest of the piece.
+    /// Until 2026-10-11 `unplace()` moved the source to the listener's own
+    /// position, where the pan played it at half level in each ear (0.50 of
+    /// never placed; a source one unit ahead plays at 0.71), so an instrument
+    /// placed once and unplaced was 6 dB down for the rest of the piece.
     @MainActor
     @Test func anUnplacedSoundIsHeardAtFullLevel() {
         let never = placed(at: nil)
@@ -677,17 +766,30 @@ struct SoundInvariantTests {
         var unplaced: [Float] = []
         exporting {
             var frame = 0
-            while frame < 90 {
-                if frame == 0 { synth.place(at: Vector3(0, 0, -8), heardFrom: Self.listener()) } else { synth.unplace() }
+            while frame < 150 {
+                switch frame {
+                case 0: synth.place(at: Vector3(0, 0, -8), heardFrom: Self.listener())
+                case 1..<90: synth.unplace()
+                default: synth.place(at: Vector3(-6, 0, -2), heardFrom: Self.listener())
+                }
                 if frame == 0 { synth.play(72, velocity: 0.9, for: 1.0) }
+                if frame == 95 { synth.play(72, velocity: 0.9, for: 1.0) }
                 synth.advance(by: 1.0 / 60)
                 frame += 1
             }
-            unplaced = synth.renderExportAudio(upTo: 1.5, sampleRate: Self.sampleRate)
+            unplaced = synth.renderExportAudio(upTo: 2.5, sampleRate: Self.sampleRate)
         }
-        let ratio = level(unplaced, channel: 0) / level(never, channel: 0)
-        pinned("an unplaced sound plays at half level (measured 2026-10-11)") {
-            #expect(abs(ratio - 1) < 0.05, "unplaced plays at \(ratio) of never placed")
+        for channel in 0...1 {
+            let ratio = level(unplaced, channel: channel) / level(never, channel: channel)
+            #expect(abs(ratio - 1) < 0.02, "unplaced plays at \(ratio) of never placed in ear \(channel)")
         }
+        // Placed again, to the left, the second note is louder in the left ear.
+        func later(_ channel: Int) -> Double {
+            let start = Int(1.65 * Self.sampleRate), end = Int(2.4 * Self.sampleRate)
+            var acc = 0.0
+            for f in start..<end { let v = Double(unplaced[f * 2 + channel]); acc += v * v }
+            return (acc / Double(end - start)).squareRoot()
+        }
+        #expect(later(0) > later(1) * 1.5, "placed again to the left, the note reads \(later(0)) left and \(later(1)) right")
     }
 }

@@ -381,17 +381,17 @@ extension Voice {
     public static let fmBuzz = Voice(patch: .buzz, gain: 0.5)
 
     /// A round drumhead, struck off center.
-    public static let drum = Voice(struck: .drum, gain: 0.9)
+    public static let drum = Voice(struck: .drum, gain: 1)
 
     /// A bar free at both ends, which is what a xylophone key is.
-    public static let bar = Voice(struck: .bar, gain: 0.85)
+    public static let bar = Voice(struck: .bar, gain: 1)
 
     /// A bell, with the minor third that makes one sound like a bell.
-    public static let chime = Voice(struck: .bell, gain: 0.7)
+    public static let chime = Voice(struck: .bell, gain: 1)
 
     /// A glass rung rather than struck: almost nothing at the front and a long
     /// pure tone behind it.
-    public static let glass = Voice(struck: .glass, gain: 0.7)
+    public static let glass = Voice(struck: .glass, gain: 1)
 
     /// Air rather than pitch: noise through a band the note moves.
     public static let breath = Voice(

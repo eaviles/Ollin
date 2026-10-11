@@ -21,7 +21,7 @@ final class StruckShapes: Sketch {
 
     @Param(0.2 ... 8, icon: "clock", group: "Body") var ring = 2.6
     @Param(0 ... 2.5, icon: "square.3.layers.3d.down.right", group: "Body") var damping = 0.9
-    @Param(0 ... 1, icon: "hammer", group: "Strike") var hardness = 0.7
+    @Param(0 ... 1, icon: "hammer", group: "Strike") var hardness = 0.85
 
     struct Piece {
         var name: String
@@ -39,7 +39,7 @@ final class StruckShapes: Sketch {
     var lastStrike = -3.0
 
     override func setup() {
-        synth.gain = 0.42
+        synth.gain = 0.55
         synth.reverb = Reverb(.hall, mix: 0.22)
 
         let radius = Double(width) * 0.115

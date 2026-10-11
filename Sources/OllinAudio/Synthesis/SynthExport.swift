@@ -16,6 +16,19 @@ extension Synth: @MainActor FrameAdvancing, @MainActor ExportAudioSource {
         exportClock += max(0, dt)
     }
 
+    /// Sets the clock to the time of the frame the sketch is about to draw.
+    ///
+    /// The sketch hands this over after the step, every frame. Counted in steps
+    /// alone the clock stands one frame past the picture while the frame is
+    /// drawn, because the sketch advances before it draws, and every note the
+    /// draw asked for landed one frame late (736 samples at 60 fps, 42 ms at
+    /// 24). Set from the frame's own time, a note asked for on frame 0 starts
+    /// on sample 0.
+    package func advance(to time: Double) {
+        guard OllinApp.isRenderingHeadless else { return }
+        exportClock = max(0, time)
+    }
+
     /// The next stretch of this instrument's soundtrack, up to `seconds`.
     ///
     /// The notes were written down as the frames went by; this plays them back
@@ -44,6 +57,14 @@ extension Synth: @MainActor FrameAdvancing, @MainActor ExportAudioSource {
                   Int(next.at * sampleRate) <= offline.rendered {
                 offline.apply(next)
                 offline.pendingPoses.removeFirst()
+            }
+
+            // How far a sound carries is a control like where it is, written
+            // down at the frame that set it and applied at the same block.
+            while let next = offline.pendingRanges.first,
+                  Int(next.at * sampleRate) <= offline.rendered {
+                offline.apply(next.range)
+                offline.pendingRanges.removeFirst()
             }
 
             // A drag through a grain cloud is a control too, quantized to the
@@ -121,6 +142,8 @@ extension Synth: @MainActor FrameAdvancing, @MainActor ExportAudioSource {
         var pending: [RecordedNote]
         /// Where the instrument was and where it was heard from, still to come.
         var pendingPoses: [RecordedPose]
+        /// How far it carried, whenever the sketch changed that, still to come.
+        var pendingRanges: [RecordedRange]
         var pendingScrubs: [RecordedScrub]
         var rendered = 0
         private var started = false
@@ -136,6 +159,7 @@ extension Synth: @MainActor FrameAdvancing, @MainActor ExportAudioSource {
             self.sampleRate = sampleRate
             pending = synth.recorded.sorted { $0.at < $1.at }
             pendingPoses = synth.recordedPoses.sorted { $0.at < $1.at }
+            pendingRanges = synth.recordedRanges.sorted { $0.at < $1.at }
             pendingScrubs = synth.recordedScrubs.sorted { $0.at < $1.at }
 
             guard let stereo = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 2),
@@ -191,7 +215,9 @@ extension Synth: @MainActor FrameAdvancing, @MainActor ExportAudioSource {
                 // rather than the head model: a file cannot know what it will
                 // be played back on.
                 listener.renderingAlgorithm = .auto
-                applyHearingRange(synth.placementRange, to: listener)
+                // The range the export began with, where the sketch changed it
+                // along the way; the one it holds now otherwise.
+                applyHearingRange(pendingRanges.first?.range ?? synth.placementRange, to: listener)
                 source.renderingAlgorithm = .auto
                 environment = listener
                 engine.attach(listener)
@@ -241,9 +267,19 @@ extension Synth: @MainActor FrameAdvancing, @MainActor ExportAudioSource {
                 forward: audioVector(pose.listener.forward),
                 up: audioVector(pose.listener.up)
             )
-            // No position means the instrument left the scene, which is the
-            // same as sitting in the middle of the listener's head.
+            // No position means the instrument left the scene. It is passed
+            // through the listener untouched then, the one stream in both
+            // ears at full level, exactly what an instrument that was never
+            // placed gets; sat at the listener's own position instead it
+            // played at half level in each ear.
+            source.renderingAlgorithm = pose.position == nil ? .stereoPassThrough : .auto
             source.position = audioPoint(pose.position ?? pose.listener.eye)
+        }
+
+        /// Sets how far a sound carries, from the frame that changed it.
+        func apply(_ range: ClosedRange<Double>) {
+            guard let environment else { return }
+            applyHearingRange(range, to: environment)
         }
 
         func shutDown() {
@@ -262,6 +298,13 @@ extension Synth {
     struct RecordedNote {
         var at: Double
         var event: SynthEvent
+    }
+
+    /// How far the instrument carried from one moment on, while a sketch was
+    /// being exported.
+    struct RecordedRange {
+        var at: Double
+        var range: ClosedRange<Double>
     }
 
     /// Whether notes are being written down instead of played.

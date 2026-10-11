@@ -63,11 +63,18 @@ public struct ModalBody: Sendable, Hashable, Codable {
     /// A hard, small mallet is over in a moment and sets everything ringing; a
     /// soft one leans on the object and only the low tones answer. This is the
     /// same distinction as a fingertip against a plectrum on a string, and it
-    /// is the difference between a click and a thump.
+    /// is the difference between a click and a thump. It is the color of the
+    /// strike and never its loudness: the push is a length of contact, 12 ms
+    /// of it at 0 falling to nothing at 1, and the same push however long it
+    /// lasts, so a soft strike reaches fewer tones rather than pushing the
+    /// same tones harder, and a tone the push is short against rings at the
+    /// level the note was played at whatever the hardness. Past 0.85 a strike
+    /// reaches every tone under 2 kHz within 3 dB; at 0.6 it is a felt mallet
+    /// that leaves a bell's octave 30 dB down.
     public var hardness: Double
 
     /// A body from a set of tones you already have.
-    public init(modes: [Mode], decay: Double = 2.0, damping: Double = 1.0, hardness: Double = 0.7) {
+    public init(modes: [Mode], decay: Double = 2.0, damping: Double = 1.0, hardness: Double = 0.85) {
         var ratios = SIMD16<Double>()
         var gains = SIMD16<Double>()
         // The first mode is what everything else is measured against, so the
@@ -113,7 +120,7 @@ public struct ModalBody: Sendable, Hashable, Codable {
         modes: zip(besselZeros, [1.0, 0.82, 0.66, 0.55, 0.5, 0.42, 0.36, 0.32,
                                  0.28, 0.26, 0.22, 0.2, 0.19, 0.16, 0.15, 0.14])
             .map { Mode(ratio: $0 / ModalBody.besselZeros[0], gain: $1) },
-        decay: 0.9, damping: 1.2, hardness: 0.75
+        decay: 0.9, damping: 1.2, hardness: 0.85
     )
 
     /// A square plate, struck. Nearer to whole multiples than a drum is, so it
@@ -122,7 +129,7 @@ public struct ModalBody: Sendable, Hashable, Codable {
         modes: squareRatios.enumerated().map { index, ratio in
             Mode(ratio: ratio, gain: pow(0.82, Double(index)))
         },
-        decay: 1.6, damping: 0.9, hardness: 0.7
+        decay: 1.6, damping: 0.9, hardness: 0.85
     )
 
     /// A bar free at both ends, which is what a xylophone key is. Its tones are
@@ -134,11 +141,12 @@ public struct ModalBody: Sendable, Hashable, Codable {
             Mode(ratio: 5.404, gain: 0.2), Mode(ratio: 8.933, gain: 0.1),
             Mode(ratio: 13.344, gain: 0.05), Mode(ratio: 18.639, gain: 0.03),
         ],
-        decay: 1.1, damping: 1.4, hardness: 0.85
+        decay: 1.1, damping: 1.4, hardness: 0.9
     )
 
     /// A bell, tuned the way founders tune one: a hum an octave below, and a
-    /// minor third that is what makes a bell sound like a bell.
+    /// minor third that is what makes a bell sound like a bell. Struck hard,
+    /// as a clapper strikes, so every partial of the list is heard.
     public static let bell = ModalBody(
         modes: [
             Mode(ratio: 0.5, gain: 0.6), Mode(ratio: 1.0, gain: 1.0),
@@ -147,7 +155,7 @@ public struct ModalBody: Sendable, Hashable, Codable {
             Mode(ratio: 2.67, gain: 0.3), Mode(ratio: 3.0, gain: 0.35),
             Mode(ratio: 4.0, gain: 0.28), Mode(ratio: 5.33, gain: 0.16),
         ],
-        decay: 6.0, damping: 0.35, hardness: 0.6
+        decay: 6.0, damping: 0.35, hardness: 0.9
     )
 
     /// A block of wood. The same tones as a bar, gone almost at once.
@@ -162,7 +170,7 @@ public struct ModalBody: Sendable, Hashable, Codable {
             Mode(ratio: 1, gain: 1), Mode(ratio: 2.32, gain: 0.35),
             Mode(ratio: 4.25, gain: 0.14), Mode(ratio: 6.63, gain: 0.06),
         ],
-        decay: 5.5, damping: 0.5, hardness: 0.35
+        decay: 5.5, damping: 0.5, hardness: 0.8
     )
 
     /// The first sixteen zeros of the Bessel functions, in order, which are what

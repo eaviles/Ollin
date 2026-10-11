@@ -275,7 +275,7 @@ synth.play("C4", for: 4)
 | `modes` | the tones it rings at, as ratios to its lowest, and how much of each |
 | `decay` | how long the lowest tone takes to fade, in seconds |
 | `damping` | how much sooner the higher ones go, `0...3` |
-| `hardness` | how hard the strike is, `0...1`, from a small hard mallet to a soft one |
+| `hardness` | how hard the strike is, `0...1`, from a soft mallet to a small hard one. It is the color of the strike and never its loudness: a soft strike reaches fewer tones rather than pushing the same tones harder, so it is darker and never louder. The default, 0.85, reaches every tone under 2 kHz; the presets strike hard, 0.8 to 1 |
 
 `damping` is most of what separates one struck thing from another. At 0 every tone fades together, which is what a bell does. At 1 a tone twice as high fades twice as fast, which is what most things do. Past 2 you hear a knock rather than a note.
 
@@ -683,8 +683,8 @@ Placing survives an [export](#sound-in-an-export). The moves are written down as
 |---|---|
 | `place(at:heardFrom:)` | where the sound is, and where it is heard from |
 | `position` | where it is, or nil if it has not been placed |
-| `hearingDistance` | the distance over which it fades, in scene units. An export reads it once, when its soundtrack starts |
-| `unplace()` | back to being heard from everywhere at once |
+| `hearingDistance` | the distance over which it fades, in scene units. A change while an export runs reaches the file at the frame that made it |
+| `unplace()` | back to being heard from everywhere at once, as loud as before it was placed |
 
 **The first call rebuilds the instrument's audio chain**, so make it before the first note if you can. Placing a sound is a different shape of graph rather than a setting on one. One stream has to arrive at something that knows where the ears are, and leave it as two. Once placed, an instrument stays placed.
 
@@ -707,7 +707,7 @@ That works because the renderer takes events and gives back samples, and it has 
 What to know:
 
 - **`--export-video` and `--export-loop` carry sound.** GIF has no way to hold any, and the still and vector exports are one frame.
-- **An instrument has to be a property of the sketch**, in the usual place, so it can be found. One made and thrown away inside `draw()` cannot be found, and neither can one held inside an array or a struct: keep each instrument as a property of its own.
+- **An instrument has to be held by the sketch** by the end of `setup()`, so it can be found: as a property, or inside a struct, an array, an optional, a dictionary, or an object of the sketch's own that a property holds. One made and thrown away inside `draw()` cannot be found. A list is read through its first element, so a list that holds plain values first and an instrument later is read as the first says.
 - **A note's length travels in beats of real time, not samples**, so the file is written at its own rate. The hardware rate does not decide it.
 - **Delay and reverb are in the file**, because the export runs the same effects the output had.
 - **A placed sound is placed in the export too.** Where it was and where it was heard from are written down each frame. The notes travel the same way, and the soundtrack is rendered through a listener afterwards. So a sound that walks past you live walks past you in the file. Place from the first frame, because the chain is fixed when the soundtrack machine is built. An instrument that starts playing before it is placed says so, rather than quietly coming out centered.

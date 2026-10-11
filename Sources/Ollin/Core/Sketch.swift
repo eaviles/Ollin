@@ -4748,22 +4748,18 @@ open class Sketch {
         // so this frame's wheel events are gathered for the next one (nothing lost).
         scrollDeltaY = pendingScroll
         pendingScroll = 0
-        for value in collectAdvancingValues() { value.advance(by: deltaTime) }
+        for value in collectAdvancingValues() {
+            value.advance(by: deltaTime)
+            value.advance(to: time)
+        }
     }
 
-    /// The `@Eased` / `@Smoothed` properties on this sketch, collected once (the
-    /// stored set is fixed) by walking the mirror up the class hierarchy, then
-    /// cached.
+    /// The `@Eased` / `@Smoothed` properties on this sketch, and every other
+    /// advancing value it holds, collected once (the held set is fixed by the
+    /// end of `setup()`) through `heldObjects(of:)`, then cached.
     private func collectAdvancingValues() -> [FrameAdvancing] {
         if let cached = advancingValues { return cached }
-        var found: [FrameAdvancing] = []
-        var mirror: Mirror? = Mirror(reflecting: self)
-        while let current = mirror {
-            for child in current.children {
-                if let advancing = child.value as? FrameAdvancing { found.append(advancing) }
-            }
-            mirror = current.superclassMirror
-        }
+        let found = heldObjects(of: (any FrameAdvancing).self)
         advancingValues = found
         return found
     }

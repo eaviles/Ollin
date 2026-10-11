@@ -58,14 +58,20 @@ public extension Synth {
 
     /// How far away a sound has to be before it stops getting quieter, in scene
     /// units. Past this it holds its level rather than fading to nothing.
+    ///
+    /// A change reaches the speakers at once, and an export at the frame that
+    /// made it: under an export there is no live environment node to tell, so
+    /// the range is written down against the export clock the way a move is,
+    /// and applied when the soundtrack is rendered.
     var hearingDistance: ClosedRange<Double> {
         get { placementRange }
         set {
+            let before = placementRange
             placementRange = newValue
-            // Under an export there is no live environment node to tell; the
-            // one the soundtrack is rendered through reads this when it is
-            // built.
-            guard !isRecordingForExport else { return }
+            guard !isRecordingForExport else {
+                recordRange(newValue, replacing: before)
+                return
+            }
             spatial.applyRange()
         }
     }
@@ -97,12 +103,15 @@ final class SpatialPlacement {
     private(set) var isWired = false
 
     func place(at position: Vector3, camera: Camera3D) {
+        let wasOut = self.position == nil
         self.position = position
         guard let owner else { return }
         if !isWired {
             owner.rewireForPlacement(environment)
             isWired = true
         }
+        // Back in the scene after `unplace()`, the source is localized again.
+        if wasOut { owner.spatialMixing?.renderingAlgorithm = .auto }
 
         // The listener is the camera: where it is, what it is looking at, and
         // which way up it is holding its head.
@@ -116,9 +125,12 @@ final class SpatialPlacement {
 
     func unplace() {
         position = nil
-        // Back in the middle of the listener's head, which is the same as not
-        // being anywhere: equally in both ears and at full level.
-        owner?.spatialMixing?.position = environment.listenerPosition
+        // Passed through the listener untouched: the one stream in both ears
+        // at full level, exactly what an instrument that was never placed
+        // gets. Sat in the middle of the listener's head instead, the pan
+        // played it at half level in each ear, 6 dB down for the rest of the
+        // piece.
+        owner?.spatialMixing?.renderingAlgorithm = .stereoPassThrough
     }
 
     /// The instrument owns the range, so an export can read it without a live
@@ -202,6 +214,32 @@ extension Synth {
     func recordUnplaced() {
         guard let last = recordedPoses.last, last.position != nil else { return }
         appendPose(RecordedPose(at: exportClock, position: nil, listener: last.listener))
+    }
+
+    /// Writes down how far the instrument carries from this frame on.
+    ///
+    /// A sketch sets the range every frame as often as not, so only a change is
+    /// kept. The first change also writes down the range it replaced, at the
+    /// start of the clock, so the soundtrack begins with the range the export
+    /// began with rather than the one the sketch holds when it ends.
+    func recordRange(_ range: ClosedRange<Double>, replacing before: ClosedRange<Double>) {
+        if recordedRanges.isEmpty {
+            guard range != before else { return }
+            appendRange(RecordedRange(at: 0, range: before))
+        } else if recordedRanges.last?.range == range {
+            return
+        }
+        appendRange(RecordedRange(at: exportClock, range: range))
+    }
+
+    private func appendRange(_ record: RecordedRange) {
+        // A sketch sweeping the range every frame for an hour should not grow
+        // without bound; past this it is a stuck loop rather than a sweep.
+        guard recordedRanges.count < 200_000 else { return }
+        recordedRanges.append(record)
+        // The soundtrack is rendered while the frames are still being drawn,
+        // so a change made after the machine was built has to reach it too.
+        offline?.pendingRanges.append(record)
     }
 
     private func appendPose(_ pose: RecordedPose) {

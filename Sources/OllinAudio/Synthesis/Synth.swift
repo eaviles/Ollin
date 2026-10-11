@@ -48,6 +48,9 @@ public final class Synth: AudioSource {
     /// changed. Empty unless the sketch placed it, which is what keeps an
     /// export of an unplaced instrument exactly what it was before.
     var recordedPoses: [RecordedPose] = []
+    /// How far the instrument carried, whenever the sketch changed that. Empty
+    /// unless it did, for the same reason the poses are.
+    var recordedRanges: [RecordedRange] = []
     /// Where a grain cloud's reading was dragged to, whenever it moved. Empty
     /// unless the sketch scrubbed one, for the same reason the poses are.
     var recordedScrubs: [RecordedScrub] = []

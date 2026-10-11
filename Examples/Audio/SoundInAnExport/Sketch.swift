@@ -44,7 +44,7 @@ final class SoundInAnExport: Sketch {
         seed(4321)
         noStroke()
         bass.gain = 0.5
-        bells.gain = 0.3
+        bells.gain = 1
         bells.reverb = Reverb(.hall, mix: 0.32)
         melody.learn([0, 2, 4, 2, 0, -3, 0, 5], loops: true)
         melody.start(at: 0)

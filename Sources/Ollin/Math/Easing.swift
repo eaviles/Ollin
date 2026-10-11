@@ -314,12 +314,26 @@ public struct Easing: Sendable, Equatable {
 /// A value the sketch advances once per frame with the frame's `deltaTime`:
 /// the `@Eased` tween, the `@Smoothed` filter, a `Timeline`, or a satellite's
 /// clock-following object (a video player tracking the export clock). The
-/// sketch collects conformers from its stored properties via reflection (like
-/// `@Param`) once, at the first frame, so a conformer must already be stored
-/// (directly or optionally) on the sketch by the end of `setup()`; one created
-/// lazily mid-run is never advanced.
+/// sketch collects conformers from what it holds by reflection (like `@Param`)
+/// once, at the first frame: its stored properties, and inside them through
+/// structs, optionals, collections, and objects of the sketch's own
+/// (`Sketch.heldObjects(of:)` says exactly how far), so a conformer must
+/// already be held by the end of `setup()`; one created lazily mid-run is
+/// never advanced.
 package protocol FrameAdvancing: AnyObject {
     func advance(by dt: Double)
+
+    /// Where the sketch's clock stands for the frame it is about to draw,
+    /// handed over right after `advance(by:)` every frame. A conformer that
+    /// keeps a clock of its own sets it from this rather than from the steps,
+    /// since the sketch advances before it draws: counted in steps, the clock
+    /// stands one frame past the picture while the frame is drawn, and
+    /// anything written down against it lands a frame late.
+    func advance(to time: Double)
+}
+
+package extension FrameAdvancing {
+    func advance(to time: Double) {}
 }
 
 /// The bounce-out shaping function, shared by the three bounce curves.
