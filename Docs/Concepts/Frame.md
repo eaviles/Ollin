@@ -18,7 +18,7 @@ The recording is dropped at the start of the next frame, and by default the canv
 
 Entries keep their call order, and the renderer replays them in that order, so a later mark covers an earlier one. There is no depth index and no sorting pass. When two things overlap the wrong way, change which one you draw first.
 
-`background(_:)` is not a rectangle. It drops everything recorded so far this frame, then sets the color the frame starts from. That is why it belongs at the top of `draw()`.
+`background(_:)` is not a rectangle. It drops everything the canvas has recorded so far this frame, then sets the color the frame starts from. That is why it belongs at the top of `draw()`. A [layer](./Layers.md) drawn before it keeps its own marks, since a layer is not the canvas.
 
 ### There is no scene
 

@@ -47,6 +47,10 @@
 #   Guide/ prose changed
 #       -> Scripts/prose-density.sh over just those pages, which fails when
 #          one framing device passes its per-page cap
+#   a host app or the runtime they share changed (OllinLive,
+#   OllinLiveCoding, OllinRuntime, OllinRun, the generator, the gallery)
+#       -> Scripts/host-gates.sh (the hosts' own headless gates; --all,
+#          with the gallery's cycle, on a gallery change)
 #   the expander's sources changed (Sources/OllinExpander, the wasm entry,
 #   the vendored tessellator)
 #       -> Scripts/build-web-expander.sh --check (the committed WebAssembly
@@ -104,7 +108,7 @@ milestone=0
 case "$1" in
 --milestone) milestone=1 ;;
 --help | -h)
-    sed -n '3,55p' "$0" | sed 's|^# \?||'
+    sed -n '3,101p' "$0" | sed 's|^# \?||'
     exit 0
     ;;
 esac
@@ -132,6 +136,8 @@ prose=$(grep -E '\.md$' <<<"$changed")
 examples=$(grep -E '^Examples/' <<<"$changed")
 reader_prose=$(grep -E '^(Guide|Docs)/.*\.md$' <<<"$changed" | grep -vE '^Guide/(PLAN|AUTHORING)\.md$')
 guide_prose=$(grep -E '^Guide/.*\.md$' <<<"$changed" | grep -vE '^Guide/(PLAN|AUTHORING)\.md$')
+hosts=$(grep -E '^(Sources/(OllinLive|OllinLiveCoding|OllinRuntime|OllinRun|OllinProjectGenerator|OllinExamples)/|Scripts/host-gates\.sh$)' <<<"$changed")
+gallery=$(grep -E '^Sources/OllinExamples/' <<<"$changed")
 hero=$(grep -E '^(Examples/Web/BreathingRing/|Sources/Ollin/Export/Web|Sources/OllinShaderText/|Sources/Ollin/Renderer/Shader|Scripts/site-hero\.sh$)' <<<"$changed")
 expander=$(grep -E '^(Sources/OllinExpander/|Scripts/web-expander/|External/CLibtess2/|Scripts/build-web-expander\.sh$)' <<<"$changed")
 
@@ -317,6 +323,18 @@ if [[ -n "$framework" || $milestone -eq 1 ]]; then
     run "iOS build" xcodebuild -scheme Ollin -destination 'generic/platform=iOS' -quiet build
 else
     skip "iOS build" "no framework change"
+fi
+
+# The hosts' own headless gates: the live hosts, the runner, the generator,
+# and the gallery test themselves through flags of their binaries, which no
+# `swift test` run reaches. About 75 s; the gallery's cycle adds two minutes,
+# so it runs on a gallery change and at a milestone.
+if [[ -n "$gallery" || $milestone -eq 1 ]]; then
+    run "host-gates --all" Scripts/host-gates.sh --all
+elif [[ -n "$hosts" ]]; then
+    run "host-gates" Scripts/host-gates.sh
+else
+    skip "host-gates" "no change to a host app or the runtime they share"
 fi
 
 # The front page's ring: the sketch's own web page, recorded into

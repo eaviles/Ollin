@@ -32,7 +32,7 @@ final class Wildfire: Sketch {
 
     override func draw() {
         let side = width / Double(cells)              // one cell, in canvas pixels
-        background(ground)                            // first: a background wipes what the frame drew before it, the field's marks too
+        background(ground)                            // clears the canvas; the field keeps its own marks
         noStroke()
         withField(woods) {
             if frameCount == 1 {

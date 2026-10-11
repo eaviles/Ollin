@@ -17,6 +17,11 @@
 #                                # targets whose tests run without the GPU,
 #                                # in a second, instrumented build of their
 #                                # own under .build/tsan
+#   Scripts/test.sh coverage     # the shard run and the hosts' gates under
+#                                # code coverage: an instrumented build,
+#                                # every process writing its own profile,
+#                                # one report by file under .build/coverage
+#                                # (see below)
 #   Scripts/test.sh <pattern>    # swift test --filter <pattern>
 #
 # One rule decides the order: a suite that measures the outside world against a
@@ -45,6 +50,19 @@
 # tests run several times slower than they do plain. `Scripts/preflight.sh
 # --milestone` runs it. The list below names the targets in it; Tests/README.md
 # says why those, why the GPU suites stay out, and what a run measured.
+#
+# The coverage run is a reading tool, not a gate: it says which lines no test
+# reached, and nothing compares the numbers with a target. It builds in place
+# rather than under a scratch path of its own, since a second whole build is
+# 13 GB, so the next plain build or test recompiles everything (about four
+# minutes). After the four phases it runs the hosts' own headless gates
+# (Scripts/host-gates.sh --all), which no swift test run reaches. Each
+# process, the shards, the hosts, and the processes the tests start
+# included, writes a profile named by its pid; they are merged once at the
+# end, and a failing test still counts what it ran, so a red run still
+# reports. The report reads every test bundle and every host executable, and
+# leaves out the tests, the vendored code, and the generated sources.
+# Tests/README.md says what the first read found.
 #
 # Agent sessions: the full run takes many minutes, well past a default command
 # timeout. Run it in the background or with an explicit long timeout, never as
@@ -105,7 +123,7 @@ phases() {
 
 case "$1" in
 --help | -h)
-    sed -n '3,56p' "$0" | sed 's|^# \?||'
+    sed -n '3,74p' "$0" | sed 's|^# \?||'
     exit 0
     ;;
 quick)
@@ -157,6 +175,53 @@ tsan | --tsan)
     rm -rf "$reports"
     (( outcome == 0 )) && echo "test.sh: Thread Sanitizer reported nothing"
     exit $outcome
+    ;;
+coverage | --coverage)
+    out=.build/coverage
+    rm -rf "$out"
+    mkdir -p "$out/raw" || exit 1
+    # The flag goes through OLLIN_SWIFT_FLAGS so the shards' own build step
+    # (Scripts/shard-tests.sh) asks for the same build and finds nothing to do.
+    export OLLIN_SWIFT_FLAGS="--enable-code-coverage${OLLIN_SWIFT_FLAGS:+ $OLLIN_SWIFT_FLAGS}"
+    echo "test.sh: the shard run under code coverage; an instrumented build in place, then the four phases, then a report under $out"
+    swift build --build-tests ${=OLLIN_SWIFT_FLAGS} || exit 1
+    # `swift test --enable-code-coverage` would set its own profile path and
+    # clear it at the start of every invocation, so the phases run plain
+    # `--skip-build` over the instrumented products and name the path here.
+    export LLVM_PROFILE_FILE="$PWD/$out/raw/%p-%m.profraw"
+    failed=0
+    echo "test.sh: phase 1 of 4, the wall-clock and device suites alone"
+    swift test --skip-build --filter "$sensitive" || failed=1
+    echo "test.sh: phase 2 of 4, the suites that want the machine to themselves"
+    swift test --skip-build --filter "$loopback|$crowded" || failed=1
+    echo "test.sh: phase 3 of 4, OllinTests across several processes"
+    OLLIN_SHARD_SKIP="$crowded" Scripts/shard-tests.sh || failed=1
+    echo "test.sh: phase 4 of 4, every other target"
+    swift test --skip-build --skip "$sensitive|$loopback|$crowded|^OllinTests\\." || failed=1
+    echo "test.sh: and the hosts' own headless gates, which no swift test run reaches"
+    Scripts/host-gates.sh --all || failed=1
+    unset LLVM_PROFILE_FILE
+    bin=$(swift build --show-bin-path ${=OLLIN_SWIFT_FLAGS}) || exit 1
+    typeset -a objects=()
+    for bundle in "$bin"/*.xctest(N); do
+        objects+=("$bundle/Contents/MacOS/${${bundle:t}%.xctest}")
+    done
+    for executable in "$bin"/*(N.*); do
+        objects+=("$executable")
+    done
+    typeset -a objectArgs=("${objects[1]}")
+    for object in "${(@)objects[2,-1]}"; do objectArgs+=(-object "$object"); done
+    xcrun llvm-profdata merge -sparse "$out"/raw/*.profraw(N) -o "$out/merged.profdata" || exit 1
+    rm -rf "$out/raw"
+    ignore='/(Tests|External|Examples|\.build)/'
+    xcrun llvm-cov report -instr-profile "$out/merged.profdata" $objectArgs \
+        -ignore-filename-regex "$ignore" > "$out/report.txt" || exit 1
+    xcrun llvm-cov export -summary-only -instr-profile "$out/merged.profdata" $objectArgs \
+        -ignore-filename-regex "$ignore" > "$out/summary.json" || exit 1
+    tail -1 "$out/report.txt"
+    echo "test.sh: the report by file is $out/report.txt, the same numbers as JSON in $out/summary.json, and the profile is $out/merged.profdata (for llvm-cov show)"
+    (( failed )) && echo "test.sh: some tests failed; the coverage still counts what they ran" >&2
+    exit $failed
     ;;
 ci)
     # The loopback suites alone, then two shards of OllinTests and one process

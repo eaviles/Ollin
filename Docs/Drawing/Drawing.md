@@ -28,7 +28,7 @@ These calls take the point and rectangle types `Vector2` and `Rectangle`, which 
 background(_ color: Color)
 ```
 
-Clear the frame to `color`. The renderer clears every frame, so call this first in `draw()`.
+Clear the frame to `color`. The renderer clears every frame, so call this first in `draw()`. It drops what the canvas has drawn so far this frame, and a layer drawn before it keeps its marks. Inside a `withTarget` block it clears that layer instead (see [Effects](./Effects.md#withtarget)).
 
 ```swift
 background(.white)

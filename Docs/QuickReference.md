@@ -217,7 +217,6 @@ ollin examples ocean --source  # an example that does it, as source
 
 Each of these gives a wrong or empty picture and no error.
 
-- **`background()` after drawing into layers.** Outside a `withTarget` block it clears everything recorded so far this frame, layers included, so their composite comes out black. Call it first in `draw()`. See [Effects](./Drawing/Effects.md#withtarget).
 - **A layer that is drawn into but never drawn.** Nothing reaches the canvas until its image does: `drawImage(layer.image, 0, 0)`. A `LineSpray`'s pass count climbs all the same, and the canvas shows only the background until `drawImage(spray.developed(exposure: 1).image, 0, 0)`.
 - **Drawing in `setup()`.** The geometry is thrown away before the first frame, and a camera, a light, or shadows set there are gone by the first `draw()`. Draw and set per-frame state in `draw()`.
 - **A concave outline through `drawPolygon`.** It fills as a fan from the first point, which only works for a convex shape. A concave one goes through `drawShape { }` or a `Shape`.

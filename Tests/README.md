@@ -14,6 +14,8 @@ Scripts/test.sh             # the whole suite, one process per phase
 Scripts/test.sh milestone   # the whole suite plus the five signed-bundle builds
 Scripts/test.sh ci          # the runner's own recipe, as build.yml runs it
 Scripts/test.sh tsan        # the non-GPU targets under Thread Sanitizer, a second build
+Scripts/test.sh coverage    # the shard run and the hosts' gates under code coverage
+Scripts/host-gates.sh       # the host apps' own headless gates (--all adds the gallery's)
 ```
 
 The whole suite takes many minutes, so run it in the background or with an
@@ -315,6 +317,50 @@ runs in every plain run.
 descriptor store, read by `isOpen` on the test's thread while the read queue
 writes it) was reported at both lines with both stacks, and the helper exited
 nonzero; the committed tree reports nothing.
+
+## Coverage, and the hosts' own gates
+
+`Scripts/test.sh coverage` runs the same four phases as `shard`, then every
+host gate, under a build instrumented for coverage, and writes a report by
+file to `.build/coverage/report.txt` (the same numbers as JSON beside it, and
+the merged profile for `xcrun llvm-cov show` when a file needs reading line by
+line). It is a reading tool: nothing compares its numbers with a target, and a
+file's percentage says nothing about whether the lines that run are checked.
+What it is for is the list of what never runs at all.
+
+It builds in place rather than under a scratch path of its own, since a second
+whole build is 13 GB, so the next plain build recompiles everything (about
+four minutes). Each process, the shards, the hosts, and whatever the tests
+start included, writes a profile named by its pid; they are merged once at
+the end. `swift test --enable-code-coverage` would set its own profile path
+and clear it at the start of every invocation, which is why the phases run a
+plain `--skip-build` over the instrumented products instead.
+
+A read is the coverage of the machine it ran on. On a Mac with ray tracing the
+raster point-light shadow never runs, and on the CI runner, which has none, it
+runs every time; a branch that depends on the device is read where that
+device is.
+
+**The hosts test themselves.** OllinLive, OllinLiveCoding, OllinRun, the
+project generator, and the gallery carry their tests as flags of their own
+binaries, since what they check lives in executable targets `swift test`
+cannot import. `Scripts/host-gates.sh` runs the eleven of them in about 71 s
+on the M2, and the gallery's cycle through 42 examples with `--all`, about two
+minutes more. Preflight runs it on any change to a host or to `OllinRuntime`,
+with `--all` on a gallery change and at a milestone. Before the first coverage
+read (2026-10-10) nothing ran them but a hand, and under the test suite alone
+every host read 0%.
+
+**What the first read found.** 83.2% of 186,385 lines with the host gates
+(78.6% without them), the core module at 86.7%. Most of what stays unreached
+is SwiftUI views (the inspector, the timeline panel, the host windows), device
+and network backends, and the command fronts that scripts drive. The public
+behavior no test reached went one of two ways: a test, red under a planted
+fault of its own (the bare drawing forms against their typed twins, the
+filter and visual catalogs, the SVG outlines of the distance-field shapes, the
+separations export, text along a path and per glyph, the USD parser's skipped
+statements, the triangle's accessors, Vision's failure sentences), or a
+filing with its reason under *Testing* in `DESIGN-NOTES.md`.
 
 ## What the suites share
 

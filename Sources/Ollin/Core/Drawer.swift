@@ -2288,9 +2288,10 @@ final class Drawer {
 
     // MARK: State setters (mirrors the bare API on `Sketch`)
 
-    /// Set the background/clear color. This also wipes anything drawn
-    /// so far this frame (background paints over everything). In accumulation mode
-    /// (`noClear`) it additionally wipes the persistent canvas this frame — the
+    /// Set the background/clear color. This also wipes what the canvas has
+    /// recorded so far this frame (background paints over everything on it),
+    /// while a layer drawn earlier in the frame keeps its marks. In accumulation
+    /// mode (`noClear`) it additionally wipes the persistent canvas this frame, the
     /// way to reset a long exposure (see `backgroundSetThisFrame`).
     func background(_ color: Color) {
         // A background inside a batch recording would wipe the recording itself;
@@ -2327,38 +2328,145 @@ final class Drawer {
         }
         backgroundColor = color
         backgroundSetThisFrame = true
-        vertices.removeAll(keepingCapacity: true)
-        sdfInstances.removeAll(keepingCapacity: true)
-        imageVertices.removeAll(keepingCapacity: true)
-        glyphVertices.removeAll(keepingCapacity: true)
-        points.removeAll(keepingCapacity: true)
-        lineCoreVertices.removeAll(keepingCapacity: true)
-        lineFringeVertices.removeAll(keepingCapacity: true)
-        meshVertices.removeAll(keepingCapacity: true)
-        instancedMeshVertices.removeAll(keepingCapacity: true)
-        meshInstances.removeAll(keepingCapacity: true)
-        // Mover ranges index the mesh list the wipe just emptied; a range left
-        // behind would send the velocity pass past the frame's vertex buffer.
-        // (The history keeps its entries: a redrawn block this frame takes a
-        // fresh occurrence key, and unmatched entries prune next frame.)
+        // A layer drawn earlier this frame (`withTarget`, `withField`, ...) is
+        // not the canvas, so its runs stay; only the canvas's own go. A frame
+        // that set its background before any layer has none to keep.
+        if batches.contains(where: { $0.target != nil }) {
+            keepOnlyLayerRuns()
+        } else {
+            vertices.removeAll(keepingCapacity: true)
+            sdfInstances.removeAll(keepingCapacity: true)
+            imageVertices.removeAll(keepingCapacity: true)
+            glyphVertices.removeAll(keepingCapacity: true)
+            points.removeAll(keepingCapacity: true)
+            lineCoreVertices.removeAll(keepingCapacity: true)
+            lineFringeVertices.removeAll(keepingCapacity: true)
+            meshVertices.removeAll(keepingCapacity: true)
+            instancedMeshVertices.removeAll(keepingCapacity: true)
+            meshInstances.removeAll(keepingCapacity: true)
+            sdfGroups.removeAll(keepingCapacity: true)
+            sdfNodes.removeAll(keepingCapacity: true)
+            sdf3DGroups.removeAll(keepingCapacity: true)
+            sdf3DNodes.removeAll(keepingCapacity: true)
+            batches.removeAll(keepingCapacity: true)
+            webSources.removeAll(keepingCapacity: true)
+        }
+        // Mover ranges index the mesh lists the wipe just emptied or moved; a
+        // range left behind would send the velocity pass past the frame's
+        // vertex buffer. (The history keeps its entries: a redrawn block this
+        // frame takes a fresh occurrence key, and unmatched entries prune next
+        // frame.)
         moverRanges.removeAll(keepingCapacity: true)
         moverPreviousPositions.removeAll(keepingCapacity: true)
         instancedMoverRanges.removeAll(keepingCapacity: true)
         moverPreviousInstances.removeAll(keepingCapacity: true)
-        sdfGroups.removeAll(keepingCapacity: true)
-        sdfNodes.removeAll(keepingCapacity: true)
-        sdf3DGroups.removeAll(keepingCapacity: true)
-        sdf3DNodes.removeAll(keepingCapacity: true)
-        volumeDraws.removeAll(keepingCapacity: true)
-        batches.removeAll(keepingCapacity: true)
-        hasOverlay = false   // the overlay's runs went with the rest
-        webSources.removeAll(keepingCapacity: true)
+        volumeDraws.removeAll { $0.target == nil }
+        hasOverlay = false   // the overlay's runs are the canvas's, and went with it
         currentKind = nil
         currentBatchDepth = nil
         hasDepthScene = false   // background wipes the recorded scene quad too
         // A background inside a withClip block: the recorded pushes were wiped with
         // the batches, so re-record the still-open ones.
         reemitClipPushes(target: nil)
+    }
+
+    /// The canvas wipe on a frame that has already drawn into a layer: every
+    /// shared list is rebuilt from the layer runs alone, in their order, each
+    /// run's starts moved to where its geometry now sits, so the frame reads
+    /// exactly as if the canvas had drawn nothing before the wipe. A run's
+    /// geometry in a list is everything from its start up to the next run's
+    /// (the extent the renderer reads); the instanced copies and the 3D lines
+    /// move by their own counts, a distance-field group carries its node
+    /// program with it, and a web source moves with the vertices it became.
+    private func keepOnlyLayerRuns() {
+        var kept: [GeometryBatch] = []
+        var keptVertices: [OllinVertex] = [], keptSDF: [SDFInstance] = []
+        var keptImage: [OllinImageVertex] = [], keptGlyph: [OllinImageVertex] = []
+        var keptPoints: [OllinPoint] = [], keptMesh: [OllinMeshVertex] = []
+        var keptGroups: [SDFGroupInstance] = [], keptNodes: [SDFNode] = []
+        var keptGroups3D: [SDF3DGroupInstance] = [], keptNodes3D: [SDFNode3D] = []
+        var keptInstanced: [OllinMeshVertex] = [], keptInstances: [OllinMeshInstance] = []
+        var keptCore: [OllinLineVertex] = [], keptFringe: [OllinLineVertex] = []
+        var keptSources: [WebSource] = []
+        func move<T>(_ list: [T], _ range: Range<Int>, into moved: inout [T]) -> Int {
+            let start = moved.count
+            moved.append(contentsOf: list[range])
+            return start
+        }
+        // Sources are recorded in vertex order, so one pass walks them beside the runs.
+        var source = 0
+        for i in batches.indices {
+            let next = i + 1 < batches.count ? batches[i + 1] : nil
+            let vertexEnd = next?.vertexStart ?? vertices.count
+            guard batches[i].target != nil else {
+                while source < webSources.count, webSources[source].vertexRange.lowerBound < vertexEnd { source += 1 }
+                continue
+            }
+            var run = batches[i]
+            let shift = keptVertices.count - run.vertexStart
+            while source < webSources.count, webSources[source].vertexRange.lowerBound < vertexEnd {
+                var moved = webSources[source]
+                if moved.vertexRange.lowerBound >= run.vertexStart {
+                    moved.vertexRange = (moved.vertexRange.lowerBound + shift) ..< (moved.vertexRange.upperBound + shift)
+                    keptSources.append(moved)
+                }
+                source += 1
+            }
+            run.vertexStart = move(vertices, run.vertexStart ..< vertexEnd, into: &keptVertices)
+            run.instanceStart = move(sdfInstances, run.instanceStart ..< (next?.instanceStart ?? sdfInstances.count),
+                                     into: &keptSDF)
+            run.imageStart = move(imageVertices, run.imageStart ..< (next?.imageStart ?? imageVertices.count),
+                                  into: &keptImage)
+            run.glyphStart = move(glyphVertices, run.glyphStart ..< (next?.glyphStart ?? glyphVertices.count),
+                                  into: &keptGlyph)
+            run.pointStart = move(points, run.pointStart ..< (next?.pointStart ?? points.count), into: &keptPoints)
+            run.meshStart = move(meshVertices, run.meshStart ..< (next?.meshStart ?? meshVertices.count),
+                                 into: &keptMesh)
+            let groupEnd = next?.sdfGroupStart ?? sdfGroups.count
+            let groups = sdfGroups[run.sdfGroupStart ..< groupEnd]
+            run.sdfGroupStart = keptGroups.count
+            for var group in groups {
+                let nodes = Int(group.nodeStart) ..< Int(group.nodeStart + group.nodeCount)
+                group.nodeStart = UInt32(move(sdfNodes, nodes, into: &keptNodes))
+                keptGroups.append(group)
+            }
+            let fieldEnd = next?.sdf3DGroupStart ?? sdf3DGroups.count
+            let fields = sdf3DGroups[run.sdf3DGroupStart ..< fieldEnd]
+            run.sdf3DGroupStart = keptGroups3D.count
+            for var field in fields {
+                let nodes = Int(field.nodeStart) ..< Int(field.nodeStart + field.nodeCount)
+                field.nodeStart = UInt32(move(sdf3DNodes, nodes, into: &keptNodes3D))
+                keptGroups3D.append(field)
+            }
+            run.instancedVertexStart = move(instancedMeshVertices,
+                                            run.instancedVertexStart ..< run.instancedVertexStart + run.instancedVertexCount,
+                                            into: &keptInstanced)
+            run.meshInstanceStart = move(meshInstances,
+                                         run.meshInstanceStart ..< run.meshInstanceStart + run.meshInstanceCount,
+                                         into: &keptInstances)
+            run.lineCoreStart = move(lineCoreVertices, run.lineCoreStart ..< run.lineCoreStart + run.lineCoreCount,
+                                     into: &keptCore)
+            run.lineFringeStart = move(lineFringeVertices,
+                                       run.lineFringeStart ..< run.lineFringeStart + run.lineFringeCount,
+                                       into: &keptFringe)
+            kept.append(run)
+        }
+        batches = kept
+        vertices = keptVertices
+        sdfInstances = keptSDF
+        imageVertices = keptImage
+        glyphVertices = keptGlyph
+        points = keptPoints
+        meshVertices = keptMesh
+        sdfGroups = keptGroups
+        sdfNodes = keptNodes
+        sdf3DGroups = keptGroups3D
+        sdf3DNodes = keptNodes3D
+        instancedMeshVertices = keptInstanced
+        meshInstances = keptInstances
+        lineCoreVertices = keptCore
+        lineFringeVertices = keptFringe
+        webSources = keptSources
     }
 
     /// Stop clearing the canvas each frame: drawing accumulates on a persistent

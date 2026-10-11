@@ -148,4 +148,32 @@ struct TessellationTests {
             .map { relaxed[$0].distance(to: after.centroid($0)) }.reduce(0, +)
         #expect(afterResidual < beforeResidual, "Lloyd should reduce site-to-centroid distance")
     }
+
+    /// A triangle's accessors: the centroid is the corners' mean, the circumcenter is the
+    /// circumcircle's center and lies as far from every corner, and the
+    /// outline and the shape are the three corners, closed, enclosing the area.
+    @Test func aTriangleKnowsItsCentersAndOutline() {
+        let t = Triangle(Vector2(1, 2), Vector2(11, 3), Vector2(4, 9))
+        let mean = (t.a + t.b + t.c) / 3
+        #expect(t.centroid.distance(to: mean) < 1e-12)
+        #expect(t.circumcenter.distance(to: t.circumcircle.center) < 1e-9)
+        let r = t.circumcenter.distance(to: t.a)
+        #expect(abs(t.circumcenter.distance(to: t.b) - r) < 1e-9 && abs(t.circumcenter.distance(to: t.c) - r) < 1e-9)
+        #expect(t.contour.isClosed && t.contour.points == [t.a, t.b, t.c])
+        #expect(t.shape.contours.count == 1 && t.shape.contours[0].points == [t.a, t.b, t.c])
+        #expect(abs(abs(polygonArea(t.points)) - abs(t.area)) < 1e-9)
+    }
+
+    /// The diagram a triangulation offers is the one its sites make, and its
+    /// triangles as shapes are its triangles.
+    @Test func aTriangulationsDiagramIsItsSitesDiagram() {
+        let d = Delaunay(sites)
+        let fromTriangulation = d.voronoi(bounds: bounds)
+        let fromSites = Voronoi(sites: sites, bounds: bounds)
+        #expect(fromTriangulation.cells.map { cellPoints($0) } == fromSites.cells.map { cellPoints($0) })
+        #expect(d.triangleShapes.count == d.triangles.count)
+        let shapeArea = d.triangleShapes.map { abs(polygonArea(cellPoints($0))) }.reduce(0, +)
+        let triangleArea = d.triangles.map { abs($0.area) }.reduce(0, +)
+        #expect(abs(shapeArea - triangleArea) < 1e-6)
+    }
 }

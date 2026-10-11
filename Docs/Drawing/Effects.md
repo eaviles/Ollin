@@ -87,7 +87,7 @@ withTarget(layer) {
 
 Call [`background(_:)`](../Drawing/Drawing.md#background) inside the block to clear the layer. Inside a `withTarget` it clears *that layer*, meaning its fill color and its geometry so far, and it leaves the canvas untouched. A layer starts transparent, so a layer you never wrote, or wrote only in part, composites as nothing where you did not draw.
 
-The canvas's own `background()` is the other way around: it drops everything recorded so far this frame, and the geometry of every layer drawn before it goes too, while the `filtered` and `combined` passes that read those layers still run, over layers that are now empty. A `background()` placed after the layers were drawn leaves their composite black with no error. Clear the canvas first, at the top of `draw()`, then draw the layers (see [the frame](../Concepts/Frame.md)).
+The canvas's own `background()` clears the canvas and nothing else. It drops what the canvas has recorded so far this frame, and every layer drawn before it keeps its marks. So a layer, a field's seed, or a feedback loop can come before the canvas background or after it (see [the frame](../Concepts/Frame.md)).
 
 <a id="image"></a>
 ### RenderTarget.image
@@ -761,7 +761,7 @@ override func draw() {
 - `feedback.previous` is last frame's content, and `feedback.image` is this frame's, for compositing.
 - `feedback.filtered(_:)` runs this frame's result through a `Filter` like any layer, so you can bloom the trails or recolor them through a gradient map. `feedback.combined(with:_:)` makes it the base of a [`Combine`](#combined), so the trails can be masked, displaced, or mixed by another layer. The state the loop carries forward stays untouched either way. An `Accumulator` and a `SimField` take both calls too.
 - `makeFeedback(precision: .float32)` keeps the pair in single-precision float, for a loop that carries a long sum of faint light. Half float stops moving once each frame's contribution falls under one part in a thousand of the total. For a sum that should converge rather than grow, an [`Accumulator`](./Accumulation.md#accumulator) keeps the sum in single precision and divides by the passes for you.
-- Call `background(_:)` **before** the block. On the canvas it resets the whole frame, so calling it after would wipe the layer's geometry, as it would for any other `withTarget` layer. Inside the block, `background(_:)` clears the feedback layer alone.
+- Inside the block, `background(_:)` clears the feedback layer alone. The canvas's own `background(_:)`, before the block or after it, leaves the layer as it was.
 - See the `Effects/Feedback` example for a spiralling tunnel.
 
 <a id="simfield"></a>

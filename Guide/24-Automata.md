@@ -89,7 +89,7 @@ final class Wildfire: Sketch {
 
     override func draw() {
         let side = width / Double(cells)              // one cell, in canvas pixels
-        background(ground)                            // first: a background wipes what the frame drew before it, the field's marks too
+        background(ground)                            // clears the canvas; the field keeps its own marks
         noStroke()
         withField(woods) {
             if frameCount == 1 {
@@ -122,7 +122,7 @@ Run it and the fire starts from the middle on the first frame. By frame 120 it l
 
 The field and the forest line up cell for cell. `scale: Double(cells) / width` makes the field 216 texels across, one for each percolation cell, and `side` is one cell in canvas pixels. `edge: .clamped` gives the field walls, as in [Chapter 23's rule of your own](23-GridSimulations.md#life-rewritten-as-a-kernel-simshader). Percolation's grid has walls too, so the two agree. A fire that reaches the right edge stops there instead of coming back on the left. The forest is planted on the first frame, one cluster at a time, by filling its outline in mid-gray. An outline runs along the cell borders, so it covers its own cells and no others. A square drawn for each cell would spill a little past its edges. On a gap one cell wide, the spill from both sides would plant a tree.
 
-`background(ground)` has to come first. A background clears everything the frame has drawn so far, including marks meant for a field. Called after `withField`, it leaves nothing planted and nothing burning. The field itself holds only three states, which the ramp colors ash, tree, and fire. To the field, burned ground and ground never planted are the same state, so both come out as ash. The loop after `drawImage` covers each cell percolation left closed with the ground color, and only the burned cells keep their ash. Last, [Chapter 19's bloom](19-LayersAndEffects.md#filters) makes the burning cells glow, since nothing else on the canvas is bright enough to pass its threshold.
+`background(ground)` clears the canvas and nothing else. The marks inside `withField` belong to the field, so the background could come after the block and the forest would still be planted. The field itself holds only three states, which the ramp colors ash, tree, and fire. To the field, burned ground and ground never planted are the same state, so both come out as ash. The loop after `drawImage` covers each cell percolation left closed with the ground color, and only the burned cells keep their ash. Last, [Chapter 19's bloom](19-LayersAndEffects.md#filters) makes the burning cells glow, since nothing else on the canvas is bright enough to pass its threshold.
 
 Then make it yours:
 

@@ -209,6 +209,60 @@ struct USDParserTests {
         #expect(root.children[0].attribute("points")?.value == .floatTupleArray(3, [0, 0, 0, 1, 0, 0]))
     }
 
+    /// What the parser passes over rather than composes: a `reorder` statement at the layer
+    /// and inside a prim (wrapped over lines), every composition arc in a
+    /// prim's metadata (a reference with a layer offset, a payload list, an
+    /// inherit, specializes, a variant selection), and an array edit. Each
+    /// is consumed exactly, so what follows it still parses, and each arc is
+    /// kept as the name of what was not read. A string's hex escapes decode.
+    @Test func usdaPassesOverWhatItDoesNotCompose() throws {
+        let source = #"""
+        #usda 1.0
+        reorder rootPrims = ["B", "A"]
+        def Xform "A" (
+            references = @./other.usda@</Thing> (offset = 10; scale = 2)
+            payload = [@a.usda@, @b.usda@</X>]
+            inherits = </Base>
+            prepend specializes = [</S1>, </S2>]
+            variants = {
+                string look = "red"
+            }
+            prepend variantSets = ["look"]
+            kind = "component"
+        )
+        {
+            reorder nameChildren = [
+                "c2",
+                "c1"
+            ]
+            int[] counts = edit [append 4]
+            string label = "A\x42\x4a\x7!"
+            float after = 2
+            def "c1"
+            {
+            }
+        }
+        def "B"
+        {
+        }
+        """#
+        let stage = try USDTextParser(text: source).parseStage()
+        // Composition is not read, so the file's order stands.
+        #expect(stage.prims.map(\.name) == ["A", "B"])
+        let a = stage.prims[0]
+        for arc in ["references", "payload", "inherits", "specializes", "variants", "variantSets"] {
+            #expect(a.metadata[arc] == .unsupported(arc), "\(arc) reads \(String(describing: a.metadata[arc]))")
+        }
+        #expect(a.metadata["kind"] == .string("component"))
+        #expect(a.attribute("counts")?.value == .unsupported("arrayEdit"))
+        #expect(a.attribute("label")?.value == .string("ABJ\u{07}!"))
+        #expect(a.attribute("after")?.value == .double(2))
+        #expect(a.children.map(\.name) == ["c1"])
+        // A reorder is a statement about order, never a property.
+        #expect(a.attribute("nameChildren") == nil)
+        #expect(a.attributes.map(\.name) == ["counts", "label", "after"] && a.relationships.isEmpty)
+    }
+
     // MARK: - Crate vs text vs Model I/O
 
     /// Model I/O exports the same asset as usda text and usdc crate; the two
