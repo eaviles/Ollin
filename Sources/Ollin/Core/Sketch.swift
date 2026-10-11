@@ -2371,6 +2371,30 @@ open class Sketch {
         drawer.drawMesh(.sweep(outline, along: path, scale: scale, twist: twist, capped: capped))
     }
 
+    /// Draw a surface through several 2D `sections` laid along a 3D `path`,
+    /// each at its fraction of the way in `at` (spaced evenly when left out)
+    /// and blended one into the next, a smooth curve through three or more
+    /// when `smoothed`. See `Mesh.loft(_:along:at:smoothed:scale:twist:capped:)`.
+    public func drawLoft(_ sections: [Shape], along path: Curve3D, at stations: [Double]? = nil,
+                         smoothed: Bool = true,
+                         scale: (Double) -> Double = { _ in 1 },
+                         twist: (Double) -> Double = { _ in 0 },
+                         capped: Bool = true) {
+        drawer.drawMesh(.loft(sections, along: path, at: stations, smoothed: smoothed,
+                              scale: scale, twist: twist, capped: capped))
+    }
+
+    /// Draw a surface through several closed outlines laid along a 3D `path`.
+    /// See `Mesh.loft(_:along:at:smoothed:scale:twist:capped:)`.
+    public func drawLoft(_ outlines: [[Vector2]], along path: Curve3D, at stations: [Double]? = nil,
+                         smoothed: Bool = true,
+                         scale: (Double) -> Double = { _ in 1 },
+                         twist: (Double) -> Double = { _ in 0 },
+                         capped: Bool = true) {
+        drawer.drawMesh(.loft(outlines, along: path, at: stations, smoothed: smoothed,
+                              scale: scale, twist: twist, capped: capped))
+    }
+
     /// Draw a ribbon between two lines in space, rung `i` joining `first[i]`
     /// to `second[i]`, one color a rung. See `Mesh.strip(between:and:colors:closed:)`.
     public func drawStrip(between first: [Vector3], and second: [Vector3],

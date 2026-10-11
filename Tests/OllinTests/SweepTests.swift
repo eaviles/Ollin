@@ -256,6 +256,9 @@ struct SweepTests {
 
     /// Swept straight along +z, a shape with a hole is its extrusion: the same
     /// walls with the same normals, the same caps, the same triangle count.
+    /// The caps match to a millionth: the extrusion's come out of the
+    /// triangulator in single precision, the sweep's are the shape's own
+    /// points.
     @Test func aStraightSweepIsAnExtrusion() {
         let outer = Profile.star(points: 5, outerRadius: 1, innerRadius: 0.5)
         let hole = Array(Profile.rectangle(width: 0.3, height: 0.3).reversed())
@@ -265,7 +268,7 @@ struct SweepTests {
         #expect(swept.triangleCount == pushed.triangleCount)
         for (p, n) in zip(swept.positions, swept.normals) {
             let match = zip(pushed.positions, pushed.normals).contains {
-                ($0.0 - p).length < 1e-12 && ($0.1 - n).length < 1e-9
+                ($0.0 - p).length < 1e-6 && ($0.1 - n).length < 1e-9
             }
             #expect(match, "no extruded vertex at \(p) facing \(n)")
         }

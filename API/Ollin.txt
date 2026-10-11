@@ -2145,6 +2145,8 @@ open class Sketch: Sendable
   func drawLine(_: Vector2, _: Vector2, file: StaticString = default, line: Int = default, column: Int = default)
   func drawLine(_: Vector3, _: Vector3)
   func drawLineSpray(_: LineSpray)
+  func drawLoft(_: [Shape], along: Curve3D, at: [Double]? = default, smoothed: Bool = default, scale: (Double) -> Double = default, twist: (Double) -> Double = default, capped: Bool = default)
+  func drawLoft(_: [[Vector2]], along: Curve3D, at: [Double]? = default, smoothed: Bool = default, scale: (Double) -> Double = default, twist: (Double) -> Double = default, capped: Bool = default)
   func drawMarbling(_: Marbling)
   func drawMark(_: StrokeMark)
   func drawMaze(_: Maze, in: Rectangle? = default)
@@ -5040,6 +5042,8 @@ struct Mesh: Sendable
   static func joined(_: [Mesh]) -> Mesh
   static func klein(scale: Double = default, segments: Int = default, sides: Int = default) -> Mesh
   static func lathe(_: [Vector2], segments: Int = default) -> Mesh
+  static func loft(_: [Shape], along: Curve3D, at: [Double]? = default, smoothed: Bool = default, scale: (Double) -> Double = default, twist: (Double) -> Double = default, capped: Bool = default) -> Mesh
+  static func loft(_: [[Vector2]], along: Curve3D, at: [Double]? = default, smoothed: Bool = default, scale: (Double) -> Double = default, twist: (Double) -> Double = default, capped: Bool = default) -> Mesh
   static func mobius(radius: Double = default, width: Double = default, segments: Int = default, sides: Int = default) -> Mesh
   static func octahedron(radius: Double = default) -> Mesh
   static func plane(width: Double = default, depth: Double = default, segments: Int = default) -> Mesh

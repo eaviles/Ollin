@@ -4,7 +4,7 @@
 
 ## Sweeps and strips
 
-A sweep carries a flat shape along a path through space. It is how a molding runs round a picture frame, or a rope follows its coil. A strip is the ribbon between two lines in space. Both rest on two smaller pieces: a path whose frames never twist, and an even pace along a curve given as a function.
+A sweep carries a flat shape along a path through space. It is how a molding runs round a picture frame, or a rope follows its coil. A loft carries several shapes along the path, one after another, and blends the surface from each to the next. That is how a bottle runs from a square foot to a round neck. A strip is the ribbon between two lines in space. All three rest on two smaller pieces: a path whose frames never twist, and an even pace along a curve given as a function.
 
 <img src="../Images/Sweeps.jpg" alt="Three objects on a near-black ground: a golden five-pointed star section swept round a trefoil knot, turning one full turn as it goes; a pale blue square section rising round a spiral, tapering toward its top and turning one full turn; and a ribbon looping between two curves, painted through the hues of the rainbow" width="680">
 
@@ -71,6 +71,28 @@ A shape wider than the path's tightest bend folds over itself on the inside of t
 
 `Mesh.tube(along:)` is the circle's case of the same idea, and its rings ride the same frames.
 
+### A surface through several shapes: lofting
+
+A loft is a sweep whose shape changes on the way. `Mesh.loft(_:along:at:smoothed:scale:twist:capped:)` takes several `Shape`s, lays each across the path at its own place, and blends the surface from one to the next. A bottle runs from a square foot through a round belly to a narrow neck. A boat hull is lofted through its ribs. The `[[Vector2]]` overload takes closed outlines, so the `Profile` helpers drop in, and `drawLoft` is the bare call.
+
+<img src="../Images/Loft.jpg" alt="Three objects on a near-black ground: a pale blue bottle rising from a square foot through a round belly to a narrow neck and lip; a golden horn along a bending spine, a six-pointed star at its wide end rounding into a circle as it turns and narrows; and an orange boat hull, open on top, lofted through U-shaped ribs from a sharp bow to a flat stern" width="680">
+
+```swift
+let spine = Curve3D([Vector3(0, -1, 0), Vector3(0, 1, 0)])
+func round(_ r: Double) -> [Vector2] { Profile.ellipse(radiusX: r, radiusY: r, segments: 40) }
+drawLoft([Profile.rectangle(width: 1, height: 1), round(0.7), round(0.2), round(0.26)],
+         along: spine, at: [0, 0.35, 0.75, 1])            // a square foot, a belly, a neck, a lip
+```
+
+- **`at`** says where each section sits, as a fraction of the path's walked length from 0 to 1, one per section in ascending order. Left out, the sections are spaced evenly from the start to the end, or evenly round a closed path. A section sits exactly where it was asked for, its own corners and all, even between two of the path's points.
+- **The outlines are matched round their lengths.** Every corner of every section is kept as a point on all of them, so a square stays a square at its station and the circle beside it gets four more points on its sides. Each closed outline's seam is turned to where it sits nearest the section before it, so the skin does not twist on its own. A section turned a little from the one before stays with its nearest corners, rather than jumping a whole corner round.
+- **`smoothed`** (the default) runs the surface as a smooth curve through three or more sections. Off, it runs straight from each section to the next, like planks laid over ribs, and the stations show as soft ridges. Between two sections the blend is straight either way, and a section that is the halfway blend of its neighbors changes nothing.
+- **The walls follow the sweep's rules.** A closed contour becomes a wall facing out and an open one a sheet. A corner sharper than 30° on any section keeps a hard edge down the whole loft, which softens where the other sections round it off, so a square foot's edges fade out on the way up to a round neck. `scale` and `twist` are read at the fraction along the path, `u` runs round each outline by its own walked length and `v` along the path, and `capped` closes an open path with the first and last section's fill.
+- **Sections are matched contour by contour, in order.** Closed contours pair with closed and open with open, first with first; a contour some section lacks is left out of the loft.
+- **On a closed path** the sections run all the way round, and the one placed last blends back into the one placed first, which keeps its seam where it was drawn.
+
+A loft of one shape is that shape's sweep, down to the last byte. A hull wants open outlines. Each rib is a `Contour` with `closed: false`, read from one gunwale down round the keel and up to the other. Lofted with `capped: false`, the boat stays open on top.
+
 ### A strip between two lines
 
 `Mesh.strip(between:and:colors:closed:)` is a ribbon between two lines in space: rung `i` joins `first[i]` to `second[i]`, and each rung joins the next with two triangles. It is the surface a moving segment sweeps, a loft between two rails, the band a pair of hands traces through the air. `drawStrip` is the bare call.
@@ -111,8 +133,8 @@ Nothing is sampled for you to keep. The curve is read once, when the pace is mad
 
 ### What it costs
 
-A sweep is one ring of the shape's points for each point of the path. A 200-point path and a 40-point shape make 8,000 vertices. Building a `Curve3D` computes its frames once, and `frame(at:)` then finds its place by binary search. A pace reads its curve about twenty-five thousand times when it is made. An area pace reads each of its two curves about thirty thousand times. In an optimized build that takes about half a millisecond, or a little over one for an area pace. Each `parameter(at:)` after it takes about a tenth of a microsecond. It is still work to do once rather than every frame. Make paths, sweeps, and paces in `setup()`, or again when the numbers that shape them change. Then draw the meshes every frame.
+A sweep is one ring of the shape's points for each point of the path. A 200-point path and a 40-point shape make 8,000 vertices. A loft's ring holds every section's points together, and each section's seam is found once by trying 256 even starts round it. So a loft costs a sweep of a shape that size, plus a few hundred thousand distance reads when it is built. Building a `Curve3D` computes its frames once, and `frame(at:)` then finds its place by binary search. A pace reads its curve about twenty-five thousand times when it is made. An area pace reads each of its two curves about thirty thousand times. In an optimized build that takes about half a millisecond, or a little over one for an area pace. Each `parameter(at:)` after it takes about a tenth of a microsecond. It is still work to do once rather than every frame. Make paths, sweeps, and paces in `setup()`, or again when the numbers that shape them change. Then draw the meshes every frame.
 
 ---
 
-See also [3D](3D.md#solid-primitives) for `drawTube`, extrusion, and the other solids, and [Geometry](../Drawing/Geometry.md) for `Shape`, `Contour`, and the `Profile` helpers. The [`SweptKnot`](../../Examples/3D/Geometry/SweptKnot/Sketch.swift) example puts a sweep, a riding frame, and a paced ribbon together.
+See also [3D](3D.md#solid-primitives) for `drawTube`, extrusion, and the other solids, and [Geometry](../Drawing/Geometry.md) for `Shape`, `Contour`, and the `Profile` helpers. The [`SweptKnot`](../../Examples/3D/Geometry/SweptKnot/Sketch.swift) example puts a sweep, a riding frame, and a paced ribbon together, and [`LoftedVessels`](../../Examples/3D/Geometry/LoftedVessels/Sketch.swift) lofts a bottle, a horn, and a hull.

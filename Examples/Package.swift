@@ -217,6 +217,7 @@ let package = Package(
         example("3D/Geometry/SolidType"),
         example("3D/Geometry/HopfFibration"),
         example("3D/Geometry/SweptKnot"),
+        example("3D/Geometry/LoftedVessels"),
         example("3D/Geometry/FieldLines"),
         example("3D/Geometry/HiddenLines"),
         example("3D/Geometry/Ocean"),

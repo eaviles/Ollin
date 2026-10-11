@@ -519,6 +519,19 @@ Without a `twist`, the shape should not turn at all. The obvious way to carry it
 
 <img src="Images/27-Meshes/FramesThatDoNotTwist.jpg" alt="Two copies of the same flat ribbon laid along the same S-shaped path, each with one edge orange and the other blue. On the left, labeled the curve's own frame, the orange edge is on top through the first bend, then the ribbon pinches and turns over in the middle, so the orange edge runs underneath through the second bend. On the right, labeled Curve3D's frames, the ribbon runs smoothly through both bends with the orange edge on top the whole way" width="560">
 
+A **loft** is a sweep whose shape changes on the way. You give several flat shapes and say where each one sits along the path, and the surface blends from one to the next. The word is the boat-builders'. The loft was the floor where a hull's ribs were drawn full size, and the planks ran through them. `drawLoft` takes the sections and their places:
+
+```swift
+let spine = Curve3D([Vector3(0, -1.2, 0), Vector3(0, 1.2, 0)])
+func round(_ r: Double) -> [Vector2] { Profile.ellipse(radiusX: r, radiusY: r, segments: 40) }
+drawLoft([Profile.rectangle(width: 1, height: 1), round(0.7), round(0.2), round(0.27)],
+         along: spine, at: [0, 0.34, 0.74, 1])
+```
+
+<img src="Images/27-Meshes/LoftedBottle.jpg" alt="On the left, four orange outlines float at their heights along a thin vertical line: a square at the bottom, a wide circle above it, a small circle higher up, and a slightly larger circle at the top. On the right, the pale blue bottle lofted through them, square at the foot, swelling to a round belly, narrowing to a neck, and opening at the lip, with the square's four edges fading out on the way up" width="560">
+
+Each section lands exactly where it was asked for, corners and all. The outlines are matched round their lengths. Each one's seam is turned to the nearest start on the section before it, so the skin does not twist on its own. A square foot's four edges run up the bottle and fade out where the sections turn round. With three or more sections the surface is a smooth curve through them; `smoothed: false` runs it straight from rib to rib. Open outlines loft to a sheet, which is how a hull is built from its ribs.
+
 A **strip** is the ribbon between two lines in space, where rung `i` joins the two lines' `i`th points. `drawStrip` builds it with one color for each rung, the way a hand-built ribbon mesh is usually made. Rungs at even steps of a curve's parameter bunch up where the curve slows down. `Pace` spaces them evenly by length, or for a strip by area:
 
 ```swift
@@ -529,7 +542,7 @@ let ts = (0..<180).map { pace.parameter(at: Double($0) / 180) }
 drawStrip(between: ts.map(lower), and: ts.map(upper), closed: true)
 ```
 
-Each rung of that ribbon now covers the same area, however the two loops bend. The [sweeps and strips page](../Docs/3D/Sweeps.md) has the rest, and [`Examples/3D/Geometry/SweptKnot`](../Examples/3D/Geometry/SweptKnot/Sketch.swift) sweeps a star round a knot with carriages riding it.
+Each rung of that ribbon now covers the same area, however the two loops bend. The [sweeps and strips page](../Docs/3D/Sweeps.md) has the rest. [`Examples/3D/Geometry/SweptKnot`](../Examples/3D/Geometry/SweptKnot/Sketch.swift) sweeps a star round a knot with carriages riding it, and [`Examples/3D/Geometry/LoftedVessels`](../Examples/3D/Geometry/LoftedVessels/Sketch.swift) lofts a bottle, a horn, and a hull.
 
 ### A shape from four dimensions: the Hopf fibration
 
@@ -542,7 +555,7 @@ Normal mapping descends from Jim Blinn's 1978 bump mapping, which perturbed the 
 ## Go deeper
 
 - [3D](../Docs/3D/3D.md): the full reference for every map (`normalMapped`, `surfaceMapped`, `parallaxMapped`, `displaced`, `triplanarTextured`, `detailMapped`, decals), with the exact envelope of each.
-- [Sweeps and strips](../Docs/3D/Sweeps.md): `Curve3D` and its frames, everything a sweep does with a shape (holes, sharp corners, caps, uvs), the strip's colors and normals, and `Pace` by length or by area, with what each costs.
+- [Sweeps and strips](../Docs/3D/Sweeps.md): `Curve3D` and its frames, everything a sweep does with a shape (holes, sharp corners, caps, uvs), a loft's stations, seams, and blend, the strip's colors and normals, and `Pace` by length or by area, with what each costs.
 - [The Hopf fibration](../Docs/3D/HopfFibration.md): the base sets, taking the color from the base point, the straight one, and what it costs to draw.
 - [Scenes](../Docs/3D/Scenes.md): the whole `loadScene` reference, what carries over from a glTF file (nodes, cameras, punctual lights, animations, skins, and morph targets) and from a USD file (nodes, cameras, its UsdLux lights, its transform animation, and its UsdSkel skins and blend shapes), how intensities are normalized, and building a `Scene` in code.
 - [Bringing a scene over](../Docs/Tools/SceneImport.md): `ollin new --from-scene` writes the sketch instead of loading the file, so the camera, the lights and every placement become source you own. What it leaves behind, and why, is listed there.

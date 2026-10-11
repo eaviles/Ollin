@@ -1232,6 +1232,28 @@
       "stillSmall": "examples/3D/Geometry/LoadedScene/still-640.jpg?v=9e509559",
       "width": 1080
     },
+    "3D/Geometry/LoftedVessels": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10.0s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 16.971,
+      "sound": false,
+      "source": "3a0ce851d4e82a2c",
+      "rendered": "2026-10-11",
+      "bytes": {
+        "loop": 1428976,
+        "loopSmall": 253165,
+        "still": 55006,
+        "stillSmall": 20653
+      },
+      "loop": "examples/3D/Geometry/LoftedVessels/loop.mp4?v=3e531211",
+      "loopSmall": "examples/3D/Geometry/LoftedVessels/loop-640.mp4?v=ec5cca6f",
+      "still": "examples/3D/Geometry/LoftedVessels/still.jpg?v=23dfc884",
+      "stillSmall": "examples/3D/Geometry/LoftedVessels/still-640.jpg?v=bb1cb1d8",
+      "seed": 1
+    },
     "3D/Geometry/MeshGrowth": {
       "bytes": {
         "loop": 2530315,
