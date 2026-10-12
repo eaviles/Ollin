@@ -2055,6 +2055,7 @@ open class Sketch: Sendable
   func describe(_: String, as: String, in: Rectangle? = default)
   func directionalLight(_: Color, direction: Vector3, intensity: Double = default, specular: Color? = default, softness: Double = default, castsShadow: Bool = default)
   func diskLight(_: Color, at: Vector3, direction: Vector3, radius: Double, isTwoSided: Bool = default, intensity: Double = default, specular: Color? = default, reach: Double? = default, castsShadow: Bool = default)
+  func drawArc(_: Arc, mode: ArcMode = default)
   func drawArc(_: Double, _: Double, _: Double, _: Double, start: Double, stop: Double, mode: ArcMode = default, file: StaticString = default, line: Int = default, column: Int = default)
   func drawArc(center: Vector2, radiusX: Double, radiusY: Double, start: Double, stop: Double, mode: ArcMode = default, file: StaticString = default, line: Int = default, column: Int = default)
   func drawArrow(_: Double, _: Double, _: Double, _: Double, headLength: Double? = default, headWidth: Double? = default, file: StaticString = default, line: Int = default, column: Int = default)
@@ -2102,6 +2103,7 @@ open class Sketch: Sendable
   func drawEgg(_: Double, _: Double, _: Double, _: Double, file: StaticString = default, line: Int = default, column: Int = default)
   func drawEgg(center: Vector2, bottomRadius: Double, topRadius: Double, file: StaticString = default, line: Int = default, column: Int = default)
   func drawEllipse(_: Double, _: Double, _: Double, _: Double, file: StaticString = default, line: Int = default, column: Int = default)
+  func drawEllipse(_: Ellipse)
   func drawEllipse(center: Vector2, radiusX: Double, radiusY: Double, file: StaticString = default, line: Int = default, column: Int = default)
   func drawEnvelope(of: [Ray2], closed: Bool = default)
   func drawEpicycles(_: Epicycles, at: Double, terms: Int = default)
@@ -2142,6 +2144,7 @@ open class Sketch: Sendable
   func drawLathe(_: [Vector2], segments: Int = default)
   func drawLine(_: Double, _: Double, _: Double, _: Double, _: Double, _: Double)
   func drawLine(_: Double, _: Double, _: Double, _: Double, file: StaticString = default, line: Int = default, column: Int = default)
+  func drawLine(_: LineSegment)
   func drawLine(_: Vector2, _: Vector2, file: StaticString = default, line: Int = default, column: Int = default)
   func drawLine(_: Vector3, _: Vector3)
   func drawLineSpray(_: LineSpray)
@@ -2813,6 +2816,9 @@ protocol ParamValue: Sendable, Equatable where Self : Equatable, Self : Sendable
   static func restored(_: ParamStored, keeping: Self) -> Self?
   static func restored(_: ParamStored, keeping: Self) -> Self?
   static func stored(_: Self) -> ParamStored
+protocol PlaneCurve
+  func crossings(with: some PlaneCurve) -> [Vector2]
+  var contour: Contour { get }
 protocol RadialBasisPoint: Sendable where Self : Sendable
   func component(_: Int) -> Double
   func distance(to: Self) -> Double
@@ -2903,6 +2909,27 @@ struct Anamorphosis: Equatable, Sendable
   var radius: Double { get set }
   var visibleHalfAngle: Double { get }
   var widestPicture: Double { get }
+struct Arc: PlaneCurve, Decodable, Encodable, Equatable, Hashable, Sendable
+  func contains(angle: Double) -> Bool
+  func contour(mode: ArcMode, segments: Int? = default) -> Contour
+  func distance(to: Vector2) -> Double
+  func nearestPoint(to: Vector2) -> Vector2
+  func point(at: Double) -> Vector2
+  init(center: Vector2, radius: Double, start: Double, stop: Double)
+  init(x: Double, y: Double, radius: Double, start: Double, stop: Double)
+  let center: Vector2
+  let radius: Double
+  let start: Double
+  let stop: Double
+  var bounds: Rectangle { get }
+  var chord: LineSegment { get }
+  var circle: Circle { get }
+  var contour: Contour { get }
+  var endPoint: Vector2 { get }
+  var length: Double { get }
+  var midpoint: Vector2 { get }
+  var startPoint: Vector2 { get }
+  var sweep: Double { get }
 struct AttractorSystem: Equatable, Sendable
   let start: Vector3
   let step: Double
@@ -3141,15 +3168,21 @@ struct ChaoticMap: Sendable
   static func ikeda(u: Double = default) -> ChaoticMap
   var next: (Vector2) -> Vector2 { get set }
   var start: Vector2 { get set }
-struct Circle: Equatable, Hashable, Sendable
+struct Circle: PlaneCurve, Decodable, Encodable, Equatable, Hashable, Sendable
   func contains(_: Vector2) -> Bool
   func contour(segments: Int? = default) -> Contour
+  func distance(to: Vector2) -> Double
+  func nearestPoint(to: Vector2) -> Vector2
+  func point(at: Double) -> Vector2
   init(center: Vector2, radius: Double)
   init(x: Double, y: Double, radius: Double)
   let center: Vector2
   let radius: Double
+  var area: Double { get }
   var bounds: Rectangle { get }
+  var contour: Contour { get }
   var diameter: Double { get }
+  var perimeter: Double { get }
   var x: Double { get }
   var y: Double { get }
 struct Clothoid: Equatable, Sendable
@@ -3457,7 +3490,7 @@ struct ComputeParams: Sendable
   mutating func append(camera: Camera3D, aspect: Double)
   var bytes: [UInt8] { get }
   var isEmpty: Bool { get }
-struct Contour: Tweenable, BidirectionalCollection, Collection, Equatable, RandomAccessCollection, Sendable, Sequence
+struct Contour: PlaneCurve, Tweenable, BidirectionalCollection, Collection, Equatable, RandomAccessCollection, Sendable, Sequence
   func chamfered(_: Double) -> Contour
   func contains(_: Vector2) -> Bool
   func crossings() -> [Contour.Crossing]
@@ -3485,6 +3518,7 @@ struct Contour: Tweenable, BidirectionalCollection, Collection, Equatable, Rando
     let otherFraction: Double
     let point: Vector2
   subscript(_: Int) -> Vector2 { get }
+  var contour: Contour { get }
   var endIndex: Int { get }
   var isClosed: Bool { get set }
   var length: Double { get }
@@ -3713,6 +3747,23 @@ struct Easing: ParamChoices, ParamValue, Equatable, Sendable
   static let linear: Easing
   static let smoothstep: Easing
   static var paramChoices: [(name: String, value: Easing)] { get }
+struct Ellipse: PlaneCurve, Decodable, Encodable, Equatable, Hashable, Sendable
+  func contains(_: Vector2) -> Bool
+  func contour(segments: Int? = default) -> Contour
+  func distance(to: Vector2) -> Double
+  func nearestPoint(to: Vector2) -> Vector2
+  func point(at: Double) -> Vector2
+  init(center: Vector2, radiusX: Double, radiusY: Double, rotation: Double = default)
+  init(x: Double, y: Double, radiusX: Double, radiusY: Double, rotation: Double = default)
+  let center: Vector2
+  let radiusX: Double
+  let radiusY: Double
+  let rotation: Double
+  var area: Double { get }
+  var bounds: Rectangle { get }
+  var contour: Contour { get }
+  var eccentricity: Double { get }
+  var perimeter: Double { get }
 struct Embroidery: Equatable, Sendable
   func data(_: [Contour], in: Rectangle, label: String = default) -> Foundation.Data
   func stitches(_: [Contour], in: Rectangle) -> Stitching
@@ -4796,6 +4847,23 @@ struct LineDrawing: Sendable
   init(of: [Mesh], camera: Camera3D, size: Vector2, creaseAngle: Double = default, spacing: Double = default)
   var hidden: [Contour] { get set }
   var paths: [Contour] { get set }
+struct LineSegment: PlaneCurve, Decodable, Encodable, Equatable, Hashable, Sendable
+  func distance(to: Vector2) -> Double
+  func fraction(of: Vector2) -> Double
+  func nearestPoint(to: Vector2) -> Vector2
+  func point(at: Double) -> Vector2
+  func reversed() -> LineSegment
+  init(_: Double, _: Double, _: Double, _: Double)
+  init(_: Vector2, _: Vector2)
+  let end: Vector2
+  let start: Vector2
+  var angle: Double { get }
+  var bounds: Rectangle { get }
+  var contour: Contour { get }
+  var direction: Vector2 { get }
+  var length: Double { get }
+  var midpoint: Vector2 { get }
+  var vector: Vector2 { get }
 struct MarbledInk: Equatable, Sendable
   init(shape: Shape, color: Color)
   var color: Color { get set }
@@ -5757,7 +5825,7 @@ struct Ray3: Equatable, Sendable
   init(origin: Vector3, direction: Vector3)
   let direction: Vector3
   let origin: Vector3
-struct Rectangle: ParamValue, Decodable, Encodable, Equatable, Hashable, Sendable
+struct Rectangle: ParamValue, PlaneCurve, Decodable, Encodable, Equatable, Hashable, Sendable
   func contains(_: Vector2) -> Bool
   func inset(by: Insets) -> Rectangle
   func point(u: Double, v: Double) -> Vector2
@@ -5775,10 +5843,13 @@ struct Rectangle: ParamValue, Decodable, Encodable, Equatable, Hashable, Sendabl
   static func restored(_: ParamStored) -> Rectangle?
   static func stored(_: Rectangle) -> ParamStored
   typealias Constraints = ParamRectangleConstraints
+  var area: Double { get }
   var bottomLeft: Vector2 { get }
   var bottomRight: Vector2 { get }
   var center: Vector2 { get }
   var contour: Contour { get }
+  var edges: [LineSegment] { get }
+  var perimeter: Double { get }
   var topLeft: Vector2 { get }
   var topRight: Vector2 { get }
   var x: Double { get }
@@ -6623,7 +6694,7 @@ struct Toolpath: Sendable
   var program: String { get }
   var travelLength: Double { get set }
   var travels: [(from: Vector2, to: Vector2)] { get set }
-struct Triangle: Equatable, Sendable
+struct Triangle: PlaneCurve, Equatable, Sendable
   init(_: Vector2, _: Vector2, _: Vector2)
   let a: Vector2
   let b: Vector2
@@ -6633,6 +6704,8 @@ struct Triangle: Equatable, Sendable
   var circumcenter: Vector2 { get }
   var circumcircle: Circle { get }
   var contour: Contour { get }
+  var edges: [LineSegment] { get }
+  var perimeter: Double { get }
   var points: [Vector2] { get }
   var shape: Shape { get }
 struct TriangleGrid: BidirectionalCollection, Collection, Equatable, Hashable, RandomAccessCollection, Sendable, Sequence
@@ -6668,6 +6741,24 @@ struct TuringScale: Equatable, Sendable
   var symmetry: Int { get set }
   var variationRadius: Double { get set }
   var weight: Double { get set }
+struct Turtle: Equatable, Sendable
+  init(at: Vector2 = default, heading: Double = default)
+  mutating func back(_: Double)
+  mutating func close()
+  mutating func forward(_: Double)
+  mutating func home()
+  mutating func left(_: Double)
+  mutating func move(to: Vector2)
+  mutating func penDown()
+  mutating func penUp()
+  mutating func popState()
+  mutating func pushState()
+  mutating func right(_: Double)
+  var contours: [Contour] { get }
+  var direction: Vector2 { get }
+  var heading: Double { get set }
+  var isPenDown: Bool { get }
+  var position: Vector2 { get }
 struct UlamSpiral: Equatable, Sendable
   func number(column: Int, row: Int) -> Int?
   func point(of: Int) -> Vector2?

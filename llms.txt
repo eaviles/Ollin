@@ -103,7 +103,7 @@ The reference is the authority on what exists and how it behaves; the guide teac
 - [Seam carving](Docs/Drawing/SeamCarving.md): `Image.seamCarved` and `SeamMap` resize a picture by removing the paths through it that matter least, so what matters keeps its shape.
 - [Color](Docs/Drawing/Color.md): the `Color` type, the OKLab family and mixing, `CIELab`, how far apart two colors look and an image's histogram, `Ramp`s and `Palette`s (loaded from a file, extracted from an…
 - [Spectral color](Docs/Drawing/Spectrum.md): `Spectrum`, the reflectance curve behind a color.
-- [Geometry](Docs/Drawing/Geometry.md): the `Vector2`, `Vector3` (sharing one `Vector` surface), `Rotation3D`, `Ray3`, `Rectangle`, `Grid`, `Shape`/`Contour`, `Path`, and `HobbySpline` value types (including the `Grid`…
+- [Geometry](Docs/Drawing/Geometry.md): the `Vector2`, `Vector3` (sharing one `Vector` surface), `Rotation3D`, `Ray3`, `Rectangle`, `Circle`, `LineSegment`, `Arc`, `Ellipse`, `Grid`, `Shape`/`Contour`, `Path`, and…
 - [SVG import](Docs/Drawing/SVG.md): `loadSVG`/`drawSVG` read vector artwork into `Shape`s and `Contour`s: paths with curves and arcs, the basic shapes, groups and transforms, fills and strokes.
 - [Fourier epicycles](Docs/Drawing/Epicycles.md): `Epicycles` + `drawEpicycles` rebuild any closed outline as a chain of spinning circles.
 - [Envelopes & caustics](Docs/Drawing/Envelopes.md): `envelope` + `caustic`. An envelope is the curve a family of lines is tangent to, and a caustic is the bright curve where reflected or bent light gathers.
@@ -203,6 +203,7 @@ The reference is the authority on what exists and how it behaves; the guide teac
 - [Random walks](Docs/Generators/Walks.md): `randomWalk` / `levyFlight` / `selfAvoidingWalk`, paths built one random step at a time: the local tangle, the cluster-and-leap, and the single stroke that never crosses itself
 - [Circle packing](Docs/Generators/Packing.md): `packCircles` and `relaxCircles`, filling a region with non-overlapping circles that grow until they touch
 - [ShapeGrammar](Docs/Generators/ShapeGrammar.md): `ShapeGrammar`, a design written as rules over labeled shapes: the balanced cut behind the ice-ray lattices, splits for a building front, insets that become bars, and nested…
+- [Turtle](Docs/Generators/Turtle.md): `Turtle`, a pen you drive from code: forward, back, left, right, pen up and down, and a remembered pose for branches, every run an ordinary contour
 - [L-systems](Docs/Generators/LSystem.md): `drawLSystem` and a preset catalog: a rewriting grammar that a turtle walks into fractal curves and branching plants, symbolic or parametric (symbols carry numbers, for fractional…
 - [Differential growth](Docs/Generators/DifferentialGrowth.md): `DifferentialGrowth`, a line of nodes that grows and folds into an organic, brain-coral structure (a stateful stepper)
 - [Meander](Docs/Generators/Meander.md): `Meander`, a river centerline that migrates by curvature, cutting off oxbow lakes and recording scars (a stateful stepper)
@@ -318,7 +319,7 @@ The reference is the authority on what exists and how it behaves; the guide teac
 
 ## The project
 
-- [Examples](Examples/README.md): 620 runnable sketches by category, each with its whole source
+- [Examples](Examples/README.md): 622 runnable sketches by category, each with its whole source
 - [Ollin architecture & internals](ARCHITECTURE.md)
 - [Ollin: the shipped-capability inventory](CAPABILITIES.md)
 - [Changelog](CHANGELOG.md)

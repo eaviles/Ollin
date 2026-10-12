@@ -7794,6 +7794,28 @@
       "stillSmall": "examples/Patterns/Turmites/still-640.jpg?v=b5708896",
       "width": 1080
     },
+    "Patterns/TurtleWalk": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 7.614,
+      "sound": false,
+      "source": "757481be466fd1f7",
+      "rendered": "2026-10-11",
+      "bytes": {
+        "loop": 9507215,
+        "loopSmall": 2871824,
+        "still": 197684,
+        "stillSmall": 69076
+      },
+      "loop": "examples/Patterns/TurtleWalk/loop.mp4?v=99e4b61b",
+      "loopSmall": "examples/Patterns/TurtleWalk/loop-640.mp4?v=35fe25f7",
+      "still": "examples/Patterns/TurtleWalk/still.jpg?v=744275d2",
+      "stillSmall": "examples/Patterns/TurtleWalk/still-640.jpg?v=bd293dd8",
+      "seed": 1
+    },
     "Patterns/UlamSpiral": {
       "bytes": {
         "loop": 12627767,
@@ -10280,6 +10302,28 @@
       "still": "examples/Shapes/CornerCutting/still.jpg?v=0740f137",
       "stillSmall": "examples/Shapes/CornerCutting/still-640.jpg?v=597652fc",
       "width": 1080
+    },
+    "Shapes/Crossings": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 6.203,
+      "sound": false,
+      "source": "3ee0c169d6d9235d",
+      "rendered": "2026-10-11",
+      "bytes": {
+        "loop": 2943176,
+        "loopSmall": 684887,
+        "still": 96432,
+        "stillSmall": 40480
+      },
+      "loop": "examples/Shapes/Crossings/loop.mp4?v=762aecf3",
+      "loopSmall": "examples/Shapes/Crossings/loop-640.mp4?v=d87bab8e",
+      "still": "examples/Shapes/Crossings/still.jpg?v=a30fc42f",
+      "stillSmall": "examples/Shapes/Crossings/still-640.jpg?v=0ac287ae",
+      "seed": 1
     },
     "Shapes/DashedStrokes": {
       "bytes": {

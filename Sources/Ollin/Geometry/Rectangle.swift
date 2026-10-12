@@ -6,7 +6,7 @@ import Foundation
 /// Like `Vector2`, `Rectangle` is a value you pass around and compose, not just
 /// a draw call: it's the typed currency the `Drawer`'s `rect` takes, with the
 /// bare scalar `drawRect(x, y, width, height)` as sugar over it.
-public struct Rectangle: Equatable, Hashable, Sendable, Codable {
+public struct Rectangle: Equatable, Hashable, Sendable, Codable, PlaneCurve {
     /// Top-left corner (smallest x, smallest y).
     public let corner: Vector2
     public let width: Double
@@ -67,11 +67,24 @@ public struct Rectangle: Equatable, Hashable, Sendable, Codable {
     public var bottomRight: Vector2 { Vector2(corner.x + width, corner.y + height) }
     public var bottomLeft: Vector2 { Vector2(corner.x, corner.y + height) }
 
+    /// The area, `width * height`.
+    public var area: Double { width * height }
+
+    /// The distance round the outline, `2 * (width + height)`.
+    public var perimeter: Double { 2 * (width + height) }
+
     /// The four corners as a closed outline, top left first and clockwise as
     /// the canvas shows it, so a rectangle can join the outlines a `Shape`, a
     /// boolean, or `regions(enclosedBy:)` takes.
     public var contour: Contour {
         Contour([topLeft, topRight, bottomRight, bottomLeft], closed: true)
+    }
+
+    /// The four sides as segments, in the order the outline walks them: top,
+    /// right, bottom, left.
+    public var edges: [LineSegment] {
+        [LineSegment(topLeft, topRight), LineSegment(topRight, bottomRight),
+         LineSegment(bottomRight, bottomLeft), LineSegment(bottomLeft, topLeft)]
     }
 
     /// Whether `point` lies inside the rectangle (the boundary counts as

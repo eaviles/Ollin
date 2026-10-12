@@ -6,7 +6,7 @@ import Foundation
 /// next: the `centroid`, the `circumcircle` (the circle through all three
 /// corners — its center is a Voronoi vertex), and a fillable `shape`/`contour`
 /// so a triangle drops straight into `drawShape`, the booleans, or hatching.
-public struct Triangle: Equatable, Sendable {
+public struct Triangle: Equatable, Sendable, PlaneCurve {
     public let a: Vector2
     public let b: Vector2
     public let c: Vector2
@@ -39,8 +39,14 @@ public struct Triangle: Equatable, Sendable {
     /// The center of the `circumcircle` — a Voronoi vertex.
     public var circumcenter: Vector2 { circumcircle.center }
 
+    /// The distance round the three sides.
+    public var perimeter: Double { a.distance(to: b) + b.distance(to: c) + c.distance(to: a) }
+
     /// The triangle as a closed contour.
     public var contour: Contour { Contour([a, b, c], closed: true) }
+
+    /// The three sides as segments, `a` to `b`, `b` to `c`, and `c` back to `a`.
+    public var edges: [LineSegment] { [LineSegment(a, b), LineSegment(b, c), LineSegment(c, a)] }
 
     /// The triangle as a fillable shape.
     public var shape: Shape { Shape([a, b, c]) }

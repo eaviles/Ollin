@@ -276,7 +276,7 @@ The way to keep this sketch is as a file for the pen. `swift run OllinLive MySke
 
 ## More from a held outline: contour questions, enclosed regions, and points in a shape
 
-The plate held its shapes to cut, grow, and hatch them, and a held outline can do more than that. It can tell you where its line goes, hand back every patch its lines wall off, and keep a scatter of points inside itself. The plate asks none of it.
+The plate held its shapes to cut, grow, and hatch them, and a held outline can do more than that. It can tell you where its line goes, hand back every patch its lines wall off, and keep a scatter of points inside itself. And the line, the arc, and the ellipse can be held as values the way the circle and the rectangle already are, each able to say where it crosses another. The plate asks none of it.
 
 ### Asking an outline where it goes: contour questions
 
@@ -356,6 +356,23 @@ drawPoints(rim, size: 6)
 ```
 
 `drawPoints` draws one dot at every point in a list, `size` across. Three lines and a glyph is a stipple. The plate scattered its sites over a whole rectangle, and this confines the same scatter to a shape. That is how a stipple, a hatch of dots, or a flock that starts inside a letter begins. The [geometry reference](../Docs/Drawing/Geometry.md#shape-points) has the forms that take any random source.
+
+### Shapes that know where they cross: segments, arcs, and ellipses
+
+A circle and a rectangle have been values since the first chapter: things you hold, not only calls you make. Three more join them here. `LineSegment` is a straight line between two points, `Arc` is a piece of a circle between two angles, and `Ellipse` is an ellipse with its own tilt. Each knows its measures: a length, an area, the box around itself, and a perimeter that is exact rather than a formula's guess. Each can name the point on it nearest to any other. And each is drawn by the call that always drew it: `drawLine(road)`, `drawArc(bow)`, `drawEllipse(dish)`. What they are for is a question a held outline could not answer cheaply before: where does this cross that?
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/CurvesThatCross-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/CurvesThatCross.jpg" alt="Three panels. On the left a line through a circle and an ellipse, a dot on each of the four places it meets them, and a probe point with a line dropped to the nearest place on the ellipse. In the middle two circles meeting at two points, and the same two drawn as arcs that keep only the one meeting on their sweeps. On the right six curves of every kind laid over each other with a dot on every crossing of every pair" width="680">
+</picture>
+
+```swift
+let road = LineSegment(Vector2(0, 300), Vector2(width, 420))
+let pond = Circle(center: center, radius: 160)
+for hit in road.crossings(with: pond) { drawCircle(center: hit, radius: 6) }
+```
+
+The answers are the textbook ones. A line against a circle or an ellipse is a quadratic. Two circles meet by the construction every compass course teaches. An ellipse against anything round starts from the two outlines and polishes the points onto the true curves. A touch counts once, and two lines that run along each other report nothing for that stretch. The circle, the rectangle, a triangle, and any contour answer the same question through one shared protocol, `PlaneCurve`. So a mixed list of them can be asked pair by pair, as the right panel is. The points come back in order along the shape you asked. The [geometry reference](../Docs/Drawing/Geometry.md#plane-curves) has every measure of the three values and the rules the pairs share. The `Shapes/Crossings` example drifts six shapes about and marks every meeting as they move.
 
 ## Filling space by packing: circles, fractions, and shapes
 
@@ -570,6 +587,7 @@ The skeleton is Harry Blum's medial axis, proposed in 1967 as a way to describe 
 ## Go deeper
 
 - [Geometry](../Docs/Drawing/Geometry.md): `Contour`, `Shape`, `Path`, the booleans, offsetting, stroke-as-shape, and the convex hull, with every signature.
+- [Where curves cross](../Docs/Drawing/Geometry.md#plane-curves): `LineSegment`, `Arc`, and `Ellipse` with every measure, and the rules every `crossings(with:)` pair shares. The [`Examples/Shapes/Crossings`](../Examples/Shapes/Crossings/Sketch.swift) example marks every meeting of six drifting shapes and drops a probe to the nearest place on each.
 - [SVG import](../Docs/Drawing/SVG.md): loading, drawing, the element list, and what the importer reads and skips.
 - [Voronoi & Delaunay](../Docs/Drawing/Voronoi.md): cells, triangles, neighbors, and Lloyd relaxation.
 - [Hulls](../Docs/Generators/Hulls.md): `concaveHull` and `alphaShape`, with the argument ranges that read well and the cost of each.

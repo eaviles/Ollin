@@ -182,9 +182,12 @@ A `Triangle` is the unit a `Delaunay` is made of, and it is useful on its own.
 | `points: [Vector2]` | The corners, in order. |
 | `centroid: Vector2` | The average of the corners. |
 | `area: Double` | Unsigned area. |
+| `perimeter: Double` | The distance round the three sides. |
+| `edges: [LineSegment]` | The three sides as segments, `a` to `b`, `b` to `c`, and `c` back to `a`. |
 | `circumcircle: Circle` | The circle through all three corners. Its center is a Voronoi vertex. |
 | `circumcenter: Vector2` | The center of the `circumcircle`. |
 | `contour: Contour` / `shape: Shape` | The triangle as fillable geometry. |
+| `crossings(with:)` | Where the outline meets any other curve, through [`PlaneCurve`](../Drawing/Geometry.md#plane-curves). |
 
 ```swift
 let t = Triangle(a, b, c)

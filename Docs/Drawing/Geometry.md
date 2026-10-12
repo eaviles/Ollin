@@ -4,7 +4,7 @@
 
 ## Geometry
 
-`Vector2`, `Vector3`, `Rotation3D`, `Ray3`, `Rectangle`, `Circle`, `Contour`, `Shape`, and `Path` are Ollin's geometry value types. Primitives take them as data, and you pass them around and compose them. Canvas coordinates use a top-left origin, with y increasing downward. The two vector types share most of their surface through the `Vector` protocol, so it is documented once below and each type's own section is short.
+`Vector2`, `Vector3`, `Rotation3D`, `Ray3`, `Rectangle`, `Circle`, `LineSegment`, `Arc`, `Ellipse`, `Contour`, `Shape`, and `Path` are Ollin's geometry value types. Primitives take them as data, and you pass them around and compose them. Canvas coordinates use a top-left origin, with y increasing downward. The two vector types share most of their surface through the `Vector` protocol, so it is documented once below and each type's own section is short.
 
 ### Contents
 
@@ -24,6 +24,10 @@
 - [Grid](#grid)
 - [Insets](#insets)
 - [Circle](#circle)
+- [LineSegment](#linesegment)
+- [Arc](#arc)
+- [Ellipse](#ellipse)
+- [Where curves cross: PlaneCurve](#plane-curves)
 - [Contour](#contour)
   - [Asking an outline questions](#contour-questions)
   - [Lighter, reversed, rounded, and cut](#contour-edits)
@@ -312,9 +316,10 @@ Rectangle(fitting size: Vector2, in container: Rectangle)
 Rectangle(covering size: Vector2, in container: Rectangle)
 ```
 
-- **Properties:** `corner`, `width`, `height`, `x`, `y`, `center`.
+- **Properties:** `corner`, `width`, `height`, `x`, `y`, `center`, `area`, `perimeter`.
 - **Corners:** `topLeft`, `topRight`, `bottomRight`, `bottomLeft`.
-- **Outline:** `contour`, the four corners as a closed `Contour`, top left first and clockwise, ready for a `Shape`, a boolean, or [`regions(enclosedBy:)`](#regions).
+- **Outline:** `contour`, the four corners as a closed `Contour`, top left first and clockwise, ready for a `Shape`, a boolean, or [`regions(enclosedBy:)`](#regions); `edges`, the four sides as `LineSegment`s in that order.
+- **Crossings:** [`crossings(with:)`](#plane-curves) against any other curve.
 - **Test:** `contains(_ point: Vector2)` (the boundary counts as inside).
 - **Inset:** `inset(by: Insets)`, the rectangle shrunk inward by a per-edge margin (see [`Grid`](#grid)).
 - **Normalized coordinates:** `point(u:v:)` is the point at 0…1 fractions of the rectangle, so `point(u: 0.5, v: 0.5)` is `center`, and values outside 0…1 land proportionally outside. Its inverse is `uv(of:)`. The canvas-wide sugar is [`uv(u, v)`](../Core/Canvas.md#uv).
@@ -444,15 +449,125 @@ Circle(center: Vector2, radius: Double)
 Circle(x: Double, y: Double, radius: Double)
 ```
 
-- **Properties:** `center`, `radius`, `x`, `y`, `diameter`, `bounds` (the bounding `Rectangle`).
+- **Properties:** `center`, `radius`, `x`, `y`, `diameter`, `area`, `perimeter`, `bounds` (the bounding `Rectangle`).
 - **Test:** `contains(_ point: Vector2)`.
-- **Outline:** `contour(segments:)`, the circle as a closed `Contour` of straight pieces, starting at the right and running clockwise. Left to its default, the count follows the radius so no piece strays more than a tenth of a unit from the circle (8 pieces for a tiny ring, up to 256), the same limit `rounded(_:)` flattens an arc to. That is the outline a `Shape`, a boolean, or [`regions(enclosedBy:)`](#regions) takes.
+- **On it:** `point(at angle:)`, the point at an angle in radians from the positive x-axis, clockwise as the canvas shows it; `nearestPoint(to:)` and `distance(to:)`, the nearest place on the outline and how far a point is from it.
+- **Outline:** `contour(segments:)`, the circle as a closed `Contour` of straight pieces, starting at the right and running clockwise. Left to its default, the count follows the radius so no piece strays more than a tenth of a unit from the circle (8 pieces for a tiny ring, up to 256), the same limit `rounded(_:)` flattens an arc to. That is the outline a `Shape`, a boolean, or [`regions(enclosedBy:)`](#regions) takes; `contour` alone is the default count.
+- **Crossings:** [`crossings(with:)`](#plane-curves) against any other curve.
 
 ```swift
 let dot = Circle(center: center, radius: 60)
 drawCircle(dot)
 if dot.contains(Vector2(mouseX, mouseY)) { /* pointer is inside */ }
 ```
+
+<a name="linesegment"></a>
+
+### `LineSegment`
+
+A straight piece of line between two points: the typed form `drawLine(_:)` takes, with the bare `drawLine(x1, y1, x2, y2)` and `drawLine(a, b)` as sugar over it. A segment has two ends. The line through a point in a direction, with no ends, is [`Ray2`](Envelopes.md).
+
+```swift
+LineSegment(_ start: Vector2, _ end: Vector2)
+LineSegment(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double)
+```
+
+- **Properties:** `start`, `end`, `length`, `vector` (`end - start`), `direction` (the unit vector from `start` toward `end`), `angle` (radians), `midpoint`, `bounds`.
+- **Along it:** `point(at: t)`, the point a fraction `0...1` of the way from `start` to `end`, clamped to the segment; `fraction(of:)`, its inverse, which for a point beside the segment is the nearest fraction.
+- **Nearest:** `nearestPoint(to:)`, `distance(to:)`.
+- **Outline:** `contour`, the two points as an open `Contour`; `reversed()`, the same segment run the other way.
+- **Crossings:** [`crossings(with:)`](#plane-curves) against any other curve.
+
+```swift
+let edge = LineSegment(Vector2(100, 900), Vector2(980, 160))
+drawLine(edge)
+for hit in edge.crossings(with: Circle(center: center, radius: 200)) {
+    drawCircle(center: hit, radius: 6)
+}
+```
+
+<a name="arc"></a>
+
+### `Arc`
+
+A piece of a circle: a `center`, a `radius`, and the two angles it runs between, `start` to `stop`. The angles are in radians from the positive x-axis, increasing clockwise as the canvas shows it, the same angles [`drawArc`](Drawing.md#arc) takes. `drawArc(_ arc:mode:)` draws one, closed the way `mode` says (the curve alone by default). A `stop` smaller than `start` runs the other way round, so the same two angles name either of the two arcs between them.
+
+```swift
+Arc(center: Vector2, radius: Double, start: Double, stop: Double)
+Arc(x: Double, y: Double, radius: Double, start: Double, stop: Double)
+```
+
+- **Properties:** `center`, `radius`, `start`, `stop`, `sweep` (`stop - start`, negative when the arc runs counterclockwise), `length`, `circle` (the whole circle), `startPoint`, `endPoint`, `midpoint`, `chord` (a `LineSegment` between the ends), `bounds` (the box round the curve itself).
+- **Along it:** `point(at: t)`, the point a fraction `0...1` of the way along the sweep; `contains(angle:)`, whether an angle lies on the arc (angles a whole turn apart are the same angle, and either end counts).
+- **Nearest:** `nearestPoint(to:)`, `distance(to:)`.
+- **Outline:** `contour`, the arc as an open polyline, flattened by the same rule as a circle; `contour(mode:segments:)`, closed by a chord or through the center the way the draw call's `ArcMode` closes it, with the number of pieces fixed if you give one.
+- **Crossings:** [`crossings(with:)`](#plane-curves) against any other curve, only on the sweep.
+
+```swift
+let smile = Arc(center: center, radius: 120, start: .pi * 0.15, stop: .pi * 0.85)
+drawArc(smile)
+drawCircle(center: smile.midpoint, radius: 6)
+```
+
+<a name="ellipse"></a>
+
+### `Ellipse`
+
+An ellipse: a `center`, the half-widths `radiusX` and `radiusY` along its own two axes, and a `rotation`. The rotation is in radians and turns those axes clockwise as the canvas shows it. This is the typed form `drawEllipse(_:)` takes. At a `rotation` of 0 it is what `drawEllipse(x, y, radiusX, radiusY)` draws, and with one the draw call turns it for you.
+
+```swift
+Ellipse(center: Vector2, radiusX: Double, radiusY: Double, rotation: Double = 0)
+Ellipse(x: Double, y: Double, radiusX: Double, radiusY: Double, rotation: Double = 0)
+```
+
+- **Properties:** `center`, `radiusX`, `radiusY`, `rotation`, `area`, `perimeter`, `eccentricity` (0 for a circle, toward 1 as it flattens), `bounds` (exact under the rotation).
+- **Test:** `contains(_ point: Vector2)` (the outline counts as inside).
+- **On it:** `point(at angle:)`, the point at a *parametric* angle (`radiusX * cos` along one axis and `radiusY * sin` along the other, turned by `rotation`), which is not the polar angle of the point from the center except on a circle; `nearestPoint(to:)` and `distance(to:)`.
+- **Outline:** `contour(segments:)`, starting at the end of the x axis and running clockwise, flattened by the same rule as a circle of the larger radius; `contour` alone is the default count.
+- **Crossings:** [`crossings(with:)`](#plane-curves) against any other curve.
+
+`perimeter` is exact to double precision, not a formula's guess. It is the complete elliptic integral of the second kind, taken through Gauss's arithmetic-geometric mean, which doubles its correct digits at every step. Ramanujan's approximation, the usual shortcut, is a few parts in ten thousand off on a very flat ellipse.
+
+```swift
+let dish = Ellipse(center: center, radiusX: 260, radiusY: 110, rotation: .pi / 8)
+drawEllipse(dish)
+let dots = Int(dish.perimeter / 12)                 // one dot every 12 points round it
+for i in 0 ..< dots { drawCircle(center: dish.point(at: Double(i) / Double(dots) * .tau), radius: 3) }
+```
+
+<a name="plane-curves"></a>
+
+### Where curves cross: `PlaneCurve`
+
+`LineSegment`, `Arc`, `Circle`, `Ellipse`, `Rectangle`, `Triangle`, and `Contour` share one protocol. A `PlaneCurve` has a `contour`, the outline every other geometry question takes, and it can say where it meets another:
+
+```swift
+func crossings(with other: some PlaneCurve) -> [Vector2]
+```
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/15-ShapesAsMaterial/CurvesThatCross-dark.jpg">
+  <img src="../../Guide/Images/15-ShapesAsMaterial/CurvesThatCross.jpg" alt="Three panels. On the left a line through a circle and an ellipse, a dot on each of the four places it meets them, and a probe point with a line dropped to the nearest place on the ellipse. In the middle two circles meeting at two points, and the same two drawn as arcs that keep only the one meeting on their sweeps. On the right six curves of every kind laid over each other with a dot on every crossing of every pair" width="680">
+</picture>
+
+The points come back sorted along the curve you asked. A segment or an arc counts from its start, and a contour along its walk. A circle or an ellipse counts from its right going clockwise, and a rectangle or a triangle from its first corner. A touch counts as a crossing. Two curves that run along each other share no single point and report nothing for that stretch. A mixed list works the same way, since every member is a `PlaneCurve`:
+
+```swift
+let road = LineSegment(Vector2(0, 300), Vector2(1080, 420))
+let pond = Circle(center: Vector2(540, 380), radius: 160)
+let dish = Ellipse(x: 300, y: 500, radiusX: 220, radiusY: 90, rotation: 0.4)
+let bow = Arc(center: center, radius: 400, start: .pi, stop: 2 * .pi)
+let curves: [any PlaneCurve] = [road, pond, dish, bow]
+for i in curves.indices {
+    for j in curves.indices where j > i {
+        for hit in curves[i].crossings(with: curves[j]) { drawCircle(center: hit, radius: 6) }
+    }
+}
+```
+
+Every pair with a closed form is answered from it, exactly. That covers anything made of straight pieces (a segment, a rectangle, a triangle, a contour) against anything else made of them. It also covers those against a circle, an arc, or an ellipse, and circles and arcs against each other. An ellipse against a circle, an arc, or another ellipse is found on the two outlines first. The points are then polished onto the true curves to machine precision. So a bare touch, or two crossings closer together than the outlines' own pieces, may come back as one or none. A contour asked about another contour keeps its own [`crossings(with:)`](#contour-questions), which also says how far along each walk the point sits.
+
+Worked example: [`Examples/Shapes/Crossings`](../../Examples/Shapes/Crossings/Sketch.swift), six drifting shapes with a dot on every meeting and a probe dropped to the nearest place on each. The Guide teaches the family in [Chapter 15](../../Guide/15-ShapesAsMaterial.md#shapes-that-know-where-they-cross-segments-arcs-and-ellipses).
 
 <a name="contour"></a>
 

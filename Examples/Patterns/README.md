@@ -39,12 +39,12 @@
 | [Spirolateral](Spirolateral/) | [Stippling](Stippling/) | [Streamlines](Streamlines/) | [Subdivision](Subdivision/) |
 | [![TenPrint](https://media.ollin.art/examples/Patterns/TenPrint/still-640.jpg?v=11c4a1b4)](TenPrint/) | [![TextureSynthesis](https://media.ollin.art/examples/Patterns/TextureSynthesis/still-640.jpg?v=8dc70efc)](TextureSynthesis/) | [![Topography](https://media.ollin.art/examples/Patterns/Topography/still-640.jpg?v=faede732)](Topography/) | [![TriangleGrid](https://media.ollin.art/examples/Patterns/TriangleGrid/still-640.jpg?v=9cd4ef00)](TriangleGrid/) |
 | [TenPrint](TenPrint/) | [TextureSynthesis](TextureSynthesis/) | [Topography](Topography/) | [TriangleGrid](TriangleGrid/) |
-| [![Truchet](https://media.ollin.art/examples/Patterns/Truchet/still-640.jpg?v=10d62f88)](Truchet/) | [![Turmites](https://media.ollin.art/examples/Patterns/Turmites/still-640.jpg?v=b5708896)](Turmites/) | [![UlamSpiral](https://media.ollin.art/examples/Patterns/UlamSpiral/still-640.jpg?v=9ee80ca4)](UlamSpiral/) | [![Venation](https://media.ollin.art/examples/Patterns/Venation/still-640.jpg?v=bc70a014)](Venation/) |
-| [Truchet](Truchet/) | [Turmites](Turmites/) | [UlamSpiral](UlamSpiral/) | [Venation](Venation/) |
-| [![Voronoi](https://media.ollin.art/examples/Patterns/Voronoi/still-640.jpg?v=a3afd40d)](Voronoi/) | [![WangTiles](https://media.ollin.art/examples/Patterns/WangTiles/still-640.jpg?v=e325063f)](WangTiles/) | [![WarpGrid](https://media.ollin.art/examples/Patterns/WarpGrid/still-640.jpg?v=42a7f103)](WarpGrid/) | [![WaveFunctionCollapse](https://media.ollin.art/examples/Patterns/WaveFunctionCollapse/still-640.jpg?v=f6e2224e)](WaveFunctionCollapse/) |
-| [Voronoi](Voronoi/) | [WangTiles](WangTiles/) | [WarpGrid](WarpGrid/) | [WaveFunctionCollapse](WaveFunctionCollapse/) |
-| [![Wavefront](https://media.ollin.art/examples/Patterns/Wavefront/still-640.jpg?v=8a15c1da)](Wavefront/) |  |  |  |
-| [Wavefront](Wavefront/) |  |  |  |
+| [![Truchet](https://media.ollin.art/examples/Patterns/Truchet/still-640.jpg?v=10d62f88)](Truchet/) | [![Turmites](https://media.ollin.art/examples/Patterns/Turmites/still-640.jpg?v=b5708896)](Turmites/) | [![TurtleWalk](https://media.ollin.art/examples/Patterns/TurtleWalk/still-640.jpg?v=bd293dd8)](TurtleWalk/) | [![UlamSpiral](https://media.ollin.art/examples/Patterns/UlamSpiral/still-640.jpg?v=9ee80ca4)](UlamSpiral/) |
+| [Truchet](Truchet/) | [Turmites](Turmites/) | [TurtleWalk](TurtleWalk/) | [UlamSpiral](UlamSpiral/) |
+| [![Venation](https://media.ollin.art/examples/Patterns/Venation/still-640.jpg?v=bc70a014)](Venation/) | [![Voronoi](https://media.ollin.art/examples/Patterns/Voronoi/still-640.jpg?v=a3afd40d)](Voronoi/) | [![WangTiles](https://media.ollin.art/examples/Patterns/WangTiles/still-640.jpg?v=e325063f)](WangTiles/) | [![WarpGrid](https://media.ollin.art/examples/Patterns/WarpGrid/still-640.jpg?v=42a7f103)](WarpGrid/) |
+| [Venation](Venation/) | [Voronoi](Voronoi/) | [WangTiles](WangTiles/) | [WarpGrid](WarpGrid/) |
+| [![WaveFunctionCollapse](https://media.ollin.art/examples/Patterns/WaveFunctionCollapse/still-640.jpg?v=f6e2224e)](WaveFunctionCollapse/) | [![Wavefront](https://media.ollin.art/examples/Patterns/Wavefront/still-640.jpg?v=8a15c1da)](Wavefront/) |  |  |
+| [WaveFunctionCollapse](WaveFunctionCollapse/) | [Wavefront](Wavefront/) |  |  |
 
 Generative patterns: grids, tessellations, and rule-based repetition. Shape *primitives* and
 shape *composition* (booleans and SDF combinators) live in [Shapes](../Shapes/).
@@ -119,6 +119,7 @@ shape *composition* (booleans and SDF combinators) live in [Shapes](../Shapes/).
 | [Hitomezashi](Hitomezashi/Sketch.swift) | one bit per grid line decides whether its row of dashes starts on the edge or one cell in, and the shifted lines join at the crossings into steps, staircases, and loops (`hitomezashi`) |
 | [ParquetDeformation](ParquetDeformation/Sketch.swift) | one tiling whose tile changes shape as you read across it, a soft pinwheel on one side and an interlocking key on the other, with the run between them sliding back and forth as a moving front (`ParquetDeformation`) |
 | [Turmites](Turmites/Sketch.swift) | small Turing machines painting a grid that wraps at its edges: Langton's ant and its highway, spiral builders, and chaotic weavers, all chosen from a preset parameter (`Turmite`) |
+| [TurtleWalk](TurtleWalk/Sketch.swift) | a pen driven from code (`Turtle`): a tree grown by the oldest turtle program there is, walk the trunk, remember the spot, grow a smaller tree to each side (`pushState`/`popState`), leaning in a wind, beside a polyspiral of ever longer steps whose turn slides over the loop |
 | [AntColony](AntColony/Sketch.swift) | an ant colony solving a tour, seen from above: the whole colony walks once per frame and lays its pheromone again, so a haze over every pair of cities condenses onto a short route (`AntColony`) |
 | [CreasePattern](CreasePattern/Sketch.swift) | the flat sheet and the folded result side by side: every line the paper is creased along, marked with the two directions a fold can go, beside the shape it folds into (`CreasePattern`) |
 | [Venation](Venation/Sketch.swift) | space colonization: veins grow live from a root at the bottom toward a blue-noise scatter of attractors, with branch thickness from the pipe model (`SpaceColonization`, `poissonDisk`) |

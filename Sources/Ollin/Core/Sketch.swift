@@ -3296,6 +3296,18 @@ open class Sketch {
         markSite(file, line, column, .point(width: 1, height: 2)); defer { clearSite() }
         drawer.drawEllipse(center.x, center.y, radiusX, radiusY)
     }
+    /// Draw an `Ellipse`, turned by its `rotation`.
+    public func drawEllipse(_ ellipse: Ellipse) {
+        guard ellipse.rotation != 0 else {
+            drawer.drawEllipse(ellipse.center.x, ellipse.center.y, ellipse.radiusX, ellipse.radiusY)
+            return
+        }
+        drawer.pushState()
+        drawer.translate(ellipse.center)
+        drawer.rotate(ellipse.rotation)
+        drawer.drawEllipse(0, 0, ellipse.radiusX, ellipse.radiusY)
+        drawer.popState()
+    }
     public func drawTriangle(_ x: Double, _ y: Double, _ radius: Double,
                              file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
         markSite(file, line, column, .xy(radius: 2)); defer { clearSite() }
@@ -3585,6 +3597,11 @@ open class Sketch {
                         file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
         markSite(file, line, column, .point(width: 1, height: 2).turning(3, 4)); defer { clearSite() }
         drawer.drawArc(center.x, center.y, radiusX, radiusY, start: start, stop: stop, mode: mode)
+    }
+    /// Draw an `Arc`, closed the way `mode` says (the curve alone by default).
+    public func drawArc(_ arc: Arc, mode: ArcMode = .open) {
+        drawer.drawArc(arc.center.x, arc.center.y, arc.radius, arc.radius,
+                       start: arc.start, stop: arc.stop, mode: mode)
     }
     public func drawPolyline(_ points: [Vector2], closed: Bool = false) {
         drawer.drawPolyline(points, closed: closed)
@@ -4186,6 +4203,10 @@ open class Sketch {
                          file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
         markSite(file, line, column, .scalars([0, 1, 2, 3])); defer { clearSite() }
         drawer.drawLine(Vector2(x1, y1), Vector2(x2, y2))
+    }
+    /// Draw a `LineSegment` from its `start` to its `end`.
+    public func drawLine(_ segment: LineSegment) {
+        drawer.drawLine(segment.start, segment.end)
     }
     /// Draw an arrow from one point to another: a stroked shaft ending in a
     /// solid triangular head whose tip is exactly `to`. The whole mark, head

@@ -753,6 +753,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("shape-morph",
                  note: "Shape morphing mid-blend: a star-to-donut ShapeMorph at a fixed t (pins contour pairing, the rotation correspondence, and the hole growing out of the center), a strip of triangle-to-circle one-offs at five fractions (pins exact endpoints and the blend between), and an open zigzag-to-arc lerp (pins direction alignment for open runs). Pure CPU build, no time, deterministic.",
                  make: { ShapeMorphScene() }),
+    SnapshotCase("plane-curves",
+                 note: "The plane curves as values on one sheet: a segment, two circles, an arc, a turned ellipse, and a rectangle drawn through their typed draw calls (drawLine(_:), drawArc(_:), drawEllipse(_:) with a rotation, drawCircle(_:), drawRect(_:)), a dot on every crossing of every pair (the segment and rectangle quadratics, the two-circle construction, the ellipse polished onto the true curves), and a turtle's square and three-level tree beside them. Pure CPU geometry, no time, no random.",
+                 make: { PlaneCurvesScene() }),
     SnapshotCase("outline-questions",
                  note: "The outline questions on one sheet: a seven-point tangled loop woven over and under by its own crossings (crossings() with every second pass cut out through piece(from:to:), wrapping through the seam), a probe dropped to the nearest place on an open curve with the tangent and normal drawn there and the walked stretch inked, a star rounded and a star chamfered (each corner limited by its edges), and a dense wave simplified to the points it needs. Pure CPU geometry, no time, no random.",
                  make: { OutlineQuestionsScene() }),
@@ -5505,6 +5508,70 @@ private final class EpicyclesScene: Sketch {
         strokeWeight(0.8)
         stroke(Color(hex: 0x6B7DA6))
         drawEpicycles(epicycles, at: 0.3, terms: 12)
+    }
+}
+
+private final class PlaneCurvesScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x10131A))
+        let road = LineSegment(Vector2(10, 150), Vector2(246, 60))
+        let left = Circle(center: Vector2(80, 100), radius: 44)
+        let right = Circle(center: Vector2(150, 118), radius: 36)
+        let dish = Ellipse(center: Vector2(130, 100), radiusX: 90, radiusY: 30, rotation: 0.35)
+        let bow = Arc(center: Vector2(128, 150), radius: 96, start: .pi * 1.1, stop: .pi * 1.9)
+        let frame = Rectangle(x: 40, y: 60, width: 160, height: 90)
+        let cast: [any PlaneCurve] = [road, left, right, dish, bow, frame]
+
+        noFill()
+        strokeWeight(1.5)
+        stroke(Color(hex: 0x7F8CA8))
+        drawLine(road)
+        stroke(Color(hex: 0xE5B15C))
+        drawCircle(left)
+        drawCircle(right)
+        stroke(Color(hex: 0x9FD6E8))
+        drawEllipse(dish)
+        stroke(Color(hex: 0xF4EAD6))
+        drawArc(bow)
+        stroke(Color(hex: 0x6BD69B))
+        drawRect(frame)
+
+        noStroke()
+        fill(Color(hex: 0xFF6B6B))
+        for i in cast.indices {
+            for j in cast.indices where j > i {
+                for hit in cast[i].crossings(with: cast[j]) {
+                    drawCircle(center: hit, radius: 3)
+                }
+            }
+        }
+
+        // A turtle's square and a small tree.
+        var square = Turtle(at: Vector2(24, 244))
+        for _ in 0 ..< 4 {
+            square.forward(36)
+            square.right(90)
+        }
+        var tree = Turtle(at: Vector2(200, 246))
+        func grow(_ turtle: inout Turtle, length: Double, depth: Int) {
+            guard depth > 0 else { return }
+            turtle.forward(length)
+            turtle.pushState()
+            turtle.left(28)
+            grow(&turtle, length: length * 0.68, depth: depth - 1)
+            turtle.popState()
+            turtle.pushState()
+            turtle.right(28)
+            grow(&turtle, length: length * 0.68, depth: depth - 1)
+            turtle.popState()
+        }
+        grow(&tree, length: 26, depth: 4)
+        noFill()
+        strokeWeight(1.2)
+        stroke(Color(hex: 0xF4EAD6))
+        for run in square.contours + tree.contours { drawPolyline(run.points, closed: run.isClosed) }
     }
 }
 

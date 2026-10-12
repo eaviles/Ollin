@@ -6,7 +6,7 @@
 
 <img src="Images/16-CurvesAndFigures/Engraving.jpg" alt="A two-ink engraved plate on cream paper: a green guilloche rosette with a red spirograph turning in its eye, a red square knot in each corner, a ribbon of six lines under the rosette, all inside a frame whose corners ease round" width="560">
 
-Some figures come from a rule instead of a hand, like the Lissajous figure two sine waves weave. Ollin has rules like that as calls, from Hobby's spline through your own points to spirolaterals and corners eased like a road's. The engraving above holds a guilloche rosette with a spirograph in its eye, a knot in each corner, and a ribbon on Hobby's spline. Envelopes, epicycles, morphs, and a drawing that reads only in a mirror come after it.
+Some figures come from a rule instead of a hand, like the Lissajous figure two sine waves weave. Ollin has rules like that as calls, from Hobby's spline through your own points to spirolaterals and corners eased like a road's. The engraving above holds a guilloche rosette with a spirograph in its eye, a knot in each corner, and a ribbon on Hobby's spline. Envelopes, epicycles, morphs, a drawing that reads only in a mirror, and a pen you drive from code come after it.
 
 ## A curve that reads as drawn: Hobby's spline
 
@@ -241,7 +241,7 @@ An engraving is line work, so keep it as line work. `swift run OllinLive MySketc
 
 ## More figures from a rule: envelopes, epicycles, morphs, and anamorphosis
 
-The engraving used a spline, two of the formula curves, a walk, and an eased corner. Four more figures come from a rule the same way, and the plate uses none of them. A family of straight lines can trace a curve they only touch, which is how light draws the bright curve in a cup. Any closed outline can be rebuilt from circles spinning on circles. One shape can become another over a number between 0 and 1. And a drawing can be built so that only a mirror standing on it reads it. Each comes back as the same geometry as the rest of the chapter, so it strokes, fills, and plots the same way.
+The engraving used a spline, two of the formula curves, a walk, and an eased corner. Five more figures come from a rule the same way, and the plate uses none of them. A family of straight lines can trace a curve they only touch, which is how light draws the bright curve in a cup. Any closed outline can be rebuilt from circles spinning on circles. One shape can become another over a number between 0 and 1. A drawing can be built so that only a mirror standing on it reads it. And a figure can be written as the moves of a pen you drive. Each comes back as the same geometry as the rest of the chapter, so it strokes, fills, and plots the same way.
 
 ### The curve a family of lines leans on: envelopes and caustics
 
@@ -363,6 +363,26 @@ There is a limit, and it is better met before you compose than after. Two tangen
 
 `plate(of:)` takes a point, a `Contour`, or a `Shape`. The map bends straight lines, so a contour is walked at an even spacing first, and the extra points carry the bend. What comes back is ordinary geometry, so a plate prints. A mirrored tube standing on the printed circle is all the apparatus you need.
 
+### A pen you drive: the turtle
+
+The spirolateral earlier in this chapter was a walk: step, turn, step, turn. A **turtle** is that walk made general. It is a pen that stands somewhere on the canvas facing some way. You drive it: walk forward, turn left or right, lift the pen, put it down. Every figure is written as the moves that make it, from the pen's own point of view. A square is "forward, turn right, four times" and never four pairs of coordinates. Seymour Papert built it into Logo in the late 1960s so that children could draw by program. Harold Abelson and Andrea diSessa made a geometry of it in *Turtle Geometry* in 1981. It is for any figure that is easier to say as moves than as points: polygons and stars, spirals, and above all branching. A branch is a walk out along a limb, a remembered spot, a smaller tree grown to each side, and the way back. [Chapter 13](13-GrowingThings.md) walked an L-system's sentence with one of these. This one takes calls instead.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/16-CurvesAndFigures/TurtleDrives-dark.jpg">
+  <img src="Images/16-CurvesAndFigures/TurtleDrives.jpg" alt="Three panels. On the left a square and a pentagon drawn by a turtle, each with its short program written under it. In the middle a tree grown by walking a limb, remembering the spot, and growing a smaller tree to each side. On the right a polyspiral, a walk of ever longer steps with the same turn after each" width="680">
+</picture>
+
+```swift
+var turtle = Turtle(at: center)        // facing up the screen, pen down
+for _ in 0 ..< 5 {
+    turtle.forward(200)
+    turtle.right(72)
+}
+for run in turtle.contours { drawPolyline(run.points) }
+```
+
+Angles are in degrees, as turtle graphics has always had them, and `right` turns clockwise as the canvas shows it. `pushState()` remembers where the turtle stands and which way it faces, and `popState()` takes it back there without drawing the way. That pair is the whole of the tree in the middle panel: forward, remember, turn left and grow a smaller tree, come back, turn right and grow another. `penUp()` and `penDown()` break the drawing into runs. Every run comes back as an ordinary contour, so the walk strokes, fills once closed, and plots like everything else in this chapter. The [reference](../Docs/Generators/Turtle.md) has every move. The `Patterns/TurtleWalk` example grows that tree in a wind beside a polyspiral whose turn slides as it loops.
+
 ## Where this comes from
 
 Hobby's spline is John Hobby's, from a 1986 paper, and it is the curve Donald Knuth's METAFONT draws through its points.
@@ -388,6 +408,7 @@ Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 - [Fourier epicycles](../Docs/Drawing/Epicycles.md): the `Term` list, the joint and path readers, and resampling requirements. The [`Examples/Motion/Epicycles`](../Examples/Motion/Epicycles/Sketch.swift) example traces a whale with them.
 - [Shape morphing](../Docs/Drawing/Morphing.md): the correspondence rules, `spacing`, and `Tweenable` geometry inside a `Timeline`. The [`Examples/Motion/Morphing`](../Examples/Motion/Morphing/Sketch.swift) example loops a star through a blob and a donut.
 - [Anamorphosis](../Docs/Drawing/Anamorphosis.md): the setup, the map for points, contours and shapes, what an eye can see of a cylinder, reading a plate back, and standing a real mirror on a printed one. The [`Examples/Patterns/Anamorphosis`](../Examples/Patterns/Anamorphosis/Sketch.swift) example spells a word around one and shows what the eye receives.
+- [Turtle](../Docs/Generators/Turtle.md): every move, the pen, the remembered pose, and what comes back. The [`Examples/Patterns/TurtleWalk`](../Examples/Patterns/TurtleWalk/Sketch.swift) example grows a tree in a wind beside a polyspiral.
 
 ---
 
