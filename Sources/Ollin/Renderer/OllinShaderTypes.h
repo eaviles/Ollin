@@ -1274,6 +1274,24 @@ typedef struct {
                              // (0 = no attenuation)
 } OllinCausticGeo;
 
+// Per-slot material data for the probe trace (`ollin_gi_trace`): what a probe ray needs
+// of the surface it lands on past the baked per-vertex albedo, metalness, and roughness.
+// The glow it adds as light of its own, and the finish that decides its lobes. One entry
+// per material slot (the plain geometries in build order, then one per copy group),
+// indexed by the hit record's slot, so a copy resolves the finish of the draw that placed
+// it; the accel build breaks its coalesced runs where these fields change while the
+// bounce is on, so a geometry is uniform in them. Stride 32.
+typedef struct {
+    simd_float4 emissive;    // rgb = the linear emissive factor the surface adds as light
+                             // of its own; w = `emissiveIntensity`, the surface's own color
+                             // added as light (both zero: no glow)
+    simd_float4 lobe;        // x = shading model (3 = physically based, the one finish
+                             // with a microfacet lobe; the rest bounce as Lambert),
+                             // y = f0 (the dielectric reflectance at normal incidence),
+                             // z = transmission (a see-through body gives up that share of
+                             // its diffuse under an environment), w unused
+} OllinGIGeo;
+
 // What a traced hit needs of a surface's *finish*, past the metalness and roughness its
 // vertices already carry. A reflection shades the surface it finds, so a surface whose look
 // comes from a stylized model (cel bands, a warm-cool tone ramp) or from a light-independent

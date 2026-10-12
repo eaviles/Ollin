@@ -272,10 +272,14 @@ extension MetalRenderer {
         var reflectAccel: MTLAccelerationStructure?
         var reflectGeoOffsets: MTLBuffer?
         /// Global illumination: the same acceleration structure + offsets for the probe
-        /// trace (one build serves shadows, reflections, and GI). Set only when
-        /// `globalIllumination()` is on and the device can trace.
+        /// trace (one build serves shadows, reflections, and GI), plus the per-slot
+        /// probe materials (the glow, the shading model, f0, transmission). Set only when
+        /// `globalIllumination()` is on and the device can trace; the accel build then
+        /// breaks its coalesced runs where those fields change, so a hit's slot resolves
+        /// a surface uniform in them.
         var giAccel: MTLAccelerationStructure?
         var giGeoOffsets: MTLBuffer?
+        var giGeoMats: MTLBuffer?
         /// Caustics: the same structure + offsets for the photon trace, plus the
         /// per-geometry caustic materials (transmission / ior / attenuation). Set only
         /// when `caustics()` is on and the device can trace; the accel build then
@@ -370,6 +374,7 @@ extension MetalRenderer {
         var accel: MTLAccelerationStructure?
         var accelOffsets: MTLBuffer?
         var accelCausticMats: MTLBuffer?
+        var accelGIMats: MTLBuffer?
         var cube: MTLTexture?
         var tracedPrimary = false
         var tracedPoints = false
@@ -377,10 +382,11 @@ extension MetalRenderer {
         if !pointCasters.isEmpty, rayTracedShadows, let meshBuffer,
            !meshVertices.isEmpty || !drawer.instancedMeshVertices.isEmpty || hasFieldCasters,
            let built = buildShadowAccel(drawer, into: commandBuffer, meshBuffer: meshBuffer,
-                                        causticMats: wantCaustics) {
+                                        causticMats: wantCaustics, giMats: wantGI) {
             accel = built.accel
             accelOffsets = built.offsets
             accelCausticMats = built.causticMats
+            accelGIMats = built.giMats
             tracedPoints = true
             // Slot 0 is one of them exactly when the primary itself is a point caster.
             tracedPrimary = lighting.shadowKind == 1
@@ -405,10 +411,11 @@ extension MetalRenderer {
             if accel != nil {
                 tracedPrimary = true
             } else if let built = buildShadowAccel(drawer, into: commandBuffer, meshBuffer: meshBuffer,
-                                                   causticMats: wantCaustics) {
+                                                   causticMats: wantCaustics, giMats: wantGI) {
                 accel = built.accel
                 accelOffsets = built.offsets
                 accelCausticMats = built.causticMats
+                accelGIMats = built.giMats
                 tracedPrimary = true
             }
         }
@@ -426,10 +433,11 @@ extension MetalRenderer {
            !meshVertices.isEmpty || !drawer.instancedMeshVertices.isEmpty || hasFieldCasters,
            let meshBuffer,
            let built = buildShadowAccel(drawer, into: commandBuffer, meshBuffer: meshBuffer,
-                                        causticMats: wantCaustics) {
+                                        causticMats: wantCaustics, giMats: wantGI) {
             accel = built.accel
             accelOffsets = built.offsets
             accelCausticMats = built.causticMats
+            accelGIMats = built.giMats
         }
 
         /// Everything this frame produced, with each accel consumer taking it only when
@@ -441,6 +449,7 @@ extension MetalRenderer {
                        reflectGeoOffsets: wantReflect ? accelOffsets : nil,
                        giAccel: wantGI ? accel : nil,
                        giGeoOffsets: wantGI ? accelOffsets : nil,
+                       giGeoMats: wantGI ? accelGIMats : nil,
                        causticAccel: wantCaustics ? accel : nil,
                        causticGeoOffsets: wantCaustics ? accelOffsets : nil,
                        causticGeoMats: wantCaustics ? accelCausticMats : nil)
@@ -2771,16 +2780,17 @@ extension MetalRenderer {
         }
     }
 
-    /// Whole trace+blend iterations for the historyless (headless/export) path: each
-    /// deepens the bounce recursion by one and averages the noise down (the blend runs
-    /// a progressive mean), so a single frame converges deterministically with no
-    /// history, and a video export cannot flicker. Resolved through the same GI
+    /// Whole trace+blend iterations for the historyless (headless/export) path, in two
+    /// phases: `burnIn` updates that each replace the field (each deepens the bounce
+    /// recursion by one, so the field reaches its depth), then `averaged` updates whose
+    /// progressive mean settles the noise, so a single frame converges deterministically
+    /// with no history and a video export cannot flicker. Resolved through the same GI
     /// quality tier as the rays.
-    private func resolveGIIterations(_ quality: RenderQuality) -> Int {
+    private func resolveGISchedule(_ quality: RenderQuality) -> (burnIn: Int, averaged: Int) {
         switch effectiveQuality(quality) {
-        case .performance: return 8
-        case .default:     return 12
-        case .detail:      return 16
+        case .performance: return (6, 6)
+        case .default:     return (10, 8)
+        case .detail:      return (16, 12)
         }
     }
 
@@ -2854,9 +2864,10 @@ extension MetalRenderer {
     func encodeGIPass(_ drawer: Drawer, into cb: MTLCommandBuffer,
                       meshBuffer: MTLBuffer?,
                       accel: MTLAccelerationStructure?, geoOffsets: MTLBuffer?,
+                      geoMats: MTLBuffer?,
                       supersample: Bool, pooled: Bool) -> GIResolved? {
         guard drawer.globalIlluminationEnabled, rayTracedShadows,
-              let accel, let geoOffsets, let meshBuffer else { return nil }
+              let accel, let geoOffsets, let geoMats, let meshBuffer else { return nil }
         var lighting = drawer.makeLighting()
         guard lighting.enabled != 0 else { return nil }
 
@@ -3044,7 +3055,8 @@ extension MetalRenderer {
         // and far geometry in the statistics collapses near-surface variance.
         let depthCap = 1.5 * max(state.spacing.x, max(state.spacing.y, state.spacing.z))
         let rays = resolveGIRays(drawer.giQualitySetting)
-        let iterations = supersample ? resolveGIIterations(drawer.giQualitySetting) : 1
+        let schedule = resolveGISchedule(drawer.giQualitySetting)
+        let iterations = supersample ? schedule.burnIn + schedule.averaged : 1
         // The cascaded trace is a separate fragment so the single-volume one keeps its
         // exact shipped codegen (fast-math re-contracts unchanged expressions when a
         // function's control flow grows; the ulp is a byte off every dithered frame).
@@ -3058,11 +3070,26 @@ extension MetalRenderer {
         else { return nil }
         if iblPlaceholderCube == nil { iblPlaceholderCube = makeCubeTexture(face: 1, mipped: false) }
         let stand = gradientStripTexture(for: drawer.gradientRows)
+        // The hit shade prices a physically based lobe's albedo from the split-sum
+        // table, which a frame with no environment has not baked yet; the bake is a
+        // pass in this command buffer ahead of the trace.
+        ensureBRDFLUT(commandBuffer: cb)
+
+        // Headless, the iterations run in two phases: a burn-in whose updates replace
+        // the field outright, so the bounce recursion reaches its depth (each update
+        // deepens it by one, and a progressive mean from the first update would weigh
+        // the one- and two-bounce fields of the first updates with the deep ones for
+        // good: a light room read 0.77 of a 64-deep path trace that way, measured
+        // 2026-10-09), then the averaged updates, each a fresh fan over the converged
+        // recursion, whose progressive mean settles the estimator's noise. Live keeps
+        // its hysteresis, whose fixed point is the full recursion.
+        let burnIn = supersample ? schedule.burnIn : 0
 
         for i in 0..<iterations {
             let seed: Float = supersample ? Float(i) : Float(frameComputeUniforms.frameCount % 4096)
             let prevValid: Float = (state.valid || i > 0) ? 1 : 0
-            let hysteresis: Float = supersample ? Float(i) / Float(i + 1) : 0.97
+            let hysteresis: Float = supersample
+                ? (i < burnIn ? 0 : Float(i - burnIn) / Float(i - burnIn + 1)) : 0.97
 
             let tracePass = MTLRenderPassDescriptor()
             tracePass.colorAttachments[0].texture = surfels
@@ -3080,6 +3107,7 @@ extension MetalRenderer {
             trace.setFragmentAccelerationStructure(accel, bufferIndex: 3)
             trace.setFragmentBuffer(meshBuffer, offset: 0, index: 6)
             trace.setFragmentBuffer(geoOffsets, offset: 0, index: 7)
+            trace.setFragmentBuffer(geoMats, offset: 0, index: 8)
             trace.setFragmentTexture(currentIBLPrefilter ?? iblPlaceholderCube, index: 5)
             trace.setFragmentTexture(ltcAmpTexture ?? stand, index: 9)
             trace.setFragmentTexture(iesArrayTexture ?? shapingStandIn(), index: 10)
@@ -3087,6 +3115,7 @@ extension MetalRenderer {
             trace.setFragmentTexture(state.irrFront, index: 13)
             trace.setFragmentTexture(state.depFront, index: 14)
             trace.setFragmentTexture(state.offFront, index: 15)
+            trace.setFragmentTexture(iblBRDFLUT ?? stand, index: 16)
             trace.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
             trace.endEncoding()
             state.lastTraceOffsets = state.offFront
@@ -3470,9 +3499,9 @@ extension MetalRenderer {
 
     func buildShadowAccel(_ drawer: Drawer, into commandBuffer: MTLCommandBuffer,
                           meshBuffer: MTLBuffer, causticMats: Bool = false,
-                          pathTraceMats: Bool = false)
+                          giMats: Bool = false, pathTraceMats: Bool = false)
         -> (accel: MTLAccelerationStructure, offsets: MTLBuffer, causticMats: MTLBuffer?,
-            ptMats: MTLBuffer?, ptScene: PTSceneTables?)? {
+            giMats: MTLBuffer?, ptMats: MTLBuffer?, ptScene: PTSceneTables?)? {
         let meshStride = MemoryLayout<OllinMeshVertex>.stride
         let meshVertices = drawer.meshVertices
         let batches = drawer.batches
@@ -3519,8 +3548,8 @@ extension MetalRenderer {
                 && !sameStylized(stylizedFinish(b.finish), plainFinish)
         }
         // A copy resolves its finish through the material slot its run claims, so the
-        // slots exist whenever either table does.
-        let wantFinishes = pathTraceMats || wantStylized
+        // slots exist whenever any per-slot table does.
+        let wantFinishes = pathTraceMats || wantStylized || giMats
         // Coalesce maximal runs of contiguous caster batches into one geometry descriptor
         // each (a non-casting batch — wireframe, or a non-mesh kind — breaks the run). The
         // caster vertices of a run are contiguous in `meshBuffer`, so one descriptor covers
@@ -3562,6 +3591,19 @@ extension MetalRenderer {
             g.refractive = SIMD4(f.transmission, f.ior, f.thickness > 0 ? 0 : 1, 0)
             g.attenuation = f.attenuation
             return g
+        }
+        // The probe trace's record of a finish: its glow and the fields that decide its
+        // lobes. Compared bytewise to break a run, since both sides pack it from the
+        // same inputs.
+        func giGeo(_ f: OllinMaterial) -> OllinGIGeo {
+            var g = OllinGIGeo()
+            g.emissive = SIMD4(f.emissive.x, f.emissive.y, f.emissive.z, f.emissiveIntensity)
+            g.lobe = SIMD4(Float(f.shadingModel), f.f0, f.transmission, 0)
+            return g
+        }
+        func sameGI(_ a: OllinGIGeo, _ b: OllinGIGeo) -> Bool {
+            var x = a, y = b
+            return memcmp(&x, &y, MemoryLayout<OllinGIGeo>.size) == 0
         }
         // The imported C struct has no synthesized ==; the finishes are packed
         // CPU-side from the same inputs, so a bytewise compare is exact.
@@ -3607,6 +3649,11 @@ extension MetalRenderer {
                 if runStart >= 0, pathTraceMats,
                    !sameFinish(batch.finish, runFinish)
                        || !PTGeoMaps.same(ptMaps(batch), runMaps) {
+                    flushRun()
+                }
+                // The probe trace reads a hit's glow and lobes off its slot, so a change
+                // in what it reads breaks the run, as the caustic record's does.
+                if runStart >= 0, giMats, !sameGI(giGeo(batch.finish), giGeo(runFinish)) {
                     flushRun()
                 }
                 // A geometry has to be finish-uniform for a hit to resolve one, so a
@@ -4046,7 +4093,23 @@ extension MetalRenderer {
             ptScene = buildPTSceneTables(drawer, geoOffsets: geoOffsets, geoCounts: geoCounts,
                                          geoFinishes: geoFinishes, geoTextures: geoTextures)
         }
-        return (accel, offsetsBuffer, matsBuffer, finishBuffer, ptScene)
+        // The probe trace's per-slot records, one per finish slot (the plain geometries
+        // in build order, then the copy groups), in the same per-frame ring.
+        var giBuffer: MTLBuffer? = nil
+        if giMats {
+            let records = geoFinishes.map(giGeo)
+            let giLength = max(MemoryLayout<OllinGIGeo>.stride,
+                               records.count * MemoryLayout<OllinGIGeo>.stride)
+            if (giGeoMatBuffers[frameIndex]?.length ?? 0) < giLength {
+                giGeoMatBuffers[frameIndex] = device.makeBuffer(length: giLength,
+                                                                options: .storageModeShared)
+            }
+            giBuffer = giGeoMatBuffers[frameIndex]
+            records.withUnsafeBytes { raw in
+                giBuffer?.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
+            }
+        }
+        return (accel, offsetsBuffer, matsBuffer, giBuffer, finishBuffer, ptScene)
     }
 
     /// The path-traced export's per-geometry scene tables: the bindless surface-map

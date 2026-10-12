@@ -1764,23 +1764,26 @@
       "seed": 1
     },
     "3D/Lighting/GlobalIllumination": {
-      "bytes": {
-        "loop": 1249540,
-        "loopSmall": 262600,
-        "still": 33602,
-        "stillSmall": 13205
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "lap",
-      "loop": "examples/3D/Lighting/GlobalIllumination/loop.mp4?v=027af2c1",
-      "loopSmall": "examples/3D/Lighting/GlobalIllumination/loop-640.mp4?v=4df0c5aa",
-      "rendered": "2026-09-10",
       "seconds": 10.0,
+      "frame": 480,
+      "motion": 13.092,
+      "sound": false,
       "source": "01bf409860b9324e",
-      "still": "examples/3D/Lighting/GlobalIllumination/still.jpg?v=aee37f70",
-      "stillSmall": "examples/3D/Lighting/GlobalIllumination/still-640.jpg?v=d0d77e2f",
-      "width": 1080
+      "rendered": "2026-10-12",
+      "bytes": {
+        "loop": 1119147,
+        "loopSmall": 241910,
+        "still": 35498,
+        "stillSmall": 13901
+      },
+      "loop": "examples/3D/Lighting/GlobalIllumination/loop.mp4?v=3147c687",
+      "loopSmall": "examples/3D/Lighting/GlobalIllumination/loop-640.mp4?v=749707e9",
+      "still": "examples/3D/Lighting/GlobalIllumination/still.jpg?v=595ddb2d",
+      "stillSmall": "examples/3D/Lighting/GlobalIllumination/still-640.jpg?v=5fa3476a",
+      "seed": 1
     },
     "3D/Lighting/LightSets": {
       "bytes": {

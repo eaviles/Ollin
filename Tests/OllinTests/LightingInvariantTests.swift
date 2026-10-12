@@ -438,6 +438,21 @@ struct LightingInvariantTests {
                     y: max(0, y - r)..<min(f.height, y + r + 1))
     }
 
+    /// The mean of each channel over the same square, for a reading of a color.
+    private func channels(_ f: Frame, _ p: Vector2, radius r: Int = 2) -> SIMD3<Double> {
+        let cx = Int(p.x.rounded()), cy = Int(p.y.rounded())
+        var sum = SIMD3<Double>.zero
+        var n = 0
+        for y in max(0, cy - r)..<min(f.height, cy + r + 1) {
+            for x in max(0, cx - r)..<min(f.width, cx + r + 1) {
+                let i = (y * f.width + x) * 3
+                sum += SIMD3(f.linear[i], f.linear[i + 1], f.linear[i + 2])
+                n += 1
+            }
+        }
+        return sum / Double(max(n, 1))
+    }
+
     /// A frame rendered through the path tracer at a fixed count with no filter, so
     /// the read is the raw estimate.
     private func traced(_ sketch: Sketch, samples: Int, maxDepth: Int? = nil) throws -> Frame {
@@ -610,30 +625,72 @@ struct LightingInvariantTests {
 
     /// The bounce is the light that arrives after the first surface, so on a ceiling
     /// the lamp never reaches it is the whole of the ceiling's light, and an export's
-    /// field must give what a deep path trace of the same room gives there.
-    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing), arguments: [0.5, 0.8])
-    func theBounceMatchesADeepTrace(albedo: Double) throws {
-        let lit = GIInvariantProbe.make(gi: true, walls: Color.linearToSrgb(albedo))
-        let field = try render(lit)
-        let unlit = try render(GIInvariantProbe.make(gi: false, walls: Color.linearToSrgb(albedo)))
-        let reference = try traced(GIInvariantProbe.make(gi: false, walls: Color.linearToSrgb(albedo)),
-                                   samples: 256, maxDepth: 64)
-        let direct = around(unlit, lit.ceiling, radius: 6)
-        #expect(direct < 0.001, "the lamp reached the ceiling directly: \(direct)")
-        let bounce = around(field, lit.ceiling, radius: 6) - direct
-        let truth = around(reference, lit.ceiling, radius: 6)
-        #expect(truth > 0.003, "the trace found no bounce on the ceiling: \(truth)")
-        func check() {
-            #expect(bounce / truth > 0.85 && bounce / truth < 1.15,
+    /// field must give what a deep path trace of the same room gives there. Two
+    /// readings. The light room's bounce against the dark room's is the depth of the
+    /// recursion: the deep bounces are most of a light room's light and little of a
+    /// dark one's, so a field that stops short reads the light room low (0.75 of the
+    /// trace's own ratio under a progressive mean from the first update, measured
+    /// 2026-10-09), and the converged field keeps the ratio within 6%. Each room's
+    /// absolute sits inside the grid's own envelope: a surface reads the field from
+    /// the probe row nearest it, a third of a cell inside the room, so a ceiling reads
+    /// the floor's pool from closer than it stands (about 0.35 units in this room, and
+    /// the pool's falloff over that is near 15%), which is the field's resolution
+    /// rather than its depth: 0.85 to 1.3 of the trace, measured 1.12 to 1.21 on
+    /// 2026-10-12. A physically based room reads the same way, through the tracer's
+    /// parity rule (its body over pi, its lobe beside it).
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing), arguments: [false, true])
+    func theBounceMatchesADeepTrace(physical: Bool) throws {
+        var ratios: [Double] = []
+        for albedo in [0.5, 0.8] {
+            let walls = Color.linearToSrgb(albedo)
+            let lit = GIInvariantProbe.make(gi: true, walls: walls, physical: physical)
+            let field = try render(lit)
+            let unlit = try render(GIInvariantProbe.make(gi: false, walls: walls, physical: physical))
+            let reference = try traced(GIInvariantProbe.make(gi: false, walls: walls, physical: physical),
+                                       samples: 256, maxDepth: 64)
+            let direct = around(unlit, lit.ceiling, radius: 6)
+            #expect(direct < 0.001, "the lamp reached the ceiling directly: \(direct)")
+            let bounce = around(field, lit.ceiling, radius: 6) - direct
+            let truth = around(reference, lit.ceiling, radius: 6)
+            #expect(truth > 0.003, "the trace found no bounce on the ceiling: \(truth)")
+            #expect(bounce / truth > 0.85 && bounce / truth < 1.3,
                     "at albedo \(albedo) the field gave the ceiling \(bounce) where the trace gives \(truth)")
+            ratios.append(bounce / truth)
         }
-        if albedo > 0.7 {
-            withKnownIssue("in a light room an export's field gives the ceiling 0.77 of the bounce a 64-deep trace gives it at albedo 0.8 (0.5 holds), measured 2026-10-09") {
-                check()
-            }
-        } else {
-            check()
+        let depth = ratios[1] / ratios[0]
+        #expect(abs(depth - 1) < 0.06,
+                "the light room's bounce against the dark room's is \(depth) of the trace's own ratio")
+    }
+
+    /// A metal bounces through its lobe, not as the plaster its base color would make:
+    /// a copper floor under a lamp's pool throws copper onto the ceiling, by about
+    /// what the path trace throws, and nothing of the lamp's white. Read as the
+    /// difference between the room with the copper floor and the same room with a
+    /// black metal floor, which reflects nothing, so what the walls add cancels.
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
+    func aMetalFloorThrowsItsOwnColorIntoTheBounce() throws {
+        func ceiling(_ f: Frame, _ p: MetalFloorInvariantProbe) -> SIMD3<Double> {
+            channels(f, p.ceilingMark, radius: 6)
         }
+        let copperProbe = MetalFloorInvariantProbe.make(gi: false, copper: true)
+        let blackProbe = MetalFloorInvariantProbe.make(gi: false, copper: false)
+        let tracedCopper = ceiling(try traced(copperProbe, samples: 256, maxDepth: 16), copperProbe)
+            - ceiling(try traced(blackProbe, samples: 256, maxDepth: 16), blackProbe)
+        // The lobe of a rough metal sends the ceiling about a fifth of what a matte
+        // copper would (0.0026 of red against 0.013, the trace's own figures), so the
+        // reading is dim and the gate sits under it.
+        #expect(tracedCopper.x > 0.0015, "the trace threw nothing from the copper floor: \(tracedCopper)")
+        let direct = ceiling(try render(copperProbe), copperProbe)
+        #expect((direct.x + direct.y + direct.z) / 3 < 0.002, "the lamp reached the ceiling directly: \(direct)")
+        let onProbe = MetalFloorInvariantProbe.make(gi: true, copper: true)
+        let offProbe = MetalFloorInvariantProbe.make(gi: true, copper: false)
+        let bounced = ceiling(try render(onProbe), onProbe) - ceiling(try render(offProbe), offProbe)
+        // The same envelope the room's bounce holds (the grid reads a surface from a
+        // third of a cell in); a floor bounced as the matte copper reads five times over.
+        #expect(bounced.x > 0.7 * tracedCopper.x && bounced.x < 1.4 * tracedCopper.x,
+                "the field threw \(bounced) from the copper floor where the trace throws \(tracedCopper)")
+        #expect(bounced.x > 1.4 * bounced.z,
+                "what the copper floor threw is not copper: \(bounced) (the trace's is \(tracedCopper))")
     }
 
     /// A surface that glows lights what faces it under global illumination, as the docs
@@ -652,10 +709,8 @@ struct LightingInvariantTests {
         let onProbe = EmitterInvariantProbe.make(gi: true, glows: true)
         let offProbe = EmitterInvariantProbe.make(gi: true, glows: false)
         let bounced = floor(try render(onProbe), onProbe) - floor(try render(offProbe), offProbe)
-        withKnownIssue("the probe trace gathers lights, the previous field, and the environment, never emission: the floor read 0 where the trace reads 0.37, measured 2026-10-09") {
-            #expect(bounced > 0.5 * tracedGlow && bounced < 1.5 * tracedGlow,
-                    "the field lit the floor under the glow by \(bounced) where the trace lights it by \(tracedGlow)")
-        }
+        #expect(bounced > 0.5 * tracedGlow && bounced < 1.5 * tracedGlow,
+                "the field lit the floor under the glow by \(bounced) where the trace lights it by \(tracedGlow)")
     }
 
     /// A lamp with a reach lights nothing past it, and so bounces nothing from past it:
@@ -909,13 +964,17 @@ private final class ShadowInvariantProbe: Sketch {
 private final class GIInvariantProbe: Sketch {
     var gi = true
     var walls = 0.9
+    /// A physically based room (every surface `.dielectric(roughness: 1)`), which the
+    /// probe trace shades through the microfacet lobes, against the standard one.
+    var physical = false
     /// Where a point on the ceiling, which the lamp's cone never reaches, lands.
     var ceiling = Vector2.zero
 
-    static func make(gi: Bool, walls: Double) -> GIInvariantProbe {
+    static func make(gi: Bool, walls: Double, physical: Bool = false) -> GIInvariantProbe {
         let p = GIInvariantProbe()
         p.gi = gi
         p.walls = walls
+        p.physical = physical
         return p
     }
 
@@ -930,6 +989,7 @@ private final class GIInvariantProbe: Sketch {
                   coneAngle: .pi / 3, penumbra: 0.4, intensity: 1.2)
         castShadows()
         if gi { globalIllumination() }
+        if physical { material(.dielectric(roughness: 1)) }
         let wall = Color(white: walls)
         withState { fill(wall); translate(0, -0.1, 0); drawBox(width: 8, height: 0.2, depth: 8) }
         withState { fill(wall); translate(0, 4.1, 0); drawBox(width: 8, height: 0.2, depth: 8) }
@@ -1251,6 +1311,49 @@ private final class EmitterInvariantProbe: Sketch {
                 .surfaceMapped(emissiveColor: glows ? .white : .black))
         }
         floorMark = project(Vector3(0, 0, 0.6)) ?? .zero
+    }
+}
+
+/// The gray room with its floor a rough copper metal (or a black one, which reflects
+/// nothing), under the spot that pools on it from above: the pool's reflection leaves
+/// the copper in a broad lobe about straight up, the ceiling never sees the lamp, so
+/// the ceiling reads only bounce, and the copper's share of it is the difference
+/// between the two floors.
+private final class MetalFloorInvariantProbe: Sketch {
+    var gi = true
+    var copper = true
+    var ceilingMark = Vector2.zero
+
+    static func make(gi: Bool, copper: Bool) -> MetalFloorInvariantProbe {
+        let p = MetalFloorInvariantProbe()
+        p.gi = gi
+        p.copper = copper
+        return p
+    }
+
+    override var canvasSize: CanvasSize { .square(192) }
+
+    override func draw() {
+        background(.black)
+        camera(.orbiting(target: Vector3(0, 2, 0), radius: 9.5,
+                         azimuth: 0, elevation: 0.02, fieldOfView: .pi / 3.2,
+                         near: 1, far: 40))
+        spotLight(.white, at: Vector3(0, 3.8, 0), direction: Vector3(0, -1, 0),
+                  coneAngle: .pi / 3, penumbra: 0.4, intensity: 1.2)
+        castShadows()
+        if gi { globalIllumination() }
+        let wall = Color(white: 0.5)
+        withState {
+            material(.metal(roughness: 0.9))
+            fill(copper ? Color(hex: 0xB87333) : .black)
+            translate(0, -0.1, 0)
+            drawBox(width: 8, height: 0.2, depth: 8)
+        }
+        withState { fill(wall); translate(0, 4.1, 0); drawBox(width: 8, height: 0.2, depth: 8) }
+        withState { fill(wall); translate(0, 2, -4.1); drawBox(width: 8, height: 4.4, depth: 0.2) }
+        withState { fill(wall); translate(-4.1, 2, 0); drawBox(width: 0.2, height: 4.4, depth: 8) }
+        withState { fill(wall); translate(4.1, 2, 0); drawBox(width: 0.2, height: 4.4, depth: 8) }
+        ceilingMark = project(Vector3(0, 4.0, -2)) ?? .zero
     }
 }
 

@@ -1087,6 +1087,9 @@ final class MetalRenderer {
     /// (transmission, index of refraction, the interior attenuation). CPU-filled at
     /// accel-build time, so it uses the same per-frame ring as the offsets.
     var causticGeoMatBuffers: [MTLBuffer?] = Array(repeating: nil, count: MetalRenderer.maxFramesInFlight)
+    /// The probe trace's per-slot materials (`OllinGIGeo`), one buffer per in-flight
+    /// frame like the caustic table beside it.
+    var giGeoMatBuffers: [MTLBuffer?] = Array(repeating: nil, count: MetalRenderer.maxFramesInFlight)
     /// Per-geometry full batch finishes (`OllinMaterial`, parallel to the offsets) for
     /// the offline path-traced export: the accel build breaks its coalesced runs where
     /// the finish changes while path tracing, so a hit resolves its whole material.
@@ -2290,6 +2293,7 @@ final class MetalRenderer {
         let gi = encodeGIPass(drawer, into: commandBuffer, meshBuffer: meshBuf,
                               accel: renderedShadow.giAccel,
                               geoOffsets: renderedShadow.giGeoOffsets,
+                              geoMats: renderedShadow.giGeoMats,
                               supersample: false, pooled: true)
         encodeEffectTargets(drawer, into: commandBuffer, buffers: buffers, pooled: true, gi: gi)
 
@@ -3006,6 +3010,7 @@ final class MetalRenderer {
         let gi = encodeGIPass(drawer, into: commandBuffer, meshBuffer: meshBuf,
                               accel: renderedShadow.giAccel,
                               geoOffsets: renderedShadow.giGeoOffsets,
+                              geoMats: renderedShadow.giGeoMats,
                               supersample: true, pooled: false)
         encodeEffectTargets(drawer, into: commandBuffer, buffers: buffers, pooled: false, gi: gi)
 
@@ -3433,6 +3438,7 @@ final class MetalRenderer {
             let gi = encodeGIPass(drawer, into: cb, meshBuffer: meshBuf,
                                   accel: renderedShadow.giAccel,
                                   geoOffsets: renderedShadow.giGeoOffsets,
+                                  geoMats: renderedShadow.giGeoMats,
                                   supersample: false, pooled: false)
             encodeEffectTargets(drawer, into: cb, buffers: buffers, pooled: false, gi: gi)
             // Half-res raymarch pre-pass (the `.performance` tier), so the benchmark measures

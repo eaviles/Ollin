@@ -4,6 +4,12 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ## [Unreleased]
 
+### Fixed
+
+- A surface that glows lights its neighbors under `globalIllumination()`: the probe trace reads a hit's emission (`Mesh.glowing`, an emissive color) and adds it to the bounce, so a glowing slab lights the floor under it as the path-traced export does, where before the field read 0 there.
+- A metal bounces through its own lobe under `globalIllumination()`, not as the plaster its base color would make: a copper wall throws copper onto what faces it, and a chrome one throws the lamp back along its reflection. The probe trace shades a physically based hit through the same microfacet lobes the renderer and the path tracer use (its body over pi, its lobe beside it), so a physically based wall bounces the light it is lit with and no more, where it bounced about three times its share before; the standard finish is unchanged.
+- An export's bounce reaches its depth in a light room: the headless probe field runs a burn-in before it averages, so the deep bounces that are most of a light room's light are no longer weighed down by the shallow first updates. A white room at albedo 0.8 read 0.77 of a 64-deep path trace; its bounce against a darker room's now matches the trace's own ratio within 3%. Exports and snapshots with the bounce on render brighter in light rooms.
+
 ## [0.15.0] - 2026-10-12
 
 ### Added

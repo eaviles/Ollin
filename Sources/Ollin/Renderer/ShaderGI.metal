@@ -105,18 +105,134 @@ static inline bool ollin_gi_occluded(float3 origin, float3 dir, float tmax, floa
     return ollin_rt_query(q, r, accel);
 }
 
-// The probe trace: one texel per (ray x, probe y). Shades a front-face hit with the
-// scene's direct light (Lambert over the punctual kinds, the exact LTC diffuse for
-// panels, and one visibility ray toward the casting light, so bounce light respects the
-// same shadow the direct light does; without it, light leaks through the very wall
-// whose shadow the primary shading draws) plus the previous update's probe field at
-// the hit (the recursion that turns one bounce into many). A miss reads the
-// environment's own radiance (sky light entering the scene; black without one). A
-// backface hit records zero radiance and a NEGATED, 80%-shortened distance: the sign
-// is what tells the relocation pass it was a backface, and the shortened magnitude is
-// what makes the visibility test read the probe as blocked from that side, which is
-// what keeps a probe that fell inside geometry from lighting anything. Output rgb =
-// display-linear radiance, a = signed hit distance capped at the far cap. Columns
+// What a probe ray brings back from a front-face hit, in the raster's display-linear
+// units: the surface's own glow, the scene's direct light through its lobes (with one
+// visibility ray toward each casting light, so bounce light respects the same shadow
+// the direct light does; without it, light leaks through the very wall whose shadow the
+// primary shading draws), and the previous update's field through the same lobes (the
+// recursion that turns one bounce into many). The finish decides the lobes, by the
+// path tracer's parity rule: a physically based surface shades through the microfacet
+// BRDF (the Lambert body over pi, the GGX lobe with its multiple-scattering share, the
+// body weighted by what the lobe leaves over, the environment split's own form), and
+// every other finish keeps the un-normalized Lambert the raster draws it with, so a
+// wall bounces the light the raster lights it with and no more. A metal's body is its
+// (1 - metalness) share and the lobe carries its color, so a copper wall throws copper
+// and a chrome one throws the lamp along its lobe; a see-through body gives up the
+// share it transmits, only under an environment, where the raster does the same. The
+// field is E/pi at the hit (zero before the first update); a rough lobe reads the
+// cosine-convolved field as its surround, and a mirror's sharp image of the room is the
+// reflection pass's to draw, never the bounce's. A panel's exact diffuse takes the body
+// without the lobe's weight, as the lit fragment does, and its highlight is not traced.
+// The glow is the emissive factor plus the surface's own color times its intensity,
+// the two terms the lit fragment adds; an emissive map's pattern is not read here, so
+// a mapped surface glows at its factor over its whole face in the bounce. `viewDir`
+// points back along the ray to the probe.
+static inline float3 ollin_gi_shade_hit(OllinRTSurface s, OllinGIGeo gm, float3 viewDir,
+                                        float3 field, float eps,
+                                        constant OllinLighting &light,
+                                        instance_acceleration_structure accel,
+                                        texture2d<float> ltcAmp,
+                                        texture2d_array<float> iesProfiles,
+                                        texture2d_array<float> cookies,
+                                        texture2d<float> brdfLUT) {
+    bool physical = gm.lobe.x > 2.5;
+    float metal = physical ? s.metal : 0.0;
+    float NoV = max(dot(s.N, viewDir), 1e-4);
+    float3 F0 = mix(float3(gm.lobe.y), s.albedo, metal);
+    // The lobe's directional albedo at this view: the split-sum scale and bias with the
+    // multiple-scattering share. Nothing for a finish without a lobe.
+    float ess = 0.0;
+    float3 specAlbedo = float3(0.0);
+    if (physical) {
+        constexpr sampler lutSamp(filter::linear, address::clamp_to_edge);
+        float2 brdf = brdfLUT.sample(lutSamp, float2(NoV, s.rough)).rg;
+        ess = saturate(brdf.x + brdf.y);
+        float3 FssEss = F0 * brdf.x + brdf.y;
+        float Ems = 1.0 - ess;
+        float3 Favg = F0 + (float3(1.0) - F0) * (1.0 / 21.0);
+        specAlbedo = FssEss + Ems * FssEss * Favg / (float3(1.0) - Favg * Ems);
+    }
+    // The body's share of the light. A physically based body keeps what the lobe leaves
+    // over, less its metalness and, under an environment, what it transmits (inert
+    // without one, the raster's rule); a panel's exact diffuse takes the body without
+    // the lobe's weight. Every other finish bounces its whole albedo.
+    float transKeep = (physical && light.iblEnabled != 0)
+                    ? (1.0 - gm.lobe.z * (1.0 - metal)) : 1.0;
+    float3 panelBody = physical ? s.albedo * ((1.0 - metal) * transKeep) : s.albedo;
+    float3 body = physical ? (float3(1.0) - specAlbedo) * panelBody : s.albedo;
+    float lambert = physical ? (1.0 / M_PI_F) : 1.0;
+
+    float3 direct = float3(0.0);
+    for (int i = 0; i < light.lightCount; i++) {
+        OllinLight L = light.lights[i];
+        float3 toLight;
+        float tmax;
+        // Outside its own reach a light gives nothing, here as in the raster pass,
+        // so the bounce carries no light past where the lamp itself stops.
+        float within = 1.0;
+        if (L.kind == 0) {
+            toLight = L.direction.xyz;
+            tmax = 1e9;
+        } else {
+            float3 d = L.position.xyz - s.P;
+            float len = max(length(d), 1e-6);
+            toLight = d / len;
+            tmax = len * 0.99;
+            if (L.position.w > 0.0) {
+                within = ollin_light_reach(len, L.position.w);
+                if (within <= 0.0) continue;
+            }
+        }
+        // Every caster in the frame's list dims its own light, by its own strength.
+        // The probe pass has no shadow map to read, so the caster's kind does not
+        // matter here: occlusion is one trace against the same structure either way.
+        float vis = 1.0;
+        for (int c = 0; c < light.shadowCasterCount; c++) {
+            if (light.shadowCasters[c].lightIndex != i) continue;
+            if (ollin_gi_occluded(s.P + s.N * eps, toLight, tmax, eps, accel)) {
+                vis = 1.0 - light.shadowCasters[c].strength;
+            }
+            break;
+        }
+        if (L.kind >= 3) {
+            if (light.ltcEnabled != 0) {
+                direct += panelBody * L.color.rgb
+                        * (vis * within * ollin_ltc_diffuse(L, s.N, viewDir, s.P, ltcAmp));
+            }
+            continue;
+        }
+        float atten = 1.0;
+        if (L.kind == 2) {
+            atten = smoothstep(L.cosOuter, L.cosInner, dot(-toLight, L.direction.xyz));
+        }
+        ollin_apply_light_shaping(L, light, toLight, s.P, iesProfiles, cookies);
+        float NoL = max(dot(s.N, toLight), 0.0);
+        float3 term = body * (lambert * NoL);
+        if (physical && NoL > 0.0) {
+            float3 h = normalize(toLight + viewDir);
+            float NoH = max(dot(s.N, h), 0.0);
+            float VoH = max(dot(viewDir, h), 0.0);
+            float D = ollin_pbr_D_GGX(NoH, s.rough);
+            float Vis = ollin_pbr_V_SmithGGX(NoV, NoL, s.rough);
+            float3 F = ollin_pbr_F_Schlick(VoH, F0);
+            term += D * Vis * F * ollin_pbr_energy_comp(F0, ess) * NoL;
+        }
+        direct += L.color.rgb * term * (atten * vis * within);
+    }
+    float3 glow = gm.emissive.rgb + gm.emissive.w * s.albedo;
+    return glow + direct + field * (body + specAlbedo);
+}
+
+// The probe trace: one texel per (ray x, probe y). Shades a front-face hit through
+// `ollin_gi_shade_hit` (its glow, the scene's direct light, and the previous update's
+// probe field at the hit, each through the surface's own lobes) with the surface's
+// per-slot material read off the hit record's slot. A miss reads the environment's
+// own radiance (sky light entering the scene; black without one). A backface hit
+// records zero radiance and a NEGATED, 80%-shortened distance: the sign is what tells
+// the relocation pass it was a backface, and the shortened magnitude is what makes the
+// visibility test read the probe as blocked from that side, which is what keeps a
+// probe that fell inside geometry from lighting anything. Output rgb = display-linear
+// radiance, a = signed hit distance capped at the far cap. Columns
 // 0..<OLLIN_GI_FIXED_RAYS are the fixed statistics fan (distance-only, un-rotated);
 // the radiance fan fills the remaining raysPerProbe columns.
 // params[0] = (raysPerProbe, seed, farCap, probeCount); params[1].x = previous atlases
@@ -127,13 +243,15 @@ fragment float4 ollin_gi_trace(PresentOut in [[stage_in]],
                                instance_acceleration_structure accel [[buffer(3)]],
                                const device OllinMeshVertex *verts [[buffer(6)]],
                                const device uint *geoOffsets [[buffer(7)]],
+                               const device OllinGIGeo *giMats [[buffer(8)]],
                                texturecube<float> prefilterTex [[texture(5)]],
                                texture2d<float> ltcAmp [[texture(9)]],
                                texture2d_array<float> iesProfiles [[texture(10)]],
                                texture2d_array<float> cookies [[texture(11)]],
                                texture2d<float> giIrradiance [[texture(13)]],
                                texture2d<float> giDepth [[texture(14)]],
-                               texture2d<float> giProbeOffsets [[texture(15)]]) {
+                               texture2d<float> giProbeOffsets [[texture(15)]],
+                               texture2d<float> brdfLUT [[texture(16)]]) {
     int rayIndex = int(in.position.x);
     int probe = int(in.position.y);
     int raysPerProbe = max(int(params[0].x), 1);
@@ -180,62 +298,21 @@ fragment float4 ollin_gi_trace(PresentOut in [[stage_in]],
         return float4(0.0, 0.0, 0.0, min(dist, farCap));
     }
 
+    // The surface's per-slot material: the hit record's slot resolves a copy's finish
+    // to the draw that placed it, as the path tracer's own lookup does.
+    OllinGIGeo gm = giMats[ollin_rt_hit_lookup(geoOffsets, q.get_committed_instance_id(),
+                                               q.get_committed_geometry_id()).mat];
     float eps = max(light.rtReflectionBias, 1e-4);
-    float3 direct = float3(0.0);
-    for (int i = 0; i < light.lightCount; i++) {
-        OllinLight L = light.lights[i];
-        float3 toLight;
-        float tmax;
-        // Outside its own reach a light gives nothing, here as in the raster pass,
-        // so the bounce carries no light past where the lamp itself stops.
-        float within = 1.0;
-        if (L.kind == 0) {
-            toLight = L.direction.xyz;
-            tmax = 1e9;
-        } else {
-            float3 d = L.position.xyz - s.P;
-            float len = max(length(d), 1e-6);
-            toLight = d / len;
-            tmax = len * 0.99;
-            if (L.position.w > 0.0) {
-                within = ollin_light_reach(len, L.position.w);
-                if (within <= 0.0) continue;
-            }
-        }
-        // Every caster in the frame's list dims its own light, by its own strength.
-        // The probe pass has no shadow map to read, so the caster's kind does not
-        // matter here: occlusion is one trace against the same structure either way.
-        float vis = 1.0;
-        for (int c = 0; c < light.shadowCasterCount; c++) {
-            if (light.shadowCasters[c].lightIndex != i) continue;
-            if (ollin_gi_occluded(s.P + s.N * eps, toLight, tmax, eps, accel)) {
-                vis = 1.0 - light.shadowCasters[c].strength;
-            }
-            break;
-        }
-        if (L.kind >= 3) {
-            if (light.ltcEnabled != 0) {
-                direct += s.albedo * L.color.rgb
-                        * (vis * within * ollin_ltc_diffuse(L, s.N, -dir, s.P, ltcAmp));
-            }
-            continue;
-        }
-        float atten = 1.0;
-        if (L.kind == 2) {
-            atten = smoothstep(L.cosOuter, L.cosInner, dot(-toLight, L.direction.xyz));
-        }
-        ollin_apply_light_shaping(L, light, toLight, s.P, iesProfiles, cookies);
-        direct += s.albedo * L.color.rgb * (max(dot(s.N, toLight), 0.0) * atten * vis * within);
-    }
-
     // The previous field at the hit: the "viewer" of a surfel is the probe it feeds, so
     // the sampler's bias runs back along the ray. The renderer packs this pass's
     // lighting with GI intensity 1, so the recursion can't compound the artistic dial.
-    float3 bounce = float3(0.0);
+    float3 field = float3(0.0);
     if (params[1].x > 0.5) {
-        bounce = s.albedo * ollin_gi_sample(s.P, s.N, -dir, light, giIrradiance, giDepth, giProbeOffsets);
+        field = ollin_gi_sample(s.P, s.N, -dir, light, giIrradiance, giDepth, giProbeOffsets);
     }
-    return float4(direct + bounce, min(dist, farCap));
+    float3 radiance = ollin_gi_shade_hit(s, gm, -dir, field, eps, light, accel,
+                                         ltcAmp, iesProfiles, cookies, brdfLUT);
+    return float4(radiance, min(dist, farCap));
 }
 
 // The trace's cascaded twin, encoded instead of `ollin_gi_trace` only while camera
@@ -254,13 +331,15 @@ fragment float4 ollin_gi_trace_cascaded(PresentOut in [[stage_in]],
                                         instance_acceleration_structure accel [[buffer(3)]],
                                         const device OllinMeshVertex *verts [[buffer(6)]],
                                         const device uint *geoOffsets [[buffer(7)]],
+                                        const device OllinGIGeo *giMats [[buffer(8)]],
                                         texturecube<float> prefilterTex [[texture(5)]],
                                         texture2d<float> ltcAmp [[texture(9)]],
                                         texture2d_array<float> iesProfiles [[texture(10)]],
                                         texture2d_array<float> cookies [[texture(11)]],
                                         texture2d<float> giIrradiance [[texture(13)]],
                                         texture2d<float> giDepth [[texture(14)]],
-                                        texture2d<float> giProbeOffsets [[texture(15)]]) {
+                                        texture2d<float> giProbeOffsets [[texture(15)]],
+                                        texture2d<float> brdfLUT [[texture(16)]]) {
     int rayIndex = int(in.position.x);
     int probe = int(in.position.y);
     int raysPerProbe = max(int(params[0].x), 1);
@@ -307,60 +386,17 @@ fragment float4 ollin_gi_trace_cascaded(PresentOut in [[stage_in]],
         return float4(0.0, 0.0, 0.0, min(dist, farCap));
     }
 
+    OllinGIGeo gm = giMats[ollin_rt_hit_lookup(geoOffsets, q.get_committed_instance_id(),
+                                               q.get_committed_geometry_id()).mat];
     float eps = max(light.rtReflectionBias, 1e-4);
-    float3 direct = float3(0.0);
-    for (int i = 0; i < light.lightCount; i++) {
-        OllinLight L = light.lights[i];
-        float3 toLight;
-        float tmax;
-        // Outside its own reach a light gives nothing, here as in the raster pass,
-        // so the bounce carries no light past where the lamp itself stops.
-        float within = 1.0;
-        if (L.kind == 0) {
-            toLight = L.direction.xyz;
-            tmax = 1e9;
-        } else {
-            float3 d = L.position.xyz - s.P;
-            float len = max(length(d), 1e-6);
-            toLight = d / len;
-            tmax = len * 0.99;
-            if (L.position.w > 0.0) {
-                within = ollin_light_reach(len, L.position.w);
-                if (within <= 0.0) continue;
-            }
-        }
-        // Every caster in the frame's list dims its own light, by its own strength.
-        // The probe pass has no shadow map to read, so the caster's kind does not
-        // matter here: occlusion is one trace against the same structure either way.
-        float vis = 1.0;
-        for (int c = 0; c < light.shadowCasterCount; c++) {
-            if (light.shadowCasters[c].lightIndex != i) continue;
-            if (ollin_gi_occluded(s.P + s.N * eps, toLight, tmax, eps, accel)) {
-                vis = 1.0 - light.shadowCasters[c].strength;
-            }
-            break;
-        }
-        if (L.kind >= 3) {
-            if (light.ltcEnabled != 0) {
-                direct += s.albedo * L.color.rgb
-                        * (vis * within * ollin_ltc_diffuse(L, s.N, -dir, s.P, ltcAmp));
-            }
-            continue;
-        }
-        float atten = 1.0;
-        if (L.kind == 2) {
-            atten = smoothstep(L.cosOuter, L.cosInner, dot(-toLight, L.direction.xyz));
-        }
-        ollin_apply_light_shaping(L, light, toLight, s.P, iesProfiles, cookies);
-        direct += s.albedo * L.color.rgb * (max(dot(s.N, toLight), 0.0) * atten * vis * within);
-    }
-
-    float3 bounce = float3(0.0);
+    float3 field = float3(0.0);
     if (params[1].x > 0.5) {
-        bounce = s.albedo * ollin_gi_sample_cascaded(s.P, s.N, -dir, light,
-                                                     giIrradiance, giDepth, giProbeOffsets);
+        field = ollin_gi_sample_cascaded(s.P, s.N, -dir, light,
+                                         giIrradiance, giDepth, giProbeOffsets);
     }
-    return float4(direct + bounce, min(dist, farCap));
+    float3 radiance = ollin_gi_shade_hit(s, gm, -dir, field, eps, light, accel,
+                                         ltcAmp, iesProfiles, cookies, brdfLUT);
+    return float4(radiance, min(dist, farCap));
 }
 
 // Which interior texel a tile-local texel mirrors: identity inside the payload, the

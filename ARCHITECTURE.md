@@ -3875,15 +3875,33 @@ ShaderCombine: it reuses Shader3D's RT surface fetch and ShaderEffects'
    relocation pass. The remaining columns are the radiance fan: a
    spherical-Fibonacci fan under a per-update random rotation (Shoemake
    quaternion from the hashed seed, so an update is a pure function of its
-   seed). A radiance hit shades as direct light (Lambert over the punctual
-   kinds, the exact LTC diffuse for panels, light shaping applied) *times one
-   visibility ray to the casting light* (without that shadow ray, bounce
-   light walks through the very wall whose shadow the primary shading draws),
-   plus the *previous* update's probe field at the hit (each update deepens
-   the bounce by one). A miss samples the environment's radiance times the
-   IBL exposure (sky light with occlusion, for free); a backface hit stores
-   zero radiance and a **negated, 80%-shortened** distance (the sign is the
-   relocation pass's flag, the shortening the leak guard).
+   seed). A radiance hit shades through `ollin_gi_shade_hit`: the surface's
+   own glow (the emissive factor plus its color times `emissiveIntensity`,
+   the two terms the lit fragment adds), the scene's direct light through
+   the surface's lobes (light shaping applied, the exact LTC diffuse for
+   panels) *times one visibility ray to the casting light* (without that
+   shadow ray, bounce light walks through the very wall whose shadow the
+   primary shading draws), plus the *previous* update's probe field through
+   the same lobes (each update deepens the bounce by one). The lobes follow
+   the path tracer's parity rule: a physically based finish shades through
+   the microfacet BRDF (the Lambert body over π weighted by what the lobe
+   leaves over, the environment split's own form, and the GGX lobe with its
+   multiple-scattering share priced from the split-sum table, which the pass
+   bakes if no environment has), and every other finish keeps the
+   un-normalized Lambert the raster draws it with, so a wall bounces the
+   light the raster lights it with and no more (before the rule every finish
+   bounced as the un-normalized Lambert, so a physically based wall bounced
+   π times its share). A metal's body is its (1 − metalness) share and its
+   lobe carries its color; a see-through body gives up the share it
+   transmits under an environment. The material behind a hit comes from a
+   per-slot `OllinGIGeo` table (the glow, the shading model, f0,
+   transmission; stride 32) the accel build fills beside the caustic one,
+   indexed by the hit record's slot, so a copy resolves the draw that placed
+   it; the build breaks a coalesced run where the record changes. A miss
+   samples the environment's radiance times the IBL exposure (sky light with
+   occlusion, for free); a backface hit stores zero radiance and a
+   **negated, 80%-shortened** distance (the sign is the relocation pass's
+   flag, the shortening the leak guard).
 2. **Blend irradiance** (`ollin_gi_blend_irradiance`): per octahedral texel,
    the cosine-weighted mean of the radiance fan (`Σ wL / Σ w`, which is
    E/π, the IBL irradiance cube's own convention, so the sample drops into
@@ -3962,9 +3980,18 @@ grid-shape-generic from the start (`giCounts.xyz` drives all index math).
 Live, the volume *holds* until the raw bounds escape it or shrink well inside,
 and a refit restarts the field. Headless/export ignores the held state
 entirely: the volume refits from the frame's own bounds and
-`resolveGIIterations()` whole trace+blend+relocate iterations (8/12/16 by
-tier) run from scratch with a progressive-mean hysteresis (`i/(i+1)`) and
-seed = the iteration index, so a frame is a pure function of itself:
+`resolveGISchedule()` whole trace+blend+relocate iterations run from scratch
+in two phases (6+6 / 10+8 / 16+12 by tier): a burn-in whose updates replace
+the field outright, so the bounce recursion reaches its depth (each update
+deepens it by one), then the averaged updates, each a fresh fan over the
+converged recursion, folded by a progressive-mean hysteresis (`k/(k+1)`
+counted from the burn-in's end). A progressive mean from the first update
+weighed the one- and two-bounce fields of the first updates with the deep
+ones for good, and a light room read 0.77 of a 64-deep path trace that way
+(albedo 0.8; 0.5 happened to read 1.03, two errors canceling), where the
+burn-in puts the light room's bounce against the dark room's within 3% of
+the trace's own ratio (measured 2026-10-12). Seeds are the iteration index,
+so a frame is a pure function of itself:
 byte-stable snapshots (`gi-3d`), flicker-free video, and a same-frame
 re-encode can't double-step the live accumulation (`statefulEncodeIsRepeat`
 guards the live path like the other stateful passes; `beginStatefulEncode`
