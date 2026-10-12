@@ -838,10 +838,12 @@ extension Array
   static var ladder: [TuringScale] { get }
   var length: Double { get }
 extension Bool
+  static func bits(of: Bool) -> UInt64?
   static func clamped(_: Bool, by: Void) -> Bool
   static func control(for: Param<Bool>) -> ParamControl
   static func restored(_: ParamStored) -> Bool?
   static func stored(_: Bool) -> ParamStored
+  static func value(fromBits: UInt64) -> Bool?
   typealias Constraints = Void
 extension ClosedRange
   static func clamped(_: ClosedRange<Double>, by: ClosedRange<Bound>.Constraints) -> ClosedRange<Double>
@@ -853,6 +855,7 @@ extension Collection
   var centroid: Self.Element? { get }
 extension Double
   init(channels: [Double])
+  static func bits(of: Double) -> UInt64?
   static func clamped(_: Double, by: Double.Constraints) -> Double
   static func control(for: Param<Double>) -> ParamControl
   static func degrees(_: Double) -> Double
@@ -861,6 +864,7 @@ extension Double
   static func restored(_: ParamStored) -> Double?
   static func stored(_: Double) -> ParamStored
   static func turns(_: Double) -> Double
+  static func value(fromBits: UInt64) -> Double?
   static let goldenAngle: Double
   static let tau: Double
   static var channelCount: Int { get }
@@ -868,10 +872,12 @@ extension Double
   var channels: [Double] { get }
   var smoothingSpeed: Double { get }
 extension Int
+  static func bits(of: Int) -> UInt64?
   static func clamped(_: Int, by: Int.Constraints) -> Int
   static func control(for: Param<Int>) -> ParamControl
   static func restored(_: ParamStored) -> Int?
   static func stored(_: Int) -> ParamStored
+  static func value(fromBits: UInt64) -> Int?
   typealias Constraints = ParamNumericConstraints<Int>
 extension String
   static func clamped(_: String, by: Void) -> String
@@ -2810,12 +2816,16 @@ protocol ParamOption: CaseIterable, ParamValue, Sendable, Equatable where Self :
   var optionLabel: String { get }
 protocol ParamValue: Sendable, Equatable where Self : Equatable, Self : Sendable, Self.Constraints : Sendable
   associatedtype Constraints
+  static func bits(of: Self) -> UInt64?
+  static func bits(of: Self) -> UInt64?
   static func clamped(_: Self, by: Self.Constraints) -> Self
   static func control(for: Param<Self>) -> ParamControl
   static func restored(_: ParamStored) -> Self?
   static func restored(_: ParamStored, keeping: Self) -> Self?
   static func restored(_: ParamStored, keeping: Self) -> Self?
   static func stored(_: Self) -> ParamStored
+  static func value(fromBits: UInt64) -> Self?
+  static func value(fromBits: UInt64) -> Self?
 protocol PlaneCurve
   func crossings(with: some PlaneCurve) -> [Vector2]
   var contour: Contour { get }

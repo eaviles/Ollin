@@ -1072,11 +1072,12 @@ static float sdRoundedX(float2 p, float w, float r) {
 }
 
 // Blobby cross: a four-armed cross with concave, inward-curving sides, `he`
-// setting how pinched the waist is. Tips reach ~±1 along the axes. Signed
-// distance, negative inside (very close to exact near the boundary).
+// setting how pinched the waist is. The tips sit at 1 / (he * sqrt 2) - 1 along
+// the axes, or at 1 once that passes 1 (the parabola's end). Signed distance,
+// negative inside (very close to exact near the boundary; see the floor below).
 static float sdBlobbyCross(float2 pos, float he) {
-    pos = abs(pos);
-    pos = float2(abs(pos.x - pos.y), 1.0 - pos.x - pos.y) / sqrt(2.0);
+    float2 a = abs(pos);
+    pos = float2(abs(a.x - a.y), 1.0 - a.x - a.y) / sqrt(2.0);
     float p = (he - pos.y - 0.25 / he) / (6.0 * he);
     float q = pos.x / (he * he * 16.0);
     float h = q * q - p * p * p;
@@ -1085,7 +1086,15 @@ static float sdBlobbyCross(float2 pos, float he) {
     else         { float r = sqrt(p); x = 2.0 * r * cos(acos(q / (p * r)) / 3.0); }
     x = min(x, sqrt(2.0) / 2.0);
     float2 z = float2(x, he * (1.0 - 2.0 * x * x)) - pos;
-    return length(z) * sign(z.y);
+    float d = length(z) * sign(z.y);
+    // Past a tip the closest-point solve clamps to the parabola's end at the
+    // diamond's corner (1, 0), so the distance it reports falls toward zero there
+    // instead of growing from the tip, and the coverage ramp drew a faint spike from
+    // every tip to the quad's edge. The diamond through the four tips holds the whole
+    // shape (the sides curve inward), so the distance to it is a floor on the true
+    // distance, exact in the wedge past each tip, and never above it inside.
+    float tip = min(1.0 / (he * sqrt(2.0)) - 1.0, 1.0);
+    return max(d, sdRhombus(a, float2(tip)));
 }
 
 // Tunnel / archway: vertical walls and a flat base under a semicircular top of

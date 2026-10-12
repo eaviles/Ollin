@@ -662,11 +662,17 @@ public struct OutlineFont: @unchecked Sendable {
                 let across = -(stacked ? glyph.y - cellTop : glyph.y) * size
                 let localX = turned ? -across : along
                 let localY = turned ? along : across
-                if let path = cache.path(for: glyph.glyph, font: glyph.font) {
-                    let contours = OutlineFont.flatten(path, scale: size,
-                                                       originX: localX, originY: localY,
-                                                       turned: turned)
-                    if !contours.isEmpty { shapes.append(Shape(contours: contours, winding: .nonZero)) }
+                // The same outline the plain run fills: the cached geometry, cleaned
+                // of self-overlaps at a reference scale and simplified to a sub-pixel
+                // tolerance, so a glyph along a path or handed to `perGlyph` is the
+                // glyph `drawText` draws to the pixel (flattening afresh here kept
+                // every curve point and carried 4.5% more ink on a 20 px O).
+                let local = geometry(for: glyph.glyph, font: glyph.font, size: size, turned: turned)
+                if !local.contours.isEmpty {
+                    let offset = Vector2(localX, localY)
+                    shapes.append(Shape(contours: local.contours.map {
+                        Contour($0.points.map { $0 + offset }, closed: $0.isClosed)
+                    }, winding: .nonZero))
                 } else if let color = colorGlyphs.glyph(glyph.glyph, font: glyph.font) {
                     picture = color.image
                     let box = OutlineFont.pictureRect(color.emRect, size: size, turned: turned)

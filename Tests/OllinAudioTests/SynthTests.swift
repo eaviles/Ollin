@@ -164,6 +164,19 @@ import Testing
         #expect(abs(loudLow - quietLow) < 0.05)
     }
 
+    /// The band-pass passes a sine at its cutoff at unity whatever the resonance:
+    /// resonance narrows the band and never makes it louder (the bare integrator
+    /// output peaked at Q, five times at resonance 0.9).
+    @Test func theBandPassIsUnityAtItsCutoffAtEveryResonance() {
+        for resonance in [0.0, 0.2, 0.5, 0.9] {
+            let gain = filterGain(inputHz: 1000, cutoff: 1000, resonance: resonance, mode: .bandpass)
+            #expect(abs(gain - 1) < 0.08, "at resonance \(resonance) the band-pass gain at its cutoff is \(gain)")
+        }
+        // And it is a band: an octave below the cutoff at resonance 0.9 it is well down.
+        let below = filterGain(inputHz: 500, cutoff: 1000, resonance: 0.9, mode: .bandpass)
+        #expect(below < 0.4, "an octave below the cutoff the band-pass passed \(below)")
+    }
+
     @Test func theFilterStaysStableWhileTheCutoffSweeps() {
         // The reason for integrating the circuit rather than folding a static
         // answer: a cutoff that moves every sample must not blow up.
@@ -180,8 +193,9 @@ import Testing
         #expect(peak.isFinite && peak < 8)
     }
 
-    /// Steady-state gain of a lowpass fed a sine.
-    private func filterGain(inputHz: Double, cutoff: Double, resonance: Double) -> Double {
+    /// Steady-state gain of the filter fed a sine, a lowpass unless told otherwise.
+    private func filterGain(inputHz: Double, cutoff: Double, resonance: Double,
+                            mode: Voice.Filter.Mode = .lowpass) -> Double {
         var filter = StateVariableFilter()
         filter.setCoefficients(cutoff: cutoff, resonance: resonance, sampleRate: Self.sampleRate)
         let total = Int(Self.sampleRate * 0.5)
@@ -189,7 +203,7 @@ import Testing
         var peak = 0.0
         for frame in 0..<total {
             let input = sin(2 * .pi * inputHz * Double(frame) / Self.sampleRate)
-            let output = filter.next(input, mode: .lowpass)
+            let output = filter.next(input, mode: mode)
             if frame >= settle { peak = max(peak, abs(output)) }
         }
         return peak

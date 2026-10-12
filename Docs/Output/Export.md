@@ -483,7 +483,7 @@ The vector format cannot express a few things exactly. This is how each one is h
 - **Images** are skipped, because raster pixels have no place in a vector file. The omission is noted as a comment in the output.
 - **`strokeAlign(.inside` / `.outside)`** falls back to a centered stroke, because SVG strokes are always centered on the path.
 - **`hollow(_:)`** band fills are approximated by a centered stroke of the band width.
-- Curves and the analytic SDF-only shapes are written as fine polyline or path **approximations** of their outline, which look identical at print scale. A traced boundary with more than one loop exports as a single even-odd path, with its holes intact. A moon whose cut disk sits fully inside is one such boundary. The Cool S's interior lines are exported as stroke line work.
+- Curves and the analytic SDF-only shapes are written as fine polyline or path **approximations** of their outline, which look identical at print scale. A sharp corner on a traced shape (the chord meeting the circle on a cut disk, a horseshoe's square arm ends) is placed where its two sides meet, not cut across. A traced boundary with more than one loop exports as a single even-odd path, with its holes intact. A moon whose cut disk sits fully inside is one such boundary. The Cool S's interior lines are exported as stroke line work.
 
 ### Hatching: solid fills for a pen plotter
 

@@ -136,6 +136,7 @@ extension MetalRenderer {
         }
 
         let loaded: MTLTexture, avg: Float
+        var prescale: Float = 1
         let isSky: Bool
         if case .sky(let t, let e, let a) = env.source {
             guard let sky = generateSkyEquirectTexture(turbidity: t, sunElevation: e,
@@ -147,11 +148,12 @@ extension MetalRenderer {
             guard let bytes = equirectBytes(for: env, blocking: blocking),
                   let tex = uploadEquirect(bytes) else { return nil }
             (loaded, avg) = (tex, bytes.avg)
+            prescale = bytes.prescale
             equirectReady.withLock { $0[env.source] = nil }
             isSky = false
         }
         guard let maps = bakeIBL(env, equirectTexture: loaded, avgLuminance: avg,
-                                 fastSky: isSky, commandBuffer: cb) else { return nil }
+                                 prescale: prescale, fastSky: isSky, commandBuffer: cb) else { return nil }
         // An animated sky makes a fresh key each frame; drop the previous sky bake so its GPU
         // textures don't accumulate over the animation (a static sky keeps its one entry).
         if isSky {
@@ -556,7 +558,7 @@ extension MetalRenderer {
     }
 
     private func bakeIBL(_ environment: Environment, equirectTexture loaded: MTLTexture,
-                         avgLuminance: Float, fastSky: Bool = false,
+                         avgLuminance: Float, prescale: Float = 1, fastSky: Bool = false,
                          commandBuffer cb: MTLCommandBuffer) -> IBLMaps? {
         guard let env = makeEnvCube(equirectTexture: loaded, commandBuffer: cb) else { return nil }
         let envCube = env.cube
@@ -589,10 +591,13 @@ extension MetalRenderer {
         }
         ensureBRDFLUT(commandBuffer: cb)
         // Auto-exposure: scale to a common target average luminance (clamped so a near-black
-        // night or a blinding noon stays sane), applied to the lighting and the skybox.
-        let normalization = avgLuminance > 1e-5
+        // night or a blinding noon stays sane), applied to the lighting and the skybox. A
+        // decoded map whose brightest texel was scaled down to fit half range (`prescale`)
+        // is scaled back up here, outside the clamp: a unit restored, not an exposure.
+        let exposure: Float = avgLuminance > 1e-5
             ? min(max(Self.iblTargetLuminance / avgLuminance, 0.01), 12)
             : 1
+        let normalization = exposure / max(prescale, 1e-6)
         return IBLMaps(irradiance: irradiance, prefilter: prefilter, envCube: envCube,
                        equirect: env.equirect, maxMip: mips - 1, normalization: normalization)
     }
@@ -924,23 +929,76 @@ extension MetalRenderer {
 
     nonisolated private static let equirectBlobMagic: UInt32 = 0x4F4C4548   // "OLEH"
 
-    /// Decode a linear-HDR equirectangular `CGImage` into `rgba16Float` pixels, clamping any
-    /// blown-out (inf/NaN half) texel to the max finite half so a bright sun doesn't propagate
-    /// inf through the convolutions, and computing the solid-angle-weighted average luminance
-    /// (for auto-exposure: the environments range ~800× in brightness).
+    /// Decode a linear-HDR equirectangular `CGImage` into `rgba16Float` pixels. The draw
+    /// goes through a single-precision context: a half-float context clamps every
+    /// texel past the largest half, 65,504, at the draw, and a sun in a photographed
+    /// sky can sit far above that (a sun of 200,000 arrived at a third of its light).
+    /// `packEquirect` then brings the map into half range by one factor the renderer
+    /// divides back out, and takes the solid-angle-weighted average luminance (for
+    /// auto-exposure: the environments range ~800× in brightness).
     nonisolated private static func processEquirect(_ cg: CGImage) -> EquirectBytes? {
         let w = cg.width, h = cg.height
         guard w > 0, h > 0, let cs = CGColorSpace(name: CGColorSpace.extendedLinearSRGB) else { return nil }
-        let bpr = w * 8
-        let info = CGBitmapInfo.floatComponents.rawValue | CGBitmapInfo.byteOrder16Little.rawValue
+        let bpr = w * 16
+        let info = CGBitmapInfo.floatComponents.rawValue | CGBitmapInfo.byteOrder32Little.rawValue
                  | CGImageAlphaInfo.premultipliedLast.rawValue
-        guard let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 16,
+        guard let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 32,
                                   bytesPerRow: bpr, space: cs, bitmapInfo: info) else { return nil }
         ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
         guard let raw = ctx.data else { return nil }
-        let halfs = raw.bindMemory(to: UInt16.self, capacity: w * h * 4)
-        let avg = clampAndAverageLuminance(halfs, width: w, height: h)
-        return EquirectBytes(data: Data(bytes: raw, count: w * h * 8), width: w, height: h, avg: avg)
+        let floats = raw.bindMemory(to: Float.self, capacity: w * h * 4)
+        return packEquirect(floats, width: w, height: h)
+    }
+
+    /// Pack single-precision equirect pixels into `rgba16Float` bytes. A component past
+    /// the largest half float cannot be stored as it is, so when the brightest finite
+    /// one is above that, the whole map is scaled down by one factor, `prescale`, that
+    /// brings it exactly to the largest half, and the renderer divides the factor back
+    /// out of the map's exposure normalization (`IBLMaps.normalization`); the bake and
+    /// the skybox read the scaled texels, and both are linear in them, so the picture
+    /// is the one the file holds. A map that fits keeps prescale 1 and its bytes as
+    /// before. An infinite or NaN component is clamped to the largest finite half with
+    /// its sign (so a sun never pushes inf through the convolutions), and the average
+    /// luminance is taken from the true values, weighted by each row's share of the
+    /// sphere (rows near the poles cover less sky).
+    nonisolated static func packEquirect(_ floats: UnsafePointer<Float>,
+                                         width w: Int, height h: Int) -> EquirectBytes {
+        let halfMax: Float = 65_504
+        var brightest: Float = 0
+        for i in 0..<(w * h * 4) where i % 4 != 3 {
+            let v = floats[i]
+            if v.isFinite { brightest = max(brightest, abs(v)) }
+        }
+        let prescale: Float = brightest > halfMax ? halfMax / brightest : 1
+        var halfs = [UInt16](repeating: 0, count: w * h * 4)
+        var lumSum = 0.0, weightSum = 0.0
+        func half(_ v: Float) -> UInt16 {
+            guard v.isFinite else { return (v.sign == .minus ? 0x8000 : 0) | 0x7BFF }
+            return Float16(v * prescale).bitPattern
+        }
+        for y in 0..<h {
+            let rowWeight = Double(sin((Double(y) + 0.5) / Double(h) * Double.pi))
+            var rowLum = 0.0
+            let row = y * w * 4
+            for x in 0..<w {
+                let i = row + x * 4
+                let r = floats[i], g = floats[i + 1], b = floats[i + 2]
+                if r.isFinite, g.isFinite, b.isFinite {
+                    rowLum += Double(0.2126 * r + 0.7152 * g + 0.0722 * b)
+                } else {
+                    rowLum += Double(halfMax)
+                }
+                halfs[i] = half(r)
+                halfs[i + 1] = half(g)
+                halfs[i + 2] = half(b)
+                halfs[i + 3] = Float16(min(max(floats[i + 3], 0), 1)).bitPattern
+            }
+            lumSum += rowLum / Double(w) * rowWeight
+            weightSum += rowWeight
+        }
+        let avg = weightSum > 0 ? Float(lumSum / weightSum) : 1
+        return EquirectBytes(data: halfs.withUnsafeBytes { Data($0) }, width: w, height: h,
+                             avg: avg, prescale: prescale)
     }
 
     /// Clamp any blown-out (inf/NaN) half to the max finite half (so a bright sun doesn't push
@@ -975,11 +1033,11 @@ extension MetalRenderer {
     /// carries the source file's size + mtime, checked on read (see `equirectSourceStamp`).
     nonisolated private static func writeEquirectBlob(_ bytes: EquirectBytes, to url: URL, source: URL) {
         let stamp = equirectSourceStamp(source)
-        var header: [UInt32] = [equirectBlobMagic, 2, UInt32(bytes.width), UInt32(bytes.height),
+        var header: [UInt32] = [equirectBlobMagic, 3, UInt32(bytes.width), UInt32(bytes.height),
                                 bytes.avg.bitPattern,
                                 UInt32(truncatingIfNeeded: stamp.size),
                                 UInt32(truncatingIfNeeded: stamp.size >> 32),
-                                stamp.mtime]
+                                stamp.mtime, bytes.prescale.bitPattern]
         var out = Data(bytes: &header, count: header.count * MemoryLayout<UInt32>.size)
         out.append(bytes.data)
         try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
@@ -993,19 +1051,24 @@ extension MetalRenderer {
 
     /// Read a processed-equirect blob, or nil if absent / corrupt / size-mismatched / decoded
     /// from different source bytes than `source` now holds (any of which falls back to a
-    /// fresh decode). Version-1 blobs (no source stamp) are rejected and re-created once.
+    /// fresh decode). Older blobs (version 1 with no source stamp, version 2 with no
+    /// prescale, whose pixels were clamped at the largest half) are rejected and
+    /// re-created once.
     nonisolated private static func readEquirectBlob(_ url: URL, source: URL) -> EquirectBytes? {
-        let headerSize = 32
+        let headerSize = 36
         guard let data = try? Data(contentsOf: url, options: .mappedIfSafe), data.count >= headerSize
         else { return nil }
         let header = data.prefix(headerSize).withUnsafeBytes { Array($0.bindMemory(to: UInt32.self)) }
-        guard header[0] == equirectBlobMagic, header[1] == 2 else { return nil }
+        guard header[0] == equirectBlobMagic, header[1] == 3 else { return nil }
         let w = Int(header[2]), h = Int(header[3]), avg = Float(bitPattern: header[4])
         guard w > 0, h > 0, data.count == headerSize + w * h * 8 else { return nil }
         let stamp = equirectSourceStamp(source)
         let size = UInt64(header[5]) | (UInt64(header[6]) << 32)
         guard size == stamp.size, header[7] == stamp.mtime else { return nil }
-        return EquirectBytes(data: data.subdata(in: headerSize..<data.count), width: w, height: h, avg: avg)
+        let prescale = Float(bitPattern: header[8])
+        guard prescale.isFinite, prescale > 0, prescale <= 1 else { return nil }
+        return EquirectBytes(data: data.subdata(in: headerSize..<data.count), width: w, height: h,
+                             avg: avg, prescale: prescale)
     }
 }
 
@@ -1019,11 +1082,14 @@ struct EquirectStamp: Equatable, Sendable {
 }
 
 /// Processed equirect float pixels (`rgba16Float`, `width·height·8` bytes) plus the source's
-/// solid-angle-weighted average luminance, handed from the decode (possibly off-thread) to
-/// the bake. `Sendable` so the off-thread load can return it across the task boundary.
+/// solid-angle-weighted average luminance and the factor the pixels were scaled down by to
+/// fit half range (1 for a map that fit; see `packEquirect`), handed from the decode
+/// (possibly off-thread) to the bake. `Sendable` so the off-thread load can return it
+/// across the task boundary.
 struct EquirectBytes: Sendable {
     let data: Data
     let width: Int
     let height: Int
     let avg: Float
+    let prescale: Float
 }

@@ -356,6 +356,40 @@ struct GlobalIlluminationTests {
         }
     }
 
+    /// The fitted grid puts a scene's bounding faces half a cell inside the outer
+    /// probe planes on every axis with three probes or more: the raw extent spans a
+    /// whole number of cells, two fewer than there are probes, so no face sits on or
+    /// a hair off a plane (the figure room's walls got a ragged seam at their open
+    /// end from a row of probes on their front edges). An axis with two probes keeps
+    /// the 15% pad. The counts are the budget's, and the grid holds the scene.
+    @Test
+    func theFittedGridPutsEveryFaceMidCell() {
+        let scenes: [(lo: SIMD3<Float>, hi: SIMD3<Float>)] = [
+            (SIMD3(-4.3, -0.2, -4.4), SIMD3(4.3, 4.2, 4.2)),     // the figure's room
+            (SIMD3(-50, 0, -50), SIMD3(50, 0.01, 50)),           // a flat floor
+            (SIMD3(0, 0, 0), SIMD3(1, 2, 3)),
+            (SIMD3(-100, -5, -1), SIMD3(100, 5, 1)),
+        ]
+        for scene in scenes {
+            let fit = MetalRenderer.giFitVolume(lo: scene.lo, hi: scene.hi)
+            let raw = scene.hi - scene.lo
+            for axis in 0..<3 {
+                let n = Int(fit.counts[axis])
+                #expect(n >= 2, "axis \(axis) of \(scene) has \(n) probes")
+                let gridMax = fit.origin[axis] + fit.spacing[axis] * Float(n - 1)
+                #expect(fit.origin[axis] < scene.lo[axis] && gridMax > scene.hi[axis],
+                        "axis \(axis) of \(scene): the grid \(fit.origin[axis])...\(gridMax) does not hold the scene")
+                guard n >= 3, raw[axis] > 0.05 * raw.max() else { continue }
+                let lowFace = (scene.lo[axis] - fit.origin[axis]) / fit.spacing[axis]
+                let highFace = (scene.hi[axis] - fit.origin[axis]) / fit.spacing[axis]
+                #expect(abs(lowFace - 0.5) < 1e-3 && abs(highFace - (Float(n) - 1.5)) < 1e-3,
+                        "axis \(axis) of \(scene): the faces sit at \(lowFace) and \(highFace) cells, not half a cell inside the ends")
+            }
+            let budget = Int(fit.counts.x) * Int(fit.counts.y) * Int(fit.counts.z)
+            #expect(budget <= 512, "\(scene) spends \(budget) probes")
+        }
+    }
+
     /// The new gathering paths are as deterministic as the main one: two renders of
     /// the mirror frame (GI + deferred supersampled reflections) and of the target
     /// frame (GI + an effect layer) are byte-identical.

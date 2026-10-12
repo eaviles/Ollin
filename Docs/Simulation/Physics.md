@@ -263,7 +263,7 @@ var userData: Any?
 
 func applyForce(_ force: Vector2)     // steady push (thrust, wind)
 func applyImpulse(_ impulse: Vector2) // instant kick (a hit, a launch)
-func applyTorque(_ torque: Double)    // spin it
+func applyTorque(_ torque: Double)    // spin it, a force in points times an arm in points
 ```
 
 The `Forces` example shows all three calls in one windy yard. It also has a `.kinematic` sweeper that other bodies cannot stop, and a pinned cloth colored by `Spring.strain`.

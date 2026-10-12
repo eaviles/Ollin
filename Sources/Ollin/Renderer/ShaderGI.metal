@@ -186,6 +186,9 @@ fragment float4 ollin_gi_trace(PresentOut in [[stage_in]],
         OllinLight L = light.lights[i];
         float3 toLight;
         float tmax;
+        // Outside its own reach a light gives nothing, here as in the raster pass,
+        // so the bounce carries no light past where the lamp itself stops.
+        float within = 1.0;
         if (L.kind == 0) {
             toLight = L.direction.xyz;
             tmax = 1e9;
@@ -194,6 +197,10 @@ fragment float4 ollin_gi_trace(PresentOut in [[stage_in]],
             float len = max(length(d), 1e-6);
             toLight = d / len;
             tmax = len * 0.99;
+            if (L.position.w > 0.0) {
+                within = ollin_light_reach(len, L.position.w);
+                if (within <= 0.0) continue;
+            }
         }
         // Every caster in the frame's list dims its own light, by its own strength.
         // The probe pass has no shadow map to read, so the caster's kind does not
@@ -209,7 +216,7 @@ fragment float4 ollin_gi_trace(PresentOut in [[stage_in]],
         if (L.kind >= 3) {
             if (light.ltcEnabled != 0) {
                 direct += s.albedo * L.color.rgb
-                        * (vis * ollin_ltc_diffuse(L, s.N, -dir, s.P, ltcAmp));
+                        * (vis * within * ollin_ltc_diffuse(L, s.N, -dir, s.P, ltcAmp));
             }
             continue;
         }
@@ -218,7 +225,7 @@ fragment float4 ollin_gi_trace(PresentOut in [[stage_in]],
             atten = smoothstep(L.cosOuter, L.cosInner, dot(-toLight, L.direction.xyz));
         }
         ollin_apply_light_shaping(L, light, toLight, s.P, iesProfiles, cookies);
-        direct += s.albedo * L.color.rgb * (max(dot(s.N, toLight), 0.0) * atten * vis);
+        direct += s.albedo * L.color.rgb * (max(dot(s.N, toLight), 0.0) * atten * vis * within);
     }
 
     // The previous field at the hit: the "viewer" of a surfel is the probe it feeds, so
@@ -306,6 +313,9 @@ fragment float4 ollin_gi_trace_cascaded(PresentOut in [[stage_in]],
         OllinLight L = light.lights[i];
         float3 toLight;
         float tmax;
+        // Outside its own reach a light gives nothing, here as in the raster pass,
+        // so the bounce carries no light past where the lamp itself stops.
+        float within = 1.0;
         if (L.kind == 0) {
             toLight = L.direction.xyz;
             tmax = 1e9;
@@ -314,6 +324,10 @@ fragment float4 ollin_gi_trace_cascaded(PresentOut in [[stage_in]],
             float len = max(length(d), 1e-6);
             toLight = d / len;
             tmax = len * 0.99;
+            if (L.position.w > 0.0) {
+                within = ollin_light_reach(len, L.position.w);
+                if (within <= 0.0) continue;
+            }
         }
         // Every caster in the frame's list dims its own light, by its own strength.
         // The probe pass has no shadow map to read, so the caster's kind does not
@@ -329,7 +343,7 @@ fragment float4 ollin_gi_trace_cascaded(PresentOut in [[stage_in]],
         if (L.kind >= 3) {
             if (light.ltcEnabled != 0) {
                 direct += s.albedo * L.color.rgb
-                        * (vis * ollin_ltc_diffuse(L, s.N, -dir, s.P, ltcAmp));
+                        * (vis * within * ollin_ltc_diffuse(L, s.N, -dir, s.P, ltcAmp));
             }
             continue;
         }
@@ -338,7 +352,7 @@ fragment float4 ollin_gi_trace_cascaded(PresentOut in [[stage_in]],
             atten = smoothstep(L.cosOuter, L.cosInner, dot(-toLight, L.direction.xyz));
         }
         ollin_apply_light_shaping(L, light, toLight, s.P, iesProfiles, cookies);
-        direct += s.albedo * L.color.rgb * (max(dot(s.N, toLight), 0.0) * atten * vis);
+        direct += s.albedo * L.color.rgb * (max(dot(s.N, toLight), 0.0) * atten * vis * within);
     }
 
     float3 bounce = float3(0.0);

@@ -756,7 +756,7 @@ Voice.Filter.sweep(from: 400, by: 3.5, resonance: 0.35)     // opens, then close
 
 | Property | What it does |
 |---|---|
-| `mode` | `.lowpass` (the usual one), `.highpass`, `.bandpass`, `.notch` |
+| `mode` | `.lowpass` (the usual one), `.highpass`, `.bandpass` (unity at the cutoff whatever the resonance, which only narrows it), `.notch` |
 | `cutoff` | where the filter sits when the note starts, in Hz |
 | `resonance` | how much it emphasizes its own cutoff, `0...1`. Past about 0.7 the cutoff whistles |
 | `envelopeAmount` | how far `envelope` moves the cutoff, **in octaves**. Negative closes it as the note goes on |

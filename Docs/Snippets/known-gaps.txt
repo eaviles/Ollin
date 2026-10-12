@@ -476,22 +476,22 @@ bae2295ab724  Docs/Drawing/Text.md:228  cannot find 'x' in scope
 d0ee46b0040d  Docs/Drawing/Text.md:284  'module' is inaccessible due to 'internal' protection level
 d0dee6b689d5  Docs/Drawing/Text.md:297  expected ',' separator
 41cac9ff2fcd  Docs/Drawing/Text.md:304  cannot find 'palette' in scope
-3fb951fbb444  Docs/Drawing/Text.md:329  cannot find 'g' in scope
-b491260662c8  Docs/Drawing/Text.md:340  expected ',' separator
-e1200c27d052  Docs/Drawing/Text.md:364  expected ',' separator
-63d35a4f2f4b  Docs/Drawing/Text.md:370  cannot find 'paragraph' in scope
-ffd6a06777da  Docs/Drawing/Text.md:387  expected ',' separator
-b858f763f312  Docs/Drawing/Text.md:431  expected ',' separator
-6c05d1ec3b67  Docs/Drawing/Text.md:492  expected ',' separator
+3fb951fbb444  Docs/Drawing/Text.md:331  cannot find 'g' in scope
+b491260662c8  Docs/Drawing/Text.md:342  expected ',' separator
+e1200c27d052  Docs/Drawing/Text.md:366  expected ',' separator
+63d35a4f2f4b  Docs/Drawing/Text.md:372  cannot find 'paragraph' in scope
+ffd6a06777da  Docs/Drawing/Text.md:389  expected ',' separator
+b858f763f312  Docs/Drawing/Text.md:433  expected ',' separator
+6c05d1ec3b67  Docs/Drawing/Text.md:494  expected ',' separator
 55c83658543e  Docs/Drawing/Text.md:51  expected ',' separator
-6b00ee90e657  Docs/Drawing/Text.md:587  expected ',' separator
-5d9a93546218  Docs/Drawing/Text.md:594  cannot find 'paragraph' in scope
-abc1e7e5a4c2  Docs/Drawing/Text.md:611  expected ',' separator
-754b34ff791c  Docs/Drawing/Text.md:618  cannot find 'passage' in scope
-d1809a9614c9  Docs/Drawing/Text.md:642  expected ',' separator
-1b92a9f8ca12  Docs/Drawing/Text.md:666  cannot find 'url' in scope
-f7d425b56c0d  Docs/Drawing/Text.md:691  'module' is inaccessible due to 'internal' protection level
-1619f3d694fa  Docs/Drawing/Text.md:700  cannot find 'someURL' in scope
+6b00ee90e657  Docs/Drawing/Text.md:589  expected ',' separator
+5d9a93546218  Docs/Drawing/Text.md:596  cannot find 'paragraph' in scope
+abc1e7e5a4c2  Docs/Drawing/Text.md:613  expected ',' separator
+754b34ff791c  Docs/Drawing/Text.md:620  cannot find 'passage' in scope
+d1809a9614c9  Docs/Drawing/Text.md:644  expected ',' separator
+1b92a9f8ca12  Docs/Drawing/Text.md:668  cannot find 'url' in scope
+f7d425b56c0d  Docs/Drawing/Text.md:693  'module' is inaccessible due to 'internal' protection level
+1619f3d694fa  Docs/Drawing/Text.md:702  cannot find 'someURL' in scope
 0c40e450fdd4  Docs/Drawing/Text.md:81  expected ',' separator
 943b9c98f82d  Docs/Drawing/Text.md:91  cannot find 'tracker' in scope
 747e14bbf9a7  Docs/Drawing/Tiling.md:120  expected ',' separator
@@ -506,7 +506,7 @@ e7bef7b419af  Docs/Drawing/Truchet.md:53  expected expression in list of express
 c96c44cc1577  Docs/Drawing/Voronoi.md:104  expected expression in list of expressions
 75e589a73e9c  Docs/Drawing/Voronoi.md:135  cannot find 'palette' in scope
 1ef939ceae7c  Docs/Drawing/Voronoi.md:152  cannot find 'points' in scope
-fdd7557e54e2  Docs/Drawing/Voronoi.md:189  cannot find 'a' in scope
+fdd7557e54e2  Docs/Drawing/Voronoi.md:192  cannot find 'a' in scope
 f8d0f0b69f83  Docs/Drawing/Voronoi.md:53  cannot find 'sites' in scope
 1ee1fe8fb692  Docs/Drawing/Voronoi.md:69  cannot find 'sites' in scope
 85ef1f56491c  Docs/Drawing/Voronoi.md:81  cannot find 'sites' in scope
@@ -869,12 +869,12 @@ eaee9918e7ae  Docs/Helpers/Math.md:68  cannot find 'progress' in scope
 62c82222d99f  Docs/Helpers/Parameters.md:106  cannot find 'radius' in scope
 7e61c6f57b45  Docs/Helpers/Parameters.md:131  unary operator cannot be separated from its operand
 8b0cd896963b  Docs/Helpers/Parameters.md:146  property wrappers are not yet supported in top-level code
-abf53e647a2d  Docs/Helpers/Parameters.md:174  cannot find type 'Opacity' in scope
-c0829da400f9  Docs/Helpers/Parameters.md:216  cannot find '$toonBands' in scope
-c0df20275b80  Docs/Helpers/Parameters.md:243  invalid redeclaration of 'radius'
-1bd9827ae463  Docs/Helpers/Parameters.md:252  cannot find 'side' in scope
-a954d343551e  Docs/Helpers/Parameters.md:308  cannot find 'osc' in scope
-d5eb0c2ff7b4  Docs/Helpers/Parameters.md:324  cannot find '$radius' in scope
+abf53e647a2d  Docs/Helpers/Parameters.md:176  cannot find type 'Opacity' in scope
+c0829da400f9  Docs/Helpers/Parameters.md:218  cannot find '$toonBands' in scope
+c0df20275b80  Docs/Helpers/Parameters.md:245  invalid redeclaration of 'radius'
+1bd9827ae463  Docs/Helpers/Parameters.md:254  cannot find 'side' in scope
+a954d343551e  Docs/Helpers/Parameters.md:310  cannot find 'osc' in scope
+d5eb0c2ff7b4  Docs/Helpers/Parameters.md:326  cannot find '$radius' in scope
 1c6c8dbec021  Docs/Helpers/Parameters.md:91  property wrappers are not yet supported in top-level code
 c79734a3b2fe  Docs/Helpers/Sonification.md:101  cannot find 'reading' in scope
 c1fdf39373c0  Docs/Helpers/Sonification.md:114  cannot find 'confidence' in scope
@@ -1098,7 +1098,7 @@ d5ed456ba6e5  Docs/Simulation/Physics.md:148  cannot find 'p' in scope
 bffdb40ad03e  Docs/Simulation/Physics.md:159  cannot find 'world' in scope
 eb45be4f0ffa  Docs/Simulation/Physics.md:171  expected '{' to start getter definition
 d580cf59d5a2  Docs/Simulation/Physics.md:224  expected '{' to start getter definition
-a416a704afc4  Docs/Simulation/Physics.md:255  expected '{' to start getter definition
+f7dad55a59ff  Docs/Simulation/Physics.md:255  expected '{' to start getter definition
 6253db349910  Docs/Simulation/Physics.md:287  expected '{' in body of function declaration
 86b94c265567  Docs/Simulation/Physics.md:304  cannot find 'world' in scope
 ebf89e121588  Docs/Simulation/Physics.md:326  cannot find 'world' in scope

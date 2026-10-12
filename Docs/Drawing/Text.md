@@ -86,7 +86,7 @@ drawCaption(_ text: String, edge: CaptionEdge = .bottom)
 Each of these draws a standard piece of text in a single call, so a state the sketch should report never stays silently blank:
 
 - `drawStatus` centers a standard notice in `container`, which is the whole canvas by default, and wraps the notice if it is long. An `.info` notice draws in quiet gray, as in "Waiting for camera…", which [`drawFrame`](../Vision/Vision.md#camera) does for you. A `.warning` notice draws in salmon, for a vision model that [can't run here](../Vision/Vision.md#availability) or a missing install.
-- `drawCaption` draws a small white label along the bottom edge, or along the top with `edge: .top`. Use it to say what the sketch is, what it is showing, and what to do with it.
+- `drawCaption` draws a small white label along the bottom edge, or along the top with `edge: .top`. Use it to say what the sketch is, what it is showing, and what to do with it. It draws over the finished frame, the way a [`withOverlay`](Effects.md#withoverlay) block does, so it stays sharp and white over a depth of field, a motion blur, a bloom, or a lens flare, and never joins an accumulating canvas.
 
 ```swift
 if let reason = tracker.unavailableReason {
@@ -313,6 +313,8 @@ drawText("ollin", at: center) { g in
 ```
 
 The closure runs once per **piece**. A piece is one character in Latin, a whole syllable in Devanagari, or a ligature. See [Every script](#scripts).
+
+Each piece's `shapes` are the outline the plain `drawText` fills: cleaned of the overlapping sub-contours some system faces build a glyph from, and simplified to a third of a pixel. A glyph stamped unchanged, or set along a path, is therefore the plain run's glyph to the pixel.
 
 A `TextGlyph` carries:
 

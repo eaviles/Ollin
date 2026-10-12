@@ -53,6 +53,52 @@ struct OverlayTests {
         return s
     }
 
+    /// A scene under a sky backdrop keeps every surface when a block draws over it.
+    /// The overlay pass starts from the finished frame, so it must never draw the
+    /// backdrop again: full-frame and with no depth, it covered everything the
+    /// frame drew and left only the sky and the caption (a showcase camera's far
+    /// plane let the backdrop through where a plain camera's clipped it away).
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aSkyBackdropNeverCoversTheSceneUnderAnOverlay() throws {
+        func scene(_ s: Overlaid, overlaid: Bool) {
+            s.background(.black)
+            s.cameraShowcase(.sway(period: 30), target: Vector3(0, 0.6, 0), radius: 7, elevation: 0.3)
+            s.environment(.sky(turbidity: 4, sunElevation: 0.4))
+            s.directionalLight(.white, direction: Vector3(-0.4, -0.9, -0.3), intensity: 0.9)
+            s.fill(Color(white: 0.6))
+            s.withState { s.translate(0, -0.1, 0); s.drawBox(width: 10, height: 0.2, depth: 10) }
+            s.fill(Color(hex: 0xE05A47))
+            s.withState { s.translate(0, 0.6, 0); s.drawBox(width: 1.4, height: 1.4, depth: 1.4) }
+            if overlaid {
+                s.withOverlay { s.fill(.white); s.drawRect(20, Double(OverlayTests.size) - 40, 120, 16) }
+            }
+        }
+        let plain = try render(sketch { scene($0, overlaid: false) }, frame: 1).frame
+        let over = try render(sketch { scene($0, overlaid: true) }, frame: 1).frame
+        // The box stands mid-frame: red pixels there, in both.
+        func red(_ f: Frame) -> Int {
+            var n = 0
+            for y in Self.size / 3 ..< 2 * Self.size / 3 {
+                for x in Self.size / 3 ..< 2 * Self.size / 3 {
+                    let c = f.at(x, y)
+                    if c.x > 0.05, c.x > 2.5 * c.y, c.x > 2.5 * c.z { n += 1 }
+                }
+            }
+            return n
+        }
+        #expect(red(plain) > 500, "the box did not render: \(red(plain)) red pixels")
+        #expect(red(over) > 500, "under the overlay the box is gone: \(red(over)) red pixels against \(red(plain))")
+        // And outside the block's own bar the frame is the frame.
+        var worst: Float = 0
+        for y in 0 ..< Self.size - 60 {
+            for x in 0 ..< Self.size {
+                let d = plain.at(x, y) - over.at(x, y)
+                worst = max(worst, max(abs(d.x), max(abs(d.y), abs(d.z))))
+            }
+        }
+        #expect(worst < 0.01, "outside the overlay the frame moved by \(worst) under it")
+    }
+
     /// A thin white bar drawn over a scene whose far plane is well out of focus:
     /// in the frame it takes the blur of the depth under it, in the overlay it
     /// keeps its edge.

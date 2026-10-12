@@ -20,7 +20,7 @@ final class Pulse: Sketch {
 }
 ```
 
-A read looks like a property's, but it costs more. Each one takes a lock and clamps the value to its range, about 40 nanoseconds on an M2 against under one for a plain property. A few reads a frame never show. A loop that reads parameters for every vertex or every sample pays for each read, though. At 160,000 vertices reading seven parameters apiece, the reads alone cost about 45 ms a frame. Read what the loop needs into locals before it starts:
+A read of a number, an integer, or a switch costs what a stored property costs: under a nanosecond, so a loop may read one per vertex. A color, a vector, a palette, or a text value reads through a lock, about 40 nanoseconds on an M2, which a few reads a frame never show but a loop reading one for every vertex or every sample does. Read those into locals before such a loop starts:
 
 ```swift
 final class Bands: Sketch {
@@ -29,7 +29,7 @@ final class Bands: Sketch {
     var colors = [Color](repeating: .black, count: 160_000)
 
     override func draw() {
-        let turns = self.turns, highlight = self.highlight   // two reads, not two per vertex
+        let highlight = self.highlight   // one locked read, not one per vertex
         for i in colors.indices {
             let t = Double(i) / Double(colors.count) * turns
             colors[i] = t - t.rounded(.down) < 0.1 ? highlight : .black
@@ -168,6 +168,8 @@ struct Opacity: ParamValue {
 @Param(constraints: .init(range: 0...1)) var veil = Opacity(0.5)
 @Param("Fade", constraints: .init(range: 0...1, step: 0.25)) var fade = Opacity(1)
 ```
+
+A type that fits in 64 bits can also answer `bits(of:)` and `value(fromBits:)`, the pair `Double`, `Int`, and `Bool` answer, and its reads then skip the lock the way theirs do; the default for both is `nil`, which reads through the lock, and a type that answers one must answer the other.
 
 The built-in constraint types are there to borrow: `ParamNumericConstraints` for anything on a slider or a stepper, `ParamRangeConstraints` for a two-thumb range (whose `outer` is the span the two thumbs move inside), `ParamVectorConstraints` and `ParamVector3Constraints` for a point, `ParamRectangleConstraints` for a rectangle or a set of insets, and `ParamSwatchConstraints` for a palette or a ramp. Each carries the bounds its control needs and a `style` where the control has more than one shape (`ParamVectorStyle.fields` against `.pad`, for instance). A type whose `Constraints` is `Void` needs no payload, so `@Param var caption = Caption("hello")` is the whole declaration. The `constraints:` form is the primitive. To read `@Param(0...1)` for your type too, put a short initializer over it in an extension of `Param`, the way the built-in kinds do:
 

@@ -31,7 +31,6 @@ These are near-term, fairly self-contained pieces. Each one is small and well-sc
 
 - **More SDF shapes, when a good fit appears.** A candidate is any canonical form parameterized by a size and a ratio or two. Such a shape drops into the instanced-SDF path as four small touch-points: a shape tag, a builder, a distance function, and a fragment case.
 - **Pictures drawn crisp when enlarged.** A small image, such as pixel art, a low-resolution canvas, or a photo dithered to two levels, draws at any whole-number scale with hard cell edges instead of blended ones, with no upscaled copy made on the CPU.
-- **Captions that stay still over the scene.** `drawCaption` draws a label over the finished frame, so a lens blur, a motion streak, or a bloom underneath never reaches the text.
 
 See the [design notes](DESIGN-NOTES.md#small-pieces).
 
@@ -132,6 +131,7 @@ See the [design notes](DESIGN-NOTES.md#swift-playgrounds-and-ios).
 These are deeper uses of the Metal core and Apple displays. All are opt-in, so the 2D path stays untaxed:
 
 - **Dolby Vision.** Dynamic per-scene HDR metadata, in contrast to the static HDR10 metadata a video carries, which describes the whole file at once. It needs the licensed encoder path rather than AVFoundation's plain HDR writer, so it is a licensing question before it is an API one.
+- **A hue-preserving tone map.** The curves on offer squeeze each color channel on its own, so a bright saturated color drifts toward a primary (an orange of linear (4, 1, 0.2) renders as a yellow). A fourth `ToneMap` case built on a published hue-preserving curve (Khronos PBR Neutral, AgX) would keep the orange orange, with its own figure beside the three.
 - **A traced shape redrawn in a new color.** A shape traced once and drawn every frame is triangulated and stroked again each time. Keeping that work, and letting a replay take a new fill and stroke color, makes a screen of hundreds of kept outlines cost what it costs to draw them.
 
 See the [design notes](DESIGN-NOTES.md#rendering-and-color-frontier).

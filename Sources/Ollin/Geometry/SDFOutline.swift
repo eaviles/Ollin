@@ -266,7 +266,7 @@ enum SDFOutline {
 
     static func blobbyCross(radius: Double, blobbiness: Double) -> [[Vector2]] {
         let he = min(max(blobbiness, 0.3), 0.6)
-        let tipUnit = 1 / (he * 1.4142135623730951) - 1
+        let tipUnit = min(1 / (he * 1.4142135623730951) - 1, 1)
         let s = radius / tipUnit
         return trace(halfX: radius * 1.08, halfY: radius * 1.08) { sdBlobbyCross($0 / s, he) * s }
     }
@@ -319,7 +319,39 @@ private extension SDFOutline {
             let t = av / (av - bv)
             return Vector2(ax + t * (bx - ax), ay + t * (by - ay))
         }
+        // A cell that holds a sharp corner (the chord meeting the circle on a cut
+        // disk, a horseshoe's square arm ends) would be traced as one straight
+        // segment between its two edge crossings, chamfering the corner by up to the
+        // cell's diagonal (about 2.4 px on the cut disk), and a plotter draws it
+        // rounded. So where the field's normals at the two crossings disagree, the
+        // corner is placed where the two tangent lines meet, the way dual contouring
+        // snaps a feature, and the segment is bent through it; a smooth curve, a
+        // corner that lands outside the cell, or a meeting point off the edge keeps
+        // the straight segment.
+        let cell = 2 * mx / Double(resX)
+        let step = cell * 0.05
+        func normal(at p: Vector2) -> Vector2? {
+            let g = Vector2(sdf(Vector2(p.x + step, p.y)) - sdf(Vector2(p.x - step, p.y)),
+                            sdf(Vector2(p.x, p.y + step)) - sdf(Vector2(p.x, p.y - step)))
+            let len = g.length
+            return len > 1e-12 ? g / len : nil
+        }
         var segments: [(Vector2, Vector2)] = []
+        func add(_ a: Vector2, _ b: Vector2, x0: Double, x1: Double, y0: Double, y1: Double) {
+            guard let na = normal(at: a), let nb = normal(at: b), dot(na, nb) < 0.94 else {
+                segments.append((a, b)); return
+            }
+            let det = na.x * nb.y - na.y * nb.x
+            let ca = dot(na, a), cb = dot(nb, b)
+            let slack = 0.5 * cell
+            guard abs(det) > 1e-9 else { segments.append((a, b)); return }
+            let corner = Vector2((ca * nb.y - cb * na.y) / det, (na.x * cb - nb.x * ca) / det)
+            guard corner.x >= x0 - slack, corner.x <= x1 + slack,
+                  corner.y >= y0 - slack, corner.y <= y1 + slack,
+                  abs(sdf(corner)) < 0.25 * cell else { segments.append((a, b)); return }
+            segments.append((a, corner))
+            segments.append((corner, b))
+        }
         for j in 0..<resY { for i in 0..<resX {
             let x0 = gx(i), x1 = gx(i + 1), y0 = gy(j), y1 = gy(j + 1)
             let v0 = vals[j * nx + i], v1 = vals[j * nx + i + 1]
@@ -333,20 +365,20 @@ private extension SDFOutline {
             func e2() -> Vector2 { interp(x0, y1, v3, x1, y1, v2) }   // top
             func e3() -> Vector2 { interp(x0, y0, v0, x0, y1, v3) }   // left
             switch code {
-            case 1: segments.append((e3(), e0()))
-            case 2: segments.append((e0(), e1()))
-            case 3: segments.append((e3(), e1()))
-            case 4: segments.append((e1(), e2()))
-            case 5: segments.append((e3(), e0())); segments.append((e1(), e2()))
-            case 6: segments.append((e0(), e2()))
-            case 7: segments.append((e3(), e2()))
-            case 8: segments.append((e2(), e3()))
-            case 9: segments.append((e2(), e0()))
-            case 10: segments.append((e0(), e1())); segments.append((e2(), e3()))
-            case 11: segments.append((e2(), e1()))
-            case 12: segments.append((e1(), e3()))
-            case 13: segments.append((e1(), e0()))
-            case 14: segments.append((e0(), e3()))
+            case 1: add(e3(), e0(), x0: x0, x1: x1, y0: y0, y1: y1)
+            case 2: add(e0(), e1(), x0: x0, x1: x1, y0: y0, y1: y1)
+            case 3: add(e3(), e1(), x0: x0, x1: x1, y0: y0, y1: y1)
+            case 4: add(e1(), e2(), x0: x0, x1: x1, y0: y0, y1: y1)
+            case 5: add(e3(), e0(), x0: x0, x1: x1, y0: y0, y1: y1); add(e1(), e2(), x0: x0, x1: x1, y0: y0, y1: y1)
+            case 6: add(e0(), e2(), x0: x0, x1: x1, y0: y0, y1: y1)
+            case 7: add(e3(), e2(), x0: x0, x1: x1, y0: y0, y1: y1)
+            case 8: add(e2(), e3(), x0: x0, x1: x1, y0: y0, y1: y1)
+            case 9: add(e2(), e0(), x0: x0, x1: x1, y0: y0, y1: y1)
+            case 10: add(e0(), e1(), x0: x0, x1: x1, y0: y0, y1: y1); add(e2(), e3(), x0: x0, x1: x1, y0: y0, y1: y1)
+            case 11: add(e2(), e1(), x0: x0, x1: x1, y0: y0, y1: y1)
+            case 12: add(e1(), e3(), x0: x0, x1: x1, y0: y0, y1: y1)
+            case 13: add(e1(), e0(), x0: x0, x1: x1, y0: y0, y1: y1)
+            case 14: add(e0(), e3(), x0: x0, x1: x1, y0: y0, y1: y1)
             default: break
             }
         }}
@@ -510,8 +542,8 @@ private func sdRoundedX(_ p: Vector2, _ w: Double, _ r: Double) -> Double {
 }
 
 private func sdBlobbyCross(_ pos: Vector2, _ he: Double) -> Double {
-    var p = Vector2(abs(pos.x), abs(pos.y))
-    p = Vector2(abs(p.x - p.y), 1 - p.x - p.y) / 2.0.squareRoot()
+    let a = Vector2(abs(pos.x), abs(pos.y))
+    var p = Vector2(abs(a.x - a.y), 1 - a.x - a.y) / 2.0.squareRoot()
     let pp = (he - p.y - 0.25 / he) / (6 * he)
     let q = p.x / (he * he * 16)
     let h = q * q - pp * pp * pp
@@ -525,7 +557,10 @@ private func sdBlobbyCross(_ pos: Vector2, _ he: Double) -> Double {
     }
     x = min(x, 2.0.squareRoot() / 2)
     let z = Vector2(x - p.x, he * (1 - 2 * x * x) - p.y)
-    return z.length * signd(z.y)
+    let d = z.length * signd(z.y)
+    // The diamond through the four tips as a floor past them (the shader's rule).
+    let tip = min(1 / (he * 2.0.squareRoot()) - 1, 1)
+    return max(d, sdRhombus(a, Vector2(tip, tip)))
 }
 
 private func sdTunnel(_ p: Vector2, _ wh: Vector2) -> Double {

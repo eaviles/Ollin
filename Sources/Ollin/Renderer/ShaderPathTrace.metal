@@ -748,6 +748,11 @@ static inline float3 ollin_pt_direct(OllinPTHit h, float3 wo, float eps,
                 atten = smoothstep(L.cosOuter, L.cosInner, dot(-toLight, L.direction.xyz));
                 if (atten <= 0.0) continue;
             }
+            // Outside its own reach a light gives nothing, in the trace as in the raster.
+            if (L.kind != 0 && L.position.w > 0.0) {
+                atten *= ollin_light_reach(length(L.position.xyz - h.s.P), L.position.w);
+                if (atten <= 0.0) continue;
+            }
             ollin_apply_light_shaping(L, light, toLight, h.s.P, iesProfiles, cookies);
             float3 target = (L.kind == 0) ? h.s.P + toLight * 1e6 : L.position.xyz;
             float3 vis = float3(1.0);
@@ -798,6 +803,12 @@ static inline float3 ollin_pt_direct(OllinPTHit h, float3 wo, float eps,
             float3 wi = toL * rsqrt(dist2);
             float NoL = dot(h.s.N, wi);
             if (NoL <= 0.0) continue;
+            // The reach, measured from the panel's center as the raster measures it.
+            float within = 1.0;
+            if (L.position.w > 0.0) {
+                within = ollin_light_reach(length(L.position.xyz - h.s.P), L.position.w);
+                if (within <= 0.0) continue;
+            }
             float cosL = dot(-wi, lightN);
             if (L.direction.w > 0.5) cosL = abs(cosL);   // two-sided panel
             if (cosL <= 0.0) continue;
@@ -809,7 +820,7 @@ static inline float3 ollin_pt_direct(OllinPTHit h, float3 wo, float eps,
                 if (all(vis <= float3(0.0))) continue;
             }
             float3 f = ollin_pt_bsdf(h, wo, wi);
-            direct += f * L.color.rgb * vis * (NoL * cosL * area / dist2);
+            direct += f * L.color.rgb * vis * (NoL * cosL * area / dist2 * within);
         }
     }
     return direct;

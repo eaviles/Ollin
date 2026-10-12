@@ -3306,7 +3306,9 @@ extension MetalRenderer {
             // or structure to read).
             finalizeShadowCasters(drawer, &lighting, renderedMap: shadowMap != nil,
                                   renderedCube: shadowCube != nil, traced: shadowAccel != nil)
-            if let taaPass, taaPass.count > 1 { shareTracedShadows(&lighting, pass: taaPass) }
+            if let taaPass, taaPass.count > 1 {
+                shareTracedShadows(&lighting, pass: taaPass, setting: drawer.shadowQualitySetting)
+            }
             // Ray-traced reflections: a physically-based metal traces the caster accel for its
             // reflection (replacing the IBL prefilter sample). The flag gates it; off → the
             // byte-identical IBL-prefilter path. The renderer owns the hardware check, so this is
@@ -3401,7 +3403,11 @@ extension MetalRenderer {
         var skyKey = PipelineKey.skybox(depth: depthFormat)
         if hasStencil { skyKey.stencilFormat = .stencil8 }
         var skyboxDrawn = false
-        if lighting.iblEnabled != 0, drawer.environment?.showsBackground == true,
+        // Never in the overlay pass: that pass starts from the finished frame, and
+        // the backdrop drawn again there, full-frame with no depth, would cover
+        // everything the frame drew (it did: a captioned scene under a sky lost
+        // every surface and kept the sky and the caption).
+        if !passOverlay, lighting.iblEnabled != 0, drawer.environment?.showsBackground == true,
            var skyUniforms = uniforms3D, let skyTex = currentIBLSkyboxTexture,
            let skyPipe = try? pipeline(skyKey) {
             skyboxDrawn = true

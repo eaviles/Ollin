@@ -99,15 +99,15 @@ struct SDFOutlineTests {
         }
     }
 
-    /// The gaps this test measured on its first run (2026-10-10), filed in
-    /// DESIGN-NOTES (the blobby cross under *Rendering and color frontier*,
-    /// the traced corners under *New output surfaces*). A fix takes its
-    /// entry off.
-    nonisolated static let knownGaps: [String: String] = [
-        "blobby cross": "the formula is a bound that reports a fraction of the distance past each tip (0.68 px where the true distance is 4.5 px), so the render draws a faint spike past every tip out to the quad's edge; the outline ends at the tip",
-        "cut disk": "the tracer's 1.5-unit grid chamfers the sharp corners where the chord meets the circle, so the outline cuts each by about 2.4 px",
-        "horseshoe": "the tracer's 1.5-unit grid chamfers the square ends of the arms by about 1.7 px",
-    ]
+    /// A gap this test has measured and a session has filed rather than fixed, by
+    /// the shape's name, with the sentence that says what it is; a fix takes its
+    /// entry off. Empty since the three the first run found (2026-10-10) were
+    /// closed (2026-10-12): the blobby cross's formula reported a fraction of the
+    /// distance past each tip and the render drew a faint spike there (now floored
+    /// by the diamond through the tips), and the tracer's 1.5-unit grid chamfered
+    /// the cut disk's and the horseshoe's sharp corners by up to 2.4 px (now bent
+    /// through the corner where the two tangent lines meet).
+    nonisolated static let knownGaps: [String: String] = [:]
 
     /// Even-odd containment over every loop, the rule a traced outline with a
     /// hole is written with.

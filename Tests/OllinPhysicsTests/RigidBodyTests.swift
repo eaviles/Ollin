@@ -26,6 +26,25 @@ struct RigidBodyTests {
     /// Low-level certification that the vendored Box2D builds, links, and steps
     /// from Swift through the raw `b2*` C API (the typed `Body` path is built on
     /// this and exercised by the tests below).
+    /// A torque is in the units a force is, points: a torque of `f * r` spins a body
+    /// as the force `f` applied `r` points from its center would, so one set of
+    /// numbers pushes and turns. Read off the spin after one step against the
+    /// textbook answer in point units, the torque over the box's own inertia
+    /// (`m * s * s / 6` for a square of side `s`) times the step; the engine's
+    /// newton-meters would spin a 1 kg, 100-point box ten thousand times slower.
+    @Test func aTorqueSpinsInPointUnits() {
+        let world = World()
+        world.gravity = Vector2(0, 0)
+        let body = world.addBody(.box(width: 100, height: 100), at: Vector2(1000, 1000))
+        let torque = 2.0e5
+        body.applyTorque(torque)
+        run(world, steps: 1, dt: 1.0 / 60)
+        let inertia = body.mass * 100 * 100 / 6
+        let expected = torque / inertia / 60
+        #expect(abs(body.angularVelocity - expected) < 0.03 * expected,
+                "a torque of \(torque) spun a \(body.mass) kg box at \(body.angularVelocity) rad/s where point units give \(expected)")
+    }
+
     @Test func rawBox2DStepsAndReadsBack() {
         var worldDef = b2DefaultWorldDef()
         worldDef.gravity = b2Vec2(x: 0, y: -10)

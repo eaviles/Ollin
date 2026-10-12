@@ -1,5 +1,6 @@
 import Foundation
 import os
+import Synchronization
 
 /// How a `@Param` eases into a new value instead of snapping to it. Pass one to a
 /// parameter to soften *every* source that drives the parameter: a MIDI fader, an OSC
@@ -400,12 +401,22 @@ public protocol ParamValue: Equatable, Sendable {
     /// not its beats per bar) keeps the rest from `current`.
     static func restored(_ stored: ParamStored, keeping current: Self) -> Self?
     static func control(for param: Param<Self>) -> ParamControl
+    /// The value as 64 bits, for a kind a read can take without the lock (a
+    /// `Double`, an `Int`, a `Bool`), or `nil` for a kind that does not fit (a
+    /// color, a vector, a palette, text), which reads through the lock. The
+    /// default is `nil`; a type that answers must answer `value(fromBits:)` too.
+    static func bits(of value: Self) -> UInt64?
+    /// The value back from the bits `bits(of:)` gave, or `nil` for a kind that
+    /// gives none.
+    static func value(fromBits bits: UInt64) -> Self?
 }
 
 public extension ParamValue {
     static func restored(_ stored: ParamStored, keeping current: Self) -> Self? {
         restored(stored)
     }
+    static func bits(of value: Self) -> UInt64? { nil }
+    static func value(fromBits bits: UInt64) -> Self? { nil }
 }
 
 extension Double: ParamValue {
@@ -422,6 +433,9 @@ extension Double: ParamValue {
     }
 
     public static func stored(_ value: Double) -> ParamStored { .number(value) }
+
+    public static func bits(of value: Double) -> UInt64? { value.bitPattern }
+    public static func value(fromBits bits: UInt64) -> Double? { Double(bitPattern: bits) }
 
     public static func restored(_ stored: ParamStored) -> Double? {
         guard case .number(let v) = stored else { return nil }
@@ -450,6 +464,9 @@ extension Int: ParamValue {
 
     public static func stored(_ value: Int) -> ParamStored { .number(Double(value)) }
 
+    public static func bits(of value: Int) -> UInt64? { UInt64(bitPattern: Int64(value)) }
+    public static func value(fromBits bits: UInt64) -> Int? { Int(Int64(bitPattern: bits)) }
+
     public static func restored(_ stored: ParamStored) -> Int? {
         // A stored number arrives from a file or a wire, so one that is not
         // finite or does not fit in an `Int` restores nothing rather than trapping.
@@ -467,6 +484,9 @@ extension Bool: ParamValue {
     public typealias Constraints = Void
     public static func clamped(_ value: Bool, by _: Void) -> Bool { value }
     public static func stored(_ value: Bool) -> ParamStored { .boolean(value) }
+
+    public static func bits(of value: Bool) -> UInt64? { value ? 1 : 0 }
+    public static func value(fromBits bits: UInt64) -> Bool? { bits != 0 }
     public static func restored(_ stored: ParamStored) -> Bool? {
         guard case .boolean(let v) = stored else { return nil }
         return v
@@ -1085,6 +1105,13 @@ public final class Param<Value: ParamValue>: @unchecked Sendable, FrameAdvancing
         var filter: OneEuroFilter<Double>?   // `.smoothed` state, nil otherwise
     }
     private let storage: OSAllocatedUnfairLock<Storage>
+    /// The current value's bits, for a kind that fits in 64 of them (`ParamValue.bits(of:)`),
+    /// stored by every writer right after it moves `current` and loaded by the read
+    /// without the lock. A snapshot of one whole value, so a read sees the value before
+    /// a write or the value after it, never a torn one, from any thread. `hasFastBits`
+    /// says whether the kind answers; the others read through the lock.
+    @usableFromInline let fastBits = Atomic<UInt64>(0)
+    @usableFromInline let hasFastBits: Bool
 
     /// The show-rule, type-erased over its source parameter, or `nil` while the row
     /// always shows. Behind its own lock: `setup()` writes it once, and the
@@ -1113,9 +1140,39 @@ public final class Param<Value: ParamValue>: @unchecked Sendable, FrameAdvancing
 
     /// The current value (the gliding one when smoothed); assigning sets a new
     /// target the value eases toward (or snaps to, with no smoothing).
+    ///
+    /// For a number, an integer, or a switch the read is one atomic load of the
+    /// value's bits, which every writer stores right after moving the value under
+    /// the lock; a color, a vector, a palette, or text reads through the lock. Every
+    /// writer stores the value already clamped (and snapped to `step:`), so the
+    /// getter never clamps. The getter is inlinable so a sketch compiles the fast
+    /// path for its own value type: left generic across the module boundary, a
+    /// read cost about 40 ns on an M2 however it was stored (through the lock and
+    /// the clamp, or through the atomic alone), where a stored property reads in
+    /// under one, so a loop reading parameters per vertex paid it every time and
+    /// the pages said to read parameters into locals first.
     public var wrappedValue: Value {
-        get { storage.withLock { Value.clamped($0.current, by: constraints) } }
+        @inlinable get {
+            if hasFastBits, let value = Value.value(fromBits: fastBits.load(ordering: .relaxed)) {
+                return value
+            }
+            return lockedValue()
+        }
         set { retarget(newValue) }
+    }
+
+    /// The value through the lock, for a kind with no bits of its own.
+    @usableFromInline func lockedValue() -> Value {
+        storage.withLock { $0.current }
+    }
+
+    /// Publish `current`'s bits for the lock-free read. Called by every writer with
+    /// the value it just stored, inside the lock, so the bits never run ahead of
+    /// the state or behind it.
+    private func publish(_ value: Value) {
+        if hasFastBits, let bits = Value.bits(of: value) {
+            fastBits.store(bits, ordering: .relaxed)
+        }
     }
 
     /// The parameter itself, via `$radius`, handy for passing it around.
@@ -1131,6 +1188,7 @@ public final class Param<Value: ParamValue>: @unchecked Sendable, FrameAdvancing
         self.smoothing = smoothing
         let v = Value.clamped(value, by: constraints)
         self.declaredValue = v
+        self.hasFastBits = Value.bits(of: v) != nil
         var filter: OneEuroFilter<Double>?
         if case .smoothed(let minCutoff, let beta) = smoothing {
             var f = OneEuroFilter<Double>(minCutoff: minCutoff, beta: beta)
@@ -1140,6 +1198,7 @@ public final class Param<Value: ParamValue>: @unchecked Sendable, FrameAdvancing
         self.storage = OSAllocatedUnfairLock(initialState: Storage(
             current: v, target: v, easeStart: (v as? Double) ?? 0,
             easeElapsed: .greatestFiniteMagnitude, filter: filter))
+        publish(v)
     }
 
     /// Jump straight to `value` with no glide (both the value and the target), and
@@ -1154,6 +1213,7 @@ public final class Param<Value: ParamValue>: @unchecked Sendable, FrameAdvancing
             state.easeStart = (v as? Double) ?? 0
             state.easeElapsed = .greatestFiniteMagnitude   // at rest
             state.filter?.jump(to: (v as? Double) ?? 0)
+            publish(v)
         }
     }
 
@@ -1206,6 +1266,7 @@ public final class Param<Value: ParamValue>: @unchecked Sendable, FrameAdvancing
             state.target = v
             if smoothing == nil {
                 state.current = v
+                publish(v)
             } else {
                 state.easeStart = (state.current as? Double) ?? 0
                 state.easeElapsed = 0
@@ -1225,17 +1286,26 @@ public final class Param<Value: ParamValue>: @unchecked Sendable, FrameAdvancing
             case .eased(let duration, let curve):
                 guard duration > 0, state.easeElapsed < duration else {
                     state.current = state.target
+                    publish(state.target)
                     return
                 }
                 state.easeElapsed += dt
                 let t = Swift.min(state.easeElapsed / duration, 1)
                 let value = state.easeStart + (target - state.easeStart) * curve(t)
-                if let v = value as? Value { state.current = v }
+                // Stored clamped, like every other write: a curve that overshoots
+                // stays in range, and a stepped parameter reads snapped mid-glide.
+                if let v = value as? Value {
+                    state.current = Value.clamped(v, by: constraints)
+                    publish(state.current)
+                }
             case .smoothed:
                 if var filter = state.filter {
                     let value = filter.filter(target, deltaTime: dt)
                     state.filter = filter
-                    if let v = value as? Value { state.current = v }
+                    if let v = value as? Value {
+                        state.current = Value.clamped(v, by: constraints)
+                        publish(state.current)
+                    }
                 }
             }
         }

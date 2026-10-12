@@ -57,7 +57,11 @@ struct StateVariableFilter {
 
         switch mode {
         case .lowpass:  return v2
-        case .bandpass: return v1
+        // The band output scaled by `k` (the inverse of the resonance's Q) is the
+        // normalized form: unity at the cutoff whatever the resonance, so resonance
+        // narrows the band and never makes it louder. The bare integrator output
+        // `v1` peaks at Q, five times at resonance 0.9.
+        case .bandpass: return k * v1
         case .highpass: return v0 - k * v1 - v2
         case .notch:    return v0 - k * v1
         }

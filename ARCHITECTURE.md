@@ -3937,12 +3937,25 @@ Specular is untouched (GI is diffuse; mirrors are the RT reflections' job).
 mesh batches' vertex AABB (folded over the same batch walk the accel build
 uses, target-drawn meshes included, so the volume covers exactly what the
 probe rays can hit and a scene drawn entirely inside a render target still
-gets a field), padded 15% per side, defines the volume. The per-axis probe
-counts derive from that volume at fit time (`giAxisCounts`): a binary search
+gets a field), padded 15% per side, sizes the volume. The per-axis probe
+counts derive from that padded volume at fit time (`giAxisCounts`): a binary search
 for the smallest near-isotropic spacing whose counts, each clamped to 2…16,
 multiply to at most the 512 budget, so a cube resolves to the original 8×8×8
 while a flat tabletop spends the same budget as 16×2×16 instead of stacking
-unused vertical rows. Counts are held with the volume (probes must not move
+unused vertical rows. The grid is then laid so the scene's bounding faces
+sit half a cell inside its outer planes (`giFitVolume`): on an axis with three
+probes or more the raw extent spans two cells fewer than there are probes,
+with one cell of pad split between the two sides, and a two-probe axis keeps
+the 15% pad. A face on, or a hair off, a probe plane is what put a ragged
+dark seam on a room's open end: ten probes along x and z put a plane 0.04 of
+a cell outside each wall's outer face and the open end, so a row of probes
+sat at the walls' front edges seeing black outside and unlit outer faces,
+with about half the trilinear weight on the inner face there, and the
+Chebyshev test flipped them in and out along its 16-texel depth tile's grid.
+Mid-cell, the nearest plane is half a cell behind the edge and the next half
+a cell in front of it; the seam is gone and the room's walls read closer to a
+path trace (the back wall 1.08 of the trace against 1.29 before, measured
+2026-10-12). Counts are held with the volume (probes must not move
 for hysteresis to mean anything), the atlases allocate once at the 512-probe
 capacity so a refit never reallocates, and the sampler/blend shaders were
 grid-shape-generic from the start (`giCounts.xyz` drives all index math).

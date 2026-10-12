@@ -607,7 +607,9 @@ extension Drawer {
         // The unit cross's tip lands at `tipUnit` along each axis; scale so it
         // reaches `radius`. (Larger `he` → shorter tips / fatter arms, so `tipUnit`
         // shrinks and the scale grows — the shape just gets blobbier at fixed reach.)
-        let tipUnit = 1 / (he * 2.0.squareRoot()) - 1
+        // Below `he` of about 0.354 the formula's tip passes 1, where the parabola
+        // ends, so the tip sits at 1 and the shape would have drawn short of `radius`.
+        let tipUnit = min(1 / (he * 2.0.squareRoot()) - 1, 1)
         let s = radius / tipUnit
         appendSDF(shape: .blobbyCross, center: Vector2(x, y),
                   size: SIMD2<Float>(Float(radius * 1.08), Float(radius * 1.08)),

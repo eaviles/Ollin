@@ -21,7 +21,7 @@ final class BouncedLight: Sketch {
 
         // The room: white floor, ceiling, and back; an orange and a teal wall.
         // The floor, the ceiling and the two side walls run on past the camera,
-        // so their open ends sit well outside the frame and off any probe plane.
+        // so their open ends sit well outside the frame.
         withState { fill(Color(white: 0.88)); translate(0, -0.1, 1.7); drawBox(width: 8.4, height: 0.2, depth: 12) }
         withState { fill(Color(white: 0.88)); translate(0, 4.1, 1.7); drawBox(width: 8.4, height: 0.2, depth: 12) }
         withState { fill(Color(white: 0.88)); translate(0, 2, -4.3); drawBox(width: 8.4, height: 4.4, depth: 0.2) }

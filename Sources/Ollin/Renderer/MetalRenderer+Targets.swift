@@ -877,6 +877,16 @@ extension MetalRenderer {
         }
     }
 
+    /// The points on the light an export's `.detail` tier traces, shared across its
+    /// passes: 64, four rays a pass over sixteen. The live tier's 16 (software ray
+    /// tracing) made a wide penumbra show its sixteen steps as bands once the passes
+    /// shared one set, since the set is the whole of the picture's softness; 64 is
+    /// smooth, and the cost is the four rays a pass rather than the sixteen each pass
+    /// traced before they shared (2.3 s a frame at 16 shared, about 7 s at 64, 25 s
+    /// at 16 unshared, on a thousand spheres under a point light at 1080 by 1920).
+    /// The live tier is untouched: a window traces the whole count every frame.
+    static let exportDetailShadowSamples: Int32 = 64
+
     /// Share every traced caster's rays out among an export's temporal-AA passes.
     /// The export draws the scene once per jitter offset and averages the passes,
     /// and the points a caster samples on the light are fixed, so tracing the whole
@@ -886,16 +896,24 @@ extension MetalRenderer {
     /// instead: the budget divided by the pass count, rounded up so the set is
     /// never shorter than the budget, and at least one ray, with the pass telling
     /// the fragment which share is its own. Slot 0 and the single-caster field
-    /// divide together, so they agree.
-    func shareTracedShadows(_ lighting: inout OllinLighting, pass: (index: Int, count: Int)) {
+    /// divide together, so they agree. The set itself is the export's: a `.detail`
+    /// tier (which is what `.default` resolves to headless) takes
+    /// `exportDetailShadowSamples` rather than the live count, since the shared set
+    /// is the whole of the penumbra's softness; an absolute count passes through.
+    func shareTracedShadows(_ lighting: inout OllinLighting, pass: (index: Int, count: Int),
+                            setting: ShadowQualitySetting) {
         let count = Int32(pass.count)
         func share(_ rays: Int32) -> Int32 { max(1, (rays + count - 1) / count) }
         var casters = shadowCasters(lighting)
         guard casters.contains(where: { $0.kind == 2 }) else { return }
-        for k in casters.indices where casters[k].kind == 2 {
-            casters[k].samples = share(casters[k].samples)
+        var budget: Int32? = nil
+        if case .tier(let quality) = setting, effectiveQuality(quality) == .detail {
+            budget = Self.exportDetailShadowSamples
         }
-        if lighting.shadowKind == 2 { lighting.shadowSamples = share(lighting.shadowSamples) }
+        for k in casters.indices where casters[k].kind == 2 {
+            casters[k].samples = share(budget ?? casters[k].samples)
+        }
+        if lighting.shadowKind == 2 { lighting.shadowSamples = share(budget ?? lighting.shadowSamples) }
         withUnsafeMutablePointer(to: &lighting.shadowCasters) { tuplePtr in
             tuplePtr.withMemoryRebound(to: OllinShadowCaster.self,
                                        capacity: Int(OLLIN_MAX_SHADOW_CASTERS)) { buf in
@@ -2542,6 +2560,41 @@ extension MetalRenderer {
     /// are non-increasing in the spacing, so the search is sound, and the whole
     /// derivation is a pure function of the extent (exports reproduce; internal so
     /// the unit tests can pin it exactly).
+    /// The probe grid fitted to a scene's bounds: where its first probe sits, how far
+    /// apart the probes are, and how many run along each axis. The counts come from
+    /// the budget over the bounds padded by 15% a side (`giAxisCounts`); then, on
+    /// every axis with three probes or more, the probes are laid so the scene's
+    /// bounding faces sit **half a cell inside the outer probe planes**: the raw
+    /// extent spans a whole number of cells (two fewer than there are probes) and
+    /// the pad is one cell, half a side. A face on or a hair off a probe plane is
+    /// what put a ragged dark seam on the open end of a room: a row of probes sat
+    /// at the walls' front edges, seeing black outside and unlit outer faces, with
+    /// half the trilinear weight on the inner face there, and the visibility test
+    /// flipped them in and out along its depth tile's grid. Mid-cell, the nearest
+    /// plane is half a cell behind the edge and the next half a cell in front of
+    /// it, and no probe grazes a surface. An axis with two probes (a flat scene's
+    /// thin axis) keeps the 15% pad, since one cell has no middle plane to avoid.
+    static func giFitVolume(lo: SIMD3<Float>, hi: SIMD3<Float>)
+        -> (origin: SIMD3<Float>, spacing: SIMD3<Float>, counts: SIMD3<Int32>) {
+        var raw = hi - lo
+        // Floor degenerate axes (a flat ground plane) so spacing never collapses.
+        let maxExt = max(max(raw.x, raw.y), max(raw.z, 0.001))
+        raw = simd_max(raw, SIMD3<Float>(repeating: maxExt * 0.05))
+        let center = (hi + lo) * 0.5
+        // Per-axis counts from the padded volume's aspect: a flat scene spends its
+        // probes horizontally instead of stacking unused vertical rows. Derived at
+        // fit time and held with the volume, so probes stay put between refits.
+        var ext = raw * 1.3
+        let counts = Self.giAxisCounts(for: ext)
+        for axis in 0..<3 where counts[axis] >= 3 {
+            let cell = raw[axis] / Float(counts[axis] - 2)
+            ext[axis] = raw[axis] + cell
+        }
+        let origin = center - ext * 0.5
+        let spacing = ext / SIMD3<Float>(counts &- 1)
+        return (origin, spacing, counts)
+    }
+
     static func giAxisCounts(for ext: SIMD3<Float>) -> SIMD3<Int32> {
         func counts(at h: Float) -> SIMD3<Int32> {
             let raw = SIMD3<Int32>(Int32((ext.x / h).rounded()) + 1,
@@ -2860,18 +2913,9 @@ extension MetalRenderer {
             }
         }
         if needFit {
-            var ext = bounds.hi - bounds.lo
-            // Floor degenerate axes (a flat ground plane) so spacing never collapses.
-            let maxExt = max(max(ext.x, ext.y), max(ext.z, 0.001))
-            ext = simd_max(ext, SIMD3<Float>(repeating: maxExt * 0.05))
-            let center = (bounds.hi + bounds.lo) * 0.5
-            ext *= 1.3   // 15% pad each side: boundary surfaces sit inside the outer cage
-            // Per-axis counts from the padded volume's aspect: a flat scene spends its
-            // probes horizontally instead of stacking unused vertical rows. Derived at
-            // fit time and held with the volume, so probes stay put between refits.
-            let counts = Self.giAxisCounts(for: ext)
-            let origin = center - ext * 0.5
-            let spacing = ext / SIMD3<Float>(counts &- 1)
+            let fit = Self.giFitVolume(lo: bounds.lo, hi: bounds.hi)
+            let counts = fit.counts, origin = fit.origin, spacing = fit.spacing
+            let ext = spacing * SIMD3<Float>(counts &- 1)
             let ladder = Self.giCascadeLadder(volumeOrigin: origin, volumeSpan: ext,
                                               spacing: spacing, eye: anchor,
                                               workingScale: workingScale)

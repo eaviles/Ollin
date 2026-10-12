@@ -529,6 +529,26 @@ final class Drawer {
     /// positions + normals drawn through `camera3D`; triangle indices are expanded
     /// into this flat list (no index buffer), matching the 2D triangle path.
     private(set) var meshVertices: [OllinMeshVertex] = []
+    /// The center of the frame's drawn mesh geometry, walked once per frame on
+    /// first use (the cache clears with the vertices), or nil while the frame holds
+    /// no plain mesh. What a traced point light's shadow softness is measured
+    /// against, so the penumbra belongs to the light and the scene and not to
+    /// where the camera aims.
+    var meshBoundsCenter: SIMD3<Float>? {
+        if let cached = meshBoundsCache, cached.count == meshVertices.count { return cached.center }
+        var lo = SIMD3<Float>(repeating: .greatestFiniteMagnitude)
+        var hi = SIMD3<Float>(repeating: -.greatestFiniteMagnitude)
+        meshVertices.withUnsafeBufferPointer { verts in
+            for v in verts {
+                let p = SIMD3<Float>(v.position.x, v.position.y, v.position.z)
+                lo = simd_min(lo, p); hi = simd_max(hi, p)
+            }
+        }
+        let center: SIMD3<Float>? = meshVertices.isEmpty ? nil : (lo + hi) * 0.5
+        meshBoundsCache = (meshVertices.count, center)
+        return center
+    }
+    private var meshBoundsCache: (count: Int, center: SIMD3<Float>?)?
 
     /// Base-mesh vertices for this frame's instanced draws (see
     /// `drawMeshInstanced`): LOCAL space, indices expanded, the model matrix NOT
@@ -1155,6 +1175,12 @@ final class Drawer {
     private var overlayDepth = 0
     /// Whether drawing is inside a `withOverlay` block.
     var isDrawingOverlay: Bool { overlayDepth > 0 }
+    /// Whether an overlay block opened now would be held back to the frame's end:
+    /// not inside a layer (which has no passes to draw after) and not inside a
+    /// batch recording (which keeps its content as drawn). A helper that wants the
+    /// overlay where there is one, and the canvas where there is not, asks this
+    /// rather than opening a block and taking the note.
+    var canDrawOverlay: Bool { currentTarget == nil && !isRecordingBatch }
     /// Whether any run this frame belongs to the overlay, so the renderer can
     /// skip the overlay pass when nothing was drawn there.
     private(set) var hasOverlay = false
@@ -2369,6 +2395,7 @@ final class Drawer {
             lineCoreVertices.removeAll(keepingCapacity: true)
             lineFringeVertices.removeAll(keepingCapacity: true)
             meshVertices.removeAll(keepingCapacity: true)
+            meshBoundsCache = nil
             instancedMeshVertices.removeAll(keepingCapacity: true)
             meshInstances.removeAll(keepingCapacity: true)
             sdfGroups.removeAll(keepingCapacity: true)
@@ -3435,19 +3462,32 @@ final class Drawer {
                     // light position comes from the light entry. The far plane reaches past
                     // the scene from the light.
                     let dist = max(Float(simd_distance(light.position.simd3, target)), 1)
+                    // The light's distance to the center of the drawn geometry (the camera's
+                    // target only while the frame holds no mesh): what the shadow's texel
+                    // size and its traced softness are measured against, so neither changes
+                    // with where the camera aims. The far plane keeps the camera's framing,
+                    // since it has to reach past what the camera frames.
+                    let anchor = meshBoundsCenter ?? target
+                    let sceneDist = max(simd_distance(light.position.simd3, anchor), 1)
                     c.kind = 1
                     c.depthA = dist + 1.5 * r      // far plane (linear-distance normalizer)
                     // A 90° cube face spans 2·d wide at distance d, so a texel there is
-                    // 2·dist/resolution, the world-space unit for the bias and PCF spread.
-                    c.texelWorld = (2 * dist) / Float(Drawer.pointShadowMapResolution)
+                    // 2·d/resolution, the world-space unit for the bias and PCF spread (the
+                    // cube path takes it as a floor under each receiver's own figure; the
+                    // traced path offsets its ray origin by it).
+                    c.texelWorld = (2 * sceneDist) / Float(Drawer.pointShadowMapResolution)
                     // On a ray-tracing device the renderer traces this caster instead of
                     // sampling the cube (it bumps `kind` to 2); `depthB` then carries the
                     // area-light radius that softens the traced shadow into a
-                    // contact-hardening penumbra (light-relative, so it's camera-independent).
-                    // The cube path ignores it, so it's harmless to always pack. Driven by the
-                    // same `shadowSoftness` parameter as the 2D casters (one control for every kind);
-                    // the default 0.5 reproduces the previous fixed `dist · 0.03` exactly.
-                    c.depthB = dist * 0.06 * Float(shadowSoftnessAmount)
+                    // contact-hardening penumbra. The cube path ignores it, so it's harmless
+                    // to always pack. Driven by the same `shadowSoftness` parameter as the 2D
+                    // casters (one control for every kind), and scaled by the light's distance
+                    // to the scene, so the penumbra belongs to the light and the scene:
+                    // measured from the camera's target, it changed with where the camera
+                    // aimed (192 levels between two aims along one sight line, 92 of them
+                    // from the texel size the ray origin is offset by) and breathed through
+                    // a camera move.
+                    c.depthB = sceneDist * 0.06 * Float(shadowSoftnessAmount)
                     // `samples` (rays/pixel) is resolved by the renderer from the GPU's
                     // capability + the sketch's quality tier; left 0 here (it has no device).
                 case .rectangle, .disk:
@@ -4743,6 +4783,7 @@ final class Drawer {
         lineCoreVertices.removeAll(keepingCapacity: true)
         lineFringeVertices.removeAll(keepingCapacity: true)
         meshVertices.removeAll(keepingCapacity: true)
+        meshBoundsCache = nil
         instancedMeshVertices.removeAll(keepingCapacity: true)
         meshInstances.removeAll(keepingCapacity: true)
         sdfGroups.removeAll(keepingCapacity: true)

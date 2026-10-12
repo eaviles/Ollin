@@ -59,22 +59,29 @@ extension Sketch {
     /// ```
     ///
     /// Draws with its own font, size, and alignment, scoped — the sketch's
-    /// drawing state is untouched.
+    /// drawing state is untouched. The caption is drawn over the finished frame
+    /// (`withOverlay`), so it stays sharp and white over a depth of field, a motion
+    /// blur, a bloom, or a lens flare, and never joins an accumulating canvas;
+    /// inside a layer or a batch recording, where there is no overlay, it draws
+    /// in place.
     public func drawCaption(_ text: String, edge: CaptionEdge = .bottom) {
-        withState {
-            noStroke()
-            fill(.white)
-            textFont(OutlineFont.systemMedium)
-            textSize(15 * scale)
-            let inset = 28 * scale
-            switch edge {
-            case .bottom:
-                textAlign(.center, .bottom)
-                drawText(text, width / 2, height - inset)
-            case .top:
-                textAlign(.center, .top)
-                drawText(text, width / 2, inset)
+        let body = {
+            self.withState {
+                self.noStroke()
+                self.fill(.white)
+                self.textFont(OutlineFont.systemMedium)
+                self.textSize(15 * self.scale)
+                let inset = 28 * self.scale
+                switch edge {
+                case .bottom:
+                    self.textAlign(.center, .bottom)
+                    self.drawText(text, self.width / 2, self.height - inset)
+                case .top:
+                    self.textAlign(.center, .top)
+                    self.drawText(text, self.width / 2, inset)
+                }
             }
         }
+        if drawer.canDrawOverlay { withOverlay(body) } else { body() }
     }
 }

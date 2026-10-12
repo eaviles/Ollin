@@ -107,10 +107,16 @@ public final class Body {
         b2Body_ApplyLinearImpulseToCenter(id, world.meters(from: impulse), true)
     }
 
-    /// Apply a torque (spin) about the center of mass.
+    /// Apply a torque (spin) about the center of mass, in the same units
+    /// `applyForce` takes: a force in points times an arm in points. A torque of
+    /// `f * r` spins the body as the force `f` applied `r` points from its center
+    /// would, so the numbers that push a body also turn it.
     public func applyTorque(_ torque: Double) {
         guard world.holds(torque, "applyTorque") else { return }
-        b2Body_ApplyTorque(id, Float(torque), true)
+        // Force in points is force in newtons times the units per meter, and an
+        // arm in points is meters times the same, so a torque in point units is
+        // newton-meters times the square.
+        b2Body_ApplyTorque(id, Float(torque / (world.unitsPerMeter * world.unitsPerMeter)), true)
     }
 }
 

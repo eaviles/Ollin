@@ -530,8 +530,8 @@ struct LightingInvariantTests {
     /// its own irradiance to a surface facing it, so the facing-to-away ratio of a white
     /// sphere's disc is 1 plus the sun's radiance times its solid angle over pi times
     /// the field's radiance, summed from the authored pixels (the ratio cancels the
-    /// exposure). Below the largest half float the decode keeps the sun; past it the
-    /// sun must still arrive.
+    /// exposure). A sun past the largest half float, 65,504, arrives whole too: the
+    /// decode scales the map into half range and the bake scales it back.
     @Test(.enabled(if: Snapshot.hasMetal), arguments: [30_000.0, 60_000.0, 200_000.0])
     func anEnvironmentsSunReachesTheScene(sun: Double) throws {
         let url = try sunMap(sun: Float(sun))
@@ -543,17 +543,8 @@ struct LightingInvariantTests {
         let fieldIrradiance: Double = Double.pi * Double(Self.sunField)
         let expected: Double = 1 + 4 * sun * texel / fieldIrradiance
         let ratio = toward / away
-        func check() {
-            #expect(abs(ratio / expected - 1) < 0.03,
-                    "a sun of \(sun) gave a facing-to-away ratio of \(ratio) where its pixels give \(expected)")
-        }
-        if sun > 65_504 {
-            withKnownIssue("the decode clamps a texel past the largest half float, 65,504, so a brighter sun arrives at that level: a sun of 200,000 gave 6.27 of an expected 17.1, measured 2026-10-09") {
-                check()
-            }
-        } else {
-            check()
-        }
+        #expect(abs(ratio / expected - 1) < 0.03,
+                "a sun of \(sun) gave a facing-to-away ratio of \(ratio) where its pixels give \(expected)")
     }
 
     /// The field around the sun, in linear radiance.
@@ -679,9 +670,7 @@ struct LightingInvariantTests {
         for i in 0..<(on.pixelCount * 4) where i % 4 != 3 {
             worst = max(worst, abs(Int(on.bytes[i]) - Int(off.bytes[i])))
         }
-        withKnownIssue("the probe trace lights every hit at the lamp's full strength, its reach unread: the field added 255 levels and a mean of 0.68, measured 2026-10-09") {
-            #expect(worst <= 3, "the field added \(worst) levels to a room the lamp cannot reach")
-        }
+        #expect(worst <= 3, "the field added \(worst) levels to a room the lamp cannot reach")
     }
 
     // MARK: Shadows, measured
@@ -779,9 +768,7 @@ struct LightingInvariantTests {
         let unshadowed = try worst(shadows: false)
         #expect(unshadowed <= 2, "with no shadows the two aims differed by \(unshadowed) levels")
         let shadowed = try worst(shadows: true)
-        withKnownIssue("a traced point light's softness scales with its distance to the camera's target, so the penumbra moves with the aim: 0.53 in linear light, measured 2026-10-09") {
-            #expect(shadowed <= 2, "with shadows the two aims differed by \(shadowed) levels")
-        }
+        #expect(shadowed <= 2, "with shadows the two aims differed by \(shadowed) levels")
     }
 
     // MARK: The trace
@@ -795,16 +782,7 @@ struct LightingInvariantTests {
         let f = isTraced ? try traced(probe, samples: 32, maxDepth: 1) : try render(probe)
         let inside = around(f, probe.inside, radius: 3), outside = around(f, probe.outside, radius: 3)
         #expect(inside > 0.02, "the floor under the lamp was not lit: \(inside)")
-        func check() {
-            #expect(outside < 0.004, "the floor past the reach read \(outside)")
-        }
-        if isTraced {
-            withKnownIssue("the tracer's direct light never reads the reach: 0.108 past it, measured 2026-10-09") {
-                check()
-            }
-        } else {
-            check()
-        }
+        #expect(outside < 0.004, "the floor past the reach read \(outside)")
     }
 
     /// Glass of the air's own index, with no thickness, is not there: it reflects nothing

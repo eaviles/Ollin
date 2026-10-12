@@ -63,14 +63,11 @@ struct TextPlacementTests {
         let plain = try render { $0.drawText("Ollin wave", 12, 60) }
         #expect(along != (try render { _ in }))
         expectSamePlace(along, plain, "along the path against the plain run")
-        withKnownIssue("""
-            the plain run fills each glyph from its outline simplified to 0.3 px, the \
-            per-glyph route (a path, perGlyph) from the outline flattened at render size \
-            with every point kept, so the same glyph differs at its curves: a 20 px O \
-            carries 4.5% more ink along a path (filed under Rendering and color frontier in DESIGN-NOTES)
-            """) {
-            #expect(zip(along, plain).map { abs(Int($0) - Int($1)) }.max() ?? 0 <= 1)
-        }
+        // The same outline on both routes (the cached, cleaned, simplified glyph),
+        // so the pixels agree to a level: the per-glyph route used to flatten afresh
+        // and carried 4.5% more ink on a 20 px O.
+        let worst = zip(along, plain).map { abs(Int($0) - Int($1)) }.max() ?? 0
+        #expect(worst <= 1, "along a straight path the glyphs differ from the plain run by \(worst) levels")
     }
 
     /// The offset slides the run along the path, and a glyph that falls off
