@@ -520,6 +520,10 @@
     "Recreations/ZdenekSykora": [
       "Recreations/ZdenekSykora/Structure",
       "Recreations/ZdenekSykora/Lines"
+    ],
+    "Recreations/AnwarJalalShemza": [
+      "Recreations/AnwarJalalShemza/Meem",
+      "Recreations/AnwarJalalShemza/Roots"
     ]
   },
   "examples": {
@@ -8288,6 +8292,50 @@
       "stillSmall": "examples/Recreations/AlmaThomas/Rings/still-640.jpg?v=4b78273d",
       "width": 1080
     },
+    "Recreations/AnwarJalalShemza/Meem": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 1224,
+      "motion": 5.006,
+      "sound": false,
+      "source": "fe3229da64605211",
+      "rendered": "2026-10-11",
+      "bytes": {
+        "loop": 1618511,
+        "loopSmall": 314415,
+        "still": 130148,
+        "stillSmall": 52120
+      },
+      "loop": "examples/Recreations/AnwarJalalShemza/Meem/loop.mp4?v=46d8bbf4",
+      "loopSmall": "examples/Recreations/AnwarJalalShemza/Meem/loop-640.mp4?v=8af7b18d",
+      "still": "examples/Recreations/AnwarJalalShemza/Meem/still.jpg?v=786b7283",
+      "stillSmall": "examples/Recreations/AnwarJalalShemza/Meem/still-640.jpg?v=345b19dc",
+      "seed": 1
+    },
+    "Recreations/AnwarJalalShemza/Roots": {
+      "width": 810,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 1240,
+      "motion": 41.834,
+      "sound": false,
+      "source": "6510255498e9368e",
+      "rendered": "2026-10-11",
+      "bytes": {
+        "loop": 1714684,
+        "loopSmall": 351854,
+        "still": 126907,
+        "stillSmall": 43348
+      },
+      "loop": "examples/Recreations/AnwarJalalShemza/Roots/loop.mp4?v=634177c8",
+      "loopSmall": "examples/Recreations/AnwarJalalShemza/Roots/loop-640.mp4?v=98c8f07a",
+      "still": "examples/Recreations/AnwarJalalShemza/Roots/still.jpg?v=d1a79d92",
+      "stillSmall": "examples/Recreations/AnwarJalalShemza/Roots/still-640.jpg?v=68467839",
+      "seed": 1
+    },
     "Recreations/BridgetRiley/Current": {
       "width": 1080,
       "height": 1080,
@@ -12078,8 +12126,8 @@
       ]
     },
     "Audio": {
-      "image": "groups/Audio.jpg?v=4f0e6479",
-      "imageSmall": "groups/Audio-640.jpg?v=40ac009a",
+      "image": "groups/Audio.jpg?v=0d15fd24",
+      "imageSmall": "groups/Audio-640.jpg?v=70700bf3",
       "of": [
         "Audio/OwnSampler",
         "Audio/Spatial",
@@ -12540,6 +12588,14 @@
         "Recreations/ZdenekSykora/Structure",
         "Recreations/ZdenekSykora/Lines"
       ]
+    },
+    "Recreations/AnwarJalalShemza": {
+      "of": [
+        "Recreations/AnwarJalalShemza/Meem",
+        "Recreations/AnwarJalalShemza/Roots"
+      ],
+      "image": "groups/Recreations-AnwarJalalShemza.jpg?v=5007bcf3",
+      "imageSmall": "groups/Recreations-AnwarJalalShemza-640.jpg?v=fe8d5f11"
     }
   },
   "heroes": {

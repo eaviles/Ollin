@@ -1009,5 +1009,11 @@ let package = Package(
         // drawn from chance, after Zdeněk Sýkora.
         example("Recreations/ZdenekSykora/Structure"),
         example("Recreations/ZdenekSykora/Lines"),
+        // The letter meem reduced to a disc and a line and written right to
+        // left, and the Roots of 1977 on, a flower above the ground and its
+        // roots below as words in Urdu script cut at the cloth's edge, after
+        // Anwar Jalal Shemza.
+        example("Recreations/AnwarJalalShemza/Meem"),
+        example("Recreations/AnwarJalalShemza/Roots"),
     ]
 )
