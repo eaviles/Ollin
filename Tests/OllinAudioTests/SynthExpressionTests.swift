@@ -156,13 +156,21 @@ import Testing
         }
     }
 
-    /// A struck body holds its pitch: its tones were decided by the strike.
+    /// A struck body holds its pitch: its tones were decided by the strike,
+    /// so a bend sent after it changes nothing, sample for sample, and what
+    /// rings late is the body's own tones rather than anything near the
+    /// pitch the bend asked for.
     @Test func aStruckBodyHoldsItsPitch() {
-        let out = Self.render(.chime, seconds: 1.0, cues: [
+        let bent = Self.render(.chime, seconds: 1.0, cues: [
             Self.on(72, id: 1, velocity: 0.9), Self.bend(12, id: 1, at: 0.2),
         ])
-        let late = Self.window(out, from: 0.5, to: 1.0)
-        #expect(Self.magnitude(late, at: Self.hz(72)) > 3 * Self.magnitude(late, at: Self.hz(84)))
+        let plain = Self.render(.chime, seconds: 1.0, cues: [Self.on(72, id: 1, velocity: 0.9)])
+        #expect(bent == plain)
+        let late = Self.window(bent, from: 0.5, to: 1.0)
+        let prime = Self.magnitude(late, at: Self.hz(72))
+        let nominal = Self.magnitude(late, at: Self.hz(84))
+        let between = Self.magnitude(late, at: Self.hz(78))
+        #expect(max(prime, nominal) > 20 * between, "prime \(prime), nominal \(nominal), a tritone up \(between)")
     }
 
     /// A press on a bowed note is that note's bow. Pressed to nothing it goes
