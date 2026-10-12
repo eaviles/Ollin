@@ -56,11 +56,14 @@ last test loads through the real system rather than a stub, and that load timed
 out inside a batch of every target at once with both rules already applied.
 
 **`loopback`, the suites that talk to a real system service.** They send a clock
-train or a frame out through Core MIDI, the Link session's socket, or the laser's
-stand-in DAC, and measure what arrives against a window. Beside a full run they
-starve: the timecode clock's one-second window closed before its probe ran, and
-the tempo clock read no tempo at all (2026-09-08, run 34248343439, both in the
-third process at minute ten). Run alone they take seconds.
+train or a frame out through Core MIDI, the Link session's socket, the laser's
+stand-in DAC, or a Syphon server, and measure what arrives against a window.
+Beside a full run they starve: the timecode clock's one-second window closed
+before its probe ran, and the tempo clock read no tempo at all (2026-09-08, run
+34248343439, both in the third process at minute ten); a published Syphon source
+travels through the machine's notification daemon and took longer than the
+thirty seconds its test waits to surface (2026-10-12, run 38287439739, in the
+same third process). Run alone they take seconds.
 
 **`crowded`, the suites that cannot share the machine with the drawing shards.**
 `PushFeedTests` drives a real local HTTP server and measures what arrives against

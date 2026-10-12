@@ -85,8 +85,9 @@ sensitive='OllinTests.DataFeedTests|OllinVisionTests.FrameSourceTests|OllinVisio
 
 # Phase two, part one: the suites that send something through a real system
 # service and measure what comes back (Core MIDI, the Link session's socket,
-# the laser's stand-in DAC). Beside a full run they starve.
-loopback='OllinMIDITests.CoreMIDILoopback|OllinLinkTests.LinkLoopbackTests|OllinLaserTests.EtherDreamLoopbackTests'
+# the laser's stand-in DAC, a Syphon frame through the machine's notification
+# daemon). Beside a full run they starve.
+loopback='OllinMIDITests.CoreMIDILoopback|OllinLinkTests.LinkLoopbackTests|OllinLaserTests.EtherDreamLoopbackTests|OllinSyphonTests.SyphonLoopbackTests'
 
 # Phase two, part two: the suites that cannot share the machine with the rest.
 # PushFeedTests drives a real local HTTP server against deadlines,

@@ -61,7 +61,9 @@ import OllinTestSupport
     /// sees it, so a long deadline costs a pass nothing. The announcement
     /// travels through the machine's notification daemon and reaches this
     /// process on the main run loop, and on a loaded CI runner it twice took
-    /// longer than 4 s twenty minutes into the run.
+    /// longer than 4 s twenty minutes into the run, then longer than these 30 s
+    /// beside the shards, which is why the suite runs in the quiet phase with
+    /// the other loopbacks (`Scripts/test.sh`, `loopback`).
     static let patience = 30.0
 
     @Test(.enabled(if: SyphonLoopbackTests.hasMetal), discoveryTrait)
