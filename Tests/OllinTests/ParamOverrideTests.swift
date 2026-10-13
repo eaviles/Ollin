@@ -67,11 +67,11 @@ struct ParamOverrideTests {
     }
 
     /// Run `body` with `overrides` standing in for this run's command line.
-    private func withOverrides(_ overrides: [ParamOverride], _ body: () -> Void) {
+    private func withOverrides(_ overrides: [ParamOverride], _ body: () throws -> Void) rethrows {
         let previous = OllinApp.paramOverrides
         OllinApp.paramOverrides = overrides
         defer { OllinApp.paramOverrides = previous }
-        body()
+        try body()
     }
 
     private func read(_ args: [String]) -> [ParamOverride] {
@@ -81,18 +81,18 @@ struct ParamOverrideTests {
 
     // MARK: - Reading the flags
 
-    @Test func theFlagRepeatsAndKeepsItsOrder() {
+    @Test func theFlagRepeatsAndKeepsItsOrder() throws {
         let found = read(["sketch", "--param", "radius=40", "--seed", "7", "--param", "rings=3"])
         #expect(found == [ParamOverride(name: "radius", text: "40"),
                           ParamOverride(name: "rings", text: "3")])
     }
 
-    @Test func onlyTheFirstEqualsSignSplitsTheValue() {
+    @Test func onlyTheFirstEqualsSignSplitsTheValue() throws {
         let found = read(["--param", "caption=a=b"])
         #expect(found == [ParamOverride(name: "caption", text: "a=b")])
     }
 
-    @Test func aFlagWithNoValueIsRefused() {
+    @Test func aFlagWithNoValueIsRefused() throws {
         guard case .problem(let message) = ParamOverride.parse(["--param", "radius"]) else {
             Issue.record("a bare name should not read as a value")
             return
@@ -111,7 +111,7 @@ struct ParamOverrideTests {
 
     // MARK: - Reading a value against its parameter
 
-    @Test func everyKindReadsItsOwnValue() {
+    @Test func everyKindReadsItsOwnValue() throws {
         let sketch = ParamSketch()
         let problems = ParamOverride.apply([
             ParamOverride(name: "radius", text: "40"),
@@ -143,7 +143,7 @@ struct ParamOverrideTests {
                                           Color(hex: 0xFF0066)])
     }
 
-    @Test func aRangeReadsBothSpellingsAndEitherWayRound() {
+    @Test func aRangeReadsBothSpellingsAndEitherWayRound() throws {
         let sketch = ParamSketch()
         #expect(ParamOverride.apply([.init(name: "band", text: "0.1,0.9")], to: sketch).isEmpty)
         #expect(sketch.band == 0.1...0.9)
@@ -151,7 +151,7 @@ struct ParamOverrideTests {
         #expect(sketch.band == 0.3...0.8)
     }
 
-    @Test func aColorReadsHexOrPlainNumbers() {
+    @Test func aColorReadsHexOrPlainNumbers() throws {
         let sketch = ParamSketch()
         #expect(ParamOverride.apply([.init(name: "tint", text: "0,0.5,1")], to: sketch).isEmpty)
         #expect(sketch.tint.red == 0 && sketch.tint.green == 0.5 && sketch.tint.blue == 1)
@@ -160,7 +160,7 @@ struct ParamOverrideTests {
         #expect(abs(sketch.tint.alpha - 128.0 / 255) < 0.001)
     }
 
-    @Test func swatchesSpreadEvenlyUnlessTheyNameTheirPlace() {
+    @Test func swatchesSpreadEvenlyUnlessTheyNameTheirPlace() throws {
         let sketch = ParamSketch()
         #expect(ParamOverride.apply([.init(name: "ramp", text: "#000,#FFF,#F06")],
                                     to: sketch).isEmpty)
@@ -172,13 +172,13 @@ struct ParamOverrideTests {
         #expect(sketch.ramp.space == .oklab)
     }
 
-    @Test func aValueOutsideTheRangeClampsTheWayTheRowDoes() {
+    @Test func aValueOutsideTheRangeClampsTheWayTheRowDoes() throws {
         let sketch = ParamSketch()
         #expect(ParamOverride.apply([.init(name: "radius", text: "9999")], to: sketch).isEmpty)
         #expect(sketch.radius == 200)
     }
 
-    @Test func aChoiceMatchesItsNameLoosely() {
+    @Test func aChoiceMatchesItsNameLoosely() throws {
         for spelling in ["easeOut", "ease-out", "Ease Out", "EASEOUT"] {
             let sketch = ParamSketch()
             #expect(ParamOverride.apply([.init(name: "mood", text: spelling)], to: sketch).isEmpty)
@@ -188,14 +188,14 @@ struct ParamOverrideTests {
 
     // MARK: - What it says when it cannot
 
-    @Test func anUnknownParameterNamesWhatTheSketchHas() {
+    @Test func anUnknownParameterNamesWhatTheSketchHas() throws {
         let problems = ParamOverride.apply([.init(name: "radiuz", text: "40")], to: ParamSketch())
         #expect(problems.count == 1)
         #expect(problems[0].contains("no @Param named 'radiuz'"))
         #expect(problems[0].contains("radius"))
     }
 
-    @Test func aValueTheKindCannotReadSaysWhatItWanted() {
+    @Test func aValueTheKindCannotReadSaysWhatItWanted() throws {
         let sketch = ParamSketch()
         let problems = ParamOverride.apply([
             .init(name: "radius", text: "wide"),
@@ -212,7 +212,7 @@ struct ParamOverrideTests {
         #expect(sketch.mood == .calm)
     }
 
-    @Test func aParameterNamedTwiceEndsOnTheLastValue() {
+    @Test func aParameterNamedTwiceEndsOnTheLastValue() throws {
         let sketch = ParamSketch()
         #expect(ParamOverride.apply([.init(name: "radius", text: "40"),
                                      .init(name: "radius", text: "60")], to: sketch).isEmpty)
@@ -221,15 +221,15 @@ struct ParamOverrideTests {
 
     // MARK: - Where it lands
 
-    @Test func theFlagWinsOverTheSketchsOwnSetup() {
+    @Test func theFlagWinsOverTheSketchsOwnSetup() throws {
         let sketch = Opinionated()
-        withOverrides([.init(name: "radius", text: "40")]) {
-            sketch.runSetup()
+        try withOverrides([.init(name: "radius", text: "40")]) {
+            try sketch.runSetup()
         }
         #expect(sketch.radius == 40)
         // And with no flag, the sketch's own line still stands.
         let plain = Opinionated()
-        withOverrides([]) { plain.runSetup() }
+        try withOverrides([]) { try plain.runSetup() }
         #expect(plain.radius == 77)
     }
 
@@ -237,9 +237,9 @@ struct ParamOverrideTests {
     /// builds from a parameter (a count, an extension behind a switch) reads
     /// the run's value rather than the declared default (found by a sketch
     /// registering an extension in `setup()` behind a `--param`, 2026-09-22).
-    @Test func theValueIsThereWhenSetupRuns() {
+    @Test func theValueIsThereWhenSetupRuns() throws {
         let sketch = Builder()
-        withOverrides([.init(name: "count", text: "12")]) { sketch.runSetup() }
+        try withOverrides([.init(name: "count", text: "12")]) { try sketch.runSetup() }
         #expect(sketch.built == 12, "setup() must read the launch value, not the declared default")
         #expect(sketch.count == 12)
     }
@@ -251,17 +251,17 @@ struct ParamOverrideTests {
         view.isPaused = true
         view.enableSetNeedsDisplay = false
         let sketch = Builder()
-        withOverrides([.init(name: "count", text: "12")]) {
+        try withOverrides([.init(name: "count", text: "12")]) {
             let runner = SketchRunner(sketch: sketch, view: view, device: device)
             runner.draw(in: view)
         }
         #expect(sketch.built == 12)
     }
 
-    @Test func theRecipeNamesTheValueTheFrameWasDrawnWith() {
+    @Test func theRecipeNamesTheValueTheFrameWasDrawnWith() throws {
         let sketch = ParamSketch()
-        withOverrides([.init(name: "radius", text: "40")]) {
-            sketch.runSetup()
+        try withOverrides([.init(name: "radius", text: "40")]) {
+            try sketch.runSetup()
             let recipe = ExportMetadata.capture(from: sketch, frame: 0, fps: 60).recipe
             #expect(recipe.contains("\"radius\":40"))
         }
@@ -271,7 +271,7 @@ struct ParamOverrideTests {
         try #require(MTLCreateSystemDefaultDevice() != nil)
         func ink(_ overrides: [ParamOverride]) -> Int {
             var covered = 0
-            withOverrides(overrides) {
+            try withOverrides(overrides) {
                 guard let image = try? OllinApp.image(of: ParamSketch(), frame: 0, fps: 60) else { return }
                 covered = inkedPixels(of: image)
             }
@@ -294,7 +294,7 @@ struct ParamOverrideTests {
         let device = try #require(MTLCreateSystemDefaultDevice())
         func size(_ overrides: [ParamOverride]) -> (Int, Int) {
             var found = (0, 0)
-            withOverrides(overrides) {
+            try withOverrides(overrides) {
                 guard let image = try? OllinApp.image(of: CanvasPicker(), frame: 0, fps: 60) else { return }
                 found = (image.width, image.height)
             }
@@ -307,7 +307,7 @@ struct ParamOverrideTests {
         view.isPaused = true
         view.enableSetNeedsDisplay = false
         let sketch = CanvasPicker()
-        withOverrides([.init(name: "wide", text: "true")]) {
+        try withOverrides([.init(name: "wide", text: "true")]) {
             _ = SketchRunner(sketch: sketch, view: view, device: device)
         }
         #expect(sketch.canvasSize.width == 96 && sketch.canvasSize.height == 48)
@@ -320,7 +320,7 @@ struct ParamOverrideTests {
         view.isPaused = true
         view.enableSetNeedsDisplay = false
         let sketch = Opinionated()
-        withOverrides([.init(name: "radius", text: "40")]) {
+        try withOverrides([.init(name: "radius", text: "40")]) {
             let runner = SketchRunner(sketch: sketch, view: view, device: device)
             runner.draw(in: view)
             #expect(sketch.radius == 40, "the launch value must beat the sketch's own setup()")

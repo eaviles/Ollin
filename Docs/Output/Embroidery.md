@@ -50,7 +50,7 @@ plan.size          // the design in millimeters, margin included
 plan.dst()         // the file's bytes
 ```
 
-`Stitch.position` stays in canvas coordinates, so you can draw the plan over the sketch with no conversion. Each stitch carries a `kind`: a `.stitch`, a `.jump`, or a `.colorChange`. A `Stitch(position:kind:)` is one of them, so a plan can be built or edited by hand. From outside a sketch, `OllinApp.stitching(of:settings:)` plans a whole frame, fills and colors included. That `Stitching` carries the same counts plus `threads`, the colors in the order the machine asks for them, `colorChanges`, how many times it stops for one, and `jumpCount`, how many jumps it makes. The `Export/Embroidery` example draws a leaf and its stitches side by side.
+`Stitch.position` stays in canvas coordinates, so you can draw the plan over the sketch with no conversion. Each stitch carries a `kind`: a `.stitch`, a `.jump`, or a `.colorChange`. A `Stitch(position:kind:)` is one of them, so a plan can be built or edited by hand. From outside a sketch, `try OllinApp.stitching(of:settings:)` plans a whole frame, fills and colors included. That `Stitching` carries the same counts plus `threads`, the colors in the order the machine asks for them, `colorChanges`, how many times it stops for one, and `jumpCount`, how many jumps it makes. The `Export/Embroidery` example draws a leaf and its stitches side by side.
 
 ### From the command line
 

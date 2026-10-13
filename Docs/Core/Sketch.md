@@ -43,10 +43,10 @@ Override these on your subclass.
 #### setup
 
 ```swift
-setup()
+setup() throws
 ```
 
-Ollin calls this once, after the canvas size is known and before the first `draw()`. Overriding it is optional.
+Ollin calls this once, after the canvas size is known and before the first `draw()`. Overriding it is optional, and an override may leave `throws` off. It may throw: a loader that cannot read its file lets its `FileError` out with a bare `try` (see [A file that will not load](#fileerror)), a window reports the sentence the way the live hosts report a compile error and holds the sketch rather than drawing it half built, and a headless export fails with it.
 
 ```swift
 override func setup() {
@@ -65,12 +65,14 @@ final class Poster: Sketch {
     var photo: Image!
     var logo: SVG?
 
-    override func setup() {
-        photo = try! loadImage("photo.jpg")   // stop, naming the file and why
+    override func setup() throws {
+        photo = try loadImage("photo.jpg")    // stop, naming the file and why
         logo = try? loadSVG("logo.svg")       // carry on without it
     }
 }
 ```
+
+`setup()` may throw, so a bare `try` is the whole of it: the sketch stops there with the loader's sentence. In a window the sentence goes to stderr and, under OllinLive or the live-coding stage, into the error strip the way a compile error does, and the window stays open on a held sketch; a headless export fails with it. `try?` is the other shape, for an asset the sketch can do without.
 
 A `FileError` says which file, what kind of trouble, and what was wrong, in a sentence:
 
@@ -408,6 +410,6 @@ override var installation: Installation { .on }
 
 `OllinApp.run(MySketch())` opens a window and runs the sketch. With `@main` on the subclass, the inherited `Sketch.main()` does that for you, so a single file is the whole program. To iterate with live reload, run the sketch through the host instead with `swift run OllinLive path/to/Sketch.swift`, described under [live reload](../../README.md#live-reload).
 
-Any sketch can also render headlessly. `--export` writes a single frame, and `--export-exr` writes that frame in linear light for a compositor. `--export-sequence <dir> (--frames N | --seconds D) [--fps F] [--skip S]` writes a deterministic numbered PNG sequence that assembles into a video, rendered at a fixed timestep. `--skip S` runs the sketch for a while first, so a stateful sketch settles before capture. See [export](../../README.md#export).
+Any sketch can also render headlessly. `--export` writes a single frame (`--frame N` picks it, or `--at S` names the moment in seconds, so nobody multiplies by the frame rate), and `--export-exr` writes that frame in linear light for a compositor. `--export-sequence <dir> (--frames N | --seconds D) [--fps F] [--skip S]` writes a deterministic numbered PNG sequence that assembles into a video, rendered at a fixed timestep. `--skip S` runs the sketch for a while first, so a stateful sketch settles before capture. See [export](../../README.md#export).
 
 The same flags work on a loose watched file through the live host, as in `swift run OllinLive path/to/Sketch.swift --export-gif loop.gif --seconds 4`. That command compiles the file and exports instead of opening a window. The full flag set covers video, GIF, perfect loops, SVG, and render quality, and it is listed in [Export](../Output/Export.md).

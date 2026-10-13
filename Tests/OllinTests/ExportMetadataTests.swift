@@ -27,7 +27,7 @@ struct ExportMetadataTests {
     /// one adds the filter, an adaptive one adds the noise it stopped at, the
     /// minimum every pixel took, and the mean count reached, to a tenth. A frame
     /// that was not traced says nothing.
-    @Test func theRecipeNamesWhatATracedFrameSpent() {
+    @Test func theRecipeNamesWhatATracedFrameSpent() throws {
         var meta = ExportMetadata.capture(from: Sketch(), frame: 0, fps: 60)
         #expect(!meta.recipe.contains("pathTraced"))
         meta.pathTracing = PathTraceReport(settings: PathTracing(samplesPerPixel: 128, maxDepth: 4),
@@ -83,7 +83,7 @@ struct ExportMetadataTests {
     }
 
     @Test func svgCarriesTheRecipe() throws {
-        let recipe = try recipeJSON(in: OllinApp.svg(of: Seeded(), frame: 3))
+        let recipe = try recipeJSON(in: try OllinApp.svg(of: Seeded(), frame: 3))
         #expect(recipe["tool"] as? String == "Ollin")
         #expect(recipe["seed"] as? Int == 7)
         #expect(recipe["frame"] as? Int == 3)
@@ -98,7 +98,7 @@ struct ExportMetadataTests {
             override func setup() { randomSeed(1); noiseSeed(2) }
             override func draw() { background(.white) }
         }
-        let recipe = try recipeJSON(in: OllinApp.svg(of: Split()))
+        let recipe = try recipeJSON(in: try OllinApp.svg(of: Split()))
         #expect(recipe["seed"] == nil)
         #expect(recipe["randomSeed"] as? Int == 1)
         #expect(recipe["noiseSeed"] as? Int == 2)
@@ -113,7 +113,7 @@ struct ExportMetadataTests {
             override func draw() { background(.white) }
         }
         let plain = Plain()
-        let recipe = try recipeJSON(in: OllinApp.svg(of: plain))
+        let recipe = try recipeJSON(in: try OllinApp.svg(of: plain))
         #expect(recipe["seed"] as? Int == plain.variation)
         #expect(recipe["randomSeed"] == nil)   // one shared seed prints as `seed`
         #expect(recipe["noiseSeed"] == nil)
@@ -129,7 +129,7 @@ struct ExportMetadataTests {
         #expect(object["fps"] as? Int == 30)
     }
 
-    @Test func recipeFormatsParamKinds() {
+    @Test func recipeFormatsParamKinds() throws {
         let meta = ExportMetadata(
             randomSeed: 5, noiseSeed: 5,
             params: [("flag", .boolean(true)),
@@ -142,7 +142,7 @@ struct ExportMetadataTests {
 
     /// A plate export is only reproducible if the recipe says which press and
     /// intent made it, so both ride the same line as the seed.
-    @Test func recipeCarriesThePrintingCondition() {
+    @Test func recipeCarriesThePrintingCondition() throws {
         var meta = ExportMetadata(randomSeed: 5, noiseSeed: 5, params: [],
                                   gitHash: nil, frame: nil, fps: nil)
         meta.inks = ["Cyan", "Magenta", "Yellow", "Black"]
@@ -155,8 +155,8 @@ struct ExportMetadataTests {
         #expect(meta.recipe == #"{"tool":"Ollin","seed":5}"#)
     }
 
-    @Test func pdfCarriesTheRecipeAsSubject() {
-        let pdf = OllinApp.pdf(of: Seeded(), frame: 3)
+    @Test func pdfCarriesTheRecipeAsSubject() throws {
+        let pdf = try OllinApp.pdf(of: Seeded(), frame: 3)
         #expect(pdf.contains(Data(#""tool":"Ollin""#.utf8)))
         #expect(pdf.contains(Data(#""seed":7"#.utf8)))
     }

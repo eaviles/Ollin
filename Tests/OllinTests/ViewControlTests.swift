@@ -136,6 +136,45 @@ struct ViewControlTests {
         #expect(sketch.viewCenter == dragged, "the opening framing snapped the view back")
     }
 
+    /// After the first call the arguments are the view's home. A value that
+    /// changes while the viewer has not touched the view (a `@Param` turned in
+    /// the inspector) glides the view there, lands exactly, and a constant
+    /// value holds it, so an export and a window frame the same picture.
+    @Test func aChangedFramingGlidesTheViewWhileTheViewerHasNotTakenIt() {
+        let sketch = probe()
+        sketch.openingZoom = 1
+        frame(sketch, at: Vector2(100, 100))
+        sketch.openingZoom = 2                          // the parameter moved
+        frame(sketch, at: Vector2(100, 100))
+        #expect(sketch.viewZoom > 1 && sketch.viewZoom < 2, "one frame in: \(sketch.viewZoom)")
+        for _ in 0..<180 { frame(sketch, at: Vector2(100, 100)) }
+        #expect(sketch.viewZoom == 2, "landed at \(sketch.viewZoom)")
+        #expect(sketch.viewCenter == Vector2(200, 200), "the center moved: \(sketch.viewCenter)")
+        sketch.openingCenter = Vector2(150, 120)
+        for _ in 0..<180 { frame(sketch, at: Vector2(100, 100)) }
+        #expect(sketch.viewCenter == Vector2(150, 120), "landed at \(sketch.viewCenter)")
+        let held = (sketch.viewCenter, sketch.viewZoom)
+        for _ in 0..<10 { frame(sketch, at: Vector2(100, 100)) }
+        #expect(sketch.viewCenter == held.0 && sketch.viewZoom == held.1, "a constant framing moved the view")
+    }
+
+    /// Once the viewer has dragged or scrolled, a changed value moves only the
+    /// home: the view stays where they left it, and `resetView()` opens on the
+    /// new home.
+    @Test func aChangedFramingLeavesAViewTheViewerTookAlone() {
+        let sketch = probe()
+        frame(sketch, at: Vector2(100, 100), pressed: true)
+        frame(sketch, at: Vector2(160, 100), pressed: true)
+        frame(sketch, at: Vector2(160, 100))
+        let taken = (sketch.viewCenter, sketch.viewZoom)
+        sketch.openingZoom = 3
+        for _ in 0..<60 { frame(sketch, at: Vector2(160, 100)) }
+        #expect(sketch.viewCenter == taken.0 && sketch.viewZoom == taken.1, "the view moved under the viewer")
+        sketch.resetView()
+        frame(sketch, at: Vector2(160, 100))
+        #expect(sketch.viewZoom == 3 && sketch.viewCenter == Vector2(200, 200), "\(sketch.viewCenter) at \(sketch.viewZoom)")
+    }
+
     /// And `resetView()` is the way back, since nothing else is.
     @Test func resetPutsTheOpeningFramingBack() {
         let sketch = probe()
@@ -190,7 +229,7 @@ struct ViewControlTests {
         override var canvasSize: CanvasSize { .square(240) }
         override func draw() {
             background(.black)
-            if scroll != 0 { view2D.seed(center: Vector2(120, 120), zoom: 1) }
+            if scroll != 0 { view2D.frame(center: Vector2(120, 120), zoom: 1) }
             viewControl()
             noStroke()
             fill(.white)

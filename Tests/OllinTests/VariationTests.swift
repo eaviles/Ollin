@@ -20,7 +20,7 @@ struct VariationTests {
         override func draw() { background(.white) }
     }
 
-    @Test func aFreshSketchIsBornOnAReadableSeed() {
+    @Test func aFreshSketchIsBornOnAReadableSeed() throws {
         let sketch = Rolls()
         #expect((1...99_999).contains(sketch.variation))
         // Both generators start from it, so the recipe's single `seed` is honest.
@@ -28,38 +28,38 @@ struct VariationTests {
         #expect(sketch.recordedNoiseSeed == sketch.variation)
     }
 
-    @Test func unseededSketchesVaryRunToRun() {
+    @Test func unseededSketchesVaryRunToRun() throws {
         // Ten fresh instances landing on one seed is a ~1-in-10^36 accident, so
         // a repeat here means the roll isn't rolling.
         let seeds = Set((0..<10).map { _ in Rolls().variation })
         #expect(seeds.count > 1)
     }
 
-    @Test func seedSetsTheVariationAndReproducesTheRun() {
+    @Test func seedSetsTheVariationAndReproducesTheRun() throws {
         let a = Rolls(), b = Rolls()
         a.seed(4242)
         b.seed(4242)
         #expect(a.variation == 4242)
         #expect(b.variation == 4242)
-        a.setup()
-        b.setup()
+        try a.setup()
+        try b.setup()
         #expect(a.samples == b.samples)          // same seed, same piece
         #expect(!a.samples.isEmpty)
     }
 
-    @Test func adjacentSeedsGiveDifferentRuns() {
+    @Test func adjacentSeedsGiveDifferentRuns() throws {
         let a = Rolls(), b = Rolls()
         a.seed(100)
         b.seed(101)
-        a.setup()
-        b.setup()
+        try a.setup()
+        try b.setup()
         #expect(a.samples != b.samples)
     }
 
     /// `randomSeed`/`noiseSeed` reseed one generator without claiming the whole
     /// run: the sketch's `variation` stays what it was, so the recipe still
     /// splits them into `randomSeed`/`noiseSeed` rather than a single `seed`.
-    @Test func partialReseedLeavesTheVariationAlone() {
+    @Test func partialReseedLeavesTheVariationAlone() throws {
         let sketch = Rolls()
         let born = sketch.variation
         sketch.randomSeed(3)
@@ -101,7 +101,7 @@ struct VariationTests {
         #expect(built == 3)
     }
 
-    @Test func anEmptySeedListMakesNoSheet() {
+    @Test func anEmptySeedListMakesNoSheet() throws {
         let error = #expect(throws: ExportError.self) {
             try OllinApp.contactSheet(of: { Rolls() }, seeds: [])
         }
@@ -167,7 +167,7 @@ struct VariationTests {
     /// does declare, rather than rendering a sheet of defaults that silently
     /// ignores the ask.
     @Test(.enabled(if: MTLCreateSystemDefaultDevice() != nil))
-    func sweepingAnUnknownParameterMakesNoSheet() {
+    func sweepingAnUnknownParameterMakesNoSheet() throws {
         let error = #expect(throws: ExportError.self) {
             try OllinApp.contactSheet(of: { Parameterized() },
                                       sweeping: "nosuch", values: [1, 2])
@@ -188,7 +188,7 @@ struct VariationTests {
     }
 
     /// The sweep recipe names the parameter, its values, and the pinned seed.
-    @Test func sweepRecipeCarriesParameterValuesAndSeed() {
+    @Test func sweepRecipeCarriesParameterValuesAndSeed() throws {
         let recipe = ExportMetadata.sheetRecipe(sweep: "radius", values: [0.5, 2],
                                                 seed: 77, frame: 3, fps: 30)
         #expect(recipe.contains("\"sweep\":\"radius\""))

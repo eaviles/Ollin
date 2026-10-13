@@ -163,11 +163,18 @@ extension OllinApp {
                         renderer?.automaticQuality = .detail
                     }
                     guard let renderer else { return }
-                    if let image = widgetImage(of: sketch, at: moment,
-                                               spacing: timeline.spacing,
-                                               size: size ?? sketch.canvasSize,
-                                               renderer: renderer) {
-                        frames.append(WidgetFrame(date: moment, image: image))
+                    do {
+                        if let image = try widgetImage(of: sketch, at: moment,
+                                                       spacing: timeline.spacing,
+                                                       size: size ?? sketch.canvasSize,
+                                                       renderer: renderer) {
+                            frames.append(WidgetFrame(date: moment, image: image))
+                        }
+                    } catch {
+                        // The same empty answer, with the sentence where a
+                        // developer looks.
+                        FileHandle.standardError.write(Data("Ollin: setup() threw: \(error)\n".utf8))
+                        return
                     }
                 }
             }
@@ -179,10 +186,10 @@ extension OllinApp {
     /// warm-up and no frame before this one, because on this surface there
     /// never is.
     private static func widgetImage(of sketch: Sketch, at moment: Date, spacing: Double,
-                                    size: CanvasSize, renderer: MetalRenderer) -> CGImage? {
+                                    size: CanvasSize, renderer: MetalRenderer) throws -> CGImage? {
         sketch.heldDate = moment
         sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
-        sketch.runSetup()
+        try sketch.runSetup()
         sketch.advance(time: WidgetTimeline.timeOfDay(at: moment),
                        deltaTime: spacing,
                        frameRate: 1 / spacing)

@@ -110,31 +110,31 @@ struct EmbroideryExportTests {
 
     // MARK: - Invariants
 
-    @Test func theFileIsAHeaderAndRecordsThatCountThemselves() {
+    @Test func theFileIsAHeaderAndRecordsThatCountThemselves() throws {
         let sketch = probe { s in
             s.noFill(); s.stroke(.black); s.strokeWeight(2)
             s.drawRect(40, 20, 100, 50)
         }
-        let data = OllinApp.embroidery(of: sketch, settings: mm)
+        let data = try OllinApp.embroidery(of: sketch, settings: mm)
         let file = DST(data)
         #expect(data.count == 512 + 3 * file.records.count)
         #expect(file.records.last?.kind == .end)
         #expect(file.headerCount == file.moves.count, "ST counts every record before the end")
         #expect(file.headerColors == 0)
         #expect(file.label == "OLLIN")
-        let plan = OllinApp.stitching(of: sketch, settings: mm)
+        let plan = try OllinApp.stitching(of: sketch, settings: mm)
         #expect(plan.threads.count == 1 && plan.colorChanges == 0)
         #expect(plan.stitchCount == file.moves.filter { $0.kind == .stitch }.count)
     }
 
-    @Test func everyRecordMovesWithinTheGridAndLandsWhereThePlanSaid() {
+    @Test func everyRecordMovesWithinTheGridAndLandsWhereThePlanSaid() throws {
         let sketch = probe { s in
             s.noFill(); s.stroke(.black); s.strokeWeight(2)
             s.drawCircle(60, 50, 35)
             s.drawLine(120, 10, 190, 90)
             s.drawRect(130, 20, 30, 30)
         }
-        let plan = OllinApp.stitching(of: sketch, settings: mm)
+        let plan = try OllinApp.stitching(of: sketch, settings: mm)
         let file = DST(plan.dst())
         #expect(file.moves.allSatisfy { abs($0.dx) <= 121 && abs($0.dy) <= 121 })
         // Every stitch and jump of the plan is reached by the file, on the grid,
@@ -151,12 +151,12 @@ struct EmbroideryExportTests {
         #expect(file.extents.plusY == ys.max()! && file.extents.minusY == -ys.min()!)
     }
 
-    @Test func aRunningStitchKeepsThePitchAndHitsTheCorners() {
+    @Test func aRunningStitchKeepsThePitchAndHitsTheCorners() throws {
         let sketch = probe { s in
             s.noFill(); s.stroke(.black); s.strokeWeight(2)
             s.drawRect(40, 20, 100, 50)
         }
-        let plan = OllinApp.stitching(of: sketch, settings: mm)
+        let plan = try OllinApp.stitching(of: sketch, settings: mm)
         var previous: Vector2?
         var longest = 0.0
         for stitch in plan.stitches where stitch.kind == .stitch {
@@ -172,12 +172,12 @@ struct EmbroideryExportTests {
         #expect(abs(plan.threadLength - 300) < 1e-6, "the perimeter is sewn once (\(plan.threadLength))")
     }
 
-    @Test func aFillIsRowsAtTheSpacingOrItsOutlineAlone() {
+    @Test func aFillIsRowsAtTheSpacingOrItsOutlineAlone() throws {
         let sketch = probe { s in
             s.noStroke(); s.fill(.black)
             s.drawRect(50, 30, 40, 20)
         }
-        let rows = OllinApp.stitching(of: sketch, settings: Embroidery(width: 200, fillSpacing: 0.5))
+        let rows = try OllinApp.stitching(of: sketch, settings: Embroidery(width: 200, fillSpacing: 0.5))
         let ys = Set(rows.stitches.filter { $0.kind == .stitch }.map { Int(($0.position.y * 100).rounded()) })
         #expect(ys.count >= 38 && ys.count <= 42, "twenty millimeters at half-millimeter rows (\(ys.count))")
         #expect(rows.stitches.filter { $0.kind == .stitch }.allSatisfy {
@@ -187,7 +187,7 @@ struct EmbroideryExportTests {
         // Rows are connected end to end where they can be: far fewer jumps than rows.
         #expect(rows.jumpCount <= 2, "the rows connect without lifting the thread (\(rows.jumpCount))")
 
-        let outline = OllinApp.stitching(of: sketch, settings: Embroidery(width: 200, fillSpacing: nil))
+        let outline = try OllinApp.stitching(of: sketch, settings: Embroidery(width: 200, fillSpacing: nil))
         let onEdge = outline.stitches.filter { $0.kind == .stitch }.allSatisfy { st in
             let p = st.position
             let onX = abs(p.x - 50) < 1e-6 || abs(p.x - 90) < 1e-6
@@ -198,14 +198,14 @@ struct EmbroideryExportTests {
         #expect(abs(outline.threadLength - 120) < 1e-6)
     }
 
-    @Test func eachColorIsItsOwnThreadInDrawOrder() {
+    @Test func eachColorIsItsOwnThreadInDrawOrder() throws {
         let sketch = probe { s in
             s.noStroke()
             s.fill(.red); s.drawRect(10, 10, 30, 30)
             s.fill(.blue); s.drawRect(60, 10, 30, 30)
             s.fill(.red); s.drawRect(110, 10, 30, 30)
         }
-        let plan = OllinApp.stitching(of: sketch, settings: mm)
+        let plan = try OllinApp.stitching(of: sketch, settings: mm)
         #expect(plan.threads == [.red, .blue, .red], "later red sews on top, so it is its own thread")
         #expect(plan.colorChanges == 2)
         let file = DST(plan.dst())
@@ -215,13 +215,13 @@ struct EmbroideryExportTests {
         #expect(file.moves.filter { $0.kind == .colorChange }.allSatisfy { $0.dx == 0 && $0.dy == 0 })
     }
 
-    @Test func aLongHopIsAJumpSpreadOverSeveralRecords() {
+    @Test func aLongHopIsAJumpSpreadOverSeveralRecords() throws {
         let sketch = probe { s in
             s.noFill(); s.stroke(.black); s.strokeWeight(2)
             s.drawLine(5, 50, 15, 50)
             s.drawLine(185, 50, 195, 50)
         }
-        let plan = OllinApp.stitching(of: sketch, settings: mm)
+        let plan = try OllinApp.stitching(of: sketch, settings: mm)
         // One jump between the two lines (the hop from the center to the first
         // line is a jump too).
         #expect(plan.jumpCount == 2)
@@ -239,21 +239,21 @@ struct EmbroideryExportTests {
         #expect(runs == 2)
     }
 
-    @Test func theWidthSetsTheScaleAndTheHoopGrowsUpward() {
+    @Test func theWidthSetsTheScaleAndTheHoopGrowsUpward() throws {
         let sketch = probe { s in
             s.noFill(); s.stroke(.black); s.strokeWeight(2)
             s.drawLine(0, 10, 200, 10)
         }
-        let file = DST(OllinApp.embroidery(of: sketch, settings: Embroidery(width: 100)))
+        let file = DST(try OllinApp.embroidery(of: sketch, settings: Embroidery(width: 100)))
         let xs = file.moves.map(\.x), ys = file.moves.map(\.y)
         #expect(xs.max()! - xs.min()! == 1000, "two hundred units across at 100 mm is 1000 grid steps")
         // Forty units above the center at half a millimeter a unit is 200 grid steps up.
         #expect(ys.allSatisfy { $0 >= 0 } && ys.max()! == 200, "the canvas top is above the center in the hoop (\(ys.max()!))")
-        let plan = OllinApp.stitching(of: sketch, settings: Embroidery(width: 100, margin: 5))
+        let plan = try OllinApp.stitching(of: sketch, settings: Embroidery(width: 100, margin: 5))
         #expect(abs(plan.size.width - 110) < 1e-9 && abs(plan.size.height - 60) < 1e-9)
     }
 
-    @Test func orderingShortensTheJumpsAndSewsTheSameThread() {
+    @Test func orderingShortensTheJumpsAndSewsTheSameThread() throws {
         let sketch = probe { s in
             s.noFill(); s.stroke(.black); s.strokeWeight(2)
             // Four short strokes drawn in the worst order for a machine.
@@ -262,8 +262,8 @@ struct EmbroideryExportTests {
             s.drawLine(10, 90, 20, 90)
             s.drawLine(180, 10, 190, 10)
         }
-        let ordered = OllinApp.stitching(of: sketch, settings: Embroidery(width: 200))
-        let asDrawn = OllinApp.stitching(of: sketch, settings: Embroidery(width: 200, optimizesTravel: false))
+        let ordered = try OllinApp.stitching(of: sketch, settings: Embroidery(width: 200))
+        let asDrawn = try OllinApp.stitching(of: sketch, settings: Embroidery(width: 200, optimizesTravel: false))
         #expect(ordered.jumpLength < asDrawn.jumpLength * 0.8, "\(ordered.jumpLength) against \(asDrawn.jumpLength)")
         #expect(abs(ordered.threadLength - asDrawn.threadLength) < 1e-6)
         #expect(ordered.stitchCount == asDrawn.stitchCount)
@@ -285,7 +285,7 @@ struct EmbroideryExportTests {
         #expect(file.moves.filter { $0.kind == .stitch }.count > 60)
     }
 
-    @Test func thePublicPlannerTakesPlainContours() {
+    @Test func thePublicPlannerTakesPlainContours() throws {
         let canvas = Rectangle(x: 0, y: 0, width: 200, height: 100)
         let square = Contour([Vector2(20, 20), Vector2(80, 20), Vector2(80, 80), Vector2(20, 80)], closed: true)
         let plan = mm.stitches([square], in: canvas)

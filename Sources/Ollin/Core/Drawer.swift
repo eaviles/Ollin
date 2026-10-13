@@ -141,6 +141,12 @@ struct GeometryBatch {
     /// included: a photograph continues past its crop, so blending across that
     /// edge is the right reading).
     var imageBounds: SIMD4<Float>?
+    /// Whether an `.image` batch reads its enlarged pixels as hard squares
+    /// (`imageSampling(.nearest)`): the renderer binds the pixel sampler, whose
+    /// magnification is nearest and whose minification stays linear, so a
+    /// picture drawn smaller than its pixels is blended as it always was. Each
+    /// image draw is its own batch, so the flag never splits one.
+    var imageSamplesNearest = false
     /// The SDF atlas page a `.glyphAtlas` batch samples, `nil` otherwise. A run of
     /// `drawText` calls with nothing drawn between them and the same page and pass
     /// state is one batch (every glyph samples the same page, and each quad
@@ -425,6 +431,7 @@ final class Drawer {
     /// same reason justification is: only a box has an edge to hang past.
     var textHangsInBox = false
     var tintColor: Color? = nil                  // multiplies drawImage texels; nil = untinted (see tint / noTint)
+    var imageSamplingMode: ImageSampling = .linear   // how drawImage reads a picture drawn larger than it is
     var currentBlend: BlendMode = .normal        // how shapes combine with the canvas (see blendMode)
     var currentDepth: Float? = nil               // clip-z for 2D draws in a 3D scene; nil = draw over (see depth(at:))
 
@@ -1640,8 +1647,10 @@ final class Drawer {
     /// `ensureBatch`, this always appends — each image draw binds its own texture,
     /// so two consecutive images can't share a batch. Resets `currentKind` so a
     /// following triangle/SDF primitive reopens its own batch. `bounds` is the
-    /// part of the texture the draw may read (`GeometryBatch.imageBounds`).
-    func beginImageBatch(_ image: Image, bounds: SIMD4<Float>? = nil) {
+    /// part of the texture the draw may read (`GeometryBatch.imageBounds`), and
+    /// `nearest` whether the draw reads its enlarged pixels as hard squares
+    /// (`GeometryBatch.imageSamplesNearest`).
+    func beginImageBatch(_ image: Image, bounds: SIMD4<Float>? = nil, nearest: Bool = false) {
         currentKind = .image
         currentBatchBlend = currentBlend
         currentBatchDepth = currentDepth
@@ -1655,6 +1664,7 @@ final class Drawer {
                                      sdfGroupStart: sdfGroups.count,
                                      sdf3DGroupStart: sdf3DGroups.count,
                                      blendMode: currentBlend, image: image, imageBounds: bounds,
+                                     imageSamplesNearest: nearest,
                                      depth: currentDepth,
                                      target: currentTarget, clipLevel: activeClipLevel))
     }
@@ -2330,6 +2340,7 @@ final class Drawer {
         var textJustifies: Bool
         var textHangsPunctuation: Bool
         var tintColor: Color?
+        var imageSamplingMode: ImageSampling
         var currentBlend: BlendMode
         var currentDepth: Float?
         var symmetryFolds: [matrix_float3x3]?
@@ -2611,6 +2622,13 @@ final class Drawer {
 
     /// Stop tinting images — back to drawing them unchanged (the default).
     func noTint() { tintColor = nil }
+
+    /// How subsequent `drawImage` calls read a picture drawn larger than it is:
+    /// `.linear` blends neighboring pixels (the default), `.nearest` keeps each
+    /// one a hard square. Carried on the image batch, where the renderer picks
+    /// the sampler; a picture drawn smaller than its pixels is blended either
+    /// way (see `ImageSampling`).
+    func imageSampling(_ mode: ImageSampling) { imageSamplingMode = mode }
 
     /// Set how subsequent shapes combine with the canvas (see `BlendMode`):
     /// `.normal` (default, lay over) or a combining mode like `.add` (sum as
@@ -5121,6 +5139,7 @@ final class Drawer {
                                      textJustifies: textJustifies,
                                      textHangsPunctuation: textHangsPunctuation,
                                      tintColor: tintColor,
+                                     imageSamplingMode: imageSamplingMode,
                                      currentBlend: currentBlend,
                                      currentDepth: currentDepth,
                                      symmetryFolds: symmetryFolds,
@@ -5162,6 +5181,7 @@ final class Drawer {
         textJustifies = s.textJustifies
         textHangsPunctuation = s.textHangsPunctuation
         tintColor = s.tintColor
+        imageSamplingMode = s.imageSamplingMode
         currentBlend = s.currentBlend
         currentDepth = s.currentDepth
         symmetryFolds = s.symmetryFolds

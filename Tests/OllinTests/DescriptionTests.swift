@@ -17,7 +17,7 @@ struct DescriptionTests {
 
     // MARK: - What a sketch says
 
-    @Test func theSummaryIsReplacedRatherThanAppended() {
+    @Test func theSummaryIsReplacedRatherThanAppended() throws {
         let s = sketch()
         s.describe("A red circle.")
         s.describe("A blue square.")
@@ -25,7 +25,7 @@ struct DescriptionTests {
         #expect(s.accessibleDescription.elements.isEmpty)
     }
 
-    @Test func emptyTextClearsTheSummary() {
+    @Test func emptyTextClearsTheSummary() throws {
         let s = sketch()
         s.describe("A red circle.")
         s.describe("   ")
@@ -33,7 +33,7 @@ struct DescriptionTests {
         #expect(s.accessibleDescription.isEmpty)
     }
 
-    @Test func surroundingSpaceIsTrimmed() {
+    @Test func surroundingSpaceIsTrimmed() throws {
         let s = sketch()
         s.describe("  A red circle.\n")
         s.describe(" sun ", as: "  a yellow disc ")
@@ -47,7 +47,7 @@ struct DescriptionTests {
     /// what is there, and they have to keep their place. A list that grew, or
     /// that reordered itself, would move a screen reader's cursor under the
     /// person using it.
-    @Test func aPartDescribedEveryFrameStaysOneEntryInItsOwnPlace() {
+    @Test func aPartDescribedEveryFrameStaysOneEntryInItsOwnPlace() throws {
         let s = sketch()
         for frame in 0..<10 {
             s.describe("sun", as: "a yellow disc at \(frame)")
@@ -62,7 +62,7 @@ struct DescriptionTests {
     /// Anything else moves the reading order under somebody who is walking it
     /// by hand: the sun setting must not send it to the bottom of the list at
     /// dawn. Caught by rendering the example, not by reasoning about it.
-    @Test func aPartThatComesAndGoesKeepsItsPlaceInTheOrder() {
+    @Test func aPartThatComesAndGoesKeepsItsPlaceInTheOrder() throws {
         let s = sketch()
         s.describe("the sun", as: "a yellow disc")
         s.describe("the water", as: "a flat band")
@@ -75,7 +75,7 @@ struct DescriptionTests {
         #expect(s.accessibleDescription.elements.map(\.name) == ["the sun", "the water", "the boat"])
     }
 
-    @Test func noDescriptionClearsEverything() {
+    @Test func noDescriptionClearsEverything() throws {
         let s = sketch()
         s.describe("A seascape.")
         s.describe("sun", as: "a yellow disc")
@@ -84,21 +84,21 @@ struct DescriptionTests {
         #expect(s.accessibleDescription.elements.isEmpty)
     }
 
-    @Test func aSketchThatSaysNothingHasNothingToRead() {
+    @Test func aSketchThatSaysNothingHasNothingToRead() throws {
         #expect(sketch().accessibleDescription.isEmpty)
         #expect(sketch().accessibleDescription.lines.isEmpty)
     }
 
     // MARK: - What gets read out
 
-    @Test func aPartReadsAsItsNameThenItsDescription() {
+    @Test func aPartReadsAsItsNameThenItsDescription() throws {
         let named = DescribedElement(name: "sun", text: "a yellow disc")
         let nameless = DescribedElement(name: "", text: "a yellow disc")
         #expect(named.spoken == "sun: a yellow disc")
         #expect(nameless.spoken == "a yellow disc")
     }
 
-    @Test func theSummaryIsReadBeforeTheParts() {
+    @Test func theSummaryIsReadBeforeTheParts() throws {
         let s = sketch()
         s.describe("sun", as: "a yellow disc")
         s.describe("A seascape.")
@@ -109,7 +109,7 @@ struct DescriptionTests {
     /// of parts changes. Rewording a part must stay quiet, or a sketch that
     /// describes itself every frame would interrupt a screen reader sixty times
     /// a second.
-    @Test func rewordingAPartDoesNotChangeTheShapeButAddingOneDoes() {
+    @Test func rewordingAPartDoesNotChangeTheShapeButAddingOneDoes() throws {
         var description = SketchDescription()
         description.setElement(name: "sun", text: "a yellow disc", region: nil)
         let first = description.shape
@@ -132,7 +132,7 @@ struct DescriptionTests {
     /// the bottom, so a part in the top-left of the canvas has to land in the
     /// top-left of the window. Getting this backwards points a screen reader at
     /// the mirror image of the piece.
-    @Test func aPartInTheTopLeftOfTheCanvasLandsInTheTopLeftOfTheView() {
+    @Test func aPartInTheTopLeftOfTheCanvasLandsInTheTopLeftOfTheView() throws {
         let bounds = CGRect(x: 0, y: 0, width: 400, height: 400)
         let topLeft = Rectangle(x: 0, y: 0, width: 100, height: 100)
         let rect = viewRect(of: topLeft, canvasWidth: 800, canvasHeight: 800, in: bounds)
@@ -146,7 +146,7 @@ struct DescriptionTests {
         #expect(flipped.minY == 0)                         // the view's bottom edge
     }
 
-    @Test func aCanvasWithNoSizeYetGivesBackTheWholeView() {
+    @Test func aCanvasWithNoSizeYetGivesBackTheWholeView() throws {
         let bounds = CGRect(x: 0, y: 0, width: 400, height: 300)
         let rect = viewRect(of: Rectangle(x: 0, y: 0, width: 10, height: 10),
                             canvasWidth: 0, canvasHeight: 0, in: bounds)
@@ -176,8 +176,8 @@ struct DescriptionTests {
         }
     }
 
-    @Test func anSVGCarriesWhatTheSketchSaid() {
-        let svg = OllinApp.svg(of: Described())
+    @Test func anSVGCarriesWhatTheSketchSaid() throws {
+        let svg = try OllinApp.svg(of: Described())
         #expect(svg.contains("<title id=\"ollin-title\">A black circle in the middle of a white square.</title>"))
         #expect(svg.contains("<desc id=\"ollin-desc\">the circle: black &amp; 40 wide</desc>"))
         #expect(svg.contains("role=\"img\""))
@@ -190,8 +190,8 @@ struct DescriptionTests {
 
     /// A sketch that describes nothing writes exactly the file it wrote before
     /// any of this existed: no attributes on the tag, no elements inside it.
-    @Test func aSilentSketchWritesTheFileItAlwaysDid() {
-        let svg = OllinApp.svg(of: Silent())
+    @Test func aSilentSketchWritesTheFileItAlwaysDid() throws {
+        let svg = try OllinApp.svg(of: Silent())
         #expect(!svg.contains("role=\"img\""))
         #expect(!svg.contains("aria-labelledby"))
         #expect(!svg.contains("<title"))
@@ -268,8 +268,8 @@ struct DescriptionTests {
         #expect(view.accessibilityChildren()?.count == 2)
     }
 
-    @Test func aPDFCarriesTheSummaryAsItsTitle() {
-        let data = OllinApp.pdf(of: Described())
+    @Test func aPDFCarriesTheSummaryAsItsTitle() throws {
+        let data = try OllinApp.pdf(of: Described())
         let document = CGPDFDocument(CGDataProvider(data: data as CFData)!)
         var title: CGPDFStringRef?
         #expect(CGPDFDictionaryGetString(document!.info!, "Title", &title))
@@ -277,8 +277,8 @@ struct DescriptionTests {
         #expect(read == "A black circle in the middle of a white square.")
     }
 
-    @Test func aSilentSketchWritesNoPDFTitle() {
-        let data = OllinApp.pdf(of: Silent())
+    @Test func aSilentSketchWritesNoPDFTitle() throws {
+        let data = try OllinApp.pdf(of: Silent())
         let document = CGPDFDocument(CGDataProvider(data: data as CFData)!)
         var title: CGPDFStringRef?
         #expect(!CGPDFDictionaryGetString(document!.info!, "Title", &title))

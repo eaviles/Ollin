@@ -51,7 +51,7 @@ extension Drawer {
         let bounds: SIMD4<Float>? = keepsToSource
             ? SIMD4(min(uLeft, uRight), min(vTop, vBot), max(uLeft, uRight), max(vTop, vBot))
             : nil
-        beginImageBatch(image, bounds: bounds)
+        beginImageBatch(image, bounds: bounds, nearest: imageSamplingMode == .nearest)
         // Symmetry replicas extend this same batch (one texture, many quads).
         replicated { imageVertices.append(contentsOf: [tl, tr, br, tl, br, bl]) }
     }

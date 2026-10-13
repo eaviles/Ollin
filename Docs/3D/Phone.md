@@ -315,10 +315,10 @@ The bundled example is `swift run --package-path Examples Example-3D-Phone-Phone
 Everything above runs one way: the phone broadcasts and the Mac reads. This is the one thing that runs the other way. The sketch tells the phone which mode to run, and gives it the pictures to look for, so the `.swift` file carries the whole work. A phone that has never seen your sketch knows what to find the moment the cable goes in.
 
 ```swift
-override func setup() {
+override func setup() throws {
     device.use(.markers)                                    // which mode to run
     device.look(for: [                                      // and what to look for
-        try! .picture(resource: "poster", withExtension: "png", in: .module, printedWidth: 0.3),
+        try .picture(resource: "poster", withExtension: "png", in: .module, printedWidth: 0.3),
     ])
     device.start()
 }

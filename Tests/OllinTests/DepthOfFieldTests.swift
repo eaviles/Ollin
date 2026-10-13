@@ -564,9 +564,9 @@ struct DepthOfFieldTests {
 
         final class Delivery { var image: CGImage? }
         /// One refresh of the window, and the frame it showed.
-        func live(_ sketch: Lens) -> [UInt8]? {
+        func live(_ sketch: Lens) throws -> [UInt8]? {
             sketch.setCanvasSize(width: Double(side), height: Double(side))
-            sketch.setup()
+            try sketch.setup()
             sketch.performDraw()
             let delivery = Delivery()
             let request = MetalRenderer.FrameGrabRequest(width: side, height: side, wantsImage: true,
@@ -580,8 +580,8 @@ struct DepthOfFieldTests {
             }
             return delivery.image.map(bytes)
         }
-        let window = try #require(live(lens()))
-        let sharpWindow = try #require(live(lens { $0.blurs = false }))
+        let window = try #require(try live(lens()))
+        let sharpWindow = try #require(try live(lens { $0.blurs = false }))
         let export = bytes(try OllinApp.image(of: lens(), frame: 0))
         func difference(_ a: [UInt8], _ b: [UInt8]) -> Double {
             Double(zip(a, b).reduce(0) { $0 + abs(Int($1.0) - Int($1.1)) }) / Double(a.count)

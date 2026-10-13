@@ -151,6 +151,7 @@ _ollin() {
             '--skip[run this many seconds before the first written frame]:S:' \
             '--start[the number the first file of a sequence is named with]:N:' \
             '--frame[which frame to write]:N:' \
+            '--at[which moment to write, in the sketch'\''s own seconds (the frame at --fps)]:S:' \
             '--render-quality[how hard the render works]:performance|default|detail:' \
             '--render-scale[draw each frame N times across and average it down]:N:' \
             '--settle[draw each written frame N times with the clock held]:N:' \

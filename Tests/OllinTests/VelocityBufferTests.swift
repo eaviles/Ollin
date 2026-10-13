@@ -122,17 +122,17 @@ struct VelocityBufferTests {
 
     // MARK: The registry (CPU)
 
-    @Test func aMoversFirstFrameRecordsNoRange() {
+    @Test func aMoversFirstFrameRecordsNoRange() throws {
         let s = MoverProbe()
-        s.setup()
+        try s.setup()
         s.performDraw()
         #expect(s.drawer.moverRanges.isEmpty,
                 "with no previous placement there is no motion to state")
     }
 
-    @Test func theSecondFrameRecordsTheWayBackToLastFramesPlacement() {
+    @Test func theSecondFrameRecordsTheWayBackToLastFramesPlacement() throws {
         let s = MoverProbe()
-        s.setup()
+        try s.setup()
         s.performDraw()
         s.step = Vector3(10, 0, 0)
         s.performDraw()
@@ -144,9 +144,9 @@ struct VelocityBufferTests {
                 "previousOfCurrent must take this frame's world placement to last frame's")
     }
 
-    @Test func aStationaryMoverRecordsTheIdentity() {
+    @Test func aStationaryMoverRecordsTheIdentity() throws {
         let s = MoverProbe()
-        s.setup()
+        try s.setup()
         s.performDraw()
         s.performDraw()
         guard let r = s.drawer.moverRanges.first else {
@@ -157,9 +157,9 @@ struct VelocityBufferTests {
                 "a mover that held still moves nothing")
     }
 
-    @Test func aSkippedFrameStartsTheHistoryOver() {
+    @Test func aSkippedFrameStartsTheHistoryOver() throws {
         let s = MoverProbe()
-        s.setup()
+        try s.setup()
         s.performDraw()
         s.skipMover = true
         s.performDraw()
@@ -170,9 +170,9 @@ struct VelocityBufferTests {
                 "a two-frame-old placement must not be read as one frame of motion")
     }
 
-    @Test func sameLineBlocksKeepSeparateHistoriesByOccurrence() {
+    @Test func sameLineBlocksKeepSeparateHistoriesByOccurrence() throws {
         let s = LoopProbe()
-        s.setup()
+        try s.setup()
         s.performDraw()
         s.offsets = [4, 50]   // the first block moves; the second holds still
         s.performDraw()
@@ -185,9 +185,9 @@ struct VelocityBufferTests {
                 "the second occurrence held still")
     }
 
-    @Test func theNamedFormPinsIdentityAcrossCallSites() {
+    @Test func theNamedFormPinsIdentityAcrossCallSites() throws {
         let s = MoverProbe()
-        s.setup()
+        try s.setup()
         s.performDraw()
         s.useAltSite = true   // the same named block drawn from a different line
         s.step = Vector3(10, 0, 0)
@@ -199,9 +199,9 @@ struct VelocityBufferTests {
                 "a named mover keeps its history when the code path that draws it moves")
     }
 
-    @Test func aMidFrameWipeDropsTheRecordedRanges() {
+    @Test func aMidFrameWipeDropsTheRecordedRanges() throws {
         let s = MoverProbe()
-        s.setup()
+        try s.setup()
         s.performDraw()
         s.wipeAfter = true   // background() after the mover empties the mesh list
         s.step = Vector3(10, 0, 0)
@@ -210,10 +210,10 @@ struct VelocityBufferTests {
                 "a range surviving the wipe would index geometry that no longer exists")
     }
 
-    @Test func aWireframeMoverIsNotRecorded() {
+    @Test func aWireframeMoverIsNotRecorded() throws {
         let s = MoverProbe()
         s.wire = true
-        s.setup()
+        try s.setup()
         s.performDraw()
         s.step = Vector3(10, 0, 0)
         s.performDraw()
@@ -221,10 +221,10 @@ struct VelocityBufferTests {
                 "the velocity pass rasterizes solid triangles; a wireframe's interior is see-through")
     }
 
-    @Test func aRenderTargetMoverIsNotRecorded() {
+    @Test func aRenderTargetMoverIsNotRecorded() throws {
         let s = MoverProbe()
         s.moverInTarget = true
-        s.setup()
+        try s.setup()
         s.performDraw()
         s.step = Vector3(10, 0, 0)
         s.performDraw()
@@ -244,9 +244,9 @@ struct VelocityBufferTests {
         return (SIMD3(now.x, now.y, now.z), SIMD3(prev.x, prev.y, prev.z))
     }
 
-    @Test func aDeformingMeshRecordsOnItsFirstSighting() {
+    @Test func aDeformingMeshRecordsOnItsFirstSighting() throws {
         let s = DeformProbe()
-        s.setup()
+        try s.setup()
         s.performDraw()
         let ranges = s.drawer.moverRanges
         #expect(ranges.count == 1, "the sketch said where the vertices were, so there is motion to state")
@@ -259,9 +259,9 @@ struct VelocityBufferTests {
                 "handing this frame's own positions states no motion")
     }
 
-    @Test func aDeformingMeshRecordsEachVertexsPreviousPlace() {
+    @Test func aDeformingMeshRecordsEachVertexsPreviousPlace() throws {
         let s = DeformProbe()
-        s.setup()
+        try s.setup()
         s.performDraw()
         s.shift = Vector3(10, 8, 0)
         s.performDraw()
@@ -276,10 +276,10 @@ struct VelocityBufferTests {
                 "the vertex moved by the shift baked into the positions, got \(v.now - v.previous)")
     }
 
-    @Test func aMismatchedCountFallsBackToTransformOnlyMotion() {
+    @Test func aMismatchedCountFallsBackToTransformOnlyMotion() throws {
         let s = DeformProbe()
         s.mismatch = true
-        s.setup()
+        try s.setup()
         s.performDraw()
         #expect(s.drawer.moverRanges.isEmpty,
                 "the fallback is the transform-only mover, which records nothing on its first frame")
@@ -292,13 +292,13 @@ struct VelocityBufferTests {
         #expect(s.drawer.moverPreviousPositions.isEmpty)
     }
 
-    @Test func previousPositionsRideLastFramesPlacementInsideABlock() {
+    @Test func previousPositionsRideLastFramesPlacementInsideABlock() throws {
         // Frame 1 at rest; frame 2 the block steps 5 right while the vertices
         // themselves shift 3 right: the previous positions go through last
         // frame's placement (the identity), so the vertex's total motion is 8.
         let s = DeformProbe()
         s.inBlock = true
-        s.setup()
+        try s.setup()
         s.performDraw()
         s.transformStep = Vector3(5, 0, 0)
         s.shift = Vector3(3, 0, 0)
@@ -312,9 +312,9 @@ struct VelocityBufferTests {
                 "the sum of the block's step and the vertex shift, got \(v.now - v.previous)")
     }
 
-    @Test func theWipeAndTheNextFrameDropThePreviousPositions() {
+    @Test func theWipeAndTheNextFrameDropThePreviousPositions() throws {
         let s = DeformProbe()
-        s.setup()
+        try s.setup()
         s.performDraw()
         #expect(!s.drawer.moverPreviousPositions.isEmpty)
         s.drawer.beginFrame()
@@ -336,7 +336,7 @@ struct VelocityBufferTests {
     private func velocityField(_ s: MoverProbe, from: Vector3, to: Vector3,
                                renderer: MetalRenderer,
                                previousEye: Vector3? = nil) throws -> [SIMD2<Float>] {
-        s.setup()
+        try s.setup()
         s.step = from
         s.performDraw()
         var prevCamera = try #require(s.drawer.camera3D)
@@ -422,7 +422,7 @@ struct VelocityBufferTests {
     /// `to` inside the positions, the transform still) and read the texture.
     private func deformingField(_ s: DeformProbe, from: Vector3, to: Vector3,
                                 renderer: MetalRenderer) throws -> [SIMD2<Float>] {
-        s.setup()
+        try s.setup()
         s.shift = from
         s.performDraw()
         let prevCamera = try #require(s.drawer.camera3D)

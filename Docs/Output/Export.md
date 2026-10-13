@@ -433,7 +433,7 @@ swift run --package-path Examples Example-Export-VectorExport --export-svg /tmp/
 Unlike raster export, SVG export records the draw calls on the **CPU**. So it never touches the GPU, runs anywhere, and is deterministic. The same export is available as functions:
 
 ```swift
-let document = OllinApp.svg(of: MySketch(), frame: 0)   // -> String
+let document = try OllinApp.svg(of: MySketch(), frame: 0)   // -> String
 try OllinApp.exportSVG(MySketch(), to: "/tmp/shapes.svg")   // writes the file
 ```
 
@@ -448,7 +448,7 @@ swift run --package-path Examples Example-Export-VectorExport --export-pdf /tmp/
 swift run --package-path Examples Example-Export-VectorExport --export-pdf /tmp/shapes.pdf --frame 30 # a later frame
 ```
 
-In code it is `OllinApp.pdf(of:frame:)`, which returns `Data`, and `OllinApp.exportPDF(_:to:frame:)`. PDF export replays the **same recorded geometry** as the SVG export, so the two documents of a frame always agree. Everything under [What SVG export records](#what-svg-export-records), including the limits, applies equally, and `--hatch` works the same way. Both flags can be given in one invocation (`--export-svg a.svg --export-pdf b.pdf`). Like the SVG path, it runs on the CPU with no GPU. Gradients, clipping, transforms, and alpha all come through as native PDF constructs.
+In code it is `try OllinApp.pdf(of:frame:)`, which returns `Data`, and `OllinApp.exportPDF(_:to:frame:)`. PDF export replays the **same recorded geometry** as the SVG export, so the two documents of a frame always agree. Everything under [What SVG export records](#what-svg-export-records), including the limits, applies equally, and `--hatch` works the same way. Both flags can be given in one invocation (`--export-svg a.svg --export-pdf b.pdf`). Like the SVG path, it runs on the CPU with no GPU. Gradients, clipping, transforms, and alpha all come through as native PDF constructs.
 
 **Paper sizes.** One canvas pixel maps to one PDF point, at 72 per inch. So the paper presets on [`CanvasSize`](../Core/Canvas.md) produce true-to-size pages. A sketch on `.a4` (595×842) exports as an actual A4 page, ready to print with no scaling. `.usLetter`, `.usLegal`, `.a3`, `.a4`, and `.a5` are built in. Each is portrait, like the physical sheet, and `.landscape` turns one on its side:
 

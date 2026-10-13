@@ -263,7 +263,7 @@ import OllinWebGate
         #expect(g.quadCount == 6 && g.instanceCount == 0 && g.vertexCount == 0)
         var blends: [Int] = []
         for (i, item) in g.canvas.enumerated() {
-            guard case let .image(source, quad, count, blend, _) = item else { Issue.record("\(item)"); continue }
+            guard case let .image(source, quad, count, blend, _, _) = item else { Issue.record("\(item)"); continue }
             #expect(source == .picture(0) && quad == i && count == 1)
             blends.append(blend)
         }
@@ -285,7 +285,7 @@ import OllinWebGate
         let recording = try OllinApp.recordWebFrames(of: Sprites(), frames: 1, fps: 30)
         var bounds: [SIMD4<Float>] = []
         for item in recording.frames[0].graph.canvas {
-            guard case let .image(source, _, _, _, held) = item else { continue }
+            guard case let .image(source, _, _, _, held, _) = item else { continue }
             #expect(source == .picture(0))
             if let held { bounds.append(held) }
         }
@@ -294,9 +294,40 @@ import OllinWebGate
         #expect(bounds[4] == SIMD4(0.5, 0.5, 1, 1))
         let pictured = try OllinApp.recordWebFrames(of: Pictured(), frames: 1, fps: 30)
         for item in pictured.frames[0].graph.canvas {
-            guard case let .image(_, _, _, _, held) = item else { continue }
+            guard case let .image(_, _, _, _, held, nearest) = item else { continue }
             #expect(held == nil, "a whole picture, a smaller one and a cover crop read the whole texture")
+            #expect(!nearest)
         }
+    }
+
+    /// A picture drawn under `imageSampling(.nearest)` crosses with the flag:
+    /// its row on the page carries the whole picture's box and a 1 after it,
+    /// where a plain draw keeps the five fields it always had.
+    final class Crisp: Sketch {
+        let cells = Image(width: 2, height: 2, premultipliedRGBA: [0, 0, 0, 255, 255, 255, 255, 255, 255, 0, 0, 255, 0, 0, 255, 255])!
+        override var canvasSize: CanvasSize { .size(64, 64) }
+        override func draw() {
+            background(.white)
+            drawImage(cells, 0, 0, 16, 16)
+            withState {
+                imageSampling(.nearest)
+                drawImage(cells, 32, 32, 16, 16)
+            }
+            drawImage(cells, 0, 32, 16, 16)
+        }
+    }
+
+    @Test func aNearestSampledPictureCrossesWithItsFlag() throws {
+        let recording = try OllinApp.recordWebFrames(of: Crisp(), frames: 1, fps: 30)
+        let items = recording.frames[0].graph.canvas.compactMap { item -> Bool? in
+            if case let .image(_, _, _, _, _, nearest) = item { return nearest }
+            return nil
+        }
+        #expect(items == [false, true, false])
+        let rows = (recording.frames[0].graph.meta["canvas"] as? [[Any]]) ?? []
+        let pictures = rows.filter { ($0.first as? String) == "m" }
+        #expect(pictures.map(\.count) == [5, 10, 5], "\(pictures)")
+        #expect((pictures[1].last as? Int) == 1)
     }
 
     @Test func anEditedPictureIsASecondAssetAndEqualPixelsAreOne() throws {
@@ -305,7 +336,7 @@ import OllinWebGate
         // frame makes a second, and the graph changes with it.
         #expect(recording.pictures.count == 2)
         func sources(_ k: Int) -> [WebImageSource] {
-            recording.frames[k].graph.canvas.compactMap { if case let .image(s, _, _, _, _) = $0 { return s } else { return nil } }
+            recording.frames[k].graph.canvas.compactMap { if case let .image(s, _, _, _, _, _) = $0 { return s } else { return nil } }
         }
         #expect(sources(0) == [.picture(0), .picture(0)])
         #expect(sources(1) == [.picture(0), .picture(0)])
@@ -464,7 +495,7 @@ import OllinWebGate
         for item in g.canvas {
             switch item {
             case .glyphs: order.append("glyphs")
-            case .image(.picture(0), _, 1, _, _): order.append("picture")
+            case .image(.picture(0), _, 1, _, _, _): order.append("picture")
             case .shapes: order.append("shape")
             default: order.append("?")
             }

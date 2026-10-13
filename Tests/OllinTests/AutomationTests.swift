@@ -23,7 +23,7 @@ struct AutomationTests {
     /// Every curve that travels leaves at 0, arrives at 1, and never turns
     /// back on the way. A curve that failed this would read as a parameter that
     /// jumps or backs up mid move.
-    @Test func curvesRunFromZeroToOneWithoutTurningBack() {
+    @Test func curvesRunFromZeroToOneWithoutTurningBack() throws {
         for curve in Self.traveling {
             #expect(abs(curve.shape(0) - 0) < 1e-6, "\(curve) leaves 0")
             #expect(abs(curve.shape(1) - 1) < 1e-6, "\(curve) arrives at 1")
@@ -37,7 +37,7 @@ struct AutomationTests {
     }
 
     /// Progress outside `0...1` clamps rather than running off the curve.
-    @Test func progressOutsideTheSpanClamps() {
+    @Test func progressOutsideTheSpanClamps() throws {
         for curve in Self.traveling {
             #expect(curve.shape(-3) == curve.shape(0))
             #expect(curve.shape(4) == curve.shape(1))
@@ -47,7 +47,7 @@ struct AutomationTests {
     /// The Bezier through its own diagonal handles is the straight line, and
     /// the symmetric pair mirrors about the middle: f(t) + f(1 - t) == 1.
     /// Both catch a solver that lands on the wrong parameter.
-    @Test func bezierMatchesItsOwnGeometry() {
+    @Test func bezierMatchesItsOwnGeometry() throws {
         let identity = Automation.Curve.bezier(x1: 0, y1: 0, x2: 1, y2: 1)
         let straight = Automation.Curve.bezier(x1: 1.0 / 3, y1: 1.0 / 3, x2: 2.0 / 3, y2: 2.0 / 3)
         let symmetric = Automation.Curve.bezier(x1: 0.42, y1: 0, x2: 0.58, y2: 1)
@@ -65,7 +65,7 @@ struct AutomationTests {
     /// measures the solver against a plain bisection written here, so a curve
     /// that skipped the search and read y straight off the progress reads
     /// wrong wherever the handles bend x.
-    @Test func bezierInvertsItsOwnClock() {
+    @Test func bezierInvertsItsOwnClock() throws {
         func reference(_ t: Double, _ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double) -> Double {
             func axis(_ a: Double, _ b: Double, _ u: Double) -> Double {
                 let v = 1 - u
@@ -95,7 +95,7 @@ struct AutomationTests {
     }
 
     /// A hold sits at the value it left until the next key takes over.
-    @Test func holdStaysUntilTheNextKey() {
+    @Test func holdStaysUntilTheNextKey() throws {
         let track = Automation.Track(name: "n", keys: [
             .init(at: 0, .number(10), curve: .hold),
             .init(at: 2, .number(20), curve: .hold),
@@ -109,7 +109,7 @@ struct AutomationTests {
 
     /// A key reads back as exactly itself, whatever curve leaves it. A blend
     /// that failed to short-circuit its ends would miss this by a hair.
-    @Test func aKeyReadsBackAsItself() {
+    @Test func aKeyReadsBackAsItself() throws {
         for curve in Self.traveling + [.hold] {
             let track = Automation.Track(name: "n", keys: [
                 .init(at: 0, .number(-3), curve: curve),
@@ -124,7 +124,7 @@ struct AutomationTests {
 
     /// Outside its own span a track is a constant: the first key before it,
     /// the last key after it.
-    @Test func aTrackHoldsOutsideItsSpan() {
+    @Test func aTrackHoldsOutsideItsSpan() throws {
         let track = Automation.Track(name: "n", keys: [
             .init(at: 1, .number(5)), .init(at: 3, .number(9)),
         ])
@@ -137,7 +137,7 @@ struct AutomationTests {
 
     /// Keys sort themselves, and two keys at the same moment keep the order
     /// they were written in, so the later one takes over from there.
-    @Test func keysSortAndTiesKeepTheirOrder() {
+    @Test func keysSortAndTiesKeepTheirOrder() throws {
         let track = Automation.Track(name: "n", keys: [
             .init(at: 3, .number(30)), .init(at: 1, .number(10)),
             .init(at: 2, .number(20)), .init(at: 2, .number(21)),
@@ -148,7 +148,7 @@ struct AutomationTests {
     }
 
     /// A linear track measures the straight line between its keys.
-    @Test func linearTravelsAtAnEvenRate() {
+    @Test func linearTravelsAtAnEvenRate() throws {
         let track = Automation.Track(name: "n", keys: [
             .init(at: 0, .number(0), curve: .linear),
             .init(at: 4, .number(100), curve: .linear),
@@ -165,7 +165,7 @@ struct AutomationTests {
     // MARK: Blending by kind
 
     /// The geometry kinds blend component by component.
-    @Test func geometryKindsBlendComponentwise() {
+    @Test func geometryKindsBlendComponentwise() throws {
         #expect(Automation.blend(.vector(x: 0, y: 10), .vector(x: 4, y: 0), 0.5)
                 == .vector(x: 2, y: 5))
         #expect(Automation.blend(.vector3(x: 0, y: 0, z: 0), .vector3(x: 2, y: 4, z: 8), 0.25)
@@ -183,7 +183,7 @@ struct AutomationTests {
     /// A switch, a menu choice, and a piece of text have nothing between two
     /// settings, so they hold the one they left. Two values of different kinds
     /// hold as well, which is what a parameter that changed type does.
-    @Test func settingsWithNothingBetweenThemStep() {
+    @Test func settingsWithNothingBetweenThemStep() throws {
         #expect(Automation.blend(.boolean(false), .boolean(true), 0.99) == .boolean(false))
         #expect(Automation.blend(.option("a"), .option("b"), 0.75) == .option("a"))
         #expect(Automation.blend(.text("one"), .text("two"), 0.5) == .text("one"))
@@ -194,7 +194,7 @@ struct AutomationTests {
 
     /// A color fade keeps its ends and moves away from both in the middle,
     /// while alpha travels at an even rate.
-    @Test func colorsFadeAndKeepTheirEnds() {
+    @Test func colorsFadeAndKeepTheirEnds() throws {
         let from = ParamStored.color(red: 1, green: 0, blue: 0, alpha: 0)
         let to = ParamStored.color(red: 0, green: 0, blue: 1, alpha: 1)
         #expect(Automation.blend(from, to, 0) == from)
@@ -212,7 +212,7 @@ struct AutomationTests {
 
     /// The position reads the clock: speed scales it, start offsets it, and a
     /// backwards pass is the mirror of the forward one.
-    @Test func speedAndDirectionReadTheClock() {
+    @Test func speedAndDirectionReadTheClock() throws {
         var forward = Automation(tracks: [.init(name: "n", keys: [
             .init(at: 0, .number(0), curve: .linear), .init(at: 4, .number(100), curve: .linear),
         ])])
@@ -236,7 +236,7 @@ struct AutomationTests {
 
     /// A looping automation wraps at its duration, forwards and backwards, and
     /// `length` moves where the wrap falls so a pass can hold past its last key.
-    @Test func loopingWrapsAtTheDuration() {
+    @Test func loopingWrapsAtTheDuration() throws {
         var automation = Automation(tracks: [.init(name: "n", keys: [
             .init(at: 0, .number(0), curve: .linear), .init(at: 4, .number(100), curve: .linear),
         ])], loops: true)
@@ -252,14 +252,14 @@ struct AutomationTests {
     }
 
     /// Nothing drives a parameter no track names.
-    @Test func anUnnamedParameterIsUntouched() {
+    @Test func anUnnamedParameterIsUntouched() throws {
         let automation = Automation(tracks: [.init(name: "n", keys: [.init(at: 0, .number(1))])])
         #expect(automation.value(of: "missing", at: 0) == nil)
         #expect(automation.track(named: "n") != nil)
     }
 
     /// Adding a track for a parameter that already has one replaces it.
-    @Test func aSecondTrackForOneParameterReplacesTheFirst() {
+    @Test func aSecondTrackForOneParameterReplacesTheFirst() throws {
         var automation = Automation()
         automation.setTrack(.init(name: "n", keys: [.init(at: 0, .number(1))]))
         automation.setTrack(.init(name: "n", keys: [.init(at: 0, .number(2))]))
@@ -322,10 +322,10 @@ struct AutomationTests {
     /// The value the sketch reads each frame is the value the curve holds at
     /// that frame's clock, including for a parameter that carries smoothing: the
     /// curve is the glide, so nothing eases into it a second time.
-    @Test func theSketchReadsTheCurve() {
+    @Test func theSketchReadsTheCurve() throws {
         let sketch = Directed()
         sketch.setCanvasSize(width: 64, height: 64)
-        sketch.setup()
+        try sketch.setup()
         #expect(sketch.automation?.tracks.count == 2)
         for frame in 1...8 {
             let t = Double(frame) / 2
@@ -341,11 +341,11 @@ struct AutomationTests {
     /// A run recorded while an automation played writes the parameter values down
     /// on the frames they held, so the take replays the same performance with
     /// no automation attached.
-    @Test func aRecordedRunWritesDownWhatTheCurveHeld() {
+    @Test func aRecordedRunWritesDownWhatTheCurveHeld() throws {
         let sketch = Directed()
         sketch.setCanvasSize(width: 64, height: 64)
         sketch.takeRecorder = TakeRecorder(sketch: sketch)
-        sketch.setup()
+        try sketch.setup()
         for frame in 1...8 {
             sketch.advance(time: Double(frame) / 2, deltaTime: 0.5, frameRate: 2)
             sketch.draw()
@@ -366,10 +366,10 @@ struct AutomationTests {
 
     /// A track naming a parameter the sketch does not declare is skipped, and the
     /// other tracks still play.
-    @Test func aTrackForAnUnknownParameterIsSkipped() {
+    @Test func aTrackForAnUnknownParameterIsSkipped() throws {
         let sketch = Directed()
         sketch.setCanvasSize(width: 64, height: 64)
-        sketch.setup()
+        try sketch.setup()
         sketch.automate(.init(name: "notAParameter", keys: [.init(at: 0, .number(99))]))
         sketch.advance(time: 2, deltaTime: 0.5, frameRate: 2)
         #expect(abs(sketch.radius - 200) < 1e-9)
@@ -405,10 +405,10 @@ struct FormulaTrackTests {
     /// The parameter a sketch reads is the formula worked out at that frame's clock,
     /// and each kind of parameter takes the number the way its own type can: a whole
     /// number rounds, and a switch is on for anything but zero.
-    @Test func theSketchReadsTheFormula() {
+    @Test func theSketchReadsTheFormula() throws {
         let sketch = Driven()
         sketch.setCanvasSize(width: 64, height: 64)
-        sketch.setup()
+        try sketch.setup()
         #expect(sketch.automation?.tracks.count == 4)
         for frame in 1...8 {
             let t = Double(frame) / 4
@@ -426,7 +426,7 @@ struct FormulaTrackTests {
     /// Reading in track order instead would give a parameter its neighbor's value
     /// from the frame before, which would make the picture depend on the frame
     /// rate, and a 30-a-second export would not match the 60-a-second window.
-    @Test func aParameterWorkedOutFromAnotherLandsOnTheSameFrame() {
+    @Test func aParameterWorkedOutFromAnotherLandsOnTheSameFrame() throws {
         final class Chain: Sketch {
             @Param(0...100) var a = 0.0
             @Param(0...100) var b = 0.0
@@ -455,7 +455,7 @@ struct FormulaTrackTests {
     /// single frame. The whole ring is left alone rather than played at a value
     /// that would depend on the frame rate, and a parameter outside the ring still
     /// plays.
-    @Test func parametersThatNameEachOtherAreLeftAlone() {
+    @Test func parametersThatNameEachOtherAreLeftAlone() throws {
         final class Ring: Sketch {
             @Param(0...100) var a = 3.0
             @Param(0...100) var b = 5.0
@@ -484,7 +484,7 @@ struct FormulaTrackTests {
     /// track is applied before the sketch steps its counter. A formula reading
     /// `frame` and the sketch reading `frameCount` must agree, or a stepped
     /// look lands one frame off what it says.
-    @Test func frameIsTheNumberTheFrameWillCarry() {
+    @Test func frameIsTheNumberTheFrameWillCarry() throws {
         final class Counting: Sketch {
             @Param(0...1000) var n = 0
             var pairs: [(Int, Int)] = []
@@ -493,7 +493,7 @@ struct FormulaTrackTests {
         }
         let sketch = Counting()
         sketch.setCanvasSize(width: 64, height: 64)
-        sketch.setup()
+        try sketch.setup()
         for frame in 1...5 {
             sketch.advance(time: Double(frame) / 10, deltaTime: 0.1, frameRate: 10)
             sketch.draw()
@@ -505,7 +505,7 @@ struct FormulaTrackTests {
     /// A formula reads `time` as where the *automation* stands, not as the raw
     /// sketch clock, so `speed`, `start`, and `loops` shape it exactly as they
     /// shape a curve. Anything else handed in under that name is overruled.
-    @Test func theFormulaReadsWhereTheAutomationStands() {
+    @Test func theFormulaReadsWhereTheAutomationStands() throws {
         let track = Automation.Track(name: "n", formula: try! Formula("time * 10"))
         #expect(track.value(at: 3) == .number(30))
         #expect(track.value(at: 3, reading: ["time": 99]) == .number(30))
@@ -520,7 +520,7 @@ struct FormulaTrackTests {
 
     /// A formula reaches the sketch's own noise field, so `noiseSeed()`
     /// reproduces a wandering parameter the same way it reproduces a drawn one.
-    @Test func aWanderingParameterFollowsTheSketchSeed() {
+    @Test func aWanderingParameterFollowsTheSketchSeed() throws {
         final class Wandering: Sketch {
             @Param(0...1) var drift = 0.0
             override func setup() { drive($drift, "noise(time)") }
@@ -529,7 +529,7 @@ struct FormulaTrackTests {
             let sketch = Wandering()
             sketch.setCanvasSize(width: 64, height: 64)
             sketch.noiseSeed(seed)
-            sketch.setup()
+            try sketch.setup()
             sketch.advance(time: 0.7, deltaTime: 0.1, frameRate: 10)
             return sketch.drift
         }
@@ -591,14 +591,14 @@ struct FormulaTrackTests {
 
     /// Text that cannot be read costs that one parameter, never the sketch: the
     /// parameter keeps the value it was given.
-    @Test func aTypoLeavesTheParameterAlone() {
+    @Test func aTypoLeavesTheParameterAlone() throws {
         final class Mistyped: Sketch {
             @Param(0...400) var radius = 42.0
             override func setup() { drive($radius, "120 + sin(") }
         }
         let sketch = Mistyped()
         sketch.setCanvasSize(width: 64, height: 64)
-        sketch.setup()
+        try sketch.setup()
         #expect(sketch.automation == nil)
         sketch.advance(time: 1, deltaTime: 0.1, frameRate: 10)
         #expect(sketch.radius == 42)
@@ -635,7 +635,7 @@ struct FormulaPartTests {
 
     /// Every parameter that holds more than one number takes a rule for each part,
     /// and each number lands where its part is named.
-    @Test func everyKindOfParameterTakesARuleForEachPart() {
+    @Test func everyKindOfParameterTakesARuleForEachPart() throws {
         let sketch = Self.made()
         sketch.drive(sketch.$spot, x: "time * 10", y: "time * 20")
         sketch.drive(sketch.$eye, x: "1", y: "2", z: "3")
@@ -656,7 +656,7 @@ struct FormulaPartTests {
     /// A part with no rule keeps whatever the parameter holds, and the hand still
     /// reaches it while the part beside it plays. That is the whole point of a
     /// rule per part: one part directed, the rest still yours.
-    @Test func aPartWithNoRuleIsLeftAlone() {
+    @Test func aPartWithNoRuleIsLeftAlone() throws {
         let sketch = Self.made()
         sketch.spot = Vector2(3, 77)
         sketch.drive(sketch.$spot, x: "time * 10")
@@ -672,7 +672,7 @@ struct FormulaPartTests {
     /// frame whichever order the tracks sit in. Reading in track order instead
     /// would give the frame before's number, which would make the picture
     /// depend on the frame rate.
-    @Test func aRuleReadsOnePartOnTheSameFrame() {
+    @Test func aRuleReadsOnePartOnTheSameFrame() throws {
         final class Pair: Sketch {
             @Param(x: 0...1000, y: 0...1000) var spot = Vector2(0, 0)
             @Param(0...1000) var radius = 0.0
@@ -698,7 +698,7 @@ struct FormulaPartTests {
 
     /// The part a *keyed* track moves is a name as well, so a rule can follow a
     /// point that is being carried between two placed values.
-    @Test func aRuleReadsOnePartOfAKeyedParameter() {
+    @Test func aRuleReadsOnePartOfAKeyedParameter() throws {
         final class Keyed: Sketch {
             @Param(x: 0...1000, y: 0...1000) var spot = Vector2(0, 0)
             @Param(0...1000) var radius = 0.0
@@ -713,7 +713,7 @@ struct FormulaPartTests {
         }
         let sketch = Keyed()
         sketch.setCanvasSize(width: 64, height: 64)
-        sketch.setup()
+        try sketch.setup()
         sketch.advance(time: 0.5, deltaTime: 0.5, frameRate: 2)
         #expect(sketch.spot == Vector2(50, 20))
         #expect(sketch.radius == 25)
@@ -722,7 +722,7 @@ struct FormulaPartTests {
     /// A part worked out from another part of the same parameter cannot settle on
     /// one frame, so the whole parameter is left alone rather than played at a value
     /// that would depend on the frame rate. A parameter outside the ring still plays.
-    @Test func aPartThatNamesItsOwnParameterIsLeftAlone() {
+    @Test func aPartThatNamesItsOwnParameterIsLeftAlone() throws {
         final class Ring: Sketch {
             @Param(x: 0...1000, y: 0...1000) var spot = Vector2(3, 5)
             @Param(0...100) var fine = 0.0
@@ -743,7 +743,7 @@ struct FormulaPartTests {
 
     /// The parameter's own range still holds, exactly as it does when a hand drags
     /// the field. A rule is a way to set a parameter, never a way past it.
-    @Test func theParametersOwnRangeStillHolds() {
+    @Test func theParametersOwnRangeStillHolds() throws {
         let sketch = Self.made()
         sketch.drive(sketch.$spot, x: "0 - 500", y: "9999")
         sketch.advance(time: 1, deltaTime: 0.5, frameRate: 2)
@@ -753,7 +753,7 @@ struct FormulaPartTests {
     /// A pair of ends stays ordered, because a crossed pair is not a value the
     /// parameter can hold. The lower end wins and the upper end is lifted to meet
     /// it, the way the two-thumb slider behaves under a hand.
-    @Test func thePairOfEndsStaysOrdered() {
+    @Test func thePairOfEndsStaysOrdered() throws {
         let climbing = Self.made()
         climbing.drive(climbing.$span, lower: "time * 30")
         climbing.advance(time: 2, deltaTime: 0.5, frameRate: 2)
@@ -769,7 +769,7 @@ struct FormulaPartTests {
     /// own numbers into it changes nothing, and a number written to one part
     /// reads back from that same part. A mismatch between the two would drive
     /// the wrong part, or none at all, and no picture would say which.
-    @Test func everyPartReadsBackWhatWasWrittenToIt() {
+    @Test func everyPartReadsBackWhatWasWrittenToIt() throws {
         let values: [ParamStored] = [
             .vector(x: 1, y: 2),
             .vector3(x: 1, y: 2, z: 3),
@@ -791,7 +791,7 @@ struct FormulaPartTests {
 
     /// A parameter that is one number, a switch, a menu choice, or a piece of text
     /// has no parts at all, so nothing there can be driven part by part.
-    @Test func aParameterOfOneNumberHasNoParts() {
+    @Test func aParameterOfOneNumberHasNoParts() throws {
         for stored: ParamStored in [.number(3), .boolean(true), .option("a"), .text("b")] {
             #expect(Automation.parts(of: stored).isEmpty, "\(stored)")
             #expect(Automation.applying(["x": 9], to: stored) == stored, "\(stored)")
@@ -838,7 +838,7 @@ struct FormulaPartTests {
     }
 
     /// Text that cannot be read costs that one part, never the parameter beside it.
-    @Test func aTypoCostsOnePartOnly() {
+    @Test func aTypoCostsOnePartOnly() throws {
         let sketch = Self.made()
         sketch.spot = Vector2(7, 0)
         sketch.drive(sketch.$spot, x: "time * (", y: "time * 10")
@@ -848,7 +848,7 @@ struct FormulaPartTests {
 
     /// A call that names no part at all leaves the parameter alone rather than
     /// writing an empty track that would look like a rule and do nothing.
-    @Test func noRuleAtAllLeavesTheParameterAlone() {
+    @Test func noRuleAtAllLeavesTheParameterAlone() throws {
         let sketch = Self.made()
         sketch.drive(sketch.$spot)
         #expect(sketch.automation == nil)
@@ -858,7 +858,7 @@ struct FormulaPartTests {
 
     /// One call carries the whole parameter, so a second call replaces the first
     /// rather than adding to it. Give every part in one call.
-    @Test func aSecondCallReplacesTheFirst() {
+    @Test func aSecondCallReplacesTheFirst() throws {
         let sketch = Self.made()
         sketch.spot = Vector2(7, 0)
         sketch.drive(sketch.$spot, x: "500")

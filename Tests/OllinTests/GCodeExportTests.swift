@@ -122,8 +122,8 @@ struct GCodeExportTests {
 
     // MARK: - Plotter
 
-    @Test func plotterPenIsUpForEveryTravel() {
-        let sim = Sim(OllinApp.gcode(of: Mixed(), settings: Self.plotter))
+    @Test func plotterPenIsUpForEveryTravel() throws {
+        let sim = Sim(try OllinApp.gcode(of: Mixed(), settings: Self.plotter))
         #expect(sim.sawEnd)
         #expect(!sim.planar.isEmpty)
         for segment in sim.planar {
@@ -135,10 +135,10 @@ struct GCodeExportTests {
         }
     }
 
-    @Test func theCanvasTopBecomesTheBedTop() {
+    @Test func theCanvasTopBecomesTheBedTop() throws {
         // Canvas y grows downward, the bed's grows upward: the line drawn at
         // canvas y 10 on a 100 px -> 100 mm square must plot at machine y 90.
-        let sim = Sim(OllinApp.gcode(of: OneLine(), settings: Self.plotter))
+        let sim = Sim(try OllinApp.gcode(of: OneLine(), settings: Self.plotter))
         let draws = sim.planar.filter { !$0.rapid }
         #expect(draws.count == 1)
         if let draw = draws.first {
@@ -147,9 +147,9 @@ struct GCodeExportTests {
         }
     }
 
-    @Test func nothingLeavesTheBed() {
+    @Test func nothingLeavesTheBed() throws {
         let settings = GCode(.plotter(), width: 100, margin: 10)
-        let sim = Sim(OllinApp.gcode(of: Mixed(), settings: settings))
+        let sim = Sim(try OllinApp.gcode(of: Mixed(), settings: settings))
         for segment in sim.planar where !segment.rapid {
             for point in [segment.from, segment.to] {
                 #expect(point.x >= 10 - 1e-6 && point.x <= 110 + 1e-6)
@@ -162,14 +162,14 @@ struct GCodeExportTests {
         #expect(abs(maxX - 110) < 1e-3)
     }
 
-    @Test func theProgramIsDeterministic() {
-        let a = OllinApp.gcode(of: Mixed(), settings: Self.plotter)
-        let b = OllinApp.gcode(of: Mixed(), settings: Self.plotter)
+    @Test func theProgramIsDeterministic() throws {
+        let a = try OllinApp.gcode(of: Mixed(), settings: Self.plotter)
+        let b = try OllinApp.gcode(of: Mixed(), settings: Self.plotter)
         #expect(a == b)
     }
 
-    @Test func theHeaderSaysWhatAndHowBig() {
-        let program = OllinApp.gcode(of: Mixed(), settings: Self.plotter)
+    @Test func theHeaderSaysWhatAndHowBig() throws {
+        let program = try OllinApp.gcode(of: Mixed(), settings: Self.plotter)
         #expect(program.contains("; canvas 100 x 100 px maps to 100 x 100 mm"))
         #expect(program.contains("machine: pen plotter"))
         #expect(program.contains("G21 ; millimeters"))
@@ -178,9 +178,9 @@ struct GCodeExportTests {
         #expect(program.contains("; {\"tool\":\"Ollin\""))               // the recipe line
     }
 
-    @Test func servoPenWritesPowerWordsAndDwells() {
+    @Test func servoPenWritesPowerWordsAndDwells() throws {
         let settings = GCode(.plotter(pen: .servo(up: 0, down: 1000)), width: 100)
-        let program = OllinApp.gcode(of: OneLine(), settings: settings)
+        let program = try OllinApp.gcode(of: OneLine(), settings: settings)
         #expect(program.contains("M3 S1000"))
         #expect(program.contains("M3 S0"))
         #expect(program.contains("G4 P0.15"))
@@ -189,9 +189,9 @@ struct GCodeExportTests {
 
     // MARK: - Laser
 
-    @Test func laserPowerRidesOnlyCuttingMoves() {
+    @Test func laserPowerRidesOnlyCuttingMoves() throws {
         let settings = GCode(.laser(power: 0.6, passes: 2), width: 100)
-        let program = OllinApp.gcode(of: OneLine(), settings: settings)
+        let program = try OllinApp.gcode(of: OneLine(), settings: settings)
         let sim = Sim(program)
         #expect(program.contains("M4 S0"))                      // dynamic mode, armed at zero
         let cuts = sim.planar.filter { !$0.rapid }
@@ -206,18 +206,18 @@ struct GCodeExportTests {
         #expect(sim.endedWithPowerOff)                          // M5 before M2
     }
 
-    @Test func constantModeArmsWithM3() {
+    @Test func constantModeArmsWithM3() throws {
         let settings = GCode(.laser(mode: .constant), width: 100)
-        let program = OllinApp.gcode(of: OneLine(), settings: settings)
+        let program = try OllinApp.gcode(of: OneLine(), settings: settings)
         #expect(program.contains("M3 S0"))
         #expect(!program.contains("M4"))
     }
 
     // MARK: - Mill
 
-    @Test func millStaysAboveTheAskedDepthAndTravelsSafe() {
+    @Test func millStaysAboveTheAskedDepthAndTravelsSafe() throws {
         let settings = GCode(.mill(depth: 1.2, depthPerPass: 0.5), width: 100)
-        let sim = Sim(OllinApp.gcode(of: Mixed(), settings: settings))
+        let sim = Sim(try OllinApp.gcode(of: Mixed(), settings: settings))
         var depths = Set<Double>()
         for segment in sim.segments {
             #expect(segment.to.z >= -1.2 - 1e-9)
@@ -236,7 +236,7 @@ struct GCodeExportTests {
 
     // MARK: - Planning
 
-    @Test func orderingShortensTravel() {
+    @Test func orderingShortensTravel() throws {
         // Segments deliberately scrambled: drawn order ping-pongs across the
         // canvas, nearest-neighbor order walks straight down.
         let canvas = Rectangle(x: 0, y: 0, width: 100, height: 100)
@@ -253,7 +253,7 @@ struct GCodeExportTests {
         #expect(ordered.drawnLength == drawnOrder.drawnLength)      // ordering never redraws
     }
 
-    @Test func touchingEndsMergeAndClose() {
+    @Test func touchingEndsMergeAndClose() throws {
         let canvas = Rectangle(x: 0, y: 0, width: 100, height: 100)
         let square = [
             Contour([Vector2(10, 10), Vector2(90, 10)], closed: false),
@@ -267,7 +267,7 @@ struct GCodeExportTests {
         #expect(abs(toolpath.drawnLength - 320) < 1e-6)
     }
 
-    @Test func aClosedLoopEntersAtItsNearestCorner() {
+    @Test func aClosedLoopEntersAtItsNearestCorner() throws {
         let canvas = Rectangle(x: 0, y: 0, width: 100, height: 100)
         let loop = Contour([Vector2(60, 20), Vector2(80, 20), Vector2(80, 40), Vector2(60, 40)])
         let toolpath = GCode(.plotter(), width: 100).toolpath([loop], in: canvas)
@@ -277,7 +277,7 @@ struct GCodeExportTests {
         #expect(toolpath.paths.first?.isClosed == true)
     }
 
-    @Test func toolpathClipsToTheCanvas() {
+    @Test func toolpathClipsToTheCanvas() throws {
         let canvas = Rectangle(x: 0, y: 0, width: 100, height: 100)
         let overhang = Contour([Vector2(50, 50), Vector2(200, 50)], closed: false)
         let toolpath = GCode(.plotter(), width: 100).toolpath([overhang], in: canvas)
@@ -288,8 +288,8 @@ struct GCodeExportTests {
         #expect(abs(toolpath.drawnLength - 50) < 1e-3)
     }
 
-    @Test func aClipRegionCutsTheLineWork() {
-        let sim = Sim(OllinApp.gcode(of: Clipped(), settings: Self.plotter))
+    @Test func aClipRegionCutsTheLineWork() throws {
+        let sim = Sim(try OllinApp.gcode(of: Clipped(), settings: Self.plotter))
         let draws = sim.planar.filter { !$0.rapid }
         #expect(!draws.isEmpty)
         for draw in draws {
@@ -302,16 +302,16 @@ struct GCodeExportTests {
         }
     }
 
-    @Test func hatchingTurnsAFillIntoManyLines() {
-        let plain = Sim(OllinApp.gcode(of: Mixed(), settings: Self.plotter))
-        let hatched = Sim(OllinApp.gcode(of: Mixed(), settings: Self.plotter,
+    @Test func hatchingTurnsAFillIntoManyLines() throws {
+        let plain = Sim(try OllinApp.gcode(of: Mixed(), settings: Self.plotter))
+        let hatched = Sim(try OllinApp.gcode(of: Mixed(), settings: Self.plotter,
                                          hatching: Hatching(spacing: 2)))
         let plainDraws = plain.planar.filter { !$0.rapid }.count
         let hatchedDraws = hatched.planar.filter { !$0.rapid }.count
         #expect(hatchedDraws > plainDraws + 5)
     }
 
-    @Test func aSketchCanEmitItsOwnProgram() {
+    @Test func aSketchCanEmitItsOwnProgram() throws {
         let canvas = Rectangle(x: 0, y: 0, width: 100, height: 100)
         let paths = [Contour([Vector2(0, 0), Vector2(100, 100)], closed: false)]
         let program = GCode(.plotter(), width: 200).program(paths, in: canvas)
@@ -324,7 +324,7 @@ struct GCodeExportTests {
 
     // MARK: A named sheet
 
-    @Test func aSheetSizesTheDrawingAndTheHeaderNamesIt() {
+    @Test func aSheetSizesTheDrawingAndTheHeaderNamesIt() throws {
         let square = Rectangle(x: 0, y: 0, width: 100, height: 100)
         let frame = [Contour([Vector2(0, 0), Vector2(100, 0), Vector2(100, 100), Vector2(0, 100)], closed: true)]
         let a4 = GCode(.plotter(), paper: .a4)
@@ -343,7 +343,7 @@ struct GCodeExportTests {
         #expect(!GCode(.plotter(), width: 190, margin: 10).program(frame, in: square).contains("sheet"))
     }
 
-    @Test func aTallCanvasFitsTheSheetsHeightRatherThanRunningOffIt() {
+    @Test func aTallCanvasFitsTheSheetsHeightRatherThanRunningOffIt() throws {
         let tall = Rectangle(x: 0, y: 0, width: 100, height: 300)
         let spine = [Contour([Vector2(0, 0), Vector2(0, 300)], closed: false)]
         // 277 mm is the tallest A4 allows with 10 mm margins; the width follows.

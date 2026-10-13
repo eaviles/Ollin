@@ -419,7 +419,7 @@ extension OllinApp {
         probe.setCanvasSize(width: Double(width), height: Double(height))
         probe.drawer.recordsWebSources = true
         defer { probe.drawer.recordsWebSources = false }
-        probe.runSetup()
+        try probe.runSetup()
         var handles: [String: ParamHandle] = [:]
         for handle in probe.parameters() where handles[handle.name] == nil { handles[handle.name] = handle }
         for s in settings {

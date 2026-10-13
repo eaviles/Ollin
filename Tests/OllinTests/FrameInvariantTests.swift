@@ -74,6 +74,14 @@ struct FrameInvariantTests {
         case .aces:
             let a = 2.51, b = 0.03, c = 2.43, d = 0.59, e = 0.14
             return min(1, max(0, (v * (a * v + b)) / (v * (c * v + d) + e)))
+        case .neutral:
+            // The hue-preserving curve on a gray: the black offset, then the
+            // peak compression above the knee; the whitening leaves a gray gray.
+            let offset = v < 0.08 ? v - 6.25 * v * v : 0.04
+            let x = v - offset
+            let knee = 0.76, headroom = 0.24
+            guard x >= knee else { return x }
+            return 1 - headroom * headroom / (x + headroom - knee)
         }
     }
 
@@ -171,7 +179,7 @@ struct FrameInvariantTests {
         view.isPaused = true
         view.enableSetNeedsDisplay = true
         sketch.setCanvasSize(width: Double(size), height: Double(size))
-        sketch.setup()
+        try sketch.setup()
         var texture: MTLTexture?
         for frame in 0..<64 {
             sketch.advance(time: Double(frame) / 60, deltaTime: 1.0 / 60, frameRate: 60)
@@ -353,7 +361,7 @@ struct FrameInvariantTests {
     /// polarization with delta = 2 pi n1 d cos(theta1) / lambda, written here with the
     /// coating's own index and quarter-wave thickness, for the bundled glasses both ways
     /// through the surface and across the visible.
-    @Test func aCoatedSurfaceReflectsWhatAThinFilmDoes() {
+    @Test func aCoatedSurfaceReflectsWhatAThinFilmDoes() throws {
         func single(_ angle: Double, _ wavelength: Double, _ n0: Double, _ n2: Double) -> Double? {
             let n1 = max((n0 * n2).squareRoot(), 1.38)
             let d = 550 / 4 / n1

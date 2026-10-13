@@ -20,7 +20,7 @@ struct StylusTests {
         override func draw() {}
     }
 
-    @Test func aLeanIsHeldToItsRangeAndATurnToOneLap() {
+    @Test func aLeanIsHeldToItsRangeAndATurnToOneLap() throws {
         let steep = Stylus(tilt: Vector2(-3, 2.5), twist: 7 * .pi)
         #expect(steep.tilt == Vector2(-1, 1), "a lean past flat is flat: \(steep.tilt)")
         #expect(abs(steep.twist - .pi) < 1e-9, "seven half turns is half a turn: \(steep.twist)")
@@ -28,14 +28,14 @@ struct StylusTests {
         #expect(Stylus(twist: .nan).twist == 0, "and nothing at all is upright")
     }
 
-    @Test func aSketchWithNoTabletReadsAsOne() {
+    @Test func aSketchWithNoTabletReadsAsOne() throws {
         let sketch = Drawing()
         #expect(sketch.stylus == Stylus(), "the pen starts as nothing")
         #expect(sketch.stylus.tilt == .zero && !sketch.stylus.isNearby && !sketch.stylus.tiltIsAvailable,
                 "so a sketch written for a pen still runs under a mouse")
     }
 
-    @Test func thePenPathStaysOfferedOnceAPenHasBeenSeen() {
+    @Test func thePenPathStaysOfferedOnceAPenHasBeenSeen() throws {
         // The lean's availability latches the way pressure's does: a stylus
         // lifted out of range would otherwise take the pen path away in the
         // middle of a stroke.
@@ -48,7 +48,7 @@ struct StylusTests {
         #expect(sketch.stylus.tilt == .zero, "with nothing left over from the last reading")
     }
 
-    @Test func theErasingEndIsItsOwnThing() {
+    @Test func theErasingEndIsItsOwnThing() throws {
         let sketch = Drawing()
         sketch.setStylus(Stylus(tilt: Vector2(0.1, 0.1), isEraser: true, isNearby: true,
                           tiltIsAvailable: true))
@@ -57,7 +57,7 @@ struct StylusTests {
         #expect(!sketch.stylus.isEraser, "and turning it over is the tip again")
     }
 
-    @Test func pressureAndThePenAreSeparate() {
+    @Test func pressureAndThePenAreSeparate() throws {
         // A trackpad measures pressure and has no lean; a pen has both. Setting
         // one must never touch the other.
         let sketch = Drawing()
@@ -68,11 +68,11 @@ struct StylusTests {
         #expect(sketch.stylus.tilt == Vector2(0.5, 0), "and the pressure left the lean alone")
     }
 
-    @Test func aTakeCarriesThePenThroughAReplay() {
+    @Test func aTakeCarriesThePenThroughAReplay() throws {
         let live = Drawing()
         live.setCanvasSize(width: 64, height: 64)
         live.takeRecorder = TakeRecorder(sketch: live)
-        live.setup()
+        try live.setup()
         let reading = Stylus(tilt: Vector2(-0.35, 0.7), twist: 1.2, isEraser: true,
                           isNearby: true, tiltIsAvailable: true)
         for frame in 0..<6 {
@@ -88,7 +88,7 @@ struct StylusTests {
         let replayed = Drawing()
         replayed.setCanvasSize(width: 64, height: 64)
         take.install(on: replayed)
-        replayed.setup()
+        try replayed.setup()
         var seen: [Stylus] = []
         for frame in 0..<6 {
             replayed.advance(time: Double(frame) * 9, deltaTime: 9, frameRate: 1)

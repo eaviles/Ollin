@@ -3931,7 +3931,7 @@ extension MetalRenderer {
                 encoder.setRenderPipelineState(state)
                 encoder.setVertexBuffer(imageBuffer, offset: batch.imageStart * imageStride, index: 0)
                 encoder.setFragmentTexture(texture, index: 0)
-                encoder.setFragmentSamplerState(imageSampler, index: 0)
+                encoder.setFragmentSamplerState(batch.imageSamplesNearest ? pixelSampler : imageSampler, index: 0)
                 var bounds = batch.imageBounds ?? MetalRenderer.wholeImage
                 encoder.setFragmentBytes(&bounds, length: MemoryLayout<SIMD4<Float>>.stride, index: 0)
                 profile.countDraw(batch.kind, count)
@@ -4511,7 +4511,7 @@ extension MetalRenderer {
                 encoder.setRenderPipelineState(state)
                 encoder.setVertexBuffer(buffer, offset: run.imageStart * imageStride, index: 0)
                 encoder.setFragmentTexture(texture, index: 0)
-                encoder.setFragmentSamplerState(imageSampler, index: 0)
+                encoder.setFragmentSamplerState(run.imageSamplesNearest ? pixelSampler : imageSampler, index: 0)
                 var bounds = run.imageBounds ?? MetalRenderer.wholeImage
                 encoder.setFragmentBytes(&bounds, length: MemoryLayout<SIMD4<Float>>.stride, index: 0)
                 profile.countDraw(run.kind, count)

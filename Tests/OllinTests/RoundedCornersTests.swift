@@ -12,7 +12,7 @@ struct RoundedCornersTests {
 
     // MARK: The value
 
-    @Test func namedCornersAndTheUniformCase() {
+    @Test func namedCornersAndTheUniformCase() throws {
         let tab = CornerRadii.top(20)
         #expect(tab == CornerRadii(topLeft: 20, topRight: 20, bottomRight: 0, bottomLeft: 0))
         #expect(CornerRadii.bottom(5) == CornerRadii(topLeft: 0, topRight: 0, bottomRight: 5, bottomLeft: 5))
@@ -24,7 +24,7 @@ struct RoundedCornersTests {
         #expect(CornerRadii.zero.uniformRadius == 0)
     }
 
-    @Test func fittingScalesEveryRadiusByTheSameFactor() {
+    @Test func fittingScalesEveryRadiusByTheSameFactor() throws {
         // Two 60s along a 100 side both become 50, and the other corners
         // scale with them so the shape is kept.
         let fitted = CornerRadii(topLeft: 60, topRight: 60, bottomRight: 12, bottomLeft: 0)
@@ -41,7 +41,7 @@ struct RoundedCornersTests {
 
     // MARK: The box path
 
-    @Test func fourEqualRadiiWriteTheSameInstanceAsOneRadius() {
+    @Test func fourEqualRadiiWriteTheSameInstanceAsOneRadius() throws {
         let one = Drawer(), four = Drawer()
         for d in [one, four] {
             d.beginFrame(); d.fill(Color.red); d.stroke(Color.black); d.strokeWeight(3)
@@ -58,7 +58,7 @@ struct RoundedCornersTests {
         #expect(big.sdfInstances[0].param0 == .zero && big.sdfInstances[0].param1 == .zero)
     }
 
-    @Test func differentRadiiRideTheParameterPairs() {
+    @Test func differentRadiiRideTheParameterPairs() throws {
         let d = Drawer()
         d.beginFrame(); d.fill(Color.red)
         d.drawRect(Rectangle(x: 0, y: 0, width: 100, height: 60),
@@ -94,8 +94,8 @@ struct RoundedCornersTests {
         }
     }
 
-    @Test func theSVGWritesARectForOneRadiusAndAPathWithAnArcPerRoundedCorner() {
-        let svg = OllinApp.svg(of: Rounded())
+    @Test func theSVGWritesARectForOneRadiusAndAPathWithAnArcPerRoundedCorner() throws {
+        let svg = try OllinApp.svg(of: Rounded())
         #expect(svg.contains("<rect x=\"10\" y=\"10\" width=\"100\" height=\"60\" rx=\"12\""))
         let path = svg.components(separatedBy: "\n").first { $0.contains("<path d=\"M 14 80") } ?? ""
         // Three rounded corners are three arcs at their own radii; the square
@@ -112,7 +112,7 @@ struct RoundedCornersTests {
     @Test func thePDFTakesThePerCornerOutline() throws {
         // The same recording through CoreGraphics arcs: a document comes back
         // with its one page, and its size says the rectangles were drawn.
-        let data = try #require(OllinApp.pdf(of: Rounded()))
+        let data = try #require(try OllinApp.pdf(of: Rounded()))
         let provider = try #require(CGDataProvider(data: data as CFData))
         let document = try #require(CGPDFDocument(provider))
         #expect(document.numberOfPages == 1)

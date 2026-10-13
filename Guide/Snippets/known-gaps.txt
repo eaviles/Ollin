@@ -36,16 +36,17 @@ f1200033a436  Guide/09-Pictures.md:208  cannot find 'walk' in scope
 ed123e551581  Guide/09-Pictures.md:236  cannot find 'picture' in scope
 8ca70252f031  Guide/09-Pictures.md:247  cannot find 'picture' in scope
 cd4b2fbdddc6  Guide/09-Pictures.md:298  cannot find 'photo' in scope
-94e632809a2c  Guide/09-Pictures.md:335  cannot find 'picture' in scope
-c3c5db53cc82  Guide/09-Pictures.md:354  cannot find 'target' in scope
+31f2452ca60a  Guide/09-Pictures.md:326  cannot find 'poster' in scope
+94e632809a2c  Guide/09-Pictures.md:348  cannot find 'picture' in scope
 5b3e1eedfb8d  Guide/09-Pictures.md:36  cannot find 'photo' in scope
-6973e2fc08f1  Guide/09-Pictures.md:370  cannot find 'picture' in scope
-843a4fdf6a3f  Guide/09-Pictures.md:391  cannot find 'picture' in scope
-42f5e59331ce  Guide/09-Pictures.md:416  cannot find 'picture' in scope
-4bda4ace2c1f  Guide/09-Pictures.md:436  cannot find 'depthMap' in scope
-7363ccd01a5f  Guide/09-Pictures.md:461  'module' is inaccessible due to 'internal' protection level
-9335f3c2f125  Guide/09-Pictures.md:480  cannot find 'table' in scope
-aec7ca7fcac8  Guide/09-Pictures.md:495  'module' is inaccessible due to 'internal' protection level
+c3c5db53cc82  Guide/09-Pictures.md:367  cannot find 'target' in scope
+6973e2fc08f1  Guide/09-Pictures.md:383  cannot find 'picture' in scope
+843a4fdf6a3f  Guide/09-Pictures.md:404  cannot find 'picture' in scope
+42f5e59331ce  Guide/09-Pictures.md:429  cannot find 'picture' in scope
+4bda4ace2c1f  Guide/09-Pictures.md:449  cannot find 'depthMap' in scope
+7363ccd01a5f  Guide/09-Pictures.md:474  'module' is inaccessible due to 'internal' protection level
+9335f3c2f125  Guide/09-Pictures.md:493  cannot find 'table' in scope
+aec7ca7fcac8  Guide/09-Pictures.md:508  'module' is inaccessible due to 'internal' protection level
 ae33653cb376  Guide/09-Pictures.md:70  cannot find 'c' in scope
 7856a82b5957  Guide/10-Vectors.md:105  cannot find 'target' in scope
 d7900de9175f  Guide/10-Vectors.md:187  cannot find 'target' in scope
@@ -75,7 +76,7 @@ d6f8fdb72cba  Guide/17-MarksAndMedia.md:68  cannot assign to value: 'mark' is a 
 0979bc9f5047  Guide/20-PicturesRestyled.md:268  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
 4467bb8d08b2  Guide/20-PicturesRestyled.md:293  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
 1d6986f2d7b4  Guide/20-PicturesRestyled.md:316  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
-d557820db6d8  Guide/20-PicturesRestyled.md:57  'module' is inaccessible due to 'internal' protection level
+1ae291889181  Guide/20-PicturesRestyled.md:57  'module' is inaccessible due to 'internal' protection level
 45ff58c66642  Guide/21-PicturesYouSolve.md:116  cannot convert value of type '[Vector2]' to expected argument type 'RenderTarget'
 2c8e3afaeaef  Guide/21-PicturesYouSolve.md:132  cannot convert value of type '[Vector2]' to expected argument type 'RenderTarget'
 cd36a2d9f010  Guide/21-PicturesYouSolve.md:17  cannot convert value of type 'RenderTarget?' to expected argument type 'Contour'
@@ -86,11 +87,11 @@ a1896233ab91  Guide/21-PicturesYouSolve.md:328  use of 'layer' refers to instanc
 9154907c71d0  Guide/27-Meshes.md:110  cannot find 'grown' in scope
 a23ac04ffc12  Guide/27-Meshes.md:120  cannot find 'u' in scope
 52bcf0d25836  Guide/27-Meshes.md:137  cannot find 'boulder' in scope
-a5a1becd18ce  Guide/27-Meshes.md:156  cannot find 'dropPoint' in scope
+99c7c3882150  Guide/27-Meshes.md:156  cannot find 'dropPoint' in scope
 176ac6a236e1  Guide/27-Meshes.md:308  cannot find 'dents' in scope
 291fdafb6fdf  Guide/27-Meshes.md:324  cannot find 'paint' in scope
 68f2b1e342d8  Guide/27-Meshes.md:340  cannot find 'ribbon' in scope
-12f405514567  Guide/27-Meshes.md:361  cannot find 'stage' in scope
+771eaf2a5915  Guide/27-Meshes.md:361  cannot find 'stage' in scope
 d8b410a46463  Guide/27-Meshes.md:378  cannot find 'stage' in scope
 11169c9041c5  Guide/27-Meshes.md:423  cannot find 'block' in scope
 a3cc26d6c8f4  Guide/27-Meshes.md:44  cannot find 'teal' in scope
@@ -113,16 +114,7 @@ a214a907f54b  Guide/29-Landscapes.md:296  cannot find 'floorLevel' in scope
 8fe3a1525343  Guide/29-Landscapes.md:483  cannot find 'weathered' in scope
 54c56af7fa4c  Guide/29-Landscapes.md:53  cannot find 'seats' in scope
 5fe3d9f427a8  Guide/29-Landscapes.md:89  cannot find 'island' in scope
-2c8bf60e2308  Guide/31-CharactersAndCloth.md:128  errors thrown from here are not handled
-1c91a766a54a  Guide/31-CharactersAndCloth.md:166  errors thrown from here are not handled
 b7d3a2e897f3  Guide/31-CharactersAndCloth.md:196  labeled block needs 'do'
-76d7631ccfae  Guide/31-CharactersAndCloth.md:204  errors thrown from here are not handled
-f1146c1aef18  Guide/31-CharactersAndCloth.md:395  errors thrown from here are not handled
-96518df1714d  Guide/31-CharactersAndCloth.md:446  errors thrown from here are not handled
-5abf426954e0  Guide/31-CharactersAndCloth.md:489  errors thrown from here are not handled
-e568d6de03cc  Guide/31-CharactersAndCloth.md:575  errors thrown from here are not handled
-2a1c012c6ce3  Guide/31-CharactersAndCloth.md:592  errors thrown from here are not handled
-5e7d649a0114  Guide/31-CharactersAndCloth.md:70  errors thrown from here are not handled
 505abdd13984  Guide/32-SculptingWithFields.md:202  cannot find 'a' in scope
 17e800a28a86  Guide/32-SculptingWithFields.md:270  cannot find 'cluster' in scope
 e3f4153e6ffa  Guide/34-Seeing.md:127  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
@@ -143,7 +135,7 @@ ed00e1e6886f  Guide/34-Seeing.md:454  argument type '@MainActor (Camera3D) -> ()
 a7aa8455a66f  Guide/34-Seeing.md:496  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
 491c839e438a  Guide/34-Seeing.md:539  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
 746879197407  Guide/34-Seeing.md:611  value of type '@MainActor (Camera3D) -> ()' has no member 'frame'
-6d480cc311b2  Guide/37-Listening.md:370  'module' is inaccessible due to 'internal' protection level
+081af4a617de  Guide/37-Listening.md:370  'module' is inaccessible due to 'internal' protection level
 917f64dd5639  Guide/37-Listening.md:40  'module' is inaccessible due to 'internal' protection level
 a084d412ddda  Guide/39-MakingSound.md:204  'module' is inaccessible due to 'internal' protection level
 26aeb599498d  Guide/39-MakingSound.md:475  'module' is inaccessible due to 'internal' protection level

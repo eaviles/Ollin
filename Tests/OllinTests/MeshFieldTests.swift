@@ -14,7 +14,7 @@ struct MeshFieldTests {
 
     private let box = Mesh.box(width: 2, height: 2, depth: 2)
 
-    @Test func placeBuildsEntriesAndCopies() {
+    @Test func placeBuildsEntriesAndCopies() throws {
         let field = MeshField()
         field.place(box, at: [MeshInstance(), MeshInstance(position: Vector3(3, 0, 0))])
         field.place(Mesh.sphere(radius: 1), at: [MeshInstance(position: Vector3(0, 2, 0))])
@@ -32,7 +32,7 @@ struct MeshFieldTests {
         #expect(abs(first.radius - Float(3.0.squareRoot())) < 1e-4)
     }
 
-    @Test func placementsKeepTheirMatricesAndTints() {
+    @Test func placementsKeepTheirMatricesAndTints() throws {
         let field = MeshField()
         field.place(box, at: [MeshInstance(position: Vector3(1, 2, 3),
                                            color: Color(red: 1, green: 0.5, blue: 0, alpha: 1))])
@@ -41,14 +41,14 @@ struct MeshFieldTests {
         #expect(inst.color == SIMD4<Float>(1, 0.5, 0, 1))
     }
 
-    @Test func emptyPlacesAreIgnored() {
+    @Test func emptyPlacesAreIgnored() throws {
         let field = MeshField()
         field.place(box, at: [])
         field.place(Mesh(positions: [], indices: []), at: [MeshInstance()])
         #expect(field.isEmpty)
     }
 
-    @Test func drawRecordsOneBatchOncePerFrame() {
+    @Test func drawRecordsOneBatchOncePerFrame() throws {
         let drawer = Drawer()
         drawer.beginFrame()
         drawer.camera(Camera3D(eye: Vector3(0, 0, 6), target: .zero))
@@ -65,7 +65,7 @@ struct MeshFieldTests {
         #expect(field.instances[0].model.columns.3.x == 0)
     }
 
-    @Test func refusedInsideABatchRecordingAndWithoutACamera() {
+    @Test func refusedInsideABatchRecordingAndWithoutACamera() throws {
         let drawer = Drawer()
         drawer.beginFrame()
         let field = MeshField()
@@ -204,7 +204,7 @@ struct MeshFieldBenchmarkTests {
         func measure(culling: Bool) -> (gpuMs: Double, cpuMs: Double, copies: Int) {
             let sketch = FieldBenchScene()
             sketch.setCanvasSize(width: Double(res), height: Double(res))
-            sketch.setup()
+            try sketch.setup()
             sketch.fieldCulling = culling
             sketch.advance(time: 1, deltaTime: 1 / 60, frameRate: 60)
             sketch.performDraw()

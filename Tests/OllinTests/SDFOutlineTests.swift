@@ -63,7 +63,7 @@ struct SDFOutlineTests {
     @Test(arguments: shapes)
     func theExportedOutlineTracesTheRender(_ shape: Case) throws {
         let render = Pixels(try OllinApp.image(of: OneShape(shape.draw), frame: 1))
-        let recording = OllinApp.recordVectorFrame(of: OneShape(shape.draw), frame: 1, fps: 60, hatching: nil)
+        let recording = try OllinApp.recordVectorFrame(of: OneShape(shape.draw), frame: 1, fps: 60, hatching: nil)
         var rings: [[Vector2]] = []
         for command in recording.commands {
             guard case let .draw(recorded) = command else { continue }

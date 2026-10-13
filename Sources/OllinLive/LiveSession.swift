@@ -84,12 +84,13 @@ final class LiveSession {
     /// isn't even running), otherwise a user-shader compile error.
     var errorMessage: String? { core.errorMessage }
 
-    /// The watcher state mapped onto the shared inspector chip. A user-shader error
-    /// turns the chip red too, even while the Swift side is happily watching.
+    /// The watcher state mapped onto the shared inspector chip. A user-shader
+    /// error or a `setup()` that threw turns the chip red too, even while the
+    /// Swift side is happily watching.
     var inspectorStatus: InspectorStatus {
         switch status {
         case .compiling: return .compiling
-        case .watching: return shaderError == nil ? .watching : .error
+        case .watching: return shaderError == nil && core.setupError == nil ? .watching : .error
         case .error: return .error
         }
     }

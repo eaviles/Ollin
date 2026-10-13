@@ -454,7 +454,15 @@ open class Sketch {
     // MARK: Lifecycle (override in subclasses)
 
     /// Called once, after the canvas size is known, before the first `draw()`.
-    open func setup() {}
+    ///
+    /// It may throw. A loader that cannot read its file (`loadImage`, `loadMesh`,
+    /// a font, a table) throws a `FileError`, and `setup()` lets it out with a
+    /// bare `try`. A window reports the sentence
+    /// the way the live hosts report a compile error (on stderr, and in a host's
+    /// error strip) and holds the sketch rather than drawing it half built; a
+    /// headless export fails with it. An override may leave `throws` off, so a
+    /// `setup()` that throws nothing is written as it always was.
+    open func setup() throws {}
     /// Called every frame. Do your drawing here.
     open func draw() {}
     /// Called once each time a mouse button is pressed over the canvas. Override
@@ -3988,6 +3996,14 @@ open class Sketch {
     /// default) leaves the image unchanged. Like other state, it's saved and
     /// restored by `withState { }`.
     public func tint(_ color: Color) { drawer.tint(color) }
+    /// How the pictures that follow are read when drawn larger than they are:
+    /// `.linear` (the default) blends neighboring pixels, `.nearest` keeps each
+    /// pixel a hard square, which is what pixel art, a low-resolution canvas,
+    /// or a photo dithered to two levels want at several canvas pixels a cell.
+    /// No enlarged copy is made; the GPU reads the picture that way. A picture
+    /// drawn smaller than its pixels is blended under either. Drawing state
+    /// beside `tint`, saved by `withState { }`. See `ImageSampling`.
+    public func imageSampling(_ mode: ImageSampling) { drawer.imageSampling(mode) }
     /// Stop tinting images — draw them unchanged again (the default), undoing `tint(_:)`.
     public func noTint() { drawer.noTint() }
     /// Set the active text font for `drawText` to a bitmap (pixel-grid) font —
@@ -4478,11 +4494,16 @@ open class Sketch {
     /// together, and anything drawn *before* it stays put, which is where a
     /// fixed backdrop or a title belongs.
     ///
-    /// `center` and `zoom` frame the opening view and are applied on the first
-    /// call only, so passing them every frame does not fight the dragging. The
-    /// default opens on the whole canvas at its own size. `zoom` is how many
-    /// screen pixels one canvas unit covers, and `range` bounds where the scroll
-    /// wheel can take it.
+    /// `center` and `zoom` frame the opening view, and after the first call
+    /// they are the view's home: passing the same values every frame changes
+    /// nothing, so a constant framing never fights the dragging, and a value
+    /// that changes (a `@Param` turned in the inspector, an edit on the live
+    /// stage) glides the view there while the viewer has not dragged or
+    /// scrolled it yet. Once they have, the view is theirs, a changed value
+    /// moves only the home, and `resetView()` is what opens on the new one.
+    /// The default opens on the whole canvas at its own size. `zoom` is how
+    /// many screen pixels one canvas unit covers, and `range` bounds where the
+    /// scroll wheel can take it.
     ///
     /// Neither gesture is damped, unlike the 3D camera: an orbit gains from a
     /// little inertia, and a flat plane under a finger does not. A drag moves
@@ -4497,10 +4518,10 @@ open class Sketch {
     public func viewControl(center: Vector2? = nil, zoom: Double = 1,
                             in range: ClosedRange<Double> = 0.05...50) {
         let middle = Vector2(width / 2, height / 2)
-        view2D.seed(center: center ?? middle, zoom: zoom)
+        view2D.frame(center: center ?? middle, zoom: zoom)
         let pointer = Vector2(mouseX, mouseY)
         view2D.update(pointer: pointer, dragging: mouseIsPressed, scroll: scrollDeltaY,
-                      canvasCenter: middle, range: range)
+                      canvasCenter: middle, range: range, dt: deltaTime)
         translate(middle)
         scale(view2D.zoom, view2D.zoom)
         translate(-view2D.center)
@@ -4518,8 +4539,9 @@ open class Sketch {
     /// How many screen pixels one canvas unit covers under the current view.
     public var viewZoom: Double { view2D.zoom }
 
-    /// Forget where the viewer took the view, so the next `viewControl()` frames
-    /// its opening view again. The escape hatch behind a reset key.
+    /// Forget where the viewer took the view, so the next `viewControl()` opens
+    /// on the framing it is passed, the current home. The escape hatch behind a
+    /// reset key.
     public func resetView() { view2D = View2D() }
 
     /// Run `body` with drawing confined to `circle`. The circle is flattened to a

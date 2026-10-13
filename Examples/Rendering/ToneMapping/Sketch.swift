@@ -21,6 +21,9 @@ import Ollin
 ///     cores keep their hue instead of blowing out, if a touch flat.
 ///   • **`.aces`**: a film-like S-curve; highlights roll off smoothly with
 ///     contrast and saturation held in the midtones, the glow look.
+///   • **`.neutral`**: the hue-preserving curve; a bright saturated core keeps
+///     its own color where the per-channel curves turn it toward a primary,
+///     and the roll-off is gentler than film.
 ///
 /// Drag left↔right to change `exposure` (the brightness dial): push it up and even
 /// `.aces` saturates; pull it down and the whole scene dims into its falloff. This
@@ -28,10 +31,11 @@ import Ollin
 /// summed in float, then mapped down at the very end.
 @main
 final class ToneMapping_Example: Sketch {
-    /// The comparison table: three tone maps over summed light, then the flat
+    /// The comparison table: four tone maps over summed light, then the flat
     /// `.normal` control where the lamps just stack.
     private let modes: [(name: String, additive: Bool, map: ToneMap)] = [
         ("ACES", true, .aces),
+        ("Neutral", true, .neutral),
         ("Reinhard", true, .reinhard),
         ("Clamp (SDR)", true, .clamp),
         ("flat (.normal)", false, .clamp)]

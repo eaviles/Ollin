@@ -242,7 +242,7 @@ struct CausticEnergyTests {
                                          sampleCount: ollinPreferredSampleCount(device),
                                          encoding: sketch.colorOutput.presentEncoding)
         sketch.setCanvasSize(width: Double(width), height: Double(height))
-        sketch.setup()
+        try sketch.setup()
         var fluxes: [Double] = []
         for k in 0..<16 {
             sketch.advance(time: Double(k) / 60, deltaTime: 1.0 / 60, frameRate: 60)

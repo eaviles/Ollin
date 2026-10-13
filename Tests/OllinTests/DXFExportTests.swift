@@ -173,8 +173,8 @@ struct DXFExportTests {
 
     // MARK: - The skeleton
 
-    @Test func theFileHasTheSkeletonEveryReaderLooksFor() {
-        let text = OllinApp.dxf(of: Lines(), settings: DXF(width: 200, margin: 5))
+    @Test func theFileHasTheSkeletonEveryReaderLooksFor() throws {
+        let text = try OllinApp.dxf(of: Lines(), settings: DXF(width: 200, margin: 5))
         let doc = Document(text)
         #expect(doc.version == "AC1009", "the R12 dialect")
         #expect(doc.units == 4, "millimeters")
@@ -187,10 +187,10 @@ struct DXFExportTests {
 
     // MARK: - Millimeters and the flip
 
-    @Test func theTopEdgeIsTheDrawingsTopInMillimeters() {
+    @Test func theTopEdgeIsTheDrawingsTopInMillimeters() throws {
         // A line two units under the top of a 200 × 100 canvas, mapped to 100 mm
         // wide with a 5 mm margin: it lands at y = 54, from x = 10 to 100.
-        let text = OllinApp.dxf(of: Lines(), settings: DXF(width: 100, margin: 5))
+        let text = try OllinApp.dxf(of: Lines(), settings: DXF(width: 100, margin: 5))
         let doc = Document(text)
         let lines = doc.ofType("LINE")
         let top = lines.first { $0.points.allSatisfy { near($0.y, 54) } }
@@ -211,15 +211,15 @@ struct DXFExportTests {
 
     // MARK: - Layers
 
-    @Test func eachColorIsALayerNamedByItsBytes() {
-        let doc = Document(OllinApp.dxf(of: Colors(), settings: DXF(width: 100)))
+    @Test func eachColorIsALayerNamedByItsBytes() throws {
+        let doc = Document(try OllinApp.dxf(of: Colors(), settings: DXF(width: 100)))
         let names = doc.layers.map(\.name)
         #expect(names == ["color-000000", "color-FF0000", "color-0000FF"], "layers in the order first drawn: \(names)")
         #expect(doc.layers.map(\.color) == [7, 1, 5], "black is the foreground, red is 1, blue is 5")
         #expect(doc.entities(on: "color-FF0000").count == 2, "the red stroke and the red fill share a layer")
         #expect(doc.entities(on: "color-0000FF").count == 1)
         // The planner exposes the same layers before anything is written.
-        let plan = OllinApp.drafting(of: Colors(), settings: DXF(width: 100))
+        let plan = try OllinApp.drafting(of: Colors(), settings: DXF(width: 100))
         #expect(plan.layers.map(\.name) == names)
         #expect(plan.entities(on: "color-FF0000").count == 2)
         #expect(near(plan.size.width, 100) && near(plan.size.height, 50))
@@ -227,8 +227,8 @@ struct DXFExportTests {
 
     // MARK: - Circles
 
-    @Test func aCircleStaysACircleUnlessSomethingSkewsIt() {
-        let doc = Document(OllinApp.dxf(of: Circles(), settings: DXF(width: 100)))
+    @Test func aCircleStaysACircleUnlessSomethingSkewsIt() throws {
+        let doc = Document(try OllinApp.dxf(of: Circles(), settings: DXF(width: 100)))
         let circles = doc.ofType("CIRCLE")
         #expect(circles.count == 2, "the plain circle and the turned, uniformly scaled one: \(circles.count)")
         // The plain one: center (50, 50) of a 200 × 100 canvas, radius 20, at half scale.
@@ -242,23 +242,23 @@ struct DXFExportTests {
         #expect(scaled?.radius.map { near($0, 10) } == true, "\(String(describing: scaled?.radius))")
         // The one under a non-uniform scale is flattened, so the file has one
         // closed polyline for it and no third circle.
-        let flattened = polylines(in: OllinApp.dxf(of: Circles(), settings: DXF(width: 100)))
+        let flattened = polylines(in: try OllinApp.dxf(of: Circles(), settings: DXF(width: 100)))
         #expect(flattened.count == 1 && flattened[0].closed && flattened[0].points.count > 12)
     }
 
     // MARK: - Merging, lines, and clipping
 
-    @Test func touchingPathsMergeAndATwoPointPathIsALine() {
-        let joined = polylines(in: OllinApp.dxf(of: Chain(), settings: DXF(width: 100)))
+    @Test func touchingPathsMergeAndATwoPointPathIsALine() throws {
+        let joined = polylines(in: try OllinApp.dxf(of: Chain(), settings: DXF(width: 100)))
         #expect(joined.count == 1, "the four touching segments become one polyline: \(joined.count)")
         #expect(joined.first?.points.count == 5)
-        let apart = Document(OllinApp.dxf(of: Chain(), settings: DXF(width: 100, joinTolerance: 0)))
+        let apart = Document(try OllinApp.dxf(of: Chain(), settings: DXF(width: 100, joinTolerance: 0)))
         #expect(apart.ofType("LINE").count == 4, "with no tolerance each segment is its own line")
         #expect(apart.ofType("POLYLINE").isEmpty)
     }
 
-    @Test func aClipCutsTheWork() {
-        let doc = Document(OllinApp.dxf(of: Clipped(), settings: DXF(width: 100)))
+    @Test func aClipCutsTheWork() throws {
+        let doc = Document(try OllinApp.dxf(of: Clipped(), settings: DXF(width: 100)))
         // The line ran the full width; only the middle half survives the clip.
         let line = doc.ofType("LINE").first
         #expect(line != nil)
@@ -268,15 +268,15 @@ struct DXFExportTests {
         }
     }
 
-    @Test func aFillIsAClosedPolylineUnlessHatched() {
-        let solid = polylines(in: OllinApp.dxf(of: Filled(), settings: DXF(width: 100)))
+    @Test func aFillIsAClosedPolylineUnlessHatched() throws {
+        let solid = polylines(in: try OllinApp.dxf(of: Filled(), settings: DXF(width: 100)))
         #expect(solid.count == 1 && solid[0].closed && solid[0].points.count == 4, "a rect fill is one closed polyline")
-        let hatched = OllinApp.dxf(of: Filled(), settings: DXF(width: 100), hatching: Hatching(spacing: 4))
+        let hatched = try OllinApp.dxf(of: Filled(), settings: DXF(width: 100), hatching: Hatching(spacing: 4))
         let doc = Document(hatched)
         #expect(doc.ofType("LINE").count > 10, "hatched, the fill is line work: \(doc.ofType("LINE").count) lines")
     }
 
-    @Test func thePublicPlannerTakesPlainContours() {
+    @Test func thePublicPlannerTakesPlainContours() throws {
         let canvas = Rectangle(x: 0, y: 0, width: 100, height: 100)
         let square = Contour([Vector2(10, 10), Vector2(90, 10), Vector2(90, 90), Vector2(10, 90)], closed: true)
         let plan = DXF(width: 50).drafting([square, Contour([Vector2(0, 50), Vector2(100, 50)], closed: false)], in: canvas)
@@ -295,7 +295,7 @@ struct DXFExportTests {
         try? FileManager.default.removeItem(atPath: path)
     }
 
-    @Test func aSheetHoldsTheDrawingInBothDirections() {
+    @Test func aSheetHoldsTheDrawingInBothDirections() throws {
         let square = Rectangle(x: 0, y: 0, width: 100, height: 100)
         let tall = Rectangle(x: 0, y: 0, width: 100, height: 300)
         let mark = [Contour([Vector2(0, 0), Vector2(100, 100)], closed: false)]

@@ -34,9 +34,9 @@ import Ollin
 final class Graded: Sketch {
     var look = ColorLUT.warmPrint                      // the bundled look
 
-    override func setup() {
+    override func setup() throws {
         // Your own, beside the sketch. Read it once: it is a whole table.
-        look = try! ColorLUT(resource: "teal-orange", withExtension: "cube", in: .module)
+        look = try ColorLUT(resource: "teal-orange", withExtension: "cube", in: .module)
     }
 
     override func draw() {

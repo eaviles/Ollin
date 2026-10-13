@@ -611,6 +611,7 @@ let package = Package(
         example("Images/Dropped"),
         example("Images/GlyphMosaic", [.samplePhotos]),
         example("Images/PhotoMosaic", [.samplePhotos]),
+        example("Images/PixelArt", [.samplePhotos]),
         example("Images/Autostereogram"),
         example("Images/Fit", [.samplePhotos]),
         example("Images/Halftone", [.samplePhotos]),

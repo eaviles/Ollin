@@ -174,7 +174,7 @@ drawScene(stage)
 
 ### Writing one back out
 
-A `Scene` can go back out to a file as well as come in from one. Write it as USDZ with [`Scene.write(to:)`](../Output/Spatial.md), which is the format Quick Look, Messages, and visionOS read. `OllinApp.spatialScene(of:frame:)` records a frame of any 3D sketch as a `Scene` first. So a sketch can leave as a model rather than as a picture of one.
+A `Scene` can go back out to a file as well as come in from one. Write it as USDZ with [`Scene.write(to:)`](../Output/Spatial.md), which is the format Quick Look, Messages, and visionOS read. `try OllinApp.spatialScene(of:frame:)` records a frame of any 3D sketch as a `Scene` first. So a sketch can leave as a model rather than as a picture of one.
 
 ```swift
 scene.write(to: "model.usdz", metersPerUnit: 0.05)

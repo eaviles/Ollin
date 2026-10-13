@@ -321,7 +321,7 @@ Any `Scene` writes the same way, including one you loaded or built by hand. A fr
 
 ```swift
 try? scene.write(to: "model.usdz")
-let frameScene = OllinApp.spatialScene(of: sketch, frame: 120)
+let frameScene = try OllinApp.spatialScene(of: sketch, frame: 120)
 ```
 
 That hands back an ordinary `Scene`, the kind [Chapter 27](27-Meshes.md#a-scene-with-its-camera-and-lights-loadscene) loaded from a file. You can look at what your own frame is made of, move a node, and write it out. One writer serves both paths, so the file and the frame agree.

@@ -99,7 +99,7 @@ final class PerformanceSession {
         switch core.phase {
         case .compiling: return .compiling
         case .idle:
-            if core.shaderError != nil { return .error }
+            if core.shaderError != nil || core.setupError != nil { return .error }
             return core.isOptimizing ? .optimizing : .watching
         case .failed: return .error
         }

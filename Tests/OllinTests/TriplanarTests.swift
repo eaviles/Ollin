@@ -221,7 +221,7 @@ struct TriplanarTests {
         // Neither file format has a triplanar slot, so the recorder strips the
         // projected maps (saying so once) and the surface exports in its plain
         // color rather than wearing a uv texture it never mapped through.
-        let scene = OllinApp.spatialScene(of: TriplanarProbe.make(.blob), frame: 1)
+        let scene = try OllinApp.spatialScene(of: TriplanarProbe.make(.blob), frame: 1)
         func firstMesh(_ nodes: [SceneNode]) -> Mesh? {
             for n in nodes {
                 if let mesh = n.mesh { return mesh }

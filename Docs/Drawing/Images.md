@@ -32,6 +32,7 @@ final class Photo: Sketch {
 - [Fitting a picture to a box](#fit) - `.stretch`, `.contain`, `.cover`
 - [Part of a picture](#part) - one cell of a sprite sheet, a tile, or a frame of a strip
 - [tint](#tint) - recolor and fade images as you draw them
+- [imageSampling](#imagesampling) - hard square pixels when a small picture is drawn big
 - [Image](#image) - the value type, loading from data or a bundle, `resized`, and `cropped`
 - [Pixels](#pixels) - author or sample an image pixel by pixel
 
@@ -44,7 +45,7 @@ loadImage(_ path: String) throws -> Image
 loadImage(_ url: URL) throws -> Image
 ```
 
-Decode an image file. The call throws a [`FileError`](../Core/Sketch.md#fileerror) when the file is not there (`missing`) or is not a picture (`unreadable`). Call it in `setup()`: `try!` stops the sketch naming the file and the reason, and `try?` carries on with `nil`.
+Decode an image file. The call throws a [`FileError`](../Core/Sketch.md#fileerror) when the file is not there (`missing`) or is not a picture (`unreadable`). Call it in `setup()` with a bare `try`: `setup()` may throw, so the sketch stops there naming the file and the reason, or write `try?` to carry on with `nil`.
 
 ```swift
 photo = try? loadImage("/Users/me/Pictures/leaf.png")
@@ -181,6 +182,34 @@ withState {
     drawImage(photo, 0, 0, width, height)
 }
 ```
+
+<a name="imagesampling"></a>
+
+### imageSampling
+
+```swift
+imageSampling(_ mode: ImageSampling)   // .linear (the default) or .nearest
+```
+
+How the pictures that follow are read when they are drawn larger than they are. A picture drawn bigger than its own pixels has to say what lies between two of them. `.linear`, the default, blends neighbors, so a photograph enlarged a little stays smooth. `.nearest` keeps every pixel a hard square, which is what pixel art, a low-resolution canvas, or a photo dithered to two levels want when drawn at several canvas pixels a cell: the cells read as cells. No enlarged copy is made on the CPU. The GPU reads the same small picture through a sampler that takes the nearest pixel, so a 270 by 270 picture drawn at four times its size costs what one quad costs.
+
+```swift
+var cells: Image!
+
+override func setup() throws {
+    let photo = try loadImage("portrait.jpg").resized(width: 270, height: 270)
+    cells = photo.dithered(.atkinson, levels: 2)     // black and white, once
+}
+
+override func draw() {
+    imageSampling(.nearest)
+    drawImage(cells, 0, 0, 1080, 1080)             // each cell a 4 by 4 square
+}
+```
+
+Two things to know. A picture drawn *smaller* than its pixels is still blended under `.nearest`: reading one pixel of many under reduction aliases into sparkle, so the choice applies only where the picture is enlarged, and a picture drawn at its own size reads the same either way. And a scale that is not a whole number gives cells of uneven width, since each canvas pixel takes whichever source pixel it lands on; draw at a whole multiple when the grid should be regular.
+
+It is drawing state beside `tint`, so `withState { }` saves and restores it, and a web page made with `--export-web` reads the picture the same way. The `Images/PixelArt` example draws one dithered photograph both ways with the split under the pointer.
 
 <a name="image"></a>
 

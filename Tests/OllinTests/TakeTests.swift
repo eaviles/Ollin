@@ -53,7 +53,7 @@ struct TakeTests {
         let live = Performance()
         live.setCanvasSize(width: 400, height: 400)
         live.takeRecorder = TakeRecorder(sketch: live)
-        live.setup()
+        try live.setup()
         var t = 0.0
         for k in 0..<frames {
             let dt = 1.0 / 60 + Double(k % 7) * 0.0013   // a jittery real clock
@@ -88,7 +88,7 @@ struct TakeTests {
         let fresh = Performance()
         fresh.setCanvasSize(width: 400, height: 400)
         take.install(on: fresh)
-        fresh.setup()
+        try fresh.setup()
         for k in 0..<frames {
             fresh.advance(time: Double(k) * 99, deltaTime: 9.9, frameRate: 1)
             fresh.performDraw()
@@ -98,7 +98,7 @@ struct TakeTests {
 
     // MARK: Determinism
 
-    @Test func aRecordedRunReplaysExactly() {
+    @Test func aRecordedRunReplaysExactly() throws {
         let live = recordPerformance()
         let take = live.takeRecorder!.take
 
@@ -116,7 +116,7 @@ struct TakeTests {
         #expect(replayed.wheels == live.wheels)
     }
 
-    @Test func theParameterMoveLandsOnItsFrame() {
+    @Test func theParameterMoveLandsOnItsFrame() throws {
         let live = recordPerformance()
         let take = live.takeRecorder!.take
         let change = take.changes.first { $0.name == "gain" }
@@ -129,13 +129,13 @@ struct TakeTests {
         // lands on the frame it was recorded on.
     }
 
-    @Test func liveInputIsGatedDuringReplay() {
+    @Test func liveInputIsGatedDuringReplay() throws {
         let live = recordPerformance(frames: 10)
         let take = live.takeRecorder!.take
         let fresh = Performance()
         fresh.setCanvasSize(width: 400, height: 400)
         take.install(on: fresh)
-        fresh.setup()
+        try fresh.setup()
         fresh.setMouse(x: 999, y: 999)          // a live pointer during replay
         fresh.handleMouseButton(pressed: true)
         #expect(fresh.mouseX == 0)
@@ -143,13 +143,13 @@ struct TakeTests {
         #expect(fresh.presses == 0)
     }
 
-    @Test func aReplayKeepsAdvancingPastTheEnd() {
+    @Test func aReplayKeepsAdvancingPastTheEnd() throws {
         let live = recordPerformance(frames: 10)
         let take = live.takeRecorder!.take
         let fresh = Performance()
         fresh.setCanvasSize(width: 400, height: 400)
         take.install(on: fresh)
-        fresh.setup()
+        try fresh.setup()
         var lastTime = -Double.infinity
         for _ in 0..<15 {
             fresh.advance(time: 0, deltaTime: 1.0 / 60, frameRate: 60)
@@ -159,14 +159,14 @@ struct TakeTests {
         #expect(fresh.frameCount == 15)
     }
 
-    @Test func aSeedOverrideKeepsTheGesturesAndMovesTheWorld() {
+    @Test func aSeedOverrideKeepsTheGesturesAndMovesTheWorld() throws {
         let live = recordPerformance()
         let take = live.takeRecorder!.take
         let fresh = Performance()
         fresh.setCanvasSize(width: 400, height: 400)
         take.install(on: fresh)
         fresh.seed(take.seed &+ 1)              // the --seed override, after install
-        fresh.setup()
+        try fresh.setup()
         for k in 0..<60 {
             fresh.advance(time: Double(k), deltaTime: 9.9, frameRate: 1)
             fresh.performDraw()
@@ -227,7 +227,7 @@ struct TakeTests {
         // rendered every frame because `noClear` accumulates.
         live.setCanvasSize(width: 200, height: 200)
         live.takeRecorder = TakeRecorder(sketch: live)
-        live.setup()
+        try live.setup()
         var t = 0.0
         var original: CGImage?
         for k in 0..<30 {
@@ -249,7 +249,7 @@ struct TakeTests {
                                                pixelFormat: fresh.colorOutput.drawablePixelFormat,
                                                sampleCount: ollinPreferredSampleCount(device),
                                                encoding: fresh.colorOutput.presentEncoding)
-        fresh.setup()
+        try fresh.setup()
         var replayed: CGImage?
         for k in 0..<30 {
             fresh.advance(time: Double(k), deltaTime: 9.9, frameRate: 1)

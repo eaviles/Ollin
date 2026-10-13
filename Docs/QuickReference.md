@@ -61,7 +61,7 @@ final class Rings: Sketch {
 - **Draw in `draw()`, not in `setup()`.** The frame's geometry is emptied before the first `draw()`, and per-frame state (the camera, lights, shadows) resets each frame.
 - **`draw*` calls emit shapes**; `fill`, `stroke`, and `background` set state; `translate`, `rotate`, and `scale` move the coordinates. `withState { }` keeps a change of state or transform inside its block.
 - **Keep state in properties.** A `Feedback`, an `Accumulator`, a loaded `Image`, or a `Mesh` is made once, in `setup()` or as a stored property, and used every frame.
-- **Loading a file throws.** `loadImage`, `loadMesh`, `loadScene`, `loadSVG`, `loadPalette`, `loadTable`, `loadJSON`, and the initializers under them throw a [`FileError`](./Core/Sketch.md#fileerror) (`missing` or `unreadable`, with the path and a sentence). `setup()` does not throw, so write `try!` to stop with that sentence or `try?` to carry on with `nil`.
+- **Loading a file throws.** `loadImage`, `loadMesh`, `loadScene`, `loadSVG`, `loadPalette`, `loadTable`, `loadJSON`, and the initializers under them throw a [`FileError`](./Core/Sketch.md#fileerror) (`missing` or `unreadable`, with the path and a sentence). `setup()` may throw, so a bare `try` stops the sketch with that sentence (on stderr, and in a host's error strip, with the window held open), or write `try?` to carry on with `nil`.
 
 [Sketch](./Core/Sketch.md) covers the lifecycle and [Canvas](./Core/Canvas.md) the canvas and window.
 
@@ -144,7 +144,7 @@ Some names from other frameworks mean something else here, or nothing. `ollin ap
 | Color | A `Color` holds sRGB components with straight alpha. Fills, strokes, lights, materials, and tints are converted to linear light for you. `linearRGB` and `Color(linear:green:blue:alpha:)` cross over by hand. |
 | Brighter than white | A component can pass 1: `Color(linear: c.linearRGB * 3)`. It only shows brighter than white on screen when the sketch overrides `colorOutput` with `.extended`; otherwise the tone map clips it. |
 | Noise | `noise`, `simplexNoise`, and `fbm` return 0 to 1. The `signed` forms (`signedNoise`, `signedFbm`) return −1 to 1. `curlNoise` returns a vector that is not normalized. `noise(loop:radius:)` loops as `loop` runs 0 to 1. |
-| Export time | `--frame N` counts from 0 and draws at N / fps. In `--export-sequence`, file n is drawn at (n − 1) / fps. `--skip` is in seconds and `--start` only renumbers the files. |
+| Export time | `--frame N` counts from 0 and draws at N / fps, and `--at S` is the same moment in seconds (the frame is S × fps, rounded; it wins when both are given). In `--export-sequence`, file n is drawn at (n − 1) / fps. `--skip` is in seconds and `--start` only renumbers the files. |
 | Depth-of-field light | A `SprayLine`'s `light` is the whole segment's, not light per unit length. A long line and a short one at the same `light` put down the same amount of light. |
 
 <a name="params"></a>
@@ -178,7 +178,7 @@ A packaged sketch runs with `swift run <Target> <flags>`, and a single file with
 
 | Flag | What it does |
 | --- | --- |
-| `--export frame.png` | One still. `--frame N` picks the frame (from 0, default 0) and `--fps` sets the rate (default 60). Every frame before N is drawn first. |
+| `--export frame.png` | One still. `--frame N` picks the frame (from 0, default 0) or `--at S` names the moment in seconds, and `--fps` sets the rate (default 60). Every frame before it is drawn first. |
 | `--export-sequence dir` | `frame-00001.png`, `frame-00002.png`, and so on, for `--seconds S` or `--frames N`. `--skip S` runs S seconds before the first file is written. |
 | `--export-video out.mp4`, `--export-gif out.gif` | A movie or a GIF, with the same `--seconds`, `--frames`, `--fps`, and `--skip`. |
 | `--export-loop out.mp4` | Exactly one lap of `loopDuration`. |

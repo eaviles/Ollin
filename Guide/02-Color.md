@@ -187,11 +187,11 @@ Each of them takes a `Ramp` or a plain list of colors. Alpha is kept too. A radi
 Every kit so far was typed in, and typing hex codes gets tiring. A file lets you skip it. `loadPalettes` reads palettes someone else already made. It returns every palette in a file, while `loadPalette` returns just the first one. Both throw when the file will not read. You never have to say what format the file is in, because the loader looks at the bytes and works it out. It reads a plain list of hex codes one per line, a CSV or TSV with a palette on each line, and JSON. It also reads Adobe `.ase` swatch files from Illustrator or Photoshop.
 
 ```swift
-let sets = try! loadPalettes("1000.json")      // however many the file holds
-let one  = try! loadPalette("sunset.hex")     // just the first
+let sets = try loadPalettes("1000.json")       // however many the file holds
+let one  = try loadPalette("sunset.hex")      // just the first
 ```
 
-> **Swift note.** A call that can fail on the way, like reading a file, is marked `throws`, and you call it with `try`. `try!` says "I promise this works", and crashes if it doesn't, the way `!` did for the optional earlier. `try?` hands you `nil`, Swift's name for the nothing case of an optional, instead of a crash. [Appendix A](A-JustEnoughSwift.md) has the rest of the story.
+> **Swift note.** A call that can fail on the way, like reading a file, is marked `throws`, and you call it with `try`. A bare `try` passes the failure up to whoever called you, and `setup()` accepts that: the sketch stops there with the loader's sentence, which is the shape to use for a file the sketch needs. `try!` says "I promise this works", and crashes if it doesn't, the way `!` did for the optional earlier. `try?` hands you `nil`, Swift's name for the nothing case of an optional, instead of a crash. [Appendix A](A-JustEnoughSwift.md) has the rest of the story.
 
 A good place to get palettes is [nice-color-palettes](https://github.com/Experience-Monks/nice-color-palettes), an npm package carrying a thousand of them as JSON, in the shape `loadPalettes` expects. You do not need npm to use it. The repository holds the files, so take `100.json` or `1000.json` from it and drop the file next to your sketch. The call above reads it as is. Two things to know about that file. Its palettes were collected from [COLOURlovers](https://www.colourlovers.com), whose default license forbids commercial use. So Ollin doesn't bundle them, and you should check the terms before selling work that uses them. And so many people have reached for this collection that its first palette shows up in a great deal of generative art. That palette's colors are `#69d2e7`, `#a7dbd8`, `#e0e4cc`, `#f38630`, and `#fa6900`. If you want your work to look like yours, [Chapter 9](09-Pictures.md#palettes-from-a-photograph) takes a palette out of a photograph you took.
 

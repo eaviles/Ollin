@@ -393,7 +393,7 @@ The palette always includes the base itself. The other swatches step evenly in l
 Palettes you collect elsewhere load with one call. `loadPalettes` returns every palette in a file, in file order, and `loadPalette` returns the first one. A file that holds a single palette reads as a one-element array. So `loadPalettes` is the form to use when you do not know which kind of file you have.
 
 ```swift
-let sets = try! loadPalettes("1000.json")     // many
+let sets = try loadPalettes("1000.json")      // many
 let one  = try? loadPalette("sunset.hex")     // the first, or nil when it will not read
 
 // From the sketch's own bundle. `in:` has no default: a default would
@@ -438,7 +438,7 @@ The `PaletteFile` example loads a CSV of six palettes and a hex-per-line file, s
 The colors in a picture are usually a better palette than a list someone else curated.
 
 ```swift
-let photo = try! loadImage("beach.jpg")
+let photo = try loadImage("beach.jpg")
 let p = Palette(extractedFrom: photo, count: 5)
 fill(p[0])                                     // the color the photo is mostly made of
 ```
@@ -465,7 +465,7 @@ The `PaletteFromImage` example paints an image from five known colors and then r
 Extraction pulls the colors out of a picture. Dithering rebuilds the picture from those colors.
 
 ```swift
-let photo = try! loadImage("beach.jpg")
+let photo = try loadImage("beach.jpg")
 let p = Palette(extractedFrom: photo, count: 6)
 let poster = photo.dithered(.floydSteinberg, to: p)
 

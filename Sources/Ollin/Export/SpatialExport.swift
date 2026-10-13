@@ -207,12 +207,12 @@ extension OllinApp {
     /// `draw()` advanced to `frame` at `fps`) and collect that frame's 3D draw
     /// calls as a `Scene`. Never touches Metal, so it runs anywhere and is
     /// deterministic.
-    static func recordSpatialFrame(of sketch: Sketch, frame: Int, fps: Double) -> Scene {
+    static func recordSpatialFrame(of sketch: Sketch, frame: Int, fps: Double) throws -> Scene {
         isRenderingHeadless = true
         defer { isRenderingHeadless = false }
         let size = sketch.canvasSizeForRun()
         sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
-        sketch.runSetup()
+        try sketch.runSetup()
         // Every frame is recorded and the last one kept, because the frame
         // written is either the one asked for or the one a `noLoop()` sketch
         // stopped on, which a window holds from then on; which one it is, is
@@ -251,8 +251,8 @@ public extension OllinApp {
     /// node carrying the transform that placed it and the surface it was
     /// drawn with, under the frame's own camera and lights. Write it with
     /// `Scene.write(to:)`, or read it, edit it, and draw it back.
-    static func spatialScene(of sketch: Sketch, frame: Int = 0, fps: FrameRate = 60) -> Scene {
-        recordSpatialFrame(of: sketch, frame: frame, fps: fps.framesPerSecond)
+    static func spatialScene(of sketch: Sketch, frame: Int = 0, fps: FrameRate = 60) throws -> Scene {
+        try recordSpatialFrame(of: sketch, frame: frame, fps: fps.framesPerSecond)
     }
 
     /// Render one frame of `sketch` and write it as a spatial model: a `.usdz`
@@ -271,7 +271,7 @@ public extension OllinApp {
     /// Throws `ExportError` when the model cannot be written.
     static func exportSpatial(_ sketch: Sketch, to path: String, frame: Int = 0,
                               fps: FrameRate = 60, metersPerUnit: Double = 1) throws {
-        let scene = spatialScene(of: sketch, frame: frame, fps: fps)
+        let scene = try spatialScene(of: sketch, frame: frame, fps: fps)
         let url = URL(fileURLWithPath: path)
         let format = SceneFileFormat(fileExtension: url.pathExtension) ?? .usdz
         do {

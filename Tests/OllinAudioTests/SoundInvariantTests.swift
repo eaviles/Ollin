@@ -66,7 +66,7 @@ struct SoundInvariantTests {
     /// is no louder than the one before. A loop that gains, a filter that rings up, or
     /// an excitation that keeps arriving all read as a rise.
     @Test(arguments: [PluckedString.nylon, .steel, .harp, .muted])
-    func aPluckedStringOnlyEverLosesEnergy(string: PluckedString) {
+    func aPluckedStringOnlyEverLosesEnergy(string: PluckedString)  throws {
         let samples = render(Voice(plucked: string, envelope: Self.flat, gain: 1), midi: 57, seconds: 2.0)
         // Eleven whole periods a window at this pitch, so the harmonics' cross
         // terms cancel and the ripple allowance can be small.
@@ -79,7 +79,7 @@ struct SoundInvariantTests {
 
     /// A struck body is passive too: its modes ring down and nothing feeds them.
     @Test(arguments: [ModalBody.drum, .plate, .bar, .bell, .wood, .glass])
-    func aStruckBodyOnlyEverLosesEnergy(body: ModalBody) {
+    func aStruckBodyOnlyEverLosesEnergy(body: ModalBody)  throws {
         let samples = render(Voice(struck: body, envelope: Self.flat, gain: 1), midi: 60, seconds: 2.2,
                              velocity: 0.9)
         let env = envelope(samples, start: 0.1, window: 0.2)
@@ -101,7 +101,7 @@ struct SoundInvariantTests {
     /// a low note or a high one, the sound stays inside the range and does not sit on
     /// the ceiling (a model that ran away and got clipped reads as a square wave).
     @Test(arguments: [0.02, 0.3, 1.0], [48.0, 72.0])
-    func aDrivenBodyStaysBoundedAtAnyDrive(drive: Double, midi: Double) {
+    func aDrivenBodyStaysBoundedAtAnyDrive(drive: Double, midi: Double)  throws {
         for (name, voice) in Self.drivenVoices {
             let samples = render(voice, midi: midi, seconds: 1.0, velocity: 0.9, drive: drive)
             let peak = samples.reduce(0) { max($0, abs($1)) }
@@ -119,10 +119,10 @@ struct SoundInvariantTests {
     }
 
     @MainActor
-    private func exporting(_ body: () -> Void) {
+    private func exporting(_ body: () throws -> Void) rethrows {
         OllinApp.isRenderingHeadless = true
         defer { OllinApp.isRenderingHeadless = false }
-        body()
+        try body()
     }
 
     /// One note, held still somewhere (or nowhere), for a second and a half.
@@ -154,7 +154,7 @@ struct SoundInvariantTests {
     /// A sound mirrored across the listener's nose is heard mirrored: the left ear's
     /// share of one is the right ear's share of the other.
     @MainActor
-    @Test func aMirroredPlaceSwapsTheEars() {
+    @Test func aMirroredPlaceSwapsTheEars() throws {
         let toTheLeft = placed(at: Vector3(-6, 0, -2))
         let toTheRight = placed(at: Vector3(6, 0, -2))
         let ll = level(toTheLeft, channel: 0), lr = level(toTheLeft, channel: 1)
@@ -171,7 +171,7 @@ struct SoundInvariantTests {
     /// stream and a half does not.
     @MainActor
     @Test(arguments: [0.5, 2.0, 8.0])
-    func placingNeverAmplifies(distance: Double) {
+    func placingNeverAmplifies(distance: Double)  throws {
         let unplaced = placed(at: nil)
         let near = placed(at: Vector3(0, 0, -distance))
         func power(_ s: [Float]) -> Double {
@@ -251,7 +251,7 @@ struct SoundInvariantTests {
     /// allpass is for (a whole-sample loop is up to a third of a semitone sharp
     /// at the top).
     @Test(arguments: [PluckedString.nylon, .steel, .harp])
-    func aPluckedStringSoundsItsNote(string: PluckedString) {
+    func aPluckedStringSoundsItsNote(string: PluckedString)  throws {
         for midi in [33.0, 45, 57, 69, 81, 93] {
             let s = render(Voice(plucked: string, envelope: Self.flat, gain: 1), midi: midi, seconds: 1.0)
             let f = peak(s[Int(0.3 * Self.sampleRate)...], near: hertz(midi))
@@ -282,7 +282,7 @@ struct SoundInvariantTests {
 
     /// A shape struck is a membrane of that shape: a disc rings at the Bessel
     /// zeros a circular membrane does, in order and in ratio.
-    @Test func aStruckDiscRingsAtAMembranesModes() {
+    @Test func aStruckDiscRingsAtAMembranesModes() throws {
         let disc = Shape((0..<160).map { step in
             let angle = Double(step) / 160 * .tau
             return Vector2(cos(angle) * 100, sin(angle) * 100)
@@ -328,7 +328,7 @@ struct SoundInvariantTests {
     /// loud at 48 kHz as at 44.1, where a push counted in samples was 9%
     /// louder at the higher rate.
     @Test(arguments: [("bell", ModalBody.bell), ("glass", .glass), ("drum", .drum), ("bar", .bar), ("plate", .plate)])
-    func aSofterStrikeIsDarkerAndNeverLouder(name: String, body: ModalBody) {
+    func aSofterStrikeIsDarkerAndNeverLouder(name: String, body: ModalBody)  throws {
         func peak(_ s: [Float]) -> Double { Double(s.map { abs($0) }.max() ?? 0) }
         func brightness(_ s: [Float]) -> Double {
             // The highest partial against the first, over the attack.
@@ -373,7 +373,7 @@ struct SoundInvariantTests {
     /// note is not compensated, so the steel string's 3.6 s is 3.6 s at MIDI 45
     /// and 0.64 s at MIDI 93 (nylon's 1.8 s becomes 0.42 s).
     @Test(arguments: [PluckedString.steel, .nylon])
-    func aPluckedStringRingsForItsDecayAtEveryPitch(string: PluckedString) {
+    func aPluckedStringRingsForItsDecayAtEveryPitch(string: PluckedString)  throws {
         for midi in [45.0, 93] {
             let s = render(Voice(plucked: string, envelope: Self.flat, gain: 1), midi: midi, seconds: 4.0)
             var points: [(Double, Double)] = []
@@ -406,7 +406,7 @@ struct SoundInvariantTests {
     /// string in about 60 ms (-25 dB at 40 to 60 ms after the lift at decay 2.2,
     /// -20 dB at decay 8), and what is left rings at the bridge segment's own
     /// pitch, about six times the note.
-    @Test func aLiftedBowLetsTheStringRingDown() {
+    @Test func aLiftedBowLetsTheStringRingDown() throws {
         let spec = BowedString(position: BowedString.cello.position, force: BowedString.cello.force,
                                decay: 2.2, damping: BowedString.cello.damping)
         let s = renderLifting(Voice(bowed: spec, gain: 1), midi: 48, seconds: 2.0, drive: 0.8, liftAt: 1.0)
@@ -502,7 +502,7 @@ struct SoundInvariantTests {
     /// The preset is loaded before the engine enters its offline mode, which
     /// is read as the moment it is lost.
     @MainActor
-    @Test func theBuiltInRoomsAreFourRooms() {
+    @Test func theBuiltInRoomsAreFourRooms() throws {
         let room = exported(effects: [Self.impulse(), .reverb(Reverb(.room, mix: 1))], seconds: 2)
         let cathedral = exported(effects: [Self.impulse(), .reverb(Reverb(.cathedral, mix: 1))], seconds: 2)
         var differ = 0.0
@@ -519,7 +519,7 @@ struct SoundInvariantTests {
     /// 2 s, and `Delay.time` is handed over unclamped and undocumented, so a
     /// time of 3 s echoes at 2.000 s.
     @MainActor
-    @Test func aDelayWaitsAsLongAsItWasAsked() {
+    @Test func aDelayWaitsAsLongAsItWasAsked() throws {
         func echo(after time: Double) -> Double {
             let out = leftChannel(exported(effects: [Self.impulse(), .delay(Delay(time: time, feedback: 0, mix: 1, damping: 20000))], seconds: time + 1))
             var at = 0, best = 0.0
@@ -542,7 +542,7 @@ struct SoundInvariantTests {
     /// applies its gain on the sample that asked for it, so every crest over
     /// the ceiling is flattened to it: 1.2% THD and 10% of the samples on the
     /// ceiling. The doc page says it ducks "rather than tearing".
-    @Test func theLimiterLimitsWithoutClipping() {
+    @Test func theLimiterLimitsWithoutClipping() throws {
         let x = (0..<Int(0.5 * Self.sampleRate)).map { Float(sin(2 * .pi * 220 * Double($0) / Self.sampleRate)) }
         let effect = DynamicsEffect(.limiter(Limiter(ceiling: -6, release: 0.05)), sampleRate: Self.sampleRate)
         let format = AVAudioFormat(standardFormatWithSampleRate: Self.sampleRate, channels: 2)!
@@ -636,9 +636,9 @@ struct SoundInvariantTests {
     }
 
     @MainActor
-    @Test func anInstrumentInsideAnArrayReachesTheExport() {
+    @Test func anInstrumentInsideAnArrayReachesTheExport() throws {
         let sketch = NestedInstruments()
-        sketch.runSetup()
+        try sketch.runSetup()
         let started = Date()
         let found = sketch.exportAudioSources()
         let took = Date().timeIntervalSince(started)
@@ -681,12 +681,12 @@ struct SoundInvariantTests {
 
     @MainActor
     @Test(arguments: [0, 10])
-    func aNoteAskedForOnAFrameStartsOnThatFrame(frame: Int) {
+    func aNoteAskedForOnAFrameStartsOnThatFrame(frame: Int) throws {
         var onset = -1
-        exporting {
+        try exporting {
             let sketch = PlaysOnOneFrame()
             sketch.onFrame = frame
-            sketch.runSetup()
+            try sketch.runSetup()
             // The exporter's own order: advance, then draw, every frame.
             for k in 0...frame {
                 sketch.advance(time: Double(k) / 60, deltaTime: 1.0 / 60, frameRate: 60)
@@ -710,7 +710,7 @@ struct SoundInvariantTests {
     /// cue, or the Spatial example's own slider) was ignored in the file while
     /// the live window honored it at once.
     @MainActor
-    @Test func aHearingDistanceChangedMidExportIsHeard() {
+    @Test func aHearingDistanceChangedMidExportIsHeard() throws {
         /// Two notes on a placed instrument, the second after frame 30, with
         /// the range `before` to start with and `after` from frame 30 on.
         func notes(before: ClosedRange<Double>, after: ClosedRange<Double>) -> (first: Double, second: Double) {
@@ -759,7 +759,7 @@ struct SoundInvariantTests {
     /// never placed; a source one unit ahead plays at 0.71), so an instrument
     /// placed once and unplaced was 6 dB down for the rest of the piece.
     @MainActor
-    @Test func anUnplacedSoundIsHeardAtFullLevel() {
+    @Test func anUnplacedSoundIsHeardAtFullLevel() throws {
         let never = placed(at: nil)
         let synth = Synth(.bell)
         synth.hearingDistance = 1...50

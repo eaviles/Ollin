@@ -1785,7 +1785,7 @@ typedef struct {
 // are appended and its codegen is untouched (see `ollin_present_wide_fragment`,
 // the twin that reads them).
 typedef struct {
-    int   toneMapMode;   // ToneMap.shaderIndex: 0 clamp (SDR), 1 reinhard, 2 aces
+    int   toneMapMode;   // ToneMap.shaderIndex: 0 clamp (SDR), 1 reinhard, 2 aces, 3 neutral
     float exposure;      // linear multiplier applied before the tone-map (1 = none)
     int   outputSpace;   // PresentEncoding: 0 sRGB 8-bit, 1 linear Display P3, 2 PQ Rec. 2020
     float ceiling;       // linear-P3 clamp: 1 = SDR white, higher = the display's headroom

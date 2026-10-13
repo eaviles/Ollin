@@ -246,7 +246,7 @@ The field is resampled onto a square power-of-two grid for the solver, so any gr
 For scenery that arrives as a file, one call gives a whole [`Scene`](../3D/Scenes.md) its colliders:
 
 ```swift
-let hall = try! loadScene("hall.usdz")
+let hall = try loadScene("hall.usdz")
 world.addStaticBodies(from: hall)
 ```
 
@@ -720,7 +720,7 @@ Every `add…` call that builds something from what it is handed, a vehicle from
 let world = World3D()
 var car: Vehicle3D!
 
-override func setup() {
+override func setup() throws {
     world.ground = 0
     car = try world.addVehicle(.box(width: 1.8, height: 0.7, depth: 4),
                            at: Vector3(0, 2, 0),
@@ -898,8 +898,8 @@ A `Ragdoll3D` gives a skinned figure weight. Hand `addRagdoll(from:)` a loaded `
 var figure: Scene!
 var ragdoll: Ragdoll3D!
 
-override func setup() {
-    figure = try! loadScene("figure.gltf")
+override func setup() throws {
+    figure = try loadScene("figure.gltf")
     world.ground = 0
     ragdoll = try world.addRagdoll(from: figure, at: Vector3(0, 3, 0))
 }
@@ -1278,7 +1278,7 @@ try world.load(contentsOf: url)     // throws, and the world is untouched, if it
 That is how a settled arrangement becomes an asset the sketch opens with:
 
 ```swift
-override func setup() {
+override func setup() throws {
     world.ground = 0
     do {
         try world.load(contentsOf: file)
@@ -1375,7 +1375,7 @@ A `.usd` scene can say more than what its prims look like. The `UsdPhysics` sche
 A scene carrying that comes into a world in one call:
 
 ```swift
-let scene = try! loadScene("yard.usda")
+let scene = try loadScene("yard.usda")
 world.addBodies(from: scene)          // every body and joint the file describes
 ```
 

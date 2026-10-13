@@ -4,6 +4,17 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ## [Unreleased]
 
+### Added
+
+- **A small picture drawn big, cell by cell.** `imageSampling(.nearest)` keeps every pixel a hard square when a picture is drawn larger than it is (pixel art, a low-resolution canvas, a photo dithered to two levels at four canvas pixels a cell), with no enlarged copy made on the CPU; `.linear`, the default, blends as before, a picture drawn smaller is blended under either, and the choice is drawing state beside `tint` that `withState { }` restores. A web page made with `--export-web` reads the picture the same way. New example `Images/PixelArt`.
+- **A still named by its moment.** `--at S` beside `--frame N` on every one-frame export (`--export`, `--export-exr`, the vector files, the sheets, the separations, the spatial file): the frame is S seconds of the sketch's clock at `--fps`, so `--at 2` is `--frame 120` at 60 fps and nobody multiplies by the frame rate.
+- **A tone map that keeps a bright color's hue.** `toneMap(.neutral)`, the Khronos PBR Neutral curve: `.reinhard` and `.aces` bend each channel on its own, so a bright orange of linear (4, 1, 0.2) came out yellow; the neutral curve compresses the three channels by one factor and holds the hue, with a gentler roll-off than film. The web page's present pass carries it, and the `Rendering/ToneMapping` example cycles four.
+
+### Changed
+
+- **`setup()` may throw.** `open func setup() throws`: a loader that cannot read its file lets its `FileError` out with a bare `try`, where it used to need `try!`. A window reports the sentence on stderr and, under OllinLive and the live-coding stage, in the error strip the way a compile error is reported, and holds the sketch rather than drawing it half built; a headless export fails with the sketch's own error. An override may leave `throws` off, so every existing sketch compiles unchanged. The in-memory recorders that run `setup()` for a frame now throw with it: `OllinApp.svg(of:)`, `pdf(of:)`, `gcode(of:)`, `dxf(of:)`, `drafting(of:)`, `stitching(of:)`, `embroidery(of:)`, and `spatialScene(of:)` take a `try` (a breaking change for a caller of those; the file-writing exports already threw).
+- **A `@Param` tunes the 2D view live.** `viewControl(center:zoom:)` applied its arguments on the first call only, so a parameter passed as the zoom changed nothing in the window until `resetView()`. After the first call they are now the view's home, as the camera rig's framing is: a constant framing changes nothing, a changed one glides the view there while the viewer has not dragged or scrolled it, and once they have, a changed value moves only the home, which `resetView()` opens on.
+
 ### Fixed
 
 - A surface that glows lights its neighbors under `globalIllumination()`: the probe trace reads a hit's emission (`Mesh.glowing`, an emissive color) and adds it to the bounce, so a glowing slab lights the floor under it as the path-traced export does, where before the field read 0 there.

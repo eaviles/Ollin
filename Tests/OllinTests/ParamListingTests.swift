@@ -43,9 +43,9 @@ struct ParamListingTests {
     /// lands on the value it was printed from. Exactly, for every kind but a
     /// color: a color is said in hex, which is how the flag spells one and how a
     /// person reads one, so it comes back to the nearest eight-bit step.
-    @Test func everyPrintedValueReadsBackAsItself() {
+    @Test func everyPrintedValueReadsBackAsItself() throws {
         let sketch = Listed()
-        sketch.runSetup()
+        try sketch.runSetup()
         for handle in sketch.parameters() {
             let before = handle.param.stored
             let text = ParamListing.value(of: before)
@@ -77,7 +77,7 @@ struct ParamListingTests {
 
     /// A fraction keeps every digit that carries and no more, and a whole number
     /// keeps no point, so a listed number reads the way a person would write it.
-    @Test func numbersAreAsShortAsTheyCanBeWithoutChanging() {
+    @Test func numbersAreAsShortAsTheyCanBeWithoutChanging() throws {
         #expect(ParamListing.number(120) == "120")
         #expect(ParamListing.number(-4) == "-4")
         #expect(ParamListing.number(0.35) == "0.35")
@@ -88,9 +88,9 @@ struct ParamListingTests {
     /// The columns: the name, the kind as a sketch spells it, what it accepts,
     /// and the value. A menu says its choices; a color and a string accept
     /// anything of their kind and say nothing.
-    @Test func theListingNamesEveryKindAndWhatItTakes() {
+    @Test func theListingNamesEveryKindAndWhatItTakes() throws {
         let sketch = Listed()
-        sketch.runSetup()
+        try sketch.runSetup()
         let text = ParamListing.text(for: sketch)
         #expect(text.hasPrefix("15 parameters, as --param takes them"))
         #expect(text.contains("radius"))
@@ -110,9 +110,9 @@ struct ParamListingTests {
     /// A group is a block under its own name, the way the inspector stacks its
     /// cards, and a parameter a show-rule is hiding says so rather than looking
     /// like a value nobody is reading.
-    @Test func groupsAreBlocksAndAHiddenRowSaysSo() {
+    @Test func groupsAreBlocksAndAHiddenRowSaysSo() throws {
         let sketch = Listed()
-        sketch.runSetup()
+        try sketch.runSetup()
         let lines = ParamListing.text(for: sketch).split(separator: "\n", omittingEmptySubsequences: false)
         let paper = lines.firstIndex { $0 == "  Paper" }
         #expect(paper != nil)
@@ -121,7 +121,7 @@ struct ParamListingTests {
     }
 
     /// A sketch with nothing to tune says so rather than printing an empty table.
-    @Test func aSketchWithNoParametersSaysSo() {
+    @Test func aSketchWithNoParametersSaysSo() throws {
         final class Bare: Sketch {
             override var canvasSize: CanvasSize { .square(32) }
             override func draw() { background(.white) }

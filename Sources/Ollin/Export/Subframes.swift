@@ -116,7 +116,7 @@ extension OllinApp {
         }
         let size = sketch.canvasSizeForRun()
         sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
-        sketch.runSetup()
+        try sketch.runSetup()
         let viewport = SIMD2<Float>(Float(size.width), Float(size.height))
         let width = size.width, height = size.height
         let target = max(0, frame)

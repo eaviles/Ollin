@@ -67,7 +67,7 @@ import OllinPhysics
 
 let world = World3D()
 world.ground = 0
-let mast = try! world.addTensegrity(Tensegrity.tower(levels: 3),
+let mast = try world.addTensegrity(Tensegrity.tower(levels: 3),
                                 at: Vector3(0, 0.3, 0))   // a little above the floor; a tower always has struts apart
 
 // each frame:

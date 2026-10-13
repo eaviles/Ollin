@@ -156,8 +156,8 @@ A `Decal` works like that. Wrap an image once, then place it each frame as a sma
 ```swift
 var sticker: Decal!
 
-override func setup() {
-    sticker = Decal(try! loadImage("label.png"))
+override func setup() throws {
+    sticker = Decal(try loadImage("label.png"))
 }
 
 override func draw() {
@@ -359,7 +359,7 @@ The duck at the start of this chapter came from a file as one mesh, and the sket
 </picture>
 
 ```swift
-stage = try! loadScene("Stage.gltf")            // in setup()
+stage = try loadScene("Stage.gltf")             // in setup()
 
 camera(stage.camera ?? .orbiting(radius: 6))   // the file's own framing
 for l in stage.lights { light(l) }             // and its lighting

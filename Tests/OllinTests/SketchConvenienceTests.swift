@@ -178,11 +178,11 @@ struct SketchConvenienceTests {
         drives.append(("a sequence, a video, a GIF", frames.seen))
 
         let vector = ExportProbe()
-        _ = OllinApp.recordVectorFrame(of: vector, frame: 2, fps: 30, hatching: nil)
+        _ = try OllinApp.recordVectorFrame(of: vector, frame: 2, fps: 30, hatching: nil)
         drives.append(("a vector file", vector.seen))
 
         let spatial = ExportProbe()
-        _ = OllinApp.recordSpatialFrame(of: spatial, frame: 2, fps: 30)
+        _ = try OllinApp.recordSpatialFrame(of: spatial, frame: 2, fps: 30)
         drives.append(("a 3D file", spatial.seen))
 
         let web = ExportProbe()
@@ -253,7 +253,7 @@ struct SketchConvenienceTests {
         #expect(view.canvasCursor == nil)
     }
 
-    @Test func everyShapeIsASystemCursor() {
+    @Test func everyShapeIsASystemCursor() throws {
         for shape in PointerShape.allCases {
             #expect(shape.systemCursor.image.size.width > 0, "\(shape)")
         }
@@ -319,7 +319,7 @@ struct SketchConvenienceTests {
         override func filesChosen() { picks += 1 }
     }
 
-    @Test func aPickArrivesAsPathsAndFiresTheHookOnce() {
+    @Test func aPickArrivesAsPathsAndFiresTheHookOnce() throws {
         let sketch = Chooser()
         sketch.handleChosenFiles(["/pictures/a.png", "/pictures/b.heic"])
         #expect(sketch.picks == 1)
@@ -333,7 +333,7 @@ struct SketchConvenienceTests {
         sketch.chooseFiles(withExtensions: ["png"])   // nothing showing it: no panel
     }
 
-    @Test func theExtensionsBecomeThePanelsTypes() {
+    @Test func theExtensionsBecomeThePanelsTypes() throws {
         let types = SketchRunner.contentTypes(forExtensions: ["png", ".JPG", "jpeg", "", "csv"])
         #expect(types == [.png, .jpeg, .commaSeparatedText],
                 "dots and case do not matter, and two names for one type offer it once")
@@ -400,7 +400,7 @@ struct SketchConvenienceTests {
         #expect(copied.width == 32 && copied.height == 32)
     }
 
-    @Test func copyFrameWithNothingShowingTheSketchArmsNothing() {
+    @Test func copyFrameWithNothingShowingTheSketchArmsNothing() throws {
         let sketch = ExportProbe()
         sketch.copyFrame()
         #expect(sketch.frameCopier == nil, "an export has no window to copy from")
@@ -412,7 +412,7 @@ struct SketchConvenienceTests {
         (a - b).length < tolerance
     }
 
-    @Test func sphericalPointsWhereItsAnglesSay() {
+    @Test func sphericalPointsWhereItsAnglesSay() throws {
         #expect(close(spherical(0, 0, 1), Vector3(0, 0, 1)), "azimuth 0 looks down +z")
         #expect(close(spherical(.pi / 2, 0, 2), Vector3(2, 0, 0)), "a quarter turn is +x")
         #expect(close(spherical(1.3, .pi / 2, 3), Vector3(0, 3, 0)), "elevation pi/2 is straight up")
@@ -421,7 +421,7 @@ struct SketchConvenienceTests {
                       Vector3(1, 2, 3) + spherical(0.7, 0.2, 5)))
     }
 
-    @Test func sphericalAndAVectorsAnglesUndoEachOther() {
+    @Test func sphericalAndAVectorsAnglesUndoEachOther() throws {
         var rng = SystemRandomNumberGenerator()
         let center = Vector3(-2, 0.5, 4)
         for _ in 0..<500 {
@@ -438,7 +438,7 @@ struct SketchConvenienceTests {
         #expect(Vector3.zero.azimuth == 0 && Vector3.zero.elevation == 0)
     }
 
-    @Test func sphericalStandsWhereTheOrbitingCameraStands() {
+    @Test func sphericalStandsWhereTheOrbitingCameraStands() throws {
         for (a, e, r) in [(0.0, 0.3, 6.0), (2.1, -0.4, 3.5), (-1.2, 1.1, 10.0)] {
             let target = Vector3(1, -1, 2)
             let camera = Camera3D.orbiting(target: target, radius: r, azimuth: a, elevation: e)

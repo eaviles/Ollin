@@ -63,8 +63,8 @@ struct PDFExportTests {
         return (Int(rgba[i]), Int(rgba[i + 1]), Int(rgba[i + 2]))
     }
 
-    @Test func documentStructure() {
-        let data = OllinApp.pdf(of: Fixture())
+    @Test func documentStructure() throws {
+        let data = try OllinApp.pdf(of: Fixture())
         #expect(data.starts(with: Array("%PDF".utf8)))
         let doc = CGPDFDocument(CGDataProvider(data: data as CFData)!)
         #expect(doc?.numberOfPages == 1)
@@ -78,10 +78,10 @@ struct PDFExportTests {
         override func draw() { background(.white) }
     }
 
-    @Test func paperPresetExportsTrueToSize() {
+    @Test func paperPresetExportsTrueToSize() throws {
         // The paper presets are sized in PDF points, so `.a4` comes out as an
         // actual A4 page (595×842 pt at 72 per inch).
-        let doc = CGPDFDocument(CGDataProvider(data: OllinApp.pdf(of: A4Page()) as CFData)!)
+        let doc = CGPDFDocument(CGDataProvider(data: try OllinApp.pdf(of: A4Page()) as CFData)!)
         #expect(doc?.page(at: 1)?.getBoxRect(.mediaBox) == CGRect(x: 0, y: 0, width: 595, height: 842))
     }
 
@@ -97,12 +97,12 @@ struct PDFExportTests {
         }
     }
 
-    @Test func dpiScaledCanvasKeepsItsPageSize() {
+    @Test func dpiScaledCanvasKeepsItsPageSize() throws {
         // `.dpi(300)` raises the pixel resolution but the PDF page stays the
         // physical sheet, with the geometry scaled back onto it.
         let sketch = PrintResolutionPage()
         #expect(sketch.canvasSize.width == 2550 && sketch.canvasSize.height == 3300)
-        let data = OllinApp.pdf(of: sketch)
+        let data = try OllinApp.pdf(of: sketch)
         let doc = CGPDFDocument(CGDataProvider(data: data as CFData)!)
         #expect(doc?.page(at: 1)?.getBoxRect(.mediaBox) == CGRect(x: 0, y: 0, width: 612, height: 792))
         // The pixel-space square still covers the page's top-left quadrant.
@@ -112,7 +112,7 @@ struct PDFExportTests {
         #expect(pixel(rgba, 102, 25, 99).r > 225)     // bottom-left: white
     }
 
-    @Test func dpiAndOrientationCompose() {
+    @Test func dpiAndOrientationCompose() throws {
         #expect(CanvasSize.a4.dpi(300).width == 2479)         // 595 × 300 / 72
         #expect(CanvasSize.a4.dpi(300).height == 3508)        // 842 × 300 / 72
         let landscape = CanvasSize.a4.dpi(300).landscape
@@ -121,16 +121,16 @@ struct PDFExportTests {
         #expect(CanvasSize.square1080.dpi(72) == .square1080)        // a no-op stays itself
     }
 
-    @Test func orientationIsTopLeft() {
+    @Test func orientationIsTopLeft() throws {
         // The black square was drawn at the canvas top-left; if the page flip
         // were missing it would land bottom-left instead.
-        let rgba = rasterize(OllinApp.pdf(of: Fixture()), width: 100, height: 100)
+        let rgba = rasterize(try OllinApp.pdf(of: Fixture()), width: 100, height: 100)
         #expect(pixel(rgba, 100, 25, 25).r < 30)     // top-left: black square
         #expect(pixel(rgba, 100, 25, 75).r > 225)    // bottom-left: white background
     }
 
-    @Test func transformAndAlpha() {
-        let rgba = rasterize(OllinApp.pdf(of: Fixture()), width: 100, height: 100)
+    @Test func transformAndAlpha() throws {
+        let rgba = rasterize(try OllinApp.pdf(of: Fixture()), width: 100, height: 100)
         // The translated half-alpha red square over white reads pink.
         let p = pixel(rgba, 100, 75, 75)
         #expect(p.r > 225)
@@ -138,18 +138,18 @@ struct PDFExportTests {
         #expect(p.b > 95 && p.b < 160)
     }
 
-    @Test func imagesAreSkipped() {
+    @Test func imagesAreSkipped() throws {
         // The blue raster image never lands on the page.
-        let rgba = rasterize(OllinApp.pdf(of: Fixture()), width: 100, height: 100)
+        let rgba = rasterize(try OllinApp.pdf(of: Fixture()), width: 100, height: 100)
         #expect(pixel(rgba, 100, 14, 84).b > 225)
         #expect(pixel(rgba, 100, 14, 84).r > 225)
     }
 
-    @Test func renderedPixelsAreDeterministic() {
+    @Test func renderedPixelsAreDeterministic() throws {
         // The container bytes carry a creation date, so determinism is pinned
         // on what the page draws, not on the file bytes.
-        let a = rasterize(OllinApp.pdf(of: Fixture(), frame: 3), width: 100, height: 100)
-        let b = rasterize(OllinApp.pdf(of: Fixture(), frame: 3), width: 100, height: 100)
+        let a = rasterize(try OllinApp.pdf(of: Fixture(), frame: 3), width: 100, height: 100)
+        let b = rasterize(try OllinApp.pdf(of: Fixture(), frame: 3), width: 100, height: 100)
         #expect(a == b)
     }
 
@@ -166,8 +166,8 @@ struct PDFExportTests {
         }
     }
 
-    @Test func linearGradientFillDrawsNatively() {
-        let rgba = rasterize(OllinApp.pdf(of: GradientFill()), width: 100, height: 100)
+    @Test func linearGradientFillDrawsNatively() throws {
+        let rgba = rasterize(try OllinApp.pdf(of: GradientFill()), width: 100, height: 100)
         let left = pixel(rgba, 100, 5, 50)
         let right = pixel(rgba, 100, 95, 50)
         #expect(left.r > 200 && left.b < 80)         // red end
@@ -189,8 +189,8 @@ struct PDFExportTests {
         }
     }
 
-    @Test func clipConfinesDrawing() {
-        let rgba = rasterize(OllinApp.pdf(of: Clipped()), width: 100, height: 100)
+    @Test func clipConfinesDrawing() throws {
+        let rgba = rasterize(try OllinApp.pdf(of: Clipped()), width: 100, height: 100)
         #expect(pixel(rgba, 100, 25, 50).r > 225)    // outside the clip: white
         #expect(pixel(rgba, 100, 75, 50).r < 30)     // inside the clip: black
     }
@@ -208,9 +208,9 @@ struct PDFExportTests {
         }
     }
 
-    @Test func hatchingTurnsFillsIntoLines() {
-        let plain = rasterize(OllinApp.pdf(of: Disk()), width: 100, height: 100)
-        let hatched = rasterize(OllinApp.pdf(of: Disk(), hatching: Hatching(spacing: 8, keepsOutline: false)),
+    @Test func hatchingTurnsFillsIntoLines() throws {
+        let plain = rasterize(try OllinApp.pdf(of: Disk()), width: 100, height: 100)
+        let hatched = rasterize(try OllinApp.pdf(of: Disk(), hatching: Hatching(spacing: 8, keepsOutline: false)),
                                 width: 100, height: 100)
         // Down the disk's vertical diameter: the plain fill is solid ink, the
         // hatched one alternates pen lines with paper gaps.

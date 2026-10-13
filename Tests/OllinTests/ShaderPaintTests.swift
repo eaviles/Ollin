@@ -275,7 +275,7 @@ struct ShaderPaintTests {
         #expect(mesh.channel(0, 30, 30) == 0 && mesh.channel(1, 30, 30) == 0)
     }
 
-    @Test func shapesUnderOneShaderShareARun() {
+    @Test func shapesUnderOneShaderShareARun() throws {
         let drawer = Drawer()
         drawer.beginFrame()
         drawer.fill(Self.uvShader)
@@ -318,14 +318,14 @@ struct ShaderPaintTests {
         #expect(refusal?.call.contains("fill(Shader)") == true)
     }
 
-    @Test func aVectorFileWritesTheShapeInGray() {
+    @Test func aVectorFileWritesTheShapeInGray() throws {
         let sketch = PaintedForm({ $0.drawRect(40, 50, 150, 110) }, fill: .shader(Self.uvShader), stroke: .shader(Self.edgeShader))
-        let svg = OllinApp.svg(of: sketch)
+        let svg = try OllinApp.svg(of: sketch)
         #expect(svg.contains("<rect x=\"40\" y=\"50\" width=\"150\" height=\"110\" fill=\"rgb(128,128,128)\""))
         #expect(svg.contains("stroke=\"rgb(128,128,128)\""))
     }
 
-    @Test func paintCarriesAShaderAsOneValue() {
+    @Test func paintCarriesAShaderAsOneValue() throws {
         let paint = Paint.shader(Self.uvShader)
         #expect(paint.solidColor == nil)
         #expect(paint.shader == Self.uvShader)

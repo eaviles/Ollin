@@ -645,7 +645,7 @@ extension OllinApp {
     /// as vector commands, with `hatching` applied when asked. The shared front
     /// half of the SVG and PDF exports; never touches Metal.
     static func recordVectorFrame(of sketch: Sketch, frame: Int, fps: Double,
-                                  hatching: Hatching?) -> VectorRecording {
+                                  hatching: Hatching?) throws -> VectorRecording {
         isRenderingHeadless = true
         // The whole drive is vector-mode, setup() included, so a `Batch` recorded
         // anywhere in it captures vector commands for `drawBatch` to splice.
@@ -653,7 +653,7 @@ extension OllinApp {
         defer { isRenderingHeadless = false; isVectorExporting = false }
         let size = sketch.canvasSizeForRun()
         sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
-        sketch.runSetup()
+        try sketch.runSetup()
         // Every frame is recorded and the last one kept, because the frame
         // written is either the one asked for or the one a `noLoop()` sketch
         // stopped on, which a window holds from then on; which one it is, is
@@ -707,8 +707,8 @@ public extension OllinApp {
     /// parallel (or cross-hatch) lines clipped to its outline, spaced by tone, so
     /// a pen plotter can shade it (see `Hatching`).
     static func svg(of sketch: Sketch, frame: Int = 0, fps: FrameRate = 60,
-                    hatching: Hatching? = nil) -> String {
-        let recording = recordVectorFrame(of: sketch, frame: frame, fps: fps.framesPerSecond, hatching: hatching)
+                    hatching: Hatching? = nil) throws -> String {
+        let recording = try recordVectorFrame(of: sketch, frame: frame, fps: fps.framesPerSecond, hatching: hatching)
         return serializeSVG(recording.commands, background: recording.background,
                             width: recording.width, height: recording.height,
                             skippedImages: recording.skippedImages, recipe: recording.recipe,
@@ -722,7 +722,7 @@ public extension OllinApp {
     /// Throws `ExportError` when the file cannot be written.
     static func exportSVG(_ sketch: Sketch, to path: String, frame: Int = 0, fps: FrameRate = 60,
                           hatching: Hatching? = nil) throws {
-        let document = svg(of: sketch, frame: frame, fps: fps, hatching: hatching)
+        let document = try svg(of: sketch, frame: frame, fps: fps, hatching: hatching)
         do {
             try document.write(toFile: path, atomically: true, encoding: .utf8)
             print("Ollin: exported frame \(frame) → \(path) (SVG)")

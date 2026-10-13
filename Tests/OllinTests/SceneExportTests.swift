@@ -460,8 +460,8 @@ struct SceneExportTests {
         }
     }
 
-    @Test @MainActor func aRecordedFrameIsOneNodePerMeshAtTheTransformThatPlacedIt() {
-        let scene = OllinApp.spatialScene(of: TwoBoxes(), frame: 0)
+    @Test @MainActor func aRecordedFrameIsOneNodePerMeshAtTheTransformThatPlacedIt() throws {
+        let scene = try OllinApp.spatialScene(of: TwoBoxes(), frame: 0)
         #expect(scene.nodes.count == 2)
         #expect(near(scene.nodes[0].position, Vector3(-1.5, 0, 0), 1e-4))
         #expect(near(scene.nodes[1].position, Vector3(2.5, 0.5, 0), 1e-4))
@@ -473,7 +473,7 @@ struct SceneExportTests {
     }
 
     @Test @MainActor func aRecordedFrameCarriesTheFillAsTheSurfaceColor() throws {
-        let scene = OllinApp.spatialScene(of: TwoBoxes(), frame: 0)
+        let scene = try OllinApp.spatialScene(of: TwoBoxes(), frame: 0)
         let red = try #require(scene.nodes[0].mesh?.material)
         let blue = try #require(scene.nodes[1].mesh?.material)
         #expect(red.baseColor.red > 0.9 && red.baseColor.blue < 0.1)
@@ -481,7 +481,7 @@ struct SceneExportTests {
     }
 
     @Test @MainActor func aRecordedFrameCarriesItsCameraAndLights() throws {
-        let scene = OllinApp.spatialScene(of: TwoBoxes(), frame: 0)
+        let scene = try OllinApp.spatialScene(of: TwoBoxes(), frame: 0)
         let camera = try #require(scene.camera)
         #expect(near(camera.eye.length, 6, 1e-3))
         // The sketch set no lights, so the frame was shaded by the default rig
@@ -498,13 +498,13 @@ struct SceneExportTests {
         }
     }
 
-    @Test @MainActor func contentWithNoSurfaceIsLeftBehindRatherThanMisdrawn() {
-        let scene = OllinApp.spatialScene(of: JustPoints(), frame: 0)
+    @Test @MainActor func contentWithNoSurfaceIsLeftBehindRatherThanMisdrawn() throws {
+        let scene = try OllinApp.spatialScene(of: JustPoints(), frame: 0)
         #expect(scene.nodes.isEmpty, "a point cloud became geometry, which it isn't")
     }
 
     @Test @MainActor func aRecordedFrameWritesAPackageTheReaderOpens() throws {
-        let scene = OllinApp.spatialScene(of: TwoBoxes(), frame: 0)
+        let scene = try OllinApp.spatialScene(of: TwoBoxes(), frame: 0)
         let read = try roundTrip(scene, as: .usdz)
         #expect(meshes(read).count == 2)
         #expect(read.camera != nil)
@@ -512,7 +512,7 @@ struct SceneExportTests {
 
     // MARK: The finish mapping
 
-    @Test func aPhysicallyBasedFinishCarriesAcrossAndAStylizedOneCarriesItsSheen() {
+    @Test func aPhysicallyBasedFinishCarriesAcrossAndAStylizedOneCarriesItsSheen() throws {
         var notes: [String] = []
         let metal = SpatialRecorder.previewSurface(
             .metal(roughness: 0.15), surface: .white, base: nil, notes: &notes)
@@ -532,7 +532,7 @@ struct SceneExportTests {
         #expect(!toonNotes.isEmpty, "a stylized finish went out without saying what was lost")
     }
 
-    @Test func glassLeavesAsSomethingYouCanSeeThrough() {
+    @Test func glassLeavesAsSomethingYouCanSeeThrough() throws {
         var notes: [String] = []
         let glass = SpatialRecorder.previewSurface(
             .glass(roughness: 0.05, ior: 1.45), surface: .white, base: nil, notes: &notes)

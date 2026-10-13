@@ -20,7 +20,7 @@ Every file export runs the sketch *headlessly*, with no window. `setup()` runs, 
 The export flags work on any example's executable. A sketch file of your own gets the same flags through the live host. Here and in the commands below, `MySketches/YourSketch.swift` stands for any sketch of yours:
 
 ```sh
-swift run OllinLive MySketches/YourSketch.swift --export poster.png --frame 200
+swift run OllinLive MySketches/YourSketch.swift --export poster.png --frame 200   # or --at 3.5, in seconds
 swift run --package-path Examples Example-Basic-HelloCircle --export-sequence /tmp/out --seconds 5 --fps 60
 ```
 

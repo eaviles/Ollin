@@ -46,7 +46,7 @@ plan.size          // the drawing in millimeters, margin included
 plan.text          // the file
 ```
 
-Contours planned this way sit on the default layer, `0`. From outside a sketch, `OllinApp.drafting(of:settings:)` plans a whole frame, colors and circles included, and `OllinApp.dxf(of:settings:)` is its text. Each `Entity` keeps canvas coordinates, so you can draw a plan over the sketch with no conversion, and `entities(on:)` picks one layer out.
+Contours planned this way sit on the default layer, `0`. From outside a sketch, `try OllinApp.drafting(of:settings:)` plans a whole frame, colors and circles included, and `try OllinApp.dxf(of:settings:)` is its text. Each `Entity` keeps canvas coordinates, so you can draw a plan over the sketch with no conversion, and `entities(on:)` picks one layer out.
 
 ### From the command line
 

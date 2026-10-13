@@ -672,8 +672,8 @@ public extension OllinApp {
     /// centerlines, fills contribute their outlines (pass `hatching` to shade
     /// them as line work instead), raster images are skipped with a note.
     static func gcode(of sketch: Sketch, settings: GCode, frame: Int = 0,
-                      fps: FrameRate = 60, hatching: Hatching? = nil) -> String {
-        let recording = recordVectorFrame(of: sketch, frame: frame, fps: fps.framesPerSecond,
+                      fps: FrameRate = 60, hatching: Hatching? = nil) throws -> String {
+        let recording = try recordVectorFrame(of: sketch, frame: frame, fps: fps.framesPerSecond,
                                           hatching: hatching)
         let canvas = Rectangle(x: 0, y: 0, width: Double(recording.width),
                                height: Double(recording.height))
@@ -691,7 +691,7 @@ public extension OllinApp {
     static func exportGCode(_ sketch: Sketch, to path: String, settings: GCode,
                             frame: Int = 0, fps: FrameRate = 60,
                             hatching: Hatching? = nil) throws {
-        let program = gcode(of: sketch, settings: settings, frame: frame,
+        let program = try gcode(of: sketch, settings: settings, frame: frame,
                             fps: fps, hatching: hatching)
         do {
             try program.write(toFile: path, atomically: true, encoding: .utf8)

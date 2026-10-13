@@ -84,7 +84,7 @@ struct ManyLightsBenchmarkTests {
                 let sketch = BenchScene()
                 sketch.lamps = lamps
                 sketch.setCanvasSize(width: Double(res), height: Double(res))
-                sketch.setup()
+                try sketch.setup()
                 sketch.drawer.cullsLightTiles = culls
                 sketch.advance(time: 1, deltaTime: 1.0 / 60, frameRate: 60)
                 sketch.performDraw()
@@ -195,7 +195,7 @@ struct LightSetBenchmarkTests {
                 sketch.lampsPerRoom = perRoom
                 sketch.split = split
                 sketch.setCanvasSize(width: Double(res), height: Double(res))
-                sketch.setup()
+                try sketch.setup()
                 sketch.advance(time: 1, deltaTime: 1.0 / 60, frameRate: 60)
                 sketch.performDraw()
                 batches[split] = sketch.drawer.batches.count

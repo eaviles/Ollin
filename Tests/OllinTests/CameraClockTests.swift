@@ -24,9 +24,9 @@ struct CameraClockTests {
     /// The eye of every frame of `sketch` over `frames` frames at `fps`, with
     /// `before` run ahead of each frame (the window's parameter edits).
     private func eyes(_ sketch: Sketch, fps: Double, frames: Int,
-                      before: (Int) -> Void = { _ in }) -> [Vector3] {
+                      before: (Int) -> Void = { _ in }) throws -> [Vector3] {
         sketch.setCanvasSize(width: 200, height: 200)
-        sketch.setup()
+        try sketch.setup()
         var out: [Vector3] = []
         for k in 0..<frames {
             before(k)
@@ -41,8 +41,8 @@ struct CameraClockTests {
 
     /// Frame N of a turntable shows the turn at N/fps: frame 0 at its start.
     @Test(arguments: [30.0, 60.0])
-    func frameNIsPosedAtNOverFps(fps: Double) {
-        let poses = eyes(Turntable(), fps: fps, frames: Int(fps) + 1)
+    func frameNIsPosedAtNOverFps(fps: Double) throws {
+        let poses = try eyes(Turntable(), fps: fps, frames: Int(fps) + 1)
         #expect(azimuth(poses[0]) == 0)
         for (k, eye) in poses.enumerated() {
             #expect(abs(azimuth(eye) - Double(k) / fps * .tau / 30) < 1e-9)
@@ -51,28 +51,28 @@ struct CameraClockTests {
 
     /// Two exports at different frame rates agree wherever their frames fall on
     /// the same time.
-    @Test func twoFrameRatesAgreeAtOneTime() {
-        let at30 = eyes(Turntable(), fps: 30, frames: 31)
-        let at60 = eyes(Turntable(), fps: 60, frames: 61)
+    @Test func twoFrameRatesAgreeAtOneTime() throws {
+        let at30 = try eyes(Turntable(), fps: 30, frames: 31)
+        let at60 = try eyes(Turntable(), fps: 60, frames: 61)
         for k in stride(from: 0, through: 30, by: 3) {
             #expect(at30[k].distance(to: at60[2 * k]) < 1e-9)
         }
     }
 
     /// A finite move's first frame is its start: a push-in opens at its full radius.
-    @Test func aMoveOpensAtItsStart() {
-        let first = eyes(PushIn(), fps: 30, frames: 1)[0]
+    @Test func aMoveOpensAtItsStart() throws {
+        let first = try eyes(PushIn(), fps: 30, frames: 1)[0]
         #expect(abs(first.length - 10) < 1e-12)
     }
 
     /// A radius tuned in the window lands where an export with that value frames
     /// it: the window's camera glides to it, and from then on matches the export
     /// frame for frame.
-    @Test func aTunedRadiusLandsWhereTheExportFramesIt() {
+    @Test func aTunedRadiusLandsWhereTheExportFramesIt() throws {
         let window = Turntable(), export = Turntable()
         export.radius = 14
-        let tuned = eyes(window, fps: 60, frames: 300) { k in if k == 30 { window.radius = 14 } }
-        let framed = eyes(export, fps: 60, frames: 300)
+        let tuned = try eyes(window, fps: 60, frames: 300) { k in if k == 30 { window.radius = 14 } }
+        let framed = try eyes(export, fps: 60, frames: 300)
         #expect(tuned[29].distance(to: framed[29]) > 1)
         #expect(tuned[31].distance(to: framed[31]) > 1)            // a glide, not a cut
         #expect(tuned[299].distance(to: framed[299]) < 1e-9)

@@ -57,8 +57,8 @@ Brushwork and hatching change what the picture is made of. A print shop's next s
 ```swift
 var look = ColorLUT.warmPrint                       // the bundled look, a warm print
 
-override func setup() {
-    look = try! ColorLUT(resource: "kodachrome", withExtension: "cube", in: .module)
+override func setup() throws {
+    look = try ColorLUT(resource: "kodachrome", withExtension: "cube", in: .module)
 }
 
 override func draw() {
@@ -162,7 +162,7 @@ final class HandColored: Sketch {
 }
 ```
 
-The photograph is one of the bundled sample photographs from [Chapter 9](09-Pictures.md), a hillside town under a warm sky. `try! loadImage("/path/to/yours.jpg")` in its place, as [Chapter 9](09-Pictures.md) wrote it, is the whole change for a picture of your own.
+The photograph is one of the bundled sample photographs from [Chapter 9](09-Pictures.md), a hillside town under a warm sky. `try loadImage("/path/to/yours.jpg")` in its place, as [Chapter 9](09-Pictures.md) wrote it, is the whole change for a picture of your own.
 
 One layer feeds everything. The photograph is drawn into `scene` once a frame, and both the color and the line are read from it. `brushwork` flattens the detail into patches that follow the picture's own contours, so the color stays inside the shapes rather than running across them. `hatching` reads the same picture and lays as many strokes as each tone is dark.
 

@@ -27,7 +27,7 @@ struct CueTests {
         for i in 0..<n { sketch.advance(time: Double(i) * dt, deltaTime: dt, frameRate: 1 / dt) }
     }
 
-    @Test func saveCueCapturesEveryParameterAndACallRestoresThem() {
+    @Test func saveCueCapturesEveryParameterAndACallRestoresThem() throws {
         let s = Looks()
         s.size = 40; s.count = 7; s.lit = true; s.tint = .blue; s.mood = .wild
         s.saveCue("loud")
@@ -40,7 +40,7 @@ struct CueTests {
         #expect(!s.cue("nothing"))
     }
 
-    @Test func aFadeEasesWhatCanFadeAndJumpsTheRest() {
+    @Test func aFadeEasesWhatCanFadeAndJumpsTheRest() throws {
         let s = Looks()
         s.size = 0; s.lit = false; s.mood = .calm; s.tint = .black
         s.saveCue("dark")
@@ -63,7 +63,7 @@ struct CueTests {
         #expect(!s.isCueFading)
     }
 
-    @Test func aCueCalledMidFadeStartsFromWhereTheParametersAre() {
+    @Test func aCueCalledMidFadeStartsFromWhereTheParametersAre() throws {
         let s = Looks()
         s.size = 0; s.saveCue("a")
         s.size = 100; s.saveCue("b")
@@ -77,7 +77,7 @@ struct CueTests {
         #expect(s.size == 0)
     }
 
-    @Test func nextAndPreviousWalkTheSheetAndWrap() {
+    @Test func nextAndPreviousWalkTheSheetAndWrap() throws {
         let s = Looks()
         for (i, name) in ["one", "two", "three"].enumerated() {
             s.size = Double(i + 1) * 10
@@ -97,7 +97,7 @@ struct CueTests {
         #expect(fresh.previousCue() && fresh.currentCue == "only")
     }
 
-    @Test func aRequestRoutesByNameNumberAndStep() {
+    @Test func aRequestRoutesByNameNumberAndStep() throws {
         let s = Looks()
         s.size = 5; s.saveCue("a")
         s.size = 6; s.saveCue("b")
@@ -109,7 +109,7 @@ struct CueTests {
         #expect(s.cue(.previous) && s.currentCue == "b")
     }
 
-    @Test func savingAnExistingNameReplacesItInPlace() {
+    @Test func savingAnExistingNameReplacesItInPlace() throws {
         let s = Looks()
         s.size = 1; s.saveCue("first")
         s.size = 2; s.saveCue("second")
@@ -122,7 +122,7 @@ struct CueTests {
         #expect(s.cueSheet.cues.count == 2)
     }
 
-    @Test func deleteTakesTheCueOutAndClearsTheCurrent() {
+    @Test func deleteTakesTheCueOutAndClearsTheCurrent() throws {
         let s = Looks()
         s.saveCue("a"); s.saveCue("b")
         s.cue("a")
@@ -133,7 +133,7 @@ struct CueTests {
         #expect(s.cueSheet.cues.count == 1)
     }
 
-    @Test func aCueNamesOnlyWhatItHoldsAndSkipsWhatTheSketchLacks() {
+    @Test func aCueNamesOnlyWhatItHoldsAndSkipsWhatTheSketchLacks() throws {
         let s = Looks()
         s.size = 3; s.count = 4
         s.cueSheet.store(Cue(name: "partial", values: ["size": .number(77), "gone": .number(1)]))
@@ -144,7 +144,7 @@ struct CueTests {
         #expect(s.size == 77 && s.count == 4)
     }
 
-    @Test func cuesChangedFiresOnSaveAndDeleteNotOnACall() {
+    @Test func cuesChangedFiresOnSaveAndDeleteNotOnACall() throws {
         let s = Looks()
         var fired = 0
         s.cuesChanged = { fired += 1 }
@@ -189,14 +189,14 @@ struct CueTests {
         OllinApp.readCueFlags(["--cues", path, "--cue", "poster"])
         #expect(OllinApp.cueSheetPath == path && OllinApp.startingCue == "poster")
         let s = Looks()
-        s.runSetup()
+        try s.runSetup()
         #expect(s.size == 64 && s.currentCue == "poster")
         // Without a sheet on the command line the cue is looked for in the
         // sketch's own.
         OllinApp.readCueFlags(["--cue", "poster"])
         let own = Looks()
         try own.loadCues(from: path)
-        own.runSetup()
+        try own.runSetup()
         #expect(own.size == 64)
     }
 
@@ -229,7 +229,7 @@ struct CueTests {
         }
         OllinApp.paramOverrides = overrides
         let s = Built()
-        s.runSetup()
+        try s.runSetup()
         // The cue holds size 64, the command line says 12: the hand wins.
         #expect(s.size == 12)
         // The cue's count is on the sketch, and it was there when setup() read it.
@@ -237,7 +237,7 @@ struct CueTests {
         #expect(s.currentCue == "poster")
         // The window path runs setup() itself and applies the pass after it.
         let window = Built()
-        window.setup()
+        try window.setup()
         window.applyCommandLineParams()
         #expect(window.size == 12 && window.count == 7)
     }

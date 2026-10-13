@@ -209,7 +209,7 @@ Drag to pan, scroll to zoom. A sketch that never calls it never pays for it, and
 
 The figure shows one reason to zoom. The place names are drawn at the same text size in both panels. The zoom draws the outlines and the letters larger, so they arrive crisp. A shape is kept as geometry rather than as pixels, so looking closer shows more of it instead of a blur.
 
-A drag moves the content as far as the pointer went, so the drawing stays under your finger. A zoom is anchored on the pointer, so whatever you are pointing at stays under it while the view grows around it. Neither is smoothed, on purpose: a flat plane under a finger reads better without inertia.
+A drag moves the content as far as the pointer went, so the drawing stays under your finger. A zoom is anchored on the pointer, so whatever you are pointing at stays under it while the view grows around it. Neither is smoothed, on purpose: a flat plane under a finger reads better without inertia. The call can also take a `center` and a `zoom` to open on, and after the first frame they are the view's home: pass a `@Param` as the zoom, and turning it in the inspector glides the view there until you drag or scroll, after which the view is yours and only `resetView()` goes to the new home.
 
 Only what you draw after `viewControl()` moves. Anything drawn *before* the call stays put, so a fixed backdrop goes there. A caption that has to be drawn last needs `withState { }`, which [Chapter 6](06-GridsAndRepetition.md#moving-the-paper-translate-rotate-and-scale) introduces. Put the call and the drawing inside it, and draw the caption after it.
 

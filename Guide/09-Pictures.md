@@ -270,12 +270,12 @@ The portrait read one pixel at a time and answered each with a letter. A palette
 Reading one pixel gives you one color. A [`Palette`](02-Color.md#kits-you-carry-palette-and-ramp) can come out of the whole picture at once. It is for a sketch that should take its colors from a photograph you took, and for a poster that reduces one. The grouping is Lloyd's algorithm, the clustering method from 1957. It moves each group's center to the middle of its members until nothing moves. It picks its starting centers the k-means++ way, from a fixed seed, so the same picture gives the same groups. Give `Palette(extractedFrom:count:)` an image and how many colors you want, and it hands back the center of each group:
 
 ```swift
-let photo = try! loadImage("beach.jpg")
+let photo = try loadImage("beach.jpg")
 let p = Palette(extractedFrom: photo, count: 5)
 fill(p[0])     // the color the photo is mostly made of
 ```
 
-The `try!` there says the file is there, as [Chapter 2](02-Color.md)'s palette files did, and the block below does it the careful way. The colors come back most-used first, so `p[0]` is the one you would name if someone asked what color the photo is. The grouping happens in OKLab for the same reason [mixing](02-Color.md#mixing-you-can-trust) does. In OKLab it groups colors the way your eye does, rather than the way the numbers do. Ask for fewer colors than the picture holds and it merges the closest ones together instead of dropping any.
+The `try` there lets a missing file stop the sketch with its name, as [Chapter 2](02-Color.md)'s palette files did, and the block below does it the careful way. The colors come back most-used first, so `p[0]` is the one you would name if someone asked what color the photo is. The grouping happens in OKLab for the same reason [mixing](02-Color.md#mixing-you-can-trust) does. In OKLab it groups colors the way your eye does, rather than the way the numbers do. Ask for fewer colors than the picture holds and it merges the closest ones together instead of dropping any.
 
 Two practical notes. The first is that it gives the same answer every time for the same picture. So a sketch that extracts a palette still reproduces, which matters once you start exporting. The second is that it does enough work that you do not want it running sixty times a second. Load the photo and extract the palette once in `setup()`, keep both in properties, and let `draw()` read what is already there:
 
@@ -317,7 +317,20 @@ The two families look different on purpose.
 
 **Error diffusion** works differently. It commits to a color for one pixel and measures how far off that was. Then it pushes the leftover error onto neighbors it has not reached yet, so every mistake is corrected nearby. `.floydSteinberg` is the classic, and it gives the organic scattered look in the last panel. `.atkinson` throws away a quarter of the error on purpose, which blows highlights and shadows out to clean white and black. That look has a name because people go looking for it.
 
-A few practical notes. `.none` skips the scattering entirely, which is what the second panel uses and what you reach for to show someone the difference. A second form, `dithered(.atkinson, levels: 2)`, posterizes. It quantizes to evenly spaced steps per channel instead of to a palette. And this is CPU work over every pixel, so do it in `setup()` and hold the result rather than redoing it each frame. [The color reference](../Docs/Drawing/Color.md#dithering) has the full method list, and [`Examples/Color/Dithering`](../Examples/Color/Dithering/Sketch.swift) puts five methods beside the original.
+A few practical notes. `.none` skips the scattering entirely, which is what the second panel uses and what you reach for to show someone the difference. A second form, `dithered(.atkinson, levels: 2)`, posterizes. It quantizes to evenly spaced steps per channel instead of to a palette. And this is CPU work over every pixel, so do it in `setup()` and hold the result rather than redoing it each frame.
+
+### Drawn big, cell by cell: `imageSampling`
+
+A dithered picture is small on purpose, and the natural next step is to draw it big: a 270-pixel picture at four canvas pixels a cell. Drawn the ordinary way the GPU blends each cell into its neighbors, and the hard black-and-white grain turns into a gray blur. `imageSampling(.nearest)` reads every pixel as a hard square instead, so the cells read as cells, and it costs nothing: no enlarged copy is made, the same small picture is read a different way. It is drawing state beside `tint`, so `withState { }` puts it back.
+
+```swift
+withState {
+    imageSampling(.nearest)
+    drawImage(poster, in: bounds)     // each cell a hard square
+}
+```
+
+The same call is what pixel art and a low-resolution canvas want. A picture drawn smaller than its pixels is still blended, since reading one pixel of many under reduction sparkles, and a scale that is not a whole number gives cells of uneven width. [`Examples/Images/PixelArt`](../Examples/Images/PixelArt/Sketch.swift) draws one dithered photograph both ways with the split under the pointer. [The color reference](../Docs/Drawing/Color.md#dithering) has the full method list, and [`Examples/Color/Dithering`](../Examples/Color/Dithering/Sketch.swift) puts five methods beside the original.
 
 ## A picture as marks: glyphs, dots, pictures, lines, and thread
 

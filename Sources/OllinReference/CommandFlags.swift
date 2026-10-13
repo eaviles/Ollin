@@ -93,6 +93,7 @@ public extension CommandFlag {
         .init("--skip", .run, .value("S"), "run this many seconds before the first written frame"),
         .init("--start", .run, .value("N"), "the number the first file of a sequence is named with"),
         .init("--frame", .run, .value("N"), "which frame to write"),
+        .init("--at", .run, .value("S"), "which moment to write, in the sketch's own seconds (the frame at --fps)"),
     ]
 
     private static let quality: [CommandFlag] = [

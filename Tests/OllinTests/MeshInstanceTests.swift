@@ -19,7 +19,7 @@ struct MeshInstanceTests {
 
     // MARK: Recording
 
-    @Test func instancedDrawRecordsLocalVerticesAndOneBatch() {
+    @Test func instancedDrawRecordsLocalVerticesAndOneBatch() throws {
         let drawer = Drawer()
         drawer.beginFrame()
         drawer.camera(Camera3D(eye: Vector3(0, 0, 6), target: .zero))
@@ -38,7 +38,7 @@ struct MeshInstanceTests {
         #expect(xs == [-1, 1])
     }
 
-    @Test func placementsComposeWithTheTransformStack() {
+    @Test func placementsComposeWithTheTransformStack() throws {
         let drawer = Drawer()
         drawer.beginFrame()
         drawer.camera(Camera3D(eye: Vector3(0, 0, 6), target: .zero))
@@ -49,7 +49,7 @@ struct MeshInstanceTests {
         #expect(m.columns.3.x == 6 && m.columns.3.y == 2 && m.columns.3.z == 3)
     }
 
-    @Test func placementMatrixMatchesTheEquivalentCallSequence() {
+    @Test func placementMatrixMatchesTheEquivalentCallSequence() throws {
         // The documented contract: translate, then rotateX/rotateY/rotateZ, then
         // scale, exactly as the sketch calls would compose the model matrix.
         let drawer = Drawer()
@@ -64,7 +64,7 @@ struct MeshInstanceTests {
         #expect(inst.matrix == drawer.modelMatrix)
     }
 
-    @Test func tintDefaultsToWhiteAndCarriesWhenSet() {
+    @Test func tintDefaultsToWhiteAndCarriesWhenSet() throws {
         let drawer = Drawer()
         drawer.beginFrame()
         drawer.camera(Camera3D(eye: Vector3(0, 0, 6), target: .zero))
@@ -78,7 +78,7 @@ struct MeshInstanceTests {
 
     // MARK: Gates
 
-    @Test func needsACameraAndInstances() {
+    @Test func needsACameraAndInstances() throws {
         let drawer = Drawer()
         drawer.beginFrame()
         drawer.drawMeshInstanced(box, instances: [MeshInstance()])   // no camera
@@ -88,7 +88,7 @@ struct MeshInstanceTests {
         #expect(drawer.batches.isEmpty)
     }
 
-    @Test func refusedInsideABatchRecording() {
+    @Test func refusedInsideABatchRecording() throws {
         let drawer = Drawer()
         drawer.beginFrame()
         drawer.camera(Camera3D(eye: Vector3(0, 0, 6), target: .zero))
@@ -99,7 +99,7 @@ struct MeshInstanceTests {
         #expect(drawer.meshInstances.isEmpty)
     }
 
-    @Test func gpuResidentPlacementsRideTheBatchBuffer() {
+    @Test func gpuResidentPlacementsRideTheBatchBuffer() throws {
         let drawer = Drawer()
         drawer.beginFrame()
         drawer.camera(Camera3D(eye: Vector3(0, 0, 6), target: .zero))
@@ -169,7 +169,7 @@ struct MeshInstanceBenchmarkTests {
         func measure(instanced: Bool) -> (cpuMs: Double, gpuMs: Double, copies: Int) {
             let sketch = InstancedBenchScene(instanced: instanced)
             sketch.setCanvasSize(width: Double(res), height: Double(res))
-            sketch.setup()
+            try sketch.setup()
             var t = 1.0
             sketch.advance(time: t, deltaTime: 1 / 60, frameRate: 60)
             sketch.performDraw()   // warm the arrays

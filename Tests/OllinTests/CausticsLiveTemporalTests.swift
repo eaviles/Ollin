@@ -30,7 +30,7 @@ struct CausticsLiveTemporalProbes {
                                          sampleCount: ollinPreferredSampleCount(device),
                                          encoding: sketch.colorOutput.presentEncoding)
         sketch.setCanvasSize(width: Double(width), height: Double(height))
-        sketch.setup()
+        try sketch.setup()
 
         var planes: [[Float]] = []
         var photons: [UInt32] = []
@@ -215,7 +215,7 @@ struct CausticsLiveTemporalProbes {
                                          sampleCount: ollinPreferredSampleCount(device),
                                          encoding: sketch.colorOutput.presentEncoding)
         sketch.setCanvasSize(width: Double(width), height: Double(height))
-        sketch.setup()
+        try sketch.setup()
 
         var peaks: [Float] = []
         var energies: [Double] = []

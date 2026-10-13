@@ -216,7 +216,7 @@ struct OverlayTests {
     /// A vector export writes the overlay after everything else, where the pass
     /// puts it, whatever the call order.
     @Test func theOverlayWritesLastInAVectorFile() throws {
-        let svg = OllinApp.svg(of: sketch { s in
+        let svg = try OllinApp.svg(of: sketch { s in
             s.withOverlay { s.fill(.red); s.drawRect(10, 10, 40, 40) }
             s.fill(.white)
             s.drawCircle(100, 100, 30)

@@ -5265,6 +5265,23 @@
       "stillSmall": "examples/Images/PhotoMosaic/still-640.jpg?v=ca5adb0b",
       "width": 1080
     },
+    "Images/PixelArt": {
+      "width": 1080,
+      "height": 1080,
+      "length": "still",
+      "stillBecause": "holds still",
+      "frame": 480,
+      "motion": 0.0,
+      "source": "f6e92184dd466185",
+      "rendered": "2026-10-13",
+      "bytes": {
+        "still": 407437,
+        "stillSmall": 200117
+      },
+      "still": "examples/Images/PixelArt/still.jpg?v=f4efe92b",
+      "stillSmall": "examples/Images/PixelArt/still-640.jpg?v=925a77df",
+      "seed": 1
+    },
     "Images/PixelField": {
       "bytes": {
         "loop": 1053802,

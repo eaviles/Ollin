@@ -1338,7 +1338,7 @@ override func draw() {
 
 It leaves a plain transform in force, so everything drawn after it moves together and anything drawn before it stays put. That is where a fixed backdrop belongs. For a HUD that has to be drawn last, wrap the call and the drawing in a `withState { }` block. Then draw the HUD after it.
 
-`center` and `zoom` frame the opening view, and they apply on the first call only. Passing them every frame therefore does not fight the dragging. `zoom` is how many screen pixels one canvas unit covers, and `range` bounds where the wheel can take it. `viewCenter` and `viewZoom` report where the view is. `resetView()` puts it back to its opening framing, which is what a reset key would call.
+`center` and `zoom` frame the opening view, and after the first call they are the view's home. Passing the same values every frame changes nothing, so a constant framing never fights the dragging. A value that changes, a `@Param` turned in the inspector or an edit on the live stage, glides the view there while the viewer has not dragged or scrolled it yet, which is how a parameter tunes the view live. Once they have, the view is theirs: a changed value moves only the home, and `resetView()` is what opens on the new one. `zoom` is how many screen pixels one canvas unit covers, and `range` bounds where the wheel can take it. `viewCenter` and `viewZoom` report where the view is. `resetView()` puts the view back on its home framing, which is what a reset key would call.
 
 | Gesture | Action |
 | --- | --- |

@@ -35,9 +35,9 @@ struct HeldObjectsTests {
         override func draw() {}
     }
 
-    @Test func everyValueTheSketchHoldsIsFoundOnce() {
+    @Test func everyValueTheSketchHoldsIsFoundOnce() throws {
         let sketch = Holder()
-        sketch.runSetup()
+        try sketch.runSetup()
         let started = Date()
         let found = sketch.heldObjects(of: (any FrameAdvancing).self)
         let took = Date().timeIntervalSince(started)
@@ -54,9 +54,9 @@ struct HeldObjectsTests {
     /// The sketch advances what it finds, so a value inside an array, a
     /// struct, a dictionary, or an object of the sketch's own moves once it is
     /// given somewhere to go.
-    @Test func anEasedValueInsideWhatTheSketchHoldsMoves() {
+    @Test func anEasedValueInsideWhatTheSketchHoldsMoves() throws {
         let sketch = Holder()
-        sketch.runSetup()
+        try sketch.runSetup()
         sketch.pairs[0].glide.wrappedValue = 100
         sketch.inArray[0].wrappedValue = 100
         sketch.byName["x"]!.wrappedValue = 100

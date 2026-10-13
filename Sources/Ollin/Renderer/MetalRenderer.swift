@@ -1997,6 +1997,14 @@ final class MetalRenderer {
     /// above for why the chain must not have it.
     let surfaceSampler: MTLSamplerState?
 
+    /// The sampler an image draw under `imageSampling(.nearest)` reads through:
+    /// magnification nearest, so a picture drawn larger than its pixels keeps
+    /// every pixel a hard square, and minification still linear through the
+    /// levels, so one drawn smaller is blended as `imageSampler` blends it.
+    /// Anisotropy 1 and clamped like `imageSampler`; bound by the image quads
+    /// alone, never by a chain pass.
+    let pixelSampler: MTLSamplerState?
+
     /// The gradient strip: one row per distinct gradient ramp this frame, baked
     /// on the CPU (see `BakedGradient`) and sampled by the SDF fragment. Reused
     /// while the frame's rows are unchanged (the common case — a steady sketch
@@ -2055,6 +2063,9 @@ final class MetalRenderer {
         samplerDesc.sAddressMode = .clampToEdge
         samplerDesc.tAddressMode = .clampToEdge
         self.imageSampler = device.makeSamplerState(descriptor: samplerDesc)
+        samplerDesc.magFilter = .nearest
+        self.pixelSampler = device.makeSamplerState(descriptor: samplerDesc)
+        samplerDesc.magFilter = .linear
         samplerDesc.maxAnisotropy = 16
         self.surfaceSampler = device.makeSamplerState(descriptor: samplerDesc)
 

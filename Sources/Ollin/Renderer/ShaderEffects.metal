@@ -50,6 +50,31 @@ static inline float3 toneMapACES(float3 x) {
     return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
 }
 
+// A hue-preserving tone map (the Khronos PBR Neutral curve, written from the
+// published description) in three steps. A small black offset lifts the
+// darkest channel toward zero, a fixed 0.04 above a knee at 0.08. The color's
+// peak channel is then compressed above 0.76 by a rational curve that reaches
+// 1 only at infinity, and the whole color is scaled by the same factor, so
+// the ratios between its channels, which are its hue, hold. Last, the color
+// is eased toward white by a share that grows with how much the peak was
+// compressed, so a color far past the ceiling whitens the way an overexposed
+// one does, while one under the knee is returned as it came.
+static inline float3 toneMapNeutral(float3 x) {
+    const float knee = 0.76;
+    const float whitening = 0.15;
+    float lowest = min(x.r, min(x.g, x.b));
+    float offset = 0.04;
+    if (lowest < 0.08) { offset = lowest - 6.25 * lowest * lowest; }
+    x -= offset;
+    float peak = max(x.r, max(x.g, x.b));
+    if (peak < knee) { return x; }
+    const float headroom = 1.0 - knee;
+    float compressed = 1.0 - headroom * headroom / (peak + headroom - knee);
+    x *= compressed / peak;
+    float white = 1.0 - 1.0 / (whitening * (peak - compressed) + 1.0);
+    return mix(x, float3(compressed), white);
+}
+
 // OLLIN_LIB_END present
 
 // The frame's coverage through the present. The canvas composites premultiplied
@@ -73,6 +98,8 @@ static inline float3 ollin_present_map(float3 c, float a, constant OllinPresentU
         c = c / (1.0 + c);              // Reinhard: x / (1 + x), per channel
     } else if (u.toneMapMode == 2) {
         c = toneMapACES(c);             // ACES filmic
+    } else if (u.toneMapMode == 3) {
+        c = toneMapNeutral(c);          // hue-preserving
     }
     return c;
 }

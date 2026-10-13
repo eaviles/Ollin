@@ -6,7 +6,7 @@
 
 Read a CSV, a TSV, or a JSON file and draw from it. Reading a file is slow next to drawing one frame, so each loader runs once. Call it in `setup()`, keep the result in a property, and read it in `draw()`.
 
-Both loaders throw a `FileError` when a file can't be read or holds nothing usable: `missing` when nothing is there, `unreadable` when the bytes are not a table or JSON, each with the path and a sentence. Write `try!` to stop the sketch with that sentence, or `try?` to carry on with `nil`, so a missing asset or a bad download shows up as an empty sketch you can report rather than a crash.
+Both loaders throw a `FileError` when a file can't be read or holds nothing usable: `missing` when nothing is there, `unreadable` when the bytes are not a table or JSON, each with the path and a sentence. In `setup()`, which may throw, a bare `try` stops the sketch with that sentence, or write `try?` to carry on with `nil`, so a missing asset or a bad download shows up as an empty sketch you can report rather than a crash.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/09-Pictures/DataAsMaterial-dark.jpg">

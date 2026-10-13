@@ -16,7 +16,7 @@ struct StrokeDashTests {
     // MARK: Reading a pattern
 
     @Test
-    func anOddCountRepeatsAndNegativesReadAsZero() {
+    func anOddCountRepeatsAndNegativesReadAsZero() throws {
         #expect(StrokeDash([8, 4, 2]).resolvedLengths == [8, 4, 2, 8, 4, 2])
         #expect(abs(StrokeDash([8, 4, 2]).period - 28) < 1e-12)
         #expect(StrokeDash([-3, 5]).resolvedLengths == [0, 5])
@@ -24,7 +24,7 @@ struct StrokeDashTests {
     }
 
     @Test
-    func solidWhenNoGapHasLength() {
+    func solidWhenNoGapHasLength() throws {
         #expect(StrokeDash([]).isSolid)
         #expect(StrokeDash([10, 0]).isSolid)
         #expect(StrokeDash([10, -4]).isSolid)
@@ -95,7 +95,7 @@ struct StrokeDashTests {
     }
 
     @Test
-    func oneDashCoveringTheWholeLoopLeavesItWhole() {
+    func oneDashCoveringTheWholeLoopLeavesItWhole() throws {
         let square = Contour([Vector2(0, 0), Vector2(100, 0), Vector2(100, 100), Vector2(0, 100)], closed: true)
         let cut = square.dashed(.dashes(1000, gap: 10))
         #expect(cut.count == 1)
@@ -123,7 +123,7 @@ struct StrokeDashTests {
     }
 
     @Test
-    func aShapeCutsEveryContour() {
+    func aShapeCutsEveryContour() throws {
         let shape = Shape(contours: [Contour(line, closed: false),
                                      Contour(line.map { $0 + Vector2(0, 10) }, closed: false)],
                           winding: .nonZero)
@@ -136,7 +136,7 @@ struct StrokeDashTests {
     // MARK: The drawer
 
     @Test
-    func aPatternTooFineForItsPathDrawsWhole() {
+    func aPatternTooFineForItsPathDrawsWhole() throws {
         let dash = StrokeDash([0.001, 0.001])
         #expect(dash.dashCount(along: 1000) > Drawer.maxDashesPerPath)
         let drawer = Drawer()
@@ -147,7 +147,7 @@ struct StrokeDashTests {
     }
 
     @Test
-    func noDashIsTheWholePathAsOneRun() {
+    func noDashIsTheWholePathAsOneRun() throws {
         let drawer = Drawer()
         let runs = drawer.strokeRuns(line, closed: true)
         #expect(runs.count == 1)
@@ -181,7 +181,7 @@ struct StrokeDashTests {
 
     /// The map a brush reads its place through: a run's own fraction onto the whole path's.
     @Test
-    func aBrushReadsItsPlaceOnTheWholePath() {
+    func aBrushReadsItsPlaceOnTheWholePath() throws {
         let run = Drawer.StrokeRun(points: [Vector2(80, 0), Vector2(90, 0)], closed: false,
                                    fractions: [0.8, 0.9])
         let place = Drawer.fractionMap(run)
@@ -193,7 +193,7 @@ struct StrokeDashTests {
     }
 
     @Test
-    func withStateRestoresTheDash() {
+    func withStateRestoresTheDash() throws {
         let drawer = Drawer()
         drawer.strokeDash(.dashes(4))
         drawer.pushState()
@@ -206,7 +206,7 @@ struct StrokeDashTests {
     /// A circle under a dash draws its fill as the instance it always was and
     /// its outline as a stroked path; with no fill there is no instance at all.
     @Test
-    func analyticShapesHandTheirOutlineOver() {
+    func analyticShapesHandTheirOutlineOver() throws {
         let drawer = Drawer()
         drawer.stroke(.black)
         drawer.strokeWeight(2)
@@ -237,7 +237,7 @@ struct StrokeDashTests {
 
     /// Each dash crosses to the web page as a source of its own.
     @Test
-    func eachDashCrossesAsItsOwnSource() {
+    func eachDashCrossesAsItsOwnSource() throws {
         let drawer = Drawer()
         drawer.recordsWebSources = true
         drawer.stroke(.black)
@@ -260,8 +260,8 @@ struct StrokeDashTests {
     /// The file carries every dash as a subpath of its own, so a plotter lifts
     /// the pen at each gap, and the fill under a dashed outline stays whole.
     @Test
-    func dashesExportAsSubpaths() {
-        let svg = OllinApp.svg(of: DashedLineFixture())
+    func dashesExportAsSubpaths() throws {
+        let svg = try OllinApp.svg(of: DashedLineFixture())
         #expect(svg.contains("<path d=\"M 0 50 L 10 50 M 20 50 L 30 50 M 40 50 L 50 50 M 60 50 L 70 50 M 80 50 L 90 50\""))
         // The rectangle's fill is the element it always was, and its dashed
         // outline is a path with no closing command.

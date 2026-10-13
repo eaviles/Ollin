@@ -113,15 +113,15 @@ import Testing
     /// The vector export writes the frame the loop stopped on. The file's
     /// recipe comment names the frame asked for, so the drawing is compared
     /// with that one line left out.
-    @Test func aVectorFileHoldsTheFrameTheLoopStoppedOn() {
+    @Test func aVectorFileHoldsTheFrameTheLoopStoppedOn() throws {
         func drawing(_ svg: String) -> String {
             svg.split(separator: "\n").filter { !$0.contains("<!--") }.joined(separator: "\n")
         }
         let held = Dice.make(stopAt: 4)
-        let late = drawing(OllinApp.svg(of: held, frame: 20))
+        let late = drawing(try OllinApp.svg(of: held, frame: 20))
         #expect(held.draws == 4)
-        #expect(late == drawing(OllinApp.svg(of: Dice.make(stopAt: 4), frame: 3)))
-        #expect(late != drawing(OllinApp.svg(of: Dice.make(stopAt: 4), frame: 2)))
+        #expect(late == drawing(try OllinApp.svg(of: Dice.make(stopAt: 4), frame: 3)))
+        #expect(late != drawing(try OllinApp.svg(of: Dice.make(stopAt: 4), frame: 2)))
     }
 
     /// A web page records what the renderer was handed, and a sketch stopped

@@ -55,7 +55,7 @@ struct DetailMapTests {
     }
 
     @Test func theSpatialExporterNotesAndSkipsDetail() throws {
-        let scene = OllinApp.spatialScene(of: DetailProbe.make(.exportStrip), frame: 0)
+        let scene = try OllinApp.spatialScene(of: DetailProbe.make(.exportStrip), frame: 0)
         func firstMesh(_ nodes: [SceneNode]) -> Mesh? {
             for n in nodes {
                 if let mesh = n.mesh { return mesh }

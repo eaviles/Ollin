@@ -14,7 +14,7 @@ struct BatchTests {
 
     // MARK: Recording
 
-    @Test func recordingCapturesGeometryAndRestoresTheFrame() {
+    @Test func recordingCapturesGeometryAndRestoresTheFrame() throws {
         let drawer = Drawer()
         drawer.beginFrame()
         drawer.drawCircle(10, 10, 5)                    // frame content before
@@ -39,7 +39,7 @@ struct BatchTests {
         #expect(drawer.batches.map(\.kind) == [.sdf])   // one merged sdf run
     }
 
-    @Test func recordingRestoresStateAndStartsFromIdentity() {
+    @Test func recordingRestoresStateAndStartsFromIdentity() throws {
         let drawer = Drawer()
         drawer.beginFrame()
         drawer.fill(Color.red)
@@ -61,7 +61,7 @@ struct BatchTests {
         #expect(drawer.sdfInstances.last.map { $0.transform.columns.2.x } == 100)
     }
 
-    @Test func gradientRowsAreHandleRelative() {
+    @Test func gradientRowsAreHandleRelative() throws {
         let drawer = Drawer()
         drawer.beginFrame()
         // A frame gradient first, so the frame's row table is non-empty.
@@ -80,7 +80,7 @@ struct BatchTests {
 
     // MARK: Replay
 
-    @Test func drawBatchAppendsOneReferenceRun() {
+    @Test func drawBatchAppendsOneReferenceRun() throws {
         let drawer = Drawer()
         drawer.beginFrame()
         let batch = drawer.makeBatch { drawer.drawCircle(0, 0, 8) }
@@ -102,7 +102,7 @@ struct BatchTests {
         #expect(drawer.batches[1].retainedTransform?.columns.2.x == 30)
     }
 
-    @Test func drawBatchCarriesTheDrawTimeContext() {
+    @Test func drawBatchCarriesTheDrawTimeContext() throws {
         let drawer = Drawer()
         drawer.beginFrame()
         let batch = drawer.makeBatch { drawer.drawCircle(0, 0, 8) }
@@ -115,7 +115,7 @@ struct BatchTests {
 
     // MARK: Gates
 
-    @Test func unsupportedContentIsSkippedNotRecorded() {
+    @Test func unsupportedContentIsSkippedNotRecorded() throws {
         let drawer = Drawer()
         drawer.beginFrame()
         let batch = drawer.makeBatch {
@@ -132,7 +132,7 @@ struct BatchTests {
         #expect(drawer.renderTargets.isEmpty)
     }
 
-    @Test func nestedRecordingReturnsEmpty() {
+    @Test func nestedRecordingReturnsEmpty() throws {
         let drawer = Drawer()
         drawer.beginFrame()
         var inner: Batch?
@@ -144,7 +144,7 @@ struct BatchTests {
         #expect(outer.sdfInstances.count == 1)
     }
 
-    @Test func pointCloudRecordsWithoutACamera() {
+    @Test func pointCloudRecordsWithoutACamera() throws {
         let drawer = Drawer()
         drawer.beginFrame()
         let cloud = PointCloud(points: [PointCloud.Point(position: Vector3(0, 0, -2))])
@@ -155,8 +155,8 @@ struct BatchTests {
 
     // MARK: Vector export
 
-    @Test func vectorExportSplicesTheRecordingUnderTheDrawTimeCTM() {
-        let svg = OllinApp.svg(of: VectorBatchSketch(), frame: 0)
+    @Test func vectorExportSplicesTheRecordingUnderTheDrawTimeCTM() throws {
+        let svg = try OllinApp.svg(of: VectorBatchSketch(), frame: 0)
         // The one recorded circle replays twice: once in place, once translated.
         let circles = svg.components(separatedBy: "<circle").count - 1
         let ellipses = svg.components(separatedBy: "<ellipse").count - 1

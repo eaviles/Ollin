@@ -34,17 +34,17 @@ struct SourcePickTests {
         }
     }
 
-    private func run<S: Sketch>(_ sketch: S, tracking: Bool = true) -> S {
+    private func run<S: Sketch>(_ sketch: S, tracking: Bool = true) throws -> S {
         sketch.setCanvasSize(width: 800, height: 800)
         sketch.tracksSourceSites = tracking
-        sketch.setup()
+        try sketch.setup()
         sketch.advance(time: 0, deltaTime: 1 / 60, frameRate: 60)
         sketch.performDraw()
         return sketch
     }
 
-    @Test func aClickFindsTheLineThatDrewTheShape() {
-        let sketch = run(TwoShapes())
+    @Test func aClickFindsTheLineThatDrewTheShape() throws {
+        let sketch = try run(TwoShapes())
         // Left of the rectangle's edge, so only the circle is there.
         let pick = sketch.sourcePick(at: Vector2(145, 200))
         #expect(pick?.site.line == sketch.circleLine)
@@ -52,34 +52,34 @@ struct SourcePickTests {
         #expect(pick?.site.fileName == "SourcePickTests.swift")
     }
 
-    @Test func theTopmostShapeWins() {
-        let sketch = run(TwoShapes())
+    @Test func theTopmostShapeWins() throws {
+        let sketch = try run(TwoShapes())
         // Inside both; the rectangle was drawn second, so it is the one seen.
         #expect(sketch.sourcePick(at: Vector2(200, 200))?.site.line == sketch.rectLine)
     }
 
-    @Test func emptyCanvasPicksNothing() {
-        let sketch = run(TwoShapes())
+    @Test func emptyCanvasPicksNothing() throws {
+        let sketch = try run(TwoShapes())
         #expect(sketch.sourcePick(at: Vector2(700, 700)) == nil)
     }
 
     /// A circle is picked by its own round edge, not by the box around it: a
     /// click just outside the curve but inside the corner of its box misses.
-    @Test func aCircleIsPickedByItsEdge() {
-        let sketch = run(TwoShapes())
+    @Test func aCircleIsPickedByItsEdge() throws {
+        let sketch = try run(TwoShapes())
         #expect(sketch.sourcePick(at: Vector2(146, 146)) == nil)
         #expect(sketch.sourcePick(at: Vector2(200, 145)) != nil)
     }
 
-    @Test func nothingIsRecordedWhileNobodyIsEditing() {
-        let sketch = run(TwoShapes(), tracking: false)
+    @Test func nothingIsRecordedWhileNobodyIsEditing() throws {
+        let sketch = try run(TwoShapes(), tracking: false)
         #expect(sketch.sourcePick(at: Vector2(200, 200)) == nil)
     }
 
     /// The pick is in canvas points, so a shape drawn inside `translate` is
     /// found where it appears, not where its numbers say.
-    @Test func aMovedFrameIsPickedWhereItAppears() {
-        let sketch = run(UnderATransform())
+    @Test func aMovedFrameIsPickedWhereItAppears() throws {
+        let sketch = try run(UnderATransform())
         #expect(sketch.sourcePick(at: Vector2(0, 0)) == nil)
         #expect(sketch.sourcePick(at: Vector2(400, 100))?.site.line == sketch.line)
         // Radius 30 at scale 2 covers 60 points on the canvas.
@@ -90,7 +90,7 @@ struct SourcePickTests {
     /// The numbers in the file are in the frame the call drew in, so a drag of
     /// 100 canvas points on a shape drawn at twice the scale is 50 in the file.
     @Test func aDragIsMeasuredInTheNumbersOwnFrame() throws {
-        let sketch = run(UnderATransform())
+        let sketch = try run(UnderATransform())
         let pick = try #require(sketch.sourcePick(at: Vector2(400, 100)))
         let delta = pick.numbersDelta(forCanvasDelta: Vector2(100, -40))
         #expect(abs(delta.x - 50) < 1e-6)
@@ -98,7 +98,7 @@ struct SourcePickTests {
     }
 
     @Test func theOutlineIsTheShapeOnTheCanvas() throws {
-        let sketch = run(UnderATransform())
+        let sketch = try run(UnderATransform())
         let pick = try #require(sketch.sourcePick(at: Vector2(400, 100)))
         let xs = pick.outline.map(\.x), ys = pick.outline.map(\.y)
         #expect(abs(xs.min()! - 340) < 1e-4)
@@ -109,20 +109,20 @@ struct SourcePickTests {
 
     /// A labeled call says so, so the host knows to look inside a `Vector2`
     /// rather than at two bare numbers.
-    @Test func aLabeledCallReportsItsPointArgument() {
+    @Test func aLabeledCallReportsItsPointArgument() throws {
         final class Labeled: Sketch {
             override func draw() {
                 fill(.black)
                 drawCircle(center: Vector2(100, 100), radius: 40)
             }
         }
-        let sketch = run(Labeled())
+        let sketch = try run(Labeled())
         #expect(sketch.sourcePick(at: Vector2(100, 100))?.site.move == .point(radius: 1))
     }
 
     /// A line is a thin thing to hit, so its region is a few points wider than
     /// the ink either side of it.
-    @Test func aThinLineIsStillHittable() {
+    @Test func aThinLineIsStillHittable() throws {
         final class OneLine: Sketch {
             override func draw() {
                 stroke(.black)
@@ -130,7 +130,7 @@ struct SourcePickTests {
                 drawLine(100, 100, 300, 100)
             }
         }
-        let sketch = run(OneLine())
+        let sketch = try run(OneLine())
         #expect(sketch.sourcePick(at: Vector2(200, 102))?.site.move == .scalars([0, 1, 2, 3]))
         #expect(sketch.sourcePick(at: Vector2(200, 130)) == nil)
     }
@@ -142,7 +142,7 @@ struct SourcePickTests {
     /// its hover across that gap, and drops it once the pointer is clear of
     /// the handles.
     @Test func theHoverSurvivesTheGapBetweenTheEdgeAndACorner() throws {
-        let sketch = run(TwoShapes())
+        let sketch = try run(TwoShapes())
         let pick = try #require(sketch.sourcePick(at: Vector2(145, 200)))
         // Outside the circle (73 from its center, radius 60), inside its box.
         #expect(sketch.sourcePick(at: Vector2(148, 148)) == nil)
@@ -156,7 +156,7 @@ struct SourcePickTests {
     /// A circle is placed by its middle and sized by one number, so every
     /// corner can scale it, and nothing on the line says which way it faces.
     @Test func aCircleOffersFourCornersAndNoTurnParameter() throws {
-        let sketch = run(TwoShapes())
+        let sketch = try run(TwoShapes())
         let pick = try #require(sketch.sourcePick(at: Vector2(145, 200)))
         #expect(pick.handles.filter { $0.kind == .resize }.count == 4)
         #expect(pick.handles.contains { $0.kind == .turn } == false)
@@ -169,7 +169,7 @@ struct SourcePickTests {
     /// A rectangle placed by its top-left corner holds that corner still, so
     /// the handle standing on it has nothing to scale and is not offered.
     @Test func aCornerPlacedRectangleOffersThreeCorners() throws {
-        let sketch = run(TwoShapes())
+        let sketch = try run(TwoShapes())
         let pick = try #require(sketch.sourcePick(at: Vector2(200, 200)))
         #expect(pick.site.line == sketch.rectLine)
         #expect(pick.handles.count == 3)
@@ -188,7 +188,7 @@ struct SourcePickTests {
                 drawLine(100, 100, 300, 100); line = #line
             }
         }
-        let sketch = run(OneLine())
+        let sketch = try run(OneLine())
         let pick = try #require(sketch.sourcePick(at: Vector2(200, 100)))
         #expect(pick.handles.count == 1)
         #expect(pick.handles.first?.kind == .turn)
@@ -208,7 +208,7 @@ struct SourcePickTests {
                 drawArc(300, 300, 100, 100, start: 0.6, stop: 2.5)
             }
         }
-        let sketch = run(OneArc())
+        let sketch = try run(OneArc())
         let pick = try #require(sketch.sourcePick(at: Vector2(300, 300)))
         #expect(pick.site.move.angles == [4, 5])
         #expect(pick.handles.filter { $0.kind == .resize }.count == 4)
@@ -218,12 +218,12 @@ struct SourcePickTests {
     /// A resize is a ratio, so the same drag on the same picture gives the same
     /// answer whatever scale the numbers are written at.
     @Test func theSizeFactorIsTheSameAtAnyScale() throws {
-        let plain = run(TwoShapes())
+        let plain = try run(TwoShapes())
         let circle = try #require(plain.sourcePick(at: Vector2(145, 200)))
         let corner = try #require(circle.handle(at: Vector2(260, 260), within: 2))
         let one = try #require(circle.sizeFactor(for: corner, canvasDelta: Vector2(60, 60)))
 
-        let scaled = run(UnderATransform())
+        let scaled = try run(UnderATransform())
         let small = try #require(scaled.sourcePick(at: Vector2(400, 100)))
         let far = try #require(small.handle(at: Vector2(460, 160), within: 2))
         let two = try #require(small.sizeFactor(for: far, canvasDelta: Vector2(60, 60)))
@@ -235,7 +235,7 @@ struct SourcePickTests {
     /// One drag cannot take a shape below a twentieth of what it was, so a
     /// corner pulled through the middle leaves something to grab again.
     @Test func aResizeStopsBeforeTheShapeDisappears() throws {
-        let sketch = run(TwoShapes())
+        let sketch = try run(TwoShapes())
         let pick = try #require(sketch.sourcePick(at: Vector2(145, 200)))
         let corner = try #require(pick.handle(at: Vector2(260, 260), within: 2))
         let factor = try #require(pick.sizeFactor(for: corner, canvasDelta: Vector2(-400, -400)))
@@ -257,7 +257,7 @@ struct SourcePickTests {
                 }
             }
         }
-        let sketch = run(InsideATurnedFrame())
+        let sketch = try run(InsideATurnedFrame())
         let pick = try #require(sketch.sourcePick(at: Vector2(300, 300)))
         // A quarter turn of the pointer about the middle of the shape.
         let angle = pick.turnAngle(from: Vector2(300, 250), to: Vector2(350, 300))

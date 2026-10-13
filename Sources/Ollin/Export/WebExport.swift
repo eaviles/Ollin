@@ -366,7 +366,7 @@ extension OllinApp {
         // made in `setup()` included.
         sketch.drawer.recordsWebSources = true
         defer { sketch.drawer.recordsWebSources = false }
-        sketch.runSetup()
+        try sketch.runSetup()
         guard sketch.colorOutput == .standard else {
             throw WebExportRefusal(call: "colorOutput \(sketch.colorOutput) (wide gamut and HDR output)", frame: 0)
         }
@@ -878,6 +878,8 @@ struct WebShaders {
             c = c / (1.0 + c);
         } else if (toneMapMode == 2) {
             c = toneMapACES(c);
+        } else if (toneMapMode == 3) {
+            c = toneMapNeutral(c);
         }
         vec2 fragCoord = vec2(gl_FragCoord.x, viewport.y - gl_FragCoord.y);
         vec3 enc = ditherEncoded(linearToSrgb(c), fragCoord);
@@ -2923,6 +2925,14 @@ enum WebPlayer {
       function drawQuads(quad, count, tex, blend, kind, w, h, quadOffset, flip, item) {
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, tex);
+        // A picture drawn under imageSampling(.nearest) carries a 1 after its
+        // bounds: its enlarged pixels read as hard squares, as the Mac's pixel
+        // sampler reads them, and the next draw of the same picture sets the
+        // filter back for itself. Reduction stays linear through the levels.
+        if (kind === 'picture') {
+          var nearest = item && item.length >= 10 && item[9];
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, nearest ? gl.NEAREST : gl.LINEAR);
+        }
         if (kind === 'glyph') {
           gl.useProgram(glyphProgram());
           gl.uniform2f(gViewport, w, h);

@@ -66,12 +66,15 @@ It applies under every mode, including `.clamp`, where it only brightens the ima
 | `.clamp` | clip to [0, 1] | **The default.** Standard dynamic range, so anything past full saturates to white, exactly as before. An in-range frame renders identically. |
 | `.reinhard` | `x / (1 + x)` | Compresses every value to under 1.0, so highlights never fully clip. Cheap and gentle, but it tends to desaturate bright areas. |
 | `.aces` | ACES filmic S-curve | Rolls highlights off while keeping contrast and saturation in the midtones. Use it for glow and light-accumulation looks. |
+| `.neutral` | the Khronos PBR Neutral curve | Keeps a bright color's hue. `.reinhard` and `.aces` bend each channel on its own, so a bright saturated color drifts toward the nearest primary: an orange of linear (4, 1, 0.2) comes out yellow. This one compresses the three channels by one factor and only eases the color toward white as its peak nears the ceiling, so the orange stays orange. Below about 0.76 of full a color keeps its hue exactly and loses only a small toe (0.04 of linear light at most), and the roll-off above is gentler than film: the choice when the colors are the point. |
 
 <img src="../../Guide/Images/19-LayersAndEffects/ToneClamp.jpg" alt="Three overlapping tinted lamps under the default clamp tone map: the entire overlapping middle blows out to a flat white slab with hard seams" width="680">
 
 <img src="../../Guide/Images/19-LayersAndEffects/ToneAces.jpg" alt="The same three lamps through the ACES film curve: the middle stays bright but keeps its warm, mint, and blue tints, rolling off softly like film" width="680">
 
-See the `Rendering/ToneMapping` example. Colored lamps orbit and overlap additively, and a key cycles through the three mappings. Watch the bright cores clip, compress, or roll off as the mapping changes.
+<img src="../../Guide/Images/19-LayersAndEffects/ToneNeutral.jpg" alt="The same three lamps through the hue-preserving curve: each lamp's core keeps its own warm, mint, or blue hue where the film curve turned them toward a primary, and the roll-off is gentler" width="680">
+
+See the `Rendering/ToneMapping` example. Colored lamps orbit and overlap additively, and a key cycles through the four mappings. Watch the bright cores clip, compress, roll off, or keep their hue as the mapping changes.
 
 <a id="notes"></a>
 ### Notes

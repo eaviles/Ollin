@@ -393,7 +393,7 @@ In [Chapter 27](27-Meshes.md#motion-the-file-remembers-animations-skins-and-morp
 Hand `addRagdoll` a skinned scene loaded as in Chapter 27, and it reads the skeleton. It builds a rigid body for every joint and hangs each one off its parent on a ball joint. The joint has a cone-shaped limit, so the limb can swing only so far from where it rests, in any direction:
 
 ```swift
-figure = try! loadScene("figure.gltf")
+figure = try loadScene("figure.gltf")
 ragdoll = try world.addRagdoll(from: figure, at: Vector3(0, 3, 0))
 ```
 

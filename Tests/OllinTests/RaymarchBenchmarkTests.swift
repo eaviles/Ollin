@@ -68,7 +68,7 @@ struct RaymarchBenchmarkTests {
 
         let sketch = BenchScene()
         sketch.setCanvasSize(width: Double(res), height: Double(res))
-        sketch.setup()
+        try sketch.setup()
         sketch.advance(time: 1, deltaTime: 1.0 / 60, frameRate: 60)
         sketch.performDraw()
         let viewport = SIMD2<Float>(Float(res), Float(res))

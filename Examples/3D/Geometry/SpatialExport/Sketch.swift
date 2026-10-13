@@ -107,9 +107,9 @@ final class SpatialExport: Sketch {
     /// is a scene like any loaded one: readable, editable, and drawable again
     /// with `drawScene`.
     private func save() {
-        let scene = OllinApp.spatialScene(of: SpatialExport(), frame: frameCount)
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("piece.usdz")
         do {
+            let scene = try OllinApp.spatialScene(of: SpatialExport(), frame: frameCount)
             try scene.write(to: url, metersPerUnit: metersPerUnit)
         } catch {
             saved = "not saved: \(error)"

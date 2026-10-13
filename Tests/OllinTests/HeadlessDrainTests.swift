@@ -59,9 +59,9 @@ struct HeadlessDrainTests {
     /// The vector drives never touch the GPU, but the sketch they run does, so
     /// they carry the same rule.
     @Test
-    func theVectorDriveDrainsEachFrame() {
+    func theVectorDriveDrainsEachFrame() throws {
         PoolCount.start()
-        #expect(!OllinApp.svg(of: WitnessSketch(), frame: 4).isEmpty)
+        #expect(try !OllinApp.svg(of: WitnessSketch(), frame: 4).isEmpty)
         #expect(PoolCount.drawn == 5)
         #expect(PoolCount.deepest == 1)
     }

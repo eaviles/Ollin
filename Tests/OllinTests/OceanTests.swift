@@ -131,7 +131,7 @@ struct OceanTests {
     /// The amplitude the CPU works out scales with the height asked for, which is
     /// the whole point of it: the sum over the spectrum is the sea's shape, and
     /// the height is one factor over the top of it.
-    @Test func theAmplitudeFollowsTheHeight() {
+    @Test func theAmplitudeFollowsTheHeight() throws {
         let low = Ocean(waveHeight: 2).amplitude(resolution: 64)
         let high = Ocean(waveHeight: 6).amplitude(resolution: 64)
         #expect(abs(high / low - 3) < 1e-9)
@@ -139,13 +139,13 @@ struct OceanTests {
 
     /// A sea with no waves asks for no amplitude rather than for a division by
     /// nothing.
-    @Test func aStillSeaAsksForNothing() {
+    @Test func aStillSeaAsksForNothing() throws {
         #expect(Ocean(waveHeight: 0).amplitude(resolution: 64) == 0)
     }
 
     /// The grid is rounded to the power of two the transform can climb, and to the
     /// *nearest* one, so 200 texels is 256 rather than 128.
-    @Test func theGridIsRoundedToWhatTheLadderCanClimb() {
+    @Test func theGridIsRoundedToWhatTheLadderCanClimb() throws {
         #expect(Ocean.roundedResolution(256) == 256)
         #expect(Ocean.roundedResolution(200) == 256)
         #expect(Ocean.roundedResolution(140) == 128)
@@ -285,12 +285,12 @@ struct OceanBenchmarkTests {
         let res = 1080
         let viewport = SIMD2<Float>(Float(res), Float(res))
 
-        func measure(segments: Int, resolution: Int) -> Double {
+        func measure(segments: Int, resolution: Int) throws -> Double {
             let sketch = OceanBenchScene()
             sketch.setCanvasSize(width: Double(res), height: Double(res))
             sketch.segments = segments
             sketch.resolution = resolution
-            sketch.setup()
+            try sketch.setup()
             sketch.advance(time: 1, deltaTime: 1 / 60, frameRate: 60)
             sketch.performDraw()
             return renderer.benchmarkGPUMilliseconds(sketch.drawer, viewport: viewport,
@@ -299,7 +299,7 @@ struct OceanBenchmarkTests {
 
         print("\n=== Ollin ocean benchmark (\(res)² px, sky environment + sun) ===")
         for (segments, resolution) in [(160, 256), (320, 256), (320, 512), (512, 512)] {
-            let ms = measure(segments: segments, resolution: resolution)
+            let ms = try measure(segments: segments, resolution: resolution)
             print(String(format: "%4d segments over a %4d field: GPU %6.2f ms (%.0f fps)",
                          segments, resolution, ms, 1000 / max(ms, 0.0001)))
         }

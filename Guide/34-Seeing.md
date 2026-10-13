@@ -69,7 +69,7 @@ override func draw() {
 }
 ```
 
-`try!` is safe here because the clip ships with Ollin. For a file of your own, `VideoPlayer(path:)` takes its path. Declare `var film: VideoPlayer?` and set it with `try?` inside `setup()`, and a missing file leaves it `nil` instead of stopping the sketch. The frames arrive on the GPU, so drawing them costs almost nothing, and `drawFrame` letterboxes them the same way.
+`try!` is safe here because the clip ships with Ollin, and a property has no `setup()` to throw from; a clip loaded inside `setup()` takes a bare `try` instead. For a file of your own, `VideoPlayer(path:)` takes its path. Declare `var film: VideoPlayer?` and set it with `try?` inside `setup()`, and a missing file leaves it `nil` instead of stopping the sketch. The frames arrive on the GPU, so drawing them costs almost nothing, and `drawFrame` letterboxes them the same way.
 
 While you build a sketch that reads people, rehearse it on footage. Standing in front of the camera for every change is tiring, and no two takes move the same way. A clip moves the same way every run, so the change you just made is the only thing that changed. Swap the camera back in once the sketch reads the film well. A tracker reads a clip in an export too. Each frame under the playhead is read before the frame that shows it is drawn, so every run reads the same frames.
 

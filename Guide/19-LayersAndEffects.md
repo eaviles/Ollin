@@ -151,7 +151,9 @@ That `toneMap(.aces, exposure: 1.5)` line in the sandpainting needs explaining, 
 
 <img src="Images/19-LayersAndEffects/ToneAces.jpg" alt="The same three lamps through the ACES film curve: the middle stays bright but keeps its warm, mint, and blue tints, rolling off softly like film" width="680">
 
-Same lamps, same brightness, one line different. `.aces` runs the frame through the S-shaped response of film. It rolls highlights off gradually instead of chopping them, and keeps color alive inside the glare. Set it once in `setup()`, and `exposure` is the brightness dial applied before the curve, like a camera's. For any glow, accumulation, or additive sketch, set `toneMap(.aces)` first, because without it the bright cores flatten to white. The details live in the [HDR reference](../Docs/Drawing/HDR.md). Some displays can show a little light above white, and [Chapter 41](41-FinishingASketch.md#brighter-than-white-hdr-output) keeps it in the files a sketch exports.
+<img src="Images/19-LayersAndEffects/ToneNeutral.jpg" alt="The same three lamps through the hue-preserving curve: each lamp's core keeps its own warm, mint, or blue hue where the film curve turned them toward a primary, and the roll-off is gentler" width="680">
+
+Same lamps, same brightness, one line different. `.aces` runs the frame through the S-shaped response of film. It rolls highlights off gradually instead of chopping them, and keeps color alive inside the glare. The third picture is `.neutral`, which keeps each lamp's own hue where the film curve turns a bright saturated color toward the nearest primary (a hot orange reads yellow under `.aces`): the choice when the colors are the point, with a gentler roll-off. Set it once in `setup()`, and `exposure` is the brightness dial applied before the curve, like a camera's. For any glow, accumulation, or additive sketch, set `toneMap(.aces)` first, because without it the bright cores flatten to white. The details live in the [HDR reference](../Docs/Drawing/HDR.md). Some displays can show a little light above white, and [Chapter 41](41-FinishingASketch.md#brighter-than-white-hdr-output) keeps it in the files a sketch exports.
 
 ## The canvas that remembers itself: feedback
 
@@ -399,7 +401,7 @@ The rule of thumb: if the drawing does not change between frames, it belongs in 
 
 The shape the layers take here, a filter catalog and explicit compositing in a `compose` block, follows OPENRNDR's model, on Ollin's own Metal core. The compositing arithmetic descends from Thomas Porter and Tom Duff's 1984 paper "Compositing Digital Images". The everyday blend-mode vocabulary of multiply, screen, lightest, and darkest is the image editors' tradition that grew up after it.
 
-Tone mapping comes from photography by way of Erik Reinhard, Michael Stark, Peter Shirley, and James Ferwerda's 2002 paper "Photographic Tone Reproduction for Digital Images". The film-like curve behind `.aces` is the Academy Color Encoding System's response, in Krzysztof Narkowicz's fitted approximation.
+Tone mapping comes from photography by way of Erik Reinhard, Michael Stark, Peter Shirley, and James Ferwerda's 2002 paper "Photographic Tone Reproduction for Digital Images". The film-like curve behind `.aces` is the Academy Color Encoding System's response, in Krzysztof Narkowicz's fitted approximation. The hue-preserving curve behind `.neutral` is the Khronos Group's PBR Neutral tone mapper of 2024, written from its published description.
 
 The filter catalog reimplements published image-processing techniques, each written from its method. The menu was cross-read against OPENRNDR's orx-fx, openFrameworks' ofxFX, and AsyncGraphics for which effects exist and how they are approached. The running mean and its print follow Anders Hoff's depth-of-field essays and Domenico Bruzzese's Blurry, read for approach and written independently.
 

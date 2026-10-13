@@ -18,7 +18,7 @@ struct StrokeDynamicsTests {
     // MARK: The mapping
 
     @Test
-    func uniformAsksForNothing() {
+    func uniformAsksForNothing() throws {
         #expect(StrokeDynamics.uniform.isUniform)
         let m = StrokeDynamics.uniform.multipliers(for: StrokeInput())
         #expect(m.width == 1)
@@ -32,7 +32,7 @@ struct StrokeDynamicsTests {
     }
 
     @Test
-    func speedThinsAsTheHandHurries() {
+    func speedThinsAsTheHandHurries() throws {
         let d = StrokeDynamics(width: .speed(reference: 1000, slow: 1, fast: 0.2))
         #expect(abs(d.multipliers(for: StrokeInput(speed: 0)).width - 1) < 1e-12)
         #expect(abs(d.multipliers(for: StrokeInput(speed: 500)).width - 0.6) < 1e-12)
@@ -44,14 +44,14 @@ struct StrokeDynamicsTests {
     /// Swapping the two ends reverses the mapping, for a mark that swells as it
     /// speeds up. This is why they are two arguments and not a range.
     @Test
-    func speedCanBeMappedEitherWay() {
+    func speedCanBeMappedEitherWay() throws {
         let d = StrokeDynamics(width: .speed(reference: 1000, slow: 0.2, fast: 1))
         #expect(abs(d.multipliers(for: StrokeInput(speed: 0)).width - 0.2) < 1e-12)
         #expect(abs(d.multipliers(for: StrokeInput(speed: 1000)).width - 1) < 1e-12)
     }
 
     @Test
-    func pressureSwellsUnderForce() {
+    func pressureSwellsUnderForce() throws {
         let d = StrokeDynamics(width: .pressure(light: 0.1),
                                opacity: .pressure(light: 0.4))
         let light = d.multipliers(for: StrokeInput(pressure: 0))
@@ -66,7 +66,7 @@ struct StrokeDynamicsTests {
     }
 
     @Test
-    func multipliersAreClamped() {
+    func multipliersAreClamped() throws {
         let d = StrokeDynamics(width: StrokeResponse { _ in -5 },
                                opacity: StrokeResponse { _ in 4 })
         let m = d.multipliers(for: StrokeInput())
@@ -80,7 +80,7 @@ struct StrokeDynamicsTests {
     /// distance per frame, so without dividing by the real elapsed time a 120 Hz
     /// display would read every stroke as half as fast and lay down a fatter mark.
     @Test
-    func recordingIsFrameRateIndependent() {
+    func recordingIsFrameRateIndependent() throws {
         /// Walk 400 points to the right at a steady 600 points per second.
         func walk(fps: Double) -> StrokeMark {
             var mark = StrokeMark(.speed(reference: 1200, fast: 0.1), smoothing: 0.5)
@@ -104,7 +104,7 @@ struct StrokeDynamicsTests {
     /// A hand held still adds nothing. Without this a paused pointer would pile
     /// hundreds of coincident points into one spot every second.
     @Test
-    func aStillHandRecordsNothing() {
+    func aStillHandRecordsNothing() throws {
         var mark = StrokeMark()
         for _ in 0..<200 { mark.record(Vector2(40, 40), deltaTime: 1.0 / 60) }
         #expect(mark.count == 0)
@@ -116,7 +116,7 @@ struct StrokeDynamicsTests {
     /// the whole interval. Spending only the last frame's time instead would read
     /// a slow, finely-sampled hand as a fast one.
     @Test
-    func skippedFramesBankTheirTime() {
+    func skippedFramesBankTheirTime() throws {
         var mark = StrokeMark(StrokeDynamics(width: .speed(reference: 1000, fast: 0)),
                               smoothing: 0)
         mark.minSpacing = 5
@@ -132,7 +132,7 @@ struct StrokeDynamicsTests {
     /// direction-driven brush starts with an honest direction rather than a
     /// made-up one. A one-point mark draws nothing anyway.
     @Test
-    func theFirstPointWaitsForItsHeading() {
+    func theFirstPointWaitsForItsHeading() throws {
         var mark = StrokeMark(StrokeDynamics(width: StrokeResponse { $0.direction.y }))
         mark.record(Vector2(0, 0), deltaTime: 1.0 / 60)
         #expect(mark.count == 0)
@@ -142,7 +142,7 @@ struct StrokeDynamicsTests {
     }
 
     @Test
-    func clearResetsTheMeasurement() {
+    func clearResetsTheMeasurement() throws {
         var mark = StrokeMark()
         for i in 0...30 { mark.record(Vector2(Double(i) * 10, 0), deltaTime: 1.0 / 60) }
         #expect(mark.count > 2)
@@ -156,7 +156,7 @@ struct StrokeDynamicsTests {
     }
 
     @Test
-    func appendedSamplesBypassTheDynamics() {
+    func appendedSamplesBypassTheDynamics() throws {
         var mark = StrokeMark(.speed(fast: 0))
         mark.append(StrokeMark.Sample(position: Vector2(0, 0), width: 0.3, opacity: 0.5))
         mark.append(StrokeMark.Sample(position: Vector2(100, 0), width: 0.7, opacity: 0.9))
@@ -167,7 +167,7 @@ struct StrokeDynamicsTests {
     /// Opacity averaged for vector export is weighted by distance, not by point
     /// count, so a spot the hand lingered over does not outvote the sweep.
     @Test
-    func averageOpacityIsWeightedByDistance() {
+    func averageOpacityIsWeightedByDistance() throws {
         var mark = StrokeMark()
         // Three points clustered at 0 (opacity 0) then one far point (opacity 1).
         mark.append(StrokeMark.Sample(position: Vector2(0, 0), opacity: 0))
@@ -184,7 +184,7 @@ struct StrokeDynamicsTests {
     /// spaced, and spreading the widths evenly would slide every one of them off
     /// the place it belongs.
     @Test
-    func pathFractionsFollowDistanceNotIndex() {
+    func pathFractionsFollowDistanceNotIndex() throws {
         var mark = StrokeMark()
         // Three points bunched in the first tenth, one at the far end.
         for (x, w) in [(0.0, 1.0), (5.0, 0.9), (10.0, 0.8), (100.0, 0.2)] {
@@ -200,7 +200,7 @@ struct StrokeDynamicsTests {
     }
 
     @Test
-    func valuesAtPositionsHoldTheirEnds() {
+    func valuesAtPositionsHoldTheirEnds() throws {
         let p = StrokeProfile.values([0.2, 1], at: [0.25, 0.75])
         #expect(abs(p(0) - 0.2) < 1e-12)              // before the first sample
         #expect(abs(p(0.25) - 0.2) < 1e-12)
@@ -277,8 +277,8 @@ struct StrokeDynamicsTests {
     /// single filled path, so it flattens to the mark's average, which for the
     /// plotter case (one pen, one ink) costs nothing.
     @Test
-    func vectorExportKeepsWidthAndFlattensOpacity() {
-        let svg = OllinApp.svg(of: VectorMarkProbe())
+    func vectorExportKeepsWidthAndFlattensOpacity() throws {
+        let svg = try OllinApp.svg(of: VectorMarkProbe())
         // A filled outline, not a stroked line: no stroke-width anywhere.
         #expect(!svg.contains("stroke-width"))
         #expect(svg.contains("<path "))

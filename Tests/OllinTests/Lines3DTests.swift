@@ -29,7 +29,7 @@ struct Lines3DTests {
 
     private let canvas = SIMD2<Float>(400, 300)
 
-    @Test func aRunOfLineCallsIsOneBatch() {
+    @Test func aRunOfLineCallsIsOneBatch() throws {
         let d = drawer()
         d.drawPolyline3D([Vector3(-1, 0, 0), Vector3(1, 0, 0)], closed: false, canvas: canvas)
         d.drawPolyline3D([Vector3(0, -1, 0), Vector3(0, 1, 0)], closed: false, canvas: canvas)
@@ -49,7 +49,7 @@ struct Lines3DTests {
         #expect(d.batches[2].lineCoreStart + d.batches[2].lineCoreCount == d.lineCoreVertices.count)
     }
 
-    @Test func theCoreIsWhollyCoveredAndTheFringeIsNot() {
+    @Test func theCoreIsWhollyCoveredAndTheFringeIsNot() throws {
         let d = drawer()
         d.strokeWidth = 4
         d.strokeJoinStyle = .round
@@ -62,7 +62,7 @@ struct Lines3DTests {
         }
     }
 
-    @Test func withoutACameraNothingIsRecordedAndANoteSaysWhy() {
+    @Test func withoutACameraNothingIsRecordedAndANoteSaysWhy() throws {
         let d = Drawer()
         d.beginFrame()
         d.drawPolyline3D([Vector3(0, 0, 0), Vector3(1, 0, 0)], closed: false, canvas: canvas)
@@ -70,7 +70,7 @@ struct Lines3DTests {
         #expect(d.drawerNotes.contains { $0.contains("draw through the 3D camera") })
     }
 
-    @Test func aRecordedBatchHoldsNoLines() {
+    @Test func aRecordedBatchHoldsNoLines() throws {
         let d = drawer()
         let batch = d.makeBatch {
             d.drawPolyline3D([Vector3(0, 0, 0), Vector3(1, 0, 0)], closed: false, canvas: canvas)
@@ -79,7 +79,7 @@ struct Lines3DTests {
         #expect(d.lineVertexCount == 0)
     }
 
-    @Test func everyVertexHoldsAPointOfTheLineMovedByTheModelMatrix() {
+    @Test func everyVertexHoldsAPointOfTheLineMovedByTheModelMatrix() throws {
         let d = drawer()
         d.translate(0.5, -0.25, 0.1)
         let points = [Vector3(-1, 0, 0), Vector3(0, 1, -1), Vector3(1, 0, 0.5)]
@@ -91,7 +91,7 @@ struct Lines3DTests {
         }
     }
 
-    @Test func aColorForEachPointColorsTheVerticesBuiltAroundIt() {
+    @Test func aColorForEachPointColorsTheVerticesBuiltAroundIt() throws {
         let d = drawer()
         let points = [Vector3(-1, 0, 0), Vector3(0, 1, 0), Vector3(1, 0, 0)]
         let colors: [Color] = [.red, .green, .blue]
@@ -119,7 +119,7 @@ struct Lines3DTests {
     }
 
     @Test(arguments: [StrokeJoin.miter, .bevel, .round])
-    func joinsAndCapsAreTheTwoDimensionalStrokesOnTheProjection(join: StrokeJoin) {
+    func joinsAndCapsAreTheTwoDimensionalStrokesOnTheProjection(join: StrokeJoin)  throws {
         let camera = Camera3D.perspective(eye: Vector3(1.5, 2, 6), target: .zero)
         let points = [Vector3(-2, 0, 0), Vector3(-0.5, 1.2, -1), Vector3(0.6, -0.4, 0.8),
                       Vector3(1.8, 0.9, -0.3), Vector3(2.2, -1, 1.5)]
@@ -155,7 +155,7 @@ struct Lines3DTests {
         }
     }
 
-    @Test func whatLiesBehindTheCameraIsCutAwayAtTheNearPlane() {
+    @Test func whatLiesBehindTheCameraIsCutAwayAtTheNearPlane() throws {
         let camera = Camera3D.perspective(eye: Vector3(0, 0, 0), target: Vector3(0, 0, -1), near: 0.1)
         let d = drawer(camera: camera)
         d.drawPolyline3D([Vector3(0.2, -0.1, -10), Vector3(0.1, 0.2, 5)], closed: false, canvas: canvas)
@@ -182,7 +182,7 @@ struct Lines3DTests {
             .map { simd_length($0.offset) }.max() ?? 0
     }
 
-    @Test func aScreenWeightHoldsAlongARecedingLineAndAWorldWeightShrinks() {
+    @Test func aScreenWeightHoldsAlongARecedingLineAndAWorldWeightShrinks() throws {
         let camera = Camera3D.perspective(eye: Vector3(0, 1, 2), target: Vector3(0, 0, -10))
         // Measured at the two inner points, whose vertices are cross-sections
         // only (the ends carry caps, which reach past the cross-section).
@@ -210,7 +210,7 @@ struct Lines3DTests {
         #expect(near > 10 * far)
     }
 
-    @Test func theUnitsAreSavedByWithState() {
+    @Test func theUnitsAreSavedByWithState() throws {
         let d = drawer()
         d.pushState()
         d.strokeUnitsMode = .world
@@ -218,18 +218,18 @@ struct Lines3DTests {
         #expect(d.strokeUnitsMode == .screen)
     }
 
-    @Test func aVectorExportCarriesTheProjectedLine() {
+    @Test func aVectorExportCarriesTheProjectedLine() throws {
         // Four units tall on 256 points: (-1, 0.5) lands at (64, 96) and (1, -0.5)
         // at (192, 160), whatever the 2D transform says.
         // The file keeps a 2D transform as an attribute beside the points, so the
         // line's element must carry none.
-        let svg = OllinApp.svg(of: VectorLineProbe())
+        let svg = try OllinApp.svg(of: VectorLineProbe())
         let line = svg.split(separator: "\n").first { $0.contains("64,96") }
         #expect(line?.contains("192,160") == true, "\(svg)")
         #expect(line?.contains("transform") == false, "\(line ?? "")")
     }
 
-    @Test func aWebPageNamesTheCallItCannotCarry() {
+    @Test func aWebPageNamesTheCallItCannotCarry() throws {
         #expect(OllinApp.webRefusalName(for: .lines3D).contains("3D points"))
     }
 

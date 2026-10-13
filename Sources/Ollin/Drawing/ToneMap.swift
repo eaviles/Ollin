@@ -33,6 +33,18 @@ public enum ToneMap: Hashable, Sendable, CaseIterable {
     /// for glow and light-accumulation looks.
     case aces
 
+    /// A tone map that keeps a bright color's hue (the Khronos PBR Neutral
+    /// curve). `.reinhard` and `.aces` bend each channel on its own, so a
+    /// bright saturated color drifts toward the nearest primary: an orange of
+    /// linear (4, 1, 0.2) comes out yellow. This one compresses a color's
+    /// three channels by one factor, so its hue holds, and only eases it
+    /// toward white as its peak nears the ceiling. Below about 0.76 of full a
+    /// color keeps its hue exactly and loses only a small toe (0.04 of linear
+    /// light at most, off every channel alike), and the roll-off above is
+    /// gentler than ACES's film curve: the choice for a scene whose colors are
+    /// the point, a lit product or a saturated glow.
+    case neutral
+
     /// The value passed to the present shader's `toneMapMode` (see
     /// `OllinPresentUniforms`). Kept in sync with the `if`-ladder there.
     var shaderIndex: Int32 {
@@ -40,6 +52,7 @@ public enum ToneMap: Hashable, Sendable, CaseIterable {
         case .clamp:    return 0
         case .reinhard: return 1
         case .aces:     return 2
+        case .neutral:  return 3
         }
     }
 }

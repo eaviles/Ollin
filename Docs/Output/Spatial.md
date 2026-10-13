@@ -30,10 +30,10 @@ scene.write(to: "model.usdz")
 saveScene(scene, to: "model.usdz")            // the same, from inside a sketch
 ```
 
-`OllinApp.spatialScene(of:frame:fps:)` is the step between the two. It returns an ordinary [`Scene`](../3D/Scenes.md), the same kind `loadScene` gives you. So you can read a recorded frame, edit it, draw it again with `drawScene`, or write it later.
+`try OllinApp.spatialScene(of:frame:fps:)` is the step between the two. It returns an ordinary [`Scene`](../3D/Scenes.md), the same kind `loadScene` gives you. So you can read a recorded frame, edit it, draw it again with `drawScene`, or write it later.
 
 ```swift
-var scene = OllinApp.spatialScene(of: sketch, frame: 120)
+var scene = try OllinApp.spatialScene(of: sketch, frame: 120)
 scene["piece3"]?.position.y += 0.5
 scene.write(to: "model.usdz")
 ```
@@ -112,7 +112,7 @@ A `.usdz` is a ZIP archive with extra rules. Nothing in it is compressed, and th
 | `scene.write(to:as:metersPerUnit:)` | write a scene as a spatial model, with the extension picking the format |
 | `scene.data(as:metersPerUnit:)` | the same, returned as bytes |
 | `saveScene(_:to:as:metersPerUnit:)` | the same call from inside a sketch, beside `saveMesh` |
-| `OllinApp.spatialScene(of:frame:fps:)` | one frame's 3D draw calls as a `Scene` |
+| `try OllinApp.spatialScene(of:frame:fps:)` | one frame's 3D draw calls as a `Scene` |
 | `OllinApp.exportSpatial(_:to:frame:fps:metersPerUnit:)` | record a frame and write it |
 | `SceneFileFormat` | `.usdz` (package) or `.usda` (text layer); `fileExtension` spells it, and `SceneFileFormat(fileExtension:)` reads one back |
 | `--export-usdz <path>` | the CLI flag, with `--frame N` and `--meters-per-unit U` |

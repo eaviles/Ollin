@@ -11,7 +11,7 @@ import Testing
 @MainActor
 struct StrandFieldTests {
 
-    @Test func tilingDerivesFromCountAndArea() {
+    @Test func tilingDerivesFromCountAndArea() throws {
         let field = StrandField(width: 30, depth: 30, count: 90_000)
         let t = field.tiling
         // ~96 blades per tile: tile area ~= area * 96 / count.
@@ -21,7 +21,7 @@ struct StrandFieldTests {
         #expect(field.bladeCount == t.tilesX * t.tilesZ * 96)
     }
 
-    @Test func recorderGates() {
+    @Test func recorderGates() throws {
         let drawer = Drawer()
         drawer.beginFrame()
         let field = StrandField(width: 10, depth: 10, count: 1_000)
@@ -96,7 +96,7 @@ struct StrandBenchmarkTests {
         func measure(detail: Bool) -> (gpuMs: Double, blades: Int) {
             let sketch = StrandBenchScene()
             sketch.setCanvasSize(width: Double(res), height: Double(res))
-            sketch.setup()
+            try sketch.setup()
             sketch.detail = detail
             sketch.advance(time: 1, deltaTime: 1 / 60, frameRate: 60)
             sketch.performDraw()

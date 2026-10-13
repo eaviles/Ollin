@@ -82,6 +82,16 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     public var onUserShaderError: (@MainActor (ShaderCompileError?) -> Void)?
     private var lastForwardedShaderError: String?
 
+    /// The sentence the sketch's `setup()` threw, while the sketch is held on
+    /// it; `nil` once a later `setup()` runs through (a reload, an asset
+    /// rerun). Readable afterwards, as every failure that happens off its call
+    /// is, and also written to stderr when it happens.
+    public private(set) var setupError: String?
+    /// Called on the main thread when `setup()` throws, with the sentence, and
+    /// again with `nil` when a later `setup()` runs through, so a host shows
+    /// it the way it shows a compile error and clears it the same way.
+    public var onSetupError: (@MainActor (String?) -> Void)?
+
     private var didSetup = false
     private var didReload = false        // call reloaded() after the post-reload setup()
     private var pendingSetupRerun = false // re-run setup() in place (e.g. an asset changed)
@@ -551,10 +561,11 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         autoreleasepool {
             if !didSetup {
                 applyLaunchParamsBeforeSetup()
-                sketch.setup()
+                performSetup()
                 applyLaunchParams()
                 didSetup = true
             }
+            if setupError != nil { return }
             sketch.advance(time: 0, deltaTime: 1.0 / 60, frameRate: 60)
             sketch.performDraw()
             let viewport = SIMD2<Float>(Float(sketch.width), Float(sketch.height))
@@ -942,6 +953,28 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         try renderer.reloadLibrary(source: source)
     }
 
+    /// `setup()`, with what it throws turned into the sentence the hosts show.
+    /// A failed `setup()` holds the sketch (`draw(in:)` draws nothing while
+    /// `setupError` stands) rather than drawing it half built; a later
+    /// `setup()` that runs through, from a reload or an asset rerun, clears the
+    /// sentence and the frames go on.
+    private func performSetup() {
+        do {
+            try sketch.setup()
+            reportSetupError(nil)
+        } catch {
+            let sentence = "setup() threw: \(error)"
+            FileHandle.standardError.write(Data("Ollin: \(sentence)\n".utf8))
+            reportSetupError(sentence)
+        }
+    }
+
+    private func reportSetupError(_ sentence: String?) {
+        guard sentence != setupError else { return }
+        setupError = sentence
+        if let handler = onSetupError { MainActor.assumeIsolated { handler(sentence) } }
+    }
+
     /// Re-run the current sketch's `setup()` on the next frame without swapping
     /// the instance or resetting the clock — for when a co-located asset changes
     /// and `setup()` is where it'd be (re)loaded. **Call on the main thread.**
@@ -1058,7 +1091,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
             (view as? OllinMTKView)?.seedPointer()
             #endif
             applyLaunchParamsBeforeSetup()
-            sketch.setup()
+            performSetup()
             restored?.applyAfterSetup(to: sketch)
             applyLaunchParams()
             nextCheckpoint = elapsed + (checkpointInterval ?? .infinity)
@@ -1069,7 +1102,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
             }
         } else if pendingSetupRerun {
             pendingSetupRerun = false
-            sketch.setup()            // in-place asset reload; clock keeps running
+            performSetup()            // in-place asset reload; clock keeps running
         } else if didReload {
             // A swap that carried the run: `setup()` did not run, so this is
             // where the fresh instance hears that it was the one swapped in,
@@ -1082,6 +1115,12 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
             #endif
             sketch.reloaded()
         }
+
+        // A sketch whose `setup()` threw is held, not drawn: what it meant to
+        // build is not there to draw with. The window stays, the sentence is on
+        // stderr and in a host's error strip, and the next `setup()` that runs
+        // through (a reload, an asset rerun) lets the frames go again.
+        if setupError != nil { return }
 
         // A refresh the GPU has no room for is dropped whole, here, before the
         // sketch draws anything. Starting it instead would park this thread in
@@ -2899,7 +2938,7 @@ public enum OllinApp {
         }
         let size = sketch.canvasSizeForRun()
         sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
-        sketch.runSetup()
+        try sketch.runSetup()
         let viewport = SIMD2<Float>(Float(size.width), Float(size.height))
         let width = size.width, height = size.height
         // In accumulation mode (`noClear`) each frame piles onto the persistent
@@ -3208,7 +3247,7 @@ public enum OllinApp {
         let width = size.width, height = size.height
         let viewport = SIMD2<Float>(Float(size.width), Float(size.height))
         sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
-        sketch.runSetup()
+        try sketch.runSetup()
 
         // Slow motion parts the two rates an export usually shares. The file
         // still plays at `fps`; the sketch's own clock runs at `clock`. The
@@ -3509,7 +3548,12 @@ public enum OllinApp {
         let n = max(1, frames)
         let size = sketch.canvasSizeForRun()
         sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
-        sketch.runSetup()
+        do {
+            try sketch.runSetup()
+        } catch {
+            FileHandle.standardError.write(Data("Ollin: setup() threw: \(error)\n".utf8))
+            return
+        }
         // One warm-up frame so first-time buffer growth doesn't skew the average.
         sketch.advance(time: 0, deltaTime: 1 / fps, frameRate: fps)
         sketch.performDraw()
@@ -3629,19 +3673,27 @@ public extension Sketch {
 #endif
 
 public extension OllinApp {
-    /// The two flags every one-frame export reads: `--frame N`, the frame to
-    /// render (0 unless given), and `--fps F`, the rate its clock counts at (60
-    /// unless given). One reader for the still, the linear frame, the plates
-    /// and the vector files, so each lands on the moment `--export-sequence`
-    /// puts at its frame N + 1 for the same rate: a still taken at `--frame 30
-    /// --fps 10` is the sequence's frame at three seconds, not at half a second.
+    /// The flags every one-frame export reads: `--frame N`, the frame to render
+    /// (0 unless given); `--at S`, the same moment named in seconds of the
+    /// sketch's clock, which is the frame S times the rate, rounded, so nobody
+    /// multiplies by the frame rate by hand (`--at 2` is `--frame 120` at 60
+    /// fps, and it wins when both are given); and `--fps F`, the rate the clock
+    /// counts at (60 unless given). One reader for the still, the linear frame,
+    /// the plates, the sheets, the spatial file and the vector files, so each
+    /// lands on the moment `--export-sequence` puts at its frame N + 1 for the
+    /// same rate: a still taken at `--frame 30 --fps 10` is the sequence's frame
+    /// at three seconds, not at half a second.
     internal static func stillFlags(_ args: [String]) -> (frame: Int, fps: FrameRate) {
         func value(_ flag: String) -> String? {
             guard let i = args.firstIndex(of: flag), i + 1 < args.count else { return nil }
             return args[i + 1]
         }
-        return (value("--frame").flatMap(Int.init) ?? 0,
-                value("--fps").flatMap(FrameRate.init(parsing:)) ?? 60)
+        let fps = value("--fps").flatMap(FrameRate.init(parsing:)) ?? 60
+        if let seconds = value("--at").flatMap(Double.init),
+           let frame = (seconds * fps.framesPerSecond).int(rounded: .toNearestOrAwayFromZero) {
+            return (max(0, frame), fps)
+        }
+        return (value("--frame").flatMap(Int.init) ?? 0, fps)
     }
 
     /// Handle the shared headless command-line surface (the export flags
@@ -3956,7 +4008,7 @@ public extension OllinApp {
             sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
             isRenderingHeadless = true
             defer { isRenderingHeadless = false }
-            sketch.runSetup()
+            try sketch.runSetup()
             print(ParamListing.text(for: sketch))
             return true
         }
@@ -4268,8 +4320,7 @@ public extension OllinApp {
             let seeds = Array(start ..< start + count)
             let columns = value("--columns").flatMap(Int.init)
             let tile = value("--tile").flatMap(Int.init) ?? 320
-            let frame = value("--frame").flatMap(Int.init) ?? 0
-            let fps = value("--fps").flatMap(FrameRate.init(parsing:)) ?? 60
+            let (frame, fps) = stillFlags(args)
             try OllinApp.exportContactSheet(makeSketch, to: args[i + 1], seeds: seeds,
                                         frame: frame, fps: fps, columns: columns,
                                         tileWidth: tile, quality: renderQuality)
@@ -4318,8 +4369,7 @@ public extension OllinApp {
             }
             let columns = value("--columns").flatMap(Int.init)
             let tile = value("--tile").flatMap(Int.init) ?? 320
-            let frame = value("--frame").flatMap(Int.init) ?? 0
-            let fps = value("--fps").flatMap(FrameRate.init(parsing:)) ?? 60
+            let (frame, fps) = stillFlags(args)
             try OllinApp.exportContactSheet(makeSketch, to: args[i + 1],
                                         sweeping: name, values: values,
                                         seed: seedOverride,
@@ -4337,7 +4387,7 @@ public extension OllinApp {
                 guard let j = args.firstIndex(of: flag), j + 1 < args.count else { return nil }
                 return args[j + 1]
             }
-            let frame = value("--frame").flatMap(Int.init) ?? 0
+            let frame = stillFlags(args).frame
             var inks: [Ink]?
             if let list = value("--inks") {
                 var parsed: [Ink] = []
@@ -4555,10 +4605,7 @@ public extension OllinApp {
                     "usage: --export-usdz <path.usdz | path.usda> [--frame N] [--meters-per-unit U]\n".utf8))
                 return true
             }
-            var frame = 0
-            if let f = args.firstIndex(of: "--frame"), f + 1 < args.count {
-                frame = Int(args[f + 1]) ?? 0
-            }
+            let frame = stillFlags(args).frame
             var metersPerUnit = 1.0
             if let m = args.firstIndex(of: "--meters-per-unit"), m + 1 < args.count {
                 metersPerUnit = Double(args[m + 1]) ?? 1

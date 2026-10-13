@@ -41,7 +41,9 @@
   func scrub(to: Int)
   init(sketch: Sketch, view: MetalKit.MTKView, device: any Metal.MTLDevice)
   var isReplaying: Bool { get }
+  var onSetupError: ((String?) -> Void)? { get set }
   var onUserShaderError: ((ShaderCompileError?) -> Void)? { get set }
+  var setupError: String? { get }
 @objc open class SketchSaverView: ScreenSaver.ScreenSaverView, NSAccessibilityElementProtocol, NSAccessibilityProtocol, NSAnimatablePropertyContainer, NSAppearanceCustomization, NSDraggingDestination, NSStandardKeyBindingResponding, NSTouchBarProvider, NSUserActivityRestoring, NSUserInterfaceItemIdentification, NSCoding, NSObjectProtocol, CVarArg, CustomDebugStringConvertible, CustomStringConvertible, Equatable, Hashable
   @objc open override func layout()
   @objc open override func startAnimation()
@@ -325,6 +327,9 @@ enum ImageFit: CaseIterable, Equatable, Hashable, Sendable
   case contain
   case cover
   case stretch
+enum ImageSampling: CaseIterable, Equatable, Hashable, Sendable
+  case linear
+  case nearest
 enum InspectorStatus: Equatable, Hashable, Sendable
   case compiling
   case error
@@ -395,9 +400,9 @@ enum OllinApp: Sendable
   static func contactSheet(of: () -> S, sweeping: KeyPath<S, Param<Int>>, values: [Int], seed: Int? = default, frame: Int = default, fps: FrameRate = default, columns: Int? = default, tileWidth: Int = default, quality: RenderQuality = default) throws -> CoreGraphics.CGImage
   static func contactSheet(of: () -> Sketch, seeds: [Int], frame: Int = default, fps: FrameRate = default, columns: Int? = default, tileWidth: Int = default, quality: RenderQuality = default) throws -> CoreGraphics.CGImage
   static func contactSheet(of: () -> Sketch, sweeping: String, values: [Double], seed: Int? = default, frame: Int = default, fps: FrameRate = default, columns: Int? = default, tileWidth: Int = default, quality: RenderQuality = default) throws -> CoreGraphics.CGImage
-  static func drafting(of: Sketch, settings: DXF, frame: Int = default, fps: FrameRate = default, hatching: Hatching? = default) -> Drafting
-  static func dxf(of: Sketch, settings: DXF, frame: Int = default, fps: FrameRate = default, hatching: Hatching? = default) -> String
-  static func embroidery(of: Sketch, settings: Embroidery, frame: Int = default, fps: FrameRate = default, label: String = default) -> Foundation.Data
+  static func drafting(of: Sketch, settings: DXF, frame: Int = default, fps: FrameRate = default, hatching: Hatching? = default) throws -> Drafting
+  static func dxf(of: Sketch, settings: DXF, frame: Int = default, fps: FrameRate = default, hatching: Hatching? = default) throws -> String
+  static func embroidery(of: Sketch, settings: Embroidery, frame: Int = default, fps: FrameRate = default, label: String = default) throws -> Foundation.Data
   static func export(_: Sketch, to: String, frame: Int = default, fps: FrameRate = default, quality: RenderQuality = default) throws
   static func exportContactSheet(_: () -> S, to: String, sweeping: KeyPath<S, Param<Double>>, values: [Double], seed: Int? = default, frame: Int = default, fps: FrameRate = default, columns: Int? = default, tileWidth: Int = default, quality: RenderQuality = default) throws
   static func exportContactSheet(_: () -> S, to: String, sweeping: KeyPath<S, Param<Int>>, values: [Int], seed: Int? = default, frame: Int = default, fps: FrameRate = default, columns: Int? = default, tileWidth: Int = default, quality: RenderQuality = default) throws
@@ -417,17 +422,17 @@ enum OllinApp: Sendable
   static func exportSpatialVideo(_: Sketch, to: String, frames: Int, fps: FrameRate = default, stereo: StereoGeometry? = default, metersPerUnit: Double = default, bitsPerSecond: Int? = default, quality: Double? = default, renderQuality: RenderQuality = default, skipSeconds: Double = default) throws
   static func exportVideo(_: Sketch, to: String, frames: Int, fps: FrameRate = default, codec: VideoCodec = default, bitsPerSecond: Int? = default, encodeQuality: Double? = default, renderQuality: RenderQuality = default, skipSeconds: Double = default, slowMotion: SlowMotion? = default) throws
   static func exportWeb(_: Sketch, to: String, frames: Int, fps: FrameRate = default, skipSeconds: Double = default, form: WebPageForm = default, controls: Bool = default, maxBytes: Int? = default, remake: (() -> Sketch)? = default) throws
-  static func gcode(of: Sketch, settings: GCode, frame: Int = default, fps: FrameRate = default, hatching: Hatching? = default) -> String
+  static func gcode(of: Sketch, settings: GCode, frame: Int = default, fps: FrameRate = default, hatching: Hatching? = default) throws -> String
   static func image(of: Sketch, frame: Int = default, fps: FrameRate = default, quality: RenderQuality = default) throws -> CoreGraphics.CGImage
-  static func pdf(of: Sketch, frame: Int = default, fps: FrameRate = default, hatching: Hatching? = default) -> Foundation.Data
+  static func pdf(of: Sketch, frame: Int = default, fps: FrameRate = default, hatching: Hatching? = default) throws -> Foundation.Data
   static func plates(of: Sketch, profile: ICCProfile? = default, intent: RenderingIntent = default, frame: Int = default, fps: FrameRate = default, quality: RenderQuality = default) throws -> ProcessSeparation
   static func run(_: Sketch)
   static func runAsWallpaper(_: () -> Sketch)
   static func runInMenuBar(width: Double = default, _: () -> Sketch)
   static func separations(of: Sketch, inks: [Ink]? = default, paper: Color = default, frame: Int = default, fps: FrameRate = default, quality: RenderQuality = default) throws -> PrintSeparation
-  static func spatialScene(of: Sketch, frame: Int = default, fps: FrameRate = default) -> Scene
-  static func stitching(of: Sketch, settings: Embroidery, frame: Int = default, fps: FrameRate = default) -> Stitching
-  static func svg(of: Sketch, frame: Int = default, fps: FrameRate = default, hatching: Hatching? = default) -> String
+  static func spatialScene(of: Sketch, frame: Int = default, fps: FrameRate = default) throws -> Scene
+  static func stitching(of: Sketch, settings: Embroidery, frame: Int = default, fps: FrameRate = default) throws -> Stitching
+  static func svg(of: Sketch, frame: Int = default, fps: FrameRate = default, hatching: Hatching? = default) throws -> String
   static func web(of: Sketch, frames: Int, fps: FrameRate = default, skipSeconds: Double = default, form: WebPageForm = default, controls: Bool = default, maxBytes: Int? = default, remake: (() -> Sketch)? = default) throws -> String
   static func widgetFrames(from: Foundation.Date = default, size: CanvasSize? = default, count: Int? = default, of: () -> Sketch) -> [WidgetFrame]
   static func windowSize(fitting: CoreFoundation.CGSize) -> CoreFoundation.CGSize
@@ -782,6 +787,7 @@ enum TextureWrap: String, CaseIterable, Equatable, Hashable, RawRepresentable, S
 enum ToneMap: CaseIterable, Equatable, Hashable, Sendable
   case aces
   case clamp
+  case neutral
   case reinhard
 enum Truchet
   enum Tile: CaseIterable, Equatable, Hashable, Sendable
@@ -2352,6 +2358,7 @@ open class Sketch: Sendable
   func hollow(_: Double)
   func hyperbolicTiling(sides: Int = default, meeting: Int = default, in: Rectangle? = default, viewpoint: Vector2 = default, minEdge: Double = default) -> [HyperbolicTiling.Tile]
   func ifsPoints(_: IFS, count: Int, settle: Int = default) -> [Vector2]
+  func imageSampling(_: ImageSampling)
   func intersect(_: () -> Void)
   func inversionLimitSet(of: [Circle], count: Int, settle: Int = default) -> [Vector2]
   func inversionLimitSet(of: [Circle], count: Int, settle: Int = default, using: R) -> [Vector2]
@@ -2719,7 +2726,7 @@ open class Sketch: Sendable
   open func mouseReleased()
   open func mouseScrolled()
   open func reloaded()
-  open func setup()
+  open func setup() throws
   open var canvasSize: CanvasSize { get }
   open var colorOutput: ColorOutput { get }
   open var installation: Installation { get }

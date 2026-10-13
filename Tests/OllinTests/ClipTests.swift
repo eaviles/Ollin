@@ -17,7 +17,7 @@ struct ClipTests {
                origin + Vector2(0, side)])
     }
 
-    @Test func batchesCarryClipLevels() {
+    @Test func batchesCarryClipLevels() throws {
         let drawer = Drawer()
         drawer.beginFrame()
         drawer.drawCircle(10, 10, 5)
@@ -36,7 +36,7 @@ struct ClipTests {
         #expect(drawer.usesClipStencil)
     }
 
-    @Test func pushRecordsRegionTriangles() {
+    @Test func pushRecordsRegionTriangles() throws {
         let drawer = Drawer()
         drawer.beginFrame()
         drawer.withClip(square()) {}
@@ -46,7 +46,7 @@ struct ClipTests {
         #expect(drawer.vertices.count == 6)
     }
 
-    @Test func backgroundInsideClipReemitsPush() {
+    @Test func backgroundInsideClipReemitsPush() throws {
         let drawer = Drawer()
         drawer.beginFrame()
         drawer.withClip(square()) {
@@ -58,7 +58,7 @@ struct ClipTests {
         #expect(drawer.batches.map(\.clipLevel) == [1, 1, 1])
     }
 
-    @Test func unbalancedPopIsIgnored() {
+    @Test func unbalancedPopIsIgnored() throws {
         let drawer = Drawer()
         drawer.beginFrame()
         drawer.popClip()
@@ -66,7 +66,7 @@ struct ClipTests {
         #expect(!drawer.usesClipStencil)
     }
 
-    @Test func frameResetClosesOpenClips() {
+    @Test func frameResetClosesOpenClips() throws {
         let drawer = Drawer()
         drawer.beginFrame()
         drawer.pushClip(square())
@@ -76,7 +76,7 @@ struct ClipTests {
         #expect(drawer.batches.isEmpty)
     }
 
-    @Test func clippingIsPerSurface() {
+    @Test func clippingIsPerSurface() throws {
         let drawer = Drawer()
         drawer.beginFrame()
         let target = RenderTarget(width: 64, height: 64, scale: 1, drawer: drawer)
@@ -99,7 +99,7 @@ struct ClipTests {
         #expect(targetBatches.map(\.kind) == [.clipPush, .sdf, .clipPop])
     }
 
-    @Test func stateChangesInsideClipDoNotLeak() {
+    @Test func stateChangesInsideClipDoNotLeak() throws {
         let drawer = Drawer()
         drawer.beginFrame()
         drawer.fill(.white)
@@ -129,7 +129,7 @@ struct ClipTests {
     }
 
     @Test func svgExportEmitsClipPaths() throws {
-        let svg = OllinApp.svg(of: ClipSVGFixture())
+        let svg = try OllinApp.svg(of: ClipSVGFixture())
         #expect(svg.contains("<clipPath id=\"clip0\">"))
         let open = try #require(svg.range(of: "<g clip-path=\"url(#clip0)\">"))
         let close = try #require(svg.range(of: "</g>"))

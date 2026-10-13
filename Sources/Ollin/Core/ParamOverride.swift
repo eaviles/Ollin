@@ -316,10 +316,11 @@ extension Sketch {
     /// `setup()` directly.
     ///
     /// A value that cannot be applied stops the run rather than rendering
-    /// something nobody asked for.
-    func runSetup() {
+    /// something nobody asked for, and so does a `setup()` that throws: the
+    /// error is the drive's own, named to whoever asked for the frame.
+    func runSetup() throws {
         applyCommandLineValues()
-        setup()
+        try setup()
         applyCommandLineParams()
     }
 

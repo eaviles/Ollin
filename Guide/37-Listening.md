@@ -368,7 +368,7 @@ An event fires when a label's confidence crosses the `threshold`, 0.6 by default
 Both listeners are live only. Under an export nothing is playing, so nothing is heard, and both say so in `unavailableReason` instead of going quiet. When an exported sketch needs words, work them out first, in `setup()`. Here `caption` is an optional `String` property of your sketch, and `voice.m4a` sits in its folder:
 
 ```swift
-override func setup() {
+override func setup() throws {
     caption = try? waitFor {
         try await SpeechListener.transcribe(resource: "voice", withExtension: "m4a", in: .module)
     }

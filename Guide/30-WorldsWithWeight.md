@@ -519,7 +519,7 @@ let mast = Tensegrity.tower(levels: 3, struts: 3, radius: 0.46, levelHeight: 0.9
 **The weight.** `addTensegrity` builds a form in the world. It makes a capsule body for each strut, a `.cable` for each cable, and a `.ball` joint wherever two struts meet at a node. Set it down a little above the floor and step the world. It lands, bounces on its own cables, and stands.
 
 ```swift
-let standing = try! world.addTensegrity(mast, at: Vector3(2.25, 0.35, 0),
+let standing = try world.addTensegrity(mast, at: Vector3(2.25, 0.35, 0),
                                         strutRadius: 0.038, friction: 0.7)
 
 // each frame:
@@ -528,7 +528,7 @@ fill(.white)
 drawTensegrity(standing)
 ```
 
-`addTensegrity` throws only for a form it cannot build, so the ready-made forms can take [Chapter 2](02-Color.md)'s `try!`. `drawTensegrity` draws the struts and cables in one fill and material. To color the struts, draw each with `drawBody` in its own fill, and each cable as a thin capsule between its two `nodes`. Drag any strut with `dragBodies(in:)` and the whole form follows, stretches, and rights itself when you let go.
+`addTensegrity` throws only for a form it cannot build, so for the ready-made forms a bare `try` in `setup()` is a formality. `drawTensegrity` draws the struts and cables in one fill and material. To color the struts, draw each with `drawBody` in its own fill, and each cable as a thin capsule between its two `nodes`. Drag any strut with `dragBodies(in:)` and the whole form follows, stretches, and rights itself when you let go.
 
 **The twist.** The top polygon of a prism has to turn against the bottom one. Only one angle works. It is a quarter turn minus half a turn divided by the number of struts. Three struts want thirty degrees, and four want forty-five. Robert Connelly and Maria Terrell proved that rule in 1995. `imbalance` measures how far a form is from balance. It reads near zero for the built-in forms and well above it for `prism(twist: 0.2)`. No set of taut cables can balance that prism's struts. Build that one anyway and watch it in the world. As it settles it turns toward thirty degrees on its own, since that is the only shape where every cable is taut.
 
@@ -618,7 +618,7 @@ A world can take its surfaces from a scene file, and a USD file can bring its bo
 For scenery, `world.addStaticBodies(from: scene)` walks a loaded `Scene`. It turns every mesh into a static collider at its authored place, so a ball can roll through the hall you imported. A `.usd` file can also say which of its prims are physical, and `world.addBodies(from: scene)` reads them all. A sketch that loads such a file writes no physics of its own:
 
 ```swift
-let scene = try! loadScene("yard.usda")
+let scene = try loadScene("yard.usda")
 world.addBodies(from: scene)
 ```
 
@@ -651,7 +651,7 @@ A snapshot is a value you can keep, so it can also go to a file, and a file surv
 ```swift
 let file = URL(fileURLWithPath: "heap.physics")
 
-override func setup() {
+override func setup() throws {
     world.ground = 0
     do {
         try world.load(contentsOf: file)

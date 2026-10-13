@@ -392,7 +392,7 @@ A call that can fail is marked `throws` where it is declared, and every call to 
 | In a listing | What it does | First in |
 |---|---|---|
 | `try? loadImage(path)` | Calls something that can fail, and turns a failure into `nil`. | [Chapter 2](02-Color.md#palettes-from-a-file) |
-| `try! loadPalettes("1000.json")` | Calls something that can fail, and stops the sketch with an error if it does. The listings use it for a file that comes with the sketch. | [Chapter 2](02-Color.md#palettes-from-a-file) |
+| `try loadPalettes("1000.json")` | Calls something that can fail. In `setup()`, which may throw, a bare `try` stops the sketch with the failure's own sentence; `try!` is the same promise anywhere else, and crashes instead. | [Chapter 2](02-Color.md#palettes-from-a-file) |
 | `in: .module` | The folder the sketch's own files are read from. | [Chapter 9](09-Pictures.md#a-picture-on-the-canvas-loadimage-and-drawimage) |
 | `import Foundation` | Apple's base library. It brings `URL`, the address of a file, and `FileManager`, which asks the disk whether a file exists. | [Chapter 28](28-MaterialsAndSurroundings.md#putting-it-together-the-bench) |
 | `do { try … } catch { … }` | Runs calls that can fail. A failure jumps to `catch`, where `error` says what went wrong. | [Chapter 30](30-WorldsWithWeight.md#a-world-saved-as-it-stands-snapshot-and-restore) |

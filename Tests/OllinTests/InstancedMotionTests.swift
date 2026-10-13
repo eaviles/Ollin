@@ -78,9 +78,9 @@ struct InstancedMotionTests {
 
     // MARK: Recording
 
-    @Test func theFirstSightingRecordsNothingAndTheSecondRecordsEveryCopy() {
+    @Test func theFirstSightingRecordsNothingAndTheSecondRecordsEveryCopy() throws {
         let s = CopiesProbe()
-        s.setup()
+        try s.setup()
         s.performDraw()
         #expect(s.drawer.instancedMoverRanges.isEmpty, "no previous placement yet")
         let first = s.drawer.meshInstances.map(\.model)
@@ -93,9 +93,9 @@ struct InstancedMotionTests {
         #expect(s.drawer.hasMovers)
     }
 
-    @Test func aChangedCountRecordsNothingAndStartsOver() {
+    @Test func aChangedCountRecordsNothingAndStartsOver() throws {
         let s = CopiesProbe()
-        s.setup()
+        try s.setup()
         s.performDraw()
         s.performDraw()
         #expect(s.drawer.instancedMoverRanges.count == 1)
@@ -107,9 +107,9 @@ struct InstancedMotionTests {
         #expect(s.drawer.instancedMoverRanges.first?.instanceCount == 4, "the new count's history holds")
     }
 
-    @Test func aSkippedFrameStartsOver() {
+    @Test func aSkippedFrameStartsOver() throws {
         let s = CopiesProbe()
-        s.setup()
+        try s.setup()
         s.performDraw()
         s.moving = false
         s.performDraw()
@@ -118,10 +118,10 @@ struct InstancedMotionTests {
         #expect(s.drawer.instancedMoverRanges.isEmpty, "two frames ago is not last frame")
     }
 
-    @Test func copiesOutsideABlockAreNotMovers() {
+    @Test func copiesOutsideABlockAreNotMovers() throws {
         let s = CopiesProbe()
         s.moving = false
-        s.setup()
+        try s.setup()
         s.performDraw()
         s.performDraw()
         #expect(s.drawer.instancedMoverRanges.isEmpty && !s.drawer.hasMovers)
@@ -138,7 +138,7 @@ struct InstancedMotionTests {
     /// Draw the probe at `from` then `to` and read the velocity texture back.
     private func field(_ s: CopiesProbe, from: [Vector3], to: [Vector3],
                        renderer: MetalRenderer) throws -> [SIMD2<Float>]? {
-        s.setup()
+        try s.setup()
         s.offsets = from
         s.performDraw()
         let camera = try #require(s.drawer.camera3D)

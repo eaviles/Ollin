@@ -84,6 +84,11 @@ public final class SketchSession {
     /// (`nil` when every shader compiles). Distinct from `phase`, which tracks
     /// the Swift compile, so the two error kinds don't clear each other.
     public private(set) var shaderError: String?
+    /// The sentence the running sketch's `setup()` threw, reported by the
+    /// runner (`nil` once a later `setup()` runs through). Distinct from
+    /// `phase` and from `shaderError`, so the three kinds never clear each
+    /// other.
+    public private(set) var setupError: String?
     public private(set) var runner: SketchRunner?
     /// Live performance numbers of the running sketch, shared with the runner
     /// (pass it to `SketchView(stats:)`) so every surface reads one source.
@@ -131,18 +136,23 @@ public final class SketchSession {
     }
 
     /// The error a host's overlay should show: the Swift compile error first
-    /// (the sketch isn't even running), otherwise a user-shader compile error.
+    /// (the sketch isn't even running), then a `setup()` that threw (the sketch
+    /// is held on it), otherwise a user-shader compile error.
     public var errorMessage: String? {
         if case .failed(let message) = phase { return message }
-        return shaderError
+        return setupError ?? shaderError
     }
 
     /// Called by the host once the renderer's `SketchRunner` exists (from
-    /// `SketchView(onRunner:)`). Wires the user-shader error channel.
+    /// `SketchView(onRunner:)`). Wires the user-shader and the `setup()` error
+    /// channels.
     public func attach(_ runner: SketchRunner) {
         self.runner = runner
         runner.onUserShaderError = { [weak self] error in
             self?.shaderError = error?.message
+        }
+        runner.onSetupError = { [weak self] sentence in
+            self?.setupError = sentence
         }
     }
 

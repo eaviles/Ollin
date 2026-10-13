@@ -64,7 +64,7 @@ struct CheckpointTests {
         try inTemporaryStore {
             let saved = Reef()
             saved.seed(4242)
-            saved.setup()
+            try saved.setup()
             saved.polyps = [Vector2(10, 20), Vector2(30, 40)]
             saved.generation = 17
             saved.tint = Color(red: 0.25, green: 0.5, blue: 0.75, alpha: 0.5)
@@ -75,7 +75,7 @@ struct CheckpointTests {
             let fresh = Reef()
             let checkpoint = try #require(Checkpoint.load(for: fresh, arguments: []))
             checkpoint.applyBeforeSetup(to: fresh)
-            fresh.setup()
+            try fresh.setup()
             checkpoint.applyAfterSetup(to: fresh)
 
             #expect(fresh.variation == 4242)
@@ -114,7 +114,7 @@ struct CheckpointTests {
 
             let fresh = Reef()
             let checkpoint = try #require(Checkpoint.load(for: fresh, arguments: []))
-            fresh.setup()                       // sets polyps to one point
+            try fresh.setup()                       // sets polyps to one point
             #expect(fresh.polyps.count == 1)
             checkpoint.applyAfterSetup(to: fresh)
             #expect(fresh.polyps.count == 3)
@@ -227,7 +227,7 @@ struct CheckpointTests {
 
     // MARK: The declaration
 
-    @Test func checkpointingIsOffUntilItIsAskedFor() {
+    @Test func checkpointingIsOffUntilItIsAskedFor() throws {
         #expect(Installation.on.checkpoint.interval == nil)
         #expect(Installation.off.checkpoint.interval == nil)
         #expect(Installation(checkpoint: .every(seconds: 60)).checkpoint.interval == 60)

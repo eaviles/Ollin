@@ -43,16 +43,16 @@ struct SVGExportTests {
         }
     }
 
-    @Test func documentStructure() {
-        let svg = OllinApp.svg(of: Fixture())
+    @Test func documentStructure() throws {
+        let svg = try OllinApp.svg(of: Fixture())
         #expect(svg.hasPrefix("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"))
         #expect(svg.contains("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"100\" height=\"100\" viewBox=\"0 0 100 100\">"))
         #expect(svg.contains("<rect width=\"100\" height=\"100\" fill=\"rgb(255,255,255)\"/>"))   // background first
         #expect(svg.hasSuffix("</svg>\n"))
     }
 
-    @Test func nativeElementsAndStyle() {
-        let svg = OllinApp.svg(of: Fixture())
+    @Test func nativeElementsAndStyle() throws {
+        let svg = try OllinApp.svg(of: Fixture())
         #expect(svg.contains("<circle cx=\"50\" cy=\"50\" r=\"20\""))
         #expect(svg.contains("fill=\"rgb(0,0,0)\""))                 // black fill
         #expect(svg.contains("<line "))                             // the line
@@ -60,28 +60,28 @@ struct SVGExportTests {
         #expect(svg.contains("<polygon points="))
     }
 
-    @Test func transformAndAlpha() {
-        let svg = OllinApp.svg(of: Fixture())
+    @Test func transformAndAlpha() throws {
+        let svg = try OllinApp.svg(of: Fixture())
         #expect(svg.contains("transform=\"matrix(1 0 0 1 10 20)\""))   // the translated rect
         #expect(svg.contains("fill-opacity=\"0.5\""))                  // the alpha fill
     }
 
-    @Test func vectorShapeBecomesPath() {
-        let svg = OllinApp.svg(of: Fixture())
+    @Test func vectorShapeBecomesPath() throws {
+        let svg = try OllinApp.svg(of: Fixture())
         // A `Shape` becomes a closed `<path d="M … Z">`.
         #expect(svg.contains("<path d=\"M "))
         #expect(svg.contains(" Z\""))
     }
 
-    @Test func curvedShapeIsTracedToPolygon() {
-        let svg = OllinApp.svg(of: Fixture())
+    @Test func curvedShapeIsTracedToPolygon() throws {
+        let svg = try OllinApp.svg(of: Fixture())
         // The heart has no native element and no closed-form polygon; it traces to
         // a `<polygon>` with many points (far more than the 3-point triangle).
         let polygons = svg.components(separatedBy: "<polygon").dropFirst()
         #expect(polygons.contains { $0.filter { $0 == "," }.count > 20 })
     }
 
-    @Test func multiLoopTraceBecomesEvenOddPath() {
+    @Test func multiLoopTraceBecomesEvenOddPath() throws {
         // A moon whose cut disk sits fully inside the outer disk has two boundary
         // loops (a ring with an off-center hole); the trace serializes as one
         // even-odd path carrying both, instead of dropping the hole.
@@ -92,7 +92,7 @@ struct SVGExportTests {
                 drawMoon(50, 50, 40, 15, 8)
             }
         }
-        let svg = OllinApp.svg(of: Donut())
+        let svg = try OllinApp.svg(of: Donut())
         let path = svg.components(separatedBy: "\n").first {
             $0.contains("<path") && $0.contains("fill-rule=\"evenodd\"")
         }
@@ -100,7 +100,7 @@ struct SVGExportTests {
         #expect((path ?? "").components(separatedBy: "M ").count - 1 == 2)   // two loops
     }
 
-    @Test func coolSExportsInteriorLineWork() {
+    @Test func coolSExportsInteriorLineWork() throws {
         // The Cool S's interior lines are zero-distance valleys the field never
         // crosses (the raster stroke band shows them); the export emits them as
         // explicit stroke polylines, but only when a stroke is active.
@@ -114,39 +114,39 @@ struct SVGExportTests {
                 drawCoolS(50, 50, 80)
             }
         }
-        let stroked = OllinApp.svg(of: CoolS())
+        let stroked = try OllinApp.svg(of: CoolS())
         #expect(stroked.components(separatedBy: "<polyline").count - 1 == 2)
         let fillOnly = CoolS()
         fillOnly.stroked = false
-        #expect(!OllinApp.svg(of: fillOnly).contains("<polyline"))
+        #expect(try !OllinApp.svg(of: fillOnly).contains("<polyline"))
     }
 
-    @Test func imagesAreSkippedWithNote() {
-        let svg = OllinApp.svg(of: Fixture())
+    @Test func imagesAreSkippedWithNote() throws {
+        let svg = try OllinApp.svg(of: Fixture())
         #expect(svg.contains("image draw(s) skipped"))
         #expect(!svg.contains("<image"))
     }
 
-    @Test func isDeterministic() {
+    @Test func isDeterministic() throws {
         // No GPU, fixed timestep: the same frame of the same variation
         // serializes identically. Seeded, because an unseeded sketch rolls a
         // fresh `variation` per instance and the recipe comment records it.
-        func fixture() -> Fixture {
+        func fixture() throws -> Fixture {
             let f = Fixture()
             f.seed(1)
             return f
         }
-        #expect(OllinApp.svg(of: fixture(), frame: 3) == OllinApp.svg(of: fixture(), frame: 3))
+        #expect(try OllinApp.svg(of: fixture(), frame: 3) == OllinApp.svg(of: fixture(), frame: 3))
     }
 
     /// Two unseeded runs of a randomness-free sketch draw the same picture; only
     /// the recorded variation in the recipe tells them apart.
-    @Test func unseededRunsDifferOnlyInTheRecordedVariation() {
+    @Test func unseededRunsDifferOnlyInTheRecordedVariation() throws {
         func body(_ svg: String) -> String {
             svg.components(separatedBy: "\n").filter { !$0.contains("<!-- {") }.joined(separator: "\n")
         }
-        let a = OllinApp.svg(of: Fixture(), frame: 3)
-        let b = OllinApp.svg(of: Fixture(), frame: 3)
+        let a = try OllinApp.svg(of: Fixture(), frame: 3)
+        let b = try OllinApp.svg(of: Fixture(), frame: 3)
         #expect(body(a) == body(b))
     }
 
@@ -163,31 +163,31 @@ struct SVGExportTests {
         }
     }
 
-    @Test func hatchingTurnsFillsIntoLines() {
-        let plain = OllinApp.svg(of: Disk())
-        let hatched = OllinApp.svg(of: Disk(), hatching: Hatching(spacing: 6))
+    @Test func hatchingTurnsFillsIntoLines() throws {
+        let plain = try OllinApp.svg(of: Disk())
+        let hatched = try OllinApp.svg(of: Disk(), hatching: Hatching(spacing: 6))
         // The plain export is a filled circle; the hatched one is line work.
         #expect(plain.contains("<circle cx=\"50\" cy=\"50\" r=\"30\" fill=\"rgb(0,0,0)\""))
         #expect(!hatched.contains("fill=\"rgb(0,0,0)\""))   // the fill is gone
         #expect(hatched.contains("<polyline"))              // replaced by hatch lines
     }
 
-    @Test func hatchingKeepsTheOutline() {
-        let hatched = OllinApp.svg(of: Disk(), hatching: Hatching(spacing: 6, keepsOutline: true))
+    @Test func hatchingKeepsTheOutline() throws {
+        let hatched = try OllinApp.svg(of: Disk(), hatching: Hatching(spacing: 6, keepsOutline: true))
         // The circle survives as a stroked, unfilled outline.
         #expect(hatched.contains("<circle cx=\"50\" cy=\"50\" r=\"30\" fill=\"none\" stroke="))
-        let dropped = OllinApp.svg(of: Disk(), hatching: Hatching(spacing: 6, keepsOutline: false))
+        let dropped = try OllinApp.svg(of: Disk(), hatching: Hatching(spacing: 6, keepsOutline: false))
         #expect(!dropped.contains("<circle"))
     }
 
-    @Test func crossHatchAddsLines() {
+    @Test func crossHatchAddsLines() throws {
         func lineCount(_ svg: String) -> Int { svg.components(separatedBy: "<polyline").count - 1 }
-        let single = OllinApp.svg(of: Disk(), hatching: Hatching(spacing: 6, crossHatches: false))
-        let cross = OllinApp.svg(of: Disk(), hatching: Hatching(spacing: 6, crossHatches: true))
+        let single = try OllinApp.svg(of: Disk(), hatching: Hatching(spacing: 6, crossHatches: false))
+        let cross = try OllinApp.svg(of: Disk(), hatching: Hatching(spacing: 6, crossHatches: true))
         #expect(lineCount(cross) > lineCount(single))
     }
 
-    @Test func usesToneDensitySkipsLightFills() {
+    @Test func usesToneDensitySkipsLightFills() throws {
         // A near-white fill drops out of the hatch entirely.
         final class Faint: Sketch {
             override var canvasSize: CanvasSize { .square(100) }
@@ -196,11 +196,11 @@ struct SVGExportTests {
                 fill(Color(white: 0.98)); drawCircle(50, 50, 30)
             }
         }
-        let hatched = OllinApp.svg(of: Faint(), hatching: Hatching(spacing: 6, keepsOutline: false))
+        let hatched = try OllinApp.svg(of: Faint(), hatching: Hatching(spacing: 6, keepsOutline: false))
         #expect(!hatched.contains("<polyline"))   // too light to hatch
     }
 
-    @Test func lineGeometryFillsAShape() {
+    @Test func lineGeometryFillsAShape() throws {
         // The public core: hatch lines for a 50-radius circle at spacing 10.
         let lines = Hatching(spacing: 10, angle: 0).lines(filling: Circle(x: 0, y: 0, radius: 50))
         #expect(!lines.isEmpty)
@@ -236,8 +236,8 @@ struct SVGGradientTests {
         }
     }
 
-    @Test func linearAndRadialBecomeDefs() {
-        let svg = OllinApp.svg(of: GradientFixture())
+    @Test func linearAndRadialBecomeDefs() throws {
+        let svg = try OllinApp.svg(of: GradientFixture())
         #expect(svg.contains("<defs>"))
         #expect(svg.contains("<linearGradient id=\"grad0\" gradientUnits=\"userSpaceOnUse\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"100\">"))
         #expect(svg.contains("fill=\"url(#grad0)\""))
@@ -245,17 +245,17 @@ struct SVGGradientTests {
         #expect(svg.contains("fill=\"url(#grad1)\""))
     }
 
-    @Test func nonRGBRampsSubdivideTheirStops() {
+    @Test func nonRGBRampsSubdivideTheirStops() throws {
         // The ramps mix in OKLab, which SVG can't interpolate — each span gains
         // intermediate stops so the SVG curve tracks the ramp.
-        let svg = OllinApp.svg(of: GradientFixture())
+        let svg = try OllinApp.svg(of: GradientFixture())
         let linearDef = svg.components(separatedBy: "</linearGradient>")[0]
         let stops = linearDef.components(separatedBy: "<stop ").count - 1
         #expect(stops > 2)
     }
 
-    @Test func alongPathStrokeSplitsIntoRuns() {
-        let svg = OllinApp.svg(of: GradientFixture())
+    @Test func alongPathStrokeSplitsIntoRuns() throws {
+        let svg = try OllinApp.svg(of: GradientFixture())
         // The 100-point line splits into ~12-point solid runs; their colors walk
         // the ramp, so the first and last differ.
         let lines = svg.components(separatedBy: "\n").filter { $0.contains("<line ") }
@@ -268,8 +268,8 @@ struct SVGGradientTests {
         }
     }
 
-    @Test func alongPathFillFallsBackToMidpoint() {
-        let svg = OllinApp.svg(of: GradientFixture())
+    @Test func alongPathFillFallsBackToMidpoint() throws {
+        let svg = try OllinApp.svg(of: GradientFixture())
         // The conic-filled polygon gets a flat midpoint color, not a url ref.
         let polygon = svg.components(separatedBy: "\n").first { $0.contains("<polygon") } ?? ""
         #expect(polygon.contains("fill=\"rgb("))

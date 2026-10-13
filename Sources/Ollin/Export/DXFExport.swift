@@ -14,7 +14,7 @@ import simd
 // still written, which is why every reader takes it, from a CAD import to a
 // laser's own software. The public core is `DXF` plus `Drafting`, callable from
 // a sketch (preview the layers, write the file from your own contours);
-// `OllinApp.dxf(of:)` / `exportDXF` and the `--export-dxf` flag are the sugar.
+// `try OllinApp.dxf(of:)` / `exportDXF` and the `--export-dxf` flag are the sugar.
 
 // MARK: - Settings
 
@@ -398,8 +398,8 @@ public extension OllinApp {
     /// skipped. Draw the result's `entities` to preview what a shop program
     /// will open.
     static func drafting(of sketch: Sketch, settings: DXF, frame: Int = 0,
-                         fps: FrameRate = 60, hatching: Hatching? = nil) -> Drafting {
-        let recording = recordVectorFrame(of: sketch, frame: frame, fps: fps.framesPerSecond, hatching: hatching)
+                         fps: FrameRate = 60, hatching: Hatching? = nil) throws -> Drafting {
+        let recording = try recordVectorFrame(of: sketch, frame: frame, fps: fps.framesPerSecond, hatching: hatching)
         let canvas = Rectangle(x: 0, y: 0, width: Double(recording.width),
                                height: Double(recording.height))
         let blocks = draftBlocks(recording.commands, canvas: canvas)
@@ -408,8 +408,8 @@ public extension OllinApp {
 
     /// Render one frame of `sketch` as the text of a DXF file.
     static func dxf(of sketch: Sketch, settings: DXF, frame: Int = 0,
-                    fps: FrameRate = 60, hatching: Hatching? = nil) -> String {
-        drafting(of: sketch, settings: settings, frame: frame, fps: fps, hatching: hatching).text
+                    fps: FrameRate = 60, hatching: Hatching? = nil) throws -> String {
+        try drafting(of: sketch, settings: settings, frame: frame, fps: fps, hatching: hatching).text
     }
 
     /// Render one frame of `sketch` and write it as a DXF file. The
@@ -419,7 +419,7 @@ public extension OllinApp {
     /// Throws `ExportError` when the file cannot be written.
     static func exportDXF(_ sketch: Sketch, to path: String, settings: DXF,
                           frame: Int = 0, fps: FrameRate = 60, hatching: Hatching? = nil) throws {
-        let drawing = drafting(of: sketch, settings: settings, frame: frame, fps: fps,
+        let drawing = try drafting(of: sketch, settings: settings, frame: frame, fps: fps,
                                hatching: hatching)
         do {
             try drawing.text.write(toFile: path, atomically: true, encoding: .utf8)

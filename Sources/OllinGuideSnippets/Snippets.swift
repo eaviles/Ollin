@@ -227,12 +227,16 @@ func wrapped(_ block: Block, preamble fullPreamble: String) -> String {
         let drawBody = statements.joined(separator: "\n")
         // Loose statements go in `draw()` so they run where a reader would put
         // them. When the block declares its own overrides they go in a plain
-        // method instead, or the synthesized one collides with the block's.
+        // method instead, or the synthesized one collides with the block's. A
+        // bare `try` (not `try?` or `try!`) is what a reader writes in
+        // `setup()`, which may throw, so statements carrying one go there.
         let declaresOverride = members.contains { $0.contains("override func ") }
+        let throwsOut = drawBody.contains(/\btry\s+(?![?!])/)
         var parts = [imports, preamble, "final class SnippetProbe: Sketch {"]
         parts.append(indent(members.joined(separator: "\n")))
         if !drawBody.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            parts.append(declaresOverride ? "    func snippetBody() {" : "    override func draw() {")
+            let home = declaresOverride ? "    func snippetBody()" : (throwsOut ? "    override func setup()" : "    override func draw()")
+            parts.append(home + (throwsOut ? " throws {" : " {"))
             parts.append(indent(drawBody, by: 8))
             parts.append("    }")
         }
