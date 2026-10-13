@@ -153,6 +153,30 @@ struct VolumeTests {
         #expect(abs(overSolid - (1 - exp(-0.5))) < 0.0015, "over the solid: \(overSolid)")
     }
 
+    /// Two volumes over the same box share their center, so the farthest-first
+    /// sort has nothing to order them by, and they keep their call order with
+    /// the later one on top. A medium that only glows adds 0.6 over black
+    /// whatever its place; an absorbing one drawn after it dims that glow by its
+    /// transmittance, and drawn before it dims only the black behind both.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func twoVolumesOnOneBoxCompositeInCallOrder() throws {
+        let glow = Medium(density: 0, color: .black, glow: .white, glowIntensity: 0.4)
+        let dust = Medium(density: 1, color: .black)
+        for dustFirst in [false, true] {
+            let probe = VolumeProbe()
+            probe.medium = glow
+            probe.secondMedium = dust
+            probe.secondFirst = dustFirst
+            probe.slabDepth = 1.5
+            probe.volume = Volume(width: 8, height: 8, depth: 8, repeating: 1)
+            let frame = try Self.render(probe)
+            let measured = frame.row(frame.height / 2, columns: 8 ..< frame.width - 8)
+            let expected = dustFirst ? 0.6 : 0.6 * exp(-1.5)
+            #expect(abs(measured - expected) < 0.0015,
+                    "dust \(dustFirst ? "first" : "last"): \(measured) against \(expected)")
+        }
+    }
+
     /// A light crossing the slab from the side, half of it blocked by a plate
     /// outside the view: the shadowed half takes no light from it, and the lit
     /// half does.
@@ -299,6 +323,10 @@ private final class VolumeProbe: Sketch {
     var lightToward: Vector3?
     /// Draw the volume before the solid instead of after it.
     var volumeFirst = false
+    /// A second medium drawn over the same box, after the first one (or before
+    /// it, with `secondFirst`), so the two boxes share their center exactly.
+    var secondMedium: Medium?
+    var secondFirst = false
     /// A plate outside the view, on the light's side, shading the slab's upper half.
     var blocksUpperHalf = false
     /// Draw the scene into a layer and the layer onto the canvas.
@@ -349,8 +377,13 @@ private final class VolumeProbe: Sketch {
     }
 
     func drawTheVolume() {
-        if let volume {
-            drawVolume(volume, width: 2, height: 2, depth: slabDepth, medium: medium)
+        guard let volume else { return }
+        if let secondMedium, secondFirst {
+            drawVolume(volume, width: 2, height: 2, depth: slabDepth, medium: secondMedium)
+        }
+        drawVolume(volume, width: 2, height: 2, depth: slabDepth, medium: medium)
+        if let secondMedium, !secondFirst {
+            drawVolume(volume, width: 2, height: 2, depth: slabDepth, medium: secondMedium)
         }
     }
 }

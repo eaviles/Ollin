@@ -66,12 +66,17 @@ extension MetalRenderer {
         volumeLightGeneration &+= 1
 
         // Farthest first, so nearer volumes composite over farther ones (by the
-        // boxes' centers; two volumes that interpenetrate order as wholes).
+        // boxes' centers; two volumes that interpenetrate order as wholes). Two
+        // centers the same distance away keep their call order, the later one
+        // on top, so an absorbing medium drawn after a glow over the same box
+        // dims the glow, and drawn before it dims only what lies behind both.
         let eye = pass.lighting[0].map { SIMD3<Float>($0.cameraPosition.x, $0.cameraPosition.y,
                                                        $0.cameraPosition.z) } ?? .zero
-        let ordered = draws.sorted { a, b in
-            simd_distance(a.model.columns.3.xyz, eye) > simd_distance(b.model.columns.3.xyz, eye)
-        }
+        let ordered = draws.enumerated().sorted { a, b in
+            let farA = simd_distance(a.element.model.columns.3.xyz, eye)
+            let farB = simd_distance(b.element.model.columns.3.xyz, eye)
+            return farA != farB ? farA > farB : a.offset < b.offset
+        }.map(\.element)
 
         // The grids and their light transmittance first, in a compute pass ahead
         // of the composite.
