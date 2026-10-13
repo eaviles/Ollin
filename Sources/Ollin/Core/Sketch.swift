@@ -4744,7 +4744,12 @@ open class Sketch {
         }
     }
 
-    func advance(time: Double, deltaTime: Double, frameRate: Double) {
+    /// `appliesAutomation` is false for the one pass a hand edit under a held
+    /// clock asks for: the parameters keep what the hand set, so the picture
+    /// follows the inspector, and the next real pass (a scrub, a step, play)
+    /// lets the tracks win again.
+    func advance(time: Double, deltaTime: Double, frameRate: Double,
+                 appliesAutomation: Bool = true) {
         var time = time, deltaTime = deltaTime, frameRate = frameRate
         // A replay overrides the caller's clock with the recorded one, after
         // applying the frame's recorded events and parameter changes; a recording
@@ -4759,7 +4764,7 @@ open class Sketch {
         // A parameter written down over time is set here, before the recorder
         // samples the parameters, so a run recorded while an automation played
         // writes down the values the curves actually held.
-        automationPlayer?.apply(to: self, at: time)
+        if appliesAutomation { automationPlayer?.apply(to: self, at: time) }
         // A cue fading in moves its parameters here, after the automation (a
         // track still wins its parameter every frame) and before the recorder
         // samples them, so a take written during a fade holds the fade.

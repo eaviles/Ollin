@@ -6,7 +6,8 @@ import Observation
 /// (the playhead, the selection, the file the tracks round-trip to) and the
 /// edits the panel makes: keys placed at the playhead, moved, removed, and
 /// curves chosen. Every edit lands on the sketch's own automation, so the
-/// panel edits exactly what the frames play.
+/// panel edits exactly what the frames play, and every edit registers its
+/// undo, so ⌘Z puts the automation back as it stood.
 ///
 /// The transport half is built on the runner's clock transport (`setClockPaused`,
 /// `scrubClock`, `stepClock`), so a scrub here is the deterministic clock
@@ -22,6 +23,11 @@ public final class TimelineModel {
 
     /// Where edits write, or `nil` when this run keeps them in memory.
     public private(set) var fileURL: URL?
+
+    /// Whether the file the edits write to exists yet. A fresh sketch has
+    /// none until the first edit lands, and the footer says so rather than
+    /// calling nothing "saved".
+    public private(set) var fileIsOnDisk = false
 
     /// Whether the tracks as edited are on disk.
     public enum SaveState: Equatable {
@@ -65,14 +71,47 @@ public final class TimelineModel {
     /// sketch wrote shows in its row and a track it placed fills its diamond.
     public private(set) var automationVersion = 0
 
+    /// The loop region, in the panel's own axis (the automation's position).
+    /// Held on the runner's transport too, mapped onto the clock the frames
+    /// actually advance on. Never written into the file. Observed, so the
+    /// ruler and the loop button follow it the moment it is set, under a
+    /// held clock as much as a running one.
+    public var loopRegion: ClosedRange<Double>? {
+        didSet { pushLoopRegion() }
+    }
+
+    /// The ruler's span while a drag is in progress on the ruler or a lane, so
+    /// the axis the drag reads holds still under it; `nil` between drags.
+    /// Without it, the last key dragged past the span grows the ruler under
+    /// the pointer and jumps ahead of it, and a scrub back from a far
+    /// playhead shrinks the ruler under the pointer and lands wherever the
+    /// shrinking stops.
+    public private(set) var lockedSpan: Double?
+
     /// Told after every edit, with the automation as it now stands. A live
     /// session holds it here so the tracks survive a reload swap.
     @ObservationIgnored public var automationChanged: ((Automation?) -> Void)?
+
+    /// Every edit registers its undo here, so ⌘Z while the panel is in front
+    /// puts the automation back as it stood and ⇧⌘Z brings the edit back; a
+    /// drag is one step however many moves it made. The panel's window hands
+    /// this manager to the Edit menu. It groups by hand rather than by event,
+    /// since a drag's moves arrive over many events.
+    @ObservationIgnored public let undoManager: UndoManager = {
+        let manager = UndoManager()
+        manager.groupsByEvent = false
+        return manager
+    }()
 
     @ObservationIgnored private var writeTask: Task<Void, Never>?
     @ObservationIgnored private var ticker: Task<Void, Never>?
     @ObservationIgnored private var watcher: Task<Void, Never>?
     @ObservationIgnored private var lastSeenAutomation: Automation?
+    /// Whether a lane drag is in progress, and whether its undo group is open
+    /// (opened by the first edit the drag makes, so a drag that edits nothing
+    /// leaves no empty step).
+    @ObservationIgnored private var dragInProgress = false
+    @ObservationIgnored private var dragGroupIsOpen = false
 
     /// How close to the playhead a key counts as being on it: half a frame
     /// at the transport's step rate.
@@ -84,6 +123,7 @@ public final class TimelineModel {
     /// here; the host installs the file's tracks on the sketch itself.
     public func setFile(_ url: URL?) {
         fileURL = url
+        fileIsOnDisk = url.map { FileManager.default.fileExists(atPath: $0.path) } ?? false
     }
 
     // MARK: What the panel reads
@@ -101,9 +141,11 @@ public final class TimelineModel {
         automation.track(named: name) != nil
     }
 
-    /// Whether the track driving `name` has a key on the playhead.
+    /// Whether the track driving `name` has a key where the clock stands. Read
+    /// from the clock rather than the ticked playhead, so a row asking while
+    /// the panel is closed is told the truth.
     public func hasKeyAtPlayhead(named name: String) -> Bool {
-        keyIndex(near: playhead, in: automation.track(named: name)) != nil
+        keyIndex(near: livePosition, in: automation.track(named: name)) != nil
     }
 
     /// The parameters no track drives yet, in declaration order.
@@ -111,31 +153,52 @@ public final class TimelineModel {
         (sketch?.parameters() ?? []).filter { automation.track(named: $0.name) == nil }
     }
 
+    /// Every moment a key stands on, across the tracks, for the ruler to snap to.
+    public var keyTimes: [Double] {
+        automation.tracks.flatMap { $0.keys.map(\.time) }.sorted()
+    }
+
+    /// `time`, or the moment of the nearest key when one stands within
+    /// `tolerance` of it: a scrub that lands a few points from a key lands on
+    /// the key, so the diamond can stand on it by hand.
+    public func snapped(_ time: Double, within tolerance: Double) -> Double {
+        var best: (time: Double, distance: Double)?
+        for key in keyTimes {
+            let distance = abs(key - time)
+            if distance <= tolerance, distance < (best?.distance ?? .infinity) {
+                best = (key, distance)
+            }
+        }
+        return best?.time ?? time
+    }
+
     private func keyIndex(near time: Double, in track: Automation.Track?) -> Int? {
         guard let track else { return nil }
         return track.keys.firstIndex { abs($0.time - time) <= TimelineModel.keyEpsilon }
     }
 
+    /// The automation's position at the sketch clock right now, read from the
+    /// runner rather than from the playhead the ticker last wrote. The ticker
+    /// runs only while the panel shows, so an edit from a row must read this,
+    /// or a diamond clicked with the panel closed keys the moment it was closed.
+    private var livePosition: Double {
+        guard let runner else { return playhead }
+        let raw = runner.clockTime
+        let automation = self.automation
+        return automation.tracks.isEmpty ? raw : automation.position(at: raw)
+    }
+
     // MARK: Transport
 
-    /// The loop region, in the panel's own axis (the automation's position).
-    /// Held on the runner's transport, mapped onto the clock the frames
-    /// actually advance on. Never written into the file.
-    public var loopRegion: ClosedRange<Double>? {
-        get { storedLoopRegion }
-        set {
-            storedLoopRegion = newValue
-            if let region = newValue {
-                let a = clockTime(forPosition: region.lowerBound)
-                let b = clockTime(forPosition: region.upperBound)
-                runner?.clockLoopRegion = min(a, b)...max(a, b)
-            } else {
-                runner?.clockLoopRegion = nil
-            }
-            editCount += 1     // chrome only; the automation is untouched
+    private func pushLoopRegion() {
+        if let region = loopRegion {
+            let a = clockTime(forPosition: region.lowerBound)
+            let b = clockTime(forPosition: region.upperBound)
+            runner?.clockLoopRegion = min(a, b)...max(a, b)
+        } else {
+            runner?.clockLoopRegion = nil
         }
     }
-    @ObservationIgnored private var storedLoopRegion: ClosedRange<Double>?
 
     /// The sketch clock that lands the automation on `position`. The panel's
     /// axis is the automation's own (`start + time * speed` read backwards),
@@ -182,14 +245,24 @@ public final class TimelineModel {
         syncFromRunner()
     }
 
+    /// Select one key and put the playhead on it, so the picture shows that
+    /// moment and the row's diamond stands on the key: adjust the parameter
+    /// and click the diamond to re-key it.
+    public func select(track name: String, index: Int) {
+        guard let track = automation.track(named: name),
+              track.keys.indices.contains(index) else { return }
+        selection = KeySelection(track: name, index: index)
+        scrub(to: track.keys[index].time)
+    }
+
     private func syncFromRunner() {
         guard let runner else { return }
         // The playhead follows the automation's own position, so a looping
         // pass shows the playhead coming around while the clock runs on.
-        let raw = runner.clockTime
-        let automation = self.automation
-        playhead = automation.tracks.isEmpty ? raw : automation.position(at: raw)
-        isPaused = runner.isClockPaused
+        // Written only on a change, so a held clock wakes nothing.
+        let position = livePosition
+        if position != playhead { playhead = position }
+        if runner.isClockPaused != isPaused { isPaused = runner.isClockPaused }
     }
 
     /// Follow the clock while the panel shows: the playhead at a steady
@@ -218,6 +291,7 @@ public final class TimelineModel {
         watcher = nil
         guard runner != nil else { return }
         lastSeenAutomation = sketch?.automation
+        pushLoopRegion()
         watcher = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(250))
@@ -233,20 +307,86 @@ public final class TimelineModel {
         automationVersion += 1
     }
 
+    // MARK: Drags
+
+    /// A drag began on the ruler or a lane (a scrub, a key, a handle): the
+    /// ruler's span holds at `span` until the drag ends, and every edit the
+    /// drag makes is one undo step.
+    public func beginDrag(span: Double) {
+        lockedSpan = span
+        dragInProgress = true
+    }
+
+    public func endDrag() {
+        lockedSpan = nil
+        dragInProgress = false
+        if dragGroupIsOpen {
+            dragGroupIsOpen = false
+            undoManager.endUndoGrouping()
+        }
+    }
+
+    // MARK: Undo
+
+    /// Put the automation back as it stood before the last edit.
+    public func undo() {
+        guard undoManager.canUndo else { return }
+        undoManager.undo()
+    }
+
+    /// Bring back the edit the last undo took away.
+    public func redo() {
+        guard undoManager.canRedo else { return }
+        undoManager.redo()
+    }
+
+    private func registerUndo(from previous: Automation?) {
+        let ownGroup: Bool
+        if dragInProgress {
+            if !dragGroupIsOpen {
+                undoManager.beginUndoGrouping()
+                dragGroupIsOpen = true
+            }
+            ownGroup = false
+        } else {
+            undoManager.beginUndoGrouping()
+            ownGroup = true
+        }
+        undoManager.registerUndo(withTarget: self) { model in
+            // The inverse first, so the step can be redone, then the state.
+            let now = model.sketch?.automation
+            model.registerUndo(from: now)
+            model.apply(previous ?? Automation(), registersUndo: false)
+        }
+        undoManager.setActionName("Timeline Edit")
+        if ownGroup { undoManager.endUndoGrouping() }
+    }
+
     // MARK: Edits
 
     /// Put a key on `name`'s track at the playhead, holding the parameter's
-    /// current value; on a key already there, take that key away instead.
-    /// The parameter-row diamond calls this. A track worked out from a formula
-    /// has no keys to place, so it is left alone.
+    /// current value. On a key already there: when the parameter still holds
+    /// what the track gives at that moment the key is taken away, and when
+    /// the hand changed it the key takes the new value, keeping its moment and
+    /// its curve. The parameter-row diamond calls this, reading the clock as
+    /// it stands. A track worked out from a formula has no keys to place, so
+    /// it is left alone.
     public func toggleKey(param name: String) {
         guard let sketch else { return }
+        syncFromRunner()
+        guard let handle = sketch.parameters().first(where: { $0.name == name }) else { return }
+        let held = handle.param.stored
         var automation = self.automation
         if let track = automation.track(named: name) {
             guard !track.isWorkedOut else { return }
             if let index = keyIndex(near: playhead, in: track) {
                 var keys = track.keys
-                keys.remove(at: index)
+                let unchanged = track.value(at: playhead) == held || keys[index].value == held
+                if unchanged {
+                    keys.remove(at: index)
+                } else {
+                    keys[index].value = held
+                }
                 if keys.isEmpty {
                     automation.tracks.removeAll { $0.name == name }
                 } else {
@@ -256,8 +396,7 @@ public final class TimelineModel {
                 return
             }
         }
-        guard let handle = sketch.parameters().first(where: { $0.name == name }) else { return }
-        addKey(named: name, at: playhead, value: handle.param.stored, to: &automation)
+        addKey(named: name, at: playhead, value: held, to: &automation)
         apply(automation)
     }
 
@@ -466,12 +605,14 @@ public final class TimelineModel {
         return tokens.first { $0.kind == .name(name) }?.offset ?? 0
     }
 
-    private func apply(_ automation: Automation) {
+    private func apply(_ automation: Automation, registersUndo: Bool = true) {
         guard let sketch else { return }
+        let previous = sketch.automation
         sketch.automation = automation.tracks.isEmpty && automation.length == nil
             ? nil : automation
         lastSeenAutomation = sketch.automation    // an edit announces itself
         editCount += 1
+        if registersUndo, previous != sketch.automation { registerUndo(from: previous) }
         automationChanged?(sketch.automation)
         scheduleWrite()
         runner?.refreshClockFrame()    // a change made while paused must show
@@ -497,10 +638,18 @@ public final class TimelineModel {
     package struct Scale: Equatable {
         package var span: Double
 
-        package init(contentDuration: Double) {
-            // At least five seconds on the ruler, and a breath past the last
-            // key, rounded up to a whole second so the ticks land cleanly.
-            span = max(5, (contentDuration * 1.05).rounded(.up))
+        /// At least five seconds on the ruler, and a breath past the last key
+        /// or the playhead, whichever is further, rounded up to a whole second
+        /// so the ticks land cleanly. The playhead counts so that a clock run
+        /// past the last key stays on the ruler rather than leaving it. A
+        /// `lockedSpan` is taken as it is, for the length of a drag.
+        package init(contentDuration: Double, playhead: Double = 0, lockedSpan: Double? = nil) {
+            if let lockedSpan {
+                span = lockedSpan
+                return
+            }
+            let reach = max(contentDuration, playhead, 0)
+            span = max(5, (reach * 1.05).rounded(.up))
         }
 
         package func x(of time: Double, width: Double) -> Double {
@@ -560,6 +709,50 @@ public final class TimelineModel {
                         keyHeights: keyValues.map(normalized))
     }
 
+    // MARK: Readouts
+
+    /// The value `name` holds right now, as a lane's trailing readout shows
+    /// it, or `nil` for a kind with no short spelling.
+    package func readout(param name: String) -> String? {
+        guard let handle = sketch?.parameters().first(where: { $0.name == name }) else { return nil }
+        return TimelineModel.readout(handle.param.stored, whole: TimelineModel.isWhole(handle))
+    }
+
+    /// `stored` as the footer shows a selected key's value, spelled for the
+    /// parameter it belongs to.
+    package func readout(of stored: ParamStored, param name: String) -> String? {
+        let handle = sketch?.parameters().first(where: { $0.name == name })
+        return TimelineModel.readout(stored, whole: handle.map(TimelineModel.isWhole) ?? false)
+    }
+
+    private static func isWhole(_ handle: ParamHandle) -> Bool {
+        if case .stepper = handle.control { return true }
+        return false
+    }
+
+    /// A value spelled the way its box spells it: a number with its own digits
+    /// and no trailing zeros, a whole number with none, a switch as on or off,
+    /// a menu by its choice, a point by its parts, a color as hex.
+    package static func readout(_ stored: ParamStored, whole: Bool) -> String? {
+        func number(_ value: Double) -> String {
+            whole ? String(Int(value.rounded())) : ParamNumberText.display(value)
+        }
+        func hex(_ red: Double, _ green: Double, _ blue: Double) -> String {
+            func byte(_ v: Double) -> Int { Int((min(max(v, 0), 1) * 255).rounded()) }
+            return String(format: "#%02X%02X%02X", byte(red), byte(green), byte(blue))
+        }
+        switch stored {
+        case .number(let value): return number(value)
+        case .boolean(let value): return value ? "on" : "off"
+        case .option(let name): return ParamHandle.humanize(name)
+        case .color(let red, let green, let blue, _): return hex(red, green, blue)
+        case .vector(let x, let y): return "\(number(x)), \(number(y))"
+        case .vector3(let x, let y, let z): return "\(number(x)), \(number(y)), \(number(z))"
+        case .text(let text): return "\u{201C}\(text)\u{201D}"
+        default: return nil
+        }
+    }
+
     /// Write the tracks to the file now. Quiet without a file.
     public func writeNow() {
         guard let url = fileURL else { return }
@@ -573,6 +766,7 @@ public final class TimelineModel {
                 // round-trips, which keeps the file honest about it.
                 try Automation().write(to: url)
             }
+            fileIsOnDisk = FileManager.default.fileExists(atPath: url.path)
             saveState = .saved
         } catch {
             saveState = .failed("\(error.localizedDescription)")

@@ -160,6 +160,10 @@ public final class SketchSession {
     public func recordParam(_ name: String, _ value: ParamStored) {
         paramValues[name] = value
         tunedNames.insert(name)
+        // Under the timeline's hold no frame would show the change: draw one
+        // that keeps the hand's values, so the picture follows the inspector
+        // and a track does not take the value back before it can be keyed.
+        runner?.refreshClockFrame(keepingHandValues: true)
     }
 
     /// The parameters the user has turned, in declaration order, each carrying what

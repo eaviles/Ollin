@@ -18,17 +18,19 @@ The panel is in OllinLive only. The gallery shows parameters as a showcase, and 
 
 The loop has three moves, and you repeat it:
 
-1. **Scrub.** Drag along the ruler. Space pauses, and the arrow keys step one frame at a time. The picture follows the playhead live.
-2. **Adjust the parameter.** Set the value in the inspector, the same way you always do.
+1. **Scrub.** Drag along the ruler. While the panel is in front, Space pauses and the arrow keys step one frame at a time. The picture follows the playhead live, and a scrub that lands a few points from a key snaps onto it.
+2. **Adjust the parameter.** Set the value in the inspector, the same way you always do. The picture follows while the clock is held. The track takes the value back on the next scrub or play unless you key it.
 3. **Click the diamond.** The parameter's row places a key at the playhead, with the value the parameter holds.
 
-A hollow diamond means nothing drives the parameter yet, and the first click starts its track. A filled diamond means a track already drives it. If the playhead stands on a key, clicking takes that key away, so the diamond both places and removes keys. The **+ Track** menu in the panel's footer starts a track the same way. Right-click a diamond or a lane label to remove the whole track.
+A hollow diamond means nothing drives the parameter yet, and the first click starts its track. A filled diamond means a track already drives it. If the playhead stands on a key and you changed the parameter, clicking re-keys it with the new value, keeping the key's moment and curve. If the parameter still holds what the key gives, clicking takes the key away. So the diamond places, re-keys, and removes. The **+ Track** menu in the panel's footer starts a track the same way. Right-click a diamond or a lane label to remove the whole track.
+
+Every edit can be undone. Press ⌘Z while the panel is in front to put the last edit back, wherever it was made, and ⇧⌘Z to bring it back. A drag counts as one edit.
 
 ### Lanes and keys
 
 A number lane draws its track's sampled value, so the line shows what the parameter will do. A color lane draws the blend itself as a band. A switch steps between its two levels. A parameter driven by a [formula](../Helpers/Formula.md) shows the rule and takes no keys. You edit that rule in the parameter's own row, which the next section covers.
 
-Drag a key along its lane to move it in time. Double-click a key to remove it. Click a key to select it. The footer then names the moment and the curve that leaves the key. It also gives you a menu to change the curve and a button to delete the key. Choosing **Bezier** shows two handles on the lane, and you drag them to shape the ease by eye. The handles bend the same `.bezier(x1:y1:x2:y2:)` curve the file carries.
+Drag a key along its lane to move it in time. Double-click a key to remove it. Click a key to select it. The playhead moves onto it, so the picture shows that moment and the row's diamond stands on the key. The footer then names the key's moment, its value, and the curve that leaves it. It also gives you a menu to change the curve and a button to delete the key. Choosing **Bezier** shows two handles on the lane, and you drag them to shape the ease by eye. The handles bend the same `.bezier(x1:y1:x2:y2:)` curve the file carries.
 
 ### Writing a rule in the row
 
@@ -42,13 +44,13 @@ The rule lands in the same automation file as the keys, written as the text you 
 
 ### The transport
 
-The playhead follows the automation's own position. When the automation loops, the playhead comes around again while the clock runs on, and the readout follows the playhead. Pausing holds the clock still and draws no wasted frames, which is what an accumulating canvas needs. A frame step holds the clock first, the way a video editor does.
+The playhead follows the automation's own position. When the automation loops, the playhead comes around again while the clock runs on, and the readout follows the playhead. The ruler keeps the playhead in view. It spans a breath past the last key, and it grows while the clock runs past that, so a running clock never leaves it. It holds still while you drag, on the ruler or on a lane. Pausing holds the clock still and draws no wasted frames, which is what an accumulating canvas needs. A frame step holds the clock first, the way a video editor does.
 
 The **loop button** repeats a stretch of time while you work on it. Option-drag the ruler to choose the region, and use the button to arm and disarm the loop. The region belongs to the transport only, and it is never written into the file. So looping two seconds while you shape a curve changes nothing about the sketch.
 
 ### The file
 
-The tracks round-trip to a JSON file. By default that file is the sketch's sibling, so `Sketch.automation.json` sits beside `Sketch.swift`. Use `--automation <file>` to point at another file. On launch, OllinLive reads the file and installs its tracks, and it re-installs them across every reload. The panel's work survives the edit loop. Edits write back to the same file a moment after they land, and the footer names the file and says whether it is saved.
+The tracks round-trip to a JSON file. By default that file is the sketch's sibling, so `Sketch.automation.json` sits beside `Sketch.swift`. Use `--automation <file>` to point at another file. On launch, OllinLive reads the file and installs its tracks, and it re-installs them across every reload. The panel's work survives the edit loop. Edits write back to the same file a moment after they land, and the footer names the file and says whether it is saved, or that nothing has been written to it yet.
 
 OllinLive's own export flags read the sibling file too, so this renders the sketch exactly as the panel played it:
 

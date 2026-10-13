@@ -50,7 +50,9 @@ struct TimelinePanelView: View {
         let _ = model.editCount
         let _ = model.playhead
         let palette = OllinInspector.Palette.resolve(scheme)
-        let scale = TimelineModel.Scale(contentDuration: model.contentDuration)
+        let scale = TimelineModel.Scale(contentDuration: model.contentDuration,
+                                        playhead: model.playhead,
+                                        lockedSpan: model.lockedSpan)
         VStack(spacing: 0) {
             TimelineTransportRow(model: model, palette: palette)
             Hairline(palette: palette)
@@ -192,6 +194,10 @@ private struct TimelineRulerView: View {
     @State private var dragMode: DragMode?
 
     var body: some View {
+        // The region is read here, outside the canvas closure, so the ruler
+        // redraws the moment it is set, under a held clock as much as a
+        // running one.
+        let _ = model.loopRegion
         GeometryReader { geo in
             let width = geo.size.width
             Canvas { context, size in
@@ -204,11 +210,17 @@ private struct TimelineRulerView: View {
                         dragMode = NSEvent.modifierFlags.contains(.option)
                             ? .region(anchor: scale.time(at: value.startLocation.x, width: width))
                             : .scrub
+                        // The span holds for the drag, or a scrub back from a
+                        // far playhead shrinks the ruler under the pointer.
+                        model.beginDrag(span: scale.span)
                     }
                     let time = scale.time(at: value.location.x, width: width)
                     switch dragMode {
                     case .scrub:
-                        model.scrub(to: time)
+                        // A scrub within a few points of a key lands on it,
+                        // so the diamond can stand on a key by hand.
+                        let tolerance = 6 / max(width, 1) * scale.span
+                        model.scrub(to: model.snapped(time, within: tolerance))
                     case .region(let anchor):
                         let low = min(anchor, time), high = max(anchor, time)
                         if high - low > 0.05 { model.loopRegion = low...high }
@@ -216,7 +228,10 @@ private struct TimelineRulerView: View {
                         break
                     }
                 }
-                .onEnded { _ in dragMode = nil })
+                .onEnded { _ in
+                    dragMode = nil
+                    model.endDrag()
+                })
         }
     }
 
@@ -287,7 +302,7 @@ private struct TimelineLaneLabel: View {
                 .lineLimit(1)
                 .truncationMode(.tail)
             Spacer(minLength: 4)
-            if let value = liveValue {
+            if let value = model.readout(param: track.name) {
                 Text(value)
                     .font(.system(size: 10, design: .monospaced))
                     .foregroundStyle(.secondary)
@@ -301,17 +316,6 @@ private struct TimelineLaneLabel: View {
         }
     }
 
-    /// The number the parameter holds right now, for the trailing readout.
-    private var liveValue: String? {
-        guard let stored = model.sketch?.parameters()
-            .first(where: { $0.name == track.name })?.param.stored else { return nil }
-        switch stored {
-        case .number(let value): return String(format: "%.2f", value)
-        case .boolean(let value): return value ? "on" : "off"
-        case .option(let name): return name
-        default: return nil
-        }
-    }
 }
 
 private struct TimelineLaneView: View {
@@ -348,14 +352,20 @@ private struct TimelineLaneView: View {
             })
             .gesture(SpatialTapGesture().onEnded { value in
                 if let index = keyIndex(at: value.location, width: width, plot: plot) {
-                    model.selection = .init(track: track.name, index: index)
+                    model.select(track: track.name, index: index)
                 } else {
                     model.selection = nil
                 }
             })
             .gesture(DragGesture(minimumDistance: 3)
                 .onChanged { value in
-                    if grab == nil { grab = target(at: value.startLocation, width: width, plot: plot) }
+                    if grab == nil {
+                        let taken = target(at: value.startLocation, width: width, plot: plot)
+                        grab = taken
+                        // The ruler holds its span under the drag, and the
+                        // moves a key or a handle makes undo as one.
+                        model.beginDrag(span: scale.span)
+                    }
                     let time = scale.time(at: value.location.x, width: width)
                     switch grab {
                     case .key(let index):
@@ -370,7 +380,10 @@ private struct TimelineLaneView: View {
                         break
                     }
                 }
-                .onEnded { _ in grab = nil })
+                .onEnded { _ in
+                    grab = nil
+                    model.endDrag()
+                })
         }
         .allowsHitTesting(!track.isWorkedOut)
     }
@@ -593,6 +606,13 @@ private struct TimelineFooterRow: View {
             Text(String(format: "%.2fs", key.time))
                 .font(.system(size: 10.5, design: .monospaced))
                 .foregroundStyle(.secondary)
+            if let value = model.readout(of: key.value, param: selection.track) {
+                Text(value)
+                    .font(.system(size: 10.5, design: .monospaced))
+                    .foregroundStyle(palette.readout)
+                    .lineLimit(1)
+                    .help("The value this key holds")
+            }
             Menu {
                 ForEach(TimelineFooterRow.curveChoices, id: \.name) { choice in
                     Button(choice.name) {
@@ -643,7 +663,8 @@ private struct TimelineFooterRow: View {
         guard let url = model.fileURL else { return "kept in memory this run" }
         let name = url.lastPathComponent
         switch model.saveState {
-        case .saved: return "\(name) \u{00B7} saved"
+        case .saved: return model.fileIsOnDisk ? "\(name) \u{00B7} saved"
+                                             : "\(name) \u{00B7} not written yet"
         case .unsaved: return "\(name) \u{00B7} editing"
         case .failed: return "\(name) \u{00B7} write failed"
         }
@@ -663,7 +684,7 @@ private struct TimelineFooterRow: View {
 @MainActor
 package final class TimelinePanelController: NSObject, NSWindowDelegate {
     private var panel: NSPanel?
-    private var host: NSHostingController<TimelinePanelRoot>?
+    private var host: FirstMouseHostingView<TimelinePanelRoot>?
     private weak var model: TimelineModel?
 
     package override init() {}
@@ -691,14 +712,17 @@ package final class TimelinePanelController: NSObject, NSWindowDelegate {
     }
 
     private func buildPanel(_ rootView: TimelinePanelRoot) {
-        let host = NSHostingController(rootView: rootView)
+        let host = FirstMouseHostingView(rootView: rootView)
         host.sizingOptions = []       // the panel is sized by hand and by the user
         self.host = host
 
-        let panel = NSPanel(contentViewController: host)
         // Activating (unlike the stats panel): the lanes take drags and the
         // transport takes the space bar, so the panel must become key.
-        panel.styleMask = [.titled, .closable, .resizable, .utilityWindow, .fullSizeContentView]
+        let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 680, height: 300),
+                            styleMask: [.titled, .closable, .resizable, .utilityWindow,
+                                        .fullSizeContentView],
+                            backing: .buffered, defer: false)
+        panel.contentView = host
         panel.title = "Timeline"
         panel.titlebarAppearsTransparent = true
         panel.titlebarSeparatorStyle = .line
@@ -751,6 +775,19 @@ package final class TimelinePanelController: NSObject, NSWindowDelegate {
         model?.endFollowingClock()
         UserDefaults.standard.set(false, forKey: OllinHUD.showTimelineKey)
     }
+
+    /// The Edit menu's Undo and Redo, while the panel is in front, work the
+    /// timeline's own edits, wherever they were made.
+    package func windowWillReturnUndoManager(_ window: NSWindow) -> UndoManager? {
+        model?.undoManager
+    }
+}
+
+/// The panel's hosting view takes the click that brings the panel to the
+/// front, so a drag on a key or the ruler works from the first click rather
+/// than needing one click to activate the panel and a second to act.
+private final class FirstMouseHostingView<Content: View>: NSHostingView<Content> {
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 }
 
 #endif

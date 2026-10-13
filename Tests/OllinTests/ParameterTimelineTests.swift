@@ -29,12 +29,13 @@ struct ParameterTimelineTests {
         }
     }
 
-    /// Two parameters of different kinds, for the edit tests.
+    /// Two parameters of different kinds, for the edit tests, counting its frames.
     private final class ParameterProbe: Sketch {
         @Param(0...300) var radius = 120.0
         @Param var filled = true
+        var frames = 0
 
-        override func draw() {}
+        override func draw() { frames += 1 }
     }
 
     /// The kinds the rule field meets: numbers that can name each other, a whole
@@ -521,5 +522,139 @@ struct ParameterTimelineTests {
         ])
         #expect(TimelineModel.plot(track, span: 2) == nil,
                 "a color lane draws its band, not a curve")
+    }
+
+    // MARK: The authoring loop under a hold
+
+    @Test func aHandEditUnderAHoldShowsAndStaysUntilTheNextPass() throws {
+        let probe = ParameterProbe()
+        let (runner, view) = try makeRunner(probe)
+        runner.draw(in: view)
+        var automation = Automation()
+        automation.setTrack(Automation.Track(name: "radius", keys: [
+            .init(at: 0, .number(100), curve: .linear),
+            .init(at: 2, .number(200), curve: .linear),
+        ]))
+        probe.automation = automation
+        runner.setClockPaused(true)
+        runner.scrubClock(to: 1)
+        runner.draw(in: view)
+        #expect(probe.radius == 150, "the scrub's pass applies the track")
+        probe.radius = 42                               // the inspector's write
+        let frames = probe.frames
+        runner.refreshClockFrame(keepingHandValues: true)
+        runner.draw(in: view)
+        #expect(probe.frames == frames + 1, "a hand edit under a hold draws its frame")
+        #expect(probe.radius == 42, "the hand pass keeps the hand's value")
+        runner.refreshClockFrame()
+        runner.draw(in: view)
+        #expect(probe.radius == 150, "the next plain pass lets the track win again")
+    }
+
+    @Test func theDiamondReKeysAChangedValueAndRemovesAnUnchangedOne() throws {
+        let probe = ParameterProbe()
+        let harness = try makeModel(probe)
+        let model = harness.model
+        defer { withExtendedLifetime(harness) {} }
+        harness.runner.setClockPaused(true)
+        model.placeKey(param: "radius", at: 0, value: .number(100), curve: .linear)
+        model.placeKey(param: "radius", at: 2, value: .number(200), curve: .linear)
+        model.scrub(to: 2)
+        harness.runner.draw(in: harness.view)           // the scrub's pass: 200
+        #expect(probe.radius == 200)
+        probe.radius = 250
+        model.toggleKey(param: "radius")
+        var track = try #require(probe.automation?.track(named: "radius"))
+        #expect(track.keys.count == 2, "a changed value re-keys rather than removing")
+        #expect(track.keys[1].value == .number(250))
+        #expect(track.keys[1].time == 2)
+        #expect(track.keys[1].curve == .linear, "re-keying keeps the curve")
+        harness.runner.draw(in: harness.view)           // the edit's pass
+        model.toggleKey(param: "radius")
+        track = try #require(probe.automation?.track(named: "radius"))
+        #expect(track.keys.count == 1, "an unchanged value takes the key away")
+    }
+
+    @Test func anEditLandsWhereTheClockStandsWithoutTheTicker() throws {
+        let probe = ParameterProbe()
+        let harness = try makeModel(probe)
+        let model = harness.model
+        defer { withExtendedLifetime(harness) {} }
+        harness.runner.setClockPaused(true)
+        model.scrub(to: 1)                               // the panel's last word
+        harness.runner.scrubClock(to: 3)                 // the clock moved on, panel closed
+        model.toggleKey(param: "radius")
+        let track = try #require(probe.automation?.track(named: "radius"))
+        #expect(track.keys.map(\.time) == [3], "the key lands where the clock stands")
+        #expect(model.hasKeyAtPlayhead(named: "radius"))
+    }
+
+    @Test func theRulerKeepsThePlayheadInViewAndHoldsStillUnderADrag() {
+        #expect(TimelineModel.Scale(contentDuration: 2, playhead: 24).span >= 24,
+                "a clock run past the last key stays on the ruler")
+        #expect(TimelineModel.Scale(contentDuration: 2, playhead: 1).span == 5)
+        #expect(TimelineModel.Scale(contentDuration: 9.6, playhead: 40, lockedSpan: 11).span == 11,
+                "a locked span is taken as it is")
+    }
+
+    @Test func aScrubNearAKeyLandsOnIt() throws {
+        let probe = ParameterProbe()
+        let harness = try makeModel(probe)
+        let model = harness.model
+        defer { withExtendedLifetime(harness) {} }
+        model.placeKey(param: "radius", at: 2, value: .number(100))
+        #expect(model.keyTimes == [2])
+        #expect(model.snapped(1.98, within: 0.05) == 2)
+        #expect(model.snapped(1.9, within: 0.05) == 1.9)
+    }
+
+    @Test func selectingAKeyMovesThePlayheadToIt() throws {
+        let probe = ParameterProbe()
+        let harness = try makeModel(probe)
+        let model = harness.model
+        defer { withExtendedLifetime(harness) {} }
+        harness.runner.setClockPaused(true)
+        model.placeKey(param: "radius", at: 1.5, value: .number(100))
+        model.select(track: "radius", index: 0)
+        #expect(model.selection == .init(track: "radius", index: 0))
+        #expect(model.playhead == 1.5)
+        #expect(model.hasKeyAtPlayhead(named: "radius"))
+    }
+
+    @Test func undoPutsTheLastEditBackAndRedoBringsIt() throws {
+        let probe = ParameterProbe()
+        let harness = try makeModel(probe)
+        let model = harness.model
+        defer { withExtendedLifetime(harness) {} }
+        model.placeKey(param: "radius", at: 1, value: .number(50))
+        model.placeKey(param: "radius", at: 2, value: .number(80))
+        #expect(model.undoManager.canUndo)
+        model.undo()
+        #expect(probe.automation?.track(named: "radius")?.keys.map(\.time) == [1])
+        model.undo()
+        #expect(probe.automation == nil, "the first edit undone leaves no automation")
+        model.redo()
+        #expect(probe.automation?.track(named: "radius")?.keys.map(\.time) == [1])
+        model.redo()
+        #expect(probe.automation?.track(named: "radius")?.keys.map(\.time) == [1, 2])
+        // A drag is one step however many moves it makes.
+        model.beginDrag(span: 5)
+        model.moveKey(track: "radius", at: 1, to: 3)
+        model.moveKey(track: "radius", at: 1, to: 4)
+        model.endDrag()
+        #expect(model.lockedSpan == nil)
+        model.undo()
+        #expect(probe.automation?.track(named: "radius")?.keys.map(\.time) == [1, 2],
+                "one undo takes the whole drag back")
+    }
+
+    @Test func aLaneReadoutSpellsEachKind() {
+        #expect(TimelineModel.readout(.number(6), whole: true) == "6")
+        #expect(TimelineModel.readout(.number(120), whole: false) == "120")
+        #expect(TimelineModel.readout(.number(0.25), whole: false) == "0.25")
+        #expect(TimelineModel.readout(.boolean(true), whole: false) == "on")
+        #expect(TimelineModel.readout(.color(red: 1, green: 0.5, blue: 0, alpha: 1),
+                                      whole: false) == "#FF8000")
+        #expect(TimelineModel.readout(.vector(x: 320, y: 40.5), whole: false) == "320, 40.5")
     }
 }

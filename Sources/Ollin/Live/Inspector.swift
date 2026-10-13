@@ -1290,18 +1290,14 @@ extension EnvironmentValues {
 
 /// The per-parameter keyframe affordance: hollow when nothing drives the parameter, the
 /// accent diamond when a track does. A click places a key at the playhead
-/// with the value the parameter holds (on a key already there, it takes the key
-/// away), so the loop is: scrub, adjust the parameter, click the diamond. Hidden
-/// wherever no timeline is injected.
+/// with the value the parameter holds (on a key already there, it re-keys a
+/// changed value and takes an unchanged key away), so the loop is: scrub,
+/// adjust the parameter, click the diamond. It sits at the trailing edge of
+/// every row, so the marks make one column down the inspector whatever the
+/// width of the control beside them. Hidden wherever no timeline is injected.
 struct KeyframeDiamond: View {
     let handle: ParamHandle
     let palette: OllinInspector.Palette
-    /// Cancel the click target's own trailing padding, so the row's spacing is
-    /// the whole gap the eye sees and the value sits beside the *mark* rather
-    /// than beside its target. A row that ends on the diamond passes `false`
-    /// and keeps the target's full width, or the mark would hang past the edge
-    /// every other row lines up on.
-    var tightensFollowingControl = true
 
     @SwiftUI.Environment(\.automationTimeline) private var timeline
 
@@ -1332,13 +1328,17 @@ struct KeyframeDiamond: View {
             }
             .buttonStyle(.plain)
             // The 22pt target carries ~7pt of padding around the 8.5pt glyph;
-            // taking it back on the trailing side leaves the row's own spacing
-            // as the gap. Tied to the frame above: change one, change both.
-            .padding(.trailing, tightensFollowingControl ? -7 : 0)
+            // taking it back on the leading side leaves the row's own spacing
+            // as the gap to the control, while the trailing side keeps its
+            // full width so every row's mark sits on one column at the edge.
+            // Tied to the frame above: change one, change both.
+            .padding(.leading, -7)
             .help(ruled
                   ? "A rule drives this parameter: edit it in the row, or right-click to remove it"
+                  : onKey
+                  ? "On a key: click to take it away, or to re-key it with the value you set"
                   : hasTrack
-                  ? "A key at the playhead: click to add or remove one"
+                  ? "Place a key at the playhead holding this value"
                   : takesRule
                   ? "Start a track with a key at the playhead, or right-click to write a rule"
                   : "Start a track with a key at the playhead")
@@ -1351,6 +1351,19 @@ struct KeyframeDiamond: View {
                     Button("Write a Rule") { timeline.beginRule(param: handle.name) }
                 }
             }
+        }
+    }
+}
+
+/// The width a diamond takes at the end of a row, for a second line of fields
+/// to end under the first. Nothing where no timeline is injected, as the
+/// diamond itself is nothing there.
+struct KeyframeDiamondGap: View {
+    @SwiftUI.Environment(\.automationTimeline) private var timeline
+
+    var body: some View {
+        if timeline != nil {
+            SwiftUI.Color.clear.frame(width: 15, height: 1)
         }
     }
 }
@@ -1764,10 +1777,10 @@ private struct SliderParamRow: View {
                 HStack {
                     ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
                     Spacer()
-                    KeyframeDiamond(handle: handle, palette: palette)
                     valueField
                         .disabled(ruled)
                         .opacity(ruled ? 0.45 : 1)
+                    KeyframeDiamond(handle: handle, palette: palette)
                 }
                 slider
                     .controlSize(.small)
@@ -1836,10 +1849,10 @@ private struct ControlRow<Control: View>: View {
                     .layoutPriority(labelWins ? 1 : 0)
                 // A floor on the gap so a wide control never crowds the label.
                 Spacer(minLength: 16)
-                KeyframeDiamond(handle: handle, palette: palette)
                 control()
                     .disabled(ruled)
                     .opacity(ruled ? 0.45 : 1)
+                KeyframeDiamond(handle: handle, palette: palette)
             }
             .frame(minHeight: 22)
             RuleLine(handle: handle, palette: palette)
@@ -2177,18 +2190,17 @@ private struct MenuParamRow: View {
                     ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
                         .fixedSize()
                     Spacer(minLength: 16)
-                    KeyframeDiamond(handle: handle, palette: palette)
                     basePicker.pickerStyle(.segmented).fixedSize()
+                    KeyframeDiamond(handle: handle, palette: palette)
                 }
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
                         Spacer(minLength: 8)
-                        // Nothing follows on this line: the picker is below, so
-                        // the diamond keeps its full width and stays on the
-                        // trailing edge every other row's diamond sits on.
-                        KeyframeDiamond(handle: handle, palette: palette,
-                                        tightensFollowingControl: false)
+                        // Nothing else on this line: the picker is below, and
+                        // the diamond keeps the trailing edge every other row's
+                        // diamond sits on.
+                        KeyframeDiamond(handle: handle, palette: palette)
                     }
                     basePicker.pickerStyle(.segmented)
                         .frame(maxWidth: .infinity)
@@ -2330,8 +2342,8 @@ private struct VectorParamRow: View {
                 HStack(spacing: 6) {
                     ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
                     Spacer(minLength: 16)
-                    KeyframeDiamond(handle: handle, palette: palette)
                     fields
+                    KeyframeDiamond(handle: handle, palette: palette)
                 }
                 ParamXYPad(x: $x, y: $y, xRange: control.xRange, yRange: control.yRange,
                            isInteracting: $isPadding, palette: palette)
@@ -2411,7 +2423,6 @@ private struct Vector3ParamRow: View {
             HStack(spacing: 6) {
                 ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
                 Spacer(minLength: 16)
-                KeyframeDiamond(handle: handle, palette: palette)
                 ScrubbableField(
                     value: $x,
                     stepping: ParamStepping(range: control.xRange),
@@ -2420,6 +2431,7 @@ private struct Vector3ParamRow: View {
                     value: $y,
                     stepping: ParamStepping(range: control.yRange),
                     isInteracting: $isEditingY, palette: palette, prefix: "y")
+                KeyframeDiamond(handle: handle, palette: palette)
             }
             HStack(spacing: 6) {
                 Spacer(minLength: 0)
@@ -2427,6 +2439,7 @@ private struct Vector3ParamRow: View {
                     value: $z,
                     stepping: ParamStepping(range: control.zRange),
                     isInteracting: $isEditingZ, palette: palette, prefix: "z")
+                KeyframeDiamondGap()
             }
         }
         .padding(.horizontal, 12)
@@ -2503,14 +2516,15 @@ private struct RectangleParamRow: View {
             HStack(spacing: 6) {
                 ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
                 Spacer(minLength: 16)
-                KeyframeDiamond(handle: handle, palette: palette)
                 field($x, range: control.xRange, editing: 0, prefix: "x")
                 field($y, range: control.yRange, editing: 1, prefix: "y")
+                KeyframeDiamond(handle: handle, palette: palette)
             }
             HStack(spacing: 6) {
                 Spacer(minLength: 0)
                 field($w, range: control.widthRange, editing: 2, prefix: "w")
                 field($h, range: control.heightRange, editing: 3, prefix: "h")
+                KeyframeDiamondGap()
             }
         }
         .padding(.horizontal, 12)
@@ -2598,14 +2612,15 @@ private struct InsetsParamRow: View {
             HStack(spacing: 6) {
                 ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
                 Spacer(minLength: 16)
-                KeyframeDiamond(handle: handle, palette: palette)
                 field($top, editing: 0, prefix: "t")
                 field($right, editing: 1, prefix: "r")
+                KeyframeDiamond(handle: handle, palette: palette)
             }
             HStack(spacing: 6) {
                 Spacer(minLength: 0)
                 field($bottom, editing: 2, prefix: "b")
                 field($left, editing: 3, prefix: "l")
+                KeyframeDiamondGap()
             }
         }
         .padding(.horizontal, 12)
@@ -2718,8 +2733,8 @@ private struct RangeParamRow: View {
                 HStack(spacing: 6) {
                     ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
                     Spacer(minLength: 16)
-                    KeyframeDiamond(handle: handle, palette: palette)
                     fields
+                    KeyframeDiamond(handle: handle, palette: palette)
                 }
                 ParamRangeSlider(lower: $lower, upper: $upper, outer: control.outer,
                                  isInteracting: $isSliding, palette: palette)
@@ -2857,7 +2872,6 @@ private struct SwatchesParamRow: View {
             HStack(spacing: 6) {
                 ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
                 Spacer(minLength: 12)
-                KeyframeDiamond(handle: handle, palette: palette)
                 if stops.indices.contains(selected) {
                     ColorPicker("", selection: selectedColor, supportsOpacity: true)
                         .labelsHidden()
@@ -2865,6 +2879,7 @@ private struct SwatchesParamRow: View {
                 }
                 countButton("minus", disabled: stops.count <= control.count.lowerBound) { removeSelected() }
                 countButton("plus", disabled: stops.count >= control.count.upperBound) { addStop() }
+                KeyframeDiamond(handle: handle, palette: palette)
             }
             strip
         }

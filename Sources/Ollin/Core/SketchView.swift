@@ -632,6 +632,10 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// the frame advances with that step (never negative; a backward nudge
     /// places the clock and hands the frame a zero step).
     private var pendingClockNudge: Double?
+    /// Whether the pending pass keeps the parameters as the hand set them (a
+    /// hand edit under a hold wants its picture) rather than letting the
+    /// automation set them at the clock.
+    private var pendingPassKeepsHands = false
     /// The frame length a transport step moves by. The exports' default cadence,
     /// so sixty steps walk one second whatever the display refreshes at.
     package static let clockStepRate: Double = 60
@@ -674,13 +678,17 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     }
 
     /// Draw one frame at the held clock, so an edit made while paused shows.
-    package func refreshClockFrame() {
+    /// With `keepingHandValues` the pass leaves the parameters as the hand set
+    /// them rather than applying the automation: the picture follows a slider
+    /// dragged under a hold, and the next scrub or step lets the tracks win.
+    package func refreshClockFrame(keepingHandValues: Bool = false) {
         guard sketch.takePlayer == nil, isClockPaused else { return }
-        runClockPass(nudge: 0)
+        runClockPass(nudge: 0, keepingHandValues: keepingHandValues)
     }
 
-    private func runClockPass(nudge: Double) {
+    private func runClockPass(nudge: Double, keepingHandValues: Bool = false) {
         pendingClockNudge = nudge
+        pendingPassKeepsHands = keepingHandValues
         // A frame the interpolator held belongs to the run before the hold;
         // presenting it would eat this deliberate pass and show a stale frame.
         renderer.dropHeldFrame()
@@ -1165,11 +1173,15 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         lastTime = now
         let measured = SketchRunner.clockStep(measuring: step)
         let dt: Double
+        var appliesAutomation = true
         if let nudge = pendingClockNudge {
             // A transport scrub or step: the clock moves by exactly the nudge
             // (a scrub placed it already and nudges zero), and the frame
-            // advances with that step, never a negative one.
+            // advances with that step, never a negative one. A hand pass
+            // keeps the parameters the inspector just set.
             pendingClockNudge = nil
+            appliesAutomation = !pendingPassKeepsHands
+            pendingPassKeepsHands = false
             elapsed = max(0, elapsed + nudge)
             dt = max(0, nudge)
         } else if isClockPaused, sketch.takePlayer == nil {
@@ -1203,7 +1215,8 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
             }
         }
 
-        sketch.advance(time: elapsed, deltaTime: dt, frameRate: smoothedFrameRate)
+        sketch.advance(time: elapsed, deltaTime: dt, frameRate: smoothedFrameRate,
+                       appliesAutomation: appliesAutomation)
         // A made frame sits in the middle of the gap between two drawn ones, and
         // that gap is this step (which already spans both refreshes while
         // interpolation runs, since the refresh between drew nothing).
