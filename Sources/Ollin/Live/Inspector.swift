@@ -1294,7 +1294,9 @@ extension EnvironmentValues {
 /// changed value and takes an unchanged key away), so the loop is: scrub,
 /// adjust the parameter, click the diamond. It sits at the trailing edge of
 /// every row, so the marks make one column down the inspector whatever the
-/// width of the control beside them. Hidden wherever no timeline is injected.
+/// width of the control beside them. Hidden wherever no timeline is injected,
+/// and, with the panel closed, on every parameter nothing drives yet, so the
+/// marks come with the panel rather than crowding every sketch's rows.
 struct KeyframeDiamond: View {
     let handle: ParamHandle
     let palette: OllinInspector.Palette
@@ -1302,7 +1304,7 @@ struct KeyframeDiamond: View {
     @SwiftUI.Environment(\.automationTimeline) private var timeline
 
     var body: some View {
-        if let timeline {
+        if let timeline, timeline.showsMark(for: handle.name) {
             // The playhead, the edit counter, and the automation version are
             // what re-render this on a scrub, an edit, or a track the sketch
             // wrote itself; the automation itself is not observable.
@@ -1357,14 +1359,19 @@ struct KeyframeDiamond: View {
 }
 
 /// The width a diamond takes at the end of a row, for a second line of fields
-/// to end under the first. Nothing where no timeline is injected, as the
-/// diamond itself is nothing there.
+/// to end under the first. Nothing wherever the diamond itself is nothing.
 struct KeyframeDiamondGap: View {
+    let handle: ParamHandle
+
     @SwiftUI.Environment(\.automationTimeline) private var timeline
 
     var body: some View {
-        if timeline != nil {
-            SwiftUI.Color.clear.frame(width: 8, height: 1)
+        if let timeline {
+            let _ = timeline.editCount
+            let _ = timeline.automationVersion
+            if timeline.showsMark(for: handle.name) {
+                SwiftUI.Color.clear.frame(width: 8, height: 1)
+            }
         }
     }
 }
@@ -2440,7 +2447,7 @@ private struct Vector3ParamRow: View {
                     value: $z,
                     stepping: ParamStepping(range: control.zRange),
                     isInteracting: $isEditingZ, palette: palette, prefix: "z")
-                KeyframeDiamondGap()
+                KeyframeDiamondGap(handle: handle)
             }
         }
         .padding(.horizontal, 12)
@@ -2525,7 +2532,7 @@ private struct RectangleParamRow: View {
                 Spacer(minLength: 0)
                 field($w, range: control.widthRange, editing: 2, prefix: "w")
                 field($h, range: control.heightRange, editing: 3, prefix: "h")
-                KeyframeDiamondGap()
+                KeyframeDiamondGap(handle: handle)
             }
         }
         .padding(.horizontal, 12)
@@ -2621,7 +2628,7 @@ private struct InsetsParamRow: View {
                 Spacer(minLength: 0)
                 field($bottom, editing: 2, prefix: "b")
                 field($left, editing: 3, prefix: "l")
-                KeyframeDiamondGap()
+                KeyframeDiamondGap(handle: handle)
             }
         }
         .padding(.horizontal, 12)

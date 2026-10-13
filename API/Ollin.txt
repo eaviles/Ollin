@@ -1733,6 +1733,7 @@ final class TimelineModel: Observable, Sendable
   func select(track: String, index: Int)
   func setCurve(track: String, at: Int, _: Automation.Curve)
   func setFile(_: Foundation.URL?)
+  func showsMark(for: String) -> Bool
   func snapped(_: Double, within: Double) -> Double
   func step(_: Int)
   func toEnd()
@@ -1755,6 +1756,7 @@ final class TimelineModel: Observable, Sendable
   var editCount: Int { get }
   var fileIsOnDisk: Bool { get }
   var fileURL: Foundation.URL? { get }
+  var isPanelShown: Bool { get }
   var isPaused: Bool { get }
   var keyTimes: [Double] { get }
   var lockedSpan: Double? { get }

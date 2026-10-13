@@ -648,6 +648,23 @@ struct ParameterTimelineTests {
                 "one undo takes the whole drag back")
     }
 
+    @Test func theMarksComeWithThePanelOrATrack() throws {
+        let probe = ParameterProbe()
+        let harness = try makeModel(probe)
+        let model = harness.model
+        defer { withExtendedLifetime(harness) {} }
+        #expect(!model.showsMark(for: "radius"), "a clean sketch with the panel closed shows no mark")
+        model.beginFollowingClock()
+        #expect(model.isPanelShown)
+        #expect(model.showsMark(for: "radius") && model.showsMark(for: "filled"),
+                "every row shows its mark while the panel is open")
+        model.endFollowingClock()
+        #expect(!model.isPanelShown)
+        model.placeKey(param: "radius", at: 1, value: .number(50))
+        #expect(model.showsMark(for: "radius"), "a driven parameter keeps its mark with the panel closed")
+        #expect(!model.showsMark(for: "filled"))
+    }
+
     @Test func aLaneReadoutSpellsEachKind() {
         #expect(TimelineModel.readout(.number(6), whole: true) == "6")
         #expect(TimelineModel.readout(.number(120), whole: false) == "120")

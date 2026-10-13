@@ -40,6 +40,11 @@ public final class TimelineModel {
     }
     public private(set) var saveState: SaveState = .saved
 
+    /// Whether the panel is on screen. The rows show their diamonds while it
+    /// is, and otherwise only on a parameter a track or a rule already drives,
+    /// so a sketch that never keyframes keeps a clean inspector.
+    public private(set) var isPanelShown = false
+
     /// The clock the lanes draw the playhead at, ticked while the panel shows.
     public private(set) var playhead: Double = 0
     /// Whether the transport is holding the clock, mirrored from the runner.
@@ -139,6 +144,13 @@ public final class TimelineModel {
     /// Whether a track drives `name`.
     public func hasTrack(named name: String) -> Bool {
         automation.track(named: name) != nil
+    }
+
+    /// Whether `name`'s row shows its keyframe mark: while the panel is open,
+    /// every row does, and with it closed only a parameter a track or a rule
+    /// already drives keeps the mark that says so.
+    public func showsMark(for name: String) -> Bool {
+        isPanelShown || hasTrack(named: name)
     }
 
     /// Whether the track driving `name` has a key where the clock stands. Read
@@ -269,6 +281,7 @@ public final class TimelineModel {
     /// cadence of its own, because the stats readout refreshes too coarsely
     /// for a moving playhead to follow it.
     public func beginFollowingClock() {
+        isPanelShown = true
         guard ticker == nil else { return }
         ticker = Task { [weak self] in
             while !Task.isCancelled {
@@ -279,6 +292,7 @@ public final class TimelineModel {
     }
 
     public func endFollowingClock() {
+        isPanelShown = false
         ticker?.cancel()
         ticker = nil
     }

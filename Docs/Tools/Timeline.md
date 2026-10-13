@@ -4,7 +4,7 @@
 
 ## The parameter timeline
 
-An [`Automation`](../Core/Automation.md) writes a sketch's parameters down over time. The timeline is the OllinLive surface where you author one by hand. It is a floating panel with one lane per automated parameter and a playhead over the sketch clock. It also puts a small diamond in every parameter row of the inspector. What it edits is the sketch's own automation, so the frames play exactly what the lanes show, and every export renders it the same way.
+An [`Automation`](../Core/Automation.md) writes a sketch's parameters down over time. The timeline is the OllinLive surface where you author one by hand. It is a floating panel with one lane per automated parameter and a playhead over the sketch clock. While it is open, it also puts a small diamond in every parameter row of the inspector. Close it, and only a parameter a track or a rule already drives keeps its mark. What it edits is the sketch's own automation, so the frames play exactly what the lanes show, and every export renders it the same way.
 
 This page covers the host panel. A sketch can also drive its own keyframe sequencer with the `Timeline` value type, which is documented in [Animation](../Helpers/Animation.md).
 
