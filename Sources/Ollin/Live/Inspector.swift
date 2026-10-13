@@ -1328,11 +1328,12 @@ struct KeyframeDiamond: View {
             }
             .buttonStyle(.plain)
             // The 22pt target carries ~7pt of padding around the 8.5pt glyph;
-            // taking it back on the leading side leaves the row's own spacing
-            // as the gap to the control, while the trailing side keeps its
-            // full width so every row's mark sits on one column at the edge.
-            // Tied to the frame above: change one, change both.
-            .padding(.leading, -7)
+            // taking it back on both sides leaves the row's own spacing as the
+            // gap to the control and puts the glyph's own edge on the row's
+            // trailing edge, where the controls end, so the row keeps the
+            // margin it had before the mark joined it. Tied to the frame
+            // above and to `KeyframeDiamondGap`: change one, change all.
+            .padding(.horizontal, -7)
             .help(ruled
                   ? "A rule drives this parameter: edit it in the row, or right-click to remove it"
                   : onKey
@@ -1363,7 +1364,7 @@ struct KeyframeDiamondGap: View {
 
     var body: some View {
         if timeline != nil {
-            SwiftUI.Color.clear.frame(width: 15, height: 1)
+            SwiftUI.Color.clear.frame(width: 8, height: 1)
         }
     }
 }
