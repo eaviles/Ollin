@@ -23,8 +23,8 @@
 | [StrokeAlignment](StrokeAlignment/) | [StrokeJoinsAndCaps](StrokeJoinsAndCaps/) | [StrokeProfiles](StrokeProfiles/) | [Superellipse](Superellipse/) |
 | [![Supershape](https://media.ollin.art/examples/Shapes/Supershape/still-640.jpg?v=5ce79b23)](Supershape/) | [![TraceToCurves](https://media.ollin.art/examples/Shapes/TraceToCurves/still-640.jpg?v=f9ed7dab)](TraceToCurves/) | [![Triangles](https://media.ollin.art/examples/Shapes/Triangles/still-640.jpg?v=0c166e76)](Triangles/) | [![Watercolor](https://media.ollin.art/examples/Shapes/Watercolor/still-640.jpg?v=00315999)](Watercolor/) |
 | [Supershape](Supershape/) | [TraceToCurves](TraceToCurves/) | [Triangles](Triangles/) | [Watercolor](Watercolor/) |
-| [![WavyLettering](https://media.ollin.art/examples/Shapes/WavyLettering/still-640.jpg?v=60471814)](WavyLettering/) |  |  |  |
-| [WavyLettering](WavyLettering/) |  |  |  |
+| [![WavingBanner](https://media.ollin.art/examples/Shapes/WavingBanner/still-640.jpg?v=3d7859b2)](WavingBanner/) | [![WavyLettering](https://media.ollin.art/examples/Shapes/WavyLettering/still-640.jpg?v=60471814)](WavyLettering/) |  |  |
+| [WavingBanner](WavingBanner/) | [WavyLettering](WavyLettering/) |  |  |
 
 These examples cover the shape-drawing vocabulary. They show every primitive and the stroke and hollow modes. They also show two ways to compose shapes: boolean set operations on filled outlines, and SDF combinators that merge distance fields.
 
@@ -64,6 +64,7 @@ These examples cover the shape-drawing vocabulary. They show every primitive and
 | [SVGImport](SVGImport/Sketch.swift) | SVG import: the bundled rocket badge is drawn as authored (`loadSVG`/`drawSVG`), then used as geometry, with its outlines resampled into evenly spaced dots |
 | [WavyLettering](WavyLettering/Sketch.swift) | lettering that follows a wave: a word's glyph outlines (`textToShapes`) are bent from their straight baseline along a wave that travels (`Shape.warped(from:along:)`), and a hand tugs the letters it passes (`pulled(toward:amount:radius:)`). Hold the mouse to be the hand |
 | [TraceToCurves](TraceToCurves/Sketch.swift) | a scribble becomes a few curves: a dense trace is lightened (`simplified`), cut at its corners (`split(atCornersOver:span:)`), and each piece traced with cubic Béziers (`fitted(tolerance:)`), drawn with their handles (`Path.cubics`) and the counts of what the fit saved. Draw with the mouse to trace your own |
+| [WavingBanner](WavingBanner/Sketch.swift) | a banner waving on its pole: three stripes and a word are drawn flat in a rectangle and bent into a four-sided patch whose top and bottom are waves (`CoonsPatch`, `Shape.warped(from:into:)`), each upright strip of cloth lit by the slope of the wave. Hold the mouse to take the far edge in your hand |
 | [Triangles](Triangles/Sketch.swift) | the two `drawTriangle` forms side by side: an equilateral triangle that turns on its center, and an isosceles wedge that turns on its apex (SDF) |
 | [Watercolor](Watercolor/Sketch.swift) | watercolor pigment made by deforming polygons (`Watercolor`, `drawShape`): three pools of interleaved translucent layers that glaze where they overlap, plus a clipped speckle for a granulated texture. Each variation starts a fresh sheet |
 | [Brushes](Brushes/Sketch.swift) | marks made by repeating a shape along a path: `strokeBrush` replaces the continuous ribbon with a row of stamps, which take their size from `strokeWeight` and their color from the stroke |

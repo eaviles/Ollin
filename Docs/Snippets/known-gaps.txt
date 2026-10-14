@@ -323,45 +323,46 @@ e7f00e72aff0  Docs/Drawing/Epicycles.md:86  expected ',' separator
 886cada6cd4c  Docs/Drawing/Fitting.md:160  cannot find 'marks' in scope
 0ece64b5f13f  Docs/Drawing/Fitting.md:92  cannot find 'pins' in scope
 cf65e5c6f914  Docs/Drawing/Fourier.md:73  cannot find 'plate' in scope
-51c2624a28b7  Docs/Drawing/Geometry.md:1013  cannot convert value of type '[Vector2].Type' to expected argument type '[Vector2]'
-4089dff1acc6  Docs/Drawing/Geometry.md:181  cannot convert value of type 'Double.Type' to expected argument type 'Double'
-0bdba7d24932  Docs/Drawing/Geometry.md:233  cannot convert value of type 'Double.Type' to expected argument type 'Double'
-c9abb7d3d7a5  Docs/Drawing/Geometry.md:246  cannot find 'crate' in scope
-fdcf3efae578  Docs/Drawing/Geometry.md:259  cannot convert value of type 'Vector3.Type' to expected argument type 'Vector3'
-ce8f3399f803  Docs/Drawing/Geometry.md:270  cannot find 'eye' in scope
-7e1e37f3022c  Docs/Drawing/Geometry.md:286  cannot convert value of type 'Vector3.Type' to expected argument type 'Vector3'
-f0183ad35e80  Docs/Drawing/Geometry.md:296  cannot find 'scan' in scope
-a26850bfb449  Docs/Drawing/Geometry.md:311  expected ',' separator
-873b3abaf9b5  Docs/Drawing/Geometry.md:341  cannot find 'Distribution' in scope
-f0b0c6b3213b  Docs/Drawing/Geometry.md:350  cannot find 'filters' in scope
-02e6dae30b9f  Docs/Drawing/Geometry.md:376  value of type '@MainActor (Int, Int, Insets, Double, Grid.Distribution) -> Grid' has no member 'points'
-ff6c8a6ce068  Docs/Drawing/Geometry.md:404  cannot find 'thumbnails' in scope
-b75f4ac15c49  Docs/Drawing/Geometry.md:427  cannot infer contextual base in reference to member 'all'
-23b6891ea8c2  Docs/Drawing/Geometry.md:447  cannot convert value of type 'Vector2.Type' to expected argument type 'Vector2'
-cd001b4096fb  Docs/Drawing/Geometry.md:470  expected ',' separator
-963ed0e10650  Docs/Drawing/Geometry.md:495  cannot convert value of type 'Vector2.Type' to expected argument type 'Vector2'
-754645c0ed85  Docs/Drawing/Geometry.md:50  expected ',' separator
-401af9738a19  Docs/Drawing/Geometry.md:518  cannot convert value of type 'Vector2.Type' to expected argument type 'Vector2'
-85a6c158019e  Docs/Drawing/Geometry.md:544  expected '{' in body of function declaration
-f898a9fe80fd  Docs/Drawing/Geometry.md:578  expected ',' separator
-52354cad80b1  Docs/Drawing/Geometry.md:624  expected '{' in body of function declaration
-d557b13beb41  Docs/Drawing/Geometry.md:672  expected '{' in body of function declaration
-a9963fe5f8ea  Docs/Drawing/Geometry.md:708  expected '{' in body of function declaration
-4fdce137d56e  Docs/Drawing/Geometry.md:759  expected ',' separator
-fae7a0c26a4e  Docs/Drawing/Geometry.md:789  cannot find 'shape' in scope
-ad8b1f537c9c  Docs/Drawing/Geometry.md:796  cannot find 'shape' in scope
-e2d750ef54f7  Docs/Drawing/Geometry.md:802  cannot find 'shape' in scope
-a852c71bbd89  Docs/Drawing/Geometry.md:828  use of 'randomPoints' refers to instance method rather than global function 'randomPoints(in:count:using:)' in module 'Ollin'
-1eb6f12247fb  Docs/Drawing/Geometry.md:839  expected '{' in body of function declaration
-c02c77676873  Docs/Drawing/Geometry.md:853  cannot find 'star' in scope
-c4ec6c299218  Docs/Drawing/Geometry.md:865  expected '{' in body of function declaration
-a1b0bb4e8556  Docs/Drawing/Geometry.md:871  cannot find 'blob' in scope
-7fa1c7078690  Docs/Drawing/Geometry.md:889  expected '{' in body of function declaration
-a70a7ea27883  Docs/Drawing/Geometry.md:896  function produces expected type '[Vector2]'; did you mean to call it with '()'?
-f987b34cd479  Docs/Drawing/Geometry.md:909  expected '{' in body of function declaration
-eb39bc6e25d9  Docs/Drawing/Geometry.md:946  expected '{' in body of function declaration
-67e13e1a3864  Docs/Drawing/Geometry.md:960  expected ',' separator
-c0091b46b433  Docs/Drawing/Geometry.md:999  expected '{' in body of function declaration
+67e13e1a3864  Docs/Drawing/Geometry.md:1013  expected ',' separator
+c0091b46b433  Docs/Drawing/Geometry.md:1052  expected '{' in body of function declaration
+51c2624a28b7  Docs/Drawing/Geometry.md:1066  cannot convert value of type '[Vector2].Type' to expected argument type '[Vector2]'
+4089dff1acc6  Docs/Drawing/Geometry.md:183  cannot convert value of type 'Double.Type' to expected argument type 'Double'
+0bdba7d24932  Docs/Drawing/Geometry.md:235  cannot convert value of type 'Double.Type' to expected argument type 'Double'
+c9abb7d3d7a5  Docs/Drawing/Geometry.md:248  cannot find 'crate' in scope
+fdcf3efae578  Docs/Drawing/Geometry.md:261  cannot convert value of type 'Vector3.Type' to expected argument type 'Vector3'
+ce8f3399f803  Docs/Drawing/Geometry.md:272  cannot find 'eye' in scope
+7e1e37f3022c  Docs/Drawing/Geometry.md:288  cannot convert value of type 'Vector3.Type' to expected argument type 'Vector3'
+f0183ad35e80  Docs/Drawing/Geometry.md:298  cannot find 'scan' in scope
+a26850bfb449  Docs/Drawing/Geometry.md:313  expected ',' separator
+873b3abaf9b5  Docs/Drawing/Geometry.md:343  cannot find 'Distribution' in scope
+f0b0c6b3213b  Docs/Drawing/Geometry.md:352  cannot find 'filters' in scope
+02e6dae30b9f  Docs/Drawing/Geometry.md:378  value of type '@MainActor (Int, Int, Insets, Double, Grid.Distribution) -> Grid' has no member 'points'
+ff6c8a6ce068  Docs/Drawing/Geometry.md:406  cannot find 'thumbnails' in scope
+b75f4ac15c49  Docs/Drawing/Geometry.md:429  cannot infer contextual base in reference to member 'all'
+23b6891ea8c2  Docs/Drawing/Geometry.md:449  cannot convert value of type 'Vector2.Type' to expected argument type 'Vector2'
+cd001b4096fb  Docs/Drawing/Geometry.md:472  expected ',' separator
+963ed0e10650  Docs/Drawing/Geometry.md:497  cannot convert value of type 'Vector2.Type' to expected argument type 'Vector2'
+754645c0ed85  Docs/Drawing/Geometry.md:52  expected ',' separator
+401af9738a19  Docs/Drawing/Geometry.md:520  cannot convert value of type 'Vector2.Type' to expected argument type 'Vector2'
+85a6c158019e  Docs/Drawing/Geometry.md:546  expected '{' in body of function declaration
+f898a9fe80fd  Docs/Drawing/Geometry.md:580  expected ',' separator
+52354cad80b1  Docs/Drawing/Geometry.md:626  expected '{' in body of function declaration
+d557b13beb41  Docs/Drawing/Geometry.md:674  expected '{' in body of function declaration
+a9963fe5f8ea  Docs/Drawing/Geometry.md:710  expected '{' in body of function declaration
+f91432eb7c7b  Docs/Drawing/Geometry.md:766  expected ',' separator
+4fdce137d56e  Docs/Drawing/Geometry.md:812  expected ',' separator
+fae7a0c26a4e  Docs/Drawing/Geometry.md:842  cannot find 'shape' in scope
+ad8b1f537c9c  Docs/Drawing/Geometry.md:849  cannot find 'shape' in scope
+e2d750ef54f7  Docs/Drawing/Geometry.md:855  cannot find 'shape' in scope
+a852c71bbd89  Docs/Drawing/Geometry.md:881  use of 'randomPoints' refers to instance method rather than global function 'randomPoints(in:count:using:)' in module 'Ollin'
+1eb6f12247fb  Docs/Drawing/Geometry.md:892  expected '{' in body of function declaration
+c02c77676873  Docs/Drawing/Geometry.md:906  cannot find 'star' in scope
+c4ec6c299218  Docs/Drawing/Geometry.md:918  expected '{' in body of function declaration
+a1b0bb4e8556  Docs/Drawing/Geometry.md:924  cannot find 'blob' in scope
+7fa1c7078690  Docs/Drawing/Geometry.md:942  expected '{' in body of function declaration
+a70a7ea27883  Docs/Drawing/Geometry.md:949  function produces expected type '[Vector2]'; did you mean to call it with '()'?
+f987b34cd479  Docs/Drawing/Geometry.md:962  expected '{' in body of function declaration
+eb39bc6e25d9  Docs/Drawing/Geometry.md:999  expected '{' in body of function declaration
 336a733604c7  Docs/Drawing/GlyphMosaic.md:31  expected ',' separator
 cb89fe7408d3  Docs/Drawing/GlyphMosaic.md:43  cannot find 'picture' in scope
 f7a401ec53bc  Docs/Drawing/GlyphMosaic.md:55  expected ',' separator
@@ -668,6 +669,8 @@ d94faad4c27d  Docs/Generators/Random.md:170  expected ',' separator
 9d8d63608afc  Docs/Generators/Random.md:47  expected type before '->'
 1c51516556c8  Docs/Generators/Random.md:68  expected expression in list of expressions
 0661df9d7da2  Docs/Generators/Random.md:83  expected type before '->'
+14e80d169850  Docs/Generators/RectanglePacking.md:27  expected ',' separator
+599bd5522d4b  Docs/Generators/RectanglePacking.md:73  cannot find 'photos' in scope
 fd24309c1943  Docs/Generators/ShadowArt.md:40  expected ',' separator
 51ce8472de9c  Docs/Generators/ShadowArt.md:62  cannot find type 'Side' in scope
 81c164e78112  Docs/Generators/ShadowArt.md:9  cannot find 'ring' in scope

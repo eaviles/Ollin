@@ -6,7 +6,7 @@
 
 <img src="Images/15-ShapesAsMaterial/Plate.jpg" alt="A plotter-style plate: a mosaic of hatched Voronoi cells in dark ink, each hatched at its own angle, parting around a wavy terracotta ribbon filled with crosshatch, all on cream paper" width="560">
 
-Shapes become material once you hold them in a variable and edit them before you draw. This chapter cuts shapes with other shapes, grows and shrinks them, divides a scatter into territories, and hatches the results for a pen. Everything in the plate above is line work a pen plotter could draw, and its section ends by exporting it for one. Past the plate, outlines answer questions and give up the regions they enclose, shapes pack and arrive from files, and line work can tell a blade where to score and cut.
+Shapes become material once you hold them in a variable and edit them before you draw. This chapter cuts shapes with other shapes, grows and shrinks them, divides a scatter into territories, and hatches the results for a pen. Everything in the plate above is line work a pen plotter could draw, and its section ends by exporting it for one. Past the plate, outlines answer questions, bend into curved patches, and give up the regions they enclose, shapes and rectangles pack and arrive from files, and line work can tell a blade where to score and cut.
 
 ## Shapes you can hold
 
@@ -276,7 +276,7 @@ The way to keep this sketch is as a file for the pen. `swift run OllinLive MySke
 
 ## More from a held outline: contour questions, enclosed regions, and points in a shape
 
-The plate held its shapes to cut, grow, and hatch them, and a held outline can do more than that. It can tell you where its line goes, bend along a curve or toward a point, hand back every patch its lines wall off, and keep a scatter of points inside itself. And the line, the arc, and the ellipse can be held as values the way the circle and the rectangle already are, each able to say where it crosses another. The plate asks none of it.
+The plate held its shapes to cut, grow, and hatch them, and a held outline can do more than that. It can tell you where its line goes, bend along a curve, toward a point, or into a patch with curved sides, hand back every patch its lines wall off, and keep a scatter of points inside itself. And the line, the arc, and the ellipse can be held as values the way the circle and the rectangle already are, each able to say where it crosses another. The plate asks none of it.
 
 ### Asking an outline where it goes: contour questions
 
@@ -355,6 +355,24 @@ for piece in soft.split(atCornersOver: .pi / 3, span: 8) {
 
 The right panel is that pipeline on a shaky trace with two corners. The fit is Philip Schneider's. It gives the points parameters by the distance walked, fits one cubic by least squares with its end directions held, improves the parameters when the fit is close, and otherwise cuts the trace at its worst point and fits each half, the two sharing a direction at the cut. One smooth run cannot turn sharply, which is why the corners are cut first. `Path.cubics` reads the curves back, one `CubicBezier` per command, to count them or draw their handles. The `Shapes/WavyLettering` example bends a word along a wave that travels and lets the mouse tug it. `Shapes/TraceToCurves` turns a scribble into curves as it is drawn, with the counts in the corner. The [geometry reference](../Docs/Drawing/Geometry.md#contour-bending) has every signature, and each edit is on `Shape` too.
 
+### Bending an outline into a patch: `CoonsPatch`
+
+A banner waving on a pole is a rectangle whose sides have turned into curves. `CoonsPatch` is that region: four sides, each a curve, read the way a rectangle is read, with `u` running across from the left side to the right and `v` running down from the top side to the bottom. `warped(from:into:)` bends an outline into it. Every point is read as fractions across and down a flat rectangle and put at the same fractions in the patch, so a word set in the rectangle lands on the banner with its first letter at the left side and its last at the right.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/CurvedPatch-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/CurvedPatch.jpg" alt="Three panels. On the left the word patch over a faint grid, set flat in a rectangle. In the middle the same word and grid bent into a patch of four straight sides between four corners, the grid lines still straight and the word slanted with the tilt. On the right the same word and grid bent into a patch whose four sides are curves, the word and every grid line bowing with the sides" width="680">
+</picture>
+
+```swift
+let banner = CoonsPatch(top: topWave, right: farEdge, bottom: bottomWave, left: pole)
+for glyph in glyphs {
+    drawShape(glyph.warped(from: flat, into: banner))
+}
+```
+
+Give four corners and the sides are straight, which is the bilinear map of the middle panel: a tile tilted into perspective, a card skewed. Give four curves and each side of the patch follows its curve exactly, as on the right. The inside comes from Steven Coons's blend, from his 1967 report at MIT on describing curved surfaces for computer-aided design. Stretch one surface between the top and bottom curves and another between the left and right, add them, and take away the plane through the four corners, which both surfaces counted. Each side is read by the distance walked along it, so the middle of the patch's top edge is the middle of the top curve by length. Like the other bends, the warp adds points along straight edges first, so a grid line that was straight bows with the sides. The `Shapes/WavingBanner` example waves a striped banner and its word from a pole, and the [geometry reference](../Docs/Drawing/Geometry.md#coons-patch) has the rest.
+
 ### The regions a drawing encloses: `regions(enclosedBy:)`
 
 Draw a few circles and a line across them, and the page is walled into patches. There are the lenses where circles overlap, the crescents left over, and the halves a line cuts. A coloring book is exactly that. `regions(enclosedBy:)` hands back every patch as its own `Shape`, so each can take a fill of its own.
@@ -416,9 +434,9 @@ for hit in road.crossings(with: pond) { drawCircle(center: hit, radius: 6) }
 
 The answers are the textbook ones. A line against a circle or an ellipse is a quadratic. Two circles meet by the construction every compass course teaches. An ellipse against anything round starts from the two outlines and polishes the points onto the true curves. A touch counts once, and two lines that run along each other report nothing for that stretch. The circle, the rectangle, a triangle, and any contour answer the same question through one shared protocol, `PlaneCurve`. So a mixed list of them can be asked pair by pair, as the right panel is. The points come back in order along the shape you asked. The [geometry reference](../Docs/Drawing/Geometry.md#plane-curves) has every measure of the three values and the rules the pairs share. The `Shapes/Crossings` example drifts six shapes about and marks every meeting as they move.
 
-## Filling space by packing: circles, fractions, and shapes
+## Filling space by packing: circles, fractions, shapes, and rectangles
 
-The plate's mosaic carved a space into territories around its points. Packing divides a space too, and the plate does not use it. A circle for every fraction belongs here as well, since those circles pack themselves with no rule asking them to.
+The plate's mosaic carved a space into territories around its points. Packing divides a space too, and the plate does not use it. A circle for every fraction belongs here as well, since those circles pack themselves with no rule asking them to. Rectangles close the section, because they pack by a different rule: they keep their sizes and look for room, where the others grow until they touch.
 
 ### Packing: circles that grow until they touch
 
@@ -482,6 +500,26 @@ The arguments beyond `count` and the radius range change the character rather th
 The output is `[Shape]`, so every shape tool in the chapter takes it. Fill it, stroke it, boolean it, hatch it, or export it as SVG. Compute the packing once and hold it, then animate something visual like each shape's color, or the shapes will jump every frame.
 
 `ContinuousPacking` is the same engine held open instead of run to completion. You `step()` it each frame and the region fills in as you watch. The big gaps go first, so each new shape is smaller than the last. Paired with `noClear()` from [Chapter 12](12-FlocksAndSwarms.md) it costs almost nothing per frame, because a placed shape never moves and only the new ones need drawing. That is what the `Patterns/ShapePacking` example does, filling in for as long as it runs.
+
+### Packing rectangles: `packRectangles`
+
+The other packings grow their pieces until they touch. A contact sheet works the other way. Each photo already has its size, and the question is where it goes. `packRectangles` takes a list of sizes and a bin and fits them in without overlapping, each at its own size. It hands back where every one went, and it lists the ones that did not fit rather than shrinking them.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/PackedRectangles-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/PackedRectangles.jpg" alt="Two panels packing the same forty long and thin rectangles into the same bin. On the left every rectangle stands as given and three that did not fit wait in a row underneath. On the right many rectangles have turned a quarter turn, each marked with a diagonal, and all forty fit" width="680">
+</picture>
+
+```swift
+let packing = packRectangles(sizes, in: bin, padding: 4, allowsRotation: true)
+for place in packing.placed {
+    drawRect(place.rectangle)                  // place.index says which size it was
+}
+```
+
+The packer keeps the free part of the bin as every largest empty rectangle inside it. They overlap one another, and that is the trick, because anything that fits anywhere fits inside one of them. Each rectangle goes into the top-left corner of the free rectangle it fits most snugly, judged by the smaller of the two gaps it would leave. At every step the packer weighs every rectangle still waiting, not only the next in the list, and places the snuggest fit of all. Jukka Jylänki compared dozens of rectangle packers in 2010, and that combination packed tightest. `allowsRotation` lets a rectangle turn a quarter turn when that fits it better, which is how the right panel fits all forty where the left leaves three out.
+
+A sheet of photos needs one more step, because a photo thousands of pixels wide fits no page as it is. The largest scale at which every photo fits is found by halving: try halfway between a scale that fits and one that does not, keep whichever half the answer lands in, and do that twenty times. The [rectangle packing reference](../Docs/Generators/RectanglePacking.md) has that loop, and the `Patterns/PackedPhotos` example runs it on the bundled photos as the page changes shape. The packing uses no randomness, so the same sizes always land the same way.
 
 ## More outlines and bones: fitting and the straight skeleton
 
@@ -630,7 +668,7 @@ The curve fit is Philip Schneider's, from the first *Graphics Gems* collection o
 
 ## Go deeper
 
-- [Geometry](../Docs/Drawing/Geometry.md): `Contour`, `Shape`, `Path`, the booleans, offsetting, stroke-as-shape, and the convex hull, with every signature.
+- [Geometry](../Docs/Drawing/Geometry.md): `Contour`, `Shape`, `Path`, the booleans, offsetting, stroke-as-shape, the convex hull, and `CoonsPatch`, with every signature.
 - [Where curves cross](../Docs/Drawing/Geometry.md#plane-curves): `LineSegment`, `Arc`, and `Ellipse` with every measure, and the rules every `crossings(with:)` pair shares. The [`Examples/Shapes/Crossings`](../Examples/Shapes/Crossings/Sketch.swift) example marks every meeting of six drifting shapes and drops a probe to the nearest place on each.
 - [SVG import](../Docs/Drawing/SVG.md): loading, drawing, the element list, and what the importer reads and skips.
 - [Voronoi & Delaunay](../Docs/Drawing/Voronoi.md): cells, triangles, neighbors, and Lloyd relaxation.
@@ -639,6 +677,7 @@ The curve fit is Philip Schneider's, from the first *Graphics Gems* collection o
 - [Medial axis](../Docs/Generators/MedialAxis.md): the skeleton, the `Branch` type, and what the radii guarantee.
 - [Straight skeleton](../Docs/Generators/StraightSkeleton.md): arcs, faces, `inset(by:)`, and when to pick it over the medial axis or `offset`.
 - [Circle packing](../Docs/Generators/Packing.md) and [shape packing](../Docs/Generators/ShapePacking.md), which also covers packing around a set of points you already have and the practical notes on building a shape bag.
+- [Rectangle packing](../Docs/Generators/RectanglePacking.md): what a packing holds, the contact sheet scaled to fill its page, and how the packer chooses.
 - [The Apollonian gasket](../Docs/Drawing/Tiling.md#apollonianGasket): the circle it fills, `minRadius`, and the order the circles come back in.
 - [Ford circles](../Docs/Generators/FordCircles.md): the circles, the Farey sequence and its mediant rule, and the `Fraction` type both rest on.
 - [Export](../Docs/Output/Export.md): the whole `--export-svg` and `--hatch` surface, `--param`, the paper sizes, plus stills, sequences, video, and GIF.
@@ -648,7 +687,7 @@ The curve fit is Philip Schneider's, from the first *Graphics Gems* collection o
 - The Rojo homage [`PiramidesYVolcanes`](../Examples/Recreations/VicenteRojo/PiramidesYVolcanes/Sketch.swift): a stream of lava is one middle line with a closed outline drawn a fixed distance either side, round at both ends. Two or three outlines at even distances make a band outlined twice or three times. The middle line never turns tighter than the band's half width, which keeps every outline from crossing itself.
 - The Sato homage [`TotemBuilder`](../Examples/Recreations/OsamuSato/TotemBuilder/Sketch.swift): a figure made of circles and circles cut by circles. A crescent is `drawMoon`, a disk with a disk taken out of it, and an eye is `drawVesica`, the overlap of two disks. Everything but the tail is built on one side and reflected to the other.
 - Appendix B draws this chapter's math, one picture per idea: [Randomness](B-JustEnoughMath.md#chance-is-lumpy), [Shapes as regions](B-JustEnoughMath.md#shapes-as-regions).
-- Worked examples: [`Examples/Shapes/Booleans`](../Examples/Shapes/Booleans/Sketch.swift), [`Examples/Patterns/Topography`](../Examples/Patterns/Topography/Sketch.swift), [`Examples/Shapes/InkRibbon`](../Examples/Shapes/InkRibbon/Sketch.swift), [`Examples/Patterns/Voronoi`](../Examples/Patterns/Voronoi/Sketch.swift), [`Examples/Patterns/Delaunay`](../Examples/Patterns/Delaunay/Sketch.swift) (the triangle half of the same pair, reading its own adjacency back), [`Examples/Patterns/CirclePacking`](../Examples/Patterns/CirclePacking/Sketch.swift), [`Examples/Shapes/SVGImport`](../Examples/Shapes/SVGImport/Sketch.swift), [`Examples/Shapes/Hulls`](../Examples/Shapes/Hulls/Sketch.swift), [`Examples/Shapes/MedialAxis`](../Examples/Shapes/MedialAxis/Sketch.swift), [`Examples/Shapes/StraightSkeleton`](../Examples/Shapes/StraightSkeleton/Sketch.swift), [`Examples/Shapes/ColoringBook`](../Examples/Shapes/ColoringBook/Sketch.swift) (a drifting drawing whose every patch is found and filled again each frame), and [`Examples/Patterns/CreasePattern`](../Examples/Patterns/CreasePattern/Sketch.swift) (a Miura sheet folding and unfolding beside its pattern, with the cut sheet a switch away), [`Examples/Shapes/WavyLettering`](../Examples/Shapes/WavyLettering/Sketch.swift), [`Examples/Shapes/TraceToCurves`](../Examples/Shapes/TraceToCurves/Sketch.swift).
+- Worked examples: [`Examples/Shapes/Booleans`](../Examples/Shapes/Booleans/Sketch.swift), [`Examples/Patterns/Topography`](../Examples/Patterns/Topography/Sketch.swift), [`Examples/Shapes/InkRibbon`](../Examples/Shapes/InkRibbon/Sketch.swift), [`Examples/Patterns/Voronoi`](../Examples/Patterns/Voronoi/Sketch.swift), [`Examples/Patterns/Delaunay`](../Examples/Patterns/Delaunay/Sketch.swift) (the triangle half of the same pair, reading its own adjacency back), [`Examples/Patterns/CirclePacking`](../Examples/Patterns/CirclePacking/Sketch.swift), [`Examples/Shapes/SVGImport`](../Examples/Shapes/SVGImport/Sketch.swift), [`Examples/Shapes/Hulls`](../Examples/Shapes/Hulls/Sketch.swift), [`Examples/Shapes/MedialAxis`](../Examples/Shapes/MedialAxis/Sketch.swift), [`Examples/Shapes/StraightSkeleton`](../Examples/Shapes/StraightSkeleton/Sketch.swift), [`Examples/Shapes/ColoringBook`](../Examples/Shapes/ColoringBook/Sketch.swift) (a drifting drawing whose every patch is found and filled again each frame), and [`Examples/Patterns/CreasePattern`](../Examples/Patterns/CreasePattern/Sketch.swift) (a Miura sheet folding and unfolding beside its pattern, with the cut sheet a switch away), [`Examples/Shapes/WavyLettering`](../Examples/Shapes/WavyLettering/Sketch.swift), [`Examples/Shapes/TraceToCurves`](../Examples/Shapes/TraceToCurves/Sketch.swift), [`Examples/Shapes/WavingBanner`](../Examples/Shapes/WavingBanner/Sketch.swift), [`Examples/Patterns/PackedPhotos`](../Examples/Patterns/PackedPhotos/Sketch.swift).
 
 ---
 

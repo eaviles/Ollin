@@ -48,6 +48,7 @@
 - [`Wave Function Collapse`](./WaveFunctionCollapse.md) - `wfc`, constraint-solved tile layouts and texture synthesis. It fills a grid so every neighbor is legal, from a tileset you declare or from the patches of an example picture
 - [`Cellular automata`](./CellularAutomata.md) - `elementaryCA`/`totalisticCA`, row stacks driven by a rule number, and `Turmite` walkers (Langton's ant and its relatives) that paint a wrapped grid
 - [`Shape packing`](./ShapePacking.md) - `packShapes` and `ContinuousPacking`, filling a region with non-overlapping shapes grown against each other's outlines
+- [`Rectangle packing`](./RectanglePacking.md) - `packRectangles` and `RectanglePacking`, fitting rectangles of given sizes into one bin at their own sizes for a contact sheet, a collage, or an atlas
 - [`Flow fields`](./FlowField.md) - `FlowField`, streamlines traced through a direction field (the flow-field look), and particles carried along the same field
 - [`Flocking`](./Boids.md) - `Boids`, a flock that steers by separation, alignment, and cohesion into emergent flocking motion
 - [`Pursuit`](./Pursuit.md) - `Pursuit`, runners that head straight at each other and trace logarithmic spirals. It covers the ring of mice and a chase after a quarry that runs straight (a stateful stepper)

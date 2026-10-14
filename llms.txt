@@ -210,6 +210,7 @@ The reference is the authority on what exists and how it behaves; the guide teac
 - [Wave Function Collapse](Docs/Generators/WaveFunctionCollapse.md): `wfc` fills a grid so every neighbor is legal, from a tileset you declare or from the patches of an example picture (constraint-solved tile layouts, texture synthesis)
 - [Cellular automata](Docs/Generators/CellularAutomata.md): `elementaryCA`/`totalisticCA` row stacks chosen by rule number, and `Turmite` walkers (Langton's ant and its relatives) painting a wrapped grid
 - [Shape packing](Docs/Generators/ShapePacking.md): `packShapes` and `ContinuousPacking`, filling a region with non-overlapping shapes grown against each other's outlines
+- [Rectangle packing](Docs/Generators/RectanglePacking.md): `packRectangles` and `RectanglePacking`, fitting rectangles of given sizes into one bin at their own sizes for a contact sheet, a collage, or an atlas
 - [Flow fields](Docs/Generators/FlowField.md): `FlowField`, streamlines traced through a direction field (the flow-field look) and particles advected along it
 - [Flocking (boids)](Docs/Generators/Boids.md): `Boids`, a flock that steers by separation, alignment, and cohesion into emergent flocking motion
 - [Pursuit](Docs/Generators/Pursuit.md): `Pursuit`, runners that head straight at each other and leave logarithmic spirals: the ring of mice, and a quarry that runs straight (a stateful stepper)
@@ -319,7 +320,7 @@ The reference is the authority on what exists and how it behaves; the guide teac
 
 ## The project
 
-- [Examples](Examples/README.md): 627 runnable sketches by category, each with its whole source
+- [Examples](Examples/README.md): 629 runnable sketches by category, each with its whole source
 - [Ollin architecture & internals](ARCHITECTURE.md)
 - [Ollin: the shipped-capability inventory](CAPABILITIES.md)
 - [Changelog](CHANGELOG.md)

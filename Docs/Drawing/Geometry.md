@@ -31,6 +31,8 @@
 - [Contour](#contour)
   - [Asking an outline questions](#contour-questions)
   - [Lighter, reversed, rounded, and cut](#contour-edits)
+  - [Bent along a curve, pulled, smoothed with its corners, split, and fitted](#contour-bending)
+- [CoonsPatch: an outline bent into a curved patch](#coons-patch)
 - [Shape](#shape)
   - [Points inside one](#shape-points)
   - [Set operations](#shape-booleans)
@@ -322,7 +324,7 @@ Rectangle(covering size: Vector2, in container: Rectangle)
 - **Crossings:** [`crossings(with:)`](#plane-curves) against any other curve.
 - **Test:** `contains(_ point: Vector2)` (the boundary counts as inside).
 - **Inset:** `inset(by: Insets)`, the rectangle shrunk inward by a per-edge margin (see [`Grid`](#grid)).
-- **Normalized coordinates:** `point(u:v:)` is the point at 0…1 fractions of the rectangle, so `point(u: 0.5, v: 0.5)` is `center`, and values outside 0…1 land proportionally outside. Its inverse is `uv(of:)`. The canvas-wide sugar is [`uv(u, v)`](../Core/Canvas.md#uv).
+- **Normalized coordinates:** `point(u:v:)` is the point at 0…1 fractions of the rectangle, so `point(u: 0.5, v: 0.5)` is `center`, and values outside 0…1 land proportionally outside. Its inverse is `uv(of:)`. The canvas-wide sugar is [`uv(u, v)`](../Core/Canvas.md#uv), and the curved counterpart, a four-sided region whose sides are curves, is [`CoonsPatch`](#coons-patch).
 
 `Rectangle(fitting:in:)` is the letterbox fit, the largest rectangle of `size`'s aspect ratio centered inside `container`. Draw an image or video frame into that box and it will not stretch, which is the fit behind `drawFrame` and `fittedRectangle(in:)`. `Rectangle(covering:in:)` works the other way. It is the *smallest* rectangle of that shape that covers the container, so it runs past two edges. What falls outside is meant to be cropped. The two are what [`drawImage`'s](Images.md#fit) `.contain` and `.cover` are built on.
 
@@ -749,6 +751,57 @@ for piece in lighter.split(atCornersOver: .pi / 3, span: 8) {
 ```
 
 `Shape` has all five: `warped`, `pulled`, and the corner-keeping `smoothed` edit every contour and keep the `winding`, `split` returns the pieces of every contour in one list, and `fitted` returns one `Path` per contour. The `Shapes/WavyLettering` example bends a word along a traveling wave and tugs it with the mouse; `Shapes/TraceToCurves` turns a scribble into curves as it is drawn.
+
+<a name="coons-patch"></a>
+
+### `CoonsPatch`: an outline bent into a curved patch
+
+A four-sided region whose sides are curves, read the way a `Rectangle` is read: `u` runs 0 to 1 from the left side to the right, `v` 0 to 1 from the top side to the bottom, and `point(u:v:)` is the place at those fractions. Bend an outline into it and lettering set in a box lands on a waving banner, or a tile lands on a bulging cushion.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/15-ShapesAsMaterial/CurvedPatch-dark.jpg">
+  <img src="../../Guide/Images/15-ShapesAsMaterial/CurvedPatch.jpg" alt="Three panels. The first is a word and a grid set flat in a rectangle. The second bends them into a patch of four straight sides between four corners, so the grid's lines stay straight and only the corners have moved. The third bends them into a patch whose four sides are curves, so the word and every grid line bow with the sides" width="680">
+</picture>
+
+```swift
+CoonsPatch(top: Contour, right: Contour, bottom: Contour, left: Contour)
+CoonsPatch(topLeft: Vector2, topRight: Vector2, bottomRight: Vector2, bottomLeft: Vector2)
+CoonsPatch(_ rectangle: Rectangle)
+
+func point(u: Double, v: Double) -> Vector2
+var contour: Contour                     // the outline, along all four sides
+let top, right, bottom, left: Contour    // the sides, turned to run as the patch reads them
+let topLeft, topRight, bottomRight, bottomLeft: Vector2
+
+// On Contour and Shape:
+func warped(from rectangle: Rectangle, into patch: CoonsPatch, spacing: Double = 4) -> Contour
+```
+
+Give four curves and each side of the patch follows its curve exactly, the inside filled by blending them: two surfaces stretched between opposite sides, added, less the plane through the four corners that both of them counted. That blend is Steven Coons's patch, from his 1967 report on surfaces for computer-aided design. Give four corners instead and the sides are straight, which is the bilinear map: `point(u:v:)` is the place `u` of the way across and `v` of the way down, read between the corners. A patch made from a rectangle is that rectangle.
+
+Each side is read by the fraction walked along it, so `point(u: 0.5, v: 0)` is the top curve's midpoint by length however its points are spaced. The top runs from the top-left corner to the top-right and sets the direction. The left and right sides run down from the top, and the bottom runs left to right like the top. A side given the other way round is turned to meet the top. The sides are meant to meet at the corners. Where two ends miss each other, the corner is halfway between them and both sides move to meet it.
+
+`warped(from:into:)` reads every point of an outline as fractions across and down `rectangle` and puts it at the same fractions in the patch. Lettering set in a box keeps its first letter at the patch's left side and its last at the right. Like the other bends, it adds points along the outline's straight runs first, so a straight edge bends with the patch. `spacing` is the longest straight stretch left, measured before the bend, and 0 keeps the points as they are. A point outside the rectangle lands outside the patch, carried past the sides in the direction each was heading at its end.
+
+```swift
+let flat = Rectangle(x: 160, y: 380, width: 760, height: 320)
+let t = time
+let waves = [flat.y, flat.y + flat.height].map { y in
+    Contour((0 ... 40).map { i -> Vector2 in
+        let s = Double(i) / 40
+        return Vector2(flat.x + s * flat.width, y + 60 * s * sin(s * .tau * 1.5 - t))
+    }, closed: false)
+}
+let banner = CoonsPatch(top: waves[0], right: Contour([], closed: false), bottom: waves[1],
+                        left: Contour([flat.topLeft, flat.bottomLeft], closed: false))
+textAlign(.center, .middle)
+textSize(150)
+for glyph in textToShapes("ollin", flat.center.x, flat.center.y) {
+    drawShape(glyph.warped(from: flat, into: banner))
+}
+```
+
+An empty side runs straight between the corners of its two neighbors, which is what the banner's free edge does above. Warp every glyph of a word from the one rectangle that holds the whole word and the word bends as one piece. A grid's lines bend too: a straight line across the rectangle warped into the patch becomes the patch's own curve at that fraction. `Shape` has `warped(from:into:)` as well, keeping its `winding`, so a glyph's counter bends with its outline. The `Shapes/WavingBanner` example waves a striped banner and its word from a pole.
 
 <a name="shape"></a>
 

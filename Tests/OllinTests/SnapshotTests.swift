@@ -762,6 +762,12 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("bent-outlines",
                  note: "The outline-bending edits on one sheet: a row of boxes laid along a straight base warped along a wave (warped(from:along:)), a blob pulled toward a point with its untouched outline ghosted and an open rope pulled near one end with both ends held (pulled(toward:amount:radius:)), a square-cornered loop smoothed with its corners kept beside the plain smoothing (smoothed(neighbors:keepingCornersOver:)), and a dense trace with two corners split into pieces (split(atCornersOver:span:)) and each piece fitted with cubic curves whose handles are drawn (fitted(tolerance:), Path.cubics). Pure CPU geometry, no time, no random.",
                  make: { BentOutlinesScene() }),
+    SnapshotCase("curved-patch",
+                 note: "A checkerboard set in a square and warped into a Coons patch whose four sides are different curves (CoonsPatch(top:right:bottom:left:), Shape.warped(from:into:)), its outline drawn; beside it a tile pinched into a four-corner bilinear patch (CoonsPatch(topLeft:topRight:bottomRight:bottomLeft:)) with its grid lines bent through the warp. Pure CPU geometry, no time, no random.",
+                 make: { CurvedPatchScene() }),
+    SnapshotCase("packed-rectangles",
+                 note: "Forty seeded rectangles packed into the canvas with a gap of 3 and rotation allowed (packRectangles(_:in:padding:allowsRotation:), MaxRects with the best short side fit and the global choice), each filled by its place in the list, the rotated ones marked with a diagonal, and the bin outlined. Pins the free-space split, the prune, the score and its tie-break, and the padding. Pure CPU geometry, no time; the sizes come from a fixed SplitMix64 seed.",
+                 make: { PackedRectanglesScene() }),
     SnapshotCase("cellular-automata",
                  note: "Two 1D cellular automata as stacked-row triangles: elementary rule 30 (left) and 3-color totalistic code 777 (right), each from a single center seed. Pins the rule-byte lookup, the totalistic base-k digit table, and row stacking. Pure CPU, no time, no random.",
                  make: { CellularAutomataScene() }),
@@ -5673,6 +5679,92 @@ private final class BentOutlinesScene: Sketch {
                 drawLine(cubic.end, cubic.control2)
             }
         }
+    }
+}
+
+private final class CurvedPatchScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x10131A))
+
+        // A checkerboard in a square, warped into a cushion of four curves.
+        func side(_ a: Vector2, _ b: Vector2, bulge: Double, wobble: Double) -> Contour {
+            let normal = (b - a).perpendicular.normalized
+            return Contour((0 ... 24).map { i -> Vector2 in
+                let t = Double(i) / 24
+                return a + (b - a) * t + normal * (bulge * sin(t * .pi) + wobble * sin(t * 3 * .pi))
+            }, closed: false)
+        }
+        let tl = Vector2(16, 20), tr = Vector2(150, 12), br = Vector2(156, 132), bl = Vector2(10, 140)
+        let cushion = CoonsPatch(top: side(tl, tr, bulge: 14, wobble: 4),
+                                 right: side(tr, br, bulge: -12, wobble: 0),
+                                 bottom: side(bl, br, bulge: 16, wobble: -5),
+                                 left: side(tl, bl, bulge: 10, wobble: 3))
+        let square = Rectangle(x: 0, y: 0, width: 120, height: 120)
+        noStroke()
+        for row in 0 ..< 6 {
+            for column in 0 ..< 6 {
+                let cell = Shape(Rectangle(x: Double(column) * 20, y: Double(row) * 20,
+                                           width: 20, height: 20).contour.points)
+                fill((row + column).isMultiple(of: 2) ? Color(hex: 0xE5B15C) : Color(hex: 0x9FD6E8))
+                drawShape(cell.warped(from: square, into: cushion, spacing: 2))
+            }
+        }
+        noFill()
+        stroke(Color(hex: 0xF4EAD6))
+        strokeWeight(1.5)
+        drawPolyline(cushion.contour.points, closed: true)
+
+        // A tile pinched into four corners, its grid lines bent with it.
+        let tile = CoonsPatch(topLeft: Vector2(150, 160), topRight: Vector2(246, 150),
+                              bottomRight: Vector2(232, 246), bottomLeft: Vector2(96, 230))
+        let unit = Rectangle(x: 0, y: 0, width: 1, height: 1)
+        noStroke()
+        fill(Color(hex: 0x6BD69B))
+        drawShape(Shape(contours: [unit.contour.warped(from: unit, into: tile, spacing: 0.05)]))
+        stroke(Color(hex: 0x10131A))
+        strokeWeight(1)
+        noFill()
+        for k in 1 ..< 8 {
+            let f = Double(k) / 8
+            let across = Contour([Vector2(0, f), Vector2(1, f)], closed: false)
+            let down = Contour([Vector2(f, 0), Vector2(f, 1)], closed: false)
+            drawPolyline(across.warped(from: unit, into: tile, spacing: 0.05).points)
+            drawPolyline(down.warped(from: unit, into: tile, spacing: 0.05).points)
+        }
+    }
+}
+
+private final class PackedRectanglesScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x10131A))
+        var rng = SplitMix64(seed: 126)
+        let sizes = (0 ..< 40).map { _ -> Vector2 in
+            Vector2(Double.random(in: 10 ... 70, using: &rng).rounded(),
+                    Double.random(in: 8 ... 48, using: &rng).rounded())
+        }
+        let bin = Rectangle(x: 8, y: 8, width: 240, height: 240)
+        let packing = packRectangles(sizes, in: bin, padding: 3, allowsRotation: true)
+        let palette = [Color(hex: 0xE5B15C), Color(hex: 0x9FD6E8), Color(hex: 0x6BD69B),
+                       Color(hex: 0xE07A5F), Color(hex: 0xF4EAD6)]
+        noStroke()
+        for place in packing.placed {
+            fill(palette[place.index % palette.count])
+            drawRect(place.rectangle)
+        }
+        stroke(Color(hex: 0x10131A))
+        strokeWeight(1.5)
+        for place in packing.placed where place.isRotated {
+            let r = place.rectangle
+            drawLine(r.topLeft, r.bottomRight)
+        }
+        noFill()
+        stroke(Color(hex: 0x3A4458))
+        strokeWeight(1)
+        drawRect(bin)
     }
 }
 

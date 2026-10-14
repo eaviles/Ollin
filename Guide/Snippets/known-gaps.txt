@@ -59,11 +59,13 @@ c75eb2a20310  Guide/12-FlocksAndSwarms.md:402  cannot find 'crowd' in scope
 bac6f70b2c26  Guide/15-ShapesAsMaterial.md:110  cannot find 'circles' in scope
 45fd2bf76c06  Guide/15-ShapesAsMaterial.md:292  cannot find 'path' in scope
 124acc641125  Guide/15-ShapesAsMaterial.md:304  cannot find 'road' in scope
-1c47a7d408ef  Guide/15-ShapesAsMaterial.md:468  cannot find 'square' in scope
-3152d9b01a08  Guide/15-ShapesAsMaterial.md:519  cannot find 'island' in scope
-941d99f289b2  Guide/15-ShapesAsMaterial.md:530  value of type '[Contour]' has no member 'maxInset'
-e94aaf6380fc  Guide/15-ShapesAsMaterial.md:596  unary operator cannot be separated from its operand
+13b4ec54646c  Guide/15-ShapesAsMaterial.md:367  cannot find 'topWave' in scope
+1c47a7d408ef  Guide/15-ShapesAsMaterial.md:486  cannot find 'square' in scope
+c1db96c31b12  Guide/15-ShapesAsMaterial.md:513  cannot find 'sizes' in scope
+3152d9b01a08  Guide/15-ShapesAsMaterial.md:557  cannot find 'island' in scope
+941d99f289b2  Guide/15-ShapesAsMaterial.md:568  value of type '[Contour]' has no member 'maxInset'
 e428f7fa87a3  Guide/15-ShapesAsMaterial.md:62  cannot find 'circle' in scope
+e94aaf6380fc  Guide/15-ShapesAsMaterial.md:634  unary operator cannot be separated from its operand
 c68765b0c991  Guide/15-ShapesAsMaterial.md:75  cannot convert value of type '@MainActor (Double, Double, Double, Double) -> Double' to expected argument type '[Vector2]'
 c8a055fb7cf3  Guide/16-CurvesAndFigures.md:300  cannot convert value of type 'Shape' to expected argument type 'Contour'
 fff55af49a8c  Guide/16-CurvesAndFigures.md:319  cannot find 'ring' in scope
