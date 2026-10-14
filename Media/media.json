@@ -524,6 +524,10 @@
     "Recreations/AnwarJalalShemza": [
       "Recreations/AnwarJalalShemza/Meem",
       "Recreations/AnwarJalalShemza/Roots"
+    ],
+    "Recreations/MacEntyreVidal": [
+      "Recreations/MacEntyreVidal/Circunferencias",
+      "Recreations/MacEntyreVidal/Focos"
     ]
   },
   "examples": {
@@ -12132,6 +12136,50 @@
       "still": "examples/Web/BreathingRing/still.jpg?v=c2d38b5d",
       "stillSmall": "examples/Web/BreathingRing/still-640.jpg?v=592802a2",
       "width": 1080
+    },
+    "Recreations/MacEntyreVidal/Circunferencias": {
+      "bytes": {
+        "loop": 7329510,
+        "loopSmall": 1711968,
+        "still": 381926,
+        "stillSmall": 145245
+      },
+      "frame": 480,
+      "height": 1080,
+      "length": "lap",
+      "loop": "examples/Recreations/MacEntyreVidal/Circunferencias/loop.mp4?v=a72c3efa",
+      "loopSmall": "examples/Recreations/MacEntyreVidal/Circunferencias/loop-640.mp4?v=37a1a5cb",
+      "motion": 4.359,
+      "rendered": "2026-10-14",
+      "seconds": 10.0,
+      "source": "dbb30224b5cff3a9",
+      "still": "examples/Recreations/MacEntyreVidal/Circunferencias/still.jpg?v=9cda4fe9",
+      "stillSmall": "examples/Recreations/MacEntyreVidal/Circunferencias/still-640.jpg?v=be16511f",
+      "width": 1080,
+      "sound": false,
+      "seed": 1
+    },
+    "Recreations/MacEntyreVidal/Focos": {
+      "bytes": {
+        "loop": 9528916,
+        "loopSmall": 3185453,
+        "still": 714186,
+        "stillSmall": 196156
+      },
+      "frame": 480,
+      "height": 1080,
+      "length": "lap",
+      "loop": "examples/Recreations/MacEntyreVidal/Focos/loop.mp4?v=436201c0",
+      "loopSmall": "examples/Recreations/MacEntyreVidal/Focos/loop-640.mp4?v=ced2603f",
+      "motion": 2.403,
+      "rendered": "2026-10-14",
+      "seconds": 10.0,
+      "source": "a0d4ebd69066e764",
+      "still": "examples/Recreations/MacEntyreVidal/Focos/still.jpg?v=eccaf3a5",
+      "stillSmall": "examples/Recreations/MacEntyreVidal/Focos/still-640.jpg?v=506b8d08",
+      "width": 1080,
+      "sound": false,
+      "seed": 1
     }
   },
   "groups": {
@@ -12214,8 +12262,8 @@
       ]
     },
     "3D/Physics": {
-      "image": "groups/3D-Physics.jpg?v=9bf5a21d",
-      "imageSmall": "groups/3D-Physics-640.jpg?v=32585b41",
+      "image": "groups/3D-Physics.jpg?v=5e6a9107",
+      "imageSmall": "groups/3D-Physics-640.jpg?v=54de510e",
       "of": [
         "3D/Physics/Contraption",
         "3D/Physics/Rigging",
@@ -12369,8 +12417,8 @@
       ]
     },
     "Physics": {
-      "image": "groups/Physics.jpg?v=13e3ff3b",
-      "imageSmall": "groups/Physics-640.jpg?v=5cebf9f5",
+      "image": "groups/Physics.jpg?v=d39587e8",
+      "imageSmall": "groups/Physics-640.jpg?v=1fc84082",
       "of": [
         "Physics/RigidBodies",
         "Physics/Blobs",
@@ -12704,6 +12752,14 @@
       ],
       "image": "groups/Recreations-AnwarJalalShemza.jpg?v=5007bcf3",
       "imageSmall": "groups/Recreations-AnwarJalalShemza-640.jpg?v=fe8d5f11"
+    },
+    "Recreations/MacEntyreVidal": {
+      "image": "groups/Recreations-MacEntyreVidal.jpg?v=5e1cc5a9",
+      "imageSmall": "groups/Recreations-MacEntyreVidal-640.jpg?v=57713eb4",
+      "of": [
+        "Recreations/MacEntyreVidal/Circunferencias",
+        "Recreations/MacEntyreVidal/Focos"
+      ]
     }
   },
   "heroes": {

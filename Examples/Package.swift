@@ -1020,5 +1020,12 @@ let package = Package(
         // Anwar Jalal Shemza.
         example("Recreations/AnwarJalalShemza/Meem"),
         example("Recreations/AnwarJalalShemza/Roots"),
+        // Families of circles whose centers walk a ring or a straight path by
+        // one constant step, after Eduardo Mac Entyre, and families of straight
+        // lines slid a step to rule a face or turned an angle about a point of
+        // light, after Miguel Ángel Vidal, the two who named Arte Generativo in
+        // Buenos Aires in 1959.
+        example("Recreations/MacEntyreVidal/Circunferencias"),
+        example("Recreations/MacEntyreVidal/Focos"),
     ]
 )
