@@ -70,6 +70,7 @@ A Mac has no depth camera, no inertial sensors, and no spare Neural Engine for l
 - **Volumes a GPU kernel writes.** A density grid filled on the GPU by a sketch's own compute kernel, so a smoke simulation or noise 128 samples a side can change every frame and draw as a cloud. Today a grid is filled on the CPU, which keeps a refill every frame to about 32 samples a side.
 - **More light in a volume.** A cloud that casts its shadow on the ground under it, the light a thick cloud bounces around inside itself, and fog that veils a volume as it veils a solid.
 - **A hologram material.** The rainbow of a diffraction grating by the angle between the light and the eye, the look of a hologram sticker or the back of a compact disc, as the missing sibling of the anodized, nacre, and sequin finishes. Over a crumpled normal map it is holographic foil in 3D.
+- **A copy in an instanced draw turned by any rotation.** `MeshInstance` takes its turn as three angles, about x, then y, then z. A turn about any axis is what `rotate(_:)` and the 3D physics bodies speak as a `Rotation3D`, and today it has to be broken into those three angles by hand. That loses precision near a quarter turn about y. A placement that takes a `Rotation3D` directly removes the conversion. [Design notes.](DESIGN-NOTES.md#3d-mode)
 
 
 3D mode is opt-in, so a 2D sketch never pays for a depth buffer or a perspective divide. The iPhone point cloud renders through it, and visionOS and AR build on it. See the [design notes](DESIGN-NOTES.md#3d-mode).
