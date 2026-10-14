@@ -52,6 +52,7 @@ final class Joints: Sketch {
     override func setup() {
         world.gravity = Vector2(0, 2000)
         world.bounds = bounds              // keep flung pieces on-canvas
+        world.drag = 0                     // no air, so the rigs keep swinging
         build()
         noStroke()
     }

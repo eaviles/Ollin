@@ -84,11 +84,17 @@ Distances are the 3D scene's world units, y-up, the same units the camera uses. 
 let world = World3D()
 world.gravity = Vector3(0, -9.8, 0)   // the default: earth, pulling down y
 world.ground = 0                      // optional static floor at a y level
-world.restitution = 0.2                    // default restitution (ground + bodies)
+world.restitution = 0.2                    // what a body gets when it names none
+world.drag = 0.00083                       // the solver's own 5% a second; 0 lets bodies coast
+world.substeps = 1                         // pieces each step is cut into, for a scene of hinges
 world.advance(by: deltaTime)             // once per frame
 ```
 
 `ground` is a wide static slab whose top face sits at the level you give it. The default is `nil`, which lets bodies fall forever. `advance(by:)` clamps the step to `maxTimestep`, which is 1/30 s, so a stalled frame cannot launch the scene. It runs one collision pass per 1/60 s of simulated time, rounding up, so a frame a hair longer than that takes two.
+
+`drag` is the share of speed, and of spin, a body loses every sixtieth of a second, the same number the 2D world reads. At `0` a body coasts forever. The default is the solver's own 5% a second, so a sketch that never sets it moves as it always has. A change reaches every rigid body already in the world. A soft body, a rope, a ragdoll, and a vehicle carry damping of their own. A change to `gravity` wakes every body, so a box asleep on the floor feels gravity turned the other way.
+
+`substeps` cuts each step into pieces, on top of the one pass per sixtieth of simulated time a long frame already takes. The solver's joints lose a little every step, in proportion to its length. A bar hinged at one end and let go horizontal returns to 92% of its height on its first swing at one piece a frame, and to 98% at four. At sixteen it holds within 5% for ten seconds. Every body pays for the count, so it is for a scene whose pendulums and linkages matter rather than a pile.
 
 You manage bodies and joints the way the 2D world manages its own:
 
@@ -102,7 +108,7 @@ world.remove(crate)      // removes its joints too
 world.removeAll()
 ```
 
-`density` is relative, and 1 is the default material, so a denser body shoves a lighter one. `friction` runs from 0, which is slick, to 1, which is grippy. `restitution` defaults to the world's own `restitution`, and the ground carries the world's value, so a body bounces off it with the larger of the two.
+`density` is relative, and 1 is the default material, so a denser body shoves a lighter one. `friction` runs from 0, which is slick, to 1, which is grippy. `restitution` defaults to the world's own `restitution` and follows it until the body is given one of its own. The ground carries no bounce of its own, so a body bounces off it with its own value, and two bodies meet with the larger of theirs.
 
 **A number the solver cannot hold is refused at the bridge.** The solver keeps single precision and stops simulating sensibly a few kilometers from its origin. So every number a sketch hands it is checked where it crosses over: a value that is not a number, an infinity, or a magnitude past a billion units never reaches it. A property keeps what it had, so `body.velocity = Vector3(.nan, 0, 0)` leaves the velocity alone. A force or an impulse made of one does nothing, and `advance(by:)` skips the step. A creation argument falls back to its default: `addBody(at:)` given such a position places the body at the origin, and a collider carrying one becomes a sphere of one unit. Each prints one note naming the call, once per world. A sketch whose arithmetic went wrong reads why in the console instead of stopping inside the solver. The calls that already throw for what they cannot build (`addVehicle`, `addSoftBody`, `addRope`, `addRagdoll`, `addTensegrity`) throw `PhysicsError.unbuildable` naming the number instead. A limit that means none, such as a motor's `strength: .infinity`, still passes. A [snapshot](#saving-and-loading) refuses the same numbers from a file.
 
@@ -121,7 +127,7 @@ body.rotationAngle            // radians about…
 body.rotationAxis             // …this unit axis (the same pose, read as a pair)
 
 body.velocity                 // units per second, get/set
-body.angularVelocity          // radians per second about each axis, up to a quarter turn a step
+body.angularVelocity          // radians per second about each axis
 body.mass                     // from collider volume × density (0 when static or kinematic)
 body.kind                     // switch .dynamic / .static / .kinematic live
 body.friction                 // 0 slick … 1 grippy, get/set
@@ -129,7 +135,7 @@ body.restitution              // how much speed survives a bounce, get/set
 body.isAwake                  // settled bodies sleep until touched
 ```
 
-Every body loses 5% of its speed and of its spin each second, the solver's own damping, so nothing coasts forever and a thrown ball lands a little short of the parabola.
+Every body loses the world's `drag` from its speed and its spin, 5% a second by default, so nothing coasts forever and a thrown ball lands a little short of the parabola. `world.drag = 0` gives the exact parabola. A spin fast enough to turn a shape more than a quarter turn between frames can carry a thin shape through another, since contacts are found once a step.
 
 ```swift
 
@@ -1223,7 +1229,7 @@ The waterline is not something you tune. A body of density `d` settles with frac
 | `flow` | a current, in units per second, that carries everything afloat along. |
 | `waves` | a rolling swell, or `nil` for a flat calm. |
 
-Drag is worth a moment, because it is the difference between water and a trampoline. With `linearDrag: 0`, a crate dropped in bounces about its waterline and loses only the solver's own few percent a second. The default `0.5` reads like water, so the crate dips, comes back up, and settles within a second or two.
+Drag is worth a moment, because it is the difference between water and a trampoline. With `linearDrag: 0`, a crate dropped in bounces about its waterline and loses only the world's `drag`. The default `0.5` reads like water, so the crate dips, comes back up, and settles within a second or two.
 
 **A swell.** `Water.Waves` gives the surface a shape, and it carries whatever is floating on it:
 
@@ -1298,7 +1304,7 @@ The snapshot's own `bodyCount` and `jointCount` say what is in it before anythin
 - Every rigid `Body3D` with its collider, pose, velocity, and every parameter `addBody` takes: kind, sensor, density, friction, restitution, freedom, gravity scale, path checking, group, and buoyancyScale.
 - Every `Joint3D` between them, gears and racks included.
 - The collision-group table with its rules.
-- The world's `gravity`, `ground`, `restitution`, `maxTimestep`, `unitsPerMeter`, and `water`.
+- The world's `gravity`, `ground`, `restitution`, `drag`, `substeps`, `maxTimestep`, `unitsPerMeter`, and `water`, and which bodies named a bounce of their own rather than taking the world's.
 
 The tiers above a loose body come back too, because none of them holds anything heavier than the shapes a body already writes down:
 

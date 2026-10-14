@@ -214,6 +214,9 @@ CJoltWorld *cjolt_world_create(float gravityX, float gravityY, float gravityZ,
                                uint32_t maxBodies);
 void cjolt_world_destroy(CJoltWorld *world);
 void cjolt_world_set_gravity(CJoltWorld *world, float x, float y, float z);
+/// Wakes every body that can move. The solver does not watch its own gravity
+/// for a change, so a settled body would sleep through one otherwise.
+void cjolt_world_wake_all(CJoltWorld *world);
 /// Advances the simulation. Returns 0 on success (a nonzero value reports the
 /// library's update-error bits, e.g. an overflowed manifold cache).
 int cjolt_world_step(CJoltWorld *world, float dt, int collisionSteps);
@@ -274,6 +277,10 @@ void cjolt_body_activate(CJoltWorld *world, CJoltBodyID body);
 void cjolt_body_deactivate(CJoltWorld *world, CJoltBodyID body);
 void cjolt_body_set_friction(CJoltWorld *world, CJoltBodyID body, float friction);
 void cjolt_body_set_restitution(CJoltWorld *world, CJoltBodyID body, float restitution);
+/// Sets the rates per second the body's velocity and its spin decay at
+/// (dv/dt = -c v). Nothing for a body without motion properties (a static
+/// one that can never be let go).
+void cjolt_body_set_damping(CJoltWorld *world, CJoltBodyID body, float linear, float angular);
 float cjolt_body_get_friction(const CJoltWorld *world, CJoltBodyID body);
 float cjolt_body_get_restitution(const CJoltWorld *world, CJoltBodyID body);
 void cjolt_body_set_gravity_factor(CJoltWorld *world, CJoltBodyID body, float factor);

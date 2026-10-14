@@ -41,6 +41,7 @@ final class Chain: Sketch {
     override func setup() {
         world.gravity = Vector2(0, 2400)
         world.bounds = bounds          // keep flung chains on-canvas
+        world.drag = 0                 // no air, so a flung chain keeps swinging
         build()
         noStroke()
     }

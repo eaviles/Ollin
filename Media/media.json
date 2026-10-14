@@ -2376,26 +2376,26 @@
       "width": 1080
     },
     "3D/Physics/Burst": {
-      "bytes": {
-        "loop": 2919854,
-        "loopSmall": 652269,
-        "still": 49362,
-        "stillSmall": 19206
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "10.0s",
-      "loop": "examples/3D/Physics/Burst/loop.mp4?v=e4fa11ff",
-      "loopSmall": "examples/3D/Physics/Burst/loop-640.mp4?v=b7e9a5ae",
-      "motion": 14.98,
-      "rendered": "2026-09-26",
       "seconds": 10.0,
-      "seed": 1,
+      "frame": 480,
+      "motion": 18.01,
       "sound": false,
       "source": "4a077e3760623c0f",
-      "still": "examples/3D/Physics/Burst/still.jpg?v=b23bf962",
-      "stillSmall": "examples/3D/Physics/Burst/still-640.jpg?v=f72070ca",
-      "width": 1080
+      "rendered": "2026-10-14",
+      "bytes": {
+        "loop": 2798994,
+        "loopSmall": 614303,
+        "still": 61432,
+        "stillSmall": 23451
+      },
+      "loop": "examples/3D/Physics/Burst/loop.mp4?v=2ff31f07",
+      "loopSmall": "examples/3D/Physics/Burst/loop-640.mp4?v=e41416a2",
+      "still": "examples/3D/Physics/Burst/still.jpg?v=2de5d2bb",
+      "stillSmall": "examples/3D/Physics/Burst/still-640.jpg?v=a6cca01c",
+      "seed": 1
     },
     "3D/Physics/Cape": {
       "bytes": {
@@ -2762,26 +2762,26 @@
       "width": 1080
     },
     "3D/Physics/Tumble": {
-      "bytes": {
-        "loop": 1135159,
-        "loopSmall": 298472,
-        "still": 44053,
-        "stillSmall": 17157
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "10.0s",
-      "loop": "examples/3D/Physics/Tumble/loop.mp4?v=14bb83eb",
-      "loopSmall": "examples/3D/Physics/Tumble/loop-640.mp4?v=6477436b",
-      "motion": 6.738,
-      "rendered": "2026-09-26",
       "seconds": 10.0,
-      "seed": 1,
+      "frame": 480,
+      "motion": 6.033,
       "sound": false,
       "source": "3e7b5de7fbafc428",
-      "still": "examples/3D/Physics/Tumble/still.jpg?v=cacf4daa",
-      "stillSmall": "examples/3D/Physics/Tumble/still-640.jpg?v=e4976234",
-      "width": 1080
+      "rendered": "2026-10-14",
+      "bytes": {
+        "loop": 1136821,
+        "loopSmall": 290221,
+        "still": 47766,
+        "stillSmall": 18684
+      },
+      "loop": "examples/3D/Physics/Tumble/loop.mp4?v=e79ea8ff",
+      "loopSmall": "examples/3D/Physics/Tumble/loop-640.mp4?v=52d6dbb2",
+      "still": "examples/3D/Physics/Tumble/still.jpg?v=71c9d9ef",
+      "stillSmall": "examples/3D/Physics/Tumble/still-640.jpg?v=df58bc6f",
+      "seed": 1
     },
     "3D/Physics/Windmill": {
       "bytes": {
@@ -7997,26 +7997,26 @@
       "width": 1080
     },
     "Physics/Burst": {
-      "bytes": {
-        "loop": 2663327,
-        "loopSmall": 656230,
-        "still": 43006,
-        "stillSmall": 16333
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "10.0s",
-      "loop": "examples/Physics/Burst/loop.mp4?v=7532b4cc",
-      "loopSmall": "examples/Physics/Burst/loop-640.mp4?v=d1d610e0",
-      "motion": 26.759,
-      "rendered": "2026-09-26",
       "seconds": 10.0,
-      "seed": 1,
+      "frame": 480,
+      "motion": 26.741,
       "sound": false,
-      "source": "6fef3e18ce40d8b5",
-      "still": "examples/Physics/Burst/still.jpg?v=8c524342",
-      "stillSmall": "examples/Physics/Burst/still-640.jpg?v=ec5aa216",
-      "width": 1080
+      "source": "9035032fb3bdd2a2",
+      "rendered": "2026-10-14",
+      "bytes": {
+        "loop": 2622154,
+        "loopSmall": 610207,
+        "still": 42062,
+        "stillSmall": 15459
+      },
+      "loop": "examples/Physics/Burst/loop.mp4?v=d29ba3f5",
+      "loopSmall": "examples/Physics/Burst/loop-640.mp4?v=d4ae0aba",
+      "still": "examples/Physics/Burst/still.jpg?v=4e764dd7",
+      "stillSmall": "examples/Physics/Burst/still-640.jpg?v=081188b1",
+      "seed": 1
     },
     "Physics/Chain": {
       "bytes": {
@@ -8039,26 +8039,26 @@
       "width": 1080
     },
     "Physics/Forces": {
-      "bytes": {
-        "loop": 2073387,
-        "loopSmall": 437302,
-        "still": 76964,
-        "stillSmall": 28239
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "10.0s",
-      "loop": "examples/Physics/Forces/loop.mp4?v=d34f19da",
-      "loopSmall": "examples/Physics/Forces/loop-640.mp4?v=146e4d9e",
-      "motion": 13.566,
-      "rendered": "2026-09-26",
       "seconds": 10.0,
-      "seed": 1,
+      "frame": 480,
+      "motion": 13.298,
       "sound": false,
-      "source": "0dd0c3d1d8af2f2d",
-      "still": "examples/Physics/Forces/still.jpg?v=d03a88bb",
-      "stillSmall": "examples/Physics/Forces/still-640.jpg?v=7dc33bc5",
-      "width": 1080
+      "source": "a0c99ef6b728463a",
+      "rendered": "2026-10-14",
+      "bytes": {
+        "loop": 1834644,
+        "loopSmall": 392454,
+        "still": 84763,
+        "stillSmall": 31786
+      },
+      "loop": "examples/Physics/Forces/loop.mp4?v=32d9b81d",
+      "loopSmall": "examples/Physics/Forces/loop-640.mp4?v=2d05a122",
+      "still": "examples/Physics/Forces/still.jpg?v=5747d974",
+      "stillSmall": "examples/Physics/Forces/still-640.jpg?v=2509854b",
+      "seed": 1
     },
     "Physics/Joints": {
       "bytes": {
@@ -8103,26 +8103,26 @@
       "width": 1080
     },
     "Physics/RigidBodies": {
-      "bytes": {
-        "loop": 3190754,
-        "loopSmall": 803050,
-        "still": 188102,
-        "stillSmall": 77914
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "10.0s",
-      "loop": "examples/Physics/RigidBodies/loop.mp4?v=d425ff81",
-      "loopSmall": "examples/Physics/RigidBodies/loop-640.mp4?v=441a333e",
-      "motion": 23.615,
-      "rendered": "2026-09-26",
       "seconds": 10.0,
-      "seed": 1,
+      "frame": 480,
+      "motion": 23.389,
       "sound": false,
-      "source": "ca71dad6e8cafe24",
-      "still": "examples/Physics/RigidBodies/still.jpg?v=c3bb94c9",
-      "stillSmall": "examples/Physics/RigidBodies/still-640.jpg?v=421f5418",
-      "width": 1080
+      "source": "d4ac05e81befaf4d",
+      "rendered": "2026-10-14",
+      "bytes": {
+        "loop": 3206855,
+        "loopSmall": 813223,
+        "still": 185918,
+        "stillSmall": 77202
+      },
+      "loop": "examples/Physics/RigidBodies/loop.mp4?v=3bae2bcb",
+      "loopSmall": "examples/Physics/RigidBodies/loop-640.mp4?v=0c493810",
+      "still": "examples/Physics/RigidBodies/still.jpg?v=dcefde14",
+      "stillSmall": "examples/Physics/RigidBodies/still-640.jpg?v=dada2a72",
+      "seed": 1
     },
     "Randomness/Gaussian": {
       "width": 1080,

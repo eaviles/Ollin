@@ -106,6 +106,7 @@ final class Body
   var kind: Body.Kind { get set }
   var mass: Double { get }
   var position: Vector2 { get set }
+  var restitution: Double { get set }
   var userData: Any? { get set }
   var velocity: Vector2 { get set }
 final class Body3D: Colliding3D
@@ -352,6 +353,7 @@ final class World
   var particlesCollide: Bool { get set }
   var restitution: Double { get set }
   var springs: [Spring] { get }
+  var substeps: Int { get set }
   var unitsPerMeter: Double { get set }
 final class World3D
   @discardableResult func addBodies(from: Scene, usesSceneGravity: Bool = default, group: CollisionGroup = default) -> [Body3D]
@@ -397,6 +399,7 @@ final class World3D
   var characters: [Character3D] { get }
   var collisionGroups: [CollisionGroup] { get }
   var contacts: [Contact3D] { get }
+  var drag: Double { get set }
   var gravity: Vector3 { get set }
   var ground: Double? { get set }
   var groundBody: Body3D? { get }
@@ -405,6 +408,7 @@ final class World3D
   var ragdolls: [Ragdoll3D] { get }
   var restitution: Double { get set }
   var softBodies: [SoftBody3D] { get }
+  var substeps: Int { get set }
   var tensegrities: [Tensegrity3D] { get }
   var unitsPerMeter: Double { get set }
   var vehicles: [Vehicle3D] { get }

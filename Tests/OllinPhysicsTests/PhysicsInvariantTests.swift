@@ -11,16 +11,14 @@ import Ollin
 /// sketch sets is what it reads back. Each is read off the bodies' own motion
 /// against an analytic value or a twin, never against the engine's arithmetic.
 ///
+/// Each was measured on 2026-10-11 and pinned where it fell; the fixes of
+/// 2026-10-14 took the pins off, and the numbers in the comments are the ones
+/// the gaps had.
+///
 /// `.serialized` is load-bearing: the 2D world's engine keeps its worlds in a
 /// global pool and is not thread-safe (see `RigidBodyTests`).
 @Suite(.serialized)
 struct PhysicsInvariantTests {
-
-    /// A measured gap stands as a known issue only where it was measured; the
-    /// statement runs plain everywhere else.
-    private func pinned(_ reason: Comment, when active: Bool = true, _ body: () -> Void) {
-        if active { withKnownIssue(reason, body) } else { body() }
-    }
 
     private func run(_ world: World, seconds: Double, hz: Double = 60) {
         for _ in 0..<Int(seconds * hz) { world.advance(by: 1 / hz) }
@@ -52,11 +50,9 @@ struct PhysicsInvariantTests {
     /// A body with nothing acting on it keeps its speed and its spin: in zero
     /// gravity, at zero drag, five seconds later it moves as it did.
     ///
-    /// Measured 2026-10-11 and filed: every 3D body carries the engine's
-    /// default damping of 5% a second on both its velocity and its spin, with
-    /// nothing in the API to turn it off, so a body coasting at 10 reads 7.79
-    /// after five seconds and a thrown ball lands 7% short of the parabola.
-    /// The 2D body at drag 0 holds exactly.
+    /// Before `World3D.drag` every 3D body carried the engine's own 5% a
+    /// second on its velocity and its spin, with nothing to turn it off, so a
+    /// body coasting at 10 read 7.79 after five seconds.
     @Test func aCoastingBodyKeepsItsSpeed() {
         let flat = World()
         flat.gravity = .zero
@@ -70,23 +66,37 @@ struct PhysicsInvariantTests {
 
         let deep = World3D()
         deep.gravity = .zero
+        deep.drag = 0
         let ball = deep.addBody(.sphere(radius: 0.5), at: Vector3(0, 5, 0))
         ball.velocity = Vector3(10, 0, 0)
         ball.angularVelocity = Vector3(0, 5, 0)
         run(deep, seconds: 5)
-        pinned("every 3D body carries 5% a second of damping with no way to turn it off (measured 2026-10-11)") {
-            #expect(abs(ball.velocity.x / 10 - 1) < 0.005, "the 3D body coasts at \(ball.velocity.x) of 10")
-            #expect(abs(ball.angularVelocity.y / 5 - 1) < 0.005, "the 3D body spins at \(ball.angularVelocity.y) of 5")
-        }
+        #expect(abs(ball.velocity.x / 10 - 1) < 0.005, "the 3D body coasts at \(ball.velocity.x) of 10")
+        #expect(abs(ball.angularVelocity.y / 5 - 1) < 0.005, "the 3D body spins at \(ball.angularVelocity.y) of 5")
+    }
+
+    /// The default 3D `drag` is the solver's own feel, 5% a second on the
+    /// speed and the spin, so a sketch written before the setting existed
+    /// moves as it did.
+    @Test func theDefaultThreeDDragIsFivePercentASecond() {
+        let deep = World3D()
+        deep.gravity = .zero
+        let ball = deep.addBody(.sphere(radius: 0.5), at: Vector3(0, 5, 0))
+        ball.velocity = Vector3(10, 0, 0)
+        ball.angularVelocity = Vector3(0, 5, 0)
+        run(deep, seconds: 1)
+        #expect(abs(ball.velocity.x / (10 * exp(-0.05)) - 1) < 0.005, "the 3D body coasts at \(ball.velocity.x) of \(10 * exp(-0.05))")
+        #expect(abs(ball.angularVelocity.y / (5 * exp(-0.05)) - 1) < 0.005, "the 3D body spins at \(ball.angularVelocity.y) of \(5 * exp(-0.05))")
     }
 
     /// The world's `drag` means one thing: a particle and a rigid body given
-    /// the same drag and the same launch slow at the same rate.
+    /// the same drag and the same launch slow at the same rate, and that rate
+    /// is the share lost per sixtieth of a second compounded (0.99 to the
+    /// sixtieth after a second at 0.01), the feel every particle sketch had.
     ///
-    /// Measured 2026-10-11 and filed: a particle's drag is taken once a step
-    /// and a body's once a second (the engine's linear damping), so at 60 Hz
-    /// and drag 0.01 the particle keeps 55% of its speed after a second and the
-    /// body 99%, a factor of sixty between two readings of one number.
+    /// Before the fix a particle's drag was taken once a step and a body's
+    /// once a second (the engine's linear damping), so at 60 Hz and drag 0.01
+    /// the particle kept 55% of its speed after a second and the body 99%.
     @Test func dragMeansTheSameForAParticleAndABody() {
         let world = World()
         world.gravity = .zero
@@ -97,17 +107,57 @@ struct PhysicsInvariantTests {
         body.velocity = Vector2(600, 0)
         run(world, seconds: 1)
         let particleSpeed = particle.velocity.x * 60, bodySpeed = body.velocity.x
-        pinned("drag is per step for a particle and per second for a body (measured 2026-10-11)") {
-            #expect(abs(particleSpeed / bodySpeed - 1) < 0.05, "after a second the particle moves at \(particleSpeed) and the body at \(bodySpeed)")
-        }
+        let expected = 600 * pow(0.99, 60.0)
+        #expect(abs(particleSpeed / bodySpeed - 1) < 0.05, "after a second the particle moves at \(particleSpeed) and the body at \(bodySpeed)")
+        #expect(abs(particleSpeed / expected - 1) < 0.01, "the particle keeps \(particleSpeed) of \(expected)")
+        #expect(abs(bodySpeed / expected - 1) < 0.01, "the body keeps \(bodySpeed) of \(expected)")
+
+        let deep = World3D()
+        deep.gravity = .zero
+        deep.drag = 0.01
+        let ball = deep.addBody(.sphere(radius: 0.5), at: Vector3(0, 5, 0))
+        ball.velocity = Vector3(10, 0, 0)
+        run(deep, seconds: 1)
+        #expect(abs(ball.velocity.x / (10 * pow(0.99, 60.0)) - 1) < 0.01, "the 3D body keeps \(ball.velocity.x) of \(10 * pow(0.99, 60.0))")
+    }
+
+    /// A `drag` set after the bodies were added reaches them: a coasting body
+    /// in each world slows once the world's drag is raised, and a 2D body made
+    /// `.kinematic`, which moves only by the velocity it is given, is never
+    /// dragged at all.
+    @Test func aWorldsDragReachesItsBodiesWhenChanged() {
+        let flat = World()
+        flat.gravity = .zero
+        flat.drag = 0
+        let disk = flat.addBody(.circle(radius: 10), at: Vector2(0, 500))
+        disk.velocity = Vector2(600, 0)
+        let sweeper = flat.addBody(.box(width: 40, height: 40), at: Vector2(0, 800), kind: .kinematic)
+        sweeper.velocity = Vector2(600, 0)
+        run(flat, seconds: 1)
+        #expect(abs(disk.velocity.x / 600 - 1) < 0.005)
+        flat.drag = 0.01
+        run(flat, seconds: 1)
+        #expect(abs(disk.velocity.x / (600 * pow(0.99, 60.0)) - 1) < 0.01, "the 2D body slowed to \(disk.velocity.x) after drag was set")
+        #expect(abs(sweeper.velocity.x / 600 - 1) < 1e-6, "the kinematic body moves at \(sweeper.velocity.x) of 600 under drag")
+
+        let deep = World3D()
+        deep.gravity = .zero
+        deep.drag = 0
+        let ball = deep.addBody(.sphere(radius: 0.5), at: Vector3(0, 5, 0))
+        ball.velocity = Vector3(10, 0, 0)
+        run(deep, seconds: 1)
+        #expect(abs(ball.velocity.x / 10 - 1) < 0.005)
+        deep.drag = 0.01
+        run(deep, seconds: 1)
+        #expect(abs(ball.velocity.x / (10 * pow(0.99, 60.0)) - 1) < 0.01, "the 3D body slowed to \(ball.velocity.x) after drag was set")
     }
 
     /// A particle's drag does not depend on the frame rate: a coasting particle
     /// keeps the same speed after one second at 30, 60, and 120 Hz.
     ///
-    /// Measured 2026-10-11 and filed: the drag is applied once a step whatever
-    /// the step, so a particle keeps 74% of its speed after a second at 30 Hz,
-    /// 55% at 60, and 30% at 120.
+    /// Before the fix the drag was applied once a step whatever the step, so a
+    /// particle kept 74% of its speed after a second at 30 Hz, 55% at 60, and
+    /// 30% at 120.
     @Test func aParticlesDragIsTheSameAtEveryFrameRate() {
         func remaining(at hz: Double) -> Double {
             let world = World()
@@ -117,10 +167,9 @@ struct PhysicsInvariantTests {
             run(world, seconds: 1, hz: hz)
             return p.velocity.x * hz
         }
-        let slow = remaining(at: 30), fast = remaining(at: 120)
-        pinned("a particle's drag is taken once a step, so it depends on the frame rate (measured 2026-10-11)") {
-            #expect(abs(slow / fast - 1) < 0.05, "a second of drag leaves \(slow) px/s at 30 Hz and \(fast) at 120")
-        }
+        let slow = remaining(at: 30), fast = remaining(at: 120), usual = remaining(at: 60)
+        #expect(abs(slow / fast - 1) < 0.05, "a second of drag leaves \(slow) px/s at 30 Hz and \(fast) at 120")
+        #expect(abs(usual / (600 * pow(0.99, 60.0)) - 1) < 0.01, "a second of drag at 60 Hz leaves \(usual) px/s of \(600 * pow(0.99, 60.0))")
     }
 
     // MARK: Returning to a height
@@ -128,15 +177,19 @@ struct PhysicsInvariantTests {
     /// A pendulum returns to the height it was released from: a bar hinged at
     /// one end and let go horizontal comes back to the pivot's height at every
     /// apex, within 5% of its swing, for ten seconds. Three pendulums: a 2D
-    /// rigid bar, a 3D rigid bar, and a Verlet bob on a rod.
+    /// rigid bar, a 3D rigid bar at drag 0 stepped in sixteen pieces a frame,
+    /// and a Verlet bob on a rod stepped in sixty-four.
     ///
-    /// Measured 2026-10-11 and filed: the 2D bar holds to 0.1% of its swing.
-    /// The 3D bar loses 13% of its swing on the first half swing and 56% by
-    /// the seventh (the body damping above). The Verlet bob at drag 0 gives
-    /// back 70% of its height on the first swing at 60 Hz (91% at 240 Hz,
-    /// 96% at 600): the projection of a plain Verlet step onto the rod takes
-    /// the radial share of each step's motion with it, a loss first order in
-    /// the step, and the model in numpy reproduces the numbers exactly.
+    /// The 2D bar holds to 0.1% of its swing at one piece. The other two lose
+    /// a share first order in the step, so `substeps` is the cure in both
+    /// worlds (measured 2026-10-14 at 60 Hz, the first apex then the seventh
+    /// or eighth). The 3D hinge: 7.9% and 37% at one piece, 2.1% and 13% at
+    /// four, 0.6% and 3.6% at sixteen; before `World3D.drag` the solver's own
+    /// damping put the first apex at 13% and the seventh at 56%. The Verlet
+    /// bob: 30% and 80% at one piece, since projecting a plain Verlet step
+    /// onto the rod drops the share of the motion that pointed along it, 2.4%
+    /// and 17% at sixteen, 0.7% and 4.7% at sixty-four; four pieces at 60 Hz
+    /// and one at 240 Hz give the same apexes to the third digit.
     @Test(arguments: ["2D rigid", "3D rigid", "Verlet"])
     func aPendulumReturnsToItsHeight(kind: String) {
         var apexes: [Double] = []
@@ -157,6 +210,8 @@ struct PhysicsInvariantTests {
             }
         case "3D rigid":
             let world = World3D()
+            world.drag = 0
+            world.substeps = 16
             let bar = world.addBody(.box(width: 2, height: 0.1, depth: 0.1), at: Vector3(1, 5, 0), friction: 0)
             _ = world.connect(bar, toWorld: .revolute(at: Vector3(0, 5, 0), axis: .unitZ))
             var lastVy = 0.0
@@ -170,6 +225,7 @@ struct PhysicsInvariantTests {
             let world = World()
             world.gravity = Vector2(0, 980)
             world.drag = 0
+            world.substeps = 64
             let pin = world.addParticle(at: .zero).pin()
             let bob = world.addParticle(at: Vector2(100, 0))
             _ = world.connect(pin, bob, length: 100, stiffness: 1)
@@ -183,15 +239,11 @@ struct PhysicsInvariantTests {
         }
         #expect(apexes.count >= 5, "\(kind): only \(apexes.count) apexes in ten seconds")
         let lost = apexes.max() ?? 1
-        pinned("the 3D bar's damping and the Verlet rod's projection lose height every swing (measured 2026-10-11)",
-               when: kind != "2D rigid") {
-            #expect(lost < 0.05, "\(kind) fell \(lost) of its swing short of the pivot's height at an apex")
-        }
+        #expect(lost < 0.05, "\(kind) fell \(lost) of its swing short of the pivot's height at an apex")
     }
 
     /// A ball dropped at restitution 1 onto a floor returns to its drop, within
-    /// 5% from 100 px in 2D and within 7% from 1 m in 3D (whose five percent a
-    /// second of damping takes the rest).
+    /// 5% from 100 px in 2D and from 1 m in 3D, both at drag 0.
     @Test func aPerfectlyElasticBallReturnsToItsDrop() {
         let flat = World()
         flat.gravity = Vector2(0, 980)
@@ -210,6 +262,7 @@ struct PhysicsInvariantTests {
         #expect(abs((490 - apex) / 100 - 1) < 0.05, "the 2D ball rose \(490 - apex) of 100")
 
         let deep = World3D()
+        deep.drag = 0
         deep.restitution = 1
         deep.ground = 0
         let ball = deep.addBody(.sphere(radius: 0.5), at: Vector3(0, 1.5, 0), restitution: 1)
@@ -221,18 +274,18 @@ struct PhysicsInvariantTests {
             lastUp = ball.velocity.y
         }
         #expect(rose)
-        #expect(abs(top - 1) < 0.07, "the 3D ball rose \(top) of 1")
+        #expect(abs(top - 1) < 0.05, "the 3D ball rose \(top) of 1")
     }
 
     /// A body given `restitution: 0` does not bounce, whatever the world's
     /// default: the world's value is what a body gets when it names none, not
-    /// a floor under the one it names.
+    /// a floor under the one it names. The walls and the ground carry no
+    /// bounce of their own, and both engines combine a pair by the larger, so
+    /// against them a body's own value is the one that counts.
     ///
-    /// Measured 2026-10-11 and filed: both engines combine the pair's
-    /// restitution by the larger, and the walls and the ground carry the
-    /// world's value, so a dead ball on a default floor rises 28 px from a
-    /// 110 px drop in 2D (the world's 0.5) and 6.5 cm from 2.5 m in 3D (the
-    /// world's 0.2); with the world's value at 0 neither bounces.
+    /// Before the fix the walls and the ground carried the world's value, so a
+    /// dead ball on a default floor rose 28 px from a 110 px drop in 2D (the
+    /// world's 0.5) and 6.5 cm from 2.5 m in 3D (the world's 0.2).
     @Test func aBallWithNoBounceDoesNotBounce() {
         let flat = World()
         flat.gravity = Vector2(0, 980)
@@ -246,9 +299,7 @@ struct PhysicsInvariantTests {
             if lastVy > 0 && disk.velocity.y < 0 { bounced = true }
             lastVy = disk.velocity.y
         }
-        pinned("the world's restitution is a floor under a body's own in both worlds (measured 2026-10-11)") {
-            #expect(990 - apex < 2, "the 2D ball with no bounce rose \(990 - apex) px")
-        }
+        #expect(990 - apex < 2, "the 2D ball with no bounce rose \(990 - apex) px")
 
         let deep = World3D()
         deep.ground = 0
@@ -260,9 +311,33 @@ struct PhysicsInvariantTests {
             if lastUp < 0 && ball.velocity.y > 0 { rose = true }
             lastUp = ball.velocity.y
         }
-        pinned("the world's restitution is a floor under a body's own in both worlds (measured 2026-10-11)") {
-            #expect(top < 0.01, "the 3D ball with no bounce rose \(top)")
-        }
+        #expect(top < 0.01, "the 3D ball with no bounce rose \(top)")
+    }
+
+    /// A body that named its own `restitution` keeps it when the world's
+    /// changes, and one that named none follows the world's, in both worlds.
+    @Test func aBodyThatNamedItsBounceKeepsItWhenTheWorldsChanges() {
+        let flat = World()
+        let own = flat.addBody(.circle(radius: 10), at: Vector2(100, 100), restitution: 0.9)
+        let handed = flat.addBody(.circle(radius: 10), at: Vector2(300, 100))
+        #expect(own.restitution == 0.9 && handed.restitution == 0.5)
+        flat.restitution = 0.1
+        #expect(own.restitution == 0.9, "the 2D body that named 0.9 reads \(own.restitution)")
+        #expect(handed.restitution == 0.1, "the 2D body that named none reads \(handed.restitution)")
+        handed.restitution = 0.7
+        flat.restitution = 0.3
+        #expect(handed.restitution == 0.7, "a 2D body given a value afterwards keeps it")
+
+        let deep = World3D()
+        let ownBall = deep.addBody(.sphere(radius: 0.5), at: Vector3(0, 5, 0), restitution: 0.9)
+        let handedBall = deep.addBody(.sphere(radius: 0.5), at: Vector3(3, 5, 0))
+        #expect(abs(ownBall.restitution - 0.9) < 1e-6 && abs(handedBall.restitution - 0.2) < 1e-6)
+        deep.restitution = 0.1
+        #expect(abs(ownBall.restitution - 0.9) < 1e-6, "the 3D body that named 0.9 reads \(ownBall.restitution)")
+        #expect(abs(handedBall.restitution - 0.1) < 1e-6, "the 3D body that named none reads \(handedBall.restitution)")
+        handedBall.restitution = 0.7
+        deep.restitution = 0.3
+        #expect(abs(handedBall.restitution - 0.7) < 1e-6, "a 3D body given a value afterwards keeps it")
     }
 
     // MARK: What the world says reaches its bodies
@@ -270,10 +345,9 @@ struct PhysicsInvariantTests {
     /// A body resting on the floor rises when gravity is turned upward: a
     /// change to the world reaches a body that has gone to sleep.
     ///
-    /// Measured 2026-10-11 and filed: neither engine wakes a sleeping body
-    /// when the world's gravity changes, so a box settled for half a second
-    /// stays on the floor under gravity pointing the other way, in both
-    /// worlds.
+    /// Neither engine wakes a sleeping body when its gravity changes, so the
+    /// worlds do it themselves; before that a box settled for half a second
+    /// stayed on the floor under gravity pointing the other way.
     @Test func aSleepingBodyWakesWhenGravityChanges() {
         let flat = World()
         flat.gravity = Vector2(0, 980)
@@ -283,9 +357,7 @@ struct PhysicsInvariantTests {
         let rest = box.position.y
         flat.gravity = Vector2(0, -980)
         run(flat, seconds: 1)
-        pinned("a sleeping body is not woken by a change of gravity (measured 2026-10-11)") {
-            #expect(rest - box.position.y > 100, "the 2D box moved \(rest - box.position.y) px after gravity flipped")
-        }
+        #expect(rest - box.position.y > 100, "the 2D box moved \(rest - box.position.y) px after gravity flipped")
 
         let deep = World3D()
         deep.ground = 0
@@ -294,19 +366,16 @@ struct PhysicsInvariantTests {
         #expect(!crate.isAwake, "the 3D box never went to sleep, so the statement was not tested")
         deep.gravity = Vector3(0, 9.8, 0)
         run(deep, seconds: 1)
-        pinned("a sleeping body is not woken by a change of gravity (measured 2026-10-11)") {
-            #expect(crate.position.y > 2, "the 3D box rose to \(crate.position.y) after gravity flipped")
-        }
+        #expect(crate.position.y > 2, "the 3D box rose to \(crate.position.y) after gravity flipped")
     }
 
-    /// The world's `restitution` reaches its walls when it changes, not only
-    /// when they were built: a ball dropped after the world's restitution was
-    /// set to 0 does not bounce off them.
+    /// The world's `restitution` reaches a body already in it when it changes,
+    /// not only when the body was added: a ball dropped after the world's
+    /// restitution was set to 0 does not bounce off the walls.
     ///
-    /// Measured 2026-10-11 and filed: the walls and each body read the
-    /// world's `restitution` and `drag` once, when they are made, so a value
-    /// set afterwards changes nothing already in the world (the ball rose
-    /// 28 px on walls built at 0.5).
+    /// Before the fix the walls and each body read the world's `restitution`
+    /// and `drag` once, when they were made, so a value set afterwards changed
+    /// nothing already in the world (the ball rose 28 px on walls built at 0.5).
     @Test func aWorldsRestitutionReachesItsWallsWhenChanged() {
         let world = World()
         world.gravity = Vector2(0, 980)
@@ -321,18 +390,16 @@ struct PhysicsInvariantTests {
             if lastVy > 0 && disk.velocity.y < 0 { bounced = true }
             lastVy = disk.velocity.y
         }
-        pinned("the walls read the world's restitution once, when they are built (measured 2026-10-11)") {
-            #expect(990 - apex < 2, "the ball rose \(990 - apex) px off walls whose world was set to 0")
-        }
+        #expect(990 - apex < 2, "the ball rose \(990 - apex) px off walls whose world was set to 0")
     }
 
     /// An angular velocity a sketch sets is the one it reads back a step later,
     /// in radians a second, with nothing acting on the body.
     ///
-    /// Measured 2026-10-11 and filed: both engines cap a body's spin at a
-    /// quarter turn a step, 47.1 rad/s at 60 Hz (seven and a half turns a
-    /// second), and the 2D cap halves at a 1/30 frame; a fan set to 100 rad/s
-    /// reads 47 with no note.
+    /// Both engines cap a body's spin at a quarter turn a step unless told
+    /// not to, 47.1 rad/s at 60 Hz (seven and a half turns a second), and the
+    /// 2D cap halved at a 1/30 frame; a fan set to 100 rad/s read 47 with no
+    /// note before the worlds lifted it.
     @Test func angularVelocityIsWhatWasSet() {
         let flat = World()
         flat.gravity = .zero
@@ -340,16 +407,15 @@ struct PhysicsInvariantTests {
         let disk = flat.addBody(.circle(radius: 50), at: Vector2(500, 500))
         disk.angularVelocity = 100
         flat.advance(by: 1.0 / 60)
-        pinned("a spin is capped at a quarter turn a step in both worlds (measured 2026-10-11)") {
-            #expect(abs(disk.angularVelocity / 100 - 1) < 0.01, "the 2D body set to 100 rad/s spins at \(disk.angularVelocity)")
-        }
+        #expect(abs(disk.angularVelocity / 100 - 1) < 0.01, "the 2D body set to 100 rad/s spins at \(disk.angularVelocity)")
+        flat.advance(by: 1.0 / 30)
+        #expect(abs(disk.angularVelocity / 100 - 1) < 0.01, "the 2D body spins at \(disk.angularVelocity) after a 1/30 step")
         let deep = World3D()
         deep.gravity = .zero
+        deep.drag = 0
         let top = deep.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(0, 5, 0))
         top.angularVelocity = Vector3(0, 100, 0)
         deep.advance(by: 1.0 / 60)
-        pinned("a spin is capped at a quarter turn a step in both worlds (measured 2026-10-11)") {
-            #expect(abs(top.angularVelocity.y / 100 - 1) < 0.01, "the 3D body set to 100 rad/s spins at \(top.angularVelocity.y)")
-        }
+        #expect(abs(top.angularVelocity.y / 100 - 1) < 0.01, "the 3D body set to 100 rad/s spins at \(top.angularVelocity.y)")
     }
 }

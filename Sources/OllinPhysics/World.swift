@@ -47,21 +47,41 @@ public final class World {
     /// second². The default pulls down the screen (y-down). Set `.zero` for a
     /// free-floating, gravity-less field.
     public var gravity: Vector2 = Vector2(0, 980) {
-        didSet { if !holds(gravity, "world.gravity") { gravity = oldValue } }
+        didSet {
+            guard holds(gravity, "world.gravity") else { gravity = oldValue; return }
+            // The engine never wakes a settled body for a change of gravity,
+            // so a box asleep on the floor would sit through it turning upward.
+            for body in bodies { b2Body_SetAwake(body.id, true) }
+        }
     }
 
-    /// Velocity damping applied each step, `0…1` — a stand-in for air friction.
-    /// `0` conserves motion (bodies drift forever); a small value bleeds energy
-    /// so things settle. Verlet has no separate velocity to scale, so this
-    /// shrinks the implicit `position - previous` gap.
+    /// The share of speed lost every sixtieth of a second, `0…1`: a stand-in
+    /// for air friction. `0` conserves motion (bodies drift forever); the
+    /// default `0.01` takes 45% of a particle's speed in a second. The step
+    /// scales it, so a frame rate changes nothing, and a rigid `Body` reads
+    /// the same number, on its speed and its spin (never a `.kinematic` one,
+    /// which moves only by the velocity it is given). A change reaches every
+    /// body already in the world. Verlet has no separate velocity to scale, so
+    /// on a particle this shrinks the implicit `position - previous` gap.
     public var drag: Double = 0.01 {
-        didSet { if !holds(drag, "world.drag") { drag = oldValue } }
+        didSet {
+            guard holds(drag, "world.drag") else { drag = oldValue; return }
+            for body in bodies { applyDamping(to: body) }
+        }
     }
 
     /// How many relaxation passes run per step. Higher holds springs and
     /// contacts together under stress (a tall stack, a stiff cloth); lower is
     /// cheaper and looser. Costs scale linearly.
     public var iterations: Int = 8
+
+    /// How many pieces each step is cut into on the soft side, each integrated
+    /// and relaxed on its own; `1` by default. A bob on a rod gives back 70% of
+    /// its height a swing at one piece a frame, since projecting a step onto
+    /// the rod drops the share of the motion that pointed along it, and 97% at
+    /// sixteen. The cost grows with the count, so it is for a pendulum or a
+    /// short chain, not a pile. The rigid side keeps its own four.
+    public var substeps: Int = 1
 
     /// An optional rectangle particles are kept inside. `nil` lets them leave the
     /// canvas. Particles collide with the walls accounting for their `radius`. The
@@ -72,10 +92,16 @@ public final class World {
         }
     }
 
-    /// Wall restitution, `0…1`: how much speed a particle keeps when it bounces
-    /// off `bounds`. `0` sticks, `1` bounces with no loss.
+    /// How much speed a particle keeps when it bounces off `bounds`, `0…1`
+    /// (`0` sticks, `1` loses nothing), and what a rigid `Body` gets when
+    /// `addBody` names none. The walls carry no bounce of their own, so a body
+    /// meets them with its own value. A body that named none follows a change
+    /// here; one that did keeps its own.
     public var restitution: Double = 0.5 {
-        didSet { if !holds(restitution, "world.restitution") { restitution = oldValue } }
+        didSet {
+            guard holds(restitution, "world.restitution") else { restitution = oldValue; return }
+            for body in bodies where !body.namesRestitution { body.write(restitution: restitution) }
+        }
     }
 
     /// When `true`, particles with a positive `radius` push apart as solid disks,
@@ -210,17 +236,17 @@ public final class World {
         guard holds(dt, "advance(by:)"), dt > 0 else { return }
         let h = Swift.min(dt, maxTimestep)
 
-        for particle in particles {
-            particle.acceleration += gravity
-            integrate(particle, dt: h)
-        }
-        lastTimestep = h
-
-        for _ in 0 ..< Swift.max(1, iterations) {
-            for spring in springs { spring.solve() }
-            if particlesCollide { solveCollisions() }
-            if bounds != nil {
-                for particle in particles { constrainToBounds(particle) }
+        let pieces = Swift.max(1, substeps)
+        if pieces == 1 {
+            step(particlesBy: h)
+        } else {
+            // The forces a sketch applied this frame are cleared by the first
+            // piece's integration, so every piece is handed them again.
+            let applied = particles.map(\.acceleration)
+            let piece = h / Double(pieces)
+            for _ in 0 ..< pieces {
+                for (particle, force) in zip(particles, applied) { particle.acceleration = force }
+                step(particlesBy: piece)
             }
         }
 
@@ -233,17 +259,63 @@ public final class World {
 
     // MARK: Solver internals
 
-    /// Time-corrected Verlet: `next = position + velocity·(dt/lastDt)·(1−drag) +
-    /// acceleration·dt²`. Scaling the velocity term by the timestep ratio keeps
-    /// speeds steady when the frame rate wanders.
-    private func integrate(_ p: Particle, dt: Double) {
+    /// One soft-side step of `h` seconds: integrate every particle, then relax
+    /// springs, contacts, and bounds.
+    private func step(particlesBy h: Double) {
+        let keep = dragKept(over: h)
+        for particle in particles {
+            particle.acceleration += gravity
+            integrate(particle, dt: h, keeping: keep)
+        }
+        lastTimestep = h
+
+        for _ in 0 ..< Swift.max(1, iterations) {
+            for spring in springs { spring.solve() }
+            if particlesCollide { solveCollisions() }
+            if bounds != nil {
+                for particle in particles { constrainToBounds(particle) }
+            }
+        }
+    }
+
+    /// Time-corrected Verlet: `next = position + velocity·(dt/lastDt)·keep +
+    /// acceleration·dt²`, `keep` the share `drag` leaves over this step.
+    /// Scaling the velocity term by the timestep ratio keeps speeds steady
+    /// when the frame rate wanders.
+    private func integrate(_ p: Particle, dt: Double, keeping keep: Double) {
         guard !p.isPinned else { p.acceleration = .zero; return }
         let ratio = lastTimestep > 0 ? dt / lastTimestep : 1
-        let velocity = (p.position - p.previous) * (ratio * (1 - drag))
+        let velocity = (p.position - p.previous) * (ratio * keep)
         let next = p.position + velocity + p.acceleration * (dt * dt)
         p.previous = p.position
         p.position = next
         p.acceleration = .zero
+    }
+
+    /// The share of its speed a particle keeps over a step of `dt`: `1 - drag`
+    /// per sixtieth of a second, compounded over the step's sixtieths, and
+    /// exactly `1 - drag` at a 1/60 step so a 60 Hz run moves as it always did.
+    func dragKept(over dt: Double) -> Double {
+        let perSixtieth = Swift.min(1, Swift.max(0, 1 - drag))
+        let sixtieths = dt * 60
+        if abs(sixtieths - 1) < 1e-9 { return perSixtieth }
+        return pow(perSixtieth, sixtieths)
+    }
+
+    /// The exponential rate the rigid engine damps at, per second, for the
+    /// share `drag` takes per sixtieth: `(1 - drag)^60 = e^-rate`. A drag at or
+    /// past 1 is read as 0.999, which stops a body within a step.
+    var rigidDamping: Float {
+        guard drag > 0 else { return 0 }
+        return Float(-60 * log(1 - Swift.min(drag, 0.999)))
+    }
+
+    /// Hand a body the world's `drag`, on its speed and its spin, and none at
+    /// all when it is kinematic (the engine would slow one regardless).
+    func applyDamping(to body: Body) {
+        let rate = body.kind == .kinematic ? 0 : rigidDamping
+        b2Body_SetLinearDamping(body.id, rate)
+        b2Body_SetAngularDamping(body.id, rate)
     }
 
     /// A cell key for the collision spatial hash.
@@ -349,15 +421,16 @@ public final class World {
     /// Add a rigid `Body` with `collider` at `position` and return it. Unlike a
     /// `Particle` (a soft Verlet point), a `Body` has orientation, rotates, stacks
     /// stably, and bounces with real contact response — it's backed by Box2D. It
-    /// shares the world's `gravity`, `bounds` (as walls), and `restitution` (used as
-    /// the wall and default contact restitution).
+    /// shares the world's `gravity`, `bounds` (as walls), `drag`, and `restitution`
+    /// (what a body gets when it names none).
     /// - Parameters:
     ///   - collider: the shape it collides with.
     ///   - position: where it starts, in canvas units.
     ///   - kind: `.dynamic` (default) is moved by forces; `.static` is immovable.
     ///   - density: mass per area; heavier bodies shove lighter ones.
     ///   - friction: surface friction, `0` slick … `1` grippy.
-    ///   - restitution: bounciness `0…1`; defaults to the world's `restitution`.
+    ///   - restitution: bounciness `0…1`; defaults to the world's `restitution`
+    ///     and follows it until the body is given one of its own.
     @discardableResult
     public func addBody(_ collider: Collider, at position: Vector2,
                         kind: Body.Kind = .dynamic, density: Double = 1,
@@ -374,7 +447,13 @@ public final class World {
         var bodyDef = b2DefaultBodyDef()
         bodyDef.type = kind.b2Type
         bodyDef.position = meters(from: position)
-        bodyDef.linearDamping = Float(Swift.max(0, drag))
+        let rate = kind == .kinematic ? 0 : rigidDamping
+        bodyDef.linearDamping = rate
+        bodyDef.angularDamping = rate
+        // The engine caps a spin at a quarter turn a step unless told not to,
+        // 47 rad/s at 60 Hz, which a fan set faster would read back short of
+        // with no note.
+        bodyDef.allowFastRotation = true
         let bodyId = b2CreateBody(worldId, &bodyDef)
 
         var shapeDef = b2DefaultShapeDef()
@@ -403,7 +482,9 @@ public final class World {
             }
         }
 
-        let body = Body(world: self, id: bodyId)
+        let body = Body(world: self, id: bodyId,
+                        restitution: restitution ?? self.restitution,
+                        namesRestitution: restitution != nil)
         bodies.append(body)
         return body
     }
@@ -542,8 +623,11 @@ public final class World {
         let wall = b2CreateBody(worldId, &bodyDef)
         wallBodyId = wall
 
+        // The walls carry no bounce of their own: the engine takes the larger
+        // of a pair's, so this is what lets a body's own value decide what it
+        // does at a wall, a ball given 0 included.
         var shapeDef = b2DefaultShapeDef()
-        shapeDef.material.restitution = Float(restitution)
+        shapeDef.material.restitution = 0
 
         let corners = [
             b2Vec2(x: meters(from: b.x), y: meters(from: b.y)),

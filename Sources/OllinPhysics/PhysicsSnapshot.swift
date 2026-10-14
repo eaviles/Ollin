@@ -35,7 +35,8 @@ internal import CJolt
 /// parameter `addBody` takes, a mass or center of mass handed in among them), the
 /// `Joint3D`s between them, gears and racks, characters, vehicles, ragdolls,
 /// tensegrities, ropes, the collision-group table, and the world's `gravity`,
-/// `ground`, `restitution`, `maxTimestep`, `unitsPerMeter`, and `water`. Any
+/// `ground`, `restitution`, `drag`, `substeps`, `maxTimestep`, `unitsPerMeter`, and
+/// `water`. Any
 /// other soft body is nothing but its mesh, so it is saved only when it has
 /// an `assetName` to write down in place of the mesh, which
 /// `restore(_:resolving:)` turns back into one; an unnamed one is left out,
@@ -166,10 +167,12 @@ public struct PhysicsSnapshot: Sendable, Equatable {
         return names
     }
 
-    /// The format this build writes. It also reads the two before it: 5 is
-    /// this one without the trailing section of handed masses and centers of
-    /// mass, and 4 is 5 without the tensegrity section before that.
-    static let version = 6
+    /// The format this build writes. It also reads the three before it: 6 is
+    /// this one without the trailing world drag and substeps and the bodies
+    /// that named a bounce of their own, 5 is 6 without the section of handed
+    /// masses and centers of mass before that, and 4 is 5 without the
+    /// tensegrity section.
+    static let version = 7
 
     /// The oldest format this build still reads.
     static let oldestReadableVersion = 4
@@ -325,6 +328,15 @@ extension World3D {
             writer.vector(body.handedCenterOfMass ?? .zero)
         }
 
+        // The world's drag and substeps, and which loose bodies named a bounce
+        // of their own rather than taking the world's, by index. Format 7; a
+        // file from before it ends above.
+        writer.f64(drag)
+        writer.u32(UInt32(max(1, substeps)))
+        let ownBounce = saved.enumerated().filter { $0.element.namesRestitution }
+        writer.u32(UInt32(ownBounce.count))
+        for (offset, _) in ownBounce { writer.u32(UInt32(offset)) }
+
         return PhysicsSnapshot(payload: writer.data,
                                bodies: saved.count + vehicles.count,
                                joints: structural.count + links.count)
@@ -451,6 +463,21 @@ extension World3D {
             }
         }
 
+        // The world's drag and substeps and the bodies that named their own
+        // bounce were added in format 7. A file from before them leaves this
+        // world's drag and substeps as they are and lets every body follow the
+        // world's bounce.
+        var savedDrag: Double?
+        var savedSubsteps: Int?
+        var namedBounce = Set<Int>()
+        if !reader.isAtEnd {
+            savedDrag = try reader.f64()
+            // Bounded before it reaches the solver's pass count: a corrupt
+            // count would otherwise be asked for as that many passes a frame.
+            savedSubsteps = min(Int(try reader.u32()), 1024)
+            for _ in 0 ..< (try reader.count()) { namedBounce.insert(Int(try reader.u32())) }
+        }
+
         // Everything read: now the world can be emptied.
         removeAll()
 
@@ -480,6 +507,8 @@ extension World3D {
         self.ground = nil
         self.unitsPerMeter = unitsPerMeter
         self.restitution = bounce
+        if let savedDrag { self.drag = savedDrag }
+        if let savedSubsteps { self.substeps = max(1, savedSubsteps) }
         self.maxTimestep = maxTimestep
         self.gravity = gravity
         groundGroup = group(saved: groundGroupIndex)
@@ -516,6 +545,7 @@ extension World3D {
                                asleep: !saved.isAwake)
             body.buoyancyScale = saved.buoyancyScale
             body.assetName = saved.assetName
+            body.namesRestitution = namedBounce.contains(offset)
             restoredBodies.append(body)
         }
 

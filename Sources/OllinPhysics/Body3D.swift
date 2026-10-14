@@ -84,9 +84,13 @@ public final class Body3D {
     /// Backing store for `kind` (the solver is told on set).
     private var storedKind: Kind
 
+    /// Whether the body was given a restitution of its own, which stops it
+    /// following the world's.
+    var namesRestitution: Bool
+
     init(world: World3D, id: CJoltBodyID, collider: Collider3D, kind: Kind,
          density: Double, isSensor: Bool = false, overriddenMass: Double? = nil,
-         handedCenterOfMass: Vector3? = nil) {
+         handedCenterOfMass: Vector3? = nil, namesRestitution: Bool = true) {
         self.world = world
         self.id = id
         self.collider = collider
@@ -95,6 +99,13 @@ public final class Body3D {
         self.isSensor = isSensor
         self.overriddenMass = overriddenMass
         self.handedCenterOfMass = handedCenterOfMass
+        self.namesRestitution = namesRestitution
+    }
+
+    /// Hand the body the world's `drag`, on its speed and its spin. The solver
+    /// damps only a dynamic body, so a kinematic one is never slowed by it.
+    func applyDamping() {
+        cjolt_body_set_damping(world.handle, id, world.dampingRate, world.dampingRate)
     }
 
     /// The body's center, in world units.
@@ -279,11 +290,15 @@ public final class Body3D {
     }
 
     /// How much speed survives a bounce off this body, `0` dead … `1` lively.
-    /// Defaults to the world's `restitution` unless `addBody` was given its own.
+    /// The world's `restitution` until the body is given one of its own, in
+    /// `addBody` or here; after that it keeps its own whatever the world's
+    /// becomes. On the ground it is the only value that counts; two bodies
+    /// meet with the larger of theirs.
     public var restitution: Double {
         get { Double(cjolt_body_get_restitution(world.handle, id)) }
         set {
             guard world.holds(newValue, "body.restitution") else { return }
+            namesRestitution = true
             cjolt_body_set_restitution(world.handle, id, Float(newValue))
         }
     }

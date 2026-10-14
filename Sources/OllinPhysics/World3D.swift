@@ -39,6 +39,9 @@ public final class World3D {
             guard holds(gravity, "world.gravity") else { gravity = oldValue; return }
             let g = meters(from: gravity)
             cjolt_world_set_gravity(handle, g.0, g.1, g.2)
+            // The solver never wakes a settled body for a change of gravity,
+            // so a box asleep on the floor would sit through it turning upward.
+            cjolt_world_wake_all(handle)
         }
     }
 
@@ -69,10 +72,39 @@ public final class World3D {
         }
     }
 
-    /// Default restitution `0…1` for the ground and for bodies that don't pass
-    /// their own: how much speed survives a bounce. Kept low so stacks settle.
+    /// What a body gets as its `restitution` when `addBody` names none, `0…1`:
+    /// how much speed survives a bounce. Kept low so stacks settle. The ground
+    /// carries no bounce of its own, so a body meets it with its own value. A
+    /// body that named none follows a change here; one that did keeps its own.
     public var restitution: Double = 0.2 {
-        didSet { if !holds(restitution, "world.restitution") { restitution = oldValue } }
+        didSet {
+            guard holds(restitution, "world.restitution") else { restitution = oldValue; return }
+            for body in bodies where !body.namesRestitution {
+                cjolt_body_set_restitution(handle, body.id, Float(restitution))
+            }
+        }
+    }
+
+    /// The share of speed, and of spin, a body loses every sixtieth of a
+    /// second, `0…1`: the same number the 2D `World` reads, scaled by the step
+    /// so a frame rate changes nothing. `0` lets a body coast forever. The
+    /// default is the solver's own damping, 5% a second, so a sketch that
+    /// never sets it moves as it always has. A change reaches every rigid body
+    /// already here; a soft body, a rope, a ragdoll, and a vehicle carry
+    /// damping of their own.
+    public var drag: Double = 1 - exp(-0.05 / 60) {
+        didSet {
+            guard holds(drag, "world.drag") else { drag = oldValue; return }
+            for body in bodies { body.applyDamping() }
+        }
+    }
+
+    /// The exponential rate the solver damps at, per second, for the share
+    /// `drag` takes per sixtieth: `(1 - drag)^60 = e^-rate`. A drag at or past
+    /// 1 is read as 0.999, which stops a body within a step.
+    var dampingRate: Float {
+        guard drag > 0 else { return 0 }
+        return Float(-60 * log(1 - min(drag, 0.999)))
     }
 
     /// The largest timestep a single `advance(by:)` will integrate, in seconds.
@@ -81,6 +113,15 @@ public final class World3D {
     public var maxTimestep: Double = 1.0 / 30 {
         didSet { if !holds(maxTimestep, "world.maxTimestep") { maxTimestep = oldValue } }
     }
+
+    /// How many pieces each step is cut into, on top of the one per sixtieth
+    /// of simulated time a long frame already takes; `1` by default. The
+    /// solver's joints lose a little every step, first order in its length: a
+    /// bar hinged at one end and let go horizontal returns to 92% of its height
+    /// on its first swing at one piece a frame, 98% at four, and holds within
+    /// 5% for ten seconds at sixteen. Every body pays for the count, so it is
+    /// for a scene whose pendulums and linkages matter, not a pile.
+    public var substeps: Int = 1
 
     /// World units per simulated meter. The solver is tuned for bodies roughly
     /// 0.1…10 m, and Ollin's 3D scenes already draw at that scale, so the
@@ -236,7 +277,8 @@ public final class World3D {
     ///   - density: relative mass per volume (`1` is the default material);
     ///     heavier bodies shove lighter ones.
     ///   - friction: surface friction, `0` slick … `1` grippy.
-    ///   - restitution: bounciness `0…1`; defaults to the world's `restitution`.
+    ///   - restitution: bounciness `0…1`; defaults to the world's `restitution`
+    ///     and follows it until the body is given one of its own.
     ///   - freedom: which ways it may move. `.all` (the default) leaves it
     ///     free; `.plane()` keeps it flat, `.upright` keeps it from tipping.
     ///   - gravityScale: how hard gravity pulls on this one body, against the
@@ -320,8 +362,8 @@ public final class World3D {
         desc.motion = kind.cjolt
         desc.friction = Float(max(0, friction))
         desc.restitution = Float(restitution ?? self.restitution)
-        desc.linearDamping = 0.05
-        desc.angularDamping = 0.05
+        desc.linearDamping = dampingRate
+        desc.angularDamping = dampingRate
         desc.gravityFactor = Float(gravityScale)
         desc.allowSleep = true
         desc.isSensor = isSensor
@@ -355,7 +397,8 @@ public final class World3D {
         let body = Body3D(world: self, id: id, collider: collider,
                           kind: isSensor ? .kinematic : kind, density: density,
                           isSensor: isSensor, overriddenMass: mass,
-                          handedCenterOfMass: centerOfMass == .zero ? nil : centerOfMass)
+                          handedCenterOfMass: centerOfMass == .zero ? nil : centerOfMass,
+                          namesRestitution: restitution != nil)
         bodies.append(body)
         bodyByID[id] = body
         return body
@@ -1337,7 +1380,7 @@ public final class World3D {
         applyBuoyancy(dt: clamped)
         // One collision pass per ~60 Hz of simulated time keeps long frames
         // stable without costing short ones anything.
-        let passes = max(1, Int((clamped * 60).rounded(.up)))
+        let passes = max(1, Int((clamped * 60).rounded(.up))) * max(1, substeps)
         _ = cjolt_world_step(handle, Float(clamped), Int32(passes))
         stepGeneration &+= 1
         // The solver's worker threads filled a buffer while it ran; empty it
@@ -1379,7 +1422,10 @@ public final class World3D {
         desc.rotation = (0, 0, 0, 1)
         desc.motion = CJOLT_MOTION_STATIC
         desc.friction = 0.5
-        desc.restitution = Float(restitution)
+        // The ground carries no bounce of its own: the solver takes the larger
+        // of a pair's, so this is what lets a body's own value decide what it
+        // does on the floor, a ball given 0 included.
+        desc.restitution = 0
         desc.allowSleep = true
         desc.gravityFactor = 1
         desc.group = groupIndex(groundGroup)

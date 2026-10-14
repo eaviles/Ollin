@@ -291,6 +291,8 @@ struct PhysicsSnapshotTests {
         world.gravity = Vector3(0.5, -14, -0.25)
         world.ground = 1.5
         world.restitution = 0.42
+        world.drag = 0.004
+        world.substeps = 3
         world.maxTimestep = 1.0 / 45
         world.water = Water(level: 2.5, density: 1.3, linearDrag: 0.7,
                             angularDrag: 0.2, flow: Vector3(0.4, 0, -0.1),
@@ -306,10 +308,34 @@ struct PhysicsSnapshotTests {
         #expect(fresh.gravity == Vector3(0.5, -14, -0.25))
         #expect(fresh.ground == 1.5)
         #expect(fresh.restitution == 0.42)
+        #expect(fresh.drag == 0.004)
+        #expect(fresh.substeps == 3)
         #expect(fresh.maxTimestep == 1.0 / 45)
         #expect(fresh.water == world.water)
         #expect(fresh.waterPhase == phase)
         #expect(fresh.groundBody != nil, "the floor was rebuilt")
+    }
+
+    /// Which bodies named a bounce of their own rides along too: after a
+    /// restore, a body that took the world's `restitution` still follows it
+    /// when the restored world's changes, and one that named its own keeps it.
+    @Test func whoNamedTheirBounceCarries() throws {
+        let world = World3D(maxBodies: 256)
+        world.restitution = 0.3
+        world.addBody(.sphere(radius: 0.4), at: Vector3(0, 6, 0))
+        world.addBody(.sphere(radius: 0.4), at: Vector3(2, 6, 0), restitution: 0.8)
+        world.addBody(.sphere(radius: 0.4), at: Vector3(4, 6, 0), restitution: 0.3)
+
+        let fresh = World3D(maxBodies: 256)
+        try fresh.restore(world.snapshot())
+        func reads(_ values: [Double]) -> Bool {
+            fresh.bodies.count == values.count
+                && zip(fresh.bodies, values).allSatisfy { abs($0.restitution - $1) < 1e-6 }
+        }
+        #expect(reads([0.3, 0.8, 0.3]), "restored at \(fresh.bodies.map(\.restitution))")
+        fresh.restitution = 0.1
+        #expect(reads([0.1, 0.8, 0.3]),
+                "the body that took the world's value follows it and the two that named one, even the same number, keep theirs: \(fresh.bodies.map(\.restitution))")
     }
 
     /// A floating crate restored into a world with no water of its own arrives

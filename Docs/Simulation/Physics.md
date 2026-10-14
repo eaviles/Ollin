@@ -89,19 +89,21 @@ var springs: [Spring] { get }
 
 ```swift
 var gravity: Vector2 = Vector2(0, 980)   // points per second², y-down
-var drag: Double = 0.01                  // velocity damping, 0…1
+var drag: Double = 0.01                  // the share of speed lost per sixtieth of a second, 0…1
 var bounds: Rectangle?                   // optional container; nil lets bodies leave
 var restitution: Double = 0.5            // how much speed survives a hit, 0…1
 var particlesCollide: Bool = false       // push particles apart as solid disks
 var iterations: Int = 8                  // relaxation passes per step
+var substeps: Int = 1                    // pieces each step is cut into, for a rod or a chain
 var maxTimestep: Double = 1.0 / 30       // clamp on dt, for stability
 ```
 
 - **`gravity`** is a constant acceleration on every unpinned particle. Set it to `.zero` for a weightless field where everything floats freely.
-- **`drag`** stands in for air friction. At `0` motion is conserved, so things drift forever. A small value removes energy, so things settle. It is taken once a step, so at 60 Hz the default of `0.01` removes 45% of a particle's speed in a second, and a higher frame rate settles things faster.
-- **`bounds`** keeps particles inside a rectangle, and it accounts for each particle's `radius`. `restitution` then sets how much speed a particle keeps when it hits a wall. At `0` the particle sticks, and at `1` it loses nothing at the wall, though `drag` still takes its share in flight.
+- **`drag`** stands in for air friction. At `0` motion is conserved, so things drift forever. A small value removes energy, so things settle. It is the share of speed lost every sixtieth of a second, whatever the frame rate: the default of `0.01` removes 45% of a particle's speed in a second at 30, 60, or 120 frames a second alike. A rigid [`Body`](#rigid-bodies) reads the same number, on its speed and on its spin. Set it at any time, since a change reaches every body already in the world.
+- **`bounds`** keeps particles inside a rectangle, and it accounts for each particle's `radius`. `restitution` then sets how much speed a particle keeps when it hits a wall. At `0` the particle sticks, and at `1` it loses nothing at the wall, though `drag` still takes its share in flight. It is also what a rigid body gets when `addBody` names none.
 - **`particlesCollide`** turns on disk-against-disk separation. The broad phase runs through a spatial hash, so it scales to thousands of bodies. It is off by default for two reasons. A cloth should not have its own points collide, and the check costs a pass every frame. Turn it on for packings and piles. Points with `radius == 0` never collide.
 - **`iterations`** is how many relaxation passes the solver runs to hold springs and collisions together. More passes make stiff stacks and tight packings firmer, and the cost grows linearly with the count.
+- **`substeps`** cuts each step into pieces, each integrated and relaxed on its own. A bob on a rod gives back only 70% of its height on its first swing at one piece a frame, because projecting a step onto the rod drops the share of the motion that pointed along it. The loss shrinks in proportion to the count: 98% at sixteen pieces, and at sixty-four the bob holds its height within 5% for ten seconds. The cost grows with the count, so it is for a pendulum or a chain of a few particles rather than a pile.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/11-ForcesAndPhysics/ForceAccumulation-dark.jpg">
@@ -231,7 +233,7 @@ var bodies: [Body] { get }
 ```
 
 - **`collider`** is the body's shape (described below). **`kind`** is how the body moves. `.dynamic` (the default) is moved by forces. `.static` never moves, so use it for walls, the ground, or a hinge anchor. `.kinematic` moves only by a velocity you set.
-- **`density`** sets the mass, so heavier bodies push lighter ones. **`friction`** is surface grip, from `0` (slippery) to `1` (grippy). **`restitution`** is bounciness, `0…1`. It defaults to the world's `restitution`, and the walls carry the world's value too, so a body bounces off them with the larger of the two.
+- **`density`** sets the mass, so heavier bodies push lighter ones. **`friction`** is surface grip, from `0` (slippery) to `1` (grippy). **`restitution`** is bounciness, `0…1`. It defaults to the world's `restitution` and follows it until the body is given one of its own, here or through `body.restitution`. The walls carry no bounce of their own, so a body bounces off them with its own value, and two bodies meet with the larger of theirs.
 
 <a name="collider"></a>
 
@@ -256,8 +258,9 @@ Geometry is given in body-local points, centered on the body's origin. The body'
 var position: Vector2          // center, in points
 var angle: Double              // orientation, radians (clockwise, y-down)
 var velocity: Vector2          // points per second (a real velocity)
-var angularVelocity: Double    // radians per second, up to a quarter turn a step
+var angularVelocity: Double    // radians per second
 var mass: Double { get }
+var restitution: Double        // bounciness; the world's until the body is given one
 var kind: Body.Kind            // .dynamic / .static / .kinematic
 var userData: Any?
 
@@ -266,11 +269,11 @@ func applyImpulse(_ impulse: Vector2) // instant kick (a hit, a launch)
 func applyTorque(_ torque: Double)    // spin it, a force in points times an arm in points
 ```
 
-The `Forces` example shows all three calls in one windy yard. It also has a `.kinematic` sweeper that other bodies cannot stop, and a pinned cloth colored by `Spring.strain`.
+A spin fast enough to turn a shape more than a quarter turn between frames can carry a thin shape through another, since contacts are found once a step. The `Forces` example shows all three calls in one windy yard. It also has a `.kinematic` sweeper that other bodies cannot stop, and a pinned cloth colored by `Spring.strain`.
 
 **Shared rules and units**
 
-The rigid side reads the settings you already made on the world. It takes `gravity` unchanged and uses `bounds` as walls. It applies `restitution` to the walls and as the default contact restitution, and it damps bodies with `drag` as a loss per second rather than per step. Both reach a body or the walls when they are made, so set them before adding bodies. It also runs on the same `advance(by:)`. One parameter belongs to the rigid side alone:
+The rigid side reads the settings you already made on the world. It takes `gravity` unchanged and uses `bounds` as walls. `restitution` is what a body gets when `addBody` names none, and `drag` slows every body's speed and spin by the share a particle loses. A change to either reaches the bodies already in the world, and a change to `gravity` wakes any that had settled, so a tilt reaches a box resting on the floor. A `.kinematic` body is never dragged, since it moves only by the velocity it is given. The rigid side also runs on the same `advance(by:)`. One parameter belongs to it alone:
 
 ```swift
 var unitsPerMeter: Double = 100
@@ -315,7 +318,7 @@ See the `RigidBodies` and `Chain` examples for complete sketches. The first is a
 
 ### How the solver works
 
-Each step first integrates every particle forward. The integration is time-corrected Verlet, so an uneven frame rate does not change how fast things move (the share `drag` takes each step is the exception). The step then runs a few **relaxation** passes. Each pass pulls springs back toward their length, pushes overlapping disks apart, and keeps everything inside `bounds`. Every constraint is solved by moving *positions*, so the velocity follows on its own. A bounce, a spring's recoil, and a collision all only move points, and the implicit Verlet velocity carries the result into the next frame. Many cloth and soft-body demos on the web use the same approach. `Particle` is the one place where Ollin uses reference semantics instead of value types. That lets a spring or a collision move the same shared point in place.
+Each step first integrates every particle forward. The integration is time-corrected Verlet, so an uneven frame rate does not change how fast things move. `drag` is scaled by the step for the same reason. The step then runs a few **relaxation** passes. Each pass pulls springs back toward their length, pushes overlapping disks apart, and keeps everything inside `bounds`. Every constraint is solved by moving *positions*, so the velocity follows on its own. A bounce, a spring's recoil, and a collision all only move points, and the implicit Verlet velocity carries the result into the next frame. Many cloth and soft-body demos on the web use the same approach. `Particle` is the one place where Ollin uses reference semantics instead of value types. That lets a spring or a collision move the same shared point in place.
 
 <a name="soft-bodies"></a>
 

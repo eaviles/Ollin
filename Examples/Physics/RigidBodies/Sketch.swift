@@ -54,8 +54,9 @@ final class RigidBodies: Sketch {
 
     override func setup() {
         world.gravity = Vector2(0, 2600)   // points/s², a firm, visible pull
-        world.restitution = 0.05           // a low-restitution floor so the stack settles
+        world.restitution = 0.05           // little bounce, so the stack settles
         world.bounds = bounds
+        world.drag = 0                     // no air: the shapes fall as fast as they are let go
         buildStack()
         noStroke()
     }

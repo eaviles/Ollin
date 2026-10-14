@@ -6,9 +6,9 @@ internal import CBox2D
 /// stacks, and joins. Where a `Particle` is a soft Verlet point (no orientation,
 /// constraints that nudge positions), a `Body` is a proper rigid body — it has an
 /// `angle`, spins, rests in stable stacks, and bounces off other bodies with real
-/// contact response. It shares the world's `gravity`, `bounds` (as walls), and
-/// `restitution`, and is measured in sketch points (the world converts to the solver's
-/// meters through `World.unitsPerMeter`).
+/// contact response. It shares the world's `gravity`, `bounds` (as walls),
+/// `drag`, and `restitution`, and is measured in sketch points (the world
+/// converts to the solver's meters through `World.unitsPerMeter`).
 ///
 /// Create one with `World.addBody(_:at:)`, hang drawing data off `userData`, and
 /// draw it from `position`/`angle` each frame:
@@ -40,9 +40,42 @@ public final class Body {
     /// drawn size, a group id) without a parallel array — as `Particle` does.
     public var userData: Any?
 
-    init(world: World, id: b2BodyId) {
+    init(world: World, id: b2BodyId, restitution: Double, namesRestitution: Bool) {
         self.world = world
         self.id = id
+        self.ownRestitution = restitution
+        self.namesRestitution = namesRestitution
+    }
+
+    /// How much speed survives a bounce off this body, `0…1`. The world's
+    /// `restitution` until the body is given one of its own, in `addBody` or
+    /// here; after that it keeps its own whatever the world's becomes. Against
+    /// the walls of `bounds` it is the only value that counts; two bodies meet
+    /// with the larger of theirs.
+    public var restitution: Double {
+        get { ownRestitution }
+        set {
+            guard world.holds(newValue, "body.restitution") else { return }
+            namesRestitution = true
+            write(restitution: newValue)
+        }
+    }
+
+    /// The value the body's shape carries, kept here because the solver hands
+    /// it back in single precision.
+    private var ownRestitution: Double
+
+    /// Whether the body was given a restitution of its own, which stops it
+    /// following the world's.
+    var namesRestitution: Bool
+
+    /// Write a restitution onto the body's shapes without claiming it as the
+    /// body's own: what the world does when its default changes.
+    func write(restitution: Double) {
+        ownRestitution = restitution
+        var shapes = [b2ShapeId](repeating: b2ShapeId(), count: 4)
+        let count = Int(b2Body_GetShapes(id, &shapes, 4))
+        for shape in shapes.prefix(count) { b2Shape_SetRestitution(shape, Float(restitution)) }
     }
 
     /// The body's center, in sketch points.
@@ -90,7 +123,11 @@ public final class Body {
     /// freezes it in place (an anchor); back to `.dynamic` lets forces move it.
     public var kind: Kind {
         get { Kind(b2Body_GetType(id)) }
-        set { b2Body_SetType(id, newValue.b2Type) }
+        set {
+            b2Body_SetType(id, newValue.b2Type)
+            // A kinematic body is never dragged, and one let go to dynamic is.
+            world.applyDamping(to: self)
+        }
     }
 
     /// Push the body's center of mass with a steady force (points/s² · mass),

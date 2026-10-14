@@ -892,6 +892,15 @@ void cjolt_world_set_gravity(CJoltWorld *world, float x, float y, float z) {
     world->physics.SetGravity(Vec3(x, y, z));
 }
 
+void cjolt_world_wake_all(CJoltWorld *world) {
+    BodyIDVector ids;
+    world->physics.GetBodies(ids);
+    BodyInterface &bodies = world->physics.GetBodyInterface();
+    for (const BodyID &id : ids) {
+        if (bodies.GetMotionType(id) != EMotionType::Static) { bodies.ActivateBody(id); }
+    }
+}
+
 int cjolt_world_step(CJoltWorld *world, float dt, int collisionSteps) {
     EPhysicsUpdateError error = world->physics.Update(
         dt, std::max(1, collisionSteps), &world->tempAllocator, &world->jobSystem);
@@ -970,6 +979,12 @@ CJoltBodyID cjolt_body_create(CJoltWorld *world, const CJoltBodyDesc *desc) {
     settings.mAngularDamping = std::max(0.0f, desc->angularDamping);
     settings.mGravityFactor = desc->gravityFactor;
     settings.mAllowSleeping = desc->allowSleep;
+    // The solver's own cap on a spin is a quarter turn a step (47 rad/s at
+    // 60 Hz), there so a fast body's contacts stay findable; a fan set to a
+    // hundred would read back short of it with no note, so the body carries
+    // no cap worth the name, and the page says a spin that fast can carry a
+    // thin shape through another.
+    settings.mMaxAngularVelocity = 1.0e6f;
     // Motion the body already has. A zeroed descriptor creates it at rest,
     // which is what every ordinary caller wants; a restored snapshot hands
     // each body back the velocity it was captured with.
@@ -1174,6 +1189,15 @@ void cjolt_body_deactivate(CJoltWorld *world, CJoltBodyID body) {
 
 void cjolt_body_set_friction(CJoltWorld *world, CJoltBodyID body, float friction) {
     world->physics.GetBodyInterface().SetFriction(BodyID(body), std::max(0.0f, friction));
+}
+
+void cjolt_body_set_damping(CJoltWorld *world, CJoltBodyID body, float linear, float angular) {
+    Body *resolved = resolveBody(world, body);
+    if (resolved == nullptr) { return; }
+    MotionProperties *motion = resolved->GetMotionPropertiesUnchecked();
+    if (motion == nullptr) { return; }
+    motion->SetLinearDamping(std::max(0.0f, linear));
+    motion->SetAngularDamping(std::max(0.0f, angular));
 }
 
 void cjolt_body_set_restitution(CJoltWorld *world, CJoltBodyID body, float restitution) {

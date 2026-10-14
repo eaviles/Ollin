@@ -49,6 +49,7 @@ final class Burst: Sketch {
     override func setup() {
         world.gravity = Vector2(0, 2200 * scale)
         world.restitution = 0.2
+        world.drag = 0                  // no air: a shape falls as fast as it is let go
         noStroke()
     }
 
