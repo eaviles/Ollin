@@ -699,6 +699,57 @@ drawShape(Shape(contours: [star.rounded(24)]))
 
 `Shape` has `simplified(tolerance:)`, `rounded(_:)`, and `chamfered(_:)` too. Each edits every contour and keeps the shape's `winding`, so holes round the same way their outline does.
 
+<a name="contour-bending"></a>
+
+#### Bent along a curve, pulled, smoothed with its corners, split, and fitted
+
+Five more edits move the outline as a whole. Four return points, and the fit returns curves.
+
+```swift
+func warped(from base: Contour, along target: Contour, spacing: Double = 4) -> Contour
+func pulled(toward point: Vector2, amount: Double, radius: Double, spacing: Double = 4) -> Contour
+func smoothed(neighbors: Int, weights: SmoothingWeights = .gaussian, keepingCornersOver angle: Double) -> Contour
+func split(atCornersOver angle: Double, span: Double = 0) -> [Contour]
+func fitted(tolerance: Double) -> Path
+```
+
+`warped(from:along:)` bends the outline so that it follows `target` the way it followed `base`: lettering set on a straight baseline bends along a wave, a row of tiles wraps round a ring. Every point is read against the base as a fraction along it and an offset to its side, then put back at the same fraction and offset along the target. The fraction is what maps, so an outline laid along the whole base stretches to the whole target. To keep the letters their size, give the base the target's length. The side offset keeps its size, so tall letters stay tall, and a base and target that are the same curve give the outline back unchanged.
+
+```swift
+let word = textToShapes("ollin", 540, 540)
+let baseline = Contour([Vector2(0, 540), Vector2(1080, 540)], closed: false)
+let wave = Contour(curveThrough: (0 ... 12).map { i in
+    Vector2(Double(i) * 90, 540 + 70 * sin(Double(i) * 0.8 + time))
+}, closed: false)
+for glyph in word { drawShape(glyph.warped(from: baseline, along: wave)) }
+```
+
+`pulled(toward:amount:radius:)` draws the part of the outline near a point toward it: a tug on one side of a blob, a rope caught at one place. Each point moves by `amount` of its distance to the point, weighted by how near it is, from full weight at the point to none at `radius`, so the pull makes a bump rather than a kink. An open contour's two ends stay where they are, and the pull fades out on the way to each. An `amount` of 1 brings the nearest points all the way, and a negative amount pushes away.
+
+Both edits add points along the outline's straight runs first, so a straight edge bends instead of staying straight between its two ends. `spacing` is the longest straight stretch left, and 0 keeps the points as they are. Every original point stays, so corners survive.
+
+`smoothed(neighbors:keepingCornersOver:)` is the moving average above with the corners left alone. A point that turns by more than `angle` (radians) between its two neighbors is a corner, and the smoothing restarts on each side of it, the way it restarts at an open contour's ends. A square with many points along each side keeps its four corners and its straight sides. The count and the order stay.
+
+`split(atCornersOver:span:)` cuts the outline into open pieces at those same corners. A trace from the hand turns gradually round a corner, a few degrees at each of several points, so `span` says how far back and ahead along the walk the turn is measured; points over the angle within `span` of each other count as one corner, cut at the sharpest. Neighboring pieces share the corner point. A closed outline with `k` corners gives `k` pieces and an open one `k + 1`; an outline with no corner over the angle comes back whole, as the one element.
+
+`fitted(tolerance:)` traces a dense outline with a few smooth cubic curves and returns them as a [`Path`](#path): a mouse stroke of hundreds of points comes back as a handful of Béziers that pass within `tolerance` of every point, joined smoothly, and closed when the contour is. It is Schneider's method: the points get parameters by the distance walked, one cubic is fitted by least squares with its end directions held, the parameters are improved by Newton's method when the fit is close, and otherwise the trace is cut at its worst point and each half fitted again. A tighter tolerance gives more curves. One smooth run cannot turn sharply, so cut a trace at its corners first and fit the pieces.
+
+```swift
+let trace = Contour([Vector2(120, 600), Vector2(300, 420), Vector2(520, 640),
+                     Vector2(700, 380)], closed: false)     // what the mouse left
+let lighter = trace.simplified(tolerance: 0.6)             // a corner onto one point
+for piece in lighter.split(atCornersOver: .pi / 3, span: 8) {
+    let path = piece.fitted(tolerance: 2)
+    drawShape(path.shape)
+    for cubic in path.cubics {                              // the handles
+        drawLine(cubic.start, cubic.control1)
+        drawLine(cubic.end, cubic.control2)
+    }
+}
+```
+
+`Shape` has all five: `warped`, `pulled`, and the corner-keeping `smoothed` edit every contour and keep the `winding`, `split` returns the pieces of every contour in one list, and `fitted` returns one `Path` per contour. The `Shapes/WavyLettering` example bends a word along a traveling wave and tugs it with the mouse; `Shapes/TraceToCurves` turns a scribble into curves as it is drawn.
+
 <a name="shape"></a>
 
 ### `Shape`
@@ -919,6 +970,7 @@ mutating func close()                                             // close into 
 
 var contour: Contour            // the sampled outline
 var shape: Shape                // a single-contour Shape, ready for drawShape
+var cubics: [CubicBezier]       // every command as a cubic Bézier
 ```
 
 The three curve verbs differ in who supplies the bend:
@@ -942,6 +994,16 @@ drawShape(blob.shape)
 
 The drawing-side sugar, `drawShape { p in … }` and `drawCurve`, is in [Drawing](../Drawing/Drawing.md#shape).
 
+`cubics` reads the path back as cubic Bézier curves, one per command, in order: a straight segment as a cubic whose handles lie on it, a quadratic raised to a cubic, each span of a `curve(to:)` run as the cubic it samples, and `close()` as the run back to the start. The path and its cubics trace the same outline, so this is how to count the curves a fit made or draw their handles.
+
+```swift
+CubicBezier(start: Vector2, control1: Vector2, control2: Vector2, end: Vector2)
+func point(at t: Double) -> Vector2       // the point a fraction t along the curve
+func direction(at t: Double) -> Vector2   // the direction of travel there, unit length
+```
+
+A `CubicBezier` is one curve with its two handles. It is what a `Path` is made of, what a [`HobbySpline`](#hobby) fits one of per gap, and what `Contour.fitted(tolerance:)` traces a dense outline with.
+
 <a name="hobby"></a>
 
 ### `HobbySpline`
@@ -952,7 +1014,7 @@ The curve `drawCurve(points, spline: .hobby)` draws, as a value. Hobby's method 
 HobbySpline(through: [Vector2], closed: Bool = false, tension: Double = 1, curl: Double = 1,
             startDirection: Vector2? = nil, endDirection: Vector2? = nil)
 
-var segments: [HobbySpline.Segment]   // the Béziers: start, control1, control2, end
+var segments: [CubicBezier]           // the Béziers: start, control1, control2, end
 var path: Path                        // the same curve as a Path of cubic curves
 var contour: Contour                  // sampled to points
 var shape: Shape                      // ready for drawShape
@@ -962,6 +1024,6 @@ Spline.hobby                          // Hobby's fit at its natural tension and 
 Spline.hobby(tension: 1, curl: 1)     // tuned
 ```
 
-`tension` pulls the control points toward the chords. A value of 1 is the natural fit, 2 hugs the straight lines between the points, and values run from 0.75 up. `curl` shapes the two ends of an open curve. The default of 1 gives an end the same bend as the point after it, and 0 lets it run straight out. A closed curve has no ends, so `curl` does nothing there. `startDirection` and `endDirection` pin the direction an open curve leaves and arrives in, and need not be unit length. Consecutive repeated points are dropped, and two points make a straight line. A `Segment` answers `point(at:)` and `direction(at:)` along itself.
+`tension` pulls the control points toward the chords. A value of 1 is the natural fit, 2 hugs the straight lines between the points, and values run from 0.75 up. `curl` shapes the two ends of an open curve. The default of 1 gives an end the same bend as the point after it, and 0 lets it run straight out. A closed curve has no ends, so `curl` does nothing there. `startDirection` and `endDirection` pin the direction an open curve leaves and arrives in, and need not be unit length. Consecutive repeated points are dropped, and two points make a straight line. Each segment is a `CubicBezier` (`HobbySpline.Segment` names the same type) and answers `point(at:)` and `direction(at:)` along itself.
 
 `spline:` is the same choice on [`drawCurve`](../Drawing/Drawing.md#curve), `Contour(curveThrough:)`, and `Shape(curveThrough:)`. A `Path`'s `curve(to:)` runs stay on the default spline.

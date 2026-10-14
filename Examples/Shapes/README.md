@@ -21,8 +21,10 @@
 | [SVGImport](SVGImport/) | [Scattered](Scattered/) | [Star](Star/) | [StraightSkeleton](StraightSkeleton/) |
 | [![StrokeAlignment](https://media.ollin.art/examples/Shapes/StrokeAlignment/still-640.jpg?v=906e3ddc)](StrokeAlignment/) | [![StrokeJoinsAndCaps](https://media.ollin.art/examples/Shapes/StrokeJoinsAndCaps/still-640.jpg?v=02096cb2)](StrokeJoinsAndCaps/) | [![StrokeProfiles](https://media.ollin.art/examples/Shapes/StrokeProfiles/still-640.jpg?v=c2ed6e7d)](StrokeProfiles/) | [![Superellipse](https://media.ollin.art/examples/Shapes/Superellipse/still-640.jpg?v=5d1a3834)](Superellipse/) |
 | [StrokeAlignment](StrokeAlignment/) | [StrokeJoinsAndCaps](StrokeJoinsAndCaps/) | [StrokeProfiles](StrokeProfiles/) | [Superellipse](Superellipse/) |
-| [![Supershape](https://media.ollin.art/examples/Shapes/Supershape/still-640.jpg?v=5ce79b23)](Supershape/) | [![Triangles](https://media.ollin.art/examples/Shapes/Triangles/still-640.jpg?v=0c166e76)](Triangles/) | [![Watercolor](https://media.ollin.art/examples/Shapes/Watercolor/still-640.jpg?v=00315999)](Watercolor/) |  |
-| [Supershape](Supershape/) | [Triangles](Triangles/) | [Watercolor](Watercolor/) |  |
+| [![Supershape](https://media.ollin.art/examples/Shapes/Supershape/still-640.jpg?v=5ce79b23)](Supershape/) | [![TraceToCurves](https://media.ollin.art/examples/Shapes/TraceToCurves/still-640.jpg?v=f9ed7dab)](TraceToCurves/) | [![Triangles](https://media.ollin.art/examples/Shapes/Triangles/still-640.jpg?v=0c166e76)](Triangles/) | [![Watercolor](https://media.ollin.art/examples/Shapes/Watercolor/still-640.jpg?v=00315999)](Watercolor/) |
+| [Supershape](Supershape/) | [TraceToCurves](TraceToCurves/) | [Triangles](Triangles/) | [Watercolor](Watercolor/) |
+| [![WavyLettering](https://media.ollin.art/examples/Shapes/WavyLettering/still-640.jpg?v=60471814)](WavyLettering/) |  |  |  |
+| [WavyLettering](WavyLettering/) |  |  |  |
 
 These examples cover the shape-drawing vocabulary. They show every primitive and the stroke and hollow modes. They also show two ways to compose shapes: boolean set operations on filled outlines, and SDF combinators that merge distance fields.
 
@@ -60,6 +62,8 @@ These examples cover the shape-drawing vocabulary. They show every primitive and
 | [Superellipse](Superellipse/Sketch.swift) | a wall of superellipse plates, with one exponent moving the whole family from a pinched star through diamond, ellipse, and squircle to an almost-rectangle |
 | [Supershape](Supershape/Sketch.swift) | one closed contour that moves through star, flower, and gear-like forms as slow sines sweep the 2D superformula, drawn over fading copies of its recent shapes |
 | [SVGImport](SVGImport/Sketch.swift) | SVG import: the bundled rocket badge is drawn as authored (`loadSVG`/`drawSVG`), then used as geometry, with its outlines resampled into evenly spaced dots |
+| [WavyLettering](WavyLettering/Sketch.swift) | lettering that follows a wave: a word's glyph outlines (`textToShapes`) are bent from their straight baseline along a wave that travels (`Shape.warped(from:along:)`), and a hand tugs the letters it passes (`pulled(toward:amount:radius:)`). Hold the mouse to be the hand |
+| [TraceToCurves](TraceToCurves/Sketch.swift) | a scribble becomes a few curves: a dense trace is lightened (`simplified`), cut at its corners (`split(atCornersOver:span:)`), and each piece traced with cubic Béziers (`fitted(tolerance:)`), drawn with their handles (`Path.cubics`) and the counts of what the fit saved. Draw with the mouse to trace your own |
 | [Triangles](Triangles/Sketch.swift) | the two `drawTriangle` forms side by side: an equilateral triangle that turns on its center, and an isosceles wedge that turns on its apex (SDF) |
 | [Watercolor](Watercolor/Sketch.swift) | watercolor pigment made by deforming polygons (`Watercolor`, `drawShape`): three pools of interleaved translucent layers that glaze where they overlap, plus a clipped speckle for a granulated texture. Each variation starts a fresh sheet |
 | [Brushes](Brushes/Sketch.swift) | marks made by repeating a shape along a path: `strokeBrush` replaces the continuous ribbon with a row of stamps, which take their size from `strokeWeight` and their color from the stroke |

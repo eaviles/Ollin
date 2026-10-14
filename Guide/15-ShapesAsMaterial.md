@@ -276,7 +276,7 @@ The way to keep this sketch is as a file for the pen. `swift run OllinLive MySke
 
 ## More from a held outline: contour questions, enclosed regions, and points in a shape
 
-The plate held its shapes to cut, grow, and hatch them, and a held outline can do more than that. It can tell you where its line goes, hand back every patch its lines wall off, and keep a scatter of points inside itself. And the line, the arc, and the ellipse can be held as values the way the circle and the rectangle already are, each able to say where it crosses another. The plate asks none of it.
+The plate held its shapes to cut, grow, and hatch them, and a held outline can do more than that. It can tell you where its line goes, bend along a curve or toward a point, hand back every patch its lines wall off, and keep a scatter of points inside itself. And the line, the arc, and the ellipse can be held as values the way the circle and the rectangle already are, each able to say where it crosses another. The plate asks none of it.
 
 ### Asking an outline where it goes: contour questions
 
@@ -312,6 +312,48 @@ Each one carries its `point`, and how far along each line it sits (`fraction` on
 The middle panel asks a loop about itself with `crossings()`. Walk once round and you pass through every crossing twice. Call every second pass "under" and cut a short gap out of the line there, and the loop weaves like a knot. The alternation always works out, because a closed curve passes an even number of crossings between its two visits to one. So every crossing gets one over and one under. The `Shapes/OverUnder` example tangles its loop a little differently every frame and weaves it again.
 
 The right panel shows three edits. `simplified(tolerance:)` thins a dense trace, like a mouse stroke or a traced edge, to the points it needs. Every original point stays within the tolerance of what is left. `rounded(_:)` turns every corner into an arc, and `chamfered(_:)` cuts every corner flat. Both stop where two corners would run into each other, so a radius that is too big still gives a clean shape. The [geometry reference](../Docs/Drawing/Geometry.md#contour-questions) lists the rest, including `reversed()` and the same edits on a whole `Shape`.
+
+### Bending an outline: warped, pulled, split, and fitted
+
+The questions above read an outline. Five edits move it as a whole. They bend a word along a wave, tug one side of a blob, smooth a trace without losing its corners, cut it at those corners, and turn a scribble into a few curves.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/BentOutlines-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/BentOutlines.jpg" alt="Three panels. On the left the word bend set on a straight baseline, drawn faint, and below it the same word bent along a wave, each letter leaning with the slope and keeping its height. In the middle a dark blob with a bump drawn out toward a dot beside it, the untouched outline faint behind, and below it a straight rope with a bump pulled up toward a second dot near its right end while both ends stay on the line. On the right a shaky line with two sharp corners, drawn over with three smooth curves in two colors, small dots marking the handles of each curve" width="680">
+</picture>
+
+`warped(from:along:)` bends an outline so that it follows one curve the way it followed another. Every point is read against the first curve, the base, as how far along it sits and how far to its side, and is put back at the same place along the second, the target. Lettering set on a straight baseline is the common case: the base is the baseline, the target is a wave, and the letters follow it, tall letters staying tall.
+
+```swift
+let baseline = Contour([Vector2(0, 540), Vector2(1080, 540)], closed: false)
+for glyph in glyphs {
+    drawShape(glyph.warped(from: baseline, along: ripple))
+}
+```
+
+The left panel is that. The fraction along the base is what maps, so a word that fills the baseline fills the whole wave, and a base the same length as the target keeps the letters their size. Straight edges bend too. The warp adds points along them first, since an edge with points only at its two ends would stay straight between them. Give the base and the target the same curve and nothing moves.
+
+`pulled(toward:amount:radius:)` draws the part of an outline near a point toward it. Each point moves by `amount` of its distance to the point, and the move fades with distance, from full at the point to none at `radius`, so the pull makes a bump rather than a kink. An open contour keeps both ends where they are, and the pull fades out on the way to each. The middle panel pulls a blob toward a hand and a rope near its end.
+
+```swift
+let tugged = blob.pulled(toward: mouse, amount: 0.6, radius: 200)
+```
+
+Three edits serve a trace from the hand, the kind the mouse leaves when it is dragged. `smoothed(neighbors:keepingCornersOver:)` is the moving average `smoothed(neighbors:)` with the corners left alone. A point that turns by more than the angle between its two neighbors is a corner, and the smoothing restarts on each side of it, so a square keeps its four. `split(atCornersOver:span:)` cuts the outline into pieces at those same corners, reading the turn over `span` of walk so a corner the hand rounded over several points still counts once. And `fitted(tolerance:)` traces a piece with a few smooth cubic curves, returned as a `Path`. Hundreds of points come back as a handful of Béziers that pass within the tolerance of every one.
+
+```swift
+let soft = trace.smoothed(neighbors: 3, keepingCornersOver: .pi / 3)
+for piece in soft.split(atCornersOver: .pi / 3, span: 8) {
+    let path = piece.fitted(tolerance: 2)
+    drawShape(path.shape)
+    for cubic in path.cubics {                       // the handles
+        drawLine(cubic.start, cubic.control1)
+        drawLine(cubic.end, cubic.control2)
+    }
+}
+```
+
+The right panel is that pipeline on a shaky trace with two corners. The fit is Philip Schneider's. It gives the points parameters by the distance walked, fits one cubic by least squares with its end directions held, improves the parameters when the fit is close, and otherwise cuts the trace at its worst point and fits each half, the two sharing a direction at the cut. One smooth run cannot turn sharply, which is why the corners are cut first. `Path.cubics` reads the curves back, one `CubicBezier` per command, to count them or draw their handles. The `Shapes/WavyLettering` example bends a word along a wave that travels and lets the mouse tug it. `Shapes/TraceToCurves` turns a scribble into curves as it is drawn, with the counts in the corner. The [geometry reference](../Docs/Drawing/Geometry.md#contour-bending) has every signature, and each edit is on `Shape` too.
 
 ### The regions a drawing encloses: `regions(enclosedBy:)`
 
@@ -584,6 +626,8 @@ The convex hull uses A. M. Andrew's monotone-chain construction from 1979. The c
 
 The skeleton is Harry Blum's medial axis, proposed in 1967 as a way to describe biological shape. It is approximated here by the Voronoi method of J. W. Brandt and V. R. Algazi. The straight skeleton is Oswin Aichholzer, Franz Aurenhammer, David Alberts, and Bernd Gärtner's, from 1995. It is computed by the shrinking-wavefront method that Petr Felkel and Štěpán Obdržálek formulated, and Tom Kelly hardened against simultaneous events. Roofers and origami folders knew the construction long before it had a name. Hatching itself is far older than any of this, since it is how engravers and etchers made tone from lines for centuries. The plotter just holds the pen steadier. The crease patterns after the plate name their own sources. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
+The curve fit is Philip Schneider's, from the first *Graphics Gems* collection of 1990, where graphics programmers published the working methods they had been passing around by hand. The bending edits are elementary geometry and belong to no one.
+
 ## Go deeper
 
 - [Geometry](../Docs/Drawing/Geometry.md): `Contour`, `Shape`, `Path`, the booleans, offsetting, stroke-as-shape, and the convex hull, with every signature.
@@ -604,7 +648,7 @@ The skeleton is Harry Blum's medial axis, proposed in 1967 as a way to describe 
 - The Rojo homage [`PiramidesYVolcanes`](../Examples/Recreations/VicenteRojo/PiramidesYVolcanes/Sketch.swift): a stream of lava is one middle line with a closed outline drawn a fixed distance either side, round at both ends. Two or three outlines at even distances make a band outlined twice or three times. The middle line never turns tighter than the band's half width, which keeps every outline from crossing itself.
 - The Sato homage [`TotemBuilder`](../Examples/Recreations/OsamuSato/TotemBuilder/Sketch.swift): a figure made of circles and circles cut by circles. A crescent is `drawMoon`, a disk with a disk taken out of it, and an eye is `drawVesica`, the overlap of two disks. Everything but the tail is built on one side and reflected to the other.
 - Appendix B draws this chapter's math, one picture per idea: [Randomness](B-JustEnoughMath.md#chance-is-lumpy), [Shapes as regions](B-JustEnoughMath.md#shapes-as-regions).
-- Worked examples: [`Examples/Shapes/Booleans`](../Examples/Shapes/Booleans/Sketch.swift), [`Examples/Patterns/Topography`](../Examples/Patterns/Topography/Sketch.swift), [`Examples/Shapes/InkRibbon`](../Examples/Shapes/InkRibbon/Sketch.swift), [`Examples/Patterns/Voronoi`](../Examples/Patterns/Voronoi/Sketch.swift), [`Examples/Patterns/Delaunay`](../Examples/Patterns/Delaunay/Sketch.swift) (the triangle half of the same pair, reading its own adjacency back), [`Examples/Patterns/CirclePacking`](../Examples/Patterns/CirclePacking/Sketch.swift), [`Examples/Shapes/SVGImport`](../Examples/Shapes/SVGImport/Sketch.swift), [`Examples/Shapes/Hulls`](../Examples/Shapes/Hulls/Sketch.swift), [`Examples/Shapes/MedialAxis`](../Examples/Shapes/MedialAxis/Sketch.swift), [`Examples/Shapes/StraightSkeleton`](../Examples/Shapes/StraightSkeleton/Sketch.swift), [`Examples/Shapes/ColoringBook`](../Examples/Shapes/ColoringBook/Sketch.swift) (a drifting drawing whose every patch is found and filled again each frame), and [`Examples/Patterns/CreasePattern`](../Examples/Patterns/CreasePattern/Sketch.swift) (a Miura sheet folding and unfolding beside its pattern, with the cut sheet a switch away).
+- Worked examples: [`Examples/Shapes/Booleans`](../Examples/Shapes/Booleans/Sketch.swift), [`Examples/Patterns/Topography`](../Examples/Patterns/Topography/Sketch.swift), [`Examples/Shapes/InkRibbon`](../Examples/Shapes/InkRibbon/Sketch.swift), [`Examples/Patterns/Voronoi`](../Examples/Patterns/Voronoi/Sketch.swift), [`Examples/Patterns/Delaunay`](../Examples/Patterns/Delaunay/Sketch.swift) (the triangle half of the same pair, reading its own adjacency back), [`Examples/Patterns/CirclePacking`](../Examples/Patterns/CirclePacking/Sketch.swift), [`Examples/Shapes/SVGImport`](../Examples/Shapes/SVGImport/Sketch.swift), [`Examples/Shapes/Hulls`](../Examples/Shapes/Hulls/Sketch.swift), [`Examples/Shapes/MedialAxis`](../Examples/Shapes/MedialAxis/Sketch.swift), [`Examples/Shapes/StraightSkeleton`](../Examples/Shapes/StraightSkeleton/Sketch.swift), [`Examples/Shapes/ColoringBook`](../Examples/Shapes/ColoringBook/Sketch.swift) (a drifting drawing whose every patch is found and filled again each frame), and [`Examples/Patterns/CreasePattern`](../Examples/Patterns/CreasePattern/Sketch.swift) (a Miura sheet folding and unfolding beside its pattern, with the cut sheet a switch away), [`Examples/Shapes/WavyLettering`](../Examples/Shapes/WavyLettering/Sketch.swift), [`Examples/Shapes/TraceToCurves`](../Examples/Shapes/TraceToCurves/Sketch.swift).
 
 ---
 

@@ -323,6 +323,7 @@ e7f00e72aff0  Docs/Drawing/Epicycles.md:86  expected ',' separator
 886cada6cd4c  Docs/Drawing/Fitting.md:160  cannot find 'marks' in scope
 0ece64b5f13f  Docs/Drawing/Fitting.md:92  cannot find 'pins' in scope
 cf65e5c6f914  Docs/Drawing/Fourier.md:73  cannot find 'plate' in scope
+51c2624a28b7  Docs/Drawing/Geometry.md:1013  cannot convert value of type '[Vector2].Type' to expected argument type '[Vector2]'
 4089dff1acc6  Docs/Drawing/Geometry.md:181  cannot convert value of type 'Double.Type' to expected argument type 'Double'
 0bdba7d24932  Docs/Drawing/Geometry.md:233  cannot convert value of type 'Double.Type' to expected argument type 'Double'
 c9abb7d3d7a5  Docs/Drawing/Geometry.md:246  cannot find 'crate' in scope
@@ -345,21 +346,22 @@ cd001b4096fb  Docs/Drawing/Geometry.md:470  expected ',' separator
 f898a9fe80fd  Docs/Drawing/Geometry.md:578  expected ',' separator
 52354cad80b1  Docs/Drawing/Geometry.md:624  expected '{' in body of function declaration
 d557b13beb41  Docs/Drawing/Geometry.md:672  expected '{' in body of function declaration
-4fdce137d56e  Docs/Drawing/Geometry.md:708  expected ',' separator
-fae7a0c26a4e  Docs/Drawing/Geometry.md:738  cannot find 'shape' in scope
-ad8b1f537c9c  Docs/Drawing/Geometry.md:745  cannot find 'shape' in scope
-e2d750ef54f7  Docs/Drawing/Geometry.md:751  cannot find 'shape' in scope
-a852c71bbd89  Docs/Drawing/Geometry.md:777  use of 'randomPoints' refers to instance method rather than global function 'randomPoints(in:count:using:)' in module 'Ollin'
-1eb6f12247fb  Docs/Drawing/Geometry.md:788  expected '{' in body of function declaration
-c02c77676873  Docs/Drawing/Geometry.md:802  cannot find 'star' in scope
-c4ec6c299218  Docs/Drawing/Geometry.md:814  expected '{' in body of function declaration
-a1b0bb4e8556  Docs/Drawing/Geometry.md:820  cannot find 'blob' in scope
-7fa1c7078690  Docs/Drawing/Geometry.md:838  expected '{' in body of function declaration
-a70a7ea27883  Docs/Drawing/Geometry.md:845  function produces expected type '[Vector2]'; did you mean to call it with '()'?
-f987b34cd479  Docs/Drawing/Geometry.md:858  expected '{' in body of function declaration
-eb39bc6e25d9  Docs/Drawing/Geometry.md:895  expected '{' in body of function declaration
-ef0ca3825a40  Docs/Drawing/Geometry.md:909  expected ',' separator
-0551b7294c44  Docs/Drawing/Geometry.md:951  cannot convert value of type '[Vector2].Type' to expected argument type '[Vector2]'
+a9963fe5f8ea  Docs/Drawing/Geometry.md:708  expected '{' in body of function declaration
+4fdce137d56e  Docs/Drawing/Geometry.md:759  expected ',' separator
+fae7a0c26a4e  Docs/Drawing/Geometry.md:789  cannot find 'shape' in scope
+ad8b1f537c9c  Docs/Drawing/Geometry.md:796  cannot find 'shape' in scope
+e2d750ef54f7  Docs/Drawing/Geometry.md:802  cannot find 'shape' in scope
+a852c71bbd89  Docs/Drawing/Geometry.md:828  use of 'randomPoints' refers to instance method rather than global function 'randomPoints(in:count:using:)' in module 'Ollin'
+1eb6f12247fb  Docs/Drawing/Geometry.md:839  expected '{' in body of function declaration
+c02c77676873  Docs/Drawing/Geometry.md:853  cannot find 'star' in scope
+c4ec6c299218  Docs/Drawing/Geometry.md:865  expected '{' in body of function declaration
+a1b0bb4e8556  Docs/Drawing/Geometry.md:871  cannot find 'blob' in scope
+7fa1c7078690  Docs/Drawing/Geometry.md:889  expected '{' in body of function declaration
+a70a7ea27883  Docs/Drawing/Geometry.md:896  function produces expected type '[Vector2]'; did you mean to call it with '()'?
+f987b34cd479  Docs/Drawing/Geometry.md:909  expected '{' in body of function declaration
+eb39bc6e25d9  Docs/Drawing/Geometry.md:946  expected '{' in body of function declaration
+67e13e1a3864  Docs/Drawing/Geometry.md:960  expected ',' separator
+c0091b46b433  Docs/Drawing/Geometry.md:999  expected '{' in body of function declaration
 336a733604c7  Docs/Drawing/GlyphMosaic.md:31  expected ',' separator
 cb89fe7408d3  Docs/Drawing/GlyphMosaic.md:43  cannot find 'picture' in scope
 f7a401ec53bc  Docs/Drawing/GlyphMosaic.md:55  expected ',' separator

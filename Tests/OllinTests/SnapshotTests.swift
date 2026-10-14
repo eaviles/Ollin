@@ -759,6 +759,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("outline-questions",
                  note: "The outline questions on one sheet: a seven-point tangled loop woven over and under by its own crossings (crossings() with every second pass cut out through piece(from:to:), wrapping through the seam), a probe dropped to the nearest place on an open curve with the tangent and normal drawn there and the walked stretch inked, a star rounded and a star chamfered (each corner limited by its edges), and a dense wave simplified to the points it needs. Pure CPU geometry, no time, no random.",
                  make: { OutlineQuestionsScene() }),
+    SnapshotCase("bent-outlines",
+                 note: "The outline-bending edits on one sheet: a row of boxes laid along a straight base warped along a wave (warped(from:along:)), a blob pulled toward a point with its untouched outline ghosted and an open rope pulled near one end with both ends held (pulled(toward:amount:radius:)), a square-cornered loop smoothed with its corners kept beside the plain smoothing (smoothed(neighbors:keepingCornersOver:)), and a dense trace with two corners split into pieces (split(atCornersOver:span:)) and each piece fitted with cubic curves whose handles are drawn (fitted(tolerance:), Path.cubics). Pure CPU geometry, no time, no random.",
+                 make: { BentOutlinesScene() }),
     SnapshotCase("cellular-automata",
                  note: "Two 1D cellular automata as stacked-row triangles: elementary rule 30 (left) and 3-color totalistic code 777 (right), each from a single center seed. Pins the rule-byte lookup, the totalistic base-k digit table, and row stacking. Pure CPU, no time, no random.",
                  make: { CellularAutomataScene() }),
@@ -5572,6 +5575,104 @@ private final class PlaneCurvesScene: Sketch {
         strokeWeight(1.2)
         stroke(Color(hex: 0xF4EAD6))
         for run in square.contours + tree.contours { drawPolyline(run.points, closed: run.isClosed) }
+    }
+}
+
+private final class BentOutlinesScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x10131A))
+        noStroke()
+
+        // A row of boxes bent along a wave.
+        let base = Contour([Vector2(8, 40), Vector2(248, 40)], closed: false)
+        let wave = Contour((0 ... 24).map { i -> Vector2 in
+            let x = 8 + Double(i) * 10
+            return Vector2(x, 40 + 14 * sin(Double(i) / 24 * .tau * 1.5))
+        }, closed: false)
+        for k in 0 ..< 8 {
+            let x = 14 + Double(k) * 30
+            let box = Shape([Vector2(x, 24), Vector2(x + 20, 24), Vector2(x + 20, 56), Vector2(x, 56)])
+            fill(k.isMultiple(of: 2) ? Color(hex: 0xE5B15C) : Color(hex: 0x9FD6E8))
+            drawShape(box.warped(from: base, along: wave, spacing: 2))
+        }
+
+        // A blob pulled toward a point, the untouched outline ghosted, and a
+        // rope pulled near one end with both ends held.
+        let blob = Contour((0 ..< 48).map { i -> Vector2 in
+            let a = Double(i) / 48 * .tau
+            return Vector2(64, 128) + Vector2(angle: a, length: 34 + 6 * sin(3 * a))
+        }, closed: true)
+        let hand = Vector2(118, 110)
+        fill(Color(hex: 0x6BD69B).withAlpha(0.3))
+        drawShape(Shape(contours: [blob]))
+        fill(Color(hex: 0x6BD69B))
+        drawShape(Shape(contours: [blob.pulled(toward: hand, amount: 0.8, radius: 60, spacing: 2)]))
+        fill(Color(hex: 0xF4EAD6))
+        drawCircle(center: hand, radius: 3)
+        let rope = Contour([Vector2(8, 184), Vector2(120, 184)], closed: false)
+        let tug = Vector2(100, 160)
+        noFill()
+        stroke(Color(hex: 0x3A4458))
+        strokeWeight(2)
+        drawPolyline(rope.points)
+        stroke(Color(hex: 0xF4EAD6))
+        drawPolyline(rope.pulled(toward: tug, amount: 1, radius: 50, spacing: 2).points)
+
+        // A square-cornered loop smoothed, corners kept beside corners lost.
+        // The jitter stays well under the corner angle at its spacing, so
+        // only the four true corners count as corners.
+        let frame = Shape([Vector2(0, 0), Vector2(52, 0), Vector2(52, 52), Vector2(0, 52)])
+            .resampled(spacing: 3.25)
+        let bumpy = frame.mapPoints { p in
+            p + Vector2(sin(p.x * 1.7 + p.y * 0.9) * 0.35, cos(p.y * 1.3 - p.x * 0.7) * 0.35)
+        }
+        strokeWeight(1.5)
+        stroke(Color(hex: 0x9FD6E8))
+        for contour in bumpy.smoothed(neighbors: 5, keepingCornersOver: .pi / 4).mapPoints({ $0 + Vector2(10, 196) }) {
+            drawPolyline(contour.points, closed: true)
+        }
+        stroke(Color(hex: 0x3A4458))
+        for contour in bumpy.smoothed(neighbors: 5).mapPoints({ $0 + Vector2(72, 196) }) {
+            drawPolyline(contour.points, closed: true)
+        }
+
+        // A dense trace with two corners, split there and fitted piece by piece.
+        var points: [Vector2] = []
+        func run(to target: Vector2, steps: Int) {
+            let from = points.last ?? target
+            for i in (points.isEmpty ? 0 : 1) ... steps {
+                points.append(from + (target - from) * (Double(i) / Double(steps)))
+            }
+        }
+        points.append(Vector2(140, 236))
+        for i in 1 ... 40 {
+            let t = Double(i) / 40
+            points.append(Vector2(140 + 40 * t, 236 - 60 * sin(t * .pi)))
+        }
+        run(to: Vector2(210, 236), steps: 30)
+        for i in 1 ... 30 {
+            let t = Double(i) / 30
+            points.append(Vector2(210 + 36 * t, 236 - 48 * t * t))
+        }
+        let trace = Contour(points, closed: false)
+        let pieces = trace.split(atCornersOver: .pi / 3, span: 6)
+        strokeWeight(5)
+        stroke(Color(hex: 0x3A4458))
+        drawPolyline(trace.points)
+        for (k, piece) in pieces.enumerated() {
+            let path = piece.fitted(tolerance: 1)
+            stroke(k.isMultiple(of: 2) ? Color(hex: 0xE5B15C) : Color(hex: 0x9FD6E8))
+            strokeWeight(1.8)
+            drawPolyline(path.contour.points)
+            stroke(Color(hex: 0xF4EAD6).withAlpha(0.7))
+            strokeWeight(1)
+            for cubic in path.cubics {
+                drawLine(cubic.start, cubic.control1)
+                drawLine(cubic.end, cubic.control2)
+            }
+        }
     }
 }
 

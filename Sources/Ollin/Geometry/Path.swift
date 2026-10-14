@@ -153,6 +153,117 @@ public struct Path: Equatable, Sendable {
     }
 }
 
+public extension Path {
+    /// Every command as a cubic Bézier, in order: a straight segment as a
+    /// cubic whose handles lie on it, a quadratic raised to a cubic, each
+    /// span of a smooth `curve(to:)` run as the cubic it samples, and
+    /// `close()` as the straight run back to the start when the pen is not
+    /// there already. The path and its cubics trace the same outline, so
+    /// this is how to count a fit's curves or draw their handles.
+    var cubics: [CubicBezier] {
+        var out: [CubicBezier] = []
+        var current = Vector2.zero
+        var start = Vector2.zero
+        var started = false
+        func straight(to p: Vector2) -> CubicBezier {
+            CubicBezier(start: current, control1: current + (p - current) / 3,
+                        control2: current + (p - current) * (2.0 / 3.0), end: p)
+        }
+        var i = 0
+        while i < commands.count {
+            switch commands[i] {
+            case .move(let p):
+                current = p
+                start = p
+                started = true
+                i += 1
+            case .line(let p):
+                if started { out.append(straight(to: p)) } else { start = p; started = true }
+                current = p
+                i += 1
+            case .quad(let c, let end):
+                if !started { start = current; started = true }
+                out.append(CubicBezier(start: current, control1: current + (c - current) * (2.0 / 3.0),
+                                       control2: end + (c - end) * (2.0 / 3.0), end: end))
+                current = end
+                i += 1
+            case .cubic(let c1, let c2, let end):
+                if !started { start = current; started = true }
+                out.append(CubicBezier(start: current, control1: c1, control2: c2, end: end))
+                current = end
+                i += 1
+            case .curve:
+                var anchors: [Vector2] = started ? [current] : []
+                while i < commands.count, case .curve(let p) = commands[i] {
+                    anchors.append(p)
+                    i += 1
+                }
+                if !started, let first = anchors.first { start = first; started = true }
+                let n = anchors.count
+                if n >= 2 {
+                    func at(_ index: Int) -> Vector2 { anchors[Swift.min(Swift.max(index, 0), n - 1)] }
+                    for j in 0 ..< (n - 1) {
+                        let p0 = at(j - 1), p1 = at(j), p2 = at(j + 1), p3 = at(j + 2)
+                        out.append(CubicBezier(start: p1, control1: p1 + (p2 - p0) / 6,
+                                               control2: p2 - (p3 - p1) / 6, end: p2))
+                    }
+                }
+                if let last = anchors.last { current = last }
+            case .close:
+                if started, current.distance(to: start) > 1e-12 { out.append(straight(to: start)) }
+                current = start
+                i += 1
+            }
+        }
+        return out
+    }
+}
+
+/// One cubic Bézier curve: a start, two handles, and an end. It is what a
+/// `Path` is made of (`Path.cubics`), what a `HobbySpline` fits one of per
+/// gap, and what `Contour.fitted(tolerance:)` traces a dense outline with.
+public struct CubicBezier: Equatable, Sendable {
+    public var start: Vector2
+    public var control1: Vector2
+    public var control2: Vector2
+    public var end: Vector2
+
+    public init(start: Vector2, control1: Vector2, control2: Vector2, end: Vector2) {
+        self.start = start
+        self.control1 = control1
+        self.control2 = control2
+        self.end = end
+    }
+
+    /// The point a fraction `t` (0...1) along the Bézier.
+    public func point(at t: Double) -> Vector2 {
+        let u = 1 - t
+        return start * (u * u * u)
+            + control1 * (3 * u * u * t)
+            + control2 * (3 * u * t * t)
+            + end * (t * t * t)
+    }
+
+    /// The direction of travel a fraction `t` along the Bézier, unit length.
+    public func direction(at t: Double) -> Vector2 {
+        derivative(at: t).normalized
+    }
+
+    /// The rate of travel at `t`: the derivative with respect to `t`.
+    func derivative(at t: Double) -> Vector2 {
+        let u = 1 - t
+        return (control1 - start) * (3 * u * u)
+            + (control2 - control1) * (6 * u * t)
+            + (end - control2) * (3 * t * t)
+    }
+
+    /// The second derivative with respect to `t`.
+    func secondDerivative(at t: Double) -> Vector2 {
+        (control2 - control1 * 2 + start) * (6 * (1 - t))
+            + (end - control2 * 2 + control1) * (6 * t)
+    }
+}
+
 /// Curve-to-polyline flattening shared by `Path` and the `curveThrough`
 /// convenience initialisers. Segment counts scale with on-canvas length so big
 /// curves stay smooth and small ones stay cheap (the ~8-point target edge the

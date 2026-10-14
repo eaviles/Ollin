@@ -256,34 +256,93 @@ public extension Contour {
         let reach = Swift.min(neighbors, isClosed ? (n - 1) / 2 : n - 1)
         guard reach > 0, n >= 3 else { return self }
         let kernel = smoothingKernel(reach: reach, weights: weights)
-        let p = points
-        var out = [Vector2](repeating: .zero, count: n)
-        for i in 0 ..< n {
-            var x = 0.0, y = 0.0
-            for k in -reach ... reach {
-                let q: Vector2
-                let j = i + k
-                if isClosed {
-                    q = p[(j % n + n) % n]
-                } else if j < 0 {
-                    q = p[0] * 2 - p[-j]
-                } else if j >= n {
-                    q = p[n - 1] * 2 - p[2 * (n - 1) - j]
-                } else {
-                    q = p[j]
-                }
-                let w = kernel[k + reach]
-                x += q.x * w
-                y += q.y * w
-            }
-            out[i] = Vector2(x, y)
+        return Contour(smoothedRun(points, reach: reach, kernel: kernel, closed: isClosed),
+                       closed: isClosed)
+    }
+
+    /// The same moving average, with the outline's corners left where they
+    /// are: a point that turns by more than `angle` (radians) between its two
+    /// neighbors is a corner, and the smoothing restarts on each side of it
+    /// the way it restarts at an open contour's ends. A square with many
+    /// points along each side keeps its four corners and its straight sides;
+    /// a rounded blob with no turn over the angle is smoothed all round. The
+    /// count and the order stay, as in the plain form.
+    ///
+    /// ```swift
+    /// let soft = traced.smoothed(neighbors: 4, keepingCornersOver: .pi / 3)
+    /// ```
+    ///
+    /// The corner test reads the two neighboring points, so on a dense trace
+    /// that rounds its corners over several points, `simplified(tolerance:)`
+    /// first pulls each corner onto one point. `split(atCornersOver:span:)`
+    /// cuts at the same corners.
+    func smoothed(neighbors: Int, weights: SmoothingWeights = .gaussian,
+                  keepingCornersOver angle: Double) -> Contour {
+        let corners = cornerIndices(over: angle)
+        guard !corners.isEmpty else { return smoothed(neighbors: neighbors, weights: weights) }
+        let n = points.count
+        guard neighbors > 0, n >= 3 else { return self }
+        var out = points
+        // Each run between two corners (or an end and a corner) is smoothed
+        // as an open contour, its two ends held.
+        var bounds: [(Int, Int)] = []
+        if isClosed {
+            for (k, corner) in corners.enumerated() { bounds.append((corner, corners[(k + 1) % corners.count])) }
+        } else {
+            var from = 0
+            for corner in corners { bounds.append((from, corner)); from = corner }
+            bounds.append((from, n - 1))
         }
-        if !isClosed {
-            out[0] = p[0]
-            out[n - 1] = p[n - 1]
+        for (from, to) in bounds {
+            var indices: [Int] = []
+            var i = from
+            while true {
+                indices.append(i)
+                if i == to { break }
+                i = (i + 1) % n
+            }
+            let run = indices.map { points[$0] }
+            let reach = Swift.min(neighbors, run.count - 1)
+            guard reach > 0, run.count >= 3 else { continue }
+            let kernel = smoothingKernel(reach: reach, weights: weights)
+            let smooth = smoothedRun(run, reach: reach, kernel: kernel, closed: false)
+            for (k, index) in indices.enumerated() { out[index] = smooth[k] }
         }
         return Contour(out, closed: isClosed)
     }
+}
+
+/// The window average over one run of points: wrapping round a closed run,
+/// and on an open one mirroring the curve through each end point and
+/// leaving the two ends where they are.
+private func smoothedRun(_ p: [Vector2], reach: Int, kernel: [Double], closed: Bool) -> [Vector2] {
+    let n = p.count
+    var out = [Vector2](repeating: .zero, count: n)
+    for i in 0 ..< n {
+        var x = 0.0, y = 0.0
+        for k in -reach ... reach {
+            let q: Vector2
+            let j = i + k
+            if closed {
+                q = p[(j % n + n) % n]
+            } else if j < 0 {
+                q = p[0] * 2 - p[-j]
+            } else if j >= n {
+                q = p[n - 1] * 2 - p[2 * (n - 1) - j]
+            } else {
+                q = p[j]
+            }
+            let w = kernel[k + reach]
+            x += q.x * w
+            y += q.y * w
+        }
+        out[i] = Vector2(x, y)
+    }
+    if !closed {
+        out[0] = p[0]
+        out[n - 1] = p[n - 1]
+    }
+    return out
 }
 
 public extension Shape {
@@ -292,6 +351,16 @@ public extension Shape {
     func smoothed(neighbors: Int, weights: SmoothingWeights = .gaussian) -> Shape {
         Shape(contours: contours.map { $0.smoothed(neighbors: neighbors, weights: weights) },
               winding: winding)
+    }
+
+    /// The corner-keeping moving average applied to every contour (see
+    /// `Contour.smoothed(neighbors:weights:keepingCornersOver:)`), keeping
+    /// the `winding` rule.
+    func smoothed(neighbors: Int, weights: SmoothingWeights = .gaussian,
+                  keepingCornersOver angle: Double) -> Shape {
+        Shape(contours: contours.map {
+            $0.smoothed(neighbors: neighbors, weights: weights, keepingCornersOver: angle)
+        }, winding: winding)
     }
 }
 

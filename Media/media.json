@@ -10736,6 +10736,28 @@
       "stillSmall": "examples/Shapes/Supershape/still-640.jpg?v=5ce79b23",
       "width": 1080
     },
+    "Shapes/TraceToCurves": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 1.24,
+      "sound": false,
+      "source": "3aa11e5edc90ad2a",
+      "rendered": "2026-10-14",
+      "bytes": {
+        "loop": 1003216,
+        "loopSmall": 225722,
+        "still": 76145,
+        "stillSmall": 28358
+      },
+      "loop": "examples/Shapes/TraceToCurves/loop.mp4?v=3914de59",
+      "loopSmall": "examples/Shapes/TraceToCurves/loop-640.mp4?v=e383263e",
+      "still": "examples/Shapes/TraceToCurves/still.jpg?v=3bc5633f",
+      "stillSmall": "examples/Shapes/TraceToCurves/still-640.jpg?v=f9ed7dab",
+      "seed": 1
+    },
     "Shapes/Triangles": {
       "bytes": {
         "loop": 784840,
@@ -10771,6 +10793,28 @@
       },
       "still": "examples/Shapes/Watercolor/still.jpg?v=083601e2",
       "stillSmall": "examples/Shapes/Watercolor/still-640.jpg?v=00315999",
+      "seed": 1
+    },
+    "Shapes/WavyLettering": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 14.023,
+      "sound": false,
+      "source": "f22f9644b6a66cee",
+      "rendered": "2026-10-14",
+      "bytes": {
+        "loop": 2455908,
+        "loopSmall": 426227,
+        "still": 70187,
+        "stillSmall": 27907
+      },
+      "loop": "examples/Shapes/WavyLettering/loop.mp4?v=56ae7be4",
+      "loopSmall": "examples/Shapes/WavyLettering/loop-640.mp4?v=9d233396",
+      "still": "examples/Shapes/WavyLettering/still.jpg?v=f32f8402",
+      "stillSmall": "examples/Shapes/WavyLettering/still-640.jpg?v=60471814",
       "seed": 1
     },
     "Simulation/Attractor": {

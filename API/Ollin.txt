@@ -3526,19 +3526,24 @@ struct Contour: PlaneCurve, Tweenable, BidirectionalCollection, Collection, Equa
   func crossings(with: Contour) -> [Contour.Crossing]
   func dashed(_: StrokeDash) -> [Contour]
   func distance(to: Vector2) -> Double
+  func fitted(tolerance: Double) -> Path
   func fraction(of: Vector2) -> Double
   func nearestPoint(to: Vector2) -> Vector2
   func normal(at: Double) -> Vector2
   func piece(from: Double, to: Double) -> Contour
   func point(at: Double) -> Vector2
+  func pulled(toward: Vector2, amount: Double, radius: Double, spacing: Double = default) -> Contour
   func resampled(spacing: Double) -> Contour
   func reversed() -> Contour
   func rounded(_: Double) -> Contour
   func simplified(tolerance: Double) -> Contour
   func smoothed(iterations: Int = default) -> Contour
   func smoothed(neighbors: Int, weights: SmoothingWeights = default) -> Contour
+  func smoothed(neighbors: Int, weights: SmoothingWeights = default, keepingCornersOver: Double) -> Contour
+  func split(atCornersOver: Double, span: Double = default) -> [Contour]
   func stroked(width: Double, join: StrokeJoin = default, cap: StrokeCap = default) -> Shape
   func tangent(at: Double) -> Vector2
+  func warped(from: Contour, along: Contour, spacing: Double = default) -> Contour
   init(_: [Vector2], closed: Bool = default)
   init(curveThrough: [Vector2], closed: Bool = default, spline: Spline = default)
   static func lerp(_: Contour, _: Contour, _: Double) -> Contour
@@ -3616,6 +3621,14 @@ struct CreasePattern: Equatable, Sendable
   var inverted: CreasePattern { get }
   var isFlatFoldable: Bool { get }
   var vertices: [Vector2] { get }
+struct CubicBezier: Equatable, Sendable
+  func direction(at: Double) -> Vector2
+  func point(at: Double) -> Vector2
+  init(start: Vector2, control1: Vector2, control2: Vector2, end: Vector2)
+  var control1: Vector2 { get set }
+  var control2: Vector2 { get set }
+  var end: Vector2 { get set }
+  var start: Vector2 { get set }
 struct Cue: Decodable, Encodable, Equatable, Sendable
   init(name: String, values: [String : ParamStored])
   var name: String { get set }
@@ -4472,14 +4485,7 @@ struct HobbySpline: Equatable, Sendable
   let points: [Vector2]
   let segments: [HobbySpline.Segment]
   let tension: Double
-  struct Segment: Equatable, Sendable
-    func direction(at: Double) -> Vector2
-    func point(at: Double) -> Vector2
-    init(start: Vector2, control1: Vector2, control2: Vector2, end: Vector2)
-    var control1: Vector2 { get set }
-    var control2: Vector2 { get set }
-    var end: Vector2 { get set }
-    var start: Vector2 { get set }
+  typealias Segment = CubicBezier
   var contour: Contour { get }
   var path: Path { get }
   var shape: Shape { get }
@@ -5650,6 +5656,7 @@ struct Path: Equatable, Sendable
   mutating func move(to: Vector2)
   mutating func quadCurve(to: Vector2, control: Vector2)
   var contour: Contour { get }
+  var cubics: [CubicBezier] { get }
   var shape: Shape { get }
 struct PathTracing: Equatable, Sendable
   init(samplesPerPixel: Int = default, maxDepth: Int = default, denoises: Bool = default, noiseThreshold: Double = default, minSamplesPerPixel: Int? = default, maxBounceLight: Double = default, reusedFrames: Int = default, secondsPerFrame: Double = default)
@@ -6183,22 +6190,27 @@ struct Shape: Tweenable, BidirectionalCollection, Collection, Equatable, RandomA
   func chamfered(_: Double) -> Shape
   func contains(_: Vector2) -> Bool
   func dashed(_: StrokeDash) -> Shape
+  func fitted(tolerance: Double) -> [Path]
   func fractured(into: Int, around: Vector2, seed: Int = default) -> [Shape]
   func fractured(into: Int, seed: Int = default) -> [Shape]
   func intersection(_: Shape) -> Shape
   func mapPoints(_: (Vector2) -> Vector2) -> Shape
   func morphed(toward: Shape, _: Double, spacing: Double? = default) -> Shape
   func offset(by: Double, join: StrokeJoin = default) -> Shape
+  func pulled(toward: Vector2, amount: Double, radius: Double, spacing: Double = default) -> Shape
   func resampled(spacing: Double) -> Shape
   func rounded(_: Double) -> Shape
   func separated() -> [Shape]
   func simplified(tolerance: Double) -> Shape
   func smoothed(iterations: Int = default) -> Shape
   func smoothed(neighbors: Int, weights: SmoothingWeights = default) -> Shape
+  func smoothed(neighbors: Int, weights: SmoothingWeights = default, keepingCornersOver: Double) -> Shape
+  func split(atCornersOver: Double, span: Double = default) -> [Contour]
   func stroked(width: Double, join: StrokeJoin = default, cap: StrokeCap = default) -> Shape
   func subtracting(_: Shape) -> Shape
   func symmetricDifference(_: Shape) -> Shape
   func union(_: Shape) -> Shape
+  func warped(from: Contour, along: Contour, spacing: Double = default) -> Shape
   init(_: [Vector2], closed: Bool = default)
   init(contours: [Contour], winding: FillWinding = default)
   init(curveThrough: [Vector2], closed: Bool = default, spline: Spline = default)

@@ -505,6 +505,8 @@ let package = Package(
         example("Shapes/CornerCutting"),
         example("Shapes/Crossings"),
         example("Shapes/OverUnder"),
+        example("Shapes/WavyLettering"),
+        example("Shapes/TraceToCurves"),
         example("Shapes/Watercolor"),
         example("Shapes/SVGImport", resources: [.copy("rocket.svg")]),
         example("Patterns/Topography"),

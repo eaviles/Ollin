@@ -36,38 +36,9 @@ import Foundation
 /// The bare call is `drawCurve(points, spline: .hobby)`.
 public struct HobbySpline: Equatable, Sendable {
 
-    /// One cubic Bézier of the fit, from one given point to the next.
-    public struct Segment: Equatable, Sendable {
-        public var start: Vector2
-        public var control1: Vector2
-        public var control2: Vector2
-        public var end: Vector2
-
-        public init(start: Vector2, control1: Vector2, control2: Vector2, end: Vector2) {
-            self.start = start
-            self.control1 = control1
-            self.control2 = control2
-            self.end = end
-        }
-
-        /// The point a fraction `t` (0...1) along the Bézier.
-        public func point(at t: Double) -> Vector2 {
-            let u = 1 - t
-            return start * (u * u * u)
-                + control1 * (3 * u * u * t)
-                + control2 * (3 * u * t * t)
-                + end * (t * t * t)
-        }
-
-        /// The direction of travel a fraction `t` along the Bézier, unit length.
-        public func direction(at t: Double) -> Vector2 {
-            let u = 1 - t
-            let d = (control1 - start) * (3 * u * u)
-                + (control2 - control1) * (6 * u * t)
-                + (end - control2) * (3 * t * t)
-            return d.normalized
-        }
-    }
+    /// One cubic Bézier of the fit, from one given point to the next: a
+    /// `CubicBezier`, the same value every curve in a `Path` reads as.
+    public typealias Segment = CubicBezier
 
     /// The points the curve passes through, in order. Consecutive repeats are
     /// dropped, and a closed run whose last point repeats its first loses it.

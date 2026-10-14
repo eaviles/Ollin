@@ -37,3 +37,10 @@ let x = 0.0
 
 // The marks a circle is fitted to.
 let marks: [Vector2] = []
+
+// The outlines the bending section edits: a traveling wave, a word's glyphs,
+// a blob, and a trace from the hand.
+let ripple = Contour([Vector2(0, 540), Vector2(540, 600), Vector2(1080, 540)], closed: false)
+let glyphs: [Shape] = [Shape([Vector2(0, 0), Vector2(60, 0), Vector2(30, 60)])]
+let blob = Shape([Vector2(0, 0), Vector2(100, 0), Vector2(100, 100), Vector2(0, 100)])
+let trace = Contour([Vector2(0, 0), Vector2(50, 8), Vector2(100, 0), Vector2(150, 40)], closed: false)

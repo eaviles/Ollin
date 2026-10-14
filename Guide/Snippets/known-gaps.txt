@@ -57,13 +57,12 @@ ffa12e764a7d  Guide/12-FlocksAndSwarms.md:17  cannot find 'position' in scope
 c75eb2a20310  Guide/12-FlocksAndSwarms.md:402  cannot find 'crowd' in scope
 750461323d36  Guide/14-FieldsAndFlow.md:281  cannot find 'x' in scope
 bac6f70b2c26  Guide/15-ShapesAsMaterial.md:110  cannot find 'circles' in scope
-6c9bb524bf9e  Guide/15-ShapesAsMaterial.md:158  cannot find 'blob' in scope
 45fd2bf76c06  Guide/15-ShapesAsMaterial.md:292  cannot find 'path' in scope
 124acc641125  Guide/15-ShapesAsMaterial.md:304  cannot find 'road' in scope
-1c47a7d408ef  Guide/15-ShapesAsMaterial.md:426  cannot find 'square' in scope
-3152d9b01a08  Guide/15-ShapesAsMaterial.md:477  cannot find 'island' in scope
-941d99f289b2  Guide/15-ShapesAsMaterial.md:488  value of type '[Contour]' has no member 'maxInset'
-e94aaf6380fc  Guide/15-ShapesAsMaterial.md:554  unary operator cannot be separated from its operand
+1c47a7d408ef  Guide/15-ShapesAsMaterial.md:468  cannot find 'square' in scope
+3152d9b01a08  Guide/15-ShapesAsMaterial.md:519  cannot find 'island' in scope
+941d99f289b2  Guide/15-ShapesAsMaterial.md:530  value of type '[Contour]' has no member 'maxInset'
+e94aaf6380fc  Guide/15-ShapesAsMaterial.md:596  unary operator cannot be separated from its operand
 e428f7fa87a3  Guide/15-ShapesAsMaterial.md:62  cannot find 'circle' in scope
 c68765b0c991  Guide/15-ShapesAsMaterial.md:75  cannot convert value of type '@MainActor (Double, Double, Double, Double) -> Double' to expected argument type '[Vector2]'
 c8a055fb7cf3  Guide/16-CurvesAndFigures.md:300  cannot convert value of type 'Shape' to expected argument type 'Contour'
