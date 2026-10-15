@@ -48,7 +48,7 @@ The weight follows [`strokeWeight(_:in:)`](Lines.md#a-weight-on-screen-or-in-the
 
 ### Many copies
 
-Under **`drawMesh(_:instances:)`** the edges of every copy are one more GPU draw beside the solids, placed by the same matrices. The CPU does no work per copy. The form whose placements a compute kernel writes, `drawMesh(_:instances:count:)`, takes them the same way. A mesh's edges are found once and kept while the mesh goes on being drawn. So a mesh drawn every frame is searched for its edges once. A mesh changed since it was last drawn is searched again.
+Under **`drawMesh(_:instances:)`** the edges of every copy are one more GPU draw beside the solids, placed by the same matrices. The CPU does no work per copy. The form whose placements a compute kernel writes, `drawMesh(_:instances:count:)`, takes them the same way. A mesh's edges are found once and kept while the mesh goes on being drawn. So a mesh drawn every frame is searched for its edges once. A mesh changed since it was last drawn is searched again. So a mesh rebuilt every frame pays the search every frame. That is about half a microsecond a vertex on an M2. A mesh of 1.2 million vertices took 0.6 seconds a frame with its edges, and 30 milliseconds without.
 
 A [mesh field](Instancing.md#a-field-that-culls-itself) draws its faces without their edges, with a note, because its GPU cull has no edges to cull yet. Draw the copies with `drawMesh(_:instances:)` when they need their edges.
 

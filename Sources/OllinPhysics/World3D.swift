@@ -243,9 +243,33 @@ public final class World3D {
     var waterCenters: [Float] = []
 
     /// Creates an empty world. `maxBodies` bounds how many bodies can ever be
-    /// live at once (the solver reserves its tables up front).
+    /// live at once (the solver reserves its tables up front, with room for sixteen
+    /// touching pairs a body).
     public init(maxBodies: Int = 4096) {
-        handle = cjolt_world_create(0, Float(gravity.y), 0, UInt32(max(64, maxBodies)))!
+        self.maxBodies = max(64, maxBodies)
+        handle = cjolt_world_create(0, Float(gravity.y), 0, UInt32(self.maxBodies))!
+    }
+
+    /// How many bodies this world can hold at once, as it was made (at least 64).
+    /// The solver sets aside its tables for this many up front, with room for
+    /// sixteen touching pairs a body (a packed box touches up to 26 neighbors); a
+    /// pile denser than that drops contacts and says so in `lastError`.
+    public let maxBodies: Int
+
+    /// What went wrong in the last step, as a sentence, or nil when it kept every
+    /// contact. A step drops contacts when more bodies touch at once than the world
+    /// set aside room for, and the bodies whose contacts were dropped pass through
+    /// each other for that step; a world made with a larger `maxBodies` holds more.
+    /// Cleared by the next step that keeps them all.
+    public private(set) var lastError: String?
+
+    /// The sentence for a step's error flags (the solver's own: its manifold cache,
+    /// its body-pair cache, and its contact-constraint buffer), or nil for none.
+    static func describe(stepError flags: Int32, maxBodies: Int) -> String? {
+        guard flags != 0 else { return nil }
+        return "The last step dropped contacts: more bodies touched at once than a world made for "
+            + "\(maxBodies) bodies holds (sixteen touching pairs a body), so some passed through each "
+            + "other. Make the world with a larger maxBodies."
     }
 
     deinit {
@@ -1381,7 +1405,8 @@ public final class World3D {
         // One collision pass per ~60 Hz of simulated time keeps long frames
         // stable without costing short ones anything.
         let passes = max(1, Int((clamped * 60).rounded(.up))) * max(1, substeps)
-        _ = cjolt_world_step(handle, Float(clamped), Int32(passes))
+        lastError = World3D.describe(stepError: Int32(cjolt_world_step(handle, Float(clamped), Int32(passes))),
+                                     maxBodies: maxBodies)
         stepGeneration &+= 1
         // The solver's worker threads filled a buffer while it ran; empty it
         // here, on the one thread the sketch reads from.

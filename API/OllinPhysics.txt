@@ -394,6 +394,7 @@ final class World3D
   func waterHeight(at: Vector3) -> Double?
   func waterMesh(extent: Double = default, resolution: Int = default, around: Vector3 = default) -> Mesh?
   init(maxBodies: Int = default)
+  let maxBodies: Int
   static var maxCollisionGroups: Int { get }
   var bodies: [Body3D] { get }
   var characters: [Character3D] { get }
@@ -404,6 +405,7 @@ final class World3D
   var ground: Double? { get set }
   var groundBody: Body3D? { get }
   var joints: [Joint3D] { get }
+  var lastError: String? { get }
   var maxTimestep: Double { get set }
   var ragdolls: [Ragdoll3D] { get }
   var restitution: Double { get set }

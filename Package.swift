@@ -541,7 +541,12 @@ let package = Package(
             ],
             publicHeadersPath: "include",
             cxxSettings: [
-                .headerSearchPath(".")
+                .headerSearchPath("."),
+                // The library's own debug checks are on unless this (or NDEBUG) is
+                // defined, and its asserts compile to a trap: a full contact buffer, a
+                // condition it reports and recovers from, stopped the process. The
+                // shim reads the step's error flags instead (`World3D.lastError`).
+                .define("JPH_NO_DEBUG")
             ],
             linkerSettings: [
                 .linkedLibrary("c++")

@@ -17,6 +17,50 @@ struct RigidBody3DTests {
         for _ in 0 ..< steps { world.advance(by: dt) }
     }
 
+    /// A thousand unit boxes on a lattice `spacing` apart, weightless and high over
+    /// the ground.
+    func pile(_ world: World3D, spacing: Double) -> [Body3D] {
+        var bodies: [Body3D] = []
+        for i in 0 ..< 10 { for j in 0 ..< 10 { for k in 0 ..< 10 {
+            bodies.append(world.addBody(.box(width: 1, height: 1, depth: 1),
+                                        at: Vector3(Double(i) * spacing, 20 + Double(j) * spacing,
+                                                    Double(k) * spacing)))
+        } } }
+        return bodies
+    }
+
+    /// A pile denser than one contact a body steps, and keeps every contact: a
+    /// thousand boxes 0.95 apart each overlap all 26 neighbors by face, edge, and
+    /// corner, about 12,000 touching pairs, where the world once set aside one pair
+    /// and one contact constraint a body and the solver's own check turned the full
+    /// buffer into a trap.
+    @Test func aPileDenserThanOneContactABodySteps() {
+        let world = World3D(maxBodies: 1024)
+        world.gravity = .zero
+        _ = pile(world, spacing: 0.95)
+        run(world, steps: 10)
+        #expect(world.lastError == nil, "a pile of 26 neighbors a body read: \(world.lastError ?? "")")
+    }
+
+    /// A pile past what the world sets aside says so, and the word clears once a
+    /// step keeps every contact again: boxes 0.45 apart overlap every neighbor two
+    /// steps away, about 62 pairs a body, past the sixteen a body the world holds,
+    /// so some contacts are dropped and `lastError` names the limit; spread far
+    /// apart, they touch nothing and the next step clears it.
+    @Test func aPileThatOverflowsSaysSoAndRecovers() {
+        let world = World3D(maxBodies: 1024)
+        world.gravity = .zero
+        let bodies = pile(world, spacing: 0.45)
+        run(world, steps: 2)
+        #expect(world.lastError?.contains("maxBodies") == true,
+                "an overflowing pile read: \(world.lastError ?? "nil")")
+        for (n, body) in bodies.enumerated() {
+            body.position = Vector3(Double(n % 32) * 3, 20 + Double(n / 32) * 3, 0)
+        }
+        run(world, steps: 2)
+        #expect(world.lastError == nil, "a spread pile still read: \(world.lastError ?? "")")
+    }
+
     /// Low-level certification that the vendored Jolt library builds, links,
     /// and steps from Swift through the raw C bridge (the typed `Body3D` path
     /// is built on this and exercised by the tests below).

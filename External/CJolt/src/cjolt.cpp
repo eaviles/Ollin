@@ -600,7 +600,11 @@ struct CJoltSoftBody {
 };
 
 struct CJoltWorld {
-    JPH::TempAllocatorImpl tempAllocator;
+    // A step takes its scratch from here. A dense pile asks for more than the
+    // fixed block (its contact constraints are set aside per step), and the
+    // plain allocator aborts when it runs out, so past the block it falls back
+    // to the heap.
+    JPH::TempAllocatorImplWithMallocFallback tempAllocator;
     JPH::JobSystemThreadPool jobSystem;
     BPLayerInterfaceImpl broadPhaseLayers;
     ObjectVsBroadPhaseLayerFilterImpl objectVsBroadPhase;
@@ -837,7 +841,14 @@ CJoltWorld *cjolt_world_create(float gravityX, float gravityY, float gravityZ,
     ensureLibraryInitialized();
     CJoltWorld *world = new CJoltWorld();
     const uint bodies = std::max(64u, maxBodies);
-    world->physics.Init(bodies, 0, std::max(1024u, bodies), std::max(1024u, bodies),
+    // Room for sixteen touching pairs a body, the pairs and the contact
+    // constraints alike: a box packed in a pile touches up to 26 neighbors by
+    // face, edge, and corner, each pair shared by two, so one a body (what this
+    // once set aside) overflowed any dense heap. The tables are reserved, not
+    // touched, until contacts fill them. Past this the step drops contacts and
+    // says so in its error flags.
+    const uint pairs = std::max(1024u, 16 * bodies);
+    world->physics.Init(bodies, 0, pairs, pairs,
                         world->broadPhaseLayers, world->objectVsBroadPhase,
                         world->objectPairs);
     world->physics.SetGravity(Vec3(gravityX, gravityY, gravityZ));
