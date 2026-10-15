@@ -82,11 +82,36 @@ public struct Environment: Equatable, Hashable, Sendable {
     /// the `clouds(_:)` modifier; a non-sky source ignores it (an HDRI's clouds are
     /// already in its pixels).
     public var clouds: Clouds?
+    /// When a `.sky` source's sun lights the scene as a light of its own (see
+    /// `Sunlight`); `.automatic` by default. Set it with the `sunlight(_:)` modifier; a
+    /// non-sky source ignores it (an HDRI's sun is already in its pixels).
+    public var sunlight: Sunlight
+
+    /// When the procedural sky's sun lights the scene. The sun is the model's own: a
+    /// directional light from where the sky draws its disc, as bright and as colored as
+    /// the real sun's beam at that haze and height (reddening toward the horizon,
+    /// weakening as the haze thickens, shared with the clouds in proportion to how much
+    /// of the sky they claim), casting the scene's shadows under `castShadows()`. While
+    /// it lights the scene, the backdrop draws the disc at the sun's true size and the
+    /// auto-exposure counts the beam beside the sky, the way a photographed sun's pixels
+    /// count in a loaded map, so a sunlit white floor sits near where the sky alone put
+    /// it and the sky reads darker beside it, as it does outdoors.
+    public enum Sunlight: Equatable, Hashable, Sendable {
+        /// The sky's sun lights the scene unless the sketch places a directional light
+        /// of its own, which then stands in as the sun (the way the default lights step
+        /// aside for the sketch's). The default.
+        case automatic
+        /// The sky's sun lights the scene beside every light the sketch places, a
+        /// directional one included (a rim light that should not put the sun out).
+        case always
+        /// The sky lights the scene through its glow alone, with no sun of its own.
+        case off
+    }
 
     public init(source: Source, intensity: Double = 1, rotation: Double = 0,
                 showsBackground: Bool = true, backgroundBlur: Double? = nil,
                 polyHavenSlug: String? = nil, bundledResource: String? = nil,
-                clouds: Clouds? = nil) {
+                clouds: Clouds? = nil, sunlight: Sunlight = .automatic) {
         self.source = source
         self.intensity = max(0, intensity)
         self.rotation = rotation
@@ -95,6 +120,7 @@ public struct Environment: Equatable, Hashable, Sendable {
         self.polyHavenSlug = polyHavenSlug
         self.bundledResource = bundledResource
         self.clouds = clouds
+        self.sunlight = sunlight
     }
 
     // MARK: - Adjustments
@@ -138,6 +164,18 @@ public struct Environment: Equatable, Hashable, Sendable {
                        tallness: Double = 0.6, phase: Double = 0) -> Environment {
         self.clouds(Clouds(coverage: coverage, density: density, scale: scale,
                            tallness: tallness, phase: phase))
+    }
+
+    /// A copy whose sun lights the scene as `mode` says: `.automatic` (the default) unless
+    /// the sketch places a directional light, `.always` beside every light, `.off` never.
+    /// Only a `.sky` environment has a sun of its own to light with.
+    ///
+    /// ```swift
+    /// environment(.sky(sunElevation: 0.5).sunlight(.always))   // the sun, plus my rim light
+    /// directionalLight(.white, direction: Vector3(0, -0.2, 1), intensity: 0.3)
+    /// ```
+    public func sunlight(_ mode: Sunlight) -> Environment {
+        var e = self; e.sunlight = mode; return e
     }
 
     /// A copy of a built-in at a higher resolution, downloaded from Poly Haven on first use
@@ -200,8 +238,10 @@ public struct Environment: Equatable, Hashable, Sendable {
     private static let warnedInvalidURLs = OSAllocatedUnfairLock(initialState: Set<String>())
 
     /// A procedural physically-based sky, generated with no asset: a clear-to-hazy daylight
-    /// dome. `sunElevation` is the sun's height above the horizon in radians, `turbidity`
-    /// the atmospheric haze, `groundAlbedo` the bounce from below.
+    /// dome with its sun. `sunElevation` is the sun's height above the horizon in radians,
+    /// `turbidity` the atmospheric haze, `groundAlbedo` the bounce from below. The sun
+    /// lights the scene as a light of its own unless the sketch places a directional
+    /// light (see `Sunlight`).
     public static func sky(turbidity: Double = 3, sunElevation: Double = 0.4,
                            groundAlbedo: Double = 0.3) -> Environment {
         Environment(source: .sky(turbidity: turbidity, sunElevation: sunElevation,

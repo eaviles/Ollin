@@ -2246,7 +2246,7 @@ final class MetalRenderer {
                             frameIndex: frameIndex)
         // Bake the IBL environment maps (once, cached) ahead of the geometry pass, so the
         // mesh fragments can sample them. A no-op when no environment is set.
-        _ = resolveIBL(for: drawer.environment, commandBuffer: commandBuffer)
+        _ = resolveIBL(for: drawer.environment, sunLit: drawer.skySunLit, commandBuffer: commandBuffer)
         ensureSheenLUT(for: drawer, commandBuffer: commandBuffer)
         ensureBRDFLUT(for: drawer, commandBuffer: commandBuffer)
         // Shadow depth pass from the casting light, ahead of the geometry pass in the
@@ -2977,7 +2977,7 @@ final class MetalRenderer {
         _ = encodeLightCull(drawer, into: commandBuffer, renderWidth: width, renderHeight: height,
                             frameIndex: nil)
         // Export blocks on a remote-environment download so the exported frame is full-res.
-        _ = resolveIBL(for: drawer.environment, commandBuffer: commandBuffer, blocking: true)
+        _ = resolveIBL(for: drawer.environment, sunLit: drawer.skySunLit, commandBuffer: commandBuffer, blocking: true)
         ensureSheenLUT(for: drawer, commandBuffer: commandBuffer)
         ensureBRDFLUT(for: drawer, commandBuffer: commandBuffer)
         // Shadow depth pass (nil when this frame casts no shadow), sharing the export
@@ -3424,7 +3424,7 @@ final class MetalRenderer {
                                    viewport: SIMD2<Float>(Float(width), Float(height)))
             _ = encodeLightCull(drawer, into: cb, renderWidth: width, renderHeight: height,
                                 frameIndex: nil)
-            _ = resolveIBL(for: drawer.environment, commandBuffer: cb)   // bake IBL once
+            _ = resolveIBL(for: drawer.environment, sunLit: drawer.skySunLit, commandBuffer: cb)   // bake IBL once
             ensureSheenLUT(for: drawer, commandBuffer: cb)
             ensureBRDFLUT(for: drawer, commandBuffer: cb)
             let renderedShadow = encodeShadowPass(

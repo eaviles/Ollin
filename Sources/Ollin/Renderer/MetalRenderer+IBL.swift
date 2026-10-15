@@ -10,7 +10,6 @@ import simd
 import CoreGraphics
 import COllinShaders
 import os   // OSAllocatedUnfairLock for the off-thread equirect decode handoff
-import CHosekWilkie   // ollin_hosek_rgb_configs, the procedural-sky coefficient cook
 
 /// One `iblCache` slot: the baked maps, their approximate GPU footprint (driving the
 /// byte-budget eviction), and the resolve tick of their last use (the LRU order).
@@ -31,6 +30,11 @@ struct IBLKey: Hashable {
     /// camera/video frame bumps it, so the stale bake stops matching and is evicted).
     /// Always 0 for every other source, so their keys never vary on it.
     var feedGeneration: UInt64 = 0
+    /// For a `.sky` source, whether its sun lights the frame (`Drawer.skySunLit`): the
+    /// sun's beam then joins the exposure's average and the clear sky's disc leaves the
+    /// bake (the light carries the sun and the backdrop draws it), so a sky baked both
+    /// ways keys two entries. Always false for every other source.
+    var sunLit = false
 }
 
 /// The renderer's per-feed record for a `.feed` environment: the frame `Image` it last
@@ -77,7 +81,7 @@ extension MetalRenderer {
     /// The sheen directional-albedo LUT edge: E is smooth in both axes, so a small
     /// table linearly sampled is exact to well under a shading step.
     private static let sheenLUTSize = 64
-    private static let iblTargetLuminance: Float = 0.4   // auto-exposure target average
+    private static let iblTargetLuminance: Float = SkySun.targetLuminance   // auto-exposure target average
     /// A neutral midday sky used to light a scene while a non-bundled HDRI downloads, instead
     /// of leaving it unlit (see resolveEnvironmentSources). The env's own intensity/rotation
     /// still apply, since the placeholder is a copy of it with only the source swapped.
@@ -89,8 +93,10 @@ extension MetalRenderer {
     /// that reuses an environment pays nothing). A `.remote` source resolves to its cached
     /// file (or a downloading placeholder); `blocking` true (the export path) waits for the
     /// download so exported art is the full-resolution version. Returns whether IBL is active.
-    func resolveIBL(for environment: Environment?, commandBuffer cb: MTLCommandBuffer,
-                    blocking: Bool = false) -> Bool {
+    /// `sunLit` is the frame's word on whether a `.sky` environment's sun lights it
+    /// (`Drawer.skySunLit`); the placeholder a download shows meanwhile never is.
+    func resolveIBL(for environment: Environment?, sunLit: Bool = false,
+                    commandBuffer cb: MTLCommandBuffer, blocking: Bool = false) -> Bool {
         iblResolveTick += 1
         defer { pruneStaleEquirects() }
         guard let environment else { currentIBL = nil; return false }
@@ -98,10 +104,12 @@ extension MetalRenderer {
         // Bake the requested environment once its pixels are ready; until then (a heavy HDRI
         // still downloading, or decoding off-thread) show the bundled placeholder, so the
         // scene is never unlit and the live window never blocks on the decode.
-        if let primary, let maps = bakeReady(primary, blocking: blocking, commandBuffer: cb) {
+        if let primary, let maps = bakeReady(primary, sunLit: sunLit, blocking: blocking,
+                                             commandBuffer: cb) {
             currentIBL = maps; return true
         }
-        if let placeholder, let maps = bakeReady(placeholder, blocking: false, commandBuffer: cb) {
+        if let placeholder, let maps = bakeReady(placeholder, sunLit: false, blocking: false,
+                                                 commandBuffer: cb) {
             currentIBL = maps; return true
         }
         currentIBL = nil; return false
@@ -110,7 +118,7 @@ extension MetalRenderer {
     /// Bake (or reuse) the IBL maps for an already-resolved `.resource`/`.url` environment, or
     /// nil when its equirect isn't decoded yet (a heavy `.url` decodes off-thread). Cached by
     /// source so the bake runs once; the raw float pixels are freed once baked into textures.
-    private func bakeReady(_ env: Environment, blocking: Bool,
+    private func bakeReady(_ env: Environment, sunLit: Bool, blocking: Bool,
                            commandBuffer cb: MTLCommandBuffer) -> IBLMaps? {
         // A live feed bakes on its own path (a per-feed generation keys its cache
         // entries), so the HDRI/sky path below never sees a feed.
@@ -122,7 +130,8 @@ extension MetalRenderer {
         // is a fresh key each frame, so it re-bakes entirely on the GPU (no CPU
         // read-back), which a smoothly moving sun or a drifting cloudscape needs.
         let isSkySource = { if case .sky = env.source { return true } else { return false } }()
-        let key = IBLKey(source: env.source, clouds: isSkySource ? env.clouds : nil)
+        let key = IBLKey(source: env.source, clouds: isSkySource ? env.clouds : nil,
+                         sunLit: isSkySource && sunLit)
         if env.clouds != nil, !isSkySource {
             let fresh = Self.warnedCloudsOnHDRI.withLock { warned in
                 warned ? false : { warned = true; return true }()
@@ -141,6 +150,7 @@ extension MetalRenderer {
         if case .sky(let t, let e, let a) = env.source {
             guard let sky = generateSkyEquirectTexture(turbidity: t, sunElevation: e,
                                                        groundAlbedo: a, clouds: key.clouds,
+                                                       sunLit: key.sunLit,
                                                        commandBuffer: cb) else { return nil }
             (loaded, avg) = sky
             isSky = true
@@ -594,9 +604,7 @@ extension MetalRenderer {
         // night or a blinding noon stays sane), applied to the lighting and the skybox. A
         // decoded map whose brightest texel was scaled down to fit half range (`prescale`)
         // is scaled back up here, outside the clamp: a unit restored, not an exposure.
-        let exposure: Float = avgLuminance > 1e-5
-            ? min(max(Self.iblTargetLuminance / avgLuminance, 0.01), 12)
-            : 1
+        let exposure = SkySun.exposure(average: avgLuminance)
         let normalization = exposure / max(prescale, 1e-6)
         return IBLMaps(irradiance: irradiance, prefilter: prefilter, envCube: envCube,
                        equirect: env.equirect, maxMip: mips - 1, normalization: normalization)
@@ -647,9 +655,14 @@ extension MetalRenderer {
     /// there's no CPU round-trip: the texture feeds the cube / irradiance / prefilter bake on the
     /// same command buffer, and the average is integrated analytically from the same coefficients
     /// (a cheap CPU sphere sum), so an animated sun re-bakes entirely on the GPU with no stall.
-    /// 1024x512 is ample for the lighting and a smooth backdrop.
+    /// 1024x512 is ample for the lighting and a smooth backdrop. When the sun lights the
+    /// scene (`sunLit`), a clear sky leaves its disc out (the directional light carries the
+    /// sun's energy and the backdrop draws the disc itself, at the sun's own size, which a
+    /// texel this coarse could not hold) and the beam joins the average the exposure is
+    /// set from; a cloudy sky keeps its disc, which the clouds in front of it dim.
     private func generateSkyEquirectTexture(turbidity: Double, sunElevation: Double,
                                             groundAlbedo: Double, clouds: Clouds?,
+                                            sunLit: Bool,
                                             commandBuffer cb: MTLCommandBuffer)
         -> (texture: MTLTexture, avgLuminance: Float)? {
         // A cloudy sky doubles the bake resolution: the clouds ARE the backdrop's
@@ -659,13 +672,8 @@ extension MetalRenderer {
         let turb = min(max(turbidity, 1), 10)
         let albedo = min(max(groundAlbedo, 0), 1)
         let elevation = min(max(sunElevation, 0.001), Double.pi / 2 - 0.001)
-        var configs = [Double](repeating: 0, count: 27)
-        var radiances = [Double](repeating: 0, count: 3)
-        configs.withUnsafeMutableBufferPointer { cp in
-            radiances.withUnsafeMutableBufferPointer { rp in
-                ollin_hosek_rgb_configs(turb, albedo, elevation, cp.baseAddress, rp.baseAddress)
-            }
-        }
+        let (configs, radiances) = SkySun.configurations(turbidity: turb, albedo: albedo,
+                                                         elevation: elevation)
         // Pack 11 float4s (see ollin_ibl_sky_gen): 9 coefficient rows (rgb = the R/G/B value of
         // coefficient i), the per-channel radiance + ground albedo, the sun direction + radius.
         // A cloudscape appends two more rows (read only by the clouds twin fragment).
@@ -675,8 +683,10 @@ extension MetalRenderer {
         }
         sky[9] = SIMD4<Float>(Float(radiances[0]), Float(radiances[1]), Float(radiances[2]), Float(albedo))
         // The sun rises in a fixed compass direction (+Z), raised by its elevation; rotated(_:) spins it.
-        let solarRadius: Float = 0.0255   // ~1.5 deg disc, a touch wider than the sun for visible reflections
-        let sunDir = SIMD3<Float>(0, Float(sin(elevation)), Float(cos(elevation)))
+        // A radius of 0 draws no disc (a clear sky whose sun lights the scene).
+        let drawsDisc = !(sunLit && clouds == nil)
+        let solarRadius: Float = drawsDisc ? 0.0255 : 0   // ~1.5 deg disc, a touch wider than the sun for visible reflections
+        let sunDir = SkySun.bakedDirection(elevation: elevation)
         sky[10] = SIMD4<Float>(sunDir.x, sunDir.y, sunDir.z, solarRadius)
         var noise: (base: MTLTexture, detail: MTLTexture)?
         if let clouds {
@@ -709,8 +719,14 @@ extension MetalRenderer {
         }
         enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
         enc.endEncoding()
-        let avg = Self.skyAverageLuminance(configs: configs, radiances: radiances,
-                                           albedo: albedo, sunDir: sunDir)
+        var avg = SkySun.averageLuminance(configs: configs, radiances: radiances,
+                                          albedo: albedo, sunDir: sunDir)
+        if sunLit {
+            // The beam's share, the same sum `SkySun.exposure(sunLit:coverage:)` makes, so
+            // the drawer's light and this bake agree on one exposure to the last bit.
+            let sun = SkySun(turbidity: turb, elevation: elevation, groundAlbedo: albedo)
+            avg = sun.litAverage(coverage: clouds?.coverage)
+        }
         return (tex, avg)
     }
 
@@ -750,48 +766,6 @@ extension MetalRenderer {
         enc.endEncoding()
         cloudNoiseTextures = (base, detail)
         return (base, detail)
-    }
-
-    /// The solid-angle-weighted average luminance of the procedural sky, integrated on the CPU
-    /// from the Hosek-Wilkie coefficients over a coarse sphere (the same upper-hemisphere-sky /
-    /// lower-hemisphere-ground-bounce split the shader uses), so auto-exposure needs no GPU
-    /// read-back. Coarse is fine: it only sets the exposure scale.
-    nonisolated private static func skyAverageLuminance(configs: [Double], radiances: [Double],
-                                                        albedo: Double, sunDir: SIMD3<Float>) -> Float {
-        func radiance(_ cosTheta: Double, _ gamma: Double, _ c: Int) -> Double {
-            let b = c * 9
-            let A = configs[b], B = configs[b + 1], C = configs[b + 2], D = configs[b + 3], E = configs[b + 4]
-            let F = configs[b + 5], G = configs[b + 6], H = configs[b + 7], I = configs[b + 8]
-            let cg = cos(gamma)
-            let mieM = (1 + cg * cg) / pow(max(1 + I * I - 2 * I * cg, 1e-4), 1.5)
-            let zenith = cosTheta > 0 ? sqrt(cosTheta) : 0
-            let v = (1 + A * exp(B / (cosTheta + 0.01)))
-                  * (C + D * exp(E * gamma) + F * cg * cg + G * mieM + H * zenith)
-            return max(v, 0) * radiances[c]
-        }
-        let sx = Double(sunDir.x), sy = Double(sunDir.y), sz = Double(sunDir.z)
-        let rows = 32, cols = 16   // coarse: it only sets the exposure scale, and runs per re-bake
-        var lumSum = 0.0, weightSum = 0.0
-        for y in 0..<rows {
-            let lat = (Double(y) + 0.5) / Double(rows) * Double.pi   // 0 top .. pi bottom
-            let rowWeight = sin(lat)
-            var rowLum = 0.0
-            for x in 0..<cols {
-                let lon = (Double(x) + 0.5) / Double(cols) * 2 * Double.pi
-                var dy = cos(lat)
-                let dxz = sin(lat)
-                let dx = dxz * cos(lon), dz = dxz * sin(lon)
-                var ground = 1.0
-                if dy < 0 { dy = -dy; ground = albedo }              // ground = dimmed mirror sky
-                let gamma = acos(max(-1, min(1, dx * sx + dy * sy + dz * sz)))
-                rowLum += (0.2126 * radiance(dy, gamma, 0)
-                         + 0.7152 * radiance(dy, gamma, 1)
-                         + 0.0722 * radiance(dy, gamma, 2)) * ground
-            }
-            lumSum += rowLum / Double(cols) * rowWeight
-            weightSum += rowWeight
-        }
-        return weightSum > 0 ? Float(lumSum / weightSum) : 1
     }
 
     func makeCubeTexture(face size: Int, mipped: Bool) -> MTLTexture? {

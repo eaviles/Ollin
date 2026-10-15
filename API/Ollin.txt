@@ -3847,6 +3847,10 @@ struct Environment: ParamChoices, ParamValue, Equatable, Hashable, Sendable
     case resource(name: String, bundleID: String?)
     case sky(turbidity: Double, sunElevation: Double, groundAlbedo: Double)
     case url(Foundation.URL)
+  enum Sunlight: Equatable, Hashable, Sendable
+    case always
+    case automatic
+    case off
   func backgroundBlurred(_: Double) -> Environment
   func clouds(_: Clouds) -> Environment
   func clouds(coverage: Double = default, density: Double = default, scale: Double = default, tallness: Double = default, phase: Double = default) -> Environment
@@ -3854,7 +3858,8 @@ struct Environment: ParamChoices, ParamValue, Equatable, Hashable, Sendable
   func intensified(to: Double) -> Environment
   func lightingOnly() -> Environment
   func rotated(_: Double) -> Environment
-  init(source: Environment.Source, intensity: Double = default, rotation: Double = default, showsBackground: Bool = default, backgroundBlur: Double? = default, polyHavenSlug: String? = default, bundledResource: String? = default, clouds: Clouds? = default)
+  func sunlight(_: Environment.Sunlight) -> Environment
+  init(source: Environment.Source, intensity: Double = default, rotation: Double = default, showsBackground: Bool = default, backgroundBlur: Double? = default, polyHavenSlug: String? = default, bundledResource: String? = default, clouds: Clouds? = default, sunlight: Environment.Sunlight = default)
   static func feed(_: some VideoFeed) -> Environment
   static func hdri(downloadURL: Foundation.URL, placeholder: String? = default) -> Environment
   static func hdri(downloadURL: String, placeholder: String? = default) -> Environment
@@ -3893,6 +3898,7 @@ struct Environment: ParamChoices, ParamValue, Equatable, Hashable, Sendable
   var rotation: Double { get set }
   var showsBackground: Bool { get set }
   var source: Environment.Source { get set }
+  var sunlight: Environment.Sunlight { get set }
 struct Epicycles: Equatable, Sendable
   func joints(at: Double, terms: Int = default) -> [Vector2]
   func path(samples: Int = default, terms: Int = default) -> Contour

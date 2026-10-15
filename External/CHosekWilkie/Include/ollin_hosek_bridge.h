@@ -17,4 +17,16 @@
 void ollin_hosek_rgb_configs(double turbidity, double albedo, double elevation,
                              double out_configs[27], double out_radiances[3]);
 
+// The sun's beam: the model's solar radiance function (published in spectral form
+// only) integrated over the solar disc, so the result is the spectral irradiance the
+// disc delivers to a surface facing it, in W / (m^2 * nm). The function varies across
+// the disc with limb darkening, so one sample at its center would misstate the power;
+// the integral is exact. The caller integrates the spectrum against the color-matching
+// curves for a color in the sky's own unit.
+//
+// turbidity 1..10, elevation in radians above the horizon (0..pi/2), wavelength in
+// nanometers within the model's range (320..720).
+double ollin_hosek_solar_irradiance(double turbidity, double elevation,
+                                    double wavelength);
+
 #endif /* OLLIN_HOSEK_BRIDGE_H */

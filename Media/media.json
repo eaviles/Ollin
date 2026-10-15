@@ -676,26 +676,26 @@
       "width": 1080
     },
     "3D/Effects/Atmosphere": {
-      "bytes": {
-        "loop": 1432617,
-        "loopSmall": 298553,
-        "still": 50227,
-        "stillSmall": 19873
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "10.0s",
-      "loop": "examples/3D/Effects/Atmosphere/loop.mp4?v=02640323",
-      "loopSmall": "examples/3D/Effects/Atmosphere/loop-640.mp4?v=ea08455e",
-      "motion": 54.155,
-      "rendered": "2026-09-26",
       "seconds": 10.0,
-      "seed": 1,
+      "frame": 480,
+      "motion": 5.314,
       "sound": false,
-      "source": "928da4020f89d319",
-      "still": "examples/3D/Effects/Atmosphere/still.jpg?v=1964034e",
-      "stillSmall": "examples/3D/Effects/Atmosphere/still-640.jpg?v=edace7e2",
-      "width": 1080
+      "source": "7a55c38fc417d10d",
+      "rendered": "2026-10-14",
+      "bytes": {
+        "loop": 774308,
+        "loopSmall": 108564,
+        "still": 23596,
+        "stillSmall": 8681
+      },
+      "loop": "examples/3D/Effects/Atmosphere/loop.mp4?v=57088074",
+      "loopSmall": "examples/3D/Effects/Atmosphere/loop-640.mp4?v=1e336263",
+      "still": "examples/3D/Effects/Atmosphere/still.jpg?v=3f641496",
+      "stillSmall": "examples/3D/Effects/Atmosphere/still-640.jpg?v=240b4eec",
+      "seed": 1
     },
     "3D/Effects/ContactShadows": {
       "bytes": {
@@ -943,24 +943,26 @@
       "seed": 1
     },
     "3D/Environments/Cloudscape": {
-      "bytes": {
-        "loop": 812062,
-        "loopSmall": 160782,
-        "still": 47628,
-        "stillSmall": 18014
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
-      "length": "10s",
-      "loop": "examples/3D/Environments/Cloudscape/loop.mp4?v=8ad411f1",
-      "loopSmall": "examples/3D/Environments/Cloudscape/loop-640.mp4?v=aa4be2ed",
-      "motion": 2.816,
-      "rendered": "2026-09-10",
+      "length": "10.0s",
       "seconds": 10.0,
+      "frame": 480,
+      "motion": 3.007,
+      "sound": false,
       "source": "6428391718f09e2b",
-      "still": "examples/3D/Environments/Cloudscape/still.jpg?v=708bca9e",
-      "stillSmall": "examples/3D/Environments/Cloudscape/still-640.jpg?v=9a6c5f83",
-      "width": 1080
+      "rendered": "2026-10-14",
+      "bytes": {
+        "loop": 849179,
+        "loopSmall": 164609,
+        "still": 55369,
+        "stillSmall": 21239
+      },
+      "loop": "examples/3D/Environments/Cloudscape/loop.mp4?v=390cadfa",
+      "loopSmall": "examples/3D/Environments/Cloudscape/loop-640.mp4?v=a87563be",
+      "still": "examples/3D/Environments/Cloudscape/still.jpg?v=76962f08",
+      "stillSmall": "examples/3D/Environments/Cloudscape/still-640.jpg?v=116f286b",
+      "seed": 1
     },
     "3D/Environments/EnvironmentGallery": {
       "bytes": {
@@ -1019,24 +1021,26 @@
       "width": 1080
     },
     "3D/Environments/ProceduralSky": {
-      "bytes": {
-        "loop": 1077864,
-        "loopSmall": 217849,
-        "still": 45186,
-        "stillSmall": 17862
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
-      "length": "10s",
-      "loop": "examples/3D/Environments/ProceduralSky/loop.mp4?v=e29e57d9",
-      "loopSmall": "examples/3D/Environments/ProceduralSky/loop-640.mp4?v=fa2ffb93",
-      "motion": 14.964,
-      "rendered": "2026-09-10",
+      "length": "10.0s",
       "seconds": 10.0,
-      "source": "da0b55cba3bebc97",
-      "still": "examples/3D/Environments/ProceduralSky/still.jpg?v=7211f4d8",
-      "stillSmall": "examples/3D/Environments/ProceduralSky/still-640.jpg?v=d60a8682",
-      "width": 1080
+      "frame": 480,
+      "motion": 37.292,
+      "sound": false,
+      "source": "401fa45a04028852",
+      "rendered": "2026-10-14",
+      "bytes": {
+        "loop": 1311956,
+        "loopSmall": 276316,
+        "still": 46463,
+        "stillSmall": 18181
+      },
+      "loop": "examples/3D/Environments/ProceduralSky/loop.mp4?v=95545237",
+      "loopSmall": "examples/3D/Environments/ProceduralSky/loop-640.mp4?v=792c12a7",
+      "still": "examples/3D/Environments/ProceduralSky/still.jpg?v=7001365a",
+      "stillSmall": "examples/3D/Environments/ProceduralSky/still-640.jpg?v=b67ea96b",
+      "seed": 1
     },
     "3D/Environments/RemoteEnvironment": {
       "bytes": {

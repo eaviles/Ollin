@@ -10,7 +10,7 @@ extension MetalRenderer {
     /// Whether this frame flares. A flare needs a camera to be a defect of, and a
     /// light to be a defect about.
     func lensFlareActive(_ drawer: Drawer) -> Bool {
-        drawer.lensFlareSetting != nil && drawer.camera3D != nil && !drawer.lights.isEmpty
+        drawer.lensFlareSetting != nil && drawer.camera3D != nil && !drawer.resolvedLights.isEmpty
     }
 
     /// Everything about a lens that does not move when the light does: the ghost
@@ -361,7 +361,7 @@ extension MetalRenderer {
                         into cb: MTLCommandBuffer, width: Int, height: Int,
                         pooled: Bool) -> MTLTexture {
         guard let flare = drawer.lensFlareSetting, let camera = drawer.camera3D,
-              let depth, !drawer.lights.isEmpty, width > 0, height > 0 else { return resolved }
+              let depth, !drawer.resolvedLights.isEmpty, width > 0, height > 0 else { return resolved }
         let aspect = Double(width) / Double(height)
         let projection = camera.projectionMatrix(aspect: aspect)
         // A flare needs a vantage point. An orthographic camera has no angle off

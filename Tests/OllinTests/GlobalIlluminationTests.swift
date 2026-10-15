@@ -428,7 +428,8 @@ private final class GIMirrorProbe: Sketch {
         background(.black)
         perspective(eye: Vector3(0, 2.3, 4.0), target: Vector3(0, 1.4, -1),
                     fieldOfView: .pi / 3.2, near: 0.5, far: 40)
-        environment(.sky().lightingOnly())
+        // The sky is the ambient only: its sun stays out of the sealed room.
+        environment(.sky().lightingOnly().sunlight(.off))
         spotLight(.white, at: Vector3(0, 3.8, -2.0), direction: Vector3(0, -1, 0),
                   coneAngle: .pi / 3, penumbra: 0.4, intensity: 3)
         castShadows()

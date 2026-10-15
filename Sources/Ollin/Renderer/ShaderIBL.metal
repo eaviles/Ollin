@@ -159,7 +159,9 @@ fragment float4 ollin_ibl_equirect_to_cube(OllinIBLVaryings in [[stage_in]],
 // step that reads the model's dataset) and arrive packed in `sky` (buffer 0), 11 float4s:
 //   sky[0..8] : coefficient i for the three channels in .rgb (.a unused)
 //   sky[9]    : .rgb = per-channel radiance scale, .a = ground albedo
-//   sky[10]   : .xyz = unit direction to the sun (world, +Y up), .w = solar radius (rad)
+//   sky[10]   : .xyz = unit direction to the sun (world, +Y up), .w = solar radius (rad);
+//               0 draws no disc (a clear sky whose sun lights the scene as a light, the
+//               backdrop drawing the disc at the sun's own size)
 constant float OLLIN_SKY_SUN_FACTOR = 25.0;   // sun-disc brightness, relative to the sky at the sun
 
 // Hosek-Wilkie sky-dome radiance for a view ray with the given cos(zenith) and angle to
@@ -202,7 +204,7 @@ fragment float4 ollin_ibl_sky_gen(OllinIBLVaryings in [[stage_in]],
     // metals catch a highlight, scaled to the sky at the sun so it stays balanced from
     // noon to a dim sunset. Only above the horizon: gate on the mirror flag, not the
     // ground factor (`groundAlbedo: 1` would otherwise paint a second sun below it).
-    if (!mirrored) {
+    if (!mirrored && solarRadius > 0.0) {
         float disk = 1.0 - smoothstep(solarRadius * 0.6, solarRadius, gamma);
         float3 sunSky = ollin_sky_radiance(sky, max(sunDir.y, 0.02), 0.0);
         col += disk * sunSky * OLLIN_SKY_SUN_FACTOR;
@@ -392,7 +394,7 @@ fragment float4 ollin_ibl_sky_gen_clouds(OllinIBLVaryings in [[stage_in]],
     float gamma = acos(clamp(dot(dir, sunDir), -1.0, 1.0));
     float3 skyOnly = ollin_sky_radiance(sky, cosTheta, gamma) * ground;
     float3 col = skyOnly;
-    if (!mirrored) {
+    if (!mirrored && solarRadius > 0.0) {
         float disk = 1.0 - smoothstep(solarRadius * 0.6, solarRadius, gamma);
         float3 sunSky = ollin_sky_radiance(sky, max(sunDir.y, 0.02), 0.0);
         col += disk * sunSky * OLLIN_SKY_SUN_FACTOR;
@@ -505,12 +507,21 @@ fragment float4 ollin_ibl_irradiance(OllinIBLVaryings in [[stage_in]],
     // Angular step: params.z when set (a coarser step for the smooth procedural sky, which
     // re-bakes every frame), else the default fine step. 0 -> default keeps the HDRI bake exact.
     const float dStep = params.z > 0.0 ? params.z : 0.025;
+    // Each sample stands for a patch about one step on a side, so it reads the level of
+    // the environment whose texel spans that patch. Never the derivative's level: the
+    // frame above flips where |n.y| crosses 0.999, at the middle of the up and down
+    // faces, so the quad there saw a vast derivative and read the coarsest level, the
+    // whole face averaged with the ground, and every floor under an environment with any
+    // structure lost light (14% under a hazy procedural sky, 3 to 8% under a clear one,
+    // measured 2026-10-14).
+    const float lod = max(0.0, log2(dStep * float(env.get_width()) / (0.5 * OLLIN_IBL_PI)));
     for (float phi = 0.0; phi < 2.0 * OLLIN_IBL_PI; phi += dStep) {
         for (float theta = 0.0; theta < 0.5 * OLLIN_IBL_PI; theta += dStep) {
             float3 tangent = cos(phi) * sin(theta) * right
                            + sin(phi) * sin(theta) * up
                            + cos(theta) * n;
-            sum += env.sample(ollin_ibl_cube_samp, tangent).rgb * cos(theta) * sin(theta);
+            sum += env.sample(ollin_ibl_cube_samp, tangent, level(lod)).rgb
+                 * cos(theta) * sin(theta);
             count += 1.0;
         }
     }
@@ -640,7 +651,10 @@ static inline float3 ollin_equirect_bicubic(texture2d<float> tex, sampler s, flo
 // the world view-ray (the same inverseViewProjection unprojection the raymarch uses) and
 // samples the environment. Rendered before the geometry with no depth test/write, so the
 // depth-tested meshes composite in front of it. `params`: x = environment Y rotation,
-// y = intensity, z = blur LOD.
+// y = intensity, z = blur LOD. `sun` (two float4s) is the procedural sky's own sun when
+// it lights the scene: sun[0].xyz the direction toward it in the sky's frame, .w its
+// angular radius; sun[1].rgb its mean radiance in the sky's unit (params.y scales both
+// alike), .w the gate (0 draws nothing, so every other backdrop is the plain read).
 struct OllinSkyboxOut {
     float4 position [[position]];
     float2 clipXY;
@@ -658,6 +672,7 @@ vertex OllinSkyboxOut ollin_ibl_skybox_vertex(uint vid [[vertex_id]]) {
 fragment float4 ollin_ibl_skybox_fragment(OllinSkyboxOut in [[stage_in]],
                                           constant Uniforms3D &u [[buffer(0)]],
                                           constant float4 &params [[buffer(1)]],
+                                          constant float4 *sun [[buffer(2)]],
                                           texture2d<float> equirect [[texture(0)]]) {
     constexpr sampler s(filter::linear, mip_filter::linear,
                         s_address::repeat, t_address::clamp_to_edge);
@@ -668,7 +683,21 @@ fragment float4 ollin_ibl_skybox_fragment(OllinSkyboxOut in [[stage_in]],
     float3x3 rot = float3x3(float3(cs, 0.0, -sn), float3(0.0, 1.0, 0.0), float3(sn, 0.0, cs));
     // Bicubic reconstruction (smooth, no bilinear blocks) at the blur LOD (params.z):
     // 0 is sharp, higher samples a coarser level for a soft-focus backdrop.
-    return float4(ollin_equirect_bicubic(equirect, s, ollin_ibl_equirect_uv(rot * rd), params.z) * params.y, 1.0);
+    float3 col = ollin_equirect_bicubic(equirect, s, ollin_ibl_equirect_uv(rot * rd), params.z)
+               * params.y;
+    if (sun[1].w > 0.5) {
+        // The sun at its own size: a disc of its mean radiance, its edge resolved over
+        // the pixel's angular footprint. A disc narrower than a pixel spreads over one
+        // pixel at the radiance that keeps its power, so a distant view keeps the sun.
+        float3 d = rot * rd;
+        float gamma = acos(clamp(dot(d, sun[0].xyz), -1.0, 1.0));
+        float pixel = max(length(fwidth(d)), 1e-6);
+        float radius = sun[0].w;
+        float reach = max(radius, 0.5 * pixel);
+        float cover = saturate((reach - gamma) / pixel + 0.5);
+        col += sun[1].rgb * (cover * (radius * radius) / (reach * reach)) * params.y;
+    }
+    return float4(col, 1.0);
 }
 
 // MARK: - Air fog backdrop (atmosphere)

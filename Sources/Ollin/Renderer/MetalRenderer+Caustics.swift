@@ -35,7 +35,7 @@ extension MetalRenderer {
     /// mesh whose material casts (transmits, or mirrors as a polished metal).
     func causticsWanted(_ drawer: Drawer) -> Bool {
         guard drawer.causticsEnabled, rayTracedShadows, drawer.camera3D != nil,
-              drawer.lights.contains(where: {
+              drawer.resolvedLights.contains(where: {
                   $0.kind == .directional || $0.kind == .point || $0.kind == .spot })
         else { return false }
         return drawer.batches.contains { batch in

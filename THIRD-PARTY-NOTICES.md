@@ -115,7 +115,7 @@ redistributed inside this repository.
 ## Hosek-Wilkie sky model
 
 - **Used for:** the procedural-sky environment (`Environment.sky(...)`). Its coefficient dataset and per-channel configuration code (RGB path) are cooked once on the CPU; Ollin's own Metal shader evaluates the sky radiance per texel from the result. Wrapped behind Ollin's own API.
-- **Location in this repo:** [`External/CHosekWilkie/`](External/CHosekWilkie/), holding the upstream header and RGB dataset verbatim, with `ArHosekSkyModel.c` trimmed to the RGB path (the spectral/CIE models and their large datasets removed; see the directory's `README.md`).
+- **Location in this repo:** [`External/CHosekWilkie/`](External/CHosekWilkie/), holding the upstream header and RGB dataset verbatim, with `ArHosekSkyModel.c` trimmed to the RGB path and the solar radiance function, and the spectral dataset trimmed to its solar and limb-darkening tables (`ArHosekSkyModelData_Solar.h`; the spectral/CIE sky models and their large datasets removed; see the directory's `README.md`).
 - **Upstream:** https://github.com/mmp/pbrt-v3 (`src/ext`), the reference implementation by Lukas Hosek and Alexander Wilkie (Charles University), v1.4a. Papers: "An Analytic Model for Full Spectral Sky-Dome Radiance" (SIGGRAPH 2012) and "Adding a Solar-Radiance Function to the Hosek-Wilkie Skylight Model" (IEEE CG&A 2013).
 - **License:** 3-clause BSD, full text at [`External/CHosekWilkie/LICENSE`](External/CHosekWilkie/LICENSE)
 

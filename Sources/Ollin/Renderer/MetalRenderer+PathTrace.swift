@@ -111,7 +111,7 @@ extension MetalRenderer {
         // structure with the per-geometry finish table. One command buffer, waited,
         // so every kernel below samples completed resources.
         guard let setupCB = commandQueue.makeCommandBuffer() else { return nil }
-        _ = resolveIBL(for: drawer.environment, commandBuffer: setupCB, blocking: true)
+        _ = resolveIBL(for: drawer.environment, sunLit: drawer.skySunLit, commandBuffer: setupCB, blocking: true)
         var lighting = drawer.makeLighting()
         if lighting.enabled != 0, drawer.environment != nil, currentIBL != nil {
             lighting.iblEnabled = 1

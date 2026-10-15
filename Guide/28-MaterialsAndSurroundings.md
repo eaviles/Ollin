@@ -26,7 +26,7 @@ material(.metal(roughness: 0.12))
 drawMesh(ball)
 ```
 
-<img src="Images/28-MaterialsAndSurroundings/EnvironmentSky.jpg" alt="Three chrome balls resting together on a gray-blue floor under a clear pale blue sky, their whole surfaces reflecting soft sky gradients" width="680">
+<img src="Images/28-MaterialsAndSurroundings/EnvironmentSky.jpg" alt="Three chrome balls resting together on a sunlit gray floor under a clear blue sky, their surfaces reflecting the sky's gradients and each carrying a small bright point of the sun" width="680">
 
 <img src="Images/28-MaterialsAndSurroundings/EnvironmentSunset.jpg" alt="The same three chrome balls in the same position, now under a warm evening HDRI of Venice. Ochre buildings and trees fill the background, and the buildings are clearly visible reflected in the left flank of the largest ball" width="680">
 
@@ -48,6 +48,12 @@ environment(.sky(sunElevation: 0.35))       // no asset, and the sun can move
 ```
 
 It takes a sun elevation and a `turbidity` for how hazy the air is. Because it's computed rather than loaded, you can animate the sun and watch the whole scene's light follow. Reach for it when you want good lighting with no assets to load.
+
+The sky also carries its sun as a light. It shines from where the sky draws its disc, as bright and as warm as the real sun at that haze and height. The side of a ball facing it is lit hard, a low sun reddens, and `castShadows()` throws the sun's shadows. Place a directional light of your own and it takes the sun's job, the sky's stepping aside. `.sunlight(.always)` keeps both, and `.sunlight(.off)` leaves the sky's glow alone:
+
+```swift
+environment(.sky(sunElevation: 0.35).sunlight(.always))   // the sun, and my rim light too
+```
 
 Two modifiers come up at once in practice. An environment paints itself **behind** your scene as a backdrop, which is usually what you want, since the reflections then match what you can see. When you'd rather keep your own `background(_:)`, `.lightingOnly()` keeps the light and drops the picture. And `.backgroundBlurred(_:)` softens only the backdrop, which pushes it back behind the subject.
 
@@ -464,7 +470,7 @@ aerialPerspective()
 
 <img src="Images/28-MaterialsAndSurroundings/DistantAir.jpg" alt="A file of dark ridgelines stepping away under a pale sky, each silhouette a step paler and bluer than the one in front, the farthest melting into the horizon, the air brightening toward the sun on the right" width="680">
 
-With a `.sky` environment it follows the sky's own sun, rotation and all, so dropping the sun to the horizon reddens the haze by itself. `density` is how much air the scene spans, and left unset it sizes itself to the camera framing. `haziness` trades the crisp blue of a clear day for the gray veil and sun halo of a humid one. It replaces `fog` for the frame, since the last call wins, and Chapter 26's volumetric beams show in it as they show in fog. The `3D/Effects/Atmosphere` example puts all of it on parameters (hold space to switch over from fog).
+With a `.sky` environment it follows the sky's own sun, rotation and all. Its far light is the sky's own horizon, so far ridges fade into the sky behind them. A sun dropped to the horizon reddens the haze by itself. `density` is how much air the scene spans, and left unset it sizes itself to the camera framing. `haziness` trades the crisp blue of a clear day for the gray veil and sun halo of a humid one. It replaces `fog` for the frame, since the last call wins, and Chapter 26's volumetric beams show in it as they show in fog. The `3D/Effects/Atmosphere` example puts all of it on parameters (hold space to switch over from fog).
 
 ### A cloud in the scene: volumes
 

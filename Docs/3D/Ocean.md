@@ -140,8 +140,9 @@ Four presets are built in: `.open`, `.tropical`, `.dusk`, and `.ink`. Copy one a
 
 With an environment set (`environment(.sky(...))` or a loaded HDRI), the surface reflects that
 environment, so the water and the sky behind it agree. The first directional light in the
-scene is the sun, and the sparkle comes from it. With no light set, the water is body color
-and reflection alone.
+scene is the sun, and the sparkle comes from it. Under a procedural sky that is the
+[sky's own sun](./3D.md#sky-sun), unless the sketch places one. With no sun at all, the
+water is body color and reflection alone.
 
 <a id="cost"></a>
 ### What it costs

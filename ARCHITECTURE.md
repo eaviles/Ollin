@@ -2383,9 +2383,14 @@ g, `aerialLight` = sun radiance + haziness); the sun resolves at pack time
 (explicit → the `.sky` environment's sun through its rotation - the skybox
 samples at R_y(rotation)·ray, so content sits at R_y(−rotation) in the world,
 sign confirmed against the drawn sun disc → the first directional light negated
-→ a default 35° elevation), and its radiance is white dimmed by the molecular
-slant-path extinction (airmass ≈ 1/sin e), so a horizon sun feeds the veil
-sunset color with no extra parameter. A nil `density` derives as 0.35 / the
+→ a default 35° elevation). Its light is the scene's: under a `.sky` it is the
+sky's horizon radiance averaged over 64 compass directions, over the phase mix
+averaged the same way, at the backdrop's exposure and intensity
+(`Drawer.aerialAirLight`), so the far veil averages to the horizon the backdrop
+draws and the haze's halo still leans it sunward; without a sky it is white
+dimmed by the molecular slant-path extinction (airmass ≈ 1/sin e) times the
+first directional light's linear color and intensity, so the frame is linear in
+its light and a horizon sun still feeds the veil sunset color. A nil `density` derives as 0.35 / the
 eye-to-target distance (the contact-shadow default's rule). **The air veil steps
 aside behind a skybox** (the renderer flags `fogParams2.z` when the skybox drew;
 the air fragment then adds only the marched beams): the sky already is this
@@ -2511,7 +2516,7 @@ given).
 Two performance decisions are load-bearing. The sky equirect is generated on
 the frame's own command buffer with **no CPU read-back**: auto-exposure's
 average luminance is integrated analytically from the coefficients
-(`skyAverageLuminance`) instead of read back from the texture (the read-back
+(`SkySun.averageLuminance`) instead of read back from the texture (the read-back
 path was the 3-fps bug). And an animated sky re-bakes every frame at a
 **reduced sample budget** (the `params.z` budget in
 `ollin_ibl_irradiance`/`_prefilter`: a coarser hemisphere step plus 32 GGX
@@ -2519,6 +2524,29 @@ samples for `fastSky`; 0 selects the default fine bake, so the HDRI path stays
 byte-identical), which keeps a moving sun smooth with no quantization stepping.
 `rotated(_:)` spins the sun for free: it is a shade-time uniform, never a
 re-bake.
+
+**The sky's sun** (`Environment.sunlight(_:)`) is a directional light the
+drawer derives from the same model. The vendored solar radiance function (the
+2013 addition, published in spectral form only) gives the beam's radiance
+across the disc; `ollin_hosek_solar_irradiance` integrates it over the disc with
+four Gauss-Legendre nodes in the limb-darkening cosine (exact for the quintic
+limb polynomial), and `SkySun.beamIrradiance` sums that spectrum through the
+CIE 1931 observer to XYZ and the sRGB matrix to linear RGB. The RGB sky dataset
+is the XYZ one through that same matrix (within a few percent), so the beam and
+the sky share one unit and their ratio is the model's. `SkySun` is the one
+place both sides read: the bake's exposure and the light's scale both come from
+`SkySun.exposure(sunLit:coverage:)`, and the bake keys on the frame's decision
+(`IBLKey.sunLit`), so the light lands in the backdrop's unit exactly. While the
+sun lights the frame, the beam joins the average as its luminance over 4 pi (a
+photographed sun's pixels count that way in a loaded map), the clear sky's
+stand-in disc leaves the equirect (a radius of 0 in `sky[10].w`), and the
+skybox fragment draws the true disc analytically (half of 0.51 degrees, its
+mean radiance, area-conserving below a pixel), since a 1K equirect texel is
+wider than the sun. A cloudy sky keeps its baked disc (the clouds in front dim
+it) and its beam keeps 1 minus the coverage. The drawer joins the light after a
+set's own lamps in `activeLights(in:)`, so everything that reads the packed
+list sees it; `.automatic` joins only a set with no directional light of its
+own, and the frame's own set decides the bake and the backdrop.
 
 **Volumetric clouds** (`Environment.clouds(_:)`, the `Clouds` value) bake into
 this same generation, which is the design's whole payoff: the backdrop, the

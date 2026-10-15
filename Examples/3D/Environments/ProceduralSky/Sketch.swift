@@ -5,7 +5,9 @@ import Ollin
 /// `environment(.sky(...))` synthesizes a physically-based daylight dome at runtime (no HDRI
 /// to load or download) and lights the scene with it, exactly like a loaded environment:
 /// the metals gather their reflections from the sky, the matte floor catches its bounce, and
-/// the sky itself draws as the backdrop. Here the sun travels a full loop across the sky,
+/// the sky itself draws as the backdrop. Its sun lights the scene as a light of its own, as
+/// bright and as warm as the real sun's beam at that haze and height, so the spheres throw
+/// their shadows across the floor. Here the sun travels a full loop across the sky,
 /// circling the compass while it rises and dips, so the whole sky (and everything reflecting
 /// it) turns with it: warm and hazy when low, cool and clear overhead.
 ///
@@ -32,8 +34,10 @@ final class ProceduralSky: Sketch {
         cameraShowcase(.sway(amplitude: 0.5, period: .tau / 0.08), target: Vector3(0, 0.55, 0), radius: 12,
                     elevation: 0.10, fieldOfView: .pi / 4.2)
 
-        // The sky is the only light. It both lights the materials and draws as the backdrop.
+        // The sky and its sun are the only light: the sky's glow lights the materials and draws
+        // as the backdrop, and the sun lights them hard and throws their shadows.
         environment(.sky(turbidity: turbidity, sunElevation: elevation).rotated(azimuth))
+        castShadows()
 
         // A row of metals sweeping mirror -> rough, resting on the floor, so the moving sky
         // reads in the reflections.

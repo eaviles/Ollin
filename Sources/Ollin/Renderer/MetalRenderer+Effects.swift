@@ -3433,6 +3433,11 @@ extension MetalRenderer {
             let blur = drawer.environment?.backgroundBlur.map { Float($0) } ?? autoBlur
             var skyParams = SIMD4<Float>(lighting.iblRotation, lighting.iblIntensity, blur * 4.0, 0)
             encoder.setFragmentBytes(&skyParams, length: MemoryLayout<SIMD4<Float>>.stride, index: 1)
+            // The procedural sky's own sun, drawn at its size when it lights the scene
+            // (the bake left it out); all zeros, the gate closed, for every other backdrop.
+            var skySun = drawer.skySunDisc ?? [SIMD4<Float>](repeating: .zero, count: 2)
+            encoder.setFragmentBytes(&skySun, length: skySun.count * MemoryLayout<SIMD4<Float>>.stride,
+                                     index: 2)
             encoder.setFragmentTexture(skyTex, index: 0)
             profile.drawCalls += 1   // the skybox backdrop
             encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)

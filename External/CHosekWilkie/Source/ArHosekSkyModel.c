@@ -100,14 +100,20 @@ All instructions on how to use this code are in the accompanying header file.
 
 /* ----------------------------------------------------------------------------
    NOTE (Ollin): This is the upstream ArHosekSkyModel.c TRIMMED to the RGB path
-   only. The spectral and CIE-XYZ models, the alien-world and solar-radiance
-   functions, and their large coefficient datasets were removed; the RGB sky
-   configuration + radiance functions below are reproduced byte-for-byte from the
-   original (3-clause BSD, above). Provenance is in this directory's README.md.
+   and the solar radiance function. The spectral and CIE-XYZ sky-dome models,
+   the alien-world functions, and their large coefficient datasets were removed;
+   the RGB sky configuration + radiance functions and the solar radiance
+   internals (arhosekskymodel_sr_internal and
+   arhosekskymodel_solar_radiance_internal2, with the solar and limb-darkening
+   datasets in ArHosekSkyModelData_Solar.h) below are reproduced byte-for-byte
+   from the original (3-clause BSD, above). Provenance is in this directory's
+   README.md.
 ---------------------------------------------------------------------------- */
 
 #include "ArHosekSkyModel.h"
 #include "ArHosekSkyModelData_RGB.h"
+#include "ArHosekSkyModelData_Solar.h"
+#include <assert.h>
 #include <stdlib.h>
 #include <math.h>
 //   Some macro definitions that occur elsewhere in ART, and that have to be
@@ -362,5 +368,148 @@ double arhosek_tristim_skymodel_radiance(
             gamma 
             ) 
         * state->radiances[channel];
+}
+
+
+const int pieces = 45;
+const int order = 4;
+
+double arhosekskymodel_sr_internal(
+        ArHosekSkyModelState  * state,
+        int                     turbidity,
+        int                     wl,
+        double                  elevation
+        )
+{
+    int pos =
+        (int) (pow(2.0*elevation / MATH_PI, 1.0/3.0) * pieces); // floor
+    
+    if ( pos > 44 ) pos = 44;
+    
+    const double break_x =
+        pow(((double) pos / (double) pieces), 3.0) * (MATH_PI * 0.5);
+
+    const double  * coefs =
+        solarDatasets[wl] + (order * pieces * turbidity + order * (pos+1) - 1);
+
+    double res = 0.0;
+    const double x = elevation - break_x;
+    double x_exp = 1.0;
+
+    int i;
+    for (i = 0; i < order; ++i)
+    {
+        res += x_exp * *coefs--;
+        x_exp *= x;
+    }
+
+    return res * state->emission_correction_factor_sun[wl];
+}
+
+double arhosekskymodel_solar_radiance_internal2(
+        ArHosekSkyModelState  * state,
+        double                  wavelength,
+        double                  elevation,
+        double                  gamma
+        )
+{
+    assert(
+           wavelength >= 320.0
+        && wavelength <= 720.0
+        && state->turbidity >= 1.0
+        && state->turbidity <= 10.0
+        );
+            
+    
+    // sun distance to diameter ratio, squared
+
+    const double sol_rad_sin = sin(state->solar_radius);
+    const double ar2 = 1 / ( sol_rad_sin * sol_rad_sin );
+    const double singamma = sin(gamma);
+    double sc2 = 1.0 - ar2 * singamma * singamma;
+    if (sc2 < 0.0 ) sc2 = 0.0;
+    double sampleCosine = sqrt (sc2);
+    if (sampleCosine == 0.) return 0.;
+
+    int     turb_low  = (int) state->turbidity - 1;
+    double  turb_frac = state->turbidity - (double) (turb_low + 1);
+    
+    if ( turb_low == 9 )
+    {
+        turb_low  = 8;
+        turb_frac = 1.0;
+    }
+
+    int    wl_low  = (int) ((wavelength - 320.0) / 40.0);
+    double wl_frac = fmod(wavelength, 40.0) / 40.0;
+    
+    if ( wl_low == 10 )
+    {
+        wl_low = 9;
+        wl_frac = 1.0;
+    }
+
+    double direct_radiance =
+          ( 1.0 - turb_frac )
+        * (    (1.0 - wl_frac)
+             * arhosekskymodel_sr_internal(
+                     state,
+                     turb_low,
+                     wl_low,
+                     elevation
+                   )
+           +   wl_frac
+             * arhosekskymodel_sr_internal(
+                     state,
+                     turb_low,
+                     wl_low+1,
+                     elevation
+                   )
+          )
+      +   turb_frac
+        * (    ( 1.0 - wl_frac )
+             * arhosekskymodel_sr_internal(
+                     state,
+                     turb_low+1,
+                     wl_low,
+                     elevation
+                   )
+           +   wl_frac
+             * arhosekskymodel_sr_internal(
+                     state,
+                     turb_low+1,
+                     wl_low+1,
+                     elevation
+                   )
+          );
+
+    double ldCoefficient[6];
+    
+    int i;
+    for ( i = 0; i < 6; i++ )
+        ldCoefficient[i] =
+              (1.0 - wl_frac) * limbDarkeningDatasets[wl_low  ][i]
+            +        wl_frac  * limbDarkeningDatasets[wl_low+1][i];
+    
+    
+    //   The following will be improved in future versions of the model:
+    //   here, we directly use fitted 5th order polynomials provided by the
+    //   astronomical community for the limb darkening effect. Astronomers need
+    //   such accurate fittings for their predictions. However, this sort of
+    //   accuracy is not really needed for CG purposes, so an approximated
+    //   dataset based on quadratic polynomials will be provided in a future
+    //   release.
+
+    double  darkeningFactor =
+          ldCoefficient[0]
+        + ldCoefficient[1] * sampleCosine
+        + ldCoefficient[2] * pow( sampleCosine, 2.0 )
+        + ldCoefficient[3] * pow( sampleCosine, 3.0 )
+        + ldCoefficient[4] * pow( sampleCosine, 4.0 )
+        + ldCoefficient[5] * pow( sampleCosine, 5.0 );
+
+    direct_radiance *= darkeningFactor;
+
+    return direct_radiance;
 }
 

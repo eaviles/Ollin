@@ -825,6 +825,11 @@ final class Drawer {
     /// ambient and reflections from it.
     private(set) var environment: Environment?
 
+    /// The last procedural sky's sun worked out, kept while the sky's three dials hold,
+    /// so the packer, the backdrop, and the air ask the model once a frame (and a still
+    /// sky once in all). Not drawing state.
+    private var skySunMemo: SkySun?
+
     /// Whether this frame casts shadows (see `castShadows`). Per-frame state like the
     /// lights — reset each frame, set in `draw()`. When on, the scene's primary
     /// directional light casts; the renderer renders a depth pass from it and the mesh
@@ -1073,22 +1078,100 @@ final class Drawer {
     /// The same for one light set by index (0 = the frame's own).
     func activeLights(inSet set: Int) -> [Light] { activeLights(in: lightState(forSet: set)) }
 
-    /// The same for one light set: what that set's meshes actually shade against.
+    /// The same for one light set: what that set's meshes actually shade against. A
+    /// procedural sky's sun joins after the set's own lamps whenever it lights that set
+    /// (`skySunJoins`), so every reader of the packed list (the shadow pass, the shafts,
+    /// the traced export, the light grid) sees it as one more directional light.
     func activeLights(in state: LightState) -> [Light] {
         switch state.mode {
         case .off: []
-        case .auto: environment != nil ? [] : Drawer.defaultLights
-        case .custom: resolvedLights(state.lights)
+        case .auto: environment != nil ? skySunLights(for: state) : Drawer.defaultLights
+        case .custom: resolvedLights(state.lights) + skySunLights(for: state)
         }
     }
 
+    // MARK: The sky's sun
+
+    /// The sun of the frame's procedural `.sky`, or nil for any other environment.
+    func skySun() -> SkySun? {
+        guard let env = environment, case .sky(let turbidity, let elevation, let albedo) = env.source
+        else { return nil }
+        let turb = min(max(turbidity, 1), 10)
+        let a = min(max(albedo, 0), 1)
+        let e = min(max(elevation, 0.001), Double.pi / 2 - 0.001)
+        if let memo = skySunMemo, memo.turbidity == turb, memo.groundAlbedo == a, memo.elevation == e {
+            return memo
+        }
+        let sun = SkySun(turbidity: turb, elevation: e, groundAlbedo: a)
+        skySunMemo = sun
+        return sun
+    }
+
+    /// Whether the sky's sun lights a light set: the environment is a `.sky` whose
+    /// `sunlight` allows it, the set is lit at all, and (under `.automatic`) the set
+    /// places no directional light of its own, which would stand in as the sun.
+    func skySunJoins(_ state: LightState) -> Bool {
+        guard state.mode != .off, let env = environment, case .sky = env.source else { return false }
+        switch env.sunlight {
+        case .off: return false
+        case .always: return true
+        case .automatic: return !state.lights.contains { $0.kind == .directional }
+        }
+    }
+
+    /// Whether the sky's sun lights the frame's own set. The frame-level systems follow
+    /// it: the bake (whether the beam joins the exposure and the disc leaves the clear
+    /// sky), the backdrop's disc, and the frame's resolved lights.
+    var skySunLit: Bool { skySunJoins(baseLightState) }
+
+    /// The sky's sun as a light, for a set it joins; empty otherwise.
+    private func skySunLights(for state: LightState) -> [Light] {
+        guard skySunJoins(state), let light = skySunLight() else { return [] }
+        return [light]
+    }
+
+    /// The sky's sun as a directional light: the beam less the clouds' share, in the units
+    /// the sky's own image is drawn in (the bake's exposure, counted with the sun, times
+    /// the environment's intensity), from where the backdrop draws the disc. Nil with no
+    /// `.sky`, or with no beam left to cast (a full overcast, an intensity of zero).
+    func skySunLight() -> Light? {
+        guard let env = environment, let sun = skySun() else { return nil }
+        let coverage = env.clouds?.coverage
+        let exposure = Double(sun.exposure(sunLit: true, coverage: coverage))
+        let rgb = sun.beam(coverage: coverage) * (exposure * env.intensity)
+        let peak = max(rgb.x, rgb.y, rgb.z)
+        guard peak > 0, peak.isFinite else { return nil }
+        let color = Color(red: Color.linearToSrgb(rgb.x / peak),
+                          green: Color.linearToSrgb(rgb.y / peak),
+                          blue: Color.linearToSrgb(rgb.z / peak))
+        let toward = SkySun.worldDirection(elevation: sun.elevation, rotation: env.rotation)
+        return .directional(color, direction: toward * -1, intensity: peak)
+    }
+
+    /// The backdrop's sun disc for the skybox pass, two float4s: the direction toward the
+    /// sun in the sky's own frame with the disc's angular radius, then its mean radiance
+    /// in the sky's unit with the gate set. Nil unless the sun lights the frame under a
+    /// clear sky (a cloudy sky keeps the disc in its bake, where the clouds dim it).
+    var skySunDisc: [SIMD4<Float>]? {
+        guard skySunLit, let env = environment, env.clouds == nil, let sun = skySun() else { return nil }
+        let radiance = sun.beam / SkySun.solarSolidAngle
+        let d = SkySun.bakedDirection(elevation: sun.elevation)
+        return [SIMD4<Float>(d.x, d.y, d.z, Float(SkySun.solarRadius)),
+                SIMD4<Float>(Float(radiance.x), Float(radiance.y), Float(radiance.z), 1)]
+    }
+
     /// The sketch's own lights with every camera-relative one (`Light.Frame.camera`)
-    /// turned into world space against this frame's `camera3D`. A world light passes
-    /// through as the same value, no arithmetic, so a frame with none of the other
-    /// kind packs byte-identically. Every reader that wants a light's *place* reads
-    /// this (the packer through `activeLights`, the lens flare, the ocean's sun);
-    /// a reader that only asks a light's kind may read `lights` as set.
-    var resolvedLights: [Light] { resolvedLights(lights) }
+    /// turned into world space against this frame's `camera3D`, and the sky's sun after
+    /// them while it lights the frame. A world light passes through as the same value,
+    /// no arithmetic, so a frame with none of the other kind packs byte-identically.
+    /// Every reader that wants a light's *place* reads this (the packer through
+    /// `activeLights`, the lens flare, the ocean's sun, the caustics' gate); a reader
+    /// that only asks a light's kind may read `lights` as set.
+    var resolvedLights: [Light] {
+        let own = resolvedLights(lights)
+        guard skySunLit, let sun = skySunLight() else { return own }
+        return own + [sun]
+    }
 
     /// The same for one set's own lamps.
     func resolvedLights(_ set: [Light]) -> [Light] {
@@ -3259,6 +3342,58 @@ final class Drawer {
                             Float(exp(-r.z * depth) * gain))
     }
 
+    /// The light the aerial air gives at saturation, per channel, before the phase: the
+    /// packed `aerialLight`, which the shader multiplies by the phase mix (the molecular
+    /// and aerosol lobes, each weighed by its share of the extinction).
+    ///
+    /// Under a procedural `.sky` the far air is the sky's own horizon: the packed light
+    /// is the horizon's radiance averaged over every compass direction, over the phase
+    /// mix averaged the same way, so the veil a far wall takes averages to the horizon
+    /// the backdrop draws behind it, at the backdrop's exposure and intensity (the haze's
+    /// own halo still leans it toward the sun). Without a sky the air follows the scene's
+    /// sun: the first directional light's linear color and intensity times the fixed
+    /// sunlight `aerialSunRadiance` gives, so doubling that light doubles the veil. With
+    /// no directional light at all, that fixed sunlight alone.
+    func aerialAirLight(toward sun: Vector3) -> SIMD3<Float> {
+        if let env = environment, let sky = skySun() {
+            let exposure = Double(sky.exposure(sunLit: skySunLit, coverage: env.clouds?.coverage))
+            let mix = Drawer.aerialPhaseMean(haziness: aerialHaziness, sunHeight: sun.y)
+            let light = sky.horizon * (exposure * env.intensity) / mix
+            return SIMD3<Float>(Float(light.x), Float(light.y), Float(light.z))
+        }
+        let base = Drawer.aerialSunRadiance(elevationSine: sun.y)
+        guard let key = activeLights.first(where: { $0.kind == .directional }) else { return base }
+        let k = key.intensity
+        return base * SIMD3<Float>(Float(Color.srgbToLinear(key.color.red) * k),
+                                   Float(Color.srgbToLinear(key.color.green) * k),
+                                   Float(Color.srgbToLinear(key.color.blue) * k))
+    }
+
+    /// The aerial phase mix, per channel, averaged over the horizon's compass directions
+    /// for a sun at height sine `sunHeight`: the shader's `ollin_aerial_split` weights
+    /// (the molecular phase 3/4 (1 + c^2) and the aerosol's Henyey-Greenstein lobe, each
+    /// by its share of the extinction), so dividing a radiance by it leaves the light whose
+    /// veil averages to that radiance along the horizon.
+    static func aerialPhaseMean(haziness: Double, sunHeight: Double) -> SIMD3<Double> {
+        let haze = min(1, max(0, haziness))
+        let g = aerialMieAnisotropy
+        let sy = min(1, max(-1, sunHeight))
+        let sz = (1 - sy * sy).squareRoot()
+        let r = aerialRayleighRatios
+        let n = 64
+        var sum = SIMD3<Double>.zero
+        for i in 0..<n {
+            let azimuth = (Double(i) + 0.5) / Double(n) * 2 * Double.pi
+            let c = sin(azimuth) * sz              // the horizon ray against the sun
+            let phaseR = 0.75 * (1 + c * c)
+            let denom = 1 + g * g - 2 * g * c
+            let phaseM = (1 - g * g) / (denom * max(denom, 1e-6).squareRoot())
+            let betaR = r * (1 - haze)
+            sum += (betaR * phaseR + SIMD3<Double>(repeating: haze * phaseM)) / (betaR + haze)
+        }
+        return sum / Double(n)
+    }
+
     /// Pack this frame's effective lighting into the GPU uniform. The mode decides
     /// the source: `.off` shades nothing (flat unlit, `enabled == 0`), `.auto` uses
     /// the default rig (the out-of-box shaded look), `.custom` uses the sketch's own
@@ -3302,7 +3437,7 @@ final class Drawer {
             u.fogParams2 = SIMD4<Float>(0, Float(camera3D?.far ?? 0), 0, 0)
             u.aerialSun = SIMD4<Float>(Float(sun.x), Float(sun.y), Float(sun.z),
                                        Float(Drawer.aerialMieAnisotropy))
-            let tint = Drawer.aerialSunRadiance(elevationSine: sun.y)
+            let tint = aerialAirLight(toward: sun)
             u.aerialLight = SIMD4<Float>(tint.x, tint.y, tint.z, Float(aerialHaziness))
         } else if fogColor != nil || volumetricAmount > 0 {
             let c = fogColor ?? .black

@@ -519,26 +519,128 @@ struct LightingInvariantTests {
 
     // MARK: The sky
 
-    /// A clear day's light is mostly the sun's beam, and haze takes the beam and gives
-    /// it to the sky, so a surface facing the sun stands out from one facing away by
-    /// several times on a clear day and by less on a hazy one (the beam's transmittance
-    /// falls with turbidity). Clear-sky measurements put that contrast near ten at this
-    /// elevation; four is a conservative floor.
+    /// A clear day's light is mostly the sun's beam. The procedural sky's sun is the sky
+    /// model's own solar radiance, integrated over the disc and through the observer
+    /// into the sky's unit, so a white surface facing it stands out from one facing away
+    /// by the model's own ratio: 8.59 at turbidity 2 and this elevation, worked out from
+    /// the published model's full source in a separate program (the disc over 512 rings,
+    /// the sky's irradiance over 180,000 directions, the channels' plain mean as the
+    /// frame's luma), where the sky without a sun gives 1.99 (the 2.0 this read before
+    /// the sun was a light, 2026-10-09).
+    ///
+    /// Haze takes the beam and gives it to the sky, so a hazy day's shadows are softer: a
+    /// white floor in the sun against the same floor in a slab's shadow reads 3.45 at
+    /// turbidity 2 and 1.89 at 8 in that program. The surface facing the sun is not the
+    /// reading for haze: the haze's glow gathers around the sun and lights that surface
+    /// too, so its contrast rises with haze (10.97 at turbidity 8 in the same program).
     @Test(.enabled(if: Snapshot.hasMetal))
     func aClearerSkyCastsHarderLight() throws {
-        func contrast(_ turbidity: Double) throws -> Double {
-            let toward = mean(try render(SkyInvariantProbe.make(turbidity: turbidity, facing: true)),
-                              x: 86..<106, y: 86..<106)
-            let away = mean(try render(SkyInvariantProbe.make(turbidity: turbidity, facing: false)),
-                            x: 86..<106, y: 86..<106)
-            return toward / away
+        let toward = mean(try renderUnrolled(SkyInvariantProbe.make(turbidity: 2, facing: true)),
+                          x: 86..<106, y: 86..<106)
+        let away = mean(try renderUnrolled(SkyInvariantProbe.make(turbidity: 2, facing: false)),
+                        x: 86..<106, y: 86..<106)
+        let facing = toward / away
+        #expect(facing >= 4, "a clear sky's facing-to-away contrast was \(facing)")
+        #expect(abs(facing / 8.59 - 1) < 0.05,
+                "a clear sky's facing-to-away contrast was \(facing) where the model gives 8.59")
+        func shadow(_ turbidity: Double) throws -> Double {
+            let probe = SkyShadowInvariantProbe.make(turbidity: turbidity)
+            let f = try renderUnrolled(probe)
+            return around(f, probe.lit, radius: 4) / around(f, probe.shaded, radius: 4)
         }
-        let clear = try contrast(2), hazy = try contrast(8)
-        #expect(clear > 1 && hazy > 1, "the side facing the sun read darker: \(clear), \(hazy)")
-        withKnownIssue("the sky's sun is a disc at 25 times the sky beside it with no beam of its own, so the contrast rises with haze: 2.0 at turbidity 2 against 5.8 at 8, measured 2026-10-09") {
-            #expect(clear > hazy, "a clear sky's contrast \(clear) did not exceed a hazy one's \(hazy)")
-            #expect(clear >= 4, "a clear sky's contrast was \(clear)")
+        let clear = try shadow(2), hazy = try shadow(8)
+        #expect(abs(clear / 3.45 - 1) < 0.05, "a clear sky's sun-to-shadow contrast was \(clear) where the model gives 3.45")
+        #expect(abs(hazy / 1.89 - 1) < 0.05, "a hazy sky's sun-to-shadow contrast was \(hazy) where the model gives 1.89")
+        #expect(clear > hazy, "a clear sky's shadow contrast \(clear) did not exceed a hazy one's \(hazy)")
+    }
+
+    /// A floor gathers the whole sky: a white plain floor under the procedural sky without
+    /// its sun receives the sky's irradiance on a level surface, the model's own (worked
+    /// out in a separate program over 23 million directions: 12.58, 21.77, 37.62 at
+    /// turbidity 2 and 43.93, 47.38, 51.65 at 8, in the sky's unit), at the bake's
+    /// exposure. The bake once read the middle of its up face through the environment's
+    /// coarsest level, the whole face averaged with the ground, and floors lost 3 to 8% of
+    /// a clear sky and 14% of a hazy one (measured 2026-10-14). The hazy sky's glow is so
+    /// sharp at the sun that the cube's box-filtered levels spread it a little wide, which
+    /// reads 2 to 6% high; the clear sky reads within 2%.
+    @Test(.enabled(if: Snapshot.hasMetal), arguments: [2.0, 8.0])
+    func aFloorGathersTheWholeSky(turbidity: Double) throws {
+        let model = turbidity == 2 ? SIMD3<Double>(12.584, 21.769, 37.616) : SIMD3<Double>(43.933, 47.375, 51.649)
+        let probe = SkyFloorInvariantProbe.make(turbidity: turbidity)
+        let f = try renderUnrolled(probe)
+        let read = channels(f, Vector2(32, 32), radius: 4)
+        let exposure = Double(SkySun(turbidity: turbidity, elevation: 0.6, groundAlbedo: 0.3)
+            .exposure(sunLit: false, coverage: nil))
+        let tolerance = turbidity == 2 ? 0.03 : 0.08
+        for k in 0..<3 {
+            let gathered = read[k] * Double.pi / exposure
+            #expect(abs(gathered / model[k] - 1) < tolerance,
+                    "at turbidity \(turbidity) channel \(k) the floor gathered \(gathered) where the sky gives \(model[k])")
         }
+    }
+
+    /// The same for a loaded map: a flat field with a bright ring overhead (the
+    /// equirect's rows 22 to 28, from 30.9 to 40.8 degrees off the zenith), where a level
+    /// floor gathers the field over the sky less the ring, and the ring: pi F plus
+    /// pi (C - F) (sin^2 b - sin^2 a), so the ring lights the floor 1 + (C - F)(sin^2 b -
+    /// sin^2 a) / F times as much as the field alone (1.35 for this ring). Each map is
+    /// auto-exposed to one average, the decoder's mean of the rows weighted by the sine of
+    /// their polar angle, so the frame's ratio carries the field's average over the
+    /// ring's (1.218 in all). The ring crosses the up face, the face whose middle the bake
+    /// once read through its coarsest level.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aFloorGathersAnOverheadRing() throws {
+        let field = Double(Self.sunField), ring = 30.0
+        func floor(_ r: Float?) throws -> Double {
+            let probe = MapFloorInvariantProbe.make(envURL: try ringMap(ring: r))
+            return around(try renderUnrolled(probe), Vector2(32, 32), radius: 4)
+        }
+        let a = 22.0 / 128 * Double.pi, b = 29.0 / 128 * Double.pi
+        let gathered = 1 + (ring - field) * (pow(sin(b), 2) - pow(sin(a), 2)) / field
+        var weighted = 0.0, weights = 0.0
+        for row in 0..<128 {
+            let w = sin((Double(row) + 0.5) / 128 * Double.pi)
+            weighted += ((22...28).contains(row) ? ring : field) * w
+            weights += w
+        }
+        let expected = gathered * field / (weighted / weights)
+        let ratio = try floor(Float(ring)) / floor(nil)
+        #expect(abs(ratio / expected - 1) < 0.03,
+                "a floor under an overhead ring read \(ratio) times the field's where the map gives \(expected)")
+    }
+
+    /// A 256 by 128 float equirect, the field at `sunField` and its rows 22 to 28 at
+    /// `ring` (or none), written once per brightness as OpenEXR.
+    private static var ringMaps: [Float: URL] = [:]
+
+    private func ringMap(ring: Float?) throws -> URL {
+        let key = ring ?? 0
+        if let known = Self.ringMaps[key] { return known }
+        let w = 256, h = 128
+        var px = [Float](repeating: 0, count: w * h * 4)
+        for i in 0..<(w * h) {
+            let row = i / w
+            let v = (ring != nil && (22...28).contains(row)) ? ring! : Self.sunField
+            px[i * 4] = v; px[i * 4 + 1] = v; px[i * 4 + 2] = v
+            px[i * 4 + 3] = 1
+        }
+        let space = try #require(CGColorSpace(name: CGColorSpace.extendedLinearSRGB))
+        let info = CGBitmapInfo.floatComponents.rawValue | CGBitmapInfo.byteOrder32Little.rawValue
+            | CGImageAlphaInfo.premultipliedLast.rawValue
+        let image = try px.withUnsafeMutableBytes { raw in
+            let ctx = try #require(CGContext(data: raw.baseAddress, width: w, height: h,
+                                             bitsPerComponent: 32, bytesPerRow: w * 16,
+                                             space: space, bitmapInfo: info))
+            return try #require(ctx.makeImage())
+        }
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ollin-lighting-invariant-ring-\(Int(key)).exr")
+        let dest = try #require(CGImageDestinationCreateWithURL(
+            url as CFURL, UTType.exr.identifier as CFString, 1, nil))
+        CGImageDestinationAddImage(dest, image, nil)
+        #expect(CGImageDestinationFinalize(dest))
+        Self.ringMaps[key] = url
+        return url
     }
 
     /// An environment's light reaches the scene whole: a small sun on a flat field adds
@@ -609,16 +711,61 @@ struct LightingInvariantTests {
     /// of the frame, the far wall the veil covers as much as the open view.
     @Test(.enabled(if: Snapshot.hasMetal))
     func theFrameIsLinearInItsLightUnderAerialPerspective() throws {
-        func farWall(aerial: Bool, gain: Double) throws -> Double {
-            mean(try renderUnrolled(AerialInvariantProbe.make(aerial: aerial, gain: gain)),
+        func farWall(aerial: Bool, gain: Double, sky: Bool = false) throws -> Double {
+            mean(try renderUnrolled(AerialInvariantProbe.make(aerial: aerial, gain: gain, sky: sky)),
                  x: 120..<180, y: 60..<90)
         }
         let open = try farWall(aerial: false, gain: 2) / farWall(aerial: false, gain: 1)
         #expect(abs(open - 2) < 0.05, "with no air, doubling the light scaled the wall by \(open)")
         let veiled = try farWall(aerial: true, gain: 2) / farWall(aerial: true, gain: 1)
-        withKnownIssue("the veil's in-scattered light is a fixed level that no light in the scene scales: doubling the light scaled the veiled wall by 1.001, measured 2026-10-09") {
-            #expect(abs(veiled - 2) < 0.05, "under the air, doubling the light scaled the wall by \(veiled)")
+        #expect(abs(veiled - 2) < 0.05, "under the air, doubling the light scaled the wall by \(veiled)")
+        // Under a procedural sky the sky is the light, its sun and its glow together:
+        // doubling its intensity doubles the veiled wall as well.
+        let skyVeiled = try farWall(aerial: true, gain: 2, sky: true)
+            / farWall(aerial: true, gain: 1, sky: true)
+        #expect(abs(skyVeiled - 2) < 0.05, "under a sky's air, doubling the sky scaled the wall by \(skyVeiled)")
+    }
+
+    /// The air far away is the sky's own horizon: looking level through air thick enough
+    /// to hide a far wall, the veil is the sky model's radiance at the horizon in that
+    /// direction (the closed form the backdrop is filled from), at the backdrop's
+    /// exposure, leaned toward the sun by the haze's own halo: the veil's light averages
+    /// to the horizon's over every compass direction, so it meets the horizon where the
+    /// halo is average and stands above it sunward. Read against the model rather than
+    /// the backdrop's pixels, because the sky brightens steeply off the horizon (6%
+    /// within a tenth of a degree at this sky), faster than a texel can follow.
+    @Test(.enabled(if: Snapshot.hasMetal), arguments: [Double.pi / 3, 2 * Double.pi / 3, Double.pi])
+    func theFarAirIsTheSkysHorizon(azimuth: Double) throws {
+        let f = try renderUnrolled(HorizonInvariantProbe.make(azimuth: azimuth))
+        // The middle of the frame, where the view is level and `azimuth` from the sun;
+        // a wider read averages over compass directions the halo leans differently.
+        let air = around(f, Vector2(96, 104), radius: 4)
+        let sun = SkySun(turbidity: 2, elevation: 0.6, groundAlbedo: 0.3)
+        let (configs, radiances) = SkySun.configurations(turbidity: 2, albedo: 0.3, elevation: 0.6)
+        // The view's angle from the sun: the level ray (sin a, 0, cos a) against
+        // (0, sin e, cos e).
+        let c = cos(azimuth) * cos(0.6)
+        let horizon = (0..<3).map {
+            SkySun.radiance(configs: configs, radiances: radiances, cosTheta: 0, gamma: acos(c), channel: $0)
         }
+        let haze = 0.3, g = 0.76
+        let phaseM = (1 - g * g) / pow(1 + g * g - 2 * g * c, 1.5)
+        let ratios = [0.428, 1.0, 2.442]
+        let mean = Drawer.aerialPhaseMean(haziness: haze, sunHeight: sin(0.6))
+        let exposure = Double(sun.exposure(sunLit: true, coverage: nil))
+        var expected = 0.0
+        for k in 0..<3 {
+            let betaR = ratios[k] * (1 - haze)
+            let lean = (betaR * 0.75 * (1 + c * c) + haze * phaseM) / (betaR + haze) / mean[k]
+            let veil = sun.horizon[k] * lean * exposure
+            expected += veil / 3   // the frame's luma is the channels' plain mean
+        }
+        let atHorizon = (horizon[0] + horizon[1] + horizon[2]) / 3 * exposure
+        #expect(abs(air / expected - 1) < 0.04,
+                "at \(azimuth) rad from the sun the far air read \(air) where the model gives \(expected)")
+        // The lean stays a lean: within a third of the horizon itself away from the sun.
+        #expect(abs(air / atHorizon - 1) < 0.35,
+                "at \(azimuth) rad from the sun the far air read \(air) against a horizon of \(atHorizon)")
     }
 
     // MARK: The bounce, measured
@@ -1213,6 +1360,7 @@ private final class SkyInvariantProbe: Sketch {
 
     override func draw() {
         background(.black)
+        toneMap(.reinhard)
         let elevation = 0.6
         let towardSun = Vector3(0, sin(elevation), cos(elevation))
         camera(Camera3D(eye: towardSun * (facing ? 10 : -10), target: .zero,
@@ -1256,11 +1404,13 @@ private final class SunInvariantProbe: Sketch {
 private final class AerialInvariantProbe: Sketch {
     var aerial = true
     var gain = 1.0
+    var sky = false
 
-    static func make(aerial: Bool, gain: Double) -> AerialInvariantProbe {
+    static func make(aerial: Bool, gain: Double, sky: Bool = false) -> AerialInvariantProbe {
         let p = AerialInvariantProbe()
         p.aerial = aerial
         p.gain = gain
+        p.sky = sky
         return p
     }
 
@@ -1270,13 +1420,130 @@ private final class AerialInvariantProbe: Sketch {
         background(.black)
         toneMap(.reinhard)
         camera(Camera3D(eye: Vector3(0, 1, 0), target: Vector3(0, 1, -10)))
-        ambientLight(.black)
-        directionalLight(.white, direction: Vector3(0.5, -0.6, -0.6), intensity: gain)
+        if sky {
+            // The sky's sun from behind the camera's right shoulder, its glow the ambient.
+            environment(.sky(turbidity: 3, sunElevation: 0.6).rotated(2.4)
+                .intensified(to: gain).lightingOnly())
+        } else {
+            ambientLight(.black)
+            directionalLight(.white, direction: Vector3(0.5, -0.6, -0.6), intensity: gain)
+        }
         if aerial { aerialPerspective(density: 0.02, haziness: 0.3) }
         fill(Color(white: 0.5))
         material(.dielectric(roughness: 1))
         withState { translate(-2, 1, -8); drawBox(width: 3, height: 3, depth: 0.2) }
         withState { translate(0, 1, -200); drawBox(width: 400, height: 400, depth: 1) }
+    }
+}
+
+/// A white plain floor seen from above under a loaded map.
+private final class MapFloorInvariantProbe: Sketch {
+    var envURL = URL(fileURLWithPath: "/dev/null")
+
+    static func make(envURL: URL) -> MapFloorInvariantProbe {
+        let p = MapFloorInvariantProbe()
+        p.envURL = envURL
+        return p
+    }
+
+    override var canvasSize: CanvasSize { .square(64) }
+
+    override func draw() {
+        background(.black)
+        toneMap(.reinhard)
+        camera(Camera3D(eye: Vector3(0, 12, 0.01), target: .zero,
+                        projection: .perspective(fieldOfView: .pi / 5)))
+        environment(.hdri(url: envURL).lightingOnly())
+        fill(.white)
+        withState { translate(0, -0.05, 0); drawBox(width: 8, height: 0.1, depth: 8) }
+    }
+}
+
+/// A white plain floor seen from above under a procedural sky with no sun of its own.
+private final class SkyFloorInvariantProbe: Sketch {
+    var turbidity = 2.0
+
+    static func make(turbidity: Double) -> SkyFloorInvariantProbe {
+        let p = SkyFloorInvariantProbe()
+        p.turbidity = turbidity
+        return p
+    }
+
+    override var canvasSize: CanvasSize { .square(64) }
+
+    override func draw() {
+        background(.black)
+        toneMap(.reinhard)
+        camera(Camera3D(eye: Vector3(0, 12, 0.01), target: .zero,
+                        projection: .perspective(fieldOfView: .pi / 5)))
+        environment(.sky(turbidity: turbidity, sunElevation: 0.6).lightingOnly().sunlight(.off))
+        fill(.white)
+        withState { translate(0, -0.05, 0); drawBox(width: 8, height: 0.1, depth: 8) }
+    }
+}
+
+/// A white floor seen from above under a procedural sky, a slab high over it throwing
+/// the sun's shadow onto it; `lit` and `shaded` mark a sunlit spot and the shadow's
+/// middle (the shadow falls toward -z by the slab's height over the sun's slope).
+private final class SkyShadowInvariantProbe: Sketch {
+    var turbidity = 2.0
+    var lit = Vector2.zero
+    var shaded = Vector2.zero
+
+    static func make(turbidity: Double) -> SkyShadowInvariantProbe {
+        let p = SkyShadowInvariantProbe()
+        p.turbidity = turbidity
+        return p
+    }
+
+    override var canvasSize: CanvasSize { .square(192) }
+
+    override func draw() {
+        background(.black)
+        toneMap(.reinhard)
+        let elevation = 0.6, height = 1.5
+        camera(Camera3D(eye: Vector3(0, 12, 0.01), target: .zero,
+                        projection: .perspective(fieldOfView: .pi / 5)))
+        environment(.sky(turbidity: turbidity, sunElevation: elevation).lightingOnly())
+        castShadows()
+        fill(.white)
+        material(Material(shading: .physicallyBased, metallic: 0, roughness: 1))
+        withState { translate(0, -0.05, 0); drawBox(width: 8, height: 0.1, depth: 8) }
+        withState { translate(0, height, 2); drawBox(width: 1.6, height: 0.05, depth: 1.6) }
+        shaded = project(Vector3(0, 0, 2 - height / tan(elevation))) ?? .zero
+        lit = project(Vector3(-2.4, 0, -1)) ?? .zero
+    }
+}
+
+/// Looking level from a little above the ground, `azimuth` radians around from the
+/// sky's sun, at a wall far away behind air thick enough to hide it (the frame's bottom
+/// half the veil).
+private final class HorizonInvariantProbe: Sketch {
+    var azimuth = Double.pi / 3
+
+    static func make(azimuth: Double) -> HorizonInvariantProbe {
+        let p = HorizonInvariantProbe()
+        p.azimuth = azimuth
+        return p
+    }
+
+    override var canvasSize: CanvasSize { .square(192) }
+
+    override func draw() {
+        background(.black)
+        toneMap(.reinhard)
+        let ahead = Vector3(sin(azimuth), 0, cos(azimuth))
+        camera(Camera3D(eye: Vector3(0, 1, 0), target: Vector3(0, 1, 0) + ahead * 10,
+                        projection: .perspective(fieldOfView: .pi / 4)))
+        environment(.sky(turbidity: 2, sunElevation: 0.6))
+        aerialPerspective(density: 0.2, haziness: 0.3)
+        fill(Color(white: 0.5))
+        material(.dielectric(roughness: 1))
+        withState {
+            translate(ahead * 200 + Vector3(0, 1 - 100, 0))
+            rotateY(azimuth)
+            drawBox(width: 400, height: 200, depth: 1)
+        }
     }
 }
 
