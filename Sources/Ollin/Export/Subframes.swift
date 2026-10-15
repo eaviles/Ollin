@@ -171,8 +171,7 @@ extension OllinApp {
                 renderer.subframe = MetalRenderer.Subframe(index: i, count: shutter.count)
                 guard let rendered = renderer.renderedFrame(of: sketch.drawer, viewport: viewport,
                                                             width: width, height: height) else {
-                    throw ExportError(.unrendered, path: path, frame: 0,
-                                      problem: "moment \(i) of frame \(target) did not come back from the GPU")
+                    throw renderer.unrendered("moment \(i) of frame \(target)", path: path, frame: 0)
                 }
                 reportHeadlessFrame(sketch, renderer: renderer, deltaTime: deltaTime, fps: fps,
                                     drawSeconds: drawSeconds)

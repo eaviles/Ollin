@@ -751,10 +751,35 @@ final class MetalRenderer {
     /// frames later, which the smoothing in `FrameStats` hides.
     let gpuFrameMS = OSAllocatedUnfairLock(initialState: 0.0)
 
-    /// What finished frames said about themselves: a failed command buffer is
-    /// written to standard error, and an overflow of memoryless attachments
-    /// turns every later pass to backed ones (`attachmentStorage`).
+    /// What finished frames said about themselves: a failed live command
+    /// buffer is written to standard error, a failed headless one is handed
+    /// back to its drive, and an overflow of memoryless attachments turns
+    /// every later pass to backed ones (`attachmentStorage`).
     let gpuFailures = GPUFailures()
+
+    /// Why the last headless frame failed on the GPU, or nil when it came
+    /// back. Cleared as each headless frame starts, and read by the exports
+    /// for the sentence their error carries.
+    private(set) var lastHeadlessFailure: String?
+
+    /// How many headless frames failed on the GPU and could not be drawn
+    /// again. Only ever grows, so an export notes it at its start and refuses
+    /// to write a frame once it has moved: a frame whose picture builds on the
+    /// one before is spoiled by any failure before it, a warmup's included.
+    private(set) var unrecoveredFailures = 0
+
+    /// How many times a headless frame the GPU threw away is drawn again
+    /// before the drive is told. A command buffer is discarded when another
+    /// program's work faults the GPU, which passes, so one more try usually
+    /// draws it.
+    static let headlessRedraws = 2
+
+    /// The headless commits, counted from this renderer's first, a test plants
+    /// as discarded: each is dropped unrun, the way the GPU drops another
+    /// program's victim, without anything having to fault the GPU. Empty in a
+    /// normal run.
+    var plantedDiscards: Set<Int> = []
+    private var headlessCommits = 0
 
     /// Make a render encoder and count the pass. Every pass in the renderer
     /// goes through here, so the profile's pass count stays honest as passes
@@ -2698,6 +2723,7 @@ final class MetalRenderer {
             print("Ollin: a piling canvas (noClear) keeps one surface across frames, "
                   + "so it renders at 1x and the render scale does not reach it.")
         }
+        lastHeadlessFailure = nil
         if accumExportDisplay?.width != width || accumExportDisplay?.height != height {
             accumExportDisplay = makeDisplayTexture(width: width, height: height)
         }
@@ -2770,7 +2796,12 @@ final class MetalRenderer {
                   to: readbackBuffer, destinationOffset: 0,
                   destinationBytesPerRow: bytesPerRow, destinationBytesPerImage: byteCount)
         blit.endEncoding()
-        commitHeadless(commandBuffer, encodeStart: encodeStart)
+        // A pile cannot be drawn again: the discarded buffer may have
+        // deposited part of the frame already.
+        guard commitHeadless(commandBuffer, encodeStart: encodeStart) else {
+            unrecoveredFailures += 1
+            return nil
+        }
         if let linearCapture {
             lastLinearFrame = finishLinearCapture(linearCapture, drawer: drawer,
                                                   width: width, height: height)
@@ -2898,8 +2929,33 @@ final class MetalRenderer {
 
     /// `image(of:…)` stopping at the read-back buffer instead of building an
     /// image (see `accumulatedFrame` for why the HDR video writer needs this).
+    ///
+    /// A frame the GPU throws away is drawn again, up to `headlessRedraws`
+    /// times, when its picture builds on nothing carried from the frame
+    /// before (`canRedraw`), with the temporal histories started fresh; past
+    /// that, or for a frame that does carry something, it comes back nil and
+    /// `lastHeadlessFailure` says why.
     func renderedFrame(of drawer: Drawer, viewport: SIMD2<Float>,
                        width outWidth: Int, height outHeight: Int) -> (buffer: MTLBuffer, bytesPerRow: Int)? {
+        var attempt = 0
+        while true {
+            lastHeadlessFailure = nil
+            if let frame = renderedFrameOnce(of: drawer, viewport: viewport, width: outWidth, height: outHeight) {
+                return frame
+            }
+            guard let failure = lastHeadlessFailure else { return nil }
+            guard attempt < MetalRenderer.headlessRedraws, canRedraw(drawer) else {
+                unrecoveredFailures += 1
+                return nil
+            }
+            attempt += 1
+            gpuFailures.note(failure + "; the frame was drawn again")
+            forgetHistoriesForRedraw()
+        }
+    }
+
+    private func renderedFrameOnce(of drawer: Drawer, viewport: SIMD2<Float>,
+                                   width outWidth: Int, height outHeight: Int) -> (buffer: MTLBuffer, bytesPerRow: Int)? {
         guard outWidth > 0, outHeight > 0 else { return nil }
         // The export supersample (`--render-scale`): the geometry is drawn `scale`
         // times across the canvas and averaged back down before the picture-side
@@ -3300,7 +3356,7 @@ final class MetalRenderer {
             guard let mean = foldSubframe(presented, step: subframe, into: commandBuffer,
                                           width: outWidth, height: outHeight) else { return nil }
             guard subframe.isLast else {
-                commitHeadless(commandBuffer, encodeStart: encodeStart)
+                guard commitHeadless(commandBuffer, encodeStart: encodeStart) else { return nil }
                 return (readback, bytesPerRow)
             }
             shown = mean
@@ -3328,7 +3384,7 @@ final class MetalRenderer {
                   destinationBytesPerRow: bytesPerRow, destinationBytesPerImage: byteCount)
         blit.endEncoding()
 
-        commitHeadless(commandBuffer, encodeStart: encodeStart)
+        guard commitHeadless(commandBuffer, encodeStart: encodeStart) else { return nil }
 
         if let linearCapture {
             lastLinearFrame = finishLinearCapture(linearCapture, drawer: drawer,
@@ -3341,15 +3397,69 @@ final class MetalRenderer {
     /// measured times on the profile: the encode, the drive's own wait for the
     /// GPU (a synchronous render waits on the frame itself rather than on the
     /// in-flight ring, so this covers the GPU's run), and the GPU's run from
-    /// its own timestamps.
-    func commitHeadless(_ commandBuffer: MTLCommandBuffer, encodeStart: CFTimeInterval) {
+    /// its own timestamps. Returns whether the frame ran; when it did not,
+    /// `lastHeadlessFailure` says why and nothing is printed, since the drive
+    /// that asked draws the frame again or throws.
+    func commitHeadless(_ commandBuffer: MTLCommandBuffer, encodeStart: CFTimeInterval) -> Bool {
         let committed = CACurrentMediaTime()
         profile.cpuEncodeMS = (committed - encodeStart) * 1000
+        let index = headlessCommits
+        headlessCommits += 1
+        if plantedDiscards.contains(index) {
+            lastHeadlessFailure = "a frame failed on the GPU and came back empty: "
+                + "discarded (victim of GPU error/recovery), planted by a test"
+            return false
+        }
         commandBuffer.commit()
         commandBuffer.waitUntilCompleted()
         profile.waitMS = (CACurrentMediaTime() - committed) * 1000
         profile.gpuMS = (commandBuffer.gpuEndTime - commandBuffer.gpuStartTime) * 1000
-        gpuFailures.check(commandBuffer)
+        if let sentence = gpuFailures.failure(of: commandBuffer) {
+            lastHeadlessFailure = sentence
+            return false
+        }
+        return true
+    }
+
+    /// Whether a headless frame the GPU threw away can be drawn again from
+    /// what the sketch recorded: its picture builds on nothing carried from
+    /// the frame before (a piling canvas, a persistent layer, a compute step,
+    /// an earlier moment of a subframe average), any of which the discarded
+    /// buffer may have half-written.
+    func canRedraw(_ drawer: Drawer) -> Bool {
+        !drawer.accumulates && !drawer.usesFeedback && drawer.dispatches.isEmpty && subframe == nil
+    }
+
+    /// Forget the temporal histories before a frame is drawn again, so the
+    /// redraw starts them fresh rather than blending with what a discarded
+    /// buffer left half-written, and make its stateful passes run rather than
+    /// serve the discarded encode's results as a same-frame repeat.
+    private func forgetHistoriesForRedraw() {
+        taaHistory = nil
+        rtReflectHistory = nil
+        causticsHistory = nil
+        pathTraceHistory = nil
+        lastStatefulEncode = nil
+    }
+
+    /// The error an export throws for a frame that did not come back, with
+    /// the GPU's own reason when it gave one.
+    func unrendered(_ what: String, path: String, frame: Int) -> ExportError {
+        ExportError(.unrendered, path: path, frame: frame,
+                    problem: "\(what) did not come back from the GPU"
+                        + (lastHeadlessFailure.map { " (\($0))" } ?? ""))
+    }
+
+    /// Throws when a headless frame failed on the GPU, and could not be drawn
+    /// again, since the drive read `unrecoveredFailures` as `count`: the
+    /// frame about to be written builds on it.
+    func throwIfFailed(since count: Int, path: String, frame: Int) throws {
+        guard unrecoveredFailures > count else { return }
+        throw ExportError(.unrendered, path: path, frame: frame,
+                          problem: "a frame before frame \(frame) failed on the GPU, and this sketch's "
+                              + "picture builds on the frame before it (a piling canvas, a persistent "
+                              + "layer, or a simulation), so it could not be drawn again"
+                              + (lastHeadlessFailure.map { " (\($0))" } ?? ""))
     }
 
     /// Render `drawer`'s already-recorded scene `iterations` times into off-screen targets

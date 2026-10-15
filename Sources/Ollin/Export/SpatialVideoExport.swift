@@ -383,8 +383,9 @@ extension OllinApp {
                     sketch.advance(time: Double(k) / fps, deltaTime: 1 / fps, frameRate: fps)
                     sketch.performDraw()
                 }
-                let unrendered = ExportError(.unrendered, path: path, frame: max(0, k - skipFrames),
-                                             problem: "frame \(max(0, k - skipFrames)) did not come back from the GPU")
+                var unrendered: ExportError {
+                    renderer.unrendered("frame \(max(0, k - skipFrames))", path: path, frame: max(0, k - skipFrames))
+                }
 
                 let accumulates = sketch.drawer.accumulates
                 let center = sketch.drawer.camera3D
@@ -448,6 +449,7 @@ extension OllinApp {
                     return                            // the pool is the iteration, so leaving it is `continue`
                 }
                 guard let frame else { throw unrendered }
+                try renderer.throwIfFailed(since: 0, path: path, frame: max(0, k - skipFrames))
                 if sketch.exportHoldsFrame { held = frame }
                 let done = k - skipFrames + 1
                 try write(frame, done - 1)

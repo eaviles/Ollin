@@ -544,6 +544,8 @@ Its `kind` sorts the failures three ways:
 | `unrendered` | A frame was not drawn. No Metal device, a renderer that would not start, or a frame that did not come back from the GPU. |
 | `unwritable` | The frame was drawn and the file would not take it. The writer would not start, stopped taking frames, refused one, or could not finish. |
 
+The GPU can throw a frame away when another program's work faults it, most often a second export or render sharing the machine. A frame whose picture builds on nothing from the frame before is drawn again, up to twice, with a line on standard error saying so, and the file holds the frame it would have held. A frame that does build on the one before cannot be drawn again, since the discarded work may have left part of it behind: a `noClear()` pile, a persistent layer, a simulation, or a moment of a `--subframes` average. That export stops with an `unrendered` error carrying the GPU's own reason, at the frame that failed or at the next frame written after a warmup frame that failed. Running one export at a time keeps this from happening.
+
 From the command line, an export flag that fails prints the sentence and exits with status 1, so a script running the export sees it fail. A web page that cannot carry the sketch is an `unsupported` failure whose sentence names the call that stopped it. An extension's own export can throw one too, through `ExportError(_:path:frame:problem:)`.
 
 ### Reproducibility metadata

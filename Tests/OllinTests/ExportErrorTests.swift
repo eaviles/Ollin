@@ -1,4 +1,5 @@
 import Foundation
+import ImageIO
 @testable import Ollin
 import Testing
 
@@ -213,5 +214,99 @@ struct ExportErrorTests {
         ]
         #expect(failures.map(\.?.kind) == [.unwritable, .unwritable, .unwritable])
         #expect(failures.map(\.?.frame) == [0, 0, 0])
+    }
+
+    // MARK: - A frame the GPU threw away
+
+    /// A picture that piles up: each frame adds a translucent mark onto the
+    /// last, so a frame that never ran leaves its mark missing for good.
+    final class Pile: Sketch {
+        override var canvasSize: CanvasSize { .square(64) }
+        override func setup() { noClear(); background(.black) }
+        override func draw() {
+            fill(Color.white.withAlpha(0.25))
+            noStroke()
+            drawCircle(8 + Double(frameCount) * 12, 32, 6)
+        }
+    }
+
+    /// The frames an export of `sketch` writes, read back as bytes, with the
+    /// commits in `discards` thrown away by the GPU.
+    private func exportedFrames(_ sketch: Sketch, frames: Int, discards: Set<Int>) throws -> [[UInt8]] {
+        OllinApp.plantedDiscards = discards
+        defer { OllinApp.plantedDiscards = [] }
+        let folder = ollinTempPath("ollin-discard-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(atPath: folder) }
+        try OllinApp.exportSequence(sketch, to: folder, frames: frames, fps: 30)
+        return try (1...frames).map { index in
+            let path = (folder as NSString).appendingPathComponent(String(format: "frame-%05d.png", index))
+            let source = try #require(CGImageSourceCreateWithURL(URL(fileURLWithPath: path) as CFURL, nil))
+            return pixels(of: try #require(CGImageSourceCreateImageAtIndex(source, 0, nil)))
+        }
+    }
+
+    /// Another program's fault can make the GPU throw away a command buffer
+    /// that was only waiting its turn. A frame whose picture builds on nothing
+    /// from the frame before is drawn again, so the file holds the frame it
+    /// would have held: the still and every frame of a sequence come out byte
+    /// for byte as they do when nothing was thrown away.
+    ///
+    /// Until 2026-10-15 the export wrote the frame anyway, half drawn, with
+    /// one line on standard error: a peer's nine-hour render kept a frame of
+    /// green blocks that way.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aFrameTheGPUThrewAwayIsDrawnAgain() throws {
+        let clean = pixels(of: try OllinApp.image(of: Tick(), frame: 3))
+        OllinApp.plantedDiscards = [0]
+        let redrawn = pixels(of: try OllinApp.image(of: Tick(), frame: 3))
+        OllinApp.plantedDiscards = []
+        #expect(redrawn == clean)
+
+        let sequence = try exportedFrames(Tick(), frames: 3, discards: [])
+        #expect(try exportedFrames(Tick(), frames: 3, discards: [1]) == sequence)
+        #expect(try exportedFrames(Tick(), frames: 3, discards: [0, 2, 4]) == sequence)
+    }
+
+    /// A frame the GPU keeps throwing away stops the export with the GPU's
+    /// own reason, naming the frame, and writes nothing for it.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aFrameTheGPUKeepsThrowingAwayStopsTheExport() throws {
+        OllinApp.plantedDiscards = Set(0...MetalRenderer.headlessRedraws)
+        defer { OllinApp.plantedDiscards = [] }
+        let still = try #require(error { _ = try OllinApp.image(of: Tick()) })
+        #expect(still.kind == .unrendered)
+        #expect(still.problem.contains("frame 0 did not come back from the GPU"))
+        #expect(still.problem.contains("victim of GPU error/recovery"))
+
+        let folder = ollinTempPath("ollin-discarded-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(atPath: folder) }
+        OllinApp.plantedDiscards = Set(1...(1 + MetalRenderer.headlessRedraws))
+        let sequence = try #require(error { try OllinApp.exportSequence(Tick(), to: folder, frames: 3, fps: 30) })
+        #expect(sequence.kind == .unrendered)
+        #expect(sequence.frame == 1)
+        #expect(sequence.problem.contains("victim of GPU error/recovery"))
+        #expect(FileManager.default.fileExists(atPath: folder + "/frame-00001.png"))
+        #expect(!FileManager.default.fileExists(atPath: folder + "/frame-00002.png"))
+    }
+
+    /// A picture that builds on the frame before cannot be drawn again,
+    /// since the buffer thrown away may have left part of its frame behind,
+    /// so the export stops at that frame rather than write a pile with a mark
+    /// missing or doubled. A still past the lost frame stops too, though its
+    /// own frame came back.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aPileTheGPUThrewAwayStopsTheExport() throws {
+        let folder = ollinTempPath("ollin-pile-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(atPath: folder) }
+        OllinApp.plantedDiscards = [1]
+        defer { OllinApp.plantedDiscards = [] }
+        let sequence = try #require(error { try OllinApp.exportSequence(Pile(), to: folder, frames: 3, fps: 30) })
+        #expect(sequence.kind == .unrendered)
+        #expect(sequence.frame == 1)
+        #expect(!FileManager.default.fileExists(atPath: folder + "/frame-00002.png"))
+
+        let still = try #require(error { _ = try OllinApp.image(of: Pile(), frame: 3) })
+        #expect(still.kind == .unrendered)
+        #expect(still.problem.contains("builds on the frame before"))
     }
 }

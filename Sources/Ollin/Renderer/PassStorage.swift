@@ -96,25 +96,38 @@ extension Drawer {
 
 /// What each finished frame's command buffer says about itself. A command
 /// buffer that fails leaves its frame empty and says so nowhere else, so a
-/// failure is written to standard error, once for each different sentence (a
-/// frame rate of the same line helps nobody), and the one failure the renderer
-/// can answer, a pass that outgrew memoryless attachments, turns every later
-/// pass to backed ones. Read from the completed handlers, off the main actor,
-/// so its state is guarded by a lock.
+/// live frame's failure is written to standard error, once for each different
+/// sentence (a frame rate of the same line helps nobody), while a headless
+/// frame's goes back to the drive that asked for it, which draws the frame
+/// again or throws. The one failure the renderer can answer, a pass that
+/// outgrew memoryless attachments, turns every later pass to backed ones. Read
+/// from the completed handlers, off the main actor, so its state is guarded by
+/// a lock.
 final class GPUFailures: Sendable {
     private let state = OSAllocatedUnfairLock(initialState: (overflowed: false, said: Set<String>()))
 
     /// Whether any frame has overflowed memoryless attachments.
     var hasOverflowed: Bool { state.withLock { $0.overflowed } }
 
-    /// Read a finished command buffer. Nothing happens unless it failed.
+    /// Read a live frame's finished command buffer. Nothing happens unless it
+    /// failed.
     func check(_ buffer: MTLCommandBuffer) {
-        guard buffer.status == .error else { return }
+        if let sentence = failure(of: buffer) { note(sentence) }
+    }
+
+    /// The sentence for a finished command buffer that failed, or nil when it
+    /// ran. Says nothing itself; an overflow still turns later passes to
+    /// backed attachments.
+    func failure(of buffer: MTLCommandBuffer) -> String? {
+        guard buffer.status == .error else { return nil }
         let (sentence, overflow) = GPUFailures.describe(buffer.error)
-        let isNew = state.withLock { state -> Bool in
-            if overflow { state.overflowed = true }
-            return state.said.insert(sentence).inserted
-        }
+        if overflow { state.withLock { $0.overflowed = true } }
+        return sentence
+    }
+
+    /// Write `sentence` to standard error the first time it comes up.
+    func note(_ sentence: String) {
+        let isNew = state.withLock { $0.said.insert(sentence).inserted }
         if isNew { FileHandle.standardError.write(Data(("Ollin: " + sentence + "\n").utf8)) }
     }
 

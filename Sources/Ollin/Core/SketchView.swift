@@ -2876,10 +2876,12 @@ public enum OllinApp {
             throw ExportError(.unrendered, path: path, problem: "the renderer would not start: \(planted)")
         }
         do {
-            return try MetalRenderer(device: device,
-                                     pixelFormat: sketch.colorOutput.drawablePixelFormat,
-                                     sampleCount: ollinPreferredSampleCount(device),
-                                     encoding: sketch.colorOutput.presentEncoding)
+            let renderer = try MetalRenderer(device: device,
+                                             pixelFormat: sketch.colorOutput.drawablePixelFormat,
+                                             sampleCount: ollinPreferredSampleCount(device),
+                                             encoding: sketch.colorOutput.presentEncoding)
+            renderer.plantedDiscards = plantedDiscards
+            return renderer
         } catch {
             throw ExportError(.unrendered, path: path, problem: "the renderer would not start: \(error)")
         }
@@ -2915,6 +2917,12 @@ public enum OllinApp {
     /// planted in a normal run.
     package nonisolated(unsafe) static var plantedRendererRefusal: String?
 
+    /// The headless commits, counted from a renderer's first, the GPU throws
+    /// away when a test plants them: the failure another program's GPU fault
+    /// hands an export, made to happen without one. Each headless renderer an
+    /// export makes takes the set. Nothing is planted in a normal run.
+    package nonisolated(unsafe) static var plantedDiscards: Set<Int> = []
+
     /// `image(of:)` for a caller writing `path`, so a failure names the file.
     static func renderStill(_ sketch: Sketch, frame: Int, fps: FrameRate,
                             quality: RenderQuality, for path: String) throws -> CGImage {
@@ -2942,8 +2950,25 @@ public enum OllinApp {
     /// renderer: the contact sheet reuses one renderer (and its compiled
     /// pipelines) across every tile instead of rebuilding per seed. The caller
     /// owns `isRenderingHeadless` and the renderer's quality fallback.
+    ///
+    /// Throws `.unrendered` with the GPU's own reason when the frame failed on
+    /// the GPU and could not be drawn again, or when a frame before it did and
+    /// this one builds on it (`MetalRenderer.throwIfFailed`).
     static func renderImage(of sketch: Sketch, frame: Int, fps: Double,
                             renderer: MetalRenderer, path: String = "") throws -> CGImage? {
+        let failures = renderer.unrecoveredFailures
+        guard let image = try drawStill(of: sketch, frame: frame, fps: fps, renderer: renderer, path: path) else {
+            if renderer.lastHeadlessFailure != nil {
+                throw renderer.unrendered("frame \(max(0, frame))", path: path, frame: 0)
+            }
+            return nil
+        }
+        try renderer.throwIfFailed(since: failures, path: path, frame: max(0, frame))
+        return image
+    }
+
+    private static func drawStill(of sketch: Sketch, frame: Int, fps: Double,
+                                  renderer: MetalRenderer, path: String) throws -> CGImage? {
         // Under `--subframes` the frame asked for is several moments averaged.
         if exportSubframes > 1 {
             return try renderSubframeImage(of: sketch, frame: frame, fps: fps,
@@ -3252,6 +3277,7 @@ public enum OllinApp {
         renderer.pathTracing = pathTracedExport
         renderer.renderScale = exportRenderScale
         renderer.pathTraceReportsProgress = false   // the loop below prints its own line
+        renderer.plantedDiscards = plantedDiscards
         renderer.capturesLinearFrame = capturesLinear
         isRenderingHeadless = true
         defer { isRenderingHeadless = false }
@@ -3337,8 +3363,8 @@ public enum OllinApp {
                                                                width: width, height: height)
                             renderer.subframe = nil
                             guard frame != nil else {
-                                throw ExportError(.unrendered, path: path, frame: written,
-                                                  problem: "moment \(i) of frame \(written) did not come back from the GPU")
+                                throw renderer.unrendered("moment \(i) of frame \(written)",
+                                                          path: path, frame: written)
                             }
                             reportHeadlessFrame(sketch, renderer: renderer, deltaTime: deltaTime,
                                                 fps: clock, drawSeconds: drawSeconds)
@@ -3425,9 +3451,12 @@ public enum OllinApp {
                 }
 
                 guard let rendered else {
-                    throw ExportError(.unrendered, path: path, frame: written,
-                                      problem: "frame \(written) did not come back from the GPU")
+                    throw renderer.unrendered("frame \(written)", path: path, frame: written)
                 }
+                // A frame the GPU threw away anywhere before this one, a warmup
+                // or a settle draw included, spoils it when it builds on the
+                // frame before; one that builds on nothing was drawn again.
+                try renderer.throwIfFailed(since: 0, path: path, frame: written)
                 let done = k - skipFrames + 1                  // 1-based count of drawn frames
                 // The made frame goes first: it belongs between the frame just drawn
                 // and the one before it, and it is built from the pair the render
@@ -3485,9 +3514,9 @@ public enum OllinApp {
                 ? renderer.accumulatedFrame(of: sketch.drawer, viewport: viewport, width: width, height: height)
                 : renderer.renderedFrame(of: sketch.drawer, viewport: viewport, width: width, height: height))
             else {
-                throw ExportError(.unrendered, path: path, frame: written,
-                                  problem: "frame \(written) did not come back from the GPU")
+                throw renderer.unrendered("frame \(written)", path: path, frame: written)
             }
+            try renderer.throwIfFailed(since: 0, path: path, frame: written)
             while written < frames {
                 try autoreleasepool {
                     try write(RenderedFrame(renderer: renderer, buffer: held.buffer,
