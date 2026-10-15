@@ -76,6 +76,29 @@ struct VelocityBufferTests {
         }
     }
 
+    /// Same-line blocks that move with no `withState` of their own: each
+    /// block keeps its transform and style inside it, so the loop places
+    /// every box from the origin rather than from the last one.
+    final class UnscopedLoopProbe: Sketch {
+        var seen: [Float] = []
+        var leaked = false
+        var fillAfter: Color?
+        override func draw() {
+            ortho(eye: Vector3(0, 0, 100), target: .zero, height: 128, near: 1, far: 200)
+            fill(.blue)
+            for o in [-40.0, 0, 40] {
+                withMotion {
+                    translate(o, 0, 0)
+                    fill(.red)
+                    seen.append(drawer.modelMatrix.columns.3.x)
+                    drawBox(width: 10, height: 10, depth: 2)
+                }
+            }
+            leaked = !drawer.modelIsIdentity
+            if case .color(let color) = drawer.fillPaint { fillAfter = color }
+        }
+    }
+
     /// A mesh that changes shape (`drawMesh(_:previous:)`): the same 30-unit box
     /// under the same 1:1 ortho, but its vertices carry `shift` baked into the
     /// positions while the transform holds still (or steps by `transformStep`
@@ -183,6 +206,15 @@ struct VelocityBufferTests {
                 "the first occurrence's delta belongs to the first block")
         #expect(matches(ranges[1].previousOfCurrent, taking: SIMD3(50, 0, 0), to: SIMD3(50, 0, 0)),
                 "the second occurrence held still")
+    }
+
+    @Test func aBlockKeepsItsTransformInside() throws {
+        let s = UnscopedLoopProbe()
+        try s.setup()
+        s.performDraw()
+        #expect(s.seen == [-40, 0, 40], "each block starts from the transform it opened on")
+        #expect(!s.leaked, "the last block's translate must not outlive it")
+        #expect(s.fillAfter == .blue, "nor its fill")
     }
 
     @Test func theNamedFormPinsIdentityAcrossCallSites() throws {

@@ -138,6 +138,7 @@ Some names from other frameworks mean something else here, or nothing. `ollin ap
 | The complex plane | Every generator that paints it and the shader library's `complexPlane` put `center` in the middle, 3 / zoom units across the shorter side, and the imaginary axis **up**. A generator's `plane` is that framing as a `ComplexPlane`, with `canvasPoint(of:in:)` and `planePoint(at:in:)`. |
 | Hue | A turn from 0 to 1 that wraps, in `Color(hue:saturation:brightness:)` and in `OKLCH` and `OKHSL`. |
 | 3D coordinates | Right-handed with y up, and the camera looks down its own −z. Nothing draws in 3D until a camera is set with `camera`, `cameraControl`, or the like, and the camera resets every frame. |
+| 3D transforms | Three numbers or a `Vector3`: `translate(x, y, z)`, `scale(s, s, s)`, `rotateY(a)` or `rotate(a, axis:)`. The two- and one-number forms, `translate(x, y)`, `scale(s)`, and `rotate(a)`, are the 2D transform and leave a mesh where it was. |
 | Field of view | Vertical, in radians, `.pi / 3` by default. A taller canvas keeps the height and shows less width, so a portrait render of a scene framed wide crops its sides. |
 | Orbit | `Camera3D.orbiting(target:radius:azimuth:elevation:)` takes radians. Elevation 0 is the horizon and positive looks down from above. Azimuth 0 puts the eye on +z looking toward −z, and π/2 puts it on +x. |
 | Spot light | `coneAngle` is the full cone in radians, `.pi / 6` by default. `penumbra` runs from 0 to 1. |

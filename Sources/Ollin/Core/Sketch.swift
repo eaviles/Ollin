@@ -2714,19 +2714,22 @@ open class Sketch {
     /// placement from frame to frame under the call site's identity and hands
     /// the renderer its exact screen motion. Two same-line blocks (a loop) keep
     /// separate identities by occurrence order; use the named form to pin
-    /// identity explicitly when call order varies. Purely additive: with both
+    /// identity explicitly when call order varies. The block saves and
+    /// restores the drawing state the way `withState` does, so a `translate`
+    /// inside it places that mover alone. Purely additive otherwise: with both
     /// features off (or for a still mesh) nothing changes, and wireframes,
     /// point clouds, and raymarched fields keep the default handling.
     public func withMotion(file: String = #fileID, line: Int = #line,
                            _ body: () -> Void) {
-        drawer.withMotion(source: "\(file):\(line)", body)
+        drawer.withMotion(source: "\(file):\(line)") { withState(body) }
     }
 
     /// The named form of `withMotion(_:)`: the block's cross-frame identity is
     /// `name` (plus occurrence order among same-name blocks in one frame), so a
     /// mover keeps its history even when the code path that draws it moves.
+    /// Its drawing state is saved and restored like the unnamed form's.
     public func withMotion(_ name: String, _ body: () -> Void) {
-        drawer.withMotion(source: "named:\(name)", body)
+        drawer.withMotion(source: "named:\(name)") { withState(body) }
     }
 
     /// Run a compute `kernel` that writes `texture` — one thread per texel, over a
