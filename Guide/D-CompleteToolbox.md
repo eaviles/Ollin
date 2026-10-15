@@ -194,6 +194,7 @@ The capabilities all assume a few ideas. These seven pages in the reference expl
 | Inverse kinematics | `IKChain`: a segmented limb that reaches for a target, or a rope dragged by its tip | [A limb that reaches: `IKChain`](11-ForcesAndPhysics.md#a-limb-that-reaches-ikchain) | [Motion](../Docs/Simulation/Motion.md) |
 | Gravity at scale | `NBody`: thousands of bodies pulling on each other, with seeded disk and cluster scenes | [Gravity at scale: `NBody`](11-ForcesAndPhysics.md#gravity-at-scale-nbody) | [Motion](../Docs/Simulation/Motion.md) |
 | Force-directed layout | `ForceLayout`: a graph that untangles itself into an even web you can grow, pin, and drag, drawn with `drawGraph` | [A graph that lays itself out: `ForceLayout`](11-ForcesAndPhysics.md#a-graph-that-lays-itself-out-forcelayout) | [ForceLayout](../Docs/Generators/ForceLayout.md) |
+| Soft bodies from outlines | `addSoftBody(from:)`: any closed `Shape` as a squishy body that keeps its area, springs back toward its shape, and keeps other outlines out | [A squishy thing from any outline: `addSoftBody(from:)`](11-ForcesAndPhysics.md#a-squishy-thing-from-any-outline-addsoftbodyfrom) | [Physics](../Docs/Simulation/Physics.md#soft-bodies) |
 
 ### Chapter 12: Flocks and swarms
 

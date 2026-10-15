@@ -1092,96 +1092,98 @@ c21e65b9ae05  Docs/Simulation/Evolution.md:100  cannot find 'run' in scope
 81876aa5dc17  Docs/Simulation/Evolution.md:154  cannot find 'pool' in scope
 eef31b546981  Docs/Simulation/Evolution.md:165  cannot find 'g' in scope
 bed84b18142a  Docs/Simulation/Fluids.md:95  cannot find 'fluid' in scope
-3945456f6f43  Docs/Simulation/Physics.md:115  expected '{' in body of function declaration
-c4ca46e5bfe3  Docs/Simulation/Physics.md:125  cannot find 'world' in scope
-c4ea2e26698f  Docs/Simulation/Physics.md:131  expected '{' to start getter definition
-d5ed456ba6e5  Docs/Simulation/Physics.md:150  cannot find 'p' in scope
-bffdb40ad03e  Docs/Simulation/Physics.md:161  cannot find 'world' in scope
-eb45be4f0ffa  Docs/Simulation/Physics.md:173  expected '{' to start getter definition
-d580cf59d5a2  Docs/Simulation/Physics.md:226  expected '{' to start getter definition
-9bfa60cd6177  Docs/Simulation/Physics.md:257  expected '{' to start getter definition
-6253db349910  Docs/Simulation/Physics.md:290  expected '{' in body of function declaration
-86b94c265567  Docs/Simulation/Physics.md:307  cannot find 'world' in scope
-ebf89e121588  Docs/Simulation/Physics.md:329  cannot find 'world' in scope
-a68dec35c447  Docs/Simulation/Physics.md:352  cannot find 'rim' in scope
+3945456f6f43  Docs/Simulation/Physics.md:117  expected '{' in body of function declaration
+c4ca46e5bfe3  Docs/Simulation/Physics.md:127  cannot find 'world' in scope
+c4ea2e26698f  Docs/Simulation/Physics.md:133  expected '{' to start getter definition
+d5ed456ba6e5  Docs/Simulation/Physics.md:152  cannot find 'p' in scope
+bffdb40ad03e  Docs/Simulation/Physics.md:163  cannot find 'world' in scope
+eb45be4f0ffa  Docs/Simulation/Physics.md:175  expected '{' to start getter definition
+d580cf59d5a2  Docs/Simulation/Physics.md:228  expected '{' to start getter definition
+9bfa60cd6177  Docs/Simulation/Physics.md:259  expected '{' to start getter definition
+6253db349910  Docs/Simulation/Physics.md:292  expected '{' in body of function declaration
+86b94c265567  Docs/Simulation/Physics.md:309  cannot find 'world' in scope
+7c09cb687069  Docs/Simulation/Physics.md:331  cannot find 'world' in scope
+52e7b06df81c  Docs/Simulation/Physics.md:350  expected '{' to start getter definition
+439f703fb34e  Docs/Simulation/Physics.md:375  cannot find 'world' in scope
+4fc1366c72ab  Docs/Simulation/Physics.md:383  expected '{' to start getter definition
 49989805e9fd  Docs/Simulation/Physics.md:70  expected '{' to start getter definition
-7d9cf5626b39  Docs/Simulation/Physics3D.md:101  cannot find 'world' in scope
-756218a29c46  Docs/Simulation/Physics3D.md:1026  cannot find 'banner' in scope
-a4bb3c3eb9e1  Docs/Simulation/Physics3D.md:1032  cannot find 'world' in scope
-0d0af9ed7cd9  Docs/Simulation/Physics3D.md:1051  cannot find 'raft' in scope
-03f3f086ea1e  Docs/Simulation/Physics3D.md:1072  cannot find 'world' in scope
-f800d4a84057  Docs/Simulation/Physics3D.md:1096  cannot find 'world' in scope
-a49b57cb0897  Docs/Simulation/Physics3D.md:1111  cannot find 'vine' in scope
-e477e4a22c18  Docs/Simulation/Physics3D.md:1122  cannot find 'chain' in scope
-885024abe204  Docs/Simulation/Physics3D.md:1148  cannot find 'world' in scope
-45f3af9ecc3f  Docs/Simulation/Physics3D.md:1164  cannot find 'cape' in scope
-6c967a731f05  Docs/Simulation/Physics3D.md:1204  cannot find 'world' in scope
-441ac42629e9  Docs/Simulation/Physics3D.md:121  value of type '@MainActor (Vector2, World3D) -> (body: Body3D, point: Vector3)?' has no member 'position'
-cc09bf811a57  Docs/Simulation/Physics3D.md:1210  cannot find 'world' in scope
-b79fb1ed7e14  Docs/Simulation/Physics3D.md:1236  cannot find 'world' in scope
-17d27515f7e2  Docs/Simulation/Physics3D.md:1243  cannot find 'world' in scope
-6f73212f90db  Docs/Simulation/Physics3D.md:1269  cannot find 'world' in scope
-39c7c5e9333b  Docs/Simulation/Physics3D.md:1279  cannot find 'world' in scope
-3cc8c5456a56  Docs/Simulation/Physics3D.md:1286  cannot find 'world' in scope
-5f32ffe4e0fd  Docs/Simulation/Physics3D.md:1315  cannot find 'world' in scope
-218a1812284f  Docs/Simulation/Physics3D.md:1337  cannot find 'world' in scope
-531ba2893ae7  Docs/Simulation/Physics3D.md:1348  cannot find 'world' in scope
-a0c1a7f4f588  Docs/Simulation/Physics3D.md:1383  cannot find 'world' in scope
-e088d7da566c  Docs/Simulation/Physics3D.md:140  value of type '@MainActor (Vector2, World3D) -> (body: Body3D, point: Vector3)?' has no member 'applyForce'
-e2cc71140483  Docs/Simulation/Physics3D.md:1411  cannot find 'world' in scope
-41ea676e013d  Docs/Simulation/Physics3D.md:1429  cannot find 'world' in scope
-051e1114d5bb  Docs/Simulation/Physics3D.md:1443  cannot find 'world' in scope
-d4a0dbf5b164  Docs/Simulation/Physics3D.md:1454  cannot find 'world' in scope
-68e9d5e140e2  Docs/Simulation/Physics3D.md:155  cannot find 'world' in scope
-8fee1a37e2c2  Docs/Simulation/Physics3D.md:168  cannot infer contextual base in reference to member 'all'
-85eb21177c8d  Docs/Simulation/Physics3D.md:182  cannot find 'balloon' in scope
-9e452047d32d  Docs/Simulation/Physics3D.md:189  cannot find 'world' in scope
-72161b5e4aef  Docs/Simulation/Physics3D.md:202  cannot find 'mesh' in scope
-68e2584a5d1e  Docs/Simulation/Physics3D.md:224  cannot find 'world' in scope
-71fb2d9b4d0d  Docs/Simulation/Physics3D.md:242  cannot find 'world' in scope
-672a91f9c047  Docs/Simulation/Physics3D.md:254  cannot find 'world' in scope
-7faa2659eef1  Docs/Simulation/Physics3D.md:267  cannot find 'world' in scope
-b9ce26196419  Docs/Simulation/Physics3D.md:280  cannot find 'world' in scope
-28398ee1ddcb  Docs/Simulation/Physics3D.md:304  cannot find 'world' in scope
-0e9e5c052b0b  Docs/Simulation/Physics3D.md:317  cannot find 'mill' in scope
-c0ee9aeeab6f  Docs/Simulation/Physics3D.md:325  cannot find 'door' in scope
-ac0c55cc42e4  Docs/Simulation/Physics3D.md:333  cannot find 'hinge' in scope
-4de59f3f885b  Docs/Simulation/Physics3D.md:342  cannot find 'neck' in scope
-f85203ef245a  Docs/Simulation/Physics3D.md:357  cannot find 'world' in scope
-acbc0dd17e61  Docs/Simulation/Physics3D.md:375  cannot find 'world' in scope
-85ef251a7d7b  Docs/Simulation/Physics3D.md:381  cannot find 'world' in scope
-936275d7580e  Docs/Simulation/Physics3D.md:391  cannot find 'world' in scope
-8c4eea21626a  Docs/Simulation/Physics3D.md:405  cannot find 'world' in scope
-aabfd4611ab0  Docs/Simulation/Physics3D.md:417  cannot find 'world' in scope
-43919ac2aec2  Docs/Simulation/Physics3D.md:426  cannot find 'world' in scope
-91b1fe1b34f3  Docs/Simulation/Physics3D.md:436  cannot find 'world' in scope
-f753b0aa5fce  Docs/Simulation/Physics3D.md:445  cannot find 'contact' in scope
-938941dc6e7a  Docs/Simulation/Physics3D.md:456  cannot find 'contact' in scope
-7ae2737557da  Docs/Simulation/Physics3D.md:464  cannot find 'ball' in scope
-4763fc671d94  Docs/Simulation/Physics3D.md:474  cannot find 'contact' in scope
-8a5601b5e7fe  Docs/Simulation/Physics3D.md:486  cannot find 'world' in scope
-49bd6bd56a8c  Docs/Simulation/Physics3D.md:499  cannot find 'world' in scope
-18d62222b348  Docs/Simulation/Physics3D.md:517  cannot find 'world' in scope
-2eb8e73e80bd  Docs/Simulation/Physics3D.md:528  cannot find 'world' in scope
-b90ac77c05ba  Docs/Simulation/Physics3D.md:542  cannot find 'world' in scope
-1d90f10a3081  Docs/Simulation/Physics3D.md:557  cannot find 'world' in scope
-98f3bd5f477b  Docs/Simulation/Physics3D.md:587  cannot find 'world' in scope
-546e3f5a4dc2  Docs/Simulation/Physics3D.md:599  cannot find 'world' in scope
-a84bb796be37  Docs/Simulation/Physics3D.md:610  cannot find 'world' in scope
-3579917d6daa  Docs/Simulation/Physics3D.md:621  cannot find 'world' in scope
-975d40f3d6fc  Docs/Simulation/Physics3D.md:696  cannot find 'walker' in scope
-ac5e7a80f3a3  Docs/Simulation/Physics3D.md:705  cannot find 'lookout' in scope
-9881daefdba2  Docs/Simulation/Physics3D.md:798  cannot find 'car' in scope
-700c012def75  Docs/Simulation/Physics3D.md:837  cannot find 'world' in scope
-eeea97d1d4fd  Docs/Simulation/Physics3D.md:859  cannot find 'world' in scope
-38e4d744020d  Docs/Simulation/Physics3D.md:874  cannot find 'crawler' in scope
-b7fd695b4659  Docs/Simulation/Physics3D.md:903  cannot find 'world' in scope
-805f2e28a82f  Docs/Simulation/Physics3D.md:926  cannot find 'ragdoll' in scope
-760fc0332382  Docs/Simulation/Physics3D.md:938  cannot find 'target' in scope
-9ecccded5c73  Docs/Simulation/Physics3D.md:953  cannot find 'world' in scope
-00aae249a703  Docs/Simulation/Physics3D.md:960  cannot find 'world' in scope
-b2f4a4fbb63c  Docs/Simulation/Physics3D.md:981  cannot find 'world' in scope
-ce33e138b1e4  Docs/Simulation/Physics3D.md:998  cannot find 'cloth' in scope
+ce33e138b1e4  Docs/Simulation/Physics3D.md:1000  cannot find 'cloth' in scope
+756218a29c46  Docs/Simulation/Physics3D.md:1028  cannot find 'banner' in scope
+7d9cf5626b39  Docs/Simulation/Physics3D.md:103  cannot find 'world' in scope
+a4bb3c3eb9e1  Docs/Simulation/Physics3D.md:1034  cannot find 'world' in scope
+0d0af9ed7cd9  Docs/Simulation/Physics3D.md:1053  cannot find 'raft' in scope
+03f3f086ea1e  Docs/Simulation/Physics3D.md:1074  cannot find 'world' in scope
+f800d4a84057  Docs/Simulation/Physics3D.md:1098  cannot find 'world' in scope
+a49b57cb0897  Docs/Simulation/Physics3D.md:1113  cannot find 'vine' in scope
+e477e4a22c18  Docs/Simulation/Physics3D.md:1124  cannot find 'chain' in scope
+885024abe204  Docs/Simulation/Physics3D.md:1150  cannot find 'world' in scope
+45f3af9ecc3f  Docs/Simulation/Physics3D.md:1166  cannot find 'cape' in scope
+6c967a731f05  Docs/Simulation/Physics3D.md:1206  cannot find 'world' in scope
+cc09bf811a57  Docs/Simulation/Physics3D.md:1212  cannot find 'world' in scope
+441ac42629e9  Docs/Simulation/Physics3D.md:123  value of type '@MainActor (Vector2, World3D) -> (body: Body3D, point: Vector3)?' has no member 'position'
+b79fb1ed7e14  Docs/Simulation/Physics3D.md:1238  cannot find 'world' in scope
+17d27515f7e2  Docs/Simulation/Physics3D.md:1245  cannot find 'world' in scope
+6f73212f90db  Docs/Simulation/Physics3D.md:1271  cannot find 'world' in scope
+39c7c5e9333b  Docs/Simulation/Physics3D.md:1281  cannot find 'world' in scope
+3cc8c5456a56  Docs/Simulation/Physics3D.md:1288  cannot find 'world' in scope
+5f32ffe4e0fd  Docs/Simulation/Physics3D.md:1317  cannot find 'world' in scope
+218a1812284f  Docs/Simulation/Physics3D.md:1339  cannot find 'world' in scope
+531ba2893ae7  Docs/Simulation/Physics3D.md:1350  cannot find 'world' in scope
+a0c1a7f4f588  Docs/Simulation/Physics3D.md:1385  cannot find 'world' in scope
+e2cc71140483  Docs/Simulation/Physics3D.md:1413  cannot find 'world' in scope
+e088d7da566c  Docs/Simulation/Physics3D.md:142  value of type '@MainActor (Vector2, World3D) -> (body: Body3D, point: Vector3)?' has no member 'applyForce'
+41ea676e013d  Docs/Simulation/Physics3D.md:1431  cannot find 'world' in scope
+051e1114d5bb  Docs/Simulation/Physics3D.md:1445  cannot find 'world' in scope
+d4a0dbf5b164  Docs/Simulation/Physics3D.md:1456  cannot find 'world' in scope
+68e9d5e140e2  Docs/Simulation/Physics3D.md:157  cannot find 'world' in scope
+8fee1a37e2c2  Docs/Simulation/Physics3D.md:170  cannot infer contextual base in reference to member 'all'
+85eb21177c8d  Docs/Simulation/Physics3D.md:184  cannot find 'balloon' in scope
+9e452047d32d  Docs/Simulation/Physics3D.md:191  cannot find 'world' in scope
+72161b5e4aef  Docs/Simulation/Physics3D.md:204  cannot find 'mesh' in scope
+68e2584a5d1e  Docs/Simulation/Physics3D.md:226  cannot find 'world' in scope
+71fb2d9b4d0d  Docs/Simulation/Physics3D.md:244  cannot find 'world' in scope
+672a91f9c047  Docs/Simulation/Physics3D.md:256  cannot find 'world' in scope
+7faa2659eef1  Docs/Simulation/Physics3D.md:269  cannot find 'world' in scope
+b9ce26196419  Docs/Simulation/Physics3D.md:282  cannot find 'world' in scope
+28398ee1ddcb  Docs/Simulation/Physics3D.md:306  cannot find 'world' in scope
+0e9e5c052b0b  Docs/Simulation/Physics3D.md:319  cannot find 'mill' in scope
+c0ee9aeeab6f  Docs/Simulation/Physics3D.md:327  cannot find 'door' in scope
+ac0c55cc42e4  Docs/Simulation/Physics3D.md:335  cannot find 'hinge' in scope
+4de59f3f885b  Docs/Simulation/Physics3D.md:344  cannot find 'neck' in scope
+f85203ef245a  Docs/Simulation/Physics3D.md:359  cannot find 'world' in scope
+acbc0dd17e61  Docs/Simulation/Physics3D.md:377  cannot find 'world' in scope
+85ef251a7d7b  Docs/Simulation/Physics3D.md:383  cannot find 'world' in scope
+936275d7580e  Docs/Simulation/Physics3D.md:393  cannot find 'world' in scope
+8c4eea21626a  Docs/Simulation/Physics3D.md:407  cannot find 'world' in scope
+aabfd4611ab0  Docs/Simulation/Physics3D.md:419  cannot find 'world' in scope
+43919ac2aec2  Docs/Simulation/Physics3D.md:428  cannot find 'world' in scope
+91b1fe1b34f3  Docs/Simulation/Physics3D.md:438  cannot find 'world' in scope
+f753b0aa5fce  Docs/Simulation/Physics3D.md:447  cannot find 'contact' in scope
+938941dc6e7a  Docs/Simulation/Physics3D.md:458  cannot find 'contact' in scope
+7ae2737557da  Docs/Simulation/Physics3D.md:466  cannot find 'ball' in scope
+4763fc671d94  Docs/Simulation/Physics3D.md:476  cannot find 'contact' in scope
+8a5601b5e7fe  Docs/Simulation/Physics3D.md:488  cannot find 'world' in scope
+49bd6bd56a8c  Docs/Simulation/Physics3D.md:501  cannot find 'world' in scope
+18d62222b348  Docs/Simulation/Physics3D.md:519  cannot find 'world' in scope
+2eb8e73e80bd  Docs/Simulation/Physics3D.md:530  cannot find 'world' in scope
+b90ac77c05ba  Docs/Simulation/Physics3D.md:544  cannot find 'world' in scope
+1d90f10a3081  Docs/Simulation/Physics3D.md:559  cannot find 'world' in scope
+98f3bd5f477b  Docs/Simulation/Physics3D.md:589  cannot find 'world' in scope
+546e3f5a4dc2  Docs/Simulation/Physics3D.md:601  cannot find 'world' in scope
+a84bb796be37  Docs/Simulation/Physics3D.md:612  cannot find 'world' in scope
+3579917d6daa  Docs/Simulation/Physics3D.md:623  cannot find 'world' in scope
+975d40f3d6fc  Docs/Simulation/Physics3D.md:698  cannot find 'walker' in scope
+ac5e7a80f3a3  Docs/Simulation/Physics3D.md:707  cannot find 'lookout' in scope
+9881daefdba2  Docs/Simulation/Physics3D.md:800  cannot find 'car' in scope
+700c012def75  Docs/Simulation/Physics3D.md:839  cannot find 'world' in scope
+eeea97d1d4fd  Docs/Simulation/Physics3D.md:861  cannot find 'world' in scope
+38e4d744020d  Docs/Simulation/Physics3D.md:876  cannot find 'crawler' in scope
+b7fd695b4659  Docs/Simulation/Physics3D.md:905  cannot find 'world' in scope
+805f2e28a82f  Docs/Simulation/Physics3D.md:928  cannot find 'ragdoll' in scope
+760fc0332382  Docs/Simulation/Physics3D.md:940  cannot find 'target' in scope
+9ecccded5c73  Docs/Simulation/Physics3D.md:955  cannot find 'world' in scope
+00aae249a703  Docs/Simulation/Physics3D.md:962  cannot find 'world' in scope
+b2f4a4fbb63c  Docs/Simulation/Physics3D.md:983  cannot find 'world' in scope
 d6f918371d6d  Docs/Simulation/Swarm.md:70  cannot find 'prey' in scope
 ac82ff8cc8b3  Docs/Simulation/Watercolor.md:71  cannot find 'paint' in scope
 8be07018e588  Docs/Swift.md:198  cannot find 'particles' in scope

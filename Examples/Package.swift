@@ -767,7 +767,7 @@ let package = Package(
         // the round trip shows with no sensor in the house. Needs a broker.
         example("Integration/MQTTRoom", [.mqtt]),
         // Physics — a Verlet world stepped each frame. Packing is a field of
-        // colliding discs; Blobs are spring-built soft bodies that squish.
+        // colliding discs; Blobs are soft bodies made from outlines that squish.
         example("Physics/Packing", [.physics]),
         example("Physics/Blobs", [.physics]),
         example("Physics/RigidBodies", [.physics]),

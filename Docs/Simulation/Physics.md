@@ -53,7 +53,7 @@ Gravity pulls the discs down, the walls stop them, and `particlesCollide` keeps 
 - [Spring](#spring) - a distance link between two particles (cloth, chains, soft bodies)
 - [Rigid bodies](#rigid-bodies) - `Body`, colliders, surface properties, and joints (the Box2D side)
 - [How the solver works](#how-the-solver-works) - Verlet integration and relaxation, in one paragraph
-- [Soft bodies](#soft-bodies) - building a squishy blob from springs
+- [Soft bodies](#soft-bodies) - a squishy body from any outline, in one call
 
 <a name="world"></a>
 
@@ -81,6 +81,8 @@ var particles: [Particle] { get }
 var springs: [Spring] { get }
 ```
 
+A [soft body](#soft-bodies) made from an outline has its own `addSoftBody(from:)`, `remove(_:)`, and `softBodies`.
+
 `remove(_ body:)` takes one rigid body out along with any joints holding it. The `Body` value is spent afterwards, so read anything you still need from it (its velocity, its angle) **before** the call and drop your reference to it after: a shard that inherits the motion of the thing it came from is the everyday case, and that is a read of a body about to leave. See [breaking things](../Generators/Fracture.md#bodies).
 
 `addParticle` returns the new [`Particle`](#particle), so you can pin it, push it, or connect it to a spring. A `radius` of `0` (the default) makes a point that does not collide. A positive radius makes the particle collide as a disk. `connect` links two particles with a [`Spring`](#spring). By default the spring's rest length is the distance between the two particles at that moment.
@@ -100,7 +102,7 @@ var maxTimestep: Double = 1.0 / 30       // clamp on dt, for stability
 
 - **`gravity`** is a constant acceleration on every unpinned particle. Set it to `.zero` for a weightless field where everything floats freely.
 - **`drag`** stands in for air friction. At `0` motion is conserved, so things drift forever. A small value removes energy, so things settle. It is the share of speed lost every sixtieth of a second, whatever the frame rate: the default of `0.01` removes 45% of a particle's speed in a second at 30, 60, or 120 frames a second alike. A rigid [`Body`](#rigid-bodies) reads the same number, on its speed and on its spin. Set it at any time, since a change reaches every body already in the world.
-- **`bounds`** keeps particles inside a rectangle, and it accounts for each particle's `radius`. `restitution` then sets how much speed a particle keeps when it hits a wall. At `0` the particle sticks, and at `1` it loses nothing at the wall, though `drag` still takes its share in flight. It is also what a rigid body gets when `addBody` names none.
+- **`bounds`** keeps particles inside a rectangle, and it accounts for each particle's `radius`. `restitution` then sets how much speed a particle keeps when it hits a wall. At `0` the particle sticks, and at `1` it loses nothing at the wall, though `drag` still takes its share in flight. It is also what a rigid body gets when `addBody` names none. A [soft body](#soft-bodies) bounces off a wall by its own give instead, so `restitution` does not reach it.
 - **`particlesCollide`** turns on disk-against-disk separation. The broad phase runs through a spatial hash, so it scales to thousands of bodies. It is off by default for two reasons. A cloth should not have its own points collide, and the check costs a pass every frame. Turn it on for packings and piles. Points with `radius == 0` never collide.
 - **`iterations`** is how many relaxation passes the solver runs to hold springs and collisions together. More passes make stiff stacks and tight packings firmer, and the cost grows linearly with the count.
 - **`substeps`** cuts each step into pieces, each integrated and relaxed on its own. A bob on a rod gives back only 70% of its height on its first swing at one piece a frame, because projecting a step onto the rod drops the share of the motion that pointed along it. The loss shrinks in proportion to the count: 98% at sixteen pieces, and at sixty-four the bob holds its height within 5% for ten seconds. The cost grows with the count, so it is for a pendulum or a chain of a few particles rather than a pile.
@@ -324,33 +326,95 @@ Each step first integrates every particle forward. The integration is time-corre
 
 ### Soft bodies
 
-A soft blob is built from three parts: a hub particle, spokes out to a ring of rim particles, and springs around the rim. Loose spokes let the blob deform. The rim springs keep it roughly round. Give the rim particles a radius and set `world.particlesCollide = true`, and then blobs no longer pass through each other.
+A soft body is a squishy thing made from an outline. Hand `addSoftBody(from:)` any closed `Shape`, such as a lumpy circle, a star, or a letter, and it puts a ring of particles round the outline. The ring keeps the area it was made with, its corners keep their angle, and it springs back toward its own shape. Other soft bodies cannot get inside it, so a pile of them squashes together instead of overlapping.
 
 ```swift
-func makeBlob(at center: Vector2, radius: Double) -> [Particle] {
-    let sides = 16
-    let hub = world.addParticle(at: center, mass: 3)
-    let rimRadius = radius * sin(.pi / Double(sides))   // adjacent rims just touch
+let disc = Circle(center: Vector2(540, 300), radius: 120)
+let blob = try world.addSoftBody(from: Shape(contours: [disc.contour]))
 
-    var rim: [Particle] = []
-    for s in 0 ..< sides {
-        let angle = Double(s) / Double(sides) * .tau
-        let p = world.addParticle(at: center + Vector2(angle: angle, length: radius),
-                                  radius: rimRadius)
-        rim.append(p)
-        world.connect(hub, p, stiffness: 0.2)            // spoke (springy)
-    }
-    for s in 0 ..< sides {
-        world.connect(rim[s], rim[(s + 1) % sides], stiffness: 0.6)   // rim ring
-    }
-    return rim
+// each frame:
+world.advance(by: deltaTime)
+fill(.orange)
+drawShape(blob.shape)
+```
+
+The particles go where the shape's points are, so build the shape where the body should start. They are ordinary particles in `world.particles`, so gravity, `drag`, `bounds`, and a sketch's own `push(_:)` reach them as they reach any other.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/11-ForcesAndPhysics/SoftShapes-dark.jpg">
+  <img src="../../Guide/Images/11-ForcesAndPhysics/SoftShapes.jpg" alt="A box with soft shapes on its floor: a star, the letters S, O, F, and T with the F and T tipped onto their sides, and a lumpy blob, each squashed a little where it presses on the floor and its neighbors, the O keeping its counter open" width="680">
+</picture>
+
+**Building one**
+
+```swift
+@discardableResult
+func addSoftBody(from shape: Shape, mass: Double = 1, spacing: Double = 8,
+                 stiffness: Double = 0.8, bend: Double = 0.2,
+                 pressure: Double = .infinity, shapeMemory: Double = 0.3) throws -> SoftBody
+func remove(_ body: SoftBody)
+var softBodies: [SoftBody] { get }
+```
+
+- **`spacing`** is the distance between neighboring particles along the outline, in points. Every corner sharper than 30 degrees gets a particle of its own, and each side between two corners is cut evenly, so a star keeps its points and a square its corners. A finer spacing follows a detailed outline more closely. The cost grows with the count.
+- **`stiffness`** is how hard the outline resists stretching. At `1` it cannot stretch at all. At `0.5` it stretches by about a tenth of its length when it holds its own weight.
+- **`bend`** is how hard each corner resists folding. Each particle is linked to the particles two and three places along the ring, so a corner keeps its angle. A long straight side can still bow, and `shapeMemory` is what holds it.
+- **`pressure`** is how firmly the body holds its area, in gravities. The default, `.infinity`, holds the area whatever presses on it. A finite value lets the body's own weight press out about `1 / pressure` of its area when nothing else holds the shape: on a slack outline (`stiffness: 0.5`, `shapeMemory: 0`), `50` gives up 2%, `20` about 5%, and `5` about a seventh. A stiff outline with shape memory keeps its area by keeping its shape, so there `pressure` changes little. At `0` nothing holds the area, and a slack outline crumples like a loose loop of string.
+- **`shapeMemory`** is how strongly the body springs back toward its own shape, turned and moved to where the body is now (shape matching). Dropped from its own height onto the floor, a disc squashes by a third of its height at `0`, by a tenth at the default `0.3`, and by under 4% at `0.9`. At `1` the body is rigid.
+
+Each setting is a compliance, an amount of give for a given load, rather than a share of the error fixed on each pass. That is why a setting means the same body at any frame rate and any `iterations`: a soft disc sagging under its own weight settles to the same height within 2% at 30, 60, 120, and 240 frames a second. More `iterations` or `substeps` still bring a stiff body closer to what its settings ask for.
+
+`addSoftBody` throws `PhysicsError.unbuildable` for a shape it cannot build from: one with no closed outline that encloses any area, a point that is not a number, or a mass or spacing of zero or less.
+
+**Holes and pieces**
+
+The shape's fill decides what the body is, read under the shape's own winding rule, so a contour inside another is a hole. A letter "O" makes one body with an open counter. Each ring keeps its own area, so the counter stays open rather than collapsing while the outline shrinks to match, and the rings never cross each other.
+
+A shape with several separate pieces, such as the dot and the stem of an "i" or a whole word, makes one body whose pieces hold together through `shapeMemory`. To let each piece go its own way, give each its own body:
+
+```swift
+for letter in textToShapes("soft", 540, 300) {
+    try world.addSoftBody(from: letter)
 }
 ```
 
-Draw the rim as a smooth filled outline, and you have a wobbling jelly:
+**Reading and moving it**
 
 ```swift
-drawCurve(rim.map(\.position), closed: true)
+var shape: Shape { get }              // the outline now, one contour per ring
+var area: Double { get }              // the area now, holes taken out
+var restArea: Double                  // the area it holds; set it to inflate
+var center: Vector2 { get }           // the average of its particles
+var velocity: Vector2 { get }         // their average velocity, per step
+let particles: [Particle]             // every particle, ring after ring
+let mass: Double
+var stiffness: Double                 // the four settings, which can change while it runs
+var bend: Double
+var pressure: Double
+var shapeMemory: Double
+var userData: Any?
+
+func contains(_ point: Vector2) -> Bool
+func push(_ amount: Vector2)
+func applyForce(_ force: Vector2)
+func move(by offset: Vector2)
 ```
 
-See the `Blobs` and `Packing` examples for complete sketches.
+`shape` has straight edges between particles, which keeps a star's points sharp. For a rounder look, draw each ring as a smooth curve, as `drawCurve(blob.shape.contours[0].points, closed: true)` does. Set `restArea` above what the body was made with to inflate it, or below to let the air out; one driven by `sin(time)` makes a blob that breathes.
+
+`push(_:)` adds the same velocity to every particle, and `applyForce(_:)` spreads a force over them so the body as a whole accelerates by force over mass. `move(by:)` shifts the body without changing its motion. To grab or poke one spot, move its particles, which are in `particles`.
+
+**What touches it**
+
+- Other soft bodies, and the separate pieces of one body, never get inside each other. Three bodies piled up sit within a pixel of each other's outlines through the whole fall.
+- With `particlesCollide` on, every loose particle with a positive radius is pushed out of every soft body by its radius. A soft body's own particles have no radius and never collide as disks.
+- The walls of `bounds` hold a soft body's particles by position, and the body bounces by its own give. A weightless blob gliding into a wall comes off at about half its speed at the defaults, whatever `restitution` says.
+- Rigid `Body`s pass through soft bodies, and a soft body does not collide with itself. Nothing rubs: there is no friction between soft bodies or against the walls, so a ball dropped on a blob rolls off.
+
+Contacts are the costly part. Each pair of bodies whose boxes overlap checks every particle of one against the other's outline. Nine blobs of about sixty particles each, piled together, step in about 4 ms a frame in a release build.
+
+**By hand**
+
+`addSoftBody` is built from particles and position constraints, the same parts as the rest of the world. For a structure no outline describes, link the particles yourself with `connect`. A ring of particles with springs round the rim and slack spokes to a hub is a blob, and giving the rim particles a radius with `particlesCollide` on keeps two such blobs apart.
+
+See the `Blobs` example for a complete sketch, with nine lumpy blobs sloshing under a gravity that swings from side to side.

@@ -43,6 +43,10 @@ public final class World {
     /// Every spring in the simulation.
     public private(set) var springs: [Spring] = []
 
+    /// Every soft body in the simulation, in the order added. Their particles
+    /// are in `particles` too.
+    public internal(set) var softBodies: [SoftBody] = []
+
     /// Constant acceleration applied to every (unpinned) particle, in points per
     /// second². The default pulls down the screen (y-down). Set `.zero` for a
     /// free-floating, gravity-less field.
@@ -210,16 +214,38 @@ public final class World {
         springs.removeAll { $0 === spring }
     }
 
-    /// Remove a particle and any springs attached to it.
+    /// Remove a particle and any springs attached to it. A particle that is
+    /// part of a soft body takes the whole body with it, since a ring with a
+    /// gap in it is no longer an outline.
     public func remove(_ particle: Particle) {
+        if let body = particle.softBody {
+            remove(body)
+            return
+        }
         springs.removeAll { $0.a === particle || $0.b === particle }
         particles.removeAll { $0 === particle }
+    }
+
+    /// Take a soft body out of the world, with its particles and any springs
+    /// a sketch attached to them.
+    public func remove(_ body: SoftBody) {
+        guard softBodies.contains(where: { $0 === body }) else { return }
+        softBodies.removeAll { $0 === body }
+        springs.removeAll { $0.a.softBody === body || $0.b.softBody === body }
+        particles.removeAll { $0.softBody === body }
+    }
+
+    /// Add a soft body built elsewhere: its particles join `particles`.
+    func register(_ body: SoftBody) {
+        particles.append(contentsOf: body.particles)
+        softBodies.append(body)
     }
 
     /// Empty the world.
     public func removeAll() {
         particles.removeAll()
         springs.removeAll()
+        softBodies.removeAll()
         // Joints before bodies: destroying a body would invalidate its joints.
         for joint in joints { b2DestroyJoint(joint.id) }
         joints.removeAll()
@@ -269,11 +295,20 @@ public final class World {
         }
         lastTimestep = h
 
+        for body in softBodies { body.begin(step: h) }
         for _ in 0 ..< Swift.max(1, iterations) {
             for spring in springs { spring.solve() }
+            for body in softBodies { body.solve() }
             if particlesCollide { solveCollisions() }
+            if !softBodies.isEmpty { solveSoftContacts() }
             if bounds != nil {
-                for particle in particles { constrainToBounds(particle) }
+                for particle in particles {
+                    if particle.softBody == nil {
+                        constrainToBounds(particle)
+                    } else {
+                        holdInsideBounds(particle)
+                    }
+                }
             }
         }
     }
@@ -380,6 +415,20 @@ public final class World {
         let overlap = minDistance - distance
         a.position -= normal * (overlap * (wA / wSum))
         b.position += normal * (overlap * (wB / wSum))
+    }
+
+    /// Keep a soft body's particle inside `bounds` by its position alone. The
+    /// walls run once a pass, and the body's own constraints pull a particle
+    /// back against them between passes, so reflecting its velocity each time
+    /// (as a loose particle's is) reflects a velocity already reflected. A
+    /// soft body bounces off a wall by its own give instead. A reflection
+    /// settled once after the passes changes nothing measurable either, since
+    /// the particles behind a landing one carry it straight back against the
+    /// wall on the next step (ARCHITECTURE.md, *The 2D soft body*).
+    private func holdInsideBounds(_ p: Particle) {
+        guard let bounds else { return }
+        p.position = Vector2(Swift.min(Swift.max(p.position.x, bounds.x), bounds.x + bounds.width),
+                             Swift.min(Swift.max(p.position.y, bounds.y), bounds.y + bounds.height))
     }
 
     /// Keep a particle inside `bounds`, reflecting its implicit velocity by

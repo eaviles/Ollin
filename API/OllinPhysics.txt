@@ -242,6 +242,23 @@ final class Rope3D: SoftBody3D, Colliding3D
   var segmentCount: Int { get }
   var segments: [RopeSegment3D] { get }
   var sides: Int { get set }
+final class SoftBody
+  func applyForce(_: Vector2)
+  func contains(_: Vector2) -> Bool
+  func move(by: Vector2)
+  func push(_: Vector2)
+  let mass: Double
+  let particles: [Particle]
+  var area: Double { get }
+  var bend: Double { get set }
+  var center: Vector2 { get }
+  var pressure: Double { get set }
+  var restArea: Double { get set }
+  var shape: Shape { get }
+  var shapeMemory: Double { get set }
+  var stiffness: Double { get set }
+  var userData: Any? { get set }
+  var velocity: Vector2 { get }
 final class Spring
   init(_: Particle, _: Particle, length: Double? = default, stiffness: Double = default)
   let a: Particle
@@ -333,12 +350,14 @@ final class Wheel3D
 final class World
   @discardableResult func addBody(_: Collider, at: Vector2, kind: Body.Kind = default, density: Double = default, friction: Double = default, restitution: Double? = default) -> Body
   @discardableResult func addParticle(at: Vector2, radius: Double = default, mass: Double = default) -> Particle
+  @discardableResult func addSoftBody(from: Shape, mass: Double = default, spacing: Double = default, stiffness: Double = default, bend: Double = default, pressure: Double = default, shapeMemory: Double = default) throws -> SoftBody
   @discardableResult func connect(_: Body, _: Body, _: JointKind) -> Joint
   @discardableResult func connect(_: Particle, _: Particle, length: Double? = default, stiffness: Double = default) -> Spring
   @discardableResult func grab(_: Body, at: Vector2) -> Joint
   func advance(by: Double)
   func remove(_: Body)
   func remove(_: Particle)
+  func remove(_: SoftBody)
   func remove(_: Spring)
   func removeAll()
   init()
@@ -352,6 +371,7 @@ final class World
   var particles: [Particle] { get }
   var particlesCollide: Bool { get set }
   var restitution: Double { get set }
+  var softBodies: [SoftBody] { get }
   var springs: [Spring] { get }
   var substeps: Int { get set }
   var unitsPerMeter: Double { get set }

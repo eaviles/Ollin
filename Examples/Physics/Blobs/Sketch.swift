@@ -2,34 +2,25 @@ import Foundation
 import Ollin
 import OllinPhysics
 
-/// Soft-body blobs built entirely from `OllinPhysics` springs: each blob is a
-/// hub particle with spokes out to a ring of rim particles, plus springs around
-/// the rim. The spokes are slack enough to let the blob squish, the rim springs
-/// hold it roughly round, and the rim particles collide so blobs don't pass
-/// through each other or the walls.
+/// Nine soft blobs in a box, each made from its outline in one call. Gravity
+/// swings slowly from side to side, so the pile sloshes across the floor: the
+/// blobs squash against the walls and each other, keep their area, and spring
+/// back toward their own lumpy shapes. **Move the mouse** through them to
+/// shove them around.
 ///
-/// They float weightlessly and drift, bouncing off the edges — and the **cursor
-/// shoves them around**: particles near the mouse are pushed away, so you sweep
-/// through the field and the blobs squish, scatter, and flow back. Move the mouse
-/// over the window to play with them.
-///
-/// This is the springs-and-collision showcase, and it renders each blob as a
-/// smooth filled `drawCurve` through its rim particles — so the soft-body outline
-/// goes through Ollin's curved-shape path while the motion comes from the simulation.
+/// Each blob starts as a `Shape`, a circle whose radius wanders with looping
+/// noise, and `addSoftBody(from:)` turns it into a ring of particles that
+/// holds its area and keeps every other outline out. The blob draws from its
+/// own particles as a smooth closed curve, so what you see is exactly what
+/// the simulation holds.
 @main
 final class Blobs: Sketch {
     let world = World()
 
-    /// One soft body: the particles that make it and the color it draws in.
-    final class Blob {
-        let rim: [Particle]
+    /// One blob: the body and the color it draws in.
+    struct Blob {
+        let body: SoftBody
         let color: Color
-        init(rim: [Particle], color: Color) {
-            self.rim = rim
-            self.color = color
-        }
-        var outline: [Vector2] { rim.map(\.position) }
-        var center: Vector2 { rim.reduce(.zero) { $0 + $1.position } / Double(rim.count) }
     }
 
     var blobs: [Blob] = []
@@ -46,75 +37,65 @@ final class Blobs: Sketch {
         Color(red: 0.55, green: 0.80, blue: 0.86)    // aqua
     ]
 
-    override func setup() {
-        world.gravity = .zero              // weightless — they float and drift
-        world.drag = 0                     // keep drifting forever
-        world.restitution = 0.85
-        world.particlesCollide = true
-        world.iterations = 12              // soft bodies want a few passes to hold
+    override func setup() throws {
         world.bounds = bounds
+        world.drag = 0.02
 
-        for color in palette {
-            let radius = random(58, 104) * scale
-            let at = Vector2(random(radius, width - radius), random(radius, height - radius))
-            let drift = Vector2(angle: random(.tau), length: random(0.5, 1.6) * scale)
-            blobs.append(makeBlob(at: at, radius: radius, color: color, drift: drift))
+        // Three rows of three, each blob a lumpy circle of its own.
+        for (k, color) in palette.enumerated() {
+            let radius = random(95, 135) * scale
+            let center = Vector2((Double(k % 3) + 0.5) * width / 3,
+                                 (Double(k / 3) + 0.5) * height / 3.6)
+            let lumpiness = random(0.1, 0.3)
+            let seed = random(100)
+            let outline = (0 ..< 64).map { i in
+                let turn = Double(i) / 64
+                let wobble = 1 + lumpiness * (noise(seed, loop: turn) - 0.5) * 2
+                return center + Vector2(angle: turn * .tau, length: radius * wobble)
+            }
+            let body = try world.addSoftBody(from: Shape(outline), spacing: 10 * scale,
+                                             stiffness: 0.7, shapeMemory: 0.15)
+            blobs.append(Blob(body: body, color: color))
         }
-    }
-
-    /// Build a blob: a hub plus a ring of rim particles, wired with spokes and
-    /// rim springs, given an initial drift, all added to the world.
-    func makeBlob(at center: Vector2, radius: Double, color: Color, drift: Vector2) -> Blob {
-        let sides = 16
-        let hub = world.addParticle(at: center, radius: 0, mass: 3)
-        hub.push(drift)
-
-        let rimRadius = radius * sin(.pi / Double(sides))   // adjacent rims just touch
-        var rim: [Particle] = []
-        for s in 0 ..< sides {
-            let angle = Double(s) / Double(sides) * .tau
-            let p = world.addParticle(at: center + Vector2(angle: angle, length: radius),
-                                      radius: rimRadius, mass: 1)
-            p.push(drift)
-            rim.append(p)
-            world.connect(hub, p, stiffness: 0.2)            // spoke (springy)
-        }
-        for s in 0 ..< sides {
-            world.connect(rim[s], rim[(s + 1) % sides], stiffness: 0.6)   // rim ring
-        }
-        return Blob(rim: rim, color: color)
     }
 
     override func draw() {
         background(Color(white: 0.1))
-        repelFromCursor()
+
+        // Down, swinging half a right angle either way every twenty seconds.
+        let tilt = sin(time * .tau / 20) * .pi / 4
+        world.gravity = Vector2(angle: .pi / 2 + tilt, length: 1400 * scale)
+        shoveFromCursor()
         world.advance(by: deltaTime)
 
         strokeWeight(2 * scale)
+        stroke(Color(white: 0, alpha: 0.25))
         for blob in blobs {
             fill(blob.color)
-            stroke(Color(white: 0, alpha: 0.25))
-            drawCurve(blob.outline, closed: true)
+            drawCurve(blob.body.shape.contours[0].points, closed: true)
+        }
 
-            // A soft highlight so the blobs read as glossy.
-            noStroke()
-            fill(Color(white: 1, alpha: 0.18))
-            drawCircle(center: blob.center + Vector2(0, -8 * scale), radius: 10 * scale)
+        // A soft highlight so the blobs read as glossy.
+        noStroke()
+        fill(Color(white: 1, alpha: 0.18))
+        for blob in blobs {
+            drawCircle(center: blob.body.center + Vector2(-14, -18) * scale, radius: 12 * scale)
         }
     }
 
-    /// Push particles away from the mouse, falling off with distance, so sweeping
-    /// the cursor scatters the blobs.
-    func repelFromCursor() {
-        guard mouseX != 0 || mouseY != 0 else { return }   // mouse hasn't moved yet
-        let cursor = mouse
-        let reach = 180 * scale
-        for p in world.particles {
-            let away = p.position - cursor
-            let d = away.length
-            guard d > 0, d < reach else { continue }
-            let falloff = 1 - d / reach
-            p.push(away.normalized * (falloff * falloff * 9 * scale))
+    /// Push particles away from the mouse, falling off with distance, so a
+    /// sweep of the cursor scatters the blobs.
+    func shoveFromCursor() {
+        guard mouseX != 0 || mouseY != 0 else { return }   // the mouse has not moved yet
+        let reach = 160 * scale
+        for blob in blobs {
+            for p in blob.body.particles {
+                let away = p.position - mouse
+                let distance = away.length
+                guard distance > 0, distance < reach else { continue }
+                let falloff = 1 - distance / reach
+                p.push(away.normalized * (falloff * falloff * 6 * scale))
+            }
         }
     }
 }

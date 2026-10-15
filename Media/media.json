@@ -8005,26 +8005,26 @@
       "width": 1080
     },
     "Physics/Blobs": {
-      "bytes": {
-        "loop": 1631671,
-        "loopSmall": 272698,
-        "still": 54175,
-        "stillSmall": 21873
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "10.0s",
-      "loop": "examples/Physics/Blobs/loop.mp4?v=80ae8efe",
-      "loopSmall": "examples/Physics/Blobs/loop-640.mp4?v=f4346ea8",
-      "motion": 21.599,
-      "rendered": "2026-09-26",
       "seconds": 10.0,
-      "seed": 1,
+      "frame": 480,
+      "motion": 63.34,
       "sound": false,
-      "source": "4562865e8588a539",
-      "still": "examples/Physics/Blobs/still.jpg?v=18dd6930",
-      "stillSmall": "examples/Physics/Blobs/still-640.jpg?v=00de6b49",
-      "width": 1080
+      "source": "698504602ad528d3",
+      "rendered": "2026-10-15",
+      "bytes": {
+        "loop": 1778421,
+        "loopSmall": 303658,
+        "still": 59253,
+        "stillSmall": 23019
+      },
+      "loop": "examples/Physics/Blobs/loop.mp4?v=53954e46",
+      "loopSmall": "examples/Physics/Blobs/loop-640.mp4?v=2ee6f51e",
+      "still": "examples/Physics/Blobs/still.jpg?v=7c1ab199",
+      "stillSmall": "examples/Physics/Blobs/still-640.jpg?v=020a9332",
+      "seed": 1
     },
     "Physics/Burst": {
       "width": 1080,

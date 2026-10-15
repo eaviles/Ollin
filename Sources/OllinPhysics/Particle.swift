@@ -52,6 +52,10 @@ public final class Particle {
     /// a color, a group id) without a parallel array.
     public var userData: Any?
 
+    /// The soft body this particle is part of, if any: what tells the contact
+    /// pass not to push a body's own particles out of it.
+    weak var softBody: SoftBody?
+
     /// Create a particle at `position`.
     /// - Parameters:
     ///   - position: starting location, in sketch points.

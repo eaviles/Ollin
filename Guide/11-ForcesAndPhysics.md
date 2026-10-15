@@ -6,7 +6,7 @@
 
 <img src="Images/11-ForcesAndPhysics/Wrecker.jpg" alt="A wrecking ball on a chain of gray links hung from a peg near the top, the chain running down and to the right into a tower of colored bricks: three bricks shattered into shards flying to the right, the top brick flung whole above them, and the five below leaning right as one column" width="560">
 
-Things in the world fall, drift, and swing because forces push on them, and a sketch can push its shapes the same way. This chapter writes gravity, wind, and drag by hand, then hands the job to a physics world of bodies, springs, hinges, and pieces that break. It ends on the wrecking ball above, and you get to knock the tower down yourself. After it, a limb reaches, gravity works at the scale of a galaxy, and a graph lays itself out, all without a world.
+Things in the world fall, drift, and swing because forces push on them, and a sketch can push its shapes the same way. This chapter writes gravity, wind, and drag by hand, then hands the job to a physics world of bodies, springs, hinges, and pieces that break. It ends on the wrecking ball above, and you get to knock the tower down yourself. After it, a limb reaches, gravity works at the scale of a galaxy, a graph lays itself out, and any outline becomes a squishy body.
 
 ## A force is a push: adding forces and dividing by mass
 
@@ -227,7 +227,7 @@ Fifteen beads, each connected to the one before, the first pinned. The strand st
 
 > **Swift note.** `beads.last` is an optional, because a list might be empty and have no last element. The `?.` after it is [Chapter 9](09-Pictures.md)'s optional chaining: if the value is there, do this, and if not, quietly do nothing. And `beads.map(\.position)` builds a new list by pulling one property out of every element, with the key path [Chapter 7](07-Tiles.md) introduced. Fifteen particles go in and fifteen positions come out, ready for `drawPolyline`.
 
-Springs plus pins go a long way. A grid of particles with springs to their neighbors is cloth. A ring of particles with springs around the rim and spokes to a hub is a squishy blob. The [Physics documentation](../Docs/Simulation/Physics.md#soft-bodies) builds that blob in twenty lines.
+Springs plus pins go a long way. A grid of particles with springs to their neighbors is cloth. A ring of particles with springs around the rim and spokes to a hub is a squishy blob. Built by hand it takes twenty lines, and [later in this chapter](#a-squishy-thing-from-any-outline-addsoftbodyfrom) one call builds it from any outline.
 
 ## Rigid bodies: `Body` and colliders
 
@@ -627,9 +627,9 @@ swift run OllinLive MySketches/Wrecker.swift --export-video wrecker.mp4 --second
 
 Where does this leave the hand-rolled forces from the start of the chapter? You now have both, and each has its place. When one or two things move and you want full control of the feel, write the forces yourself. That covers a chase, a flutter, or a custom bounce, in four lines you own. The moment bodies need to *negotiate*, piling, stacking, hanging, colliding, let a `World` do the negotiating. Plenty of good sketches do both in the same `draw()`.
 
-## Systems that come assembled: `IKChain`, `NBody`, and `ForceLayout`
+## Systems that come assembled: `IKChain`, `NBody`, `ForceLayout`, and soft bodies
 
-The wrecking ball used a world that pushes back, its hinges, a grab, and a break. Three more systems belong to the same idea, motion and arrangement decided by forces, and the sketch had no use for them. Each is a plain object you keep on the sketch and step once a frame, the way you held the `World`. None needs a `World`, and all three live in the core framework, so there is no extra import.
+The wrecking ball used a world that pushes back, its hinges, a grab, and a break. Four more systems belong to the same idea, motion and arrangement decided by forces, and the sketch had no use for them. The first three are plain objects you keep on the sketch and step once a frame, the way you held the `World`. They need no `World`, and they live in the core framework, so there is no extra import. The fourth is a body the `World` itself builds from any outline, the squishy blob from the springs section in one call.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/11-ForcesAndPhysics/Articulated-dark.jpg">
@@ -712,20 +712,45 @@ Because the layout freezes, a change is a deliberate act. `reheat(0.3)` warms th
 
 > **Swift note.** `($0, ($0 + 1) % 24)` builds a *tuple*, two values carried together in parentheses, which [Chapter 9](09-Pictures.md) first used. Here each one is an edge, the two node numbers it joins.
 
+### A squishy thing from any outline: `addSoftBody(from:)`
+
+A soft body is a shape that squashes where it lands and springs back. Hand `addSoftBody(from:)` any closed `Shape`, a lumpy circle, a star, a letter in a heavy face, and it rings the outline with particles that hold three things together. The outline keeps its length, the body keeps its area, and the whole thing is pulled back toward the shape it was made with. Use it for jelly, for a pile of soft letters, or for a balloon you inflate by setting its `restArea`. It is the hub-and-spokes blob from the springs section, built for you and fitted to whatever outline you give it.
+
+Each of those rules is a position constraint like the springs, written in the *compliant* form that Miles Macklin, Matthias Müller and Nuttapong Chentanez published in 2016 as "XPBD: Position-Based Simulation of Compliant Constrained Dynamics". Compliance is an amount of give for a given load, which is why a setting means the same body at 30 frames a second or 120. The pull back toward the original shape is *shape matching*, from Müller, Bruno Heidelberger, Matthias Teschner and Markus Gross's 2005 paper "Meshless Deformations Based on Shape Matching". Each frame it finds the turn and shift that best fit the original shape onto where the particles are, then draws them toward it.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/11-ForcesAndPhysics/SoftShapes-dark.jpg">
+  <img src="Images/11-ForcesAndPhysics/SoftShapes.jpg" alt="A box with soft shapes on its floor: a star, the letters S, O, F, and T with the F and T tipped onto their sides, and a lumpy blob, each squashed a little where it presses on the floor and its neighbors, the O keeping its counter open" width="680">
+</picture>
+
+Each letter in the figure is one call, and each shape draws from its own `shape`:
+
+```swift
+for letter in textToShapes("SOFT", 540, 300) {
+    try world.addSoftBody(from: letter)
+}
+
+// each frame:
+world.advance(by: deltaTime)
+for body in world.softBodies { drawShape(body.shape) }
+```
+
+Four settings decide the feel. `stiffness` is how far the outline stretches and `bend` how hard its corners fold. `pressure` is how firmly it holds its area, and by default it holds it whatever presses on it. `shapeMemory` is the one to try first. At `0` a disc dropped from its own height lands like a water balloon and squashes by a third. At the default `0.3` it squashes by a tenth and comes back, and at `1` it is rigid. A hole stays a hole, so the O keeps its counter. The bodies never get inside each other, but nothing rubs: they slide on the floor and on each other, and rigid bodies pass straight through them. The worked example is [`Examples/Physics/Blobs`](../Examples/Physics/Blobs/Sketch.swift), nine lumpy blobs sloshing under a gravity that swings from side to side.
+
 ## Where this comes from
 
 The force half of this chapter walks the path Daniel Shiffman's *The Nature of Code* made standard. Accumulate forces, divide by mass, and let Newton do the rest. The soft half rests on Verlet integration, named for Loup Verlet, who used it to simulate molecules in 1967. Thomas Jakobsen's 2001 talk "Advanced Character Physics" showed game programmers how positions plus relaxation could make cloth, ropes, and ragdolls simple and stable. Relaxation nudges each constraint toward satisfied, a few passes a frame. Ollin's particle solver follows that approach. The rigid half is Box2D by Erin Catto, released as open source in 2007 and still the reference 2D engine. Ollin bundles it and wraps it in the same `World`.
 
-Breaking a shape into pieces is a Voronoi fracture. The diagram is named for Georgy Voronoy, who described it in 1908. Cutting a solid along one to break it is the usual approach when a toolkit shatters something. Ollin's own implementation cuts each cell against the shape, in 2D and in 3D alike. The assembled systems name their own sources above. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The soft body from an outline holds its constraints in the compliant form of Macklin, Müller and Chentanez's XPBD (2016) and springs back by the shape matching of Müller, Heidelberger, Teschner and Gross (2005), both named in its section above. Breaking a shape into pieces is a Voronoi fracture. The diagram is named for Georgy Voronoy, who described it in 1908. Cutting a solid along one to break it is the usual approach when a toolkit shatters something. Ollin's own implementation cuts each cell against the shape, in 2D and in 3D alike. The assembled systems name their own sources above. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
-- [Physics](../Docs/Simulation/Physics.md): the full `World` / `Particle` / `Spring` / `Body` reference, including the parts this chapter left out: masses and forces on particles, `strain` for tinting springs by stress, soft blobs, and the other joint kinds.
+- [Physics](../Docs/Simulation/Physics.md): the full `World` / `Particle` / `Spring` / `Body` reference, including the parts this chapter left out: masses and forces on particles, `strain` for tinting springs by stress, the soft body's settings and what it touches, and the other joint kinds.
 - [Articulated and chaotic motion](../Docs/Simulation/Motion.md): the full `IKChain`, `DoublePendulum`, and `NBody` reference, including both IK solvers, `maxBend`, the pendulum's `energy` check, and the n-body factories.
 - [Breaking things](../Docs/Generators/Fracture.md): the full `fractured` reference for shapes and for solids, what a piece is guaranteed to be, and how a piece becomes a rigid body in either dimension.
 - [Force-directed layout](../Docs/Generators/ForceLayout.md): the full `ForceLayout` reference, including edge weights, gravity for disconnected graphs, the cooling schedule's settings, and the pin-and-drag idiom.
 - Appendix B draws this chapter's math, one picture per idea: [Vectors, motion, and forces](B-JustEnoughMath.md#vectors-motion-and-forces).
-- Worked examples, in [`Examples/Physics/`](../Examples/Physics/): `Packing` (discs settling into a jar), `Blobs` (squishy soft bodies that bump), `RigidBodies` (a pyramid to knock down into a rain of mixed shapes), `Chain` (hanging chains to grab and fling), `Joints` (the four joint kinds side by side, one rig each), `Forces` (a windy yard where every push, kick, and spin is a force call), and `Burst` (shapes thrown up the canvas that break at the top of the arc, the pieces falling on their own).
+- Worked examples, in [`Examples/Physics/`](../Examples/Physics/): `Packing` (discs settling into a jar), `Blobs` (lumpy soft bodies, each one `addSoftBody` call, sloshing under a swinging gravity), `RigidBodies` (a pyramid to knock down into a rain of mixed shapes), `Chain` (hanging chains to grab and fling), `Joints` (the four joint kinds side by side, one rig each), `Forces` (a windy yard where every push, kick, and spin is a force call), and `Burst` (shapes thrown up the canvas that break at the top of the arc, the pieces falling on their own).
 - The assembled systems at work, in [`Examples/Motion/`](../Examples/Motion/): `InverseKinematics` (five tentacles under a swimming lure, both IK properties exposed as parameters) and `NBody` (two galaxies on a grazing orbit).
 - A look ahead: the flocking in [`Examples/Patterns/Flocking`](../Examples/Patterns/Flocking/Sketch.swift) is force accumulation too, with the forces coming from neighbors. [Chapter 12](12-FlocksAndSwarms.md) builds it.
 
