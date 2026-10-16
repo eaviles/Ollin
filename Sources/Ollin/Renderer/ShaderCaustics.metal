@@ -802,10 +802,10 @@ fragment float4 ollin_caustics_splat_fragment(CausticSplatOut in [[stage_in]],
         return float4(albedo * E, 0.0);
     }
     // The physically based receiver shades its caustic as it shades a direct
-    // light, through the same terms: Lambert over pi kept by what the Fresnel
-    // term leaves and faded by metalness, plus the microfacet lobe toward the
-    // camera with its multiple-scattering compensation, so a glossy receiver
-    // streaks its caustic the way it streaks its lights.
+    // light, through the same terms: Lambert over pi kept by what the lobe does
+    // not reflect toward the camera and faded by metalness, plus the microfacet
+    // lobe toward the camera with its multiple-scattering compensation, so a
+    // glossy receiver streaks its caustic the way it streaks its lights.
     float metal = mat.x;
     float rough = clamp(mat.y, 0.045, 1.0);
     float3 V = normalize(light.cameraPosition.xyz - in.worldCenter);
@@ -817,7 +817,8 @@ fragment float4 ollin_caustics_splat_fragment(CausticSplatOut in [[stage_in]],
     float3 F = ollin_pbr_F_Schlick(vdh, F0);
     float3 spec = ollin_pbr_D_GGX(ndh, rough) * ollin_pbr_V_SmithGGX(ndv, ndl, rough) * F
                 * ollin_pbr_energy_comp(F0, ollin_pbr_ess(brdfLUT, ndv, rough));
-    float3 diffuse = (1.0 - F) * (1.0 - metal) * albedo * (1.0 / M_PI_F);
+    float3 diffuse = (float3(1.0) - ollin_pbr_lobe_albedo(brdfLUT, F0, ndv, rough))
+                   * (1.0 - metal) * albedo * (1.0 / M_PI_F);
     float3 color = (diffuse + spec) * E;
     return float4(color, 0.0);
 }

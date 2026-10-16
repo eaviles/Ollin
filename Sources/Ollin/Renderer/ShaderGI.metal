@@ -121,8 +121,8 @@ static inline bool ollin_gi_occluded(float3 origin, float3 dir, float tmax, floa
 // share it transmits, only under an environment, where the raster does the same. The
 // field is E/pi at the hit (zero before the first update); a rough lobe reads the
 // cosine-convolved field as its surround, and a mirror's sharp image of the room is the
-// reflection pass's to draw, never the bounce's. A panel's exact diffuse takes the body
-// without the lobe's weight, as the lit fragment does, and its highlight is not traced.
+// reflection pass's to draw, never the bounce's. A panel's exact diffuse takes the same
+// weighted body, as the lit fragment does, and its highlight is not traced.
 // The glow is the emissive factor plus the surface's own color times its intensity,
 // the two terms the lit fragment adds; an emissive map's pattern is not read here, so
 // a mapped surface glows at its factor over its whole face in the bounce. `viewDir`
@@ -154,12 +154,12 @@ static inline float3 ollin_gi_shade_hit(OllinRTSurface s, OllinGIGeo gm, float3 
     }
     // The body's share of the light. A physically based body keeps what the lobe leaves
     // over, less its metalness and, under an environment, what it transmits (inert
-    // without one, the raster's rule); a panel's exact diffuse takes the body without
-    // the lobe's weight. Every other finish bounces its whole albedo.
+    // without one, the raster's rule), for every light, a panel's exact diffuse
+    // included. Every other finish bounces its whole albedo.
     float transKeep = (physical && light.iblEnabled != 0)
                     ? (1.0 - gm.lobe.z * (1.0 - metal)) : 1.0;
-    float3 panelBody = physical ? s.albedo * ((1.0 - metal) * transKeep) : s.albedo;
-    float3 body = physical ? (float3(1.0) - specAlbedo) * panelBody : s.albedo;
+    float3 body = physical ? (float3(1.0) - specAlbedo) * s.albedo * ((1.0 - metal) * transKeep)
+                           : s.albedo;
     float lambert = physical ? (1.0 / M_PI_F) : 1.0;
 
     float3 direct = float3(0.0);
@@ -196,7 +196,7 @@ static inline float3 ollin_gi_shade_hit(OllinRTSurface s, OllinGIGeo gm, float3 
         }
         if (L.kind >= 3) {
             if (light.ltcEnabled != 0) {
-                direct += panelBody * L.color.rgb
+                direct += body * L.color.rgb
                         * (vis * within * ollin_ltc_diffuse(L, s.N, viewDir, s.P, ltcAmp));
             }
             continue;

@@ -1530,6 +1530,19 @@ static inline float shadowFactorRayTraced(float3 worldPos, float3 n, float3 ligh
 // set `samples · passes` long, as the point path does; the rect's set keeps its order
 // (the center first for an odd length, then each pair's +p and −p), so the passes
 // together trace every pair whole.
+//
+// The factor is the share of the panel's light that arrives, not the share of its points
+// that can be seen: each ray counts by what its point sends this surface unshadowed (the
+// cosine at the receiver times the cosine at the panel over the distance squared, the
+// form factor's integrand), and the visible weight is divided by the whole weight, the
+// ratio estimator of analytic light and a stochastic shadow. A point the panel faces away
+// from, or one below this surface's horizon, then darkens nothing, and the near part of a
+// panel counts for more than its far part. Where no point reaches the surface at all the
+// light gives nothing anyway, and the plain count stands in. Under the shared passes each
+// pass weighs its own rays against the whole set's weight (every point's weight is
+// geometry alone, so it costs no ray), times the pass count, so the passes' mean is the
+// whole set's ratio: a pass of one ray weighed against itself is that ray's 0 or 1, and
+// the passes would average back to the plain count.
 static inline float shadowFactorRayTracedArea(float3 worldPos, float3 n, OllinLight L,
                                               float scale, float eps, int samples,
                                               int pass, int passes,
@@ -1540,41 +1553,43 @@ static inline float shadowFactorRayTracedArea(float3 worldPos, float3 n, OllinLi
     int stride = max(passes, 1);
     int first = stride > 1 ? pass : 0;
     int total = n_samples * stride;
-    float lit = 0.0;
-    if (L.kind == 4) {
-        // Disk: Vogel samples in the panel's own plane (axisA/axisB span it).
-        float radius = L.axisA.w * scale;
-        for (int i = 0; i < n_samples; i++) {
-            int k = first + i * stride;            // this ray's place in the whole disk
+    bool twoSided = L.direction.w > 0.5;
+    float lit = 0.0, litWeight = 0.0, weight = 0.0;
+    for (int k = 0; k < total; k++) {              // every point of the whole set
+        float3 t;
+        if (L.kind == 4) {
+            // Disk: Vogel samples in the panel's own plane (axisA/axisB span it).
+            float radius = L.axisA.w * scale;
             float fi = (float(k) + 0.5) / float(total);
             float rr = sqrt(fi) * radius;
             float th = float(k) * 2.39996323;      // golden angle
-            float3 t = L.position.xyz + L.axisA.xyz * (cos(th) * rr)
-                                      + L.axisB.xyz * (sin(th) * rr);
-            lit += traceShadowRay(origin, t, eps, accel, params);
-        }
-    } else {
-        // Rect: the R2 lattice over the panel, emitted as +p / -p pairs about the
-        // center (an odd length adds the center itself, first), so the sample set's
-        // mean sits on the panel center at any count.
-        bool odd = total % 2 == 1;
-        for (int i = 0; i < n_samples; i++) {
-            int k = first + i * stride;            // this ray's place in the whole set
-            if (odd && k == 0) {
-                lit += traceShadowRay(origin, L.position.xyz, eps, accel, params);
-                continue;
-            }
-            int j = odd ? k - 1 : k;
+            t = L.position.xyz + L.axisA.xyz * (cos(th) * rr) + L.axisB.xyz * (sin(th) * rr);
+        } else if (total % 2 == 1 && k == 0) {
+            // Rect: the R2 lattice over the panel, emitted as +p / -p pairs about the
+            // center (an odd length adds the center itself, first), so the sample set's
+            // mean sits on the panel center at any count.
+            t = L.position.xyz;
+        } else {
+            int j = (total % 2 == 1) ? k - 1 : k;
             int pair = j / 2;
             float u = fract(0.25 + float(pair) * 0.7548776662) * 2.0 - 1.0;
             float v = fract(0.25 + float(pair) * 0.5698402910) * 2.0 - 1.0;
             float3 offset = L.axisA.xyz * (L.axisA.w * scale * u)
                           + L.axisB.xyz * (L.axisB.w * scale * v);
-            float side = (j % 2 == 0) ? 1.0 : -1.0;
-            lit += traceShadowRay(origin, L.position.xyz + offset * side, eps, accel, params);
+            t = L.position.xyz + offset * ((j % 2 == 0) ? 1.0 : -1.0);
         }
+        float3 toPoint = t - origin;
+        float d2 = max(dot(toPoint, toPoint), 1e-8);
+        float3 l = toPoint * rsqrt(d2);
+        float facing = dot(L.direction.xyz, -l);
+        float w = max(dot(n, l), 0.0) * (twoSided ? abs(facing) : max(facing, 0.0)) / d2;
+        weight += w;
+        if (k % stride != first) continue;          // another pass's ray
+        float seen = traceShadowRay(origin, t, eps, accel, params);
+        lit += seen;
+        litWeight += seen * w;
     }
-    return lit / float(n_samples);
+    return weight > 0.0 ? float(stride) * litWeight / weight : lit / float(n_samples);
 }
 
 // The ray-traced shadow factor for one caster, or 1 (lit) when that caster isn't ray
@@ -2706,6 +2721,22 @@ static inline float3 ollin_pbr_energy_comp(float3 F0, float ess) {
     return 1.0 + F0 * (1.0 / max(ess, 0.1) - 1.0);
 }
 
+// The directional albedo of the compensated lobe the lights shade with: the split-sum
+// LUT's scale and bias at this view (F0·A + B, the single scatter) times the
+// compensation that puts the multiple bounces back. One minus it is the share the matte
+// body under the lobe keeps, so a white dielectric sends back the light that reaches it
+// at every view angle and roughness: the body weighted by the lobe's albedo at the view
+// direction alone, the layering the published surface models use (README Techniques).
+// A body weighted by one minus the Fresnel at the half vector instead kept 135% of a
+// uniform field at grazing at roughness 0.2, since most of the lamps a grazing view
+// sees sit far from the mirror direction, where that Fresnel is small.
+static inline float3 ollin_pbr_lobe_albedo(texture2d<float> brdfLUT, float3 F0, float NoV,
+                                           float rough) {
+    constexpr sampler lutSamp(filter::linear, address::clamp_to_edge);
+    float2 ab = brdfLUT.sample(lutSamp, float2(NoV, rough)).rg;
+    return (F0 * ab.x + ab.y) * ollin_pbr_energy_comp(F0, saturate(ab.x + ab.y));
+}
+
 // The Smith masking term for one direction (GGX), the half the height-correlated
 // visibility above does not expose. The glossy reflection lobe's sampling density needs
 // it on its own: a direction drawn from the distribution of *visible* normals has
@@ -3711,7 +3742,9 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
                 }
                 float3 spec = (F0 * lt2.x + (float3(1.0) - F0) * lt2.y) * specI
                             * ollin_pbr_energy_comp(F0, ollin_pbr_ess(iblBRDF, NoV, rough));
-                float3 diff = base * ((1.0 - mat.metallic) * diffI * diffKeep);
+                // The body keeps what the lobe does not reflect toward the eye.
+                float3 diff = base * (float3(1.0) - ollin_pbr_lobe_albedo(iblBRDF, F0, NoV, rough))
+                            * ((1.0 - mat.metallic) * diffI * diffKeep);
                 float3 term = diff + spec;
                 // Sheen under a panel: the lobe is broad, so its response is its
                 // directional albedo times the panel's exact cosine integral.
@@ -3908,7 +3941,14 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
                 }
                 float3 spec = D * Vis * F
                             * ollin_pbr_energy_comp(F0, ollin_pbr_ess(iblBRDF, NoV, rough));
-                float3 kD   = (float3(1.0) - F) * (1.0 - mat.metallic);
+                // The body keeps what the lobe does not reflect toward the eye, the share
+                // the image-based ambient leaves it too (a film reflects in its own colors).
+                float3 F0e = (interference > 0.0)
+                    ? ollin_pbr_film_f0(F0, filmNoV, interference,
+                                        mat.thinFilmThickness, mat.thinFilmIor)
+                    : F0;
+                float3 kD   = (float3(1.0) - ollin_pbr_lobe_albedo(iblBRDF, F0e, NoV, rough))
+                            * (1.0 - mat.metallic);
                 float3 diff = kD * base * (diffKeep / 3.14159265);
                 float3 term = diff + spec;
                 // Layering order: sheen over the base (the base scaled by 1 - max(tint)·E
@@ -4286,7 +4326,9 @@ static inline float4 meshLitColorMapped(float3 base, float alpha, float3 normal,
                 }
                 float3 spec = (F0 * lt2.x + (float3(1.0) - F0) * lt2.y) * specI
                             * ollin_pbr_energy_comp(F0, ollin_pbr_ess(iblBRDF, NoV, rough));
-                float3 diff = base * ((1.0 - pxMetal) * diffI * diffKeep);
+                // The body keeps what the lobe does not reflect toward the eye.
+                float3 diff = base * (float3(1.0) - ollin_pbr_lobe_albedo(iblBRDF, F0, NoV, rough))
+                            * ((1.0 - pxMetal) * diffI * diffKeep);
                 float3 term = diff + spec;
                 // Sheen under a panel: the lobe is broad, so its response is its
                 // directional albedo times the panel's exact cosine integral.
@@ -4482,7 +4524,14 @@ static inline float4 meshLitColorMapped(float3 base, float alpha, float3 normal,
                 }
                 float3 spec = D * Vis * F
                             * ollin_pbr_energy_comp(F0, ollin_pbr_ess(iblBRDF, NoV, rough));
-                float3 kD   = (float3(1.0) - F) * (1.0 - pxMetal);
+                // The body keeps what the lobe does not reflect toward the eye, the share
+                // the image-based ambient leaves it too (a film reflects in its own colors).
+                float3 F0e = (interference > 0.0)
+                    ? ollin_pbr_film_f0(F0, filmNoV, interference,
+                                        mat.thinFilmThickness, mat.thinFilmIor)
+                    : F0;
+                float3 kD   = (float3(1.0) - ollin_pbr_lobe_albedo(iblBRDF, F0e, NoV, rough))
+                            * (1.0 - pxMetal);
                 float3 diff = kD * base * (diffKeep / 3.14159265);
                 float3 term = diff + spec;
                 // Layering order: sheen over the base (the base scaled by 1 - max(tint)·E
@@ -5414,9 +5463,6 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
     if (mat.thinFilm > 0.0) {
         F0 = ollin_pbr_film_f0(F0, NoV, mat.thinFilm, mat.thinFilmThickness, mat.thinFilmIor);
     }
-    // Roughness-aware Fresnel so rough grazing angles don't blow out.
-    float3 F = F0 + (max(float3(1.0 - rough), F0) - F0) * pow(1.0 - NoV, 5.0);
-    float3 kD = (float3(1.0) - F) * (1.0 - mat.metallic);
     float3 irradiance = irradianceTex.sample(cubeSamp, rot * n).rgb;
 #if OLLIN_RT_SHADOWS
     // Probe-field bounce light stands in for the environment's diffuse irradiance (the
@@ -5472,6 +5518,12 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
     float3 Favg = F0 + (float3(1.0) - F0) * (1.0 / 21.0);
     float3 FmsEms = Ems * FssEss * Favg / (float3(1.0) - Favg * Ems);
     float3 specular = prefiltered * FssEss + FmsEms * irradiance;
+    // The body keeps what the lobe does not reflect: one minus the lobe's albedo at
+    // this view, its multiple-scattering share included, so in a uniform field the
+    // two shares sum to one at every angle and roughness (the published split, and
+    // the transmission branch's weight below). Metals keep no body.
+    float3 E = FssEss + FmsEms;
+    float3 kD = (float3(1.0) - E) * (1.0 - mat.metallic);
     float3 diffusePart = kD * diffuse;
     // Transmission swaps the diffuse body for the view through it: the refracted
     // environment (or the traced scene), tinted by the albedo and weighted by the
@@ -5520,7 +5572,6 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
         // as the traced walk divides its own light.
         if (!traced && sceneBehind.a > 0.0)
             Ft = mix(Ft, sceneBehind.rgb / max(light.iblIntensity, 1e-3), sceneBehind.a);
-        float3 E = FssEss + FmsEms;   // the specular lobe's share of the energy
         diffusePart = mix(diffusePart, Ft * (float3(1.0) - E) * base, trans);
     }
     float3 color = diffusePart + specular;
@@ -5669,9 +5720,6 @@ static inline float3 ollin_pbr_ibl_ambient_mapped(float3 base, float3 n, float3 
     if (mat.thinFilm > 0.0) {
         F0 = ollin_pbr_film_f0(F0, NoV, mat.thinFilm, mat.thinFilmThickness, mat.thinFilmIor);
     }
-    // Roughness-aware Fresnel so rough grazing angles don't blow out.
-    float3 F = F0 + (max(float3(1.0 - rough), F0) - F0) * pow(1.0 - NoV, 5.0);
-    float3 kD = (float3(1.0) - F) * (1.0 - pxMetal);
     float3 irradiance = irradianceTex.sample(cubeSamp, rot * n).rgb;
 #if OLLIN_RT_SHADOWS
     // Probe-field bounce light stands in for the environment's diffuse irradiance (the
@@ -5727,6 +5775,12 @@ static inline float3 ollin_pbr_ibl_ambient_mapped(float3 base, float3 n, float3 
     float3 Favg = F0 + (float3(1.0) - F0) * (1.0 / 21.0);
     float3 FmsEms = Ems * FssEss * Favg / (float3(1.0) - Favg * Ems);
     float3 specular = prefiltered * FssEss + FmsEms * irradiance;
+    // The body keeps what the lobe does not reflect: one minus the lobe's albedo at
+    // this view, its multiple-scattering share included, so in a uniform field the
+    // two shares sum to one at every angle and roughness (the published split, and
+    // the transmission branch's weight below). Metals keep no body.
+    float3 E = FssEss + FmsEms;
+    float3 kD = (float3(1.0) - E) * (1.0 - pxMetal);
     float3 diffusePart = kD * diffuse;
     // Transmission swaps the diffuse body for the view through it: the refracted
     // environment (or the traced scene), tinted by the albedo and weighted by the
@@ -5775,7 +5829,6 @@ static inline float3 ollin_pbr_ibl_ambient_mapped(float3 base, float3 n, float3 
         // as the traced walk divides its own light.
         if (!traced && sceneBehind.a > 0.0)
             Ft = mix(Ft, sceneBehind.rgb / max(light.iblIntensity, 1e-3), sceneBehind.a);
-        float3 E = FssEss + FmsEms;   // the specular lobe's share of the energy
         diffusePart = mix(diffusePart, Ft * (float3(1.0) - E) * base, trans);
     }
     float3 color = diffusePart + specular;

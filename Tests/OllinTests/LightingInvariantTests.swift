@@ -471,27 +471,36 @@ struct LightingInvariantTests {
     /// roughness (the published split puts 1 - (FssEss + FmsEms) into the diffuse).
     /// The sphere above is read over a disc that is mostly head on; a plate seen at
     /// one angle is where a split that leans on the view angle shows.
+    /// The plate is read twice, plain and with a white occlusion map, which shades through
+    /// the surface-mapped pipeline's own copy of the environment's split.
     @Test(.enabled(if: Snapshot.hasMetal), arguments: [0.2, 0.4, 0.5, 0.7, 1.0])
     func aWhiteDielectricReturnsTheFieldFromEverySide(roughness: Double) throws {
+        for mapped in [false, true] {
+            for cosine in [1.0, 0.5, 0.15] {
+                let f = try render(PlateInvariantProbe.make(roughness: roughness, cosine: cosine,
+                                                            mapped: mapped, envURL: furnace()))
+                let field = mean(f, x: 76..<116, y: 2..<12)
+                let kept = mean(f, x: 76..<116, y: 90..<102) / field
+                #expect(abs(kept - 1) < 0.02,
+                        "a white plate\(mapped ? " with maps" : "") at roughness \(roughness) seen at cosine \(cosine) kept \(kept * 100)% of the field")
+            }
+        }
+    }
+
+    /// The same plate under the lamps' own terms: the path tracer shades every light and
+    /// every bounce through the surface function the lit fragments use for a lamp, so its
+    /// furnace is the lamps' furnace. What the lobe does not reflect toward the eye the
+    /// body gives back, at every angle; a body kept by one minus the Fresnel at the half
+    /// vector returned 135% of the field at grazing at roughness 0.2 (2026-10-16).
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing), arguments: [0.2, 0.5, 1.0])
+    func aWhiteDielectricReturnsTheFieldFromEverySideInTheTrace(roughness: Double) throws {
         for cosine in [1.0, 0.5, 0.15] {
-            let f = try render(PlateInvariantProbe.make(roughness: roughness, cosine: cosine,
-                                                        envURL: furnace()))
+            let f = try traced(PlateInvariantProbe.make(roughness: roughness, cosine: cosine,
+                                                        envURL: furnace()), samples: 128)
             let field = mean(f, x: 76..<116, y: 2..<12)
             let kept = mean(f, x: 76..<116, y: 90..<102) / field
-            func check() {
-                #expect(abs(kept - 1) < 0.02,
-                        "a white plate at roughness \(roughness) seen at cosine \(cosine) kept \(kept * 100)% of the field")
-            }
-            // Where the measured gap shows: at grazing below roughness 1, and head on and
-            // at 60 degrees at roughness 1 (97.0% and 97.9%).
-            let pinned = cosine < 0.5 ? (0.2...0.7).contains(roughness) : roughness == 1
-            if pinned {
-                withKnownIssue("the environment's diffuse weight is 1 - F at the view angle, not 1 minus the lobe's albedo: at grazing a plate kept 90.3% at roughness 0.5 and 102.8% at 0.2, and head on 97.0% at roughness 1, measured 2026-10-09") {
-                    check()
-                }
-            } else {
-                check()
-            }
+            #expect(abs(kept - 1) < 0.02,
+                    "traced, a white plate at roughness \(roughness) seen at cosine \(cosine) kept \(kept * 100)% of the field")
         }
     }
 
@@ -939,17 +948,8 @@ struct LightingInvariantTests {
                 }
             }
             let share = seen / weight
-            func check() {
-                #expect(abs(rendered - share) < 0.03,
-                        "at \(x) the floor kept \(rendered) of its light where the panel's weighted share is \(share)")
-            }
-            if x == 0 {
-                check()
-            } else {
-                withKnownIssue("a panel's shadow rays count the panel's points unweighted: the floor kept 0.213 at -0.6 where the weighted share is 0.091, measured 2026-10-09") {
-                    check()
-                }
-            }
+            #expect(abs(rendered - share) < 0.03,
+                    "at \(x) the floor kept \(rendered) of its light where the panel's weighted share is \(share)")
         }
     }
 
@@ -996,9 +996,51 @@ struct LightingInvariantTests {
         let through = mean(try traced(PaneInvariantProbe.make(pane: true, roughness: roughness), samples: 128),
                            x: 52..<76, y: 52..<76)
         #expect(bare > 0.05, "the ball read \(bare)")
-        withKnownIssue("a ball seen through a pane of index 1 reads 12% brighter at roughness 0.08 and 8% at 0.5, measured 2026-10-09") {
+        #expect(abs(through / bare - 1) < 0.03,
+                "through the pane the ball at roughness \(roughness) read \(through / bare) of itself")
+    }
+
+    /// A solid block of the air's own index is not there either: it bends nothing, so the
+    /// ball behind it reads as it does without it, whatever the trace does with light
+    /// through a solid that does bend it.
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing), arguments: [0.08, 0.5])
+    func anIndexMatchedBlockChangesNothingInTheTrace(roughness: Double) throws {
+        let bare = mean(try traced(PaneInvariantProbe.make(pane: false, roughness: roughness), samples: 256),
+                        x: 52..<76, y: 52..<76)
+        let through = mean(try traced(PaneInvariantProbe.make(pane: true, roughness: roughness, thickness: 0.3),
+                                      samples: 256),
+                           x: 52..<76, y: 52..<76)
+        #expect(bare > 0.05, "the ball read \(bare)")
+        func check() {
             #expect(abs(through / bare - 1) < 0.03,
-                    "through the pane the ball at roughness \(roughness) read \(through / bare) of itself")
+                    "through the block the ball at roughness \(roughness) read \(through / bare) of itself")
+        }
+        if roughness < 0.25 {
+            check()
+        } else {
+            withKnownIssue("a solid's shadow rays pass straight through it while the continuation that crosses it is credited in full, so the light behind a solid is counted twice: the ball behind a block of index 1 read 1.081 of itself at roughness 0.5, and behind a 0.3 slab of index 1.5 23% above the continuation's own estimate, measured 2026-10-16") {
+                check()
+            }
+        }
+    }
+
+    /// The trace and the window agree on a white ball in a lit room: the window's ambient
+    /// is the room's light convolved by each lobe, an estimate made a different way from
+    /// the same environment, and the two read within 3% of a continuation-only trace
+    /// (0.384 and 0.372 for a matte ball, 0.379 and 0.376 for a metal one at roughness
+    /// 0.5). So the trace, with all its strategies, reads within 6% of the window.
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
+    func theTraceAgreesWithTheWindowOnABallInALitRoom() throws {
+        for (name, finish) in [("a matte ball", Material(shading: .physicallyBased, metallic: 0, roughness: 1)),
+                               ("a metal ball at roughness 0.5", Material.metal(roughness: 0.5))] {
+            let probe = LitRoomInvariantProbe.make(finish)
+            let window = mean(try render(probe), x: 52..<76, y: 52..<76)
+            let trace = mean(try traced(probe, samples: 256), x: 52..<76, y: 52..<76)
+            #expect(window > 0.05, "\(name) read \(window) in the window")
+            withKnownIssue("the continuation's miss reads the room blurred to its footprint while the environment's own draw reads it sharp and prices both weights from the sharp table, so a lamp's blurred skirt is counted beside its sharp core: traced at 256 samples, a matte ball read 0.475 where the window reads 0.384 and a continuation-only trace 0.372, and a metal one at roughness 0.5 0.434 against 0.379, measured 2026-10-16") {
+                #expect(abs(trace / window - 1) < 0.06,
+                        "traced, \(name) read \(trace / window) of the window's reading")
+            }
         }
     }
 
@@ -1282,12 +1324,15 @@ private final class BeamInvariantProbe: Sketch {
 private final class PlateInvariantProbe: Sketch {
     var roughness = 0.5
     var cosine = 1.0
+    var mapped = false
     var envURL = URL(fileURLWithPath: "/dev/null")
 
-    static func make(roughness: Double, cosine: Double, envURL: URL) -> PlateInvariantProbe {
+    static func make(roughness: Double, cosine: Double, mapped: Bool = false,
+                     envURL: URL) -> PlateInvariantProbe {
         let p = PlateInvariantProbe()
         p.roughness = roughness
         p.cosine = cosine
+        p.mapped = mapped
         p.envURL = envURL
         return p
     }
@@ -1303,7 +1348,12 @@ private final class PlateInvariantProbe: Sketch {
             fill(.white)
             material(Material(shading: .physicallyBased, metallic: 0, roughness: roughness))
             rotateX(asin(cosine))
-            drawPlane(width: 40, depth: 1.8 / cosine)
+            if mapped {
+                drawMesh(Mesh.plane(width: 40, depth: 1.8 / cosine)
+                    .surfaceMapped(occlusion: Image(width: 4, height: 4, color: .white)))
+            } else {
+                drawPlane(width: 40, depth: 1.8 / cosine)
+            }
         }
     }
 }
@@ -1789,16 +1839,18 @@ private final class ReachFloorInvariantProbe: Sketch {
     }
 }
 
-/// A white metal ball under the interior environment, seen bare or through a pane of
-/// clear glass of index 1 and no thickness.
+/// A white metal ball under the interior environment, seen bare or through clear glass
+/// of index 1: a pane of no thickness, or a solid block when given one.
 private final class PaneInvariantProbe: Sketch {
     var pane = true
     var roughness = 0.08
+    var thickness = 0.0
 
-    static func make(pane: Bool, roughness: Double) -> PaneInvariantProbe {
+    static func make(pane: Bool, roughness: Double, thickness: Double = 0) -> PaneInvariantProbe {
         let p = PaneInvariantProbe()
         p.pane = pane
         p.roughness = roughness
+        p.thickness = thickness
         return p
     }
 
@@ -1812,11 +1864,33 @@ private final class PaneInvariantProbe: Sketch {
         if pane {
             withState {
                 fill(.white)
-                material(.glass(roughness: 0, ior: 1, thickness: 0))
+                material(.glass(roughness: 0, ior: 1, thickness: thickness))
                 translate(0, 0, 3)
-                drawBox(width: 4, height: 4, depth: 0.01)
+                drawBox(width: 4, height: 4, depth: max(thickness, 0.01))
             }
         }
+    }
+}
+
+/// A white ball of one finish in the bundled interior, lit by it and drawn over black.
+private final class LitRoomInvariantProbe: Sketch {
+    var finish = Material()
+
+    static func make(_ finish: Material) -> LitRoomInvariantProbe {
+        let p = LitRoomInvariantProbe()
+        p.finish = finish
+        return p
+    }
+
+    override var canvasSize: CanvasSize { .square(128) }
+
+    override func draw() {
+        background(.black)
+        camera(Camera3D(eye: Vector3(0, 0, 5), target: .zero))
+        environment(Environment.interior.lightingOnly())
+        fill(.white)
+        material(finish)
+        drawSphere(radius: 1.2)
     }
 }
 

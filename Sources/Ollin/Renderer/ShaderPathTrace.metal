@@ -64,8 +64,9 @@ constant float3 ollin_pt_luma = float3(0.2126, 0.7152, 0.0722);
 // frame can say what share of its light the bound took. The host sets the bound
 // (`PathTracing.maxBounceLight`, `--pt-clamp`) and the sites apply it to light that
 // has scattered at least twice on its way to the eye: an emitter or the environment
-// met two or more bounces out (`depth > 1`), and a light strategy run at a bounce
-// vertex (`depth > 0`). What one scattering shows, a lamp in a mirror, a window on a
+// met two or more scatters out, and a light strategy run at a vertex past the first
+// scatter (a thin pane crossed straight is no scatter, so it moves nothing into the
+// bound). What one scattering shows, a lamp in a mirror, a window on a
 // glossy floor, is direct light and keeps its value; measured on a scene of two
 // thousand polished beads mirroring a lit studio, bounding that too took half the
 // frame's light for under a decibel. A hot source caught two bounces out every few
@@ -375,6 +376,10 @@ struct OllinPTHit {
                            // specular lobe (`ollin_pbr_energy_comp`), priced once
                            // per hit since the view side is fixed there; 1 for a
                            // legacy finish, so it multiplies as a no-op
+    float3 bodyKeep;       // the share the matte body keeps, one minus the lobe's
+                           // directional albedo at the same fixed view
+                           // (`ollin_pbr_lobe_albedo`), priced with it; 1 for a
+                           // legacy finish
 };
 
 // Next-event visibility with glass in the scene: walk the shadow segment hit by
@@ -432,7 +437,12 @@ static inline float3 ollin_pt_transmittance(float3 origin, float3 target, float 
                 medium = float4(0.0);
             }
         } else {
-            tint *= s.albedo * m.transmission;   // a thin pane, one sheet
+            // A thin pane, one sheet: what its face does not reflect passes, at the
+            // index the continuation crosses it with, so a light seen through it
+            // here and the same light a path finds past it come out the same.
+            float F = ollin_pt_fresnel_dielectric(max(abs(dot(dir, s.N)), 1e-4),
+                                                  1.0 / max(m.ior, 1e-3));
+            tint *= s.albedo * (m.transmission * (1.0 - F));
         }
         o = o + dir * (d + eps);
         remaining -= d + eps;
@@ -597,6 +607,19 @@ static inline OllinPTMapped ollin_pt_apply_maps(thread OllinPTHit &h,
     return out;
 }
 
+// The share of the light the matte body under a physically based lobe keeps: one minus
+// the lobe's directional albedo at the hit's view, the film's reflectance standing in
+// for the bare one where a film colors the lobe (the raster's rule). Priced wherever the
+// hit's energy compensation is, at the roughness the lobe shades with.
+static inline float3 ollin_pt_body_keep(OllinPTHit h, texture2d<float> brdfLUT, float3 F0,
+                                        float NoV) {
+    if (h.mat.thinFilm > 0.0) {
+        F0 = ollin_pbr_film_f0(F0, NoV, h.mat.thinFilm, h.mat.thinFilmThickness,
+                               h.mat.thinFilmIor);
+    }
+    return float3(1.0) - ollin_pbr_lobe_albedo(brdfLUT, F0, NoV, h.s.rough);
+}
+
 // Evaluate the surface's reflectance for light arriving from `wi` seen from `wo`
 // (both away from the surface), *without* the raster parity fold: the physically-
 // based finish returns the microfacet BRDF value, a legacy finish returns albedo/π.
@@ -619,7 +642,7 @@ static inline float3 ollin_pt_bsdf(OllinPTHit h, float3 wo, float3 wi) {
                              h.mat.thinFilmThickness, h.mat.thinFilmIor);
     }
     float3 spec = D * Vis * F * h.energyComp;
-    float3 diff = (float3(1.0) - F) * (1.0 - h.s.metal) * h.s.albedo * (1.0 / 3.14159265);
+    float3 diff = h.bodyKeep * (1.0 - h.s.metal) * h.s.albedo * (1.0 / 3.14159265);
     return diff + spec;
 }
 
@@ -1032,6 +1055,11 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
                                 // halves of the pairing scale together, which is
                                 // what keeps the combined estimator consistent)
         float pathDist = 0.0;   // distance traveled so far (grows the texture ray cone)
+        uint straight = 0;      // thin panes crossed so far: a crossing that does not turn
+                                // the ray is no scatter, so the light past it is still
+                                // seen as directly as it was before it
+        float legCarried = 0.0; // the length of this ray's leg before the panes it has
+                                // crossed straight, from the vertex that launched it
         // The ray cone (see `ollin_pt_curvature`): the pixel's width at the near
         // plane and its angle per unit of travel, both signed; a thin lens opens the
         // width to the whole opening and turns the spread inward toward the focus
@@ -1085,7 +1113,7 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
                     ollin_pt_add(radiance, dropped,
                                  throughput * ollin_pt_env(rd, light, pt, equirectFiltered, lod)
                                  * (w * aoPrev),
-                                 bounded && depth > 1, bounceLimit);
+                                 bounded && depth - straight > 1, bounceLimit);
                 }
                 break;
             }
@@ -1098,9 +1126,13 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
             h.copied = lookup.copied;
             h.physical = h.mat.shadingModel == 3;
             h.energyComp = float3(1.0);
+            h.bodyKeep = float3(1.0);
             h.Ng = h.s.N;
             float hitDist = q.get_committed_distance();
             if (depth == 0) { covered = true; primaryDist = hitDist; }
+            // How many times the light reaching the eye from here has scattered: the
+            // depth less the panes crossed straight on the way.
+            uint bounce = depth - straight;
             pathDist += hitDist;
             // The cone at this hit: its width here, and the spread a reflection off
             // this surface adds, twice the curvature times the footprint (the width
@@ -1138,6 +1170,7 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
                 float NoVms = max(dot(h.s.N, -rd), 1e-4);
                 h.energyComp = ollin_pbr_energy_comp(
                     F0ms, ollin_pbr_ess(brdfLUT, NoVms, h.s.rough));
+                h.bodyKeep = ollin_pt_body_keep(h, brdfLUT, F0ms, NoVms);
             }
 
             if (depth == 0 && wantsGuides) {
@@ -1181,19 +1214,22 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
                 if (depth > 0 && prevNEE && !h.copied && pt.meshLights.x > 0.5 && lum > 0.0) {
                     // The geometric normal: the strategy's own pdf prices the
                     // triangle plane, so a normal-map bend must not shift this.
+                    // The leg runs from the vertex that aimed at this surface, through
+                    // any pane it crossed straight, as that vertex's strategy saw it.
                     float cosL = max(abs(dot(h.Ng, rd)), 1e-4);
-                    float pdfSA = (lum / pt.meshLights.y) * hitDist * hitDist / cosL;
+                    float leg = legCarried + hitDist;
+                    float pdfSA = (lum / pt.meshLights.y) * leg * leg / cosL;
                     wE = ollin_pt_mis(prevPdf, pdfSA);
                 }
                 ollin_pt_add(radiance, dropped, throughput * mapped.emissive * wE,
-                             bounded && depth > 1, bounceLimit);
+                             bounded && bounce > 1, bounceLimit);
             }
             // The surface's own color glowing (`emissiveIntensity`): no
             // next-event strategy ever aims at this share, so it is credited
             // whole wherever a path lands on it.
             if (any(mapped.selfEmissive > float3(0.0))) {
                 ollin_pt_add(radiance, dropped, throughput * mapped.selfEmissive,
-                             bounded && depth > 1, bounceLimit);
+                             bounded && bounce > 1, bounceLimit);
             }
 
             if (glassVertex) {
@@ -1265,8 +1301,20 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
                 if (!(thin && crossed))
                     throughput *= ollin_pt_smith_g1(max(abs(dot(h.s.N, wi)), 1e-4), a);
                 if (!crossed) coneSpread += spreadGain;   // a crossing keeps the cone
-                prevPdf = 1e6;      // effectively a delta lobe (it widens the cone by nothing)
-                prevNEE = false;
+                if (thin && crossed) {
+                    // A thin pane passes the ray on unturned, along the straight line
+                    // the vertex before it ran its shadow rays through, so what the ray
+                    // finds past it is still that vertex's to share out: its pdf and
+                    // its pairing carry on, and so does the leg's length, or the pane
+                    // would hand the full share of the light it hides to a lobe whose
+                    // strategies already counted it.
+                    straight++;
+                    legCarried += hitDist;
+                } else {
+                    prevPdf = 1e6;  // effectively a delta lobe (it widens the cone by nothing)
+                    prevNEE = false;
+                    legCarried = 0.0;
+                }
                 if (depth >= 3) {
                     float p = clamp(max(throughput.x, max(throughput.y, throughput.z)),
                                     0.05, 0.95);
@@ -1278,15 +1326,29 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
                 continue;
             }
 
-            // Path-space regularization: a next-event evaluation at an *indirectly*
-            // seen vertex widens a polished lobe to a modest floor. On a near-mirror
-            // surface the light term has no probability division, so one sample that
-            // happens to align with a light spikes by the distribution's full peak
-            // (single-pixel glitter no sample count cures); the widened lobe renders
-            // the same glint softly. Direct looks (depth 0) and the mirror chains
-            // themselves (the continuation below) stay exact.
+            // Path-space regularization: the light list's evaluation at an
+            // *indirectly* seen vertex widens a polished lobe to a modest floor. A
+            // listed light is a point the lobe can never sample, so its term has no
+            // probability division and no partner, and on a near-mirror surface one
+            // sample that happens to align with it spikes by the distribution's full
+            // peak (single-pixel glitter no sample count cures); the widened lobe
+            // renders the same glint softly. Direct looks (no scatter yet, a pane
+            // crossed straight included) and the mirror chains themselves (the
+            // continuation below) stay exact. The environment and the mesh lights
+            // keep the sharp lobe: each is paired with the continuation's pickup
+            // through the power heuristic, and the pair is one estimate only while
+            // both halves price the same lobe (a floored lobe on one side lit a ball
+            // seen through a pane of nothing 12% brighter at roughness 0.08).
             OllinPTHit hNEE = h;
-            if (depth > 0) hNEE.s.rough = max(hNEE.s.rough, 0.25);
+            if (bounce > 0 && hNEE.s.rough < 0.25) {
+                hNEE.s.rough = 0.25;
+                if (h.physical) {
+                    float3 F0r = mix(float3(h.mat.f0), h.s.albedo, h.s.metal);
+                    float NoVr = max(dot(h.s.N, -rd), 1e-4);
+                    hNEE.energyComp = ollin_pbr_energy_comp(F0r, ollin_pbr_ess(brdfLUT, NoVr, hNEE.s.rough));
+                    hNEE.bodyKeep = ollin_pt_body_keep(hNEE, brdfLUT, F0r, NoVr);
+                }
+            }
 
             // The lights the surface sees directly, through the lobe its footprint
             // fans over: the normals under the footprint spread by the curvature
@@ -1314,6 +1376,7 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
                 float NoVd = max(dot(h.s.N, -rd), 1e-4);
                 hDirect.energyComp = ollin_pbr_energy_comp(
                     F0d, ollin_pbr_ess(brdfLUT, NoVd, hDirect.s.rough));
+                hDirect.bodyKeep = ollin_pt_body_keep(hDirect, brdfLUT, F0d, NoVd);
             }
             ollin_pt_add(radiance, dropped,
                          throughput * ollin_pt_direct(hDirect, -rd, eps, accel, light,
@@ -1321,7 +1384,7 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
                                                       iesProfiles, cookies,
                                                       verts, geoOffsets, geoMats,
                                                       pt.meshLights.z > 0.5),
-                         bounded && depth > 0, bounceLimit);
+                         bounded && bounce > 0, bounceLimit);
             dim += uint(light.lightCount) + 1u;
 
             // The emissive meshes' own strategy: one triangle drawn by its share
@@ -1331,11 +1394,11 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
             if (pt.meshLights.x > 0.5) {
                 float4 ue = ollin_pt_rand4(gid, sampleIndex, dim++);
                 ollin_pt_add(radiance, dropped,
-                             throughput * ollin_pt_mesh_light(hNEE, -rd, eps, accel,
+                             throughput * ollin_pt_mesh_light(h, -rd, eps, accel,
                                                               verts, geoOffsets,
                                                               geoMats, emTris,
                                                               geoTextures, pt, ue),
-                             bounded && depth > 0, bounceLimit);
+                             bounded && bounce > 0, bounceLimit);
             }
 
             // The environment's own strategy: one sample drawn by the equirect's
@@ -1359,8 +1422,8 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
                                                          verts, geoOffsets, geoMats,
                                                          pt.meshLights.z > 0.5);
                     if (any(visE > float3(0.0))) {
-                        float3 f = ollin_pt_bsdf(hNEE, -rd, wiE);
-                        float w = ollin_pt_mis(envPdf, ollin_pt_bsdf_pdf(hNEE, -rd, wiE));
+                        float3 f = ollin_pt_bsdf(h, -rd, wiE);
+                        float w = ollin_pt_mis(envPdf, ollin_pt_bsdf_pdf(h, -rd, wiE));
                         // The table's draw reads the level its tables were built
                         // from, never the cone's: its importance matches the sharp
                         // lamp cell, and a draw read blurred would carry little while
@@ -1372,7 +1435,7 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
                                      throughput * f * visE
                                      * ollin_pt_env(wiE, light, pt, equirect, pt.miss.w)
                                      * (NoLE / envPdf * w * mapped.ao),
-                                     bounded && depth > 0, bounceLimit);
+                                     bounded && bounce > 0, bounceLimit);
                     }
                 }
             }
@@ -1418,6 +1481,7 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
             throughput *= weight;
             coneSpread = ollin_pt_widen(coneSpread + spreadGain, prevPdf);
             prevNEE = true;
+            legCarried = 0.0;
             aoPrev = mapped.ao;
 
             // Russian roulette after a few bounces: continue with probability equal
