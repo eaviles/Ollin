@@ -68,12 +68,17 @@ struct WaveguideLine {
 /// being pushed. It holds at its maximum while the two are moving together
 /// closely enough to stay stuck, then falls away quickly once they tear loose.
 /// A note is that cycle repeating: stick, drag, slip, snap back, stick.
+///
+/// The bow's grip is scaled by how much of it is on the string. Lifted, the
+/// junction passes both waves straight through, and the string rings down over
+/// its `decay` like a plucked one.
 struct BowVoice {
     private var bridgeSide: WaveguideLine
     private var nutSide: WaveguideLine
 
     /// What the bridge reflection keeps each time, which sets how long the
-    /// string rings when the bow is lifted.
+    /// string rings when the bow is lifted. The whole loop's loss is taken
+    /// here, once a period; the nut reflects without loss.
     private var loopGain = 0.99
     /// The one-zero loss filter's coefficient, and also its delay in samples.
     private var shade = 0.4
@@ -107,7 +112,10 @@ struct BowVoice {
     /// Tunes the string for a note. Nothing is excited: a bow makes no sound
     /// until it moves, which is the whole difference from a pluck.
     mutating func start(frequency: Double, spec: BowedString, sampleRate: Double) {
-        shade = min(max(0, spec.damping), 1) * 0.5
+        // The loss filter and what the loop keeps, so that a lifted bow lets
+        // the note ring for `decay` at any pitch (`loopLoss`).
+        (shade, loopGain) = loopLoss(decay: spec.decay, damping: spec.damping,
+                                     frequency: frequency, sampleRate: sampleRate)
 
         // The two sides together are one round trip, so they add up to a period
         // once the loss filter's own delay is taken out of the budget. The bow
@@ -117,9 +125,6 @@ struct BowVoice {
         eta = allpass
         bridgeSide.reset(length: bridgeWhole)
         nutSide.reset(length: nutWhole)
-
-        let trips = max(1e-6, spec.decay * frequency)
-        loopGain = min(exp(-6.907_755_278_982_137 / trips), 0.999_99)
 
         // More force means the rosin holds over a wider range of speeds, so the
         // string stays stuck to the bow for longer in each cycle.
@@ -160,14 +165,17 @@ struct BowVoice {
         return (bridgeWhole, nutWhole, (1 - fraction) / (1 + fraction))
     }
 
-    /// One sample, with the bow moving at `bowVelocity`.
-    mutating func next(bowVelocity: Double) -> Double {
+    /// One sample, with the bow moving at `bowVelocity` and `contact` of it
+    /// on the string, `0...1`: 0 is lifted clear, 1 is the whole bow.
+    mutating func next(bowVelocity: Double, contact: Double) -> Double {
         let fromBridge = bridgeSide.head
         let fromNut = nutSide.head
 
-        // What the bow is doing relative to the string under it.
+        // What the bow is doing relative to the string under it. A bow resting
+        // still on the string grips it all the same and mutes it, so it is
+        // the contact, not the speed, that lets a lifted string ring.
         let difference = bowVelocity - (fromBridge + fromNut)
-        let injected = friction(difference) * difference
+        let injected = contact * friction(difference) * difference
 
         // Each side leaves carrying what came in from the other, plus the bow.
         let toBridge = fromNut + injected
@@ -183,7 +191,7 @@ struct BowVoice {
         lastAllpassOutput = allpassed
 
         bridgeSide.advance(-loopGain * allpassed)
-        nutSide.advance(-loopGain * toNut)
+        nutSide.advance(-toNut)
 
         // What the bridge is being shaken by is what the body would radiate.
         return fromBridge
@@ -212,6 +220,12 @@ struct BowVoice {
     /// note as loud as the bow is fast.
     static let stickingGrip = 0.9
 
+    /// The pressure under which the bow starts to leave the string: its grip
+    /// is scaled by `pressure / liftedBelow` there, and is whole above. Low
+    /// enough that no preset speaks under it (each does from about 0.15), so
+    /// a sounding note is untouched.
+    static let liftedBelow = 0.1
+
     /// The pitch the string is set up to sound, for checking the tuning.
     func soundingFrequency(sampleRate: Double) -> Double {
         let fraction = (1 - eta) / (1 + eta)
@@ -224,18 +238,23 @@ struct BowVoice {
 ///
 /// The tube is one delay line carrying a round trip, and the far end sends the
 /// wave back changed. What happens at the mouth end is what makes it an
-/// instrument, and it is different for the two kinds:
+/// instrument, and here that is a reed.
 ///
-/// **A reed** is pushed shut by the pressure that is driving it. Fully shut it
+/// A reed is pushed shut by the pressure that is driving it. Fully shut it
 /// is a rigid wall, so the wave comes back untouched; fully open the mouthpiece
 /// is simply held at the player's breath pressure. Between those two limits the
 /// reflection is a mixture of the two, and that mixture depends on the pressure
 /// itself, which is the feedback that makes it oscillate.
 ///
-/// **A jet** of air splits across an edge and is pushed to one side or the
-/// other by whatever the tube is already doing. That deflection saturates: past
-/// a point, blowing harder cannot push it further, and the odd shape of that
-/// saturation is what fills in the harmonics.
+/// The breath is reckoned in the reed's own closing pressure. A tube starts to
+/// sound once the breath reaches a fraction of it that depends on how much the
+/// bore loses (half, for a bore that lost nothing), so each note's start is
+/// worked out from its own loss and placed at the same point of the pressure
+/// dial (`TubeVoice.speaksFrom`) whatever the pitch or the reed. Full pressure
+/// blows `1.1 / closingPressure` of it, so a tighter bite comes nearer to
+/// shutting the reed. And what is heard is the bore's pressure with its
+/// standing part taken out, since the breath holds the mouthpiece above the
+/// room's pressure while the sound the tube radiates swings about it.
 struct TubeVoice {
     private var bore: WaveguideLine
 
@@ -243,10 +262,18 @@ struct TubeVoice {
     private var shade = 0.4
     private var lastFilterInput = 0.0
     private var closingPressure = 1.0
+    /// The breath, in closing pressures, at which this note starts to sound.
+    private var onset = 0.5
+    /// The breath, in closing pressures, full pressure blows.
+    private var full = 1.1
     private var eta = 0.0
     private var lastAllpassInput = 0.0
     private var lastAllpassOutput = 0.0
     private var noiseState: UInt64
+    /// The DC block on what radiates: its pole, and its last input and output.
+    private var blockPole = 0.997
+    private var lastRadiatedInput = 0.0
+    private var lastRadiated = 0.0
 
     static func memoryNeeded(capacity: Int) -> Int { max(4, capacity) }
 
@@ -260,7 +287,20 @@ struct TubeVoice {
         lastFilterInput = 0
         lastAllpassInput = 0
         lastAllpassOutput = 0
+        lastRadiatedInput = 0
+        lastRadiated = 0
     }
+
+    /// The point of the pressure dial, `0...1`, at which every tube starts to
+    /// sound, whatever its pitch or its reed. Below it the breath rises to the
+    /// note's onset and nothing is heard; above it the breath rises on to
+    /// full.
+    static let speaksFrom = 0.3
+
+    /// Where the standing pressure is taken out of what the tube radiates, in
+    /// Hz: under every note it plays, and quick enough that a step in the
+    /// breath settles in a few milliseconds rather than holding an offset.
+    static let blockedBelow = 20.0
 
     mutating func start(frequency: Double, spec: BlownTube, sampleRate: Double) {
         shade = min(max(0, spec.damping), 1) * 0.5
@@ -284,6 +324,35 @@ struct TubeVoice {
 
         // Biting harder shuts the reed at a lower pressure.
         closingPressure = 1.6 - 1.3 * min(max(0, spec.embouchure), 1)
+
+        // Where this note starts to sound, from the reed's small-signal gain.
+        // With the breath and both waves in closing pressures, the reed hands
+        // back 2x - 1 of a small change in the returning wave, x being how far
+        // the reed is pushed toward shut (mouth minus twice the returning
+        // wave). Round the bore, half a period of delay turns the fundamental
+        // over once and the open end once more, so it comes back with the
+        // loop's gain G at the note, and the note grows once (2x - 1) G passes
+        // 1. The bore holds still at the operating point the loop's gain g at
+        // no frequency sets, x² + 2(k - 1)x = 2k m with k = (1 + g) / 2g,
+        // which gives the breath m there. Measured against a sweep of the
+        // breath at five pitches on each preset, it lands within 0.005.
+        let w = 2 * Double.pi * frequency / sampleRate
+        let response = (1 - 2 * shade * (1 - shade) * (1 - cos(w))).squareRoot()
+        let x = (1 + 1 / (loopGain * response)) / 2
+        let k = (1 + loopGain) / (2 * loopGain)
+        onset = (x * x + 2 * (k - 1) * x) / (2 * k)
+        // Full pressure blows what it always did; a tube whose onset is
+        // nearly that still swells over the top of the dial.
+        full = max(1.1 / closingPressure, onset * 1.15)
+        blockPole = exp(-2 * Double.pi * TubeVoice.blockedBelow / sampleRate)
+    }
+
+    /// The breath at `pressure`, in closing pressures: up to the note's
+    /// onset over the first `speaksFrom` of the dial, then on to full.
+    private func breath(at pressure: Double) -> Double {
+        let p = min(max(0, pressure), 1)
+        let from = TubeVoice.speaksFrom
+        return p <= from ? onset * p / from : onset + (full - onset) * (p - from) / (1 - from)
     }
 
     /// Moves a sounding tube to another pitch without emptying it. The reed,
@@ -304,11 +373,11 @@ struct TubeVoice {
         return (whole, (1 - fraction) / (1 + fraction))
     }
 
-    /// One sample, with the player blowing at `breath`.
-    mutating func next(breath: Double, breathiness: Double) -> Double {
+    /// One sample, with the player blowing at `pressure`, `0...1`.
+    mutating func next(pressure: Double, breathiness: Double) -> Double {
         // Real air is turbulent, and a wind instrument with none of that in it
         // sounds synthetic in a way that is hard to place until it is put back.
-        let mouth = breath * (1 + breathiness * 0.35 * nextNoise())
+        let mouth = closingPressure * breath(at: pressure) * (1 + breathiness * 0.35 * nextNoise())
 
         // The far end of the tube: what comes back is quieter, duller, and
         // upside down, because an open end reflects pressure inverted.
@@ -331,7 +400,13 @@ struct TubeVoice {
         var outgoing = opening * (mouth - returned) + (1 - opening) * returned
         outgoing = min(max(outgoing, -4), 4)
         bore.advance(outgoing)
-        return returned
+
+        // What radiates: the bore's pressure less its standing part, through
+        // a one-pole DC block.
+        let radiated = returned - lastRadiatedInput + blockPole * lastRadiated
+        lastRadiatedInput = returned
+        lastRadiated = radiated
+        return radiated
     }
 
     /// The pitch the tube is set up to sound, for checking the tuning.

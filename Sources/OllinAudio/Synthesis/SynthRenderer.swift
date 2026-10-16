@@ -390,9 +390,13 @@ final class SynthRenderer: @unchecked Sendable {
             // light bow can be over-driven and a heavy one stays solid, which is
             // the same bargain a player makes.
             let speed = pressure * (0.06 + 0.22 * min(max(0, spec.force), 1))
-            sample = voice.bow.next(bowVelocity: speed)
+            // The bow leaves the string over the bottom tenth of the pressure,
+            // where no preset sounds yet, so at 0 it is lifted and the string
+            // rings down over its decay rather than being held still.
+            let contact = min(1, pressure / BowVoice.liftedBelow)
+            sample = voice.bow.next(bowVelocity: speed, contact: contact)
             if voice.spec.detune != 0 {
-                sample = 0.5 * (sample + voice.secondBow.next(bowVelocity: speed))
+                sample = 0.5 * (sample + voice.secondBow.next(bowVelocity: speed, contact: contact))
             }
         case .sampled:
             // The read head was placed when the note started; here it only
@@ -406,11 +410,10 @@ final class SynthRenderer: @unchecked Sendable {
                 sample = 0.5 * (sample + voice.secondPatch.next())
             }
         case .blown(let spec):
-            let breath = pressure * 1.1
-            sample = voice.tube.next(breath: breath, breathiness: spec.breathiness)
+            sample = voice.tube.next(pressure: pressure, breathiness: spec.breathiness)
             if voice.spec.detune != 0 {
                 sample = 0.5 * (sample
-                                + voice.secondTube.next(breath: breath,
+                                + voice.secondTube.next(pressure: pressure,
                                                         breathiness: spec.breathiness))
             }
         case .wavetable:

@@ -200,14 +200,15 @@ import Testing
 
     @Test func theLimiterLetsGoOverItsRelease() {
         // One loud burst, then a tone under the ceiling: right after the burst
-        // the tone is still ducked, and a few releases later it is not.
+        // the tone is still ducked, and a few releases later it is not. The
+        // times are when the sound went in; it leaves a lookahead later.
         let burst = sine(220, seconds: 0.05, level: 0)
         let after = sine(220, seconds: 0.6, level: -12)
         let effect = DynamicsEffect(.limiter(Limiter(ceiling: -6, release: 0.05)), sampleRate: rate)
         let out = run(effect, left: burst + after, right: burst + after)
         let window = Int(rate * 0.01)
         func level(at seconds: Double) -> Double {
-            let start = Int(seconds * rate)
+            let start = Int((seconds + Limiter.lookahead) * rate)
             return decibels(out.left[start..<(start + window)])
         }
         #expect(level(at: 0.052) < -13, "just after the burst the tone is still down: \(level(at: 0.052))")

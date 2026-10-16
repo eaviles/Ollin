@@ -76,8 +76,11 @@ struct StringVoice {
 
         // How much of the top the loop filter takes off. Half is the most it
         // can take (it puts a zero exactly on Nyquist); past that it starts
-        // giving the top back, so the useful range is the half below.
-        shade = min(max(0, spec.damping), 1) * 0.5
+        // giving the top back, so the useful range is the half below. What the
+        // loop keeps each round trip is set with it, since the filter takes its
+        // share of the note too (`loopLoss`).
+        (shade, loopGain) = loopLoss(decay: spec.decay, damping: spec.damping,
+                                     frequency: frequency, sampleRate: sampleRate)
 
         // The loop has to come out exactly as long as one period, and the loop
         // filter is part of it: a one-zero filter with coefficient `shade`
@@ -90,12 +93,6 @@ struct StringVoice {
         delay = max(2, min(capacity - 1, Int((remaining - 0.2).rounded(.down))))
         let fraction = min(max(0.2, remaining - Double(delay)), 1.2)
         eta = (1 - fraction) / (1 + fraction)
-
-        // What the loop keeps each round trip, so that the note falls to a
-        // thousandth of itself after `decay` seconds. The loop runs once per
-        // period, so the number of round trips in that time is what sets it.
-        let trips = max(1e-6, spec.decay * frequency)
-        loopGain = min(exp(-6.907_755_278_982_137 / trips), 0.999_99)
 
         excite(spec: spec, velocity: velocity, sampleRate: sampleRate)
     }
@@ -198,4 +195,35 @@ struct StringVoice {
         z = z ^ (z >> 31)
         return Double(z >> 11) * (2.0 / 9_007_199_254_740_992.0) - 1.0
     }
+}
+
+/// The loss in a string's loop: the one-zero filter's coefficient and the gain
+/// beside it, so that the note itself falls to a thousandth after `decay`
+/// seconds whatever its pitch.
+///
+/// The loop runs once a period, so a note rings for `decay * frequency` round
+/// trips, and the gain is what each trip keeps. The filter takes its own share
+/// of the fundamental, which is nothing low down and most of the loss at the
+/// top of the range (left uncounted, the steel string's MIDI 93 rings a sixth
+/// of its decay), so the gain is divided by the filter's response at the note. Where the filter alone takes more than the whole decay allows,
+/// its coefficient is eased until it does not, which keeps the top harmonics
+/// fading closer to together with the note: the decay stretching of Jaffe and
+/// Smith's extensions to the plucked string.
+func loopLoss(decay: Double, damping: Double,
+              frequency: Double, sampleRate: Double) -> (shade: Double, gain: Double) {
+    var shade = min(max(0, damping), 1) * 0.5
+    let trips = max(1e-6, decay * frequency)
+    let kept = exp(-6.907_755_278_982_137 / trips)
+    let most = 0.999_99
+    // The one-zero's gain at the note: |(1 - s) + s e^-iw|.
+    let w = 2 * Double.pi * frequency / sampleRate
+    func response(_ s: Double) -> Double { (1 - 2 * s * (1 - s) * (1 - cos(w))).squareRoot() }
+    if kept / response(shade) > most {
+        // The coefficient whose response is exactly what the trip may lose.
+        let need = kept / most
+        let product = (1 - need * need) / (2 * max(1e-12, 1 - cos(w)))
+        let eased = product <= 0 ? 0 : (1 - max(0, 1 - 4 * product).squareRoot()) / 2
+        shade = min(shade, eased)
+    }
+    return (shade, min(kept / response(shade), most))
 }

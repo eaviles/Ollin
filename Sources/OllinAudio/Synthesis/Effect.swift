@@ -337,5 +337,9 @@ public struct Distortion: Sendable, Hashable, Codable {
         unit.loadFactoryPreset(character.preset)
         unit.preGain = Float(drive)
         unit.wetDryMix = Float(mix * 100)
+        // At mix 0 the unit still colors the sound it passes (a bell moved
+        // by 7% of its height), so a distortion asked for none of itself
+        // steps aside, as a flat equalizer does.
+        unit.bypass = mix == 0
     }
 }

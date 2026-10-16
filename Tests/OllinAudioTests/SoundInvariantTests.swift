@@ -273,8 +273,8 @@ struct SoundInvariantTests {
             let slice = s[Int(0.4 * Self.sampleRate)...]
             let f = peak(slice, near: hertz(midi))
             let off = cents(f, hertz(midi))
-            pinned("the reedy tube's pitch moves with pressure at the top of its range, 14 cents flat at MIDI 93 at pressure 0.8 (measured 2026-10-11)",
-                   when: name == "reedy" && midi == 93) {
+            pinned("the reedy and clarinet tubes leave their register at the top of the range: at MIDI 93 a tube speaks and jumps toward its twelfth within a tenth of breath of each other, so at pressure 0.8 the fundamental is a weak line read 6 to 14 cents flat (measured 2026-10-15)",
+                   when: (name == "reedy" || name == "clarinet") && midi == 93) {
                 #expect(abs(off) <= 5, "\(name) at MIDI \(midi) sounds \(off) cents off")
             }
         }
@@ -365,73 +365,92 @@ struct SoundInvariantTests {
         #expect(abs(ratio - 1) < 0.03, "\(name) played at \(ratio) of its level when rendered at 48 kHz")
     }
 
+    /// How long the fundamental of `samples` takes to fall 60 dB, from a line
+    /// fit to its level in 50 ms windows over the first 40 dB of its fall.
+    private func ringTime(_ samples: ArraySlice<Float>, hz: Double) -> Double {
+        var points: [(Double, Double)] = []
+        var t = 0.05
+        let start = samples.startIndex
+        while Int(t * Self.sampleRate) + Int(0.05 * Self.sampleRate) <= samples.count {
+            let a = start + Int(t * Self.sampleRate), b = a + Int(0.05 * Self.sampleRate)
+            let m = magnitude(samples[a..<b], hz: hz)
+            if m > 1e-3 { points.append((t, 20 * log10(m))) }
+            t += 0.05
+        }
+        let top = points.first?.1 ?? 0
+        let fit = points.filter { $0.1 > top - 40 }
+        let n = Double(fit.count)
+        let sx = fit.reduce(0) { $0 + $1.0 }, sy = fit.reduce(0) { $0 + $1.1 }
+        let sxx = fit.reduce(0) { $0 + $1.0 * $1.0 }, sxy = fit.reduce(0) { $0 + $1.0 * $1.1 }
+        let slope = (n * sxy - sx * sy) / (n * sxx - sx * sx)
+        return -60 / slope
+    }
+
     /// `decay` is how long the note takes to fade at the note being played, so
-    /// the fundamental's T60 is `decay` at every pitch.
+    /// the fundamental's T60 is `decay` at every pitch, within a tenth.
     ///
-    /// Measured 2026-10-11 and filed: the loop gain is set as if the loop filter
-    /// were lossless at the fundamental, and the one-zero's own loss at a high
-    /// note is not compensated, so the steel string's 3.6 s is 3.6 s at MIDI 45
-    /// and 0.64 s at MIDI 93 (nylon's 1.8 s becomes 0.42 s).
-    @Test(arguments: [PluckedString.steel, .nylon])
+    /// Until 2026-10-15 the loop gain was set as if the loop filter were
+    /// lossless at the fundamental, so the steel string's 3.6 s was 3.6 s at
+    /// MIDI 45 and 0.64 s at MIDI 93 (nylon's 1.8 s became 0.42 s).
+    @Test(arguments: [PluckedString.steel, .nylon, .harp])
     func aPluckedStringRingsForItsDecayAtEveryPitch(string: PluckedString)  throws {
-        for midi in [45.0, 93] {
-            let s = render(Voice(plucked: string, envelope: Self.flat, gain: 1), midi: midi, seconds: 4.0)
-            var points: [(Double, Double)] = []
-            var t = 0.05
-            while t < 3.9 {
-                let a = Int(t * Self.sampleRate), b = a + Int(0.05 * Self.sampleRate)
-                let m = magnitude(s[a..<b], hz: hertz(midi))
-                if m > 1e-3 { points.append((t, 20 * log10(m))) }
-                t += 0.05
-            }
-            let top = points.first?.1 ?? 0
-            let fit = points.filter { $0.1 > top - 40 }
-            let n = Double(fit.count)
-            let sx = fit.reduce(0) { $0 + $1.0 }, sy = fit.reduce(0) { $0 + $1.1 }
-            let sxx = fit.reduce(0) { $0 + $1.0 * $1.0 }, sxy = fit.reduce(0) { $0 + $1.0 * $1.1 }
-            let slope = (n * sxy - sx * sy) / (n * sxx - sx * sx)
-            let t60 = -60 / slope
-            pinned("the loop filter's loss at the fundamental is not compensated, so a high note rings a fraction of its decay (measured 2026-10-11)", when: midi > 80) {
-                #expect(abs(t60 / string.decay - 1) < 0.15, "MIDI \(midi) rings for \(t60) s where decay is \(string.decay)")
-            }
+        for midi in [33.0, 45, 57, 69, 81, 93] {
+            let seconds = min(5.0, string.decay * 1.1 + 0.2)
+            let s = render(Voice(plucked: string, envelope: Self.flat, gain: 1), midi: midi, seconds: seconds)
+            let t60 = ringTime(s[...], hz: hertz(midi))
+            #expect(abs(t60 / string.decay - 1) < 0.1, "MIDI \(midi) rings for \(t60) s where decay is \(string.decay)")
         }
     }
 
     /// A bowed string's `decay` is how long it would ring if the bow were
     /// lifted, so once the pressure is taken away the string keeps most of its
-    /// sound for the first 60 ms (a 2.2 s decay loses 1.6 dB in that time).
+    /// sound for the first 60 ms (a 2.2 s decay loses 1.6 dB in that time),
+    /// sounds its note, and rings down over its decay, at every pitch.
     ///
-    /// Measured 2026-10-11 and filed: at pressure 0 the bow is parked on the
-    /// string rather than lifted, so the junction keeps its grip and mutes the
-    /// string in about 60 ms (-25 dB at 40 to 60 ms after the lift at decay 2.2,
-    /// -20 dB at decay 8), and what is left rings at the bridge segment's own
-    /// pitch, about six times the note.
-    @Test func aLiftedBowLetsTheStringRingDown() throws {
-        let spec = BowedString(position: BowedString.cello.position, force: BowedString.cello.force,
-                               decay: 2.2, damping: BowedString.cello.damping)
-        let s = renderLifting(Voice(bowed: spec, gain: 1), midi: 48, seconds: 2.0, drive: 0.8, liftAt: 1.0)
-        let before = rms(s[Int(0.9 * Self.sampleRate)..<Int(1.0 * Self.sampleRate)])
-        let after = rms(s[Int(1.04 * Self.sampleRate)..<Int(1.06 * Self.sampleRate)])
-        let fell = 20 * log10(after / before)
-        pinned("a bow at pressure 0 is parked, not lifted, and mutes the string in 60 ms (measured 2026-10-11)") {
-            #expect(fell > -6, "the string fell \(fell) dB in the 60 ms after the bow was lifted")
+    /// Until 2026-10-15 the bow at pressure 0 was parked on the string rather
+    /// than lifted: the junction kept its grip and muted the string in about
+    /// 60 ms (-25 dB at 40 to 60 ms after the lift at decay 2.2), and the loss
+    /// was taken on both sides of the bow, so a lifted string would have rung
+    /// half its decay.
+    @Test(arguments: [("violin", BowedString.violin), ("cello", BowedString.cello)])
+    func aLiftedBowLetsTheStringRingDown(name: String, preset: BowedString) throws {
+        let spec = BowedString(position: preset.position, force: preset.force, decay: 2.2, damping: preset.damping)
+        for midi in [48.0, 69, 81] {
+            let s = renderLifting(Voice(bowed: spec, gain: 1), midi: midi, seconds: 3.6, drive: 0.8, liftAt: 1.0)
+            let before = rms(s[Int(0.9 * Self.sampleRate)..<Int(1.0 * Self.sampleRate)])
+            let after = rms(s[Int(1.04 * Self.sampleRate)..<Int(1.06 * Self.sampleRate)])
+            let fell = 20 * log10(after / before)
+            #expect(fell > -6, "\(name) at MIDI \(midi) fell \(fell) dB in the 60 ms after the bow was lifted")
+            let ringing = s[Int(1.0 * Self.sampleRate)...]
+            let f = peak(ringing.prefix(Int(0.5 * Self.sampleRate)), near: hertz(midi))
+            #expect(abs(cents(f, hertz(midi))) < 10, "\(name) at MIDI \(midi) rang at \(f) Hz once lifted")
+            let t60 = ringTime(ringing, hz: hertz(midi))
+            #expect(abs(t60 / spec.decay - 1) < 0.1, "\(name) at MIDI \(midi) rang for \(t60) s where decay is 2.2")
         }
     }
 
-    /// A tube blown at half pressure speaks: `pressure` is a dial from nothing
-    /// to full, and the sweep the docs show (0.3 to 0.8) is meant to swell a
-    /// note, not to gate it.
+    /// Every tube starts to sound at the same point of the dial, whatever its
+    /// pitch or its reed: silent at 0.25, speaking at 0.5. `pressure` is a dial
+    /// from nothing to full, and the sweep the docs show (0.3 to 0.8) is meant
+    /// to swell a note, not to gate it.
     ///
-    /// Measured 2026-10-11 and filed: the clarinet speaks from about 0.6 and
-    /// the hollow tube from 0.7 (the reedy one from 0.4).
+    /// Until 2026-10-15 the breath was the dial times a constant, and where a
+    /// note starts moves with how much its bore loses, so the clarinet spoke
+    /// from about 0.6 at MIDI 57, the hollow tube from 0.7, and every tube
+    /// later on a low note than on a high one.
     @Test(arguments: [("clarinet", Voice(blown: .clarinet, gain: 0.6)), ("reedy", Voice(blown: .reedy, gain: 0.6)),
                       ("hollow", Voice(blown: .hollow, gain: 0.6))])
-    func aBlownTubeSpeaksAtHalfPressure(name: String, voice: Voice) {
-        let s = render(voice, midi: 57, seconds: 1.0, velocity: 0.9, drive: 0.5)
-        let slice = s[Int(0.4 * Self.sampleRate)...]
-        let f0 = magnitude(slice, hz: hertz(57)) / (Double(slice.count) / 2)
-        pinned("the clarinet and hollow tubes do not speak below pressure 0.6 to 0.7 (measured 2026-10-11)", when: name != "reedy") {
-            #expect(f0 > 0.05, "\(name) at pressure 0.5 has a fundamental of \(f0)")
+    func aBlownTubeSpeaksFromTheSamePressureAtEveryPitch(name: String, voice: Voice) {
+        func fundamental(midi: Double, pressure: Double) -> Double {
+            let s = render(voice, midi: midi, seconds: 1.0, velocity: 0.9, drive: pressure)
+            let slice = s[Int(0.5 * Self.sampleRate)...]
+            return magnitude(slice, hz: hertz(midi)) / (Double(slice.count) / 2)
+        }
+        for midi in [45.0, 57, 69] {
+            let quiet = fundamental(midi: midi, pressure: 0.25)
+            #expect(quiet < 0.005, "\(name) at MIDI \(midi) sounds \(quiet) at pressure 0.25")
+            let speaking = fundamental(midi: midi, pressure: 0.5)
+            #expect(speaking > 0.05, "\(name) at MIDI \(midi) has a fundamental of \(speaking) at pressure 0.5")
         }
     }
 
@@ -439,21 +458,18 @@ struct SoundInvariantTests {
     /// reed pushed shut and held makes no sound, and a speaking one swings
     /// about zero.
     ///
-    /// Measured 2026-10-11 and filed: the tube holds a DC offset that shrinks
-    /// with pressure and never quite goes (the clarinet -0.13 at 0.5, where it
-    /// does not speak, -0.05 at 0.8 and -0.01 at 1.0 where it does; the hollow
-    /// tube -0.17 and -0.13), which eats headroom in a mix and thumps when the
-    /// pressure steps.
+    /// Until 2026-10-15 the tube held a DC offset that shrank with pressure
+    /// and never quite went (the clarinet -0.13 at 0.5, -0.05 at 0.8 and -0.01
+    /// at 1.0; the hollow tube -0.17 and -0.13), which ate headroom in a mix
+    /// and thumped when the pressure stepped.
     @Test(arguments: [("clarinet", Voice(blown: .clarinet, gain: 0.6)), ("reedy", Voice(blown: .reedy, gain: 0.6)),
                       ("hollow", Voice(blown: .hollow, gain: 0.6))])
     func aBlownTubeHoldsNoOffset(name: String, voice: Voice) {
-        for pressure in [0.5, 0.8] {
+        for pressure in [0.2, 0.5, 0.8, 1.0] {
             let s = render(voice, midi: 57, seconds: 1.0, velocity: 0.9, drive: pressure)
             let slice = s[Int(0.4 * Self.sampleRate)...]
             let mean = slice.reduce(0.0) { $0 + Double($1) } / Double(slice.count)
-            pinned("a blown tube holds a DC offset at every pressure under full (measured 2026-10-11)") {
-                #expect(abs(mean) < 0.01, "\(name) at pressure \(pressure) holds an offset of \(mean)")
-            }
+            #expect(abs(mean) < 0.005, "\(name) at pressure \(pressure) holds an offset of \(mean)")
         }
     }
 
@@ -493,58 +509,54 @@ struct SoundInvariantTests {
         stride(from: 0, to: stereo.count, by: 2).map { stereo[$0] }
     }
 
-    /// Four rooms are four rooms: the same note through `.room` and through
-    /// `.cathedral` cannot be the same samples.
+    /// Four rooms are four rooms: the same click through any two of the
+    /// built-in rooms cannot be the same samples.
     ///
-    /// Measured 2026-10-11 and filed: in an export the four built-in rooms
-    /// render byte for byte alike (a click through each has the same 1.41 s
-    /// decay and the same peak), so choosing one changes nothing in the file.
-    /// The preset is loaded before the engine enters its offline mode, which
-    /// is read as the moment it is lost.
+    /// Until 2026-10-15 the four rendered byte for byte alike (a click through
+    /// each had the same 1.41 s decay and the same peak): the room was loaded
+    /// with `loadFactoryPreset`, which on macOS 27 names the preset and leaves
+    /// every setting at the unit's default room, live and in an export alike.
     @MainActor
     @Test func theBuiltInRoomsAreFourRooms() throws {
-        let room = exported(effects: [Self.impulse(), .reverb(Reverb(.room, mix: 1))], seconds: 2)
-        let cathedral = exported(effects: [Self.impulse(), .reverb(Reverb(.cathedral, mix: 1))], seconds: 2)
-        var differ = 0.0
-        for i in 0..<min(room.count, cathedral.count) { differ = max(differ, Double(abs(room[i] - cathedral[i]))) }
-        pinned("the four built-in rooms export as one room (measured 2026-10-11)") {
-            #expect(differ > 0.01, "a room and a cathedral rendered the same samples")
+        let rooms = Reverb.Space.allCases.map { space in
+            (space, exported(effects: [Self.impulse(), .reverb(Reverb(space, mix: 1))], seconds: 2))
+        }
+        for (a, first) in rooms.enumerated() {
+            for second in rooms.dropFirst(a + 1) {
+                var differ = 0.0
+                for i in 0..<min(first.1.count, second.1.count) {
+                    differ = max(differ, Double(abs(first.1[i] - second.1[i])))
+                }
+                #expect(differ > 0.01, "\(first.0) and \(second.0) rendered the same samples")
+            }
         }
     }
 
-    /// A delay waits as long as it was asked: an echo asked for at 3 s arrives
-    /// at 3 s, as one asked for at 1.5 s arrives at 1.5 s.
+    /// A delay waits as long as its `time` says: an echo at 1.5 s arrives at
+    /// 1.5 s and one at 2 s at 2 s, and a time past the longest the echo can
+    /// wait reads back as that longest, so what it says is what is heard.
     ///
-    /// Measured 2026-10-11 and filed: the unit under the delay takes at most
-    /// 2 s, and `Delay.time` is handed over unclamped and undocumented, so a
-    /// time of 3 s echoes at 2.000 s.
+    /// Until 2026-10-15 `Delay.time` kept whatever it was given while the unit
+    /// under it held 2 s, so a time of 3 s read back as 3 and echoed at 2.000 s.
     @MainActor
-    @Test func aDelayWaitsAsLongAsItWasAsked() throws {
-        func echo(after time: Double) -> Double {
-            let out = leftChannel(exported(effects: [Self.impulse(), .delay(Delay(time: time, feedback: 0, mix: 1, damping: 20000))], seconds: time + 1))
+    @Test func aDelayWaitsAsLongAsItsTimeSays() throws {
+        func echo(_ delay: Delay) -> Double {
+            let out = leftChannel(exported(effects: [Self.impulse(), .delay(delay)], seconds: delay.time + 1))
             var at = 0, best = 0.0
             for i in 200..<out.count where Double(abs(out[i])) > best { best = Double(abs(out[i])); at = i }
             return Double(at) / Self.sampleRate
         }
-        #expect(abs(echo(after: 1.5) - 1.5) < 0.002)
-        pinned("a delay past 2 s is capped at 2 s by the unit (measured 2026-10-11)") {
-            let at = echo(after: 3)
-            #expect(abs(at - 3) < 0.002, "an echo asked for at 3 s arrived at \(at) s")
+        for time in [1.5, 2.0, 3.0] {
+            let delay = Delay(time: time, feedback: 0, mix: 1, damping: 20000)
+            #expect(delay.time == min(time, Delay.maxTime))
+            let at = echo(delay)
+            #expect(abs(at - delay.time) < 0.002, "an echo at \(delay.time) s arrived at \(at) s")
         }
     }
 
-    /// A limiter holds a ceiling without flattening the wave: a 0 dBFS sine
-    /// through a -6 dB ceiling comes out a sine 6 dB down, not a flat-topped
-    /// one, so its distortion stays under a third of a percent and no stretch
-    /// of samples sits exactly on the ceiling.
-    ///
-    /// Measured 2026-10-11 and filed: the limiter has no lookahead and
-    /// applies its gain on the sample that asked for it, so every crest over
-    /// the ceiling is flattened to it: 1.2% THD and 10% of the samples on the
-    /// ceiling. The doc page says it ducks "rather than tearing".
-    @Test func theLimiterLimitsWithoutClipping() throws {
-        let x = (0..<Int(0.5 * Self.sampleRate)).map { Float(sin(2 * .pi * 220 * Double($0) / Self.sampleRate)) }
-        let effect = DynamicsEffect(.limiter(Limiter(ceiling: -6, release: 0.05)), sampleRate: Self.sampleRate)
+    /// `x` through a limiter in blocks of 512, the left channel back.
+    private func limited(_ x: [Float], _ limiter: Limiter) -> [Float] {
+        let effect = DynamicsEffect(.limiter(limiter), sampleRate: Self.sampleRate)
         let format = AVAudioFormat(standardFormatWithSampleRate: Self.sampleRate, channels: 2)!
         let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 4096)!
         var y = [Float]()
@@ -560,6 +572,20 @@ struct SoundInvariantTests {
             y += Array(UnsafeBufferPointer(start: data[0], count: count))
             position += count
         }
+        return y
+    }
+
+    /// A limiter holds a ceiling without flattening the wave: a 0 dBFS sine
+    /// through a -6 dB ceiling comes out a sine 6 dB down, not a flat-topped
+    /// one, so its distortion stays under a third of a percent and no stretch
+    /// of samples sits exactly on the ceiling.
+    ///
+    /// Until 2026-10-15 the limiter had no lookahead and applied its gain on
+    /// the sample that asked for it, so every crest over the ceiling was
+    /// flattened to it: 1.2% THD and 10% of the samples on the ceiling.
+    @Test func theLimiterLimitsWithoutClipping() throws {
+        let x = (0..<Int(0.5 * Self.sampleRate)).map { Float(sin(2 * .pi * 220 * Double($0) / Self.sampleRate)) }
+        let y = limited(x, Limiter(ceiling: -6, release: 0.05))
         let tail = y[Int(0.3 * Self.sampleRate)...]
         let ceiling = Float(pow(10, -6.0 / 20))
         let onTheCeiling = Double(tail.filter { abs(abs($0) - ceiling) < 1e-5 }.count) / Double(tail.count)
@@ -567,18 +593,50 @@ struct SoundInvariantTests {
         var harmonics = 0.0
         for h in 2...9 { let m = magnitude(tail, hz: 220 * Double(h)); harmonics += m * m }
         let thd = harmonics.squareRoot() / f
-        pinned("the limiter flattens every crest over its ceiling (measured 2026-10-11)") {
-            #expect(thd < 0.003, "THD \(thd * 100)% through the limiter")
-            #expect(onTheCeiling < 0.01, "\(onTheCeiling * 100)% of the samples sat exactly on the ceiling")
+        #expect(thd < 0.003, "THD \(thd * 100)% through the limiter")
+        #expect(onTheCeiling < 0.01, "\(onTheCeiling * 100)% of the samples sat exactly on the ceiling")
+    }
+
+    /// Nothing leaves a limiter over its ceiling, whatever arrives: bursts of
+    /// noise up to 24 dB over it, a lone spike, and a step from silence to
+    /// full scale. And below the ceiling the sound passes untouched, later by
+    /// `Limiter.lookahead`, which is what the listening ahead costs.
+    @Test func aLimitersCeilingHoldsAndItsDelayIsItsLookahead() throws {
+        var state: UInt64 = 7
+        func noise() -> Float {
+            state = state &* 6364136223846793005 &+ 1442695040888963407
+            return Float(Double(state >> 11) / Double(1 << 53) * 2 - 1)
         }
+        let n = Int(1.0 * Self.sampleRate)
+        var x = [Float](repeating: 0, count: n)
+        for i in 0..<n {
+            let burst = (i / 2205) % 3 == 0 ? Float(8) : 0.05
+            x[i] = noise() * burst
+        }
+        x[n / 2] = 16
+        for i in (3 * n / 4)..<n { x[i] = 1 }
+        for ceiling in [-12.0, -6, -0.5] {
+            let y = limited(x, Limiter(ceiling: ceiling, release: 0.02))
+            let most = y.map { abs($0) }.max() ?? 0
+            #expect(Double(most) <= pow(10, ceiling / 20) * (1 + 1e-6), "ceiling \(ceiling) dB let \(most) through")
+        }
+
+        let quiet = (0..<4096).map { Float(0.25 * sin(2 * .pi * 330 * Double($0) / Self.sampleRate)) }
+        let passed = limited(quiet, Limiter(ceiling: -6))
+        let lag = Int((Limiter.lookahead * Self.sampleRate).rounded())
+        var moved: Float = 0
+        for i in lag..<quiet.count { moved = max(moved, abs(passed[i] - quiet[i - lag])) }
+        #expect(moved < 1e-6, "a sound under the ceiling moved by \(moved) besides its delay of \(lag) samples")
+        #expect(passed[0..<lag].allSatisfy { $0 == 0 })
     }
 
     /// An effect at the setting that asks for none of it passes the sound
     /// unchanged, sample for sample.
     ///
     /// Measured 2026-10-11: the delay, the built-in room, the equalizer, and
-    /// the convolution hold to the byte; the distortion at mix 0 moves a bell
-    /// by 0.027 of 0.38 (filed).
+    /// the convolution held to the byte, and the distortion at mix 0 moved a
+    /// bell by 0.027 of 0.38, until 2026-10-15, when it began to step aside at
+    /// mix 0 the way a flat equalizer does.
     @MainActor
     @Test(arguments: [("delay at mix 0", Effect.delay(Delay(mix: 0))),
                       ("room at mix 0", .reverb(Reverb(.hall, mix: 0))),
@@ -591,9 +649,7 @@ struct SoundInvariantTests {
         #expect(wet.count == dry.count)
         var moved = 0.0
         for i in 0..<min(dry.count, wet.count) { moved = max(moved, Double(abs(wet[i] - dry[i]))) }
-        pinned("the distortion unit at mix 0 is not the identity (measured 2026-10-11)", when: name.hasPrefix("distortion")) {
-            #expect(moved < 1e-6, "\(name) moved a sample by \(moved)")
-        }
+        #expect(moved < 1e-6, "\(name) moved a sample by \(moved)")
     }
 
     /// A sketch holding its instruments inside a struct, an array, an

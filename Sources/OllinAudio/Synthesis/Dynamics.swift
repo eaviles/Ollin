@@ -51,9 +51,11 @@ public struct Compressor: Sendable, Hashable, Codable {
 ///
 /// The last thing in a chain, where a compressor is a shape and this is a
 /// promise: whatever arrives, nothing leaves above `ceiling`. It gets there by
-/// turning the level down the instant a peak asks for it and letting go over
-/// `release`, so a single loud note ducks the sound around it for that long
-/// rather than tearing.
+/// listening `Limiter.lookahead` ahead of what it plays, so the level is
+/// already down when a peak arrives and comes down smoothly over that time
+/// rather than flattening the wave, then letting go over `release`. A single
+/// loud note ducks the sound around it for that long rather than tearing, and
+/// the sound leaves `lookahead` later than it came in.
 ///
 /// ```swift
 /// synth.effects = [.distortion(Distortion(.softClip)), .limiter(Limiter())]
@@ -70,6 +72,11 @@ public struct Limiter: Sendable, Hashable, Codable {
         self.ceiling = min(max(-40, ceiling), 0)
         self.release = min(max(0.005, release), 5)
     }
+
+    /// How far ahead the limiter listens, in seconds, which is also how much
+    /// later the sound leaves it: long enough to bring the level down over a
+    /// whole cycle of a low note's wave, short enough not to be heard as late.
+    public static let lookahead = 0.005
 }
 
 /// Silence between the notes.
@@ -151,10 +158,47 @@ final class DynamicsEffect: @unchecked Sendable {
     private var level = 0.0
     private var heldFor = 0
 
+    /// The limiter's lookahead, in samples, and what it keeps for it: the
+    /// sound waiting to leave (two channels), the gain each of the waiting
+    /// samples asks for with the release laid over it, and the running sum
+    /// of those gains. Memory the object owns, since it is written from the
+    /// audio thread. Empty for the other two kinds.
+    private let ahead: Int
+    private let waiting: UnsafeMutablePointer<Double>
+    private let asked: UnsafeMutablePointer<Double>
+    /// The smallest gain asked for over the window, as a queue of sample
+    /// positions whose gains rise from front to back (the oldest that could
+    /// still be the smallest at the front).
+    private let smallest: UnsafeMutablePointer<Int>
+    private let needs: UnsafeMutablePointer<Double>
+    private var smallestFront = 0
+    private var smallestCount = 0
+    private var position = 0
+    private var askedSum = 0.0
+    private var released = 1.0
+
     init(_ settings: Settings, sampleRate: Double) {
         self.kind = settings.kind
         self.sampleRate = max(1000, sampleRate)
         self.settings = OSAllocatedUnfairLock(initialState: settings)
+        let window = settings.kind == .limiter ? max(1, Int((Limiter.lookahead * self.sampleRate).rounded())) : 0
+        ahead = window
+        waiting = .allocate(capacity: 2 * (window + 1))
+        waiting.initialize(repeating: 0, count: 2 * (window + 1))
+        asked = .allocate(capacity: window + 1)
+        asked.initialize(repeating: 1, count: window + 1)
+        needs = .allocate(capacity: window + 1)
+        needs.initialize(repeating: 1, count: window + 1)
+        smallest = .allocate(capacity: window + 1)
+        smallest.initialize(repeating: 0, count: window + 1)
+        askedSum = Double(window + 1)
+    }
+
+    deinit {
+        waiting.deallocate()
+        asked.deallocate()
+        needs.deallocate()
+        smallest.deallocate()
     }
 
     /// Whether this object can carry these settings at this rate: the same
@@ -233,19 +277,51 @@ final class DynamicsEffect: @unchecked Sendable {
             }
 
         case .limiter(let limiter):
+            // A lookahead limiter. The sample leaving now came in `ahead`
+            // samples ago. Each gain below is the smallest any of the last
+            // `ahead + 1` samples asks for (ceiling over its peak), with the
+            // release laid over it so it lets go slowly; what is applied is
+            // the mean of the last `ahead + 1` of those. Every one of them saw
+            // the leaving sample in its window, so none is above what it
+            // needs, and so neither is their mean: the ceiling holds exactly, and the gain
+            // comes down along a straight line over the lookahead instead of
+            // in one sample, which is what keeps a crest round.
             let release = coefficient(limiter.release)
             let ceiling = pow(10, limiter.ceiling / 20)
+            let span = ahead + 1
             for index in 0..<count {
                 var peak = 0.0
                 for channel in 0..<channels { peak = max(peak, abs(Double(block[channel][index]))) }
-                // What this very sample needs, taken at once so the ceiling is
-                // a promise rather than a tendency, and let go of slowly. The
-                // release rises toward full, and never past what this sample
-                // asks for, which is what keeps the promise while it lets go.
                 let needed = peak > ceiling ? ceiling / peak : 1
-                gain = min(needed, release * gain + (1 - release))
+                let slot = position % span
+                // The window's smallest need: drop the positions that left
+                // it, and the ones this sample's need is no larger than.
+                needs[slot] = needed
+                if smallestCount > 0, smallest[smallestFront] <= position - span {
+                    smallestFront = (smallestFront + 1) % span
+                    smallestCount -= 1
+                }
+                while smallestCount > 0 {
+                    let back = smallest[(smallestFront + smallestCount - 1) % span]
+                    guard needs[back % span] >= needed else { break }
+                    smallestCount -= 1
+                }
+                smallest[(smallestFront + smallestCount) % span] = position
+                smallestCount += 1
+                let windowLeast = needs[smallest[smallestFront] % span]
+                released = min(windowLeast, release * released + (1 - release))
+                askedSum += released - asked[slot]
+                asked[slot] = released
+                gain = min(1, askedSum / Double(span))
+                // In comes this sample, and out goes the one that came in
+                // `ahead` samples ago, which sits in the next slot round.
                 let applied = Float(gain)
-                for channel in 0..<channels { block[channel][index] *= applied }
+                let leaving = (position + 1) % span
+                for channel in 0..<channels {
+                    waiting[2 * slot + channel] = Double(block[channel][index])
+                    block[channel][index] = Float(waiting[2 * leaving + channel]) * applied
+                }
+                position += 1
             }
 
         case .gate(let gate):

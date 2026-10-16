@@ -411,6 +411,7 @@ struct CustomEffect: Decodable, Encodable, Equatable, Hashable, Sendable
   var name: String { get set }
 struct Delay: Decodable, Encodable, Equatable, Hashable, Sendable
   init(time: Double = default, feedback: Double = default, mix: Double = default, damping: Double = default)
+  static let maxTime: Double
   var damping: Double { get set }
   var feedback: Double { get set }
   var mix: Double { get set }
@@ -507,6 +508,7 @@ struct ImpulseResponse: Decodable, Encodable, Equatable, Hashable, Sendable
   var sampleRate: Double { get set }
 struct Limiter: Decodable, Encodable, Equatable, Hashable, Sendable
   init(ceiling: Double = default, release: Double = default)
+  static let lookahead: Double
   var ceiling: Double { get set }
   var release: Double { get set }
 struct MIDIFile: Equatable, Hashable, Sendable

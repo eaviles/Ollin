@@ -241,7 +241,7 @@ synth.voice = Voice(plucked: string)
 |---|---|
 | `position` | where along the string it is plucked, `0...1` |
 | `hardness` | how hard the pluck is, `0...1`, from a fingertip to a plectrum |
-| `decay` | how long the note takes to fade, in seconds. Exact at low notes; a high note rings shorter than this, since the loop filter takes a share of its own (a steel string's 3.6 s is under a second at MIDI 93) |
+| `decay` | how long the note takes to fade, in seconds, at the note being played and at every pitch. The loop's gain allows for what the loop filter takes from the note. Near the top of the range, where the filter alone would take more than the decay allows, it is eased, so the top harmonics there fade closer to together with the note |
 | `damping` | how much sooner the top goes than the bottom, `0...1` |
 
 **`position` is the one that sounds least like a setting.** A string held at a point cannot move there. Every harmonic with a node at that point is therefore missing. Plucking at `0.5` loses every even harmonic and comes out hollow. Plucking near the end keeps them all and comes out thin and nasal. A quarter of the way along is roughly where a guitar is played. `Examples/Audio/Strings` lets you click a string wherever you want to pluck it.
@@ -344,13 +344,14 @@ One nonlinearity is what makes it sound bowed. Rosin grips harder when the bow a
 |---|---|
 | `position` | where the bow sits, `0...1` from the bridge. Small is thin and bright, which is what *sul ponticello* means |
 | `force` | how hard it presses. More force keeps the string stuck for longer in each cycle, which is louder and harder-edged |
-| `decay` | the loss inside the string's loop, which colors a sounding note. It is not a ring-out: a bow at pressure 0 rests on the string and mutes it within a tenth of a second |
+| `decay` | how long the string rings once the bow is lifted, in seconds, at every pitch. While it is bowed, it is the loss that colors the note |
 | `damping` | how much sooner the bright part goes than the low part |
 
 Two things fall out of the model rather than being settings, and both are worth knowing:
 
 - **Bow too fast for the force and the tone breaks.** The string tears loose twice a cycle instead of once. The note jumps to the octave, which is exactly what over-bowing sounds like on a real instrument. Raise `force` or lower `pressure` and it settles back.
-- **Loudness comes from force as much as from speed.** Across the whole range of `pressure` the level moves by about 8 dB. `force` moves it further. That is also true of a real bow, and it means `force` is the loudness parameter while `pressure` is the expressive one.
+- **Loudness comes from force as much as from speed.** From where a note first speaks to full `pressure` the level moves by 5 to 10 dB, depending on the instrument. `force` moves it further. That is also true of a real bow, and it means `force` is the loudness parameter while `pressure` is the expressive one.
+- **At pressure 0 the bow is off the string.** Over the bottom tenth of `pressure`, where no preset sounds yet, the bow lifts away, and at 0 the string rings down over its `decay` like a plucked one. A pressure that glides down to 0 slows the bow on the string first, which takes some of the ring, the way stopping a bow does.
 
 #### A blown tube
 
@@ -372,7 +373,7 @@ The tube is stopped at the reed and open at the far end, and that one fact is mo
 
 | Setting | What it does |
 |---|---|
-| `embouchure` | the bite. Higher shuts the reed at a lower pressure so it never gets far open, which is thinner and purer. A looser lip is the fuller, reedier one |
+| `embouchure` | the bite. Higher brings the reed nearer to shut at full breath, so it never gets far open, which is thinner and purer. A looser lip is the fuller, reedier one |
 | `breathiness` | how much of the breath arrives as noise. A wind instrument with none of it sounds synthetic in a way that is hard to place until it is put back |
 | `decay` | how long the tube would ring if the breath stopped |
 | `damping` | how much sooner the bright part goes |
@@ -383,7 +384,7 @@ The tube is stopped at the reed and open at the far end, and that one fact is mo
 synth.pressure = 0.6 + 0.4 * abs(sin(time * 2))
 ```
 
-`pressure` is `0...1`, read once every block of a few milliseconds, and shared by every note the instrument is playing. That is right for one bow and one breath. At zero there is nothing to hear, because nothing is driving the model. A tube also needs a minimum breath before it speaks, about 0.6 for the clarinet, 0.4 for the reedy one, and 0.7 for the hollow tube, and below that it is silent. The sources that are set going once (a wave, a plucked string, a struck body) ignore it entirely. Adding it changed nothing that already worked. A note pressed on its own ([`press`](#expression)) is driven by that instead, from the first press on, which is what a surface with a finger on every note wants.
+`pressure` is `0...1`, read once every block of a few milliseconds, and shared by every note the instrument is playing. That is right for one bow and one breath. At zero there is nothing to hear, because nothing is driving the model. A tube also needs a minimum breath before it speaks. Every tube speaks from 0.3, at every pitch and with any reed, and below that it is silent: where a note starts depends on how much its tube loses, so each note's start is worked out from its own loss and placed at 0.3 on the dial. What a tube sends out swings about zero, so a held breath leaves no standing offset to eat into the headroom of a mix. One limit stays: near the top of the range a tube blown hard leaves its note for the one a twelfth above, the way a clarinet overblows, and from about MIDI 87 up the breath that makes a note speak and the breath that tips it over are close together. The sources that are set going once (a wave, a plucked string, a struck body) ignore it entirely. Adding it changed nothing that already worked. A note pressed on its own ([`press`](#expression)) is driven by that instead, from the first press on, which is what a surface with a finger on every note wants.
 
 This is the control an envelope cannot give you. An envelope is decided when the note starts, while `pressure` is whatever you are doing right now.
 
@@ -820,7 +821,7 @@ Delay(time: 0.25, feedback: 0.4, mix: 0.3, damping: 6000)
 
 | Setting | What it does |
 |---|---|
-| `time` | seconds before the first repeat, up to 2 |
+| `time` | seconds before the first repeat, `0...2`. Two seconds is the longest the echo can wait, `Delay.maxTime`, so a longer time is held at 2 and reads back as 2 |
 | `feedback` | how much of each repeat feeds the next, `0...0.95`. Higher runs longer |
 | `mix` | how much of the result is the echo rather than the sound, `0...1` |
 | `damping` | where the repeats start losing their top, in Hz. Lower makes each repeat duller than the last, the way a real echo is |
@@ -916,7 +917,7 @@ Where the four above move the sound, these three watch how loud it is and act on
 | Level | What it does | Settings |
 |---|---|---|
 | `Compressor` | above `threshold`, lets the sound through at a fraction of what it does: a `ratio` of 4 means four decibels over arrive as one. What that buys is a narrower sound rather than a quieter one, so `makeupGain` brings the whole thing back up with the loud parts still held. `knee` is how wide the bend at the threshold is, and a wide one starts working before the threshold, which is what makes a compressor hard to hear working | `threshold`, `ratio`, `attack`, `release`, `knee`, `makeupGain` |
-| `Limiter` | a promise rather than a shape: whatever arrives, nothing leaves above `ceiling`. It turns the level down on the sample that asks for it, so a single loud note ducks the sound around it for a `release`; a wave that crosses the ceiling is flattened to it on the way, since there is no lookahead. The last thing in a chain | `ceiling`, `release` |
+| `Limiter` | a promise rather than a shape: whatever arrives, nothing leaves above `ceiling`. It listens `Limiter.lookahead` (5 ms) ahead of what it plays, so the level is already coming down when a peak arrives and a wave keeps its round crests rather than being flattened. A single loud note ducks the sound around it for a `release`. The sound leaves 5 ms later than it came in. The last thing in a chain | `ceiling`, `release` |
 | `Gate` | below `threshold`, turns the sound down by `depth`, which takes hiss, hum, and room out of the gaps. `hold` is how long it stays open after the level drops, which is what keeps a decaying note from being chopped off | `threshold`, `attack`, `hold`, `release`, `depth` |
 
 `attack` is how long the holding down takes and `release` how long the letting go takes, both in seconds, and between them they are most of what a compressor sounds like. A fast attack flattens every transient, and a slow release breathes. The level is read from both sides at once, so a loud note on one side pulls the other down with it and the image stays where you put it.

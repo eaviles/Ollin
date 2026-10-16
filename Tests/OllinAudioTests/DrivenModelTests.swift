@@ -125,12 +125,13 @@ import Testing
                 < 0.5 * Self.loudness(steady, from: 1.5, to: 1.9))
 
         // Bowing faster is louder, which is the other half of the control.
-        // Measured at about 1.8 times across that range rather than the ratio
-        // of the speeds: a bowed string's loudness comes from the bow's force
-        // as much as its speed, and force is the stronger of the two here.
+        // Measured at about 1.5 times across that range (1.8 while the loop's
+        // loss was taken twice a period) rather than the ratio of the speeds:
+        // a bowed string's loudness comes from the bow's force as much as its
+        // speed, and force is the stronger of the two here.
         #expect(Self.loudness(Self.render(.cello, pitch: 48, seconds: 1.6, drive: 0.9),
                               from: 1.0, to: 1.5)
-                > 1.5 * Self.loudness(Self.render(.cello, pitch: 48, seconds: 1.6, drive: 0.25),
+                > 1.3 * Self.loudness(Self.render(.cello, pitch: 48, seconds: 1.6, drive: 0.25),
                                       from: 1.0, to: 1.5))
     }
 
