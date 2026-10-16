@@ -1029,5 +1029,12 @@ let package = Package(
         // Buenos Aires in 1959.
         example("Recreations/MacEntyreVidal/Circunferencias"),
         example("Recreations/MacEntyreVidal/Focos"),
+        // A grid of 10 by 10 units on a surface of 4:5 and eight parts on it,
+        // the warm ones displaced a unit a step along the border and the cold
+        // ones along the diagonal, ruled in thin lines with a few cells painted
+        // in full, and one of those cells enlarged until its lines are bands of
+        // flat color, after Dóra Maurer.
+        example("Recreations/DoraMaurer/Displacements"),
+        example("Recreations/DoraMaurer/QuasiImage"),
     ]
 )

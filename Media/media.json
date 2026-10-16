@@ -528,6 +528,10 @@
     "Recreations/MacEntyreVidal": [
       "Recreations/MacEntyreVidal/Circunferencias",
       "Recreations/MacEntyreVidal/Focos"
+    ],
+    "Recreations/DoraMaurer": [
+      "Recreations/DoraMaurer/Displacements",
+      "Recreations/DoraMaurer/QuasiImage"
     ]
   },
   "examples": {
@@ -8507,6 +8511,50 @@
       "stillSmall": "examples/Recreations/CaseyReas/Touching/still-640.jpg?v=d3527730",
       "width": 1080
     },
+    "Recreations/DoraMaurer/Displacements": {
+      "bytes": {
+        "loop": 15483410,
+        "loopSmall": 3088510,
+        "still": 283723,
+        "stillSmall": 96550
+      },
+      "frame": 480,
+      "height": 1080,
+      "length": "lap",
+      "loop": "examples/Recreations/DoraMaurer/Displacements/loop.mp4?v=505e2796",
+      "loopSmall": "examples/Recreations/DoraMaurer/Displacements/loop-640.mp4?v=01f6399f",
+      "motion": 8.433,
+      "rendered": "2026-10-16",
+      "seconds": 10.0,
+      "seed": 1,
+      "sound": false,
+      "source": "d4b6146883bdadff",
+      "still": "examples/Recreations/DoraMaurer/Displacements/still.jpg?v=119df32f",
+      "stillSmall": "examples/Recreations/DoraMaurer/Displacements/still-640.jpg?v=e6fddf94",
+      "width": 864
+    },
+    "Recreations/DoraMaurer/QuasiImage": {
+      "bytes": {
+        "loop": 10524135,
+        "loopSmall": 2833521,
+        "still": 179225,
+        "stillSmall": 75936
+      },
+      "frame": 480,
+      "height": 1080,
+      "length": "lap",
+      "loop": "examples/Recreations/DoraMaurer/QuasiImage/loop.mp4?v=e9a41a85",
+      "loopSmall": "examples/Recreations/DoraMaurer/QuasiImage/loop-640.mp4?v=032ce4a5",
+      "motion": 79.678,
+      "rendered": "2026-10-16",
+      "seconds": 10.0,
+      "seed": 1,
+      "sound": false,
+      "source": "7e3285875638160b",
+      "still": "examples/Recreations/DoraMaurer/QuasiImage/still.jpg?v=81cfe425",
+      "stillSmall": "examples/Recreations/DoraMaurer/QuasiImage/still-640.jpg?v=f07fecc5",
+      "width": 1080
+    },
     "Recreations/FriederNake/HommageAPaulKlee": {
       "bytes": {
         "still": 121026,
@@ -12285,8 +12333,8 @@
       ]
     },
     "3D/Environments": {
-      "image": "groups/3D-Environments.jpg?v=65053517",
-      "imageSmall": "groups/3D-Environments-640.jpg?v=fa8ce933",
+      "image": "groups/3D-Environments.jpg?v=c09cccf2",
+      "imageSmall": "groups/3D-Environments-640.jpg?v=d68774a5",
       "of": [
         "3D/Environments/RemoteEnvironment",
         "3D/Environments/EnvironmentGallery",
@@ -12345,8 +12393,8 @@
       ]
     },
     "Audio": {
-      "image": "groups/Audio.jpg?v=0d15fd24",
-      "imageSmall": "groups/Audio-640.jpg?v=70700bf3",
+      "image": "groups/Audio.jpg?v=ff3d2d84",
+      "imageSmall": "groups/Audio-640.jpg?v=5229f117",
       "of": [
         "Audio/OwnSampler",
         "Audio/Spatial",
@@ -12480,8 +12528,8 @@
       ]
     },
     "Physics": {
-      "image": "groups/Physics.jpg?v=d39587e8",
-      "imageSmall": "groups/Physics-640.jpg?v=1fc84082",
+      "image": "groups/Physics.jpg?v=db5740bc",
+      "imageSmall": "groups/Physics-640.jpg?v=22aef076",
       "of": [
         "Physics/RigidBodies",
         "Physics/Blobs",
@@ -12517,6 +12565,14 @@
         "Recreations/AlmaThomas/Columns"
       ]
     },
+    "Recreations/AnwarJalalShemza": {
+      "of": [
+        "Recreations/AnwarJalalShemza/Meem",
+        "Recreations/AnwarJalalShemza/Roots"
+      ],
+      "image": "groups/Recreations-AnwarJalalShemza.jpg?v=5007bcf3",
+      "imageSmall": "groups/Recreations-AnwarJalalShemza-640.jpg?v=fe8d5f11"
+    },
     "Recreations/BridgetRiley": {
       "image": "groups/Recreations-BridgetRiley.jpg?v=b60256e3",
       "imageSmall": "groups/Recreations-BridgetRiley-640.jpg?v=a2555ef2",
@@ -12531,6 +12587,14 @@
       "of": [
         "Recreations/CaseyReas/Touching",
         "Recreations/CaseyReas/Planes"
+      ]
+    },
+    "Recreations/DoraMaurer": {
+      "image": "groups/Recreations-DoraMaurer.jpg?v=221e4c11",
+      "imageSmall": "groups/Recreations-DoraMaurer-640.jpg?v=e9651741",
+      "of": [
+        "Recreations/DoraMaurer/Displacements",
+        "Recreations/DoraMaurer/QuasiImage"
       ]
     },
     "Recreations/FriederNake": {
@@ -12602,6 +12666,14 @@
       "of": [
         "Recreations/KazuyaSakai/Ondulaciones",
         "Recreations/KazuyaSakai/RightOff"
+      ]
+    },
+    "Recreations/MacEntyreVidal": {
+      "image": "groups/Recreations-MacEntyreVidal.jpg?v=5e1cc5a9",
+      "imageSmall": "groups/Recreations-MacEntyreVidal-640.jpg?v=57713eb4",
+      "of": [
+        "Recreations/MacEntyreVidal/Circunferencias",
+        "Recreations/MacEntyreVidal/Focos"
       ]
     },
     "Recreations/ManfredMohr": {
@@ -12725,6 +12797,14 @@
         "Recreations/WaldemarCordeiro/Gente"
       ]
     },
+    "Recreations/ZdenekSykora": {
+      "image": "groups/Recreations-ZdenekSykora.jpg?v=ff984a02",
+      "imageSmall": "groups/Recreations-ZdenekSykora-640.jpg?v=d76f49c7",
+      "of": [
+        "Recreations/ZdenekSykora/Structure",
+        "Recreations/ZdenekSykora/Lines"
+      ]
+    },
     "Rendering": {
       "image": "groups/Rendering.jpg?v=44f925ed",
       "imageSmall": "groups/Rendering-640.jpg?v=9e014439",
@@ -12798,30 +12878,6 @@
       "imageSmall": "groups/Web-640.jpg?v=fd88be70",
       "of": [
         "Web/BreathingRing"
-      ]
-    },
-    "Recreations/ZdenekSykora": {
-      "image": "groups/Recreations-ZdenekSykora.jpg?v=ff984a02",
-      "imageSmall": "groups/Recreations-ZdenekSykora-640.jpg?v=d76f49c7",
-      "of": [
-        "Recreations/ZdenekSykora/Structure",
-        "Recreations/ZdenekSykora/Lines"
-      ]
-    },
-    "Recreations/AnwarJalalShemza": {
-      "of": [
-        "Recreations/AnwarJalalShemza/Meem",
-        "Recreations/AnwarJalalShemza/Roots"
-      ],
-      "image": "groups/Recreations-AnwarJalalShemza.jpg?v=5007bcf3",
-      "imageSmall": "groups/Recreations-AnwarJalalShemza-640.jpg?v=fe8d5f11"
-    },
-    "Recreations/MacEntyreVidal": {
-      "image": "groups/Recreations-MacEntyreVidal.jpg?v=5e1cc5a9",
-      "imageSmall": "groups/Recreations-MacEntyreVidal-640.jpg?v=57713eb4",
-      "of": [
-        "Recreations/MacEntyreVidal/Circunferencias",
-        "Recreations/MacEntyreVidal/Focos"
       ]
     }
   },
