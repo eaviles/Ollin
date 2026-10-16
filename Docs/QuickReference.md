@@ -237,6 +237,8 @@ Each of these gives a wrong or empty picture and no error.
 - **A volume, and the 2D drawn after it.** `drawVolume` with no camera set draws nothing. With one, every volume composites over the frame's whole drawing once it is done, so a caption drawn later in `draw()` lies under the cloud. Draw the caption in `withOverlay { }`. See [Volumes](./3D/Volumes.md#in-front-of-and-behind).
 - **A texture on a mesh with no texture coordinates.** The texture is ignored, and the mesh draws in its base color.
 - **`redraw()`, `copyFrame()`, `chooseFiles`, and `pointerShape` in an export.** There is no window, so each does nothing. A `redraw()` inside `draw()` asks for nothing either: that frame is the one being drawn.
+- **Noise offsets 256 apart.** Every Perlin field repeats every 256 units on each axis, so copies told apart by an offset of `32 * i` read the same noise every eighth copy. Use an offset that is not a power of two, or a seed per copy.
+- **Noise at its ends.** `noise` is clamped after its contrast is raised, so about 2% of it sits exactly at 0 and 2% exactly at 1, and a curve read straight from it runs flat there.
 - **A `print` during an exported sequence.** It lands on the same terminal line as the progress text, and later than expected when the output is piped. Write to standard error with a newline first, or read the value after the run.
 
 <a name="checking"></a>

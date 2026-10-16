@@ -46,6 +46,11 @@ let n = noise(x * 0.01, y * 0.01)        // 0...1, smooth across the canvas
 drawCircle(x, y, n * 20)
 ```
 
+Two facts about every Perlin form here, the looping ones included, follow from how it is built:
+
+- **The field repeats every 256 units on each axis.** The lattice is hashed through a table of 256 entries, so `noise(x)` and `noise(x + 256)` are the same value, and so are two reads 256 apart in `y` or `z`. An offset used to give each copy of something a noise of its own should not be a multiple of 256, and a step whose multiples land on 256 repeats: copies offset by `32 * i` read the same field every eighth copy. An offset that is not a power of two (`37.3 * i`) or a seed of its own per copy avoids it.
+- **The ends of the range are flat.** Contrast-calibrated means the raw field is scaled up and the overshoot clamped, which is what lets it reach 0 and 1. The price is that a share of the field sits exactly on an end: over 800,000 samples, 1.9% of `noise(x, y)` is exactly 0 and 2.0% exactly 1, and the looping forms 2 to 3.5% at each end. A curve read straight from the field runs flat there. Two reads at unrelated offsets averaged and rescaled are flat only where both clamp at once.
+
 <a name="signedNoise"></a>
 
 #### signedNoise
