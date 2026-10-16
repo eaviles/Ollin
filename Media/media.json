@@ -3170,46 +3170,48 @@
       "width": 1080
     },
     "Audio/Bowing": {
-      "bytes": {
-        "loop": 760924,
-        "loopSmall": 104448,
-        "still": 37922,
-        "stillSmall": 17944
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "10.0s",
-      "loop": "examples/Audio/Bowing/loop.mp4?v=3de5434d",
-      "loopSmall": "examples/Audio/Bowing/loop-640.mp4?v=3623ac05",
-      "motion": 0.0,
-      "rendered": "2026-09-10",
       "seconds": 10.0,
+      "frame": 480,
+      "motion": 0.0,
       "sound": true,
       "source": "5751269d9be85f8c",
-      "still": "examples/Audio/Bowing/still.jpg?v=92dc36db",
-      "stillSmall": "examples/Audio/Bowing/still-640.jpg?v=4bfbdb26",
-      "width": 1080
+      "rendered": "2026-10-16",
+      "bytes": {
+        "loop": 761792,
+        "loopSmall": 110118,
+        "still": 37921,
+        "stillSmall": 17949
+      },
+      "loop": "examples/Audio/Bowing/loop.mp4?v=53983cc1",
+      "loopSmall": "examples/Audio/Bowing/loop-640.mp4?v=11c3b371",
+      "still": "examples/Audio/Bowing/still.jpg?v=40f31baf",
+      "stillSmall": "examples/Audio/Bowing/still-640.jpg?v=6c106fe1",
+      "seed": 1
     },
     "Audio/Changes": {
-      "bytes": {
-        "loop": 969549,
-        "loopSmall": 129495,
-        "still": 47217,
-        "stillSmall": 18828
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
-      "length": "10s",
-      "loop": "examples/Audio/Changes/loop.mp4?v=9705ba0f",
-      "loopSmall": "examples/Audio/Changes/loop-640.mp4?v=cc7ab6cb",
-      "motion": 0.99,
-      "rendered": "2026-09-10",
+      "length": "10.0s",
       "seconds": 10.0,
+      "frame": 480,
+      "motion": 0.99,
       "sound": true,
       "source": "3c1e1f464f44d774",
-      "still": "examples/Audio/Changes/still.jpg?v=86e4261b",
-      "stillSmall": "examples/Audio/Changes/still-640.jpg?v=5bebeaf9",
-      "width": 1080
+      "rendered": "2026-10-16",
+      "bytes": {
+        "loop": 973120,
+        "loopSmall": 129593,
+        "still": 47235,
+        "stillSmall": 18823
+      },
+      "loop": "examples/Audio/Changes/loop.mp4?v=602d91c3",
+      "loopSmall": "examples/Audio/Changes/loop-640.mp4?v=108c9680",
+      "still": "examples/Audio/Changes/still.jpg?v=45067389",
+      "stillSmall": "examples/Audio/Changes/still-640.jpg?v=0244916a",
+      "seed": 1
     },
     "Audio/ChladniResonance": {
       "width": 1080,
@@ -3234,48 +3236,49 @@
       "seed": 1
     },
     "Audio/ChordSymbols": {
-      "bytes": {
-        "loop": 941121,
-        "loopSmall": 120531,
-        "still": 52718,
-        "stillSmall": 20964
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "10.0s",
-      "loop": "examples/Audio/ChordSymbols/loop.mp4?v=74dc1d22",
-      "loopSmall": "examples/Audio/ChordSymbols/loop-640.mp4?v=2623d60e",
-      "motion": 2.291,
-      "rendered": "2026-09-10",
       "seconds": 10.0,
+      "frame": 480,
+      "motion": 2.291,
       "sound": true,
       "source": "3a63c189629e2fe9",
-      "still": "examples/Audio/ChordSymbols/still.jpg?v=bb747c3f",
-      "stillSmall": "examples/Audio/ChordSymbols/still-640.jpg?v=fddd30ee",
-      "width": 1080
+      "rendered": "2026-10-16",
+      "bytes": {
+        "loop": 940619,
+        "loopSmall": 122856,
+        "still": 52702,
+        "stillSmall": 20961
+      },
+      "loop": "examples/Audio/ChordSymbols/loop.mp4?v=7784789a",
+      "loopSmall": "examples/Audio/ChordSymbols/loop-640.mp4?v=3898a92d",
+      "still": "examples/Audio/ChordSymbols/still.jpg?v=ff77072d",
+      "stillSmall": "examples/Audio/ChordSymbols/still-640.jpg?v=6a3d4225",
+      "seed": 1
     },
     "Audio/Expression": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10.0s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 8.973,
+      "sound": true,
+      "source": "673928a603dd2d32",
+      "rendered": "2026-10-16",
       "bytes": {
-        "loop": 990066,
-        "loopSmall": 170729,
+        "loop": 988419,
+        "loopSmall": 169685,
         "still": 78987,
         "stillSmall": 32127
       },
-      "frame": 480,
-      "height": 1080,
-      "length": "10s",
-      "loop": "examples/Audio/Expression/loop.mp4?v=997d2228",
-      "loopSmall": "examples/Audio/Expression/loop-640.mp4?v=7048207a",
-      "motion": 8.973,
-      "rendered": "2026-09-26",
-      "seconds": 10.0,
-      "seed": 1,
-      "sound": true,
-      "source": "673928a603dd2d32",
-      "staged": "a hand of the sketch's own plays the phrase",
+      "loop": "examples/Audio/Expression/loop.mp4?v=4a8dc7eb",
+      "loopSmall": "examples/Audio/Expression/loop-640.mp4?v=41b4d951",
       "still": "examples/Audio/Expression/still.jpg?v=6304cba1",
       "stillSmall": "examples/Audio/Expression/still-640.jpg?v=133b1a49",
-      "width": 1080
+      "seed": 1,
+      "staged": "a hand of the sketch's own plays the phrase"
     },
     "Audio/FilePlayer": {
       "bytes": {
@@ -3299,46 +3302,48 @@
       "width": 1080
     },
     "Audio/Generative": {
-      "bytes": {
-        "loop": 1751439,
-        "loopSmall": 403878,
-        "still": 98547,
-        "stillSmall": 37769
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "10.0s",
-      "loop": "examples/Audio/Generative/loop.mp4?v=9cc83f99",
-      "loopSmall": "examples/Audio/Generative/loop-640.mp4?v=1140220f",
-      "motion": 1.535,
-      "rendered": "2026-09-10",
       "seconds": 10.0,
+      "frame": 480,
+      "motion": 1.535,
       "sound": true,
-      "source": "53b59d8c4f05ca52",
-      "still": "examples/Audio/Generative/still.jpg?v=ad66d3aa",
-      "stillSmall": "examples/Audio/Generative/still-640.jpg?v=84388996",
-      "width": 1080
+      "source": "5b9cebdf5601f91e",
+      "rendered": "2026-10-16",
+      "bytes": {
+        "loop": 1749170,
+        "loopSmall": 408420,
+        "still": 98509,
+        "stillSmall": 37786
+      },
+      "loop": "examples/Audio/Generative/loop.mp4?v=236b83e8",
+      "loopSmall": "examples/Audio/Generative/loop-640.mp4?v=d295c0a8",
+      "still": "examples/Audio/Generative/still.jpg?v=78cac49f",
+      "stillSmall": "examples/Audio/Generative/still-640.jpg?v=694b3472",
+      "seed": 1
     },
     "Audio/Grains": {
-      "bytes": {
-        "loop": 986362,
-        "loopSmall": 195170,
-        "still": 59352,
-        "stillSmall": 21236
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "10.0s",
-      "loop": "examples/Audio/Grains/loop.mp4?v=5bb2263d",
-      "loopSmall": "examples/Audio/Grains/loop-640.mp4?v=7c616759",
-      "motion": 1.522,
-      "rendered": "2026-09-14",
       "seconds": 10.0,
+      "frame": 480,
+      "motion": 1.523,
       "sound": true,
-      "source": "777a7864cc2d5d34",
-      "still": "examples/Audio/Grains/still.jpg?v=1b7bc14c",
-      "stillSmall": "examples/Audio/Grains/still-640.jpg?v=82036031",
-      "width": 1080
+      "source": "e86eae17a66471a3",
+      "rendered": "2026-10-16",
+      "bytes": {
+        "loop": 993138,
+        "loopSmall": 187995,
+        "still": 59413,
+        "stillSmall": 21236
+      },
+      "loop": "examples/Audio/Grains/loop.mp4?v=69c5712c",
+      "loopSmall": "examples/Audio/Grains/loop-640.mp4?v=3800c4cb",
+      "still": "examples/Audio/Grains/still.jpg?v=24ee3c44",
+      "stillSmall": "examples/Audio/Grains/still-640.jpg?v=19176e4c",
+      "seed": 1
     },
     "Audio/GuitarTuner": {
       "bytes": {
@@ -3362,46 +3367,48 @@
       "width": 1080
     },
     "Audio/Levels": {
-      "bytes": {
-        "loop": 852751,
-        "loopSmall": 94227,
-        "still": 46475,
-        "stillSmall": 17126
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
-      "length": "10s",
-      "loop": "examples/Audio/Levels/loop.mp4?v=8e38522b",
-      "loopSmall": "examples/Audio/Levels/loop-640.mp4?v=74328d89",
-      "motion": 0.0,
-      "rendered": "2026-09-10",
+      "length": "10.0s",
       "seconds": 10.0,
+      "frame": 480,
+      "motion": 0.0,
       "sound": true,
-      "source": "271938a3f6c3ecd3",
-      "still": "examples/Audio/Levels/still.jpg?v=13613bfe",
-      "stillSmall": "examples/Audio/Levels/still-640.jpg?v=eb28c921",
-      "width": 1080
+      "source": "4ceda713f64c1bfc",
+      "rendered": "2026-10-16",
+      "bytes": {
+        "loop": 854497,
+        "loopSmall": 94158,
+        "still": 46516,
+        "stillSmall": 17114
+      },
+      "loop": "examples/Audio/Levels/loop.mp4?v=7ee3a2c9",
+      "loopSmall": "examples/Audio/Levels/loop-640.mp4?v=884a5c1c",
+      "still": "examples/Audio/Levels/still.jpg?v=86c319c5",
+      "stillSmall": "examples/Audio/Levels/still-640.jpg?v=4ed2b247",
+      "seed": 1
     },
     "Audio/MIDIFiles": {
-      "bytes": {
-        "loop": 944746,
-        "loopSmall": 223593,
-        "still": 99221,
-        "stillSmall": 45341
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
-      "length": "10s",
-      "loop": "examples/Audio/MIDIFiles/loop.mp4?v=1771d680",
-      "loopSmall": "examples/Audio/MIDIFiles/loop-640.mp4?v=9f5a02f5",
-      "motion": 0.484,
-      "rendered": "2026-09-18",
+      "length": "10.0s",
       "seconds": 10.0,
+      "frame": 480,
+      "motion": 0.471,
       "sound": true,
-      "source": "487e6d37656e57b8",
-      "still": "examples/Audio/MIDIFiles/still.jpg?v=919378a5",
-      "stillSmall": "examples/Audio/MIDIFiles/still-640.jpg?v=b243bd5d",
-      "width": 1080
+      "source": "23b5326fd7fb8805",
+      "rendered": "2026-10-16",
+      "bytes": {
+        "loop": 933525,
+        "loopSmall": 218858,
+        "still": 101778,
+        "stillSmall": 44842
+      },
+      "loop": "examples/Audio/MIDIFiles/loop.mp4?v=8d45df3d",
+      "loopSmall": "examples/Audio/MIDIFiles/loop-640.mp4?v=947341fd",
+      "still": "examples/Audio/MIDIFiles/still.jpg?v=92ac0cb3",
+      "stillSmall": "examples/Audio/MIDIFiles/still-640.jpg?v=eaf1c1bd",
+      "seed": 1
     },
     "Audio/Movement": {
       "bytes": {
@@ -3425,46 +3432,48 @@
       "width": 1080
     },
     "Audio/OwnSampler": {
-      "bytes": {
-        "loop": 1043525,
-        "loopSmall": 194347,
-        "still": 119084,
-        "stillSmall": 41794
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "10.0s",
-      "loop": "examples/Audio/OwnSampler/loop.mp4?v=b88cbbd1",
-      "loopSmall": "examples/Audio/OwnSampler/loop-640.mp4?v=ae370211",
-      "motion": 3.577,
-      "rendered": "2026-09-10",
       "seconds": 10.0,
+      "frame": 480,
+      "motion": 3.577,
       "sound": true,
-      "source": "01d4f4ba35d4281f",
-      "still": "examples/Audio/OwnSampler/still.jpg?v=88097993",
-      "stillSmall": "examples/Audio/OwnSampler/still-640.jpg?v=b108e67e",
-      "width": 1080
+      "source": "8898cd313e7deeef",
+      "rendered": "2026-10-16",
+      "bytes": {
+        "loop": 1042062,
+        "loopSmall": 193957,
+        "still": 119082,
+        "stillSmall": 41804
+      },
+      "loop": "examples/Audio/OwnSampler/loop.mp4?v=604bb816",
+      "loopSmall": "examples/Audio/OwnSampler/loop-640.mp4?v=085373d9",
+      "still": "examples/Audio/OwnSampler/still.jpg?v=2bff2dbe",
+      "stillSmall": "examples/Audio/OwnSampler/still-640.jpg?v=1a75067c",
+      "seed": 1
     },
     "Audio/Patching": {
-      "bytes": {
-        "loop": 829364,
-        "loopSmall": 123595,
-        "still": 46616,
-        "stillSmall": 19657
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
-      "length": "10s",
-      "loop": "examples/Audio/Patching/loop.mp4?v=b9e76a98",
-      "loopSmall": "examples/Audio/Patching/loop-640.mp4?v=119831db",
-      "motion": 0.0,
-      "rendered": "2026-09-10",
+      "length": "10.0s",
       "seconds": 10.0,
+      "frame": 480,
+      "motion": 0.0,
       "sound": true,
-      "source": "279c6dd783a2a229",
-      "still": "examples/Audio/Patching/still.jpg?v=f6626a26",
-      "stillSmall": "examples/Audio/Patching/still-640.jpg?v=cb1749a4",
-      "width": 1080
+      "source": "93f7674b3f776745",
+      "rendered": "2026-10-16",
+      "bytes": {
+        "loop": 825827,
+        "loopSmall": 123026,
+        "still": 46613,
+        "stillSmall": 19667
+      },
+      "loop": "examples/Audio/Patching/loop.mp4?v=a374bb7c",
+      "loopSmall": "examples/Audio/Patching/loop-640.mp4?v=65eb835c",
+      "still": "examples/Audio/Patching/still.jpg?v=3f232a32",
+      "stillSmall": "examples/Audio/Patching/still-640.jpg?v=f1691fbb",
+      "seed": 1
     },
     "Audio/Rooms": {
       "bytes": {
@@ -3488,25 +3497,26 @@
       "width": 1080
     },
     "Audio/Sampler": {
-      "bytes": {
-        "loop": 1041135,
-        "loopSmall": 154755,
-        "still": 39840,
-        "stillSmall": 16323
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "10.0s",
-      "loop": "examples/Audio/Sampler/loop.mp4?v=9472fca4",
-      "loopSmall": "examples/Audio/Sampler/loop-640.mp4?v=5d1faf1b",
-      "motion": 2.062,
-      "rendered": "2026-09-10",
       "seconds": 10.0,
+      "frame": 480,
+      "motion": 2.062,
       "sound": true,
       "source": "ef156e9762527fc2",
-      "still": "examples/Audio/Sampler/still.jpg?v=180a11d6",
-      "stillSmall": "examples/Audio/Sampler/still-640.jpg?v=6df8895e",
-      "width": 1080
+      "rendered": "2026-10-16",
+      "bytes": {
+        "loop": 1036732,
+        "loopSmall": 157115,
+        "still": 39809,
+        "stillSmall": 16329
+      },
+      "loop": "examples/Audio/Sampler/loop.mp4?v=3c0713e0",
+      "loopSmall": "examples/Audio/Sampler/loop-640.mp4?v=3d2facae",
+      "still": "examples/Audio/Sampler/still.jpg?v=c2a6857d",
+      "stillSmall": "examples/Audio/Sampler/still-640.jpg?v=6242cc1e",
+      "seed": 1
     },
     "Audio/Sequencer": {
       "width": 1080,
@@ -3517,61 +3527,62 @@
       "motion": 4.917,
       "sound": true,
       "source": "dcf157a2153bfbcf",
-      "rendered": "2026-10-11",
+      "rendered": "2026-10-16",
       "bytes": {
-        "loop": 1177525,
+        "loop": 1179287,
         "loopSmall": 295918,
         "still": 87552,
         "stillSmall": 37409
       },
-      "loop": "examples/Audio/Sequencer/loop.mp4?v=6c34591f",
+      "loop": "examples/Audio/Sequencer/loop.mp4?v=fc734a67",
       "loopSmall": "examples/Audio/Sequencer/loop-640.mp4?v=888f985c",
       "still": "examples/Audio/Sequencer/still.jpg?v=fe7c9b01",
       "stillSmall": "examples/Audio/Sequencer/still-640.jpg?v=610d3aeb",
       "seed": 1
     },
     "Audio/Shaping": {
-      "bytes": {
-        "loop": 922723,
-        "loopSmall": 201917,
-        "still": 111646,
-        "stillSmall": 43856
-      },
-      "frame": 480,
-      "height": 1080,
-      "length": "10s",
-      "loop": "examples/Audio/Shaping/loop.mp4?v=9c3a280e",
-      "loopSmall": "examples/Audio/Shaping/loop-640.mp4?v=cc84af81",
-      "motion": 0.0,
-      "rendered": "2026-09-10",
-      "seconds": 10.0,
-      "sound": true,
-      "source": "c4dedc1ea2f1960e",
-      "still": "examples/Audio/Shaping/still.jpg?v=a3291d68",
-      "stillSmall": "examples/Audio/Shaping/still-640.jpg?v=d6cb6131",
-      "width": 1080
-    },
-    "Audio/Sonification": {
-      "bytes": {
-        "loop": 780276,
-        "loopSmall": 117557,
-        "still": 66859,
-        "stillSmall": 28102
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "10.0s",
-      "loop": "examples/Audio/Sonification/loop.mp4?v=5c9bca6d",
-      "loopSmall": "examples/Audio/Sonification/loop-640.mp4?v=0bb32d02",
-      "motion": 0.388,
-      "rendered": "2026-09-26",
       "seconds": 10.0,
-      "seed": 1,
+      "frame": 480,
+      "motion": 0.0,
+      "sound": true,
+      "source": "df53eac062892064",
+      "rendered": "2026-10-16",
+      "bytes": {
+        "loop": 917012,
+        "loopSmall": 201819,
+        "still": 111661,
+        "stillSmall": 43881
+      },
+      "loop": "examples/Audio/Shaping/loop.mp4?v=669af48b",
+      "loopSmall": "examples/Audio/Shaping/loop-640.mp4?v=b37dae9d",
+      "still": "examples/Audio/Shaping/still.jpg?v=be7fcd5c",
+      "stillSmall": "examples/Audio/Shaping/still-640.jpg?v=5eb6c0ba",
+      "seed": 1
+    },
+    "Audio/Sonification": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10.0s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 0.388,
       "sound": true,
       "source": "fa407286d5a64b06",
-      "still": "examples/Audio/Sonification/still.jpg?v=6612ef2b",
-      "stillSmall": "examples/Audio/Sonification/still-640.jpg?v=cf080ccc",
-      "width": 1080
+      "rendered": "2026-10-16",
+      "bytes": {
+        "loop": 777263,
+        "loopSmall": 117319,
+        "still": 66873,
+        "stillSmall": 28098
+      },
+      "loop": "examples/Audio/Sonification/loop.mp4?v=7955d8df",
+      "loopSmall": "examples/Audio/Sonification/loop-640.mp4?v=3b560c5a",
+      "still": "examples/Audio/Sonification/still.jpg?v=e56329e5",
+      "stillSmall": "examples/Audio/Sonification/still-640.jpg?v=a8f8dcb8",
+      "seed": 1
     },
     "Audio/SoundInAnExport": {
       "width": 720,
@@ -3582,14 +3593,14 @@
       "motion": 1.881,
       "sound": true,
       "source": "1bd084c839816d6d",
-      "rendered": "2026-10-11",
+      "rendered": "2026-10-16",
       "bytes": {
-        "loop": 1623717,
+        "loop": 1624399,
         "loopSmall": 279996,
         "still": 25680,
         "stillSmall": 10621
       },
-      "loop": "examples/Audio/SoundInAnExport/loop.mp4?v=cf7fc1ad",
+      "loop": "examples/Audio/SoundInAnExport/loop.mp4?v=89fe9f5d",
       "loopSmall": "examples/Audio/SoundInAnExport/loop-640.mp4?v=4d946e3e",
       "still": "examples/Audio/SoundInAnExport/still.jpg?v=5e611afe",
       "stillSmall": "examples/Audio/SoundInAnExport/still-640.jpg?v=7cac126c",
@@ -3604,39 +3615,40 @@
       "motion": 2.53,
       "sound": true,
       "source": "9335aaac4e11d93b",
-      "rendered": "2026-10-11",
+      "rendered": "2026-10-16",
       "bytes": {
-        "loop": 1640522,
+        "loop": 1641478,
         "loopSmall": 281552,
         "still": 57186,
         "stillSmall": 22828
       },
-      "loop": "examples/Audio/Spatial/loop.mp4?v=ce30fcfb",
+      "loop": "examples/Audio/Spatial/loop.mp4?v=5ec6e73e",
       "loopSmall": "examples/Audio/Spatial/loop-640.mp4?v=74ec54e4",
       "still": "examples/Audio/Spatial/still.jpg?v=3c0bccd6",
       "stillSmall": "examples/Audio/Spatial/still-640.jpg?v=ae4b06ce",
       "seed": 1
     },
     "Audio/Spectral": {
-      "bytes": {
-        "loop": 968583,
-        "loopSmall": 161711,
-        "still": 72148,
-        "stillSmall": 31653
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "10.0s",
-      "loop": "examples/Audio/Spectral/loop.mp4?v=512204c9",
-      "loopSmall": "examples/Audio/Spectral/loop-640.mp4?v=b9da1dc6",
-      "motion": 4.236,
-      "rendered": "2026-09-13",
       "seconds": 10.0,
+      "frame": 480,
+      "motion": 4.236,
       "sound": true,
-      "source": "6c90db46c4cd884d",
-      "still": "examples/Audio/Spectral/still.jpg?v=5aeb75f1",
-      "stillSmall": "examples/Audio/Spectral/still-640.jpg?v=315d8c30",
-      "width": 1080
+      "source": "def622f04a84b3b5",
+      "rendered": "2026-10-16",
+      "bytes": {
+        "loop": 967049,
+        "loopSmall": 162933,
+        "still": 72134,
+        "stillSmall": 31652
+      },
+      "loop": "examples/Audio/Spectral/loop.mp4?v=50e743d9",
+      "loopSmall": "examples/Audio/Spectral/loop-640.mp4?v=81dfaa4e",
+      "still": "examples/Audio/Spectral/still.jpg?v=325d193a",
+      "stillSmall": "examples/Audio/Spectral/still-640.jpg?v=bccfeaac",
+      "seed": 1
     },
     "Audio/Spectrum": {
       "bytes": {
@@ -3660,26 +3672,26 @@
       "width": 1080
     },
     "Audio/Strings": {
-      "bytes": {
-        "loop": 1141484,
-        "loopSmall": 188855,
-        "still": 69126,
-        "stillSmall": 27524
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "10.0s",
-      "loop": "examples/Audio/Strings/loop.mp4?v=267014cc",
-      "loopSmall": "examples/Audio/Strings/loop-640.mp4?v=b2d02b53",
-      "motion": 2.227,
-      "rendered": "2026-09-26",
       "seconds": 10.0,
-      "seed": 1,
+      "frame": 480,
+      "motion": 2.227,
       "sound": true,
       "source": "9d812574815a6b69",
-      "still": "examples/Audio/Strings/still.jpg?v=8c6e9cbf",
-      "stillSmall": "examples/Audio/Strings/still-640.jpg?v=95f30781",
-      "width": 1080
+      "rendered": "2026-10-16",
+      "bytes": {
+        "loop": 1139006,
+        "loopSmall": 186185,
+        "still": 69122,
+        "stillSmall": 27524
+      },
+      "loop": "examples/Audio/Strings/loop.mp4?v=1ccd27bf",
+      "loopSmall": "examples/Audio/Strings/loop-640.mp4?v=364d5108",
+      "still": "examples/Audio/Strings/still.jpg?v=e9bb85db",
+      "stillSmall": "examples/Audio/Strings/still-640.jpg?v=21a781ee",
+      "seed": 1
     },
     "Audio/StruckShapes": {
       "width": 1080,
@@ -3690,39 +3702,40 @@
       "motion": 0.826,
       "sound": true,
       "source": "107962b9bd885e6d",
-      "rendered": "2026-10-11",
+      "rendered": "2026-10-16",
       "bytes": {
-        "loop": 1028651,
+        "loop": 1028892,
         "loopSmall": 198892,
         "still": 75407,
         "stillSmall": 30117
       },
-      "loop": "examples/Audio/StruckShapes/loop.mp4?v=2f779822",
+      "loop": "examples/Audio/StruckShapes/loop.mp4?v=49ac290a",
       "loopSmall": "examples/Audio/StruckShapes/loop-640.mp4?v=2f5109be",
       "still": "examples/Audio/StruckShapes/still.jpg?v=65307a0b",
       "stillSmall": "examples/Audio/StruckShapes/still-640.jpg?v=0d655f41",
       "seed": 1
     },
     "Audio/Synth": {
-      "bytes": {
-        "loop": 506630,
-        "loopSmall": 70356,
-        "still": 26737,
-        "stillSmall": 12496
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
-      "length": "10s",
-      "loop": "examples/Audio/Synth/loop.mp4?v=7df52df0",
-      "loopSmall": "examples/Audio/Synth/loop-640.mp4?v=ce5691ca",
-      "motion": 0.0,
-      "rendered": "2026-09-10",
+      "length": "10.0s",
       "seconds": 10.0,
+      "frame": 480,
+      "motion": 0.0,
       "sound": true,
       "source": "5b18ea03e250d6fd",
-      "still": "examples/Audio/Synth/still.jpg?v=748d0da4",
-      "stillSmall": "examples/Audio/Synth/still-640.jpg?v=e056fd72",
-      "width": 1080
+      "rendered": "2026-10-16",
+      "bytes": {
+        "loop": 506709,
+        "loopSmall": 65493,
+        "still": 26738,
+        "stillSmall": 12501
+      },
+      "loop": "examples/Audio/Synth/loop.mp4?v=79502ce4",
+      "loopSmall": "examples/Audio/Synth/loop-640.mp4?v=be439c55",
+      "still": "examples/Audio/Synth/still.jpg?v=dd7406db",
+      "stillSmall": "examples/Audio/Synth/still-640.jpg?v=23a77a0f",
+      "seed": 1
     },
     "Audio/Tuner": {
       "bytes": {
@@ -3746,46 +3759,48 @@
       "width": 1080
     },
     "Audio/Tunings": {
-      "bytes": {
-        "loop": 1076853,
-        "loopSmall": 130025,
-        "still": 55735,
-        "stillSmall": 22263
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
-      "length": "10s",
-      "loop": "examples/Audio/Tunings/loop.mp4?v=a1016a3a",
-      "loopSmall": "examples/Audio/Tunings/loop-640.mp4?v=3e1e0a75",
-      "motion": 0.586,
-      "rendered": "2026-09-10",
+      "length": "10.0s",
       "seconds": 10.0,
+      "frame": 480,
+      "motion": 0.586,
       "sound": true,
       "source": "998fca92c14f78aa",
-      "still": "examples/Audio/Tunings/still.jpg?v=3415b654",
-      "stillSmall": "examples/Audio/Tunings/still-640.jpg?v=ce9b7f09",
-      "width": 1080
+      "rendered": "2026-10-16",
+      "bytes": {
+        "loop": 1072261,
+        "loopSmall": 135495,
+        "still": 55709,
+        "stillSmall": 22273
+      },
+      "loop": "examples/Audio/Tunings/loop.mp4?v=c0937da3",
+      "loopSmall": "examples/Audio/Tunings/loop-640.mp4?v=2cf13ecb",
+      "still": "examples/Audio/Tunings/still.jpg?v=95dd318b",
+      "stillSmall": "examples/Audio/Tunings/still-640.jpg?v=057b6941",
+      "seed": 1
     },
     "Audio/Wavetable": {
-      "bytes": {
-        "loop": 738440,
-        "loopSmall": 122590,
-        "still": 63045,
-        "stillSmall": 24428
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
-      "length": "10s",
-      "loop": "examples/Audio/Wavetable/loop.mp4?v=e250a396",
-      "loopSmall": "examples/Audio/Wavetable/loop-640.mp4?v=ca4d50b0",
-      "motion": 0.0,
-      "rendered": "2026-09-10",
+      "length": "10.0s",
       "seconds": 10.0,
+      "frame": 480,
+      "motion": 0.0,
       "sound": true,
       "source": "51ac599f25fd0fe1",
-      "still": "examples/Audio/Wavetable/still.jpg?v=72667da1",
-      "stillSmall": "examples/Audio/Wavetable/still-640.jpg?v=93a2b8ee",
-      "width": 1080
+      "rendered": "2026-10-16",
+      "bytes": {
+        "loop": 737100,
+        "loopSmall": 109961,
+        "still": 63067,
+        "stillSmall": 24412
+      },
+      "loop": "examples/Audio/Wavetable/loop.mp4?v=bf1997c9",
+      "loopSmall": "examples/Audio/Wavetable/loop-640.mp4?v=7a2b6df2",
+      "still": "examples/Audio/Wavetable/still.jpg?v=44057be0",
+      "stillSmall": "examples/Audio/Wavetable/still-640.jpg?v=18f0617a",
+      "seed": 1
     },
     "Basic/Describing": {
       "bytes": {
