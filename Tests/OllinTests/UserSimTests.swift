@@ -129,6 +129,35 @@ struct UserSimTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func aFilteredInputArrivesAsItResolvedTheFrameBefore() throws {
+        // Filters resolve after the sims step, so a kernel that copies a filtered
+        // layer reads it as it stood at the end of the frame before: the state a
+        // frame leaves holds the pattern of the frame before that. The pattern
+        // alternates sides every frame, so a reading a frame off in either
+        // direction, or a blank, lands on the wrong side.
+        let copy = Shader("""
+        float4 shade(float2 uv, ShaderInfo info) { return input(info, 0); }
+        """)
+        func state(atFrameCount count: Int) throws -> FieldSnapshot {
+            let sketch = DelayedInputProbe()
+            sketch.probeSim = .shader(copy)
+            sketch.snapshotAtFrameCount = count
+            _ = try OllinApp.image(of: sketch, frame: count - 1)
+            return try #require(sketch.captured)
+        }
+        // After the first step nothing has resolved yet: zero, not garbage.
+        let first = try state(atFrameCount: 2)
+        #expect(first[5, 24].x == 0 && first[40, 24].x == 0)
+        // Read at frame 5: the state frame 4 left, which copied frame 3's pattern
+        // (odd: the left half lit).
+        let odd = try state(atFrameCount: 5)
+        #expect(odd[5, 24].x == 1 && odd[40, 24].x == 0)
+        // Read at frame 6: frame 4's pattern (even: the right half lit).
+        let even = try state(atFrameCount: 6)
+        #expect(even[5, 24].x == 0 && even[40, 24].x == 1)
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func theInjectKernelAddsWhereTheMarkLandedAndThePrecisionKeepsIt() throws {
         // An identity step under an inject that adds 4097 per full mark. Two marked
         // frames sum to 8194, which a 32-bit float holds and a half float cannot
@@ -345,6 +374,34 @@ private final class InputProbe: Sketch {
             drawPolygon([Vector2(0, 0), Vector2(24, 0), Vector2(24, 48), Vector2(0, 48)])
         }
         field.inputs = [half]
+        withField(field) {}
+        drawImage(field.image, 0, 0)
+    }
+}
+
+/// A field whose kernel reads a filtered layer: one half lit, the left on odd
+/// frames and the right on even ones, through a threshold that keeps it as it is.
+@MainActor
+private final class DelayedInputProbe: Sketch {
+    override var canvasSize: CanvasSize { .square(48) }
+    var probeSim: Sim = .gameOfLife()
+    var snapshotAtFrameCount = 0
+    var captured: FieldSnapshot?
+    private var field: SimField!
+
+    override func setup() { field = makeSimField(probeSim, scale: 1) }
+
+    override func draw() {
+        background(.black)
+        if frameCount == snapshotAtFrameCount { captured = field.snapshot() }
+        let half = makeRenderTarget()
+        withTarget(half) {
+            background(.black)
+            noStroke(); fill(.white)
+            let x = frameCount % 2 == 1 ? 0.0 : 24.0
+            drawPolygon([Vector2(x, 0), Vector2(x + 24, 0), Vector2(x + 24, 48), Vector2(x, 48)])
+        }
+        field.inputs = [half.filtered(.threshold(0.5))]
         withField(field) {}
         drawImage(field.image, 0, 0)
     }

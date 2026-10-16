@@ -1431,6 +1431,24 @@ final class MetalRenderer {
     /// (a layer skipped this frame keeps its content as the next front).
     var feedbackUsedThisFrame: Set<ObjectIdentifier> = []
 
+    /// The filtered and combined layers one simulation field reads as inputs, as
+    /// they resolved at the end of the frame before. Filters resolve after the
+    /// sims step, so a field cannot read this frame's; each frame copies the
+    /// resolve into a texture of the field's own, which the next step reads.
+    /// A slot's index is the input's index; `nil` reads as zero (the first
+    /// frame, or a frame where the layer did not resolve). Written by a blit in
+    /// place: Metal's hazard tracking orders it after this frame's read, as for
+    /// the accumulators. Pruned once the sketch releases the field.
+    final class DelayedInputSlot {
+        var textures: [MTLTexture?] = Array(repeating: nil, count: SimField.maxInputs)
+        weak var owner: AnyObject?
+        init(owner: AnyObject) { self.owner = owner }
+    }
+    var delayedInputSlots: [ObjectIdentifier: DelayedInputSlot] = [:]
+    /// The filtered layers this frame's sims named as inputs, to be copied into
+    /// their fields' slots once the filters have resolved.
+    var delayedInputsThisFrame: [(field: SimField, index: Int, layer: RenderTarget)] = []
+
     /// The 3D lookup textures a live soft proof samples, one per printing
     /// condition. Baking the lattice costs milliseconds and uploading it costs
     /// half a megabyte, while a sketch proofs against the same condition every

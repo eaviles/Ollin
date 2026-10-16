@@ -128,8 +128,10 @@ public class SimField {
     /// for the layer at index `i` (up to four). Like `modulation`, each is a per-frame
     /// layer: draw or generate it every frame before reading the field, and it arrives
     /// exactly as stored (no color conversion), through the field's own edge rule. A
-    /// layer not drawn this frame reads as zero rather than stale, and a `filtered(_:)`
-    /// output cannot be an input (filters resolve after the sims). The built-in sims
+    /// layer not drawn this frame reads as zero rather than stale. A `filtered(_:)` or
+    /// `combined(with:_:)` output arrives as it resolved at the end of the frame
+    /// before, since filters resolve after the sims step; it reads as zero on the
+    /// first frame and after a frame in which it did not resolve. The built-in sims
     /// ignore this list.
     public var inputs: [RenderTarget] = []
 

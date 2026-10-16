@@ -385,12 +385,20 @@ extension MetalRenderer {
                     let modulation = sf.modulation.flatMap { map in
                         drawer.renderTargets.contains(where: { $0 === map }) ? map.texture : nil
                     }
-                    // A kernel's extra layers: the ones drawn this frame, a blank for
-                    // the rest, so `input(info, i)` always reads something defined.
+                    // A kernel's extra layers: the ones drawn this frame; a filtered or
+                    // combined layer as it resolved at the end of the frame before
+                    // (filters resolve after the sims); a blank for the rest, so
+                    // `input(info, i)` always reads something defined.
                     let inputs: [MTLTexture] = sf.sim.userKernel == nil ? [] :
-                        sf.inputs.prefix(SimField.maxInputs).map { layer in
-                            (drawer.renderTargets.contains(where: { $0 === layer }) ? layer.texture : nil)
-                                ?? blankInput()
+                        sf.inputs.prefix(SimField.maxInputs).enumerated().map { index, layer in
+                            if drawer.renderTargets.contains(where: { $0 === layer }) {
+                                return layer.texture ?? blankInput()
+                            }
+                            if drawer.filterOps.contains(where: { $0 === layer }) {
+                                delayedInputsThisFrame.append((sf, index, layer))
+                                return delayedInputSlots[ObjectIdentifier(sf)]?.textures[index] ?? blankInput()
+                            }
+                            return blankInput()
                         }
                     // The edge rule is set by the sampler: a sim that taps its neighbors
                     // through the field's sampler wraps or clamps as the field says,
@@ -433,6 +441,7 @@ extension MetalRenderer {
                 continue
             }
         }
+        keepDelayedInputs(into: cb)
         // Advance each feedback layer drawn this frame (its back becomes next frame's
         // front), then prune slots whose owner the sketch has released (live reload,
         // or a layer no longer held) so the map stays bounded.
@@ -1794,6 +1803,43 @@ extension MetalRenderer {
     }
 
     /// The 1x1 transparent-black texture a kernel's missing input binds.
+    /// Copy each filtered layer a sim read this frame into its field's slot, now
+    /// that the filters have resolved, for the field's next step to read. A layer
+    /// that did not resolve leaves its slot empty, so the next step reads zero
+    /// rather than an older frame.
+    private func keepDelayedInputs(into cb: MTLCommandBuffer) {
+        defer { delayedInputsThisFrame.removeAll(keepingCapacity: true) }
+        if delayedInputSlots.contains(where: { $0.value.owner == nil }) {
+            delayedInputSlots = delayedInputSlots.filter { $0.value.owner != nil }
+        }
+        guard !delayedInputsThisFrame.isEmpty else { return }
+        var blit: MTLBlitCommandEncoder?
+        for (field, index, layer) in delayedInputsThisFrame {
+            let id = ObjectIdentifier(field)
+            let slot = delayedInputSlots[id] ?? DelayedInputSlot(owner: field)
+            delayedInputSlots[id] = slot
+            guard let source = layer.texture else {
+                slot.textures[index] = nil
+                continue
+            }
+            var kept = slot.textures[index]
+            if kept == nil || kept!.width != source.width || kept!.height != source.height
+                || kept!.pixelFormat != source.pixelFormat {
+                let desc = MTLTextureDescriptor.texture2DDescriptor(
+                    pixelFormat: source.pixelFormat, width: source.width, height: source.height,
+                    mipmapped: false)
+                desc.usage = [.shaderRead]
+                desc.storageMode = .private
+                kept = device.makeTexture(descriptor: desc)
+                slot.textures[index] = kept
+            }
+            guard let kept else { continue }
+            if blit == nil { blit = cb.makeBlitCommandEncoder() }
+            blit?.copy(from: source, to: kept)
+        }
+        blit?.endEncoding()
+    }
+
     private func blankInput() -> MTLTexture {
         if let blank = blankInputTexture { return blank }
         let desc = MTLTextureDescriptor.texture2DDescriptor(
