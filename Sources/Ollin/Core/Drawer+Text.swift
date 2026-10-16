@@ -1063,8 +1063,10 @@ extension Drawer {
     /// A vector `Shape`: a filled region that may be **concave** and may have
     /// **holes**, plus a stroked outline of each contour. The fill is
     /// triangulated (even-odd winding, so nested contours cut holes); open
-    /// contours are stroke-only. Both fill and stroke go through the triangle
-    /// path, so a `Shape` composites in draw order with everything else.
+    /// contours are stroke-only. The fill goes through the triangle path and the
+    /// stroke through the fringe path, both in call order, so a `Shape`
+    /// composites in draw order with everything else. A shape drawn again
+    /// unchanged copies the triangles and plain stroke it kept (`ShapeMemory`).
     func drawShape(_ shape: Shape) {
         // A brushed outline stamps on the vector path as well as the raster one,
         // so the fill is emitted on its own first (this call again, with no
@@ -1089,11 +1091,16 @@ extension Drawer {
         if let fill = fillPaint {
             let vp = vertexPaint(fill, anchor: Drawer.boundsCenter(shape.contours.flatMap(\.points)),
                                  bounds: shapeBox())
-            let triangles = shape.triangulatedFill()
+            // A shape drawn again unchanged hands back the triangles it was cut into.
+            let triangles = shape.memory.fill(of: shape) { shape.triangulatedFill() }
             replicated {
                 let start = vertices.count
-                for i in stride(from: 0, to: triangles.count - 2, by: 3) {
-                    emitTriangle(triangles[i], triangles[i + 1], triangles[i + 2], paint: vp)
+                if case .solid(let c) = vp {
+                    appendSolidTriangles(triangles, color: c)
+                } else {
+                    for i in stride(from: 0, to: triangles.count - 2, by: 3) {
+                        emitTriangle(triangles[i], triangles[i + 1], triangles[i + 2], paint: vp)
+                    }
                 }
                 if recordsWebSources, case .solid(let c) = vp {
                     // The contours the tessellator was given, in its order.
@@ -1107,9 +1114,18 @@ extension Drawer {
             }
         }
         if let stroke = strokePaint, strokeWidth > 0 {
-            for contour in shape.contours where contour.points.count >= 2 {
-                appendFringeStroke(contour.points, closed: contour.isClosed,
-                                   paint: vertexPaint(stroke, anchor: contour.points[0], bounds: shapeBox()))
+            for (index, contour) in shape.contours.enumerated() where contour.points.count >= 2 {
+                let paint = vertexPaint(stroke, anchor: contour.points[0], bounds: shapeBox())
+                guard case .solid(let color) = paint, strokeIsPlain else {
+                    appendFringeStroke(contour.points, closed: contour.isClosed, paint: paint)
+                    continue
+                }
+                // A plain stroke the shape has drawn before at these settings is
+                // handed back expanded.
+                let expanded = shape.memory.stroke(of: shape, contour: index, key: plainStrokeKey) {
+                    expandedPlainStroke(contour.points, closed: contour.isClosed)
+                }
+                replicated { appendExpandedStroke(expanded, color: color) }
             }
         }
     }

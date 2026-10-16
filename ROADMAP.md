@@ -137,7 +137,6 @@ See the [design notes](DESIGN-NOTES.md#swift-playgrounds-and-ios).
 These are deeper uses of the Metal core and Apple displays. All are opt-in, so the 2D path stays untaxed:
 
 - **Dolby Vision.** Dynamic per-scene HDR metadata, in contrast to the static HDR10 metadata a video carries, which describes the whole file at once. It needs the licensed encoder path rather than AVFoundation's plain HDR writer, so it is a licensing question before it is an API one.
-- **A traced shape redrawn in a new color.** A shape traced once and drawn every frame is triangulated and stroked again each time. Keeping that work, and letting a replay take a new fill and stroke color, makes a screen of hundreds of kept outlines cost what it costs to draw them.
 
 See the [design notes](DESIGN-NOTES.md#rendering-and-color-frontier).
 
@@ -146,6 +145,7 @@ See the [design notes](DESIGN-NOTES.md#rendering-and-color-frontier).
 **Later.** This section covers the editing experiences the live-reload core makes possible, and where Ollin draws its line on AI: nowhere in the work. The README says it ("It's a tool for making art … Ollin is not a generative-art model"), and it extends to any AI *feature*: **AI helped build the framework, and it plays no part in what you make with it.** Not as the author of a sketch, and not at the controls either, because in generative art the parameters are the work. A palette, a density, a speed chosen by hand is the hand. Models that read the world (the [perception tier](Docs/Vision/Vision.md), depth, listening) are input, like a camera, and stay. The section draws a second line at node editors: the effect and SDF graphs stay code, and a code-less, node-based Ollin would be a separate app on the framework, taken on only if someone wants one. Within those lines:
 
 - **Curves and sequences as parameters.** One inspector row edits a curve by dragging its points, for a falloff or a response. Another edits a row of values as bars, for a step pattern. Both save back into the sketch like any other parameter.
+- **A live window that notices the framework was rebuilt.** A sketch saved after the framework was rebuilt under a running window can crash that window. The window would say to relaunch instead.
 - **The rest of a package in the live window.** A sketch that imports another target of its own package, or another package, still runs only through `swift run`. The live window would build those first and load them beside the sketch. The phone route, completion in the live-coding editor, and a shape drag in a helper file each still see the sketch's one file.
 
 See the [design notes](DESIGN-NOTES.md#authoring-and-editor-tooling).

@@ -395,7 +395,7 @@ override func draw() {
 
 `makeBatch { }` records your drawing once into a `Batch` you hold, and `drawBatch` replays it from the GPU's own memory. For static work at scale the difference is large. A hundred and fifty thousand circles cost about 13.5 ms of CPU a frame drawn the ordinary way, and about 0.003 ms replayed. The [`Rendering/RetainedBatch`](../Examples/Rendering/RetainedBatch/Sketch.swift) example has a parameter that switches between the two paths, so you can watch the difference in the inspector. The transform in force when you call `drawBatch` still applies to the whole recording, so one batch can be stamped at several positions or sizes.
 
-The rule of thumb: if the drawing does not change between frames, it belongs in a batch, and if it does change, leave it alone. A few things are per-frame by nature and cannot be recorded, namely 3D meshes and fields, GPU particles, layer blocks like `withTarget`, clipping, and `background`. The recording leaves them out, and Ollin prints a note once, at the call inside `makeBatch`, saying where to draw them instead.
+The rule of thumb: if the drawing does not change between frames, it belongs in a batch, and if it does change, leave it alone. A shape whose outline stays put while its color changes needs neither. A `Shape` kept in a property remembers its triangles and stroke from its second draw on, so drawing it again in a new color costs little more than a copy. A few things are per-frame by nature and cannot be recorded, namely 3D meshes and fields, GPU particles, layer blocks like `withTarget`, clipping, and `background`. The recording leaves them out, and Ollin prints a note once, at the call inside `makeBatch`, saying where to draw them instead.
 
 ## Where this comes from
 

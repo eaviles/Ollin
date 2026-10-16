@@ -26,7 +26,7 @@ override func draw() {
 
 As a reference point, take 150,000 circles. On the ordinary path they cost about 13.5 ms of CPU per frame in a release build on an M2. That caps the frame rate at about 74 fps before anything else happens. The same field replayed as a `Batch` costs about 0.003 ms. The [`RetainedBatch`](../../Examples/Rendering/RetainedBatch/Sketch.swift) example has a parameter that switches between the two paths, so you can watch the difference live in the inspector.
 
-A `Batch` is different from the collection calls such as [`drawCircles(_:)`](./Drawing.md#batches). Those draw many shapes in one call but still record them every frame, so use them when the drawing changes every frame. Use a `Batch` when the drawing stays the same.
+A `Batch` is different from the collection calls such as [`drawCircles(_:)`](./Drawing.md#batches). Those draw many shapes in one call but still record them every frame, so use them when the drawing changes every frame. Use a `Batch` when the drawing stays the same. A [`Shape`](./Drawing.md#shape) you keep sits between the two. It keeps its own triangles and stroke, so it can take a new color every frame without being worked out again.
 
 ### Contents
 

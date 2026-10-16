@@ -6249,6 +6249,7 @@ struct Shape: Tweenable, BidirectionalCollection, Collection, Equatable, RandomA
   init(contours: [Contour], winding: FillWinding = default)
   init(curveThrough: [Vector2], closed: Bool = default, spline: Spline = default)
   init(outer: [Vector2], holes: [[Vector2]])
+  static func ==(_: Shape, _: Shape) -> Bool
   static func lerp(_: Shape, _: Shape, _: Double) -> Shape
   subscript(_: Int) -> Contour { get }
   var area: Double { get }

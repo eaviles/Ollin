@@ -144,10 +144,19 @@ public struct Shape: Equatable, Sendable {
     /// How the fill resolves overlaps and nested contours (see `FillWinding`).
     /// Defaults to `.evenOdd`; glyph shapes from the text API use `.nonZero`.
     public var winding: FillWinding
+    /// The triangles and stroke this shape was last drawn with, so drawing it
+    /// again unchanged copies them instead of working them out again. Copies
+    /// share it; it is no part of the shape's value.
+    let memory = ShapeMemory()
 
     public init(contours: [Contour], winding: FillWinding = .evenOdd) {
         self.contours = contours
         self.winding = winding
+    }
+
+    /// Two shapes are equal when their contours and winding are.
+    public static func == (lhs: Shape, rhs: Shape) -> Bool {
+        lhs.contours == rhs.contours && lhs.winding == rhs.winding
     }
 
     /// A shape from a single contour of points (closed by default).

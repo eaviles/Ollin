@@ -299,14 +299,15 @@ extension Drawer {
         return max(Double(sx + sy) / 2, 1e-6)
     }
 
-    /// Append one fringe-stroke vertex (CTM-transformed) into `vertices` under a
-    /// `.fringe` batch. The AA coverage is stored in `aa.x` (its own interpolant the
-    /// fringe fragment remaps to perceptual alpha), while `color` carries the
-    /// stroke's rgb and its own paint alpha — the two kept separate so a translucent
-    /// stroke composites at its true opacity.
+    /// Append one fringe-stroke vertex (CTM-transformed) into `vertices`, which the
+    /// caller has put under a `.fringe` batch (one check a stroke rather than one a
+    /// vertex: nothing a batch is keyed on changes while a stroke expands). The AA
+    /// coverage is stored in `aa.x` (its own interpolant the fringe fragment remaps
+    /// to perceptual alpha), while `color` carries the stroke's rgb and its own
+    /// paint alpha, the two kept separate so a translucent stroke composites at its
+    /// true opacity.
     private func emitFringe(_ position: SIMD2<Float>, cov: Float, opacity: Float = 0,
                             color: SIMD4<Float>) {
-        ensureBatch(.fringe)
         let aa = SIMD2<Float>(cov, opacity)
         if transformIsIdentity {
             vertices.append(OllinVertex(position: position, aa: aa, color: color))
@@ -361,6 +362,13 @@ extension Drawer {
         // that replicates itself; wrapping them again would fold every copy twice.
         if let brush = strokeBrushShape {
             appendBrushStamps(points, closed: closed, brush: brush)
+            return
+        }
+        // One color at one width along the whole path: expanded into a list of
+        // its own and laid into the frame in one pass.
+        if case .solid(let color) = paint, strokeIsPlain {
+            let expanded = expandedPlainStroke(points, closed: closed)
+            replicated { appendExpandedStroke(expanded, color: color) }
             return
         }
         // A dash cuts the path into runs first. Each run expands on its own, with
@@ -433,21 +441,12 @@ extension Drawer {
             }
         }
 
-        let join: StrokeExpanderJoin
-        switch strokeJoinStyle {
-        case .miter: join = .miter
-        case .bevel: join = .bevel
-        case .round: join = .round
-        }
-        let cap: StrokeExpanderCap
-        switch strokeCapStyle {
-        case .butt: cap = .butt
-        case .square: cap = .square
-        case .round: cap = .round
-        }
+        let join = expanderJoin, cap = expanderCap
         let scale = ctmScale
         let local = pts.map { Point2D($0.x, $0.y) }
         let start = vertices.count
+        // Two or more points always expand to at least one ribbon, so the run is
+        // opened here, once, in the state every vertex below would have asked for.
         if case .shader(let shader, let box) = paint {
             // A shader stroke: each expanded vertex carries its own uv over the box
             // (the outline's, or this run's footprint), its path vertex's fraction
@@ -459,6 +458,7 @@ extension Drawer {
             let inward: Float = closed && Drawer.signedArea(pts) > 0 ? -1 : 1
             let saved = currentPaintShader
             currentPaintShader = shader
+            ensureBatch(.fringe)
             StrokeExpander.expand(local, closed: closed,
                                   halfWidths: hws, colors: cols, fringe: fw, ctmScale: scale,
                                   join: join, cap: cap) { v, source in
@@ -468,6 +468,7 @@ extension Drawer {
             }
             currentPaintShader = saved
         } else {
+            ensureBatch(.fringe)
             StrokeExpander.expand(local, closed: closed,
                                   halfWidths: hws, colors: cols, fringe: fw, ctmScale: scale,
                                   join: join, cap: cap) { v in
@@ -484,6 +485,96 @@ extension Drawer {
                                                       colors: single == nil ? cols : nil, color: single ?? cols[0]),
                                         points: local, transform: transformIsIdentity ? nil : transform,
                                         vertexRange: start ..< vertices.count))
+        }
+    }
+
+    /// The current join, as the expander names it.
+    private var expanderJoin: StrokeExpanderJoin {
+        switch strokeJoinStyle {
+        case .miter: .miter
+        case .bevel: .bevel
+        case .round: .round
+        }
+    }
+
+    /// The current cap, as the expander names it.
+    private var expanderCap: StrokeExpanderCap {
+        switch strokeCapStyle {
+        case .butt: .butt
+        case .square: .square
+        case .round: .round
+        }
+    }
+
+    /// Whether a stroke drawn now is one width along its whole length, with no
+    /// dash, brush, or fading opacity, and no page recording its source: the
+    /// stroke whose expansion carries nothing but positions and coverage, and
+    /// so can be made once and colored as it is laid into the frame.
+    var strokeIsPlain: Bool {
+        strokeBrushShape == nil && (strokeDashPattern?.isSolid ?? true)
+            && strokeProfileShape.isUniform && strokeOpacityShape.isUniform && !recordsWebSources
+    }
+
+    /// The settings a plain stroke's expansion depends on beyond its points,
+    /// which a kept shape compares before reusing one.
+    var plainStrokeKey: ShapeMemory.StrokeKey {
+        ShapeMemory.StrokeKey(halfWidth: strokeWidth / 2, join: strokeJoinStyle, cap: strokeCapStyle,
+                              ctmScale: ctmScale)
+    }
+
+    /// A plain stroke (see `strokeIsPlain`) along `points`, expanded before the
+    /// transform: the vertices `appendFringeStrokeSingle` lays down for a solid
+    /// paint, without their color.
+    func expandedPlainStroke(_ points: [Vector2], closed: Bool) -> [ExpandedStrokeVertex] {
+        let (pts, _) = Drawer.deduplicated(points, fractions: nil, closed: closed)
+        let n = pts.count
+        guard n >= 2 else { return [] }
+        var expanded: [ExpandedStrokeVertex] = []
+        StrokeExpander.expand(pts.map { Point2D($0.x, $0.y) }, closed: closed,
+                              halfWidths: [Double](repeating: strokeWidth / 2, count: n),
+                              colors: [SIMD4<Float>](repeating: .zero, count: n),
+                              fringe: 1.0 / ctmScale, ctmScale: ctmScale,
+                              join: expanderJoin, cap: expanderCap) { v in
+            expanded.append(ExpandedStrokeVertex(position: v.position, coverage: v.coverage))
+        }
+        return expanded
+    }
+
+    /// Lay an expanded plain stroke into the frame under the current transform,
+    /// every vertex in `color`.
+    func appendExpandedStroke(_ expanded: [ExpandedStrokeVertex], color: SIMD4<Float>) {
+        guard !expanded.isEmpty else { return }
+        ensureBatch(.fringe)
+        if transformIsIdentity {
+            vertices.append(contentsOf: expanded.lazy.map {
+                OllinVertex(position: $0.position, aa: SIMD2<Float>($0.coverage, 0), color: color)
+            })
+        } else {
+            let t = transform
+            vertices.append(contentsOf: expanded.lazy.map {
+                let p = t * SIMD3<Float>($0.position.x, $0.position.y, 1)
+                return OllinVertex(position: SIMD2<Float>(p.x, p.y), aa: SIMD2<Float>($0.coverage, 0), color: color)
+            })
+        }
+    }
+
+    /// Lay fill triangles (every three points one triangle) into the frame
+    /// under the current transform, every vertex in `color`: what `emitTriangle`
+    /// does for a solid paint, in one pass.
+    func appendSolidTriangles(_ triangles: [Vector2], color: SIMD4<Float>) {
+        let count = triangles.count / 3 * 3
+        guard count > 0 else { return }
+        ensureBatch(.triangles)
+        if transformIsIdentity {
+            vertices.append(contentsOf: triangles[..<count].lazy.map {
+                OllinVertex(position: $0.simd2, color: color)
+            })
+        } else {
+            let t = transform
+            vertices.append(contentsOf: triangles[..<count].lazy.map {
+                let p = t * SIMD3<Float>(Float($0.x), Float($0.y), 1)
+                return OllinVertex(position: SIMD2<Float>(p.x, p.y), color: color)
+            })
         }
     }
 
