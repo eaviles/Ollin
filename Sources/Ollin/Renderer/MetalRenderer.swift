@@ -1094,6 +1094,28 @@ final class MetalRenderer {
     /// structure reaches them indirectly, so an encoder that binds the top one has to
     /// mark these resident itself, which `useTracedScene` does at every bind site.
     var rtReferencedAccels: [MTLAccelerationStructure] = []
+    /// The pictures this frame's traced scene names in its finish records, made
+    /// resident wherever the scene is bound (`useTracedScene`).
+    var rtMapTextures: [MTLTexture] = []
+    /// A layer's picture a traced geometry carries: the finish record that names it,
+    /// filled in once the layer is drawn (`tracedPictureTable`), and the gate to raise.
+    struct PendingTracedPicture {
+        var record: Int
+        var image: Image
+        var gate: Float
+    }
+    /// The layer pictures this frame's traced scene names, with the table and the
+    /// word its finish records start at.
+    struct PendingTracedPictures {
+        var table: MTLBuffer
+        var finishBase: Int
+        var entries: [PendingTracedPicture]
+    }
+    var rtPendingPictures: PendingTracedPictures?
+    /// The main passes' copies of the hit table with layer pictures filled in, and
+    /// the records staged for them, one of each per frame in flight.
+    var tracedPictureTables: [MTLBuffer?] = Array(repeating: nil, count: MetalRenderer.maxFramesInFlight)
+    var tracedPictureStages: [MTLBuffer?] = Array(repeating: nil, count: MetalRenderer.maxFramesInFlight)
     /// The base-vertex value that marks the plain-mesh instance in the hit-lookup
     /// table: it reads the per-geometry table instead of carrying one vertex of its
     /// own. Mirrors `OLLIN_RT_PLAIN_MESH` in the shader library.
@@ -2296,7 +2318,7 @@ final class MetalRenderer {
         // same command buffer (a no-op returning nil when this frame casts no shadow).
         // It shares the mesh vertex buffer the geometry pass uses.
         let meshBuf = meshBuffer(at: frameIndex, for: tracedMeshVertexCount(drawer))
-        let renderedShadow = encodeShadowPass(
+        var renderedShadow = encodeShadowPass(
             drawer, into: commandBuffer, meshBuffer: meshBuf,
             instancedMeshBuffer: drawer.instancedMeshVertices.isEmpty ? nil
                 : instancedMeshBuffer(at: frameIndex, for: drawer.instancedMeshVertices.count),
@@ -2350,6 +2372,10 @@ final class MetalRenderer {
                               geoMats: renderedShadow.giGeoMats,
                               supersample: false, pooled: true)
         encodeEffectTargets(drawer, into: commandBuffer, buffers: buffers, pooled: true, gi: gi)
+        // The layers are drawn, so the passes from here on find their pictures on the
+        // surfaces a traced ray reaches.
+        renderedShadow.reflectGeoOffsets = tracedPictureTable(renderedShadow.reflectGeoOffsets,
+                                                              into: commandBuffer)
 
         // Half-res raymarch pre-pass (the `.performance` tier): sphere-trace the fields at half
         // resolution into a sampleable color+depth that the main pass upsamples + composites.
@@ -3057,7 +3083,7 @@ final class MetalRenderer {
         // Shadow depth pass (nil when this frame casts no shadow), sharing the export
         // mesh buffer; so the headless/snapshot path shadows exactly like the window.
         let meshBuf = exportMeshBuffer(for: tracedMeshVertexCount(drawer))
-        let renderedShadow = encodeShadowPass(
+        var renderedShadow = encodeShadowPass(
             drawer, into: commandBuffer, meshBuffer: meshBuf,
             instancedMeshBuffer: drawer.instancedMeshVertices.isEmpty ? nil
                 : exportInstancedMeshBuffer(for: drawer.instancedMeshVertices.count),
@@ -3098,6 +3124,10 @@ final class MetalRenderer {
                               geoMats: renderedShadow.giGeoMats,
                               supersample: true, pooled: false)
         encodeEffectTargets(drawer, into: commandBuffer, buffers: buffers, pooled: false, gi: gi)
+        // The layers are drawn, so the passes from here on find their pictures on the
+        // surfaces a traced ray reaches.
+        renderedShadow.reflectGeoOffsets = tracedPictureTable(renderedShadow.reflectGeoOffsets,
+                                                              into: commandBuffer)
 
         // Half-res raymarch pre-pass: honors the resolution tier on export too, so an
         // explicit `.performance`/`.default` raymarch quality downscales here as it does live.
@@ -3555,7 +3585,7 @@ final class MetalRenderer {
             _ = resolveIBL(for: drawer.environment, sunLit: drawer.skySunLit, commandBuffer: cb)   // bake IBL once
             ensureSheenLUT(for: drawer, commandBuffer: cb)
             ensureBRDFLUT(for: drawer, commandBuffer: cb)
-            let renderedShadow = encodeShadowPass(
+            var renderedShadow = encodeShadowPass(
                 drawer, into: cb, meshBuffer: meshBuf,
                 instancedMeshBuffer: buffers.instancedMesh,
                 meshInstanceBuffer: buffers.meshInstance,
@@ -3580,6 +3610,10 @@ final class MetalRenderer {
                                   geoMats: renderedShadow.giGeoMats,
                                   supersample: false, pooled: false)
             encodeEffectTargets(drawer, into: cb, buffers: buffers, pooled: false, gi: gi)
+            // The layers are drawn, so the passes from here on find their pictures on the
+            // surfaces a traced ray reaches.
+            renderedShadow.reflectGeoOffsets = tracedPictureTable(renderedShadow.reflectGeoOffsets,
+                                                                  into: cb)
             // Half-res raymarch pre-pass (the `.performance` tier), so the benchmark measures
             // the same cost the live path pays. nil otherwise.
             let halfResField = makeRaymarchUniforms3D(drawer, viewport: viewport).flatMap { u3 in

@@ -3549,7 +3549,15 @@ extension MetalRenderer {
         }
         // A copy resolves its finish through the material slot its run claims, so the
         // slots exist whenever any per-slot table does.
-        let wantFinishes = pathTraceMats || wantStylized || giMats
+        // A mesh drawn with a picture carries it to a traced hit in its finish record
+        // (`OllinRTFinish.base`), so a picture anywhere among the casters writes the
+        // records and gives each picture a geometry of its own. The path-traced build
+        // leaves it out: the export resolves every map at its own hits, from its own
+        // table, after the same fetch.
+        let wantMaps = !pathTraceMats && batches.contains { b in
+            b.kind == .mesh3D && !b.meshWireframe && !b.meshGrid && b.material?.texture != nil
+        }
+        let wantFinishes = pathTraceMats || wantStylized || giMats || wantMaps
         // Coalesce maximal runs of contiguous caster batches into one geometry descriptor
         // each (a non-casting batch — wireframe, or a non-mesh kind — breaks the run). The
         // caster vertices of a run are contiguous in `meshBuffer`, so one descriptor covers
@@ -3662,6 +3670,13 @@ extension MetalRenderer {
                 // in something the trace ignores stay one geometry.
                 if runStart >= 0, wantStylized,
                    !sameStylized(stylizedFinish(batch.finish), stylizedFinish(runFinish)) {
+                    flushRun()
+                }
+                // A hit reads one picture per geometry, so a different picture, or the
+                // same one repeating differently, starts a new one.
+                if runStart >= 0, wantMaps,
+                   ptMaps(batch).base !== runMaps.base || batch.finish.uvWrap != runFinish.uvWrap
+                       || batch.finish.triplanar != runFinish.triplanar {
                     flushRun()
                 }
                 if runStart < 0 {
@@ -3996,7 +4011,7 @@ extension MetalRenderer {
         // record reads as five `float4` rows. A frame with nothing stylized to say leaves
         // the block out and writes a zero base, which is the shader's gate.
         let finishWords = MemoryLayout<OllinRTFinish>.stride / MemoryLayout<UInt32>.stride
-        let finishBase = wantStylized ? ((tailStart + geoOffsets.count + 3) / 4) * 4 : 0
+        let finishBase = wantStylized || wantMaps ? ((tailStart + geoOffsets.count + 3) / 4) * 4 : 0
         head[1] = UInt32(finishBase)
         let tableWords = max(tailStart + geoOffsets.count,
                              finishBase == 0 ? 0 : finishBase + geoFinishes.count * finishWords)
@@ -4016,8 +4031,35 @@ extension MetalRenderer {
         }
         // Guarded by the base itself, never by the flag that set it: a block written at
         // offset zero would land on the header it is reached through.
+        var mapTextures: [MTLTexture] = []
+        var pendingMaps: [PendingTracedPicture] = []
         if finishBase != 0 {
-            let finishes = geoFinishes.map(stylizedFinish)
+            var finishes = geoFinishes.map(stylizedFinish)
+            // Every record names a picture, the white stand-in where its geometry has
+            // none (a handle is read whole even behind a closed gate), and the plain
+            // geometries with one raise the gate. A copy carries no picture, and a
+            // picture projected by world position (triplanar) stays out. A layer's
+            // picture is drawn after this table is written, so its record keeps the
+            // gate down here and the main passes read a copy with it filled in
+            // (`tracedPictureTable`).
+            if let white = whiteStandIn() {
+                let whiteID = unsafeBitCast(white.gpuResourceID, to: UInt64.self)
+                mapTextures.append(white)
+                for i in finishes.indices {
+                    finishes[i].base = whiteID
+                    guard wantMaps, i < geoTextures.count, geoFinishes[i].triplanar == 0,
+                          let image = geoTextures[i].base else { continue }
+                    if image.webRenderTarget != nil {
+                        pendingMaps.append(PendingTracedPicture(record: i, image: image,
+                                                                gate: geoFinishes[i].uvWrap + 1))
+                        continue
+                    }
+                    guard let picture = image.texture(for: device) else { continue }
+                    finishes[i].base = unsafeBitCast(picture.gpuResourceID, to: UInt64.self)
+                    finishes[i].cool.w = geoFinishes[i].uvWrap + 1
+                    mapTextures.append(picture)
+                }
+            }
             finishes.withUnsafeBytes { raw in
                 offsetsBuffer.contents().advanced(by: finishBase * MemoryLayout<UInt32>.stride)
                     .copyMemory(from: raw.baseAddress!, byteCount: raw.count)
@@ -4035,6 +4077,9 @@ extension MetalRenderer {
                                                    options: .storageModePrivate)
         }
         rtReferencedAccels = structures
+        rtMapTextures = mapTextures
+        rtPendingPictures = pendingMaps.isEmpty ? nil
+            : PendingTracedPictures(table: offsetsBuffer, finishBase: finishBase, entries: pendingMaps)
         // Which copy batches the traced scene took. The path-traced export reads it
         // to decide what its traced layer already stands in for: a batch that fell
         // out here (an over-budget field, a run whose kernel would not build, a
@@ -4219,12 +4264,60 @@ extension MetalRenderer {
         enc.useResource(accel, usage: .read, stages: .fragment)
         let referenced = rtReferencedAccels + [dummyShadowAccel].compactMap { $0 }
         if !referenced.isEmpty { enc.useResources(referenced, usage: .read, stages: .fragment) }
+        if !rtMapTextures.isEmpty { enc.useResources(rtMapTextures, usage: .read, stages: .fragment) }
     }
 
     func useTracedScene(_ enc: MTLComputeCommandEncoder, _ accel: MTLAccelerationStructure) {
         enc.useResource(accel, usage: .read)
         let referenced = rtReferencedAccels + [dummyShadowAccel].compactMap { $0 }
         if !referenced.isEmpty { enc.useResources(referenced, usage: .read) }
+        if !rtMapTextures.isEmpty { enc.useResources(rtMapTextures, usage: .read) }
+    }
+
+    /// The traced scene's hit table as the frame's main passes read it, once the
+    /// layers are drawn: a copy with the handle of every layer picture the scene names
+    /// filled in. The passes that bound the scene before the layers were drawn keep
+    /// the table as it was built, where those pictures stay off, so no pass reads a
+    /// texture it was not made resident for or one not yet drawn. The copy is a blit,
+    /// since part of the table is written on the GPU earlier in the frame (the hit
+    /// records of copies a kernel places), and the filled records are blitted over it
+    /// from a staging buffer. Returns `table` itself when it names no layer picture.
+    func tracedPictureTable(_ table: MTLBuffer?, into commandBuffer: MTLCommandBuffer) -> MTLBuffer? {
+        guard let table, let pending = rtPendingPictures, pending.table === table else { return table }
+        rtPendingPictures = nil
+        let stride = MemoryLayout<OllinRTFinish>.stride
+        let recordBase = pending.finishBase * MemoryLayout<UInt32>.stride
+        var records: [(offset: Int, record: OllinRTFinish)] = []
+        for entry in pending.entries {
+            guard let picture = entry.image.texture(for: device) else { continue }
+            let offset = recordBase + entry.record * stride
+            var record = table.contents().advanced(by: offset).load(as: OllinRTFinish.self)
+            record.base = unsafeBitCast(picture.gpuResourceID, to: UInt64.self)
+            record.cool.w = entry.gate
+            records.append((offset, record))
+            rtMapTextures.append(picture)
+        }
+        guard !records.isEmpty else { return table }
+        let slot = frameIndex % MetalRenderer.maxFramesInFlight
+        if (tracedPictureTables[slot]?.length ?? 0) < table.length {
+            tracedPictureTables[slot] = device.makeBuffer(length: table.length, options: .storageModeShared)
+        }
+        let stageLength = records.count * stride
+        if (tracedPictureStages[slot]?.length ?? 0) < stageLength {
+            tracedPictureStages[slot] = device.makeBuffer(length: stageLength, options: .storageModeShared)
+        }
+        guard let copy = tracedPictureTables[slot], let stage = tracedPictureStages[slot],
+              let blit = commandBuffer.makeBlitCommandEncoder() else { return table }
+        for (k, entry) in records.enumerated() {
+            stage.contents().advanced(by: k * stride).storeBytes(of: entry.record, as: OllinRTFinish.self)
+        }
+        blit.copy(from: table, sourceOffset: 0, to: copy, destinationOffset: 0, size: table.length)
+        for (k, entry) in records.enumerated() {
+            blit.copy(from: stage, sourceOffset: k * stride, to: copy, destinationOffset: entry.offset,
+                      size: stride)
+        }
+        blit.endEncoding()
+        return copy
     }
 
     func ensureDummyShadowAccel() -> MTLAccelerationStructure? {

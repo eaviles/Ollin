@@ -1303,7 +1303,8 @@ typedef struct {
 // Every field is zero for a standard or physically-based finish with no rim and no
 // subsurface, which is what a frame of ordinary materials writes: the whole table is then
 // left out (the hit table's header says so with a zero base) and the traced shade is the
-// plain physically-based one. Stride 112.
+// plain physically-based one. A frame that draws a mesh with a picture writes the table too,
+// so the picture reaches the hit (`base`). Stride 128.
 typedef struct {
     simd_float4 model;   // x = shading model: 0 standard/physically-based, 1 toon, 2 Gooch
                          // y = cel bands (toon), z = Blinn-Phong specular strength,
@@ -1311,7 +1312,8 @@ typedef struct {
                          // only: the standard model's highlight is not traced, the
                          // envelope that keeps every existing reflective frame unmoved.
     simd_float4 warm;    // rgb = Gooch warm tone (lit side); w = the rim's Fresnel exponent
-    simd_float4 cool;    // rgb = Gooch cool tone (shadow side); w unused
+    simd_float4 cool;    // rgb = Gooch cool tone (shadow side); w = the base picture's gate
+                         // and wrap: 0 for none, else the material's `uvWrap` plus one
     simd_float4 rim;     // rgb = linear rim color; w = rim strength (0 = no rim)
     simd_float4 sss;     // rgb = fake-subsurface tint; w = its strength (0 = none)
     simd_float4 sheen;   // rgb = linear sheen tint premultiplied by its strength (0,0,0 = none);
@@ -1319,6 +1321,17 @@ typedef struct {
                          // the gate the primary shade uses.
     simd_float4 coat;    // x = clearcoat intensity (0 = no coat), y = the coat's own perceptual
                          // roughness, z and w pad the row. Physically-based only.
+    // The surface's base-color picture (`Mesh.textured`), which a traced hit multiplies its
+    // color by at the hit's uv, so a mirror or a pane shows the picture rather than the
+    // plain color under it. Read only behind `cool.w`. The CPU writes the texture's GPU
+    // resource ID, and the white stand-in's where a geometry has no picture.
+#ifdef __METAL_VERSION__
+    texture2d<float> base;
+    ulong pad;           // keeps the stride a multiple of sixteen on both sides
+#else
+    uint64_t base;
+    uint64_t pad;
+#endif
 } OllinRTFinish;
 
 // Per-dispatch constants for the offline path-traced export (`--path-traced`): the

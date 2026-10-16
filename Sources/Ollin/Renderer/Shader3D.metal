@@ -1815,6 +1815,19 @@ static inline OllinRTSurface ollin_rt_fetch_surface(thread intersection_query<tr
     if (backface) s.N = -s.N;
     // Vertex color is straight sRGB (the baked `fill`), like the rasterized fragment.
     s.albedo = srgbToLinear(w.x * a.color.rgb + w.y * b.color.rgb + w.z * c.color.rgb) * hit.tint;
+    // A picture on the surface, read at the hit the way the raster draw reads it, at its
+    // full-size level: a ray carries no screen footprint to choose a smaller one from.
+    if (hit.fin.cool.w > 0.5) {
+        float2 uv = w.x * a.uv + w.y * b.uv + w.z * c.uv;
+        float wrap = hit.fin.cool.w - 1.0;
+        constexpr sampler clampSamp(filter::linear, address::clamp_to_edge);
+        constexpr sampler tileSamp(filter::linear, address::repeat);
+        constexpr sampler mirrorSamp(filter::linear, address::mirrored_repeat);
+        float4 picture = wrap >= 1.5 ? hit.fin.base.sample(mirrorSamp, uv, level(0.0))
+                       : wrap >= 0.5 ? hit.fin.base.sample(tileSamp, uv, level(0.0))
+                       : hit.fin.base.sample(clampSamp, uv, level(0.0));
+        s.albedo *= picture.rgb;
+    }
     // Metalness + roughness are baked per vertex into the spare w slots (constant across
     // the triangle), so a hit shades as the surface it is.
     s.metal = clamp(a.normal.w, 0.0, 1.0);
