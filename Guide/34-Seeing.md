@@ -359,6 +359,8 @@ override func mousePressed() {
 
 Click something and the sketch follows it. `track(centeredAt:size:in:)` hands the tracker a square 160 points across around the click, mapped through `view`, the rectangle the frame landed in. Alongside its box, `trackedObject` carries a `confidence` that falls as the patch is hidden, leaves the frame, or moves too fast to keep up with. Fade an overlay by it, or give up below a threshold and ask for a new box.
 
+A detector's box seeds it as well as a click does: pass a face's `bounds(in: view)` to `track(_:in:)`. The `ObjectTracking` example does that with the bundled dance film, where nobody is there to click. One lock from the face follows the dancer's head through the turns of the dance. The face detector is asked again only when the confidence says the patch is lost.
+
 ### Things that fly: TrajectoryTracker
 
 **`TrajectoryTracker`** waits for things that fly. It is for a sketch that answers a throw, a catch, or a bounce. Rather than being pointed at something, it watches for the curve of a thrown thing. A ball tossed or a pebble bouncing then arrives on its own as a `DetectedTrajectory`, a run of sightings with a parabola fitted through them. Galileo showed in 1638 that a thrown thing follows a parabola, and that shape is what the tracker looks for.

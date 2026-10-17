@@ -336,14 +336,50 @@ public final class PhoneTouches {
 /// one hand off a two-handed chord does not jump the pointer across the canvas.
 /// Only a finger that lands while nothing holds the pointer takes it.
 ///
+/// The first two fingers on the glass are also read as a pair, for a pinch and
+/// a turn: a reading that finds the same two fingers as the reading before,
+/// moved, reports where both were and where both are. A pair that changes (one
+/// of the two lifts, a third finger takes its place) starts over, so nothing
+/// jumps.
+///
 /// Pure, so its invariants are pinned without a phone or a sketch.
 struct PhonePointer: Sendable, Equatable {
+
+    /// Two fingers' positions on the phone's -1 to 1 scale, the first to land first.
+    struct Pair: Sendable, Equatable {
+        var first: Vector2
+        var second: Vector2
+
+        /// How the pair changed on the way to `later`, measured where both land
+        /// on `canvas`: the factor the distance between the fingers grew by,
+        /// and the angle the line between them turned through, in radians
+        /// clockwise on the canvas (whose y runs down), the shorter way round.
+        /// `nil` when either reading has both fingers in one spot.
+        func change(to later: Pair, in canvas: Rectangle) -> (scale: Double, turn: Double)? {
+            let before = PhoneTouch.mapped(second, in: canvas) - PhoneTouch.mapped(first, in: canvas)
+            let after = PhoneTouch.mapped(later.second, in: canvas)
+                - PhoneTouch.mapped(later.first, in: canvas)
+            guard before.length > 1e-9, after.length > 1e-9 else { return nil }
+            var turn = after.angle - before.angle
+            if turn > .pi { turn -= 2 * .pi } else if turn <= -.pi { turn += 2 * .pi }
+            return (after.length / before.length, turn)
+        }
+    }
 
     /// One thing the pointer did, with the position on the phone's -1 to 1 scale.
     enum Event: Sendable, Equatable {
         case press(Vector2, force: Double?)
         case move(Vector2, force: Double?)
         case release(Vector2)
+        /// The two fingers of a pair moved between two readings.
+        case pair(from: Pair, to: Pair)
+    }
+
+    /// The two fingers read as a pair in the last reading, and where they were.
+    private var pair: HeldPair?
+    private struct HeldPair: Sendable, Equatable {
+        var ids: [Int]
+        var at: Pair
     }
 
     /// The finger holding the pointer, or `nil` while none does.
@@ -382,6 +418,16 @@ struct PhonePointer: Sendable, Equatable {
         }
         if let holder {
             passed.formUnion(touches.lazy.map(\.id).filter { $0 != holder })
+        }
+        if touches.count >= 2 {
+            let ids = [touches[0].id, touches[1].id]
+            let now = Pair(first: touches[0].position, second: touches[1].position)
+            if let pair, pair.ids == ids, pair.at != now {
+                events.append(.pair(from: pair.at, to: now))
+            }
+            pair = HeldPair(ids: ids, at: now)
+        } else {
+            pair = nil
         }
         return events
     }

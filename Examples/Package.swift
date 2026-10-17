@@ -478,6 +478,9 @@ let package = Package(
         // carrying the speed of the last few frames.
         example("Input/Drag"),
         example("Input/PanAndZoom"),
+        // Two fingers on the trackpad: the frame's pinch and turn, and a dial
+        // the turn hook clicks through.
+        example("Input/PinchAndTurn"),
         example("Patterns/WarpGrid"),
         example("Randomness/NoiseField"),
         // The CPU noise family side by side over one set of coordinates.
@@ -824,7 +827,7 @@ let package = Package(
         // OCR — text read from the feed, each line boxed and printed.
         example("Vision/TextScan", [.vision, .samplePhotos]),
         // Object tracking — click to lock onto a patch and follow it across frames.
-        example("Vision/ObjectTracking", [.vision, .samplePhotos]),
+        example("Vision/ObjectTracking", [.vision, .video, .samplePhotos]),
         // Optical flow — the camera's motion as a field of arrows, with dust
         // particles carried by it.
         example("Vision/OpticalFlow", [.vision, .video, .samplePhotos]),

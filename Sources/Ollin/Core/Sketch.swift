@@ -181,6 +181,26 @@ open class Sketch {
     /// event for one-shot response.
     public internal(set) var scrollDeltaY: Double = 0
 
+    /// How much two fingers pinching on the trackpad changed the size this
+    /// frame, as a factor: `1` while nothing pinches, `1.1` when the fingers
+    /// spread a tenth farther apart, `0.9` as they close. Every pinch since the
+    /// last frame is multiplied in, so `zoom *= pinchScale` in `draw()` follows
+    /// the fingers exactly. The `fingersPinched()` hook fires per event.
+    ///
+    /// The phone showing this sketch (`PhoneDevice.show(_:)`) sends its
+    /// two-finger pinch here too. `viewControl()` and `cameraControl()` zoom
+    /// with it the way they zoom with the scroll wheel.
+    public internal(set) var pinchScale: Double = 1
+
+    /// How far two fingers turned on the trackpad this frame, in radians:
+    /// `0` while nothing turns, positive clockwise on the screen, the
+    /// direction `rotate(_:)` turns. Every turn since the last frame is added
+    /// in, so `angle += turnAngle` followed by `rotate(angle)` keeps a shape
+    /// under the fingers. The `fingersTurned()` hook fires per event.
+    ///
+    /// The phone showing this sketch sends its two-finger turn here too.
+    public internal(set) var turnAngle: Double = 0
+
     /// The paths of files dropped on the window since the last call, oldest
     /// first, as `String` paths, and reading them empties the list.
     ///
@@ -478,6 +498,16 @@ open class Sketch {
     /// event's movement. Override for one-shot response (a discrete zoom step, a
     /// page); for continuous response poll `scrollDeltaY` in `draw()` instead.
     open func mouseScrolled() {}
+    /// Called once each time two fingers pinch on the trackpad; `pinchScale`
+    /// holds this event's own factor. Override for one-shot response (a zoom
+    /// that snaps to steps); for continuous response multiply by `pinchScale`
+    /// in `draw()` instead.
+    open func fingersPinched() {}
+    /// Called once each time two fingers turn on the trackpad; `turnAngle`
+    /// holds this event's own turn, in radians. Override for one-shot response
+    /// (a dial that clicks through notches); for continuous response add
+    /// `turnAngle` in `draw()` instead.
+    open func fingersTurned() {}
     /// Called once each time a key is pressed (auto-repeat doesn't re-fire it).
     /// Override to respond to keys; `key`/`keyCode` hold the key. For movement
     /// while a key is held, poll `isKeyDown(_:)` in `draw()` instead.
@@ -1087,7 +1117,8 @@ open class Sketch {
         cameraRig.driver = .control
         let input = CameraInput(mouseX: mouseX, mouseY: mouseY,
                                 leftPressed: mouseIsPressed, rightPressed: rightMouseIsPressed,
-                                modifiers: modifiers, scrollDeltaY: scrollDeltaY)
+                                modifiers: modifiers, scrollDeltaY: scrollDeltaY,
+                                pinchScale: pinchScale)
         cameraRig.updateControl(input: input, dt: deltaTime, viewportHeight: height)
         cameraRig.applyViewSnap(dt: deltaTime)
         camera(cameraRig.makeCamera(near: near, far: far))
@@ -1124,7 +1155,8 @@ open class Sketch {
         cameraRig.driver = .showcase
         let input = CameraInput(mouseX: mouseX, mouseY: mouseY,
                                 leftPressed: mouseIsPressed, rightPressed: rightMouseIsPressed,
-                                modifiers: modifiers, scrollDeltaY: scrollDeltaY)
+                                modifiers: modifiers, scrollDeltaY: scrollDeltaY,
+                                pinchScale: pinchScale)
         cameraRig.updateInteractiveMove(move, input: input, dt: deltaTime,
                                         viewportHeight: height, idleTimeout: idleReturn,
                                         returnDuration: returnDuration)
@@ -4524,7 +4556,7 @@ open class Sketch {
         view2D.frame(center: center ?? middle, zoom: zoom)
         let pointer = Vector2(mouseX, mouseY)
         view2D.update(pointer: pointer, dragging: mouseIsPressed, scroll: scrollDeltaY,
-                      canvasCenter: middle, range: range, dt: deltaTime)
+                      pinch: pinchScale, canvasCenter: middle, range: range, dt: deltaTime)
         translate(middle)
         scale(view2D.zoom, view2D.zoom)
         translate(-view2D.center)
@@ -4667,6 +4699,45 @@ open class Sketch {
         mouseScrolled()
     }
 
+    /// Pinches and turns delivered between frames, gathered here and surfaced
+    /// as `pinchScale` and `turnAngle` at the start of the next `advance()`,
+    /// the way the scroll is.
+    private var pendingPinch: Double = 1
+    private var pendingTurn: Double = 0
+
+    /// Record one pinch from the view (or the phone) and fire its hook. The
+    /// factor is this event's own change of size; a factor at or below zero
+    /// is no size at all, so it is held just above zero, and a factor that is
+    /// not a number is dropped.
+    package func handlePinch(by factor: Double) {
+        guard factor.isFinite else { return }
+        let factor = max(factor, 0.01)
+        takeRecorder?.log(.pinch(scale: factor), at: frameCount)
+        guard takePlayer == nil else { return }
+        ingestPinch(scale: factor)
+    }
+
+    fileprivate func ingestPinch(scale factor: Double) {
+        pendingPinch *= factor
+        pinchScale = factor
+        fingersPinched()
+    }
+
+    /// Record one two-finger turn from the view (or the phone), in radians,
+    /// clockwise on the screen, and fire its hook.
+    package func handleTurn(by radians: Double) {
+        guard radians.isFinite else { return }
+        takeRecorder?.log(.turn(angle: radians), at: frameCount)
+        guard takePlayer == nil else { return }
+        ingestTurn(angle: radians)
+    }
+
+    fileprivate func ingestTurn(angle radians: Double) {
+        pendingTurn += radians
+        turnAngle = radians
+        fingersTurned()
+    }
+
     /// Files dropped on the window from the view: the pointer moves to where
     /// they landed, the paths join the inbox, and the per-drop hook fires. A
     /// drop is live input outside a take: neither recorded nor replayed, so a
@@ -4738,6 +4809,10 @@ open class Sketch {
             ingestPressure(amount, canVary: canVary)
         case .scroll(let deltaY):
             ingestScroll(deltaY: deltaY)
+        case .pinch(let factor):
+            ingestPinch(scale: factor)
+        case .turn(let radians):
+            ingestTurn(angle: radians)
         case .modifiers(let mods):
             modifiers = mods
         case .key(let character, let code, let pressed):
@@ -4799,6 +4874,10 @@ open class Sketch {
         // so this frame's wheel events are gathered for the next one (nothing lost).
         scrollDeltaY = pendingScroll
         pendingScroll = 0
+        pinchScale = pendingPinch
+        pendingPinch = 1
+        turnAngle = pendingTurn
+        pendingTurn = 0
         for value in collectAdvancingValues() {
             value.advance(by: deltaTime)
             value.advance(to: time)

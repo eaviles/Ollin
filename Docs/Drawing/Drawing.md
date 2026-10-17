@@ -1334,7 +1334,7 @@ Both are restored on exit, and boxes nest. A box inside a box composes both mapp
 viewControl(center: Vector2? = nil, zoom: Double = 1, in range: ClosedRange<Double> = 0.05...50)
 ```
 
-Hand the view of the canvas to whoever is watching, so they can drag to pan and scroll to zoom. Call it once each `draw()`, before the drawing it should move. It is the 2D counterpart of [`cameraControl()`](../3D/Camera.md#control), and it is opt-in the same way. A sketch that never calls it never pays for it.
+Hand the view of the canvas to whoever is watching, so they can drag to pan and scroll or pinch to zoom. Call it once each `draw()`, before the drawing it should move. It is the 2D counterpart of [`cameraControl()`](../3D/Camera.md#control), and it is opt-in the same way. A sketch that never calls it never pays for it.
 
 ```swift
 override func draw() {
@@ -1346,12 +1346,13 @@ override func draw() {
 
 It leaves a plain transform in force, so everything drawn after it moves together and anything drawn before it stays put. That is where a fixed backdrop belongs. For a HUD that has to be drawn last, wrap the call and the drawing in a `withState { }` block. Then draw the HUD after it.
 
-`center` and `zoom` frame the opening view, and after the first call they are the view's home. Passing the same values every frame changes nothing, so a constant framing never fights the dragging. A value that changes, a `@Param` turned in the inspector or an edit on the live stage, glides the view there while the viewer has not dragged or scrolled it yet, which is how a parameter tunes the view live. Once they have, the view is theirs: a changed value moves only the home, and `resetView()` is what opens on the new one. `zoom` is how many screen pixels one canvas unit covers, and `range` bounds where the wheel can take it. `viewCenter` and `viewZoom` report where the view is. `resetView()` puts the view back on its home framing, which is what a reset key would call.
+`center` and `zoom` frame the opening view, and after the first call they are the view's home. Passing the same values every frame changes nothing, so a constant framing never fights the dragging. A value that changes, a `@Param` turned in the inspector or an edit on the live stage, glides the view there while the viewer has not dragged or scrolled it yet, which is how a parameter tunes the view live. Once they have, the view is theirs: a changed value moves only the home, and `resetView()` is what opens on the new one. `zoom` is how many screen pixels one canvas unit covers, and `range` bounds where the wheel or a pinch can take it. `viewCenter` and `viewZoom` report where the view is. `resetView()` puts the view back on its home framing, which is what a reset key would call.
 
 | Gesture | Action |
 | --- | --- |
 | Drag | Pan, and the content follows the pointer exactly |
 | Scroll | Zoom about the pointer, so what you point at stays under it |
+| Pinch | Zoom about the pointer by the [pinch](../Helpers/Input.md#pinch) itself: fingers spread to twice the distance, twice the zoom |
 
 Neither gesture is damped, unlike the 3D camera. An orbit gains from a little inertia, and a flat plane under a finger does not.
 

@@ -11,6 +11,8 @@ struct CameraInput {
     var rightPressed: Bool
     var modifiers: ModifierKeys
     var scrollDeltaY: Double
+    /// The frame's two-finger pinch, as a factor; spreading the fingers dollies in.
+    var pinchScale: Double = 1
 }
 
 /// A canonical camera angle for inspecting a 3D scene, the way a modeling tool's
@@ -266,7 +268,7 @@ final class CameraRig {
         let isOrbit = input.leftPressed && !panModifier
         let isPan = input.rightPressed || (input.leftPressed && panModifier)
         let interacting = isOrbit || isPan
-        if interacting || input.scrollDeltaY != 0 { restsAtHome = false }
+        if interacting || input.scrollDeltaY != 0 || input.pinchScale != 1 { restsAtHome = false }
         follow(&fieldOfView, &goalFieldOfView, followShare(dt))
 
         // Seed the reference point when a drag starts, so the first frame has no
@@ -318,8 +320,8 @@ final class CameraRig {
             goalTarget = goalTarget - basis.right * (dx * scale) + basis.up * (dy * scale)
         }
 
-        if input.scrollDeltaY != 0 {
-            goalRadius *= pow(dollyBase, input.scrollDeltaY)
+        if input.scrollDeltaY != 0 || input.pinchScale != 1 {
+            goalRadius *= pow(dollyBase, input.scrollDeltaY) / input.pinchScale
             goalRadius = Swift.min(Swift.max(goalRadius, minRadius), maxRadius)
         }
 
@@ -479,12 +481,12 @@ final class CameraRig {
     }
 
     /// Whether this frame's input is the viewer driving the camera: an orbit drag, a
-    /// pan (right-drag or modifier-drag), or a scroll dolly.
+    /// pan (right-drag or modifier-drag), or a scroll or pinch dolly.
     private func isInteracting(_ input: CameraInput) -> Bool {
         let panModifier = input.modifiers.contains(.shift) || input.modifiers.contains(.option)
         let isOrbit = input.leftPressed && !panModifier
         let isPan = input.rightPressed || (input.leftPressed && panModifier)
-        return isOrbit || isPan || input.scrollDeltaY != 0
+        return isOrbit || isPan || input.scrollDeltaY != 0 || input.pinchScale != 1
     }
 
     /// Snapshot the viewer's pose, restart the move from the *home* framing (so the

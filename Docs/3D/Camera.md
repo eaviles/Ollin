@@ -21,7 +21,7 @@ Each is a single call you make in `draw()`, like `camera(...)`. A sketch that ca
 
 - [Showcase camera](#showcase) - `cameraShowcase(_:)`, the usual default
 - [Interactive control](#control) - `cameraControl()`
-- [The input surface it reads](#input) - `scrollDeltaY`, `modifiers`, `mouseScrolled()`, `rightMouseIsPressed`
+- [The input surface it reads](#input) - `scrollDeltaY`, `pinchScale`, `modifiers`, `mouseScrolled()`, `rightMouseIsPressed`
 - [Cinematic moves](#moves) - `cameraMove(_:)`
 - [The move catalog](#catalog) - `CameraMove`
 - [Opening on an authored camera](#from-authored) - the `from:` forms, which seed the rig from any `Camera3D`
@@ -62,7 +62,7 @@ The `target` / `radius` / `elevation` / `fieldOfView` arguments frame the shot, 
 <a id="control"></a>
 ### Interactive control
 
-`cameraControl()` hands the camera to the viewer. Drag to orbit the object, scroll to dolly in and out, and right-drag or shift / option-drag to pan the target. The motion is damped, so it settles smoothly, and a flick keeps a little spin before it comes to rest. It is opt-in, like [`lights()`](./3D.md#lights). Call it in each `draw()`, and it sets the camera for that frame.
+`cameraControl()` hands the camera to the viewer. Drag to orbit the object, scroll or pinch to dolly in and out, and right-drag or shift / option-drag to pan the target. The motion is damped, so it settles smoothly, and a flick keeps a little spin before it comes to rest. It is opt-in, like [`lights()`](./3D.md#lights). Call it in each `draw()`, and it sets the camera for that frame.
 
 ```swift
 override func draw() {
@@ -78,6 +78,7 @@ The `target` / `radius` / `azimuth` / `elevation` / `fieldOfView` arguments are 
 | --- | --- |
 | Drag (left) | Orbit (azimuth and elevation around the target) |
 | Scroll | Dolly (change the radius) |
+| Pinch | Dolly by the pinch: fingers spread to twice the distance, half the radius |
 | Right-drag, or shift / option-drag | Pan (move the target across the view) |
 
 <a id="input"></a>
@@ -87,6 +88,7 @@ The `target` / `radius` / `azimuth` / `elevation` / `fieldOfView` arguments are 
 
 - `scrollDeltaY` - how far the scroll wheel or a two-finger trackpad scroll moved this frame. The value is summed since the last frame, and it is `0` when nothing scrolled. It is a per-frame value, so read it in `draw()`. A positive value is a scroll up.
 - `modifiers` - the modifier keys currently held, as a `ModifierKeys` option set (`.shift`, `.option`, `.command`, `.control`). Test one with `if modifiers.contains(.shift) { … }`.
+- `pinchScale` - how much two fingers pinching on the trackpad changed the size this frame, as a factor, `1` while nothing pinches. See [pinch and turn](../Helpers/Input.md#pinch).
 - `rightMouseIsPressed` - whether the secondary mouse button is held. It is the companion to `mouseIsPressed`.
 - `mouseScrolled()` - an override hook that is called once per scroll event. Use it for a one-shot discrete step. For a continuous response, poll `scrollDeltaY` instead.
 

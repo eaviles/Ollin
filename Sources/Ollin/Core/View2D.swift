@@ -76,7 +76,7 @@ struct View2D {
         return (screen - canvasCenter) / zoom + center
     }
 
-    /// Take one frame of pointer and scroll input, after one step of the glide
+    /// Take one frame of pointer, scroll, and pinch input, after one step of the glide
     /// a changed framing asked for (`dt` is the frame's step).
     ///
     /// Zoom is anchored on the pointer, so the content under it does not move
@@ -85,9 +85,9 @@ struct View2D {
     /// from a little inertia, and a flat plane under a finger does not. The
     /// glide toward a changed home is the one eased motion here, and the
     /// viewer's first drag or scroll ends it.
-    mutating func update(pointer: Vector2, dragging: Bool, scroll: Double,
+    mutating func update(pointer: Vector2, dragging: Bool, scroll: Double, pinch: Double = 1,
                          canvasCenter: Vector2, range: ClosedRange<Double>, dt: Double = 0) {
-        if dragging || scroll != 0 {
+        if dragging || scroll != 0 || pinch != 1 {
             restsAtHome = false
             goalCenter = nil
             goalZoom = nil
@@ -101,9 +101,9 @@ struct View2D {
             center = center.lerp(to: goal, share)
             if (goal - center).length <= 1e-9 * Swift.max(1, goal.length) { center = goal; goalCenter = nil }
         }
-        if scroll != 0 {
+        if scroll != 0 || pinch != 1 {
             let anchored = contentPoint(pointer, canvasCenter: canvasCenter)
-            let wanted = zoom * pow(View2D.zoomPerScrollUnit, scroll)
+            let wanted = zoom * pow(View2D.zoomPerScrollUnit, scroll) * pinch
             zoom = Swift.min(Swift.max(wanted, range.lowerBound), range.upperBound)
             center = anchored - (pointer - canvasCenter) / zoom
         }

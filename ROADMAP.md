@@ -106,9 +106,8 @@ These are more of the platform's live signals. Each one is a `FrameSource` or a 
 - **Apple Pencil.** Tilt, azimuth, and hover on the tablet. The Pencil's force joins the pressure a sketch already reads.
 - **Body data, and where the Mac is.** Heart rate from a paired Watch, for biofeedback. The Mac's own location as a slow live input, so a weather can follow the machine.
 - **Depth from video, deeper.** The first piece is the metric checkpoint of the video depth model, once its license is settled. With it, a webcam's depth comes in meters and lifts into an `RGBDFrame` and a point cloud. The second piece is the encoder on the Neural Engine, with only the temporal head on the GPU, for twice the readings a second.
-- **Pinch and rotate.** The trackpad's pinch and rotate gestures read as plain values in `draw()`, with hooks beside the mouse's. Two-finger gestures on a phone arrive the same way.
+- **Pinch and turn on the phone itself.** A sketch installed on a phone or tablet reads a two-finger pinch and turn through the same two values the Mac's trackpad fills.
 - **Typed text.** A sketch reads typed text through the system's input methods. Accents, dead keys, the emoji viewer, and Chinese or Japanese input then arrive as text. `key` still reports single key presses.
-- **Following a region across video.** A sketch marks a region of a camera or video frame, and the region is followed as it moves. The trackers find what they were built for, such as bodies, faces, and hands, and this follows whatever the sketch picked.
 
 Several overlap the [iPhone sensor array](#iphone-as-a-sensor-array). These are the Mac-side direct sources. See the [design notes](DESIGN-NOTES.md#new-input-sources).
 

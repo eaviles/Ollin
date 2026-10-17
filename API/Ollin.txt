@@ -2734,6 +2734,8 @@ open class Sketch: Sendable
   open func draw()
   open func filesChosen()
   open func filesDropped()
+  open func fingersPinched()
+  open func fingersTurned()
   open func keyPressed()
   open func keyReleased()
   open func mousePressed()
@@ -2783,6 +2785,7 @@ open class Sketch: Sendable
   var mouseY: Double { get }
   var moveAxis: Vector2 { get }
   var noiseFields: NoiseFields { get }
+  var pinchScale: Double { get }
   var prefersReducedMotion: Bool { get }
   var pressure: Double { get }
   var pressureIsAvailable: Bool { get }
@@ -2799,6 +2802,7 @@ open class Sketch: Sendable
   var shortSide: Double { get }
   var stylus: Stylus { get }
   var time: Double { get }
+  var turnAngle: Double { get }
   var variation: Int { get }
   var viewCenter: Vector2 { get }
   var viewZoom: Double { get }
@@ -6667,11 +6671,13 @@ struct Take: Decodable, Encodable, Equatable, Sendable
     case key(character: String?, code: KeyCode?, pressed: Bool)
     case keysCleared
     case modifiers(ModifierKeys)
+    case pinch(scale: Double)
     case pointer(x: Double, y: Double)
     case pressure(amount: Double, canVary: Bool)
     case rightButton(pressed: Bool)
     case scroll(deltaY: Double)
     case stylus(Stylus)
+    case turn(angle: Double)
   func install(on: Sketch)
   func write(to: Foundation.URL) throws
   func write(to: String) throws

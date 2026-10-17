@@ -642,7 +642,7 @@ ObjectTracker(_ source: any FrameSource)
 func track(_ region: Rectangle, in frameRect: Rectangle, mirrored: Bool = false)
 func track(centeredAt: Vector2, size: Double, in frameRect: Rectangle, mirrored: Bool = false)
 func track(normalized: Rectangle)
-func stop()
+func stopTracking()
 var trackedObject: TrackedObject? { get }
 var isTracking: Bool { get }
 static func track(_ seed: Rectangle, across: [Image]) async throws -> [TrackedObject]
@@ -650,7 +650,7 @@ static func track(_ seed: Rectangle, across: [Image]) async throws -> [TrackedOb
 
 The other trackers *detect*, which means they find faces or rectangles on their own. This one *tracks* instead. You hand it a box that says where something is right now, and it follows that same patch from frame to frame as it moves. So it can follow an object the recognizers have no model for. It is a classical tracker with no neural model, so it runs on any Mac.
 
-Seed it from a click with `track(centeredAt:size:in:)`, or from a box you drew with `track(_:in:)`. Another detector's result works too, if you pass its `bounds(in:)`. Then read `trackedObject` each frame. Call a `track(…)` method again to re-target, or `stop()` (spelled `stopTracking()` on the object itself) to let go.
+Seed it from a click with `track(centeredAt:size:in:)`, or from a box you drew with `track(_:in:)`. Another detector's result works too, if you pass its `bounds(in:)`. Then read `trackedObject` each frame. Call a `track(…)` method again to re-target, or `stopTracking()` to let go.
 
 ```swift
 let camera = Camera()
@@ -673,6 +673,8 @@ override func mousePressed() {
 
 The static `track(_:across:)` follows a patch through an ordered array of frames with no camera. That is the form for a recorded clip.
 
+The `ObjectTracking` example locks onto whatever you click. With no camera it plays the bundled dance film and seeds the tracker from the dancer's face as `FaceTracker` finds it. From then on the tracker does the following.
+
 <a name="trackedobject"></a>
 
 ### TrackedObject
@@ -684,6 +686,8 @@ func center(in: Rectangle, mirrored: Bool = false) -> Vector2
 ```
 
 `TrackedObject` says where the tracked patch is now and how sure the tracker is. `confidence` stays high while the patch is clearly in view. It falls as the patch is hidden, leaves the frame, or moves too fast. That makes it a good value to fade an overlay by, and a good value to threshold on. When it drops below the threshold, treat the object as lost and call `track(…)` again to re-lock.
+
+Read `confidence` to tell whether the patch is lost, since the box stays put when it is. Take a textured patch sixty-four pixels across, moving five pixels a frame through a 640 by 480 frame. The box stays about a pixel from it, under three at the worst frame of sixty, and the confidence stays near 0.9. When the patch slides out of the frame, the confidence falls over the frames its edge crosses out. It sits near 0.03 once the patch is gone, while the box stays where the patch was last seen.
 
 <a name="trajectorytracker"></a>
 

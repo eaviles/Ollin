@@ -5521,6 +5521,23 @@
       "stillSmall": "examples/Input/PanAndZoom/still-640.jpg?v=03ea91e2",
       "width": 1080
     },
+    "Input/PinchAndTurn": {
+      "width": 1080,
+      "height": 1080,
+      "length": "still",
+      "stillBecause": "holds still",
+      "frame": 480,
+      "motion": 0.0,
+      "source": "673e1babe47bc28d",
+      "rendered": "2026-10-17",
+      "bytes": {
+        "still": 98985,
+        "stillSmall": 37273
+      },
+      "still": "examples/Input/PinchAndTurn/still.jpg?v=f7770dca",
+      "stillSmall": "examples/Input/PinchAndTurn/still-640.jpg?v=6ddfa159",
+      "seed": 1
+    },
     "Input/RepelGrid": {
       "bytes": {
         "still": 260060,
@@ -12050,42 +12067,48 @@
       "seed": 1
     },
     "Vision/ObjectTracking": {
-      "bytes": {
-        "still": 189356,
-        "stillSmall": 68168
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
-      "length": "still",
-      "motion": 0.0,
-      "rendered": "2026-09-10",
-      "source": "88d29bb8b83c234c",
-      "still": "examples/Vision/ObjectTracking/still.jpg?v=6d5c8344",
-      "stillBecause": "holds still",
-      "stillSmall": "examples/Vision/ObjectTracking/still-640.jpg?v=b5066731",
-      "width": 1080
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 11.999,
+      "sound": false,
+      "source": "e952a7b0be9fd0b0",
+      "rendered": "2026-10-17",
+      "bytes": {
+        "loop": 1782244,
+        "loopSmall": 428734,
+        "still": 46163,
+        "stillSmall": 17803
+      },
+      "loop": "examples/Vision/ObjectTracking/loop.mp4?v=62c45d79",
+      "loopSmall": "examples/Vision/ObjectTracking/loop-640.mp4?v=95ec6cba",
+      "still": "examples/Vision/ObjectTracking/still.jpg?v=81512bdb",
+      "stillSmall": "examples/Vision/ObjectTracking/still-640.jpg?v=e24f4ce9",
+      "seed": 1
     },
     "Vision/OpticalFlow": {
-      "bytes": {
-        "loop": 4646048,
-        "loopSmall": 1058272,
-        "still": 81559,
-        "stillSmall": 35795
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "10.0s",
-      "loop": "examples/Vision/OpticalFlow/loop.mp4?v=41eb8bbb",
-      "loopSmall": "examples/Vision/OpticalFlow/loop-640.mp4?v=48af838d",
-      "motion": 5.06,
-      "rendered": "2026-09-26",
       "seconds": 10.0,
-      "seed": 1,
+      "frame": 480,
+      "motion": 10.563,
       "sound": false,
-      "source": "8f932a66b82e65de",
-      "still": "examples/Vision/OpticalFlow/still.jpg?v=700ececd",
-      "stillSmall": "examples/Vision/OpticalFlow/still-640.jpg?v=62fe4f07",
-      "width": 1080
+      "source": "7cb65757c372a6cf",
+      "rendered": "2026-10-17",
+      "bytes": {
+        "loop": 8086266,
+        "loopSmall": 2693091,
+        "still": 140794,
+        "stillSmall": 58738
+      },
+      "loop": "examples/Vision/OpticalFlow/loop.mp4?v=cbc5b40d",
+      "loopSmall": "examples/Vision/OpticalFlow/loop-640.mp4?v=355758c6",
+      "still": "examples/Vision/OpticalFlow/still.jpg?v=27b43ae7",
+      "stillSmall": "examples/Vision/OpticalFlow/still-640.jpg?v=ce8d7ead",
+      "seed": 1
     },
     "Vision/PaintByClass": {
       "bytes": {

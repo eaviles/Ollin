@@ -46,6 +46,12 @@ public struct Take: Codable, Equatable, Sendable {
         case stylus(Stylus)
         /// One scroll-wheel event's movement; the `mouseScrolled()` hook fires.
         case scroll(deltaY: Double)
+        /// One two-finger pinch, as the factor it changed the size by; the
+        /// `fingersPinched()` hook fires.
+        case pinch(scale: Double)
+        /// One two-finger turn, in radians clockwise on the screen; the
+        /// `fingersTurned()` hook fires.
+        case turn(angle: Double)
         /// The held modifier keys changed.
         case modifiers(ModifierKeys)
         /// A key went down or up: a printing key carries `character`, a named

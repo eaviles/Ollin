@@ -382,7 +382,7 @@ for d in decls:
         if d.kind == "func" and "open" in d.mods:
             if re.match(r"^on[A-Z]", d.name):
                 fail("hook", d, f"`{d.name}`: an input hook is past tense (mousePressed), never on…")
-            elif re.match(r"^(?:mouse|key|touch|scroll|drag|click)", d.name) and not d.name.endswith("ed"):
+            elif re.match(r"^(?:mouse|key|touch|scroll|drag|click|fingers|pinch|turn)", d.name) and not d.name.endswith("ed"):
                 fail("hook", d, f"`{d.name}`: an input hook is past tense (mousePressed, mouseScrolled)")
         # verb
         if d.kind == "func" and d.name in NOUNS and not d.returns:

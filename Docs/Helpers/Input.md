@@ -14,6 +14,8 @@ Pointer and keyboard input are plain properties and overridable methods on the s
 - [mousePressed / mouseReleased](#mousePressed)
 - [pressure / pressureIsAvailable](#pressure)
 - [stylus](#stylus)
+- [scrollDeltaY / mouseScrolled](#scroll)
+- [pinchScale / turnAngle / fingersPinched / fingersTurned](#pinch): two fingers on the trackpad
 - [key / keyCode / keyIsPressed](#key)
 - [keyPressed / keyReleased](#keyPressed)
 - [isKeyDown](#isKeyDown)
@@ -144,6 +146,69 @@ let angle = stylus.tiltIsAvailable ? atan2(stylus.tilt.y, stylus.tilt.x) + .pi /
 `tiltIsAvailable` is the same kind of answer `pressureIsAvailable` is: it comes from the events rather than from the machine, so it is false until a pen has been used, and it latches on once one has, since a stylus lifted out of range would otherwise take the pen path away in the middle of a stroke. Everything else is zero and false under a mouse, so a sketch written for a stylus still runs there.
 
 A stylus's values are recorded into a [take](../Output/Recording.md) and replayed with the rest of the input. See [Marks](../Drawing/Marks.md) for the brush that reads a press, and `Examples/Input/Pen` for a nib that reads the lean.
+
+<a name="scroll"></a>
+
+### scrollDeltaY / mouseScrolled
+
+```swift
+scrollDeltaY: Double   // how far the wheel moved this frame, 0 when it did not
+mouseScrolled()        // fires once per wheel event
+```
+
+How far the scroll wheel, or two fingers scrolling on a trackpad, moved this frame. Every movement since the last frame is added in, so none is lost between frames. Positive is a scroll up. Inside `mouseScrolled()` the value is that one event's movement, and by the next `draw()` it is the whole frame's.
+
+```swift
+var zoom = 1.0
+
+override func draw() {
+    zoom *= pow(1.02, scrollDeltaY)
+}
+```
+
+[`viewControl`](../Drawing/Drawing.md#viewcontrol) and [`cameraControl`](../3D/Camera.md) zoom with the wheel already.
+
+<a name="pinch"></a>
+
+### pinchScale / turnAngle / fingersPinched / fingersTurned
+
+```swift
+pinchScale: Double   // how much two fingers changed the size this frame, 1 when still
+turnAngle: Double    // how far two fingers turned this frame, radians, 0 when still
+fingersPinched()     // fires once per pinch event
+fingersTurned()      // fires once per turn event
+```
+
+Two fingers on the trackpad. `pinchScale` is a factor: `1.1` when the fingers spread a tenth farther apart this frame, `0.9` as they close, `1` while nothing pinches. Every pinch since the last frame is multiplied in, so multiplying a size by it follows the fingers exactly. `turnAngle` is the turn in radians, positive clockwise on the screen, which is the way [`rotate`](../Drawing/Drawing.md#rotate) turns a positive angle. So adding it to an angle and rotating by that keeps a shape under the fingers:
+
+```swift
+var size = 300.0
+var spin = 0.0
+
+override func draw() {
+    size *= pinchScale
+    spin += turnAngle
+    translate(width / 2, height / 2)
+    rotate(spin)
+    drawRect(Rectangle(center: .zero, width: size, height: size))
+}
+```
+
+Both are this frame's change, the way `mouse - previousMouse` is, so the sketch keeps the totals itself. The hooks fire once per event, and inside them the value is that one event's change. Use them for a response that comes in steps, such as a dial that clicks every fifteen degrees:
+
+```swift
+var notch = 0.0
+var petals = 7
+
+override func fingersTurned() {
+    notch += turnAngle
+    if notch >= .pi / 12 { notch -= .pi / 12; petals += 1 }
+}
+```
+
+[`viewControl`](../Drawing/Drawing.md#viewcontrol) zooms with a pinch about the pointer, and [`cameraControl`](../3D/Camera.md) dollies with one: spreading the fingers to twice the distance brings the camera to half its distance. When the phone shows the sketch ([`PhoneDevice.show`](../Tools/OnThePhone.md)), two fingers on its screen pinch and turn the sketch the same way. A mouse has no pinch, so `pinchScale` stays `1` and `turnAngle` stays `0` under one.
+
+A pinch and a turn are recorded into a [take](../Output/Recording.md) and replayed with the rest of the input. A performance that zoomed and turned then renders offline the way it was played. `Examples/Input/PinchAndTurn` sizes and spins a rose and clicks its petal count with the turn.
 
 <a name="key"></a>
 

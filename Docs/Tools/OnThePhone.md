@@ -125,7 +125,7 @@ final class Held: Sketch {
 }
 ```
 
-The Mac compresses each frame as video and sends it down the cable to [Ollin Capture](../3D/Phone.md#the-sketch-on-the-phones-screen), which shows it full screen. The first finger on the picture is the sketch's pointer, just as it is on this page. So `mouseX`, `mouseY`, `mouseIsPressed`, and `pressure` read the same either way.
+The Mac compresses each frame as video and sends it down the cable to [Ollin Capture](../3D/Phone.md#the-sketch-on-the-phones-screen), which shows it full screen. The first finger on the picture is the sketch's pointer, just as it is on this page. So `mouseX`, `mouseY`, `mouseIsPressed`, and `pressure` read the same either way. Two fingers on the shown picture also pinch and turn the sketch through `pinchScale` and `turnAngle`, as they do on the Mac's trackpad. A sketch installed on the phone reads one finger only.
 
 The two answer different questions. Showing the picture tells you how the sketch looks and plays in the hand. An edit appears as soon as the Mac has compiled it, through the live window's own reload. Installing tells you whether the phone's own GPU keeps up, and that the sketch runs with no Mac at all. Both suit a sketch in progress: showing it while you shape it, installing it when you want to know it holds.
 

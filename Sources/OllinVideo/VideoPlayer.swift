@@ -260,12 +260,17 @@ public final class VideoPlayer: FrameSource, VideoFeed, ClipPlayback {
 
     /// Starts (or resumes) playback at `rate`.
     public func play() {
+        // The virtual playhead takes the intent in either mode, so a player
+        // started before an export began (in a property's initializer, which
+        // runs before the export takes the clock) plays on the export's clock.
+        // Without it the playhead stays parked and every exported frame is
+        // the clip's first.
+        if !virtualPlaying { virtualArmed = true }
+        virtualPlaying = true
         if OllinApp.isRenderingHeadless {
             if let duration = headlessDuration, duration > 0, virtualTime >= duration {
                 virtualTime = 0
             }
-            if !virtualPlaying { virtualArmed = true }
-            virtualPlaying = true
             return
         }
         if let duration, duration > 0, currentTime >= duration {
@@ -276,20 +281,16 @@ public final class VideoPlayer: FrameSource, VideoFeed, ClipPlayback {
 
     /// Pauses playback, keeping the position.
     public func pause() {
-        if OllinApp.isRenderingHeadless {
-            virtualPlaying = false
-            return
-        }
+        virtualPlaying = false
+        if OllinApp.isRenderingHeadless { return }
         player.pause()
     }
 
     /// Stops playback and rewinds to the beginning.
     public func stop() {
-        if OllinApp.isRenderingHeadless {
-            virtualPlaying = false
-            virtualTime = 0
-            return
-        }
+        virtualPlaying = false
+        virtualTime = 0
+        if OllinApp.isRenderingHeadless { return }
         player.pause()
         player.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero)
     }

@@ -6,7 +6,7 @@
 
 <img src="Images/38-ControlsAndSignals/WeatherRose.jpg" alt="A seven-petaled rose outlined in dark ink on cream, with fainter, slightly turned copies of itself fanning out behind it as though blown" width="560">
 
-Knobs, faders, a shared beat, a game controller, and the weather all reach a sketch from outside the inspector. This chapter binds knobs and faders straight to your parameters and reads everything else in `draw()` as a level or a moment. All of them move the weather rose above, and it knocks the trackpad under your hand on every downbeat. Past it come a table you touch, sensors on a wire or over Bluetooth, published and smoothed parameters, and data from the web.
+Knobs, faders, a shared beat, a game controller, and the weather all reach a sketch from outside the inspector. This chapter binds knobs and faders straight to your parameters and reads everything else in `draw()` as a level or a moment. All of them move the weather rose above, and it knocks the trackpad under your hand on every downbeat. Past it come the trackpad, a table you touch, sensors on a wire or over Bluetooth, published and smoothed parameters, and data from the web.
 
 ## Parameters from anywhere: MIDI and OSC
 
@@ -366,9 +366,38 @@ Then make it yours:
 
 This one is played rather than rendered, so keep it as a take. Press ⌘⇧R in the live host to start recording the window while you play, and press it again to finish the file. An export renders the sketch again on a fixed clock, and nothing you do while it renders reaches it. Chapter 43's [Keeping the take](43-Performing.md#keeping-the-take) has the rest.
 
-## More hands: a table, a wire, and a radio
+## More hands: the trackpad, a table, a wire, and a radio
 
-The rose takes its hands from things you can buy ready-made: a knob box, a phone, a game controller. Other hands you build or set up yourself. A table can see the objects set on it, and a sensor you wired can report on a cable or over Bluetooth. Each one reads with the same split into levels and moments, and most of them can bind to a parameter the way the knob does.
+The rose takes its hands from things you can buy ready-made: a knob box, a phone, a game controller. One more is already under your hand, and the rest you build or set up yourself. The trackpad reads two fingers at once, and a table can see the objects set on it. A sensor you wired can report on a cable or over Bluetooth. Each one reads with the same split into levels and moments, and most of them can bind to a parameter the way the knob does.
+
+### Two fingers on the trackpad: pinch and turn
+
+A pinch spreads or closes two fingers, and a turn twists them. The Mac's trackpad reads both while you do it. Use them to hold the size and the angle of something at once, the way you zoom and turn a photo. They suit a zoom, a dial, or a shape set down at the scale it wants. A surface that tells several fingers apart grew out of Wayne Westerman's doctoral work at the University of Delaware. He studied chords of fingers on a multi-touch surface, and with John Elias founded FingerWorks to build pads that read them. Apple bought the company in 2005, and the MacBook Air of January 2008 brought pinch and rotate to the Mac.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/38-ControlsAndSignals/TwoFingers-dark.jpg">
+  <img src="Images/38-ControlsAndSignals/TwoFingers.jpg" alt="Two fingers on a trackpad at one reading, hollow on a dashed line, and at the next, filled on a solid line that is 1.4 times as long and turned 25 degrees clockwise. Beside it, pinchScale reads 1.40 and turnAngle reads 0.44, and a dashed square grows into a larger one turned by the same angle" width="680">
+</picture>
+
+`pinchScale` is how much the pinch changed the size this frame, as a factor, and `turnAngle` is how far the fingers turned, in radians. Both are this frame's change, the way `mouse - previousMouse` is, so the sketch keeps the totals:
+
+```swift
+var size = 300.0
+var spin = 0.0
+
+override func draw() {
+    background(.white)
+    size *= pinchScale      // 1 while nothing pinches
+    spin += turnAngle       // 0 while nothing turns
+    translate(width / 2, height / 2)
+    rotate(spin)
+    noFill()
+    stroke(.black)
+    drawRect(Rectangle(center: .zero, width: size, height: size))
+}
+```
+
+The turn is positive clockwise on the screen, which is the way `rotate` turns, so the square turns with your fingers. `fingersPinched()` and `fingersTurned()` fire once for each event, for a response that comes in steps, like a dial that clicks every fifteen degrees. `viewControl()` and `cameraControl()` already zoom with a pinch. The phone showing the sketch sends its own two fingers to the same two values. A take records them too, so a performance that zoomed and turned renders again the way it was played. The [`PinchAndTurn`](../Examples/Input/PinchAndTurn/Sketch.swift) example sizes and spins a rose, and its turn clicks the petal count. [Input](../Docs/Helpers/Input.md#pinch) has the rest.
 
 ### A table you put things on: TUIO
 

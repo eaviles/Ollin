@@ -155,12 +155,13 @@ import Testing
     /// A sketch reading a playing video through a counting tracker.
     final class VideoReader: Sketch {
         var player: VideoPlayer?
+        var playsInSetup = true
         let tracker = CountingTracker()
         var seen: [Int] = []
         private var attached = false
 
         override var canvasSize: CanvasSize { .square(64) }
-        override func setup() { player?.play() }
+        override func setup() { if playsInSetup { player?.play() } }
         override func draw() {
             if !attached, let player {
                 attached = true
@@ -188,6 +189,25 @@ import Testing
         }
         #expect(runs[0].last == 12)
         #expect(runs[0] == runs[1])
+    }
+
+    /// A player told to play before the export began, the way a property's
+    /// initializer does it (it runs when the sketch is made, before the export
+    /// takes the clock), plays on the export's clock all the same, so the
+    /// export moves through the clip and a tracker reading it is handed its
+    /// frames rather than the first one held for the whole run.
+    @Test(clipTrait) func aVideoStartedBeforeTheExportPlaysOnItsClock() async throws {
+        let url = try #require(await Self.writeClip())
+        defer { try? FileManager.default.removeItem(at: url) }
+        let sketch = VideoReader()
+        sketch.playsInSetup = false
+        let player = try VideoPlayer(url: url)
+        player.isMuted = true
+        player.play()
+        sketch.player = player
+        _ = try OllinApp.image(of: sketch, frame: 59)
+        #expect(sketch.seen.last == 12)
+        player.stop()
     }
 
     /// Twenty-four frames of gray at twelve a second, each a shade apart so

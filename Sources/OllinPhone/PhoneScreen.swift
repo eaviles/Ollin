@@ -178,6 +178,11 @@ public final class PhoneScreen: SketchExtension {
                 sketch.setPressure(0, canVary: false)
                 sketch.handleMouseButton(pressed: false)
                 holdsPress = false
+            case .pair(let from, let to):
+                // Two fingers pinch and turn the way they do on a trackpad.
+                guard showing, let change = from.change(to: to, in: canvas) else { continue }
+                if change.scale != 1 { sketch.handlePinch(by: change.scale) }
+                if change.turn != 0 { sketch.handleTurn(by: change.turn) }
             }
         }
     }

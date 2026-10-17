@@ -819,24 +819,26 @@ e0ad80b2704e  Docs/Helpers/Data.md:70  cannot find type 'Row' in scope
 d2e4dd12768b  Docs/Helpers/Data.md:85  cannot find 'row' in scope
 3497e1983058  Docs/Helpers/Data.md:99  cannot find 'row' in scope
 60a99bf62638  Docs/Helpers/Formula.md:183  cannot find '$radius' in scope
-b06014a03f48  Docs/Helpers/Input.md:105  consecutive statements on a line must be separated by ';'
-08d010246bba  Docs/Helpers/Input.md:114  cannot find 'brush' in scope
-f92b38359663  Docs/Helpers/Input.md:126  consecutive statements on a line must be separated by ';'
-79ee2cbf3f29  Docs/Helpers/Input.md:152  consecutive statements on a line must be separated by ';'
-1177688d0de2  Docs/Helpers/Input.md:183  cannot find 'paused' in scope
-c64f9f091aae  Docs/Helpers/Input.md:194  expected ',' separator
-f9bcf06f0aea  Docs/Helpers/Input.md:201  cannot find 'x' in scope
-3da996694044  Docs/Helpers/Input.md:214  consecutive statements on a line must be separated by ';'
-4eeafe0f61ad  Docs/Helpers/Input.md:220  cannot find 'position' in scope
-950c0a9c5d80  Docs/Helpers/Input.md:230  expected type before '->'
-725ffd331515  Docs/Helpers/Input.md:237  cannot find 'pictures' in scope
-8fb44123b8d1  Docs/Helpers/Input.md:251  expected ',' separator
-e8797eca5985  Docs/Helpers/Input.md:280  expected ',' separator
-9908ad262265  Docs/Helpers/Input.md:30  consecutive statements on a line must be separated by ';'
-fb9dcf7906f1  Docs/Helpers/Input.md:310  cannot find 'sketch' in scope
-f0cd6be6aef9  Docs/Helpers/Input.md:51  consecutive statements on a line must be separated by ';'
-8367ed789b5b  Docs/Helpers/Input.md:58  unary operator cannot be separated from its operand
-8e0b26210e84  Docs/Helpers/Input.md:70  consecutive statements on a line must be separated by ';'
+b06014a03f48  Docs/Helpers/Input.md:107  consecutive statements on a line must be separated by ';'
+08d010246bba  Docs/Helpers/Input.md:116  cannot find 'brush' in scope
+f92b38359663  Docs/Helpers/Input.md:128  consecutive statements on a line must be separated by ';'
+1af200cf0112  Docs/Helpers/Input.md:154  consecutive statements on a line must be separated by ';'
+1b7813db3732  Docs/Helpers/Input.md:175  consecutive statements on a line must be separated by ';'
+79ee2cbf3f29  Docs/Helpers/Input.md:217  consecutive statements on a line must be separated by ';'
+1177688d0de2  Docs/Helpers/Input.md:248  cannot find 'paused' in scope
+c64f9f091aae  Docs/Helpers/Input.md:259  expected ',' separator
+f9bcf06f0aea  Docs/Helpers/Input.md:266  cannot find 'x' in scope
+3da996694044  Docs/Helpers/Input.md:279  consecutive statements on a line must be separated by ';'
+4eeafe0f61ad  Docs/Helpers/Input.md:285  cannot find 'position' in scope
+950c0a9c5d80  Docs/Helpers/Input.md:295  expected type before '->'
+725ffd331515  Docs/Helpers/Input.md:302  cannot find 'pictures' in scope
+8fb44123b8d1  Docs/Helpers/Input.md:316  expected ',' separator
+9908ad262265  Docs/Helpers/Input.md:32  consecutive statements on a line must be separated by ';'
+e8797eca5985  Docs/Helpers/Input.md:345  expected ',' separator
+fb9dcf7906f1  Docs/Helpers/Input.md:375  cannot find 'sketch' in scope
+f0cd6be6aef9  Docs/Helpers/Input.md:53  consecutive statements on a line must be separated by ';'
+8367ed789b5b  Docs/Helpers/Input.md:60  unary operator cannot be separated from its operand
+8e0b26210e84  Docs/Helpers/Input.md:72  consecutive statements on a line must be separated by ';'
 d7ff958d42d5  Docs/Helpers/Listening.md:107  cannot find 'ears' in scope
 14edaccb0736  Docs/Helpers/Listening.md:128  cannot find 'mic' in scope
 7abdd4aad5ea  Docs/Helpers/Listening.md:141  'module' is inaccessible due to 'internal' protection level
@@ -1209,20 +1211,20 @@ a9a1aaeb971a  Docs/Tools/SingleFile.md:114  'module' is inaccessible due to 'int
 70bd7a0335ec  Docs/Video/Video.md:41  'throws' may only occur before '->'
 18628713c27a  Docs/Video/Video.md:55  expected '{' in body of function declaration
 9275119a4b5c  Docs/Video/Video.md:76  overriding non-open instance method outside of its defining module
-006426c05db9  Docs/Vision/Vision.md:1007  expected '{' in body of function declaration
-5c5a08dabc9f  Docs/Vision/Vision.md:1032  expected '{' to start getter definition
+006426c05db9  Docs/Vision/Vision.md:1011  expected '{' in body of function declaration
+5c5a08dabc9f  Docs/Vision/Vision.md:1036  expected '{' to start getter definition
 be62f39682e0  Docs/Vision/Vision.md:104  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
-26580fe6f2aa  Docs/Vision/Vision.md:1055  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-34c07e1c39dd  Docs/Vision/Vision.md:1074  expected ',' separator
-b6753b0533d8  Docs/Vision/Vision.md:1115  expected ',' separator
-bdca8b7007b6  Docs/Vision/Vision.md:1134  class 'SnippetProbe' has no initializers
-bf93c06e1fd8  Docs/Vision/Vision.md:1172  expected ',' separator
-ab4b590c81f4  Docs/Vision/Vision.md:1180  expected ',' separator
-207ac16b7787  Docs/Vision/Vision.md:1191  'async' call in a function that does not support concurrency
+26580fe6f2aa  Docs/Vision/Vision.md:1059  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+34c07e1c39dd  Docs/Vision/Vision.md:1078  expected ',' separator
+b6753b0533d8  Docs/Vision/Vision.md:1119  expected ',' separator
+bdca8b7007b6  Docs/Vision/Vision.md:1138  class 'SnippetProbe' has no initializers
+bf93c06e1fd8  Docs/Vision/Vision.md:1176  expected ',' separator
+ab4b590c81f4  Docs/Vision/Vision.md:1184  expected ',' separator
+207ac16b7787  Docs/Vision/Vision.md:1195  'async' call in a function that does not support concurrency
 1eeb10f31606  Docs/Vision/Vision.md:120  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
-dabd491a4320  Docs/Vision/Vision.md:1201  cannot find 'image' in scope
-b37d2de5f126  Docs/Vision/Vision.md:1211  cannot find 'minimumScore' in scope
-1cb517a75c42  Docs/Vision/Vision.md:1224  cannot find 'bodies' in scope
+dabd491a4320  Docs/Vision/Vision.md:1205  cannot find 'image' in scope
+b37d2de5f126  Docs/Vision/Vision.md:1215  cannot find 'minimumScore' in scope
+1cb517a75c42  Docs/Vision/Vision.md:1228  cannot find 'bodies' in scope
 a6be6ecbcd02  Docs/Vision/Vision.md:199  expected ',' separator
 30373466cede  Docs/Vision/Vision.md:218  expected ',' separator
 dea9b68f19a8  Docs/Vision/Vision.md:238  expected '{' in body of function declaration
@@ -1243,16 +1245,16 @@ f3c88e3b9780  Docs/Vision/Vision.md:456  cannot find 'drawMyBackground' in scope
 d9332481baa6  Docs/Vision/Vision.md:561  expected parameter name followed by ':'
 9a3fb8aecfe9  Docs/Vision/Vision.md:587  expected ',' separator
 89d002609bbe  Docs/Vision/Vision.md:613  expected ',' separator
-25cd10166c62  Docs/Vision/Vision.md:640  expected ',' separator
-6f077e6e8bb9  Docs/Vision/Vision.md:680  expected '{' to start getter definition
-d1425fc54681  Docs/Vision/Vision.md:694  expected ',' separator
-9b7a1d5882a9  Docs/Vision/Vision.md:724  expected '{' to start getter definition
-dee10b654a59  Docs/Vision/Vision.md:747  expected ',' separator
-74524523d73d  Docs/Vision/Vision.md:766  expected '{' to start getter definition
-ddfc90dfdf31  Docs/Vision/Vision.md:806  expected ',' separator
-3c4a18f23a50  Docs/Vision/Vision.md:840  expected '{' to start getter definition
-bc92ab8b42ae  Docs/Vision/Vision.md:857  expected ',' separator
+de264bce6eb7  Docs/Vision/Vision.md:640  expected ',' separator
+6f077e6e8bb9  Docs/Vision/Vision.md:682  expected '{' to start getter definition
+d1425fc54681  Docs/Vision/Vision.md:698  expected ',' separator
+9b7a1d5882a9  Docs/Vision/Vision.md:728  expected '{' to start getter definition
+dee10b654a59  Docs/Vision/Vision.md:751  expected ',' separator
+74524523d73d  Docs/Vision/Vision.md:770  expected '{' to start getter definition
+ddfc90dfdf31  Docs/Vision/Vision.md:810  expected ',' separator
+3c4a18f23a50  Docs/Vision/Vision.md:844  expected '{' to start getter definition
+bc92ab8b42ae  Docs/Vision/Vision.md:861  expected ',' separator
 1f6728d0dc5c  Docs/Vision/Vision.md:88  expected ',' separator
-f178c1b8e0e9  Docs/Vision/Vision.md:895  expected '{' in body of function declaration
-aa1d08606449  Docs/Vision/Vision.md:910  expected ',' separator
-cfa1e0f3ccb4  Docs/Vision/Vision.md:952  expected ',' separator
+f178c1b8e0e9  Docs/Vision/Vision.md:899  expected '{' in body of function declaration
+aa1d08606449  Docs/Vision/Vision.md:914  expected ',' separator
+cfa1e0f3ccb4  Docs/Vision/Vision.md:956  expected ',' separator

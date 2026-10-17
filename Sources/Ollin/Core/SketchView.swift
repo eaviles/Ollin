@@ -1782,6 +1782,37 @@ final class OllinMTKView: MTKView {
         sketch?.handleScroll(deltaY: Double(event.scrollingDeltaY))
     }
 
+    /// Two fingers pinching or turning on the trackpad. Inside the SwiftUI
+    /// hosts the hosting layer's gesture plumbing can take these before
+    /// responder dispatch, the way it takes pressure, so the local monitor
+    /// installed in `viewDidMoveToWindow` hands them over as well; whichever
+    /// path sees an event first reports it, and the other skips that event.
+    override func magnify(with event: NSEvent) { reportGesture(event) }
+    override func rotate(with event: NSEvent) { reportGesture(event) }
+
+    /// The last gesture event reported, so the monitor and the override never
+    /// both count one event.
+    private var lastGesture: (type: NSEvent.EventType, timestamp: TimeInterval)?
+
+    /// Hand the sketch one pinch or turn. A magnify event's `magnification` is
+    /// the change of size, so its factor is one more than that; a rotate
+    /// event's `rotation` is in degrees counterclockwise, and the sketch's turn
+    /// is radians clockwise on a canvas whose y runs down, the way `rotate(_:)`
+    /// turns. An event that moves nothing (the start or end of a gesture) is
+    /// not reported.
+    func reportGesture(_ event: NSEvent) {
+        guard let sketch, event.type == .magnify || event.type == .rotate else { return }
+        if let last = lastGesture, last.type == event.type, last.timestamp == event.timestamp { return }
+        lastGesture = (event.type, event.timestamp)
+        if event.type == .magnify {
+            let change = Double(event.magnification)
+            if change != 0 { sketch.handlePinch(by: 1 + change) }
+        } else {
+            let degrees = Double(event.rotation)
+            if degrees != 0 { sketch.handleTurn(by: -degrees * .pi / 180) }
+        }
+    }
+
     /// Modifier keys (shift / option / command / control) changed: map AppKit's
     /// flags onto Ollin's platform-neutral set.
     override func flagsChanged(with event: NSEvent) {
@@ -1872,6 +1903,10 @@ final class OllinMTKView: MTKView {
     /// and hands it to the dragger when a host has installed one.
     private var modifierMonitor: Any?
 
+    /// Trackpad pinches and turns over this canvas, seen before the hosting
+    /// layer's gesture plumbing can take them (see `reportGesture`).
+    private var gestureMonitor: Any?
+
     /// A canvas made while no display is awake (a window opened with the lid
     /// closed and the monitor asleep) gets a frame timer that never fires, and
     /// nothing rebuilds it when the display comes back, so the window stays
@@ -1936,6 +1971,15 @@ final class OllinMTKView: MTKView {
                 return event
             }
         }
+        if gestureMonitor == nil {
+            gestureMonitor = NSEvent.addLocalMonitorForEvents(matching: [.magnify, .rotate]) { [weak self] event in
+                guard let self, event.window === self.window,
+                      self.bounds.contains(self.convert(event.locationInWindow, from: nil))
+                else { return event }
+                self.reportGesture(event)
+                return event
+            }
+        }
         // Take keyboard focus once we're in a window, so a sketch reacts to keys
         // without the user clicking the canvas first. A host whose window has its
         // own keyboard surface (the gallery's example list) opts out; there a
@@ -1966,6 +2010,10 @@ final class OllinMTKView: MTKView {
         if newWindow == nil, let modifierMonitor {
             NSEvent.removeMonitor(modifierMonitor)
             self.modifierMonitor = nil
+        }
+        if newWindow == nil, let gestureMonitor {
+            NSEvent.removeMonitor(gestureMonitor)
+            self.gestureMonitor = nil
         }
         // A move to another window watches that window's screen instead.
         stopObservingScreens()

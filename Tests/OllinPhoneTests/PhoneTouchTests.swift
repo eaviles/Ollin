@@ -326,4 +326,54 @@ import simd
         screen.beforeDraw(sketch)
         #expect(!sketch.mouseIsPressed && sketch.releases == 1)
     }
+
+    /// A sketch that writes down what two fingers did, frame by frame.
+    private final class Pinched: Sketch {
+        override var canvasSize: CanvasSize { .size(800, 400) }
+        var frames: [[Double]] = []
+        var pinches = 0
+        override func fingersPinched() { pinches += 1 }
+        override func draw() { frames.append([pinchScale, turnAngle]) }
+    }
+
+    @Test func twoFingersOnThePhonePinchAndTurnTheSketch() {
+        let device = PhoneDevice()
+        let sketch = Pinched()
+        sketch.setCanvasSize(width: 800, height: 400)
+        var mode = PhoneCaptureMode.sketch
+        let screen = PhoneScreen(device: device, frameRate: 60,
+                                 sender: PhonePictureSender(dials: false), phoneMode: { mode })
+        func frame() {
+            screen.beforeDraw(sketch)
+            sketch.advance(time: Double(sketch.frameCount + 1) / 60, deltaTime: 1.0 / 60, frameRate: 60)
+            sketch.performDraw()
+        }
+        // Two fingers a quarter of the canvas apart, then half, in one frame:
+        // the frame reads a pinch of two and no turn.
+        device.touches.feel([PhoneTouch(id: 1, position: Vector2(-0.125, 0)),
+                             PhoneTouch(id: 2, position: Vector2(0.125, 0))], at: 1)
+        device.touches.feel([PhoneTouch(id: 1, position: Vector2(-0.25, 0)),
+                             PhoneTouch(id: 2, position: Vector2(0.25, 0))], at: 1.02)
+        frame()
+        #expect(sketch.frames.last == [2, 0])
+        frame()
+        #expect(sketch.frames.last == [1, 0], "still fingers read no pinch")
+
+        // The second finger swings from the right of the first to below it on
+        // the glass: a quarter turn clockwise on the canvas, and the distance,
+        // measured on the 800 by 400 canvas, from 200 to 100.
+        device.touches.feel([PhoneTouch(id: 1, position: Vector2(-0.25, 0)),
+                             PhoneTouch(id: 2, position: Vector2(-0.25, -0.5))], at: 2)
+        frame()
+        let turned = sketch.frames.last!
+        #expect(abs(turned[0] - 0.5) < 1e-12 && abs(turned[1] - .pi / 2) < 1e-12, "\(turned)")
+
+        // Off the Sketch screen the glass is not the canvas, and nothing reaches it.
+        mode = .touch
+        let seen = sketch.pinches
+        device.touches.feel([PhoneTouch(id: 1, position: Vector2(-0.5, 0)),
+                             PhoneTouch(id: 2, position: Vector2(-0.5, -0.9))], at: 3)
+        frame()
+        #expect(sketch.pinches == seen && sketch.frames.last == [1, 0])
+    }
 }
