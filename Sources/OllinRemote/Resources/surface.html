@@ -138,6 +138,9 @@
   .rangebar .band { position: absolute; top: 0; bottom: 0; background: var(--accent-soft); border-left: 2px solid var(--accent); border-right: 2px solid var(--accent); pointer-events: none; }
   .rangebar .label { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); font-size: 15px; font-weight: 500; pointer-events: none; }
   .rangebar .val { position: absolute; right: 13px; top: 50%; transform: translateY(-50%); font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: 13px; pointer-events: none; }
+  .plot { position: relative; height: 120px; background: var(--field); border: 0.5px solid var(--field-stroke); border-radius: 7px; overflow: hidden; touch-action: none; }
+  .plot canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .plot.short { height: 84px; }
   .hidden { display: none; }
   .empty { text-align: center; color: var(--text-3); font-size: 13px; padding: 40px 20px; }
 </style>
@@ -182,6 +185,8 @@
     if (v.range) { return { kind: 'range', value: v.range }; }
     if (v.text) { return { kind: 'text', value: v.text._0 }; }
     if (v.colors) { return { kind: 'colors', value: v.colors }; }
+    if (v.curve) { return { kind: 'curve', value: v.curve._0 }; }
+    if (v.numbers) { return { kind: 'numbers', value: v.numbers._0 }; }
     return null;
   }
   function storedNumber(x) { return { number: { _0: x } }; }
@@ -618,6 +623,188 @@
     };
   }
 
+  // A canvas sized to its box in device pixels, redrawn by `draw(ctx, w, h)`.
+  function plotCanvas(box, draw) {
+    var canvas = document.createElement('canvas');
+    box.appendChild(canvas);
+    function redraw() {
+      var ratio = window.devicePixelRatio || 1;
+      var w = box.clientWidth, h = box.clientHeight;
+      if (canvas.width !== Math.round(w * ratio)) { canvas.width = Math.round(w * ratio); }
+      if (canvas.height !== Math.round(h * ratio)) { canvas.height = Math.round(h * ratio); }
+      var ctx = canvas.getContext('2d');
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+      draw(ctx, w, h);
+    }
+    window.addEventListener('resize', redraw);
+    // On the next frame, so a row seeded before it joins the page is drawn
+    // once it has a size.
+    return function () { requestAnimationFrame(redraw); };
+  }
+  function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+  // A list of numbers: one bar per value, painted by dragging a finger across
+  // them. The number of bars is the sketch's; the phone sets their heights.
+  function barsRow(desc) {
+    var lo = desc.lower || 0, hi = desc.upper === undefined ? 1 : desc.upper;
+    var root = document.createElement('div');
+    root.className = 'card';
+    root.innerHTML = '<div class="row"><div class="label"></div><div class="hex mono"></div></div>'
+      + '<div class="strip"><div class="plot short"></div></div>';
+    root.querySelector('.label').textContent = desc.label;
+    var readout = root.querySelector('.hex');
+    var box = root.querySelector('.plot');
+    var values = [];
+    var selected = 0;
+    var last = null;
+    var touching = { active: false };
+    var send = throttled(function () { sendSet(desc.name, { numbers: { _0: values.slice() } }); });
+    function frac(v) { return hi > lo ? clamp((v - lo) / (hi - lo), 0, 1) : 0; }
+    var redraw = plotCanvas(box, function (ctx, w, h) {
+      if (!values.length) { return; }
+      var gap = 2.5, bw = (w - 8 - gap * (values.length - 1)) / values.length;
+      var zero = (lo < 0 && hi > 0) ? frac(0) : 0;
+      values.forEach(function (v, i) {
+        var x = 4 + i * (bw + gap), top = Math.max(frac(v), zero), bottom = Math.min(frac(v), zero);
+        ctx.fillStyle = cssVar('--field');
+        ctx.fillRect(x, 4, bw, h - 8);
+        ctx.globalAlpha = i === selected ? 1 : 0.55;
+        ctx.fillStyle = cssVar('--accent');
+        var y0 = 4 + (1 - top) * (h - 8), y1 = 4 + (1 - bottom) * (h - 8);
+        ctx.fillRect(x, y0, bw, Math.max(y1 - y0, 2));
+        ctx.globalAlpha = 1;
+      });
+    });
+    function show() {
+      readout.textContent = values.length ? (selected + 1) + '  ' + fmt(values[selected], decimalsFor(desc)) : '';
+      redraw();
+    }
+    function at(event) {
+      var r = box.getBoundingClientRect();
+      var i = clamp(Math.floor((event.clientX - r.left) / (r.width / values.length)), 0, values.length - 1);
+      var v = snap(lo + (1 - clamp((event.clientY - r.top - 4) / (r.height - 8), 0, 1)) * (hi - lo), desc.step, lo);
+      return { i: i, v: clamp(v, lo, hi) };
+    }
+    function paint(event) {
+      if (!values.length) { return; }
+      var p = at(event), from = last || p, span = p.i - from.i, dir = span >= 0 ? 1 : -1;
+      for (var k = 0; k <= Math.abs(span); k++) {
+        var t = span === 0 ? 1 : k / Math.abs(span);
+        values[from.i + k * dir] = snap(from.v + (p.v - from.v) * t, desc.step, lo);
+      }
+      last = p;
+      selected = p.i;
+      show();
+      send(values);
+    }
+    box.addEventListener('pointerdown', function (e) { touching.active = true; box.setPointerCapture(e.pointerId); last = null; paint(e); });
+    box.addEventListener('pointermove', function (e) { if (touching.active) { paint(e); } });
+    box.addEventListener('pointerup', function () { touching.active = false; last = null; });
+    box.addEventListener('pointercancel', function () { touching.active = false; last = null; });
+    function seed(v) { values = (v || []).slice(); selected = Math.min(selected, Math.max(values.length - 1, 0)); show(); }
+    return { root: root, touching: touching, update: function (s) { if (s.kind === 'numbers' && !touching.active) { seed(s.value); } }, seed: seed };
+  }
+
+  // A curve: its points drag, each kept between its neighbors. The curve is
+  // drawn through the points as the sketch shapes it (a monotone cubic), and
+  // adding or taking away points is left to the Mac, where the buttons are.
+  function curveRow(desc) {
+    var root = document.createElement('div');
+    root.className = 'card';
+    root.innerHTML = '<div class="row"><div class="label"></div><div class="hex mono"></div></div>'
+      + '<div class="strip"><div class="plot"></div></div>';
+    root.querySelector('.label').textContent = desc.label;
+    var readout = root.querySelector('.hex');
+    var box = root.querySelector('.plot');
+    var points = [];
+    var held = null;
+    var touching = { active: false };
+    var inset = 12;
+    var send = throttled(function () { sendSet(desc.name, { curve: { _0: points.map(function (p) { return { x: p.x, y: p.y }; }) } }); });
+    function slopes() {
+      var n = points.length, d = [], m = [];
+      for (var k = 0; k < n - 1; k++) { d.push((points[k + 1].y - points[k].y) / (points[k + 1].x - points[k].x)); }
+      if (n < 2) { return points.map(function () { return 0; }); }
+      m[0] = d[0]; m[n - 1] = d[n - 2];
+      for (k = 1; k < n - 1; k++) { m[k] = d[k - 1] * d[k] <= 0 ? 0 : (d[k - 1] + d[k]) / 2; }
+      for (k = 0; k < n - 1; k++) {
+        if (d[k] === 0) { m[k] = 0; m[k + 1] = 0; continue; }
+        var a = m[k] / d[k], b = m[k + 1] / d[k], len = a * a + b * b;
+        if (len > 9) { var tau = 3 / Math.sqrt(len); m[k] = tau * a * d[k]; m[k + 1] = tau * b * d[k]; }
+      }
+      return m;
+    }
+    function height(x, m) {
+      var n = points.length;
+      if (!n) { return x; }
+      if (n === 1 || x <= points[0].x) { return points[0].y; }
+      if (x >= points[n - 1].x) { return points[n - 1].y; }
+      var k = 0;
+      while (k < n - 2 && x > points[k + 1].x) { k++; }
+      var a = points[k], b = points[k + 1], h = b.x - a.x, t = (x - a.x) / h, t2 = t * t, t3 = t2 * t;
+      var v = (2 * t3 - 3 * t2 + 1) * a.y + (t3 - 2 * t2 + t) * h * m[k] + (-2 * t3 + 3 * t2) * b.y + (t3 - t2) * h * m[k + 1];
+      return clamp(v, 0, 1);
+    }
+    var redraw = plotCanvas(box, function (ctx, w, h) {
+      var aw = w - inset * 2, ah = h - inset * 2;
+      function px(p) { return [inset + p.x * aw, inset + (1 - p.y) * ah]; }
+      ctx.strokeStyle = cssVar('--sep'); ctx.lineWidth = 0.5;
+      [0.25, 0.5, 0.75].forEach(function (q) {
+        ctx.beginPath(); ctx.moveTo(inset + q * aw, inset); ctx.lineTo(inset + q * aw, inset + ah); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(inset, inset + q * ah); ctx.lineTo(inset + aw, inset + q * ah); ctx.stroke();
+      });
+      var m = slopes();
+      ctx.beginPath();
+      for (var i = 0; i <= 96; i++) {
+        var q = px({ x: i / 96, y: height(i / 96, m) });
+        if (i === 0) { ctx.moveTo(q[0], q[1]); } else { ctx.lineTo(q[0], q[1]); }
+      }
+      ctx.strokeStyle = cssVar('--accent'); ctx.lineWidth = 2; ctx.stroke();
+      points.forEach(function (p, i) {
+        var q = px(p);
+        ctx.beginPath(); ctx.arc(q[0], q[1], i === held ? 9 : 7, 0, Math.PI * 2);
+        ctx.fillStyle = i === held ? cssVar('--accent') : '#fff'; ctx.fill();
+        ctx.lineWidth = 2; ctx.strokeStyle = i === held ? '#fff' : cssVar('--accent'); ctx.stroke();
+      });
+    });
+    function show() {
+      var p = held !== null ? points[held] : null;
+      readout.textContent = p ? fmt(p.x, 2) + ' \u2192 ' + fmt(p.y, 2) : points.length + ' points';
+      redraw();
+    }
+    function local(event) {
+      var r = box.getBoundingClientRect();
+      return { x: clamp((event.clientX - r.left - inset) / (r.width - inset * 2), 0, 1),
+               y: clamp(1 - (event.clientY - r.top - inset) / (r.height - inset * 2), 0, 1) };
+    }
+    box.addEventListener('pointerdown', function (e) {
+      var r = box.getBoundingClientRect(), best = null, bestDistance = 28;
+      points.forEach(function (p, i) {
+        var d = Math.hypot(inset + p.x * (r.width - inset * 2) - (e.clientX - r.left),
+                           inset + (1 - p.y) * (r.height - inset * 2) - (e.clientY - r.top));
+        if (d < bestDistance) { best = i; bestDistance = d; }
+      });
+      if (best === null) { return; }
+      held = best; touching.active = true; box.setPointerCapture(e.pointerId); show();
+    });
+    box.addEventListener('pointermove', function (e) {
+      if (!touching.active || held === null) { return; }
+      // Short of each neighbor: on one place the curve keeps one of the two.
+      var p = local(e), gap = 0.01;
+      var lo = held > 0 ? points[held - 1].x + gap : 0, hi = held < points.length - 1 ? points[held + 1].x - gap : 1;
+      if (lo > hi) { lo = held > 0 ? points[held - 1].x : 0; hi = held < points.length - 1 ? points[held + 1].x : 1; }
+      points[held] = { x: clamp(p.x, lo, hi), y: p.y };
+      show();
+      send(points);
+    });
+    function release() { touching.active = false; held = null; show(); }
+    box.addEventListener('pointerup', release);
+    box.addEventListener('pointercancel', release);
+    function seed(v) { points = (v || []).map(function (p) { return { x: p.x, y: p.y }; }); show(); }
+    return { root: root, touching: touching, update: function (s) { if (s.kind === 'curve' && !touching.active) { seed(s.value); } }, seed: seed };
+  }
+
   function build(desc) {
     switch (desc.kind) {
       case 'slider': return desc.isField ? numberField(desc) : barSlider(desc);
@@ -633,6 +820,8 @@
       case 'insets': return fieldsControl(desc, ['top', 'right', 'bottom', 'left'], 'insets', ['T', 'R', 'B', 'L']);
       case 'range': return desc.isField ? fieldsControl(desc, ['lower', 'upper'], 'range', ['Min', 'Max']) : rangeControl(desc);
       case 'swatches': return swatchesRow(desc);
+      case 'curve': return curveRow(desc);
+      case 'bars': return barsRow(desc);
       default: return textRow(desc);
     }
   }

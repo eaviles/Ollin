@@ -42,7 +42,7 @@ override func keyPressed() {
 
 ### What fades and what jumps
 
-A number, a color, a vector, a rectangle, a set of insets, and a range fade, each component on the same ease. A switch, a menu choice, a piece of text, and a palette have nothing between two values, so they take the cue's value on the first frame of the fade rather than at its end. A fade moves a parameter through the same restore path a reload uses, so a smoothed parameter does not add its own glide on top.
+A number, a color, a vector, a rectangle, a set of insets, and a range fade, each component on the same ease. So do a list of numbers, bar by bar, and a curve, point by point, while the two cues hold as many of them; lists or curves of different lengths take the cue's value on the first frame. A switch, a menu choice, a piece of text, and a palette have nothing between two values, so they take the cue's value on the first frame of the fade rather than at its end. A fade moves a parameter through the same restore path a reload uses, so a smoothed parameter does not add its own glide on top.
 
 ### The inspector's card
 

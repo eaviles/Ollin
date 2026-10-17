@@ -65,13 +65,19 @@ public enum ParamStored: Equatable, Sendable, Codable {
     /// through (`nil` for a palette, whose colors are evenly spread and never
     /// blended).
     case colors(stops: [ParamColorStop], space: String?)
+    /// A `ResponseCurve` parameter's value: the points it passes through, in
+    /// order of `x`, each inside the unit square.
+    case curve([Vector2])
+    /// A list-of-numbers parameter's value (`[Double]` or `[Int]`), one number
+    /// per bar, in order.
+    case numbers([Double])
 
     /// The stored spelling of every case. `rectangle` travels as `"rect"`,
     /// the key takes, checkpoints, and the room's messages carry on the wire.
     enum CodingKeys: String, CodingKey {
         case number, boolean, option, color, vector, vector3
         case rectangle = "rect"
-        case insets, range, text, colors
+        case insets, range, text, colors, curve, numbers
     }
 }
 
@@ -130,6 +136,8 @@ public enum ParamControl {
     case range(RangeFields)
     case text(TextBox)
     case swatches(Swatches)
+    case graph(Graph)
+    case bars(Bars)
 
     /// A `Double` parameter: a slider over `range`, optionally snapped to `step`.
     /// `style: .field` drops the track and leaves the scrubbable value field.
@@ -317,6 +325,43 @@ public enum ParamControl {
             self.read = read; self.write = write
         }
     }
+
+    /// A `ResponseCurve` parameter: a small graph whose points drag, with
+    /// buttons that add and take away a point.
+    public struct Graph: Sendable {
+        /// How many points the curve may hold; the add and remove buttons
+        /// stop at its ends.
+        public let count: ClosedRange<Int>
+        /// The curve's own height at `x`. The graph draws this rather than a
+        /// line of its own between the points, so the row shows the curve the
+        /// sketch reads.
+        public let sample: @Sendable (Double) -> Double
+        public let read: @Sendable () -> [Vector2]
+        public let write: @Sendable ([Vector2]) -> Void
+
+        public init(count: ClosedRange<Int>,
+                    sample: @escaping @Sendable (Double) -> Double,
+                    read: @escaping @Sendable () -> [Vector2],
+                    write: @escaping @Sendable ([Vector2]) -> Void) {
+            self.count = count; self.sample = sample
+            self.read = read; self.write = write
+        }
+    }
+
+    /// A list of numbers: one bar per value, each over `range` and snapped to
+    /// `step`. The number of bars is the list's, fixed by the declaration.
+    public struct Bars: Sendable {
+        public let range: ClosedRange<Double>
+        public let step: Double?
+        public let read: @Sendable () -> [Double]
+        public let write: @Sendable ([Double]) -> Void
+
+        public init(range: ClosedRange<Double>, step: Double?,
+                    read: @escaping @Sendable () -> [Double],
+                    write: @escaping @Sendable ([Double]) -> Void) {
+            self.range = range; self.step = step; self.read = read; self.write = write
+        }
+    }
 }
 
 // MARK: - Value kinds
@@ -369,6 +414,15 @@ public struct ParamSwatchConstraints: Sendable {
     }
 }
 
+/// The constraint payload of a `ResponseCurve` parameter: how many points the
+/// curve may hold.
+public struct ParamCurveConstraints: Sendable {
+    public var count: ClosedRange<Int>
+    public init(count: ClosedRange<Int>) {
+        self.count = count
+    }
+}
+
 /// The numeric constraint payload of a `Double` or `Int` parameter: the allowed
 /// range, an optional step the value snaps to, and the presentation style.
 public struct ParamNumericConstraints<Number: Comparable & Sendable>: Sendable {
@@ -386,7 +440,8 @@ public struct ParamNumericConstraints<Number: Comparable & Sendable>: Sendable {
 /// (a numeric range, or nothing), knows how to clamp to it, round-trips through
 /// `ParamStored` for host persistence, and describes the inspector control that
 /// edits it. The built-in kinds cover the numbers, `Bool`, `Color`, the geometry
-/// values, text, palettes and ramps, and any enum conforming to `ParamOption`.
+/// values, text, palettes and ramps, curves (`ResponseCurve`), lists of numbers,
+/// and any enum conforming to `ParamOption`.
 /// A type of your own conforms the same way and is wrapped through
 /// `Param.init(wrappedValue:constraints:icon:group:)`, or the bare form when
 /// its `Constraints` is `Void`.
@@ -777,6 +832,94 @@ extension Ramp: ParamValue {
                 param.wrappedValue = Ramp(stops: stops.map { (position: $0.position, color: $0.color) },
                                           in: param.wrappedValue.space)
             }))
+    }
+}
+
+// A curve is a graph in the inspector whose points drag. Its payload is the
+// points, so a tuned curve restores as exactly the shape that was left.
+extension ResponseCurve: ParamValue {
+    public typealias Constraints = ParamCurveConstraints
+
+    /// Points past the upper bound are dropped from the inside out, the last
+    /// inner ones first, so the curve keeps both its ends. A curve with fewer
+    /// points than the lower bound is left as it is: there is no point to
+    /// invent, and the bound is there to stop the row's remove button.
+    public static func clamped(_ value: ResponseCurve, by constraints: Constraints) -> ResponseCurve {
+        let limit = Swift.max(constraints.count.upperBound, 1)
+        guard value.points.count > limit else { return value }
+        guard limit > 1, let last = value.points.last else {
+            return ResponseCurve(points: Array(value.points.prefix(1)))
+        }
+        return ResponseCurve(points: Array(value.points.prefix(limit - 1)) + [last])
+    }
+
+    public static func stored(_ value: ResponseCurve) -> ParamStored { .curve(value.points) }
+
+    public static func restored(_ stored: ParamStored) -> ResponseCurve? {
+        guard case .curve(let points) = stored, !points.isEmpty else { return nil }
+        return ResponseCurve(points: points)
+    }
+
+    public static func control(for param: Param<ResponseCurve>) -> ParamControl {
+        .graph(.init(count: param.constraints.count,
+                     sample: { param.wrappedValue($0) },
+                     read: { param.wrappedValue.points },
+                     write: { param.wrappedValue = ResponseCurve(points: $0) }))
+    }
+}
+
+// A list of numbers is a row of bars, one per value. The control follows the
+// type: a `[Double]` and an `[Int]` are both lists of numbers, so one
+// conformance covers every element whose own constraints are a numeric range,
+// and each value is clamped, snapped, and persisted the way its element is.
+extension Array: ParamValue where Element: ParamValue & Comparable,
+                                  Element.Constraints == ParamNumericConstraints<Element> {
+    public typealias Constraints = ParamNumericConstraints<Element>
+
+    public static func clamped(_ value: [Element], by constraints: Constraints) -> [Element] {
+        value.map { Element.clamped($0, by: constraints) }
+    }
+
+    public static func stored(_ value: [Element]) -> ParamStored {
+        .numbers(value.map { number(of: $0) })
+    }
+
+    public static func restored(_ stored: ParamStored) -> [Element]? {
+        guard case .numbers(let values) = stored else { return nil }
+        let elements = values.compactMap { Element.restored(.number($0)) }
+        return elements.count == values.count ? elements : nil
+    }
+
+    /// The number of bars is the declaration's: a payload of more values
+    /// restores the first ones, and a payload of fewer keeps the values the
+    /// list already holds past its end, so a list lengthened in the source
+    /// keeps the bars it was tuned to and gains the new ones as written.
+    public static func restored(_ stored: ParamStored, keeping current: [Element]) -> [Element]? {
+        guard let given = restored(stored) else { return nil }
+        guard !current.isEmpty else { return given }
+        return current.indices.map { $0 < given.count ? given[$0] : current[$0] }
+    }
+
+    public static func control(for param: Param<[Element]>) -> ParamControl {
+        let constraints = param.constraints
+        // A whole-number list steps by whole numbers whatever its declaration
+        // says, the way an `Int` parameter's stepper does.
+        let whole = Element.self is any BinaryInteger.Type
+        let step = constraints.step.map { number(of: $0) }
+        return .bars(.init(range: number(of: constraints.range.lowerBound)...number(of: constraints.range.upperBound),
+                           step: whole ? Swift.max(step ?? 1, 1) : step,
+                           read: { param.wrappedValue.map { number(of: $0) } },
+                           write: { values in
+                               let elements = values.compactMap { Element.restored(.number($0)) }
+                               guard elements.count == values.count else { return }
+                               param.wrappedValue = elements
+                           }))
+    }
+
+    /// An element as the number its own payload carries.
+    private static func number(of element: Element) -> Double {
+        guard case .number(let value) = Element.stored(element) else { return 0 }
+        return value
     }
 }
 
@@ -1546,6 +1689,65 @@ public extension Param where Value == Ramp {
     convenience init(wrappedValue: Ramp, _ label: String, count: ClosedRange<Int> = 2...8,
                      icon: String? = nil, group: ParamGroup? = nil) {
         self.init(wrappedValue, label: label, constraints: .init(count: count, style: .gradient),
+                  smoothing: nil, icon: icon, group: group)
+    }
+}
+
+public extension Param where Value == ResponseCurve {
+    /// A curve shaped by its points: a small graph whose points drag, read by
+    /// the sketch as a function from 0 to 1 (`falloff(t)`). `count:` bounds how
+    /// many points the curve holds, which is where the row's add and remove
+    /// buttons stop.
+    convenience init(wrappedValue: ResponseCurve, count: ClosedRange<Int> = 2...12,
+                     icon: String? = nil, group: ParamGroup? = nil) {
+        self.init(wrappedValue, label: nil, constraints: .init(count: count),
+                  smoothing: nil, icon: icon, group: group)
+    }
+
+    convenience init(wrappedValue: ResponseCurve, _ label: String, count: ClosedRange<Int> = 2...12,
+                     icon: String? = nil, group: ParamGroup? = nil) {
+        self.init(wrappedValue, label: label, constraints: .init(count: count),
+                  smoothing: nil, icon: icon, group: group)
+    }
+}
+
+public extension Param where Value == [Double] {
+    /// A list of numbers, edited as a row of bars: every value is held to
+    /// `range` and snapped to `step` when one is given. The list's length is
+    /// the number of bars, fixed by the declaration.
+    ///
+    /// ```swift
+    /// @Param(0...1) var accents = [1, 0.2, 0.6, 0.2, 0.9, 0.2, 0.5, 0.1]
+    /// ```
+    convenience init(wrappedValue: [Double], _ range: ClosedRange<Double>, step: Double? = nil,
+                     icon: String? = nil, group: ParamGroup? = nil) {
+        self.init(wrappedValue, label: nil, constraints: .init(range: range, step: step),
+                  smoothing: nil, icon: icon, group: group)
+    }
+
+    convenience init(wrappedValue: [Double], _ label: String, _ range: ClosedRange<Double>,
+                     step: Double? = nil, icon: String? = nil, group: ParamGroup? = nil) {
+        self.init(wrappedValue, label: label, constraints: .init(range: range, step: step),
+                  smoothing: nil, icon: icon, group: group)
+    }
+}
+
+public extension Param where Value == [Int] {
+    /// A list of whole numbers, edited as a row of bars that land on whole
+    /// steps: a step pattern of notes, counts, or choices by index.
+    ///
+    /// ```swift
+    /// @Param(0...12) var notes = [0, 3, 7, 10, 12, 10, 7, 3]
+    /// ```
+    convenience init(wrappedValue: [Int], _ range: ClosedRange<Int>, step: Int? = nil,
+                     icon: String? = nil, group: ParamGroup? = nil) {
+        self.init(wrappedValue, label: nil, constraints: .init(range: range, step: step),
+                  smoothing: nil, icon: icon, group: group)
+    }
+
+    convenience init(wrappedValue: [Int], _ label: String, _ range: ClosedRange<Int>,
+                     step: Int? = nil, icon: String? = nil, group: ParamGroup? = nil) {
+        self.init(wrappedValue, label: label, constraints: .init(range: range, step: step),
                   smoothing: nil, icon: icon, group: group)
     }
 }

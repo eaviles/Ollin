@@ -85,8 +85,10 @@ A parameter becomes a node at `/name`, or at `/Group/name` when it declares a gr
 | `ClosedRange<Double>` | `ff` | lower, upper | the outer range, twice |
 | `String` | `s` | the text | none |
 | `Palette` or `Ramp` | a container | one `r` child per color: `/inks/0`, `/inks/1`, and so on | none |
+| a list of numbers (`[Double]`, `[Int]`) | a container | one `f` child per bar: `/accents/0`, `/accents/1`, and so on | each child's `MIN` and `MAX` |
+| `ResponseCurve` | a container | one `ff` child per point, its place and its height | 0 to 1, twice |
 
-A strip of colors is served as a container of color methods rather than one node. A client that knows nothing about palettes still gets a color well per stop. Writing a child replaces that one color and leaves the stop where it sits. A hidden parameter, one whose [show rule](../Helpers/Parameters.md#show-rules) currently fails, stays in the tree and keeps taking values, as it keeps following an OSC binding.
+A strip of colors is served as a container of color methods rather than one node. A client that knows nothing about palettes still gets a color well per stop. Writing a child replaces that one color and leaves the stop where it sits. A list and a curve are served the same way, so a fader per bar drives a step pattern and an XY pad per point shapes a curve. A point sent past a neighbor stops just short of it, as a drag in the graph does. A hidden parameter, one whose [show rule](../Helpers/Parameters.md#show-rules) currently fails, stays in the tree and keeps taking values, as it keeps following an OSC binding.
 
 `?HOST_INFO` answers with the server's `NAME`, the `EXTENSIONS` it speaks (`ACCESS`, `VALUE`, `RANGE`, and `DESCRIPTION`; the WebSocket `LISTEN` stream is not offered, so a client polls for changes), and `OSC_PORT` with `OSC_TRANSPORT` set to `UDP`. In code that answer is an `OSCQueryHostInfo`, with `name`, `extensions`, `oscPort`, and `oscTransport`.
 

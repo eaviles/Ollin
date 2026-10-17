@@ -59,6 +59,11 @@ public struct Take: Codable, Equatable, Sendable {
         case key(character: String?, code: KeyCode?, pressed: Bool)
         /// The canvas lost keyboard focus and dropped its held keys.
         case keysCleared
+        /// Text the input system typed; the `textTyped()` hook fires.
+        case typed(text: String)
+        /// What an input method is composing changed (empty once it
+        /// confirms or lets go).
+        case composing(text: String)
     }
 
     /// An event and the frame it precedes: an event stamped `frame` was

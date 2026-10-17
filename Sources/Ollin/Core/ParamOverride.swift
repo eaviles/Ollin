@@ -132,7 +132,46 @@ extension ParamOverride {
             }
             // The parameter keeps the space it mixes in; only the colors move.
             return .value(.colors(stops: stops, space: space))
+        case .curve:
+            guard let points = curvePoints(trimmed) else {
+                return .problem("expected heights from 0 to 1, each at its place: 1@0,0.7@0.4,0@1"
+                                + " (heights given no place are spread evenly: 1,0.7,0)")
+            }
+            return .value(.curve(points))
+        case .numbers(let current):
+            let parts = trimmed.split(separator: ",", omittingEmptySubsequences: false)
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+            let values = parts.compactMap(Double.init).filter(\.isFinite)
+            guard !parts.isEmpty, values.count == parts.count else {
+                return .problem("expected \(current.count) numbers separated by commas, like 1,0.2,0.6,0.2")
+            }
+            return .value(.numbers(values))
         }
+    }
+
+    /// A curve's points as heights at places, `1@0,0.7@0.4,0@1`, the way a
+    /// color strip names its stops. Heights given no place are spread evenly
+    /// across `0...1`.
+    private static func curvePoints(_ text: String) -> [Vector2]? {
+        let parts = text.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+        guard !parts.isEmpty else { return nil }
+        var given: [(place: Double?, height: Double)] = []
+        for part in parts {
+            var body = part
+            var place: Double?
+            if let mark = part.lastIndex(of: "@") {
+                guard let value = Double(part[part.index(after: mark)...]
+                    .trimmingCharacters(in: .whitespaces)), value.isFinite else { return nil }
+                place = value
+                body = String(part[..<mark]).trimmingCharacters(in: .whitespaces)
+            }
+            guard let height = Double(body), height.isFinite else { return nil }
+            given.append((place, height))
+        }
+        let even = given.count > 1
+            ? (0 ..< given.count).map { Double($0) / Double(given.count - 1) }
+            : [0]
+        return given.enumerated().map { Vector2($1.place ?? even[$0], $1.height) }
     }
 
     private static func boolean(_ text: String) -> Bool? {

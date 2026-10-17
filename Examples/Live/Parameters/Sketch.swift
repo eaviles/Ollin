@@ -12,7 +12,8 @@ import Ollin
 // The control follows the property's type: Double → slider, Int → stepper,
 // Bool → toggle, a ParamOption enum → menu, Color → color well, Palette → a
 // strip of swatches, Ramp → a band with a handle per stop, Easing → a menu of
-// the named curves. `group:` names an inspector section, `icon:` gives the row
+// the named curves, ResponseCurve → a graph whose points drag, and a list of
+// numbers → a row of bars. `group:` names an inspector section, `icon:` gives the row
 // an SF Symbol, and `group: .folded("Advanced")` makes a section that starts
 // closed behind a disclosure row (open it and it stays open for this sketch).
 // Numeric value boxes scrub: drag across one to change it (Option = fine,
@@ -52,6 +53,13 @@ final class Parameters: Sketch {
     @Param(count: 2...6, icon: "circle.lefthalf.filled", group: "Look")
     var fade = Ramp([Color(hex: 0xE4572E), Color(hex: 0x2E86AB)])
     @Param(0.5...12, step: 0.5, icon: "lineweight", group: "Look") var weight = 2.5
+    // A row of bars is a list of numbers: here a weight for each ring in
+    // turn, repeating, so the rings read heavy, light, heavier, light.
+    @Param(0...1, icon: "chart.bar", group: "Look") var accents = [1, 0.3, 0.7, 0.3]
+    // A curve shaped by dragging its points, read as `taper(t)` the way an
+    // easing reads: how big each dot or bead is along its ring's turn.
+    @Param(icon: "chart.xyaxis.line", group: "Look")
+    var taper = ResponseCurve([(0, 1), (0.5, 0.35), (1, 1)])
     @Param(icon: "character.cursor.ibeam", group: "Look") var caption = "rings"
 
     // Parameters worth having but not worth a first glance: a `.folded` group
@@ -62,9 +70,9 @@ final class Parameters: Sketch {
 
     override func draw() {
         background(paper)
-        strokeWeight(weight * scale)
 
         for i in 0..<rings {
+            strokeWeight(weight * (0.25 + accents[i % accents.count]) * scale)
             let t = Double(i) / Double(max(rings - 1, 1))
             let phase: Double = time * speed + t * .tau
             let swell: Double = breathe ? sin(phase) * 30 : 0
@@ -82,8 +90,10 @@ final class Parameters: Sketch {
                 fill(fade.color(at: t))
                 noStroke()
                 for j in 0..<count {
-                    let a = Double(j) / Double(count) * .tau + time * (speed * 0.2 + orbit)
-                    drawCircle(anchor.x * scale + cos(a) * r, anchor.y * scale + sin(a) * r, dot)
+                    let turn = Double(j) / Double(count)
+                    let a = turn * .tau + time * (speed * 0.2 + orbit)
+                    drawCircle(anchor.x * scale + cos(a) * r, anchor.y * scale + sin(a) * r,
+                               dot * (0.2 + taper(turn)))
                 }
             }
         }

@@ -79,6 +79,8 @@ enum ParamListing {
         case .range: "ClosedRange"
         case .text: "String"
         case .swatches: "colors"
+        case .graph: "ResponseCurve"
+        case .bars: "numbers"
         }
     }
 
@@ -106,6 +108,11 @@ enum ParamListing {
             return "within \(span(r.outer))"
         case .swatches(let s):
             return "\(s.count.lowerBound) to \(s.count.upperBound) colors"
+        case .graph(let g):
+            return "\(g.count.lowerBound) to \(g.count.upperBound) points in 0...1"
+        case .bars(let b):
+            let step = b.step.map { ", by \(number($0))" } ?? ""
+            return "\(b.read().count) values, each \(span(b.range))" + step
         case .toggle, .colorWell, .text:
             return ""
         }
@@ -136,6 +143,12 @@ enum ParamListing {
             stops.enumerated()
                 .map { hex($1.red, $1.green, $1.blue, $1.alpha) + place($1, at: $0, of: stops.count) }
                 .joined(separator: ",")
+        case .curve(let points):
+            // Each point is its height at its place, the way a color stop is
+            // its color at its place: `1@0,0.7@0.4,0@1`.
+            points.map { number($0.y) + "@" + number($0.x) }.joined(separator: ",")
+        case .numbers(let values):
+            values.map(number).joined(separator: ",")
         }
     }
 

@@ -1620,6 +1620,12 @@ final class OllinMTKView: MTKView {
     /// eat the click that was supposed to give the machine back.
     var ignoresInput = false
 
+    /// What an input method is composing for the sketch and has not confirmed
+    /// (`TypedText.swift`), and the part of it the method has selected. Empty
+    /// while nothing is being composed.
+    var markedText = ""
+    var markedSelection = NSRange(location: 0, length: 0)
+
     override func hitTest(_ point: NSPoint) -> NSView? {
         ignoresInput ? nil : super.hitTest(point)
     }
@@ -2020,10 +2026,15 @@ final class OllinMTKView: MTKView {
     }
 
     override func keyDown(with event: NSEvent) {
+        guard !Self.isUndoKey(event) else { return }
         // Auto-repeat fires keyDown over and over while held; the hook is
         // once-per-press, so ignore repeats (held-key response polls isKeyDown).
-        guard !event.isARepeat, !Self.isUndoKey(event) else { return }
-        dispatchKey(event, pressed: true)
+        if !event.isARepeat { dispatchKey(event, pressed: true) }
+        // The same press goes on to the input system, which types text from it
+        // (`typedText()`), repeats included, as a text field takes them. After
+        // the key hook, so a Return that confirms a composition still finds
+        // `composingText` holding it.
+        composeText(from: event)
     }
 
     /// Command-Z and Shift-Command-Z, the undo pair. A host with nothing to
@@ -2077,6 +2088,7 @@ final class OllinMTKView: MTKView {
     /// `flagsChanged` a key or modifier held across a focus change would otherwise
     /// stay stuck down.
     override func resignFirstResponder() -> Bool {
+        abandonComposition()
         sketch?.clearHeldKeys()
         sketch?.setModifiers([])
         sketch?.setRightMousePressed(false)

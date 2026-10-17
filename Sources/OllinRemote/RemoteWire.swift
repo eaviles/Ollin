@@ -18,7 +18,7 @@ import Ollin
 /// spelling, so the JSON the page reads is unchanged by the Swift casing.
 public enum RemoteControlKind: String, Codable, Equatable, Sendable {
     case slider, stepper, toggle, menu, color, vector, vector3, rect
-    case insets, range, text, swatches
+    case insets, range, text, swatches, curve, bars
 }
 
 public struct RemoteParamDescriptor: Codable, Equatable, Sendable {
@@ -159,6 +159,12 @@ public enum RemoteWire {
             d.kind = .swatches
             d.lower = Double(s.count.lowerBound); d.upper = Double(s.count.upperBound)
             if case .gradient = s.style { d.isGradient = true }
+        case .graph:
+            d.kind = .curve
+        case .bars(let b):
+            d.kind = .bars
+            d.lower = b.range.lowerBound; d.upper = b.range.upperBound
+            d.step = b.step
         }
         return d
     }

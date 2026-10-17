@@ -757,16 +757,17 @@ ca9a8117f05d  Docs/Helpers/Accessibility.md:129  cannot find 'myPalette' in scop
 deee27952e1a  Docs/Helpers/Accessibility.md:145  cannot find 'i' in scope
 97b09791371b  Docs/Helpers/Accessibility.md:24  cannot find 'hull' in scope
 5bf6cd7259bf  Docs/Helpers/Accessibility.md:42  cannot find 'x' in scope
-3011a22a909a  Docs/Helpers/Animation.md:125  expected ',' separator
-32f8ffb273d1  Docs/Helpers/Animation.md:133  cannot find 'dots' in scope
-6682174b974c  Docs/Helpers/Animation.md:141  unary operator cannot be separated from its operand
-4eb6bf83bfe1  Docs/Helpers/Animation.md:246  cannot find '$x' in scope
-822e706211a5  Docs/Helpers/Animation.md:26  expected ',' separator
-b2be1fcf6add  Docs/Helpers/Animation.md:293  cannot find 'noisy' in scope
-16b9acb8ebfe  Docs/Helpers/Animation.md:331  cannot find 'target' in scope
-340f89d95270  Docs/Helpers/Animation.md:344  cannot find 'x' in scope
-476cfba14ab9  Docs/Helpers/Animation.md:60  expected ',' separator
-566254870042  Docs/Helpers/Animation.md:97  expected ',' separator
+3011a22a909a  Docs/Helpers/Animation.md:126  expected ',' separator
+32f8ffb273d1  Docs/Helpers/Animation.md:134  cannot find 'dots' in scope
+6682174b974c  Docs/Helpers/Animation.md:142  unary operator cannot be separated from its operand
+d9cad8cc61bb  Docs/Helpers/Animation.md:227  expected ',' separator
+822e706211a5  Docs/Helpers/Animation.md:27  expected ',' separator
+4eb6bf83bfe1  Docs/Helpers/Animation.md:280  cannot find '$x' in scope
+b2be1fcf6add  Docs/Helpers/Animation.md:327  cannot find 'noisy' in scope
+16b9acb8ebfe  Docs/Helpers/Animation.md:365  cannot find 'target' in scope
+340f89d95270  Docs/Helpers/Animation.md:378  cannot find 'x' in scope
+476cfba14ab9  Docs/Helpers/Animation.md:61  expected ',' separator
+566254870042  Docs/Helpers/Animation.md:98  expected ',' separator
 89fac67e9339  Docs/Helpers/Audio.md:123  expected '{' in body of function declaration
 16eb10b4a5c4  Docs/Helpers/Audio.md:130  unary operator cannot be separated from its operand
 a64ccfb3bf3e  Docs/Helpers/Audio.md:148  expected '{' in body of function declaration
@@ -819,26 +820,27 @@ e0ad80b2704e  Docs/Helpers/Data.md:70  cannot find type 'Row' in scope
 d2e4dd12768b  Docs/Helpers/Data.md:85  cannot find 'row' in scope
 3497e1983058  Docs/Helpers/Data.md:99  cannot find 'row' in scope
 60a99bf62638  Docs/Helpers/Formula.md:183  cannot find '$radius' in scope
-b06014a03f48  Docs/Helpers/Input.md:107  consecutive statements on a line must be separated by ';'
-08d010246bba  Docs/Helpers/Input.md:116  cannot find 'brush' in scope
-f92b38359663  Docs/Helpers/Input.md:128  consecutive statements on a line must be separated by ';'
-1af200cf0112  Docs/Helpers/Input.md:154  consecutive statements on a line must be separated by ';'
-1b7813db3732  Docs/Helpers/Input.md:175  consecutive statements on a line must be separated by ';'
-79ee2cbf3f29  Docs/Helpers/Input.md:217  consecutive statements on a line must be separated by ';'
-1177688d0de2  Docs/Helpers/Input.md:248  cannot find 'paused' in scope
-c64f9f091aae  Docs/Helpers/Input.md:259  expected ',' separator
-f9bcf06f0aea  Docs/Helpers/Input.md:266  cannot find 'x' in scope
-3da996694044  Docs/Helpers/Input.md:279  consecutive statements on a line must be separated by ';'
-4eeafe0f61ad  Docs/Helpers/Input.md:285  cannot find 'position' in scope
-950c0a9c5d80  Docs/Helpers/Input.md:295  expected type before '->'
-725ffd331515  Docs/Helpers/Input.md:302  cannot find 'pictures' in scope
-8fb44123b8d1  Docs/Helpers/Input.md:316  expected ',' separator
-9908ad262265  Docs/Helpers/Input.md:32  consecutive statements on a line must be separated by ';'
-e8797eca5985  Docs/Helpers/Input.md:345  expected ',' separator
-fb9dcf7906f1  Docs/Helpers/Input.md:375  cannot find 'sketch' in scope
-f0cd6be6aef9  Docs/Helpers/Input.md:53  consecutive statements on a line must be separated by ';'
-8367ed789b5b  Docs/Helpers/Input.md:60  unary operator cannot be separated from its operand
-8e0b26210e84  Docs/Helpers/Input.md:72  consecutive statements on a line must be separated by ';'
+b06014a03f48  Docs/Helpers/Input.md:108  consecutive statements on a line must be separated by ';'
+08d010246bba  Docs/Helpers/Input.md:117  cannot find 'brush' in scope
+f92b38359663  Docs/Helpers/Input.md:129  consecutive statements on a line must be separated by ';'
+1af200cf0112  Docs/Helpers/Input.md:155  consecutive statements on a line must be separated by ';'
+1b7813db3732  Docs/Helpers/Input.md:176  consecutive statements on a line must be separated by ';'
+79ee2cbf3f29  Docs/Helpers/Input.md:218  consecutive statements on a line must be separated by ';'
+1177688d0de2  Docs/Helpers/Input.md:249  cannot find 'paused' in scope
+c64f9f091aae  Docs/Helpers/Input.md:260  expected ',' separator
+f9bcf06f0aea  Docs/Helpers/Input.md:267  cannot find 'x' in scope
+3da996694044  Docs/Helpers/Input.md:280  consecutive statements on a line must be separated by ';'
+4eeafe0f61ad  Docs/Helpers/Input.md:286  cannot find 'position' in scope
+db6852f064f7  Docs/Helpers/Input.md:296  consecutive statements on a line must be separated by ';'
+950c0a9c5d80  Docs/Helpers/Input.md:327  expected type before '->'
+9908ad262265  Docs/Helpers/Input.md:33  consecutive statements on a line must be separated by ';'
+725ffd331515  Docs/Helpers/Input.md:334  cannot find 'pictures' in scope
+8fb44123b8d1  Docs/Helpers/Input.md:348  expected ',' separator
+e8797eca5985  Docs/Helpers/Input.md:377  expected ',' separator
+fb9dcf7906f1  Docs/Helpers/Input.md:407  cannot find 'sketch' in scope
+f0cd6be6aef9  Docs/Helpers/Input.md:54  consecutive statements on a line must be separated by ';'
+8367ed789b5b  Docs/Helpers/Input.md:61  unary operator cannot be separated from its operand
+8e0b26210e84  Docs/Helpers/Input.md:73  consecutive statements on a line must be separated by ';'
 d7ff958d42d5  Docs/Helpers/Listening.md:107  cannot find 'ears' in scope
 14edaccb0736  Docs/Helpers/Listening.md:128  cannot find 'mic' in scope
 7abdd4aad5ea  Docs/Helpers/Listening.md:141  'module' is inaccessible due to 'internal' protection level

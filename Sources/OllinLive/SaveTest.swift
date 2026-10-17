@@ -38,6 +38,9 @@ enum SaveTest {
             @Param(in: 0...50) var sizes = 5.0...20.0
             @Param var caption = "hello"
             @Param(count: 1...6) var inks = Palette(.red, .white)
+            @Param var falloff = ResponseCurve([(0, 1), (1, 0)])
+            @Param(0...1) var accents = [1, 0.2, 0.6, 0.2]
+            @Param(0...12) var notes = [0, 3, 7, 10]
             @Param(0...200) var borrowed = houseRadius
             @Param(0...600) var half = 600.0 / 2
 
@@ -63,7 +66,7 @@ enum SaveTest {
         let running = load()
         var handles: [String: ParamHandle] = [:]
         for handle in running.parameters() { handles[handle.name] = handle }
-        check(handles.count == 12, "expected 12 parameters, got \(handles.count)")
+        check(handles.count == 15, "expected 15 parameters, got \(handles.count)")
 
         /// Adjust one parameter through its typed control, which is what an inspector
         /// row does, and hand back what the host would have recorded.
@@ -85,6 +88,10 @@ enum SaveTest {
         tuned.append(turn("inks") { if case .swatches(let c) = $0 {
             c.write([.init(position: 0, color: .black), .init(position: 1, color: .orange)])
         } })
+        let shaped = [Vector2(0, 1), Vector2(0.25, 0.875), Vector2(0.6, 0.3), Vector2(1, 0)]
+        tuned.append(turn("falloff") { if case .graph(let c) = $0 { c.write(shaped) } })
+        tuned.append(turn("accents") { if case .bars(let c) = $0 { c.write([1, 0.25, 0.5, 0]) } })
+        tuned.append(turn("notes") { if case .bars(let c) = $0 { c.write([0, 4, 7, 11]) } })
         // The two that cannot be written: one names a value the sketch works
         // out, the other is arithmetic.
         tuned.append(turn("borrowed") { if case .slider(let c) = $0 { c.write(150) } })
@@ -93,8 +100,8 @@ enum SaveTest {
         print("OllinLive savetest: write them into the @Param lines …")
         let text = try! String(contentsOfFile: file, encoding: .utf8)
         let result = ParamWrite.writing(text, values: tuned)
-        check(result.written.count == 9,
-              "expected 9 parameters written, got \(result.written): \(result.refused)")
+        check(result.written.count == 12,
+              "expected 12 parameters written, got \(result.written): \(result.refused)")
         check(result.refused.map(\.name).sorted() == ["borrowed", "half"],
               "the refusals should be borrowed and half, not \(result.refused.map(\.name))")
         check(result.refused.contains { $0.reason == .computed("houseRadius") },
@@ -134,11 +141,17 @@ enum SaveTest {
         guard case .colors(let stops, _) = stored("inks") else { fail("inks is not a strip any more") }
         check(stops.count == 2 && stops[0].red == 0 && stops[1].green > 0.5,
               "the strip came back as \(stops)")
+        check(stored("falloff") == .curve(shaped), "the curve came back as \(stored("falloff"))")
+        check(stored("accents") == .numbers([1, 0.25, 0.5, 0]), "the list came back as \(stored("accents"))")
+        check(stored("notes") == .numbers([0, 4, 7, 11]), "the whole list came back as \(stored("notes"))")
+        guard let notes = fresh["notes"], case .bars(let bars) = notes.control, bars.step == 1 else {
+            fail("the whole list is not a row of whole steps any more")
+        }
         // The two refusals stand exactly where the author left them.
         check(stored("borrowed") == .number(90), "a refused parameter moved: \(stored("borrowed"))")
         check(stored("half") == .number(300), "a refused parameter moved: \(stored("half"))")
 
-        print("OllinLive savetest: PASS: 9 parameters were written into the file, the file still "
+        print("OllinLive savetest: PASS: 12 parameters were written into the file, the file still "
             + "compiles, a fresh sketch carries them as its own defaults, and the two that "
             + "are worked out were named rather than overwritten.")
         exit(0)

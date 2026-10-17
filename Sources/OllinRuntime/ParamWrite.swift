@@ -398,6 +398,19 @@ package enum ParamWrite {
             }
             let written = stops.map { "(position: \(argument($0.position)), color: \(color($0)))" }
             return .success("Ramp(stops: [" + written.joined(separator: ", ") + "], in: .\(space))")
+        case .curve(let points):
+            // The pairs are passed to the curve, which fixes their type, so a
+            // whole number needs no point of its own.
+            let written = points.map { "(\(argument($0.x)), \(argument($0.y)))" }
+            return .success("ResponseCurve([" + written.joined(separator: ", ") + "])")
+        case .numbers(let values):
+            // The scalar rule, element by element: a list written whole stays
+            // whole while every value is whole, and otherwise every value keeps
+            // a point, since a list of whole literals beside a range of whole
+            // literals reads as a list of `Int`.
+            let whole = !existing.contains(".") && values.allSatisfy { $0 == $0.rounded() && abs($0) < 1e15 }
+            let written = values.map { whole ? String(Int($0.rounded())) : number($0) }
+            return .success("[" + written.joined(separator: ", ") + "]")
         }
     }
 

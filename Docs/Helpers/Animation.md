@@ -14,6 +14,7 @@ Motion is the default in Ollin, so most movement comes from a term in `draw()` t
 - [Timers](#timers): `every`, `after`, `everyFrames`
 - [Easing curves](#easing)
 - [The curve catalog](#catalog)
+- [A curve you shape: `ResponseCurve`](#response-curve)
 - [`@Eased`](#eased)
 - [`@Smoothed`](#smoothed)
 - [`@Sprung`](#sprung): spring toward a target with momentum
@@ -218,6 +219,39 @@ The back, elastic, and bounce families overshoot. Back dips past the start and o
 Three short aliases cover the common case. `.easeIn`, `.easeOut`, and `.easeInOut` map to the cubic forms. `.smoothstep` is a Hermite smoothstep. It is a gentler S curve than `easeInOut`, and it is the same curve as the bare [`smoothstep(0, 1, t)`](../Helpers/Math.md#shaping).
 
 The [EasingGallery example](../../Examples/Motion/EasingGallery/Sketch.swift) plots all thirty so you can see the shapes side by side.
+
+<a name="response-curve"></a>
+
+### A curve you shape: `ResponseCurve`
+
+```swift
+ResponseCurve(_ points: [(Double, Double)])
+ResponseCurve(points: [Vector2])
+ResponseCurve.linear
+callAsFunction(_ x: Double) -> Double
+points: [Vector2]
+easing: Easing
+```
+
+A curve shaped by its points rather than by a formula. A number from 0 to 1 goes in and a number from 0 to 1 comes out, read the way an `Easing` reads. It fits wherever a shape is a matter of taste. A falloff says how strongly a brush paints at each distance from its center. A response turns a pressure, a loudness, or a speed into a size. A tone curve maps one brightness onto another.
+
+```swift
+let falloff = ResponseCurve([(0, 1), (0.3, 0.85), (0.7, 0.2), (1, 0)])
+
+override func draw() {
+    background(.white)
+    noStroke()
+    for ring in 0..<20 {
+        let t = Double(ring) / 19
+        fill(Color(white: 1 - falloff(t)))
+        drawCircle(width / 2, height / 2, 400 * (1 - t))
+    }
+}
+```
+
+The curve passes through every point and runs smooth between them, and it never overshoots. Between two points it stays between their heights, so a falloff never dips below zero and a response never runs past one. That is monotone cubic interpolation, the method Fritsch and Carlson published in 1980. A plain smooth spline through the same points would swing past a peak. Left of the first point the curve holds the first point's height, and right of the last it holds the last one's. The points are put in order of `x` and held inside the unit square, and a second point at the same `x` is dropped, since a curve has one height at each place.
+
+`.linear` is the straight line from (0, 0) to (1, 1). `easing` hands the curve to a call that takes an `Easing`, such as a parameter's glide or a tween. As a parameter, `@Param var falloff = ResponseCurve(...)` is a small graph in the inspector whose points drag. [Parameters](Parameters.md#response-curve) has the row.
 
 <a name="eased"></a>
 

@@ -233,6 +233,50 @@ open class Sketch {
     }
     var chosenFileInbox: [String] = []
 
+    /// The text typed on the keyboard since the last call, oldest first, and
+    /// reading it empties it.
+    ///
+    /// This is text the way a text field receives it rather than keys: the
+    /// system's input methods compose it first, so an accent typed with a dead
+    /// key (Option-E, then E) arrives as "é", a character picked in the emoji
+    /// viewer arrives as itself, and Chinese or Japanese typed through an input
+    /// method arrives once it is confirmed (`composingText` holds it until
+    /// then). A held key repeats, as it does in a text field. Return arrives as
+    /// `"\n"`, Tab as `"\t"`, and Delete as a backspace character (`"\u{8}"`),
+    /// which `append(typing:)` reads as taking the last character away:
+    ///
+    /// ```swift
+    /// var caption = ""
+    /// override func draw() {
+    ///     caption.append(typing: typedText())
+    ///     drawText(caption + composingText, 60, 120)
+    /// }
+    /// ```
+    ///
+    /// `key`, `keyCode`, and `keyPressed()` still report the keys themselves.
+    /// Override `textTyped()` to be told as text arrives. The text reaches the
+    /// sketch while its canvas holds the keyboard; a headless export types
+    /// nothing.
+    public func typedText() -> String {
+        defer { typedTextInbox = "" }
+        return typedTextInbox
+    }
+    var typedTextInbox = ""
+
+    /// The text an input method is composing and has not confirmed yet: the
+    /// underlined reading of Japanese or Chinese before a candidate is picked,
+    /// or the accent a dead key holds until the next key. Empty while nothing
+    /// is being composed. Draw it after the confirmed text, the way a text field
+    /// shows it; once confirmed it arrives through `typedText()` and this
+    /// empties.
+    public internal(set) var composingText = ""
+
+    /// Where the sketch draws its text caret, in canvas coordinates: the bottom
+    /// of the line being typed. An input method opens its list of candidates
+    /// just below this point. `nil`, the default, opens the list below the
+    /// pointer.
+    public var caretPosition: Vector2?
+
     /// The modifier keys (shift, option, command, control) currently held. Combine
     /// with a drag for a modified gesture, e.g. `if modifiers.contains(.shift) { … }`.
     public internal(set) var modifiers: ModifierKeys = []
@@ -515,6 +559,11 @@ open class Sketch {
     /// Called once each time a key is released; `key`/`keyCode` hold the released
     /// key.
     open func keyReleased() {}
+    /// Called each time typed text arrives: a character, a held key's repeat,
+    /// an accent a dead key finished, or a confirmed input-method word.
+    /// `typedText()` holds what arrived. Override to respond as it is typed; to
+    /// pick it up later, read `typedText()` in `draw()` instead.
+    open func textTyped() {}
     /// Called once each time files are dropped on the window. `droppedFiles()`
     /// holds their paths and `mouseX`/`mouseY` where they landed. Override to
     /// respond at the drop; to pick them up later, poll `droppedFiles()` in
@@ -4778,6 +4827,29 @@ open class Sketch {
         if pressed { keyPressed() } else { keyReleased() }
     }
 
+    /// Record text the input system typed (a character, a confirmed
+    /// composition, Return as `"\n"`) and fire `textTyped()`.
+    func handleTypedText(_ text: String) {
+        guard !text.isEmpty else { return }
+        takeRecorder?.log(.typed(text: text), at: frameCount)
+        guard takePlayer == nil else { return }
+        ingestTypedText(text)
+    }
+
+    fileprivate func ingestTypedText(_ text: String) {
+        typedTextInbox += text
+        textTyped()
+    }
+
+    /// Record what an input method is composing, empty once it confirms or
+    /// lets go.
+    func handleComposingText(_ text: String) {
+        guard text != composingText else { return }
+        takeRecorder?.log(.composing(text: text), at: frameCount)
+        guard takePlayer == nil else { return }
+        composingText = text
+    }
+
     /// Drop all held keys — called when the canvas loses keyboard focus, so a key
     /// held while focus leaves (no `keyUp` is delivered then) doesn't stick down.
     func clearHeldKeys() {
@@ -4819,6 +4891,10 @@ open class Sketch {
             ingestKey(character: character.flatMap { $0.first }, code: code, pressed: pressed)
         case .keysCleared:
             ingestClearHeldKeys()
+        case .typed(let text):
+            ingestTypedText(text)
+        case .composing(let text):
+            composingText = text
         }
     }
 

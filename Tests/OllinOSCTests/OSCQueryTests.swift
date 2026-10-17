@@ -26,6 +26,12 @@ private final class QueryProbeSketch: Sketch {
     @Param(count: 1...8, group: "Look & Feel") var inks = Palette(.red, .white, .black)
 }
 
+/// A sketch wearing the two kinds shaped by hand: a curve and a list.
+private final class ShapedProbeSketch: Sketch {
+    @Param var falloff = ResponseCurve([(0, 1), (0.5, 0.8), (1, 0)])
+    @Param(0...1) var accents = [1, 0.2, 0.6, 0.2]
+}
+
 @MainActor @Suite struct OSCQueryTests {
 
     private func served() -> (sketch: QueryProbeSketch, server: OSCQueryServer) {
@@ -238,6 +244,30 @@ private final class QueryProbeSketch: Sketch {
         #expect(OSCQueryWire.payload([.float(0.75), .float(0.25)], for: .range) == .range(lower: 0.25, upper: 0.75))
         #expect(OSCQueryWire.payload([.string("hi")], for: .text) == .text("hi"))
         #expect(OSCQueryWire.payload([.color(Color.black)], for: .swatch(1)) == .color(red: 0, green: 0, blue: 0, alpha: 1))
+    }
+
+    /// A list is a container of one float method per bar, and a curve one
+    /// place-and-height method per point; a message to one moves that one,
+    /// and a point sent past a neighbor stops at it.
+    @Test func aListAndACurveAnswerPerBarAndPerPoint() throws {
+        let sketch = ShapedProbeSketch()
+        let server = OSCQueryServer(port: 0, name: "Probe")
+        server.advertises = false
+        server.discover(sketch)
+        let (tree, routes) = OSCQueryWire.namespace(for: sketch.parameters(), sketchName: "Probe")
+        let accents = try #require(tree.contents?["accents"])
+        #expect(accents.contents?.count == 4 && accents.contents?["2"]?.type == "f")
+        #expect(accents.contents?["2"]?.value == [.number(0.6)])
+        let falloff = try #require(tree.contents?["falloff"])
+        #expect(falloff.contents?["1"]?.type == "ff")
+        #expect(routes["/accents/3"]?.leaf == .bar(3) && routes["/falloff/1"]?.leaf == .curvePoint(1))
+
+        server.receive(OSCMessage("/accents/1", .float(0.5)))
+        server.receive(OSCMessage("/falloff/1", .float(2), .float(0.25)))
+        server.beforeDraw(sketch)
+        #expect(sketch.accents == [1, 0.5, 0.6, 0.2])
+        #expect(sketch.falloff.points == [Vector2(0, 1), Vector2(0.999, 0.25), Vector2(1, 0)],
+                "a point sent past its neighbor should stop just short of it: \(sketch.falloff.points)")
     }
 
     // MARK: The apply path, end to end without a socket

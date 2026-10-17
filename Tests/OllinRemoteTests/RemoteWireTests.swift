@@ -24,6 +24,12 @@ private final class RemoteProbeSketch: Sketch {
     @Param var fade = Ramp([.black, .white])
 }
 
+/// The two kinds shaped by hand, on their own so the probe above keeps its count.
+private final class ShapedRemoteSketch: Sketch {
+    @Param var falloff = ResponseCurve([(0, 1), (0.5, 0.8), (1, 0)])
+    @Param(0...12) var notes = [0, 3, 7, 10]
+}
+
 @MainActor @Suite struct RemoteWireTests {
 
     // MARK: Handshake
@@ -178,6 +184,30 @@ private final class RemoteProbeSketch: Sketch {
         let bare = #"{"kind":"set","name":"inks","value":{"colors":{"stops":"# + stops + #"}}}"#
         let second = try JSONDecoder().decode(RemoteSet.self, from: Data(bare.utf8))
         #expect(second.value == set.value)
+    }
+
+    /// A curve travels as its points and a list as its numbers, both ways:
+    /// the descriptor names the row the page builds, and the page's own JSON
+    /// lands on the parameter.
+    @Test func aCurveAndAListTravelBothWays() throws {
+        let sketch = ShapedRemoteSketch()
+        let curve = try #require(sketch.parameters().first { $0.name == "falloff" })
+        let list = try #require(sketch.parameters().first { $0.name == "notes" })
+        #expect(RemoteWire.descriptor(for: curve).kind == .curve)
+        let bars = RemoteWire.descriptor(for: list)
+        #expect(bars.kind == .bars && bars.lower == 0 && bars.upper == 12 && bars.step == 1)
+
+        let out = String(decoding: try JSONEncoder().encode(RemoteWire.snapshotValue(of: curve)), as: UTF8.self)
+        #expect(out.contains(#""curve""#) && out.contains(#""x":0.5"#))
+
+        let points = #"[{"x":0,"y":0.5},{"x":0.4,"y":1},{"x":1,"y":0}]"#
+        let setCurve = #"{"kind":"set","name":"falloff","value":{"curve":{"_0":"# + points + #"}}}"#
+        RemoteWire.apply(try JSONDecoder().decode(RemoteSet.self, from: Data(setCurve.utf8)).value, to: curve)
+        #expect(sketch.falloff.points == [Vector2(0, 0.5), Vector2(0.4, 1), Vector2(1, 0)])
+
+        let setList = #"{"kind":"set","name":"notes","value":{"numbers":{"_0":[12,11,4,0]}}}"#
+        RemoteWire.apply(try JSONDecoder().decode(RemoteSet.self, from: Data(setList.utf8)).value, to: list)
+        #expect(sketch.notes == [12, 11, 4, 0])
     }
 
     @Test func aMenuTravelsByIndexBothWays() throws {

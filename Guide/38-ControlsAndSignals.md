@@ -6,7 +6,7 @@
 
 <img src="Images/38-ControlsAndSignals/WeatherRose.jpg" alt="A seven-petaled rose outlined in dark ink on cream, with fainter, slightly turned copies of itself fanning out behind it as though blown" width="560">
 
-Knobs, faders, a shared beat, a game controller, and the weather all reach a sketch from outside the inspector. This chapter binds knobs and faders straight to your parameters and reads everything else in `draw()` as a level or a moment. All of them move the weather rose above, and it knocks the trackpad under your hand on every downbeat. Past it come the trackpad, a table you touch, sensors on a wire or over Bluetooth, published and smoothed parameters, and data from the web.
+Knobs, faders, a shared beat, a game controller, and the weather all reach a sketch from outside the inspector. This chapter binds knobs and faders straight to your parameters and reads everything else in `draw()` as a level or a moment. All of them move the weather rose above, and it knocks the trackpad under your hand on every downbeat. Past it come the trackpad, typing, a table you touch, and sensors on a wire or over Bluetooth. Then parameters published, drawn as shapes, and smoothed, and data from the web.
 
 ## Parameters from anywhere: MIDI and OSC
 
@@ -366,9 +366,9 @@ Then make it yours:
 
 This one is played rather than rendered, so keep it as a take. Press ⌘⇧R in the live host to start recording the window while you play, and press it again to finish the file. An export renders the sketch again on a fixed clock, and nothing you do while it renders reaches it. Chapter 43's [Keeping the take](43-Performing.md#keeping-the-take) has the rest.
 
-## More hands: the trackpad, a table, a wire, and a radio
+## More hands: the trackpad, typing, a table, a wire, and a radio
 
-The rose takes its hands from things you can buy ready-made: a knob box, a phone, a game controller. One more is already under your hand, and the rest you build or set up yourself. The trackpad reads two fingers at once, and a table can see the objects set on it. A sensor you wired can report on a cable or over Bluetooth. Each one reads with the same split into levels and moments, and most of them can bind to a parameter the way the knob does.
+The rose takes its hands from things you can buy ready-made: a knob box, a phone, a game controller. Two more are already under your hands, and the rest you build or set up yourself. The trackpad reads two fingers at once, and the keyboard can be read as text. A table can see the objects set on it. A sensor you wired can report on a cable or over Bluetooth. Each one reads with the same split into levels and moments, and most of them can bind to a parameter the way the knob does.
 
 ### Two fingers on the trackpad: pinch and turn
 
@@ -398,6 +398,31 @@ override func draw() {
 ```
 
 The turn is positive clockwise on the screen, which is the way `rotate` turns, so the square turns with your fingers. `fingersPinched()` and `fingersTurned()` fire once for each event, for a response that comes in steps, like a dial that clicks every fifteen degrees. `viewControl()` and `cameraControl()` already zoom with a pinch. The phone showing the sketch sends its own two fingers to the same two values. A take records them too, so a performance that zoomed and turned renders again the way it was played. The [`PinchAndTurn`](../Examples/Input/PinchAndTurn/Sketch.swift) example sizes and spins a rose, and its turn clicks the petal count. [Input](../Docs/Helpers/Input.md#pinch) has the rest.
+
+### Text the way a text field takes it: typed text
+
+Typed text is the keyboard read as text instead of as keys. The system's input methods stand between the two. A dead key holds an accent until the next letter, and a Japanese or Chinese input method turns a typed reading into characters. Use typed text for a caption you type live on stage, a typewriter piece, a word game, or a name a visitor writes in their own script. The name dead key comes from the typewriter. Its accent keys struck without moving the carriage, so the next letter landed under the accent. A language with thousands of characters took longer to type. Toshiba's JW-10 was the first practical Japanese word processor, shown in 1978 by Ken-ichi Mori's team. It turned typed kana into kanji, and every Japanese input method still does that.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/38-ControlsAndSignals/TwoReadings-dark.jpg">
+  <img src="Images/38-ControlsAndSignals/TwoReadings.jpg" alt="A table of presses and what they type. Option and E hold an acute accent, underlined, as the text being composed, and type nothing. E then types é. The letters N I H O N show the reading にほん underlined, Space turns it into 日本, still underlined, and Return types 日本" width="680">
+</picture>
+
+`key` reports the keys, so Option-E then E reads as two presses of `e`. `typedText()` reports what they typed: one "é". It returns the text typed since the last call and empties itself, the way `droppedFiles()` does:
+
+```swift
+var caption = ""
+
+override func draw() {
+    background(.white)
+    caption.append(typing: typedText())
+    fill(.black)
+    textSize(64)
+    drawText(caption + composingText, 60, 200)
+}
+```
+
+`append(typing:)` keeps the caption the way a text field would. Delete arrives as a backspace character, which takes the last character away, and Return arrives as a new line. A held key repeats, as it does in a text field. While an input method is still composing, `composingText` holds the reading it shows, so the sketch can draw it underlined after the caption. Set `caretPosition` to the bottom of the line, and the input method opens its list of candidates there. `textTyped()` fires as text arrives, for a sketch that answers each word. Typing goes to whatever holds the keyboard. On the performance stage the editor holds it, so a click on the canvas hands the sketch the typing along with the keys. A take records the text, so a typed performance renders again as it was played. The [`TypedText`](../Examples/Input/TypedText/Sketch.swift) example sets the last key beside the last text it typed. [Input](../Docs/Helpers/Input.md#typed-text) has the rest.
 
 ### A table you put things on: TUIO
 
@@ -513,9 +538,9 @@ Ollin already knows the formats of the standard values, so `.heartRateMeasuremen
 
 The rest matches the wire. `strap.bind(.heartRateMeasurement, to: $radius, from: 50...180)` puts a pulse on a parameter. `strap.write("led on\n", to: .uartOut)` sends something back. `connect()` waits rather than failing, so a strap carried out of the room and back is picked up again by itself. `Integration/BluetoothSensor` is the place to start with a device you own: type part of its name into a parameter and watch everything it offers arrive. [The Bluetooth reference](../Docs/Integration/Bluetooth.md) has the full surface.
 
-## More around the parameters: publishing them, and smoothing the rest
+## More around the parameters: publishing them, shaping them, and smoothing the rest
 
-The rose binds its parameters by address, `/radius` and `/bloom`, and the phone has to be told those addresses by hand. It also smooths only its parameters. A sketch can publish its parameters so an app builds the controls itself. It can also smooth a value that is not a parameter at all.
+The rose binds its parameters by address, `/radius` and `/bloom`, and the phone has to be told those addresses by hand. It also smooths only its parameters. A sketch can publish its parameters so an app builds the controls itself. A parameter can be a shape you draw rather than a number. A sketch can also smooth a value that is not a parameter at all.
 
 ### The sketch that says what it takes: OSCQuery
 
@@ -557,6 +582,33 @@ You don't need the app to look. Open `http://your-mac.local:9000/` in a browser,
 Anyone on the network who has the address can move your parameters while the server is up. Use it in a studio or on a stage, and don't leave it open on a café's Wi-Fi. Set `advertises = false` before the server starts to keep the sketch off the list apps browse, and `stop()` closes both ports.
 
 The `Integration/OSCQuery` example publishes a ring of marks and draws its own tree down the left. You see the picture and the listing side by side.
+
+### Shapes you draw: a curve and a row of bars
+
+Some values are a shape rather than a number: how a brush fades from its middle to its edge, or how loud each step of a pattern is. Two parameters let you draw that shape in the inspector. A `ResponseCurve` is a small graph whose points you drag, and a list of numbers is a row of bars you paint. Use the curve for a falloff, a response, or a tone curve, and the bars for a step pattern. Both shapes are older than code. A photo editor's Curves tool shapes a picture's tones this way, and a drum machine's sixteen steps are a row of bars set one by one. The curve runs smooth through its points without overshooting them, a method Fritsch and Carlson published in 1980.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/38-ControlsAndSignals/ShapedByHand-dark.jpg">
+  <img src="Images/38-ControlsAndSignals/ShapedByHand.jpg" alt="Above, a curve drawn as the inspector draws it: a graph with four points falling from the top left to the bottom right, beside a disc of rings that is darkest at the middle and fades out as the curve falls. Below, eight bars of differing heights beside eight circles in a row, each as large as its bar is tall" width="680">
+</picture>
+
+```swift
+@Param var falloff = ResponseCurve([(0, 1), (0.3, 0.85), (0.7, 0.2), (1, 0)])
+@Param(0...1) var accents = [1, 0.25, 0.6, 0.25, 0.85, 0.25, 0.45, 0.1]
+
+override func draw() {
+    background(.white)
+    noStroke()
+    let loud = accents[frameCount / 8 % accents.count]
+    for ring in 0..<20 {
+        let t = Double(ring) / 19
+        fill(Color(white: 1 - falloff(t) * loud))
+        drawCircle(width / 2, height / 2, 400 * (1 - t))
+    }
+}
+```
+
+The sketch reads the curve like an easing, `falloff(t)` for a `t` from 0 to 1, and the list like any list. In the inspector, drag a point to move it, or press away from the points to add one on the curve. The minus button takes the selected point away. Drag across the bars to paint them. The number of bars is the list's own, set where you declare it. A list of whole numbers lands on whole steps. Save writes both back into the sketch like any other parameter. A cue or a timeline key moving between two lists of the same length moves each bar, and two curves move point by point. Over OSCQuery each bar and each point gets an address of its own. The [`Parameters`](../Examples/Live/Parameters/Sketch.swift) example has one of each. [Parameters](../Docs/Helpers/Parameters.md#response-curve) has the rest.
 
 ### A value that is not a parameter: `@Smoothed`
 
@@ -671,7 +723,8 @@ MIDI was unveiled in 1983 by Dave Smith and Ikutaro Kakehashi, so that instrumen
 
 ## Go deeper
 
-- [Parameters](../Docs/Helpers/Parameters.md): the typed `@Param` family, smoothing, show-rules, and the binding surface.
+- [Parameters](../Docs/Helpers/Parameters.md): the typed `@Param` family, the curve and the bars among it, smoothing, show-rules, and the binding surface.
+- [Input](../Docs/Helpers/Input.md#typed-text): typed text, the reading still being composed, the caret the input method opens under, and how a take keeps it.
 - [`@Smoothed`](../Docs/Helpers/Animation.md#smoothed): the filter's tuning arguments, the raw value and the jump, and `OneEuroFilter` for a value that is not a property.
 - [MIDI](../Docs/Integration/MIDI.md): messages, the three reads, binding, and sending MIDI out.
 - [OSC](../Docs/Integration/OSC.md): addresses and arguments, bundles, binding, and testing with a phone.

@@ -92,13 +92,19 @@ public struct CueSheet: Codable, Equatable, Sendable {
     }
 
     /// Whether two stored values have something between them: numbers, colors,
-    /// vectors, rectangles, insets, and ranges fade; a switch, a menu choice, a
-    /// piece of text, and a set of colors do not, and a fade jumps them.
+    /// vectors, rectangles, insets, and ranges fade, and so do two lists of
+    /// numbers or two curves holding as many values or points; a switch, a menu
+    /// choice, a piece of text, and a set of colors do not, and a fade jumps
+    /// them.
     static func canFade(_ a: ParamStored, _ b: ParamStored) -> Bool {
         switch (a, b) {
         case (.number, .number), (.color, .color), (.vector, .vector), (.vector3, .vector3),
              (.rectangle, .rectangle), (.insets, .insets), (.range, .range):
             return true
+        case (.numbers(let a), .numbers(let b)):
+            return a.count == b.count
+        case (.curve(let a), .curve(let b)):
+            return a.count == b.count
         default:
             return false
         }

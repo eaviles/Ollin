@@ -1160,6 +1160,12 @@ private struct ParamRow: View {
         case .swatches(let control):
             SwatchesParamRow(handle: handle, control: control, palette: palette,
                              iconGutter: iconGutter, onChange: onChange)
+        case .graph(let control):
+            CurveParamRow(handle: handle, control: control, palette: palette,
+                          iconGutter: iconGutter, onChange: onChange)
+        case .bars(let control):
+            BarsParamRow(handle: handle, control: control, palette: palette,
+                         iconGutter: iconGutter, onChange: onChange)
         }
     }
 }
@@ -3061,5 +3067,513 @@ private struct SwatchesParamRow: View {
         }
         .buttonStyle(.plain)
         .disabled(disabled)
+    }
+}
+
+// MARK: - Curve and bars
+
+/// Where the add button puts a new point on a curve, and which point the row
+/// selects after: the middle of the widest gap between two points, on the
+/// curve itself (its height there), so the curve does not move when a point
+/// is added. A curve that does not reach an end gains its point in the gap to
+/// that end when that gap is the widest.
+func curveGraphAdding(to points: [Vector2], sample: (Double) -> Double) -> (points: [Vector2], selected: Int) {
+    var widest = (gap: -1.0, at: 0.5)
+    var previous = 0.0
+    for point in points {
+        let gap = point.x - previous
+        if gap > widest.gap { widest = (gap, (point.x + previous) / 2) }
+        previous = point.x
+    }
+    if 1 - previous > widest.gap { widest = (1 - previous, (1 + previous) / 2) }
+    return curveGraphInserting(at: widest.at, into: points, sample: sample)
+}
+
+/// A point added at `x`, on the curve (its height there), and its index. A
+/// point already standing at that `x` is selected instead, since a curve has
+/// one height at each place.
+func curveGraphInserting(at x: Double, into points: [Vector2],
+                         sample: (Double) -> Double) -> (points: [Vector2], selected: Int) {
+    let x = Swift.min(Swift.max(x, 0), 1)
+    if let same = points.firstIndex(where: { $0.x == x }) { return (points, same) }
+    var points = points
+    let index = points.firstIndex { $0.x > x } ?? points.count
+    points.insert(Vector2(x, Swift.min(Swift.max(sample(x), 0), 1)), at: index)
+    return (points, index)
+}
+
+/// Point `index` moved toward `target`: its height held to `0...1`, and its
+/// place held between its neighbors and `gap` short of each, so the order the
+/// graph shows is the order the curve holds and the dragged index stays the
+/// dragged index. Neighbors already closer than that keep the plain clamp.
+func curveGraphMoving(_ points: [Vector2], index: Int, to target: Vector2, gap: Double) -> [Vector2] {
+    guard points.indices.contains(index) else { return points }
+    let previous = index > 0 ? points[index - 1].x : 0
+    let next = index < points.count - 1 ? points[index + 1].x : 1
+    let low = index > 0 ? previous + gap : 0
+    let high = index < points.count - 1 ? next - gap : 1
+    let x = low <= high
+        ? Swift.min(Swift.max(target.x, low), high)
+        : Swift.min(Swift.max(target.x, previous), next)
+    var points = points
+    points[index] = Vector2(x, Swift.min(Swift.max(target.y, 0), 1))
+    return points
+}
+
+/// A drag across a row of bars, from bar `from` at `fromValue` to bar `to` at
+/// `toValue`: every bar between the two takes its share of the way, so a
+/// quick stroke that skips bars between two frames still paints them.
+func barsPainting(_ values: [Double], from: Int, fromValue: Double, to: Int, toValue: Double) -> [Double] {
+    var values = values
+    guard values.indices.contains(to) else { return values }
+    let start = values.indices.contains(from) ? from : to
+    let span = to - start
+    if span == 0 {
+        values[to] = toValue
+        return values
+    }
+    let direction = span > 0 ? 1 : -1
+    for (offset, index) in stride(from: start, through: to, by: direction).enumerated() {
+        let t = Double(offset) / Double(abs(span))
+        values[index] = fromValue + (toValue - fromValue) * t
+    }
+    return values
+}
+
+/// A `ResponseCurve` row: the name with the selected point's place and height
+/// beside it and the buttons that add and take away a point, over a small
+/// graph of the curve whose points drag. A press away from every point adds
+/// one there, on the curve, and goes on dragging it.
+private struct CurveParamRow: View {
+    let handle: ParamHandle
+    let control: ParamControl.Graph
+    let palette: OllinInspector.Palette
+    let iconGutter: Bool
+    let onChange: (ParamStored) -> Void
+
+    @State private var points: [Vector2]
+    /// What the param held when this row last wrote or pulled, so the sync pull
+    /// can tell an external change from this row's own echo.
+    @State private var lastKnown: [Vector2]
+    @State private var selected: Int
+    /// The point a drag holds, chosen when it starts and kept to its end.
+    @State private var dragging: Int?
+    @State private var isEditingField = false
+
+    private static let graphHeight: CGFloat = 84
+    private static let pointSize: CGFloat = 11
+    /// How far the points' travel stays off each edge, so a point never clips.
+    private static let inset: CGFloat = 7
+    /// How near a press must land to a point to take it rather than add one.
+    private static let reach: CGFloat = 9
+    private static let samples = 96
+
+    init(handle: ParamHandle, control: ParamControl.Graph, palette: OllinInspector.Palette,
+         iconGutter: Bool, onChange: @escaping (ParamStored) -> Void) {
+        self.handle = handle
+        self.control = control
+        self.palette = palette
+        self.iconGutter = iconGutter
+        self.onChange = onChange
+        let current = control.read()
+        _points = State(initialValue: current)
+        _lastKnown = State(initialValue: current)
+        _selected = State(initialValue: 0)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
+                Spacer(minLength: 8)
+                if points.indices.contains(selected) {
+                    ScrubbableField(value: coordinate(place: true), stepping: ParamStepping(range: placeRange),
+                                    isInteracting: $isEditingField, palette: palette, prefix: "in")
+                    ScrubbableField(value: coordinate(place: false), stepping: ParamStepping(range: 0...1),
+                                    isInteracting: $isEditingField, palette: palette, prefix: "out")
+                }
+                countButton("minus", disabled: points.count <= control.count.lowerBound) { removeSelected() }
+                countButton("plus", disabled: points.count >= control.count.upperBound) { addPoint() }
+                KeyframeDiamond(handle: handle, palette: palette)
+            }
+            graph
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 11)
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(100))
+                guard dragging == nil, !isEditingField else { continue }
+                let live = control.read()
+                if live != lastKnown {
+                    lastKnown = live
+                    points = live
+                    selected = Swift.min(selected, Swift.max(live.count - 1, 0))
+                }
+            }
+        }
+    }
+
+    // MARK: The graph
+
+    private var graph: some View {
+        GeometryReader { geo in
+            let size = geo.size
+            ZStack {
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(palette.fieldFill)
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .strokeBorder(palette.fieldStroke, lineWidth: 0.5)
+                SwiftUI.Path { path in
+                    for q in [0.25, 0.5, 0.75] {
+                        path.move(to: place(Vector2(q, 0), in: size))
+                        path.addLine(to: place(Vector2(q, 1), in: size))
+                        path.move(to: place(Vector2(0, q), in: size))
+                        path.addLine(to: place(Vector2(1, q), in: size))
+                    }
+                }
+                .stroke(palette.separator, lineWidth: 0.5)
+                SwiftUI.Path { path in
+                    path.move(to: place(Vector2(0, 0), in: size))
+                    for (x, y) in curveSamples { path.addLine(to: place(Vector2(x, y), in: size)) }
+                    path.addLine(to: place(Vector2(1, 0), in: size))
+                    path.closeSubpath()
+                }
+                .fill(OllinInspector.accent.opacity(0.14))
+                SwiftUI.Path { path in
+                    for (index, sample) in curveSamples.enumerated() {
+                        let point = place(Vector2(sample.x, sample.y), in: size)
+                        if index == 0 { path.move(to: point) } else { path.addLine(to: point) }
+                    }
+                }
+                .stroke(OllinInspector.accent, style: StrokeStyle(lineWidth: 1.75, lineCap: .round, lineJoin: .round))
+                ForEach(Array(points.enumerated()), id: \.offset) { index, point in
+                    let isSelected = index == selected
+                    SwiftUI.Circle()
+                        .fill(isSelected ? OllinInspector.accent : SwiftUI.Color.white)
+                        .overlay(SwiftUI.Circle()
+                            .strokeBorder(isSelected ? SwiftUI.Color.white : OllinInspector.accent,
+                                          lineWidth: isSelected ? 2 : 1.5))
+                        .shadow(color: .black.opacity(0.35), radius: 1.5, y: 0.5)
+                        .frame(width: Self.pointSize, height: Self.pointSize)
+                        .position(place(point, in: size))
+                }
+            }
+            .contentShape(SwiftUI.Rectangle())
+            .gesture(dragGesture(in: size))
+        }
+        .frame(height: Self.graphHeight)
+    }
+
+    /// The curve as the sketch reads it, sampled across the graph: asked of
+    /// the value itself, so the row draws exactly what `falloff(t)` returns.
+    private var curveSamples: [(x: Double, y: Double)] {
+        (0...Self.samples).map { step in
+            let x = Double(step) / Double(Self.samples)
+            return (x, control.sample(x))
+        }
+    }
+
+    private func travel(_ size: CGSize) -> CGSize {
+        CGSize(width: Swift.max(size.width - Self.inset * 2, 1),
+               height: Swift.max(size.height - Self.inset * 2, 1))
+    }
+
+    private func place(_ point: Vector2, in size: CGSize) -> CGPoint {
+        let area = travel(size)
+        return CGPoint(x: Self.inset + CGFloat(point.x) * area.width,
+                       y: Self.inset + CGFloat(1 - point.y) * area.height)
+    }
+
+    private func value(at location: CGPoint, in size: CGSize) -> Vector2 {
+        let area = travel(size)
+        let x = Double((location.x - Self.inset) / area.width)
+        let y = 1 - Double((location.y - Self.inset) / area.height)
+        return Vector2(ParamNumberText.dragged(x, perPoint: 1 / Double(area.width), in: 0...1),
+                       ParamNumberText.dragged(y, perPoint: 1 / Double(area.height), in: 0...1))
+    }
+
+    private func dragGesture(in size: CGSize) -> some Gesture {
+        DragGesture(minimumDistance: 0)
+            .onChanged { drag in
+                if dragging == nil {
+                    let nearest = points.indices.min { a, b in
+                        distance(place(points[a], in: size), drag.startLocation)
+                            < distance(place(points[b], in: size), drag.startLocation)
+                    }
+                    if let nearest, distance(place(points[nearest], in: size), drag.startLocation) <= Self.reach {
+                        dragging = nearest
+                    } else if points.count < control.count.upperBound {
+                        let added = curveGraphInserting(at: value(at: drag.startLocation, in: size).x,
+                                                        into: points, sample: control.sample)
+                        points = added.points
+                        dragging = added.selected
+                    } else {
+                        return
+                    }
+                    selected = dragging ?? selected
+                }
+                guard let index = dragging else { return }
+                let gap = Double(Self.pointSize / travel(size).width)
+                points = curveGraphMoving(points, index: index, to: value(at: drag.location, in: size), gap: gap)
+                push()
+            }
+            .onEnded { _ in dragging = nil }
+    }
+
+    private func distance(_ a: CGPoint, _ b: CGPoint) -> CGFloat {
+        hypot(a.x - b.x, a.y - b.y)
+    }
+
+    // MARK: Editing
+
+    /// Where the selected point may be placed: between its neighbors.
+    private var placeRange: ClosedRange<Double> {
+        guard points.indices.contains(selected) else { return 0...1 }
+        let low = selected > 0 ? points[selected - 1].x : 0
+        let high = selected < points.count - 1 ? points[selected + 1].x : 1
+        return low <= high ? low...high : 0...1
+    }
+
+    /// The selected point's place (`place: true`) or height, as the pill
+    /// edits it.
+    private func coordinate(place: Bool) -> Binding<Double> {
+        Binding(
+            get: {
+                guard points.indices.contains(selected) else { return 0 }
+                return place ? points[selected].x : points[selected].y
+            },
+            set: { newValue in
+                guard points.indices.contains(selected) else { return }
+                let current = points[selected]
+                let target = place ? Vector2(newValue, current.y) : Vector2(current.x, newValue)
+                // A place typed onto a neighbor's stops just short of it: on
+                // the same place the curve would keep only one of the two.
+                points = curveGraphMoving(points, index: selected, to: target, gap: 0.001)
+                push()
+            })
+    }
+
+    private func addPoint() {
+        guard points.count < control.count.upperBound else { return }
+        let added = curveGraphAdding(to: points, sample: control.sample)
+        points = added.points
+        selected = added.selected
+        push()
+    }
+
+    private func removeSelected() {
+        guard points.count > control.count.lowerBound, points.indices.contains(selected) else { return }
+        points.remove(at: selected)
+        selected = Swift.min(selected, Swift.max(points.count - 1, 0))
+        push()
+    }
+
+    /// Write the edited curve through the param, read back what it actually
+    /// holds, and reflect and report that.
+    private func push() {
+        guard points != lastKnown else { return }
+        control.write(points)
+        let actual = control.read()
+        if actual != points { points = actual }
+        lastKnown = actual
+        selected = Swift.min(selected, Swift.max(actual.count - 1, 0))
+        onChange(handle.param.stored)
+    }
+
+    private func countButton(_ symbol: String, disabled: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            SwiftUI.Image(systemName: symbol)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(disabled ? palette.textTertiary : .secondary)
+                .frame(width: 20, height: 20)
+                .background(palette.fieldFill, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .strokeBorder(palette.fieldStroke, lineWidth: 0.5))
+        }
+        .buttonStyle(.plain)
+        .disabled(disabled)
+    }
+}
+
+/// A list-of-numbers row: the name with the selected bar's number and value
+/// beside it, over one bar per value. A drag across the bars paints them, each
+/// bar taking the height under the pointer, and a range that crosses zero
+/// grows its bars up and down from the zero line.
+private struct BarsParamRow: View {
+    let handle: ParamHandle
+    let control: ParamControl.Bars
+    let palette: OllinInspector.Palette
+    let iconGutter: Bool
+    let onChange: (ParamStored) -> Void
+
+    @State private var values: [Double]
+    @State private var lastKnown: [Double]
+    @State private var selected = 0
+    /// The bar and value the drag last painted, so the next move fills the
+    /// bars between; nil while no drag is under way.
+    @State private var lastPainted: (index: Int, value: Double)?
+    @State private var isEditingField = false
+
+    private static let stripHeight: CGFloat = 52
+    private static let spacing: CGFloat = 2.5
+
+    init(handle: ParamHandle, control: ParamControl.Bars, palette: OllinInspector.Palette,
+         iconGutter: Bool, onChange: @escaping (ParamStored) -> Void) {
+        self.handle = handle
+        self.control = control
+        self.palette = palette
+        self.iconGutter = iconGutter
+        self.onChange = onChange
+        let current = control.read()
+        _values = State(initialValue: current)
+        _lastKnown = State(initialValue: current)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
+                Spacer(minLength: 8)
+                if values.indices.contains(selected) {
+                    ScrubbableField(value: selectedValue,
+                                    stepping: ParamStepping(range: control.range, step: control.step),
+                                    isInteracting: $isEditingField, palette: palette,
+                                    prefix: "\(selected + 1)")
+                }
+                KeyframeDiamond(handle: handle, palette: palette)
+            }
+            strip
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 11)
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(100))
+                guard lastPainted == nil, !isEditingField else { continue }
+                let live = control.read()
+                if live != lastKnown {
+                    lastKnown = live
+                    values = live
+                    selected = Swift.min(selected, Swift.max(live.count - 1, 0))
+                }
+            }
+        }
+    }
+
+    // MARK: The bars
+
+    private var strip: some View {
+        GeometryReader { geo in
+            let size = geo.size
+            let zero = zeroFraction
+            HStack(alignment: .bottom, spacing: Self.spacing) {
+                ForEach(Array(values.enumerated()), id: \.offset) { index, value in
+                    let level = fraction(value)
+                    let top = Swift.max(level, zero)
+                    let height = Swift.max(abs(level - zero) * Double(size.height), 2)
+                    ZStack(alignment: .top) {
+                        RoundedRectangle(cornerRadius: 3, style: .continuous)
+                            .fill(palette.fieldFill)
+                        RoundedRectangle(cornerRadius: 3, style: .continuous)
+                            .fill(index == selected ? OllinInspector.accent : OllinInspector.accent.opacity(0.55))
+                            .overlay(RoundedRectangle(cornerRadius: 3, style: .continuous)
+                                .strokeBorder(SwiftUI.Color.white.opacity(index == selected ? 0.85 : 0),
+                                              lineWidth: 1.25))
+                            .frame(height: CGFloat(height))
+                            .offset(y: CGFloat(1 - top) * size.height)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
+                }
+            }
+            .contentShape(SwiftUI.Rectangle())
+            .gesture(paintGesture(in: size))
+        }
+        .frame(height: Self.stripHeight)
+        .overlay(alignment: .bottom) { beatMarks.offset(y: 6) }
+        .padding(.bottom, showsBeats ? 6 : 0)
+    }
+
+    /// Whether the row counts in fours: a pattern of 8, 12, 16 bars or more.
+    private var showsBeats: Bool { values.count >= 8 && values.count % 4 == 0 }
+
+    /// A small mark under every fourth bar, so a long pattern reads in beats.
+    @ViewBuilder private var beatMarks: some View {
+        if showsBeats {
+            GeometryReader { geo in
+                let width = (geo.size.width - Self.spacing * CGFloat(values.count - 1)) / CGFloat(values.count)
+                ForEach(Array(stride(from: 0, to: values.count, by: 4)), id: \.self) { index in
+                    SwiftUI.Rectangle()
+                        .fill(palette.textTertiary)
+                        .frame(width: 1, height: 3)
+                        .position(x: CGFloat(index) * (width + Self.spacing) + 0.5, y: 1.5)
+                }
+            }
+            .frame(height: 3)
+        }
+    }
+
+    /// Where a value sits on the bar's height, 0 at the bottom of the range.
+    private func fraction(_ value: Double) -> Double {
+        let span = control.range.upperBound - control.range.lowerBound
+        guard span > 0 else { return 0 }
+        return Swift.min(Swift.max((value - control.range.lowerBound) / span, 0), 1)
+    }
+
+    /// The line bars grow from: zero when the range holds it, else its bottom.
+    private var zeroFraction: Double {
+        control.range.contains(0) ? fraction(0) : 0
+    }
+
+    private func paintGesture(in size: CGSize) -> some Gesture {
+        DragGesture(minimumDistance: 0)
+            .onChanged { drag in
+                guard !values.isEmpty, size.width > 0, size.height > 0 else { return }
+                let slot = size.width / CGFloat(values.count)
+                let index = Swift.min(Swift.max(Int(drag.location.x / slot), 0), values.count - 1)
+                let span = control.range.upperBound - control.range.lowerBound
+                let raw = control.range.lowerBound + (1 - Double(drag.location.y / size.height)) * span
+                let value = snapped(ParamNumberText.dragged(raw, perPoint: span / Double(size.height),
+                                                            in: control.range))
+                let from = lastPainted ?? (index, value)
+                values = barsPainting(values, from: from.index, fromValue: from.value,
+                                      to: index, toValue: value).map(snapped)
+                lastPainted = (index, value)
+                selected = index
+                push()
+            }
+            .onEnded { _ in lastPainted = nil }
+    }
+
+    /// A value on the row's step, when it has one.
+    private func snapped(_ value: Double) -> Double {
+        guard let step = control.step, step > 0 else { return value }
+        let lower = control.range.lowerBound
+        let stepped = lower + ((value - lower) / step).rounded() * step
+        return Swift.min(Swift.max(stepped, lower), control.range.upperBound)
+    }
+
+    // MARK: Editing
+
+    private var selectedValue: Binding<Double> {
+        Binding(
+            get: { values.indices.contains(selected) ? values[selected] : 0 },
+            set: { newValue in
+                guard values.indices.contains(selected) else { return }
+                values[selected] = newValue
+                push()
+            })
+    }
+
+    /// Write the edited list through the param, read back what it actually
+    /// holds (clamped and snapped per value), and reflect and report that.
+    private func push() {
+        guard values != lastKnown else { return }
+        control.write(values)
+        let actual = control.read()
+        if actual != values { values = actual }
+        lastKnown = actual
+        onChange(handle.param.stored)
     }
 }

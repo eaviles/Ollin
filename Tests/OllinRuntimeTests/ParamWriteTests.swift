@@ -177,6 +177,39 @@ struct ParamWriteTests {
                                     + "(position: 0.5, color: Color(red: 1, green: 1, blue: 1))], in: .oklch)"))
     }
 
+    /// A curve writes every point it holds, in order, as the pairs it is
+    /// spelled with; a whole place or height needs no point, since the curve
+    /// fixes the pairs' type.
+    @Test func aCurveWritesEveryPoint() {
+        let result = written("@Param var falloff = ResponseCurve([(0, 1), (1, 0)])",
+                             ("falloff", .curve([Vector2(0, 1), Vector2(0.25, 0.875),
+                                                 Vector2(0.6, 0.3), Vector2(1, 0)])))
+        #expect(result.text.hasSuffix("= ResponseCurve([(0, 1), (0.25, 0.875), (0.6, 0.3), (1, 0)])"))
+        #expect(result.written == ["falloff"])
+        let named = written("@Param(count: 2...6) var response: ResponseCurve = .linear",
+                            ("response", .curve([Vector2(0, 0), Vector2(0.5, 0.2), Vector2(1, 1)])))
+        #expect(named.text.hasSuffix("= ResponseCurve([(0, 0), (0.5, 0.2), (1, 1)])"))
+    }
+
+    /// A list keeps its literal's kind: whole numbers stay whole while every
+    /// value is whole, and a list written with a point keeps one on every
+    /// value, since a list of whole literals beside a whole range reads as a
+    /// list of `Int`.
+    @Test func aListOfNumbersKeepsItsKind() {
+        let fractions = written("@Param(0...1) var accents = [1, 0.2, 0.6, 0.2]",
+                                ("accents", .numbers([1, 0.25, 0.5, 0])))
+        #expect(fractions.text.hasSuffix("= [1.0, 0.25, 0.5, 0.0]"))
+        let whole = written("@Param(0...12) var notes = [0, 3, 7, 10]",
+                            ("notes", .numbers([0, 4, 7, 11])))
+        #expect(whole.text.hasSuffix("= [0, 4, 7, 11]"))
+        let grown = written("@Param(0.0...1) var gates = [1, 0, 1, 0]",
+                            ("gates", .numbers([1, 0.5, 1, 0])))
+        #expect(grown.text.hasSuffix("= [1.0, 0.5, 1.0, 0.0]"), "a fraction in a whole list lost its point")
+        let built = written("@Param(0...1) var levels = Array(repeating: 0.5, count: 3)",
+                            ("levels", .numbers([0.5, 0.75, 0.5])))
+        #expect(built.text.hasSuffix("= [0.5, 0.75, 0.5]"))
+    }
+
     // MARK: A type of your own
 
     /// A type of your own wraps one literal, `Opacity(0.5)`, and what its payload

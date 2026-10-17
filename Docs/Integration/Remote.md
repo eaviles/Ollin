@@ -72,8 +72,10 @@ The page shows one touch control per parameter, grouped the way `group:` arrange
 - `Vector3`, `Rectangle`, `Insets`, and `ClosedRange` become labeled numeric fields
 - a `String` becomes a text field
 - a `Palette` or `Ramp` becomes a chip per color, each opening the phone's color picker, with a ramp's band drawn above them
+- a list of numbers becomes a row of bars painted by dragging a finger across them
+- a `ResponseCurve` becomes its graph, whose points drag under a finger and stop short of their neighbors
 
-The phone only recolors a strip. It does not move a ramp's stops or change how many colors there are, because those edits stay on the Mac, where the handles are. The band the page draws fades straight between the stops, so it is close to what the sketch shows without being the sketch's own blend.
+The phone moves a curve's points but does not add or take one away, and it sets a list's bars but not how many there are; those buttons are on the Mac. The phone only recolors a strip. It does not move a ramp's stops or change how many colors there are, because those edits stay on the Mac, where the handles are. The band the page draws fades straight between the stops, so it is close to what the sketch shows without being the sketch's own blend.
 
 A header shows the sketch's name and the connection state. A monitor strip shows the frame rate, the clock, and the frame count, refreshed a few times a second. Rows controlled by `Param.show(when:)` appear and disappear as their rule changes.
 

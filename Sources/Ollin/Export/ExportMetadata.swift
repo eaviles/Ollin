@@ -273,7 +273,8 @@ struct ExportMetadata {
 /// A parameter value as a compact JSON value: numbers bare, composites as
 /// arrays in their natural component order. A palette or ramp is an array of
 /// those, one `[position, red, green, blue, alpha]` per color; the space a ramp
-/// blends through is not part of the recipe.
+/// blends through is not part of the recipe. A curve is one `[x, y]` per point,
+/// and a list of numbers the numbers themselves.
 private func jsonValue(_ stored: ParamStored) -> String {
     switch stored {
     case .number(let v): return jsonNumber(v)
@@ -289,6 +290,10 @@ private func jsonValue(_ stored: ParamStored) -> String {
     case let .colors(stops, _):
         let each = stops.map { jsonArray([$0.position, $0.red, $0.green, $0.blue, $0.alpha]) }
         return "[" + each.joined(separator: ",") + "]"
+    case .curve(let points):
+        return "[" + points.map { jsonArray([$0.x, $0.y]) }.joined(separator: ",") + "]"
+    case .numbers(let values):
+        return jsonArray(values)
     }
 }
 

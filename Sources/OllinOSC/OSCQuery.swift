@@ -165,6 +165,10 @@ enum OSCQueryWire {
         case vector, vector3, rectangle, insets, range, text
         /// One color of a palette or ramp, by its position in the strip.
         case swatch(Int)
+        /// One value of a list of numbers, by its bar.
+        case bar(Int)
+        /// One point of a curve, by its position in the curve.
+        case curvePoint(Int)
     }
 
     /// Where an address leads: the parameter, and what the leaf takes.
@@ -309,6 +313,36 @@ enum OSCQueryWire {
                 route(.swatch(index), at: address)
             }
             node.contents = colors
+        case .bars(let b):
+            // A list is a container of its values, one method each, so a
+            // fader per bar drives a step pattern.
+            let values = b.read()
+            node.access = 0
+            node.description = "\(handle.label), \(values.count) values"
+            var bars: [String: OSCQueryNode] = [:]
+            for (index, value) in values.enumerated() {
+                let address = path + "/\(index)"
+                bars["\(index)"] = OSCQueryNode(fullPath: address, type: "f", access: 3,
+                                                description: "\(handle.label) \(index + 1)",
+                                                value: [.number(value)], range: [span(b.range)])
+                route(.bar(index), at: address)
+            }
+            node.contents = bars
+        case .graph(let g):
+            // A curve is a container of its points, each a place and a height.
+            let points = g.read()
+            node.access = 0
+            node.description = "\(handle.label), \(points.count) points"
+            var children: [String: OSCQueryNode] = [:]
+            for (index, point) in points.enumerated() {
+                let address = path + "/\(index)"
+                children["\(index)"] = OSCQueryNode(fullPath: address, type: "ff", access: 3,
+                                                    description: "\(handle.label) point \(index + 1)",
+                                                    value: [.number(point.x), .number(point.y)],
+                                                    range: [span(0...1), span(0...1)])
+                route(.curvePoint(index), at: address)
+            }
+            node.contents = children
         }
         return (node, routes)
     }
@@ -371,6 +405,11 @@ enum OSCQueryWire {
             return .range(lower: Swift.min(lower, upper), upper: Swift.max(lower, upper))
         case .text:
             return arguments.first?.text.map { .text($0) }
+        case .bar:
+            return number(0).map { .number($0) }
+        case .curvePoint:
+            guard let x = number(0), let y = number(1) else { return nil }
+            return .vector(x: x, y: y)
         }
     }
 
@@ -409,6 +448,27 @@ enum OSCQueryWire {
             guard stops.indices.contains(index) else { return }
             stops[index].color = Color(red: r, green: g, blue: b, alpha: a)
             s.write(stops)
+        case (.bars(let b), .number(let v)):
+            guard case .bar(let index) = leaf else { return }
+            var values = b.read()
+            guard values.indices.contains(index) else { return }
+            values[index] = v
+            b.write(values)
+        case (.graph(let g), .vector(let x, let y)):
+            // A point moved past a neighbor stops just short of it, as a drag
+            // in the graph does: on the neighbor's place the curve would keep
+            // one of the two, and the point an address names would vanish.
+            guard case .curvePoint(let index) = leaf else { return }
+            var points = g.read()
+            guard points.indices.contains(index) else { return }
+            let gap = 0.001
+            let previous = index > 0 ? points[index - 1].x : 0
+            let next = index < points.count - 1 ? points[index + 1].x : 1
+            var low = index > 0 ? previous + gap : 0
+            var high = index < points.count - 1 ? next - gap : 1
+            if low > high { (low, high) = (previous, next) }
+            points[index] = Vector2(Swift.min(Swift.max(x, low), high), y)
+            g.write(points)
         default:
             break
         }

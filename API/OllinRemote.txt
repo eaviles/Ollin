@@ -1,7 +1,9 @@
 // OllinRemote: the public surface, written by Scripts/api-surface.sh.
 // Change the source, then run it with --record; never edit this file by hand.
 enum RemoteControlKind: String, Decodable, Encodable, Equatable, Hashable, RawRepresentable, Sendable
+  case bars
   case color
+  case curve
   case insets
   case menu
   case range

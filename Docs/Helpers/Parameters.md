@@ -72,6 +72,8 @@ You declare every supported type the same way, and each one gets the matching in
 | `String` | text field | `@Param var caption = "hello"` |
 | `Palette` | strip of swatches | `@Param var inks = Palette(.red, .white, .black)` |
 | `Ramp` | gradient band with a handle per stop | `@Param var fade = Ramp([.black, .white])` |
+| `ResponseCurve` | a graph whose points drag | `@Param var falloff = ResponseCurve([(0, 1), (0.5, 0.8), (1, 0)])` |
+| `[Double]`, `[Int]` | a row of bars, one per value | `@Param(0...1) var accents = [1, 0.2, 0.6, 0.2]` |
 | `Tempo` | slider in beats per minute | `@Param(60...160) var tempo: Tempo = 104` |
 | `NoteLength` | pop-up menu of the named lengths | `@Param var length: NoteLength = .eighth` |
 | `Easing` | pop-up menu of the named curves | `@Param var curve: Easing = .easeInOut` |
@@ -110,6 +112,54 @@ let r = radius * spacing(Double(i) / Double(rings - 1))
 ```
 
 Each built-in curve carries its own name. The menu selects on that name, and a tuned choice is saved under it. The three friendly aliases are the cubic curves themselves, so `.easeInOut` reads on the menu as "Ease In Out Cubic". A curve you build from a closure (`Easing { t in t * t }`) is not on the menu. It equals itself and nothing else, so the row shows the first entry instead, and a reload restores that entry rather than your closure. Write a closure curve directly into the code that uses it, and keep the parameter for the named curves.
+
+<a name="response-curve"></a>
+
+#### A curve you shape
+
+A [`ResponseCurve`](Animation.md#response-curve) parameter is a small graph of the curve with a dot on each of its points. It suits a falloff or a response you would rather shape by eye than by formula. The sketch reads it as a function from 0 to 1, the way it reads an `Easing`:
+
+```swift
+@Param(count: 2...8) var falloff = ResponseCurve([(0, 1), (0.3, 0.85), (0.7, 0.2), (1, 0)])
+
+override func draw() {
+    background(.white)
+    noStroke()
+    for ring in 0..<20 {
+        let t = Double(ring) / 19
+        fill(Color(white: 1 - falloff(t)))
+        drawCircle(width / 2, height / 2, 400 * (1 - t))
+    }
+}
+```
+
+Drag a dot to move its point. A dot stops short of its neighbors, so the order the graph shows is the order the curve holds. A press away from every dot adds a point there, on the curve, and goes on dragging it. The `+` button adds one in the middle of the widest gap, again on the curve, so the shape does not move. The `−` button takes the selected point away. `in` and `out` beside the name are the selected point's place and height, and they scrub or take a typed number like any value box. `count:` sets how many points the curve may hold, which is where the two buttons stop. A curve given more points than that keeps both its ends and drops inner points from the end.
+
+The line in the graph is drawn by asking the curve for its height across the box, so the row shows exactly what `falloff(t)` returns. Saving writes the points back as the pairs you would type (`ResponseCurve([(0, 1), (0.25, 0.9), (1, 0)])`), and `--param falloff=1@0,0.7@0.4,0@1` sets the curve for a run, each height at its place.
+
+<a name="bars"></a>
+
+#### A list of numbers as bars
+
+A list of numbers is a row of bars, one per value: a step pattern, a weight for each ring, a level for each band. Every value is held to the range and snapped to `step:` when one is given. A list of whole numbers lands on whole steps.
+
+```swift
+@Param(0...1) var accents = [1, 0.2, 0.6, 0.2, 0.9, 0.2, 0.5, 0.1]
+@Param(0...12) var notes = [0, 3, 7, 10]
+
+override func draw() {
+    let step = frameCount / 8 % accents.count
+    background(.white)
+    fill(.black)
+    drawCircle(width / 2, height / 2, 100 + 300 * accents[step])
+}
+```
+
+Drag across the bars to paint them. Each bar takes the height under the pointer, and a quick stroke that skips bars between two frames still paints the ones it skipped. A range that crosses zero, `-1...1`, grows its bars up and down from the zero line. The selected bar's number and value sit beside the name. A pattern of 8, 12, 16 bars or more has a small mark under every fourth bar, so it reads in beats.
+
+The number of bars is the list's own, fixed by the declaration. A restored value with more numbers keeps its first ones. One with fewer keeps the list's values past its end, so a list lengthened in the source keeps the bars it was tuned to. Saving writes the list back as typed. Whole numbers stay whole while every value is whole, and a list written with a point keeps one on every value. `--param accents=1,0.2,0.6,0.2` sets it for a run.
+
+Both kinds move smoothly between two values of the same length. A [cue](Cues.md) fade or a timeline key moves each bar of a list and each point of a curve. Two lists or two curves of different lengths hold until the next key. Over [OSC](../Integration/OSCQuery.md) a list is one address per bar and a curve one address per point. The [phone's remote surface](../Integration/Remote.md) paints the bars and drags the points by touch.
 
 #### Palettes and gradients
 
@@ -171,7 +221,7 @@ struct Opacity: ParamValue {
 
 A type that fits in 64 bits can also answer `bits(of:)` and `value(fromBits:)`, the pair `Double`, `Int`, and `Bool` answer, and its reads then skip the lock the way theirs do; the default for both is `nil`, which reads through the lock, and a type that answers one must answer the other.
 
-The built-in constraint types are there to borrow: `ParamNumericConstraints` for anything on a slider or a stepper, `ParamRangeConstraints` for a two-thumb range (whose `outer` is the span the two thumbs move inside), `ParamVectorConstraints` and `ParamVector3Constraints` for a point, `ParamRectangleConstraints` for a rectangle or a set of insets, and `ParamSwatchConstraints` for a palette or a ramp. Each carries the bounds its control needs and a `style` where the control has more than one shape (`ParamVectorStyle.fields` against `.pad`, for instance). A type whose `Constraints` is `Void` needs no payload, so `@Param var caption = Caption("hello")` is the whole declaration. The `constraints:` form is the primitive. To read `@Param(0...1)` for your type too, put a short initializer over it in an extension of `Param`, the way the built-in kinds do:
+The built-in constraint types are there to borrow: `ParamNumericConstraints` for anything on a slider or a stepper, `ParamRangeConstraints` for a two-thumb range (whose `outer` is the span the two thumbs move inside), `ParamVectorConstraints` and `ParamVector3Constraints` for a point, `ParamRectangleConstraints` for a rectangle or a set of insets, `ParamSwatchConstraints` for a palette or a ramp, and `ParamCurveConstraints(count:)` for a curve, whose `count` bounds its points. A list of numbers takes its element's own constraints: `Array.Constraints` is `ParamNumericConstraints` of the element, so the range and step apply to every value. Each carries the bounds its control needs and a `style` where the control has more than one shape (`ParamVectorStyle.fields` against `.pad`, for instance). A type whose `Constraints` is `Void` needs no payload, so `@Param var caption = Caption("hello")` is the whole declaration. The `constraints:` form is the primitive. To read `@Param(0...1)` for your type too, put a short initializer over it in an extension of `Param`, the way the built-in kinds do:
 
 ```swift
 extension Param where Value == Opacity {

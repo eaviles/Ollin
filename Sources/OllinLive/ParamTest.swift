@@ -6,7 +6,8 @@ import Ollin
 /// `swift run OllinLive --paramtest`: a headless check of the `@Param` model.
 /// Reflection-based discovery, auto-derived vs explicit labels, declaration
 /// order, ranges, value clamping and step snapping, the typed control family
-/// (slider / stepper / toggle / menu / color well / swatch strip), group + icon metadata, and
+/// (slider / stepper / toggle / menu / color well / swatch strip / curve graph /
+/// bars), group + icon metadata, and
 /// the stored-value round-trip the hosts persist across reloads; then the rule
 /// field, through the timeline model the rows write to: a rule typed for a
 /// parameter drives it and reaches the file, a rule that cannot be read is
@@ -36,6 +37,9 @@ enum ParamTest {
         @Param(count: 1...6) var inks = Palette(.red, .white, .black)
         @Param var fade = Ramp([.black, .white])
         @Param(0...8, group: .folded("Advanced")) var jitter = 2.0
+        @Param(count: 2...5) var falloff = ResponseCurve([(0, 1), (0.5, 0.8), (1, 0)])
+        @Param(0...1, step: 0.25) var accents = [1, 0.2, 0.6, 0.2]
+        @Param(0...12) var notes = [0, 3, 7, 10]
     }
 
     @MainActor
@@ -43,18 +47,18 @@ enum ParamTest {
         let subject = Subject()
         let params = subject.parameters()
 
-        check(params.count == 20, "expected 20 params, got \(params.count)")
+        check(params.count == 23, "expected 23 params, got \(params.count)")
         check(params.map(\.name) == ["radius", "noiseScale", "speed", "quantized",
                                      "rings", "visible", "tint", "style", "anchor",
                                      "eye", "iterations", "region", "margins",
                                      "sizes", "caption", "mood", "curve", "inks", "fade",
-                                     "jitter"],
+                                     "jitter", "falloff", "accents", "notes"],
               "names/order wrong: \(params.map(\.name))")
         check(params.map(\.label) == ["Radius", "Noise Scale", "Tempo", "Quantized",
                                       "Rings", "Visible", "Tint", "Style", "Anchor",
                                       "Eye", "Iterations", "Region", "Margins",
                                       "Sizes", "Caption", "Mood", "Curve", "Inks", "Fade",
-                                      "Jitter"],
+                                      "Jitter", "Falloff", "Accents", "Notes"],
               "labels wrong: \(params.map(\.label))")
         check(params[4].icon == "circle.grid.2x2", "icon metadata lost")
         check(params[4].group == "Layout" && params[5].group == "Layout" && params[0].group == nil,
@@ -153,6 +157,26 @@ enum ParamTest {
                   .init(position: 1, color: .white)])
         check(subject.fade.stops.map(\.position) == [0, 0.7, 1], "ramp stops not reflected")
 
+        guard case .graph(let falloff) = params[20].control else { fatal("falloff isn't a graph") }
+        check(falloff.count == 2...5, "graph count wrong: \(falloff.count)")
+        check(falloff.sample(0.5) == 0.8 && falloff.sample(1) == 0, "the graph should read the curve")
+        falloff.write([Vector2(0, 0.9), Vector2(0.3, 0.7), Vector2(0.6, 0.2), Vector2(1, 0)])
+        check(subject.falloff.points.count == 4 && subject.falloff(0.3) == 0.7, "graph write not reflected")
+        subject.falloff = ResponseCurve([(0, 1), (0.2, 0.9), (0.4, 0.7), (0.6, 0.5), (0.8, 0.3), (1, 0)])
+        check(subject.falloff.points.count == 5 && subject.falloff.points.last == Vector2(1, 0),
+              "a curve past its count should drop an inner point and keep its ends: \(subject.falloff.points)")
+        falloff.write([Vector2(0, 0.9), Vector2(0.3, 0.7), Vector2(0.6, 0.2), Vector2(1, 0)])
+
+        guard case .bars(let accents) = params[21].control else { fatal("accents isn't a row of bars") }
+        check(accents.range == 0...1 && accents.step == 0.25, "bars metadata wrong")
+        check(subject.accents == [1, 0.25, 0.5, 0.25], "the declared list should snap to its step: \(subject.accents)")
+        accents.write([2, -1, 0.4, 0.8])
+        check(subject.accents == [1, 0, 0.5, 0.75], "bars clamp and snap failed: \(subject.accents)")
+        guard case .bars(let notes) = params[22].control else { fatal("notes isn't a row of bars") }
+        check(notes.step == 1, "a whole list should step by whole numbers")
+        notes.write([0, 4.4, 6.6, 99])
+        check(subject.notes == [0, 4, 7, 12], "a whole list should round and clamp: \(subject.notes)")
+
         // Show-rules: a parameter hides while its source parameter keeps it inert, and the
         // inspector reads the flag through the same type-erased face.
         check(params[1].isShown, "isShown should default to true")
@@ -174,7 +198,9 @@ enum ParamTest {
                 && fresh.region == Rectangle(x: 0, y: 0, width: 500, height: 50)
                 && fresh.sizes == 40...50 && fresh.caption == "ollin" && fresh.mood == .noir
                 && fresh.curve == .easeOutBounce && fresh.inks.count == 6
-                && fresh.fade.stops.map(\.position) == [0, 0.7, 1],
+                && fresh.fade.stops.map(\.position) == [0, 0.7, 1]
+                && fresh.falloff == subject.falloff && fresh.accents == [1, 0, 0.5, 0.75]
+                && fresh.notes == [0, 4, 7, 12],
               "stored round-trip lost a value")
         // A payload of the wrong kind is ignored, keeping the current value
         // (the clamp checks above left radius at 0, carried by the round-trip).
@@ -210,7 +236,7 @@ enum ParamTest {
         for name in ["radius", "rings", "visible", "iterations"] {
             check(TimelineModel.takesRule(handles[name]!), "'\(name)' should take a rule")
         }
-        for name in ["tint", "style", "anchor", "caption", "inks", "sizes"] {
+        for name in ["tint", "style", "anchor", "caption", "inks", "sizes", "falloff", "accents"] {
             check(!TimelineModel.takesRule(handles[name]!), "'\(name)' must not take a rule")
         }
 

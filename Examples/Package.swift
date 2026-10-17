@@ -481,6 +481,7 @@ let package = Package(
         // Two fingers on the trackpad: the frame's pinch and turn, and a dial
         // the turn hook clicks through.
         example("Input/PinchAndTurn"),
+        example("Input/TypedText"),
         example("Patterns/WarpGrid"),
         example("Randomness/NoiseField"),
         // The CPU noise family side by side over one set of coordinates.

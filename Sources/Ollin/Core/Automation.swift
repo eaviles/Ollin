@@ -357,10 +357,12 @@ public struct Automation: Codable, Equatable, Sendable {
     // MARK: Blending
 
     /// Blend two stored values. The numeric kinds interpolate component by
-    /// component and colors take the even path a fade wants; a switch, a menu
-    /// choice, a piece of text, and a set of colors have nothing between two
-    /// values, so they hold the one they left until the next key. Two values
-    /// of different kinds hold as well.
+    /// component and colors take the even path a fade wants; a list of numbers
+    /// moves bar by bar and a curve point by point while the two hold as many;
+    /// a switch, a menu choice, a piece of text, and a set of colors have
+    /// nothing between two values, so they hold the one they left until the
+    /// next key. Two values of different kinds hold as well, and so do two
+    /// lists or two curves of different lengths.
     static func blend(_ from: ParamStored, _ to: ParamStored, _ t: Double) -> ParamStored {
         if t <= 0 { return from }
         if t >= 1 { return to }
@@ -384,6 +386,10 @@ public struct Automation: Codable, Equatable, Sendable {
                            bottom: lerp(ab, bb), left: lerp(al, bl))
         case (.range(let al, let au), .range(let bl, let bu)):
             return .range(lower: lerp(al, bl), upper: lerp(au, bu))
+        case (.numbers(let a), .numbers(let b)) where a.count == b.count:
+            return .numbers(zip(a, b).map(lerp))
+        case (.curve(let a), .curve(let b)) where a.count == b.count:
+            return .curve(zip(a, b).map { Vector2(lerp($0.x, $1.x), lerp($0.y, $1.y)) })
         default:
             return from
         }
@@ -396,7 +402,8 @@ public struct Automation: Codable, Equatable, Sendable {
     /// `blue`, `alpha` for a color, `x`, `y`, `width`, `height` for a
     /// rectangle, `top`, `right`, `bottom`, `left` for insets, and `lower`,
     /// `upper` for a pair of ends. A plain number, a switch, a menu choice, a
-    /// piece of text, and a set of colors have no parts.
+    /// piece of text, a set of colors, a curve, and a list of numbers have no
+    /// parts.
     public static func parts(of stored: ParamStored) -> [String: Double] {
         switch stored {
         case .color(let red, let green, let blue, let alpha):
@@ -411,7 +418,7 @@ public struct Automation: Codable, Equatable, Sendable {
             return ["top": top, "right": right, "bottom": bottom, "left": left]
         case .range(let lower, let upper):
             return ["lower": lower, "upper": upper]
-        case .number, .boolean, .option, .text, .colors:
+        case .number, .boolean, .option, .text, .colors, .curve, .numbers:
             return [:]
         }
     }
@@ -445,7 +452,7 @@ public struct Automation: Codable, Equatable, Sendable {
         case .range(let lower, let upper):
             let low = number("lower", lower)
             return .range(lower: low, upper: Swift.max(low, number("upper", upper)))
-        case .number, .boolean, .option, .text, .colors:
+        case .number, .boolean, .option, .text, .colors, .curve, .numbers:
             return stored
         }
     }

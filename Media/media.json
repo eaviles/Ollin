@@ -5554,6 +5554,23 @@
       "stillSmall": "examples/Input/RepelGrid/still-640.jpg?v=8cfa1fd9",
       "width": 1080
     },
+    "Input/TypedText": {
+      "width": 1080,
+      "height": 1080,
+      "length": "still",
+      "stillBecause": "holds still",
+      "frame": 480,
+      "motion": 0.0,
+      "source": "e617e859bff8e39d",
+      "rendered": "2026-10-17",
+      "bytes": {
+        "still": 43676,
+        "stillSmall": 17007
+      },
+      "still": "examples/Input/TypedText/still.jpg?v=ab048009",
+      "stillSmall": "examples/Input/TypedText/still-640.jpg?v=f04e93eb",
+      "seed": 1
+    },
     "Installation/Fitted": {
       "bytes": {
         "loop": 4065371,
@@ -5842,24 +5859,26 @@
       "width": 720
     },
     "Live/Parameters": {
-      "bytes": {
-        "loop": 1130390,
-        "loopSmall": 315272,
-        "still": 56974,
-        "stillSmall": 25380
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
-      "length": "10s",
-      "loop": "examples/Live/Parameters/loop.mp4?v=49539652",
-      "loopSmall": "examples/Live/Parameters/loop-640.mp4?v=c77a78f7",
-      "motion": 4.285,
-      "rendered": "2026-09-10",
+      "length": "10.0s",
       "seconds": 10.0,
-      "source": "e10159588087e8f1",
-      "still": "examples/Live/Parameters/still.jpg?v=f70a5814",
-      "stillSmall": "examples/Live/Parameters/still-640.jpg?v=e274f8ca",
-      "width": 1080
+      "frame": 480,
+      "motion": 3.922,
+      "sound": false,
+      "source": "908ceae12493ed3c",
+      "rendered": "2026-10-17",
+      "bytes": {
+        "loop": 835364,
+        "loopSmall": 284414,
+        "still": 57265,
+        "stillSmall": 24997
+      },
+      "loop": "examples/Live/Parameters/loop.mp4?v=bc5ae9de",
+      "loopSmall": "examples/Live/Parameters/loop-640.mp4?v=0730453a",
+      "still": "examples/Live/Parameters/still.jpg?v=c2d98bf0",
+      "stillSmall": "examples/Live/Parameters/still-640.jpg?v=1b645c90",
+      "seed": 1
     },
     "Motion/ArcModes": {
       "bytes": {

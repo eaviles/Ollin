@@ -107,7 +107,7 @@ These are more of the platform's live signals. Each one is a `FrameSource` or a 
 - **Body data, and where the Mac is.** Heart rate from a paired Watch, for biofeedback. The Mac's own location as a slow live input, so a weather can follow the machine.
 - **Depth from video, deeper.** The first piece is the metric checkpoint of the video depth model, once its license is settled. With it, a webcam's depth comes in meters and lifts into an `RGBDFrame` and a point cloud. The second piece is the encoder on the Neural Engine, with only the temporal head on the GPU, for twice the readings a second.
 - **Pinch and turn on the phone itself.** A sketch installed on a phone or tablet reads a two-finger pinch and turn through the same two values the Mac's trackpad fills.
-- **Typed text.** A sketch reads typed text through the system's input methods. Accents, dead keys, the emoji viewer, and Chinese or Japanese input then arrive as text. `key` still reports single key presses.
+- **Typed text on the phone itself.** A sketch installed on a phone or tablet reads what its keyboard types through the same `typedText()` the Mac fills.
 
 Several overlap the [iPhone sensor array](#iphone-as-a-sensor-array). These are the Mac-side direct sources. See the [design notes](DESIGN-NOTES.md#new-input-sources).
 
@@ -143,7 +143,6 @@ See the [design notes](DESIGN-NOTES.md#rendering-and-color-frontier).
 
 **Later.** This section covers the editing experiences the live-reload core makes possible, and where Ollin draws its line on AI: nowhere in the work. The README says it ("It's a tool for making art … Ollin is not a generative-art model"), and it extends to any AI *feature*: **AI helped build the framework, and it plays no part in what you make with it.** Not as the author of a sketch, and not at the controls either, because in generative art the parameters are the work. A palette, a density, a speed chosen by hand is the hand. Models that read the world (the [perception tier](Docs/Vision/Vision.md), depth, listening) are input, like a camera, and stay. The section draws a second line at node editors: the effect and SDF graphs stay code, and a code-less, node-based Ollin would be a separate app on the framework, taken on only if someone wants one. Within those lines:
 
-- **Curves and sequences as parameters.** One inspector row edits a curve by dragging its points, for a falloff or a response. Another edits a row of values as bars, for a step pattern. Both save back into the sketch like any other parameter.
 - **A live window that notices the framework was rebuilt.** A sketch saved after the framework was rebuilt under a running window can crash that window. The window would say to relaunch instead.
 - **The rest of a package in the live window.** A sketch that imports another target of its own package, or another package, still runs only through `swift run`. The live window would build those first and load them beside the sketch. The phone route, completion in the live-coding editor, and a shape drag in a helper file each still see the sketch's one file.
 

@@ -20,6 +20,7 @@ Pointer and keyboard input are plain properties and overridable methods on the s
 - [keyPressed / keyReleased](#keyPressed)
 - [isKeyDown](#isKeyDown)
 - [moveAxis](#moveAxis)
+- [typedText / textTyped / composingText](#typed-text): text the way a text field receives it
 - [droppedFiles / filesDropped](#droppedFiles)
 - [chooseFiles / chosenFiles / filesChosen](#chooseFiles): a file picked through the open panel
 - [pointerShape / hidePointer / showPointer](#pointer): the pointer over the canvas
@@ -288,6 +289,37 @@ position += moveAxis * speed * deltaTime
 
 A 3D sketch reads the same value and maps y onto its own forward direction. The usual choice is for canvas up to mean "ahead", so `-moveAxis.y` is the throttle.
 
+<a name="typed-text"></a>
+
+### typedText / textTyped / composingText
+
+```swift
+typedText() -> String
+textTyped()
+composingText: String
+caretPosition: Vector2?
+```
+
+The keyboard read as text, the way a text field receives it. `key` reports the keys themselves, so Option-E then E is two presses of `e`. `typedText()` reports what those presses typed once the system's input methods composed them: one "é". A character picked in the emoji viewer (Control-Command-Space) arrives as itself. Chinese or Japanese typed through an input method arrives once a candidate is chosen. Holding a key repeats it, as it does in a text field, even though `keyPressed()` fires once per press.
+
+`typedText()` returns the text typed since the last call, oldest first, and reading it empties it. `textTyped()` is called each time text arrives, so a sketch can take it there or read it in `draw()`, whichever it prefers. Return arrives as `"\n"` and Tab as `"\t"`. Delete arrives as a backspace character, `"\u{8}"`, which `append(typing:)` reads as taking the last character away:
+
+```swift
+var caption = ""
+
+override func draw() {
+    background(.white)
+    caption.append(typing: typedText())
+    fill(.black)
+    textSize(64)
+    drawText(caption + composingText, 60, 200)
+}
+```
+
+While an input method is still composing, `composingText` holds the reading it shows: the underlined hiragana before a kanji is picked, or the accent a dead key holds until the next key. It is empty the rest of the time. Draw it after the typed text, in a color or with an underline of its own, the way a text field does. Once the input method confirms, the text arrives through `typedText()` and `composingText` empties. Set `caretPosition` to the bottom of the line being typed, in canvas coordinates. The input method then opens its list of candidates just below it. Left `nil`, the list opens below the pointer.
+
+Text reaches the sketch while its canvas holds the keyboard (see [Keyboard focus in the hosts](#keyboardFocus)). Losing the keyboard drops a composition half written, as a text field does. A take records typed text and compositions, and a replay repeats them. A headless export types nothing. `Examples/Input/TypedText` puts what you type on the canvas and shows the last key beside the last text it typed.
+
 <a name="droppedFiles"></a>
 
 ### droppedFiles / filesDropped
@@ -375,3 +407,5 @@ When you embed `SketchView` in your own SwiftUI app, the `keyboardFocus:` parame
 ```swift
 SketchView(sketch, keyboardFocus: .onClick, showsKeyboardHint: true)
 ```
+
+Typed text follows the keys: whoever holds the keyboard gets the text. On the performance stage the editor holds the keys, so what you type goes into the code, and a click on the canvas hands both to the sketch.
