@@ -471,11 +471,16 @@ private final class SeparationSolver {
                     score(base * (SIMD3(repeating: 1) + a * axis))
                 }
 
+                // A tie goes toward less ink, here and at the endpoints below.
+                // Once the inks already chosen print solid black, nothing this
+                // ink does can be seen and every coverage scores the same; the
+                // answer then is to leave the plate empty, where a tie broken
+                // the other way lays solid pink under a black background.
                 var lo = 0.0, hi = 1.0
                 var x1 = hi - phi * (hi - lo), x2 = lo + phi * (hi - lo)
                 var f1 = at(x1), f2 = at(x2)
                 for _ in 0..<28 {
-                    if f1 < f2 {
+                    if f1 <= f2 {
                         hi = x2; x2 = x1; f2 = f1
                         x1 = hi - phi * (hi - lo); f1 = at(x1)
                     } else {
@@ -487,10 +492,15 @@ private final class SeparationSolver {
                 var bestScore = at(best)
                 // The exact endpoints matter: solid ink and bare paper are
                 // the common answers, and the golden section brackets them
-                // without ever landing exactly on them.
-                for endpoint in [0.0, 1.0] where at(endpoint) <= bestScore {
-                    best = endpoint
-                    bestScore = at(endpoint)
+                // without ever landing exactly on them. Solid has to win
+                // outright; bare paper takes a tie.
+                if at(1) < bestScore {
+                    best = 1
+                    bestScore = at(1)
+                }
+                if at(0) <= bestScore {
+                    best = 0
+                    bestScore = at(0)
                 }
                 coverages[ink] = best
             }

@@ -77,11 +77,13 @@ Two things follow from this, and both are worth knowing before you use `.extende
 
 | Export | `.standard` | `.wide` | `.extended` |
 | --- | --- | --- | --- |
-| `--export` (PNG) | 8-bit sRGB | 8-bit linear Display P3 | 8-bit linear Display P3, highlights clipped to white |
-| `--export` (HEIC) | 8-bit sRGB | 8-bit Display P3 | Display P3 **plus an ISO gain map**: the highlights are kept |
-| `--export-video` | Rec. 709 | P3-D65 | **HDR10**: Rec. 2020 primaries, PQ transfer, 10-bit HEVC |
+| `--export` (PNG) | 8-bit sRGB | 16-bit Display P3 | 16-bit Display P3, highlights clipped to white |
+| `--export` (HEIC) | 8-bit sRGB | 10-bit Display P3 | 10-bit Display P3 **plus an ISO gain map**: the highlights are kept |
+| `--export-video` | Rec. 709 | P3-D65, 8-bit | **HDR10**: Rec. 2020 primaries, PQ transfer, 10-bit HEVC |
 | `--export-gif` | sRGB | converted to sRGB | converted to sRGB |
 | `--export-svg` / `--export-pdf` | unaffected (vector output carries its own color) |
+
+A wide frame stays in floating point until it reaches the file, and it is quantized there. A PNG keeps 16 bits and a HEIC 10, both under the Display P3 curve, and neither needs a dither. A `.wide` video's frames are 8 bits, and so is a [recording](../Output/Recording.md) of a wide window. Those get the dither a `.standard` frame gets on its way to the screen. A slow gradient therefore stays a gradient in every file, instead of turning into a few flat bands.
 
 An `.extended` video is written as HDR10, and you need no further flags for it. If the codec was left at the h264 default, Ollin forces it to `hevc`, because eight bits cannot carry HDR10. The encoder works out the mastering-display and content-light-level metadata that the file declares. In the file, 1.0 is the standard's reference white of 203 cd/m², so an exported clip's paper white lands where every other HDR video's does. The peak the file carries is 1000 cd/m², about 4.9x white.
 
@@ -98,11 +100,11 @@ The file guarantees three things:
 
 - The picture inside it is the PNG. A reader that knows nothing of gain maps shows the frame clamped at white.
 - The map's ceiling is the frame's own brightest value, so a small highlight keeps its brightness. A lamp core covers a fraction of a percent of the canvas. A map whose ceiling comes from frame statistics loses a highlight that small.
-- The map holds a gain per channel, so a bright amber core stays amber. Reconstruction is accurate to about two percent across a highlight and the field around it; at a highlight's edge the half-resolution map is off by far more.
+- The map holds a gain per channel, so a bright amber core stays amber. Rebuilt from the file, the frame is within about half a percent of the rendered one across a highlight and the field around it, and within about 2% on the highlight's antialiased edge. The file keeps a map's color at half resolution, so the map is written at four times the frame's size, and every pixel reads a color of its own. A frame of more than about 1.5 million pixels gets a map at twice its size. There, a highlight's one-pixel antialiased rim can come back about 4% off.
 
 The gain map is written in ISO 21496-1, the cross-vendor gain-map standard, not in a private format that only one viewer reads.
 
-PNG is still the deeper file in one way. It writes 16 bits a channel where HEIC writes 8, so a slow gradient has more levels to work with. Pick HEIC when the highlights matter, and PNG when precision matters.
+PNG is still the deeper file in one way. It writes 16 bits a channel where HEIC writes 10, so a slow gradient has more levels to work with. Pick HEIC when the highlights matter, and PNG when precision matters.
 
 <a id="notes"></a>
 ### Notes

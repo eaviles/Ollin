@@ -327,6 +327,10 @@ extension OllinApp {
     /// Encode `image` as a PNG carrying the recipe in its text chunks (the
     /// `Software` and `Description` keywords) and write it to `path`. Returns
     /// `false` when encoding or writing fails.
+    ///
+    /// A float frame (a `.wide` or `.extended` sketch's) is written at sixteen
+    /// bits a component in Display P3, clipped at white (`FrameBytes`); an
+    /// 8-bit one goes in as it stands.
     static func writePNG(_ image: CGImage, to path: String, recipe: String?) -> Bool {
         let url = URL(fileURLWithPath: path)
         guard let destination = CGImageDestinationCreateWithURL(
@@ -334,7 +338,28 @@ extension OllinApp {
         var png: [CFString: Any] = [kCGImagePropertyPNGSoftware: "Ollin"]
         if let recipe { png[kCGImagePropertyPNGDescription] = recipe }
         let properties = [kCGImagePropertyPNGDictionary: png] as CFDictionary
-        CGImageDestinationAddImage(destination, image, properties)
+        let written = image.bitmapInfo.contains(.floatComponents)
+            ? FrameBytes.sixteenBit(image) ?? sixteenBitDisplayP3(image) ?? image : image
+        CGImageDestinationAddImage(destination, written, properties)
         return CGImageDestinationFinalize(destination)
+    }
+
+    /// `image` at sixteen bits a component in Display P3, through Core
+    /// Graphics: the form for a float image a caller built in some other
+    /// layout than the renderer's. Handed a float image as it stands, the PNG
+    /// encoder writes eight bits under a linear profile, which leaves the dark
+    /// end a handful of codes. A see-through image keeps its coverage, which
+    /// the encoder writes out as straight alpha.
+    private static func sixteenBitDisplayP3(_ image: CGImage) -> CGImage? {
+        guard let space = CGColorSpace(name: CGColorSpace.displayP3) else { return nil }
+        let alpha: CGImageAlphaInfo = image.carriesAlpha ? .premultipliedLast : .noneSkipLast
+        guard let context = CGContext(data: nil, width: image.width, height: image.height,
+                                      bitsPerComponent: 16, bytesPerRow: 0, space: space,
+                                      bitmapInfo: alpha.rawValue | CGBitmapInfo.byteOrder16Little.rawValue)
+        else { return nil }
+        let rect = CGRect(x: 0, y: 0, width: image.width, height: image.height)
+        context.clear(rect)
+        context.draw(image, in: rect)
+        return context.makeImage()
     }
 }

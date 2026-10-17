@@ -33,9 +33,25 @@ import UniformTypeIdentifiers
 //   needs three different multipliers. Measured with one channel, the green
 //   came back 81% high and the blue 300% high. With three, every channel lands
 //   within 0.6%.
-// - **The base picture is the frame clamped at white**, which is exactly what
-//   the PNG export writes. So the fallback everybody sees is the shipped still,
-//   and the gain map is an addition to it.
+// - **The base picture is the frame clamped at white**, the picture the PNG
+//   export writes. So the fallback everybody sees is the shipped still, and
+//   the gain map is an addition to it. It is written at sixteen bits, which
+//   the HEIC writer stores as ten (`FrameBytes`): within 0.4% of the frame
+//   everywhere and no banding, where an eight-bit picture, dithered, sat two
+//   levels off on a dark pixel and left a highlight's dim neighbor 6% off.
+// - **The map is written at four times the frame's size, each gain repeated
+//   over four by four.** The file stores the map the way it stores a picture,
+//   with its color at half resolution (4:2:0), and a per-channel gain is
+//   exactly that color: at the edge of a colored highlight a map the frame's
+//   size had its three gains smeared across the edge, and the rebuilt edge
+//   was 40% off (measured on an amber core with an antialiased rim). At twice
+//   the size the color is the frame's resolution, but the codec sits each
+//   color sample at the left of its block, so a one-pixel rim still read a
+//   quarter of its neighbor's color and came back 4% off; at four times every
+//   sample a pixel reads is its own, and the rim rebuilds within 1.7%. That
+//   costs 0.44 s against 0.20 s on a 1080 square and a few kilobytes, so a
+//   frame whose map would pass 24 million pixels (one past about 1.5 million)
+//   is written at twice the size instead.
 
 public extension OllinApp {
 
@@ -175,32 +191,41 @@ enum GainMap {
     /// white. Every float frame gets its picture built the same way, so a
     /// wide-gamut still and an extended one differ only by the map.
     static func build(from samples: Samples, context: CIContext) -> Built? {
-        guard let base = clampedBase(of: samples, context: context) else { return nil }
+        guard let base = clampedBase(of: samples) else { return nil }
         let maxStops = log2(max(samples.peak, 1))
         guard maxStops > 0.0001, let metadata = metadata(maxStops: maxStops) else {
             return Built(base: base, auxiliaryInfo: nil)
         }
 
-        // One gain per channel, packed the way the description below declares.
+        // One gain per channel, packed the way the description below declares,
+        // each repeated over a square block (see the top of this file).
         // Rows are padded to a 16-byte boundary, which is what the imaging
         // stack's own maps do.
-        let bytesPerRow = (samples.width * 4 + 15) & ~15
-        var bytes = [UInt8](repeating: 255, count: bytesPerRow * samples.height)
+        let mapScale = mapScale(width: samples.width, height: samples.height)
+        let mapWidth = samples.width * mapScale, mapHeight = samples.height * mapScale
+        let bytesPerRow = (mapWidth * 4 + 15) & ~15
+        var bytes = [UInt8](repeating: 255, count: bytesPerRow * mapHeight)
         for y in 0..<samples.height {
-            let row = y * bytesPerRow
             for x in 0..<samples.width {
                 let p = (y * samples.width + x) * 4
-                let out = row + x * 4
-                bytes[out + 0] = encode(samples.pixels[p + 2], maxStops: maxStops)   // blue
-                bytes[out + 1] = encode(samples.pixels[p + 1], maxStops: maxStops)   // green
-                bytes[out + 2] = encode(samples.pixels[p + 0], maxStops: maxStops)   // red
-                bytes[out + 3] = 255
+                let blue = encode(samples.pixels[p + 2], maxStops: maxStops)
+                let green = encode(samples.pixels[p + 1], maxStops: maxStops)
+                let red = encode(samples.pixels[p + 0], maxStops: maxStops)
+                for dy in 0..<mapScale {
+                    let row = (y * mapScale + dy) * bytesPerRow
+                    for dx in 0..<mapScale {
+                        let out = row + (x * mapScale + dx) * 4
+                        bytes[out + 0] = blue
+                        bytes[out + 1] = green
+                        bytes[out + 2] = red
+                    }
+                }
             }
         }
         let info: [CFString: Any] = [
             kCGImageAuxiliaryDataInfoData: Data(bytes) as CFData,
             kCGImageAuxiliaryDataInfoDataDescription: [
-                "Width": samples.width, "Height": samples.height,
+                "Width": mapWidth, "Height": mapHeight,
                 "BytesPerRow": bytesPerRow,
                 "PixelFormat": 0x4247_5241,      // 'BGRA', one gain per channel
             ] as CFDictionary,
@@ -208,6 +233,18 @@ enum GainMap {
         ]
         return Built(base: base, auxiliaryInfo: info)
     }
+
+    /// How many map pixels across one frame pixel: four, so every color sample
+    /// a frame pixel reads from the map, which the file keeps at half
+    /// resolution, is that pixel's own; two for a frame whose map would pass
+    /// `maxMapPixels`.
+    static func mapScale(width: Int, height: Int) -> Int {
+        width * height * 16 <= maxMapPixels ? 4 : 2
+    }
+
+    /// The most pixels a map is written at four times the frame's size: 24
+    /// million, a frame of about 1.5 million.
+    static let maxMapPixels = 24_000_000
 
     /// One channel's gain, as the fraction of the frame's ceiling it sits at.
     /// The base is this channel clamped at white, so the gain is what turns one
@@ -219,26 +256,10 @@ enum GainMap {
         return UInt8((fraction * 255).rounded())
     }
 
-    /// The picture the file shows: the frame clamped at white, in 8-bit Display
-    /// P3. The same pixels the PNG export writes.
-    private static func clampedBase(of samples: Samples, context: CIContext) -> CGImage? {
-        var clamped = samples.pixels
-        for i in 0..<clamped.count { clamped[i] = min(max(clamped[i], 0), 1) }
-        let data = clamped.withUnsafeBytes { Data($0) }
-        guard let provider = CGDataProvider(data: data as CFData),
-              let linear = CGColorSpace(name: CGColorSpace.extendedLinearDisplayP3),
-              let display = CGColorSpace(name: CGColorSpace.displayP3) else { return nil }
-        let info = CGBitmapInfo(rawValue: CGBitmapInfo.floatComponents.rawValue
-                                | CGBitmapInfo.byteOrder32Little.rawValue
-                                | CGImageAlphaInfo.noneSkipLast.rawValue)
-        guard let float = CGImage(width: samples.width, height: samples.height,
-                                  bitsPerComponent: 32, bitsPerPixel: 128,
-                                  bytesPerRow: samples.width * 16, space: linear,
-                                  bitmapInfo: info, provider: provider, decode: nil,
-                                  shouldInterpolate: false, intent: .defaultIntent) else { return nil }
-        let bounds = CGRect(x: 0, y: 0, width: samples.width, height: samples.height)
-        return context.createCGImage(CIImage(cgImage: float), from: bounds,
-                                     format: .RGBA8, colorSpace: display)
+    /// The picture the file shows: the frame clamped at white, at sixteen bits
+    /// in Display P3, which the HEIC writer stores as ten.
+    private static func clampedBase(of samples: Samples) -> CGImage? {
+        FrameBytes.sixteenBit(fromFloat: samples.pixels, width: samples.width, height: samples.height)
     }
 
     // MARK: - Metadata

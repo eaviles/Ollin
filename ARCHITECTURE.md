@@ -8508,19 +8508,55 @@ bright color clamps unevenly. An amber core of (4.0, 2.2, 0.72) becomes
 one channel for all three: green came back 81% high, blue 300% high. With
 three channels: every channel within 0.6%.
 
-**The base is written losslessly.** `kCGImageDestinationLossyCompressionQuality`
-is 1.0, so a still export stays as faithful as the PNG it replaces. The
-reconstruction error is then the 8-bit base's own quantization, about 0.6% at
-mid gray and under 2% at the peak.
+**The base is written at ten bits.** It is handed to the writer at sixteen bits
+under the Display P3 curve (`FrameBytes.sixteenBit`), and the writer stores a
+sixteen-bit picture as a 10-bit HEVC image. At
+`kCGImageDestinationLossyCompressionQuality` 1.0 the coding is near-lossless:
+an 8-bit picture came back within one level of its bytes. The two 8-bit forms
+both fell short of ten bits, on the survey's gradient with an amber core:
+
+| Base | Worst against the frame | Gradient | File |
+| --- | --- | --- | --- |
+| 8-bit, undithered (the old base) | 1.3% | 4 runs: bands | 1.7 KB |
+| 8-bit, dithered | 3.6% on a dark pixel, 6% beside the highlight | 475 runs | 4.5 KB |
+| 10-bit | 0.3% | 15 ten-bit codes, no visible steps | 1.9 KB |
+
+The dithered picture is two levels off at worst (the dither's one and the
+codec's one), and two levels is 3.6% of a dark pixel. Ten bits won on all
+three columns, and the ruling of 2026-10-17 took it.
 
 The metadata is the `HDRToneMap` namespace ImageIO reads back: `Version`,
 `BaseHeadroom`, `AlternateHeadroom`, `BaseColorIsWorkingColor`, and one
 `ChannelMetadata` entry per channel carrying `GainMapMin`, `GainMapMax`,
 `Gamma`, `BaseOffset`, and `AlternateOffset`. Reconstruction is
 `(base + offset) * 2^(e * GainMapMax) - offset`, where `e` is the stored byte
-over 255. ImageIO re-encodes the three-channel map as 4:2:0 (`'420f'`), so the
-*differences between* channels are stored at half resolution; the overall gain
-is not.
+over 255.
+
+**The map is written at four times the frame's size.** ImageIO re-encodes the
+three-channel map as 4:2:0 (`'420f'`), so the *differences between* channels,
+which are what a per-channel map is, are stored at half resolution. And a
+colored highlight's edge is exactly where those differences change. Measured on
+an amber core with a one-pixel antialiased rim, each gain repeated over a block:
+
+| Map | Highlight | Rim | Elsewhere | 1080² write |
+| --- | --- | --- | --- | --- |
+| frame size | 1.7% | 40% | 1.5% | 0.23 s |
+| twice | 0.4% | 4.0% | 2.7% | 0.20 s |
+| four times | 0.4% | 1.7% | 0.3% | 0.44 s |
+
+At twice the size the half-resolution color is the frame's resolution, but the
+codec sits each color sample at the left of its two-by-two block. A frame
+pixel's center therefore reads a quarter of its right neighbor's color, which
+is harmless inside a flat highlight and 4% on a rim one pixel wide. At four
+times, every sample a pixel's center reads is its own. The map is held in
+memory while the file is written, sixteen times the frame's pixels at four
+bytes each (75 MB for a 1080 square), so `GainMap.mapScale` drops to twice
+once the map would pass 24 million pixels, about a 1.5-megapixel frame.
+
+The system's own gain-map writer (`kCGImageDestinationEncodeToISOGainmap` with
+`kCGImageDestinationEncodeGenerateGainMapWithBaseImage` and a subsample factor
+of 1) refused to write this frame at all, in every combination tried, so it
+was not pursued.
 
 A frame whose peak is at or below white carries no map at all, and
 `OllinApp.StillExport.keepsHighlights` reports which happened.

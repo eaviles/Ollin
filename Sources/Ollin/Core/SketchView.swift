@@ -3263,14 +3263,15 @@ public enum OllinApp {
         let width: Int
         let height: Int
         /// The canvas showed through (`background(.clear)`), so the present
-        /// kept its coverage as alpha and the image is tagged premultiplied.
+        /// kept its coverage as alpha: beside straight color in 8-bit bytes,
+        /// under premultiplied color in float ones.
         let transparent: Bool
 
         /// The frame as an image, in whatever space the sketch's `colorOutput`
         /// presents into.
         var image: CGImage? {
             renderer.displayImage(from: buffer, width: width, height: height,
-                                  transparent: transparent)
+                                  alpha: .file(transparent: transparent))
         }
 
         /// The presented bytes themselves, `bytesPerRow * height` of them.

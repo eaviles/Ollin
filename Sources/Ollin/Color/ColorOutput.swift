@@ -130,6 +130,26 @@ enum PresentEncoding: Int32 {
     var isFloat: Bool { self != .srgb8 }
 }
 
+/// What the present pass writes as a pixel's alpha. The canvas composites
+/// premultiplied over its clear color, so a see-through background leaves the
+/// frame holding coverage; this says whether that coverage reaches the output,
+/// and in which form an 8-bit output stores the color beside it.
+enum PresentAlpha: Int32 {
+    /// Alpha 1: the window, and any canvas that is not see-through.
+    case opaque = 0
+    /// The color scaled by the coverage in the encoded domain, the dither on
+    /// that stored value: a frame grab, whose texture is shared live (Syphon,
+    /// an LED map) as premultiplied pixels are.
+    case premultiplied = 1
+    /// The color as drawn beside its coverage, the dither on the color: an
+    /// export. A PNG stores straight alpha, so a faint fill keeps every level
+    /// it was drawn at rather than the few its coverage leaves room for.
+    case straight = 2
+
+    /// The mode a frame headed for a file presents with.
+    static func file(transparent: Bool) -> PresentAlpha { transparent ? .straight : .opaque }
+}
+
 public extension ColorOutput {
 
     /// The luminance 1.0 stands for when a frame is written as HDR video, in

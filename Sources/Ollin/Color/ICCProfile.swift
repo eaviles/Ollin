@@ -264,6 +264,64 @@ extension ICCProfile {
         return ColorSyncProfileCreate(data as CFData, nil)?.takeRetainedValue()
     }
 
+    /// A live ColorSync profile for this profile as the screen end of a proof,
+    /// the canvas a color starts from and the screen it comes home to.
+    ///
+    /// A display profile in the format's second version records the screen's
+    /// own white as its media white (D65 for sRGB, Adobe RGB, and the generic
+    /// gray), and the color engine's absolute intent scales by that white on
+    /// either side of the press. Read as written, an absolute proof of white
+    /// comes out cyan, and the paper it simulates far yellower than the press
+    /// profile says its stock is. The eye is adapted to a screen's white, so
+    /// for a screen the media white is read as the connection's own white
+    /// (D50), which is what the format's fourth version writes for every
+    /// display profile; Display P3 already does. Only that tag changes, so a relative or perceptual
+    /// proof is the same bytes either way. Anything that is not a display
+    /// profile, or carries no media white to read, is used as it is.
+    var colorSyncProfileAsScreen: ColorSyncProfile? {
+        guard isUsable else { return nil }
+        guard let patched = Self.whiteAtConnection(data) else { return colorSyncProfile }
+        return ColorSyncProfileCreate(patched as CFData, nil)?.takeRetainedValue() ?? colorSyncProfile
+    }
+
+    /// `data` with a display profile's media white rewritten to the connection
+    /// white, or nil when it is not a display profile, its white is already
+    /// that, or the tag table cannot be read. The tag table's count and each
+    /// offset are bounded by the bytes before any is followed.
+    static func whiteAtConnection(_ data: Data) -> Data? {
+        var bytes = [UInt8](data)
+        guard bytes.count >= 132, String(bytes: bytes[12..<16], encoding: .ascii) == "mntr" else { return nil }
+        func word(_ at: Int) -> Int {
+            Int(bytes[at]) << 24 | Int(bytes[at + 1]) << 16 | Int(bytes[at + 2]) << 8 | Int(bytes[at + 3])
+        }
+        let count = word(128)
+        guard count > 0, count <= (bytes.count - 132) / 12 else { return nil }
+        // The connection white as the format encodes it: X 0.9642, Y 1, Z 0.8249
+        // in signed 15.16 fixed point.
+        let d50 = [0x0000_F6D6, 0x0001_0000, 0x0000_D32D]
+        for entry in 0..<count {
+            let at = 132 + entry * 12
+            guard String(bytes: bytes[at..<(at + 4)], encoding: .ascii) == "wtpt" else { continue }
+            let offset = word(at + 4)
+            guard offset >= 0, offset <= bytes.count - 20, word(at + 8) >= 20,
+                  String(bytes: bytes[offset..<(offset + 4)], encoding: .ascii) == "XYZ " else { return nil }
+            let white = (0..<3).map { word(offset + 8 + $0 * 4) }
+            guard zip(white, d50).contains(where: { abs($0 - $1) > 64 }) else { return nil }
+            for (i, value) in d50.enumerated() {
+                let to = offset + 8 + i * 4
+                bytes[to] = UInt8(value >> 24)
+                bytes[to + 1] = UInt8((value >> 16) & 0xFF)
+                bytes[to + 2] = UInt8((value >> 8) & 0xFF)
+                bytes[to + 3] = UInt8(value & 0xFF)
+            }
+            // The profile's digest no longer matches its bytes; zero says none
+            // was computed, which a reader takes as it stands.
+            for i in 84..<100 { bytes[i] = 0 }
+            return Data(bytes)
+        }
+        return nil
+    }
+
     /// A four-character tag from the 128-byte ICC header.
     private static func headerTag(_ data: Data, at offset: Int) -> String {
         guard data.count >= offset + 4 else { return "" }

@@ -375,7 +375,7 @@ extension MetalRenderer {
               let presentEncoder = cb.makeRenderCommandEncoder(descriptor: presentPass(into: display))
         else { return nil }
         encodePresent(from: slot.output, drawer: drawer, into: presentEncoder,
-                      keepsAlpha: drawer.hasTransparentBackground)
+                      alpha: .file(transparent: drawer.hasTransparentBackground))
         presentEncoder.endEncoding()
         guard let blit = cb.makeBlitCommandEncoder() else { return nil }
         blit.copy(from: display, sourceSlice: 0, sourceLevel: 0,

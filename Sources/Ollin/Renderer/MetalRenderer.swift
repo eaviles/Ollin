@@ -2753,7 +2753,7 @@ final class MetalRenderer {
         guard let frame = accumulatedFrame(of: drawer, viewport: viewport, width: width, height: height)
         else { return nil }
         return displayImage(from: frame.buffer, width: width, height: height,
-                            transparent: drawer.hasTransparentBackground)
+                            alpha: .file(transparent: drawer.hasTransparentBackground))
     }
 
     /// `accumulatedImage(of:…)` stopping one step earlier, at the read-back
@@ -2827,7 +2827,7 @@ final class MetalRenderer {
         // Tone-map the float pile into the sRGB display texture, then read that back.
         if let presentEncoder = countedEncoder(commandBuffer, presentPass(into: display)) {
             encodePresent(from: shown, drawer: drawer, into: presentEncoder,
-                          keepsAlpha: drawer.hasTransparentBackground)
+                          alpha: .file(transparent: drawer.hasTransparentBackground))
             presentEncoder.endEncoding()
         }
 
@@ -2909,28 +2909,36 @@ final class MetalRenderer {
     /// pass left them. The 8-bit path is untouched; a float display texture
     /// comes back as half-float components tagged extended-linear Display P3,
     /// so the wide gamut (and, in an `extended` frame, the values above 1)
-    /// survive into the image. `transparent` says the present kept the frame's
-    /// coverage as alpha (a see-through canvas, `Drawer.hasTransparentBackground`),
-    /// so the bytes are tagged premultiplied and a PNG or a ProRes 4444 clip
-    /// carries the transparency; an opaque frame keeps the tag it always had.
+    /// survive into the image. `alpha` is the mode the present ran with: an
+    /// opaque frame keeps the tag it always had, and a see-through one
+    /// (`Drawer.hasTransparentBackground`) is tagged with its coverage, straight
+    /// for an export's 8-bit bytes and premultiplied for a grab's, so a PNG or a
+    /// ProRes 4444 clip carries the transparency. Float components are
+    /// premultiplied in either mode: at half precision a faint fill keeps its
+    /// levels that way.
     func displayImage(from buffer: MTLBuffer, width: Int, height: Int,
-                      transparent: Bool = false) -> CGImage? {
+                      alpha: PresentAlpha = .opaque) -> CGImage? {
         pixelFormat == .rgba16Float
             ? MetalRenderer.cgImage(fromRGBA16Float: buffer, width: width, height: height,
-                                    transparent: transparent)
+                                    transparent: alpha != .opaque)
             : MetalRenderer.cgImage(fromBGRA8: buffer, width: width, height: height,
-                                    transparent: transparent)
+                                    alpha: alpha)
     }
 
     /// Build a BGRA8 `CGImage` from a shared buffer of `width*height*4` bytes
-    /// (the resolved-texture read-back layout), opaque unless `transparent`
-    /// says the alpha byte is real coverage over premultiplied color. Shared by
-    /// `image(of:)` and the accumulation read-back paths.
+    /// (the resolved-texture read-back layout), opaque unless `alpha` says the
+    /// alpha byte is real coverage, beside straight color or under
+    /// premultiplied color. Shared by `image(of:)` and the accumulation
+    /// read-back paths.
     private static func cgImage(fromBGRA8 buffer: MTLBuffer, width: Int, height: Int,
-                                transparent: Bool) -> CGImage? {
+                                alpha mode: PresentAlpha) -> CGImage? {
         let bytesPerRow = width * 4, byteCount = bytesPerRow * height
         guard let provider = frameDataProvider(copying: buffer.contents(), byteCount: byteCount) else { return nil }
-        let alpha: CGImageAlphaInfo = transparent ? .premultipliedFirst : .noneSkipFirst
+        let alpha: CGImageAlphaInfo = switch mode {
+        case .opaque: .noneSkipFirst
+        case .premultiplied: .premultipliedFirst
+        case .straight: .first
+        }
         let bitmapInfo = CGBitmapInfo(rawValue: alpha.rawValue
                                       | CGBitmapInfo.byteOrder32Little.rawValue)
         return CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32,
@@ -2968,7 +2976,7 @@ final class MetalRenderer {
         guard let frame = renderedFrame(of: drawer, viewport: viewport, width: width, height: height)
         else { return nil }
         return displayImage(from: frame.buffer, width: width, height: height,
-                            transparent: drawer.hasTransparentBackground)
+                            alpha: .file(transparent: drawer.hasTransparentBackground))
     }
 
     /// `image(of:…)` stopping at the read-back buffer instead of building an
@@ -3419,7 +3427,7 @@ final class MetalRenderer {
             : nil
         guard let presentEncoder = countedEncoder(commandBuffer, presentPass(into: displayTexture)) else { return nil }
         encodePresent(from: shown, drawer: drawer, into: presentEncoder,
-                      keepsAlpha: drawer.hasTransparentBackground)
+                      alpha: .file(transparent: drawer.hasTransparentBackground))
         presentEncoder.endEncoding()
 
         // Copy the display texture into a CPU-readable buffer (works on every
@@ -3768,7 +3776,7 @@ final class MetalRenderer {
             return
         }
         encodePresent(from: presentSource, drawer: drawer, into: presentEncoder,
-                      keepsAlpha: drawer.hasTransparentBackground)
+                      alpha: drawer.hasTransparentBackground ? .premultiplied : .opaque)
         presentEncoder.endEncoding()
 
         // The image's bytes, copied out on the GPU (works on every Mac GPU,
@@ -3815,7 +3823,7 @@ final class MetalRenderer {
         let image = request.wantsImage
             ? grab.buffer.flatMap {
                 displayImage(from: $0, width: request.width, height: request.height,
-                             transparent: grab.transparent)
+                             alpha: grab.transparent ? .premultiplied : .opaque)
             }
             : nil
         request.deliver(image, request.wantsTexture ? grab.texture : nil)

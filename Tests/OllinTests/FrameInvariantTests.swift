@@ -401,12 +401,6 @@ struct FrameInvariantTests {
 
     // MARK: Survey B (2026-10-11): what the files keep
 
-    /// A measured gap stands as a known issue only where it was measured; the
-    /// statement runs plain everywhere else.
-    private func pinned(_ reason: Comment, when active: Bool = true, _ body: () -> Void) {
-        if active { withKnownIssue(reason, body) } else { body() }
-    }
-
     /// The bytes of an image file as its decoder hands them over (a PNG with
     /// alpha arrives straight, not premultiplied), with the row's width and
     /// the component depth.
@@ -437,28 +431,34 @@ struct FrameInvariantTests {
     /// whose stored byte lands between two codes averages to the fraction it
     /// asked for, as an opaque one does.
     ///
-    /// Measured 2026-10-11 and filed: the dither is added to the straight
-    /// encoded value and then scaled by the alpha on the way into the
-    /// premultiplied store, so at alpha 0.2 it is a fifth of a level and
-    /// cannot straddle a code: a field asked for at 28.56 stores 29 in every
-    /// pixel.
+    /// Measured 2026-10-11: the dither was added to the straight encoded value
+    /// and then scaled by the alpha on the way into the premultiplied store,
+    /// so at alpha 0.2 it was a fifth of a level and could not straddle a
+    /// code: a field asked for at 28.56 stored 29 in every pixel. The file now
+    /// stores the color straight beside its coverage, the dither on that value,
+    /// so the bytes read here are the ones the PNG holds.
     @Test func theDitherIsUnbiasedAtEveryAlpha() throws {
         func toDisplay(_ c: Double) -> Double { c <= 0.0031308 ? c * 12.92 : 1.055 * pow(c, 1 / 2.4) - 0.055 }
-        // A white whose premultiplied byte at alpha 0.2 sits 0.56 past a code.
+        // A white whose stored byte sits 0.56 past a code.
         var white = 0.5
         for _ in 0..<80 {
-            let byte = toDisplay(Color.srgbToLinear(white)) * 0.2 * 255
-            white += byte < 28.56 ? 0.0005 : -0.0005
+            let byte = toDisplay(Color.srgbToLinear(white)) * 255
+            white += byte < 142.56 ? 0.0005 : -0.0005
         }
-        let expected = toDisplay(Color.srgbToLinear(white)) * 0.2 * 255
-        let sketch = SeeThroughProbe.make(alpha: 0.2, white: white)
-        let frame = try render(sketch)
-        var sum = 0
-        for y in 0..<frame.height { for x in 0..<frame.width { sum += frame.byte(x, y, 0) } }
-        let mean = Double(sum) / Double(frame.width * frame.height)
-        pinned("the dither is scaled by the pixel's alpha, so a translucent field stores one code (measured 2026-10-11)") {
-            #expect(abs(mean - expected) < 0.1, "a field asked for at \(expected) averaged \(mean)")
+        let expected = toDisplay(Color.srgbToLinear(white)) * 255
+        let path = temporary("unbiased.png")
+        try OllinApp.export(SeeThroughProbe.make(alpha: 0.2, white: white), to: path)
+        let f = try #require(file(path))
+        #expect(f.bits == 8)
+        var sum = 0, alphas = Set<UInt8>()
+        let pixels = f.bytes.count / 4
+        for p in 0..<pixels {
+            sum += Int(f.bytes[p * 4])
+            alphas.insert(f.bytes[p * 4 + 3])
         }
+        let mean = Double(sum) / Double(pixels)
+        #expect(alphas == [51], "the coverage stored as \(alphas.sorted())")
+        #expect(abs(mean - expected) < 0.1, "a field asked for at \(expected) averaged \(mean)")
     }
 
     /// A see-through frame keeps its levels: sixty-four grays drawn at alpha
@@ -471,20 +471,19 @@ struct FrameInvariantTests {
         let path = temporary("levels.png")
         try OllinApp.export(SeeThroughProbe.make(alpha: 0.1, columns: 64), to: path)
         let values = try #require(middleRow(of: path, columns: 64))
-        pinned("a translucent pixel is quantized premultiplied, so a tenth-alpha fill keeps 26 levels (measured 2026-10-11)") {
-            #expect(Set(values).count >= 60, "\(Set(values).count) distinct values of 64 drawn")
-        }
+        #expect(Set(values).count >= 60, "\(Set(values).count) distinct values of 64 drawn")
     }
 
     /// An eight-bit file of a wide frame is dithered as an eight-bit file of
     /// a standard one is: a slow gradient across three codes lands on
     /// hundreds of short runs, never on a few bands.
     ///
-    /// Measured 2026-10-11 and filed: the float present carries no dither
-    /// and the eight-bit sinks after it (the HEIC, the video frame, the
-    /// recording) quantize without one, so the same gradient that gives the
-    /// standard PNG 471 runs gives the wide HEIC 4 and the wide video frame
-    /// 3. The wide PNG is 8-bit too, with a linear profile (filed beside it).
+    /// Measured 2026-10-11: the float present carries no dither and the
+    /// eight-bit sinks after it quantized without one, so the same gradient
+    /// that gives the standard PNG 471 runs gave the wide HEIC 4 and the wide
+    /// video frame 3. A wide clip's frames and a recording's are now dithered
+    /// as they are filled (`FrameBytes`), and the HEIC holds ten bits instead
+    /// (`aWideHEICKeepsTenBits`).
     @Test func anEightBitFileOfAWideFrameIsDithered() throws {
         func runs(_ values: [Int]) -> Int {
             var runs = 1
@@ -494,26 +493,61 @@ struct FrameInvariantTests {
         let standard = temporary("standard.png")
         try OllinApp.export(GradientProbe.make(output: .standard), to: standard)
         #expect(runs(try #require(middleRow(of: standard, columns: 1024))) > 100)
+        // The same gradient as a wide clip's first frame, through a codec that
+        // keeps the dither (a lossy one smooths some of it away, as it would
+        // any fine grain).
+        let clip = temporary("wide.mov")
+        try OllinApp.exportVideo(GradientProbe.make(output: .wide), to: clip, frames: 2, fps: 30, codec: .proRes422)
+        let generator = AVAssetImageGenerator(asset: AVURLAsset(url: URL(fileURLWithPath: clip)))
+        generator.requestedTimeToleranceBefore = .zero
+        generator.requestedTimeToleranceAfter = .zero
+        let still = try generator.copyCGImage(at: .zero, actualTime: nil)
+        let frame = temporary("wide-frame.png")
+        let destination = try #require(CGImageDestinationCreateWithURL(URL(fileURLWithPath: frame) as CFURL,
+                                                                       "public.png" as CFString, 1, nil))
+        CGImageDestinationAddImage(destination, still, nil)
+        #expect(CGImageDestinationFinalize(destination))
+        let clipRuns = runs(try #require(middleRow(of: frame, columns: 1024)))
+        #expect(clipRuns > 100, "the wide clip's gradient lands on \(clipRuns) runs")
+    }
+
+    /// A wide HEIC keeps ten bits: the picture inside it is written at
+    /// sixteen, which the HEIC writer stores as ten, so the slow gradient that
+    /// spans three eight-bit codes lands on several times as many.
+    @Test func aWideHEICKeepsTenBits() throws {
         let heic = temporary("wide.heic")
         try OllinApp.export(GradientProbe.make(output: .wide), to: heic)
-        let wideRuns = runs(try #require(middleRow(of: heic, columns: 1024)))
-        pinned("an eight-bit file of a wide frame is quantized without a dither (measured 2026-10-11)") {
-            #expect(wideRuns > 100, "the wide HEIC's gradient lands on \(wideRuns) runs")
+        let source = try #require(CGImageSourceCreateWithURL(URL(fileURLWithPath: heic) as CFURL, nil))
+        let image = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
+        #expect(image.bitsPerComponent == 10, "the wide HEIC holds \(image.bitsPerComponent) bits a component")
+        let context = GainMap.makeContext()
+        var row = [Float](repeating: 0, count: image.width * 4)
+        let space = try #require(CGColorSpace(name: CGColorSpace.displayP3))
+        row.withUnsafeMutableBytes { buffer in
+            context.render(CIImage(cgImage: image), toBitmap: buffer.baseAddress!, rowBytes: image.width * 16,
+                           bounds: CGRect(x: 0, y: 8, width: image.width, height: 1), format: .RGBAf, colorSpace: space)
         }
+        let codes = Set(stride(from: 0, to: row.count, by: 4).map { Int((row[$0] * 1023).rounded()) })
+        #expect(codes.count >= 10, "the gradient lands on \(codes.count) ten-bit codes")
     }
 
     /// A wide PNG keeps sixteen bits, as the reference says.
     ///
-    /// Measured 2026-10-11 and filed: the file is written at eight bits a
-    /// component under a linear Display P3 profile, which collapses the dark
-    /// end (a gradient at linear 0.2 spans two codes).
+    /// Measured 2026-10-11: the file was written at eight bits a component
+    /// under a linear Display P3 profile, which collapsed the dark end (a
+    /// gradient at linear 0.2 spanned two codes). It is now encoded at sixteen
+    /// bits under the Display P3 curve (`FrameBytes`).
     @Test func aWidePNGKeepsSixteenBits() throws {
         let path = temporary("wide16.png")
         try OllinApp.export(GradientProbe.make(output: .wide), to: path)
         let f = try #require(file(path))
-        pinned("a wide PNG is written at eight bits with a linear profile (measured 2026-10-11)") {
-            #expect(f.bits == 16, "the wide PNG holds \(f.bits) bits a component under the \(f.profile) profile")
-        }
+        #expect(f.bits == 16, "the wide PNG holds \(f.bits) bits a component under the \(f.profile) profile")
+        #expect(f.profile == "Display P3", "the wide PNG is tagged \(f.profile)")
+        // The dark end keeps its levels: the gradient runs over a sliver of
+        // linear 0.033 to 0.036, two codes in eight linear bits, and sixteen
+        // encoded bits keep every step the half-float frame holds there.
+        let ramp = try #require(middleRow(of: path, columns: 1024))
+        #expect(Set(ramp).count > 50, "the gradient holds \(Set(ramp).count) distinct values")
     }
 
     /// An HDR export declares its mastering: the track's format carries the
@@ -539,12 +573,16 @@ struct FrameInvariantTests {
     /// and the map matches the rendered one within 5% at every pixel of a
     /// small highlight, its edge and the three pixels around it included.
     ///
-    /// Measured 2026-10-11 and filed: inside the highlight and over the dim
-    /// field the rebuild is within 2.4%, but at the highlight's edge and the
-    /// three pixels around it the error reaches 38%, since the map is written
-    /// at half resolution in chroma and re-encoded lossily, and a highlight's
-    /// edge is exactly where the gain changes by a stop.
+    /// Measured 2026-10-11: inside the highlight and over the dim field the
+    /// rebuild was within 2.4%, but at the highlight's edge and the three
+    /// pixels around it the error reached 38%, since the file keeps the map's
+    /// color at half resolution and a highlight's edge is exactly where the
+    /// gain changes by a stop. The map is now written at four times the
+    /// frame's size and the picture at ten bits.
     @Test func aGainMapKeepsAHighlightsEdge() throws {
+        // A 1080 square takes the four-times map; a frame past the budget, two.
+        #expect(GainMap.mapScale(width: 1080, height: 1080) == 4)
+        #expect(GainMap.mapScale(width: 1920, height: 1080) == 2)
         let sketch = GradientProbe.make(output: .extended)
         sketch.highlight = true
         let image = try OllinApp.image(of: sketch)
@@ -577,9 +615,7 @@ struct FrameInvariantTests {
             }
         }
         #expect(worstInside < 0.05, "the rebuilt highlight is \(worstInside) off inside")
-        pinned("a gain map's rebuild is 38% off at a highlight's edge (measured 2026-10-11)") {
-            #expect(worstEdge < 0.05, "the rebuilt highlight is \(worstEdge) off at its edge")
-        }
+        #expect(worstEdge < 0.05, "the rebuilt highlight is \(worstEdge) off at its edge")
     }
 }
 

@@ -290,12 +290,6 @@ struct ColorScienceInvariantTests {
 
     // MARK: Survey B (2026-10-11): the gamut map and the press
 
-    /// A measured gap stands as a known issue only where it was measured; the
-    /// statement runs plain everywhere else.
-    private func pinned(_ reason: Comment, when active: Bool = true, _ body: () -> Void) {
-        if active { withKnownIssue(reason, body) } else { body() }
-    }
-
     /// OKLab to linear sRGB as published (Ottosson 2020), written here so the
     /// boundary the map is held to does not come from the code that maps.
     private static func linearFromOKLab(_ L: Double, _ a: Double, _ b: Double) -> (Double, Double, Double) {
@@ -347,16 +341,17 @@ struct ColorScienceInvariantTests {
     /// A pixel darker than every ink separates to the darkest ink alone: solid
     /// black takes solid black and leaves the other plates empty.
     ///
-    /// Measured 2026-10-11 and filed: once the first ink's transmittance is
-    /// zero every later ink's score is flat, and the tie breaks toward solid,
-    /// so black pulls solid coverage onto the pink plate (and onto every ink
-    /// after a solid black, in either order); a mid gray separates to black
-    /// alone as it should.
+    /// Measured 2026-10-11: once the first ink's transmittance is zero every
+    /// later ink's score is flat, and the tie broke toward solid, so black
+    /// pulled solid coverage onto the pink plate (and onto every ink after a
+    /// solid black, in either order). A tie now goes toward less ink.
     @Test func aBlackPixelSeparatesToBlackAlone() {
-        let separation = flat(.black).separated(into: [.black, .fluorescentPink])
-        #expect(separation.layers[0].averageInk > 0.98)
-        pinned("a pixel darker than the first ink reaches pulls solid coverage onto every later ink (measured 2026-10-11)") {
-            #expect(separation.layers[1].averageInk < 0.02, "pink at \(separation.layers[1].averageInk) under solid black")
+        for inks in [[Ink.black, .fluorescentPink], [.fluorescentPink, .black]] {
+            let separation = flat(.black).separated(into: inks)
+            let black = inks.firstIndex(of: .black)!, pink = 1 - black
+            #expect(separation.layers[black].averageInk > 0.98)
+            #expect(separation.layers[pink].averageInk < 0.02,
+                    "pink at \(separation.layers[pink].averageInk) under solid black, inks \(inks.map(\.name))")
         }
         let gray = flat(Color(white: 0.5)).separated(into: [.black, .fluorescentPink])
         #expect(gray.layers[1].averageInk < 0.02, "pink at \(gray.layers[1].averageInk) under a mid gray")
@@ -366,16 +361,48 @@ struct ColorScienceInvariantTests {
     /// warm (its media white sits on the yellow side of neutral), so an
     /// absolute proof of white is at least as red as it is blue.
     ///
-    /// Measured 2026-10-11 and filed: white proofs to (195, 210, 226), a cyan
-    /// cast, because the forward leg carries the source profile's D65 white
-    /// into the press's D50 connection as if it were a color; the paper
-    /// simulation's own white reads (238, 220, 185), far yellower than the
-    /// profile's media white for the same reason on the return leg.
+    /// Measured 2026-10-11: white proofed to (195, 210, 226), a cyan cast,
+    /// because the canvas profile, written to the format's second version,
+    /// records the screen's D65 white as its media white and the absolute
+    /// intent carried it into the press's D50 connection as a color. A screen's
+    /// white is now read as the connection's own.
     @Test(.enabled(if: SoftProof(.genericCMYK).destination.isUsable))
     func anAbsoluteProofOfWhiteShowsTheStocksWarmth() {
         let shown = mean(flat(.white).softProofed(SoftProof(.genericCMYK, intent: .absolute)))
-        pinned("an absolute proof of white comes out cyan (measured 2026-10-11)") {
-            #expect(shown.r >= shown.b - 2, "white proofs to \(shown)")
+        #expect(shown.r >= shown.b - 2, "white proofs to \(shown)")
+        // The paper, not white: an absolute proof does not remap it.
+        #expect(shown.g < 240, "white proofs to \(shown)")
+    }
+
+    /// The paper a proof simulates is the press profile's own media white, as
+    /// the screen shows a color relative to its white: the tag's XYZ, carried
+    /// from the connection's D50 to the screen's D65 by the Bradford transform
+    /// and through the sRGB primaries, written out here so the reference does
+    /// not come from the engine it checks.
+    ///
+    /// Measured 2026-10-11: the paper read (238, 220, 185), far yellower than
+    /// the tag's (224, 223, 216), for the same reason as the absolute proof's
+    /// cyan, on the trip back.
+    @Test(.enabled(if: SoftProof(.genericCMYK).destination.isUsable))
+    func theSimulatedPaperIsThePressProfilesMediaWhite() throws {
+        let icc = [UInt8](ICCProfile.genericCMYK.data)
+        func word(_ at: Int) -> Int { Int(icc[at]) << 24 | Int(icc[at + 1]) << 16 | Int(icc[at + 2]) << 8 | Int(icc[at + 3]) }
+        let entry = try #require((0..<word(128)).map { 132 + $0 * 12 }.first {
+            String(bytes: icc[$0..<($0 + 4)], encoding: .ascii) == "wtpt"
+        })
+        let xyz = (0..<3).map { Double(Int32(bitPattern: UInt32(word(word(entry + 4) + 8 + $0 * 4)))) / 65536 }
+        let bradford = [[0.8951, 0.2664, -0.1614], [-0.7502, 1.7135, 0.0367], [0.0389, -0.0685, 1.0296]]
+        let inverse = [[0.9869929, -0.1470543, 0.1599627], [0.4323053, 0.5183603, 0.0492912],
+                       [-0.0085287, 0.0400428, 0.9684867]]
+        func times(_ m: [[Double]], _ v: [Double]) -> [Double] { m.map { $0[0] * v[0] + $0[1] * v[1] + $0[2] * v[2] } }
+        let fromWhite = times(bradford, [0.9642, 1, 0.8249]), toWhite = times(bradford, [0.95047, 1, 1.08883])
+        let cone = times(bradford, xyz).enumerated().map { $0.element * toWhite[$0.offset] / fromWhite[$0.offset] }
+        let linear = times([[3.2404542, -1.5371385, -0.4985314], [-0.9692660, 1.8760108, 0.0415560],
+                            [0.0556434, -0.2040259, 1.0572252]], times(inverse, cone))
+        let paper = linear.map { c in (c <= 0.0031308 ? c * 12.92 : 1.055 * pow(c, 1 / 2.4) - 0.055) * 255 }
+        let shown = mean(flat(.white).softProofed(SoftProof(.genericCMYK, simulatesPaper: true)))
+        for (got, want) in zip([shown.r, shown.g, shown.b], paper) {
+            #expect(abs(got - want) <= 3, "the paper shows as \(shown) where its media white is \(paper)")
         }
     }
 }

@@ -164,6 +164,60 @@ struct SessionRecorderWriterTests {
         #expect(audioRange.duration.seconds > 0.2)
     }
 
+    /// A slow gray gradient over three encoded codes on a wide-gamut canvas.
+    private final class WideGradient: Sketch {
+        override var colorOutput: ColorOutput { .wide }
+        override var canvasSize: CanvasSize { .size(1024, 16) }
+        override func draw() {
+            background(.black)
+            noStroke()
+            for x in 0..<1024 {
+                fill(Color(white: 0.200 + 0.012 * Double(x) / 1023))
+                drawRect(Double(x), 0, 1, 16)
+            }
+        }
+    }
+
+    /// A recording of a wide window is dithered as it is quantized, as an
+    /// export is: the gradient lands on hundreds of short runs in the take,
+    /// where a conversion to eight bits left it three bands (measured
+    /// 2026-10-11 on the export's wide clip, which took the same route).
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aWideTakeIsDithered() async throws {
+        let sketch = WideGradient()
+        let frame = try OllinApp.image(of: sketch)
+        let recorder = SessionRecorder(audio: .none, codec: .proRes422)
+        sketch.extend(recorder)
+        recorder.setup(sketch)
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ollin-recorder-wide-\(UInt32.random(in: 0..<UInt32.max)).mov")
+        defer { try? FileManager.default.removeItem(at: url) }
+        recorder.start(to: url)
+        try #require(recorder.isRecording)
+        var fed = 0
+        for _ in 0..<1000 {
+            if recorder.elapsed >= 0.4 && fed >= 20 { break }
+            recorder.frameRendered(sketch, image: frame)
+            fed += 1
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        _ = await withCheckedContinuation { done in recorder.stop { done.resume(returning: $0) } }
+
+        let generator = AVAssetImageGenerator(asset: AVURLAsset(url: url))
+        let still = try await generator.image(at: CMTime(value: 1, timescale: 10)).image
+        let context = try #require(CGContext(data: nil, width: still.width, height: still.height,
+                                             bitsPerComponent: 8, bytesPerRow: still.width * 4,
+                                             space: CGColorSpace(name: CGColorSpace.displayP3)!,
+                                             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        context.draw(still, in: CGRect(x: 0, y: 0, width: still.width, height: still.height))
+        let bytes = try #require(context.data).bindMemory(to: UInt8.self, capacity: still.width * still.height * 4)
+        var runs = 1
+        for x in 1..<still.width where bytes[(8 * still.width + x) * 4] != bytes[(8 * still.width + x - 1) * 4] {
+            runs += 1
+        }
+        #expect(runs > 100, "the wide take's gradient lands on \(runs) runs")
+    }
+
     @Test func aCanvasSizeChangeFinishesTheFileCleanly() async throws {
         let sketch = Still()
         let recorder = SessionRecorder(audio: .none)

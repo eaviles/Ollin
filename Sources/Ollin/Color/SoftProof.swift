@@ -46,7 +46,8 @@ public struct SoftProof: Sendable, Hashable {
     public var intent: RenderingIntent
     /// Show the paper's own color rather than remapping it to white. Off by
     /// default: it is the honest picture of cream or newsprint stock, and it
-    /// looks wrong until you are expecting it.
+    /// looks wrong until you are expecting it. An `.absolute` proof shows the
+    /// paper either way.
     public var simulatesPaper: Bool
 
     public init(_ destination: ICCProfile, from source: ICCProfile = .sRGB,
@@ -59,8 +60,9 @@ public struct SoftProof: Sendable, Hashable {
 
     /// The intent the trip back to the screen runs under. Absolute is what
     /// keeps the paper's own color in the picture; relative is what maps it
-    /// back to white.
-    var returnIntent: RenderingIntent { simulatesPaper ? .absolute : .relative }
+    /// back to white. An absolute proof keeps it whatever `simulatesPaper`
+    /// says, since not remapping white is what that intent is.
+    var returnIntent: RenderingIntent { simulatesPaper || intent == .absolute ? .absolute : .relative }
 
     /// Whether both ends carry usable profile bytes.
     var isUsable: Bool { source.isUsable && destination.isUsable }
@@ -92,8 +94,10 @@ final class ProofTransform: @unchecked Sendable {
     let outputChannels: Int
 
     init?(_ proof: SoftProof, role: ProofRole) {
+        // The source is a screen at both ends of the trip, so its white is the
+        // one the eye is adapted to (`ICCProfile.colorSyncProfileAsScreen`).
         guard proof.isUsable,
-              let source = proof.source.colorSyncProfile,
+              let source = proof.source.colorSyncProfileAsScreen,
               let destination = proof.destination.colorSyncProfile else { return nil }
 
         func step(_ profile: ColorSyncProfile, _ tag: Unmanaged<CFString>?,

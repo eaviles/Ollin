@@ -239,9 +239,12 @@ struct GainMapExportTests {
             source, 0, kCGImageAuxiliaryDataTypeISOGainMap) as? [CFString: Any]
         #expect(iso != nil, "the map should be readable as the standard one")
 
+        // Written at four times the frame's size, so its color, which the file
+        // keeps at half resolution, is every frame pixel's own.
         let description = try #require(iso?[kCGImageAuxiliaryDataInfoDataDescription] as? [CFString: Any])
-        #expect(description["Width" as CFString] as? Int == image.width)
-        #expect(description["Height" as CFString] as? Int == image.height)
+        let scale = GainMap.mapScale(width: image.width, height: image.height)
+        #expect(description["Width" as CFString] as? Int == image.width * scale)
+        #expect(description["Height" as CFString] as? Int == image.height * scale)
         try? FileManager.default.removeItem(at: url)
     }
 

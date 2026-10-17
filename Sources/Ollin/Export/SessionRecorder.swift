@@ -483,12 +483,18 @@ private final class RecorderWriter: @unchecked Sendable {
         var pixelBuffer: CVPixelBuffer?
         CVPixelBufferPoolCreatePixelBuffer(nil, pool, &pixelBuffer)
         guard let buffer = pixelBuffer else { return }
-        // A wide-gamut frame is drawn into a Display P3 buffer, so the colors
-        // it named outside sRGB survive the trip.
+        // A wide-gamut frame arrives as half floats in linear Display P3 and is
+        // quantized into the buffer with the 8-bit present's dither, so a slow
+        // gradient stays smooth and the colors it named outside sRGB survive.
+        // Any other frame is drawn into the buffer, an 8-bit one copied.
         let space = output == .wide
             ? CGColorSpace(name: CGColorSpace.displayP3)! : CGColorSpace(name: CGColorSpace.sRGB)!
         CVPixelBufferLockBaseAddress(buffer, [])
-        if let context = CGContext(data: CVPixelBufferGetBaseAddress(buffer),
+        let filled = output == .wide && grab.image.width == width && grab.image.height == height
+            && CVPixelBufferGetBaseAddress(buffer).map {
+                FrameBytes.fillEightBit($0, bytesPerRow: CVPixelBufferGetBytesPerRow(buffer), from: grab.image)
+            } == true
+        if !filled, let context = CGContext(data: CVPixelBufferGetBaseAddress(buffer),
                                    width: width, height: height,
                                    bitsPerComponent: 8,
                                    bytesPerRow: CVPixelBufferGetBytesPerRow(buffer),

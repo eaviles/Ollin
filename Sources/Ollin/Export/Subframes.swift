@@ -177,7 +177,7 @@ extension OllinApp {
                                     drawSeconds: drawSeconds)
                 if i == shutter.count - 1 {
                     image = renderer.displayImage(from: rendered.buffer, width: width, height: height,
-                                                  transparent: sketch.drawer.hasTransparentBackground)
+                                                  alpha: .file(transparent: sketch.drawer.hasTransparentBackground))
                 }
                 return false
             }

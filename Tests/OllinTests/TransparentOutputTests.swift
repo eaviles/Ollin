@@ -5,10 +5,10 @@ import Testing
 @testable import Ollin
 
 /// A see-through canvas (`background(.clear)`) leaves the file see-through: a
-/// still carries the frame's coverage as its alpha, premultiplied the way an
-/// 8-bit image with alpha is read, and a clip through a codec that keeps an
-/// alpha channel (ProRes 4444, HEVC with alpha) composites over whatever it is
-/// laid on. An opaque canvas is untouched, tag and bytes.
+/// still carries the frame's coverage as its alpha beside the color as drawn,
+/// the form a PNG stores, and a clip through a codec that keeps an alpha
+/// channel (ProRes 4444, HEVC with alpha) composites over whatever it is laid
+/// on. An opaque canvas is untouched, tag and bytes.
 @Suite
 @MainActor
 struct TransparentOutputTests {
@@ -57,7 +57,7 @@ struct TransparentOutputTests {
 
     @Test func aClearCanvasExportsItsCoverageAsAlpha() throws {
         let image = try #require(render(ground: .clear))
-        #expect(image.alphaInfo == .premultipliedFirst)
+        #expect(image.alphaInfo == .first)
         let corner = stored(image, x: 4, y: 4)
         #expect(corner.a == 0)
         #expect(corner.r == 0 && corner.g == 0 && corner.b == 0)
@@ -73,16 +73,14 @@ struct TransparentOutputTests {
         #expect(corner.r == 255 && corner.g == 255 && corner.b == 255)
     }
 
-    /// A half-covered pixel premultiplies the *encoded* color, the way a reader
-    /// divides it back out: the red byte is the alpha byte, not the sRGB encode
-    /// of half of linear red.
-    @Test func halfCoverIsPremultipliedInTheEncodedDomain() throws {
+    /// A half-covered pixel stores the color that was drawn beside its
+    /// coverage: the red byte is full red, not the sRGB encode of half of
+    /// linear red, and not the coverage's share of it.
+    @Test func halfCoverStoresTheColorAsDrawn() throws {
         let image = try #require(render(ground: .clear, ink: Color(red: 1, green: 0, blue: 0, alpha: 0.5)))
         let center = stored(image, x: 64, y: 64)
         #expect(abs(center.a - 128) <= 1)
-        #expect(abs(center.r - center.a) <= 1)
-        // Divided back out, the color is the red that was drawn.
-        #expect(center.r * 255 / center.a >= 250)
+        #expect(center.r >= 254 && center.g <= 1 && center.b <= 1, "stored \(center)")
     }
 
     /// The tone map sees the straight color, so a half-covered mid gray maps to
@@ -94,19 +92,18 @@ struct TransparentOutputTests {
         let solid = stored(opaque, x: 64, y: 64)
         let half = stored(seeThrough, x: 64, y: 64)
         #expect(abs(half.a - 128) <= 1)
-        // Premultiplied by the coverage in the encoded domain: the stored byte is
-        // the opaque byte halved, within the dither and the rounding.
-        #expect(abs(half.r * 2 - solid.r) <= 3, "stored \(half.r) against opaque \(solid.r)")
+        // Stored straight: the byte is the opaque byte, within the dither.
+        #expect(abs(half.r - solid.r) <= 2, "stored \(half.r) against opaque \(solid.r)")
     }
 
     /// A background with any alpha under 1 counts; the rest of the color is the
-    /// premultiplied ground the canvas composites over.
+    /// ground the canvas composites over, stored as it was drawn.
     @Test func aTranslucentGroundIsSeeThroughToo() throws {
         let image = try #require(render(ground: Color(red: 0, green: 0, blue: 1, alpha: 0.25)))
-        #expect(image.alphaInfo == .premultipliedFirst)
+        #expect(image.alphaInfo == .first)
         let corner = stored(image, x: 4, y: 4)
         #expect(abs(corner.a - 64) <= 1)
-        #expect(abs(corner.b - 64) <= 1 && corner.r <= 1)
+        #expect(corner.b >= 254 && corner.r <= 1, "stored \(corner)")
     }
 
     /// The PNG on disk reads back with the alpha intact.
@@ -147,7 +144,7 @@ struct TransparentOutputTests {
         let sketch = Disk()
         sketch.blur = 6
         let image = try OllinApp.image(of: sketch)
-        #expect(image.alphaInfo == .premultipliedFirst)
+        #expect(image.alphaInfo == .first)
         #expect(stored(image, x: 4, y: 4).a == 0)
         #expect(stored(image, x: 64, y: 64).a == 255)
         let edge = stored(image, x: 64 + 40, y: 64)

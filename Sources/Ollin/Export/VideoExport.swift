@@ -347,6 +347,22 @@ public extension OllinApp {
                     }
                 }
                 CVPixelBufferUnlockBaseAddress(buffer, [])
+            } else if output == .wide {
+                if index == 0, frame.transparent, !codec.carriesAlpha {
+                    print("Ollin: the canvas is see-through and \(codec.rawValue) keeps no alpha channel; the file shows it over black (--codec hevcWithAlpha or proRes4444 keeps it)")
+                }
+                // A wide-gamut frame is half floats in linear Display P3, so the
+                // colors it named outside sRGB are still in it; it is quantized
+                // into the buffer here, with the 8-bit present's dither, rather
+                // than by a color conversion that rounds a gradient into bands.
+                CVPixelBufferLockBaseAddress(buffer, [])
+                if let base = CVPixelBufferGetBaseAddress(buffer) {
+                    FrameBytes.fillEightBit(base, bytesPerRow: CVPixelBufferGetBytesPerRow(buffer),
+                                            fromHalf: frame.pixels, sourceBytesPerRow: frame.bytesPerRow,
+                                            width: size.width, height: size.height, hasAlpha: frame.transparent)
+                }
+                CVPixelBufferUnlockBaseAddress(buffer, [])
+                if frame.transparent { buffer.markPremultipliedAlpha() }
             } else {
                 guard let cgImage = frame.image else {
                     throw ExportError(.unrendered, path: path, frame: index,
@@ -355,11 +371,9 @@ public extension OllinApp {
                 if index == 0, frame.transparent, !codec.carriesAlpha {
                     print("Ollin: the canvas is see-through and \(codec.rawValue) keeps no alpha channel; the file shows it over black (--codec hevcWithAlpha or proRes4444 keeps it)")
                 }
-                // A wide-gamut frame is drawn into a Display P3 buffer, so the
-                // colors it named outside sRGB survive the trip; a standard one
-                // takes the sRGB path it always did.
-                let space = output == .wide
-                    ? CGColorSpace(name: CGColorSpace.displayP3)! : CGColorSpace(name: CGColorSpace.sRGB)!
+                // A standard frame takes the sRGB path it always did. Its bytes
+                // are already dithered 8-bit, so drawing them copies them.
+                let space = CGColorSpace(name: CGColorSpace.sRGB)!
                 CVPixelBufferLockBaseAddress(buffer, [])
                 if let context = CGContext(data: CVPixelBufferGetBaseAddress(buffer),
                                            width: size.width, height: size.height,

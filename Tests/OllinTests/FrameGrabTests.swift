@@ -171,6 +171,75 @@ struct FrameGrabTests {
         return (Int(bytes[i]) + Int(bytes[i + 1]) + Int(bytes[i + 2])) / 3
     }
 
+    /// A flat field at alpha 0.2 on a see-through canvas.
+    final class Veil: Sketch {
+        var white = 0.5
+        override var canvasSize: CanvasSize { .square(64) }
+        override func draw() {
+            background(Color(white: 0, alpha: 0))
+            noStroke()
+            fill(Color(white: white, alpha: 0.2))
+            drawRect(0, 0, 64, 64)
+        }
+    }
+
+    /// A grab of a see-through canvas keeps the coverage under premultiplied
+    /// color, the form a texture shared live is read in, with the dither on
+    /// the value the byte stores: a field whose stored byte sits between two
+    /// codes averages to the fraction it asked for, and no channel exceeds the
+    /// alpha. (Measured 2026-10-11 on the export, which stored that way then:
+    /// the dither was scaled by the alpha and every pixel stored 29.)
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aGrabOfASeeThroughCanvasIsPremultipliedAndUnbiased() throws {
+        func toDisplay(_ c: Double) -> Double { c <= 0.0031308 ? c * 12.92 : 1.055 * pow(c, 1 / 2.4) - 0.055 }
+        var white = 0.5
+        for _ in 0..<80 {
+            let byte = toDisplay(Color.srgbToLinear(white)) * 0.2 * 255
+            white += byte < 28.56 ? 0.0005 : -0.0005
+        }
+        let expected = toDisplay(Color.srgbToLinear(white)) * 51
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let sketch = Veil()
+        sketch.white = white
+        let view = makeView(device, side: 64, for: sketch)
+        sketch.setCanvasSize(width: 64, height: 64)
+        let sink = Sink()
+        sink.armed = true
+        sketch.extend(sink)
+        let runner = SketchRunner(sketch: sketch, view: view, device: device)
+        runner.draw(in: view)
+        spin { !sink.images.isEmpty }
+        let image = try #require(sink.images.first)
+        #expect(image.alphaInfo == .premultipliedFirst)
+        let bytes = [UInt8](try #require(image.dataProvider?.data as Data?))
+        var sum = 0, highest = 0, alphas = Set<UInt8>()
+        for p in 0..<(image.width * image.height) {
+            let i = (p / image.width) * image.bytesPerRow + (p % image.width) * 4
+            sum += Int(bytes[i + 2])
+            highest = max(highest, Int(bytes[i]), Int(bytes[i + 1]), Int(bytes[i + 2]))
+            alphas.insert(bytes[i + 3])
+        }
+        let mean = Double(sum) / Double(image.width * image.height)
+        #expect(alphas == [51], "the coverage stored as \(alphas.sorted())")
+        #expect(highest <= 51, "a channel stored \(highest) over an alpha of 51")
+        #expect(abs(mean - expected) < 0.1, "a field asked for at \(expected) averaged \(mean)")
+
+        // White under the same coverage stores the alpha itself in every
+        // channel: the top of the range stays exact, as white does opaque.
+        sketch.white = 1
+        sink.images.removeAll()
+        runner.draw(in: view)
+        spin { !sink.images.isEmpty }
+        let whiteImage = try #require(sink.images.first)
+        let whiteBytes = [UInt8](try #require(whiteImage.dataProvider?.data as Data?))
+        var off = Set<UInt8>()
+        for p in 0..<(whiteImage.width * whiteImage.height) {
+            let i = (p / whiteImage.width) * whiteImage.bytesPerRow + (p % whiteImage.width) * 4
+            for c in 0..<4 where whiteBytes[i + c] != 51 { off.insert(whiteBytes[i + c]) }
+        }
+        #expect(off.isEmpty, "white under an alpha of 51 stored \(off.sorted())")
+    }
+
     @Test(.enabled(if: Snapshot.hasMetal))
     func theGrabIsTheFrameOnScreenAndCostsOnePass() throws {
         let device = try #require(MTLCreateSystemDefaultDevice())

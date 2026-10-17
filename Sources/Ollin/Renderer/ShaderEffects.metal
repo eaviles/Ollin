@@ -104,16 +104,32 @@ static inline float3 ollin_present_map(float3 c, float a, constant OllinPresentU
     return c;
 }
 
-// The 8-bit encode. An opaque present is `finalizeColor` as it always was. One
-// that keeps the alpha premultiplies the *encoded* values, which is how an
+// The dither on an encoded value stored under a ceiling of `top` rather than
+// 1: the reach narrows within a level of either end as `ditherEncoded`'s does,
+// so 0 and `top` stay exact, and nothing is pushed past `top`.
+static inline float3 ollin_dither_below(float3 enc, float top, float2 fragCoord) {
+    float3 reach = clamp(min(enc, top - enc) * 255.0 + 0.3, 0.0, 1.0);
+    float3 step = float3(ditherTriangle(fragCoord) * (1.0 / 255.0));
+    return clamp(enc + select(step * reach, step, reach >= 1.0), 0.0, top);
+}
+
+// The 8-bit encode. An opaque present is `finalizeColor` as it always was.
+// With the alpha kept, the dither goes on the value the byte stores, so it
+// reaches a whole level at every coverage and a flat field averages to the
+// fraction it asked for. A straight present (an export, `keepsAlpha` 2) stores
+// the encoded color as drawn beside its coverage, the form a PNG holds, so a
+// faint fill keeps every level it was drawn at. A premultiplied one (a frame
+// grab, 1) stores the encoded color scaled by the coverage, which is how an
 // 8-bit image with alpha is read (a reader divides the coverage back out of
-// the bytes as stored), so the straight color is encoded and dithered first
-// and the coverage applied after; a channel can then never exceed the alpha.
+// the bytes as stored); the coverage is quantized first and the color held
+// under it, so a channel never exceeds the alpha.
 static inline float4 ollin_present_finish(float3 c, float a, float2 fragCoord,
                                           constant OllinPresentUniforms &u) {
     if (u.keepsAlpha == 0) return finalizeColor(float4(c, 1.0), fragCoord);
-    float3 enc = ditherEncoded(linearToSrgb(c), fragCoord) * a;
-    return float4(srgbToLinear(enc), a);
+    if (u.keepsAlpha == 2) return float4(srgbToLinear(ditherEncoded(linearToSrgb(c), fragCoord)), a);
+    float stored = rint(a * 255.0) * (1.0 / 255.0);
+    float3 enc = ollin_dither_below(linearToSrgb(c) * stored, stored, fragCoord);
+    return float4(srgbToLinear(enc), stored);
 }
 
 fragment float4 ollin_present_fragment(PresentOut in [[stage_in]],
