@@ -90,6 +90,17 @@ extension Drawer {
         }
         return total
     }
+
+    /// Whether everything drawn onto `target` this frame is particles drawn as
+    /// light, or nothing at all: a pass that needs no multisampling, since a
+    /// light particle's coverage is its own, and so can be drawn single-sample.
+    func drawsOnlyLight(on target: RenderTarget) -> Bool {
+        guard !target.needsStencil, !target.needsDepth else { return false }
+        for batch in batches where batch.target === target {
+            guard batch.kind == .particles, batch.particleStyle == .light else { return false }
+        }
+        return true
+    }
 }
 
 // MARK: - What went wrong on the GPU

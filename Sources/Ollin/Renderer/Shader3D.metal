@@ -94,6 +94,16 @@ vertex ParticleLightOut ollin_particle_light_vertex(uint vid [[vertex_id]],
     float diameterTexels = pt.size * max(uniforms.pixelScale.x, uniforms.pixelScale.y);
 
     ParticleLightOut out;
+    // A particle of no size carries no light (a spray marks its unused slots
+    // this way): all six corners on one spot outside the frame, so it is gone
+    // before the rasterizer and costs nothing past this.
+    if (!(pt.size > 0.0)) {
+        out.position = float4(2.0, 2.0, 0.0, 1.0);
+        out.local = float2(0.0);
+        out.radius = 0.0;
+        out.color = float4(0.0);
+        return out;
+    }
     float2 local;
     if (diameterTexels <= 1.0) {
         // The point path: a quad one texel wide, so it covers the texel holding
@@ -129,6 +139,78 @@ fragment float4 ollin_particle_light_fragment(ParticleLightOut in [[stage_in]]) 
     // of a small disc's own area), so the coverage is scaled by the disc's area
     // over the ramp's integral, which makes the total deposit the area exactly
     // and continuous with the one-texel path at a one-texel diameter.
+    float d = sdEllipse(in.local, float2(in.radius));
+    float px = max(fwidth(d), 1e-5);
+    float coverage = clamp(0.5 - d / px, 0.0, 1.0);
+    float r2 = in.radius * in.radius;
+    coverage *= r2 / (r2 + px * px / 12.0);
+    float a = in.color.a * coverage;
+    if (a <= 0.0) { discard_fragment(); }
+    return float4(in.color.rgb, a);
+}
+
+// MARK: - GPU particles as light, single-sample
+//
+// The same light as above, drawn into a single-sample layer (an accumulator
+// whose pass holds nothing but light particles, which needs no multisampling
+// and is held in single precision). A point at or under one texel spreads its
+// area over the four texels around it in bilinear shares, (1 - |dx|)(1 - |dy|)
+// from each texel's center, which sum to one wherever the point falls, so its
+// light is kept exactly below a pixel and it lands where a multisampled one-
+// texel square would (the same box over the texel grid, without its eight-
+// sample steps). The quad reaches a sixteenth of a texel past one texel on
+// each side, so every center with a share is inside it whatever the
+// rasterizer's snapping; one at a whole texel or more has none and is
+// discarded. A disc over one texel takes the area ramp exactly as above.
+
+vertex ParticleLightOut ollin_particle_splat_vertex(uint vid [[vertex_id]],
+                                                    uint iid [[instance_id]],
+                                                    const device OllinParticle *particles [[buffer(0)]],
+                                                    constant Uniforms &uniforms [[buffer(1)]]) {
+    OllinParticle pt = particles[iid];
+    const float2 corners[6] = { float2(-1, -1), float2(1, -1), float2(1, 1),
+                                float2(-1, -1), float2(1, 1), float2(-1, 1) };
+    float2 texel = 1.0 / max(uniforms.pixelScale, float2(1e-6));
+    float radius = max(pt.size, 0.0) * 0.5;
+    float diameterTexels = pt.size * max(uniforms.pixelScale.x, uniforms.pixelScale.y);
+
+    ParticleLightOut out;
+    if (!(pt.size > 0.0)) {
+        out.position = float4(2.0, 2.0, 0.0, 1.0);
+        out.local = float2(0.0);
+        out.radius = 0.0;
+        out.color = float4(0.0);
+        return out;
+    }
+    float2 local;
+    if (diameterTexels <= 1.0) {
+        local = corners[vid] * 1.0625 * texel;
+        out.radius = 0.0;
+        float areaTexels = 0.78539816339 * diameterTexels * diameterTexels;
+        out.color = float4(pt.color.rgb, pt.color.a * areaTexels);
+    } else {
+        local = corners[vid] * (radius + max(texel.x, texel.y));
+        out.radius = radius;
+        out.color = pt.color;
+    }
+    float2 sketch = pt.position + local;
+    float2 ndc;
+    ndc.x = (sketch.x / uniforms.viewport.x) * 2.0 - 1.0;
+    ndc.y = 1.0 - (sketch.y / uniforms.viewport.y) * 2.0;
+    out.position = float4(ndc, uniforms.clipDepth, 1.0);
+    // In texels for the point path, so the fragment reads its offset from the
+    // texel's center directly; in points for the disc path, as above.
+    out.local = out.radius <= 0.0 ? corners[vid] * 1.0625 : local;
+    return out;
+}
+
+fragment float4 ollin_particle_splat_fragment(ParticleLightOut in [[stage_in]]) {
+    if (in.radius <= 0.0) {
+        float2 share = max(1.0 - abs(in.local), 0.0);
+        float a = in.color.a * share.x * share.y;
+        if (a <= 0.0) { discard_fragment(); }
+        return float4(in.color.rgb, a);
+    }
     float d = sdEllipse(in.local, float2(in.radius));
     float px = max(fwidth(d), 1e-5);
     float coverage = clamp(0.5 - d / px, 0.0, 1.0);

@@ -33,7 +33,9 @@ struct LightAccumulationTests {
     }
 
     /// Length sampling shares a pass's points by length times weight, at least
-    /// one per line; per-line sampling gives every line the same count.
+    /// one per line; per-line sampling gives a line its weight's share of the
+    /// count, at least one and at most all of it; a line with no light gets no
+    /// points under either, and takes no part in the sharing.
     @Test func lineSprayPointCounts() {
         let lines = [
             SprayLine(from: .zero, to: Vector3(1, 0, 0)),
@@ -44,6 +46,90 @@ struct LightAccumulationTests {
         #expect(LineSpray.pointCounts(for: lines, sampling: .perLine(25)) == [25, 25, 25, 25])
         // Weighted lengths 1, 3, 2, 0 over a hundred points: 16, 50, 33, and one.
         #expect(LineSpray.pointCounts(for: lines, sampling: .byLength(pointsPerPass: 100)) == [16, 50, 33, 1])
+
+        let shares = [1, 0.5, 0.02, 0, 7].map {
+            SprayLine(from: .zero, to: Vector3(1, 0, 0), weight: $0)
+        }
+        #expect(LineSpray.pointCounts(for: shares, sampling: .perLine(25)) == [25, 13, 1, 1, 25])
+
+        var withDark = lines
+        withDark.insert(SprayLine(from: .zero, to: Vector3(0, 9, 0), light: .zero), at: 1)
+        #expect(LineSpray.pointCounts(for: withDark, sampling: .perLine(25)) == [25, 0, 25, 25, 25])
+        #expect(LineSpray.pointCounts(for: withDark, sampling: .byLength(pointsPerPass: 100)) == [16, 0, 50, 33, 1],
+                "the dark line's length takes none of the pass")
+        let lightAtOneEnd = SprayLine(from: .zero, to: Vector3(1, 0, 0), light: .zero,
+                                      endLight: SIMD3(0, 0, 1))
+        #expect(LineSpray.pointCounts(for: [lightAtOneEnd], sampling: .perLine(25)) == [25],
+                "light at one end is light")
+    }
+
+    /// Per-line sampling packs the lit lines' records to the front and pads to
+    /// the lines given; each record carries its count, and one over it.
+    @Test func perLineRecordsCarryTheirCountsAndSkipTheDark() {
+        let lit = SprayLine(from: .zero, to: Vector3(1, 0, 0), light: SIMD3(repeating: 1), weight: 0.25)
+        let dark = SprayLine(from: .zero, to: Vector3(0, 1, 0), light: .zero)
+        let lines = [dark, lit, dark]
+        let sampling = LineSpray.Sampling.perLine(300)
+        let counts = LineSpray.pointCounts(for: lines, sampling: sampling)
+        let records = LineSpray.records(for: lines, counts: counts, sampling: sampling)
+        #expect(records.count == 3, "the records run on to the lines given")
+        #expect(records[0].end.w == 75 && abs(records[0].start.w - 1 / 75) < 1e-7,
+                "the lit line leads, with its share of the slots and one over it")
+        #expect(records[1].end.w == 0 && records[2].end.w == 0)
+        #expect(LineSpray.pointTable(counts: counts, sampling: sampling).table == nil,
+                "per-line sampling needs no table")
+        #expect(LineSpray.pointTable(counts: counts, sampling: sampling).points == 300,
+                "one lit line's slots, and none for the dark ones")
+    }
+
+    /// A piece with no light costs nothing: a scene of three pieces where two
+    /// are dark dispatches the one lit piece's points and draws its picture to
+    /// the byte, under either sampling.
+    @Test(.enabled(if: Snapshot.hasMetal),
+          arguments: [LineSpray.Sampling.perLine(300), .byLength(pointsPerPass: 900)])
+    func aDarkPieceCostsNothing(sampling: LineSpray.Sampling) throws {
+        let alone = PieceSpraySketch()
+        alone.sampling = sampling
+        let one = try OllinApp.image(of: alone, frame: 4)
+        let padded = PieceSpraySketch()
+        padded.sampling = sampling
+        padded.dark = 2
+        let three = try OllinApp.image(of: padded, frame: 4)
+        #expect(padded.spray.pointsInAPass == alone.spray.pointsInAPass,
+                "three pieces dispatch \(padded.spray.pointsInAPass) points, one \(alone.spray.pointsInAPass)")
+        #expect(printedLight(of: one, exposure: 40) > 0.1, "the lit piece drew")
+        #expect(pixelsEqual(one, three), "the dark pieces changed the picture")
+    }
+
+    /// A weight below 1 under per-line sampling draws its share of the points
+    /// and the same light: a quarter of the slots carry four times the light
+    /// each, and the slots past them deposit nothing.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aWeightDrawsAShareOfThePointsAtTheSameLight() throws {
+        let full = PieceSpraySketch()
+        let all = printedLight(of: try OllinApp.image(of: full, frame: 6), exposure: 40)
+        let quarter = PieceSpraySketch()
+        quarter.weight = 0.25
+        let share = printedLight(of: try OllinApp.image(of: quarter, frame: 6), exposure: 40)
+        #expect(all > 0.1)
+        #expect(abs(share / all - 1) < 0.03, "a quarter of the points developed \(share / all) of the light")
+    }
+
+    /// A spray whose pieces all go dark adds passes of no light, so its picture
+    /// goes dark rather than holding the last one it had.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aSprayThatGoesDarkDevelopsDark() throws {
+        let lit = PieceSpraySketch()
+        lit.dark = 2
+        let before = try OllinApp.image(of: lit, frame: 2)
+        #expect(printedLight(of: before, exposure: 40) > 0.1, "the piece drew while it was lit")
+        let fading = PieceSpraySketch()
+        fading.dark = 2
+        fading.darkFrom = 3
+        let after = try OllinApp.image(of: fading, frame: 6)
+        #expect(pixels(of: after).enumerated().allSatisfy { $0.offset % 4 == 3 || $0.element <= 1 },
+                "the dark scene still shows light")
+        #expect(fading.spray.passes == 4 * fading.spray.passesPerFrame, "the dark frames still add their passes")
     }
 
     /// A spray line's optional end values default to the start's, and the tone
@@ -274,6 +360,16 @@ struct LightAccumulationTests {
         #expect(LineSpray.quadPointCounts(for: quads, sampling: .perLine(25)) == [25, 25, 25, 25])
         // Weighted areas 1, 4, 3, 0 over a hundred points: 12, 50, 37, and one.
         #expect(LineSpray.quadPointCounts(for: quads, sampling: .byLength(pointsPerPass: 100)) == [12, 50, 37, 1])
+
+        // A dark quad takes no points and no share; a weight is a share of n.
+        let dark = SprayQuad(corner: .zero, edge1: Vector3(5, 0, 0), edge2: Vector3(0, 5, 0), light: .zero)
+        let half = SprayQuad(corner: .zero, edge1: Vector3(1, 0, 0), edge2: Vector3(0, 1, 0), weight: 0.5)
+        #expect(LineSpray.quadPointCounts(for: [dark, half, quads[1]], sampling: .perLine(25)) == [0, 13, 25])
+        #expect(LineSpray.quadPointCounts(for: [quads[0], dark, quads[1]], sampling: .byLength(pointsPerPass: 100))
+                == [20, 0, 80])
+        let records = LineSpray.quadRecords(for: [dark, half], counts: [0, 13], sampling: .perLine(25))
+        #expect(records.count == 2 && records[0].edge1.w == 13 && records[1].edge1.w == 0,
+                "the lit quad leads with its count, the dark one leaves only padding")
     }
 
     @Test func sprayQuadLightAndToneAreOneNumber() {
@@ -292,8 +388,9 @@ struct LightAccumulationTests {
                               light: SIMD3(repeating: 2))
         let large = SprayQuad(corner: .zero, edge1: Vector3(10, 0, 0), edge2: Vector3(0, 10, 0),
                               light: SIMD3(repeating: 2))
-        let counts = LineSpray.quadPointCounts(for: [small, large], sampling: .byLength(pointsPerPass: 1010))
-        let records = LineSpray.quadRecords(for: [small, large], counts: counts)
+        let sampling = LineSpray.Sampling.byLength(pointsPerPass: 1010)
+        let counts = LineSpray.quadPointCounts(for: [small, large], sampling: sampling)
+        let records = LineSpray.quadRecords(for: [small, large], counts: counts, sampling: sampling)
         for (record, count) in zip(records, counts) {
             #expect(abs(Double(record.corner.w) - 1 / Double(count)) < 1e-6,
                     "each point carries one \(count)th of its quad's light")
@@ -307,7 +404,7 @@ struct LightAccumulationTests {
         let plain = SprayQuad(corner: .zero, edge1: Vector3(1, 0, 0), edge2: Vector3(0, 1, 0))
         let read = SprayQuad(corner: .zero, edge1: Vector3(1, 0, 0), edge2: Vector3(0, 1, 0),
                              pictureBounds: Rectangle(x: 0.25, y: 0.5, width: 0.25, height: 0.5))
-        let records = LineSpray.quadRecords(for: [plain, read], counts: [1, 1])
+        let records = LineSpray.quadRecords(for: [plain, read], counts: [1, 1], sampling: .perLine(1))
         #expect(records[0].texture.z == 0 && records[0].texture.w == 0,
                 "a patch of no size is what tells the kernel to read no picture")
         #expect(records[1].texture == SIMD4<Float>(0.25, 0.5, 0.25, 0.5))
@@ -382,21 +479,22 @@ struct LightAccumulationTests {
     /// An aperture moves where a sample lands, never how much light it
     /// carries: every sample deposits its line's share whatever hole it went
     /// through, so a hexagon, a triangle and the round ball print the same
-    /// total light. Read below the print's ceiling, or a shape that crowds its
-    /// middle clips and reads short of one that does not.
+    /// total light, the dot's 3 in each channel. Read from the mean itself,
+    /// drawn as it is rather than printed: a print's 8-bit steps cost a shape
+    /// that spreads into a faint rim a few percent the round ball keeps.
     @Test(.enabled(if: Snapshot.hasMetal))
     func theApertureShapesTheLightWithoutChangingIt() throws {
         func ink(_ aperture: Aperture) throws -> Double {
             let sketch = AperturePointSketch()
             sketch.aperture = aperture
-            sketch.printExposure = 1.2
-            return linearSum(of: try OllinApp.image(of: sketch, frame: 6))
+            sketch.drawsTheMean = true
+            let d = pixels(of: try OllinApp.image(of: sketch, frame: 6))
+            return (0 ..< d.count).reduce(0) { $1 % 4 == 3 ? $0 : $0 + linear(d[$1]) }
         }
-        let round = try ink(.round)
-        let six = try ink(.blades(6))
-        let three = try ink(.blades(3))
-        #expect(abs(six - round) < round * 0.03, "round \(round), six blades \(six)")
-        #expect(abs(three - round) < round * 0.03, "round \(round), three blades \(three)")
+        for aperture in [Aperture.round, .blades(6), .blades(3)] {
+            let light = try ink(aperture)
+            #expect(abs(light / 9 - 1) < 0.02, "\(aperture) carried \(light / 9) of the dot's light")
+        }
     }
 
     /// The blades draw their own shape, and turning them turns it. A triangle
@@ -443,7 +541,7 @@ struct LightAccumulationTests {
             let sketch = AperturePointSketch()
             sketch.aperture = aperture
             sketch.printExposure = 1.2
-            return linearSum(of: try OllinApp.image(of: sketch, frame: 6))
+            return printedLight(of: try OllinApp.image(of: sketch, frame: 6), exposure: 1.2)
         }
         func lean(_ aperture: Aperture) throws -> Double {
             let sketch = AperturePointSketch()
@@ -498,7 +596,7 @@ struct LightAccumulationTests {
         #expect(moving.spray.passes == moving.spray.passesPerFrame, "moved lines restart the average")
         #expect(moving.spray.ringDepth <= MetalRenderer.maxFramesInFlight && moving.spray.ringDepth >= 2,
                 "the records ride a ring: \(moving.spray.ringDepth) buffers")
-        #expect(moving.spray.pointTable === moving.tableAtFirstDraw, "the point table is kept while the counts hold")
+        #expect(moving.spray.pointTable == nil, "per-line sampling keeps no point table at all")
         // The sixth frame's lines sit 1.0 unit to the right of the still scene's,
         // about 14 px through this camera and still on the canvas, so the light's
         // centroid has moved that far: the rewrite reached the GPU. A slot the
@@ -650,6 +748,19 @@ struct LightAccumulationTests {
             sum += (linear(d[i]) + linear(d[i + 1]) + linear(d[i + 2])) / 3
         }
         return sum
+    }
+
+    /// The light a developed print holds, its three channels summed: the print
+    /// writes Reinhard's x / (1 + x) as the display value itself, so a byte is
+    /// read back through the curve and the exposure divided out.
+    private func printedLight(of image: CGImage, exposure: Double) -> Double {
+        let d = pixels(of: image)
+        var sum = 0.0
+        for i in 0 ..< d.count where i % 4 != 3 {
+            let m = min(Double(d[i]) / 255, 0.998)
+            sum += m / (1 - m)
+        }
+        return sum / exposure
     }
 
     private func meanLinear(of image: CGImage) -> Double {
@@ -938,6 +1049,42 @@ private final class SpraySketch: Sketch {
     }
 }
 
+/// One lit piece of light with `dark` pieces of none around it, the lit one
+/// carrying `weight`; from `darkFrom` on, every piece is dark.
+@MainActor
+private final class PieceSpraySketch: Sketch {
+    var spray: LineSpray!
+    var sampling: LineSpray.Sampling = .perLine(300)
+    var dark = 0
+    var weight = 1.0
+    var darkFrom: Int?
+    override var canvasSize: CanvasSize { .square(96) }
+
+    private func pieces(frame: Int) -> [SprayLine] {
+        let none = SprayLine(from: Vector3(0, 1, 0), to: Vector3(1, 1, 0), light: .zero)
+        if let darkFrom, frame >= darkFrom { return Array(repeating: none, count: dark + 1) }
+        let lit = SprayLine(from: Vector3(-1, -0.5, 0), to: Vector3(1, 0.5, 0.5),
+                            light: SIMD3(repeating: 0.5), weight: weight)
+        // One dark piece ahead of the lit one, so packing has a gap to close.
+        let before = (dark + 1) / 2
+        return Array(repeating: none, count: before) + [lit] + Array(repeating: none, count: dark - before)
+    }
+
+    override func setup() {
+        randomSeed(7)
+        spray = makeLineSpray(pieces(frame: 0), sampling: sampling, passesPerFrame: 3,
+                              bokeh: Bokeh(focalDistance: 8, strength: 0.05, minSize: 0.02))
+    }
+
+    override func draw() {
+        background(.black)
+        camera(.perspective(eye: Vector3(0, 0, 8), target: .zero, fieldOfView: .pi / 4))
+        spray.setLines(pieces(frame: frameCount - 1))
+        drawLineSpray(spray)
+        drawImage(spray.developed(exposure: 40).image, 0, 0)
+    }
+}
+
 /// The ring of twelve lines, rebuilt every draw: shifted along x by `shift(frame)`,
 /// the even ones stretched by `stretch(frame)` (only some, so the shares under
 /// length sampling move), then handed to `setLines`. With both at their rest
@@ -1032,6 +1179,8 @@ private final class AperturePointSketch: Sketch {
     var spray: LineSpray!
     var aperture: Aperture = .round
     var printExposure = 6.0
+    /// Draw the running mean as it is, linear light, rather than its print.
+    var drawsTheMean = false
     override var canvasSize: CanvasSize { .square(96) }
 
     override func setup() {
@@ -1047,6 +1196,6 @@ private final class AperturePointSketch: Sketch {
         background(.black)
         camera(.perspective(eye: Vector3(0, 0, 8), target: .zero, fieldOfView: .pi / 4))
         drawLineSpray(spray)
-        drawImage(spray.developed(exposure: printExposure).image, 0, 0)
+        drawImage(drawsTheMean ? spray.image : spray.developed(exposure: printExposure).image, 0, 0)
     }
 }

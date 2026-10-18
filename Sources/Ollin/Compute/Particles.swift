@@ -17,7 +17,10 @@ import COllinShaders   // OllinParticle (the GPU particle struct, shared with th
 ///   dot that straddles a pixel corner to more than twice the light of one that
 ///   lands on a center. A disc at or under one pixel takes a cheap path: its quad
 ///   is a single texel, so a million one-pixel points cost a million fragments
-///   rather than twenty-five million.
+///   rather than twenty-five million. Drawn into an `Accumulator` that holds
+///   nothing else, the pass is single-sample and such a disc spreads its light
+///   over the four pixels around it in bilinear shares, which sum to all of it
+///   wherever it falls.
 public enum ParticleStyle: Sendable, Equatable {
     /// Anti-aliased ink over a ground: perceptual coverage, sRGB color.
     case marks

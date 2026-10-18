@@ -276,41 +276,84 @@ struct FrameInvariantTests {
 
     // MARK: Depth of field from light
 
-    /// The total light of a developed spray, the Reinhard print unrolled and the
-    /// exposure divided out.
+    /// The light of a developed spray by pixel, the Reinhard print unrolled and
+    /// the exposure divided out. The print writes the curve's output as the
+    /// display value itself, with no sRGB step, so a byte is read back through
+    /// the curve alone.
+    private func sprayLights(_ f: Frame, exposure: Double) -> [Double] {
+        var lights = [Double](repeating: 0, count: f.width * f.height)
+        for y in 0..<f.height {
+            for x in 0..<f.width {
+                var v = 0.0
+                for c in 0..<3 {
+                    let m = min(Double(f.byte(x, y, c)) / 255, 0.998)
+                    v += m / (1 - m)
+                }
+                lights[y * f.width + x] = v / exposure
+            }
+        }
+        return lights
+    }
+
+    /// The total light of a developed spray, its three channels summed.
     private func sprayLight(_ sketch: SprayInvariantProbe) throws -> (total: Double, frame: Frame) {
         let f = try render(sketch, frame: 7)
-        var sum = 0.0
-        for i in 0..<(f.width * f.height * 4) where i % 4 != 3 {
-            let v = min(toLinear(Double(f.bytes[i]) / 255), 0.998)
-            sum += v / (1 - v)
-        }
-        return (sum / sketch.exposure, f)
+        return (sprayLights(f, exposure: sketch.exposure).reduce(0, +), f)
     }
 
     /// Every point carries its share of its line's light, wherever the lens throws it:
-    /// a dot's developed light is the same at any point count when it is out of focus,
-    /// and the same in focus as out of it.
+    /// a white dot of light 1 a pass develops 1 in each channel whatever its point
+    /// count, in focus and out of it. A frame's pass piles every point of a dot in
+    /// focus onto four pixels, so it holds sixteen thousand of them only in single
+    /// precision. Each dot is printed at an exposure that keeps it off the 8-bit
+    /// floor (a spread disc's faint rim) and the ceiling (a focused pixel's peak).
     @Test(.enabled(if: Snapshot.hasMetal))
     func aSprayedDotKeepsItsLightAtAnyCountAndFocus() throws {
         let counts = [100, 1_000, 16_000]
-        var defocused: [Double] = []
-        var focused: [Double] = []
         for points in counts {
-            defocused.append(try sprayLight(SprayInvariantProbe.make(points: points, focus: 2, exposure: 2)).total)
-            focused.append(try sprayLight(SprayInvariantProbe.make(points: points, focus: 8, exposure: 2)).total)
+            let defocused = try sprayLight(SprayInvariantProbe.make(points: points, focus: 2, exposure: 32)).total
+            let focused = try sprayLight(SprayInvariantProbe.make(points: points, focus: 8, exposure: 2)).total
+            #expect(abs(defocused / 3 - 1) < 0.02,
+                    "out of focus, \(points) points developed \(defocused / 3) of the dot's light")
+            #expect(abs(focused / 3 - 1) < 0.02,
+                    "in focus, \(points) points developed \(focused / 3) of the dot's light")
         }
-        let mean = defocused.reduce(0, +) / Double(defocused.count)
-        #expect(mean > 0.05, "the defocused dot developed \(mean)")
-        for (points, light) in zip(counts, defocused) {
-            #expect(abs(light / mean - 1) < 0.05,
-                    "out of focus, \(points) points developed \(light) against the counts' mean \(mean)")
-        }
-        withKnownIssue("an in-focus dot develops 2.6 times its defocused light at 100 points and 0.03 times at 16,000, measured 2026-10-09") {
-            for (points, (inFocus, outOfFocus)) in zip(counts, zip(focused, defocused)) {
-                #expect(abs(inFocus / outOfFocus - 1) < 0.05,
-                        "at \(points) points the dot in focus developed \(inFocus / outOfFocus) of itself out of focus")
+    }
+
+    /// A dot in focus smaller than a pixel keeps all of its light wherever it falls
+    /// on the pixel grid, and lands where it falls: walked across a pixel in eighths,
+    /// it develops one total at every step, on no more than the four pixels around
+    /// it, with its light's centroid on the dot.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aSprayedDotKeepsItsLightWhereverItFallsOnAPixel() throws {
+        // 96 pixels a unit of tangent at this camera, so a pixel at the dot's
+        // distance of 8 is 8 / 96 of a world unit.
+        let pixel = 8.0 / 96
+        for step in 0...8 {
+            let shift = Double(step) / 8
+            let probe = SprayInvariantProbe.make(points: 1_000, focus: 8, exposure: 2)
+            probe.offset = Vector2(shift * pixel, shift * 0.5 * pixel)
+            let f = try render(probe, frame: 7)
+            let lights = sprayLights(f, exposure: 2)
+            let total = lights.reduce(0, +)
+            #expect(abs(total / 3 - 1) < 0.01, "a dot \(shift) px along developed \(total / 3) of its light")
+            let lit = lights.indices.filter { lights[$0] > 0.002 * total }
+            #expect(lit.count <= 4, "a dot \(shift) px along lit \(lit.count) pixels")
+            var cx = 0.0, cy = 0.0, held = 0.0
+            for i in lit {
+                cx += lights[i] * (Double(i % f.width) + 0.5)
+                cy += lights[i] * (Double(i / f.width) + 0.5)
+                held += lights[i]
             }
+            // Over the lit pixels' own light: the print's faint noise elsewhere
+            // is a fraction of a percent of the total, which at 96 pixels from
+            // the corner is a fifth of a pixel.
+            cx /= held
+            cy /= held
+            // The canvas's center is a pixel corner; y runs down the canvas while
+            // the world's runs up.
+            #expect(abs(cx - (96 + shift)) < 0.02 && abs(cy - (96 - shift * 0.5)) < 0.02,
+                    "a dot \(shift) px along centered at (\(cx), \(cy))")
         }
     }
 
@@ -328,16 +371,11 @@ struct FrameInvariantTests {
                                              distance: distance, strength: 0.25,
                                              aperture: .blades(count: 48, rotation: 0))
         let f = try sprayLight(probe).frame
+        let lights = sprayLights(f, exposure: exposure)
         var weight = 0.0, sx = 0.0, sy = 0.0
-        var lights = [Double](repeating: 0, count: f.width * f.height)
         for y in 0..<f.height {
             for x in 0..<f.width {
-                var v = 0.0
-                for c in 0..<3 {
-                    let l = min(toLinear(Double(f.byte(x, y, c)) / 255), 0.998)
-                    v += l / (1 - l)
-                }
-                lights[y * f.width + x] = v
+                let v = lights[y * f.width + x]
                 weight += v; sx += v * Double(x); sy += v * Double(y)
             }
         }
@@ -769,6 +807,8 @@ private final class SprayInvariantProbe: Sketch {
     var distance = 8.0
     var strength = 0.1
     var aperture: Aperture = .round
+    /// Where the dot sits off the camera's axis, across the canvas, world units.
+    var offset = Vector2.zero
     private var spray: LineSpray!
 
     static func make(points: Int, focus: Double, exposure: Double, distance: Double = 8,
@@ -787,7 +827,7 @@ private final class SprayInvariantProbe: Sketch {
 
     override func setup() {
         randomSeed(7)
-        let dot = Vector3(0, 0, -distance)
+        let dot = Vector3(offset.x, offset.y, -distance)
         spray = makeLineSpray([SprayLine(from: dot, to: dot, light: SIMD3(repeating: 1))],
                               sampling: .perLine(points), passesPerFrame: 4,
                               bokeh: Bokeh(focalDistance: focus, strength: strength,

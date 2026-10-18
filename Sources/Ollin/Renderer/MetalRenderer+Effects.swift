@@ -235,17 +235,39 @@ extension MetalRenderer {
                 acc.sumLayer.texture = slot.sum
                 continue
             }
-            let storage = attachmentStorage(for: drawer, target: target)
-            guard let tex = acquireTargetTextures(width: pw, height: ph, pooled: pooled,
-                                                  storage: storage) else { continue }
+            // A pass of light particles alone needs no multisampling (their
+            // coverage is their own) and draws straight into a single-sample
+            // layer in single precision: a pixel that many faint points pile
+            // onto in one frame keeps every one of them, which half float does
+            // not, and the layer is still a quarter of the memory of the
+            // multisampled one, with none of its per-sample blend. Every Apple
+            // GPU blends that format and only the newer ones multisample it,
+            // so anything else drawn into the accumulator keeps the half-float
+            // multisampled pass every layer has.
+            let lightOnly = drawer.drawsOnlyLight(on: target)
+            let frameTexture: MTLTexture
+            let passHasStencil: Bool
             let pass = MTLRenderPassDescriptor()
-            pass.colorAttachments[0].texture = tex.msaa
-            pass.colorAttachments[0].resolveTexture = tex.resolve
             pass.colorAttachments[0].loadAction = .clear
             pass.colorAttachments[0].clearColor = target.clearColor.mtlClearColor
-            pass.colorAttachments[0].storeAction = .multisampleResolve
-            let passHasStencil = attachClipStencil(to: pass, active: target.needsStencil,
+            if lightOnly {
+                guard let tex = acquireFilterTexture(width: pw, height: ph, pooled: pooled,
+                                                     format: .rgba32Float) else { continue }
+                pass.colorAttachments[0].texture = tex
+                pass.colorAttachments[0].storeAction = .store
+                passHasStencil = false
+                frameTexture = tex
+            } else {
+                let storage = attachmentStorage(for: drawer, target: target)
+                guard let tex = acquireTargetTextures(width: pw, height: ph, pooled: pooled,
+                                                      format: target.pixelFormat, storage: storage) else { continue }
+                pass.colorAttachments[0].texture = tex.msaa
+                pass.colorAttachments[0].resolveTexture = tex.resolve
+                pass.colorAttachments[0].storeAction = .multisampleResolve
+                passHasStencil = attachClipStencil(to: pass, active: target.needsStencil,
                                                    width: pw, height: ph, storage: storage)
+                frameTexture = tex.resolve
+            }
             guard let enc = countedEncoder(cb, pass) else { continue }
             encode(drawer, viewport: SIMD2(Float(target.width), Float(target.height)), into: enc,
                    triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf, imageBuffer: buffers.image,
@@ -254,10 +276,11 @@ extension MetalRenderer {
                    meshInstanceBuffer: buffers.meshInstance,
                    sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
                    sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode,
-                   depthFormat: nil, stencil: passHasStencil, gi: gi, target: target)
+                   depthFormat: nil, stencil: passHasStencil, gi: gi, target: target,
+                   singleSample: lightOnly, layerFormat: lightOnly ? .rgba32Float : nil)
             enc.endEncoding()
-            target.texture = tex.resolve
-            encodeAccumulate(acc, frame: tex.resolve, slot: slot, into: cb)
+            target.texture = frameTexture
+            encodeAccumulate(acc, frame: frameTexture, slot: slot, into: cb)
             acc.meanLayer.texture = slot.mean
             acc.sumLayer.texture = slot.sum
         }
@@ -3134,7 +3157,15 @@ extension MetalRenderer {
                         // kind without one draws as it does on the canvas, and the
                         // live grid and a mesh's ink line stay out. nil (every
                         // other pass) leaves the loop unchanged.
-                        peel: (depth: MTLTexture, params: OllinPeel)? = nil) {
+                        peel: (depth: MTLTexture, params: OllinPeel)? = nil,
+                        // A single-sample pass (an accumulator's pass of light
+                        // particles alone): every pipeline is built for one sample,
+                        // and the light particles take the splat that keeps a sub-
+                        // pixel point's light where multisampling would have.
+                        singleSample: Bool = false,
+                        // The attachment format when the pass draws into one of
+                        // the renderer's own choosing rather than its layer's.
+                        layerFormat: MTLPixelFormat? = nil) {
         let vertices = drawer.vertices
         let instances = drawer.sdfInstances
         let imageVertices = drawer.imageVertices
@@ -3237,8 +3268,8 @@ extension MetalRenderer {
         // A single-precision layer (or accumulation surface) builds every pipeline
         // drawn into it against its own format; the canvas and half-float layers
         // leave the key untouched.
-        let passColorFormat: MTLPixelFormat? = passTarget.map {
-            $0.pixelFormat == linearFormat ? nil : $0.pixelFormat
+        let passColorFormat: MTLPixelFormat? = (layerFormat ?? passTarget?.pixelFormat).map {
+            $0 == linearFormat ? nil : $0
         } ?? canvasColorFormat
         var uniforms = Uniforms(viewport: viewport, clipDepth: 0,
                                 batchTransformed: 0,
@@ -3727,6 +3758,13 @@ extension MetalRenderer {
             // to declare the stencil format, clipped or not.
             if hasStencil { pipelineKey.stencilFormat = .stencil8 }
             if let passColorFormat { pipelineKey.colorFormat = passColorFormat }
+            if singleSample {
+                if batch.kind == .particles, batch.particleStyle == .light {
+                    pipelineKey.vertex = "ollin_particle_splat_vertex"
+                    pipelineKey.fragment = "ollin_particle_splat_fragment"
+                }
+                pipelineKey.singleSample = true
+            }
             // The hidden layer's pass: the 3D kinds with a peel variant draw through
             // it, with the rule bound per batch (a closed mesh's faces turned away
             // stay out; blades, splats, lines, water, and a depth scene have no

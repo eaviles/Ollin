@@ -20,9 +20,14 @@ public struct SprayLine: Sendable, Equatable {
     /// `end`, and the points between carry the blend.
     public var light: SIMD3<Double>
     public var endLight: SIMD3<Double>
-    /// Under length sampling, this line's share of the pass's points relative to
-    /// its length (2 draws twice the points, at half the light each). Ignored by
-    /// per-line sampling.
+    /// How many points this line gets beside the others, at the same light
+    /// whatever the count. Under length sampling it scales the line's share of
+    /// the pass relative to its length (2 draws twice the points, at half the
+    /// light each). Under per-line sampling it is the share of `n` the line
+    /// draws: 0.5 draws half of them, rounded and never fewer than one, and `n`
+    /// is the most any line draws, so a weight past 1 draws `n`. A faint line
+    /// can ask for fewer points this way, and a weight that changes every frame
+    /// rebuilds nothing.
     public var weight: Double
 
     /// A line carrying `light` (linear RGB radiance per pass) at its start and
@@ -53,6 +58,10 @@ public struct SprayLine: Sendable, Equatable {
 
     /// The segment's length in world units.
     public var length: Double { start.distance(to: end) }
+
+    /// Whether the line carries no light at either end. It has nothing to
+    /// deposit, so a pass gives it no points at all.
+    var isDark: Bool { light == .zero && endLight == .zero }
 }
 
 /// A flat surface in the spray, sampled over its area.
@@ -84,8 +93,9 @@ public struct SprayQuad: Sendable, Equatable {
     /// The patch of the spray's ``LineSpray/picture`` this quad reads, in
     /// `0...1` across it, or nil to read none and stand on its `light` alone.
     public var pictureBounds: Rectangle?
-    /// Under length sampling, this quad's share of the pass's points relative
-    /// to its area. Ignored by per-line sampling.
+    /// How many points this quad gets beside the others, as a line's
+    /// ``SprayLine/weight`` is: under length sampling its share relative to its
+    /// area, under per-line sampling the share of `n` it draws, `n` the most.
     public var weight: Double
 
     /// A quad carrying `light` (linear RGB radiance per pass) over its surface.
@@ -111,6 +121,9 @@ public struct SprayQuad: Sendable, Equatable {
     /// The surface's area in world units, the length of the cross product of
     /// its two edges. A quad whose edges are parallel has none.
     public var area: Double { edge1.cross(edge2).length }
+
+    /// Whether the quad carries no light, so a pass gives it no points.
+    var isDark: Bool { light == .zero }
 }
 
 /// The lens a `LineSpray` scatters through: how far the plane of focus sits, how
@@ -273,12 +286,22 @@ public final class LineSpray {
 
     /// How a pass distributes its points over the lines.
     public enum Sampling: Sendable, Equatable {
-        /// Every line gets the same number of points per pass, whatever its length.
+        /// Every line gets up to `n` points per pass, whatever its length: all
+        /// `n` at its default weight of 1, and the share its `weight` names
+        /// below that.
         case perLine(Int)
         /// A pass's `pointsPerPass` points are shared out by length (times each
         /// line's `weight`), at least one per line, so a long line is drawn as
         /// densely as a short one.
         case byLength(pointsPerPass: Int)
+
+        /// Whether a pass lays the lit primitives' slots end to end, leaving the
+        /// dark ones out of the records, rather than naming each point's
+        /// primitive in a table.
+        var packsLitPrimitives: Bool {
+            if case .perLine = self { return true }
+            return false
+        }
     }
 
     /// The lens. Changing it restarts the average.
@@ -374,13 +397,19 @@ public final class LineSpray {
         reset()
     }
 
-    // The GPU side: the line records, one line index per point, and the points.
+    // The GPU side: the line records, the table naming each point's line, and
+    // the points.
     //
     // The records live in a ring of `MetalRenderer.maxFramesInFlight` buffers,
     // one slot written per frame at most, so a slot is only ever rewritten after
     // every frame that read it has completed; the live path's ring of vertex
-    // buffers rests on the same count. A scene that changes its point counts
-    // (a new line count, or `.byLength` shares that moved) rebuilds everything.
+    // buffers rests on the same count. Under per-line sampling there is no
+    // table: a pass is every lit line's `n` slots end to end, a thread finds
+    // its line by dividing, and the records carry each line's own count, so
+    // counts that change every frame (a weight, a line going dark) only rewrite
+    // the records, and the ring is made again only for a new number of lines.
+    // Under length sampling the table names each point's line, and a scene
+    // whose shares round differently rebuilds it.
     private var lineBuffers: [ComputeBuffer<OllinSprayLine>] = []
     private var lineSlot = 0
     private var lineBuffer: ComputeBuffer<OllinSprayLine>? { lineBuffers.isEmpty ? nil : lineBuffers[lineSlot] }
@@ -431,56 +460,58 @@ public final class LineSpray {
     }
 
     /// Lay the lines out for the GPU from scratch: each line's record with its
-    /// share, and the point-to-line table a thread reads to find its line.
+    /// count, and under length sampling the point-to-line table a thread reads
+    /// to find its line.
     private func rebuild() {
         guard !lines.isEmpty else {
             lineBuffers = []; lineSlot = 0; counts = []; pointLines = nil; pointsPerPass = 0
             return
         }
         counts = LineSpray.pointCounts(for: lines, sampling: sampling)
-        var table: [UInt32] = []
-        table.reserveCapacity(counts.reduce(0, +))
-        for (i, n) in counts.enumerated() {
-            table.append(contentsOf: repeatElement(UInt32(i), count: n))
-        }
-        lineBuffers = [ComputeBuffer(LineSpray.records(for: lines, counts: counts))]
+        lineBuffers = [ComputeBuffer(LineSpray.records(for: lines, counts: counts, sampling: sampling))]
         lineSlot = 0
-        pointLines = ComputeBuffer(table)
-        pointsPerPass = table.count
+        (pointLines, pointsPerPass) = LineSpray.pointTable(counts: counts, sampling: sampling)
     }
 
-    /// The same, for the surfaces: each quad's record with its share, and the
-    /// point-to-quad table a thread reads to find the quad it belongs to.
+    /// The same, for the surfaces: each quad's record with its count, and the
+    /// point-to-quad table under length sampling.
     private func rebuildQuads() {
         guard !quads.isEmpty else {
             quadBuffers = []; quadSlot = 0; quadCounts = []; pointQuads = nil; quadPointsPerPass = 0
             return
         }
         quadCounts = LineSpray.quadPointCounts(for: quads, sampling: sampling)
-        var table: [UInt32] = []
-        table.reserveCapacity(quadCounts.reduce(0, +))
-        for (i, n) in quadCounts.enumerated() {
-            table.append(contentsOf: repeatElement(UInt32(i), count: n))
-        }
-        quadBuffers = [ComputeBuffer(LineSpray.quadRecords(for: quads, counts: quadCounts))]
+        quadBuffers = [ComputeBuffer(LineSpray.quadRecords(for: quads, counts: quadCounts, sampling: sampling))]
         quadSlot = 0
-        pointQuads = ComputeBuffer(table)
-        quadPointsPerPass = table.count
+        (pointQuads, quadPointsPerPass) = LineSpray.pointTable(counts: quadCounts, sampling: sampling)
+    }
+
+    /// Whether new counts can be written over the layout the GPU already
+    /// holds: under per-line sampling while the number of primitives holds,
+    /// under length sampling only while every count does.
+    private func keepsLayout(_ newCounts: [Int], _ heldCounts: [Int], ringCount: Int?) -> Bool {
+        guard let ringCount else { return false }
+        if case .perLine = sampling { return ringCount == newCounts.count }
+        return newCounts == heldCounts
     }
 
     /// The quad twin of `refresh`, on the same once-a-frame rule and the same
     /// ring, so a scene whose surfaces move every frame costs no allocation
-    /// while their point counts hold.
+    /// while their layout holds.
     private func refreshQuads(frame: Int) {
         guard quadsChanged else { return }
         quadsChanged = false
         let newCounts = quads.isEmpty ? [] : LineSpray.quadPointCounts(for: quads, sampling: sampling)
-        guard newCounts == quadCounts, !quadBuffers.isEmpty else {
+        guard keepsLayout(newCounts, quadCounts, ringCount: quadBuffers.first?.count) else {
             rebuildQuads()
             lastQuadWriteFrame = frame
             return
         }
-        let records = LineSpray.quadRecords(for: quads, counts: quadCounts)
+        if newCounts != quadCounts {
+            quadCounts = newCounts
+            quadPointsPerPass = LineSpray.pointTable(counts: quadCounts, sampling: sampling).points
+        }
+        let records = LineSpray.quadRecords(for: quads, counts: quadCounts, sampling: sampling)
         if frame != lastQuadWriteFrame {
             quadSlot = (quadSlot + 1) % MetalRenderer.maxFramesInFlight
             lastQuadWriteFrame = frame
@@ -499,12 +530,16 @@ public final class LineSpray {
         guard linesChanged else { return }
         linesChanged = false
         let newCounts = lines.isEmpty ? [] : LineSpray.pointCounts(for: lines, sampling: sampling)
-        guard newCounts == counts, !lineBuffers.isEmpty else {
+        guard keepsLayout(newCounts, counts, ringCount: lineBuffers.first?.count) else {
             rebuild()
             lastWriteFrame = frame
             return
         }
-        let records = LineSpray.records(for: lines, counts: counts)
+        if newCounts != counts {
+            counts = newCounts
+            pointsPerPass = LineSpray.pointTable(counts: counts, sampling: sampling).points
+        }
+        let records = LineSpray.records(for: lines, counts: counts, sampling: sampling)
         if frame != lastWriteFrame {
             lineSlot = (lineSlot + 1) % MetalRenderer.maxFramesInFlight
             lastWriteFrame = frame
@@ -516,29 +551,58 @@ public final class LineSpray {
         }
     }
 
-    /// The GPU records: each line's ends, its light at each, and its share of a
-    /// pass (`start.w`, one over its point count).
-    static func records(for lines: [SprayLine], counts: [Int]) -> [OllinSprayLine] {
+    /// The GPU records: each line's ends, its light at each, its share of a
+    /// pass (`start.w`, one over its point count), and the count itself
+    /// (`end.w`), which is where a per-line slot past it learns to stop.
+    ///
+    /// Under per-line sampling the lit lines are packed to the front, since a
+    /// pass is their slots end to end, and the records run on to the number of
+    /// lines given with nothing in them: a frame whose lit count moves writes
+    /// over the same buffer rather than making a new one, and nothing reads
+    /// past the lit ones. Under length sampling every line keeps its own
+    /// record, and a dark one is simply named by no point.
+    static func records(for lines: [SprayLine], counts: [Int], sampling: Sampling) -> [OllinSprayLine] {
         var records: [OllinSprayLine] = []
         records.reserveCapacity(lines.count)
+        let packs = sampling.packsLitPrimitives
         for (i, line) in lines.enumerated() {
+            let n = counts[i]
+            if packs && n == 0 { continue }
             let a = line.light, b = line.endLight
             records.append(OllinSprayLine(
                 start: SIMD4<Float>(Float(line.start.x), Float(line.start.y), Float(line.start.z),
-                                    1 / Float(counts[i])),
-                end: SIMD4<Float>(Float(line.end.x), Float(line.end.y), Float(line.end.z), 0),
+                                    n > 0 ? 1 / Float(n) : 0),
+                end: SIMD4<Float>(Float(line.end.x), Float(line.end.y), Float(line.end.z), Float(n)),
                 startColor: SIMD4<Float>(Float(a.x), Float(a.y), Float(a.z), 0),
                 endColor: SIMD4<Float>(Float(b.x), Float(b.y), Float(b.z), 0)))
         }
+        while records.count < lines.count { records.append(OllinSprayLine()) }
         return records
     }
 
-    /// What the tests read: how many record buffers the ring holds, and the
-    /// point table's and the particles' identity, so a rewrite in place can be
-    /// told from a rebuild.
+    /// The table naming each point's primitive under length sampling, and the
+    /// points one pass draws. Per-line sampling needs no table, since its pass
+    /// is every lit primitive's `n` slots end to end.
+    static func pointTable(counts: [Int], sampling: Sampling) -> (table: ComputeBuffer<UInt32>?, points: Int) {
+        if case .perLine(let n) = sampling {
+            return (nil, counts.reduce(0) { $1 > 0 ? $0 + 1 : $0 } * max(1, n))
+        }
+        var table: [UInt32] = []
+        table.reserveCapacity(counts.reduce(0, +))
+        for (i, n) in counts.enumerated() {
+            table.append(contentsOf: repeatElement(UInt32(i), count: n))
+        }
+        return (table.isEmpty ? nil : ComputeBuffer(table), table.count)
+    }
+
+    /// What the tests read: how many record buffers the ring holds, the point
+    /// table's and the particles' identity, so a rewrite in place can be told
+    /// from a rebuild, and how many points a pass dispatches.
     var ringDepth: Int { lineBuffers.count }
     var pointTable: AnyObject? { pointLines }
     var particleStore: AnyObject? { points }
+    /// The threads one pass dispatches over the lines and the quads together.
+    var pointsInAPass: Int { pointsPerPass + quadPointsPerPass }
 
     /// How many particles to make room for when a frame asks for `count`: a
     /// sixteenth more, rounded up to a whole block, so a total that drifts from
@@ -549,69 +613,95 @@ public final class LineSpray {
         return (count + count / 16 + block - 1) / block * block
     }
 
-    /// Points per line for one pass: the same for every line, or shared by length.
+    /// Points per line for one pass: a line's share of `n` by its weight, or
+    /// its share of the pass by length; none for a line with no light, which
+    /// has nothing to deposit.
     static func pointCounts(for lines: [SprayLine], sampling: Sampling) -> [Int] {
-        switch sampling {
-        case .perLine(let n):
-            return Array(repeating: max(1, n), count: lines.count)
-        case .byLength(let total):
-            let weighted = lines.map { $0.length * $0.weight }
-            let sum = weighted.reduce(0, +)
-            guard sum > 0 else { return Array(repeating: 1, count: lines.count) }
-            let perUnit = Double(max(1, total)) / sum
-            return weighted.map { max(1, Int((perUnit * $0).rounded(.down))) }
-        }
+        counts(dark: lines.map(\.isDark), sizes: lines.map(\.length),
+               weights: lines.map(\.weight), sampling: sampling)
     }
 
-    /// Points per quad for one pass: the same for every quad, or shared by area.
+    /// Points per quad for one pass: a quad's share of `n` by its weight, or
+    /// its share of the pass by area; none for a quad with no light.
     ///
     /// Under length sampling the quads draw from a pool of their own rather
     /// than from the lines', because a length and an area are not the same
     /// units and a budget shared between them would mean nothing. The number
     /// is the same one, spent twice.
     static func quadPointCounts(for quads: [SprayQuad], sampling: Sampling) -> [Int] {
+        counts(dark: quads.map(\.isDark), sizes: quads.map(\.area),
+               weights: quads.map(\.weight), sampling: sampling)
+    }
+
+    /// The counts both kinds of primitive share: under per-line sampling a
+    /// weight's share of `n`, rounded, at least one and at most `n`; under
+    /// length sampling a share of the pass by size times weight, rounded down
+    /// and at least one, with the dark ones taking no part in the sharing.
+    private static func counts(dark: [Bool], sizes: [Double], weights: [Double],
+                               sampling: Sampling) -> [Int] {
         switch sampling {
         case .perLine(let n):
-            return Array(repeating: max(1, n), count: quads.count)
+            let cap = max(1, n)
+            return zip(dark, weights).map { isDark, weight in
+                guard !isDark else { return 0 }
+                let share = (Double(cap) * weight).rounded()
+                guard share < Double(cap) else { return cap }
+                return max(1, share.int() ?? 1)
+            }
         case .byLength(let total):
-            let weighted = quads.map { $0.area * $0.weight }
+            let weighted = (0 ..< sizes.count).map { dark[$0] ? 0 : sizes[$0] * weights[$0] }
             let sum = weighted.reduce(0, +)
-            guard sum > 0 else { return Array(repeating: 1, count: quads.count) }
+            guard sum > 0 else { return dark.map { $0 ? 0 : 1 } }
             let perUnit = Double(max(1, total)) / sum
-            return weighted.map { max(1, Int((perUnit * $0).rounded(.down))) }
+            return zip(dark, weighted).map { isDark, share in
+                isDark ? 0 : max(1, (perUnit * share).int(rounded: .down) ?? 1)
+            }
         }
     }
 
     /// The GPU records: each quad's corner and edges, its light, the patch of
-    /// the picture it reads, and its share of a pass (`corner.w`, one over its
-    /// point count), which is what keeps the light the whole quad's.
-    static func quadRecords(for quads: [SprayQuad], counts: [Int]) -> [OllinSprayQuad] {
+    /// the picture it reads, its share of a pass (`corner.w`, one over its
+    /// point count), which is what keeps the light the whole quad's, and the
+    /// count itself (`edge1.w`). Packed under per-line sampling exactly as
+    /// the lines' records are.
+    static func quadRecords(for quads: [SprayQuad], counts: [Int], sampling: Sampling) -> [OllinSprayQuad] {
         var records: [OllinSprayQuad] = []
         records.reserveCapacity(quads.count)
+        let packs = sampling.packsLitPrimitives
         for (i, quad) in quads.enumerated() {
+            let n = counts[i]
+            if packs && n == 0 { continue }
             let bounds = quad.pictureBounds
             records.append(OllinSprayQuad(
                 corner: SIMD4<Float>(Float(quad.corner.x), Float(quad.corner.y), Float(quad.corner.z),
-                                     1 / Float(counts[i])),
-                edge1: SIMD4<Float>(Float(quad.edge1.x), Float(quad.edge1.y), Float(quad.edge1.z), 0),
+                                     n > 0 ? 1 / Float(n) : 0),
+                edge1: SIMD4<Float>(Float(quad.edge1.x), Float(quad.edge1.y), Float(quad.edge1.z), Float(n)),
                 edge2: SIMD4<Float>(Float(quad.edge2.x), Float(quad.edge2.y), Float(quad.edge2.z), 0),
                 light: SIMD4<Float>(Float(quad.light.x), Float(quad.light.y), Float(quad.light.z), 0),
                 texture: SIMD4<Float>(Float(bounds?.x ?? 0), Float(bounds?.y ?? 0),
                                       Float(bounds?.width ?? 0), Float(bounds?.height ?? 0))))
         }
+        while records.count < quads.count { records.append(OllinSprayQuad()) }
         return records
     }
 
-    /// The scatter kernel: one thread per point per pass. Reads its line, picks a
-    /// spot along it and a spot in the bokeh ball around that spot in camera
+    /// The scatter kernel: one thread per point per pass. Finds its line, picks
+    /// a spot along it and a spot in the bokeh ball around that spot in camera
     /// space, fades by attenuation, projects through the camera, and writes the
     /// particle the light path draws.
+    ///
+    /// Under per-line sampling a thread finds its line by dividing its place in
+    /// the pass by the slots each line owns, and a slot past the line's own
+    /// count (a weight below 1 asked for fewer) marks its particle empty and
+    /// stops there, before any of the lens. Under length sampling the table
+    /// names the line.
     static let kernel = ComputeKernel(entry: "ollin_line_spray", """
         struct OllinSprayParams {
             OllinCameraMatrices camera;
             float4 lens;   // x focal distance, y strength, z minimum size, w power
             float4 misc;   // x attenuation, y point size, z points per pass, w seed
             float4 hole;   // x blades (0 none), y rotation, z 1 when a mask is bound
+            float4 layout; // x slots per line under per-line sampling, 0 to read the table
         };
 
         kernel void ollin_line_spray(device const OllinSprayLine *lines [[buffer(0)]],
@@ -623,7 +713,14 @@ public final class LineSpray {
                                      uint id [[thread_position_in_grid]]) {
             if (id >= u.particleCount) { return; }
             uint perPass = max(uint(p.misc.z), 1u);
-            OllinSprayLine line = lines[lineOf[id % perPass]];
+            uint point = id % perPass;
+            uint slots = uint(p.layout.x);
+            uint index = slots > 0u ? point / slots : lineOf[point];
+            OllinSprayLine line = lines[index];
+            if (slots > 0u && point - index * slots >= uint(line.end.w)) {
+                out[id].size = 0.0;     // a slot this line's weight leaves unused
+                return;
+            }
 
             // Fresh randomness per point per frame, from small seed parts.
             float3 seed = float3(float(id & 4095u), float(id >> 12u), p.misc.w);
@@ -679,10 +776,11 @@ public final class LineSpray {
 
     /// The quad scatter kernel: one thread per point per pass over the surfaces.
     ///
-    /// The same lens and the same deposit as the lines'. What differs is the
-    /// sample: two numbers place it anywhere on the parallelogram, and the same
-    /// two read the picture at the matching spot, so a texel travels with the
-    /// place it belongs to rather than with the thread.
+    /// The same lens, the same layout, and the same deposit as the lines'. What
+    /// differs is the sample: two numbers place it anywhere on the
+    /// parallelogram, and the same two read the picture at the matching spot,
+    /// so a texel travels with the place it belongs to rather than with the
+    /// thread.
     static let quadKernel = ComputeKernel(entry: "ollin_quad_spray", """
         struct OllinQuadSprayParams {
             OllinCameraMatrices camera;
@@ -690,6 +788,7 @@ public final class LineSpray {
             float4 misc;   // x attenuation, y point size, z points per pass, w seed
             float4 where;  // x first particle this dispatch writes, yzw unused
             float4 hole;   // x blades (0 none), y rotation, z 1 when a mask is bound
+            float4 layout; // x slots per quad under per-line sampling, 0 to read the table
         };
 
         kernel void ollin_quad_spray(device const OllinSprayQuad *quads [[buffer(0)]],
@@ -702,7 +801,14 @@ public final class LineSpray {
                                      uint id [[thread_position_in_grid]]) {
             if (id >= u.particleCount) { return; }
             uint perPass = max(uint(p.misc.z), 1u);
-            OllinSprayQuad quad = quads[quadOf[id % perPass]];
+            uint point = id % perPass;
+            uint slots = uint(p.layout.x);
+            uint index = slots > 0u ? point / slots : quadOf[point];
+            OllinSprayQuad quad = quads[index];
+            if (slots > 0u && point - index * slots >= uint(quad.edge1.w)) {
+                out[uint(p.where.x) + id].size = 0.0;     // a slot this quad's weight leaves unused
+                return;
+            }
 
             // Fresh randomness per point per frame, from small seed parts.
             float3 seed = float3(float(id & 4095u), float(id >> 12u), p.misc.w);
@@ -777,7 +883,10 @@ public final class LineSpray {
         let lineCount = pointsPerPass * passesPerFrame
         let quadCount = quadPointsPerPass * passesPerFrame
         let count = lineCount + quadCount
-        guard count > 0 else { return }
+        // A spray of nothing but dark primitives still adds a pass, of no light,
+        // so a scene that goes dark develops dark rather than holding the last
+        // picture it had. One with no primitives at all draws nothing.
+        guard count > 0 || !lines.isEmpty || !quads.isEmpty else { return }
 
         let signature = Signature(camera: camera, bokeh: bokeh, pointSize: pointSize,
                                   width: Int(width), height: Int(height),
@@ -792,13 +901,17 @@ public final class LineSpray {
         // the count exactly would be thrown away and made again each time, which
         // at a few million points is hundreds of megabytes a frame. Nothing reads
         // past `count`: both dispatches and the draw are handed it outright.
-        let wanted = LineSpray.particleCapacity(for: count)
+        let wanted = LineSpray.particleCapacity(for: max(1, count))
         if points == nil || count > pointsAllocated || wanted * 4 <= pointsAllocated {
             points = PingPong(count: wanted)
             pointsAllocated = wanted
         }
         guard let points else { return }
 
+        // Per-line sampling's slots per primitive, which is how a thread finds
+        // its line without a table; 0 tells the kernels to read the table.
+        let slots: Int
+        if case .perLine(let n) = sampling { slots = max(1, n) } else { slots = 0 }
         // The lens and the print are the same for both, so the two dispatches
         // differ only in where they start writing and how many points a pass
         // spreads over their own primitive.
@@ -812,26 +925,30 @@ public final class LineSpray {
             if offset >= 0 { params.append(SIMD4<Float>(Float(offset), 0, 0, 0)) }
             params.append(SIMD4<Float>(Float(bokeh.aperture.bladeCount), Float(bokeh.aperture.rotation),
                                        apertureSource == nil ? 0 : 1, 0))
+            params.append(SIMD4<Float>(Float(slots), 0, 0, 0))
             return params
         }
 
         let write = points.write
-        if let lineBuffer, let pointLines, lineCount > 0 {
+        // With no table (per-line sampling) the records stand in at the table's
+        // index: the kernel never reads it then, but every buffer it declares
+        // is bound.
+        if let lineBuffer, lineCount > 0 {
             // A 1-D dispatch that may bind an aperture mask, so it takes the
             // 2-D form with a height of one, as every textured kernel here does.
             drawer.recordDispatch(RecordedDispatch(
                 kernel: LineSpray.kernel, gridWidth: lineCount, gridHeight: 1,
                 textures: [apertureSource],
-                buffers: [lineBuffer, pointLines, write],
+                buffers: [lineBuffer, pointLines ?? lineBuffer, write],
                 params: lensParams(perPass: pointsPerPass, at: -1).bytes))
         }
-        if let quadBuffer, let pointQuads, quadCount > 0 {
+        if let quadBuffer, quadCount > 0 {
             // A 1-D dispatch that also binds a picture, so it takes the 2-D
             // form with a height of one, the way every textured kernel here does.
             drawer.recordDispatch(RecordedDispatch(
                 kernel: LineSpray.quadKernel, gridWidth: quadCount, gridHeight: 1,
                 textures: [pictureSource, apertureSource],
-                buffers: [quadBuffer, pointQuads, write],
+                buffers: [quadBuffer, pointQuads ?? quadBuffer, write],
                 params: lensParams(perPass: quadPointsPerPass, at: lineCount).bytes))
         }
         points.swap()
@@ -840,7 +957,7 @@ public final class LineSpray {
         // surfaces are the same image and print together.
         drawer.withAccumulator(accumulator, passes: passesPerFrame) {
             drawer.blendMode(.add)
-            drawer.recordParticles(write, count: count, style: .light)
+            if count > 0 { drawer.recordParticles(write, count: count, style: .light) }
         }
     }
 }

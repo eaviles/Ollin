@@ -492,7 +492,7 @@ spray = makeLineSpray(lines, sampling: .perLine(10), passesPerFrame: 5,
 drawLineSpray(spray)
 ```
 
-`sampling: .perLine(10)` gives every line ten points a pass, and the bokeh's `minSize` is the smallest disc a point is drawn as, so a line in focus keeps a little width. The `Rendering/LineSpray` example is the sphere of a hundred and fifty rings. The rings are bent by `curlNoise`, the three-coordinate relative of [Chapter 14](14-FieldsAndFlow.md)'s `curlField`. A curl never gathers or drains, so the rings wave as if a current had passed through the sphere, without tearing. The `Rendering/DepthOfField` example does the same from a kernel of its own, with millions of samples a frame over any geometry. The [depth of field page](../Docs/Drawing/DepthOfField.md) has the lens and the rules.
+`sampling: .perLine(10)` gives every line ten points a pass, and the bokeh's `minSize` is the smallest disc a point is drawn as, so a line in focus keeps a little width. A line's `weight` asks for a share of the ten, so a faint line can take fewer, and a line with no light takes none. The `Rendering/LineSpray` example is the sphere of a hundred and fifty rings. The rings are bent by `curlNoise`, the three-coordinate relative of [Chapter 14](14-FieldsAndFlow.md)'s `curlField`. A curl never gathers or drains, so the rings wave as if a current had passed through the sphere, without tearing. The `Rendering/DepthOfField` example does the same from a kernel of its own, with millions of samples a frame over any geometry. The [depth of field page](../Docs/Drawing/DepthOfField.md) has the lens and the rules.
 
 ## What else reads the motion: a changing mesh, fewer pixels, and fewer frames
 

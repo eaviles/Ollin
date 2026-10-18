@@ -4,10 +4,11 @@ import Metal
 /// A layer that keeps a running **mean** of what is drawn into it, frame after
 /// frame: the substrate of progressive light accumulation, where every frame
 /// scatters another pass of faint samples and the picture is the average of all
-/// of them so far. The renderer keeps the sum in single-precision float and the
-/// number of passes beside it, and `image` hands back the mean, so the picture
-/// *converges* as passes pile up rather than brightening without end. That is the
-/// difference between this and a `noClear()` canvas, which only ever adds.
+/// of them so far. The renderer keeps the sum in single-precision float (and a
+/// frame's pass too, when it is light particles alone) and the number of passes
+/// beside it, and `image` hands back the mean, so the picture *converges* as
+/// passes pile up rather than brightening without end. That is the difference
+/// between this and a `noClear()` canvas, which only ever adds.
 ///
 /// ```swift
 /// var light: Accumulator!
@@ -55,6 +56,16 @@ public final class Accumulator {
     /// This frame's write surface: the block's geometry lands here (a transient
     /// layer the renderer clears every frame), and the renderer then adds it into
     /// the persistent sum. Tagged `.accumulate(self)` so the renderer routes it.
+    ///
+    /// A pass of light particles alone (a `LineSpray`'s, or `drawParticles`
+    /// with `.light`) is drawn single-sample in single precision, which their
+    /// own coverage allows and every Apple GPU can blend: one frame's pass can
+    /// pile many thousands of faint samples onto a pixel (a line in focus puts
+    /// every one of its points on a few), and half float stops adding a sample
+    /// once the pixel holds one to two thousand times what that sample brings,
+    /// so in half float an in-focus dot of sixteen thousand points keeps a
+    /// twentieth of its light. Anything else drawn here takes the multisampled
+    /// half-float pass every layer has.
     let writeLayer: RenderTarget
 
     /// A read-only texture carrier the renderer points at the mean each frame,
