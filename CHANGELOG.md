@@ -4,6 +4,8 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-10-18
+
 ### Added
 
 - **A cloud a kernel writes, and its shadow.** `ComputeTexture3D` is a box of samples kept on the GPU that a sketch's own compute kernel fills through `compute(_:writing:)`, one thread per sample (`PingPongTexture3D` pairs two for a simulation that reads its last state, and `compute(_:reading:writing:)` steps it), and `drawVolume` draws it as a cloud in place of a `Volume`. The grid never leaves the GPU, so 128 samples a side can change every frame where a grid filled on the CPU held 60 frames a second to about 32. And a volume now casts its shadow: under `castShadows()` the solids under a cloud read darker by the light the cloud keeps from each casting light, read off the same light-transmittance grid the cloud shades itself by, so a plume stands in its own shadow on the floor and a ball inside it is shadowed by the smoke above it; a scene that never calls `castShadows()` draws as before. The live march now takes its step from `volumetricQuality`: one and a half steps per sample spacing at the default, one at `.performance`, and two at `.detail` and on every export, which is what every march took before. [`Examples/3D/Effects/Volumes`](Examples/3D/Effects/Volumes/) fills its plume from a kernel (`Plume.metal`), 96 by 144 by 96 samples, and the plume shadows the pedestal.
@@ -830,7 +832,8 @@ The first tagged release. Ollin grew in one repository from May 2026 to this tag
 
 - Tags begin at 0.1.0. A breaking change or a new feature bumps the minor, a fix bumps the patch, and each release names its breaking renames in this file. Deprecation shims and a settled surface arrive at 1.0. Until then, pin `.upToNextMinor(from: "0.1.0")`.
 
-[Unreleased]: https://github.com/eaviles/Ollin/compare/0.15.0...HEAD
+[Unreleased]: https://github.com/eaviles/Ollin/compare/0.16.0...HEAD
+[0.16.0]: https://github.com/eaviles/Ollin/compare/0.15.0...0.16.0
 [0.15.0]: https://github.com/eaviles/Ollin/compare/0.14.0...0.15.0
 [0.14.0]: https://github.com/eaviles/Ollin/compare/0.13.0...0.14.0
 [0.13.0]: https://github.com/eaviles/Ollin/compare/0.12.0...0.13.0
