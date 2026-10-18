@@ -17,10 +17,10 @@ struct Query3DTests {
 
     /// A world with a unit box parked in the air at each of the given heights,
     /// so a ray dropped down the y axis meets them in order.
-    func tower(_ heights: [Double]) -> (World3D, [Body3D]) {
+    func tower(_ heights: [Double]) throws -> (World3D, [Body3D]) {
         let world = World3D()
-        let boxes = heights.map {
-            world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(0, $0, 0),
+        let boxes = try heights.map {
+            try world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(0, $0, 0),
                           kind: .static)
         }
         return (world, boxes)
@@ -31,7 +31,7 @@ struct Query3DTests {
     /// The same ray with the near body gone reaches the far one: what stopped it
     /// was that body, not the ray's own reach.
     @Test func withTheNearBodyGoneTheRayReachesTheFarOne() throws {
-        let (world, boxes) = tower([3, 1])
+        let (world, boxes) = try tower([3, 1])
         world.remove(boxes[0])
         let hit = try #require(world.raycast(from: Vector3(0, 8, 0),
                                              to: Vector3(0, -8, 0)))
@@ -41,25 +41,25 @@ struct Query3DTests {
     /// Line of sight, the question this whole surface exists for: the target is
     /// what the ray finds only when nothing stands between.
     @Test func aWallIsWhatBreaksTheLineOfSight() throws {
-        func canSee(throughAWall: Bool) -> Bool {
+        func canSee(throughAWall: Bool) throws -> Bool {
             let world = World3D()
-            let target = world.addBody(.sphere(radius: 0.5), at: Vector3(0, 1, 6),
+            let target = try world.addBody(.sphere(radius: 0.5), at: Vector3(0, 1, 6),
                                        kind: .static)
             if throughAWall {
-                world.addBody(.box(width: 6, height: 6, depth: 0.4),
+                try world.addBody(.box(width: 6, height: 6, depth: 0.4),
                               at: Vector3(0, 1, 3), kind: .static)
             }
             return world.raycast(from: Vector3(0, 1, 0),
                                  to: target.position)?.body === target
         }
-        #expect(canSee(throughAWall: false))
-        #expect(!canSee(throughAWall: true))
+        #expect(try canSee(throughAWall: false))
+        #expect(try !canSee(throughAWall: true))
     }
 
     /// The hit says where and which way, not just what: a ray dropped onto a
     /// box's top face lands on the face, pointing up, at the distance it fell.
     @Test func theHitCarriesWhereItLandedAndWhichWayTheSurfaceFaces() throws {
-        let (world, _) = tower([1])                  // top face at y = 1.5
+        let (world, _) = try tower([1])                  // top face at y = 1.5
         let hit = try #require(world.raycast(from: Vector3(0, 5, 0),
                                              to: Vector3(0, -5, 0)))
         #expect(abs(hit.point.y - 1.5) < 1e-3, "landed at \(hit.point)")
@@ -69,14 +69,14 @@ struct Query3DTests {
 
     /// A ray is a segment, not a line: it stops where it was told to.
     @Test func aRayReachesOnlyAsFarAsItsEnd() throws {
-        let (world, _) = tower([1])
+        let (world, _) = try tower([1])
         #expect(world.raycast(from: Vector3(0, 5, 0), to: Vector3(0, 3, 0)) == nil)
         #expect(world.raycast(from: Vector3(0, 5, 0), to: Vector3(0, 1, 0)) != nil)
     }
 
     /// Everything along the way, nearest first.
     @Test func everyHitComesBackNearestFirst() throws {
-        let (world, boxes) = tower([5, 3, 1])
+        let (world, boxes) = try tower([5, 3, 1])
         let hits = world.raycastAll(from: Vector3(0, 9, 0), to: Vector3(0, -9, 0))
         #expect(hits.count == 3, "found \(hits.count)")
         #expect(hits.map(\.body) === boxes)
@@ -87,7 +87,7 @@ struct Query3DTests {
     /// that decides, not the order things were added. And the ignore list is
     /// what lets a body cast from inside itself.
     @Test func anIgnoredBodyIsLookedStraightThrough() throws {
-        let (world, boxes) = tower([3, 1])
+        let (world, boxes) = try tower([3, 1])
         let plain = try #require(world.raycast(from: Vector3(0, 8, 0),
                                                to: Vector3(0, -8, 0)))
         #expect(plain.body === boxes[0], "the box at y = 3 is the one in the way")
@@ -102,9 +102,9 @@ struct Query3DTests {
     /// is asked for.
     @Test func sensorsAreTransparentUntilTheyAreAskedFor() throws {
         let world = World3D()
-        let field = world.addBody(.box(width: 4, height: 4, depth: 4),
+        let field = try world.addBody(.box(width: 4, height: 4, depth: 4),
                                   at: Vector3(0, 4, 0), isSensor: true)
-        let floor = world.addBody(.box(width: 4, height: 1, depth: 4),
+        let floor = try world.addBody(.box(width: 4, height: 1, depth: 4),
                                   at: Vector3(0, 0, 0), kind: .static)
         let solid = try #require(world.raycast(from: Vector3(0, 9, 0),
                                                to: Vector3(0, -9, 0)))
@@ -131,7 +131,7 @@ struct Query3DTests {
     @Test func aCharacterCanBeSeen() throws {
         let world = World3D()
         world.ground = 0
-        let walker = world.addCharacter(radius: 0.3, height: 1.8, at: Vector3(0, 0, 4))
+        let walker = try world.addCharacter(radius: 0.3, height: 1.8, at: Vector3(0, 0, 4))
         run(world, steps: 30)
         let hit = try #require(world.raycast(from: Vector3(0, 1, 0),
                                              to: Vector3(0, 1, 8)))
@@ -143,7 +143,7 @@ struct Query3DTests {
     /// A swept shape stops a radius short of where a ray reaches, because it is
     /// the shape's surface that touches rather than a point.
     @Test func aSweptSphereStopsARadiusShortOfTheRay() throws {
-        let (world, _) = tower([1])                  // top face at y = 1.5
+        let (world, _) = try tower([1])                  // top face at y = 1.5
         let ray = try #require(world.raycast(from: Vector3(0, 5, 0),
                                              to: Vector3(0, -5, 0)))
         let swept = try #require(world.sweep(.sphere(radius: 0.5),
@@ -159,30 +159,30 @@ struct Query3DTests {
     /// answers whether something *fits*. The same line through the same gap is
     /// clear for one and blocked for the other.
     @Test func aSweepIsStoppedByAGapARayPassesThrough() throws {
-        func slot() -> World3D {
+        func slot() throws -> World3D {
             let world = World3D()
             // Two slabs with a 0.5-wide gap between their inner faces.
             for side in [-1.0, 1.0] {
-                world.addBody(.box(width: 1, height: 4, depth: 4),
+                try world.addBody(.box(width: 1, height: 4, depth: 4),
                               at: Vector3(side * 0.75, 0, 0), kind: .static)
             }
             return world
         }
-        let through = slot().raycast(from: Vector3(0, 0, -4), to: Vector3(0, 0, 4))
+        let through = try slot().raycast(from: Vector3(0, 0, -4), to: Vector3(0, 0, 4))
         #expect(through == nil, "a ray down the middle of the gap is clear")
 
-        let squeezed = slot().sweep(.sphere(radius: 0.1), from: Vector3(0, 0, -4),
+        let squeezed = try slot().sweep(.sphere(radius: 0.1), from: Vector3(0, 0, -4),
                                     to: Vector3(0, 0, 4))
         #expect(squeezed == nil, "a shape narrower than the gap fits too")
 
-        let stuck = slot().sweep(.sphere(radius: 0.4), from: Vector3(0, 0, -4),
+        let stuck = try slot().sweep(.sphere(radius: 0.4), from: Vector3(0, 0, -4),
                                  to: Vector3(0, 0, 4))
         #expect(stuck != nil, "a shape wider than the gap does not")
     }
 
     /// A sweep that sets off already touching reports no travel at all.
     @Test func aSweepThatStartsTouchingTravelsNothing() throws {
-        let (world, _) = tower([1])
+        let (world, _) = try tower([1])
         let hit = try #require(world.sweep(.sphere(radius: 0.5), from: Vector3(0, 1, 0),
                                            to: Vector3(0, -5, 0)))
         #expect(hit.distance < 1e-3, "distance was \(hit.distance)")
@@ -191,10 +191,10 @@ struct Query3DTests {
     /// Turning the probe changes what fits, the way a sheet of plywood goes
     /// through a doorway edge-on and not flat.
     @Test func aRotatedProbeFitsWhereAnUprightOneDoesNot() throws {
-        func blocked(rotated angle: Double) -> Bool {
+        func blocked(rotated angle: Double) throws -> Bool {
             let world = World3D()
             for side in [-1.0, 1.0] {
-                world.addBody(.box(width: 1, height: 4, depth: 4),
+                try world.addBody(.box(width: 1, height: 4, depth: 4),
                               at: Vector3(side * 0.9, 0, 0), kind: .static)
             }
             // A blade 1.4 wide and 0.3 thick against a 0.8-wide gap.
@@ -202,13 +202,13 @@ struct Query3DTests {
                                from: Vector3(0, 0, -4), to: Vector3(0, 0, 4),
                                rotated: angle, axis: .unitY) != nil
         }
-        #expect(blocked(rotated: 0), "flat on, the blade is wider than the gap")
-        #expect(!blocked(rotated: .pi / 2), "turned edge-on it slides through")
+        #expect(try blocked(rotated: 0), "flat on, the blade is wider than the gap")
+        #expect(try !blocked(rotated: .pi / 2), "turned edge-on it slides through")
     }
 
     /// Everything a sweep brushes past, nearest first.
     @Test func aSweepCanReportEverythingItTouches() throws {
-        let (world, boxes) = tower([5, 3, 1])
+        let (world, boxes) = try tower([5, 3, 1])
         let hits = world.sweepAll(.sphere(radius: 0.2), from: Vector3(0, 9, 0),
                                   to: Vector3(0, -9, 0))
         #expect(hits.map(\.body) === boxes, "found \(hits.count)")
@@ -217,7 +217,7 @@ struct Query3DTests {
     /// Scenery is not a probe: a mesh collider describes a landscape, and the
     /// narrow phase cannot sweep one, so the query says so rather than guessing.
     @Test func sceneryColliderscannotBeUsedAsProbes() throws {
-        let (world, _) = tower([1])
+        let (world, _) = try tower([1])
         let mesh = Mesh.box(size: 1)
         #expect(world.sweep(.mesh(mesh), from: Vector3(0, 5, 0),
                             to: Vector3(0, -5, 0)) == nil)
@@ -236,9 +236,9 @@ struct Query3DTests {
     /// own size deciding.
     @Test func anOverlapFindsWhatIsInsideItAndNothingElse() throws {
         let world = World3D()
-        let near = world.addBody(.sphere(radius: 0.3), at: Vector3(1, 0, 0),
+        let near = try world.addBody(.sphere(radius: 0.3), at: Vector3(1, 0, 0),
                                  kind: .static)
-        let far = world.addBody(.sphere(radius: 0.3), at: Vector3(4, 0, 0),
+        let far = try world.addBody(.sphere(radius: 0.3), at: Vector3(4, 0, 0),
                                 kind: .static)
         let small = world.bodiesOverlapping(.sphere(radius: 2), at: .zero)
         #expect(small.count == 1 && small[0] === near, "found \(small.count)")
@@ -256,7 +256,7 @@ struct Query3DTests {
             beads.append(.part(.sphere(radius: 0.2),
                                at: Vector3(cos(angle), 0, sin(angle))))
         }
-        world.addBody(.compound(beads), at: .zero, kind: .static)
+        try world.addBody(.compound(beads), at: .zero, kind: .static)
         #expect(world.bodiesOverlapping(.sphere(radius: 3), at: .zero).count == 1)
     }
 
@@ -264,7 +264,7 @@ struct Query3DTests {
     /// the query asks for one.
     @Test func anOverlapSeesSensorsOnlyWhenAsked() throws {
         let world = World3D()
-        world.addBody(.box(width: 2, height: 2, depth: 2), at: .zero, isSensor: true)
+        try world.addBody(.box(width: 2, height: 2, depth: 2), at: .zero, isSensor: true)
         #expect(world.bodiesOverlapping(.sphere(radius: 1), at: .zero).isEmpty)
         #expect(world.bodiesOverlapping(.sphere(radius: 1), at: .zero,
                                         includingSensors: true).count == 1)
@@ -273,7 +273,7 @@ struct Query3DTests {
     /// The exact form of the question: a point is inside a body or it is not.
     @Test func aPointIsInsideOnlyWhatContainsIt() throws {
         let world = World3D()
-        let box = world.addBody(.box(width: 2, height: 2, depth: 2),
+        let box = try world.addBody(.box(width: 2, height: 2, depth: 2),
                                 at: Vector3(0, 1, 0), kind: .static)
         let inside = world.bodiesContaining(Vector3(0.5, 1.5, 0.5))
         #expect(inside.count == 1 && inside[0] === box)
@@ -291,14 +291,14 @@ struct Query3DTests {
         /// floor below it.
         func stoppedAt(cloth: Bool, ignoringIt: Bool = false) throws -> Double {
             let world = World3D()
-            world.addBody(.box(width: 6, height: 1, depth: 6), at: .zero,
+            try world.addBody(.box(width: 6, height: 1, depth: 6), at: .zero,
                           kind: .static)
             var sheet: SoftBody3D?
             if cloth {
                 sheet = try! world.addSoftBody(from: Mesh.plane(width: 4, depth: 4, segments: 8),
                                           at: Vector3(0, 3, 0))
             } else {
-                world.addBody(.box(width: 4, height: 0.1, depth: 4),
+                try world.addBody(.box(width: 4, height: 0.1, depth: 4),
                               at: Vector3(0, 3, 0), kind: .static)
             }
             let hit = try #require(world.raycast(from: Vector3(0, 6, 0),
@@ -323,7 +323,7 @@ struct Query3DTests {
     @Test func distancesAreInWorldUnits() throws {
         let world = World3D()
         world.unitsPerMeter = 100
-        world.addBody(.box(width: 100, height: 100, depth: 100),
+        try world.addBody(.box(width: 100, height: 100, depth: 100),
                       at: Vector3(0, 0, 0), kind: .static)
         let hit = try #require(world.raycast(from: Vector3(0, 500, 0),
                                              to: Vector3(0, -500, 0)))
@@ -336,7 +336,7 @@ struct Query3DTests {
     @Test func askingChangesNothingAndAnswersTheSame() throws {
         let world = World3D()
         world.ground = 0
-        let box = world.addBody(.box(width: 1, height: 1, depth: 1),
+        let box = try world.addBody(.box(width: 1, height: 1, depth: 1),
                                 at: Vector3(0, 3, 0))
         run(world, steps: 60)
         let before = box.position
@@ -350,18 +350,18 @@ struct Query3DTests {
     /// Two identical worlds answer identically, the determinism the whole 3D
     /// tier is pinned by.
     @Test func identicalWorldsAnswerIdentically() throws {
-        func probe() -> [Double] {
+        func probe() throws -> [Double] {
             let world = World3D()
             world.ground = 0
             for index in 0 ..< 6 {
-                world.addBody(.box(width: 1, height: 1, depth: 1),
+                try world.addBody(.box(width: 1, height: 1, depth: 1),
                               at: Vector3(Double(index) * 0.15, 2 + Double(index), 0))
             }
             for _ in 0 ..< 120 { world.advance(by: 1.0 / 60) }
             return world.raycastAll(from: Vector3(0, 12, 0), to: Vector3(0, -1, 0))
                 .flatMap { [$0.distance, $0.point.x, $0.normal.y] }
         }
-        #expect(probe() == probe())
+        #expect(try probe() == probe())
     }
 }
 

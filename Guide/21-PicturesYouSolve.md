@@ -6,7 +6,7 @@
 
 <img src="Images/21-PicturesYouSolve/Lighthouse.jpg" alt="A lighthouse on a dark headland at dusk, its lamp throwing beams into a violet and orange sky, the sun on the horizon, and a small boat with a lit mast on the water, every silhouette traced in a thin warm outline" width="560">
 
-Some filters solve a problem instead of changing a picture. Diffusion paints from a few marks, a distance field measures every pixel against an edge, and light works itself out from its lamps. In the lighthouse above, the sky is diffused, the outlines are measured, and the beams are worked out. Past it, a pasted patch loses its seam, a picture is read as waves, and a window's average costs the same at any size.
+Some filters solve a problem instead of changing a picture. Diffusion paints from a few marks, a distance field measures every pixel against an edge, and light works itself out from its lamps. In the lighthouse above, the sky is diffused, the outlines are measured, and the beams are worked out. Past it, a pasted patch loses its seam and a picture is read as waves. A window's average costs the same at any size, and a layer gets an edge it was not drawn with.
 
 ## A picture made of a few marks: diffusion
 
@@ -101,13 +101,7 @@ marks.filtered(.distanceField(maxDistance: 64))
 
 Past that distance the field reads flat, with a zero direction, which is its way of saying nothing is within reach.
 
-Some uses of the field are common enough to have a filter of their own. These are the layer styles, each read off the layer's alpha. An outline is a band cut from this field. A glow is a falloff read along it, and a bevel lights its slope. Two shadows blur the layer instead, and each style chains like any other filter:
-
-```swift
-let styled = marks.filtered(.bevel(width: 12)).filtered(.outline(width: 5, color: .black))
-```
-
-[`Examples/Effects/LayerStyles`](../Examples/Effects/LayerStyles/Sketch.swift) stacks them on a word under a moving light, and [Layer styles](../Docs/Drawing/LayerStyles.md) has each one and how they stack.
+Some uses of the field are common enough to have a filter of their own. Those are the layer styles: the outline, the shadows, the glows, and the bevel. They get [an entry of their own](#an-edge-of-its-own-layer-styles) at the end of the chapter.
 
 ## Light that works itself out: `.light`
 
@@ -247,13 +241,13 @@ Then make it yours:
 
 The lighthouse is about motion, since the beams sweep and the boat rocks on the swell, so keep it as a movie. `swift run OllinLive MySketches/Lighthouse.swift --export-video lighthouse.mp4 --seconds 16` writes sixteen seconds of it. An export raises the light to its detail quality, so the file takes longer to write than the window takes to draw.
 
-## Other problems a layer can solve: a seamless paste, the frequency domain, and local averages
+## Other problems a layer can solve: a seamless paste, the frequency domain, local averages, and an edge of its own
 
-The lighthouse solved three problems: colors settled between a few marks, distance measured from every silhouette, and light traced from lamps. Three more filters treat a layer the same way, as a problem rather than a picture, and none of them is in the lighthouse. The first settles a pasted patch into its new picture the way diffusion settles a color. The second reads a picture as the waves that add up to it. The third answers any window's average at a flat price.
+The lighthouse solved three problems: colors settled between a few marks, distance measured from every silhouette, and light traced from lamps. Four more filters treat a layer the same way, as a problem rather than a picture, and none of them is in the lighthouse. The first settles a pasted patch into its new picture the way diffusion settles a color. The second reads a picture as the waves that add up to it. The third answers any window's average at a flat price. The fourth gives a layer an edge it was not drawn with, read off the field the second step measured. Each entry here is the short form, and its reference page carries the rules and the costs.
 
 ### Putting a piece of one picture into another: `.seamlessClone`
 
-`.seamlessClone` drops a patch from one picture into another without its seam. It is for a slab of texture, a cut-out, or anything from elsewhere that would otherwise read as pasted. The rim gives a paste away, and so does the color, since the patch was lit differently wherever it came from. The method is the Poisson image editing that Patrick Pérez, Michel Gangnet, and Andrew Blake published in 2003. It fixes both without touching the patch's detail:
+`.seamlessClone` drops a patch from one picture into another without its seam. It is for a slab of texture, a cut-out, or anything from elsewhere that would otherwise read as pasted. The rim gives a paste away, and so does the color, since the patch was lit differently wherever it came from. The method is the Poisson image editing that Patrick Pérez, Michel Gangnet, and Andrew Blake published in 2003. It is the diffusion from the first step under another name. Around the rim it measures how far the patch's color sits from the backdrop's. It spreads that difference across the inside as smoothly as it can, and adds it back. The rim lands on the backdrop, and only the slow, low part of the patch's color is replaced, so the stones survive:
 
 ```swift
 let backdrop = makeRenderTarget()
@@ -267,15 +261,7 @@ drawImage(backdrop.combined(with: patch, .seamlessClone()).image, 0, 0)
 
 <img src="Images/21-PicturesYouSolve/SeamlessClone.jpg" alt="Three panels. A green slab of stones on black; the same slab pasted onto a blue-to-orange gradient with an obvious circular rim; and the same slab cloned, where the rim has vanished and the stones themselves have gone blue at the top and orange at the bottom" width="680">
 
-Where the patch layer is opaque is where it lands, so the shape you draw is the shape that gets cloned. Draw it where you want it, and that is the whole of the positioning.
-
-Here is what it does. Around the rim it measures how far the patch's color sits from the backdrop's. It spreads that difference across the inside as smoothly as it can, and adds it back. On the rim that lands on the backdrop, so there is no join left to see. Inside, the patch is nudged by the gentlest correction that reaches it. The stones survive because only the slow, low part of the color is replaced.
-
-Spreading a difference as smoothly as possible is the diffusion from the first step, under another name. The marks are the rim, and the field between them is the correction.
-
-Two things follow, and both are better known in advance. The patch keeps its own **range of tone** and only moves where that range sits. Drop a contrasty patch somewhere much darker than itself and its shadows go below black. And the rim is where the entire answer comes from, so a rim laid across a **hard edge** drags that edge inward. Keep the rim on quiet ground and neither one comes up.
-
-`amount` runs from 0 to 1. One is the full clone. Zero leaves the seam in, which is the picture you want beside it when you are deciding whether it worked. [`Examples/Effects/SeamlessClone`](../Examples/Effects/SeamlessClone/Sketch.swift) does the paste live.
+Where the patch layer is opaque is where it lands, so the shape you draw is the shape that gets cloned. `amount` runs from 0 to 1. Zero leaves the seam in, which is the picture you want beside it when you are deciding whether it worked. The [Effects](../Docs/Drawing/Effects.md#combined) page has the two limits: a patch keeps its own range of tone, and a rim must stay off a hard edge. [`Examples/Effects/SeamlessClone`](../Examples/Effects/SeamlessClone/Sketch.swift) does the paste live.
 
 ### A picture read as waves: the Fourier transform
 
@@ -288,9 +274,7 @@ drawImage(spectrum.filtered(.spectrum()).image, 0, 0)   // the view of it
 
 <img src="Images/21-PicturesYouSolve/FrequencyDomain.jpg" alt="Three panels. A dark plate with a pale circle, a blue square, a red triangle and a row of fine white stripes; the same plate as a spectrum, a bright center with a star of lines radiating from it and a comb of evenly spaced vertical lines crossing its middle line; and the plate blurred smooth, its stripes gone to a flat gray band and rings of ripple around every shape" width="680">
 
-The middle panel is that spectrum, drawn through `.spectrum()`, the view that makes its faint values visible. It is a map of the drawing's *scales* rather than a picture of the drawing. Slow, wide gradients sit near the middle, and fine detail out at the edges. The star through it is the shapes' straight edges. The evenly spaced vertical lines are the stripes. One wavelength, repeated, lands at one spacing along the middle line. The stripe band is short, so each of those points stretches into a vertical line.
-
-The reason to make the trip is that filtering by scale, which is awkward on the pixel side, is a multiplication on this side. Draw a shape over the spectrum and you have a filter:
+The middle panel is the spectrum, drawn through `.spectrum()`, the view that makes its faint values visible. It is a map of the drawing's *scales* rather than a picture of the drawing. Slow, wide gradients sit near the middle and fine detail out at the edges. The stripes are a comb of evenly spaced points along the middle line. Filtering by scale is awkward on the pixel side and a multiplication on this side, so a shape drawn over the spectrum is a filter:
 
 ```swift
 let soft = plate.filtered(.fourier())
@@ -298,62 +282,41 @@ let soft = plate.filtered(.fourier())
     .filtered(.inverseFourier())
 ```
 
-`.mask()` keeps the base where the second layer is white and drops it where it is black, which is the multiplication. Keep the middle and the fine detail is gone. That is the third panel, and the stripes have become one flat band. Invert the mask and the opposite happens, leaving the edges and nothing else. A ring keeps one band of scales and drops both the coarse and the fine, which no ordinary blur can do.
-
-There are three things to know before you reach for it. The layer has to be square with a side that is a power of two, 256, 512, or 1024, because the transform works by halving. `makeRenderTarget(width: 512, height: 512)` makes one. It reads one channel, the brightness unless you name another, so what comes back is gray. And a hard-edged mask *rings*. The ripples around every shape in the third panel are the price of cutting a band off sharply. Soften the mask's own edge to soften them.
-
-It also runs the other way on its own. Write a spectrum, transform it, and a field comes out that nobody drew. The physics of a sea is written as a spectrum, and that is how [Chapter 29](29-Landscapes.md) makes an ocean. The [reference](../Docs/Drawing/Fourier.md) has the cost and the rest of the rules, and [`Examples/Effects/Fourier`](../Examples/Effects/Fourier/Sketch.swift) filters a picture by scale live.
+Keep the middle and the fine detail is gone, which is the third panel, where the stripes become one flat band. Invert the mask and only the edges are left. A ring keeps one band of scales and drops both the coarse and the fine, which no ordinary blur can do. The [reference](../Docs/Drawing/Fourier.md) has the three rules: a square layer with a power-of-two side, one channel read, and a hard-edged mask that rings. It also has the other direction, a field written as a spectrum, which is how [Chapter 29](29-Landscapes.md) makes an ocean. [`Examples/Effects/Fourier`](../Examples/Effects/Fourier/Sketch.swift) filters a picture by scale live.
 
 ### Averages of a neighborhood, at a flat price: the summed-area table
 
-The [distance field](#a-field-you-measure-the-distance-field) asked every pixel how far away something was. Here is a different question, and a cheaper answer: what does the neighborhood around this pixel look like? It is for a blur that reaches across the canvas. It is also for cutting a page to black and white under light that falls unevenly across it. The table that answers it is Franklin C. Crow's summed-area table, from 1984.
-
-The obvious way to answer costs more the wider you look. A 5-pixel square is 25 reads and a 500-pixel square is 250,000. A blur that reaches across the canvas costs too much to run each frame. The table turns the cost into a flat fee.
-
-Build one table first. Every cell of the table holds the sum of everything above and to the left of it. Then the sum over *any* rectangle is a bit of arithmetic on four corners of that table:
-
-```
-      A ─────────── B          the shaded box
-      │             │            =  D − B − C + A
-      │      ┌──────┤
-      │      │//////│          four lookups, wherever the box is
-      C ─────┼──────D          and however big it is
-             │//////│
-```
-
-That table is a **summed-area table**, and once you have one, two useful filters cost almost nothing.
-
-The first is a blur:
+The [distance field](#a-field-you-measure-the-distance-field) asked every pixel how far away something was. Here is a different question, and a cheaper answer: what does the neighborhood around this pixel look like? The obvious way costs more the wider you look, 25 reads for a 5-pixel square and 250,000 for a 500-pixel one. Franklin C. Crow's summed-area table, from 1984, turns that into a flat fee. Every cell of the table holds the sum of everything above and to the left of it. The sum over any rectangle is then four lookups on its corners, wherever the box is and however big. Two filters stand on the table:
 
 ```swift
-layer.filtered(.boxBlur(radius: 4))     // these two
-layer.filtered(.boxBlur(radius: 400))   // cost the same
+page.filtered(.boxBlur(radius: 400))             // costs what a radius of 4 costs
+page.filtered(.adaptiveThreshold(window: 16))    // cut against each pixel's own surroundings
 ```
-
-It is the plainest blur there is, the average of the square around each pixel, and it is not as good-looking as `gaussianBlur`. Reach for it when the reach is large. Reach for it too when the radius changes while the sketch runs, and you do not want the frame rate changing with it. Three of them in a row come close enough to a Gaussian to pass for one, and that is still three fixed-price passes.
-
-The second filter, `adaptiveThreshold`, is the reason to build the table.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/21-PicturesYouSolve/LocalAverages-dark.jpg">
   <img src="Images/21-PicturesYouSolve/LocalAverages.jpg" alt="Three panels. A page of printed text with diagonal bands of shadow falling across it; the same page cut to black and white by one threshold, which turns the shadow bands solid black; and the same page cut against each pixel's own neighborhood, where the text comes back through the bands and only dark streaks along their edges remain" width="680">
 </picture>
 
-The left panel is a page with bands of shadow falling across it. `.threshold(0.3)` is the filter that sends every pixel brighter than one number to white and the rest to black. Try to cut the page with it and you have to pick that number, and there is no number that works. Pick one that keeps the shadowed bands and you flood the lit paper. Pick one that keeps the lit paper and the bands go solid black, which is the middle panel.
+The first is the plainest blur there is, the average of the square around each pixel. Reach for it when the reach is large, or when the radius changes while the sketch runs. The second is the reason to build the table. `.threshold(0.3)` sends every pixel brighter than one number to white and the rest to black. The middle panel is what it does to a page under uneven light: no one number keeps the lit paper and the shadowed bands both. `adaptiveThreshold` compares each pixel with the average of its own surroundings instead, Derek Bradley and Gerhard Roth's rule from 2007. That is the right panel, where the text comes back through the shadow. The [reference](../Docs/Drawing/LocalAverages.md) has the window rule, wider than the marks and narrower than the lighting, the `bias` fraction, and what the table costs. [`Examples/Effects/SummedArea`](../Examples/Effects/SummedArea/Sketch.swift) runs both filters over a page.
 
-`adaptiveThreshold` compares each pixel with the average of its own surroundings instead. The rule is Derek Bradley and Gerhard Roth's, from 2007:
+### An edge of its own: layer styles
+
+Some uses of the measured field are common enough to have a filter each. These are the layer styles, the edge treatments a design tool offers a layer. There is an outline, a drop shadow and an inner shadow, an outer glow and an inner glow, and a bevel. They are for lettering and logos, for a cut-out that has to sit on its ground, and for any mark that wants a rim. Each reads the layer's alpha, so it follows letters and photographs as closely as shapes. The outline is a band cut from the distance field, a glow is a falloff read along it, and the bevel lights its slope. The two shadows blur the layer instead. Each is one filter, and they stack in the order they are chained:
 
 ```swift
-page.filtered(.adaptiveThreshold(window: 16))
+let styled = marks
+    .filtered(.bevel(width: 12, angle: -.pi * 0.75))
+    .filtered(.outline(width: 5, color: .black))
+    .filtered(.dropShadow(offset: Vector2(8, 10), radius: 14, color: Color(white: 0, alpha: 0.45)))
 ```
 
-That is the right panel. The text comes back through the shadow, and only the darkest band edges keep a streak. Hard contrast is local, and uneven light is not, so comparing locally keeps the first and throws away the second.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/21-PicturesYouSolve/LayerStyles-dark.jpg">
+  <img src="Images/21-PicturesYouSolve/LayerStyles.jpg" alt="Three panels, each holding the same heavy word edge beside a disc. Left, a dark outline around every shape; middle, the shapes raised into a lit bevel with a pale glow along their inside; right, the shapes casting a soft shadow down and to the right with a darker shadow held inside their rims" width="680">
+</picture>
 
-The argument that matters is `window`, how wide that neighborhood is in pixels. It wants to be big enough to hold both ink and paper. Set it smaller than your marks and the middle of a thick stroke sees nothing but more stroke. It decides that must be what paper looks like here, and comes out hollow. It is bounded on the other side too. A window wider than a shadow band averages the lit paper around it, and the band comes out solid ink. So the window wants to be wider than the marks and narrower than the lighting you want to see past. A line height or two suits a page of text, which is the 16 pixels above. Left alone it is an eighth of the layer, which suits a page lit unevenly from edge to edge.
-
-There is one more argument, `bias`, which is how far below the local average a pixel has to fall before it goes dark. It is a *fraction* rather than a fixed amount, for a reason. Light falling on a page multiplies what comes back off it. So only a test that scales along with the average is unmoved when somebody turns the lamp down.
-
-There are two costs, and neither grows with the window. Building the table is about twenty passes over the layer, a few milliseconds for a full canvas. One of these in a frame is comfortable. A dozen are not. And the running totals get large, which eats into a float's precision and leaves a small error behind. That error is a fixed amount divided by the area you asked for, so it fades away as the window grows. It only shows up at tiny radii, which is where you would reach for a Gaussian anyway. [`Examples/Effects/SummedArea`](../Examples/Effects/SummedArea/Sketch.swift) runs both filters over a page.
+The order is the picture: here the outline is beveled with nothing, and the shadow falls from the outlined shape. An outline can sit inside, outside, or centered on the edge, and the bevel's light is an angle the sketch can turn. [Layer styles](../Docs/Drawing/LayerStyles.md) has each filter's arguments, how exact the band is, and what each costs; [`Examples/Effects/LayerStyles`](../Examples/Effects/LayerStyles/Sketch.swift) stacks them on a word under a moving light.
 
 ## Where this comes from
 
@@ -366,9 +329,10 @@ The entries after the lighthouse name their own sources. The seamless paste is P
 - [Diffusion](../Docs/Drawing/Effects.md#generate) and the [seamless paste](../Docs/Drawing/Effects.md#combined): `.diffuse` and `drawDiffusionCurve` with their arguments, and what `.seamlessClone` keeps and where its rim should sit.
 - [Measured distance fields](../Docs/Drawing/DistanceFields.md): what the field holds, reading it back, and the jump flood underneath it.
 - [The frequency domain](../Docs/Drawing/Fourier.md): the transform both ways, filtering by scale, building a field from its spectrum, and what the ladder costs.
+- [Layer styles](../Docs/Drawing/LayerStyles.md): the six filters, where an outline sits, how exact the band is, and what each one costs.
 - [Light in a flat sketch](../Docs/Drawing/Light.md): the two layers, every argument, the cost at each quality tier, what it will not do, and the ladder underneath it.
 - [Local averages](../Docs/Drawing/LocalAverages.md): the box blur, the adaptive threshold, choosing the window, and what the summed-area table costs.
-- Worked examples: [`Examples/Effects/DiffusionCurves`](../Examples/Effects/DiffusionCurves/Sketch.swift), [`Examples/Effects/SeamlessClone`](../Examples/Effects/SeamlessClone/Sketch.swift), [`Examples/Effects/DistanceField`](../Examples/Effects/DistanceField/Sketch.swift), [`Examples/Effects/Fourier`](../Examples/Effects/Fourier/Sketch.swift), [`Examples/Effects/Light`](../Examples/Effects/Light/Sketch.swift), and [`Examples/Effects/SummedArea`](../Examples/Effects/SummedArea/Sketch.swift).
+- Worked examples: [`Examples/Effects/DiffusionCurves`](../Examples/Effects/DiffusionCurves/Sketch.swift), [`Examples/Effects/SeamlessClone`](../Examples/Effects/SeamlessClone/Sketch.swift), [`Examples/Effects/DistanceField`](../Examples/Effects/DistanceField/Sketch.swift), [`Examples/Effects/Fourier`](../Examples/Effects/Fourier/Sketch.swift), [`Examples/Effects/Light`](../Examples/Effects/Light/Sketch.swift), [`Examples/Effects/SummedArea`](../Examples/Effects/SummedArea/Sketch.swift), and [`Examples/Effects/LayerStyles`](../Examples/Effects/LayerStyles/Sketch.swift).
 
 ---
 

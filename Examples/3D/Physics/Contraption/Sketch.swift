@@ -62,30 +62,30 @@ final class Contraption: Sketch {
     let teal = Color(hex: 0x4FA89B)
     let clay = Color(hex: 0xD2603F)
 
-    override func setup() {
+    override func setup() throws {
         world.ground = 0
         world.restitution = 0.15
         // Gear teeth mesh; plain cylinders would jam. Nothing in the frame
         // needs to collide with anything else in it.
         world.ignoreCollisions(between: "frame", and: "frame")
 
-        buildDriveTrain()
-        buildHoist()
-        buildTurntable()
-        buildTrack()
+        try buildDriveTrain()
+        try buildHoist()
+        try buildTurntable()
+        try buildTrack()
     }
 
     // MARK: The drive train
 
-    func buildDriveTrain() {
-        let wall = world.addBody(.box(width: 5.8, height: 3.6, depth: 0.25),
+    func buildDriveTrain() throws {
+        let wall = try world.addBody(.box(width: 5.8, height: 3.6, depth: 0.25),
                                  at: Vector3(-4.2, 1.8, -0.75), kind: .static,
                                  group: "frame")
         wall.userData = timber
 
         // A cylinder stands upright, so every wheel here takes a quarter turn
         // about x to lay its axle along z, facing the camera.
-        let small = world.addBody(.compound([
+        let small = try world.addBody(.compound([
             .part(.cylinder(height: 0.3, radius: smallRadius),
                   rotated: .pi / 2, axis: .unitX, density: 3),
         ]), at: smallHub, group: "frame")
@@ -93,7 +93,7 @@ final class Contraption: Sketch {
 
         // One body carrying two wheels: the gear that meshes with the small one,
         // and the pinion in front of it that drives the bar.
-        let big = world.addBody(.compound([
+        let big = try world.addBody(.compound([
             .part(.cylinder(height: 0.3, radius: bigRadius),
                   rotated: .pi / 2, axis: .unitX, density: 3),
             .part(.cylinder(height: 0.3, radius: pinionRadius),
@@ -111,7 +111,7 @@ final class Contraption: Sketch {
         // The bar carries a fork, so the blocks between its two arms are
         // shuttled back and forth rather than shoved off one end.
         let barCenter = Vector3(bigHub.x, rackY, 0.45)
-        let bar = world.addBody(.compound([
+        let bar = try world.addBody(.compound([
             .part(.box(width: 3.8, height: 0.22, depth: 0.22)),
             .part(.box(width: 0.2, height: 0.5, depth: 0.9),
                   at: Vector3(-0.8, -0.24, 0)),
@@ -130,13 +130,13 @@ final class Contraption: Sketch {
                       .rackAndPinion(travelPerTurn: 2 * .pi * pinionRadius))
 
         let shelfTop = rackY - 0.49
-        let shelf = world.addBody(.box(width: 4.4, height: 0.3, depth: 1.3),
+        let shelf = try world.addBody(.box(width: 4.4, height: 0.3, depth: 1.3),
                                   at: Vector3(bigHub.x, shelfTop - 0.15, 0.45),
                                   kind: .static, group: "frame")
         shelf.userData = timber
 
         for i in 0 ..< 3 {
-            let block = world.addBody(.box(width: 0.34, height: 0.34, depth: 0.34),
+            let block = try world.addBody(.box(width: 0.34, height: 0.34, depth: 0.34),
                                       at: Vector3(bigHub.x - 0.5 + Double(i) * 0.5,
                                                   shelfTop + 0.18, 0.45),
                                       density: 0.6, friction: 0.5)
@@ -147,13 +147,13 @@ final class Contraption: Sketch {
 
     // MARK: The hoist
 
-    func buildHoist() {
-        let beam = world.addBody(.box(width: 4.6, height: 0.25, depth: 0.35),
+    func buildHoist() throws {
+        let beam = try world.addBody(.box(width: 4.6, height: 0.25, depth: 0.35),
                                  at: Vector3(1.75, 5.5, 0), kind: .static,
                                  group: "frame")
         beam.userData = timber
         for x in [-0.4, 3.9] {
-            let leg = world.addBody(.box(width: 0.25, height: 5.4, depth: 0.3),
+            let leg = try world.addBody(.box(width: 0.25, height: 5.4, depth: 0.3),
                                     at: Vector3(x, 2.7, 0), kind: .static,
                                     group: "frame")
             leg.userData = timber
@@ -167,7 +167,7 @@ final class Contraption: Sketch {
                                     depth: dz == 0 ? 1.1 : 0.12),
                                at: Vector3(dx, 0.25, dz)))
         }
-        let basket = world.addBody(.compound(walls), at: Vector3(0.6, 3.2, 0),
+        let basket = try world.addBody(.compound(walls), at: Vector3(0.6, 3.2, 0),
                                    density: 0.5, friction: 0.6)
         basket.userData = steel
         tray = basket
@@ -175,7 +175,7 @@ final class Contraption: Sketch {
         // The counterweight starts on the ground with the rope at its full
         // length, so the hoist opens at rest: it is the load in the tray that
         // starts it moving, and the weight that comes up in exchange.
-        let weight = world.addBody(.box(width: 0.7, height: 0.7, depth: 0.7),
+        let weight = try world.addBody(.box(width: 0.7, height: 0.7, depth: 0.7),
                                    at: Vector3(2.9, 0.35, 0), density: 3)
         weight.userData = clay
         counterweight = weight
@@ -189,14 +189,14 @@ final class Contraption: Sketch {
 
     // MARK: The turntable
 
-    func buildTurntable() {
-        let base = world.addBody(.box(width: 1.0, height: 1.0, depth: 1.0),
+    func buildTurntable() throws {
+        let base = try world.addBody(.box(width: 1.0, height: 1.0, depth: 1.0),
                                  at: Vector3(5.6, 0.5, 0), kind: .static,
                                  group: "frame")
         base.userData = timber
 
         let top = Vector3(5.6, 3.6, 0)
-        let platter = world.addBody(.cylinder(height: 0.22, radius: 1.1),
+        let platter = try world.addBody(.cylinder(height: 0.22, radius: 1.1),
                                     at: top, density: 1.2, friction: 0.8)
         platter.userData = steel
         platter.angularVelocity = Vector3(0, 2.6, 0)
@@ -206,7 +206,7 @@ final class Contraption: Sketch {
 
         for i in 0 ..< 3 {
             let angle = Double(i) / 3 * 2 * .pi
-            let crate = world.addBody(.box(width: 0.4, height: 0.4, depth: 0.4),
+            let crate = try world.addBody(.box(width: 0.4, height: 0.4, depth: 0.4),
                                       at: top + Vector3(cos(angle) * 0.72, 0.32,
                                                         sin(angle) * 0.72),
                                       density: 0.8, friction: 0.6)
@@ -216,7 +216,7 @@ final class Contraption: Sketch {
 
     // MARK: The track
 
-    func buildTrack() {
+    func buildTrack() throws {
         // A little railway across the front, clear of everything behind it.
         track = (0 ..< 48).map { i in
             let a = Double(i) / 48 * 2 * .pi
@@ -224,10 +224,10 @@ final class Contraption: Sketch {
         }
         // The track belongs to its first body, so the rails need one; this one
         // sits under the floor because it is bookkeeping, not scenery.
-        let rails = world.addBody(.box(width: 0.2, height: 0.2, depth: 0.2),
+        let rails = try world.addBody(.box(width: 0.2, height: 0.2, depth: 0.2),
                                   at: Vector3(0, -2, 0), kind: .static,
                                   group: "frame")
-        let cart = world.addBody(.box(width: 0.8, height: 0.45, depth: 0.5),
+        let cart = try world.addBody(.box(width: 0.8, height: 0.45, depth: 0.5),
                                  at: track[0], density: 1.5)
         cart.userData = clay
         let joint = world.connect(rails, cart,
@@ -241,9 +241,11 @@ final class Contraption: Sketch {
 
     override func keyPressed() {
         if key == " " {
-            let crate = world.addBody(.box(width: 0.45, height: 0.45, depth: 0.45),
-                                      at: Vector3(0.6 + random(-0.1, 0.1), 6.8, 0),
-                                      density: 4, friction: 0.6)
+            // A full world refuses the crate, and a key press has nowhere to
+            // throw to, so the press does nothing.
+            guard let crate = try? world.addBody(.box(width: 0.45, height: 0.45, depth: 0.45),
+                                                 at: Vector3(0.6 + random(-0.1, 0.1), 6.8, 0),
+                                                 density: 4, friction: 0.6) else { return }
             crate.userData = brass
             loaded.append(crate)
             // Keep the pile finite; the oldest crate is retired.

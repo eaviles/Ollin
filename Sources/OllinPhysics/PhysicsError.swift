@@ -10,10 +10,18 @@ public enum PhysicsError: Error, CustomStringConvertible {
     /// The thing could not be built from what was handed in; the text names
     /// what it needed.
     case unbuildable(String)
+    /// The 3D world already holds as many bodies as it was made for
+    /// (`World3D(maxBodies:)`), so nothing more can be added until one is
+    /// removed. Rigid bodies, soft bodies, ropes, a ragdoll's limbs, a
+    /// vehicle's chassis, and a character's inner body all count.
+    case full(maxBodies: Int)
 
     public var description: String {
         switch self {
         case .unbuildable(let what): return what
+        case .full(let maxBodies):
+            return "the world is full: it was made for \(maxBodies) bodies and holds that many. "
+                + "Make it with a larger maxBodies, or remove a body first."
         }
     }
 }

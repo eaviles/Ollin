@@ -391,7 +391,7 @@ private final class ScatteredBoxesProbe: Sketch {
         let copies = (0..<12).map { k -> MeshInstance in
             let a = Double(k) * 0.52
             return MeshInstance(position: Vector3(Double(k % 4) * 1.4 - 2.1, Double(k / 4) * 1.4 - 1.4, 0),
-                                rotation: Vector3(a, a * 0.7, a * 0.3), scale: 0.6)
+                                rotation: .euler(x: a, y: a * 0.7, z: a * 0.3), scale: 0.6)
         }
         if instanced {
             drawMesh(.box(size: 1), instances: copies)

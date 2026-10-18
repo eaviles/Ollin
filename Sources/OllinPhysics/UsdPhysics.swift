@@ -54,7 +54,7 @@ extension World3D {
     ///   - group: which collision group everything joins.
     @discardableResult
     public func addBodies(from scene: Scene, usesSceneGravity: Bool = false,
-                          group: CollisionGroup = .default) -> [Body3D] {
+                          group: CollisionGroup = .default) throws -> [Body3D] {
         let description = scene.physics
         guard !description.isEmpty else {
             noteOnce("this scene carries no physics annotations, so there was "
@@ -70,8 +70,8 @@ extension World3D {
         for described in description.bodies {
             guard let collider = collider(for: described.shapes) else { continue }
             let material = described.shapes.first
-            let body = addBody(collider, at: described.position,
-                               kind: kind(of: described.motion), isSensor: false,
+            let body = try addBody(collider, at: described.position,
+                                   kind: kind(of: described.motion), isSensor: false,
                                rotated: 0, axis: .unitY,
                                density: described.density ?? material?.density ?? 1,
                                friction: material?.friction ?? 0.5,

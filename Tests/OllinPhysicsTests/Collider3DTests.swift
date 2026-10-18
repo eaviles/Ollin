@@ -18,9 +18,9 @@ struct Collider3DTests {
 
     // MARK: Compound bodies
 
-    @Test func compoundMassIsTheSumOfItsParts() {
+    @Test func compoundMassIsTheSumOfItsParts() throws {
         let world = World3D()
-        let pair = world.addBody(.compound([
+        let pair = try world.addBody(.compound([
             .part(.box(width: 1, height: 1, depth: 1), at: Vector3(-1, 0, 0)),
             .part(.box(width: 1, height: 1, depth: 1), at: Vector3(1, 0, 0)),
         ]), at: Vector3(0, 5, 0))
@@ -29,7 +29,7 @@ struct Collider3DTests {
         #expect(abs(pair.mass - 2000) < 1)
 
         // A part's own density multiplies the body's.
-        let weighted = world.addBody(.compound([
+        let weighted = try world.addBody(.compound([
             .part(.box(width: 1, height: 1, depth: 1), at: Vector3(-1, 0, 0)),
             .part(.box(width: 1, height: 1, depth: 1), at: Vector3(1, 0, 0),
                   density: 4),
@@ -42,12 +42,12 @@ struct Collider3DTests {
     /// center of mass moves off the pivot, so gravity tips it. A welded pair
     /// of separate bodies can fake the pose but the compound carries the true
     /// mass properties in one body.
-    @Test func compoundBalanceFollowsPartDensity() {
-        func makeBar(endDensity: Double) -> (World3D, Joint3D) {
+    @Test func compoundBalanceFollowsPartDensity() throws {
+        func makeBar(endDensity: Double) throws -> (World3D, Joint3D) {
             let world = World3D()
-            let anchor = world.addBody(.sphere(radius: 0.1), at: Vector3(0, 5, 0),
+            let anchor = try world.addBody(.sphere(radius: 0.1), at: Vector3(0, 5, 0),
                                        kind: .static)
-            let bar = world.addBody(.compound([
+            let bar = try world.addBody(.compound([
                 .part(.box(width: 1, height: 0.2, depth: 0.2), at: Vector3(-0.8, 0, 0)),
                 .part(.box(width: 1, height: 0.2, depth: 0.2), at: Vector3(0.8, 0, 0),
                       density: endDensity),
@@ -57,22 +57,22 @@ struct Collider3DTests {
             return (world, hinge)
         }
 
-        let (balanced, level) = makeBar(endDensity: 1)
+        let (balanced, level) = try makeBar(endDensity: 1)
         run(balanced, steps: 90)
         #expect(abs(level.angle) < 0.02)
 
-        let (lopsided, tipped) = makeBar(endDensity: 8)
+        let (lopsided, tipped) = try makeBar(endDensity: 8)
         run(lopsided, steps: 90)
         // The heavy +x end swings down: a negative turn about the +z hinge.
         #expect(tipped.angle < -0.15)
     }
 
-    @Test func anOffsetPartPosesItsShape() {
+    @Test func anOffsetPartPosesItsShape() throws {
         let world = World3D()
         world.ground = 0
         // One sphere held a unit below the body's origin: the origin should
         // come to rest a unit above the resting sphere.
-        let body = world.addBody(.compound([
+        let body = try world.addBody(.compound([
             .part(.sphere(radius: 0.5), at: Vector3(0, -1, 0)),
         ]), at: Vector3(0, 3, 0))
 
@@ -80,12 +80,12 @@ struct Collider3DTests {
         #expect(abs(body.position.y - 1.5) < 0.05)
     }
 
-    @Test func aRotatedPartPosesItsShape() {
+    @Test func aRotatedPartPosesItsShape() throws {
         let world = World3D()
         world.ground = 0
         // A tall box turned onto its side inside the compound: it rests at
         // half its *width*, not half its height.
-        let body = world.addBody(.compound([
+        let body = try world.addBody(.compound([
             .part(.box(width: 0.4, height: 2, depth: 0.4),
                   rotated: .pi / 2, axis: .unitZ),
         ]), at: Vector3(0, 3, 0))
@@ -96,32 +96,32 @@ struct Collider3DTests {
 
     // MARK: Tapered shapes
 
-    @Test func aConeWeighsAThirdOfItsCylinder() {
+    @Test func aConeWeighsAThirdOfItsCylinder() throws {
         let world = World3D()
-        let cone = world.addBody(.cone(height: 1, radius: 0.5),
+        let cone = try world.addBody(.cone(height: 1, radius: 0.5),
                                  at: Vector3(0, 5, 0))
-        let cylinder = world.addBody(.cylinder(height: 1, radius: 0.5),
+        let cylinder = try world.addBody(.cylinder(height: 1, radius: 0.5),
                                      at: Vector3(3, 5, 0))
         #expect(abs(cone.mass / cylinder.mass - 1.0 / 3) < 0.01)
     }
 
-    @Test func aTaperedCapsuleWeighsBetweenItsBoundingCapsules() {
+    @Test func aTaperedCapsuleWeighsBetweenItsBoundingCapsules() throws {
         let world = World3D()
-        let thin = world.addBody(.capsule(height: 1, radius: 0.2),
+        let thin = try world.addBody(.capsule(height: 1, radius: 0.2),
                                  at: Vector3(-3, 5, 0))
-        let tapered = world.addBody(.taperedCapsule(height: 1, topRadius: 0.2,
+        let tapered = try world.addBody(.taperedCapsule(height: 1, topRadius: 0.2,
                                                     bottomRadius: 0.4),
                                     at: Vector3(0, 5, 0))
-        let fat = world.addBody(.capsule(height: 1, radius: 0.4),
+        let fat = try world.addBody(.capsule(height: 1, radius: 0.4),
                                 at: Vector3(3, 5, 0))
         #expect(thin.mass < tapered.mass)
         #expect(tapered.mass < fat.mass)
     }
 
-    @Test func anUprightConeRestsOnItsBase() {
+    @Test func anUprightConeRestsOnItsBase() throws {
         let world = World3D()
         world.ground = 0
-        let cone = world.addBody(.cone(height: 1, radius: 0.4),
+        let cone = try world.addBody(.cone(height: 1, radius: 0.4),
                                  at: Vector3(0, 2, 0))
         run(world, steps: 300)
         #expect(abs(cone.position.y - 0.5) < 0.05)
@@ -129,14 +129,14 @@ struct Collider3DTests {
 
     // MARK: Heightfield terrain
 
-    @Test func aBallRestsOnAFlatHeightfieldAtItsLevel() {
+    @Test func aBallRestsOnAFlatHeightfieldAtItsLevel() throws {
         let world = World3D()
         let plateau = Heightfield(columns: 33, rows: 33, repeating: 0.5)
-        world.addBody(.heightfield(plateau, width: 8, depth: 8, height: 2),
+        try world.addBody(.heightfield(plateau, width: 8, depth: 8, height: 2),
                       at: .zero, kind: .static)
         // Surface at 0.5 · 2 = 1; the ball's center rests a radius above it,
         // away from the middle so the extent mapping is exercised too.
-        let ball = world.addBody(.sphere(radius: 0.3), at: Vector3(1.4, 3, -2.1))
+        let ball = try world.addBody(.sphere(radius: 0.3), at: Vector3(1.4, 3, -2.1))
 
         run(world, steps: 300)
         #expect(abs(ball.position.y - 1.3) < 0.05)
@@ -148,26 +148,26 @@ struct Collider3DTests {
         #expect(abs(ball.position.z + 2.1) < 0.6)
     }
 
-    @Test func aNonSquareFieldResamplesOntoItsSquareGrid() {
+    @Test func aNonSquareFieldResamplesOntoItsSquareGrid() throws {
         let world = World3D()
         // 200 × 50 source samples; the collider must still trace level ground.
         let strip = Heightfield(columns: 200, rows: 50, repeating: 0.25)
-        world.addBody(.heightfield(strip, width: 10, depth: 4, height: 2),
+        try world.addBody(.heightfield(strip, width: 10, depth: 4, height: 2),
                       at: .zero, kind: .static)
-        let ball = world.addBody(.sphere(radius: 0.3), at: Vector3(-3.2, 3, 0.9))
+        let ball = try world.addBody(.sphere(radius: 0.3), at: Vector3(-3.2, 3, 0.9))
 
         run(world, steps: 300)
         #expect(abs(ball.position.y - 0.8) < 0.05)
     }
 
-    @Test func aBallRollsToTheBottomOfABowl() {
+    @Test func aBallRollsToTheBottomOfABowl() throws {
         let world = World3D()
         let bowl = Heightfield(columns: 65, rows: 65) { u, v in
             0.1 + 2 * ((u - 0.5) * (u - 0.5) + (v - 0.5) * (v - 0.5))
         }
-        world.addBody(.heightfield(bowl, width: 8, depth: 8, height: 2),
+        try world.addBody(.heightfield(bowl, width: 8, depth: 8, height: 2),
                       at: .zero, kind: .static, friction: 0.2)
-        let ball = world.addBody(.sphere(radius: 0.25), at: Vector3(1.5, 2, -1),
+        let ball = try world.addBody(.sphere(radius: 0.25), at: Vector3(1.5, 2, -1),
                                  friction: 0.2)
 
         run(world, steps: 900)
@@ -177,22 +177,22 @@ struct Collider3DTests {
         #expect(abs(ball.position.y - (0.1 * 2 + 0.25)) < 0.1)
     }
 
-    @Test func beyondTheFieldEdgeThereIsNothing() {
+    @Test func beyondTheFieldEdgeThereIsNothing() throws {
         let world = World3D()
         let plateau = Heightfield(columns: 33, rows: 33, repeating: 0.5)
-        world.addBody(.heightfield(plateau, width: 8, depth: 8, height: 2),
+        try world.addBody(.heightfield(plateau, width: 8, depth: 8, height: 2),
                       at: .zero, kind: .static)
         // Past the half-width: no terrain, no ground, a long fall.
-        let ball = world.addBody(.sphere(radius: 0.3), at: Vector3(5.5, 3, 0))
+        let ball = try world.addBody(.sphere(radius: 0.3), at: Vector3(5.5, 3, 0))
 
         run(world, steps: 240)
         #expect(ball.position.y < -5)
     }
 
-    @Test func aDynamicHeightfieldBodyIsPinned() {
+    @Test func aDynamicHeightfieldBodyIsPinned() throws {
         let world = World3D()
         let field = Heightfield(columns: 9, rows: 9, repeating: 0.5)
-        let terrain = world.addBody(.heightfield(field, width: 4, depth: 4, height: 1),
+        let terrain = try world.addBody(.heightfield(field, width: 4, depth: 4, height: 1),
                                     at: Vector3(0, 2, 0))   // asked dynamic
 
         run(world, steps: 120)
@@ -213,7 +213,7 @@ struct Collider3DTests {
 
     // MARK: Scene colliders
 
-    @Test func sceneMeshesBecomeStaticColliders() {
+    @Test func sceneMeshesBecomeStaticColliders() throws {
         // A floor slab authored two nodes deep, each contributing half the
         // lift, so the collider only lands right if the walk composes the
         // node transforms.
@@ -226,24 +226,24 @@ struct Collider3DTests {
         let scene = Scene(nodes: [outer])
 
         let world = World3D()
-        let colliders = world.addStaticBodies(from: scene)
+        let colliders = try world.addStaticBodies(from: scene)
         #expect(colliders.count == 1)
 
         // Local surface 0.5, lifted 0.75 twice: the slab sits at y = 2.
-        let ball = world.addBody(.sphere(radius: 0.3), at: Vector3(0.6, 4, 0.4))
+        let ball = try world.addBody(.sphere(radius: 0.3), at: Vector3(0.6, 4, 0.4))
         run(world, steps: 300)
         #expect(abs(ball.position.y - 2.3) < 0.05)
     }
 
     // MARK: Determinism
 
-    @Test func compoundOnTerrainReplaysByteIdentically() {
-        func build() -> (World3D, Body3D) {
+    @Test func compoundOnTerrainReplaysByteIdentically() throws {
+        func build() throws -> (World3D, Body3D) {
             let world = World3D()
             let slope = Heightfield(columns: 33, rows: 33) { u, _ in 0.8 * (1 - u) }
-            world.addBody(.heightfield(slope, width: 10, depth: 10, height: 2),
+            try world.addBody(.heightfield(slope, width: 10, depth: 10, height: 2),
                           at: .zero, kind: .static)
-            let tumbler = world.addBody(.compound([
+            let tumbler = try world.addBody(.compound([
                 .part(.box(width: 0.8, height: 0.25, depth: 0.25)),
                 .part(.box(width: 0.25, height: 0.8, depth: 0.25),
                       at: Vector3(0.2, 0.3, 0), density: 3),
@@ -251,8 +251,8 @@ struct Collider3DTests {
             return (world, tumbler)
         }
 
-        let (first, a) = build()
-        let (second, b) = build()
+        let (first, a) = try build()
+        let (second, b) = try build()
         run(first, steps: 240)
         run(second, steps: 240)
 

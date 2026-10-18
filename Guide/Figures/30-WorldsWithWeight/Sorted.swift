@@ -23,7 +23,7 @@ final class Sorted: Sketch {
     let held = Color(hex: 0xE8A33D)
     let passing = Color(hex: 0x4FC1AE)
 
-    override func setup() {
+    override func setup() throws {
         world.ground = floorY
         world.restitution = 0.05
 
@@ -31,7 +31,7 @@ final class Sorted: Sketch {
         world.ignoreCollisions(between: "passing", and: "grating")
 
         for side in [-1.0, 1.0] {
-            buildTube(at: side * 1.35)
+            try buildTube(at: side * 1.35)
         }
 
         // The same pour into each tube: the left beads are in no group at all,
@@ -45,8 +45,8 @@ final class Sorted: Sketch {
                                          2.0 + Double(layer) * 0.5
                                              + Double((i + j) % 2) * 0.13,
                                          Double(j) * 0.42 - 0.42)
-                    add(at: Vector3(-1.35, 0, 0) + offset, group: .default, color: held)
-                    add(at: Vector3(1.35, 0, 0) + offset, group: "passing", color: passing)
+                    try add(at: Vector3(-1.35, 0, 0) + offset, group: .default, color: held)
+                    try add(at: Vector3(1.35, 0, 0) + offset, group: "passing", color: passing)
                 }
             }
         }
@@ -54,24 +54,24 @@ final class Sorted: Sketch {
 
     /// An open tube with a grating across the middle: four walls running from
     /// the floor up past the grating, so a bead either stops on it or does not.
-    func buildTube(at x: Double) {
-        gratings.append(world.addBody(.box(width: tube, height: 0.14, depth: tube),
+    func buildTube(at x: Double) throws {
+        gratings.append(try world.addBody(.box(width: tube, height: 0.14, depth: tube),
                                       at: Vector3(x, gratingY, 0), kind: .static,
                                       friction: 0.7, group: "grating"))
         let height = 2.9
         let mid = floorY + height / 2
         for edge in [-1.0, 1.0] {
-            walls.append(world.addBody(.box(width: 0.1, height: height, depth: tube),
+            walls.append(try world.addBody(.box(width: 0.1, height: height, depth: tube),
                                        at: Vector3(x + edge * tube / 2, mid, 0),
                                        kind: .static, friction: 0.3))
-            walls.append(world.addBody(.box(width: tube, height: height, depth: 0.1),
+            walls.append(try world.addBody(.box(width: tube, height: height, depth: 0.1),
                                        at: Vector3(x, mid, edge * tube / 2),
                                        kind: .static, friction: 0.3))
         }
     }
 
-    func add(at position: Vector3, group: CollisionGroup, color: Color) {
-        let bead = world.addBody(.sphere(radius: beadRadius), at: position,
+    func add(at position: Vector3, group: CollisionGroup, color: Color) throws {
+        let bead = try world.addBody(.sphere(radius: beadRadius), at: position,
                                  density: 0.9, friction: 0.45, group: group)
         beads.append((bead, color))
     }

@@ -37,14 +37,14 @@ final class Sightlines: Sketch {
         Vector3(-0.4, 0, -3.4), Vector3(1.9, 0, -4.1),
     ]
 
-    override func setup() {
+    override func setup() throws {
         world.ground = 0
         for base in pillars {
-            world.addBody(.box(width: 0.8, height: 4.4, depth: 0.8),
+            try world.addBody(.box(width: 0.8, height: 4.4, depth: 0.8),
                           at: base + Vector3(0, 2.2, 0), kind: .static)
         }
         for base in placed {
-            crates.append(world.addBody(.box(width: crateSize, height: crateSize,
+            crates.append(try world.addBody(.box(width: crateSize, height: crateSize,
                                              depth: crateSize),
                                         at: base + Vector3(0, crateSize / 2, 0),
                                         density: 0.6, friction: 0.7))

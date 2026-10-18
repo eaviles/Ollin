@@ -17,14 +17,14 @@ final class Joyride: Sketch {
         Color(hex: 0x8D92E0),
     ]
 
-    override func setup() {
+    override func setup() throws {
         world.ground = 0
 
         // A line of markers round the outside of the corner, close enough to
         // clip one if the back comes round too far.
         for index in 0 ..< 7 {
             let angle = 0.34 + Double(index) / 6 * 0.62
-            let crate = world.addBody(
+            let crate = try world.addBody(
                 .box(width: 0.6, height: 0.6, depth: 0.6),
                 at: Vector3(-17 + cos(angle) * 20, 0.31, 17.3 + sin(angle) * 20),
                 density: 0.05, friction: 0.5)

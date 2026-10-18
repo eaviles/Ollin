@@ -18,10 +18,10 @@ struct JointMotor3DTests {
     /// A bar hinged at its own center of mass, so gravity exerts no torque
     /// about the pivot and the motor's effect is unconfounded.
     func makeWheel(_ world: World3D,
-                   limits: ClosedRange<Double>? = nil) -> (Body3D, Joint3D) {
-        let anchor = world.addBody(.sphere(radius: 0.1), at: Vector3(0, 5, 0),
+                   limits: ClosedRange<Double>? = nil) throws -> (Body3D, Joint3D) {
+        let anchor = try world.addBody(.sphere(radius: 0.1), at: Vector3(0, 5, 0),
                                    kind: .static)
-        let bar = world.addBody(.box(width: 2, height: 0.2, depth: 0.2),
+        let bar = try world.addBody(.box(width: 2, height: 0.2, depth: 0.2),
                                 at: Vector3(0, 5, 0))
         let joint = world.connect(anchor, bar,
                                   .revolute(at: Vector3(0, 5, 0), axis: .unitZ,
@@ -32,10 +32,10 @@ struct JointMotor3DTests {
     /// A pendulum: the bar reaches +x from the pivot, so gravity swings it
     /// down (a negative angle about the +z hinge axis).
     func makePendulum(_ world: World3D,
-                      limits: ClosedRange<Double>? = nil) -> (Body3D, Joint3D) {
-        let anchor = world.addBody(.sphere(radius: 0.1), at: Vector3(0, 5, 0),
+                      limits: ClosedRange<Double>? = nil) throws -> (Body3D, Joint3D) {
+        let anchor = try world.addBody(.sphere(radius: 0.1), at: Vector3(0, 5, 0),
                                    kind: .static)
-        let bob = world.addBody(.box(width: 1, height: 0.2, depth: 0.2),
+        let bob = try world.addBody(.box(width: 1, height: 0.2, depth: 0.2),
                                 at: Vector3(1.5, 5, 0))
         let joint = world.connect(anchor, bob,
                                   .revolute(at: Vector3(0, 5, 0), axis: .unitZ,
@@ -43,9 +43,9 @@ struct JointMotor3DTests {
         return (bob, joint)
     }
 
-    @Test func velocityMotorSpinsAtItsTargetRate() {
+    @Test func velocityMotorSpinsAtItsTargetRate() throws {
         let world = World3D()
-        let (bar, joint) = makeWheel(world)
+        let (bar, joint) = try makeWheel(world)
 
         joint.drive(at: 2)
         run(world, steps: 30)   // half a second: one radian of turn
@@ -56,9 +56,9 @@ struct JointMotor3DTests {
         #expect(abs(joint.angle - 1) < 0.1)
     }
 
-    @Test func positionMotorSettlesOnItsTarget() {
+    @Test func positionMotorSettlesOnItsTarget() throws {
         let world = World3D()
-        let (bar, joint) = makeWheel(world)
+        let (bar, joint) = try makeWheel(world)
 
         joint.drive(to: .pi / 2, frequency: 8)
         run(world, steps: 300)
@@ -67,28 +67,28 @@ struct JointMotor3DTests {
         #expect(bar.angularVelocity.length < 0.05)   // arrived, and calm
     }
 
-    @Test func velocityMotorStrengthCapsItsTorque() {
+    @Test func velocityMotorStrengthCapsItsTorque() throws {
         // The bar's inertia is ~27 kg·m², so a 1 N·m motor can add at most
         // ~0.04 rad/s of spin per second; the unlimited default hits the
         // target rate in a step. One second of driving separates them.
         let capped = World3D()
-        let (cappedBar, weak) = makeWheel(capped)
+        let (cappedBar, weak) = try makeWheel(capped)
         weak.drive(at: 2, strength: 1)
         run(capped, steps: 60)
         #expect(cappedBar.angularVelocity.z < 0.2)
 
         let unlimited = World3D()
-        let (freeBar, strong) = makeWheel(unlimited)
+        let (freeBar, strong) = try makeWheel(unlimited)
         strong.drive(at: 2)
         run(unlimited, steps: 60)
         #expect(abs(freeBar.angularVelocity.z - 2) < 0.05)
     }
 
-    @Test func hingeLimitsStopTheSwing() {
+    @Test func hingeLimitsStopTheSwing() throws {
         let limited = World3D()
-        let (_, joint) = makePendulum(limited, limits: -0.4 ... 0.4)
+        let (_, joint) = try makePendulum(limited, limits: -0.4 ... 0.4)
         let free = World3D()
-        let (_, unlimited) = makePendulum(free)
+        let (_, unlimited) = try makePendulum(free)
 
         var limitedMin = 0.0
         var freeMin = 0.0
@@ -104,13 +104,13 @@ struct JointMotor3DTests {
         #expect(freeMin < -1)
     }
 
-    @Test func sliderLimitsStopTheTravel() {
+    @Test func sliderLimitsStopTheTravel() throws {
         let world = World3D()
         let axis = Vector3(1, -1, 0).normalized
-        let anchor = world.addBody(.sphere(radius: 0.1), at: Vector3(0, 5, 0),
+        let anchor = try world.addBody(.sphere(radius: 0.1), at: Vector3(0, 5, 0),
                                    kind: .static)
         let start = Vector3(0, 5, 0) + axis * 1.5
-        let block = world.addBody(.box(width: 0.5, height: 0.5, depth: 0.5),
+        let block = try world.addBody(.box(width: 0.5, height: 0.5, depth: 0.5),
                                   at: start)
         let joint = world.connect(anchor, block,
                                   .prismatic(at: start, axis: axis,
@@ -123,11 +123,11 @@ struct JointMotor3DTests {
         #expect((block.position - (start + axis)).length < 0.05)
     }
 
-    @Test func sliderPositionMotorReachesItsOffset() {
+    @Test func sliderPositionMotorReachesItsOffset() throws {
         let world = World3D()
-        let anchor = world.addBody(.sphere(radius: 0.1), at: Vector3(0, 5, 0),
+        let anchor = try world.addBody(.sphere(radius: 0.1), at: Vector3(0, 5, 0),
                                    kind: .static)
-        let block = world.addBody(.box(width: 0.5, height: 0.5, depth: 0.5),
+        let block = try world.addBody(.box(width: 0.5, height: 0.5, depth: 0.5),
                                   at: Vector3(1.5, 5, 0))
         let joint = world.connect(anchor, block,
                                   .prismatic(at: Vector3(1.5, 5, 0),
@@ -142,14 +142,14 @@ struct JointMotor3DTests {
         #expect(abs(block.position.x - 2.3) < 0.05)
     }
 
-    @Test func frictionHoldsAnUnpoweredHinge() {
+    @Test func frictionHoldsAnUnpoweredHinge() throws {
         let sticky = World3D()
-        let (_, held) = makePendulum(sticky)
+        let (_, held) = try makePendulum(sticky)
         // Gravity's torque on the bar is ~mgr = 8·9.8·1.5 = 118 N·m; a drag
         // torque far above it pins the hinge where it started.
         held.friction = 1000
         let free = World3D()
-        let (_, loose) = makePendulum(free)
+        let (_, loose) = try makePendulum(free)
 
         run(sticky, steps: 120)
         run(free, steps: 120)
@@ -158,11 +158,11 @@ struct JointMotor3DTests {
         #expect(loose.angle < -0.5)
     }
 
-    @Test func softLimitsGiveThenHoldNearTheStop() {
+    @Test func softLimitsGiveThenHoldNearTheStop() throws {
         let hard = World3D()
-        let (_, hardJoint) = makePendulum(hard, limits: -0.3 ... 0.3)
+        let (_, hardJoint) = try makePendulum(hard, limits: -0.3 ... 0.3)
         let soft = World3D()
-        let (softBob, softJoint) = makePendulum(soft, limits: -0.3 ... 0.3)
+        let (softBob, softJoint) = try makePendulum(soft, limits: -0.3 ... 0.3)
         softJoint.softenLimits(frequency: 2)
 
         var hardMin = 0.0
@@ -181,11 +181,11 @@ struct JointMotor3DTests {
         #expect(softBob.velocity.length < 0.1)
     }
 
-    @Test func drivingAnUndrivableJointIsSafe() {
+    @Test func drivingAnUndrivableJointIsSafe() throws {
         let world = World3D()
-        let anchor = world.addBody(.sphere(radius: 0.1), at: Vector3(0, 5, 0),
+        let anchor = try world.addBody(.sphere(radius: 0.1), at: Vector3(0, 5, 0),
                                    kind: .static)
-        let bob = world.addBody(.sphere(radius: 0.3), at: Vector3(1, 5, 0))
+        let bob = try world.addBody(.sphere(radius: 0.3), at: Vector3(1, 5, 0))
         let joint = world.connect(anchor, bob, .ball(at: Vector3(0, 5, 0)))
 
         joint.drive(at: 2)
@@ -200,9 +200,9 @@ struct JointMotor3DTests {
         #expect(joint.offset == 0)
     }
 
-    @Test func angleReadsZeroAtConnectThenFollowsTheSwing() {
+    @Test func angleReadsZeroAtConnectThenFollowsTheSwing() throws {
         let world = World3D()
-        let (bob, joint) = makePendulum(world)
+        let (bob, joint) = try makePendulum(world)
 
         #expect(joint.angle == 0)   // the connect pose is the zero
         run(world, steps: 90)

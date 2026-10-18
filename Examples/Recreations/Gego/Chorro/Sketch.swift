@@ -88,19 +88,19 @@ final class Chorro: Sketch {
 
     override var canvasSize: CanvasSize { .square(1080) }
 
-    override func setup() {
+    override func setup() throws {
         world.gravity = Vector3(0, -9.81, 0)
         world.ground = 0
-        hangTheRods()
+        try hangTheRods()
     }
 
     // MARK: - The piece
 
     /// Cuts the rods, hooks them into falls, ties the falls together at the
     /// tiers, and hangs the whole thing from the plate.
-    func hangTheRods() {
+    func hangTheRods() throws {
         ringRadius = max(0.08, Double(falls) * 0.028 / .tau)
-        plate = world.addBody(.sphere(radius: 0.02), at: hang, kind: .kinematic)
+        plate = try world.addBody(.sphere(radius: 0.02), at: hang, kind: .kinematic)
         guard let plate else { return }
 
         var chains: [[Int]] = []     // each fall's hooks, top to bottom
@@ -146,7 +146,7 @@ final class Chorro: Sketch {
                     direction = (along * run + Vector3(0, -drop, 0)) / rodLength
                 }
                 let bottom = point + direction * rodLength
-                let body = rodBody(from: point, to: bottom, length: rodLength, shortened: false)
+                let body = try rodBody(from: point, to: bottom, length: rodLength, shortened: false)
                 let rod = rods.count
                 world.connect(previous, body, .ball(at: anchor))
                 let low = nodes.count
@@ -175,9 +175,9 @@ final class Chorro: Sketch {
                 let next = (c + 1) % falls
                 guard let here = nearestHook(chains[c], to: height),
                       let there = nearestHook(chains[next], to: position(of: here)) else { continue }
-                tie(here, there)
+                try tie(here, there)
                 if c % 2 == 0, let below = hookBelow(chains[next], there) {
-                    tie(here, below)
+                    try tie(here, below)
                 }
             }
         }
@@ -201,13 +201,13 @@ final class Chorro: Sketch {
     /// A short rod hooked between two hooks of different falls. Nothing is
     /// tied with a rod longer than the longest she cut, two hooks are tied
     /// once, and a hook a tie reaches is no longer a free end.
-    func tie(_ a: Int, _ b: Int) {
+    func tie(_ a: Int, _ b: Int) throws {
         let pa = position(of: a), pb = position(of: b)
         let length = (pb - pa).length
         guard length > rodRadius * 3, length <= rodLengths.upperBound,
               !rods.contains(where: { ($0.a == a && $0.b == b) || ($0.a == b && $0.b == a) })
         else { return }
-        let body = rodBody(from: pa, to: pb, length: length, shortened: true)
+        let body = try rodBody(from: pa, to: pb, length: length, shortened: true)
         world.connect(rods[nodes[a].rod].body, body, .ball(at: pa))
         world.connect(rods[nodes[b].rod].body, body, .ball(at: pb))
         rods.append(Rod(body: body, length: length, a: a, b: b))
@@ -218,7 +218,7 @@ final class Chorro: Sketch {
     /// A capsule lying along the line from one hook to the other. A tie is
     /// cut a little short of both hooks so it does not sit inside the rods it
     /// hooks onto; a fall's own rods meet cap to cap at the hook.
-    func rodBody(from a: Vector3, to b: Vector3, length: Double, shortened: Bool) -> Body3D {
+    func rodBody(from a: Vector3, to b: Vector3, length: Double, shortened: Bool) throws -> Body3D {
         let direction = (b - a).normalized
         let height = max(length - (shortened ? 4 : 2) * rodRadius, 0.01)
         let up = Vector3(0, 1, 0)
@@ -230,7 +230,7 @@ final class Chorro: Sketch {
         } else {
             axis = axis.normalized
         }
-        return world.addBody(.capsule(height: height, radius: rodRadius),
+        return try world.addBody(.capsule(height: height, radius: rodRadius),
                              at: (a + b) / 2, rotated: angle, axis: axis,
                              density: 2.7, friction: 0.5, checksPath: true)
     }

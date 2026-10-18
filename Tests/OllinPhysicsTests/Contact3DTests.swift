@@ -35,7 +35,7 @@ struct Contact3DTests {
     @Test func aFallingBodyReportsItsLanding() throws {
         let world = World3D()
         world.ground = 0
-        let ball = world.addBody(.sphere(radius: 0.5), at: Vector3(0, 3, 0),
+        let ball = try world.addBody(.sphere(radius: 0.5), at: Vector3(0, 3, 0),
                                  restitution: 0)
 
         let seen = collect(world, steps: 90)
@@ -63,16 +63,16 @@ struct Contact3DTests {
     /// The impact reads the speed at the moment of contact, before the solver
     /// answers it, so a longer drop lands harder in the ratio free fall says.
     @Test func impactSpeedFollowsTheDrop() throws {
-        func landingSpeed(from height: Double) -> Double {
+        func landingSpeed(from height: Double) throws -> Double {
             let world = World3D()
             world.ground = 0
-            let ball = world.addBody(.sphere(radius: 0.5), at: Vector3(0, height, 0))
+            let ball = try world.addBody(.sphere(radius: 0.5), at: Vector3(0, height, 0))
             let seen = collect(world, steps: 180)
             return seen.first { $0.phase == .began && $0.involves(ball) }?.speed ?? 0
         }
 
-        let shallow = landingSpeed(from: 1.5)     // 1 unit of fall
-        let deep = landingSpeed(from: 8.5)        // 8 units of fall
+        let shallow = try landingSpeed(from: 1.5)     // 1 unit of fall
+        let deep = try landingSpeed(from: 8.5)        // 8 units of fall
         #expect(shallow > 3 && shallow < 6)       // √(2·9.8·1) ≈ 4.4
         #expect(deep > 11 && deep < 14)           // √(2·9.8·8) ≈ 12.5
         #expect(deep > shallow * 2)
@@ -100,7 +100,7 @@ struct Contact3DTests {
         let fused = World3D()
         fused.ground = 0
         // Two feet a body-width apart: both land in the same step.
-        fused.addBody(.compound([
+        try fused.addBody(.compound([
             .part(.box(width: 1, height: 0.4, depth: 1), at: Vector3(-1.2, 0, 0)),
             .part(.box(width: 1, height: 0.4, depth: 1), at: Vector3(1.2, 0, 0)),
         ]), at: Vector3(0, 1.2, 0), restitution: 0)
@@ -112,9 +112,9 @@ struct Contact3DTests {
 
         let loose = World3D()
         loose.ground = 0
-        let left = loose.addBody(.box(width: 1, height: 0.4, depth: 1),
+        let left = try loose.addBody(.box(width: 1, height: 0.4, depth: 1),
                                  at: Vector3(-1.2, 1.2, 0), restitution: 0)
-        let right = loose.addBody(.box(width: 1, height: 0.4, depth: 1),
+        let right = try loose.addBody(.box(width: 1, height: 0.4, depth: 1),
                                   at: Vector3(1.2, 1.2, 0), restitution: 0)
         let looseSteps = beginnings(loose, steps: 120)
         let landing = try! #require(looseSteps.first { !$0.isEmpty })
@@ -131,7 +131,7 @@ struct Contact3DTests {
     @Test func contactsBelongToTheirStep() throws {
         let world = World3D()
         world.ground = 0
-        let ball = world.addBody(.sphere(radius: 0.5), at: Vector3(0, 1.2, 0),
+        let ball = try world.addBody(.sphere(radius: 0.5), at: Vector3(0, 1.2, 0),
                                  restitution: 0)
         let floor = try! #require(world.groundBody)
 
@@ -169,7 +169,7 @@ struct Contact3DTests {
     @Test func aSleepingPileStopsReportingItsTouches() throws {
         let world = World3D()
         world.ground = 0
-        let crate = world.addBody(.box(width: 1, height: 1, depth: 1),
+        let crate = try world.addBody(.box(width: 1, height: 1, depth: 1),
                                   at: Vector3(0, 0.6, 0), restitution: 0)
         let floor = try! #require(world.groundBody)
 
@@ -191,24 +191,24 @@ struct Contact3DTests {
     /// falls exactly as if nothing were there and reports going in and coming
     /// out, while the same sphere made solid stops it.
     @Test func aSensorReportsWhatPassesThroughAndSolidStops() throws {
-        func drop(obstacle: Bool, sensing: Bool) -> (rest: Double, events: [Contact3D]) {
+        func drop(obstacle: Bool, sensing: Bool) throws -> (rest: Double, events: [Contact3D]) {
             let world = World3D()
             world.ground = 0
             var gate: Body3D?
             if obstacle {
-                gate = world.addBody(.sphere(radius: 1), at: Vector3(0, 3, 0),
+                gate = try world.addBody(.sphere(radius: 1), at: Vector3(0, 3, 0),
                                      kind: .static, isSensor: sensing)
             }
-            let ball = world.addBody(.sphere(radius: 0.3), at: Vector3(0, 6, 0),
+            let ball = try world.addBody(.sphere(radius: 0.3), at: Vector3(0, 6, 0),
                                      restitution: 0)
             let seen = collect(world, steps: 240)
             let atGate = gate.map { g in seen.filter { $0.involves(g) && $0.involves(ball) } }
             return (ball.position.y, atGate ?? [])
         }
 
-        let clear = drop(obstacle: false, sensing: false)
-        let through = drop(obstacle: true, sensing: true)
-        let blocked = drop(obstacle: true, sensing: false)
+        let clear = try drop(obstacle: false, sensing: false)
+        let through = try drop(obstacle: true, sensing: true)
+        let blocked = try drop(obstacle: true, sensing: false)
 
         // A sensor pushes nothing: the ball lands where it would have with an
         // empty scene.
@@ -232,10 +232,10 @@ struct Contact3DTests {
     @Test func aSleepingBodyStaysInsideASensor() throws {
         let world = World3D()
         world.ground = 0
-        let plate = world.addBody(.box(width: 4, height: 0.5, depth: 4),
+        let plate = try world.addBody(.box(width: 4, height: 0.5, depth: 4),
                                   at: Vector3(0, 0.5, 0), kind: .static,
                                   isSensor: true)
-        let crate = world.addBody(.box(width: 0.6, height: 0.6, depth: 0.6),
+        let crate = try world.addBody(.box(width: 0.6, height: 0.6, depth: 0.6),
                                   at: Vector3(0, 1.2, 0), restitution: 0)
 
         run(world, steps: 600)   // long enough to land, settle, and sleep
@@ -250,7 +250,7 @@ struct Contact3DTests {
     @Test func aSensorHoldsItsPlaceAndItsKind() throws {
         let world = World3D()
         world.ground = 0
-        let zone = world.addBody(.sphere(radius: 1), at: Vector3(0, 4, 0),
+        let zone = try world.addBody(.sphere(radius: 1), at: Vector3(0, 4, 0),
                                  isSensor: true)   // asked for the default .dynamic
         #expect(zone.kind == .kinematic)
         #expect(zone.isSensor)
@@ -273,9 +273,9 @@ struct Contact3DTests {
     @Test func enteredAndExitedNameTheStepsTransitions() throws {
         let world = World3D()
         world.ground = 0
-        let zone = world.addBody(.sphere(radius: 1), at: Vector3(0, 3, 0),
+        let zone = try world.addBody(.sphere(radius: 1), at: Vector3(0, 3, 0),
                                  kind: .static, isSensor: true)
-        let ball = world.addBody(.sphere(radius: 0.3), at: Vector3(0, 6, 0))
+        let ball = try world.addBody(.sphere(radius: 0.3), at: Vector3(0, 6, 0))
 
         var entered = 0
         var exited = 0
@@ -297,9 +297,9 @@ struct Contact3DTests {
     @Test func aRemovedBodyLeavesNoStaleTouches() throws {
         let world = World3D()
         world.ground = 0
-        let crate = world.addBody(.box(width: 1, height: 1, depth: 1),
+        let crate = try world.addBody(.box(width: 1, height: 1, depth: 1),
                                   at: Vector3(0, 0.6, 0))
-        let neighbor = world.addBody(.box(width: 1, height: 1, depth: 1),
+        let neighbor = try world.addBody(.box(width: 1, height: 1, depth: 1),
                                       at: Vector3(1.02, 0.6, 0))
         // Removed while the pile is still awake and reporting.
         run(world, steps: 20)
@@ -319,11 +319,11 @@ struct Contact3DTests {
     /// buffer is put in pair order before it leaves the bridge: two identical
     /// worlds must read the same events in the same order.
     @Test func contactEventsReplayInTheSameOrder() throws {
-        func runScene() -> [String] {
+        func runScene() throws -> [String] {
             let world = World3D()
             world.ground = 0
             for index in 0 ..< 8 {
-                world.addBody(.box(width: 0.8, height: 0.8, depth: 0.8),
+                try world.addBody(.box(width: 0.8, height: 0.8, depth: 0.8),
                               at: Vector3(Double(index % 3) * 0.85 - 0.85,
                                           1 + Double(index) * 0.9,
                                           Double(index % 2) * 0.4),
@@ -341,9 +341,9 @@ struct Contact3DTests {
             return log
         }
 
-        let first = runScene()
+        let first = try runScene()
         #expect(first.count > 8)
-        #expect(runScene() == first)
+        #expect(try runScene() == first)
     }
 
     // MARK: A cloth's touches
@@ -387,7 +387,7 @@ struct Contact3DTests {
         world.ground = 0
         let cloth = try world.addSoftBody(from: Self.clothMesh,
                                                    at: Vector3(0, 1, 0))
-        let crate = world.addBody(.box(width: 0.6, height: 0.6, depth: 0.6),
+        let crate = try world.addBody(.box(width: 0.6, height: 0.6, depth: 0.6),
                                   at: Vector3(4, 1, 0))
         run(world, steps: 600)
         #expect(!cloth.isAwake && !crate.isAwake, "both have settled")
@@ -425,7 +425,7 @@ struct Contact3DTests {
         func run(withCloth: Bool) throws -> Int {
             let world = World3D()
             world.ground = 0
-            let plate = world.addBody(.box(width: 3, height: 0.3, depth: 3),
+            let plate = try world.addBody(.box(width: 3, height: 0.3, depth: 3),
                                       at: Vector3(0, 0.6, 0), kind: .static,
                                       isSensor: true)
             if withCloth {
@@ -449,7 +449,7 @@ struct Contact3DTests {
         func log() throws -> [String] {
             let world = World3D()
             world.ground = 0
-            world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(0.6, 0.5, 0),
+            try world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(0.6, 0.5, 0),
                           kind: .static)
             _ = try! world.addSoftBody(from: Self.clothMesh, at: Vector3(0, 2, 0))
             var lines: [String] = []

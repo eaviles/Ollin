@@ -49,21 +49,21 @@ final class Imported: Sketch {
         "Arm": Color(hex: 0x4E4A3C),
     ]
 
-    override func setup() {
+    override func setup() throws {
         scene = try? Scene(resource: "yard", withExtension: "usda", in: Bundle.module)
-        rebuild()
+        try rebuild()
     }
 
     /// The whole world, in one call. The file's own gravity comes with it.
-    func rebuild() {
+    func rebuild() throws {
         world.removeAll()
         world.restitution = 0.2
-        world.addBodies(from: scene, usesSceneGravity: true)
+        try world.addBodies(from: scene, usesSceneGravity: true)
     }
 
     override func keyPressed() {
         switch key?.lowercased() ?? "" {
-        case "r": rebuild()
+        case "r": try? rebuild()
         case " ": drop()
         default: break
         }

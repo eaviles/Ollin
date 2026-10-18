@@ -21,10 +21,10 @@ import OllinPhysics
 final class Crates: Sketch {
     let world = World3D()
 
-    override func setup() {
+    override func setup() throws {
         world.ground = 0                        // a static floor at y = 0
         for level in 0 ..< 6 {
-            world.addBody(.box(width: 1, height: 1, depth: 1),
+            try world.addBody(.box(width: 1, height: 1, depth: 1),
                           at: Vector3(0, 0.5 + Double(level) * 1.05, 0))
         }
     }
@@ -94,14 +94,14 @@ world.advance(by: deltaTime)             // once per frame
 
 `drag` is the share of speed, and of spin, a body loses every sixtieth of a second, the same number the 2D world reads. At `0` a body coasts forever. The default is the solver's own 5% a second, so a sketch that never sets it moves as it always has. A change reaches every rigid body already in the world. A soft body, a rope, a ragdoll, and a vehicle carry damping of their own. A change to `gravity` wakes every body, so a box asleep on the floor feels gravity turned the other way.
 
-**How many bodies a world holds.** `World3D(maxBodies:)` sets aside the solver's tables up front, 4,096 bodies by default, and `maxBodies` reads back what the world was made with. A body added past it does not exist in the solver. So make the world with room for every body the scene holds at once. Each body also gets room for sixteen touching pairs. That is enough for a box packed in a pile, which touches up to 26 neighbors by face, edge, and corner. A pile denser than that drops some contacts, and the bodies whose contacts were dropped pass through each other for that step. `lastError` then says so in a sentence, and the next step that keeps every contact clears it. A larger `maxBodies` holds a denser pile.
+**How many bodies a world holds.** `World3D(maxBodies:)` sets aside the solver's tables up front, 4,096 bodies by default, and `maxBodies` reads back what the world was made with. Every call that creates a body, `addBody`, `addStaticBodies`, `addCharacter`, `addVehicle`, `addRagdoll`, `addSoftBody`, `addRope`, and `addBodies(from:)`, throws `PhysicsError.full` once the world holds that many at once, naming the limit, so a sketch that adds bodies on a click writes `try?` and stops adding, and one that builds its scene in `setup()` lets the error out. Removing a body frees its place. The `ground` is a property, so it cannot throw; set past the limit it notes the failure on stderr and the world has no floor. So make the world with room for every body the scene holds at once. Each body also gets room for sixteen touching pairs. That is enough for a box packed in a pile, which touches up to 26 neighbors by face, edge, and corner. A pile denser than that drops some contacts, and the bodies whose contacts were dropped pass through each other for that step. `lastError` then says so in a sentence, and the next step that keeps every contact clears it. A larger `maxBodies` holds a denser pile.
 
 `substeps` cuts each step into pieces, on top of the one pass per sixtieth of simulated time a long frame already takes. The solver's joints lose a little every step, in proportion to its length. A bar hinged at one end and let go horizontal returns to 92% of its height on its first swing at one piece a frame, and to 98% at four. At sixteen it holds within 5% for ten seconds. Every body pays for the count, so it is for a scene whose pendulums and linkages matter rather than a pile.
 
 You manage bodies and joints the way the 2D world manages its own:
 
 ```swift
-let crate = world.addBody(.box(width: 1, height: 1, depth: 1),
+let crate = try world.addBody(.box(width: 1, height: 1, depth: 1),
                           at: Vector3(0, 4, 0),
                           kind: .dynamic,        // .static / .kinematic
                           rotated: 0.4, axis: .unitY,
@@ -155,7 +155,7 @@ body.applyTorque(Vector3(0, 5, 0))      // spin about each axis
 You can tell a body three things about its own motion. Each one is available when you add the body, and each one stays settable while the sketch runs.
 
 ```swift
-let coin = world.addBody(.cylinder(height: 0.1, radius: 0.4), at: p,
+let coin = try world.addBody(.cylinder(height: 0.1, radius: 0.4), at: p,
                          freedom: .plane(),        // stays flat
                          gravityScale: 0.4,        // falls lazily
                          checksPath: true)         // never tunnels
@@ -189,7 +189,7 @@ feather.gravityScale = 0.15      // falls a sixth as far in the same second
 **`checksPath`** sweeps the body's shape along its whole path each step, instead of only testing where it ends up. It is off by default, and it is worth turning on for anything small and fast. A fast body can cover more than its own width between two steps. It is then in front of a thin wall at one step and past it at the next, without ever having touched it.
 
 ```swift
-let pellet = world.addBody(.sphere(radius: 0.05), at: muzzle, checksPath: true)
+let pellet = try world.addBody(.sphere(radius: 0.05), at: muzzle, checksPath: true)
 pellet.velocity = Vector3(0, 0, 120)
 ```
 
@@ -224,7 +224,7 @@ The upright shapes all stand along the body's y axis, so rotate the body to poin
 `.compound` fuses several colliders into one rigid body, such as a hammer, a table, or a windmill's blade cross. Each part is a child collider placed in the body's local space. The body's mass, balance, and inertia come from the whole assembly, so a lopsided tool tumbles the way a lopsided tool should.
 
 ```swift
-let hammer = world.addBody(.compound([
+let hammer = try world.addBody(.compound([
     .part(.capsule(height: 0.9, radius: 0.06)),          // the handle
     .part(.box(width: 0.3, height: 0.14, depth: 0.14),
           at: Vector3(0, 0.52, 0), density: 8),          // the head, leading the swing
@@ -244,7 +244,7 @@ Draw a compound the way you built it. `withBody` poses the whole body, and then 
 ```swift
 let land = Heightfield.diamondSquare(size: 257, roughness: 0.55, seed: 7)
     .eroded(.hydraulic(), seed: 7)
-world.addBody(.heightfield(land, width: 14, depth: 14, height: 4),
+try world.addBody(.heightfield(land, width: 14, depth: 14, height: 4),
               at: .zero, kind: .static)
 drawMesh(land.mesh(width: 14, depth: 14, height: 4))   // the same numbers
 ```
@@ -255,7 +255,7 @@ For scenery that arrives as a file, one call gives a whole [`Scene`](../3D/Scene
 
 ```swift
 let hall = try loadScene("hall.usdz")
-world.addStaticBodies(from: hall)
+try world.addStaticBodies(from: hall)
 ```
 
 It walks the node tree and adds one static mesh body for each mesh node. The node's world transform is baked into the triangles, including nested groups and authored rotations and scales. Colliders take each mesh as authored, at rest, so skins and morph targets are not posed. `friction:` and `restitution:` apply to all of them, and you still draw the scene itself with `drawScene(_:)`.
@@ -486,7 +486,7 @@ if contact.other(than: ball) === world.groundBody { thud() }
 A sensor is a region rather than a solid. Things pass straight through it, and it reports each one.
 
 ```swift
-let goal = world.addBody(.cylinder(height: 0.5, radius: 1), at: hoopCenter,
+let goal = try world.addBody(.cylinder(height: 0.5, radius: 1), at: hoopCenter,
                          isSensor: true)
 
 // in draw(), after step:
@@ -499,7 +499,7 @@ Sensors push nothing and are pushed by nothing, so a ball falls through one exac
 A sensor sets its own motion. It is kinematic and never sleeps, whatever `kind` you asked for, so it goes on reporting bodies that have settled and fallen asleep inside it. That is what makes a tray or a pressure plate work:
 
 ```swift
-let tray = world.addBody(.box(width: 3, height: 0.7, depth: 3),
+let tray = try world.addBody(.box(width: 3, height: 0.7, depth: 3),
                          at: Vector3(0, 0.55, 0), isSensor: true)
 let load = tray.touching.count        // still right once they doze off
 ```
@@ -517,7 +517,7 @@ Everything in a world collides with everything else. A **collision group** is a 
 <img src="../../Guide/Images/30-WorldsWithWeight/Sorted.jpg" alt="Two glass tubes side by side, each with a solid horizontal shelf across the middle. In the left tube a pile of amber beads rests on top of the shelf; in the right tube the same number of teal beads has fallen straight through it and lies on the floor below" width="560">
 
 ```swift
-let bead = world.addBody(.sphere(radius: 0.2), at: p, group: "beads")
+let bead = try world.addBody(.sphere(radius: 0.2), at: p, group: "beads")
 world.ignoreCollisions(between: "beads", and: "glass")
 ```
 
@@ -542,12 +542,12 @@ world.ignoreCollisions(between: "confetti", and: "confetti")
 Every kind of thing takes a group:
 
 ```swift
-world.addBody(…, group: "phantoms")
-world.addCharacter(…, group: "phantoms")
+try world.addBody(…, group: "phantoms")
+try world.addCharacter(…, group: "phantoms")
 try world.addVehicle(…, group: "traffic")
 try world.addRagdoll(from: figure, group: "phantoms")
 try world.addSoftBody(from: cloth, group: "drapes")
-world.addStaticBodies(from: hall, group: "scenery")
+try world.addStaticBodies(from: hall, group: "scenery")
 ```
 
 Each of them can also be moved between groups while it runs, through `body.group`, `character.group`, `vehicle.group`, `ragdoll.group`, and `softBody.group`. A rule written after things have already settled on each other still applies. The bodies are woken so the solver looks at the pair again.
@@ -641,9 +641,9 @@ A `Character3D` is a walking figure. It is a capsule that goes where you steer i
 let world = World3D()
 var walker: Character3D!
 
-override func setup() {
+override func setup() throws {
     world.ground = 0
-    walker = world.addCharacter(radius: 0.3, height: 1.8, at: Vector3(0, 2, 0))
+    walker = try world.addCharacter(radius: 0.3, height: 1.8, at: Vector3(0, 2, 0))
 }
 
 override func draw() {
@@ -1210,9 +1210,9 @@ world.water = Water(level: 0)
 Everything already in the world starts floating. What floats and what does not comes from the `density` each body was built with, measured against the water's density. So it is a number you were already setting:
 
 ```swift
-world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(0, 4, 0),
+try world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(0, 4, 0),
               density: 0.3)   // a cork: floats with a third of it under
-world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(2, 4, 0),
+try world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(2, 4, 0),
               density: 3)     // a stone: goes to the bottom
 ```
 
@@ -1337,7 +1337,7 @@ This is also the honest answer about determinism. Simulating is reproducible wit
 Almost everything in a world is small. A box is three numbers, and a joint is a point and an axis. Two things are not small. A `.mesh` or `.heightfield` collider carries every vertex of whatever it was cut from. A soft body surface is built out of a whole mesh, and a snapshot never holds that mesh. Give either one a name, and the snapshot writes the name down instead:
 
 ```swift
-let island = world.addBody(.heightfield(terrain, width: 60, depth: 60, height: 8),
+let island = try world.addBody(.heightfield(terrain, width: 60, depth: 60, height: 8),
                            at: .zero, kind: .static)
 island.assetName = "island"
 
@@ -1384,7 +1384,7 @@ A scene carrying that comes into a world in one call:
 
 ```swift
 let scene = try loadScene("yard.usda")
-world.addBodies(from: scene)          // every body and joint the file describes
+try world.addBodies(from: scene)          // every body and joint the file describes
 ```
 
 Nothing else is needed. The bodies are ordinary `Body3D`s, so they collide, stack, take impulses, snapshot, and draw the way any others do. Each one's `assetName` is the name of the prim it came from, which is how a drawing loop tells them apart. A snapshot writes that name in place of an exact-mesh collider, so restoring one needs a [resolver](#naming-geometry).

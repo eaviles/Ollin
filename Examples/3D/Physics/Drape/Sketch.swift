@@ -37,15 +37,15 @@ final class Drape: Sketch {
     }
     var props: [Prop] = []
 
-    override func setup() {
+    override func setup() throws {
         world.ground = 0
-        buildStage()
+        try buildStage()
         buildCloth()
     }
 
     /// The scenery the cloth has to answer to: two posts carrying the line, and
     /// a crate for the sheet to be thrown over.
-    func buildStage() {
+    func buildStage() throws {
         for side in [-1.0, 1.0] {
             props.append(Prop(size: Vector3(0.16, lineY, 0.16),
                               at: Vector3(side * lineSpan / 2, lineY / 2, -1.4)))
@@ -53,14 +53,14 @@ final class Drape: Sketch {
         props.append(Prop(size: Vector3(1.0, 1.0, 1.0), at: Vector3(1.5, 0.5, 1.6)))
 
         for prop in props {
-            world.addBody(.box(width: prop.size.x, height: prop.size.y,
+            try world.addBody(.box(width: prop.size.x, height: prop.size.y,
                                depth: prop.size.z),
                           at: prop.at, kind: .static, friction: 0.9)
         }
         // The line the banner is pegged to. Nothing hangs off it in the
         // simulation (the pegs hold the cloth directly), so it is a thin static
         // rod there only to be seen and bumped into.
-        world.addBody(.cylinder(height: lineSpan, radius: 0.02),
+        try world.addBody(.cylinder(height: lineSpan, radius: 0.02),
                       at: Vector3(0, lineY, -1.4), kind: .static,
                       rotated: .pi / 2, axis: Vector3(0, 0, 1))
     }

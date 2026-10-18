@@ -90,7 +90,7 @@ final class PathTraced: Sketch {
             guard seats.allSatisfy({ Vector2($0.x, $0.z).distance(to: Vector2(p.x, p.z)) > 1.1 })
             else { continue }
             pebbles.append(MeshInstance(position: p,
-                                        rotation: Vector3(0, random(.tau), 0),
+                                        rotation: .aboutY(random(.tau)),
                                         scale: Vector3(1, random(0.7, 1.0), 1),
                                         color: Color(hue: 0.08, saturation: random(0.15, 0.35),
                                                      brightness: random(0.3, 0.6))))

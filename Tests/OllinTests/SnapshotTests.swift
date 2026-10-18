@@ -7715,7 +7715,7 @@ private final class SceneLineDrawing: Sketch {
                 .transformed(by: MeshInstance(position: Vector3(1.0, 0.75, -0.3))),
             Mesh.box(size: 0.8)
                 .transformed(by: MeshInstance(position: Vector3(0.3, 0.4, 1.4),
-                                              rotation: Vector3(0, 0.5, 0))),
+                                              rotation: .aboutY(0.5))),
         ]
         let drawing = lineDrawing(of: scene)
         noFill()
@@ -10044,11 +10044,11 @@ private final class MeshFieldScene: Sketch {
             let p = Vector3(cos(a) * r, 0.4, sin(a) * r)
             let tint = Color(red: 0.5 + 0.5 * cos(a), green: 0.7, blue: 1, alpha: 1)
             switch i % 3 {
-            case 0: boxes.append(MeshInstance(position: p, rotation: Vector3(0, a, 0),
+            case 0: boxes.append(MeshInstance(position: p, rotation: .aboutY(a),
                                               scale: Vector3(1, 1 + Double(i % 4) * 0.4, 0.8),
                                               color: tint))
             case 1: spheres.append(MeshInstance(position: p, scale: 0.6, color: tint))
-            default: cones.append(MeshInstance(position: p, rotation: Vector3(0, a, 0), color: tint))
+            default: cones.append(MeshInstance(position: p, rotation: .aboutY(a), color: tint))
             }
         }
         field.place(Mesh.box(width: 0.8, height: 0.8, depth: 0.8), at: boxes)
@@ -10102,7 +10102,7 @@ private final class InstancedMeshScene: Sketch {
             let h = 0.6 + Double((i * 7) % 11) * 0.22
             placements.append(MeshInstance(
                 position: Vector3(cos(a) * r, h / 2, sin(a) * r),
-                rotation: Vector3(0, a, 0),
+                rotation: .aboutY(a),
                 scale: Vector3(1, h, 0.7),
                 color: Color(red: 0.6 + 0.4 * cos(a), green: 0.7, blue: 1, alpha: 1)))
         }

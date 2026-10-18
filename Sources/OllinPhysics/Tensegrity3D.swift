@@ -66,7 +66,7 @@ public final class Tensegrity3D {
 
     init?(world: World3D, structure: Tensegrity, position: Vector3,
           strutRadius: Double, prestress: Double, stiffness: Double,
-          density: Double, friction: Double, group: CollisionGroup) {
+          density: Double, friction: Double, group: CollisionGroup) throws {
         let placed = structure.translated(by: position)
         var anchors = [(strut: Int, offset: Vector3)?](repeating: nil, count: placed.nodes.count)
         var struts: [Body3D] = []
@@ -81,7 +81,7 @@ public final class Tensegrity3D {
             let radius = min(max(strutRadius, 1e-4), length * 0.25)
             let direction = (b - a) * (1 / length)
             let turn = Rotation3D(from: .unitY, to: direction)
-            let body = world.addBody(.capsule(height: length - 2 * radius, radius: radius),
+            let body = try world.addBody(.capsule(height: length - 2 * radius, radius: radius),
                                      at: a.lerp(to: b, 0.5),
                                      rotated: turn.angle, axis: turn.axis,
                                      density: density, friction: friction,

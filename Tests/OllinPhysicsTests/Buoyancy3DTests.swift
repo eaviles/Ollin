@@ -35,14 +35,14 @@ struct Buoyancy3DTests {
     /// water, riding the surface, is the ordinary case of
     /// `perBodyBuoyancyOverridesWhatDensityAloneWouldDo`.)
     @Test func withoutWaterTheSameBodyJustFalls() throws {
-        func settle(_ water: Water?) -> Double {
+        func settle(_ water: Water?) throws -> Double {
             let world = pool(water)
-            let cork = world.addBody(.box(width: 1, height: 1, depth: 1),
+            let cork = try world.addBody(.box(width: 1, height: 1, depth: 1),
                                      at: Vector3(0, 2, 0), density: 0.3)
             run(world, steps: 600)
             return cork.position.y
         }
-        #expect(settle(nil) < -9)
+        #expect(try settle(nil) < -9)
     }
 
     /// The waterline is not tuned, it is derived: a body of density d floats
@@ -53,7 +53,7 @@ struct Buoyancy3DTests {
     @Test func theWaterlineSitsWhereTheDisplacedVolumeSays() throws {
         for density in [0.2, 0.6, 0.8] {
             let world = pool(Water(level: 0))
-            let cube = world.addBody(.box(width: 1, height: 1, depth: 1),
+            let cube = try world.addBody(.box(width: 1, height: 1, depth: 1),
                                      at: Vector3(0, 2, 0), density: density)
             run(world, steps: 2400)
             let submerged = submergedFraction(cube)
@@ -66,14 +66,14 @@ struct Buoyancy3DTests {
     /// in ordinary water, 0.6 under, is the 0.6 case of the waterline test
     /// above.
     @Test func denserWaterFloatsTheSameBodyHigher() throws {
-        func settle(waterDensity: Double) -> Double {
+        func settle(waterDensity: Double) throws -> Double {
             let world = pool(Water(level: 0, density: waterDensity))
-            let cube = world.addBody(.box(width: 1, height: 1, depth: 1),
+            let cube = try world.addBody(.box(width: 1, height: 1, depth: 1),
                                      at: Vector3(0, 2, 0), density: 0.6)
             run(world, steps: 2400)
             return submergedFraction(cube)
         }
-        #expect(abs(settle(waterDensity: 2) - 0.3) < 0.08)
+        #expect(try abs(settle(waterDensity: 2) - 0.3) < 0.08)
     }
 
     // MARK: Drag
@@ -82,9 +82,9 @@ struct Buoyancy3DTests {
     /// Measured over the tail of a long run, so the initial splash is not
     /// counted either way.
     @Test func dragSettlesABodyThatOtherwiseKeepsBobbing() throws {
-        func tailSwing(drag: Double) -> Double {
+        func tailSwing(drag: Double) throws -> Double {
             let world = pool(Water(level: 0, linearDrag: drag, angularDrag: drag))
-            let cube = world.addBody(.box(width: 1, height: 1, depth: 1),
+            let cube = try world.addBody(.box(width: 1, height: 1, depth: 1),
                                      at: Vector3(0, 2, 0), density: 0.5)
             var tail: [Double] = []
             for step in 0 ..< 3600 {
@@ -93,8 +93,8 @@ struct Buoyancy3DTests {
             }
             return (tail.max() ?? 0) - (tail.min() ?? 0)
         }
-        #expect(tailSwing(drag: 0) > 0.2, "with no drag it should still be bobbing")
-        #expect(tailSwing(drag: 0.5) < 0.01, "with drag it should have come to rest")
+        #expect(try tailSwing(drag: 0) > 0.2, "with no drag it should still be bobbing")
+        #expect(try tailSwing(drag: 0.5) < 0.01, "with drag it should have come to rest")
     }
 
     // MARK: Sleeping
@@ -103,7 +103,7 @@ struct Buoyancy3DTests {
     /// falls asleep stops being pushed up, so it must not then sink.
     @Test func aFloaterThatFallsAsleepStaysAtItsWaterline() throws {
         let world = pool(Water(level: 0))
-        let cube = world.addBody(.box(width: 1, height: 1, depth: 1),
+        let cube = try world.addBody(.box(width: 1, height: 1, depth: 1),
                                  at: Vector3(0, 0.5, 0), density: 0.5)
         run(world, steps: 1800)
         #expect(!cube.isAwake, "a floating body should settle and sleep")
@@ -120,7 +120,7 @@ struct Buoyancy3DTests {
     /// to be let go of.
     @Test func raisingTheLevelWakesABodyAsleepAtTheOldOne() throws {
         let world = pool(Water(level: 0))
-        let cube = world.addBody(.box(width: 1, height: 1, depth: 1),
+        let cube = try world.addBody(.box(width: 1, height: 1, depth: 1),
                                  at: Vector3(0, 0.5, 0), density: 0.5)
         run(world, steps: 1800)
         #expect(!cube.isAwake)
@@ -134,7 +134,7 @@ struct Buoyancy3DTests {
     /// lying there asleep, the same way a tide does.
     @Test func addingWaterLaterFloatsWhatHadAlreadySettled() throws {
         let world = pool(nil)
-        let cork = world.addBody(.box(width: 1, height: 1, depth: 1),
+        let cork = try world.addBody(.box(width: 1, height: 1, depth: 1),
                                  at: Vector3(0, 2, 0), density: 0.4)
         run(world, steps: 1800)
         #expect(!cork.isAwake, "it should be asleep on the bottom")
@@ -150,9 +150,9 @@ struct Buoyancy3DTests {
     @Test func aSwellCarriesWhatFloatsAndLetsTheBottomSleep() throws {
         let world = pool(Water(level: 0, waves: Water.Waves(amplitude: 0.4,
                                                             wavelength: 6)))
-        let raft = world.addBody(.box(width: 1, height: 0.4, depth: 1),
+        let raft = try world.addBody(.box(width: 1, height: 0.4, depth: 1),
                                  at: Vector3(0, 1, 0), density: 0.4)
-        let stone = world.addBody(.box(width: 0.5, height: 0.5, depth: 0.5),
+        let stone = try world.addBody(.box(width: 0.5, height: 0.5, depth: 0.5),
                                   at: Vector3(4, 1, 0), density: 4)
         run(world, steps: 600)
         var heights: [Double] = []
@@ -169,7 +169,7 @@ struct Buoyancy3DTests {
     /// Still water is a flat plane, so nothing bobs at all.
     @Test func stillWaterDoesNotBob() throws {
         let world = pool(Water(level: 0))
-        let raft = world.addBody(.box(width: 1, height: 0.4, depth: 1),
+        let raft = try world.addBody(.box(width: 1, height: 0.4, depth: 1),
                                  at: Vector3(0, 1, 0), density: 0.4)
         run(world, steps: 1200)
         var heights: [Double] = []
@@ -183,15 +183,15 @@ struct Buoyancy3DTests {
     // MARK: The current, and the per-body parameter
 
     @Test func aCurrentCarriesAFloaterDownstream() throws {
-        func drift(flow: Vector3) -> Double {
+        func drift(flow: Vector3) throws -> Double {
             let world = pool(Water(level: 0, flow: flow))
-            let raft = world.addBody(.box(width: 1, height: 0.4, depth: 1),
+            let raft = try world.addBody(.box(width: 1, height: 0.4, depth: 1),
                                      at: Vector3(0, 1, 0), density: 0.4)
             run(world, steps: 600)
             return raft.position.x
         }
-        #expect(abs(drift(flow: .zero)) < 0.5, "still water should carry nothing")
-        #expect(drift(flow: Vector3(2, 0, 0)) > 5, "a current should carry it along")
+        #expect(try abs(drift(flow: .zero)) < 0.5, "still water should carry nothing")
+        #expect(try drift(flow: Vector3(2, 0, 0)) > 5, "a current should carry it along")
     }
 
     /// The per-body override, both ways: enough of it floats a stone, none of
@@ -199,20 +199,20 @@ struct Buoyancy3DTests {
     /// tier: one number decides it, and it is the density the body was built
     /// with.
     @Test func perBodyBuoyancyOverridesWhatDensityAloneWouldDo() throws {
-        func settle(density: Double, buoyancyScale: Double) -> Double {
+        func settle(density: Double, buoyancyScale: Double) throws -> Double {
             let world = pool(Water(level: 0))
-            let cube = world.addBody(.box(width: 1, height: 1, depth: 1),
+            let cube = try world.addBody(.box(width: 1, height: 1, depth: 1),
                                      at: Vector3(0, 2, 0), density: density)
             cube.buoyancyScale = buoyancyScale
             run(world, steps: 900)
             return cube.position.y
         }
-        #expect(settle(density: 3, buoyancyScale: 1) < -9,
+        #expect(try settle(density: 3, buoyancyScale: 1) < -9,
                 "a body heavier than water should reach the bottom")
-        #expect(settle(density: 3, buoyancyScale: 6) > -0.5, "6x lift floats a stone")
-        #expect(settle(density: 0.3, buoyancyScale: 1) > -0.5,
+        #expect(try settle(density: 3, buoyancyScale: 6) > -0.5, "6x lift floats a stone")
+        #expect(try settle(density: 0.3, buoyancyScale: 1) > -0.5,
                 "a body lighter than water should ride the surface")
-        #expect(settle(density: 0.3, buoyancyScale: 0) < -9, "no lift sinks a cork")
+        #expect(try settle(density: 0.3, buoyancyScale: 0) < -9, "no lift sinks a cork")
     }
 
     /// A stone lifted by exactly its own density ratio rides half under, the
@@ -220,7 +220,7 @@ struct Buoyancy3DTests {
     /// on what the water would otherwise do.
     @Test func perBodyBuoyancyMultipliesTheDensityRatio() throws {
         let world = pool(Water(level: 0))
-        let cube = world.addBody(.box(width: 1, height: 1, depth: 1),
+        let cube = try world.addBody(.box(width: 1, height: 1, depth: 1),
                                  at: Vector3(0, 2, 0), density: 3)
         cube.buoyancyScale = 6 // 6 x (1/3) = 2, so half of it should sit under
         run(world, steps: 2400)
@@ -233,7 +233,7 @@ struct Buoyancy3DTests {
     /// spot the sketch put it on.
     @Test func aSensorInTheWaterIsNotFloated() throws {
         let world = pool(Water(level: 0))
-        let sensor = world.addBody(.box(width: 1, height: 1, depth: 1),
+        let sensor = try world.addBody(.box(width: 1, height: 1, depth: 1),
                                    at: Vector3(0, -0.5, 0), isSensor: true)
         run(world, steps: 300)
         #expect(abs(sensor.position.y + 0.5) < 1e-6)
@@ -424,18 +424,18 @@ struct Buoyancy3DTests {
     // MARK: Determinism
 
     @Test func identicalRunsReplayIdentically() throws {
-        func settle() -> [Vector3] {
+        func settle() throws -> [Vector3] {
             let world = pool(Water(level: 0, waves: Water.Waves(amplitude: 0.3,
                                                                 wavelength: 5)))
             var bodies: [Body3D] = []
             for i in 0 ..< 6 {
-                bodies.append(world.addBody(.box(width: 0.6, height: 0.6, depth: 0.6),
+                bodies.append(try world.addBody(.box(width: 0.6, height: 0.6, depth: 0.6),
                                             at: Vector3(Double(i) * 0.7 - 2, 2, 0),
                                             density: 0.2 + Double(i) * 0.3))
             }
             run(world, steps: 400)
             return bodies.map(\.position)
         }
-        #expect(settle() == settle())
+        #expect(try settle() == settle())
     }
 }

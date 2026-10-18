@@ -5,9 +5,9 @@ import OllinPhysics
 
 // The world, and the character the first step walks.
 let world = World3D()
-var walker = world.addCharacter(radius: 0.3, height: 1.8, at: Vector3(0, 2, 0))
+var walker = try! world.addCharacter(radius: 0.3, height: 1.8, at: Vector3(0, 2, 0))
 var stride = 0.0
-let lookout = world.addBody(.box(width: 2, height: 0.2, depth: 2),
+let lookout = try! world.addBody(.box(width: 2, height: 0.2, depth: 2),
                             at: Vector3(0, 3, 0), isSensor: true)
 
 // The car, one of its wheels, and the machine on tracks.

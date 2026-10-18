@@ -26,7 +26,7 @@ final class Trigger: Sketch {
         Color(hex: 0x8D92E0), Color(hex: 0x72BFB2),
     ]
 
-    override func setup() {
+    override func setup() throws {
         world.ground = 0
         world.restitution = 0.35
 
@@ -36,23 +36,23 @@ final class Trigger: Sketch {
             rim.append(.part(.sphere(radius: hoopTube),
                              at: Vector3(cos(angle), 0, sin(angle)) * hoopRadius))
         }
-        world.addBody(.compound(rim), at: hoopCenter, kind: .static,
+        try world.addBody(.compound(rim), at: hoopCenter, kind: .static,
                       friction: 0.3, restitution: 0.5)
-        hoop = world.addBody(.cylinder(height: 0.5, radius: hoopRadius - hoopTube),
+        hoop = try world.addBody(.cylinder(height: 0.5, radius: hoopRadius - hoopTube),
                              at: hoopCenter, isSensor: true)
 
         let wall = 0.18
         for side in 0 ..< 4 {
             let angle = Double(side) * .pi / 2
             let out = Vector3(cos(angle), 0, sin(angle)) * (trayHalf + wall / 2)
-            world.addBody(.box(width: side % 2 == 0 ? wall : 2 * trayHalf + 2 * wall,
+            try world.addBody(.box(width: side % 2 == 0 ? wall : 2 * trayHalf + 2 * wall,
                                height: 0.4,
                                depth: side % 2 == 0 ? 2 * trayHalf + 2 * wall : wall),
                           at: Vector3(out.x, 0.2, out.z), kind: .static)
         }
-        world.addBody(.box(width: 2 * trayHalf, height: 0.2, depth: 2 * trayHalf),
+        try world.addBody(.box(width: 2 * trayHalf, height: 0.2, depth: 2 * trayHalf),
                       at: Vector3(0, 0.1, 0), kind: .static, friction: 0.8)
-        tray = world.addBody(.box(width: 2 * trayHalf, height: 0.7,
+        tray = try world.addBody(.box(width: 2 * trayHalf, height: 0.7,
                                   depth: 2 * trayHalf),
                              at: Vector3(0, 0.55, 0), isSensor: true)
 
@@ -65,10 +65,10 @@ final class Trigger: Sketch {
         (135, -0.15, -0.40), (180, 0.35, 0.30), (260, -0.12, 0.16),
     ]
 
-    func releaseDue() {
+    func releaseDue() throws {
         for (index, release) in releases.enumerated()
         where release.frame == frameCount {
-            let ball = world.addBody(.sphere(radius: ballRadius),
+            let ball = try world.addBody(.sphere(radius: ballRadius),
                                      at: Vector3(release.x, 5.4, release.z),
                                      density: 1.4, friction: 0.35,
                                      restitution: 0.4)
@@ -83,7 +83,7 @@ final class Trigger: Sketch {
         castShadows()
         perspective(eye: Vector3(1.4, 4.0, 7.6), target: Vector3(0, 2.4, 0))
 
-        releaseDue()
+        try? releaseDue()
         world.advance(by: deltaTime)
 
         if let hoop {

@@ -323,46 +323,46 @@ e7f00e72aff0  Docs/Drawing/Epicycles.md:86  expected ',' separator
 886cada6cd4c  Docs/Drawing/Fitting.md:160  cannot find 'marks' in scope
 0ece64b5f13f  Docs/Drawing/Fitting.md:92  cannot find 'pins' in scope
 cf65e5c6f914  Docs/Drawing/Fourier.md:73  cannot find 'plate' in scope
-67e13e1a3864  Docs/Drawing/Geometry.md:1013  expected ',' separator
-c0091b46b433  Docs/Drawing/Geometry.md:1052  expected '{' in body of function declaration
-51c2624a28b7  Docs/Drawing/Geometry.md:1066  cannot convert value of type '[Vector2].Type' to expected argument type '[Vector2]'
+eb39bc6e25d9  Docs/Drawing/Geometry.md:1000  expected '{' in body of function declaration
+67e13e1a3864  Docs/Drawing/Geometry.md:1014  expected ',' separator
+c0091b46b433  Docs/Drawing/Geometry.md:1053  expected '{' in body of function declaration
+51c2624a28b7  Docs/Drawing/Geometry.md:1067  cannot convert value of type '[Vector2].Type' to expected argument type '[Vector2]'
 4089dff1acc6  Docs/Drawing/Geometry.md:183  cannot convert value of type 'Double.Type' to expected argument type 'Double'
-0bdba7d24932  Docs/Drawing/Geometry.md:235  cannot convert value of type 'Double.Type' to expected argument type 'Double'
-c9abb7d3d7a5  Docs/Drawing/Geometry.md:248  cannot find 'crate' in scope
-fdcf3efae578  Docs/Drawing/Geometry.md:261  cannot convert value of type 'Vector3.Type' to expected argument type 'Vector3'
-ce8f3399f803  Docs/Drawing/Geometry.md:272  cannot find 'eye' in scope
-7e1e37f3022c  Docs/Drawing/Geometry.md:288  cannot convert value of type 'Vector3.Type' to expected argument type 'Vector3'
-f0183ad35e80  Docs/Drawing/Geometry.md:298  cannot find 'scan' in scope
-a26850bfb449  Docs/Drawing/Geometry.md:313  expected ',' separator
-873b3abaf9b5  Docs/Drawing/Geometry.md:343  cannot find 'Distribution' in scope
-f0b0c6b3213b  Docs/Drawing/Geometry.md:352  cannot find 'filters' in scope
-02e6dae30b9f  Docs/Drawing/Geometry.md:378  value of type '@MainActor (Int, Int, Insets, Double, Grid.Distribution) -> Grid' has no member 'points'
-ff6c8a6ce068  Docs/Drawing/Geometry.md:406  cannot find 'thumbnails' in scope
-b75f4ac15c49  Docs/Drawing/Geometry.md:429  cannot infer contextual base in reference to member 'all'
-23b6891ea8c2  Docs/Drawing/Geometry.md:449  cannot convert value of type 'Vector2.Type' to expected argument type 'Vector2'
-cd001b4096fb  Docs/Drawing/Geometry.md:472  expected ',' separator
-963ed0e10650  Docs/Drawing/Geometry.md:497  cannot convert value of type 'Vector2.Type' to expected argument type 'Vector2'
+c8dd6a17c836  Docs/Drawing/Geometry.md:235  cannot convert value of type 'Double.Type' to expected argument type 'Double'
+c9abb7d3d7a5  Docs/Drawing/Geometry.md:249  cannot find 'crate' in scope
+fdcf3efae578  Docs/Drawing/Geometry.md:262  cannot convert value of type 'Vector3.Type' to expected argument type 'Vector3'
+ce8f3399f803  Docs/Drawing/Geometry.md:273  cannot find 'eye' in scope
+7e1e37f3022c  Docs/Drawing/Geometry.md:289  cannot convert value of type 'Vector3.Type' to expected argument type 'Vector3'
+f0183ad35e80  Docs/Drawing/Geometry.md:299  cannot find 'scan' in scope
+a26850bfb449  Docs/Drawing/Geometry.md:314  expected ',' separator
+873b3abaf9b5  Docs/Drawing/Geometry.md:344  cannot find 'Distribution' in scope
+f0b0c6b3213b  Docs/Drawing/Geometry.md:353  cannot find 'filters' in scope
+02e6dae30b9f  Docs/Drawing/Geometry.md:379  value of type '@MainActor (Int, Int, Insets, Double, Grid.Distribution) -> Grid' has no member 'points'
+ff6c8a6ce068  Docs/Drawing/Geometry.md:407  cannot find 'thumbnails' in scope
+b75f4ac15c49  Docs/Drawing/Geometry.md:430  cannot infer contextual base in reference to member 'all'
+23b6891ea8c2  Docs/Drawing/Geometry.md:450  cannot convert value of type 'Vector2.Type' to expected argument type 'Vector2'
+cd001b4096fb  Docs/Drawing/Geometry.md:473  expected ',' separator
+963ed0e10650  Docs/Drawing/Geometry.md:498  cannot convert value of type 'Vector2.Type' to expected argument type 'Vector2'
 754645c0ed85  Docs/Drawing/Geometry.md:52  expected ',' separator
-401af9738a19  Docs/Drawing/Geometry.md:520  cannot convert value of type 'Vector2.Type' to expected argument type 'Vector2'
-85a6c158019e  Docs/Drawing/Geometry.md:546  expected '{' in body of function declaration
-f898a9fe80fd  Docs/Drawing/Geometry.md:580  expected ',' separator
-52354cad80b1  Docs/Drawing/Geometry.md:626  expected '{' in body of function declaration
-d557b13beb41  Docs/Drawing/Geometry.md:674  expected '{' in body of function declaration
-a9963fe5f8ea  Docs/Drawing/Geometry.md:710  expected '{' in body of function declaration
-f91432eb7c7b  Docs/Drawing/Geometry.md:766  expected ',' separator
-4fdce137d56e  Docs/Drawing/Geometry.md:812  expected ',' separator
-fae7a0c26a4e  Docs/Drawing/Geometry.md:842  cannot find 'shape' in scope
-ad8b1f537c9c  Docs/Drawing/Geometry.md:849  cannot find 'shape' in scope
-e2d750ef54f7  Docs/Drawing/Geometry.md:855  cannot find 'shape' in scope
-a852c71bbd89  Docs/Drawing/Geometry.md:881  use of 'randomPoints' refers to instance method rather than global function 'randomPoints(in:count:using:)' in module 'Ollin'
-1eb6f12247fb  Docs/Drawing/Geometry.md:892  expected '{' in body of function declaration
-c02c77676873  Docs/Drawing/Geometry.md:906  cannot find 'star' in scope
-c4ec6c299218  Docs/Drawing/Geometry.md:918  expected '{' in body of function declaration
-a1b0bb4e8556  Docs/Drawing/Geometry.md:924  cannot find 'blob' in scope
-7fa1c7078690  Docs/Drawing/Geometry.md:942  expected '{' in body of function declaration
-a70a7ea27883  Docs/Drawing/Geometry.md:949  function produces expected type '[Vector2]'; did you mean to call it with '()'?
-f987b34cd479  Docs/Drawing/Geometry.md:962  expected '{' in body of function declaration
-eb39bc6e25d9  Docs/Drawing/Geometry.md:999  expected '{' in body of function declaration
+401af9738a19  Docs/Drawing/Geometry.md:521  cannot convert value of type 'Vector2.Type' to expected argument type 'Vector2'
+85a6c158019e  Docs/Drawing/Geometry.md:547  expected '{' in body of function declaration
+f898a9fe80fd  Docs/Drawing/Geometry.md:581  expected ',' separator
+52354cad80b1  Docs/Drawing/Geometry.md:627  expected '{' in body of function declaration
+d557b13beb41  Docs/Drawing/Geometry.md:675  expected '{' in body of function declaration
+a9963fe5f8ea  Docs/Drawing/Geometry.md:711  expected '{' in body of function declaration
+f91432eb7c7b  Docs/Drawing/Geometry.md:767  expected ',' separator
+4fdce137d56e  Docs/Drawing/Geometry.md:813  expected ',' separator
+fae7a0c26a4e  Docs/Drawing/Geometry.md:843  cannot find 'shape' in scope
+ad8b1f537c9c  Docs/Drawing/Geometry.md:850  cannot find 'shape' in scope
+e2d750ef54f7  Docs/Drawing/Geometry.md:856  cannot find 'shape' in scope
+a852c71bbd89  Docs/Drawing/Geometry.md:882  use of 'randomPoints' refers to instance method rather than global function 'randomPoints(in:count:using:)' in module 'Ollin'
+1eb6f12247fb  Docs/Drawing/Geometry.md:893  expected '{' in body of function declaration
+c02c77676873  Docs/Drawing/Geometry.md:907  cannot find 'star' in scope
+c4ec6c299218  Docs/Drawing/Geometry.md:919  expected '{' in body of function declaration
+a1b0bb4e8556  Docs/Drawing/Geometry.md:925  cannot find 'blob' in scope
+7fa1c7078690  Docs/Drawing/Geometry.md:943  expected '{' in body of function declaration
+a70a7ea27883  Docs/Drawing/Geometry.md:950  function produces expected type '[Vector2]'; did you mean to call it with '()'?
+f987b34cd479  Docs/Drawing/Geometry.md:963  expected '{' in body of function declaration
 336a733604c7  Docs/Drawing/GlyphMosaic.md:31  expected ',' separator
 cb89fe7408d3  Docs/Drawing/GlyphMosaic.md:43  cannot find 'picture' in scope
 f7a401ec53bc  Docs/Drawing/GlyphMosaic.md:55  expected ',' separator
@@ -582,7 +582,7 @@ ca46594965eb  Docs/Generators/Fracture.md:31  expected ',' separator
 9dd10912df1e  Docs/Generators/Fracture.md:54  expected ',' separator
 829e94421388  Docs/Generators/Fracture.md:59  cannot find 'corner' in scope
 e4552e096f31  Docs/Generators/Fracture.md:78  cannot find 'piece' in scope
-adfbefe9c30b  Docs/Generators/Fracture.md:84  cannot find 'piece' in scope
+6f278d0b4559  Docs/Generators/Fracture.md:84  cannot find 'piece' in scope
 b8a017fd39d8  Docs/Generators/Fracture.md:98  consecutive statements on a line must be separated by ';'
 97124d23a4e3  Docs/Generators/HilbertOrder.md:26  expected ',' separator
 25b2192edb53  Docs/Generators/HilbertOrder.md:33  cannot find 'picture' in scope
@@ -716,7 +716,7 @@ dfccda8c8733  Docs/Generators/StringArt.md:60  expected ',' separator
 d1ad6e970d0e  Docs/Generators/SurfaceReconstruction.md:62  cannot find 'world' in scope
 e40ba7d620dd  Docs/Generators/SurfaceReconstruction.md:96  cannot find 'cloud' in scope
 a09bb60f67c3  Docs/Generators/SurfaceSampling.md:102  cannot find 'terrain' in scope
-2a47f010b3be  Docs/Generators/SurfaceSampling.md:110  expected '{' in body of function declaration
+a28ca36d69ce  Docs/Generators/SurfaceSampling.md:110  expected '{' in body of function declaration
 a0c709a812b6  Docs/Generators/SurfaceSampling.md:116  cannot find 'tree' in scope
 d5e73b092108  Docs/Generators/SurfaceSampling.md:126  anonymous closure argument not contained in a closure
 543d5f75454f  Docs/Generators/SurfaceSampling.md:134  cannot find 'mesh' in scope
@@ -1113,7 +1113,7 @@ d580cf59d5a2  Docs/Simulation/Physics.md:228  expected '{' to start getter defin
 49989805e9fd  Docs/Simulation/Physics.md:70  expected '{' to start getter definition
 ce33e138b1e4  Docs/Simulation/Physics3D.md:1000  cannot find 'cloth' in scope
 756218a29c46  Docs/Simulation/Physics3D.md:1028  cannot find 'banner' in scope
-7d9cf5626b39  Docs/Simulation/Physics3D.md:103  cannot find 'world' in scope
+017e2dbc0283  Docs/Simulation/Physics3D.md:103  cannot find 'world' in scope
 a4bb3c3eb9e1  Docs/Simulation/Physics3D.md:1034  cannot find 'world' in scope
 0d0af9ed7cd9  Docs/Simulation/Physics3D.md:1053  cannot find 'raft' in scope
 03f3f086ea1e  Docs/Simulation/Physics3D.md:1074  cannot find 'world' in scope
@@ -1123,7 +1123,7 @@ e477e4a22c18  Docs/Simulation/Physics3D.md:1124  cannot find 'chain' in scope
 885024abe204  Docs/Simulation/Physics3D.md:1150  cannot find 'world' in scope
 45f3af9ecc3f  Docs/Simulation/Physics3D.md:1166  cannot find 'cape' in scope
 6c967a731f05  Docs/Simulation/Physics3D.md:1206  cannot find 'world' in scope
-cc09bf811a57  Docs/Simulation/Physics3D.md:1212  cannot find 'world' in scope
+b8fa9c51e593  Docs/Simulation/Physics3D.md:1212  cannot find 'world' in scope
 441ac42629e9  Docs/Simulation/Physics3D.md:123  value of type '@MainActor (Vector2, World3D) -> (body: Body3D, point: Vector3)?' has no member 'position'
 b79fb1ed7e14  Docs/Simulation/Physics3D.md:1238  cannot find 'world' in scope
 17d27515f7e2  Docs/Simulation/Physics3D.md:1245  cannot find 'world' in scope
@@ -1131,22 +1131,22 @@ b79fb1ed7e14  Docs/Simulation/Physics3D.md:1238  cannot find 'world' in scope
 39c7c5e9333b  Docs/Simulation/Physics3D.md:1281  cannot find 'world' in scope
 3cc8c5456a56  Docs/Simulation/Physics3D.md:1288  cannot find 'world' in scope
 5f32ffe4e0fd  Docs/Simulation/Physics3D.md:1317  cannot find 'world' in scope
-218a1812284f  Docs/Simulation/Physics3D.md:1339  cannot find 'world' in scope
+975fef1c34ed  Docs/Simulation/Physics3D.md:1339  cannot find 'world' in scope
 531ba2893ae7  Docs/Simulation/Physics3D.md:1350  cannot find 'world' in scope
-a0c1a7f4f588  Docs/Simulation/Physics3D.md:1385  cannot find 'world' in scope
+58eb43b36234  Docs/Simulation/Physics3D.md:1385  cannot find 'world' in scope
 e2cc71140483  Docs/Simulation/Physics3D.md:1413  cannot find 'world' in scope
 e088d7da566c  Docs/Simulation/Physics3D.md:142  value of type '@MainActor (Vector2, World3D) -> (body: Body3D, point: Vector3)?' has no member 'applyForce'
 41ea676e013d  Docs/Simulation/Physics3D.md:1431  cannot find 'world' in scope
 051e1114d5bb  Docs/Simulation/Physics3D.md:1445  cannot find 'world' in scope
 d4a0dbf5b164  Docs/Simulation/Physics3D.md:1456  cannot find 'world' in scope
-68e9d5e140e2  Docs/Simulation/Physics3D.md:157  cannot find 'world' in scope
+68d97e63de0c  Docs/Simulation/Physics3D.md:157  cannot find 'world' in scope
 8fee1a37e2c2  Docs/Simulation/Physics3D.md:170  cannot infer contextual base in reference to member 'all'
 85eb21177c8d  Docs/Simulation/Physics3D.md:184  cannot find 'balloon' in scope
-9e452047d32d  Docs/Simulation/Physics3D.md:191  cannot find 'world' in scope
+e0eaacc0d6a5  Docs/Simulation/Physics3D.md:191  cannot find 'world' in scope
 72161b5e4aef  Docs/Simulation/Physics3D.md:204  cannot find 'mesh' in scope
-68e2584a5d1e  Docs/Simulation/Physics3D.md:226  cannot find 'world' in scope
-71fb2d9b4d0d  Docs/Simulation/Physics3D.md:244  cannot find 'world' in scope
-672a91f9c047  Docs/Simulation/Physics3D.md:256  cannot find 'world' in scope
+9f27b37f01cf  Docs/Simulation/Physics3D.md:226  cannot find 'world' in scope
+f2067688d9f3  Docs/Simulation/Physics3D.md:244  cannot find 'world' in scope
+d76196c108df  Docs/Simulation/Physics3D.md:256  cannot find 'world' in scope
 7faa2659eef1  Docs/Simulation/Physics3D.md:269  cannot find 'world' in scope
 b9ce26196419  Docs/Simulation/Physics3D.md:282  cannot find 'world' in scope
 28398ee1ddcb  Docs/Simulation/Physics3D.md:306  cannot find 'world' in scope
@@ -1166,11 +1166,11 @@ f753b0aa5fce  Docs/Simulation/Physics3D.md:447  cannot find 'contact' in scope
 938941dc6e7a  Docs/Simulation/Physics3D.md:458  cannot find 'contact' in scope
 7ae2737557da  Docs/Simulation/Physics3D.md:466  cannot find 'ball' in scope
 4763fc671d94  Docs/Simulation/Physics3D.md:476  cannot find 'contact' in scope
-8a5601b5e7fe  Docs/Simulation/Physics3D.md:488  cannot find 'world' in scope
-49bd6bd56a8c  Docs/Simulation/Physics3D.md:501  cannot find 'world' in scope
-18d62222b348  Docs/Simulation/Physics3D.md:519  cannot find 'world' in scope
+cb3e50bbc771  Docs/Simulation/Physics3D.md:488  cannot find 'world' in scope
+2d6b56b7a045  Docs/Simulation/Physics3D.md:501  cannot find 'world' in scope
+0a75faeb7467  Docs/Simulation/Physics3D.md:519  cannot find 'world' in scope
 2eb8e73e80bd  Docs/Simulation/Physics3D.md:530  cannot find 'world' in scope
-b90ac77c05ba  Docs/Simulation/Physics3D.md:544  cannot find 'world' in scope
+fd5c353f3e73  Docs/Simulation/Physics3D.md:544  cannot find 'world' in scope
 1d90f10a3081  Docs/Simulation/Physics3D.md:559  cannot find 'world' in scope
 98f3bd5f477b  Docs/Simulation/Physics3D.md:589  cannot find 'world' in scope
 546e3f5a4dc2  Docs/Simulation/Physics3D.md:601  cannot find 'world' in scope

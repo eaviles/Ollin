@@ -32,7 +32,7 @@ final class SceneAsLines: Sketch {
                 .transformed(by: MeshInstance(position: Vector3(1.1, 0.8, -0.3))),
             Mesh.box(size: 0.9)
                 .transformed(by: MeshInstance(position: Vector3(0.3, 0.45, 1.5),
-                                              rotation: Vector3(0, 0.5, 0))),
+                                              rotation: .aboutY(0.5))),
         ]
         let drawing = lineDrawing(of: scene)
 

@@ -36,25 +36,25 @@ final class Flotsam: Sketch {
     let seaLevel = 0.0
     let deep = -6.0
 
-    override func setup() {
+    override func setup() throws {
         // The sea floor, deep enough that what sinks is clearly gone.
         world.ground = deep
         world.water = Water(level: seaLevel, waves: Water.Waves(amplitude: swell,
                                                                 wavelength: 7,
                                                                 speed: 1.6))
-        buildCrates()
-        buildAnchor()
+        try buildCrates()
+        try buildAnchor()
     }
 
     /// Six crates from cork to nearly waterlogged. The only thing that differs
     /// between them is `density`, which is what decides where each waterline
     /// lands: the lightest sits a fifth under, the heaviest nine tenths.
-    func buildCrates() {
+    func buildCrates() throws {
         let densities = [0.2, 0.35, 0.5, 0.65, 0.8, 0.92]
         for (index, density) in densities.enumerated() {
             let size = Vector3(0.8, 0.8, 0.8)
             let x = Double(index) * 1.25 - 3.1
-            let body = world.addBody(.box(width: size.x, height: size.y,
+            let body = try world.addBody(.box(width: size.x, height: size.y,
                                           depth: size.z),
                                      at: Vector3(x, 2.2 + Double(index) * 0.35,
                                                  random(-0.7, 0.7)),
@@ -71,8 +71,8 @@ final class Flotsam: Sketch {
 
     /// A stone heavier than water, to show what the same water does to
     /// something it cannot hold up.
-    func buildAnchor() {
-        anchor = world.addBody(.box(width: 0.7, height: 0.7, depth: 0.7),
+    func buildAnchor() throws {
+        anchor = try world.addBody(.box(width: 0.7, height: 0.7, depth: 0.7),
                                at: Vector3(2.6, 2.0, 1.4), rotated: 0.5,
                                axis: Vector3(1, 0.4, 0), density: 3.2,
                                friction: 0.9)

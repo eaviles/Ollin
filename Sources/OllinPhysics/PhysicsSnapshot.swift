@@ -529,8 +529,8 @@ extension World3D {
                 restoredBodies.append(nil)
                 continue
             }
-            let body = addBody(collider, at: saved.position,
-                               kind: saved.kind, isSensor: saved.isSensor,
+            let body = try addBody(collider, at: saved.position,
+                                   kind: saved.kind, isSensor: saved.isSensor,
                                rotated: 0, axis: .unitY, density: saved.density,
                                friction: saved.friction,
                                restitution: saved.restitution, mass: handed[offset]?.mass,
@@ -592,7 +592,7 @@ extension World3D {
         }
 
         for saved in savedCharacters {
-            let character = addCharacter(radius: saved.radius, height: saved.height,
+            let character = try addCharacter(radius: saved.radius, height: saved.height,
                                          at: saved.position,
                                          stepHeight: saved.stepHeight,
                                          stickToFloorDistance: saved.stickToFloorDistance,

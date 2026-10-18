@@ -58,13 +58,13 @@ final class Sieve: Sketch {
     let trayY = 0.1
     let steel = Color(hex: 0x1D2534)
 
-    override func setup() {
+    override func setup() throws {
         world.ground = -1.5
         world.restitution = 0.1
-        buildRamp()
-        buildChutes()
-        buildTrays()
-        stockTheHopper()
+        try buildRamp()
+        try buildChutes()
+        try buildTrays()
+        try stockTheHopper()
         applyRules()
     }
 
@@ -81,8 +81,8 @@ final class Sieve: Sketch {
     @discardableResult
     func part(_ size: Vector3, at position: Vector3, color: Color,
               tilted: Bool = true, friction: Double = 0.4,
-              group: CollisionGroup = .default) -> Body3D {
-        let body = world.addBody(.box(width: size.x, height: size.y, depth: size.z),
+              group: CollisionGroup = .default) throws -> Body3D {
+        let body = try world.addBody(.box(width: size.x, height: size.y, depth: size.z),
                                  at: position, kind: .static,
                                  rotated: tilted ? -rampTilt : 0, axis: .unitZ,
                                  friction: friction, group: group)
@@ -93,26 +93,26 @@ final class Sieve: Sketch {
     /// One plate of the ramp. A window and a solid stretch are the same plate;
     /// the only difference between them is the group it is in.
     func plate(from startX: Double, to endX: Double, color: Color,
-               group: CollisionGroup = .default) {
+               group: CollisionGroup = .default) throws {
         let span = endX - startX
-        part(Vector3(span / cos(rampTilt), 0.2, rampWidth),
+        try part(Vector3(span / cos(rampTilt), 0.2, rampWidth),
              at: onRamp(startX + span / 2), color: color, friction: 0.3, group: group)
     }
 
-    func buildRamp() {
+    func buildRamp() throws {
         var edge = rampTop.x
         for kind in kinds {
             let start = kind.windowX - windowWidth / 2
-            plate(from: edge, to: start, color: steel)
-            plate(from: start, to: start + windowWidth,
+            try plate(from: edge, to: start, color: steel)
+            try plate(from: start, to: start + windowWidth,
                   color: kind.color.withAlpha(0.55), group: kind.window)
             edge = start + windowWidth
         }
-        plate(from: edge, to: 3.1, color: steel)
+        try plate(from: edge, to: 3.1, color: steel)
 
         // Rails, so a bead that bounces stays on the ramp.
         for side in [-1.0, 1.0] {
-            part(Vector3(9.0, 0.5, 0.12),
+            try part(Vector3(9.0, 0.5, 0.12),
                  at: onRamp(-1.25) + Vector3(0, 0.24, side * (rampWidth / 2 + 0.06)),
                  color: steel, friction: 0.2)
         }
@@ -122,16 +122,16 @@ final class Sieve: Sketch {
     /// makes the sorting land where it should: a bead drops through the window
     /// still carrying its roll, and with nothing to catch that it would fly on
     /// under the ramp and come down in the next color's tray.
-    func buildChutes() {
+    func buildChutes() throws {
         for kind in kinds {
             let below = rampUp * -(chuteDrop / 2 + 0.1)
             let color = kind.color.withAlpha(0.14)
             for edge in [-windowWidth / 2, windowWidth / 2] {
-                part(Vector3(0.09, chuteDrop, rampWidth + 0.18),
+                try part(Vector3(0.09, chuteDrop, rampWidth + 0.18),
                      at: onRamp(kind.windowX + edge) + below, color: color)
             }
             for side in [-1.0, 1.0] {
-                part(Vector3(windowWidth, chuteDrop, 0.09),
+                try part(Vector3(windowWidth, chuteDrop, 0.09),
                      at: onRamp(kind.windowX) + below
                          + Vector3(0, 0, side * (rampWidth / 2 + 0.05)),
                      color: color)
@@ -145,40 +145,40 @@ final class Sieve: Sketch {
     /// wall, which is how the last tray catches beads still traveling at the
     /// speed the whole ramp gave them.
     func tray(at center: Vector3, width: Double, depth: Double,
-              backboard: Double = 0.7) {
-        part(Vector3(width, 0.2, depth), at: center, color: steel, tilted: false,
+              backboard: Double = 0.7) throws {
+        try part(Vector3(width, 0.2, depth), at: center, color: steel, tilted: false,
              friction: 0.7)
-        part(Vector3(0.14, backboard, depth),
+        try part(Vector3(0.14, backboard, depth),
              at: center + Vector3(width / 2, backboard / 2, 0), color: steel,
              tilted: false, friction: 0.5)
         for (offset, size) in [(Vector3(-width / 2, 0.35, 0), Vector3(0.14, 0.7, depth)),
                                (Vector3(0, 0.35, depth / 2), Vector3(width, 0.7, 0.14)),
                                (Vector3(0, 0.35, -depth / 2), Vector3(width, 0.7, 0.14))] {
-            part(size, at: center + offset, color: steel, tilted: false, friction: 0.5)
+            try part(size, at: center + offset, color: steel, tilted: false, friction: 0.5)
         }
     }
 
-    func buildTrays() {
+    func buildTrays() throws {
         for kind in kinds {
             // Under the chute's mouth, which the ramp's tilt carries a little
             // back up the slope from the window itself.
             let mouth = onRamp(kind.windowX) - rampUp * chuteDrop
-            tray(at: Vector3(mouth.x, trayY, 0), width: 1.8, depth: 2.4)
+            try tray(at: Vector3(mouth.x, trayY, 0), width: 1.8, depth: 2.4)
         }
         // The overflow, which everything reaches when the sorting is off. It
         // sits where a bead leaving the end of the ramp lands, with a tall
         // back wall for the ones still carrying the whole slope's worth of
         // speed.
-        tray(at: Vector3(5.4, trayY - 1.1, 0), width: 3.4, depth: 2.4,
+        try tray(at: Vector3(5.4, trayY - 1.1, 0), width: 3.4, depth: 2.4,
              backboard: 2.1)
     }
 
     // MARK: The beads
 
-    func stockTheHopper() {
+    func stockTheHopper() throws {
         for index in 0 ..< 54 {
             let kind = kinds[index % kinds.count]
-            let bead = world.addBody(.sphere(radius: beadRadius), at: hopper(),
+            let bead = try world.addBody(.sphere(radius: beadRadius), at: hopper(),
                                      density: 0.7, friction: 0.3, restitution: 0.1,
                                      group: kind.group)
             bead.userData = kind.color

@@ -10,7 +10,7 @@
 # check (a compile and swap, a file watcher, a drag that writes source, a
 # session carried across an evaluation) lives in an executable target that
 # `swift test` cannot import. OllinLive: --selftest, --watchtest,
-# --dragtest, --paramtest, --savetest. OllinLiveCoding: --selftest,
+# --dragtest, --paramtest, --savetest, --inspectortest. OllinLiveCoding: --selftest,
 # --sessiontest, --dragtest, --controltest. OllinRun: --selftest. The
 # generator: --stagetest. The gallery: --cycletest. They passed whenever
 # someone typed them, and no script did: under the test suite alone, the
@@ -33,6 +33,7 @@ typeset -a gates=(
     "OllinLive --dragtest"
     "OllinLive --paramtest"
     "OllinLive --savetest"
+    "OllinLive --inspectortest"
     "OllinLiveCoding --selftest"
     "OllinLiveCoding --sessiontest"
     "OllinLiveCoding --dragtest"

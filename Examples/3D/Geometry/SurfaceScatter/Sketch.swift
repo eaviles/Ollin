@@ -93,7 +93,7 @@ final class SurfaceScatter: Sketch {
             // put its base on the skin.
             let up = stand ? spot.normal : .unitY
             return MeshInstance(position: spot.position + up * 0.11,
-                                rotation: stand ? spot.alignment(spin: random(.tau)) : .zero,
+                                rotation: stand ? spot.alignment(spin: random(.tau)) : .identity,
                                 scale: 0.7 + random(0.5))
         }
         closest = closestPair(spots.map(\.position))

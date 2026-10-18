@@ -19,7 +19,7 @@ final class Ragdolls: Sketch {
     var limpDoll: Ragdoll3D!
     var heldDoll: Ragdoll3D!
 
-    override func setup() {
+    override func setup() throws {
         rest = try? loadScene("Examples/3D/Physics/Ragdoll/figure.gltf")
         limp = rest
         held = rest

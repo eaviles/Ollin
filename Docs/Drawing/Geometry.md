@@ -236,6 +236,7 @@ A turn in space as one value: how far, and about which axis. It is what a 3D bod
 Rotation3D(angle: Double, axis: Vector3)      // right-handed, like rotate(_:axis:)
 Rotation3D(from: Vector3, to: Vector3)        // the shortest turn taking one direction to the other
 Rotation3D.aboutX(_:) / .aboutY(_:) / .aboutZ(_:)
+Rotation3D.euler(x:y:z:)                      // three angles, composed as rotateX, rotateY, rotateZ would be, in that order
 Rotation3D.identity                           // no turn
 Rotation3D(x:y:z:w:)                          // from quaternion parts, for a value that arrives that way
 ```

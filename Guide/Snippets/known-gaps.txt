@@ -110,8 +110,8 @@ f9772692a39c  Guide/28-MaterialsAndSurroundings.md:253  cannot find 'picture' in
 cc748b059cc6  Guide/29-Landscapes.md:140  cannot convert value of type '(UnboundedRange_) -> ()' to expected argument type 'Camera3D'
 be4bf5adc860  Guide/29-Landscapes.md:161  expected '}' in class
 ea2ec72bb301  Guide/29-Landscapes.md:24  cannot find 'land' in scope
-a214a907f54b  Guide/29-Landscapes.md:296  cannot find 'floorLevel' in scope
-659184501264  Guide/29-Landscapes.md:403  extraneous '}' at top level
+eca37dc3dbff  Guide/29-Landscapes.md:296  cannot find 'floorLevel' in scope
+b0c725d0951e  Guide/29-Landscapes.md:403  extraneous '}' at top level
 8fe3a1525343  Guide/29-Landscapes.md:483  cannot find 'weathered' in scope
 54c56af7fa4c  Guide/29-Landscapes.md:53  cannot find 'seats' in scope
 5fe3d9f427a8  Guide/29-Landscapes.md:89  cannot find 'island' in scope

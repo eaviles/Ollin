@@ -291,7 +291,7 @@ struct Ragdoll3DTests {
         let ragdoll = try world.addRagdoll(from: target, at: Vector3(0, 0, 0))
         ragdoll.kind = .kinematic
         // A crate right where the figure's arm will sweep.
-        let crate = world.addBody(.box(width: 0.3, height: 0.3, depth: 0.3),
+        let crate = try world.addBody(.box(width: 0.3, height: 0.3, depth: 0.3),
                                   at: Vector3(0.55, 1.48, 0))
         let crateStart = crate.position
 
@@ -315,19 +315,19 @@ struct Ragdoll3DTests {
         /// joint at the post, left to fall under gravity. The rod's center
         /// height says how far it got: 0 is still horizontal, -0.5 is hanging
         /// straight down.
-        func drop(_ kind: (Vector3, Vector3) -> JointKind3D) -> Double {
+        func drop(_ kind: (Vector3, Vector3) -> JointKind3D) throws -> Double {
             let world = World3D()
-            let post = world.addBody(.box(width: 0.04, height: 0.04, depth: 0.04),
+            let post = try world.addBody(.box(width: 0.04, height: 0.04, depth: 0.04),
                                      at: .zero, kind: .static)
-            let rod = world.addBody(.capsule(height: 0.8, radius: 0.06),
+            let rod = try world.addBody(.capsule(height: 0.8, radius: 0.06),
                                     at: Vector3(0.55, 0, 0), rotated: .pi / 2,
                                     axis: .unitZ)
             world.connect(post, rod, kind(.zero, .unitX))
             for _ in 0..<300 { world.advance(by: 1.0 / 60) }
             return rod.position.y
         }
-        let free = drop { at, _ in .ball(at: at) }
-        let limited = drop { at, axis in
+        let free = try drop { at, _ in .ball(at: at) }
+        let limited = try drop { at, axis in
             .swingTwist(at: at, axis: axis, swing: 20 * .pi / 180)
         }
         // The free joint lets the rod hang straight down; the cone catches it

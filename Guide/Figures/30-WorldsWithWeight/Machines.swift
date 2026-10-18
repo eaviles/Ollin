@@ -27,19 +27,19 @@ final class Machines: Sketch {
     let steel = Color(hex: 0xB9C2CE)
     let teal = Color(hex: 0x4FC1AE)
 
-    override func setup() {
+    override func setup() throws {
         world.ground = -0.8
         // Meshed teeth: plain cylinders would jam against each other.
         world.ignoreCollisions(between: "frame", and: "frame")
 
-        let wall = world.addBody(.box(width: 6.0, height: 3.8, depth: 0.25),
+        let wall = try world.addBody(.box(width: 6.0, height: 3.8, depth: 0.25),
                                  at: Vector3(-0.6, 1.3, -0.7), kind: .static,
                                  group: "frame")
         wall.userData = timber
 
         // A cylinder stands upright, so each wheel takes a quarter turn about x
         // to lay its axle along z, facing the camera.
-        let small = world.addBody(.compound([
+        let small = try world.addBody(.compound([
             .part(.cylinder(height: 0.3, radius: smallRadius),
                   rotated: .pi / 2, axis: .unitX, density: 3),
         ]), at: smallHub, group: "frame")
@@ -47,7 +47,7 @@ final class Machines: Sketch {
 
         // One body wearing two wheels: the gear that meshes with the small one,
         // and the pinion in front of it that drives the bar.
-        let big = world.addBody(.compound([
+        let big = try world.addBody(.compound([
             .part(.cylinder(height: 0.3, radius: bigRadius),
                   rotated: .pi / 2, axis: .unitX, density: 3),
             .part(.cylinder(height: 0.3, radius: pinionRadius),
@@ -63,7 +63,7 @@ final class Machines: Sketch {
         crank = crankHinge
 
         let barCenter = Vector3(bigHub.x, rackY, 0.45)
-        let bar = world.addBody(.compound([
+        let bar = try world.addBody(.compound([
             .part(.box(width: 3.6, height: 0.22, depth: 0.22)),
             .part(.box(width: 0.2, height: 0.5, depth: 0.9),
                   at: Vector3(-1.5, -0.24, 0)),
@@ -78,13 +78,13 @@ final class Machines: Sketch {
                       .rackAndPinion(travelPerTurn: 2 * .pi * pinionRadius))
 
         let shelfTop = rackY - 0.49
-        let shelf = world.addBody(.box(width: 4.4, height: 0.3, depth: 1.2),
+        let shelf = try world.addBody(.box(width: 4.4, height: 0.3, depth: 1.2),
                                   at: Vector3(bigHub.x, shelfTop - 0.15, 0.45),
                                   kind: .static, group: "frame")
         shelf.userData = timber
 
         for i in 0 ..< 4 {
-            let block = world.addBody(.box(width: 0.3, height: 0.3, depth: 0.3),
+            let block = try world.addBody(.box(width: 0.3, height: 0.3, depth: 0.3),
                                       at: Vector3(bigHub.x - 1.0 + Double(i) * 0.42,
                                                   shelfTop + 0.16, 0.45),
                                       density: 0.6, friction: 0.5)

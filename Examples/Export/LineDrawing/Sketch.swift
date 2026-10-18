@@ -53,7 +53,7 @@ final class LineDrawing: Sketch {
                 .transformed(by: MeshInstance(position: Vector3(1.2, 0.95, -0.4))),
             Mesh.box(size: 1.1)
                 .transformed(by: MeshInstance(position: Vector3(0.4, 0.55, 1.8),
-                                              rotation: Vector3(0, 0.6, 0))),
+                                              rotation: .aboutY(0.6))),
         ]
     }
 

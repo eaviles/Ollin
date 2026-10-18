@@ -7,17 +7,19 @@ import simd
 /// field of thousands costs one draw call instead of thousands of CPU re-bakes.
 ///
 /// The transform reads like the sketch calls it replaces: the copy is placed as
-/// if you had written `translate(position)`, then `rotateX/rotateY/rotateZ` (in
-/// that order), then `scale`. The whole field still follows the surrounding 3D
-/// transform stack, so `translate`/`rotate` before the draw move every copy
-/// together.
+/// if you had written `translate(position)`, then `rotate(rotation)`, then
+/// `scale`. The whole field still follows the surrounding 3D transform stack,
+/// so `translate`/`rotate` before the draw move every copy together.
 public struct MeshInstance: Sendable {
 
     /// Where this copy sits, in world units (applied first).
     public var position: Vector3
-    /// How this copy turns: Euler angles in radians, applied about the x-axis,
-    /// then the y-axis, then the z-axis (the `rotateX`/`rotateY`/`rotateZ` order).
-    public var rotation: Vector3
+    /// How this copy turns: one `Rotation3D`, about any axis. `.aboutY(a)`
+    /// spins a copy about y, `Rotation3D(from:to:)` points its up along a
+    /// direction, a physics body's own `rotation` places it as the solver has
+    /// it, and `.euler(x:y:z:)` is three angles composed the way `rotateX`,
+    /// `rotateY`, `rotateZ` would be, in that order.
+    public var rotation: Rotation3D
     /// How this copy scales, per axis (applied last). `Vector3(1, 1, 1)` keeps
     /// the mesh's own size.
     public var scale: Vector3
@@ -25,8 +27,8 @@ public struct MeshInstance: Sendable {
     /// times the mesh material's base color), or `nil` to leave it unchanged.
     public var color: Color?
 
-    /// A placement from position, Euler rotation, per-axis scale, and tint.
-    public init(position: Vector3 = .zero, rotation: Vector3 = .zero,
+    /// A placement from position, rotation, per-axis scale, and tint.
+    public init(position: Vector3 = .zero, rotation: Rotation3D = .identity,
                 scale: Vector3 = Vector3(1, 1, 1), color: Color? = nil) {
         self.position = position
         self.rotation = rotation
@@ -35,20 +37,24 @@ public struct MeshInstance: Sendable {
     }
 
     /// A placement with one uniform scale factor on all three axes.
-    public init(position: Vector3 = .zero, rotation: Vector3 = .zero,
+    public init(position: Vector3 = .zero, rotation: Rotation3D = .identity,
                 scale: Double, color: Color? = nil) {
         self.init(position: position, rotation: rotation,
                   scale: Vector3(scale, scale, scale), color: color)
     }
 
-    /// The local -> world matrix this placement composes to: T · Rx · Ry · Rz · S,
-    /// matching the equivalent `translate`/`rotateX`/`rotateY`/`rotateZ`/`scale`
-    /// call sequence exactly.
+    /// The local -> world matrix this placement composes to: T · R · S, the
+    /// turn built through the same axis-angle helper `rotate(_:)` uses, so the
+    /// matrix matches the equivalent `translate`/`rotate`/`scale` call
+    /// sequence exactly.
     var matrix: simd_float4x4 {
         var m = Drawer.translation3(position.simd3)
-        if rotation.x != 0 { m = m * Drawer.rotationX(Float(rotation.x)) }
-        if rotation.y != 0 { m = m * Drawer.rotationY(Float(rotation.y)) }
-        if rotation.z != 0 { m = m * Drawer.rotationZ(Float(rotation.z)) }
+        if rotation != .identity {
+            let axis = rotation.axis.normalized
+            if axis.lengthSquared > 0 {
+                m = m * Drawer.rotation3(Float(rotation.angle), axis: axis.simd3)
+            }
+        }
         if scale != Vector3(1, 1, 1) {
             m = m * Drawer.scaling3(Float(scale.x), Float(scale.y), Float(scale.z))
         }

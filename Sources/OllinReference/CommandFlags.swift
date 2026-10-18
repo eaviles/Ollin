@@ -277,6 +277,7 @@ public extension CommandFlag {
         .init("--paramtest", .internalUse, .nothing, "the parameter plumbing's headless gate"),
         .init("--savetest", .internalUse, .nothing, "the write-back's headless gate"),
         .init("--dragtest", .internalUse, .nothing, "the shape drag's headless gate"),
+        .init("--inspectortest", .internalUse, .nothing, "the inspector's posted-event gate"),
         .init("--sessiontest", .internalUse, .nothing, "the shared session's headless gate"),
         .init("--controltest", .internalUse, .nothing, "the performance controls' headless gate"),
         .init("--cycletest", .internalUse, .nothing, "the gallery's headless gate"),

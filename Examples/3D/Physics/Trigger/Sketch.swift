@@ -43,12 +43,12 @@ final class Trigger: Sketch {
         var age = 0.0
     }
 
-    override func setup() {
+    override func setup() throws {
         world.ground = 0
         world.restitution = 0.35
-        buildHoop()
-        buildTray()
-        for index in 0 ..< 5 { dropBall(stagger: index) }
+        try buildHoop()
+        try buildTray()
+        for index in 0 ..< 5 { try dropBall(stagger: index) }
     }
 
     /// The hoop: a solid rim of overlapping beads fused into one static body,
@@ -57,7 +57,7 @@ final class Trigger: Sketch {
     /// ball rolls off it instead of parking); the sensor is the hole, and only
     /// a ball that gets through the hole enters it. A sensor is not solid, so
     /// the two happily occupy the same space.
-    func buildHoop() {
+    func buildHoop() throws {
         let beads = 28
         var rim: [Collider3D.Part] = []
         for index in 0 ..< beads {
@@ -65,36 +65,36 @@ final class Trigger: Sketch {
             rim.append(.part(.sphere(radius: hoopTube),
                              at: Vector3(cos(angle), 0, sin(angle)) * hoopRadius))
         }
-        world.addBody(.compound(rim), at: hoopCenter, kind: .static,
+        try world.addBody(.compound(rim), at: hoopCenter, kind: .static,
                       friction: 0.3, restitution: 0.5)
 
-        hoop = world.addBody(.cylinder(height: 0.5, radius: hoopRadius - hoopTube),
+        hoop = try world.addBody(.cylinder(height: 0.5, radius: hoopRadius - hoopTube),
                              at: hoopCenter, isSensor: true)
     }
 
     /// The tray: a solid pan the balls come to rest in, with a shallow sensor
     /// box sitting over its floor. Balls that settle in there fall asleep, and
     /// because a sensor stays awake it goes on counting them.
-    func buildTray() {
+    func buildTray() throws {
         let wall = 0.18
         for side in 0 ..< 4 {
             let angle = Double(side) * .pi / 2
             let out = Vector3(cos(angle), 0, sin(angle)) * (trayHalf + wall / 2)
-            world.addBody(.box(width: side % 2 == 0 ? wall : 2 * trayHalf + 2 * wall,
+            try world.addBody(.box(width: side % 2 == 0 ? wall : 2 * trayHalf + 2 * wall,
                                height: 0.4,
                                depth: side % 2 == 0 ? 2 * trayHalf + 2 * wall : wall),
                           at: Vector3(out.x, 0.2, out.z), kind: .static)
         }
-        world.addBody(.box(width: 2 * trayHalf, height: 0.2, depth: 2 * trayHalf),
+        try world.addBody(.box(width: 2 * trayHalf, height: 0.2, depth: 2 * trayHalf),
                       at: Vector3(0, 0.1, 0), kind: .static, friction: 0.8)
 
-        tray = world.addBody(.box(width: 2 * trayHalf, height: 0.7,
+        tray = try world.addBody(.box(width: 2 * trayHalf, height: 0.7,
                                   depth: 2 * trayHalf),
                              at: Vector3(0, 0.55, 0), isSensor: true)
     }
 
-    func dropBall(stagger: Int = 0) {
-        let ball = world.addBody(.sphere(radius: ballRadius),
+    func dropBall(stagger: Int = 0) throws {
+        let ball = try world.addBody(.sphere(radius: ballRadius),
                                  at: Vector3(random(-1.15, 1.15),
                                              5.6 + Double(stagger) * 0.7,
                                              random(-1.15, 1.15)),
@@ -114,7 +114,7 @@ final class Trigger: Sketch {
     }
 
     override func keyPressed() {
-        if key == " " { dropBall() }
+        if key == " " { try? dropBall() }
     }
 
     override func draw() {
@@ -127,7 +127,7 @@ final class Trigger: Sketch {
         dragBodies(in: world)
         world.advance(by: deltaTime)
         readTheTriggers()
-        keepBallsInPlay()
+        try? keepBallsInPlay()
 
         drawStage()
         drawHoop()
@@ -162,11 +162,11 @@ final class Trigger: Sketch {
         knocks.removeAll { $0.age > 0.55 }
     }
 
-    func keepBallsInPlay() {
+    func keepBallsInPlay() throws {
         nextDrop -= deltaTime
         if nextDrop <= 0 {
             nextDrop = dropEvery
-            if balls.count < 14 { dropBall() } else { recycle(balls[frameCount % balls.count]) }
+            if balls.count < 14 { try dropBall() } else { recycle(balls[frameCount % balls.count]) }
         }
         for (index, ball) in balls.enumerated() {
             restFrames[index] = ball.velocity.length < 0.06 ? restFrames[index] + 1 : 0

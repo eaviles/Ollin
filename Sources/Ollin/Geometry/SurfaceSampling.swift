@@ -302,10 +302,11 @@ private func thinToBlueNoise(_ samples: [SurfaceSample], count: Int,
 
 public extension SurfaceSample {
 
-    /// The turn that stands a mesh up along this sample's normal: the angles a
-    /// `MeshInstance` takes, which point the mesh's own +y at the surface
-    /// direction here. `spin` turns the mesh about that direction afterward, so
-    /// a scattered field does not read as a field of clones.
+    /// The turn that stands a mesh up along this sample's normal: the
+    /// `Rotation3D` a `MeshInstance` takes (and `rotate(_:)` draws), which
+    /// points the mesh's own +y at the surface direction here. `spin` turns
+    /// the mesh about that direction afterward, so a scattered field does not
+    /// read as a field of clones.
     ///
     /// ```swift
     /// let trees = surfacePoints(on: island, count: 300)
@@ -317,9 +318,8 @@ public extension SurfaceSample {
     /// ```
     ///
     /// - Parameter spin: A turn about the normal, in radians.
-    /// - Returns: Angles about the x, y, and z axes, in the order a
-    ///   `MeshInstance` and `rotateX`/`rotateY`/`rotateZ` apply them.
-    func alignment(spin: Double = 0) -> Vector3 {
+    /// - Returns: The turn, as one rotation.
+    func alignment(spin: Double = 0) -> Rotation3D {
         let n = normal.lengthSquared > 1e-18 ? normal.normalized : Vector3.unitY
         // With no turn about x, the pair (y, z) already reaches every direction:
         // z tilts +y away from upright by the angle to the normal, and y swings
@@ -327,50 +327,13 @@ public extension SurfaceSample {
         let tilt = acos(Swift.min(Swift.max(n.y, -1), 1))
         let flat = (1 - n.y * n.y).squareRoot()
         let swing = flat > 1e-9 ? atan2(n.z, -n.x) : 0
-        guard spin != 0 else { return Vector3(0, swing, tilt) }
-
+        var turn = Rotation3D.aboutY(swing) * .aboutZ(tilt)
         // A spin about the mesh's own up, applied before the two turns above,
-        // comes out as a spin about the normal. Read the product back as the
-        // three angles the placement takes.
-        let m = ollinRotationY(swing) * ollinRotationZ(tilt) * ollinRotationY(spin)
-        let y = asin(Swift.min(Swift.max(m.m02, -1), 1))
-        if abs(m.m02) > 1 - 1e-9 {   // upright or upside down: x and z fold together
-            return Vector3(0, y, atan2(m.m10, m.m11))
-        }
-        return Vector3(atan2(-m.m12, m.m22), y, atan2(-m.m01, m.m00))
+        // comes out as a spin about the normal.
+        if spin != 0 { turn = turn * .aboutY(spin) }
+        return turn
     }
 }
-
-/// A 3x3 rotation, just enough to compose three turns and read the result back.
-private struct Mat3 {
-    var m00 = 1.0, m01 = 0.0, m02 = 0.0
-    var m10 = 0.0, m11 = 1.0, m12 = 0.0
-    var m20 = 0.0, m21 = 0.0, m22 = 1.0
-
-    static func * (a: Mat3, b: Mat3) -> Mat3 {
-        Mat3(m00: a.m00 * b.m00 + a.m01 * b.m10 + a.m02 * b.m20,
-             m01: a.m00 * b.m01 + a.m01 * b.m11 + a.m02 * b.m21,
-             m02: a.m00 * b.m02 + a.m01 * b.m12 + a.m02 * b.m22,
-             m10: a.m10 * b.m00 + a.m11 * b.m10 + a.m12 * b.m20,
-             m11: a.m10 * b.m01 + a.m11 * b.m11 + a.m12 * b.m21,
-             m12: a.m10 * b.m02 + a.m11 * b.m12 + a.m12 * b.m22,
-             m20: a.m20 * b.m00 + a.m21 * b.m10 + a.m22 * b.m20,
-             m21: a.m20 * b.m01 + a.m21 * b.m11 + a.m22 * b.m21,
-             m22: a.m20 * b.m02 + a.m21 * b.m12 + a.m22 * b.m22)
-    }
-}
-
-private func ollinRotationY(_ a: Double) -> Mat3 {
-    let c = cos(a), s = sin(a)
-    return Mat3(m00: c, m01: 0, m02: s, m10: 0, m11: 1, m12: 0, m20: -s, m21: 0, m22: c)
-}
-
-private func ollinRotationZ(_ a: Double) -> Mat3 {
-    let c = cos(a), s = sin(a)
-    return Mat3(m00: c, m01: -s, m02: 0, m10: s, m11: c, m12: 0, m20: 0, m21: 0, m22: 1)
-}
-
-// MARK: - Sketch sugar
 
 public extension Sketch {
 

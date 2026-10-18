@@ -17,14 +17,14 @@ final class Crawler: Sketch {
     let hull = Vector3(1.75, 0.85, 5.2)
     let wheelRadius = 0.44, wheelWidth = 0.6, trackX = 1.3
 
-    override func setup() {
+    override func setup() throws {
         world.ground = 0
 
         // A ring of markers to turn against: with the machine spinning between
         // them rather than driving past them, they are what says it stayed put.
         for index in 0 ..< 8 {
             let angle = Double(index) / 8 * .tau
-            let post = world.addBody(.box(width: 0.5, height: 1.4, depth: 0.5),
+            let post = try world.addBody(.box(width: 0.5, height: 1.4, depth: 0.5),
                                      at: Vector3(cos(angle) * 5.6, 0.71,
                                                  sin(angle) * 5.6),
                                      kind: .static)

@@ -48,8 +48,8 @@ final class Crawler: Sketch {
         Color(hex: 0x5F7A6B),
     ]
 
-    override func setup() {
-        buildQuarry()
+    override func setup() throws {
+        try buildQuarry()
         start = Vector3(0, floorY + 1.6, -9)
         crawler = buildCrawler(at: start)
         eye = start + Vector3(0, 6, -14)
@@ -59,7 +59,7 @@ final class Crawler: Sketch {
     /// climbing to a bench. The bank is eroded so it has gullies rather than
     /// one clean face; the floor is held flat afterwards, because a pivot on
     /// the spot only reads as one if there is no slope to roll down.
-    func buildQuarry() {
+    func buildQuarry() throws {
         let bumps = Heightfield.diamondSquare(size: 129, roughness: 0.5, seed: 7)
         let weathered = Heightfield(columns: 129, rows: 129) { u, v in
             // Two cut faces with a bench between them: the shape a quarry is
@@ -78,7 +78,7 @@ final class Crawler: Sketch {
         }
         floorY = floorLevel * landHeight
         terrain = terrainMesh(land)
-        world.addBody(.heightfield(land, width: landWidth, depth: landDepth,
+        try world.addBody(.heightfield(land, width: landWidth, depth: landDepth,
                                    height: landHeight),
                       at: .zero, kind: .static, friction: 0.9)
 
@@ -86,7 +86,7 @@ final class Crawler: Sketch {
         for i in 0 ..< 7 {
             let across = Double(i) * 2.4 - 7.2 + (i % 2 == 0 ? -3 : 3)
             let along = -2.0 + Double(i % 3) * 2.0
-            let rock = world.addBody(.sphere(radius: 0.5 + Double(i % 3) * 0.15),
+            let rock = try world.addBody(.sphere(radius: 0.5 + Double(i % 3) * 0.15),
                                      at: Vector3(across, floorY + 1.2, along),
                                      density: 0.4, friction: 0.8)
             rock.userData = palette[(i + 2) % palette.count]
@@ -95,7 +95,7 @@ final class Crawler: Sketch {
         for level in 0 ..< 3 {
             for column in 0 ... (2 - level) {
                 let x = Double(column) * 1.05 - Double(2 - level) * 0.52
-                let crate = world.addBody(
+                let crate = try world.addBody(
                     .box(width: 1, height: 1, depth: 1),
                     at: Vector3(x + 8, floorY + 0.55 + Double(level) * 1.05, -6),
                     density: 0.09, friction: 0.6)

@@ -57,7 +57,7 @@ final class HiddenLines_Example: Sketch {
                     let q = p * 0.16
                     let a = signedNoise(q.x, q.y, q.z, loop: lap, radius: 0.7) * .pi * tumble
                     let b = signedNoise(q.x + 41.3, q.y, q.z, loop: lap, radius: 0.7) * .pi * tumble
-                    copies.append(MeshInstance(position: p, rotation: Vector3(a, b, a * 0.6),
+                    copies.append(MeshInstance(position: p, rotation: .euler(x: a, y: b, z: a * 0.6),
                                                scale: spacing * 0.42))
                 }
             }

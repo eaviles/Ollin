@@ -17,7 +17,7 @@ final class Raft: Sketch {
     let deckSize = 3.4
     let post = Vector3(-2.5, 0, -0.5)
 
-    override func setup() {
+    override func setup() throws {
         world.ground = deep
         world.water = Water(level: 0, linearDrag: 0.4,
                             waves: Water.Waves(amplitude: 0.08, wavelength: 9,
@@ -37,7 +37,7 @@ final class Raft: Sketch {
         // contact like any other.
         for (index, color) in [Color(hex: 0xD9A441), Color(hex: 0x8FA860)].enumerated() {
             let size = 0.46 + Double(index) * 0.06
-            crates.append((world.addBody(.box(width: size, height: size, depth: size),
+            crates.append((try world.addBody(.box(width: size, height: size, depth: size),
                                          at: Vector3(Double(index) * 0.9 + 0.1,
                                                      0.9, Double(index) * 0.5 + 0.45),
                                          density: 0.3, friction: 0.9),
@@ -45,9 +45,9 @@ final class Raft: Sketch {
         }
 
         // The sounding line's post and the arm it hangs from.
-        world.addBody(.box(width: 0.2, height: 3.0, depth: 0.2),
+        try world.addBody(.box(width: 0.2, height: 3.0, depth: 0.2),
                       at: post + Vector3(0, 1.5, 0), kind: .static)
-        world.addBody(.box(width: 1.75, height: 0.14, depth: 0.14),
+        try world.addBody(.box(width: 1.75, height: 0.14, depth: 0.14),
                       at: post + Vector3(0.72, 2.9, -0.35), kind: .static)
     }
 

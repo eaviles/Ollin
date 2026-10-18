@@ -17,11 +17,11 @@ final class Windmill: Sketch {
         Color(hex: 0xD94F70), Color(hex: 0x8D92E0),
     ]
 
-    override func setup() {
+    override func setup() throws {
         world.ground = 0
         world.restitution = 0.3
 
-        let tower = world.addBody(.box(width: 0.4, height: 2.9, depth: 0.3),
+        let tower = try world.addBody(.box(width: 0.4, height: 2.9, depth: 0.3),
                                   at: Vector3(0, 1.45, -0.5), kind: .static)
         tower.userData = Color(hex: 0x6B5A48)
         var parts: [Collider3D.Part] = [
@@ -34,16 +34,16 @@ final class Windmill: Sketch {
             parts.append(.part(.box(width: 1.5, height: 0.26, depth: 0.08),
                                at: direction * 1.11, rotated: angle, axis: .unitZ))
         }
-        let cross = world.addBody(.compound(parts), at: hubCenter)
+        let cross = try world.addBody(.compound(parts), at: hubCenter)
         cross.userData = Color(hex: 0xE8DCC5)
         let mill = world.connect(tower, cross, .revolute(at: hubCenter, axis: .unitZ))
         mill.drive(at: 2.5, strength: 500)
 
         for x in [3.4, -3.4] {
-            let post = world.addBody(.box(width: 0.14, height: 1.15, depth: 0.14),
+            let post = try world.addBody(.box(width: 0.14, height: 1.15, depth: 0.14),
                                      at: Vector3(x, 0.575, -1.0), kind: .static)
             post.userData = Color(hex: 0x3A4150)
-            let panel = world.addBody(.box(width: 0.08, height: 1.0, depth: 1.75),
+            let panel = try world.addBody(.box(width: 0.08, height: 1.0, depth: 1.75),
                                       at: Vector3(x, 0.5, 0), friction: 0.3)
             panel.userData = Color(hex: 0x72BFB2)
             let gate = world.connect(post, panel,
@@ -57,7 +57,7 @@ final class Windmill: Sketch {
         let drops: [(Double, Double)] = [(-1.1, 4.8), (0.7, 5.6), (-0.4, 6.5),
                                          (1.1, 7.4), (-0.8, 8.4), (0.3, 9.2)]
         for (index, drop) in drops.enumerated() {
-            let ball = world.addBody(.sphere(radius: 0.21),
+            let ball = try world.addBody(.sphere(radius: 0.21),
                                      at: Vector3(drop.0, drop.1, 0),
                                      density: 1.5, friction: 0.4,
                                      restitution: 0.55)

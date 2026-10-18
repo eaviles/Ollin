@@ -43,38 +43,38 @@ final class Bagatelle: Sketch {
     let brass = Color(hex: 0xE8A83A)
     let frame = Color(hex: 0x151A25)
 
-    override func setup() {
+    override func setup() throws {
         // No floor: a ball that escapes the board should be seen leaving.
         world.restitution = 0.45
-        buildTable()
-        for _ in 0 ..< 14 { drop() }
+        try buildTable()
+        for _ in 0 ..< 14 { try drop() }
     }
 
     // MARK: The table
 
     @discardableResult
     func wall(_ size: Vector3, at position: Vector3, rotated angle: Double = 0)
-        -> Body3D {
-        let body = world.addBody(.box(width: size.x, height: size.y, depth: size.z),
+        throws -> Body3D {
+        let body = try world.addBody(.box(width: size.x, height: size.y, depth: size.z),
                                  at: position, kind: .static,
                                  rotated: angle, axis: .unitZ, friction: 0.2)
         walls.append((body, size))
         return body
     }
 
-    func buildTable() {
+    func buildTable() throws {
         let half = boardWidth / 2
         // The top rail and the gate above the lane are thin plates, the way a
         // pin table's really are, and they are what the plunger's shot has to
         // cross. A ball that covers more ground in one step than a plate is
         // thick can be in front of it at one step and behind it at the next,
         // which is exactly what `checksPath` is for.
-        wall(Vector3(boardWidth + 1, 0.1, 0.6), at: Vector3(0, boardHeight / 2, 0))
-        wall(Vector3(0.4, boardHeight, 0.6), at: Vector3(-half - 0.2, 0, 0))
-        wall(Vector3(0.4, boardHeight, 0.6), at: Vector3(half + 0.7, 0, 0))
+        try wall(Vector3(boardWidth + 1, 0.1, 0.6), at: Vector3(0, boardHeight / 2, 0))
+        try wall(Vector3(0.4, boardHeight, 0.6), at: Vector3(-half - 0.2, 0, 0))
+        try wall(Vector3(0.4, boardHeight, 0.6), at: Vector3(half + 0.7, 0, 0))
         // The lane the plunger fires up, and the gate that turns a shot inward.
-        wall(Vector3(0.3, boardHeight - 1.6, 0.6), at: Vector3(laneX - 0.35, -0.6, 0))
-        wall(Vector3(1.6, 0.08, 0.6), at: Vector3(half - 0.4, boardHeight / 2 - 1.1, 0),
+        try wall(Vector3(0.3, boardHeight - 1.6, 0.6), at: Vector3(laneX - 0.35, -0.6, 0))
+        try wall(Vector3(1.6, 0.08, 0.6), at: Vector3(half - 0.4, boardHeight / 2 - 1.1, 0),
              rotated: 0.5)
 
         // Pins on a staggered lattice, the way a pin table is set out.
@@ -85,7 +85,7 @@ final class Bagatelle: Sketch {
                 let x = Double(column) * 1.24 + offset - 0.3
                 guard x < laneX - 0.9 else { continue }
                 pins.append(Vector3(x, y, 0))
-                world.addBody(.cylinder(height: 0.6, radius: 0.16),
+                try world.addBody(.cylinder(height: 0.6, radius: 0.16),
                               at: Vector3(x, y, 0), kind: .static,
                               rotated: .pi / 2, axis: .unitX,
                               friction: 0.1, restitution: 0.6)
@@ -94,10 +94,10 @@ final class Bagatelle: Sketch {
 
         // Bins along the bottom, and the dividers between them.
         for column in -3 ... 2 {
-            wall(Vector3(0.16, 1.8, 0.6),
+            try wall(Vector3(0.16, 1.8, 0.6),
                  at: Vector3(Double(column) * 1.05 + 0.5, -boardHeight / 2 + 0.9, 0))
         }
-        wall(Vector3(boardWidth + 1, 0.3, 0.6), at: Vector3(0, -boardHeight / 2, 0))
+        try wall(Vector3(boardWidth + 1, 0.3, 0.6), at: Vector3(0, -boardHeight / 2, 0))
     }
 
     // MARK: Balls
@@ -106,8 +106,8 @@ final class Bagatelle: Sketch {
     /// board's plane and turn about the axis facing the camera, and no more.
     var boardPlane: Freedom3D { flat ? .plane() : .all }
 
-    func drop() {
-        let ball = world.addBody(.sphere(radius: ballRadius),
+    func drop() throws {
+        let ball = try world.addBody(.sphere(radius: ballRadius),
                                  at: Vector3(random(-2.8, 1.6), random(3.4, 4.2), 0),
                                  friction: 0.15, restitution: 0.5,
                                  freedom: boardPlane, gravityScale: weight)
@@ -121,8 +121,8 @@ final class Bagatelle: Sketch {
 
     /// The plunger's shot: small, quick, and the only body here that can
     /// outrun a single step.
-    func fire() {
-        let shot = world.addBody(.sphere(radius: shotRadius),
+    func fire() throws {
+        let shot = try world.addBody(.sphere(radius: shotRadius),
                                  at: Vector3(laneX, -boardHeight / 2 + 0.9, 0),
                                  density: 4, friction: 0.1, restitution: 0.55,
                                  freedom: boardPlane, gravityScale: weight,
@@ -133,7 +133,7 @@ final class Bagatelle: Sketch {
     }
 
     override func keyPressed() {
-        if key == " " { fire() }
+        if key == " " { try? fire() }
     }
 
     override func draw() {
@@ -165,7 +165,7 @@ final class Bagatelle: Sketch {
         }
         balls.removeAll { ball in escaped.contains { $0 === ball } }
 
-        if balls.count < 14 && frameCount % 45 == 0 { drop() }
+        if balls.count < 14 && frameCount % 45 == 0 { try? drop() }
         dragBodies(in: world)
         world.advance(by: deltaTime)
 

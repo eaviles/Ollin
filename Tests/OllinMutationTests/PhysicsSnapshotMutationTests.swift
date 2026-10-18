@@ -13,12 +13,12 @@ import OllinMutation
 @Suite(.enabled(if: !underThreadSanitizer, fileRunReason))
 struct PhysicsSnapshotMutationTests {
 
-    static func savedWorld() -> PhysicsSnapshot {
+    static func savedWorld() throws -> PhysicsSnapshot {
         let world = World3D()
         world.ground = -2
-        let frame = world.addBody(.box(width: 1, height: 0.2, depth: 1), at: .zero, kind: .static)
-        let door = world.addBody(.box(width: 1.4, height: 0.1, depth: 0.6), at: Vector3(1, 0, 0))
-        let ball = world.addBody(.sphere(radius: 0.3), at: Vector3(0, 3, 0))
+        let frame = try world.addBody(.box(width: 1, height: 0.2, depth: 1), at: .zero, kind: .static)
+        let door = try world.addBody(.box(width: 1.4, height: 0.1, depth: 0.6), at: Vector3(1, 0, 0))
+        let ball = try world.addBody(.sphere(radius: 0.3), at: Vector3(0, 3, 0))
         let hinge = world.connect(frame, door, .revolute(at: .zero, axis: .unitZ, limits: -0.02...1.2))
         hinge.drive(to: 0.8, frequency: 6)
         world.connect(frame, ball, .distance(from: frame.position, to: ball.position))
@@ -26,7 +26,7 @@ struct PhysicsSnapshotMutationTests {
         _ = try? world.addVehicle(.box(width: 1.8, height: 0.6, depth: 4), at: Vector3(6, 1, 0),
                                   wheels: [.wheel(at: Vector3(0.9, -0.1, 1.3), steers: true),
                                            .wheel(at: Vector3(-0.9, -0.1, -1.3), driven: true)])
-        world.addCharacter(radius: 0.33, height: 1.7, at: Vector3(-6, 2, 0))
+        try world.addCharacter(radius: 0.33, height: 1.7, at: Vector3(-6, 2, 0))
         if let cloth = try? world.addSoftBody(from: sheet, at: Vector3(0, 4, 3), mass: 1, stiffness: 0.8,
                                               pinned: { $0.z < -0.4 }) {
             cloth.assetName = "sheet"
@@ -71,8 +71,8 @@ struct PhysicsSnapshotMutationTests {
         return true
     }
 
-    @Test func wholeFiles() {
-        let saved = Self.savedWorld()
+    @Test func wholeFiles() throws {
+        let saved = try Self.savedWorld()
         let world = World3D()
         let report = MutationRun.run("physics-file", seeds: [[UInt8](saved.data)], count: 300,
                                      allocations: fileBound) { try Self.restore($0, into: world) }
@@ -81,7 +81,7 @@ struct PhysicsSnapshotMutationTests {
     }
 
     @Test func sealedPayloads() throws {
-        let saved = Self.savedWorld()
+        let saved = try Self.savedWorld()
         let payload = try #require(saved.payload.map { [UInt8]($0) })
         let world = World3D()
         let report = MutationRun.run("physics-payload", seeds: [payload], count: 300,

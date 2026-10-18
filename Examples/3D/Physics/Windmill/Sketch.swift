@@ -27,22 +27,22 @@ final class Windmill: Sketch {
         Color(hex: 0xD94F70), Color(hex: 0x8D92E0),
     ]
 
-    override func setup() {
+    override func setup() throws {
         world.ground = 0
         world.restitution = 0.3
 
-        buildMill()
-        buildGate(at: 3.4)
-        buildGate(at: -3.4)
-        for index in 0 ..< 6 { dropBall(index) }
+        try buildMill()
+        try buildGate(at: 3.4)
+        try buildGate(at: -3.4)
+        for index in 0 ..< 6 { try dropBall(index) }
     }
 
     /// The tower behind the sweep, and the blade cross as ONE body: a compound
     /// of the hub cylinder and four blades, each a part posed in the cross's
     /// local space, hung on one motored hinge. Mass, balance, and inertia come
     /// from the whole assembly, and a part can never drift off its pose.
-    func buildMill() {
-        let tower = world.addBody(.box(width: 0.4, height: 2.9, depth: 0.3),
+    func buildMill() throws {
+        let tower = try world.addBody(.box(width: 0.4, height: 2.9, depth: 0.3),
                                   at: Vector3(0, 1.45, -0.5), kind: .static)
         tower.userData = Color(hex: 0x6B5A48)
 
@@ -59,7 +59,7 @@ final class Windmill: Sketch {
             parts.append(.part(.box(width: 1.5, height: 0.26, depth: 0.08),
                                at: direction * 1.11, rotated: angle, axis: .unitZ))
         }
-        let cross = world.addBody(.compound(parts), at: hubCenter)
+        let cross = try world.addBody(.compound(parts), at: hubCenter)
         cross.userData = Color(hex: 0xE8DCC5)
 
         let hinge = world.connect(tower, cross,
@@ -70,11 +70,11 @@ final class Windmill: Sketch {
 
     /// A swing gate: a panel on a vertical limited hinge, pulled shut by a
     /// gentle position motor a rolling ball can still barge through.
-    func buildGate(at x: Double) {
-        let post = world.addBody(.box(width: 0.14, height: 1.15, depth: 0.14),
+    func buildGate(at x: Double) throws {
+        let post = try world.addBody(.box(width: 0.14, height: 1.15, depth: 0.14),
                                  at: Vector3(x, 0.575, -1.0), kind: .static)
         post.userData = Color(hex: 0x3A4150)
-        let panel = world.addBody(.box(width: 0.08, height: 1.0, depth: 1.75),
+        let panel = try world.addBody(.box(width: 0.08, height: 1.0, depth: 1.75),
                                   at: Vector3(x, 0.5, 0), friction: 0.3)
         panel.userData = Color(hex: 0x72BFB2)
 
@@ -88,8 +88,8 @@ final class Windmill: Sketch {
 
     /// Feed a ball into the sweep from above, staggered so they don't arrive
     /// as one clump.
-    func dropBall(_ index: Int) {
-        let ball = world.addBody(.sphere(radius: 0.21),
+    func dropBall(_ index: Int) throws {
+        let ball = try world.addBody(.sphere(radius: 0.21),
                                  at: Vector3(random(-1.2, 1.2),
                                              5 + Double(index) * 0.9,
                                              random(-0.04, 0.04)),

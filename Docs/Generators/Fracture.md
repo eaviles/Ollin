@@ -84,7 +84,7 @@ let shard = world.addBody(.polygon(local.contours[0].points), at: here + middle)
 ```swift
 let middle = piece.centroid
 let local = piece.mapPositions { $0 - middle }           // 3D
-let shard = world.addBody(.hull(local.positions), at: here + middle)
+let shard = try world.addBody(.hull(local.positions), at: here + middle)
 ```
 
 Give each piece the parent's velocity plus a push away from the break, and the cloud keeps traveling while it spreads. Read everything the pieces inherit **before** the parent leaves the world: [`World.remove(_:)`](../Simulation/Physics.md#rigid-bodies) and [`World3D.remove(_:)`](../Simulation/Physics3D.md) spend the body they take.

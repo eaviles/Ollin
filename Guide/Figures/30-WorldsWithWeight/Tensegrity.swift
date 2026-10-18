@@ -14,7 +14,7 @@ final class TensegrityFigure: Sketch {
     var forms: [Tensegrity3D] = []
     let strutColors = [Color(hex: 0xE8632F), Color(hex: 0xF2B84B), Color(hex: 0x72BFB2)]
 
-    override func setup() {
+    override func setup() throws {
         world.ground = 0
         world.restitution = 0.15
         // The prism and the ball are tipped so they land on an edge and have

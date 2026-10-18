@@ -26,7 +26,7 @@ final class Contraption: Sketch {
     let smallHub = Vector3(-1.5, 2.4, 0)
     let bigHub = Vector3(0.4, 2.4, 0)
 
-    override func setup() {
+    override func setup() throws {
         world.ground = 0
         world.restitution = 0.15
 
@@ -34,19 +34,19 @@ final class Contraption: Sketch {
         // instead. Nothing in the frame needs to collide with the rest of it.
         world.ignoreCollisions(between: "frame", and: "frame")
 
-        let wall = world.addBody(.box(width: 6.0, height: 4.4, depth: 0.25),
+        let wall = try world.addBody(.box(width: 6.0, height: 4.4, depth: 0.25),
                                  at: Vector3(-0.4, 2.2, -0.75), kind: .static,
                                  group: "frame")
         wall.userData = timber
 
         // A cylinder stands upright, so each wheel takes a quarter turn about
         // x to lay its axle along z, facing the camera.
-        let small = world.addBody(.compound([
+        let small = try world.addBody(.compound([
             .part(.cylinder(height: 0.3, radius: 0.7), rotated: .pi / 2, axis: .unitX, density: 3),
         ]), at: smallHub, group: "frame")
         small.userData = brass
 
-        let big = world.addBody(.compound([
+        let big = try world.addBody(.compound([
             .part(.cylinder(height: 0.3, radius: 1.2), rotated: .pi / 2, axis: .unitX, density: 3),
             .part(.box(width: 3.8, height: 0.16, depth: 0.5), density: 3),
         ]), at: bigHub, group: "frame")
@@ -57,12 +57,12 @@ final class Contraption: Sketch {
         world.connect(smallHinge, bigHinge, .gear(teeth: 20, and: bigTeeth))
         crank = smallHinge
 
-        let shelf = world.addBody(.box(width: 3.2, height: 0.3, depth: 1.2),
+        let shelf = try world.addBody(.box(width: 3.2, height: 0.3, depth: 1.2),
                                   at: Vector3(2.9, 1.05, 0), kind: .static, group: "frame")
         shelf.userData = timber
 
         for i in 0 ..< 6 {
-            let crate = world.addBody(.box(width: 0.4, height: 0.4, depth: 0.4),
+            let crate = try world.addBody(.box(width: 0.4, height: 0.4, depth: 0.4),
                                       at: Vector3(1.9 + Double(i) * 0.5, 1.45, 0))
             crate.userData = clay
             crates.append(crate)

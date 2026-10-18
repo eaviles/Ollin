@@ -28,7 +28,7 @@ final class Tumble3D: Sketch {
     }
 
     /// Drop one random solid from above the pile with a little spin.
-    func spawn() {
+    func spawn() throws {
         guard world.bodies.count < maxBodies else { return }
         let collider: Collider3D
         switch Int(random(4)) {
@@ -38,7 +38,7 @@ final class Tumble3D: Sketch {
         case 2: collider = .capsule(height: random(0.4, 0.8), radius: random(0.16, 0.26))
         default: collider = .cylinder(height: random(0.4, 0.8), radius: random(0.22, 0.38))
         }
-        let body = world.addBody(collider,
+        let body = try world.addBody(collider,
                                  at: Vector3(random(-1.6, 1.6), random(6, 8), random(-1.6, 1.6)),
                                  rotated: random(.tau),
                                  axis: Vector3(random(-1, 1), random(-1, 1), random(-1, 1)),
@@ -66,7 +66,7 @@ final class Tumble3D: Sketch {
         castShadows()
         perspective(eye: Vector3(5.2, 4.6, 7.8), target: Vector3(0, 1.2, 0))
 
-        if frameCount % 18 == 0 { spawn() }
+        if frameCount % 18 == 0 { try? spawn() }
         if let grabbed { dragGrab(grabbed, to: mouse) }
         world.advance(by: deltaTime)
 

@@ -16,17 +16,17 @@ struct SolverNumberTests {
     static let bad: [Double] = [.nan, .infinity, -.infinity, 1e30]
 
     func world() -> World3D { let w = World3D(); w.ground = 0; return w }
-    func box(_ w: World3D, at p: Vector3 = Vector3(0, 2, 0)) -> Body3D {
-        w.addBody(.box(width: 1, height: 1, depth: 1), at: p)
+    func box(_ w: World3D, at p: Vector3 = Vector3(0, 2, 0)) throws -> Body3D {
+        try w.addBody(.box(width: 1, height: 1, depth: 1), at: p)
     }
     func step(_ w: World3D, _ n: Int = 30) { for _ in 0 ..< n { w.advance(by: 1.0 / 60) } }
     func noted(_ w: World3D, _ what: String) -> Bool {
         w.worldNotes.contains { $0.hasPrefix("\(what) was given") }
     }
 
-    @Test func aBodyKeepsItsPoseAndMotion() {
+    @Test func aBodyKeepsItsPoseAndMotion() throws {
         let w = world()
-        let b = box(w)
+        let b = try box(w)
         let position = b.position
         for v in Self.bad {
             b.position = Vector3(v, 1, 0)
@@ -53,10 +53,10 @@ struct SolverNumberTests {
         #expect(b.position.x == 3)
     }
 
-    @Test func aForceThatIsNotANumberDoesNothing() {
+    @Test func aForceThatIsNotANumberDoesNothing() throws {
         let w = world()
-        let control = box(w, at: Vector3(-3, 2, 0))
-        let b = box(w, at: Vector3(3, 2, 0))
+        let control = try box(w, at: Vector3(-3, 2, 0))
+        let b = try box(w, at: Vector3(3, 2, 0))
         b.applyForce(Vector3(.nan, 0, 0))
         b.applyImpulse(Vector3(.infinity, 0, 0))
         b.applyTorque(Vector3(0, 1e30, 0))
@@ -68,9 +68,9 @@ struct SolverNumberTests {
         #expect(noted(w, "applyTorque"))
     }
 
-    @Test func aMaterialNumberIsKept() {
+    @Test func aMaterialNumberIsKept() throws {
         let w = world()
-        let b = box(w)
+        let b = try box(w)
         let friction = b.friction, restitution = b.restitution, gravityScale = b.gravityScale
         for v in Self.bad {
             b.friction = v
@@ -85,9 +85,9 @@ struct SolverNumberTests {
         #expect(noted(w, "body.gravityScale"))
     }
 
-    @Test func theWorldKeepsItsOwnNumbers() {
+    @Test func theWorldKeepsItsOwnNumbers() throws {
         let w = world()
-        let b = box(w)
+        let b = try box(w)
         for v in Self.bad {
             w.gravity = Vector3(0, v, 0)
             w.ground = v
@@ -115,30 +115,30 @@ struct SolverNumberTests {
         #expect(noted(w, "advance(by:)"))
     }
 
-    @Test func aBodyAddedWithANumberTheSolverCannotHoldTakesTheDefault() {
+    @Test func aBodyAddedWithANumberTheSolverCannotHoldTakesTheDefault() throws {
         let w = world()
-        let control = box(w, at: Vector3(5, 2, 0))
-        let atNaN = w.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(.nan, 2, 0))
+        let control = try box(w, at: Vector3(5, 2, 0))
+        let atNaN = try w.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(.nan, 2, 0))
         #expect(atNaN.position == .zero)
-        let turned = w.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(-5, 2, 0),
+        let turned = try w.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(-5, 2, 0),
                                rotated: .nan, axis: .unitY)
         #expect(turned.rotation == .identity)
-        let noAxis = w.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(-5, 5, 0),
+        let noAxis = try w.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(-5, 5, 0),
                                rotated: 1, axis: .zero)
         // The axis falls back to the parameter's default, straight up, and
         // the turn is kept.
         #expect(abs(noAxis.rotation.angle - 1) < 1e-3)
         #expect(abs(noAxis.rotation.axis.y - 1) < 1e-3)
-        let dense = w.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(5, 5, 0),
+        let dense = try w.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(5, 5, 0),
                               density: .nan)
         #expect(dense.mass == control.mass)
-        let sized = w.addBody(.box(width: .nan, height: 1, depth: 1), at: Vector3(0, 5, 0))
+        let sized = try w.addBody(.box(width: .nan, height: 1, depth: 1), at: Vector3(0, 5, 0))
         if case .sphere(let radius) = sized.collider {
             #expect(radius == 1)
         } else {
             Issue.record("a collider with a number the solver cannot hold becomes a unit sphere")
         }
-        let hull = w.addBody(.hull([Vector3(0, 0, 0), Vector3(1, 0, 0), Vector3(0, .infinity, 0), Vector3(0, 0, 1)]),
+        let hull = try w.addBody(.hull([Vector3(0, 0, 0), Vector3(1, 0, 0), Vector3(0, .infinity, 0), Vector3(0, 0, 1)]),
                              at: Vector3(0, 8, 0))
         if case .sphere = hull.collider {} else { Issue.record("a hull with an infinite point becomes a unit sphere") }
         step(w, 120)
@@ -150,9 +150,9 @@ struct SolverNumberTests {
         #expect(noted(w, "addBody's collider"))
     }
 
-    @Test func aCharacterKeepsItsNumbers() {
+    @Test func aCharacterKeepsItsNumbers() throws {
         let w = world()
-        let c = w.addCharacter(at: Vector3(0, 2, 0))
+        let c = try w.addCharacter(at: Vector3(0, 2, 0))
         let position = c.position
         c.position = Vector3(.nan, 2, 0)
         #expect(c.position == position)
@@ -168,7 +168,7 @@ struct SolverNumberTests {
         step(w)
         #expect(SolverNumber.holds(c.position))
         #expect(abs(c.position.x) < 1e-6)
-        let elsewhere = w.addCharacter(at: Vector3(.nan, 2, 0), mass: .infinity)
+        let elsewhere = try w.addCharacter(at: Vector3(.nan, 2, 0), mass: .infinity)
         #expect(elsewhere.position == .zero)
         #expect(elsewhere.mass == 70)
         #expect(noted(w, "character.position"))
@@ -177,10 +177,10 @@ struct SolverNumberTests {
         #expect(noted(w, "addCharacter(at:)"))
     }
 
-    @Test func aJointRefusesANumberItCannotDrive() {
+    @Test func aJointRefusesANumberItCannotDrive() throws {
         let w = world()
-        let anchor = w.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(0, 5, 0), kind: .static)
-        let arm = w.addBody(.box(width: 2, height: 0.2, depth: 0.2), at: Vector3(1, 5, 0))
+        let anchor = try w.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(0, 5, 0), kind: .static)
+        let arm = try w.addBody(.box(width: 2, height: 0.2, depth: 0.2), at: Vector3(1, 5, 0))
         let hinge = w.connect(anchor, arm, .revolute(at: Vector3(0, 5, 0), axis: .unitZ))
         hinge.drive(at: .nan)
         hinge.drive(to: 1, frequency: .infinity)
@@ -266,14 +266,14 @@ struct SolverNumberTests {
         }
     }
 
-    @Test func waterWithANumberTheSolverCannotHoldIsRefused() {
+    @Test func waterWithANumberTheSolverCannotHoldIsRefused() throws {
         let w = world()
         w.water = Water(level: 1)
         w.water = Water(level: .nan)
         #expect(w.water?.level == 1)
         w.water = Water(level: 1, flow: Vector3(.infinity, 0, 0))
         #expect(w.water?.flow == .zero)
-        let b = box(w, at: Vector3(0, 3, 0))
+        let b = try box(w, at: Vector3(0, 3, 0))
         step(w)
         #expect(SolverNumber.holds(b.position))
         #expect(noted(w, "world.water"))

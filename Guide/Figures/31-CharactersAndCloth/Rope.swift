@@ -23,7 +23,7 @@ final class Rope: Sketch {
         (0 ..< n).map { Vector3(Double($0) * spacing, 0, 0) }
     }
 
-    override func setup() {
+    override func setup() throws {
         world.ground = 0
         for (index, bend) in [0.0, 0.5, 1.0].enumerated() {
             let line = try? world.addRope(through: Rope.arm(22, spacing: 0.061),

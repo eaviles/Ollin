@@ -108,10 +108,10 @@ let flat = surfacePoints(on: terrain, count: 800).filter { $0.normal.y > 0.8 }
 #### Standing something up
 
 ```swift
-func alignment(spin: Double = 0) -> Vector3
+func alignment(spin: Double = 0) -> Rotation3D
 ```
 
-Returns the turn that points a mesh's own **+y** along the sample's normal, as the angles a [`MeshInstance`](../3D/Instancing.md) takes. `spin` then turns the mesh about that direction, which keeps a scattered field from reading as a field of clones.
+Returns the turn that points a mesh's own **+y** along the sample's normal, as the `Rotation3D` a [`MeshInstance`](../3D/Instancing.md) takes, which `rotate(_:)` takes too. `spin` then turns the mesh about that direction, which keeps a scattered field from reading as a field of clones.
 
 ```swift
 drawMesh(tree, instances: spots.map {

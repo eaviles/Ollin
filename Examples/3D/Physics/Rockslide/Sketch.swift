@@ -25,14 +25,14 @@ final class Rockslide: Sketch {
         Color(hex: 0x8D92E0), Color(hex: 0x72BFB2),
     ]
 
-    override func setup() {
-        rebuild()
+    override func setup() throws {
+        try rebuild()
     }
 
     /// Grow, weather, and mount the mountainside: a ridge along the west edge
     /// falling toward the east with fractal detail, eroded so ravines funnel
     /// the rocks, then handed whole to the collider.
-    func rebuild() {
+    func rebuild() throws {
         builtSeed = terrainSeed.rounded()
         let seed = Int(builtSeed)
 
@@ -47,17 +47,17 @@ final class Rockslide: Sketch {
         terrain = terrainMesh(land)
 
         world.removeAll()
-        world.addBody(.heightfield(land, width: landWidth, depth: landDepth,
+        try world.addBody(.heightfield(land, width: landWidth, depth: landDepth,
                                    height: landHeight),
                       at: .zero, kind: .static, friction: 0.55)
         rocks.removeAll()
         restFrames.removeAll()
-        for index in 0 ..< 16 { dropRock(stagger: index) }
+        for index in 0 ..< 16 { try dropRock(stagger: index) }
     }
 
     /// A rock onto the ridge: a sphere, a slab, or a cone, staggered so the
     /// feed arrives as a slide rather than one clump.
-    func dropRock(stagger: Int = 0) {
+    func dropRock(stagger: Int = 0) throws {
         let collider: Collider3D
         switch Int(random(0, 3)) {
         case 0: collider = .sphere(radius: random(0.16, 0.28))
@@ -70,7 +70,7 @@ final class Rockslide: Sketch {
                             land.value(u: u, v: v) * landHeight + 1.2
                                 + Double(stagger) * 0.55,
                             (v - 0.5) * landDepth)
-        let rock = world.addBody(collider, at: start,
+        let rock = try world.addBody(collider, at: start,
                                  rotated: random(0, .tau), axis: .unitY,
                                  density: 2, friction: 0.45, restitution: 0.2)
         rock.userData = palette[Int(random(0, Double(palette.count)))
@@ -81,16 +81,16 @@ final class Rockslide: Sketch {
 
     /// Back to the ridge after falling off the world's edge, or after resting
     /// in the scree long enough for the slide to stay alive.
-    func recycle(_ index: Int) {
+    func recycle(_ index: Int) throws {
         let rock = rocks[index]
         world.remove(rock)
         rocks.remove(at: index)
         restFrames.remove(at: index)
-        dropRock()
+        try dropRock()
     }
 
     override func draw() {
-        if terrainSeed.rounded() != builtSeed { rebuild() }
+        if terrainSeed.rounded() != builtSeed { try? rebuild() }
 
         background(Color(hex: 0x0A0D12))
         environment(.sky(turbidity: 3, sunElevation: 0.5).lightingOnly())
@@ -104,7 +104,7 @@ final class Rockslide: Sketch {
             restFrames[index] = rocks[index].velocity.length < 0.05
                 ? restFrames[index] + 1 : 0
             if rocks[index].position.y < -3 || restFrames[index] > 420 {
-                recycle(index)
+                try? recycle(index)
             }
         }
 

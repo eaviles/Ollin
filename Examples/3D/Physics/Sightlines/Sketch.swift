@@ -41,14 +41,14 @@ final class Sightlines: Sketch {
         var age = 0.0
     }
 
-    override func setup() {
+    override func setup() throws {
         world.ground = 0
         world.restitution = 0.15
 
         // Five pillars in a ring: the things that get in the way.
         for index in 0 ..< 5 {
             let angle = Double(index) / 5 * .tau + 0.3
-            pillars.append(world.addBody(.box(width: 0.8, height: 4.4, depth: 0.8),
+            pillars.append(try world.addBody(.box(width: 0.8, height: 4.4, depth: 0.8),
                                          at: Vector3(cos(angle), 0, sin(angle)) * 3.1
                                              + Vector3(0, 2.2, 0),
                                          kind: .static, friction: 0.6))
@@ -58,7 +58,7 @@ final class Sightlines: Sketch {
         for _ in 0 ..< 14 {
             let angle = random(0, .tau)
             let reach = random(1.2, 5.6)
-            let crate = world.addBody(.box(width: crateSize, height: crateSize,
+            let crate = try world.addBody(.box(width: crateSize, height: crateSize,
                                            depth: crateSize),
                                       at: Vector3(cos(angle) * reach,
                                                   crateSize / 2 + random(0, 1.5),

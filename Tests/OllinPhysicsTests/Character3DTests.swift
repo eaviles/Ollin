@@ -18,10 +18,10 @@ struct Character3DTests {
 
     // MARK: Standing
 
-    @Test func standsOnTheGroundItLandsOn() {
+    @Test func standsOnTheGroundItLandsOn() throws {
         let world = World3D()
         world.ground = 0
-        let walker = world.addCharacter(radius: 0.3, height: 1.8,
+        let walker = try world.addCharacter(radius: 0.3, height: 1.8,
                                         at: Vector3(0, 2, 0))
         run(world, steps: 90)
 
@@ -33,12 +33,12 @@ struct Character3DTests {
         #expect(walker.groundBody === world.groundBody)
     }
 
-    @Test func walkingOffAnEdgeFalls() {
+    @Test func walkingOffAnEdgeFalls() throws {
         let world = World3D()
         // No ground: a narrow ledge to walk off the end of.
-        world.addBody(.box(width: 2, height: 0.4, depth: 4), at: Vector3(0, -0.2, 0),
+        try world.addBody(.box(width: 2, height: 0.4, depth: 4), at: Vector3(0, -0.2, 0),
                       kind: .static)
-        let walker = world.addCharacter(radius: 0.3, height: 1.8, at: Vector3(0, 0.3, 0))
+        let walker = try world.addCharacter(radius: 0.3, height: 1.8, at: Vector3(0, 0.3, 0))
         run(world, steps: 40)
         #expect(walker.isOnGround)
 
@@ -54,17 +54,17 @@ struct Character3DTests {
 
     /// Walk east up a ramp tilted `degrees` and report the height gained. The
     /// ramp is one static box rotated about z, so +x is uphill.
-    func climbRamp(degrees: Double, maxSlope: Double? = nil) -> Double {
+    func climbRamp(degrees: Double, maxSlope: Double? = nil) throws -> Double {
         let world = World3D()
         world.ground = -6
         let angle = degrees * .pi / 180
-        world.addBody(.box(width: 12, height: 0.4, depth: 4), at: .zero,
+        try world.addBody(.box(width: 12, height: 0.4, depth: 4), at: .zero,
                       kind: .static, rotated: angle, axis: Vector3(0, 0, 1))
         // Start above the ramp's lower half and let it settle onto the surface.
         let u = -3.0
         let start = Vector3(u * cos(angle) - 0.2 * sin(angle),
                             u * sin(angle) + 0.2 * cos(angle) + 0.6, 0)
-        let walker = world.addCharacter(radius: 0.3, height: 1.8, at: start)
+        let walker = try world.addCharacter(radius: 0.3, height: 1.8, at: start)
         if let maxSlope { walker.maxSlope = maxSlope }
         run(world, steps: 40)
         let settled = walker.position.y
@@ -73,21 +73,21 @@ struct Character3DTests {
         return walker.position.y - settled
     }
 
-    @Test func walksUpAGentleSlopeAndSlidesOffASteepOne() {
+    @Test func walksUpAGentleSlopeAndSlidesOffASteepOne() throws {
         // Well inside the default 50° limit: it climbs.
-        #expect(climbRamp(degrees: 15) > 1)
-        #expect(climbRamp(degrees: 25) > 1.5)
+        #expect(try climbRamp(degrees: 15) > 1)
+        #expect(try climbRamp(degrees: 25) > 1.5)
         // Well past it: nothing holds the character, and it ends up lower than
         // it started rather than higher.
-        #expect(climbRamp(degrees: 70) < -1)
+        #expect(try climbRamp(degrees: 70) < -1)
     }
 
     /// The sharper twin: one ramp, one parameter. The same 40° slope is walkable or
     /// not depending only on `maxSlope`, which is what proves the limit is
     /// doing the deciding rather than the geometry.
-    @Test func theSlopeLimitIsWhatDecides() {
-        let climbed = climbRamp(degrees: 40, maxSlope: 50 * Double.pi / 180)
-        let refused = climbRamp(degrees: 40, maxSlope: 20 * Double.pi / 180)
+    @Test func theSlopeLimitIsWhatDecides() throws {
+        let climbed = try climbRamp(degrees: 40, maxSlope: 50 * Double.pi / 180)
+        let refused = try climbRamp(degrees: 40, maxSlope: 20 * Double.pi / 180)
         #expect(climbed > 1.5)
         #expect(refused < 0.2)
         #expect(climbed > refused + 1)
@@ -97,13 +97,13 @@ struct Character3DTests {
     /// what `.onSteepSlope` means. (Steeper still and nothing supports it at
     /// all: a near-vertical face reads `.notSupported`, since the character is
     /// touching something that cannot hold it rather than standing on it.)
-    @Test func aSlopePastTheLimitReadsAsSteepGround() {
+    @Test func aSlopePastTheLimitReadsAsSteepGround() throws {
         let world = World3D()
         world.ground = -6
         let angle = 55 * Double.pi / 180
-        world.addBody(.box(width: 12, height: 0.4, depth: 4), at: .zero,
+        try world.addBody(.box(width: 12, height: 0.4, depth: 4), at: .zero,
                       kind: .static, rotated: angle, axis: Vector3(0, 0, 1))
-        let walker = world.addCharacter(radius: 0.3, height: 1.8,
+        let walker = try world.addCharacter(radius: 0.3, height: 1.8,
                                         at: Vector3(-1.5, 2.4, 0))
         // Catch the frame where the slope is holding it: it is supported, but
         // not by anything it may walk on.
@@ -121,12 +121,12 @@ struct Character3DTests {
 
     /// Walk east into a wide, deep block `blockHeight` tall (the only way past
     /// it is over it) and report the height actually gained.
-    func climbStep(blockHeight: Double, stepHeight: Double) -> Double {
+    func climbStep(blockHeight: Double, stepHeight: Double) throws -> Double {
         let world = World3D()
         world.ground = 0
-        world.addBody(.box(width: 6, height: blockHeight, depth: 8),
+        try world.addBody(.box(width: 6, height: blockHeight, depth: 8),
                       at: Vector3(4, blockHeight / 2, 0), kind: .static)
-        let walker = world.addCharacter(radius: 0.3, height: 1.8,
+        let walker = try world.addCharacter(radius: 0.3, height: 1.8,
                                         at: Vector3(0, 0.2, 0), stepHeight: stepHeight)
         run(world, steps: 40)
         let settled = walker.position.y
@@ -142,25 +142,25 @@ struct Character3DTests {
     /// A ledge under the step height is climbed and one past it is a wall. And
     /// the twin that isolates the parameter: the very same 0.3 ledge is a step
     /// or a wall depending only on whether stepping is switched on.
-    @Test func stepsOntoALedgeUnderItsStepHeight() {
+    @Test func stepsOntoALedgeUnderItsStepHeight() throws {
         // Comfortably inside the 0.4 limit: the character ends up on top.
-        let stepped = climbStep(blockHeight: 0.3, stepHeight: 0.4)
+        let stepped = try climbStep(blockHeight: 0.3, stepHeight: 0.4)
         #expect(abs(stepped - 0.3) < 0.05)
         #expect(stepped > 0.25)
         // Comfortably past it: the ledge is a wall.
-        #expect(climbStep(blockHeight: 0.8, stepHeight: 0.4) < 0.05)
+        #expect(try climbStep(blockHeight: 0.8, stepHeight: 0.4) < 0.05)
         // With stepping switched off, the same 0.3 ledge is a wall too.
-        let blocked = climbStep(blockHeight: 0.3, stepHeight: 0)
+        let blocked = try climbStep(blockHeight: 0.3, stepHeight: 0)
         #expect(blocked < 0.05)
     }
 
     // MARK: Jumping
 
-    @Test func aJumpLeavesTheGround() {
-        func peakHeight(jumping: Bool) -> Double {
+    @Test func aJumpLeavesTheGround() throws {
+        func peakHeight(jumping: Bool) throws -> Double {
             let world = World3D()
             world.ground = 0
-            let walker = world.addCharacter(radius: 0.3, height: 1.8,
+            let walker = try world.addCharacter(radius: 0.3, height: 1.8,
                                             at: Vector3(0, 0.2, 0))
             run(world, steps: 40)
             var peak = walker.position.y
@@ -171,17 +171,17 @@ struct Character3DTests {
             }
             return peak
         }
-        let jumped = peakHeight(jumping: true)
-        let stood = peakHeight(jumping: false)
+        let jumped = try peakHeight(jumping: true)
+        let stood = try peakHeight(jumping: false)
         #expect(stood < 0.01)
         // v²/2g for the default 4 units/s is about 0.82.
         #expect(jumped > 0.6 && jumped < 1.0)
     }
 
-    @Test func aJumpIsOnlyGrantedFromTheGround() {
+    @Test func aJumpIsOnlyGrantedFromTheGround() throws {
         let world = World3D()
         world.ground = 0
-        let walker = world.addCharacter(radius: 0.3, height: 1.8,
+        let walker = try world.addCharacter(radius: 0.3, height: 1.8,
                                         at: Vector3(0, 4, 0))
         // Falling, not standing: asking to jump changes nothing.
         world.advance(by: 1.0 / 60)
@@ -196,12 +196,12 @@ struct Character3DTests {
     // MARK: Pushing bodies
 
     /// Walk east into a crate and report how far the crate slid.
-    func shove(crateDensity: Double, pushStrength: Double) -> Double {
+    func shove(crateDensity: Double, pushStrength: Double) throws -> Double {
         let world = World3D()
         world.ground = 0
-        let crate = world.addBody(.box(width: 0.6, height: 0.6, depth: 0.6),
+        let crate = try world.addBody(.box(width: 0.6, height: 0.6, depth: 0.6),
                                   at: Vector3(1.5, 0.3, 0), density: crateDensity)
-        let walker = world.addCharacter(radius: 0.3, height: 1.8,
+        let walker = try world.addCharacter(radius: 0.3, height: 1.8,
                                         at: Vector3(0, 0.2, 0),
                                         pushStrength: pushStrength)
         run(world, steps: 40)
@@ -211,25 +211,25 @@ struct Character3DTests {
         return crate.position.x - start
     }
 
-    @Test func shovesALightCrateUnlessItsStrengthIsZero() {
+    @Test func shovesALightCrateUnlessItsStrengthIsZero() throws {
         // A 4 kg crate goes where it is pushed.
-        #expect(shove(crateDensity: 0.02, pushStrength: 100) > 2)
+        #expect(try shove(crateDensity: 0.02, pushStrength: 100) > 2)
         // The same crate, the same walk, no strength: it becomes a wall.
-        #expect(abs(shove(crateDensity: 0.02, pushStrength: 0)) < 0.01)
+        #expect(try abs(shove(crateDensity: 0.02, pushStrength: 0)) < 0.01)
     }
 
-    @Test func aCrateTooHeavyForTheStrengthStaysPut() {
+    @Test func aCrateTooHeavyForTheStrengthStaysPut() throws {
         // 43 kg on a friction-0.5 floor needs more than 100 N to start moving,
         // so the same push that shifted the light crate does nothing here.
-        #expect(abs(shove(crateDensity: 0.2, pushStrength: 100)) < 0.01)
+        #expect(try abs(shove(crateDensity: 0.2, pushStrength: 100)) < 0.01)
     }
 
-    @Test func aCharacterCanBeBlockedByWhatItCannotPush() {
+    @Test func aCharacterCanBeBlockedByWhatItCannotPush() throws {
         let world = World3D()
         world.ground = 0
-        world.addBody(.box(width: 0.6, height: 0.6, depth: 4), at: Vector3(1.5, 0.3, 0),
+        try world.addBody(.box(width: 0.6, height: 0.6, depth: 4), at: Vector3(1.5, 0.3, 0),
                       density: 0.02)
-        let walker = world.addCharacter(radius: 0.3, height: 1.8,
+        let walker = try world.addCharacter(radius: 0.3, height: 1.8,
                                         at: Vector3(0, 0.2, 0), pushStrength: 0)
         walker.walk(x: 2, z: 0)
         run(world, steps: 120)
@@ -241,10 +241,10 @@ struct Character3DTests {
         #expect(abs(walker.actualVelocity.x) < 0.05)
     }
 
-    @Test func onOpenGroundItActuallyMovesAtTheWalkingPace() {
+    @Test func onOpenGroundItActuallyMovesAtTheWalkingPace() throws {
         let world = World3D()
         world.ground = 0
-        let walker = world.addCharacter(radius: 0.3, height: 1.8, at: Vector3(0, 0.2, 0))
+        let walker = try world.addCharacter(radius: 0.3, height: 1.8, at: Vector3(0, 0.2, 0))
         run(world, steps: 40)
         walker.walk(x: 2, z: 0)
         run(world, steps: 60)
@@ -255,13 +255,13 @@ struct Character3DTests {
 
     // MARK: Riding what moves
 
-    @Test func aMovingPlatformCarriesTheCharacter() {
+    @Test func aMovingPlatformCarriesTheCharacter() throws {
         let world = World3D()
         world.ground = -20
-        let platform = world.addBody(.box(width: 4, height: 0.4, depth: 4), at: .zero,
+        let platform = try world.addBody(.box(width: 4, height: 0.4, depth: 4), at: .zero,
                                      kind: .kinematic)
         platform.velocity = Vector3(1, 0, 0)
-        let walker = world.addCharacter(radius: 0.3, height: 1.8, at: Vector3(0, 0.5, 0))
+        let walker = try world.addCharacter(radius: 0.3, height: 1.8, at: Vector3(0, 0.5, 0))
         run(world, steps: 30)
         let start = walker.position.x
         let platformStart = platform.position.x
@@ -277,10 +277,10 @@ struct Character3DTests {
 
     // MARK: Presence among the bodies
 
-    @Test func theCharacterHasAStandInAmongTheBodies() {
+    @Test func theCharacterHasAStandInAmongTheBodies() throws {
         let world = World3D()
         world.ground = 0
-        let walker = world.addCharacter(radius: 0.3, height: 1.8, at: Vector3(0, 0.2, 0))
+        let walker = try world.addCharacter(radius: 0.3, height: 1.8, at: Vector3(0, 0.2, 0))
         // The stand-in is a body the world knows, but not one a drawing loop
         // over `bodies` would find (nobody asked for a capsule).
         #expect(!world.bodies.contains { $0 === walker.body })
@@ -288,12 +288,12 @@ struct Character3DTests {
         #expect(world.characters.contains { $0 === walker })
     }
 
-    @Test func walkingIntoASensorReportsIt() {
+    @Test func walkingIntoASensorReportsIt() throws {
         let world = World3D()
         world.ground = 0
-        let gate = world.addBody(.box(width: 1, height: 2, depth: 2), at: Vector3(2, 1, 0),
+        let gate = try world.addBody(.box(width: 1, height: 2, depth: 2), at: Vector3(2, 1, 0),
                                  isSensor: true)
-        let walker = world.addCharacter(radius: 0.3, height: 1.8, at: Vector3(0, 0.2, 0))
+        let walker = try world.addCharacter(radius: 0.3, height: 1.8, at: Vector3(0, 0.2, 0))
         run(world, steps: 40)
         #expect(!gate.isTouching(walker.body))
 
@@ -315,12 +315,12 @@ struct Character3DTests {
 
     // MARK: Teleporting, removal, replay
 
-    @Test func teleportingRereadsWhatIsUnderfoot() {
+    @Test func teleportingRereadsWhatIsUnderfoot() throws {
         let world = World3D()
         world.ground = 0
-        world.addBody(.box(width: 4, height: 2, depth: 4), at: Vector3(20, 1, 0),
+        try world.addBody(.box(width: 4, height: 2, depth: 4), at: Vector3(20, 1, 0),
                       kind: .static)
-        let walker = world.addCharacter(radius: 0.3, height: 1.8, at: Vector3(0, 0.2, 0))
+        let walker = try world.addCharacter(radius: 0.3, height: 1.8, at: Vector3(0, 0.2, 0))
         run(world, steps: 40)
         #expect(walker.groundBody === world.groundBody)
 
@@ -332,10 +332,10 @@ struct Character3DTests {
         #expect(walker.groundBody !== world.groundBody)
     }
 
-    @Test func removingACharacterTakesItsStandInWithIt() {
+    @Test func removingACharacterTakesItsStandInWithIt() throws {
         let world = World3D()
         world.ground = 0
-        let walker = world.addCharacter(radius: 0.3, height: 1.8, at: Vector3(0, 0.2, 0))
+        let walker = try world.addCharacter(radius: 0.3, height: 1.8, at: Vector3(0, 0.2, 0))
         let innerID = walker.body.id
         run(world, steps: 20)
 
@@ -351,15 +351,15 @@ struct Character3DTests {
 
     /// The 3D physics determinism rule: the same build replays a scene
     /// byte-identically, characters included.
-    @Test func identicalRunsReplayIdentically() {
-        func trace() -> [Vector3] {
+    @Test func identicalRunsReplayIdentically() throws {
+        func trace() throws -> [Vector3] {
             let world = World3D()
             world.ground = 0
-            world.addBody(.box(width: 6, height: 0.3, depth: 8), at: Vector3(4, 0.15, 0),
+            try world.addBody(.box(width: 6, height: 0.3, depth: 8), at: Vector3(4, 0.15, 0),
                           kind: .static)
-            let crate = world.addBody(.box(width: 0.5, height: 0.5, depth: 0.5),
+            let crate = try world.addBody(.box(width: 0.5, height: 0.5, depth: 0.5),
                                       at: Vector3(1.2, 0.25, 0), density: 0.02)
-            let walker = world.addCharacter(radius: 0.3, height: 1.8,
+            let walker = try world.addCharacter(radius: 0.3, height: 1.8,
                                             at: Vector3(0, 1.2, 0))
             var poses: [Vector3] = []
             for i in 0 ..< 200 {
@@ -371,6 +371,6 @@ struct Character3DTests {
             }
             return poses
         }
-        #expect(trace() == trace())
+        #expect(try trace() == trace())
     }
 }

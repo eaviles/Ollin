@@ -39,7 +39,7 @@ final class MeshFieldSketch: Sketch {
         field.place(Mesh.box(width: 0.5, height: 0.35, depth: 0.5),
                     at: scatter(90_000) { x, z in
             MeshInstance(position: Vector3(x, 0.17, z),
-                         rotation: Vector3(0, random(.tau), 0),
+                         rotation: .aboutY(random(.tau)),
                          scale: random(0.5, 1.6),
                          color: Color.mix(stoneGray, mossGreen, random(0.5)))
         })
@@ -68,7 +68,7 @@ final class MeshFieldSketch: Sketch {
         field.place(Mesh.box(width: 0.45, height: 3.2, depth: 0.3),
                     at: scatter(5_000) { x, z in
             MeshInstance(position: Vector3(x, 1.6, z),
-                         rotation: Vector3(random(-0.05, 0.05), random(.tau), random(-0.05, 0.05)),
+                         rotation: .euler(x: random(-0.05, 0.05), y: random(.tau), z: random(-0.05, 0.05)),
                          scale: random(0.7, 1.3),
                          color: Color.mix(stoneGray, Color(white: 0.7), random(0.5)))
         })

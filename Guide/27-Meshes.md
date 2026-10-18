@@ -435,7 +435,7 @@ Not every assembly needs a cut. **Joining** lays several meshes end to end as on
 let body = Mesh.box(width: 1, height: 0.5, depth: 2)
 let wheel = Mesh.cylinder(radius: 0.25, height: 0.2)
 let spots = [Vector3(0.6, -0.3, 0.7), Vector3(-0.6, -0.3, 0.7), Vector3(0.6, -0.3, -0.7), Vector3(-0.6, -0.3, -0.7)]
-let car = Mesh.joined([body] + spots.map { wheel.placed(MeshInstance(position: $0, rotation: Vector3(0, 0, .pi / 2))) })
+let car = Mesh.joined([body] + spots.map { wheel.placed(MeshInstance(position: $0, rotation: .aboutZ(.pi / 2))) })
 drawMesh(car)
 ```
 

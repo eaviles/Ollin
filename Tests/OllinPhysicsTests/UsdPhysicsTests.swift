@@ -57,7 +57,7 @@ struct UsdPhysicsTests {
     /// annotations, which gets nothing.
     @Test func aFileSaysWhichPrimsFall() throws {
         let world = World3D()
-        let made = world.addBodies(from: try Self.yard(), usesSceneGravity: true)
+        let made = try world.addBodies(from: try Self.yard(), usesSceneGravity: true)
         #expect(made.count == world.bodies.count)
         #expect(made.count > 8, "the whole yard came across")
         #expect(world.joints.count == 2, "and both hinges")
@@ -71,14 +71,14 @@ struct UsdPhysicsTests {
             }
         """)
         let empty = World3D()
-        #expect(empty.addBodies(from: bare).isEmpty)
+        #expect(try empty.addBodies(from: bare).isEmpty)
     }
 
     /// A collider with no rigid body over it is scenery and never moves; one
     /// with a body falls. The twin is each against the other.
     @Test func aColliderWithoutABodyIsScenery() throws {
         let world = World3D()
-        world.addBodies(from: try scene("""
+        try world.addBodies(from: try scene("""
             def Cube "Floor" (
                 prepend apiSchemas = ["PhysicsCollisionAPI"]
             )
@@ -114,7 +114,7 @@ struct UsdPhysicsTests {
     /// change what a body is, and each against a plain dynamic twin.
     @Test func theMotionFlagsCarry() throws {
         let world = World3D()
-        world.addBodies(from: try scene("""
+        try world.addBodies(from: try scene("""
             def Sphere "Falling" (
                 prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsRigidBodyAPI"]
             )
@@ -149,7 +149,7 @@ struct UsdPhysicsTests {
     @Test func aScaledPrimIsABiggerShape() throws {
         func size(scaled: Bool) throws -> Double {
             let world = World3D()
-            world.addBodies(from: try scene("""
+            try world.addBodies(from: try scene("""
                 def Cube "Block" (
                     prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsRigidBodyAPI"]
                 )
@@ -176,7 +176,7 @@ struct UsdPhysicsTests {
         func settled(axis: String) throws -> Double {
             let world = World3D()
             world.ground = 0
-            world.addBodies(from: try scene("""
+            try world.addBodies(from: try scene("""
                 def Capsule "Rod" (
                     prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsRigidBodyAPI"]
                 )
@@ -206,7 +206,7 @@ struct UsdPhysicsTests {
     /// authored as their own bodies, which is two.
     @Test func collidersUnderOneBodyFuseIntoOne() throws {
         let fused = World3D()
-        fused.addBodies(from: try scene("""
+        try fused.addBodies(from: try scene("""
             def Xform "Tool" (
                 prepend apiSchemas = ["PhysicsRigidBodyAPI"]
             )
@@ -243,7 +243,7 @@ struct UsdPhysicsTests {
 
         // The twin: the same two shapes as their own bodies.
         let loose = World3D()
-        loose.addBodies(from: try scene("""
+        try loose.addBodies(from: try scene("""
             def Cylinder "Handle" (
                 prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsRigidBodyAPI"]
             )
@@ -265,7 +265,7 @@ struct UsdPhysicsTests {
     /// otherwise give. The twin is the same shape with no mass authored.
     @Test func anAuthoredMassWins() throws {
         let world = World3D()
-        world.addBodies(from: try scene("""
+        try world.addBodies(from: try scene("""
             def Sphere "Light" (
                 prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsRigidBodyAPI", "PhysicsMassAPI"]
             )
@@ -291,7 +291,7 @@ struct UsdPhysicsTests {
             let world = World3D()
             world.ground = 0
             world.restitution = 0.05
-            world.addBodies(from: try scene("""
+            try world.addBodies(from: try scene("""
                 def Sphere "Ball" (
                     prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsRigidBodyAPI", "PhysicsMassAPI"]
                 )
@@ -330,7 +330,7 @@ struct UsdPhysicsTests {
     /// Velocity and the starts-asleep flag come across.
     @Test func motionAndSleepCarry() throws {
         let world = World3D()
-        world.addBodies(from: try scene("""
+        try world.addBodies(from: try scene("""
             def Sphere "Thrown" (
                 prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsRigidBodyAPI"]
             )
@@ -363,7 +363,7 @@ struct UsdPhysicsTests {
         func fell(hinged: Bool) throws -> Double {
             let world = World3D()
             world.ground = 0
-            world.addBodies(from: try scene("""
+            try world.addBodies(from: try scene("""
                 def Cube "Plank" (
                     prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsRigidBodyAPI", "PhysicsMassAPI"]
                 )
@@ -398,7 +398,7 @@ struct UsdPhysicsTests {
     /// them to each other and lets the pair fall together.
     @Test func aJointNamingOneBodyHoldsItToTheWorld() throws {
         let world = World3D()
-        world.addBodies(from: try scene("""
+        try world.addBodies(from: try scene("""
             def Cube "Sign" (
                 prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsRigidBodyAPI", "PhysicsMassAPI"]
             )
@@ -424,7 +424,7 @@ struct UsdPhysicsTests {
 
         // The twin: no joint at all, and it is on the floor of nowhere.
         let free = World3D()
-        free.addBodies(from: try scene("""
+        try free.addBodies(from: try scene("""
             def Cube "Sign" (
                 prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsRigidBodyAPI", "PhysicsMassAPI"]
             )
@@ -444,7 +444,7 @@ struct UsdPhysicsTests {
     @Test func aHingeKeepsTheLimitsTheFileGaveIt() throws {
         func swing(limited: Bool) throws -> Double {
             let world = World3D()
-            world.addBodies(from: try scene("""
+            try world.addBodies(from: try scene("""
                 def Cube "Arm" (
                     prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsRigidBodyAPI", "PhysicsMassAPI"]
                 )
@@ -484,7 +484,7 @@ struct UsdPhysicsTests {
     /// it that breaks a rule shows up here.
     @Test func theShippedYardComesInAsAuthored() throws {
         let world = World3D()
-        world.addBodies(from: try Self.yard(), usesSceneGravity: true)
+        try world.addBodies(from: try Self.yard(), usesSceneGravity: true)
 
         #expect(try body(world, "Ground").kind == .static)
         #expect(try body(world, "Fulcrum").kind == .static)
@@ -519,7 +519,7 @@ struct UsdPhysicsTests {
     /// `theShippedYardComesInAsAuthored`, and an exact restore does not need it.)
     @Test func animportedWorldSnapshotsLikeAnyOther() throws {
         let world = World3D()
-        world.addBodies(from: try Self.yard(), usesSceneGravity: true)
+        try world.addBodies(from: try Self.yard(), usesSceneGravity: true)
         let placed = world.bodies.map(\.position)
 
         let back = World3D()

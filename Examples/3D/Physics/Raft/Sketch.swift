@@ -50,14 +50,14 @@ final class Raft: Sketch {
     let gateX = 4.6
     let palette = [Color(hex: 0xD9A441), Color(hex: 0xC1553F), Color(hex: 0x8FA860)]
 
-    override func setup() {
+    override func setup() throws {
         world.ground = deep
         world.water = Water(level: 0, linearDrag: 0.4,
                             waves: Water.Waves(amplitude: swell, wavelength: 9,
                                                speed: 1.4))
         buildRaft()
-        buildHarbour()
-        for index in 0 ..< 2 { dropCrate(at: Double(index) * 0.9 - 0.45) }
+        try buildHarbour()
+        for index in 0 ..< 2 { try dropCrate(at: Double(index) * 0.9 - 0.45) }
     }
 
     /// The deck: an ordinary plane mesh, stiff enough to carry a crate and
@@ -76,28 +76,28 @@ final class Raft: Sketch {
 
     /// The two things watching the water: a sounding line that measures what is
     /// under it, and a gate that reports what is inside it.
-    func buildHarbour() {
-        world.addBody(.box(width: 0.24, height: 3.4, depth: 0.24),
+    func buildHarbour() throws {
+        try world.addBody(.box(width: 0.24, height: 3.4, depth: 0.24),
                       at: soundingPost + Vector3(0, 1.7, 0), kind: .static)
         // The arm the line hangs off, so the sounding drops clear of the post.
-        world.addBody(.box(width: 1.1, height: 0.16, depth: 0.16),
+        try world.addBody(.box(width: 1.1, height: 0.16, depth: 0.16),
                       at: soundingPost + Vector3(0.35, 3.3, 0), kind: .static)
         // The gate is a detector, not a wall: the raft sails through it and it
         // reports the passage.
-        gate = world.addBody(.box(width: 0.5, height: 2.4, depth: 6.6),
+        gate = try world.addBody(.box(width: 0.5, height: 2.4, depth: 6.6),
                              at: Vector3(gateX, 0, 0), kind: .static,
                              isSensor: true)
         for side in [-1.0, 1.0] {
-            world.addBody(.cylinder(height: 3.0, radius: 0.16),
+            try world.addBody(.cylinder(height: 3.0, radius: 0.16),
                           at: Vector3(gateX, 1.0, side * 3.4), kind: .static)
         }
     }
 
     /// A crate from above. It lands, the deck dips under it, and the landing
     /// comes back as a contact.
-    func dropCrate(at x: Double) {
+    func dropCrate(at x: Double) throws {
         let size = random(0.44, 0.58)
-        let body = world.addBody(.box(width: size, height: size, depth: size),
+        let body = try world.addBody(.box(width: size, height: size, depth: size),
                                  at: Vector3(x, 1.7, random(-0.5, 0.5)),
                                  rotated: random(-0.4, 0.4),
                                  axis: Vector3(0.3, 1, 0.2),
@@ -123,7 +123,7 @@ final class Raft: Sketch {
     }
 
     override func keyPressed() {
-        if key == " " { dropCrate(at: random(-0.7, 0.7)) }
+        if key == " " { try? dropCrate(at: random(-0.7, 0.7)) }
     }
 
     override func draw() {

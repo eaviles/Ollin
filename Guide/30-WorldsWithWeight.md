@@ -15,10 +15,10 @@ Weight turns a 3D scene into a machine: bodies fall and knock into each other, a
 ```swift
 let world = World3D()
 
-override func setup() {
+override func setup() throws {
     world.ground = 0                     // a static floor at y = 0
     for level in 0 ..< 6 {
-        world.addBody(.box(width: 1, height: 1, depth: 1),
+        try world.addBody(.box(width: 1, height: 1, depth: 1),
                       at: Vector3(0, 0.6 + Double(level) * 1.04, 0))
     }
 }
@@ -58,7 +58,7 @@ for arm in 0 ..< 4 {
                        at: Vector3(cos(angle), sin(angle), 0) * 1.11,
                        rotated: angle, axis: .unitZ))    // a blade
 }
-let cross = world.addBody(.compound(parts), at: hubCenter)
+let cross = try world.addBody(.compound(parts), at: hubCenter)
 ```
 
 The result is a windmill's blade cross, five shapes in one body. A cylinder stands upright, so the hub takes a quarter turn about x to face the camera. A part's own `density` weighs it against the rest, which is how a hammer gets a head that leads its swing. `withBody` still draws the compound as one body, so inside the block you translate to each part's pose and draw its shape.
@@ -116,7 +116,7 @@ Until now everything in a world has collided with everything else. Usually you w
 You could do this with logic, checking who touched what and undoing it. Ollin has you name the rule instead. You put bodies in a named **group** when you build them, and then tell the world that two groups never touch:
 
 ```swift
-let bead = world.addBody(.sphere(radius: 0.17), at: p, group: "passing")
+let bead = try world.addBody(.sphere(radius: 0.17), at: p, group: "passing")
 world.ignoreCollisions(between: "passing", and: "grating")
 ```
 
@@ -171,7 +171,7 @@ final class Contraption: Sketch {
     let smallHub = Vector3(-1.5, 2.4, 0)
     let bigHub = Vector3(0.4, 2.4, 0)
 
-    override func setup() {
+    override func setup() throws {
         world.ground = 0
         world.restitution = 0.15
 
@@ -179,19 +179,19 @@ final class Contraption: Sketch {
         // instead. Nothing in the frame needs to collide with the rest of it.
         world.ignoreCollisions(between: "frame", and: "frame")
 
-        let wall = world.addBody(.box(width: 6.0, height: 4.4, depth: 0.25),
+        let wall = try world.addBody(.box(width: 6.0, height: 4.4, depth: 0.25),
                                  at: Vector3(-0.4, 2.2, -0.75), kind: .static,
                                  group: "frame")
         wall.userData = timber
 
         // A cylinder stands upright, so each wheel takes a quarter turn about
         // x to lay its axle along z, facing the camera.
-        let small = world.addBody(.compound([
+        let small = try world.addBody(.compound([
             .part(.cylinder(height: 0.3, radius: 0.7), rotated: .pi / 2, axis: .unitX, density: 3),
         ]), at: smallHub, group: "frame")
         small.userData = brass
 
-        let big = world.addBody(.compound([
+        let big = try world.addBody(.compound([
             .part(.cylinder(height: 0.3, radius: 1.2), rotated: .pi / 2, axis: .unitX, density: 3),
             .part(.box(width: 3.8, height: 0.16, depth: 0.5), density: 3),
         ]), at: bigHub, group: "frame")
@@ -202,12 +202,12 @@ final class Contraption: Sketch {
         world.connect(smallHinge, bigHinge, .gear(teeth: 20, and: bigTeeth))
         crank = smallHinge
 
-        let shelf = world.addBody(.box(width: 3.2, height: 0.3, depth: 1.2),
+        let shelf = try world.addBody(.box(width: 3.2, height: 0.3, depth: 1.2),
                                   at: Vector3(2.9, 1.05, 0), kind: .static, group: "frame")
         shelf.userData = timber
 
         for i in 0 ..< 6 {
-            let crate = world.addBody(.box(width: 0.4, height: 0.4, depth: 0.4),
+            let crate = try world.addBody(.box(width: 0.4, height: 0.4, depth: 0.4),
                                       at: Vector3(1.9 + Double(i) * 0.5, 1.45, 0))
             crate.userData = clay
             crates.append(crate)
@@ -323,7 +323,7 @@ A sensor is a body that is not solid. Things pass through it untouched, and it t
 You make one with `isSensor: true`:
 
 ```swift
-let goal = world.addBody(.cylinder(height: 0.5, radius: 0.93),
+let goal = try world.addBody(.cylinder(height: 0.5, radius: 0.93),
                          at: hoopCenter, isSensor: true)
 
 score += goal.arrivals.count           // entered during this step
@@ -405,7 +405,7 @@ A rigid body can do six things. It travels along three axes and turns about thre
 Those are two identical pin boards. The same beads are poured down each, one at a time. Most beads get a nudge toward or away from the camera on the way down. Both boards get the same nudges. The beads on the left are held to the board's plane, and the ones on the right are not:
 
 ```swift
-let bead = world.addBody(.sphere(radius: 0.17), at: p, freedom: .plane())
+let bead = try world.addBody(.sphere(radius: 0.17), at: p, freedom: .plane())
 ```
 
 The left beads had nowhere to put that nudge, so they landed in one flat row. The right ones took it, and most rolled out of the open front. A locked direction is gone from the body. Gravity, a contact, a joint, and a velocity you set yourself all fail to move it that way.
@@ -439,7 +439,7 @@ feather.gravityScale = 0.15      // falls about a seventh as far in the same sec
 `checksPath` makes the solver test a body's whole path through a step, not only where the step leaves it. It is for things that are small and quick. A body can cover more than its own width in one step. It can then be in front of a thin wall at one step and past it at the next, having touched nothing. Engines answer this with continuous collision detection, which tests the whole motion rather than where it ended. Turn it on and the solver sweeps the body's shape along its path:
 
 ```swift
-let pellet = world.addBody(.sphere(radius: 0.05), at: muzzle, checksPath: true)
+let pellet = try world.addBody(.sphere(radius: 0.05), at: muzzle, checksPath: true)
 pellet.velocity = Vector3(0, 0, 120)
 ```
 
@@ -555,9 +555,9 @@ world.water = Water(level: 0)
 Everything already in the world starts floating. You do not mark a crate as floatable, and you do not pick how high it floats. You already said that in the `density` you built it with:
 
 ```swift
-world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(0, 4, 0),
+try world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(0, 4, 0),
               density: 0.3)   // cork
-world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(2, 4, 0),
+try world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(2, 4, 0),
               density: 3)     // stone
 ```
 
@@ -605,7 +605,7 @@ A heightfield collider is ground made from a grid of heights. It is for terrain,
 The rocks are spheres, boxes, and cones dropped along the ridge, and the ravines the rain carved funnel them down. `.heightfield` takes the `Heightfield` directly, sized like its `mesh(width:depth:height:)`, so the collider and the drawn mesh trace one surface:
 
 ```swift
-let island = world.addBody(.heightfield(land, width: 14, depth: 14, height: 4.2),
+let island = try world.addBody(.heightfield(land, width: 14, depth: 14, height: 4.2),
                            at: .zero, kind: .static, friction: 0.55)
 ```
 
@@ -619,7 +619,7 @@ For scenery, `world.addStaticBodies(from: scene)` walks a loaded `Scene`. It tur
 
 ```swift
 let scene = try loadScene("yard.usda")
-world.addBodies(from: scene)
+try world.addBodies(from: scene)
 ```
 
 The import covers bodies, colliders, joints, masses, and the friction and bounce of the file's physics materials. The file's gravity is read only when you pass `usesSceneGravity: true`. Reading it is lossy, and that is on purpose. It keeps what this world understands and leaves out articulations, joint drives, and the file's own collision groups. Anything a file leaves unsaid about a body gets a sensible default.

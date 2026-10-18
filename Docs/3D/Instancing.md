@@ -20,7 +20,7 @@ override func draw() {
     for i in 0 ..< 5_000 {
         let a = Double(i) / 5_000 * .tau * 8
         copies.append(MeshInstance(position: Vector3(cos(a) * Double(i) * 0.002, 0.2, sin(a) * Double(i) * 0.002),
-                                   rotation: Vector3(0, a, 0),
+                                   rotation: .aboutY(a),
                                    scale: 0.5 + noise(Double(i) * 0.1)))
     }
     drawMesh(rock, instances: copies)
@@ -47,12 +47,12 @@ A `MeshInstance` holds one copy's placement: where the copy sits, how it turns, 
 
 ```swift
 MeshInstance(position: Vector3(2, 0, -1),          // world units (applied first)
-             rotation: Vector3(0, .pi / 4, 0),     // Euler radians: x, then y, then z
+             rotation: .aboutY(.pi / 4),           // a Rotation3D: any axis, any angle
              scale: Vector3(1, 3, 1),              // per axis (applied last); or one Double
              color: Color(hue: 0.6, saturation: 0.5, brightness: 1))
 ```
 
-The transform works like the calls it replaces. The copy is placed as if you had written `translate(position)`, then `rotateX`, `rotateY`, and `rotateZ` in that order, then `scale`. Every parameter has a neutral default, so `MeshInstance(position: p)` is a plain unrotated copy. The `color` multiplies the surface color, which is the current `fill` times the mesh material's base color. A `nil` color leaves the surface color unchanged.
+The transform works like the calls it replaces. The copy is placed as if you had written `translate(position)`, then `rotate(rotation)`, then `scale`. `rotation` is a [`Rotation3D`](../Drawing/Geometry.md#rotation3d), a turn about any axis: `.aboutY(a)` for a spin about y, `Rotation3D(angle:axis:)` for any axis, `Rotation3D(from:to:)` to point a mesh's up along a direction, a physics body's own `rotation` as it is, and `.euler(x:y:z:)` for three angles the way `rotateX`, `rotateY`, `rotateZ` would compose them, in that order. Every parameter has a default, so `MeshInstance(position: p)` is a copy that only moves.
 
 The whole field still follows the 3D transform stack. A `translate` or `rotate` before the draw moves every copy together, and each instance's own transform composes on top of that.
 

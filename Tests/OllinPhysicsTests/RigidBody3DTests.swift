@@ -19,10 +19,10 @@ struct RigidBody3DTests {
 
     /// A thousand unit boxes on a lattice `spacing` apart, weightless and high over
     /// the ground.
-    func pile(_ world: World3D, spacing: Double) -> [Body3D] {
+    func pile(_ world: World3D, spacing: Double) throws -> [Body3D] {
         var bodies: [Body3D] = []
         for i in 0 ..< 10 { for j in 0 ..< 10 { for k in 0 ..< 10 {
-            bodies.append(world.addBody(.box(width: 1, height: 1, depth: 1),
+            bodies.append(try world.addBody(.box(width: 1, height: 1, depth: 1),
                                         at: Vector3(Double(i) * spacing, 20 + Double(j) * spacing,
                                                     Double(k) * spacing)))
         } } }
@@ -34,10 +34,10 @@ struct RigidBody3DTests {
     /// corner, about 12,000 touching pairs, where the world once set aside one pair
     /// and one contact constraint a body and the solver's own check turned the full
     /// buffer into a trap.
-    @Test func aPileDenserThanOneContactABodySteps() {
+    @Test func aPileDenserThanOneContactABodySteps() throws {
         let world = World3D(maxBodies: 1024)
         world.gravity = .zero
-        _ = pile(world, spacing: 0.95)
+        _ = try pile(world, spacing: 0.95)
         run(world, steps: 10)
         #expect(world.lastError == nil, "a pile of 26 neighbors a body read: \(world.lastError ?? "")")
     }
@@ -47,10 +47,10 @@ struct RigidBody3DTests {
     /// steps away, about 62 pairs a body, past the sixteen a body the world holds,
     /// so some contacts are dropped and `lastError` names the limit; spread far
     /// apart, they touch nothing and the next step clears it.
-    @Test func aPileThatOverflowsSaysSoAndRecovers() {
+    @Test func aPileThatOverflowsSaysSoAndRecovers() throws {
         let world = World3D(maxBodies: 1024)
         world.gravity = .zero
-        let bodies = pile(world, spacing: 0.45)
+        let bodies = try pile(world, spacing: 0.45)
         run(world, steps: 2)
         #expect(world.lastError?.contains("maxBodies") == true,
                 "an overflowing pile read: \(world.lastError ?? "nil")")
@@ -87,9 +87,9 @@ struct RigidBody3DTests {
         #expect(position.1 < -4)   // ½·10·1² ≈ 5 m of fall
     }
 
-    @Test func dynamicBodyFallsUnderGravity() {
+    @Test func dynamicBodyFallsUnderGravity() throws {
         let world = World3D()
-        let body = world.addBody(.box(width: 1, height: 1, depth: 1),
+        let body = try world.addBody(.box(width: 1, height: 1, depth: 1),
                                  at: Vector3(0, 10, 0))
 
         run(world, steps: 60)   // ~one second of fall
@@ -100,10 +100,10 @@ struct RigidBody3DTests {
         #expect(abs(body.position.z) < 1e-3)
     }
 
-    @Test func groundStopsAFallingSphere() {
+    @Test func groundStopsAFallingSphere() throws {
         let world = World3D()
         world.ground = 0
-        let ball = world.addBody(.sphere(radius: 0.5), at: Vector3(0, 3, 0),
+        let ball = try world.addBody(.sphere(radius: 0.5), at: Vector3(0, 3, 0),
                                  restitution: 0)
 
         run(world, steps: 300)   // fall and settle
@@ -112,12 +112,12 @@ struct RigidBody3DTests {
         #expect(abs(ball.position.y - 0.5) < 0.05)
     }
 
-    @Test func aStackOfBoxesSettles() {
+    @Test func aStackOfBoxesSettles() throws {
         let world = World3D()
         world.ground = 0
         var boxes: [Body3D] = []
         for level in 0 ..< 3 {
-            boxes.append(world.addBody(.box(width: 1, height: 1, depth: 1),
+            boxes.append(try world.addBody(.box(width: 1, height: 1, depth: 1),
                                        at: Vector3(0, 0.5 + Double(level), 0),
                                        restitution: 0))
         }
@@ -132,11 +132,11 @@ struct RigidBody3DTests {
         }
     }
 
-    @Test func aRevoluteJointSwingsAboutItsPivot() {
+    @Test func aRevoluteJointSwingsAboutItsPivot() throws {
         let world = World3D()
-        let anchor = world.addBody(.box(width: 0.2, height: 0.2, depth: 0.2),
+        let anchor = try world.addBody(.box(width: 0.2, height: 0.2, depth: 0.2),
                                    at: Vector3(0, 5, 0), kind: .static)
-        let bob = world.addBody(.box(width: 1, height: 0.2, depth: 0.2),
+        let bob = try world.addBody(.box(width: 1, height: 0.2, depth: 0.2),
                                 at: Vector3(1.5, 5, 0))
         world.connect(anchor, bob, .revolute(at: Vector3(0, 5, 0), axis: .unitZ))
 
@@ -152,11 +152,11 @@ struct RigidBody3DTests {
         #expect(abs(bob.position.z) < 1e-3)
     }
 
-    @Test func aDistanceRodHoldsItsLength() {
+    @Test func aDistanceRodHoldsItsLength() throws {
         let world = World3D()
-        let anchor = world.addBody(.sphere(radius: 0.1), at: Vector3(0, 6, 0),
+        let anchor = try world.addBody(.sphere(radius: 0.1), at: Vector3(0, 6, 0),
                                    kind: .static)
-        let bob = world.addBody(.sphere(radius: 0.3), at: Vector3(2, 6, 0))
+        let bob = try world.addBody(.sphere(radius: 0.3), at: Vector3(2, 6, 0))
         world.connect(anchor, bob, .distance(from: Vector3(0, 6, 0),
                                              to: Vector3(2, 6, 0)))
 
@@ -167,10 +167,10 @@ struct RigidBody3DTests {
         #expect(abs(spacing - 2) < 0.1)
     }
 
-    @Test func aGrabPullsABodyTowardItsTarget() {
+    @Test func aGrabPullsABodyTowardItsTarget() throws {
         let world = World3D()
         world.ground = 0
-        let box = world.addBody(.box(width: 1, height: 1, depth: 1),
+        let box = try world.addBody(.box(width: 1, height: 1, depth: 1),
                                 at: Vector3(0, 0.5, 0))
         run(world, steps: 30)   // let it rest
 
@@ -193,11 +193,11 @@ struct RigidBody3DTests {
         #expect(abs(box.position.y - 0.5) < 0.1)   // released, it fell back
     }
 
-    @Test func removingABodyCascadesToItsJoints() {
+    @Test func removingABodyCascadesToItsJoints() throws {
         let world = World3D()
-        let a = world.addBody(.sphere(radius: 0.3), at: Vector3(0, 5, 0),
+        let a = try world.addBody(.sphere(radius: 0.3), at: Vector3(0, 5, 0),
                               kind: .static)
-        let b = world.addBody(.sphere(radius: 0.3), at: Vector3(1, 5, 0))
+        let b = try world.addBody(.sphere(radius: 0.3), at: Vector3(1, 5, 0))
         world.connect(a, b, .ball(at: Vector3(0, 5, 0)))
         #expect(world.joints.count == 1)
 
@@ -207,25 +207,25 @@ struct RigidBody3DTests {
         run(world, steps: 10)   // stepping after the removal is safe
     }
 
-    @Test func massFollowsVolumeAndDensity() {
+    @Test func massFollowsVolumeAndDensity() throws {
         let world = World3D()
-        let ball = world.addBody(.sphere(radius: 0.5), at: Vector3(0, 1, 0))
+        let ball = try world.addBody(.sphere(radius: 0.5), at: Vector3(0, 1, 0))
         // Density 1 is 1000 kg/m³; a 0.5 m sphere is (4/3)π·0.125 m³.
         let expected = 1000.0 * (4.0 / 3.0) * .pi * 0.125
         #expect(abs(ball.mass - expected) / expected < 0.05)
 
-        let heavy = world.addBody(.sphere(radius: 0.5), at: Vector3(3, 1, 0),
+        let heavy = try world.addBody(.sphere(radius: 0.5), at: Vector3(3, 1, 0),
                                   density: 2)
         #expect(abs(heavy.mass - 2 * ball.mass) / ball.mass < 0.01)
 
-        let anchor = world.addBody(.sphere(radius: 0.5), at: Vector3(6, 1, 0),
+        let anchor = try world.addBody(.sphere(radius: 0.5), at: Vector3(6, 1, 0),
                                    kind: .static)
         #expect(anchor.mass == 0)
     }
 
-    @Test func orientationRoundTripsThroughAngleAndAxis() {
+    @Test func orientationRoundTripsThroughAngleAndAxis() throws {
         let world = World3D()
-        let box = world.addBody(.box(width: 1, height: 1, depth: 1),
+        let box = try world.addBody(.box(width: 1, height: 1, depth: 1),
                                 at: Vector3(0, 2, 0),
                                 rotated: 0.7, axis: Vector3(0, 0, 1))
         #expect(abs(box.rotationAngle - 0.7) < 1e-4)
@@ -236,9 +236,9 @@ struct RigidBody3DTests {
         #expect((box.rotationAxis - .unitY).length < 1e-4)
     }
 
-    @Test func orientationIsOneValueThatSetsReadsAndComposes() {
+    @Test func orientationIsOneValueThatSetsReadsAndComposes() throws {
         let world = World3D()
-        let box = world.addBody(.box(width: 1, height: 1, depth: 1),
+        let box = try world.addBody(.box(width: 1, height: 1, depth: 1),
                                 at: Vector3(0, 2, 0))
         #expect(box.rotation == .identity)
 
@@ -262,15 +262,15 @@ struct RigidBody3DTests {
                 || (box.rotation.inverse * Rotation3D(angle: 1.2, axis: .unitY)).angle < 1e-4)
     }
 
-    @Test func identicalWorldsStepIdentically() {
-        func build() -> (World3D, [Body3D]) {
+    @Test func identicalWorldsStepIdentically() throws {
+        func build() throws -> (World3D, [Body3D]) {
             let world = World3D()
             world.ground = 0
             var bodies: [Body3D] = []
             for i in 0 ..< 20 {
                 let x = Double(i % 4) * 0.6 - 1
                 let z = Double((i / 4) % 4) * 0.6 - 1
-                bodies.append(world.addBody(.box(width: 0.5, height: 0.5, depth: 0.5),
+                bodies.append(try world.addBody(.box(width: 0.5, height: 0.5, depth: 0.5),
                                             at: Vector3(x, 1 + Double(i) * 0.6, z),
                                             rotated: Double(i) * 0.3,
                                             axis: Vector3(0.3, 1, 0.2)))
@@ -278,8 +278,8 @@ struct RigidBody3DTests {
             return (world, bodies)
         }
 
-        let (worldA, bodiesA) = build()
-        let (worldB, bodiesB) = build()
+        let (worldA, bodiesA) = try build()
+        let (worldB, bodiesB) = try build()
         run(worldA, steps: 240)
         run(worldB, steps: 240)
 

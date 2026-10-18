@@ -17,12 +17,12 @@ struct PhysicsSnapshotTests {
     /// A heap of boxes dropped into a ring, settled. Deterministic: no
     /// randomness anywhere near a physics test.
     @discardableResult
-    func pile(in world: World3D, count: Int = 12, settle: Int = 600) -> World3D {
+    func pile(in world: World3D, count: Int = 12, settle: Int = 600) throws -> World3D {
         world.ground = 0
         world.restitution = 0.15
         for i in 0 ..< count {
             let a = Double(i) * 0.7
-            world.addBody(.box(width: 0.5, height: 0.5, depth: 0.5),
+            try world.addBody(.box(width: 0.5, height: 0.5, depth: 0.5),
                           at: Vector3(cos(a) * 0.6, 1.0 + Double(i) * 0.6, sin(a) * 0.6),
                           rotated: a, axis: Vector3(0.3, 1, 0.2))
         }
@@ -38,7 +38,7 @@ struct PhysicsSnapshotTests {
     /// zero is the snapshot's doing and not a heap that never moved.
     @Test func aRestoredPileStandsExactlyWhereItWasSaved() throws {
         let world = World3D()
-        pile(in: world)
+        try pile(in: world)
         let saved = world.snapshot()
         let settled = world.bodies.map(\.position)
 
@@ -65,7 +65,7 @@ struct PhysicsSnapshotTests {
     /// re-derived on the way through.
     @Test func aRestoredPileIsAsSettledAsTheOneItCameFrom() throws {
         let world = World3D()
-        pile(in: world)
+        try pile(in: world)
         #expect(world.bodies.allSatisfy { !$0.isAwake }, "the pile has settled")
         let settled = world.bodies.map(\.position)
 
@@ -82,7 +82,7 @@ struct PhysicsSnapshotTests {
         let fresh = World3D()
         fresh.ground = 0
         for position in settled {
-            fresh.addBody(.box(width: 0.5, height: 0.5, depth: 0.5), at: position)
+            try fresh.addBody(.box(width: 0.5, height: 0.5, depth: 0.5), at: position)
         }
         #expect(fresh.bodies.allSatisfy { $0.isAwake },
                 "an ordinarily built pile arrives awake")
@@ -92,9 +92,9 @@ struct PhysicsSnapshotTests {
     /// where the one that was never interrupted does. The twin is the same
     /// flight with a different launch, which lands elsewhere.
     @Test func aRestoredWorldCarriesOnIdentically() throws {
-        func flight(restoring: Bool, push: Double = 3) -> Vector3 {
+        func flight(restoring: Bool, push: Double = 3) throws -> Vector3 {
             let world = World3D()
-            let ball = world.addBody(.sphere(radius: 0.2), at: Vector3(0, 10, 0))
+            let ball = try world.addBody(.sphere(radius: 0.2), at: Vector3(0, 10, 0))
             ball.velocity = Vector3(push, 2, -1)
             ball.angularVelocity = Vector3(0.5, -0.2, 0.9)
             run(world, steps: 30)
@@ -102,11 +102,11 @@ struct PhysicsSnapshotTests {
             run(world, steps: 60)
             return world.bodies[0].position
         }
-        let straight = flight(restoring: false)
-        let viaSnapshot = flight(restoring: true)
+        let straight = try flight(restoring: false)
+        let viaSnapshot = try flight(restoring: true)
         #expect((straight - viaSnapshot).length == 0,
                 "a restored world carries on exactly where it left off")
-        #expect((straight - flight(restoring: false, push: 4)).length > 0.5,
+        #expect(try (straight - flight(restoring: false, push: 4)).length > 0.5,
                 "and the measurement is not blind to a real difference")
     }
 
@@ -115,7 +115,7 @@ struct PhysicsSnapshotTests {
     /// from rest.
     @Test func aMovingBodyCarriesItsMotion() throws {
         let world = World3D()
-        let ball = world.addBody(.sphere(radius: 0.3), at: Vector3(0, 5, 0),
+        let ball = try world.addBody(.sphere(radius: 0.3), at: Vector3(0, 5, 0),
                                  gravityScale: 0)
         ball.velocity = Vector3(2, -3, 1)
         ball.angularVelocity = Vector3(0.4, 1.1, -0.7)
@@ -136,9 +136,9 @@ struct PhysicsSnapshotTests {
     /// door, the same limits, connected at the swung pose, which reads zero.
     @Test func aHingeKeepsItsZeroAcrossASnapshot() throws {
         let world = World3D()
-        let frame = world.addBody(.box(width: 1, height: 0.2, depth: 1), at: .zero,
+        let frame = try world.addBody(.box(width: 1, height: 0.2, depth: 1), at: .zero,
                                   kind: .static)
-        let door = world.addBody(.box(width: 1.4, height: 0.1, depth: 0.6),
+        let door = try world.addBody(.box(width: 1.4, height: 0.1, depth: 0.6),
                                  at: Vector3(1, 0, 0))
         let hinge = world.connect(frame, door,
                                   .revolute(at: .zero, axis: .unitZ,
@@ -154,9 +154,9 @@ struct PhysicsSnapshotTests {
 
         // The counterfactual: connect it where it now stands and zero moves.
         let naive = World3D()
-        let post = naive.addBody(.box(width: 1, height: 0.2, depth: 1), at: .zero,
+        let post = try naive.addBody(.box(width: 1, height: 0.2, depth: 1), at: .zero,
                                  kind: .static)
-        let leaf = naive.addBody(.box(width: 1.4, height: 0.1, depth: 0.6),
+        let leaf = try naive.addBody(.box(width: 1.4, height: 0.1, depth: 0.6),
                                  at: world.bodies[1].position)
         leaf.setRotation(swung, axis: .unitZ)
         let naiveHinge = naive.connect(post, leaf,
@@ -169,11 +169,11 @@ struct PhysicsSnapshotTests {
     /// And the limit moves with the zero: a restored door still stops where the
     /// original one did, rather than opening another whole swing past it.
     @Test func aHingeLimitStillStopsWhereItDid() throws {
-        func openWide(restoring: Bool) -> Double {
+        func openWide(restoring: Bool) throws -> Double {
             let world = World3D()
-            let frame = world.addBody(.box(width: 1, height: 0.2, depth: 1),
+            let frame = try world.addBody(.box(width: 1, height: 0.2, depth: 1),
                                       at: .zero, kind: .static)
-            let door = world.addBody(.box(width: 1.4, height: 0.1, depth: 0.6),
+            let door = try world.addBody(.box(width: 1.4, height: 0.1, depth: 0.6),
                                      at: Vector3(1, 0, 0))
             var hinge = world.connect(frame, door,
                                       .revolute(at: .zero, axis: .unitZ,
@@ -189,8 +189,8 @@ struct PhysicsSnapshotTests {
             run(world, steps: 240)
             return world.bodies[1].rotationAngle
         }
-        let straight = openWide(restoring: false)
-        let viaSnapshot = openWide(restoring: true)
+        let straight = try openWide(restoring: false)
+        let viaSnapshot = try openWide(restoring: true)
         #expect(abs(straight - 1.2) < 0.05, "the door stops at its limit")
         #expect(abs(viaSnapshot - straight) < 0.02,
                 "and a restored door stops in the same place")
@@ -201,9 +201,9 @@ struct PhysicsSnapshotTests {
     @Test func aRodKeepsTheLengthItWasMadeAt() throws {
         let world = World3D()
         world.ground = -6
-        let anchor = world.addBody(.sphere(radius: 0.2), at: Vector3(0, 4, 0),
+        let anchor = try world.addBody(.sphere(radius: 0.2), at: Vector3(0, 4, 0),
                                    kind: .static)
-        let bob = world.addBody(.sphere(radius: 0.3), at: Vector3(1.7, 4, 0))
+        let bob = try world.addBody(.sphere(radius: 0.3), at: Vector3(1.7, 4, 0))
         world.connect(anchor, bob, .distance(from: anchor.position, to: bob.position))
         run(world, steps: 120)
         let spanBefore = (world.bodies[1].position - world.bodies[0].position).length
@@ -220,7 +220,7 @@ struct PhysicsSnapshotTests {
     @Test func aJointToTheGroundCarries() throws {
         let world = World3D()
         world.ground = 0
-        let post = world.addBody(.box(width: 0.3, height: 2, depth: 0.3),
+        let post = try world.addBody(.box(width: 0.3, height: 2, depth: 0.3),
                                  at: Vector3(0, 3, 0))
         world.connect(world.groundBody!, post, .ball(at: Vector3(0, 2, 0)))
         run(world, steps: 120)
@@ -235,7 +235,7 @@ struct PhysicsSnapshotTests {
         // The twin: no joint at all and the post falls to the floor.
         let loose = World3D()
         loose.ground = 0
-        let free = loose.addBody(.box(width: 0.3, height: 2, depth: 0.3),
+        let free = try loose.addBody(.box(width: 0.3, height: 2, depth: 0.3),
                                  at: Vector3(0, 3, 0))
         run(loose, steps: 120)
         #expect(free.position.y < hangingBefore.y - 0.5,
@@ -246,15 +246,15 @@ struct PhysicsSnapshotTests {
     /// saved last and put back once both hinges exist. The twin is the same
     /// pair with the gear left out, where the second wheel never turns.
     @Test func aGearPairCarries() throws {
-        func turn(linked: Bool, restoring: Bool) -> Double {
+        func turn(linked: Bool, restoring: Bool) throws -> Double {
             let world = World3D()
             world.gravity = .zero
-            let frame = world.addBody(.box(width: 4, height: 0.2, depth: 0.2),
+            let frame = try world.addBody(.box(width: 4, height: 0.2, depth: 0.2),
                                       at: .zero, kind: .static)
-            let small = world.addBody(.cylinder(height: 0.2, radius: 0.5),
+            let small = try world.addBody(.cylinder(height: 0.2, radius: 0.5),
                                       at: Vector3(-0.8, 0, 0),
                                       rotated: .pi / 2, axis: .unitX)
-            let big = world.addBody(.cylinder(height: 0.2, radius: 1.0),
+            let big = try world.addBody(.cylinder(height: 0.2, radius: 1.0),
                                     at: Vector3(1.2, 0, 0),
                                     rotated: .pi / 2, axis: .unitX)
             world.ignoreCollisions(between: .default, and: .default)
@@ -274,10 +274,10 @@ struct PhysicsSnapshotTests {
             // which is what the gear does or does not carry over to it.
             return abs(follower.angle)
         }
-        #expect(turn(linked: true, restoring: false) > 0.5, "the gear pair turns")
-        #expect(turn(linked: false, restoring: true) < 0.05,
+        #expect(try turn(linked: true, restoring: false) > 0.5, "the gear pair turns")
+        #expect(try turn(linked: false, restoring: true) < 0.05,
                 "without a gear the second wheel sits still")
-        #expect(turn(linked: true, restoring: true) > 0.5,
+        #expect(try turn(linked: true, restoring: true) > 0.5,
                 "and a restored gear pair still turns")
     }
 
@@ -298,7 +298,7 @@ struct PhysicsSnapshotTests {
                             angularDrag: 0.2, flow: Vector3(0.4, 0, -0.1),
                             waves: Water.Waves(amplitude: 0.3, wavelength: 7,
                                                speed: 1.1, heading: 0.6))
-        world.addBody(.sphere(radius: 0.4), at: Vector3(0, 6, 0), density: 0.4)
+        try world.addBody(.sphere(radius: 0.4), at: Vector3(0, 6, 0), density: 0.4)
         run(world, steps: 60)
         let phase = world.waterPhase
 
@@ -322,9 +322,9 @@ struct PhysicsSnapshotTests {
     @Test func whoNamedTheirBounceCarries() throws {
         let world = World3D(maxBodies: 256)
         world.restitution = 0.3
-        world.addBody(.sphere(radius: 0.4), at: Vector3(0, 6, 0))
-        world.addBody(.sphere(radius: 0.4), at: Vector3(2, 6, 0), restitution: 0.8)
-        world.addBody(.sphere(radius: 0.4), at: Vector3(4, 6, 0), restitution: 0.3)
+        try world.addBody(.sphere(radius: 0.4), at: Vector3(0, 6, 0))
+        try world.addBody(.sphere(radius: 0.4), at: Vector3(2, 6, 0), restitution: 0.8)
+        try world.addBody(.sphere(radius: 0.4), at: Vector3(4, 6, 0), restitution: 0.3)
 
         let fresh = World3D(maxBodies: 256)
         try fresh.restore(world.snapshot())
@@ -343,11 +343,11 @@ struct PhysicsSnapshotTests {
     /// crate restored from a snapshot taken with the water turned off, which
     /// sinks past the level the first one holds.
     @Test func aFloatingSceneStaysAfloatAcrossASnapshot() throws {
-        func settle(withWater: Bool) -> Double {
+        func settle(withWater: Bool) throws -> Double {
             let world = World3D()
             world.ground = -12
             if withWater { world.water = Water(level: 0) }
-            world.addBody(.box(width: 1, height: 1, depth: 1),
+            try world.addBody(.box(width: 1, height: 1, depth: 1),
                           at: Vector3(0, 3, 0), density: 0.4)
             run(world, steps: 400)
             let restored = World3D()
@@ -355,20 +355,20 @@ struct PhysicsSnapshotTests {
             run(restored, steps: 200)
             return restored.bodies[0].position.y
         }
-        #expect(settle(withWater: true) > -0.6, "the crate is still floating")
-        #expect(settle(withWater: false) < -10, "the dry twin is on the bottom")
+        #expect(try settle(withWater: true) > -0.6, "the crate is still floating")
+        #expect(try settle(withWater: false) < -10, "the dry twin is on the bottom")
     }
 
     /// The collision-group table carries: the names in their solver order and
     /// every rule written about them. The twin is a snapshot taken before the
     /// rule, whose beads land on the tray instead of falling through it.
     @Test func collisionGroupsAndTheirRulesCarry() throws {
-        func drop(writingTheRule: Bool) -> Double {
+        func drop(writingTheRule: Bool) throws -> Double {
             let world = World3D()
             world.ground = -8
-            world.addBody(.box(width: 4, height: 0.3, depth: 4), at: .zero,
+            try world.addBody(.box(width: 4, height: 0.3, depth: 4), at: .zero,
                           kind: .static, group: "tray")
-            world.addBody(.sphere(radius: 0.3), at: Vector3(0, 3, 0), group: "beads")
+            try world.addBody(.sphere(radius: 0.3), at: Vector3(0, 3, 0), group: "beads")
             if writingTheRule { world.ignoreCollisions(between: "beads", and: "tray") }
             let saved = world.snapshot()
 
@@ -379,8 +379,8 @@ struct PhysicsSnapshotTests {
             run(fresh, steps: 400)
             return fresh.bodies[1].position.y
         }
-        #expect(drop(writingTheRule: false) > -0.5, "the bead rests on the tray")
-        #expect(drop(writingTheRule: true) < -7, "the rule lets it through")
+        #expect(try drop(writingTheRule: false) > -0.5, "the bead rests on the tray")
+        #expect(try drop(writingTheRule: true) < -7, "the rule lets it through")
     }
 
     /// Every per-body parameter comes back, including the ones only the solver knows
@@ -388,15 +388,15 @@ struct PhysicsSnapshotTests {
     @Test func everyBodyParameterCarries() throws {
         let world = World3D()
         world.ground = 0
-        let crate = world.addBody(.box(width: 1, height: 1, depth: 1),
+        let crate = try world.addBody(.box(width: 1, height: 1, depth: 1),
                                   at: Vector3(0, 4, 0), density: 2.5,
                                   friction: 0.85, restitution: 0.33,
                                   freedom: .upright, gravityScale: 0.4,
                                   checksPath: true, group: "cargo")
         crate.buoyancyScale = 1.7
-        let sensor = world.addBody(.sphere(radius: 1), at: Vector3(3, 1, 0),
+        let sensor = try world.addBody(.sphere(radius: 1), at: Vector3(3, 1, 0),
                                    isSensor: true)
-        let wall = world.addBody(.box(width: 2, height: 2, depth: 0.2),
+        let wall = try world.addBody(.box(width: 2, height: 2, depth: 0.2),
                                  at: Vector3(-3, 1, 0), kind: .static)
         _ = sensor
         _ = wall
@@ -425,10 +425,10 @@ struct PhysicsSnapshotTests {
         // The values rather than the body: a body holds its world unowned, so
         // it cannot outlive the world this function builds.
         func settle(restoring: Bool, keel: Vector3 = Vector3(0, -0.4, 0))
-            -> (position: Vector3, mass: Double, handed: Vector3?) {
+            throws -> (position: Vector3, mass: Double, handed: Vector3?) {
             let world = World3D()
             world.ground = 0
-            _ = world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(0, 1.5, 0),
+            _ = try world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(0, 1.5, 0),
                               kind: .dynamic, isSensor: false, rotated: 0.9, axis: .unitZ,
                               density: 1, friction: 0.5, restitution: nil,
                               mass: 10, centerOfMass: keel)
@@ -438,13 +438,13 @@ struct PhysicsSnapshotTests {
             let body = world.bodies[0]
             return (body.position, body.mass, body.handedCenterOfMass)
         }
-        let restored = settle(restoring: true)
+        let restored = try settle(restoring: true)
         #expect(abs(restored.mass - 10) < 1e-6, "the handed mass came back")
         #expect(restored.handed == Vector3(0, -0.4, 0), "and where the weight hangs")
-        let straight = settle(restoring: false)
+        let straight = try settle(restoring: false)
         #expect((straight.position - restored.position).length < 1e-6,
                 "the crate settles where it would have with no snapshot between")
-        #expect((straight.position - settle(restoring: false, keel: .zero).position).length > 0.01,
+        #expect(try (straight.position - settle(restoring: false, keel: .zero).position).length > 0.01,
                 "and the measurement is not blind to where the weight hangs")
     }
 
@@ -470,11 +470,11 @@ struct PhysicsSnapshotTests {
                              rotated: 0.5, axis: .unitZ, density: 6)]),
         ]
         for (i, collider) in colliders.enumerated() {
-            world.addBody(collider, at: Vector3(Double(i) * 3, 5, 0),
+            try world.addBody(collider, at: Vector3(Double(i) * 3, 5, 0),
                           gravityScale: 0)
         }
-        world.addBody(.mesh(sculpted), at: Vector3(0, 0, 12), kind: .static)
-        world.addBody(.heightfield(field, width: 6, depth: 6, height: 2),
+        try world.addBody(.mesh(sculpted), at: Vector3(0, 0, 12), kind: .static)
+        try world.addBody(.heightfield(field, width: 6, depth: 6, height: 2),
                       at: Vector3(0, 0, -12), kind: .static)
         let masses = world.bodies.map(\.mass)
         let positions = world.bodies.map(\.position)
@@ -489,8 +489,8 @@ struct PhysicsSnapshotTests {
         // The static kinds are checked by what they carry: a ball dropped onto
         // the restored plate and one dropped onto the restored terrain both
         // come to rest above them.
-        let onPlate = world.addBody(.sphere(radius: 0.2), at: Vector3(0, 3, 12))
-        let onTerrain = world.addBody(.sphere(radius: 0.2), at: Vector3(0, 4, -12))
+        let onPlate = try world.addBody(.sphere(radius: 0.2), at: Vector3(0, 3, 12))
+        let onTerrain = try world.addBody(.sphere(radius: 0.2), at: Vector3(0, 4, -12))
         run(world, steps: 300)
         #expect(onPlate.position.y > 0.3, "the restored mesh plate holds it up")
         #expect(onTerrain.position.y > 0.3, "and so does the restored terrain")
@@ -502,7 +502,7 @@ struct PhysicsSnapshotTests {
     /// built from the file stands where the one in memory does.
     @Test func aFileRoundTripIsTheSameSnapshot() throws {
         let world = World3D()
-        pile(in: world, count: 6, settle: 400)
+        try pile(in: world, count: 6, settle: 400)
         let saved = world.snapshot()
         let settled = world.bodies.map(\.position)
 
@@ -537,7 +537,7 @@ struct PhysicsSnapshotTests {
 
         // The refusal is about bytes, not poses, so the pile need not settle.
         let world = World3D()
-        pile(in: world, count: 4, settle: 0)
+        try pile(in: world, count: 4, settle: 0)
         let saved = world.snapshot()
         let settled = world.bodies.map(\.position)
 
@@ -564,7 +564,7 @@ struct PhysicsSnapshotTests {
     @Test func aDamagedSnapshotIsRefusedRatherThanHalfRead() throws {
         // The checksum is what refuses the damage, so the pile need not settle.
         let world = World3D()
-        pile(in: world, count: 5, settle: 0)
+        try pile(in: world, count: 5, settle: 0)
         let saved = world.snapshot()
         let settled = world.bodies.map(\.position)
 
@@ -594,7 +594,7 @@ struct PhysicsSnapshotTests {
     /// packs less well and still round-trips exactly.
     @Test func aSnapshotIsPackedAndStillExact() throws {
         let world = World3D()
-        pile(in: world, count: 40, settle: 400)
+        try pile(in: world, count: 40, settle: 400)
         let saved = world.snapshot()
         let loose = 40 * 130
         #expect(saved.data.count < loose / 2,
@@ -611,7 +611,7 @@ struct PhysicsSnapshotTests {
         varied.ground = 0
         for i in 0 ..< 40 {
             let t = Double(i)
-            varied.addBody(.box(width: 0.3 + t * 0.017, height: 0.41, depth: 0.29),
+            try varied.addBody(.box(width: 0.3 + t * 0.017, height: 0.41, depth: 0.29),
                            at: Vector3(sin(t * 1.7) * 9.13, 1.37 + t * 0.61,
                                        cos(t * 2.3) * 7.41),
                            rotated: t * 0.37, axis: Vector3(0.31, 0.83, 0.46))
@@ -632,7 +632,7 @@ struct PhysicsSnapshotTests {
     @Test func aSoftBodyIsLeftOutRatherThanHalfSaved() throws {
         let world = World3D()
         world.ground = 0
-        world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(0, 1, 0))
+        try world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(0, 1, 0))
         try world.addVehicle(.box(width: 1.8, height: 0.6, depth: 4),
                          at: Vector3(6, 1, 0),
                          wheels: [
@@ -641,7 +641,7 @@ struct PhysicsSnapshotTests {
                             .wheel(at: Vector3(0.9, -0.1, -1.3), driven: true),
                             .wheel(at: Vector3(-0.9, -0.1, -1.3), driven: true),
                          ])
-        world.addCharacter(radius: 0.3, height: 1.8, at: Vector3(-6, 2, 0))
+        try world.addCharacter(radius: 0.3, height: 1.8, at: Vector3(-6, 2, 0))
         try world.addSoftBody(from: Mesh.plane(width: 2, depth: 2, segments: 6),
                           at: Vector3(0, 4, 6))
         #expect(world.bodies.count == 2, "the chassis is one of the world's bodies")
@@ -663,14 +663,14 @@ struct PhysicsSnapshotTests {
         let source = World3D()
         source.ground = 0
         for i in 0 ..< 3 {
-            source.addBody(.sphere(radius: 0.3), at: Vector3(Double(i), 1, 0))
+            try source.addBody(.sphere(radius: 0.3), at: Vector3(Double(i), 1, 0))
         }
         let saved = source.snapshot()
 
         let busy = World3D()
         busy.ground = 5
         for i in 0 ..< 9 {
-            busy.addBody(.box(width: 1, height: 1, depth: 1),
+            try busy.addBody(.box(width: 1, height: 1, depth: 1),
                          at: Vector3(0, Double(i) + 6, 0))
         }
         try busy.restore(saved)
@@ -683,8 +683,8 @@ struct PhysicsSnapshotTests {
     @Test func aSnapshotSaysWhatItHolds() throws {
         let world = World3D()
         world.ground = 0
-        let a = world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(0, 3, 0))
-        let b = world.addBody(.sphere(radius: 0.4), at: Vector3(0, 5, 0))
+        let a = try world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(0, 3, 0))
+        let b = try world.addBody(.sphere(radius: 0.4), at: Vector3(0, 5, 0))
         world.connect(a, b, .distance(from: a.position, to: b.position))
         let saved = world.snapshot()
         #expect(saved.bodyCount == 2)
@@ -697,7 +697,7 @@ struct PhysicsSnapshotTests {
     @Test func aGrabIsNotSaved() throws {
         let world = World3D()
         world.ground = 0
-        let crate = world.addBody(.box(width: 1, height: 1, depth: 1),
+        let crate = try world.addBody(.box(width: 1, height: 1, depth: 1),
                                   at: Vector3(0, 2, 0))
         world.grab(crate, at: crate.position)
         #expect(world.joints.count == 1)
@@ -728,7 +728,7 @@ struct SnapshotTierTests {
     @Test func aWalkingFigureComesBackWalking() throws {
         let world = World3D()
         world.ground = 0
-        let walker = world.addCharacter(radius: 0.3, height: 1.8, at: Vector3(0, 2, 0))
+        let walker = try world.addCharacter(radius: 0.3, height: 1.8, at: Vector3(0, 2, 0))
         walker.walk(at: Vector3(1.5, 0, 0))
         run(world, steps: 120)
         let mid = walker.position
@@ -753,7 +753,7 @@ struct SnapshotTierTests {
         // position rather than about carried speed.)
         let idle = World3D()
         idle.ground = 0
-        let sitting = idle.addCharacter(radius: 0.3, height: 1.8, at: mid)
+        let sitting = try idle.addCharacter(radius: 0.3, height: 1.8, at: mid)
         run(idle, steps: 60)
         #expect(sitting.position.x < walker.position.x - 1,
                 "and the measurement is not blind to a figure that stayed put")
@@ -765,7 +765,7 @@ struct SnapshotTierTests {
     @Test func everyCharacterParameterCarries() throws {
         let world = World3D()
         world.ground = 0
-        let walker = world.addCharacter(radius: 0.42, height: 1.55,
+        let walker = try world.addCharacter(radius: 0.42, height: 1.55,
                                         at: Vector3(1, 2, -3),
                                         stepHeight: 0.61,
                                         stickToFloorDistance: 0.34,
@@ -790,7 +790,7 @@ struct SnapshotTierTests {
 
         // The twin: a default character shares none of those numbers.
         let plain = World3D()
-        let bare = plain.addCharacter(at: .zero)
+        let bare = try plain.addCharacter(at: .zero)
         #expect(bare.radius != back.radius)
         #expect(bare.stepHeight != back.stepHeight)
         #expect(bare.maxSlope != back.maxSlope)
@@ -1117,10 +1117,10 @@ struct SnapshotTierTests {
     @Test func aWorldOfEveryTierRoundTripsToTheSameBytes() throws {
         let world = World3D()
         _ = try #require(machine(in: world))
-        world.addCharacter(radius: 0.33, height: 1.7, at: Vector3(-6, 2, 0))
+        try world.addCharacter(radius: 0.33, height: 1.7, at: Vector3(-6, 2, 0))
         _ = try world.addRagdoll(from: try Ragdoll3DTests.figure(),
                                           at: Vector3(4, 2, 0))
-        world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(0, 6, 3))
+        try world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(0, 6, 3))
         run(world, steps: 120)
 
         try world.restore(world.snapshot())
@@ -1150,21 +1150,21 @@ struct SnapshotAssetTests {
     /// heap of crates settled on top. A test that only counts what comes back
     /// passes `settle: 0`, since the heap's poses change nothing it reads.
     @discardableResult
-    func scenery(in world: World3D, named: Bool, settle: Int = 400) -> World3D {
+    func scenery(in world: World3D, named: Bool, settle: Int = 400) throws -> World3D {
         world.ground = 0
         // Standing on the floor rather than sunk into it, so anything landing
         // on the terrain is above where the bare floor would have caught it.
-        let island = world.addBody(.heightfield(Self.terrain, width: 40, depth: 40,
+        let island = try world.addBody(.heightfield(Self.terrain, width: 40, depth: 40,
                                                 height: 6),
                                    at: Vector3(0, 0, 0), kind: .static)
-        let sculpture = world.addBody(.mesh(Self.knot), at: Vector3(0, 11, 0),
+        let sculpture = try world.addBody(.mesh(Self.knot), at: Vector3(0, 11, 0),
                                       kind: .static)
         if named {
             island.assetName = "island"
             sculpture.assetName = "knot"
         }
         for i in 0 ..< 20 {
-            world.addBody(.box(width: 0.4, height: 0.4, depth: 0.4),
+            try world.addBody(.box(width: 0.4, height: 0.4, depth: 0.4),
                           at: Vector3(Double(i % 5) * 0.5 - 1,
                                       9 + Double(i / 5) * 0.5, 0))
         }
@@ -1185,11 +1185,11 @@ struct SnapshotAssetTests {
     /// is the identical scene saved whole, which is the size of its scenery.
     @Test func namingTheSceneryIsTheDifferenceBetweenAKilobyteAndAHundred() throws {
         let whole = World3D()
-        scenery(in: whole, named: false)
+        try scenery(in: whole, named: false)
         let held = whole.snapshot()
 
         let world = World3D()
-        scenery(in: world, named: true)
+        try scenery(in: world, named: true)
         let named = world.snapshot()
 
         #expect(held.assetNames.isEmpty, "a snapshot that holds everything names nothing")
@@ -1211,18 +1211,18 @@ struct SnapshotAssetTests {
     /// where it should have landed.
     @Test func namedSceneryStillHoldsThingsUp() throws {
         let world = World3D()
-        scenery(in: world, named: true)
+        try scenery(in: world, named: true)
         let saved = world.snapshot()
 
         let back = World3D()
         try back.restore(saved, resolving: resolver)
-        let onTerrain = back.addBody(.sphere(radius: 0.2), at: Vector3(4, 12, 4))
+        let onTerrain = try back.addBody(.sphere(radius: 0.2), at: Vector3(4, 12, 4))
         run(back, steps: 240)
 
         let bare = World3D()
         bare.ground = 0
         try bare.restore(saved)      // no resolver: the scenery is left out
-        let falling = bare.addBody(.sphere(radius: 0.2), at: Vector3(4, 12, 4))
+        let falling = try bare.addBody(.sphere(radius: 0.2), at: Vector3(4, 12, 4))
         run(bare, steps: 240)
 
         #expect(bare.bodies.count == back.bodies.count - 2,
@@ -1237,7 +1237,7 @@ struct SnapshotAssetTests {
     /// resolver that knows both names and answers each with the right kind.
     @Test func anUnknownNameCostsOneBodyRatherThanTheWholeWorld() throws {
         let world = World3D()
-        scenery(in: world, named: true, settle: 0)
+        try scenery(in: world, named: true, settle: 0)
         let saved = world.snapshot()
         let crates = world.bodies.count - 2
 
@@ -1353,7 +1353,7 @@ struct SnapshotAssetTests {
         let cloth = try world.addSoftBody(from: Self.sheet,
                                                    at: Vector3(0, 3, 0))
         cloth.assetName = "sheet"
-        world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(4, 1, 0))
+        try world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(4, 1, 0))
         run(world, steps: 120)
 
         let back = World3D()
@@ -1368,7 +1368,7 @@ struct SnapshotAssetTests {
     /// back.
     @Test func aNamedWorldSurvivesAFile() throws {
         let world = World3D()
-        scenery(in: world, named: true)
+        try scenery(in: world, named: true)
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("ollin-named-\(UUID().uuidString).physics")
         defer { try? FileManager.default.removeItem(at: url) }
@@ -1390,7 +1390,7 @@ struct SnapshotAssetTests {
     /// table and all.
     @Test func aNamedWorldRoundTripsToTheSameBytes() throws {
         let world = World3D()
-        scenery(in: world, named: true)
+        try scenery(in: world, named: true)
         try world.restore(world.snapshot(), resolving: resolver)
         let settled = world.snapshot()
         try world.restore(settled, resolving: resolver)

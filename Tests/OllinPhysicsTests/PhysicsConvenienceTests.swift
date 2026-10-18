@@ -31,15 +31,15 @@ struct PhysicsConvenienceTests {
         var oneCall = true
         var world: World3D!
         override var canvasSize: CanvasSize { .square(256) }
-        override func setup() {
+        override func setup() throws {
             noLoop()
             world = World3D()
-            world.addBody(.box(width: 1, height: 1, depth: 1),
+            try world.addBody(.box(width: 1, height: 1, depth: 1),
                           at: Vector3(-2, 0.5, 0), kind: .static)
-            world.addBody(.sphere(radius: 0.5), at: Vector3(0, 0.5, 0), kind: .static)
-            world.addBody(.capsule(height: 0.8, radius: 0.3),
+            try world.addBody(.sphere(radius: 0.5), at: Vector3(0, 0.5, 0), kind: .static)
+            try world.addBody(.capsule(height: 0.8, radius: 0.3),
                           at: Vector3(2, 0.7, 0), kind: .static)
-            world.addBody(.cylinder(height: 1, radius: 0.4),
+            try world.addBody(.cylinder(height: 1, radius: 0.4),
                           at: Vector3(0, 0.5, -2), kind: .static)
         }
         override func draw() {
@@ -125,7 +125,7 @@ struct PhysicsConvenienceTests {
         sketch.height = 400
         sketch.perspective(eye: Vector3(0, 0, 6), target: .zero)
         let world = World3D()
-        world.addBody(.box(width: 1, height: 1, depth: 1), at: .zero, kind: .dynamic)
+        try world.addBody(.box(width: 1, height: 1, depth: 1), at: .zero, kind: .dynamic)
 
         let over = try #require(sketch.project(.zero))
         sketch.mouseX = over.x
@@ -152,7 +152,7 @@ struct PhysicsConvenienceTests {
         sketch.height = 400
         sketch.perspective(eye: Vector3(0, 0, 6), target: .zero)
         let world = World3D()
-        world.addBody(.box(width: 1, height: 1, depth: 1), at: .zero, kind: .dynamic)
+        try world.addBody(.box(width: 1, height: 1, depth: 1), at: .zero, kind: .dynamic)
 
         // Press on empty sky: nothing grabbed, and the miss is remembered.
         sketch.mouseX = 5

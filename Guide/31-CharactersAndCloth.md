@@ -15,7 +15,7 @@ Everything in [Chapter 30](30-WorldsWithWeight.md) was something you watch. A **
 A body with a capsule collider, pushed by forces, does not work for this. A body goes wherever the simulation sends it. Shove it and it tips over, and land it awkwardly and it rolls away. A character is a different kind of thing. It has a shape and it collides, but nothing tumbles it or knocks it down. You hand it a direction and it goes. Game engines call this a character controller, and it is how the people in most 3D games move around.
 
 ```swift
-walker = world.addCharacter(radius: 0.28, height: 1.7, at: Vector3(-1.6, 0.1, 0))
+walker = try world.addCharacter(radius: 0.28, height: 1.7, at: Vector3(-1.6, 0.1, 0))
 ```
 
 Steering it is a poll in `draw()`, like the mouse. `moveAxis` reads the W, A, S, and D keys and the arrows as one direction. Each axis runs from -1 to 1, and up on the keys is `(0, -1)`, the way up is on the canvas. `isKeyDown` asks whether one key is held right now, where [Chapter 4](04-Randomness.md)'s `keyPressed()` ran once per press. The space bar is the character `" "`:
@@ -239,13 +239,13 @@ final class Yard: Sketch {
     let timber = Color(hex: 0x8A6A4A)
     let teal = Color(hex: 0x3E8E86)
 
-    override func setup() {
+    override func setup() throws {
         world.ground = 0
 
         // A floor body for the drawing loop to draw. `world.ground` already
         // holds everything up, but it stays out of `world.bodies`, so the
         // loop below would never see it.
-        let floor = world.addBody(.box(width: 34, height: 0.4, depth: 34),
+        let floor = try world.addBody(.box(width: 34, height: 0.4, depth: 34),
                                   at: Vector3(0, -0.2, 0), kind: .static)
         floor.userData = Color(hex: 0x2C3340)
 
@@ -267,7 +267,7 @@ final class Yard: Sketch {
                                  mass: 1400, engineTorque: 520, topSpeed: 16,
                                  rotated: .pi, axis: .unitY)
 
-        pacer = world.addCharacter(radius: 0.3, height: 1.75, at: Vector3(-4.4, 1.0, 0.4))
+        pacer = try world.addCharacter(radius: 0.3, height: 1.75, at: Vector3(-4.4, 1.0, 0.4))
 
         // A soft body is its mesh. Pinning the two top corners is what turns a
         // sheet into a banner rather than a dropped cloth.
@@ -276,13 +276,13 @@ final class Yard: Sketch {
                                    pinned: { $0.z < -1.0 && abs($0.x) > 2.2 })
 
         for post in [-3.7, 1.3] {
-            let p = world.addBody(.box(width: 0.22, height: 3.4, depth: 0.22),
+            let p = try world.addBody(.box(width: 0.22, height: 3.4, depth: 0.22),
                                   at: Vector3(post, 1.7, -4.2), kind: .static)
             p.userData = timber
         }
 
         for i in 0 ..< 9 {
-            let crate = world.addBody(.box(width: 0.7, height: 0.7, depth: 0.7),
+            let crate = try world.addBody(.box(width: 0.7, height: 0.7, depth: 0.7),
                                       at: Vector3(-0.6 + Double(i % 3) * 0.75,
                                                   0.4 + Double(i / 3) * 0.72, -1.0))
             crate.userData = clay

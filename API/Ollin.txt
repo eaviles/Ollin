@@ -5258,11 +5258,11 @@ struct Mesh: Sendable
   var uvs: [Vector2] { get set }
   var volume: Double { get }
 struct MeshInstance: Sendable
-  init(position: Vector3 = default, rotation: Vector3 = default, scale: Double, color: Color? = default)
-  init(position: Vector3 = default, rotation: Vector3 = default, scale: Vector3 = default, color: Color? = default)
+  init(position: Vector3 = default, rotation: Rotation3D = default, scale: Double, color: Color? = default)
+  init(position: Vector3 = default, rotation: Rotation3D = default, scale: Vector3 = default, color: Color? = default)
   var color: Color? { get set }
   var position: Vector3 { get set }
-  var rotation: Vector3 { get set }
+  var rotation: Rotation3D { get set }
   var scale: Vector3 { get set }
 struct MeshMaterial: Sendable
   init(baseColor: Color = default, texture: Image? = default, wrap: TextureWrap = default, normalTexture: Image? = default, normalScale: Double = default, metallicRoughnessTexture: Image? = default, occlusionTexture: Image? = default, occlusionStrength: Double = default, emissiveTexture: Image? = default, emissiveColor: Color = default, emissiveIntensity: Double = default, heightTexture: Image? = default, heightScale: Double = default, triplanarScale: Double = default, detailTexture: Image? = default, detailNormalTexture: Image? = default, detailScale: Double = default, detailAmount: Double = default, metallic: Double = default, roughness: Double = default, opacity: Double = default, ior: Double = default, clearcoat: Double = default, clearcoatRoughness: Double = default)
@@ -6030,6 +6030,7 @@ struct Rotation3D: Decodable, Encodable, Equatable, Hashable, Sendable
   static func aboutX(_: Double) -> Rotation3D
   static func aboutY(_: Double) -> Rotation3D
   static func aboutZ(_: Double) -> Rotation3D
+  static func euler(x: Double = default, y: Double = default, z: Double = default) -> Rotation3D
   static let identity: Rotation3D
   var angle: Double { get }
   var axis: Vector3 { get }
@@ -6698,7 +6699,7 @@ struct SurfaceChemistry: Equatable, Sendable
   var secondSpread: Double { get set }
   var spread: Double { get set }
 struct SurfaceSample: Equatable, Sendable
-  func alignment(spin: Double = default) -> Vector3
+  func alignment(spin: Double = default) -> Rotation3D
   init(position: Vector3, normal: Vector3, uv: Vector2, triangle: Int, barycentric: Vector3)
   var barycentric: Vector3 { get set }
   var normal: Vector3 { get set }

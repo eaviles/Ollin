@@ -935,6 +935,16 @@ bool cjolt_world_group_collision(const CJoltWorld *world, int32_t groupA,
     return world->objectPairs.groups.collides(groupA, groupB);
 }
 
+int32_t cjolt_world_body_count(const CJoltWorld *world) {
+    if (world == nullptr) { return 0; }
+    return int32_t(world->physics.GetNumBodies());
+}
+
+int32_t cjolt_world_max_bodies(const CJoltWorld *world) {
+    if (world == nullptr) { return 0; }
+    return int32_t(world->physics.GetMaxBodies());
+}
+
 // Bodies --------------------------------------------------------------------
 
 CJoltBodyID cjolt_body_create(CJoltWorld *world, const CJoltBodyDesc *desc) {

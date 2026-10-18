@@ -31,14 +31,14 @@ struct JointKind3DTests {
 
     /// A body threaded onto a track and a loose twin, both thrown the same way:
     /// the loose one leaves, the threaded one is still on its circle.
-    @Test func aTrackHoldsItsBodyOnTheCurve() {
+    @Test func aTrackHoldsItsBodyOnTheCurve() throws {
         let world = World3D()
         world.ground = nil
-        let rails = world.addBody(.box(width: 0.2, height: 0.2, depth: 0.2),
+        let rails = try world.addBody(.box(width: 0.2, height: 0.2, depth: 0.2),
                                   at: .zero, kind: .static)
-        let loose = world.addBody(.box(width: 0.6, height: 0.4, depth: 0.6),
+        let loose = try world.addBody(.box(width: 0.6, height: 0.4, depth: 0.6),
                                   at: Vector3(4, 0, 0))
-        let railed = world.addBody(.box(width: 0.6, height: 0.4, depth: 0.6),
+        let railed = try world.addBody(.box(width: 0.6, height: 0.4, depth: 0.6),
                                    at: Vector3(4, 0, 0))
         world.connect(rails, railed, .path(through: ring(radius: 4), looping: true))
         for body in [loose, railed] { body.velocity = Vector3(0, -3, 6) }
@@ -52,12 +52,12 @@ struct JointKind3DTests {
 
     /// Driven along its track at a known rate, a body's progress is the
     /// distance it has covered over the length of the whole curve.
-    @Test func progressCountsTheDistanceCovered() {
+    @Test func progressCountsTheDistanceCovered() throws {
         let world = World3D()
         world.ground = nil
-        let rails = world.addBody(.box(width: 0.2, height: 0.2, depth: 0.2),
+        let rails = try world.addBody(.box(width: 0.2, height: 0.2, depth: 0.2),
                                   at: .zero, kind: .static)
-        let cart = world.addBody(.box(width: 0.6, height: 0.4, depth: 0.6),
+        let cart = try world.addBody(.box(width: 0.6, height: 0.4, depth: 0.6),
                                  at: Vector3(4, 0, 0), gravityScale: 0)
         let ride = world.connect(rails, cart,
                                  .path(through: ring(radius: 4), looping: true))
@@ -68,13 +68,13 @@ struct JointKind3DTests {
     }
 
     /// A looping track wraps back past its end; an open one stops there.
-    @Test func aLoopingTrackWrapsAndAnOpenOneStops() {
-        func finalProgress(looping: Bool) -> Double {
+    @Test func aLoopingTrackWrapsAndAnOpenOneStops() throws {
+        func finalProgress(looping: Bool) throws -> Double {
             let world = World3D()
             world.ground = nil
-            let rails = world.addBody(.box(width: 0.2, height: 0.2, depth: 0.2),
+            let rails = try world.addBody(.box(width: 0.2, height: 0.2, depth: 0.2),
                                       at: .zero, kind: .static)
-            let cart = world.addBody(.box(width: 0.6, height: 0.4, depth: 0.6),
+            let cart = try world.addBody(.box(width: 0.6, height: 0.4, depth: 0.6),
                                      at: Vector3(4, 0, 0), gravityScale: 0)
             let ride = world.connect(rails, cart,
                                      .path(through: ring(radius: 4), looping: looping))
@@ -82,18 +82,18 @@ struct JointKind3DTests {
             run(world, steps: 360)
             return ride.progress
         }
-        #expect(finalProgress(looping: false) > 0.99, "an open track ends at its end")
-        let looped = finalProgress(looping: true)
+        #expect(try finalProgress(looping: false) > 0.99, "an open track ends at its end")
+        let looped = try finalProgress(looping: true)
         #expect(looped >= 0 && looped < 0.9, "a loop is round again and past 0")
     }
 
     /// The position motor seeks a fraction of the whole curve and holds there.
-    @Test func aTrackMotorSeeksAFractionOfTheCurve() {
+    @Test func aTrackMotorSeeksAFractionOfTheCurve() throws {
         let world = World3D()
         world.ground = nil
-        let rails = world.addBody(.box(width: 0.2, height: 0.2, depth: 0.2),
+        let rails = try world.addBody(.box(width: 0.2, height: 0.2, depth: 0.2),
                                   at: .zero, kind: .static)
-        let cart = world.addBody(.box(width: 0.6, height: 0.4, depth: 0.6),
+        let cart = try world.addBody(.box(width: 0.6, height: 0.4, depth: 0.6),
                                  at: Vector3(4, 0, 0), gravityScale: 0)
         let ride = world.connect(rails, cart, .path(through: ring(radius: 4)))
         ride.drive(to: 0.5, frequency: 3)
@@ -105,13 +105,13 @@ struct JointKind3DTests {
 
     /// The same ride with the track turning the body and without it: only the
     /// aligned one comes round facing a different way.
-    @Test func alignmentDecidesWhetherTheBodyTurnsWithTheTrack() {
-        func turn(_ alignment: JointKind3D.PathAlignment) -> Double {
+    @Test func alignmentDecidesWhetherTheBodyTurnsWithTheTrack() throws {
+        func turn(_ alignment: JointKind3D.PathAlignment) throws -> Double {
             let world = World3D()
             world.ground = nil
-            let rails = world.addBody(.box(width: 0.2, height: 0.2, depth: 0.2),
+            let rails = try world.addBody(.box(width: 0.2, height: 0.2, depth: 0.2),
                                       at: .zero, kind: .static)
-            let cart = world.addBody(.box(width: 0.6, height: 0.4, depth: 0.6),
+            let cart = try world.addBody(.box(width: 0.6, height: 0.4, depth: 0.6),
                                      at: Vector3(4, 0, 0), gravityScale: 0)
             let ride = world.connect(rails, cart,
                                      .path(through: ring(radius: 4), looping: true,
@@ -120,8 +120,8 @@ struct JointKind3DTests {
             run(world, steps: 90)
             return cart.rotationAngle
         }
-        #expect(turn(.free) < 0.01, "left free, the body never turns")
-        #expect(turn(.followsPath) > 1.5, "following the track, it swings round")
+        #expect(try turn(.free) < 0.01, "left free, the body never turns")
+        #expect(try turn(.followsPath) > 1.5, "following the track, it swings round")
     }
 
     /// A track drawn as a flat contour lands in the world's ground plane: the
@@ -141,12 +141,12 @@ struct JointKind3DTests {
 
     /// Two points on top of each other say nothing about a curve, so a track
     /// that has no length is refused rather than silently drawn as a knot.
-    @Test func aTrackNeedsTwoPointsThatAreApart() {
+    @Test func aTrackNeedsTwoPointsThatAreApart() throws {
         let world = World3D()
         world.ground = nil
-        let rails = world.addBody(.box(width: 0.2, height: 0.2, depth: 0.2),
+        let rails = try world.addBody(.box(width: 0.2, height: 0.2, depth: 0.2),
                                   at: .zero, kind: .static)
-        let cart = world.addBody(.box(width: 0.4, height: 0.4, depth: 0.4),
+        let cart = try world.addBody(.box(width: 0.4, height: 0.4, depth: 0.4),
                                  at: Vector3(0, 3, 0))
         let dud = world.connect(rails, cart,
                                 .path(through: [Vector3(1, 0, 0), Vector3(1, 0, 0)]))
@@ -161,13 +161,13 @@ struct JointKind3DTests {
     /// length is what says so: the heavier body wins and hauls the lighter up.
     /// The same fall with the light side threaded twice moves it half as far,
     /// which is the whole point of a block and tackle.
-    @Test func aPulleyRatioIsHowManyFallsHoldTheSecondSide() {
-        func rise(ratio: Double) -> (dropped: Double, rose: Double) {
+    @Test func aPulleyRatioIsHowManyFallsHoldTheSecondSide() throws {
+        func rise(ratio: Double) throws -> (dropped: Double, rose: Double) {
             let world = World3D()
             world.ground = nil
-            let heavy = world.addBody(.box(width: 1, height: 1, depth: 1),
+            let heavy = try world.addBody(.box(width: 1, height: 1, depth: 1),
                                       at: Vector3(-3, 6, 0), density: 4)
-            let light = world.addBody(.box(width: 1, height: 1, depth: 1),
+            let light = try world.addBody(.box(width: 1, height: 1, depth: 1),
                                       at: Vector3(3, 6, 0), density: 1)
             world.connect(heavy, light,
                           .pulley(from: Vector3(-3, 6.5, 0), over: Vector3(-3, 12, 0),
@@ -176,8 +176,8 @@ struct JointKind3DTests {
             run(world, steps: 90)
             return (6 - heavy.position.y, light.position.y - 6)
         }
-        let single = rise(ratio: 1)
-        let doubled = rise(ratio: 2)
+        let single = try rise(ratio: 1)
+        let doubled = try rise(ratio: 2)
         #expect(single.dropped > 3, "the heavy side falls")
         #expect(abs(single.dropped - single.rose) < 0.3, "and the light side rises as far")
         #expect(abs(doubled.dropped / 2 - doubled.rose) < 0.3,
@@ -186,13 +186,13 @@ struct JointKind3DTests {
 
     /// A rope can be let slack but not stretched; a taut one is a linkage, so
     /// lifting one end pushes the other end down.
-    @Test func aTautRopePushesWhereALooseOneOnlyPulls() {
-        func otherEnd(taut: Bool) -> Double {
+    @Test func aTautRopePushesWhereALooseOneOnlyPulls() throws {
+        func otherEnd(taut: Bool) throws -> Double {
             let world = World3D()
             world.ground = nil
-            let lifted = world.addBody(.box(width: 1, height: 1, depth: 1),
+            let lifted = try world.addBody(.box(width: 1, height: 1, depth: 1),
                                        at: Vector3(-3, 4, 0), gravityScale: 0)
-            let other = world.addBody(.box(width: 1, height: 1, depth: 1),
+            let other = try world.addBody(.box(width: 1, height: 1, depth: 1),
                                       at: Vector3(3, 4, 0), gravityScale: 0)
             world.connect(lifted, other,
                           .pulley(from: Vector3(-3, 4.5, 0), over: Vector3(-3, 10, 0),
@@ -202,18 +202,18 @@ struct JointKind3DTests {
             run(world, steps: 60)
             return other.position.y
         }
-        #expect(abs(otherEnd(taut: false) - 4) < 0.01, "a slack rope pushes nothing")
-        #expect(otherEnd(taut: true) < 3.2, "a taut one drives the far end down")
+        #expect(try abs(otherEnd(taut: false) - 4) < 0.01, "a slack rope pushes nothing")
+        #expect(try otherEnd(taut: true) < 3.2, "a taut one drives the far end down")
     }
 
     /// The solver's pulley reads a kinematic body as an ordinary one, so that
     /// case is refused rather than left to misbehave.
-    @Test func aPulleyRefusesAKinematicEnd() {
+    @Test func aPulleyRefusesAKinematicEnd() throws {
         let world = World3D()
         world.ground = nil
-        let hoist = world.addBody(.box(width: 1, height: 1, depth: 1),
+        let hoist = try world.addBody(.box(width: 1, height: 1, depth: 1),
                                   at: Vector3(-3, 4, 0), kind: .kinematic)
-        let load = world.addBody(.box(width: 1, height: 1, depth: 1),
+        let load = try world.addBody(.box(width: 1, height: 1, depth: 1),
                                  at: Vector3(3, 4, 0))
         let rope = world.connect(hoist, load,
                                  .pulley(from: Vector3(-3, 4.5, 0),
@@ -229,12 +229,12 @@ struct JointKind3DTests {
 
     /// A body on a joint that allows rising and spinning does exactly those
     /// two things: thrown sideways and tumbled, it keeps its post and its axis.
-    @Test func allowingKeepsOnlyTheFreedomsItNames() {
+    @Test func allowingKeepsOnlyTheFreedomsItNames() throws {
         let world = World3D()
         world.ground = nil
-        let post = world.addBody(.box(width: 0.3, height: 1, depth: 0.3),
+        let post = try world.addBody(.box(width: 0.3, height: 1, depth: 0.3),
                                  at: Vector3(0, 0.5, 0), kind: .static)
-        let platter = world.addBody(.cylinder(height: 0.2, radius: 1),
+        let platter = try world.addBody(.cylinder(height: 0.2, radius: 1),
                                     at: Vector3(0, 6, 0))
         world.connect(post, platter,
                       .allowing([.moveY, .turnY], at: Vector3(0, 6, 0),
@@ -253,12 +253,12 @@ struct JointKind3DTests {
 
     /// The same joint with nothing allowed is a weld: a body given every kind
     /// of push does not move at all.
-    @Test func allowingNothingIsAWeld() {
+    @Test func allowingNothingIsAWeld() throws {
         let world = World3D()
         world.ground = nil
-        let anchor = world.addBody(.box(width: 0.4, height: 0.4, depth: 0.4),
+        let anchor = try world.addBody(.box(width: 0.4, height: 0.4, depth: 0.4),
                                    at: .zero, kind: .static)
-        let held = world.addBody(.box(width: 0.4, height: 0.4, depth: 0.4),
+        let held = try world.addBody(.box(width: 0.4, height: 0.4, depth: 0.4),
                                  at: Vector3(0, -2, 0))
         world.connect(anchor, held, .allowing([], at: Vector3(0, -2, 0)))
         held.velocity = Vector3(5, 0, 5)
@@ -270,13 +270,13 @@ struct JointKind3DTests {
 
     /// A turning freedom can be bounded too: a spinning vane runs up to its
     /// stop and holds there, where an unbounded twin keeps going.
-    @Test func aTurningFreedomTakesItsOwnLimits() {
-        func spun(rotation: ClosedRange<Double>?) -> (angle: Double, spin: Double) {
+    @Test func aTurningFreedomTakesItsOwnLimits() throws {
+        func spun(rotation: ClosedRange<Double>?) throws -> (angle: Double, spin: Double) {
             let world = World3D()
             world.ground = nil
-            let frame = world.addBody(.box(width: 0.3, height: 0.3, depth: 0.3),
+            let frame = try world.addBody(.box(width: 0.3, height: 0.3, depth: 0.3),
                                       at: .zero, kind: .static)
-            let vane = world.addBody(.box(width: 2, height: 0.2, depth: 0.4),
+            let vane = try world.addBody(.box(width: 2, height: 0.2, depth: 0.4),
                                      at: .zero, gravityScale: 0)
             world.connect(frame, vane, .allowing([.turnY], at: .zero,
                                                  rotation: rotation))
@@ -284,25 +284,25 @@ struct JointKind3DTests {
             run(world, steps: 120)
             return (vane.rotationAngle, vane.angularVelocity.y)
         }
-        let bounded = spun(rotation: -0.5 ... 0.5)
+        let bounded = try spun(rotation: -0.5 ... 0.5)
         #expect(bounded.angle < 0.55 && bounded.angle > 0.35, "stopped at its limit")
         #expect(abs(bounded.spin) < 0.1, "and stopped turning")
-        #expect(abs(spun(rotation: nil).spin) > 5, "where the free twin keeps going")
+        #expect(try abs(spun(rotation: nil).spin) > 5, "where the free twin keeps going")
     }
 
     // MARK: Gears
 
     /// A hinge driving another through a gear, and the same pair with no gear
     /// between them: only the geared partner turns, and it turns the other way.
-    @Test func aGearTurnsItsPartnerTheOtherWay() {
-        func partnerSpin(geared: Bool) -> Double {
+    @Test func aGearTurnsItsPartnerTheOtherWay() throws {
+        func partnerSpin(geared: Bool) throws -> Double {
             let world = World3D()
             world.ground = nil
-            let frame = world.addBody(.box(width: 0.2, height: 0.2, depth: 0.2),
+            let frame = try world.addBody(.box(width: 0.2, height: 0.2, depth: 0.2),
                                       at: .zero, kind: .static)
-            let driver = world.addBody(.cylinder(height: 0.2, radius: 0.5),
+            let driver = try world.addBody(.cylinder(height: 0.2, radius: 0.5),
                                        at: Vector3(0, 2, 0), gravityScale: 0)
-            let follower = world.addBody(.cylinder(height: 0.2, radius: 0.5),
+            let follower = try world.addBody(.cylinder(height: 0.2, radius: 0.5),
                                          at: Vector3(2, 2, 0), gravityScale: 0)
             let hingeA = world.connect(frame, driver,
                                        .revolute(at: Vector3(0, 2, 0), axis: .unitZ))
@@ -313,22 +313,22 @@ struct JointKind3DTests {
             run(world, steps: 60)
             return follower.angularVelocity.z
         }
-        #expect(abs(partnerSpin(geared: false)) < 1e-3, "ungeared, it just sits")
-        #expect(abs(partnerSpin(geared: true) + 2) < 0.01,
+        #expect(try abs(partnerSpin(geared: false)) < 1e-3, "ungeared, it just sits")
+        #expect(try abs(partnerSpin(geared: true) + 2) < 0.01,
                 "geared one to one, it turns as fast the other way")
     }
 
     /// The ratio is how many turns the first gear makes per turn of the second,
     /// whether it is given as a number or as two tooth counts.
-    @Test func aGearRatioIsTurnsPerTurn() {
-        func partnerSpin(_ link: JointLink3D) -> Double {
+    @Test func aGearRatioIsTurnsPerTurn() throws {
+        func partnerSpin(_ link: JointLink3D) throws -> Double {
             let world = World3D()
             world.ground = nil
-            let frame = world.addBody(.box(width: 0.2, height: 0.2, depth: 0.2),
+            let frame = try world.addBody(.box(width: 0.2, height: 0.2, depth: 0.2),
                                       at: .zero, kind: .static)
-            let driver = world.addBody(.cylinder(height: 0.2, radius: 0.5),
+            let driver = try world.addBody(.cylinder(height: 0.2, radius: 0.5),
                                        at: Vector3(0, 2, 0), gravityScale: 0)
-            let follower = world.addBody(.cylinder(height: 0.2, radius: 1.5),
+            let follower = try world.addBody(.cylinder(height: 0.2, radius: 1.5),
                                          at: Vector3(2.2, 2, 0), gravityScale: 0)
             let hingeA = world.connect(frame, driver,
                                        .revolute(at: Vector3(0, 2, 0), axis: .unitZ))
@@ -339,22 +339,22 @@ struct JointKind3DTests {
             run(world, steps: 60)
             return follower.angularVelocity.z
         }
-        #expect(abs(partnerSpin(.gear(ratio: 3)) + 1) < 0.01,
+        #expect(try abs(partnerSpin(.gear(ratio: 3)) + 1) < 0.01,
                 "three to one: the big wheel turns a third as fast")
-        #expect(abs(partnerSpin(.gear(teeth: 10, and: 30)) + 1) < 0.01,
+        #expect(try abs(partnerSpin(.gear(teeth: 10, and: 30)) + 1) < 0.01,
                 "and tooth counts say the same thing")
     }
 
     /// A gear needs two hinges. Anything else is refused rather than half
     /// applied, and the world keeps running.
-    @Test func aGearRefusesWhatIsNotAPairOfHinges() {
+    @Test func aGearRefusesWhatIsNotAPairOfHinges() throws {
         let world = World3D()
         world.ground = nil
-        let frame = world.addBody(.box(width: 0.2, height: 0.2, depth: 0.2),
+        let frame = try world.addBody(.box(width: 0.2, height: 0.2, depth: 0.2),
                                   at: .zero, kind: .static)
-        let wheel = world.addBody(.cylinder(height: 0.2, radius: 0.5),
+        let wheel = try world.addBody(.cylinder(height: 0.2, radius: 0.5),
                                   at: Vector3(0, 2, 0), gravityScale: 0)
-        let carriage = world.addBody(.box(width: 1, height: 0.2, depth: 0.2),
+        let carriage = try world.addBody(.box(width: 1, height: 0.2, depth: 0.2),
                                      at: Vector3(0, 5, 0), gravityScale: 0)
         let hinge = world.connect(frame, wheel,
                                   .revolute(at: Vector3(0, 2, 0), axis: .unitZ))
@@ -371,14 +371,14 @@ struct JointKind3DTests {
 
     /// Removing a geared body takes the gear with it, and the survivor is
     /// still drivable.
-    @Test func removingAGearCutsTheLink() {
+    @Test func removingAGearCutsTheLink() throws {
         let world = World3D()
         world.ground = nil
-        let frame = world.addBody(.box(width: 0.2, height: 0.2, depth: 0.2),
+        let frame = try world.addBody(.box(width: 0.2, height: 0.2, depth: 0.2),
                                   at: .zero, kind: .static)
-        let driver = world.addBody(.cylinder(height: 0.2, radius: 0.5),
+        let driver = try world.addBody(.cylinder(height: 0.2, radius: 0.5),
                                    at: Vector3(0, 2, 0), gravityScale: 0)
-        let follower = world.addBody(.cylinder(height: 0.2, radius: 0.5),
+        let follower = try world.addBody(.cylinder(height: 0.2, radius: 0.5),
                                      at: Vector3(2, 2, 0), gravityScale: 0)
         let hingeA = world.connect(frame, driver,
                                    .revolute(at: Vector3(0, 2, 0), axis: .unitZ))
@@ -399,15 +399,15 @@ struct JointKind3DTests {
 
     /// One turn of the pinion moves the rack exactly the distance asked for,
     /// and doubling that distance doubles the travel.
-    @Test func aPinionMovesItsRackByTheTravelAsked() {
-        func traveled(perTurn: Double) -> Double {
+    @Test func aPinionMovesItsRackByTheTravelAsked() throws {
+        func traveled(perTurn: Double) throws -> Double {
             let world = World3D()
             world.ground = nil
-            let frame = world.addBody(.box(width: 0.2, height: 0.2, depth: 0.2),
+            let frame = try world.addBody(.box(width: 0.2, height: 0.2, depth: 0.2),
                                       at: .zero, kind: .static)
-            let pinion = world.addBody(.cylinder(height: 0.2, radius: 0.5),
+            let pinion = try world.addBody(.cylinder(height: 0.2, radius: 0.5),
                                        at: Vector3(0, 2, 0), gravityScale: 0)
-            let rack = world.addBody(.box(width: 6, height: 0.2, depth: 0.2),
+            let rack = try world.addBody(.box(width: 6, height: 0.2, depth: 0.2),
                                      at: Vector3(0, 1.4, 0), gravityScale: 0)
             let hinge = world.connect(frame, pinion,
                                       .revolute(at: Vector3(0, 2, 0), axis: .unitZ))
@@ -418,22 +418,22 @@ struct JointKind3DTests {
             run(world, steps: 60)
             return slider.offset
         }
-        #expect(abs(traveled(perTurn: 2) - 2) < 0.05)
-        #expect(abs(traveled(perTurn: 4) - 4) < 0.05)
-        #expect(abs(traveled(perTurn: -2) + 2) < 0.05, "a negative one runs back")
+        #expect(try abs(traveled(perTurn: 2) - 2) < 0.05)
+        #expect(try abs(traveled(perTurn: 4) - 4) < 0.05)
+        #expect(try abs(traveled(perTurn: -2) + 2) < 0.05, "a negative one runs back")
     }
 
     // MARK: Swing-twist motors
 
     /// A swing-twist joint told to roll to an angle rolls to it, and leaves the
     /// bend it is free to make alone.
-    @Test func aSwingTwistMotorRollsWithoutBending() {
+    @Test func aSwingTwistMotorRollsWithoutBending() throws {
         let world = World3D()
         world.ground = nil
         world.ignoreCollisions(between: "hub", and: "bone")
-        let anchor = world.addBody(.box(width: 0.4, height: 0.4, depth: 0.4),
+        let anchor = try world.addBody(.box(width: 0.4, height: 0.4, depth: 0.4),
                                    at: .zero, kind: .static, group: "hub")
-        let bone = world.addBody(.capsule(height: 1.4, radius: 0.2),
+        let bone = try world.addBody(.capsule(height: 1.4, radius: 0.2),
                                  at: Vector3(0, -0.9, 0), group: "bone")
         let joint = world.connect(anchor, bone,
                                   .swingTwist(at: .zero, axis: Vector3(0, -1, 0),
@@ -446,13 +446,13 @@ struct JointKind3DTests {
     }
 
     /// The rate form runs the roll at the speed asked for.
-    @Test func aSwingTwistMotorRollsAtTheRateAsked() {
+    @Test func aSwingTwistMotorRollsAtTheRateAsked() throws {
         let world = World3D()
         world.ground = nil
         world.ignoreCollisions(between: "hub", and: "bone")
-        let anchor = world.addBody(.box(width: 0.4, height: 0.4, depth: 0.4),
+        let anchor = try world.addBody(.box(width: 0.4, height: 0.4, depth: 0.4),
                                    at: .zero, kind: .static, group: "hub")
-        let bone = world.addBody(.capsule(height: 1.4, radius: 0.2),
+        let bone = try world.addBody(.capsule(height: 1.4, radius: 0.2),
                                  at: Vector3(0, -0.9, 0), group: "bone")
         let joint = world.connect(anchor, bone,
                                   .swingTwist(at: .zero, axis: Vector3(0, -1, 0),
@@ -465,14 +465,14 @@ struct JointKind3DTests {
 
     /// Pointed at a direction, the bone goes there and stays; asked past its
     /// cone, it leans as far as the cone allows; let go, it falls back.
-    @Test func aSwingTwistJointCanBePointedSomewhere() {
-        func lean(toward direction: Vector3, cone: Double) -> Double {
+    @Test func aSwingTwistJointCanBePointedSomewhere() throws {
+        func lean(toward direction: Vector3, cone: Double) throws -> Double {
             let world = World3D()
             world.ground = nil
             world.ignoreCollisions(between: "hub", and: "bone")
-            let anchor = world.addBody(.box(width: 0.4, height: 0.4, depth: 0.4),
+            let anchor = try world.addBody(.box(width: 0.4, height: 0.4, depth: 0.4),
                                        at: .zero, kind: .static, group: "hub")
-            let bone = world.addBody(.capsule(height: 1.4, radius: 0.2),
+            let bone = try world.addBody(.capsule(height: 1.4, radius: 0.2),
                                      at: Vector3(0, -0.9, 0), gravityScale: 0,
                                      group: "bone")
             let joint = world.connect(anchor, bone,
@@ -483,21 +483,21 @@ struct JointKind3DTests {
             return joint.angle
         }
         let wide = 170 * Double.pi / 180
-        #expect(abs(lean(toward: Vector3(sin(0.6), -cos(0.6), 0), cone: wide) - 0.6) < 0.01,
+        #expect(try abs(lean(toward: Vector3(sin(0.6), -cos(0.6), 0), cone: wide) - 0.6) < 0.01,
                 "it goes exactly where it is pointed")
         let narrow = 80 * Double.pi / 180
-        #expect(abs(lean(toward: Vector3(1, 0, 0), cone: narrow) - narrow) < 0.05,
+        #expect(try abs(lean(toward: Vector3(1, 0, 0), cone: narrow) - narrow) < 0.05,
                 "and no further than its cone")
     }
 
     /// A powered joint holds its bone up; cut the power and gravity takes it.
-    @Test func stoppingASwingTwistMotorLetsTheBoneFall() {
+    @Test func stoppingASwingTwistMotorLetsTheBoneFall() throws {
         let world = World3D()
         world.ground = nil
         world.ignoreCollisions(between: "hub", and: "bone")
-        let anchor = world.addBody(.box(width: 0.4, height: 0.4, depth: 0.4),
+        let anchor = try world.addBody(.box(width: 0.4, height: 0.4, depth: 0.4),
                                    at: .zero, kind: .static, group: "hub")
-        let bone = world.addBody(.capsule(height: 1.4, radius: 0.2),
+        let bone = try world.addBody(.capsule(height: 1.4, radius: 0.2),
                                  at: Vector3(0, -0.9, 0), group: "bone")
         let joint = world.connect(anchor, bone,
                                   .swingTwist(at: .zero, axis: Vector3(0, -1, 0),
@@ -517,15 +517,15 @@ struct JointKind3DTests {
 
     /// The whole family, run twice in the same binary, lands on the same
     /// numbers: the arc's replay rule (no pixel snapshots, but exact replays).
-    @Test func theseJointsReplayIdentically() {
-        func once() -> [Double] {
+    @Test func theseJointsReplayIdentically() throws {
+        func once() throws -> [Double] {
             let world = World3D()
             world.ground = 0
-            let frame = world.addBody(.box(width: 0.2, height: 0.2, depth: 0.2),
+            let frame = try world.addBody(.box(width: 0.2, height: 0.2, depth: 0.2),
                                       at: Vector3(0, 3, 0), kind: .static)
-            let small = world.addBody(.cylinder(height: 0.2, radius: 0.5),
+            let small = try world.addBody(.cylinder(height: 0.2, radius: 0.5),
                                       at: Vector3(0, 3, 0))
-            let big = world.addBody(.cylinder(height: 0.2, radius: 1),
+            let big = try world.addBody(.cylinder(height: 0.2, radius: 1),
                                     at: Vector3(2, 3, 0))
             let hingeA = world.connect(frame, small,
                                        .revolute(at: Vector3(0, 3, 0), axis: .unitZ))
@@ -534,7 +534,7 @@ struct JointKind3DTests {
             world.connect(hingeA, hingeB, .gear(ratio: 2))
             hingeA.drive(at: 4, strength: 40)
 
-            let cart = world.addBody(.box(width: 0.4, height: 0.3, depth: 0.4),
+            let cart = try world.addBody(.box(width: 0.4, height: 0.3, depth: 0.4),
                                      at: Vector3(3, 1, 0))
             let ride = world.connect(frame, cart,
                                      .path(through: ring(radius: 3, count: 12),
@@ -543,6 +543,6 @@ struct JointKind3DTests {
             run(world, steps: 180)
             return [big.rotationAngle, cart.position.x, cart.position.z, ride.progress]
         }
-        #expect(once() == once())
+        #expect(try once() == once())
     }
 }

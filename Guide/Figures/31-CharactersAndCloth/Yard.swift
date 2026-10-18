@@ -24,13 +24,13 @@ final class Yard: Sketch {
     let timber = Color(hex: 0x8A6A4A)
     let teal = Color(hex: 0x3E8E86)
 
-    override func setup() {
+    override func setup() throws {
         world.ground = 0
 
         // A floor body for the drawing loop to draw. `world.ground` already
         // holds everything up, but it stays out of `world.bodies`, so the
         // loop below would never see it.
-        let floor = world.addBody(.box(width: 34, height: 0.4, depth: 34),
+        let floor = try world.addBody(.box(width: 34, height: 0.4, depth: 34),
                                   at: Vector3(0, -0.2, 0), kind: .static)
         floor.userData = Color(hex: 0x2C3340)
 
@@ -52,7 +52,7 @@ final class Yard: Sketch {
                                  mass: 1400, engineTorque: 520, topSpeed: 16,
                                  rotated: .pi, axis: .unitY)
 
-        pacer = world.addCharacter(radius: 0.3, height: 1.75, at: Vector3(-4.4, 1.0, 0.4))
+        pacer = try world.addCharacter(radius: 0.3, height: 1.75, at: Vector3(-4.4, 1.0, 0.4))
 
         // A soft body is its mesh. Pinning the two top corners is what turns a
         // sheet into a banner rather than a dropped cloth.
@@ -61,13 +61,13 @@ final class Yard: Sketch {
                                    pinned: { $0.z < -1.0 && abs($0.x) > 2.2 })
 
         for post in [-3.7, 1.3] {
-            let p = world.addBody(.box(width: 0.22, height: 3.4, depth: 0.22),
+            let p = try world.addBody(.box(width: 0.22, height: 3.4, depth: 0.22),
                                   at: Vector3(post, 1.7, -4.2), kind: .static)
             p.userData = timber
         }
 
         for i in 0 ..< 9 {
-            let crate = world.addBody(.box(width: 0.7, height: 0.7, depth: 0.7),
+            let crate = try world.addBody(.box(width: 0.7, height: 0.7, depth: 0.7),
                                       at: Vector3(-0.6 + Double(i % 3) * 0.75,
                                                   0.4 + Double(i / 3) * 0.72, -1.0))
             crate.userData = clay

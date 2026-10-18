@@ -45,10 +45,10 @@ final class Stroll: Sketch {
         Color(hex: 0x8D92E0), Color(hex: 0x72BFB2),
     ]
 
-    override func setup() {
-        buildIsland()
-        buildArchitecture()
-        walker = world.addCharacter(radius: 0.28, height: 1.7,
+    override func setup() throws {
+        try buildIsland()
+        try buildArchitecture()
+        walker = try world.addCharacter(radius: 0.28, height: 1.7,
                                     at: start + Vector3(0, plazaY + 0.4, 0),
                                     stepHeight: stepHeight)
         eye = walker.position + Vector3(0, 4, 9)
@@ -56,7 +56,7 @@ final class Stroll: Sketch {
 
     /// A flat plaza in the middle, hills around the rim, and nothing past the
     /// shoreline. Erosion cuts the gullies that make the hills worth reading.
-    func buildIsland() {
+    func buildIsland() throws {
         let bumps = Heightfield.diamondSquare(size: 129, roughness: 0.55, seed: 7)
         land = Heightfield(columns: 129, rows: 129) { u, v in
             let d = (Vector2(u - 0.5, v - 0.5).length) * 2      // 0 center … 1 edge
@@ -71,35 +71,35 @@ final class Stroll: Sketch {
         .normalized()
         plazaY = land.value(u: 0.5, v: 0.5) * landHeight
         terrain = terrainMesh(land)
-        world.addBody(.heightfield(land, width: landWidth, depth: landDepth,
+        try world.addBody(.heightfield(land, width: landWidth, depth: landDepth,
                                    height: landHeight),
                       at: .zero, kind: .static, friction: 0.6)
     }
 
     /// The things on the plaza that answer back: a stair up to a lookout with a
     /// sensor under its deck, and a few crates light enough to shove.
-    func buildArchitecture() {
+    func buildArchitecture() throws {
         // Four steps climbing north, each one just inside the default reach.
         for index in 0 ..< 4 {
             let rise = 0.3
             let top = plazaY + rise * Double(index + 1)
-            world.addBody(.box(width: 3, height: top, depth: 1),
+            try world.addBody(.box(width: 3, height: top, depth: 1),
                           at: Vector3(0, top / 2, -2.4 - Double(index) * 1.0),
                           kind: .static, friction: 0.6)
         }
         // The lookout deck the stair arrives on.
         let deckY = plazaY + 1.2
-        world.addBody(.box(width: 3.6, height: deckY, depth: 3),
+        try world.addBody(.box(width: 3.6, height: deckY, depth: 3),
                       at: Vector3(0, deckY / 2, -7.4), kind: .static, friction: 0.6)
         // A detector standing on the deck: it reports the walker without ever
         // pushing it, so stepping onto the lookout is something the sketch can
         // notice happening.
-        lookout = world.addBody(.box(width: 3.4, height: 1.8, depth: 2.8),
+        lookout = try world.addBody(.box(width: 3.4, height: 1.8, depth: 2.8),
                                 at: Vector3(0, deckY + 0.9, -7.4), isSensor: true)
 
         for index in 0 ..< 7 {
             let angle = Double(index) / 7 * .tau
-            let crate = world.addBody(
+            let crate = try world.addBody(
                 .box(width: 0.5, height: 0.5, depth: 0.5),
                 at: Vector3(cos(angle) * 3.4, plazaY + 0.6, sin(angle) * 3.4 + 1.5),
                 rotated: random(0, .tau), axis: .unitY, density: 0.02, friction: 0.4)

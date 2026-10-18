@@ -77,7 +77,7 @@ final class Yard: Sketch {
     let rubber = Color(hex: 0x22242A)
     let cloth = Color(hex: 0xD8CBB4)
 
-    override func setup() {
+    override func setup() throws {
         skin = try? Scene(resource: "figure", withExtension: "gltf", in: Bundle.module)
         standing = skin
         idle = skin.animations.first
@@ -91,7 +91,7 @@ final class Yard: Sketch {
             kept = try? PhysicsSnapshot(contentsOf: file)
             say("loaded the yard from the last run")
         } catch {
-            build()
+            try build()
         }
     }
 
@@ -107,27 +107,27 @@ final class Yard: Sketch {
         }
     }
 
-    func build() {
+    func build() throws {
         world.removeAll()
 
         // The yard's own ground: a heightfield, which is thousands of numbers,
         // so it is named rather than written into the file.
-        let floor = world.addBody(.heightfield(ground, width: 40, depth: 34,
+        let floor = try world.addBody(.heightfield(ground, width: 40, depth: 34,
                                                height: 1.6),
                                   at: Vector3(0, -0.8, 0), kind: .static,
                                   friction: 0.9)
         floor.assetName = "yard"
 
         // The walls, so nothing that gets hit leaves.
-        world.addBody(.box(width: 22, height: 1.4, depth: 0.5),
+        try world.addBody(.box(width: 22, height: 1.4, depth: 0.5),
                       at: Vector3(0, 0.7, -6), kind: .static, friction: 0.8)
-        world.addBody(.box(width: 0.5, height: 1.4, depth: 12),
+        try world.addBody(.box(width: 0.5, height: 1.4, depth: 12),
                       at: Vector3(-9, 0.7, 0), kind: .static, friction: 0.8)
 
         // A stack to drive into.
         for i in 0 ..< 12 {
             let row = i / 3, column = i % 3
-            world.addBody(.box(width: 0.8, height: 0.8, depth: 0.8),
+            try world.addBody(.box(width: 0.8, height: 0.8, depth: 0.8),
                           at: Vector3(Double(column) * 0.85 - 3.15,
                                       0.41 + Double(row) * 0.81, -4.3),
                           density: 0.6, friction: 0.7)
@@ -154,7 +154,7 @@ final class Yard: Sketch {
         // before anyone has touched it.
         truck?.handBrake = 1
 
-        pacer = world.addCharacter(radius: 0.3, height: 1.75,
+        pacer = try world.addCharacter(radius: 0.3, height: 1.75,
                                    at: Vector3(-5.5, 0.1, 1.6))
 
         // A second figure, dropped from a height so it lands in a heap: the
@@ -211,7 +211,7 @@ final class Yard: Sketch {
             adopt()
             say("back to the yard as it was saved")
         case "n":
-            build()
+            try? build()
         default:
             break
         }

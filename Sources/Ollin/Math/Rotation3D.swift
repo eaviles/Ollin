@@ -106,6 +106,14 @@ public struct Rotation3D: Equatable, Hashable, Sendable, Codable {
         Rotation3D(angle: radians, axis: .unitZ)
     }
 
+    /// The one turn that three angles compose: what `rotateX(x)`, then
+    /// `rotateY(y)`, then `rotateZ(z)` would leave the transform stack at,
+    /// in that order, so a placement written as three angles reads the same
+    /// as the calls it stands for.
+    public static func euler(x: Double = 0, y: Double = 0, z: Double = 0) -> Rotation3D {
+        aboutX(x) * aboutY(y) * aboutZ(z)
+    }
+
     /// How far the turn goes, in radians, `0...π`. Read it with `axis`.
     public var angle: Double {
         2 * acos(max(-1, min(1, w)))

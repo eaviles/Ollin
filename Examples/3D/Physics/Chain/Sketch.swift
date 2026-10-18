@@ -25,44 +25,44 @@ final class Chain3D: Sketch {
         Color(hex: 0x72BFB2), Color(hex: 0x8D92E0),
     ]
 
-    override func setup() {
+    override func setup() throws {
         world.ground = 0
         world.restitution = 0.1
 
         // The beam, the chain, and the ball, joined top to bottom. Each link
         // meets the next where cap touches cap, and a ball joint there lets
         // the chain fold every way a real one does.
-        let beam = world.addBody(.box(width: 1.4, height: 0.22, depth: 0.22),
+        let beam = try world.addBody(.box(width: 1.4, height: 0.22, depth: 0.22),
                                  at: Vector3(0, anchorHeight, 0), kind: .static)
         var previous = beam
         let step = linkHeight + 2 * linkRadius
         for index in 0 ..< linkCount {
             let top = anchorHeight - 0.11 - Double(index) * step
-            let link = world.addBody(.capsule(height: linkHeight, radius: linkRadius),
+            let link = try world.addBody(.capsule(height: linkHeight, radius: linkRadius),
                                      at: Vector3(0, top - step / 2, 0),
                                      density: 2, friction: 0.4)
             world.connect(previous, link, .ball(at: Vector3(0, top, 0)))
             previous = link
         }
         let chainEnd = anchorHeight - 0.11 - Double(linkCount) * step
-        let sphere = world.addBody(.sphere(radius: 0.5),
+        let sphere = try world.addBody(.sphere(radius: 0.5),
                                    at: Vector3(0, chainEnd - 0.5, 0),
                                    density: 8, friction: 0.4)
         world.connect(previous, sphere, .ball(at: Vector3(0, chainEnd, 0)))
         ball = sphere
 
-        buildTower()
+        try buildTower()
     }
 
     /// The crates waiting to be scattered, off to the side of the ball's rest.
-    func buildTower() {
+    func buildTower() throws {
         for body in world.bodies where body.userData is Color {
             world.remove(body)
         }
         let size = 0.62
         for level in 0 ..< 5 {
             for row in 0 ..< 2 {
-                let crate = world.addBody(
+                let crate = try world.addBody(
                     .box(width: size, height: size, depth: size),
                     at: Vector3(2.4, size / 2 + Double(level) * (size + 0.03),
                                 Double(row) * (size + 0.04) - (size + 0.04) / 2),
@@ -73,7 +73,7 @@ final class Chain3D: Sketch {
     }
 
     override func keyPressed() {
-        if key == " " { buildTower() }
+        if key == " " { try? buildTower() }
     }
 
     override func draw() {

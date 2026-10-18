@@ -216,13 +216,13 @@ final class Valley: Sketch {
             if spot.normal.y > 0.78 && p.y < relief * 0.66 {
                 let s = random(0.7, 1.5)
                 pines.append(MeshInstance(position: Vector3(p.x, p.y + 1.6 * s, p.z),
-                                          rotation: Vector3(0, random(.tau), 0),
+                                          rotation: .aboutY(random(.tau)),
                                           scale: Vector3(s, s * random(0.85, 1.5), s),
                                           color: Color.mix(pineDark, pineLight, random(1))))
             } else if spot.normal.y < 0.71 && random(1) < 0.4 {
                 let s = random(0.4, 1.4)
                 stones.append(MeshInstance(position: Vector3(p.x, p.y + 0.25 * s, p.z),
-                                           rotation: Vector3(random(.tau), random(.tau), random(.tau)),
+                                           rotation: .euler(x: random(.tau), y: random(.tau), z: random(.tau)),
                                            scale: Vector3(s, s * 0.7, s),
                                            color: Color.mix(stoneGray, Color(white: 0.68), random(1))))
             }
@@ -286,7 +286,7 @@ final class Valley: Sketch {
             let gust = sin(time * 0.9 + seat.phase + seat.x * 0.06) * 0.04
             let s = 0.8 + (sin(seat.phase * 3) * 0.5 + 0.5) * 0.8
             stand.append(MeshInstance(position: Vector3(seat.x, seat.ground + 1.6 * s, seat.z),
-                                      rotation: Vector3(gust, seat.phase, gust * 0.6),
+                                      rotation: .euler(x: gust, y: seat.phase, z: gust * 0.6),
                                       scale: Vector3(s, s * 1.2, s),
                                       color: Color.mix(pineDark, pineLight,
                                                        sin(seat.phase * 5) * 0.5 + 0.5)))

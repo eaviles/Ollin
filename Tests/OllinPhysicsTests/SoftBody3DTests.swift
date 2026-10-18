@@ -105,7 +105,7 @@ struct SoftBody3DTests {
     @Test func aClothDrapesOverWhatItLandsOn() throws {
         let world = World3D()
         world.ground = 0
-        let obstacle = world.addBody(.sphere(radius: 0.6), at: Vector3(0, 0.6, 0),
+        let obstacle = try world.addBody(.sphere(radius: 0.6), at: Vector3(0, 0.6, 0),
                                      kind: .static)
         let cloth = try! world.addSoftBody(from: Mesh.plane(width: 3, depth: 3, segments: 14),
                               at: Vector3(0, 2, 0), vertexRadius: 0.02)
@@ -220,7 +220,7 @@ struct SoftBody3DTests {
         func shove(pressure: Double) throws -> Double {
             let world = World3D()
             world.ground = 0
-            let crate = world.addBody(.box(width: 0.4, height: 0.4, depth: 0.4),
+            let crate = try world.addBody(.box(width: 0.4, height: 0.4, depth: 0.4),
                                       at: Vector3(0.25, 0.2, 0), density: 0.02)
             let body = try! world.addSoftBody(from: Mesh.icosphere(radius: 0.4, subdivisions: 2),
                                   at: Vector3(0, 1.6, 0), mass: 30)
@@ -322,7 +322,7 @@ struct SoftBody3DTests {
         func settle() throws -> [Vector3] {
             let world = World3D()
             world.ground = 0
-            _ = world.addBody(.sphere(radius: 0.5), at: Vector3(0.2, 0.5, 0), kind: .static)
+            _ = try world.addBody(.sphere(radius: 0.5), at: Vector3(0.2, 0.5, 0), kind: .static)
             let cloth = try! world.addSoftBody(from: Self.cloth, at: Vector3(0, 2, 0), bend: 0.3)
             run(world, steps: 150)
             return cloth.positions

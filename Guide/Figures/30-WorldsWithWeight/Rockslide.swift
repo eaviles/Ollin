@@ -18,7 +18,7 @@ final class Rockslide: Sketch {
         Color(hex: 0x8D92E0), Color(hex: 0x72BFB2),
     ]
 
-    override func setup() {
+    override func setup() throws {
         let bumps = Heightfield.diamondSquare(size: 129, roughness: 0.55, seed: 12)
         land = Heightfield(columns: 129, rows: 129) { u, v in
             0.7 * pow(1 - u, 1.6) + 0.3 * bumps.value(u: u, v: v)
@@ -28,7 +28,7 @@ final class Rockslide: Sketch {
         .normalized()
         terrain = terrainMesh(land)
 
-        world.addBody(.heightfield(land, width: landWidth, depth: landDepth,
+        try world.addBody(.heightfield(land, width: landWidth, depth: landDepth,
                                    height: landHeight),
                       at: .zero, kind: .static, friction: 0.55)
 
@@ -49,7 +49,7 @@ final class Rockslide: Sketch {
             let start = Vector3((u - 0.5) * landWidth,
                                 land.value(u: u, v: drop.1) * landHeight + 1.2 + drop.2,
                                 (drop.1 - 0.5) * landDepth)
-            let rock = world.addBody(drop.0, at: start,
+            let rock = try world.addBody(drop.0, at: start,
                                      rotated: Double(index) * 0.7, axis: .unitY,
                                      density: 2, friction: 0.45, restitution: 0.2)
             rock.userData = palette[index % palette.count]

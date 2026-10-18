@@ -34,6 +34,7 @@ struct OllinLiveApp: App {
         if arguments.contains("--watchtest") { WatchTest.run() }    // headless; exits
         if arguments.contains("--paramtest") { ParamTest.run() }    // headless; exits
         if arguments.contains("--dragtest") { DragTest.run() }      // headless; exits
+        if arguments.contains("--inspectortest") { InspectorTest.run() }   // a window in this process; exits
         if arguments.contains("--savetest") { SaveTest.run() }      // headless; exits
 
         let named = SketchChoice.arguments(arguments)

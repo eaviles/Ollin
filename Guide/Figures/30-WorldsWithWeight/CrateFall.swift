@@ -15,7 +15,7 @@ final class CrateFall: Sketch {
         Color(hex: 0x76B39D), Color(hex: 0x8D92E0),
     ]
 
-    override func setup() {
+    override func setup() throws {
         world.ground = 0
         let size = 0.72
         let gap = 0.05
@@ -24,7 +24,7 @@ final class CrateFall: Sketch {
             let span = Double(count - 1) * (size + gap)
             for row in 0 ..< count {
                 for column in 0 ..< count {
-                    let crate = world.addBody(
+                    let crate = try world.addBody(
                         .box(width: size, height: size, depth: size),
                         at: Vector3(Double(column) * (size + gap) - span / 2,
                                     size / 2 + Double(level) * (size + gap),
@@ -36,7 +36,7 @@ final class CrateFall: Sketch {
         }
         // The wrecking shot: a dense steel ball lobbed flat into the middle
         // layers, so the whole tower takes the hit rather than just the cap.
-        let ball = world.addBody(.sphere(radius: 0.42), at: Vector3(-4.5, 1.3, 0.9),
+        let ball = try world.addBody(.sphere(radius: 0.42), at: Vector3(-4.5, 1.3, 0.9),
                                  density: 10, friction: 0.4)
         ball.velocity = Vector3(12.5, 1.2, -2.0)
     }

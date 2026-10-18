@@ -168,13 +168,13 @@ struct Tensegrity3DTests {
     /// cabled body comes freely, the rodded one is held. Pulled apart, both
     /// are stopped at the length.
     @Test func aCableHoldsItsLengthOneWayOnly() throws {
-        func drift(_ kind: JointKind3D, push: Double) -> Double {
+        func drift(_ kind: JointKind3D, push: Double) throws -> Double {
             let world = World3D()
             world.ground = nil
             world.gravity = .zero
-            let post = world.addBody(.box(width: 0.2, height: 0.2, depth: 0.2),
+            let post = try world.addBody(.box(width: 0.2, height: 0.2, depth: 0.2),
                                      at: .zero, kind: .static)
-            let bead = world.addBody(.sphere(radius: 0.1), at: Vector3(2, 0, 0))
+            let bead = try world.addBody(.sphere(radius: 0.1), at: Vector3(2, 0, 0))
             world.connect(post, bead, kind)
             bead.velocity = Vector3(push, 0, 0)
             run(world, seconds: 1)
@@ -182,27 +182,27 @@ struct Tensegrity3DTests {
         }
         let cable = JointKind3D.cable(from: .zero, to: Vector3(2, 0, 0))
         let rod = JointKind3D.distance(from: .zero, to: Vector3(2, 0, 0))
-        #expect(drift(cable, push: -1) < 1.2, "the cable lets the bead come in")
-        #expect(abs(drift(rod, push: -1) - 2) < 0.05, "the rod holds it out")
-        #expect(abs(drift(cable, push: 1) - 2) < 0.05, "the cable stops it at its length")
-        #expect(abs(drift(rod, push: 1) - 2) < 0.05)
+        #expect(try drift(cable, push: -1) < 1.2, "the cable lets the bead come in")
+        #expect(try abs(drift(rod, push: -1) - 2) < 0.05, "the rod holds it out")
+        #expect(try abs(drift(cable, push: 1) - 2) < 0.05, "the cable stops it at its length")
+        #expect(try abs(drift(rod, push: 1) - 2) < 0.05)
     }
 
     /// A cable shorter than its anchors' spacing starts taut and pulls them
     /// together, which is what a prestressed cable does.
     @Test func aShortCablePullsItsAnchorsTogether() throws {
-        func spacing(length: Double?) -> Double {
+        func spacing(length: Double?) throws -> Double {
             let world = World3D()
             world.ground = nil
             world.gravity = .zero
-            let a = world.addBody(.sphere(radius: 0.1), at: Vector3(-1, 0, 0))
-            let b = world.addBody(.sphere(radius: 0.1), at: Vector3(1, 0, 0))
+            let a = try world.addBody(.sphere(radius: 0.1), at: Vector3(-1, 0, 0))
+            let b = try world.addBody(.sphere(radius: 0.1), at: Vector3(1, 0, 0))
             world.connect(a, b, .cable(from: a.position, to: b.position, length: length))
             run(world, seconds: 1)
             return a.position.distance(to: b.position)
         }
-        #expect(abs(spacing(length: nil) - 2) < 1e-3, "at its spacing, nothing moves")
-        #expect(abs(spacing(length: 1.5) - 1.5) < 0.05, "shorter, it draws them in")
+        #expect(try abs(spacing(length: nil) - 2) < 1e-3, "at its spacing, nothing moves")
+        #expect(try abs(spacing(length: 1.5) - 1.5) < 0.05, "shorter, it draws them in")
     }
 
     // MARK: Reading it back
@@ -230,7 +230,7 @@ struct Tensegrity3DTests {
 
     @Test func removingATensegrityTakesItsStrutsAndCables() throws {
         let (world, built) = try standing(Tensegrity.tower(levels: 2))
-        let crate = world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(4, 2, 0))
+        let crate = try world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(4, 2, 0))
         #expect(world.tensegrities.count == 1)
         #expect(world.bodies.count == 6 + 1)
         #expect(world.joints.count == 15 + 3)

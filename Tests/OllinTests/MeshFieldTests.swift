@@ -335,11 +335,11 @@ private final class FieldABSketch: Sketch {
             let p = Vector3(cos(a) * r, 0.4, sin(a) * r)
             let tint = Color(red: 0.5 + 0.5 * cos(a), green: 0.7, blue: 1, alpha: 1)
             switch i % 3 {
-            case 0: boxes.append(MeshInstance(position: p, rotation: Vector3(0, a, 0),
+            case 0: boxes.append(MeshInstance(position: p, rotation: .aboutY(a),
                                               scale: Vector3(1, 1 + Double(i % 4) * 0.4, 0.8),
                                               color: tint))
             case 1: spheres.append(MeshInstance(position: p, scale: 0.6, color: tint))
-            default: cones.append(MeshInstance(position: p, rotation: Vector3(0, a, 0), color: tint))
+            default: cones.append(MeshInstance(position: p, rotation: .aboutY(a), color: tint))
             }
         }
         world = [(Mesh.box(width: 0.8, height: 0.8, depth: 0.8), boxes),

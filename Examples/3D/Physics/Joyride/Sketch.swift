@@ -41,9 +41,9 @@ final class Joyride: Sketch {
         Color(hex: 0x8D92E0), Color(hex: 0x72BFB2),
     ]
 
-    override func setup() {
-        buildIsland()
-        buildCourse()
+    override func setup() throws {
+        try buildIsland()
+        try buildCourse()
         start = Vector3(0, apronY + 1.4, -8)
         car = buildCar(at: start)
         eye = start + Vector3(0, 5, -12)
@@ -52,7 +52,7 @@ final class Joyride: Sketch {
     /// A flat apron in the middle to launch from, hills around the rim to climb
     /// and slide down, and erosion to cut the gullies that make them worth
     /// driving.
-    func buildIsland() {
+    func buildIsland() throws {
         let bumps = Heightfield.diamondSquare(size: 129, roughness: 0.5, seed: 12)
         land = Heightfield(columns: 129, rows: 129) { u, v in
             let d = Vector2(u - 0.5, v - 0.5).length * 2      // 0 center … 1 edge
@@ -67,19 +67,19 @@ final class Joyride: Sketch {
         apronY = land.value(u: 0.5, v: 0.5) * landHeight
         terrain = terrainMesh(land)
         // The tires want grip: a slick island is a skating rink.
-        world.addBody(.heightfield(land, width: landWidth, depth: landDepth,
+        try world.addBody(.heightfield(land, width: landWidth, depth: landDepth,
                                    height: landHeight),
                       at: .zero, kind: .static, friction: 0.9)
     }
 
     /// The things worth driving at: a ramp to leave the ground over and a stack
     /// of crates light enough to scatter.
-    func buildCourse() {
+    func buildCourse() throws {
         // A ramp on the apron, tilted about x so it climbs toward +z. Its low
         // lip is sunk into the ground: a ramp a car has to climb a step onto
         // is a wall, not a jump.
         let rampDepth = 8.0, rampTilt = 0.24
-        world.addBody(.box(width: 5, height: 0.3, depth: rampDepth),
+        try world.addBody(.box(width: 5, height: 0.3, depth: rampDepth),
                       at: Vector3(0, apronY + rampDepth / 2 * sin(rampTilt), 8),
                       kind: .static, rotated: -rampTilt, axis: .unitX,
                       friction: 0.9)
@@ -87,7 +87,7 @@ final class Joyride: Sketch {
         for level in 0 ..< 3 {
             for column in 0 ... (3 - level) {
                 let x = Double(column) * 1.1 - Double(3 - level) * 0.55
-                let crate = world.addBody(
+                let crate = try world.addBody(
                     .box(width: 1, height: 1, depth: 1),
                     at: Vector3(x - 6, apronY + 0.55 + Double(level) * 1.05, 20),
                     density: 0.08, friction: 0.5)

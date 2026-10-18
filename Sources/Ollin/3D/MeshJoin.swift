@@ -10,8 +10,8 @@ import simd
 /// let wheel = Mesh.cylinder(radius: 0.25, height: 0.2)
 /// let car = Mesh.joined([
 ///     body,
-///     wheel.placed(MeshInstance(position: Vector3(0.5, -0.3, 0.7), rotation: Vector3(0, 0, .pi / 2))),
-///     wheel.placed(MeshInstance(position: Vector3(-0.5, -0.3, 0.7), rotation: Vector3(0, 0, .pi / 2))),
+///     wheel.placed(MeshInstance(position: Vector3(0.5, -0.3, 0.7), rotation: .aboutZ(.pi / 2))),
+///     wheel.placed(MeshInstance(position: Vector3(-0.5, -0.3, 0.7), rotation: .aboutZ(.pi / 2))),
 /// ])
 /// drawMesh(car)
 /// ```

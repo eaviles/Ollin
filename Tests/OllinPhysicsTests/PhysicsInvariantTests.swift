@@ -33,7 +33,7 @@ struct PhysicsInvariantTests {
     /// A free body falls half g t squared in one second, in both worlds, within
     /// a percent (the semi-implicit step's own bias is a quarter of that at
     /// four substeps).
-    @Test func aFreeBodyFallsHalfGTSquared() {
+    @Test func aFreeBodyFallsHalfGTSquared() throws {
         let flat = World()
         flat.gravity = Vector2(0, 980)
         flat.drag = 0
@@ -42,7 +42,7 @@ struct PhysicsInvariantTests {
         #expect(abs(disk.position.y / 490 - 1) < 0.01, "the 2D body fell \(disk.position.y) of 490")
 
         let deep = World3D()
-        let ball = deep.addBody(.sphere(radius: 0.5), at: Vector3(0, 100, 0))
+        let ball = try deep.addBody(.sphere(radius: 0.5), at: Vector3(0, 100, 0))
         run(deep, seconds: 1)
         #expect(abs((100 - ball.position.y) / 4.9 - 1) < 0.01, "the 3D body fell \(100 - ball.position.y) of 4.9")
     }
@@ -53,7 +53,7 @@ struct PhysicsInvariantTests {
     /// Before `World3D.drag` every 3D body carried the engine's own 5% a
     /// second on its velocity and its spin, with nothing to turn it off, so a
     /// body coasting at 10 read 7.79 after five seconds.
-    @Test func aCoastingBodyKeepsItsSpeed() {
+    @Test func aCoastingBodyKeepsItsSpeed() throws {
         let flat = World()
         flat.gravity = .zero
         flat.drag = 0
@@ -67,7 +67,7 @@ struct PhysicsInvariantTests {
         let deep = World3D()
         deep.gravity = .zero
         deep.drag = 0
-        let ball = deep.addBody(.sphere(radius: 0.5), at: Vector3(0, 5, 0))
+        let ball = try deep.addBody(.sphere(radius: 0.5), at: Vector3(0, 5, 0))
         ball.velocity = Vector3(10, 0, 0)
         ball.angularVelocity = Vector3(0, 5, 0)
         run(deep, seconds: 5)
@@ -78,10 +78,10 @@ struct PhysicsInvariantTests {
     /// The default 3D `drag` is the solver's own feel, 5% a second on the
     /// speed and the spin, so a sketch written before the setting existed
     /// moves as it did.
-    @Test func theDefaultThreeDDragIsFivePercentASecond() {
+    @Test func theDefaultThreeDDragIsFivePercentASecond() throws {
         let deep = World3D()
         deep.gravity = .zero
-        let ball = deep.addBody(.sphere(radius: 0.5), at: Vector3(0, 5, 0))
+        let ball = try deep.addBody(.sphere(radius: 0.5), at: Vector3(0, 5, 0))
         ball.velocity = Vector3(10, 0, 0)
         ball.angularVelocity = Vector3(0, 5, 0)
         run(deep, seconds: 1)
@@ -97,7 +97,7 @@ struct PhysicsInvariantTests {
     /// Before the fix a particle's drag was taken once a step and a body's
     /// once a second (the engine's linear damping), so at 60 Hz and drag 0.01
     /// the particle kept 55% of its speed after a second and the body 99%.
-    @Test func dragMeansTheSameForAParticleAndABody() {
+    @Test func dragMeansTheSameForAParticleAndABody() throws {
         let world = World()
         world.gravity = .zero
         world.drag = 0.01
@@ -115,7 +115,7 @@ struct PhysicsInvariantTests {
         let deep = World3D()
         deep.gravity = .zero
         deep.drag = 0.01
-        let ball = deep.addBody(.sphere(radius: 0.5), at: Vector3(0, 5, 0))
+        let ball = try deep.addBody(.sphere(radius: 0.5), at: Vector3(0, 5, 0))
         ball.velocity = Vector3(10, 0, 0)
         run(deep, seconds: 1)
         #expect(abs(ball.velocity.x / (10 * pow(0.99, 60.0)) - 1) < 0.01, "the 3D body keeps \(ball.velocity.x) of \(10 * pow(0.99, 60.0))")
@@ -125,7 +125,7 @@ struct PhysicsInvariantTests {
     /// in each world slows once the world's drag is raised, and a 2D body made
     /// `.kinematic`, which moves only by the velocity it is given, is never
     /// dragged at all.
-    @Test func aWorldsDragReachesItsBodiesWhenChanged() {
+    @Test func aWorldsDragReachesItsBodiesWhenChanged() throws {
         let flat = World()
         flat.gravity = .zero
         flat.drag = 0
@@ -143,7 +143,7 @@ struct PhysicsInvariantTests {
         let deep = World3D()
         deep.gravity = .zero
         deep.drag = 0
-        let ball = deep.addBody(.sphere(radius: 0.5), at: Vector3(0, 5, 0))
+        let ball = try deep.addBody(.sphere(radius: 0.5), at: Vector3(0, 5, 0))
         ball.velocity = Vector3(10, 0, 0)
         run(deep, seconds: 1)
         #expect(abs(ball.velocity.x / 10 - 1) < 0.005)
@@ -191,7 +191,7 @@ struct PhysicsInvariantTests {
     /// and 17% at sixteen, 0.7% and 4.7% at sixty-four; four pieces at 60 Hz
     /// and one at 240 Hz give the same apexes to the third digit.
     @Test(arguments: ["2D rigid", "3D rigid", "Verlet"])
-    func aPendulumReturnsToItsHeight(kind: String) {
+    func aPendulumReturnsToItsHeight(kind: String) throws {
         var apexes: [Double] = []
         switch kind {
         case "2D rigid":
@@ -212,7 +212,7 @@ struct PhysicsInvariantTests {
             let world = World3D()
             world.drag = 0
             world.substeps = 16
-            let bar = world.addBody(.box(width: 2, height: 0.1, depth: 0.1), at: Vector3(1, 5, 0), friction: 0)
+            let bar = try world.addBody(.box(width: 2, height: 0.1, depth: 0.1), at: Vector3(1, 5, 0), friction: 0)
             _ = world.connect(bar, toWorld: .revolute(at: Vector3(0, 5, 0), axis: .unitZ))
             var lastVy = 0.0
             for _ in 0..<600 {
@@ -244,7 +244,7 @@ struct PhysicsInvariantTests {
 
     /// A ball dropped at restitution 1 onto a floor returns to its drop, within
     /// 5% from 100 px in 2D and from 1 m in 3D, both at drag 0.
-    @Test func aPerfectlyElasticBallReturnsToItsDrop() {
+    @Test func aPerfectlyElasticBallReturnsToItsDrop() throws {
         let flat = World()
         flat.gravity = Vector2(0, 980)
         flat.drag = 0
@@ -265,7 +265,7 @@ struct PhysicsInvariantTests {
         deep.drag = 0
         deep.restitution = 1
         deep.ground = 0
-        let ball = deep.addBody(.sphere(radius: 0.5), at: Vector3(0, 1.5, 0), restitution: 1)
+        let ball = try deep.addBody(.sphere(radius: 0.5), at: Vector3(0, 1.5, 0), restitution: 1)
         var top = 0.0, rose = false, lastUp = 0.0
         for _ in 0..<240 {
             deep.advance(by: 1.0 / 60)
@@ -286,7 +286,7 @@ struct PhysicsInvariantTests {
     /// Before the fix the walls and the ground carried the world's value, so a
     /// dead ball on a default floor rose 28 px from a 110 px drop in 2D (the
     /// world's 0.5) and 6.5 cm from 2.5 m in 3D (the world's 0.2).
-    @Test func aBallWithNoBounceDoesNotBounce() {
+    @Test func aBallWithNoBounceDoesNotBounce() throws {
         let flat = World()
         flat.gravity = Vector2(0, 980)
         flat.drag = 0
@@ -303,7 +303,7 @@ struct PhysicsInvariantTests {
 
         let deep = World3D()
         deep.ground = 0
-        let ball = deep.addBody(.sphere(radius: 0.5), at: Vector3(0, 3, 0), restitution: 0)
+        let ball = try deep.addBody(.sphere(radius: 0.5), at: Vector3(0, 3, 0), restitution: 0)
         var top = 0.0, rose = false, lastUp = 0.0
         for _ in 0..<300 {
             deep.advance(by: 1.0 / 60)
@@ -316,7 +316,7 @@ struct PhysicsInvariantTests {
 
     /// A body that named its own `restitution` keeps it when the world's
     /// changes, and one that named none follows the world's, in both worlds.
-    @Test func aBodyThatNamedItsBounceKeepsItWhenTheWorldsChanges() {
+    @Test func aBodyThatNamedItsBounceKeepsItWhenTheWorldsChanges() throws {
         let flat = World()
         let own = flat.addBody(.circle(radius: 10), at: Vector2(100, 100), restitution: 0.9)
         let handed = flat.addBody(.circle(radius: 10), at: Vector2(300, 100))
@@ -329,8 +329,8 @@ struct PhysicsInvariantTests {
         #expect(handed.restitution == 0.7, "a 2D body given a value afterwards keeps it")
 
         let deep = World3D()
-        let ownBall = deep.addBody(.sphere(radius: 0.5), at: Vector3(0, 5, 0), restitution: 0.9)
-        let handedBall = deep.addBody(.sphere(radius: 0.5), at: Vector3(3, 5, 0))
+        let ownBall = try deep.addBody(.sphere(radius: 0.5), at: Vector3(0, 5, 0), restitution: 0.9)
+        let handedBall = try deep.addBody(.sphere(radius: 0.5), at: Vector3(3, 5, 0))
         #expect(abs(ownBall.restitution - 0.9) < 1e-6 && abs(handedBall.restitution - 0.2) < 1e-6)
         deep.restitution = 0.1
         #expect(abs(ownBall.restitution - 0.9) < 1e-6, "the 3D body that named 0.9 reads \(ownBall.restitution)")
@@ -348,7 +348,7 @@ struct PhysicsInvariantTests {
     /// Neither engine wakes a sleeping body when its gravity changes, so the
     /// worlds do it themselves; before that a box settled for half a second
     /// stayed on the floor under gravity pointing the other way.
-    @Test func aSleepingBodyWakesWhenGravityChanges() {
+    @Test func aSleepingBodyWakesWhenGravityChanges() throws {
         let flat = World()
         flat.gravity = Vector2(0, 980)
         flat.bounds = Rectangle(x: 0, y: 0, width: 1000, height: 1000)
@@ -361,7 +361,7 @@ struct PhysicsInvariantTests {
 
         let deep = World3D()
         deep.ground = 0
-        let crate = deep.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(0, 0.5, 0))
+        let crate = try deep.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(0, 0.5, 0))
         run(deep, seconds: 3)
         #expect(!crate.isAwake, "the 3D box never went to sleep, so the statement was not tested")
         deep.gravity = Vector3(0, 9.8, 0)
@@ -400,7 +400,7 @@ struct PhysicsInvariantTests {
     /// not to, 47.1 rad/s at 60 Hz (seven and a half turns a second), and the
     /// 2D cap halved at a 1/30 frame; a fan set to 100 rad/s read 47 with no
     /// note before the worlds lifted it.
-    @Test func angularVelocityIsWhatWasSet() {
+    @Test func angularVelocityIsWhatWasSet() throws {
         let flat = World()
         flat.gravity = .zero
         flat.drag = 0
@@ -413,7 +413,7 @@ struct PhysicsInvariantTests {
         let deep = World3D()
         deep.gravity = .zero
         deep.drag = 0
-        let top = deep.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(0, 5, 0))
+        let top = try deep.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(0, 5, 0))
         top.angularVelocity = Vector3(0, 100, 0)
         deep.advance(by: 1.0 / 60)
         #expect(abs(top.angularVelocity.y / 100 - 1) < 0.01, "the 3D body set to 100 rad/s spins at \(top.angularVelocity.y)")

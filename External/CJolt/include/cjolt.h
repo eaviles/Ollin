@@ -235,6 +235,11 @@ void cjolt_world_set_group_collision(CJoltWorld *world, int32_t groupA,
 bool cjolt_world_group_collision(const CJoltWorld *world, int32_t groupA,
                                  int32_t groupB);
 
+/// How many bodies the solver holds right now, rigid and soft alike, and how
+/// many it was made for. A create call past the second returns no body.
+int32_t cjolt_world_body_count(const CJoltWorld *world);
+int32_t cjolt_world_max_bodies(const CJoltWorld *world);
+
 // Bodies --------------------------------------------------------------------
 
 CJoltBodyID cjolt_body_create(CJoltWorld *world, const CJoltBodyDesc *desc);

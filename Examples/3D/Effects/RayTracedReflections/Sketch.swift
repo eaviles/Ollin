@@ -64,7 +64,7 @@ final class RayTracedReflections: Sketch {
         for _ in 0 ..< 700 {
             let a = random(.tau), r = random(7.6, 12.6)
             drift.append(MeshInstance(position: Vector3(cos(a) * r, 0.08, sin(a) * r),
-                                      rotation: Vector3(0, random(.tau), 0),
+                                      rotation: .aboutY(random(.tau)),
                                       scale: Vector3(random(0.5, 1.1), random(0.3, 0.7),
                                                      random(0.5, 1.1)),
                                       color: Color(hue: random(1), saturation: 0.16, brightness: 0.72)))
@@ -139,7 +139,7 @@ final class RayTracedReflections: Sketch {
         for i in 0 ..< 24 {
             let a = Double(i) / 24 * .tau + 0.13
             posts.append(MeshInstance(position: Vector3(cos(a) * 6.2, 0.45, sin(a) * 6.2),
-                                      rotation: Vector3(0, -a, 0),
+                                      rotation: .aboutY(-a),
                                       color: Color(hue: Double(i) / 24, saturation: 0.5, brightness: 1)))
         }
         withState {

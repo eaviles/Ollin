@@ -18,19 +18,19 @@ final class Kept: Sketch {
     let stones: [Color] = [Color(hex: 0x9C9282), Color(hex: 0x847A6C),
                            Color(hex: 0xAAA292), Color(hex: 0x6F6A61)]
 
-    override func setup() {
-        let saved = build(nudge: 0)
+    override func setup() throws {
+        let saved = try build(nudge: 0)
 
         let restored = World3D()
         try? restored.restore(saved.snapshot())
 
-        heaps = [saved, restored, build(nudge: 1e-7)]
+        heaps = [saved, restored, try build(nudge: 1e-7)]
     }
 
     /// A heap laid one stone at a time, each one settling before the next
     /// arrives. `nudge` lifts the fourth stone's release point, and nothing
     /// else, by an amount no eye could find in the setup.
-    func build(nudge: Double) -> World3D {
+    func build(nudge: Double) throws -> World3D {
         let world = World3D()
         world.ground = 0
         world.restitution = 0
@@ -40,7 +40,7 @@ final class Kept: Sketch {
             let shape: Collider3D = i % 3 == 0
                 ? .cylinder(height: 0.14, radius: 0.32)
                 : .box(width: 0.42, height: 0.16, depth: 0.42)
-            world.addBody(shape,
+            try world.addBody(shape,
                           at: Vector3(cos(turn) * 0.16,
                                       top + 0.4 + (i == 3 ? nudge : 0),
                                       sin(turn) * 0.16),

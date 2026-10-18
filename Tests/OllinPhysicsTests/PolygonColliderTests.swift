@@ -86,7 +86,7 @@ struct PolygonColliderTests {
         let heights = shards.map(\.position.y)
         #expect((heights.max() ?? 0) - (heights.min() ?? 0) > 10)
     }
-    @Test func theSolidPiecesLandOnTheGroundAndOnEachOther() {
+    @Test func theSolidPiecesLandOnTheGroundAndOnEachOther() throws {
         // The 3D side never had the flat side's corner limit: a hull collider
         // takes as many points as it is handed. This says so out loud.
         let world = World3D()
@@ -96,7 +96,7 @@ struct PolygonColliderTests {
             let middle = piece.centroid
             let local = piece.mapPositions { $0 - middle }
             #expect(local.positions.count > 8, "the piece is not past the flat side's limit")
-            shards.append(world.addBody(.hull(local.positions), at: Vector3(0, 3, 0) + middle,
+            shards.append(try world.addBody(.hull(local.positions), at: Vector3(0, 3, 0) + middle,
                                         friction: 0.6, restitution: 0.05))
         }
         #expect(shards.count > 5)

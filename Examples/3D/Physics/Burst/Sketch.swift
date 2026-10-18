@@ -46,7 +46,7 @@ final class Burst3D: Sketch {
     }
 
     /// Throw one solid up from under the bottom of the view.
-    func throwOne() {
+    func throwOne() throws {
         guard world.bodies.count < 200 else { return }
         let size = random(0.55, 0.95)
         // Five convex solids. The collider is the hull of the very mesh that
@@ -61,7 +61,7 @@ final class Burst3D: Sketch {
         default: mesh = .cone(radius: size, height: size * 2, segments: 18)
         }
 
-        let solid = world.addBody(.hull(mesh.positions),
+        let solid = try world.addBody(.hull(mesh.positions),
                                   at: Vector3(random(-3.4, 3.4), -6, random(-1.2, 1.2)),
                                   rotated: random(.tau),
                                   axis: Vector3(random(-1, 1), random(-1, 1), random(-1, 1)),
@@ -74,7 +74,7 @@ final class Burst3D: Sketch {
 
     /// Break one solid into pieces, each with the parent's motion and a push
     /// out of the break.
-    func burst(_ solid: Body3D, look: Look) {
+    func burst(_ solid: Body3D, look: Look) throws {
         let turn = solid.rotation
         let here = solid.position
         let motion = solid.velocity
@@ -90,7 +90,7 @@ final class Burst3D: Sketch {
         for piece in pieces {
             let middle = piece.centroid
             let local = piece.mapPositions { $0 - middle }
-            let shard = world.addBody(.hull(local.positions),
+            let shard = try world.addBody(.hull(local.positions),
                                       at: here + middle.rotated(by: turn),
                                       rotated: turn.angle, axis: turn.axis,
                                       friction: 0.5, restitution: 0.15)
@@ -105,7 +105,7 @@ final class Burst3D: Sketch {
     override func mousePressed() {
         guard let hit = body(under: mouse, in: world),
               let look = hit.body.userData as? Look, look.breaksAt != nil else { return }
-        burst(hit.body, look: look)
+        try? burst(hit.body, look: look)
     }
 
     override func keyPressed() {
@@ -117,7 +117,7 @@ final class Burst3D: Sketch {
         lightingPreset(.studio)
         perspective(eye: Vector3(0, 1.4, 9.5), target: Vector3(0, 0.6, 0))
 
-        if frameCount % 22 == 0 { throwOne() }
+        if frameCount % 22 == 0 { try? throwOne() }
         world.advance(by: deltaTime)
 
         // Past the top of the arc it lets go: the solid is on its way down, and
@@ -125,7 +125,7 @@ final class Burst3D: Sketch {
         for body in world.bodies {
             guard let look = body.userData as? Look, let breaksAt = look.breaksAt else { continue }
             if body.velocity.y <= breaksAt && body.position.y > -1.5 {
-                burst(body, look: look)
+                try? burst(body, look: look)
             }
         }
 

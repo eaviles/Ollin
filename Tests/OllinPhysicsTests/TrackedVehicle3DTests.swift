@@ -295,15 +295,15 @@ struct TrackedVehicle3DTests {
     /// coefficient rather than a tire's slip curve, and scaling it scales what
     /// the machine can drag itself up.
     @Test func slickTracksClimbLessOfTheSameBank() throws {
-        func climbed(grip: Double) -> Double {
+        func climbed(grip: Double) throws -> Double {
             let world = World3D()
             world.ground = nil
             let angle = 30 * Double.pi / 180
-            world.addBody(.box(width: 24, height: 1, depth: 20),
+            try world.addBody(.box(width: 24, height: 1, depth: 20),
                           at: Vector3(0, -0.5, -10), kind: .static, friction: 1)
             let along = Vector3(0, sin(angle), cos(angle))
             let normal = Vector3(0, cos(angle), -sin(angle))
-            world.addBody(.box(width: 24, height: 1, depth: 25),
+            try world.addBody(.box(width: 24, height: 1, depth: 25),
                           at: along * 12.5 - normal * 0.5, kind: .static,
                           rotated: -angle, axis: .unitX, friction: 1)
             let crawler = try! Self.crawler(in: world, at: Vector3(0, 1.2, -6),
@@ -319,8 +319,8 @@ struct TrackedVehicle3DTests {
             return highest
         }
 
-        let gripping = climbed(grip: 1)
-        let slick = climbed(grip: 0.02)
+        let gripping = try climbed(grip: 1)
+        let slick = try climbed(grip: 0.02)
         #expect(gripping > 10)
         #expect(slick < 2.5)
         #expect(gripping > 4 * slick)

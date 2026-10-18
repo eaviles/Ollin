@@ -102,7 +102,7 @@ struct MeshJoinTests {
 
     @Test func placedMovesPositionsByThePlacementMatrix() {
         let box = Mesh.box(width: 2, height: 1, depth: 0.5)
-        let placement = MeshInstance(position: Vector3(1, 2, 3), rotation: Vector3(0.3, 0.2, 0.1),
+        let placement = MeshInstance(position: Vector3(1, 2, 3), rotation: .euler(x: 0.3, y: 0.2, z: 0.1),
                                      scale: Vector3(2, 1, 0.5))
         let placed = box.placed(placement)
         let m = placement.matrix
@@ -121,7 +121,7 @@ struct MeshJoinTests {
     /// length, where scaling it like a position would tilt it.
     @Test func placedNormalsStayPerpendicularUnderNonUniformScale() {
         let box = Mesh.box(size: 1)
-        let placement = MeshInstance(rotation: Vector3(0.4, 0, 0), scale: Vector3(3, 1, 0.25))
+        let placement = MeshInstance(rotation: .aboutX(0.4), scale: Vector3(3, 1, 0.25))
         let placed = box.placed(placement)
         #expect(placed.normals.count == box.normals.count)
         for n in placed.normals { #expect(abs(n.length - 1) < 1e-5) }
@@ -140,7 +140,7 @@ struct MeshJoinTests {
     @Test func placedTangentsTurnWithTheSurface() {
         var quad = Self.triangle(at: 0)
         quad.tangents = [MeshTangent(.unitX, handedness: -1), MeshTangent(.unitX), MeshTangent(.unitX)]
-        let placed = quad.placed(MeshInstance(rotation: Vector3(0, 0, .pi / 2), scale: Vector3(5, 5, 5)))
+        let placed = quad.placed(MeshInstance(rotation: .aboutZ(.pi / 2), scale: Vector3(5, 5, 5)))
         for t in placed.tangents {
             #expect(abs(t.direction.length - 1) < 1e-6)
             #expect(t.direction.distance(to: .unitY) < 1e-6)
@@ -206,11 +206,11 @@ private final class JoinedABSketch: Sketch {
 
     private static let parts: [(Mesh, MeshInstance)] = [
         (Mesh.box(width: 1.2, height: 0.5, depth: 0.8),
-         MeshInstance(position: Vector3(-1.1, 0.25, 0.2), rotation: Vector3(0, 0.6, 0))),
+         MeshInstance(position: Vector3(-1.1, 0.25, 0.2), rotation: .aboutY(0.6))),
         (Mesh.sphere(radius: 0.55, segments: 24, rings: 12),
          MeshInstance(position: Vector3(0.9, 0.7, -0.3), scale: Vector3(1.4, 0.8, 1))),
         (Mesh.cylinder(radius: 0.3, height: 1.4),
-         MeshInstance(position: Vector3(0.2, 0.7, 1.1), rotation: Vector3(0.3, 0, 0.5))),
+         MeshInstance(position: Vector3(0.2, 0.7, 1.1), rotation: .euler(x: 0.3, z: 0.5))),
     ]
 
     override func draw() {

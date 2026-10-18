@@ -28,7 +28,7 @@ final class HiddenLines: Sketch {
                 for k in 0 ..< 5 {
                     let p = Vector3(Double(i) * 0.62 - 2.48, Double(j) * 0.55 + 0.35, Double(k) * 0.6 - 5.4)
                     let a = noise(Double(i) * 0.7, Double(j) * 0.7, Double(k) * 0.7) * 4
-                    copies.append(MeshInstance(position: p, rotation: Vector3(a, a * 1.3, a * 0.4), scale: 0.3))
+                    copies.append(MeshInstance(position: p, rotation: .euler(x: a, y: a * 1.3, z: a * 0.4), scale: 0.3))
                 }
             }
         }

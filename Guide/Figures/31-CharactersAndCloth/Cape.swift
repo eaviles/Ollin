@@ -25,7 +25,7 @@ final class Cape: Sketch {
     static let sheet = Mesh.plane(width: 0.8, depth: length, segments: 16)
     static let collar = -length / 2 + 0.02
 
-    override func setup() {
+    override func setup() throws {
         rest = try? loadScene("Examples/3D/Physics/Ragdoll/figure.gltf")
         carriedFigure = rest
         pinnedFigure = rest

@@ -17,7 +17,7 @@ final class Floating: Sketch {
     let deep = -3.0
     var crates: [Body3D] = []
 
-    override func setup() {
+    override func setup() throws {
         world.ground = deep
         world.water = Water(level: 0)
 
@@ -27,7 +27,7 @@ final class Floating: Sketch {
             // of it under the line, rather than dropped in: a dropped crate
             // bobs, and the water's drag lets a bob die away only slowly.
             let y = size * (0.5 - density)
-            crates.append(world.addBody(.box(width: size, height: size, depth: size),
+            crates.append(try world.addBody(.box(width: size, height: size, depth: size),
                                         at: Vector3(x, y, 0), density: density,
                                         friction: 0.6))
         }

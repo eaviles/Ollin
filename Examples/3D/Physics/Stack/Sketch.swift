@@ -22,14 +22,14 @@ final class Stack3D: Sketch {
         Color(hex: 0x72BFB2), Color(hex: 0x8D92E0),
     ]
 
-    override func setup() {
+    override func setup() throws {
         world.ground = 0
         world.restitution = 0.1
-        buildTower()
+        try buildTower()
     }
 
     /// A square pyramid of crates: 4×4 at the base up to a single cap.
-    func buildTower() {
+    func buildTower() throws {
         world.removeAll()
         let size = 0.72
         let gap = 0.045
@@ -38,7 +38,7 @@ final class Stack3D: Sketch {
             let span = Double(count - 1) * (size + gap)
             for row in 0 ..< count {
                 for column in 0 ..< count {
-                    let crate = world.addBody(
+                    let crate = try world.addBody(
                         .box(width: size, height: size, depth: size),
                         at: Vector3(Double(column) * (size + gap) - span / 2,
                                     size / 2 + Double(level) * (size + gap),
@@ -55,15 +55,16 @@ final class Stack3D: Sketch {
         guard let camera = activeCamera,
               let ray = cameraRay(through: mouse) else { return }
         let aim = ray.direction
-        let ball = world.addBody(.sphere(radius: 0.3),
-                                 at: camera.eye + aim * 1.2,
-                                 density: 6, friction: 0.4)
+        // A full world refuses the ball, and a click has nowhere to throw to.
+        guard let ball = try? world.addBody(.sphere(radius: 0.3),
+                                            at: camera.eye + aim * 1.2,
+                                            density: 6, friction: 0.4) else { return }
         ball.velocity = aim * 24
         ball.userData = Color(hex: 0xD4DCE6)
     }
 
     override func keyPressed() {
-        if key == " " { buildTower() }
+        if key == " " { try? buildTower() }
     }
 
     override func draw() {

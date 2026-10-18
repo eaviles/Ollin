@@ -59,9 +59,38 @@ struct MeshInstanceTests {
         drawer.rotateY(0.2)
         drawer.rotateZ(0.1)
         drawer.scale(2, 1, 0.5)
-        let inst = MeshInstance(position: Vector3(1, 2, 3), rotation: Vector3(0.3, 0.2, 0.1),
+        let inst = MeshInstance(position: Vector3(1, 2, 3), rotation: .euler(x: 0.3, y: 0.2, z: 0.1),
                                 scale: Vector3(2, 1, 0.5))
+        // Three angles compose into one turn and back out as one matrix, so
+        // the match is to float rounding rather than to the bit.
+        for c in 0 ..< 4 {
+            for r in 0 ..< 4 {
+                #expect(abs(inst.matrix[c][r] - drawer.modelMatrix[c][r]) < 1e-6,
+                        "column \(c) row \(r)")
+            }
+        }
+    }
+
+    /// A placement turned by any rotation composes to the bit what
+    /// `translate`, `rotate(_:)`, and `scale` leave the stack at, since the
+    /// instance builds its turn through the same axis-angle helper.
+    @Test func placementMatrixMatchesRotateByAnyAxisExactly() throws {
+        let turn = Rotation3D(angle: 1.1, axis: Vector3(0.3, -0.8, 0.5))
+        let drawer = Drawer()
+        drawer.beginFrame()
+        drawer.translate(-2, 0.5, 3)
+        drawer.rotate(turn.angle, axis: turn.axis)
+        drawer.scale(0.5, 2, 1.5)
+        let inst = MeshInstance(position: Vector3(-2, 0.5, 3), rotation: turn,
+                                scale: Vector3(0.5, 2, 1.5))
         #expect(inst.matrix == drawer.modelMatrix)
+        // No turn at all leaves the stack untouched, to the bit as well.
+        let still = MeshInstance(position: Vector3(-2, 0.5, 3), scale: Vector3(0.5, 2, 1.5))
+        let plain = Drawer()
+        plain.beginFrame()
+        plain.translate(-2, 0.5, 3)
+        plain.scale(0.5, 2, 1.5)
+        #expect(still.matrix == plain.modelMatrix)
     }
 
     @Test func tintDefaultsToWhiteAndCarriesWhenSet() throws {
@@ -311,7 +340,7 @@ private final class InstancedABSketch: Sketch {
             let h = 0.6 + Double((i * 7) % 11) * 0.22
             placements.append(MeshInstance(
                 position: Vector3(cos(a) * r, h / 2, sin(a) * r),
-                rotation: Vector3(0, a, 0),
+                rotation: .aboutY(a),
                 scale: Vector3(1, h, 0.7),
                 color: Color(red: 0.6 + 0.4 * cos(a), green: 0.7, blue: 1, alpha: 1)))
         }
@@ -325,7 +354,7 @@ private final class InstancedABSketch: Sketch {
             for p in placements {
                 withState {
                     translate(p.position.x, p.position.y, p.position.z)
-                    rotateY(p.rotation.y)
+                    rotate(p.rotation)
                     scale(p.scale.x, p.scale.y, p.scale.z)
                     if let c = p.color {
                         fill(Color(red: base.red * c.red, green: base.green * c.green,

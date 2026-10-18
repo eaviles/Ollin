@@ -23,7 +23,7 @@ final class TrackAndPulley: Sketch {
     let steel = Color(hex: 0xB9C2CE)
     let clay = Color(hex: 0xC96F4A)
 
-    override func setup() {
+    override func setup() throws {
         world.ground = -0.8
 
         // The looping track: an oval that climbs at the back and dips in front.
@@ -31,9 +31,9 @@ final class TrackAndPulley: Sketch {
             let a = Double(i) / 16 * .tau
             return Vector3(-3.1 + 2.3 * cos(a), 1.0 - 0.55 * sin(a), 1.3 * sin(a))
         }
-        let rails = world.addBody(.box(width: 0.2, height: 0.2, depth: 0.2),
+        let rails = try world.addBody(.box(width: 0.2, height: 0.2, depth: 0.2),
                                   at: Vector3(0, -2, 0), kind: .static)
-        let cart = world.addBody(.box(width: 0.8, height: 0.4, depth: 0.5),
+        let cart = try world.addBody(.box(width: 0.8, height: 0.4, depth: 0.5),
                                  at: track[0], density: 1.5)
         cart.userData = clay
         world.connect(rails, cart,
@@ -48,14 +48,14 @@ final class TrackAndPulley: Sketch {
                                     depth: dz == 0 ? 1.0 : 0.12),
                                at: Vector3(dx, 0.22, dz)))
         }
-        let basket = world.addBody(.compound(walls), at: Vector3(1.85, 2.1, 0),
+        let basket = try world.addBody(.compound(walls), at: Vector3(1.85, 2.1, 0),
                                    density: 0.5, friction: 0.6)
         basket.userData = steel
         tray = basket
-        let load = world.addBody(.sphere(radius: 0.24), at: Vector3(1.85, 2.7, 0),
+        let load = try world.addBody(.sphere(radius: 0.24), at: Vector3(1.85, 2.7, 0),
                                  density: 3.5, friction: 0.6)
         load.userData = brass
-        let weight = world.addBody(.box(width: 0.55, height: 0.55, depth: 0.55),
+        let weight = try world.addBody(.box(width: 0.55, height: 0.55, depth: 0.55),
                                    at: Vector3(3.35, 0.75, 0), density: 1.5)
         weight.userData = clay
         counterweight = weight

@@ -253,8 +253,26 @@ public final class World3D {
     /// How many bodies this world can hold at once, as it was made (at least 64).
     /// The solver sets aside its tables for this many up front, with room for
     /// sixteen touching pairs a body (a packed box touches up to 26 neighbors); a
-    /// pile denser than that drops contacts and says so in `lastError`.
+    /// pile denser than that drops contacts and says so in `lastError`. Every
+    /// call that creates a body throws `PhysicsError.full` once this many are
+    /// held at once; removing a body frees its place.
     public let maxBodies: Int
+
+    /// How many bodies the solver holds right now: the rigid ones, the soft
+    /// ones, every rope, a ragdoll's limbs, a vehicle's chassis, a character's
+    /// inner body, and the ground slab.
+    var solverBodyCount: Int { Int(cjolt_world_body_count(handle)) }
+
+    /// Whether one more body would be past `maxBodies`.
+    var isFull: Bool { solverBodyCount >= maxBodies }
+
+    /// Throws `PhysicsError.full` when the world cannot take one more body;
+    /// the creators that make their body inside the solver (a character's
+    /// inner body) ask before they build, since the solver answers them with
+    /// a body that has no presence rather than with a refusal.
+    func checkRoom() throws {
+        if isFull { throw PhysicsError.full(maxBodies: maxBodies) }
+    }
 
     /// What went wrong in the last step, as a sentence, or nil when it kept every
     /// contact. A step drops contacts when more bodies touch at once than the world
@@ -312,6 +330,12 @@ public final class World3D {
     ///   - group: which collision group it joins. Everything is in `.default`
     ///     and collides with everything until `ignoreCollisions(between:and:)`
     ///     says two groups pass through each other.
+    ///
+    /// Throws `PhysicsError.full` when the world already holds `maxBodies`
+    /// bodies, and `PhysicsError.unbuildable` when the solver cannot make a
+    /// body from the collider. A sketch that adds bodies on a click writes
+    /// `try?` and stops adding; one that builds its scene in `setup()` lets
+    /// the error out.
     @discardableResult
     public func addBody(_ collider: Collider3D, at position: Vector3,
                         kind: Body3D.Kind = .dynamic, isSensor: Bool = false,
@@ -320,8 +344,8 @@ public final class World3D {
                         restitution: Double? = nil,
                         freedom: Freedom3D = .all, gravityScale: Double = 1,
                         checksPath: Bool = false,
-                        group: CollisionGroup = .default) -> Body3D {
-        addBody(collider, at: position, kind: kind, isSensor: isSensor,
+                        group: CollisionGroup = .default) throws -> Body3D {
+        try addBody(collider, at: position, kind: kind, isSensor: isSensor,
                 rotated: angle, axis: axis, density: density, friction: friction,
                 restitution: restitution, mass: nil, centerOfMass: .zero,
                 freedom: freedom, gravityScale: gravityScale,
@@ -345,7 +369,7 @@ public final class World3D {
                  orientation: SIMD4<Double>? = nil,
                  velocity: Vector3 = .zero,
                  angularVelocity: Vector3 = .zero,
-                 asleep: Bool = false) -> Body3D {
+                 asleep: Bool = false) throws -> Body3D {
         // A sketch's own numbers are checked here, where they cross into the
         // solver: one it cannot hold falls back to the parameter's default
         // with a note, and a collider carrying one becomes a unit sphere.
@@ -415,6 +439,15 @@ public final class World3D {
                 cjolt_body_create(handle, $0)
             }
         }
+        // No body came back: the world is full, or the collider was one the
+        // solver could not make a shape from. Either is a failure the call
+        // can see, so it throws rather than handing back a body that would
+        // sit at the origin for good.
+        guard id != CJOLT_BODY_INVALID else {
+            if isFull { throw PhysicsError.full(maxBodies: maxBodies) }
+            throw PhysicsError.unbuildable("the solver could not make a body from this "
+                                           + "collider; nothing was added")
+        }
 
         // A sensor is kinematic whatever was asked for, so it stays awake and
         // keeps reporting bodies that fall asleep inside it.
@@ -442,8 +475,11 @@ public final class World3D {
     @discardableResult
     public func addStaticBodies(from scene: Scene, friction: Double = 0.5,
                                    restitution: Double? = nil,
-                                   group: CollisionGroup = .default) -> [Body3D] {
-        var added: [Body3D] = []
+                                   group: CollisionGroup = .default) throws -> [Body3D] {
+        // The meshes are baked first and added after, so a world that fills
+        // up partway throws from an ordinary loop rather than from inside
+        // the scene walk.
+        var baked: [Mesh] = []
         Scene.visitWorlds(scene.nodes, parent: matrix_identity_float4x4) { node, world in
             guard var mesh = node.mesh, !mesh.isEmpty else { return }
             mesh.positions = mesh.positions.map { position in
@@ -451,9 +487,13 @@ public final class World3D {
                                              Float(position.z), 1)
                 return Vector3(Double(w.x), Double(w.y), Double(w.z))
             }
-            added.append(addBody(.mesh(mesh), at: .zero, kind: .static,
-                                 friction: friction, restitution: restitution,
-                                 group: group))
+            baked.append(mesh)
+        }
+        var added: [Body3D] = []
+        for mesh in baked {
+            added.append(try addBody(.mesh(mesh), at: .zero, kind: .static,
+                                     friction: friction, restitution: restitution,
+                                     group: group))
         }
         // Many statics arrived at once; rebuild the broad-phase tree.
         cjolt_world_optimize(handle)
@@ -490,7 +530,11 @@ public final class World3D {
                              maxSlope: Double = 50 * .pi / 180,
                              mass: Double = 70,
                              pushStrength: Double = 100,
-                             group: CollisionGroup = .default) -> Character3D {
+                             group: CollisionGroup = .default) throws -> Character3D {
+        // The character's inner body is made by the solver as part of the
+        // character, and a solver with no room leaves it out rather than
+        // refusing, so the room is checked here first.
+        try checkRoom()
         let position = held(position, "addCharacter(at:)", or: .zero)
         let radius = held(radius, "addCharacter's radius", or: 0.3)
         let height = held(height, "addCharacter's height", or: 1.8)
@@ -499,12 +543,15 @@ public final class World3D {
         let maxSlope = held(maxSlope, "addCharacter's maxSlope", or: 50 * .pi / 180)
         let mass = held(mass, "addCharacter's mass", or: 70)
         let pushStrength = held(pushStrength, "addCharacter's pushStrength", or: 100)
-        let character = Character3D(world: self, radius: radius, height: height,
-                                    position: position, stepHeight: stepHeight,
-                                    stickToFloorDistance: stickToFloorDistance,
-                                    maxSlope: maxSlope, mass: mass,
-                                    pushStrength: pushStrength,
-                                    group: group)!
+        guard let character = Character3D(world: self, radius: radius, height: height,
+                                          position: position, stepHeight: stepHeight,
+                                          stickToFloorDistance: stickToFloorDistance,
+                                          maxSlope: maxSlope, mass: mass,
+                                          pushStrength: pushStrength,
+                                          group: group) else {
+            throw PhysicsError.unbuildable("the character could not be built; "
+                                           + "check its radius and height")
+        }
         characters.append(character)
         return character
     }
@@ -589,10 +636,10 @@ public final class World3D {
         // that cornering cannot lever it over.
         let hang = centerOfMass
             ?? Vector3(0, wheels.map(\.position.y).reduce(0, +) / Double(wheels.count), 0)
-        let body = addBody(chassis, at: position, kind: .dynamic, isSensor: false,
-                           rotated: angle, axis: axis, density: 1,
-                           friction: friction, restitution: nil, mass: mass,
-                           centerOfMass: hang, group: group)
+        let body = try addBody(chassis, at: position, kind: .dynamic, isSensor: false,
+                               rotated: angle, axis: axis, density: 1,
+                               friction: friction, restitution: nil, mass: mass,
+                               centerOfMass: hang, group: group)
         guard let vehicle = Vehicle3D(world: self, chassis: body, wheels: wheels,
                                       engineTorque: engineTorque,
                                       topSpeed: topSpeed,
@@ -665,6 +712,7 @@ public final class World3D {
                                       joints: joints, swing: swing, twist: twist,
                                       mass: mass, friction: friction,
                                       group: group) else {
+            if isFull { throw PhysicsError.full(maxBodies: maxBodies) }
             throw PhysicsError.unbuildable("the ragdoll could not be built from this skeleton")
         }
         ragdolls.append(ragdoll)
@@ -790,6 +838,7 @@ public final class World3D {
                                       skeleton: scene?.skeleton() ?? [],
                                       carriedBy: carriedBy, sway: sway, backStop: backStop,
                                       maxStretch: maxStretch, restoredSkin: nil) else {
+            if isFull { throw PhysicsError.full(maxBodies: maxBodies) }
             throw PhysicsError.unbuildable("addSoftBody needs a mesh with at least one triangle "
                                            + "whose corners are distinct; nothing was added")
         }
@@ -911,6 +960,7 @@ public final class World3D {
                                   friction: friction, restitution: restitution ?? self.restitution,
                                   iterations: iterations, pinned: pinned,
                                   maxStretch: maxStretch, group: group) else {
+            if isFull { throw PhysicsError.full(maxBodies: maxBodies) }
             throw PhysicsError.unbuildable("addRope needs at least two points that are not "
                                            + "on top of each other; nothing was added")
         }
@@ -990,7 +1040,7 @@ public final class World3D {
         try check(stiffness, "addTensegrity's stiffness")
         try check(density, "addTensegrity's density")
         try check(friction, "addTensegrity's friction")
-        guard let built = Tensegrity3D(world: self, structure: structure,
+        guard let built = try Tensegrity3D(world: self, structure: structure,
                                        position: position, strutRadius: strutRadius,
                                        prestress: prestress, stiffness: stiffness,
                                        density: density, friction: friction,
@@ -1455,6 +1505,14 @@ public final class World3D {
         desc.gravityFactor = 1
         desc.group = groupIndex(groundGroup)
         groundID = withUnsafePointer(to: &desc) { cjolt_body_create(handle, $0) }
+        // `ground` is a property, so it has no caller to throw to: a world
+        // with no room says so once and stays without a floor.
+        guard groundID != CJOLT_BODY_INVALID else {
+            noteOnce("the ground could not be made: the world is full (it was made for "
+                     + "\(maxBodies) bodies and holds that many), so set `ground` before "
+                     + "the bodies, or make the world with a larger maxBodies")
+            return
+        }
         // Registered so contacts with the floor name a body, but kept out of
         // `bodies`: a sketch's drawing loop never asked for a 1000-unit slab.
         let slab = Body3D(world: self, id: groundID,

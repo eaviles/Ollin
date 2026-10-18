@@ -16,11 +16,11 @@ final class Cloth: Sketch {
 
     let ballRadius = 0.42
 
-    override func setup() {
+    override func setup() throws {
         world.ground = 0
 
         // What the sheet has to find the shape of.
-        world.addBody(.sphere(radius: 0.62), at: Vector3(-1.05, 0.62, 0),
+        try world.addBody(.sphere(radius: 0.62), at: Vector3(-1.05, 0.62, 0),
                       kind: .static, friction: 0.8)
 
         sheet = try? world.addSoftBody(from: .plane(width: 2.2, depth: 2.2, segments: 22),

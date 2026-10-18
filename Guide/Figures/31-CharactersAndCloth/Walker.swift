@@ -18,30 +18,30 @@ final class Walker: Sketch {
         Color(hex: 0xE4572E), Color(hex: 0xF2A93B), Color(hex: 0x76B39D),
     ]
 
-    override func setup() {
+    override func setup() throws {
         world.ground = 0
 
         // Four steps rising east, each inside the character's 0.4 reach.
         for index in 0 ..< 4 {
             let top = 0.3 * Double(index + 1)
-            world.addBody(.box(width: 0.9, height: top, depth: 3.2),
+            try world.addBody(.box(width: 0.9, height: top, depth: 3.2),
                           at: Vector3(2.2 + Double(index) * 0.9, top / 2, 0),
                           kind: .static, friction: 0.6)
         }
         // The deck the stair arrives on.
-        world.addBody(.box(width: 2.4, height: 1.2, depth: 3.2),
+        try world.addBody(.box(width: 2.4, height: 1.2, depth: 3.2),
                       at: Vector3(6.6, 0.6, 0), kind: .static, friction: 0.6)
 
         // Two crates light enough for the walk to shoulder aside.
         for (index, offset) in [Vector3(0.9, 0.26, 0.28),
                                 Vector3(1.5, 0.26, -0.3)].enumerated() {
-            let crate = world.addBody(.box(width: 0.5, height: 0.5, depth: 0.5),
+            let crate = try world.addBody(.box(width: 0.5, height: 0.5, depth: 0.5),
                                       at: offset, density: 0.02, friction: 0.4)
             crate.userData = palette[index]
             crates.append(crate)
         }
 
-        walker = world.addCharacter(radius: 0.28, height: 1.7,
+        walker = try world.addCharacter(radius: 0.28, height: 1.7,
                                     at: Vector3(-1.6, 0.1, 0))
     }
 

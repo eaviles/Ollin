@@ -255,7 +255,7 @@ struct Rope3DTests {
     @Test func aRopeDrapesOverACrateRatherThanThroughIt() throws {
         let world = World3D()
         world.ground = 0
-        world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(0, 0.5, 0),
+        try world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(0, 0.5, 0),
                       kind: .static)
         let rope = try world.addRope(through: Rope3DTests.sideways(24),
                                        at: Vector3(-1.2, 2, 0),
@@ -270,10 +270,10 @@ struct Rope3DTests {
     }
 
     @Test func aRopePushesALightBodyOutOfItsWay() throws {
-        func pebbleTravel(withRope: Bool) -> Double {
+        func pebbleTravel(withRope: Bool) throws -> Double {
             let world = World3D()
             world.ground = 0
-            let pebble = world.addBody(.sphere(radius: 0.1), at: Vector3(0, 0.1, 0),
+            let pebble = try world.addBody(.sphere(radius: 0.1), at: Vector3(0, 0.1, 0),
                                        density: 0.1)
             if withRope {
                 try! world.addRope(through: Rope3DTests.sideways(20), at: Vector3(-1, 1.5, 0),
@@ -282,8 +282,8 @@ struct Rope3DTests {
             run(world, steps: 240)
             return (pebble.position - Vector3(0, 0.1, 0)).length
         }
-        #expect(pebbleTravel(withRope: true) > 0.1)
-        #expect(pebbleTravel(withRope: false) < 0.01)
+        #expect(try pebbleTravel(withRope: true) > 0.1)
+        #expect(try pebbleTravel(withRope: false) < 0.01)
     }
 
     @Test func aRopeFloatsAtTheDensityItIsGiven() throws {
