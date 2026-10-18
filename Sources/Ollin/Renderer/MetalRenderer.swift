@@ -660,6 +660,20 @@ final class MetalRenderer {
     var volumeLightCache: [VolumeLightKey: (texture: MTLTexture, used: UInt64)] = [:]
     var volumeLightGeneration: UInt64 = 0
     var volumeLightStandIn: MTLTexture?
+    /// Transmittance grids the cache let go of, reused for a grid of the same
+    /// size before a new texture is made (a kernel-written cloud wants one every
+    /// frame).
+    var volumeLightPool: [MTLTexture] = []
+    /// This frame's volumes with their GPU resources resolved (`prepareVolumes`),
+    /// read by every geometry pass for the cloud's shadow and by the composite
+    /// after each pass for the cloud itself.
+    var preparedVolumes: [PreparedVolume] = []
+    /// The one zero entry a pass with no casting volume binds at the lit mesh
+    /// fragments' buffer 11.
+    var volumeShadowStandIn: MTLBuffer?
+    /// The frame's volumetric quality, noted by `prepareVolumes` for the march
+    /// step `makeVolumeDraw` sizes.
+    var drawerVolumetricQuality: VolumetricQualitySetting = .tier(.default)
     var computeLibraries: [UInt64: MTLLibrary] = [:]
     /// The same pipelines keyed by the kernel's own source alone, for a kernel
     /// written in the sketch's source (`ComputeKernel.quickHash`): the library
@@ -2301,6 +2315,7 @@ final class MetalRenderer {
             return
         }
         encodeCompute(drawer, into: commandBuffer)   // sim steps before the render pass
+        prepareVolumes(drawer, into: commandBuffer)  // the clouds' grids, lit, ahead of every pass
         encodeMeshFieldCulling(drawer, into: commandBuffer,
                                viewport: SIMD2<Float>(Float(width), Float(height)))
         // Many lights: cull the frame's light set into the screen tile grid, ahead of
@@ -2651,6 +2666,7 @@ final class MetalRenderer {
                                                width: width, height: height,
                                                storage: attachmentStorage(for: drawer, target: nil))
         encodeCompute(drawer, into: commandBuffer)   // sim steps before the render pass
+        prepareVolumes(drawer, into: commandBuffer)  // the clouds' grids, lit, ahead of every pass
         // The accumulating path culls its own lights too. Even a frame that has none
         // has to make the call, or a lit pass here would read whatever grid the last
         // frame through another path left behind.
@@ -2783,6 +2799,7 @@ final class MetalRenderer {
                                                width: width, height: height,
                                                storage: attachmentStorage(for: drawer, target: nil))
         encodeCompute(drawer, into: commandBuffer)   // sim steps before the render pass
+        prepareVolumes(drawer, into: commandBuffer)  // the clouds' grids, lit, ahead of every pass
         guard let encoder = countedEncoder(commandBuffer, pass, caller: "canvas (accumulating, headless)") else { return nil }
 
         encode(drawer, viewport: viewport, attachment: SIMD2<Float>(Float(width), Float(height)), into: encoder,
@@ -3080,6 +3097,7 @@ final class MetalRenderer {
         // safely re-fill the accel/offsets rings the trace used. nil = pure raster.
         let pathTraced = encodePathTracePass(drawer, width: width, height: height)
         encodeCompute(drawer, into: commandBuffer)   // sim steps before the render pass
+        prepareVolumes(drawer, into: commandBuffer)  // the clouds' grids, lit, ahead of every pass
         encodeMeshFieldCulling(drawer, into: commandBuffer,
                                viewport: SIMD2<Float>(Float(width), Float(height)))
         _ = encodeLightCull(drawer, into: commandBuffer, renderWidth: width, renderHeight: height,
@@ -3586,6 +3604,7 @@ final class MetalRenderer {
                                                    width: width, height: height, storage: storage)
             guard let cb = commandQueue.makeCommandBuffer() else { continue }
             encodeCompute(drawer, into: cb)
+            prepareVolumes(drawer, into: cb)
             encodeMeshFieldCulling(drawer, into: cb,
                                    viewport: SIMD2<Float>(Float(width), Float(height)))
             _ = encodeLightCull(drawer, into: cb, renderWidth: width, renderHeight: height,

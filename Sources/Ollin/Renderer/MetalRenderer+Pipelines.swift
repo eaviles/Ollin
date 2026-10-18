@@ -33,9 +33,14 @@ extension MetalRenderer {
         // composes the full text.
         let quick = kernel.quickHash.map { ComputeKey(sourceHash: $0, entry: kernel.entry) }
         if let quick, let existing = quickComputePipelines[quick] { return existing }
-        let composed = MetalRenderer.composeComputeSource(kernel.source,
-                                                          sourcePath: kernel.sourcePath)
-        let hash = MetalRenderer.fnv1a(composed)
+        // The composed text's hash without composing it: FNV runs byte by byte, so
+        // hashing the kernel's own (include-resolved) text from the state the shared
+        // library left is the hash of the two joined. A kernel read from a file has
+        // no quick key, and building and hashing the 200 KB of composed source for
+        // it on every dispatch of every frame was most of what its dispatch cost;
+        // only a miss builds the text.
+        let user = MetalRenderer.resolvedComputeUserSource(kernel.source, sourcePath: kernel.sourcePath)
+        let hash = MetalRenderer.fnv1a(user, from: MetalRenderer.resolvedComputeLibraryHash)
         let key = ComputeKey(sourceHash: hash, entry: kernel.entry)
         if let existing = computePipelines[key] {
             if let quick { quickComputePipelines[quick] = existing }
@@ -45,6 +50,7 @@ extension MetalRenderer {
         if let cached = computeLibraries[hash] {
             lib = cached
         } else {
+            let composed = MetalRenderer.resolvedComputeLibrary + "\n" + user
             lib = try device.makeLibrary(source: composed, options: ollinShaderCompileOptions())
             computeLibraries[hash] = lib
         }
@@ -728,18 +734,27 @@ extension MetalRenderer {
     /// because the runtime compiler has no include search path (same reason
     /// `composeShaderSource` splices).
     static func composeComputeSource(_ userSource: String, sourcePath: String = "") -> String {
-        // A kernel may pull in a file of its own, the same way a fragment shader does,
-        // so one helper file can serve both. It resolves against the folder the kernel's
-        // source came from.
-        let user = sourcePath.isEmpty ? userSource
+        resolvedComputeLibrary + "\n" + resolvedComputeUserSource(userSource, sourcePath: sourcePath)
+    }
+
+    /// The kernel's own text with its includes resolved: a kernel may pull in a
+    /// file of its own, the same way a fragment shader does, so one helper file
+    /// can serve both. It resolves against the folder the kernel's source came
+    /// from.
+    static func resolvedComputeUserSource(_ userSource: String, sourcePath: String) -> String {
+        sourcePath.isEmpty ? userSource
             : ShaderIncludes.resolveFromFilesystem(userSource, name: sourcePath).source
-        return resolvedComputeLibrary + "\n" + user
     }
 
     /// The shared library's text with its includes resolved, read once per
     /// process: the bundle does not change under a running one, and resolving
     /// it again for every kernel on every dispatch was most of what a compute
     /// dispatch cost on the CPU.
+    /// The FNV state after the shared library and the newline that joins it to
+    /// a kernel's text: `fnv1a(user, from: this)` is `fnv1a(library + "\n" + user)`,
+    /// the composed source's hash, without the composed source.
+    private static let resolvedComputeLibraryHash: UInt64 = fnv1a(resolvedComputeLibrary + "\n")
+
     private static let resolvedComputeLibrary: String = {
         var lib = "#include <metal_stdlib>\nusing namespace metal;\n#include \"OllinShaderTypes.h\"\n"
         if let url = OllinResources.bundle.url(forResource: "OllinShaderLib", withExtension: "metal"),
@@ -753,7 +768,13 @@ extension MetalRenderer {
     /// (`Hasher` is per-process-seeded, so it can't key a stable cache; FNV is
     /// stable — the same lesson the model-tracker cache learned.)
     nonisolated static func fnv1a(_ string: String) -> UInt64 {
-        var hash: UInt64 = 0xcbf29ce484222325
+        fnv1a(string, from: 0xcbf29ce484222325)
+    }
+
+    /// The same hash continued from `state`, the state an earlier text left, so a
+    /// text in two pieces hashes as the one text.
+    nonisolated static func fnv1a(_ string: String, from state: UInt64) -> UInt64 {
+        var hash = state
         for byte in string.utf8 { hash = (hash ^ UInt64(byte)) &* 0x100000001b3 }
         return hash
     }

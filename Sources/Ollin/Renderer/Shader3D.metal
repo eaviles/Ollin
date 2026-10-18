@@ -1299,6 +1299,88 @@ static inline float ollin_fog_shadow_tap(float3 p, float4x4 lightVP, uint layer,
     return shadowMap.sample_compare(shadowSamp, uv, layer, ndc.z - 0.0015);
 }
 
+// MARK: - Volumes: the box, the lattice, and a cloud's shadow on a solid
+//
+// Shared by the volume composite (ShaderVolume.metal) and the lit mesh fragments
+// below, which read a volume's light-transmittance grid for its shadow.
+
+// The unit box [-0.5, 0.5]^3 crossed by o + t * d: the t interval inside it
+// (empty when x >= y). `d` need not be unit length; a zero component is nudged
+// so the slab test never forms 0 * inf under fast math. A ray running along a
+// face (a zero component on that axis) is inside that axis's slab for its whole
+// length when its origin is, a point exactly on the face included: the nudged
+// inverse alone ended a face point's interval at 0 there, which left every
+// lattice point on a face parallel to the light with no medium in front of it
+// (a bright skin on the light grid's faces, and a shadow that faded short of
+// the box's edge).
+static inline float2 ollin_volume_box(float3 o, float3 d) {
+    bool3 along = fabs(d) < 1e-12;
+    float3 safe = select(d, copysign(float3(1e-12), d), along);
+    float3 inv = 1.0 / safe;
+    float3 a = (-0.5 - o) * inv;
+    float3 b = (0.5 - o) * inv;
+    float3 lo = min(a, b), hi = max(a, b);
+    bool3 within = fabs(o) <= 0.5;
+    lo = select(lo, select(float3(1e30), float3(-1e30), within), along);
+    hi = select(hi, select(float3(-1e30), float3(1e30), within), along);
+    return float2(max(max(lo.x, lo.y), lo.z), min(min(hi.x, hi.y), hi.z));
+}
+
+// A unit-box point's texture coordinate in a grid of `n` samples per axis: the
+// samples span the box corner to corner, so a face reads its own samples
+// exactly and the box's center reads between the middle two.
+static inline float3 ollin_volume_uvw(float3 p, float3 n) {
+    return ((clamp(p, -0.5, 0.5) + 0.5) * (n - 1.0) + 0.5) / n;
+}
+
+// A light-transmittance grid read at a unit-box point: how much of its light
+// survives the medium from there to the light.
+static inline float ollin_volume_grid_read(texture3d<float> lit, float3 p) {
+    constexpr sampler s(filter::linear, address::clamp_to_edge, coord::normalized);
+    float3 n = float3(lit.get_width(), lit.get_height(), lit.get_depth());
+    return lit.sample(s, ollin_volume_uvw(p, n)).r;
+}
+
+// A cloud's shadow on a solid (`drawVolume` under `castShadows()`): per caster,
+// the light left after the volume's medium along the surface's ray toward that
+// caster's light, which the volume's light-transmittance grid (Behrens and
+// Ratering's attenuation volume) already holds for every point inside the box.
+// From a surface outside the box the ray enters it at one face, and the grid
+// there is the transmittance of the whole column beyond, so one trilinear read
+// at the entry point is the shadow; a surface inside the box reads at itself.
+// A ray that misses the box, or whose light sits short of it, keeps the light.
+// The factors fold into the per-caster dimmer the marched fields' shadows use.
+static inline float4 ollin_resolve_volume_shadow(float3 worldPos, constant OllinLighting &light,
+                                                 constant OllinVolumeShadow *volumes) {
+    float4 factor = float4(1.0);
+    int casters = min(light.shadowCasterCount, OLLIN_MAX_SHADOW_CASTERS);
+    for (int v = 0; v < light.volumeShadowCount; v++) {
+        constant OllinVolumeShadow &vs = volumes[v];
+        float3 o = (vs.inverseModel * float4(worldPos, 1.0)).xyz;
+        for (int c = 0; c < casters; c++) {
+            if (vs.casts[c] <= 0.0) continue;
+            int li = light.shadowCasters[c].lightIndex;
+            if (li < 0 || li >= OLLIN_MAX_LIGHTS) continue;
+            constant OllinLight &L = light.lights[li];
+            float3 toLight;
+            float reach = INFINITY;
+            if (L.kind == 0) {
+                toLight = normalize(L.direction.xyz);
+            } else {
+                float3 toward = L.position.xyz - worldPos;
+                reach = length(toward);
+                toLight = toward / max(reach, 1e-6);
+            }
+            float3 d = (vs.inverseModel * float4(toLight, 0.0)).xyz;
+            float2 span = ollin_volume_box(o, d);
+            float t0 = max(span.x, 0.0);
+            if (span.y <= t0 || t0 >= reach) continue;
+            factor[c] *= ollin_volume_grid_read(vs.lit[c], o + d * t0);
+        }
+    }
+    return factor;
+}
+
 // The view ray's crossing of a spot's outer cone: the t-interval of o + t*r inside
 // the cone, clipped to [0, tEnd], written to `span`. Bounding the march to this
 // interval is what keeps a thin beam resolvable: strata spread over the whole ray
@@ -6058,6 +6140,9 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
                                     const device OllinLight *sceneLights [[buffer(8)]],
                                     const device uint *lightTiles [[buffer(9)]],
                                     texture2d<float> fieldShadowTex [[texture(3)]],
+                                    // The volumes casting a shadow onto this pass's solids (buffer 11), read
+                                    // only while `light.volumeShadowCount` is set; one zero entry otherwise.
+                                    constant OllinVolumeShadow *volumeShadows [[buffer(11)]],
                                     texturecube<float> iblIrradiance [[texture(4)]],
                                     texturecube<float> iblPrefilter [[texture(5)]],
                                     texture2d<float> iblBRDF [[texture(6)]],
@@ -6134,6 +6219,12 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
         float2 cts = float2(contactShadowTex.get_width(), contactShadowTex.get_height());
         meshFieldShadow *= contactShadowTex.sample(contactSamp,
             in.position.xy * light.contactShadow.y / max(cts, float2(1.0)));
+    }
+    // A cloud's shadow (`drawVolume` under `castShadows()`): each volume's light
+    // transmittance toward each caster, folded into the same per-caster dimmer.
+    // A count of 0 leaves the branch untaken, byte-identical.
+    if (light.volumeShadowCount > 0) {
+        meshFieldShadow *= ollin_resolve_volume_shadow(in.worldPos, light, volumeShadows);
     }
 #if OLLIN_RT_SHADOWS
     float4 rtShadow = meshRTShadowAll(in.worldPos, in.normal, light, shadowAccel);
@@ -6458,6 +6549,9 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
                                              const device OllinLight *sceneLights [[buffer(8)]],
                                              const device uint *lightTiles [[buffer(9)]],
                                              texture2d<float> fieldShadowTex [[texture(3)]],
+                                             // The volumes casting a shadow onto this pass's solids (buffer 11), read
+                                             // only while `light.volumeShadowCount` is set; one zero entry otherwise.
+                                             constant OllinVolumeShadow *volumeShadows [[buffer(11)]],
                                              texturecube<float> iblIrradiance [[texture(4)]],
                                              texturecube<float> iblPrefilter [[texture(5)]],
                                              texture2d<float> iblBRDF [[texture(6)]],
@@ -6520,6 +6614,12 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
         float2 cts = float2(contactShadowTex.get_width(), contactShadowTex.get_height());
         meshFieldShadow *= contactShadowTex.sample(contactSamp,
             in.position.xy * light.contactShadow.y / max(cts, float2(1.0)));
+    }
+    // A cloud's shadow (`drawVolume` under `castShadows()`): each volume's light
+    // transmittance toward each caster, folded into the same per-caster dimmer.
+    // A count of 0 leaves the branch untaken, byte-identical.
+    if (light.volumeShadowCount > 0) {
+        meshFieldShadow *= ollin_resolve_volume_shadow(in.worldPos, light, volumeShadows);
     }
 #if OLLIN_RT_SHADOWS
     float4 rtShadow = meshRTShadowAll(in.worldPos, in.normal, light, shadowAccel);
@@ -6673,6 +6773,9 @@ fragment float4 ollin_mesh_nm_fragment(MeshTexturedNMOut in [[stage_in]],
                                        const device OllinLight *sceneLights [[buffer(8)]],
                                        const device uint *lightTiles [[buffer(9)]],
                                        texture2d<float> fieldShadowTex [[texture(3)]],
+                                       // The volumes casting a shadow onto this pass's solids (buffer 11), read
+                                       // only while `light.volumeShadowCount` is set; one zero entry otherwise.
+                                       constant OllinVolumeShadow *volumeShadows [[buffer(11)]],
                                        texturecube<float> iblIrradiance [[texture(4)]],
                                        texturecube<float> iblPrefilter [[texture(5)]],
                                        texture2d<float> iblBRDF [[texture(6)]],
@@ -6744,6 +6847,12 @@ fragment float4 ollin_mesh_nm_fragment(MeshTexturedNMOut in [[stage_in]],
         float2 cts = float2(contactShadowTex.get_width(), contactShadowTex.get_height());
         meshFieldShadow *= contactShadowTex.sample(contactSamp,
             in.position.xy * light.contactShadow.y / max(cts, float2(1.0)));
+    }
+    // A cloud's shadow (`drawVolume` under `castShadows()`): each volume's light
+    // transmittance toward each caster, folded into the same per-caster dimmer.
+    // A count of 0 leaves the branch untaken, byte-identical.
+    if (light.volumeShadowCount > 0) {
+        meshFieldShadow *= ollin_resolve_volume_shadow(in.worldPos, light, volumeShadows);
     }
 #if OLLIN_RT_SHADOWS
     float4 rtShadow = meshRTShadowAll(in.worldPos, in.normal, light, shadowAccel);
@@ -7028,6 +7137,9 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
                                          const device OllinLight *sceneLights [[buffer(8)]],
                                          const device uint *lightTiles [[buffer(9)]],
                                          texture2d<float> fieldShadowTex [[texture(3)]],
+                                         // The volumes casting a shadow onto this pass's solids (buffer 11), read
+                                         // only while `light.volumeShadowCount` is set; one zero entry otherwise.
+                                         constant OllinVolumeShadow *volumeShadows [[buffer(11)]],
                                          texturecube<float> iblIrradiance [[texture(4)]],
                                          texturecube<float> iblPrefilter [[texture(5)]],
                                          texture2d<float> iblBRDF [[texture(6)]],
@@ -7247,6 +7359,12 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
         float2 cts = float2(contactShadowTex.get_width(), contactShadowTex.get_height());
         meshFieldShadow *= contactShadowTex.sample(contactSamp,
             in.position.xy * light.contactShadow.y / max(cts, float2(1.0)));
+    }
+    // A cloud's shadow (`drawVolume` under `castShadows()`): each volume's light
+    // transmittance toward each caster, folded into the same per-caster dimmer.
+    // A count of 0 leaves the branch untaken, byte-identical.
+    if (light.volumeShadowCount > 0) {
+        meshFieldShadow *= ollin_resolve_volume_shadow(in.worldPos, light, volumeShadows);
     }
 #if OLLIN_RT_SHADOWS
     float4 rtShadow = meshRTShadowAll(in.worldPos, in.normal, light, shadowAccel);

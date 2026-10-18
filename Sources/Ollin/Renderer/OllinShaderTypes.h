@@ -351,8 +351,9 @@ typedef struct {
     simd_float4x4 model;          // the unit box [-0.5, 0.5]^3 -> world (the draw's
                                   // transform times its width, height, and depth)
     simd_float4x4 inverseModel;   // world -> the unit box
-    simd_float4 grid;             // xyz = samples per axis (as floats); w = the march
-                                  // step in unit-box lengths (half the finest spacing)
+    simd_float4 grid;             // xyz = samples per axis (as floats); w = the view march's
+                                  // step in unit-box lengths (the finest spacing over the
+                                  // steps per sample the quality tier asks, two at .detail)
     simd_float4 medium;           // x = density (extinction per world unit at value 1),
                                   // y = anisotropy (Henyey-Greenstein g), z = the march's
                                   // start offset phase (0 except under temporal sampling,
@@ -947,6 +948,26 @@ typedef struct {
                                         // (slot order, so a cube primary is cube 0); 0 otherwise
 } OllinShadowCaster;
 
+// A volume's shadow on the solids around it (`drawVolume` under `castShadows()`),
+// read by the lit mesh fragments from a table of these at buffer 11: for each of
+// the frame's shadow casters, the light-transmittance grid the volume computed
+// toward that caster's light (the grid its own self-shadow reads), held as a
+// texture handle the fragment samples where the surface's ray toward the light
+// enters the volume's box. That sample is the light left after the whole column
+// of medium between the far face and the surface. A caster whose light has no
+// grid (past the first four lit lights, or an area kind) reads nothing: its
+// `casts` lane is 0 and its handle the never-sampled stand-in. Stride 112.
+#define OLLIN_MAX_VOLUME_SHADOWS 4
+typedef struct {
+    simd_float4x4 inverseModel;   // world -> the volume's unit box [-0.5, 0.5]^3
+#ifdef __METAL_VERSION__
+    texture3d<float> lit[OLLIN_MAX_SHADOW_CASTERS];   // per caster, the transmittance toward its light
+#else
+    uint64_t lit[OLLIN_MAX_SHADOW_CASTERS];           // the textures' GPU resource IDs
+#endif
+    simd_float4 casts;            // per caster: 1 when `lit` holds that caster's grid, else 0
+} OllinVolumeShadow;
+
 // One camera-anchored global-illumination probe cascade (the vast-scene ladder;
 // the scene-fitted volume is stored in `OllinLighting`'s own gi fields as cascade 0).
 // Spacing is isotropic per cascade (each cascade doubles the finer one's), and the
@@ -1200,6 +1221,10 @@ typedef struct {
     // stride is unchanged.
     int   shadowPass;
     int   shadowPassCount;
+    int   volumeShadowCount;      // entries in the `OllinVolumeShadow` table at the lit mesh
+                                  // fragments' buffer 11: the volumes casting a shadow onto
+                                  // this pass's solids (`drawVolume` under `castShadows()`).
+                                  // 0 leaves every carrier's read untaken, byte-identical.
 } OllinLighting;
 
 // The per-tile light cull (`ollin_light_cull`). One thread per screen tile: it

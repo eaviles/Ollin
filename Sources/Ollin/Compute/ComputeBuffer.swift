@@ -189,18 +189,20 @@ public struct ComputeParams: Sendable {
 /// and/or textures and the packed params bytes (bound at index 11 when non-empty).
 /// The standard `OllinComputeUniforms` (index 10) are filled by the renderer.
 ///
-/// The grid is up to 2-D: a buffer dispatch is `gridWidth × 1` (one thread per
-/// element), a texture dispatch is `gridWidth × gridHeight` (one thread per texel).
+/// The grid is up to 3-D: a buffer dispatch is `gridWidth × 1` (one thread per
+/// element), a texture dispatch is `gridWidth × gridHeight` (one thread per texel),
+/// and a 3D texture dispatch adds `gridDepth` (one thread per sample).
 struct RecordedDispatch {
     let kernel: ComputeKernel
     let gridWidth: Int
     let gridHeight: Int
+    let gridDepth: Int
     let buffers: [ComputeBindable?]          // bound at buffer indices 0… (10/11 reserved)
     let textures: [ComputeTextureBindable?]  // bound at texture indices 0…
     let params: [UInt8]                      // buffer index 11 (empty = not bound)
 
     /// Total thread count, also the `OllinComputeUniforms.particleCount` value.
-    var threadCount: Int { gridWidth * gridHeight }
+    var threadCount: Int { gridWidth * gridHeight * gridDepth }
 
     /// A 1-D buffer dispatch (`threadCount × 1`). Keeps the buffer call sites
     /// unchanged as the struct grew the texture/2-D fields.
@@ -208,6 +210,7 @@ struct RecordedDispatch {
         self.kernel = kernel
         self.gridWidth = threadCount
         self.gridHeight = 1
+        self.gridDepth = 1
         self.buffers = buffers
         self.textures = []
         self.params = params
@@ -219,6 +222,20 @@ struct RecordedDispatch {
         self.kernel = kernel
         self.gridWidth = gridWidth
         self.gridHeight = gridHeight
+        self.gridDepth = 1
+        self.buffers = buffers
+        self.textures = textures
+        self.params = params
+    }
+
+    /// A 3-D texture dispatch (`gridWidth × gridHeight × gridDepth`, one thread
+    /// per sample).
+    init(kernel: ComputeKernel, gridWidth: Int, gridHeight: Int, gridDepth: Int,
+         textures: [ComputeTextureBindable?], buffers: [ComputeBindable?] = [], params: [UInt8]) {
+        self.kernel = kernel
+        self.gridWidth = gridWidth
+        self.gridHeight = gridHeight
+        self.gridDepth = gridDepth
         self.buffers = buffers
         self.textures = textures
         self.params = params

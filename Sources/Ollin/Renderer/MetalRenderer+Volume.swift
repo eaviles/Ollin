@@ -9,6 +9,14 @@ import COllinShaders
 // over the pass's resolved color, reading the resolved depth. That is also the
 // order a translucent medium wants: a solid drawn after the volume in code still
 // sits inside it, veiled by what lies in front of it.
+//
+// What a volume needs from the GPU is resolved in two steps. `prepareVolumes`
+// runs ahead of the frame's first geometry pass, right after the sketch's own
+// compute dispatches (so a grid a kernel writes this frame is already written):
+// it realizes each grid and computes its light-transmittance grid toward each
+// lit light. The geometry passes read those grids for the cloud's shadow on
+// their solids (`volumeShadowTable`), and the composite after each pass
+// (`encodeVolumes`) reads them for the cloud's own shading.
 
 /// What the geometry pass resolved for the volumes that follow it: the lighting
 /// every light set shades against, the shadow map it was rendered with, and the
@@ -20,14 +28,32 @@ struct VolumePassLight {
     var uniforms3D: Uniforms3D
 }
 
-/// A light-transmittance grid's identity: the samples, where they sit, the
-/// medium's thickness, and the light. A change to any of them is a new grid
-/// (computed into a new texture, never over one a frame in flight may read).
+/// A light-transmittance grid's identity: the samples (a grid's buffer, or a
+/// kernel-written texture at its write count), where they sit, the medium's
+/// thickness, and the light. A change to any of them is a new grid (computed
+/// into another texture, never over one a frame in flight may read).
 struct VolumeLightKey: Hashable {
     var content: UInt64
+    var generation: UInt64
     var model: [Float]
     var density: Float
     var lightRay: SIMD4<Float>
+}
+
+/// One `drawVolume` with its GPU resources resolved for the frame: the grid,
+/// the transmittance grid toward each of the first lit lights, and the draw
+/// record the composite fills its phase into.
+struct PreparedVolume {
+    /// Its position in `drawer.volumeDraws` (the tie-break of the composite's sort).
+    var index: Int
+    var draw: OllinVolumeDraw
+    var grid: MTLTexture
+    /// The transmittance grid per lit slot (`OLLIN_VOLUME_MAX_LIT`).
+    var lit: [MTLTexture?]
+    /// The light-list index each lit slot serves, -1 for none.
+    var litIndices: SIMD4<Float>
+    var target: RenderTarget?
+    var lightSet: Int
 }
 
 extension MetalRenderer {
@@ -38,6 +64,165 @@ extension MetalRenderer {
     /// read at this resolution for its self-shadow (a shadow is smoother than
     /// the medium casting it).
     static let volumeLightMaxSamples = 128
+
+    /// The table of volumes casting a shadow onto one pass's solids, as the lit
+    /// mesh fragments read it at buffer 11, with the textures it names (for
+    /// residency) and the buffer that holds it.
+    struct VolumeShadowTable {
+        var entries: [OllinVolumeShadow] = []
+        var textures: [MTLTexture] = []
+        var buffer: MTLBuffer?
+    }
+
+    /// Resolve every volume drawn this frame ahead of its first geometry pass:
+    /// realize each grid, and compute (or find cached) its light-transmittance
+    /// grid toward each of the first `OLLIN_VOLUME_MAX_LIT` lit lights, in a
+    /// compute pass on `cb`. Called right after the sketch's compute dispatches,
+    /// so a grid a kernel wrote this frame is read as written. The grids are
+    /// computed when the medium has a thickness and the lights are on: for the
+    /// medium's own shading when it scatters, and for its shadow on the solids
+    /// whenever the frame casts shadows; a medium with no thickness, and a frame
+    /// with no lights, computes none (and casts nothing).
+    func prepareVolumes(_ drawer: Drawer, into cb: MTLCommandBuffer) {
+        preparedVolumes.removeAll(keepingCapacity: true)
+        guard !drawer.volumeDraws.isEmpty else { return }
+        drawerVolumetricQuality = drawer.volumetricQualitySetting
+        volumeLightGeneration &+= 1
+        var lightings: [Int: OllinLighting] = [:]
+        var pending: [(texture: MTLTexture, grid: MTLTexture, draw: OllinVolumeDraw, ray: SIMD4<Float>)] = []
+        for (index, item) in drawer.volumeDraws.enumerated() {
+            guard let grid = item.source.texture(for: device) else { continue }
+            let lighting: OllinLighting
+            if let known = lightings[item.lightSet] {
+                lighting = known
+            } else {
+                lighting = drawer.makeLighting(set: item.lightSet)
+                lightings[item.lightSet] = lighting
+            }
+            var gpu = makeVolumeDraw(item, phase: 0)
+            var lit: [MTLTexture?] = []
+            var litIndices = SIMD4<Float>(repeating: -1)
+            let wantsGrids = gpu.medium.x > 0 && lighting.enabled != 0
+                && (gpu.scatter.w > 0 || drawer.castsShadows)
+            if wantsGrids {
+                let count = min(Int(lighting.lightCount), Int(OLLIN_MAX_LIGHTS))
+                for lightIndex in 0 ..< count where lit.count < Int(OLLIN_VOLUME_MAX_LIT) {
+                    let light = lightAt(lighting, lightIndex)
+                    let ray: SIMD4<Float>
+                    switch light.kind {
+                    case 0: ray = SIMD4(light.direction.x, light.direction.y, light.direction.z, 0)
+                    case 1, 2: ray = SIMD4(light.position.x, light.position.y, light.position.z, 1)
+                    default: continue
+                    }
+                    let lightKey = VolumeLightKey(content: item.source.contentID,
+                                                  generation: item.source.contentGeneration,
+                                                  model: item.model.flatArray,
+                                                  density: gpu.medium.x, lightRay: ray)
+                    if let cached = volumeLightCache[lightKey] {
+                        volumeLightCache[lightKey]?.used = volumeLightGeneration
+                        lit.append(cached.texture)
+                    } else if let texture = makeVolumeLightTexture(for: item.source) {
+                        volumeLightCache[lightKey] = (texture, volumeLightGeneration)
+                        pending.append((texture, grid, gpu, ray))
+                        lit.append(texture)
+                    } else {
+                        continue
+                    }
+                    litIndices[lit.count - 1] = Float(lightIndex)
+                }
+            }
+            gpu.litLights = litIndices
+            preparedVolumes.append(PreparedVolume(index: index, draw: gpu, grid: grid, lit: lit,
+                                                  litIndices: litIndices, target: item.target,
+                                                  lightSet: item.lightSet))
+        }
+        // A transmittance grid no volume has asked for in a few frames goes to
+        // the pool, where a grid of its size is taken from before a new texture
+        // is made: a kernel-written cloud asks for a fresh grid every frame, and
+        // this keeps that from being an allocation every frame. Eight frames
+        // unused is past any frame still in flight, so a pooled texture is never
+        // one the GPU is still reading.
+        for (key, entry) in volumeLightCache where volumeLightGeneration &- entry.used >= 8 {
+            volumeLightCache[key] = nil
+            if volumeLightPool.count < 8 { volumeLightPool.append(entry.texture) }
+        }
+        guard !pending.isEmpty, let kernel = try? libraryComputePipeline("ollin_volume_light_kernel"),
+              let encoder = cb.makeComputeCommandEncoder() else { return }
+        encoder.label = "Ollin volume light"
+        encoder.setComputePipelineState(kernel)
+        for job in pending {
+            var draw = job.draw
+            var ray = job.ray
+            encoder.setTexture(job.texture, index: 0)
+            encoder.setTexture(job.grid, index: 1)
+            encoder.setBytes(&draw, length: MemoryLayout<OllinVolumeDraw>.stride, index: 0)
+            encoder.setBytes(&ray, length: MemoryLayout<SIMD4<Float>>.stride, index: 1)
+            encoder.dispatchThreads(MTLSize(width: job.texture.width, height: job.texture.height,
+                                            depth: job.texture.depth),
+                                    threadsPerThreadgroup: MTLSize(width: 4, height: 4, depth: 4))
+        }
+        encoder.endEncoding()
+    }
+
+    /// The volumes casting a shadow onto `target`'s solids under `lighting`'s
+    /// casters: every prepared volume drawn into the target with a thickness,
+    /// each naming, per caster, the transmittance grid it computed toward that
+    /// caster's light (the first four lit lights have one; a caster past them,
+    /// or an area kind, is skipped by its `casts` lane). Empty when the pass
+    /// casts no shadow, which is where `castShadows()` gates the cloud's shadow
+    /// with the solids'. The table is written to a small buffer of its own for
+    /// the pass; with nothing to cast, the one zero entry every lit mesh
+    /// fragment's declared argument is bound to.
+    func volumeShadowTable(target: RenderTarget?, lighting: OllinLighting) -> VolumeShadowTable {
+        var table = VolumeShadowTable()
+        let casters = min(Int(lighting.shadowCasterCount), Int(OLLIN_MAX_SHADOW_CASTERS))
+        if lighting.enabled != 0, casters > 0, let standIn = volumeStandIn() {
+            let standInID = unsafeBitCast(standIn.gpuResourceID, to: UInt64.self)
+            for item in preparedVolumes where item.target === target && item.draw.medium.x > 0 {
+                var entry = OllinVolumeShadow()
+                entry.inverseModel = item.draw.inverseModel
+                var casts = SIMD4<Float>(repeating: 0)
+                var handles = [UInt64](repeating: standInID, count: Int(OLLIN_MAX_SHADOW_CASTERS))
+                for caster in 0 ..< casters {
+                    let lightIndex = casterAt(lighting, caster).lightIndex
+                    guard lightIndex >= 0,
+                          let slot = (0 ..< item.lit.count).first(where: {
+                              item.litIndices[$0] == Float(lightIndex)
+                          }),
+                          let texture = item.lit[slot] else { continue }
+                    handles[caster] = unsafeBitCast(texture.gpuResourceID, to: UInt64.self)
+                    casts[caster] = 1
+                    table.textures.append(texture)
+                }
+                guard casts != .zero else { continue }
+                withUnsafeMutablePointer(to: &entry.lit) { tuple in
+                    tuple.withMemoryRebound(to: UInt64.self, capacity: handles.count) { ids in
+                        for (i, id) in handles.enumerated() { ids[i] = id }
+                    }
+                }
+                entry.casts = casts
+                table.entries.append(entry)
+                if table.entries.count == Int(OLLIN_MAX_VOLUME_SHADOWS) { break }
+            }
+            if !table.entries.isEmpty { table.textures.append(standIn) }
+        }
+        if table.entries.isEmpty {
+            if volumeShadowStandIn == nil {
+                var zero = OllinVolumeShadow()
+                volumeShadowStandIn = device.makeBuffer(bytes: &zero,
+                                                        length: MemoryLayout<OllinVolumeShadow>.stride,
+                                                        options: .storageModeShared)
+                volumeShadowStandIn?.label = "Ollin volume shadow (none)"
+            }
+            table.buffer = volumeShadowStandIn
+        } else {
+            table.buffer = table.entries.withUnsafeBytes { raw in
+                device.makeBuffer(bytes: raw.baseAddress!, length: raw.count, options: .storageModeShared)
+            }
+            table.buffer?.label = "Ollin volume shadow"
+        }
+        return table
+    }
 
     /// Note what this pass resolved, for the volumes drawn into it. Called from
     /// `encode` once its lighting is packed; a pass with no volume keeps nothing.
@@ -61,9 +246,8 @@ extension MetalRenderer {
         let key = target.map { ObjectIdentifier($0) }
         guard let depth, let pass = volumePassLights[key] else { return }
         volumePassLights[key] = nil
-        let draws = drawer.volumeDraws.filter { $0.target === target }
-        guard !draws.isEmpty else { return }
-        volumeLightGeneration &+= 1
+        let items = preparedVolumes.filter { $0.target === target }
+        guard !items.isEmpty else { return }
 
         // Farthest first, so nearer volumes composite over farther ones (by the
         // boxes' centers; two volumes that interpenetrate order as wholes). Two
@@ -72,80 +256,10 @@ extension MetalRenderer {
         // dims the glow, and drawn before it dims only what lies behind both.
         let eye = pass.lighting[0].map { SIMD3<Float>($0.cameraPosition.x, $0.cameraPosition.y,
                                                        $0.cameraPosition.z) } ?? .zero
-        let ordered = draws.enumerated().sorted { a, b in
-            let farA = simd_distance(a.element.model.columns.3.xyz, eye)
-            let farB = simd_distance(b.element.model.columns.3.xyz, eye)
-            return farA != farB ? farA > farB : a.offset < b.offset
-        }.map(\.element)
-
-        // The grids and their light transmittance first, in a compute pass ahead
-        // of the composite.
-        struct Prepared {
-            var draw: OllinVolumeDraw
-            var grid: MTLTexture
-            var lit: [MTLTexture?]
-            var lighting: OllinLighting
-            var scissor: MTLScissorRect?
-        }
-        var prepared: [Prepared] = []
-        var pending: [(texture: MTLTexture, grid: MTLTexture, draw: OllinVolumeDraw, ray: SIMD4<Float>)] = []
-        for item in ordered {
-            guard let grid = item.volume.texture(for: device) else { continue }
-            let lighting = pass.lighting[item.lightSet] ?? pass.lighting[0]!
-            var gpu = makeVolumeDraw(item, phase: phase)
-            var lit: [MTLTexture?] = []
-            var litIndices = SIMD4<Float>(repeating: -1)
-            if gpu.scatter.w > 0, lighting.enabled != 0 {
-                let count = min(Int(lighting.lightCount), Int(OLLIN_MAX_LIGHTS))
-                for index in 0 ..< count where lit.count < Int(OLLIN_VOLUME_MAX_LIT) {
-                    let light = lightAt(lighting, index)
-                    let ray: SIMD4<Float>
-                    switch light.kind {
-                    case 0: ray = SIMD4(light.direction.x, light.direction.y, light.direction.z, 0)
-                    case 1, 2: ray = SIMD4(light.position.x, light.position.y, light.position.z, 1)
-                    default: continue
-                    }
-                    let lightKey = VolumeLightKey(content: item.volume.contentID,
-                                                  model: item.model.flatArray,
-                                                  density: gpu.medium.x, lightRay: ray)
-                    if let cached = volumeLightCache[lightKey] {
-                        volumeLightCache[lightKey]?.used = volumeLightGeneration
-                        lit.append(cached.texture)
-                    } else if let texture = makeVolumeLightTexture(for: item.volume) {
-                        volumeLightCache[lightKey] = (texture, volumeLightGeneration)
-                        pending.append((texture, grid, gpu, ray))
-                        lit.append(texture)
-                    } else {
-                        continue
-                    }
-                    litIndices[lit.count - 1] = Float(index)
-                }
-            }
-            gpu.litLights = litIndices
-            prepared.append(Prepared(draw: gpu, grid: grid, lit: lit, lighting: lighting,
-                                     scissor: volumeScissor(item.model, uniforms: pass.uniforms3D,
-                                                            width: color.width, height: color.height)))
-        }
-        // A transmittance grid no volume has asked for in a few passes goes.
-        volumeLightCache = volumeLightCache.filter { volumeLightGeneration &- $0.value.used < 8 }
-        guard !prepared.isEmpty else { return }
-
-        if !pending.isEmpty, let kernel = try? libraryComputePipeline("ollin_volume_light_kernel"),
-           let encoder = cb.makeComputeCommandEncoder() {
-            encoder.label = "Ollin volume light"
-            encoder.setComputePipelineState(kernel)
-            for job in pending {
-                var draw = job.draw
-                var ray = job.ray
-                encoder.setTexture(job.texture, index: 0)
-                encoder.setTexture(job.grid, index: 1)
-                encoder.setBytes(&draw, length: MemoryLayout<OllinVolumeDraw>.stride, index: 0)
-                encoder.setBytes(&ray, length: MemoryLayout<SIMD4<Float>>.stride, index: 1)
-                encoder.dispatchThreads(MTLSize(width: job.texture.width, height: job.texture.height,
-                                                depth: job.texture.depth),
-                                        threadsPerThreadgroup: MTLSize(width: 4, height: 4, depth: 4))
-            }
-            encoder.endEncoding()
+        let ordered = items.sorted { a, b in
+            let farA = simd_distance(a.draw.model.columns.3.xyz, eye)
+            let farB = simd_distance(b.draw.model.columns.3.xyz, eye)
+            return farA != farB ? farA > farB : a.index < b.index
         }
 
         let colorFormat: MTLPixelFormat? = color.pixelFormat == linearFormat ? nil : color.pixelFormat
@@ -166,9 +280,10 @@ extension MetalRenderer {
         encoder.setFragmentTexture(iesArrayTexture ?? shapingStandIn(), index: 10)
         encoder.setFragmentTexture(cookieArrayTexture ?? shapingStandIn(), index: 11)
         let standIn = volumeStandIn()
-        for item in prepared {
+        for item in ordered {
             var draw = item.draw
-            var lighting = item.lighting
+            draw.medium.z = phase
+            var lighting = pass.lighting[item.lightSet] ?? pass.lighting[0]!
             encoder.setFragmentBytes(&draw, length: MemoryLayout<OllinVolumeDraw>.stride, index: 0)
             encoder.setFragmentBytes(&lighting, length: MemoryLayout<OllinLighting>.stride, index: 1)
             encoder.setFragmentTexture(item.grid, index: 0)
@@ -176,8 +291,9 @@ extension MetalRenderer {
                 let texture = slot < item.lit.count ? item.lit[slot] : nil
                 encoder.setFragmentTexture(texture ?? standIn, index: 4 + slot)
             }
-            let scissor = item.scissor ?? MTLScissorRect(x: 0, y: 0, width: color.width,
-                                                         height: color.height)
+            let scissor = volumeScissor(item.draw.model, uniforms: pass.uniforms3D,
+                                        width: color.width, height: color.height)
+                ?? MTLScissorRect(x: 0, y: 0, width: color.width, height: color.height)
             guard scissor.width > 0, scissor.height > 0 else { continue }
             encoder.setScissorRect(scissor)
             profile.drawCalls += 1
@@ -193,10 +309,33 @@ extension MetalRenderer {
         return Float(phase - phase.rounded(.down))
     }
 
+    /// How many march steps a view ray takes per sample spacing of the grid,
+    /// by the frame's volumetric quality: two at `.detail` (every export and
+    /// test, the rule the integral's closed forms are read against), one and a
+    /// half at the live default, one at `.performance`. The march's cost is its
+    /// step count times the pixels the box covers, so a fine grid in a big
+    /// window pays here; the per-step jitter turns a coarser march into grain
+    /// rather than bands, and temporal anti-aliasing averages the grain away. A
+    /// step count given outright (`volumetricSteps`) is the beams' and leaves
+    /// the volume at two.
+    func volumeStepsPerSample(_ setting: VolumetricQualitySetting) -> Float {
+        switch setting {
+        case .absolute:
+            return 2
+        case .tier(let quality):
+            switch effectiveQuality(quality) {
+            case .performance: return 1
+            case .default: return 1.5
+            case .detail: return 2
+            }
+        }
+    }
+
     /// The draw's GPU record: placement, step, and the medium in linear light.
     func makeVolumeDraw(_ item: VolumeDraw, phase: Float) -> OllinVolumeDraw {
-        let volume = item.volume
-        let finest = 1 / Float(max(volume.width, volume.height, volume.depth) - 1)
+        let source = item.source
+        let finest = 1 / Float(max(source.width, source.height, source.depth) - 1)
+        let step = finest / volumeStepsPerSample(drawerVolumetricQuality)
         let medium = item.medium
         let density = Float(max(0, medium.density))
         let scatter = medium.color.linearRGBA
@@ -205,7 +344,7 @@ extension MetalRenderer {
         return OllinVolumeDraw(
             model: item.model,
             inverseModel: item.model.inverse,
-            grid: SIMD4(Float(volume.width), Float(volume.height), Float(volume.depth), 0.5 * finest),
+            grid: SIMD4(Float(source.width), Float(source.height), Float(source.depth), step),
             medium: SIMD4(density, Float(min(0.95, max(-0.95, medium.anisotropy))),
                           phase, MetalRenderer.volumeMaxSteps),
             scatter: SIMD4(scatter.x, scatter.y, scatter.z, scatters),
@@ -213,16 +352,23 @@ extension MetalRenderer {
             litLights: SIMD4(repeating: -1))
     }
 
-    /// A light-transmittance grid sized for `volume` (its own resolution, up to
-    /// `volumeLightMaxSamples` a side), written by the light kernel.
-    private func makeVolumeLightTexture(for volume: Volume) -> MTLTexture? {
+    /// A light-transmittance grid sized for `source` (its own resolution, up to
+    /// `volumeLightMaxSamples` a side), written by the light kernel: one of that
+    /// size from the pool when there is one, else a new texture.
+    private func makeVolumeLightTexture(for source: VolumeSource) -> MTLTexture? {
         let cap = MetalRenderer.volumeLightMaxSamples
+        let width = min(source.width, cap), height = min(source.height, cap), depth = min(source.depth, cap)
+        if let pooled = volumeLightPool.firstIndex(where: {
+            $0.width == width && $0.height == height && $0.depth == depth
+        }) {
+            return volumeLightPool.remove(at: pooled)
+        }
         let descriptor = MTLTextureDescriptor()
         descriptor.textureType = .type3D
         descriptor.pixelFormat = .r16Float
-        descriptor.width = min(volume.width, cap)
-        descriptor.height = min(volume.height, cap)
-        descriptor.depth = min(volume.depth, cap)
+        descriptor.width = width
+        descriptor.height = height
+        descriptor.depth = depth
         descriptor.usage = [.shaderRead, .shaderWrite]
         descriptor.storageMode = .private
         let texture = device.makeTexture(descriptor: descriptor)
@@ -282,6 +428,13 @@ extension MetalRenderer {
     private func lightAt(_ lighting: OllinLighting, _ index: Int) -> OllinLight {
         withUnsafeBytes(of: lighting.lights) { raw in
             raw.bindMemory(to: OllinLight.self)[index]
+        }
+    }
+
+    /// Shadow caster `index` of a lighting uniform's fixed-size inline list.
+    private func casterAt(_ lighting: OllinLighting, _ index: Int) -> OllinShadowCaster {
+        withUnsafeBytes(of: lighting.shadowCasters) { raw in
+            raw.bindMemory(to: OllinShadowCaster.self)[index]
         }
     }
 }

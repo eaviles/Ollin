@@ -986,6 +986,13 @@ final class ComputeBuffer<Element>: ComputeBindable, Sendable
   init(_: [Element])
   init(count: Int)
   let count: Int
+final class ComputeTexture3D: Sendable
+  func snapshot() -> [Float]?
+  init(width: Int, height: Int, depth: Int, format: ComputeTextureFormat = default)
+  let depth: Int
+  let format: ComputeTextureFormat
+  let height: Int
+  let width: Int
 final class ComputeTexture: Sendable
   func snapshot() -> [Float]?
   init(width: Int, height: Int, format: ComputeTextureFormat = default)
@@ -1494,6 +1501,11 @@ final class PingPong<Element>: Sendable
   init(count: Int)
   var read: ComputeBuffer<Element> { get }
   var write: ComputeBuffer<Element> { get }
+final class PingPongTexture3D: Sendable
+  func swap()
+  init(width: Int, height: Int, depth: Int, format: ComputeTextureFormat = default)
+  var read: ComputeTexture3D { get }
+  var write: ComputeTexture3D { get }
 final class PingPongTexture: Sendable
   func swap()
   init(width: Int, height: Int, format: ComputeTextureFormat = default)
@@ -2092,7 +2104,9 @@ open class Sketch: Sendable
   func compute(_: ComputeKernel, over: ComputeBuffer<T>, count: Int? = default, params: ComputeParams = default)
   func compute(_: ComputeKernel, reading: ComputeBuffer<A>, writing: ComputeBuffer<B>, count: Int? = default, params: ComputeParams = default)
   func compute(_: ComputeKernel, reading: ComputeTexture, writing: ComputeTexture, params: ComputeParams = default)
+  func compute(_: ComputeKernel, reading: ComputeTexture3D, writing: ComputeTexture3D, params: ComputeParams = default)
   func compute(_: ComputeKernel, writing: ComputeTexture, params: ComputeParams = default)
+  func compute(_: ComputeKernel, writing: ComputeTexture3D, params: ComputeParams = default)
   func contactShadows(_: Bool = default, length: Double? = default)
   func copyFrame()
   func curlField(scale: Double = default, z: Double = default) -> FlowField
@@ -2332,6 +2346,8 @@ open class Sketch: Sendable
   func drawVesica(_: Double, _: Double, _: Double, _: Double, cornerRadius: Double = default, file: StaticString = default, line: Int = default, column: Int = default)
   func drawVesica(center: Vector2, width: Double, height: Double, cornerRadius: Double = default, file: StaticString = default, line: Int = default, column: Int = default)
   func drawVisual(_: Visual)
+  func drawVolume(_: ComputeTexture3D, size: Double = default, medium: Medium = default)
+  func drawVolume(_: ComputeTexture3D, width: Double, height: Double, depth: Double, medium: Medium = default)
   func drawVolume(_: Volume, size: Double = default, medium: Medium = default)
   func drawVolume(_: Volume, width: Double, height: Double, depth: Double, medium: Medium = default)
   func drawVoronoi(_: [Vector2], in: Rectangle? = default)

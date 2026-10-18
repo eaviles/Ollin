@@ -2848,6 +2848,44 @@ open class Sketch {
         simulation.recordUpdate(into: drawer, custom: custom)
     }
 
+    /// Run a compute `kernel` that writes a 3D `texture`, one thread per sample
+    /// over its whole grid. The write texture binds at **texture index 0**; the
+    /// kernel takes `texture3d<float, access::write> [[texture(0)]]` and a
+    /// `uint3 gid [[thread_position_in_grid]]`. Standard constants are at buffer
+    /// index 10 (`u.time`/…) and any `params` at buffer index 11. The grid a
+    /// `drawVolume` draws as a cloud is filled this way, every frame if it moves.
+    ///
+    /// ```swift
+    /// kernel void cloud(texture3d<float, access::write> out [[texture(0)]],
+    ///                   constant OllinComputeUniforms &u [[buffer(10)]],
+    ///                   uint3 gid [[thread_position_in_grid]]) {
+    ///     float3 p = float3(gid) / float3(out.get_width() - 1, out.get_height() - 1, out.get_depth() - 1);
+    ///     out.write(float4(fbm(p * 4.0 + u.time * 0.1)), gid);
+    /// }
+    /// ```
+    public func compute(_ kernel: ComputeKernel, writing texture: ComputeTexture3D,
+                        params: ComputeParams = ComputeParams()) {
+        texture.noteWrite()
+        drawer.recordDispatch(RecordedDispatch(
+            kernel: kernel, gridWidth: texture.width, gridHeight: texture.height,
+            gridDepth: texture.depth, textures: [texture], params: params.bytes))
+    }
+
+    /// Run a compute `kernel` reading the 3D `reading` (texture index 0) and
+    /// writing `writing` (texture index 1), the 3D ping-pong form: the kernel takes
+    /// `texture3d<float, access::read> [[texture(0)]]`, `texture3d<float,
+    /// access::write> [[texture(1)]]`, and a `uint3 gid`. The grid covers
+    /// `writing`. For a field that evolves from its own last state, drive it
+    /// through a `PingPongTexture3D` so a step never reads a grid it is mid-write
+    /// into.
+    public func compute(_ kernel: ComputeKernel, reading: ComputeTexture3D,
+                        writing: ComputeTexture3D, params: ComputeParams = ComputeParams()) {
+        writing.noteWrite()
+        drawer.recordDispatch(RecordedDispatch(
+            kernel: kernel, gridWidth: writing.width, gridHeight: writing.height,
+            gridDepth: writing.depth, textures: [reading, writing], params: params.bytes))
+    }
+
     // MARK: Keyboard queries
 
     /// Whether `character` is currently held down — for continuous response while
@@ -3225,13 +3263,32 @@ open class Sketch {
     /// drawVolume(smoke, size: 4, medium: .smoke)
     /// ```
     public func drawVolume(_ volume: Volume, size: Double = 1, medium: Medium = Medium()) {
-        drawer.drawVolume(volume, width: size, height: size, depth: size, medium: medium)
+        drawer.drawVolume(.grid(volume), width: size, height: size, depth: size, medium: medium)
     }
     /// Draw a density grid as a cloud filling a `width` x `height` x `depth` box
     /// centered at the model origin; see `drawVolume(_:size:medium:)`.
     public func drawVolume(_ volume: Volume, width: Double, height: Double, depth: Double,
                            medium: Medium = Medium()) {
-        drawer.drawVolume(volume, width: width, height: height, depth: depth, medium: medium)
+        drawer.drawVolume(.grid(volume), width: width, height: height, depth: depth, medium: medium)
+    }
+    /// Draw a grid a compute kernel wrote (`compute(_:writing:)` on a
+    /// `ComputeTexture3D`) as a cloud filling a cube `size` world units on each
+    /// edge, the way `drawVolume(_:size:medium:)` draws a `Volume`: the texture's
+    /// red channel is the density, read on the same corner-to-corner lattice, and
+    /// the grid never leaves the GPU, so a kernel can refill it every frame.
+    ///
+    /// ```swift
+    /// compute(fillCloud, writing: cloud)
+    /// drawVolume(cloud, size: 4, medium: .cloud)
+    /// ```
+    public func drawVolume(_ texture: ComputeTexture3D, size: Double = 1, medium: Medium = Medium()) {
+        drawer.drawVolume(.texture(texture), width: size, height: size, depth: size, medium: medium)
+    }
+    /// Draw a grid a compute kernel wrote as a cloud filling a `width` x `height`
+    /// x `depth` box centered at the model origin; see `drawVolume(_:size:medium:)`.
+    public func drawVolume(_ texture: ComputeTexture3D, width: Double, height: Double, depth: Double,
+                           medium: Medium = Medium()) {
+        drawer.drawVolume(.texture(texture), width: width, height: height, depth: depth, medium: medium)
     }
 
     // MARK: SDF-combinator blocks (sugar over `SDF` + `drawSDF`, and `SDF3D` + `drawSDF3D`)

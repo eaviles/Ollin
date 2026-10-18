@@ -29,25 +29,8 @@
 // uniform medium is therefore exact at any step count, and a thick one
 // never adds more than its source over its own extinction.
 
-// The unit box [-0.5, 0.5]^3 crossed by o + t * d: the t interval inside it
-// (empty when x >= y). `d` need not be unit length; a zero component is nudged
-// so the slab test never forms 0 * inf under fast math.
-static inline float2 ollin_volume_box(float3 o, float3 d) {
-    float3 safe = select(d, copysign(float3(1e-12), d), fabs(d) < 1e-12);
-    float3 inv = 1.0 / safe;
-    float3 a = (-0.5 - o) * inv;
-    float3 b = (0.5 - o) * inv;
-    float3 lo = min(a, b), hi = max(a, b);
-    return float2(max(max(lo.x, lo.y), lo.z), min(min(hi.x, hi.y), hi.z));
-}
-
-// A unit-box point's texture coordinate in a grid of `n` samples per axis: the
-// samples span the box corner to corner, so a face reads its own samples
-// exactly and the box's center reads between the middle two.
-static inline float3 ollin_volume_uvw(float3 p, float3 n) {
-    return ((clamp(p, -0.5, 0.5) + 0.5) * (n - 1.0) + 0.5) / n;
-}
-
+// `ollin_volume_box` and `ollin_volume_uvw` (the box crossing and the lattice
+// coordinate) live in Shader3D.metal beside the solids' read of a cloud's shadow.
 static inline float ollin_volume_density(texture3d<float> grid, float3 p, float3 n) {
     constexpr sampler s(filter::linear, address::clamp_to_edge, coord::normalized);
     return max(grid.sample(s, ollin_volume_uvw(p, n)).r, 0.0);
@@ -84,8 +67,10 @@ kernel void ollin_volume_light_kernel(texture3d<float, access::write> out [[text
     float tEnd = min(ollin_volume_box(p, d).y, reach);
     float tau = 0.0;
     if (tEnd > 0.0) {
-        // A step of one sample spacing: the grid holds nothing finer.
-        float stepLength = 2.0 * vol.grid.w / max(length(d), 1e-6);
+        // A step of one sample spacing: the grid holds nothing finer. Its own
+        // spacing, not the view march's step, which follows the quality tier.
+        float finest = 1.0 / (max(max(n.x, n.y), n.z) - 1.0);
+        float stepLength = finest / max(length(d), 1e-6);
         int steps = clamp(int(ceil(tEnd / stepLength)), 1, 1024);
         float dt = tEnd / float(steps);
         for (int i = 0; i < steps; i++) {
@@ -111,9 +96,7 @@ vertex OllinVolumeOut ollin_volume_vertex(uint vid [[vertex_id]]) {
 }
 
 static inline float ollin_volume_self_shadow(texture3d<float> lit, float3 p) {
-    constexpr sampler s(filter::linear, address::clamp_to_edge, coord::normalized);
-    float3 n = float3(lit.get_width(), lit.get_height(), lit.get_depth());
-    return lit.sample(s, ollin_volume_uvw(p, n)).r;
+    return ollin_volume_grid_read(lit, p);
 }
 
 fragment float4 ollin_volume_fragment(OllinVolumeOut in [[stage_in]],

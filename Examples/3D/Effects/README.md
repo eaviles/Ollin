@@ -11,7 +11,7 @@
 | [LensFlare](LensFlare/) | [MotionBlur](MotionBlur/) | [PathTraced](PathTraced/) | [RayTracedReflections](RayTracedReflections/) |
 | [![SceneDefocus](https://media.ollin.art/examples/3D/Effects/SceneDefocus/still-640.jpg?v=1299ef05)](SceneDefocus/) | [![ScreenSpaceReflections](https://media.ollin.art/examples/3D/Effects/ScreenSpaceReflections/still-640.jpg?v=e167c52e)](ScreenSpaceReflections/) | [![SpecularAntialias](https://media.ollin.art/examples/3D/Effects/SpecularAntialias/still-640.jpg?v=fc004d3a)](SpecularAntialias/) | [![TemporalAA](https://media.ollin.art/examples/3D/Effects/TemporalAA/still-640.jpg?v=e0b0f49e)](TemporalAA/) |
 | [SceneDefocus](SceneDefocus/) | [ScreenSpaceReflections](ScreenSpaceReflections/) | [SpecularAntialias](SpecularAntialias/) | [TemporalAA](TemporalAA/) |
-| [![Upscaling](https://media.ollin.art/examples/3D/Effects/Upscaling/still-640.jpg?v=6140b5b2)](Upscaling/) | [![Volumes](https://media.ollin.art/examples/3D/Effects/Volumes/still-640.jpg?v=7b3957df)](Volumes/) |  |  |
+| [![Upscaling](https://media.ollin.art/examples/3D/Effects/Upscaling/still-640.jpg?v=6140b5b2)](Upscaling/) | [![Volumes](https://media.ollin.art/examples/3D/Effects/Volumes/still-640.jpg?v=ea852b3b)](Volumes/) |  |  |
 | [Upscaling](Upscaling/) | [Volumes](Volumes/) |  |  |
 
 This group covers the scene-wide realism passes over the 3D frame.

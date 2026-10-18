@@ -486,7 +486,30 @@ let smoke = Volume(width: 36, height: 48, depth: 36) { u, v, w in
 drawVolume(smoke, width: 2.8, height: 4.2, depth: 2.8, medium: .smoke)
 ```
 
-The function runs once for each sample, with `u`, `v`, and `w` between 0 and 1 across the box, so the sketch's own `fbm` shapes the cloud. `Volume.noise` fills a grid with noise across every core, which is fast enough to refill a small one every frame. The `medium` says what fills the box. Its `density` is how thickly it blocks light, its `color` is the share of light it scatters back, and its `glow` is light of its own. The presets are `.smoke`, `.cloud`, `.fire`, `.ink`, and `.nebula`. The light reaching each point has crossed the medium on its way there, so a cloud shades itself. A solid between the lamp and the smoke cuts a dark shaft through it. The `3D/Effects/Volumes` example sends up a column from noise that repeats, with a ball hanging in it.
+The function runs once for each sample, with `u`, `v`, and `w` between 0 and 1 across the box, so the sketch's own `fbm` shapes the cloud. `Volume.noise` fills a grid with noise across every core, which is fast enough to refill a small one every frame. The `medium` says what fills the box. Its `density` is how thickly it blocks light, its `color` is the share of light it scatters back, and its `glow` is light of its own. The presets are `.smoke`, `.cloud`, `.fire`, `.ink`, and `.nebula`. The light reaching each point has crossed the medium on its way there, so a cloud shades itself. A solid between the lamp and the smoke cuts a dark shaft through it. And with `castShadows()` on, the cloud throws its own shadow. The floor under it reads darker by the light the cloud keeps, read off the same grid that shades the cloud. So a thick plume stands in its own shadow, and a ball inside it is shadowed by the smoke above it.
+
+The function form fills the grid on the CPU, which holds 60 frames a second to about 32 samples a side. For a cloud that changes every frame at a finer grid, a `ComputeTexture3D` is the same box of samples kept on the GPU. The sketch's own compute kernel fills it with `compute(_:writing:)`, one thread per sample, the way [Chapter 25](25-ParticleSimulations.md#a-million-grains-gpu-particles)'s kernels fill a texture. `drawVolume` takes it in place of a `Volume`:
+
+```swift
+let cloud = ComputeTexture3D(width: 128, height: 128, depth: 128)
+
+let fill = ComputeKernel(entry: "cloud", """
+    kernel void cloud(texture3d<float, access::write> out [[texture(0)]],
+                      constant OllinComputeUniforms &u [[buffer(10)]],
+                      uint3 gid [[thread_position_in_grid]]) {
+        float3 p = float3(gid) / float3(out.get_width() - 1, out.get_height() - 1, out.get_depth() - 1);
+        float fromCenter = distance(p, float3(0.5));
+        out.write(float4(max(0.0, fbm(p * 4.0 + u.time * 0.1) - 2.0 * fromCenter)), gid);
+    }
+""")
+
+override func draw() {
+    compute(fill, writing: cloud)                 // one thread per sample
+    drawVolume(cloud, size: 4, medium: .cloud)
+}
+```
+
+The kernel writes a density into each sample's red channel from its `gid`, a kernel kept in a `.metal` file beside the sketch loads with `ComputeKernel(entry:resource:in:)`, and the grid never leaves the GPU, so 128 samples a side refill in under a millisecond. Drawing a fine grid costs more than filling it, since the march takes its steps from the grid's spacing; the [reference](../Docs/3D/Volumes.md#what-it-costs) has the numbers. The `3D/Effects/Volumes` example sends up a column from a kernel's noise that repeats over the column's height, with a ball hanging in it and the plume's shadow on the pedestal.
 
 ## More finishes you measure: the thin film
 
@@ -522,7 +545,7 @@ The measured finishes are the Cook-Torrance microfacet model. Their form is the 
 
 - [Environment lighting](../Docs/3D/3D.md#environment-lighting): all twenty curated environments listed by mood, which eight are bundled offline, `highResolution` backdrops, loading your own `.exr` or `.hdr`, where downloads cache, and the full procedural-sky arguments.
 - [Atmosphere](../Docs/3D/Atmosphere.md): `aerialPerspective` with its `density` and `haziness`, how it follows a `.sky` environment's sun, and how it trades places with `fog`.
-- [Volumes](../Docs/3D/Volumes.md): building a `Volume` from a function, a list, or noise; every `Medium` dial and preset; which lights scatter and which shadows fall into the medium; and what a march costs.
+- [Volumes](../Docs/3D/Volumes.md): building a `Volume` from a function, a list, or noise, or a `ComputeTexture3D` from a kernel; every `Medium` dial and preset; which lights scatter, which shadows fall into the medium, and where the cloud's own falls; and what a march costs.
 - [Physically based materials](../Docs/3D/3D.md#materials): the metallic-roughness model in full, plus the ready-made metals and dielectrics and how they combine with the stylized finishes.
 - [Glass](../Docs/3D/3D.md#glass): every transmission argument with its units, the environment requirement, and the edges spelled out.
 - [Subsurface scattering](../Docs/3D/3D.md#subsurface-scattering): the three scattering arguments, the presets, and the envelope; worked example [`Examples/3D/Materials/Subsurface`](../Examples/3D/Materials/Subsurface/Sketch.swift) (hold space to compare against the plain surfaces).

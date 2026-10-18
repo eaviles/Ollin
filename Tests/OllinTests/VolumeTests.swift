@@ -236,6 +236,27 @@ struct VolumeTests {
         #expect(abs(measured - expected) < 0.0015, "\(measured) against \(expected)")
     }
 
+    /// A grid a kernel wrote draws as the `Volume` holding the same samples
+    /// draws, to the byte: the same march, the same light grid, the same medium.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aKernelWrittenGridDrawsAsTheCPUGridToTheByte() throws {
+        let medium = Medium(density: 1.2, color: Color(linear: 1, green: 0.5, blue: 0.25))
+        let cpu = VolumeProbe()
+        cpu.medium = medium
+        cpu.slabDepth = 1
+        cpu.volume = VolumeProbe.kernelSlab(side: 9)
+        cpu.lightToward = Vector3(0, 0, -1)
+        let gpu = VolumeProbe()
+        gpu.medium = medium
+        gpu.slabDepth = 1
+        gpu.computeSource = ComputeTexture3D(width: 9, height: 9, depth: 9)
+        gpu.lightToward = Vector3(0, 0, -1)
+        let a = try Self.render(cpu), b = try Self.render(gpu)
+        #expect(a.rgb == b.rgb)
+        // And the picture is a lit slab, not two blanks agreeing.
+        #expect(a.row(a.height / 2, columns: 8 ..< a.width - 8) > 0.05)
+    }
+
     /// A volume holding nothing changes nothing.
     @Test(.enabled(if: Snapshot.hasMetal))
     func anEmptyVolumeLeavesTheFrameAlone() throws {
@@ -313,6 +334,22 @@ struct VolumeValueTests {
 /// -z: 2 units wide and high, `slabDepth` deep, centered at the origin.
 private final class VolumeProbe: Sketch {
     var volume: Volume? = Volume(width: 2, height: 2, depth: 2, repeating: 1)
+    /// A grid a kernel fills on the first frame, drawn in place of `volume`
+    /// when set: `0.25 + 0.5 * v`, the slab `kernelSlab` describes.
+    var computeSource: ComputeTexture3D?
+    private var filled = false
+    private let fillSlab = ComputeKernel(entry: "fillSlab", """
+        kernel void fillSlab(texture3d<float, access::write> out [[texture(0)]],
+                             uint3 gid [[thread_position_in_grid]]) {
+            uint3 n = uint3(out.get_width(), out.get_height(), out.get_depth());
+            if (any(gid >= n)) return;
+            out.write(float4(0.25 + 0.5 * float(gid.y) / float(n.y - 1)), gid);
+        }
+    """)
+    /// The same slab for the CPU: values `k / 16 + 1 / 4`, exact in every float.
+    static func kernelSlab(side: Int) -> Volume {
+        Volume(width: side, height: side, depth: side) { _, v, _ in 0.25 + 0.5 * v }
+    }
     var medium = Medium()
     var slabDepth = 1.0
     var ground: Color = .black
@@ -349,6 +386,10 @@ private final class VolumeProbe: Sketch {
     func scene() {
         background(ground)
         ortho(eye: Vector3(0, 0, 10), target: .zero, height: 2, near: 1, far: 30)
+        if let computeSource, !filled {
+            compute(fillSlab, writing: computeSource)
+            filled = true
+        }
         if temporal { temporalAntialiasing() }
         noLights()
         ambientLight(.black)
@@ -377,6 +418,10 @@ private final class VolumeProbe: Sketch {
     }
 
     func drawTheVolume() {
+        if let computeSource {
+            drawVolume(computeSource, width: 2, height: 2, depth: slabDepth, medium: medium)
+            return
+        }
         guard let volume else { return }
         if let secondMedium, secondFirst {
             drawVolume(volume, width: 2, height: 2, depth: slabDepth, medium: secondMedium)
@@ -384,6 +429,194 @@ private final class VolumeProbe: Sketch {
         drawVolume(volume, width: 2, height: 2, depth: slabDepth, medium: medium)
         if let secondMedium, !secondFirst {
             drawVolume(volume, width: 2, height: 2, depth: slabDepth, medium: secondMedium)
+        }
+    }
+}
+
+/// A cloud's shadow on the solids under it (`drawVolume` under `castShadows()`):
+/// the floor under a slab reads darker by the slab's transmittance toward the
+/// light, read off the same light grid the cloud shades itself by, and nothing
+/// changes until the frame casts shadows.
+@Suite
+@MainActor
+struct CloudShadowTests {
+    /// The floor under a slab whose thickness grows across it, lit straight
+    /// down: each column keeps exp(-density * depth * value) of the floor
+    /// beside the slab, for a grid the CPU filled and one a kernel wrote alike.
+    @Test(.enabled(if: Snapshot.hasMetal), arguments: [false, true])
+    func theFloorUnderACloudKeepsItsTransmittance(kernelWritten: Bool) throws {
+        let probe = CloudShadowProbe()
+        probe.kernelWritten = kernelWritten
+        let frame = try VolumeTests.render(probe)
+        let beside = CloudShadowProbe.floor(frame, x: -0.85)
+        #expect(beside > 0.3, "the floor beside the slab reads \(beside)")
+        var worst = 0.0
+        for x in [-0.4, -0.2, 0.0, 0.2, 0.4] {
+            let expected = exp(-probe.density * 0.5 * (x + 0.5))
+            let ratio = CloudShadowProbe.floor(frame, x: x) / beside
+            worst = max(worst, abs(ratio - expected))
+            #expect(abs(ratio - expected) < 0.03, "x \(x): \(ratio) against \(expected)")
+        }
+        #expect(worst < 0.03, "worst column off its transmittance by \(worst)")
+    }
+
+    /// The same slab, the same light, no `castShadows()`: the floor under it
+    /// reads as the floor beside it, and the frame is the frame with no slab.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aCloudShadowsNothingUntilTheFrameCastsShadows() throws {
+        let probe = CloudShadowProbe()
+        probe.castsShadows = false
+        let frame = try VolumeTests.render(probe)
+        let beside = CloudShadowProbe.floor(frame, x: -0.85)
+        let under = CloudShadowProbe.floor(frame, x: 0.4)
+        #expect(abs(under / beside - 1) < 0.002, "under \(under), beside \(beside)")
+        let bare = CloudShadowProbe()
+        bare.castsShadows = false
+        bare.drawsSlab = false
+        #expect(frame.rgb == (try VolumeTests.render(bare)).rgb)
+    }
+
+    /// A grid a kernel wrote shadows the floor as the CPU grid holding the same
+    /// samples does, to the byte.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aKernelWrittenCloudShadowsAsTheCPUGridDoes() throws {
+        let cpu = CloudShadowProbe()
+        let gpu = CloudShadowProbe()
+        gpu.kernelWritten = true
+        #expect(try VolumeTests.render(cpu).rgb == VolumeTests.render(gpu).rgb)
+    }
+}
+
+/// A white floor under a slab of absorbing medium whose value grows from 0 at
+/// its left face to 1 at its right (`u`), 1 wide, 0.5 thick, 2 deep, floating
+/// 1.5 above the floor; a white directional light straight down. The
+/// orthographic camera sits low over the floor looking along -z and down, so
+/// the floor under the slab is in view below it and the slab itself lies above
+/// the frame: a floor pixel at `x` is lit through the slab's column there and
+/// seen through clear air.
+private final class CloudShadowProbe: Sketch {
+    var castsShadows = true
+    var drawsSlab = true
+    var kernelWritten = false
+    let density = 2.0
+    private let side = 9
+    private lazy var grid = ComputeTexture3D(width: side, height: side, depth: side)
+    private var filled = false
+    private let fillRamp = ComputeKernel(entry: "fillRamp", """
+        kernel void fillRamp(texture3d<float, access::write> out [[texture(0)]],
+                             uint3 gid [[thread_position_in_grid]]) {
+            uint3 n = uint3(out.get_width(), out.get_height(), out.get_depth());
+            if (any(gid >= n)) return;
+            out.write(float4(float(gid.x) / float(n.x - 1)), gid);
+        }
+    """)
+
+    override var canvasSize: CanvasSize { .square(96) }
+
+    /// The floor's red channel at world `x` on the row through the target,
+    /// averaged over a few rows (the ratio depends on `x` alone).
+    static func floor(_ frame: VolumeTests.Linear, x: Double) -> Double {
+        let column = Int((x + 1) * Double(frame.width) / 2)
+        let center = frame.height / 2
+        return (center - 4 ... center + 4).reduce(0.0) { $0 + frame.channel(column, $1, 0) } / 9
+    }
+
+    override func draw() {
+        background(.black)
+        ortho(eye: Vector3(0, 3, 8), target: .zero, height: 2, near: 1, far: 40)
+        noLights()
+        ambientLight(.black)
+        directionalLight(.white, direction: Vector3(0, -1, 0), intensity: 1)
+        if castsShadows { castShadows() }
+        noStroke()
+        fill(.white)
+        withState { translate(0, -0.05, 0); drawBox(width: 12, height: 0.1, depth: 12) }
+        guard drawsSlab else { return }
+        let medium = Medium(density: density, color: .black)
+        withState {
+            translate(0, 1.75, 0)
+            if kernelWritten {
+                if !filled { compute(fillRamp, writing: grid); filled = true }
+                drawVolume(grid, width: 1, height: 0.5, depth: 2, medium: medium)
+            } else {
+                let ramp = Volume(width: side, height: side, depth: side) { u, _, _ in u }
+                drawVolume(ramp, width: 1, height: 0.5, depth: 2, medium: medium)
+            }
+        }
+    }
+}
+
+/// A 3D compute texture as storage: what a kernel writes is what a read gives
+/// back, a fresh one is zero, and the ping-pong pair swaps.
+@Suite
+@MainActor
+struct ComputeTexture3DTests {
+    /// Each sample written by `gid` reads back at its place, `x` fastest.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aKernelWritesEverySampleOfAGrid() throws {
+        let probe = GridProbe()
+        _ = try VolumeTests.render(probe)
+        let samples = try #require(probe.grid.snapshot())
+        #expect(samples.count == 5 * 6 * 7)
+        for z in 0 ..< 7 {
+            for y in 0 ..< 6 {
+                for x in 0 ..< 5 {
+                    #expect(samples[(z * 6 + y) * 5 + x] == Float(x + 10 * y + 100 * z))
+                }
+            }
+        }
+    }
+
+    /// A grid no kernel has touched holds zeros once something binds it (a
+    /// volume drawn before its first kernel is empty), and each side is at
+    /// least 2.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aFreshGridIsZero() throws {
+        let probe = GridProbe()
+        probe.fills = false
+        _ = try VolumeTests.render(probe)
+        let samples = try #require(probe.grid.snapshot())
+        #expect(samples.count == 5 * 6 * 7)
+        #expect(samples.allSatisfy { $0 == 0 })
+        let tiny = ComputeTexture3D(width: 0, height: 1, depth: 300)
+        #expect(tiny.width == 2 && tiny.height == 2 && tiny.depth == 300)
+    }
+
+    /// The pair's `read` and `write` trade places on every swap.
+    @Test func thePingPongPairSwaps() {
+        let pair = PingPongTexture3D(width: 4, height: 4, depth: 4)
+        let first = pair.read
+        #expect(pair.write !== first)
+        pair.swap()
+        #expect(pair.write === first)
+        #expect(pair.read !== first)
+    }
+}
+
+/// A 5 x 6 x 7 grid at full precision, each sample its own coordinates.
+private final class GridProbe: Sketch {
+    let grid = ComputeTexture3D(width: 5, height: 6, depth: 7, format: .r32Float)
+    var fills = true
+    private let fill = ComputeKernel(entry: "fillCoordinates", """
+        kernel void fillCoordinates(texture3d<float, access::write> out [[texture(0)]],
+                                    uint3 gid [[thread_position_in_grid]]) {
+            uint3 n = uint3(out.get_width(), out.get_height(), out.get_depth());
+            if (any(gid >= n)) return;
+            out.write(float4(float(gid.x + 10 * gid.y + 100 * gid.z)), gid);
+        }
+    """)
+
+    override var canvasSize: CanvasSize { .square(8) }
+
+    override func draw() {
+        background(.black)
+        if fills {
+            compute(fill, writing: grid)
+        } else {
+            // Drawn untouched, so the renderer realizes the texture (a texture
+            // nothing has bound has no contents to read back yet).
+            ortho(eye: Vector3(0, 0, 10), target: .zero, height: 2, near: 1, far: 30)
+            drawVolume(grid, size: 1, medium: Medium(density: 1, color: .black))
         }
     }
 }

@@ -1,21 +1,29 @@
 import Ollin
 
-/// Volumes: a plume of smoke rising over a pedestal, a ball hanging in it, and
-/// a lamp above throwing the ball's shadow down through the smoke.
+/// Volumes: a plume of smoke rising over a pedestal, a ball hanging in it, a
+/// lamp above throwing the ball's shadow down through the smoke, and the
+/// smoke's own shadow on the pedestal and the floor.
 ///
-/// The smoke is a `Volume`, a box of density samples. Once, in `setup()`, a
-/// grid of fractal noise is filled that repeats from its bottom row to its top
-/// (`fbm(_:_:loop:radius:)` with the height as the loop), and every frame the
-/// plume reads that grid scrolled upward and shapes it into a column that
-/// widens and thins as it rises. The scroll comes back to where it started
-/// every twelve seconds, so the plume rises without end and an export loops.
+/// The smoke is a grid of density samples. Here the grid is a
+/// `ComputeTexture3D` that a compute kernel of the sketch's own (`Plume.metal`)
+/// fills every frame, 96 by 144 by 96 samples, with noise over the box's width
+/// and depth that repeats from the bottom row to the top, read scrolled upward
+/// and shaped into a column that widens and thins as it rises. The grid never
+/// leaves the GPU, so the refill costs under a millisecond where a `Volume`
+/// filled on the CPU (`Volume(width:height:depth:_:)`, the other way to build
+/// one) holds 60 frames a second to about 32 samples a side. The
+/// scroll comes back to where it started every twelve seconds, so the plume
+/// rises without end and an export loops.
+///
 /// `drawVolume` marches each pixel's ray through the box after the solids are
 /// drawn, reading their depth: the ball inside the plume is veiled only by the
 /// smoke in front of it and hides the smoke behind it. Along the ray the smoke
 /// takes light away (Beer's law) and gives back the lamp's light and the
 /// ambient it scatters toward the eye; the lamp's light reaching each point has
 /// crossed the smoke between, so the plume shades itself, and the ball's
-/// shadow cuts a dark shaft down through it.
+/// shadow cuts a dark shaft down through it. With `castShadows()` on, the same
+/// light-transmittance grid that shades the plume darkens the pedestal and the
+/// floor under it, so a thick plume stands in its own shadow.
 ///
 /// The `medium` parameter says what the plume is made of: gray `smoke`, a white
 /// `cloud` that scatters nearly everything, `fire` glowing from inside, `ink`
@@ -28,19 +36,9 @@ final class Volumes: Sketch {
     @Param(0.2 ... 3, icon: "aqi.medium", group: "Smoke") var thickness = 1.0
     @Param(0 ... 6.28, icon: "lamp.desk", group: "Lamp") var lampAround = 0.8
 
-    /// The plume's grid, and the repeating noise it is read from.
-    private let columns = 36, rows = 48
-    private var source = Volume(width: 2, height: 2, depth: 2)
-
-    override func setup() {
-        // Noise over the box's width and depth, looping over its height: the
-        // bottom row and the top row hold the same values, so a read scrolled
-        // past the top wraps to the bottom without a seam.
-        noiseSeed(4)
-        source = Volume(width: columns, height: rows, depth: columns) { u, v, w in
-            fbm(u * 3.4, w * 3.4, loop: v, radius: 0.7, octaves: 4)
-        }
-    }
+    /// The plume's grid, and the kernel that fills it each frame.
+    private let plume = ComputeTexture3D(width: 96, height: 144, depth: 96)
+    private let plumeKernel = try? ComputeKernel(entry: "plume", resource: "Plume", in: .module)
 
     override func draw() {
         background(Color(hex: 0x0E1014))
@@ -73,18 +71,12 @@ final class Volumes: Sketch {
             drawSphere(radius: 0.2)
         }
 
-        // The plume: the repeating noise scrolled up one grid height every
-        // twelve seconds, kept where it rises above a floor that climbs away
-        // from the column's axis, so the smoke frays at its edge instead of
-        // ending on the box's faces.
-        let rise = (time / 12).truncatingRemainder(dividingBy: 1)
-        let plume = Volume(width: columns, height: rows, depth: columns) { u, v, w in
-            let scrolled = (v - rise + 1).truncatingRemainder(dividingBy: 1)
-            let spread = 0.16 + 0.24 * v
-            let fromAxis = Vector2(u - 0.5, w - 0.5).length / spread
-            let floor = 0.42 + 0.35 * fromAxis * fromAxis + 0.15 * v
-            let ends = min(1, v * 10) * min(1, (1 - v) * 2.5)
-            return max(0, source.value(u: u, v: scrolled, w: w) - floor) * 5 * ends
+        // The plume: the kernel refills the grid with its noise scrolled up one
+        // grid height every twelve seconds, then the grid draws as the medium.
+        if let plumeKernel {
+            var params = ComputeParams()
+            params.append(SIMD4<Float>(Float((time / 12).truncatingRemainder(dividingBy: 1)), 0, 0, 0))
+            compute(plumeKernel, writing: plume, params: params)
         }
         var look = medium
         look.density *= thickness
@@ -93,6 +85,6 @@ final class Volumes: Sketch {
             drawVolume(plume, width: 2.8, height: 4.2, depth: 2.8, medium: look)
         }
 
-        withOverlay { drawCaption("Volumes: smoke from repeating noise, lit and shadowed") }
+        withOverlay { drawCaption("Volumes: smoke a kernel writes, lit, shadowed, and casting its shadow") }
     }
 }

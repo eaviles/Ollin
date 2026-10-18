@@ -202,6 +202,28 @@ The render path may also read the field each frame. In that case, drive a [`Ping
 
 `ComputeTexture.snapshot()` reads the float texels back to the CPU for tests and debugging. It works on float formats only.
 
+**A box of samples: `ComputeTexture3D`.** The same storage in three dimensions, for a grid of density a kernel fills and `drawVolume` draws as a cloud, or a simulation's state over a volume. It is one 16-bit channel (`.r16Float`) by default, the density a [volume](../3D/Volumes.md) reads from the red channel. Each side has at least 2 samples. The write form runs one thread per sample over the whole grid, with a `uint3 gid`. The read-and-write form binds the source at `texture(0)` and the destination at `texture(1)`, and `PingPongTexture3D` is the pair for a field that evolves from its last state. `snapshot()` reads a float grid back `x` fastest, then `y`, then `z`.
+
+```swift
+let cloud = ComputeTexture3D(width: 128, height: 128, depth: 128)
+
+let fill = ComputeKernel(entry: "cloud", """
+    kernel void cloud(texture3d<float, access::write> out [[texture(0)]],
+                      constant OllinComputeUniforms &u [[buffer(10)]],
+                      uint3 gid [[thread_position_in_grid]]) {
+        float3 p = float3(gid) / float3(out.get_width() - 1, out.get_height() - 1, out.get_depth() - 1);
+        out.write(float4(max(0.0, fbm(p * 4.0 + u.time * 0.1) - 0.4)), gid);
+    }
+""")
+
+override func draw() {
+    compute(fill, writing: cloud)                 // refilled every frame
+    drawVolume(cloud, size: 4, medium: .cloud)
+}
+```
+
+A grid filled this way never leaves the GPU, so 128 samples a side refill in under a millisecond. A `Volume` filled on the CPU holds a frame rate to about 32 a side. What drawing one costs is on the [Volumes](../3D/Volumes.md#what-it-costs) page.
+
 <a id="metalfile"></a>
 ### Kernels in a `.metal` file
 

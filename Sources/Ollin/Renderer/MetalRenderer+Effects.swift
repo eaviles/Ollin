@@ -3451,6 +3451,20 @@ extension MetalRenderer {
             return lighting
         }
         var lighting = resolvedLighting(set: 0)
+        // A cloud's shadow on this pass's solids: the volumes drawn into this target
+        // with a thickness, each with its transmittance grid toward every caster
+        // (prepared ahead of the pass), as the table the lit mesh fragments read at
+        // buffer 11. The overlay has no solids to shade; every other pass takes it,
+        // the hidden layer and the pass behind the glass included, so what a lens
+        // or a pane shows of a floor is shadowed as the floor is. Only the frame's
+        // own lights cast (a scoped set resolves no casters), so the count rides
+        // on set 0 alone.
+        let volumeShadow = passOverlay ? VolumeShadowTable()
+            : volumeShadowTable(target: passTarget, lighting: lighting)
+        lighting.volumeShadowCount = Int32(volumeShadow.entries.count)
+        if !volumeShadow.textures.isEmpty {
+            encoder.useResources(volumeShadow.textures, usage: .read, stages: .fragment)
+        }
         // The scoped sets resolved up front: the shaping/LTC texture arrays they share
         // are baked while resolving, so every set must have packed before the first
         // draw binds one. A frame with no scoped set resolves once, as it always did.
@@ -3591,6 +3605,10 @@ extension MetalRenderer {
             if let shadowSampler { encoder.setFragmentSamplerState(shadowSampler, index: 1) }
             if let shadowCubeSampler { encoder.setFragmentSamplerState(shadowCubeSampler, index: 2) }
             encoder.setFragmentBytes(&batchLighting, length: MemoryLayout<OllinLighting>.stride, index: 0)
+            // A cloud's shadow table (buffer 11; `volumeShadowCount` gates the read):
+            // the pass's entries, or the one zero entry, so the declared argument is
+            // always bound.
+            if let table = volumeShadow.buffer { encoder.setFragmentBuffer(table, offset: 0, index: 11) }
             // Many lights: this set's whole light list (buffer 8) and the per-tile
             // index lists (buffer 9) its own cull wrote. Read only past
             // `OLLIN_MAX_LIGHTS` (`sceneLightCount` gates it); a one-element stand-in
@@ -4670,15 +4688,27 @@ extension MetalRenderer {
             }
             // Threadgroup shaped to the grid: the execution width along x, the rest
             // of the budget along y. A 1-D buffer dispatch (height 1) collapses to
-            // the old `width × 1`; a 2-D texture dispatch tiles in both axes.
-            // `dispatchThreads` handles a grid that isn't a multiple of the group.
+            // the old `width × 1`; a 2-D texture dispatch tiles in both axes. A 3-D
+            // one takes a short run along y and the rest of the budget along z, a
+            // block compact in all three axes, so a sample's neighbors are in the
+            // group that reads them. `dispatchThreads` handles a grid that isn't a
+            // multiple of the group.
             let tew = state.threadExecutionWidth
+            let budget = state.maxTotalThreadsPerThreadgroup
             let groupWidth = max(1, min(dispatch.gridWidth, tew))
-            let groupHeight = max(1, min(dispatch.gridHeight, state.maxTotalThreadsPerThreadgroup / tew))
+            let groupHeight: Int
+            let groupDepth: Int
+            if dispatch.gridDepth > 1 {
+                groupHeight = max(1, min(dispatch.gridHeight, 4))
+                groupDepth = max(1, min(dispatch.gridDepth, budget / (groupWidth * groupHeight)))
+            } else {
+                groupHeight = max(1, min(dispatch.gridHeight, budget / tew))
+                groupDepth = 1
+            }
             profile.computeDispatches += 1
             encoder.dispatchThreads(
-                MTLSize(width: dispatch.gridWidth, height: dispatch.gridHeight, depth: 1),
-                threadsPerThreadgroup: MTLSize(width: groupWidth, height: groupHeight, depth: 1))
+                MTLSize(width: dispatch.gridWidth, height: dispatch.gridHeight, depth: dispatch.gridDepth),
+                threadsPerThreadgroup: MTLSize(width: groupWidth, height: groupHeight, depth: groupDepth))
         }
         encoder.endEncoding()
     }
