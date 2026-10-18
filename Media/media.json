@@ -412,7 +412,9 @@
     ],
     "Recreations/MohamedMelehi": [
       "Recreations/MohamedMelehi/Waves",
-      "Recreations/MohamedMelehi/Flamme"
+      "Recreations/MohamedMelehi/Flamme",
+      "Recreations/MohamedMelehi/Soleil",
+      "Recreations/MohamedMelehi/Volcanique"
     ],
     "Recreations/MonirFarmanfarmaian": [
       "Recreations/MonirFarmanfarmaian/MirrorFamily",
@@ -9119,6 +9121,50 @@
       "stillSmall": "examples/Recreations/MohamedMelehi/Flamme/still-640.jpg?v=09bb9f7d",
       "width": 940
     },
+    "Recreations/MohamedMelehi/Soleil": {
+      "width": 940,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 4.934,
+      "sound": false,
+      "source": "77c889cdd99f21d1",
+      "rendered": "2026-10-18",
+      "bytes": {
+        "loop": 3023348,
+        "loopSmall": 639673,
+        "still": 130415,
+        "stillSmall": 53295
+      },
+      "loop": "examples/Recreations/MohamedMelehi/Soleil/loop.mp4?v=c3ff4d14",
+      "loopSmall": "examples/Recreations/MohamedMelehi/Soleil/loop-640.mp4?v=566afa8c",
+      "still": "examples/Recreations/MohamedMelehi/Soleil/still.jpg?v=60654aa1",
+      "stillSmall": "examples/Recreations/MohamedMelehi/Soleil/still-640.jpg?v=f70a75e7",
+      "seed": 1
+    },
+    "Recreations/MohamedMelehi/Volcanique": {
+      "width": 810,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 4.032,
+      "sound": false,
+      "source": "1094a0a929025264",
+      "rendered": "2026-10-18",
+      "bytes": {
+        "loop": 1980531,
+        "loopSmall": 441013,
+        "still": 165282,
+        "stillSmall": 67672
+      },
+      "loop": "examples/Recreations/MohamedMelehi/Volcanique/loop.mp4?v=33740422",
+      "loopSmall": "examples/Recreations/MohamedMelehi/Volcanique/loop-640.mp4?v=57a70662",
+      "still": "examples/Recreations/MohamedMelehi/Volcanique/still.jpg?v=6bf05ec8",
+      "stillSmall": "examples/Recreations/MohamedMelehi/Volcanique/still-640.jpg?v=231a6750",
+      "seed": 1
+    },
     "Recreations/MohamedMelehi/Waves": {
       "bytes": {
         "loop": 2462134,
@@ -12736,12 +12782,14 @@
       ]
     },
     "Recreations/MohamedMelehi": {
-      "image": "groups/Recreations-MohamedMelehi.jpg?v=937aba70",
-      "imageSmall": "groups/Recreations-MohamedMelehi-640.jpg?v=d928a173",
       "of": [
         "Recreations/MohamedMelehi/Waves",
-        "Recreations/MohamedMelehi/Flamme"
-      ]
+        "Recreations/MohamedMelehi/Flamme",
+        "Recreations/MohamedMelehi/Soleil",
+        "Recreations/MohamedMelehi/Volcanique"
+      ],
+      "image": "groups/Recreations-MohamedMelehi.jpg?v=f2b10e3d",
+      "imageSmall": "groups/Recreations-MohamedMelehi-640.jpg?v=c95b06a0"
     },
     "Recreations/MonirFarmanfarmaian": {
       "image": "groups/Recreations-MonirFarmanfarmaian.jpg?v=82811db3",

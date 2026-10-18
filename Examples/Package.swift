@@ -983,9 +983,13 @@ let package = Package(
         example("Recreations/NasreenMohamedi/Diagonals"),
         // The hard-edge wave of the 1970s, a ribbon of bands that enters
         // straight and breaks into the wave, and the wave standing up as a
-        // flame, after Mohamed Melehi.
+        // flame; the ribbon parting over a sun of rings, and a mountain of
+        // bands that climbs straight and comes down as the wave under four
+        // skies and their suns, after Mohamed Melehi.
         example("Recreations/MohamedMelehi/Waves"),
         example("Recreations/MohamedMelehi/Flamme"),
+        example("Recreations/MohamedMelehi/Soleil"),
+        example("Recreations/MohamedMelehi/Volcanique"),
         // The concentric paintings of 1966 to 1970 and the vertical mosaics
         // of 1970 to 1972, short strokes of a flat brush laid in rings and in
         // columns with the ground showing between them, after Alma Thomas.
