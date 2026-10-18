@@ -149,7 +149,7 @@ The blur reads the motion between frames, so an export carries it the same way e
 
 A streak keeps the light of the thing that made it. What spreads past a sphere's edge is taken from inside it, so a fast sphere fades a little as it smears, as it would in a long exposure. That is checked against an export that draws each frame at many moments while the shutter is open and averages them, which is the streak itself. [Chapter 41](41-FinishingASketch.md#blurred-the-slow-way-subframes) shows that export.
 
-The [`MotionBlur` example](../Examples/3D/Effects/MotionBlur/Sketch.swift) is a scene like the figure's, with the camera turning as well, and the toggle and the shutter on parameters. Slide the shutter while the spheres orbit and watch the same motion go from strobe to smear. The environment backdrop never streaks, and neither does 2D drawing over it. A caption over the 3D scene takes the motion of the surface under it, so the example puts its caption in `withOverlay { }`, which the next section explains.
+The [`MotionBlur` example](../Examples/3D/Effects/MotionBlur/Sketch.swift) is a scene like the figure's, with the camera turning as well, and the toggle and the shutter on parameters. Slide the shutter while the spheres orbit and watch the same motion go from strobe to smear. An environment's backdrop streaks with a turning camera, by the same amount as a floor at the horizon. A plain background color never streaks, and neither does 2D drawing over it. A caption over the 3D scene, or over a sky, takes the motion of what is under it, so the example puts its caption in `withOverlay { }`, which the next section explains.
 
 ## Light in the camera: lens flare
 

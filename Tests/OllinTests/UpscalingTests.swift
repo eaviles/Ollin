@@ -90,6 +90,8 @@ struct UpscalingTests {
         return m
     }
 
+    /// Over a plain clear color the far plane holds 2D drawing and the clear,
+    /// which the camera does not move: depth 1 writes zero motion.
     @Test(.enabled(if: Snapshot.hasMetal))
     func theBackdropHoldsStill() throws {
         guard let (renderer, _) = try makeRenderer() else { return }
@@ -97,7 +99,78 @@ struct UpscalingTests {
             width: 16, height: 16, depth: [Float](repeating: 1, count: 256), mover: nil,
             viewProjection: matrix_identity_float4x4,
             previousViewProjection: ndcTranslation(0.5, 0.5)))
-        for v in field { #expect(v == .zero, "depth 1 is the backdrop; it must write zero motion") }
+        for v in field { #expect(v == .zero, "depth 1 over a plain background must write zero motion") }
+    }
+
+    /// A perspective camera at `eye` looking along `yaw` radians from -z, and its
+    /// view-projection at a square aspect.
+    private func camera(eye: Vector3, yaw: Double) -> (Camera3D, simd_float4x4) {
+        let target = eye + Vector3(sin(yaw), 0, -cos(yaw))
+        let cam = Camera3D(eye: eye, target: target, up: .unitY, near: 0.5, far: 100,
+                           projection: .perspective(fieldOfView: .pi / 3))
+        return (cam, cam.projectionMatrix(aspect: 1) * cam.viewMatrix)
+    }
+
+    /// Under an environment the far plane is the sky, which turns with the
+    /// camera: a camera that yawed between frames moves every sky pixel by its
+    /// turn, and by exactly what a surface at the same pixel moves under that
+    /// turn (a pure turn moves every direction alike, whatever its distance),
+    /// which is the floor meeting the sky at the horizon with no seam.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func theSkyTurnsWithTheCameraLikeAFloorAtTheHorizon() throws {
+        guard let (renderer, _) = try makeRenderer() else { return }
+        let w = 32, h = 32
+        let (cam, now) = camera(eye: Vector3(0, 1, 0), yaw: 0.05)
+        let (_, before) = camera(eye: Vector3(0, 1, 0), yaw: 0)
+        let eye = cam.eye.simd3
+        let sky = try #require(renderer.debugUpscaleFillReadback(
+            width: w, height: h, depth: [Float](repeating: 1, count: w * h), mover: nil,
+            viewProjection: now, previousViewProjection: before,
+            backdropTurns: true, eye: eye, previousEye: eye))
+        let surface = try #require(renderer.debugUpscaleFillReadback(
+            width: w, height: h, depth: [Float](repeating: 0.9, count: w * h), mover: nil,
+            viewProjection: now, previousViewProjection: before))
+        var worst: Float = 0
+        for i in 0..<(w * h) { worst = max(worst, simd_length(sky[i] - surface[i])) }
+        #expect(worst < 0.05, "the sky and a far surface parted by \(worst) px under one turn")
+        // And the turn is real: a 0.05 radian yaw at this lens is about 1.4 px.
+        let center = sky[16 * w + 16]
+        #expect(center.x > 1, "the sky moved \(center.x) px under a turn of 0.05 radians")
+        #expect(abs(center.y) < 0.05)
+    }
+
+    /// The sky sits at infinity, so a camera that travels without turning
+    /// leaves it where it was, while a surface in front of it slides.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aTravelingCameraLeavesTheSkyStill() throws {
+        guard let (renderer, _) = try makeRenderer() else { return }
+        let w = 32, h = 32
+        let (cam, now) = camera(eye: Vector3(1, 1, 0), yaw: 0)
+        let (was, before) = camera(eye: Vector3(0, 1, 0), yaw: 0)
+        let sky = try #require(renderer.debugUpscaleFillReadback(
+            width: w, height: h, depth: [Float](repeating: 1, count: w * h), mover: nil,
+            viewProjection: now, previousViewProjection: before,
+            backdropTurns: true, eye: cam.eye.simd3, previousEye: was.eye.simd3))
+        for v in sky { #expect(simd_length(v) < 0.01, "the sky moved \(v) under a camera that only traveled") }
+        let near = try #require(renderer.debugUpscaleFillReadback(
+            width: w, height: h, depth: [Float](repeating: 0.5, count: w * h), mover: nil,
+            viewProjection: now, previousViewProjection: before))
+        #expect(simd_length(near[16 * w + 16]) > 1, "a surface in front slid \(near[16 * w + 16]) px")
+    }
+
+    /// Without an environment the same turn moves the far plane by nothing: the
+    /// flag, not the matrices, decides.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aPlainBackdropHoldsStillUnderATurn() throws {
+        guard let (renderer, _) = try makeRenderer() else { return }
+        let w = 16, h = 16
+        let (cam, now) = camera(eye: Vector3(0, 1, 0), yaw: 0.05)
+        let (_, before) = camera(eye: Vector3(0, 1, 0), yaw: 0)
+        let field = try #require(renderer.debugUpscaleFillReadback(
+            width: w, height: h, depth: [Float](repeating: 1, count: w * h), mover: nil,
+            viewProjection: now, previousViewProjection: before,
+            backdropTurns: false, eye: cam.eye.simd3, previousEye: cam.eye.simd3))
+        for v in field { #expect(v == .zero, "a plain backdrop moved \(v) under a turn") }
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))

@@ -4241,6 +4241,59 @@ Gaussian, the published Blackman-Harris fit e^−2.29r², weighted by each
 tap's distance from that center), which re-centers the shifted render and
 keeps the nonzero-mean jitter sequence from wobbling the whole image.
 
+**The reconstruction runs where the frame has depth, and the backdrop turns
+with the camera under an environment (2026-10-18).** The closest-depth 3×3 is
+read first, because it also says what a pixel is. Where it holds a depth under
+1 the jitter moved something and the Gaussian reconstructs it; a 3×3 of pure
+far-plane depth holds only what the jitter never touched, 2D drawing and the
+clear color sitting exactly where they were drawn, with the environment behind
+them a smooth picture whose shifted samples the blend averages on its own, so
+the pixel's own sample stands. The Gaussian over every pixel had softened a
+still hairline in a 3D canvas to 85, 219, 111 across three columns where the
+plain frame reads 0, 255, 0, measured 2026-10-09 off the live loop and pinned
+by `stillTwoDPassesThroughTheLiveResolve` (`FrameInvariantTests`, the
+`MTKView` harness over sixty-four refreshes). The reprojection then has three
+cases rather than two: a mover's own velocity, a surface's depth through the
+previous view-projection, and, new, a far-plane pixel under an environment
+(`backdropTurnsWithCamera`: `showsBackground` and a baked skybox), whose
+history is fetched by `ollin_backdrop_motion`. The environment sits at
+infinity, so a far pixel is a direction, not a point: the far-plane point the
+unjittered inverse view-projection gives is carried from this frame's eye to
+last frame's (`previousEye`, kept on the slot beside the matrix) along the
+same world direction and projected through last frame's view-projection, so a
+turn moves the sky by exactly what it moves a floor at the horizon and a
+travel moves it by nothing. Before this every far pixel kept the identity,
+which was exact for the sky only while the camera stood still; a turning
+camera reprojected the sky's history from the wrong place and the clamp
+smeared what it could not reject. Over a plain clear color the far plane is
+2D and the clear, which the camera does not move, so there the identity stays
+and 2D over a colored ground never softens under a turn (ruled 2026-10-18:
+the backdrop follows the camera only when it is the environment's picture).
+The same helper and the same flag serve the motion blur's fill and the
+platform effects' fill, so the four consumers of the motion field agree on
+the sky. The sky's turn was also the first fractional-pixel reprojection of
+an HDR step the resolve had met: the sky's sun is a thousand times its sky in
+linear light, and the Catmull-Rom's negative lobes rang on it, a halo of 118
+and 199 beside a four-pixel disc and a pit of 115 inside it, measured off the
+live loop. The history fetch is now held to the range of the 2×2 texels the
+bilinear fetch would read (the lobes keep their sharpening inside that range;
+a still pixel's fetch lands on one texel, where the clamp is inert, so the
+converged still frame is untouched). `theSkyFollowsATurningCameraInTheLiveResolve`
+reads the disc off the live loop against the plain frame in 2D: its centroid
+within 0.6 px, its lit area at most 1.4 times the plain disc's, its interior
+white. With the far plane at the identity the same disc had lagged 0.74 px
+and read 95 to 122 where the plain frame reads 255, each sun pixel blended
+with the sky that stood there a frame before, and a glowing sphere at depth
+did the same under the geometry branch, so the dim smear of a bright mover
+under a turning camera was the resolve's own, which the clamp fixes for both.
+The compressed-space resample the published treatments suggest was measured
+and left out: every pixel the jittered disc touches blends to white in that
+space, and the disc came back a whole ring wider (1.81 times the area against
+1.31 for the linear form). The linear form's residual is the positive lobe's
+spill of a few percent of an HDR disc into the pixel ahead of it, which after
+compression reads bright, a lead of about half a pixel at two pixels of turn
+a frame; it is filed under *Photorealistic 3D* in `DESIGN-NOTES.md`.
+
 **Headless/export** never touches the history (the deferred-reflection
 precedent): `image(of:)` renders the geometry N times under the fixed
 sequence (4/8/16 by tier via `resolveTAASamples`; export's automatic tier is
@@ -4573,12 +4626,17 @@ it. On with a still *mover*, the mover pass writes zero motion, every
 neighborhood's dominant velocity sits under the half-pixel floor, and the
 reconstruction's early-out copies each pixel through by nearest-sample read,
 which is value-exact. Frame 0 has no previous camera and returns unblurred by
-definition. The backdrop rule is deliberate: a pixel at depth exactly 1 (2D
-drawing, the clear color, the environment skybox) writes zero velocity, the
-temporal resolve's own background treatment, so 2D drawing over the backdrop
-never smears under a camera move (over the 3D scene it takes the motion of
-the surface under it; see below); the cost is that the sky does not streak
-under a pan, the documented envelope. The soft-depth extent is 1% of the eye-to-target
+definition. The backdrop rule is the temporal resolve's: a pixel at depth
+exactly 1 is the sky under an environment, which sits at infinity and so
+turns with the camera (`ollin_backdrop_motion`, each far pixel's direction
+carried between the two eyes and reprojected, so a pan streaks the sky by
+what it streaks a floor at the horizon and a travel by nothing;
+`theSkyStreaksUnderATurningCamera` reads the procedural sun's run on its row
+with the blur on against off), and over a plain clear color it is 2D drawing
+and the clear, which write zero velocity, so 2D over a colored ground never
+smears under a camera move (over the 3D scene, or over a sky, it takes the
+motion of what is under it; see below). Until 2026-10-18 every far pixel wrote
+zero, which left the sky still under a pan. The soft-depth extent is 1% of the eye-to-target
 distance (the `sceneScale` proxy the sparkle cells and RT bias already use),
 not a fixed world constant: the published 1mm-10cm figures assume meter-scale
 scenes, and a tuned screen-space constant hiding a scale assumption is the
@@ -4618,19 +4676,27 @@ two, at the default shutter). Three findings ride with it:
   column beside the fast sphere and took that sphere's error from 0.020 to
   0.035, worse than the old gather. The reference shows the visible
   background sharp, so the plainer form is the closer one.
-- *An edge pixel half covered by a mover can keep the background's velocity.*
-  The mover pass rasterizes one sample a pixel while the color is
-  multisampled, so a pixel whose center falls just outside the mover carries
-  the mover's partial color with no motion. With edges on pixel centers this
-  costs about 1% of a 24-pixel box's light on the leading side; with edges on
-  whole pixels the streak holds to 0.16%. A multisampled velocity resolve is
-  the fix, filed rather than built.
-- *2D drawing over the 3D scene takes the scene's motion.* The velocity fill
-  reads the depth under a pixel, and 2D drawing writes none, so a caption over
-  a moving floor streaks with the floor. The old gather's center weight hid it
-  at small spreads, which the new one blurs as the true box they are (the
-  floor itself matches the reference either way). `withOverlay` is the
-  answer, and the example's caption uses it.
+- *An edge pixel half covered by a mover carries the mover's velocity (since
+  2026-10-18).* The mover pass rasterized one sample a pixel while the color
+  is multisampled, so a pixel whose center fell just outside the mover carried
+  the mover's partial color with no motion: with edges on pixel centers that
+  cost about 1% of a 24-pixel box's light on the leading side, with edges on
+  whole pixels the streak held to 0.16%. The pass now draws multisampled at
+  the geometry pass's own count into a stored per-sample pair (the readable
+  MSAA shape the mesh-normal pass uses) and `ollin_mesh_velocity_resolve`
+  keeps each pixel's nearest sample, so a pixel the mover covers at all
+  carries its motion, which is the pixel the `.min` depth resolve already
+  places on the mover: the blur's depth and velocity agree at every edge. The
+  region invariant runs with the box's edges on whole pixels and on pixel
+  centers alike, and the half-covered columns themselves are read against the
+  reference; `aPixelTheMoverHalfCoversCarriesItsMotion` reads the pass.
+- *2D drawing over the 3D scene, or over a sky, takes the motion of what is
+  under it.* The velocity fill reads the depth under a pixel, and 2D drawing
+  writes none, so a caption over a moving floor streaks with the floor, and
+  one over an environment's backdrop streaks with the sky under a pan. The
+  old gather's center weight hid it at small spreads, which the new one blurs
+  as the true box they are (the floor itself matches the reference either
+  way). `withOverlay` is the answer, and the example's caption uses it.
 
 **The subframe export.** `--subframes N` (`OllinApp.exportSubframes`, with
 `--shutter` / `OllinApp.exportShutter`) is the accumulation buffer: each
@@ -4745,7 +4811,9 @@ Verification splits along the honesty rule: the deterministic pieces
 (`UpscalingTests`, 9) pin the gating, the tier mapping, the jitter-table
 prefix, the fill's three behaviors over crafted textures
 (`debugUpscaleFillReadback`: raw mover passthrough with no shutter scale,
-exact camera reprojection, depth-1 backdrop zero), and the headless
+exact camera reprojection, the depth-1 backdrop zero over a plain clear color
+and, under an environment, the camera's turn, read against a surface at the
+same pixel under one turn and against a camera that only travels), and the headless
 equivalence; the fill and gate sabotages each read red. The live scaler is a
 stateful platform object, so its verification is measurement (2026-08-11, the
 TAA frame-diff protocol: a static RT-reflection scene in OllinLive, window

@@ -153,25 +153,38 @@ struct FrameInvariantTests {
     /// still the window shows it exactly as the plain frame does, as the docs promise.
     /// Read off the live loop the window runs, one renderer and one drawable over
     /// sixty-four refreshes.
+    ///
+    /// Measured 2026-10-09: the resolve's 3 by 3 Gaussian ran over every pixel,
+    /// jittered or not, and a still hairline read 85, 219, 111 across three columns.
+    /// Since 2026-10-18 the reconstruction runs only where the 3 by 3 holds a depth
+    /// under 1, and a pixel of pure backdrop keeps its own sample.
     @Test(.enabled(if: Snapshot.hasMetal))
     func stillTwoDPassesThroughTheLiveResolve() throws {
         let plain = try liveColumns(LiveHairlineInvariantProbe.make(taa: false))
         #expect(plain == [0, 0, 255, 0, 0], "the plain frame's hairline read \(plain)")
         let resolved = try liveColumns(LiveHairlineInvariantProbe.make(taa: true))
-        withKnownIssue("the live resolve's 3 by 3 Gaussian runs over every pixel, jittered or not: a still hairline reads 85, 219, 111 across three columns, measured 2026-10-09") {
-            for (i, (a, b)) in zip(resolved, plain).enumerated() {
-                #expect(abs(a - b) <= 2, "with the live resolve, column \(62 + i) read \(a) where the plain frame reads \(b)")
-            }
+        for (i, (a, b)) in zip(resolved, plain).enumerated() {
+            #expect(abs(a - b) <= 2, "with the live resolve, column \(62 + i) read \(a) where the plain frame reads \(b)")
         }
     }
 
     /// Five columns of one row around the hairline, green channel, as the window shows
     /// them after sixty-four live refreshes.
     private func liveColumns(_ sketch: LiveHairlineInvariantProbe) throws -> [Int] {
+        let size = 128
+        let shown = try liveFrame(sketch, size: size, refreshes: 64)
+        // The drawable is BGRA; row 100 lies below the box, the hairline in column 64.
+        return (62...66).map { Int(shown[(100 * size + $0) * 4 + 1]) }
+    }
+
+    /// The window's drawable after `refreshes` live refreshes of `sketch` at 60 a
+    /// second, as BGRA bytes: one renderer and one drawable, the loop the window
+    /// runs, so the stateful passes (the temporal resolve's history) are read as
+    /// the window shows them.
+    private func liveFrame(_ sketch: Sketch, size: Int, refreshes: Int) throws -> [UInt8] {
         let device = try #require(MTLCreateSystemDefaultDevice())
         let renderer = try MetalRenderer(device: device, pixelFormat: ollinColorPixelFormat,
                                          sampleCount: ollinPreferredSampleCount(device))
-        let size = 128
         let view = MTKView(frame: CGRect(x: 0, y: 0, width: size, height: size), device: device)
         view.colorPixelFormat = ollinColorPixelFormat
         view.framebufferOnly = false
@@ -181,7 +194,7 @@ struct FrameInvariantTests {
         sketch.setCanvasSize(width: Double(size), height: Double(size))
         try sketch.setup()
         var texture: MTLTexture?
-        for frame in 0..<64 {
+        for frame in 0..<refreshes {
             sketch.advance(time: Double(frame) / 60, deltaTime: 1.0 / 60, frameRate: 60)
             sketch.performDraw()
             let drawable = try #require(view.currentDrawable)
@@ -200,8 +213,70 @@ struct FrameInvariantTests {
         commands.commit()
         commands.waitUntilCompleted()
         let bytes = buffer.contents().assumingMemoryBound(to: UInt8.self)
-        // The drawable is BGRA; row 100 lies below the box, the hairline in column 64.
-        return (62...66).map { Int(bytes[(100 * size + $0) * 4 + 1]) }
+        return Array(UnsafeBufferPointer(start: bytes, count: size * size * 4))
+    }
+
+    /// Under an environment the far backdrop turns with the camera, and the live
+    /// resolve follows it: the sky's sun, a disc about six pixels across, under a
+    /// camera turning about two pixels a frame stays the disc the plain frame
+    /// draws. Its centroid sits within 0.6 px of the plain disc's, its lit area is
+    /// at most 1.4 times the plain disc's (the jitter's own soft edge), and every
+    /// pixel inside the plain disc stays white.
+    ///
+    /// Measured 2026-10-18 off this loop, in 2D over a window around the sun. With
+    /// the far plane kept at the identity the resolve blended each sun pixel with
+    /// the sky that stood there a frame before: the disc lagged 0.74 px and its
+    /// core read 95 to 122 where the plain frame reads 255 (a glowing sphere at
+    /// depth did the same, so this was the resolve's, not the backdrop's). With
+    /// the sky reprojected by its turn but the history resampled unclamped, the
+    /// Catmull-Rom lobes rang on the disc (a thousand times its sky in linear
+    /// light) into a halo that lit 1.53 times the plain area, with a pit inside.
+    /// Resampled in compressed space the disc came back a whole ring wider, 1.81
+    /// times the area. Clamped and linear, as shipped, the disc keeps 1.31 times
+    /// the area and leads the plain one by 0.51 px along the turn, the positive
+    /// lobe's spill of a few percent of an HDR disc into the pixel ahead of it:
+    /// the residual this pin allows.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func theSkyFollowsATurningCameraInTheLiveResolve() throws {
+        let size = 192
+        let plain = try liveFrame(LiveSkyInvariantProbe.make(taa: false), size: size, refreshes: 41)
+        let resolved = try liveFrame(LiveSkyInvariantProbe.make(taa: true), size: size, refreshes: 41)
+        func green(_ b: [UInt8], _ x: Int, _ y: Int) -> Int { Int(b[(y * size + x) * 4 + 1]) }
+        // The sun: the brightest pixel of the plain frame, and the sky well beside it.
+        var peak = 0, px = 0, py = 0
+        for y in 0..<size {
+            for x in 0..<size where green(plain, x, y) > peak { peak = green(plain, x, y); px = x; py = y }
+        }
+        #expect(peak > 200, "the sun drew nothing bright: \(peak) at (\(px), \(py))")
+        let sky = green(plain, max(px - 40, 0), py)
+        let window = (max(px - 15, 0)..<min(px + 15, size), max(py - 15, 0)..<min(py + 15, size))
+        func measure(_ b: [UInt8]) -> (cx: Double, cy: Double, lit: Int) {
+            var weight = 0.0, sx = 0.0, sy = 0.0, lit = 0
+            for y in window.1 {
+                for x in window.0 {
+                    let v = Double(max(0, green(b, x, y) - sky))
+                    weight += v; sx += v * Double(x); sy += v * Double(y)
+                    if green(b, x, y) > sky + 24 { lit += 1 }
+                }
+            }
+            return (sx / max(weight, 1), sy / max(weight, 1), lit)
+        }
+        let p = measure(plain), r = measure(resolved)
+        #expect(p.lit >= 12 && p.lit <= 60, "the plain sun covers \(p.lit) pixels")
+        let shift = ((r.cx - p.cx) * (r.cx - p.cx) + (r.cy - p.cy) * (r.cy - p.cy)).squareRoot()
+        #expect(shift < 0.6, "under the live resolve the sun's centroid moved \(shift) px from the plain frame's")
+        #expect(r.lit <= Int(Double(p.lit) * 1.4),
+                "under the live resolve the sun covers \(r.lit) pixels against \(p.lit) plain")
+        // The disc's interior: every plain pixel whose eight neighbors are lit too.
+        var dimmest = 255
+        for y in window.1.dropFirst().dropLast() {
+            for x in window.0.dropFirst().dropLast() {
+                var interior = true
+                for dy in -1...1 { for dx in -1...1 where green(plain, x + dx, y + dy) <= sky + 24 { interior = false } }
+                if interior { dimmest = min(dimmest, green(resolved, x, y)) }
+            }
+        }
+        #expect(dimmest >= 240, "inside the sun the live resolve reads \(dimmest) where the plain frame reads 255")
     }
 
     // MARK: Motion blur
@@ -229,17 +304,25 @@ struct FrameInvariantTests {
     /// beyond), the canvas blur stays within 2% of the box's value of that reference on
     /// average. The renormalized gather missed the inner ramps by 20% of the box's
     /// value at either shutter.
-    @Test(.enabled(if: Snapshot.hasMetal), arguments: [0.5, 1.0])
-    func theStreakMatchesTheSubframeReference(shutter: Double) throws {
-        let sharp = try SubframeExportTests.render(StreakProbe.make(blur: false, shutter: shutter), frame: 3)
-        let post = try SubframeExportTests.render(StreakProbe.make(blur: true, shutter: shutter), frame: 3)
-        let reference = try SubframeExportTests.render(StreakProbe.make(blur: false, shutter: shutter),
+    ///
+    /// With the box's edges on whole pixels every pixel is the mover's or the
+    /// ground's; with them on pixel centers (`edgeOffset` 0.5) the edge pixels are
+    /// half the mover's, and those pixels streak with it too. Measured 2026-10-08:
+    /// the single-sample mover pass gave such a pixel the ground's motion, so the
+    /// mover's half of it stayed sharp and the leading side lost about 1% of the
+    /// box's light. Since 2026-10-18 the pass is multisampled and resolved by the
+    /// nearest sample, so a pixel the mover covers at all carries its motion.
+    @Test(.enabled(if: Snapshot.hasMetal), arguments: [0.5, 1.0], [0.0, 0.5])
+    func theStreakMatchesTheSubframeReference(shutter: Double, edgeOffset: Double) throws {
+        let sharp = try SubframeExportTests.render(StreakProbe.make(blur: false, shutter: shutter, edgeOffset: edgeOffset), frame: 3)
+        let post = try SubframeExportTests.render(StreakProbe.make(blur: true, shutter: shutter, edgeOffset: edgeOffset), frame: 3)
+        let reference = try SubframeExportTests.render(StreakProbe.make(blur: false, shutter: shutter, edgeOffset: edgeOffset),
                                                        frame: 3, subframes: 40, shutter: shutter)
         let rows = 88..<104
         let value = sharp.column(StreakProbe.left(at: 3) + 12, rows: rows)
         #expect(value > 0.1, "the box drew nothing: \(value)")
         // The box's edges at the instant, and how far the shutter carries each.
-        let left = Double(StreakProbe.left(at: 3)), right = left + 24
+        let left = Double(StreakProbe.left(at: 3)) + edgeOffset, right = left + 24
         let reach = 10 * shutter
         var error: [String: (sum: Double, count: Int)] = [:]
         for x in 0..<sharp.width {
@@ -255,7 +338,14 @@ struct FrameInvariantTests {
         }
         for (region, e) in error {
             let mean = e.sum / Double(e.count)
-            #expect(mean < 0.02 * value, "\(region) strayed \(mean / value) of the box's value from the reference")
+            #expect(mean < 0.02 * value, "\(region) strayed \(mean / value) of the box's value from the reference with the edges \(edgeOffset) px off whole pixels")
+        }
+        // The edge pixels themselves: the first pixel past each instantaneous edge
+        // holds the mover's half (with the edges on pixel centers) and must hold
+        // the reference's share of the streak, not that half left sharp.
+        for x in [Int(left.rounded(.down)), Int(right.rounded(.down))] where edgeOffset > 0 {
+            let e = abs(post.column(x, rows: rows) - reference.column(x, rows: rows))
+            #expect(e < 0.06 * value, "the half-covered edge column \(x) strayed \(e / value) of the box's value from the reference")
         }
     }
 
@@ -741,19 +831,22 @@ private final class BlurInvariantProbe: Sketch {
 
 /// The same crossing driven by the clock rather than the frame count, so the
 /// subframe export can draw it between frames: 20 pixels a frame at 60 frames a
-/// second, its edges on whole pixels at every frame's instant.
+/// second, its edges on whole pixels at every frame's instant, or `edgeOffset`
+/// pixels past them (0.5 puts every edge on a pixel center).
 private final class StreakProbe: Sketch {
     var blur = true
     var shutter = 1.0
+    var edgeOffset = 0.0
 
-    static func make(blur: Bool, shutter: Double) -> StreakProbe {
+    static func make(blur: Bool, shutter: Double, edgeOffset: Double = 0) -> StreakProbe {
         let p = StreakProbe()
         p.blur = blur
         p.shutter = shutter
+        p.edgeOffset = edgeOffset
         return p
     }
 
-    /// The box's left edge, in canvas pixels, at frame `n`'s instant.
+    /// The box's left edge, in canvas pixels, at frame `n`'s instant (before `edgeOffset`).
     static func left(at n: Int) -> Int { 96 + 20 * n - 40 - 12 }
 
     override var canvasSize: CanvasSize { .square(192) }
@@ -766,7 +859,7 @@ private final class StreakProbe: Sketch {
         fill(Color(white: 0.6))
         withMotion {
             withState {
-                translate(1200 * time - 40, 0, 0)
+                translate(1200 * time - 40 + edgeOffset, 0, 0)
                 drawBox(width: 24, height: 24, depth: 2)
             }
         }
@@ -795,6 +888,36 @@ private final class LiveHairlineInvariantProbe: Sketch {
         stroke(.white)
         strokeWeight(1)
         drawLine(64.5, 8, 64.5, 120)
+    }
+}
+
+/// The procedural sky under a narrow lens aimed at its sun, turning 0.004 radians a
+/// frame (about two pixels at this lens) so the sun is on the axis at the forty-first
+/// frame, temporal anti-aliasing on or off. The sky is dimmed so the disc stands out
+/// of its glow, no lights of the sketch's own so the sky's sun draws its disc, and one
+/// small box sits out of view, since the pass that paints the skybox runs only for a
+/// frame with a mesh in it.
+private final class LiveSkyInvariantProbe: Sketch {
+    var taa = true
+
+    static func make(taa: Bool) -> LiveSkyInvariantProbe {
+        let p = LiveSkyInvariantProbe()
+        p.taa = taa
+        return p
+    }
+
+    override var canvasSize: CanvasSize { .square(192) }
+
+    override func draw() {
+        background(.black)
+        environment(.sky(turbidity: 3, sunElevation: 0.3).intensified(to: 0.08))
+        let toSun = SkySun.worldDirection(elevation: 0.3, rotation: 0)
+        let yaw = 0.004 * Double(frameCount - 40)
+        let aim = Vector3(toSun.x * cos(yaw) - toSun.z * sin(yaw), toSun.y,
+                          toSun.x * sin(yaw) + toSun.z * cos(yaw))
+        perspective(eye: .zero, target: aim, fieldOfView: .pi / 9, near: 0.5, far: 50)
+        if taa { temporalAntialiasing() }
+        withState { translate(0, -3, -10); fill(.white); drawBox(width: 0.5, height: 0.5, depth: 0.5) }
     }
 }
 

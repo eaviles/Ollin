@@ -1885,6 +1885,31 @@ fragment float4 ollin_mesh_normal_resolve(float4 pos [[position]],
     return float4(nsum / float(n), cov / float(n));
 }
 
+// The mover-velocity pass is multisampled like the color it serves, and this
+// resolves it by the nearest sample: a pixel a mover covers at all, however
+// little, carries the mover's motion, which is the pixel the `.min` depth
+// resolve already places on the mover, so the blur's depth and its velocity
+// agree at every edge and the mover's partial color there streaks with it. A
+// single-sample pass took the background's motion wherever the pixel's center
+// fell outside the mover, and the mover's share of that pixel stayed sharp
+// (about 1% of a 24-pixel box's light on its leading side, measured
+// 2026-10-08). The nearest sample of a pixel nothing covered holds the cleared
+// sentinel, as does one an occluder's depth-only draw won, so both keep the
+// camera's own motion in the fills that read this.
+fragment float4 ollin_mesh_velocity_resolve(float4 pos [[position]],
+                                            texture2d_ms<float> velocityMS [[texture(0)]],
+                                            depth2d_ms<float> depthMS [[texture(1)]]) {
+    uint2 c = uint2(pos.xy);
+    uint n = velocityMS.get_num_samples();
+    uint nearest = 0;
+    float nearestDepth = depthMS.read(c, 0);
+    for (uint s = 1; s < n; s++) {
+        float d = depthMS.read(c, s);
+        if (d < nearestDepth) { nearestDepth = d; nearest = s; }
+    }
+    return velocityMS.read(c, nearest);
+}
+
 // MARK: - Deferred ray-traced reflections (trace + temporal accumulation)
 //
 // The anti-aliased form of the ray-traced reflection: one ray per pixel is a sharp
@@ -2343,6 +2368,15 @@ static inline float4 ollin_taa_clip(float4 lo, float4 hi, float4 p) {
 // collapse the 4x4 footprint onto a 3x3 of taps). Bilinear alone convolves a
 // tent filter into the history every frame and the accumulation goes soft in a
 // few dozen frames; the negative lobes keep it sharp under repeated resampling.
+// Resampled in linear light and held to its 2x2 footprint (below). The
+// compressed-space resample the published treatments suggest was measured
+// here (2026-10-18, the sky's sun under a turning camera, off the live loop)
+// and left out: in that space every pixel the jittered disc touches at all
+// blends to white, and a disc about six pixels across came back a whole ring
+// wider (58 pixels lit against 32) where the linear form keeps its size (42,
+// the jitter's soft edge). The linear form's residual is the positive lobe's
+// spill of a few percent of an HDR disc into the pixel ahead of it, a lead of
+// about half a pixel at two pixels of turn a frame, documented with the test.
 static inline float4 ollin_taa_history(texture2d<float> tex, sampler samp,
                                        float2 uv, float2 texel) {
     float2 pos = uv / texel;
@@ -2360,20 +2394,59 @@ static inline float4 ollin_taa_history(texture2d<float> tex, sampler samp,
     // Every tap names level 0. The resolve calls this only after it has sent the
     // disoccluded pixels home, so the quad is already broken here, and the history
     // front is full size: there is no other level to reach for.
-    return tex.sample(samp, float2(tc0.x,  tc0.y),  level(0.0)) * (w0.x  * w0.y)
-         + tex.sample(samp, float2(tc12.x, tc0.y),  level(0.0)) * (w12.x * w0.y)
-         + tex.sample(samp, float2(tc3.x,  tc0.y),  level(0.0)) * (w3.x  * w0.y)
-         + tex.sample(samp, float2(tc0.x,  tc12.y), level(0.0)) * (w0.x  * w12.y)
-         + tex.sample(samp, float2(tc12.x, tc12.y), level(0.0)) * (w12.x * w12.y)
-         + tex.sample(samp, float2(tc3.x,  tc12.y), level(0.0)) * (w3.x  * w12.y)
-         + tex.sample(samp, float2(tc0.x,  tc3.y),  level(0.0)) * (w0.x  * w3.y)
-         + tex.sample(samp, float2(tc12.x, tc3.y),  level(0.0)) * (w12.x * w3.y)
-         + tex.sample(samp, float2(tc3.x,  tc3.y),  level(0.0)) * (w3.x  * w3.y);
+    float4 h = tex.sample(samp, float2(tc0.x,  tc0.y),  level(0.0)) * (w0.x  * w0.y)
+             + tex.sample(samp, float2(tc12.x, tc0.y),  level(0.0)) * (w12.x * w0.y)
+             + tex.sample(samp, float2(tc3.x,  tc0.y),  level(0.0)) * (w3.x  * w0.y)
+             + tex.sample(samp, float2(tc0.x,  tc12.y), level(0.0)) * (w0.x  * w12.y)
+             + tex.sample(samp, float2(tc12.x, tc12.y), level(0.0)) * (w12.x * w12.y)
+             + tex.sample(samp, float2(tc3.x,  tc12.y), level(0.0)) * (w3.x  * w12.y)
+             + tex.sample(samp, float2(tc0.x,  tc3.y),  level(0.0)) * (w0.x  * w3.y)
+             + tex.sample(samp, float2(tc12.x, tc3.y),  level(0.0)) * (w12.x * w3.y)
+             + tex.sample(samp, float2(tc3.x,  tc3.y),  level(0.0)) * (w3.x  * w3.y);
+    // Held to the range of the 2x2 texels the bilinear fetch would read. The
+    // negative lobes ring on a step, and a step in linear light can be the sun
+    // (a thousand times its sky): once the sky reprojected by a fraction of a
+    // pixel, the ring was a halo of 118 and 199 beside a disc and a pit of 115
+    // inside it (measured 2026-10-18 off the live loop). Inside that range the
+    // lobes keep their sharpening; a still pixel's fetch lands on one texel,
+    // where the clamp is inert, so the converged still frame is untouched.
+    constexpr sampler point(filter::nearest);
+    float2 c0 = center * texel, c1 = (center + 1.0) * texel;
+    float4 a = tex.sample(point, c0, level(0.0));
+    float4 b = tex.sample(point, float2(c1.x, c0.y), level(0.0));
+    float4 c = tex.sample(point, float2(c0.x, c1.y), level(0.0));
+    float4 d = tex.sample(point, c1, level(0.0));
+    return clamp(h, min(min(a, b), min(c, d)), max(max(a, b), max(c, d)));
+}
+
+// The far backdrop's own motion under the camera. A pixel at depth 1 shows the
+// environment, which sits at infinity: it is a direction, not a point, so it
+// turns with the camera and never travels with it. The far-plane point the
+// unjittered inverse view-projection gives is carried from this frame's eye to
+// last frame's along the same world direction and projected through last
+// frame's view-projection, so a translating camera moves the sky by nothing and
+// a turning one by exactly its turn, which is also the motion of a floor at the
+// horizon. Previous minus current, in uv (y-down); false when the direction lay
+// behind the previous camera and has no previous position to name. Shared by
+// the temporal resolve, the motion blur's fill, and the platform effects' fill,
+// so the three consumers of the motion field agree on the sky.
+static inline bool ollin_backdrop_motion(float2 uv, float4x4 invVP, float4x4 prevVP,
+                                         float3 eye, float3 prevEye,
+                                         thread float2 &deltaUV) {
+    float2 ndc = float2(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0);
+    float4 far = invVP * float4(ndc, 1.0, 1.0);
+    float3 direction = far.xyz / far.w - eye;
+    float4 clip = prevVP * float4(prevEye + direction, 1.0);
+    if (clip.w <= 0.0) return false;
+    float2 pndc = clip.xy / clip.w;
+    deltaUV = float2(pndc.x * 0.5 + 0.5, 0.5 - pndc.y * 0.5) - uv;
+    return true;
 }
 
 // The resolve. Inputs: the frame's resolved color (rendered under this frame's
 // jitter), the `.min`-resolved scene depth, and the history front.
-// params[0] = (texel.xy, hasHistory, 0); params[1] = (jitter in pixels, hasVelocity, 0);
+// params[0] = (texel.xy, hasHistory, 0); params[1] = (jitter in pixels, hasVelocity,
+// backdropTurns); params[12].xyz = this frame's eye and params[13].xyz = last frame's;
 // params[4..7] = the current inverse view-projection columns and
 // params[8..11] = the previous view·projection columns, both UNJITTERED: the
 // jitter is removed from the reprojection entirely (the published rule), so a
@@ -2395,31 +2468,16 @@ fragment float4 ollin_fx_taa_resolve(PresentOut in [[stage_in]],
     // params[1].z: whether this frame rendered a mover-velocity texture (a frame
     // with no declared movers binds a stand-in and never samples it).
     bool hasVelocity = params[1].z > 0.5;
+    // params[1].w: whether the far backdrop is the environment's picture, which
+    // turns with the camera. A plain clear color, and the 2D drawn over it, hold
+    // still, so they keep the identity.
+    bool backdropTurns = params[1].w > 0.5;
 
-    // Reconstruct this frame's estimate at the *unjittered* pixel center: weight
-    // the 3x3 by a Gaussian (the published Blackman-Harris fit, e^-2.29r²) of each
-    // tap's distance from that center. A tap at offset d holds content whose
-    // unjittered position is d minus the jitter, so the weights re-center the
-    // shifted render (the jitter sequence's mean is not exactly zero, so an
-    // uncentered current would bias the whole image a fraction of a pixel) and
-    // trim the jitter-to-jitter variance the blend has to absorb.
-    float4 cur = 0.0;
-    float wsum = 0.0;
-    for (int y = -1; y <= 1; y++) {
-        for (int x = -1; x <= 1; x++) {
-            float2 d = float2(float(x), float(y)) - jitterPx;
-            float w = exp(-2.29 * dot(d, d));
-            cur += current.sample(samp, in.uv + float2(float(x), float(y)) * texel) * w;
-            wsum += w;
-        }
-    }
-    cur /= wsum;
-    if (!hasHistory) return cur;
-
-    // Closest-depth dilation: reproject by the front-most surface in the 3x3,
-    // so a silhouette pixel follows the foreground it belongs to. A moving
-    // edge otherwise samples the background's motion on half its pixels and
-    // loses its accumulated AA exactly where it matters.
+    // Closest-depth dilation, read first because it also says what the pixel is:
+    // the front-most surface in the 3x3 is what a silhouette pixel belongs to,
+    // so the reprojection below follows it (a moving edge otherwise samples the
+    // background's motion on half its pixels and loses its accumulated AA
+    // exactly where it matters), and a 3x3 of pure far-plane depth is backdrop.
     constexpr sampler dsamp(filter::nearest);
     float bestD = 1.0;
     float2 bestUV = in.uv;
@@ -2430,6 +2488,41 @@ fragment float4 ollin_fx_taa_resolve(PresentOut in [[stage_in]],
             if (d < bestD) { bestD = d; bestUV = uvn; }
         }
     }
+
+    // Reconstruct this frame's estimate at the *unjittered* pixel center where
+    // the 3x3 holds geometry the jitter moved: weight the 3x3 by a Gaussian (the
+    // published Blackman-Harris fit, e^-2.29r²) of each tap's distance from that
+    // center. A tap at offset d holds content whose unjittered position is d
+    // minus the jitter, so the weights re-center the shifted render (the jitter
+    // sequence's mean is not exactly zero, so an uncentered current would bias
+    // the whole image a fraction of a pixel) and trim the jitter-to-jitter
+    // variance the blend has to absorb. A 3x3 of pure far-plane depth holds only
+    // what the jitter never touched: 2D drawing and the clear color sit exactly
+    // where they were drawn, and the environment behind them is a smooth picture
+    // whose shifted samples the blend averages on its own. The Gaussian there
+    // only softened a still hairline (85, 219, 111 across three columns where
+    // the plain frame reads 0, 255, 0, measured 2026-10-09), so the pixel's own
+    // sample stands. Level 0 by name: the branch breaks the quad.
+    float4 cur = 0.0;
+    if (bestD < 1.0) {
+        float wsum = 0.0;
+        for (int y = -1; y <= 1; y++) {
+            for (int x = -1; x <= 1; x++) {
+                float2 d = float2(float(x), float(y)) - jitterPx;
+                float w = exp(-2.29 * dot(d, d));
+                cur += current.sample(samp, in.uv + float2(float(x), float(y)) * texel,
+                                      level(0.0)) * w;
+                wsum += w;
+            }
+        }
+        cur /= wsum;
+    } else {
+        cur = current.sample(samp, in.uv, level(0.0));
+    }
+    if (!hasHistory) return cur;
+
+    float4x4 invVP = float4x4(params[4], params[5], params[6], params[7]);
+    float4x4 prevVP = float4x4(params[8], params[9], params[10], params[11]);
     float2 prevUV = in.uv;
     // Exact mover motion (the velocity pass, `withMotion`): sample the buffer at
     // the dilated closest-depth neighbor (the closest-fetch rule, so a mover's
@@ -2448,8 +2541,6 @@ fragment float4 ollin_fx_taa_resolve(PresentOut in [[stage_in]],
     }
     if (!exactMotion && bestD < 1.0) {
         float2 ndc = float2(bestUV.x * 2.0 - 1.0, 1.0 - bestUV.y * 2.0);
-        float4x4 invVP = float4x4(params[4], params[5], params[6], params[7]);
-        float4x4 prevVP = float4x4(params[8], params[9], params[10], params[11]);
         float4 wp = invVP * float4(ndc, bestD, 1.0);
         float4 clip = prevVP * float4(wp.xyz / wp.w, 1.0);
         if (clip.w <= 0.0) return cur;                 // behind the previous camera
@@ -2457,14 +2548,22 @@ fragment float4 ollin_fx_taa_resolve(PresentOut in [[stage_in]],
         float2 pUV = float2(pndc.x * 0.5 + 0.5, 0.5 - pndc.y * 0.5);
         prevUV = in.uv + (pUV - bestUV);               // the dilated neighbor's motion, applied here
         if (any(prevUV < 0.0) || any(prevUV > 1.0)) return cur;   // disoccluded / off-frame
+    } else if (!exactMotion && backdropTurns) {
+        // A 3x3 of pure far-plane depth under an environment: the sky turns with
+        // the camera (a still camera reprojects it to exactly itself, so nothing
+        // changes until the camera turns). Without an environment the backdrop is
+        // 2D drawing and the clear color, for which the identity is exact.
+        float2 delta;
+        if (!ollin_backdrop_motion(in.uv, invVP, prevVP, params[12].xyz, params[13].xyz, delta)) {
+            return cur;                                // behind the previous camera
+        }
+        prevUV = in.uv + delta;
+        if (any(prevUV < 0.0) || any(prevUV > 1.0)) return cur;   // off-frame
     }
     // Screen-space motion in pixels: what the velocity-adaptive rectification
     // below keys on (a camera-still pixel reprojects exactly, so its history
     // deserves a wide box; a fast-moving one gets a tight one).
     float motionPx = length((prevUV - in.uv) / texel);
-    // A 3x3 of pure far-plane depth is background: 2D content and the clear
-    // color sit still (identity is exact for them), and under a static camera
-    // the jittered sky still converges its average through the identity.
 
     float4 hist = max(ollin_taa_history(history, samp, prevUV, texel), 0.0);
 
@@ -2589,16 +2688,17 @@ static inline float2 ollin_mb_spread_cmp(float offset, float2 spread, float pxTo
 // texel that motion wins; everywhere else the pixel's world position (through
 // the unjittered inverse view-projection) reprojects through last frame's
 // view-projection, the temporal resolve's own fallback math. Depth 1.0 is the
-// backdrop (2D drawing, the clear, the environment): held still by design,
-// exactly as the temporal resolve treats it. The magnitude clamp to
-// [0.5px, k] is the published form: a whisper of motion still rounds up to a
-// half-pixel spread (so the reconstruction's center weight stays bounded)
-// and nothing streaks past the tile radius the pyramid assumes.
+// backdrop: under an environment it is the sky, which turns with the camera
+// (`ollin_backdrop_motion`, the resolve's own rule); otherwise it is 2D
+// drawing and the clear color, held still. The magnitude clamp to [0.5px, k]
+// is the published form: a whisper of motion still rounds up to a half-pixel
+// spread (so the reconstruction's center weight stays bounded) and nothing
+// streaks past the tile radius the pyramid assumes.
 //
-// params[0] = (texel.x, texel.y, halfShutter, k); params[1].x = mover texture
-// bound; params[2..5] = inverse view-projection columns; params[6..9] =
-// previous view-projection columns; params[10].xyz = eye; params[11].xyz =
-// the view forward axis.
+// params[0] = (texel.x, texel.y, halfShutter, k); params[1] = (mover texture
+// bound, mover scale.xy, backdrop turns); params[2..5] = inverse view-projection
+// columns; params[6..9] = previous view-projection columns; params[10].xyz =
+// eye; params[11].xyz = the view forward axis; params[12].xyz = last frame's eye.
 fragment float4 ollin_mb_fill(PresentOut in [[stage_in]],
                               depth2d<float> depthTex [[texture(0)]],
                               texture2d<float> mover [[texture(1)]],
@@ -2609,28 +2709,37 @@ fragment float4 ollin_mb_fill(PresentOut in [[stage_in]],
     float d = depthTex.sample(dsamp, in.uv);
     float2 ndc = float2(in.uv.x * 2.0 - 1.0, 1.0 - in.uv.y * 2.0);
     float4x4 invVP = float4x4(params[2], params[3], params[4], params[5]);
+    float4x4 prevVP = float4x4(params[6], params[7], params[8], params[9]);
     float4 wp4 = invVP * float4(ndc, d, 1.0);
     float3 wp = wp4.xyz / wp4.w;
     float viewZ = dot(wp - params[10].xyz, params[11].xyz);
-    if (d >= 1.0) { return float4(0.0, 0.0, -viewZ, 0.0); }
     float2 q = 0.0;
-    bool wrote = false;
-    if (params[1].x > 0.5) {
-        // params[1].yz rescale a mover texture rendered at a different pixel
-        // size than this fill (the temporal upscaler's render-resolution
-        // texture feeding a full-resolution blur); (1, 1) otherwise, which
-        // multiplies exactly and keeps the plain path byte-identical. The
-        // sentinel test reads the raw value, before any rescale.
-        float2 v = mover.sample(dsamp, in.uv).xy;
-        if (v.x > 0.5 * OLLIN_VELOCITY_NONE) { q = v * params[1].yz; wrote = true; }
-    }
-    if (!wrote) {
-        float4x4 prevVP = float4x4(params[6], params[7], params[8], params[9]);
-        float4 clip = prevVP * float4(wp, 1.0);
-        if (clip.w > 0.0) {
-            float2 pndc = clip.xy / clip.w;
-            float2 pUV = float2(pndc.x * 0.5 + 0.5, 0.5 - pndc.y * 0.5);
-            q = (pUV - in.uv) / texel;   // previous minus current, pixels, y-down
+    if (d >= 1.0) {
+        float2 delta;
+        if (params[1].w > 0.5
+            && ollin_backdrop_motion(in.uv, invVP, prevVP, params[10].xyz, params[12].xyz, delta)) {
+            q = delta / texel;           // the sky's turn: previous minus current, pixels
+        } else {
+            return float4(0.0, 0.0, -viewZ, 0.0);
+        }
+    } else {
+        bool wrote = false;
+        if (params[1].x > 0.5) {
+            // params[1].yz rescale a mover texture rendered at a different pixel
+            // size than this fill (the temporal upscaler's render-resolution
+            // texture feeding a full-resolution blur); (1, 1) otherwise, which
+            // multiplies exactly and keeps the plain path byte-identical. The
+            // sentinel test reads the raw value, before any rescale.
+            float2 v = mover.sample(dsamp, in.uv).xy;
+            if (v.x > 0.5 * OLLIN_VELOCITY_NONE) { q = v * params[1].yz; wrote = true; }
+        }
+        if (!wrote) {
+            float4 clip = prevVP * float4(wp, 1.0);
+            if (clip.w > 0.0) {
+                float2 pndc = clip.xy / clip.w;
+                float2 pUV = float2(pndc.x * 0.5 + 0.5, 0.5 - pndc.y * 0.5);
+                q = (pUV - in.uv) / texel;   // previous minus current, pixels, y-down
+            }
         }
     }
     // The stored motion points backward (previous minus current); the shutter is
@@ -2647,12 +2756,13 @@ fragment float4 ollin_mb_fill(PresentOut in [[stage_in]],
 // shutter scale and no magnitude clamp, which is what the scaler consumes at
 // motion-vector scale 1. Where the mover pass wrote a texel that motion wins;
 // everywhere else the pixel's world position reprojects through last frame's
-// view-projection, and the backdrop (depth 1: 2D drawing, the clear, the
-// environment) holds still, the temporal resolve's own background treatment.
-// params[0] = (texel.x, texel.y, 0, 0); params[1].x = mover texture bound;
-// params[2..5] = inverse view-projection columns; params[6..9] = previous
-// view-projection columns. Both view-projections arrive unjittered (the
-// remove-the-jitter rule).
+// view-projection, and the backdrop (depth 1) is the sky's turn under an
+// environment or zero over a plain clear color, the temporal resolve's own
+// background treatment. params[0] = (texel.x, texel.y, 0, 0); params[1] =
+// (mover texture bound, 0, 0, backdrop turns); params[2..5] = inverse
+// view-projection columns; params[6..9] = previous view-projection columns;
+// params[10].xyz = eye; params[11].xyz = last frame's eye. Both view-projections
+// arrive unjittered (the remove-the-jitter rule).
 fragment float4 ollin_fx_velocity_fill(PresentOut in [[stage_in]],
                                        depth2d<float> depthTex [[texture(0)]],
                                        texture2d<float> mover [[texture(1)]],
@@ -2660,16 +2770,23 @@ fragment float4 ollin_fx_velocity_fill(PresentOut in [[stage_in]],
                                        constant float4 *params [[buffer(0)]]) {
     constexpr sampler dsamp(filter::nearest);
     float d = depthTex.sample(dsamp, in.uv);
-    if (d >= 1.0) { return float4(0.0); }
+    float4x4 invVP = float4x4(params[2], params[3], params[4], params[5]);
+    float4x4 prevVP = float4x4(params[6], params[7], params[8], params[9]);
+    if (d >= 1.0) {
+        float2 delta;
+        if (params[1].w > 0.5
+            && ollin_backdrop_motion(in.uv, invVP, prevVP, params[10].xyz, params[11].xyz, delta)) {
+            return float4(delta / params[0].xy, 0.0, 0.0);
+        }
+        return float4(0.0);
+    }
     if (params[1].x > 0.5) {
         float2 v = mover.sample(dsamp, in.uv).xy;
         if (v.x > 0.5 * OLLIN_VELOCITY_NONE) { return float4(v, 0.0, 0.0); }
     }
     float2 ndc = float2(in.uv.x * 2.0 - 1.0, 1.0 - in.uv.y * 2.0);
-    float4x4 invVP = float4x4(params[2], params[3], params[4], params[5]);
     float4 wp4 = invVP * float4(ndc, d, 1.0);
     float3 wp = wp4.xyz / wp4.w;
-    float4x4 prevVP = float4x4(params[6], params[7], params[8], params[9]);
     float4 clip = prevVP * float4(wp, 1.0);
     if (clip.w <= 0.0) { return float4(0.0); }
     float2 pndc = clip.xy / clip.w;

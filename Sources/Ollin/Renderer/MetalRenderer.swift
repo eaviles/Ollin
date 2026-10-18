@@ -442,9 +442,11 @@ final class MetalRenderer {
                         depthFormat: depth, isScatterMask: true)
         }
         // mover velocity (temporal AA): re-render this frame's declared movers
-        // single-sample into an rg16Float screen-motion texture with its own depth,
-        // so the resolve reprojects their history exactly. Only encoded when TAA is
-        // live and the frame declared movers (`withMotion`).
+        // into an rg16Float screen-motion texture with its own depth, multisampled
+        // at the geometry pass's count and resolved by the nearest sample, so the
+        // resolve reprojects their history exactly down to a half-covered edge
+        // pixel. Only encoded when TAA is live and the frame declared movers
+        // (`withMotion`), or when the blur needs them.
         static func meshVelocity(depth: MTLPixelFormat) -> PipelineKey {
             PipelineKey(vertex: "ollin_mesh_velocity_vertex",
                         fragment: "ollin_mesh_velocity_fragment",
@@ -1608,6 +1610,10 @@ final class MetalRenderer {
         var flipped = false
         var valid = false
         var previousViewProjection = matrix_identity_float4x4
+        /// Where the camera stood on the frame `previousViewProjection` saw: the
+        /// far backdrop is a direction, so its reprojection needs the eye the
+        /// previous frame looked out from beside the matrix.
+        var previousEye = SIMD3<Float>(0, 0, 0)
         init(a: MTLTexture, b: MTLTexture, w: Int, h: Int) {
             self.a = a; self.b = b; self.w = w; self.h = h
         }
@@ -1671,11 +1677,14 @@ final class MetalRenderer {
     /// resolved, kept for the size it was made at. It holds nothing between passes.
     var flareSampleCache: MTLTexture?
 
-    /// The mover-velocity pass's texture pair (rg16Float screen motion + its own
-    /// depth), cached by size like `scatterMaskCache`. Only allocated the first
-    /// frame that runs the pass (live TAA + declared movers), so a frame without
-    /// `withMotion` costs nothing.
-    var velocityCache: (tex: MTLTexture, depth: MTLTexture, w: Int, h: Int)?
+    /// The mover-velocity pass's textures: the multisampled rg16Float screen
+    /// motion and its own depth the pass draws into, at the geometry pass's
+    /// sample count so a pixel's coverage is the color's, and the single-sample
+    /// texture `ollin_mesh_velocity_resolve` keeps each pixel's nearest sample in,
+    /// which is what every consumer reads. Cached by size like `scatterMaskCache`.
+    /// Only allocated the first frame that runs the pass (live TAA + declared
+    /// movers, or the blur), so a frame without `withMotion` costs nothing.
+    var velocityCache: (tex: MTLTexture, msaa: MTLTexture, msaaDepth: MTLTexture, w: Int, h: Int)?
     /// The deforming movers' previous world positions (`drawMesh(_:previous:)`),
     /// uploaded by the velocity pass itself: a ring of two slots per frame in
     /// flight, advanced per encode, because the pass runs at most twice a frame

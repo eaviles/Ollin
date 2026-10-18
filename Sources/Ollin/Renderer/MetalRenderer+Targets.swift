@@ -1681,7 +1681,16 @@ extension MetalRenderer {
             else { return nil }
             instanced = (upload.buffer, upload.instances, upload.previous, occluder, mover)
         }
-        let target: (tex: MTLTexture, depth: MTLTexture, w: Int, h: Int)
+        // The pass draws multisampled, at the geometry pass's own count, so a
+        // pixel's coverage here is its coverage in the color, and a resolve keeps
+        // each pixel's nearest sample (`ollin_mesh_velocity_resolve`): a pixel a
+        // mover half covers carries the mover's motion, as the `.min` depth
+        // resolve already carries its depth. Both multisampled textures are
+        // stored and shader-readable per sample for that resolve, the readable
+        // MSAA shape the mesh-normal pass uses; the single-sample `tex` is what
+        // every consumer reads. On a device with no multisampling the pass draws
+        // into `tex` itself and nothing resolves.
+        let target: (tex: MTLTexture, msaa: MTLTexture, msaaDepth: MTLTexture, w: Int, h: Int)
         if let cached = velocityCache, cached.w == width, cached.h == height {
             target = cached
         } else {
@@ -1689,25 +1698,35 @@ extension MetalRenderer {
                 pixelFormat: .rg16Float, width: width, height: height, mipmapped: false)
             colorDesc.usage = [.renderTarget, .shaderRead]
             colorDesc.storageMode = .private
+            let msaaDesc = MTLTextureDescriptor.texture2DDescriptor(
+                pixelFormat: .rg16Float, width: width, height: height, mipmapped: false)
+            msaaDesc.textureType = sampleCount > 1 ? .type2DMultisample : .type2D
+            msaaDesc.sampleCount = sampleCount
+            msaaDesc.usage = [.renderTarget, .shaderRead]
+            msaaDesc.storageMode = .private
             let depthDesc = MTLTextureDescriptor.texture2DDescriptor(
                 pixelFormat: depthPixelFormat, width: width, height: height, mipmapped: false)
-            depthDesc.usage = .renderTarget
+            depthDesc.textureType = sampleCount > 1 ? .type2DMultisample : .type2D
+            depthDesc.sampleCount = sampleCount
+            depthDesc.usage = [.renderTarget, .shaderRead]
             depthDesc.storageMode = .private
             guard let tex = device.makeTexture(descriptor: colorDesc),
+                  let msaa = sampleCount > 1 ? device.makeTexture(descriptor: msaaDesc) : tex,
                   let depth = device.makeTexture(descriptor: depthDesc) else { return nil }
-            target = (tex, depth, width, height)
+            target = (tex, msaa, depth, width, height)
             velocityCache = target
         }
         let pass = MTLRenderPassDescriptor()
-        pass.colorAttachments[0].texture = target.tex
+        pass.colorAttachments[0].texture = target.msaa
         pass.colorAttachments[0].loadAction = .clear
         pass.colorAttachments[0].clearColor = MTLClearColor(
             red: Double(OLLIN_VELOCITY_NONE), green: 0, blue: 0, alpha: 0)
         pass.colorAttachments[0].storeAction = .store
-        pass.depthAttachment.texture = target.depth
+        pass.depthAttachment.texture = target.msaaDepth
         pass.depthAttachment.loadAction = .clear
         pass.depthAttachment.clearDepth = 1.0
-        pass.depthAttachment.storeAction = .dontCare
+        // The resolve reads the depth per sample to find the nearest one.
+        pass.depthAttachment.storeAction = sampleCount > 1 ? .store : .dontCare
         guard let enc = countedEncoder(cb, pass) else { return nil }
         enc.setViewport(MTLViewport(originX: 0, originY: 0, width: Double(width),
                                     height: Double(height), znear: 0, zfar: 1))
@@ -1813,7 +1832,25 @@ extension MetalRenderer {
             }
         }
         enc.endEncoding()
+        // The nearest-sample resolve into the single-sample texture the
+        // consumers read (no resolve on a device that drew single-sample).
+        if sampleCount > 1 {
+            encodeEffectFragment("ollin_mesh_velocity_resolve", inputs: [target.msaa, target.msaaDepth],
+                                 output: target.tex, params: [], into: cb)
+        }
         return target.tex
+    }
+
+    /// Whether the far backdrop turns with the camera this frame: it does when
+    /// the environment paints its picture behind the scene (`showsBackground`,
+    /// the skybox the geometry pass fills first), which sits at infinity and so
+    /// moves with the camera's turn and never with its travel. Over a plain
+    /// clear color the far plane holds 2D drawing and the clear, which the
+    /// camera does not move, so there the identity stays exact. Read by the
+    /// temporal resolve and by both velocity fills, so every consumer of the
+    /// motion field agrees on the sky.
+    func backdropTurnsWithCamera(_ drawer: Drawer) -> Bool {
+        drawer.environment?.showsBackground == true && currentIBLSkyboxTexture != nil
     }
 
     /// This encode's ring slot for the instanced copies the velocity pass draws:
@@ -1976,22 +2013,29 @@ extension MetalRenderer {
         // the *velocity* under camera motion, never the still case.
         let viewProjection = camera.projectionMatrix(aspect: aspect) * camera.viewMatrix
         let invVP = simd_inverse(viewProjection)
-        var params = [SIMD4<Float>](repeating: .zero, count: 12)
+        var params = [SIMD4<Float>](repeating: .zero, count: 14)
         params[0] = SIMD4(1 / Float(width), 1 / Float(height), slot.valid ? 1 : 0, 0)
         // The jitter back in pixels (the resolve re-centers the current frame's
         // reconstruction on the unjittered pixel; NDC y runs opposite pixel y).
         // params[1].z: whether a mover-velocity texture rendered this frame.
+        // params[1].w: whether the far backdrop is the environment's picture and
+        // turns with the camera (see `backdropTurnsWithCamera`).
         params[1] = SIMD4(jitter.x * Float(width) / 2, -jitter.y * Float(height) / 2,
-                          velocity != nil ? 1 : 0, 0)
+                          velocity != nil ? 1 : 0, backdropTurnsWithCamera(drawer) ? 1 : 0)
         params[4] = invVP.columns.0; params[5] = invVP.columns.1
         params[6] = invVP.columns.2; params[7] = invVP.columns.3
         let pv = slot.previousViewProjection
         params[8] = pv.columns.0; params[9] = pv.columns.1
         params[10] = pv.columns.2; params[11] = pv.columns.3
+        // The two eyes the backdrop's direction is carried between.
+        let eye = camera.eye.simd3
+        params[12] = SIMD4(eye, 0)
+        params[13] = SIMD4(slot.valid ? slot.previousEye : eye, 0)
         encodeEffectFragment("ollin_fx_taa_resolve",
                              inputs: [resolved, depth, front, velocity ?? front],
                              output: back, params: params, into: cb)
         slot.previousViewProjection = viewProjection
+        slot.previousEye = eye
         slot.valid = true
         slot.flipped.toggle()   // the just-written back is next frame's (and any repeat's) front
         return back
@@ -2082,16 +2126,21 @@ extension MetalRenderer {
         // proxy every scale-dependent constant here scales by), so "how close is a
         // depth tie" means the same thing in a hand-sized scene and a terrain.
         let sceneScale = max(simd_distance(camera.eye.simd3, camera.target.simd3), 1)
-        var params = [SIMD4<Float>](repeating: .zero, count: 12)
+        var params = [SIMD4<Float>](repeating: .zero, count: 13)
         params[0] = SIMD4(1 / Float(width), 1 / Float(height),
                           Float(0.5 * drawer.motionBlurShutter), Float(k))
-        params[1] = SIMD4(mover != nil ? 1 : 0, moverScale.x, moverScale.y, 0)
+        // params[1].w: the far backdrop is the environment's picture and turns
+        // with the camera (see `backdropTurnsWithCamera`); over a plain clear
+        // color it holds still.
+        params[1] = SIMD4(mover != nil ? 1 : 0, moverScale.x, moverScale.y,
+                          backdropTurnsWithCamera(drawer) ? 1 : 0)
         params[2] = invVP.columns.0; params[3] = invVP.columns.1
         params[4] = invVP.columns.2; params[5] = invVP.columns.3
         params[6] = prevVP.columns.0; params[7] = prevVP.columns.1
         params[8] = prevVP.columns.2; params[9] = prevVP.columns.3
         params[10] = SIMD4(eye, 0)
         params[11] = SIMD4(fwd, 0)
+        params[12] = SIMD4(previous.eye.simd3, 0)
         encodeEffectFragment("ollin_mb_fill", inputs: [depth, mover ?? resolved],
                              output: fill, params: params, into: cb)
         encodeEffectFragment("ollin_mb_tilemax", inputs: [fill], output: tileMax,

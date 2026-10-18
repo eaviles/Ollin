@@ -155,10 +155,12 @@ extension MetalRenderer {
         if key.isVelocity {
             // The mover-velocity pass: one rg16Float attachment (a signed pixel
             // delta, so blending stays off and the write replaces the sentinel
-            // clear), single-sample, depth-tested + writing into its own depth.
-            // The occluder phase is the same pass with no fragment: Metal requires
-            // every color write mask empty when the fragment function is nil, which
-            // is exactly the depth-only behavior it exists for.
+            // clear), multisampled at the geometry pass's own count so its
+            // coverage is the color's (`ollin_mesh_velocity_resolve` then keeps
+            // each pixel's nearest sample), depth-tested + writing into its own
+            // depth. The occluder phase is the same pass with no fragment: Metal
+            // requires every color write mask empty when the fragment function is
+            // nil, which is exactly the depth-only behavior it exists for.
             guard let v = library.makeFunction(name: key.vertex) else {
                 throw RendererError.shaderFunctions
             }
@@ -172,7 +174,7 @@ extension MetalRenderer {
                 }
                 d.fragmentFunction = f
             }
-            d.rasterSampleCount = 1
+            d.rasterSampleCount = sampleCount
             d.colorAttachments[0].pixelFormat = .rg16Float
             if let depthFormat = key.depthFormat {
                 d.depthAttachmentPixelFormat = depthFormat

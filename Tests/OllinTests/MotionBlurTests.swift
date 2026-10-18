@@ -233,6 +233,35 @@ struct MotionBlurTests {
     /// The backdrop holds still by design: under a panning camera, a far-corner
     /// background pixel (no geometry anywhere near it) is untouched, so 2D
     /// overlays and the environment never smear.
+    /// Under an environment the backdrop is the sky, and a turning camera streaks
+    /// it: the procedural sky's sun, a disc a few pixels wide, smears along the
+    /// turn by about the frame's travel at a full shutter. Read on the sun's row
+    /// as the run of pixels brighter than the sky around them. Measured
+    /// 2026-10-18 before the fix: the sun's run was the same width with the blur
+    /// on and off, since every far-plane pixel wrote zero motion.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func theSkyStreaksUnderATurningCamera() throws {
+        let off = pixels(try OllinApp.image(of: MBSkyProbe.make(blur: false), frame: 2))
+        let on = pixels(try OllinApp.image(of: MBSkyProbe.make(blur: true), frame: 2))
+        // The sun: the brightest pixel of the sharp frame.
+        var peak = 0, px = 0, py = 0
+        for y in 0..<off.h {
+            for x in 0..<off.w where ink(off, x, y) > peak { peak = ink(off, x, y); px = x; py = y }
+        }
+        #expect(peak > 200, "the sun drew nothing bright: \(peak) at (\(px), \(py))")
+        // The sky beside the sun, well clear of the streak.
+        let sky = ink(off, max(px - 40, 0), py)
+        func run(_ p: (data: [UInt8], w: Int, h: Int)) -> Int {
+            (0..<p.w).filter { ink(p, $0, py) > sky + 24 }.count
+        }
+        let sharp = run(off), streaked = run(on)
+        let travel = MBSkyProbe.travelPx
+        #expect(sharp >= 2 && sharp <= 12, "the sharp sun spans \(sharp) pixels")
+        // Measured 2026-10-18: 4 pixels sharp, 14 blurred, at 11 pixels of travel.
+        #expect(streaked >= sharp + travel / 2 && streaked <= sharp + 2 * travel,
+                "the sun under a turning camera spans \(streaked) pixels blurred against \(sharp) sharp, at a frame's travel of \(travel) px")
+    }
+
     @Test(.enabled(if: Snapshot.hasMetal))
     func theBackdropHoldsStill() throws {
         let on = try cameraFrame(blur: true, frame: 2)
@@ -292,6 +321,41 @@ private final class MBMoverProbe: Sketch {
             }
         }
         if mover { withMotion { place() } } else { place() }
+    }
+}
+
+/// The procedural sky under a narrow lens aimed at its sun and yawing 0.02
+/// radians a frame, so the sun (about five pixels across) crosses the frame at
+/// about eleven pixels a frame. No lights of the sketch's own, so the sky's sun
+/// lights the frame and draws its disc; the sky is dimmed so the disc stands
+/// out of the glow around it; and one small box sits out of view, because the
+/// 3D pass that paints the skybox runs only for a frame with a mesh in it.
+private final class MBSkyProbe: Sketch {
+    var blur = true
+    static let yawPerFrame = 0.02
+    static let elevation = 0.3
+    /// The sun's travel across the canvas in a frame: the yaw at this lens.
+    static var travelPx: Int { Int((yawPerFrame * 96 / tan(Double.pi / 18)).rounded()) }
+
+    static func make(blur: Bool) -> MBSkyProbe {
+        let probe = MBSkyProbe()
+        probe.blur = blur
+        return probe
+    }
+
+    override var canvasSize: CanvasSize { .square(192) }
+
+    override func draw() {
+        background(.black)
+        environment(.sky(turbidity: 3, sunElevation: Self.elevation).intensified(to: 0.08))
+        // Toward the sun at frame 2, turned about the vertical by the frames so far.
+        let toSun = SkySun.worldDirection(elevation: Self.elevation, rotation: 0)
+        let yaw = Self.yawPerFrame * Double(frameCount - 2)
+        let aim = Vector3(toSun.x * cos(yaw) - toSun.z * sin(yaw), toSun.y,
+                          toSun.x * sin(yaw) + toSun.z * cos(yaw))
+        perspective(eye: .zero, target: aim, fieldOfView: .pi / 9, near: 0.5, far: 50)
+        if blur { motionBlur(shutter: 1) }
+        withState { translate(0, -3, -10); fill(.white); drawBox(width: 0.5, height: 0.5, depth: 0.5) }
     }
 }
 

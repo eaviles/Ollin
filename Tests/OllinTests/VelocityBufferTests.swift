@@ -407,6 +407,30 @@ struct VelocityBufferTests {
         #expect(!isWritten(background), "an unwritten texel must keep the sentinel")
     }
 
+    /// A pixel the mover covers in part carries the mover's motion: with the box's
+    /// right edge a quarter of the way into a pixel, that pixel's center lies
+    /// outside the box, yet its color is a quarter the mover's, and the `.min`
+    /// depth resolve places it on the mover. The pass is multisampled at the
+    /// color's own count and resolved by the nearest sample, so that pixel reads
+    /// the mover's displacement (measured 2026-10-08 before the fix: a
+    /// single-sample pass left it the sentinel, and its share of the mover stayed
+    /// sharp under the blur).
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aPixelTheMoverHalfCoversCarriesItsMotion() throws {
+        guard let (renderer, device) = try makeRenderer() else { return }
+        guard device.supportsTextureSampleCount(2) else { return }
+        let s = MoverProbe()
+        // The box spans world x -15 to 15; moved right 10.25 its right edge sits
+        // at 25.25, a quarter of the way into pixel 64 + 25 = 89.
+        let field = try velocityField(s, from: .zero, to: Vector3(10.25, 0, 0), renderer: renderer)
+        let edge = at(field, 64 + 25, 64)
+        #expect(isWritten(edge), "a pixel the mover covers a quarter of must carry its motion")
+        #expect(abs(edge.x - -10.25) < 0.15, "expected -10.25 px in x at the edge, got \(edge.x)")
+        #expect(abs(edge.y) < 0.15)
+        // The next pixel out, which the box never reaches, keeps the sentinel.
+        #expect(!isWritten(at(field, 64 + 26, 64)), "a pixel past the mover's edge must keep the sentinel")
+    }
+
     @Test(.enabled(if: Snapshot.hasMetal))
     func aStationaryMoverWritesZeroNotTheSentinel() throws {
         guard let (renderer, _) = try makeRenderer() else { return }

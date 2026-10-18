@@ -202,13 +202,19 @@ extension MetalRenderer {
                                         width: width, height: height,
                                         previousViewProjection: prevVP)
         let invVP = simd_inverse(curVP)
-        var params = [SIMD4<Float>](repeating: .zero, count: 10)
+        var params = [SIMD4<Float>](repeating: .zero, count: 12)
         params[0] = SIMD4(1 / Float(width), 1 / Float(height), 0, 0)
-        params[1] = SIMD4(mover != nil ? 1 : 0, 0, 0, 0)
+        // params[1].w: the far backdrop is the environment's picture and turns
+        // with the camera (see `backdropTurnsWithCamera`); over a plain clear
+        // color it holds still.
+        params[1] = SIMD4(mover != nil ? 1 : 0, 0, 0, backdropTurnsWithCamera(drawer) ? 1 : 0)
         params[2] = invVP.columns.0; params[3] = invVP.columns.1
         params[4] = invVP.columns.2; params[5] = invVP.columns.3
         params[6] = prevVP.columns.0; params[7] = prevVP.columns.1
         params[8] = prevVP.columns.2; params[9] = prevVP.columns.3
+        let eye = camera.eye.simd3
+        params[10] = SIMD4(eye, 0)
+        params[11] = SIMD4(drawer.previousCamera3D?.eye.simd3 ?? eye, 0)
         encodeEffectFragment("ollin_fx_velocity_fill", inputs: [depth, mover ?? fallbackColor],
                              output: motion, params: params, into: cb)
         return mover
@@ -219,11 +225,15 @@ extension MetalRenderer {
     /// and read the filled field back as row-major pixel deltas. Exercises the
     /// fill fragment alone: the mover passthrough must be raw (no shutter scale,
     /// no clamp), the fallback the camera reprojection, and the depth-1 backdrop
-    /// zero. Tests only.
+    /// zero over a plain clear color or, with `backdropTurns`, the camera's own
+    /// turn carried between `eye` and `previousEye`. Tests only.
     func debugUpscaleFillReadback(width: Int, height: Int,
                                   depth: [Float], mover: [SIMD2<Float>]?,
                                   viewProjection: simd_float4x4,
-                                  previousViewProjection: simd_float4x4) -> [SIMD2<Float>]? {
+                                  previousViewProjection: simd_float4x4,
+                                  backdropTurns: Bool = false,
+                                  eye: SIMD3<Float> = .zero,
+                                  previousEye: SIMD3<Float> = .zero) -> [SIMD2<Float>]? {
         guard depth.count == width * height else { return nil }
         let dDesc = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .depth32Float, width: width, height: height, mipmapped: false)
@@ -261,13 +271,15 @@ extension MetalRenderer {
             }
         }
         let invVP = simd_inverse(viewProjection)
-        var params = [SIMD4<Float>](repeating: .zero, count: 10)
+        var params = [SIMD4<Float>](repeating: .zero, count: 12)
         params[0] = SIMD4(1 / Float(width), 1 / Float(height), 0, 0)
-        params[1] = SIMD4(mover != nil ? 1 : 0, 0, 0, 0)
+        params[1] = SIMD4(mover != nil ? 1 : 0, 0, 0, backdropTurns ? 1 : 0)
         params[2] = invVP.columns.0; params[3] = invVP.columns.1
         params[4] = invVP.columns.2; params[5] = invVP.columns.3
         params[6] = previousViewProjection.columns.0; params[7] = previousViewProjection.columns.1
         params[8] = previousViewProjection.columns.2; params[9] = previousViewProjection.columns.3
+        params[10] = SIMD4(eye, 0)
+        params[11] = SIMD4(previousEye, 0)
         encodeEffectFragment("ollin_fx_velocity_fill", inputs: [dTex, mTex],
                              output: out, params: params, into: cb)
         let bytesPerRow = width * 8
