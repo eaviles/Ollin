@@ -235,9 +235,7 @@ private final class JoinedABSketch: Sketch {
             for (mesh, at) in Self.parts {
                 withState {
                     translate(at.position)
-                    rotateX(at.rotation.x)
-                    rotateY(at.rotation.y)
-                    rotateZ(at.rotation.z)
+                    rotate(at.rotation)
                     scale(at.scale.x, at.scale.y, at.scale.z)
                     drawMesh(mesh)
                 }
