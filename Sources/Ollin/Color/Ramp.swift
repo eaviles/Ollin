@@ -141,4 +141,20 @@ public extension Ramp {
         Color(hex: 0x7B3FE4), Color(hex: 0x2E5CFF), Color(hex: 0x18C8F0), Color(hex: 0x3EE07A),
         Color(hex: 0xF4E04D), Color(hex: 0xFF9A3C), Color(hex: 0xFF4D6D), Color(hex: 0xE24CCF),
     ])
+
+    /// The sky of airbrushed lettering chrome, read from the top of the shape
+    /// down to its horizon: deep navy through blue to a pale sky that goes
+    /// nearly white where it meets the horizon. What `Filter.chrome` paints
+    /// above the horizon unless handed another ramp.
+    static let chromeSky = Ramp([
+        Color(hex: 0x0A1F5C), Color(hex: 0x1F6FE0), Color(hex: 0x8FD0FF), Color(hex: 0xEAF7FF),
+    ])
+
+    /// The floor of airbrushed lettering chrome, read from the horizon down to
+    /// the bottom of the shape: dark brown through orange and gold to a pale
+    /// yellow. What `Filter.chrome` paints below the horizon unless handed
+    /// another ramp.
+    static let chromeFloor = Ramp([
+        Color(hex: 0x3A1A06), Color(hex: 0xC8641C), Color(hex: 0xF2C65A), Color(hex: 0xFFF0B8),
+    ])
 }

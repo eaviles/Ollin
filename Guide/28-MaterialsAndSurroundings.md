@@ -511,9 +511,9 @@ override func draw() {
 
 The kernel writes a density into each sample's red channel from its `gid`, a kernel kept in a `.metal` file beside the sketch loads with `ComputeKernel(entry:resource:in:)`, and the grid never leaves the GPU, so 128 samples a side refill in under a millisecond. Drawing a fine grid costs more than filling it, since the march takes its steps from the grid's spacing; the [reference](../Docs/3D/Volumes.md#what-it-costs) has the numbers. The `3D/Effects/Volumes` example sends up a column from a kernel's noise that repeats over the column's height, with a ball hanging in it and the plume's shadow on the pedestal.
 
-## More finishes you measure: the thin film
+## More finishes you measure: the thin film and the hologram
 
-The bench's finishes were all picked by number. The thin film is the measured finish the bench did not need, and it colors a surface with a distance instead of a pigment.
+The bench's finishes were all picked by number. These two are measured finishes the bench did not need. Both color a surface with geometry instead of a pigment: a film by its thickness, and a grating by its grooves.
 
 ### Color with no pigment: the thin film
 
@@ -537,9 +537,26 @@ Each filmed ball has one thickness, and yet its color changes from the middle of
 
 The fourth ball is the bubble itself. `.soapFilm(thickness:)` is [glass](#glass) and a film together, a wall you see through that is colored by its own thinness. A real bubble drains as it stands, thinning from the top until it goes black and pops. Walk the thickness down over time and yours will do the same. The reference lists the other presets. It differs from the `iridescence` under [Chapter 26](26-3DGently.md)'s `.iridescent` finish, which is a stylized rainbow at the rim. The thin film is measured, so it holds its color under a moving light the way the real surface does.
 
+### A rainbow from grooves: the hologram
+
+A hologram sticker and the back of a disc get their rainbow from geometry too, but from a grating rather than a film. Fine parallel grooves ruled into the surface send each color of a light off at its own angle. The color at a point then follows the angle between the light and the eye, and it walks through the spectrum as either moves. That rule is the grating equation, and Jos Stam put it into a shader in 1999. The `.hologram` finish rules such a grating into a polished metal.
+
+<img src="Images/28-MaterialsAndSurroundings/Hologram.jpg" alt="Three bodies in one grated metal under one light, labeled a plate, a sphere, and a crumpled sheet. The plate carries a rainbow band from orange through green to violet across its face. The sphere has a bright highlight with a full rainbow on either side of it and fainter rainbows beyond. The sheet is a mosaic of flat facets, each one a single color or bare metal" width="680">
+
+```swift
+fill(Color(white: 0.8))
+material(.hologram)                      // a polished metal ruled at 1,000 nm
+
+var disc = Material.hologram
+disc.gratingSpacing = 1600               // the pitch of a compact disc
+material(disc)
+```
+
+The plate shows the rule plainly. Its rainbow is a band that sits where the angle says, beside the highlight rather than on it. It slides across the plate as the light moves. `gratingSpacing` is the distance between the grooves in nanometers, light's own scale again. A wider spacing brings the rainbow closer to the highlight. The sphere puts the first order on both sides of its highlight, with the fainter orders beyond. The sheet carries a crumpled normal map from [Chapter 27](27-Meshes.md), so every facet turns the grooves its own way and the rainbow breaks into pieces. That is holographic foil in 3D, the solid cousin of [Chapter 20](20-PicturesRestyled.md#a-sheet-of-holographic-foil-holographicfoil)'s filter, and it reads the same `FacetField`. The rainbow answers the plain lights only, so a scene lit by an environment alone shows the metal. The [hologram reference](../Docs/3D/3D.md#hologram) has the three parameters. [`Examples/3D/Materials/Hologram`](../Examples/3D/Materials/Hologram/Sketch.swift) turns the light around all three bodies.
+
 ## Where this comes from
 
-The measured finishes are the Cook-Torrance microfacet model. Their form is the metallic-roughness one that Brent Burley presented for Disney in 2012 and that the glTF specification wrote down. The anisotropic version follows Christopher Kulla and Alejandro Conty Estevez, who also wrote the production-friendly sheen used here. The clear coat is the second lobe of Google's Filament documentation. Lighting a scene from a picture of a place is Paul Debevec's idea, in the split-sum form Brian Karis published in 2013. The computed sky is Lukas Hosek and Alexander Wilkie's model, which ships inside Ollin. Subsurface scattering is the separable screen-space diffusion of Jorge Jimenez and colleagues. It runs over the measured skin profile Eugene d'Eon and David Luebke fitted, with the backlit half from Jimenez's translucency work. The entries after the bench name their own sources. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The measured finishes are the Cook-Torrance microfacet model. Their form is the metallic-roughness one that Brent Burley presented for Disney in 2012 and that the glTF specification wrote down. The anisotropic version follows Christopher Kulla and Alejandro Conty Estevez, who also wrote the production-friendly sheen used here. The clear coat is the second lobe of Google's Filament documentation. Lighting a scene from a picture of a place is Paul Debevec's idea, in the split-sum form Brian Karis published in 2013. The computed sky is Lukas Hosek and Alexander Wilkie's model, which ships inside Ollin. Subsurface scattering is the separable screen-space diffusion of Jorge Jimenez and colleagues. It runs over the measured skin profile Eugene d'Eon and David Luebke fitted, with the backlit half from Jimenez's translucency work. The entries after the bench name their own sources. Full credits are in the project's [attribution notes](../ATTRIBUTION.md). The hologram's rainbow follows Jos Stam's diffraction shader of 1999, which put the grating equation into a surface.
 
 ## Go deeper
 
@@ -548,11 +565,12 @@ The measured finishes are the Cook-Torrance microfacet model. Their form is the 
 - [Volumes](../Docs/3D/Volumes.md): building a `Volume` from a function, a list, or noise, or a `ComputeTexture3D` from a kernel; every `Medium` dial and preset; which lights scatter, which shadows fall into the medium, and where the cloud's own falls; and what a march costs.
 - [Physically based materials](../Docs/3D/3D.md#materials): the metallic-roughness model in full, plus the ready-made metals and dielectrics and how they combine with the stylized finishes.
 - [Glass](../Docs/3D/3D.md#glass): every transmission argument with its units, the environment requirement, and the edges spelled out.
+- [The hologram](../Docs/3D/3D.md#hologram): the grating's three arguments, the grating equation in plain words, which lights it answers, and the normal map that turns its grooves; worked example [`Examples/3D/Materials/Hologram`](../Examples/3D/Materials/Hologram/Sketch.swift).
 - [Subsurface scattering](../Docs/3D/3D.md#subsurface-scattering): the three scattering arguments, the presets, and the envelope; worked example [`Examples/3D/Materials/Subsurface`](../Examples/3D/Materials/Subsurface/Sketch.swift) (hold space to compare against the plain surfaces).
 - [Combining 3D features](../Docs/3D/Combining.md): which finishes reach which kind of geometry, which is the table to check when a material you expected to apply does nothing.
 - The Farmanfarmaian homage [`MirrorFamily`](../Examples/Recreations/MonirFarmanfarmaian/MirrorFamily/Sketch.swift): a relief built as two meshes of flat triangles. One has a near-mirror metal finish, and the other a painted finish under a clear coat. Its reflections are traced against the room the sketch builds around it, which is where a mirror's look comes from.
 - The Felguérez homage [`RelieveLacado`](../Examples/Recreations/ManuelFelguerez/RelieveLacado/Sketch.swift) raises a composed design in lacquered layers under a key light that circles slowly. With the lights off and the camera straight on, it renders its own plan again, pixel for pixel. That is the check that the raising is right.
-- Worked examples, in [`Examples/3D/`](../Examples/3D/): `Materials/BrushedMetal`, `Materials/CoatAndCloth`, `Materials/ThinFilm`, `Materials/SeeThrough`, `Materials/Explorer`, and `Environments/Cloudscape`.
+- Worked examples, in [`Examples/3D/`](../Examples/3D/): `Materials/BrushedMetal`, `Materials/CoatAndCloth`, `Materials/ThinFilm`, `Materials/Hologram`, `Materials/SeeThrough`, `Materials/Explorer`, and `Environments/Cloudscape`.
 
 ---
 

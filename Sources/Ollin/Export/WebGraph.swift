@@ -430,6 +430,7 @@ enum WebMaterial {
             if m.clearcoat > 0 { return "a clear-coated finish on a raymarched field" }
             if m.sheenColor.x + m.sheenColor.y + m.sheenColor.z > 0 { return "a sheened finish on a raymarched field" }
             if m.thinFilm > 0 { return "a thin-film finish on a raymarched field" }
+            if m.grating.x > 0 { return "a hologram finish on a raymarched field" }
             if m.anisotropy.x != 0 { return "a brushed (anisotropic) finish on a raymarched field" }
         }
         if m.scatterStrength > 0 { return "a scattering finish on a raymarched field" }

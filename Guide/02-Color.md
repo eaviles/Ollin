@@ -341,6 +341,17 @@ Spectrum.blackbody(6500)      // and as a curve: roughly daylight
 
 Run `Color(wavelength:)` from 400 to 700 nanometers and it sweeps a physical rainbow. A hue wheel gives you a different rainbow. `blackbody` is why a candle is orange and a hot star is blue, from one number in kelvin. `Color(kelvin:)` gives the same tint without the spectrum behind it. Three GPU effects also work wavelength by wavelength instead of channel by channel. They are `.thinFilm` for the colors in a soap bubble and `.diffraction` for the rainbow split off a grating. The third, `.paintMix`, runs the paint mixing above over a whole picture at once. The [Spectral color](../Docs/Drawing/Spectrum.md) reference has all of it.
 
+One more color comes from the curve, and it is the one a painter cannot mix. `Color.interference(thickness: 420)` is the color a clear film that many nanometers deep shows, a soap wall or oil on a puddle. Light reflects off both faces of the film, and the two reflections meet out of step, so some wavelengths add and others cancel. Nothing in it is pigment, which is why the color walks as the thickness changes. It runs straw, then magenta, blue, and green, then the pale bands of a thick film. A ramp of it through `.alongPath` paints a stroke that walks that order along its length.
+
+<img src="Images/02-Color/PearlStrokes.jpg" alt="A ruler of color from 0 to 1,200 nanometers, running from black through white and straw into magenta, blue, green, and pink before fading to pale pastels. Under it four thick wavy strokes, each colored along its length by a stretch of that ruler, labeled with the thicknesses it spans" width="680">
+
+```swift
+let pearl = Ramp((0...24).map { Color.interference(thickness: 250 + Double($0) * 20) })
+stroke(.alongPath(pearl))                 // a stroke colored the way a soap film is
+```
+
+[`Examples/Color/PearlStrokes`](../Examples/Color/PearlStrokes/Sketch.swift) draws a sheet of such strokes over a ruler of the color, with the film's index and the thicknesses on parameters.
+
 ## Measuring color, and shades that drift
 
 The field chose its colors by eye, and that is usually right. Two more tools help when a sketch needs numbers instead. One shades a color so it reads as lit. The other says how far apart two colors look. The field has no use for either. A photograph snapped to a palette does, and so does a flat shape that should look like it has a light on it.
@@ -387,7 +398,7 @@ The hue wheel goes back to Isaac Newton, who bent the spectrum into a circle in 
 - [Color](../Docs/Drawing/Color.md): the complete reference, including color temperature (`Color(kelvin:)`) and the string-hex grammar.
 - [Light and color](../Docs/Concepts/Light.md): one screen on why the middle of a frame is linear light, and what the last pass does to it before the screen.
 - Appendix B draws this chapter's math, one picture per idea: [Fractions, mapping, and wrapping](B-JustEnoughMath.md#t-the-fraction-along-lerp-and-map), [Color and light as numbers](B-JustEnoughMath.md#numeric-vs-perceptual-mixing).
-- Worked examples, all in [`Examples/Color/`](../Examples/Color/): `Mixing` (the six spaces side by side), `Harmonies`, `Swatchbook`, `PaletteFile`, `PaletteFromImage`, `Colormaps`, `HSBWheel`, `Gradients`, `Dithering`, `ColorVision`, and `Shades` (drifting ramps from a photograph's colors, the photograph snapped to them).
+- Worked examples, all in [`Examples/Color/`](../Examples/Color/): `Mixing` (the six spaces side by side), `Harmonies`, `Swatchbook`, `PaletteFile`, `PaletteFromImage`, `Colormaps`, `HSBWheel`, `Gradients`, `Dithering`, `ColorVision`, `PearlStrokes` (strokes colored along their length the way a soap film is), and `Shades` (drifting ramps from a photograph's colors, the photograph snapped to them).
 - [Accessibility](../Docs/Helpers/Accessibility.md): the color-vision simulation, the palette check, and the reduce-motion setting.
 - The Schuh homages in [`Examples/Recreations/OwenSchuh/`](../Examples/Recreations/OwenSchuh/): both pages use color as a code. A digit is one step of a ten-step scale, so a number can be read off the picture. Colored this way, a page of arithmetic comes out as a piece of cloth.
 - The Melehi homage [`Waves`](../Examples/Recreations/MohamedMelehi/Waves/Sketch.swift): a palette handed out by shares. Each color declares how many of every cycle's bands it gets, and a weighted round robin deals them in the palette's order. A rainbow keeps its order, and the share decides how often a color comes back.

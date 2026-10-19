@@ -135,6 +135,24 @@ for crease in sheet.edges { drawLine(crease) }       // the filter's creases, in
 
 `phase` sweeps the bands and `lightAngle` turns the light, which is all the animation needs; `relief` reads the layer's own brightness as height, so a gray mark drawn into the layer presses into the foil as creases. The creases you stroke from the sheet land on the filter's own, because the GPU reads the facets you hold, which is also what makes the sheet a plotter can draw. The filter's parameters are on the [Effects](../Docs/Drawing/Effects.md#design) page, the sheet is on the [Voronoi](../Docs/Drawing/Voronoi.md#facets) page beside the triangulation it stands on, and [`Examples/Effects/CrumpledFoil`](../Examples/Effects/CrumpledFoil/Sketch.swift) fills the whole canvas with a sheet that breathes.
 
+### Airbrushed chrome: chrome
+
+The fifth filter that reads a silhouette paints it as the chrome of a logo. This is the airbrush convention, not a reflection. A sky sits above a horizon and a floor below it. At the join are a dark band, a razor-thin black break, and a bright wire. The horizon bends, by a sine of x and a cosine at a second frequency, so the bend never repeats. `.chrome` draws all of that over whatever shape the layer holds, and the layer's own color tints it.
+
+<img src="Images/20-PicturesRestyled/ChromeLettering.jpg" alt="The word CHROME in heavy letters filled with airbrushed chrome: a deep blue sky fading to pale at a gently waving horizon, a thin white wire and a black break at the join, and an orange floor fading to gold below. Under it a heart in a gold palette and a disc in a violet and pink night palette, each with its own bent horizon" width="680">
+
+```swift
+let word = makeRenderTarget()
+withTarget(word) {
+    noStroke(); fill(.white)
+    textFont(.systemBold); textSize(220); textAlign(.center, .middle)
+    drawText("CHROME", width / 2, height / 2)
+}
+drawImage(word.filtered(.chrome(phase: time * 0.6)).image, 0, 0)
+```
+
+Every stop is a parameter. `sky` and `floor` are ramps, read from the top of the layer down to the horizon and from the horizon down to the bottom. `core` and `wire` are colors. So the gold and the night palettes under the word are the same filter with other ramps. `horizon` sets where the join sits, `warp` how far it bends, `waves` how often, and `phase` drifts the bend: feed it `time`. It differs from `.liquidMetal` above, whose bands wrap an inflated shape. This one reads as lettering because its horizon is a line. The parameters are on the [Effects](../Docs/Drawing/Effects.md#design) page. [`Examples/Effects/ChromeLettering`](../Examples/Effects/ChromeLettering/Sketch.swift) letters a word in three palettes picked from the inspector.
+
 ## Putting it together: the hand-colored print
 
 The hand-colored print turns a photograph into the kind of picture a print shop once sold, an engraving tinted by hand. It stacks five of this chapter's steps. `brushwork` paints the color, and `hatching` draws the line work over it under [Chapter 19](19-LayersAndEffects.md)'s `.multiply`. Then a look grades the frame warm, film grain gives it a texture, and `paperTexture` presses it into a sheet. Make `MySketches/HandColored.swift`:
@@ -371,6 +389,7 @@ The entries after the print name their own sources. The ink line is the extended
 - [Looks](../Docs/Drawing/Looks.md): the `.cube` format in both forms, the reader's refusals, the tetrahedral read, and writing a look of your own.
 - [Sample photographs](../Docs/Drawing/SamplePhotos.md): the bundled pictures the chapter's figures and its print start from, and what each one is good for.
 - Worked examples: [`Examples/Effects/InkDrawing`](../Examples/Effects/InkDrawing/Sketch.swift) (the scarf photograph as pen and ink), [`Examples/Effects/Brushwork`](../Examples/Effects/Brushwork/Sketch.swift) (the marigolds photograph painted as brushwork, every dial on a parameter), [`Examples/Effects/Coherence`](../Examples/Effects/Coherence/Sketch.swift) (the portrait flattened into regions by the shock filter), [`Examples/Effects/Hatching`](../Examples/Effects/Hatching/Sketch.swift) (an engraved landscape with the sun crossing it), [`Examples/Color/Look`](../Examples/Color/Look/Sketch.swift) (a look from a `.cube` file wiped across a portrait), [`Examples/Effects/FilmLook`](../Examples/Effects/FilmLook/Sketch.swift) (a night street through halation and grain), [`Examples/Effects/Relight`](../Examples/Effects/Relight/Sketch.swift), [`Examples/Effects/Droste`](../Examples/Effects/Droste/Sketch.swift), and [`Examples/Effects/FilterCatalog`](../Examples/Effects/FilterCatalog/Sketch.swift).
+- [`Examples/Effects/ChromeLettering`](../Examples/Effects/ChromeLettering/Sketch.swift): a word in airbrushed chrome, the horizon drifting, with the classic, gold, and night palettes on a parameter.
 
 ---
 

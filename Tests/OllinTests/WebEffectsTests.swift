@@ -500,6 +500,21 @@ import OllinWebGate
         }
     }
 
+    /// A heart in airbrushed chrome, its horizon's bend drifting: the sky and
+    /// floor ramps travel as two tables.
+    final class Chromed: Sketch {
+        override var canvasSize: CanvasSize { .square(120) }
+        override func draw() {
+            background(Color(hex: 0x14161C))
+            let layer = makeRenderTarget()
+            withTarget(layer) {
+                noStroke(); fill(.white); drawHeart(60, 62, 100)
+            }
+            drawImage(layer.filtered(.chrome(warp: 5, waves: 1.2, coreWidth: 8,
+                                             phase: time * 1.3)).image, 0, 0)
+        }
+    }
+
     /// A blurred layer under a bloomed one, the two passes the page owns.
     final class Blurred: Sketch {
         override var canvasSize: CanvasSize { .square(120) }
@@ -858,6 +873,7 @@ import OllinWebGate
             ("Distorted", { Distorted() }, 6, 4),
             ("Pinned", { Pinned() }, 4, 2),
             ("Foiled", { Foiled() }, 4, 2),
+            ("Chromed", { Chromed() }, 4, 2),
             ("Measured", { Measured() }, 4, 2),
             ("Outlined", { Outlined() }, 4, 2),
             ("Shadowed", { Shadowed() }, 4, 2),

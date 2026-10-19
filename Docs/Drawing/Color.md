@@ -250,6 +250,8 @@ The stops are `Ramp.Stop` values with a `position` and a `color`. `Ramp(stops: [
 
 A **stepped** ramp holds each color flat up to the next stop, with hard edges and no blending: the poster-flat gradient, and the stripe spectrum of holographic foil. `Ramp.stepped(_ colors:)` gives each color an equal band, so the first runs from 0 up to the second, and `Ramp.stepped(stops:)` places them, each holding from its own position up to the next stop's, the first color showing below the first stop. `isStepped` says which kind a ramp is, `color(at:)` picks the band, and `reversed` keeps the bands, each now running the other way. `Ramp.holographic` is one: eight flat bands from violet through blue, cyan, green, yellow, and orange to red and magenta, the order a diffraction grating spreads white light in, and what [`Filter.holographicFoil`](Effects.md#design) reads unless handed another ramp.
 
+Two more named ramps are the sky and the floor of airbrushed lettering chrome, `Ramp.chromeSky` (navy to a pale sky) and `Ramp.chromeFloor` (dark brown to a pale gold), what the [`.chrome`](Effects.md#design) filter paints above and below its horizon unless handed others; they are plain ramps, and `.reversed` or another list makes a palette of your own.
+
 ```swift
 let stripes = Ramp.stepped([.red, .orange, .yellow, .green, .blue])
 fill(stripes.color(at: 0.3))       // orange, exactly, with no red in it

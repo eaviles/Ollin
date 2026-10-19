@@ -7,16 +7,16 @@
 | [![BrushedMetal](https://media.ollin.art/examples/3D/Materials/BrushedMetal/still-640.jpg?v=819826df)](BrushedMetal/) | [![CoatAndCloth](https://media.ollin.art/examples/3D/Materials/CoatAndCloth/still-640.jpg?v=9dc6bd1e)](CoatAndCloth/) | [![Decals](https://media.ollin.art/examples/3D/Materials/Decals/still-640.jpg?v=f04fed92)](Decals/) | [![Detail](https://media.ollin.art/examples/3D/Materials/Detail/still-640.jpg?v=013fca2f)](Detail/) |
 |---|---|---|---|
 | [BrushedMetal](BrushedMetal/) | [CoatAndCloth](CoatAndCloth/) | [Decals](Decals/) | [Detail](Detail/) |
-| [![Explorer](https://media.ollin.art/examples/3D/Materials/Explorer/still-640.jpg?v=1eb85080)](Explorer/) | [![Glass](https://media.ollin.art/examples/3D/Materials/Glass/still-640.jpg?v=155ce580)](Glass/) | [![Inked](https://media.ollin.art/examples/3D/Materials/Inked/still-640.jpg?v=f376a7db)](Inked/) | [![LiveSurface](https://media.ollin.art/examples/3D/Materials/LiveSurface/still-640.jpg?v=784066fa)](LiveSurface/) |
-| [Explorer](Explorer/) | [Glass](Glass/) | [Inked](Inked/) | [LiveSurface](LiveSurface/) |
-| [![Matcap](https://media.ollin.art/examples/3D/Materials/Matcap/still-640.jpg?v=907c3afc)](Matcap/) | [![Materials](https://media.ollin.art/examples/3D/Materials/Materials/still-640.jpg?v=136060de)](Materials/) | [![NormalMaps](https://media.ollin.art/examples/3D/Materials/NormalMaps/still-640.jpg?v=d852fdd3)](NormalMaps/) | [![Parallax](https://media.ollin.art/examples/3D/Materials/Parallax/still-640.jpg?v=cc9d1a39)](Parallax/) |
-| [Matcap](Matcap/) | [Materials](Materials/) | [NormalMaps](NormalMaps/) | [Parallax](Parallax/) |
-| [![PhysicalMaterials](https://media.ollin.art/examples/3D/Materials/PhysicalMaterials/still-640.jpg?v=efde6f57)](PhysicalMaterials/) | [![SeeThrough](https://media.ollin.art/examples/3D/Materials/SeeThrough/still-640.jpg?v=ce8834c6)](SeeThrough/) | [![Subsurface](https://media.ollin.art/examples/3D/Materials/Subsurface/still-640.jpg?v=4875baea)](Subsurface/) | [![SurfaceMaps](https://media.ollin.art/examples/3D/Materials/SurfaceMaps/still-640.jpg?v=77317ef9)](SurfaceMaps/) |
-| [PhysicalMaterials](PhysicalMaterials/) | [SeeThrough](SeeThrough/) | [Subsurface](Subsurface/) | [SurfaceMaps](SurfaceMaps/) |
-| [![ThinFilm](https://media.ollin.art/examples/3D/Materials/ThinFilm/still-640.jpg?v=e9f731f4)](ThinFilm/) | [![Triplanar](https://media.ollin.art/examples/3D/Materials/Triplanar/still-640.jpg?v=800a89ba)](Triplanar/) |  |  |
-| [ThinFilm](ThinFilm/) | [Triplanar](Triplanar/) |  |  |
+| [![Explorer](https://media.ollin.art/examples/3D/Materials/Explorer/still-640.jpg?v=1eb85080)](Explorer/) | [![Glass](https://media.ollin.art/examples/3D/Materials/Glass/still-640.jpg?v=155ce580)](Glass/) | [![Hologram](https://media.ollin.art/examples/3D/Materials/Hologram/still-640.jpg?v=06c838e0)](Hologram/) | [![Inked](https://media.ollin.art/examples/3D/Materials/Inked/still-640.jpg?v=f376a7db)](Inked/) |
+| [Explorer](Explorer/) | [Glass](Glass/) | [Hologram](Hologram/) | [Inked](Inked/) |
+| [![LiveSurface](https://media.ollin.art/examples/3D/Materials/LiveSurface/still-640.jpg?v=784066fa)](LiveSurface/) | [![Matcap](https://media.ollin.art/examples/3D/Materials/Matcap/still-640.jpg?v=907c3afc)](Matcap/) | [![Materials](https://media.ollin.art/examples/3D/Materials/Materials/still-640.jpg?v=136060de)](Materials/) | [![NormalMaps](https://media.ollin.art/examples/3D/Materials/NormalMaps/still-640.jpg?v=d852fdd3)](NormalMaps/) |
+| [LiveSurface](LiveSurface/) | [Matcap](Matcap/) | [Materials](Materials/) | [NormalMaps](NormalMaps/) |
+| [![Parallax](https://media.ollin.art/examples/3D/Materials/Parallax/still-640.jpg?v=cc9d1a39)](Parallax/) | [![PhysicalMaterials](https://media.ollin.art/examples/3D/Materials/PhysicalMaterials/still-640.jpg?v=efde6f57)](PhysicalMaterials/) | [![SeeThrough](https://media.ollin.art/examples/3D/Materials/SeeThrough/still-640.jpg?v=ce8834c6)](SeeThrough/) | [![Subsurface](https://media.ollin.art/examples/3D/Materials/Subsurface/still-640.jpg?v=4875baea)](Subsurface/) |
+| [Parallax](Parallax/) | [PhysicalMaterials](PhysicalMaterials/) | [SeeThrough](SeeThrough/) | [Subsurface](Subsurface/) |
+| [![SurfaceMaps](https://media.ollin.art/examples/3D/Materials/SurfaceMaps/still-640.jpg?v=77317ef9)](SurfaceMaps/) | [![ThinFilm](https://media.ollin.art/examples/3D/Materials/ThinFilm/still-640.jpg?v=e9f731f4)](ThinFilm/) | [![Triplanar](https://media.ollin.art/examples/3D/Materials/Triplanar/still-640.jpg?v=800a89ba)](Triplanar/) |  |
+| [SurfaceMaps](SurfaceMaps/) | [ThinFilm](ThinFilm/) | [Triplanar](Triplanar/) |  |
 
-This group covers what surfaces are made of: stylized finishes, physically based metal, glass, subsurface, thin film, and the map set that varies any of them per pixel.
+This group covers what surfaces are made of: stylized finishes, physically based metal, glass, subsurface, thin film, the hologram grating, and the map set that varies any of them per pixel.
 
 | Sketch | What it shows |
 | --- | --- |
@@ -38,5 +38,6 @@ This group covers what surfaces are made of: stylized finishes, physically based
 | [Subsurface](Subsurface/) | Light that travels under the surface before it comes back out. |
 | [BrushedMetal](BrushedMetal/) | Anisotropic specular: brushed, turned, and satin finishes whose highlight is a streak instead of a dot. |
 | [ThinFilm](ThinFilm/) | Thin-film interference two ways: a series of nm thicknesses on a physically-based surface, and animated soap bubbles on thin glass. |
+| [Hologram](Hologram/) | The hologram finish: a diffraction grating in a polished metal whose rainbow sits where the angle between the light and the eye says, on a flat plate, a sphere, and a crumpled sheet whose facets turn the grooves (`Material.hologram`, `gratingSpacing`, `gratingRotation`). |
 
 Run one with `swift run Example-3D-Materials-<Name>`, for example `swift run Example-3D-Materials-Materials`.

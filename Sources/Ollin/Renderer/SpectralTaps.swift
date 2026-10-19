@@ -1,3 +1,4 @@
+import COllinShaders
 import Foundation
 import simd
 
@@ -27,6 +28,28 @@ enum SpectralTaps {
         var out: [Int: [SIMD4<Float>]] = [:]
         for taps in [7, 15, 31] { out[taps] = cook(taps) }
         return out
+    }()
+
+    /// The taps the lighting uniform carries for the hologram finish: the
+    /// `OLLIN_SPECTRAL_TAPS` observer entries of the same cooked block with each
+    /// tap's wavelength in `.w`, then the block's three XYZ-to-RGB rows. The
+    /// same taps the `.thinFilm` and `.diffraction` filters read at the default
+    /// quality, so a grating's color and a film's agree on the eye.
+    static let lightingTable: (taps: [SIMD4<Float>], rows: [SIMD4<Float>]) = {
+        let n = Int(OLLIN_SPECTRAL_TAPS)
+        let block = SpectralTaps.block(n)
+        let basis = Array(block[1 ..< 1 + n])
+        let weight = Array(block[1 + n ..< 1 + 2 * n])
+        var rows = Array(block[1 + 2 * n ..< 1 + 2 * n + 3])
+        let taps = zip(weight, basis).map { w, b in SIMD4<Float>(w.x, w.y, w.z, b.w) }
+        // The first row's spare slot carries the grating lobe's unit: the taps'
+        // own white luminance over their brightest tap's. The inverse maps the
+        // *sum* of the taps to white, so a lobe narrowed to one tap and scaled
+        // by this reads as full brightness at the eye's brightest wavelength,
+        // and a lobe spread over every tap reads as a dimmer white.
+        let luminance = taps.map(\.y)
+        rows[0].w = luminance.reduce(0, +) / max(luminance.max() ?? 1, 1e-9)
+        return (taps, rows)
     }()
 
     private static func cook(_ count: Int) -> [SIMD4<Float>] {

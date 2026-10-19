@@ -219,6 +219,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("design-filters",
                  note: "The six design filters at fixed phases (no time, no random): liquidMetal, heatmap, and gemSmoke over a drawn heart (pinning the alpha-mask extract + Gaussian interior/halo field passes), and flutedGlass, water, and paperTexture over a fixed mesh-gradient backdrop. Pins each dispatch arm, the multi-pass field prep, and the sRGB palette walks.",
                  make: { DesignFiltersSheet() }),
+    SnapshotCase("chrome-lettering",
+                 note: "The chrome filter at a fixed phase (no time, no random): a word in the classic blue-sky, orange-floor chrome on the left, a heart in a gold palette with a deeper warp in the middle, and a disc in a night palette at amount 0.5 on the right. Pins the warped horizon (the sine and the second cosine), the sky and floor ramps read from their strips, the wire, the break, the core band's fade, the tint by the layer's color, and the amount mix.",
+                 make: { ChromeLetteringSheet() }),
     SnapshotCase("holographic-foil",
                  note: "The holographic foil filter at a fixed phase and light (no time, no random): a star silhouette as crumpled foil on the left, with the sheet's creases drawn in geometry from the same FacetField over the filter's fill, and the full tile as a sheet with a pressed-in mark on the right. Pins the facet lookup strip, the band break by tilt, the lit and dark creases, the corner glints, the relief from the layer's luminance, and the CPU and GPU agreement on the sheet.",
                  make: { HolographicFoilSheet() }),
@@ -426,6 +429,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("thin-film-materials",
                  note: "Thin-film interference on the physically-based finish: a thickness sweep over one metal (250/400/550/750 nm) and the four ready-made films (.anodized, .oilOnWater, .nacre, .soapFilm). Pins the OllinMaterial thinFilm packing, the interference model itself (both faces' Fresnel, the phase shifts, the frequency-domain color), and its two ways into the shading (the reflectance replacing a traced ray's Fresnel, the straight-on stand-in feeding the environment lobe). Fixed camera + environment, no time.",
                  make: { ThinFilmScene() }),
+    SnapshotCase("hologram-material",
+                 note: "The hologram finish under two directional lights, no environment, fixed camera (no time, no random): a flat plate whose rainbow runs across it by the grating equation, a sphere with the first order on both sides of its highlight and the fainter orders beyond, a plate with the grooves turned a quarter turn, and a sheet of flat facets from a normal map that breaks the rainbow per facet. Pins the OllinMaterial grating packing, the tangent frame under the grating rotation, the taps and their unit in the lighting uniform, the per-order lobes, and the lobe's share of the light.",
+                 make: { HologramScene() }),
     SnapshotCase("pbr-ibl",
                  note: "Physically-based balls lit by a bundled HDRI environment (image-based lighting): pins the whole IBL path (the equirect->cube / irradiance / GGX-prefilter / BRDF-LUT bake, the split-sum ambient on the mesh fragment, and the skybox backdrop). Fixed camera + environment, no time, so the bake is deterministic.",
                  make: { IBLScene() }),
@@ -2482,6 +2488,66 @@ private final class ThinFilmScene: Sketch {
                 fill(pair.1)
                 material(pair.0)
                 drawSphere(radius: 0.65)
+            }
+        }
+    }
+}
+
+private final class HologramScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    private var crumple: Image?
+
+    override func setup() {
+        // A sheet of flat facets as a green-up normal map, from a FacetField.
+        let size = 192
+        let field = FacetField.crumpled(in: Rectangle(x: 0, y: 0, width: Double(size), height: Double(size)),
+                                        spacing: 30, crinkle: 0.9, seed: 7)
+        var bytes = [UInt8](repeating: 255, count: size * size * 4)
+        for y in 0..<size {
+            for x in 0..<size {
+                let p = Vector2(Double(x) + 0.5, Double(y) + 0.5)
+                let n = field.facet(containing: p)?.normal ?? Vector3(0, 0, 1)
+                let i = (y * size + x) * 4
+                bytes[i] = UInt8((n.x * 0.5 + 0.5) * 255)
+                bytes[i + 1] = UInt8((n.y * 0.5 + 0.5) * 255)
+                bytes[i + 2] = UInt8((n.z * 0.5 + 0.5) * 255)
+            }
+        }
+        crumple = Image(width: size, height: size, premultipliedRGBA: bytes)
+    }
+
+    override func draw() {
+        background(Color(white: 0.04))
+        camera(.perspective(eye: Vector3(0, 0.9, 7.6), target: Vector3(0, 0, 0), fieldOfView: .pi / 4.4))
+        toneMap(.aces, exposure: 1.0)
+        directionalLight(.white, direction: Vector3(-0.28, -0.4, -0.75), intensity: 1.2)
+        directionalLight(Color(white: 0.4), direction: Vector3(0.6, -0.2, -0.6), intensity: 0.5)
+        fill(Color(white: 0.8))
+
+        // Top left: the flat plate; top right: the same with the grooves turned.
+        withState {
+            translate(-1.35, 1.2, 0); rotateX(.pi / 2)
+            material(.hologram)
+            drawPlane(width: 2.2, depth: 2.0)
+        }
+        withState {
+            translate(1.35, 1.2, 0); rotateX(.pi / 2)
+            var turned = Material.hologram
+            turned.gratingRotation = .pi / 2
+            material(turned)
+            drawPlane(width: 2.2, depth: 2.0)
+        }
+        // Bottom left: a sphere; bottom right: the crumpled sheet.
+        withState {
+            translate(-1.35, -1.15, 0)
+            material(.hologram)
+            drawSphere(radius: 1.0)
+        }
+        if let crumple {
+            withState {
+                translate(1.35, -1.15, 0); rotateX(.pi / 2)
+                material(.hologram)
+                drawMesh(Mesh.plane(width: 2.2, depth: 2.0).normalMapped(crumple, scale: 1))
             }
         }
     }
@@ -9743,6 +9809,37 @@ private final class HolographicFoilSheet: Sketch {
                                                     lightAngle: 2.4, relief: 50, phase: 0.6)).image, 256, 0)
     }
 
+}
+
+private final class ChromeLetteringSheet: Sketch {
+    override var canvasSize: CanvasSize { .size(512, 256) }
+
+    override func draw() {
+        background(Color(hex: 0x14161C))
+        let word = makeRenderTarget(width: 256, height: 128)
+        withTarget(word) {
+            noStroke(); fill(.white)
+            textFont(.systemBold); textSize(68); textAlign(.center, .middle)
+            drawText("OLLIN", 128, 64)
+        }
+        drawImage(word.filtered(.chrome(warp: 6, waves: 1.5, phase: 0.8)).image, 0, 0)
+
+        let heart = makeRenderTarget(width: 128, height: 128)
+        withTarget(heart) { noStroke(); fill(.white); drawHeart(64, 66, 110) }
+        let gold = Filter.chrome(horizon: 0.56, warp: 10, waves: 1,
+                                 sky: Ramp([Color(hex: 0x3B1D00), Color(hex: 0xC98A1E), Color(hex: 0xFFF2B0)]),
+                                 floor: Ramp([Color(hex: 0x5A2E00), Color(hex: 0xE2A232), Color(hex: 0xFFE89A)]),
+                                 core: Color(hex: 0x2A1400), coreWidth: 10, wire: Color(hex: 0xFFF8DC), phase: 2.1)
+        drawImage(heart.filtered(gold).image, 60, 128)
+
+        let disc = makeRenderTarget(width: 128, height: 128)
+        withTarget(disc) { noStroke(); fill(Color(hex: 0xBFD4FF)); drawCircle(64, 64, 54) }
+        let night = Filter.chrome(horizon: 0.45, warp: 12, waves: 2.5,
+                                  sky: Ramp([Color(hex: 0x05060F), Color(hex: 0x3A2B8C), Color(hex: 0xD9C8FF)]),
+                                  floor: Ramp([Color(hex: 0x1B0A2E), Color(hex: 0xB02A7A), Color(hex: 0xFFC2E0)]),
+                                  core: Color(hex: 0x0A0410), breakWidth: 3, amount: 0.5, phase: -1.4)
+        drawImage(disc.filtered(night).image, 320, 128)
+    }
 }
 
 /// One wedge of drawing folded by `symmetry(6, mirrored: true)` around an

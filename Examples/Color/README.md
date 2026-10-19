@@ -9,10 +9,10 @@
 | [ColorVision](ColorVision/) | [ColorWaves](ColorWaves/) | [Colormaps](Colormaps/) | [Dithering](Dithering/) |
 | [![Gradients](https://media.ollin.art/examples/Color/Gradients/still-640.jpg?v=ce8739f0)](Gradients/) | [![HSBWheel](https://media.ollin.art/examples/Color/HSBWheel/still-640.jpg?v=ec947957)](HSBWheel/) | [![Harmonies](https://media.ollin.art/examples/Color/Harmonies/still-640.jpg?v=4908872e)](Harmonies/) | [![Look](https://media.ollin.art/examples/Color/Look/still-640.jpg?v=b880cd24)](Look/) |
 | [Gradients](Gradients/) | [HSBWheel](HSBWheel/) | [Harmonies](Harmonies/) | [Look](Look/) |
-| [![Mixing](https://media.ollin.art/examples/Color/Mixing/still-640.jpg?v=9d733025)](Mixing/) | [![PaletteFile](https://media.ollin.art/examples/Color/PaletteFile/still-640.jpg?v=baf88afa)](PaletteFile/) | [![PaletteFromImage](https://media.ollin.art/examples/Color/PaletteFromImage/still-640.jpg?v=3f3d36fc)](PaletteFromImage/) | [![PrintSeparation](https://media.ollin.art/examples/Color/PrintSeparation/still-640.jpg?v=4aad09ce)](PrintSeparation/) |
-| [Mixing](Mixing/) | [PaletteFile](PaletteFile/) | [PaletteFromImage](PaletteFromImage/) | [PrintSeparation](PrintSeparation/) |
-| [![Shades](https://media.ollin.art/examples/Color/Shades/still-640.jpg?v=911b8d0e)](Shades/) | [![SoftProof](https://media.ollin.art/examples/Color/SoftProof/still-640.jpg?v=768b9eef)](SoftProof/) | [![Swatchbook](https://media.ollin.art/examples/Color/Swatchbook/still-640.jpg?v=581862c5)](Swatchbook/) |  |
-| [Shades](Shades/) | [SoftProof](SoftProof/) | [Swatchbook](Swatchbook/) |  |
+| [![Mixing](https://media.ollin.art/examples/Color/Mixing/still-640.jpg?v=9d733025)](Mixing/) | [![PaletteFile](https://media.ollin.art/examples/Color/PaletteFile/still-640.jpg?v=baf88afa)](PaletteFile/) | [![PaletteFromImage](https://media.ollin.art/examples/Color/PaletteFromImage/still-640.jpg?v=3f3d36fc)](PaletteFromImage/) | [![PearlStrokes](https://media.ollin.art/examples/Color/PearlStrokes/still-640.jpg?v=6bfe8af0)](PearlStrokes/) |
+| [Mixing](Mixing/) | [PaletteFile](PaletteFile/) | [PaletteFromImage](PaletteFromImage/) | [PearlStrokes](PearlStrokes/) |
+| [![PrintSeparation](https://media.ollin.art/examples/Color/PrintSeparation/still-640.jpg?v=4aad09ce)](PrintSeparation/) | [![Shades](https://media.ollin.art/examples/Color/Shades/still-640.jpg?v=911b8d0e)](Shades/) | [![SoftProof](https://media.ollin.art/examples/Color/SoftProof/still-640.jpg?v=768b9eef)](SoftProof/) | [![Swatchbook](https://media.ollin.art/examples/Color/Swatchbook/still-640.jpg?v=581862c5)](Swatchbook/) |
+| [PrintSeparation](PrintSeparation/) | [Shades](Shades/) | [SoftProof](SoftProof/) | [Swatchbook](Swatchbook/) |
 
 These examples cover palettes, colormaps, and color driven by a value or by time.
 
@@ -29,6 +29,7 @@ These examples cover palettes, colormaps, and color driven by a value or by time
 | [Look](Look/Sketch.swift) | a look from a `.cube` file wiped across a bundled portrait: the bundled warm print, the identity table, a look written in code, and any `.cube` file dropped on the window, with the amount on a parameter |
 | [PaletteFile](PaletteFile/Sketch.swift) | palettes read from disk: a CSV file that holds six palettes, and a file with one hex color per line that holds one palette, loaded with no format declared |
 | [PaletteFromImage](PaletteFromImage/Sketch.swift) | a palette built by clustering a bundled photograph's pixels, a woman before a wall of marigolds, most-used color first |
+| [PearlStrokes](PearlStrokes/Sketch.swift) | strokes colored along their length by `Color.interference`, the color a clear film of a given thickness shows, so each walks a soap film's true color order from a thin end to a thick one as the thicknesses crawl, over a ruler of the same color from 0 to 1,200 nm |
 | [PrintSeparation](PrintSeparation/Sketch.swift) | a sunrise poster split into three spot-ink printing masters, with a halftoned overprint preview and a view parameter that switches between them |
 | [Shades](Shades/Sketch.swift) | four colors taken from a photograph of woven blankets, each grown into a ramp of shades whose hue warms in the light and cools in the shadow, the photograph snapped cell by cell to the nearest shade, and the lightness histograms of both |
 | [SoftProof](SoftProof/Sketch.swift) | a poster converted into a press profile and back before it is printed, so the colors the ink cannot reproduce show up changed on screen, next to the gamut check and the process plates |

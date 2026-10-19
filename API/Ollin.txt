@@ -3342,6 +3342,7 @@ struct Color: ParamValue, RadialBasisValue, Decodable, Encodable, Equatable, Has
   init?(hex: String)
   static func clamped(_: Color, by: Void) -> Color
   static func control(for: Param<Color>) -> ParamControl
+  static func interference(thickness: Double, ior: Double = default) -> Color
   static func linearToSrgb(_: Double) -> Double
   static func mix(_: Color, _: Color, _: Double, in: ColorSpace = default) -> Color
   static func restored(_: ParamStored) -> Color?
@@ -4091,6 +4092,7 @@ struct Filter: Sendable
   static func bulge(amount: Double = default, radius: Double = default, center: Vector2 = default) -> Filter
   static func channelMixer(_: ColorMatrix) -> Filter
   static func chromaticAberration(amount: Double = default, mode: Filter.Dispersion = default, spectral: Bool = default, quality: RenderQuality = default) -> Filter
+  static func chrome(horizon: Double = default, warp: Double = default, waves: Double = default, sky: Ramp = default, floor: Ramp = default, core: Color = default, coreWidth: Double = default, breakWidth: Double = default, wire: Color = default, amount: Double = default, phase: Double = default) -> Filter
   static func cmykHalftone(scale: Double = default) -> Filter
   static func colorGrade(brightness: Double = default, contrast: Double = default, saturation: Double = default, hue: Double = default) -> Filter
   static func colorVision(_: ColorVision) -> Filter
@@ -5087,7 +5089,7 @@ struct Material: ParamChoices, ParamValue, Equatable, Sendable
     case toon
   func iridescent(by: Double) -> Material
   func outlined(_: Double, color: Color = default) -> Material
-  init(shading: Material.Shading = default, toonBands: Double = default, metallic: Double = default, roughness: Double = default, anisotropy: Double = default, anisotropyRotation: Double = default, transmission: Double = default, ior: Double = default, thickness: Double = default, attenuationColor: Color = default, attenuationDistance: Double = default, dispersion: Double = default, clearcoat: Double = default, clearcoatRoughness: Double = default, sheen: Double = default, sheenColor: Color = default, sheenRoughness: Double = default, thinFilm: Double = default, thinFilmThickness: Double = default, thinFilmIOR: Double = default, specular: Double = default, specularSharpness: Double = default, iridescence: Double = default, iridescenceScale: Double = default, iridescenceFlow: Double = default, iridescencePhase: Double = default, iridescenceFlowSize: Double = default, sparkle: Double = default, sparkleSize: Double = default, sparkleSharpness: Double = default, sparkleColor: Color = default, rim: Double = default, rimSharpness: Double = default, rimColor: Color = default, subsurface: Double = default, subsurfaceColor: Color = default, scattering: Double = default, scatteringRadius: Double = default, scatteringColor: Color = default, goochWarm: Color = default, goochCool: Color = default, outlineWidth: Double = default, outlineColor: Color = default)
+  init(shading: Material.Shading = default, toonBands: Double = default, metallic: Double = default, roughness: Double = default, anisotropy: Double = default, anisotropyRotation: Double = default, transmission: Double = default, ior: Double = default, thickness: Double = default, attenuationColor: Color = default, attenuationDistance: Double = default, dispersion: Double = default, clearcoat: Double = default, clearcoatRoughness: Double = default, sheen: Double = default, sheenColor: Color = default, sheenRoughness: Double = default, thinFilm: Double = default, thinFilmThickness: Double = default, thinFilmIOR: Double = default, hologram: Double = default, gratingSpacing: Double = default, gratingRotation: Double = default, specular: Double = default, specularSharpness: Double = default, iridescence: Double = default, iridescenceScale: Double = default, iridescenceFlow: Double = default, iridescencePhase: Double = default, iridescenceFlowSize: Double = default, sparkle: Double = default, sparkleSize: Double = default, sparkleSharpness: Double = default, sparkleColor: Color = default, rim: Double = default, rimSharpness: Double = default, rimColor: Color = default, subsurface: Double = default, subsurfaceColor: Color = default, scattering: Double = default, scatteringRadius: Double = default, scatteringColor: Color = default, goochWarm: Color = default, goochCool: Color = default, outlineWidth: Double = default, outlineColor: Color = default)
   static func carPaint(roughness: Double = default) -> Material
   static func dielectric(roughness: Double = default) -> Material
   static func glass(roughness: Double = default, ior: Double = default, thickness: Double = default, attenuationColor: Color = default, attenuationDistance: Double = default, dispersion: Double = default) -> Material
@@ -5108,6 +5110,7 @@ struct Material: ParamChoices, ParamValue, Equatable, Sendable
   static let glossy: Material
   static let gooch: Material
   static let gummy: Material
+  static let hologram: Material
   static let iridescent: Material
   static let jade: Material
   static let lacquer: Material
@@ -5137,6 +5140,9 @@ struct Material: ParamChoices, ParamValue, Equatable, Sendable
   var dispersion: Double { get set }
   var goochCool: Color { get set }
   var goochWarm: Color { get set }
+  var gratingRotation: Double { get set }
+  var gratingSpacing: Double { get set }
+  var hologram: Double { get set }
   var ior: Double { get set }
   var iridescence: Double { get set }
   var iridescenceFlow: Double { get set }
@@ -5960,6 +5966,8 @@ struct Ramp: ParamValue, Equatable, Hashable, Sendable
   static func stepped(stops: [(position: Double, color: Color)]) -> Ramp
   static func stepped(stops: [Ramp.Stop]) -> Ramp
   static func stored(_: Ramp) -> ParamStored
+  static let chromeFloor: Ramp
+  static let chromeSky: Ramp
   static let holographic: Ramp
   struct Stop: Equatable, Hashable, Sendable
     init(position: Double, color: Color)
@@ -6515,6 +6523,7 @@ struct Spectrum: Equatable, Sendable
   static func *(_: Spectrum, _: Spectrum) -> Spectrum
   static func +(_: Spectrum, _: Spectrum) -> Spectrum
   static func blackbody(_: Double) -> Spectrum
+  static func interference(thickness: Double, ior: Double = default) -> Spectrum
   static let black: Spectrum
   static let sampleCount: Int
   static let wavelengths: [Double]

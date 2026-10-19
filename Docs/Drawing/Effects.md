@@ -289,10 +289,11 @@ postProcess(.ripple(amplitude: 0.02, frequency: 12, phase: time * 3))
 
 These are the image-filter siblings of the [design-pattern generators](#generate), and they share the
 same conventions. Animation is an explicit `phase` you feed `time`, and palettes
-blend in sRGB so designer colors read true. Four of them read the layer's
+blend in sRGB so designer colors read true. Five of them read the layer's
 **alpha shape**, so draw a shape or logo into a transparent layer and then filter it.
 The others transform the whole layer. `Effects/FilterCatalog`'s design family shows six of
-them, `Images/LuminanceMelt` shows the melt, and `Effects/CrumpledFoil` the foil.
+them, `Images/LuminanceMelt` shows the melt, `Effects/CrumpledFoil` the foil, and
+`Effects/ChromeLettering` the chrome.
 
 <img src="../../Guide/Images/20-PicturesRestyled/DesignFilters.jpg" alt="Six tiles in two labeled rows. The top row, 'these read the shape', shows the same heart silhouette as flowing chrome, as a red-and-blue thermal map with contour bands, and as pale swirling gem smoke. The bottom row, 'these read the picture', shows the same photograph of a hillside town behind angled glass flutes, refracted through rippling water, and pressed into a crumpled paper sheet" width="680">
 
@@ -347,6 +348,20 @@ them, `Images/LuminanceMelt` shows the melt, and `Effects/CrumpledFoil` the foil
   over the layer, and `phase` sweeps the bands one cycle per `2π`: feed it `time`,
   and turn `lightAngle` with it to make the sheet move. The layer's own color tints
   the metal, so a white shape is silver foil and a colored one is colored foil.
+- **`.chrome(horizon:warp:waves:sky:floor:core:coreWidth:breakWidth:wire:amount:phase:)`**
+  the alpha shape as airbrushed lettering chrome, the logo convention rather than a
+  reflection. A horizon crosses the shape at `horizon` of the layer's height (0 the
+  top, 1 the bottom), bent by `warp` pixels in `waves` across the width, a sine and
+  a cosine at a second frequency so the bend never repeats. Above it the `sky` ramp
+  runs from the top of the layer to the horizon (`.chromeSky` by default, navy to a
+  pale sky), and below it the `floor` ramp runs from the horizon to the bottom
+  (`.chromeFloor`, dark brown to a pale gold). At the horizon sit a razor break of
+  black `breakWidth` pixels tall, a `wire` of the same height just above it in the
+  sky, and under it the dark `core` band fading into the floor over `coreWidth`
+  pixels. The layer's own color tints the chrome, so a white word is the classic
+  and a colored one is tinted. `amount` mixes it over the layer, and `phase` drifts
+  the bend: feed it `time`. The warped horizon and the hard bands are what read as
+  lettering chrome, where `.liquidMetal`'s inflated bands read as a blob.
 
 <img src="../../Guide/Images/20-PicturesRestyled/CrumpledFoil.jpg" alt="Two panels. On the left a heart filled with crumpled holographic foil: a stepped rainbow of stripes that jumps at every crease, bright and dark crease lines, and small cross glints at some corners. On the right the same sheet drawn as flat gray triangles, each shaded by how it faces the light, with every crease inked" width="680">
 
@@ -368,6 +383,22 @@ let sheet = FacetField.crumpled(in: canvasRectangle, spacing: 56, crinkle: 0.6, 
 drawImage(logo.filtered(.holographicFoil(facets: sheet, lightAngle: time * 0.3, phase: time)).image, 0, 0)
 stroke(Color(white: 0.1, alpha: 0.6))
 for edge in sheet.edges { drawLine(edge) }
+```
+
+The chrome is for lettering. Draw a word white into a layer sized to the word, so
+the ramps land inside the letters, and let the filter do the rest; the gold and the
+night palettes in the figure are the same call with other ramps.
+
+<img src="../../Guide/Images/20-PicturesRestyled/ChromeLettering.jpg" alt="The word CHROME in heavy letters filled with airbrushed chrome: deep blue sky fading to pale at a gently waving horizon, a thin white wire and a black break at the join, and an orange floor fading to gold below. Under it a heart in a gold palette and a disc in a violet and pink night palette, each with its own bent horizon" width="680">
+
+```swift
+let word = makeRenderTarget()
+withTarget(word) {
+    noStroke(); fill(.white)
+    textFont(.systemBold); textSize(220); textAlign(.center, .middle)
+    drawText("CHROME", width / 2, height / 2)
+}
+drawImage(word.filtered(.chrome(phase: time * 0.6)).image, 0, 0)
 ```
 
 Filters chain, so an effect reads as one expression:

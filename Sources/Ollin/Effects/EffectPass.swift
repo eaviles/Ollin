@@ -330,6 +330,17 @@ extension Filter {
                          f(glints, amount, Double(spectrum.count), Double(width)),
                          f(Double(height), Double(max(bands.stops.count, 1)), 0, 0)],
                         inputs: [.layer(0), .table(strip), .table(spectrum)])
+        case let .chrome(horizon, warp, waves, sky, floor, core, coreWidth, breakWidth,
+                         wire, amount, phase):
+            // The two ramps travel as 256-texel strips, read with a lerp between
+            // texels so a web page needs no float filtering.
+            return pass("ollin_fx_chrome",
+                        [f(horizon, warp, waves, phase),
+                         f(coreWidth, breakWidth, amount, Double(width)),
+                         f(Double(height), 0, 0, 0),
+                         core, wire],
+                        inputs: [.layer(0), .table(FoilTable.bandStrip(sky)),
+                                 .table(FoilTable.bandStrip(floor))])
 
         // Every pass that is more than one fragment, or reads what a page cannot
         // hold, stays with the renderer.

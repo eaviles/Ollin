@@ -67,7 +67,10 @@ import COllinShaders
 /// from. That is where a soap bubble, anodized titanium, oil on a puddle, and the inside
 /// of a shell get their color, and unlike the stylized `iridescence` sheen it is
 /// computed from the interference itself (use the `.soapFilm(thickness:)` helper or the
-/// `.anodized` / `.oilOnWater` / `.nacre` built-ins).
+/// `.anodized` / `.oilOnWater` / `.nacre` built-ins). A **hologram** (`hologram`, with
+/// its groove spacing in nanometers) is the other color made by geometry: a grating in
+/// the surface splits a light's reflection into a rainbow placed by the angle between
+/// the light and the eye (the `.hologram` built-in).
 ///
 /// Two more layered lobes sit over the physically-based finish: **clearcoat** (a thin
 /// polished lacquer over the base, at its own `clearcoatRoughness`: car paint, piano
@@ -211,6 +214,30 @@ public struct Material: Equatable, Sendable {
     /// reflection and shortens the color cycle.
     public var thinFilmIOR: Double
 
+    /// Physically-based shading: how strongly the surface carries a **diffraction
+    /// grating**, `0…1`: fine parallel grooves that split a light's reflection into
+    /// a rainbow beside the highlight, the way a hologram sticker or the back of a
+    /// compact disc does. Each color of the light comes off the grooves at its own
+    /// angle (the grating equation), so the color at a point follows the angle
+    /// between the light and the eye and walks through the spectrum as either
+    /// moves. The first three orders are summed, the second and third fainter.
+    /// `0` (the default) is off. Ignored unless `shading == .physicallyBased`, and
+    /// the rainbow answers the plain lights (directional, point, spot), not an
+    /// environment or an area panel. Use the `.hologram` built-in, or set it on
+    /// any physically based finish; over a crumpled normal map the grooves turn
+    /// with every facet, which is holographic foil in 3D.
+    public var hologram: Double
+    /// How far apart the grating's grooves are, in **nanometers** (light's scale,
+    /// like the film's thickness): about `1000` for a hologram sticker, `1600` for
+    /// a compact disc. A wider spacing brings the rainbow closer to the highlight
+    /// and repeats it sooner; a finer one spreads it wider.
+    public var gratingSpacing: Double
+    /// The direction the grooves run in the surface plane, in radians, turned from
+    /// the surface's own tangent like `anisotropyRotation`. The rainbow spreads
+    /// *across* the grooves, so turning them by a quarter turn moves it a quarter
+    /// turn around the highlight.
+    public var gratingRotation: Double
+
     /// Specular highlight strength: `0` matte, `~0.5` glossy, `1` a bright hotspot.
     public var specular: Double
     /// Blinn-Phong specular exponent: higher is a tighter, sharper highlight.
@@ -320,6 +347,8 @@ public struct Material: Equatable, Sendable {
                 sheenRoughness: Double = 0.5,
                 thinFilm: Double = 0, thinFilmThickness: Double = 400,
                 thinFilmIOR: Double = 1.3,
+                hologram: Double = 0, gratingSpacing: Double = 1000,
+                gratingRotation: Double = 0,
                 specular: Double = 0, specularSharpness: Double = 32,
                 iridescence: Double = 0, iridescenceScale: Double = 1,
                 iridescenceFlow: Double = 0, iridescencePhase: Double = 0,
@@ -353,6 +382,9 @@ public struct Material: Equatable, Sendable {
         self.thinFilm = min(1, max(0, thinFilm))
         self.thinFilmThickness = max(0, thinFilmThickness)
         self.thinFilmIOR = min(3, max(1, thinFilmIOR))
+        self.hologram = min(1, max(0, hologram))
+        self.gratingSpacing = max(0, gratingSpacing)
+        self.gratingRotation = gratingRotation
         self.specular = max(0, specular)
         self.specularSharpness = max(1, specularSharpness)
         self.iridescence = min(1, max(0, iridescence))
@@ -452,6 +484,12 @@ public struct Material: Equatable, Sendable {
         m.thinFilm = thinFilmThickness > 0 ? Float(thinFilm) : 0
         m.thinFilmThickness = Float(thinFilmThickness)
         m.thinFilmIor = Float(thinFilmIOR)
+        // The grating follows the film's rule: no spacing is no grooves, so the
+        // strength ships as zero there and the shader's gate stays one compare. The
+        // groove direction ships as cos/sin like the brushing rotation.
+        m.grating = SIMD4<Float>(gratingSpacing > 0 ? Float(hologram) : 0,
+                                 Float(gratingSpacing),
+                                 Float(cos(gratingRotation)), Float(sin(gratingRotation)))
         // The brushing rotation ships as cos/sin so the fragment never evaluates the
         // angle; at strength 0 the shader's gate keeps the whole lobe untouched.
         m.anisotropy = SIMD4<Float>(Float(anisotropy),
@@ -725,4 +763,18 @@ public extension Material {
                  transmission: 1, ior: 1.33,
                  thinFilm: 1, thinFilmThickness: thickness, thinFilmIOR: 1.33)
     }
+
+    // A diffraction grating in the surface: the rainbow of a hologram sticker or
+    // the back of a disc, split off a light by the grooves and placed by the angle
+    // between the light and the eye, so it walks as either moves.
+
+    /// **A hologram**: a polished metal ruled with a grating of 1,000 nanometers,
+    /// the sticker on a card or a passport. A light's reflection splits into a
+    /// rainbow beside its highlight that walks through the spectrum as the light,
+    /// the camera, or the surface turns. The `fill` colors the metal; set
+    /// `gratingSpacing` to `1600` for the back of a compact disc, and
+    /// `gratingRotation` to turn the grooves. Over a crumpled normal map the
+    /// grooves turn with every facet, which is holographic foil in 3D.
+    static let hologram = Material(shading: .physicallyBased, metallic: 1, roughness: 0.3,
+                                   hologram: 1, gratingSpacing: 1000)
 }

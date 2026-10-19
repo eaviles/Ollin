@@ -2121,6 +2121,28 @@
       "stillSmall": "examples/3D/Materials/Glass/still-640.jpg?v=155ce580",
       "width": 1080
     },
+    "3D/Materials/Hologram": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10.0s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 9.062,
+      "sound": false,
+      "source": "aa52672bfaa8f0ca",
+      "rendered": "2026-10-19",
+      "bytes": {
+        "loop": 2453913,
+        "loopSmall": 604399,
+        "still": 114542,
+        "stillSmall": 42722
+      },
+      "loop": "examples/3D/Materials/Hologram/loop.mp4?v=214710c6",
+      "loopSmall": "examples/3D/Materials/Hologram/loop-640.mp4?v=f20fde6b",
+      "still": "examples/3D/Materials/Hologram/still.jpg?v=50b097a4",
+      "stillSmall": "examples/3D/Materials/Hologram/still-640.jpg?v=06c838e0",
+      "seed": 1
+    },
     "3D/Materials/Inked": {
       "bytes": {
         "loop": 2106530,
@@ -4099,6 +4121,28 @@
       "stillSmall": "examples/Color/PaletteFromImage/still-640.jpg?v=3f3d36fc",
       "width": 1080
     },
+    "Color/PearlStrokes": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10.0s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 19.152,
+      "sound": false,
+      "source": "3c368eceac5beb0e",
+      "rendered": "2026-10-19",
+      "bytes": {
+        "loop": 2560422,
+        "loopSmall": 716100,
+        "still": 175717,
+        "stillSmall": 77314
+      },
+      "loop": "examples/Color/PearlStrokes/loop.mp4?v=1113e1ec",
+      "loopSmall": "examples/Color/PearlStrokes/loop-640.mp4?v=a881edfb",
+      "still": "examples/Color/PearlStrokes/still.jpg?v=63169394",
+      "stillSmall": "examples/Color/PearlStrokes/still-640.jpg?v=6bfe8af0",
+      "seed": 1
+    },
     "Color/PrintSeparation": {
       "bytes": {
         "still": 34266,
@@ -4389,6 +4433,28 @@
       "still": "examples/Effects/Cellular/still.jpg?v=f9588cde",
       "stillSmall": "examples/Effects/Cellular/still-640.jpg?v=59068a76",
       "width": 1080
+    },
+    "Effects/ChromeLettering": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10.0s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 1.987,
+      "sound": false,
+      "source": "421e6abadfb3c1fa",
+      "rendered": "2026-10-19",
+      "bytes": {
+        "loop": 910988,
+        "loopSmall": 233390,
+        "still": 68744,
+        "stillSmall": 29314
+      },
+      "loop": "examples/Effects/ChromeLettering/loop.mp4?v=9888bc7e",
+      "loopSmall": "examples/Effects/ChromeLettering/loop-640.mp4?v=1375ccfb",
+      "still": "examples/Effects/ChromeLettering/still.jpg?v=dc9e3137",
+      "stillSmall": "examples/Effects/ChromeLettering/still-640.jpg?v=bb359bbc",
+      "seed": 1
     },
     "Effects/Coherence": {
       "bytes": {

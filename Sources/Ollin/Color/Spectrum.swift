@@ -94,6 +94,46 @@ public struct Spectrum: Equatable, Sendable {
         return Spectrum(samples: values)
     }
 
+    /// The light a clear film sends back when it lies on a surface: a film
+    /// `thickness` nanometers deep with refractive index `ior`, lit and seen
+    /// straight on. Light reflects off the film's top face and off its bottom
+    /// face, the second wave travels farther, and the two meet again out of
+    /// step, so at each wavelength the two reflections add or cancel by how
+    /// many waves fit in the round trip. The result is the reflectance curve of
+    /// the film, 0 to a few percent at each wavelength (a film reflects little;
+    /// the color is in the *shape* of the curve), the same two-beam
+    /// interference the `.thinFilm` filter evaluates on the GPU. `Color.interference(thickness:ior:)`
+    /// is the same curve scaled to full brightness, which is the form a stroke
+    /// or a fill wants.
+    ///
+    /// A thickness of 0 reflects nothing; around 100 nm the film is nearly
+    /// clear; 300 to 600 nm gives the strong colors in the order a draining soap
+    /// film shows them (straw, magenta, blue, green); past about 1000 nm the
+    /// bands crowd together and the color washes toward pale. `ior` is 1.35 by
+    /// default (soap and most oxide films); oil is about 1.45.
+    public static func interference(thickness: Double, ior: Double = 1.35) -> Spectrum {
+        let n = max(ior, 1)
+        let d = max(thickness, 0)
+        let r = (n - 1) / (n + 1)
+        let r2 = r * r
+        return Spectrum(samples: wavelengths.map { lambda in
+            // The phase the round trip through the film adds, and the exact
+            // reflectance of a symmetric film for one boundary amplitude r.
+            let cosd = cos(4 * .pi * n * d / lambda)
+            return 2 * r2 * (1 - cosd) / (1 + r2 * r2 - 2 * r2 * cosd)
+        })
+    }
+
+    /// The most a film of index `ior` can reflect at any one wavelength: full
+    /// constructive interference between its two faces. `Color.interference`
+    /// divides by it, so that brightest case reads as full brightness.
+    static func interferencePeak(ior: Double) -> Double {
+        let n = max(ior, 1)
+        let r = (n - 1) / (n + 1)
+        let r2 = r * r
+        return 4 * r2 / ((1 + r2) * (1 + r2))
+    }
+
     /// A flat spectrum of 1: the reflectance of white.
     public static let white = Spectrum(samples: [Double](repeating: 1, count: sampleCount))
 
@@ -214,6 +254,28 @@ public extension Color {
                   green: Color.linearToSrgb(max(0, rgb.y)),
                   blue: Color.linearToSrgb(max(0, rgb.z)),
                   alpha: alpha)
+    }
+
+    /// The color a clear film `thickness` nanometers deep shows, lit and seen
+    /// straight on: the interference color of a soap wall, an oil slick, or the
+    /// oxide on anodized metal, with no pigment in it. It is
+    /// `Spectrum.interference(thickness:ior:)` scaled so that full constructive
+    /// interference reads as full brightness, the convention the `.thinFilm`
+    /// filter uses, so a stroke or a fill in this color reads as the film and
+    /// not as the few percent of light a real film returns. A thickness of 0 is
+    /// black, about 100 nm is a pale near-white, 300 to 600 nm walks the strong
+    /// colors in a draining film's order (straw, magenta, blue, green), and past
+    /// about 1000 nm the bands crowd into pale pastels. The most saturated films
+    /// land a channel just past 1, which the display clips.
+    ///
+    /// ```swift
+    /// let pearl = Ramp((0...24).map { Color.interference(thickness: 250 + Double($0) * 20) })
+    /// stroke(.alongPath(pearl))        // a stroke that walks a film's color order
+    /// ```
+    static func interference(thickness: Double, ior: Double = 1.35) -> Color {
+        let peak = Spectrum.interferencePeak(ior: ior)
+        guard peak > 0 else { return .black }
+        return Color(Spectrum.interference(thickness: thickness, ior: ior) * (1 / peak))
     }
 
     /// The pure hue of one wavelength of light, in nanometers: 450 is blue,

@@ -2366,3 +2366,73 @@ fragment float4 ollin_fx_holographic_foil(PresentOut in [[stage_in]],
     float4 foil = ollin_premul(max(color, 0.0), s.a);
     return amount <= 0.0 ? s : mix(s, foil, amount);
 }
+
+// chrome: the layer's alpha shape as airbrushed lettering chrome, the logo
+// convention rather than a reflection. One signed distance does the work: the
+// pixel's height above or below a horizon that crosses the layer at `horizon`
+// of its height, bent by a sine of x and a cosine at a second frequency and
+// drifting with the phase. Above it the sky strip (texture(1)) runs from the
+// top of the layer to the horizon; below it the floor strip (texture(2)) runs
+// from the horizon to the bottom, under a dark core band that fades into it.
+// At the horizon a razor break of black, with a bright wire of the same height
+// just above it in the sky. The strips are read with a lerp between texels so
+// a page needs no float filtering. params[0]: horizon, warp, waves, phase;
+// params[1]: coreWidth, breakWidth, amount, the layer's width in pixels;
+// params[2]: its height; params[3]: the core color; params[4]: the wire color.
+// The layer's own color tints the chrome, and its alpha is kept as it was.
+
+static inline float3 ollin_chrome_strip(texture2d<float> strip, float t) {
+    float x = clamp(t, 0.0, 1.0) * 255.0;
+    float i = floor(x);
+    float3 a = strip.read(uint2(uint(i), 0u)).rgb;
+    float3 b = strip.read(uint2(uint(min(i + 1.0, 255.0)), 0u)).rgb;
+    return mix(a, b, x - i);
+}
+
+fragment float4 ollin_fx_chrome(PresentOut in [[stage_in]],
+                                texture2d<float> src [[texture(0)]],
+                                texture2d<float> sky [[texture(1)]],
+                                texture2d<float> floorStrip [[texture(2)]],
+                                sampler samp [[sampler(0)]],
+                                constant float4 *params [[buffer(0)]]) {
+    float horizon = params[0].x, warp = params[0].y, waves = params[0].z, phase = params[0].w;
+    float coreWidth = max(params[1].x, 0.0), breakWidth = max(params[1].y, 0.0);
+    float amount = params[1].z;
+    float2 size = float2(max(params[1].w, 1.0), max(params[2].x, 1.0));
+    float4 core = params[3], wire = params[4];
+
+    float4 s = src.sample(samp, in.uv);
+    if (amount <= 0.0) return s;   // zero is an exact identity, not a round trip
+    float3 c = ollin_unpremul(s);
+    float2 p = in.uv * size;
+
+    // The horizon under this column, and the pixel's signed height from it
+    // (negative in the sky, positive on the floor), with a pixel of coverage.
+    float k = 6.28318530718 * waves / size.x;
+    float bend = sin(p.x * k + phase) + 0.55 * cos(p.x * k * 2.37 - 0.61 * phase);
+    float hy = horizon * size.y + warp * bend;
+    float d = p.y - hy;
+    float aa = max(fwidth(d), 1e-3);
+
+    // The sky from the top of the layer to the horizon, the floor from the
+    // horizon to the bottom, and the core band fading into the floor.
+    float3 skyC = ollin_chrome_strip(sky, p.y / max(hy, 1.0));
+    float3 floorC = ollin_chrome_strip(floorStrip, d / max(size.y - hy, 1.0));
+    float gap = breakWidth * 0.5;
+    float3 below = mix(core.rgb, floorC, smoothstep(0.0, max(coreWidth, 1.0), d - gap));
+
+    // The bands at the horizon: the wire in the sky, the black break, the floor
+    // side. A break thinner than a pixel keeps its ink by coverage.
+    float ink = min(breakWidth / aa, 1.0);
+    float wireBand = smoothstep(-3.0 * gap - aa, -3.0 * gap + aa, d)
+                   * (1.0 - smoothstep(-gap - aa, -gap + aa, d)) * ink;
+    float breakBand = smoothstep(-gap - aa, -gap + aa, d)
+                    * (1.0 - smoothstep(gap - aa, gap + aa, d)) * ink;
+    float floorSide = smoothstep(gap - aa, gap + aa, d);
+    float3 chrome = skyC;
+    chrome = mix(chrome, wire.rgb, wireBand * wire.a);
+    chrome = mix(chrome, float3(0.0), breakBand);
+    chrome = mix(chrome, below, floorSide);
+
+    return ollin_premul(mix(c, chrome * c, amount), s.a);
+}

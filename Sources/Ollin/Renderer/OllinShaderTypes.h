@@ -766,6 +766,14 @@ typedef struct {
                                   // in screen space and the faces toward the eye culled, so only
                                   // the rim past the silhouette shows. The lit fragments never
                                   // read it.
+    simd_float4 grating;          // the hologram finish (physically-based only), a diffraction
+                                  // grating in the surface: x = `Material.hologram`, the strength
+                                  // 0…1 (0 = no grating, the gate; every other batch keeps this
+                                  // zero, so every frame without one is untouched); y = the groove
+                                  // spacing in nanometers (`gratingSpacing`, the wavelength scale,
+                                  // like the film's thickness); z/w = cos/sin of `gratingRotation`,
+                                  // the groove direction in the surface plane, packed CPU-side
+                                  // like the anisotropy's so the fragment never evaluates the angle.
                                   // (Both sides round the struct up to its 16-byte alignment, so
                                   // a trailing float would need no hand-written padding either.)
 } OllinMaterial;
@@ -835,6 +843,11 @@ typedef struct {
 // path, so a 3D frame that sets no light renders exactly as before.
 
 #define OLLIN_MAX_LIGHTS 8
+
+// The wavelength taps the hologram finish integrates over: the same set the
+// spectral effects cook from the tables behind `Spectrum`, carried in the
+// lighting uniform so a lit fragment needs no buffer of its own.
+#define OLLIN_SPECTRAL_TAPS 15
 
 // One light. `kind`: 0 directional (parallel rays), 1 point (omni from a position),
 // 2 spot (point gated by a cone), 3 rect / 4 disk / 5 tube (area lights, shaded with
@@ -1225,6 +1238,15 @@ typedef struct {
                                   // fragments' buffer 11: the volumes casting a shadow onto
                                   // this pass's solids (`drawVolume` under `castShadows()`).
                                   // 0 leaves every carrier's read untaken, byte-identical.
+    // The wavelength taps the hologram finish (`OllinMaterial.grating`) sums its
+    // diffraction orders over: per tap the daylight-weighted observer (xyz, the
+    // XYZ one unit of light at that wavelength contributes) with the wavelength in
+    // nanometers in w, then the three rows of the taps' own XYZ-to-linear-RGB
+    // inverse. Cooked once from the tables behind `Spectrum` (the block the
+    // spectral effects read) and written on every frame; read only while a batch's
+    // grating strength is above zero, so every other frame is untouched.
+    simd_float4 spectralTaps[OLLIN_SPECTRAL_TAPS];
+    simd_float4 spectralToRGB[3];
 } OllinLighting;
 
 // The per-tile light cull (`ollin_light_cull`). One thread per screen tile: it

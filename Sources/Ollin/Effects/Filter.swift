@@ -416,6 +416,12 @@ public struct Filter: Sendable {
                              bandShift: Double, lightAngle: Double, lightElevation: Double,
                              relief: Double, creases: Double, glints: Double,
                              amount: Double, phase: Double)
+        /// Airbrushed lettering chrome over the layer's alpha shape: a sky
+        /// above a warped horizon, a dark core band under it, a floor below,
+        /// and a razor break with a bright wire beside it.
+        case chrome(horizon: Double, warp: Double, waves: Double, sky: Ramp, floor: Ramp,
+                    core: SIMD4<Float>, coreWidth: Double, breakWidth: Double,
+                    wire: SIMD4<Float>, amount: Double, phase: Double)
         /// Thermal-camera rendering of the layer's alpha shape: heat blooming
         /// inside, a halo radiating outside, mapped through a palette.
         case heatmap(colors: [SIMD4<Float>], contour: Double, innerGlow: Double,
@@ -1536,6 +1542,33 @@ public struct Filter: Sendable {
                                       relief: max(relief, 0), creases: min(max(creases, 0), 4),
                                       glints: min(max(glints, 0), 4), amount: min(max(amount, 0), 1),
                                       phase: phase))
+    }
+
+    /// Chrome: render the layer's alpha shape as airbrushed lettering chrome,
+    /// the logo convention rather than a reflection. A horizon crosses the
+    /// shape at `horizon` of the layer's height (0 the top, 1 the bottom), bent
+    /// by `warp` pixels in `waves` across the width (a sine, and a cosine at a
+    /// second frequency, so the bend never repeats). Above it the `sky` ramp
+    /// runs from the top of the layer to the horizon, and below it the `floor`
+    /// ramp runs from the horizon to the bottom. At the horizon sit a razor
+    /// break of black `breakWidth` pixels tall, a `wire` of the same height
+    /// just above it in the sky, and under it the dark `core` band that fades
+    /// into the floor over `coreWidth` pixels. The layer's own color tints the
+    /// chrome, so a white shape is the classic and a colored one is tinted.
+    /// `amount` mixes the chrome over the layer, 0 leaving it untouched, and
+    /// `phase` drifts the bend along: feed it your `time`. Draw a word into a
+    /// layer, then filter it. The warped horizon and the hard bands are what
+    /// read as lettering chrome; `.liquidMetal` is the inflated kind.
+    public static func chrome(horizon: Double = 0.5, warp: Double = 8, waves: Double = 1.5,
+                              sky: Ramp = .chromeSky, floor: Ramp = .chromeFloor,
+                              core: Color = Color(hex: 0x24110A), coreWidth: Double = 14,
+                              breakWidth: Double = 2, wire: Color = .white,
+                              amount: Double = 1, phase: Double = 0) -> Filter {
+        Filter(kind: .chrome(horizon: min(max(horizon, 0), 1), warp: max(warp, 0),
+                             waves: max(waves, 0), sky: sky, floor: floor,
+                             core: core.linearRGBA, coreWidth: max(coreWidth, 0),
+                             breakWidth: max(breakWidth, 0), wire: wire.linearRGBA,
+                             amount: min(max(amount, 0), 1), phase: phase))
     }
 
     /// Heatmap: render the layer's alpha shape as thermal imaging. Heat blooms

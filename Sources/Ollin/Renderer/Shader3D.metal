@@ -3463,9 +3463,9 @@ static inline float ollin_pbr_V_SmithGGX_Aniso(float at, float ab,
 // stable world-derived frame (the LTC fallback axis), which reads as a lathe finish
 // on a rotational surface. The packed cos/sin (`mat.anisotropy.yz`) then spins the
 // frame in the surface plane.
-static inline void ollin_aniso_frame(float3 n, float4 vertexTangent,
-                                     constant OllinMaterial &mat,
-                                     thread float3 &t, thread float3 &b) {
+static inline void ollin_surface_frame(float3 n, float4 vertexTangent,
+                                       float cr, float sr,
+                                       thread float3 &t, thread float3 &b) {
     if (vertexTangent.w != 0.0) {
         // Orthonormalize against the shading normal (a map may have bent it away
         // from the frame the tangent was authored against).
@@ -3477,10 +3477,68 @@ static inline void ollin_aniso_frame(float3 n, float4 vertexTangent,
         t = ollin_ltc_any_tangent(n);
         b = cross(n, t);
     }
-    float cr = mat.anisotropy.y, sr = mat.anisotropy.z;
     float3 t0 = t;
     t = t0 * cr + b * sr;
     b = b * cr - t0 * sr;
+}
+static inline void ollin_aniso_frame(float3 n, float4 vertexTangent,
+                                     constant OllinMaterial &mat,
+                                     thread float3 &t, thread float3 &b) {
+    ollin_surface_frame(n, vertexTangent, mat.anisotropy.y, mat.anisotropy.z, t, b);
+}
+
+// MARK: - The hologram grating
+//
+// A diffraction grating ruled into the surface: fine parallel grooves that send
+// each wavelength of a light off at its own angle, the rainbow beside the
+// highlight on a hologram sticker or the back of a disc. The geometry is the
+// grating equation in the form Stam's diffraction shader uses (credited in
+// ATTRIBUTION.md): with L and V the unit directions toward the light and the
+// eye and T the groove direction, order n of wavelength λ reflects where
+// (L + V) · T = n λ / d, d the groove spacing. So the component u of the
+// half-vector sum along the grooves picks, for each order, the one wavelength
+// that arrives here, λ = d u / n, and the color is that wavelength's. A real
+// grating is never perfectly regular, so each order is a lobe rather than a
+// line: a Gaussian in wavelength whose width grows with the roughness, summed
+// over the wavelength taps the lighting uniform carries (the same taps the
+// spectral filters read) and weighed by the eye's response at each. The first
+// three orders are summed, the second and third far fainter. The lobe is
+// normalized so a narrow first order at the eye's brightest wavelength reads
+// as full brightness, and the loop scales it by the share of a light a real
+// embossed grating diffracts, so the metal under it still shows.
+static inline float3 ollin_grating_color(float u, float spacingNm, float sigmaU,
+                                         constant OllinLighting &light) {
+    float tapStep = (light.spectralTaps[OLLIN_SPECTRAL_TAPS - 1].w - light.spectralTaps[0].w)
+                  / float(OLLIN_SPECTRAL_TAPS - 1);
+    float3 xyz = float3(0.0);
+    for (int order = 1; order <= 3; order++) {
+        float center = spacingNm * u / float(order);
+        // Past the taps on either side the order contributes nothing here.
+        if (center < 330.0 || center > 830.0) continue;
+        // The lobe's width in nanometers, floored at the tap spacing so the sum
+        // never falls between two taps.
+        float width = max(sigmaU * spacingNm / float(order), 0.7 * tapStep);
+        float3 sum = float3(0.0);
+        float norm = 0.0;
+        for (int i = 0; i < OLLIN_SPECTRAL_TAPS; i++) {
+            float4 tap = light.spectralTaps[i];
+            float z = (tap.w - center) / width;
+            float w = exp(-z * z);
+            sum += tap.xyz * w;
+            norm += w;
+        }
+        // The orders past the first are far fainter on a real grating.
+        float share = (order == 1) ? 1.0 : ((order == 2) ? 0.3 : 0.1);
+        xyz += sum * (share / max(norm, 1e-6));
+    }
+    // The unit, packed by the CPU beside the matrix rows: the taps' white over
+    // their brightest tap, so a narrow lobe at the eye's brightest wavelength
+    // reads as full brightness through the taps' own inverse below.
+    xyz *= light.spectralToRGB[0].w;
+    float3x3 toRGB = float3x3(float3(light.spectralToRGB[0].x, light.spectralToRGB[1].x, light.spectralToRGB[2].x),
+                              float3(light.spectralToRGB[0].y, light.spectralToRGB[1].y, light.spectralToRGB[2].y),
+                              float3(light.spectralToRGB[0].z, light.spectralToRGB[1].z, light.spectralToRGB[2].z));
+    return max(toRGB * xyz, 0.0);
 }
 
 
@@ -3783,6 +3841,19 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
         ollin_aniso_frame(n, tangent, mat, anisoT, anisoB);
         anisoToV = dot(anisoT, viewDir);
         anisoBoV = dot(anisoB, viewDir);
+    }
+    // The hologram grating: its groove direction in the surface frame and the lobe
+    // width the roughness gives it, resolved once per pixel. Strength 0 takes none
+    // of this (the gate the light loop reads), so every grating-less material
+    // shades byte-identically.
+    float grating = (model == 3) ? mat.grating.x : 0.0;
+    float3 gratingT = float3(0.0);
+    float gratingSigma = 0.0;
+    if (grating > 0.0) {
+        float3 gratingB;
+        ollin_surface_frame(n, tangent, mat.grating.z, mat.grating.w, gratingT, gratingB);
+        float r = clamp((float)mat.roughness, 0.045, 1.0);
+        gratingSigma = 0.02 + 0.25 * r * r;
     }
 
     // Gooch sets its own diffuse tone below; the others start from the flat ambient term.
@@ -4129,6 +4200,15 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
                          + ollin_pbr_D_GGX(NoH, coatRough) * ollin_pbr_V_Kelemen(VoH) * Fc;
                 }
                 lit += term * L.color.rgb * (atten * NoL);
+                if (grating > 0.0) {
+                    // The grating's rainbow: the half-vector sum's component along the
+                    // grooves picks the wavelength each order sends this way, reflected
+                    // by the surface's own Fresnel and faded in at the terminator.
+                    float u = abs(dot(toLight + viewDir, gratingT));
+                    float3 rainbow = ollin_grating_color(u, mat.grating.y, gratingSigma, light);
+                    lit += rainbow * F * L.color.rgb
+                         * (0.5 * grating * atten * smoothstep(0.0, 0.15, NoL));
+                }
             }
         } else {
             // Standard Lambert diffuse + Blinn-Phong specular.
@@ -4367,6 +4447,19 @@ static inline float4 meshLitColorMapped(float3 base, float alpha, float3 normal,
         ollin_aniso_frame(n, tangent, mat, anisoT, anisoB);
         anisoToV = dot(anisoT, viewDir);
         anisoBoV = dot(anisoB, viewDir);
+    }
+    // The hologram grating: its groove direction in the surface frame and the lobe
+    // width the roughness gives it, resolved once per pixel. Strength 0 takes none
+    // of this (the gate the light loop reads), so every grating-less material
+    // shades byte-identically.
+    float grating = (model == 3) ? mat.grating.x : 0.0;
+    float3 gratingT = float3(0.0);
+    float gratingSigma = 0.0;
+    if (grating > 0.0) {
+        float3 gratingB;
+        ollin_surface_frame(n, tangent, mat.grating.z, mat.grating.w, gratingT, gratingB);
+        float r = clamp((float)pxRough, 0.045, 1.0);
+        gratingSigma = 0.02 + 0.25 * r * r;
     }
 
     // Gooch sets its own diffuse tone below; the others start from the flat ambient term.
@@ -4712,6 +4805,15 @@ static inline float4 meshLitColorMapped(float3 base, float alpha, float3 normal,
                          + ollin_pbr_D_GGX(NoH, coatRough) * ollin_pbr_V_Kelemen(VoH) * Fc;
                 }
                 lit += term * L.color.rgb * (atten * NoL);
+                if (grating > 0.0) {
+                    // The grating's rainbow: the half-vector sum's component along the
+                    // grooves picks the wavelength each order sends this way, reflected
+                    // by the surface's own Fresnel and faded in at the terminator.
+                    float u = abs(dot(toLight + viewDir, gratingT));
+                    float3 rainbow = ollin_grating_color(u, mat.grating.y, gratingSigma, light);
+                    lit += rainbow * F * L.color.rgb
+                         * (0.5 * grating * atten * smoothstep(0.0, 0.15, NoL));
+                }
             }
         } else {
             // Standard Lambert diffuse + Blinn-Phong specular.

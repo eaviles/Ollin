@@ -3506,6 +3506,20 @@ final class Drawer {
                 for i in 0..<count { buf[i] = packed[i] }
             }
         }
+        // The wavelength taps the hologram finish sums over, cooked once from the
+        // tables behind Spectrum: the same tuple fill, read by a fragment only
+        // while a batch's grating strength is above zero.
+        let spectral = SpectralTaps.lightingTable
+        withUnsafeMutablePointer(to: &u.spectralTaps) { tuplePtr in
+            tuplePtr.withMemoryRebound(to: SIMD4<Float>.self, capacity: Int(OLLIN_SPECTRAL_TAPS)) { buf in
+                for i in 0..<min(spectral.taps.count, Int(OLLIN_SPECTRAL_TAPS)) { buf[i] = spectral.taps[i] }
+            }
+        }
+        withUnsafeMutablePointer(to: &u.spectralToRGB) { tuplePtr in
+            tuplePtr.withMemoryRebound(to: SIMD4<Float>.self, capacity: 3) { buf in
+                for i in 0..<min(spectral.rows.count, 3) { buf[i] = spectral.rows[i] }
+            }
+        }
         // `sceneLightCount` (the tiled path's gate) and the grid beside it stay 0
         // here: the renderer fills them in for the passes that actually bind the
         // grid, since the tiles are the render target's rather than the canvas's and
