@@ -248,6 +248,13 @@ let sky = Ramp(stops: [(0, Color(hex: 0x0B1A40)),
 
 The stops are `Ramp.Stop` values with a `position` and a `color`. `Ramp(stops: [Ramp.Stop])` takes them directly, so you can build a ramp from stops you edit or generate. `reversed` runs a ramp the other way, with every stop at `1 - position`. For example, `heat.reversed` cools from white to black, the way a colormap's `_r` variant does.
 
+A **stepped** ramp holds each color flat up to the next stop, with hard edges and no blending: the poster-flat gradient, and the stripe spectrum of holographic foil. `Ramp.stepped(_ colors:)` gives each color an equal band, so the first runs from 0 up to the second, and `Ramp.stepped(stops:)` places them, each holding from its own position up to the next stop's, the first color showing below the first stop. `isStepped` says which kind a ramp is, `color(at:)` picks the band, and `reversed` keeps the bands, each now running the other way. `Ramp.holographic` is one: eight flat bands from violet through blue, cyan, green, yellow, and orange to red and magenta, the order a diffraction grating spreads white light in, and what [`Filter.holographicFoil`](Effects.md#design) reads unless handed another ramp.
+
+```swift
+let stripes = Ramp.stepped([.red, .orange, .yellow, .green, .blue])
+fill(stripes.color(at: 0.3))       // orange, exactly, with no red in it
+```
+
 <a name="gradient"></a>
 
 ### Gradient paint

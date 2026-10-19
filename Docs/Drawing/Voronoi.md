@@ -21,6 +21,7 @@ Everything here runs on the seedable [`random`](../Generators/Random.md) and [`n
 - [Power diagrams: cells with weights](#power)
 - [Delaunay](#delaunay)
 - [Triangle](#triangle)
+- [A sheet of facets: `FacetField`](#facets)
 
 <a name="quick-start"></a>
 
@@ -194,6 +195,42 @@ let t = Triangle(a, b, c)
 fill(.clear); stroke(.gray); drawCircle(t.circumcircle)   // the circumcircle
 fill(.black); drawShape(t.shape)
 ```
+
+<a name="facets"></a>
+
+### A sheet of facets: `FacetField`
+
+A `FacetField` is a triangulation lifted by a height function: a sheet of flat faces, each a `Facet` that knows its normal, its center, the way it leans, and how squarely it faces a light. It is the geometry under crumpled foil, a low-poly ground, or folded paper. A sketch paints each facet with its own fill, hatch, or brush, and a plotter gets the creases as lines.
+
+```swift
+let sheet = FacetField.grid(in: canvasRectangle, spacing: 60, seed: 3) { p in
+    noise(p.x * 0.01, p.y * 0.01) * 50          // the height at a point
+}
+let light = FacetField.lightDirection(angle: -2.2, elevation: 0.9)
+noStroke()
+for facet in sheet.facets {
+    fill(Color(white: 0.3 + 0.7 * facet.facing(light)))
+    drawShape(facet.shape)
+}
+stroke(.black)
+for crease in sheet.edges { drawLine(crease) }
+```
+
+The points are the sheet's own choice. `grid(in:spacing:jitter:seed:height:)` jitters a lattice over a region, each point moved by up to `jitter` times the spacing (half of it by default, which keeps every triangle well shaped), with one ring of points past the region's edge so every point inside lies on a facet, and the lattice is anchored at the canvas origin, so two sheets over overlapping regions share their points. `FacetField(points:height:)` takes any scatter, a Poisson disk or your own, and `FacetField(_ delaunay:height:)` lifts a triangulation you already hold. `crumpled(in:spacing:crinkle:seed:)` is the sheet [`Filter.holographicFoil`](Effects.md#design) builds for itself: the lattice lifted by two octaves of the seeded noise, swinging about `crinkle` times the spacing. The same triangulation lifts again by another height through `lifted(by:)`, so a sheet that breathes every frame never triangulates twice.
+
+| Member | Meaning |
+| --- | --- |
+| `facets: [Facet]` | One per triangle of the triangulation, in its order. |
+| `delaunay: Delaunay`, `points`, `heights` | What the sheet stands on: the triangulation, its points, and one height per point. |
+| `edges: [LineSegment]` | Every crease once, in a fixed order: the lines a plotter draws. |
+| `facet(containing:) -> Facet?` | The facet under a point, or `nil` off the sheet. |
+| `lifted(by:) -> FacetField` | The same triangulation under another height. |
+| `latticePoints(in:spacing:jitter:seed:)` | The jittered lattice `grid` stands on, as points. |
+| `lightDirection(angle:elevation:) -> Vector3` | The direction toward a light at an angle in the canvas plane and an elevation above it, in radians, for `facing`. |
+
+A `Facet` carries its `triangle`, the `heights` of its corners, and its unit `normal`, which points toward the viewer. From those: `centroid`, `area`, `shape`, `contour`, and `edges` read as a triangle's do; `tilt` is the normal's part in the canvas plane, pointing downhill and as long as the sine of the slope; `facing(_ light: Vector3)` is the cosine against a light direction, 1 head on and 0 grazing or from behind, with `facing(lightAngle:elevation:)` taking the angles instead; and `bandCoordinate(angle:shift:)` is where the facet sits along bands at an angle, moved by its tilt, which is the number the foil filter reads to break its rainbow at a crease.
+
+The cuts a facet painter wants next, a shape split along a line or clipped to one side of it, are on [`Shape`](Geometry.md#shape-cut). Example: [`Examples/Effects/CrumpledFoil`](../../Examples/Effects/CrumpledFoil/Sketch.swift) lifts one sheet every frame under the foil filter and inks its creases over the fill.
 
 ---
 

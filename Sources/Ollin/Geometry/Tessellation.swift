@@ -93,6 +93,14 @@ public struct Delaunay: Sendable {
         self.indices = Delaunay.triangulate(points)
     }
 
+    /// A triangulation already worked out: `points` with a triangle list in the
+    /// canonical order, for a caller that trimmed one (a facet sheet dropping
+    /// the slivers along its hull).
+    init(points: [Vector2], indices: [Int]) {
+        self.points = points
+        self.indices = indices
+    }
+
     /// The triangles, resolved from `indices` into corner points.
     public var triangles: [Triangle] {
         var result: [Triangle] = []

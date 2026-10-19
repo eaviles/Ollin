@@ -408,6 +408,14 @@ public struct Filter: Sendable {
         case liquidMetal(repetition: Double, softness: Double, dispersion: Double,
                          distortion: Double, contour: Double, angle: Double,
                          tint: SIMD4<Float>, phase: Double)
+        /// Crumpled holographic foil over the layer's alpha shape: a sheet of
+        /// facets, a stepped rainbow that breaks at every crease, creases lit
+        /// by a light, and glints where facets face it hardest.
+        case holographicFoil(facets: FacetField?, spacing: Double, crinkle: Double, seed: Int,
+                             bands: Ramp, bandWidth: Double, bandAngle: Double,
+                             bandShift: Double, lightAngle: Double, lightElevation: Double,
+                             relief: Double, creases: Double, glints: Double,
+                             amount: Double, phase: Double)
         /// Thermal-camera rendering of the layer's alpha shape: heat blooming
         /// inside, a halo radiating outside, mapped through a palette.
         case heatmap(colors: [SIMD4<Float>], contour: Double, innerGlow: Double,
@@ -1489,6 +1497,45 @@ public struct Filter: Sendable {
                                   distortion: min(max(distortion, 0), 1),
                                   contour: min(max(contour, 0), 1), angle: angle,
                                   tint: tint.linearRGBA, phase: phase))
+    }
+
+    /// Holographic foil: render the layer's alpha shape as a crumpled sheet of
+    /// holographic foil. The sheet is a `FacetField`, `facets` when handed one
+    /// (in layer pixels, so a sheet built over the canvas lands where it was
+    /// built), otherwise `FacetField.crumpled` over the layer at `spacing`
+    /// pixels and `crinkle` depth from `seed`, which a sketch can build for
+    /// itself to draw the same creases. A stepped rainbow of `bands` (the
+    /// `Ramp`; `.holographic` by default) runs across the sheet at `bandAngle`
+    /// in stripes `bandWidth` pixels wide, and every facet moves the stripes by
+    /// `bandShift` pixels times its tilt, which is what breaks the rainbow at
+    /// each crease. A light at `lightAngle` in the canvas plane and
+    /// `lightElevation` above it shades the facets, lights or darkens the
+    /// creases (`creases` scales their width, 0 draws none), and puts a cross
+    /// glint on the corners of the facets that face it hardest (`glints` scales
+    /// them, and they pass 1.0 so a `.bloom` after carries them). `relief` is
+    /// how many pixels of height one unit of the layer's own luminance adds at
+    /// a facet's corners, so a mark drawn into the layer presses into the foil
+    /// as creases; 0 reads the layer only as a silhouette and a tint. `amount`
+    /// mixes the foil over the layer, 0 leaving it untouched, and `phase`
+    /// sweeps the bands one cycle per `2π`: feed it your `time`, and turn
+    /// `lightAngle` with it to make the sheet move.
+    public static func holographicFoil(facets: FacetField? = nil, spacing: Double = 56,
+                                       crinkle: Double = 0.6, seed: Int = 1,
+                                       bands: Ramp = .holographic, bandWidth: Double = 36,
+                                       bandAngle: Double = -0.6, bandShift: Double = 90,
+                                       lightAngle: Double = -2.2, lightElevation: Double = 0.9,
+                                       relief: Double = 0, creases: Double = 1,
+                                       glints: Double = 1, amount: Double = 1,
+                                       phase: Double = 0) -> Filter {
+        Filter(kind: .holographicFoil(facets: facets, spacing: max(spacing, 4),
+                                      crinkle: min(max(crinkle, 0), 4), seed: seed,
+                                      bands: bands,
+                                      bandWidth: max(bandWidth, 1), bandAngle: bandAngle,
+                                      bandShift: bandShift, lightAngle: lightAngle,
+                                      lightElevation: min(max(lightElevation, 0), .pi / 2),
+                                      relief: max(relief, 0), creases: min(max(creases, 0), 4),
+                                      glints: min(max(glints, 0), 4), amount: min(max(amount, 0), 1),
+                                      phase: phase))
     }
 
     /// Heatmap: render the layer's alpha shape as thermal imaging. Heat blooms

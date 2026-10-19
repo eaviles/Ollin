@@ -315,6 +315,21 @@ extension Filter {
         case let .fieldMap(lut, from, to, repeating):
             return pass("ollin_fx_field_map", [f(from, to, repeating ? 1 : 0, 0)],
                         inputs: [.layer(0), .table(lut)])
+        case let .holographicFoil(facets, spacing, crinkle, seed, bands, bandWidth, bandAngle,
+                                  bandShift, lightAngle, lightElevation, relief, creases,
+                                  glints, amount, phase):
+            // The sheet travels as a lookup strip in layer pixels (FoilTable):
+            // the one handed in, packed, or the default crumple over this layer.
+            let strip = facets.map(FoilTable.pack)
+                ?? FoilTable.defaultStrip(width: width, height: height, spacing: spacing,
+                                          crinkle: crinkle, seed: seed)
+            let spectrum = FoilTable.bandStrip(bands)
+            return pass("ollin_fx_holographic_foil",
+                        [f(bandWidth, bandAngle, bandShift, phase),
+                         f(lightAngle, lightElevation, relief, creases),
+                         f(glints, amount, Double(spectrum.count), Double(width)),
+                         f(Double(height), Double(max(bands.stops.count, 1)), 0, 0)],
+                        inputs: [.layer(0), .table(strip), .table(spectrum)])
 
         // Every pass that is more than one fragment, or reads what a page cannot
         // hold, stays with the renderer.

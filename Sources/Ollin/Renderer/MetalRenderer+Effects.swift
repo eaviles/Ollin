@@ -884,7 +884,7 @@ extension MetalRenderer {
              .thinFilm, .diffraction, .scanlines, .glitch, .crt, .kaleidoscope, .swirl,
              .droste, .bulge, .wave, .ripple, .mirror, .polar, .tile, .perturb,
              .lensDistortion, .cornerPin, .channelMixer,
-             .flutedGlass, .water, .paperTexture, .melt, .fieldMap, .arrows:
+             .flutedGlass, .water, .paperTexture, .melt, .fieldMap, .arrows, .holographicFoil:
             return nil
         // Every layer style was encoded from its `styledPass` description above.
         case .outline, .shadow, .glow, .bevel:

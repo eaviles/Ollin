@@ -4,6 +4,13 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ## [Unreleased]
 
+### Added
+
+- **Holographic foil.** `.holographicFoil()` fills a layer's shape with crumpled holographic foil, and the foil moves: a stepped rainbow runs across a sheet of facets and breaks at every crease, because each facet shifts the stripes by its tilt; a light at `lightAngle` shades the facets, lights the creases it crosses and darkens the ones it runs along, and puts a cross glint on the corners of the facets that face it hardest; `phase` sweeps the bands, so `phase: time` and `lightAngle: time * 0.3` make the sheet move; and `relief` reads the layer's own brightness as height, so a gray mark drawn into the layer presses into the foil as creases. The sheet is a `FacetField`, the filter's own by default or the one you hand it, and the GPU reads the facets you hold, so the creases you stroke from `sheet.edges` land on the filter's own. [`Examples/Effects/CrumpledFoil`](Examples/Effects/CrumpledFoil/) fills the canvas with a sheet that breathes under a drifting light. ([Effects](Docs/Drawing/Effects.md#design))
+- **A sheet of facets.** `FacetField` lifts a Delaunay triangulation by a height function into flat faces that each know their `normal`, which way they lean (`tilt`), and how squarely they face a light (`facing(_:)`), with every crease listed once in `edges` for a plotter. `FacetField.grid(in:spacing:seed:height:)` stands it on a jittered lattice, `FacetField(points:height:)` on any scatter, `crumpled(in:spacing:crinkle:seed:)` makes the foil's own crumple, and `lifted(by:)` lifts the same triangulation again, so a sheet that breathes never triangulates twice. ([Voronoi & Delaunay](Docs/Drawing/Voronoi.md#facets))
+- **A shape cut by a line.** `shape.split(along: line)` gives a shape's two sides of a `Ray2`, `clipped(to: HalfPlane(point:inward:))` keeps one side, and `clipped(within:of:)` keeps the band around a line, each by one walk of the outline, with holes kept and the two sides of a split adding up to the whole. ([Geometry](Docs/Drawing/Geometry.md#shape-cut))
+- **A stepped ramp.** `Ramp.stepped([.red, .orange, .yellow])` holds each color flat up to the next stop, with hard edges and no blending, for a poster-flat gradient; `Ramp.stepped(stops:)` places the bands, `isStepped` says which kind a ramp is, and `reversed` keeps the bands. `Ramp.holographic` is the foil's stripe spectrum, eight flat bands in the order a grating spreads white light. ([Color](Docs/Drawing/Color.md#ramp))
+
 ## [0.16.0] - 2026-10-18
 
 ### Added

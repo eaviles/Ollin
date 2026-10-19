@@ -219,6 +219,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("design-filters",
                  note: "The six design filters at fixed phases (no time, no random): liquidMetal, heatmap, and gemSmoke over a drawn heart (pinning the alpha-mask extract + Gaussian interior/halo field passes), and flutedGlass, water, and paperTexture over a fixed mesh-gradient backdrop. Pins each dispatch arm, the multi-pass field prep, and the sRGB palette walks.",
                  make: { DesignFiltersSheet() }),
+    SnapshotCase("holographic-foil",
+                 note: "The holographic foil filter at a fixed phase and light (no time, no random): a star silhouette as crumpled foil on the left, with the sheet's creases drawn in geometry from the same FacetField over the filter's fill, and the full tile as a sheet with a pressed-in mark on the right. Pins the facet lookup strip, the band break by tilt, the lit and dark creases, the corner glints, the relief from the layer's luminance, and the CPU and GPU agreement on the sheet.",
+                 make: { HolographicFoilSheet() }),
     SnapshotCase("design-patterns",
                  note: "The nine other design-pattern generators tiled 3×3 at fixed phases (no time, no random): filaments, smokeRing, colorPanels, spiral, waves, dotOrbit, grainGradient, pulsingBorder, godRays. Pins each generator dispatch arm and fragment, incl. the polar-seam blends, the pane projection + scheduling, and the dual over/additive bloom accumulations.",
                  make: { DesignPatternsSheet() }),
@@ -9695,6 +9698,51 @@ private final class DesignFiltersSheet: Sketch {
             drawImage(tile.image, in: cell.frame)
         }
     }
+}
+
+/// The holographic foil filter twice at a fixed phase and light: a heart
+/// silhouette as crumpled foil with the sheet's creases drawn from the same
+/// `FacetField` over it, and a whole tile as a sheet with a gray mark pressed
+/// in by the layer's own luminance.
+private final class HolographicFoilSheet: Sketch {
+    override var canvasSize: CanvasSize { .size(512, 256) }
+
+    override func draw() {
+        background(.black)
+        let tile = Rectangle(x: 0, y: 0, width: 256, height: 256)
+        let sheet = FacetField.crumpled(in: tile, spacing: 34, crinkle: 0.7, seed: 6)
+
+        // A seven-point star as the silhouette: the same shape fills the layer
+        // the filter reads and keeps the drawn creases to the foil.
+        let silhouette = Shape((0 ..< 14).map { i -> Vector2 in
+            let r = i % 2 == 0 ? 118.0 : 62.0
+            let a = Double(i) / 14 * 2 * .pi - .pi / 2
+            return Vector2(128 + r * cos(a), 130 + r * sin(a))
+        })
+        let star = makeRenderTarget(width: 256, height: 256)
+        withTarget(star) {
+            noStroke(); fill(.white)
+            drawShape(silhouette)
+        }
+        drawImage(star.filtered(.holographicFoil(facets: sheet, bandWidth: 22,
+                                                 lightAngle: -2.0, lightElevation: 0.8,
+                                                 phase: 1.3)).image, 0, 0)
+        // The creases the CPU holds, over the fill the GPU drew from the same sheet.
+        stroke(Color(white: 0.1, alpha: 0.5)); strokeWeight(0.6); noFill()
+        for edge in sheet.edges where silhouette.contains(edge.midpoint) {
+            drawLine(edge)
+        }
+
+        let pressed = makeRenderTarget(width: 256, height: 256)
+        withTarget(pressed) {
+            background(.white)
+            noStroke(); fill(Color(white: 0.72))
+            drawRect(center: Vector2(128, 128), width: 110, height: 70)
+        }
+        drawImage(pressed.filtered(.holographicFoil(spacing: 40, crinkle: 0.5, seed: 2, bandAngle: 0.4,
+                                                    lightAngle: 2.4, relief: 50, phase: 0.6)).image, 256, 0)
+    }
+
 }
 
 /// One wedge of drawing folded by `symmetry(6, mirrored: true)` around an

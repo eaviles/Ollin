@@ -38,6 +38,7 @@
   - [Set operations](#shape-booleans)
   - [Offsetting](#shape-offset)
   - [Stroke as shape](#shape-stroked)
+  - [Cut by a line](#shape-cut)
 - [The regions a drawing encloses](#regions)
 - [Convex hull](#convex-hull)
 - [Path](#path)
@@ -953,6 +954,36 @@ drawShape(ribbon.subtracting(stencil))
 ```
 
 The `Examples/Shapes/InkRibbon` sketch strokes a drifting brush line and insets contour bands inside it.
+
+<a name="shape-cut"></a>
+
+**Cut by a line.** Three cuts take a shape against one straight line, by one pass over its outline (the Sutherland-Hodgman clip), so the shape booleans are not involved and the cost is a walk of the points. A `HalfPlane` is one side of a line, the line included: a `point` on it and an `inward` vector pointing into the side that is kept, at any length, or `HalfPlane(leftOf:)` / `HalfPlane(rightOf:)` for the two sides of a `Ray2` as the canvas shows them when you look along its direction.
+
+```swift
+// On Shape (every contour, the winding kept) and on Contour (the pieces inside):
+func clipped(to half: HalfPlane) -> Shape                       // one side of a line
+func split(along line: Ray2) -> (left: Shape, right: Shape)     // both sides; the areas add up
+func clipped(within distance: Double, of line: Ray2) -> Shape   // the band around a line
+```
+
+```swift
+let sheet = FacetField.crumpled(in: canvasRectangle, spacing: 60)
+for facet in sheet.facets {
+    let lit = HalfPlane(point: facet.centroid, inward: facet.tilt)   // the downhill half of the facet
+    fill(Color(white: 0.85)); drawShape(facet.shape.clipped(to: lit))
+}
+
+let blob = Shape((0 ..< 24).map { i in
+    center + Vector2(angle: Double(i) / 24 * 2 * .pi, length: 180 + 40 * sin(Double(i) * 1.3))
+})
+let (above, below) = blob.split(along: Ray2(origin: center, direction: Vector2(1, 0.2)))
+fill(.red); drawShape(above)
+fill(.blue); drawShape(below)
+let stripe = blob.clipped(within: 12, of: Ray2(origin: center, direction: Vector2(1, 1)))
+fill(.white); drawShape(stripe)
+```
+
+A convex shape stays convex, and a hole survives the cut on whichever side it falls. A closed outline that is not convex keeps its fill right but may touch itself along the cut, which is what any clip of that outline against a line does. An open contour comes back as the pieces of it that lie inside, each its own open contour. `HalfPlane.contains(_:)` and `signedDistance(to:)` ask which side a point is on, and `boundary` is the line itself as a `Ray2`. The sheet of facets these cuts were made for is [`FacetField`](Voronoi.md#facets).
 
 <a name="regions"></a>
 

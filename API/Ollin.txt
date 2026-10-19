@@ -3576,6 +3576,7 @@ struct ComputeParams: Sendable
   var isEmpty: Bool { get }
 struct Contour: PlaneCurve, Tweenable, BidirectionalCollection, Collection, Equatable, RandomAccessCollection, Sendable, Sequence
   func chamfered(_: Double) -> Contour
+  func clipped(to: HalfPlane) -> [Contour]
   func contains(_: Vector2) -> Bool
   func crossings() -> [Contour.Crossing]
   func crossings(with: Contour) -> [Contour.Crossing]
@@ -3980,6 +3981,36 @@ struct ExportError: LocalizedError, CustomStringConvertible, Equatable, Error, S
   let problem: String
   var description: String { get }
   var errorDescription: String? { get }
+struct Facet: Equatable, Sendable
+  func bandCoordinate(angle: Double, shift: Double) -> Double
+  func facing(_: Vector3) -> Double
+  func facing(lightAngle: Double, elevation: Double) -> Double
+  init(_: Triangle, heights: SIMD3<Double>)
+  let heights: SIMD3<Double>
+  let normal: Vector3
+  let triangle: Triangle
+  var area: Double { get }
+  var centroid: Vector2 { get }
+  var contour: Contour { get }
+  var edges: [LineSegment] { get }
+  var shape: Shape { get }
+  var tilt: Vector2 { get }
+struct FacetField: Equatable, Sendable
+  func facet(containing: Vector2) -> Facet?
+  func lifted(by: (Vector2) -> Double) -> FacetField
+  init(_: Delaunay, height: (Vector2) -> Double)
+  init(_: Delaunay, heights: [Double])
+  init(points: [Vector2], height: (Vector2) -> Double)
+  let delaunay: Delaunay
+  let facets: [Facet]
+  let heights: [Double]
+  static func ==(_: FacetField, _: FacetField) -> Bool
+  static func crumpled(in: Rectangle, spacing: Double = default, crinkle: Double = default, seed: Int = default) -> FacetField
+  static func grid(in: Rectangle, spacing: Double, jitter: Double = default, seed: Int = default, height: (Vector2) -> Double) -> FacetField
+  static func latticePoints(in: Rectangle, spacing: Double, jitter: Double = default, seed: Int = default) -> [Vector2]
+  static func lightDirection(angle: Double, elevation: Double) -> Vector3
+  var edges: [LineSegment] { get }
+  var points: [Vector2] { get }
 struct FieldEdge: Equatable, Sendable
   init(wrapsX: Bool, wrapsY: Bool)
   static let clamped: FieldEdge
@@ -4096,6 +4127,7 @@ struct Filter: Sendable
   static func halftone(scale: Double = default, angle: Double = default) -> Filter
   static func hatching(spacing: Double = default, length: Double = default, directions: Int = default, foreground: Color = default, background: Color = default) -> Filter
   static func heatmap(colors: [Color] = default, contour: Double = default, innerGlow: Double = default, outerGlow: Double = default, angle: Double = default, noise: Double = default, phase: Double = default) -> Filter
+  static func holographicFoil(facets: FacetField? = default, spacing: Double = default, crinkle: Double = default, seed: Int = default, bands: Ramp = default, bandWidth: Double = default, bandAngle: Double = default, bandShift: Double = default, lightAngle: Double = default, lightElevation: Double = default, relief: Double = default, creases: Double = default, glints: Double = default, amount: Double = default, phase: Double = default) -> Filter
   static func innerGlow(radius: Double = default, color: Color = default) -> Filter
   static func innerShadow(offset: Vector2 = default, radius: Double = default, color: Color = default) -> Filter
   static func inverseFourier() -> Filter
@@ -4454,6 +4486,15 @@ struct Grid: BidirectionalCollection, Collection, Equatable, Hashable, RandomAcc
   var endIndex: Int { get }
   var points: [Grid.Point] { get }
   var startIndex: Int { get }
+struct HalfPlane: Equatable, Hashable, Sendable
+  func contains(_: Vector2) -> Bool
+  func signedDistance(to: Vector2) -> Double
+  init(leftOf: Ray2)
+  init(point: Vector2, inward: Vector2)
+  init(rightOf: Ray2)
+  var boundary: Ray2 { get }
+  var inward: Vector2 { get set }
+  var point: Vector2 { get set }
 struct HalftoneDot: Sendable
   let center: Vector2
   let color: Color
@@ -5915,12 +5956,17 @@ struct Ramp: ParamValue, Equatable, Hashable, Sendable
   static func control(for: Param<Ramp>) -> ParamControl
   static func restored(_: ParamStored) -> Ramp?
   static func shades(of: Color, lightness: ClosedRange<Double> = default, hueDrift: Double = default) -> Ramp
+  static func stepped(_: [Color]) -> Ramp
+  static func stepped(stops: [(position: Double, color: Color)]) -> Ramp
+  static func stepped(stops: [Ramp.Stop]) -> Ramp
   static func stored(_: Ramp) -> ParamStored
+  static let holographic: Ramp
   struct Stop: Equatable, Hashable, Sendable
     init(position: Double, color: Color)
     var color: Color { get set }
     var position: Double { get set }
   typealias Constraints = ParamSwatchConstraints
+  var isStepped: Bool { get }
   var reversed: Ramp { get }
   var space: ColorSpace { get set }
   var stops: [Ramp.Stop] { get }
@@ -6292,6 +6338,8 @@ struct ShadowArt: Sendable
   var voxelSize: Double { get }
 struct Shape: Tweenable, BidirectionalCollection, Collection, Equatable, RandomAccessCollection, Sendable, Sequence
   func chamfered(_: Double) -> Shape
+  func clipped(to: HalfPlane) -> Shape
+  func clipped(within: Double, of: Ray2) -> Shape
   func contains(_: Vector2) -> Bool
   func dashed(_: StrokeDash) -> Shape
   func fitted(tolerance: Double) -> [Path]
@@ -6309,6 +6357,7 @@ struct Shape: Tweenable, BidirectionalCollection, Collection, Equatable, RandomA
   func smoothed(iterations: Int = default) -> Shape
   func smoothed(neighbors: Int, weights: SmoothingWeights = default) -> Shape
   func smoothed(neighbors: Int, weights: SmoothingWeights = default, keepingCornersOver: Double) -> Shape
+  func split(along: Ray2) -> (left: Shape, right: Shape)
   func split(atCornersOver: Double, span: Double = default) -> [Contour]
   func stroked(width: Double, join: StrokeJoin = default, cap: StrokeCap = default) -> Shape
   func subtracting(_: Shape) -> Shape

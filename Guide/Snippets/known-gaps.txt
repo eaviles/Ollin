@@ -56,16 +56,16 @@ d7900de9175f  Guide/10-Vectors.md:187  cannot find 'target' in scope
 ffa12e764a7d  Guide/12-FlocksAndSwarms.md:17  cannot find 'position' in scope
 c75eb2a20310  Guide/12-FlocksAndSwarms.md:402  cannot find 'crowd' in scope
 750461323d36  Guide/14-FieldsAndFlow.md:281  cannot find 'x' in scope
-bac6f70b2c26  Guide/15-ShapesAsMaterial.md:110  cannot find 'circles' in scope
-45fd2bf76c06  Guide/15-ShapesAsMaterial.md:292  cannot find 'path' in scope
-124acc641125  Guide/15-ShapesAsMaterial.md:304  cannot find 'road' in scope
-13b4ec54646c  Guide/15-ShapesAsMaterial.md:367  cannot find 'topWave' in scope
-1c47a7d408ef  Guide/15-ShapesAsMaterial.md:486  cannot find 'square' in scope
-c1db96c31b12  Guide/15-ShapesAsMaterial.md:513  cannot find 'sizes' in scope
-3152d9b01a08  Guide/15-ShapesAsMaterial.md:557  cannot find 'island' in scope
-941d99f289b2  Guide/15-ShapesAsMaterial.md:568  value of type '[Contour]' has no member 'maxInset'
+bac6f70b2c26  Guide/15-ShapesAsMaterial.md:112  cannot find 'circles' in scope
+45fd2bf76c06  Guide/15-ShapesAsMaterial.md:294  cannot find 'path' in scope
+124acc641125  Guide/15-ShapesAsMaterial.md:306  cannot find 'road' in scope
+13b4ec54646c  Guide/15-ShapesAsMaterial.md:369  cannot find 'topWave' in scope
+1c47a7d408ef  Guide/15-ShapesAsMaterial.md:488  cannot find 'square' in scope
+c1db96c31b12  Guide/15-ShapesAsMaterial.md:515  cannot find 'sizes' in scope
+3152d9b01a08  Guide/15-ShapesAsMaterial.md:559  cannot find 'island' in scope
+941d99f289b2  Guide/15-ShapesAsMaterial.md:570  value of type '[Contour]' has no member 'maxInset'
 e428f7fa87a3  Guide/15-ShapesAsMaterial.md:62  cannot find 'circle' in scope
-e94aaf6380fc  Guide/15-ShapesAsMaterial.md:634  unary operator cannot be separated from its operand
+e94aaf6380fc  Guide/15-ShapesAsMaterial.md:636  unary operator cannot be separated from its operand
 c68765b0c991  Guide/15-ShapesAsMaterial.md:75  cannot convert value of type '@MainActor (Double, Double, Double, Double) -> Double' to expected argument type '[Vector2]'
 c8a055fb7cf3  Guide/16-CurvesAndFigures.md:300  cannot convert value of type 'Shape' to expected argument type 'Contour'
 fff55af49a8c  Guide/16-CurvesAndFigures.md:319  cannot find 'ring' in scope
@@ -73,16 +73,15 @@ c6308b0590b1  Guide/17-MarksAndMedia.md:163  cannot find 'navy' in scope
 6aff37f70683  Guide/17-MarksAndMedia.md:177  cannot find 'bath' in scope
 1e41fd025294  Guide/17-MarksAndMedia.md:188  cannot find 'bath' in scope
 d6f8fdb72cba  Guide/17-MarksAndMedia.md:68  cannot assign to value: 'mark' is a 'let' constant
-3ad05523666d  Guide/20-PicturesRestyled.md:236  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
-0979bc9f5047  Guide/20-PicturesRestyled.md:268  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
-4467bb8d08b2  Guide/20-PicturesRestyled.md:293  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
-1d6986f2d7b4  Guide/20-PicturesRestyled.md:316  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
+3ad05523666d  Guide/20-PicturesRestyled.md:251  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
+0979bc9f5047  Guide/20-PicturesRestyled.md:283  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
+4467bb8d08b2  Guide/20-PicturesRestyled.md:308  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
+1d6986f2d7b4  Guide/20-PicturesRestyled.md:331  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
 1ae291889181  Guide/20-PicturesRestyled.md:57  'module' is inaccessible due to 'internal' protection level
-45ff58c66642  Guide/21-PicturesYouSolve.md:116  cannot convert value of type '[Vector2]' to expected argument type 'RenderTarget'
-2c8e3afaeaef  Guide/21-PicturesYouSolve.md:132  cannot convert value of type '[Vector2]' to expected argument type 'RenderTarget'
+45ff58c66642  Guide/21-PicturesYouSolve.md:110  cannot convert value of type '[Vector2]' to expected argument type 'RenderTarget'
+2c8e3afaeaef  Guide/21-PicturesYouSolve.md:126  cannot convert value of type '[Vector2]' to expected argument type 'RenderTarget'
 cd36a2d9f010  Guide/21-PicturesYouSolve.md:17  cannot convert value of type 'RenderTarget?' to expected argument type 'Contour'
-2065dd8af5c4  Guide/21-PicturesYouSolve.md:258  cannot convert value of type 'RenderTarget' to expected argument type 'Image'
-a1896233ab91  Guide/21-PicturesYouSolve.md:328  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
+2065dd8af5c4  Guide/21-PicturesYouSolve.md:252  cannot convert value of type 'RenderTarget' to expected argument type 'Image'
 8f074282df6a  Guide/21-PicturesYouSolve.md:67  cannot find 'bands' in scope
 70e92ab22ab8  Guide/22-IteratedForms.md:473  reference to member 'domainColoring' cannot be resolved without a contextual type
 9154907c71d0  Guide/27-Meshes.md:110  cannot find 'grown' in scope
@@ -101,10 +100,10 @@ a3cc26d6c8f4  Guide/27-Meshes.md:44  cannot find 'teal' in scope
 c3a7d05cd766  Guide/27-Meshes.md:485  cannot find 'ball' in scope
 464ad97ecd6f  Guide/27-Meshes.md:54  cannot find 'planks' in scope
 cdcf169eea19  Guide/27-Meshes.md:89  cannot find 'base' in scope
-2fc02e91a351  Guide/28-MaterialsAndSurroundings.md:172  expected '}' in class
+2fc02e91a351  Guide/28-MaterialsAndSurroundings.md:178  expected '}' in class
 3846f3d9c837  Guide/28-MaterialsAndSurroundings.md:23  cannot find 'ball' in scope
-f9772692a39c  Guide/28-MaterialsAndSurroundings.md:253  cannot find 'picture' in scope
-1bf5a69793ab  Guide/28-MaterialsAndSurroundings.md:339  extraneous '}' at top level
+f9772692a39c  Guide/28-MaterialsAndSurroundings.md:259  cannot find 'picture' in scope
+1bf5a69793ab  Guide/28-MaterialsAndSurroundings.md:345  extraneous '}' at top level
 5e288f34fe35  Guide/29-Landscapes.md:105  cannot find 'terrain' in scope
 817218f25cab  Guide/29-Landscapes.md:115  cannot find 'stone' in scope
 cc748b059cc6  Guide/29-Landscapes.md:140  cannot convert value of type '(UnboundedRange_) -> ()' to expected argument type 'Camera3D'
@@ -126,16 +125,16 @@ ab964ab735c3  Guide/34-Seeing.md:299  argument type '@MainActor (Camera3D) -> ()
 e6e9484ee21c  Guide/34-Seeing.md:313  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
 10296f99c463  Guide/34-Seeing.md:327  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
 3d548b82b7b5  Guide/34-Seeing.md:342  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-fe868f649d36  Guide/34-Seeing.md:370  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-c09ae8043967  Guide/34-Seeing.md:404  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-a74ee9528a00  Guide/34-Seeing.md:419  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-5f5a4703d420  Guide/34-Seeing.md:440  cannot find 'encoderURL' in scope
-ed00e1e6886f  Guide/34-Seeing.md:454  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-9db962075aa9  Guide/34-Seeing.md:468  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-69cdcef589cf  Guide/34-Seeing.md:482  cannot find 'rect' in scope
-a7aa8455a66f  Guide/34-Seeing.md:496  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-491c839e438a  Guide/34-Seeing.md:539  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
-746879197407  Guide/34-Seeing.md:611  value of type '@MainActor (Camera3D) -> ()' has no member 'frame'
+fe868f649d36  Guide/34-Seeing.md:372  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+c09ae8043967  Guide/34-Seeing.md:406  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+a74ee9528a00  Guide/34-Seeing.md:421  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+5f5a4703d420  Guide/34-Seeing.md:442  cannot find 'encoderURL' in scope
+ed00e1e6886f  Guide/34-Seeing.md:456  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+9db962075aa9  Guide/34-Seeing.md:470  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+69cdcef589cf  Guide/34-Seeing.md:484  cannot find 'rect' in scope
+a7aa8455a66f  Guide/34-Seeing.md:498  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+491c839e438a  Guide/34-Seeing.md:541  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
+746879197407  Guide/34-Seeing.md:613  value of type '@MainActor (Camera3D) -> ()' has no member 'frame'
 081af4a617de  Guide/37-Listening.md:370  'module' is inaccessible due to 'internal' protection level
 917f64dd5639  Guide/37-Listening.md:40  'module' is inaccessible due to 'internal' protection level
 a084d412ddda  Guide/39-MakingSound.md:204  'module' is inaccessible due to 'internal' protection level

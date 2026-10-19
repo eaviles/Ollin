@@ -481,6 +481,25 @@ import OllinWebGate
         }
     }
 
+    /// A disc of crumpled holographic foil, its bands sweeping and its light
+    /// turning, over a sheet a sketch built itself: the facet strip and the
+    /// spectrum strip travel as two tables.
+    final class Foiled: Sketch {
+        let sheet = FacetField.crumpled(in: Rectangle(x: 0, y: 0, width: 120, height: 120),
+                                        spacing: 22, crinkle: 0.7, seed: 3)
+        override var canvasSize: CanvasSize { .square(120) }
+        override func draw() {
+            background(Color(hex: 0x14161C))
+            let layer = makeRenderTarget()
+            withTarget(layer) {
+                noStroke(); fill(.white); drawCircle(60, 60, 50)
+            }
+            drawImage(layer.filtered(.holographicFoil(facets: sheet, bandWidth: 14,
+                                                      lightAngle: -2 + time * 0.4,
+                                                      phase: time * 1.5)).image, 0, 0)
+        }
+    }
+
     /// A blurred layer under a bloomed one, the two passes the page owns.
     final class Blurred: Sketch {
         override var canvasSize: CanvasSize { .square(120) }
@@ -838,6 +857,7 @@ import OllinWebGate
             ("Mixed", { Mixed() }, 4, 2),
             ("Distorted", { Distorted() }, 6, 4),
             ("Pinned", { Pinned() }, 4, 2),
+            ("Foiled", { Foiled() }, 4, 2),
             ("Measured", { Measured() }, 4, 2),
             ("Outlined", { Outlined() }, 4, 2),
             ("Shadowed", { Shadowed() }, 4, 2),

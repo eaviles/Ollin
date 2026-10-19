@@ -131,6 +131,7 @@ let package = Package(
         example("Effects/Relight"),
         example("Effects/Glitter"),
         example("Effects/SoapFilm"),
+        example("Effects/CrumpledFoil"),
         example("Effects/MeshGradient"),
         example("Effects/DistanceField"),
         example("Effects/LayerStyles"),

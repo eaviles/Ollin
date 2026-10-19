@@ -120,6 +120,21 @@ One practical note. A strong distortion reads past the layer's edge, and `edges`
 
 [`Examples/Effects/FilterCatalog`](../Examples/Effects/FilterCatalog/Sketch.swift) tours the design filters in full, and [`Examples/Effects/GeneratorCatalog`](../Examples/Effects/GeneratorCatalog/Sketch.swift) does the same for [Chapter 18](18-YourFirstShader.md)'s design generators.
 
+### A sheet of holographic foil: holographicFoil
+
+The fourth filter that reads a silhouette fills it with crumpled holographic foil, the sticker-sheet kind whose rainbow jumps at every crease. It is a material built from geometry rather than from a field. The sheet is a `FacetField`, a triangulation lifted by a height function so each triangle knows which way it leans, and the filter builds one for itself or takes the one you hand it. A stepped rainbow, a `Ramp.stepped` with hard edges and no blending, runs across the sheet in stripes, and every facet moves the stripes by its tilt. That one move is the whole look: two facets that meet at a crease lean differently, so the stripe on one side is not the stripe on the other. A light shades the facets, lights the creases it crosses and darkens the ones it runs along, and puts a cross glint on the corners of the facets that face it hardest. The right panel below is the sheet the left panel read, drawn in geometry by the same light.
+
+<img src="Images/20-PicturesRestyled/CrumpledFoil.jpg" alt="Two panels. On the left a heart filled with crumpled holographic foil: a stepped rainbow of stripes that jumps at every crease, bright and dark crease lines, and small cross glints at some corners. On the right the same sheet drawn as flat gray triangles, each shaded by how it faces the light, with every crease inked" width="680">
+
+```swift
+let sheet = FacetField.crumpled(in: canvasRectangle, spacing: 56, crinkle: 0.6, seed: 1)
+drawImage(art.filtered(.holographicFoil(facets: sheet, lightAngle: time * 0.3, phase: time)).image, 0, 0)
+stroke(Color(white: 0.1, alpha: 0.6))
+for crease in sheet.edges { drawLine(crease) }       // the filter's creases, in ink
+```
+
+`phase` sweeps the bands and `lightAngle` turns the light, which is all the animation needs; `relief` reads the layer's own brightness as height, so a gray mark drawn into the layer presses into the foil as creases. The creases you stroke from the sheet land on the filter's own, because the GPU reads the facets you hold, which is also what makes the sheet a plotter can draw. The filter's parameters are on the [Effects](../Docs/Drawing/Effects.md#design) page, the sheet is on the [Voronoi](../Docs/Drawing/Voronoi.md#facets) page beside the triangulation it stands on, and [`Examples/Effects/CrumpledFoil`](../Examples/Effects/CrumpledFoil/Sketch.swift) fills the whole canvas with a sheet that breathes.
+
 ## Putting it together: the hand-colored print
 
 The hand-colored print turns a photograph into the kind of picture a print shop once sold, an engraving tinted by hand. It stacks five of this chapter's steps. `brushwork` paints the color, and `hatching` draws the line work over it under [Chapter 19](19-LayersAndEffects.md)'s `.multiply`. Then a look grades the frame warm, film grain gives it a texture, and `paperTexture` presses it into a sheet. Make `MySketches/HandColored.swift`:

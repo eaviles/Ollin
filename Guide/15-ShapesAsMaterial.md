@@ -100,6 +100,8 @@ let mesh = delaunay(sites)                  // mesh.triangles, each a Triangle v
 
 Every Voronoi cell is a `Shape`, so every shape tool in the chapter applies per cell. You can inset them for grout lines, subtract things from them, or hatch them, and the plate does all three. A companion helper comes with it. `lloyd(sites, in: bounds)` relaxes the scatter, nudging every site to its cell's center and building the mosaic again. Each pass makes the mosaic calmer and more even, like a pan of bubbles settling.
 
+A triangulation lifted by a height becomes a sheet. `FacetField.grid(in: bounds, spacing: 60, seed: 3) { p in height(p) }` turns the mesh into facets, flat faces that each know which way they lean and how squarely they face a light (`facet.facing(light)`), with the creases between them as lines a plotter draws (`sheet.edges`). It is the geometry under crumpled foil, a low-poly ground, or folded paper, and [Chapter 20](20-PicturesRestyled.md#a-sheet-of-holographic-foil-holographicfoil) fills a silhouette with holographic foil over one. Two cuts came with it for painting a facet half by half: `shape.split(along: line)` gives a shape's two sides of a line, and `shape.clipped(to: HalfPlane(point:inward:))` keeps one, by one walk of the outline. Both are on the [Geometry](../Docs/Drawing/Geometry.md#shape-cut) page, and the sheet is on the [Voronoi](../Docs/Drawing/Voronoi.md#facets) page beside the triangulation it stands on.
+
 A Voronoi diagram answers one question badly, and it comes up as soon as the things being divided have sizes. A boundary halfway between two centers is fair between two points. Between a large circle and a small one it is not, because it falls inside the large one.
 
 <picture>

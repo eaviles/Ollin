@@ -2203,3 +2203,166 @@ fragment float4 ollin_fx_diffuse_prolong(PresentOut in [[stage_in]],
     float3 f = fine.sample(samp, in.uv, level(0.0)).rgb;
     return float4(f + (1.0 - w) * e, 1.0);
 }
+
+// holographicFoil: the layer's alpha shape as a crumpled sheet of holographic
+// foil. The sheet arrives as a lookup strip at texture(1) (FoilTable packs it):
+// a cell grid in front of the facets, so a pixel reads its cell, walks the few
+// facets the cell lists, and keeps the one that holds it. From that facet it has
+// its corners and the heights of two of them above the third, which give the
+// normal (lifted by the layer's own luminance at the corners when `relief`
+// asks), and from the normal the facet's shade under the light, the stripe of
+// the stepped spectrum it sits under (the band coordinate moved by the tilt,
+// which is what breaks the rainbow at a crease), its nearest crease lit or
+// darkened by how the light crosses it, and a cross glint at its corners when
+// it faces the light hardest. params[0]: bandWidth, bandAngle, bandShift,
+// phase; params[1]: lightAngle, lightElevation, relief, creases; params[2]:
+// glints, amount, the spectrum strip's texel count, the layer's width in
+// pixels; params[3]: its height, and the spectrum's stop count (one band each).
+// The spectrum is texture(2), read by texel so a stepped ramp keeps its edges.
+// A pixel off the sheet (the default sheet covers the layer, a handed-in one
+// may not) reads as a flat facet with no creases and no glints. The corner
+// samples name level(0), since they follow a loop a pixel leaves early.
+
+static inline float4 ollin_foil_read(texture2d<float> strip, int i) {
+    return strip.read(uint2(uint(max(i, 0)), 0u));
+}
+
+// The distance from p to the segment a-b.
+static inline float ollin_foil_segment(float2 p, float2 a, float2 b) {
+    float2 ab = b - a;
+    float t = clamp(dot(p - a, ab) / max(dot(ab, ab), 1e-9), 0.0, 1.0);
+    return length(p - (a + ab * t));
+}
+
+// A cross-shaped glint around the origin: a soft core and two thin arms.
+static inline float ollin_foil_star(float2 r) {
+    return exp(-dot(r, r) / 7.0)
+         + 0.55 * exp(-abs(r.x) / 0.7 - abs(r.y) / 6.5)
+         + 0.55 * exp(-abs(r.y) / 0.7 - abs(r.x) / 6.5);
+}
+
+fragment float4 ollin_fx_holographic_foil(PresentOut in [[stage_in]],
+                                          texture2d<float> src [[texture(0)]],
+                                          texture2d<float> facets [[texture(1)]],
+                                          texture2d<float> bands [[texture(2)]],
+                                          sampler samp [[sampler(0)]],
+                                          constant float4 *params [[buffer(0)]]) {
+    float bandWidth = max(params[0].x, 1.0), bandAngle = params[0].y;
+    float bandShift = params[0].z, phase = params[0].w;
+    float lightAngle = params[1].x, lightElevation = params[1].y;
+    float relief = params[1].z, creases = params[1].w;
+    float glints = params[2].x, amount = params[2].y;
+    int stripCount = max(int(params[2].z), 1);
+    float2 size = float2(max(params[2].w, 1.0), max(params[3].x, 1.0));
+    float stops = max(params[3].y, 1.0);
+
+    float4 s = src.sample(samp, in.uv);
+    float2 p = in.uv * size;
+
+    // The facet under the pixel: its cell's candidates, the first that holds it.
+    float4 head = ollin_foil_read(facets, 0);
+    float4 grid = ollin_foil_read(facets, 1);
+    int columns = max(int(head.x), 1), rows = max(int(head.y), 1);
+    float cell = max(head.z, 1e-6);
+    int candidateStart = int(head.w), facetStart = int(grid.z);
+    int cx = clamp(int(floor((p.x - grid.x) / cell)), 0, columns - 1);
+    int cy = clamp(int(floor((p.y - grid.y) / cell)), 0, rows - 1);
+    float4 slot = ollin_foil_read(facets, 2 + cy * columns + cx);
+    int start = int(slot.x), count = min(int(slot.y), 48);
+    bool found = false;
+    float2 A = p, B = p, C = p;
+    float2 dh = float2(0.0, 0.0);
+    for (int k = 0; k < count; k++) {
+        int index = start + k;
+        float4 four = ollin_foil_read(facets, candidateStart + index / 4);
+        int lane = index - (index / 4) * 4;
+        float which = lane == 0 ? four.x : (lane == 1 ? four.y : (lane == 2 ? four.z : four.w));
+        int base = facetStart + int(which) * 2;
+        float4 t0 = ollin_foil_read(facets, base);
+        float4 t1 = ollin_foil_read(facets, base + 1);
+        float2 a = t0.xy, b = t0.zw, c = t1.xy;
+        float2 v0 = b - a, v1 = c - a, v2 = p - a;
+        float d = v0.x * v1.y - v1.x * v0.y;
+        if (abs(d) < 1e-9) continue;
+        float v = (v2.x * v1.y - v1.x * v2.y) / d;
+        float w = (v0.x * v2.y - v2.x * v0.y) / d;
+        float u = 1.0 - v - w;
+        if (u >= -1e-4 && v >= -1e-4 && w >= -1e-4) {
+            found = true;
+            A = a; B = b; C = c;
+            dh = t1.zw;
+            break;
+        }
+    }
+
+    // The normal of the lifted face, the layer's luminance added at the corners.
+    float3 n = float3(0.0, 0.0, 1.0);
+    if (found) {
+        float ha = 0.0, hb = dh.x, hc = dh.y;
+        if (relief > 0.0) {
+            ha += relief * ollin_luma(ollin_unpremul(src.sample(samp, clamp(A / size, 0.0, 1.0), level(0))));
+            hb += relief * ollin_luma(ollin_unpremul(src.sample(samp, clamp(B / size, 0.0, 1.0), level(0))));
+            hc += relief * ollin_luma(ollin_unpremul(src.sample(samp, clamp(C / size, 0.0, 1.0), level(0))));
+        }
+        float3 e1 = float3(B - A, hb - ha), e2 = float3(C - A, hc - ha);
+        n = cross(e1, e2);
+        if (n.z < 0.0) n = -n;
+        float len = length(n);
+        n = len > 0.0 ? n / len : float3(0.0, 0.0, 1.0);
+    }
+
+    float3 L = float3(cos(lightAngle) * cos(lightElevation),
+                      sin(lightAngle) * cos(lightElevation), sin(lightElevation));
+    float ndotl = max(dot(n, L), 0.0);
+    float3 tint = ollin_unpremul(s);
+
+    // The base: a metal shade of the layer's own color, with a marker step
+    // across the face on its downhill half.
+    float2 centroid = (A + B + C) / 3.0;
+    float marker = found ? 0.07 * (smoothstep(-0.75, 0.75, dot(p - centroid, n.xy)) - 0.5) : 0.0;
+    float shade = 0.26 + 0.64 * pow(ndotl, 1.4) + marker;
+    float3 color = tint * shade;
+
+    // The stripes: the band coordinate, moved by the tilt, through the spectrum.
+    float2 along = float2(cos(bandAngle), sin(bandAngle));
+    float2 off = float2(cos(bandAngle + 0.65), sin(bandAngle + 0.65));
+    float cycle = bandWidth * stops;
+    float u = dot(p, along) + bandShift * dot(n.xy, off) + phase / 6.2831853 * cycle;
+    float t = fract(u / cycle);
+    float4 stripe = ollin_foil_read(bands, clamp(int(t * float(stripCount)), 0, stripCount - 1));
+    // How much of the rainbow a facet shows: a sheen that follows its tilt
+    // against a direction tied to the light, so some facets flash color and
+    // others stay silver, and which ones changes as the light turns. A flat
+    // sheet shows an even sheen.
+    float2 sheenDir = float2(cos(lightAngle + 1.2), sin(lightAngle + 1.2));
+    float sheen = found ? clamp(0.3 + 0.7 * (0.5 + 1.8 * dot(n.xy, sheenDir)), 0.0, 1.0) : 0.65;
+    float3 stripeColor = mix(float3(0.85, 0.85, 0.85), stripe.rgb, 0.85) * (0.45 + 0.75 * ndotl);
+    color = mix(color, stripeColor, stripe.a * sheen);
+    color += 0.35 * pow(ndotl, 28.0);
+
+    // The nearest crease: lit where the light crosses it squarely or the face
+    // meets the light, dark otherwise.
+    if (found && creases > 0.0) {
+        float dAB = ollin_foil_segment(p, A, B);
+        float dBC = ollin_foil_segment(p, B, C);
+        float dCA = ollin_foil_segment(p, C, A);
+        float dEdge = min(dAB, min(dBC, dCA));
+        float2 edge = dEdge == dAB ? (B - A) : (dEdge == dBC ? (C - B) : (A - C));
+        float across = abs(edge.x * L.y - edge.y * L.x) / (max(length(edge), 1e-6) * max(length(L.xy), 1e-6));
+        float lit = max(smoothstep(0.72, 0.95, across), smoothstep(0.75, 0.92, ndotl));
+        float halfWidth = 0.8 * creases;
+        float mask = 1.0 - smoothstep(halfWidth - 0.5, halfWidth + 0.5, dEdge);
+        float3 creaseColor = mix(float3(0.07, 0.07, 0.08), float3(1.1, 1.1, 1.15), lit);
+        color = mix(color, creaseColor, mask * 0.85);
+    }
+
+    // The glints: a cross at each corner of a face that meets the light hardest.
+    if (found && glints > 0.0) {
+        float g = glints * smoothstep(0.74, 0.92, ndotl);
+        float star = ollin_foil_star(p - A) + ollin_foil_star(p - B) + ollin_foil_star(p - C);
+        color += g * 1.8 * star;
+    }
+
+    float4 foil = ollin_premul(max(color, 0.0), s.a);
+    return amount <= 0.0 ? s : mix(s, foil, amount);
+}

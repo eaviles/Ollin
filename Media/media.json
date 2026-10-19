@@ -4406,6 +4406,28 @@
       "stillSmall": "examples/Effects/Coherence/still-640.jpg?v=2366f0ea",
       "width": 1080
     },
+    "Effects/CrumpledFoil": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 14.308,
+      "sound": false,
+      "source": "60634f35448672b5",
+      "rendered": "2026-10-18",
+      "bytes": {
+        "loop": 8005293,
+        "loopSmall": 2708696,
+        "still": 461941,
+        "stillSmall": 159801
+      },
+      "loop": "examples/Effects/CrumpledFoil/loop.mp4?v=382df654",
+      "loopSmall": "examples/Effects/CrumpledFoil/loop-640.mp4?v=2ba5e890",
+      "still": "examples/Effects/CrumpledFoil/still.jpg?v=9bbd0e18",
+      "stillSmall": "examples/Effects/CrumpledFoil/still-640.jpg?v=d260e632",
+      "seed": 1
+    },
     "Effects/Defocus": {
       "width": 1080,
       "height": 1080,

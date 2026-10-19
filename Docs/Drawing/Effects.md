@@ -289,10 +289,10 @@ postProcess(.ripple(amplitude: 0.02, frequency: 12, phase: time * 3))
 
 These are the image-filter siblings of the [design-pattern generators](#generate), and they share the
 same conventions. Animation is an explicit `phase` you feed `time`, and palettes
-blend in sRGB so designer colors read true. Three of them read the layer's
+blend in sRGB so designer colors read true. Four of them read the layer's
 **alpha shape**, so draw a shape or logo into a transparent layer and then filter it.
 The others transform the whole layer. `Effects/FilterCatalog`'s design family shows six of
-them, and `Images/LuminanceMelt` shows the melt.
+them, `Images/LuminanceMelt` shows the melt, and `Effects/CrumpledFoil` the foil.
 
 <img src="../../Guide/Images/20-PicturesRestyled/DesignFilters.jpg" alt="Six tiles in two labeled rows. The top row, 'these read the shape', shows the same heart silhouette as flowing chrome, as a red-and-blue thermal map with contour bands, and as pale swirling gem smoke. The bottom row, 'these read the picture', shows the same photograph of a hillside town behind angled glass flutes, refracted through rippling water, and pressed into a crumpled paper sheet" width="680">
 
@@ -328,11 +328,46 @@ them, and `Images/LuminanceMelt` shows the melt.
   picture straight through the palette. `warp` is the turbulence, and `scale` is the
   field zoom. The picture survives as light and shadow rather than as its own colors,
   and that dyed reading is the look.
+- **`.holographicFoil(facets:spacing:crinkle:seed:bands:bandWidth:bandAngle:bandShift:lightAngle:lightElevation:relief:creases:glints:amount:phase:)`**
+  the alpha shape as a crumpled sheet of holographic foil. The sheet is a
+  [`FacetField`](Voronoi.md#facets): the one you hand in through `facets` (in layer
+  pixels, so a sheet built over the canvas lands where you built it), or else
+  `FacetField.crumpled` over the layer at `spacing` pixels and `crinkle` depth from
+  `seed`, which you can build yourself to draw the same creases in geometry. A
+  stepped rainbow of `bands` (a `Ramp`, `.holographic` by default) runs across the
+  sheet at `bandAngle` in stripes `bandWidth` pixels wide, and every facet moves the
+  stripes by `bandShift` pixels times its tilt, which is what breaks the rainbow at
+  each crease. A light at `lightAngle` in the canvas plane and `lightElevation` above
+  it shades the facets, lights or darkens the creases (`creases` scales their width,
+  0 draws none), and puts a cross glint on the corners of the facets that face it
+  hardest (`glints` scales them, and they pass 1.0, so a `.bloom` after carries them).
+  `relief` is how many pixels of height one unit of the layer's own luminance adds at
+  a facet's corners, so a gray mark drawn into the layer presses into the foil as
+  creases; at 0 the layer is a silhouette and a tint only. `amount` mixes the foil
+  over the layer, and `phase` sweeps the bands one cycle per `2π`: feed it `time`,
+  and turn `lightAngle` with it to make the sheet move. The layer's own color tints
+  the metal, so a white shape is silver foil and a colored one is colored foil.
+
+<img src="../../Guide/Images/20-PicturesRestyled/CrumpledFoil.jpg" alt="Two panels. On the left a heart filled with crumpled holographic foil: a stepped rainbow of stripes that jumps at every crease, bright and dark crease lines, and small cross glints at some corners. On the right the same sheet drawn as flat gray triangles, each shaded by how it faces the light, with every crease inked" width="680">
 
 ```swift
 let logo = makeRenderTarget()
 withTarget(logo) { noStroke(); fill(.white); drawHeart(width / 2, height / 2, 400) }
 drawImage(logo.filtered(.liquidMetal(phase: time)).image, 0, 0)
+```
+
+The foil's sheet is geometry you can hold, so the creases the filter lights are
+creases you can draw. Build the sheet once, hand it to the filter, and stroke its
+`edges` over the fill (they land on the filter's own creases, since the GPU reads the
+facets you hold), or lift the same sheet every frame so it breathes:
+
+```swift
+let logo = makeRenderTarget()
+withTarget(logo) { noStroke(); fill(.white); drawHeart(width / 2, height / 2, 400) }
+let sheet = FacetField.crumpled(in: canvasRectangle, spacing: 56, crinkle: 0.6, seed: 1)
+drawImage(logo.filtered(.holographicFoil(facets: sheet, lightAngle: time * 0.3, phase: time)).image, 0, 0)
+stroke(Color(white: 0.1, alpha: 0.6))
+for edge in sheet.edges { drawLine(edge) }
 ```
 
 Filters chain, so an effect reads as one expression:
