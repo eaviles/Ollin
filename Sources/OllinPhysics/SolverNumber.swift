@@ -1,4 +1,5 @@
 import Foundation
+import simd
 import Ollin
 
 /// The numbers a solver holds, defined once for a snapshot's and a sketch's
@@ -76,6 +77,26 @@ enum SolverNumber {
     static func complaint(in values: some Sequence<Vector3>) -> String? {
         for value in values {
             if let wrong = complaint(value) { return wrong }
+        }
+        return nil
+    }
+
+    /// A rectangle: its corner and its size.
+    static func complaint(_ rect: Rectangle) -> String? {
+        complaint(rect.x) ?? complaint(rect.y) ?? complaint(rect.width) ?? complaint(rect.height)
+    }
+
+    /// The first complaint among the entries of `matrices` (a scene's joint
+    /// transforms, as a ragdoll pose hands them over), or `nil`.
+    static func complaint(in matrices: [simd_float4x4]) -> String? {
+        for matrix in matrices {
+            for column in 0 ..< 4 {
+                let c = matrix[column]
+                if let wrong = complaint(Double(c.x)) ?? complaint(Double(c.y))
+                    ?? complaint(Double(c.z)) ?? complaint(Double(c.w)) {
+                    return wrong
+                }
+            }
         }
         return nil
     }

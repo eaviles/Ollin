@@ -80,6 +80,7 @@ public final class Rope3D: SoftBody3D {
     /// The rope's radius in world units: how thick it draws and collides.
     public var radius: Double {
         didSet {
+            guard world.holds(radius, "rope.radius") else { radius = oldValue; return }
             vertexRadius = radius
             cachedTube = nil
         }

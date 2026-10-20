@@ -152,6 +152,7 @@ public final class Character3D {
     /// figure you draw: point it along the heading and the walker turns.
     public var facing: Double = 0 {
         didSet {
+            guard world.holds(facing, "character.facing") else { facing = oldValue; return }
             let half = facing / 2
             withFloats4((0, Float(sin(half)), 0, Float(cos(half)))) {
                 cjolt_character_set_rotation(handle, $0)

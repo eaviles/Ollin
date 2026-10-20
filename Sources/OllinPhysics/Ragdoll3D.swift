@@ -226,7 +226,7 @@ public final class Ragdoll3D {
     /// shoving whatever it walks through.
     public func drive(toward scene: Scene, frequency: Double = 20,
                       damping: Double = 1, strength: Double = .infinity) {
-        guard let handle, let worlds = jointWorlds(of: scene) else { return }
+        guard let handle, let worlds = jointWorlds(of: scene, for: "drive(toward:)") else { return }
         guard world.holds(frequency, "drive(toward:)'s frequency"),
               world.holds(damping, "drive(toward:)'s damping"),
               world.holds(strength, "drive(toward:)'s strength", orUnbounded: true) else { return }
@@ -269,7 +269,7 @@ public final class Ragdoll3D {
     /// Place every limb instantly at the pose `scene` is holding, velocities
     /// left where they were: the reset, and how a figure is stood back up.
     public func pose(from scene: Scene) {
-        guard let handle, let worlds = jointWorlds(of: scene) else { return }
+        guard let handle, let worlds = jointWorlds(of: scene, for: "pose(from:)") else { return }
         let matrices = poseMatrices(from: worlds)
         matrices.withUnsafeBufferPointer {
             cjolt_ragdoll_set_pose(world.handle, handle, $0.baseAddress)
@@ -374,15 +374,20 @@ public final class Ragdoll3D {
     }
 
     /// The scene's current joint transforms, one per limb, or `nil` (with a
-    /// one-time note) when the scene isn't the one this figure was built from.
-    private func jointWorlds(of scene: Scene) -> [simd_float4x4]? {
+    /// one-time note) when the scene isn't the one this figure was built from
+    /// or a transform a sketch posed by hand holds a number the solver cannot
+    /// (`what` names the call for the note).
+    private func jointWorlds(of scene: Scene, for what: String) -> [simd_float4x4]? {
         let skeleton = scene.skeleton()
         guard skeleton.count == skinJointCount else {
             world.noteOnce("this scene's skeleton is not the one the ragdoll was "
                            + "built from; the pose is ignored.")
             return nil
         }
-        return skinIndexOfLimb.map { skeleton[$0].world }
+        let worlds = skinIndexOfLimb.map { skeleton[$0].world }
+        guard world.accepts(SolverNumber.complaint(in: worlds), "\(what)'s scene",
+                            else: "ignoring the pose") else { return nil }
+        return worlds
     }
 
     /// Those transforms as the flat column-major matrices the solver takes,

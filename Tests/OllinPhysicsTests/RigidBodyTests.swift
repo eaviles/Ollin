@@ -225,6 +225,9 @@ struct RigidBodyTests {
         #expect(world.gravity == Vector2(0, 980))
         world.unitsPerMeter = 0
         #expect(world.unitsPerMeter == 100)
+        world.bounds = Rectangle(x: 0, y: 0, width: 400, height: 400)
+        world.bounds = Rectangle(x: .nan, y: 0, width: 400, height: .infinity)
+        #expect(world.bounds == Rectangle(x: 0, y: 0, width: 400, height: 400))
         let atNaN = world.addBody(.box(width: 40, height: 40), at: Vector2(.nan, 100))
         #expect(atNaN.position == .zero)
         let anchor = world.addBody(.box(width: 40, height: 40), at: Vector2(300, 100), kind: .static)
@@ -240,7 +243,7 @@ struct RigidBodyTests {
         world.advance(by: .nan)
         run(world, steps: 30, dt: 1.0 / 60)
         for body in world.bodies { #expect(SolverNumber.holds(body.position)) }
-        for what in ["world.gravity", "world.unitsPerMeter", "addBody(at:)", "connect's anchor",
+        for what in ["world.gravity", "world.unitsPerMeter", "world.bounds", "addBody(at:)", "connect's anchor",
                      "connect's length", "grab(_:at:)", "joint.target", "advance(by:)"] {
             #expect(world.worldNotes.contains { $0.hasPrefix("\(what) was given") }, Comment(rawValue: what))
         }

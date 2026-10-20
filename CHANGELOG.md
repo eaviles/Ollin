@@ -20,6 +20,7 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ### Fixed
 
+- **A few more numbers stop at the physics bridge.** A body's `buoyancyScale`, a character's `facing`, a rope's `radius`, and the 2D world's `bounds` now keep what they had when handed a value that is not a number, an infinity, or a magnitude past a billion units, with the one-time note the other members print, and a ragdoll's `pose(from:)` or `drive(toward:)` ignores a scene whose transforms hold one instead of handing it to the solver.
 - **A picker that ran off the panel.** A `@Param` picker with `style: .segmented` whose names are wider than the inspector panel (five long names) ran past the panel's edge, where its segments could not be clicked. It now falls back to the menu row when even the wrapped control does not fit, since a segmented control never shrinks below its names.
 
 ## [0.16.0] - 2026-10-18

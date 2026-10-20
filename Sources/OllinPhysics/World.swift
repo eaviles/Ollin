@@ -92,6 +92,10 @@ public final class World {
     /// rigid `Body` sub-system also collides with these walls.
     public var bounds: Rectangle? {
         didSet {
+            if let bounds, !accepts(SolverNumber.complaint(bounds), "world.bounds", else: "ignoring it") {
+                self.bounds = oldValue
+                return
+            }
             if let id = rigidWorldId { rebuildWalls(in: id) }
         }
     }

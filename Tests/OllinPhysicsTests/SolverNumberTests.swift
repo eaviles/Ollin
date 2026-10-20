@@ -177,6 +177,37 @@ struct SolverNumberTests {
         #expect(noted(w, "addCharacter(at:)"))
     }
 
+    /// The members the first pass left: a body's buoyancy scale (read by the
+    /// water each step), a character's facing (a rotation the solver takes),
+    /// and a rope's radius (its vertices' and its drawn tube's).
+    @Test func theLastOfTheBridgeHoldsItsNumbers() throws {
+        let w = world()
+        w.water = Water(level: 1)
+        let b = try box(w)
+        let c = try w.addCharacter(at: Vector3(3, 2, 0))
+        let rope = try w.addRope(through: [Vector3(-3, 3, 0), Vector3(-3, 1, 0)])
+        let radius = rope.radius
+        for v in Self.bad {
+            b.buoyancyScale = v
+            c.facing = v
+            rope.radius = v
+        }
+        #expect(b.buoyancyScale == 1)
+        #expect(c.facing == 0)
+        #expect(rope.radius == radius)
+        step(w)
+        #expect(SolverNumber.holds(b.position))
+        #expect(SolverNumber.holds(c.position))
+        #expect(noted(w, "body.buoyancyScale"))
+        #expect(noted(w, "character.facing"))
+        #expect(noted(w, "rope.radius"))
+        // A number the solver holds still goes through.
+        b.buoyancyScale = 0.5
+        c.facing = 1
+        rope.radius = radius * 2
+        #expect(b.buoyancyScale == 0.5 && c.facing == 1 && rope.radius == radius * 2)
+    }
+
     @Test func aJointRefusesANumberItCannotDrive() throws {
         let w = world()
         let anchor = try w.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(0, 5, 0), kind: .static)

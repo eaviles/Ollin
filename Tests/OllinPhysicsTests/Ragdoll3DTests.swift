@@ -387,6 +387,29 @@ struct Ragdoll3DTests {
         #expect(bends[1].right < bends[1].left / 3)
     }
 
+    /// A scene a sketch posed by hand can carry a number that is not one in a
+    /// node's transform: a pose or a drive from it is ignored with a note
+    /// naming the call, the figure stays where it was, and the world steps on.
+    @Test func aPoseFromASceneWithANumberTheSolverCannotHoldIsIgnored() throws {
+        var target = try Self.figure()
+        let world = World3D()
+        world.ground = 0
+        let ragdoll = try world.addRagdoll(from: target, at: Vector3(0, 0, 0))
+        run(world, steps: 30)
+        let settled = ragdoll.position
+        for index in target.nodes.indices where target.nodes[index].name == "hips" {
+            target.nodes[index].position = Vector3(.nan, 0.95, 0)
+        }
+        ragdoll.pose(from: target)
+        #expect(ragdoll.position == settled)
+        ragdoll.drive(toward: target)
+        run(world, steps: 30)
+        #expect(SolverNumber.holds(ragdoll.position))
+        for limb in ragdoll.limbs { #expect(SolverNumber.holds(limb.body.position)) }
+        #expect(world.worldNotes.contains { $0.hasPrefix("pose(from:)'s scene was given") })
+        #expect(world.worldNotes.contains { $0.hasPrefix("drive(toward:)'s scene was given") })
+    }
+
     // MARK: Living among the other bodies
 
     @Test func limbsLandOnTheGroundAndSaySo() throws {

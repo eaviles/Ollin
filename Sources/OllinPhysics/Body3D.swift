@@ -50,7 +50,9 @@ public final class Body3D {
     /// its `density` puts it; above 1 floats it higher than it should; `0` sinks
     /// it whatever it is made of. Reach for `density` first and keep this for
     /// the one crate that has to bob higher than the rest.
-    public var buoyancyScale: Double = 1
+    public var buoyancyScale: Double = 1 {
+        didSet { if !world.holds(buoyancyScale, "body.buoyancyScale") { buoyancyScale = oldValue } }
+    }
 
     /// Free-form tag so a sketch can hang its own data off a body (its color,
     /// its mesh, a group id) without a parallel array.
