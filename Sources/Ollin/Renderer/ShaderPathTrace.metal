@@ -154,10 +154,11 @@ static inline float ollin_pt_fresnel_dielectric(float cosI, float eta) {
 // The environment's radiance along `dir`, in display-linear units: the equirect at
 // the frame's rotation times the normalization-times-intensity scale (the skybox /
 // IBL exposure), or the flat ambient when no environment is bound.
-// The lobe strategy reads the level its footprint asks for (`ollin_pt_env_lod`,
-// 0 for a flat mirror seen pinhole-sharp); the environment strategy reads the same
-// filtered level its tables were built from, so one lamp texel far brighter than
-// its table cell cannot spike.
+// Both strategies of the pair read the tracer's filtered copy at the level the
+// cone reaches along the direction read (`ollin_pt_env_lod`, 0 for a flat mirror
+// seen pinhole-sharp): the continuation at its miss, and the environment's draw at
+// the level the continuation would take along the drawn direction. The backdrop
+// reads the original at the table's level.
 static inline float3 ollin_pt_env(float3 dir, constant OllinLighting &light,
                                   constant OllinPathTraceUniforms &pt,
                                   texture2d<float> equirect, float lod) {
@@ -903,9 +904,9 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
                            texture2d<float, access::read_write> stats [[texture(8)]],
                            const device uint *openList [[buffer(13)]],
                            // The tracer's own copy of the equirect, its mip chain
-                           // weighted by latitude (`ollin_pt_env_mip`), for the lobe
-                           // strategy's reads at the footprint's level; the table
-                           // strategy and the backdrop read the original.
+                           // weighted by latitude (`ollin_pt_env_mip`), read at the
+                           // footprint's level by both strategies of the pair; the
+                           // backdrop reads the original.
                            texture2d<float> equirectFiltered [[texture(9)]]) {
     uint2 gid = lane;
     if (pt.open.x > 0u) {
@@ -1301,13 +1302,26 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
                 if (!(thin && crossed))
                     throughput *= ollin_pt_smith_g1(max(abs(dot(h.s.N, wi)), 1e-4), a);
                 if (!crossed) coneSpread += spreadGain;   // a crossing keeps the cone
-                if (thin && crossed) {
-                    // A thin pane passes the ray on unturned, along the straight line
-                    // the vertex before it ran its shadow rays through, so what the ray
-                    // finds past it is still that vertex's to share out: its pdf and
-                    // its pairing carry on, and so does the leg's length, or the pane
-                    // would hand the full share of the light it hides to a lobe whose
-                    // strategies already counted it.
+                if (crossed) {
+                    // A crossing is no scatter. A thin pane passes the ray on
+                    // unturned, along the straight line the vertex before it ran
+                    // its shadow rays through, so what the ray finds past it is
+                    // still that vertex's to share out: its pdf and its pairing
+                    // carry on, and so does the leg's length, or the pane would
+                    // hand the full share of the light it hides to a lobe whose
+                    // strategies already counted it. A solid turns the ray, and
+                    // that vertex's shadow rays passed it on the straight line
+                    // (`ollin_pt_transmittance`), so the pairing carries on the
+                    // same way, the pickup weighed against the table at the
+                    // direction the ray leaves with: where the table draws that
+                    // direction reliably (a lamp) the straight pass has the light,
+                    // where it does not (the room) the bent path has it, and the
+                    // light behind a solid is counted once. Taken whole by the bent
+                    // path, as it was, a ball behind a block of index 1 read 8%
+                    // bright and behind a 0.3 slab of index 1.5 23%; taken whole by
+                    // the straight pass instead, a polished ball behind the block
+                    // read 42% of itself at 256 samples, since a near-mirror lobe is
+                    // light only its own continuation samples well.
                     straight++;
                     legCarried += hitDist;
                 } else {
@@ -1423,17 +1437,28 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
                                                          pt.meshLights.z > 0.5);
                     if (any(visE > float3(0.0))) {
                         float3 f = ollin_pt_bsdf(h, -rd, wiE);
-                        float w = ollin_pt_mis(envPdf, ollin_pt_bsdf_pdf(h, -rd, wiE));
-                        // The table's draw reads the level its tables were built
-                        // from, never the cone's: its importance matches the sharp
-                        // lamp cell, and a draw read blurred would carry little while
-                        // the blur's skirt sat in cells the table rarely draws, so a
-                        // finite count came up short (13% of the bead scene's light
-                        // at 128, measured). The footprint reaches this strategy
-                        // through the lobe instead, widened at the hit below.
+                        float pdfB = ollin_pt_bsdf_pdf(h, -rd, wiE);
+                        float w = ollin_pt_mis(envPdf, pdfB);
+                        // The draw reads the same picture the continuation would
+                        // read along this direction: the tracer's own copy at the
+                        // level the cone reaches once this lobe's footprint at
+                        // this direction is folded in, as the continuation folds
+                        // its own at the hit below. The two strategies then
+                        // estimate one integrand and their weights sum to one
+                        // over it; a draw read sharp beside a continuation read
+                        // blurred counted a lamp's blurred skirt at nearly full
+                        // weight beside its sharp core (a matte ball in the
+                        // bundled interior traced 24% above the window). A draw
+                        // whose lobe is sharp here reads finer than the table's
+                        // cell, where the sharper read's spike is what the lobe's
+                        // own weight takes, since that is the direction it draws
+                        // reliably; a draw whose lobe is wide here reads coarser.
+                        float lodE = ollin_pt_env_lod(
+                            ollin_pt_widen(coneSpread + spreadGain, pdfB),
+                            lensSpread, 0.0, equirectFiltered);
                         ollin_pt_add(radiance, dropped,
                                      throughput * f * visE
-                                     * ollin_pt_env(wiE, light, pt, equirect, pt.miss.w)
+                                     * ollin_pt_env(wiE, light, pt, equirectFiltered, lodE)
                                      * (NoLE / envPdf * w * mapped.ao),
                                      bounded && bounce > 0, bounceLimit);
                     }

@@ -140,10 +140,9 @@ extension MetalRenderer {
         // alone, which handles a uniform field exactly.
         var envTables: MTLBuffer? = nil
         var envTableLOD: Float = 0
-        // The lobe strategy's reads take the tracer's own copy of the equirect, its
-        // mip chain weighted by latitude (built beside the tables, cached with them);
-        // the table strategy and the backdrop keep the original, so a flat scene's
-        // bytes do not move.
+        // Both strategies' environment reads take the tracer's own copy of the
+        // equirect, its mip chain weighted by latitude (built beside the tables,
+        // cached with them); the backdrop keeps the original.
         var envFiltered: MTLTexture? = nil
         if lighting.iblEnabled != 0, let equirect = currentIBL?.equirect {
             envTables = envSamplingTables(for: equirect)
@@ -828,7 +827,7 @@ extension MetalRenderer {
     /// read there comes out dark (6% on the bundled interior at the top levels, exact
     /// to a tenth of a percent through level 6). The base level is a plain copy, each
     /// level above it averages its four source texels by the sine of their own
-    /// latitude, and the lobe strategy reads this copy at the footprint's level. nil
+    /// latitude, and both strategies of the pair read this copy at the footprint's level. nil
     /// when it cannot be built, and the kernel then reads the original.
     private func latitudeWeightedCopy(of equirect: MTLTexture) -> MTLTexture? {
         let desc = MTLTextureDescriptor.texture2DDescriptor(

@@ -1001,8 +1001,14 @@ struct LightingInvariantTests {
     }
 
     /// A solid block of the air's own index is not there either: it bends nothing, so the
-    /// ball behind it reads as it does without it, whatever the trace does with light
-    /// through a solid that does bend it.
+    /// ball behind it reads as it does without it. The light behind a solid is counted
+    /// once: a surface's shadow rays pass the solid on the straight line, and the path
+    /// that crosses it carries that surface's pairing on, weighed against the table at
+    /// the direction it leaves with, so a lamp the table draws reliably is the straight
+    /// pass's and the room the bent path's. Credited whole after the crossing, the ball
+    /// at roughness 0.5 read 1.081 of itself; credited to the straight pass alone, the
+    /// polished one read 0.42 at 256 samples, a near-mirror lobe being light only its
+    /// own continuation samples well.
     @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing), arguments: [0.08, 0.5])
     func anIndexMatchedBlockChangesNothingInTheTrace(roughness: Double) throws {
         let bare = mean(try traced(PaneInvariantProbe.make(pane: false, roughness: roughness), samples: 256),
@@ -1011,36 +1017,31 @@ struct LightingInvariantTests {
                                       samples: 256),
                            x: 52..<76, y: 52..<76)
         #expect(bare > 0.05, "the ball read \(bare)")
-        func check() {
-            #expect(abs(through / bare - 1) < 0.03,
-                    "through the block the ball at roughness \(roughness) read \(through / bare) of itself")
-        }
-        if roughness < 0.25 {
-            check()
-        } else {
-            withKnownIssue("a solid's shadow rays pass straight through it while the continuation that crosses it is credited in full, so the light behind a solid is counted twice: the ball behind a block of index 1 read 1.081 of itself at roughness 0.5, and behind a 0.3 slab of index 1.5 23% above the continuation's own estimate, measured 2026-10-16") {
-                check()
-            }
-        }
+        #expect(abs(through / bare - 1) < 0.03,
+                "through the block the ball at roughness \(roughness) read \(through / bare) of itself")
     }
 
     /// The trace and the window agree on a white ball in a lit room: the window's ambient
     /// is the room's light convolved by each lobe, an estimate made a different way from
     /// the same environment, and the two read within 3% of a continuation-only trace
     /// (0.384 and 0.372 for a matte ball, 0.379 and 0.376 for a metal one at roughness
-    /// 0.5). So the trace, with all its strategies, reads within 6% of the window.
+    /// 0.5). So the trace, with all its strategies, reads within 3% of the window. It
+    /// pins the two strategies reading one picture: the environment's draw read sharp
+    /// beside a continuation read blurred to its footprint counted a lamp's blurred skirt
+    /// beside its sharp core (the matte ball traced 0.475, 24% above the window), and the
+    /// two the other way round, the draw blurred beside a sharp miss, 25% under it.
     @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
     func theTraceAgreesWithTheWindowOnABallInALitRoom() throws {
         for (name, finish) in [("a matte ball", Material(shading: .physicallyBased, metallic: 0, roughness: 1)),
-                               ("a metal ball at roughness 0.5", Material.metal(roughness: 0.5))] {
+                               ("a metal ball at roughness 0.5", Material.metal(roughness: 0.5)),
+                               ("a dielectric ball at roughness 0.3",
+                                Material(shading: .physicallyBased, metallic: 0, roughness: 0.3))] {
             let probe = LitRoomInvariantProbe.make(finish)
             let window = mean(try render(probe), x: 52..<76, y: 52..<76)
             let trace = mean(try traced(probe, samples: 256), x: 52..<76, y: 52..<76)
             #expect(window > 0.05, "\(name) read \(window) in the window")
-            withKnownIssue("the continuation's miss reads the room blurred to its footprint while the environment's own draw reads it sharp and prices both weights from the sharp table, so a lamp's blurred skirt is counted beside its sharp core: traced at 256 samples, a matte ball read 0.475 where the window reads 0.384 and a continuation-only trace 0.372, and a metal one at roughness 0.5 0.434 against 0.379, measured 2026-10-16") {
-                #expect(abs(trace / window - 1) < 0.06,
-                        "traced, \(name) read \(trace / window) of the window's reading")
-            }
+            #expect(abs(trace / window - 1) < 0.03,
+                    "traced, \(name) read \(trace / window) of the window's reading")
         }
     }
 
