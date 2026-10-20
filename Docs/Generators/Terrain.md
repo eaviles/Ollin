@@ -25,6 +25,7 @@ drawMesh(land.mesh(width: 10, depth: 10, height: 2.2))
 - [Hydraulic erosion](#hydraulic)
 - [Thermal erosion](#thermal)
 - [Meshes, images, and contours](#emit)
+- [Creases](#crease)
 - [Practical notes](#notes)
 
 <a name="build"></a>
@@ -109,6 +110,20 @@ let contours = isolines(at: levels, in: sheet, resolution: 220) { p in
     return land.value(u: uv.x, v: uv.y)
 }
 ```
+
+<a name="crease"></a>
+
+#### Creases
+
+```swift
+var sheet = Heightfield(columns: 257, rows: 257, repeating: 0.5)
+sheet = sheet.creased(along: [Vector2(0.1, 0.2), Vector2(0.9, 0.7)], width: 0.03, amplitude: 0.3)
+sheet = sheet.creased(along: [Vector2(0.8, 0.1), Vector2(0.3, 0.95)], width: 0.02, amplitude: -0.2)
+```
+
+A heightfield can be folded. `creased(along:width:amplitude:)` presses a crease into the field along a polyline. The path is given in the field's normalized coordinates, `u` and `v` in 0…1, the coordinates the closure initializer samples at, and `width` is in the same units. Every sample takes `amplitude` times the kernel's value at its signed distance from the path, in widths. The field's other heights are kept, so creases stack, and `normalized()` restores 0…1 when the folds take it past. A negative amplitude sinks the crease. The flank on the path's positive side lifts and the other lowers, where the positive side is the one on which the segment's direction crossed with the offset to the sample is positive. Walking the path the other way swaps the flanks.
+
+The kernel is one closed form, `Heightfield.creaseProfile(at:)`, read at the signed distance `s` in widths. It is the sum of three parts. A **cusp**, `exp(√f − √(s² + f))` with the floor `f` = 0.004, is a sharp peak with a tip rounded over a few hundredths of the width. An **asymmetric step**, `0.3 · tanh(2s) · exp(−s² / 8)`, lifts one flank and lowers the other the way a sheet folded over sits higher on one side, and fades over a few widths. A **flanking trough**, `−0.35 · exp(−(|s| − 2)² / 0.5)`, is the hollow a crease presses into the sheet two widths out on either side. Past eight widths, where the sum is under a thousandth, the profile is read at eight. The same kernel shapes the folds of [`.paperTexture`](../Drawing/Effects.md#design), so a crease pressed into a heightfield and a fold in the paper filter are one shape. The `Effects/Textures` example folds a sheet three times with the creases' ends drifting, and lights it from the field's own slope.
 
 <a name="notes"></a>
 

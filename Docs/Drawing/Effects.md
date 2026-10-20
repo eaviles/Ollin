@@ -319,7 +319,9 @@ them, `Images/LuminanceMelt` shows the melt, `Effects/CrumpledFoil` the foil, an
   filaments wash over it.
 - **`.paperTexture(paper:shading:contrast:roughness:fiber:crumples:folds:drops:seed:)`**
   lay the image onto a sheet of paper the filter synthesizes (tooth, fibers, crumple
-  facets, fold creases, speckles), embossed by the same relief lighting. Static by design.
+  facets, fold creases, speckles), embossed by the same relief lighting. The folds are
+  straight seeded creases shaped by the [crease kernel](../Generators/Terrain.md#crease)
+  a heightfield folds by, lit on one flank and shaded on the other. Static by design.
 - **`.melt(colors:scale:warp:liquify:blend:phase:)`** the luminance melt. A warped
   noise field liquifies the layer, and the result is poured through a four-stop
   palette that runs dark to light. One displacement does two jobs. It warps the
@@ -362,6 +364,16 @@ them, `Images/LuminanceMelt` shows the melt, `Effects/CrumpledFoil` the foil, an
   and a colored one is tinted. `amount` mixes it over the layer, and `phase` drifts
   the bend: feed it `time`. The warped horizon and the hard bands are what read as
   lettering chrome, where `.liquidMetal`'s inflated bands read as a blob.
+- **`.bubbleWrap(radius:gap:magnification:lightAngle:highlight:amount:)`** a sheet
+  of bubble wrap over the layer, over whatever is already drawn. The bubbles sit on a
+  hex lattice, each a lens `radius` layer pixels across with `gap` pixels of flat film
+  between them, and each magnifies what lies under it by `magnification`, bending the
+  picture more toward its rim as a dome does. A light at `lightAngle` in the canvas
+  plane puts a bright meniscus arc on the side of each bubble toward it and a dark arc
+  on the side away, a shadow ring around the rim, and a `highlight` spot on the dome.
+  The film between the bubbles is left as the layer is. `amount` mixes the sheet
+  over the layer, and a `radius` of 0 (or an `amount` of 0) changes no byte. As a
+  `postProcess` it wraps the whole frame. See `Effects/Textures`.
 
 <img src="../../Guide/Images/20-PicturesRestyled/CrumpledFoil.jpg" alt="Two panels. On the left a heart filled with crumpled holographic foil: a stepped rainbow of stripes that jumps at every crease, bright and dark crease lines, and small cross glints at some corners. On the right the same sheet drawn as flat gray triangles, each shaded by how it faces the light, with every crease inked" width="680">
 
@@ -485,6 +497,36 @@ The basic patterns (cells stay square whatever the layer's aspect ratio):
 - **`.noise(scale:sharpness:warp:foreground:background:)`** fractal value noise, running from a soft cloud (`sharpness` 0) to a hard two-tone split (1). The `warp` value domain-warps the field, meaning the layers displace their own sampling coordinates, twice over. A `warp` of 0 is the plain field, and 1 is the classic flowing marble-and-cloud smear.
 - **`.cellular(scale:jitter:style:foreground:background:phase:)`** Worley cellular noise, `scale` cells across. `style` is `.cells` (dark cores brightening toward the walls), `.borders` (thin cracks tracing the walls), or `.mosaic` (flat stained-glass panes). `jitter` runs the cells from a regular grid (0) to fully organic (1). `phase` makes the feature points wander on small orbits, so the cells crawl and reform. It is periodic over 2π, so `phase: loopProgress(over: 12) * .tau` loops seamlessly. See the `Cellular` example.
 - **`.gaborNoise(wavelength:bandwidth:angle:spread:impulses:phase:seed:foreground:background:)`** Gabor noise, a field whose spectrum you design instead of inherit. Every kernel is a small Gaussian blob carrying a cosine wave, scattered at random and summed, so the field has one principal `wavelength` (in pixels) and, when `spread` is small, one direction: brushed metal, wood grain, straw, silk. `bandwidth` is the width of the band around that wavelength as a fraction of it, where 0.2 is nearly a pure wave with long interference patterns and 1 is blobby. `angle` is the wave direction (0 oscillates along x, so the stripes stand vertical), and `spread` is how far each kernel's own direction may wander from it: 0 is one direction, π (the default) every direction. `impulses` is how many kernels overlap at any point, the quality dial. `phase` slides every wave along its own direction and is periodic over 2π, so `phase: loopProgress(over: 8) * .tau` loops. A field at `angle + .pi` is the same field, so `angle: loopProgress(over: 8) * .pi` loops too. The kernels are filtered for a one-pixel footprint, so a wavelength driven toward two pixels fades to gray instead of aliasing. The CPU [`gaborNoise`](../Generators/Noise.md#gaborNoise) computes the same field at the same pixel. See the `GaborNoise` example.
+
+**Material textures**: surfaces asked for by name, each a scatter the sketch can
+also hold as geometry (a [`Patina`](../Generators/Textures.md#patina), a
+[`Terrazzo`](../Generators/Textures.md#terrazzo)) painted by the GPU. Hand the
+generator the scatter and the blob or chip it paints is the one you stroke; hand it
+none and it scatters its own over the layer from `seed`. Static by design, so a new
+seed is a new surface, and a scatter rebuilt each frame moves the paint with it. See
+`Effects/Textures`:
+
+- **`.rust(blobs:count:radius:seed:tones:background:lightAngle:lip:blisters:grain:)`**
+  a rust bloom: blooms whose edge wavers in two octaves around a circle, each with
+  two nested masses in darker `tones` toward its core (four colors, outer to core),
+  a flaked lip at the edge (a dark line offset one way and a light line the other,
+  under a light at `lightAngle`), and blisters inside, a dark arc on the side away
+  from the light and a bright arc on the side toward it. `background` is the steel
+  under the blooms, or `.clear` to rust whatever is drawn under the layer. With no
+  `blobs`, `count` blooms are scattered at a mean radius drawn from `radius`, in
+  layer pixels. `lip`, `blisters`, and `grain` scale their parts, `0` to leave one out.
+- **`.verdigris(blobs:count:radius:seed:tones:background:lightAngle:lip:blisters:tide:grain:)`**
+  the same blooms in the greens of weathered copper over bronze, with a `tide`
+  line, a pale deposit just inside the edge that comes and goes around the bloom by a
+  noise, the mineral crust a wet patina leaves when it dries.
+- **`.terrazzo(chips:chipRadius:density:gap:seed:tones:background:hatching:grain:)`**
+  a terrazzo floor: chips of stone set in a `background` binder. With no `chips`,
+  one is scattered by dart throwing in three size tiers, the largest at `chipRadius`
+  (in layer pixels) and the others at 0.55 and 0.3 of it, together covering about
+  `density` of the floor with every chip clear of every other by `gap` pixels. Each
+  chip is a polygon of five to eight corners in one of up to eight `tones`, and the
+  larger chips are hatched with fine lines at their own angle, the spacing following
+  the chip's size, by `hatching` (`0` for flat chips); `grain` speckles the binder.
 
 **Design patterns**: richer animated sources in the same mold. Every one takes a
 `phase` you feed `time` for motion, or hold fixed for a still. Most take a palette

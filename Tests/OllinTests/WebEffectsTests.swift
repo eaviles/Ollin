@@ -515,6 +515,42 @@ import OllinWebGate
         }
     }
 
+    /// A rust bloom over blooms a sketch scattered itself, its light turning:
+    /// the scatter travels as a lookup strip read by a generator.
+    final class Rusted: Sketch {
+        let blooms = Patina.scatter(in: Rectangle(x: 0, y: 0, width: 120, height: 120),
+                                    count: 6, radius: 18 ... 40, seed: 4)
+        override var canvasSize: CanvasSize { .square(120) }
+        override func draw() {
+            background(Color(hex: 0x14161C))
+            drawImage(generate(.rust(blobs: blooms, lightAngle: -2 + time * 0.5)).image, 0, 0)
+        }
+    }
+
+    /// A terrazzo floor laid chip by chip, the chips a strip the page reads.
+    final class Floored: Sketch {
+        let floor = Terrazzo.scatter(in: Rectangle(x: 0, y: 0, width: 120, height: 120),
+                                     chipRadius: 14, density: 0.5, seed: 4)
+        override var canvasSize: CanvasSize { .square(120) }
+        override func draw() {
+            background(Color(hex: 0x14161C))
+            let laid = min(floor.chips.count, Int(time * 60))
+            drawImage(generate(.terrazzo(chips: Terrazzo(chips: Array(floor.chips.prefix(laid)), gap: floor.gap))).image, 0, 0)
+        }
+    }
+
+    /// Bubble wrap over two discs, the light turning.
+    final class Bubbled: Sketch {
+        override var canvasSize: CanvasSize { .square(120) }
+        override func draw() {
+            background(Color(hex: 0xEFEAE0))
+            noStroke()
+            fill(Color(hex: 0x2B6C8C)); drawCircle(40, 50, 26)
+            fill(Color(hex: 0xE4572E)); drawCircle(80, 70, 22)
+            postProcess(.bubbleWrap(radius: 11, gap: 3, lightAngle: -2 + time * 0.6))
+        }
+    }
+
     /// A blurred layer under a bloomed one, the two passes the page owns.
     final class Blurred: Sketch {
         override var canvasSize: CanvasSize { .square(120) }
@@ -874,6 +910,9 @@ import OllinWebGate
             ("Pinned", { Pinned() }, 4, 2),
             ("Foiled", { Foiled() }, 4, 2),
             ("Chromed", { Chromed() }, 4, 2),
+            ("Rusted", { Rusted() }, 4, 2),
+            ("Floored", { Floored() }, 4, 2),
+            ("Bubbled", { Bubbled() }, 4, 2),
             ("Measured", { Measured() }, 4, 2),
             ("Outlined", { Outlined() }, 4, 2),
             ("Shadowed", { Shadowed() }, 4, 2),

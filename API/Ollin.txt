@@ -4089,6 +4089,7 @@ struct Filter: Sendable
   static func bloom(threshold: Double = default, amount: Double = default, radius: Double = default) -> Filter
   static func boxBlur(radius: Double = default) -> Filter
   static func brushwork(radius: Double = default, stretch: Double = default, sharpness: Double = default) -> Filter
+  static func bubbleWrap(radius: Double = default, gap: Double = default, magnification: Double = default, lightAngle: Double = default, highlight: Double = default, amount: Double = default) -> Filter
   static func bulge(amount: Double = default, radius: Double = default, center: Vector2 = default) -> Filter
   static func channelMixer(_: ColorMatrix) -> Filter
   static func chromaticAberration(amount: Double = default, mode: Filter.Dispersion = default, spectral: Bool = default, quality: RenderQuality = default) -> Filter
@@ -4413,9 +4414,12 @@ struct Generator: Sendable
   static func phyllotaxis(colors: [Color] = default, background: Color = default, count: Double = default, dotSize: Double = default, phase: Double = default) -> Generator
   static func pulsingBorder(colors: [Color] = default, background: Color = default, roundness: Double = default, thickness: Double = default, softness: Double = default, amount: Double = default, bloom: Double = default, spots: Double = default, spotSize: Double = default, pulse: Double = default, smoke: Double = default, smokeScale: Double = default, margins: Insets = default, phase: Double = default) -> Generator
   static func quasicrystal(colors: [Color] = default, background: Color = default, symmetry: Double = default, scale: Double = default, contrast: Double = default, phase: Double = default) -> Generator
+  static func rust(blobs: Patina? = default, count: Int = default, radius: ClosedRange<Double> = default, seed: Int = default, tones: [Color] = default, background: Color = default, lightAngle: Double = default, lip: Double = default, blisters: Double = default, grain: Double = default) -> Generator
   static func shader(_: Shader) -> Generator
   static func smokeRing(colors: [Color] = default, background: Color = default, radius: Double = default, thickness: Double = default, fill: Double = default, scale: Double = default, detail: Double = default, phase: Double = default) -> Generator
   static func spiral(foreground: Color = default, background: Color = default, density: Double = default, distortion: Double = default, strokeWidth: Double = default, taper: Double = default, cap: Double = default, noise: Double = default, noiseScale: Double = default, softness: Double = default, scale: Double = default, phase: Double = default) -> Generator
+  static func terrazzo(chips: Terrazzo? = default, chipRadius: Double = default, density: Double = default, gap: Double = default, seed: Int = default, tones: [Color] = default, background: Color = default, hatching: Double = default, grain: Double = default) -> Generator
+  static func verdigris(blobs: Patina? = default, count: Int = default, radius: ClosedRange<Double> = default, seed: Int = default, tones: [Color] = default, background: Color = default, lightAngle: Double = default, lip: Double = default, blisters: Double = default, tide: Double = default, grain: Double = default) -> Generator
   static func waves(foreground: Color = default, background: Color = default, shape: Double = default, frequency: Double = default, amplitude: Double = default, spacing: Double = default, proportion: Double = default, softness: Double = default, scale: Double = default, phase: Double = default) -> Generator
   var plane: ComplexPlane? { get }
 struct Genome: BidirectionalCollection, Collection, Equatable, Hashable, RandomAccessCollection, Sendable, Sequence
@@ -4531,6 +4535,7 @@ struct Hatching: Equatable, Sendable
   var usesToneDensity: Bool { get set }
 struct Heightfield: Sendable
   func coloredMesh(width: Double = default, depth: Double = default, height: Double = default, _: Ramp, in: ClosedRange<Double> = default) -> Mesh
+  func creased(along: [Vector2], width: Double, amplitude: Double) -> Heightfield
   func drainage(fillingHollows: Bool = default, minDrop: Double = default) -> Drainage
   func eroded(_: Erosion, seed: Int = default) -> Heightfield
   func eroded(_: Erosion, using: R) -> Heightfield
@@ -4545,6 +4550,7 @@ struct Heightfield: Sendable
   init(columns: Int, rows: Int, values: [Double])
   let columns: Int
   let rows: Int
+  static func creaseProfile(at: Double) -> Double
   static func diamondSquare(size: Int, roughness: Double = default, seed: Int = default) -> Heightfield
   static func diamondSquare(size: Int, roughness: Double = default, using: R) -> Heightfield
   subscript(_: Int, _: Int) -> Double { get set }
@@ -5795,6 +5801,28 @@ struct PathTracing: Equatable, Sendable
   var reusedFrames: Int { get set }
   var samplesPerPixel: Int { get set }
   var secondsPerFrame: Double { get set }
+struct Patina: Equatable, Sendable
+  init(blobs: [Patina.Blob])
+  let blobs: [Patina.Blob]
+  static func scatter(in: Rectangle, count: Int = default, radius: ClosedRange<Double> = default, seed: Int = default) -> Patina
+  static func scatter(in: Rectangle, count: Int = default, radius: ClosedRange<Double> = default, using: R) -> Patina
+  struct Blob: Equatable, Sendable
+    func boundaryRadius(at: Double) -> Double
+    func contains(_: Vector2) -> Bool
+    init(center: Vector2, radius: Double, amplitudes: SIMD4<Double>, phases: SIMD4<Double>, massOffset: Vector2, blisters: [Circle], tone: Double)
+    let amplitudes: SIMD4<Double>
+    let blisters: [Circle]
+    let center: Vector2
+    let massOffset: Vector2
+    let phases: SIMD4<Double>
+    let radius: Double
+    let tone: Double
+    static let harmonics: SIMD4<Double>
+    static let massScales: [Double]
+    var masses: [Contour] { get }
+    var outline: Contour { get }
+    var swing: Double { get }
+  var outlines: [Contour] { get }
 struct Percolation: Equatable, Hashable, Sendable
   func cellRects(of: Int, in: Rectangle) -> [Rectangle]
   func cluster(_: Int) -> [(column: Int, row: Int)]
@@ -6879,6 +6907,28 @@ struct Tensegrity: Equatable, Sendable
   var imbalance: Double { get }
   var nodes: [Vector3] { get set }
   var struts: [Tensegrity.Member] { get set }
+struct Terrazzo: Equatable, Sendable
+  init(chips: [Terrazzo.Chip], gap: Double = default)
+  let chips: [Terrazzo.Chip]
+  let gap: Double
+  static func scatter(in: Rectangle, chipRadius: Double = default, density: Double = default, gap: Double = default, tones: Int = default, seed: Int = default) -> Terrazzo
+  static func scatter(in: Rectangle, chipRadius: Double = default, density: Double = default, gap: Double = default, tones: Int = default, using: R) -> Terrazzo
+  static let tierScales: [Double]
+  static let tierShares: [Double]
+  struct Chip: Equatable, Sendable
+    func contains(_: Vector2) -> Bool
+    init(center: Vector2, radius: Double, rotation: Double, tier: Int, tone: Int, corners: [Double])
+    let center: Vector2
+    let corners: [Double]
+    let radius: Double
+    let rotation: Double
+    let tier: Int
+    let tone: Int
+    var outline: Contour { get }
+    var points: [Vector2] { get }
+    var shape: Shape { get }
+    var sides: Int { get }
+  var outlines: [Contour] { get }
 struct TextGlyph
   func draw()
   let bounds: Rectangle

@@ -416,6 +416,11 @@ public struct Filter: Sendable {
                              bandShift: Double, lightAngle: Double, lightElevation: Double,
                              relief: Double, creases: Double, glints: Double,
                              amount: Double, phase: Double)
+        /// A sheet of bubble wrap over the layer: a hex lattice of lenses,
+        /// each magnifying what lies under it, with a shadow ring, two opposed
+        /// meniscus arcs, and a highlight under a light.
+        case bubbleWrap(radius: Double, gap: Double, magnification: Double, lightAngle: Double,
+                        highlight: Double, amount: Double)
         /// Airbrushed lettering chrome over the layer's alpha shape: a sky
         /// above a warped horizon, a dark core band under it, a floor below,
         /// and a razor break with a bright wire beside it.
@@ -1542,6 +1547,25 @@ public struct Filter: Sendable {
                                       relief: max(relief, 0), creases: min(max(creases, 0), 4),
                                       glints: min(max(glints, 0), 4), amount: min(max(amount, 0), 1),
                                       phase: phase))
+    }
+
+    /// Bubble wrap: a sheet of bubble wrap laid over the layer, over whatever
+    /// is already drawn. The bubbles sit on a hex lattice, each a lens
+    /// `radius` layer pixels across with `gap` pixels of flat film between
+    /// them, and each magnifies what lies under it by `magnification`, bending
+    /// the picture more toward its rim as a dome does. A light at
+    /// `lightAngle` in the canvas plane puts a bright meniscus arc on the
+    /// side of each bubble toward it and a dark arc on the side away, a
+    /// shadow ring around the rim, and a `highlight` spot on the dome. The
+    /// film between the bubbles is left as the layer is. `amount` mixes the
+    /// sheet over the layer, and a `radius` of 0 (or an `amount` of 0) leaves
+    /// every byte as it was.
+    public static func bubbleWrap(radius: Double = 26, gap: Double = 6, magnification: Double = 1.4,
+                                  lightAngle: Double = -2.2, highlight: Double = 0.7,
+                                  amount: Double = 1) -> Filter {
+        Filter(kind: .bubbleWrap(radius: max(radius, 0), gap: max(gap, 0),
+                                 magnification: min(max(magnification, 1), 4), lightAngle: lightAngle,
+                                 highlight: min(max(highlight, 0), 2), amount: min(max(amount, 0), 1)))
     }
 
     /// Chrome: render the layer's alpha shape as airbrushed lettering chrome,

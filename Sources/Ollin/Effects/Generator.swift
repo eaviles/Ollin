@@ -45,6 +45,22 @@ public struct Generator: Sendable {
         /// A user-supplied `Shader` run as a source layer (it reads no input).
         case shader(Shader)
 
+        // Material textures ----------------------------------------------------
+        /// Corrosion blooms over a surface: the blobs of a `Patina` (the one
+        /// handed in, or `count` scattered at `radius` from `seed`), each
+        /// painted through four `tones` from the outer bloom to the deepest
+        /// core, with a flaked lip at the edge, blisters inside, and, when
+        /// `tide` is up, a noise-gated tide line inside the edge. The rust and
+        /// the verdigris are this one kind with other palettes.
+        case patina(blobs: Patina?, count: Int, radius: ClosedRange<Double>, seed: Int,
+                    tones: [SIMD4<Float>], background: SIMD4<Float>, lightAngle: Double,
+                    lip: Double, blisters: Double, tide: Double, grain: Double)
+        /// A terrazzo floor: the chips of a `Terrazzo` (the one handed in, or
+        /// one scattered over the layer from `seed`), each a polygon in one of
+        /// the `tones`, hatched by size, set in a `background` binder.
+        case terrazzo(chips: Terrazzo?, chipRadius: Double, density: Double, gap: Double, seed: Int,
+                      tones: [SIMD4<Float>], background: SIMD4<Float>, hatching: Double, grain: Double)
+
         // Design patterns ------------------------------------------------------
         /// Soft color blobs drifting on orbits, blended by inverse-distance
         /// weighting over a domain-warped, optionally swirled field.
@@ -256,6 +272,94 @@ public struct Generator: Sendable {
     /// A user-supplied `Shader` as a procedural source layer: it reads no input and
     /// fills the layer from its `shade(uv, info)` function. Use it with `generate`.
     public static func shader(_ shader: Shader) -> Generator { Generator(kind: .shader(shader)) }
+
+    // MARK: Material textures
+
+    /// A rust bloom: corrosion blooms over a steel surface, each a blob whose
+    /// edge wavers in two octaves around a circle, with nested masses in
+    /// darker tones toward its core, a flaked lip at the edge (a dark line
+    /// offset one way and a light line the other, under a light at
+    /// `lightAngle` in the canvas plane), and blisters inside, each a dark
+    /// arc on the side away from the light and a bright arc on the side
+    /// toward it. `tones` run from the outer bloom to the deepest core, four
+    /// colors (fewer repeat the last); `background` is the surface under the
+    /// blooms, which can be `.clear` to rust whatever is drawn under the
+    /// layer. `blobs` is the `Patina` to paint, so the blooms a sketch holds
+    /// and strokes are the blooms the GPU paints; with none, `count` blooms
+    /// are scattered over the layer at a mean radius drawn from `radius` (in
+    /// layer pixels) from `seed`. `lip` scales the flaked edge, `blisters` the
+    /// blisters, `grain` the speckle in the bloom, each `0` to leave it out.
+    /// Static by design: nothing here moves without a new seed.
+    public static func rust(blobs: Patina? = nil, count: Int = 14,
+                            radius: ClosedRange<Double> = 40 ... 150, seed: Int = 1,
+                            tones: [Color] = [Color(hex: 0xC2602E), Color(hex: 0x8F3F1C),
+                                              Color(hex: 0x5E2612), Color(hex: 0x2A140A)],
+                            background: Color = Color(hex: 0x4B5057),
+                            lightAngle: Double = -2.2, lip: Double = 1, blisters: Double = 1,
+                            grain: Double = 0.6) -> Generator {
+        patina(blobs: blobs, count: count, radius: radius, seed: seed, tones: tones,
+               background: background, lightAngle: lightAngle, lip: lip, blisters: blisters,
+               tide: 0, grain: grain)
+    }
+
+    /// A verdigris patina: the same blooms as `rust` in the greens of
+    /// weathered copper over a bronze surface, with a `tide` line, a pale
+    /// deposit just inside the edge that comes and goes around the bloom by a
+    /// noise, as the mineral crust a wet patina leaves when it dries. The
+    /// parameters mean what they mean on `rust`; `tide` scales the line, `0`
+    /// for none.
+    public static func verdigris(blobs: Patina? = nil, count: Int = 14,
+                                 radius: ClosedRange<Double> = 40 ... 150, seed: Int = 1,
+                                 tones: [Color] = [Color(hex: 0x74BB9A), Color(hex: 0x3F917C),
+                                                   Color(hex: 0x2A6E69), Color(hex: 0x1B4A4B)],
+                                 background: Color = Color(hex: 0x6E4C2B),
+                                 lightAngle: Double = -2.2, lip: Double = 0.8, blisters: Double = 0.6,
+                                 tide: Double = 1, grain: Double = 0.5) -> Generator {
+        patina(blobs: blobs, count: count, radius: radius, seed: seed, tones: tones,
+               background: background, lightAngle: lightAngle, lip: lip, blisters: blisters,
+               tide: tide, grain: grain)
+    }
+
+    private static func patina(blobs: Patina?, count: Int, radius: ClosedRange<Double>, seed: Int,
+                               tones: [Color], background: Color, lightAngle: Double,
+                               lip: Double, blisters: Double, tide: Double, grain: Double) -> Generator {
+        var palette = tones.map(\.linearRGBA)
+        if palette.isEmpty { palette = [Color(hex: 0xC2602E).linearRGBA] }
+        while palette.count < 4 { palette.append(palette[palette.count - 1]) }
+        let low = max(min(radius.lowerBound, radius.upperBound), 1)
+        return Generator(kind: .patina(blobs: blobs, count: max(count, 0),
+                                       radius: low ... max(radius.upperBound, low), seed: seed,
+                                       tones: Array(palette.prefix(4)), background: background.linearRGBA,
+                                       lightAngle: lightAngle, lip: min(max(lip, 0), 3),
+                                       blisters: min(max(blisters, 0), 3), tide: min(max(tide, 0), 3),
+                                       grain: min(max(grain, 0), 2)))
+    }
+
+    /// A terrazzo floor: chips of stone set in a binder. The chips are those of
+    /// a `Terrazzo` (`chips`, so the chips a sketch holds and strokes are the
+    /// chips the GPU paints) or, with none, one scattered over the layer by
+    /// dart throwing in three size tiers from `seed`: the largest tier at
+    /// `chipRadius` (in layer pixels) and the others at 0.55 and 0.3 of it,
+    /// together covering about `density` of the floor, every chip clear of
+    /// every other by `gap` pixels. Each chip is a polygon of five to eight
+    /// corners in one of the `tones` (up to eight), and the larger chips are
+    /// hatched with fine lines at their own angle, the spacing following the
+    /// chip's size, by `hatching` (`0` for flat chips). `background` is the
+    /// binder, speckled by `grain`. Static by design.
+    public static func terrazzo(chips: Terrazzo? = nil, chipRadius: Double = 44, density: Double = 0.55,
+                                gap: Double = 3, seed: Int = 1,
+                                tones: [Color] = [Color(hex: 0xDCC9B2), Color(hex: 0x8F3A2E),
+                                                  Color(hex: 0x2E3A46), Color(hex: 0xC9A458),
+                                                  Color(hex: 0xF1EDE4)],
+                                background: Color = Color(hex: 0xB8AFA2),
+                                hatching: Double = 0.6, grain: Double = 0.4) -> Generator {
+        var palette = tones.map(\.linearRGBA)
+        if palette.isEmpty { palette = [Color(hex: 0xDCC9B2).linearRGBA] }
+        return Generator(kind: .terrazzo(chips: chips, chipRadius: max(chipRadius, 2),
+                                         density: min(max(density, 0), 0.9), gap: max(gap, 0), seed: seed,
+                                         tones: Array(palette.prefix(8)), background: background.linearRGBA,
+                                         hatching: min(max(hatching, 0), 2), grain: min(max(grain, 0), 2)))
+    }
 
     // MARK: Design patterns
 

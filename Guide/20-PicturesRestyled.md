@@ -153,6 +153,19 @@ drawImage(word.filtered(.chrome(phase: time * 0.6)).image, 0, 0)
 
 Every stop is a parameter. `sky` and `floor` are ramps, read from the top of the layer down to the horizon and from the horizon down to the bottom. `core` and `wire` are colors. So the gold and the night palettes under the word are the same filter with other ramps. `horizon` sets where the join sits, `warp` how far it bends, `waves` how often, and `phase` drifts the bend: feed it `time`. It differs from `.liquidMetal` above, whose bands wrap an inflated shape. This one reads as lettering because its horizon is a line. The parameters are on the [Effects](../Docs/Drawing/Effects.md#design) page. [`Examples/Effects/ChromeLettering`](../Examples/Effects/ChromeLettering/Sketch.swift) letters a word in three palettes picked from the inspector.
 
+### A sheet over the picture: bubbleWrap
+
+The last design filter transforms the picture rather than reading a shape, and it is the one that goes over everything. `.bubbleWrap` lays a sheet of bubble wrap on the layer. The bubbles sit on a hex lattice, and each one is a lens that magnifies what is under it, bending the picture more toward its rim as a dome does. Each has a shadow ring, a bright arc on the side toward the light, a dark arc on the side away, and a highlight on the dome. The film between the bubbles leaves the layer as it is. Applied with `postProcess`, it wraps the whole frame, drawing and all.
+
+<img src="Images/20-PicturesRestyled/BubbleWrap.jpg" alt="Two panels of the same photograph of a hillside town. The left is the plain picture; the right is seen through a sheet of bubble wrap, every bubble a small lens with a highlight on its upper left and a shadow on its lower right, the picture magnified a little inside each" width="680">
+
+```swift
+drawCircle(width / 2, height / 2, 300)        // whatever the frame holds
+postProcess(.bubbleWrap(radius: 26, gap: 6, lightAngle: -2.2))
+```
+
+`radius` and `gap` are in layer pixels, and `magnification` is how much each lens enlarges. `lightAngle` turns the arcs and the highlight around the bubbles, and `highlight` scales the spot. A radius of 0 changes nothing, which is the filter's resting state. It sits among the material textures that [Chapter 18](18-YourFirstShader.md#surfaces-by-name-rust-verdigris-and-terrazzo) paints from nothing. The [`Effects/Textures`](../Examples/Effects/Textures/Sketch.swift) example has it on the same picker as the rust and the terrazzo. The parameters are on the [Effects](../Docs/Drawing/Effects.md#design) page.
+
 ## Putting it together: the hand-colored print
 
 The hand-colored print turns a photograph into the kind of picture a print shop once sold, an engraving tinted by hand. It stacks five of this chapter's steps. `brushwork` paints the color, and `hatching` draws the line work over it under [Chapter 19](19-LayersAndEffects.md)'s `.multiply`. Then a look grades the frame warm, film grain gives it a texture, and `paperTexture` presses it into a sheet. Make `MySketches/HandColored.swift`:
@@ -390,6 +403,7 @@ The entries after the print name their own sources. The ink line is the extended
 - [Sample photographs](../Docs/Drawing/SamplePhotos.md): the bundled pictures the chapter's figures and its print start from, and what each one is good for.
 - Worked examples: [`Examples/Effects/InkDrawing`](../Examples/Effects/InkDrawing/Sketch.swift) (the scarf photograph as pen and ink), [`Examples/Effects/Brushwork`](../Examples/Effects/Brushwork/Sketch.swift) (the marigolds photograph painted as brushwork, every dial on a parameter), [`Examples/Effects/Coherence`](../Examples/Effects/Coherence/Sketch.swift) (the portrait flattened into regions by the shock filter), [`Examples/Effects/Hatching`](../Examples/Effects/Hatching/Sketch.swift) (an engraved landscape with the sun crossing it), [`Examples/Color/Look`](../Examples/Color/Look/Sketch.swift) (a look from a `.cube` file wiped across a portrait), [`Examples/Effects/FilmLook`](../Examples/Effects/FilmLook/Sketch.swift) (a night street through halation and grain), [`Examples/Effects/Relight`](../Examples/Effects/Relight/Sketch.swift), [`Examples/Effects/Droste`](../Examples/Effects/Droste/Sketch.swift), and [`Examples/Effects/FilterCatalog`](../Examples/Effects/FilterCatalog/Sketch.swift).
 - [`Examples/Effects/ChromeLettering`](../Examples/Effects/ChromeLettering/Sketch.swift): a word in airbrushed chrome, the horizon drifting, with the classic, gold, and night palettes on a parameter.
+- [`Examples/Effects/Textures`](../Examples/Effects/Textures/Sketch.swift): bubble wrap over a drawing, beside the rust, the verdigris, the terrazzo, and a creased sheet, one picker across them.
 
 ---
 

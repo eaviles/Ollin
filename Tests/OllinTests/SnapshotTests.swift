@@ -225,6 +225,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("holographic-foil",
                  note: "The holographic foil filter at a fixed phase and light (no time, no random): a star silhouette as crumpled foil on the left, with the sheet's creases drawn in geometry from the same FacetField over the filter's fill, and the full tile as a sheet with a pressed-in mark on the right. Pins the facet lookup strip, the band break by tilt, the lit and dark creases, the corner glints, the relief from the layer's luminance, and the CPU and GPU agreement on the sheet.",
                  make: { HolographicFoilSheet() }),
+    SnapshotCase("material-textures",
+                 note: "The material textures at fixed seeds and lights (no time, no random): a rust bloom over a Patina the sketch holds with its outlines drawn in geometry over the paint, a verdigris patina the generator scatters itself, a terrazzo floor over a Terrazzo the sketch holds, and bubble wrap over two discs and a word. Pins the two lookup strips (TextureTable), the bloom stack (tones, masses, lip, blisters, tide), the chip sector test and hatching by size, the hex lens lattice with its arcs and highlight, and the CPU and GPU agreement on both scatters.",
+                 make: { MaterialTexturesSheet() }),
     SnapshotCase("design-patterns",
                  note: "The nine other design-pattern generators tiled 3×3 at fixed phases (no time, no random): filaments, smokeRing, colorPanels, spiral, waves, dotOrbit, grainGradient, pulsingBorder, godRays. Pins each generator dispatch arm and fragment, incl. the polar-seam blends, the pane projection + scheduling, and the dual over/additive bloom accumulations.",
                  make: { DesignPatternsSheet() }),
@@ -9809,6 +9812,41 @@ private final class HolographicFoilSheet: Sketch {
                                                     lightAngle: 2.4, relief: 50, phase: 0.6)).image, 256, 0)
     }
 
+}
+
+/// The material textures at fixed seeds and lights: a rust bloom and a
+/// verdigris patina over scatters the sketch holds (the rust with its blooms'
+/// outlines drawn in geometry over the paint, which lands on the GPU's), a
+/// terrazzo floor, and bubble wrap over two discs and a word.
+private final class MaterialTexturesSheet: Sketch {
+    override var canvasSize: CanvasSize { .square(512) }
+
+    override func draw() {
+        background(.black)
+        let tile = Rectangle(x: 0, y: 0, width: 256, height: 256)
+        let blooms = Patina.scatter(in: tile, count: 9, radius: 28 ... 70, seed: 6)
+        drawImage(generate(.rust(blobs: blooms, lightAngle: -2.1), width: 256, height: 256).image, 0, 0)
+        stroke(Color(white: 0.05, alpha: 0.6)); strokeWeight(0.8); noFill()
+        for blob in blooms.blobs { drawPolygon(blob.outline.points) }
+
+        drawImage(generate(.verdigris(count: 10, radius: 24 ... 64, seed: 3, lightAngle: 2.4),
+                           width: 256, height: 256).image, 256, 0)
+
+        let floor = Terrazzo.scatter(in: tile, chipRadius: 22, density: 0.6, gap: 2, tones: 5, seed: 2)
+        drawImage(generate(.terrazzo(chips: floor), width: 256, height: 256).image, 0, 256)
+
+        let drawing = makeRenderTarget(width: 256, height: 256)
+        withTarget(drawing) {
+            background(Color(hex: 0xEFEAE0))
+            noStroke()
+            fill(Color(hex: 0x2B6C8C)); drawCircle(90, 110, 56)
+            fill(Color(hex: 0xE4572E)); drawCircle(170, 150, 48)
+            fill(Color(hex: 0x1A1B1E))
+            textFont(.systemBold); textSize(64); textAlign(.center, .middle)
+            drawText("WRAP", 128, 128)
+        }
+        drawImage(drawing.filtered(.bubbleWrap(radius: 14, gap: 3, lightAngle: -2.2)).image, 256, 256)
+    }
 }
 
 private final class ChromeLetteringSheet: Sketch {

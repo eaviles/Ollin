@@ -885,7 +885,7 @@ extension MetalRenderer {
              .droste, .bulge, .wave, .ripple, .mirror, .polar, .tile, .perturb,
              .lensDistortion, .cornerPin, .channelMixer,
              .flutedGlass, .water, .paperTexture, .melt, .fieldMap, .arrows, .holographicFoil,
-             .chrome:
+             .chrome, .bubbleWrap:
             return nil
         // Every layer style was encoded from its `styledPass` description above.
         case .outline, .shadow, .glow, .bevel:
@@ -2439,9 +2439,16 @@ extension MetalRenderer {
             return
         }
         // Every pattern is one fragment pass described as data (the same
-        // description the web recorder writes down).
+        // description the web recorder writes down). A generator reads no
+        // layer, only the lookup strips a texture generator carries its
+        // scatter in.
         guard let pass = generator.pass(width: width, height: height, scale: scale) else { return }
-        encodeEffectFragment(pass.fragment, inputs: [], output: output, params: pass.params, into: cb)
+        var inputs: [MTLTexture] = []
+        for input in pass.inputs {
+            guard case .table(let samples) = input, let tex = makeLUTTexture(samples) else { continue }
+            inputs.append(tex)
+        }
+        encodeEffectFragment(pass.fragment, inputs: inputs, output: output, params: pass.params, into: cb)
     }
 
     /// Encode one fullscreen filter (or generator) fragment pass: bind `inputs` as

@@ -42,6 +42,13 @@ Once the field is shaped, it reads out three ways. `mesh(width:depth:height:)` g
 
 Erosion is work, tens of thousands of drops each walking dozens of steps, so it belongs in `setup()`. Grow the field, weather it, keep the mesh, and let `draw()` draw it.
 
+A heightfield can also be folded. `creased(along:width:amplitude:)` presses a crease into the field along a path, given in the same 0 to 1 coordinates the closure initializer samples at. One closed-form kernel shapes it: a sharp cusp, a step that lifts one flank and lowers the other the way a folded sheet sits, and a shallow trough two widths out on both sides. Creases stack, so three calls crumple a sheet, and a negative amplitude sinks one. It is the same kernel that shapes the folds of [Chapter 20](20-PicturesRestyled.md)'s paper filter. That is why a crease in a landscape and a fold in a sheet of paper look like one thing. The [`Effects/Textures`](../Examples/Effects/Textures/Sketch.swift) example's crease mode folds a flat sheet three times with the creases' ends drifting, and lights it from the field's own slope. The kernel's closed form is on the [Terrain](../Docs/Generators/Terrain.md#crease) page.
+
+```swift
+var sheet = Heightfield(columns: 257, rows: 257, repeating: 0.5)
+sheet = sheet.creased(along: [Vector2(0.1, 0.2), Vector2(0.9, 0.7)], width: 0.03, amplitude: 0.3)
+```
+
 ## Ten thousand of the same thing: instancing
 
 Once there is ground, you want many things standing on it: a plaza of columns, a hillside of trees, a scatter of ten thousand rocks. The first loop to write, `drawMesh` inside a `for`, pays the mesh's full cost once per copy, every frame, on the CPU. Ten thousand copies of even a small mesh are hundreds of thousands of vertices rebuilt per frame, and the frame rate drops accordingly.

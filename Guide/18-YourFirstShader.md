@@ -189,7 +189,7 @@ An aurora is motion, so keep it as a loop. `swift run OllinLive MySketches/Auror
 
 ## The shaders Ollin ships: the design generators, the pattern fields, and anti-aliasing
 
-The aurora was a shader you wrote and `generate` ran. Ollin's own built-in patterns are shaders written with the same library, and `generate` runs them the same way. Two groups come with it. The design generators look like finished graphics at their defaults. The pattern fields are closed forms, one piece of arithmetic per pixel, which you now know how to read. A generated layer carries no coverage, the record of how much of each edge pixel a shape fills. So a filter, a pass over the finished layer, repairs the stair-stepped edges any of them leaves.
+The aurora was a shader you wrote and `generate` ran. Ollin's own built-in patterns are shaders written with the same library, and `generate` runs them the same way. Three groups come with it. The design generators look like finished graphics at their defaults. The pattern fields are closed forms, one piece of arithmetic per pixel, which you now know how to read. The material textures are surfaces asked for by name, rust and terrazzo among them, each painted over geometry the sketch can hold. A generated layer carries no coverage, the record of how much of each edge pixel a shape fills. So a filter, a pass over the finished layer, repairs the stair-stepped edges any of them leaves.
 
 ### Backdrops that come composed: the design generators
 
@@ -264,6 +264,21 @@ The two differ, and the differences show what a built-in adds. The bands run a d
 `z = info.time` reads a 3D field at a moving slice, which is a general trick to keep. It is why the bands crawl and reconnect instead of sliding.
 
 Two conventions apply across the design and pattern-field sets. Their palettes blend in sRGB, the plain screen RGB of [Chapter 2](02-Color.md#mixing-you-can-trust)'s RGB row. That is the space design tools work in. So mixes look like what a design tool would show rather than what physically correct light would do. And centered compositions stay centered and round whatever the canvas shape, so a tall layer does not get a squashed crystal. When a built-in is close to what you want, take it and adjust its arguments. When it is not, you now know what is inside one.
+
+### Surfaces by name: rust, verdigris, and terrazzo
+
+A **material texture** is a built-in generator that paints a surface you would otherwise photograph: a rust bloom, a verdigris patina, a terrazzo floor. It is for a ground that has to look like a material rather than a graphic, and the difference from the design generators is what sits under the paint. Each of these is drawn over a scatter the sketch can hold as geometry: the rust and the verdigris over a `Patina`, the blobs a corrosion grows from, and the terrazzo over a `Terrazzo`, the chips of a floor. Hand the generator the scatter and it paints those very blobs or chips, so a plotter draws the same blooms the screen shows. The scatters are seeded, and the floor is laid by dart throwing (Cook, 1986), the same even-but-random placement behind [Chapter 4](04-Randomness.md)'s Poisson disk.
+
+```swift
+let blooms = Patina.scatter(in: canvasRectangle, count: 12, seed: 3)
+drawImage(generate(.rust(blobs: blooms)).image, 0, 0)
+stroke(.black); noFill()
+for blob in blooms.blobs { drawPolygon(blob.outline.points) }   // lands on the paint
+```
+
+<img src="Images/18-YourFirstShader/MaterialTextures.jpg" alt="Three labeled tiles: orange rust blooms with darker cores, blisters, and a lit edge over gray steel; the same blooms in the greens of verdigris with a pale tide line over bronze; and a terrazzo floor of red, slate, ochre, and cream chips in three sizes, the larger ones hatched" width="680">
+
+The rust bloom is a circle whose edge wavers in two octaves. Inside it sit two nested masses in darker tones toward the core, a flaked lip at the edge lit from one side, and blisters that catch the light on one side and shade on the other. The verdigris is the same bloom in the greens of weathered copper, with a tide line, a pale deposit that comes and goes around the edge. The terrazzo is three sizes of chip thrown largest first, each a polygon of five to eight corners, no two alike, the larger ones hatched at their own angle. Every part is a parameter, and the tones are yours. `.rust(tones:background:)` with `background: .clear` rusts whatever is drawn under the layer. A scatter rebuilt each frame moves the paint with it. That is how [`Examples/Effects/Textures`](../Examples/Effects/Textures/Sketch.swift) grows its blooms in one after another and lays its floor chip by chip. The scatters' geometry is on the [Textures](../Docs/Generators/Textures.md) page, and the paint's parameters on the [Effects](../Docs/Drawing/Effects.md#generate) page.
 
 ### The edges a shader leaves: post-process anti-aliasing
 
@@ -402,6 +417,7 @@ Shaders come out of computer graphics research and the demoscene, and two projec
 - [Checking a shader](../Docs/Tools/ShaderCheck.md): `ollin check` on the command line, with what it reports, naming the shape yourself, and checking several files at once.
 - [The shader library](../Docs/Shaders/ShaderLibrary.md): every spliced-in helper with its signature, and the `using:` option that splices in only the sections you name.
 - [Generators](../Docs/Drawing/Effects.md#generate): `Generator` and `generate(_:)`, the pattern-field catalog with every argument, and how a generated layer feeds the rest of an effect chain.
+- [Textures](../Docs/Generators/Textures.md): the `Patina` and `Terrazzo` scatters under the material textures, every property of a bloom and a chip, and how the generators read them. The [`Effects/Textures`](../Examples/Effects/Textures/Sketch.swift) example has all five textures on one picker.
 - [Visual chains](../Docs/Shaders/Visuals.md): all sources, warps, color ops, combines, and modulations.
 - [Compute](../Docs/Shaders/Compute.md): the sibling world where kernels update buffers of particles instead of pixels, waiting in [Chapter 25](25-ParticleSimulations.md).
 - Appendix B draws this chapter's math, one picture per idea: [Where things are](B-JustEnoughMath.md#normalized-coordinates-01-anywhere), [Per-pixel thinking and distance](B-JustEnoughMath.md#per-pixel-thinking-and-distance).

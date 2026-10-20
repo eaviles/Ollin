@@ -43,7 +43,7 @@ struct WebFragmentTranslatorTests {
         "ollin_fx_tile", "ollin_fx_perturb", "ollin_fx_lens_distortion", "ollin_fx_corner_pin",
         "ollin_fx_channel_mixer", "ollin_fx_fluted_glass", "ollin_fx_water",
         "ollin_fx_paper_texture", "ollin_fx_melt", "ollin_fx_field_map", "ollin_fx_arrows",
-        "ollin_fx_holographic_foil",
+        "ollin_fx_holographic_foil", "ollin_fx_chrome", "ollin_fx_bubble_wrap",
         "ollin_fx_brightpass", "ollin_fx_bloom_combine", "ollin_fx_halation_combine",
         // The measured field's ladder, and the layer styles that read it or a blur.
         "ollin_field_seed", "ollin_field_flood", "ollin_field_resolve",
@@ -58,6 +58,7 @@ struct WebFragmentTranslatorTests {
         "ollin_gen_god_rays", "ollin_gen_quasicrystal", "ollin_gen_moire", "ollin_gen_gyroid",
         "ollin_gen_phyllotaxis", "ollin_gen_hexpulse", "ollin_gen_chladni", "ollin_gen_escape",
         "ollin_gen_orbittrap", "ollin_gen_domain", "ollin_gen_gabor", "ollin_gen_newton",
+        "ollin_gen_patina", "ollin_gen_terrazzo",
         // Simulations: the injects and the steps of the single-field sims.
         "ollin_sim_inject", "ollin_sim_inject_height", "ollin_sim_inject_sand",
         "ollin_sim_inject_grains", "ollin_sim_inject_excite", "ollin_sim_inject_brain",

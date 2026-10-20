@@ -133,6 +133,7 @@ let package = Package(
         example("Effects/SoapFilm"),
         example("Effects/CrumpledFoil"),
         example("Effects/ChromeLettering"),
+        example("Effects/Textures"),
         example("Effects/MeshGradient"),
         example("Effects/DistanceField"),
         example("Effects/LayerStyles"),

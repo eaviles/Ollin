@@ -199,7 +199,8 @@ The reference is the authority on what exists and how it behaves; the guide teac
 - [Chladni figures](Docs/Generators/Chladni.md): `chladni`, a ringing plate's standing-wave field in closed form, plus the `.chladni` generator's sand and wave readings and the mode-by-pitch join to audio
 - [Billiards: one rule, and the room does the rest](Docs/Generators/Billiards.md): `Billiard`, a ball that bounces forever in a circle, an ellipse, a polygon, or a stadium, with posts standing in it.
 - [Drainage: rivers worked out from the ground](Docs/Generators/Drainage.md): `Drainage`, rivers computed from a `Heightfield` rather than drawn.
-- [Terrain](Docs/Generators/Terrain.md): `Heightfield`, landscapes from noise or `diamondSquare`, weathered by droplet hydraulic and thermal erosion, and emitted as terrain meshes, heightmaps, and contours
+- [Terrain](Docs/Generators/Terrain.md): `Heightfield`, landscapes from noise or `diamondSquare`, weathered by droplet hydraulic and thermal erosion, folded by `creased(along:)`, and emitted as terrain meshes…
+- [Textures](Docs/Generators/Textures.md): `Patina` and `Terrazzo`, the blooms of a corrosion and the chips of a floor scattered from a seed, held as geometry a sketch can stroke and plot, and painted by the `.rust`…
 - [Random walks](Docs/Generators/Walks.md): `randomWalk` / `levyFlight` / `selfAvoidingWalk`, paths built one random step at a time: the local tangle, the cluster-and-leap, and the single stroke that never crosses itself
 - [Circle packing](Docs/Generators/Packing.md): `packCircles` and `relaxCircles`, filling a region with non-overlapping circles that grow until they touch
 - [ShapeGrammar](Docs/Generators/ShapeGrammar.md): `ShapeGrammar`, a design written as rules over labeled shapes: the balanced cut behind the ice-ray lattices, splits for a building front, insets that become bars, and nested…
@@ -320,7 +321,7 @@ The reference is the authority on what exists and how it behaves; the guide teac
 
 ## The project
 
-- [Examples](Examples/README.md): 639 runnable sketches by category, each with its whole source
+- [Examples](Examples/README.md): 640 runnable sketches by category, each with its whole source
 - [Ollin architecture & internals](ARCHITECTURE.md)
 - [Ollin: the shipped-capability inventory](CAPABILITIES.md)
 - [Changelog](CHANGELOG.md)

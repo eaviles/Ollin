@@ -330,6 +330,10 @@ extension Filter {
                          f(glints, amount, Double(spectrum.count), Double(width)),
                          f(Double(height), Double(max(bands.stops.count, 1)), 0, 0)],
                         inputs: [.layer(0), .table(strip), .table(spectrum)])
+        case let .bubbleWrap(radius, gap, magnification, lightAngle, highlight, amount):
+            return pass("ollin_fx_bubble_wrap",
+                        [f(radius, gap, magnification, lightAngle),
+                         f(highlight, amount, Double(width), Double(height))])
         case let .chrome(horizon, warp, waves, sky, floor, core, coreWidth, breakWidth,
                          wire, amount, phase):
             // The two ramps travel as 256-texel strips, read with a lerp between
@@ -485,12 +489,37 @@ extension Generator {
     /// this pattern; `nil` for a user shader, which the renderer compiles itself.
     func pass(width: Int, height: Int, scale: Double = 1) -> EffectPass? {
         let aspect = Float(width) / Float(max(1, height))
-        func pass(_ fragment: String, _ params: [SIMD4<Float>]) -> EffectPass {
-            EffectPass(fragment: fragment, inputs: [], params: params)
+        let f = { (a: Double, b: Double, c: Double, d: Double) in
+            SIMD4<Float>(Float(a), Float(b), Float(c), Float(d)) }
+        func pass(_ fragment: String, _ params: [SIMD4<Float>],
+                  inputs: [EffectInput] = []) -> EffectPass {
+            EffectPass(fragment: fragment, inputs: inputs, params: params)
         }
         switch kind {
         case .shader:
             return nil
+
+        // Material textures. The scatter travels as a lookup strip in layer
+        // pixels (TextureTable): the one handed in, packed, or the default
+        // over this layer.
+        case let .patina(blobs, count, radius, seed, tones, background, lightAngle, lip, blisters, tide, grain):
+            let strip = blobs.map(TextureTable.pack)
+                ?? TextureTable.defaultPatinaStrip(width: width, height: height, count: count,
+                                                   radius: radius, seed: seed)
+            return pass("ollin_gen_patina",
+                        [f(Double(width), Double(height), lightAngle, lip),
+                         f(blisters, tide, grain, Double(seed % 1024)),
+                         background] + tones,
+                        inputs: [.table(strip)])
+        case let .terrazzo(chips, chipRadius, density, gap, seed, tones, background, hatching, grain):
+            let strip = chips.map(TextureTable.pack)
+                ?? TextureTable.defaultTerrazzoStrip(width: width, height: height, chipRadius: chipRadius,
+                                                     density: density, gap: gap, tones: tones.count, seed: seed)
+            return pass("ollin_gen_terrazzo",
+                        [f(Double(width), Double(height), hatching, grain),
+                         f(Double(tones.count), Double(seed % 1024), 0, 0),
+                         background] + tones,
+                        inputs: [.table(strip)])
         case let .checkers(scale, fg, bg):
             return pass("ollin_gen_checkers", [SIMD4(Float(scale), aspect, 0, 0), fg, bg])
         case let .gridLines(scale, weight, fg, bg):

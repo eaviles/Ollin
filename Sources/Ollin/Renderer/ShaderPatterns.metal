@@ -1048,13 +1048,39 @@ fragment float4 ollin_fx_water(PresentOut in [[stage_in]],
     return c;
 }
 
+// The crease kernel, the one `Heightfield.creaseProfile` evaluates on the
+// CPU: the height a fold adds at `s`, the signed distance from the crease in
+// units of its width. A cusp with a rounded tip (the exponential of the
+// square root of the squared distance plus a floor), an asymmetric step that
+// lifts the flank on the positive side and lowers the other, fading over a
+// few widths, and a trough two widths out on both sides.
+static inline float ollin_crease_profile(float s) {
+    // Past eight widths the kernel is under a thousandth, and tanh of a far
+    // distance overflows under fast math, so it is read at eight from there.
+    s = clamp(s, -8.0, 8.0);
+    const float f = 0.004;
+    float cusp = exp(sqrt(f) - sqrt(s * s + f));
+    float step = 0.3 * tanh(2.0 * s) * exp(-s * s / 8.0);
+    float off = abs(s) - 2.0;
+    float trough = -0.35 * exp(-off * off / 0.5);
+    return cusp + step + trough;
+}
+
+// The kernel's slope across the crease, by a central difference: what tilts
+// a normal.
+static inline float ollin_crease_slope(float s) {
+    const float e = 0.02;
+    return (ollin_crease_profile(s + e) - ollin_crease_profile(s - e)) / (2.0 * e);
+}
+
 // paperTexture: emboss lighting of a synthesized paper height field
 // (params[0]: contrast, roughness, fiber, crumples; params[1]: folds, drops,
 // seed, aspect; params[2]/[3]: paper/shading colors). Five signals sum into a
 // pseudo-normal lit by one Lambert dot: pixel-locked tooth, cellular crumple
-// facets, curly fibers (the gradient magnitude of a domain-rotated fbm), long
-// radial fold creases, and speckles. The image is nudged by the relief and
-// re-lit by the same lighting so it sits *on* the paper.
+// facets, curly fibers (the gradient magnitude of a domain-rotated fbm), fold
+// creases (straight seeded creases shaped by the crease kernel above), and
+// speckles. The image is nudged by the relief and re-lit by the same lighting
+// so it sits *on* the paper.
 
 static inline float ollin_paper_rough(float2 p) {
     float v = 0.0, amp = 0.5;
@@ -1127,22 +1153,26 @@ fragment float4 ollin_fx_paper_texture(PresentOut in [[stage_in]],
 
     float fiberSig = 0.8 * fiber * (ollin_paper_fiber(p5 * 2.0 + seed) - 1.0);
 
-    // Folds: pull toward the nearest of five seeded crease centers, evaluated
-    // twice in slightly rotated frames so each crease catches light on one side.
-    float foldSig = 0.0;
+    // Folds: five seeded creases, each a straight segment through the sheet
+    // with soft ends, the crease kernel's slope across it tilting the normal
+    // along the crease's own perpendicular, so each fold catches the light on
+    // one flank and shades the other, as a folded sheet does.
+    float2 foldN = float2(0.0);
     {
-        float bestD = 1e9;
-        float2 bestP = float2(0.0);
+        const float w = 0.03;   // the cusp a few pixels wide on a full sheet
         for (int i = 0; i < 5; i++) {
             float2 rnd = hash22(float2(float(i) * 3.3 + seed, float(i) * 7.1 - seed));
             float2 fp = (rnd - 0.5) * 4.5;
-            float d = length(p5 - fp);
-            if (d < bestD) { bestD = d; bestP = fp; }
+            float2 more = hash22(float2(float(i) * 5.9 - seed, float(i) * 2.3 + seed));
+            float fa = more.x * 6.28318530718;
+            float reach = 1.2 + 1.6 * more.y;
+            float2 dir = float2(cos(fa), sin(fa));
+            float2 d = p5 - fp;
+            float along = dot(d, dir);
+            float across = dir.x * d.y - dir.y * d.x;
+            float ends = 1.0 - smoothstep(reach - 0.3, reach + 0.3, abs(along));
+            foldN += ollin_crease_slope(across / w) * ends * float2(-dir.y, dir.x);
         }
-        float2 d1 = p5 - bestP;
-        float2 d2 = ollin_rot2(p5, 0.045) - bestP;
-        float att = max(0.0, 1.0 - pow(min(bestD * 0.35, 1.0), 0.25));
-        foldSig = max(0.0, (normalize(d1 + 1e-5).x - normalize(d2 + 1e-5).x)) * att * 8.0;
     }
 
     // Ink-drop speckles: tight Worley splotches.
@@ -1165,7 +1195,7 @@ fragment float4 ollin_fx_paper_texture(PresentOut in [[stage_in]],
     nxy.x += 1.5 * roughSig * roughness;
     nxy += crumpleSig * crumples;
     nxy.x += fiberSig;
-    nxy.x += foldSig * folds * min(5.0 * contrast, 1.0);
+    nxy += 0.8 * foldN * folds * min(5.0 * contrast, 1.0);
     nxy += 3.0 * dropSig * drops * 0.15;
 
     float z = 9.5 - 9.0 * pow(max(contrast, 1e-3), 0.1);
@@ -2435,4 +2465,320 @@ fragment float4 ollin_fx_chrome(PresentOut in [[stage_in]],
     chrome = mix(chrome, below, floorSide);
 
     return ollin_premul(mix(c, chrome * c, amount), s.a);
+}
+
+// MARK: - Material textures
+
+// The cell grid in front of a TextureTable strip (the blooms of a Patina, the
+// chips of a Terrazzo), read the way the foil reads its sheet: the two header
+// texels, then the cell under p and its candidate list.
+struct OllinTableCell {
+    int start;            // where the cell's candidates start in the list
+    int count;            // how many it lists
+    int candidateStart;   // where the list starts in the strip
+    int recordStart;      // where the records start in the strip
+};
+
+static inline OllinTableCell ollin_table_cell(texture2d<float> strip, float2 p) {
+    float4 head = ollin_foil_read(strip, 0);
+    float4 grid = ollin_foil_read(strip, 1);
+    int columns = max(int(head.x), 1), rows = max(int(head.y), 1);
+    float cell = max(head.z, 1e-6);
+    int cx = clamp(int(floor((p.x - grid.x) / cell)), 0, columns - 1);
+    int cy = clamp(int(floor((p.y - grid.y) / cell)), 0, rows - 1);
+    float4 slot = ollin_foil_read(strip, 2 + cy * columns + cx);
+    OllinTableCell c;
+    c.start = int(slot.x);
+    c.count = min(int(slot.y), 32);
+    c.candidateStart = int(head.w);
+    c.recordStart = int(grid.z);
+    return c;
+}
+
+// The record index of candidate k of a cell, four to a texel.
+static inline int ollin_table_candidate(texture2d<float> strip, OllinTableCell c, int k) {
+    int index = c.start + k;
+    float4 four = ollin_foil_read(strip, c.candidateStart + index / 4);
+    int lane = index - (index / 4) * 4;
+    return int(lane == 0 ? four.x : (lane == 1 ? four.y : (lane == 2 ? four.z : four.w)));
+}
+
+// A straight-alpha color laid over a premultiplied one.
+static inline float4 ollin_texture_lay(float3 rgb, float a, float4 under) {
+    float4 mark = float4(rgb * a, a);
+    return mark + under * (1.0 - a);
+}
+
+// patina (rust, verdigris): corrosion blooms read from a TextureTable strip at
+// texture(0) (TextureTable.pack(Patina)), seven texels a bloom: the center,
+// mean radius, and tone; the four harmonic amplitudes; their phases; two
+// blisters' centers; their radii and the mass offset; two more centers; their
+// radii and the blister count. A pixel reads its cell, walks the blooms the
+// cell lists, and for each one that reaches it lays the bloom's stack over
+// what is there: the outer tone grained and darkened toward the core, the two
+// nested masses in the next tones (the same waver at smaller scales, shifted
+// off center), the flaked lip (the outline displaced away from the light
+// drawn dark and displaced toward it drawn light, both kept inside the bloom),
+// the blisters (a dark arc on the side away from the light, a bright arc on
+// the side toward it), and the tide line (a pale deposit inside the edge that
+// a noise around the bloom turns on and off). Every edge is a pixel of
+// coverage from the ring function's own distance, so no derivative is taken
+// inside the loop. params[0]: the layer's width and height in pixels, the
+// light angle, lip; params[1]: blisters, tide, grain, a seed hash;
+// params[2]: the background; params[3..6]: the four tones, outer to core.
+
+static inline float ollin_patina_waver(float angle, float4 amp, float4 phase) {
+    return amp.x * sin(2.0 * angle + phase.x) + amp.y * sin(3.0 * angle + phase.y)
+         + amp.z * sin(5.0 * angle + phase.z) + amp.w * sin(8.0 * angle + phase.w);
+}
+
+// The signed distance from p to a wavering ring around c (negative inside):
+// the radial distance less the ring's radius at p's angle, the phases turned
+// by `turn`.
+static inline float ollin_patina_ring(float2 p, float2 c, float r, float4 amp, float4 phase, float turn) {
+    float2 d = p - c;
+    float angle = atan2(d.y, d.x);
+    return length(d) - r * (1.0 + ollin_patina_waver(angle, amp, phase + turn));
+}
+
+fragment float4 ollin_gen_patina(PresentOut in [[stage_in]],
+                                 texture2d<float> strip [[texture(0)]],
+                                 constant float4 *params [[buffer(0)]]) {
+    float2 size = float2(max(params[0].x, 1.0), max(params[0].y, 1.0));
+    float lightAngle = params[0].z, lip = params[0].w;
+    float blisters = params[1].x, tide = params[1].y, grain = params[1].z, seed = params[1].w;
+    float4 T0 = params[3], T1 = params[4], T2 = params[5], T3 = params[6];
+    float2 p = in.uv * size;
+    float2 L = float2(cos(lightAngle), sin(lightAngle));
+    float3 pale = mix(T0.rgb, float3(1.0), 0.55);
+
+    float4 color = ollin_pat_premul(params[2]);
+    OllinTableCell cell = ollin_table_cell(strip, p);
+    for (int k = 0; k < cell.count; k++) {
+        int base = cell.recordStart + ollin_table_candidate(strip, cell, k) * 7;
+        float4 t0 = ollin_foil_read(strip, base);
+        float2 c = t0.xy;
+        float r = t0.z, tone = t0.w;
+        if (r <= 0.0) continue;
+        float4 amp = ollin_foil_read(strip, base + 1);
+        float4 phase = ollin_foil_read(strip, base + 2);
+        float d = ollin_patina_ring(p, c, r, amp, phase, 0.0);
+        if (d > 0.12 * r + 2.0) continue;
+        float inside = 1.0 - smoothstep(-0.7, 0.7, d);
+        float2 rel = p - c;
+        float radial = clamp(length(rel) / max(r, 1e-3), 0.0, 1.0);
+
+        // The bloom: the outer tone, grained, darkening toward the core.
+        float g = 1.0 + grain * (0.35 * (ollin_vnoise(p * 0.45 + seed) - 0.5)
+                              + 0.15 * (hash12(floor(p) + seed) - 0.5));
+        float3 bloom = mix(T0.rgb, T1.rgb, 0.3 * (1.0 - radial)) * (0.9 + 0.2 * tone) * g;
+        color = ollin_texture_lay(bloom, T0.a * inside, color);
+
+        // The nested masses, the next two tones, each shifted off center.
+        float4 t4 = ollin_foil_read(strip, base + 4);
+        float2 off = t4.zw * r;
+        float d1 = ollin_patina_ring(p, c + off, 0.62 * r, amp, phase, 0.9);
+        float m1 = (1.0 - smoothstep(-1.2, 1.2, d1)) * inside;
+        color = ollin_texture_lay(T1.rgb * (0.92 + 0.16 * tone) * g, T1.a * m1, color);
+        float d2 = ollin_patina_ring(p, c + off * 1.7, 0.36 * r, amp, phase, 1.8);
+        float m2 = (1.0 - smoothstep(-1.2, 1.2, d2)) * inside;
+        color = ollin_texture_lay(T2.rgb * g, T2.a * m2, color);
+
+        // The flaked lip: the outline displaced away from the light drawn dark,
+        // displaced toward it drawn light, both inside the bloom.
+        if (lip > 0.0) {
+            float e = lip * (1.5 + 0.02 * r);
+            float lw = 0.8 + 0.012 * r;
+            float dDark = ollin_patina_ring(p + L * e, c, r, amp, phase, 0.0);
+            float dLight = ollin_patina_ring(p - L * e, c, r, amp, phase, 0.0);
+            float dark = (1.0 - smoothstep(lw - 0.7, lw + 0.7, abs(dDark))) * inside;
+            float light = (1.0 - smoothstep(lw - 0.7, lw + 0.7, abs(dLight))) * inside;
+            color = ollin_texture_lay(T3.rgb, 0.9 * dark, color);
+            color = ollin_texture_lay(pale, 0.7 * light, color);
+        }
+
+        // The blisters: a dark arc away from the light, a bright arc toward it.
+        if (blisters > 0.0) {
+            float4 t3 = ollin_foil_read(strip, base + 3);
+            float4 t5 = ollin_foil_read(strip, base + 5);
+            float4 t6 = ollin_foil_read(strip, base + 6);
+            int count = clamp(int(t6.z), 0, 4);
+            for (int j = 0; j < count; j++) {
+                float2 cb = j == 0 ? t3.xy : (j == 1 ? t3.zw : (j == 2 ? t5.xy : t5.zw));
+                float rb = j == 0 ? t4.x : (j == 1 ? t4.y : (j == 2 ? t6.x : t6.y));
+                if (rb <= 0.0) continue;
+                float2 db = p - cb;
+                float dist = length(db);
+                float facing = dist > 1e-4 ? dot(db / dist, L) : 0.0;
+                float ring = 1.0 - smoothstep(0.6, 1.8, abs(dist - rb));
+                float dome = 1.0 - smoothstep(-0.7, 0.7, dist - rb);
+                float strength = min(blisters, 1.0);
+                color = ollin_texture_lay(T2.rgb, 0.25 * strength * dome * inside, color);
+                color = ollin_texture_lay(T3.rgb, 0.9 * blisters * ring * pow(max(-facing, 0.0), 1.5) * inside, color);
+                color = ollin_texture_lay(pale, 0.8 * blisters * ring * pow(max(facing, 0.0), 1.5) * inside, color);
+            }
+        }
+
+        // The tide line: a pale deposit inside the edge, gated around the
+        // bloom by a noise read on the circle so it has no seam.
+        if (tide > 0.0) {
+            float tw = tide * (2.0 + 0.04 * r);
+            float band = smoothstep(-tw - 1.5, -tw, d) * (1.0 - smoothstep(-1.5, -0.5, d));
+            float angle = atan2(rel.y, rel.x);
+            float n = ollin_vnoise(float2(cos(angle), sin(angle)) * 2.5 + float2(seed, tone * 7.0));
+            float gate = smoothstep(0.42, 0.6, n);
+            color = ollin_texture_lay(mix(T0.rgb, float3(1.0), 0.6), 0.85 * min(tide, 1.0) * band * gate, color);
+        }
+    }
+    return color;
+}
+
+// terrazzo: chips read from a TextureTable strip at texture(0)
+// (TextureTable.pack(Terrazzo)), four texels a chip: the center, radius, and
+// rotation; the side count, tone, tier, and a hash; the corners' radius
+// fractions, four and four. A pixel inside a chip's circle finds its angular
+// sector, takes the two corners that bound it, and reads its signed distance
+// from the edge between them (the chip is star-shaped about its center, so
+// the sector's edge is the right one). The chip is its tone, jittered per chip
+// and grained, with fine hatch lines at its own angle when its size allows
+// them (the spacing follows the radius, and a chip too small for lines stays
+// flat), a thin shade at its rim, and a pixel of coverage at the edge. The
+// binder between chips is the background, speckled. params[0]: the layer's
+// width and height in pixels, hatching, grain; params[1]: the tone count, a
+// seed hash; params[2]: the background; params[3...]: the tones.
+
+static inline float ollin_terrazzo_corner(float4 a, float4 b, int k) {
+    float4 v = k < 4 ? a : b;
+    int j = k < 4 ? k : k - 4;
+    return j == 0 ? v.x : (j == 1 ? v.y : (j == 2 ? v.z : v.w));
+}
+
+fragment float4 ollin_gen_terrazzo(PresentOut in [[stage_in]],
+                                   texture2d<float> strip [[texture(0)]],
+                                   constant float4 *params [[buffer(0)]]) {
+    float2 size = float2(max(params[0].x, 1.0), max(params[0].y, 1.0));
+    float hatching = params[0].z, grain = params[0].w;
+    int toneCount = max(int(params[1].x), 1);
+    float seed = params[1].y;
+    float2 p = in.uv * size;
+
+    // The binder: the background, speckled like a poured floor.
+    float4 bg = params[2];
+    float speck = grain * (0.08 * (hash12(floor(p) + seed) - 0.5)
+                        + 0.05 * (ollin_vnoise(p * 0.2 + seed) - 0.5));
+    float4 color = ollin_pat_premul(float4(bg.rgb * (1.0 + speck), bg.a));
+
+    OllinTableCell cell = ollin_table_cell(strip, p);
+    for (int k = 0; k < cell.count; k++) {
+        int base = cell.recordStart + ollin_table_candidate(strip, cell, k) * 4;
+        float4 t0 = ollin_foil_read(strip, base);
+        float2 c = t0.xy;
+        float r = t0.z, rot = t0.w;
+        float2 d = p - c;
+        if (r <= 0.0 || dot(d, d) > (r + 1.5) * (r + 1.5)) continue;
+        float4 t1 = ollin_foil_read(strip, base + 1);
+        float4 c0 = ollin_foil_read(strip, base + 2);
+        float4 c1 = ollin_foil_read(strip, base + 3);
+        int n = clamp(int(t1.x), 3, 8);
+        int tone = clamp(int(t1.y), 0, toneCount - 1);
+        float h = t1.w;
+
+        // The sector the pixel is in, and the edge between its two corners.
+        float sector = 6.28318530718 / float(n);
+        float u = fract((atan2(d.y, d.x) - rot) / 6.28318530718) * float(n);
+        int k0 = min(int(u), n - 1);
+        int k1 = (k0 + 1) % n;
+        float a0 = rot + float(k0) * sector, a1 = rot + float(k1) * sector;
+        float2 P0 = c + float2(cos(a0), sin(a0)) * (r * ollin_terrazzo_corner(c0, c1, k0));
+        float2 P1 = c + float2(cos(a1), sin(a1)) * (r * ollin_terrazzo_corner(c0, c1, k1));
+        float2 edge = P1 - P0;
+        float2 normal = normalize(float2(-edge.y, edge.x) + float2(1e-9, 0.0));
+        float side = dot(p - P0, normal);
+        float sd = dot(c - P0, normal) > 0.0 ? -side : side;   // negative inside
+        float inside = 1.0 - smoothstep(-0.7, 0.7, sd);
+        if (inside <= 0.0) continue;
+
+        // The chip's tone, jittered per chip and grained, hatched by size.
+        float4 T = params[3 + tone];
+        float speckle = 1.0 + grain * 0.12 * (ollin_vnoise(p * 0.35 + h * 50.0) - 0.5);
+        float3 col = T.rgb * (0.92 + 0.16 * h) * speckle;
+        float spacing = r * 0.2;
+        if (hatching > 0.0 && spacing >= 2.5) {
+            float2 q = ollin_rot2(d, -rot - 0.35);
+            float lineD = abs(fract(q.y / spacing + 0.5) - 0.5) * spacing;
+            float lineW = 0.45 + 0.012 * r;
+            float line = 1.0 - smoothstep(lineW - 0.6, lineW + 0.6, lineD);
+            float margin = 1.0 - smoothstep(-2.5 - lineW, -1.0, sd);
+            col *= 1.0 - 0.3 * min(hatching, 1.0) * line * margin;
+        }
+        float rim = smoothstep(-2.0, -0.3, sd);
+        col *= 1.0 - 0.18 * rim;
+        color = ollin_texture_lay(col, T.a * inside, color);
+    }
+    return color;
+}
+
+// bubbleWrap: a sheet of bubble wrap over the layer. The bubbles sit on a hex
+// lattice with `radius` plus half the `gap` between a bubble's center and the
+// film's middle; a pixel finds the nearest center (the nearer of the two
+// interleaved rectangular lattices) and, inside the lens, reads the layer
+// pulled toward the center by the magnification, more toward the rim as a
+// dome bends more there. Over that: a shadow ring at the rim, a bright
+// meniscus arc on the side toward the light and a dark one on the side away,
+// a highlight spot on the dome toward the light with a fainter one opposite,
+// and the faint milk of the film everywhere. The lens read follows a per-pixel
+// return, so it names level(0). params[0]: radius, gap, magnification,
+// lightAngle; params[1]: highlight, amount, the layer's width and height in
+// pixels. A radius or an amount of zero returns the layer untouched.
+
+static inline float2 ollin_bubble_center(float2 p, float pitch) {
+    float rowH = pitch * 0.86602540378;
+    float2 a = float2(round(p.x / pitch) * pitch, round(p.y / (2.0 * rowH)) * 2.0 * rowH);
+    float2 b = float2((round(p.x / pitch - 0.5) + 0.5) * pitch,
+                      (round(p.y / (2.0 * rowH) - 0.5) + 0.5) * 2.0 * rowH);
+    return distance(p, a) < distance(p, b) ? a : b;
+}
+
+fragment float4 ollin_fx_bubble_wrap(PresentOut in [[stage_in]],
+                                     texture2d<float> src [[texture(0)]],
+                                     sampler samp [[sampler(0)]],
+                                     constant float4 *params [[buffer(0)]]) {
+    float radius = params[0].x, gap = params[0].y;
+    float mag = max(params[0].z, 1.0), lightAngle = params[0].w;
+    float highlight = params[1].x, amount = params[1].y;
+    float2 size = float2(max(params[1].z, 1.0), max(params[1].w, 1.0));
+
+    float4 s = src.sample(samp, in.uv);
+    if (radius <= 0.0 || amount <= 0.0) return s;   // zero is an exact identity
+    float2 p = in.uv * size;
+    float pitch = 2.0 * radius + gap;
+    float2 c = ollin_bubble_center(p, pitch);
+    float2 d = p - c;
+    float dist = length(d);
+    float q = min(dist / radius, 1.0);
+    float lens = 1.0 - smoothstep(radius - 0.7, radius + 0.7, dist);
+    float2 L = float2(cos(lightAngle), sin(lightAngle));
+
+    // The layer under the lens, pulled toward the center, more at the rim.
+    float dome = sqrt(max(0.0, 1.0 - q * q));
+    float2 pulled = c + d * ((1.0 / mag) * (0.75 + 0.25 * dome));
+    float2 readAt = mix(p, pulled, lens) / size;
+    float4 under = src.sample(samp, clamp(readAt, 0.0, 1.0), level(0));
+
+    // The sheet's marks, each a straight color over what is there.
+    float facing = dist > 1e-4 ? dot(d / dist, L) : 0.0;
+    float ring = 1.0 - smoothstep(0.08, 0.22, abs(q - 0.86));
+    float4 color = under;
+    color = ollin_texture_lay(float3(1.0), 0.06 - 0.03 * lens, color);
+    color = ollin_texture_lay(float3(0.0), 0.35 * smoothstep(0.7, 1.0, q) * lens, color);
+    color = ollin_texture_lay(float3(0.0), 0.45 * ring * pow(max(-facing, 0.0), 1.5) * lens, color);
+    color = ollin_texture_lay(float3(1.0), 0.6 * ring * pow(max(facing, 0.0), 1.5) * lens, color);
+    float2 spot = c + L * (0.38 * radius);
+    float2 glance = c - L * (0.5 * radius);
+    float sr = 0.2 * radius, gr = 0.14 * radius;
+    float spotA = exp(-dot(p - spot, p - spot) / (sr * sr));
+    float glanceA = exp(-dot(p - glance, p - glance) / (gr * gr));
+    color = ollin_texture_lay(float3(1.0), highlight * (0.85 * spotA + 0.25 * glanceA) * lens, color);
+
+    return mix(s, color, amount);
 }
