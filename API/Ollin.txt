@@ -3662,6 +3662,20 @@ struct CosinePalette: Sendable
   var b: CosinePalette.RGB { get set }
   var c: CosinePalette.RGB { get set }
   var d: CosinePalette.RGB { get set }
+struct Crackle: Equatable, Sendable
+  init(veins: [Crackle.Vein], cell: Shape)
+  let cell: Shape
+  let veins: [Crackle.Vein]
+  static func grow(in: Rectangle, spacing: Double = default, creases: [[Vector2]] = default, forkChance: Double = default, wobble: Double = default, seed: Int = default) -> Crackle
+  static func grow(in: Shape, spacing: Double = default, creases: [[Vector2]] = default, forkChance: Double = default, wobble: Double = default, seed: Int = default) -> Crackle
+  static let maxOrder: Int
+  struct Vein: Equatable, Sendable
+    init(points: [Vector2], order: Int = default, parent: Int? = default)
+    let order: Int
+    let parent: Int?
+    let points: [Vector2]
+    var length: Double { get }
+  var lines: [[Vector2]] { get }
 struct CreasePattern: Equatable, Sendable
   enum Assignment: CaseIterable, Equatable, Hashable, Sendable
     case boundary
@@ -4325,6 +4339,38 @@ struct FrameRate: ParamChoices, ParamValue, CustomStringConvertible, Equatable, 
   var description: String { get }
   var frameDuration: Double { get }
   var framesPerSecond: Double { get }
+struct Frost: Equatable, Sendable
+  enum Side: Equatable, Hashable, Sendable
+    case both
+    case inside
+    case outside
+  init(needles: [Frost.Needle])
+  let needles: [Frost.Needle]
+  static func barbStations(length: Double, spacing: Double) -> [Double]
+  static func grow(along: Contour, spacing: Double = default, length: Double = default, clump: Double = default, barbSpacing: Double = default, barbAngle: Double = default, side: Frost.Side = default, seed: Int = default) -> Frost
+  static func grow(along: Shape, spacing: Double = default, length: Double = default, clump: Double = default, barbSpacing: Double = default, barbAngle: Double = default, side: Frost.Side = default, seed: Int = default) -> Frost
+  static let barbCap: Double
+  static let barbReach: Double
+  static let barbStart: Double
+  struct Barb: Equatable, Sendable
+    init(base: Vector2, tip: Vector2, station: Double, side: Int)
+    let base: Vector2
+    let side: Int
+    let station: Double
+    let tip: Vector2
+    var length: Double { get }
+    var points: [Vector2] { get }
+  struct Needle: Equatable, Sendable
+    init(root: Vector2, angle: Double, length: Double, barbs: [Frost.Barb])
+    let angle: Double
+    let barbs: [Frost.Barb]
+    let length: Double
+    let root: Vector2
+    var spine: [Vector2] { get }
+    var strokes: [[Vector2]] { get }
+    var tip: Vector2 { get }
+  var roots: [Vector2] { get }
+  var strokes: [[Vector2]] { get }
 struct GCode: Equatable, Sendable
   enum LaserMode: Equatable, Hashable, Sendable
     case constant
@@ -4668,6 +4714,28 @@ struct IFS: Sendable
     var f: Double { get set }
     var weight: Double { get set }
   var maps: [IFS.Map] { get set }
+struct Ikat: Equatable, Sendable
+  enum Warp: Equatable, Hashable, Sendable
+    case horizontal
+    case vertical
+  init(stripes: [Ikat.Stripe])
+  let stripes: [Ikat.Stripe]
+  static func stripe(across: Rectangle, bundle: Double = default, bleed: Double = default, spikes: Double = default, intrusions: Double = default, skew: Double = default, warp: Ikat.Warp = default, seed: Int = default) -> Ikat.Stripe
+  static func stripes(in: Rectangle, count: Int = default, bundle: Double = default, bleed: Double = default, spikes: Double = default, intrusions: Double = default, skew: Double = default, warp: Ikat.Warp = default, seed: Int = default) -> Ikat
+  struct Stripe: Equatable, Sendable
+    init(band: Rectangle, bundle: Double, warp: Ikat.Warp = default, leading: [Double], trailing: [Double])
+    let band: Rectangle
+    let bundle: Double
+    let leading: [Double]
+    let trailing: [Double]
+    let warp: Ikat.Warp
+    var bundles: Int { get }
+    var edges: [[Vector2]] { get }
+    var leadingEdge: [Vector2] { get }
+    var shape: Shape { get }
+    var trailingEdge: [Vector2] { get }
+  var edges: [[Vector2]] { get }
+  var shapes: [Shape] { get }
 struct Ink: Equatable, Hashable, Sendable
   init(name: String, color: Color)
   static func named(_: String) -> Ink?
@@ -7277,6 +7345,32 @@ struct WindowCustomizer: Sendable, NSViewRepresentable, View
   func makeNSView(context: WindowCustomizer.Context) -> AppKit.NSView
   func updateNSView(_: AppKit.NSView, context: WindowCustomizer.Context)
   init(configure: (AppKit.NSWindow) -> Void)
+struct WoodGrain: Equatable, Sendable
+  func across(_: Vector2) -> Double
+  func tone(at: Vector2) -> Double
+  init(strokes: [WoodGrain.Stroke], knots: [WoodGrain.Knot], direction: Double = default, ringSpacing: Double = default, wobble: Double = default, seed: Int = default)
+  let direction: Double
+  let knots: [WoodGrain.Knot]
+  let ringSpacing: Double
+  let seed: Int
+  let strokes: [WoodGrain.Stroke]
+  let wobble: Double
+  static func trace(in: Rectangle, direction: Double = default, spacing: Double = default, knots: Int = default, ringSpacing: Double = default, ringContrast: Double = default, wobble: Double = default, seed: Int = default) -> WoodGrain
+  static func trace(in: Rectangle, direction: Double = default, spacing: Double = default, knots: [WoodGrain.Knot], ringSpacing: Double = default, ringContrast: Double = default, wobble: Double = default, seed: Int = default) -> WoodGrain
+  struct Knot: Equatable, Sendable
+    init(center: Vector2, radius: Double, height: Double = default)
+    let center: Vector2
+    let height: Double
+    let radius: Double
+    static func scatter(in: Rectangle, count: Int, seed: Int = default) -> [WoodGrain.Knot]
+    static let closingHeight: Double
+  struct Stroke: Equatable, Sendable
+    init(points: [Vector2], tone: Double, isClosed: Bool = default)
+    let isClosed: Bool
+    let points: [Vector2]
+    let tone: Double
+  var field: FlowField { get }
+  var lines: [[Vector2]] { get }
 struct WorldCloud
   @discardableResult mutating func add(_: PointCloud, correcting: simd.simd_float4x4, settings: CloudAlignment.Settings = default) -> CloudAlignment
   init(voxelSize: Double = default)

@@ -7375,6 +7375,28 @@
       "stillSmall": "examples/Patterns/Lichtenberg/still-640.jpg?v=a10f76c3",
       "width": 1080
     },
+    "Patterns/LineTextures": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 660,
+      "motion": 4.306,
+      "sound": false,
+      "source": "69050d966cc0c2d8",
+      "rendered": "2026-10-20",
+      "bytes": {
+        "loop": 1623441,
+        "loopSmall": 619246,
+        "still": 381004,
+        "stillSmall": 108987
+      },
+      "loop": "examples/Patterns/LineTextures/loop.mp4?v=116a3970",
+      "loopSmall": "examples/Patterns/LineTextures/loop-640.mp4?v=fc8ee740",
+      "still": "examples/Patterns/LineTextures/still.jpg?v=7274026a",
+      "stillSmall": "examples/Patterns/LineTextures/still-640.jpg?v=6b788c8f",
+      "seed": 1
+    },
     "Patterns/LowDiscrepancy": {
       "bytes": {
         "loop": 2243034,

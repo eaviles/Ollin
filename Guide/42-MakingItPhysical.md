@@ -6,7 +6,7 @@
 
 <img src="Images/42-MakingItPhysical/PrintedKnot.jpg" alt="A flat pink knotted loop on white, outlined in thin dark blue lines. Where one strand passes under another, its hidden edges continue as dashed lines across the strand on top. The lines turn nearly black where they cross or overlap" width="560">
 
-A sketch can leave the screen as lines a plotter draws, inks a press prints, or a solid a 3D printer builds. You learn the file each machine reads, and how a 3D scene becomes lines a pen can follow. The knot at the top is one design sent three ways, as G-code for a pen, two ink plates, and a file to print. After it come embroidery and DXF, proofs and process plates, and a model and spatial video.
+A sketch can leave the screen as lines a plotter draws, inks a press prints, or a solid a 3D printer builds. You learn the file each machine reads, and how a 3D scene becomes lines a pen can follow. The knot at the top is one design sent three ways, as G-code for a pen, two ink plates, and a file to print. After it come embroidery, DXF, and four textures a pen draws, then proofs and process plates, and a model and spatial video.
 
 ## Driving the machine itself: G-code
 
@@ -212,9 +212,9 @@ swift run OllinLive MySketches/PrintedKnot.swift --export-separations knot.png
 
 The first writes the line drawing for a pen on an A4 sheet. It comes to 190 millimeters square, the size `pen` was worked out for, and `--gcode-width 190` gives the same size with no margin. Only the lines travel, since a surface has no line work to plot. The second writes the two masters, `knot-1-fluorescent-pink.png` and `knot-2-medium-blue.png`, and `knot-preview.png` with the two inks overprinted. Both read frame 0, the start of the turn. Give both the same `--frame` for another view, and the plot and the plates still show the same knot. The print needs no command. Run the sketch and press S, and `knot.3mf` is written to the folder you ran it from.
 
-## More line work for machines: embroidery and DXF
+## More line work for machines: embroidery, DXF, and textures for a pen
 
-The knot's lines went to a pen plotter as G-code. Other machines take line work in formats of their own. An embroidery machine reads stitches, and a shop opens a drawing sorted into jobs.
+The knot's lines went to a pen plotter as G-code. Other machines take line work in formats of their own. An embroidery machine reads stitches, and a shop opens a drawing sorted into jobs. And four materials come as nothing but lines, so a pen can draw a plank, a frosted pane, cracked wax, or a woven stripe.
 
 ### Thread instead of ink: embroidery
 
@@ -261,6 +261,28 @@ try? OllinApp.exportDXF(sketch, to: "plate.dxf", settings: DXF(width: 150))
 So the sketch's colors sort the work. Draw the outline in one color, the fold lines in another, and the engraving in a third, and the file arrives sorted into three jobs. A layer is named by its color's bytes, such as `color-1B1040`. It also carries the nearest of the few standard colors a DXF names by number, and close colors land on the same one. Here the red and the blue both come out gray, so the layer names are what keep the jobs apart.
 
 The width is yours to give here too. Strokes arrive as lines and polylines along their centerlines, and fills as their outlines, unless hatching turns them into line work. A circle that nothing has skewed stays a circle, which a cutter drilling a hole prefers. Paths whose ends touch merge into one, and a clip cuts the work as it cuts the render. [`Examples/Export/Drafting`](../Examples/Export/Drafting/Sketch.swift) draws a box panel that way and lists its layers. Check the drawing's size against the material in the shop's software before anything moves.
+
+### Textures for a pen: wood grain, frost, crackle, and ikat
+
+A **line texture** is a material drawn as nothing but lines, so a pen can draw it. Four come by name, each as geometry the sketch holds: `WoodGrain`, `Frost`, `Crackle`, and `Ikat`. They are for a plotted plank, a frosted window, a batik panel, a woven stripe, or any material made of strokes. Each is a convention of how that material is drawn, built on moves the Guide has met. The wood grain is [Chapter 14](14-FieldsAndFlow.md)'s evenly spaced streamlines through a field of its own. The crackle stops where it meets another vein, the way [Chapter 13](13-GrowingThings.md)'s cracks do:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/42-MakingItPhysical/LineTextures-dark.jpg">
+  <img src="Images/42-MakingItPhysical/LineTextures.jpg" alt="Four panels of line work in one ink: wood grain as flowing lines that bunch into rings and circle a knot, frost as barbed needles standing in and out of a circle, crackle as wandering veins across a square that crowd along one diagonal, and three ikat stripes whose edges step up and down once per bundle" width="680">
+</picture>
+
+Wood grain is a *ring coordinate*: the distance across the grain, lifted into a bump at every knot and wandered by noise. Every stroke follows one level of it. So strokes never cross, they close into loops around a knot, and each belongs to one ring, which it carries as a `tone`. The rings show as density too, since the strokes crowd on a ring and spread between them. Frost is needles stood along an outline's normals, each with barbs under one law. They start a quarter of the way up, sit a fixed distance apart, lean forward at sixty degrees, and shorten to nothing at the tip. Crackle is veins that walk across a cell with a wandering heading. A vein stops at the rim or on the first vein it meets, and forks once near its middle; a crease you name seeds more of them along itself. Ikat is a stripe whose two edges step once per bundle of warp threads. Every tied bundle lands a little out of place on the loom. Each bundle slips as one and each edge bleeds on its own. A few bundles spike out or intrude, and the whole edge leans along the warp.
+
+```swift
+let plank = WoodGrain.trace(in: canvasRectangle, direction: 0.12, spacing: 6, knots: 2, seed: 3)
+noFill()
+for line in plank.strokes {
+    stroke(Color(hex: 0x4A2A14).withAlpha(0.3 + 0.7 * line.tone))
+    if line.isClosed { drawPolygon(line.points) } else { drawPolyline(line.points) }
+}
+```
+
+`Frost.grow(along:)` takes any contour or shape and a side, `Crackle.grow(in:)` any shape as the cell with `creases:` to crowd along, and `Ikat.stripes(in:count:)` lays a set across a region. Every one repeats from its seed, and every stroke is a point list, so `--export-svg` writes the texture as paths and `--export-gcode` as a route. The `Patterns/LineTextures` example draws each one the way a plotter would, stroke by stroke over the loop. [Textures](../Docs/Generators/Textures.md) has every parameter.
 
 ## More for the press: proofs and process plates
 
@@ -390,6 +412,7 @@ G-code grew out of the numerical control of machine tools in the 1950s and was s
 - [Embroidery](../Docs/Output/Embroidery.md): a frame as the stitches a machine sews, with strokes as running stitch, fills as rows, and each color as its own thread.
 - [DXF](../Docs/Output/DXF.md): a frame as the drawing a shop program opens, each color on its own layer, with circles kept as circles and touching paths merged.
 - [Line drawing](../Docs/3D/LineDrawing.md): a 3D scene as the line work a machine can follow, which edges are kept and why, placing several meshes so they hide each other, and what the hidden set is for.
+- [Textures](../Docs/Generators/Textures.md): the four line textures with every parameter, the ring coordinate under the wood grain, the barb law, the vein walk, and the stepped edge.
 - [Print separations](../Docs/Output/PrintSeparations.md): the spot-ink model, the ink catalog, screening angles, and the overprint preview.
 - [Print color](../Docs/Output/PrintColor.md): profiles, the soft proof, the gamut check, and the four plates.
 - [Fabrication](../Docs/Output/Fabrication.md): writing a mesh as STL, OBJ, or 3MF, real-world sizing, and what makes a surface printable.

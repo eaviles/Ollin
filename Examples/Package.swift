@@ -576,6 +576,7 @@ let package = Package(
         example("Patterns/Flocking"),
         example("Patterns/ForceGraph"),
         example("Patterns/Venation"),
+        example("Patterns/LineTextures"),
         example("Patterns/Dendrite"),
         example("Patterns/Lichtenberg"),
         example("Patterns/AntColony"),

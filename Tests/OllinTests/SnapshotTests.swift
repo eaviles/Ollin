@@ -228,6 +228,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("material-textures",
                  note: "The material textures at fixed seeds and lights (no time, no random): a rust bloom over a Patina the sketch holds with its outlines drawn in geometry over the paint, a verdigris patina the generator scatters itself, a terrazzo floor over a Terrazzo the sketch holds, and bubble wrap over two discs and a word. Pins the two lookup strips (TextureTable), the bloom stack (tones, masses, lip, blisters, tide), the chip sector test and hatching by size, the hex lens lattice with its arcs and highlight, and the CPU and GPU agreement on both scatters.",
                  make: { MaterialTexturesSheet() }),
+    SnapshotCase("line-textures",
+                 note: "The line textures at fixed seeds (no time, no random), each as the geometry its emitter hands back, stroked: wood grain traced over a knot with its rings as density and tone, frost grown along a circle with its barbs, crackle grown in a square with one crease, and three ikat stripes filled from their stepped edges. Pins the level-curve tracer and its closing loops, the barb law, the vein walk with its exact stop, and the stair per bundle, through the stroke and fill paths.",
+                 make: { LineTexturesSheet() }),
     SnapshotCase("design-patterns",
                  note: "The nine other design-pattern generators tiled 3×3 at fixed phases (no time, no random): filaments, smokeRing, colorPanels, spiral, waves, dotOrbit, grainGradient, pulsingBorder, godRays. Pins each generator dispatch arm and fragment, incl. the polar-seam blends, the pane projection + scheduling, and the dual over/additive bloom accumulations.",
                  make: { DesignPatternsSheet() }),
@@ -11545,5 +11548,54 @@ private final class VolumeGlowScene: Sketch {
         drawVolume(ball, size: 2.4,
                    medium: Medium(density: 1.6, color: .black, glow: Color(hex: 0xFF8A3D),
                                   glowIntensity: 2.5))
+    }
+}
+
+/// The line textures at fixed seeds: wood grain over one knot, frost along a
+/// circle, crackle in a square with a crease, and three ikat stripes, each
+/// the geometry its emitter hands back, stroked or filled.
+private final class LineTexturesSheet: Sketch {
+    override var canvasSize: CanvasSize { .square(512) }
+
+    override func draw() {
+        background(Color(hex: 0x1A1B1E))
+        let tile = Rectangle(x: 0, y: 0, width: 256, height: 256)
+        strokeCap(.round); strokeJoin(.round)
+
+        // Wood grain, top left.
+        noStroke(); fill(Color(hex: 0xEADFC8)); drawRect(corner: .zero, width: 256, height: 256)
+        let knot = WoodGrain.Knot(center: Vector2(150, 140), radius: 22, height: 3.5)
+        let grain = WoodGrain.trace(in: tile, direction: 0.1, spacing: 5, knots: [knot], ringSpacing: 30, seed: 3)
+        noFill()
+        for line in grain.strokes {
+            stroke(Color(hex: 0x4A2A14).withAlpha(0.3 + 0.7 * line.tone))
+            strokeWeight(0.5 + 0.7 * line.tone)
+            if line.isClosed { drawPolygon(line.points) } else { drawPolyline(line.points) }
+        }
+
+        // Frost, top right.
+        noStroke(); fill(Color(hex: 0x0B1B33)); drawRect(corner: Vector2(256, 0), width: 256, height: 256)
+        let frost = Frost.grow(along: Circle(center: Vector2(384, 128), radius: 62).contour, spacing: 6,
+                               length: 44, clump: 0.6, barbSpacing: 5, side: .both, seed: 2)
+        noFill(); stroke(Color(hex: 0xEAF4FF)); strokeWeight(1)
+        for line in frost.strokes { drawPolyline(line) }
+
+        // Crackle, bottom left.
+        noStroke(); fill(Color(hex: 0xF1E6C8)); drawRect(corner: Vector2(0, 256), width: 256, height: 256)
+        let wax = Rectangle(x: 16, y: 272, width: 224, height: 224)
+        let crackle = Crackle.grow(in: wax, spacing: 26, creases: [[Vector2(40, 300), Vector2(220, 470)]], seed: 5)
+        noFill(); stroke(Color(hex: 0x1F2B5B)); strokeWeight(1.2)
+        for line in crackle.lines { drawPolyline(line) }
+
+        // Ikat, bottom right.
+        noStroke(); fill(Color(hex: 0xF1E6C8)); drawRect(corner: Vector2(256, 256), width: 256, height: 256)
+        let cloth = Ikat.stripes(in: Rectangle(x: 272, y: 272, width: 224, height: 224), count: 3, bundle: 8,
+                                 bleed: 14, seed: 4)
+        let dyes = [Color(hex: 0x1F2B5B), Color(hex: 0x9E3A2F)]
+        for (i, stripe) in cloth.stripes.enumerated() {
+            noStroke(); fill(dyes[i % 2]); drawShape(stripe.shape)
+            noFill(); stroke(Color(hex: 0x15203F)); strokeWeight(1)
+            for edge in stripe.edges { drawPolyline(edge) }
+        }
     }
 }

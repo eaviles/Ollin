@@ -37,7 +37,6 @@ See the [design notes](DESIGN-NOTES.md#small-pieces).
 
 This tier is a set of classic generative-art building blocks. Each one emits vector geometry (points, `Contour`s, `Shape`s) that feeds the existing draw, shape-boolean, hatching, and SVG paths, rather than the renderer. They follow the plotter-friendly, geometry-first pattern that the shape booleans set. All of them run off the existing seedable `random`/`noise`, so a run is reproducible. Each ships with an example. Several are the natural implementation behind a [recreation](DESIGN-NOTES.md#examples-folder) of a work by the artist who pioneered them. The conventions for adding one are in the [design notes](DESIGN-NOTES.md#generative-geometry). The broader algorithm catalog is the [technique and algorithm helpers](#technique-and-algorithm-helpers) tier.
 
-- **Textures drawn as lines.** Four textures that are line work, so they plot. Wood grain is streamlines through an angle field whose knots bend the flow and whose rings darken every few lines. Frost is needles sprouted along any outline's normals, barbed and clumped. Crackle is veins that walk across a cell and fork, denser where the surface creases. The fourth is the stepped, bleeding edge of a resist-dyed stripe.
 
 ## Technique and algorithm helpers
 
