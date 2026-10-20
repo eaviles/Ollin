@@ -427,6 +427,22 @@ public struct Filter: Sendable {
         case chrome(horizon: Double, warp: Double, waves: Double, sky: Ramp, floor: Ramp,
                     core: SIMD4<Float>, coreWidth: Double, breakWidth: Double,
                     wire: SIMD4<Float>, amount: Double, phase: Double)
+
+        // Optical looks -------------------------------------------------------
+        /// A red-and-cyan anaglyph of the layer at one parallax: the red
+        /// channel read from a copy shifted one way and the green and blue
+        /// from a copy shifted the other, so a dark mark prints as a cyan and
+        /// a red copy that meet in a fused dark.
+        case anaglyph(separation: Double, amount: Double)
+        /// A heat mirage: every row above the horizon shifted sideways by a
+        /// wavering amount that grows toward the horizon, stepped at faults,
+        /// and below the horizon the picture inverted and shifted by waves
+        /// that grow with the distance down.
+        case mirage(horizon: Double, faults: Double, amount: Double, phase: Double)
+        /// Schlieren: the knife-edge shading of the layer read as a density
+        /// field, the gradient of its luminance along the knife's direction
+        /// mapped to brightness about a mid-gray.
+        case schlieren(angle: Double, amount: Double)
         /// Thermal-camera rendering of the layer's alpha shape: heat blooming
         /// inside, a halo radiating outside, mapped through a palette.
         case heatmap(colors: [SIMD4<Float>], contour: Double, innerGlow: Double,
@@ -1593,6 +1609,89 @@ public struct Filter: Sendable {
                              core: core.linearRGBA, coreWidth: max(coreWidth, 0),
                              breakWidth: max(breakWidth, 0), wire: wire.linearRGBA,
                              amount: min(max(amount, 0), 1), phase: phase))
+    }
+
+    // MARK: Optical looks
+
+    /// Anaglyph: the layer as a red-and-cyan stereo print at one parallax.
+    /// The red channel is read from a copy of the layer shifted left by half
+    /// of `separation` (layer pixels) and the green and blue channels from a
+    /// copy shifted right by the same, the way the two eyes' pictures are
+    /// printed over each other for red-and-cyan glasses. A dark mark on a
+    /// light ground comes out as a cyan copy and a red copy that overlap in a
+    /// fused dark, which is what reads as solid through the glasses, and a
+    /// photograph comes out as the classic doubled print. A transparent
+    /// pixel counts as white paper, so a drawing over nothing prints as it
+    /// would on a white sheet. `amount` mixes the print over the layer, and a
+    /// `separation` of 0 leaves every byte as it was. Every pixel shifts by
+    /// the same amount here; to shift by depth, hand a depth map to the
+    /// `Combine.anaglyph(separation:focus:amount:)` form.
+    public static func anaglyph(separation: Double = 8, amount: Double = 1) -> Filter {
+        Filter(kind: .anaglyph(separation: max(separation, 0), amount: min(max(amount, 0), 1)))
+    }
+
+    /// Mirage: the shimmer over a hot road. Above the `horizon` (a fraction of
+    /// the layer's height, 0 the top and 1 the bottom) every row is shifted
+    /// sideways by a wavering amount, up to `amount` layer pixels at the
+    /// horizon and fading to nothing at the top, since the hot air sits on
+    /// the ground. The waver is two slow waves down the rows and a stepped
+    /// jump at every fault, a band of rows that share one offset, `faults`
+    /// setting how hard the steps are (0 none, 1 as wide as the waver).
+    /// Below the horizon the picture is inverted, the sky mirrored onto the
+    /// ground as a mirage is, and shifted by waves that grow with the
+    /// distance down, fading back to the ground under that band. `phase`
+    /// drifts the waver and the faults: feed it your `time`. An `amount` of 0
+    /// leaves the rows where they were, and the inversion with them.
+    /// `Filter.mirageShift(y:horizon:faults:amount:phase:)` is the row shift
+    /// the filter reads, for a sketch that draws where a row went.
+    public static func mirage(horizon: Double = 0.62, faults: Double = 0.5, amount: Double = 14,
+                              phase: Double = 0) -> Filter {
+        Filter(kind: .mirage(horizon: min(max(horizon, 0.02), 0.98), faults: min(max(faults, 0), 1),
+                             amount: max(amount, 0), phase: phase))
+    }
+
+    /// The sideways shift, in layer pixels, that `.mirage` gives the row at
+    /// `y` (a fraction of the layer's height, 0 the top) above its horizon:
+    /// the two slow waves and the stepped faults, scaled by how near the row
+    /// is to the horizon. Rows at or below the horizon carry the inverted
+    /// copy's wave instead and answer 0 here. The same numbers the shader
+    /// reads, so a sketch can draw a mark where a row has moved to.
+    public static func mirageShift(y: Double, horizon: Double = 0.62, faults: Double = 0.5,
+                                   amount: Double = 14, phase: Double = 0) -> Double {
+        let h = min(max(horizon, 0.02), 0.98)
+        guard y < h, amount > 0 else { return 0 }
+        let near = y / h
+        let strength = near * near
+        let wander = 0.6 * sin(y * 31 + phase * 2.1) + 0.4 * sin(y * 73 - phase * 3.3)
+        let band = floor(y * 9 + phase * 0.5)
+        let fault = (mirageHash(band + 0.5) * 2 - 1) * min(max(faults, 0), 1)
+        return max(amount, 0) * strength * (wander + fault)
+    }
+
+    /// The float hash the mirage's faults draw from, written in single
+    /// precision here so it lands on the shader's value.
+    static func mirageHash(_ p: Double) -> Double {
+        var v = Float(p)
+        v = v * 0.1031
+        v -= v.rounded(.down)
+        v *= v + 33.33
+        v *= v + v
+        v -= v.rounded(.down)
+        return Double(v)
+    }
+
+    /// Schlieren: the knife-edge shading of a density field. The layer's
+    /// luminance is read as the density of a gas, and the gradient of that
+    /// density along the knife's `angle` (radians, 0 a knife that reads
+    /// changes left to right) is mapped to brightness about a mid-gray:
+    /// light where the density climbs along the knife and dark where it
+    /// falls, so every spine in the layer reads as a lit side and a shaded
+    /// side with a razor flip between them, the look of a schlieren
+    /// photograph of heat or a shock. `amount` is the gain on the gradient
+    /// (1 maps a full change over ten pixels to full light), and a
+    /// flat layer comes out mid-gray. The layer's alpha is kept.
+    public static func schlieren(angle: Double = 0, amount: Double = 1) -> Filter {
+        Filter(kind: .schlieren(angle: angle, amount: max(amount, 0)))
     }
 
     /// Heatmap: render the layer's alpha shape as thermal imaging. Heat blooms

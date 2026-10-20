@@ -133,6 +133,32 @@ public struct Ramp: Equatable, Hashable, Sendable {
 }
 
 public extension Ramp {
+    /// A ramp over wavelengths of light: `stops` colors placed evenly `from`
+    /// one wavelength `to` another, in nanometers, each the pure hue of its
+    /// wavelength (`Color(wavelength:)`, the nearest a display shows at full
+    /// brightness), so `color(at:)` walks the physical spectrum, violet at
+    /// 400 through blue, green, yellow, and orange to red at 700. A hue wheel
+    /// gives a different rainbow: this one has no magenta, since no single
+    /// wavelength is magenta, and its green is wide. The visible range is
+    /// about 380 to 780, and the ends are clamped to it; running `from` the
+    /// longer wavelength `to` the shorter reverses the ramp.
+    ///
+    /// ```swift
+    /// let spectrum = Ramp.wavelengths()                  // 400 to 700
+    /// fill(spectrum.color(at: 0.5))                      // 550 nm, green
+    /// let warm = Ramp.wavelengths(from: 570, to: 700)    // yellow to red
+    /// ```
+    static func wavelengths(from: Double = 400, to: Double = 700, stops: Int = 31,
+                            in space: ColorSpace = .oklab) -> Ramp {
+        let lo = min(max(from, 380), 780), hi = min(max(to, 380), 780)
+        let n = max(stops, 2)
+        let colors = (0 ..< n).map { i -> Color in
+            let t = Double(i) / Double(n - 1)
+            return Color(wavelength: lo + (hi - lo) * t)
+        }
+        return Ramp(colors, in: space)
+    }
+
     /// The stripe spectrum of holographic foil: eight flat bands from violet
     /// through blue, cyan, green, yellow, and orange to red and magenta, the
     /// order a diffraction grating spreads white light in, as a stepped ramp.

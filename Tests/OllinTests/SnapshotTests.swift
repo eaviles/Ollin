@@ -231,6 +231,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("line-textures",
                  note: "The line textures at fixed seeds (no time, no random), each as the geometry its emitter hands back, stroked: wood grain traced over a knot with its rings as density and tone, frost grown along a circle with its barbs, crackle grown in a square with one crease, and three ikat stripes filled from their stepped edges. Pins the level-curve tracer and its closing loops, the barb law, the vein walk with its exact stop, and the stair per bundle, through the stroke and fill paths.",
                  make: { LineTexturesSheet() }),
+    SnapshotCase("optical-looks",
+                 note: "The six optical and print looks at fixed phases and seeds (no time, no random): a drawing as a red-and-cyan anaglyph at one parallax and two discs by a hand-drawn depth map, a three-ink poster with its plates out of register, a road under a heat mirage, a blurred blob read by a schlieren knife, the wavelength ramp as bands, and chromatography drops meeting. Pins the channel split and the paper-white read of a transparent pixel, the depth gather and its sign, the plane resampling behind the misprint, the row-shift function and the inversion below the line, the knife's gray and its flip, the spectral stops, and the ring caps where fronts meet.",
+                 make: { OpticalLooksSheet() }),
     SnapshotCase("design-patterns",
                  note: "The nine other design-pattern generators tiled 3×3 at fixed phases (no time, no random): filaments, smokeRing, colorPanels, spiral, waves, dotOrbit, grainGradient, pulsingBorder, godRays. Pins each generator dispatch arm and fragment, incl. the polar-seam blends, the pane projection + scheduling, and the dual over/additive bloom accumulations.",
                  make: { DesignPatternsSheet() }),
@@ -11596,6 +11599,116 @@ private final class LineTexturesSheet: Sketch {
             noStroke(); fill(dyes[i % 2]); drawShape(stripe.shape)
             noFill(); stroke(Color(hex: 0x15203F)); strokeWeight(1)
             for edge in stripe.edges { drawPolyline(edge) }
+        }
+    }
+}
+
+/// The six optical and print looks at fixed phases and seeds, three across and
+/// two down: an anaglyph of a drawing and of two discs by a depth map, a
+/// misregistered three-ink poster, a road under a mirage, a schlieren knife
+/// over a blurred blob, the wavelength ramp as bands, and chromatography.
+private final class OpticalLooksSheet: Sketch {
+    override var canvasSize: CanvasSize { .size(513, 342) }
+
+    private var misprint: Image?
+
+    override func setup() {
+        // A flat poster in three inks, separated once and slipped.
+        let side = 171
+        let image = Image(width: side, height: side)
+        for y in 0 ..< side {
+            for x in 0 ..< side {
+                var c = Color.white
+                let p = Vector2(Double(x) + 0.5, Double(y) + 0.5)
+                if (p - Vector2(70, 60)).length < 38 { c = Ink.fluorescentPink.color }
+                if p.y > 100 + 12 * sin(p.x * 0.05) { c = Ink.blue.color }
+                if p.y > 135 { c = Ink.black.color }
+                image[x, y] = c
+            }
+        }
+        misprint = image.separated(into: [.black, .blue, .fluorescentPink])
+            .misregistered(offsets: [.zero, Vector2(4, 2), Vector2(-3, 3)], rotations: [0, 0.01, 0])
+            .preview()
+    }
+
+    override func draw() {
+        background(Color(hex: 0x1A1B1E))
+        let tile = 171.0
+
+        // Anaglyph, top left: a drawing over transparency at one parallax on the
+        // left, two discs by a hand-drawn depth map on the right.
+        let drawing = makeRenderTarget(width: 86, height: 171)
+        withTarget(drawing) {
+            noFill(); stroke(.black); strokeWeight(3)
+            drawCircle(43, 60, 24); drawLine(14, 110, 72, 150); drawRect(20, 20, 46, 130)
+        }
+        noStroke(); fill(.white); drawRect(0, 0, tile, tile)
+        drawImage(drawing.filtered(.anaglyph(separation: 8)).image, 0, 0)
+        let discs = makeRenderTarget(width: 85, height: 171)
+        withTarget(discs) {
+            background(.white); noStroke(); fill(.black)
+            drawCircle(42, 50, 22); drawCircle(42, 120, 22)
+        }
+        let depth = makeRenderTarget(width: 85, height: 171)
+        withTarget(depth) {
+            noStroke()
+            fill(Color(white: 0.15)); drawRect(0, 0, 85, 85)
+            fill(Color(white: 0.9)); drawRect(0, 85, 85, 86)
+        }
+        drawImage(discs.combined(with: depth, .anaglyph(separation: 24, focus: 0.5)).image, 86, 0)
+
+        // Misregistration, top middle.
+        if let misprint { drawImage(misprint, in: Rectangle(x: tile, y: 0, width: tile, height: tile)) }
+
+        // Mirage, top right: a road under a hot sky.
+        let road = makeRenderTarget(width: 171, height: 171)
+        withTarget(road) {
+            noStroke()
+            fill(Color(hex: 0x4A80C8)); drawRect(0, 0, 171, 60)
+            fill(Color(hex: 0xBFD6EE)); drawRect(0, 60, 171, 42)
+            fill(Color(hex: 0xFFE9A8)); drawCircle(120, 40, 14)
+            fill(Color(hex: 0xC9A66B)); drawRect(0, 102, 171, 69)
+            fill(Color(hex: 0x3A3A40)); drawPolygon([Vector2(30, 171), Vector2(141, 171), Vector2(88, 102), Vector2(83, 102)])
+            fill(Color(hex: 0x2A2A2E)); drawRect(150, 70, 4, 32); drawRect(130, 86, 3, 16)
+        }
+        drawImage(road.filtered(.mirage(horizon: 0.6, faults: 0.5, amount: 8, phase: 1.3)).image, tile * 2, 0)
+
+        // Schlieren, bottom left: a blurred blob and a ring under a knife at 0.6 rad.
+        let density = makeRenderTarget(width: 171, height: 171)
+        withTarget(density) {
+            background(Color(white: 0.4)); noStroke()
+            fill(.white); drawCircle(70, 80, 36)
+            fill(Color(white: 0.1)); drawCircle(120, 120, 20)
+        }
+        drawImage(density.filtered(.gaussianBlur(radius: 9)).filtered(.schlieren(angle: 0.6)).image, 0, tile)
+
+        // The wavelength ramp, bottom middle: bands from 400 to 700, and the
+        // warm half under them.
+        let spectrum = Ramp.wavelengths()
+        for i in 0 ..< 30 {
+            fill(spectrum.color(at: (Double(i) + 0.5) / 30))
+            drawRect(tile + Double(i) * tile / 30, tile, tile / 30 + 0.5, tile * 0.6)
+        }
+        let warm = Ramp.wavelengths(from: 570, to: 700, stops: 8)
+        for i in 0 ..< 8 {
+            fill(warm.color(at: Double(i) / 7))
+            drawRect(tile + Double(i) * tile / 8, tile + tile * 0.62, tile / 8 + 0.5, tile * 0.38)
+        }
+
+        // Chromatography, bottom right: three drops meeting over paper.
+        fill(Color(hex: 0xF4EFE3)); drawRect(tile * 2, tile, tile, tile)
+        let stain = Chromatography.spread([(Vector2(tile * 2 + 60, tile + 62), 46),
+                                           (Vector2(tile * 2 + 118, tile + 90), 52),
+                                           (Vector2(tile * 2 + 70, tile + 128), 38)], seed: 5)
+        let inks = Ramp([Color(hex: 0x1B1A2E), Color(hex: 0x24449A), Color(hex: 0xC43E7A), Color(hex: 0xE9B84A)])
+        for drop in stain.drops {
+            noStroke()
+            for (band, ring) in zip(drop.bands, drop.rings) {
+                fill(inks.color(at: ring.tone).withAlpha(0.7))
+                drawShape(band)
+            }
+            noFill(); stroke(Color(hex: 0x1B1A2E).withAlpha(0.6)); strokeWeight(0.8)
+            for fiber in drop.fibers { drawPolyline(fiber) }
         }
     }
 }

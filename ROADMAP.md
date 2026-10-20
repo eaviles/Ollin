@@ -47,7 +47,6 @@ This tier is a set of classic generative-art building blocks. Each one emits vec
 - **Points spread evenly over a sphere.** A list of any number of points on a sphere, each with about the same share of the surface and no clumping at the poles, for a dome of lights, a ball of dots, or directions to aim things along. Sketches write the golden-angle spiral that does this by hand today.
 - **Finding boxes and neighbors in 3D.** A bounds index answers which of many boxes contain a point, which overlap a rectangle, and which overlap each other. A 3D form of `SpatialIndex` answers its neighbor questions for point clouds and swarms in space.
 - **Matching two sets at the least total cost.** This finds the pairing between two sets of points with the least total distance. Particles can then gather into the letters of a word along the shortest total path, and outlines can pair the same way.
-- **Six optical and print looks.** Each one is a filter. A red-and-cyan anaglyph is driven by a depth map, with the fused dark where the two copies meet. Plate misregistration works on the print separations, each ink shifted and screened at its own angle. A heat mirage shifts each row by a wavering amount, with an inverted copy below a mirror line. Schlieren is the knife-edge shading of a density field. A ramp runs over wavelengths. Chromatography rings are noisy annuli that yield to their neighbors.
 
 See the [design notes](DESIGN-NOTES.md#technique-and-algorithm-helpers).
 

@@ -6,7 +6,7 @@
 
 <img src="Images/20-PicturesRestyled/HandColored.jpg" alt="A street of colonial facades under a warm sky made into a hand-colored print: flat painted color under dark hatched line work, graded warm, grained like film, and pressed into paper" width="560">
 
-One photograph can become a painting, a pen drawing, a colorist's grade, or a print on paper. You learn the filters that do it, each one call on a layer, so they chain and take arguments. Five of them, stacked, turn the street photograph above into a hand-colored print. More of the stylize shelf follows it, with filters that read a layer as height, tone, a center, a ring, or a pour.
+One photograph can become a painting, a pen drawing, a colorist's grade, or a print on paper. You learn the filters that do it, each one call on a layer, so they chain and take arguments. Five of them, stacked, turn the street photograph above into a hand-colored print. More of the stylize shelf follows it, with filters that read a layer as height, tone, a center, a ring, a pour, a depth, a density, or hot air.
 
 ## Paint that follows the picture: brushwork
 
@@ -325,7 +325,7 @@ layer.filtered(.channelMixer(.gray(red: 0.7, green: 0.2, blue: 0.1)))
 
 ## Filters that read the layer as something else: height, tone, a center, a ring, and a pour
 
-Every filter in the print and in the family before it read the layer as a picture and handed back a changed picture. A few filters read the same pixels as *information about something else*. They read a height, a tone, a point to warp around, a ring to repeat, or a brightness to pour by. What you feed them then matters more than their arguments, so each is met on its own here.
+Every filter in the print and in the family before it read the layer as a picture and handed back a changed picture. A few filters read the same pixels as *information about something else*. They read a height, a tone, a point to warp around, a ring to repeat, a brightness to pour by, a stereo pair, a gas, or a hot road. What you feed them then matters more than their arguments, so each is met on its own here.
 
 ### Height, tone, and a center: relight, the two-tone dither, and the warps
 
@@ -388,6 +388,24 @@ Underneath, the filter builds a swirling noise field and uses one displacement v
 
 It is a strong effect at its defaults, and `liquify`, `warp`, and `blend` dial back how far it takes the picture. The sway that animates it uses frequencies that do not divide evenly into each other, so it never repeats. It drifts forever, and it will not give you a seamless loop.
 
+### Depth, density, and hot air: anaglyph, schlieren, and mirage
+
+Three more filters read the layer as something else. `.anaglyph` reads it as a stereo pair, `.schlieren` as the density of a gas, and `.mirage` as a scene with hot air over its ground. They are for a print seen through red-and-cyan glasses, the look of a schlieren photograph of heat, and the shimmer over a summer road. The anaglyph is the red-and-cyan method Wilhelm Rollmann described in 1853. Schlieren is August Toepler's knife-edge method of 1864. The mirage is a drawing convention rather than a model of the refraction:
+
+<img src="Images/20-PicturesRestyled/OpticalLooks.jpg" alt="One photograph of a street of colonial facades three ways: as a red-and-cyan anaglyph with every edge doubled in the two colors, under a heat mirage with the facades wavering and mirrored into the road, and as a schlieren picture in gray where every edge is lit on one side and shaded on the other" width="680">
+
+The anaglyph reads the red channel from a copy of the layer shifted one way, and the green and blue from a copy shifted the other. A dark mark on a light ground then comes out as a cyan copy and a red copy that meet in a fused dark, which reads as solid through the glasses. Schlieren takes the brightness as density and the slope of that density along a knife as the picture. One side of every spine is lit and the other shaded, with a razor flip between them. The mirage shifts every row above a horizon sideways by a wavering amount that grows toward the horizon, and mirrors the picture below it. Each is one call:
+
+```swift
+let picture = makeRenderTarget()
+withTarget(picture) { background(.white); fill(.black); drawCircle(width / 2, height / 2, 200) }
+drawImage(picture.filtered(.anaglyph(separation: 9)).image, 0, 0)
+drawImage(picture.filtered(.gaussianBlur(radius: 6)).filtered(.schlieren(angle: 0.5)).image, 0, 0)
+drawImage(picture.filtered(.mirage(horizon: 0.58, amount: 12, phase: time)).image, 0, 0)
+```
+
+The filter shifts every pixel by one parallax. A 3D scene has a depth of its own, and `scene.combined(with: scene.depth, .anaglyph())` shifts each pixel by that depth instead, so a near orb stands off the page and a far one sinks into it. The [`Effects/Phenomena`](../Examples/Effects/Phenomena/Sketch.swift) example runs all three, with the orbs orbiting, the air shimmering, and a plume rising under the knife. [Layered effects](../Docs/Drawing/Effects.md#filter) has every argument.
+
 ## Where this comes from
 
 The stylizing filters each rebuild a published method. The brushwork is the anisotropic Kuwahara filter of Jan Eric Kyprianidis, Henry Kang, and Jürgen Döllner, from 2009. The hatching walks its strokes by Brian Cabral and Leith Casey Leedom's line integral convolution, from 1993. Its tone follows Georges Winkenbach and David H. Salesin's stroke-density rule, from 1994. The film grain is the stochastic model of Alasdair Newson, Julie Delon, and Bruno Galerne, from 2017. Halation is written from the photographic physics in T. H. James's *The Theory of the Photographic Process*. In the film it describes, the red-sensitive layer lies nearest the base.
@@ -404,6 +422,7 @@ The entries after the print name their own sources. The ink line is the extended
 - Worked examples: [`Examples/Effects/InkDrawing`](../Examples/Effects/InkDrawing/Sketch.swift) (the scarf photograph as pen and ink), [`Examples/Effects/Brushwork`](../Examples/Effects/Brushwork/Sketch.swift) (the marigolds photograph painted as brushwork, every dial on a parameter), [`Examples/Effects/Coherence`](../Examples/Effects/Coherence/Sketch.swift) (the portrait flattened into regions by the shock filter), [`Examples/Effects/Hatching`](../Examples/Effects/Hatching/Sketch.swift) (an engraved landscape with the sun crossing it), [`Examples/Color/Look`](../Examples/Color/Look/Sketch.swift) (a look from a `.cube` file wiped across a portrait), [`Examples/Effects/FilmLook`](../Examples/Effects/FilmLook/Sketch.swift) (a night street through halation and grain), [`Examples/Effects/Relight`](../Examples/Effects/Relight/Sketch.swift), [`Examples/Effects/Droste`](../Examples/Effects/Droste/Sketch.swift), and [`Examples/Effects/FilterCatalog`](../Examples/Effects/FilterCatalog/Sketch.swift).
 - [`Examples/Effects/ChromeLettering`](../Examples/Effects/ChromeLettering/Sketch.swift): a word in airbrushed chrome, the horizon drifting, with the classic, gold, and night palettes on a parameter.
 - [`Examples/Effects/Textures`](../Examples/Effects/Textures/Sketch.swift): bubble wrap over a drawing, beside the rust, the verdigris, the terrazzo, and a creased sheet, one picker across them.
+- [`Examples/Effects/Phenomena`](../Examples/Effects/Phenomena/Sketch.swift): the anaglyph of a 3D scene by its own depth, a road under a mirage, and a plume under a schlieren knife, beside three print and color looks, one picker across them.
 
 ---
 

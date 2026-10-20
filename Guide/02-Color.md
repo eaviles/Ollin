@@ -341,6 +341,13 @@ Spectrum.blackbody(6500)      // and as a curve: roughly daylight
 
 Run `Color(wavelength:)` from 400 to 700 nanometers and it sweeps a physical rainbow. A hue wheel gives you a different rainbow. `blackbody` is why a candle is orange and a hot star is blue, from one number in kelvin. `Color(kelvin:)` gives the same tint without the spectrum behind it. Three GPU effects also work wavelength by wavelength instead of channel by channel. They are `.thinFilm` for the colors in a soap bubble and `.diffraction` for the rainbow split off a grating. The third, `.paintMix`, runs the paint mixing above over a whole picture at once. The [Spectral color](../Docs/Drawing/Spectrum.md) reference has all of it.
 
+Hold that sweep as a ramp and it is `Ramp.wavelengths(from: 400, to: 700)`. The stops are the pure hues of the wavelengths, placed evenly, so `color(at: 0.5)` is the green of 550 nanometers. It is the rainbow a prism makes, with no magenta in it, since no single wavelength is magenta:
+
+```swift
+let spectrum = Ramp.wavelengths()          // 400 to 700 nanometers
+fill(spectrum.color(at: 0.5))              // 550 nm, green
+```
+
 One more color comes from the curve, and it is the one a painter cannot mix. `Color.interference(thickness: 420)` is the color a clear film that many nanometers deep shows, a soap wall or oil on a puddle. Light reflects off both faces of the film, and the two reflections meet out of step, so some wavelengths add and others cancel. Nothing in it is pigment, which is why the color walks as the thickness changes. It runs straw, then magenta, blue, and green, then the pale bands of a thick film. A ramp of it through `.alongPath` paints a stroke that walks that order along its length.
 
 <img src="Images/02-Color/PearlStrokes.jpg" alt="A ruler of color from 0 to 1,200 nanometers, running from black through white and straw into magenta, blue, green, and pink before fading to pale pastels. Under it four thick wavy strokes, each colored along its length by a stretch of that ruler, labeled with the thicknesses it spans" width="680">

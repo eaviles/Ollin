@@ -3252,6 +3252,27 @@ struct ChaoticMap: Sendable
   static func ikeda(u: Double = default) -> ChaoticMap
   var next: (Vector2) -> Vector2 { get set }
   var start: Vector2 { get set }
+struct Chromatography: Equatable, Sendable
+  init(drops: [Chromatography.Drop])
+  let drops: [Chromatography.Drop]
+  static func scatter(in: Rectangle, count: Int = default, radius: ClosedRange<Double> = default, rings: Int = default, ruffle: Double = default, fibers: Double = default, seed: Int = default) -> Chromatography
+  static func spread(_: [(center: Vector2, radius: Double)], rings: Int = default, ruffle: Double = default, fibers: Double = default, seed: Int = default) -> Chromatography
+  static func spread(at: Vector2, radius: Double, rings: Int = default, ruffle: Double = default, fibers: Double = default, seed: Int = default) -> Chromatography
+  static let coreFraction: Double
+  struct Drop: Equatable, Sendable
+    init(center: Vector2, radius: Double, rings: [Chromatography.Ring], fibers: [[Vector2]] = default)
+    let center: Vector2
+    let fibers: [[Vector2]]
+    let radius: Double
+    let rings: [Chromatography.Ring]
+    var bands: [Shape] { get }
+    var core: Double { get }
+  struct Ring: Equatable, Sendable
+    init(points: [Vector2], fraction: Double, tone: Double)
+    let fraction: Double
+    let points: [Vector2]
+    let tone: Double
+  var lines: [[Vector2]] { get }
 struct Circle: PlaneCurve, Decodable, Encodable, Equatable, Hashable, Sendable
   func contains(_: Vector2) -> Bool
   func contour(segments: Int? = default) -> Contour
@@ -3472,6 +3493,7 @@ struct Combine: Sendable
     case alpha
     case luminance
   static func ambientOcclusion(radius: Double = default, amount: Double = default, bias: Double = default, quality: RenderQuality = default) -> Combine
+  static func anaglyph(separation: Double = default, focus: Double = default, amount: Double = default) -> Combine
   static func defocus(focus: Double = default, range: Double = default, maxBlur: Double = default, quality: RenderQuality = default, blades: Int? = default, irisAngle: Double = default, catsEye: Double = default) -> Combine
   static func disperse(amount: Double = default, mode: Filter.Dispersion = default, spectral: Bool = default, quality: RenderQuality = default) -> Combine
   static func displace(amount: Double = default) -> Combine
@@ -4096,6 +4118,7 @@ struct Filter: Sendable
     case metal
     case sand
   static func adaptiveThreshold(window: Double? = default, bias: Double = default, inverted: Bool = default) -> Filter
+  static func anaglyph(separation: Double = default, amount: Double = default) -> Filter
   static func antialias(amount: Double = default, threshold: Double = default, quality: RenderQuality = default) -> Filter
   static func arrows(spacing: Double = default, scale: Double = default, color: Color = default, width: Double = default) -> Filter
   static func bevel(width: Double = default, depth: Double = default, profile: Filter.BevelProfile = default, angle: Double = default, elevation: Double = default, highlight: Color = default, shadow: Color = default) -> Filter
@@ -4159,6 +4182,8 @@ struct Filter: Sendable
   static func lut(_: ColorLUT, amount: Double = default) -> Filter
   static func median() -> Filter
   static func melt(colors: [Color] = default, scale: Double = default, warp: Double = default, liquify: Double = default, blend: Double = default, phase: Double = default) -> Filter
+  static func mirage(horizon: Double = default, faults: Double = default, amount: Double = default, phase: Double = default) -> Filter
+  static func mirageShift(y: Double, horizon: Double = default, faults: Double = default, amount: Double = default, phase: Double = default) -> Double
   static func mirror(vertical: Bool = default, flipped: Bool = default) -> Filter
   static func motionBlur(angle: Double = default, distance: Double = default) -> Filter
   static func normalMap(amount: Double = default) -> Filter
@@ -4174,6 +4199,7 @@ struct Filter: Sendable
   static func relight(_: Filter.RelightFinish = default, angle: Double = default, elevation: Double = default, height: Double = default, intensity: Double = default, color: Color? = default) -> Filter
   static func ripple(amplitude: Double = default, frequency: Double = default, phase: Double = default, center: Vector2 = default) -> Filter
   static func scanlines(count: Double = default, amount: Double = default) -> Filter
+  static func schlieren(angle: Double = default, amount: Double = default) -> Filter
   static func sepia(amount: Double = default) -> Filter
   static func shader(_: Shader) -> Filter
   static func sharpen(amount: Double = default) -> Filter
@@ -5996,6 +6022,7 @@ struct PowerDiagram: Sendable
 struct PrintSeparation
   func dithered(_: Dither = default, serpentine: Bool = default) -> PrintSeparation
   func halftoned(pitch: Double = default, angles: [Double]? = default) -> PrintSeparation
+  func misregistered(offsets: [Vector2], rotations: [Double] = default) -> PrintSeparation
   func preview() -> Image
   let height: Int
   let layers: [PrintSeparation.Layer]
@@ -6009,6 +6036,7 @@ struct PrintSeparation
 struct ProcessSeparation
   func dithered(_: Dither = default, serpentine: Bool = default) -> ProcessSeparation
   func halftoned(pitch: Double = default, angles: [Double]? = default) -> ProcessSeparation
+  func misregistered(offsets: [Vector2], rotations: [Double] = default) -> ProcessSeparation
   func preview() -> Image
   let averageTotalInk: Double
   let height: Int
@@ -6062,6 +6090,7 @@ struct Ramp: ParamValue, Equatable, Hashable, Sendable
   static func stepped(stops: [(position: Double, color: Color)]) -> Ramp
   static func stepped(stops: [Ramp.Stop]) -> Ramp
   static func stored(_: Ramp) -> ParamStored
+  static func wavelengths(from: Double = default, to: Double = default, stops: Int = default, in: ColorSpace = default) -> Ramp
   static let chromeFloor: Ramp
   static let chromeSky: Ramp
   static let holographic: Ramp

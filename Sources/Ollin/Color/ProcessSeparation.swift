@@ -125,6 +125,22 @@ public struct ProcessSeparation {
         }
     }
 
+    /// The plates off register, the way a press lands them: each plate moved
+    /// by its own `offset` (layer pixels, x to the right and y down) and turned
+    /// by its own `rotation` (radians, about the sheet's center), in the
+    /// plates' order, with a missing entry meaning no move, the same call the
+    /// spot-ink masters take (`PrintSeparation.misregistered`). The preview
+    /// then shows the misprint, every color fringed by the plate that slipped.
+    /// Screen after, not before, so each plate's dots and angle stay its own.
+    public func misregistered(offsets: [Vector2], rotations: [Double] = []) -> ProcessSeparation {
+        screened { plane, index in
+            let offset = index < offsets.count ? offsets[index] : .zero
+            let rotation = index < rotations.count ? rotations[index] : 0
+            PrintSeparation.resamplePlane(&plane, width: width, height: height,
+                                          offset: offset, rotation: rotation)
+        }
+    }
+
     /// The conventional four-color screen angles, in radians, in the order
     /// the plates come back: cyan 15, magenta 75, yellow 0, black 45 degrees.
     /// Yellow takes 0 because it is the ink the eye least resents seeing as a

@@ -2570,6 +2570,77 @@ fragment float4 ollin_fx_wave(PresentOut in [[stage_in]],
     return src.sample(samp, clamp(uv, 0.0, 1.0));
 }
 
+// mirage: the shimmer over a hot road. Above the horizon every row is shifted
+// sideways by a wavering amount that grows toward the horizon (the square of
+// the row's nearness to it): two slow waves down the rows plus a stepped jump
+// at every fault, a band of rows sharing one hashed offset, `faults` scaling
+// the steps. Below the horizon the picture is inverted (the row mirrored about
+// the line) and shifted by a wave that grows with the distance down, fading
+// back to the ground over the band under the line. `ollin_mirage_shift` is the row
+// shift above the horizon, in pixels, and `Filter.mirageShift` on the CPU is
+// the same numbers. params[0]: horizon (a fraction of the height), faults,
+// amount (pixels), phase; params[1]: the layer's width and height. An amount
+// of zero returns the layer untouched.
+static inline float ollin_mirage_shift(float y, float h, float faults, float amount, float phase) {
+    float near = y / h;
+    float strength = near * near;
+    float wander = 0.6 * sin(y * 31.0 + phase * 2.1) + 0.4 * sin(y * 73.0 - phase * 3.3);
+    float band = floor(y * 9.0 + phase * 0.5);
+    float fault = (hash11(band + 0.5) * 2.0 - 1.0) * faults;
+    return amount * strength * (wander + fault);
+}
+
+fragment float4 ollin_fx_mirage(PresentOut in [[stage_in]],
+                                texture2d<float> src [[texture(0)]],
+                                sampler samp [[sampler(0)]],
+                                constant float4 *params [[buffer(0)]]) {
+    float h = params[0].x, faults = params[0].y, amount = params[0].z, phase = params[0].w;
+    float2 size = float2(max(params[1].x, 1.0), max(params[1].y, 1.0));
+    if (amount <= 0.0) return src.sample(samp, in.uv);   // zero is an exact identity
+    float y = in.uv.y;
+    if (y < h) {
+        float shift = ollin_mirage_shift(y, h, faults, amount, phase) / size.x;
+        return src.sample(samp, clamp(float2(in.uv.x + shift, y), 0.0, 1.0), level(0.0));
+    }
+    float t = (y - h) / max(1.0 - h, 1e-4);             // 0 at the line, 1 at the bottom
+    float wave = amount * (0.5 + 2.5 * t) * sin(t * 55.0 + phase * 4.0) / size.x;
+    float ym = max(2.0 * h - y, 0.0);                   // the row mirrored about the line
+    float4 mirrored = src.sample(samp, clamp(float2(in.uv.x + wave, ym), 0.0, 1.0), level(0.0));
+    float4 ground = src.sample(samp, clamp(float2(in.uv.x + wave * 0.3, y), 0.0, 1.0), level(0.0));
+    float w = 1.0 - smoothstep(0.18, 0.7, t);   // the mirrored band, then the ground returns
+    return mix(ground, mirrored, w);
+}
+
+// schlieren: the knife-edge shading of a density field. The layer's luminance
+// (premultiplied, so a transparent pixel is no density) is the density, its
+// gradient by central differences is projected on the knife's direction, and
+// that slope is mapped to brightness about a mid-gray: light where the density
+// climbs along the knife, dark where it falls, with a razor flip at every
+// spine. `amount` is the gain (1 maps a full change over ten pixels to full
+// light). The alpha is the widest of the taps, so the shading shows just
+// past a transparent layer's edge. params[0]: the texel size, the knife's
+// angle, the amount.
+fragment float4 ollin_fx_schlieren(PresentOut in [[stage_in]],
+                                   texture2d<float> src [[texture(0)]],
+                                   sampler samp [[sampler(0)]],
+                                   constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    float angle = params[0].z, amount = params[0].w;
+    float4 s = src.sample(samp, in.uv);
+    float4 xp = src.sample(samp, clamp(in.uv + float2(t.x, 0.0), 0.0, 1.0));
+    float4 xm = src.sample(samp, clamp(in.uv - float2(t.x, 0.0), 0.0, 1.0));
+    float4 yp = src.sample(samp, clamp(in.uv + float2(0.0, t.y), 0.0, 1.0));
+    float4 ym = src.sample(samp, clamp(in.uv - float2(0.0, t.y), 0.0, 1.0));
+    float2 g = 0.5 * float2(ollin_luma(xp.rgb) - ollin_luma(xm.rgb),
+                            ollin_luma(yp.rgb) - ollin_luma(ym.rgb));
+    float slope = dot(g, float2(cos(angle), sin(angle)));
+    // The gray is mid-gray to the eye (sRGB 0.5), and the slope is mapped
+    // symmetrically about it in that space before the result goes to linear.
+    float v = 0.5 + 0.5 * clamp(slope * 10.0 * amount, -1.0, 1.0);
+    float a = max(max(s.a, xp.a), max(max(xm.a, yp.a), ym.a));
+    return ollin_premul(srgbToLinear(float3(v)), a);
+}
+
 // ripple: concentric radial sine displacement from `center` (params[0]: amplitude,
 // frequency, phase, aspect; params[1].xy: center in layer fractions).
 fragment float4 ollin_fx_ripple(PresentOut in [[stage_in]],

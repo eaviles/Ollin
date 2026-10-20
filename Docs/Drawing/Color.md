@@ -257,6 +257,14 @@ let stripes = Ramp.stepped([.red, .orange, .yellow, .green, .blue])
 fill(stripes.color(at: 0.3))       // orange, exactly, with no red in it
 ```
 
+A ramp over **wavelengths** of light is `Ramp.wavelengths(from:to:stops:in:)`: `stops` colors placed evenly from one wavelength to another, in nanometers, each the pure hue of its wavelength (`Color(wavelength:)`, see [Spectral color](Spectrum.md#physical)), so `color(at:)` walks the physical spectrum, violet at 400 through blue, green, yellow, and orange to red at 700. It is a different rainbow from a hue wheel's: no magenta, since no single wavelength is magenta, and a wide green. The ends clamp to the visible range (about 380 to 780), and a run from the longer wavelength to the shorter reverses the ramp.
+
+```swift
+let spectrum = Ramp.wavelengths()                  // 400 to 700 nm
+fill(spectrum.color(at: 0.5))                      // 550 nm, green
+let warm = Ramp.wavelengths(from: 570, to: 700)    // yellow to red
+```
+
 <a name="gradient"></a>
 
 ### Gradient paint

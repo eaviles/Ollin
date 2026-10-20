@@ -46,6 +46,15 @@ separation.halftoned(pitch: 8)           // classic round-dot screens
 
 `halftoned` rotates each layer's dot grid to its own angle. The darkest ink takes 45 degrees, the least visible angle, so the drums overprint into the traditional rosette instead of moire. Pass `angles:` in radians to choose your own. `PrintSeparation.screenAngles(for:)` returns the angles the default would give a list of inks, in the order you pass them. With those, a proof can label each master with its angle, or a sketch can screen the masters itself with `drawHalftone` at the same angles. The four-color set for process plates is `ProcessSeparation.screenAngles`, cyan, magenta, yellow, then black. Both passes preserve tone exactly, so a 30% gray becomes dots that cover 30% of the paper. Both also drop coverage below 2% to bare paper, and raise coverage above 98% to solid ink. That floor is the smallest dot a press can hold. 8-bit rounding leaves an invisible residue under 1% in "white" areas. Without that floor, the residue would screen into stray specks.
 
+A press never lands its plates exactly where the last one went, and the slip is a look of its own. `misregistered(offsets:rotations:)` moves each master by its own offset and turns it by its own rotation, in the order the inks were given, with a missing entry meaning no move. An offset is in layer pixels, x to the right and y down, and a rotation is in radians about the sheet's center. The inks then print over each other out of place: a black mark rings itself with its own inks, a filled shape shows a fringe of one ink on one side and bare paper on the other, and `preview()` shows the misprint. Paper slides in where a plate moved away from an edge, ink moved past the sheet is lost, and a whole-pixel offset with no rotation moves the master exactly. Misregister first and screen after, so each plate's dots and screen angle stay its own. The process plates take the same call, `ProcessSeparation.misregistered`.
+
+```swift
+let separation = Image(width: 400, height: 400, color: .blue).separated(into: [.black, .blue, .yellow])
+let slipped = separation.misregistered(offsets: [.zero, Vector2(6, 2), Vector2(-3, 4)],
+                                       rotations: [0, 0.004, 0])
+drawImage(slipped.halftoned(pitch: 8).preview(), 0, 0)
+```
+
 Separation and screening are per-pixel CPU work, cached per distinct color. Run them in `setup()` and hold the result, rather than running them once per frame. A GPU-backed image has no CPU pixels to read, so it returns an empty separation. Call `snapshot()` on the image before you separate it. The work is deterministic. The same image, inks, and paper always give the same masters, so separations are safe to snapshot and export.
 
 ### Exporting print files

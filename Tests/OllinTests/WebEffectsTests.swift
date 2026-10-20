@@ -551,6 +551,32 @@ import OllinWebGate
         }
     }
 
+    /// The three optical filters and the depth-driven anaglyph, each one
+    /// translated pass, over discs that move.
+    final class Looked: Sketch {
+        override var canvasSize: CanvasSize { .square(120) }
+        override func draw() {
+            background(Color(hex: 0xEFEAE0))
+            let scene = makeRenderTarget()
+            withTarget(scene) {
+                background(.white)
+                noStroke()
+                fill(Color(hex: 0x2B6C8C)); drawCircle(30 + time * 8, 30, 16)
+                fill(Color(hex: 0x1A1B1E)); drawCircle(80, 70, 14)
+            }
+            let depth = makeRenderTarget()
+            withTarget(depth) {
+                noStroke()
+                fill(Color(white: 0.2)); drawRect(0, 0, 60, 120)
+                fill(Color(white: 0.85)); drawRect(60, 0, 60, 120)
+            }
+            drawImage(scene.combined(with: depth, .anaglyph(separation: 10)).image, 0, 0)
+            drawImage(scene.filtered(.anaglyph(separation: 6)).image, 60, 0)
+            drawImage(scene.filtered(.mirage(horizon: 0.6, amount: 6, phase: time)).image, 0, 60)
+            drawImage(scene.filtered(.gaussianBlur(radius: 4)).filtered(.schlieren(angle: 0.4)).image, 60, 60)
+        }
+    }
+
     /// A blurred layer under a bloomed one, the two passes the page owns.
     final class Blurred: Sketch {
         override var canvasSize: CanvasSize { .square(120) }
@@ -913,6 +939,7 @@ import OllinWebGate
             ("Rusted", { Rusted() }, 4, 2),
             ("Floored", { Floored() }, 4, 2),
             ("Bubbled", { Bubbled() }, 4, 2),
+            ("Looked", { Looked() }, 4, 2),
             ("Measured", { Measured() }, 4, 2),
             ("Outlined", { Outlined() }, 4, 2),
             ("Shadowed", { Shadowed() }, 4, 2),

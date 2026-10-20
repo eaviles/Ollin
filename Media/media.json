@@ -4933,6 +4933,28 @@
       "stillSmall": "examples/Effects/NewtonBasins/still-640.jpg?v=61035e7b",
       "width": 1080
     },
+    "Effects/Phenomena": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 18.75,
+      "sound": false,
+      "source": "1b9724d9c5d0f5ea",
+      "rendered": "2026-10-20",
+      "bytes": {
+        "loop": 1609580,
+        "loopSmall": 355305,
+        "still": 73601,
+        "stillSmall": 27216
+      },
+      "loop": "examples/Effects/Phenomena/loop.mp4?v=bd00343f",
+      "loopSmall": "examples/Effects/Phenomena/loop-640.mp4?v=4f5b20c2",
+      "still": "examples/Effects/Phenomena/still.jpg?v=db373f8d",
+      "stillSmall": "examples/Effects/Phenomena/still-640.jpg?v=477c9750",
+      "seed": 1
+    },
     "Effects/PigmentMix": {
       "bytes": {
         "loop": 701005,

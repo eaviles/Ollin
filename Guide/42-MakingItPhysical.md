@@ -6,7 +6,7 @@
 
 <img src="Images/42-MakingItPhysical/PrintedKnot.jpg" alt="A flat pink knotted loop on white, outlined in thin dark blue lines. Where one strand passes under another, its hidden edges continue as dashed lines across the strand on top. The lines turn nearly black where they cross or overlap" width="560">
 
-A sketch can leave the screen as lines a plotter draws, inks a press prints, or a solid a 3D printer builds. You learn the file each machine reads, and how a 3D scene becomes lines a pen can follow. The knot at the top is one design sent three ways, as G-code for a pen, two ink plates, and a file to print. After it come embroidery, DXF, and four textures a pen draws, then proofs and process plates, and a model and spatial video.
+A sketch can leave the screen as lines a plotter draws, inks a press prints, or a solid a 3D printer builds. You learn the file each machine reads, and how a 3D scene becomes lines a pen can follow. The knot at the top is one design sent three ways, as G-code for a pen, two ink plates, and a file to print. After it come embroidery, DXF, four textures a pen draws, and the rings a drop of ink leaves, then proofs, process plates, and plates out of register, and a model and spatial video.
 
 ## Driving the machine itself: G-code
 
@@ -284,6 +284,25 @@ for line in plank.strokes {
 
 `Frost.grow(along:)` takes any contour or shape and a side, `Crackle.grow(in:)` any shape as the cell with `creases:` to crowd along, and `Ikat.stripes(in:count:)` lays a set across a region. Every one repeats from its seed, and every stroke is a point list, so `--export-svg` writes the texture as paths and `--export-gcode` as a route. The `Patterns/LineTextures` example draws each one the way a plotter would, stroke by stroke over the loop. [Textures](../Docs/Generators/Textures.md) has every parameter.
 
+### A drop that spread: chromatography
+
+**Chromatography** is the stain a drop of ink leaves as it spreads through paper. The pigments in the ink travel at different speeds, so each stops at its own distance and the stain is rings around a core. `Chromatography` gives you that stain as geometry: each ring a closed outline with a tone, each band between two rings a shape, and fibers wicking past the outer edge. It is for a felt-tip stain, a dyed cloth, a dish of cultures, or a plotted bloom. Several drops that spread into each other stop where they meet, on the line where their fronts share the paper, and no ring ever enters a neighbor's core:
+
+<img src="Images/42-MakingItPhysical/ChromatographyRings.jpg" alt="Three panels over cream paper: one drop as five nested rings filled from dark indigo at the core through blue and magenta to a yellow outer band with short fibers past its edge, three such drops whose outer rings flatten against each other where they meet, and the same three drawn as nothing but their outlines and fibers in one dark ink" width="680">
+
+```swift
+let stain = Chromatography.scatter(in: canvasRectangle, count: 6, radius: 70 ... 150, seed: 2)
+let inks = Ramp([Color(hex: 0x1B1A2E), Color(hex: 0x24449A), Color(hex: 0xC43E7A), Color(hex: 0xE9B84A)])
+for drop in stain.drops {
+    for (band, ring) in zip(drop.bands, drop.rings) {
+        fill(inks.color(at: ring.tone))
+        drawShape(band)
+    }
+}
+```
+
+`spread(at:radius:)` is one drop and `spread(_:)` takes drops you placed yourself. `stain.lines` is every ring closed and every fiber, for `--export-svg` and the pen. The [`Effects/Phenomena`](../Examples/Effects/Phenomena/Sketch.swift) example grows a set of drops in over its loop. [Textures](../Docs/Generators/Textures.md#chromatography) has every parameter.
+
 ## More for the press: proofs and process plates
 
 The knot went to the press as two spot inks. A press can also mix every color from four standard inks, cyan, magenta, yellow, and black, CMYK for short. A profile describes what that press does. The profile shows the print on screen before you print, and it splits a picture into the four plates.
@@ -324,6 +343,21 @@ override var printProfile: ICCProfile? { .genericCMYK }
 Declare that, and `--export-plates poster.png` writes the four plates plus the proof, with registration marks, as `--export-separations` does for spot inks. The separation also reports **total ink**, the sum of all four coverages at the heaviest spot. Ask your shop what they will take. Around 300% is usual for coated paper, and newsprint takes less.
 
 The profile tells the two paths apart. Spot separations are for a shop printing named inks one at a time, where no profile exists and Ollin models the overprint. Plates are for a press whose behavior has been measured, where the profile answers directly. [Print color](../Docs/Output/PrintColor.md) has the rest.
+
+### When the plates slip: misregistration
+
+A press never lands a plate exactly where the last one went. The slip is called **misregistration**, and on a riso print it is half the charm. `misregistered(offsets:rotations:)` moves each master by its own offset and turns it about the sheet's center, on the spot inks and the process plates alike. It is for a print that looks printed, a poster with its colors fringed, or a check of what a shop's tolerance will do to a fine line. A black mark rings itself with its own inks, and a shape shows one ink on one side and bare paper on the other:
+
+<img src="Images/42-MakingItPhysical/Misregistration.jpg" alt="A three-ink poster of a pink sun over blue hills and black ground three times: in register with clean edges, with its plates slipped so every edge shows a fringe of one ink and a sliver of paper, and slipped then screened into dots at three angles" width="680">
+
+```swift
+let separation = Image(width: 400, height: 400, color: .blue).separated(into: [.black, .blue, .fluorescentPink])
+let slipped = separation.misregistered(offsets: [.zero, Vector2(5, 3), Vector2(-4, 2)],
+                                       rotations: [0, 0.012, 0])
+drawImage(slipped.halftoned(pitch: 6).preview(), 0, 0)
+```
+
+Slip first and screen after, so each plate keeps its own dots and angle. [Print separations](../Docs/Output/PrintSeparations.md) has the rest.
 
 ## More objects: a model and spatial video
 
@@ -412,8 +446,8 @@ G-code grew out of the numerical control of machine tools in the 1950s and was s
 - [Embroidery](../Docs/Output/Embroidery.md): a frame as the stitches a machine sews, with strokes as running stitch, fills as rows, and each color as its own thread.
 - [DXF](../Docs/Output/DXF.md): a frame as the drawing a shop program opens, each color on its own layer, with circles kept as circles and touching paths merged.
 - [Line drawing](../Docs/3D/LineDrawing.md): a 3D scene as the line work a machine can follow, which edges are kept and why, placing several meshes so they hide each other, and what the hidden set is for.
-- [Textures](../Docs/Generators/Textures.md): the four line textures with every parameter, the ring coordinate under the wood grain, the barb law, the vein walk, and the stepped edge.
-- [Print separations](../Docs/Output/PrintSeparations.md): the spot-ink model, the ink catalog, screening angles, and the overprint preview.
+- [Textures](../Docs/Generators/Textures.md): the four line textures with every parameter, the ring coordinate under the wood grain, the barb law, the vein walk, and the stepped edge, and the chromatography rings with their caps where drops meet.
+- [Print separations](../Docs/Output/PrintSeparations.md): the spot-ink model, the ink catalog, screening angles, the overprint preview, and the plates slipped out of register.
 - [Print color](../Docs/Output/PrintColor.md): profiles, the soft proof, the gamut check, and the four plates.
 - [Fabrication](../Docs/Output/Fabrication.md): writing a mesh as STL, OBJ, or 3MF, real-world sizing, and what makes a surface printable.
 - [Spatial](../Docs/Output/Spatial.md): what a USDZ model carries, and spatial video with its two numbers.

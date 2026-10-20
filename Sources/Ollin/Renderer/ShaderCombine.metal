@@ -415,6 +415,42 @@ static inline float ollin_dof_coc(float depth, float focus, float range, float m
 }
 static inline float ollin_dof_depth(float4 texel) { return linearToSrgb(float3(ollin_luma(texel.rgb))).x; }
 
+// anaglyph: the layer as a red-and-cyan stereo print. The red channel is read
+// from a copy of the layer shifted one way and the green and blue from a copy
+// shifted the other, by half a parallax each; a transparent pixel counts as
+// white paper under each copy, so a dark mark on nothing prints as a cyan copy
+// and a red copy that meet in a fused dark, and a photograph as the classic
+// doubled print. params[0]: the separation in layer pixels, the depth flag, the
+// focus depth, and the amount; params[1]: the layer's width and height. With
+// the flag up the second texture is read as a depth map (luminance, 0 near to 1
+// far, the reading `.defocus` makes) and the parallax is the separation times
+// the depth off the focus, so a nearer pixel shifts one way and a farther one
+// the other; with the flag down the parallax is the separation itself and the
+// second texture is never read. A positive parallax moves the red copy left and
+// the cyan copy right, the pair that reads as behind the page. A separation or
+// an amount of zero returns the layer untouched.
+fragment float4 ollin_fx_anaglyph(PresentOut in [[stage_in]],
+                                  texture2d<float> src [[texture(0)]],
+                                  texture2d<float> depthMap [[texture(1)]],
+                                  sampler samp [[sampler(0)]],
+                                  constant float4 *params [[buffer(0)]]) {
+    float separation = params[0].x, byDepth = params[0].y;
+    float focus = params[0].z, amount = params[0].w;
+    float2 size = float2(max(params[1].x, 1.0), max(params[1].y, 1.0));
+    float4 s = src.sample(samp, in.uv);
+    if (separation <= 0.0 || amount <= 0.0) return s;   // zero is an exact identity
+    float parallax = separation;
+    if (byDepth > 0.5) parallax = separation * (ollin_dof_depth(depthMap.sample(samp, in.uv)) - focus);
+    float2 off = float2(parallax * 0.5 / size.x, 0.0);
+    float4 left = src.sample(samp, clamp(in.uv + off, 0.0, 1.0), level(0.0));
+    float4 right = src.sample(samp, clamp(in.uv - off, 0.0, 1.0), level(0.0));
+    float3 lc = mix(float3(1.0), ollin_unpremul(left), left.a);
+    float3 rc = mix(float3(1.0), ollin_unpremul(right), right.a);
+    float a = max(left.a, right.a);
+    float4 print = ollin_premul(float3(lc.r, rc.g, rc.b), a);
+    return mix(s, print, amount);
+}
+
 // The layer prepass for `.defocus`: the aux depth map (luminance, 0 near to 1 far)
 // reduced to what the shared gather below reads, (blur, depth, blur in front of the
 // focus, 1), the canvas prepass's own layout. A drawn map's silhouette is an

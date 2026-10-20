@@ -29,6 +29,7 @@ for line in plank.strokes { drawPolyline(line.points) }         // a plotter's p
   - [Frost](#frost)
   - [Crackle](#crackle)
   - [Ikat](#ikat)
+- [A drop that spread: chromatography](#chromatography)
 
 <a name="patina"></a>
 
@@ -186,3 +187,29 @@ let one = Ikat.stripe(across: Rectangle(x: 40, y: 200, width: 1000, height: 80),
 **`Ikat`** is the stepped, bleeding edge of a resist-dyed stripe. In ikat the threads are tied in bundles and dyed before they are woven. Every bundle lands a little out of place on the loom, so a stripe's edge is not a line but a stair, one step per bundle, each at its own height. A **`Stripe`** is a `band`, the stripe as it was designed, with an offset per bundle at each of its two edges, `leading` and `trailing`. The offsets run along the **`Warp`**, the direction the threads run. For a `.vertical` warp the leading edge is the top and the bundles step across x. `leadingEdge` and `trailingEdge` are the stairs as polylines, two points per bundle with a riser between bundles. `shape` is the stripe between them, closed, for a fill.
 
 `stripe(across:bundle:bleed:spikes:intrusions:skew:warp:seed:)` dyes one stripe over a band. Each bundle *slips* along the warp, moving both its edges together, by a slow noise of up to a third of `bleed` plus a lean of `skew` times `bleed` from one end of the stripe to the other. Each edge then *bleeds* on its own. It flares up to half of `bleed` either way by a slow noise, spikes one to two bleeds out on a `spikes` share of the bundles (a spike runs into the next bundle a third of the time), and intrudes half to one bleed in on an `intrusions` share, never past two fifths of the band. `stripes(in:count:...)` lays `count` stripes across a region, each half as tall as its share of the region along the warp and centered in it, every one dyed from its own draw of the seed. `Ikat(stripes:)` builds a cloth from stripes of your own, each made with `Ikat.Stripe(band:bundle:warp:leading:trailing:)`.
+
+<a name="chromatography"></a>
+
+#### A drop that spread: chromatography
+
+`Chromatography` is the stain a drop of ink leaves as it spreads through paper. The pigments in the ink travel at different speeds, so each stops at its own distance. The stain is a set of rings around a core, each a band of one tone, noisy where the paper's grain pulled the front. Fibers of the outermost front wick a little past the edge. Several drops that spread into each other stop where they meet. Every ring yields to its neighbor along the line their fronts share, nearer the smaller drop, with a ruffle where it was stopped, and no ring ever enters a neighbor's core. The stain is geometry the sketch holds. Each ring is a closed outline with a `tone`, 0 at the core and 1 at the outermost front. Each band between two rings is a `Shape`, and each fiber is a short open line. So a sketch fills the bands, strokes the rings, or plots both.
+
+```swift
+let stain = Chromatography.scatter(in: canvasRectangle, count: 6, radius: 70 ... 150, seed: 2)
+let inks = Ramp([Color(hex: 0x1B1A2E), Color(hex: 0x24449A), Color(hex: 0xC43E7A), Color(hex: 0xE9B84A)])
+noStroke()
+for drop in stain.drops {
+    for (band, ring) in zip(drop.bands, drop.rings) {
+        fill(inks.color(at: ring.tone))
+        drawShape(band)
+    }
+    noFill(); stroke(Color(hex: 0x1B1A2E))
+    for fiber in drop.fibers { drawPolyline(fiber) }
+}
+stain.lines                 // every ring closed, then every fiber, for a plotter
+stain.drops[0].core         // the core's radius, which no neighbor's ring enters
+Chromatography.spread(at: Vector2(300, 300), radius: 120, rings: 6, ruffle: 0.5, fibers: 0.8, seed: 1)
+Chromatography.spread([(Vector2(200, 200), 90), (Vector2(360, 240), 140)], seed: 1)   // drops you placed
+```
+
+`spread(at:radius:)` is one drop. `scatter(in:count:radius:)` throws `count` drops over a region with no two cores touching. `spread(_:)` takes drops you placed yourself as centers and radii. `rings` is how many fronts a drop leaves. `ruffle`, 0 to 1, is how much a stopped front crinkles. `fibers`, 0 to 1, is how densely the outer front wicks past the edge. Every value repeats from its seed. A stain can also be built by hand. `Chromatography(drops:)` takes `Chromatography.Drop(center:radius:rings:fibers:)` values, and each ring is a `Chromatography.Ring(points:fraction:tone:)`: a closed outline, its nominal radius as a fraction of the drop's, and its tone. `Chromatography.coreFraction` is the core's share of a radius, 0.22, the distance from a neighbor's center no ring enters. The `Effects/Phenomena` example grows a set of drops in over its loop, beside five optical looks.

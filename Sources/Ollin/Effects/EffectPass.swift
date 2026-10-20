@@ -334,6 +334,17 @@ extension Filter {
             return pass("ollin_fx_bubble_wrap",
                         [f(radius, gap, magnification, lightAngle),
                          f(highlight, amount, Double(width), Double(height))])
+        case let .anaglyph(separation, amount):
+            // One parallax for every pixel: the depth flag is 0, so the second
+            // texture is never read and the input stands in for it.
+            return pass("ollin_fx_anaglyph",
+                        [f(separation, 0, 0.5, amount), f(Double(width), Double(height), 0, 0)],
+                        inputs: [.layer(0), .layer(0)])
+        case let .mirage(horizon, faults, amount, phase):
+            return pass("ollin_fx_mirage",
+                        [f(horizon, faults, amount, phase), f(Double(width), Double(height), 0, 0)])
+        case let .schlieren(angle, amount):
+            return pass("ollin_fx_schlieren", [SIMD4(texel.x, texel.y, Float(angle), Float(amount))])
         case let .chrome(horizon, warp, waves, sky, floor, core, coreWidth, breakWidth,
                          wire, amount, phase):
             // The two ramps travel as 256-texel strips, read with a lerp between
@@ -474,6 +485,11 @@ extension Combine {
                          SIMD4(1 / Float(width), 1 / Float(height), 0, 0)])
         case let .mix(amount):
             return pass("ollin_fx_mix", [SIMD4(Float(amount), 0, 0, 0)])
+        case let .anaglyph(separation, focus, amount):
+            // The depth flag is 1: the aux is read as the depth map.
+            return pass("ollin_fx_anaglyph",
+                        [SIMD4(Float(separation), 1, Float(focus), Float(amount)),
+                         SIMD4(Float(width), Float(height), 0, 0)])
         case let .paintMix(amount, quality):
             return pass("ollin_fx_paint_mix",
                         [SIMD4(Float(amount), 0, 0, 0)]

@@ -374,6 +374,39 @@ them, `Images/LuminanceMelt` shows the melt, `Effects/CrumpledFoil` the foil, an
   The film between the bubbles is left as the layer is. `amount` mixes the sheet
   over the layer, and a `radius` of 0 (or an `amount` of 0) changes no byte. As a
   `postProcess` it wraps the whole frame. See `Effects/Textures`.
+- **`.anaglyph(separation:amount:)`** the layer as a red-and-cyan stereo print at one
+  parallax, the kind seen through red-and-cyan glasses. The red channel is read from a
+  copy of the layer shifted left by half of `separation` (layer pixels) and the green
+  and blue from a copy shifted right by the same, so a dark mark on a light ground
+  comes out as a cyan copy and a red copy that overlap in a fused dark, which is what
+  reads as solid through the glasses, and a photograph comes out as the classic
+  doubled print. A transparent pixel counts as white paper, so a drawing over nothing
+  prints as it would on a white sheet; give the layer a `background()` to anaglyph a
+  picture. `amount` mixes the print over the layer, and a `separation` of 0 leaves
+  every byte as it was. Every pixel shifts by the same amount here. To shift by depth,
+  so a near thing stands off the page and a far one sinks into it, hand a depth map to
+  the [`.anaglyph` combine](#combine) below.
+- **`.mirage(horizon:faults:amount:phase:)`** the shimmer over a hot road. Above the
+  `horizon` (a fraction of the layer's height, 0 the top and 1 the bottom) every row is
+  shifted sideways by a wavering amount, up to `amount` layer pixels at the horizon and
+  fading to nothing at the top, since the hot air sits on the ground. The waver is two
+  slow waves down the rows plus a stepped jump at every fault, a band of rows that share
+  one offset, with `faults` setting how hard the steps are (0 none, 1 as wide as the
+  waver). Below the horizon the picture is inverted, the sky mirrored onto the ground as
+  a mirage is, and shifted by waves that grow with the distance down, fading back to the
+  ground under that band. `phase` drifts the waver and the faults: feed it `time`. An
+  `amount` of 0 leaves the rows where they were, and the inversion with them.
+  `Filter.mirageShift(y:horizon:faults:amount:phase:)` is the row shift the filter
+  reads, in pixels, for a sketch that draws a mark where a row went.
+- **`.schlieren(angle:amount:)`** the knife-edge shading of a density field, the look
+  of a schlieren photograph of heat or a shock. The layer's luminance is read as the
+  density of a gas, and the gradient of that density along the knife's `angle` (radians,
+  0 a knife that reads changes left to right) is mapped to brightness about a mid-gray:
+  light where the density climbs along the knife and dark where it falls, so every
+  spine in the layer reads as a lit side and a shaded side with a razor flip between
+  them. `amount` is the gain on the gradient (1 maps a full change over ten pixels
+  to full light), a flat layer comes out mid-gray, and the layer's alpha is kept. Blur a
+  drawing of soft blobs first and the knife reads them as a plume.
 
 <img src="../../Guide/Images/20-PicturesRestyled/CrumpledFoil.jpg" alt="Two panels. On the left a heart filled with crumpled holographic foil: a stepped rainbow of stripes that jumps at every crease, bright and dark crease lines, and small cross glints at some corners. On the right the same sheet drawn as flat gray triangles, each shaded by how it faces the light, with every crease inked" width="680">
 
@@ -430,6 +463,7 @@ A `Combine` is a value descriptor like `Filter`. A value descriptor cannot hold 
 - **`.displace(amount:)`** offset the base's pixels by the aux read as a **vector field**. Red is horizontal, green is vertical, mid-gray is no shift, and the largest shift is `amount` of the layer. Feed it noise or a gradient for ripples, smearing, heat haze, and refraction.
 - **`.disperse(amount:mode:spectral:quality:)`** chromatic aberration over the base, its amount scaled per pixel by the aux's brightness. A white aux splits by the full `amount`, and a black one leaves the base alone. So the aux decides *where* the color comes apart rather than how much. `mode`, `spectral`, and `quality` mean what they mean on [`.chromaticAberration`](#filter).
 - **`.mix(amount:)`** cross-dissolve the base toward the aux by `amount` (0 = base, 1 = aux). It is the everyday transition.
+- **`.anaglyph(separation:focus:amount:)`** the base as a red-and-cyan stereo print whose parallax follows the aux, read as a **depth map** (luminance, 0 near and 1 far, the reading `.defocus` makes, so a 3D layer's own [`depth`](#depth) is the natural aux). At each pixel the red channel is read from a copy of the base shifted one way and the green and blue from a copy shifted the other, by `separation` layer pixels times how far the depth there sits from `focus`: a pixel at the focus depth stays put, one nearer than the focus shifts one way, one farther shifts the other, and the shift grows with the distance, which through the glasses is what places it in front of or behind the page. A dark mark comes out as a cyan copy and a red copy that meet in a fused dark, and a transparent pixel counts as white paper. `amount` mixes the print over the base. [`Filter.anaglyph`](#filter) is the one-parallax form for a layer with no depth.
 - **`.light(reach:brightness:bounces:sky:quality:)`** light a flat scene. The base is what light meets, and its alpha stops a ray. The aux is what gives light off, and the result is the light arriving at every pixel. One measurement gives you shadows that are sharp at the shape and soft further away, falloff, beams through a gap, and the color a lit wall gives back. The cost does not follow how much was drawn. See [Light in a flat sketch](Light.md) and the `Effects/Light` example.
 - **`.paintMix(amount:quality:)`** blend the base toward the aux the way scattering paints blend, rather than the way lights cross-dissolve. At each pixel both colors become reflectance spectra and mix through the Kubelka-Munk model, over a `quality`-sized set of wavelength taps. It is the GPU form of `Color.mix(_:_:t:in: .paint)` (see [Spectral color](Spectrum.md)). A yellow wash over a blue field meets it in green, and overlaps darken like glazes. The aux's own coverage gates the mix. Where the aux layer is empty the base passes through untouched, and the aux reads as paint laid over the base. `amount` is the mix where the aux is opaque.
 - **`.seamlessClone(amount:threshold:)`** drop the aux layer into the base so the join disappears. The patch keeps its own detail and takes on the base's color and brightness, which is what stops a cut-out reading as a cut-out. It lands on **the aux's opaque region**, so draw the patch into a layer of its own, transparent everywhere else, positioned where you want it. Around the rim of the patch the op measures how far the patch's color sits from the base's. It spreads that difference across the inside as smoothly as it can, and adds it back. The rim then matches the base exactly, and the inside is nudged by the gentlest correction that reaches it. `amount` dials that correction: 1 is fully seamless, and 0 is a plain paste with the seam left in, which makes a useful before picture. `threshold` is the alpha a texel needs to count as part of the patch. Raise it if a soft-edged patch reads as larger than it looks. Two limits follow from what the op does rather than from how it is written. First, only the low, slow part of the patch's color is replaced, so the patch's **range of tone is kept**. Drop a contrasty patch somewhere much darker than itself and its shadows are pushed below black and clip. Second, the rim is where the whole answer comes from, so a rim laid **across a hard edge** in the base smears that edge inward. Keep the rim on quiet ground. See the `Effects/SeamlessClone` example.
@@ -453,7 +487,7 @@ The base and aux can render at different `scale`s, because the aux is sampled by
 <a id="depth"></a>
 ### depth: a 3D scene's depth as a layer
 
-The depth map `.defocus` reads can be one you draw by hand, but when the scene **is** 3D its depth comes for free. Draw a 3D scene into a render target. Because meshes or point clouds land in it, the target captures depth too, and `target.depth` exposes it. That is a gray layer (0 near … 1 far) the renderer fills from the scene's own depth buffer. Feed it straight to `.defocus` as the aux and a real 3D render racks focus like a lens, with no hand-drawn depth map needed. The same layer feeds `.ambientOcclusion` and `.screenSpaceReflections`. It carries the camera's near and far planes and its field of view, so their world-unit parameters (`radius`, `maxDistance`) read in the scene's own scale.
+The depth map `.defocus` reads can be one you draw by hand, but when the scene **is** 3D its depth comes for free. Draw a 3D scene into a render target. Because meshes or point clouds land in it, the target captures depth too, and `target.depth` exposes it. That is a gray layer (0 near … 1 far) the renderer fills from the scene's own depth buffer. Feed it straight to `.defocus` as the aux and a real 3D render racks focus like a lens, with no hand-drawn depth map needed. The same layer feeds `.ambientOcclusion` and `.screenSpaceReflections`. It carries the camera's near and far planes and its field of view, so their world-unit parameters (`radius`, `maxDistance`) read in the scene's own scale. The same layer drives `.anaglyph`, so a 3D scene prints as a red-and-cyan pair whose parallax follows its own depth.
 
 ```swift
 let scene = makeRenderTarget()

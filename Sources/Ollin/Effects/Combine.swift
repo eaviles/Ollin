@@ -119,6 +119,10 @@ public struct Combine: Sendable {
         /// light arriving at every pixel.
         case light(reach: Double?, brightness: Double, bounces: Int,
                    sky: SIMD4<Float>, quality: RenderQuality)
+        /// A red-and-cyan anaglyph of the base whose parallax follows the aux
+        /// read as a depth map: the red copy shifted one way and the cyan copy
+        /// the other by `separation` times the pixel's depth off `focus`.
+        case anaglyph(separation: Double, focus: Double, amount: Double)
     }
 
     let kind: Kind
@@ -224,6 +228,25 @@ public struct Combine: Sendable {
     public static func paintMix(amount: Double = 0.5,
                                 quality: RenderQuality = .default) -> Combine {
         Combine(kind: .paintMix(amount: min(max(amount, 0), 1), quality: quality))
+    }
+
+    /// Anaglyph: the base as a red-and-cyan stereo print whose parallax follows
+    /// the aux, read as a *depth map* (its luminance is the depth, 0 near and 1
+    /// far, the same reading `.defocus` makes, so a 3D layer's own `depth` is the
+    /// natural aux). At each pixel the red channel is read from a copy of the base
+    /// shifted one way and the green and blue from a copy shifted the other, by
+    /// `separation` layer pixels times how far the depth there sits from `focus`:
+    /// a pixel at the focus depth stays put, one nearer the eye than the focus
+    /// shifts one way, one farther shifts the other, and the shift grows with
+    /// the distance, which through red-and-cyan glasses is what places it in
+    /// front of or behind the page. A dark mark comes out as a cyan copy and a
+    /// red copy that meet in a fused dark. A transparent pixel counts as white
+    /// paper. `amount` mixes the print over the base. `Filter.anaglyph` is the
+    /// one-parallax form for a layer with no depth.
+    public static func anaglyph(separation: Double = 24, focus: Double = 0.5,
+                                amount: Double = 1) -> Combine {
+        Combine(kind: .anaglyph(separation: max(separation, 0), focus: min(max(focus, 0), 1),
+                                amount: min(max(amount, 0), 1)))
     }
 
     /// Depth of field: blur the base layer by the aux layer, read as a *depth map*

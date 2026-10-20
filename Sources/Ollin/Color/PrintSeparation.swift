@@ -139,6 +139,69 @@ public struct PrintSeparation {
         }
     }
 
+    /// The plates off register, the way a press lands them: each master
+    /// moved by its own `offset` (layer pixels, x to the right and y down) and
+    /// turned by its own `rotation` (radians, about the sheet's center), in
+    /// the order the inks were given, with a missing entry meaning no move.
+    /// The inks then print over each other out of place, so a black mark
+    /// rings itself with its own inks, a filled shape shows a fringe of one
+    /// ink on one side and the paper on the other, and the overprint preview
+    /// shows the misprint. Paper slides in where a plate moved away from an
+    /// edge (no ink), and ink moved past the sheet is lost. A plate's tone is
+    /// resampled bilinearly, so a whole-pixel offset with no rotation moves
+    /// the master exactly. Screen after, not before: `misregistered(...)` then
+    /// `halftoned(...)` keeps the dots crisp and lets each plate's screen
+    /// angle stay its own.
+    public func misregistered(offsets: [Vector2], rotations: [Double] = []) -> PrintSeparation {
+        var index = 0
+        return screened { plane in
+            let offset = index < offsets.count ? offsets[index] : .zero
+            let rotation = index < rotations.count ? rotations[index] : 0
+            index += 1
+            Self.resamplePlane(&plane, width: width, height: height, offset: offset, rotation: rotation)
+        }
+    }
+
+    /// Move a coverage plane by `offset` and turn it by `rotation` about the
+    /// sheet's center, the plate as the press laid it down: every destination
+    /// pixel reads the plane bilinearly at the source it came from, and a
+    /// source off the sheet reads as bare paper. Shared with the process
+    /// plates (`ProcessSeparation.misregistered`).
+    static func resamplePlane(_ plane: inout [Double], width: Int, height: Int,
+                              offset: Vector2, rotation: Double) {
+        guard width > 0, height > 0, plane.count == width * height else { return }
+        guard offset.x.isFinite, offset.y.isFinite, rotation.isFinite else { return }
+        if offset == .zero && rotation == 0 { return }
+        let source = plane
+        let cx = Double(width) / 2, cy = Double(height) / 2
+        let c = cos(-rotation), s = sin(-rotation)
+        for y in 0 ..< height {
+            for x in 0 ..< width {
+                // The destination pixel's center, moved back by the offset and
+                // turned back about the center, is where the plate's ink came from.
+                let dx = Double(x) + 0.5 - offset.x - cx
+                let dy = Double(y) + 0.5 - offset.y - cy
+                let sx = cx + dx * c - dy * s - 0.5
+                let sy = cy + dx * s + dy * c - 0.5
+                plane[y * width + x] = Self.bilinear(source, width: width, height: height, x: sx, y: sy)
+            }
+        }
+    }
+
+    /// A plane read between its samples, zero (bare paper) past its edges.
+    private static func bilinear(_ plane: [Double], width: Int, height: Int, x: Double, y: Double) -> Double {
+        let x0 = floor(x), y0 = floor(y)
+        let fx = x - x0, fy = y - y0
+        let ix = Int(x0), iy = Int(y0)
+        func at(_ px: Int, _ py: Int) -> Double {
+            guard px >= 0, py >= 0, px < width, py < height else { return 0 }
+            return plane[py * width + px]
+        }
+        let top = at(ix, iy) * (1 - fx) + at(ix + 1, iy) * fx
+        let bottom = at(ix, iy + 1) * (1 - fx) + at(ix + 1, iy + 1) * fx
+        return top * (1 - fy) + bottom * fy
+    }
+
     /// Rebuild each layer by running `transform` over its coverage plane
     /// (`0...1`, ink fraction per pixel, row-major).
     private func screened(_ transform: (inout [Double]) -> Void) -> PrintSeparation {

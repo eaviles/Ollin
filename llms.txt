@@ -299,7 +299,7 @@ The reference is the authority on what exists and how it behaves; the guide teac
 - [A sketch as the desktop wallpaper](Docs/Output/Wallpaper.md): run a sketch as the desktop wallpaper: one window per display at desktop level, behind the icons, with a menu-bar item to quit it
 - [A sketch in the menu bar](Docs/Output/MenuBar.md): run a sketch as a small live strip among the menu bar's status items, drawn at a rate an all-day surface can afford
 - [A sketch as a widget](Docs/Output/Widget.md): show a sketch as a widget on the desktop, drawn one picture per moment, so the sketch changes through the day rather than moving
-- [Print separations](Docs/Output/PrintSeparations.md): split a sketch into per-ink grayscale masters for risograph and screen printing, with an overprint preview and registration marks
+- [Print separations](Docs/Output/PrintSeparations.md): split a sketch into per-ink grayscale masters for risograph and screen printing, with an overprint preview, registration marks, and the plates slipped out of register on purpose
 - [Print color](Docs/Output/PrintColor.md): soft-proof a canvas against a press profile, flag the colors ink cannot reach, and split it into process-color plates with their total-ink figures
 - [Spatial export](Docs/Output/Spatial.md): write a 3D frame or a `Scene` as USDZ, so the work opens in Quick Look, sends in a message, and stands on a real table through AR.
 
@@ -321,7 +321,7 @@ The reference is the authority on what exists and how it behaves; the guide teac
 
 ## The project
 
-- [Examples](Examples/README.md): 641 runnable sketches by category, each with its whole source
+- [Examples](Examples/README.md): 642 runnable sketches by category, each with its whole source
 - [Ollin architecture & internals](ARCHITECTURE.md)
 - [Ollin: the shipped-capability inventory](CAPABILITIES.md)
 - [Changelog](CHANGELOG.md)
