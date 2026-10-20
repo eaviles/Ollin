@@ -46,15 +46,19 @@ public struct Generator: Sendable {
         case shader(Shader)
 
         // Material textures ----------------------------------------------------
-        /// Corrosion blooms over a surface: the blobs of a `Patina` (the one
-        /// handed in, or `count` scattered at `radius` from `seed`), each
-        /// painted through four `tones` from the outer bloom to the deepest
-        /// core, with a flaked lip at the edge, blisters inside, and, when
-        /// `tide` is up, a noise-gated tide line inside the edge. The rust and
-        /// the verdigris are this one kind with other palettes.
+        /// Corrosion over a surface: the blobs of a `Patina` (the one handed
+        /// in, or `count` scattered at `radius` from `seed`), each painted
+        /// through four `tones`. At `crust` 0 a blob is a bloom: the outer
+        /// tone darkening toward nested masses in the next tones, a flaked lip
+        /// at the edge, blisters inside. At `crust` 1 it is a crust: a mottled
+        /// film with pale mineral patches, a powdery edge, and, when `tide` is
+        /// up, a noise-gated tide line inside the edge. `drips` runs streaks
+        /// down from every blob. The rust is the bloom and the verdigris the
+        /// crust, each with its palette.
         case patina(blobs: Patina?, count: Int, radius: ClosedRange<Double>, seed: Int,
                     tones: [SIMD4<Float>], background: SIMD4<Float>, lightAngle: Double,
-                    lip: Double, blisters: Double, tide: Double, grain: Double)
+                    lip: Double, blisters: Double, tide: Double, drips: Double, crust: Double,
+                    grain: Double)
         /// A terrazzo floor: the chips of a `Terrazzo` (the one handed in, or
         /// one scattered over the layer from `seed`), each a polygon in one of
         /// the `tones`, hatched by size, set in a `background` binder.
@@ -288,41 +292,50 @@ public struct Generator: Sendable {
     /// and strokes are the blooms the GPU paints; with none, `count` blooms
     /// are scattered over the layer at a mean radius drawn from `radius` (in
     /// layer pixels) from `seed`. `lip` scales the flaked edge, `blisters` the
-    /// blisters, `grain` the speckle in the bloom, each `0` to leave it out.
-    /// Static by design: nothing here moves without a new seed.
+    /// blisters, `drips` the rust stains that run down from a bloom (their
+    /// length, as a share of the radius), `grain` the speckle in the bloom,
+    /// each `0` to leave it out. Static by design: nothing here moves without
+    /// a new seed.
     public static func rust(blobs: Patina? = nil, count: Int = 14,
                             radius: ClosedRange<Double> = 40 ... 150, seed: Int = 1,
                             tones: [Color] = [Color(hex: 0xC2602E), Color(hex: 0x8F3F1C),
                                               Color(hex: 0x5E2612), Color(hex: 0x2A140A)],
                             background: Color = Color(hex: 0x4B5057),
                             lightAngle: Double = -2.2, lip: Double = 1, blisters: Double = 1,
-                            grain: Double = 0.6) -> Generator {
+                            drips: Double = 0.5, grain: Double = 0.6) -> Generator {
         patina(blobs: blobs, count: count, radius: radius, seed: seed, tones: tones,
                background: background, lightAngle: lightAngle, lip: lip, blisters: blisters,
-               tide: 0, grain: grain)
+               tide: 0, drips: drips, crust: 0, grain: grain)
     }
 
-    /// A verdigris patina: the same blooms as `rust` in the greens of
-    /// weathered copper over a bronze surface, with a `tide` line, a pale
-    /// deposit just inside the edge that comes and goes around the bloom by a
-    /// noise, as the mineral crust a wet patina leaves when it dries. The
-    /// parameters mean what they mean on `rust`; `tide` scales the line, `0`
-    /// for none.
+    /// A verdigris patina: a crust rather than a bloom, over the same blobs
+    /// `rust` paints, in the greens of weathered copper over a bronze
+    /// surface. Each blob is a mottled film of the `tones` (the second the
+    /// film, lighter patches of the first, worn patches of the third) with
+    /// pale mineral crust where the mottle peaks, a powdery edge that frays
+    /// into specks rather than a lip, a `tide` line (a pale deposit just
+    /// inside the edge that comes and goes around the blob by a noise, as the
+    /// crust a wet patina leaves when it dries), and `drips`, pale streaks
+    /// that run down from the blob where water carried the mineral. The
+    /// other parameters mean what they mean on `rust`; `lip` and `blisters`
+    /// are off by default, since a crust has neither, and `tide` and `drips`
+    /// take `0` for none.
     public static func verdigris(blobs: Patina? = nil, count: Int = 14,
                                  radius: ClosedRange<Double> = 40 ... 150, seed: Int = 1,
-                                 tones: [Color] = [Color(hex: 0x74BB9A), Color(hex: 0x3F917C),
-                                                   Color(hex: 0x2A6E69), Color(hex: 0x1B4A4B)],
+                                 tones: [Color] = [Color(hex: 0x8ED1B2), Color(hex: 0x4FA089),
+                                                   Color(hex: 0x2F6F6A), Color(hex: 0x1B4A4B)],
                                  background: Color = Color(hex: 0x6E4C2B),
-                                 lightAngle: Double = -2.2, lip: Double = 0.8, blisters: Double = 0.6,
-                                 tide: Double = 1, grain: Double = 0.5) -> Generator {
+                                 lightAngle: Double = -2.2, lip: Double = 0, blisters: Double = 0,
+                                 tide: Double = 1, drips: Double = 1, grain: Double = 0.5) -> Generator {
         patina(blobs: blobs, count: count, radius: radius, seed: seed, tones: tones,
                background: background, lightAngle: lightAngle, lip: lip, blisters: blisters,
-               tide: tide, grain: grain)
+               tide: tide, drips: drips, crust: 1, grain: grain)
     }
 
     private static func patina(blobs: Patina?, count: Int, radius: ClosedRange<Double>, seed: Int,
                                tones: [Color], background: Color, lightAngle: Double,
-                               lip: Double, blisters: Double, tide: Double, grain: Double) -> Generator {
+                               lip: Double, blisters: Double, tide: Double, drips: Double,
+                               crust: Double, grain: Double) -> Generator {
         var palette = tones.map(\.linearRGBA)
         if palette.isEmpty { palette = [Color(hex: 0xC2602E).linearRGBA] }
         while palette.count < 4 { palette.append(palette[palette.count - 1]) }
@@ -332,6 +345,7 @@ public struct Generator: Sendable {
                                        tones: Array(palette.prefix(4)), background: background.linearRGBA,
                                        lightAngle: lightAngle, lip: min(max(lip, 0), 3),
                                        blisters: min(max(blisters, 0), 3), tide: min(max(tide, 0), 3),
+                                       drips: min(max(drips, 0), 3), crust: min(max(crust, 0), 1),
                                        grain: min(max(grain, 0), 2)))
     }
 

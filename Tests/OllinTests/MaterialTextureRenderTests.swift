@@ -89,9 +89,11 @@ struct MaterialTextureRenderTests {
         let built = try OllinApp.image(of: GeneratorProbe.make(.rust(seed: 3)), frame: 1)
         let handed = try OllinApp.image(of: GeneratorProbe.make(.rust(blobs: blooms, seed: 3)), frame: 1)
         #expect(maxDifference(built, handed) == 0)
-        // Another seed with the same blooms differs by its grain alone: a few levels.
-        let regrained = try OllinApp.image(of: GeneratorProbe.make(.rust(blobs: blooms, seed: 4)), frame: 1)
-        let grainOnly = maxDifference(built, regrained)
+        // Another seed with the same blooms and no drips differs by its grain
+        // alone: a few levels (the seed also places the drips, so they are off).
+        let grained = try OllinApp.image(of: GeneratorProbe.make(.rust(blobs: blooms, seed: 3, drips: 0)), frame: 1)
+        let regrained = try OllinApp.image(of: GeneratorProbe.make(.rust(blobs: blooms, seed: 4, drips: 0)), frame: 1)
+        let grainOnly = maxDifference(grained, regrained)
         #expect(grainOnly > 0 && grainOnly < 40, "grain alone moved \(grainOnly) levels")
 
         let floor = Terrazzo.scatter(in: Self.layer, chipRadius: 24, density: 0.55, gap: 3, tones: 5, seed: 3)
@@ -111,7 +113,7 @@ struct MaterialTextureRenderTests {
                                massOffset: Vector2(0.1, 0.05), blisters: [], tone: 0.5)
         let tones = [Color(hex: 0xC2602E), Color(hex: 0x8F3F1C), Color(hex: 0x5E2612), Color(hex: 0x2A140A)]
         let generator = Generator.rust(blobs: Patina(blobs: [blob]), tones: tones,
-                                       background: Color(hex: 0x4B5057), lip: 0, blisters: 0, grain: 0)
+                                       background: Color(hex: 0x4B5057), lip: 0, blisters: 0, drips: 0, grain: 0)
         let px = Pixels(try OllinApp.image(of: GeneratorProbe.make(generator), frame: 1))
         // The second mass is centered 1.7 offsets out: read there.
         let core = rgb(px, blob.massCenter(1))
@@ -124,6 +126,62 @@ struct MaterialTextureRenderTests {
         #expect(outer.x <= t0.x + 4 && outer.x >= t1.x - 4, "outer \(outer) off the first tone \(t0)")
         // A corner far from the bloom: the background.
         #expect(within(rgb(px, Vector2(6, 230)), bytes(Color(hex: 0x4B5057)), 3))
+    }
+
+    /// The verdigris is a crust, not a recolored bloom: over the same blob the
+    /// rust's innermost mass reads the third tone where the verdigris reads a
+    /// mottle of its lighter tones, and the drips of either run below the
+    /// blob and nowhere above it.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func theVerdigrisIsACrustAndTheDripsRunDown() throws {
+        let blob = Patina.Blob(center: Vector2(120, 100), radius: 60,
+                               amplitudes: SIMD4(0.1, 0.08, 0.04, 0.03), phases: SIMD4(0.3, 1.1, 2.0, 0.7),
+                               massOffset: Vector2(0.1, 0.05), blisters: [], tone: 0.5)
+        let blooms = Patina(blobs: [blob])
+        let tones = [Color(hex: 0x8ED1B2), Color(hex: 0x4FA089), Color(hex: 0x2F6F6A), Color(hex: 0x1B4A4B)]
+        let crust = Pixels(try OllinApp.image(of: GeneratorProbe.make(
+            .verdigris(blobs: blooms, tones: tones, tide: 0, drips: 0, grain: 0)), frame: 1))
+        // A crust is a mottle, never the bloom's deepest core: over the square
+        // inscribed in the blob, no pixel is as dark as the deepest tone, and
+        // both lighter and darker patches than the film's tone take a share.
+        let deepest = bytes(tones[3]), film = bytes(tones[1])
+        let half = Int(blob.radius * (1 - blob.swing) * 0.7)
+        var lighter = 0, darker = 0, total = 0
+        for y in stride(from: -half, through: half, by: 2) {
+            for x in stride(from: -half, through: half, by: 2) {
+                let v = rgb(crust, blob.center + Vector2(Double(x), Double(y)))
+                #expect(v.y > deepest.y + 10, "a crust pixel \(v) as dark as the deepest tone \(deepest)")
+                if v.y > film.y + 10 { lighter += 1 }
+                if v.y < film.y - 10 { darker += 1 }
+                total += 1
+            }
+        }
+        #expect(lighter > total / 20, "lighter patches are \(lighter) of \(total)")
+        #expect(darker > total / 20, "darker patches are \(darker) of \(total)")
+
+        // Drips: with them on, the band below the blob differs; the band
+        // above the blob is byte-identical.
+        let dry = try OllinApp.image(of: GeneratorProbe.make(.verdigris(blobs: blooms, tones: tones, tide: 0, drips: 0)), frame: 1)
+        let wet = try OllinApp.image(of: GeneratorProbe.make(.verdigris(blobs: blooms, tones: tones, tide: 0, drips: 1)), frame: 1)
+        let pd = pixels(of: dry), pw = pixels(of: wet)
+        func bandDifference(rows: Range<Int>) -> Int {
+            var worst = 0
+            for y in rows {
+                for x in 0 ..< Self.side {
+                    for ch in 0 ..< 3 {
+                        let i = (y * Self.side + x) * 4 + ch
+                        worst = max(worst, abs(Int(pd[i]) - Int(pw[i])))
+                    }
+                }
+            }
+            return worst
+        }
+        #expect(bandDifference(rows: 0 ..< 30) == 0, "a drip above the blob")
+        #expect(bandDifference(rows: 180 ..< 236) > 20, "no drip below the blob")
+        // The rust drips too, in its own stain.
+        let rustDry = try OllinApp.image(of: GeneratorProbe.make(.rust(blobs: blooms, drips: 0)), frame: 1)
+        let rustWet = try OllinApp.image(of: GeneratorProbe.make(.rust(blobs: blooms, drips: 1)), frame: 1)
+        #expect(maxDifference(rustDry, rustWet) > 20)
     }
 
     /// A chip's center reads its tone and the binder between chips reads the

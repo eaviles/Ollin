@@ -502,14 +502,15 @@ extension Generator {
         // Material textures. The scatter travels as a lookup strip in layer
         // pixels (TextureTable): the one handed in, packed, or the default
         // over this layer.
-        case let .patina(blobs, count, radius, seed, tones, background, lightAngle, lip, blisters, tide, grain):
+        case let .patina(blobs, count, radius, seed, tones, background, lightAngle, lip, blisters, tide,
+                         drips, crust, grain):
             let strip = blobs.map(TextureTable.pack)
                 ?? TextureTable.defaultPatinaStrip(width: width, height: height, count: count,
                                                    radius: radius, seed: seed)
             return pass("ollin_gen_patina",
                         [f(Double(width), Double(height), lightAngle, lip),
                          f(blisters, tide, grain, Double(seed % 1024)),
-                         background] + tones,
+                         background] + tones + [f(drips, crust, 0, 0)],
                         inputs: [.table(strip)])
         case let .terrazzo(chips, chipRadius, density, gap, seed, tones, background, hatching, grain):
             let strip = chips.map(TextureTable.pack)

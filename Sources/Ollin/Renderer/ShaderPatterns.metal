@@ -2509,23 +2509,30 @@ static inline float4 ollin_texture_lay(float3 rgb, float a, float4 under) {
     return mark + under * (1.0 - a);
 }
 
-// patina (rust, verdigris): corrosion blooms read from a TextureTable strip at
-// texture(0) (TextureTable.pack(Patina)), seven texels a bloom: the center,
+// patina (rust, verdigris): corrosion read from a TextureTable strip at
+// texture(0) (TextureTable.pack(Patina)), seven texels a blob: the center,
 // mean radius, and tone; the four harmonic amplitudes; their phases; two
 // blisters' centers; their radii and the mass offset; two more centers; their
-// radii and the blister count. A pixel reads its cell, walks the blooms the
-// cell lists, and for each one that reaches it lays the bloom's stack over
-// what is there: the outer tone grained and darkened toward the core, the two
-// nested masses in the next tones (the same waver at smaller scales, shifted
-// off center), the flaked lip (the outline displaced away from the light
-// drawn dark and displaced toward it drawn light, both kept inside the bloom),
-// the blisters (a dark arc on the side away from the light, a bright arc on
-// the side toward it), and the tide line (a pale deposit inside the edge that
-// a noise around the bloom turns on and off). Every edge is a pixel of
-// coverage from the ring function's own distance, so no derivative is taken
-// inside the loop. params[0]: the layer's width and height in pixels, the
-// light angle, lip; params[1]: blisters, tide, grain, a seed hash;
-// params[2]: the background; params[3..6]: the four tones, outer to core.
+// radii and the blister count. A pixel reads its cell, walks the blobs the
+// cell lists, and for each one that reaches it lays the blob's stack over
+// what is there. At crust 0 the blob is a bloom (the rust): the outer tone
+// grained and darkened toward the core, the two nested masses in the next
+// tones (the same waver at smaller scales, shifted off center), and the
+// flaked lip (the outline displaced away from the light drawn dark and
+// displaced toward it drawn light, both kept inside the bloom). At crust 1 it
+// is a crust (the verdigris): a mottled film of the second tone with lighter
+// patches of the first and worn patches of the third, pale mineral crust
+// where the mottle peaks, and a powdery edge, the outline frayed by a noise
+// and shedding specks just outside it. Either way the blisters (a dark arc
+// on the side away from the light, a bright arc on the side toward it), the
+// tide line (a pale deposit inside the edge that a noise around the blob
+// turns on and off), and the drips (streaks running down from the blob's
+// lower edge, tapering, in the stain's own color) are laid where their
+// amounts ask. Every edge is a pixel of coverage from the ring function's
+// own distance, so no derivative is taken inside the loop. params[0]: the
+// layer's width and height in pixels, the light angle, lip; params[1]:
+// blisters, tide, grain, a seed hash; params[2]: the background;
+// params[3..6]: the four tones, outer to core; params[7]: drips, crust.
 
 static inline float ollin_patina_waver(float angle, float4 amp, float4 phase) {
     return amp.x * sin(2.0 * angle + phase.x) + amp.y * sin(3.0 * angle + phase.y)
@@ -2548,6 +2555,8 @@ fragment float4 ollin_gen_patina(PresentOut in [[stage_in]],
     float lightAngle = params[0].z, lip = params[0].w;
     float blisters = params[1].x, tide = params[1].y, grain = params[1].z, seed = params[1].w;
     float4 T0 = params[3], T1 = params[4], T2 = params[5], T3 = params[6];
+    float drips = params[7].x, crust = clamp(params[7].y, 0.0, 1.0);
+    float bloom = 1.0 - crust;
     float2 p = in.uv * size;
     float2 L = float2(cos(lightAngle), sin(lightAngle));
     float3 pale = mix(T0.rgb, float3(1.0), 0.55);
@@ -2563,26 +2572,82 @@ fragment float4 ollin_gen_patina(PresentOut in [[stage_in]],
         float4 amp = ollin_foil_read(strip, base + 1);
         float4 phase = ollin_foil_read(strip, base + 2);
         float d = ollin_patina_ring(p, c, r, amp, phase, 0.0);
-        if (d > 0.12 * r + 2.0) continue;
-        float inside = 1.0 - smoothstep(-0.7, 0.7, d);
         float2 rel = p - c;
-        float radial = clamp(length(rel) / max(r, 1e-3), 0.0, 1.0);
-
-        // The bloom: the outer tone, grained, darkening toward the core.
         float g = 1.0 + grain * (0.35 * (ollin_vnoise(p * 0.45 + seed) - 0.5)
                               + 0.15 * (hash12(floor(p) + seed) - 0.5));
-        float3 bloom = mix(T0.rgb, T1.rgb, 0.3 * (1.0 - radial)) * (0.9 + 0.2 * tone) * g;
-        color = ollin_texture_lay(bloom, T0.a * inside, color);
 
-        // The nested masses, the next two tones, each shifted off center.
+        // The drips: a few streaks down from the blob's lower edge, each in
+        // its own column, tapering over a length of its own, read as the
+        // ring's distance in that column so they start at the edge.
+        if (drips > 0.0 && rel.y > 0.0 && d > 0.0 && d < 1.6 * r) {
+            // Widest where it leaves the blob, wandering a little on the way
+            // down, and ending in a drop, in the patina's own pale tone (the
+            // crust) or its stain (the bloom): a water track, not a line.
+            float3 stain = crust > 0.5 ? mix(T0.rgb, pale, 0.6) : mix(T1.rgb, T2.rgb, 0.5);
+            for (int j = 0; j < 3; j++) {
+                float hj = hash12(float2(tone * 31.0 + float(j) * 7.3, seed + float(j)));
+                float hk = hash12(float2(seed * 3.0 + float(j) * 2.1, tone * 17.0));
+                if (hk < 0.45) continue;
+                float wander = (0.03 * r + 1.0) * sin(p.y * 0.045 + hj * 20.0);
+                float xj = c.x + (hj - 0.5) * 1.2 * r + wander;
+                float dx = abs(p.x - xj);
+                if (dx > 0.08 * r + 4.0) continue;
+                float reach = (0.5 + 1.2 * hk) * r * min(drips, 1.5);
+                float below = ollin_patina_ring(float2(xj, p.y), c, r, amp, phase, 0.0);
+                if (below <= 0.0 || below > reach + 0.1 * r) continue;
+                float t = clamp(below / reach, 0.0, 1.0);
+                float top = 0.05 * r + 1.5;
+                float wj = top * (0.3 + 0.7 * (1.0 - t));
+                // The drop at the end: the track swells again just before it stops.
+                float drop = exp(-pow((below - reach) / (0.06 * r + 1.0), 2.0));
+                wj = max(wj, top * 0.6 * drop);
+                float a = (1.0 - smoothstep(wj - 1.2, wj + 1.2, dx)) * (0.5 + 0.5 * drop) * (1.0 - 0.6 * t);
+                color = ollin_texture_lay(stain * g, 0.6 * a, color);
+            }
+        }
+
+        if (d > 0.12 * r + 2.0) continue;
+        float inside = 1.0 - smoothstep(-0.7, 0.7, d);
+        float radial = clamp(length(rel) / max(r, 1e-3), 0.0, 1.0);
         float4 t4 = ollin_foil_read(strip, base + 4);
-        float2 off = t4.zw * r;
-        float d1 = ollin_patina_ring(p, c + off, 0.62 * r, amp, phase, 0.9);
-        float m1 = (1.0 - smoothstep(-1.2, 1.2, d1)) * inside;
-        color = ollin_texture_lay(T1.rgb * (0.92 + 0.16 * tone) * g, T1.a * m1, color);
-        float d2 = ollin_patina_ring(p, c + off * 1.7, 0.36 * r, amp, phase, 1.8);
-        float m2 = (1.0 - smoothstep(-1.2, 1.2, d2)) * inside;
-        color = ollin_texture_lay(T2.rgb * g, T2.a * m2, color);
+
+        if (bloom > 0.0) {
+            // The bloom: the outer tone, grained, darkening toward the core.
+            float3 body = mix(T0.rgb, T1.rgb, 0.3 * (1.0 - radial)) * (0.9 + 0.2 * tone) * g;
+            color = ollin_texture_lay(body, T0.a * inside * bloom, color);
+
+            // The nested masses, the next two tones, each shifted off center.
+            float2 off = t4.zw * r;
+            float d1 = ollin_patina_ring(p, c + off, 0.62 * r, amp, phase, 0.9);
+            float m1 = (1.0 - smoothstep(-1.2, 1.2, d1)) * inside;
+            color = ollin_texture_lay(T1.rgb * (0.92 + 0.16 * tone) * g, T1.a * m1 * bloom, color);
+            float d2 = ollin_patina_ring(p, c + off * 1.7, 0.36 * r, amp, phase, 1.8);
+            float m2 = (1.0 - smoothstep(-1.2, 1.2, d2)) * inside;
+            color = ollin_texture_lay(T2.rgb * g, T2.a * m2 * bloom, color);
+        }
+
+        if (crust > 0.0) {
+            // The crust: a mottled film, lighter patches, worn patches, and
+            // pale mineral crust where the mottle peaks, under a powdery edge
+            // frayed by a noise, shedding specks just outside it.
+            float n1 = 0.6 * ollin_vnoise(p * 0.035 + float2(seed, tone * 9.0))
+                     + 0.4 * ollin_vnoise(p * 0.09 + float2(tone * 3.0, seed));
+            float n2 = ollin_vnoise(p * 0.06 + float2(tone * 5.0, seed * 2.0));
+            float3 film = mix(T1.rgb, T0.rgb, smoothstep(0.35, 0.7, n1));
+            // Worn patches: the film thins to the darker tone and lets the
+            // surface under it show through.
+            float worn = 1.0 - smoothstep(0.28, 0.42, n2);
+            film = mix(film, T2.rgb, 0.5 * worn);
+            float3 mineral = mix(T0.rgb, float3(1.0), 0.55);
+            film = mix(film, mineral, 0.7 * smoothstep(0.6, 0.75, n1));
+            float fray = (0.03 * r + 1.5) * 2.0 * (ollin_vnoise(p * 0.35 + seed) - 0.5);
+            float frayed = 1.0 - smoothstep(-2.0, 1.5, d + fray);
+            color = ollin_texture_lay(film * g, T1.a * frayed * crust * (1.0 - 0.45 * worn), color);
+            // Specks shed just past the edge, none inside.
+            float powder = step(0.955, hash12(floor(p * 0.5) + seed))
+                         * smoothstep(-0.5, 1.0, d) * (1.0 - smoothstep(0.0, 0.12 * r, d));
+            color = ollin_texture_lay(mineral, 0.8 * powder * crust, color);
+        }
 
         // The flaked lip: the outline displaced away from the light drawn dark,
         // displaced toward it drawn light, both inside the bloom.
@@ -2625,8 +2690,8 @@ fragment float4 ollin_gen_patina(PresentOut in [[stage_in]],
             float tw = tide * (2.0 + 0.04 * r);
             float band = smoothstep(-tw - 1.5, -tw, d) * (1.0 - smoothstep(-1.5, -0.5, d));
             float angle = atan2(rel.y, rel.x);
-            float n = ollin_vnoise(float2(cos(angle), sin(angle)) * 2.5 + float2(seed, tone * 7.0));
-            float gate = smoothstep(0.42, 0.6, n);
+            float n = ollin_vnoise(float2(cos(angle), sin(angle)) * 4.0 + float2(seed, tone * 7.0));
+            float gate = smoothstep(0.5, 0.62, n);
             color = ollin_texture_lay(mix(T0.rgb, float3(1.0), 0.6), 0.85 * min(tide, 1.0) * band * gate, color);
         }
     }

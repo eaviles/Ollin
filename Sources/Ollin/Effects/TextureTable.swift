@@ -104,10 +104,12 @@ enum TextureTable {
         let blobs = Array(patina.blobs.prefix(maxBlobs))
         var reach = 1.0
         let records = blobs.map { blob -> Record in
-            // The bloom reaches its outline's widest, plus the lip and tide
-            // drawn around it, read as a share of the radius.
+            // The bloom reaches its outline's widest, plus the lip and the
+            // powder drawn around it, read as a share of the radius, and the
+            // drips run below it by up to 1.6 radii.
             let extent = blob.radius * (1 + blob.swing) + 0.12 * blob.radius + 2
-            reach = max(reach, extent)
+            let dripReach = 1.6 * blob.radius
+            reach = max(reach, extent + dripReach)
             let f = { (v: Double) in Float(v) }
             let blisters = blob.blisters.prefix(4)
             func blister(_ i: Int) -> Circle {
@@ -116,7 +118,7 @@ enum TextureTable {
             let b0 = blister(0), b1 = blister(1), b2 = blister(2), b3 = blister(3)
             return Record(
                 bounds: Rectangle(x: blob.center.x - extent, y: blob.center.y - extent,
-                                  width: 2 * extent, height: 2 * extent),
+                                  width: 2 * extent, height: 2 * extent + dripReach),
                 texels: [SIMD4(f(blob.center.x), f(blob.center.y), f(blob.radius), f(blob.tone)),
                          SIMD4(f(blob.amplitudes[0]), f(blob.amplitudes[1]), f(blob.amplitudes[2]), f(blob.amplitudes[3])),
                          SIMD4(f(blob.phases[0]), f(blob.phases[1]), f(blob.phases[2]), f(blob.phases[3])),

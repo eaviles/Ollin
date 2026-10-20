@@ -506,19 +506,27 @@ none and it scatters its own over the layer from `seed`. Static by design, so a 
 seed is a new surface, and a scatter rebuilt each frame moves the paint with it. See
 `Effects/Textures`:
 
-- **`.rust(blobs:count:radius:seed:tones:background:lightAngle:lip:blisters:grain:)`**
+- **`.rust(blobs:count:radius:seed:tones:background:lightAngle:lip:blisters:drips:grain:)`**
   a rust bloom: blooms whose edge wavers in two octaves around a circle, each with
   two nested masses in darker `tones` toward its core (four colors, outer to core),
   a flaked lip at the edge (a dark line offset one way and a light line the other,
-  under a light at `lightAngle`), and blisters inside, a dark arc on the side away
-  from the light and a bright arc on the side toward it. `background` is the steel
-  under the blooms, or `.clear` to rust whatever is drawn under the layer. With no
-  `blobs`, `count` blooms are scattered at a mean radius drawn from `radius`, in
-  layer pixels. `lip`, `blisters`, and `grain` scale their parts, `0` to leave one out.
-- **`.verdigris(blobs:count:radius:seed:tones:background:lightAngle:lip:blisters:tide:grain:)`**
-  the same blooms in the greens of weathered copper over bronze, with a `tide`
-  line, a pale deposit just inside the edge that comes and goes around the bloom by a
-  noise, the mineral crust a wet patina leaves when it dries.
+  under a light at `lightAngle`), blisters inside, a dark arc on the side away
+  from the light and a bright arc on the side toward it, and `drips`, the stains
+  that run down from a bloom (their length as a share of the radius). `background`
+  is the steel under the blooms, or `.clear` to rust whatever is drawn under the
+  layer. With no `blobs`, `count` blooms are scattered at a mean radius drawn from
+  `radius`, in layer pixels. `lip`, `blisters`, `drips`, and `grain` scale their
+  parts, `0` to leave one out.
+- **`.verdigris(blobs:count:radius:seed:tones:background:lightAngle:lip:blisters:tide:drips:grain:)`**
+  a crust rather than a bloom, over the same blobs, in the greens of weathered
+  copper over bronze. Each blob is a mottled film of the `tones` (the second the
+  film, lighter patches of the first, worn patches of the third that let the surface
+  under it show through) with pale mineral crust where the mottle peaks, a powdery
+  edge that frays into specks rather than a lip, a `tide` line (a pale deposit just
+  inside the edge that comes and goes around the blob by a noise, the crust a wet
+  patina leaves when it dries), and `drips`, pale streaks that run down where water
+  carried the mineral. `lip` and `blisters` are off by default, since a crust has
+  neither.
 - **`.terrazzo(chips:chipRadius:density:gap:seed:tones:background:hatching:grain:)`**
   a terrazzo floor: chips of stone set in a `background` binder. With no `chips`,
   one is scattered by dart throwing in three size tiers, the largest at `chipRadius`

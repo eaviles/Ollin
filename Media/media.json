@@ -5044,15 +5044,15 @@
       "source": "210a409483c9efdf",
       "rendered": "2026-10-20",
       "bytes": {
-        "loop": 2632904,
-        "loopSmall": 546789,
-        "still": 134778,
-        "stillSmall": 45505
+        "loop": 2642666,
+        "loopSmall": 553323,
+        "still": 135728,
+        "stillSmall": 45871
       },
-      "loop": "examples/Effects/Textures/loop.mp4?v=2a7c186b",
-      "loopSmall": "examples/Effects/Textures/loop-640.mp4?v=f13f718e",
-      "still": "examples/Effects/Textures/still.jpg?v=7651e386",
-      "stillSmall": "examples/Effects/Textures/still-640.jpg?v=0f78de9d",
+      "loop": "examples/Effects/Textures/loop.mp4?v=08d624a6",
+      "loopSmall": "examples/Effects/Textures/loop-640.mp4?v=3aad3708",
+      "still": "examples/Effects/Textures/still.jpg?v=37978f77",
+      "stillSmall": "examples/Effects/Textures/still-640.jpg?v=6740dd17",
       "seed": 1
     },
     "Export/Capture": {
