@@ -266,7 +266,7 @@ let sim = ComputeKernel(entry: "step", """
 """)
 ```
 
-Bind your own buffers at indices **0…9**, since `compute(_:buffers:)` hands a kernel up to ten of them, in order. Index **10** is the standard `OllinComputeUniforms`, and index **11** is `custom`, the params. The compiled pipeline is cached by the source's hash, so re-creating the same kernel value each frame costs nothing.
+Bind your own buffers at indices **0…9**, since `compute(_:buffers:)` hands a kernel up to ten of them, in order. Index **10** is the standard `OllinComputeUniforms`, and index **11** is `custom`, the params. The params are bound as bytes, so they have to stay under Metal's 4 KB limit for that path. A lookup table of a few hundred floats fits; a larger table goes in a `ComputeBuffer` through the `buffers:` form. The compiled pipeline is cached by the source's hash, so re-creating the same kernel value each frame costs nothing.
 
 <a id="computebuffer"></a>
 #### ComputeBuffer
@@ -382,7 +382,11 @@ A query kernel takes its buffers in a fixed order. `reading` is at 0, `writing` 
 <a id="notes"></a>
 ### Notes
 
-- **`OllinParticle`** is the built-in particle struct, with `position`, `velocity`, `color`, `size`, `life`, and two scratch floats. `drawParticles` reads `position`, `color`, and `size` from it. A custom struct that wants the built-in renderer must place those fields at the same offsets. Otherwise it has to render itself.
+- **The shared GPU structs** live in one C header the kernels and the sketch both read (`Sources/Ollin/Renderer/OllinShaderTypes.h`). A sketch that holds one of them in a `ComputeBuffer` or a `PingPong` writes `import COllinShaders` beside `import Ollin`, since they are C types rather than Swift ones, and they are not in the `ollin api` listing for the same reason. The four a kernel meets:
+  - **`OllinParticle`** is the built-in particle struct: `position` (`float2`, points, top-left origin), `velocity` (`float2`, points a second), `color` (`float4`, straight RGBA), `size` (`float`, the on-screen diameter), `life` (`float`, 0 to 1), and `seedA` and `seedB` (two free floats), stride 48. `drawParticles` reads `position`, `color`, and `size` from it. A custom struct that wants the built-in renderer must place those fields at the same offsets. Otherwise it has to render itself.
+  - **`OllinComputeUniforms`** is what buffer 10 carries: `resolution`, `mouse`, `time`, `dt`, `frameCount`, `particleCount`, and the `custom` `float4`, stride 48.
+  - **`OllinCameraMatrices`** is a camera's `view` and `projection`, stride 128, what `ComputeParams.append(camera:aspect:)` writes and `ollin_project` reads.
+  - **`OllinSpatialGrid`** is the neighbor hash's grid: `origin`, `worldSize`, `cellSize`, `gridW`, `gridH`, `numCells`, and `cell`, stride 40, bound at 5 by a query kernel.
 - **Two particle styles.** `.marks` is the default and behaves as ink, with perceptual coverage and an sRGB `color`. `.light` behaves as light, with linear area coverage, a linear `color`, and a one-texel path at or under one pixel. Use `.light` for anything summed additively into an `Accumulator` or a `noClear` canvas. See [the light particle style](../Drawing/DepthOfField.md#light).
 - **Ping-pong, not in place, for simulation.** The kernel may write a buffer or texture that the render path also reads each frame. Drive it as a `PingPong` or `PingPongTexture` pair, which `Particles` and `Simulation` do for you. In-place `compute(_:over:)` is for scratch work the render path doesn't also read that frame.
 - **A `ComputeTexture` draws as linear color.** Its texels feed the render pipeline as linear values, which is the format the renderer composites in. Write display colors in a kernel through `srgbToLinear`, from the [shader library](#prelude), and keep alpha at 1 for opaque, predictable compositing. Storage is `.shared`, which is unified memory, with `.shaderRead` and `.shaderWrite` usage.

@@ -145,8 +145,11 @@ public final class PingPong<Element>: @unchecked Sendable {
 /// An ordered byte-packer for a kernel's custom parameters, bound at buffer index
 /// 11. Append values in the order your MSL `constant` struct declares them and mind
 /// 16-byte alignment for `float4`/`float2` runs, the usual rules for a Metal
-/// constant buffer. For just a few live floats, the `Particles` `custom:` 4-float
-/// bag (also index 11) is simpler.
+/// constant buffer. The bytes are bound inline (`setBytes`), so the whole pack has
+/// to stay under Metal's 4 KB limit for that path: a lookup table of a few hundred
+/// floats fits, and a larger one goes in a `ComputeBuffer` through the `buffers:`
+/// form. For just a few live floats, the `Particles` `custom:` 4-float bag (also
+/// index 11) is simpler.
 ///
 /// `append(camera:aspect:)` packs a `Camera3D` as an `OllinCameraMatrices` (its
 /// view and projection, 128 bytes), so a kernel can project world points through
