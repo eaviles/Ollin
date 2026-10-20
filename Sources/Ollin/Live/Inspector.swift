@@ -2196,7 +2196,10 @@ private struct MenuParamRow: View {
 
     /// `.menu` is a single-line row with a pop-up. `.segmented` stays on one
     /// line while the segments fit beside the label (the label pinned so it
-    /// can't silently truncate), else wraps to a full-width control below it.
+    /// can't silently truncate), else wraps to a full-width control below it,
+    /// and when even that is wider than the panel (five long names) it falls
+    /// back to the menu row, since a segmented control never shrinks below
+    /// its names and would run off the panel's edge, unreachable.
     @ViewBuilder private var layout: some View {
         if control.style == .segmented {
             ViewThatFits(in: .horizontal) {
@@ -2207,6 +2210,9 @@ private struct MenuParamRow: View {
                     basePicker.pickerStyle(.segmented).fixedSize()
                     KeyframeDiamond(handle: handle, palette: palette)
                 }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .frame(minHeight: 38)
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
@@ -2216,26 +2222,34 @@ private struct MenuParamRow: View {
                         // diamond sits on.
                         KeyframeDiamond(handle: handle, palette: palette)
                     }
-                    basePicker.pickerStyle(.segmented)
-                        .frame(maxWidth: .infinity)
+                    // Fixed to its names on purpose: a segmented control
+                    // asked to be narrower than them draws them clipped and
+                    // still reports its own width, so this child only fits
+                    // when the names do, and ViewThatFits moves on otherwise.
+                    basePicker.pickerStyle(.segmented).fixedSize()
                 }
                 // Pinned leading: ViewThatFits centers a child narrower than
                 // the row, which would strand the label off the label column.
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .frame(minHeight: 38)
+                menuRow
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .frame(minHeight: 38)
         } else {
-            // The menu sizes itself to its widest option, which on a long
-            // list crowded the label out of its own row. It shrinks instead:
-            // the label lays out first, and the menu takes what is left
-            // between a floor and a cap, trimming its title if it must (the
-            // menu still opens to the full names).
-            ControlRow(handle: handle, palette: palette, iconGutter: iconGutter, labelWins: true) {
-                basePicker.pickerStyle(.menu)
-                    .frame(minWidth: 84, maxWidth: 170, alignment: .trailing)
-            }
+            menuRow
+        }
+    }
+
+    /// The menu sizes itself to its widest option, which on a long list
+    /// crowded the label out of its own row. It shrinks instead: the label
+    /// lays out first, and the menu takes what is left between a floor and a
+    /// cap, trimming its title if it must (the menu still opens to the full
+    /// names).
+    private var menuRow: some View {
+        ControlRow(handle: handle, palette: palette, iconGutter: iconGutter, labelWins: true) {
+            basePicker.pickerStyle(.menu)
+                .frame(minWidth: 84, maxWidth: 170, alignment: .trailing)
         }
     }
 

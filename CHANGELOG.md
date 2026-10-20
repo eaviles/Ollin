@@ -18,6 +18,10 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 - **A shape cut by a line.** `shape.split(along: line)` gives a shape's two sides of a `Ray2`, `clipped(to: HalfPlane(point:inward:))` keeps one side, and `clipped(within:of:)` keeps the band around a line, each by one walk of the outline, with holes kept and the two sides of a split adding up to the whole. ([Geometry](Docs/Drawing/Geometry.md#shape-cut))
 - **A stepped ramp.** `Ramp.stepped([.red, .orange, .yellow])` holds each color flat up to the next stop, with hard edges and no blending, for a poster-flat gradient; `Ramp.stepped(stops:)` places the bands, `isStepped` says which kind a ramp is, and `reversed` keeps the bands. `Ramp.holographic` is the foil's stripe spectrum, eight flat bands in the order a grating spreads white light. ([Color](Docs/Drawing/Color.md#ramp))
 
+### Fixed
+
+- **A picker that ran off the panel.** A `@Param` picker with `style: .segmented` whose names are wider than the inspector panel (five long names) ran past the panel's edge, where its segments could not be clicked. It now falls back to the menu row when even the wrapped control does not fit, since a segmented control never shrinks below its names.
+
 ## [0.16.0] - 2026-10-18
 
 ### Added
