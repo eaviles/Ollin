@@ -358,6 +358,9 @@ typedef struct {
 // and maps each sample into the box, so a scaled box is a longer path through the
 // same medium, and `density` is extinction per world unit at a grid value of 1.
 #define OLLIN_VOLUME_MAX_LIT 4
+// The lattice cells per side of a block in a volume's fine occupancy grid
+// (`ollin_volume_occupancy_kernel`); a coarse block is this many fine ones a side.
+#define OLLIN_VOLUME_BLOCK 4
 typedef struct {
     simd_float4x4 model;          // the unit box [-0.5, 0.5]^3 -> world (the draw's
                                   // transform times its width, height, and depth)

@@ -1361,6 +1361,25 @@ static inline void ollin_apply_light_shaping(thread OllinLight &L,
     L.specular.rgb *= tint;
 }
 
+// The same shaping as a tint, for a light read in place rather than copied:
+// the factor `ollin_apply_light_shaping` scales the light's color by.
+static inline float3 ollin_light_shaping_tint(constant OllinLight &L,
+                                              constant OllinLighting &light,
+                                              float3 toLight, float3 worldPos,
+                                              texture2d_array<float> iesProfiles,
+                                              texture2d_array<float> cookies) {
+    if (L.kind < 1 || L.kind > 2) return float3(1.0);
+    float scale = 1.0;
+    if (light.iesEnabled != 0 && L.shaping.x >= 0.0) {
+        scale = ollin_ies_sample(iesProfiles, L, toLight);
+    }
+    float3 tint = float3(scale);
+    if (light.cookieEnabled != 0 && L.kind == 2 && L.shaping.y >= 0.0) {
+        tint *= ollin_cookie_sample(cookies, L, worldPos);
+    }
+    return tint;
+}
+
 // MARK: - Atmosphere (fog + volumetric light)
 //
 // Participating-media single scattering over the frame's atmosphere constants

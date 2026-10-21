@@ -23,6 +23,8 @@ import OllinRuntime
 ///   optimizing behind it and the sketch on stage untouched.
 /// - First-mount bookkeeping: `reloadCount` stays 0 and `lastBuildSeconds`
 ///   stays nil until a runner exists to reload into.
+/// - A framework rebuilt after the host started refuses the evaluation with
+///   one sentence, and the sketch on stage keeps drawing.
 enum SessionTest {
     @MainActor
     static func run() -> Never {
@@ -233,10 +235,12 @@ enum SessionTest {
         }
 
         await checkSupersedeAcrossARunner(loader: loader)
+        await checkRefusalAfterARebuild(loader: loader)
 
         print("OllinLiveCoding sessiontest passed: the two-speed landing, param carry, variation carry, "
             + "edited defaults, supersede against both builds, the clean failure, the cue carry, "
-            + "putting a parameter back, and supersede across a run being carried all hold.")
+            + "putting a parameter back, supersede across a run being carried, and the refusal "
+            + "after a framework rebuild all hold.")
         exit(0)
     }
 
@@ -342,6 +346,62 @@ enum SessionTest {
         }
         guard HeadlessStage.step(runner, view, restarted), mark(of: restarted) == 24 else {
             fail("the track did not win its parameter back on the next frame (\(mark(of: restarted) ?? .nan))")
+        }
+    }
+
+    /// A framework rebuilt under a running stage: the evaluation is refused
+    /// with the sentence, the sketch on stage stays, and the stage goes on
+    /// drawing. The rebuild is stood in for by a loader told this process
+    /// started before the framework's module files were written, which reads
+    /// every module the compile names as newer than the host. The module files
+    /// themselves are never touched: a build product with a new timestamp
+    /// sends the next build back through everything that depends on it.
+    @MainActor
+    private static func checkRefusalAfterARebuild(loader: SketchLoader) async {
+        print("OllinLiveCoding sessiontest: a framework rebuilt under the stage refuses the evaluation …")
+        guard let view = HeadlessStage.view(side: 256), let device = view.device else {
+            fail("no Metal device")
+        }
+        let session = SketchSession(keepClock: true, landsPlainBuildFirst: true)
+        session.evaluate(loader, input: .source(HeadlessStage.pilingProbe(mark: 8)))
+        await settle(session)
+        guard let mounted = session.sketch else { fail("the probe did not mount") }
+        let runner = SketchRunner(sketch: mounted, view: view, device: device)
+        session.attach(runner)
+        for _ in 0..<3 where !HeadlessStage.step(runner, view, mounted) {
+            fail("the runner never drew a frame")
+        }
+
+        var rebuilt = loader
+        rebuilt.launchedAt = .distantPast
+        var refusal: SketchLoader.LoadError?
+        session.evaluate(rebuilt, input: .source(HeadlessStage.pilingProbe(mark: 20)),
+                         onFailure: { refusal = $0 })
+        await settle(session)
+        guard case .frameworkRebuilt(let module, _)? = refusal, module.hasPrefix("Ollin"),
+              case .failed(let sentence) = session.phase,
+              sentence.contains("rebuilt since this window opened"), sentence.contains("relaunch") else {
+            fail("the evaluation after a rebuild was not refused with the sentence "
+                + "(refusal \(refusal.map { "\($0)" } ?? "none"), phase \(session.phase))")
+        }
+        guard session.currentSketch === mounted, mark(of: mounted) == 8 else {
+            fail("the refused evaluation changed the sketch on stage")
+        }
+        for _ in 0..<3 where !HeadlessStage.step(runner, view, mounted) {
+            fail("the stage stopped drawing after the refusal")
+        }
+        guard HeadlessStage.saved("frames", of: mounted) == 6 else {
+            fail("the sketch on stage did not keep running through the refusal "
+                + "(frame \(HeadlessStage.saved("frames", of: mounted) ?? -1), expected the sixth)")
+        }
+
+        // A host launched after the build (a loader whose process started
+        // after the module files were written) loads the same text.
+        session.evaluate(loader, input: .source(HeadlessStage.pilingProbe(mark: 20)))
+        await settle(session)
+        guard case .idle = session.phase, let relaunched = session.currentSketch,
+              mark(of: relaunched) == 20 else {
+            fail("the same text did not load once the framework predated the host: \(session.phase)")
         }
     }
 

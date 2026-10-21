@@ -2138,6 +2138,38 @@ culled-vs-unculled A/B surfaced it as a single 37-pixel shadow sliver.
 
 ---
 
+### Feature edges over a mesh that moves
+
+A feature-edge search hashes every face's three edges into a dictionary to
+pair the faces that share them, after welding the corners into a second
+one. On a 1.2-million-vertex tube that hashing was about 98% of 800 ms, and
+none of it depends on where the vertices are: only the index buffer and
+which corners coincide. So the search keeps that half
+(`FeatureEdgeTopology`: the welds, the kept faces, each edge with its faces,
+whether the surface closes) and a mesh that moves over the same indices
+redoes only the crease test: face normals, each edge's kind, and the rows.
+That pass is one independent step per vertex, face, or edge, so it splits
+across the cores past 65,536 items. It costs 16 ms a frame on that tube.
+
+The kept half is valid only while the new positions meet as the searched
+ones did, and the checks are each a single pass with no hashing. Every
+welded corner stays in its representative's weld cell, under the new
+extent's grain. No edge's two ends fall in one cell, which would weld them
+and drop the faces along them. Every kept face keeps area past 1e-20, and
+every flat one stays flat. Any failure is a search from scratch. The one
+case left unchecked is two parts of the surface coming within a millionth
+of its size of each other away from a shared face. A fresh search would
+weld them; ruling it out takes the hash the split exists to avoid.
+
+Two smaller things came with it. The cache had appended an entry per frame
+for a moving mesh, up to 16 entries of about 260 MB each on that tube; a
+moving mesh now takes its entry over, and a second mesh drawn over the same
+index buffer in the same frame gets its own entry sharing the faces. The
+edges also went into page-aligned memory the Metal buffer wraps
+(`bytesNoCopy`) instead of an array copied into a buffer, which was 19 ms a
+frame of copying at that size. The buffer's deallocator holds the memory,
+so a frame still in flight keeps it.
+
 ## 3D lighting and environments
 
 The user-facing surface is in `Docs/3D/3D.md`; this section is the machinery
@@ -2455,6 +2487,43 @@ distance ordering, sunward brightening, haziness graying, height falloff, the
 sky-pixel byte-hold behind a skybox, the bare-air glow, beams scaling with the aerial
 density, determinism - the sky-skip, flat-ratio, and flipped-lobe sabotages each
 verified red), plus the `aerial-perspective` snapshot.
+
+### Volumes: what the march skips
+
+The march walks a box at fixed steps, and for a plume filling a third of its
+box most steps land in nothing and read a zero. The skip removes those steps
+and only those, so every volume draws the bytes it drew before. That is a
+stronger promise than the closed-form tests need, and it was cheap to keep.
+
+Ahead of the march, per source, a compute pass writes three things: a fine
+occupancy of 4-cell blocks, a coarse one of 16-cell blocks, and the tight
+box of the held fine blocks. A block holds anything when a sample a trilinear
+read inside it can reach is above zero. That is its own samples plus one more
+on every side: a read a rounding step past a face, or one the filter takes
+from the neighboring texel, still lands in the margin. A block of 0 therefore
+reads exactly zero anywhere in it.
+
+The march keeps the whole box's step lattice: the same start, step, count,
+and per-step jitter. It only chooses which steps to take. It begins at the
+first step whose sample may fall in the tight box and stops after the last.
+A ray that misses the tight box is discarded, which blends to the same bytes
+as the (0, 0, 0, 0) it used to emit. Where a sample reads zero, the march asks
+the coarse map and then the fine one for an empty block around it, and jumps
+to the first step whose sample may land past the block's exit. A sample at
+`t0 + (i + jitter) * dt` lies in `[t0 + i*dt, t0 + (i + 1)*dt)`, so every
+step before `floor((exit - t0) / dt)` samples inside the block.
+
+Measured on the plume in one release build, swapping the committed and new
+shaders in the bundle, at 1080 square: 9.65 ms to 7.27 at the live default,
+11.46 to 8.33 at `.detail`. The scene without its march is 4.1 ms. Of the
+3.2 ms left, 0.6 is the empty space before the cloud, 0.6 is stepping inside
+it, and 2.0 is lighting its steps. Variants in the bundle priced the parts
+of that lighting: the solids' shadow-map tap is 0.55 ms, the self-shadow
+read is nothing measurable, the shaping is 0.2, and reading the light in
+place instead of copying it per step saves 0.15. The rest is the work of a
+lit step itself, which the skip cannot reach without changing the picture;
+the coarser lighting it would take is filed in `DESIGN-NOTES.md`. The light
+kernel, recomputed every frame for a kernel-written grid, measured at noise.
 
 ### The IBL bake
 
@@ -8722,6 +8791,40 @@ reloads of the same class do not collide in the objc runtime. The loader
 regexes the `class ...: Sketch` name and compiles a sibling
 `@_cdecl("ollin_make_sketch")` factory file alongside the user's source, so
 the user file is untouched and its `@main` is harmless under `-emit-library`.
+
+### A framework rebuilt under the window
+
+The dylib binds to whatever framework the host process carries, and it is
+type-checked against whatever module files sit beside the host's binary on
+disk. Those are the same framework until a build runs while the window is
+open: the build replaces the module files, the next save compiles against
+them, and the dylib loads into a host whose types are laid out the old way.
+Two windows went that way (a release build had added a stored field to
+`Shape`; the reloaded sketch died in `swift_release` on its first draw).
+
+The loader asks the compiler what it read. Every compile writes its
+loaded-module trace (`-emit-loaded-module-trace-path`), and the module files
+it names under the discovered `-I` directories are the framework the dylib
+was checked against: `Ollin` and its own dependencies for a plain sketch,
+plus whichever satellites the sketch imports, and never the SDK's. If any of
+them was written after the process started (`sysctl` `KERN_PROC_PID`
+`p_starttime`), the load is refused as `LoadError.frameworkRebuilt`. The
+process start is the reference rather than a snapshot taken at the first
+compile, because the gallery's first compile can come minutes after launch,
+and a snapshot taken then would bless a framework the gallery is not
+running. The last trace's modules are also checked before each compile,
+which refuses at once instead of compiling against files a build may still
+be writing.
+
+Two paths are compared through their links. The compiler names the real file
+(`.build/out/Products/Debug/Ollin.swiftmodule/...`), while a host run as
+`.build/debug/OllinLiveCoding` finds its directories through the `debug`
+link. Matched as written, no framework module ever matched and nothing was
+refused. The unit tests built their own folders and could not see it; the
+session gate, compiling for real from the linked path, did. The gates never
+touch a real module file to stage a rebuild: a build product with a new
+timestamp sends the next build back through everything that depends on it.
+They set the loader's `launchedAt` to the distant past instead.
 
 ### A sketch that is a package's target
 

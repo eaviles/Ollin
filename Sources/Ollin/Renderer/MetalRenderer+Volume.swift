@@ -40,6 +40,26 @@ struct VolumeLightKey: Hashable {
     var lightRay: SIMD4<Float>
 }
 
+/// Which blocks of a volume source's samples hold any medium, at two block
+/// sizes (`ollin_volume_occupancy_kernel`): the march reads it where its
+/// sample comes back zero and steps past the rest of an empty block, which on
+/// a plume filling a third of its box is most of the steps it would take. A
+/// block counts the samples a read inside it can reach, so a skipped step is
+/// one that would have read zero, and the march leaves the bytes a march
+/// through every step leaves.
+struct VolumeOccupancy {
+    var fine: MTLTexture
+    var coarse: MTLTexture
+    /// The span of fine blocks that hold anything, as the occupancy kernel
+    /// folds it (six `UInt32`s: the lowest block per axis, then the
+    /// complement of the highest).
+    var bounds: MTLBuffer
+    /// The samples' generation it was worked out for (`VolumeSource.contentGeneration`).
+    var generation: UInt64
+    /// The frame it last served, as `volumeLightCache` counts them.
+    var used: UInt64
+}
+
 /// One `drawVolume` with its GPU resources resolved for the frame: the grid,
 /// the transmittance grid toward each of the first lit lights, and the draw
 /// record the composite fills its phase into.
@@ -54,6 +74,9 @@ struct PreparedVolume {
     var litIndices: SIMD4<Float>
     var target: RenderTarget?
     var lightSet: Int
+    /// The grid's fine and coarse occupancy, or nil when there is none (the
+    /// march then reads the stand-in and skips nothing).
+    var occupancy: (fine: MTLTexture, coarse: MTLTexture, bounds: MTLBuffer)?
 }
 
 extension MetalRenderer {
@@ -90,8 +113,10 @@ extension MetalRenderer {
         volumeLightGeneration &+= 1
         var lightings: [Int: OllinLighting] = [:]
         var pending: [(texture: MTLTexture, grid: MTLTexture, draw: OllinVolumeDraw, ray: SIMD4<Float>)] = []
+        var occupancyJobs: [(grid: MTLTexture, occupancy: VolumeOccupancy)] = []
         for (index, item) in drawer.volumeDraws.enumerated() {
             guard let grid = item.source.texture(for: device) else { continue }
+            let occupancy = volumeOccupancy(for: item.source, grid: grid, jobs: &occupancyJobs)
             let lighting: OllinLighting
             if let known = lightings[item.lightSet] {
                 lighting = known
@@ -134,7 +159,8 @@ extension MetalRenderer {
             gpu.litLights = litIndices
             preparedVolumes.append(PreparedVolume(index: index, draw: gpu, grid: grid, lit: lit,
                                                   litIndices: litIndices, target: item.target,
-                                                  lightSet: item.lightSet))
+                                                  lightSet: item.lightSet,
+                                                  occupancy: occupancy.map { ($0.fine, $0.coarse, $0.bounds) }))
         }
         // A transmittance grid no volume has asked for in a few frames goes to
         // the pool, where a grid of its size is taken from before a new texture
@@ -146,9 +172,41 @@ extension MetalRenderer {
             volumeLightCache[key] = nil
             if volumeLightPool.count < 8 { volumeLightPool.append(entry.texture) }
         }
-        guard !pending.isEmpty, let kernel = try? libraryComputePipeline("ollin_volume_light_kernel"),
+        for (key, entry) in volumeOccupancyCache where volumeLightGeneration &- entry.used >= 8 {
+            volumeOccupancyCache[key] = nil
+        }
+        guard !pending.isEmpty || !occupancyJobs.isEmpty,
               let encoder = cb.makeComputeCommandEncoder() else { return }
         encoder.label = "Ollin volume light"
+        // The occupancy first: the tight box reset, the fine blocks (which
+        // fold the tight box too), then the coarse ones. Dispatches on one
+        // encoder run in order, each seeing what the one before it wrote.
+        if !occupancyJobs.isEmpty,
+           let resetKernel = try? libraryComputePipeline("ollin_volume_bounds_reset_kernel"),
+           let fineKernel = try? libraryComputePipeline("ollin_volume_occupancy_kernel"),
+           let coarseKernel = try? libraryComputePipeline("ollin_volume_coarse_occupancy_kernel") {
+            encoder.setComputePipelineState(resetKernel)
+            for job in occupancyJobs {
+                encoder.setBuffer(job.occupancy.bounds, offset: 0, index: 0)
+                encoder.dispatchThreads(MTLSize(width: 6, height: 1, depth: 1),
+                                        threadsPerThreadgroup: MTLSize(width: 6, height: 1, depth: 1))
+            }
+            for (pass, kernel) in [fineKernel, coarseKernel].enumerated() {
+                encoder.setComputePipelineState(kernel)
+                for job in occupancyJobs {
+                    let out = pass == 0 ? job.occupancy.fine : job.occupancy.coarse
+                    encoder.setTexture(out, index: 0)
+                    encoder.setTexture(pass == 0 ? job.grid : job.occupancy.fine, index: 1)
+                    encoder.setBuffer(job.occupancy.bounds, offset: 0, index: 0)
+                    encoder.dispatchThreads(MTLSize(width: out.width, height: out.height, depth: out.depth),
+                                            threadsPerThreadgroup: MTLSize(width: 4, height: 4, depth: 4))
+                }
+            }
+        }
+        guard !pending.isEmpty, let kernel = try? libraryComputePipeline("ollin_volume_light_kernel") else {
+            encoder.endEncoding()
+            return
+        }
         encoder.setComputePipelineState(kernel)
         for job in pending {
             var draw = job.draw
@@ -280,6 +338,8 @@ extension MetalRenderer {
         encoder.setFragmentTexture(iesArrayTexture ?? shapingStandIn(), index: 10)
         encoder.setFragmentTexture(cookieArrayTexture ?? shapingStandIn(), index: 11)
         let standIn = volumeStandIn()
+        let occupancyStandIn = volumeOccupancyHeld()
+        let boundsStandIn = volumeBoundsWhole()
         for item in ordered {
             var draw = item.draw
             draw.medium.z = phase
@@ -291,6 +351,10 @@ extension MetalRenderer {
                 let texture = slot < item.lit.count ? item.lit[slot] : nil
                 encoder.setFragmentTexture(texture ?? standIn, index: 4 + slot)
             }
+            let occupancy = MetalRenderer.skipsEmptyVolumeBlocks ? item.occupancy : nil
+            encoder.setFragmentTexture(occupancy?.fine ?? occupancyStandIn, index: 12)
+            encoder.setFragmentTexture(occupancy?.coarse ?? occupancyStandIn, index: 13)
+            encoder.setFragmentBuffer(occupancy?.bounds ?? boundsStandIn, offset: 0, index: 3)
             let scissor = volumeScissor(item.draw.model, uniforms: pass.uniforms3D,
                                         width: color.width, height: color.height)
                 ?? MTLScissorRect(x: 0, y: 0, width: color.width, height: color.height)
@@ -350,6 +414,84 @@ extension MetalRenderer {
             scatter: SIMD4(scatter.x, scatter.y, scatter.z, scatters),
             glow: SIMD4(glow.x, glow.y, glow.z, 0),
             litLights: SIMD4(repeating: -1))
+    }
+
+    /// The occupancy of `source`'s samples for this frame: kept while the
+    /// samples hold, and when they are new (or a kernel rewrote them) a job
+    /// added to `jobs` that works it out ahead of the march. A kernel-written
+    /// grid keeps one pair of textures and has them rewritten in place; a
+    /// frame still reading the old ones is ahead of the rewrite on the queue.
+    private func volumeOccupancy(for source: VolumeSource, grid: MTLTexture,
+                                 jobs: inout [(grid: MTLTexture, occupancy: VolumeOccupancy)]) -> VolumeOccupancy? {
+        let id = source.contentID, generation = source.contentGeneration
+        if var known = volumeOccupancyCache[id] {
+            known.used = volumeLightGeneration
+            if known.generation != generation {
+                known.generation = generation
+                jobs.append((grid, known))
+            }
+            volumeOccupancyCache[id] = known
+            return known
+        }
+        func blocks(_ samples: Int, _ side: Int) -> Int { max(1, (samples - 1 + side - 1) / side) }
+        let block = Int(OLLIN_VOLUME_BLOCK)
+        let fineSize = (blocks(source.width, block), blocks(source.height, block), blocks(source.depth, block))
+        guard let fine = makeOccupancyTexture(fineSize.0, fineSize.1, fineSize.2),
+              let coarse = makeOccupancyTexture((fineSize.0 + block - 1) / block,
+                                                (fineSize.1 + block - 1) / block,
+                                                (fineSize.2 + block - 1) / block),
+              let bounds = device.makeBuffer(length: 6 * MemoryLayout<UInt32>.stride,
+                                             options: .storageModePrivate) else { return nil }
+        bounds.label = "Ollin volume tight box"
+        let occupancy = VolumeOccupancy(fine: fine, coarse: coarse, bounds: bounds,
+                                        generation: generation, used: volumeLightGeneration)
+        volumeOccupancyCache[id] = occupancy
+        jobs.append((grid, occupancy))
+        return occupancy
+    }
+
+    private func makeOccupancyTexture(_ width: Int, _ height: Int, _ depth: Int) -> MTLTexture? {
+        let descriptor = MTLTextureDescriptor()
+        descriptor.textureType = .type3D
+        descriptor.pixelFormat = .r8Uint
+        descriptor.width = width
+        descriptor.height = height
+        descriptor.depth = depth
+        descriptor.usage = [.shaderRead, .shaderWrite]
+        descriptor.storageMode = .private
+        let texture = device.makeTexture(descriptor: descriptor)
+        texture?.label = "Ollin volume occupancy"
+        return texture
+    }
+
+    /// The one-block occupancy that says every block holds medium.
+    private func volumeOccupancyHeld() -> MTLTexture? {
+        if let volumeOccupancyStandIn { return volumeOccupancyStandIn }
+        let descriptor = MTLTextureDescriptor()
+        descriptor.textureType = .type3D
+        descriptor.pixelFormat = .r8Uint
+        descriptor.width = 1
+        descriptor.height = 1
+        descriptor.depth = 1
+        descriptor.usage = .shaderRead
+        descriptor.storageMode = .shared
+        guard let texture = device.makeTexture(descriptor: descriptor) else { return nil }
+        var one: UInt8 = 1
+        texture.replace(region: MTLRegionMake3D(0, 0, 0, 1, 1, 1), mipmapLevel: 0, slice: 0,
+                        withBytes: &one, bytesPerRow: 1, bytesPerImage: 1)
+        volumeOccupancyStandIn = texture
+        return texture
+    }
+
+    /// The tight box that is the whole grid: the lowest block 0 on every axis
+    /// and a highest one past any grid's last.
+    private func volumeBoundsWhole() -> MTLBuffer? {
+        if let volumeBoundsStandIn { return volumeBoundsStandIn }
+        var whole: [UInt32] = [0, 0, 0, ~UInt32(1 << 20), ~UInt32(1 << 20), ~UInt32(1 << 20)]
+        volumeBoundsStandIn = device.makeBuffer(bytes: &whole, length: 6 * MemoryLayout<UInt32>.stride,
+                                                options: .storageModeShared)
+        volumeBoundsStandIn?.label = "Ollin volume tight box (whole)"
+        return volumeBoundsStandIn
     }
 
     /// A light-transmittance grid sized for `source` (its own resolution, up to

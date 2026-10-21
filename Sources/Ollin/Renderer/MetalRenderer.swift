@@ -687,6 +687,15 @@ final class MetalRenderer {
     /// size before a new texture is made (a kernel-written cloud wants one every
     /// frame).
     var volumeLightPool: [MTLTexture] = []
+    /// Each volume source's occupancy (`VolumeOccupancy`), keyed by its
+    /// content, worked out again when a kernel rewrites the grid.
+    var volumeOccupancyCache: [UInt64: VolumeOccupancy] = [:]
+    /// The occupancy a volume without one of its own reads: every block held,
+    /// so its march strides past nothing.
+    var volumeOccupancyStandIn: MTLTexture?
+    /// The tight box a volume without an occupancy of its own reads: the
+    /// whole grid.
+    var volumeBoundsStandIn: MTLBuffer?
     /// This frame's volumes with their GPU resources resolved (`prepareVolumes`),
     /// read by every geometry pass for the cloud's shadow and by the composite
     /// after each pass for the cloud itself.
@@ -855,6 +864,12 @@ final class MetalRenderer {
     /// such batch keeps its four-vertex quad, which is what a probe draws beside
     /// the points to show they land on the same pixels.
     nonisolated(unsafe) static var drawsParticlesAsPoints = true
+
+    /// Whether a volume's march strides through the blocks of its grid that
+    /// hold no medium. On, always, outside a test: off, every march reads its
+    /// grid step by step, which is what a probe draws beside the skipping march
+    /// to show the two leave the same bytes.
+    nonisolated(unsafe) static var skipsEmptyVolumeBlocks = true
 
     /// Whether a particle batch's covering square is drawn as one point
     /// primitive for `style` at this pass's `pixelScale` (texels per canvas

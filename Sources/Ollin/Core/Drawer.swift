@@ -5028,6 +5028,7 @@ final class Drawer {
         lineFringeVertices.removeAll(keepingCapacity: true)
         meshVertices.removeAll(keepingCapacity: true)
         meshBoundsCache = nil
+        featureEdgeCache.beginFrame()
         instancedMeshVertices.removeAll(keepingCapacity: true)
         meshInstances.removeAll(keepingCapacity: true)
         sdfGroups.removeAll(keepingCapacity: true)

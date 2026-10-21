@@ -182,21 +182,12 @@ extension LineDrawing {
     /// copy of a corner per face, and without this every edge would look like a
     /// boundary and be drawn.
     static func weld(_ positions: [Vector3]) -> [Int] {
-        var low = Vector3(.infinity, .infinity, .infinity)
-        var high = Vector3(-.infinity, -.infinity, -.infinity)
-        for p in positions {
-            low = Vector3(min(low.x, p.x), min(low.y, p.y), min(low.z, p.z))
-            high = Vector3(max(high.x, p.x), max(high.y, p.y), max(high.z, p.z))
-        }
-        let span = max((high - low).length, 1e-9)
-        let grain = span * 1e-6
+        let grain = weldGrain(positions)
         var seen: [SIMD3<Int64>: Int] = [:]
         seen.reserveCapacity(positions.count)
         var welded = [Int](repeating: 0, count: positions.count)
         for (index, p) in positions.enumerated() {
-            let key = SIMD3<Int64>(Int64((p.x / grain).rounded()),
-                                   Int64((p.y / grain).rounded()),
-                                   Int64((p.z / grain).rounded()))
+            let key = weldKey(p, grain: grain)
             if let first = seen[key] {
                 welded[index] = first
             } else {
@@ -205,6 +196,26 @@ extension LineDrawing {
             }
         }
         return welded
+    }
+
+    /// The cell size two points weld within: a millionth of the points' extent.
+    static func weldGrain(_ positions: [Vector3]) -> Double {
+        var low = Vector3(.infinity, .infinity, .infinity)
+        var high = Vector3(-.infinity, -.infinity, -.infinity)
+        for p in positions {
+            low = Vector3(min(low.x, p.x), min(low.y, p.y), min(low.z, p.z))
+            high = Vector3(max(high.x, p.x), max(high.y, p.y), max(high.z, p.z))
+        }
+        let span = max((high - low).length, 1e-9)
+        return span * 1e-6
+    }
+
+    /// The weld cell a point falls in: two points weld when their cells match.
+    @inline(__always)
+    static func weldKey(_ p: Vector3, grain: Double) -> SIMD3<Int64> {
+        SIMD3<Int64>(Int64((p.x / grain).rounded()),
+                     Int64((p.y / grain).rounded()),
+                     Int64((p.z / grain).rounded()))
     }
 
     /// The edges worth drawing: a boundary, a silhouette, or a crease.

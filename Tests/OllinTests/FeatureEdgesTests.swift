@@ -78,6 +78,114 @@ struct FeatureEdgesTests {
         #expect(cache.count == 3)
     }
 
+    // MARK: A mesh that moves
+
+    /// The mesh with every point moved by a function of where it is, so
+    /// corners that coincide go on coinciding: a twist about y and a swell.
+    private func moved(_ mesh: Mesh, _ t: Double) -> Mesh {
+        var m = mesh
+        m.positions = mesh.positions.map { p in
+            let a = t * p.y, s = 1 + 0.2 * sin(3 * p.y + t)
+            return Vector3((p.x * cos(a) - p.z * sin(a)) * s, p.y, (p.x * sin(a) + p.z * cos(a)) * s)
+        }
+        return m
+    }
+
+    /// Whether two edge sets are the same bytes, which is what the GPU reads.
+    private func same(_ a: FeatureEdgeSet, _ b: FeatureEdgeSet) -> Bool {
+        a.isClosed == b.isClosed && a.edges.count == b.edges.count
+            && (a.edges.isEmpty || memcmp(a.edges.baseAddress!, b.edges.baseAddress!,
+                                          a.edges.count * MemoryLayout<OllinMeshEdge>.stride) == 0)
+    }
+
+    /// Whether an edge set is the reference search's, byte for byte.
+    private func same(_ a: FeatureEdgeSet, _ reference: (edges: [OllinMeshEdge], isClosed: Bool)) -> Bool {
+        a.isClosed == reference.isClosed && a.edges.count == reference.edges.count
+            && reference.edges.withUnsafeBytes { raw in
+                a.edges.isEmpty || memcmp(a.edges.baseAddress!, raw.baseAddress!, raw.count) == 0
+            }
+    }
+
+    private static let shapes: [String: Mesh] = [
+        "box": .box(size: 1),
+        "sphere": .sphere(radius: 0.6),
+        "plane": .plane(width: 1, depth: 1, segments: 8),
+        // Past the size where the crease test splits across the cores.
+        "fine sphere": .sphere(radius: 0.6, segments: 256, rings: 160),
+    ]
+
+    @Test(arguments: ["box", "sphere", "plane", "fine sphere"])
+    func aMeshThatMovesIsSearchedOnceAndFindsTheSameEdges(shape: String) {
+        let mesh = Self.shapes[shape]!
+        var cache = FeatureEdgeCache()
+        for frame in 0 ..< 6 {
+            cache.beginFrame()
+            let m = moved(mesh, Double(frame) * 0.4)
+            let reference = ReferenceEdgeSearch.find(in: m, creaseAngle: 0.5)
+            #expect(same(cache.edges(of: m, creaseAngle: 0.5), reference), "frame \(frame)")
+            #expect(same(FeatureEdgeSet.find(in: m, creaseAngle: 0.5), reference), "frame \(frame), from scratch")
+        }
+        #expect(cache.searches == 1, "the faces were searched once, the creases tested every frame")
+        #expect(cache.count == 1, "the moving mesh took its own entry over, frame after frame")
+    }
+
+    @Test func cornersThatPartAreSearchedAgain() {
+        var cache = FeatureEdgeCache()
+        let box = Mesh.box(size: 1)
+        _ = cache.edges(of: box, creaseAngle: 0.5)
+        // One copy of a corner moves off the copies it welded with.
+        var parted = box
+        parted.positions[0] = parted.positions[0] + Vector3(0, 0.1, 0)
+        cache.beginFrame()
+        #expect(same(cache.edges(of: parted, creaseAngle: 0.5), FeatureEdgeSet.find(in: parted, creaseAngle: 0.5)))
+        #expect(cache.searches == 2)
+    }
+
+    @Test func endsThatMeetAreSearchedAgain() {
+        var cache = FeatureEdgeCache()
+        let plane = Mesh.plane(width: 1, depth: 1, segments: 4)
+        _ = cache.edges(of: plane, creaseAngle: 0.5)
+        // A vertex moved onto the one along its edge: the two weld, and the
+        // faces along that edge go.
+        var met = plane
+        let a = Int(plane.indices[0]), b = Int(plane.indices[1])
+        met.positions[b] = met.positions[a]
+        cache.beginFrame()
+        let kept = cache.edges(of: met, creaseAngle: 0.5)
+        #expect(same(kept, FeatureEdgeSet.find(in: met, creaseAngle: 0.5)))
+        #expect(cache.searches == 2)
+    }
+
+    @Test func aFlatFaceThatOpensIsSearchedAgain() {
+        // Two faces over four points; the first has three corners in a row.
+        let flat = Mesh(positions: [Vector3(0, 0, 0), Vector3(1, 0, 0), Vector3(2, 0, 0), Vector3(0, 1, 0)],
+                        indices: [0, 1, 2, 0, 1, 3])
+        var cache = FeatureEdgeCache()
+        #expect(kinds(cache.edges(of: flat, creaseAngle: 0.5)).boundary == 3, "the flat face is left out")
+        var opened = flat
+        opened.positions[1] = Vector3(1, -0.5, 0)
+        cache.beginFrame()
+        #expect(same(cache.edges(of: opened, creaseAngle: 0.5), FeatureEdgeSet.find(in: opened, creaseAngle: 0.5)))
+        #expect(cache.searches == 2)
+    }
+
+    @Test func twoMeshesOverOneIndexBufferKeepAnEntryEach() {
+        let sphere = Mesh.sphere(radius: 0.6)
+        let a = moved(sphere, 0.3), b = moved(sphere, 1.1)
+        var cache = FeatureEdgeCache()
+        cache.beginFrame()
+        let firstA = cache.edges(of: a, creaseAngle: 0.5)
+        let firstB = cache.edges(of: b, creaseAngle: 0.5)
+        for _ in 0 ..< 3 {
+            cache.beginFrame()
+            #expect(cache.edges(of: a, creaseAngle: 0.5) === firstA)
+            #expect(cache.edges(of: b, creaseAngle: 0.5) === firstB)
+        }
+        #expect(same(firstB, FeatureEdgeSet.find(in: b, creaseAngle: 0.5)))
+        #expect(cache.count == 2, "the second mesh did not take the first one's entry")
+        #expect(cache.searches == 1, "the second mesh shares the first one's faces")
+    }
+
     // MARK: Recording
 
     private func drawer() -> Drawer {
@@ -163,6 +271,21 @@ struct FeatureEdgesTests {
 
     /// A unit box seen face on through a perspective camera: the four edges of
     /// its near face, and nothing inside them, no diagonal.
+    /// A mesh that moves every frame draws the edges a sketch that only ever
+    /// drew it where it ends up draws, to the pixel: the kept faces and the
+    /// crease test redone are the search from scratch.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aMovingMeshInksAsTheMeshSearchedWhereItStops() throws {
+        let moving = MovingMeshProbe()
+        let a = Pixels(try OllinApp.image(of: moving, frame: 4))
+        let still = MovingMeshProbe()
+        still.frozen = moving.pose
+        let b = Pixels(try OllinApp.image(of: still, frame: 4))
+        #expect(moving.pose > 0)
+        #expect(a.bytes == b.bytes)
+        #expect(a.bytes.contains { $0 < 100 }, "the edges inked")
+    }
+
     @Test(.enabled(if: Snapshot.hasMetal))
     func aBoxSeenFaceOnShowsOneSquare() throws {
         let f = try frame(EdgeBoxProbe())
@@ -461,5 +584,95 @@ private final class SphereOutlineProbe: Sketch {
         featureEdges()
         rotateX(0.3)
         drawSphere(radius: 0.9)
+    }
+}
+
+/// A twisted, swelling sphere under `featureEdges`, its positions moved every
+/// frame over an index buffer that holds, or held at the pose of one frame.
+private final class MovingMeshProbe: Sketch {
+    /// The pose to hold, or nil to move with the frame.
+    var frozen: Double?
+    /// The pose the last frame drew.
+    private(set) var pose = 0.0
+    let sphere = Mesh.sphere(radius: 0.6)
+    override var canvasSize: CanvasSize { .square(256) }
+    override func draw() {
+        background(.white)
+        perspective(eye: Vector3(0.4, 0.6, 3))
+        noLights()
+        fill(.white)
+        stroke(.black)
+        strokeWeight(1.5)
+        featureEdges(creaseAngle: 0.3)
+        let t = frozen ?? Double(frameCount) * 0.4
+        pose = t
+        var m = sphere
+        m.positions = sphere.positions.map { p in
+            let a = t * p.y, s = 1 + 0.2 * sin(3 * p.y + t)
+            return Vector3((p.x * cos(a) - p.z * sin(a)) * s, p.y, (p.x * sin(a) + p.z * cos(a)) * s)
+        }
+        drawMesh(m)
+    }
+}
+
+/// The edge search as one pass from scratch, every face hashed every time:
+/// the oracle the kept faces and the split crease test are read against.
+private enum ReferenceEdgeSearch {
+    static func find(in mesh: Mesh, creaseAngle: Double) -> (edges: [OllinMeshEdge], isClosed: Bool) {
+        let positions = mesh.positions
+        let welded = LineDrawing.weld(positions)
+        struct Face { var a: Int, b: Int, c: Int, normal: Vector3 }
+        var faces: [Face] = []
+        var index = 0
+        while index + 2 < mesh.indices.count {
+            let a = Int(mesh.indices[index]), b = Int(mesh.indices[index + 1]), c = Int(mesh.indices[index + 2])
+            index += 3
+            guard a < positions.count, b < positions.count, c < positions.count else { continue }
+            guard welded[a] != welded[b], welded[b] != welded[c], welded[c] != welded[a] else { continue }
+            let cross = (positions[b] - positions[a]).cross(positions[c] - positions[a])
+            let area = cross.length
+            guard area > 1e-20 else { continue }
+            faces.append(Face(a: a, b: b, c: c, normal: cross / area))
+        }
+        struct Sides { var first: Int; var second: Int?; var branches = false }
+        var shared: [SIMD2<Int32>: Sides] = [:]
+        var order: [(key: SIMD2<Int32>, u: Int, v: Int)] = []
+        for (f, face) in faces.enumerated() {
+            for (u, v) in [(face.a, face.b), (face.b, face.c), (face.c, face.a)] {
+                let wu = welded[u], wv = welded[v]
+                guard wu != wv else { continue }
+                let key = SIMD2<Int32>(Int32(min(wu, wv)), Int32(max(wu, wv)))
+                if var sides = shared[key] {
+                    if sides.second == nil { sides.second = f } else { sides.branches = true }
+                    shared[key] = sides
+                } else {
+                    shared[key] = Sides(first: f)
+                    order.append((key, u, v))
+                }
+            }
+        }
+        let creaseLimit = cos(min(max(creaseAngle, 0), .pi))
+        func row(_ v: Vector3, _ w: Float = 0) -> SIMD4<Float> {
+            SIMD4<Float>(Float(v.x), Float(v.y), Float(v.z), w)
+        }
+        var edges: [OllinMeshEdge] = []
+        var closed = true
+        for (key, u, v) in order {
+            guard let sides = shared[key] else { continue }
+            let first = faces[sides.first].normal
+            let kind: Float
+            let second: Vector3
+            if let s = sides.second {
+                second = faces[s].normal
+                kind = sides.branches || creaseAngle <= 0 || first.dot(second) < creaseLimit ? 1 : 2
+            } else {
+                second = first
+                kind = 0
+                closed = false
+            }
+            edges.append(OllinMeshEdge(a: row(positions[u], kind), b: row(positions[v]),
+                                       normal0: row(first), normal1: row(second)))
+        }
+        return (edges, closed)
     }
 }

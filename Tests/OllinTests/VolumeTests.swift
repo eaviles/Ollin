@@ -257,6 +257,29 @@ struct VolumeTests {
         #expect(a.row(a.height / 2, columns: 8 ..< a.width - 8) > 0.05)
     }
 
+    /// The march strides through the blocks of its grid that hold no medium
+    /// and leaves the bytes it leaves stepping through every one: a puff that
+    /// fills part of its box, with holes in it, lit by a spot through its own
+    /// shadow and the solids', from a CPU grid and from one a kernel writes.
+    @Test(.enabled(if: Snapshot.hasMetal), arguments: [false, true])
+    func skippingTheEmptyBlocksLeavesTheSameBytes(kernelWritten: Bool) throws {
+        func render(skipping: Bool) throws -> [UInt8] {
+            MetalRenderer.skipsEmptyVolumeBlocks = skipping
+            defer { MetalRenderer.skipsEmptyVolumeBlocks = true }
+            let probe = PuffProbe()
+            probe.kernelWritten = kernelWritten
+            return Pixels(try OllinApp.image(of: probe, frame: 1)).bytes
+        }
+        let skipped = try render(skipping: true)
+        let stepped = try render(skipping: false)
+        #expect(skipped == stepped)
+        // And there is a lit cloud to compare, over a scene that differs from it.
+        let plain = PuffProbe()
+        plain.drawsVolume = false
+        let without = Pixels(try OllinApp.image(of: plain, frame: 1)).bytes
+        #expect(zip(skipped, without).filter { $0 != $1 }.count > 2_000)
+    }
+
     /// A volume holding nothing changes nothing.
     @Test(.enabled(if: Snapshot.hasMetal))
     func anEmptyVolumeLeavesTheFrameAlone() throws {
@@ -617,6 +640,66 @@ private final class GridProbe: Sketch {
             // nothing has bound has no contents to read back yet).
             ortho(eye: Vector3(0, 0, 10), target: .zero, height: 2, near: 1, far: 30)
             drawVolume(grid, size: 1, medium: Medium(density: 1, color: .black))
+        }
+    }
+}
+
+/// A lumpy puff in the lower part of a tall box, with a hollow through it,
+/// lit by a spot from above that also lights a ball and the floor, seen in
+/// perspective: most of the box is empty, in blocks the march can stride past.
+private final class PuffProbe: Sketch {
+    var kernelWritten = false
+    var drawsVolume = true
+    private let grid = ComputeTexture3D(width: 40, height: 56, depth: 40)
+    private let fill = ComputeKernel(entry: "fillPuff", """
+        kernel void fillPuff(texture3d<float, access::write> out [[texture(0)]],
+                             uint3 gid [[thread_position_in_grid]]) {
+            uint3 n = uint3(out.get_width(), out.get_height(), out.get_depth());
+            if (any(gid >= n)) return;
+            float3 u = float3(gid) / float3(n - 1);
+            float3 c = u - float3(0.5, 0.32, 0.5);
+            float r = length(c * float3(1.0, 1.4, 1.0));
+            float lumps = 0.08 * sin(u.x * 23.0) * sin(u.y * 17.0 + 1.0) * sin(u.z * 19.0 + 2.0);
+            float hole = length(float2(c.x, c.z)) < 0.06 ? 0.0 : 1.0;
+            out.write(float4(max(0.0, 0.3 + lumps - r) * 6.0 * hole), gid);
+        }
+    """)
+    /// The same puff for the CPU.
+    nonisolated static func density(_ u: Double, _ v: Double, _ w: Double) -> Double {
+        let c = (u - 0.5, v - 0.32, w - 0.5)
+        let r = (c.0 * c.0 + c.1 * 1.4 * c.1 * 1.4 + c.2 * c.2).squareRoot()
+        let lumps = 0.08 * sin(u * 23) * sin(v * 17 + 1) * sin(w * 19 + 2)
+        let hole = (c.0 * c.0 + c.2 * c.2).squareRoot() < 0.06 ? 0.0 : 1.0
+        return max(0, 0.3 + lumps - r) * 6 * hole
+    }
+    private lazy var volume = Volume(width: 40, height: 56, depth: 40, PuffProbe.density)
+
+    override var canvasSize: CanvasSize { .square(128) }
+
+    override func draw() {
+        background(Color(white: 0.1))
+        perspective(eye: Vector3(2.2, 1.6, 4.4), target: Vector3(0, 0.9, 0))
+        ambientLight(Color(white: 0.15))
+        castShadows()
+        spotLight(.white, at: Vector3(0.3, 4, 0.2), direction: Vector3(-0.3, -4, -0.2),
+                  coneAngle: 0.6, penumbra: 0.3, intensity: 2)
+        noStroke()
+        fill(Color(white: 0.5))
+        drawGround(size: 8)
+        withState {
+            translate(0.15, 1.1, 0.1)
+            fill(Color(white: 0.8))
+            drawSphere(radius: 0.18)
+        }
+        guard drawsVolume else { return }
+        withState {
+            translate(0, 1.4, 0)
+            if kernelWritten {
+                compute(fill, writing: grid)
+                drawVolume(grid, width: 2, height: 2.8, depth: 2, medium: .smoke)
+            } else {
+                drawVolume(volume, width: 2, height: 2.8, depth: 2, medium: .smoke)
+            }
         }
     }
 }

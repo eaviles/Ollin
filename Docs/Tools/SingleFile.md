@@ -48,7 +48,7 @@ ollin new dots.swift
 ollin dots.swift
 ```
 
-`new` writes a small breathing-circle sketch, names the class after the file, and marks the file executable. `ollin dots.swift` then opens that sketch in the live host. Edit the file and save it, and the window swaps in the change without closing. A save that does not compile shows the error over the canvas, and the last good sketch keeps drawing. Everything the live host offers works here too. You get the `@Param` inspector and the seed card. `--keep-clock` carries the clock across reloads, and `--record` keeps the run as a [movie](../Output/Recording.md) from its first frame.
+`new` writes a small breathing-circle sketch, names the class after the file, and marks the file executable. `ollin dots.swift` then opens that sketch in the live host. Edit the file and save it, and the window swaps in the change without closing. A save that does not compile shows the error over the canvas, and the last good sketch keeps drawing. A save after the framework was rebuilt under the open window is refused the same way. Its sentence says to relaunch, since the new build would crash the old window. Everything the live host offers works here too. You get the `@Param` inspector and the seed card. `--keep-clock` carries the clock across reloads, and `--record` keeps the run as a [movie](../Output/Recording.md) from its first frame.
 
 The file is an ordinary Ollin sketch, so there is nothing single-file-specific to learn:
 

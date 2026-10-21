@@ -1,5 +1,6 @@
 import Foundation
 import Ollin
+import os
 
 /// Compiles a sketch `.swift` file into a `.dylib` and loads the `Sketch`
 /// instance out of it: the one file, or every file of the SwiftPM target it
@@ -64,6 +65,12 @@ public struct SketchLoader: Sendable {
         case target
     }
 
+    /// The moment the framework modules a compile reads must predate for the
+    /// sketch to load into this process: the process's own start, so a module
+    /// a build wrote while the window was open refuses the reload
+    /// (`LoadError.frameworkRebuilt`). Set earlier only to test that refusal.
+    package var launchedAt: Date = SketchLoader.processLaunch
+
     public init(sketchPath: String, optimization: Optimization = .speed, scope: Scope = .file) {
         self.sketchPath = sketchPath
         self.optimization = optimization
@@ -91,6 +98,12 @@ public struct SketchLoader: Sendable {
         case packageUnreadable(String)
         case compileFailed(String)
         case loadFailed(String)
+        /// A framework module the compile read was written after this process
+        /// started: a build replaced the framework under a running host, so the
+        /// sketch was compiled against a framework this process is not, and
+        /// loading it would crash the host. The module's name and when it was
+        /// written. Nothing is loaded; a relaunch picks up the new framework.
+        case frameworkRebuilt(module: String, at: Date)
 
         public var description: String {
             switch self {
@@ -100,6 +113,10 @@ public struct SketchLoader: Sendable {
             case .packageUnreadable(let message): return message
             case .compileFailed(let log): return "compile failed —\n\(log)"
             case .loadFailed(let msg): return "load failed — \(msg)"
+            case .frameworkRebuilt(let module, let date):
+                return "The framework was rebuilt since this window opened (\(module) at "
+                    + "\(date.formatted(date: .omitted, time: .standard))), so the edit was not "
+                    + "loaded; relaunch to run it."
             }
         }
     }
@@ -136,6 +153,12 @@ public struct SketchLoader: Sendable {
     /// `compile()`, but with the source selected by `input`: the file on disk, or
     /// an in-memory buffer compiled *as* that file (see `Input`).
     public func compile(_ input: Input) -> Result<String, LoadError> {
+        // The modules the last compile read, checked before this one starts:
+        // a framework rebuilt since launch refuses at once, without a compile
+        // against module files a build may still be writing.
+        if let rebuilt = Self.rebuiltModule(Self.lastLoadedModules.withLock { $0 }, since: launchedAt) {
+            return .failure(rebuilt)
+        }
         var source: String
         switch input {
         case .file:
@@ -261,11 +284,13 @@ public struct SketchLoader: Sendable {
         }
 
         let dylibPath = (work as NSString).appendingPathComponent("sketch.dylib")
+        let tracePath = (work as NSString).appendingPathComponent("modules.json")
         var args = Self.compileArguments(
             dylibPath: dylibPath, moduleName: "OllinRuntimeSketch_\(token)",
             sources: [sourceFile] + siblings + [factoryPath], optimization: optimization,
             flags: target?.compilerFlags(debug: optimization == .none) ?? [])
         args += moduleArguments()
+        args += ["-emit-loaded-module-trace-path", tracePath]
         let result = Self.run("/usr/bin/xcrun", args)
         guard result.status == 0 else {
             let log = result.stderr.isEmpty ? result.stdout : result.stderr
@@ -275,7 +300,62 @@ public struct SketchLoader: Sendable {
             }
             return .failure(.compileFailed(message))
         }
+        // The framework modules this compile actually read, from the trace
+        // the compiler wrote: a sketch built against a module newer than this
+        // process would load into a host that does not match it.
+        let loaded = Self.frameworkModules(inTrace: tracePath, under: moduleSearchPaths())
+        Self.lastLoadedModules.withLock { $0 = loaded }
+        if let rebuilt = Self.rebuiltModule(loaded, since: launchedAt) {
+            return .failure(rebuilt)
+        }
         return .success(dylibPath)
+    }
+
+    /// When this process started, from the kernel's record of it; the moment
+    /// of the first read if the kernel will not say.
+    package static let processLaunch: Date = {
+        var info = kinfo_proc()
+        var size = MemoryLayout<kinfo_proc>.stride
+        var request: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_PID, getpid()]
+        guard sysctl(&request, u_int(request.count), &info, &size, nil, 0) == 0 else { return Date() }
+        let start = info.kp_proc.p_un.__p_starttime
+        return Date(timeIntervalSince1970: TimeInterval(start.tv_sec) + TimeInterval(start.tv_usec) / 1_000_000)
+    }()
+
+    /// The framework module files the last compile in this process read.
+    private static let lastLoadedModules = OSAllocatedUnfairLock<[String]>(initialState: [])
+
+    /// The module files a compile's loaded-module trace names under the
+    /// framework's search directories: the framework and whatever of its
+    /// libraries the sketch imports, and never the SDK's modules. Empty when
+    /// the trace is missing or unreadable. Both sides are compared through
+    /// their symbolic links: the compiler names the real file, and a host run
+    /// as `.build/debug/…` finds its directories through the link.
+    package static func frameworkModules(inTrace path: String, under directories: [String]) -> [String] {
+        guard let data = FileManager.default.contents(atPath: path),
+              let trace = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let modules = trace["swiftmodules"] as? [String] else { return [] }
+        let roots = directories.map { directory -> String in
+            let real = SketchTarget.resolved(directory)
+            return real.hasSuffix("/") ? real : real + "/"
+        }
+        return modules.map(SketchTarget.resolved).filter { module in roots.contains { module.hasPrefix($0) } }
+    }
+
+    /// The first of `modules` written after `launch`, as the refusal that
+    /// names it, or nil when every one predates it (or is gone).
+    package static func rebuiltModule(_ modules: [String], since launch: Date) -> LoadError? {
+        for path in modules {
+            guard let written = (try? FileManager.default.attributesOfItem(atPath: path))?[.modificationDate] as? Date,
+                  written > launch else { continue }
+            // `Ollin.swiftmodule/arm64-apple-macos.swiftmodule` in one build
+            // layout, `Modules/Ollin.swiftmodule` in the other.
+            let parent = (path as NSString).deletingLastPathComponent
+            let file = parent.hasSuffix(".swiftmodule") ? parent : path
+            let name = ((file as NSString).lastPathComponent as NSString).deletingPathExtension
+            return .frameworkRebuilt(module: name, at: written)
+        }
+        return nil
     }
 
     /// A sentence for a compile that failed on a module the target depends on

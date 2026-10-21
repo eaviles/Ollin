@@ -10,9 +10,10 @@ import OllinRuntime
 /// recompile → `dlopen` → instantiate → render — end to end (Metal required).
 /// Two further phases cover the directly-executable hashbang form: a
 /// `#!/usr/bin/env ollin` sketch must compile and render, and a broken one
-/// must still report diagnostics at the original line numbers. The last
-/// covers a sketch split across a SwiftPM target: an edit to the helper file
-/// reaches the render, and the one file alone still cannot compile.
+/// must still report diagnostics at the original line numbers. A loader told
+/// the framework was rebuilt after launch refuses the load with its sentence.
+/// The last covers a sketch split across a SwiftPM target: an edit to the
+/// helper file reaches the render, and the one file alone still cannot compile.
 enum SelfTest {
     @MainActor
     static func run() -> Never {
@@ -130,12 +131,34 @@ enum SelfTest {
             }
         }
 
+        // A framework rebuilt after this window opened: the compile reads
+        // module files newer than the host, and the load is refused with the
+        // sentence rather than crashing the window. The rebuild is stood in
+        // for by a loader told the host started before every module file.
+        print("OllinLive selftest: a framework rebuilt since launch refuses the load …")
+        writeSketch(radius: 60)
+        var rebuilt = SketchLoader(sketchPath: sketchFile)
+        rebuilt.launchedAt = .distantPast
+        switch rebuilt.load() {
+        case .success:
+            fail("a sketch compiled against a framework newer than the host was loaded")
+        case .failure(let error):
+            guard case .frameworkRebuilt(let module, _) = error, module.hasPrefix("Ollin"),
+                  "\(error)".contains("rebuilt since this window opened") else {
+                fail("the load after a rebuild failed for another reason: \(error)")
+            }
+        }
+        guard compileLoadRender(to: (dir as NSString).appendingPathComponent("e.png")) else {
+            fail("a host started after the build could not load the same sketch")
+        }
+
         let helperChanged = targetPhase(in: dir)
 
         print("OllinLive selftest: PASS: the edited sketch recompiled, loaded, and "
             + "rendered differently (\(a.count) vs \(b.count) bytes), the unoptimized "
             + "compile rendered the same bytes, the hashbang form compiled with "
-            + "exact diagnostic lines, and an edit to a target's helper file reached "
+            + "exact diagnostic lines, a framework rebuilt since launch refused the "
+            + "load with its sentence, and an edit to a target's helper file reached "
             + "the render (\(helperChanged) bytes of the frame changed).")
         exit(0)
     }

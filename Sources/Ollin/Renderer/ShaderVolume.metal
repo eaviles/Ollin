@@ -80,6 +80,111 @@ kernel void ollin_volume_light_kernel(texture3d<float, access::write> out [[text
     out.write(float4(exp(-vol.medium.x * tau)), gid);
 }
 
+// Which blocks of a grid hold any medium, for the march to stride through the
+// ones that hold none. One thread a block of OLLIN_VOLUME_BLOCK lattice cells a
+// side, writing 1 when any sample a trilinear read inside the block can reach
+// is above zero: the block's own samples and one more on every side, so a read
+// a rounding step past a face, or one the filter takes from the neighboring
+// texel, is still covered. A block of 0 therefore reads exactly zero anywhere
+// in it, and a march that skips it adds nothing it would have added.
+//
+// A held block also widens the grid's tight box, the span of fine blocks that
+// hold anything (`bounds`: the lowest block per axis, then the highest one's
+// complement, all folded with atomic minimums from the 0xFFFFFFFF that
+// `ollin_volume_bounds_reset_kernel` leaves): every point outside it lies in an
+// empty block, so a ray reads nothing before it enters that box or after it
+// leaves.
+kernel void ollin_volume_bounds_reset_kernel(device atomic_uint *bounds [[buffer(0)]],
+                                             uint gid [[thread_position_in_grid]]) {
+    if (gid < 6) atomic_store_explicit(&bounds[gid], 0xFFFFFFFFu, memory_order_relaxed);
+}
+
+kernel void ollin_volume_occupancy_kernel(texture3d<uint, access::write> out [[texture(0)]],
+                                          texture3d<float> grid [[texture(1)]],
+                                          device atomic_uint *bounds [[buffer(0)]],
+                                          uint3 gid [[thread_position_in_grid]]) {
+    if (any(gid >= uint3(out.get_width(), out.get_height(), out.get_depth()))) return;
+    int3 last = int3(grid.get_width(), grid.get_height(), grid.get_depth()) - 1;
+    int3 lo = max(int3(gid) * OLLIN_VOLUME_BLOCK - 1, 0);
+    int3 hi = min(int3(gid + 1) * OLLIN_VOLUME_BLOCK + 1, last);
+    uint held = 0;
+    for (int z = lo.z; z <= hi.z && held == 0; z++) {
+        for (int y = lo.y; y <= hi.y && held == 0; y++) {
+            for (int x = lo.x; x <= hi.x; x++) {
+                if (grid.read(uint3(x, y, z)).r > 0.0) { held = 1; break; }
+            }
+        }
+    }
+    out.write(uint4(held), gid);
+    if (held != 0) {
+        for (int axis = 0; axis < 3; axis++) {
+            atomic_fetch_min_explicit(&bounds[axis], gid[axis], memory_order_relaxed);
+            atomic_fetch_min_explicit(&bounds[3 + axis], ~gid[axis], memory_order_relaxed);
+        }
+    }
+}
+
+// The tight box `bounds` describes, in the unit box: the fine blocks from the
+// lowest held one to the highest, corner to corner. Empty (lo above hi) when
+// no block holds anything.
+static inline void ollin_volume_tight_box(device const uint *bounds, float3 n,
+                                          thread float3 &lo, thread float3 &hi) {
+    float3 first = float3(bounds[0], bounds[1], bounds[2]);
+    float3 last = float3(~bounds[3], ~bounds[4], ~bounds[5]);
+    if (bounds[0] == 0xFFFFFFFFu) { lo = float3(1.0); hi = float3(-1.0); return; }
+    lo = first * float(OLLIN_VOLUME_BLOCK) / (n - 1.0) - 0.5;
+    hi = min((last + 1.0) * float(OLLIN_VOLUME_BLOCK), n - 1.0) / (n - 1.0) - 0.5;
+}
+
+// The coarse occupancy: a block of OLLIN_VOLUME_BLOCK fine blocks a side holds
+// medium when any of them does. The fine blocks' margins cover the coarse
+// block's, so the same exactness carries up.
+kernel void ollin_volume_coarse_occupancy_kernel(texture3d<uint, access::write> out [[texture(0)]],
+                                                 texture3d<uint> fine [[texture(1)]],
+                                                 uint3 gid [[thread_position_in_grid]]) {
+    if (any(gid >= uint3(out.get_width(), out.get_height(), out.get_depth()))) return;
+    uint3 last = uint3(fine.get_width(), fine.get_height(), fine.get_depth()) - 1;
+    uint3 lo = gid * OLLIN_VOLUME_BLOCK;
+    uint3 hi = min(lo + (OLLIN_VOLUME_BLOCK - 1), last);
+    uint held = 0;
+    for (uint z = lo.z; z <= hi.z && held == 0; z++) {
+        for (uint y = lo.y; y <= hi.y && held == 0; y++) {
+            for (uint x = lo.x; x <= hi.x; x++) {
+                if (fine.read(uint3(x, y, z)).r != 0) { held = 1; break; }
+            }
+        }
+    }
+    out.write(uint4(held), gid);
+}
+
+// Where a ray leaves the empty block around the unit-box point `p`, at the
+// coarse size when that block is empty and the fine size when only that one
+// is, or -1 when the fine block holds medium. The ray is `o + t * d` in the
+// unit box, `n` the grid's samples per axis.
+static inline float ollin_volume_empty_exit(texture3d<uint> fine, texture3d<uint> coarse,
+                                            float3 p, float3 o, float3 d, float3 n) {
+    float3 lattice = (clamp(p, -0.5, 0.5) + 0.5) * (n - 1.0);
+    float3 lo;
+    float side;
+    uint3 coarseLast = uint3(coarse.get_width(), coarse.get_height(), coarse.get_depth()) - 1;
+    uint3 coarseBlock = min(uint3(lattice / float(OLLIN_VOLUME_BLOCK * OLLIN_VOLUME_BLOCK)), coarseLast);
+    if (coarse.read(coarseBlock).r == 0) {
+        side = float(OLLIN_VOLUME_BLOCK * OLLIN_VOLUME_BLOCK);
+        lo = float3(coarseBlock) * side;
+    } else {
+        uint3 fineLast = uint3(fine.get_width(), fine.get_height(), fine.get_depth()) - 1;
+        uint3 fineBlock = min(uint3(lattice / float(OLLIN_VOLUME_BLOCK)), fineLast);
+        if (fine.read(fineBlock).r != 0) return -1.0;
+        side = float(OLLIN_VOLUME_BLOCK);
+        lo = float3(fineBlock) * side;
+    }
+    float3 hi = min(lo + side, n - 1.0);
+    float3 safe = select(d, copysign(float3(1e-12), d), fabs(d) < 1e-12);
+    float3 far = select(lo, hi, safe > 0.0) / (n - 1.0) - 0.5;
+    float3 t = (far - o) / safe;
+    return min(min(t.x, t.y), t.z);
+}
+
 struct OllinVolumeOut {
     float4 position [[position]];
     float2 clipXY;
@@ -113,7 +218,10 @@ fragment float4 ollin_volume_fragment(OllinVolumeOut in [[stage_in]],
                                       texture3d<float> lit3 [[texture(7)]],
                                       texturecube<float> iblIrradiance [[texture(8)]],
                                       texture2d_array<float> iesProfiles [[texture(10)]],
-                                      texture2d_array<float> cookies [[texture(11)]]) {
+                                      texture2d_array<float> cookies [[texture(11)]],
+                                      texture3d<uint> fineOccupancy [[texture(12)]],
+                                      texture3d<uint> coarseOccupancy [[texture(13)]],
+                                      device const uint *tightBounds [[buffer(3)]]) {
     // The world ray through this pixel, rebuilt the way the raymarched fields
     // rebuild theirs (the frame's own, jittered view-projection), so the march
     // lines up with the depth it reads.
@@ -141,6 +249,21 @@ fragment float4 ollin_volume_fragment(OllinVolumeOut in [[stage_in]],
     float stepLength = vol.grid.w / max(length(d), 1e-6);
     int steps = clamp(int(ceil(span1 / stepLength)), 1, int(vol.medium.w));
     float dt = span1 / float(steps);
+    // The steps that can read anything: those whose samples may fall inside
+    // the grid's tight box. The steps keep the places and offsets the whole
+    // box gives them, so the ones taken add exactly what a march through
+    // every step adds; a ray that misses the tight box adds nothing, which
+    // is a discard.
+    float3 tightLo, tightHi;
+    ollin_volume_tight_box(tightBounds, n, tightLo, tightHi);
+    float3 safe = select(d, copysign(float3(1e-12), d), fabs(d) < 1e-12);
+    float3 enter3 = (select(tightHi, tightLo, safe > 0.0) - o) / safe;
+    float3 leave3 = (select(tightLo, tightHi, safe > 0.0) - o) / safe;
+    float enter = max(max(enter3.x, enter3.y), enter3.z);
+    float leave = min(min(leave3.x, leave3.y), leave3.z);
+    if (any(tightLo > tightHi) || leave <= enter || leave <= t0 || enter >= t1) discard_fragment();
+    int firstStep = int(max(floor((enter - t0) / dt), 0.0));
+    int endStep = min(int(min(floor((leave - t0) / dt), float(steps))) + 1, steps);
     // Each step reads its sample at its own offset inside the step, a pure
     // function of the pixel and the step (and of the temporal sample, when the
     // frame takes several), so banding becomes fine grain the present dither
@@ -178,19 +301,33 @@ fragment float4 ollin_volume_fragment(OllinVolumeOut in [[stage_in]],
 
     float3 radiance = float3(0.0);
     float T = 1.0;
-    for (int i = 0; i < steps; i++) {
+    for (int i = firstStep; i < endStep; i++) {
         float jitter = fract(ollin_ign(in.position.xy + float(i) * 5.588238) + vol.medium.z);
         float t = t0 + (float(i) + jitter) * dt;
         float3 p = o + d * t;
         float rho = ollin_volume_density(grid, p, n);
-        if (rho <= 0.0) continue;
+        if (rho <= 0.0) {
+            // An empty block around this sample: every step whose sample falls
+            // before the ray leaves it reads zero too, so the march goes on from
+            // the first step that may sample past it, at the place and with the
+            // offset it would have reached step by step.
+            float leaves = ollin_volume_empty_exit(fineOccupancy, coarseOccupancy, p, o, d, n);
+            if (leaves > t) {
+                int next = int(min(floor((leaves - t0) / dt), float(steps)));
+                i = max(i, next - 1);
+            }
+            continue;
+        }
         float sigma = sigmaScale * rho;
         float3 source = vol.glow.rgb * rho;
         if (scatters && sigma > 0.0) {
             float3 world = ro + rd * t;
             float3 arriving = ambient;
             for (int li = 0; li < lightCount; li++) {
-                OllinLight L = light.lights[li];
+                // Read in place: a copy of the light per step is a large
+                // record moved for the two fields shaping may tint.
+                constant OllinLight &L = light.lights[li];
+                float3 color = L.color.rgb;
                 float3 toLight;
                 float atten = 1.0;
                 if (L.kind == 0) {
@@ -205,7 +342,7 @@ fragment float4 ollin_volume_fragment(OllinVolumeOut in [[stage_in]],
                                             dot(normalize(L.direction.xyz), -toLight));
                     }
                     if (atten <= 0.0) continue;
-                    ollin_apply_light_shaping(L, light, toLight, world, iesProfiles, cookies);
+                    color *= ollin_light_shaping_tint(L, light, toLight, world, iesProfiles, cookies);
                 } else {
                     continue;   // the area kinds have no single direction to scatter from
                 }
@@ -222,7 +359,7 @@ fragment float4 ollin_volume_fragment(OllinVolumeOut in [[stage_in]],
                 else if (vol.litLights.y == float(li)) atten *= ollin_volume_self_shadow(lit1, p);
                 else if (vol.litLights.z == float(li)) atten *= ollin_volume_self_shadow(lit2, p);
                 else if (vol.litLights.w == float(li)) atten *= ollin_volume_self_shadow(lit3, p);
-                arriving += L.color.rgb * (atten * ollin_hg_phase(dot(toLight, rd), g));
+                arriving += color * (atten * ollin_hg_phase(dot(toLight, rd), g));
             }
             source += vol.scatter.rgb * sigma * arriving;
         }

@@ -117,6 +117,8 @@ The names come from a check of the buffer against the framework, the same module
 
 A typo never interrupts the show, because the last sketch that compiled keeps playing and the stage is never dimmed. The mistake shows in a small strip along the bottom, one row per compiler error with its line number. The lines at fault turn red in the editor. Click a row to move the caret there, fix the line, then press ⌘↩ again.
 
+One failure is not in your code: the framework rebuilt while the window is open. A sketch compiled against the new build would crash this window, which still runs the old one. So the evaluation is refused, the strip says to relaunch, and the last sketch keeps playing.
+
 A user shader that fails to compile reports through the same strip, at its own file and line. The shader can be an inline `Shader` or a `.metal` resource. The two kinds of error are independent. Fixing the Swift error does not hide a shader error, and fixing the shader error does not hide a Swift one.
 
 ### Files, saving, and recovery

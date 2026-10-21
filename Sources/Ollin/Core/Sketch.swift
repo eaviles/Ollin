@@ -1637,7 +1637,9 @@ open class Sketch {
     /// `strokeWeight(_:in: .world)`. Under `drawMesh(_:instances:)` the edges of
     /// every copy are one more GPU draw beside the solids', placed by the same
     /// matrices, so ten thousand boxes cost what their faces cost; the edges of
-    /// a mesh are found once and kept while it is drawn. `noStroke()` leaves the
+    /// a mesh are found once and kept while it is drawn, and a mesh rebuilt each
+    /// frame over the same index buffer keeps how its faces meet and redoes
+    /// only the crease test. `noStroke()` leaves the
     /// edges out; `wireframe()` wins over this, and a mesh field draws its
     /// faces only.
     /// The edges are lines, not geometry: they cast no shadow and a path-traced
