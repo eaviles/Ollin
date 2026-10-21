@@ -3808,7 +3808,8 @@ public extension OllinApp {
     /// `--param name=value` to set a declared parameter on any of them (and on the
     /// windowed path, which reaches here first),
     /// `--replay` to drive any of them from a recorded take, plus `--bench`)
-    /// against a sketch supplied on demand.
+    /// against a sketch supplied on demand. `--help` (or `-h`) prints the
+    /// sketch's parameters and every flag it reads, and stops.
     ///
     /// Returns `true` when a headless flag was recognized (the work ran, or a
     /// usage message was printed), meaning the caller should exit rather than
@@ -3839,6 +3840,20 @@ public extension OllinApp {
     /// status is the caller above.
     @MainActor
     private static func runCommandLine(_ args: [String], makeSketch: () -> Sketch) throws -> Bool {
+        // `--help` (or `-h`) says what the sketch takes and stops. It is read
+        // before any other flag, so asking never opens a window, writes a file,
+        // or trips over the rest of the line. The sketch is set up headless,
+        // as `--list-params` does, so its parameters read their first values.
+        if args.contains("--help") || args.contains("-h") {
+            let sketch = makeSketch()
+            let size = sketch.canvasSizeForRun()
+            sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
+            isRenderingHeadless = true
+            defer { isRenderingHeadless = false }
+            try sketch.runSetup()
+            print(CommandLineHelp.text(for: sketch, arguments: args))
+            return true
+        }
         // `--capture-source` beside any export flag ties the files to the source
         // that drew them: the commit is recorded in the recipe and added to
         // every written name, and an uncommitted tree is written into the

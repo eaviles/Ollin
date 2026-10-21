@@ -600,7 +600,7 @@ $ ollin dots.swift --export-<TAB>
 ...
 ```
 
-One flag belongs beside the parameters you just tuned. `ollin HelloMotion.swift --list-params` prints every `@Param` the sketch declares: its kind, its range, and what it holds. Each is in the spelling `--param` reads back, so a value can be set for a run from the command line. [Checking the machine](../Docs/Tools/Doctor.md#what-the-sketch-itself-declares) shows the listing.
+One flag belongs beside the parameters you just tuned. `ollin HelloMotion.swift --list-params` prints every `@Param` the sketch declares: its kind, its range, and what it holds. Each is in the spelling `--param` reads back, so a value can be set for a run from the command line. `--help` prints the same list and then every flag the sketch reads, without opening a window. [Checking the machine](../Docs/Tools/Doctor.md#what-the-sketch-itself-declares) shows the listing.
 
 The command does two more things beyond running a file, and each has a page of its own in the reference.
 

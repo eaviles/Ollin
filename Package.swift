@@ -340,6 +340,13 @@ let package = Package(
         .target(
             name: "OllinShaderText"
         ),
+        // Every flag a person types at the `ollin` command or after a sketch,
+        // with its one line. A table and nothing else, with no dependencies,
+        // so the framework prints a sketch's `--help` from it and the reference
+        // tools complete from it without either linking the other.
+        .target(
+            name: "OllinCommandFlags"
+        ),
         // The project generator's model: the kinds of project it can make, the
         // ready-made templates, the capabilities each one wires in, and the files
         // they turn into. Depends on nothing but the shader lexer above, never on
@@ -372,14 +379,14 @@ let package = Package(
         // one, and on nothing else, so it stays a text target.
         .target(
             name: "OllinReference",
-            dependencies: ["OllinProjects"]
+            dependencies: ["OllinProjects", "OllinCommandFlags"]
         ),
         // `ollin docs` and `ollin examples`: the reference in the terminal, out
         // of this checkout, for anybody with no network or no wish to open a
         // browser. It links no framework, so the first run is a second or two.
         .executableTarget(
             name: "OllinDocs",
-            dependencies: ["OllinReference"]
+            dependencies: ["OllinReference", "OllinCommandFlags"]
         ),
         // `ollin doctor`: ask this machine what it can run. It links the framework
         // because the report is the framework's own (Core/Doctor.swift), which is
@@ -829,7 +836,9 @@ let package = Package(
                            // own Metal text through the Metal-to-GLSL rewriter.
                            "OllinShaderText",
                            // The stroke and fill expander, shared with the web page.
-                           "OllinExpander"],
+                           "OllinExpander",
+                           // The flag table a sketch's `--help` prints.
+                           "OllinCommandFlags"],
             // Declaring the `.metal` files as resources makes SwiftPM copy them
             // into the target's resource bundle and synthesize `Bundle.module`,
             // which MetalRenderer.loadLibrary reads and concatenates (ShaderCore
@@ -1188,7 +1197,7 @@ let package = Package(
         // browser gives WebGL2.
         .testTarget(
             name: "OllinReferenceTests",
-            dependencies: ["OllinReference", "OllinWebGate"]
+            dependencies: ["OllinReference", "OllinCommandFlags", "OllinWebGate"]
         ),
         // Editing a sketch's own source from the window it runs in: the scanner
         // that finds one draw call's numbers and writes the new ones. Text in,

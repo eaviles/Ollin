@@ -186,6 +186,7 @@ A packaged sketch runs with `swift run <Target> <flags>`, and a single file with
 | `--seed N` | The variation to render, set before `setup()`. A `seed(n)` in `setup()` overrides it. |
 | `--param name=value` | Sets a parameter, before `canvasSize` is read and before and after `setup()`. Repeat it for more. A color is `#RRGGBB`, a vector `x,y`, a menu its label. |
 | `--list-params` | Prints every parameter in the form `--param` takes, and stops. |
+| `--help` | Prints the sketch's parameters and every flag it reads, each with one line, and stops. No window opens. |
 | `--settle N` | Draws each written frame N times with the clock held. A `LineSpray` and an `Accumulator` need it to converge. Anti-aliasing over time and path tracing don't. |
 | `--render-quality` | `performance`, `default`, or `detail`: the sampling budgets for soft shadows, depth of field, and ambient occlusion. Exports default to `detail`. |
 | `--render-scale N` | Draws each frame N times larger and averages it down. It smooths fills and polygons; shapes and strokes are already smooth. |

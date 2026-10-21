@@ -1,5 +1,6 @@
 import Darwin
 import Foundation
+import OllinCommandFlags
 import OllinReference
 
 /// `ollin docs`, `ollin examples`, and `ollin api`: the written reference, the

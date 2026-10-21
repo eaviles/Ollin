@@ -10,7 +10,7 @@
 # until now. A flag added to a host and not to the table completes to nothing at
 # somebody's prompt, which is a gap nobody reports; a flag dropped from a host
 # and left in the table completes to something that no longer exists, which is
-# worse. So the table (Sources/OllinReference/CommandFlags.swift) is read
+# worse. So the table (Sources/OllinCommandFlags/CommandFlags.swift) is read
 # against the files that actually parse a command line, both ways:
 #
 #   1. Every "--flag" literal in a command-line-reading file is in the table.
@@ -107,7 +107,7 @@ for reader in readers:
             spelled.setdefault(flag, (reader, number))
             if flag not in table and flag not in allow:
                 problems.append(f"{reader}:{number}: {flag} is read here and is not in the flag table"
-                                " (add it to Sources/OllinReference/CommandFlags.swift,"
+                                " (add it to Sources/OllinCommandFlags/CommandFlags.swift,"
                                 " or to Scripts/check-flags-allow.txt with its reason)")
 
 for flag in sorted(table):

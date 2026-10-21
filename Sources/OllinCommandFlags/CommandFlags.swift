@@ -3,13 +3,18 @@ import Foundation
 /// Every flag a person types at the `ollin` command, with the one line that
 /// says what it does.
 ///
-/// It is one table for two readers. A shell reads it as completions, so the
+/// It is one table for three readers. A shell reads it as completions, so the
 /// flags of whichever subcommand is being typed come up with their meanings
-/// attached; a gate reads it against the tree, so a flag the code learns and
-/// the table does not fails before anybody meets it as silence at the prompt.
-/// That second reader is the reason internal flags are in here too: leaving
-/// them out would make the table incomplete rather than curated, and there
-/// would be no way to tell the difference.
+/// attached; a sketch run with `--help` prints the flags it takes from it; and
+/// a gate reads it against the tree, so a flag the code learns and the table
+/// does not fails before anybody meets it as silence at the prompt. That last
+/// reader is the reason internal flags are in here too: leaving them out would
+/// make the table incomplete rather than curated, and there would be no way to
+/// tell the difference.
+///
+/// It lives in a target of its own with no dependencies, so the framework
+/// (for `--help`) and the reference tools (for completions) read the one
+/// table without either linking the other.
 public struct CommandFlag: Sendable, Equatable {
 
     /// Where a flag is typed. The same spelling can sit in two scopes and mean
@@ -51,10 +56,67 @@ public struct CommandFlag: Sendable, Equatable {
 
 public extension CommandFlag {
 
+    /// A titled run of the table, the way `--help` prints it.
+    struct Group: Sendable {
+        /// What the flags in it are for, as a heading.
+        public let title: String
+        public let flags: [CommandFlag]
+    }
+
     /// The whole table, grouped as a person would look for it.
-    static let all: [CommandFlag] = exports + timing + quality + variation
-        + parameters + recordings + printing + fabrication + dimensional + wall + live
+    static let all: [CommandFlag] = runGroups.flatMap(\.flags) + live
         + newProject + reference + shaderCheck + phone + internals
+
+    /// The flags a sketch reads when it runs, in the groups `--help` prints:
+    /// every `.run` flag but the live hosts' own (`liveGroup`).
+    static let runGroups: [Group] = [
+        Group(title: "Exports (each writes its file and stops, with no window)", flags: exports),
+        Group(title: "How much and which moment", flags: timing),
+        Group(title: "Quality, encoders, and timing a run", flags: quality),
+        Group(title: "Variations and contact sheets", flags: variation),
+        Group(title: "Parameters and cues", flags: parameters),
+        Group(title: "Takes and recordings", flags: recordings),
+        Group(title: "Printing", flags: printing),
+        Group(title: "Plotters, cutters, and stitching", flags: fabrication),
+        Group(title: "3D and spatial files", flags: dimensional),
+        Group(title: "Installations and walls", flags: wall),
+    ]
+
+    /// The flags the live hosts read beside a sketch's own.
+    static let liveGroup = Group(title: "In a live host", flags: live)
+
+    /// The run flags as `--help` prints them: a block per group, each flag with
+    /// what it takes and its one line. The flag column is as wide as its
+    /// longest entry up to `column` characters; a longer entry puts its line
+    /// underneath.
+    static func runUsage(includingLiveHosts: Bool = false, column: Int = 30) -> String {
+        let groups = runGroups + (includingLiveHosts ? [liveGroup] : [])
+        func spelled(_ flag: CommandFlag) -> String {
+            switch flag.takes {
+            case .nothing: flag.name
+            case .file: flag.name + " FILE"
+            case .directory: flag.name + " DIR"
+            case .value(let word): flag.name + " " + word
+            case .optionalValue(let word): flag.name + " [" + word + "]"
+            }
+        }
+        let width = min(groups.flatMap(\.flags).map { spelled($0).count }.max() ?? 0, column)
+        var lines: [String] = []
+        for group in groups {
+            if !lines.isEmpty { lines.append("") }
+            lines.append(group.title)
+            for flag in group.flags {
+                let left = spelled(flag)
+                if left.count <= width {
+                    lines.append("  " + left.padding(toLength: width, withPad: " ", startingAt: 0) + "  " + flag.summary)
+                } else {
+                    lines.append("  " + left)
+                    lines.append("  " + String(repeating: " ", count: width) + "  " + flag.summary)
+                }
+            }
+        }
+        return lines.joined(separator: "\n")
+    }
 
     /// Just the ones a shell should offer.
     static var completable: [CommandFlag] { all.filter { $0.scope != .internalUse } }
@@ -140,6 +202,7 @@ public extension CommandFlag {
 
     private static let parameters: [CommandFlag] = [
         .init("--param", .run, .value("name=value"), "set one declared parameter for this run"),
+        .init("--help", .run, .nothing, "say what the sketch takes, its parameters and these flags, and stop"),
         .init("--list-params", .run, .nothing, "say what the sketch declares, and stop"),
         .init("--cue", .run, .value("name"), "start at a saved cue"),
         .init("--cues", .run, .file, "the cue sheet to read"),

@@ -1,4 +1,5 @@
 import Foundation
+import OllinCommandFlags
 @testable import OllinReference
 import Testing
 
@@ -29,6 +30,23 @@ struct CommandFlagsTests {
             #expect(!flag.summary.contains("\n"), "\(flag.name) runs to a second line")
             #expect(flag.summary.first?.isUppercase == false, "\(flag.name) starts with a capital")
         }
+    }
+
+    /// The groups `--help` prints hold every flag a sketch run reads, each
+    /// once, and the live hosts' own come in only when asked for.
+    @Test func theHelpGroupsHoldEveryRunFlagOnce() {
+        let grouped = (CommandFlag.runGroups + [CommandFlag.liveGroup]).flatMap(\.flags)
+        #expect(grouped.map(\.name).sorted() == CommandFlag.inScope(.run).map(\.name).sorted())
+        let usage = CommandFlag.runUsage()
+        for flag in CommandFlag.runGroups.flatMap(\.flags) {
+            #expect(usage.contains("  " + flag.name), "\(flag.name) is not in the help")
+            #expect(usage.contains(flag.summary), "\(flag.name)'s line is not in the help")
+        }
+        for flag in CommandFlag.liveGroup.flags {
+            #expect(!usage.contains("  " + flag.name + " "), "\(flag.name) is a host's and shows without asking")
+            #expect(CommandFlag.runUsage(includingLiveHosts: true).contains("  " + flag.name))
+        }
+        #expect(usage.contains("--help"))
     }
 
     /// The scope a flag is typed in is the scope it completes in, and the ones

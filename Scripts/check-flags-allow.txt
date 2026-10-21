@@ -3,7 +3,7 @@
 # and never complete. One per line: the flag, then why it is here.
 #
 # A flag of Ollin's own is never listed here. It goes in the table
-# (Sources/OllinReference/CommandFlags.swift) instead, marked internalUse when
+# (Sources/OllinCommandFlags/CommandFlags.swift) instead, marked internalUse when
 # a host spells it and a person never does.
 
 --json-output   devicectl's, when ollin phone reads a build's result
