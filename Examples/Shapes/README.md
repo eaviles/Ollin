@@ -68,5 +68,6 @@ These examples cover the shape-drawing vocabulary. They show every primitive and
 | [Triangles](Triangles/Sketch.swift) | the two `drawTriangle` forms side by side: an equilateral triangle that turns on its center, and an isosceles wedge that turns on its apex (SDF) |
 | [Watercolor](Watercolor/Sketch.swift) | watercolor pigment made by deforming polygons (`Watercolor`, `drawShape`): three pools of interleaved translucent layers that glaze where they overlap, plus a clipped speckle for a granulated texture. Each variation starts a fresh sheet |
 | [Brushes](Brushes/Sketch.swift) | marks made by repeating a shape along a path: `strokeBrush` replaces the continuous ribbon with a row of stamps, which take their size from `strokeWeight` and their color from the stroke |
+| [ShadedStrokes](ShadedStrokes/Sketch.swift) | strokes drawn in a material (`strokeMedium`): pencil, charcoal, and pastel that break into specks as the press lightens, a stick of three colors, bristles streaking two pigments, a brush running dry, wet paint dragging the swatches it crosses, and oil lit by its ridges. Drag to draw in the chosen medium |
 
 Run one with `swift run Example-Shapes-<Name>`, for example `swift run Example-Shapes-Primitives`.
