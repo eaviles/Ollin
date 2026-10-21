@@ -305,6 +305,8 @@ compute(transform, reading: src, writing: dst)
 
 Use the `buffers:` form for a kernel that reads static geometry uploaded once and writes an `OllinParticle` buffer the renderer draws. The geometry is a `ComputeBuffer` of your own struct, and you can bind a table or two beside these buffers. Nothing has to be packed into a struct it isn't. Any `ComputeBuffer` is a `ComputeBindable`, whatever its element type.
 
+A table the CPU works out again every frame goes in a fresh `ComputeBuffer` each frame: build the array, bind `ComputeBuffer(values)` beside the others, and let last frame's go. The frame's command buffer keeps what it binds until the GPU is done with it, so the old buffer is freed safely, and the cost is one allocation and one copy (half a megabyte for 130,000 floats). A buffer is never rewritten in place, since a frame in flight may still be reading it. The buffer form binds buffers only, so a kernel that steers by a 2D field reads it from such a table: clamp the point, read the four neighbors at `y * width + x`, and mix them, with the field's width and height in the params.
+
 Draw a `ComputeBuffer<OllinParticle>` directly with `drawParticles(_ buffer:)`. For a custom struct, draw it with your own geometry, either by reading the buffer in your own shader or by copying the positions out. Draw a `ComputeTexture` with its `image`, which is a texture-backed [`Image`](../Drawing/Drawing.md).
 
 <a id="camera"></a>
