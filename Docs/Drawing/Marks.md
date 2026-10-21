@@ -371,4 +371,5 @@ A **brush** exports as its stamps. Each stamp becomes a real circle, polygon, or
 - [Input](../Helpers/Input.md) for the rest of the pointer and keyboard surface
 - [Export](../Output/Export.md) for the vector exporters
 - [Shaders](../Shaders/Shaders.md#a-shader-as-paint) for a shader as paint, and what `info` carries on a stroke
+- [Gesture marks](../Generators/GestureMarks.md) for a recorded mark made into many small marks laid along it (a cloud, rows of dashes, a feather, a coil), each a shape a plotter draws
 - Example: `Examples/Shapes/Brushwork` (paint with it), `Examples/Shapes/StrokeProfiles` (the profile family), `Examples/Shapes/Brushes` (the brush family), `Examples/Shapes/ShadedStrokes` (draw in each medium)

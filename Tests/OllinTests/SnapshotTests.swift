@@ -166,6 +166,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("stroke-media",
                  note: "The bristle, dry-brush, wet, and oil media over a ground split in two colors: two pigments streaked along a brush, a brush running dry on three grain scales, wet paint dragging the ground along its direction (the frame drawn again without the wet strokes), and oil's relief lit from the upper left. Pins the ribbon's along and across coordinates reaching the medium fragment and the wet-ground pre-pass.",
                  make: { StrokeMediaScene() }),
+    SnapshotCase("gesture-marks",
+                 note: "Four GestureMark families, each over one short tapering wave: a cloud of discs filled as one silhouette, three rows of dashes in three colors, the band with spikes as one silhouette, and a feather's barbs stroked. Pins the spine's frames (its station steps and the direction that turns across each), the rows' shares of a taper, the spike wave, and the union of the closed pieces.",
+                 make: { GestureMarksScene() }),
     SnapshotCase("bitmap-text", note: "The bitmap font specimen.",
                  make: { TextSpecimen() }),
     SnapshotCase("tinted-image", note: "A tinted textured-quad image.",
@@ -7310,6 +7313,37 @@ private final class StrokeMediaScene: Sketch {
         drawPolyline(wave(156))
         strokeMedium(.oil(seed: 6))
         drawPolyline(wave(214))
+    }
+}
+
+/// Four gesture-mark families, one per tapering wave.
+private final class GestureMarksScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(.white)
+        func wave(_ y: Double) -> GestureMark {
+            GestureMark(points: (0...48).map { i in
+                            let t = Double(i) / 48
+                            return Vector2(24 + 208 * t, y + 12 * sin(t * .pi * 2))
+                        },
+                        widths: (0...48).map { 34 - 18 * Double($0) / 48 })
+        }
+        let ink = Color(red: 0.12, green: 0.17, blue: 0.36)
+        let colors = [ink, Color(red: 0.77, green: 0.28, blue: 0.23), Color(red: 0.88, green: 0.64, blue: 0.23)]
+        noStroke()
+        fill(ink)
+        drawShape(wave(36).cloud(seed: 2).shape)
+        for piece in wave(96).dashes(rows: 3, seed: 2) {
+            fill(colors[piece.row])
+            drawShape(piece.shape)
+        }
+        fill(colors[1])
+        drawShape(wave(158).spikes(seed: 2).shape)
+        noFill()
+        stroke(ink)
+        strokeWeight(1.2)
+        for piece in wave(218).feather(seed: 2) { drawPolyline(piece.contour.points) }
     }
 }
 

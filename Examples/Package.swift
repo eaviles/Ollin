@@ -597,6 +597,7 @@ let package = Package(
         example("Patterns/Chladni"),
         example("Patterns/Cracks"),
         example("Patterns/Clothoid"),
+        example("Patterns/GestureMarks"),
         example("Shapes/HollowShapes"),
         example("Shapes/StrokeAlignment"),
         example("Shapes/StrokeJoinsAndCaps"),

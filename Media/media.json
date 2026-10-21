@@ -7120,6 +7120,28 @@
       "stillSmall": "examples/Patterns/FractalFlame/still-640.jpg?v=7ed09709",
       "width": 1080
     },
+    "Patterns/GestureMarks": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 3.528,
+      "sound": false,
+      "source": "d64a957c227a736f",
+      "rendered": "2026-10-21",
+      "bytes": {
+        "loop": 561448,
+        "loopSmall": 111647,
+        "still": 48709,
+        "stillSmall": 19889
+      },
+      "loop": "examples/Patterns/GestureMarks/loop.mp4?v=72cb0ff5",
+      "loopSmall": "examples/Patterns/GestureMarks/loop-640.mp4?v=68d98471",
+      "still": "examples/Patterns/GestureMarks/still.jpg?v=6aa63e48",
+      "stillSmall": "examples/Patterns/GestureMarks/still-640.jpg?v=5c146074",
+      "seed": 1
+    },
     "Patterns/Girih": {
       "bytes": {
         "loop": 9483549,

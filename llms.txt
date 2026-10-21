@@ -201,6 +201,7 @@ The reference is the authority on what exists and how it behaves; the guide teac
 - [Drainage: rivers worked out from the ground](Docs/Generators/Drainage.md): `Drainage`, rivers computed from a `Heightfield` rather than drawn.
 - [Terrain](Docs/Generators/Terrain.md): `Heightfield`, landscapes from noise or `diamondSquare`, weathered by droplet hydraulic and thermal erosion, folded by `creased(along:)`, and emitted as terrain meshes…
 - [Textures](Docs/Generators/Textures.md): `Patina` and `Terrazzo`, the blooms of a corrosion and the chips of a floor scattered from a seed, held as geometry a sketch can stroke and plot, and painted by the `.rust`…
+- [Gesture marks](Docs/Generators/GestureMarks.md): `GestureMark`, one drawn path and its width made into sixteen families of marks a plotter can draw (a cloud, a chain, spikes, dashes, dots, strips, a feather, leaves, a fringe…
 - [Random walks](Docs/Generators/Walks.md): `randomWalk` / `levyFlight` / `selfAvoidingWalk`, paths built one random step at a time: the local tangle, the cluster-and-leap, and the single stroke that never crosses itself
 - [Circle packing](Docs/Generators/Packing.md): `packCircles` and `relaxCircles`, filling a region with non-overlapping circles that grow until they touch
 - [ShapeGrammar](Docs/Generators/ShapeGrammar.md): `ShapeGrammar`, a design written as rules over labeled shapes: the balanced cut behind the ice-ray lattices, splits for a building front, insets that become bars, and nested…
@@ -321,7 +322,7 @@ The reference is the authority on what exists and how it behaves; the guide teac
 
 ## The project
 
-- [Examples](Examples/README.md): 643 runnable sketches by category, each with its whole source
+- [Examples](Examples/README.md): 644 runnable sketches by category, each with its whole source
 - [Ollin architecture & internals](ARCHITECTURE.md)
 - [Ollin: the shipped-capability inventory](CAPABILITIES.md)
 - [Changelog](CHANGELOG.md)

@@ -871,6 +871,7 @@ extension Array
   static var ladder: [TuringScale] { get }
   typealias Constraints = ParamNumericConstraints<Element>
   var length: Double { get }
+  var shape: Shape { get }
 extension Bool
   static func bits(of: Bool) -> UInt64?
   static func clamped(_: Bool, by: Void) -> Bool
@@ -4508,6 +4509,46 @@ struct Genome: BidirectionalCollection, Collection, Equatable, Hashable, RandomA
   var endIndex: Int { get }
   var genes: [Double] { get }
   var startIndex: Int { get }
+struct GestureMark: Equatable, Sendable
+  enum Figure: Equatable, Sendable
+    case circle
+    case ellipse
+    case polygon(sides: Int)
+    case rectangle
+    case star(points: Int, inner: Double)
+  func blob(radius: Double? = default) -> Shape
+  func chain(spacing: Double = default, roundness: Double = default, seed: Int = default) -> [GestureMark.Piece]
+  func cloud(variation: Double = default, seed: Int = default) -> [GestureMark.Piece]
+  func dashes(rows: Int = default, length: Double = default, gap: Double = default, seed: Int = default) -> [GestureMark.Piece]
+  func dots(rows: Int = default, size: Double = default, gap: Double = default, seed: Int = default) -> [GestureMark.Piece]
+  func facets(spacing: Double = default, jitter: Double = default, seed: Int = default) -> [GestureMark.Piece]
+  func feather(angle: Double = default, spacing: Double = default, seed: Int = default) -> [GestureMark.Piece]
+  func figure(_: GestureMark.Figure) -> Shape
+  func fragments(density: Double = default, length: Double = default, spread: Double = default, seed: Int = default) -> [GestureMark.Piece]
+  func fringe(angle: Double = default, spacing: Double = default, seed: Int = default) -> [GestureMark.Piece]
+  func hull(padding: Double? = default) -> Shape
+  func lanes(count: Int = default, gap: Double = default, wander: Double = default, seed: Int = default) -> [GestureMark.Piece]
+  func leaves(angle: Double = default, size: Double = default, seed: Int = default) -> [GestureMark.Piece]
+  func pixels(cell: Double, roughness: Double = default, seed: Int = default) -> [GestureMark.Piece]
+  func spikes(spacing: Double = default, height: Double = default, sharpness: Double = default, seed: Int = default) -> [GestureMark.Piece]
+  func spiral(cycle: Double = default, loop: Double = default) -> [GestureMark.Piece]
+  func strands(count: Int = default, spread: Double = default, wavelength: Double = default, seed: Int = default) -> [GestureMark.Piece]
+  func strips(rows: Int = default, length: Double = default, seed: Int = default) -> [GestureMark.Piece]
+  func wiggle(wavelength: Double = default, amplitude: Double = default) -> [GestureMark.Piece]
+  init(_: Contour, width: Double)
+  init(_: StrokeMark, width: Double)
+  init(points: [Vector2], widths: [Double])
+  let points: [Vector2]
+  let widths: [Double]
+  static func ==(_: GestureMark, _: GestureMark) -> Bool
+  struct Piece: Equatable, Sendable
+    init(contour: Contour, row: Int = default, index: Int = default, distance: Double = default)
+    let contour: Contour
+    let distance: Double
+    let index: Int
+    let row: Int
+    var shape: Shape { get }
+  var length: Double { get }
 struct GlyphMosaicCell: Sendable
   let brightness: Double
   let center: Vector2
@@ -6492,6 +6533,7 @@ struct Shape: Tweenable, BidirectionalCollection, Collection, Equatable, RandomA
   func smoothed(iterations: Int = default) -> Shape
   func smoothed(neighbors: Int, weights: SmoothingWeights = default) -> Shape
   func smoothed(neighbors: Int, weights: SmoothingWeights = default, keepingCornersOver: Double) -> Shape
+  func spiked(_: Int, height: Double, sharpness: Double = default, seed: Int = default) -> Shape
   func split(along: Ray2) -> (left: Shape, right: Shape)
   func split(atCornersOver: Double, span: Double = default) -> [Contour]
   func stroked(width: Double, join: StrokeJoin = default, cap: StrokeCap = default) -> Shape
@@ -6500,6 +6542,7 @@ struct Shape: Tweenable, BidirectionalCollection, Collection, Equatable, RandomA
   func union(_: Shape) -> Shape
   func warped(from: Contour, along: Contour, spacing: Double = default) -> Shape
   func warped(from: Rectangle, into: CoonsPatch, spacing: Double = default) -> Shape
+  func wobbled(by: Double, scale: Double, seed: Int = default) -> Shape
   init(_: [Vector2], closed: Bool = default)
   init(contours: [Contour], winding: FillWinding = default)
   init(curveThrough: [Vector2], closed: Bool = default, spline: Spline = default)

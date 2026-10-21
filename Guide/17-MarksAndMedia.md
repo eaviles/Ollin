@@ -6,7 +6,7 @@
 
 <img src="Images/17-MarksAndMedia/Monogram.jpg" alt="The initials OL in navy ink over a spray of gold, inside the pale core of a heart of marbled rings in navy, red, gold, and green, on a combed and feathered marbled sheet framed by a dotted rule" width="560">
 
-A line drawn by hand swells and thins as it answers to speed and pressure. This chapter teaches strokes with a hand in them: width profiles, stroke dynamics, brushes, dashes, and a marbled sheet poured from bent outlines. In the monogram above, a broad nib writes your initials into the pale heart of that sheet. After it come two more media. Watercolor is pigment made from one polygon, deformed and stacked. A stroke medium draws a line in a material, from pencil on paper to wet oil.
+A line drawn by hand swells and thins as it answers to speed and pressure. This chapter teaches strokes with a hand in them: width profiles, stroke dynamics, brushes, dashes, and a marbled sheet poured from bent outlines. In the monogram above, a broad nib writes your initials into the pale heart of that sheet. After it come two more media. Watercolor is pigment made from one polygon, deformed and stacked. A stroke medium draws a line in a material, from pencil on paper to wet oil. Last, one gesture becomes many small marks laid along it: clouds, dashes, feathers, and coils that follow its width.
 
 ## A width that changes along the path: strokeProfile
 
@@ -381,11 +381,45 @@ The bottom row is paint. `.bristles` streaks the stroke's color and a second one
 
 A translucent medium mark lays one coat. Where a loop crosses itself, the crossing reads as the rest of the loop does, and a second mark still layers over the first. A medium is raster only. `--export-svg` writes the stroke as the flat ribbon, the line a plotter would draw. [`Examples/Shapes/ShadedStrokes`](../Examples/Shapes/ShadedStrokes/Sketch.swift) lets you draw in each medium with the pointer, and [Marks](../Docs/Drawing/Marks.md#media) has every setting.
 
+## Marks a gesture builds
+
+Every stroke so far is one ribbon of ink. A gesture can also be the plan for many small marks laid along it. Each of those marks is a shape you hold, so a plotter can draw it too.
+
+### Clouds, dashes, and feathers from one stroke: GestureMark
+
+A **gesture mark** turns one drawn path and its width into a family of shapes and lines. It is for marks one ribbon of ink cannot make. A cloud of discs, rows of dashes that follow a taper, a feather's barbs, and a coil wound along the line are four of them. The catalog follows Kenichi Yoneda's notes on the drawing tool behind *Etude on Painting*. Each family is written here from plain geometry, so every one of them plots.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/17-MarksAndMedia/GestureMarks-dark.jpg">
+  <img src="Images/17-MarksAndMedia/GestureMarks.jpg" alt="One S-shaped gesture that starts heavy and thins toward its end, made sixteen ways: a dark cloud of discs, a chain of rounded squares, a band with sharp spikes, three rows of colored dashes, rows of dots, a patchwork of strips, a feather of curved barbs, scattered leaves, a dense fringe, a band of square pixels in two colors, a band of shaded triangles, four colored lanes, a looping coil, wandering strands, short scattered fragments, and an even wiggle" width="680">
+</picture>
+
+```swift
+let palette: [Color] = [.black, .red, .orange]
+let path = Contour(curveThrough: [Vector2(100, 400), Vector2(400, 250), Vector2(700, 500)], closed: false)
+let gesture = GestureMark(path, width: 60)
+noStroke()
+fill(.black)
+drawShape(gesture.cloud(seed: 3).shape)
+for piece in gesture.dashes(rows: 3, seed: 3) {
+    fill(palette[piece.row])
+    drawShape(piece.shape)
+}
+```
+
+A `GestureMark` is built from any contour at one width, or from a `StrokeMark` the pointer recorded, whose widths come along. Each family returns pieces. A closed piece is a region to fill and an open one is a line to stroke. `piece.row` names the row or the side a piece belongs to, and `piece.index` its place in that row, so a palette can color them. `.shape` merges a list of pieces into one silhouette, which is how the cloud and the spikes above are filled.
+
+Sizes count in widths, not pixels. In `dashes(length: 2)`, a dash is twice as long as its row is thick. So a mark looks the same on any canvas, and it narrows where the stroke tapers. The pixels are the one exception, since their grid belongs to the canvas.
+
+A growing gesture never moves what it has already laid down. Every piece is placed by its distance from the start, and every row draws its sizes from a seeded sequence of its own. Only the piece at the tip changes as the pen moves on. So a sketch can rebuild the marks from its pen every frame, and nothing behind the pen flickers.
+
+Two more calls work on the gesture as a whole. `blob()` is the region a lasso encloses, and `hull()` is the rounded convex blob around every point. Any filled shape can then grow spikes with `spiked(_:height:)` or a wavering edge with `wobbled(by:scale:)`. [`Examples/Patterns/GestureMarks`](../Examples/Patterns/GestureMarks/Sketch.swift) plays a stroke back in each family, and you can drag to draw your own. [Gesture marks](../Docs/Generators/GestureMarks.md) has every family's settings.
+
 ## Where this comes from
 
 Stroke dynamics follow the brush engines of digital painting, which turn how fast a hand moves into how heavy a mark it leaves. Krita and Procreate offer it as a speed setting, and Steve Ruiz's perfect-freehand library estimates pressure from how far apart the points land. The speed a mark measures here is smoothed by the 1€ filter of Géry Casiez, Nicolas Roussel, and Daniel Vogel. The broad nib a stylus leans across is the calligrapher's edged pen, far older than any tablet. The monogram's letters are Hershey Sans. It descends from the single-line faces Allen Hershey digitized in the late 1960s for a plotter to write. [Chapter 8](08-Words.md) tells that story.
 
-The marbling equations are Aubrey Jaffer's closed-form model of a craft that predates all of it. The watercolor and the stroke media after the monogram name their own sources. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The marbling equations are Aubrey Jaffer's closed-form model of a craft that predates all of it. The watercolor, the stroke media, and the gesture marks after the monogram name their own sources. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
@@ -396,8 +430,9 @@ The marbling equations are Aubrey Jaffer's closed-form model of a craft that pre
 - [Stroke fonts](../Docs/Drawing/Text.md#strokefont): the single-line pen font the monogram is written in, and loading more of them.
 - [Marbling](../Docs/Generators/Marbling.md): the bath, every raking tool, and floating your own outlines as ink.
 - [Watercolor](../Docs/Generators/Watercolor.md): the sugar, the typed base, and how the deformation runs.
+- [Gesture marks](../Docs/Generators/GestureMarks.md): every family's settings, what a piece carries, the rule that keeps a growing gesture still, and the regions and figures a whole gesture makes.
 - The Mohamedi homage [`Diagonals`](../Examples/Recreations/NasreenMohamedi/Diagonals/Sketch.swift): a chevron is one polyline through its corner with a `.values` profile. It is full width at the corner and a fraction of it at each tip. That is the mark a loaded ruling pen leaves as its ink runs out. Its `--export-svg` writes each chevron as the filled outline of the stroke rather than a line with one width, so the thinning reaches the paper. It writes every hairline of its wakes and fans as a plain line.
-- Worked examples: [`Examples/Shapes/StrokeProfiles`](../Examples/Shapes/StrokeProfiles/Sketch.swift), [`Examples/Shapes/Brushwork`](../Examples/Shapes/Brushwork/Sketch.swift), [`Examples/Input/Pen`](../Examples/Input/Pen/Sketch.swift), [`Examples/Shapes/Brushes`](../Examples/Shapes/Brushes/Sketch.swift), [`Examples/Shapes/DashedStrokes`](../Examples/Shapes/DashedStrokes/Sketch.swift), [`Examples/Patterns/Marbling`](../Examples/Patterns/Marbling/Sketch.swift), [`Examples/Shapes/Watercolor`](../Examples/Shapes/Watercolor/Sketch.swift), and [`Examples/Shapes/ShadedStrokes`](../Examples/Shapes/ShadedStrokes/Sketch.swift).
+- Worked examples: [`Examples/Shapes/StrokeProfiles`](../Examples/Shapes/StrokeProfiles/Sketch.swift), [`Examples/Shapes/Brushwork`](../Examples/Shapes/Brushwork/Sketch.swift), [`Examples/Input/Pen`](../Examples/Input/Pen/Sketch.swift), [`Examples/Shapes/Brushes`](../Examples/Shapes/Brushes/Sketch.swift), [`Examples/Shapes/DashedStrokes`](../Examples/Shapes/DashedStrokes/Sketch.swift), [`Examples/Patterns/Marbling`](../Examples/Patterns/Marbling/Sketch.swift), [`Examples/Shapes/Watercolor`](../Examples/Shapes/Watercolor/Sketch.swift), [`Examples/Shapes/ShadedStrokes`](../Examples/Shapes/ShadedStrokes/Sketch.swift), and [`Examples/Patterns/GestureMarks`](../Examples/Patterns/GestureMarks/Sketch.swift).
 
 ---
 
