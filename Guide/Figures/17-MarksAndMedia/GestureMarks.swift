@@ -56,7 +56,8 @@ final class GestureMarks: Sketch {
                 case 10:
                     noStroke()
                     for piece in gesture.facets(seed: 4) {
-                        fill(teal.mixed(with: paper, 0.14 * Double(piece.row) + 0.06 * Double(piece.index % 3)))
+                        let fade: Double = 0.14 * Double(piece.row) + 0.06 * Double(piece.index % 3)
+                        fill(teal.mixed(with: paper, fade))
                         drawShape(piece.shape)
                     }
                 case 11: fill(gesture.lanes(count: 4, seed: 4), palette) { $0.row }

@@ -15,20 +15,30 @@ import Testing
 
     /// A wavy, tapering gesture sampled a few units apart, as a pen records.
     static func pen(count: Int = 160) -> GestureMark {
-        let points = (0 ..< count).map { i -> Vector2 in
+        let points: [Vector2] = (0 ..< count).map { (i: Int) -> Vector2 in
             let t = Double(i)
-            return Vector2(30 + 3.1 * t, 200 + 60 * sin(t * 0.045) + 18 * sin(t * 0.13))
+            let y: Double = 200 + 60 * sin(t * 0.045) + 18 * sin(t * 0.13)
+            return Vector2(30 + 3.1 * t, y)
         }
-        let widths = (0 ..< count).map { i in 36 - 20 * Double(i) / Double(max(count, 1)) + 4 * sin(Double(i) * 0.2) }
+        let widths: [Double] = (0 ..< count).map { (i: Int) -> Double in
+            let u = Double(i) / Double(max(count, 1))
+            let wobble: Double = 4 * sin(Double(i) * 0.2)
+            return 36 - 20 * u + wobble
+        }
         return GestureMark(points: points, widths: widths)
     }
 
     /// A straight gesture along x at y = 100, from x = 20 to x = `end`.
     static func straight(to end: Double = 420, width: Double = 40, taperTo: Double? = nil) -> GestureMark {
         let count = 60
-        let points = (0 ... count).map { Vector2(20 + (end - 20) * Double($0) / Double(count), 100) }
-        let widths = (0 ... count).map { i in
-            width + ((taperTo ?? width) - width) * Double(i) / Double(count)
+        let last: Double = taperTo ?? width
+        let points: [Vector2] = (0 ... count).map { (i: Int) -> Vector2 in
+            let u = Double(i) / Double(count)
+            return Vector2(20 + (end - 20) * u, 100)
+        }
+        let widths: [Double] = (0 ... count).map { (i: Int) -> Double in
+            let u = Double(i) / Double(count)
+            return width + (last - width) * u
         }
         return GestureMark(points: points, widths: widths)
     }
@@ -109,7 +119,9 @@ import Testing
         for variation in [0.0, 0.5, 1.0] {
             let gesture = Self.pen()
             let discs = gesture.cloud(variation: variation, seed: 5).map { piece -> (Vector2, Double) in
-                let c = piece.contour.points.reduce(Vector2(0, 0), +) / Double(piece.contour.points.count)
+                var sum = Vector2(0, 0)
+                for p in piece.contour.points { sum = sum + p }
+                let c: Vector2 = sum / Double(piece.contour.points.count)
                 return (c, piece.contour.points[0].distance(to: c))
             }
             var s = 0.0
@@ -159,7 +171,10 @@ import Testing
     /// its row's share of the local width, so the rows narrow with it.
     @Test func rowsStayInTheirShareAndFollowATaper() {
         let gesture = Self.straight(to: 620, width: 60, taperTo: 20)
-        func half(at x: Double) -> Double { (60 + (20 - 60) * (x - 20) / 600) / 2 }
+        func half(at x: Double) -> Double {
+            let u: Double = (x - 20) / 600
+            return (60 - 40 * u) / 2
+        }
         for (name, rows, inset, pieces) in [
             ("dashes", 3, 0.12, gesture.dashes(rows: 3, seed: 1)),
             ("strips", 4, 0.0, gesture.strips(rows: 4, seed: 1)),
@@ -181,7 +196,9 @@ import Testing
             // near the start.
             let early = pieces.filter { $0.distance < 100 }.map { Self.height(of: $0.contour) }
             let late = pieces.filter { $0.distance > 480 }.map { Self.height(of: $0.contour) }
-            #expect(late.reduce(0, +) / Double(late.count) < 0.6 * early.reduce(0, +) / Double(early.count), "\(name)")
+            let lateMean: Double = late.reduce(0, +) / Double(late.count)
+            let earlyMean: Double = early.reduce(0, +) / Double(early.count)
+            #expect(lateMean < 0.6 * earlyMean, "\(name)")
         }
     }
 
@@ -223,12 +240,14 @@ import Testing
         let gesture = Self.straight(to: 420, width: 40)
         for cycle in [0.5, 1.0, 1.7] {
             let turns = gesture.spiral(cycle: cycle)
-            #expect(turns.count == Int((400 / (cycle * 40)).rounded(.up)), "cycle \(cycle): \(turns.count) turns")
+            let expected = Int((400.0 / (cycle * 40.0)).rounded(.up))
+            #expect(turns.count == expected, "cycle \(cycle): \(turns.count) turns")
             // A whole turn ends where it began across the path.
             for turn in turns.dropLast() {
                 let first = turn.contour.points.first!, last = turn.contour.points.last!
                 #expect(abs(first.y - last.y) < 1e-6)
-                #expect(abs((last.x - first.x) - cycle * 40) < 1e-6)
+                let advance: Double = last.x - first.x
+                #expect(abs(advance - cycle * 40) < 1e-6)
             }
         }
     }
@@ -261,13 +280,15 @@ import Testing
     /// The figures are the shapes their two ends span.
     @Test func figuresSpanTheirEnds() {
         let gesture = GestureMark(points: [Vector2(100, 100), Vector2(130, 90), Vector2(160, 140)], widths: [4])
-        let reach = sqrt(60.0 * 60 + 40 * 40)
+        let reach: Double = sqrt(5200)
+        let disc: Double = Double.pi * reach * reach
         let circle = gesture.figure(.circle)
-        #expect(abs(circle.area - .pi * reach * reach) / (.pi * reach * reach) < 0.01)
+        #expect(abs(circle.area - disc) / disc < 0.01)
         let box = gesture.figure(.rectangle)
         #expect(abs(box.area - 60 * 40) < 1e-6)
         let ellipse = gesture.figure(.ellipse)
-        #expect(abs(ellipse.area - .pi * 30 * 20) / (.pi * 600) < 0.01)
+        let oval: Double = Double.pi * 600
+        #expect(abs(ellipse.area - oval) / oval < 0.01)
         let hexagon = gesture.figure(.polygon(sides: 6))
         #expect(hexagon[0].points.count == 6)
         #expect(hexagon[0].points.allSatisfy { abs($0.distance(to: Vector2(100, 100)) - reach) < 1e-9 })
@@ -306,8 +327,8 @@ import Testing
         let outline = wobbled[0].points
         #expect(outline.count > 60)
         for p in outline {
-            let inside = min(p.x, p.y, 200 - p.x, 200 - p.y)
-            let outside = max(-p.x, -p.y, p.x - 200, p.y - 200)
+            let inside: Double = min(min(p.x, p.y), min(200 - p.x, 200 - p.y))
+            let outside: Double = max(max(-p.x, -p.y), max(p.x - 200, p.y - 200))
             #expect(inside <= 8 + 1e-6 && outside <= 8 + 1e-6)
         }
         let step = outline.indices.map { outline[$0].distance(to: outline[($0 + 1) % outline.count]) }
@@ -362,8 +383,14 @@ import Testing
     /// each, so a plotter gets exactly the geometry.
     @Test @MainActor func thePiecesRoundTripThroughSVG() throws {
         final class Plate: Sketch {
-            lazy var gesture = GestureMark(points: (0 ... 40).map { Vector2(20 + 5 * Double($0), 120 + 30 * sin(Double($0) * 0.2)) },
-                                           widths: [30])
+            lazy var gesture: GestureMark = {
+                let points: [Vector2] = (0 ... 40).map { (i: Int) -> Vector2 in
+                    let x = Double(i)
+                    let y: Double = 120 + 30 * sin(x * 0.2)
+                    return Vector2(20 + 5 * x, y)
+                }
+                return GestureMark(points: points, widths: [30])
+            }()
             lazy var pieces = gesture.dashes(rows: 2, seed: 1) + gesture.feather(seed: 1) + gesture.spiral()
             override var canvasSize: CanvasSize { .square(240) }
             override func draw() {

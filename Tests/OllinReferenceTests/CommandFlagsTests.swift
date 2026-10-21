@@ -43,7 +43,8 @@ struct CommandFlagsTests {
             #expect(usage.contains(flag.summary), "\(flag.name)'s line is not in the help")
         }
         for flag in CommandFlag.liveGroup.flags {
-            #expect(!usage.contains("  " + flag.name + " "), "\(flag.name) is a host's and shows without asking")
+            let shown = "  \(flag.name) "
+            #expect(!usage.contains(shown), "\(flag.name) is a host's and shows without asking")
             #expect(CommandFlag.runUsage(includingLiveHosts: true).contains("  " + flag.name))
         }
         #expect(usage.contains("--help"))

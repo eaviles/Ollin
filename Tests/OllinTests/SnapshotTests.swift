@@ -7323,11 +7323,13 @@ private final class GestureMarksScene: Sketch {
     override func draw() {
         background(.white)
         func wave(_ y: Double) -> GestureMark {
-            GestureMark(points: (0...48).map { i in
-                            let t = Double(i) / 48
-                            return Vector2(24 + 208 * t, y + 12 * sin(t * .pi * 2))
-                        },
-                        widths: (0...48).map { 34 - 18 * Double($0) / 48 })
+            let points: [Vector2] = (0...48).map { (i: Int) -> Vector2 in
+                let t = Double(i) / 48
+                let rise: Double = 12 * sin(t * Double.pi * 2)
+                return Vector2(24 + 208 * t, y + rise)
+            }
+            let widths: [Double] = (0...48).map { (i: Int) -> Double in 34 - 18 * Double(i) / 48 }
+            return GestureMark(points: points, widths: widths)
         }
         let ink = Color(red: 0.12, green: 0.17, blue: 0.36)
         let colors = [ink, Color(red: 0.77, green: 0.28, blue: 0.23), Color(red: 0.88, green: 0.64, blue: 0.23)]

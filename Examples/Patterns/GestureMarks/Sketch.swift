@@ -90,7 +90,8 @@ final class GestureMarks: Sketch {
             case .facets:
                 noStroke()
                 for piece in gesture.facets(seed: seed) {
-                    fill(ink.mixed(with: paper, 0.12 * Double(piece.row) + 0.05 * Double(piece.index % 3)))
+                    let fade: Double = 0.12 * Double(piece.row) + 0.05 * Double(piece.index % 3)
+                    fill(ink.mixed(with: paper, fade))
                     drawShape(piece.shape)
                 }
             case .lanes: fill(gesture.lanes(count: 4, seed: seed)) { $0.row }
@@ -143,12 +144,17 @@ final class GestureMarks: Sketch {
     /// lifting toward the end.
     func handStroke(seed: Int) -> (points: [Vector2], widths: [Double]) {
         randomSeed(seed)
-        let route = [Vector2(150, 600), Vector2(350, 330), Vector2(580, 520), Vector2(760, 790), Vector2(930, 470)]
-        let knots = route.map { $0 + Vector2(random(-50, 50), random(-70, 70)) }
+        let route: [Vector2] = [Vector2(150, 600), Vector2(350, 330), Vector2(580, 520), Vector2(760, 790),
+                                Vector2(930, 470)]
+        let knots: [Vector2] = route.map { (point: Vector2) -> Vector2 in
+            point + Vector2(random(-50, 50), random(-70, 70))
+        }
         let points = Contour(curveThrough: knots, closed: false).resampled(spacing: 4).points
-        let widths = points.indices.map { i -> Double in
+        let widths: [Double] = points.indices.map { (i: Int) -> Double in
             let u = Double(i) / Double(max(points.count - 1, 1))
-            return weight * (1 - 0.7 * u) * (0.35 + 0.65 * smoothstep(0, 0.05, u))
+            let lift: Double = 1 - 0.7 * u
+            let press: Double = 0.35 + 0.65 * smoothstep(0, 0.05, u)
+            return weight * lift * press
         }
         return (points, widths)
     }

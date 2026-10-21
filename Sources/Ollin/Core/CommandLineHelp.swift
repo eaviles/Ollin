@@ -14,8 +14,8 @@ enum CommandLineHelp {
     static func text(for sketch: Sketch, arguments: [String]) -> String {
         let name = String(describing: type(of: sketch))
         let program = arguments.first.map { URL(fileURLWithPath: $0).lastPathComponent } ?? name
-        let operands = arguments.dropFirst().prefix { !$0.hasPrefix("-") }
-        let usage = ([program] + operands).joined(separator: " ")
+        let operands: [String] = Array(arguments.dropFirst().prefix { !$0.hasPrefix("-") })
+        let usage: String = ([program] + operands).joined(separator: " ")
         return [
             "\(name), an Ollin sketch.",
             "",

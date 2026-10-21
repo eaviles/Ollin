@@ -97,7 +97,7 @@ public extension CommandFlag {
             case .file: flag.name + " FILE"
             case .directory: flag.name + " DIR"
             case .value(let word): flag.name + " " + word
-            case .optionalValue(let word): flag.name + " [" + word + "]"
+            case .optionalValue(let word): "\(flag.name) [\(word)]"
             }
         }
         let width = min(groups.flatMap(\.flags).map { spelled($0).count }.max() ?? 0, column)
@@ -108,10 +108,12 @@ public extension CommandFlag {
             for flag in group.flags {
                 let left = spelled(flag)
                 if left.count <= width {
-                    lines.append("  " + left.padding(toLength: width, withPad: " ", startingAt: 0) + "  " + flag.summary)
+                    let padded = left.padding(toLength: width, withPad: " ", startingAt: 0)
+                    lines.append("  \(padded)  \(flag.summary)")
                 } else {
-                    lines.append("  " + left)
-                    lines.append("  " + String(repeating: " ", count: width) + "  " + flag.summary)
+                    let indent = String(repeating: " ", count: width)
+                    lines.append("  \(left)")
+                    lines.append("  \(indent)  \(flag.summary)")
                 }
             }
         }

@@ -216,8 +216,9 @@ public struct GestureMark: Equatable, Sendable {
             func edge(_ side: Int, _ sign: Double) -> [Vector2] {
                 let (tall, lean) = sides[side]
                 let limit = (cut - s) / period
-                var fractions = (0 ... 12).map { lean * Double($0) / 12 } + (1 ... 12).map { lean + (1 - lean) * Double($0) / 12 }
-                fractions = fractions.filter { $0 < limit - 1e-12 } + [Swift.min(limit, 1)]
+                let up: [Double] = (0 ... 12).map { lean * Double($0) / 12 }
+                let down: [Double] = (1 ... 12).map { lean + (1 - lean) * Double($0) / 12 }
+                let fractions: [Double] = (up + down).filter { $0 < limit - 1e-12 } + [Swift.min(limit, 1)]
                 return fractions.map { f in
                     let frame = spine.frame(at: s + f * period)
                     let wave = f <= lean ? f / lean : (1 - f) / (1 - lean)
@@ -818,7 +819,9 @@ extension Shape {
             for i in 0 ..< count {
                 let tall = Swift.max(height, 0) * (1 - 0.35 * GestureMark.hash(seed, 30 + c, i, 0))
                 let lean = 0.5 + 0.125 * (2 * GestureMark.hash(seed, 30 + c, i, 1) - 1)
-                let fractions = (0 ..< 12).map { lean * Double($0) / 12 } + (0 ..< 12).map { lean + (1 - lean) * Double($0) / 12 }
+                let up: [Double] = (0 ..< 12).map { lean * Double($0) / 12 }
+                let down: [Double] = (0 ..< 12).map { lean + (1 - lean) * Double($0) / 12 }
+                let fractions = up + down
                 for f in fractions {
                     let frame = spine.frame(at: (Double(i) + f) * period)
                     let wave = f <= lean ? f / lean : (1 - f) / (1 - lean)
