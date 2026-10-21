@@ -82,8 +82,10 @@ typedef struct {
     simd_float2 pixelScale;  // attachment texels per canvas point (x, y): 1 when the
                              // pass draws at canvas size, above 1 for a supersampled
                              // export or a window larger than the canvas, below 1 for
-                             // a fraction-resolution layer. Read only by the light
-                             // particle path, which sizes a one-pixel point in texels.
+                             // a fraction-resolution layer. Read only by the particle
+                             // paths: the light one sizes a one-pixel point in texels,
+                             // and a particle drawn as a point primitive sizes the
+                             // point itself, which the GPU takes in texels.
 } Uniforms;
 
 // Per-frame constants for the 3D pipelines (an active `Camera3D`). Bound at

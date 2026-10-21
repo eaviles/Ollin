@@ -162,6 +162,13 @@ struct GeometryBatch {
     /// the perceptual ink discs or the radiometric light deposit. Selects the
     /// pipeline, so a change of style opens a new batch.
     var particleStyle: ParticleStyle = .marks
+    /// The largest `size`, in canvas points, any particle of a `.particles`
+    /// batch carries, when the sketch named it; `nil` when it did not. With it
+    /// known the renderer draws each particle as one point primitive instead of
+    /// a four-vertex quad, as long as the largest fits a point (the GPU caps a
+    /// point at `MetalRenderer.maxPointSize` texels, so the decision is made per
+    /// pass, against that pass's texels per point).
+    var particleMaxSize: Float?
     /// Clip-space z (Metal NDC, [0,1]) this 2D batch tests and writes against the
     /// 3D depth buffer — `nil` (the default) means "draw over" (always-pass, no
     /// write), the byte-identical legacy behavior. Set by `depth(at:)` and carried
@@ -2175,7 +2182,11 @@ final class Drawer {
     /// Like `beginImageBatch`, it always appends (each draw carries its own buffer)
     /// and resets `currentKind` so a following primitive reopens its own batch. The
     /// particle buffer's positions are in canvas space, so no CTM applies to it.
-    func recordParticles(_ buffer: ComputeBindable, count: Int, style: ParticleStyle = .marks) {
+    /// `maxSize` is the largest particle in the buffer when the caller knows it
+    /// (`GeometryBatch.particleMaxSize`), which is what lets the renderer draw
+    /// one vertex a particle.
+    func recordParticles(_ buffer: ComputeBindable, count: Int, style: ParticleStyle = .marks,
+                         maxSize: Double? = nil) {
         // A particle batch reads a compute buffer the GPU rewrites every frame;
         // there's nothing static to retain.
         if isRecordingBatch {
@@ -2198,6 +2209,7 @@ final class Drawer {
                                      blendMode: currentBlend,
                                      particleBuffer: buffer, particleCount: count,
                                      particleStyle: style,
+                                     particleMaxSize: maxSize.map { Float($0) },
                                      depth: currentDepth, target: currentTarget,
                                      clipLevel: activeClipLevel))
     }

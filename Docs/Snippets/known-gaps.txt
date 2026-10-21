@@ -13,28 +13,28 @@
 # To shrink a page's share, add Docs/Snippets/<Group>-<Page>.swift declaring the
 # names its prose establishes; it is spliced into every probe from that page.
 
-59a8691ecc04  Docs/3D/3D.md:1027  overriding declaration requires an 'override' keyword
+59a8691ecc04  Docs/3D/3D.md:1055  overriding declaration requires an 'override' keyword
 f120c3e411c4  Docs/3D/3D.md:138  cannot find 'x' in scope
-76ba2c72194a  Docs/3D/3D.md:1397  cannot find 'ribbon' in scope
-344f7f4b3cc6  Docs/3D/3D.md:1607  cannot convert value of type '@MainActor (Int, Int, Insets, Double, Grid.Distribution) -> Grid' to expected argument type 'Image'
-b315a31afeb9  Docs/3D/3D.md:1630  cannot find 'planks' in scope
-e0187f40506d  Docs/3D/3D.md:1675  cannot find 'rockColor' in scope
-677c77a8c73e  Docs/3D/3D.md:1693  cannot find 'h' in scope
-d51355214a9e  Docs/3D/3D.md:1720  cannot find 'paint' in scope
-e74d2eeb069f  Docs/3D/3D.md:1737  cannot find 'ribbon' in scope
-2a67d7fc8d2c  Docs/3D/3D.md:1759  cannot find 'brickColor' in scope
-5193d7f3850b  Docs/3D/3D.md:1775  cannot find 'reliefImage' in scope
-124899510ce1  Docs/3D/3D.md:1795  cannot find 'rock' in scope
-d1a6a8c0f0eb  Docs/3D/3D.md:1826  cannot find 'rock' in scope
-b0d19a4efbe1  Docs/3D/3D.md:1850  cannot use instance member 'loadImage' within property initializer; property initializers run before 'self' is available
-945a0d5a84a5  Docs/3D/3D.md:1896  cannot find 'blob' in scope
+76ba2c72194a  Docs/3D/3D.md:1425  cannot find 'ribbon' in scope
+344f7f4b3cc6  Docs/3D/3D.md:1635  cannot convert value of type '@MainActor (Int, Int, Insets, Double, Grid.Distribution) -> Grid' to expected argument type 'Image'
+b315a31afeb9  Docs/3D/3D.md:1658  cannot find 'planks' in scope
+e0187f40506d  Docs/3D/3D.md:1703  cannot find 'rockColor' in scope
+677c77a8c73e  Docs/3D/3D.md:1721  cannot find 'h' in scope
+d51355214a9e  Docs/3D/3D.md:1748  cannot find 'paint' in scope
+e74d2eeb069f  Docs/3D/3D.md:1765  cannot find 'ribbon' in scope
+2a67d7fc8d2c  Docs/3D/3D.md:1787  cannot find 'brickColor' in scope
+5193d7f3850b  Docs/3D/3D.md:1803  cannot find 'reliefImage' in scope
+124899510ce1  Docs/3D/3D.md:1823  cannot find 'rock' in scope
+d1a6a8c0f0eb  Docs/3D/3D.md:1854  cannot find 'rock' in scope
+b0d19a4efbe1  Docs/3D/3D.md:1878  cannot use instance member 'loadImage' within property initializer; property initializers run before 'self' is available
 7d5e1e905641  Docs/3D/3D.md:192  cannot find 'x' in scope
+945a0d5a84a5  Docs/3D/3D.md:1924  cannot find 'blob' in scope
 f6d0fb32d6d9  Docs/3D/3D.md:231  cannot find 'block' in scope
 16f7145339d7  Docs/3D/3D.md:434  'module' is inaccessible due to 'internal' protection level
 9bd70590640e  Docs/3D/3D.md:447  cannot find 'eye' in scope
 a0b9671c7ce3  Docs/3D/3D.md:59  '@main' attribute cannot be applied to this declaration
 f0ec15e3ed0a  Docs/3D/3D.md:90  cannot find 'a' in scope
-a5b3460feb06  Docs/3D/3D.md:962  cannot find 'e' in scope
+a5b3460feb06  Docs/3D/3D.md:990  cannot find 'e' in scope
 1fbb55b7ead2  Docs/3D/Atmosphere.md:13  cannot convert value of type '(UnboundedRange_) -> ()' to expected argument type 'Camera3D'
 c58bc0d079e5  Docs/3D/Atmosphere.md:96  cannot find 'gobo' in scope
 1eefcecfecc2  Docs/3D/Camera.md:138  cannot find 'stage' in scope
@@ -149,7 +149,7 @@ a44d249678b0  Docs/Core/Sketch.md:397  consecutive statements on a line must be 
 a5c2f1d106c9  Docs/Core/Variations.md:104  cannot find 'MySketch' in scope
 57d474d715d6  Docs/Core/Variations.md:127  unary operator cannot be separated from its operand
 07a5a0c7f12a  Docs/Drawing/Accumulation.md:24  cannot convert value of type '()' to expected argument type 'LayerPrecision'
-1c021458eb56  Docs/Drawing/Accumulation.md:84  cannot find 'samples' in scope
+8e32b85cbfa6  Docs/Drawing/Accumulation.md:84  cannot find 'samples' in scope
 5ff62c226df1  Docs/Drawing/Anamorphosis.md:109  cannot find 'mirror' in scope
 b7f3f4d2132a  Docs/Drawing/Anamorphosis.md:38  cannot convert value of type 'Vector2.Type' to expected argument type 'Vector2'
 25d93404f30d  Docs/Drawing/Anamorphosis.md:66  cannot find 'mirror' in scope
@@ -183,18 +183,18 @@ f71a08bdd26d  Docs/Drawing/Color.md:153  consecutive statements on a line must b
 ddbe57709497  Docs/Drawing/Color.md:213  expected ',' separator
 53df4ad44e2c  Docs/Drawing/Color.md:225  cannot find 'ink' in scope
 bc263aff0c18  Docs/Drawing/Color.md:240  cannot find 'energy' in scope
-d8147ec3af4e  Docs/Drawing/Color.md:264  cannot find 'sky' in scope
-04196cfd36c7  Docs/Drawing/Color.md:284  cannot find 'beat' in scope
+d8147ec3af4e  Docs/Drawing/Color.md:274  cannot find 'sky' in scope
+04196cfd36c7  Docs/Drawing/Color.md:294  cannot find 'beat' in scope
 a5908cabee46  Docs/Drawing/Color.md:31  cannot convert value of type 'Double.Type' to expected argument type 'Double'
-a289bd896621  Docs/Drawing/Color.md:335  cannot find 'x' in scope
-9e7fb1cec3a6  Docs/Drawing/Color.md:344  cannot find 'palette' in scope
-b75171f5e36c  Docs/Drawing/Color.md:356  cannot find 'base' in scope
-5738daba25dd  Docs/Drawing/Color.md:373  cannot find 'base' in scope
-1aff19fb1cdc  Docs/Drawing/Color.md:402  'module' is inaccessible due to 'internal' protection level
-512f523c5b16  Docs/Drawing/Color.md:457  cannot find 'photo' in scope
-fa294f1f47c0  Docs/Drawing/Color.md:511  cannot find 'photo' in scope
-d6862f064245  Docs/Drawing/Color.md:530  cannot find 't' in scope
-0d4d6656f396  Docs/Drawing/Color.md:552  cannot find 'x' in scope
+a289bd896621  Docs/Drawing/Color.md:345  cannot find 'x' in scope
+9e7fb1cec3a6  Docs/Drawing/Color.md:354  cannot find 'palette' in scope
+b75171f5e36c  Docs/Drawing/Color.md:366  cannot find 'base' in scope
+5738daba25dd  Docs/Drawing/Color.md:383  cannot find 'base' in scope
+1aff19fb1cdc  Docs/Drawing/Color.md:412  'module' is inaccessible due to 'internal' protection level
+512f523c5b16  Docs/Drawing/Color.md:467  cannot find 'photo' in scope
+fa294f1f47c0  Docs/Drawing/Color.md:521  cannot find 'photo' in scope
+d6862f064245  Docs/Drawing/Color.md:540  cannot find 't' in scope
+0d4d6656f396  Docs/Drawing/Color.md:562  cannot find 'x' in scope
 c708de778678  Docs/Drawing/Color.md:63  cannot find 'userString' in scope
 3340ea233772  Docs/Drawing/Color.md:76  cannot find 'base' in scope
 a47e065ecf70  Docs/Drawing/Color.md:95  cannot find 'albedo' in scope
@@ -220,7 +220,7 @@ b37a8b2335f9  Docs/Drawing/Curves.md:53  expected type before '->'
 793884e6c153  Docs/Drawing/Curves.md:78  expected type before '->'
 29396a5f03fe  Docs/Drawing/Curves.md:91  expected type before '->'
 b785ec4fb130  Docs/Drawing/DepthOfField.md:134  cannot find 'samples' in scope
-92f7d6441007  Docs/Drawing/DepthOfField.md:153  value of type '@MainActor (Light) -> ()' has no member 'developed'
+92f7d6441007  Docs/Drawing/DepthOfField.md:154  value of type '@MainActor (Light) -> ()' has no member 'developed'
 381fce610bdb  Docs/Drawing/DepthOfField.md:54  cannot find 'a' in scope
 94548f0a96c2  Docs/Drawing/DepthOfField.md:73  cannot find 'spray' in scope
 8c1e355373f1  Docs/Drawing/DepthOfField.md:96  cannot find 'spray' in scope
@@ -296,18 +296,18 @@ b774992b6378  Docs/Drawing/Drawing.md:938  expected ',' separator
 1545ca2f9764  Docs/Drawing/Drawing.md:958  expected ',' separator
 0375abf145ad  Docs/Drawing/Drawing.md:979  expected ',' separator
 6d78937929ce  Docs/Drawing/Drawing.md:999  expected ',' separator
-63ea4c842664  Docs/Drawing/Effects.md:1028  cannot find 'photo' in scope
 f9dd3d125f11  Docs/Drawing/Effects.md:110  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+63ea4c842664  Docs/Drawing/Effects.md:1143  cannot find 'photo' in scope
 8528c8e05574  Docs/Drawing/Effects.md:136  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
 de01af674fc3  Docs/Drawing/Effects.md:147  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
 287a7fa55e41  Docs/Drawing/Effects.md:172  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
 5aa234bd9c13  Docs/Drawing/Effects.md:235  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
 cfebd0c142fa  Docs/Drawing/Effects.md:254  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
 0cf1d8be56d4  Docs/Drawing/Effects.md:279  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-69cf570bc684  Docs/Drawing/Effects.md:375  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-314af6ac5659  Docs/Drawing/Effects.md:625  cannot find 'horizon' in scope
-1c1c7cea776b  Docs/Drawing/Effects.md:647  cannot find 'glow' in scope
-a8f0d552b0f0  Docs/Drawing/Effects.md:675  cannot find 'marks' in scope
+69cf570bc684  Docs/Drawing/Effects.md:451  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+314af6ac5659  Docs/Drawing/Effects.md:740  cannot find 'horizon' in scope
+1c1c7cea776b  Docs/Drawing/Effects.md:762  cannot find 'glow' in scope
+a8f0d552b0f0  Docs/Drawing/Effects.md:790  cannot find 'marks' in scope
 09c8e57cb7b7  Docs/Drawing/Effects.md:97  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'image'
 eb9d4c173b18  Docs/Drawing/Envelopes.md:105  expected ',' separator
 3ba94f2cae8b  Docs/Drawing/Envelopes.md:112  cannot find 'shore' in scope
@@ -464,7 +464,7 @@ b8967328df69  Docs/Drawing/SpatialIndex.md:31  cannot find 'points' in scope
 5a595ceec8d3  Docs/Drawing/Spectrum.md:21  cannot find 'someColor' in scope
 42962964f6ab  Docs/Drawing/Spectrum.md:40  cannot find 'a' in scope
 1fcce1341596  Docs/Drawing/Spectrum.md:55  cannot find 'glass' in scope
-7d673b20c71b  Docs/Drawing/Spectrum.md:86  cannot find 'field' in scope
+7d673b20c71b  Docs/Drawing/Spectrum.md:95  cannot find 'field' in scope
 f59ee085df93  Docs/Drawing/TenPrint.md:27  expected expression in list of expressions
 2408abdef1f1  Docs/Drawing/TenPrint.md:60  value of type '@MainActor (Int, Int, Maze.Algorithm) -> Maze' has no member 'runs'
 515c47db3f89  Docs/Drawing/Text.md:106  expected ',' separator
@@ -730,11 +730,11 @@ ddc2ab5dc4a4  Docs/Generators/SurfaceSampling.md:36  cannot find 'island' in sco
 44690e793a87  Docs/Generators/SurfaceSampling.md:91  cannot find 'spot' in scope
 71704dc5a6d2  Docs/Generators/Tensegrity.md:115  cannot find 'points' in scope
 c53fc37f7031  Docs/Generators/Tensegrity.md:89  cannot find 'world' in scope
-7d2fcd028a25  Docs/Generators/Terrain.md:104  cannot find 'land' in scope
-6f0bff596609  Docs/Generators/Terrain.md:34  cannot find 'w' in scope
-3cfa49d15d22  Docs/Generators/Terrain.md:60  cannot find 'land' in scope
-e4afede2a90d  Docs/Generators/Terrain.md:83  cannot find 'land' in scope
-5fc431b5c805  Docs/Generators/Terrain.md:94  cannot find 'land' in scope
+7d2fcd028a25  Docs/Generators/Terrain.md:105  cannot find 'land' in scope
+6f0bff596609  Docs/Generators/Terrain.md:35  cannot find 'w' in scope
+3cfa49d15d22  Docs/Generators/Terrain.md:61  cannot find 'land' in scope
+e4afede2a90d  Docs/Generators/Terrain.md:84  cannot find 'land' in scope
+5fc431b5c805  Docs/Generators/Terrain.md:95  cannot find 'land' in scope
 096fa338b7b7  Docs/Generators/Turtle.md:25  expected ',' separator
 33c9988fae51  Docs/Generators/Turtle.md:44  'mutating' is only valid on methods
 4555dfe5dc95  Docs/Generators/Turtle.md:57  'mutating' is only valid on methods
@@ -1063,7 +1063,7 @@ dec15e2daf9c  Docs/Output/PrintColor.md:65  cannot find 'artwork' in scope
 31a37aefb322  Docs/Output/PrintColor.md:88  cannot find 'artwork' in scope
 e770c78cfc8d  Docs/Output/PrintSeparations.md:11  cannot find 'artwork' in scope
 56ebf0d6b1f2  Docs/Output/PrintSeparations.md:41  cannot find 'separation' in scope
-eac6cd3e0246  Docs/Output/PrintSeparations.md:85  cannot find 'sketch' in scope
+eac6cd3e0246  Docs/Output/PrintSeparations.md:94  cannot find 'sketch' in scope
 f0c1976a3bd8  Docs/Output/ScreenSaver.md:35  cannot find 'Ripple' in scope
 2464e3c8732c  Docs/Output/Spatial.md:153  cannot find 'shot' in scope
 87c880d4f02e  Docs/Output/Spatial.md:182  cannot find 'AVAssetPlaybackAssistant' in scope

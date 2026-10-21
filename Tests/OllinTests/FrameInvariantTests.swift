@@ -447,6 +447,33 @@ struct FrameInvariantTests {
         }
     }
 
+    /// The spray names its point size, so each point is one vertex, and the
+    /// single-sample splat lands where the four-vertex quad landed: a dot in
+    /// focus and one out of it, each drawn both ways, agree to the byte but for
+    /// the present pass's dither.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aSprayedPointLandsWhereItsQuadLanded() throws {
+        defer { MetalRenderer.drawsParticlesAsPoints = true }
+        for (focus, exposure) in [(8.0, 2.0), (2.0, 32.0)] {
+            func render(points: Bool) throws -> Frame {
+                MetalRenderer.drawsParticlesAsPoints = points
+                let probe = SprayInvariantProbe.make(points: 1_000, focus: focus, exposure: exposure)
+                probe.offset = Vector2(0.37, -0.21)
+                return try self.render(probe, frame: 7)
+            }
+            let quads = try render(points: false)
+            let points = try render(points: true)
+            var worst = 0
+            var lit = 0
+            for i in quads.bytes.indices where i % 4 != 3 {
+                worst = max(worst, abs(Int(quads.bytes[i]) - Int(points.bytes[i])))
+                if quads.bytes[i] > 1 { lit += 1 }
+            }
+            #expect(lit > 0)
+            #expect(worst <= 1, "at focus \(focus) the points and the quads differ by \(worst) levels")
+        }
+    }
+
     /// A flat aperture blurs a point into the thin lens's circle of confusion: under a
     /// pinhole, a point displaced within its own depth plane by strength times |d - f|
     /// over the aperture lands on a disc of radius strength * |d - f| / d in tangent

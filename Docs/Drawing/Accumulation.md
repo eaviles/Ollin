@@ -90,7 +90,7 @@ override func draw() {
     background(.black)
     withAccumulator(light, passes: 4) {                    // this frame's samples
         blendMode(.add)
-        drawParticles(samples, count: count, style: .light)
+        drawParticles(samples, count: count, style: .light, maxSize: 1)
     }
     drawImage(light.developed(exposure: 30, ground: Color(hex: 0x151010)).image, 0, 0)
 }

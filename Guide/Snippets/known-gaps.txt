@@ -73,10 +73,10 @@ c6308b0590b1  Guide/17-MarksAndMedia.md:163  cannot find 'navy' in scope
 6aff37f70683  Guide/17-MarksAndMedia.md:177  cannot find 'bath' in scope
 1e41fd025294  Guide/17-MarksAndMedia.md:188  cannot find 'bath' in scope
 d6f8fdb72cba  Guide/17-MarksAndMedia.md:68  cannot assign to value: 'mark' is a 'let' constant
-3ad05523666d  Guide/20-PicturesRestyled.md:251  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
-0979bc9f5047  Guide/20-PicturesRestyled.md:283  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
-4467bb8d08b2  Guide/20-PicturesRestyled.md:308  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
-1d6986f2d7b4  Guide/20-PicturesRestyled.md:331  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
+3ad05523666d  Guide/20-PicturesRestyled.md:282  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
+0979bc9f5047  Guide/20-PicturesRestyled.md:314  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
+4467bb8d08b2  Guide/20-PicturesRestyled.md:339  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
+1d6986f2d7b4  Guide/20-PicturesRestyled.md:362  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
 1ae291889181  Guide/20-PicturesRestyled.md:57  'module' is inaccessible due to 'internal' protection level
 45ff58c66642  Guide/21-PicturesYouSolve.md:110  cannot convert value of type '[Vector2]' to expected argument type 'RenderTarget'
 2c8e3afaeaef  Guide/21-PicturesYouSolve.md:126  cannot convert value of type '[Vector2]' to expected argument type 'RenderTarget'
@@ -104,16 +104,16 @@ cdcf169eea19  Guide/27-Meshes.md:89  cannot find 'base' in scope
 3846f3d9c837  Guide/28-MaterialsAndSurroundings.md:23  cannot find 'ball' in scope
 f9772692a39c  Guide/28-MaterialsAndSurroundings.md:259  cannot find 'picture' in scope
 1bf5a69793ab  Guide/28-MaterialsAndSurroundings.md:345  extraneous '}' at top level
-5e288f34fe35  Guide/29-Landscapes.md:105  cannot find 'terrain' in scope
-817218f25cab  Guide/29-Landscapes.md:115  cannot find 'stone' in scope
-cc748b059cc6  Guide/29-Landscapes.md:140  cannot convert value of type '(UnboundedRange_) -> ()' to expected argument type 'Camera3D'
-be4bf5adc860  Guide/29-Landscapes.md:161  expected '}' in class
+5e288f34fe35  Guide/29-Landscapes.md:112  cannot find 'terrain' in scope
+817218f25cab  Guide/29-Landscapes.md:122  cannot find 'stone' in scope
+cc748b059cc6  Guide/29-Landscapes.md:147  cannot convert value of type '(UnboundedRange_) -> ()' to expected argument type 'Camera3D'
+be4bf5adc860  Guide/29-Landscapes.md:168  expected '}' in class
 ea2ec72bb301  Guide/29-Landscapes.md:24  cannot find 'land' in scope
-eca37dc3dbff  Guide/29-Landscapes.md:296  cannot find 'floorLevel' in scope
-b0c725d0951e  Guide/29-Landscapes.md:403  extraneous '}' at top level
-8fe3a1525343  Guide/29-Landscapes.md:483  cannot find 'weathered' in scope
-54c56af7fa4c  Guide/29-Landscapes.md:53  cannot find 'seats' in scope
-5fe3d9f427a8  Guide/29-Landscapes.md:89  cannot find 'island' in scope
+eca37dc3dbff  Guide/29-Landscapes.md:303  cannot find 'floorLevel' in scope
+b0c725d0951e  Guide/29-Landscapes.md:410  extraneous '}' at top level
+8fe3a1525343  Guide/29-Landscapes.md:490  cannot find 'weathered' in scope
+54c56af7fa4c  Guide/29-Landscapes.md:60  cannot find 'seats' in scope
+5fe3d9f427a8  Guide/29-Landscapes.md:96  cannot find 'island' in scope
 b7d3a2e897f3  Guide/31-CharactersAndCloth.md:196  labeled block needs 'do'
 505abdd13984  Guide/32-SculptingWithFields.md:202  cannot find 'a' in scope
 17e800a28a86  Guide/32-SculptingWithFields.md:270  cannot find 'cluster' in scope

@@ -142,8 +142,9 @@ withAccumulator(light, passes: 4) {
 - `color` is read as linear radiance, not as an sRGB tone. If you want to write a tone in the kernel, convert it with `srgbToLinear`.
 - A particle at or under one pixel takes a cheap path. Its quad is a single texel, so a million one-pixel points cost a million fragments rather than twenty-five million. The deposit is continuous across the one-pixel boundary, so a size that is animated through that boundary never steps in brightness.
 - Inside an accumulator block that holds nothing else, the pass is single-sample and in single precision. A particle at or under one pixel then spreads its light over the four pixels around it in bilinear shares, which add up to all of it wherever it falls. A dot in focus keeps its whole light at any point count, and it lands where it falls rather than on the nearest pixel.
-- A particle of size 0 draws nothing and costs nothing past its vertices, which is how a kernel marks a slot it has no light for.
+- A particle of size 0 draws nothing and costs nothing past its vertex, which is how a kernel marks a slot it has no light for.
 - To deposit a point's whole light into its pixel, put the radiance in `color` and set `alpha = 4 / (π × size²)`. The disc's area then cancels out, and the pixel receives the radiance itself.
+- **Name the largest size when you know it.** `drawParticles(buffer, style: .light, maxSize: 1)` says that no particle in the buffer is wider than one point. Each particle is then drawn as one vertex, a point primitive, instead of a quad of four, and the vertex work is most of what millions of sub-pixel points cost, so a spray draws in about half the time on the same pixels. `LineSpray` names its own `pointSize` for you. A particle wider than the named size is clipped to it, so name the largest. Past 511 texels a particle keeps the quad (a canvas point is one texel at canvas size and several in a supersampled export), so a named size never limits what a buffer can draw. The same label works for the `.marks` style.
 
 <a id="develop"></a>
 ### develop
@@ -160,7 +161,7 @@ drawImage(light.developed(exposure: 30, ground: Color(hex: 0x151010)).image, 0, 
 `LineSpray` samples lines. The same pipeline runs from the compute primitives over any geometry a kernel can evaluate, such as a curve, a surface, or a point cloud. Each frame, do three things:
 
 1. Pack the camera with `cameraParams()` and append the lens after it. Dispatch a kernel with `compute(_:buffers:count:params:)`, binding your scene buffer and a particle buffer. In the kernel, move a point into camera space with the packed `view`. Then scatter it with `ballSample(seed) × radius`, and project it with `ollin_project_eye(p.camera, eye, u.resolution)`.
-2. Draw the particles with `drawParticles(buffer, style: .light)` inside `withAccumulator(acc, passes:)` under `blendMode(.add)`.
+2. Draw the particles with `drawParticles(buffer, style: .light, maxSize: 1)` inside `withAccumulator(acc, passes:)` under `blendMode(.add)`, naming the largest size the kernel writes so each particle is one vertex.
 3. Print with `acc.developed(exposure:ground:)`.
 
 The `Rendering/DepthOfField` example is exactly that pipeline, over nine closed curves. It draws each sample as three particles scattered to slightly different radii, so the bokeh gets chromatic fringes. The [compute reference](../Shaders/Compute.md#camera) covers the kernel side.

@@ -957,7 +957,12 @@ public final class LineSpray {
         // surfaces are the same image and print together.
         drawer.withAccumulator(accumulator, passes: passesPerFrame) {
             drawer.blendMode(.add)
-            if count > 0 { drawer.recordParticles(write, count: count, style: .light) }
+            // Every point the kernels write is `pointSize` across (or 0, an
+            // unused slot), so the draw knows its largest particle and each
+            // point is one vertex where it fits.
+            if count > 0 {
+                drawer.recordParticles(write, count: count, style: .light, maxSize: pointSize)
+            }
         }
     }
 }

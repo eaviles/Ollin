@@ -65,6 +65,8 @@ withAccumulator(mean) {
 drawImage(mean.developed(exposure: 20).image, 0, 0)
 ```
 
+When you know the largest size your kernel writes, name it: `drawParticles(sand, style: .light, maxSize: 1)`. Each grain is then one vertex on the GPU instead of four, and a million grains draw in about half the time, on the same pixels.
+
 Grains drawn as light into a running mean are also how Ollin builds a lens that blurs by distance. [Chapter 33](33-TracedLight.md#a-lens-made-of-samples-depth-of-field-from-light) takes that up with the 3D camera.
 
 ## Putting it together: the drift

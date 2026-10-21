@@ -778,9 +778,18 @@ open class Sketch {
     /// Composites under the active blend mode (`.add` sums them as light) and in
     /// draw order with everything else. `count` defaults to the buffer's element
     /// count. See `ParticleStyle`.
+    ///
+    /// `maxSize` is the largest `size`, in canvas points, any particle in the
+    /// buffer carries, when the kernel's sizes are known to the sketch (a spray
+    /// of one-pixel points names 1). With it named, each particle is drawn as
+    /// one vertex rather than a quad of four, which is most of what a buffer of
+    /// millions of sub-pixel points costs; the pixels are the same. A particle
+    /// larger than named is clipped to the named extent, so name the largest.
+    /// Past 511 texels a particle keeps the quad, so a named size never limits
+    /// what a buffer can draw. Unnamed, every particle takes the quad.
     public func drawParticles(_ buffer: ComputeBuffer<OllinParticle>, count: Int? = nil,
-                              style: ParticleStyle = .marks) {
-        drawer.recordParticles(buffer, count: count ?? buffer.count, style: style)
+                              style: ParticleStyle = .marks, maxSize: Double? = nil) {
+        drawer.recordParticles(buffer, count: count ?? buffer.count, style: style, maxSize: maxSize)
     }
 
     /// Step a `Particles` system one frame (records its compute dispatch and swaps
@@ -791,9 +800,11 @@ open class Sketch {
     }
 
     /// Draw a `Particles` system's current state as discs (see
-    /// `drawParticles(_ buffer:count:style:)`).
-    public func drawParticles(_ particles: Particles, style: ParticleStyle = .marks) {
-        drawer.recordParticles(particles.current, count: particles.count, style: style)
+    /// `drawParticles(_ buffer:count:style:maxSize:)`, whose `maxSize` is the
+    /// same here: the largest `size` the step kernel writes, when the sketch
+    /// knows it, so each particle is one vertex).
+    public func drawParticles(_ particles: Particles, style: ParticleStyle = .marks, maxSize: Double? = nil) {
+        drawer.recordParticles(particles.current, count: particles.count, style: style, maxSize: maxSize)
     }
 
     // MARK: Light accumulation

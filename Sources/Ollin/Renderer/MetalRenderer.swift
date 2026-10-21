@@ -258,6 +258,27 @@ final class MetalRenderer {
                 : PipelineKey(vertex: "ollin_particle_vertex", fragment: "ollin_particle_fragment",
                               blend: blend, depthFormat: depth)
         }
+        // the same particle deposit drawn as one point primitive a particle
+        // (`[[point_size]]`, the fragment reading its offset from the point
+        // coordinate): the key for any of the three particle quads, marks,
+        // light, or the single-sample splat, with its vertex and fragment
+        // swapped for their point twins. Anything else is handed back as it is.
+        func particlePoints() -> PipelineKey {
+            var key = self
+            switch vertex {
+            case "ollin_particle_vertex":
+                key.vertex = "ollin_particle_point_vertex"
+                key.fragment = "ollin_particle_point_fragment"
+            case "ollin_particle_light_vertex":
+                key.vertex = "ollin_particle_light_point_vertex"
+                key.fragment = "ollin_particle_light_point_fragment"
+            case "ollin_particle_splat_vertex":
+                key.vertex = "ollin_particle_splat_point_vertex"
+                key.fragment = "ollin_particle_splat_point_fragment"
+            default: break
+            }
+            return key
+        }
         // instanced 3D point-cloud splats (camera-facing discs, depth-tested)
         static func pointCloud(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
             PipelineKey(vertex: "ollin_point_vertex", fragment: "ollin_point_fragment", blend: blend, depthFormat: depth)
@@ -823,6 +844,34 @@ final class MetalRenderer {
     /// that have completed.
     static let maxFramesInFlight = 3
     private let frameBoundary = DispatchSemaphore(value: MetalRenderer.maxFramesInFlight)
+
+    /// The largest point primitive the GPU rasterizes, in texels (Metal's
+    /// `[[point_size]]` cap). A particle batch whose largest named size would
+    /// need a larger point keeps its quads.
+    static let maxPointSize: Float = 511
+
+    /// Whether a particle batch whose largest size the sketch named draws each
+    /// particle as one point primitive. On, always, outside a test: off, every
+    /// such batch keeps its four-vertex quad, which is what a probe draws beside
+    /// the points to show they land on the same pixels.
+    nonisolated(unsafe) static var drawsParticlesAsPoints = true
+
+    /// Whether a particle batch's covering square is drawn as one point
+    /// primitive for `style` at this pass's `pixelScale` (texels per canvas
+    /// point), given the largest particle it holds in points: the square the
+    /// shader sizes for it, the disc plus its margin on the coarser axis, has
+    /// to fit the GPU's cap. A one-texel light point is a one-texel square
+    /// whatever the scale, so a spray of sub-pixel points always fits.
+    static func particlePointFits(maxSize: Float, style: ParticleStyle, pixelScale: SIMD2<Float>) -> Bool {
+        guard drawsParticlesAsPoints, maxSize.isFinite, maxSize >= 0 else { return false }
+        let scale = max(pixelScale.x, pixelScale.y)
+        let side: Float
+        switch style {
+        case .marks: side = (maxSize + 4) * scale
+        case .light: side = max(maxSize * scale + 2, 2.125)
+        }
+        return side <= maxPointSize
+    }
     /// How many of those slots the GPU still holds, kept beside the semaphore
     /// because a semaphore cannot be asked: waiting on it is the only way to
     /// learn, and that wait lands on whichever thread starts the frame. On the

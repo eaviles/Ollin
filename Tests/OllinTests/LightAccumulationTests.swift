@@ -210,6 +210,120 @@ struct LightAccumulationTests {
         #expect(abs(sum - Double.pi / 4) < 0.08, "deposit \(sum)")
     }
 
+    /// A buffer whose largest size the sketch named draws each particle as one
+    /// point primitive, and the points land where the quads land: three thousand
+    /// particles at four sizes, in both styles, drawn as points and as quads,
+    /// agree to the byte but for the present pass's dither (one level), with the
+    /// same light in the frame. Sizes under a pixel, at one, and over it, since
+    /// the one-texel and the disc paths are different code.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aNamedSizeDrawsEachParticleAsOnePointOnTheSamePixels() throws {
+        defer { MetalRenderer.drawsParticlesAsPoints = true }
+        for style in [ParticleStyle.light, .marks] {
+            for size in [0.5, 1, 2, 6] as [Float] {
+                func image(points: Bool) throws -> CGImage {
+                    MetalRenderer.drawsParticlesAsPoints = points
+                    let sketch = ParticleDepositSketch(count: 3000, size: size, alpha: 0.5, style: style,
+                                                       maxSize: Double(size))
+                    return try OllinApp.image(of: sketch, frame: 0)
+                }
+                let quads = try image(points: false)
+                let points = try image(points: true)
+                let worst = maxByteDifference(quads, points)
+                #expect(worst <= 1, "\(style) at size \(size): points and quads differ by \(worst) levels")
+                let a = linearSum(of: quads), b = linearSum(of: points)
+                #expect(abs(a - b) <= 0.002 * a + 1e-6,
+                        "\(style) at size \(size): quads deposit \(a), points \(b)")
+            }
+        }
+    }
+
+    /// A particle whose center sits just past the canvas's edge still lands the
+    /// share of its light that falls inside, drawn as a point as it does as a
+    /// quad: a point primitive is clipped as a square, not thrown away by its
+    /// center. Three tenths past the edge, so the sliver inside holds some of
+    /// the multisample pattern's positions on every axis (four tenths past it
+    /// on y, neither path lands anything).
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aPointJustPastTheEdgeLandsItsShareInside() throws {
+        defer { MetalRenderer.drawsParticlesAsPoints = true }
+        for position in [SIMD2<Float>(-0.3, 100.5), SIMD2<Float>(511.7, 300.5),
+                         SIMD2<Float>(200.5, -0.3), SIMD2<Float>(300.5, 511.6)] {
+            func sum(points: Bool, size: Float) throws -> Double {
+                MetalRenderer.drawsParticlesAsPoints = points
+                let sketch = ParticleDepositSketch(count: 1, size: size, alpha: 1, style: .light,
+                                                   fixed: position, maxSize: Double(size))
+                return linearSum(of: try OllinApp.image(of: sketch, frame: 0))
+            }
+            for size in [1, 3] as [Float] {
+                let quad = try sum(points: false, size: size)
+                let point = try sum(points: true, size: size)
+                #expect(quad > 0.01, "a particle at \(position) of size \(size) should land something inside")
+                #expect(abs(quad - point) <= 0.03 * quad + 0.002,
+                        "at \(position), size \(size): the quad lands \(quad), the point \(point)")
+            }
+        }
+    }
+
+    /// A light disc wider than the GPU's largest point keeps its whole area: the
+    /// draw keeps the quad for it, since a point would be clipped to the cap (a
+    /// 900-point disc clipped to a 511-texel square would keep two fifths). The
+    /// named draw is the unnamed one to the byte, and the area is read loosely,
+    /// since a disc this faint sits near the 8-bit floor.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aLightDiscPastThePointCapKeepsItsArea() throws {
+        defer { MetalRenderer.drawsParticlesAsPoints = true }
+        let size: Float = 900
+        let alpha: Float = 0.002
+        func image(points: Bool) throws -> CGImage {
+            MetalRenderer.drawsParticlesAsPoints = points
+            let sketch = ParticleDepositSketch(count: 1, size: size, alpha: alpha, style: .light,
+                                               fixed: SIMD2<Float>(540, 540), maxSize: Double(size), side: 1080)
+            return try OllinApp.image(of: sketch, frame: 0)
+        }
+        let named = try image(points: true)
+        let quad = try image(points: false)
+        #expect(maxByteDifference(named, quad) == 0, "past the cap, the named draw is the quad's")
+        let total = linearSum(of: named)
+        let expected = Double.pi / 4 * Double(size) * Double(size) * Double(alpha)
+        #expect(total > 0.9 * expected, "a 900-point light disc deposited \(total) of \(expected)")
+    }
+
+    /// Whether a named size fits a point is read against the pass's texels per
+    /// point and the GPU's cap: the square the shader sizes, the disc plus its
+    /// margin on the coarser axis, at most 511 texels. A one-texel light point
+    /// always fits; a size that is not a number never does.
+    @Test func aNamedSizeFitsAPointUpToTheCap() {
+        let one = SIMD2<Float>(1, 1)
+        #expect(MetalRenderer.particlePointFits(maxSize: 1, style: .light, pixelScale: one))
+        #expect(MetalRenderer.particlePointFits(maxSize: 0, style: .light, pixelScale: one))
+        #expect(MetalRenderer.particlePointFits(maxSize: 509, style: .light, pixelScale: one))
+        #expect(!MetalRenderer.particlePointFits(maxSize: 510, style: .light, pixelScale: one))
+        #expect(MetalRenderer.particlePointFits(maxSize: 507, style: .marks, pixelScale: one))
+        #expect(!MetalRenderer.particlePointFits(maxSize: 508, style: .marks, pixelScale: one))
+        // A supersampled export at four texels a point: the same disc is four
+        // times the square.
+        let four = SIMD2<Float>(4, 4)
+        #expect(MetalRenderer.particlePointFits(maxSize: 127, style: .light, pixelScale: four))
+        #expect(!MetalRenderer.particlePointFits(maxSize: 128, style: .light, pixelScale: four))
+        // The coarser axis decides.
+        #expect(!MetalRenderer.particlePointFits(maxSize: 200, style: .light, pixelScale: SIMD2(1, 3)))
+        #expect(!MetalRenderer.particlePointFits(maxSize: .nan, style: .light, pixelScale: one))
+        #expect(!MetalRenderer.particlePointFits(maxSize: -1, style: .light, pixelScale: one))
+    }
+
+    /// `drawParticles(_:count:style:maxSize:)` carries the named size onto its
+    /// batch, and nothing without it.
+    @Test func drawParticlesRecordsTheNamedSize() {
+        let drawer = Drawer()
+        drawer.beginFrame()
+        let buffer = ComputeBuffer([OllinParticle(position: .zero, velocity: .zero, color: SIMD4(repeating: 1),
+                                                  size: 1, life: 1, seedA: 0, seedB: 0)])
+        drawer.recordParticles(buffer, count: 1, style: .light, maxSize: 2.5)
+        drawer.recordParticles(buffer, count: 1, style: .marks)
+        #expect(drawer.batches.map(\.particleMaxSize) == [2.5, nil])
+    }
+
     /// An accumulator hands back the mean: six passes of the same faint square read
     /// the same as one, the count matches, `passes:` divides, and a reset restarts.
     @Test(.enabled(if: Snapshot.hasMetal))
@@ -741,6 +855,15 @@ struct LightAccumulationTests {
         return 2 * (meanSquare / weight - center * center).squareRoot()
     }
 
+    /// The largest difference between two renders of one size, in 8-bit levels.
+    private func maxByteDifference(_ a: CGImage, _ b: CGImage) -> Int {
+        let x = pixels(of: a), y = pixels(of: b)
+        guard x.count == y.count else { return 255 }
+        var worst = 0
+        for i in x.indices where i % 4 != 3 { worst = max(worst, abs(Int(x[i]) - Int(y[i]))) }
+        return worst
+    }
+
     private func linearSum(of image: CGImage) -> Double {
         let d = pixels(of: image)
         var sum = 0.0
@@ -813,10 +936,17 @@ struct LightAccumulationTests {
 private final class ParticleDepositSketch: Sketch {
     var buffer: ComputeBuffer<OllinParticle>!
     var style: ParticleStyle = .marks
-    override var canvasSize: CanvasSize { .square(512) }
+    /// The largest size named to the draw, or nothing: with it named, each
+    /// particle is one point primitive where it fits.
+    var maxSize: Double?
+    var side = 512
+    override var canvasSize: CanvasSize { .square(side) }
 
-    convenience init(count: Int, size: Float, alpha: Float, style: ParticleStyle, fixed: SIMD2<Float>? = nil) {
+    convenience init(count: Int, size: Float, alpha: Float, style: ParticleStyle, fixed: SIMD2<Float>? = nil,
+                     maxSize: Double? = nil, side: Int = 512) {
         self.init()
+        self.maxSize = maxSize
+        self.side = side
         var state: UInt32 = 12345
         func next() -> Float {
             state = state &* 1664525 &+ 1013904223
@@ -836,7 +966,7 @@ private final class ParticleDepositSketch: Sketch {
     override func draw() {
         background(.black)
         blendMode(.add)
-        drawParticles(buffer, style: style)
+        drawParticles(buffer, style: style, maxSize: maxSize)
     }
 }
 

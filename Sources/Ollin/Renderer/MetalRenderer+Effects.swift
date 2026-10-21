@@ -3791,6 +3791,15 @@ extension MetalRenderer {
                 }
                 pipelineKey.singleSample = true
             }
+            // One vertex a particle: a batch whose largest size the sketch named
+            // draws each particle as a point primitive when that size fits the
+            // GPU's point at this pass's texels per point, the quad otherwise.
+            let particlePoints = batch.kind == .particles
+                && batch.particleMaxSize.map {
+                    MetalRenderer.particlePointFits(maxSize: $0, style: batch.particleStyle,
+                                                    pixelScale: pixelScale)
+                } ?? false
+            if particlePoints { pipelineKey = pipelineKey.particlePoints() }
             // The hidden layer's pass: the 3D kinds with a peel variant draw through
             // it, with the rule bound per batch (a closed mesh's faces turned away
             // stay out; blades, splats, lines, water, and a depth scene have no
@@ -4064,15 +4073,21 @@ extension MetalRenderer {
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
             case .particles:
                 // GPU-resident particle buffer (written by a compute dispatch this
-                // frame), drawn as one instanced disc per particle. Uniforms are
-                // already bound at index 1; the particle struct is read at index 0.
+                // frame), drawn as one disc per particle: a point primitive each
+                // when the batch's largest size is named and fits, else a strip of
+                // four vertices instanced once per particle. Uniforms are already
+                // bound at index 1; the particle struct is read at index 0.
                 guard batch.particleCount > 0,
                       let buffer = batch.particleBuffer?.realizedBuffer(for: device) else { continue }
                 encoder.setRenderPipelineState(state)
                 encoder.setVertexBuffer(buffer, offset: 0, index: 0)
                 profile.countDraw(batch.kind, batch.particleCount)
-                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6,
-                                       instanceCount: batch.particleCount)
+                if particlePoints {
+                    encoder.drawPrimitives(type: .point, vertexStart: 0, vertexCount: batch.particleCount)
+                } else {
+                    encoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4,
+                                           instanceCount: batch.particleCount)
+                }
             case .points3D:
                 // 3D point-cloud splats: one instanced camera-facing quad per point,
                 // projected by the camera constants bound at index 2 above. Each draw

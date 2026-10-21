@@ -501,6 +501,41 @@ rasterization, which is what the export supersample (`--render-scale`, see
 `Docs/Output/Export.md`) exists to spend time on and what makes it worth
 little on the paths that carry their own coverage.
 
+### The GPU particle path, and one vertex a particle
+
+A `drawParticles` batch reads a compute-written `OllinParticle` buffer straight
+from the GPU and draws one disc per particle, in one of two geometries that land
+the same pixels. The default is a quad covering the disc plus its anti-aliasing
+margin, a strip of four vertices instanced once per particle (a list of six
+until 2026-10-20; a quad is affine in screen space, so its interpolants and
+their derivatives are the same over either diagonal, and the whole snapshot
+table held unrecorded through the change). When the sketch names the largest
+`size` in the buffer (`maxSize:`), the renderer draws each particle as one
+point primitive instead: the vertex emits `[[point_size]]`, the side of the
+covering square in texels, and the fragment turns `[[point_coord]]` back into
+the quad's offset through an extent the vertex hands it, so every deposit is
+one helper both fragments call. The GPU caps a point at 511 texels, so
+`MetalRenderer.particlePointFits` decides per pass, against that pass's texels
+per point: a disc past the cap keeps the quad, and a one-texel light point
+always fits. A point primitive is clipped as its square rather than by its
+center on the M2, so a particle a few tenths past the canvas edge lands the
+same share inside either way; this is pinned, since the other behavior is
+what point sprites were once known for.
+
+The measurement that justified it: four million one-pixel light points at
+1080 square, in one process with the GPU saturated and the variants swapped
+through `reloadShaderLibrary(fromDirectory:)`, took 32.9 ms a frame on the
+six-vertex list, 20.7 ms on the strip, and 8.9 ms as points, with the kernel
+3.4 ms of each and the draw's vertex stage alone, every particle made
+degenerate, 14.8 ms on the strip against 2.2 ms as points. The fragments cost
+2.5 to 3.3 ms either way, so the vertex stage was the spray's frame. Two
+harness lessons travel: a shader reload rebuilds every cached pipeline from
+the new library, so a copy of the shaders lacking a function some cached key
+names fails to load (the committed "before" can only be read before any new
+pipeline exists); and a harness that spins the run loop while it waits for
+the frame ring lets every other main-actor test run inside it, so it runs
+alone, never beside the suites.
+
 ### Retained batches (`Batch` / `makeBatch` / `drawBatch`)
 
 The per-frame model re-records and re-uploads every mark each frame; a

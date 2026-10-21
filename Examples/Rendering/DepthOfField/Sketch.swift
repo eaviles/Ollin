@@ -174,7 +174,8 @@ final class DepthOfField_Example: Sketch {
         samples.swap()
         withAccumulator(light, passes: passes) {
             blendMode(.add)
-            drawParticles(out, count: count, style: .light)
+            // Every sample is a one-pixel point, named so each is one vertex.
+            drawParticles(out, count: count, style: .light, maxSize: 1)
         }
 
         drawImage(light.developed(exposure: exposure, ground: ground).image, 0, 0)
