@@ -664,7 +664,7 @@ The value is on the parameter before `setup()` runs, so a count built there or a
 
 ### Saying what a sketch declares
 
-`--list-params` prints the sketch's parameters and stops. It is the other half of `--param`: one sets a value, the other says what there is to set. `--help` (or `-h`) prints the same listing under the sketch's name and how to run it, then every flag a sketch reads, grouped, each with its one line. It stops there too, so asking never opens a window or writes a file, whatever else is on the line.
+`--list-params` prints the sketch's parameters and stops. It is the other half of `--param`: one sets a value, the other says what there is to set. `--help` (or `-h`) prints the same listing under the sketch's name and how to run it, then every flag a sketch reads, grouped, each with its one line. It stops there too, so asking never opens a window or writes a file, whatever else is on the line. It never runs `setup()`, so nothing a sketch starts there (a camera, a model, a listener) starts for it, and its parameters show the values their `@Param` lines declare.
 
 ```sh
 swift run --package-path Examples Example-Live-Parameters --list-params

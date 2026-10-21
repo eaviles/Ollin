@@ -3842,16 +3842,11 @@ public extension OllinApp {
     private static func runCommandLine(_ args: [String], makeSketch: () -> Sketch) throws -> Bool {
         // `--help` (or `-h`) says what the sketch takes and stops. It is read
         // before any other flag, so asking never opens a window, writes a file,
-        // or trips over the rest of the line. The sketch is set up headless,
-        // as `--list-params` does, so its parameters read their first values.
+        // or trips over the rest of the line. It never runs `setup()` either,
+        // so no camera, model, or listener starts for it: the parameters are
+        // read as declared (`--list-params` is the one that sets up first).
         if args.contains("--help") || args.contains("-h") {
-            let sketch = makeSketch()
-            let size = sketch.canvasSizeForRun()
-            sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
-            isRenderingHeadless = true
-            defer { isRenderingHeadless = false }
-            try sketch.runSetup()
-            print(CommandLineHelp.text(for: sketch, arguments: args))
+            print(CommandLineHelp.text(for: makeSketch(), arguments: args))
             return true
         }
         // `--capture-source` beside any export flag ties the files to the source

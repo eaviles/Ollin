@@ -6,10 +6,10 @@ internal import OllinCommandFlags
 /// reads, grouped, each with its one line from the shared flag table.
 enum CommandLineHelp {
 
-    /// The help for `sketch`, set up already so its parameters read the values
-    /// the first frame would draw with. `arguments` is the command line as it
-    /// came, whose leading words (the program and, for a host, the sketch file)
-    /// make the usage line.
+    /// The help for `sketch` as it was made, never set up, so its parameters
+    /// read the values their `@Param` lines declare. `arguments` is the command
+    /// line as it came, whose leading words (the program and, for a host, the
+    /// sketch file) make the usage line.
     @MainActor
     static func text(for sketch: Sketch, arguments: [String]) -> String {
         let name = String(describing: type(of: sketch))
@@ -23,6 +23,7 @@ enum CommandLineHelp {
             "With no flags it opens its window. With an export flag it writes the file and stops, with no window.",
             "",
             ParamListing.text(for: sketch),
+            "The values are as declared. --list-params runs setup() first and shows the ones the first frame draws with.",
             "",
             CommandFlag.runUsage(),
             "",

@@ -14,10 +14,8 @@ import Testing
         override func draw() {}
     }
 
-    @Test func theHelpNamesTheSketchItsParametersAndItsFlags() throws {
+    @Test func theHelpNamesTheSketchItsParametersAndItsFlags() {
         let sketch = Dial()
-        sketch.setCanvasSize(width: 64, height: 64)
-        try sketch.runSetup()
         let text = CommandLineHelp.text(for: sketch, arguments: ["/tmp/build/Example-Dial", "--help"])
         #expect(text.hasPrefix("Dial, an Ollin sketch."))
         #expect(text.contains("usage: Example-Dial [flags]"))
@@ -31,12 +29,30 @@ import Testing
 
     /// A host run names the sketch file in its usage line, the words before
     /// the first flag.
-    @Test func aHostsUsageLineKeepsTheSketchFile() throws {
+    @Test func aHostsUsageLineKeepsTheSketchFile() {
         let sketch = Dial()
-        sketch.setCanvasSize(width: 64, height: 64)
-        try sketch.runSetup()
         let text = CommandLineHelp.text(for: sketch, arguments: ["/usr/local/bin/OllinLive", "Sketches/Dial.swift", "-h"])
         #expect(text.contains("usage: OllinLive Sketches/Dial.swift [flags]"))
+    }
+
+    /// A sketch whose `setup()` would start something (a camera, a model)
+    /// starts nothing under `--help`, and its parameters read as declared.
+    @Test func helpNeverRunsSetup() {
+        final class Starter: Sketch {
+            static var setups = 0
+            @Param("Radius", 10 ... 200) var radius = 80.0
+            override func setup() {
+                Starter.setups += 1
+                radius = 150
+            }
+            override func draw() {}
+        }
+        Starter.setups = 0
+        let sketch = Starter()
+        let text = CommandLineHelp.text(for: sketch, arguments: ["Example-Starter", "--help"])
+        #expect(text.contains("80") && !text.contains("150"))
+        #expect(OllinApp.handleCommandLine(["Example-Starter", "--help"]) { Starter() })
+        #expect(Starter.setups == 0, "setup ran \(Starter.setups) times under --help")
     }
 
     /// `--help` and `-h` both count as handled, ahead of any export on the
