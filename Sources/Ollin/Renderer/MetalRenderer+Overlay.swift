@@ -46,7 +46,7 @@ extension MetalRenderer {
         pass.depthAttachment.loadAction = .clear
         pass.depthAttachment.clearDepth = 1.0
         pass.depthAttachment.storeAction = .dontCare
-        let hasStencil = attachClipStencil(to: pass, active: drawer.usesClipStencil,
+        let hasStencil = attachClipStencil(to: pass, active: drawer.usesCanvasStencil,
                                            width: width, height: height, storage: storage)
         guard let enc = countedEncoder(cb, pass, caller: "overlay") else { return resolved }
 

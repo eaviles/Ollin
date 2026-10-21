@@ -184,7 +184,7 @@ extension MetalRenderer {
         pass.depthAttachment.resolveTexture = depthResolve
         pass.depthAttachment.storeAction = .multisampleResolve
         pass.depthAttachment.depthResolveFilter = .min
-        let hasStencil = attachClipStencil(to: pass, active: drawer.usesClipStencil,
+        let hasStencil = attachClipStencil(to: pass, active: drawer.usesCanvasStencil,
                                            width: width, height: height, storage: storage)
         guard let enc = countedEncoder(cb, pass, caller: "hidden layer") else { return nil }
         enc.setScissorRect(extent)

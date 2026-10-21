@@ -361,8 +361,19 @@ extension Drawer {
         // of `replicated`, because each stamp draws through an ordinary draw method
         // that replicates itself; wrapping them again would fold every copy twice.
         if let brush = strokeBrushShape {
+            if strokeMediumShape != nil {
+                noteOnce("strokeBrush(_:) replaces the ribbon with stamps, so strokeMedium(_:) has no ribbon to shade; the brush draws.")
+            }
             appendBrushStamps(points, closed: closed, brush: brush)
             return
+        }
+        // A medium shades the ribbon in its own coordinates, one coat per stroke.
+        if let medium = strokeMediumShape {
+            if paint.shader == nil {
+                appendMediumStroke(points, closed: closed, paint: paint, medium: medium)
+                return
+            }
+            noteOnce("strokeMedium(_:) shades a color or gradient stroke; under stroke(_ shader:) the shader paints the ribbon.")
         }
         // One color at one width along the whole path: expanded into a list of
         // its own and laid into the frame in one pass.
@@ -447,25 +458,23 @@ extension Drawer {
         let start = vertices.count
         // Two or more points always expand to at least one ribbon, so the run is
         // opened here, once, in the state every vertex below would have asked for.
-        if case .shader(let shader, let box) = paint {
+        if case .shader(let shader, _) = paint {
             // A shader stroke: each expanded vertex carries its own uv over the box
             // (the outline's, or this run's footprint), its path vertex's fraction
             // along the run, and its signed offset from the centerline, negative
-            // inside a closed outline (the expander signs it toward the left normal,
-            // which is inside on a clockwise outline, the usual drawing order), with
-            // the opacity profile beside the coverage in `aa.y`.
-            let box = box ?? PaintBox.around(pts, inflate: closed ? 0 : (hws.max() ?? 0) + fw / 2)
-            let inward: Float = closed && Drawer.signedArea(pts) > 0 ? -1 : 1
+            // inside a closed outline, with the opacity profile beside the coverage
+            // in `aa.y`, and a second slot with the ribbon's own coordinates (see
+            // `appendRibbon`).
+            var list: [OllinVertex] = []
+            var unused: [OllinVertex] = []
+            appendRibbon(pts, fractions: ts, closed: closed, paint: paint, halfWidths: hws,
+                         colors: cols, opacity: opacityAt, wholeLength: nil,
+                         seed: Drawer.mediumSeed(pts[0], transform: transform), coreFirst: false,
+                         cores: &list, fringes: &unused)
             let saved = currentPaintShader
             currentPaintShader = shader
             ensureBatch(.fringe)
-            StrokeExpander.expand(local, closed: closed,
-                                  halfWidths: hws, colors: cols, fringe: fw, ctmScale: scale,
-                                  join: join, cap: cap) { v, source in
-                let uv = box.uv(Vector2(Double(v.position.x), Double(v.position.y)))
-                emitFringe(v.position, cov: v.coverage, opacity: opacityAt[source],
-                           color: SIMD4<Float>(uv.x, uv.y, cols[source].z, v.offset * inward))
-            }
+            vertices.append(contentsOf: list)
             currentPaintShader = saved
         } else {
             ensureBatch(.fringe)
@@ -486,6 +495,195 @@ extension Drawer {
                                         points: local, transform: transformIsIdentity ? nil : transform,
                                         vertexRange: start ..< vertices.count))
         }
+    }
+
+    // MARK: Ribbons
+
+    /// A stroke under a medium (`strokeMedium(_:)`): the path's runs (the whole
+    /// path, or its dashes) expanded into one batch of its own, every core
+    /// triangle ahead of every fringe triangle, so that the coat draw lays the
+    /// stroke down once where it crosses itself (the first triangle to reach a
+    /// sample claims it, and a core reaches first). Each vertex carries the
+    /// ribbon's own coordinates in its second slot (see `appendRibbon`).
+    private func appendMediumStroke(_ points: [Vector2], closed: Bool, paint: VertexPaint,
+                                    medium: StrokeMedium) {
+        let runs = strokeRuns(points, closed: closed)
+        // A dash reads its place on the whole path, so its distance along does too.
+        let whole: Double? = runs.contains { $0.fractions != nil }
+            ? Contour(points, closed: closed).length : nil
+        guard let first = points.first else { return }
+        let seed = Drawer.mediumSeed(first, transform: transform)
+        let savedMedium = currentPaintMedium, savedCoat = currentPaintCoat
+        currentPaintMedium = medium
+        currentPaintCoat = mediumStrokeCount
+        mediumStrokeCount += 1
+        defer { currentPaintMedium = savedMedium; currentPaintCoat = savedCoat }
+        if let target = currentTarget {
+            target.needsStencil = true
+            if medium.readsGround {
+                noteOnce("A wet stroke medium drags the canvas's ground; inside a layer it has no ground to drag and paints its pigment alone.")
+            }
+        } else {
+            usesCoatStencil = true
+        }
+        replicated {
+            var cores: [OllinVertex] = []
+            var fringes: [OllinVertex] = []
+            for run in runs {
+                appendMediumRun(run.points, closed: run.closed, paint: paint, fractions: run.fractions,
+                                wholeLength: whole, seed: seed, cores: &cores, fringes: &fringes)
+            }
+            guard !cores.isEmpty || !fringes.isEmpty else { return }
+            ensureBatch(.fringe)
+            vertices.append(contentsOf: cores)
+            vertices.append(contentsOf: fringes)
+        }
+    }
+
+    /// One run of a medium stroke, prepared as the plain expander path prepares
+    /// it (de-duplicated, subdivided where a gradient or a profile asks, a
+    /// half-width and a color per path vertex), into `cores` and `fringes`.
+    private func appendMediumRun(_ points: [Vector2], closed: Bool, paint: VertexPaint,
+                                 fractions: [Double]?, wholeLength: Double?, seed: Float,
+                                 cores: inout [OllinVertex], fringes: inout [OllinVertex]) {
+        var (pts, ts) = Drawer.deduplicated(points, fractions: fractions, closed: closed)
+        if paint.isGradient || !strokeProfileShape.isUniform || !strokeOpacityShape.isUniform {
+            (pts, ts) = Drawer.subdivided(pts, fractions: ts, closed: closed, maxLength: 12)
+        }
+        let n = pts.count
+        guard n >= 2 else { return }
+        let hws = strokeHalfWidths(for: pts, closed: closed, fractions: ts)
+            ?? [Double](repeating: strokeWidth / 2, count: n)
+        let varyingOpacity = !strokeOpacityShape.isUniform
+        var cols = [SIMD4<Float>](repeating: .zero, count: n)
+        if case .solid(let c) = paint, !varyingOpacity {
+            for i in 0..<n { cols[i] = c }
+        } else {
+            var cum = [Double](repeating: 0, count: n)
+            for i in 1..<n { cum[i] = cum[i - 1] + (pts[i] - pts[i - 1]).length }
+            var total = cum[n - 1]
+            if closed { total += (pts[0] - pts[n - 1]).length }
+            for i in 0..<n {
+                let t = ts?[i] ?? (total > 0 ? cum[i] / total : 0)
+                var color = paint.color(at: pts[i], pathT: t)
+                if varyingOpacity { color.w *= Float(strokeOpacityShape(t)) }
+                cols[i] = color
+            }
+        }
+        appendRibbon(pts, fractions: ts, closed: closed, paint: paint, halfWidths: hws, colors: cols,
+                     opacity: nil, wholeLength: wholeLength, seed: seed, coreFirst: true,
+                     cores: &cores, fringes: &fringes)
+    }
+
+    /// Expand one prepared run (points, half-widths, and colors per path vertex)
+    /// into vertex pairs: the first slot the vertex a stroke always gets, the
+    /// second the ribbon's own coordinates at the same position (see
+    /// `OllinVertex`). A vertex's distance along is its path vertex's plus its
+    /// offset along that vertex's tangent (the bisector of the two segments
+    /// there), which is one affine map around each path vertex, so every triangle
+    /// meeting there agrees on it and a cap carries it past the ends. Its place
+    /// across is its offset over the local half-width, signed as the shader
+    /// paint's distance is (negative inside a closed outline).
+    ///
+    /// With `coreFirst`, a triangle touching the outer edge (a fringe triangle:
+    /// one of its corners has no coverage) goes to `fringes` and every other to
+    /// `cores`; without it every triangle goes to `cores` in the expander's order.
+    /// `opacity` is the shader paint's per-vertex opacity profile; `nil` writes
+    /// the color as the plain fringe vertex does. A shader paint's first slot
+    /// carries its uv, its fraction along (`colors[i].z`), and its offset.
+    func appendRibbon(_ pts: [Vector2], fractions ts: [Double]?, closed: Bool, paint: VertexPaint,
+                      halfWidths hws: [Double], colors cols: [SIMD4<Float>], opacity: [Float]?,
+                      wholeLength: Double?, seed: Float, coreFirst: Bool,
+                      cores: inout [OllinVertex], fringes: inout [OllinVertex]) {
+        let n = pts.count
+        guard n >= 2 else { return }
+        let fw = 1.0 / ctmScale
+        var cum = [Double](repeating: 0, count: n)
+        for i in 1..<n { cum[i] = cum[i - 1] + (pts[i] - pts[i - 1]).length }
+        var total = cum[n - 1]
+        if closed { total += (pts[0] - pts[n - 1]).length }
+        // Where each path vertex sits along the stroke: its own run's distance, or
+        // for a dash its place on the whole path.
+        let length = wholeLength ?? total
+        let arc: [Double] = (wholeLength != nil && ts != nil) ? ts!.map { $0 * length } : cum
+        var tangent = [Vector2](repeating: Vector2(1, 0), count: n)
+        for i in 0..<n {
+            var d = Vector2(0, 0)
+            var forward = Vector2(1, 0)
+            if i > 0 || closed {
+                let e = pts[i] - pts[(i - 1 + n) % n]
+                let l = e.length
+                if l > 0 { d = d + e * (1 / l); forward = e * (1 / l) }
+            }
+            if i < n - 1 || closed {
+                let e = pts[(i + 1) % n] - pts[i]
+                let l = e.length
+                if l > 0 { d = d + e * (1 / l); forward = e * (1 / l) }
+            }
+            let l = d.length
+            tangent[i] = l > 1e-9 ? d * (1 / l) : forward
+        }
+        let inward: Double = closed && Drawer.signedArea(pts) > 0 ? -1 : 1
+        let box: PaintBox? = {
+            guard case .shader(_, let given) = paint else { return nil }
+            return given ?? PaintBox.around(pts, inflate: closed ? 0 : (hws.max() ?? 0) + fw / 2)
+        }()
+        let identity = transformIsIdentity, m = transform
+        let lengthF = Float(length)
+        func write(_ v: StrokeVertex, _ src: Int, wraps: Bool, into list: inout [OllinVertex]) {
+            let p = Vector2(Double(v.position.x), Double(v.position.y))
+            var a = arc[src] + (p - pts[src]).dot(tangent[src])
+            // A closed loop's last segment ends on the first path vertex, which
+            // there sits the loop's whole length along rather than at its start.
+            if wraps && src == 0 { a += total }
+            let hw = hws[src]
+            let across = Float(Double(v.offset) * inward / max(hw, fw / 2))
+            let along = length > 0 ? Float(a / length) : 0
+            let color: SIMD4<Float>
+            let aaY: Float
+            if let box, let opacity {
+                let uv = box.uv(p)
+                color = SIMD4<Float>(uv.x, uv.y, cols[src].z, v.offset * Float(inward))
+                aaY = opacity[src]
+            } else {
+                color = v.color
+                aaY = 0
+            }
+            var position = v.position
+            if !identity {
+                let q = m * SIMD3<Float>(position.x, position.y, 1)
+                position = SIMD2<Float>(q.x, q.y)
+            }
+            list.append(OllinVertex(position: position, aa: SIMD2<Float>(v.coverage, aaY), color: color))
+            list.append(OllinVertex(position: position, aa: SIMD2<Float>(Float(a), across),
+                                    color: SIMD4<Float>(Float(hw), seed, along, lengthF)))
+        }
+        var tri: [(StrokeVertex, Int)] = []
+        tri.reserveCapacity(3)
+        StrokeExpander.expand(pts.map { Point2D($0.x, $0.y) }, closed: closed,
+                              halfWidths: hws, colors: cols, fringe: fw, ctmScale: ctmScale,
+                              join: expanderJoin, cap: expanderCap) { v, source in
+            tri.append((v, source))
+            guard tri.count == 3 else { return }
+            let wraps = closed && n >= 3 && tri.contains { $0.1 == n - 1 } && tri.contains { $0.1 == 0 }
+            let toFringe = coreFirst && tri.contains { $0.0.coverage <= 0 }
+            for (u, src) in tri {
+                if toFringe { write(u, src, wraps: wraps, into: &fringes) }
+                else { write(u, src, wraps: wraps, into: &cores) }
+            }
+            tri.removeAll(keepingCapacity: true)
+        }
+    }
+
+    /// A stroke's seed for a medium: its first point on the canvas, so a mark
+    /// redrawn every frame keeps its bristles and two marks differ, whatever
+    /// order they are drawn in.
+    static func mediumSeed(_ p: Vector2, transform: matrix_float3x3) -> Float {
+        let q = transform * SIMD3<Float>(Float(p.x), Float(p.y), 1)
+        var h = UInt64(bitPattern: Int64((Double(q.x) * 16).rounded())) &* 0x9E37_79B9_7F4A_7C15
+        h ^= UInt64(bitPattern: Int64((Double(q.y) * 16).rounded())) &* 0xC2B2_AE3D_27D4_EB4F
+        h ^= h >> 29
+        return Float(h % 4096)
     }
 
     /// The current join, as the expander names it.
@@ -511,7 +709,7 @@ extension Drawer {
     /// stroke whose expansion carries nothing but positions and coverage, and
     /// so can be made once and colored as it is laid into the frame.
     var strokeIsPlain: Bool {
-        strokeBrushShape == nil && (strokeDashPattern?.isSolid ?? true)
+        strokeBrushShape == nil && strokeMediumShape == nil && (strokeDashPattern?.isSolid ?? true)
             && strokeProfileShape.isUniform && strokeOpacityShape.isUniform && !recordsWebSources
     }
 
@@ -627,6 +825,9 @@ extension Drawer {
         // stroke as a range copy (see `replicated`). A shader paint's run carries
         // its shader; its quads read the path vertex's uv at both ends, so across
         // a glyph outline's thin stroke the uv is the path's, and the offset zero.
+        if strokeMediumShape != nil {
+            noteOnce("strokeMedium(_:) shades the ribbon strokes; an outline glyph's stroke draws plain.")
+        }
         let saved = currentPaintShader
         if let shader = paint.shader { currentPaintShader = shader }
         replicated { appendStrokedPathSingle(points, closed: closed, half: half, paint: paint) }

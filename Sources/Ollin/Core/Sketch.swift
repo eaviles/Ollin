@@ -3187,6 +3187,23 @@ open class Sketch {
     public func strokeBrush(_ brush: Brush) { drawer.strokeBrush(brush) }
     /// Return to a continuous stroke (the default), undoing `strokeBrush(_:)`.
     public func noStrokeBrush() { drawer.noStrokeBrush() }
+    /// Shade every stroke in a material: `strokeMedium(.pencil)` draws in graphite
+    /// whose paper tooth breaks a light line into speckles, `.charcoal` and
+    /// `.pastel` are the same dry renderer at coarser settings, `.bristles` streaks
+    /// two pigments along the path, `.dryBrush` runs dry on the paper's grain,
+    /// `.wet` drags the paint under it, and `.oil` lights its own relief.
+    ///
+    /// The stroke's color is the pigment and its alpha the density, so a mark
+    /// recorded with an opacity response thins the pigment where the hand did. A
+    /// medium mark lays one coat where it crosses itself. Applies to the stroked
+    /// paths (`drawLine`, `drawBezier`, `drawPolyline`, `drawCurve`, `drawMark`,
+    /// and `drawShape` / `drawPolygon` outlines) and to the circle, ellipse, rect,
+    /// triangle, ngon, star, trapezoid, and parallelogram outlines, which hand
+    /// their outline to the ribbon while a medium is on. A vector export writes
+    /// the flat ribbon. See `StrokeMedium`.
+    public func strokeMedium(_ medium: StrokeMedium) { drawer.strokeMedium(medium) }
+    /// Return to a plain ribbon (the default), undoing `strokeMedium(_:)`.
+    public func noStrokeMedium() { drawer.noStrokeMedium() }
     /// Cut every stroke into dashes: `strokeDash([12, 8])` lays 12-point dashes
     /// with 8-point gaps along the path, and `strokeDash(.dots(spacing: 10))`
     /// under `strokeCap(.round)` lays dots. The lengths are in the path's own

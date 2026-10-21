@@ -3355,7 +3355,7 @@ extension MetalRenderer {
         pass.depthAttachment.resolveTexture = depthResolve
         pass.depthAttachment.storeAction = .multisampleResolve
         pass.depthAttachment.depthResolveFilter = .min
-        let hasStencil = attachClipStencil(to: pass, active: drawer.usesClipStencil,
+        let hasStencil = attachClipStencil(to: pass, active: drawer.usesCanvasStencil,
                                            width: width, height: height, storage: storage)
         guard let enc = countedEncoder(cb, pass, caller: "scene behind glass") else { return nil }
         // The geometry buffers already hold this frame's data (the main pass or the
@@ -3388,6 +3388,126 @@ extension MetalRenderer {
         let u3 = makeUniforms3D(drawer, camera: camera, viewport: viewport)
         let viewProjection = u3.projection * u3.view
         return (resolve, depthResolve, viewProjection, simd_inverse(viewProjection))
+    }
+
+    /// Whether this frame's canvas draws a stroke whose medium reads the ground
+    /// (wet paint, oil), directly or inside a replayed `Batch`.
+    func canvasReadsStrokeGround(_ drawer: Drawer) -> Bool {
+        drawer.batches.contains { batch in
+            guard batch.target == nil else { return false }
+            if batch.medium?.readsGround == true { return true }
+            if batch.kind == .retained, let handle = batch.retained {
+                return handle.innerBatches.contains { $0.medium?.readsGround == true }
+            }
+            return false
+        }
+    }
+
+    /// The ground a wet stroke drags (`StrokeMedium.wet`, `.oil`): the frame drawn
+    /// once more with every wet stroke left out, into the main pass's MSAA color
+    /// format (and its depth, when the frame has one), resolved into a texture
+    /// the medium fragment reads by screen position. A wet stroke so drags what
+    /// lies under it, whatever was drawn before or after it in the frame, and never
+    /// itself, and the picture is the same on every run (a read of the previous
+    /// frame would smear a mark redrawn each frame a little more every frame).
+    ///
+    /// On a canvas that keeps its paint (`noClear`), the pass starts from the pile
+    /// so far: `pile` is the accumulation surface, copied into this pass's
+    /// multisampled target and loaded, so the ground is everything painted before
+    /// this frame plus this frame's other marks.
+    ///
+    /// Returns nil, and the wet fragments keep their pigment, when no canvas
+    /// stroke reads the ground. The 3D carriers are forwarded so a wet stroke over
+    /// a lit scene drags the scene as the main pass draws it.
+    func encodeStrokeGroundPass(_ drawer: Drawer, into cb: MTLCommandBuffer,
+                                viewport: SIMD2<Float>,
+                                buffers: GeometryBuffers,
+                                width: Int, height: Int,
+                                pile: MTLTexture? = nil,
+                                colorFormat: MTLPixelFormat? = nil,
+                                shadowMap: MTLTexture? = nil,
+                                shadowCube: MTLTexture? = nil,
+                                shadowAccel: MTLAccelerationStructure? = nil,
+                                reflectAccel: MTLAccelerationStructure? = nil,
+                                reflectGeoOffsets: MTLBuffer? = nil,
+                                halfResField: (color: MTLTexture, depth: MTLTexture,
+                                               region: SIMD4<Float>)? = nil,
+                                halfResFieldShadow: MTLTexture? = nil,
+                                contactShadow: MTLTexture? = nil,
+                                gi: GIResolved? = nil,
+                                caustics: MTLTexture? = nil,
+                                pathTraced: PathTracedLayer? = nil) -> MTLTexture? {
+        guard canvasReadsStrokeGround(drawer) else { return nil }
+        let format = colorFormat ?? linearFormat
+        // A loaded pile needs a target that keeps its samples; otherwise the
+        // target lives only for the pass.
+        let storage: MTLStorageMode = pile != nil ? .private : attachmentStorage(for: drawer, target: nil)
+        if strokeGroundSize != (width, height) || strokeGroundResolveTex == nil
+            || strokeGroundMSAATex?.storageMode != storage || strokeGroundMSAATex?.pixelFormat != format {
+            let msaaDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: format, width: width, height: height,
+                                                                    mipmapped: false)
+            msaaDesc.textureType = sampleCount > 1 ? .type2DMultisample : .type2D
+            msaaDesc.sampleCount = sampleCount
+            msaaDesc.usage = .renderTarget
+            msaaDesc.storageMode = storage
+            let resolveDesc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: format, width: width,
+                                                                       height: height, mipmapped: false)
+            resolveDesc.usage = [.renderTarget, .shaderRead]
+            resolveDesc.storageMode = .private
+            guard let msaa = device.makeTexture(descriptor: msaaDesc),
+                  let resolve = device.makeTexture(descriptor: resolveDesc) else { return nil }
+            strokeGroundMSAATex = msaa
+            strokeGroundResolveTex = resolve
+            strokeGroundSize = (width, height)
+        }
+        guard let msaa = strokeGroundMSAATex, let resolve = strokeGroundResolveTex else { return nil }
+        if let pile, pile.sampleCount == msaa.sampleCount, pile.pixelFormat == msaa.pixelFormat,
+           pile.width == msaa.width, pile.height == msaa.height, let blit = cb.makeBlitCommandEncoder() {
+            blit.copy(from: pile, to: msaa)
+            blit.endEncoding()
+        }
+        let pass = MTLRenderPassDescriptor()
+        pass.colorAttachments[0].texture = msaa
+        pass.colorAttachments[0].resolveTexture = resolve
+        pass.colorAttachments[0].loadAction = pile != nil ? .load : .clear
+        pass.colorAttachments[0].clearColor = drawer.backgroundColor.mtlClearColor
+        pass.colorAttachments[0].storeAction = pile != nil ? .storeAndMultisampleResolve : .multisampleResolve
+        var depthFormat: MTLPixelFormat? = nil
+        if drawer.usesDepthBuffer, pile == nil {
+            if strokeGroundDepthTex?.width != width || strokeGroundDepthTex?.height != height
+                || strokeGroundDepthTex?.storageMode != storage {
+                strokeGroundDepthTex = makeDepthMSAA(width: width, height: height, storage: storage)
+            }
+            if let depth = strokeGroundDepthTex {
+                pass.depthAttachment.texture = depth
+                pass.depthAttachment.loadAction = .clear
+                pass.depthAttachment.clearDepth = 1.0
+                pass.depthAttachment.storeAction = .dontCare
+                depthFormat = depthPixelFormat
+            }
+        }
+        let hasStencil = attachClipStencil(to: pass, active: drawer.usesCanvasStencil,
+                                           width: width, height: height, storage: storage)
+        guard let enc = countedEncoder(cb, pass, caller: "stroke ground") else { return nil }
+        encode(drawer, viewport: viewport, attachment: SIMD2<Float>(Float(width), Float(height)), into: enc,
+               triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf,
+               imageBuffer: buffers.image, glyphBuffer: buffers.glyph,
+               pointBuffer: buffers.point, meshBuffer: buffers.mesh, lineBuffer: buffers.line,
+               instancedMeshBuffer: buffers.instancedMesh,
+               meshInstanceBuffer: buffers.meshInstance,
+               sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
+               sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode,
+               depthFormat: depthFormat, stencil: hasStencil,
+               shadowMap: shadowMap, shadowCube: shadowCube,
+               shadowAccel: shadowAccel,
+               reflectAccel: reflectAccel, reflectGeoOffsets: reflectGeoOffsets,
+               halfResField: halfResField, halfResFieldShadow: halfResFieldShadow,
+               contactShadow: contactShadow, gi: gi, caustics: caustics,
+               pathTraced: pathTraced,
+               skippingWetStrokes: true,
+               canvasColorFormat: colorFormat)
+        enc.endEncoding()
+        return resolve
     }
 
     /// Contact shadows (`contactShadows()`): march a short screen-space ray from each

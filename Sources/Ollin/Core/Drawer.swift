@@ -295,6 +295,16 @@ struct GeometryBatch {
     /// run painted by colors and gradients. A change of shader opens a fresh
     /// batch, like a blend-mode change, so one run never carries two.
     var paintShader: Shader?
+    /// The medium a `.fringe` run is shaded in (`strokeMedium(_:)`): the run
+    /// draws through the medium fragment, and it is one stroke, whose vertices
+    /// are ordered with every core triangle ahead of every fringe triangle so
+    /// that the stroke lays one coat (see `isRibbon` and the coat draws).
+    var medium: StrokeMedium? = nil
+
+    /// Whether the run's vertices come in pairs, the second slot carrying the
+    /// ribbon's own coordinates (see `OllinVertex`): a stroke under a shader
+    /// paint or a medium.
+    var isRibbon: Bool { kind == .fringe && (paintShader != nil || medium != nil) }
 }
 
 /// `box` through `m` (the box around its eight moved corners), unioned onto
@@ -405,6 +415,10 @@ final class Drawer {
     // strokeBrush). `nil` is the ribbon, so every stroke that does not ask for a
     // brush takes exactly the path it always did.
     var strokeBrushShape: Brush?
+    // The material a ribbon stroke is shaded in (see strokeMedium). `nil` is the
+    // plain ribbon, so every stroke that does not ask for a medium takes exactly
+    // the path it always did.
+    var strokeMediumShape: StrokeMedium?
     // A dash pattern cut along a path before it is expanded (see strokeDash).
     // `nil` is the whole path, so every stroke that does not ask for a dash
     // takes exactly the path it always did.
@@ -1244,6 +1258,18 @@ final class Drawer {
     /// emission by the paint sites (`appendSDF`, `emitTriangle`, the fringe
     /// expander) and read by `ensureBatch`; `nil` under a color or a gradient.
     var currentPaintShader: Shader? = nil
+    /// The stroke medium of the currently-open batch and the one the stroke being
+    /// recorded is shaded in, set around its emission like `currentPaintShader`.
+    var currentBatchMedium: StrokeMedium? = nil
+    var currentPaintMedium: StrokeMedium? = nil
+    /// Which medium stroke the currently-open batch holds, and which one is being
+    /// recorded: each medium stroke is a batch of its own, since its one coat is
+    /// drawn and then cleared from the stencil before the next stroke lays its own
+    /// (see `GeometryBatch.medium`). `nil` outside a medium stroke.
+    var currentBatchCoat: Int? = nil
+    var currentPaintCoat: Int? = nil
+    /// Medium strokes recorded this frame, the source of `currentPaintCoat`.
+    var mediumStrokeCount = 0
     /// The shaders baked this frame as mesh surfaces (`paintBake(_:)`), one layer
     /// each however many meshes read it; per frame, like the layers themselves.
     private var paintBakes: [Shader: RenderTarget] = [:]
@@ -1360,6 +1386,12 @@ final class Drawer {
     /// pushed outside any target). Per-frame, like the geometry; targets carry their
     /// own `needsStencil` flag instead.
     private(set) var usesClipStencil = false
+    /// Whether the main canvas needs a stencil attachment for a medium stroke's one
+    /// coat (see `GeometryBatch.medium`). Per-frame, like `usesClipStencil`; a
+    /// target sets its own `needsStencil` instead.
+    var usesCoatStencil = false
+    /// Whether the canvas pass carries a stencil, for a clip or for a coat.
+    var usesCanvasStencil: Bool { usesClipStencil || usesCoatStencil }
 
     private func recomputeClipLevel() {
         var n = 0
@@ -1565,6 +1597,8 @@ final class Drawer {
         let savedBatchClip = currentBatchClip
         let savedBatchLightSet = currentBatchLightSet
         let savedBatchPaintShader = currentBatchPaintShader
+        let savedBatchMedium = currentBatchMedium
+        let savedBatchCoat = currentBatchCoat
         var savedTargets: [TargetFrame] = []
         var savedClips: [ClipFrame] = []
         swap(&savedTargets, &targetStack)
@@ -1575,6 +1609,8 @@ final class Drawer {
         currentBatchClip = 0
         currentBatchLightSet = 0
         currentBatchPaintShader = nil
+        currentBatchMedium = nil
+        currentBatchCoat = nil
         isRecordingBatch = true
         pushState()
         transform = matrix_identity_float3x3
@@ -1609,6 +1645,8 @@ final class Drawer {
         currentBatchClip = savedBatchClip
         currentBatchLightSet = savedBatchLightSet
         currentBatchPaintShader = savedBatchPaintShader
+        currentBatchMedium = savedBatchMedium
+        currentBatchCoat = savedBatchCoat
         return recorded
     }
 
@@ -1638,6 +1676,12 @@ final class Drawer {
         guard !batch.isEmpty else { return }
         if batch.hasPointContent {
             currentTarget?.needsDepth = true   // 3D in a target → that pass carries depth
+        }
+        // A recorded medium stroke lays its one coat in the stencil of the pass
+        // it is replayed into, which a recording made on an earlier frame (in
+        // `setup()`, typically) has not asked for this frame.
+        if batch.innerBatches.contains(where: { $0.medium != nil }) {
+            if let target = currentTarget { target.needsStencil = true } else { usesCoatStencil = true }
         }
         batches.append(GeometryBatch(kind: .retained, vertexStart: vertices.count,
                                      instanceStart: sdfInstances.count,
@@ -1712,8 +1756,12 @@ final class Drawer {
             || currentBatchDepth != currentDepth
             || currentBatchClip != activeClipLevel
             || currentBatchLightSet != set
-            || currentBatchPaintShader != currentPaintShader else { return }
+            || currentBatchPaintShader != currentPaintShader
+            || currentBatchMedium != currentPaintMedium
+            || currentBatchCoat != currentPaintCoat else { return }
         currentKind = kind
+        currentBatchMedium = currentPaintMedium
+        currentBatchCoat = currentPaintCoat
         currentBatchLightSet = set
         currentBatchBlend = currentBlend
         currentBatchDepth = currentDepth
@@ -1730,7 +1778,8 @@ final class Drawer {
                                      blendMode: currentBlend, depth: currentDepth,
                                      target: currentTarget, clipLevel: activeClipLevel,
                                      lightSet: currentBatchLightSet,
-                                     paintShader: currentPaintShader))
+                                     paintShader: currentPaintShader,
+                                     medium: currentPaintMedium))
     }
 
     /// Open a fresh `.image` batch carrying `image` as its texture. Unlike
@@ -2267,6 +2316,12 @@ final class Drawer {
     func svgRecord(_ geometry: SVGGeometry, fill: Paint?, stroke: Paint?) {
         guard svgRecorder != nil else { return }
         let visibleStroke = (stroke != nil && strokeWidth > 0) ? stroke : nil
+        // A medium is shaded per pixel, which a vector file has no way to carry:
+        // the stroke goes in as the flat ribbon it is without one, a line a
+        // plotter draws.
+        if visibleStroke != nil, strokeMediumShape != nil {
+            noteOnce("strokeMedium(_:) is raster; a vector export writes the stroke as its flat ribbon.")
+        }
         // A dash is cut along the path here, the same cut the screen draws, so
         // the file carries every dash as a subpath of its own: a plotter lifts
         // the pen at each gap. The fill, if any, stays the shape it was, and a
@@ -2420,6 +2475,7 @@ final class Drawer {
         var strokeProfileShape: StrokeProfile
         var strokeOpacityShape: StrokeProfile
         var strokeBrushShape: Brush?
+        var strokeMediumShape: StrokeMedium?
         var strokeDashPattern: StrokeDash?
         var strokeUnitsMode: StrokeUnits
         var currentMaterial: Material
@@ -2765,6 +2821,15 @@ final class Drawer {
 
     /// Return to a continuous stroke (the default).
     func noStrokeBrush() { strokeBrushShape = nil }
+
+    /// Shade the ribbon strokes in a material (see `StrokeMedium`): the stroke's
+    /// color is the pigment and its alpha the density. Affects the stroked paths
+    /// and the analytic shapes with a polygonal outline, which hand their outline
+    /// to the ribbon while a medium is on.
+    func strokeMedium(_ medium: StrokeMedium) { strokeMediumShape = medium }
+
+    /// Return to a plain ribbon (the default).
+    func noStrokeMedium() { strokeMediumShape = nil }
 
     /// Cut every stroked path into dashes (see `StrokeDash`). The pattern is cut
     /// along the path before it is expanded, so each dash takes the caps and a
@@ -4977,6 +5042,12 @@ final class Drawer {
         batches.removeAll(keepingCapacity: true)
         currentPaintShader = nil
         currentBatchPaintShader = nil
+        currentPaintMedium = nil
+        currentBatchMedium = nil
+        currentPaintCoat = nil
+        currentBatchCoat = nil
+        mediumStrokeCount = 0
+        usesCoatStencil = false
         paintBakes.removeAll(keepingCapacity: true)
         webSources.removeAll(keepingCapacity: true)
         dispatches.removeAll(keepingCapacity: true)
@@ -5287,6 +5358,7 @@ final class Drawer {
                                      strokeProfileShape: strokeProfileShape,
                                      strokeOpacityShape: strokeOpacityShape,
                                      strokeBrushShape: strokeBrushShape,
+                                     strokeMediumShape: strokeMediumShape,
                                      strokeDashPattern: strokeDashPattern,
                                      strokeUnitsMode: strokeUnitsMode,
                                      currentMaterial: currentMaterial,
@@ -5327,6 +5399,7 @@ final class Drawer {
         strokeProfileShape = s.strokeProfileShape
         strokeOpacityShape = s.strokeOpacityShape
         strokeBrushShape = s.strokeBrushShape
+        strokeMediumShape = s.strokeMediumShape
         strokeDashPattern = s.strokeDashPattern
         strokeUnitsMode = s.strokeUnitsMode
         currentMaterial = s.currentMaterial

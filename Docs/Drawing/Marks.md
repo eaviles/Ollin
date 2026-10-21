@@ -30,7 +30,7 @@ Drag, and the mark comes out full where you moved slowly and thin where you hurr
   <img src="../../Guide/Images/17-MarksAndMedia/MarkDynamics.jpg" alt="One S-curve drawn three times at one stroke weight by a hand that is slow at the ends and fast through the middle: ignoring the pace it is an even line, letting the pace drive width it swells at the ends and narrows to a hairline in the middle, letting the pace drive opacity it stays the same width but fades" width="680">
 </picture>
 
-**Contents:** [The pieces](#pieces) · [StrokeInput](#input) · [StrokeResponse](#response) · [StrokeDynamics](#dynamics) · [StrokeMark](#mark) · [drawMark](#drawMark) · [Pressure](#pressure) · [Building a mark by hand](#byhand) · [Brushes](#brushes) · [What exports](#export)
+**Contents:** [The pieces](#pieces) · [StrokeInput](#input) · [StrokeResponse](#response) · [StrokeDynamics](#dynamics) · [StrokeMark](#mark) · [drawMark](#drawMark) · [Pressure](#pressure) · [Building a mark by hand](#byhand) · [Brushes](#brushes) · [Stroke media](#media) · [What exports](#export)
 
 <a name="pieces"></a>
 
@@ -131,6 +131,10 @@ mark.append(_ sample: StrokeMark.Sample)
 mark.samples      // [Sample], each a position + width + opacity
 mark.positions    // just the path
 mark.count / .isEmpty / .length / .bounds
+
+mark.pressureDeadZone   // 0...1, a press at or under it counts as none
+mark.pressureCurve      // the exponent a press follows, 1 linear
+mark.maxWidthChange     // nil, or the most the width may change per point traveled
 ```
 
 A `StrokeMark` is the recording. `record` adds to the live path, and `Sketch.record(into:)` fills its three arguments from the running sketch. That is the form you want in `draw()`:
@@ -195,6 +199,15 @@ override func mousePressed() {
     mark = StrokeMark(pressureIsAvailable ? .pressure(light: 0.1)
                                           : .speed(fast: 0.15))
 }
+```
+
+Two settings on the mark shape the press before any response reads it, the way a tablet's pressure setting does. **`pressureDeadZone`** is how hard a press has to be before it counts: a reading at or under it is no pressure, and the rest of the range is spread over `0...1`, so a pen resting on the tablet does not start a mark already swollen. **`pressureCurve`** is the exponent the press is raised to. `2` asks for a firmer press before the mark responds and `0.5` answers to a lighter one. A third, **`maxWidthChange`**, limits how fast the width may change per canvas point traveled, so a sudden press swells the mark along the path rather than stepping it:
+
+```swift
+var mark = StrokeMark(.pressure(light: 0.1))
+mark.pressureDeadZone = 0.08
+mark.pressureCurve = 1.6
+mark.maxWidthChange = 0.02     // a fiftieth of the weight per point, at most
 ```
 
 Ollin asks the trackpad for the drawing gesture. That gesture is a single stage over the full range, so a press reads as a smooth amount. No force-click fires look-up in the middle of a stroke.
@@ -274,6 +287,72 @@ A `drawMark`'s recorded widths and opacities feed in the same way, so the hand c
 
 A stamp's randomness comes from its index along the path and from the brush's `seed`, never from the sketch's `random`. That means a brush cannot shift randomness a sketch is using elsewhere, and the same path draws the same mark every frame. Animate the path and the stamps travel with it rather than boiling in place.
 
+<a name="media"></a>
+
+## Stroke media
+
+A profile, a mark, and a brush decide how much ink lands and where. A **`StrokeMedium`** decides what the ink is made of. It shades the stroke's ribbon one pixel at a time, in the ribbon's own coordinates. Each pixel knows how far along the path it sits and where it falls across the width.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/17-MarksAndMedia/StrokeMedia-dark.jpg">
+  <img src="../../Guide/Images/17-MarksAndMedia/StrokeMedia.jpg" alt="One S-curve drawn in eight media. Pencil, charcoal, pastel, and a multicolor pastel each fade from full density to a seventh along the curve by inking fewer grains of the paper, so the light end breaks into specks. A bristle brush streaks red and gold along the path, a dry brush breaks up on the paper's grain, and wet and oil strokes cross a ground half blue and half yellow, dragging the blue into the yellow behind them" width="680">
+</picture>
+
+```swift
+var mark = StrokeMark(StrokeDynamics(opacity: .pressure(light: 0.15)))
+
+override func draw() {
+    background(.white)
+    if mouseIsPressed { record(into: &mark) }
+    stroke(.black)
+    strokeWeight(14)
+    strokeMedium(.pencil)
+    drawMark(mark)
+}
+```
+
+`strokeMedium(_:)` is style. You set it once and it is held, like `strokeBrush`, and `noStrokeMedium()` goes back to the plain ribbon. It applies wherever a path is stroked: `drawLine`, `drawBezier`, `drawPolyline`, `drawCurve`, `drawArc`, `drawMark`, and the outlines of `drawShape` and `drawPolygon`. The circle, ellipse, rect, triangle, ngon, star, trapezoid, and parallelogram hand their outline to the ribbon while a medium is on, as they do for a dash. The rest of the analytic family draws a plain outline and says so once. So does a brush, which replaces the ribbon, and a shader stroke, which paints it.
+
+The stroke's **color** is the pigment and its **alpha** is the density. A mark recorded with an opacity response therefore thins the pigment where the hand did, and a dry medium breaks into specks there.
+
+| Medium | What it does |
+|---|---|
+| `.dry(tooth:softness:roughness:palette:seed:)` | Pigment catches on the paper's tooth. A dense stroke inks nearly every grain and a light one only the highest, so a light line breaks into specks rather than fading. `tooth` is the grain's size in canvas points, `softness` how gradually a speck gives way to paper, `roughness` how far the tooth frays the edge (a fraction of the half-width), and `palette` a color per grain. |
+| `.pencil`, `.charcoal`, `.pastel` | `.dry` at three settings: a fine, hard tooth; a coarse, soft one with a frayed edge; and a broad, chalky one. `.pastel(palette:seed:)` is the multicolor stick. |
+| `.bristles(_:streaks:amount:seed:)` | A brush whose bristles streak the stroke's color and a second pigment along the path, each streak its own mix. `amount` is the second pigment's share. Leave the second pigment out for a deeper shade of the first. |
+| `.dryBrush(grain:amount:streaks:seed:)` | A brush running dry. Its load falls along the mark, and where it is short the paper's grain, at three scales, decides what catches. `amount` sets how soon it runs out. |
+| `.wet(amount:reach:)` | Wet paint that drags the ground. Each pixel mixes its pigment with what lies up to `reach` canvas points behind it along the path, most of all toward the tail. |
+| `.oil(amount:reach:relief:streaks:seed:)` | Wet paint under a dominant color, its ridges lit from the upper left. `relief` scales their height, and `0` lies flat. |
+
+`.bristles`, `.dryBrush`, `.wet`, and `.oil` are also there with their default settings, as `.pencil` is.
+
+### The tooth belongs to the paper
+
+The dry media's tooth is fixed to the canvas, not to the stroke, and the medium's `seed` chooses the paper. Two strokes over one spot catch the same grains, which is how a second pass of pencil darkens what the first left. A drawing makes the same picture every frame. A brush's streaks follow each stroke instead, seeded by where the stroke starts, so a mark redrawn every frame keeps its bristles.
+
+### Wet paint drags the frame without its wet strokes
+
+A wet stroke reads the ground under it from the frame drawn once more with every wet stroke left out. It drags whatever else the frame holds, drawn before it or after, never itself, and two runs give the same picture. On a canvas that keeps its paint (`noClear()`), the ground also holds everything painted on earlier frames. That second drawing is what a wet stroke costs, and a frame with none draws once. Inside a layer a wet stroke has no ground yet, so it paints its pigment alone and says so once.
+
+### One coat
+
+A translucent medium mark lays one coat. Where it crosses itself, the crossing reads as the rest of the mark does rather than twice as dark. Each stroke claims each pixel once, then clears its claim, so a second mark still layers over the first.
+
+### Your own shader on the same coordinates
+
+A shader stroke reads the ribbon's coordinates too. `info.arcLength` is the distance along the path in its own units. `info.across` is the place across the width, -1 and 1 at the edges, and `info.halfWidth` is the local half-width. They sit beside `info.along`, the fraction along, and `info.distance`, the signed distance from the centerline. On an analytic outline drawn under a shader, `info.arcLength` reads 0.
+
+```swift
+stroke(Shader("""
+float4 shade(float2 uv, ShaderInfo info) {
+    float band = step(0.5, fract(info.arcLength / 12.0)) * (1.0 - abs(info.across));
+    return mix(float4(0.1, 0.1, 0.12, 1.0), float4(0.9, 0.3, 0.2, 1.0), band);
+}
+"""))
+strokeWeight(18)
+drawPolyline([Vector2(60, 300), Vector2(240, 160), Vector2(420, 300), Vector2(600, 160)])
+```
+
 <a name="export"></a>
 
 ## What exports
@@ -282,6 +361,8 @@ A mark's **width** exports exactly. `--export-svg` and `--export-pdf` write the 
 
 A mark's **opacity flattens** to its average, weighted along the mark's length. A vector document draws one fill at one alpha per path, so a varying opacity has nowhere to go. Ollin says so once on the console rather than dropping it silently. For a plotter, with one pen and one ink, this costs nothing.
 
+A **medium** is raster. `--export-svg` and `--export-pdf` write the stroke as the flat ribbon it would be without one, the line a plotter draws, and say so once. The web page export stops at a medium and names the call.
+
 A **brush** exports as its stamps. Each stamp becomes a real circle, polygon, or path a plotter can follow. The exported document then carries the mark the screen showed, rather than the bare path running under it. Because each stamp is its own shape, a brushed mark keeps its varying opacity in vector export, where a ribbon has to flatten it. A brush cannot vary opacity over a *gradient* stroke, because that would mean rewriting the ramp. It says so once and stamps at the ramp's own alpha.
 
 ## See also
@@ -289,4 +370,5 @@ A **brush** exports as its stamps. Each stamp becomes a real circle, polygon, or
 - [Drawing](Drawing.md#strokeProfile) for `strokeProfile`, which shapes a designed mark
 - [Input](../Helpers/Input.md) for the rest of the pointer and keyboard surface
 - [Export](../Output/Export.md) for the vector exporters
-- Example: `Examples/Shapes/Brushwork` (paint with it), `Examples/Shapes/StrokeProfiles` (the profile family), `Examples/Shapes/Brushes` (the brush family)
+- [Shaders](../Shaders/Shaders.md#a-shader-as-paint) for a shader as paint, and what `info` carries on a stroke
+- Example: `Examples/Shapes/Brushwork` (paint with it), `Examples/Shapes/StrokeProfiles` (the profile family), `Examples/Shapes/Brushes` (the brush family), `Examples/Shapes/ShadedStrokes` (draw in each medium)

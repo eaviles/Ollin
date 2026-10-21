@@ -79,6 +79,28 @@ public struct StrokeMark: Sendable {
     /// visibly trailing the pointer.
     public var smoothing: Double
 
+    /// How hard a press has to be before it counts, `0...1`. A reading at or under
+    /// it is no pressure at all and the rest of the range is spread over `0...1`,
+    /// so a pen resting on a tablet, or a trackpad's lightest click, does not
+    /// start a mark already swollen. `0` (the default) passes every reading.
+    public var pressureDeadZone: Double = 0
+
+    /// The curve a press follows once past the dead zone: the exponent the
+    /// pressure is raised to before any response reads it. `1` (the default) is
+    /// linear; `2` asks for a firmer press before the mark responds, and `0.5`
+    /// answers to a lighter one. It shapes what both `StrokeResponse.pressure`
+    /// axes see, the way a tablet's pressure setting does.
+    public var pressureCurve: Double = 1
+
+    /// The most the width multiplier may change per canvas point traveled, or
+    /// `nil` (the default) to follow the dynamics wherever they go. A hand that
+    /// presses suddenly, or a speed reading that jumps between two frames, can
+    /// step a mark's width abruptly; `0.02` lets the width change by at most a
+    /// fiftieth of the stroke weight per point, so it swells and thins along the
+    /// path rather than stepping. Points added with `append(_:)` are taken as
+    /// given.
+    public var maxWidthChange: Double? = nil
+
     /// Speed and pressure each get their own adaptive low-pass. The filter is
     /// the right tool here rather than a fixed average because a stroke is both
     /// things at once: nearly still while a hand sets up (where jitter shows and
@@ -144,7 +166,7 @@ public struct StrokeMark: Sendable {
     /// running sketch.
     public mutating func record(_ position: Vector2, deltaTime: Double, pressure: Double = 1) {
         pendingTime += max(deltaTime, 0)
-        let force = min(max(pressure, 0), 1)
+        let force = shapedPressure(pressure)
 
         guard let last = samples.last ?? pending.map({ Sample(position: $0.position) }) else {
             // Nothing recorded yet: hold this point until a second one arrives to
@@ -206,8 +228,23 @@ public struct StrokeMark: Sendable {
     }
 
     private mutating func store(_ position: Vector2, _ input: StrokeInput) {
-        let m = dynamics.multipliers(for: input)
+        var m = dynamics.multipliers(for: input)
+        // The width follows the dynamics no faster than the limit allows over the
+        // distance this point spans.
+        if let limit = maxWidthChange, let last = samples.last {
+            let span = (position - last.position).length * max(limit, 0)
+            m.width = min(max(m.width, last.width - span), last.width + span)
+        }
         samples.append(Sample(position: position, width: m.width, opacity: m.opacity))
+    }
+
+    /// A raw pressure reading through the dead zone and the curve, `0...1`.
+    func shapedPressure(_ reading: Double) -> Double {
+        let p = min(max(reading, 0), 1)
+        let zone = min(max(pressureDeadZone, 0), 0.999)
+        guard p > zone else { return 0 }
+        let x = (p - zone) / (1 - zone)
+        return pressureCurve == 1 ? x : pow(x, max(pressureCurve, 0.01))
     }
 
     /// The smoothing parameter as a filter cutoff in hertz. Cutoffs are heard

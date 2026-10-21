@@ -176,6 +176,53 @@ fragment float4 ollin_fringe_fragment(FringeVertexOut in [[stage_in]]) {
     return float4(lin, a);
 }
 
+// Ribbon runs (a stroke under a shader paint or a stroke medium): the fringe
+// vertex above plus the ribbon's own coordinates, read from a second 32-byte slot
+// the expander's caller writes beside each vertex (see OllinVertex). The vertex
+// stage is the fringe one's twin over the pair, so a ribbon run is placed exactly
+// as a plain stroke is; only what reaches the fragment grows.
+struct RibbonVertexOut {
+    float4 position [[position]];
+    float4 color;        // the fringe vertex's color (or a shader paint's uv, along, distance)
+    float coverage;      // AA fringe coverage
+    float opacity;       // a shader paint's opacity profile (see FringeVertexOut)
+    float2 canvas;       // the vertex in canvas points
+    float arcLength;     // distance along the path, in its own units
+    float across;        // signed place across the width, +-1 at the true edge
+    float halfWidth;     // the local half-width, in the path's units
+    float along;         // 0...1 fraction along the path
+    float seed [[flat]];     // a per-stroke seed
+    float length [[flat]];   // the path's whole length
+};
+
+vertex RibbonVertexOut ollin_ribbon_vertex(uint vertexID [[vertex_id]],
+                                           const device OllinVertex *vertices [[buffer(0)]],
+                                           constant Uniforms &uniforms [[buffer(1)]]) {
+    OllinVertex v = vertices[2u * vertexID];
+    OllinVertex r = vertices[2u * vertexID + 1u];
+    // Retained-batch replay transform (see ollin_vertex).
+    float2 p = v.position;
+    if (uniforms.batchTransformed != 0.0) {
+        p = (uniforms.batchTransform * float3(p, 1.0)).xy;
+    }
+    float2 ndc;
+    ndc.x = (p.x / uniforms.viewport.x) * 2.0 - 1.0;
+    ndc.y = 1.0 - (p.y / uniforms.viewport.y) * 2.0;
+    RibbonVertexOut out;
+    out.position = float4(ndc, uniforms.clipDepth, 1.0);
+    out.color = v.color;
+    out.coverage = v.aa.x;
+    out.opacity = v.aa.y;
+    out.canvas = p;
+    out.arcLength = r.aa.x;
+    out.across = r.aa.y;
+    out.halfWidth = r.color.x;
+    out.seed = r.color.y;
+    out.along = r.color.z;
+    out.length = r.color.w;
+    return out;
+}
+
 // MARK: - Textured quads (images)
 //
 // One pipeline samples a 2D texture over a quad whose four corners arrive already

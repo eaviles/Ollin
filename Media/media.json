@@ -10977,6 +10977,28 @@
       "stillSmall": "examples/Shapes/Scattered/still-640.jpg?v=499a8bf5",
       "width": 1080
     },
+    "Shapes/ShadedStrokes": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 2.211,
+      "sound": false,
+      "source": "6ff7418ff1165436",
+      "rendered": "2026-10-21",
+      "bytes": {
+        "loop": 939276,
+        "loopSmall": 191620,
+        "still": 181494,
+        "stillSmall": 52500
+      },
+      "loop": "examples/Shapes/ShadedStrokes/loop.mp4?v=a275613e",
+      "loopSmall": "examples/Shapes/ShadedStrokes/loop-640.mp4?v=9ac8eda0",
+      "still": "examples/Shapes/ShadedStrokes/still.jpg?v=c988d121",
+      "stillSmall": "examples/Shapes/ShadedStrokes/still-640.jpg?v=9540f3ef",
+      "seed": 1
+    },
     "Shapes/Star": {
       "bytes": {
         "loop": 1600418,

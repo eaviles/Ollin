@@ -851,6 +851,7 @@ let package = Package(
                 .copy("Renderer/Shader3D.metal"),
                 .copy("Renderer/ShaderRaymarch.metal"),
                 .copy("Renderer/ShaderStrands.metal"),
+                .copy("Renderer/ShaderStrokes.metal"),
                 .copy("Renderer/ShaderFourier.metal"),
                 .copy("Renderer/ShaderOcean.metal"),
                 .copy("Renderer/ShaderEffects.metal"),

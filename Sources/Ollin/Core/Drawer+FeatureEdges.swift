@@ -177,8 +177,9 @@ extension Drawer {
             noteOnce("feature edges take one color; a shader stroke draws them white.")
             color = .white
         }
-        if strokeDashPattern != nil || strokeBrushShape != nil || !strokeProfileShape.isUniform {
-            noteOnce("strokeDash, strokeBrush, and strokeProfile shape 2D strokes; a mesh's feature edges draw whole, at one weight.")
+        if strokeDashPattern != nil || strokeBrushShape != nil || strokeMediumShape != nil
+            || !strokeProfileShape.isUniform {
+            noteOnce("strokeDash, strokeBrush, strokeMedium, and strokeProfile shape 2D strokes; a mesh's feature edges draw whole, plain, at one weight.")
         }
         let set = featureEdgeCache.edges(of: mesh, creaseAngle: angle)
         guard !set.edges.isEmpty else { return }

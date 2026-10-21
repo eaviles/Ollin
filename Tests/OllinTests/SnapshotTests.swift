@@ -154,6 +154,18 @@ private let snapshotMetalCases: [SnapshotCase] = [
                  make: { BrushesScene() }),
     SnapshotCase("dashed-strokes", note: "strokeDash on the fringe path, a profile across the gaps, and the analytic outlines that hand over.",
                  make: { DashedStrokesScene() }),
+    SnapshotCase("stroke-medium-pencil",
+                 note: "strokeMedium(.pencil): one dry renderer at its pencil settings, lines at falling density breaking into speckles rather than fading, a translucent loop laying one coat where it crosses itself, and a circle handing its outline to the ribbon. Pins the paper tooth (canvas-fixed, seeded), the density threshold, the edge roughness, and the coat's stencil order (cores before fringes).",
+                 make: { DryMediumScene(.pencil) }),
+    SnapshotCase("stroke-medium-charcoal",
+                 note: "strokeMedium(.charcoal): the same scene and the same renderer as stroke-medium-pencil at the charcoal settings (a coarser, softer tooth and a frayed edge).",
+                 make: { DryMediumScene(.charcoal) }),
+    SnapshotCase("stroke-medium-pastel",
+                 note: "strokeMedium(.pastel) and .pastel(palette:): the same renderer at the pastel settings, its lower half drawn with a three-color stick that inks each tooth cell in one color.",
+                 make: { DryMediumScene(.pastel, palette: true) }),
+    SnapshotCase("stroke-media",
+                 note: "The bristle, dry-brush, wet, and oil media over a ground split in two colors: two pigments streaked along a brush, a brush running dry on three grain scales, wet paint dragging the ground along its direction (the frame drawn again without the wet strokes), and oil's relief lit from the upper left. Pins the ribbon's along and across coordinates reaching the medium fragment and the wet-ground pre-pass.",
+                 make: { StrokeMediaScene() }),
     SnapshotCase("bitmap-text", note: "The bitmap font specimen.",
                  make: { TextSpecimen() }),
     SnapshotCase("tinted-image", note: "A tinted textured-quad image.",
@@ -7222,6 +7234,82 @@ private final class StrokeJoinsCaps: Sketch {
             strokeCap(cap)
             drawPolyline([Vector2(70, cy), Vector2(186, cy)])
         }
+    }
+}
+
+/// One dry medium over a scene that shows what it does: four lines at falling
+/// density, a translucent loop crossing itself, and a circle's outline.
+private final class DryMediumScene: Sketch {
+    var medium: StrokeMedium = .pencil
+    var palette = false
+
+    convenience init(_ medium: StrokeMedium, palette: Bool = false) {
+        self.init()
+        self.medium = medium
+        self.palette = palette
+    }
+
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.97))
+        noFill()
+        strokeCap(.round)
+        strokeWeight(14)
+        strokeMedium(medium)
+        for (i, alpha) in [1.0, 0.6, 0.35, 0.18].enumerated() {
+            stroke(Color(white: 0.1).withAlpha(alpha))
+            drawLine(24, 24 + Double(i) * 22, 232, 30 + Double(i) * 22)
+        }
+        stroke(Color(red: 0.55, green: 0.15, blue: 0.12).withAlpha(0.45))
+        strokeWeight(18)
+        drawPolyline((0...60).map { i in
+            let t = Double(i) / 60 * 2 * .pi
+            return Vector2(80 + 52 * sin(t), 178 + 40 * sin(2 * t))
+        })
+        if palette {
+            strokeMedium(.pastel(palette: [Color(red: 0.89, green: 0.34, blue: 0.18),
+                                           Color(red: 0.95, green: 0.65, blue: 0.07),
+                                           Color(red: 0.16, green: 0.2, blue: 0.36)], seed: 3))
+            stroke(.white)
+        } else {
+            stroke(Color(red: 0.12, green: 0.25, blue: 0.5))
+        }
+        strokeWeight(16)
+        fill(Color(red: 0.86, green: 0.9, blue: 0.95))
+        drawCircle(196, 182, 40)
+    }
+}
+
+/// The brush and wet media over a ground in two colors.
+private final class StrokeMediaScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(.white)
+        noStroke()
+        fill(Color(red: 0.23, green: 0.43, blue: 0.65)); drawRect(0, 0, 128, 256)
+        fill(Color(red: 0.96, green: 0.83, blue: 0.37)); drawRect(128, 0, 128, 256)
+        noFill()
+        strokeCap(.round)
+        strokeWeight(34)
+        func wave(_ y: Double) -> [Vector2] {
+            (0...48).map { i in
+                let t = Double(i) / 48
+                return Vector2(24 + 208 * t, y + 14 * sin(t * .pi * 2))
+            }
+        }
+        stroke(Color(red: 0.75, green: 0.22, blue: 0.17))
+        strokeMedium(.bristles(Color(red: 0.95, green: 0.65, blue: 0.07), seed: 2))
+        drawPolyline(wave(40))
+        stroke(Color(red: 0.1, green: 0.1, blue: 0.12))
+        strokeMedium(.dryBrush(seed: 4))
+        drawPolyline(wave(98))
+        stroke(Color(red: 0.75, green: 0.22, blue: 0.17))
+        strokeMedium(.wet)
+        drawPolyline(wave(156))
+        strokeMedium(.oil(seed: 6))
+        drawPolyline(wave(214))
     }
 }
 

@@ -605,6 +605,7 @@ let package = Package(
         example("Shapes/DashedStrokes"),
         example("Shapes/HobbySpline"),
         example("Shapes/Brushwork"),
+        example("Shapes/ShadedStrokes"),
         example("Motion/Mandala"),
         example("Text/HelloText"),
         example("Text/TextVolume"),

@@ -2527,6 +2527,41 @@ extension MetalRenderer {
     /// at fragment buffer 0 and the per-frame uniforms at 1 (`resolution` is the
     /// pass's pixel size, the rest the frame's clock and cursor), the same two
     /// bindings a layer shader gets.
+    /// Draw one stroke medium's run (its pipeline already set, its vertex pairs
+    /// bound): the medium's settings and the wet ground bound to the fragment,
+    /// then the stroke laid as one coat when the pass carries a stencil (each
+    /// sample takes the first of the stroke's triangles to reach it, the cores
+    /// ordered ahead of the fringes) and its coat bit cleared again under the same
+    /// triangles, so the next stroke starts clear. With no stencil (it could not
+    /// be allocated) the run draws as one ordinary pass.
+    func encodeMediumRun(_ medium: StrokeMedium, vertexCount: Int, key: PipelineKey,
+                         ground: MTLTexture?, standIn: MTLTexture?, pixelScale: SIMD2<Float>,
+                         hasStencil: Bool, clipLevel: Int, depthTested: Bool,
+                         into encoder: MTLRenderCommandEncoder) {
+        guard vertexCount > 0 else { return }
+        var u = medium.uniforms(pixelScale: pixelScale, hasGround: ground != nil)
+        encoder.setFragmentBytes(&u, length: MemoryLayout<OllinStrokeMedium>.stride, index: 0)
+        if let texture = ground ?? standIn { encoder.setFragmentTexture(texture, index: 0) }
+        encoder.setFragmentSamplerState(imageSampler, index: 0)
+        guard hasStencil else {
+            encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertexCount)
+            return
+        }
+        encoder.setDepthStencilState(clipDepthStencilState(
+            ClipStateKey(depth: depthTested ? .test : .always, stencil: .coat)))
+        encoder.setStencilReferenceValue(UInt32(clipLevel))
+        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertexCount)
+        var clearKey = key
+        clearKey.vertex = "ollin_ribbon_vertex"
+        clearKey.fragment = "ollin_clip_fragment"
+        clearKey.blend = .normal
+        clearKey.isClipWrite = true
+        guard let clear = try? pipeline(clearKey) else { return }
+        encoder.setRenderPipelineState(clear)
+        encoder.setDepthStencilState(clipDepthStencilState(ClipStateKey(depth: .always, stencil: .coatClear)))
+        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertexCount)
+    }
+
     func bindPaint(_ shader: Shader, resolution: SIMD2<Float>, into encoder: MTLRenderCommandEncoder) {
         var u = OllinShaderUniforms(
             resolution: resolution,
@@ -3144,6 +3179,11 @@ extension MetalRenderer {
                                       viewProjection: simd_float4x4,
                                       inverseViewProjection: simd_float4x4)? = nil,
                         skippingTransmissive: Bool = false,
+                        // The ground a wet stroke medium drags (the frame drawn once
+                        // more without its wet strokes; `encodeStrokeGroundPass`),
+                        // and the flag that pass itself sets to leave them out.
+                        strokeGround: MTLTexture? = nil,
+                        skippingWetStrokes: Bool = false,
                         target passTarget: RenderTarget? = nil,
                         // The overlay pass draws only the runs a `withOverlay` block
                         // tagged, and every other pass skips them.
@@ -3729,6 +3769,9 @@ extension MetalRenderer {
             // refracted read finds what stands behind the body rather than the body
             // itself. Off (the default) this never fires and the loop is unchanged.
             if skippingTransmissive, batch.isTransmissive { continue }
+            // The wet-ground pre-pass draws the frame with the wet strokes taken
+            // out, so a wet stroke drags what lies under it, never itself.
+            if skippingWetStrokes, batch.medium?.readsGround == true { continue }
             // A clip batch without a stencil attachment can't draw (its pipeline
             // declares the stencil format); skip it, so a failed stencil allocation
             // degrades to unclipped drawing rather than a validation error.
@@ -3741,7 +3784,9 @@ extension MetalRenderer {
                     encodeRetained(handle, reference: batch, drawer: drawer,
                                    loopUniforms: uniforms, into: encoder,
                                    depthFormat: depthFormat, hasStencil: hasStencil, colorFormat: passColorFormat,
-                                   resolution: attachmentSize)
+                                   resolution: attachmentSize,
+                                   strokeGround: strokeGround, skippingWetStrokes: skippingWetStrokes,
+                                   standIn: strip)
                 }
                 continue
             }
@@ -3838,6 +3883,9 @@ extension MetalRenderer {
                batch.kind == .sdf || batch.kind == .triangles || batch.kind == .fringe {
                 guard let paint = paintPipeline(for: paintShader, kind: batch.kind, key: pipelineKey) else { continue }
                 state = paint
+            } else if batch.medium != nil, batch.kind == .fringe {
+                guard let medium = try? pipeline(MetalRenderer.mediumKey(pipelineKey)) else { continue }
+                state = medium
             } else {
                 guard let plain = try? pipeline(pipelineKey) else { continue }
                 state = plain
@@ -3913,8 +3961,17 @@ extension MetalRenderer {
                 if let paintShader = batch.paintShader {
                     bindPaint(paintShader, resolution: attachmentSize, into: encoder)
                 }
-                profile.countDraw(batch.kind, count)
-                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
+                // A ribbon run's vertices come in pairs (`ollin_ribbon_vertex`).
+                let drawn = batch.isRibbon ? count / 2 : count
+                profile.countDraw(batch.kind, drawn)
+                if let medium = batch.medium, batch.kind == .fringe {
+                    encodeMediumRun(medium, vertexCount: drawn, key: pipelineKey,
+                                    ground: strokeGround, standIn: strip, pixelScale: uniforms.pixelScale,
+                                    hasStencil: hasStencil, clipLevel: batch.clipLevel,
+                                    depthTested: depthFormat != nil && batch.depth != nil, into: encoder)
+                } else {
+                    encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: drawn)
+                }
             case .sdf:
                 let end = next?.instanceStart ?? instances.count
                 let count = end - batch.instanceStart
@@ -4543,7 +4600,12 @@ extension MetalRenderer {
                                 depthFormat: MTLPixelFormat?, hasStencil: Bool,
                                 colorFormat: MTLPixelFormat? = nil,
                                 // The pass's pixel size, a shader paint's `info.resolution`.
-                                resolution: SIMD2<Float> = .zero) {
+                                resolution: SIMD2<Float> = .zero,
+                                // The wet ground and its pre-pass's flag (see `encode`),
+                                // and a texture to bind where there is no ground.
+                                strokeGround: MTLTexture? = nil,
+                                skippingWetStrokes: Bool = false,
+                                standIn: MTLTexture? = nil) {
         let resources = handle.gpuResources(for: device)
         var u = loopUniforms
         if depthFormat != nil { u.clipDepth = reference.depth ?? 0 }
@@ -4562,6 +4624,7 @@ extension MetalRenderer {
         for j in inner.indices {
             let run = inner[j]
             let next = j + 1 < inner.count ? inner[j + 1] : nil
+            if skippingWetStrokes, run.medium?.readsGround == true { continue }
             var key = PipelineKey.forBatch(run.kind, run.blendMode, depth: depthFormat)
             if hasStencil { key.stencilFormat = .stencil8 }
             if let colorFormat { key.colorFormat = colorFormat }
@@ -4572,6 +4635,9 @@ extension MetalRenderer {
                run.kind == .sdf || run.kind == .triangles || run.kind == .fringe {
                 guard let paint = paintPipeline(for: paintShader, kind: run.kind, key: key) else { continue }
                 state = paint
+            } else if run.medium != nil, run.kind == .fringe {
+                guard let medium = try? pipeline(MetalRenderer.mediumKey(key)) else { continue }
+                state = medium
             } else {
                 guard let plain = try? pipeline(key) else { continue }
                 state = plain
@@ -4603,8 +4669,17 @@ extension MetalRenderer {
                 if let paintShader = run.paintShader {
                     bindPaint(paintShader, resolution: resolution, into: encoder)
                 }
-                profile.countDraw(run.kind, count)
-                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
+                let drawn = run.isRibbon ? count / 2 : count
+                profile.countDraw(run.kind, drawn)
+                if let medium = run.medium, run.kind == .fringe {
+                    encodeMediumRun(medium, vertexCount: drawn, key: key,
+                                    ground: strokeGround, standIn: standIn ?? resources.strip,
+                                    pixelScale: u.pixelScale,
+                                    hasStencil: hasStencil, clipLevel: reference.clipLevel,
+                                    depthTested: depthFormat != nil && reference.depth != nil, into: encoder)
+                } else {
+                    encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: drawn)
+                }
             case .sdf:
                 let end = next?.instanceStart ?? handle.sdfInstances.count
                 let count = end - run.instanceStart

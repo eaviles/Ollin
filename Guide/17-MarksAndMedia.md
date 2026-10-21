@@ -6,7 +6,7 @@
 
 <img src="Images/17-MarksAndMedia/Monogram.jpg" alt="The initials OL in navy ink over a spray of gold, inside the pale core of a heart of marbled rings in navy, red, gold, and green, on a combed and feathered marbled sheet framed by a dotted rule" width="560">
 
-A line drawn by hand swells and thins as it answers to speed and pressure. This chapter teaches strokes with a hand in them: width profiles, stroke dynamics, brushes, dashes, and a marbled sheet poured from bent outlines. In the monogram above, a broad nib writes your initials into the pale heart of that sheet. After it comes watercolor, pigment made from one polygon deformed and stacked.
+A line drawn by hand swells and thins as it answers to speed and pressure. This chapter teaches strokes with a hand in them: width profiles, stroke dynamics, brushes, dashes, and a marbled sheet poured from bent outlines. In the monogram above, a broad nib writes your initials into the pale heart of that sheet. After it come two more media. Watercolor is pigment made from one polygon, deformed and stacked. A stroke medium draws a line in a material, from pencil on paper to wet oil.
 
 ## A width that changes along the path: strokeProfile
 
@@ -353,23 +353,51 @@ This is deliberately heavy drawing, since each layer is a full concave fill. Pai
 
 Two more moves open up once the basic pool works. For two pigments that mix instead of one covering the other, build a typed `Watercolor` base per pool. Interleave their layers a few at a time, so overlaps glaze in both directions. And for the grainy look of pigment settling into paper, speckle small translucent circles inside a `withClip` of the pool's own outline. `Examples/Shapes/Watercolor` pours several pools that way, and [Watercolor](../Docs/Generators/Watercolor.md) has the typed base.
 
+## The stroke's own material: media
+
+The monogram's ink lands as one flat color wherever it lands, and so does every stroke before it in this chapter. The tools above decide where ink goes and how much of it. A medium decides what the ink is made of. The same stroke can be graphite on paper, a brush loaded with two paints, or wet paint that drags what lies under it.
+
+### Pencil, chalk, and paint along a stroke: strokeMedium
+
+A **stroke medium** shades a stroke's ribbon one pixel at a time, in the stroke's own coordinates. Each pixel knows how far along the path it sits and where it falls across the width. It is for marks that look made with something: a pencil sketch, a charcoal study, a loaded brush. The approach follows Kenichi Yoneda's notes on the drawing tool behind the exhibition *Etude on Painting*. Each look is written from an older technique. Graphite catching on the paper's tooth comes from Mario Costa Sousa and John Buchanan. The brush made of bristles comes from Steve Strassmann, and paint a brush picks up from William Baxter and colleagues.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/17-MarksAndMedia/StrokeMedia-dark.jpg">
+  <img src="Images/17-MarksAndMedia/StrokeMedia.jpg" alt="One S-curve drawn in eight media. Pencil, charcoal, pastel, and a multicolor pastel each fade from full density to a seventh along the curve by inking fewer grains of the paper, so the light end breaks into specks. A bristle brush streaks red and gold along the path, a dry brush breaks up on the paper's grain, and wet and oil strokes cross a ground half blue and half yellow, dragging the blue into the yellow behind them" width="680">
+</picture>
+
+```swift
+stroke(.black)
+strokeWeight(14)
+strokeMedium(.pencil)
+drawPolyline(points)
+```
+
+It is drawing state like the brush, and `noStrokeMedium()` puts the plain ribbon back. The stroke's color is the pigment, and its alpha is how densely the pigment lands. The four dry panels show what that means. Each is a mark whose opacity falls from full to a seventh along its length. A plain stroke would fade evenly. The pencil instead inks fewer and fewer grains of the paper, so the light end breaks into specks. Pencil, charcoal, and pastel are one renderer at three settings of `.dry(tooth:softness:roughness:)`. The tooth is the size of the paper's grain, and the roughness frays the edge. `.pastel(palette:)` gives each grain one of several colors.
+
+The tooth belongs to the paper, not to the stroke. Two strokes over one spot catch the same grains, the way a second pass of pencil darkens what the first one left. A mark recorded with an opacity response comes out darker where the hand pressed harder.
+
+The bottom row is paint. `.bristles` streaks the stroke's color and a second one along the path, one streak per bristle. `.dryBrush` runs out of paint along its length and catches on the grain where it does. `.wet` mixes each pixel with what lies behind it along the path, most of all near the tail, so the mark drags the ground it crosses. That ground is the frame drawn once more without its wet strokes, so a wet mark never drags itself. `.oil` is wet paint with ridges, lit from the upper left.
+
+A translucent medium mark lays one coat. Where a loop crosses itself, the crossing reads as the rest of the loop does, and a second mark still layers over the first. A medium is raster only. `--export-svg` writes the stroke as the flat ribbon, the line a plotter would draw. [`Examples/Shapes/ShadedStrokes`](../Examples/Shapes/ShadedStrokes/Sketch.swift) lets you draw in each medium with the pointer, and [Marks](../Docs/Drawing/Marks.md#media) has every setting.
+
 ## Where this comes from
 
 Stroke dynamics follow the brush engines of digital painting, which turn how fast a hand moves into how heavy a mark it leaves. Krita and Procreate offer it as a speed setting, and Steve Ruiz's perfect-freehand library estimates pressure from how far apart the points land. The speed a mark measures here is smoothed by the 1€ filter of Géry Casiez, Nicolas Roussel, and Daniel Vogel. The broad nib a stylus leans across is the calligrapher's edged pen, far older than any tablet. The monogram's letters are Hershey Sans. It descends from the single-line faces Allen Hershey digitized in the late 1960s for a plotter to write. [Chapter 8](08-Words.md) tells that story.
 
-The marbling equations are Aubrey Jaffer's closed-form model of a craft that predates all of it. The watercolor after the monogram names its own source. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The marbling equations are Aubrey Jaffer's closed-form model of a craft that predates all of it. The watercolor and the stroke media after the monogram name their own sources. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
 - [Stroke profiles](../Docs/Drawing/Drawing.md#strokeProfile): `.taper`, `.ramp`, `.nib` and `.values` with every argument, the by-hand closure form, which primitives honor a profile, and what vector export writes.
 - [Dashed strokes](../Docs/Drawing/Drawing.md#strokeDash): the pattern and its phase, dots from zero-length dashes, what the cut does to a profile, a brush, and a gradient, which shapes hand their outline over, and what vector export writes.
-- [Marks](../Docs/Drawing/Marks.md): `StrokeMark`, the response and dynamics types, what the smoothing and spacing arguments do, building a mark without a pointer, the brushes, and what survives vector export.
+- [Marks](../Docs/Drawing/Marks.md): `StrokeMark`, the response and dynamics types, what the smoothing and spacing arguments do, shaping the press, building a mark without a pointer, the brushes, the stroke media, and what survives vector export.
 - [The stylus](../Docs/Helpers/Input.md#stylus): the lean, the barrel turn, the eraser end, and hovering, read beside `pressure`.
 - [Stroke fonts](../Docs/Drawing/Text.md#strokefont): the single-line pen font the monogram is written in, and loading more of them.
 - [Marbling](../Docs/Generators/Marbling.md): the bath, every raking tool, and floating your own outlines as ink.
 - [Watercolor](../Docs/Generators/Watercolor.md): the sugar, the typed base, and how the deformation runs.
 - The Mohamedi homage [`Diagonals`](../Examples/Recreations/NasreenMohamedi/Diagonals/Sketch.swift): a chevron is one polyline through its corner with a `.values` profile. It is full width at the corner and a fraction of it at each tip. That is the mark a loaded ruling pen leaves as its ink runs out. Its `--export-svg` writes each chevron as the filled outline of the stroke rather than a line with one width, so the thinning reaches the paper. It writes every hairline of its wakes and fans as a plain line.
-- Worked examples: [`Examples/Shapes/StrokeProfiles`](../Examples/Shapes/StrokeProfiles/Sketch.swift), [`Examples/Shapes/Brushwork`](../Examples/Shapes/Brushwork/Sketch.swift), [`Examples/Input/Pen`](../Examples/Input/Pen/Sketch.swift), [`Examples/Shapes/Brushes`](../Examples/Shapes/Brushes/Sketch.swift), [`Examples/Shapes/DashedStrokes`](../Examples/Shapes/DashedStrokes/Sketch.swift), [`Examples/Patterns/Marbling`](../Examples/Patterns/Marbling/Sketch.swift), and [`Examples/Shapes/Watercolor`](../Examples/Shapes/Watercolor/Sketch.swift).
+- Worked examples: [`Examples/Shapes/StrokeProfiles`](../Examples/Shapes/StrokeProfiles/Sketch.swift), [`Examples/Shapes/Brushwork`](../Examples/Shapes/Brushwork/Sketch.swift), [`Examples/Input/Pen`](../Examples/Input/Pen/Sketch.swift), [`Examples/Shapes/Brushes`](../Examples/Shapes/Brushes/Sketch.swift), [`Examples/Shapes/DashedStrokes`](../Examples/Shapes/DashedStrokes/Sketch.swift), [`Examples/Patterns/Marbling`](../Examples/Patterns/Marbling/Sketch.swift), [`Examples/Shapes/Watercolor`](../Examples/Shapes/Watercolor/Sketch.swift), and [`Examples/Shapes/ShadedStrokes`](../Examples/Shapes/ShadedStrokes/Sketch.swift).
 
 ---
 

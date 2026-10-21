@@ -58,9 +58,9 @@ extension Drawer {
             noteOnce("drawPolyline(_:colors:) takes one color per point (got \(given.count) for \(points.count) points); drawing the line in the stroke color.")
             perPoint = nil
         }
-        if strokeDashPattern != nil || strokeBrushShape != nil
+        if strokeDashPattern != nil || strokeBrushShape != nil || strokeMediumShape != nil
             || !strokeProfileShape.isUniform {
-            noteOnce("strokeDash, strokeBrush, and strokeProfile shape 2D strokes; a line with 3D points draws whole, at one weight.")
+            noteOnce("strokeDash, strokeBrush, strokeMedium, and strokeProfile shape 2D strokes; a line with 3D points draws whole, plain, at one weight.")
         }
 
         let viewport = currentTarget.map { SIMD2<Float>(Float($0.width), Float($0.height)) } ?? canvas

@@ -58,6 +58,15 @@ typedef simd_ushort4 OllinHalf4;
 // the signed distance to the shape's edge in its own units, and `aa.y` is the
 // stroke's opacity profile (1 when none), the shader's own alpha standing in for
 // the paint alpha. The stride stays 32 either way.
+//
+// A ribbon run (a stroke drawn under a shader paint or a stroke medium) takes two
+// slots per vertex, read by `ollin_ribbon_vertex` as one 64-byte vertex: the first
+// slot is the vertex as above, the second carries the ribbon's own coordinates at
+// the same position, `aa` = (arcLength, across) and `color` = (halfWidth, seed,
+// along, length): the distance along the path in its own units, the signed place
+// across the width as a fraction of the half-width (+-1 at the true edge), the
+// local half-width, a per-stroke seed, the 0...1 fraction along, and the path's
+// whole length. Every other run keeps one slot, so a plain stroke is unchanged.
 typedef struct {
     simd_float2 position;   // sketch-space, points, top-left origin, y-down
     simd_float2 aa;         // fringe pipeline: x = AA coverage 0…1, y = opacity (shader paint); ignored elsewhere
@@ -1721,6 +1730,33 @@ typedef struct {
     unsigned int frame;         // frames drawn so far
     unsigned int paramCount;    // number of valid user floats in the params buffer
 } OllinShaderUniforms;
+
+// A stroke medium (`strokeMedium(_:)`): the settings the medium fragment
+// (`ollin_medium_fragment`) shades a ribbon with, bound at fragment buffer 0 for
+// each medium run. A medium run's vertices come in pairs (see
+// `ollin_ribbon_vertex`): the first is the stroke's ordinary fringe vertex, the
+// second carries the ribbon's own coordinates. `kind` is `StrokeMedium.Kind`'s
+// raw value. `second.r` below 0 means "no second pigment given" (a deeper shade
+// of the stroke's own is used). Stride 208 (16-aligned).
+#define OLLIN_MEDIUM_PALETTE 8
+typedef struct {
+    unsigned int kind;          // 1 dry, 2 bristles, 3 dry brush, 4 wet, 5 oil
+    unsigned int paletteCount;  // dry: colors in `palette` (0 = the stroke's own)
+    unsigned int hasGround;     // wet / oil: 1 when the ground texture holds the frame
+    float streaks;              // bristles / dry brush / oil: streaks across the width
+    float tooth;                // dry: tooth cell in canvas points; dry brush: finest grain
+    float softness;             // dry: threshold softness, 0...1
+    float roughness;            // dry: edge roughness, a fraction of the half-width
+    float amount;               // bristles: second share; dry brush: dryness; wet / oil: drag
+    float reach;                // wet / oil: drag distance in canvas points
+    float relief;               // oil: ridge height, 1 the default
+    float seed;                 // the medium's own seed
+    float _mediumPad0;
+    simd_float2 pixelScale;     // attachment pixels per canvas point (x, y)
+    simd_float2 _mediumPad1;
+    simd_float4 second;         // bristles: the second pigment, straight sRGB + alpha
+    simd_float4 palette[OLLIN_MEDIUM_PALETTE];  // dry: tooth-cell colors, straight sRGB + alpha
+} OllinStrokeMedium;
 
 // Per-frame parameters for the strange-attractor step (`AttractorFlow`), packed by
 // the CPU and bound at buffer index 11. Every particle follows the same velocity field

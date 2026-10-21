@@ -413,15 +413,15 @@ c688967ded07  Docs/Drawing/LayerStyles.md:88  value of type '@MainActor (@escapi
 dc108f2622c5  Docs/Drawing/Looks.md:31  'module' is inaccessible due to 'internal' protection level
 58686098885f  Docs/Drawing/Looks.md:72  'module' is inaccessible due to 'internal' protection level
 a50c1387030b  Docs/Drawing/Looks.md:97  cannot find 'look' in scope
-58ade7b032da  Docs/Drawing/Marks.md:122  expected ',' separator
-c54c9b002aa9  Docs/Drawing/Marks.md:138  cannot find 'mark' in scope
-e03e09af2807  Docs/Drawing/Marks.md:152  cannot find 'strokes' in scope
-5680665f2a0b  Docs/Drawing/Marks.md:165  expected ',' separator
-5b71b04018ca  Docs/Drawing/Marks.md:173  cannot find 'mark' in scope
-d71e48938d96  Docs/Drawing/Marks.md:193  cannot find 'mark' in scope
-58c9a0902d7b  Docs/Drawing/Marks.md:208  cannot find 'path' in scope
-6d34b3f5c9bf  Docs/Drawing/Marks.md:231  cannot find 'points' in scope
-95baf2fffa33  Docs/Drawing/Marks.md:265  cannot find 'points' in scope
+cdeeb66dbf45  Docs/Drawing/Marks.md:122  expected ',' separator
+c54c9b002aa9  Docs/Drawing/Marks.md:142  cannot find 'mark' in scope
+e03e09af2807  Docs/Drawing/Marks.md:156  cannot find 'strokes' in scope
+5680665f2a0b  Docs/Drawing/Marks.md:169  expected ',' separator
+5b71b04018ca  Docs/Drawing/Marks.md:177  cannot find 'mark' in scope
+d71e48938d96  Docs/Drawing/Marks.md:197  cannot find 'mark' in scope
+58c9a0902d7b  Docs/Drawing/Marks.md:221  cannot find 'path' in scope
+6d34b3f5c9bf  Docs/Drawing/Marks.md:244  cannot find 'points' in scope
+95baf2fffa33  Docs/Drawing/Marks.md:278  cannot find 'points' in scope
 2ef161a02aa2  Docs/Drawing/Marks.md:57  initializer requires a body
 7de869ba2111  Docs/Drawing/Marks.md:74  unary operator cannot be separated from its operand
 470cc29b31b7  Docs/Drawing/Marks.md:96  cannot convert value of type '()' to expected argument type 'StrokeResponse'

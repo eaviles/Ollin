@@ -286,6 +286,7 @@ The capabilities all assume a few ideas. These seven pages in the reference expl
 | Dashed strokes | `strokeDash(_:)`: a line with gaps, the pattern walked along the path so corners and curves keep their rhythm | [A line with gaps: strokeDash](17-MarksAndMedia.md#a-line-with-gaps-strokedash) | [Drawing](../Docs/Drawing/Drawing.md#strokeDash) |
 | Paper marbling | Ink floated on a bath and raked: drops, tines, combs, and vortices, each a transform of vector outlines | [Ink on water: marbling](17-MarksAndMedia.md#ink-on-water-marbling) | [Marbling](../Docs/Generators/Marbling.md) |
 | Watercolor | Pigment from one polygon, deformed and stacked at low opacity: dense cores and uneven edges | [Pigment from a polygon: drawWatercolor](17-MarksAndMedia.md#pigment-from-a-polygon-drawwatercolor) | [Watercolor](../Docs/Generators/Watercolor.md) |
+| Stroke media | `strokeMedium(_:)`: a stroke shaded along its length in a material, from pencil, charcoal, and pastel on the paper's tooth to bristles, a dry brush, wet paint that drags the ground, and oil lit by its relief, one coat per mark | [Pencil, chalk, and paint along a stroke: strokeMedium](17-MarksAndMedia.md#pencil-chalk-and-paint-along-a-stroke-strokemedium) | [Marks](../Docs/Drawing/Marks.md#media) |
 
 ## Part IV: Pixels and light
 

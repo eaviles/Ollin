@@ -920,7 +920,11 @@ extension MetalRenderer {
         case .paint:
             // Where the pixel is on the canvas, how far it is from the shape's edge
             // (its own units, negative inside), and how far along a stroke (0...1).
+            // On a stroke, the ribbon's own coordinates too: the distance along
+            // the path in its units, the signed place across the width (+-1 at
+            // the true edge), and the local half-width.
             layerFields = "    float2 position; float distance; float along;\n"
+                + "    float arcLength; float across; float halfWidth;\n"
             sampleReaders = ""
         case .filter:
             layerFields = "    texture2d<float> in0; sampler in0samp;\n"
@@ -1121,7 +1125,9 @@ extension MetalRenderer {
     private static let paintWrapperTail = """
     static inline ShaderInfo ollin_paint_info(constant float4 *params,
                                               constant OllinShaderUniforms &u,
-                                              float2 position, float distance, float along) {
+                                              float2 position, float distance, float along,
+                                              float arcLength = 0.0, float across = 0.0,
+                                              float halfWidth = 0.0) {
         ShaderInfo info;
         info.resolution = u.resolution;
         info.mouse = u.mouse;
@@ -1133,6 +1139,9 @@ extension MetalRenderer {
         info.position = position;
         info.distance = distance;
         info.along = along;
+        info.arcLength = arcLength;
+        info.across = across;
+        info.halfWidth = halfWidth;
         return info;
     }
     // A fill on the triangle path: `shade` in place of the vertex color.
@@ -1145,11 +1154,13 @@ extension MetalRenderer {
     }
     // A stroke on the fringe path: the shader's alpha times the opacity profile
     // and the perceptual coverage, the two channels kept apart as the plain
-    // fringe fragment keeps them.
-    fragment float4 ollin_paint_fringe_fragment(FringeVertexOut in [[stage_in]],
+    // fringe fragment keeps them. Its vertices come in pairs (`ollin_ribbon_vertex`),
+    // the second carrying the ribbon's own coordinates.
+    fragment float4 ollin_paint_fringe_fragment(RibbonVertexOut in [[stage_in]],
                                                 constant float4 *ollin_params [[buffer(0)]],
                                                 constant OllinShaderUniforms &ollin_u [[buffer(1)]]) {
-        ShaderInfo info = ollin_paint_info(ollin_params, ollin_u, in.canvas, in.color.w, in.color.z);
+        ShaderInfo info = ollin_paint_info(ollin_params, ollin_u, in.canvas, in.color.w, in.color.z,
+                                           in.arcLength, in.across, in.halfWidth);
         float4 c = shade(in.color.xy, info);
         float a = c.a * in.opacity * perceptualCoverage(clamp(in.coverage, 0.0, 1.0));
         return float4(srgbToLinear(c.rgb), a);
@@ -1182,7 +1193,11 @@ extension MetalRenderer {
         }
         float4 strokePaint;
         if (in.strokeKind == 5u) {
-            ShaderInfo info = ollin_paint_info(ollin_params, ollin_u, in.canvas, edge, pathT);
+            // An analytic outline has no path to measure along, so its arc length
+            // reads 0; across is the edge distance over the half-width.
+            float halfStroke = max(in.strokeWidth * 0.5, 1e-6);
+            ShaderInfo info = ollin_paint_info(ollin_params, ollin_u, in.canvas, edge, pathT,
+                                               0.0, edge / halfStroke, in.strokeWidth * 0.5);
             float4 c = shade(uv, info);
             strokePaint = float4(srgbToLinear(c.rgb), c.a);
         } else {
@@ -1216,7 +1231,7 @@ extension MetalRenderer {
         let vertex: String, fragment: String
         switch kind {
         case .sdf: (vertex, fragment) = ("ollin_sdf_vertex", "ollin_paint_sdf_fragment")
-        case .fringe: (vertex, fragment) = ("ollin_fringe_vertex", "ollin_paint_fringe_fragment")
+        case .fringe: (vertex, fragment) = ("ollin_ribbon_vertex", "ollin_paint_fringe_fragment")
         default: (vertex, fragment) = ("ollin_vertex", "ollin_paint_fragment")
         }
         do {
@@ -1299,7 +1314,7 @@ extension MetalRenderer {
     /// here and declaring its dependencies in the file itself, rather than working out
     /// which slot in a hand-kept sequence it belongs in. The single `Shaders.metal`
     /// split into these once it crossed ~2,000 lines; the renderer never assumes one file.
-    static let shaderSourceNames = ["OllinShaderLib", "Shader3D", "ShaderCaustics", "ShaderCombinator", "ShaderCombine", "ShaderCore", "ShaderEffects", "ShaderFlare", "ShaderFourier", "ShaderGI", "ShaderIBL", "ShaderOcean", "ShaderPathTrace", "ShaderPatterns", "ShaderRadiance", "ShaderRaymarch", "ShaderShapes", "ShaderSim", "ShaderStrands", "ShaderVolume"]
+    static let shaderSourceNames = ["OllinShaderLib", "Shader3D", "ShaderCaustics", "ShaderCombinator", "ShaderCombine", "ShaderCore", "ShaderEffects", "ShaderFlare", "ShaderFourier", "ShaderGI", "ShaderIBL", "ShaderOcean", "ShaderPathTrace", "ShaderPatterns", "ShaderRadiance", "ShaderRaymarch", "ShaderShapes", "ShaderSim", "ShaderStrands", "ShaderStrokes", "ShaderVolume"]
 
     /// Assemble the built-in library out of `roots`, resolving each segment's declared
     /// includes through `load`. The result holds every file once, each after everything

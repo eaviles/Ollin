@@ -1020,7 +1020,13 @@ final class MetalRenderer {
     /// Only a stencil-carrying pass ever sets one, so the no-clip paths never look here.
     struct ClipStateKey: Hashable {
         enum Depth { case always, test, testNoWrite }
-        enum Stencil { case equal, push, pop }
+        /// `equal`/`push`/`pop` are the clip levels. `coat` is a stroke medium's
+        /// one coat: the sample must sit at the clip level with the top bit clear,
+        /// and the first triangle of the stroke to reach it sets that bit, so the
+        /// stroke's later triangles over the same sample are rejected.
+        /// `coatClear` lowers the bit again under the same triangles, so the next
+        /// stroke starts clear and the clip levels below are never touched.
+        enum Stencil { case equal, push, pop, coat, coatClear }
         var depth: Depth
         var stencil: Stencil
     }
@@ -1045,6 +1051,14 @@ final class MetalRenderer {
         case .equal: s.depthStencilPassOperation = .keep
         case .push:  s.depthStencilPassOperation = .incrementClamp
         case .pop:   s.depthStencilPassOperation = .decrementClamp
+        case .coat:
+            s.depthStencilPassOperation = .invert
+            s.writeMask = MetalRenderer.coatStencilBit
+        case .coatClear:
+            s.stencilCompareFunction = .always
+            s.depthStencilPassOperation = .zero
+            s.depthFailureOperation = .zero
+            s.writeMask = MetalRenderer.coatStencilBit
         }
         d.frontFaceStencil = s
         d.backFaceStencil = s
@@ -1052,6 +1066,20 @@ final class MetalRenderer {
         clipDepthStencilStates[key] = made
         return made
     }
+
+    /// The pipeline a stroke medium's run draws through: the pass's key for its
+    /// fringe batch (blend, depth, stencil, color format, sample count) with the
+    /// ribbon's vertex stage and the medium fragment.
+    static func mediumKey(_ key: PipelineKey) -> PipelineKey {
+        var k = key
+        k.vertex = "ollin_ribbon_vertex"
+        k.fragment = "ollin_medium_fragment"
+        return k
+    }
+
+    /// The stencil bit a stroke medium's coat claims (see `ClipStateKey.Stencil.coat`).
+    /// Clip levels count up from 0 in the bits below it and never reach it.
+    static let coatStencilBit: UInt32 = 0x80
 
     /// Cached MSAA stencil attachments for clipping passes, one per size and storage
     /// (see `clipStencilTexture`). Cleared by every pass and never stored, so reuse
@@ -1370,6 +1398,14 @@ final class MetalRenderer {
     var sceneBehindDepthResolveTex: MTLTexture?
     var sceneBehindResolveTex: MTLTexture?
     var sceneBehindSize = (width: 0, height: 0)
+
+    /// The wet-ground pre-pass targets (`encodeStrokeGroundPass`): the frame drawn
+    /// once more without its wet strokes, resolved for the wet stroke media to read.
+    /// Cached by size, rewritten whole each frame a wet stroke is drawn.
+    var strokeGroundMSAATex: MTLTexture?
+    var strokeGroundDepthTex: MTLTexture?
+    var strokeGroundResolveTex: MTLTexture?
+    var strokeGroundSize = (width: 0, height: 0)
 
     /// The hidden layer of the canvas depth of field (`encodeHiddenLayerPass`): the
     /// 3D scene drawn once more keeping only what lies behind the first layer, into
@@ -2364,7 +2400,7 @@ final class MetalRenderer {
         }
         // A clipping frame (`withClip` on the canvas) adds a stencil attachment the
         // same lazy way; an unclipped frame allocates none and stays byte-identical.
-        let passHasStencil = attachClipStencil(to: geomPass, active: drawer.usesClipStencil,
+        let passHasStencil = attachClipStencil(to: geomPass, active: drawer.usesCanvasStencil,
                                                width: renderWidth, height: renderHeight,
                                                storage: storage)
 
@@ -2527,6 +2563,17 @@ final class MetalRenderer {
             reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
             halfResField: halfResField, halfResFieldShadow: halfResFieldShadow,
             contactShadow: contactShadow, gi: gi, caustics: caustics)
+        // The ground a wet stroke drags: the frame without its wet strokes. nil,
+        // and nothing is drawn twice, when no stroke reads it.
+        let strokeGround = encodeStrokeGroundPass(
+            drawer, into: commandBuffer, viewport: viewport, buffers: buffers,
+            width: renderWidth, height: renderHeight,
+            shadowMap: renderedShadow.twoD, shadowCube: renderedShadow.cube,
+            shadowAccel: renderedShadow.accel,
+            reflectAccel: renderedShadow.reflectAccel,
+            reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
+            halfResField: halfResField, halfResFieldShadow: halfResFieldShadow,
+            contactShadow: contactShadow, gi: gi, caustics: caustics)
 
         guard let geomEncoder = countedEncoder(commandBuffer, geomPass, caller: "canvas") else {
             returnFrameSlot()   // nothing encoded; hand the slot back
@@ -2567,6 +2614,7 @@ final class MetalRenderer {
                gi: gi,
                caustics: caustics,
                sceneBehind: sceneBehind,
+               strokeGround: strokeGround,
                taaJitter: taaJitter)
         geomEncoder.endEncoding()
         // The hidden layer for the depth of field: the scene drawn once more
@@ -2720,7 +2768,7 @@ final class MetalRenderer {
         }
         // Clipping works while accumulating too: the stencil is per-frame (cleared
         // each pass) even though the color pile persists.
-        let passHasStencil = attachClipStencil(to: pass, active: drawer.usesClipStencil,
+        let passHasStencil = attachClipStencil(to: pass, active: drawer.usesCanvasStencil,
                                                width: width, height: height,
                                                storage: attachmentStorage(for: drawer, target: nil))
         encodeCompute(drawer, into: commandBuffer)   // sim steps before the render pass
@@ -2730,6 +2778,25 @@ final class MetalRenderer {
         // frame through another path left behind.
         _ = encodeLightCull(drawer, into: commandBuffer, renderWidth: width, renderHeight: height,
                             frameIndex: frameIndex)
+        // The ground a wet stroke drags: the pile so far (when this frame keeps it)
+        // plus this frame's other marks.
+        let strokeGround = encodeStrokeGroundPass(
+            drawer, into: commandBuffer, viewport: viewport,
+            buffers: GeometryBuffers(
+                triangle: vertexBuffer(at: frameIndex, for: drawer.vertices.count),
+                sdf: sdfBuffer(at: frameIndex, for: drawer.sdfInstances.count),
+                image: imageBuffer(at: frameIndex, for: drawer.imageVertices.count),
+                glyph: glyphBuffer(at: frameIndex, for: drawer.glyphVertices.count),
+                point: pointBuffer(at: frameIndex, for: drawer.points.count),
+                mesh: meshBuffer(at: frameIndex, for: tracedMeshVertexCount(drawer)),
+                sdfGroup: sdfGroupBuffer(at: frameIndex, for: drawer.sdfGroups.count),
+                sdfNode: sdfNodeBuffer(at: frameIndex, for: drawer.sdfNodes.count),
+                sdf3DGroup: sdf3DGroupBuffer(at: frameIndex, for: drawer.sdf3DGroups.count),
+                sdf3DNode: sdf3DNodeBuffer(at: frameIndex, for: drawer.sdf3DNodes.count),
+                line: lineBuffer(at: frameIndex, for: drawer.lineVertexCount)),
+            width: width, height: height,
+            pile: pass.colorAttachments[0].loadAction == .load ? accumTarget : nil,
+            colorFormat: accumCanvasFormat)
         guard let encoder = countedEncoder(commandBuffer, pass, caller: "canvas (accumulating)") else {
             returnFrameSlot()      // nothing encoded; hand the slot back
             return
@@ -2756,6 +2823,7 @@ final class MetalRenderer {
                sdf3DNodeBuffer: sdf3DNodeBuffer(at: frameIndex, for: drawer.sdf3DNodes.count),
                depthFormat: nil,   // 3D + accumulation isn't supported in M1
                stencil: passHasStencil,
+               strokeGround: strokeGround,
                canvasColorFormat: accumCanvasFormat)
         encoder.endEncoding()
         // The overlay goes over the pile without joining it: what is shown is a
@@ -2853,11 +2921,29 @@ final class MetalRenderer {
         profile.resetCounts()
         profile.batches = drawer.batches.count
         let encodeStart = CACurrentMediaTime()
-        let passHasStencil = attachClipStencil(to: pass, active: drawer.usesClipStencil,
+        let passHasStencil = attachClipStencil(to: pass, active: drawer.usesCanvasStencil,
                                                width: width, height: height,
                                                storage: attachmentStorage(for: drawer, target: nil))
         encodeCompute(drawer, into: commandBuffer)   // sim steps before the render pass
         prepareVolumes(drawer, into: commandBuffer)  // the clouds' grids, lit, ahead of every pass
+        // The ground a wet stroke drags (see the live path).
+        let strokeGround = encodeStrokeGroundPass(
+            drawer, into: commandBuffer, viewport: viewport,
+            buffers: GeometryBuffers(
+                triangle: exportVertexBuffer(for: drawer.vertices.count),
+                sdf: exportSDFBuffer(for: drawer.sdfInstances.count),
+                image: exportImageBuffer(for: drawer.imageVertices.count),
+                glyph: exportGlyphBuffer(for: drawer.glyphVertices.count),
+                point: exportPointBuffer(for: drawer.points.count),
+                mesh: exportMeshBuffer(for: tracedMeshVertexCount(drawer)),
+                sdfGroup: exportSDFGroupBuffer(for: drawer.sdfGroups.count),
+                sdfNode: exportSDFNodeBuffer(for: drawer.sdfNodes.count),
+                sdf3DGroup: exportSDF3DGroupBuffer(for: drawer.sdf3DGroups.count),
+                sdf3DNode: exportSDF3DNodeBuffer(for: drawer.sdf3DNodes.count),
+                line: exportLineBuffer(for: drawer.lineVertexCount)),
+            width: width, height: height,
+            pile: pass.colorAttachments[0].loadAction == .load ? accumTarget : nil,
+            colorFormat: accumCanvasFormat)
         guard let encoder = countedEncoder(commandBuffer, pass, caller: "canvas (accumulating, headless)") else { return nil }
 
         encode(drawer, viewport: viewport, attachment: SIMD2<Float>(Float(width), Float(height)), into: encoder,
@@ -2874,6 +2960,7 @@ final class MetalRenderer {
                sdf3DNodeBuffer: exportSDF3DNodeBuffer(for: drawer.sdf3DNodes.count),
                depthFormat: nil,   // 3D + accumulation isn't supported in M1
                stencil: passHasStencil,
+               strokeGround: strokeGround,
                canvasColorFormat: accumCanvasFormat)
         encoder.endEncoding()
 
@@ -3141,7 +3228,7 @@ final class MetalRenderer {
             }
         }
         // A clipping frame adds a stencil attachment, so exports clip like the window.
-        let passHasStencil = attachClipStencil(to: pass, active: drawer.usesClipStencil,
+        let passHasStencil = attachClipStencil(to: pass, active: drawer.usesCanvasStencil,
                                                width: width, height: height, storage: storage)
 
         let bytesPerRow = outWidth * displayBytesPerPixel
@@ -3289,6 +3376,18 @@ final class MetalRenderer {
             halfResField: halfResField, halfResFieldShadow: halfResFieldShadow,
             contactShadow: contactShadow, gi: gi, caustics: caustics,
             pathTraced: pathTraced)
+        // The ground a wet stroke drags, once outside the sample loop like the
+        // scene behind the glass: screen-space and unjittered.
+        let strokeGround = encodeStrokeGroundPass(
+            drawer, into: commandBuffer, viewport: viewport, buffers: buffers,
+            width: width, height: height,
+            shadowMap: renderedShadow.twoD, shadowCube: renderedShadow.cube,
+            shadowAccel: renderedShadow.accel,
+            reflectAccel: renderedShadow.reflectAccel,
+            reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
+            halfResField: halfResField, halfResFieldShadow: halfResFieldShadow,
+            contactShadow: contactShadow, gi: gi, caustics: caustics,
+            pathTraced: pathTraced)
 
         // Temporal AA, historyless: render the geometry N times under the fixed
         // jitter sequence and average within this one frame, the deterministic
@@ -3333,6 +3432,7 @@ final class MetalRenderer {
                        caustics: caustics,
                        pathTraced: pathTraced,
                        sceneBehind: sceneBehind,
+                       strokeGround: strokeGround,
                        taaJitter: jitter,
                        taaPass: (s, taaSamples))
                 encoder.endEncoding()
@@ -3418,7 +3518,8 @@ final class MetalRenderer {
                    gi: gi,
                    caustics: caustics,
                    pathTraced: pathTraced,
-                   sceneBehind: sceneBehind)
+                   sceneBehind: sceneBehind,
+                   strokeGround: strokeGround)
             encoder.endEncoding()
             // The hidden layer for the depth of field: the scene drawn once more
             // keeping only what lies behind the first layer, over the pixels the near
@@ -3658,7 +3759,7 @@ final class MetalRenderer {
                     }
                 }
             }
-            let passHasStencil = attachClipStencil(to: pass, active: drawer.usesClipStencil,
+            let passHasStencil = attachClipStencil(to: pass, active: drawer.usesCanvasStencil,
                                                    width: width, height: height, storage: storage)
             guard let cb = commandQueue.makeCommandBuffer() else { continue }
             encodeCompute(drawer, into: cb)

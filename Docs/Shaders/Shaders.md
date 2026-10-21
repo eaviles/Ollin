@@ -115,7 +115,7 @@ drawStar(300, 300, 120, 50, points: 6)
 
 ## `ShaderInfo` and params
 
-As well as the per-frame fields (and, under a paint, `info.position`, `info.distance`, and `info.along`), you can pass your own floats and read them with `param(info, i)`:
+As well as the per-frame fields (and, under a paint, `info.position`, `info.distance`, and `info.along`, plus on a stroke `info.arcLength`, `info.across`, and `info.halfWidth`), you can pass your own floats and read them with `param(info, i)`:
 
 ```swift
 let warp = Shader(metalSource, params: [0.3, 1.2, 6.0])
@@ -227,7 +227,7 @@ To try a shader without launching a sketch at all, hand the file to [`ollin chec
 
 ### See also
 
-- [A shader as paint](../Drawing/Color.md#shader-paint): `fill(shader)` / `stroke(shader)`, the shape-box `uv`, and `info.position` / `info.distance` / `info.along`
+- [A shader as paint](../Drawing/Color.md#shader-paint): `fill(shader)` / `stroke(shader)`, the shape-box `uv`, and `info.position` / `info.distance` / `info.along`, with a stroke's `info.arcLength` / `info.across` / `info.halfWidth`
 - [Checking a shader](../Tools/ShaderCheck.md): compile a `.metal` file from the command line and see what it reads
 - [Layered effects](../Drawing/Effects.md): the off-screen layers, filters, and `compose { }` your shader plugs into
 - [Compute & GPU particles](./Compute.md): runtime-compiled compute kernels, the sibling page for buffer and texture work

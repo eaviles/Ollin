@@ -2520,6 +2520,7 @@ open class Sketch: Sendable
   func noStroke()
   func noStrokeBrush()
   func noStrokeDash()
+  func noStrokeMedium()
   func noStrokeProfile()
   func noSymmetry()
   func noTemporalAntialiasing()
@@ -2687,6 +2688,7 @@ open class Sketch: Sendable
   func strokeDash(_: StrokeDash)
   func strokeDash(_: [Double], phase: Double = default)
   func strokeJoin(_: StrokeJoin)
+  func strokeMedium(_: StrokeMedium)
   func strokeProfile(_: (Double) -> Double)
   func strokeProfile(_: StrokeProfile)
   func strokeWeight(_: Double, in: StrokeUnits = default)
@@ -6837,10 +6839,27 @@ struct StrokeMark: Sendable
   var dynamics: StrokeDynamics { get set }
   var isEmpty: Bool { get }
   var length: Double { get }
+  var maxWidthChange: Double? { get set }
   var minSpacing: Double { get set }
   var positions: [Vector2] { get }
+  var pressureCurve: Double { get set }
+  var pressureDeadZone: Double { get set }
   var samples: [StrokeMark.Sample] { get }
   var smoothing: Double { get set }
+struct StrokeMedium: Equatable, Hashable, Sendable
+  static func bristles(_: Color? = default, streaks: Int = default, amount: Double = default, seed: Int = default) -> StrokeMedium
+  static func dry(tooth: Double, softness: Double = default, roughness: Double = default, palette: [Color] = default, seed: Int = default) -> StrokeMedium
+  static func dryBrush(grain: Double = default, amount: Double = default, streaks: Int = default, seed: Int = default) -> StrokeMedium
+  static func oil(amount: Double = default, reach: Double = default, relief: Double = default, streaks: Int = default, seed: Int = default) -> StrokeMedium
+  static func pastel(palette: [Color], seed: Int = default) -> StrokeMedium
+  static func wet(amount: Double = default, reach: Double = default) -> StrokeMedium
+  static let bristles: StrokeMedium
+  static let charcoal: StrokeMedium
+  static let dryBrush: StrokeMedium
+  static let oil: StrokeMedium
+  static let pastel: StrokeMedium
+  static let pencil: StrokeMedium
+  static let wet: StrokeMedium
 struct StrokeProfile: Sendable
   func callAsFunction(_: Double, direction: Vector2 = default) -> Double
   init(_: (Double) -> Double)

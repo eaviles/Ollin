@@ -61,8 +61,10 @@ extension Drawer {
     /// With no dash on, `body` runs as it is and the outline is never built.
     func withDashedOutline(_ outline: @autoclosure () -> [Vector2], anchor: Vector2,
                            _ body: () -> Void) {
-        guard let dash = strokeDashPattern, !dash.isSolid,
-              let stroke = strokePaint, strokeWidth > 0 else {
+        // A medium shades a ribbon, which the analytic outline is not, so it takes
+        // the same route a dash does.
+        let wantsRibbon = (strokeDashPattern.map { !$0.isSolid } ?? false) || strokeMediumShape != nil
+        guard wantsRibbon, let stroke = strokePaint, strokeWidth > 0 else {
             body()
             return
         }
@@ -821,6 +823,9 @@ extension Drawer {
         // rest of the catalog keeps its continuous band and says so once.
         if hasStroke, let dash = strokeDashPattern, !dash.isSolid {
             noteOnce("strokeDash(_:) applies to stroked paths and to the circle, ellipse, rect, triangle, ngon, star, trapezoid, and parallelogram outlines; \(shape) draws its outline as a continuous stroke.")
+        }
+        if hasStroke, strokeMediumShape != nil {
+            noteOnce("strokeMedium(_:) applies to stroked paths and to the circle, ellipse, rect, triangle, ngon, star, trapezoid, and parallelogram outlines; \(shape) draws its outline as a plain stroke.")
         }
         // Hollow mode applies only to region shapes the fragment can onion; the
         // round-dot point path shares the `.ellipse` tag, so it opts out here.
