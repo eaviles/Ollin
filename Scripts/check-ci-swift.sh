@@ -3,7 +3,8 @@
 # Scripts/check-ci-swift.sh: build the package with the Swift the CI runner
 # compiles with, so a break that only the runner sees is found before a push.
 #
-#   Scripts/check-ci-swift.sh    # every target but the tests, in its own build folder
+#   Scripts/check-ci-swift.sh            # every target but the tests, in its own build folder
+#   Scripts/check-ci-swift.sh --tests    # the tests too, as the runner builds them
 #
 # The desk and the runner run different compilers (6.4 here, the macos-26
 # image's 6.3 there), and the two disagree about which expressions are too
@@ -13,6 +14,9 @@
 # of vector products in Noise.swift (2026-09-16), two map closures in
 # GestureMark.swift (2026-10-21). The newer compiler's long-expression warning
 # flagged none of them, so the reliable check is the older compiler itself.
+# The runner compiles the tests too, and test code is open to the same
+# failure, so `--tests` builds them as well: six to eight minutes cold against
+# three.
 #
 # Needs a swift.org toolchain of the runner's minor under
 # ~/Library/Developer/Toolchains or /Library/Developer/Toolchains (or the one
@@ -29,6 +33,9 @@ emulate -L zsh
 setopt null_glob
 
 runner_swift=6.3
+
+typeset -a build_flags
+[[ "$1" == "--tests" ]] && build_flags=(--build-tests)
 
 toolchain=${OLLIN_CI_TOOLCHAIN:-}
 if [[ -z "$toolchain" ]]; then
@@ -63,4 +70,4 @@ fi
 
 swift="$toolchain/usr/bin/swift"
 echo "ci-swift: $("$swift" --version 2>&1 | head -1), against $sdk"
-SDKROOT="$sdk" "$swift" build --scratch-path .build/ci-swift --sdk "$sdk" -j 4
+SDKROOT="$sdk" "$swift" build $build_flags --scratch-path .build/ci-swift --sdk "$sdk" -j 4
