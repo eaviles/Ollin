@@ -67,6 +67,10 @@
 #       -> xcodebuild for generic iOS (nothing else compiles the framework
 #          for the phone, and a macOS-only call in a core file broke it
 #          silently within a day of the last hand check; about 30 s warm)
+#       -> Scripts/check-ci-swift.sh (every target but the tests under the
+#          CI runner's Swift, which refuses expressions the desk's newer
+#          compiler accepts; about three minutes cold; also on a change to
+#          the script)
 #       -> Scripts/api-docs.sh (the generated API reference, the one gate
 #          that reads doc comments: a link at a symbol that has gone, or a
 #          parameter documented under a name the signature dropped; about a
@@ -108,7 +112,7 @@ milestone=0
 case "$1" in
 --milestone) milestone=1 ;;
 --help | -h)
-    sed -n '3,101p' "$0" | sed 's|^# \?||'
+    sed -n '3,105p' "$0" | sed 's|^# \?||'
     exit 0
     ;;
 esac
@@ -323,6 +327,18 @@ if [[ -n "$framework" || $milestone -eq 1 ]]; then
     run "iOS build" xcodebuild -scheme Ollin -destination 'generic/platform=iOS' -quiet build
 else
     skip "iOS build" "no framework change"
+fi
+
+# The runner's compiler: CI builds with an older Swift than the desk, and the
+# two disagree about which expressions are too hard to type-check, so a
+# change that builds here can fail there (four times between 2026-09-01 and
+# 2026-10-21, none visible to the newer compiler's warnings). Its own build folder, so it
+# never takes the main build's lock. Cold, about three minutes.
+ci_swift=$(grep -E '^Scripts/check-ci-swift\.sh$' <<<"$changed")
+if [[ -n "$framework" || -n "$ci_swift" || $milestone -eq 1 ]]; then
+    run "ci-swift (the runner's compiler)" Scripts/check-ci-swift.sh
+else
+    skip "ci-swift" "no framework change"
 fi
 
 # The hosts' own headless gates: the live hosts, the runner, the generator,
