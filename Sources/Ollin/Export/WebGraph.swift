@@ -62,6 +62,15 @@ struct WebGraph: Hashable {
         }
     }
 
+    /// Whether any surface lays a stroke under a medium this frame, which the
+    /// page draws with its ribbon programs and a stencil for the coat.
+    var hasRibbons: Bool {
+        draws { item in
+            if case .ribbons = item { return true }
+            return false
+        }
+    }
+
     /// How many strokes and fills the frame carries as their points.
     var sourceCount: Int {
         var n = 0
@@ -185,6 +194,11 @@ enum WebDrawItem: Hashable {
     /// records at float `start` of the source region, `floats` long, which
     /// the page expands into the vertices the Mac drew.
     case sources(start: Int, floats: Int, count: Int, fringe: Bool, blend: Int)
+    /// One stroke under a dry medium as its ribbon runs: the records at float
+    /// `start` of the source region, `floats` long, which the page expands
+    /// into the ribbon's vertex pairs and lays as one coat, shaded by the
+    /// medium whose rows sit at `medium` in the parameter region.
+    case ribbons(start: Int, floats: Int, medium: Int, blend: Int)
     /// A layer or a picture composited as `count` textured quads (six vertices
     /// each, from quad `quad`; more than one when symmetry replicated the
     /// draw), under a blend mode (`WebBlend`). `bounds` is the part of the
@@ -430,6 +444,25 @@ enum WebNode3D {
 
 /// The finish of a field batch as the page's rows: the four tinted layers, then
 /// the scalars the lighting reads. Nine rows of four.
+/// A stroke medium as the rows the page's medium fragment reads: the kind,
+/// the palette's size, the streaks, and the tooth; the softness, the edge
+/// roughness, the amount, and the seed; the second pigment; and the eight
+/// palette slots, as `StrokeMedium.uniforms` fills them for the renderer.
+enum WebStrokeMedium {
+    static func rows(of medium: StrokeMedium) -> [SIMD4<Float>] {
+        var u = medium.uniforms(pixelScale: SIMD2(1, 1), hasGround: false)
+        var rows: [SIMD4<Float>] = [
+            SIMD4(Float(u.kind), Float(u.paletteCount), u.streaks, u.tooth),
+            SIMD4(u.softness, u.roughness, u.amount, u.seed),
+            u.second,
+        ]
+        withUnsafeBytes(of: &u.palette) { raw in
+            rows.append(contentsOf: raw.bindMemory(to: SIMD4<Float>.self))
+        }
+        return rows
+    }
+}
+
 enum WebMaterial {
     static let rows = 9
 
@@ -752,6 +785,29 @@ final class WebGraphRecorder {
                 items.append(item)
             }
         }
+        /// The one item of a medium stroke's run `[from, to)`: every vertex in it
+        /// belongs to a ribbon source the drawer kept, or the stroke cannot cross.
+        func appendRibbons(from: Int, to: Int, medium: Int, blend: Int, into items: inout [WebDrawItem]) throws {
+            guard to > from else { return }
+            let start = sources.count
+            let recorded = drawer.webSources
+            var lo = 0, hi = recorded.count
+            while lo < hi {
+                let mid = (lo + hi) / 2
+                if recorded[mid].vertexRange.lowerBound < from { lo = mid + 1 } else { hi = mid }
+            }
+            var at = from
+            while lo < recorded.count, recorded[lo].vertexRange.lowerBound < to {
+                let source = recorded[lo]
+                lo += 1
+                guard case .ribbons = source.kind, source.vertexRange.lowerBound == at,
+                      source.vertexRange.upperBound <= to else { continue }
+                source.encode(into: &sources)
+                at = source.vertexRange.upperBound
+            }
+            guard at == to else { throw refuse("strokeMedium (a stroke under a medium the page could not carry)") }
+            items.append(.ribbons(start: start, floats: sources.count - start, medium: medium, blend: blend))
+        }
         func items(for surface: RenderTarget?) throws -> [WebDrawItem] {
             // A volume composites over a pass's resolved depth, which the page
             // has no counterpart for; a cloud crosses as video.
@@ -769,10 +825,19 @@ final class WebGraphRecorder {
                 // A shader paint is a program of its own per shape, which the page's
                 // shape pipelines do not carry; the export stops and names the call.
                 if batch.paintShader != nil { throw refuse("fill(Shader) or stroke(Shader) (a shader as paint)") }
-                // A stroke medium shades its ribbon in coordinates the page's
-                // expander does not carry; the export stops and names the call.
-                if batch.medium != nil { throw refuse("strokeMedium (a stroke shaded along its length)") }
                 let blend = WebBlend.index(of: batch.blendMode)
+                // A stroke under a dry medium crosses as its ribbon runs, shaded by
+                // the medium's own fragment; a wet one drags the frame drawn without
+                // it, a second pass the page does not run.
+                if let medium = batch.medium {
+                    if medium.readsGround {
+                        throw refuse("strokeMedium(.wet) or strokeMedium(.oil) (a stroke that drags the canvas under it)")
+                    }
+                    let end = nextStart(i, \.vertexStart, end: drawer.vertices.count)
+                    let row = rows(WebStrokeMedium.rows(of: medium)).offset
+                    try appendRibbons(from: batch.vertexStart, to: end, medium: row, blend: blend, into: &items)
+                    continue
+                }
                 switch batch.kind {
                 case .sdf:
                     let end = nextStart(i, \.instanceStart, end: drawer.sdfInstances.count)
@@ -1299,6 +1364,7 @@ extension WebGraph {
                 case let .shapes(start, count, blend): return ["s", start, count, blend]
                 case let .triangles(start, count, fringe, blend): return ["t", start, count, fringe ? 1 : 0, blend]
                 case let .sources(start, floats, count, fringe, blend): return ["x", start, floats, count, fringe ? 1 : 0, blend]
+                case let .ribbons(start, floats, medium, blend): return ["r", start, floats, medium, blend]
                 case let .image(source, quad, count, blend, bounds, nearest):
                     // A source rectangle's bounds ride after the count, so a
                     // whole-picture item keeps the five fields it always had;

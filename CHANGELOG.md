@@ -6,6 +6,7 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ### Added
 
+- **Stroke media on a web page.** `--export-web` now carries a stroke under a dry medium (`.pencil`, `.charcoal`, `.pastel`, `.dry`, `.bristles`, `.dryBrush`): it crosses as its points and the page shades it with the medium's own functions, one coat where it crosses itself, within a fraction of a level of the Mac. `.wet` and `.oil` still stop the export by name.
 - **A worn videotape.** `.vhs(smear:jitter:damage:amount:phase:)` plays a layer off a worn tape: each line jitters sideways, a wobble and a rolling crease come in bursts, the bottom lines tear where the heads switch, and the color is split into luma and chroma so the chroma trails behind edges the luma keeps sharp. Feed `phase` your `time`; `amount` 0 is the layer untouched.
 - **A JPEG at a quality, without a file.** `.jpeg(quality:)` runs the format's own 8 by 8 block transform with the standard's quantization tables at the quality curve image editors use: within a level at 100, flat tiles with ringing toward 10. The layer's alpha is kept.
 - **Tilt-shift and a progressive blur.** `.tiltShift(focus:angle:band:falloff:radius:)` keeps a band sharp around a line, untouched byte for byte, and blurs away from it so a view reads as a model; `.progressiveBlur(angle:start:end:radius:)` fades a blur in across the layer, the same as `.gaussianBlur(radius:)` where it is full.

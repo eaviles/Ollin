@@ -10,6 +10,11 @@
 // and only once, so the segment list itself carries no order (see ShaderIncludes).
 #include "ShaderCore.metal"
 
+// The dry media's shading, marked as a library section so the web page's
+// medium fragment reads the same functions: the tooth, its cells, and what a
+// dry stick, a bristle brush, and a dry brush lay at a pixel of the ribbon.
+// OLLIN_LIB_BEGIN medium
+
 // The paper's tooth at `p` (canvas points over the tooth's cell size): two
 // octaves of value noise, evened out so its values spread over 0...1 about
 // uniformly. The sum of the octaves is close to normal around 0.5 with a spread
@@ -42,6 +47,78 @@ static inline float2 ollin_medium_cell(float2 p, float seed) {
     }
     return best;
 }
+
+// A dry medium's ink at a pixel: pigment catches on the tooth's peaks. The
+// density sets how low on the tooth the stick still reaches, so a dense
+// stroke inks nearly every cell and a light one only the highest, which is
+// what breaks a light line into speckles rather than fading it. The tooth
+// eats into the edge too: near it, a low cell goes bare first.
+static inline float ollin_medium_dry_ink(float2 canvas, float across, float density, float tooth,
+                                         float softness, float roughness, float seed) {
+    float t = ollin_medium_tooth(canvas / tooth, seed);
+    float edge = 1.0;
+    if (roughness > 0.0) {
+        float inside = 1.0 - abs(across) + (t - 0.5) * roughness;
+        edge = smoothstep(0.0, roughness, inside);
+    }
+    float d = density * edge;
+    float s = 0.02 + 0.5 * softness;
+    return smoothstep(1.0 - d - s, 1.0 - d + s, t);
+}
+
+// Which of `count` palette colors a multicolor dry medium gives the tooth
+// cell at `canvas`.
+static inline int ollin_medium_palette_index(float2 canvas, float tooth, float seed, int count) {
+    float2 cell = ollin_medium_cell(canvas / (tooth * 0.8), seed);
+    return min(int(hash12(cell + seed * 3.17) * float(count)), count - 1);
+}
+
+// Bristles: each streak across the width carries its own mix of the two
+// pigments, stretched along the path, with a groove between streaks and the
+// outer bristles running out near the end. `second.r` below 0 means no second
+// pigment was given, and a deeper shade of the stroke's own stands in. The
+// pigment comes back in rgb and the alpha in a.
+static inline float4 ollin_medium_bristles(float3 pigment, float density, float4 second, float across,
+                                           float arcLength, float hw, float along, float strokeSeed,
+                                           float streaks, float amount, float seed) {
+    float u = clamp(across * 0.5 + 0.5, 0.0, 1.0);
+    float s = u * streaks;
+    float h = hash11(floor(s) * 1.618 + strokeSeed * 0.37 + seed * 0.11);
+    float a = arcLength / (hw * 2.2);
+    float n = ollin_vnoise(float2(a + h * 41.0, s * 0.9));
+    float n2 = ollin_vnoise(float2(a * 0.4 + h * 17.0 + 5.3, s * 0.45));
+    float share = 0.55 * n + 0.45 * n2 + (h - 0.5) * 0.6;
+    float mixing = smoothstep(1.0 - amount - 0.12, 1.0 - amount + 0.12, share);
+    float3 other = second.r < 0.0 ? pigment * float3(0.30, 0.27, 0.25) : srgbToLinear(second.rgb);
+    // Each bristle carries its pigment a shade lighter or darker than its
+    // neighbors.
+    float3 mixed = mix(pigment, other, mixing) * (0.88 + 0.24 * h);
+    float groove = smoothstep(0.62, 1.0, abs(fract(s) - 0.5) * 2.0);
+    float ink = 1.0 - 0.4 * groove * (0.4 + 0.6 * n);
+    float outer = abs(u - 0.5) * 2.0;
+    float end = 1.0 - 0.18 * outer - 0.1 * h;
+    ink *= 1.0 - 0.85 * smoothstep(end - 0.06, end, along) * outer;
+    return float4(mixed, density * ink);
+}
+
+// A dry brush: the bristles' load falls along the mark, and where it is short
+// the paper's grain, at three scales, decides what catches. The alpha.
+static inline float ollin_medium_dry_brush(float2 canvas, float density, float across, float arcLength,
+                                           float hw, float along, float strokeSeed, float tooth,
+                                           float streaks, float amount, float seed) {
+    float g1 = ollin_medium_tooth(canvas / tooth, seed);
+    float g2 = ollin_medium_tooth(canvas / (tooth * 3.0), seed + 3.1);
+    float g3 = ollin_medium_tooth(canvas / (tooth * 9.0), seed + 7.7);
+    float grain = 1.0 / (1.0 + exp(-((0.45 * g1 + 0.33 * g2 + 0.22 * g3) - 0.5) * 7.0));
+    float u = clamp(across * 0.5 + 0.5, 0.0, 1.0);
+    float s = u * streaks;
+    float h = hash11(floor(s) * 1.618 + strokeSeed * 0.37 + seed * 0.11);
+    float streak = 0.65 + 0.35 * ollin_vnoise(float2(arcLength / (hw * 3.0) + h * 23.0, s * 0.8));
+    float load = density * streak * (1.0 - amount * pow(clamp(along, 0.0, 1.0), 1.3) * (0.7 + 0.6 * h));
+    return smoothstep(1.0 - load - 0.05, 1.0 - load + 0.05, grain);
+}
+
+// OLLIN_LIB_END medium
 
 // The relief of an oil stroke at a place on the ribbon: ridges stretched along
 // the path in two octaves, under a dome across the width, 0 at the edge.
@@ -84,63 +161,22 @@ fragment float4 ollin_medium_fragment(RibbonVertexOut in [[stage_in]],
     float alpha = density;
 
     if (m.kind == 1u) {
-        // Dry media: pigment catches on the tooth's peaks. The density sets how
-        // low on the tooth the stick still reaches, so a dense stroke inks nearly
-        // every cell and a light one only the highest, which is what breaks a
-        // light line into speckles rather than fading it.
-        float t = ollin_medium_tooth(in.canvas / m.tooth, m.seed);
-        // The tooth eats into the edge: near it, a low cell goes bare first.
-        float edge = 1.0;
-        if (m.roughness > 0.0) {
-            float inside = 1.0 - abs(in.across) + (t - 0.5) * m.roughness;
-            edge = smoothstep(0.0, m.roughness, inside);
-        }
-        float d = density * edge;
-        float s = 0.02 + 0.5 * m.softness;
-        float ink = smoothstep(1.0 - d - s, 1.0 - d + s, t);
+        float ink = ollin_medium_dry_ink(in.canvas, in.across, density, m.tooth, m.softness,
+                                         m.roughness, m.seed);
         if (m.paletteCount > 0u) {
-            float2 cell = ollin_medium_cell(in.canvas / (m.tooth * 0.8), m.seed);
-            uint i = min(uint(hash12(cell + m.seed * 3.17) * float(m.paletteCount)), m.paletteCount - 1u);
+            int i = ollin_medium_palette_index(in.canvas, m.tooth, m.seed, int(m.paletteCount));
             pigment = srgbToLinear(m.palette[i].rgb);
             ink *= m.palette[i].a;
         }
         alpha = ink;
     } else if (m.kind == 2u) {
-        // Bristles: each streak across the width carries its own mix of the two
-        // pigments, stretched along the path, with a groove between streaks and
-        // the outer bristles running out near the end.
-        float u = clamp(in.across * 0.5 + 0.5, 0.0, 1.0);
-        float s = u * m.streaks;
-        float h = hash11(floor(s) * 1.618 + in.seed * 0.37 + m.seed * 0.11);
-        float a = in.arcLength / (hw * 2.2);
-        float n = ollin_vnoise(float2(a + h * 41.0, s * 0.9));
-        float n2 = ollin_vnoise(float2(a * 0.4 + h * 17.0 + 5.3, s * 0.45));
-        float share = 0.55 * n + 0.45 * n2 + (h - 0.5) * 0.6;
-        float mixing = smoothstep(1.0 - m.amount - 0.12, 1.0 - m.amount + 0.12, share);
-        float3 second = m.second.r < 0.0 ? pigment * float3(0.30, 0.27, 0.25) : srgbToLinear(m.second.rgb);
-        // Each bristle carries its pigment a shade lighter or darker than its
-        // neighbors.
-        pigment = mix(pigment, second, mixing) * (0.88 + 0.24 * h);
-        float groove = smoothstep(0.62, 1.0, abs(fract(s) - 0.5) * 2.0);
-        float ink = 1.0 - 0.4 * groove * (0.4 + 0.6 * n);
-        float outer = abs(u - 0.5) * 2.0;
-        float end = 1.0 - 0.18 * outer - 0.1 * h;
-        ink *= 1.0 - 0.85 * smoothstep(end - 0.06, end, in.along) * outer;
-        alpha = density * ink;
+        float4 b = ollin_medium_bristles(pigment, density, m.second, in.across, in.arcLength, hw,
+                                         in.along, in.seed, m.streaks, m.amount, m.seed);
+        pigment = b.rgb;
+        alpha = b.a;
     } else if (m.kind == 3u) {
-        // A dry brush: the bristles' load falls along the mark, and where it is
-        // short the paper's grain, at three scales, decides what catches.
-        float g1 = ollin_medium_tooth(in.canvas / m.tooth, m.seed);
-        float g2 = ollin_medium_tooth(in.canvas / (m.tooth * 3.0), m.seed + 3.1);
-        float g3 = ollin_medium_tooth(in.canvas / (m.tooth * 9.0), m.seed + 7.7);
-        float grain = 1.0 / (1.0 + exp(-((0.45 * g1 + 0.33 * g2 + 0.22 * g3) - 0.5) * 7.0));
-        float u = clamp(in.across * 0.5 + 0.5, 0.0, 1.0);
-        float s = u * m.streaks;
-        float h = hash11(floor(s) * 1.618 + in.seed * 0.37 + m.seed * 0.11);
-        float streak = 0.65 + 0.35 * ollin_vnoise(float2(in.arcLength / (hw * 3.0) + h * 23.0, s * 0.8));
-        float load = density * streak
-            * (1.0 - m.amount * pow(clamp(in.along, 0.0, 1.0), 1.3) * (0.7 + 0.6 * h));
-        alpha = smoothstep(1.0 - load - 0.05, 1.0 - load + 0.05, grain);
+        alpha = ollin_medium_dry_brush(in.canvas, density, in.across, in.arcLength, hw, in.along,
+                                       in.seed, m.tooth, m.streaks, m.amount, m.seed);
     } else {
         // Wet paint and oil: the pigment mixes with the ground lying behind the
         // pixel along the path, strongest toward the tail. The direction of

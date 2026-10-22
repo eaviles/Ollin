@@ -62,7 +62,32 @@ public func ollinExpand(_ count: Int32) -> Int32 {
     return Int32(outputCount / 7)
 }
 
-/// The vertices the last `ollin_expand` wrote.
+/// Expand the first `count` floats of the input as the ribbon runs of one
+/// stroke under a medium: thirteen floats a vertex (the position, the
+/// coverage, the color, the distance along, the place across, the
+/// half-width, the fraction along, the seed, and the length), every run's
+/// cores ahead of every run's fringes. Returns the vertex count written to
+/// the output, or -1 when a record is malformed or not a ribbon.
+@_expose(wasm, "ollin_expand_ribbons")
+@_cdecl("ollin_expand_ribbons")
+public func ollinExpandRibbons(_ count: Int32) -> Int32 {
+    outputCount = 0
+    let n = Int(max(0, count))
+    guard let input, n <= inputCapacity else { return -1 }
+    var vertices: [Float] = []
+    let runs = WebSourceExpander.expandRibbons(UnsafeBufferPointer(start: input, count: n), into: &vertices)
+    if vertices.count > outputCapacity {
+        output?.deallocate()
+        output = UnsafeMutablePointer<Float>.allocate(capacity: vertices.count)
+        outputCapacity = vertices.count
+    }
+    if let output { for i in 0..<vertices.count { output[i] = vertices[i] } }
+    outputCount = vertices.count
+    guard runs != nil else { return -1 }
+    return Int32(outputCount / WebSourceExpander.ribbonVertexFloats)
+}
+
+/// The vertices the last `ollin_expand` or `ollin_expand_ribbons` wrote.
 @_expose(wasm, "ollin_output")
 @_cdecl("ollin_output")
 public func ollinOutput() -> UnsafeMutablePointer<Float>? {

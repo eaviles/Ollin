@@ -556,7 +556,7 @@ enum WebExpanderResource {
 enum WebShaderSources {
     static let text: String = {
         ["OllinShaderLib", "ShaderCore", "ShaderShapes", "ShaderCombinator", "ShaderRaymarch",
-         "ShaderEffects", "ShaderCombine", "ShaderSim", "ShaderPatterns"].compactMap { name -> String? in
+         "ShaderEffects", "ShaderCombine", "ShaderSim", "ShaderPatterns", "ShaderStrokes"].compactMap { name -> String? in
             guard let url = OllinResources.bundle.url(forResource: name, withExtension: "metal") else { return nil }
             return try? String(contentsOf: url, encoding: .utf8)
         }.joined(separator: "\n")
@@ -612,9 +612,14 @@ struct WebShaders {
     var fieldVertex: String = ""
     var fieldFragment: String = ""
     var upsampleFragment: String = ""
+    /// A stroke under a dry medium: the ribbon's vertex stage, which hands on
+    /// the ribbon's own coordinates, and `ollin_medium_fragment`'s dry half
+    /// over the translated medium section. Empty when no frame lays one.
+    var ribbonVertex: String = ""
+    var mediumFragment: String = ""
 
     static func make(effects wanted: [String: Int] = [:], users: [WebUserShader] = [],
-                     groups: Bool = false, fields: Bool = false) throws -> WebShaders {
+                     groups: Bool = false, fields: Bool = false, media: Bool = false) throws -> WebShaders {
         let text = WebShaderSources.text
         let shapes = WebShaderLibrary.translate(text, wanted: ["shapes"])
         guard shapes.isClean else { throw WebShaderError(diagnostics: shapes.unsupported) }
@@ -657,6 +662,13 @@ struct WebShaders {
                 + "\n" + resolvePaintSource + "\n" + fieldLightingSource + "\n" + fieldFragmentTail
             shaders.upsampleFragment = upsampleFragment
         }
+        if media {
+            let medium = WebShaderLibrary.translate(text, wanted: ["medium"])
+            guard medium.isClean else { throw WebShaderError(diagnostics: medium.unsupported) }
+            shaders.ribbonVertex = ribbonVertex
+            shaders.mediumFragment = WebShaderCompat.preamble + "\n" + medium.support + "\n\n" + medium.body
+                + "\n" + mediumFragmentTail
+        }
         return shaders
     }
 
@@ -679,6 +691,79 @@ struct WebShaders {
         gl_Position = vec4((aPosition.x / viewport.x) * 2.0 - 1.0, (1.0 - (aPosition.y / viewport.y) * 2.0) * ollin_flip, 0.0, 1.0);
         vColor = aColor;
         vCoverage = aCoverage;
+    }
+    """
+
+    /// `ollin_ribbon_vertex`: the triangle path's vertex stage with the
+    /// ribbon's own coordinates handed on, the distance along, the place
+    /// across, the half-width, and the fraction along, and the stroke's seed
+    /// flat. The expander lays the pair a renderer vertex is as one vertex of
+    /// thirteen floats.
+    static let ribbonVertex = """
+    #version 300 es
+    precision highp float;
+    layout(location = 0) in vec2 aPosition;
+    layout(location = 1) in float aCoverage;
+    layout(location = 2) in vec4 aColor;
+    layout(location = 3) in vec4 aRibbon;
+    layout(location = 4) in vec2 aSeed;
+    uniform vec2 viewport;
+    uniform float ollin_flip;
+    out vec4 vColor;
+    out float vCoverage;
+    out vec2 vCanvas;
+    out vec4 vRibbon;
+    flat out float vSeed;
+    void main() {
+        gl_Position = vec4((aPosition.x / viewport.x) * 2.0 - 1.0, (1.0 - (aPosition.y / viewport.y) * 2.0) * ollin_flip, 0.0, 1.0);
+        vColor = aColor;
+        vCoverage = aCoverage;
+        vCanvas = aPosition;
+        vRibbon = aRibbon;
+        vSeed = aSeed.x;
+    }
+    """
+
+    /// `ollin_medium_fragment`'s dry half (the dry media, bristles, and the
+    /// dry brush) over the same medium functions, its rows as uniforms: the
+    /// kind, the palette's size, the streaks, and the tooth; the softness, the
+    /// roughness, the amount, and the seed; the second pigment; the palette.
+    static let mediumFragmentTail = """
+    in vec4 vColor;
+    in float vCoverage;
+    in vec2 vCanvas;
+    in vec4 vRibbon;
+    flat in float vSeed;
+    uniform vec4 medium[11];
+    out vec4 fragColor;
+    void main() {
+        float cov = perceptualCoverage(clamp(vCoverage, 0.0, 1.0));
+        float density = clamp(vColor.a, 0.0, 1.0);
+        vec3 pigment = srgbToLinear(vColor.rgb);
+        float hw = max(vRibbon.z, 0.25);
+        float alpha = density;
+        int kind = int(medium[0].x + 0.5);
+        if (kind == 1) {
+            float ink = ollin_medium_dry_ink(vCanvas, vRibbon.y, density, medium[0].w, medium[1].x,
+                                             medium[1].y, medium[1].w);
+            int count = int(medium[0].y + 0.5);
+            if (count > 0) {
+                int i = ollin_medium_palette_index(vCanvas, medium[0].w, medium[1].w, count);
+                vec4 c = medium[3 + i];
+                pigment = srgbToLinear(c.rgb);
+                ink *= c.a;
+            }
+            alpha = ink;
+        } else if (kind == 2) {
+            vec4 b = ollin_medium_bristles(pigment, density, medium[2], vRibbon.y, vRibbon.x, hw,
+                                           vRibbon.w, vSeed, medium[0].z, medium[1].z, medium[1].w);
+            pigment = b.rgb;
+            alpha = b.a;
+        } else if (kind == 3) {
+            alpha = ollin_medium_dry_brush(vCanvas, density, vRibbon.y, vRibbon.x, hw, vRibbon.w,
+                                           vSeed, medium[0].w, medium[0].z, medium[1].z, medium[1].w);
+        }
+        fragColor = vec4(pigment, alpha * cov);
     }
     """
 
@@ -1801,7 +1886,8 @@ extension OllinApp {
         }
         let shaders = try WebShaders.make(effects: rows, users: recording.shaders,
                                           groups: recording.frames.contains { $0.graph.groupCount > 0 },
-                                          fields: recording.frames.contains { $0.graph.hasFields })
+                                          fields: recording.frames.contains { $0.graph.hasFields },
+                                          media: recording.frames.contains { $0.graph.hasRibbons })
         let track = WebTrack(recording)
         let label = recording.description.isEmpty
             ? "\(recording.name), a sketch made with Ollin"
@@ -1832,6 +1918,8 @@ extension OllinApp {
         slots["FIELD_VS"] = jsString(shaders.fieldVertex)
         slots["FIELD_FS"] = jsString(shaders.fieldFragment)
         slots["UPSAMPLE_FS"] = jsString(shaders.upsampleFragment)
+        slots["RIBBON_VS"] = jsString(shaders.ribbonVertex)
+        slots["MEDIUM_FS"] = jsString(shaders.mediumFragment)
         let lut = recording.brdfLUT.isEmpty ? "[0, \"\"]"
             : "[\(WebBRDFLUT.size), \"\(WebTrack.base64(recording.brdfLUT))\"]"
         slots["BRDF"] = lut
@@ -2026,6 +2114,8 @@ enum WebPlayer {
       var FIELD_VS = @FIELD_VS@;
       var FIELD_FS = @FIELD_FS@;
       var UPSAMPLE_FS = @UPSAMPLE_FS@;
+      var RIBBON_VS = @RIBBON_VS@;
+      var MEDIUM_FS = @MEDIUM_FS@;
       var FX_VS = @FX_VS@;
       var BLUR_FS = @BLUR_FS@;
       var FX = @FX@;
@@ -2561,7 +2651,8 @@ enum WebPlayer {
         var adopt = function (instance) {
           var x = instance.exports;
           if (x._initialize) x._initialize();
-          expander = { memory: x.memory, input: x.ollin_input, expand: x.ollin_expand, output: x.ollin_output };
+          expander = { memory: x.memory, input: x.ollin_input, expand: x.ollin_expand, output: x.ollin_output,
+                       ribbons: x.ollin_expand_ribbons };
         };
         var module = bytes(EXPANDER).buffer;
         try {
@@ -2918,6 +3009,104 @@ enum WebPlayer {
         gl.drawArrays(gl.TRIANGLES, 0, entry.count);
         gl.bindVertexArray(null);
       }
+      // A stroke under a medium: its ribbon runs expanded into thirteen floats
+      // a vertex (the position, the coverage, the color, the distance along,
+      // the place across, the half-width, the fraction along, the seed, and
+      // the length), shaded by the medium's rows, and laid as one coat as the
+      // Mac lays it: the triangles pass the stencil once a sample (the pass
+      // flips bit 0x80, so a second triangle over a sample fails), then the
+      // same triangles with no color clear the bit. The cores come first, so
+      // where the stroke crosses itself the solid part claims the sample.
+      var RV = 13, rlayout = [[2, 0], [1, 8], [4, 12], [4, 28], [2, 44]];
+      var ribbon = null;
+      function ribbonProgram() {
+        if (ribbon) return ribbon;
+        var p = program(RIBBON_VS, MEDIUM_FS);
+        ribbon = { p: p, viewport: gl.getUniformLocation(p, 'viewport'), flip: gl.getUniformLocation(p, 'ollin_flip'),
+                   medium: gl.getUniformLocation(p, 'medium') };
+        return ribbon;
+      }
+      // The stencil the coat needs, on the buffer the surface draws into, made
+      // the first time a ribbon lands there; none where the surface keeps a
+      // depth buffer for marched fields, and the stroke then draws without
+      // its coat.
+      function ensureStencil(s, ms) {
+        var owner = ms || s;
+        if (owner.stencilRB !== undefined) return owner.stencilRB;
+        if (s.depthRB) { owner.stencilRB = null; return null; }
+        var rb = gl.createRenderbuffer();
+        gl.bindRenderbuffer(gl.RENDERBUFFER, rb);
+        if (ms) gl.renderbufferStorageMultisample(gl.RENDERBUFFER, samples, gl.STENCIL_INDEX8, s.w, s.h);
+        else gl.renderbufferStorage(gl.RENDERBUFFER, gl.STENCIL_INDEX8, s.w, s.h);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, owner.fbo);
+        gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.STENCIL_ATTACHMENT, gl.RENDERBUFFER, rb);
+        if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
+          gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.STENCIL_ATTACHMENT, gl.RENDERBUFFER, null);
+          rb = null;
+        } else {
+          gl.clearStencil(0);
+          gl.clear(gl.STENCIL_BUFFER_BIT);
+        }
+        owner.stencilRB = rb;
+        return rb;
+      }
+      function drawRibbons(item, w, h, so, flip, g, surface, ms) {
+        if (!expander || !expander.ribbons) return;
+        var start = item[1], floats = item[2];
+        var src = scratch.subarray(so + start, so + start + floats);
+        var entry = sourceCache.get(item);
+        if (entry) entry.tick = drawTick;
+        var same = !!entry && entry.floats.length === floats;
+        if (same) { for (var i = 0; i < floats; i++) { if (entry.floats[i] !== src[i]) { same = false; break; } } }
+        if (!same) {
+          if (!entry) {
+            entry = { floats: new Float32Array(floats), buffer: gl.createBuffer(), vao: gl.createVertexArray(), count: 0, tick: drawTick };
+            gl.bindVertexArray(entry.vao);
+            gl.bindBuffer(gl.ARRAY_BUFFER, entry.buffer);
+            for (var t = 0; t < rlayout.length; t++) {
+              gl.enableVertexAttribArray(t);
+              gl.vertexAttribPointer(t, rlayout[t][0], gl.FLOAT, false, RV * 4, rlayout[t][1]);
+            }
+            gl.bindVertexArray(null);
+            sourceCache.set(item, entry);
+          }
+          if (entry.floats.length !== floats) entry.floats = new Float32Array(floats);
+          entry.floats.set(src);
+          var ptr = expander.input(floats);
+          new Float32Array(expander.memory.buffer, ptr, floats).set(src);
+          var count = expander.ribbons(floats);
+          if (count < 0) { entry.count = 0; return; }
+          var out = new Float32Array(expander.memory.buffer, expander.output(), count * RV);
+          gl.bindBuffer(gl.ARRAY_BUFFER, entry.buffer);
+          gl.bufferData(gl.ARRAY_BUFFER, out, gl.DYNAMIC_DRAW);
+          entry.count = count;
+        }
+        if (!entry.count) return;
+        var e = ribbonProgram();
+        gl.useProgram(e.p);
+        gl.uniform2f(e.viewport, w, h);
+        gl.uniform1f(e.flip, flip);
+        var at = paramOffset(g) + item[3];
+        gl.uniform4fv(e.medium, scratch.subarray(at, at + 44));
+        setBlend(item[4] || 0, true);
+        gl.bindVertexArray(entry.vao);
+        if (ensureStencil(surface, ms)) {
+          gl.enable(gl.STENCIL_TEST);
+          gl.stencilMask(0x80);
+          gl.stencilFunc(gl.EQUAL, 0, 0x80);
+          gl.stencilOp(gl.KEEP, gl.KEEP, gl.INVERT);
+          gl.drawArrays(gl.TRIANGLES, 0, entry.count);
+          gl.colorMask(false, false, false, false);
+          gl.stencilFunc(gl.ALWAYS, 0, 0x80);
+          gl.stencilOp(gl.KEEP, gl.KEEP, gl.ZERO);
+          gl.drawArrays(gl.TRIANGLES, 0, entry.count);
+          gl.colorMask(true, true, true, true);
+          gl.disable(gl.STENCIL_TEST);
+        } else {
+          gl.drawArrays(gl.TRIANGLES, 0, entry.count);
+        }
+        gl.bindVertexArray(null);
+      }
       // An item's vertices stay for as long as the item is drawn: a stable
       // cast's items recur every frame and keep theirs, a changing cast's are
       // let go once the frame has moved past them, so a long recording holds
@@ -3093,6 +3282,7 @@ enum WebPlayer {
           if (item[0] === 's') { drawShapes(item[1], item[2], item[3] || 0, w, h, flip); continue; }
           if (item[0] === 't') { drawTriangles(item[1], item[2], item[3] === 1, item[4] || 0, w, h, vo, flip); continue; }
           if (item[0] === 'x') { drawSources(item, item[4] === 1, item[5] || 0, w, h, so, flip); continue; }
+          if (item[0] === 'r') { drawRibbons(item, w, h, so, flip, g, surface, ms); continue; }
           if (item[0] === 'g') { drawGroups(item[1], item[2], item[3] || 0, w, h, flip, g); continue; }
           if (item[0] === 'f') {
             if (!sc) continue;

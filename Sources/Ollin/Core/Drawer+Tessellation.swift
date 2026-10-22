@@ -529,14 +529,24 @@ extension Drawer {
         replicated {
             var cores: [OllinVertex] = []
             var fringes: [OllinVertex] = []
+            var recorded: [WebRibbonRun] = []
             for run in runs {
                 appendMediumRun(run.points, closed: run.closed, paint: paint, fractions: run.fractions,
-                                wholeLength: whole, seed: seed, cores: &cores, fringes: &fringes)
+                                wholeLength: whole, seed: seed, cores: &cores, fringes: &fringes,
+                                recorded: &recorded)
             }
             guard !cores.isEmpty || !fringes.isEmpty else { return }
             ensureBatch(.fringe)
+            let start = vertices.count
             vertices.append(contentsOf: cores)
             vertices.append(contentsOf: fringes)
+            if recordsWebSources, paint.shader == nil {
+                webSources.append(WebSource(kind: .ribbons(runs: recorded, join: expanderJoin, cap: expanderCap,
+                                                           fringe: 1.0 / ctmScale, ctmScale: ctmScale,
+                                                           wholeLength: whole, seed: seed),
+                                            points: [], transform: transformIsIdentity ? nil : transform,
+                                            vertexRange: start ..< vertices.count))
+            }
         }
     }
 
@@ -545,7 +555,8 @@ extension Drawer {
     /// half-width and a color per path vertex), into `cores` and `fringes`.
     private func appendMediumRun(_ points: [Vector2], closed: Bool, paint: VertexPaint,
                                  fractions: [Double]?, wholeLength: Double?, seed: Float,
-                                 cores: inout [OllinVertex], fringes: inout [OllinVertex]) {
+                                 cores: inout [OllinVertex], fringes: inout [OllinVertex],
+                                 recorded: inout [WebRibbonRun]) {
         var (pts, ts) = Drawer.deduplicated(points, fractions: fractions, closed: closed)
         if paint.isGradient || !strokeProfileShape.isUniform || !strokeOpacityShape.isUniform {
             (pts, ts) = Drawer.subdivided(pts, fractions: ts, closed: closed, maxLength: 12)
@@ -573,6 +584,10 @@ extension Drawer {
         appendRibbon(pts, fractions: ts, closed: closed, paint: paint, halfWidths: hws, colors: cols,
                      opacity: nil, wholeLength: wholeLength, seed: seed, coreFirst: true,
                      cores: &cores, fringes: &fringes)
+        if recordsWebSources {
+            recorded.append(WebRibbonRun(points: pts.map { Point2D($0.x, $0.y) }, closed: closed,
+                                         halfWidths: hws, colors: cols, fractions: ts))
+        }
     }
 
     /// Expand one prepared run (points, half-widths, and colors per path vertex)
@@ -598,52 +613,24 @@ extension Drawer {
         let n = pts.count
         guard n >= 2 else { return }
         let fw = 1.0 / ctmScale
-        var cum = [Double](repeating: 0, count: n)
-        for i in 1..<n { cum[i] = cum[i - 1] + (pts[i] - pts[i - 1]).length }
-        var total = cum[n - 1]
-        if closed { total += (pts[0] - pts[n - 1]).length }
-        // Where each path vertex sits along the stroke: its own run's distance, or
-        // for a dash its place on the whole path.
-        let length = wholeLength ?? total
-        let arc: [Double] = (wholeLength != nil && ts != nil) ? ts!.map { $0 * length } : cum
-        var tangent = [Vector2](repeating: Vector2(1, 0), count: n)
-        for i in 0..<n {
-            var d = Vector2(0, 0)
-            var forward = Vector2(1, 0)
-            if i > 0 || closed {
-                let e = pts[i] - pts[(i - 1 + n) % n]
-                let l = e.length
-                if l > 0 { d = d + e * (1 / l); forward = e * (1 / l) }
-            }
-            if i < n - 1 || closed {
-                let e = pts[(i + 1) % n] - pts[i]
-                let l = e.length
-                if l > 0 { d = d + e * (1 / l); forward = e * (1 / l) }
-            }
-            let l = d.length
-            tangent[i] = l > 1e-9 ? d * (1 / l) : forward
-        }
-        let inward: Double = closed && Drawer.signedArea(pts) > 0 ? -1 : 1
+        let frame = RibbonFrame(pts.map { Point2D($0.x, $0.y) }, closed: closed, halfWidths: hws, fringe: fw,
+                                fractions: ts, wholeLength: wholeLength)
         let box: PaintBox? = {
             guard case .shader(_, let given) = paint else { return nil }
             return given ?? PaintBox.around(pts, inflate: closed ? 0 : (hws.max() ?? 0) + fw / 2)
         }()
         let identity = transformIsIdentity, m = transform
-        let lengthF = Float(length)
+        let lengthF = Float(frame.length)
         func write(_ v: StrokeVertex, _ src: Int, wraps: Bool, into list: inout [OllinVertex]) {
             let p = Vector2(Double(v.position.x), Double(v.position.y))
-            var a = arc[src] + (p - pts[src]).dot(tangent[src])
-            // A closed loop's last segment ends on the first path vertex, which
-            // there sits the loop's whole length along rather than at its start.
-            if wraps && src == 0 { a += total }
+            let (a, across, along) = frame.coordinates(Point2D(p.x, p.y), offset: v.offset, source: src,
+                                                       wraps: wraps)
             let hw = hws[src]
-            let across = Float(Double(v.offset) * inward / max(hw, fw / 2))
-            let along = length > 0 ? Float(a / length) : 0
             let color: SIMD4<Float>
             let aaY: Float
             if let box, let opacity {
                 let uv = box.uv(p)
-                color = SIMD4<Float>(uv.x, uv.y, cols[src].z, v.offset * Float(inward))
+                color = SIMD4<Float>(uv.x, uv.y, cols[src].z, v.offset * Float(frame.inward))
                 aaY = opacity[src]
             } else {
                 color = v.color
@@ -665,7 +652,7 @@ extension Drawer {
                               join: expanderJoin, cap: expanderCap) { v, source in
             tri.append((v, source))
             guard tri.count == 3 else { return }
-            let wraps = closed && n >= 3 && tri.contains { $0.1 == n - 1 } && tri.contains { $0.1 == 0 }
+            let wraps = frame.wraps(tri[0].1, tri[1].1, tri[2].1)
             let toFringe = coreFirst && tri.contains { $0.0.coverage <= 0 }
             for (u, src) in tri {
                 if toFringe { write(u, src, wraps: wraps, into: &fringes) }

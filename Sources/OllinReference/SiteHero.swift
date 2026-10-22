@@ -46,6 +46,8 @@ enum SiteHero {
       var FIELD_VS = "";
       var FIELD_FS = "";
       var UPSAMPLE_FS = "";
+      var RIBBON_VS = "";
+      var MEDIUM_FS = "";
       var FX_VS = "#version 300 es\nprecision highp float;\nout vec2 uv;\nvoid main() {\n    vec2 p = vec2(float((gl_VertexID \x3C\x3C 1) & 2), float(gl_VertexID & 2));\n    gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);\n    uv = vec2(p.x, 1.0 - p.y);\n}";
       var BLUR_FS = "#version 300 es\nprecision highp float;\nuniform sampler2D src;\nuniform vec2 step;\nuniform float sigma;\nin vec2 uv;\nout vec4 fragColor;\nvoid main() {\n    vec2 q = vec2(uv.x, 1.0 - uv.y);\n    int radius = int(ceil(sigma * 3.5));\n    float twoSigma2 = 2.0 * sigma * sigma;\n    vec4 sum = texture(src, q);\n    float weight = 1.0;\n    for (int i = 1; i \x3C= radius; i++) {\n        float w = exp(-float(i * i) / twoSigma2);\n        vec2 d = step * float(i);\n        sum += (texture(src, q + d) + texture(src, q - d)) * w;\n        weight += 2.0 * w;\n    }\n    fragColor = sum / weight;\n}";
       var FX = {};
@@ -599,7 +601,8 @@ enum SiteHero {
         var adopt = function (instance) {
           var x = instance.exports;
           if (x._initialize) x._initialize();
-          expander = { memory: x.memory, input: x.ollin_input, expand: x.ollin_expand, output: x.ollin_output };
+          expander = { memory: x.memory, input: x.ollin_input, expand: x.ollin_expand, output: x.ollin_output,
+                       ribbons: x.ollin_expand_ribbons };
         };
         var module = bytes(EXPANDER).buffer;
         try {
@@ -956,6 +959,104 @@ enum SiteHero {
         gl.drawArrays(gl.TRIANGLES, 0, entry.count);
         gl.bindVertexArray(null);
       }
+      // A stroke under a medium: its ribbon runs expanded into thirteen floats
+      // a vertex (the position, the coverage, the color, the distance along,
+      // the place across, the half-width, the fraction along, the seed, and
+      // the length), shaded by the medium's rows, and laid as one coat as the
+      // Mac lays it: the triangles pass the stencil once a sample (the pass
+      // flips bit 0x80, so a second triangle over a sample fails), then the
+      // same triangles with no color clear the bit. The cores come first, so
+      // where the stroke crosses itself the solid part claims the sample.
+      var RV = 13, rlayout = [[2, 0], [1, 8], [4, 12], [4, 28], [2, 44]];
+      var ribbon = null;
+      function ribbonProgram() {
+        if (ribbon) return ribbon;
+        var p = program(RIBBON_VS, MEDIUM_FS);
+        ribbon = { p: p, viewport: gl.getUniformLocation(p, 'viewport'), flip: gl.getUniformLocation(p, 'ollin_flip'),
+                   medium: gl.getUniformLocation(p, 'medium') };
+        return ribbon;
+      }
+      // The stencil the coat needs, on the buffer the surface draws into, made
+      // the first time a ribbon lands there; none where the surface keeps a
+      // depth buffer for marched fields, and the stroke then draws without
+      // its coat.
+      function ensureStencil(s, ms) {
+        var owner = ms || s;
+        if (owner.stencilRB !== undefined) return owner.stencilRB;
+        if (s.depthRB) { owner.stencilRB = null; return null; }
+        var rb = gl.createRenderbuffer();
+        gl.bindRenderbuffer(gl.RENDERBUFFER, rb);
+        if (ms) gl.renderbufferStorageMultisample(gl.RENDERBUFFER, samples, gl.STENCIL_INDEX8, s.w, s.h);
+        else gl.renderbufferStorage(gl.RENDERBUFFER, gl.STENCIL_INDEX8, s.w, s.h);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, owner.fbo);
+        gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.STENCIL_ATTACHMENT, gl.RENDERBUFFER, rb);
+        if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
+          gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.STENCIL_ATTACHMENT, gl.RENDERBUFFER, null);
+          rb = null;
+        } else {
+          gl.clearStencil(0);
+          gl.clear(gl.STENCIL_BUFFER_BIT);
+        }
+        owner.stencilRB = rb;
+        return rb;
+      }
+      function drawRibbons(item, w, h, so, flip, g, surface, ms) {
+        if (!expander || !expander.ribbons) return;
+        var start = item[1], floats = item[2];
+        var src = scratch.subarray(so + start, so + start + floats);
+        var entry = sourceCache.get(item);
+        if (entry) entry.tick = drawTick;
+        var same = !!entry && entry.floats.length === floats;
+        if (same) { for (var i = 0; i < floats; i++) { if (entry.floats[i] !== src[i]) { same = false; break; } } }
+        if (!same) {
+          if (!entry) {
+            entry = { floats: new Float32Array(floats), buffer: gl.createBuffer(), vao: gl.createVertexArray(), count: 0, tick: drawTick };
+            gl.bindVertexArray(entry.vao);
+            gl.bindBuffer(gl.ARRAY_BUFFER, entry.buffer);
+            for (var t = 0; t < rlayout.length; t++) {
+              gl.enableVertexAttribArray(t);
+              gl.vertexAttribPointer(t, rlayout[t][0], gl.FLOAT, false, RV * 4, rlayout[t][1]);
+            }
+            gl.bindVertexArray(null);
+            sourceCache.set(item, entry);
+          }
+          if (entry.floats.length !== floats) entry.floats = new Float32Array(floats);
+          entry.floats.set(src);
+          var ptr = expander.input(floats);
+          new Float32Array(expander.memory.buffer, ptr, floats).set(src);
+          var count = expander.ribbons(floats);
+          if (count < 0) { entry.count = 0; return; }
+          var out = new Float32Array(expander.memory.buffer, expander.output(), count * RV);
+          gl.bindBuffer(gl.ARRAY_BUFFER, entry.buffer);
+          gl.bufferData(gl.ARRAY_BUFFER, out, gl.DYNAMIC_DRAW);
+          entry.count = count;
+        }
+        if (!entry.count) return;
+        var e = ribbonProgram();
+        gl.useProgram(e.p);
+        gl.uniform2f(e.viewport, w, h);
+        gl.uniform1f(e.flip, flip);
+        var at = paramOffset(g) + item[3];
+        gl.uniform4fv(e.medium, scratch.subarray(at, at + 44));
+        setBlend(item[4] || 0, true);
+        gl.bindVertexArray(entry.vao);
+        if (ensureStencil(surface, ms)) {
+          gl.enable(gl.STENCIL_TEST);
+          gl.stencilMask(0x80);
+          gl.stencilFunc(gl.EQUAL, 0, 0x80);
+          gl.stencilOp(gl.KEEP, gl.KEEP, gl.INVERT);
+          gl.drawArrays(gl.TRIANGLES, 0, entry.count);
+          gl.colorMask(false, false, false, false);
+          gl.stencilFunc(gl.ALWAYS, 0, 0x80);
+          gl.stencilOp(gl.KEEP, gl.KEEP, gl.ZERO);
+          gl.drawArrays(gl.TRIANGLES, 0, entry.count);
+          gl.colorMask(true, true, true, true);
+          gl.disable(gl.STENCIL_TEST);
+        } else {
+          gl.drawArrays(gl.TRIANGLES, 0, entry.count);
+        }
+        gl.bindVertexArray(null);
+      }
       // An item's vertices stay for as long as the item is drawn: a stable
       // cast's items recur every frame and keep theirs, a changing cast's are
       // let go once the frame has moved past them, so a long recording holds
@@ -1131,6 +1232,7 @@ enum SiteHero {
           if (item[0] === 's') { drawShapes(item[1], item[2], item[3] || 0, w, h, flip); continue; }
           if (item[0] === 't') { drawTriangles(item[1], item[2], item[3] === 1, item[4] || 0, w, h, vo, flip); continue; }
           if (item[0] === 'x') { drawSources(item, item[4] === 1, item[5] || 0, w, h, so, flip); continue; }
+          if (item[0] === 'r') { drawRibbons(item, w, h, so, flip, g, surface, ms); continue; }
           if (item[0] === 'g') { drawGroups(item[1], item[2], item[3] || 0, w, h, flip, g); continue; }
           if (item[0] === 'f') {
             if (!sc) continue;

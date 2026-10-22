@@ -26,6 +26,11 @@ struct WebSource {
         /// A fill through the tessellator: its closed contours' lengths, the
         /// winding rule, and its color.
         case tessellated(lengths: [Int], nonZero: Bool, color: SIMD4<Float>)
+        /// A stroke under a medium as its runs (the whole path, or its
+        /// dashes), each with its own points, half-widths, colors, and
+        /// fractions along the whole path; the source's `points` stay empty.
+        case ribbons(runs: [WebRibbonRun], join: StrokeExpanderJoin, cap: StrokeExpanderCap,
+                     fringe: Double, ctmScale: Double, wholeLength: Double?, seed: Float)
     }
 
     var kind: Kind
@@ -47,6 +52,13 @@ struct WebSource {
             return WebSourceLayout.fanFloats(points: points.count)
         case let .tessellated(lengths, _, _):
             return WebSourceLayout.tessellatedFloats(contours: lengths)
+        case let .ribbons(runs, _, _, _, _, _, _):
+            return runs.reduce(0) { total, run in
+                total + WebSourceLayout.ribbonFloats(points: run.points.count,
+                                                     widthsPerPoint: run.halfWidths.count > 1,
+                                                     colorsPerPoint: run.colors.count > 1,
+                                                     fractions: run.fractions != nil)
+            }
         }
     }
 
@@ -98,6 +110,44 @@ struct WebSource {
             for n in lengths { out.append(Float(n)) }
             for p in points { point(p) }
             color(c)
+        case let .ribbons(runs, join, cap, fringe, ctmScale, wholeLength, seed):
+            for run in runs {
+                var flags = run.closed ? WebSourceLayout.closedFlag : 0
+                flags |= Int(join.rawValue) << WebSourceLayout.joinShift
+                flags |= Int(cap.rawValue) << WebSourceLayout.capShift
+                if run.halfWidths.count > 1 { flags |= WebSourceLayout.widthsPerPointFlag }
+                if run.colors.count > 1 { flags |= WebSourceLayout.colorsPerPointFlag }
+                if run.fractions != nil { flags |= WebSourceLayout.fractionsFlag }
+                header(kind: WebSourceLayout.ribbonKind, flags: flags, count: run.points.count,
+                       fringe: fringe, ctmScale: ctmScale)
+                for p in run.points { point(p) }
+                for w in run.halfWidths { out.append(Float(w)) }
+                for c in run.colors { color(c) }
+                if let fractions = run.fractions { for t in fractions { out.append(Float(t)) } }
+                out.append(wholeLength.map(Float.init) ?? -1)
+                out.append(seed)
+            }
         }
+    }
+}
+
+/// One run of a stroke under a medium, prepared as the renderer expands it:
+/// its points, one half-width or one per point, one color or one per point,
+/// and its fractions along the whole path when it is a dash.
+struct WebRibbonRun {
+    var points: [Point2D]
+    var closed: Bool
+    var halfWidths: [Double]
+    var colors: [SIMD4<Float>]
+    var fractions: [Double]?
+
+    /// A run with its per-point lists folded to one entry where every entry
+    /// is the same.
+    init(points: [Point2D], closed: Bool, halfWidths: [Double], colors: [SIMD4<Float>], fractions: [Double]?) {
+        self.points = points
+        self.closed = closed
+        self.halfWidths = halfWidths.allSatisfy { $0 == halfWidths.first } ? Array(halfWidths.prefix(1)) : halfWidths
+        self.colors = colors.allSatisfy { $0 == colors.first } ? Array(colors.prefix(1)) : colors
+        self.fractions = fractions
     }
 }
