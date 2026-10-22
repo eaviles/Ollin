@@ -179,7 +179,7 @@ A packaged sketch runs with `swift run <Target> <flags>`, and a single file with
 
 | Flag | What it does |
 | --- | --- |
-| `--export frame.png` | One still. `--frame N` picks the frame (from 0, default 0) or `--at S` names the moment in seconds, and `--fps` sets the rate (default 60). Every frame before it is drawn first. |
+| `--export frame.png` | One still. `--frame N` picks the frame (from 0, default 0) or `--at S` names the moment in seconds, and `--fps` sets the rate (default 60). Every frame before it runs `draw()` first, and the GPU renders those only when the picture builds on them (a pile, a feedback or simulation layer, a compute step), so a still costs one frame of GPU work. |
 | `--export-sequence dir` | `frame-00001.png`, `frame-00002.png`, and so on, for `--seconds S` or `--frames N`. `--skip S` runs S seconds before the first file is written. |
 | `--export-video out.mp4`, `--export-gif out.gif` | A movie or a GIF, with the same `--seconds`, `--frames`, `--fps`, and `--skip`. |
 | `--export-loop out.mp4` | Exactly one lap of `loopDuration`. |
@@ -239,7 +239,7 @@ Each of these gives a wrong or empty picture and no error.
 - **A texture on a mesh with no texture coordinates.** The texture is ignored, and the mesh draws in its base color.
 - **`redraw()`, `copyFrame()`, `chooseFiles`, and `pointerShape` in an export.** There is no window, so each does nothing. A `redraw()` inside `draw()` asks for nothing either: that frame is the one being drawn.
 - **Noise offsets 256 apart.** Every Perlin field repeats every 256 units on each axis, so copies told apart by an offset of `32 * i` read the same noise every eighth copy. Use an offset that is not a power of two, or a seed per copy.
-- **Noise at its ends.** `noise` is clamped after its contrast is raised, so about 2% of it sits exactly at 0 and 2% exactly at 1, and a curve read straight from it runs flat there.
+- **Noise at its ends.** `noise` is clamped after its contrast is raised, so about 2% of `noise(x, y)` sits exactly at 0 and 2% exactly at 1, about 3.2% at each end in three dimensions, and none in one, and a curve read straight from it runs flat there.
 - **A `print` during an exported sequence.** It lands on the same terminal line as the progress text, and later than expected when the output is piped. Write to standard error with a newline first, or read the value after the run.
 
 <a name="checking"></a>

@@ -70,6 +70,8 @@ swift run --package-path Examples Example-Basic-HelloCircle --export /tmp/frame.
 
 `--frame` counts at 60 frames a second unless `--fps` says otherwise, so `--frame 30 --fps 10` is the moment a 10 fps sequence puts at its thirty-first frame, three seconds in. Every one-frame export reads the two flags the same way: the still, the EXR, the plates, and the vector files.
 
+To reach frame N, a still runs `draw()` for every frame before it, so time, the seed's draws, and the sketch's own state arrive where a window would have them. The GPU renders those earlier frames only when the picture builds on them: a canvas that piles up, a feedback or simulation layer, and the history screen-space reflections keep. A compute simulation's steps run every frame as well. Anything else, a filter or a combine such as the 2D light, is worked out from scratch each frame, so it renders once, for the frame asked for, and draws what the same frame of a movie would. A still at frame 600 therefore costs 600 calls to `draw()` and one frame of GPU work, where a movie costs every frame's.
+
 Write a deterministic, fixed-timestep PNG sequence (ready for `ffmpeg`):
 
 ```sh
