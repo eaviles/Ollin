@@ -1053,5 +1053,11 @@ let package = Package(
         // flat color, after Dóra Maurer.
         example("Recreations/DoraMaurer/Displacements"),
         example("Recreations/DoraMaurer/QuasiImage"),
+        // One gesture cast from random control points, laid down once as a
+        // brush stroke and again and again as fine pen strokes behind it, and
+        // one curve repeated along a larger copy of itself until the close
+        // lines fold into a flower, after Roman Verostko.
+        example("Recreations/RomanVerostko/Pathway"),
+        example("Recreations/RomanVerostko/Cyberflower"),
     ]
 )

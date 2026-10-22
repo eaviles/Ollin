@@ -534,6 +534,10 @@
     "Recreations/DoraMaurer": [
       "Recreations/DoraMaurer/Displacements",
       "Recreations/DoraMaurer/QuasiImage"
+    ],
+    "Recreations/RomanVerostko": [
+      "Recreations/RomanVerostko/Pathway",
+      "Recreations/RomanVerostko/Cyberflower"
     ]
   },
   "examples": {
@@ -9639,6 +9643,50 @@
       "stillSmall": "examples/Recreations/OwenSchuh/DiagonalArgument/still-640.jpg?v=e4720d01",
       "width": 920
     },
+    "Recreations/RomanVerostko/Cyberflower": {
+      "width": 864,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 1080,
+      "motion": 1.372,
+      "sound": false,
+      "source": "b89e7603acc96067",
+      "rendered": "2026-10-22",
+      "bytes": {
+        "loop": 1627244,
+        "loopSmall": 356819,
+        "still": 130902,
+        "stillSmall": 40145
+      },
+      "loop": "examples/Recreations/RomanVerostko/Cyberflower/loop.mp4?v=8ca66a07",
+      "loopSmall": "examples/Recreations/RomanVerostko/Cyberflower/loop-640.mp4?v=1bbc196a",
+      "still": "examples/Recreations/RomanVerostko/Cyberflower/still.jpg?v=68f4437f",
+      "stillSmall": "examples/Recreations/RomanVerostko/Cyberflower/still-640.jpg?v=c3260f2f",
+      "seed": 1
+    },
+    "Recreations/RomanVerostko/Pathway": {
+      "width": 1620,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 1500,
+      "motion": 2.097,
+      "sound": false,
+      "source": "22ce27a4b02c2089",
+      "rendered": "2026-10-22",
+      "bytes": {
+        "loop": 3456921,
+        "loopSmall": 1103015,
+        "still": 318131,
+        "stillSmall": 85944
+      },
+      "loop": "examples/Recreations/RomanVerostko/Pathway/loop.mp4?v=89df685a",
+      "loopSmall": "examples/Recreations/RomanVerostko/Pathway/loop-640.mp4?v=2fff92c2",
+      "still": "examples/Recreations/RomanVerostko/Pathway/still.jpg?v=09a18a08",
+      "stillSmall": "examples/Recreations/RomanVerostko/Pathway/still-640.jpg?v=09cc52bc",
+      "seed": 1
+    },
     "Recreations/RyszardWiniarski/LosowanieDwiemaKostkami": {
       "bytes": {
         "loop": 1454517,
@@ -12785,8 +12833,8 @@
       ]
     },
     "Live": {
-      "image": "groups/Live.jpg?v=a7783b4a",
-      "imageSmall": "groups/Live-640.jpg?v=7773d6c6",
+      "image": "groups/Live.jpg?v=b5566de7",
+      "imageSmall": "groups/Live-640.jpg?v=3cb0d65a",
       "of": [
         "Live/DragToEdit",
         "Live/Cues",
@@ -13023,6 +13071,14 @@
       "of": [
         "Recreations/OwenSchuh/CountingTheRationals",
         "Recreations/OwenSchuh/DiagonalArgument"
+      ]
+    },
+    "Recreations/RomanVerostko": {
+      "image": "groups/Recreations-RomanVerostko.jpg?v=aed8ec79",
+      "imageSmall": "groups/Recreations-RomanVerostko-640.jpg?v=8405fe17",
+      "of": [
+        "Recreations/RomanVerostko/Pathway",
+        "Recreations/RomanVerostko/Cyberflower"
       ]
     },
     "Recreations/RyszardWiniarski": {
