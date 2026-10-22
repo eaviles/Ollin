@@ -81,7 +81,7 @@ struct TapeAndLensTests {
 
     @Test(.enabled(if: Snapshot.hasMetal))
     func qualityOneHundredComesBackWithinALevel() throws {
-        let plain = try render(nil), saved = try render(.jpeg(quality: 100))
+        let plain = try render(nil), saved = try render(.jpeg(quality: 100, subsamplesChroma: false))
         // Every step is one level, so what is lost is the rounding of each
         // coefficient: a level at most in all but a handful of channels, the
         // rest a level more where the frame's own dither falls the other way.
@@ -133,7 +133,7 @@ struct TapeAndLensTests {
 
     @Test(.enabled(if: Snapshot.hasMetal))
     func qualityTenHoldsOnlyTheKeptCoefficients() throws {
-        let px = try render(.jpeg(quality: 10))
+        let px = try render(.jpeg(quality: 10, subsamplesChroma: false))
         let tables = Filter.jpegTables(quality: 10)
         var checked = 0, off = 0, zeroed = 0, high = 0
         for by in 0 ..< Self.side / 8 {
@@ -158,6 +158,49 @@ struct TapeAndLensTests {
         // ringing a channel clipped at the edge of the range.
         #expect(off * 100 < checked, "\(off) of \(checked) coefficients sit between their steps")
         #expect(Double(zeroed) / Double(high) > 0.97, "the fine coefficients round away: \(zeroed) of \(high)")
+    }
+
+    /// A one-pixel-wide orange line on gray, through a JPEG at quality 100 (or
+    /// as it is).
+    final class ColorLine: Sketch {
+        var filter: Filter?
+        override var canvasSize: CanvasSize { .square(TapeAndLensTests.side) }
+        override func draw() {
+            background(.black)
+            let scene = makeRenderTarget()
+            withTarget(scene) {
+                background(Color(white: 0.5))
+                noStroke(); fill(Color(red: 0.95, green: 0.45, blue: 0.1)); drawRect(101, 0, 1, 240)
+            }
+            drawImage((filter.map { scene.filtered($0) } ?? scene).image, 0, 0)
+        }
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func subsampledColorSpreadsAcrossItsPairOfPixels() throws {
+        func render(_ filter: Filter?) throws -> Pixels {
+            let s = ColorLine(); s.filter = filter
+            return Pixels(try OllinApp.image(of: s, frame: 1))
+        }
+        func warmth(_ px: Pixels, _ x: Int) -> Int { px.channel(0, x, 120) - px.channel(2, x, 120) }
+        let plain = try render(nil)
+        let full = try render(.jpeg(quality: 100, subsamplesChroma: false))
+        let half = try render(.jpeg(quality: 100))
+        // Full-resolution color keeps every column's hue.
+        for x in 96 ..< 108 {
+            #expect(abs(warmth(full, x) - warmth(plain, x)) <= 3, "column \(x): \(warmth(full, x)) against \(warmth(plain, x))")
+        }
+        // Half-resolution color is one value for each pair of columns, so the
+        // one-column line gives up much of its hue, while the brightness, kept
+        // at full resolution, stays the layer's in every column.
+        #expect(warmth(half, 101) < warmth(plain, 101) - 15, "the line's hue is shared out")
+        func luma(_ px: Pixels, _ x: Int) -> Double {
+            0.299 * Double(px.channel(0, x, 120)) + 0.587 * Double(px.channel(1, x, 120))
+                + 0.114 * Double(px.channel(2, x, 120))
+        }
+        for x in 96 ..< 108 {
+            #expect(abs(luma(half, x) - luma(plain, x)) <= 4, "column \(x)'s brightness: \(luma(half, x)) against \(luma(plain, x))")
+        }
     }
 
     // MARK: Videotape

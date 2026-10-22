@@ -773,12 +773,12 @@ import OllinWebGate
         #expect(pairs.count == 2, "the JPEG and the tilt-shift")
         let jpeg = try #require(pairs.first { $0.pairParts?.first == "ollin_fx_jpeg_forward" })
         #expect(jpeg.pairParts?.second == "ollin_fx_jpeg_inverse")
-        #expect(jpeg.pairParts?.rows == 33, "the size, then the two tables")
-        #expect(jpeg.paramRows == 1 + 33 + 1)
+        #expect(jpeg.pairParts?.rows == 34, "the size, the two tables, and the subsampling")
+        #expect(jpeg.paramRows == 1 + 34 + 2)
         let blur = try #require(pairs.first { $0.pairParts?.first == "ollin_fx_varblur" })
         #expect(blur.pairParts?.second == "ollin_fx_varblur" && blur.paramRows == 1 + 3 + 3)
-        #expect(graph.fragmentRows["ollin_fx_jpeg_forward"] == 33)
-        #expect(graph.fragmentRows["ollin_fx_jpeg_inverse"] == 1)
+        #expect(graph.fragmentRows["ollin_fx_jpeg_forward"] == 34)
+        #expect(graph.fragmentRows["ollin_fx_jpeg_inverse"] == 2)
         #expect(graph.fragmentRows["ollin_fx_varblur"] == 3)
     }
 

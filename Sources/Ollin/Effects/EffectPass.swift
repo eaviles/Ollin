@@ -390,17 +390,19 @@ extension Filter {
         let f = { (a: Double, b: Double, c: Double, d: Double) in
             SIMD4<Float>(Float(a), Float(b), Float(c), Float(d)) }
         switch kind {
-        case .jpeg(let quality):
-            let pw = (width + 7) / 8 * 8, ph = (height + 7) / 8 * 8
+        case let .jpeg(quality, subsamplesChroma):
+            let whole = subsamplesChroma ? 16 : 8
+            let pw = (width + whole - 1) / whole * whole, ph = (height + whole - 1) / whole * whole
             let size = f(Double(width), Double(height), Double(pw), Double(ph))
             let tables = Filter.jpegTables(quality: quality)
             func rows(_ table: [Double]) -> [SIMD4<Float>] {
                 stride(from: 0, to: 64, by: 4).map { f(table[$0], table[$0 + 1], table[$0 + 2], table[$0 + 3]) }
             }
+            let flag = f(subsamplesChroma ? 1 : 0, 0, 0, 0)
             return EffectPair(first: EffectPass(fragment: "ollin_fx_jpeg_forward", inputs: [.layer(0)],
-                                                params: [size] + rows(tables.luma) + rows(tables.chroma)),
+                                                params: [size] + rows(tables.luma) + rows(tables.chroma) + [flag]),
                               second: EffectPass(fragment: "ollin_fx_jpeg_inverse",
-                                                 inputs: [.layer(0), .layer(1)], params: [size]),
+                                                 inputs: [.layer(0), .layer(1)], params: [size, flag]),
                               scratchWidth: pw, scratchHeight: ph)
         case let .tiltShift(focus, angle, band, falloff, radius):
             return Self.varblur(head: f(0, radius, Double(width), Double(height)),

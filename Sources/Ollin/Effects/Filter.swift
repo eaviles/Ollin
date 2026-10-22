@@ -450,8 +450,9 @@ public struct Filter: Sendable {
         /// chroma smeared along the line behind a sharper luma, under a beat.
         case vhs(smear: Double, jitter: Double, damage: Double, amount: Double, phase: Double)
         /// Baseline JPEG's block transform: every 8 by 8 block's cosine
-        /// transform quantized by the standard tables at `quality`.
-        case jpeg(quality: Int)
+        /// transform quantized by the standard tables at `quality`, the chroma
+        /// at half resolution when `subsamplesChroma`.
+        case jpeg(quality: Int, subsamplesChroma: Bool)
         /// A band in focus around a line, the blur growing away from it.
         case tiltShift(focus: Double, angle: Double, band: Double, falloff: Double, radius: Double)
         /// A blur whose radius grows along a direction, from none to `radius`.
@@ -1752,15 +1753,21 @@ public struct Filter: Sendable {
     /// by its step in the quantization table and rounded, then put back
     /// together. The tables are the standard's (the luma and chroma tables of
     /// its Annex K) scaled to `quality` the way the common encoder library
-    /// scales them, so a quality reads as it does in an image editor's export
-    /// dialog. At 100 every step is one level and the picture comes back
-    /// within a level; toward 10 the fine coefficients round away, the
-    /// blocks flatten into tiles with ringing at their edges, and the color
-    /// falls to one tint a block. The layer's alpha is kept.
+    /// scales them, and the color is stored at half resolution the way most
+    /// encoders store it, so a quality reads as it does in an image editor's
+    /// export dialog. Toward 10 the fine coefficients round away, the blocks
+    /// flatten into tiles with ringing at their edges, and the color falls to
+    /// one tint across each 16 by 16 macroblock. The layer's alpha is kept.
     ///
-    /// - Parameter quality: 1 (the most loss) to 100 (the least).
-    public static func jpeg(quality: Int = 25) -> Filter {
-        Filter(kind: .jpeg(quality: min(max(quality, 1), 100)))
+    /// - Parameters:
+    ///   - quality: 1 (the most loss) to 100 (the least).
+    ///   - subsamplesChroma: Whether the color is averaged over 2 by 2
+    ///     pixels before its transform, as most files store it (the color
+    ///     then bleeds a little across a sharp colored edge even at 100).
+    ///     Off, the color keeps full resolution, and at 100 the picture comes
+    ///     back within a level.
+    public static func jpeg(quality: Int = 25, subsamplesChroma: Bool = true) -> Filter {
+        Filter(kind: .jpeg(quality: min(max(quality, 1), 100), subsamplesChroma: subsamplesChroma))
     }
 
     /// A tilt-shift lens: a band of the layer kept sharp around a focus line,

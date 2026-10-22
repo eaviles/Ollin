@@ -274,13 +274,16 @@ codec, through a lens, on film, on paper. Three of them animate by a phase you f
   luma stays sharp and the chroma trails `smear` pixels behind it (to the right when
   positive), so color bleeds past edges the detail keeps. `amount` scales the whole
   look, and 0 returns the layer untouched.
-- **`.jpeg(quality:)`** the loss of a JPEG file without writing one. The layer is cut
-  into 8 by 8 blocks from its top-left corner, and each block goes through the format's
-  own transform: into luma and two chroma channels, into 64 cosine coefficients, each
-  divided by its step in the standard's quantization tables, rounded, and put back. The
-  tables scale with `quality` (1 to 100) the way image editors scale them. At 100 the
-  picture comes back within a level; toward 10 the blocks flatten into tiles with
-  ringing at their edges and one tint each. Alpha is kept.
+- **`.jpeg(quality:subsamplesChroma:)`** the loss of a JPEG file without writing one.
+  The layer is cut into 8 by 8 blocks from its top-left corner, and each block goes
+  through the format's own transform: into luma and two chroma channels, into 64 cosine
+  coefficients, each divided by its step in the standard's quantization tables, rounded,
+  and put back. The tables scale with `quality` (1 to 100) the way image editors scale
+  them. The color is stored at half resolution, averaged over 2 by 2 pixels, as most
+  files store it, so it bleeds a little across a sharp colored edge and falls to one tint
+  across each 16 by 16 macroblock as the quality drops. Toward 10 the blocks flatten into
+  tiles with ringing at their edges. `subsamplesChroma: false` keeps the color at full
+  resolution, and at 100 the picture then comes back within a level. Alpha is kept.
 - **`.tiltShift(focus:angle:band:falloff:radius:)`** a band in focus around a line,
   the blur growing smoothly away from it on both sides, so a wide view reads as a
   model. `focus` is where the line crosses the middle column (a fraction of the

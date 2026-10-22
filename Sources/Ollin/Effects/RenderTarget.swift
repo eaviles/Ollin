@@ -91,6 +91,16 @@ public final class RenderTarget {
         case accumulate(Owner<Accumulator>)
     }
 
+    /// The layers a filter or a combine reads (its input, or its base and its
+    /// aux); empty for any other layer.
+    var opInputs: [RenderTarget] {
+        switch origin {
+        case let .filter(input, _): return [input]
+        case let .combine(base, aux, _): return [base, aux]
+        default: return []
+        }
+    }
+
     /// The layer a `Feedback`, `SimField`, or `Accumulator` target writes for,
     /// held weakly. The layer owns its write target, so a strong reference back
     /// would keep both alive for the life of the process, and with them the

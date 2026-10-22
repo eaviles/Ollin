@@ -102,12 +102,15 @@ extension MetalRenderer {
             guard case let .ocean(request) = target.origin else { continue }
             target.texture = encodeOceanField(request, into: cb, pooled: pooled)
         }
-        for target in drawer.renderTargets {
-            guard case .geometry = target.origin else { continue }
+        // A geometry layer that draws the image of a filter or a combine (or of a
+        // layer that waits on one) is drawn after that op runs, below; every
+        // other layer is drawn here, before the ops, as it always was.
+        let waiting = layersWaitingOnOps(drawer)
+        func encodeGeometry(_ target: RenderTarget) {
             let pw = target.pixelWidth, ph = target.pixelHeight
             let storage = attachmentStorage(for: drawer, target: target)
             guard let tex = acquireTargetTextures(width: pw, height: ph, pooled: pooled,
-                                                  format: target.pixelFormat, storage: storage) else { continue }
+                                                  format: target.pixelFormat, storage: storage) else { return }
             let pass = MTLRenderPassDescriptor()
             pass.colorAttachments[0].texture = tex.msaa
             pass.colorAttachments[0].resolveTexture = tex.resolve
@@ -132,7 +135,7 @@ extension MetalRenderer {
             // A clip pushed inside this layer gives its pass a stencil attachment.
             let passHasStencil = attachClipStencil(to: pass, active: target.needsStencil,
                                                    width: pw, height: ph, storage: storage)
-            guard let enc = countedEncoder(cb, pass) else { continue }
+            guard let enc = countedEncoder(cb, pass) else { return }
             // Geometry inside the block used canvas coordinates, so map by the logical
             // size; a fraction-res layer's smaller attachment just downsamples.
             encode(drawer, viewport: SIMD2(Float(target.width), Float(target.height)), into: enc,
@@ -175,6 +178,11 @@ extension MetalRenderer {
                                                            meshBuffer: buffers.mesh,
                                                            width: pw, height: ph, pooled: pooled)
             }
+                }
+        for target in drawer.renderTargets {
+            guard case .geometry = target.origin,
+                  !waiting.contains(ObjectIdentifier(target)) else { continue }
+            encodeGeometry(target)
         }
         // Feedback layers: like a geometry target, but rendered into persistent
         // ping-pong storage. The block reads the *front* (last frame, exposed as
@@ -449,18 +457,18 @@ extension MetalRenderer {
         // inputs (filled earlier in this loop, or by the geometry/generator passes
         // above) are ready before it runs.
         defer { filterChainFormat = nil }
-        for output in drawer.filterOps {
+        func runOp(_ output: RenderTarget) {
             // Every pass of this op works in its output's precision, which follows
             // the layer it reads (a `.float32` source keeps float32 to the end).
             filterChainFormat = output.pixelFormat == linearFormat ? nil : output.pixelFormat
             switch output.origin {
             case let .filter(input, filter):
-                guard let src = input.texture else { continue }
+                guard let src = input.texture else { return }
                 output.texture = applyFilter(filter, input: src,
                                              width: output.pixelWidth, height: output.pixelHeight,
                                              into: cb, pooled: pooled)
             case let .combine(base, aux, op):
-                guard let b = base.texture, let a = aux.texture else { continue }
+                guard let b = base.texture, let a = aux.texture else { return }
                 // Ambient occlusion reads the base's mesh-normal G-buffer when it was
                 // captured (a 3D base feeding AO); nil otherwise → the shader's
                 // depth-reconstruction fallback.
@@ -469,7 +477,41 @@ extension MetalRenderer {
                                               width: output.pixelWidth, height: output.pixelHeight,
                                               into: cb, pooled: pooled)
             default:
-                continue
+                return
+            }
+                }
+        if waiting.isEmpty {
+            for output in drawer.filterOps { runOp(output) }
+        } else {
+            // Ops and the layers waiting on them, each as soon as everything it
+            // reads this frame is ready, in record order among the ready ones.
+            var pendingOps = drawer.filterOps
+            var pendingLayers = drawer.renderTargets.filter { waiting.contains(ObjectIdentifier($0)) }
+            var unready = Set(pendingOps.map(ObjectIdentifier.init)).union(waiting)
+            while !pendingOps.isEmpty || !pendingLayers.isEmpty {
+                var progressed = false
+                pendingOps.removeAll { output in
+                    guard output.opInputs.allSatisfy({ !unready.contains(ObjectIdentifier($0)) }) else { return false }
+                    runOp(output)
+                    unready.remove(ObjectIdentifier(output))
+                    progressed = true
+                    return true
+                }
+                pendingLayers.removeAll { target in
+                    guard layerSources(of: target, in: drawer).allSatisfy({ !unready.contains(ObjectIdentifier($0)) })
+                    else { return false }
+                    encodeGeometry(target)
+                    unready.remove(ObjectIdentifier(target))
+                    progressed = true
+                    return true
+                }
+                if !progressed {
+                    // A layer that reads itself through an op: draw what is left in
+                    // record order, each reading whatever its inputs hold.
+                    pendingOps.forEach(runOp)
+                    pendingLayers.forEach(encodeGeometry)
+                    break
+                }
             }
         }
         keepDelayedInputs(into: cb)
@@ -910,6 +952,38 @@ extension MetalRenderer {
         case .outline, .shadow, .glow, .bevel:
             return nil
         }
+    }
+
+    /// The layers a geometry layer draws the image of this frame: the sources of
+    /// its image batches that are layers.
+    func layerSources(of target: RenderTarget, in drawer: Drawer) -> [RenderTarget] {
+        drawer.batches.compactMap { batch in
+            batch.target === target && batch.kind == .image ? batch.image?.webRenderTarget : nil
+        }
+    }
+
+    /// The geometry layers that draw the image of a filter or a combine this
+    /// frame, or of another layer in this set, so they must wait for those ops
+    /// to run. Empty for every frame that draws an op only onto the canvas,
+    /// which keeps those frames in the order they always had.
+    func layersWaitingOnOps(_ drawer: Drawer) -> Set<ObjectIdentifier> {
+        guard !drawer.filterOps.isEmpty else { return [] }
+        let geometry = drawer.renderTargets.filter { if case .geometry = $0.origin { return true }; return false }
+        guard !geometry.isEmpty else { return [] }
+        var later = Set(drawer.filterOps.map(ObjectIdentifier.init))
+        var waiting: Set<ObjectIdentifier> = []
+        var grew = true
+        while grew {
+            grew = false
+            for target in geometry where !waiting.contains(ObjectIdentifier(target)) {
+                if layerSources(of: target, in: drawer).contains(where: { later.contains(ObjectIdentifier($0)) }) {
+                    waiting.insert(ObjectIdentifier(target))
+                    later.insert(ObjectIdentifier(target))
+                    grew = true
+                }
+            }
+        }
+        return waiting
     }
 
     /// Build a summed-area table of `input`: every texel holding the sum of everything

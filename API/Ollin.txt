@@ -4176,7 +4176,7 @@ struct Filter: Sendable
   static func inverseFourier() -> Filter
   static func invert(amount: Double = default) -> Filter
   static func iridescence(amount: Double = default, scale: Double = default, bands: Double = default, shift: Double = default) -> Filter
-  static func jpeg(quality: Int = default) -> Filter
+  static func jpeg(quality: Int = default, subsamplesChroma: Bool = default) -> Filter
   static func kaleidoscope(segments: Double = default, angle: Double = default) -> Filter
   static func lensDistortion(amount: Double = default, quartic: Double = default, center: Vector2 = default, fillsFrame: Bool = default) -> Filter
   static func levels(blackPoint: Double = default, whitePoint: Double = default, gamma: Double = default) -> Filter

@@ -2729,10 +2729,15 @@ fragment float4 ollin_fx_vhs(PresentOut in [[stage_in]],
 // holds coefficient (u, v) of the luma and the two chroma channels (JFIF
 // YCbCr over the encoded values, level-shifted by a half), each divided by
 // its step in the quantization table, rounded, and multiplied back, which is
-// all the loss there is. The coefficients land in a texture padded to whole
-// blocks. params[0]: the layer's width and height, the padded width and
-// height; params[1...16]: the luma table, params[17...32]: the chroma table,
-// sixty-four steps each in row-major order (v then u), in levels of the eight-bit range.
+// all the loss there is. With the chroma subsampled, as most encoders store
+// it, the chroma is averaged over 2 by 2 pixels first, so one 8 by 8 chroma
+// block covers a 16 by 16 macroblock, and its coefficients sit in the
+// macroblock's top-left 8 by 8 texels. The coefficients land in a texture
+// padded to whole blocks (whole macroblocks when subsampled). params[0]: the
+// layer's width and height, the padded width and height; params[1...16]: the
+// luma table, params[17...32]: the chroma table, sixty-four steps each in
+// row-major order (v then u), in levels of the eight-bit range; params[33].x:
+// 1 when the chroma is subsampled.
 static inline float3 ollin_rgb_to_ycc(float3 c) {
     return float3(dot(c, float3(0.299, 0.587, 0.114)),
                   dot(c, float3(-0.168736, -0.331264, 0.5)),
@@ -2745,11 +2750,20 @@ static inline float3 ollin_ycc_to_rgb(float3 c) {
                   c.x + 1.772 * c.y);
 }
 
+// The level-shifted YCbCr of the layer's pixel at `at` (clamped to the layer).
+static inline float3 ollin_jpeg_sample(texture2d<float> src, sampler samp, float2 at, float2 size) {
+    float4 c = src.sample(samp, (min(at, size - 1.0) + 0.5) / size, level(0.0));
+    float3 ycc = ollin_rgb_to_ycc(linearToSrgb(saturate(ollin_unpremul(c))));
+    ycc.x -= 0.5;
+    return ycc;
+}
+
 fragment float4 ollin_fx_jpeg_forward(PresentOut in [[stage_in]],
                                       texture2d<float> src [[texture(0)]],
                                       sampler samp [[sampler(0)]],
                                       constant float4 *params [[buffer(0)]]) {
     float2 size = params[0].xy, padded = params[0].zw;
+    bool subsampled = params[33].x > 0.5;
     float2 px = floor(in.uv * padded);
     float2 block = floor(px / 8.0) * 8.0;
     float2 uv = px - block;
@@ -2758,44 +2772,84 @@ fragment float4 ollin_fx_jpeg_forward(PresentOut in [[stage_in]],
         float cy = cos((2.0 * float(y) + 1.0) * uv.y * 0.19634954085);
         for (int x = 0; x < 8; x++) {
             float cx = cos((2.0 * float(x) + 1.0) * uv.x * 0.19634954085);
-            float2 at = min(block + float2(float(x), float(y)), size - 1.0);
-            float4 c = src.sample(samp, (at + 0.5) / size, level(0.0));
-            float3 ycc = ollin_rgb_to_ycc(linearToSrgb(saturate(ollin_unpremul(c))));
-            ycc.x -= 0.5;
-            sum += ycc * (cx * cy);
+            sum += ollin_jpeg_sample(src, samp, block + float2(float(x), float(y)), size) * (cx * cy);
         }
     }
     float cu = uv.x < 0.5 ? 0.70710678118 : 1.0;
     float cv = uv.y < 0.5 ? 0.70710678118 : 1.0;
     float3 coefficient = 0.25 * cu * cv * sum;
+    // The chroma's block position: the luma's, or the place inside the macroblock.
+    float2 cuv = uv;
+    if (subsampled) {
+        float2 macro = floor(px / 16.0) * 16.0;
+        cuv = px - macro;
+        float2 chroma = float2(0.0);
+        if (cuv.x < 8.0 && cuv.y < 8.0) {
+            for (int y = 0; y < 8; y++) {
+                float cy = cos((2.0 * float(y) + 1.0) * cuv.y * 0.19634954085);
+                for (int x = 0; x < 8; x++) {
+                    float cx = cos((2.0 * float(x) + 1.0) * cuv.x * 0.19634954085);
+                    float2 at = macro + 2.0 * float2(float(x), float(y));
+                    float2 mean = 0.25 * (ollin_jpeg_sample(src, samp, at, size).yz
+                                        + ollin_jpeg_sample(src, samp, at + float2(1.0, 0.0), size).yz
+                                        + ollin_jpeg_sample(src, samp, at + float2(0.0, 1.0), size).yz
+                                        + ollin_jpeg_sample(src, samp, at + float2(1.0, 1.0), size).yz);
+                    chroma += mean * (cx * cy);
+                }
+            }
+            float ccu = cuv.x < 0.5 ? 0.70710678118 : 1.0;
+            float ccv = cuv.y < 0.5 ? 0.70710678118 : 1.0;
+            coefficient.yz = 0.25 * ccu * ccv * chroma;
+        } else {
+            coefficient.yz = float2(0.0);
+            cuv = float2(0.0);
+        }
+    }
     int i = int(uv.y) * 8 + int(uv.x);
+    int j = int(cuv.y) * 8 + int(cuv.x);
     float qLuma = params[1 + i / 4][i % 4] / 255.0;
-    float qChroma = params[17 + i / 4][i % 4] / 255.0;
+    float qChroma = params[17 + j / 4][j % 4] / 255.0;
     float3 q = float3(qLuma, qChroma, qChroma);
     return float4(round(coefficient / q) * q, 1.0);
 }
 
 // The inverse pass: every pixel sums its block's quantized coefficients back
 // through the cosines, undoes the level shift and the color transform, and
-// clamps to the eight-bit range the format holds. The layer's own alpha is
-// kept (the format carries none). Inputs: the layer, the coefficients.
-// params[0]: the layer's width and height, the padded width and height.
+// clamps to the eight-bit range the format holds. Subsampled chroma is read
+// from the pixel's macroblock with the cosines taken at the pixel's place in
+// the half-resolution grid, which spreads it smoothly across the 2 by 2
+// pixels it stood for. The layer's own alpha is kept (the format carries
+// none). Inputs: the layer, the coefficients. params[0]: the layer's width
+// and height, the padded width and height; params[1].x: 1 when the chroma is
+// subsampled.
 fragment float4 ollin_fx_jpeg_inverse(PresentOut in [[stage_in]],
                                       texture2d<float> src [[texture(0)]],
                                       texture2d<float> coefficients [[texture(1)]],
                                       sampler samp [[sampler(0)]],
                                       constant float4 *params [[buffer(0)]]) {
     float2 size = params[0].xy, padded = params[0].zw;
+    bool subsampled = params[1].x > 0.5;
     float2 px = floor(in.uv * size);
     float2 block = floor(px / 8.0) * 8.0;
     float2 xy = px - block;
+    float2 macro = floor(px / 16.0) * 16.0;
+    float2 half_xy = (px - macro + 0.5) * 0.5 - 0.5;
     float3 sum = float3(0.0);
     for (int v = 0; v < 8; v++) {
         float cv = (v == 0 ? 0.70710678118 : 1.0) * cos((2.0 * xy.y + 1.0) * float(v) * 0.19634954085);
+        float hv = (v == 0 ? 0.70710678118 : 1.0) * cos((2.0 * half_xy.y + 1.0) * float(v) * 0.19634954085);
         for (int u = 0; u < 8; u++) {
             float cu = (u == 0 ? 0.70710678118 : 1.0) * cos((2.0 * xy.x + 1.0) * float(u) * 0.19634954085);
             float2 at = block + float2(float(u), float(v));
-            sum += coefficients.sample(samp, (at + 0.5) / padded, level(0.0)).rgb * (cu * cv);
+            float3 c = coefficients.sample(samp, (at + 0.5) / padded, level(0.0)).rgb;
+            if (subsampled) {
+                float hu = (u == 0 ? 0.70710678118 : 1.0) * cos((2.0 * half_xy.x + 1.0) * float(u) * 0.19634954085);
+                float2 cat = macro + float2(float(u), float(v));
+                float2 cc = coefficients.sample(samp, (cat + 0.5) / padded, level(0.0)).gb;
+                sum += float3(c.x * (cu * cv), cc * (hu * hv));
+            } else {
+                sum += c * (cu * cv);
+            }
         }
     }
     float3 ycc = 0.25 * sum;
