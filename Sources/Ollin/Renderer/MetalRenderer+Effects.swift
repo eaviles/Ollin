@@ -302,7 +302,7 @@ extension MetalRenderer {
                     if let slot = fluidSlot(for: sf, width: pw, height: ph, into: cb) {
                         target.texture = slot.flipped ? slot.dyeB : slot.dyeA
                     }
-                } else if sf.sim.selfWarpConfig != nil {
+                } else if sf.sim.usesWarpState {
                     if let slot = selfWarpSlots[ObjectIdentifier(sf)] {
                         target.texture = slot.flipped ? slot.histB : slot.histA
                     }
@@ -361,6 +361,14 @@ extension MetalRenderer {
                 // warped history.
                 guard let slot = selfWarpSlot(for: sf, width: pw, height: ph, into: cb) else { continue }
                 runSelfWarp(config, seed: seed, slot: slot,
+                            width: pw, height: ph, into: cb, pooled: pooled)
+                target.texture = slot.flipped ? slot.histA : slot.histB
+                selfWarpUsedThisFrame.insert(ObjectIdentifier(sf))
+            } else if let config = sf.sim.datamoshConfig {
+                // Datamosh: the self-warp's state and motion fit, with blocks that
+                // refresh or hold. `image` resolves to the freshly decoded picture.
+                guard let slot = selfWarpSlot(for: sf, width: pw, height: ph, into: cb) else { continue }
+                runDatamosh(config, seed: seed, slot: slot,
                             width: pw, height: ph, into: cb, pooled: pooled)
                 target.texture = slot.flipped ? slot.histA : slot.histB
                 selfWarpUsedThisFrame.insert(ObjectIdentifier(sf))
@@ -547,6 +555,16 @@ extension MetalRenderer {
         if let single = filter.singlePass(width: width, height: height, resolve: effectiveQuality) {
             return encodeSinglePass(single, layers: [input], width: width, height: height,
                                     into: cb, pooled: pooled)
+        }
+        // Two passes through one scratch texture, kept in single precision so a
+        // block transform's coefficients and a blur's first direction lose nothing.
+        if let pair = filter.pairPass(width: width, height: height) {
+            guard let scratch = acquireSATTexture(width: pair.scratchWidth, height: pair.scratchHeight,
+                                                  pooled: pooled) else { return nil }
+            encodeEffectFragment(pair.first.fragment, inputs: [input], output: scratch,
+                                 params: pair.first.params, into: cb, format: .rgba32Float)
+            return encodeSinglePass(pair.second, layers: [input, scratch],
+                                    width: width, height: height, into: cb, pooled: pooled)
         }
         // A layer style: the field or the blur it reads, then its composite over the layer.
         if let styled = filter.styledPass(width: width, height: height) {
@@ -885,7 +903,8 @@ extension MetalRenderer {
              .droste, .bulge, .wave, .ripple, .mirror, .polar, .tile, .perturb,
              .lensDistortion, .cornerPin, .channelMixer,
              .flutedGlass, .water, .paperTexture, .melt, .fieldMap, .arrows, .holographicFoil,
-             .chrome, .bubbleWrap, .anaglyph, .mirage, .schlieren:
+             .chrome, .bubbleWrap, .anaglyph, .mirage, .schlieren, .vhs, .lightLeak, .pagePeel,
+             .jpeg, .tiltShift, .progressiveBlur:
             return nil
         // Every layer style was encoded from its `styledPass` description above.
         case .outline, .shadow, .glow, .bevel:
@@ -2003,6 +2022,30 @@ extension MetalRenderer {
             }
             slot.primed = true
         }
+        measureWarpMotion(seed: seed, slot: slot, flowFront: flowFront, flowBack: flowBack,
+                          smoothing: config.smoothing, into: cb, pooled: pooled)
+        // 3. Carry the history along the motion, fade it by decay, and mix the fresh
+        //    drawing back in where it covers.
+        encodeEffectFragment("ollin_warp_advect",
+                             inputs: [histFront, seed, flowBack], output: histBack,
+                             params: [SIMD4(1 / Float(width), 1 / Float(height), 0, 0),
+                                      SIMD4(config.strength, config.refresh, config.decay, 0)],
+                             into: cb)
+        // 4. This frame's drawing becomes next frame's "previous" source. The blit is
+        //    ordered after the passes above, so they still read the old source.
+        if let blit = cb.makeBlitCommandEncoder() {
+            blit.copy(from: seed, to: slot.source)
+            blit.endEncoding()
+        }
+    }
+
+    /// The self-warp's motion fit: the motion between the last drawing (the
+    /// slot's source) and this one (`seed`), a coarse solve initialized from
+    /// last frame's motion and a fine one that folds in `smoothing`, landing in
+    /// `flowBack` in uv units.
+    private func measureWarpMotion(seed: MTLTexture, slot: SelfWarpSlot,
+                                   flowFront: MTLTexture, flowBack: MTLTexture, smoothing: Float,
+                                   into cb: MTLCommandBuffer, pooled: Bool) {
         let fw = slot.flowW, fh = slot.flowH
         let cw = max(4, fw / 4), ch = max(4, fh / 4)
         guard let lumaPrev = acquireFilterTexture(width: fw, height: fh, pooled: pooled),
@@ -2024,20 +2067,50 @@ extension MetalRenderer {
         encodeEffectFragment("ollin_warp_flow",
                              inputs: [lumaPrev, lumaCur, coarse, flowFront], output: flowBack,
                              params: [SIMD4(1 / Float(fw), 1 / Float(fh), 0, 0),
-                                      SIMD4(config.smoothing, 0, 0, 0)], into: cb)
-        // 3. Carry the history along the motion, fade it by decay, and mix the fresh
-        //    drawing back in where it covers.
-        encodeEffectFragment("ollin_warp_advect",
-                             inputs: [histFront, seed, flowBack], output: histBack,
-                             params: [SIMD4(1 / Float(width), 1 / Float(height), 0, 0),
-                                      SIMD4(config.strength, config.refresh, config.decay, 0)],
+                                      SIMD4(smoothing, 0, 0, 0)], into: cb)
+    }
+
+    /// Evolve a datamosh `SimField` one frame, on the self-warp's state: measure
+    /// the drawing's motion as the self-warp does, decide every block's fate and
+    /// vector (`ollin_mosh_blocks`, one texel a block), then decode: a refreshing
+    /// block shows this frame's drawing, a held one re-reads the last decoded
+    /// picture behind its vector. The decoded picture lands in the history pair's
+    /// back, which the field's `image` serves.
+    private func runDatamosh(_ config: Sim.DatamoshConfig, seed: MTLTexture,
+                             slot: SelfWarpSlot, width: Int, height: Int,
+                             into cb: MTLCommandBuffer, pooled: Bool) {
+        let flowFront = slot.flipped ? slot.flowB : slot.flowA
+        let flowBack  = slot.flipped ? slot.flowA : slot.flowB
+        let histFront = slot.flipped ? slot.histB : slot.histA
+        let histBack  = slot.flipped ? slot.histA : slot.histB
+        // First use: the decoded picture starts as this frame's drawing.
+        if !slot.primed {
+            if let blit = cb.makeBlitCommandEncoder() {
+                blit.copy(from: seed, to: slot.source)
+                blit.copy(from: seed, to: histFront)
+                blit.endEncoding()
+            }
+            slot.primed = true
+        }
+        measureWarpMotion(seed: seed, slot: slot, flowFront: flowFront, flowBack: flowBack,
+                          smoothing: 0.5, into: cb, pooled: pooled)
+        let side = config.blockSize
+        let bw = (width + side - 1) / side, bh = (height + side - 1) / side
+        guard let blocks = acquireFilterTexture(width: bw, height: bh, pooled: pooled) else { return }
+        let size = SIMD4<Float>(Float(width), Float(height), Float(side), Float(slot.frames))
+        encodeEffectFragment("ollin_mosh_blocks", inputs: [flowBack], output: blocks,
+                             params: [size,
+                                      SIMD4(config.amount, config.motion, config.wander, config.period),
+                                      SIMD4(config.drift.x, config.drift.y, Float(config.seed), 0)],
                              into: cb)
-        // 4. This frame's drawing becomes next frame's "previous" source. The blit is
-        //    ordered after the passes above, so they still read the old source.
+        encodeEffectFragment("ollin_mosh_decode", inputs: [histFront, seed, blocks], output: histBack,
+                             params: [size], into: cb)
+        // This frame's drawing becomes the next frame's last drawing.
         if let blit = cb.makeBlitCommandEncoder() {
             blit.copy(from: seed, to: slot.source)
             blit.endEncoding()
         }
+        slot.frames += 1
     }
 
     /// Evolve a watercolor `SimField` one frame: the classic three-layer wash model.

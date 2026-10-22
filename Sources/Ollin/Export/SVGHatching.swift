@@ -118,8 +118,10 @@ private func hatchPass(_ contours: [[Vector2]], winding: FillWinding,
     guard maxY > minY else { return [] }
 
     var lines: [[Vector2]] = []
-    // Offset the first scan line by half a step so lines sit inside the bounds.
-    var y = (minY / spacing).rounded(.up) * spacing + spacing / 2
+    // Every fill scans one lattice, the half-steps of the spacing in the rotated
+    // frame, so neighboring fills hatched alike line up; the first scan line is
+    // the lattice line at or just under the top.
+    var y = ((minY / spacing - 0.5).rounded(.up) + 0.5) * spacing
     while y < maxY {
         // Crossings of this scan line with the edges; `dir` is the y-direction,
         // for the non-zero winding count.

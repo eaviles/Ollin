@@ -4176,9 +4176,11 @@ struct Filter: Sendable
   static func inverseFourier() -> Filter
   static func invert(amount: Double = default) -> Filter
   static func iridescence(amount: Double = default, scale: Double = default, bands: Double = default, shift: Double = default) -> Filter
+  static func jpeg(quality: Int = default) -> Filter
   static func kaleidoscope(segments: Double = default, angle: Double = default) -> Filter
   static func lensDistortion(amount: Double = default, quartic: Double = default, center: Vector2 = default, fillsFrame: Bool = default) -> Filter
   static func levels(blackPoint: Double = default, whitePoint: Double = default, gamma: Double = default) -> Filter
+  static func lightLeak(anchor: Vector2 = default, spread: Double = default, streaks: Double = default, colors: [Color] = default, flicker: Double = default, intensity: Double = default, phase: Double = default, seed: Int = default) -> Filter
   static func lineScreen(scale: Double = default, softness: Double = default, angle: Double = default, foreground: Color = default, background: Color = default) -> Filter
   static func liquidMetal(repetition: Double = default, softness: Double = default, dispersion: Double = default, distortion: Double = default, contour: Double = default, angle: Double = default, tint: Color = default, phase: Double = default) -> Filter
   static func lumaKey(low: Double = default, high: Double = default, inverted: Bool = default) -> Filter
@@ -4193,11 +4195,13 @@ struct Filter: Sendable
   static func oilPaint(radius: Double = default) -> Filter
   static func outerGlow(radius: Double = default, color: Color = default) -> Filter
   static func outline(width: Double = default, color: Color = default, align: StrokeAlign = default) -> Filter
+  static func pagePeel(amount: Double = default, corner: Vector2 = default, radius: Double = default, shading: Double = default, sheen: Double = default, shadow: Double = default, back: Color = default) -> Filter
   static func paperTexture(paper: Color = default, shading: Color = default, contrast: Double = default, roughness: Double = default, fiber: Double = default, crumples: Double = default, folds: Double = default, drops: Double = default, seed: Double = default) -> Filter
   static func perturb(amount: Double = default, scale: Double = default, phase: Double = default) -> Filter
   static func pixelate(size: Double = default, channel: Filter.PixelChannel = default, tint: Color? = default) -> Filter
   static func polar(amount: Double = default) -> Filter
   static func posterize(levels: Double = default) -> Filter
+  static func progressiveBlur(angle: Double = default, start: Double = default, end: Double = default, radius: Double = default) -> Filter
   static func radialBlur(amount: Double = default) -> Filter
   static func relight(_: Filter.RelightFinish = default, angle: Double = default, elevation: Double = default, height: Double = default, intensity: Double = default, color: Color? = default) -> Filter
   static func ripple(amplitude: Double = default, frequency: Double = default, phase: Double = default, center: Vector2 = default) -> Filter
@@ -4216,7 +4220,9 @@ struct Filter: Sendable
   static func thinFilm(amount: Double = default, thickness: Double = default, variation: Double = default, ior: Double = default, scale: Double = default, shift: Double = default, quality: RenderQuality = default) -> Filter
   static func threshold(_: Double = default, softness: Double = default) -> Filter
   static func tile(count: Double = default, mirrored: Bool = default) -> Filter
+  static func tiltShift(focus: Double = default, angle: Double = default, band: Double = default, falloff: Double = default, radius: Double = default) -> Filter
   static func toon(levels: Double = default, edges: Double = default) -> Filter
+  static func vhs(smear: Double = default, jitter: Double = default, damage: Double = default, amount: Double = default, phase: Double = default) -> Filter
   static func vibrance(amount: Double = default) -> Filter
   static func vignette(amount: Double = default, radius: Double = default, softness: Double = default) -> Filter
   static func water(scale: Double = default, waves: Double = default, refraction: Double = default, layering: Double = default, edges: Double = default, highlightAmount: Double = default, highlightColor: Color = default, phase: Double = default) -> Filter
@@ -4490,6 +4496,7 @@ struct Generator: Sendable
   static func pulsingBorder(colors: [Color] = default, background: Color = default, roundness: Double = default, thickness: Double = default, softness: Double = default, amount: Double = default, bloom: Double = default, spots: Double = default, spotSize: Double = default, pulse: Double = default, smoke: Double = default, smokeScale: Double = default, margins: Insets = default, phase: Double = default) -> Generator
   static func quasicrystal(colors: [Color] = default, background: Color = default, symmetry: Double = default, scale: Double = default, contrast: Double = default, phase: Double = default) -> Generator
   static func rust(blobs: Patina? = default, count: Int = default, radius: ClosedRange<Double> = default, seed: Int = default, tones: [Color] = default, background: Color = default, lightAngle: Double = default, lip: Double = default, blisters: Double = default, drips: Double = default, grain: Double = default) -> Generator
+  static func scratches(count: Int = default, thickness: Double = default, length: Double = default, angle: Double = default, wobble: Double = default, flicker: Double = default, color: Color = default, phase: Double = default, seed: Int = default) -> Generator
   static func shader(_: Shader) -> Generator
   static func smokeRing(colors: [Color] = default, background: Color = default, radius: Double = default, thickness: Double = default, fill: Double = default, scale: Double = default, detail: Double = default, phase: Double = default) -> Generator
   static func spiral(foreground: Color = default, background: Color = default, density: Double = default, distortion: Double = default, strokeWidth: Double = default, taper: Double = default, cap: Double = default, noise: Double = default, noiseScale: Double = default, softness: Double = default, scale: Double = default, phase: Double = default) -> Generator
@@ -6607,6 +6614,7 @@ struct SidebarVibrancy: Sendable, NSViewRepresentable, View
 struct Sim: Sendable
   static func briansBrain() -> Sim
   static func cyclic(states: Int = default, threshold: Int = default, range: Int = default, neighborhood: CellNeighborhood = default, seed: Double = default) -> Sim
+  static func datamosh(amount: Double = default, blockSize: Int = default, motion: Double = default, drift: Vector2 = default, wander: Double = default, period: Double = default, seed: Int = default) -> Sim
   static func excitable(states: Int = default, threshold: Int = default, range: Int = default, neighborhood: CellNeighborhood = default) -> Sim
   static func fallingSand(passes: Int = default, friction: Double = default) -> Sim
   static func fluid(curl: Double = default, velocityDissipation: Double = default, densityDissipation: Double = default, pressureIterations: Int = default, buoyancy: Double = default) -> Sim

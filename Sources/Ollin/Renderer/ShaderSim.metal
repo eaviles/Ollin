@@ -1154,6 +1154,70 @@ fragment float4 ollin_warp_advect(PresentOut in [[stage_in]],
     return h * (1.0 - refresh * s.a) + s * refresh;
 }
 
+// MARK: - Datamosh
+//
+// Runs on the self-warp's state and motion fit. One texel a block decides the
+// block's fate and its vector; the decode then refreshes a pixel from this
+// frame's drawing or re-reads the last decoded picture behind the block's
+// vector.
+
+// mosh_blocks: a block's fate and vector, one texel a block. A block keeps
+// its fate for `period` frames and then re-rolls it, each block on a clock
+// of its own phase, so regions clear and melt at different moments; it is
+// held when its roll falls under `amount`. Its vector, in pixels a frame, is
+// the measured motion averaged over the block (a grid of 4 by 4 reads of the
+// flow, which is in uv units) times `motion`, plus the drift, plus the
+// wander, a slow direction of the block's own from seeded noise. Out: the
+// vector in rg, 1 in b for a held block. params[0]: the field's width and
+// height, the block size, the frame; params[1]: amount, motion, wander,
+// period; params[2]: the drift, the seed.
+fragment float4 ollin_mosh_blocks(PresentOut in [[stage_in]],
+                                  texture2d<float> flow [[texture(0)]],
+                                  sampler samp [[sampler(0)]],
+                                  constant float4 *params [[buffer(0)]]) {
+    float2 size = params[0].xy;
+    float side = params[0].z, frame = params[0].w;
+    float amount = params[1].x, motion = params[1].y, wander = params[1].z, period = params[1].w;
+    float seed = params[2].z;
+    float2 count = ceil(size / side);
+    float2 block = floor(in.uv * count);
+    float phase = hash12(block + float2(seed * 1.37 + 0.5, 3.7));
+    float epoch = floor(frame / period + phase);
+    float roll = hash12(block + float2(epoch * 7.13 + 0.5, seed * 2.11 + 11.0));
+    bool held = amount >= 1.0 || roll < amount;
+    float2 sum = float2(0.0);
+    for (int j = 0; j < 4; j++) {
+        for (int i = 0; i < 4; i++) {
+            float2 at = (block + (float2(float(i), float(j)) + 0.5) / 4.0) * side / size;
+            sum += flow.sample(samp, clamp(at, 0.0, 1.0), level(0.0)).xy;
+        }
+    }
+    float2 measured = sum / 16.0 * size * motion;
+    float heading = 12.5663706144 * ollin_vnoise(block * 0.11 + float2(frame * 0.004, seed * 3.3));
+    float2 roam = wander * float2(cos(heading), sin(heading));
+    return float4(measured + params[2].xy + roam, held ? 1.0 : 0.0, 1.0);
+}
+
+// mosh_decode: a pixel of a refreshing block is this frame's drawing as it
+// is; a pixel of a held block re-reads the last decoded picture behind its
+// block's vector, so the block drags its old contents along. Inputs: the last
+// decoded picture, this frame's drawing, the blocks. params[0]: the field's
+// width and height, the block size.
+fragment float4 ollin_mosh_decode(PresentOut in [[stage_in]],
+                                  texture2d<float> decoded [[texture(0)]],
+                                  texture2d<float> drawing [[texture(1)]],
+                                  texture2d<float> blocks [[texture(2)]],
+                                  sampler samp [[sampler(0)]],
+                                  constant float4 *params [[buffer(0)]]) {
+    float2 size = params[0].xy;
+    float side = params[0].z;
+    float2 count = ceil(size / side);
+    float2 block = floor(in.uv * size / side);
+    float4 b = blocks.sample(samp, (block + 0.5) / count, level(0.0));
+    if (b.z < 0.5) return drawing.sample(samp, in.uv, level(0.0));
+    return decoded.sample(samp, clamp(in.uv - b.xy / size, 0.0, 1.0), level(0.0));
+}
+
 // MARK: - Multi-scale Turing patterns
 //
 // One substance in the red channel, held in 0...1 (the state's rgb are all the same

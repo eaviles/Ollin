@@ -30,6 +30,7 @@ Ollin is pre-1.0, and the public API still changes freely. Semantic version tags
 These are near-term, fairly self-contained pieces. Each one is small and well-scoped.
 
 - **More SDF shapes, when a good fit appears.** A candidate is any canonical form parameterized by a size and a ratio or two. Such a shape drops into the instanced-SDF path as four small touch-points: a shape tag, a builder, a distance function, and a fragment case.
+- **Hatching centered in each shape.** Hatch lines evened across a shape's own extent, a whole number of them with equal margins, so a grid of equal cells hatches alike the way a hand fills a square. Today every fill shares one lattice, which lines neighboring fills up but gives equal cells a line more or less by where they sit.
 
 See the [design notes](DESIGN-NOTES.md#small-pieces).
 
@@ -48,7 +49,6 @@ This tier is a set of classic generative-art building blocks. Each one emits vec
 - **Finding boxes and neighbors in 3D.** A bounds index answers which of many boxes contain a point, which overlap a rectangle, and which overlap each other. A 3D form of `SpatialIndex` answers its neighbor questions for point clouds and swarms in space.
 - **Matching two sets at the least total cost.** This finds the pairing between two sets of points with the least total distance. Particles can then gather into the letters of a word along the shortest total path, and outlines can pair the same way.
 - **Gesture marks in space.** A tube wound around a drawn path with candy stripes or a wobble, a metal tube that reflects the canvas, and a chain of flat-shaded solids strung along it, made from the same path, width, and seed as the flat gesture marks.
-- **A shelf of tape and lens looks.** Each one filter, or one simulation: a worn VHS tape (chroma smeared along the line, the picture wobbling, a crease, the head switch at the bottom); JPEG compression at a chosen quality, as a real block transform with its high frequencies thrown away; datamosh, where blocks of the picture hold and drag their last contents along a motion vector instead of refreshing; tilt-shift, a band in focus with blur growing away from it, and a blur that fades in across the canvas; a light leak, emitted light that raises what it touches; a page peeling from a corner with its curl shaded and its shadow on the page below; hairline scratches.
 - **Wipes, copies, blocks, and a glowing edge.** A transition between two layers ordered by a coverage, a straight edge, a growing circle, a clock sweep, a grid of blocks, a noise dissolve, each foldable, tiled, cut into bands, or shuffled, with a soft front, so one call reveals a layer in any order. Copies of a layer in a grid, around a ring, or along a line, each a little smaller, more turned, fainter, and hue-shifted than the last. Any field on the raymarched path rebuilt as lit blocks, so a flat shape becomes pixel art or a wall of bricks and a solid a voxel model. And a band of light hugging a layer's edge with colored spots racing around it.
 
 See the [design notes](DESIGN-NOTES.md#technique-and-algorithm-helpers).

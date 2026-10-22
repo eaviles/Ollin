@@ -35,14 +35,14 @@ override func draw() {
 - [withTarget](#withtarget) - draw into a layer
 - [RenderTarget.image](#image) - composite a layer back
 - [filtered](#filtered) - run a filter over a layer
-- [Filter](#filter) - the filter catalog (blur, bloom, color, stylize)
+- [Filter](#filter) - the filter catalog (blur, bloom, color, stylize, [tape and lens](#tape-and-lens))
 - [combined / Combine](#combined) - combine two layers (mask, displace, disperse, mix, seamless clone, defocus, ambient occlusion, screen-space reflections)
 - [depth](#depth) - a 3D scene's depth buffer as a layer (feed `.defocus` / `.ambientOcclusion` / `.screenSpaceReflections`)
 - [generate / Generator](#generate) - procedural pattern sources
 - [postProcess](#postprocess) - filter the whole frame
 - [withOverlay](#withoverlay) - draw over the finished frame, after every pass
 - [feedback / withFeedback](#feedback) - a layer that remembers itself (trails, tunnels)
-- [simField / Sim](#simfield) - a layer that runs a simulation (reaction-diffusion, Game of Life, fluid, the self-warp motion feedback)
+- [simField / Sim](#simfield) - a layer that runs a simulation (reaction-diffusion, Game of Life, fluid, the self-warp motion feedback, the datamosh)
 - [Sim.shader](#simfield-shader) - a simulation of your own: a kernel you write, the inject, the field's edge and precision, arrows, readback
 - [compose / layer](#compose) - declare a stack of layers as one block
 - [aside](#aside) - a helper layer that feeds another layer's effect
@@ -256,6 +256,69 @@ layer.filtered(.scanlines(count: 240))
 layer.filtered(.crt())
 postProcess(.glitch(amount: 0.3, seed: time * 8))
 ```
+
+<a id="tape-and-lens"></a>
+#### Tape and lens
+
+Looks borrowed from the way pictures used to be carried and taken: on tape, through a
+codec, through a lens, on film, on paper. Three of them animate by a phase you feed
+`time`; the rest are still unless you move their numbers.
+
+<img src="../../Guide/Images/20-PicturesRestyled/TapeAndLens.jpg" alt="Eight panels of one street scene: on a worn videotape with its colors smeared right and its bottom lines torn, saved as a JPEG at low quality in flat 8 by 8 tiles, moshed so blocks drag the old picture along, through a tilt-shift lens with a sharp band across the middle, blurring in from the bottom, fogged by an orange light leak from the right edge, peeling up from its bottom-right corner over a dark ground, and in sepia under hairline scratches" width="680">
+
+- **`.vhs(smear:jitter:damage:amount:phase:)`** a worn videotape. Each of the tape's
+  lines steps sideways by up to `jitter` pixels, re-rolled every frame. A slow wobble
+  comes and goes in bursts, a crease of torn lines rolls down the frame while a burst
+  lasts, and the bottom lines tear sideways where the heads switch; `damage` scales those
+  three. The color is split into luma and chroma the way a video signal carries it. The
+  luma stays sharp and the chroma trails `smear` pixels behind it (to the right when
+  positive), so color bleeds past edges the detail keeps. `amount` scales the whole
+  look, and 0 returns the layer untouched.
+- **`.jpeg(quality:)`** the loss of a JPEG file without writing one. The layer is cut
+  into 8 by 8 blocks from its top-left corner, and each block goes through the format's
+  own transform: into luma and two chroma channels, into 64 cosine coefficients, each
+  divided by its step in the standard's quantization tables, rounded, and put back. The
+  tables scale with `quality` (1 to 100) the way image editors scale them. At 100 the
+  picture comes back within a level; toward 10 the blocks flatten into tiles with
+  ringing at their edges and one tint each. Alpha is kept.
+- **`.tiltShift(focus:angle:band:falloff:radius:)`** a band in focus around a line,
+  the blur growing smoothly away from it on both sides, so a wide view reads as a
+  model. `focus` is where the line crosses the middle column (a fraction of the
+  height), `angle` tilts it, `band` is half the sharp band's height, and `falloff` is
+  how far past it the blur takes to reach a Gaussian of `radius` pixels. The band
+  itself comes through byte for byte.
+- **`.progressiveBlur(angle:start:end:radius:)`** a blur that fades in across the
+  layer: none before `start`, growing to `radius` at `end` along the direction `angle`
+  (π/2, the default, is downward), and full past it. Where it is full it is the same as
+  `.gaussianBlur(radius:)`.
+- **`.lightLeak(anchor:spread:streaks:colors:flicker:intensity:phase:seed:)`** light
+  fogging the frame from `anchor` (a point in layer fractions, on the right edge by
+  default), the way it leaks past a camera's worn seal. A hot bloom stretched toward
+  the middle sits in a broad shoulder, with streak bands along the beam. The light runs
+  through `colors` (fringe, body, hot core) and is screened over the layer as emitted
+  light: it never darkens a pixel, and over a transparent layer it raises the alpha.
+  `flicker` is how much it breathes as `phase` runs.
+- **`.pagePeel(amount:corner:radius:shading:sheen:shadow:back:)`** the layer as a sheet
+  of paper peeling up from `corner` (layer fractions, bottom right by default; a point
+  on an edge peels from that edge). Past the fold the sheet wraps a cylinder of
+  `radius` (a fraction of the diagonal) and lies flat on top beyond half a turn, so you
+  see the curl's underside, its top in the `back` color with a sheen, and the flipped
+  flap. The sheet darkens under the crease and beside the flap. The ground it lifted off
+  is transparent, with a soft shadow just past the curl, so whatever is drawn under the
+  layer shows through. `amount` 0 is the flat layer.
+
+```swift
+let street = makeRenderTarget()
+withTarget(street) { background(.white); fill(.orange); drawCircle(width / 2, height / 2, 300) }
+drawImage(street.filtered(.vhs(phase: time)).image, 0, 0)
+drawImage(street.filtered(.jpeg(quality: 8)).image, 0, 0)
+drawImage(street.filtered(.tiltShift(focus: 0.6, radius: 14)).image, 0, 0)
+drawImage(street.filtered(.pagePeel(amount: 0.3)).image, 0, 0)
+```
+
+The tape's other companions live elsewhere in this page: hairline
+[`.scratches`](#generate) are a generator you composite over a picture, and the
+[`.datamosh`](#simfield) is a simulation, since a held block needs the picture it held.
 
 #### Distortion
 
@@ -610,6 +673,15 @@ drawImage(generate(.meshGradient(phase: time)).image, 0, 0)
   crepuscular rays streaming from a point, one drifting streak layer per color. `bloom`
   morphs the stack from alpha layering to additive light, and `bloomTint` washes an extra
   glow color over the lit areas.
+- **`.scratches(count:thickness:length:angle:wobble:flicker:color:phase:seed:)`** the
+  hairline scratches a print picks up running through a projector: fine lines at
+  `thickness` pixels, each wobbling a little sideways and broken by gaps. The layer is
+  cut into `count` lanes, each holding at most one scratch, which keeps its place for a
+  few dozen frames before the lane re-rolls it. While it lives it blinks and jitters
+  frame to frame by `flicker`, at film's 24 frames a second; feed `phase` your `time`.
+  Between the lines the layer is transparent, so it composites over a picture: white
+  for scratches through the emulsion, black for dirt on it. It pairs with the
+  [tape and lens](#tape-and-lens) filters.
 
 **Pattern fields**: closed-form animated fields, each a few lines of per-pixel math
 with a look of its own. They follow the same conventions as the design patterns, with a
@@ -999,6 +1071,35 @@ override func draw() {
         drawCircle(width / 2 + cos(time) * 300, height / 2 + sin(time) * 300, 60)
     }
     drawImage(warp.image, 0, 0)                          // the smeared picture
+}
+```
+
+- **`.datamosh(amount:blockSize:motion:drift:wander:period:seed:)`** the picture as a
+  video stream that lost its key frames. The field is cut into square blocks of
+  `blockSize` pixels, the macroblocks a codec works in. Every frame each block either
+  refreshes from this frame's drawing or holds. A held block re-reads its own last
+  contents shifted by a motion vector, which is what a decoder does when the motion
+  keeps arriving after the picture it applies to was dropped, so held blocks drag the
+  old picture along and smear it until they refresh. `amount` is the share of blocks
+  held at any moment: 0 shows the drawing untouched, and 1 holds every block, so the
+  first frame never leaves and only moves. Each block keeps its fate for about `period`
+  frames and then re-rolls it on a clock of its own, so regions clear and melt at
+  different moments. A held block's vector is the drawing's measured motion (the
+  self-warp's fit, averaged over the block) times `motion`, plus a fixed `drift` in
+  pixels a frame, plus a slow `wander` of its own from seeded noise. The wander is
+  what makes a still or flat picture melt too, since there is no motion to measure in
+  it; set it to 0 to move by the drawing alone. See the `Effects/TapeAndLens` example.
+
+```swift
+var mosh: SimField!
+override func setup() { mosh = makeSimField(.datamosh(amount: 0.6)) }
+
+override func draw() {
+    withField(mosh) {                                    // a disc circling, moshed
+        background(.black); fill(.orange)
+        drawCircle(width / 2 + cos(time) * 300, height / 2, 120)
+    }
+    drawImage(mosh.image, 0, 0)
 }
 ```
 

@@ -443,6 +443,26 @@ public struct Filter: Sendable {
         /// field, the gradient of its luminance along the knife's direction
         /// mapped to brightness about a mid-gray.
         case schlieren(angle: Double, amount: Double)
+
+        // Tape and lens looks --------------------------------------------------
+        /// A worn videotape: the picture read through warped coordinates (line
+        /// jitter, a wobble in bursts, a crease, the head-switch band) with its
+        /// chroma smeared along the line behind a sharper luma, under a beat.
+        case vhs(smear: Double, jitter: Double, damage: Double, amount: Double, phase: Double)
+        /// Baseline JPEG's block transform: every 8 by 8 block's cosine
+        /// transform quantized by the standard tables at `quality`.
+        case jpeg(quality: Int)
+        /// A band in focus around a line, the blur growing away from it.
+        case tiltShift(focus: Double, angle: Double, band: Double, falloff: Double, radius: Double)
+        /// A blur whose radius grows along a direction, from none to `radius`.
+        case progressiveBlur(angle: Double, start: Double, end: Double, radius: Double)
+        /// Light leaking in from an anchor, screened over the layer as emitted
+        /// light through a fringe-to-hot ramp.
+        case lightLeak(anchor: Vector2, spread: Double, streaks: Double, colors: [SIMD4<Float>],
+                       flicker: Double, intensity: Double, phase: Double, seed: Int)
+        /// The layer as a sheet curling up from a corner around a cylinder.
+        case pagePeel(corner: Vector2, amount: Double, radius: Double, shading: Double,
+                      sheen: Double, shadow: Double, back: SIMD4<Float>)
         /// Thermal-camera rendering of the layer's alpha shape: heat blooming
         /// inside, a halo radiating outside, mapped through a palette.
         case heatmap(colors: [SIMD4<Float>], contour: Double, innerGlow: Double,
@@ -1692,6 +1712,189 @@ public struct Filter: Sendable {
     /// flat layer comes out mid-gray. The layer's alpha is kept.
     public static func schlieren(angle: Double = 0, amount: Double = 1) -> Filter {
         Filter(kind: .schlieren(angle: angle, amount: max(amount, 0)))
+    }
+
+    // MARK: Tape and lens looks
+
+    /// A worn videotape. The picture is read through the tape's warped
+    /// coordinates: each of the tape's lines shifted sideways by its own
+    /// jitter, re-rolled every frame; a slow wobble that comes and goes in
+    /// bursts; a crease, a band of torn lines rolling down the frame while a
+    /// burst lasts; and the head-switch band at the bottom, where the last
+    /// lines tear sideways. The color is split the way a video signal carries
+    /// it, into luma and chroma: the luma is read at the warped point and
+    /// stays sharp, while the chroma is averaged over a trail of taps behind
+    /// it, so color bleeds past the edges the detail keeps. A slow bar of
+    /// brightness rolls up the frame over the result.
+    ///
+    /// Pass `time` as `phase` to play the tape; the same phase gives the same
+    /// picture.
+    ///
+    /// - Parameters:
+    ///   - smear: How far the color trails, in pixels. Positive trails it to
+    ///     the right, as a tape does; negative to the left.
+    ///   - jitter: The largest sideways step a line takes, in pixels.
+    ///   - damage: How bad the tape is: the bursts of wobble, the crease, and
+    ///     the head-switch tear (0 none, 1 a worn tape, more a ruined one).
+    ///   - amount: The whole look, scaling every part of it. 0 returns the
+    ///     layer untouched.
+    ///   - phase: The tape's clock, in seconds.
+    public static func vhs(smear: Double = 6, jitter: Double = 1, damage: Double = 1,
+                           amount: Double = 1, phase: Double = 0) -> Filter {
+        Filter(kind: .vhs(smear: smear, jitter: max(jitter, 0), damage: max(damage, 0),
+                          amount: max(amount, 0), phase: phase))
+    }
+
+    /// The loss of a JPEG file, without writing one. The layer is cut into 8
+    /// by 8 blocks from its top-left corner, and each block goes through the
+    /// format's own transform: converted to luma and two chroma channels,
+    /// taken apart into its 64 cosine coefficients, each coefficient divided
+    /// by its step in the quantization table and rounded, then put back
+    /// together. The tables are the standard's (the luma and chroma tables of
+    /// its Annex K) scaled to `quality` the way the common encoder library
+    /// scales them, so a quality reads as it does in an image editor's export
+    /// dialog. At 100 every step is one level and the picture comes back
+    /// within a level; toward 10 the fine coefficients round away, the
+    /// blocks flatten into tiles with ringing at their edges, and the color
+    /// falls to one tint a block. The layer's alpha is kept.
+    ///
+    /// - Parameter quality: 1 (the most loss) to 100 (the least).
+    public static func jpeg(quality: Int = 25) -> Filter {
+        Filter(kind: .jpeg(quality: min(max(quality, 1), 100)))
+    }
+
+    /// A tilt-shift lens: a band of the layer kept sharp around a focus line,
+    /// with the blur growing smoothly away from it on both sides, so a wide
+    /// view reads as a miniature. The band is untouched byte for byte; past
+    /// it the blur eases in over `falloff` and reaches a Gaussian of
+    /// `radius`, the same as `gaussianBlur(radius:)`.
+    ///
+    /// - Parameters:
+    ///   - focus: Where the focus line crosses the layer's middle column, as a
+    ///     fraction of its height (0 the top, 1 the bottom).
+    ///   - angle: The focus line's angle, in radians (0 level).
+    ///   - band: Half the height of the sharp band, as a fraction of the
+    ///     layer's height.
+    ///   - falloff: How far past the band the blur takes to reach full, as a
+    ///     fraction of the height.
+    ///   - radius: The full blur, in pixels.
+    public static func tiltShift(focus: Double = 0.55, angle: Double = 0, band: Double = 0.06,
+                                 falloff: Double = 0.3, radius: Double = 14) -> Filter {
+        Filter(kind: .tiltShift(focus: focus, angle: angle, band: max(band, 0),
+                                falloff: max(falloff, 0.001), radius: min(max(radius, 0), 80)))
+    }
+
+    /// A blur that fades in across the layer: none before `start`, growing
+    /// steadily to a Gaussian of `radius` at `end`, and full past it, where
+    /// it is the same as `gaussianBlur(radius:)`. The default runs from the
+    /// middle of the layer to its bottom edge, the way a panel blurs what
+    /// scrolls under it.
+    ///
+    /// - Parameters:
+    ///   - angle: The direction the blur grows in, in radians (π/2 down).
+    ///   - start: Where it begins, as a fraction of the layer's extent along
+    ///     that direction.
+    ///   - end: Where it reaches full.
+    ///   - radius: The full blur, in pixels.
+    public static func progressiveBlur(angle: Double = .pi / 2, start: Double = 0.5,
+                                       end: Double = 1, radius: Double = 16) -> Filter {
+        Filter(kind: .progressiveBlur(angle: angle, start: start, end: max(end, start + 0.001),
+                                      radius: min(max(radius, 0), 80)))
+    }
+
+    /// A light leak: light bleeding into the frame from `anchor`, the way it
+    /// fogs film past a camera's worn seal. A hot bloom at the anchor,
+    /// stretched along the beam toward the middle of the frame, sits in a
+    /// broad shoulder with streak bands running parallel to the beam and
+    /// fading with the distance in. The beam's heading and the light's
+    /// strength drift slowly with `phase`. The field runs through `colors`
+    /// (the fringe, the body, and the hot core, then white where it
+    /// overexposes) and is screened over the layer as emitted light: it adds
+    /// where the layer is dark, raises the alpha over a transparent layer,
+    /// and never darkens a pixel.
+    ///
+    /// - Parameters:
+    ///   - anchor: Where the light comes in, in fractions of the layer (the
+    ///     default sits on the right edge).
+    ///   - spread: How far the light reaches into the frame, as a fraction of
+    ///     the height.
+    ///   - streaks: The strength of the bands along the beam (0...1).
+    ///   - colors: The ramp from the fringe to the hot core, three stops.
+    ///   - flicker: How much the light breathes as `phase` runs (0...1).
+    ///   - intensity: The light's strength; 1 overexposes the core.
+    ///   - phase: The leak's clock, in seconds.
+    ///   - seed: Picks another drift and other bands.
+    public static func lightLeak(anchor: Vector2 = Vector2(0.95, 0.4), spread: Double = 0.55,
+                                 streaks: Double = 0.6,
+                                 colors: [Color] = [Color(hex: 0xA63D8F), Color(hex: 0xFF7A2F),
+                                                    Color(hex: 0xFFF3C4)],
+                                 flicker: Double = 0.35, intensity: Double = 0.4,
+                                 phase: Double = 0, seed: Int = 0) -> Filter {
+        var stops = colors.prefix(3).map(\.simd4)
+        while stops.count < 3 { stops.append(stops.last ?? SIMD4(1, 1, 1, 1)) }
+        return Filter(kind: .lightLeak(anchor: anchor, spread: max(spread, 0.01),
+                                       streaks: min(max(streaks, 0), 1), colors: stops,
+                                       flicker: min(max(flicker, 0), 1), intensity: max(intensity, 0),
+                                       phase: phase, seed: seed))
+    }
+
+    /// The layer as a sheet of paper peeling up from a corner. Past a fold
+    /// line the sheet wraps around a cylinder and, beyond half a turn, lies
+    /// flat on top heading back, so the curl shows its underside (the front,
+    /// darkening into the crook), its top (the sheet's back, lit from above
+    /// with a sheen along it), and the flipped flap. The flat sheet darkens
+    /// under the crease and beside the flap, the ground the sheet lifted off
+    /// takes a soft shadow just past the curl, and beyond that it is
+    /// transparent, so whatever is drawn under the layer shows through.
+    ///
+    /// - Parameters:
+    ///   - amount: How far the peel has gone (0 flat and untouched, 1 peeled
+    ///     to the far side).
+    ///   - corner: Where it peels from, in fractions of the layer: a corner
+    ///     (the default is the bottom right), or a point on an edge to peel
+    ///     from that edge.
+    ///   - radius: The curl's radius, as a fraction of the layer's diagonal.
+    ///   - shading: How much the curl darkens away from the light (0...1).
+    ///   - sheen: The highlight along the top of the curl.
+    ///   - shadow: The strength of the shadows the curl casts (0...1).
+    ///   - back: The color of the sheet's back.
+    public static func pagePeel(amount: Double = 0.3, corner: Vector2 = Vector2(1, 1),
+                                radius: Double = 0.06, shading: Double = 0.55, sheen: Double = 0.4,
+                                shadow: Double = 0.8, back: Color = Color(white: 0.95)) -> Filter {
+        Filter(kind: .pagePeel(corner: corner, amount: min(max(amount, 0), 1),
+                               radius: min(max(radius, 0.001), 0.5),
+                               shading: min(max(shading, 0), 1), sheen: max(sheen, 0),
+                               shadow: min(max(shadow, 0), 1), back: back.linearRGBA))
+    }
+
+    /// The standard's luma and chroma quantization tables (its Annex K), each
+    /// 64 steps in row-major order, scaled to `quality` (1...100) as the
+    /// common encoder library scales them: a factor of 5000 / quality below
+    /// 50 and 200 - 2 quality above, each step rounded and held between 1 and
+    /// 255. The steps are in levels of the eight-bit range.
+    static func jpegTables(quality: Int) -> (luma: [Double], chroma: [Double]) {
+        let luma: [Double] = [16, 11, 10, 16, 24, 40, 51, 61,
+                              12, 12, 14, 19, 26, 58, 60, 55,
+                              14, 13, 16, 24, 40, 57, 69, 56,
+                              14, 17, 22, 29, 51, 87, 80, 62,
+                              18, 22, 37, 56, 68, 109, 103, 77,
+                              24, 35, 55, 64, 81, 104, 113, 92,
+                              49, 64, 78, 87, 103, 121, 120, 101,
+                              72, 92, 95, 98, 112, 100, 103, 99]
+        let chroma: [Double] = [17, 18, 24, 47, 99, 99, 99, 99,
+                                18, 21, 26, 66, 99, 99, 99, 99,
+                                24, 26, 56, 99, 99, 99, 99, 99,
+                                47, 66, 99, 99, 99, 99, 99, 99,
+                                99, 99, 99, 99, 99, 99, 99, 99,
+                                99, 99, 99, 99, 99, 99, 99, 99,
+                                99, 99, 99, 99, 99, 99, 99, 99,
+                                99, 99, 99, 99, 99, 99, 99, 99]
+        let q = min(max(quality, 1), 100)
+        let scale = q < 50 ? 5000 / q : 200 - 2 * q
+        func scaled(_ table: [Double]) -> [Double] {
+            table.map { min(max((Int($0) * scale + 50) / 100, 1), 255) }.map(Double.init)
+        }
+        return (scaled(luma), scaled(chroma))
     }
 
     /// Heatmap: render the layer's alpha shape as thermal imaging. Heat blooms

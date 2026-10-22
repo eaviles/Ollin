@@ -6,7 +6,7 @@
 
 <img src="Images/20-PicturesRestyled/HandColored.jpg" alt="A street of colonial facades under a warm sky made into a hand-colored print: flat painted color under dark hatched line work, graded warm, grained like film, and pressed into paper" width="560">
 
-One photograph can become a painting, a pen drawing, a colorist's grade, or a print on paper. You learn the filters that do it, each one call on a layer, so they chain and take arguments. Five of them, stacked, turn the street photograph above into a hand-colored print. More of the stylize shelf follows it, with filters that read a layer as height, tone, a center, a ring, a pour, a depth, a density, or hot air.
+One photograph can become a painting, a pen drawing, a colorist's grade, or a print on paper. You learn the filters that do it, each one call on a layer, so they chain and take arguments. Five of them, stacked, turn the street photograph above into a hand-colored print. More of the stylize shelf follows it, with filters that read a layer as height, tone, a center, a ring, a pour, a depth, a density, or hot air, and the looks of tape, a codec, a lens, and paper.
 
 ## Paint that follows the picture: brushwork
 
@@ -406,13 +406,34 @@ drawImage(picture.filtered(.mirage(horizon: 0.58, amount: 12, phase: time)).imag
 
 The filter shifts every pixel by one parallax. A 3D scene has a depth of its own, and `scene.combined(with: scene.depth, .anaglyph())` shifts each pixel by that depth instead, so a near orb stands off the page and a far one sinks into it. The [`Effects/Phenomena`](../Examples/Effects/Phenomena/Sketch.swift) example runs all three, with the orbs orbiting, the air shimmering, and a plume rising under the knife. [Layered effects](../Docs/Drawing/Effects.md#filter) has every argument.
 
+## Looks from tape, a codec, a lens, and paper
+
+A videotape smears its color and tears its bottom lines. A JPEG breaks a picture into blocks, and a tilt-shift lens turns a town into a model. Film fogs where light leaked in, and paper curls. People now want each of those on purpose, for a music video, a poster, or a title card. Ollin has them as six filters, a generator, and a simulation:
+
+<img src="Images/20-PicturesRestyled/TapeAndLens.jpg" alt="Eight panels of one street of colonial facades: on a worn videotape with its colors smeared right and its bottom lines torn, saved as a JPEG at low quality in flat 8 by 8 tiles, moshed so blocks drag the old picture along a pan, through a tilt-shift lens with one sharp band across the middle, blurring in toward the bottom, fogged by an orange light leak from the right edge, peeling up from its bottom-right corner over a dark ground, and in sepia under hairline scratches" width="680">
+
+The tape and the JPEG rebuild the mechanism rather than paint its symptoms. `.vhs` keeps its luma sharp and smears only the chroma, the split a video signal makes. `.jpeg` runs the format's own 8 by 8 cosine transform with the standard's quantization tables. A quality reads as it does in an export dialog. `.datamosh` is a simulation, because a held block needs the picture it held. `.scratches` is a generator you lay over a picture. Each is one call:
+
+```swift
+let street = makeRenderTarget()
+withTarget(street) { background(.white); fill(.orange); drawCircle(width / 2, height / 2, 300) }
+drawImage(street.filtered(.vhs(phase: time)).image, 0, 0)
+drawImage(street.filtered(.jpeg(quality: 8)).image, 0, 0)
+drawImage(street.filtered(.tiltShift(focus: 0.6, radius: 14)).image, 0, 0)
+drawImage(street.filtered(.pagePeel(amount: 0.3)).image, 0, 0)
+```
+
+The [`Effects/TapeAndLens`](../Examples/Effects/TapeAndLens/Sketch.swift) example runs all eight, one picker across them. [Layered effects](../Docs/Drawing/Effects.md#tape-and-lens) has every argument, the light leak's and the page peel's among them.
+
 ## Where this comes from
 
 The stylizing filters each rebuild a published method. The brushwork is the anisotropic Kuwahara filter of Jan Eric Kyprianidis, Henry Kang, and Jürgen Döllner, from 2009. The hatching walks its strokes by Brian Cabral and Leith Casey Leedom's line integral convolution, from 1993. Its tone follows Georges Winkenbach and David H. Salesin's stroke-density rule, from 1994. The film grain is the stochastic model of Alasdair Newson, Julie Delon, and Bruno Galerne, from 2017. Halation is written from the photographic physics in T. H. James's *The Theory of the Photographic Process*. In the film it describes, the red-sensitive layer lies nearest the base.
 
 A look is read from Adobe's Cube LUT format. The tetrahedral read between its nodes goes back to a 1981 patent by Sakamoto and Itooka. The design filters were cross-read against Paper Shaders, the design-shader library from paper.design with shaders by Ksenia Kondrashova. The liquid metal and the fluted glass follow its published parameterization closely, re-expressed in Ollin's own Metal. The paper texture is Jim Blinn's bump lighting over a height field of noise.
 
-The entries after the print name their own sources. The ink line is the extended difference of Gaussians of Holger Winnemöller, Jan Eric Kyprianidis, and Sven C. Olsen, from 2012. The flat regions are Kyprianidis and Kang's coherence-enhancing filter, from 2011. The picture inside itself is named after a Dutch cocoa tin from 1904. Its label showed a nurse holding a tray with a cup of cocoa and the same tin on it. Escher took the idea somewhere stranger in *Print Gallery* (1956), where a man in a gallery looks at a picture that contains the gallery. He left a hole in the middle, which he signed rather than finished. Hendrik Lenstra and Bart de Smit worked out in 2003 what belonged in it. The straighten-repeat-curl construction the filter runs is Escher's, completed by them. The melt is Inigo Quilez's domain warping, with the picture read through the same warp as the swirl. Its shared displacement and its sway follow *fluid*, an open-source generative-background studio credited in the attribution notes. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The entries after the print name their own sources. The ink line is the extended difference of Gaussians of Holger Winnemöller, Jan Eric Kyprianidis, and Sven C. Olsen, from 2012. The flat regions are Kyprianidis and Kang's coherence-enhancing filter, from 2011. The picture inside itself is named after a Dutch cocoa tin from 1904. Its label showed a nurse holding a tray with a cup of cocoa and the same tin on it. Escher took the idea somewhere stranger in *Print Gallery* (1956), where a man in a gallery looks at a picture that contains the gallery. He left a hole in the middle, which he signed rather than finished. Hendrik Lenstra and Bart de Smit worked out in 2003 what belonged in it. The straighten-repeat-curl construction the filter runs is Escher's, completed by them. The melt is Inigo Quilez's domain warping, with the picture read through the same warp as the swirl. Its shared displacement and its sway follow *fluid*, an open-source generative-background studio credited in the attribution notes.
+
+The tape and lens looks were read as a map from Shaders, a component library of two hundred web effects. Each was written from its technique. The JPEG is the baseline transform of the ITU's T.81 standard from 1992. Its Annex K tables are scaled by the Independent JPEG Group's quality curve. The tape splits its color into the luma and chroma of the NTSC signal, whose chroma carried far less detail than its luma. The page curl wraps the sheet around a cylinder and lays what passes half a turn flat on top of it. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 

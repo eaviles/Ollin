@@ -345,6 +345,19 @@ extension Filter {
                         [f(horizon, faults, amount, phase), f(Double(width), Double(height), 0, 0)])
         case let .schlieren(angle, amount):
             return pass("ollin_fx_schlieren", [SIMD4(texel.x, texel.y, Float(angle), Float(amount))])
+        case let .vhs(smear, jitter, damage, amount, phase):
+            return pass("ollin_fx_vhs",
+                        [f(smear, jitter, damage, amount), f(phase, Double(width), Double(height), 0)])
+        case let .lightLeak(anchor, spread, streaks, colors, flicker, intensity, phase, seed):
+            return pass("ollin_fx_light_leak",
+                        [f(anchor.x, anchor.y, spread, intensity),
+                         f(streaks, flicker, phase, Double(seed)),
+                         f(Double(aspect), Double(width), Double(height), 0)] + colors)
+        case let .pagePeel(corner, amount, radius, shading, sheen, shadow, back):
+            return pass("ollin_fx_page_peel",
+                        [f(corner.x, corner.y, amount, radius),
+                         f(shading, sheen, shadow, Double(width)),
+                         f(Double(height), 0, 0, 0), back])
         case let .chrome(horizon, warp, waves, sky, floor, core, coreWidth, breakWidth,
                          wire, amount, phase):
             // The two ramps travel as 256-texel strips, read with a lerp between
@@ -362,10 +375,63 @@ extension Filter {
         case .shader, .gaussianBlur, .bloom, .halation, .softProof, .fourier, .inverseFourier, .spectrum,
              .liquidMetal, .heatmap, .gemSmoke, .diffuse, .distanceField, .boxBlur,
              .adaptiveThreshold, .xdog, .brushwork, .shock, .hatching,
-             .outline, .shadow, .glow, .bevel:
+             .outline, .shadow, .glow, .bevel, .jpeg, .tiltShift, .progressiveBlur:
             return nil
         }
     }
+
+    /// The two fragment passes this filter is, at a layer of `width` by
+    /// `height` pixels, or `nil` for any other. The first reads the layer and
+    /// writes a scratch texture of the pair's scratch size; the second writes
+    /// the result, reading the layer as `.layer(0)` and the scratch as
+    /// `.layer(1)`. The renderer and the web recorder both run it from this
+    /// one description.
+    func pairPass(width: Int, height: Int) -> EffectPair? {
+        let f = { (a: Double, b: Double, c: Double, d: Double) in
+            SIMD4<Float>(Float(a), Float(b), Float(c), Float(d)) }
+        switch kind {
+        case .jpeg(let quality):
+            let pw = (width + 7) / 8 * 8, ph = (height + 7) / 8 * 8
+            let size = f(Double(width), Double(height), Double(pw), Double(ph))
+            let tables = Filter.jpegTables(quality: quality)
+            func rows(_ table: [Double]) -> [SIMD4<Float>] {
+                stride(from: 0, to: 64, by: 4).map { f(table[$0], table[$0 + 1], table[$0 + 2], table[$0 + 3]) }
+            }
+            return EffectPair(first: EffectPass(fragment: "ollin_fx_jpeg_forward", inputs: [.layer(0)],
+                                                params: [size] + rows(tables.luma) + rows(tables.chroma)),
+                              second: EffectPass(fragment: "ollin_fx_jpeg_inverse",
+                                                 inputs: [.layer(0), .layer(1)], params: [size]),
+                              scratchWidth: pw, scratchHeight: ph)
+        case let .tiltShift(focus, angle, band, falloff, radius):
+            return Self.varblur(head: f(0, radius, Double(width), Double(height)),
+                                shape: f(focus, angle, band, falloff), width: width, height: height)
+        case let .progressiveBlur(angle, start, end, radius):
+            return Self.varblur(head: f(1, radius, Double(width), Double(height)),
+                                shape: f(angle, start, end, 0), width: width, height: height)
+        default:
+            return nil
+        }
+    }
+
+    /// The variable blur as its two passes: across, then down.
+    private static func varblur(head: SIMD4<Float>, shape: SIMD4<Float>,
+                                width: Int, height: Int) -> EffectPair {
+        EffectPair(first: EffectPass(fragment: "ollin_fx_varblur", inputs: [.layer(0)],
+                                     params: [head, shape, SIMD4(0, 0, 0, 0)]),
+                   second: EffectPass(fragment: "ollin_fx_varblur", inputs: [.layer(1)],
+                                      params: [head, shape, SIMD4(1, 0, 0, 0)]),
+                   scratchWidth: width, scratchHeight: height)
+    }
+}
+
+/// A filter that is two fragment passes through one scratch texture: the
+/// first over the layer into the scratch, the second into the result, where
+/// `.layer(0)` is the filter's input and `.layer(1)` the scratch.
+struct EffectPair: Equatable {
+    var first: EffectPass
+    var second: EffectPass
+    var scratchWidth: Int
+    var scratchHeight: Int
 }
 
 /// A distance field measured out of a layer, as data: the value cut (the
@@ -642,6 +708,11 @@ extension Generator {
                                Float(coreIntensity)),
                          SIMD4(Float(intensity), Float(bloom), Float(phase), 0),
                          bloomTint, background] + colors)
+        case let .scratches(count, thickness, length, angle, wobble, flicker, color, phase, seed):
+            return pass("ollin_gen_scratches",
+                        [f(Double(count), thickness, length, angle),
+                         f(wobble, flicker, phase, Double(seed % 4096)),
+                         f(Double(width), Double(height), 0, 0), color])
 
         // Pattern fields: scalars in the leading rows, background at params[2],
         // the palette (where one applies) as trailing rows.

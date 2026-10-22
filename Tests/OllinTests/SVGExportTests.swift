@@ -180,6 +180,29 @@ struct SVGExportTests {
         #expect(!dropped.contains("<circle"))
     }
 
+    /// Every fill scans the one lattice, so the first line is the lattice line
+    /// at or just under a shape's top, never a whole step further in, and two
+    /// equal squares anywhere on the canvas hatch within a line of each other.
+    @Test func hatchingStartsOnTheFirstLatticeLineInside() {
+        let hatch = Hatching(spacing: 7.43, angle: 0)
+        func firstAndCount(_ top: Double) -> (first: Double, count: Int) {
+            let lines = hatch.lines(filling: Rectangle(x: 10, y: top, width: 52, height: 52))
+            return (lines.map { $0[0].y }.min() ?? .infinity, lines.count)
+        }
+        // The top on a whole step: the lattice line half a step in.
+        let onStep = firstAndCount(7.43 * 14)
+        #expect(abs(onStep.first - 7.43 * 14.5) < 1e-9 && onStep.count == 7)
+        // The top at 100: the lattice line at 13.5 steps (100.3) is inside, so
+        // it is the first, not the one at 14.5 steps (7.7 pixels in).
+        let at100 = firstAndCount(100)
+        #expect(abs(at100.first - 7.43 * 13.5) < 1e-9 && at100.count == 7)
+        for top in stride(from: 90.0, to: 110, by: 0.37) {
+            let (first, count) = firstAndCount(top)
+            #expect(first >= top && first - top < 7.43, "first line \(first - top) in at \(top)")
+            #expect(count == 6 || count == 7, "\(count) lines at \(top)")
+        }
+    }
+
     @Test func crossHatchAddsLines() throws {
         func lineCount(_ svg: String) -> Int { svg.components(separatedBy: "<polyline").count - 1 }
         let single = try OllinApp.svg(of: Disk(), hatching: Hatching(spacing: 6, crossHatches: false))

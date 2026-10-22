@@ -251,10 +251,30 @@ struct WebPassNode: Hashable {
     /// A page pass followed by a translated fragment (`prepared:fragment`).
     static func styled(_ prepared: String, then fragment: String) -> String { prepared + ":" + fragment }
 
+    static let pairPrefix = "ollin_web_pair:"
+    /// Two translated fragments through one scratch texture
+    /// (`ollin_web_pair:first:rows:second`, `rows` the first's row count). The
+    /// node's first row carries the scratch's width and height and whether the
+    /// second reads the layer beside the scratch; the first's rows follow,
+    /// then the second's.
+    static func pair(_ first: String, rows: Int, then second: String) -> String {
+        pairPrefix + first + ":" + String(rows) + ":" + second
+    }
+
+    /// The two fragments of a pair's name and the row count of the first;
+    /// `nil` for any other.
+    var pairParts: (first: String, rows: Int, second: String)? {
+        guard fragment.hasPrefix(Self.pairPrefix) else { return nil }
+        let parts = fragment.dropFirst(Self.pairPrefix.count).split(separator: ":")
+        guard parts.count == 3, let rows = Int(parts[1]) else { return nil }
+        return (String(parts[0]), rows, String(parts[2]))
+    }
+
     /// The page pass that prepares, and the translated fragment that follows it,
     /// of a styled name; `nil` for any other.
     var styledParts: (prepared: String, fragment: String)? {
-        guard isPageOwned, let colon = fragment.firstIndex(of: ":") else { return nil }
+        guard isPageOwned, !fragment.hasPrefix(Self.pairPrefix),
+              let colon = fragment.firstIndex(of: ":") else { return nil }
         return (String(fragment[..<colon]), String(fragment[fragment.index(after: colon)...]))
     }
 }
@@ -929,6 +949,14 @@ final class WebGraphRecorder {
             let r = rows(pass.params)
             return WebPassNode(fragment: pass.fragment, inputs: inputs, paramOffset: r.offset, paramRows: r.rows)
         }
+        func pairNode(_ pair: EffectPair) -> WebPassNode {
+            let readsLayer: Float = pair.second.inputs.contains(.layer(0)) ? 1 : 0
+            let head = SIMD4<Float>(Float(pair.scratchWidth), Float(pair.scratchHeight), readsLayer, 0)
+            let r = rows([head] + pair.first.params + pair.second.params)
+            return WebPassNode(fragment: WebPassNode.pair(pair.first.fragment, rows: pair.first.params.count,
+                                                          then: pair.second.fragment),
+                               inputs: [.layer(0)], paramOffset: r.offset, paramRows: r.rows)
+        }
         func userIndex(_ shader: Shader, variant: Int) throws -> (Int, (offset: Int, rows: Int)) {
             let resolved: (source: String, problems: [String])
             if !shader.source.isEmpty {
@@ -990,6 +1018,8 @@ final class WebGraphRecorder {
                     layer.kind = .user(shader: si, inputs: [li], paramOffset: r.offset, paramRows: r.rows)
                 } else if let pass = filter.singlePass(width: pw, height: ph, resolve: Self.exportQuality) {
                     layer.kind = .filter(input: li, node(pass))
+                } else if let pair = filter.pairPass(width: pw, height: ph) {
+                    layer.kind = .filter(input: li, pairNode(pair))
                 } else if case let .gaussianBlur(radius) = filter.kind {
                     // The Mac runs a hardware Gaussian; the page runs its own
                     // separable one over the same sigma (see `WebPlayer`).
@@ -1043,7 +1073,7 @@ final class WebGraphRecorder {
             case .simField(let owner):
                 guard let field = owner.layer else { throw refuse("a simulation released before its frame") }
                 let sim = field.sim
-                if sim.fluidConfig != nil || sim.watercolorConfig != nil || sim.selfWarpConfig != nil
+                if sim.fluidConfig != nil || sim.watercolorConfig != nil || sim.usesWarpState
                     || sim.turingConfig != nil || sim.stepFragment.isEmpty {
                     throw refuse("the \(Self.caseName(sim.kind)) simulation")
                 }
@@ -1081,6 +1111,10 @@ final class WebGraphRecorder {
         var frameFilters: [WebPassNode] = []
         for filter in drawer.frameFilters {
             if case .shader = filter.kind { throw refuse("postProcess(.shader)") }
+            if let pair = filter.pairPass(width: canvasWidth, height: canvasHeight) {
+                frameFilters.append(pairNode(pair))
+                continue
+            }
             guard let pass = filter.singlePass(width: canvasWidth, height: canvasHeight,
                                                resolve: Self.exportQuality) else {
                 throw refuse("postProcess(.\(Self.caseName(filter.kind)))")
@@ -1340,6 +1374,11 @@ extension WebGraph {
                 for (name, count) in zip(WebPassNode.halationFragments, [1, 2]) {
                     rows[name] = max(rows[name] ?? 0, count)
                 }
+                return
+            }
+            if let pair = n.pairParts {
+                rows[pair.first] = max(rows[pair.first] ?? 0, pair.rows)
+                rows[pair.second] = max(rows[pair.second] ?? 0, n.paramRows - 1 - pair.rows)
                 return
             }
             if let styled = n.styledParts {

@@ -2641,6 +2641,367 @@ fragment float4 ollin_fx_schlieren(PresentOut in [[stage_in]],
     return ollin_premul(srgbToLinear(float3(v)), a);
 }
 
+// MARK: - Tape and lens looks
+
+// vhs: a worn videotape. The picture is read through the tape's warped
+// coordinates: every one of the tape's lines shifted by its own jitter, a slow
+// wobble that comes and goes in bursts, a crease (a band of torn lines)
+// rolling down the frame while a burst lasts, and the head-switch band at the
+// bottom, where the last lines tear sideways. The color is split into luma
+// and chroma (YIQ, over the encoded values a video signal carries): the luma
+// is read at the warped point alone and the chroma averaged over a trail of
+// taps behind it, so color bleeds past its edges while the detail stays put.
+// A slow brightness beat rolls over the result. params[0]: smear (pixels,
+// signed: positive trails color to the right), jitter (pixels), damage,
+// amount; params[1]: phase (seconds), the layer's width and height. An amount
+// of zero returns the layer untouched.
+static inline float ollin_vhs_burst(float t) {
+    return smoothstep(0.55, 0.75, ollin_vnoise(float2(t * 0.35, 7.3)));
+}
+
+static inline float3 ollin_rgb_to_yiq(float3 c) {
+    return float3(dot(c, float3(0.299, 0.587, 0.114)),
+                  dot(c, float3(0.596, -0.274, -0.322)),
+                  dot(c, float3(0.211, -0.523, 0.312)));
+}
+
+static inline float3 ollin_yiq_to_rgb(float3 c) {
+    return float3(c.x + 0.956 * c.y + 0.621 * c.z,
+                  c.x - 0.272 * c.y - 0.647 * c.z,
+                  c.x - 1.106 * c.y + 1.703 * c.z);
+}
+
+fragment float4 ollin_fx_vhs(PresentOut in [[stage_in]],
+                             texture2d<float> src [[texture(0)]],
+                             sampler samp [[sampler(0)]],
+                             constant float4 *params [[buffer(0)]]) {
+    float smear = params[0].x, jitter = params[0].y, damage = params[0].z, amount = params[0].w;
+    float t = params[1].x;
+    float2 size = float2(max(params[1].y, 1.0), max(params[1].z, 1.0));
+    if (amount <= 0.0) return src.sample(samp, in.uv);   // zero is an exact identity
+    float2 px = in.uv * size;
+    float y = in.uv.y;
+    float frame = floor(t * 29.97);
+    float line = floor(px.y / max(1.0, size.y / 480.0));   // the tape's own lines
+    float burst = ollin_vhs_burst(t) * damage;
+    // Each line's own sideways step, re-rolled every frame.
+    float dx = (hash12(float2(line, frame)) - 0.5) * 2.0 * jitter;
+    // The wobble, a slow wave down the frame that swells with the burst.
+    dx += burst * (3.0 * sin(y * 11.0 + t * 2.3) + 1.2 * sin(y * 37.0 - t * 5.1));
+    // The crease, a band of torn lines rolling down while the burst lasts.
+    float crease = burst * (1.0 - smoothstep(0.0, 0.025, abs(y - fract(t * 0.11 + 0.3))));
+    dx += crease * (hash12(float2(line, frame + 17.0)) - 0.5) * 40.0;
+    // Head switching: the bottom lines tear sideways, more toward the bottom.
+    float head = smoothstep(0.965, 1.0, y) * min(damage, 1.0);
+    dx += head * (10.0 + 16.0 * hash12(float2(line, frame + 5.0)));
+    dx *= amount;
+    float2 uv = clamp(float2(px.x + dx, px.y) / size, 0.0, 1.0);
+
+    float4 center = src.sample(samp, uv, level(0.0));
+    float3 yiq = ollin_rgb_to_yiq(linearToSrgb(saturate(ollin_unpremul(center))));
+    // The chroma's trail: taps behind the warped point, weighted toward it and
+    // by their own coverage, so a transparent tap lends no color.
+    float2 chroma = float2(0.0);
+    float weight = 0.0;
+    float step = smear * amount / 10.0;
+    for (int k = 0; k < 10; k++) {
+        float2 tuv = clamp(float2(uv.x - float(k) * step / size.x, uv.y), 0.0, 1.0);
+        float4 c = src.sample(samp, tuv, level(0.0));
+        float w = exp(-0.3 * float(k)) * c.a;
+        chroma += w * ollin_rgb_to_yiq(linearToSrgb(saturate(ollin_unpremul(c)))).yz;
+        weight += w;
+    }
+    yiq.yz = weight > 1e-5 ? chroma / weight : yiq.yz;
+    // A torn line is noisier and loses some of its color.
+    float tear = max(crease, head) * amount;
+    yiq.x += tear * (hash12(px + frame) - 0.5) * 0.35;
+    yiq.yz *= 1.0 - 0.5 * tear;
+    // The beat: a slow bar of brightness rolling up the frame.
+    yiq.x *= 1.0 + 0.04 * amount * sin(6.28318530718 * (y * 1.5 - t * 0.6));
+    float3 rgb = srgbToLinear(saturate(ollin_yiq_to_rgb(yiq)));
+    return ollin_premul(rgb, center.a);
+}
+
+// jpeg: the block transform of baseline JPEG, in two passes. The forward pass
+// writes, for every 8 by 8 block of the layer (anchored at its top-left, a
+// partial block at an edge padded by repeating the edge, as an encoder pads),
+// the block's discrete cosine transform: the texel at (u, v) inside the block
+// holds coefficient (u, v) of the luma and the two chroma channels (JFIF
+// YCbCr over the encoded values, level-shifted by a half), each divided by
+// its step in the quantization table, rounded, and multiplied back, which is
+// all the loss there is. The coefficients land in a texture padded to whole
+// blocks. params[0]: the layer's width and height, the padded width and
+// height; params[1...16]: the luma table, params[17...32]: the chroma table,
+// sixty-four steps each in row-major order (v then u), in levels of the eight-bit range.
+static inline float3 ollin_rgb_to_ycc(float3 c) {
+    return float3(dot(c, float3(0.299, 0.587, 0.114)),
+                  dot(c, float3(-0.168736, -0.331264, 0.5)),
+                  dot(c, float3(0.5, -0.418688, -0.081312)));
+}
+
+static inline float3 ollin_ycc_to_rgb(float3 c) {
+    return float3(c.x + 1.402 * c.z,
+                  c.x - 0.344136 * c.y - 0.714136 * c.z,
+                  c.x + 1.772 * c.y);
+}
+
+fragment float4 ollin_fx_jpeg_forward(PresentOut in [[stage_in]],
+                                      texture2d<float> src [[texture(0)]],
+                                      sampler samp [[sampler(0)]],
+                                      constant float4 *params [[buffer(0)]]) {
+    float2 size = params[0].xy, padded = params[0].zw;
+    float2 px = floor(in.uv * padded);
+    float2 block = floor(px / 8.0) * 8.0;
+    float2 uv = px - block;
+    float3 sum = float3(0.0);
+    for (int y = 0; y < 8; y++) {
+        float cy = cos((2.0 * float(y) + 1.0) * uv.y * 0.19634954085);
+        for (int x = 0; x < 8; x++) {
+            float cx = cos((2.0 * float(x) + 1.0) * uv.x * 0.19634954085);
+            float2 at = min(block + float2(float(x), float(y)), size - 1.0);
+            float4 c = src.sample(samp, (at + 0.5) / size, level(0.0));
+            float3 ycc = ollin_rgb_to_ycc(linearToSrgb(saturate(ollin_unpremul(c))));
+            ycc.x -= 0.5;
+            sum += ycc * (cx * cy);
+        }
+    }
+    float cu = uv.x < 0.5 ? 0.70710678118 : 1.0;
+    float cv = uv.y < 0.5 ? 0.70710678118 : 1.0;
+    float3 coefficient = 0.25 * cu * cv * sum;
+    int i = int(uv.y) * 8 + int(uv.x);
+    float qLuma = params[1 + i / 4][i % 4] / 255.0;
+    float qChroma = params[17 + i / 4][i % 4] / 255.0;
+    float3 q = float3(qLuma, qChroma, qChroma);
+    return float4(round(coefficient / q) * q, 1.0);
+}
+
+// The inverse pass: every pixel sums its block's quantized coefficients back
+// through the cosines, undoes the level shift and the color transform, and
+// clamps to the eight-bit range the format holds. The layer's own alpha is
+// kept (the format carries none). Inputs: the layer, the coefficients.
+// params[0]: the layer's width and height, the padded width and height.
+fragment float4 ollin_fx_jpeg_inverse(PresentOut in [[stage_in]],
+                                      texture2d<float> src [[texture(0)]],
+                                      texture2d<float> coefficients [[texture(1)]],
+                                      sampler samp [[sampler(0)]],
+                                      constant float4 *params [[buffer(0)]]) {
+    float2 size = params[0].xy, padded = params[0].zw;
+    float2 px = floor(in.uv * size);
+    float2 block = floor(px / 8.0) * 8.0;
+    float2 xy = px - block;
+    float3 sum = float3(0.0);
+    for (int v = 0; v < 8; v++) {
+        float cv = (v == 0 ? 0.70710678118 : 1.0) * cos((2.0 * xy.y + 1.0) * float(v) * 0.19634954085);
+        for (int u = 0; u < 8; u++) {
+            float cu = (u == 0 ? 0.70710678118 : 1.0) * cos((2.0 * xy.x + 1.0) * float(u) * 0.19634954085);
+            float2 at = block + float2(float(u), float(v));
+            sum += coefficients.sample(samp, (at + 0.5) / padded, level(0.0)).rgb * (cu * cv);
+        }
+    }
+    float3 ycc = 0.25 * sum;
+    ycc.x += 0.5;
+    float3 rgb = srgbToLinear(saturate(ollin_ycc_to_rgb(ycc)));
+    float a = src.sample(samp, in.uv, level(0.0)).a;
+    return ollin_premul(rgb, a);
+}
+
+// The blur radius a tilt-shift or a progressive blur gives a pixel, as the
+// Gaussian's sigma in pixels. params[0]: the mode (0 tilt-shift, 1
+// progressive), the full radius, the layer's width and height; params[1]:
+// the tilt-shift's focus (a fraction of the height where the line crosses
+// the middle column), its angle, the half-width of the sharp band and the
+// distance the blur takes to reach full, both fractions of the height; or
+// the progressive blur's angle, and where along that direction it starts and
+// reaches full, as fractions of the layer's extent along it.
+static inline float ollin_varblur_sigma(float2 px, float4 head, float4 shape) {
+    float radius = head.y;
+    float2 size = head.zw;
+    if (head.x < 0.5) {
+        float2 normal = float2(-sin(shape.y), cos(shape.y));
+        float d = abs(dot(px - float2(0.5 * size.x, shape.x * size.y), normal)) / size.y;
+        float t = saturate((d - shape.z) / max(shape.w, 1e-4));
+        return radius * t * t * (3.0 - 2.0 * t);
+    }
+    float2 dir = float2(cos(shape.x), sin(shape.x));
+    float reach = 0.5 * (abs(dir.x) * size.x + abs(dir.y) * size.y);
+    float s = (dot(px - 0.5 * size, dir) + reach) / max(2.0 * reach, 1e-4);
+    return radius * saturate((s - shape.y) / max(shape.z - shape.y, 1e-4));
+}
+
+// varblur: one direction of a Gaussian whose sigma varies over the layer, run
+// across and then down. A pixel whose sigma is zero is its own texel read at
+// its center, so the band a tilt-shift keeps in focus comes through byte for
+// byte. params[0], params[1]: as `ollin_varblur_sigma`; params[2].x: 0 runs
+// across, 1 runs down.
+fragment float4 ollin_fx_varblur(PresentOut in [[stage_in]],
+                                 texture2d<float> src [[texture(0)]],
+                                 sampler samp [[sampler(0)]],
+                                 constant float4 *params [[buffer(0)]]) {
+    float2 size = params[0].zw;
+    float sigma = ollin_varblur_sigma(in.uv * size, params[0], params[1]);
+    float4 center = src.sample(samp, in.uv, level(0.0));
+    if (sigma < 0.05) return center;
+    float2 step = params[2].x < 0.5 ? float2(1.0 / size.x, 0.0) : float2(0.0, 1.0 / size.y);
+    int taps = min(int(ceil(3.0 * sigma)), 240);
+    float4 sum = center;
+    float weight = 1.0;
+    float k = -0.5 / (sigma * sigma);
+    for (int i = 1; i <= taps; i++) {
+        float w = exp(k * float(i * i));
+        sum += w * (src.sample(samp, clamp(in.uv + step * float(i), 0.0, 1.0), level(0.0))
+                  + src.sample(samp, clamp(in.uv - step * float(i), 0.0, 1.0), level(0.0)));
+        weight += 2.0 * w;
+    }
+    return sum / weight;
+}
+
+// lightLeak: light bleeding into the frame from an anchor, the way it leaks
+// past a camera's seal onto film. A heat field gathers a hot bloom at the
+// anchor (stretched along the beam toward the middle of the frame), a broad
+// shoulder around it, and streak bands parallel to the beam that fade with the
+// distance in; the beam's angle and the whole field's strength drift slowly
+// with the phase. The heat is dithered, mapped through a ramp (fringe, then
+// mid, then hot, then white where it overexposes), and screened over the layer
+// as emitted light: it adds where the layer is dark, raises the alpha over a
+// transparent layer, and never darkens a pixel. params[0]: the anchor (layer
+// fractions), spread, intensity; params[1]: streaks, flicker, phase, seed;
+// params[2]: aspect, width, height; params[3...5]: fringe, mid, and hot, in
+// encoded values.
+fragment float4 ollin_fx_light_leak(PresentOut in [[stage_in]],
+                                    texture2d<float> src [[texture(0)]],
+                                    sampler samp [[sampler(0)]],
+                                    constant float4 *params [[buffer(0)]]) {
+    float4 base = src.sample(samp, in.uv);
+    float spread = max(params[0].z, 1e-3), intensity = params[0].w;
+    float streaks = params[1].x, flicker = params[1].y, seed = params[1].w;
+    float aspect = params[2].x;
+    float t = params[1].z * 0.6 + seed * 7.9;
+    float2 scale = float2(aspect, 1.0);
+    float2 p = in.uv * scale, anchor = params[0].xy * scale, center = 0.5 * scale;
+    // The slow drift: the beam's heading wanders and the light breathes.
+    float breathe = 1.0 - flicker * ollin_vnoise(float2(t * 0.8, seed + 3.1));
+    float2 toward = center - anchor;
+    float heading = atan2(toward.y, toward.x) + 0.35 * (ollin_vnoise(float2(t * 0.3, seed)) - 0.5);
+    float2 dir = float2(cos(heading), sin(heading));
+    float along = dot(p - anchor, dir);
+    float across = dot(p - anchor, float2(-dir.y, dir.x));
+    float r = length(float2(along * 0.6, across));
+    float bloom = exp(-pow(r / (spread * 0.45), 2.0));
+    float shoulder = 0.6 * exp(-r / (spread * 0.9));
+    float bands = 0.0;
+    for (int k = 0; k < 3; k++) {
+        float f = 9.0 + 7.0 * float(k);
+        float wave = 0.5 + 0.5 * sin(across * f / spread + t * (0.7 + 0.4 * float(k)) + float(k) * 1.7 + seed);
+        bands += pow(wave, 6.0);
+    }
+    float reach = exp(-max(along, 0.0) / (spread * 1.5)) * smoothstep(-0.05, 0.1, along);
+    float heat = (1.25 * bloom + shoulder + 0.85 * streaks * reach * bands / 3.0) * intensity * 2.2 * breathe;
+    heat = max(heat + (hash12(in.uv * params[2].yz + fract(t)) - 0.5) / 255.0, 0.0);
+    float3 tint = mix(params[3].rgb, params[4].rgb, smoothstep(0.0, 0.45, heat));
+    tint = mix(tint, params[5].rgb, smoothstep(0.45, 1.0, heat));
+    tint = mix(tint, float3(1.0), smoothstep(1.0, 2.0, heat));
+    float lit = saturate(heat);
+    float3 light = srgbToLinear(tint) * lit;
+    return float4(base.rgb + light * max(1.0 - base.rgb, 0.0), base.a + lit * (1.0 - base.a));
+}
+
+// pagePeel: the layer as a sheet of paper curling up from a corner (or any
+// point on its edge) around a cylinder. Past the fold line the sheet wraps
+// the cylinder and, beyond half a turn, lies flat on top heading back, so a
+// pixel can see the flipped flap, the top of the curl (the sheet's back), the
+// curl's underside (the front, darkening into the crook), the flat sheet, or
+// nothing where the sheet has lifted away. It is a gather: each candidate
+// reads the layer at the page point that lands there, and they composite back
+// to front with coverage, so the curl's edge is antialiased. The back is
+// `back` with a trace of the print showing through, lit from above with a
+// sheen along the curl; the flat sheet darkens under the curl and beside the
+// flap, and the revealed ground takes a soft shadow just past the curl and is
+// transparent beyond it. params[0]: the corner (layer fractions), amount (0
+// flat, 1 peeled to the far side), radius (a fraction of the diagonal);
+// params[1]: shading, sheen, shadow, width; params[2]: height; params[3]:
+// the back's color (linear).
+static inline float ollin_peel_inside(float2 q, float2 size) {
+    float2 d = abs(q - 0.5 * size) - 0.5 * size;
+    float outside = length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
+    return saturate(0.5 - outside);
+}
+
+static inline float ollin_peel_box(float2 q, float2 size) {
+    float2 d = abs(q - 0.5 * size) - 0.5 * size;
+    return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
+}
+
+static inline float4 ollin_over(float4 top, float4 under) {
+    return top + under * (1.0 - top.a);
+}
+
+fragment float4 ollin_fx_page_peel(PresentOut in [[stage_in]],
+                                   texture2d<float> src [[texture(0)]],
+                                   sampler samp [[sampler(0)]],
+                                   constant float4 *params [[buffer(0)]]) {
+    float amount = params[0].z;
+    if (amount <= 0.0) return src.sample(samp, in.uv);   // zero is an exact identity
+    float2 size = float2(max(params[1].w, 1.0), max(params[2].x, 1.0));
+    float shading = params[1].x, sheen = params[1].y, shadow = params[1].z;
+    float R = max(params[0].w * length(size), 0.5);
+    float2 P = in.uv * size, c = 0.5 * size;
+    float2 toward = params[0].xy * size - c;
+    float2 n = length(toward) > 1e-3 ? normalize(toward) : float2(0.70710678118);
+    float extent = 0.5 * (abs(n.x) * size.x + abs(n.y) * size.y);
+    float fold = extent - amount * 2.0 * extent;
+    float s = dot(P - c, n) - fold;
+    float gate = saturate(amount * 20.0);
+    float pi = 3.14159265359;
+
+    // The ground the sheet lifted off: transparent, with a soft shadow just past the curl.
+    float4 out = float4(0.0);
+    if (s > 0.0) {
+        float fall = exp(-max(s - R, 0.0) / (0.7 * R)) * (1.0 - smoothstep(R, 3.0 * R, s));
+        out = float4(0.0, 0.0, 0.0, 0.45 * shadow * gate * fall);
+    }
+    // The flat sheet, darkened under the curl's crease and beside the flap.
+    if (s <= 0.0) {
+        float4 flat = src.sample(samp, in.uv, level(0.0));
+        float crease = 0.35 * exp(s / (0.5 * R));
+        float2 mirrored = P + (pi * R - 2.0 * s) * n;
+        float beside = 0.5 * (1.0 - smoothstep(0.0, 0.8 * R, ollin_peel_box(mirrored, size)));
+        flat.rgb *= 1.0 - shadow * gate * saturate(crease + beside);
+        out = ollin_over(flat, out);
+    }
+    // The curl's underside: the front of the sheet, darkening into the crook.
+    if (s > 0.0 && s <= R) {
+        float theta = asin(saturate(s / R));
+        float2 q = P + (R * theta - s) * n;
+        float4 front = src.sample(samp, clamp(q / size, 0.0, 1.0), level(0.0));
+        front.rgb *= 1.0 - shading * 0.6 * pow(sin(theta), 1.5);
+        out = ollin_over(front * ollin_peel_inside(q, size), out);
+    }
+    // The sheet's back: the top of the curl, then the flap lying flat on top.
+    float2 q = P;
+    float lit = 1.0, glint = 0.0;
+    bool hasBack = false;
+    if (s > 0.0 && s <= R) {
+        float theta = pi - asin(saturate(s / R));
+        q = P + (R * theta - s) * n;
+        lit = mix(1.0, saturate(-cos(theta)), shading);
+        glint = sheen * exp(-pow((theta - 0.72 * pi) / 0.12, 2.0));
+        hasBack = true;
+    } else if (s <= 0.0) {
+        q = P + (pi * R - 2.0 * s) * n;
+        hasBack = true;
+    }
+    if (hasBack) {
+        float cover = ollin_peel_inside(q, size);
+        if (cover > 0.0) {
+            float4 print = src.sample(samp, clamp(q / size, 0.0, 1.0), level(0.0));
+            float3 paper = mix(params[3].rgb, ollin_unpremul(print), 0.12);
+            float3 rgb = paper * lit + glint;
+            out = ollin_over(ollin_premul(rgb, print.a * cover), out);
+        }
+    }
+    return out;
+}
+
 // ripple: concentric radial sine displacement from `center` (params[0]: amplitude,
 // frequency, phase, aspect; params[1].xy: center in layer fractions).
 fragment float4 ollin_fx_ripple(PresentOut in [[stage_in]],

@@ -1677,6 +1677,8 @@ final class MetalRenderer {
         let flowW: Int, flowH: Int
         var primed = false
         var flipped = false
+        /// The frames a datamosh has decoded on this state, its blocks' clock.
+        var frames = 0
         weak var owner: AnyObject?
         init(source: MTLTexture, flowA: MTLTexture, flowB: MTLTexture,
              histA: MTLTexture, histB: MTLTexture,

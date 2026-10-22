@@ -2847,3 +2847,56 @@ fragment float4 ollin_fx_bubble_wrap(PresentOut in [[stage_in]],
 
     return mix(s, color, amount);
 }
+
+// MARK: - scratches
+//
+// Hairline scratches on film: the layer is cut into lanes across the
+// scratches' direction, and each lane may hold one scratch, a fine line at a
+// thickness with a slow sideways wobble, running part of the way along the
+// layer and broken into gaps where noise along it dips. A scratch keeps its
+// place for a life of a few dozen frames, then the lane re-rolls it (or
+// leaves it empty); while it lives it flickers on and off and in strength
+// frame to frame, at film's 24 frames a second. Neighboring lanes are read
+// too, so a wobble crosses a lane's edge without a cut. params[0]: count
+// (lanes), thickness (pixels), length (a fraction of the layer), angle;
+// params[1]: wobble (pixels), flicker, phase (seconds), seed; params[2]: the
+// width and height; params[3]: the color (straight, linear).
+fragment float4 ollin_gen_scratches(PresentOut in [[stage_in]],
+                                    constant float4 *params [[buffer(0)]]) {
+    float count = max(params[0].x, 1.0), thickness = params[0].y, length = params[0].z;
+    float angle = params[0].w;
+    float wobble = params[1].x, flicker = params[1].y, seed = params[1].w;
+    float frame = floor(params[1].z * 24.0);
+    float2 size = params[2].xy;
+    float2 center = 0.5 * size;
+    float2 p = ollin_rot2(in.uv * size - center, -angle) + center;
+    float span = abs(cos(angle)) * size.y + abs(sin(angle)) * size.x;
+    float width = abs(cos(angle)) * size.x + abs(sin(angle)) * size.y;
+    float lane = width / count;
+    float home = floor((p.x - (center.x - 0.5 * width)) / lane);
+    float alpha = 0.0;
+    for (int k = -1; k <= 1; k++) {
+        float i = home + float(k);
+        float life = 12.0 + 36.0 * hash12(float2(i, seed + 0.5));
+        float epoch = floor(frame / life + hash12(float2(i, seed + 9.1)));
+        float2 key = float2(i * 1.731 + epoch * 0.137, seed * 3.9 + epoch);
+        if (hash12(key) > 0.7) continue;                   // an empty lane this life
+        if (hash12(key + float2(frame * 0.71, 2.3)) < 0.6 * flicker) continue;   // off this frame
+        float x = center.x - 0.5 * width + (i + 0.2 + 0.6 * hash12(key + 1.7)) * lane;
+        x += wobble * sin(p.y / span * (3.0 + 5.0 * hash12(key + 4.1)) + 6.2831853 * hash12(key + 5.3));
+        x += (hash12(key + float2(frame, 7.7)) - 0.5) * 0.6 * flicker;
+        float d = abs(p.x - x);
+        float line = saturate(0.5 * thickness + 0.5 - d);
+        if (line <= 0.0) continue;
+        // Where along the layer it runs, softened at its ends, and its gaps.
+        float mid = (0.1 + 0.8 * hash12(key + 3.3)) * span;
+        float reach = 0.5 * span * length * (0.6 + 0.8 * hash12(key + 6.6));
+        float along = abs(p.y - (center.y - 0.5 * span) - mid);
+        float ends = 1.0 - smoothstep(reach * 0.85, reach, along);
+        float gaps = smoothstep(0.25, 0.45, ollin_vnoise(float2(p.y / 23.0, i * 5.3 + epoch)));
+        float strength = 1.0 - 0.45 * flicker * hash12(key + float2(frame, 8.8));
+        alpha = max(alpha, line * ends * gaps * strength * thickness / max(thickness, 1.0));
+    }
+    float a = alpha * params[3].a;
+    return float4(params[3].rgb * a, a);
+}

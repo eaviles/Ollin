@@ -2279,8 +2279,20 @@ enum WebPlayer {
       // bright pass, blur, and their own add-back (the halation's binds the
       // amount and then the tint); the distance field; and a layer style, a
       // field or a blur from the first row and then the style's translated
-      // fragment over the layer and it, with the rows after.
+      // fragment over the layer and it, with the rows after; and a pair, two
+      // translated fragments through a scratch.
       function runOwned(name, input, rows, out) {
+        if (name.indexOf('ollin_web_pair:') === 0) {
+          // Two fragments through a scratch: the first's rows, then the second's,
+          // after a row of the scratch's size and whether the second reads the
+          // layer beside it.
+          var parts = name.split(':'), k = parseInt(parts[2], 10);
+          var middle = acquire(rows[0], rows[1]);
+          runFragment(parts[1], [input], rows.subarray(4, 4 + 4 * k), middle);
+          runFragment(parts[3], rows[2] > 0.5 ? [input, middle.tex] : [middle.tex],
+                      rows.subarray(4 + 4 * k), out);
+          return;
+        }
         var colon = name.indexOf(':');
         if (colon > 0) {
           var prepared = acquire(out.w, out.h);

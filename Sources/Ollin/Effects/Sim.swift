@@ -58,6 +58,9 @@ public struct Sim: Sendable {
                        passes: Int, seed: Double)
         case ising(temperature: Double, field: Double, sweeps: Int, seed: Double)
         case selfWarp(SelfWarpConfig)
+        /// A datamosh: blocks of the layer refresh or hold, a held block
+        /// dragging its last contents along its own motion.
+        case datamosh(DatamoshConfig)
         /// A kernel of the sketch's own: `step` runs every substep over the state,
         /// `inject` (or the data inject when nil) lays this frame's marks onto it.
         case shader(step: Shader, inject: Shader?, substeps: Int, rest: SIMD4<Float>)
@@ -87,6 +90,19 @@ public struct Sim: Sendable {
         var refresh: Float      // how much of this frame's drawing re-enters (0...1)
         var decay: Float        // per-frame multiplier on the carried history (1 = keep)
         var smoothing: Float    // temporal steadying of the motion field (0...0.98)
+    }
+
+    /// The fixed configuration a `.datamosh` hands the renderer. It runs on the
+    /// self-warp's state (the last drawing, the motion pair, and the decoded
+    /// pair) and its motion fit, then decides and moves blocks of its own.
+    struct DatamoshConfig: Sendable {
+        var amount: Float       // the share of blocks held at any moment (0...1)
+        var blockSize: Int      // a block's side, in pixels
+        var motion: Float       // how far a held block follows the measured motion
+        var drift: SIMD2<Float> // a push every held block takes, in pixels a frame
+        var wander: Float       // a slow seeded push of each block's own, in pixels a frame
+        var period: Float       // the mean frames a block keeps its fate
+        var seed: Int
     }
 
     /// Gray-Scott **reaction-diffusion**: two chemicals diffuse and react, and where
@@ -349,6 +365,64 @@ public struct Sim: Sendable {
             refresh: Float(min(1, max(0, refresh))),
             decay: Float(min(1, max(0, decay))),
             smoothing: Float(min(0.98, max(0, smoothing))))))
+    }
+
+    /// **Datamosh**: the picture as a video stream that lost its key frames.
+    /// The field is cut into square blocks, the macroblocks a video codec
+    /// works in, and every frame each block either refreshes from this
+    /// frame's drawing or holds: a held block re-reads its own last contents
+    /// shifted by a motion vector, which is what a decoder does when the
+    /// motion keeps arriving after the picture it applies to was dropped. So
+    /// held blocks drag yesterday's picture along today's motion, smearing it
+    /// into liquid trails, until the block refreshes and the drawing shows
+    /// through again. Each block keeps its fate for a while and then re-rolls
+    /// it on a clock of its own, so regions clear and melt at different
+    /// moments rather than all at once.
+    ///
+    /// A held block's vector is the drawing's own motion, measured between
+    /// this frame and the last (the self-warp's fit, averaged over the block)
+    /// and scaled by `motion`, plus a fixed `drift`, plus a slow `wander` of
+    /// the block's own, so a still or flat picture melts too, since there is
+    /// no motion to measure in it. Draw the scene into the field each frame
+    /// (a `background` inside the block keeps it opaque); the raw `image` is
+    /// the decoded picture.
+    ///
+    /// ```swift
+    /// var mosh: SimField!
+    /// override func setup() { mosh = makeSimField(.datamosh()) }
+    ///
+    /// override func draw() {
+    ///     withField(mosh) { drawImage(photo, 0, 0, width, height) }
+    ///     drawImage(mosh.image, 0, 0)
+    /// }
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - amount: The share of blocks held at any moment (0...1). 0 shows
+    ///     the drawing untouched; 1 holds every block, so the first frame
+    ///     never leaves and only moves.
+    ///   - blockSize: A block's side, in pixels (16, a codec's macroblock, by
+    ///     default).
+    ///   - motion: How far a held block follows the drawing's measured motion
+    ///     (1 with it, 0 ignoring it).
+    ///   - drift: A push every held block takes, in pixels a frame.
+    ///   - wander: The largest slow push of a block's own, in pixels a frame:
+    ///     a direction from seeded noise that turns slowly over the frames.
+    ///     0 leaves only the measured motion and the drift.
+    ///   - period: How many frames a block keeps its fate on average before
+    ///     it re-rolls.
+    ///   - seed: Picks other blocks, other clocks, and another wander.
+    public static func datamosh(amount: Double = 0.6, blockSize: Int = 16, motion: Double = 1,
+                                drift: Vector2 = .zero, wander: Double = 1.5, period: Double = 45,
+                                seed: Int = 0) -> Sim {
+        Sim(kind: .datamosh(DatamoshConfig(
+            amount: Float(min(max(amount, 0), 1)),
+            blockSize: min(max(blockSize, 2), 256),
+            motion: Float(min(max(motion, -8), 8)),
+            drift: SIMD2(Float(drift.x), Float(drift.y)),
+            wander: Float(max(wander, 0)),
+            period: Float(max(period, 1)),
+            seed: seed)))
     }
 
     /// **Multi-scale Turing patterns**: one substance, looked at through several
@@ -836,6 +910,16 @@ public struct Sim: Sendable {
         if case let .selfWarp(c) = kind { return c }; return nil
     }
 
+    /// The datamosh configuration, when this is a `.datamosh` (else `nil`). It
+    /// runs on the self-warp's state and motion fit (`runDatamosh`).
+    var datamoshConfig: DatamoshConfig? {
+        if case let .datamosh(c) = kind { return c }; return nil
+    }
+
+    /// Whether this sim keeps the self-warp's state: the last drawing, the
+    /// motion pair, and the picture pair it carries.
+    var usesWarpState: Bool { selfWarpConfig != nil || datamoshConfig != nil }
+
     /// The multi-scale Turing configuration, when this is a `.multiScaleTuring`
     /// (else `nil`). Like the fluid it runs its own multi-pass pipeline
     /// (`runMultiScaleTuring`) rather than the single-texture step path, because a
@@ -882,6 +966,7 @@ public struct Sim: Sendable {
         case let .ising(_, _, sweeps, _):
             return sweeps * 2               // two checkerboard passes make one sweep
         case .selfWarp:          return 1   // unused: self-warp runs its own pipeline
+        case .datamosh:          return 1   // unused: datamosh runs its own pipeline
         case let .shader(_, _, substeps, _): return max(1, substeps)
         }
     }
@@ -921,6 +1006,7 @@ public struct Sim: Sendable {
         case let .shader(_, _, _, rest): return rest
         case .selfWarp:          return SIMD4(0, 0, 0, 0)   // unused: runSelfWarp clears
                                                             // and primes its own state
+        case .datamosh:          return SIMD4(0, 0, 0, 0)   // unused: as the self-warp
         }
     }
 
@@ -947,6 +1033,7 @@ public struct Sim: Sendable {
         case .schelling:         return "ollin_sim_schelling"
         case .ising:             return "ollin_sim_ising"
         case .selfWarp:          return ""   // unused: self-warp dispatches its own fragments
+        case .datamosh:          return ""   // unused: datamosh dispatches its own fragments
         case .shader:            return ""   // unused: the kernel is the sketch's own Shader
         }
     }
@@ -1047,8 +1134,8 @@ public struct Sim: Sendable {
         case let .ising(temperature, field, sweeps, seed):
             // The sweeps per frame let the step count passes across frames for its coin.
             return [SIMD4(Float(temperature), Float(field), Float(seed), Float(sweeps))]
-        case .selfWarp:
-            return []   // unused: self-warp binds per-pass parameters itself
+        case .selfWarp, .datamosh:
+            return []   // unused: these bind per-pass parameters themselves
         case .shader:
             return []   // the kernel's own `params` go in the user-shader buffer
         }
@@ -1073,7 +1160,7 @@ public struct Sim: Sendable {
              .ising, .shader:
             return true
         case .ripples, .fluid, .multiScaleTuring, .sandpile, .fallingSand, .watercolor,
-             .schelling, .selfWarp:
+             .schelling, .selfWarp, .datamosh:
             return false
         }
     }

@@ -110,6 +110,9 @@ public struct Generator: Sendable {
                      density: Double, breakup: Double, coreSize: Double,
                      coreIntensity: Double, intensity: Double, bloom: Double,
                      bloomTint: SIMD4<Float>, phase: Double)
+        /// Hairline scratches on film, a line a lane, flickering in place.
+        case scratches(count: Int, thickness: Double, length: Double, angle: Double, wobble: Double,
+                       flicker: Double, color: SIMD4<Float>, phase: Double, seed: Int)
 
         // Pattern fields -------------------------------------------------------
         /// A quasicrystal interference field: plane waves at evenly spaced
@@ -610,6 +613,41 @@ public struct Generator: Sendable {
                                  intensity: min(max(intensity, 0), 1),
                                  bloom: min(max(bloom, 0), 1),
                                  bloomTint: bloomTint.linearRGBA, phase: phase))
+    }
+
+    /// Hairline scratches, the kind a print picks up running through a
+    /// projector: fine lines along the layer at `thickness`, each wobbling a
+    /// little sideways, running part of the way and broken by gaps. The layer
+    /// is cut into `count` lanes and each may hold one scratch, which keeps
+    /// its place for a life of a few dozen frames before the lane re-rolls it;
+    /// while it lives it flickers on and off and in strength from frame to
+    /// frame, at film's 24 frames a second. The layer is transparent between
+    /// the lines, so it composites over a picture: white for scratches
+    /// through the emulsion, black for dirt on it.
+    ///
+    /// Pass `time` as `phase` to run the film.
+    ///
+    /// - Parameters:
+    ///   - count: The lanes across the layer, each holding at most one scratch.
+    ///   - thickness: A line's width, in pixels; below one pixel it fades
+    ///     rather than thinning.
+    ///   - length: How much of the layer a scratch runs along, on average (1
+    ///     the whole of it).
+    ///   - angle: The scratches' direction off vertical, in radians.
+    ///   - wobble: The largest sideways wander along a scratch, in pixels.
+    ///   - flicker: How much a scratch blinks and jitters from frame to frame
+    ///     (0 steady).
+    ///   - color: The lines' color.
+    ///   - phase: The film's clock, in seconds.
+    ///   - seed: Picks other lanes, lives, and gaps.
+    public static func scratches(count: Int = 14, thickness: Double = 1.2, length: Double = 0.6,
+                                 angle: Double = 0, wobble: Double = 3, flicker: Double = 0.5,
+                                 color: Color = Color(white: 1, alpha: 0.75),
+                                 phase: Double = 0, seed: Int = 0) -> Generator {
+        Generator(kind: .scratches(count: max(count, 1), thickness: max(thickness, 0.05),
+                                   length: min(max(length, 0.01), 1), angle: angle,
+                                   wobble: max(wobble, 0), flicker: min(max(flicker, 0), 1),
+                                   color: color.linearRGBA, phase: phase, seed: seed))
     }
     // MARK: Pattern fields
 

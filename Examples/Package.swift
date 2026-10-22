@@ -135,6 +135,7 @@ let package = Package(
         example("Effects/ChromeLettering"),
         example("Effects/Textures"),
         example("Effects/Phenomena"),
+        example("Effects/TapeAndLens", [.samplePhotos]),
         example("Effects/MeshGradient"),
         example("Effects/DistanceField"),
         example("Effects/LayerStyles"),

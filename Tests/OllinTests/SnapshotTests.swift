@@ -249,6 +249,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("optical-looks",
                  note: "The six optical and print looks at fixed phases and seeds (no time, no random): a drawing as a red-and-cyan anaglyph at one parallax and two discs by a hand-drawn depth map, a three-ink poster with its plates out of register, a road under a heat mirage, a blurred blob read by a schlieren knife, the wavelength ramp as bands, and chromatography drops meeting. Pins the channel split and the paper-white read of a transparent pixel, the depth gather and its sign, the plane resampling behind the misprint, the row-shift function and the inversion below the line, the knife's gray and its flip, the spectral stops, and the ring caps where fronts meet.",
                  make: { OpticalLooksSheet() }),
+    SnapshotCase("tape-and-lens", frame: 8,
+                 note: "The eight tape and lens looks at fixed phases and seeds over one drawn scene, four across and two down: a videotape mid-burst, a JPEG at quality 12, a datamosh at frame 8 with every block held and a stated drift plus half its blocks refreshing, a tilt-shift band, a progressive blur, a light leak, a page peeling from its corner over a dark ground, and scratches over a sepia copy. Pins every fragment, the two-pass scratch and its padding to whole blocks, and the datamosh's block clock.",
+                 make: { TapeAndLensSheet() }),
     SnapshotCase("design-patterns",
                  note: "The nine other design-pattern generators tiled 3×3 at fixed phases (no time, no random): filaments, smokeRing, colorPanels, spiral, waves, dotOrbit, grainGradient, pulsingBorder, godRays. Pins each generator dispatch arm and fragment, incl. the polar-seam blends, the pane projection + scheduling, and the dual over/additive bloom accumulations.",
                  make: { DesignPatternsSheet() }),
@@ -11724,6 +11727,57 @@ private final class LineTexturesSheet: Sketch {
             noFill(); stroke(Color(hex: 0x15203F)); strokeWeight(1)
             for edge in stripe.edges { drawPolyline(edge) }
         }
+    }
+}
+
+/// The eight tape and lens looks at fixed phases and seeds, four across and two
+/// down, each over the same drawn scene at 120 pixels a side. The datamosh is
+/// the one with state: it is read at frame 8, every block held and drifting in
+/// its left half, and half its blocks refreshing in its right.
+private final class TapeAndLensSheet: Sketch {
+    override var canvasSize: CanvasSize { .size(480, 240) }
+
+    private var held: SimField?
+    private var mixed: SimField?
+
+    override func setup() {
+        held = makeSimField(.datamosh(amount: 1, motion: 0, drift: Vector2(2, 1), wander: 0), width: 60, height: 120)
+        mixed = makeSimField(.datamosh(amount: 0.5, blockSize: 12, period: 4, seed: 3), width: 60, height: 120)
+    }
+
+    private func scene(_ shift: Double = 0) {
+        noStroke()
+        for row in 0 ..< 12 {
+            fill(Color(hue: 0.08 + Double(row) * 0.02, saturation: 0.35, brightness: 0.75 + Double(row) * 0.015))
+            drawRect(0, Double(row) * 10, 120, 10)
+        }
+        fill(Color(hex: 0x2B6C8C)); drawCircle(40 + shift, 46, 22)
+        fill(Color(hex: 0xC2452D)); drawRect(70, 30, 30, 70)
+        fill(Color(hex: 0x1A1B1E)); drawCircle(36, 92, 12)
+        fill(.white); for i in 0 ..< 5 { drawRect(8 + Double(i) * 10, 106, 4, 10) }
+    }
+
+    override func draw() {
+        background(Color(hex: 0x1A1B1E))
+        let tile = 120.0
+        let layer = makeRenderTarget(width: 120, height: 120)
+        withTarget(layer) { scene() }
+        drawImage(layer.filtered(.vhs(smear: 8, jitter: 1.5, damage: 2, phase: 5.2)).image, 0, 0)
+        drawImage(layer.filtered(.jpeg(quality: 12)).image, tile, 0)
+        // The datamosh pair, the scene's disc moving a few pixels a frame.
+        if let held, let mixed {
+            withField(held) { scene(Double(frameCount) * 4) }
+            withField(mixed) { scene(Double(frameCount) * 4) }
+            drawImage(held.image, tile * 2, 0)
+            drawImage(mixed.image, tile * 2 + 60, 0, 60, 120)
+        }
+        drawImage(layer.filtered(.tiltShift(focus: 0.55, angle: 0.2, band: 0.08, falloff: 0.2, radius: 6)).image, tile * 3, 0)
+        drawImage(layer.filtered(.progressiveBlur(angle: 0, start: 0.2, end: 0.9, radius: 7)).image, 0, tile)
+        drawImage(layer.filtered(.lightLeak(anchor: Vector2(0.95, 0.3), intensity: 0.5, phase: 1.7, seed: 4)).image, tile, tile)
+        drawImage(layer.filtered(.pagePeel(amount: 0.32, radius: 0.08)).image, tile * 2, tile)
+        drawImage(layer.filtered(.sepia(amount: 0.9)).image, tile * 3, tile)
+        drawImage(generate(.scratches(count: 8, thickness: 1.4, length: 0.8, flicker: 0.5, phase: 2.2, seed: 6),
+                           width: 120, height: 120).image, tile * 3, tile)
     }
 }
 

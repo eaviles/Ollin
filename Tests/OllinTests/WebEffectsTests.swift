@@ -577,6 +577,53 @@ import OllinWebGate
         }
     }
 
+    /// The tape and lens looks that cross, a quarter each over discs that
+    /// move: the videotape, a JPEG at a quality whose blocks do not fill the
+    /// quarter (the coefficients' scratch is padded to whole blocks), the
+    /// tilt-shift's two passes, and the light leak.
+    final class Taped: Sketch {
+        override var canvasSize: CanvasSize { .square(120) }
+        func scene() {
+            background(Color(hex: 0xD8CFC0))
+            noStroke()
+            fill(Color(hex: 0x2B6C8C)); drawCircle(20 + time * 8, 22, 12)
+            fill(Color(hex: 0xC2452D)); drawCircle(40, 40, 10)
+            fill(Color(hex: 0x3D7A4A)); drawRect(8, 44, 44, 6)
+        }
+        override func draw() {
+            background(Color(hex: 0x1A1B1E))
+            let scene = makeRenderTarget(width: 60, height: 60)
+            withTarget(scene) { self.scene() }
+            drawImage(scene.filtered(.vhs(smear: 8, damage: 1, phase: time)).image, 0, 0)
+            drawImage(scene.filtered(.jpeg(quality: 15)).image, 60, 0)
+            drawImage(scene.filtered(.tiltShift(focus: 0.5, band: 0.1, radius: 5)).image, 0, 60)
+            drawImage(scene.filtered(.lightLeak(anchor: Vector2(1, 0.3), phase: time, seed: 2)).image, 60, 60)
+        }
+    }
+
+    /// The page peeling over the canvas, a progressive blur, and the scratches
+    /// generator over it.
+    final class Peeled: Sketch {
+        override var canvasSize: CanvasSize { .square(120) }
+        override func draw() {
+            background(Color(hex: 0x3A3F47))
+            let page = makeRenderTarget(width: 60, height: 120)
+            withTarget(page) {
+                background(Color(hex: 0xF2EAD8))
+                noStroke(); fill(Color(hex: 0x2B6C8C)); drawCircle(30, 40, 18)
+            }
+            drawImage(page.filtered(.pagePeel(amount: 0.2 + 0.02 * time, radius: 0.08)).image, 0, 0)
+            let side = makeRenderTarget(width: 60, height: 120)
+            withTarget(side) {
+                background(.white)
+                noStroke(); fill(Color(hex: 0xC2452D))
+                for i in 0 ..< 6 { drawRect(4 + Double(i) * 10, 0, 4, 120) }
+            }
+            drawImage(side.filtered(.progressiveBlur(start: 0.2, end: 0.9, radius: 4)).image, 60, 0)
+            drawImage(generate(.scratches(count: 8, thickness: 1.5, flicker: 0.4, phase: time, seed: 1)).image, 0, 0)
+        }
+    }
+
     /// A blurred layer under a bloomed one, the two passes the page owns.
     final class Blurred: Sketch {
         override var canvasSize: CanvasSize { .square(120) }
@@ -714,6 +761,25 @@ import OllinWebGate
         #expect(track.meta.contains("\"graph\":{"))
         #expect(track.meta.contains("\"f\":\"ollin_gen_cellular\""))
         #expect(track.passCount == 1)
+    }
+
+    @Test func aTwoPassFilterIsAPairThroughAScratch() throws {
+        let recording = try OllinApp.recordWebFrames(of: Taped(), frames: 2, fps: 30)
+        let graph = recording.frames[1].graph
+        let pairs = graph.layers.compactMap { layer -> WebPassNode? in
+            if case let .filter(_, node) = layer.kind, node.pairParts != nil { return node }
+            return nil
+        }
+        #expect(pairs.count == 2, "the JPEG and the tilt-shift")
+        let jpeg = try #require(pairs.first { $0.pairParts?.first == "ollin_fx_jpeg_forward" })
+        #expect(jpeg.pairParts?.second == "ollin_fx_jpeg_inverse")
+        #expect(jpeg.pairParts?.rows == 33, "the size, then the two tables")
+        #expect(jpeg.paramRows == 1 + 33 + 1)
+        let blur = try #require(pairs.first { $0.pairParts?.first == "ollin_fx_varblur" })
+        #expect(blur.pairParts?.second == "ollin_fx_varblur" && blur.paramRows == 1 + 3 + 3)
+        #expect(graph.fragmentRows["ollin_fx_jpeg_forward"] == 33)
+        #expect(graph.fragmentRows["ollin_fx_jpeg_inverse"] == 1)
+        #expect(graph.fragmentRows["ollin_fx_varblur"] == 3)
     }
 
     @Test func aFilterChainReadsItsInputsInOrder() throws {
@@ -940,6 +1006,8 @@ import OllinWebGate
             ("Floored", { Floored() }, 4, 2),
             ("Bubbled", { Bubbled() }, 4, 2),
             ("Looked", { Looked() }, 4, 2),
+            ("Taped", { Taped() }, 4, 2),
+            ("Peeled", { Peeled() }, 4, 2),
             ("Measured", { Measured() }, 4, 2),
             ("Outlined", { Outlined() }, 4, 2),
             ("Shadowed", { Shadowed() }, 4, 2),
