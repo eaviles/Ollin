@@ -64,6 +64,11 @@ package struct PhoneProject: Sendable, Equatable {
     package let sketchPath: String
     /// The `Sketch` subclass the host makes.
     package let typeName: String
+    /// Whether the sketch marks itself `@main`, as every sketch written for
+    /// the desk does. The host owns the entry point here, and a module takes
+    /// one, so the project then compiles a copy of the file with that
+    /// attribute blanked rather than the file through the link.
+    package let sketchCarriesEntryPoint: Bool
     /// The checkout the app builds the framework from.
     package let frameworkPath: String
     /// The signing team the project is built under.
@@ -128,7 +133,9 @@ package struct PhoneProject: Sendable, Equatable {
             .filter { assetExtensions.contains(($0 as NSString).pathExtension.lowercased()) }
             .filter { !(($0 as NSString).lastPathComponent).hasPrefix(".") }
             .sorted()
-        return PhoneProject(sketchPath: sketchPath, typeName: typeName, frameworkPath: frameworkPath,
+        let carriesEntryPoint = SketchDeclarations(source).classes.contains { $0.name == typeName && $0.isMain }
+        return PhoneProject(sketchPath: sketchPath, typeName: typeName,
+                            sketchCarriesEntryPoint: carriesEntryPoint, frameworkPath: frameworkPath,
                             team: team, satellites: satellites, untried: untried, assets: assets)
     }
 
@@ -148,17 +155,38 @@ package struct PhoneProject: Sendable, Equatable {
 
     // MARK: The files
 
-    /// The sketch folder's name inside the project: the file, through the link.
+    /// The sketch as the project compiles it: the file through the link, or,
+    /// when the sketch marks itself `@main`, the copy beside the host.
     package var sketchReference: String {
-        Self.sketchLink + "/" + (sketchPath as NSString).lastPathComponent
+        let name = (sketchPath as NSString).lastPathComponent
+        return sketchCarriesEntryPoint ? "Sources/" + name : Self.sketchLink + "/" + name
     }
+
+    /// `source` with each `@main` attribute in its code blanked to spaces,
+    /// so the host's entry point is the module's only one. Every line and
+    /// column stays where it was, which keeps a diagnostic pointing at the
+    /// place in the file the author has open; an `@main` inside a comment or
+    /// a string is left alone.
+    package static func withoutEntryPoint(_ source: String) -> String {
+        let code = SourceRegions.code(in: source) as NSString
+        let text = NSMutableString(string: source)
+        for match in entryPoint.matches(in: code as String, range: NSRange(location: 0, length: code.length)) {
+            text.replaceCharacters(in: match.range, with: String(repeating: " ", count: match.range.length))
+        }
+        return text as String
+    }
+
+    private static let entryPoint = try! NSRegularExpression(pattern: #"@main\b"#)
 
     /// The xcodegen spec. The sketch and its assets are named through the
     /// `Sketch` link and the framework through the `Ollin` link, so every
     /// path stays short and inside the project folder.
     package var projectSpec: String {
         var sources = "      - path: Sources\n"
-        sources += "      - path: \(yamlQuoted(sketchReference))\n"
+        // A copy of the sketch lives in Sources, which is named already.
+        if !sketchCarriesEntryPoint {
+            sources += "      - path: \(yamlQuoted(sketchReference))\n"
+        }
         for asset in assets {
             let name = (asset as NSString).lastPathComponent
             sources += "      - path: \(yamlQuoted(Self.sketchLink + "/" + name))\n"
@@ -335,6 +363,16 @@ package struct PhoneProject: Sendable, Equatable {
         try projectSpec.write(to: folder.appendingPathComponent("project.yml"), atomically: true, encoding: .utf8)
         try infoPlist.write(to: folder.appendingPathComponent("Info.plist"), atomically: true, encoding: .utf8)
         try hostSource.write(to: sources.appendingPathComponent(Self.hostFileName), atomically: true, encoding: .utf8)
+        // Written again on every run, so a save is what the next build
+        // compiles; and taken away when the sketch stops marking itself
+        // `@main`, or it would compile twice, here and through the link.
+        let copy = folder.appendingPathComponent("Sources/" + (sketchPath as NSString).lastPathComponent)
+        if sketchCarriesEntryPoint {
+            let source = try String(contentsOfFile: sketchPath, encoding: .utf8)
+            try Self.withoutEntryPoint(source).write(to: copy, atomically: true, encoding: .utf8)
+        } else if files.fileExists(atPath: copy.path), copy.lastPathComponent != Self.hostFileName {
+            try files.removeItem(at: copy)
+        }
         try Self.link(folder.appendingPathComponent(Self.sketchLink),
                       to: (sketchPath as NSString).deletingLastPathComponent)
         try Self.link(folder.appendingPathComponent(Self.frameworkLink), to: frameworkPath)

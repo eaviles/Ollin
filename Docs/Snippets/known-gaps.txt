@@ -1196,7 +1196,8 @@ ac82ff8cc8b3  Docs/Simulation/Watercolor.md:71  cannot find 'paint' in scope
 db053ea5fd33  Docs/Tools/Extensions.md:123  attribute 'public' can only be used in a non-local scope
 43678beac50b  Docs/Tools/Extensions.md:132  cannot find 'GuidesOverlay' in scope
 c0b9297f465c  Docs/Tools/Extensions.md:78  cannot find 'cornerShadeSource' in scope
-209408dc5cf8  Docs/Tools/OnThePhone.md:89  '@main' attribute cannot be applied to this declaration
+209408dc5cf8  Docs/Tools/OnThePhone.md:111  '@main' attribute cannot be applied to this declaration
+031788c48bd5  Docs/Tools/OnThePhone.md:95  '@main' attribute cannot be applied to this declaration
 d6acdc662c79  Docs/Tools/ProjectGenerator.md:175  'module' is inaccessible due to 'internal' protection level
 9416ce8ce603  Docs/Tools/SceneImport.md:31  cannot find 'drawPart' in scope
 ca46f27c17f3  Docs/Tools/SceneImport.md:50  attribute 'private' can only be used in a non-local scope

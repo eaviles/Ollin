@@ -12,18 +12,23 @@ proves the platform leg works. It is not a product.
 
 Almost nothing.
 
-- **The app owns the entry point.** On the desk `Sketch.main()` opens a window
-  for the sketch, and `@main` goes on the sketch itself. The system owns an
-  app's launch instead, so `@main` goes on the `App`, which puts the sketch in a
-  `SketchView`. See `Sources/OllinSketchHostApp.swift`.
+- **`@main` stays on the sketch.** On the desk `Sketch.main()` opens a window
+  for it; here the same entry starts the app the framework carries, with the
+  canvas full screen and the sketch's `@Param`s a tap away in a development
+  build (Command-/ with a keyboard in any build). The project is the sketch,
+  `Sources/Bundle+Module.swift` (one line pointing `Bundle.module` at the app,
+  since an Xcode app target has no package bundle), the property list, and the
+  spec. An app with a launch of its own writes its own `App` and puts the
+  sketch in a `SketchView` instead.
 - **A finger is the pointer.** `mouseX`, `mouseY`, and `mouseIsPressed` read the
   touch, so a sketch written for a mouse runs on glass with no change. A stylus
   or a screen that measures force also fills `pressure`.
 - **`Scene` is two types.** The framework has a 3D `Scene` and SwiftUI has one,
-  so an `App` in a file that imports both writes `some SwiftUI.Scene`.
-- **The desk features stay on the desk.** The standalone launcher, the export
-  flags, the screen saver, the wallpaper, the menu-bar strip, the display wall,
-  the detached inspector panel, and the source-editing drag are all macOS only.
+  so an `App` of your own in a file that imports both writes
+  `some SwiftUI.Scene`.
+- **The desk features stay on the desk.** The export flags, the screen saver,
+  the wallpaper, the menu-bar strip, the display wall, the detached inspector
+  panel, and the source-editing drag are all macOS only.
   A sketch that uses none of them is portable as written.
 
 ## Build and run

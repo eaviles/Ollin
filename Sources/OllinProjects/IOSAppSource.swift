@@ -4,10 +4,10 @@ import Foundation
 ///
 /// An app is installed onto a device, never run from the command line, so
 /// what this kind writes is an Xcode project rather than a package: the spec
-/// the `xcodegen` tool turns into one, a property list, a host that owns the
-/// entry point and puts the sketch in a `SketchView`, and the sketch itself.
-/// It is the shape of the reference app in the checkout, written around the
-/// sketch chosen here.
+/// the `xcodegen` tool turns into one, a property list, the sketch itself,
+/// marked `@main` as on the desk (the framework carries the app it starts),
+/// and one line pointing `Bundle.module` at the app. It is the shape of the
+/// reference app in the checkout, written around the sketch chosen here.
 ///
 /// Two facts shape the spec. The framework is named by its absolute path, as
 /// the manifest kinds name it, and the spec tool takes that as it is; only a
@@ -35,8 +35,8 @@ extension ProjectGenerator {
         let sourceDir = "Sources/\(target)"
         var (files, _) = sketchFiles(request, sourceDir: sourceDir)
 
-        files.append(GeneratedFile(path: "\(sourceDir)/\(target)App.swift",
-                                   contents: iOSHostSource(request, target: target)))
+        files.append(GeneratedFile(path: "\(sourceDir)/\(iOSBundleFileName)",
+                                   contents: iOSBundleSource(request)))
         files.append(GeneratedFile(path: "project.yml",
                                    contents: iOSProjectSpec(request, target: target, files: files)))
         files.append(GeneratedFile(path: "Info.plist",
@@ -299,53 +299,31 @@ extension ProjectGenerator {
         """
     }
 
-    // MARK: - The host
+    // MARK: - The bundle
 
-    /// The app around the sketch: the reference app's shape. The system owns
-    /// an app's launch, so the entry point lives here rather than on the
-    /// sketch, and the sketch sits in a `SketchView`, the view the desk hosts
-    /// use. `Bundle.module` is the app, because the sketch is compiled into it
-    /// and the files beside the sketch are its resources.
-    static func iOSHostSource(_ request: ProjectRequest, target: String) -> String {
+    /// The file beside the sketch that holds the one line the app needs.
+    static let iOSBundleFileName = "Bundle+Module.swift"
+
+    /// `Bundle.module` as the app. The entry point is the sketch's own `@main`,
+    /// which starts the app the framework carries, so this is all an app needs
+    /// beside the sketch: a package build writes `Bundle.module` for its
+    /// targets, an Xcode app target has none, and the sketch is compiled into
+    /// the app with the files beside it as the app's resources.
+    static func iOSBundleSource(_ request: ProjectRequest) -> String {
         """
-        import SwiftUI
-        import Ollin
+        import Foundation
 
-        // \(request.folderName): the app around the sketch.
+        // \(request.folderName): the one line the app needs beside the sketch.
         //
-        // On the desk a sketch is its own program, and `Sketch.main()` opens the
-        // window for it. An app cannot work that way: the system owns the launch,
-        // so the app declares the entry point and puts the sketch inside a
-        // `SketchView`, the same view the desk hosts use. Everything else is the
-        // sketch, in Sketch.swift beside this file.
+        // The sketch is the whole program: `@main` on it starts the app here, as
+        // it opens the window on the desk. A package build writes `Bundle.module`
+        // for its targets, and an Xcode app target has none, so this says what it
+        // is: the sketch is compiled into the app itself, and the files beside it
+        // are the app's own resources, so the bundle the sketch asks for with
+        // `in: .module` is the app.
 
         extension Bundle {
-            /// The sketch is compiled into the app itself, and the files beside it
-            /// are the app's own resources, so the bundle the sketch asks for with
-            /// `in: .module` is the app.
             static var module: Bundle { .main }
-        }
-
-        @main
-        struct \(target)App: App {
-            // `Scene` is spelled out, because the framework has a 3D scene of its
-            // own and the bare name is then two types.
-            var body: some SwiftUI.Scene {
-                WindowGroup {
-                    // To carry the clock, the seed, and every tuned parameter across
-                    // a relaunch, hand the runner a checkpoint:
-                    //   SketchView(\(target)(), onRunner: { runner in
-                    //       runner.beginInstallation(Installation(checkpoint: .every(seconds: 30)))
-                    //   })
-                    SketchView(\(target)())
-                        // The canvas takes the whole screen, edges included, because
-                        // a piece has no chrome to leave room for.
-                        .ignoresSafeArea()
-                        .background(.black)
-                        .statusBarHidden()
-                        .persistentSystemOverlays(.hidden)
-                }
-            }
         }
 
         """
@@ -402,6 +380,18 @@ extension ProjectGenerator {
 
         A `.metal` file is carried as a file, never compiled by Xcode, because the framework reads a shader's source at run time. That is what its `copyFiles` entry in the spec does: the resources phase would compile it into a library the framework never reads.
 
+        ## The parameters
+
+        A sketch's `@Param`s open from the app itself, as a panel beside the canvas on a tablet and a sheet on a phone. A build you run from Xcode shows a small button in the top corner for them; an archive for TestFlight or the App Store never does, so what you hand out carries no tuning control over the art. Command-/ on a keyboard opens them in any build. A value turned there lasts for the run, because the app cannot write it back into the sketch file on the Mac; the final numbers go into the sketch by hand.
+
+        To carry the clock, the seed, and every tuned value across a relaunch, declare a checkpoint in the sketch:
+
+        ```swift
+        override var installation: Installation { Installation(checkpoint: .every(seconds: 30)) }
+        ```
+
+        A sketch that declares an installation (a checkpoint alone is one) also keeps the screen from sleeping, unless it sets `keepsDisplayAwake: false`.
+
         ## The simulator does not run it
 
         It builds for the simulator and stops on the first frame. The simulated GPU reports itself as an older family with neither MetalFX nor cube-array textures, and the renderer binds a cube array on every frame. Use a device: iOS 26, paired with this Mac and trusted, with Developer Mode on.
@@ -412,7 +402,7 @@ extension ProjectGenerator {
 
         ## Where things go
 
-        The sketch and everything it loads live in `Sources/\(target)/`, with `\(target)App.swift` beside it as the host that owns the entry point. `Info.plist` is the app's name tag and `project.yml` is the whole project: the three are self-contained, so they can be copied into any sketch folder of this shape to make an app of it too.
+        The sketch and everything it loads live in `Sources/\(target)/`. `@main` on the sketch is the app's entry point, the same line that opens its window on the desk, and `\(iOSBundleFileName)` beside it points `Bundle.module` at the app. `Info.plist` is the app's name tag and `project.yml` is the whole project: they are self-contained, so they can be copied into any sketch folder of this shape to make an app of it too.
         """
     }
 

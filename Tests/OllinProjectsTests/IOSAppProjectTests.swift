@@ -7,8 +7,8 @@ import Testing
 /// that spec: a `.metal` under a source group is compiled into a library the
 /// framework never reads, a satellite an example imports has to be linked as
 /// a product, and a capability that wraps a Mac service would fail somewhere
-/// inside the build rather than here. The sketch itself splits the same way
-/// the wallpaper does: no entry point, since the host owns it.
+/// inside the build rather than here. The sketch itself keeps its entry point,
+/// as on the desk: the framework carries the app `@main` starts on a phone.
 @Suite("iPhone and iPad app projects")
 struct IOSAppProjectTests {
 
@@ -17,18 +17,20 @@ struct IOSAppProjectTests {
     @Test("The kind is offered, and asks for no more than a team")
     func theKindIsOpen() {
         #expect(ProjectKind.iOSApp.isAvailable)
-        #expect(!ProjectKind.iOSApp.carriesEntryPoint)
+        #expect(ProjectKind.iOSApp.carriesEntryPoint)
         #expect(ProjectKind.iOSApp.fillsTheDisplay)
         #expect(ProjectKind.available.contains(.iOSApp))
     }
 
-    @Test("The project carries the sketch, the host, the spec, and the app's name tag")
+    @Test("The project carries the sketch, the bundle line, the spec, and the app's name tag")
     func theLayoutIsWhatAnAppNeeds() throws {
         let project = try plan(named: "Rings")
         let paths = project.files.map(\.path)
 
         #expect(paths.contains("Sources/Rings/Sketch.swift"))
-        #expect(paths.contains("Sources/Rings/RingsApp.swift"))
+        #expect(paths.contains("Sources/Rings/Bundle+Module.swift"))
+        // No host of its own: `@main` on the sketch starts the framework's app.
+        #expect(!paths.contains("Sources/Rings/RingsApp.swift"))
         #expect(paths.contains("project.yml"))
         #expect(paths.contains("Info.plist"))
         #expect(paths.contains("README.md"))
@@ -38,32 +40,30 @@ struct IOSAppProjectTests {
         #expect(!paths.contains("build.sh"))
     }
 
-    @Test("The sketch loses its entry point and takes the whole screen")
+    @Test("The sketch keeps its entry point and takes the whole screen")
     func theSketchSuitsAPhone() throws {
         let project = try plan(named: "Rings")
         let sketch = try #require(project.files.first { $0.path == "Sources/Rings/Sketch.swift" }).contents
 
-        // The host owns `@main`; a second one refuses to build.
-        #expect(!sketch.contains("@main"))
+        // `@main` on the sketch starts the app, as it opens the window on the
+        // desk, so the file is the same one the desk runs.
+        #expect(sketch.contains("@main\nfinal class Rings: Sketch"))
         // The screen is the canvas, so `width` and `height` are its.
         #expect(sketch.contains("override var windowMode: WindowMode { .resizable }"))
         #expect(sketch.contains("final class Rings: Sketch"))
     }
 
-    @Test("The host owns the entry point, spells out the SwiftUI scene, and makes the app the module")
-    func theHostIsTheReferenceShape() throws {
+    @Test("The one file beside the sketch makes the app the module, and declares no entry point")
+    func theBundleLineIsAllBesideTheSketch() throws {
         let project = try plan(named: "Rings")
-        let host = try #require(project.files.first { $0.path == "Sources/Rings/RingsApp.swift" }).contents
+        let bundle = try #require(project.files.first { $0.path == "Sources/Rings/Bundle+Module.swift" }).contents
 
-        #expect(host.contains("@main"))
-        #expect(host.contains("struct RingsApp: App"))
-        // The framework has a 3D `Scene`, so the bare name is two types.
-        #expect(host.contains("some SwiftUI.Scene"))
-        #expect(host.contains("SketchView(Rings())"))
         // A resource beside the sketch is found through `in: .module`, which
-        // an Xcode target never synthesizes, so the host says what it is.
-        #expect(host.contains("static var module: Bundle { .main }"))
-        #expect(host.contains(".ignoresSafeArea()"))
+        // an Xcode target never synthesizes, so the file says what it is.
+        #expect(bundle.contains("static var module: Bundle { .main }"))
+        // The sketch's `@main` is the app's one entry point.
+        #expect(!bundle.split(separator: "\n").contains { $0.trimmingCharacters(in: .whitespaces) == "@main" })
+        #expect(!bundle.contains(": App"))
     }
 
     // MARK: - The spec

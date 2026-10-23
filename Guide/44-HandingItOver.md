@@ -354,7 +354,7 @@ The app that command writes is its own, under the caches folder. To keep one, ma
 ollin new Rings --kind ios-app
 ```
 
-Out comes the sketch, a host that owns the entry point, and the spec that `xcodegen` writes the Xcode project from. Run `cd Rings && xcodegen generate`, open the project, pick the phone, and press Run. The signing team is the one question this kind asks that no other does, and Xcode asks it for you when it is left off. The generator window from [Chapter 1](01-HelloOllin.md#when-one-file-isnt-enough) offers the same kind from its menu.
+Out comes the sketch, marked `@main` just as it is on the Mac, and the spec that `xcodegen` writes the Xcode project from. On the phone, `@main` starts an app the framework carries, with the canvas filling the screen. Run `cd Rings && xcodegen generate`, open the project, pick the phone, and press Run. A sketch with `@Param`s shows a small button in that build, and it opens them in a panel. An archive you hand out never shows it. The signing team is the one question this kind asks that no other does, and Xcode asks it for you when it is left off. The generator window from [Chapter 1](01-HelloOllin.md#when-one-file-isnt-enough) offers the same kind from its menu.
 
 ### Leaving it on the Mac: the phone as the sketch's screen
 

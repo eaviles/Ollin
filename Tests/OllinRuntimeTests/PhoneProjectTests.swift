@@ -110,6 +110,70 @@ struct PhoneProjectTests {
         #expect(!spec.contains("\"Sketch/Sketch.swift\"\n        buildPhase"))
     }
 
+    // MARK: A sketch written for the desk
+
+    @Test func aSketchMarkedMainIsCompiledAsTheCopyBesideTheHost() throws {
+        let desk = try plan("import Ollin\n\n@main\nfinal class Waves: Sketch {\n}\n")
+        #expect(desk.sketchCarriesEntryPoint)
+        #expect(desk.sketchReference == "Sources/Sketch.swift")
+        // The copy is inside Sources, which the spec names already; the file
+        // through the link would be the module's second entry point.
+        #expect(!desk.projectSpec.contains("Sketch/Sketch.swift"))
+        #expect(desk.projectSpec.contains("- path: Sources\n"))
+        // The host keeps the entry point either way.
+        #expect(desk.hostSource.contains("@main\nstruct OllinPhoneHost: App"))
+
+        let plain = try plan("final class Waves: Sketch {}")
+        #expect(!plain.sketchCarriesEntryPoint)
+        // `@main` on another class in the file is not the sketch's.
+        let other = try plan("final class Waves: Sketch {}\n@main\nenum Tool { static func main() {} }")
+        #expect(!other.sketchCarriesEntryPoint)
+    }
+
+    @Test func blankingTheEntryPointKeepsEveryLineAndColumn() {
+        let source = """
+            /// Not `@main` here, in a comment.
+            @main
+            final class Waves: Sketch {
+                let note = "@main in a string"
+            }
+            @MainActor @main final class Tides: Sketch {}
+            """
+        let blanked = PhoneProject.withoutEntryPoint(source)
+        #expect(blanked.count == source.count)
+        let lines = blanked.split(separator: "\n", omittingEmptySubsequences: false)
+        #expect(lines.count == source.split(separator: "\n", omittingEmptySubsequences: false).count)
+        #expect(lines[0] == "/// Not `@main` here, in a comment.")
+        #expect(lines[1] == "     ")
+        #expect(lines[3] == "    let note = \"@main in a string\"")
+        #expect(lines[5] == "@MainActor       final class Tides: Sketch {}")
+        // `@MainActor` is a different attribute, and stays.
+        #expect(lines[5].hasPrefix("@MainActor "))
+    }
+
+    @Test func writingADeskSketchPutsTheCopyDownAndTakesItAwayAfter() throws {
+        let folder = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ollin-phone-copy-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let sketches = folder.appendingPathComponent("Sketches", isDirectory: true)
+        let project = folder.appendingPathComponent("Project", isDirectory: true)
+        try FileManager.default.createDirectory(at: sketches, withIntermediateDirectories: true)
+        let sketch = sketches.appendingPathComponent("Sketch.swift")
+        let copy = project.appendingPathComponent("Sources/Sketch.swift")
+
+        try "import Ollin\n\n@main\nfinal class Waves: Sketch {}\n".write(to: sketch, atomically: true, encoding: .utf8)
+        try PhoneProject.plan(sketchPath: sketch.path, frameworkPath: framework, team: "TEAM123456").write(to: project)
+        let written = try String(contentsOf: copy, encoding: .utf8)
+        #expect(written == "import Ollin\n\n     \nfinal class Waves: Sketch {}\n")
+
+        // The sketch stops marking itself, and the copy goes, or the next
+        // build would compile the class twice.
+        try "import Ollin\n\nfinal class Waves: Sketch {}\n".write(to: sketch, atomically: true, encoding: .utf8)
+        try PhoneProject.plan(sketchPath: sketch.path, frameworkPath: framework, team: "TEAM123456").write(to: project)
+        #expect(!FileManager.default.fileExists(atPath: copy.path))
+        #expect(FileManager.default.fileExists(atPath: project.appendingPathComponent("Sources/OllinPhoneHost.swift").path))
+    }
+
     @Test func aNameWithASpaceAndAQuoteSurvivesTheSpec() throws {
         let odd = "/Users/someone/Sketches/my \"odd\" sketch.swift"
         let plan = try plan("class Waves: Sketch {}", path: odd)

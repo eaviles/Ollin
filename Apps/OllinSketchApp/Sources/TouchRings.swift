@@ -10,6 +10,7 @@ import Ollin
 /// `.resizable` makes the canvas the size of the screen it lands on, so the
 /// piece fills a phone held either way and a tablet too. A fixed canvas would
 /// be letterboxed inside it instead.
+@main
 final class TouchRings: Sketch {
     override var canvasSize: CanvasSize { .square(1080) }
     override var windowMode: WindowMode { .resizable }

@@ -298,10 +298,16 @@ final class Tether: @unchecked Sendable {
         if options.verbose { print(build.output) }
         guard build.status == 0 else {
             print("  build     failed after \(Self.seconds(since: buildStart))")
-            // The compiler saw the sketch through the project's link; the
+            // The compiler saw the sketch through the project's link, or as the
+            // copy beside the host when the sketch marks itself `@main`; the
             // author is looking at the real file, so say that path.
             let linked = projectFolder.appendingPathComponent(PhoneProject.sketchLink).path + "/"
-            Self.printDiagnostics(build.output.replacingOccurrences(of: linked, with: sketchFolder + "/"))
+            var output = build.output.replacingOccurrences(of: linked, with: sketchFolder + "/")
+            if plan.sketchCarriesEntryPoint {
+                let copy = projectFolder.appendingPathComponent(plan.sketchReference).path
+                output = output.replacingOccurrences(of: copy, with: options.sketchPath)
+            }
+            Self.printDiagnostics(output)
             return false
         }
         print("  build     \(Self.seconds(since: buildStart))")

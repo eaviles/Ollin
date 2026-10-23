@@ -54,7 +54,7 @@ Shaders in a `.metal` file beside the sketch come along as resources, so a shade
 
 ### What comes along
 
-The sketch file is referenced where it is, never copied. Files beside it with a resource extension are copied into the app. That covers images, sounds, video, fonts, data, meshes, and `.metal` shaders. `Bundle.module` is the app, so `loadImage("photo.png", in: .module)` finds on the phone what it found on the Mac. Drop a new file beside the sketch and the next save takes it along.
+The sketch file is referenced where it is. The one exception is a sketch marked `@main`, as every sketch written for the Mac is. The command's own host owns the entry point, so it compiles a copy of the file with that attribute blanked to spaces. The copy is written again on every save. Every line and column stays where it was, and a build error names your file. Files beside it with a resource extension are copied into the app. That covers images, sounds, video, fonts, data, meshes, and `.metal` shaders. `Bundle.module` is the app, so `loadImage("photo.png", in: .module)` finds on the phone what it found on the Mac. Drop a new file beside the sketch and the next save takes it along.
 
 Every `import Ollin…` line links that satellite into the app. Ten have been built and run on a phone: `OllinRemote`, `OllinPhysics`, `OllinOSC`, `OllinMIDI`, `OllinController`, `OllinVideo`, `OllinBluetooth`, `OllinAudio`, `OllinVision`, and `OllinHaptics`. A satellite outside that list is linked too, and the command names it, so you know what to check first if the build fails. Five satellites work only on the Mac, so the command refuses them and gives the reason. They are the virtual camera, Syphon, screen capture, and both ends of the phone-as-sensor link, because a phone cannot be its own peripheral.
 
@@ -82,9 +82,31 @@ ollin new Rings --kind ios-app --team ABCDE12345
 cd Rings && xcodegen generate && open Rings.xcodeproj
 ```
 
-The folder holds the sketch, a host that owns the entry point, the property list, and the `project.yml` the Xcode project is written from. The `.xcodeproj` is never edited by hand and is not kept in git. Leave the team off and Xcode asks for it the first time you press Run, but what Xcode writes is lost when the project is generated again, so the README says to put it into `project.yml`. Every template fits, and so does any example that stays off the Mac-only libraries: a capability that lives on the Mac (Syphon, screen capture, the virtual camera, the phone link) is refused with its reason. A `.metal` file beside the sketch is copied by a copy-files phase, because the resources phase would compile it into a library the framework never reads. The generator window offers the same kind from its menu, with a field for the team.
+The folder holds the sketch, marked `@main` as on the Mac, and a one-line `Bundle+Module.swift` that points `Bundle.module` at the app. Beside them are the property list and the `project.yml` the Xcode project is written from. The `.xcodeproj` is never edited by hand and is not kept in git. Leave the team off and Xcode asks for it the first time you press Run, but what Xcode writes is lost when the project is generated again, so the README says to put it into `project.yml`. Every template fits, and so does any example that stays off the Mac-only libraries: a capability that lives on the Mac (Syphon, screen capture, the virtual camera, the phone link) is refused with its reason. A `.metal` file beside the sketch is copied by a copy-files phase, because the resources phase would compile it into a library the framework never reads. The generator window offers the same kind from its menu, with a field for the team.
 
-`Apps/OllinSketchApp` in the checkout is the same shape, written by hand. It is an Xcode project with the framework as a local package, plus a host that puts the sketch in a `SketchView`.
+`Apps/OllinSketchApp` in the checkout is the same shape, written by hand, with the framework as a local package.
+
+`@main` on the sketch does on a phone what it does on the Mac. There `Sketch.main()` opens a window. Here it starts an app the framework carries, with the canvas filling the screen and the status bar and the home indicator hidden. A checkpoint the sketch declares in its `installation` is kept. A piece that declares an installation keeps the screen awake, unless it sets `keepsDisplayAwake` to false.
+
+The sketch's `@Param`s open from the app itself: a panel beside the canvas on an iPad or a Mac, a sheet on an iPhone. A build you run from Xcode shows a small button in the top corner for them. It shows whatever the sketch declares, a checkpoint included, since a phone has no keyboard. An archive for TestFlight or the App Store never shows it, so what you hand to somebody else carries no tuning control over the art. Command-/ on a keyboard opens them in any build. A value turned there lasts for the run: the app cannot write it back into the sketch file, which lives on the Mac. A checkpoint carries it across a relaunch, and the final numbers go into the sketch by hand.
+
+To set the sketch up before it runs, write the entry point yourself and hand the sketch to `OllinApp.run`:
+
+```swift
+import Ollin
+import OllinRemote
+
+@main
+enum Launch {
+    @MainActor static func main() {
+        let sketch = Waves()
+        sketch.extend(RemoteInspector(port: 9330))   // the parameters in a browser, too
+        OllinApp.run(sketch)
+    }
+}
+```
+
+An app with a launch of its own (more than one window, chrome of its own) writes its own `App` and puts the sketch in a `SketchView`:
 
 ```swift
 import SwiftUI
@@ -106,7 +128,7 @@ struct MyApp: App {
 }
 ```
 
-The app owns the entry point, so `@main` goes on the `App` rather than on the sketch. The command's own host calls `beginInstallation` with a checkpoint every second. But a sketch that runs on a tablet in a room can use a checkpoint every minute instead.
+That app owns the entry point, so `@main` goes on the `App` rather than on the sketch. A `SketchView` alone reads nothing from the sketch's `installation`, so a host of its own begins the checkpoint itself. The command's own host calls `beginInstallation` with a checkpoint every second. But a sketch that runs on a tablet in a room can use a checkpoint every minute instead.
 
 ### Without installing it
 

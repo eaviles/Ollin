@@ -21,8 +21,10 @@ public struct ProjectKind: Sendable, Hashable, Identifiable {
     /// A windowed program does. A plug-in does not, because the program that
     /// loads it has an entry point already and a second one is at best dead
     /// weight; and neither does a sketch whose program is a wrapper file beside
-    /// the sketch (the wallpaper, menu-bar, and phone kinds), where a second
-    /// `@main` would refuse to build. It is the one thing that changes the sketch file
+    /// the sketch (the wallpaper and menu-bar kinds), where a second `@main`
+    /// would refuse to build. The phone kind's sketch does: the framework
+    /// carries the app a phone or a tablet launches, so `@main` on the sketch
+    /// starts it there as it opens the window on the desk. It is the one thing that changes the sketch file
     /// rather than the files around it, which is why it belongs to the kind instead
     /// of being asked about later.
     public let carriesEntryPoint: Bool
@@ -126,16 +128,17 @@ extension ProjectKind {
     ///
     /// An app is installed onto a device rather than run from the command
     /// line, so this kind writes an Xcode project spec rather than a package:
-    /// the sketch, a host that puts it in a `SketchView` and owns the entry
-    /// point, the property list, and the spec that ties them to the
-    /// framework. The one question it asks that no other kind does is the
-    /// signing team, and it can be left for Xcode to ask.
+    /// the sketch, marked `@main` as on the desk (the framework carries the
+    /// app it starts), one line pointing `Bundle.module` at the app, the
+    /// property list, and the spec that ties them to the framework. The one
+    /// question it asks that no other kind does is the signing team, and it
+    /// can be left for Xcode to ask.
     public static let iOSApp = ProjectKind(
         id: "ios-app",
         title: "iPhone and iPad app",
         summary: "A sketch wrapped as an app for the phone and the tablet, with touch and the device sensors as input.",
         availability: .available,
-        carriesEntryPoint: false,
+        carriesEntryPoint: true,
         fillsTheDisplay: true
     )
 
