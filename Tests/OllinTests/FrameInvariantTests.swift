@@ -544,13 +544,16 @@ struct FrameInvariantTests {
             }
         }
         #expect(cases.count > 40, "only \(cases.count) cases lay below the critical angle")
-        withKnownIssue("the coating's two-beam form weights the inner reflection by t01 squared and blends toward bare Fresnel off the axis: 0.0086 against the exact 0.0043 head on at 1.67, 0.0226 against 0.0069 leaving 1.67 glass at 20 degrees, measured 2026-10-09") {
-            for (degrees, nm, n0, n2, exact) in cases {
-                let coated = coatedReflectance(angle: degrees * .pi / 180, wavelength: nm,
-                                               designWavelength: 550, n0: n0, n2: n2)
-                #expect(abs(coated - exact) <= max(0.02 * exact, 1e-5),
-                        "from \(n0) into \(n2) at \(degrees) degrees and \(nm) nm the coating reflected \(coated) where a thin film reflects \(exact)")
-            }
+        // Measured 2026-10-09 before the fix: the inner reflection weighted by the
+        // outer face's transmission squared rather than its round trip, and the
+        // value blended toward bare glass off the axis, gave 0.0086 against the
+        // exact 0.0043 head on into 1.67 glass and 0.0226 against 0.0069 leaving
+        // it at 20 degrees.
+        for (degrees, nm, n0, n2, exact) in cases {
+            let coated = coatedReflectance(angle: degrees * .pi / 180, wavelength: nm,
+                                           designWavelength: 550, n0: n0, n2: n2)
+            #expect(abs(coated - exact) <= max(0.02 * exact, 1e-5),
+                    "from \(n0) into \(n2) at \(degrees) degrees and \(nm) nm the coating reflected \(coated) where a thin film reflects \(exact)")
         }
     }
 

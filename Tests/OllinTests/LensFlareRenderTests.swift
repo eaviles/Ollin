@@ -127,21 +127,59 @@ struct LensFlareRenderProbes {
                 "a point source's sharpest edge steps by \(point.steepest) against \(lamp.steepest)")
     }
 
-    /// The iris moves the flare's light and adds none. Closing it shrinks the
-    /// ghosts it shapes, and the same light in a smaller shape is a brighter one.
-    /// The double Gauss is the lens to ask, since its ghosts are the iris's to
-    /// shape; most of the Heliar's are bounded by the barrel, which does not move.
-    @Test(.enabled(if: Snapshot.hasMetal))
-    func stoppingDownGathersTheLightAndAddsNone() throws {
-        let lens = Lens.doubleGauss.multicoated()
-        let open = try ghostLight(lens, fStop: 4, sourceSize: 0.004)
-        let closed = try ghostLight(lens, fStop: 11, sourceSize: 0.004)
-        #expect(closed.covered < open.covered * 3 / 4,
-                "stopped down the ghosts cover \(closed.covered) pixels against \(open.covered)")
-        #expect(closed.peak > open.peak * 1.3,
-                "stopped down they peak at \(closed.peak) against \(open.peak)")
-        #expect(closed.total < open.total * 2 && closed.total > open.total / 4,
-                "and carry \(closed.total) against \(open.total): gathered, not multiplied")
+    /// What the ghosts alone add at each pixel, in linear light, at the
+    /// fraction of the usual level `ghostLight` draws at.
+    private func ghostRises(_ lens: Lens, fStop: Double, sourceSize: Double,
+                            amount: Double = 0.12) throws -> [Double] {
+        let on = try OllinApp.image(of: FlareProbe.make(
+            occluder: .none, flare: true, sourceSize: sourceSize, amount: amount,
+            lens: lens.stopped(to: fStop)), frame: 1)
+        let a = pixels(of: on), b = try unflared(.none)
+        // Only where the scene underneath is dark: over the lit floor a ghost's
+        // rise is a level or two, and the dither turns it into noise.
+        return stride(from: 0, to: a.count, by: 4).map { i in
+            guard (0..<3).allSatisfy({ b[i + $0] < 48 }) else { return 0 }
+            return (0..<3).map { max(0, linear(a[i + $0]) - linear(b[i + $0])) }.max() ?? 0
+        }
+    }
+
+    /// A lens of one element in front of its iris: two reflecting surfaces, so
+    /// one ghost. With the iris 5 mm behind the element the ghost's light
+    /// crosses the iris plane narrow and the front glass bounds it at every
+    /// stop from f/2.8 to f/8; 20 mm behind, the iris bounds it at all of them.
+    /// The last distance is the paraxial back focus.
+    private static func singlet(irisGap: Double) -> Lens {
+        Lens(interfaces: [
+            LensInterface(radius: 60, thickness: 6, ior: 1.6, height: 15),
+            LensInterface(radius: -60, thickness: irisGap, ior: 1, height: 15),
+            .iris(thickness: irisGap < 10 ? 44.04 : 29.04, height: 14),
+        ])
+    }
+
+    /// With the exposure held for the scene, closing the iris brightens every
+    /// ghost by the stop's area ratio, whatever bounds it: the iris takes the
+    /// scene's light by that ratio and the exposure gives it back. A ghost the
+    /// iris shapes shrinks and keeps its light, and one the front glass bounds
+    /// keeps its size and gains it all, so either is brighter wherever it is lit
+    /// at both stops by the stop's area ratio. One ghost a lens, so the pixel
+    /// is that ghost. Before 2026-10-22 the ghost the front glass bounds kept
+    /// its brightness: the ratio was 1 where the stop's is 4.
+    @Test(.enabled(if: Snapshot.hasMetal), arguments: [5.0, 20.0])
+    func stoppingDownBrightensByTheStopsArea(irisGap: Double) throws {
+        let lens = Self.singlet(irisGap: irisGap)
+        #expect(lens.optics().ghosts.count == 1)
+        let gain = lens.stopped(to: 5.6).optics().stopGain / lens.stopped(to: 2.8).optics().stopGain
+        let open = try ghostRises(lens, fStop: 2.8, sourceSize: 0.004, amount: 1)
+        let closed = try ghostRises(lens, fStop: 5.6, sourceSize: 0.004, amount: 1)
+        var ratios: [Double] = []
+        for i in open.indices where open[i] > 0.01 && closed[i] > 0.01 {
+            ratios.append(closed[i] / open[i])
+        }
+        ratios.sort()
+        #expect(ratios.count > 500, "only \(ratios.count) pixels lit at both stops")
+        let median = ratios.isEmpty ? 0 : ratios[ratios.count / 2]
+        #expect(abs(median / gain - 1) < 0.1,
+                "where the ghost is lit at both stops it brightened \(median) times; the stop's area fell \(gain) times")
     }
 
     /// Following the rays is what stops a ghost at the barrel. First order has no
@@ -209,7 +247,7 @@ struct LensFlareRenderProbes {
     /// up it.
     @Test(.enabled(if: Snapshot.hasMetal))
     func anAnamorphicLensStretchesTheGhostsSideways() throws {
-        let lens = Lens.doubleGauss.multicoated().stopped(to: 8)
+        let lens = Lens.doubleGauss.multicoated().stopped(to: 5.6)
         let plain = try ghostSpread(lens)
         let squeezed = try ghostSpread(lens.anamorphic(squeeze: 2))
         #expect(plain.across > 0 && plain.up > 0)
@@ -226,7 +264,7 @@ struct LensFlareRenderProbes {
     /// the step from one pixel to the next.
     @Test(.enabled(if: Snapshot.hasMetal))
     func anAnamorphicGhostIsAsSoftAcrossAsUp() throws {
-        let lens = Lens.doubleGauss.multicoated().stopped(to: 8)
+        let lens = Lens.doubleGauss.multicoated().stopped(to: 5.6)
         let plain = try ghostLight(lens, sourceSize: 0.03)
         let squeezed = try ghostLight(lens.anamorphic(squeeze: 2), sourceSize: 0.03)
         let before = plain.steepestAcross / plain.steepestUp

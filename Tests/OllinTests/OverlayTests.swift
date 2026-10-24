@@ -99,6 +99,37 @@ struct OverlayTests {
         #expect(worst < 0.01, "outside the overlay the frame moved by \(worst) under it")
     }
 
+    /// A fogged scene keeps its fog where its surfaces are when a block draws
+    /// over it. The fog's air is drawn full-frame with no depth, like the sky
+    /// backdrop, and drawn again in the overlay pass it took every pixel as open
+    /// to the far plane: found 2026-10-22 by bisecting the Atmosphere example,
+    /// whose low mist under its caption had turned into one sheet below the
+    /// horizon at the commit that moved `drawCaption` into the overlay.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func fogNeverCoversTheSceneUnderAnOverlay() throws {
+        func scene(_ s: Overlaid, overlaid: Bool) {
+            s.background(Color(hex: 0xB4BDC9))
+            s.camera(Camera3D(eye: Vector3(0, 1.2, 8), target: Vector3(0, 1, 0)))
+            s.directionalLight(.white, direction: Vector3(-0.4, -0.9, -0.3), intensity: 0.9)
+            s.fog(Color(hex: 0xB4BDC9), density: 0.16, heightFalloff: 0.55)
+            s.fill(Color(white: 0.3))
+            s.withState { s.translate(0, 1.5, 0); s.drawBox(width: 1.4, height: 3, depth: 1.4) }
+            if overlaid {
+                s.withOverlay { s.fill(.white); s.drawRect(20, Double(OverlayTests.size) - 40, 120, 16) }
+            }
+        }
+        let plain = try render(sketch { scene($0, overlaid: false) }, frame: 1).frame
+        let over = try render(sketch { scene($0, overlaid: true) }, frame: 1).frame
+        var worst: Float = 0
+        for y in 0 ..< Self.size - 60 {
+            for x in 0 ..< Self.size {
+                let d = plain.at(x, y) - over.at(x, y)
+                worst = max(worst, max(abs(d.x), max(abs(d.y), abs(d.z))))
+            }
+        }
+        #expect(worst < 0.01, "outside the overlay the fogged frame moved by \(worst) under it")
+    }
+
     /// A thin white bar drawn over a scene whose far plane is well out of focus:
     /// in the frame it takes the blur of the depth under it, in the overlay it
     /// keeps its edge.

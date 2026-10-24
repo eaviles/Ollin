@@ -475,22 +475,13 @@ extension MetalRenderer {
         // star would otherwise reach across the whole picture.
         let openness = min(8, optics.irisRadius > 0 ? optics.openIrisRadius / optics.irisRadius : 1)
         let starExtent = flare.star > 0 ? flare.starSize * openness : 0
-        // The iris moves the flare's light around and neither adds nor removes
-        // any. Closing it shrinks a ghost, and the same light in a smaller shape
-        // is a brighter one, by as much as the shape shrank (`gathered`, below,
-        // worked out per ghost: a ghost the front opening bounds rather than the
-        // iris does not shrink, so it does not brighten either). The star goes
-        // the other way for the same reason. It grows as the iris closes, so the
-        // same light runs along longer arms and each stretch is fainter.
+        // Closing the iris brightens every ghost by the stop's area ratio
+        // (`stopGain`): the exposure is held for the scene, so the light the
+        // iris takes is given back to everything. The star goes the other way.
+        // It grows as the iris closes, so its light runs along longer arms and
+        // each stretch is fainter.
         let concentration = openness * openness
-        /// How much brighter closing the iris has made one ghost: the area it
-        /// covered wide open over the area it covers now.
-        func gathered(_ ghost: LensGhost) -> Double {
-            let across = max(abs(ghost.toIris.a), 1e-9)
-            let open = min(optics.openIrisRadius / across, optics.pupilRadius)
-            let now = min(optics.irisRadius / across, optics.pupilRadius)
-            return min(64, (open * open) / max(now * now, 1e-12))
-        }
+        let stopGain = optics.stopGain
         uniforms.iris = SIMD4<Float>(Float(blades), Float(starExtent),
                                      Float(inner), Float(flareLens.coatingRows))
         withUnsafeMutablePointer(to: &uniforms.blades) { tuple in
@@ -682,9 +673,9 @@ extension MetalRenderer {
                                    narrow * max(abs(ownScale), narrow))
             }
             // What the analytic pass draws of this ghost: the share not followed
-            // ray by ray, at the brightness the iris has gathered it to.
+            // ray by ray, at the brightness the stop has raised it to.
             for channel in 0..<3 {
-                spreads[index * 3 + channel].z *= Float((1 - followed[index]) * gathered(ghost))
+                spreads[index * 3 + channel].z *= Float((1 - followed[index]) * stopGain)
             }
             incidence[index] = SIMD4(Float(ghost.outerIncidence.pupil), Float(ghost.outerIncidence.angle),
                                      Float(ghost.innerIncidence.pupil), Float(ghost.innerIncidence.angle))
@@ -738,7 +729,7 @@ extension MetalRenderer {
                             reflect = max(reflect, value.x, value.y, value.z)
                         }
                         let scale = held(ghost.channels[1].sensorA)
-                        let peak = strongest * reflect * shares[ghostIndex] * gathered(ghost)
+                        let peak = strongest * reflect * shares[ghostIndex] * stopGain
                             / (scale * scale)
                         guard peak >= MetalRenderer.flareFaintest else { continue }
                         lightShows[index].append((ghostIndex, peak))
@@ -857,7 +848,7 @@ extension MetalRenderer {
                     draw.ring = SIMD4(Float(ghost.ringScale), Float(a * a),
                                       Float(a), Float(ghost.toSensor.b))
                     draw.source = SIMD4(Float(lightIndex), 0, 0, 0)
-                    let level = lightLevels[lightIndex] * (followed[shown.ghost] * gathered(ghost))
+                    let level = lightLevels[lightIndex] * (followed[shown.ghost] * stopGain)
 
                     // How far apart this ghost's colors land, against a pixel of
                     // the canvas it is drawn on. Under a pixel, one pass carries

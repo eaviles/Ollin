@@ -401,42 +401,33 @@ static inline float ollin_flare_bare(float cos0, float n0, float n2) {
 }
 
 // What a quarter-wave coated interface reflects at an angle and a wavelength: the
-// reflections off the coating's two faces, interfered per polarization over the
-// path between them. It runs into the bare value as the angle nears the critical
-// one, since the cancellation needs a wave traveling on into the far glass.
+// exact single-film reflectance per polarization, the outer face's reflection and
+// every round trip inside the film summed into one fraction. It reaches the whole
+// of the light as the angle nears the critical one, where the far wave flattens.
+static inline float ollin_flare_film(float outer, float inner, float turn) {
+    float cross = 2.0 * outer * inner * turn;
+    return (outer * outer + inner * inner + cross) / (1.0 + outer * outer * inner * inner + cross);
+}
+
 static inline float ollin_flare_coated(float cos0, float wavelength, float design,
                                        float n0, float n2) {
-    float bare = ollin_flare_bare(cos0, n0, n2);
-    if (design <= 0.0) { return bare; }
+    if (design <= 0.0) { return ollin_flare_bare(cos0, n0, n2); }
     float n1 = max(sqrt(n0 * n2), 1.38);
     float thickness = design / 4.0 / n1;
+    cos0 = clamp(cos0, 0.0, 1.0);
     float sin0 = sqrt(max(0.0, 1.0 - cos0 * cos0));
     float sin1 = sin0 * n0 / n1, sin2 = sin0 * n0 / n2;
-    if (sin1 >= 1.0 || sin2 >= 1.0) { return 1.0; }
-    float theta0 = acos(clamp(cos0, 0.0, 1.0)), theta1 = asin(sin1), theta2 = asin(sin2);
-    float keeps = cos(theta2);
-    float value;
-    if (theta0 + theta1 <= 1e-4 || theta1 + theta2 <= 1e-4) {
-        float r01 = (n0 - n1) / (n0 + n1), r12 = (n1 - n2) / (n1 + n2);
-        float t01 = 2.0 * n0 / (n0 + n1);
-        float inner = t01 * t01 * r12;
-        float phase = 4.0 * M_PI_F / wavelength * thickness * n1;
-        value = r01 * r01 + inner * inner + 2.0 * r01 * inner * cos(phase);
-    } else {
-        float rs01 = -sin(theta0 - theta1) / sin(theta0 + theta1);
-        float rp01 = tan(theta0 - theta1) / tan(theta0 + theta1);
-        float ts01 = 2.0 * sin(theta1) * cos(theta0) / sin(theta0 + theta1);
-        float tp01 = ts01 * cos(theta0 - theta1);
-        float rs12 = -sin(theta1 - theta2) / sin(theta1 + theta2);
-        float rp12 = tan(theta1 - theta2) / tan(theta1 + theta2);
-        float innerS = ts01 * ts01 * rs12, innerP = tp01 * tp01 * rp12;
-        float dy = thickness * n1, dx = tan(theta1) * dy;
-        float phase = 4.0 * M_PI_F / wavelength * (sqrt(dx * dx + dy * dy) - dx * sin0);
-        float outS = rs01 * rs01 + innerS * innerS + 2.0 * rs01 * innerS * cos(phase);
-        float outP = rp01 * rp01 + innerP * innerP + 2.0 * rp01 * innerP * cos(phase);
-        value = 0.5 * (outS + outP);
-    }
-    return clamp(value, 0.0, 1.0) * keeps + bare * (1.0 - keeps);
+    // The far medium is always the first to stop a wave, since the coating's
+    // index lies between the two.
+    if (sin2 >= 1.0) { return 1.0; }
+    float cos1 = sqrt(max(0.0, 1.0 - sin1 * sin1));
+    float cos2 = sqrt(max(0.0, 1.0 - sin2 * sin2));
+    float turn = cos(4.0 * M_PI_F * n1 * thickness * cos1 / wavelength);
+    float s = ollin_flare_film((n0 * cos0 - n1 * cos1) / (n0 * cos0 + n1 * cos1),
+                               (n1 * cos1 - n2 * cos2) / (n1 * cos1 + n2 * cos2), turn);
+    float p = ollin_flare_film((n1 * cos0 - n0 * cos1) / (n1 * cos0 + n0 * cos1),
+                               (n2 * cos1 - n1 * cos2) / (n2 * cos1 + n1 * cos2), turn);
+    return clamp(0.5 * (s + p), 0.0, 1.0);
 }
 
 struct OllinFlareRay {

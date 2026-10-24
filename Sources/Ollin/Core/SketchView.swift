@@ -1320,8 +1320,8 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         #else
         let headroom = view.window?.windowScene?.screen.currentEDRHeadroom ?? 1
         #endif
-        renderer.presentCeiling = sketch.colorOutput.ceiling(displayHeadroom: Float(headroom))
-        sketch.setDisplayHeadroom(Double(headroom))
+        sketch.setDisplayHeadroom(fromScreen: Double(headroom))
+        renderer.presentCeiling = Float(sketch.displayHeadroom)
 
         // A GPU frame capture, asked for by the sketch or by the host's menu
         // command, wraps exactly this one frame. The capture must bracket the

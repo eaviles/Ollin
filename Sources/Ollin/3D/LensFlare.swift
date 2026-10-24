@@ -95,8 +95,9 @@ public struct Lens: Equatable, Sendable {
     /// the usual choice, the middle of what the eye sees best.
     public var coatingWavelength: Double
 
-    /// The f-number the iris is stopped down to. Higher closes the iris, which
-    /// makes every ghost smaller and harder edged. `nil` leaves the iris wide
+    /// The f-number the iris is stopped down to, read as a photographer reads
+    /// it: from the opening as the front of the lens shows it. Higher closes the
+    /// iris, which makes every ghost smaller, harder edged, and brighter. `nil` leaves the iris wide
     /// open at the opening the prescription gives it.
     public var fStop: Double?
 
@@ -176,13 +177,13 @@ public struct Lens: Equatable, Sendable {
     }
 
     /// The lens a flare is drawn through when none is named: the double Gauss,
-    /// multicoated, stopped to f/8.
+    /// multicoated, stopped to f/5.6.
     ///
     /// Any lens wide open throws ghosts so broad that they read as haze, and a
     /// single coating makes them all one color. Stopped down a few stops with a
     /// modern coating is where a flare looks like one: a chain of separate,
     /// differently colored shapes running through the middle of the frame.
-    public static let standard = Lens.doubleGauss.multicoated().stopped(to: 8)
+    public static let standard = Lens.doubleGauss.multicoated().stopped(to: 5.6)
 
     /// A 1950s five-element Heliar-type portrait lens of about 100mm: a
     /// cemented front doublet, a single middle element, the iris, and a
@@ -470,6 +471,28 @@ struct LensGhost: Equatable {
     }
 }
 
+extension LensOptics {
+    /// The radius of the opening light from straight ahead fills, as the front
+    /// sees it, for an iris of radius `iris`: its picture through the glass in
+    /// front of it, or the front opening when that is the smaller.
+    func entrancePupilRadius(iris: Double) -> Double {
+        min(iris / irisScale, pupilRadius)
+    }
+
+    /// How much brighter closing the iris makes every ghost: the opening's area
+    /// wide open over its area now, as the front sees both. A photograph is
+    /// exposed for the scene, and the iris takes the scene's light by that
+    /// ratio, so the held exposure gives it back to everything in the frame. A
+    /// ghost the iris shrinks keeps its light in a smaller shape, and one the
+    /// front glass bounds loses none to the iris and comes out brighter at its
+    /// own size. Held at 64 for a lens stopped down to a pinhole.
+    var stopGain: Double {
+        let open = entrancePupilRadius(iris: openIrisRadius)
+        let now = entrancePupilRadius(iris: irisRadius)
+        return min(64, (open * open) / max(now * now, 1e-12))
+    }
+}
+
 /// The paraxial description of a lens: the ghost list plus the few scalars a
 /// flare needs. Built once per lens and cached, because none of it moves when
 /// the light does.
@@ -483,6 +506,10 @@ struct LensOptics: Equatable {
     /// The radius the prescription gives the iris with nothing stopped down,
     /// which is the reference the star's size is measured against.
     var openIrisRadius: Double
+    /// How far from the axis a ray parallel to it, entering the front at height
+    /// 1, crosses the iris: the glass in front shrinks or magnifies the opening
+    /// as the front sees it by one over this.
+    var irisScale: Double
     /// Sensor height per unit ray angle for light that goes straight through,
     /// which is the scale that puts a ghost where the picture is.
     var directScale: Double
@@ -666,17 +693,23 @@ extension Lens {
     func optics() -> LensOptics {
         guard interfaces.count >= 2 else {
             return LensOptics(ghosts: [], pupilRadius: 0, irisRadius: 0, openIrisRadius: 0,
-                              directScale: 0, focalLength: 0)
+                              irisScale: 1, directScale: 0, focalLength: 0)
         }
         let irisIndex = interfaces.firstIndex { $0.isIris }
         let f = focalLength
-        let openHeight = irisIndex.map { interfaces[$0].height } ?? interfaces[0].height
-        let stopped = fStop.map { abs(f) / (2 * $0) } ?? .infinity
 
         // The lens at the index the table prints, which places the ghosts, and
         // once more per color channel, which is what separates their rims.
         let reference = LensStack(self)
         let referenceArrivals = reference.arrivals()
+
+        // An f-number names the opening as seen from the front, the entrance
+        // pupil, and the glass in front of the iris magnifies it: a ray parallel
+        // to the axis at height h reaches the iris at `irisScale` times h. So the
+        // iris itself closes to the pupil's radius times that.
+        let irisScale = irisIndex.map { abs(referenceArrivals[$0].a) } ?? 1
+        let openHeight = irisIndex.map { interfaces[$0].height } ?? interfaces[0].height
+        let stopped = fStop.map { abs(f) / (2 * $0) * irisScale } ?? .infinity
         let wavelengths = Lens.channelWavelengths
         let colored = (0..<3).map { LensStack(self, wavelength: wavelengths[$0]) }
         let coloredArrivals = colored.map { $0.arrivals() }
@@ -737,6 +770,7 @@ extension Lens {
                           pupilRadius: interfaces[0].height,
                           irisRadius: min(openHeight, stopped),
                           openIrisRadius: openHeight,
+                          irisScale: max(irisScale, 1e-9),
                           directScale: directMatrix.b,
                           focalLength: f)
     }
@@ -894,8 +928,10 @@ extension Lens {
 /// why a ghost near the middle of the frame is a different color from one near
 /// the corner.
 ///
-/// Written from the published thin-film interference formula, credited in
-/// `ATTRIBUTION.md`.
+/// This is the exact reflectance of a single film, for each polarization: the
+/// light the outer face sends back, plus every round trip inside the film, each
+/// one delayed by the film's phase. The sum closes into one fraction. Written
+/// from the published thin-film formula, credited in `ATTRIBUTION.md`.
 ///
 /// - Parameters:
 ///   - angle: the angle of incidence, in radians.
@@ -913,54 +949,30 @@ func coatedReflectance(angle: Double, wavelength: Double, designWavelength: Doub
     let sin0 = min(1, max(-1, sin(angle)))
     let sin1 = sin0 * n0 / n1
     let sin2 = sin0 * n0 / n2
-    // Past the critical angle nothing crosses into the far medium: the light
-    // turns around whole, and a coating that works by canceling the reflection
-    // off the far face has nothing to cancel.
-    guard abs(sin1) <= 1, abs(sin2) <= 1 else { return 1 }
-    let theta0 = angle, theta1 = asin(sin1), theta2 = asin(sin2)
-    // The cancellation needs a wave running into the far medium, and that wave
-    // flattens out as the angle approaches critical, taking the coating's effect
-    // with it. Weighting by how squarely the far wave still travels carries the
-    // reflectance smoothly up to the whole-of-it that lies past the critical
-    // angle, instead of stepping there.
-    let coating = cos(theta2)
-    let bare = uncoatedReflectance(angle: angle, n0: n0, n2: n2)
+    // Past the critical angle nothing crosses into the far medium, so the light
+    // turns around whole. The coating's index lies between the two media's, so
+    // the far medium is always the first to stop a wave: past this guard the
+    // light still travels inside the film.
+    guard abs(sin2) < 1 else { return 1 }
+    let cos0 = (1 - sin0 * sin0).squareRoot()
+    let cos1 = (1 - sin1 * sin1).squareRoot()
+    let cos2 = (1 - sin2 * sin2).squareRoot()
 
-    // Head on the sine and tangent forms both become singular, so take the
-    // normal-incidence limit there instead.
-    if theta0 + theta1 <= 1e-6 || theta1 + theta2 <= 1e-6 {
-        let r01 = (n0 - n1) / (n0 + n1)
-        let r12 = (n1 - n2) / (n1 + n2)
-        let t01 = 2 * n0 / (n0 + n1)
-        let inner = t01 * t01 * r12
-        let phase = 4 * Double.pi / wavelength * thickness * n1
-        let amplitude = r01 * r01 + inner * inner + 2 * r01 * inner * cos(phase)
-        return min(1, max(0, amplitude))
+    // What one round trip through the film does to the phase.
+    let phase = 4 * Double.pi * n1 * thickness * cos1 / wavelength
+    let turn = cos(phase)
+    // Each face's amplitude in one sign convention for both, which is what lets
+    // the two be multiplied. As the far wave flattens toward the critical angle
+    // the inner face's amplitude reaches a whole one, and so does the film's.
+    func film(_ outer: Double, _ inner: Double) -> Double {
+        let cross = 2 * outer * inner * turn
+        return (outer * outer + inner * inner + cross) / (1 + outer * outer * inner * inner + cross)
     }
-
-    // Amplitudes for the reflection and transmission at the outer face, split
-    // by polarization: only waves of the same polarization interfere.
-    let rs01 = -sin(theta0 - theta1) / sin(theta0 + theta1)
-    let rp01 = tan(theta0 - theta1) / tan(theta0 + theta1)
-    let ts01 = 2 * sin(theta1) * cos(theta0) / sin(theta0 + theta1)
-    let tp01 = ts01 * cos(theta0 - theta1)
-    // The inner face, reached after crossing the coating.
-    let rs12 = -sin(theta1 - theta2) / sin(theta1 + theta2)
-    let rp12 = tan(theta1 - theta2) / tan(theta1 + theta2)
-    // The inner reflection reaches the outside again after two crossings.
-    let innerS = ts01 * ts01 * rs12
-    let innerP = tp01 * tp01 * rp12
-
-    // How far the inner path runs behind the outer one, as a phase.
-    let dy = thickness * n1
-    let dx = tan(theta1) * dy
-    let delay = (dx * dx + dy * dy).squareRoot()
-    let relativePhase = 4 * Double.pi / wavelength * (delay - dx * sin0)
-
-    let outS = rs01 * rs01 + innerS * innerS + 2 * rs01 * innerS * cos(relativePhase)
-    let outP = rp01 * rp01 + innerP * innerP + 2 * rp01 * innerP * cos(relativePhase)
-    let coated = min(1, max(0, (outS + outP) / 2))
-    return coated * coating + bare * (1 - coating)
+    let s = film((n0 * cos0 - n1 * cos1) / (n0 * cos0 + n1 * cos1),
+                 (n1 * cos1 - n2 * cos2) / (n1 * cos1 + n2 * cos2))
+    let p = film((n1 * cos0 - n0 * cos1) / (n1 * cos0 + n0 * cos1),
+                 (n2 * cos1 - n1 * cos2) / (n2 * cos1 + n1 * cos2))
+    return min(1, max(0, (s + p) / 2))
 }
 
 /// How much light a plain uncoated interface reflects, at an angle.

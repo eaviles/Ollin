@@ -116,8 +116,50 @@ struct LensFlareTests {
         let tight = Lens.heliar.stopped(to: 22).optics().irisRadius
         #expect(wide > mid && mid > tight)
         #expect(abs(wide - 11.6) < 1e-9, "wide open is the prescription's opening: \(wide)")
-        // Half the focal length over the f-number, which is what an f-number means.
-        #expect(abs(tight - Lens.heliar.focalLength / 44) < 1e-9)
+    }
+
+    /// An f-number is half the focal length over the radius of the entrance
+    /// pupil, the opening as the front of the lens shows it, and the glass in
+    /// front of the iris magnifies the iris into it. Measured 2026-10-22 before
+    /// the fix: the iris was closed to the pupil's radius, so the double Gauss
+    /// at f/8 stood at f/5.5 and the Heliar at f/6.4.
+    @Test(arguments: [4.0, 5.6, 8, 11, 16, 22])
+    func anFNumberIsReadAtTheEntrancePupil(fStop: Double) {
+        for lens in [Lens.heliar, Lens.doubleGauss] {
+            let optics = lens.stopped(to: fStop).optics()
+            let pupil = optics.entrancePupilRadius(iris: optics.irisRadius)
+            let reading = abs(lens.focalLength) / (2 * pupil)
+            #expect(abs(reading / fStop - 1) < 1e-9, "stopped to f/\(fStop) the lens reads f/\(reading)")
+        }
+    }
+
+    /// The prescription says what the double Gauss is wide open: 100mm at f/2.
+    /// Read through the glass in front of its iris, its opening says the same,
+    /// where the iris's own radius would read f/2.9.
+    @Test func theDoubleGaussIsTheF2ItsPatentPrints() {
+        let optics = Lens.doubleGauss.optics()
+        let pupil = optics.entrancePupilRadius(iris: optics.irisRadius)
+        let reading = abs(Lens.doubleGauss.focalLength) / (2 * pupil)
+        #expect(abs(reading - 2) < 0.05, "wide open the double Gauss reads f/\(reading)")
+    }
+
+    /// With the exposure held for the scene, closing the iris takes light from
+    /// the scene and the longer exposure gives it back to everything, so each
+    /// ghost's brightness rises by the entrance pupil's area ratio, whatever
+    /// bounds the ghost. Wide open nothing changes, and the gain is held at
+    /// 64 for a pinhole.
+    @Test func closingTheIrisGainsTheStopsAreaRatio() {
+        for lens in [Lens.heliar, Lens.doubleGauss] {
+            let open = lens.optics()
+            #expect(abs(open.stopGain - 1) < 1e-12)
+            let wide = open.entrancePupilRadius(iris: open.openIrisRadius)
+            for fStop in [5.6, 8.0, 11.0] {
+                let optics = lens.stopped(to: fStop).optics()
+                let now = optics.entrancePupilRadius(iris: optics.irisRadius)
+                #expect(abs(optics.stopGain - (wide * wide) / (now * now)) < 1e-9)
+            }
+            #expect(lens.stopped(to: 64).optics().stopGain == 64)
+        }
     }
 
     /// Multicoating puts a different wavelength on each exposed surface, which

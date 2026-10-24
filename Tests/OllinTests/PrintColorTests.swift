@@ -373,6 +373,48 @@ struct PrintColorTests {
         #expect(rendered[3].red > 0.98)
     }
 
+    /// A wide canvas proofed from Display P3, one saturated P3 color that sRGB
+    /// cannot hold, read back in P3 and set beside the CPU's trip through the
+    /// same printing condition. Measured 2026-10-22 before the fix, when the
+    /// lattice baked for P3 was read with sRGB components and its P3 answers
+    /// taken for sRGB ones: red came back 128 where the CPU proof gives 110.
+    private final class WideProofSketch: Sketch {
+        static let color = (red: 0.0, green: 0.8, blue: 0.3)
+        static let proof = SoftProof(.genericCMYK, from: .displayP3)
+        override var colorOutput: ColorOutput { .wide }
+        override var canvasSize: CanvasSize { .square(32) }
+
+        override func draw() {
+            background(Color(displayP3: Self.color.red, green: Self.color.green, blue: Self.color.blue))
+            postProcess(.softProof(Self.proof))
+        }
+    }
+
+    @MainActor @Test(.enabled(if: Snapshot.hasMetal))
+    func aWideCanvasProofsItsOwnColors() throws {
+        let image = try OllinApp.image(of: WideProofSketch(), frame: 0)
+        var pixels = [Float32](repeating: 0, count: image.width * image.height * 4)
+        let space = CGColorSpace(name: CGColorSpace.extendedLinearDisplayP3)!
+        pixels.withUnsafeMutableBytes { raw in
+            let context = CGContext(data: raw.baseAddress, width: image.width, height: image.height,
+                                    bitsPerComponent: 32, bytesPerRow: image.width * 16, space: space,
+                                    bitmapInfo: CGBitmapInfo.floatComponents.rawValue
+                                        | CGBitmapInfo.byteOrder32Little.rawValue
+                                        | CGImageAlphaInfo.premultipliedLast.rawValue)!
+            context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+        }
+        let at = (image.height / 2 * image.width + image.width / 2) * 4
+        let rendered = (0 ..< 3).map { Color.linearToSrgb(Double(pixels[at + $0])) }
+        let source = WideProofSketch.color
+        let transform = try #require(ProofTransforms.transform(WideProofSketch.proof, .proof))
+        let expected = try #require(transform.convert([Float(source.red), Float(source.green),
+                                                       Float(source.blue)], pixels: 1))
+        for channel in 0 ..< 3 {
+            #expect(abs(rendered[channel] - Double(expected[channel])) * 255 <= 2,
+                    "channel \(channel): the live proof gave \(rendered[channel] * 255) where the CPU proof gives \(Double(expected[channel]) * 255)")
+        }
+    }
+
     @Test func theLatticeIsSharedRatherThanRebuilt() {
         // The renderer keys its texture on the object, so the same printing
         // condition has to hand back the same lattice every frame.

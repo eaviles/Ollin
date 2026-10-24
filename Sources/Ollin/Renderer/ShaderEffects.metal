@@ -537,8 +537,9 @@ fragment float4 ollin_fx_gradient_map(PresentOut in [[stage_in]],
 // values (what a color profile speaks) and stores *linear* ones (what the
 // effect chain works in), so the encode happens here and no decode is needed.
 // Its alpha carries the gamut flag: 1 where the destination cannot hold the
-// color at all. params[0].x = amount, .y = 1 when the warning is on;
-// params[1].rgb = the warning color.
+// color at all. params[0].x = amount, .y = 1 when the warning is on, .z = 1
+// when the lattice is indexed by Display P3 components (a wide canvas, whose
+// colors sRGB components cannot name); params[1].rgb = the warning color.
 fragment float4 ollin_fx_soft_proof(PresentOut in [[stage_in]],
                                     texture2d<float> src [[texture(0)]],
                                     texture3d<float> lut [[texture(1)]],
@@ -547,7 +548,8 @@ fragment float4 ollin_fx_soft_proof(PresentOut in [[stage_in]],
     float4 s = src.sample(samp, in.uv);
     float3 c = ollin_unpremul(s);
     // Ink has no highlights above white, so a value past 1 proofs as 1.
-    float3 encoded = clamp(linearToSrgb(clamp(c, 0.0, 1.0)), 0.0, 1.0);
+    float3 axes = params[0].z > 0.5 ? ollin_srgb_to_display_p3(c) : c;
+    float3 encoded = clamp(linearToSrgb(clamp(axes, 0.0, 1.0)), 0.0, 1.0);
     // Node i of n sits at (i + 0.5) / n in texture coordinates, so the ends of
     // the ramp land on the outermost nodes instead of half a node beyond them.
     float n = float(lut.get_width());

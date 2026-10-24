@@ -691,20 +691,20 @@
       "length": "10.0s",
       "seconds": 10.0,
       "frame": 480,
-      "motion": 5.314,
+      "motion": 55.494,
       "sound": false,
       "source": "7a55c38fc417d10d",
-      "rendered": "2026-10-14",
+      "rendered": "2026-10-23",
       "bytes": {
-        "loop": 774308,
-        "loopSmall": 108564,
-        "still": 23596,
-        "stillSmall": 8681
+        "loop": 1435776,
+        "loopSmall": 297466,
+        "still": 50063,
+        "stillSmall": 19969
       },
-      "loop": "examples/3D/Effects/Atmosphere/loop.mp4?v=57088074",
-      "loopSmall": "examples/3D/Effects/Atmosphere/loop-640.mp4?v=1e336263",
-      "still": "examples/3D/Effects/Atmosphere/still.jpg?v=3f641496",
-      "stillSmall": "examples/3D/Effects/Atmosphere/still-640.jpg?v=240b4eec",
+      "loop": "examples/3D/Effects/Atmosphere/loop.mp4?v=ae1539e2",
+      "loopSmall": "examples/3D/Effects/Atmosphere/loop-640.mp4?v=2f89d463",
+      "still": "examples/3D/Effects/Atmosphere/still.jpg?v=83fe2f5c",
+      "stillSmall": "examples/3D/Effects/Atmosphere/still-640.jpg?v=1af055c5",
       "seed": 1
     },
     "3D/Effects/ContactShadows": {
@@ -748,25 +748,26 @@
       "width": 1080
     },
     "3D/Effects/LensFlare": {
-      "bytes": {
-        "loop": 1007312,
-        "loopSmall": 208710,
-        "still": 49539,
-        "stillSmall": 19595
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "10.0s",
-      "loop": "examples/3D/Effects/LensFlare/loop.mp4?v=2c9f8d5e",
-      "loopSmall": "examples/3D/Effects/LensFlare/loop-640.mp4?v=cc79c652",
-      "motion": 10.669,
-      "rendered": "2026-09-26",
       "seconds": 10.0,
+      "frame": 480,
+      "motion": 10.883,
       "sound": false,
-      "source": "346923c56f98b472",
-      "still": "examples/3D/Effects/LensFlare/still.jpg?v=216341e8",
-      "stillSmall": "examples/3D/Effects/LensFlare/still-640.jpg?v=16e887f8",
-      "width": 1080
+      "source": "2b70a87e9237b68c",
+      "rendered": "2026-10-23",
+      "bytes": {
+        "loop": 1022417,
+        "loopSmall": 216578,
+        "still": 50463,
+        "stillSmall": 20006
+      },
+      "loop": "examples/3D/Effects/LensFlare/loop.mp4?v=be9a6c08",
+      "loopSmall": "examples/3D/Effects/LensFlare/loop-640.mp4?v=46da82b7",
+      "still": "examples/3D/Effects/LensFlare/still.jpg?v=4d297d39",
+      "stillSmall": "examples/3D/Effects/LensFlare/still-640.jpg?v=6dfba77a",
+      "seed": 1
     },
     "3D/Effects/MotionBlur": {
       "width": 1080,

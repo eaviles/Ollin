@@ -193,6 +193,22 @@ struct ColorOutputTests {
         #expect(ColorOutput.extended.ceiling(displayHeadroom: 0.5) == 1)
     }
 
+    /// The screen reports the headroom it grants to whatever on it asked, so it
+    /// read 1.76 on this desk's panel to an app that had asked for none
+    /// (2026-10-22, the panel's potential 2.0). A sketch that never asks reads 1
+    /// from it, as its page says.
+    @Test("a sketch that asks for no headroom reads none, whatever the screen grants")
+    func displayHeadroomFollowsTheOutput() {
+        final class Plain: Sketch {}
+        final class Bright: Sketch { override var colorOutput: ColorOutput { .extended } }
+        final class Wide: Sketch { override var colorOutput: ColorOutput { .wide } }
+        let plain = Plain(), wide = Wide(), bright = Bright()
+        for sketch in [plain, wide, bright] as [Sketch] { sketch.setDisplayHeadroom(fromScreen: 1.76) }
+        #expect(plain.displayHeadroom == 1)
+        #expect(wide.displayHeadroom == 1)
+        #expect(abs(bright.displayHeadroom - 1.76) < 1e-6)
+    }
+
     // MARK: The exported video
 
     @Test("an extended sketch exports HDR10, a standard one does not")

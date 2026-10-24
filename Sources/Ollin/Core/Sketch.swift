@@ -332,11 +332,13 @@ open class Sketch {
     open var windowMode: WindowMode { .auto }
 
     /// How far above white the display can currently go, as a multiple of it:
-    /// 1 means no headroom (an ordinary screen, or a window that never asked
-    /// for any), 2 means values up to 2.0 are shown as highlights brighter than
-    /// white. Read it to tell whether an `.extended` sketch is actually getting
-    /// the range it asked for, since the system grants headroom and takes it
-    /// back as the display's brightness and the surrounding content change.
+    /// 1 means no headroom (an ordinary screen, or a sketch whose `colorOutput`
+    /// is not `.extended`, which never asks for any, even while another window
+    /// on the same screen holds some), 2 means values up to 2.0 are shown as
+    /// highlights brighter than white. Read it to tell whether an `.extended`
+    /// sketch is actually getting the range it asked for, since the system
+    /// grants headroom and takes it back as the display's brightness and the
+    /// surrounding content change.
     ///
     /// Live only: a headless render has no display, so it reads 1.
     public private(set) var displayHeadroom: Double = 1
@@ -4774,8 +4776,12 @@ open class Sketch {
         screenFrame = screen
     }
 
-    func setDisplayHeadroom(_ headroom: Double) {
-        displayHeadroom = headroom
+    /// Take this frame's headroom from the screen's reading of it. A screen
+    /// reports what it grants to whatever on it asked for headroom, another
+    /// app's window included, so a sketch that asked for none reads 1 rather
+    /// than somebody else's grant, the same ceiling its frames are drawn under.
+    func setDisplayHeadroom(fromScreen headroom: Double) {
+        displayHeadroom = Double(colorOutput.ceiling(displayHeadroom: Float(headroom)))
     }
 
     func setRightMousePressed(_ pressed: Bool) {

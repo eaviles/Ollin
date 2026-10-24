@@ -681,7 +681,7 @@ extension MetalRenderer {
             // layer alone rather than showing something invented.
             guard let lut, let table = proofLUTTexture(lut) else { return nil }
             return pass("ollin_fx_soft_proof", [input, table],
-                        [f(amount, warning == nil ? 0 : 1, 0, 0),
+                        [f(amount, warning == nil ? 0 : 1, lut.readsDisplayP3 ? 1 : 0, 0),
                          warning ?? SIMD4<Float>(repeating: 0)])
 
         case let .lut(table, amount):
@@ -3754,7 +3754,10 @@ extension MetalRenderer {
         // sky: fog is an occluding medium, and a fogged frame should swallow its
         // backdrop too.
         if lighting.fogColor.w > 1.5 { lighting.fogParams2.z = skyboxDrawn ? 1 : 0 }
-        if lighting.fogColor.w > 0, var airUniforms = uniforms3D,
+        // Never in the overlay pass, for the backdrop's reason: drawn again over the
+        // finished frame with no depth, the air took every pixel as open to the far
+        // plane, and a low mist under a caption became one sheet below the horizon.
+        if !passOverlay, lighting.fogColor.w > 0, var airUniforms = uniforms3D,
            let airPipe = try? pipeline(airKey) {
             encoder.setRenderPipelineState(airPipe)
             encoder.setDepthStencilState(noDepthState)

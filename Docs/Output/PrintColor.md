@@ -79,7 +79,7 @@ layer.filtered(.softProof(press, warning: .magenta))        // one layer
 postProcess(.softProof(press, warning: .magenta, amount: 0))  // flag only, colors untouched
 ```
 
-`amount` blends between the canvas as drawn and the proof. At `0` the colors are left alone and only the warning shows. That is the mode for checking a palette without working inside the proof the whole time. The lattice is cached per printing condition. A change to the intent or to `simulatesPaper` costs one bake the first time, and after that the filter answers immediately.
+`amount` blends between the canvas as drawn and the proof. At `0` the colors are left alone and only the warning shows. That is the mode for checking a palette without working inside the proof the whole time. A `.wide` or `.extended` canvas holds colors that sRGB cannot name, so proof it `from: .displayP3`. The lattice is then laid over Display P3, and each pixel is looked up by its P3 components. The lattice is cached per printing condition. A change to the intent or to `simulatesPaper` costs one bake the first time, and after that the filter answers immediately.
 
 ### Plates
 

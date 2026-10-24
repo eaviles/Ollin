@@ -14,8 +14,8 @@ import Ollin
 /// has more surfaces, so it strings the busier chain, with ghosts on both sides
 /// of the middle of the frame: some land beyond the lamp and some across the
 /// center from it. The Heliar throws fewer and wider ones, more of a veil. Stop
-/// the iris down with `fStop` and the ghosts it shapes shrink and brighten, the
-/// same light in a smaller shape. Give the camera blades and they take the
+/// the iris down with `fStop` and the ghosts it shapes shrink and brighten,
+/// since the exposure is held for the scene the iris takes light from. Give the camera blades and they take the
 /// blades' shape, because a ghost is a picture of the opening the light came
 /// through. That is also the opening the path-traced export makes its
 /// out-of-focus highlights from, so the two cannot disagree.
@@ -77,7 +77,7 @@ final class LensFlare: Sketch {
     var strength = 1.0
 
     @Param(1.4...22, icon: "camera.aperture", group: "Iris")
-    var fStop = 8.0
+    var fStop = 5.6
 
     @Param(0...11, icon: "hexagon", group: "Iris")
     var blades = 6

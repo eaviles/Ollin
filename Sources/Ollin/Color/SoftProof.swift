@@ -329,13 +329,20 @@ final class ProofLUT: Sendable {
     let size: Int
     /// `size ^ 3` entries, red fastest then green then blue, matching the
     /// memory order of a 3D texture. `rgb` is the proofed color in linear
-    /// light (what the effect chain works in), `a` is 1 where the source color
+    /// light on sRGB primaries (what the effect chain works in, so a color
+    /// outside sRGB has a component below 0), `a` is 1 where the source color
     /// was out of gamut.
     let samples: [SIMD4<Float>]
+    /// Whether the lattice is indexed by Display P3 components rather than
+    /// sRGB ones: a proof from a wide canvas, whose colors reach past what sRGB
+    /// components between 0 and 1 can name. The live filter carries a pixel
+    /// into P3 before it looks one up.
+    let readsDisplayP3: Bool
 
-    init(size: Int, samples: [SIMD4<Float>]) {
+    init(size: Int, samples: [SIMD4<Float>], readsDisplayP3: Bool = false) {
         self.size = size
         self.samples = samples
+        self.readsDisplayP3 = readsDisplayP3
     }
 
     /// The proofed color for one encoded input, by trilinear interpolation,
@@ -409,16 +416,25 @@ enum ProofLUTCache {
         guard let proofed = transform.convert(lattice, pixels: count) else { return nil }
         let flags = ProofTransforms.transform(proof, .gamut)?.convert(lattice, pixels: count)
 
+        // A wide canvas is proofed from Display P3, so its lattice speaks P3:
+        // the nodes are P3 components and so are the answers.
+        let readsDisplayP3 = proof.source == .displayP3
         var samples = [SIMD4<Float>](repeating: .zero, count: count)
         for p in 0 ..< count {
             // The lattice is encoded (what a profile speaks); the effect chain
-            // is linear light, so the answer is decoded on the way out.
-            let r = Color.srgbToLinear(Double(min(max(proofed[p * 3], 0), 1)))
-            let g = Color.srgbToLinear(Double(min(max(proofed[p * 3 + 1], 0), 1)))
-            let b = Color.srgbToLinear(Double(min(max(proofed[p * 3 + 2], 0), 1)))
-            samples[p] = SIMD4<Float>(Float(r), Float(g), Float(b),
+            // is linear light on sRGB primaries, so the answer is decoded on the
+            // way out, and a P3 answer is carried onto those primaries.
+            var color = Color(red: Double(min(max(proofed[p * 3], 0), 1)),
+                              green: Double(min(max(proofed[p * 3 + 1], 0), 1)),
+                              blue: Double(min(max(proofed[p * 3 + 2], 0), 1)))
+            if readsDisplayP3 {
+                color = Color(displayP3: color.red, green: color.green, blue: color.blue)
+            }
+            samples[p] = SIMD4<Float>(Float(Color.srgbToLinear(color.red)),
+                                      Float(Color.srgbToLinear(color.green)),
+                                      Float(Color.srgbToLinear(color.blue)),
                                       (flags?[p] ?? 0) > 0.5 ? 1 : 0)
         }
-        return ProofLUT(size: size, samples: samples)
+        return ProofLUT(size: size, samples: samples, readsDisplayP3: readsDisplayP3)
     }
 }
