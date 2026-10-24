@@ -2387,6 +2387,7 @@ open class Sketch: Sendable
   func fill(_: Gradient)
   func fill(_: Paint)
   func fill(_: Shader)
+  func fillMedium(_: FillMedium)
   func flowField(scale: Double = default, turns: Double = default, z: Double = default) -> FlowField
   func fog(_: Color, density: Double = default, heightFalloff: Double = default)
   func fog(_: Fog)
@@ -2506,6 +2507,7 @@ open class Sketch: Sendable
   func noEnvironment()
   func noFeatureEdges()
   func noFill()
+  func noFillMedium()
   func noFog()
   func noFrameInterpolation()
   func noGlobalIllumination()
@@ -3369,6 +3371,7 @@ struct Color: ParamValue, RadialBasisValue, Decodable, Encodable, Equatable, Has
   static func interference(thickness: Double, ior: Double = default) -> Color
   static func linearToSrgb(_: Double) -> Double
   static func mix(_: Color, _: Color, _: Double, in: ColorSpace = default) -> Color
+  static func mostVivid(hue: Double) -> Color
   static func restored(_: ParamStored) -> Color?
   static func srgbToLinear(_: Double) -> Double
   static func stored(_: Color) -> ParamStored
@@ -4074,6 +4077,26 @@ struct FileError: LocalizedError, CustomStringConvertible, Equatable, Error, Sen
   let problem: String
   var description: String { get }
   var errorDescription: String? { get }
+struct FillMedium: Equatable, Hashable, Sendable
+  static func chrome(edge: Double = default, relief: Double = default, reach: Double = default) -> FillMedium
+  static func facetedGlass(facet: Double = default, edge: Double = default, relief: Double = default, refraction: Double = default, seed: Int = default) -> FillMedium
+  static func glass(edge: Double = default, relief: Double = default, refraction: Double = default) -> FillMedium
+  static func impasto(edge: Double = default, relief: Double = default, swell: Double = default, detail: Double = default, size: Double = default, second: Color? = default, mottle: Double = default, seed: Int = default) -> FillMedium
+  static func knife(edge: Double = default, relief: Double = default, cut: Double = default, angle: Double = default, second: Color? = default, mottle: Double = default, seed: Int = default) -> FillMedium
+  static func marble(veins: Color? = default, spacing: Double = default, angle: Double = default, sharpness: Double = default, edge: Double = default, seed: Int = default) -> FillMedium
+  static func rock(size: Double = default, depth: Double = default, edge: Double = default, relief: Double = default, second: Color? = default, seed: Int = default) -> FillMedium
+  static func sand(grain: Double = default, edge: Double = default, sparkle: Double = default, second: Color? = default, mottle: Double = default, seed: Int = default) -> FillMedium
+  static func wash(water: Double = default, flow: Double = default, angle: Double = default, reach: Double = default, size: Double = default, edge: Double = default, seed: Int = default) -> FillMedium
+  static let chrome: FillMedium
+  static let facetedGlass: FillMedium
+  static let glass: FillMedium
+  static let gouache: FillMedium
+  static let impasto: FillMedium
+  static let knife: FillMedium
+  static let marble: FillMedium
+  static let rock: FillMedium
+  static let sand: FillMedium
+  static let wash: FillMedium
 struct Filter: Sendable
   enum BevelProfile: CaseIterable, Equatable, Hashable, Sendable
     case chiseled
@@ -5738,6 +5761,12 @@ struct Pace: Equatable, Sendable
   let range: ClosedRange<Double>
   let total: Double
 struct Palette: ParamValue, BidirectionalCollection, Collection, Equatable, RandomAccessCollection, Sendable, Sequence
+  enum Scheme: Equatable, Hashable, Sendable
+    case dark
+    case monochrome
+    case pastel
+    case vivid
+    case vividAndDark
   func color(at: Double) -> Color
   func confusions(tolerance: Double = default) -> [ColorConfusion]
   func confusions(under: ColorVision, tolerance: Double = default) -> [ColorConfusion]
@@ -5762,6 +5791,7 @@ struct Palette: ParamValue, BidirectionalCollection, Collection, Equatable, Rand
   static func palettes(resource: String, withExtension: String? = default, in: Foundation.Bundle) throws -> [Palette]
   static func palettes(url: Foundation.URL, format: PaletteFormat = default) throws -> [Palette]
   static func restored(_: ParamStored) -> Palette?
+  static func scheme(_: Palette.Scheme, key: Color, count: Int = default, jitter: Double = default, seed: Int = default) -> Palette
   static func shades(of: Color, count: Int = default, lightness: ClosedRange<Double> = default, hueDrift: Double = default) -> Palette
   static func splitComplementary(of: Color, spread: Double = default) -> Palette
   static func stored(_: Palette) -> ParamStored

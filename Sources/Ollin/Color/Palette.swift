@@ -106,6 +106,130 @@ public extension Palette {
     }
 }
 
+// MARK: - Schemes
+
+public extension Palette {
+    /// A way of building a palette around one hue (see `scheme(_:key:count:jitter:seed:)`).
+    enum Scheme: Hashable, Sendable {
+        /// Every color the key's hue: the first at its most vivid point
+        /// (`Color.mostVivid(hue:)`), the rest dividing the lightness range
+        /// from deep to light.
+        case monochrome
+        /// Hues spaced evenly around the wheel from the key: the half nearest
+        /// the key vivid, each hue at the lightness where its color word is most
+        /// typical, and the far half dark.
+        case vividAndDark
+        /// Hues spaced evenly around the wheel from the key, every one vivid
+        /// at its typical lightness.
+        case vivid
+        /// Hues gathered close around the key, light and soft.
+        case pastel
+        /// Hues gathered close around the key, deep.
+        case dark
+    }
+
+    /// A palette of `count` colors built around `key`'s hue (its OKLCH hue; a
+    /// gray reads as hue 0, a red) by `scheme`, worked out in OKLCH so steps
+    /// of lightness and hue read evenly.
+    ///
+    /// ```swift
+    /// let tones = Palette.scheme(.monochrome, key: Color(hex: 0xC8553D))
+    /// let wheel = Palette.scheme(.vividAndDark, key: .blue, count: 6, jitter: 0.5, seed: 3)
+    /// ```
+    ///
+    /// The vivid colors take a lightness Ollin sets per hue, near where the
+    /// hue's color word is most typical (yellow light; red, green, and cyan in
+    /// the middle; blue and purple deep), at the largest chroma the screen
+    /// shows there. `jitter` (`0` exact to `1`) nudges each color's lightness,
+    /// chroma, and (except in a monochrome palette) hue by a small amount the
+    /// `seed` picks, so two seeds give two related palettes.
+    static func scheme(_ scheme: Scheme, key: Color, count: Int = 5, jitter: Double = 0,
+                       seed: Int = 0) -> Palette {
+        guard count > 0 else { return Palette([]) }
+        let hue = OKLCH(key).h
+        let n = Double(count)
+        var colors: [OKLCH] = []
+        switch scheme {
+        case .monochrome:
+            // Lightness spread over the range; the slot nearest the hue's most
+            // vivid point becomes that point and moves to the front.
+            let cusp = gamutCusp(hue: hue)
+            var levels = (0..<count).map { i in count == 1 ? cusp.l : 0.22 + 0.74 * Double(i) / (n - 1) }
+            let nearest = levels.indices.min { abs(levels[$0] - cusp.l) < abs(levels[$1] - cusp.l) } ?? 0
+            levels.remove(at: nearest)
+            colors.append(OKLCH(l: cusp.l, c: cusp.c, h: hue))
+            for l in levels { colors.append(OKLCH(l: l, c: maxChroma(lightness: l, hue: hue) * 0.92, h: hue)) }
+        case .vividAndDark, .vivid:
+            for i in 0..<count {
+                let h = hue + Double(i) / n
+                let around = Swift.min(Double(i), n - Double(i)) / n
+                if scheme == .vividAndDark, around > 0.25 + 1e-9 {
+                    let l = Palette.darkLightness
+                    colors.append(OKLCH(l: l, c: maxChroma(lightness: l, hue: h) * 0.85, h: h))
+                } else {
+                    let l = Palette.typicalLightness(hue: h)
+                    colors.append(OKLCH(l: l, c: maxChroma(lightness: l, hue: h), h: h))
+                }
+            }
+        case .pastel, .dark:
+            for i in 0..<count {
+                let offset = count == 1 ? 0 : (Double(i) / (n - 1) - 0.5) * 0.16
+                let h = hue + offset
+                let step = count == 1 ? 0.5 : Double(i) / (n - 1)
+                if scheme == .pastel {
+                    let l = 0.82 + 0.1 * (1 - abs(step - 0.5) * 2)
+                    colors.append(OKLCH(l: l, c: Swift.min(0.075, maxChroma(lightness: l, hue: h)), h: h))
+                } else {
+                    let l = 0.2 + 0.16 * (1 - abs(step - 0.5) * 2)
+                    colors.append(OKLCH(l: l, c: maxChroma(lightness: l, hue: h) * 0.8, h: h))
+                }
+            }
+        }
+        let amount = Swift.min(Swift.max(jitter, 0), 1)
+        if amount > 0 {
+            var rng = SplitMix64(seed: UInt64(bitPattern: Int64(seed)) &+ 0x5EED_CAFE)
+            func unit() -> Double { Double(rng.next() >> 11) / Double(1 << 53) * 2 - 1 }
+            colors = colors.map { c in
+                let dh = unit(), dl = unit(), dc = unit()
+                let h = scheme == .monochrome ? c.h : c.h + dh * 0.03 * amount
+                let l = Swift.min(Swift.max(c.l + dl * 0.05 * amount, 0.05), 0.98)
+                let chroma = Swift.min(c.c * (1 + dc * 0.15 * amount), maxChroma(lightness: l, hue: h))
+                return OKLCH(l: l, c: Swift.max(chroma, 0), h: h)
+            }
+        }
+        return Palette(colors.map { Color($0) })
+    }
+
+    /// The lightness the dark half of a vivid-and-dark wheel takes.
+    internal static let darkLightness = 0.3
+
+    /// The lightness a vivid hue takes: Ollin's own table of where each color
+    /// word's hue looks most typical, read around the wheel and blended between
+    /// neighbors so the lightness never jumps. Hues are OKLCH turns.
+    internal static func typicalLightness(hue: Double) -> Double {
+        let table: [(hue: Double, lightness: Double)] = [
+            (25.0 / 360, 0.58),    // red
+            (60.0 / 360, 0.72),    // orange
+            (105.0 / 360, 0.9),    // yellow
+            (145.0 / 360, 0.66),   // green
+            (195.0 / 360, 0.72),   // cyan
+            (255.0 / 360, 0.5),    // blue
+            (300.0 / 360, 0.46),   // purple
+            (345.0 / 360, 0.62),   // pink and magenta
+        ]
+        let h = hue - hue.rounded(.down)
+        for i in table.indices {
+            let a = table[i], b = table[(i + 1) % table.count]
+            var span = b.hue - a.hue
+            if span <= 0 { span += 1 }
+            var t = h - a.hue
+            if t < 0 { t += 1 }
+            if t <= span { return a.lightness + (b.lightness - a.lightness) * (t / span) }
+        }
+        return 0.6
+    }
+}
+
 // MARK: - Built-in sets
 
 // The eight ColorBrewer qualitative palettes (Cynthia Brewer, Mark Harrower,

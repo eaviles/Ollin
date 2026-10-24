@@ -72,6 +72,7 @@ fff55af49a8c  Guide/16-CurvesAndFigures.md:319  cannot find 'ring' in scope
 c6308b0590b1  Guide/17-MarksAndMedia.md:163  cannot find 'navy' in scope
 6aff37f70683  Guide/17-MarksAndMedia.md:177  cannot find 'bath' in scope
 1e41fd025294  Guide/17-MarksAndMedia.md:188  cannot find 'bath' in scope
+e393d3e0ab01  Guide/17-MarksAndMedia.md:393  cannot find 'blob' in scope
 d6f8fdb72cba  Guide/17-MarksAndMedia.md:68  cannot assign to value: 'mark' is a 'let' constant
 3ad05523666d  Guide/20-PicturesRestyled.md:282  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
 0979bc9f5047  Guide/20-PicturesRestyled.md:314  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'

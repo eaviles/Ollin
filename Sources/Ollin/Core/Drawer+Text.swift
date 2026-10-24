@@ -1038,7 +1038,9 @@ extension Drawer {
             svgRecord(.polygon(points), fill: fillPaint, stroke: strokePaint)
             return
         }
-        if let fill = fillPaint {
+        if let fill = fillPaint,
+           !drewMediumFill(Shape(contours: [Contour(points, closed: true)], winding: .evenOdd),
+                           anchor: Drawer.boundsCenter(points), bounds: .around(points)) {
             let vp = vertexPaint(fill, anchor: Drawer.boundsCenter(points), bounds: .around(points))
             replicated {
                 let start = vertices.count
@@ -1088,7 +1090,9 @@ extension Drawer {
         // Every contour of the shape, its fill and its strokes, reads one box, so a
         // shader paints the outline where it paints the region under it.
         let shapeBox = { PaintBox.around(shape.contours.flatMap(\.points)) }
-        if let fill = fillPaint {
+        if let fill = fillPaint,
+           !drewMediumFill(shape, anchor: Drawer.boundsCenter(shape.contours.flatMap(\.points)),
+                           bounds: shapeBox()) {
             let vp = vertexPaint(fill, anchor: Drawer.boundsCenter(shape.contours.flatMap(\.points)),
                                  bounds: shapeBox())
             // A shape drawn again unchanged hands back the triangles it was cut into.

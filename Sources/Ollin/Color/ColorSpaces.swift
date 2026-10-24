@@ -404,6 +404,16 @@ public extension Color {
 // MARK: - Color from the OKLab family
 
 public extension Color {
+    /// The most vivid color of a hue the screen can show: in OKLCH, the
+    /// lightness at which `hue` reaches its largest in-gamut chroma, at that
+    /// chroma. Yellow peaks light and blue deep, so each hue's answer sits at
+    /// its own lightness. `hue` is a turn, `0...1` (wraps), as `OKLCH.h` reads.
+    static func mostVivid(hue: Double) -> Color {
+        let h = hue - hue.rounded(.down)
+        let cusp = gamutCusp(hue: h)
+        return Color(OKLCH(l: cusp.l, c: cusp.c, h: h))
+    }
+
     /// Create a color from OKLab. A value outside the sRGB gamut is mapped
     /// back by reducing chroma at constant lightness and hue, so the color
     /// stays *the same color*, just as vivid as the screen can show.
@@ -678,6 +688,21 @@ private func maxSaturation(_ a: Double, _ b: Double) -> Double {
     let f2 = 6 * (w.l * kl * kl * l_ + w.m * km * km * m_ + w.s * ks * ks * s_)
     s -= f * f1 / (f1 * f1 - 0.5 * f * f2)
     return s
+}
+
+/// The cusp of the sRGB gamut at hue `h` (a turn): the OKLCH lightness at which
+/// the hue reaches its largest displayable chroma, and that chroma.
+func gamutCusp(hue h: Double) -> (l: Double, c: Double) {
+    let angle = h * Double.tau
+    return findCusp(cos(angle), sin(angle))
+}
+
+/// The largest displayable OKLCH chroma at lightness `l` and hue `h` (a turn).
+func maxChroma(lightness l: Double, hue h: Double) -> Double {
+    let angle = h * Double.tau
+    let a = cos(angle), b = sin(angle)
+    let lc = min(max(l, 0), 1)
+    return max(0, gamutIntersection(a, b, l1: lc, c1: 1, l0: lc, cusp: findCusp(a, b)))
 }
 
 /// The cusp of the sRGB gamut slice for a normalized hue direction — the

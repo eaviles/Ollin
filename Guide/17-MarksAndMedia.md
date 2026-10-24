@@ -6,7 +6,7 @@
 
 <img src="Images/17-MarksAndMedia/Monogram.jpg" alt="The initials OL in navy ink over a spray of gold, inside the pale core of a heart of marbled rings in navy, red, gold, and green, on a combed and feathered marbled sheet framed by a dotted rule" width="560">
 
-A line drawn by hand swells and thins as it answers to speed and pressure. This chapter teaches strokes with a hand in them: width profiles, stroke dynamics, brushes, dashes, and a marbled sheet poured from bent outlines. In the monogram above, a broad nib writes your initials into the pale heart of that sheet. After it come two more media. Watercolor is pigment made from one polygon, deformed and stacked. A stroke medium draws a line in a material, from pencil on paper to wet oil. Last, one gesture becomes many small marks laid along it: clouds, dashes, feathers, and coils that follow its width.
+A line drawn by hand swells and thins as it answers to speed and pressure. This chapter teaches strokes with a hand in them: width profiles, stroke dynamics, brushes, dashes, and a marbled sheet poured from bent outlines. In the monogram above, a broad nib writes your initials into the pale heart of that sheet. After it come two more media. Watercolor is pigment made from one polygon, deformed and stacked. A medium draws a line or fills a shape in a material, from pencil on paper and wet oil to glass and stone. Last, one gesture becomes many small marks laid along it: clouds, dashes, feathers, and coils that follow its width.
 
 ## A width that changes along the path: strokeProfile
 
@@ -353,9 +353,9 @@ This is deliberately heavy drawing, since each layer is a full concave fill. Pai
 
 Two more moves open up once the basic pool works. For two pigments that mix instead of one covering the other, build a typed `Watercolor` base per pool. Interleave their layers a few at a time, so overlaps glaze in both directions. And for the grainy look of pigment settling into paper, speckle small translucent circles inside a `withClip` of the pool's own outline. `Examples/Shapes/Watercolor` pours several pools that way, and [Watercolor](../Docs/Generators/Watercolor.md) has the typed base.
 
-## The stroke's own material: media
+## What a mark is made of: media
 
-The monogram's ink lands as one flat color wherever it lands, and so does every stroke before it in this chapter. The tools above decide where ink goes and how much of it. A medium decides what the ink is made of. The same stroke can be graphite on paper, a brush loaded with two paints, or wet paint that drags what lies under it.
+The monogram's ink lands as one flat color wherever it lands, and so does every stroke before it in this chapter. The tools above decide where ink goes and how much of it. A medium decides what the ink is made of. The same stroke can be graphite on paper, a brush loaded with two paints, or wet paint that drags what lies under it. A filled shape can be thick paint, glass, or stone.
 
 ### Pencil, chalk, and paint along a stroke: strokeMedium
 
@@ -380,6 +380,30 @@ The tooth belongs to the paper, not to the stroke. Two strokes over one spot cat
 The bottom row is paint. `.bristles` streaks the stroke's color and a second one along the path, one streak per bristle. `.dryBrush` runs out of paint along its length and catches on the grain where it does. `.wet` mixes each pixel with what lies behind it along the path, most of all near the tail, so the mark drags the ground it crosses. That ground is the frame drawn once more without its wet strokes, so a wet mark never drags itself. `.oil` is wet paint with ridges, lit from the upper left.
 
 A translucent medium mark lays one coat. Where a loop crosses itself, the crossing reads as the rest of the loop does, and a second mark still layers over the first. A medium is raster only. `--export-svg` writes the stroke as the flat ribbon, the line a plotter would draw. [`Examples/Shapes/ShadedStrokes`](../Examples/Shapes/ShadedStrokes/Sketch.swift) lets you draw in each medium with the pointer, and [Marks](../Docs/Drawing/Marks.md#media) has every setting.
+
+### Paint, glass, and stone inside a shape: fillMedium
+
+A **fill medium** shades a filled shape as what it is made of. Each pixel of the fill knows how far it lies from the shape's own edge and which way that edge is. The medium works from those two facts. It is for shapes that look like things: a thick dab of paint, a pane of glass over a drawing, a pebble. The catalog follows the fills in Kenichi Yoneda's notes on *Etude on Painting*, and each look is written from an older technique. The paint is lit as a surface by James Blinn's bump mapping. The knife's straight ridges are the edges of a Voronoi diagram, found the way Inigo Quilez finds them.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/17-MarksAndMedia/FillMedia-dark.jpg">
+  <img src="Images/17-MarksAndMedia/FillMedia.jpg" alt="One blob in ten fill media over the same blue and yellow stripes. Impasto paint rises along its outline in two colors and catches the light on its upper left, the knife lays flat passes with straight ridges, a wash glazes the stripes in violet, gouache covers them in orange, chrome reflects the stripes around its rim, plain glass shows them straight through its middle and bent at its rim, faceted glass breaks them into facets, and rock, marble, and sand are creased stone, veined stone, and grains thinning out at the edge" width="680">
+</picture>
+
+```swift
+noStroke()
+fill(Color(hex: 0xC8553D))
+fillMedium(.impasto)
+drawShape(blob)
+```
+
+It is drawing state like `fill`, held until `noFillMedium()`. The fill's color is the pigment, and its alpha the opacity. `drawShape` and `drawPolygon` take a medium, and so do the circle, the rect, and the other shapes with a simple outline. To know its distance from the edge, the fill is cut into thin bands that follow the outline inward. Each band is a fixed step deeper than the last. Every corner of a band sits a known distance from the edge, so the GPU only blends between corners.
+
+The top row is paint. `.impasto` rises along the outline and levels off, so the light catches its rim on the upper left. The rise is a smoothstep of the distance. Its slope falls to nothing where the rise ends, so the light bends into the flat middle without a crease. `.knife` lays flat passes, each tilted its own way, that meet in straight ridges. `.wash` is pigment in water. Wet, it glazes the stripes: each channel takes the darker of the ground and the pigment, so a wash never lightens what is under it. `.gouache` is the same wash dry. It covers the ground and drags a little of it along. `.chrome` reflects a bright sky over a dark floor, and the stripes around it at its rim.
+
+In the bottom row, `.glass` shows the stripes straight through its flat middle and bends them at its rounded rim. `.facetedGlass` breaks them into facets. `.rock` folds noise into creases that run with the outline near the edge. `.marble` draws thin veins through a polished slab, and `.sand` thins into loose grains toward the outline.
+
+The textures belong to the shape. A blob moved by `translate` or turned by `rotate` carries its swells and veins along, while the light stays put on the canvas. The wash, the gouache, chrome, and the glasses read the frame drawn once more without them, the way a wet stroke does. A fill medium is raster only, so `--export-svg` writes the fill flat. [`Examples/Shapes/PaintedFills`](../Examples/Shapes/PaintedFills/Sketch.swift) sways five blobs in each medium over a grid, colored by a [palette scheme](02-Color.md#palettes-from-one-hue-palettescheme). You can drag a loop to add one, and [Marks](../Docs/Drawing/Marks.md#fill-media) has every setting.
 
 ## Marks a gesture builds
 
@@ -419,20 +443,20 @@ Two more calls work on the gesture as a whole. `blob()` is the region a lasso en
 
 Stroke dynamics follow the brush engines of digital painting, which turn how fast a hand moves into how heavy a mark it leaves. Krita and Procreate offer it as a speed setting, and Steve Ruiz's perfect-freehand library estimates pressure from how far apart the points land. The speed a mark measures here is smoothed by the 1€ filter of Géry Casiez, Nicolas Roussel, and Daniel Vogel. The broad nib a stylus leans across is the calligrapher's edged pen, far older than any tablet. The monogram's letters are Hershey Sans. It descends from the single-line faces Allen Hershey digitized in the late 1960s for a plotter to write. [Chapter 8](08-Words.md) tells that story.
 
-The marbling equations are Aubrey Jaffer's closed-form model of a craft that predates all of it. The watercolor, the stroke media, and the gesture marks after the monogram name their own sources. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The marbling equations are Aubrey Jaffer's closed-form model of a craft that predates all of it. The watercolor, the stroke and fill media, and the gesture marks after the monogram name their own sources. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
 - [Stroke profiles](../Docs/Drawing/Drawing.md#strokeProfile): `.taper`, `.ramp`, `.nib` and `.values` with every argument, the by-hand closure form, which primitives honor a profile, and what vector export writes.
 - [Dashed strokes](../Docs/Drawing/Drawing.md#strokeDash): the pattern and its phase, dots from zero-length dashes, what the cut does to a profile, a brush, and a gradient, which shapes hand their outline over, and what vector export writes.
-- [Marks](../Docs/Drawing/Marks.md): `StrokeMark`, the response and dynamics types, what the smoothing and spacing arguments do, shaping the press, building a mark without a pointer, the brushes, the stroke media, and what survives vector export.
+- [Marks](../Docs/Drawing/Marks.md): `StrokeMark`, the response and dynamics types, what the smoothing and spacing arguments do, shaping the press, building a mark without a pointer, the brushes, the stroke and fill media, and what survives vector export.
 - [The stylus](../Docs/Helpers/Input.md#stylus): the lean, the barrel turn, the eraser end, and hovering, read beside `pressure`.
 - [Stroke fonts](../Docs/Drawing/Text.md#strokefont): the single-line pen font the monogram is written in, and loading more of them.
 - [Marbling](../Docs/Generators/Marbling.md): the bath, every raking tool, and floating your own outlines as ink.
 - [Watercolor](../Docs/Generators/Watercolor.md): the sugar, the typed base, and how the deformation runs.
 - [Gesture marks](../Docs/Generators/GestureMarks.md): every family's settings, what a piece carries, the rule that keeps a growing gesture still, and the regions and figures a whole gesture makes.
 - The Mohamedi homage [`Diagonals`](../Examples/Recreations/NasreenMohamedi/Diagonals/Sketch.swift): a chevron is one polyline through its corner with a `.values` profile. It is full width at the corner and a fraction of it at each tip. That is the mark a loaded ruling pen leaves as its ink runs out. Its `--export-svg` writes each chevron as the filled outline of the stroke rather than a line with one width, so the thinning reaches the paper. It writes every hairline of its wakes and fans as a plain line.
-- Worked examples: [`Examples/Shapes/StrokeProfiles`](../Examples/Shapes/StrokeProfiles/Sketch.swift), [`Examples/Shapes/Brushwork`](../Examples/Shapes/Brushwork/Sketch.swift), [`Examples/Input/Pen`](../Examples/Input/Pen/Sketch.swift), [`Examples/Shapes/Brushes`](../Examples/Shapes/Brushes/Sketch.swift), [`Examples/Shapes/DashedStrokes`](../Examples/Shapes/DashedStrokes/Sketch.swift), [`Examples/Patterns/Marbling`](../Examples/Patterns/Marbling/Sketch.swift), [`Examples/Shapes/Watercolor`](../Examples/Shapes/Watercolor/Sketch.swift), [`Examples/Shapes/ShadedStrokes`](../Examples/Shapes/ShadedStrokes/Sketch.swift), and [`Examples/Patterns/GestureMarks`](../Examples/Patterns/GestureMarks/Sketch.swift).
+- Worked examples: [`Examples/Shapes/StrokeProfiles`](../Examples/Shapes/StrokeProfiles/Sketch.swift), [`Examples/Shapes/Brushwork`](../Examples/Shapes/Brushwork/Sketch.swift), [`Examples/Input/Pen`](../Examples/Input/Pen/Sketch.swift), [`Examples/Shapes/Brushes`](../Examples/Shapes/Brushes/Sketch.swift), [`Examples/Shapes/DashedStrokes`](../Examples/Shapes/DashedStrokes/Sketch.swift), [`Examples/Patterns/Marbling`](../Examples/Patterns/Marbling/Sketch.swift), [`Examples/Shapes/Watercolor`](../Examples/Shapes/Watercolor/Sketch.swift), [`Examples/Shapes/ShadedStrokes`](../Examples/Shapes/ShadedStrokes/Sketch.swift), [`Examples/Shapes/PaintedFills`](../Examples/Shapes/PaintedFills/Sketch.swift), and [`Examples/Patterns/GestureMarks`](../Examples/Patterns/GestureMarks/Sketch.swift).
 
 ---
 

@@ -300,11 +300,22 @@ struct GeometryBatch {
     /// are ordered with every core triangle ahead of every fringe triangle so
     /// that the stroke lays one coat (see `isRibbon` and the coat draws).
     var medium: StrokeMedium? = nil
+    /// The medium a `.triangles` run is shaded in (`fillMedium(_:)`): the run
+    /// draws through the fill medium fragment, its vertices in pairs whose
+    /// second slot carries each one's distance to the fill's edge (see
+    /// `OllinVertex`).
+    var fillMedium: FillMedium? = nil
 
     /// Whether the run's vertices come in pairs, the second slot carrying the
     /// ribbon's own coordinates (see `OllinVertex`): a stroke under a shader
-    /// paint or a medium.
-    var isRibbon: Bool { kind == .fringe && (paintShader != nil || medium != nil) }
+    /// paint or a medium, or a fill under a medium.
+    var isRibbon: Bool {
+        (kind == .fringe && (paintShader != nil || medium != nil)) || (kind == .triangles && fillMedium != nil)
+    }
+
+    /// Whether the run reads the ground under it (a wet stroke, a wash, chrome,
+    /// glass), which the ground pass draws the frame without.
+    var readsGround: Bool { medium?.readsGround == true || fillMedium?.readsGround == true }
 }
 
 /// `box` through `m` (the box around its eight moved corners), unioned onto
@@ -419,6 +430,9 @@ final class Drawer {
     // plain ribbon, so every stroke that does not ask for a medium takes exactly
     // the path it always did.
     var strokeMediumShape: StrokeMedium?
+    // What a fill is made of (see fillMedium). `nil` is a flat fill, so every
+    // fill that does not ask for a medium takes exactly the path it always did.
+    var fillMediumShape: FillMedium?
     // A dash pattern cut along a path before it is expanded (see strokeDash).
     // `nil` is the whole path, so every stroke that does not ask for a dash
     // takes exactly the path it always did.
@@ -1262,6 +1276,12 @@ final class Drawer {
     /// recorded is shaded in, set around its emission like `currentPaintShader`.
     var currentBatchMedium: StrokeMedium? = nil
     var currentPaintMedium: StrokeMedium? = nil
+    /// The fill medium of the currently-open batch and the one the fill being
+    /// recorded is shaded in, set around its emission the same way.
+    var currentBatchFillMedium: FillMedium? = nil
+    var currentPaintFillMedium: FillMedium? = nil
+    /// The bands the fills under a medium were cut into lately (see `FillRings`).
+    let fillRingCache = FillRingCache()
     /// Which medium stroke the currently-open batch holds, and which one is being
     /// recorded: each medium stroke is a batch of its own, since its one coat is
     /// drawn and then cleared from the stencil before the next stroke lays its own
@@ -1598,6 +1618,7 @@ final class Drawer {
         let savedBatchLightSet = currentBatchLightSet
         let savedBatchPaintShader = currentBatchPaintShader
         let savedBatchMedium = currentBatchMedium
+        let savedBatchFillMedium = currentBatchFillMedium
         let savedBatchCoat = currentBatchCoat
         var savedTargets: [TargetFrame] = []
         var savedClips: [ClipFrame] = []
@@ -1610,6 +1631,7 @@ final class Drawer {
         currentBatchLightSet = 0
         currentBatchPaintShader = nil
         currentBatchMedium = nil
+        currentBatchFillMedium = nil
         currentBatchCoat = nil
         isRecordingBatch = true
         pushState()
@@ -1646,6 +1668,7 @@ final class Drawer {
         currentBatchLightSet = savedBatchLightSet
         currentBatchPaintShader = savedBatchPaintShader
         currentBatchMedium = savedBatchMedium
+        currentBatchFillMedium = savedBatchFillMedium
         currentBatchCoat = savedBatchCoat
         return recorded
     }
@@ -1758,9 +1781,11 @@ final class Drawer {
             || currentBatchLightSet != set
             || currentBatchPaintShader != currentPaintShader
             || currentBatchMedium != currentPaintMedium
+            || currentBatchFillMedium != currentPaintFillMedium
             || currentBatchCoat != currentPaintCoat else { return }
         currentKind = kind
         currentBatchMedium = currentPaintMedium
+        currentBatchFillMedium = currentPaintFillMedium
         currentBatchCoat = currentPaintCoat
         currentBatchLightSet = set
         currentBatchBlend = currentBlend
@@ -1779,7 +1804,8 @@ final class Drawer {
                                      target: currentTarget, clipLevel: activeClipLevel,
                                      lightSet: currentBatchLightSet,
                                      paintShader: currentPaintShader,
-                                     medium: currentPaintMedium))
+                                     medium: currentPaintMedium,
+                                     fillMedium: currentPaintFillMedium))
     }
 
     /// Open a fresh `.image` batch carrying `image` as its texture. Unlike
@@ -2322,6 +2348,9 @@ final class Drawer {
         if visibleStroke != nil, strokeMediumShape != nil {
             noteOnce("strokeMedium(_:) is raster; a vector export writes the stroke as its flat ribbon.")
         }
+        if fill != nil, fillMediumShape != nil {
+            noteOnce("fillMedium(_:) is raster; a vector export writes the fill flat.")
+        }
         // A dash is cut along the path here, the same cut the screen draws, so
         // the file carries every dash as a subpath of its own: a plotter lifts
         // the pen at each gap. The fill, if any, stays the shape it was, and a
@@ -2476,6 +2505,7 @@ final class Drawer {
         var strokeOpacityShape: StrokeProfile
         var strokeBrushShape: Brush?
         var strokeMediumShape: StrokeMedium?
+        var fillMediumShape: FillMedium?
         var strokeDashPattern: StrokeDash?
         var strokeUnitsMode: StrokeUnits
         var currentMaterial: Material
@@ -2830,6 +2860,15 @@ final class Drawer {
 
     /// Return to a plain ribbon (the default).
     func noStrokeMedium() { strokeMediumShape = nil }
+
+    /// Shade the fills in what they are made of (see `FillMedium`): the fill's
+    /// color is the pigment and its alpha the opacity. Affects `drawShape`,
+    /// `drawPolygon`, and the analytic shapes with a polygonal outline, which
+    /// hand their outline to the fill path while a medium is on.
+    func fillMedium(_ medium: FillMedium) { fillMediumShape = medium }
+
+    /// Return to a flat fill (the default).
+    func noFillMedium() { fillMediumShape = nil }
 
     /// Cut every stroked path into dashes (see `StrokeDash`). The pattern is cut
     /// along the path before it is expanded, so each dash takes the caps and a
@@ -5045,6 +5084,9 @@ final class Drawer {
         currentBatchPaintShader = nil
         currentPaintMedium = nil
         currentBatchMedium = nil
+        currentPaintFillMedium = nil
+        currentBatchFillMedium = nil
+        fillRingCache.swapAndClear()
         currentPaintCoat = nil
         currentBatchCoat = nil
         mediumStrokeCount = 0
@@ -5360,6 +5402,7 @@ final class Drawer {
                                      strokeOpacityShape: strokeOpacityShape,
                                      strokeBrushShape: strokeBrushShape,
                                      strokeMediumShape: strokeMediumShape,
+                                     fillMediumShape: fillMediumShape,
                                      strokeDashPattern: strokeDashPattern,
                                      strokeUnitsMode: strokeUnitsMode,
                                      currentMaterial: currentMaterial,
@@ -5401,6 +5444,7 @@ final class Drawer {
         strokeOpacityShape = s.strokeOpacityShape
         strokeBrushShape = s.strokeBrushShape
         strokeMediumShape = s.strokeMediumShape
+        fillMediumShape = s.fillMediumShape
         strokeDashPattern = s.strokeDashPattern
         strokeUnitsMode = s.strokeUnitsMode
         currentMaterial = s.currentMaterial

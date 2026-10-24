@@ -825,6 +825,9 @@ final class WebGraphRecorder {
                 // A shader paint is a program of its own per shape, which the page's
                 // shape pipelines do not carry; the export stops and names the call.
                 if batch.paintShader != nil { throw refuse("fill(Shader) or stroke(Shader) (a shader as paint)") }
+                // A fill under a medium is shaded from its distance to its own
+                // edge, which the page's fill pipeline does not carry.
+                if batch.fillMedium != nil { throw refuse("fillMedium (a fill shaded as what it is made of)") }
                 let blend = WebBlend.index(of: batch.blendMode)
                 // A stroke under a dry medium crosses as its ribbon runs, shaded by
                 // the medium's own fragment; a wet one drags the frame drawn without
@@ -875,6 +878,9 @@ final class WebGraphRecorder {
                         }
                         if run.medium != nil {
                             throw refuse("strokeMedium (a stroke shaded along its length) inside drawBatch")
+                        }
+                        if run.fillMedium != nil {
+                            throw refuse("fillMedium (a fill shaded as what it is made of) inside drawBatch")
                         }
                         let next = j + 1 < inner.count ? inner[j + 1] : nil
                         let runBlend = WebBlend.index(of: run.blendMode)

@@ -2709,6 +2709,21 @@ extension MetalRenderer {
         encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertexCount)
     }
 
+    /// Draw one fill medium's run (its pipeline already set, its vertex pairs
+    /// bound): the medium's settings and the ground bound to the fragment, then
+    /// the run's triangles. A fill's bands never overlap, so it lays one coat
+    /// with no help from the stencil.
+    func encodeFillMediumRun(_ medium: FillMedium, vertexCount: Int, ground: MTLTexture?,
+                             standIn: MTLTexture?, pixelScale: SIMD2<Float>,
+                             into encoder: MTLRenderCommandEncoder) {
+        guard vertexCount > 0 else { return }
+        var u = medium.uniforms(pixelScale: pixelScale, hasGround: ground != nil)
+        encoder.setFragmentBytes(&u, length: MemoryLayout<OllinFillMedium>.stride, index: 0)
+        if let texture = ground ?? standIn { encoder.setFragmentTexture(texture, index: 0) }
+        encoder.setFragmentSamplerState(imageSampler, index: 0)
+        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertexCount)
+    }
+
     func bindPaint(_ shader: Shader, resolution: SIMD2<Float>, into encoder: MTLRenderCommandEncoder) {
         var u = OllinShaderUniforms(
             resolution: resolution,
@@ -3921,7 +3936,7 @@ extension MetalRenderer {
             if skippingTransmissive, batch.isTransmissive { continue }
             // The wet-ground pre-pass draws the frame with the wet strokes taken
             // out, so a wet stroke drags what lies under it, never itself.
-            if skippingWetStrokes, batch.medium?.readsGround == true { continue }
+            if skippingWetStrokes, batch.readsGround { continue }
             // A clip batch without a stencil attachment can't draw (its pipeline
             // declares the stencil format); skip it, so a failed stencil allocation
             // degrades to unclipped drawing rather than a validation error.
@@ -4036,6 +4051,9 @@ extension MetalRenderer {
             } else if batch.medium != nil, batch.kind == .fringe {
                 guard let medium = try? pipeline(MetalRenderer.mediumKey(pipelineKey)) else { continue }
                 state = medium
+            } else if batch.fillMedium != nil, batch.kind == .triangles {
+                guard let medium = try? pipeline(MetalRenderer.fillMediumKey(pipelineKey)) else { continue }
+                state = medium
             } else {
                 guard let plain = try? pipeline(pipelineKey) else { continue }
                 state = plain
@@ -4119,6 +4137,9 @@ extension MetalRenderer {
                                     ground: strokeGround, standIn: strip, pixelScale: uniforms.pixelScale,
                                     hasStencil: hasStencil, clipLevel: batch.clipLevel,
                                     depthTested: depthFormat != nil && batch.depth != nil, into: encoder)
+                } else if let medium = batch.fillMedium, batch.kind == .triangles {
+                    encodeFillMediumRun(medium, vertexCount: drawn, ground: strokeGround, standIn: strip,
+                                        pixelScale: uniforms.pixelScale, into: encoder)
                 } else {
                     encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: drawn)
                 }
@@ -4774,7 +4795,7 @@ extension MetalRenderer {
         for j in inner.indices {
             let run = inner[j]
             let next = j + 1 < inner.count ? inner[j + 1] : nil
-            if skippingWetStrokes, run.medium?.readsGround == true { continue }
+            if skippingWetStrokes, run.readsGround { continue }
             var key = PipelineKey.forBatch(run.kind, run.blendMode, depth: depthFormat)
             if hasStencil { key.stencilFormat = .stencil8 }
             if let colorFormat { key.colorFormat = colorFormat }
@@ -4787,6 +4808,9 @@ extension MetalRenderer {
                 state = paint
             } else if run.medium != nil, run.kind == .fringe {
                 guard let medium = try? pipeline(MetalRenderer.mediumKey(key)) else { continue }
+                state = medium
+            } else if run.fillMedium != nil, run.kind == .triangles {
+                guard let medium = try? pipeline(MetalRenderer.fillMediumKey(key)) else { continue }
                 state = medium
             } else {
                 guard let plain = try? pipeline(key) else { continue }
@@ -4827,6 +4851,10 @@ extension MetalRenderer {
                                     pixelScale: u.pixelScale,
                                     hasStencil: hasStencil, clipLevel: reference.clipLevel,
                                     depthTested: depthFormat != nil && reference.depth != nil, into: encoder)
+                } else if let medium = run.fillMedium, run.kind == .triangles {
+                    encodeFillMediumRun(medium, vertexCount: drawn, ground: strokeGround,
+                                        standIn: standIn ?? resources.strip, pixelScale: u.pixelScale,
+                                        into: encoder)
                 } else {
                     encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: drawn)
                 }

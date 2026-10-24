@@ -17,6 +17,7 @@
 - [Gradient paint](#gradient)
 - [A shader as paint](#shader-paint)
 - [Palette](#palette)
+- [Palette schemes](#palette-schemes): `Palette.scheme`, `Color.mostVivid(hue:)`
 - [Shades whose hue drifts](#shades)
 - [Loading palettes from a file](#palette-files)
 - [Extracting a palette from an image](#palette-extraction)
@@ -371,9 +372,35 @@ Palette.triadic(of: base)                               // thirds of the wheel
 Palette.analogous(of: base, count: 3, spread: 1.0 / 12) // neighbors centered on base
 ```
 
+<a name="palette-schemes"></a>
+
+**Schemes** build a whole palette around one hue rather than from one color. `Palette.scheme(_:key:count:jitter:seed:)` reads only the key's OKLCH hue and works out every color from it:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/02-Color/PaletteSchemes-dark.jpg">
+  <img src="../../Guide/Images/02-Color/PaletteSchemes.jpg" alt="A red swatch, the hue's most vivid color, above five rows of six swatches built around it: a monochrome row of that one red from the vivid point through deep maroon to pale pink, a wheel whose key and its two neighbors (red, yellow, and purple) are vivid while the far three are dark green, teal, and navy, a vivid wheel of six hues each at its typical lightness, six soft pastels from pink to peach, and six deep maroons and browns" width="680">
+</picture>
+
+```swift
+let key = Color(hex: 0xC8553D)
+Palette.scheme(.monochrome, key: key)                 // one hue, the vivid point first, then deep to light
+Palette.scheme(.vividAndDark, key: key, count: 6)     // a wheel: the near half vivid, the far half dark
+Palette.scheme(.vivid, key: key, count: 8)            // the whole wheel, every hue vivid
+Palette.scheme(.pastel, key: key)                     // hues close around the key, light and soft
+Palette.scheme(.dark, key: key, jitter: 0.5, seed: 3) // the same cluster, deep, nudged by a seed
+```
+
+A vivid color in these schemes stands at a lightness Ollin sets per hue, near where that hue's color word is most typical. Yellow sits light, red, green, and cyan in the middle, and blue and purple deep. It takes the largest chroma the screen shows at that lightness. `jitter`, from `0` to `1`, nudges each color's lightness and chroma, and its hue in every scheme but `.monochrome`, by a small amount the `seed` picks.
+
+`Color.mostVivid(hue:)` is the color a monochrome palette starts from. Every hue reaches its largest displayable chroma at one lightness, the cusp of the screen's gamut. That lightness differs by hue: yellow's is near white, and blue's is deep. `hue` is a turn, `0...1`, as `OKLCH.h` reads it.
+
+```swift
+fill(Color.mostVivid(hue: 0.6))   // the bluest blue the screen shows
+```
+
 **Built-in sets.** The eight ColorBrewer qualitative palettes ship as data. They are `.set1`, `.set2`, `.set3`, `.paired`, `.pastel1`, `.pastel2`, `.dark2`, and `.accent`. They are credited under [Influences & attribution](../../ATTRIBUTION.md#color).
 
-The `Harmonies` example follows a drifting base color through all four builders. `Swatchbook` lays out the built-in sets.
+The `Harmonies` example follows a drifting base color through all four builders. `Swatchbook` lays out the built-in sets. `PaintedFills` colors its blobs by a scheme whose hue you turn.
 
 <a name="shades"></a>
 

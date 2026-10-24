@@ -1092,6 +1092,15 @@ final class MetalRenderer {
         return k
     }
 
+    /// The pipeline a fill medium's run draws through: the pass's key for its
+    /// triangle batch with the fill medium's vertex stage and fragment.
+    static func fillMediumKey(_ key: PipelineKey) -> PipelineKey {
+        var k = key
+        k.vertex = "ollin_fill_medium_vertex"
+        k.fragment = "ollin_fill_medium_fragment"
+        return k
+    }
+
     /// The stencil bit a stroke medium's coat claims (see `ClipStateKey.Stencil.coat`).
     /// Clip levels count up from 0 in the bits below it and never reach it.
     static let coatStencilBit: UInt32 = 0x80

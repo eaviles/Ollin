@@ -3208,6 +3208,20 @@ open class Sketch {
     public func strokeMedium(_ medium: StrokeMedium) { drawer.strokeMedium(medium) }
     /// Return to a plain ribbon (the default), undoing `strokeMedium(_:)`.
     public func noStrokeMedium() { drawer.noStrokeMedium() }
+    /// Fill every shape as what it is made of: `fillMedium(.impasto)` lays thick
+    /// paint that rises along the outline and is lit as a surface, `.knife` spreads
+    /// it in flat passes, `.wash` glazes what is under it and `.gouache` covers it,
+    /// `.chrome` reflects, `.glass` and `.facetedGlass` refract what is drawn
+    /// under them, and `.rock`, `.marble`, and `.sand` are stone and grain.
+    ///
+    /// The fill's color is the pigment (the tint, for the metal and the glasses)
+    /// and its alpha the opacity. Applies to `drawShape`, `drawPolygon`, and the
+    /// circle, ellipse, rect, triangle, ngon, star, trapezoid, and parallelogram,
+    /// which hand their outline to the fill path while a medium is on. A vector
+    /// export writes the fill flat. See `FillMedium`.
+    public func fillMedium(_ medium: FillMedium) { drawer.fillMedium(medium) }
+    /// Return to a flat fill (the default), undoing `fillMedium(_:)`.
+    public func noFillMedium() { drawer.noFillMedium() }
     /// Cut every stroke into dashes: `strokeDash([12, 8])` lays 12-point dashes
     /// with 8-point gaps along the path, and `strokeDash(.dots(spacing: 10))`
     /// under `strokeCap(.round)` lays dots. The lengths are in the path's own

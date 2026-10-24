@@ -67,6 +67,11 @@ typedef simd_ushort4 OllinHalf4;
 // across the width as a fraction of the half-width (+-1 at the true edge), the
 // local half-width, a per-stroke seed, the 0...1 fraction along, and the path's
 // whole length. Every other run keeps one slot, so a plain stroke is unchanged.
+// A fill drawn under a fill medium takes two slots the same way (read by
+// `ollin_fill_medium_vertex`): the second carries `aa` = (distance, 0), the
+// distance to the fill's own edge in canvas points, and `color` = (outward.x,
+// outward.y, material.x, material.y), the unit direction out through the nearest
+// edge on the canvas and the place in the shape's own coordinates, in canvas points.
 typedef struct {
     simd_float2 position;   // sketch-space, points, top-left origin, y-down
     simd_float2 aa;         // fringe pipeline: x = AA coverage 0…1, y = opacity (shader paint); ignored elsewhere
@@ -1760,6 +1765,29 @@ typedef struct {
     simd_float4 second;         // bristles: the second pigment, straight sRGB + alpha
     simd_float4 palette[OLLIN_MEDIUM_PALETTE];  // dry: tooth-cell colors, straight sRGB + alpha
 } OllinStrokeMedium;
+
+// A fill medium (`fillMedium(_:)`): the settings the fill medium fragment
+// (`ollin_fill_medium_fragment`) shades a fill with, bound at fragment buffer 0
+// for each fill medium run. `kind` is `FillMedium.Kind`'s raw value; the lengths
+// are in canvas points. `second.r` below 0 means "no second color given" (a shade
+// of the fill's own is used). Stride 80 (16-aligned).
+typedef struct {
+    unsigned int kind;          // 1 impasto, 2 knife, 3 wash, 4 chrome, 5 glass, 6 faceted glass, 7 rock, 8 marble, 9 sand
+    unsigned int hasGround;     // 1 when the ground texture holds the frame
+    float edge;                 // the width the relief rises over from the edge
+    float relief;               // the relief's height, 1 the default
+    float swell;                // impasto: low swells; rock: crease depth
+    float detail;               // impasto: fine detail; sand: grain sparkle
+    float amount;               // the second color's share / the water / the refraction
+    float scale;                // the size of the look's features
+    float angle;                // the knife's pass, the wash's flow, the marble's veins
+    float reach;                // how far the ground is read from (wash drag, chrome reflection)
+    float sharpness;            // marble: the veins' exponent
+    float seed;                 // the medium's own seed
+    simd_float2 pixelScale;     // attachment pixels per canvas point (x, y)
+    simd_float2 _fillMediumPad;
+    simd_float4 second;         // the second color, straight sRGB + alpha
+} OllinFillMedium;
 
 // Per-frame parameters for the strange-attractor step (`AttractorFlow`), packed by
 // the CPU and bound at buffer index 11. Every particle follows the same velocity field

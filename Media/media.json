@@ -10969,6 +10969,28 @@
       "stillSmall": "examples/Shapes/OverUnder/still-640.jpg?v=6d7f6f6d",
       "width": 1080
     },
+    "Shapes/PaintedFills": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 7.056,
+      "sound": false,
+      "source": "01962121e716ae53",
+      "rendered": "2026-10-24",
+      "bytes": {
+        "loop": 2347539,
+        "loopSmall": 690212,
+        "still": 245788,
+        "stillSmall": 125313
+      },
+      "loop": "examples/Shapes/PaintedFills/loop.mp4?v=23058933",
+      "loopSmall": "examples/Shapes/PaintedFills/loop-640.mp4?v=fa725666",
+      "still": "examples/Shapes/PaintedFills/still.jpg?v=f69f9172",
+      "stillSmall": "examples/Shapes/PaintedFills/still-640.jpg?v=931d1bcf",
+      "seed": 1
+    },
     "Shapes/Polygons": {
       "bytes": {
         "loop": 1758500,

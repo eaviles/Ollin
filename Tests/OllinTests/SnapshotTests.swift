@@ -166,6 +166,12 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("stroke-media",
                  note: "The bristle, dry-brush, wet, and oil media over a ground split in two colors: two pigments streaked along a brush, a brush running dry on three grain scales, wet paint dragging the ground along its direction (the frame drawn again without the wet strokes), and oil's relief lit from the upper left. Pins the ribbon's along and across coordinates reaching the medium fragment and the wet-ground pre-pass.",
                  make: { StrokeMediaScene() }),
+    SnapshotCase("fill-media",
+                 note: "fillMedium's lit looks, one small blob each: impasto in two colors, the knife's passes, rock, marble, and sand, and a circle handing its outline to the bands under impasto. Pins the bands' distance and outward direction reaching the fragment, the quintic rise lit from the upper left, the knife's Voronoi ridges, the textures in the shape's own coordinates under a turn, and the sand thinning toward its edge.",
+                 make: { FillMediaScene() }),
+    SnapshotCase("fill-media-ground",
+                 note: "fillMedium's looks that read the ground, over stripes: a wash glazing them, gouache covering and dragging them, chrome reflecting them at its rim, glass straight through its middle and bent at its rim, faceted glass, and a glass rect from the analytic route. Pins the ground pass leaving every ground-reading fill out and the refraction and reflection offsets.",
+                 make: { FillMediaGroundScene() }),
     SnapshotCase("gesture-marks",
                  note: "Four GestureMark families, each over one short tapering wave: a cloud of discs filled as one silhouette, three rows of dashes in three colors, the band with spikes as one silhouette, and a feather's barbs stroked. Pins the spine's frames (its station steps and the direction that turns across each), the rows' shares of a taper, the spike wave, and the union of the closed pieces.",
                  make: { GestureMarksScene() }),
@@ -7316,6 +7322,80 @@ private final class StrokeMediaScene: Sketch {
         drawPolyline(wave(156))
         strokeMedium(.oil(seed: 6))
         drawPolyline(wave(214))
+    }
+}
+
+/// A blob around `center` whose radius wanders by two waves, for the fill
+/// media scenes.
+private func fillMediaBlob(_ center: Vector2, radius: Double, phase: Double) -> Shape {
+    let points = (0..<120).map { i -> Vector2 in
+        let a = Double(i) / 120 * 2 * .pi
+        let r = radius * (1 + 0.12 * sin(3 * a + phase) + 0.06 * sin(5 * a + 2 * phase))
+        return center + Vector2(cos(a), sin(a)) * r
+    }
+    return Shape(contours: [Contour(points, closed: true)])
+}
+
+/// Five lit fill media and a circle under impasto, on paper.
+private final class FillMediaScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.95))
+        noStroke()
+        let looks: [(FillMedium, Color)] = [
+            (.impasto(size: 30, seed: 2), Color(red: 0.78, green: 0.33, blue: 0.24)),
+            (.knife(cut: 26, seed: 1), Color(red: 0.18, green: 0.53, blue: 0.67)),
+            (.rock(size: 40, seed: 1), Color(red: 0.54, green: 0.5, blue: 0.45)),
+            (.marble(spacing: 40, seed: 2), Color(red: 0.93, green: 0.91, blue: 0.88)),
+            (.sand, Color(red: 0.85, green: 0.72, blue: 0.5)),
+        ]
+        for (i, look) in looks.enumerated() {
+            let c = Vector2(44 + Double(i % 3) * 84, 66 + Double(i / 3) * 124)
+            fill(look.1)
+            fillMedium(look.0)
+            withState {
+                translate(c)
+                rotate(0.3 * Double(i))
+                drawShape(fillMediaBlob(.zero, radius: 34, phase: Double(i)))
+            }
+        }
+        fill(Color(red: 0.95, green: 0.65, blue: 0.07))
+        fillMedium(.impasto(edge: 12, swell: 0.3, detail: 0.2, size: 24, mottle: 0))
+        drawCircle(212, 190, 34)
+        noFillMedium()
+    }
+}
+
+/// The fill media that read the ground, over stripes.
+private final class FillMediaGroundScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(.white)
+        noFillMedium()
+        noStroke()
+        for k in 0..<32 {
+            fill(k % 2 == 0 ? Color(red: 0.23, green: 0.43, blue: 0.65) : Color(red: 0.96, green: 0.83, blue: 0.37))
+            drawRect(Double(k) * 8, 0, 8, 256)
+        }
+        let looks: [(FillMedium, Color)] = [
+            (.wash(water: 0.85, flow: 0.6, reach: 16), Color(red: 0.62, green: 0.25, blue: 0.45)),
+            (.gouache, Color(red: 0.93, green: 0.42, blue: 0.27)),
+            (.chrome(edge: 26, reach: 30), .white),
+            (.glass(edge: 22), Color(red: 0.8, green: 0.92, blue: 0.95)),
+            (.facetedGlass(facet: 18, seed: 3), .white),
+        ]
+        for (i, look) in looks.enumerated() {
+            let c = Vector2(44 + Double(i % 3) * 84, 66 + Double(i / 3) * 124)
+            fill(look.1)
+            fillMedium(look.0)
+            drawShape(fillMediaBlob(c, radius: 34, phase: Double(i)))
+        }
+        fill(.white)
+        fillMedium(.glass(edge: 14))
+        drawRect(182, 160, 60, 60, cornerRadius: 10)
+        noFillMedium()
     }
 }
 

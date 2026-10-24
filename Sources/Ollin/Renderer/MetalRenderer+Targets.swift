@@ -3390,14 +3390,15 @@ extension MetalRenderer {
         return (resolve, depthResolve, viewProjection, simd_inverse(viewProjection))
     }
 
-    /// Whether this frame's canvas draws a stroke whose medium reads the ground
-    /// (wet paint, oil), directly or inside a replayed `Batch`.
+    /// Whether this frame's canvas draws a stroke or a fill whose medium reads
+    /// the ground (wet paint, oil, the wash, chrome, glass), directly or inside a
+    /// replayed `Batch`.
     func canvasReadsStrokeGround(_ drawer: Drawer) -> Bool {
         drawer.batches.contains { batch in
             guard batch.target == nil else { return false }
-            if batch.medium?.readsGround == true { return true }
+            if batch.readsGround { return true }
             if batch.kind == .retained, let handle = batch.retained {
-                return handle.innerBatches.contains { $0.medium?.readsGround == true }
+                return handle.innerBatches.contains { $0.readsGround }
             }
             return false
         }

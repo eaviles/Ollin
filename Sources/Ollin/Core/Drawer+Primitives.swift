@@ -58,21 +58,35 @@ extension Drawer {
     /// a dash is on. `body` draws the shape with the stroke cleared, so its fill
     /// stays the instance it always was, and `outline` (in user space, closed)
     /// is then expanded like a polygon's, where the pattern can lay along it.
-    /// With no dash on, `body` runs as it is and the outline is never built.
+    /// A fill medium takes the outline the same way: the fill is cut into bands
+    /// along it and shaded, and `body` draws only the stroke. With neither on,
+    /// `body` runs as it is and the outline is never built.
     func withDashedOutline(_ outline: @autoclosure () -> [Vector2], anchor: Vector2,
                            _ body: () -> Void) {
         // A medium shades a ribbon, which the analytic outline is not, so it takes
         // the same route a dash does.
         let wantsRibbon = (strokeDashPattern.map { !$0.isSolid } ?? false) || strokeMediumShape != nil
-        guard wantsRibbon, let stroke = strokePaint, strokeWidth > 0 else {
+        let ribbonStroke = wantsRibbon && strokePaint != nil && strokeWidth > 0
+        let wantsMediumFill = fillMediumShape != nil && fillPaint != nil
+        guard ribbonStroke || wantsMediumFill else {
             body()
             return
         }
-        let saved = strokePaint
-        strokePaint = nil
-        body()
-        strokePaint = saved
         let points = outline()
+        let savedFill = fillPaint
+        if wantsMediumFill,
+           drewMediumFill(Shape(contours: [Contour(points, closed: true)], winding: .nonZero),
+                          anchor: anchor, bounds: .around(points)) {
+            fillPaint = nil
+        }
+        defer { fillPaint = savedFill }
+        guard ribbonStroke, let stroke = strokePaint else {
+            if fillPaint != nil || (strokePaint != nil && strokeWidth > 0) { body() }
+            return
+        }
+        strokePaint = nil
+        if fillPaint != nil { body() }
+        strokePaint = stroke
         appendFringeStroke(points, closed: true,
                            paint: vertexPaint(stroke, anchor: anchor, bounds: .around(points)))
     }

@@ -30,7 +30,7 @@ Drag, and the mark comes out full where you moved slowly and thin where you hurr
   <img src="../../Guide/Images/17-MarksAndMedia/MarkDynamics.jpg" alt="One S-curve drawn three times at one stroke weight by a hand that is slow at the ends and fast through the middle: ignoring the pace it is an even line, letting the pace drive width it swells at the ends and narrows to a hairline in the middle, letting the pace drive opacity it stays the same width but fades" width="680">
 </picture>
 
-**Contents:** [The pieces](#pieces) · [StrokeInput](#input) · [StrokeResponse](#response) · [StrokeDynamics](#dynamics) · [StrokeMark](#mark) · [drawMark](#drawMark) · [Pressure](#pressure) · [Building a mark by hand](#byhand) · [Brushes](#brushes) · [Stroke media](#media) · [What exports](#export)
+**Contents:** [The pieces](#pieces) · [StrokeInput](#input) · [StrokeResponse](#response) · [StrokeDynamics](#dynamics) · [StrokeMark](#mark) · [drawMark](#drawMark) · [Pressure](#pressure) · [Building a mark by hand](#byhand) · [Brushes](#brushes) · [Stroke media](#media) · [Fill media](#fill-media) · [What exports](#export)
 
 <a name="pieces"></a>
 
@@ -353,6 +353,63 @@ strokeWeight(18)
 drawPolyline([Vector2(60, 300), Vector2(240, 160), Vector2(420, 300), Vector2(600, 160)])
 ```
 
+<a name="fill-media"></a>
+
+## Fill media
+
+A stroke medium is what a line is made of. A **`FillMedium`** is what a filled shape is made of. Thick paint rises along the outline and levels off inside, lit as a surface. A wash darkens what lies under it, and glass bends it. Each pixel of the fill knows how far it is from the shape's own edge and which way that edge lies. The medium shades from those two facts.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/17-MarksAndMedia/FillMedia-dark.jpg">
+  <img src="../../Guide/Images/17-MarksAndMedia/FillMedia.jpg" alt="One blob in ten fill media over the same blue and yellow stripes. Impasto paint rises along its outline in two colors and catches the light on its upper left, the knife lays flat passes with straight ridges, a wash glazes the stripes in violet, gouache covers them in orange, chrome reflects the stripes around its rim, plain glass shows them straight through its middle and bent at its rim, faceted glass breaks them into facets, and rock, marble, and sand are creased stone, veined stone, and grains thinning out at the edge" width="680">
+</picture>
+
+```swift
+let blob = Shape(curveThrough: [Vector2(220, 300), Vector2(520, 220), Vector2(780, 420),
+                                 Vector2(560, 780), Vector2(260, 620)])
+
+override func draw() {
+    background(.white)
+    noStroke()
+    fill(Color(hex: 0xC8553D))
+    fillMedium(.impasto)
+    drawShape(blob)
+}
+```
+
+`fillMedium(_:)` is style, like `fill`. It is held until `noFillMedium()` goes back to a flat fill. It applies to `drawShape` and `drawPolygon`. The circle, ellipse, rect, triangle, ngon, star, trapezoid, and parallelogram take it too, handing their outline to the fill path while a medium is on. A shader fill paints its own way and keeps it, saying so once.
+
+The fill's **color** is the pigment, and for chrome and the glasses the tint, so white is plain chrome and clear glass. Its **alpha** is the opacity.
+
+| Medium | What it does |
+|---|---|
+| `.impasto(edge:relief:swell:detail:size:second:mottle:seed:)` | Paint laid on thick. It rises over `edge` canvas points from the outline and levels off, swells inside by `swell` in bumps `size` points across, and carries fine brush texture by `detail`. A second color is worked in by `mottle`, in patches with sharp borders. Leave `second` out for a lighter shade of the fill. |
+| `.knife(edge:relief:cut:angle:second:mottle:seed:)` | Paint spread with a palette knife. Flat passes `cut` points long, laid at `angle`, each tilted its own way and scraped along its length. Where two passes meet, the later one ends in a straight ridge and the earlier one lies in its shadow. |
+| `.wash(water:flow:angle:reach:size:edge:seed:)` | Pigment carried in water. At `water` 1 it glazes what is under it: each channel the darker of the ground and the pigment, so a wash never lightens the ground, and it pools at its edge. At `water` 0 it covers the ground. `flow` drags the ground up to `reach` points along `angle`, the direction drifting with position, and streaks the pigment along it. |
+| `.gouache` | The wash at its dry end. It covers the ground and drags it the farthest. |
+| `.chrome(edge:relief:reach:)` | Polished metal whose rim rounds over within `edge` points. Facing up it reflects a studio's bright sky and dark floor; toward the rim it reflects what is drawn around it, `reach` points out. |
+| `.glass(edge:relief:refraction:)` | A clear pane. Its flat middle shows what is under it straight, its rounded rim bends it by `refraction` and reflects more as the surface turns away. The color tints it, more where it is thick. |
+| `.facetedGlass(facet:edge:relief:refraction:seed:)` | Glass cut into flat facets about `facet` points across, on a jittered triangle lattice. Each facet bends the ground its own way, with a bright or dark crease where two meet. |
+| `.rock(size:depth:edge:relief:second:seed:)` | Stone folded into valley creases `size` points apart, cut `depth` deep, the folds running with the outline near the edge. A `second` stone joins it in broad patches. |
+| `.marble(veins:spacing:angle:sharpness:edge:seed:)` | A polished slab veined by a band across it, warped by noise and drawn thin, about `spacing` points apart. `sharpness` runs from broad clouds at 1 to hairlines at 20. |
+| `.sand(grain:edge:sparkle:second:mottle:seed:)` | Grains `grain` points across, each catching the light its own way, thinning out over `edge` points toward the outline so the edge dissolves. |
+
+Every one is also there with its default settings, as `.impasto` is.
+
+### How a fill knows its edge
+
+While a medium is on, the fill is cut into bands that follow its outline inward. An inset is the outline moved in by a fixed distance, with round corners. Each band lies between one inset and the next, about a point and a half deeper. Every corner of a band therefore sits a known distance from the edge. A point inside a band takes the blend of its corners' distances. Past the depth the medium reads, such as the relief's width, the fill is one flat piece. A shape drawn again unchanged, on this frame or the next, is not cut again.
+
+The relief is the quintic smoothstep of that distance. The light follows its slope. The slope falls to zero where the rise meets the flat inside, and so does the rate the slope changes. The light therefore bends into the flat middle without turning a corner where the rise ends.
+
+### What reads the ground
+
+The wash, the gouache, chrome, and both glasses read what is drawn under them. That is the frame drawn once more without them, as a wet stroke medium reads it. They see everything else the frame holds, drawn before them or after, and two runs give the same picture. A fill that reads the ground does not see another one, which is left out of that second drawing too. Inside a layer there is no ground yet, so they draw from their color alone and say so once.
+
+### The paint moves with the shape
+
+A medium's swells, veins, grains, and facets sit in the shape's own coordinates. A shape moved or turned by `translate` and `rotate` carries its texture with it, while the light stays where it is on the canvas, so a turning blob catches the light on whichever side faces the upper left. The `seed` picks which swells, passes, folds, and grains.
+
 <a name="export"></a>
 
 ## What exports
@@ -363,6 +420,8 @@ A mark's **opacity flattens** to its average, weighted along the mark's length. 
 
 A **medium** is raster. `--export-svg` and `--export-pdf` write the stroke as the flat ribbon it would be without one, the line a plotter draws, and say so once. The [web page](../Output/Web.md#strokes-and-fills-on-the-page) export carries the dry media, the bristles, and the dry brush, shaded on the page by the same functions; it stops at `.wet` and `.oil`, which drag the frame drawn without them, and names the call.
 
+A **fill medium** is raster too. A vector export writes the fill flat, in its color, and says so once. The web page export stops at a fill medium and names the call.
+
 A **brush** exports as its stamps. Each stamp becomes a real circle, polygon, or path a plotter can follow. The exported document then carries the mark the screen showed, rather than the bare path running under it. Because each stamp is its own shape, a brushed mark keeps its varying opacity in vector export, where a ribbon has to flatten it. A brush cannot vary opacity over a *gradient* stroke, because that would mean rewriting the ramp. It says so once and stamps at the ramp's own alpha.
 
 ## See also
@@ -372,4 +431,5 @@ A **brush** exports as its stamps. Each stamp becomes a real circle, polygon, or
 - [Export](../Output/Export.md) for the vector exporters
 - [Shaders](../Shaders/Shaders.md#a-shader-as-paint) for a shader as paint, and what `info` carries on a stroke
 - [Gesture marks](../Generators/GestureMarks.md) for a recorded mark made into many small marks laid along it (a cloud, rows of dashes, a feather, a coil), each a shape a plotter draws
-- Example: `Examples/Shapes/Brushwork` (paint with it), `Examples/Shapes/StrokeProfiles` (the profile family), `Examples/Shapes/Brushes` (the brush family), `Examples/Shapes/ShadedStrokes` (draw in each medium)
+- [Color](Color.md#palette-schemes) for the palette schemes that color the example's blobs
+- Example: `Examples/Shapes/Brushwork` (paint with it), `Examples/Shapes/StrokeProfiles` (the profile family), `Examples/Shapes/Brushes` (the brush family), `Examples/Shapes/ShadedStrokes` (draw in each medium), `Examples/Shapes/PaintedFills` (each fill medium, and drag a loop to add a blob)
