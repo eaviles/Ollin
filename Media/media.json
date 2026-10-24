@@ -538,6 +538,10 @@
     "Recreations/RomanVerostko": [
       "Recreations/RomanVerostko/Pathway",
       "Recreations/RomanVerostko/Cyberflower"
+    ],
+    "Recreations/JesusRafaelSoto": [
+      "Recreations/JesusRafaelSoto/Vibracion",
+      "Recreations/JesusRafaelSoto/Penetrable"
     ]
   },
   "examples": {
@@ -9042,6 +9046,50 @@
       "stillSmall": "examples/Recreations/JaredTarbell/Substrate/still-640.jpg?v=eb89a361",
       "width": 1080
     },
+    "Recreations/JesusRafaelSoto/Penetrable": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10.0s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 3.539,
+      "sound": false,
+      "source": "56733e7775e11616",
+      "rendered": "2026-10-24",
+      "bytes": {
+        "loop": 6477516,
+        "loopSmall": 1073531,
+        "still": 169126,
+        "stillSmall": 52373
+      },
+      "loop": "examples/Recreations/JesusRafaelSoto/Penetrable/loop.mp4?v=c98dc2c5",
+      "loopSmall": "examples/Recreations/JesusRafaelSoto/Penetrable/loop-640.mp4?v=95ea7841",
+      "still": "examples/Recreations/JesusRafaelSoto/Penetrable/still.jpg?v=df4b7776",
+      "stillSmall": "examples/Recreations/JesusRafaelSoto/Penetrable/still-640.jpg?v=5e601edd",
+      "seed": 1
+    },
+    "Recreations/JesusRafaelSoto/Vibracion": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 2.276,
+      "sound": false,
+      "source": "f7a80de358fa6430",
+      "rendered": "2026-10-24",
+      "bytes": {
+        "loop": 3141585,
+        "loopSmall": 1072678,
+        "still": 163944,
+        "stillSmall": 66277
+      },
+      "loop": "examples/Recreations/JesusRafaelSoto/Vibracion/loop.mp4?v=62efb6db",
+      "loopSmall": "examples/Recreations/JesusRafaelSoto/Vibracion/loop-640.mp4?v=a197ff60",
+      "still": "examples/Recreations/JesusRafaelSoto/Vibracion/still.jpg?v=8663d1cd",
+      "stillSmall": "examples/Recreations/JesusRafaelSoto/Vibracion/still-640.jpg?v=b0f8bd13",
+      "seed": 1
+    },
     "Recreations/JohnWhitney/Permutations": {
       "bytes": {
         "loop": 4483887,
@@ -12680,8 +12728,8 @@
       ]
     },
     "3D/Effects": {
-      "image": "groups/3D-Effects.jpg?v=ca4bf74e",
-      "imageSmall": "groups/3D-Effects-640.jpg?v=44e0d392",
+      "image": "groups/3D-Effects.jpg?v=b663254c",
+      "imageSmall": "groups/3D-Effects-640.jpg?v=f62f5b60",
       "of": [
         "3D/Effects/PathTraced",
         "3D/Effects/ScreenSpaceReflections",
@@ -13002,6 +13050,14 @@
       "of": [
         "Recreations/JaredTarbell/Substrate"
       ]
+    },
+    "Recreations/JesusRafaelSoto": {
+      "of": [
+        "Recreations/JesusRafaelSoto/Vibracion",
+        "Recreations/JesusRafaelSoto/Penetrable"
+      ],
+      "image": "groups/Recreations-JesusRafaelSoto.jpg?v=d7ee845d",
+      "imageSmall": "groups/Recreations-JesusRafaelSoto-640.jpg?v=290c62d5"
     },
     "Recreations/JohnWhitney": {
       "image": "groups/Recreations-JohnWhitney.jpg?v=159184a5",

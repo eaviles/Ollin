@@ -1061,5 +1061,10 @@ let package = Package(
         // lines fold into a flower, after Roman Verostko.
         example("Recreations/RomanVerostko/Pathway"),
         example("Recreations/RomanVerostko/Cyberflower"),
+        // Wires hung in front of a striped ground that shimmer and come apart
+        // as you move, and a room of hanging tubes with a yellow orb in them
+        // that you walk through, after Jesús Rafael Soto.
+        example("Recreations/JesusRafaelSoto/Vibracion"),
+        example("Recreations/JesusRafaelSoto/Penetrable"),
     ]
 )
