@@ -6,7 +6,7 @@
 
 <img src="Images/32-SculptingWithFields/Molten.jpg" alt="A pale mint sculpture like a settling drop of glaze, glossy under studio light, one lobe drooping toward a dark floor that catches its soft shadow" width="560">
 
-A shape stored as a distance field can melt into its neighbors, carve them, and stay one surface however you push it. This chapter builds shapes that way, flat on the canvas and then in space, where a tracer finds the surface by hopping along each ray. The sculpture above is four melted lobes, twisted a little and breathing slowly, and you can orbit it with the mouse. Other ways to combine fields, space folded into copies, fractals, and the way out into a mesh follow it.
+A shape stored as a distance field can melt into its neighbors, carve them, and stay one surface however you push it. This chapter builds shapes that way, flat on the canvas and then in space, where a tracer finds the surface by hopping along each ray. The sculpture above is four melted lobes, twisted a little and breathing slowly, and you can orbit it with the mouse. Other ways to combine fields, a field rebuilt from cubes, space folded into copies, fractals, and the way out into a mesh follow it.
 
 ## A shape as a question: the signed distance field
 
@@ -186,9 +186,9 @@ Then make it yours:
 
 The sculpture breathes and turns on its own, so keep it as a video. `swift run OllinLive MySketches/Molten.swift --export-video molten.mp4 --seconds 12` records the first twelve seconds. An export renders every frame of the field at full quality.
 
-## More ways to combine: the other verbs, joinery, the block form, and sculpting
+## More ways to combine: the other verbs, joinery, the block form, sculpting, and voxels
 
-Molten melts every lobe with one verb, `smoothUnion`. Fields combine in other ways too. They carve, keep only an overlap, or become a shape halfway between two. They meet in hard-edged joints, merge ordinary draw calls, and build up in a block the way clay does.
+Molten melts every lobe with one verb, `smoothUnion`. Fields combine in other ways too. They carve, keep only an overlap, or become a shape halfway between two. They meet in hard-edged joints, merge ordinary draw calls, and build up in a block the way clay does. And any of them can be rebuilt out of cubes.
 
 ### Carving, overlapping, and halfway: the other verbs
 
@@ -253,6 +253,20 @@ sculpt {
 ```
 
 Flip one `add()` to `carve()` and a bump becomes a dent. That one-word edit suits live coding.
+
+### A field rebuilt from cubes: voxelized
+
+`voxelized(size:)` rebuilds any field out of cubes on a grid: a voxel model, pixel art, a world built from blocks. Every cell whose center lies inside the field becomes one block. The block takes the field's color at that center. Voxels are as old as volume rendering, and a block game made them a way of building:
+
+```swift
+let melt = SDF3D.sphere(radius: 1.25).colored(Color(hex: 0xE8A24A))
+    .smoothUnion(SDF3D.torus(radius: 1.75, tube: 0.38).colored(Color(hex: 0x3E8FB0)), k: 0.45)
+drawSDF3D(melt.voxelized(size: 0.16))
+```
+
+<img src="Images/32-SculptingWithFields/Blocks.jpg" alt="The same melt of an orange sphere, a blue ring, and a red cap three times: as a smooth surface, rebuilt from large blocks, and rebuilt from small ones, each block one flat color with darker seams and creases" width="560">
+
+The smooth union's blended seam lands a block at a time, since each block reads one color. The faces are flat and square to the grid. A thin seam runs along each face's edges, and a face darkens where a neighbor rises beside it. A slab one block thick reads as pixel art from the front. The tracer pays for the cubes: a block field costs about three times the field it came from. The [reference](../Docs/Drawing/Combinators.md#blocks) has the seams, the gaps, and why a slab has to sit on the cell centers. [`Examples/3D/Raymarching/RaymarchedBlocks`](../Examples/3D/Raymarching/RaymarchedBlocks/Sketch.swift) builds a model, an island, and a heart.
 
 ## Space folded and detail without end: domain repetition and fractals
 

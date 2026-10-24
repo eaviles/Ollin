@@ -464,6 +464,13 @@ public struct Filter: Sendable {
         /// The layer as a sheet curling up from a corner around a cylinder.
         case pagePeel(corner: Vector2, amount: Double, radius: Double, shading: Double,
                       sheen: Double, shadow: Double, back: SIMD4<Float>)
+        /// Reveal the layer pixel by pixel in `order` as `progress` passes each
+        /// pixel's place in it, across a front `feather` of the order wide.
+        case wipe(WipeOrder, progress: Double, feather: Double)
+        /// Copies of the layer laid out by `layout`, each one the last turned,
+        /// scaled, faded, and hue-shifted by the per-copy steps.
+        case repeated(layout: CopyLayout, count: Int, scale: Double, rotation: Double,
+                      opacity: Double, hueShift: Double, jitter: Double, seed: Int)
         /// Thermal-camera rendering of the layer's alpha shape: heat blooming
         /// inside, a halo radiating outside, mapped through a palette.
         case heatmap(colors: [SIMD4<Float>], contour: Double, innerGlow: Double,
@@ -510,6 +517,9 @@ public struct Filter: Sendable {
         /// Paint fading over `radius` pixels from the layer's edge, outward and
         /// under it, or (`inside`) inward over it.
         case glow(radius: Double, color: SIMD4<Float>, inside: Bool)
+        /// A band of light on the layer's edge with colored spots racing around it.
+        case edgeGlow(width: Double, colors: [SIMD4<Float>], spots: Int, spotSize: Double,
+                      pulse: Double, bloom: Double, center: Vector2, phase: Double)
         /// The band `width` pixels in from the edge raised into a lit slope.
         case bevel(width: Double, depth: Double, profile: BevelProfile, angle: Double,
                    elevation: Double, highlight: SIMD4<Float>, shadow: SIMD4<Float>)
@@ -2234,6 +2244,40 @@ extension Filter {
     /// of 0 leaves the layer exactly as it was.
     public static func innerGlow(radius: Double = 16, color: Color = .white) -> Filter {
         Filter(kind: .glow(radius: max(0, radius), color: color.linearRGBA, inside: true))
+    }
+
+    /// Lay a band of light along the layer's edge, `width` pixels out from it, with
+    /// spots of each color racing around the shape.
+    ///
+    /// ```swift
+    /// drawImage(logo.filtered(.edgeGlow(width: 18, colors: [Color(hex: 0x7B2FF7), Color(hex: 0x00E0FF)],
+    ///                                   phase: time)).image, 0, 0)
+    /// ```
+    ///
+    /// The band follows the measured distance from the edge, as `outerGlow` does, so
+    /// it hugs letters, photographs, and shapes alike: brightest on the edge, fading
+    /// over `width` outside and over a third of that inside. Each color sends `spots`
+    /// spots around the shape, placed by their angle around `center` (fractions of
+    /// the layer, the middle by default) and `spotSize` of a turn long; the first
+    /// color runs clockwise, the next counterclockwise, and so on, each a little
+    /// faster than the one before, so where two colors cross they add up rather
+    /// than mix to mud. The light is folded together one color at a time in linear
+    /// light; `bloom` turns what piles past full brightness toward white, the hot
+    /// core of a lamp; and the sum is laid over the layer as emitted light, which
+    /// raises the alpha over transparency and never darkens a pixel.
+    ///
+    /// `phase` moves the spots a quarter of the way around a second when given
+    /// `time`. `pulse` from 0 to 1 sets how strongly the band and the spots beat
+    /// together, a double beat once a unit of phase. A `width` of 0 or no colors
+    /// leaves the layer exactly as it was.
+    public static func edgeGlow(width: Double = 16, colors: [Color] = [.magenta, .cyan],
+                                spots: Int = 3, spotSize: Double = 0.06, pulse: Double = 0,
+                                bloom: Double = 0.5, center: Vector2 = Vector2(0.5, 0.5),
+                                phase: Double = 0) -> Filter {
+        Filter(kind: .edgeGlow(width: max(0, width), colors: colors.prefix(8).map(\.linearRGBA),
+                               spots: min(max(spots, 0), 16), spotSize: max(spotSize, 0.001),
+                               pulse: min(max(pulse, 0), 1), bloom: min(max(bloom, 0), 1),
+                               center: center, phase: phase))
     }
 
     /// Raise the layer's edge into a lit slope: the band `width` pixels in from the

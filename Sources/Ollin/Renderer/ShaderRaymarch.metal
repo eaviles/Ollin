@@ -462,18 +462,157 @@ static float3 ollin_sdf3d_xform(float3 p, SDFNode3D nd) {
     }
 }
 
+// --- Blocks (the voxelized scope) ---
+// A voxelized field reads its child once at the query point and, inside the band
+// near the surface, again at the centers of the eight cells nearest the point
+// (the point's own cell and its neighbors toward the nearest corner). A cell is a
+// block when the child is negative at its center. Beyond the band the child's own
+// distance less the block's half diagonal is a safe step; inside it the nearest
+// block of the eight, capped at half a cell (no block outside the eight is
+// nearer), is. The walk (below, and the page's own) does the looping; these do
+// the arithmetic.
+
+// The cell offset (0 or 1 per axis, to be multiplied by the octant) of read `k`.
+static float3 ollin_voxel_corner(int k) {
+    return float3(float(k % 2), float((k / 2) % 2), float((k / 4) % 2));
+}
+
+// Whether the cell `cell` was read as a block: 0 when it is not one of the eight.
+static float ollin_voxel_occupied(float3 cell, float3 base, float3 oct, uint mask) {
+    float3 rel = (cell - base) * oct;
+    if (any(rel < -0.5) || any(rel > 1.5)) { return 0.0; }
+    uint bit = uint(rel.x + 0.5) + 2u * uint(rel.y + 0.5) + 4u * uint(rel.z + 0.5);
+    return float((mask >> bit) & 1u);
+}
+
+// The color a block shows at `p`: the color its center read (`col`), moved by a
+// tone fixed to the block, darkened along the face's edges (the seams), and
+// darkened where a neighbor rises beside the face (the crease occlusion, read
+// from the eight cells' occupancy as stacked blocks shade their corners). `b` is
+// the block's half size; `look` = (gap, jitter, seams, occlusion).
+static float4 ollin_voxel_shade(float3 p, float3 cell, float s, float b, float3 base, float3 oct,
+                                uint mask, float4 col, float4 look, float seed) {
+    float3 q = p - (cell + 0.5) * s;
+    float3 aq = abs(q);
+    int axis = (aq.x >= aq.y && aq.x >= aq.z) ? 0 : ((aq.y >= aq.z) ? 1 : 2);
+    int t1 = (axis + 1) % 3;
+    int t2 = (axis + 2) % 3;
+    float3 n = float3(0.0);
+    n[axis] = q[axis] >= 0.0 ? 1.0 : -1.0;
+    float3 e1 = float3(0.0);
+    e1[t1] = q[t1] >= 0.0 ? 1.0 : -1.0;
+    float3 e2 = float3(0.0);
+    e2[t2] = q[t2] >= 0.0 ? 1.0 : -1.0;
+    float u1 = clamp(aq[t1] / max(b, 1e-6), 0.0, 1.0);
+    float u2 = clamp(aq[t2] / max(b, 1e-6), 0.0, 1.0);
+    float side1 = ollin_voxel_occupied(cell + n + e1, base, oct, mask);
+    float side2 = ollin_voxel_occupied(cell + n + e2, base, oct, mask);
+    float corner = ollin_voxel_occupied(cell + n + e1 + e2, base, oct, mask);
+    float w1 = u1 * u1;
+    float w2 = u2 * u2;
+    float occ = clamp(side1 * w1 + side2 * w2 + corner * (1.0 - side1) * (1.0 - side2) * w1 * w2, 0.0, 1.0);
+    float shade = 1.0 - look.w * 0.6 * occ;
+    float edge = min(b - aq[t1], b - aq[t2]);
+    float seam = 1.0 - look.z * (1.0 - smoothstep(0.0, 0.08 * s, edge));
+    float tone = 1.0 + look.y * (hash13(cell * 0.6180339 + float3(seed * 0.137, seed * 0.271, seed * 0.419)) * 2.0 - 1.0);
+    return float4(clamp(col.rgb * tone * shade * seam, 0.0, 1.0), col.a);
+}
+
+// The distance from `p` to the boundary of the eight cells read around it (two
+// cells a side, `base` and its neighbor toward `oct` on each axis): no block
+// outside them is nearer than this, which is at least half a cell.
+static float ollin_voxel_region(float3 p, float3 base, float3 oct, float s) {
+    float3 lo = (base + min(oct, float3(0.0))) * s;
+    float3 hi = (base + max(oct, float3(0.0)) + 1.0) * s;
+    float3 inside = min(p - lo, hi - p);
+    return max(min(inside.x, min(inside.y, inside.z)), 0.0);
+}
+
+// The outward normal of the face of a block (middle `c`, half size `b`) that
+// `p` is on or nearest: the axis along which it sits farthest out.
+static float3 ollin_voxel_face(float3 p, float3 c, float b) {
+    float3 q = p - c;
+    float3 aq = abs(q);
+    if (aq.x >= aq.y && aq.x >= aq.z) { return float3(q.x >= 0.0 ? 1.0 : -1.0, 0.0, 0.0); }
+    if (aq.y >= aq.z) { return float3(0.0, q.y >= 0.0 ? 1.0 : -1.0, 0.0); }
+    return float3(0.0, 0.0, q.z >= 0.0 ? 1.0 : -1.0);
+}
+
+// The index (0 to 7) of a cell beside the face of block `cell` that `p` is on
+// which the crease shading reads and nothing has read yet, or -1: the cell over
+// the face stepped toward the nearer edge on each of the face's two axes, and
+// the one over the corner between them. A cell the probe rules out counts as
+// read (it is empty).
+static int ollin_voxel_crease_cell(float3 p, float3 cell, float s, float3 base, float3 oct,
+                                   uint known, float probe) {
+    float3 q = p - (cell + 0.5) * s;
+    float3 aq = abs(q);
+    int axis = (aq.x >= aq.y && aq.x >= aq.z) ? 0 : ((aq.y >= aq.z) ? 1 : 2);
+    int t1 = (axis + 1) % 3;
+    int t2 = (axis + 2) % 3;
+    float3 n = float3(0.0);
+    n[axis] = q[axis] >= 0.0 ? 1.0 : -1.0;
+    float3 e1 = float3(0.0);
+    e1[t1] = q[t1] >= 0.0 ? 1.0 : -1.0;
+    float3 e2 = float3(0.0);
+    e2[t2] = q[t2] >= 0.0 ? 1.0 : -1.0;
+    for (int j = 0; j < 3; j++) {
+        float3 other = cell + n + (j == 0 ? e1 : (j == 1 ? e2 : e1 + e2));
+        float3 rel = (other - base) * oct;
+        if (any(rel < -0.5) || any(rel > 1.5)) { continue; }
+        int k = int(rel.x + 0.5) + 2 * int(rel.y + 0.5) + 4 * int(rel.z + 0.5);
+        if (((known >> uint(k)) & 1u) != 0u) { continue; }
+        if (length(p - (other + 0.5) * s) <= probe) { continue; }
+        return k;
+    }
+    return -1;
+}
+
 // OLLIN_LIB_END raymarch
+
+// What a voxel scope read last, kept by the caller across calls so the march's
+// next step (and the normal at the point it stopped) reuses the eight cells it
+// already read: the scope (its BEGIN's index), the region (base cell and octant),
+// which of the eight were read, which are blocks, and the color each block's
+// center read. A step that lands in another region starts it over.
+struct OllinVoxelCache {
+    int scope;
+    float3 base;
+    float3 oct;
+    uint known;
+    uint mask;
+    float4 colors[8];
+};
+
+static OllinVoxelCache ollin_voxel_cache_empty() {
+    OllinVoxelCache c;
+    c.scope = -1;
+    c.base = float3(0.0);
+    c.oct = float3(0.0);
+    c.known = 0u;
+    c.mask = 0u;
+    for (int k = 0; k < 8; k++) { c.colors[k] = float4(0.0); }
+    return c;
+}
 
 // Walk the field's node program at field-local point `p0`, returning distance + color
 // (the value-stack top). Two fixed-depth stacks, clamped on overflow (the CPU also caps).
 static float ollin_sdf3d_field(float3 p0, const device SDFNode3D *nodes,
-                               uint start, uint count, thread float4 &outColor) {
+                               uint start, uint count, thread float4 &outColor,
+                               thread float3 &outNormal, thread OllinVoxelCache &cache) {
     float  distStack[OLLIN_SDF3D_VALUE_STACK];
     float4 colStack[OLLIN_SDF3D_VALUE_STACK];
     float3 pointStack[OLLIN_SDF3D_POINT_STACK];
     int sp = 0;   // value stack pointer
     int pp = 0;   // point stack pointer
     float3 p = p0;
+    // One voxel scope's state (the CPU strips a scope nested in another): the
+    // query point, which read is next (-1 the read at the point itself), and the
+    // child's distance at the point; the eight cells themselves are in `cache`.
+    float3 vOrigin = float3(0.0);
+    int vPhase = -1;
+    float vProbe = 0.0;
+    outNormal = float3(0.0);
 
     for (uint i = 0u; i < count; i++) {
         SDFNode3D nd = nodes[start + i];
@@ -519,6 +658,101 @@ static float ollin_sdf3d_field(float3 p0, const device SDFNode3D *nodes,
             if (pp < OLLIN_SDF3D_POINT_STACK) { pointStack[pp] = p; pp++; }
             p = ollin_sdf3d_xform(p, nd);
             break;
+        case 5u:     // VOXEL_BEGIN -> keep the query point; the child reads it first
+            if (pp < OLLIN_SDF3D_POINT_STACK) { pointStack[pp] = p; pp++; }
+            vOrigin = p;
+            vPhase = -1;
+            break;
+        case 6u: {   // VOXEL_END -> take the child's read; read the next cell, or push the blocks
+            float d = 1.0e9;
+            float4 cd = float4(0.0);
+            if (sp >= 1) { sp--; d = distStack[sp]; cd = colStack[sp]; }
+            float s = nd.k;
+            float h = 0.5 * s;
+            float b = h * (1.0 - nd.geo0.x);
+            int scope = int(i) - int(nd.extra);
+            bool done = false;
+            float result = 0.0;
+            float4 resultColor = cd;
+            if (vPhase < 0) {
+                float far = d - b * 1.7320508;
+                if (far > h) {
+                    result = far;
+                    done = true;
+                } else {
+                    float3 g = vOrigin / s;
+                    float3 base = floor(g);
+                    float3 oct = float3(g.x - base.x >= 0.5 ? 1.0 : -1.0,
+                                        g.y - base.y >= 0.5 ? 1.0 : -1.0,
+                                        g.z - base.z >= 0.5 ? 1.0 : -1.0);
+                    if (cache.scope != scope || any(cache.base != base) || any(cache.oct != oct)) {
+                        cache.scope = scope;
+                        cache.base = base;
+                        cache.oct = oct;
+                        cache.known = 0u;
+                        cache.mask = 0u;
+                    }
+                    vProbe = d;
+                    vPhase = 0;
+                }
+            } else {
+                uint bit = 1u << uint(vPhase);
+                cache.known |= bit;
+                if (d < 0.0) { cache.mask |= bit; cache.colors[vPhase] = cd; }
+            }
+            if (!done) {
+                // The nearest block among the cells read, and the cell to read next:
+                // the nearest one not yet read that could still beat it (no block
+                // outside the eight is nearer than the region's edge, and a center
+                // no farther from the point than the child's distance there cannot
+                // be inside it). On a block's face, the three cells beside the face
+                // are read too, since the crease shading asks for them.
+                float best = 1.0e9;
+                int bestK = -1;
+                int next = -1;
+                float nextD = 1.0e9;
+                for (int k = 0; k < 8; k++) {
+                    float3 cell = cache.base + ollin_voxel_corner(k) * cache.oct;
+                    float bd = ollin_sd3_box(vOrigin - (cell + 0.5) * s, float3(b));
+                    if (((cache.mask >> uint(k)) & 1u) != 0u) {
+                        if (bd < best) { best = bd; bestK = k; }
+                    } else if (((cache.known >> uint(k)) & 1u) == 0u && bd < nextD
+                               && length(vOrigin - (cell + 0.5) * s) > vProbe) {
+                        nextD = bd;
+                        next = k;
+                    }
+                }
+                float limit = min(best, ollin_voxel_region(vOrigin, cache.base, cache.oct, s));
+                if (next >= 0 && nextD >= limit) { next = -1; }
+                if (next < 0 && bestK >= 0 && best < 0.02 * s) {
+                    float3 cell = cache.base + ollin_voxel_corner(bestK) * cache.oct;
+                    next = ollin_voxel_crease_cell(vOrigin, cell, s, cache.base, cache.oct, cache.known, vProbe);
+                }
+                if (next >= 0) {
+                    vPhase = next;
+                } else {
+                    result = max(vProbe - b * 1.7320508, limit);
+                    if (bestK >= 0) {
+                        float3 cell = cache.base + ollin_voxel_corner(bestK) * cache.oct;
+                        resultColor = ollin_voxel_shade(vOrigin, cell, s, b, cache.base, cache.oct, cache.mask,
+                                                        cache.colors[bestK], nd.geo0, nd.geo1.x);
+                        outNormal = ollin_voxel_face(vOrigin, (cell + 0.5) * s, b);
+                    } else {
+                        outNormal = float3(0.0);
+                    }
+                    done = true;
+                }
+            }
+            if (done) {
+                if (pp > 0) { pp--; p = pointStack[pp]; }
+                if (sp < OLLIN_SDF3D_VALUE_STACK) { distStack[sp] = result; colStack[sp] = resultColor; sp++; }
+                vPhase = -1;
+            } else {
+                p = (cache.base + ollin_voxel_corner(vPhase) * cache.oct + 0.5) * s;
+                i -= uint(nd.extra);   // back to BEGIN; the loop steps onto the child again
+            }
+            break;
+        }
         default:     // RESTORE_P -> pop point, apply the scope's distance scale
             if (pp > 0) { pp--; p = pointStack[pp]; }
             if (nd.k != 1.0 && sp >= 1) { distStack[sp-1] *= nd.k; }
@@ -532,14 +766,38 @@ static float ollin_sdf3d_field(float3 p0, const device SDFNode3D *nodes,
 
 // The world-space scene field for one group: map the world point into the field's local
 // frame, evaluate the node VM, and scale the local distance back to world units.
+// The `cache` form keeps a voxel scope's cells between calls along one ray.
+static float ollin_sdf3d_world(float3 pw, SDF3DGroupInstance g, const device SDFNode3D *nodes,
+                               thread float4 &col, thread OllinVoxelCache &cache) {
+    float3 pl = (g.inverseModel * float4(pw, 1.0)).xyz;
+    float3 unused;
+    return ollin_sdf3d_field(pl, nodes, g.nodeStart, g.nodeCount, col, unused, cache) * g.modelScale;
+}
+
 static float ollin_sdf3d_world(float3 pw, SDF3DGroupInstance g,
                                const device SDFNode3D *nodes, thread float4 &col) {
-    float3 pl = (g.inverseModel * float4(pw, 1.0)).xyz;
-    return ollin_sdf3d_field(pl, nodes, g.nodeStart, g.nodeCount, col) * g.modelScale;
+    OllinVoxelCache cache = ollin_voxel_cache_empty();
+    return ollin_sdf3d_world(pw, g, nodes, col, cache);
 }
 
 // Tetrahedron (4-tap) normal of the world field. `e` is a small world-space step.
-static float3 ollin_sdf3d_normal(float3 pw, SDF3DGroupInstance g, const device SDFNode3D *nodes) {
+// A field whose last instruction is a voxel scope's end is blocks all the way
+// out: its normal is the face of the nearest block, read in the one walk that
+// finds the block rather than four, and exactly square to the grid.
+static float3 ollin_sdf3d_normal(float3 pw, SDF3DGroupInstance g, const device SDFNode3D *nodes,
+                                 thread OllinVoxelCache &cache) {
+    if (g.nodeCount > 0u && nodes[g.nodeStart + g.nodeCount - 1u].kind == 6u) {
+        float3 pl = (g.inverseModel * float4(pw, 1.0)).xyz;
+        float4 unusedColor;
+        float3 face;
+        ollin_sdf3d_field(pl, nodes, g.nodeStart, g.nodeCount, unusedColor, face, cache);
+        if (dot(face, face) > 0.5) {
+            // Local to world by the inverse transpose of the model, which is the
+            // transpose of the inverse the group already carries.
+            float3x3 inv = float3x3(g.inverseModel[0].xyz, g.inverseModel[1].xyz, g.inverseModel[2].xyz);
+            return normalize(transpose(inv) * face);
+        }
+    }
     const float e = g.normalEpsilon > 0.0 ? g.normalEpsilon : 0.0008;
     const float2 k = float2(1.0, -1.0);
     float4 dummy;
@@ -548,6 +806,11 @@ static float3 ollin_sdf3d_normal(float3 pw, SDF3DGroupInstance g, const device S
         k.yyx * ollin_sdf3d_world(pw + k.yyx * e, g, nodes, dummy) +
         k.yxy * ollin_sdf3d_world(pw + k.yxy * e, g, nodes, dummy) +
         k.xxx * ollin_sdf3d_world(pw + k.xxx * e, g, nodes, dummy));
+}
+
+static float3 ollin_sdf3d_normal(float3 pw, SDF3DGroupInstance g, const device SDFNode3D *nodes) {
+    OllinVoxelCache cache = ollin_voxel_cache_empty();
+    return ollin_sdf3d_normal(pw, g, nodes, cache);
 }
 
 // Analytic soft self-shadow: march from a hit point toward the light through the same
@@ -562,9 +825,10 @@ static float ollin_sdf3d_softshadow(float3 ro, float3 rd, float maxt, float k, i
     float res = 1.0;
     float t = 0.02;          // start off the surface to skip the origin's own zero distance
     float4 dummy;
+    OllinVoxelCache cache = ollin_voxel_cache_empty();
     for (int i = 0; i < steps; i++) {
         if (t >= maxt) break;
-        float h = ollin_sdf3d_world(ro + rd * t, g, nodes, dummy);
+        float h = ollin_sdf3d_world(ro + rd * t, g, nodes, dummy, cache);
         if (h < 0.001) return 0.0;
         res = min(res, k * h / t);
         t += h * OLLIN_RAYMARCH_STEP_SCALE;
@@ -836,10 +1100,13 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
             }
         }
     }
+    // A block field's eight cells, kept from one step to the next along this ray
+    // and on into the normal at the point where it stops.
+    OllinVoxelCache voxels = ollin_voxel_cache_empty();
     for (int i = 0; i < steps; i++) {
         if (t > t1) break;
         float3 pw = ro + rd * t;
-        float d = ollin_sdf3d_world(pw, g, nodes, col);
+        float d = ollin_sdf3d_world(pw, g, nodes, col, voxels);
         if (d < OLLIN_RAYMARCH_EPS) { hit = true; break; }
         float footprint = (orthographic ? 1.0 : t) * kPixel;
         float ratio = d / max(footprint, 1e-6);
@@ -866,9 +1133,9 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
         coverage = clamp(1.0 - minRatio, 0.0, 1.0);
         if (coverage < 0.004) { discard_fragment(); return miss; }
         pw = ro + rd * tNear;
-        ollin_sdf3d_world(pw, g, nodes, col);   // the leaf color at the closest approach
+        ollin_sdf3d_world(pw, g, nodes, col, voxels);   // the leaf color at the closest approach
     }
-    float3 n = ollin_sdf3d_normal(pw, g, nodes);
+    float3 n = ollin_sdf3d_normal(pw, g, nodes, voxels);
 
     // Shadow toward each casting light, but only where one is set (castShadows()); a slot
     // with no caster keeps -1, and slot 0 at -1 tells the shading tail this is a mesh, to

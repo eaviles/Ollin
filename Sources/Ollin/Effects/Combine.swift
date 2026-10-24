@@ -123,6 +123,9 @@ public struct Combine: Sendable {
         /// read as a depth map: the red copy shifted one way and the cyan copy
         /// the other by `separation` times the pixel's depth off `focus`.
         case anaglyph(separation: Double, focus: Double, amount: Double)
+        /// Turn the base into the aux pixel by pixel in `order` as `progress` passes
+        /// each pixel's place in it, across a front `feather` of the order wide.
+        case wipe(WipeOrder, progress: Double, feather: Double)
     }
 
     let kind: Kind

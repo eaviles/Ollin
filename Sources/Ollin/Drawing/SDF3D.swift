@@ -53,6 +53,17 @@ public struct SDF3D {
         case combine(Combine, SDF3D, SDF3D, Float, Float)   // op, lhs, rhs, k (smoothing / morph / joint size), extra (stairs steps)
         case modify(Modifier, SDF3D, Float, Float)   // round/onion/displace, child, amount, frequency (displace only)
         case transformed(Transform, SDF3D)           // a point-space scope around a child
+        case voxelized(SDF3D, Voxels)                // the child rebuilt as blocks on a grid
+    }
+
+    /// How `voxelized` cuts and shades its blocks (field units and 0...1 amounts).
+    struct Voxels {
+        var size: Float
+        var gap: Float
+        var jitter: Float
+        var seams: Float
+        var occlusion: Float
+        var seed: Float
     }
 
     var node: Node
@@ -338,6 +349,26 @@ public extension SDF3D {
             return .init(.modify(m, c.painting(color), amt, freq))
         case let .transformed(t, c):
             return .init(.transformed(t, c.painting(color)))
+        case let .voxelized(c, v):
+            return .init(.voxelized(c.painting(color), v))
+        }
+    }
+
+    /// The field with every `voxelized` scope inside it replaced by its child: the
+    /// shader keeps one voxel scope's state at a time, so a scope nested in another
+    /// takes the outer one's blocks only.
+    internal func strippingVoxels() -> SDF3D {
+        switch node {
+        case .leaf:
+            return self
+        case let .combine(op, a, b, k, n):
+            return .init(.combine(op, a.strippingVoxels(), b.strippingVoxels(), k, n))
+        case let .modify(m, c, amt, freq):
+            return .init(.modify(m, c.strippingVoxels(), amt, freq))
+        case let .transformed(t, c):
+            return .init(.transformed(t, c.strippingVoxels()))
+        case let .voxelized(c, _):
+            return c.strippingVoxels()
         }
     }
 }
@@ -439,6 +470,35 @@ public extension SDF3D {
     /// `displaced(amplitude:frequency:)`.
     func roughened(amplitude: Double, frequency: Double) -> SDF3D {
         .init(.modify(.displaceNoise, self, Float(max(amplitude, 0)), Float(max(frequency, 0))))
+    }
+
+    /// Rebuild the field out of cubes `size` units on a side, on a grid aligned to
+    /// the field's origin: every cell whose center is inside the field becomes a
+    /// block, so a sphere becomes a voxel model and a thin slab becomes pixel art.
+    ///
+    /// ```swift
+    /// drawSDF3D(.sphere(radius: 1).smoothUnion(.torus(radius: 1.1, tube: 0.25), k: 0.3)
+    ///     .voxelized(size: 0.12))
+    /// ```
+    ///
+    /// Each block takes the color the field has at its center, and is shaded as a
+    /// block: its faces are flat and square to the grid, so it lights in steps;
+    /// `occlusion` darkens a face where a neighbor rises beside it, the crease
+    /// darkening of stacked blocks; `seams` darkens a thin line along every face's
+    /// edges, so a flat run of blocks still reads as bricks; and `jitter` moves each
+    /// block's tone by a seeded amount of its own, the same block the same tone on
+    /// every frame for one `seed`. `gap` from 0 to 0.9 shrinks every block inside its
+    /// cell, opening real grooves between them. Smaller blocks cost more to march,
+    /// since the march steps no farther than half a block near the surface. A
+    /// `voxelized` field inside another takes the outer one's blocks only.
+    func voxelized(size: Double, gap: Double = 0, jitter: Double = 0.08, seams: Double = 0.3,
+                   occlusion: Double = 0.5, seed: Int = 0) -> SDF3D {
+        .init(.voxelized(self, Voxels(size: Float(max(size, 1e-3)),
+                                      gap: Float(min(max(gap, 0), 0.9)),
+                                      jitter: Float(min(max(jitter, 0), 1)),
+                                      seams: Float(min(max(seams, 0), 1)),
+                                      occlusion: Float(min(max(occlusion, 0), 1)),
+                                      seed: Float(seed % 4096))))
     }
 }
 
@@ -545,6 +605,26 @@ extension SDF3D {
             return FlattenResult(lo: rc.lo - SIMD3(repeating: grow),
                                  hi: rc.hi + SIMD3(repeating: grow),
                                  valueDepth: rc.valueDepth, pointDepth: rc.pointDepth,
+                                 unbounded: rc.unbounded, normalEpsilon: rc.normalEpsilon)
+
+        case let .voxelized(c, v):
+            // A scope the shader loops over: BEGIN keeps the query point, the child
+            // is read there and then at the eight nearest cell centers, and END
+            // (holding the size, the shading, and how far back BEGIN is) decides
+            // after each read whether to read again or to push the blocks' distance.
+            let begin = nodes.count
+            nodes.append(SDFNode3D(kind: 5, sel: 0, k: v.size, extra: 0,
+                                   color: .zero, geo0: .zero, geo1: .zero))
+            let rc = c.strippingVoxels().flatten(defaultFill: defaultFill, into: &nodes)
+            nodes.append(SDFNode3D(kind: 6, sel: 0, k: v.size, extra: Float(nodes.count - begin),
+                                   color: .zero,
+                                   geo0: SIMD4(v.gap, v.jitter, v.seams, v.occlusion),
+                                   geo1: SIMD4(v.seed, 0, 0, 0)))
+            // A block reaches half a cell past the center that decides it, and that
+            // center lies inside the child's bounds.
+            let grow = SIMD3<Float>(repeating: v.size)
+            return FlattenResult(lo: rc.lo - grow, hi: rc.hi + grow,
+                                 valueDepth: rc.valueDepth, pointDepth: rc.pointDepth + 1,
                                  unbounded: rc.unbounded, normalEpsilon: rc.normalEpsilon)
 
         case let .transformed(t, c):

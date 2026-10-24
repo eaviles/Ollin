@@ -3141,3 +3141,23 @@ fragment float4 ollin_contact_shadow(PresentOut in [[stage_in]],
     }
     return mask;
 }
+
+// wipe (combine): turn the base into the aux in an order (see ollin_wipe_order
+// in ShaderEffects). params[0...2] the order's rows, params[3] = (progress,
+// feather, -, -); texture(2) the permutation strip. The two ends are exact: the
+// base at 0, the aux at 1.
+fragment float4 ollin_fx_wipe_combine(PresentOut in [[stage_in]],
+                                      texture2d<float> base [[texture(0)]],
+                                      texture2d<float> other [[texture(1)]],
+                                      texture2d<float> perm [[texture(2)]],
+                                      sampler samp [[sampler(0)]],
+                                      constant float4 *params [[buffer(0)]]) {
+    float4 a = base.sample(samp, in.uv);
+    float4 b = other.sample(samp, in.uv);
+    float progress = params[3].x;
+    if (progress <= 0.0) { return a; }
+    if (progress >= 1.0) { return b; }
+    float m = ollin_wipe_amount(ollin_wipe_order(in.uv, params[0], params[1], params[2], perm),
+                                progress, params[3].y);
+    return m <= 0.0 ? a : (m >= 1.0 ? b : mix(a, b, m));
+}

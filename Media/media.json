@@ -2866,6 +2866,28 @@
       "stillSmall": "examples/3D/Physics/Yard/still-640.jpg?v=e0b297d0",
       "width": 1080
     },
+    "3D/Raymarching/RaymarchedBlocks": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 7.713,
+      "sound": false,
+      "source": "d72dae100c573ab8",
+      "rendered": "2026-10-24",
+      "bytes": {
+        "loop": 9048263,
+        "loopSmall": 1401639,
+        "still": 132839,
+        "stillSmall": 44298
+      },
+      "loop": "examples/3D/Raymarching/RaymarchedBlocks/loop.mp4?v=cdba2109",
+      "loopSmall": "examples/3D/Raymarching/RaymarchedBlocks/loop-640.mp4?v=b8fe3d2b",
+      "still": "examples/3D/Raymarching/RaymarchedBlocks/still.jpg?v=7d0d83d5",
+      "stillSmall": "examples/3D/Raymarching/RaymarchedBlocks/still-640.jpg?v=3d8b72db",
+      "seed": 1
+    },
     "3D/Raymarching/RaymarchedCastShadow": {
       "bytes": {
         "loop": 1121474,
@@ -5084,6 +5106,28 @@
       "loopSmall": "examples/Effects/Textures/loop-640.mp4?v=3aad3708",
       "still": "examples/Effects/Textures/still.jpg?v=37978f77",
       "stillSmall": "examples/Effects/Textures/still-640.jpg?v=6740dd17",
+      "seed": 1
+    },
+    "Effects/WipesAndCopies": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 62.324,
+      "sound": false,
+      "source": "836ba48f0fbd991f",
+      "rendered": "2026-10-24",
+      "bytes": {
+        "loop": 14330016,
+        "loopSmall": 3081883,
+        "still": 778460,
+        "stillSmall": 293964
+      },
+      "loop": "examples/Effects/WipesAndCopies/loop.mp4?v=6dd7c440",
+      "loopSmall": "examples/Effects/WipesAndCopies/loop-640.mp4?v=21a1e4b2",
+      "still": "examples/Effects/WipesAndCopies/still.jpg?v=35f05b11",
+      "stillSmall": "examples/Effects/WipesAndCopies/still-640.jpg?v=0c8d9e74",
       "seed": 1
     },
     "Export/Capture": {

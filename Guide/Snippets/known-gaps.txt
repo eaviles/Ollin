@@ -74,6 +74,7 @@ c6308b0590b1  Guide/17-MarksAndMedia.md:163  cannot find 'navy' in scope
 1e41fd025294  Guide/17-MarksAndMedia.md:188  cannot find 'bath' in scope
 e393d3e0ab01  Guide/17-MarksAndMedia.md:393  cannot find 'blob' in scope
 d6f8fdb72cba  Guide/17-MarksAndMedia.md:68  cannot assign to value: 'mark' is a 'let' constant
+c51dbc7f841e  Guide/19-LayersAndEffects.md:410  cannot find 'day' in scope
 3ad05523666d  Guide/20-PicturesRestyled.md:282  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
 0979bc9f5047  Guide/20-PicturesRestyled.md:314  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
 4467bb8d08b2  Guide/20-PicturesRestyled.md:339  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
@@ -83,6 +84,7 @@ d6f8fdb72cba  Guide/17-MarksAndMedia.md:68  cannot assign to value: 'mark' is a 
 2c8e3afaeaef  Guide/21-PicturesYouSolve.md:126  cannot convert value of type '[Vector2]' to expected argument type 'RenderTarget'
 cd36a2d9f010  Guide/21-PicturesYouSolve.md:17  cannot convert value of type 'RenderTarget?' to expected argument type 'Contour'
 2065dd8af5c4  Guide/21-PicturesYouSolve.md:252  cannot convert value of type 'RenderTarget' to expected argument type 'Image'
+0d61696b5fa8  Guide/21-PicturesYouSolve.md:325  cannot find 'word' in scope
 8f074282df6a  Guide/21-PicturesYouSolve.md:67  cannot find 'bands' in scope
 70e92ab22ab8  Guide/22-IteratedForms.md:473  reference to member 'domainColoring' cannot be resolved without a contextual type
 9154907c71d0  Guide/27-Meshes.md:110  cannot find 'grown' in scope

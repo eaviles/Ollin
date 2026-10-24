@@ -46,14 +46,16 @@ struct WebFragmentTranslatorTests {
         "ollin_fx_holographic_foil", "ollin_fx_chrome", "ollin_fx_bubble_wrap",
         "ollin_fx_anaglyph", "ollin_fx_mirage", "ollin_fx_schlieren",
         "ollin_fx_vhs", "ollin_fx_light_leak", "ollin_fx_page_peel",
+        "ollin_fx_wipe", "ollin_fx_repeated",
         // The two-pass filters' fragments: the block transform and the variable blur.
         "ollin_fx_jpeg_forward", "ollin_fx_jpeg_inverse", "ollin_fx_varblur",
         "ollin_fx_brightpass", "ollin_fx_bloom_combine", "ollin_fx_halation_combine",
         // The measured field's ladder, and the layer styles that read it or a blur.
         "ollin_field_seed", "ollin_field_flood", "ollin_field_resolve",
-        "ollin_fx_outline", "ollin_fx_glow", "ollin_fx_bevel", "ollin_fx_shadow",
+        "ollin_fx_outline", "ollin_fx_glow", "ollin_fx_edge_glow", "ollin_fx_bevel", "ollin_fx_shadow",
         // Combines
         "ollin_fx_mask", "ollin_fx_displace", "ollin_fx_lic", "ollin_fx_mix", "ollin_fx_paint_mix",
+        "ollin_fx_wipe_combine",
         // Generators
         "ollin_gen_checkers", "ollin_gen_grid", "ollin_gen_bars", "ollin_gen_noise",
         "ollin_gen_cellular", "ollin_gen_mesh_gradient", "ollin_gen_filaments",

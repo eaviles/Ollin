@@ -36,6 +36,7 @@ the *whole* merged region or outline as one continuous surface instead. See
 - [Scoped blocks](#scoped-blocks)
 - [3D fields](#fields-3d)
 - [Fractal leaves](#fractals)
+- [Blocks](#blocks)
 - [Notes and limits](#notes)
 
 <a name="quick-start"></a>
@@ -556,6 +557,50 @@ tiers, `raymarchResolution(_:)` takes a custom fraction, so `raymarchResolution(
 at 75% at full coverage. The tiers are 1.0, 0.5, and 0.25. For an exact, machine-independent
 *march budget* use `raymarchSteps(_:)`, which always runs at full resolution.
 `Scripts/benchmark.sh raymarch` measures the per-GPU cost.
+
+<a name="blocks"></a>
+
+#### Blocks
+
+`voxelized(size:gap:jitter:seams:occlusion:seed:)` rebuilds any 3D field out of cubes
+`size` units on a side, on a grid aligned to the field's own origin: every cell whose center is
+inside the field becomes a block. A sphere becomes a voxel model, a melt becomes one built
+block by block, and a slab one block thick becomes pixel art seen from the front and a row of
+bricks from the side.
+
+<picture>
+  <img src="../../Guide/Images/32-SculptingWithFields/Blocks.jpg" alt="The same melt of an orange sphere, a blue ring, and a red cap three times: as a smooth surface, rebuilt from large blocks, and rebuilt from small ones, each block one flat color with darker seams and creases" width="680">
+</picture>
+
+```swift
+let melt = SDF3D.sphere(radius: 1.25).colored(Color(hex: 0xE8A24A))
+    .smoothUnion(SDF3D.torus(radius: 1.75, tube: 0.38).colored(Color(hex: 0x3E8FB0)), k: 0.45)
+drawSDF3D(melt.voxelized(size: 0.16))
+```
+
+Each block takes the color the field has at its center, so a smooth union's blended seam lands
+a block at a time. It is shaded as a block: its faces are flat and square to the grid, read
+from the nearest block's face rather than from the field's gradient, so it lights in steps.
+`occlusion` darkens a face where a neighbor rises beside it, the crease shading of stacked
+blocks; `seams` darkens a thin line along every face's edges, so a flat run of blocks still
+reads as bricks; `jitter` moves each block's tone by a seeded amount of its own, the same block
+the same tone on every frame for one `seed`. `gap` from 0 to 0.9 shrinks every block inside its
+cell and opens real grooves between them.
+
+The grid is the field's, so transforms written before `voxelized` move the shape through the
+grid (a turn re-cuts the blocks) and transforms after it move the finished blocks. A slab meant
+to be one block thick has to hold a row of cell centers, which sit half a block from the grid
+lines: build it a block thick around `size / 2`, not around 0. A `voxelized` field inside
+another takes the outer one's blocks only.
+
+What it costs: away from the surface the march steps by the field's own distance less a block's
+half diagonal; within about three half blocks of it, each step also reads the field at the
+centers of the eight nearest cells, the nearest first, stopping once no unread cell could hold a
+nearer block, and a step keeps the cells it read for the next. A block field costs about three
+times the field it is built from, whatever the block size, and `castShadows()` about doubles
+that, since a shadow ray grazing the blocks reads them too. Keep the field simple, with few
+leaves, when it will be drawn live. See `Examples/3D/Raymarching/RaymarchedBlocks`, and the
+page export carries a block field like any other.
 
 <a name="notes"></a>
 

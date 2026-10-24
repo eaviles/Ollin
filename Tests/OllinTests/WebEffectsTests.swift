@@ -624,6 +624,29 @@ import OllinWebGate
         }
     }
 
+    /// A wipe between two layers along shuffled bands, a layer revealed in a
+    /// checker of diamonds, copies around a ring with their hues turning, and
+    /// a glowing edge with its spots moving.
+    final class Wiped: Sketch {
+        override var canvasSize: CanvasSize { .square(120) }
+        override func draw() {
+            background(Color(hex: 0x1A1B1E))
+            let a = makeRenderTarget(width: 60, height: 60), b = makeRenderTarget(width: 60, height: 60)
+            withTarget(a) { background(Color(hex: 0xD8CFC0)); noStroke(); fill(Color(hex: 0xC2452D)); drawCircle(30, 30, 18) }
+            withTarget(b) { background(Color(hex: 0x2B6C8C)); noStroke(); fill(Color(hex: 0xF2EAD8)); drawRect(10, 20, 40, 20) }
+            let t = 0.3 + 0.05 * time
+            drawImage(a.combined(with: b, .wipe(.directional(angle: 0.4).bands(6).shuffled(seed: 3), progress: t)).image, 0, 0)
+            drawImage(b.filtered(.wipe(.cells(columns: 5, rows: 5).checker().diamond(), progress: t + 0.2)).image, 60, 0)
+            let mark = makeRenderTarget(width: 60, height: 60)
+            withTarget(mark) { noStroke(); fill(Color(hex: 0xE8A24A)); drawRect(center: Vector2(30, 30), width: 12, height: 8) }
+            drawImage(mark.filtered(.repeated(.ring(radius: 0.32, facesOut: true), count: 7, scale: 0.92,
+                                              rotation: 0.2, hueShift: 0.4, jitter: 0.3, seed: 2)).image, 0, 60)
+            let disc = makeRenderTarget(width: 60, height: 60)
+            withTarget(disc) { noStroke(); fill(Color(white: 0.4)); drawCircle(30, 30, 16) }
+            drawImage(disc.filtered(.edgeGlow(width: 6, colors: [.magenta, .cyan], spots: 2, pulse: 0.5, phase: time)).image, 60, 60)
+        }
+    }
+
     /// A blurred layer under a bloomed one, the two passes the page owns.
     final class Blurred: Sketch {
         override var canvasSize: CanvasSize { .square(120) }
@@ -1008,6 +1031,7 @@ import OllinWebGate
             ("Looked", { Looked() }, 4, 2),
             ("Taped", { Taped() }, 4, 2),
             ("Peeled", { Peeled() }, 4, 2),
+            ("Wiped, copied, and glowing", { Wiped() }, 4, 2),
             ("Measured", { Measured() }, 4, 2),
             ("Outlined", { Outlined() }, 4, 2),
             ("Shadowed", { Shadowed() }, 4, 2),

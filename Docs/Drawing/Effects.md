@@ -35,8 +35,8 @@ override func draw() {
 - [withTarget](#withtarget) - draw into a layer
 - [RenderTarget.image](#image) - composite a layer back
 - [filtered](#filtered) - run a filter over a layer
-- [Filter](#filter) - the filter catalog (blur, bloom, color, stylize, [tape and lens](#tape-and-lens))
-- [combined / Combine](#combined) - combine two layers (mask, displace, disperse, mix, seamless clone, defocus, ambient occlusion, screen-space reflections)
+- [Filter](#filter) - the filter catalog (blur, bloom, color, stylize, [tape and lens](#tape-and-lens), [wipes and copies](#wipes-and-copies))
+- [combined / Combine](#combined) - combine two layers (mask, displace, disperse, mix, wipe, seamless clone, defocus, ambient occlusion, screen-space reflections)
 - [depth](#depth) - a 3D scene's depth buffer as a layer (feed `.defocus` / `.ambientOcclusion` / `.screenSpaceReflections`)
 - [generate / Generator](#generate) - procedural pattern sources
 - [postProcess](#postprocess) - filter the whole frame
@@ -323,6 +323,64 @@ The tape's other companions live elsewhere in this page: hairline
 [`.scratches`](#generate) are a generator you composite over a picture, and the
 [`.datamosh`](#simfield) is a simulation, since a held block needs the picture it held.
 
+#### Wipes and copies
+
+A wipe takes a layer's pixels in an order, and copies lay the layer out again
+around itself. Both are one pointwise pass over the layer.
+
+- **`.wipe(_:progress:feather:)`** reveal the layer in a `WipeOrder`: as `progress`
+  climbs from 0 to 1, each pixel appears when the progress passes its place in the
+  order, across a soft front `feather` of the order's run wide (0.05 by default, 0
+  for a hard edge). Only the coverage changes, so the layer composites over whatever
+  is behind it as it comes in, and the two ends are exact: nothing at 0, the layer as
+  it was at 1. To wipe from one layer to another, use [`Combine.wipe`](#combined).
+- **`WipeOrder`** is a number for every pixel from 0 (goes first) to 1 (goes last),
+  built from one of five shapes: `.directional(angle:)` (a straight edge, 0 sweeping
+  left to right and `.pi / 2` top to bottom), `.radial(center:)` (a circle growing until
+  it reaches the farthest corner), `.angular(center:angle:)` (a clock hand, clockwise
+  from the top by default), `.cells(columns:rows:)` (blocks that go whole, in reading
+  order, up to 128 each way), and `.noise(size:seed:)` (a soft dissolve). Modifiers
+  reshape it: `.folded()` (the middle first, two edges opening outward),
+  `.tiled(_:)` (the order repeated into strips that wipe together, venetian blinds),
+  `.bands(_:)` (cut into bands that each go whole), `.shuffled(seed:)` (the bands or
+  cells in a seeded order, each still with a slot of its own), `.checker()` (every
+  other band or cell first), `.diamond()` (each cell opening as a diamond from its
+  middle), and `.reversed()`. They apply in that fixed order whatever order they are
+  written in, and the shuffle, the checker, and the diamonds need bands or cells to
+  work on. Positions are layer fractions from the top left; distances take the
+  aspect out, so a radial wipe is round on a wide layer.
+- **`.repeated(_:count:scale:rotation:opacity:hueShift:jitter:seed:)`** copies of the
+  layer laid out by a `Filter.CopyLayout`: `.grid(columns:)` (reading order, as many
+  rows as the count needs, each copy the whole layer shrunk into its cell),
+  `.ring(radius:center:angle:sweep:facesOut:)` (spaced around a circle `radius` of the
+  layer's height across, each turned to point outward with `facesOut`, as petals or
+  the numbers on a clock), or `.line(from:to:)`. Each copy is the whole layer moved so
+  its middle lands on the copy's place, so draw the thing to copy in the middle of its
+  layer. Copy `i` is scaled by `scale` to the power `i`, turned by `i` times `rotation`
+  radians, faded by `opacity` to the power `i`, and turned `i` times `hueShift` radians
+  around the OKLCH hue wheel, which keeps its lightness. `jitter` from 0 to 1 nudges each
+  copy's place, turn, and size by a seeded amount that holds from frame to frame. The
+  first copy is on top, and the copies composite back to front in premultiplied light,
+  so a trail fades away behind its leader. Up to 64 copies; a copy shrunk below two
+  thirds takes four samples, so fine detail does not alias.
+
+```swift
+let title = makeRenderTarget()
+withTarget(title) { fill(.white); textSize(200); drawText("Ollin", 160, 600) }
+let t = (time * 0.25).truncatingRemainder(dividingBy: 1)
+drawImage(title.filtered(.wipe(.cells(columns: 12, rows: 6).shuffled(seed: 2), progress: t)).image, 0, 0)
+
+let petal = makeRenderTarget()
+withTarget(petal) { fill(.orange); drawEllipse(width / 2, height / 2 - 40, 46, 120) }
+drawImage(petal.filtered(.repeated(.ring(radius: 0.18, facesOut: true), count: 9,
+                                   scale: 0.94, hueShift: 0.25)).image, 0, 0)
+```
+
+<img src="../../Guide/Images/19-LayersAndEffects/WipesAndCopies.jpg" alt="Four square panels: two layers of stripes wiped halfway along a straight edge cut into shuffled diagonal bands, the same two wiped as rings around a point, a layer revealed as a checker of diamonds, and an orange petal copied ten times around a ring, each copy turned outward and moved further around the hue wheel" width="560">
+
+See the `Effects/WipesAndCopies` example, which runs nine orders between two
+photographs and lays one petal out three ways.
+
 #### Distortion
 
 These filters warp the image's *coordinates*. They re-sample the source at a remapped position, so color passes through untouched. A warp measured from the center stays round on a non-square layer.
@@ -529,6 +587,7 @@ A `Combine` is a value descriptor like `Filter`. A value descriptor cannot hold 
 - **`.displace(amount:)`** offset the base's pixels by the aux read as a **vector field**. Red is horizontal, green is vertical, mid-gray is no shift, and the largest shift is `amount` of the layer. Feed it noise or a gradient for ripples, smearing, heat haze, and refraction.
 - **`.disperse(amount:mode:spectral:quality:)`** chromatic aberration over the base, its amount scaled per pixel by the aux's brightness. A white aux splits by the full `amount`, and a black one leaves the base alone. So the aux decides *where* the color comes apart rather than how much. `mode`, `spectral`, and `quality` mean what they mean on [`.chromaticAberration`](#filter).
 - **`.mix(amount:)`** cross-dissolve the base toward the aux by `amount` (0 = base, 1 = aux). It is the everyday transition.
+- **`.wipe(_:progress:feather:)`** wipe from the base to the aux in a [`WipeOrder`](#wipes-and-copies): as `progress` climbs from 0 to 1, each pixel turns from the base to the aux when the progress passes its place in the order, across a front `feather` of the order's run wide. At 0 the result is the base and at 1 the aux, each exactly, and at 0.5 a straight wipe holds one layer on each half with the front centered on the middle. Only the mix changes, one pointwise pass, so the two layers can be two scenes, a picture and its filtered self, or anything else.
 - **`.anaglyph(separation:focus:amount:)`** the base as a red-and-cyan stereo print whose parallax follows the aux, read as a **depth map** (luminance, 0 near and 1 far, the reading `.defocus` makes, so a 3D layer's own [`depth`](#depth) is the natural aux). At each pixel the red channel is read from a copy of the base shifted one way and the green and blue from a copy shifted the other, by `separation` layer pixels times how far the depth there sits from `focus`: a pixel at the focus depth stays put, one nearer than the focus shifts one way, one farther shifts the other, and the shift grows with the distance, which through the glasses is what places it in front of or behind the page. A dark mark comes out as a cyan copy and a red copy that meet in a fused dark, and a transparent pixel counts as white paper. `amount` mixes the print over the base. [`Filter.anaglyph`](#filter) is the one-parallax form for a layer with no depth.
 - **`.light(reach:brightness:bounces:sky:quality:)`** light a flat scene. The base is what light meets, and its alpha stops a ray. The aux is what gives light off, and the result is the light arriving at every pixel. One measurement gives you shadows that are sharp at the shape and soft further away, falloff, beams through a gap, and the color a lit wall gives back. The cost does not follow how much was drawn. See [Light in a flat sketch](Light.md) and the `Effects/Light` example.
 - **`.paintMix(amount:quality:)`** blend the base toward the aux the way scattering paints blend, rather than the way lights cross-dissolve. At each pixel both colors become reflectance spectra and mix through the Kubelka-Munk model, over a `quality`-sized set of wavelength taps. It is the GPU form of `Color.mix(_:_:t:in: .paint)` (see [Spectral color](Spectrum.md)). A yellow wash over a blue field meets it in green, and overlaps darken like glazes. The aux's own coverage gates the mix. Where the aux layer is empty the base passes through untouched, and the aux reads as paint laid over the base. `amount` is the mix where the aux is opaque.
@@ -1262,6 +1321,7 @@ The combine modifiers mirror the [`Combine`](#combined) ops:
 - **`.displaced(by:amount:)`** push the layer's pixels around by the aside read as a vector field.
 - **`.dispersed(by:amount:mode:spectral:quality:)`** pull the layer's colors apart where the aside is bright.
 - **`.mixed(with:amount:)`** cross-dissolve the layer toward the aside.
+- **`.wiped(to:_:progress:feather:)`** wipe the layer away to the aside in a [`WipeOrder`](#wipes-and-copies), 0 being the layer and 1 the aside.
 - **`.cloned(from:amount:threshold:)`** drop the aside into the layer so the join disappears, with the aside keeping its detail and taking the layer's color. It lands where the aside is opaque.
 - **`.streaked(along:length:field:)`** brush the layer along the aside read as a direction field (line integral convolution), with `field` choosing how the aside is read.
 - **`.defocused(by:focus:range:maxBlur:)`** depth of field, blurring the layer by the aside read as a depth map. It takes `blades`, `irisAngle`, and `catsEye` too, so the highlights take the shape of a real opening.

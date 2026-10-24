@@ -3828,3 +3828,241 @@ fragment float4 ollin_fx_arrows(PresentOut in [[stage_in]],
     float a = color.a * coverage;
     return float4(color.rgb * a, a);
 }
+
+// MARK: - Wipes: a layer taken in an order
+//
+// A wipe's order is a number per pixel from 0 (goes first) to 1 (goes last).
+// Five shapes make it (a straight edge, a growing circle, a clock hand, a grid
+// of cells, smooth noise) and the modifiers reshape it in one fixed order: the
+// fold, the tiling, the bands, the shuffle (a slot read from a permutation strip
+// the CPU drew from the seed), the checkerboard, the diamonds, the reversal.
+// Rows (kept in step with WipeOrder.rows): w0 = (shape, three numbers), w1 =
+// (folded, tiles, bands, pieces shuffled or 0), w2 = (checker, diamond,
+// reversed, the layer's aspect). Distances are in layer heights, so a circle
+// stays round on a wide layer.
+static inline float ollin_wipe_order(float2 uv, float4 w0, float4 w1, float4 w2,
+                                     texture2d<float> perm) {
+    float aspect = max(w2.w, 1e-6);
+    float2 p = float2((uv.x - 0.5) * aspect, uv.y - 0.5);
+    float t = 0.0;
+    float slot = -1.0;
+    float slots = 0.0;
+    float parity = 0.0;
+    float2 local = float2(0.0);
+    bool isCells = false;
+    if (w0.x < 0.5) {
+        // A straight edge: the projection on the direction, the corner farthest
+        // back at 0 and the one farthest ahead at 1.
+        float span = abs(w0.y) * aspect + abs(w0.z);
+        t = dot(p, w0.yz) / max(span, 1e-6) + 0.5;
+    } else if (w0.x < 2.5) {
+        float2 q = p - float2((w0.y - 0.5) * aspect, w0.z - 0.5);
+        if (w0.x < 1.5) {
+            // A circle, reaching 1 at the layer's farthest corner.
+            float2 far = float2(0.5 * aspect, 0.5) + abs(float2((w0.y - 0.5) * aspect, w0.z - 0.5));
+            t = length(q) / max(length(far), 1e-6);
+        } else {
+            // A clock hand from the start angle, clockwise on the canvas.
+            t = fract((atan2(q.y, q.x) - w0.w) / 6.283185307);
+        }
+    } else if (w0.x < 3.5) {
+        // Cells in reading order, each one slot.
+        float2 dims = max(w0.yz, float2(1.0));
+        float2 g = uv * dims;
+        float2 cell = clamp(floor(g), float2(0.0), dims - 1.0);
+        local = (g - cell) * 2.0 - 1.0;
+        slot = cell.y * dims.x + cell.x;
+        slots = dims.x * dims.y;
+        parity = fmod(cell.x + cell.y, 2.0);
+        t = (slot + 0.5) / slots;
+        isCells = true;
+    } else {
+        // Smooth noise, its middle stretched so the dissolve spends its time
+        // evenly rather than all at once around one half.
+        float n = ollin_fbm(p / max(w0.y, 1e-3) + float2(w0.z, w0.z * 0.61));
+        t = (n - 0.5) * 2.4 + 0.5;
+    }
+    t = clamp(t, 0.0, 1.0);
+    if (w1.x > 0.5) { t = abs(2.0 * t - 1.0); }
+    if (w1.y > 0.5) {
+        float x = t * w1.y;
+        t = x - min(floor(x), w1.y - 1.0);
+    }
+    if (w1.z > 0.5) {
+        float b = min(floor(t * w1.z), w1.z - 1.0);
+        slot = b;
+        slots = w1.z;
+        parity = fmod(b, 2.0);
+        t = (b + 0.5) / w1.z;
+        isCells = false;
+    }
+    if (w1.w > 0.5 && slot >= 0.0) {
+        slot = perm.read(uint2(uint(slot), 0u)).x;
+        t = (slot + 0.5) / slots;
+    }
+    if (w2.x > 0.5 && slot >= 0.0) { t = 0.5 * (parity + t); }
+    if (w2.y > 0.5 && isCells) { t = 0.5 * t + 0.25 * (abs(local.x) + abs(local.y)); }
+    if (w2.z > 0.5) { t = 1.0 - t; }
+    return t;
+}
+
+// How far a pixel at order `t` has turned over at `progress`: a smoothstep
+// across a front `feather` wide, centered on the progress, which is 0 for every
+// pixel at progress 0 and 1 for every pixel at progress 1.
+static inline float ollin_wipe_amount(float t, float progress, float feather) {
+    float f = max(feather, 1e-4);
+    return smoothstep(0.0, 1.0, (progress * (1.0 + f) - t) / f);
+}
+
+// wipe: reveal the layer in an order. params[0...2] the order's rows,
+// params[3] = (progress, feather, -, -); texture(1) the permutation strip. Only
+// coverage changes, and the two ends are exact: nothing at 0, the layer at 1.
+fragment float4 ollin_fx_wipe(PresentOut in [[stage_in]],
+                              texture2d<float> src [[texture(0)]],
+                              texture2d<float> perm [[texture(1)]],
+                              sampler samp [[sampler(0)]],
+                              constant float4 *params [[buffer(0)]]) {
+    float4 c = src.sample(samp, in.uv);
+    float progress = params[3].x;
+    if (progress >= 1.0) { return c; }
+    if (progress <= 0.0) { return float4(0.0); }
+    float t = ollin_wipe_order(in.uv, params[0], params[1], params[2], perm);
+    return c * ollin_wipe_amount(t, progress, params[3].y);
+}
+
+// MARK: - Copies of a layer
+//
+// repeated: copies of the layer, each sampled through the inverse of its own
+// place, turn, and size, tinted by its opacity and hue turn, and composited
+// back to front in premultiplied light so the first copy is on top. The copies
+// come from a strip the CPU writes, two texels each, front first: (center x,
+// center y, turn, scale) in layer fractions and radians, and (opacity, hue turn
+// in OKLCH radians, -, -). params[0] = (count, aspect, -, -). A copy shrunk
+// below about two thirds takes four samples, so fine detail does not alias.
+fragment float4 ollin_fx_repeated(PresentOut in [[stage_in]],
+                                  texture2d<float> src [[texture(0)]],
+                                  texture2d<float> strip [[texture(1)]],
+                                  sampler samp [[sampler(0)]],
+                                  constant float4 *params [[buffer(0)]]) {
+    int count = int(params[0].x + 0.5);
+    float aspect = max(params[0].y, 1e-6);
+    float2 texel = 1.0 / float2(src.get_width(), src.get_height());
+    float4 acc = float4(0.0);
+    for (int i = count - 1; i >= 0; i--) {
+        float4 place = strip.read(uint2(uint(2 * i), 0u));
+        float4 look = strip.read(uint2(uint(2 * i + 1), 0u));
+        float s = place.w;
+        if (s <= 1e-6 || look.x <= 0.0) { continue; }
+        float cs = cos(place.z);
+        float sn = sin(place.z);
+        int taps = s < 0.66 ? 4 : 1;
+        float4 c = float4(0.0);
+        for (int k = 0; k < taps; k++) {
+            // A rotated grid of four sample points a quarter pixel from the middle.
+            float2 jit = taps == 1 ? float2(0.0)
+                : float2(k == 0 ? 0.125 : (k == 1 ? -0.375 : (k == 2 ? 0.375 : -0.125)),
+                         k == 0 ? 0.375 : (k == 1 ? 0.125 : (k == 2 ? -0.125 : -0.375))) * texel;
+            float2 uv0 = in.uv + jit;
+            float2 d = float2((uv0.x - place.x) * aspect, uv0.y - place.y);
+            float2 r = float2(cs * d.x + sn * d.y, -sn * d.x + cs * d.y) / s;
+            float2 uv = float2(r.x / aspect + 0.5, r.y + 0.5);
+            if (uv.x >= 0.0 && uv.y >= 0.0 && uv.x <= 1.0 && uv.y <= 1.0) {
+                c += src.sample(samp, uv, level(0.0));
+            }
+        }
+        c /= float(taps);
+        if (c.a <= 0.0) { continue; }
+        if (look.y != 0.0) {
+            float3 lab = linearToOklab(max(ollin_unpremul(c), 0.0));
+            float ch = cos(look.y);
+            float sh = sin(look.y);
+            lab.yz = float2(ch * lab.y - sh * lab.z, sh * lab.y + ch * lab.z);
+            c = ollin_premul(max(oklabToLinear(lab), 0.0), c.a);
+        }
+        c *= look.x;
+        acc = c + acc * (1.0 - c.a);
+    }
+    return acc;
+}
+
+// MARK: - Edge glow
+//
+// A band of light on the layer's edge with spots of each color racing around
+// it. The band is read from the measured field (signed pixels, positive
+// outside): a Gaussian of the distance over the width outside and a third of it
+// inside. The spots are placed by the pixel's angle around a center, one ring
+// of them per color, alternate colors running opposite ways; each color's light
+// is folded in on its own in linear light, what piles past full brightness is
+// turned toward white by the bloom, and the sum is screened over the layer as
+// emitted light. params[0] = (width, colors, spots, spot size in turns),
+// params[1] = (pulse, bloom, phase, aspect), params[2] = (center x, y, -, -),
+// params[3...] = the colors (linear rgb, strength in alpha).
+
+// A double beat once a unit of phase, rising from 0 between beats.
+static inline float ollin_glow_beat(float phase) {
+    float f = fract(phase);
+    float a = (f - 0.08) / 0.035;
+    float b = (f - 0.26) / 0.045;
+    return exp(-a * a) + 0.6 * exp(-b * b);
+}
+
+fragment float4 ollin_fx_edge_glow(PresentOut in [[stage_in]],
+                                   texture2d<float> src [[texture(0)]],
+                                   texture2d<float> field [[texture(1)]],
+                                   constant float4 *params [[buffer(0)]]) {
+    uint2 px = uint2(in.position.xy);
+    float4 c = src.read(px);
+    float width = params[0].x;
+    int colors = int(params[0].y + 0.5);
+    if (width <= 0.0 || colors <= 0) { return c; }
+    int spots = int(params[0].z + 0.5);
+    float spotSize = max(params[0].w, 1e-3);
+    float pulse = params[1].x;
+    float bloom = params[1].y;
+    float phase = params[1].z;
+    float aspect = max(params[1].w, 1e-6);
+    float d = field.read(px).r;
+    float reach = d >= 0.0 ? width : width * 0.33;
+    float x = d / max(reach, 1e-4);
+    // Both profiles end inside the measured reach (two and a half widths), so
+    // the field's cap beyond it never shows as a haze over the whole layer.
+    float window = 1.0 - smoothstep(1.2, 2.4, abs(x));
+    float band = exp(-2.0 * x * x) * window;
+    float xs = x / 1.6;
+    float spill = exp(-2.0 * xs * xs) * window;
+    float2 q = float2((in.uv.x - params[2].x) * aspect, in.uv.y - params[2].y);
+    float turn = atan2(q.y, q.x) / 6.283185307;
+    // Close to the center a spot a fixed share of a turn long is only a few
+    // pixels across, so an edge passing near it would show a sharp spike; within
+    // a few band widths the spots blend into their average around the ring.
+    float widthHeights = width / float(src.get_height());
+    float spread = smoothstep(widthHeights, widthHeights * 4.0, length(q));
+    float spotMean = float(spots) * spotSize * 2.5066283;
+    float beat = 1.0 + pulse * (ollin_glow_beat(phase) - 0.35);
+    float3 mean = float3(0.0);
+    float3 light = float3(0.0);
+    for (int j = 0; j < colors; j++) {
+        float4 col = params[3 + j];
+        float3 paint = col.rgb * col.a;
+        mean += paint;
+        float way = (j % 2 == 0) ? 1.0 : -1.0;
+        float speed = 0.25 * (1.0 + 0.15 * float(j));
+        float offset = float(j) / float(colors * max(spots, 1));
+        float lit = 0.0;
+        for (int k = 0; k < spots; k++) {
+            float a = turn - (float(k) / float(spots) + offset + way * speed * phase);
+            a = a - floor(a + 0.5);
+            float g = a / spotSize;
+            lit += exp(-0.5 * g * g);
+        }
+        lit = mix(spotMean, lit, spread);
+        light += paint * (1.4 * lit * spill);
+    }
+    light += mean / float(colors) * (0.35 * band);
+    light *= beat;
+    float peak = max(light.r, max(light.g, light.b));
+    light = mix(light, float3(peak), bloom * smoothstep(0.7, 2.0, peak));
+    light = clamp(light, 0.0, 1.0);
+    float glow = max(light.r, max(light.g, light.b));
+    return float4(c.rgb + light * max(1.0 - c.rgb, 0.0), c.a + glow * (1.0 - c.a));
+}

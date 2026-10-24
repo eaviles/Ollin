@@ -188,6 +188,23 @@ import OllinWebGate
         }
     }
 
+    /// A field rebuilt as blocks: a melt of a sphere and a torus on a grid, the
+    /// voxel scope's loop over its child walked by the page as by the Mac.
+    final class Blocks: Sketch {
+        override var canvasSize: CanvasSize { .square(200) }
+        override func draw() {
+            background(Color(hex: 0x14161c))
+            camera(.orbiting(target: .zero, radius: 6, azimuth: 0.5 + time * 0.4, elevation: 0.5,
+                             fieldOfView: .pi / 4, near: 0.1, far: 40))
+            directionalLight(.white, direction: Vector3(-0.4, -0.8, -0.45), intensity: 1.1)
+            ambientLight(Color(white: 0.25))
+            fill(Color(hex: 0x6ab04c))
+            let form = SDF3D.sphere(radius: 1.1)
+                .smoothUnion(SDF3D.torus(radius: 1.3, tube: 0.3).colored(Color(hex: 0xe8a24a)), k: 0.3)
+            drawSDF3D(form.voxelized(size: 0.25, seed: 2))
+        }
+    }
+
     // MARK: The recorder
 
     @Test func aComposedFieldCrossesAsItsQuadAndProgram() throws {
@@ -416,6 +433,7 @@ import OllinWebGate
             ("Shadowed (a self-shadowing plane)", { Shadowed() }, 1, 0),
             ("Reduced (a half-resolution march)", { Reduced() }, 3, 1),
             ("Finished (metal, toon, Gooch)", { Finished() }, 1, 0),
+            ("Blocks (a melt rebuilt as blocks)", { Blocks() }, 3, 2),
         ]
         let pages = try cases.map { c in
             let recording = try OllinApp.recordWebFrames(of: c.make(), frames: c.frames, fps: 30)

@@ -255,6 +255,12 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("optical-looks",
                  note: "The six optical and print looks at fixed phases and seeds (no time, no random): a drawing as a red-and-cyan anaglyph at one parallax and two discs by a hand-drawn depth map, a three-ink poster with its plates out of register, a road under a heat mirage, a blurred blob read by a schlieren knife, the wavelength ramp as bands, and chromatography drops meeting. Pins the channel split and the paper-white read of a transparent pixel, the depth gather and its sign, the plane resampling behind the misprint, the row-shift function and the inversion below the line, the knife's gray and its flip, the spectral stops, and the ring caps where fronts meet.",
                  make: { OpticalLooksSheet() }),
+    SnapshotCase("wipes-and-copies",
+                 note: "Four wipes and four copy layouts over one drawn scene, four across and two down: a straight edge cut into shuffled bands halfway between two layers, a radial order cut into rings, a checker of diamonds revealing a layer, and a noise dissolve; copies around a ring facing out with their hues turning, in a grid, along a line shrinking and fading, and a disc's edge glowing with three colors of spot. Pins the order's shapes and modifiers, the permutation strip, the soft front, the per-copy strip and its back-to-front composite, and the glow's band and spots over the measured field.",
+                 make: { WipesAndCopiesSheet() }),
+    SnapshotCase("blocks",
+                 note: "A sphere melted into a ring and a cap, rebuilt as blocks under a key light and ambient, with tone jitter, seams, and crease occlusion. Pins the voxel scope's loop (the probe, the nearest-first cell reads, the region bound), the block's color from its center, the face normal read in one walk, and the shading.",
+                 make: { BlocksScene() }),
     SnapshotCase("tape-and-lens", frame: 8,
                  note: "The eight tape and lens looks at fixed phases and seeds over one drawn scene, four across and two down: a videotape mid-burst, a JPEG at quality 12, a datamosh at frame 8 with every block held and a stated drift plus half its blocks refreshing, a tilt-shift band, a progressive blur, a light leak, a page peeling from its corner over a dark ground, and scratches over a sepia copy. Pins every fragment, the two-pass scratch and its padding to whole blocks, and the datamosh's block clock.",
                  make: { TapeAndLensSheet() }),
@@ -11814,6 +11820,63 @@ private final class LineTexturesSheet: Sketch {
 /// down, each over the same drawn scene at 120 pixels a side. The datamosh is
 /// the one with state: it is read at frame 8, every block held and drifting in
 /// its left half, and half its blocks refreshing in its right.
+private final class WipesAndCopiesSheet: Sketch {
+    override var canvasSize: CanvasSize { .size(480, 240) }
+
+    private func scene(_ warm: Bool) {
+        noStroke()
+        for row in 0 ..< 12 {
+            fill(warm ? Color(red: 0.8, green: 0.4 + Double(row) * 0.03, blue: 0.25)
+                      : Color(red: 0.15, green: 0.3 + Double(row) * 0.02, blue: 0.55))
+            drawRect(0, Double(row) * 10, 120, 10)
+        }
+        fill(warm ? Color(hex: 0xF2E3A0) : Color(hex: 0xE8F0F8)); drawCircle(50, 60, 26)
+    }
+
+    override func draw() {
+        background(Color(hex: 0x1A1B1E))
+        let a = makeRenderTarget(width: 120, height: 120), b = makeRenderTarget(width: 120, height: 120)
+        withTarget(a) { scene(true) }
+        withTarget(b) { scene(false) }
+        drawImage(a.combined(with: b, .wipe(.directional(angle: 0.3).bands(8).shuffled(seed: 5), progress: 0.5)).image, 0, 0)
+        drawImage(a.combined(with: b, .wipe(.radial(center: Vector2(0.4, 0.5)).bands(5), progress: 0.55)).image, 120, 0)
+        drawImage(b.filtered(.wipe(.cells(columns: 6, rows: 6).checker().diamond(), progress: 0.45)).image, 240, 0)
+        drawImage(a.combined(with: b, .wipe(.noise(size: 0.2, seed: 3), progress: 0.5, feather: 0.1)).image, 360, 0)
+        let mark = makeRenderTarget(width: 120, height: 120)
+        withTarget(mark) {
+            noStroke(); fill(Color(hex: 0xE8A24A)); drawEllipse(60, 48, 7, 16)
+        }
+        drawImage(mark.filtered(.repeated(.ring(radius: 0.14, facesOut: true), count: 9, scale: 0.95,
+                                          hueShift: 0.35)).image, 0, 120)
+        let square = makeRenderTarget(width: 120, height: 120)
+        withTarget(square) { noStroke(); fill(Color(hex: 0x5BC0BE)); drawRect(center: Vector2(60, 60), width: 90, height: 90) }
+        drawImage(square.filtered(.repeated(.grid(columns: 3), count: 8, scale: 0.95, rotation: 0.15,
+                                            jitter: 0.5, seed: 2)).image, 120, 120)
+        drawImage(mark.filtered(.repeated(.line(from: Vector2(0.15, 0.85), to: Vector2(0.85, 0.15)), count: 6,
+                                          scale: 0.85, rotation: 0.3, opacity: 0.8)).image, 240, 120)
+        let disc = makeRenderTarget(width: 120, height: 120)
+        withTarget(disc) { noStroke(); fill(Color(white: 0.25)); drawCircle(60, 60, 30) }
+        drawImage(disc.filtered(.edgeGlow(width: 10, colors: [.magenta, .cyan, .yellow], spots: 2,
+                                          pulse: 0.5, phase: 0.3)).image, 360, 120)
+    }
+}
+
+private final class BlocksScene: Sketch {
+    override var canvasSize: CanvasSize { .square(240) }
+    override func draw() {
+        background(Color(hex: 0x9CC3E0))
+        camera(.orbiting(target: .zero, radius: 7.5, azimuth: 0.6, elevation: 0.55,
+                         fieldOfView: .pi / 4, near: 0.1, far: 40))
+        directionalLight(Color(hex: 0xFFF4E0), direction: Vector3(-0.45, -0.8, -0.35), intensity: 1.15)
+        ambientLight(Color(hex: 0x6E8AA8))
+        material(.matte)
+        let field = SDF3D.sphere(radius: 1.25).colored(Color(hex: 0xE8A24A))
+            .smoothUnion(SDF3D.torus(radius: 1.75, tube: 0.38).rotatedX(0.35).colored(Color(hex: 0x3E8FB0)), k: 0.45)
+            .smoothUnion(SDF3D.sphere(radius: 0.45).at(0, 1.45, 0).colored(Color(hex: 0xD9534F)), k: 0.3)
+        drawSDF3D(field.voxelized(size: 0.25, jitter: 0.1, seams: 0.35, occlusion: 0.6, seed: 3))
+    }
+}
+
 private final class TapeAndLensSheet: Sketch {
     override var canvasSize: CanvasSize { .size(480, 240) }
 

@@ -358,6 +358,16 @@ extension Filter {
                         [f(corner.x, corner.y, amount, radius),
                          f(shading, sheen, shadow, Double(width)),
                          f(Double(height), 0, 0, 0), back])
+        case let .wipe(order, progress, feather):
+            return pass("ollin_fx_wipe",
+                        order.rows(aspect: aspect) + [f(progress, feather, 0, 0)],
+                        inputs: [.layer(0), .table(order.permutation)])
+        case let .repeated(layout, count, scale, rotation, opacity, hueShift, jitter, seed):
+            let strip = Filter.copyStrip(layout: layout, count: count, scale: scale,
+                                         rotation: rotation, opacity: opacity, hueShift: hueShift,
+                                         jitter: jitter, seed: seed, aspect: Double(aspect))
+            return pass("ollin_fx_repeated", [f(Double(count), Double(aspect), 0, 0)],
+                        inputs: [.layer(0), .table(strip)])
         case let .chrome(horizon, warp, waves, sky, floor, core, coreWidth, breakWidth,
                          wire, amount, phase):
             // The two ramps travel as 256-texel strips, read with a lerp between
@@ -375,7 +385,7 @@ extension Filter {
         case .shader, .gaussianBlur, .bloom, .halation, .softProof, .fourier, .inverseFourier, .spectrum,
              .liquidMetal, .heatmap, .gemSmoke, .diffuse, .distanceField, .boxBlur,
              .adaptiveThreshold, .xdog, .brushwork, .shock, .hatching,
-             .outline, .shadow, .glow, .bevel, .jpeg, .tiltShift, .progressiveBlur:
+             .outline, .shadow, .glow, .edgeGlow, .bevel, .jpeg, .tiltShift, .progressiveBlur:
             return nil
         }
     }
@@ -504,6 +514,15 @@ extension Filter {
         case let .glow(radius, color, inside):
             return StyledPass(preparation: field(reaching: radius),
                               pass: pass("ollin_fx_glow", [SIMD4(Float(radius), inside ? 1 : 0, 0, 0), color]))
+        case let .edgeGlow(glowWidth, colors, spots, spotSize, pulse, bloom, center, phase):
+            // The spots spill past the band, to two and a half widths out.
+            let aspect = Float(width) / Float(max(1, height))
+            return StyledPass(preparation: field(reaching: glowWidth * 2.5),
+                              pass: pass("ollin_fx_edge_glow",
+                                         [SIMD4(Float(glowWidth), Float(colors.count), Float(spots), Float(spotSize)),
+                                          SIMD4(Float(pulse), Float(bloom), Float(phase), aspect),
+                                          SIMD4(Float(center.x), Float(center.y), 0, 0)]
+                                         + colors))
         case let .bevel(width, depth, profile, angle, elevation, highlight, shadow):
             // The slope's stencil reads two pixels past the band.
             return StyledPass(preparation: field(reaching: width + 3),
@@ -553,6 +572,12 @@ extension Combine {
                          SIMD4(1 / Float(width), 1 / Float(height), 0, 0)])
         case let .mix(amount):
             return pass("ollin_fx_mix", [SIMD4(Float(amount), 0, 0, 0)])
+        case let .wipe(order, progress, feather):
+            let aspect = Float(width) / Float(max(1, height))
+            return EffectPass(fragment: "ollin_fx_wipe_combine",
+                              inputs: [.layer(0), .layer(1), .table(order.permutation)],
+                              params: order.rows(aspect: aspect)
+                                + [SIMD4(Float(progress), Float(feather), 0, 0)])
         case let .anaglyph(separation, focus, amount):
             // The depth flag is 1: the aux is read as the depth map.
             return pass("ollin_fx_anaglyph",

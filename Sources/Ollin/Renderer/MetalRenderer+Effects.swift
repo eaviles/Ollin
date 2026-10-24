@@ -946,10 +946,10 @@ extension MetalRenderer {
              .lensDistortion, .cornerPin, .channelMixer,
              .flutedGlass, .water, .paperTexture, .melt, .fieldMap, .arrows, .holographicFoil,
              .chrome, .bubbleWrap, .anaglyph, .mirage, .schlieren, .vhs, .lightLeak, .pagePeel,
-             .jpeg, .tiltShift, .progressiveBlur:
+             .jpeg, .tiltShift, .progressiveBlur, .wipe, .repeated:
             return nil
         // Every layer style was encoded from its `styledPass` description above.
-        case .outline, .shadow, .glow, .bevel:
+        case .outline, .shadow, .glow, .edgeGlow, .bevel:
             return nil
         }
     }
@@ -1660,7 +1660,7 @@ extension MetalRenderer {
             encodeUserShader(shader, variant: .combine, inputs: [base, aux], output: output,
                              width: width, height: height, into: cb)
             return output
-        case .mask, .displace, .lineIntegralConvolution, .disperse, .mix, .paintMix, .anaglyph:
+        case .mask, .displace, .lineIntegralConvolution, .disperse, .mix, .paintMix, .anaglyph, .wipe:
             return nil   // encoded from `singlePass` above
         case let .seamlessClone(amount, threshold):
             // Three passes and no new solver: read the patch's rim as boundary values,

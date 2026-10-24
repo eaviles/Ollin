@@ -4,7 +4,7 @@
 
 ## Layer styles
 
-A layer style gives a layer an edge of its own: an outline, a shadow, a glow, or a bevel. Each one reads the layer's alpha, so it follows whatever was drawn there, letters and photographs as closely as shapes. Each is one `Filter`, so styles chain like any other filters, and the chain's order is the order they stack in.
+A layer style gives a layer an edge of its own: an outline, a shadow, a glow, a band of light with spots circling it, or a bevel. Each one reads the layer's alpha, so it follows whatever was drawn there, letters and photographs as closely as shapes. Each is one `Filter`, so styles chain like any other filters, and the chain's order is the order they stack in.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/LayerStyles-dark.jpg">
@@ -18,6 +18,7 @@ A layer style gives a layer an edge of its own: an outline, a shadow, a glow, or
 - [Shadows](#shadows)
 - [Glows](#glows)
 - [A bevel](#bevel)
+- [An edge glow](#edge-glow)
 - [Stacking styles](#stacking)
 - [How exact they are](#precision)
 - [On a web page](#web)
@@ -111,6 +112,28 @@ The light comes from `angle`, in radians in the canvas's directions, and stands 
 
 A part of the shape narrower than twice the width never reaches the top. It rises to a ridge where the slopes from its two sides meet, which is what a chiseled letter looks like.
 
+<a name="edge-glow"></a>
+
+### An edge glow
+
+```swift
+let layer = makeRenderTarget()
+withTarget(layer) { fill(Color(hex: 0x262C3D)); textSize(250); textAlign(.center, .center); drawText("Ollin", width / 2, height / 2) }
+drawImage(layer.filtered(.edgeGlow(width: 20, colors: [Color(hex: 0x7B2FF7), Color(hex: 0x00E0FF)],
+                                   spots: 3, phase: time)).image, 0, 0)
+```
+
+`.edgeGlow(width:colors:spots:spotSize:pulse:bloom:center:phase:)` lays a band of light along the layer's edge with spots of each color racing around the shape, the lit outline of a sign or a logo on a stage. The band follows the measured distance from the edge, as a glow does: brightest on the edge, a Gaussian falling over `width` pixels outside and over a third of that inside, and ended inside two and a half widths so the field's measured reach never shows. Each color sends `spots` spots around, placed by their angle around `center` (layer fractions, the middle by default) and `spotSize` of a turn long. The first color runs clockwise and the next counterclockwise, each a little faster than the one before, and up to eight colors are read.
+
+The light is folded in one color at a time in linear light, so where two spots cross their light adds rather than mixing to mud. `bloom` from 0 to 1 then turns what piles past full brightness toward white, the hot core of a lamp, and the sum is laid over the layer as emitted light: it raises the alpha over transparency and never darkens a pixel. `phase` is the clock (pass `time`, and the spots go a quarter of the way around each second), and `pulse` from 0 to 1 sets how strongly the band and the spots beat together, a double beat once a unit of phase.
+
+Because the spots are placed by angle, a shape that wraps around the center reads best, and a part of the edge close to the center would see a spot only a few pixels long; within a few band widths of the center the spots blend into their average around the ring instead. A `width` of 0, or no colors, leaves the layer exactly as it was. See the `Effects/WipesAndCopies` example.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/21-PicturesYouSolve/EdgeGlow-dark.jpg">
+  <img src="../../Guide/Images/21-PicturesYouSolve/EdgeGlow.jpg" alt="Two dark panels: the word edge glowing blue and violet along its letters, and a five-pointed star with a wide band of pink, gold, and green light running around its edge" width="560">
+</picture>
+
 <a name="stacking"></a>
 
 ### Stacking styles
@@ -146,7 +169,7 @@ The edge each style measures is the layer's own, so it inherits how that edge wa
 
 ### On a web page
 
-All six styles cross to a [web page](../Output/Web.md). The page runs the same distance field, the seed, the flood ladder, and the resolve, through the Mac's own fragments carried to GLSL. It runs its own Gaussian for the shadows, then each style's composite, also the Mac's own fragment. `.distanceField` crosses with them, so `.fieldMap` behind it does too.
+All seven styles cross to a [web page](../Output/Web.md). The page runs the same distance field, the seed, the flood ladder, and the resolve, through the Mac's own fragments carried to GLSL. It runs its own Gaussian for the shadows, then each style's composite, also the Mac's own fragment. `.distanceField` crosses with them, so `.fieldMap` behind it does too.
 
 The ladder holds positions in 32-bit floats. On a GPU that cannot draw into those, the page falls back to its own half-float layers and measures coarser far from an edge.
 
@@ -154,7 +177,7 @@ The ladder holds positions in 32-bit floats. On a GPU that cannot draw into thos
 
 ### How it works
 
-The outline, both glows, and the bevel read the layer's [measured distance field](DistanceFields.md), cut where the alpha crosses one half. They measure it only as far as they reach, plus a margin for antialiasing, which keeps the ladder short. Outlining and glowing by thresholds on a distance field is Chris Green's technique from 2007, from rendering vector art at Valve. The shadows read the layer blurred by the hardware Gaussian instead. They read it at the moved position from the four nearest texels, so a whole-pixel offset lands on one texel exactly.
+The outline, both glows, the edge glow, and the bevel read the layer's [measured distance field](DistanceFields.md), cut where the alpha crosses one half. They measure it only as far as they reach, plus a margin for antialiasing, which keeps the ladder short. Outlining and glowing by thresholds on a distance field is Chris Green's technique from 2007, from rendering vector art at Valve. The shadows read the layer blurred by the hardware Gaussian instead. They read it at the moved position from the four nearest texels, so a whole-pixel offset lands on one texel exactly.
 
 Every style then composites in one of two ways, both in premultiplied linear light. *Under* lays paint beneath the layer where it is not opaque. *Inside* moves the layer's color toward a paint within its own coverage. Both are written so a weight of zero adds exactly nothing.
 

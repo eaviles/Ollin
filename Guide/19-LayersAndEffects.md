@@ -6,7 +6,7 @@
 
 <img src="Images/19-LayersAndEffects/Comets.jpg" alt="A dark canvas full of glowing comet swarms: hundreds of small lights in orange, pink, and green, each dragging a soft luminous tail that curves with its flock's turn" width="560">
 
-A layer is a second canvas off screen, one you can filter, blend, and keep from frame to frame. You learn to draw into one, run the filter catalog over it, and let a canvas feed its own past back in. The flock of [Chapter 12](12-FlocksAndSwarms.md) comes back as the comets above, drawn into a feedback layer that returns bloomed and added as light. After them come the `compose` block, the running mean, and what to do when a frame gets slow.
+A layer is a second canvas off screen, one you can filter, blend, and keep from frame to frame. You learn to draw into one, run the filter catalog over it, and let a canvas feed its own past back in. The flock of [Chapter 12](12-FlocksAndSwarms.md) comes back as the comets above, drawn into a feedback layer that returns bloomed and added as light. After them come the `compose` block, the running mean, and what to do when a frame gets slow. Last come two more ways to use a finished layer: wipes and copies.
 
 ## A drawing you can hold: render targets
 
@@ -397,6 +397,42 @@ override func draw() {
 
 The rule of thumb: if the drawing does not change between frames, it belongs in a batch, and if it does change, leave it alone. A shape whose outline stays put while its color changes needs neither. A `Shape` kept in a property remembers its triangles and stroke from its second draw on, so drawing it again in a new color costs little more than a copy. A few things are per-frame by nature and cannot be recorded, namely 3D meshes and fields, GPU particles, layer blocks like `withTarget`, clipping, and `background`. The recording leaves them out, and Ollin prints a note once, at the call inside `makeBatch`, saying where to draw them instead.
 
+## Two more ways to use a finished layer: wipes and copies
+
+A layer that is finished can still be taken away in an order, or laid out again around itself. Both are one pass over the layer. Both reach back to older crafts, the film editor's wipe and the printer's step and repeat.
+
+### Taking a layer in an order: wipes
+
+A **wipe** replaces one picture with another along a moving front. A film uses one to cut between scenes, an edge sliding across the screen. Film editors have used wipes since the early sound era, and Akira Kurosawa, and George Lucas after him, made them a signature. In a sketch it is the transition between two layers, or a layer arriving over whatever is behind it.
+
+Every wipe is the same call given a different order. A `WipeOrder` gives each pixel a number from 0, which goes first, to 1, which goes last. A straight edge, a growing circle, a clock hand, a grid of blocks, and a noise dissolve are its five shapes. Modifiers fold it, tile it into blinds, cut it into bands, and shuffle the bands into a seeded order:
+
+```swift
+let t = (time * 0.25).truncatingRemainder(dividingBy: 1)
+let bars = WipeOrder.directional(angle: 0.3).bands(18).shuffled(seed: 4)
+drawImage(day.combined(with: night, .wipe(bars, progress: t)).image, 0, 0)
+```
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/19-LayersAndEffects/WipesAndCopies-dark.jpg">
+  <img src="Images/19-LayersAndEffects/WipesAndCopies.jpg" alt="Four square panels: two layers of stripes wiped halfway along a straight edge cut into shuffled diagonal bands, the same two wiped as rings around a point, a layer revealed as a checker of diamonds, and an orange petal copied ten times around a ring, each copy turned outward and further around the hue wheel" width="680">
+</picture>
+
+As `progress` climbs from 0 to 1, each pixel turns over when the progress passes its number. The front is soft, `feather` wide. At 0 the result is the first layer exactly and at 1 the second, so a finished wipe costs the picture nothing. `Filter.wipe` is the one-layer form, which brings a layer in over the canvas. [`Examples/Effects/WipesAndCopies`](../Examples/Effects/WipesAndCopies/Sketch.swift) runs nine orders between two photographs, and the [reference](../Docs/Drawing/Effects.md#wipes-and-copies) lists every shape and modifier.
+
+### Laying a layer out again: copies
+
+**Copies** repeat one layer in a grid, around a ring, or along a line. Each is a step smaller, more turned, fainter, and further around the hue wheel than the last. The print shop calls it step and repeat. Here each step can change the copy a little, so one petal becomes a flower and one mark becomes a trail.
+
+```swift
+let petal = makeRenderTarget()
+withTarget(petal) { fill(.orange); drawEllipse(width / 2, height / 2 - 40, 46, 120) }
+drawImage(petal.filtered(.repeated(.ring(radius: 0.18, facesOut: true), count: 9,
+                                   scale: 0.94, hueShift: 0.25)).image, 0, 0)
+```
+
+Each copy is the whole layer, moved so its middle lands on the copy's place. That is why the petal is drawn in the middle of its layer. Copy `i` is scaled by `scale` to the power `i` and turned `i` times `rotation`, and its hue moves `i` times `hueShift`. With `facesOut`, each copy on a ring points away from the center. The first copy is on top, so a line of shrinking copies reads as a trail behind its leader. The same example lays the petal out all three ways.
+
 ## Where this comes from
 
 The shape the layers take here, a filter catalog and explicit compositing in a `compose` block, follows OPENRNDR's model, on Ollin's own Metal core. The compositing arithmetic descends from Thomas Porter and Tom Duff's 1984 paper "Compositing Digital Images". The everyday blend-mode vocabulary of multiply, screen, lightest, and darkest is the image editors' tradition that grew up after it.
@@ -405,11 +441,13 @@ Tone mapping comes from photography by way of Erik Reinhard, Michael Stark, Pete
 
 The filter catalog reimplements published image-processing techniques, each written from its method. The menu was cross-read against OPENRNDR's orx-fx, openFrameworks' ofxFX, and AsyncGraphics for which effects exist and how they are approached. The running mean and its print follow Anders Hoff's depth-of-field essays and Domenico Bruzzese's Blurry, read for approach and written independently.
 
+The wipe orders and the copies were read as a map from Shaders, an MIT-licensed library of web effects, and written independently.
+
 Video feedback is the analog ancestor of the `Feedback` layer. Video artists pointed a camera at its own monitor from the late 1960s on. Steina and Woody Vasulka began that way in New York in 1969, with a tape called *Feedback*. There the transform is whatever the room does to the signal. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
-- [Layered effects](../Docs/Drawing/Effects.md): every filter, generator, combine op, and the full `compose` grammar.
+- [Layered effects](../Docs/Drawing/Effects.md): every filter, generator, combine op, and the full `compose` grammar, with [wipes and copies](../Docs/Drawing/Effects.md#wipes-and-copies).
 - [Layers](../Docs/Concepts/Layers.md): one screen on what a layer is, what one costs, and when you do not need one.
 - [What survives a frame](../Docs/Concepts/Persistence.md): the list of what carries into the next frame, from the ink state to a checkpoint on disk.
 - [Accumulation](../Docs/Drawing/Accumulation.md) and [HDR & tone mapping](../Docs/Drawing/HDR.md): the persistent canvas, the `Accumulator` that keeps a running mean, and the float pipeline underneath both.

@@ -3511,6 +3511,7 @@ struct Combine: Sendable
   static func screenSpaceReflections(amount: Double = default, maxDistance: Double = default, thickness: Double = default, roughness: Double = default, fresnel: Double = default, edgeFade: Double = default, quality: RenderQuality = default, file: String = default, line: Int = default) -> Combine
   static func seamlessClone(amount: Double = default, threshold: Double = default) -> Combine
   static func shader(_: Shader) -> Combine
+  static func wipe(_: WipeOrder, progress: Double, feather: Double = default) -> Combine
 struct Complex: AdditiveArithmetic, CustomStringConvertible, Decodable, Encodable, Equatable, ExpressibleByFloatLiteral, ExpressibleByIntegerLiteral, Hashable, Numeric, Sendable, SignedNumeric
   func rotated(by: Double) -> Complex
   func squareRoot() -> Complex
@@ -3586,6 +3587,7 @@ struct ComposeLayer
   func post(_: Filter...) -> ComposeLayer
   func scaled(_: Double) -> ComposeLayer
   func streaked(along: ComposeLayer, length: Double = default, field: Combine.FieldEncoding = default) -> ComposeLayer
+  func wiped(to: ComposeLayer, _: WipeOrder, progress: Double, feather: Double = default) -> ComposeLayer
 struct ComputeKernel: Sendable
   init(entry: String, _: String, file: String = default)
   init(entry: String, contentsOf: Foundation.URL) throws
@@ -4174,6 +4176,7 @@ struct Filter: Sendable
   static func dropShadow(offset: Vector2 = default, radius: Double = default, color: Color = default) -> Filter
   static func droste(inner: Double = default, twist: Double = default, zoom: Double = default, center: Vector2 = default, angle: Double = default) -> Filter
   static func duotone(dark: Color, light: Color, amount: Double = default) -> Filter
+  static func edgeGlow(width: Double = default, colors: [Color] = default, spots: Int = default, spotSize: Double = default, pulse: Double = default, bloom: Double = default, center: Vector2 = default, phase: Double = default) -> Filter
   static func edges(amount: Double = default) -> Filter
   static func emboss(amount: Double = default, angle: Double = default) -> Filter
   static func exposure(stops: Double = default) -> Filter
@@ -4227,6 +4230,7 @@ struct Filter: Sendable
   static func progressiveBlur(angle: Double = default, start: Double = default, end: Double = default, radius: Double = default) -> Filter
   static func radialBlur(amount: Double = default) -> Filter
   static func relight(_: Filter.RelightFinish = default, angle: Double = default, elevation: Double = default, height: Double = default, intensity: Double = default, color: Color? = default) -> Filter
+  static func repeated(_: Filter.CopyLayout, count: Int = default, scale: Double = default, rotation: Double = default, opacity: Double = default, hueShift: Double = default, jitter: Double = default, seed: Int = default) -> Filter
   static func ripple(amplitude: Double = default, frequency: Double = default, phase: Double = default, center: Vector2 = default) -> Filter
   static func scanlines(count: Double = default, amount: Double = default) -> Filter
   static func schlieren(angle: Double = default, amount: Double = default) -> Filter
@@ -4250,7 +4254,12 @@ struct Filter: Sendable
   static func vignette(amount: Double = default, radius: Double = default, softness: Double = default) -> Filter
   static func water(scale: Double = default, waves: Double = default, refraction: Double = default, layering: Double = default, edges: Double = default, highlightAmount: Double = default, highlightColor: Color = default, phase: Double = default) -> Filter
   static func wave(amplitude: Double = default, frequency: Double = default, phase: Double = default, vertical: Bool = default) -> Filter
+  static func wipe(_: WipeOrder, progress: Double, feather: Double = default) -> Filter
   static func xdog(radius: Double = default, sharpening: Double = default, threshold: Double = default, softness: Double = default, flow: Double = default, foreground: Color = default, background: Color = default) -> Filter
+  struct CopyLayout: Equatable, Sendable
+    static func grid(columns: Int = default) -> Filter.CopyLayout
+    static func line(from: Vector2 = default, to: Vector2 = default) -> Filter.CopyLayout
+    static func ring(radius: Double = default, center: Vector2 = default, angle: Double = default, sweep: Double = default, facesOut: Bool = default) -> Filter.CopyLayout
 struct FlowField
   func advected(_: [Vector2], stepLength: Double = default) -> [Vector2]
   func direction(at: Vector2) -> Vector2
@@ -6379,6 +6388,7 @@ struct SDF3D
   func tongue(_: SDF3D, height: Double, width: Double) -> SDF3D
   func twisted(_: Double) -> SDF3D
   func union(_: SDF3D) -> SDF3D
+  func voxelized(size: Double, gap: Double = default, jitter: Double = default, seams: Double = default, occlusion: Double = default, seed: Int = default) -> SDF3D
   static func box(size: Double) -> SDF3D
   static func box(width: Double, height: Double, depth: Double) -> SDF3D
   static func cappedTorus(radius: Double, tube: Double, angle: Double) -> SDF3D
@@ -7474,6 +7484,19 @@ struct WindowCustomizer: Sendable, NSViewRepresentable, View
   func makeNSView(context: WindowCustomizer.Context) -> AppKit.NSView
   func updateNSView(_: AppKit.NSView, context: WindowCustomizer.Context)
   init(configure: (AppKit.NSWindow) -> Void)
+struct WipeOrder: Equatable, Sendable
+  func bands(_: Int) -> WipeOrder
+  func checker() -> WipeOrder
+  func diamond() -> WipeOrder
+  func folded() -> WipeOrder
+  func reversed() -> WipeOrder
+  func shuffled(seed: Int = default) -> WipeOrder
+  func tiled(_: Int) -> WipeOrder
+  static func angular(center: Vector2 = default, angle: Double = default) -> WipeOrder
+  static func cells(columns: Int = default, rows: Int = default) -> WipeOrder
+  static func directional(angle: Double = default) -> WipeOrder
+  static func noise(size: Double = default, seed: Int = default) -> WipeOrder
+  static func radial(center: Vector2 = default) -> WipeOrder
 struct WoodGrain: Equatable, Sendable
   func across(_: Vector2) -> Double
   func tone(at: Vector2) -> Double

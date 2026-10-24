@@ -1462,13 +1462,23 @@ struct WebShaders {
         nd.geo1 = nodeRows[i * 4 + 3];
         return nd;
     }
-    float fieldDistance(vec3 p0, out vec4 outColor) {
+    float fieldDistance(vec3 p0, out vec4 outColor, out vec3 outNormal) {
         float distStack[16];
         vec4 colStack[16];
         vec3 pointStack[16];
         int sp = 0;
         int pp = 0;
         vec3 p = p0;
+        vec3 vOrigin = vec3(0.0);
+        int vPhase = -1;
+        vec3 vBase = vec3(0.0);
+        vec3 vOct = vec3(1.0);
+        uint vMask = 0u;
+        float vBest = 1.0e9;
+        vec4 vBestColor = vec4(0.0);
+        vec3 vBestCell = vec3(0.0);
+        float vProbe = 0.0;
+        outNormal = vec3(0.0);
         int count = int(field[7].y + 0.5);
         for (int i = 0; i < count; i++) {
             SDFNode3D nd = readNode3D(i);
@@ -1510,6 +1520,72 @@ struct WebShaders {
                 if (pp < 16) { pointStack[pp] = p; pp++; }
                 p = ollin_sdf3d_xform(p, nd);
                 break;
+            case 5u:
+                if (pp < 16) { pointStack[pp] = p; pp++; }
+                vOrigin = p;
+                vPhase = -1;
+                vMask = 0u;
+                vBest = 1.0e9;
+                break;
+            case 6u: {
+                float d = 1.0e9;
+                vec4 cd = vec4(0.0);
+                if (sp >= 1) { sp--; d = distStack[sp]; cd = colStack[sp]; }
+                float s = nd.k;
+                float h = 0.5 * s;
+                float b = h * (1.0 - nd.geo0.x);
+                bool done = false;
+                float result = 0.0;
+                vec4 resultColor = cd;
+                if (vPhase < 0) {
+                    float far = d - b * 1.7320508;
+                    if (far > h) {
+                        result = far;
+                        done = true;
+                    } else {
+                        vec3 g = vOrigin / s;
+                        vBase = floor(g);
+                        vOct = vec3(g.x - vBase.x >= 0.5 ? 1.0 : -1.0,
+                                    g.y - vBase.y >= 0.5 ? 1.0 : -1.0,
+                                    g.z - vBase.z >= 0.5 ? 1.0 : -1.0);
+                        vProbe = d;
+                        vPhase = 0;
+                    }
+                } else {
+                    if (d < 0.0) {
+                        vMask |= (1u << uint(vPhase));
+                        vec3 cell = vBase + ollin_voxel_corner(vPhase) * vOct;
+                        float bd = ollin_sd3_box(vOrigin - (cell + 0.5) * s, vec3(b));
+                        if (bd < vBest) { vBest = bd; vBestColor = cd; vBestCell = cell; }
+                    }
+                    vPhase += 1;
+                }
+                while (!done && vPhase >= 0 && vPhase < 8
+                       && length(vOrigin - (vBase + ollin_voxel_corner(vPhase) * vOct + 0.5) * s) <= vProbe) {
+                    vPhase += 1;
+                }
+                if (!done && vPhase >= 8) {
+                    result = max(vProbe - b * 1.7320508,
+                                 min(vBest, ollin_voxel_region(vOrigin, vBase, vOct, s)));
+                    if (vMask != 0u) {
+                        resultColor = ollin_voxel_shade(vOrigin, vBestCell, s, b, vBase, vOct, vMask,
+                                                        vBestColor, nd.geo0, nd.geo1.x);
+                        outNormal = ollin_voxel_face(vOrigin, (vBestCell + 0.5) * s, b);
+                    } else {
+                        outNormal = vec3(0.0);
+                    }
+                    done = true;
+                }
+                if (done) {
+                    if (pp > 0) { pp--; p = pointStack[pp]; }
+                    if (sp < 16) { distStack[sp] = result; colStack[sp] = resultColor; sp++; }
+                    vPhase = -1;
+                } else {
+                    p = (vBase + ollin_voxel_corner(vPhase) * vOct + 0.5) * s;
+                    i -= int(nd.extra + 0.5);
+                }
+                break;
+            }
             default:
                 if (pp > 0) { pp--; p = pointStack[pp]; }
                 if (nd.k != 1.0 && sp >= 1) { distStack[sp-1] *= nd.k; }
@@ -1522,9 +1598,18 @@ struct WebShaders {
     float worldDistance(vec3 pw, out vec4 col) {
         mat4 inv = mat4(field[0], field[1], field[2], field[3]);
         vec3 pl = (inv * vec4(pw, 1.0)).xyz;
-        return fieldDistance(pl, col) * field[4].w;
+        vec3 unused;
+        return fieldDistance(pl, col, unused) * field[4].w;
     }
     vec3 fieldNormal(vec3 pw) {
+        int last = int(field[7].y + 0.5) - 1;
+        if (last >= 0 && int(nodeRows[last * 4].x + 0.5) == 6) {
+            mat4 inv = mat4(field[0], field[1], field[2], field[3]);
+            vec4 unusedColor;
+            vec3 face;
+            fieldDistance((inv * vec4(pw, 1.0)).xyz, unusedColor, face);
+            if (dot(face, face) > 0.5) { return normalize(transpose(mat3(inv)) * face); }
+        }
         float e = field[8].x > 0.0 ? field[8].x : 0.0008;
         vec2 k = vec2(1.0, -1.0);
         vec4 dummy;

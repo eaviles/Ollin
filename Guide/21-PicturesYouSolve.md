@@ -243,7 +243,7 @@ The lighthouse is about motion, since the beams sweep and the boat rocks on the 
 
 ## Other problems a layer can solve: a seamless paste, the frequency domain, local averages, and an edge of its own
 
-The lighthouse solved three problems: colors settled between a few marks, distance measured from every silhouette, and light traced from lamps. Four more filters treat a layer the same way, as a problem rather than a picture, and none of them is in the lighthouse. The first settles a pasted patch into its new picture the way diffusion settles a color. The second reads a picture as the waves that add up to it. The third answers any window's average at a flat price. The fourth gives a layer an edge it was not drawn with, read off the field the second step measured. Each entry here is the short form, and its reference page carries the rules and the costs.
+The lighthouse solved three problems: colors settled between a few marks, distance measured from every silhouette, and light traced from lamps. Four more filters treat a layer the same way, as a problem rather than a picture, and none of them is in the lighthouse. The first settles a pasted patch into its new picture the way diffusion settles a color. The second reads a picture as the waves that add up to it. The third answers any window's average at a flat price. The fourth gives a layer an edge it was not drawn with, read off the field the second step measured, and a band of light that runs around it. Each entry here is the short form, and its reference page carries the rules and the costs.
 
 ### Putting a piece of one picture into another: `.seamlessClone`
 
@@ -317,6 +317,22 @@ let styled = marks
 </picture>
 
 The order is the picture: here the outline is beveled with nothing, and the shadow falls from the outlined shape. An outline can sit inside, outside, or centered on the edge, and the bevel's light is an angle the sketch can turn. [Layer styles](../Docs/Drawing/LayerStyles.md) has each filter's arguments, how exact the band is, and what each costs; [`Examples/Effects/LayerStyles`](../Examples/Effects/LayerStyles/Sketch.swift) stacks them on a word under a moving light.
+
+### Light running around an edge: the edge glow
+
+The **edge glow** is a band of light hugging a layer's edge, with colored spots racing around the shape. It is the lit outline of a sign, a logo on a stage, or a button that is busy. The band is a glow read from the same measured field, brightest on the edge and fading over a width. Each color sends a few spots around it, placed by their angle around the layer's middle:
+
+```swift
+drawImage(word.filtered(.edgeGlow(width: 20, colors: [Color(hex: 0x7B2FF7), Color(hex: 0x00E0FF)],
+                                  spots: 3, phase: time)).image, 0, 0)
+```
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/21-PicturesYouSolve/EdgeGlow-dark.jpg">
+  <img src="Images/21-PicturesYouSolve/EdgeGlow.jpg" alt="Two dark panels: the word edge glowing blue and violet along its letters, and a five-pointed star with a wide band of pink, gold, and green light running around its edge" width="680">
+</picture>
+
+Each color's light is added on its own, so where two spots cross they brighten rather than mixing to mud. The brightest overlaps turn toward white. The colors run alternate ways, and `phase: time` keeps them moving. The light is laid over the layer as emitted light, so it never darkens a pixel. The [reference](../Docs/Drawing/LayerStyles.md#edge-glow) has the pulse, the bloom, and why a shape that crosses its own middle glows evenly there. [`Examples/Effects/WipesAndCopies`](../Examples/Effects/WipesAndCopies/Sketch.swift) runs it on a word and a star.
 
 ## Where this comes from
 
