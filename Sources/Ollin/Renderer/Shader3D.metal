@@ -2181,6 +2181,51 @@ static inline bool ollin_rt_query(thread intersection_query<triangle_data, insta
     return q.get_committed_intersection_type() == intersection_type::triangle;
 }
 
+// The order an exact tie is settled in: the back face first, then the lower instance,
+// geometry, and primitive. `key` is (front facing, instance, geometry, primitive).
+static inline bool ollin_rt_key_before(uint4 key, uint4 than) {
+    if (key.x != than.x) return key.x < than.x;
+    if (key.y != than.y) return key.y < than.y;
+    if (key.z != than.z) return key.z < than.z;
+    return key.w < than.w;
+}
+
+// A closest-hit query whose exact ties come out the same in every process. Two
+// coincident faces (a solid cut into pieces that touch, a box standing flush on a
+// floor) meet a ray at one distance, and an opaque traversal commits whichever of the
+// two it reaches first, which is not the same one from process to process (measured
+// 2026-10-25: a fractured cube's probe rays flipped between the face one shard leaves
+// by and the face the next one is entered by, and the field moved a level on a bright
+// face). Here every candidate is reported, the strictly nearer one is kept, and a tie
+// goes to the back face (a ray between two coincident faces stays inside matter), then
+// by `ollin_rt_key_before`. A ray with no tie commits the triangle the opaque query
+// does. The price is a candidate call for each triangle met on the way to the closest,
+// which suits the probe trace's few thousand rays and not a walk for every pixel.
+static inline bool ollin_rt_query_ordered(thread intersection_query<triangle_data, instancing> &q,
+                                          ray r, instance_acceleration_structure accel) {
+    intersection_params params;
+    params.assume_geometry_type(geometry_type::triangle);
+    params.force_opacity(forced_opacity::non_opaque);
+    q.reset(r, accel, params);
+    bool held = false;
+    float nearest = 0.0;
+    uint4 nearestKey = uint4(0u);
+    while (q.next()) {
+        if (q.get_candidate_intersection_type() != intersection_type::triangle) continue;
+        float t = q.get_candidate_triangle_distance();
+        uint4 key = uint4(q.is_candidate_triangle_front_facing() ? 1u : 0u,
+                          q.get_candidate_instance_id(), q.get_candidate_geometry_id(),
+                          q.get_candidate_primitive_id());
+        if (!held || t < nearest || (t == nearest && ollin_rt_key_before(key, nearestKey))) {
+            held = true;
+            nearest = t;
+            nearestKey = key;
+            q.commit_triangle_intersection();
+        }
+    }
+    return q.get_committed_intersection_type() == intersection_type::triangle;
+}
+
 // A base's normal-incidence reflectance re-derived for the interface under a clear coat;
 // defined with the physically-based helpers below, which this block precedes in the
 // concatenated compile unit.

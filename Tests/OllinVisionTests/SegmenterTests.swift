@@ -190,21 +190,21 @@ import Ollin
         let tap = try #require(source.frameTap)
         let frame = image.currentCGImage()
 
-        // Both surfaces are read before the clock, since a starved task can
-        // wake past its own deadline having never looked once, and a loop that
-        // tests the deadline first then gives up over a result that is already
-        // published.
-        let deadline = Date(timeIntervalSinceNow: 8)
-        var published = false
-        while true {
-            tap(frame)   // the analyzer drops frames while one is in flight
-            // Reading both surfaces arms both conversions (the first read is what
-            // turns each one on), so poll until both publish.
-            if subjects.matte != nil, subjects.cutout != nil { published = true; break }
-            if Date() >= deadline { break }
-            try? await Task.sleep(for: .milliseconds(50))
-        }
-        #expect(published)
+        // Reading a surface is what arms its conversion, so both are read
+        // before any frame arrives.
+        #expect(subjects.matte == nil)
+        #expect(subjects.cutout == nil)
+
+        // The tap takes the frame the way a capture queue would, and its
+        // analysis runs on a background task nothing here waits on. Under a
+        // full shard run that task can sit unscheduled past any deadline, which
+        // is how an eight-second wait here failed while the test passed alone
+        // (2026-10-20). The same analysis awaited inline is the drive: a loaded
+        // machine makes it slower, never absent.
+        tap(frame)
+        await SourceAnalyzers.analyzer(for: source).analyzeNow(FrameBox(frame))
+        #expect(subjects.matte != nil)
+        #expect(subjects.cutout != nil)
         #expect(subjects.count >= 1)
     }
 }

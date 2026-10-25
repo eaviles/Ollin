@@ -4,13 +4,16 @@ import Ollin
 @testable import OllinSerial
 import OllinTestSupport
 
-/// Firmata over the port, checked against the published protocol: every
-/// message the board is sent has the bytes the spec gives, the parser turns
-/// the board's stream into readings and survives any chunk boundary, and over
-/// a pty pair a fake board sees what a sketch's reads and writes send and its
-/// readings land where the sketch looks. No hardware, no GPU.
-@Suite
-struct FirmataTests {
+extension Pseudoterminals {
+    /// Firmata over the port, checked against the published protocol: every
+    /// message the board is sent has the bytes the spec gives, the parser turns
+    /// the board's stream into readings and survives any chunk boundary, and over
+    /// a pty pair a fake board sees what a sketch's reads and writes send and its
+    /// readings land where the sketch looks. No hardware, no GPU.
+    @Suite struct FirmataTests {}
+}
+
+extension Pseudoterminals.FirmataTests {
 
     // MARK: The bytes sent
 

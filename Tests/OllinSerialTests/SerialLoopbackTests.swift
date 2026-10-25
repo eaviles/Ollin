@@ -4,13 +4,16 @@ import Ollin
 @testable import OllinSerial
 import OllinTestSupport
 
-/// End-to-end checks over a pty pair: the replica side opens as a real
-/// `SerialPort` (a pty is a tty, so the whole termios path runs), while the
-/// test drives the manager side as the fake device. Exercises open, the
-/// polling cache, the line drain, `@Param` binding, the write path, and the
-/// EOF disconnect, all with no hardware. No GPU, so these run in CI too.
-@Suite
-struct SerialLoopbackTests {
+extension Pseudoterminals {
+    /// End-to-end checks over a pty pair: the replica side opens as a real
+    /// `SerialPort` (a pty is a tty, so the whole termios path runs), while the
+    /// test drives the manager side as the fake device. Exercises open, the
+    /// polling cache, the line drain, `@Param` binding, the write path, and the
+    /// EOF disconnect, all with no hardware. No GPU, so these run in CI too.
+    @Suite struct SerialLoopbackTests {}
+}
+
+extension Pseudoterminals.SerialLoopbackTests {
 
     /// `OllinTestSupport.waitFor` with this suite's budget: a pty pair, where the EOF disconnect takes the kernel a moment.
     func waitFor<T>(timeout: Double = 5.0, _ probe: () -> T?) async throws -> T {
@@ -169,6 +172,33 @@ struct SerialLoopbackTests {
         try await Task.sleep(nanoseconds: 1_600_000_000)
         #expect(!port.isOpen)
         #expect(port.lastError == "the device went away", Comment(rawValue: port.lastError ?? "nil"))
+    }
+
+    /// The other half of going away: a device that comes back at its path is
+    /// reconnected by the retry with nothing asked of the sketch, and the
+    /// sentence clears. A fresh pair is handed the number the old one freed,
+    /// which is how this plays a board plugged back in, and why these suites
+    /// run one test at a time (`Pseudoterminals`).
+    @Test func aDeviceThatComesBackAtItsPathIsReconnected() async throws {
+        let (pty, port) = try await makePair()
+        defer { port.close() }
+        close(pty.manager)
+        _ = try await waitFor { port.isOpen ? nil : true }
+        #expect(port.lastError == "the device went away")
+
+        // The port lets go of its end on its own queue a moment after it
+        // reports closed, and until then the old number is still taken.
+        let back = try await waitFor { () -> Pty? in
+            guard let pair = try? Pty() else { return nil }
+            if pair.path == pty.path { return pair }
+            close(pair.manager)
+            return nil
+        }
+        defer { close(back.manager) }
+        _ = try await waitFor { port.isOpen ? true : nil }
+        #expect(port.lastError == nil, "a port that reconnected has nothing to report")
+        back.send("42\n")
+        _ = try await waitFor { port.latestLine == "42" ? true : nil }
     }
 
     /// The rule behind it, with no device: an absence found after the device

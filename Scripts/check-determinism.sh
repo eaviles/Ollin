@@ -217,9 +217,12 @@ EOF
 }
 
 if (( selftest )); then
-  # Three sketches the check must tell apart: one that reads the wall clock
+  # Four sketches the check must tell apart: one that reads the wall clock
   # and one that walks a Set must differ between two processes, and the same
-  # drawing from the seeded generator must not.
+  # drawing from the seeded generator must not, nor a solid cut into pieces
+  # that touch under the bounce (the probe rays meet two coincident faces at
+  # one distance, and before the probe trace settled that tie by a fixed
+  # order the lit face came back a level apart, 2026-10-25).
   mkdir -p $OUT/selftest
   cat > $OUT/selftest/Clock.swift <<'EOF'
 import Foundation
@@ -261,13 +264,36 @@ final class Seeded: Sketch {
     }
 }
 EOF
-  for name in Clock HashOrder Seeded; do
+  cat > $OUT/selftest/Touching.swift <<'EOF'
+import Ollin
+
+final class Touching: Sketch {
+    let pieces = Mesh.box(size: 2).fractured(into: 96, seed: 3)
+    override var canvasSize: CanvasSize { .square(192) }
+    override func draw() {
+        background(.black)
+        camera(.orbiting(target: Vector3(0, 1, 0), radius: 6.5, azimuth: 0.5, elevation: 0.35,
+                         fieldOfView: .pi / 3.2, near: 0.5, far: 40))
+        directionalLight(.white, direction: Vector3(0.6, -1, -0.4), intensity: 1.2, castsShadow: true)
+        castShadows()
+        globalIllumination()
+        fill(Color(white: 0.8))
+        withState { translate(0, -0.1, 0); drawBox(width: 10, height: 0.2, depth: 10) }
+        fill(.white)
+        withState {
+            translate(0, 1, 0)
+            for piece in pieces { drawMesh(piece) }
+        }
+    }
+}
+EOF
+  for name in Clock HashOrder Seeded Touching; do
     echo "=== selftest/$name"
     check selftest/$name $OUT/selftest/$name.swift 30
   done
   wanted=(selftest/Clock selftest/HashOrder)
-  if [[ ${differing[*]} == ${wanted[*]} && $same == 1 && $failed == 0 ]]; then
-    echo "selftest: the clock and the hash order go red, the seeded sketch stays green"
+  if [[ ${differing[*]} == ${wanted[*]} && $same == 2 && $failed == 0 ]]; then
+    echo "selftest: the clock and the hash order go red, the seeded sketch and the touching pieces stay green"
     exit 0
   fi
   echo "selftest: FAILED (differed: ${differing[*]:-none}; same: $same; no picture: ${failing[*]:-none})" >&2

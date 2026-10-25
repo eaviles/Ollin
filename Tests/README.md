@@ -142,6 +142,14 @@ other's setup change. Both loopback suites are nested under one serialized paren
 (`CoreMIDILoopback`), and the trait is recursive, so only one of them holds the
 link at a time. Nesting is what makes it work; two `.serialized` siblings do not.
 
+Pseudoterminal pairs are the same case inside one process. The kernel gives a
+freed pair's number to the next pair anyone asks for, and a `SerialPort` whose
+device went away retries its path every second, so a test that closes its fake
+device leaves a port that opens whatever pair the next test makes. Every suite
+that makes a pair sits under `Pseudoterminals`, one serialized parent, so each
+port is closed before another pair exists. A new suite that makes one goes there
+too.
+
 Two *processes* can still collide, and no trait reaches that far: the Core MIDI
 endpoint names, the Link session's UDP port, and a few fixed `$TMPDIR` paths are
 global to the machine. Don't run the suite in two checkouts at once, and never

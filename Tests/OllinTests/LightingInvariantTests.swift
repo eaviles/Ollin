@@ -248,6 +248,22 @@ struct LightingInvariantTests {
                 "the brightest bounce (\(bounceMax)) outshone the brightest direct light (\(directMax))")
     }
 
+    /// Pieces of one solid touch face to face, so a probe ray inside it meets the face
+    /// one piece is left by and the face the next is entered by at one distance. An
+    /// opaque traversal committed whichever it reached first, which was not the same one
+    /// from render to render, and the field moved a level on a lit face (a peer's
+    /// fractured cube: 12 of 35 frames of two quiet exports, 2026-10-15). The probe
+    /// trace settles a tie by a fixed order, so the same frame draws the same bytes.
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
+    func touchingPiecesBounceTheSameLightEveryTime() throws {
+        let first = try render(TouchingPiecesProbe())
+        for run in 1..<4 {
+            let again = try render(TouchingPiecesProbe())
+            let moved = zip(first.bytes, again.bytes).filter { $0 != $1 }.count
+            #expect(moved == 0, "render \(run) moved \(moved) bytes off the first")
+        }
+    }
+
     // MARK: Caustics
 
     /// Every pixel outside the ball's own silhouette, which is read off a mask render
@@ -1172,6 +1188,31 @@ private final class ShadowInvariantProbe: Sketch {
         withState { translate(0, -0.1, 0); drawBox(width: 10, height: 0.2, depth: 10) }
         fill(Color(white: 0.6))
         withState { translate(0, 1.2, 0); drawBox(width: 1.2, height: 2.4, depth: 1.2) }
+    }
+}
+
+/// A cube cut into pieces that fit back together exactly, standing on a floor under a
+/// key light with the bounce on: every cut is two coincident faces.
+private final class TouchingPiecesProbe: Sketch {
+    static let pieces = Mesh.box(size: 2).fractured(into: 96, seed: 3)
+
+    override var canvasSize: CanvasSize { .square(192) }
+
+    override func draw() {
+        background(.black)
+        camera(.orbiting(target: Vector3(0, 1, 0), radius: 6.5,
+                         azimuth: 0.5, elevation: 0.35, fieldOfView: .pi / 3.2,
+                         near: 0.5, far: 40))
+        directionalLight(.white, direction: Vector3(0.6, -1, -0.4), intensity: 1.2, castsShadow: true)
+        castShadows()
+        globalIllumination()
+        fill(Color(white: 0.8))
+        withState { translate(0, -0.1, 0); drawBox(width: 10, height: 0.2, depth: 10) }
+        fill(.white)
+        withState {
+            translate(0, 1, 0)
+            for piece in Self.pieces { drawMesh(piece) }
+        }
     }
 }
 

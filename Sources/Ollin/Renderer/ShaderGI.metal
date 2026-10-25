@@ -309,7 +309,7 @@ fragment float4 ollin_gi_trace(PresentOut in [[stage_in]],
     r.min_distance = 0.0;
     r.max_distance = 1e9;
     intersection_query<triangle_data, instancing> q;
-    if (!ollin_rt_query(q, r, accel)) {
+    if (!ollin_rt_query_ordered(q, r, accel)) {
         float3 sky = float3(0.0);
         if (light.iblEnabled != 0) {
             constexpr sampler cubeSamp(filter::linear, mip_filter::linear, address::clamp_to_edge);
@@ -399,7 +399,7 @@ fragment float4 ollin_gi_trace_cascaded(PresentOut in [[stage_in]],
     r.min_distance = 0.0;
     r.max_distance = 1e9;
     intersection_query<triangle_data, instancing> q;
-    if (!ollin_rt_query(q, r, accel)) {
+    if (!ollin_rt_query_ordered(q, r, accel)) {
         float3 sky = float3(0.0);
         if (light.iblEnabled != 0) {
             constexpr sampler cubeSamp(filter::linear, mip_filter::linear, address::clamp_to_edge);
