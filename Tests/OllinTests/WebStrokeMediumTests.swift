@@ -5,11 +5,12 @@ import Testing
 import OllinExpander
 import OllinWebGate
 
-/// Strokes under a dry medium on a recorded page: each crosses as its ribbon
+/// Strokes under a medium on a recorded page: each crosses as its ribbon
 /// runs, the shared expander gives back the renderer's vertex pairs (the
 /// ribbon's own coordinates included) from them, the page lays them through
-/// the medium's own shading under a one-coat stencil, and a wet stroke is
-/// still refused by name.
+/// the medium's own shading under a one-coat stencil, and a wet or oil stroke
+/// on the canvas drags the canvas the page draws first without it. On a
+/// canvas that keeps its paint it is refused by name.
 @Suite @MainActor struct WebStrokeMediumTests {
 
     /// A pencil scribble that crosses itself, a multicolor pastel loop, a
@@ -95,11 +96,44 @@ import OllinWebGate
         #expect(worst.arc < 1e-2 && worst.across < 1e-3 && worst.along < 1e-4, "\(worst)")
     }
 
-    /// A wet stroke over a mark.
+    /// A wet stroke over two marks, and an oil stroke across the wet one,
+    /// over a mark drawn after it, which the wet stroke drags all the same.
     final class Wet: Sketch {
-        override var canvasSize: CanvasSize { .square(120) }
+        override var canvasSize: CanvasSize { .square(160) }
+        var drags = true
         override func draw() {
-            background(.white)
+            background(Color(hex: 0xF4EFE3))
+            noStroke()
+            fill(Color(hex: 0xE07A2E)); drawCircle(60, 70, 34)
+            fill(Color(hex: 0x2B6C8C)); drawRect(92, 40, 46, 60)
+            noFill()
+            if drags { strokeMedium(.wet()) }
+            stroke(Color(hex: 0x8E2C48)); strokeWeight(18)
+            drawCurve([Vector2(14, 72), Vector2(70, 60), Vector2(120, 84), Vector2(150, 66)], closed: false)
+            if drags { strokeMedium(.oil(relief: 1.4)) }
+            stroke(Color(hex: 0x3E7A3A)); strokeWeight(16)
+            drawLine(30, 130, 140, 112)
+            noStrokeMedium()
+            noStroke(); fill(Color(hex: 0xF2C14E)); drawCircle(110, 124, 14)
+        }
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aWetStrokeOnTheCanvasCrossesMarkedToDragItsGround() throws {
+        let recording = try OllinApp.recordWebFrames(of: Wet(), frames: 1, fps: 30, controls: false)
+        let marked = recording.frames[0].graph.canvas.filter {
+            if case let .ribbons(_, _, _, _, readsGround) = $0 { return readsGround }
+            return false
+        }
+        #expect(marked.count == 2, "the wet stroke and the oil stroke each drag the ground")
+    }
+
+    /// A wet stroke on a canvas that keeps its paint.
+    final class WetPile: Sketch {
+        override var canvasSize: CanvasSize { .square(120) }
+        override func setup() { noClear() }
+        override func draw() {
+            if frameCount == 1 { background(.white) }
             noStroke(); fill(.orange); drawCircle(60, 60, 30)
             noFill(); stroke(.blue); strokeWeight(14)
             strokeMedium(.wet())
@@ -108,15 +142,32 @@ import OllinWebGate
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
-    func aWetStrokeIsStillRefusedByName() throws {
-        #expect(throws: WebExportRefusal.self) {
-            _ = try OllinApp.recordWebFrames(of: Wet(), frames: 1, fps: 30, controls: false)
-        }
+    func aWetStrokeOnACanvasThatKeepsItsPaintIsRefusedByName() throws {
         do {
-            _ = try OllinApp.recordWebFrames(of: Wet(), frames: 1, fps: 30, controls: false)
+            _ = try OllinApp.recordWebFrames(of: WetPile(), frames: 1, fps: 30, controls: false)
+            Issue.record("a wet stroke over a pile crossed")
         } catch let refusal as WebExportRefusal {
-            #expect(refusal.call.contains("strokeMedium(.wet)"))
+            #expect(refusal.call.contains("noClear"))
         }
+    }
+
+    @Test(.enabled("a browser with WebGL2 is needed") { await HeadlessBrowser.hasWebGL2() })
+    func thePageDragsTheGroundTheMacDragged() async throws {
+        let recording = try OllinApp.recordWebFrames(of: Wet(), frames: 2, fps: 30, controls: false)
+        let page = try OllinApp.webPage(of: recording, form: .inline)
+        let played = try await WebExportTests.pagePixels(page, frame: 1)
+        let reference = try OllinApp.image(of: Wet(), frame: 1, fps: 30)
+        let difference = try WebExportTests.meanDifference(played, reference)
+        let far = WebTriangleTests.farFraction(played, reference)
+        print("web page against the Mac: wet and oil frame 1, mean difference \(String(format: "%.3f", difference)), \(String(format: "%.3f", far * 100))% of the pixels past 32 levels")
+        #expect(difference < Snapshot.tolerance, "mean difference \(difference)")
+        #expect(far < 0.01, "\(far * 100)% of the pixels past 32 levels")
+        // Without the drag and the relief the page would draw flat ribbons in
+        // the pigment: the parity above is the ground and the light crossing.
+        let flat = Wet()
+        flat.drags = false
+        let plain = try OllinApp.image(of: flat, frame: 1, fps: 30)
+        #expect(try WebExportTests.meanDifference(played, plain) > difference + 1)
     }
 
     @Test(.enabled("a browser with WebGL2 is needed") { await HeadlessBrowser.hasWebGL2() })

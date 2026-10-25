@@ -612,9 +612,9 @@ struct WebShaders {
     var fieldVertex: String = ""
     var fieldFragment: String = ""
     var upsampleFragment: String = ""
-    /// A stroke under a dry medium: the ribbon's vertex stage, which hands on
-    /// the ribbon's own coordinates, and `ollin_medium_fragment`'s dry half
-    /// over the translated medium section. Empty when no frame lays one.
+    /// A stroke under a medium: the ribbon's vertex stage, which hands on the
+    /// ribbon's own coordinates, and `ollin_medium_fragment` over the
+    /// translated medium section. Empty when no frame lays one.
     var ribbonVertex: String = ""
     var mediumFragment: String = ""
 
@@ -724,18 +724,44 @@ struct WebShaders {
     }
     """
 
-    /// `ollin_medium_fragment`'s dry half (the dry media, bristles, and the
-    /// dry brush) over the same medium functions, its rows as uniforms: the
-    /// kind, the palette's size, the streaks, and the tooth; the softness, the
-    /// roughness, the amount, and the seed; the second pigment; the palette.
+    /// `ollin_medium_fragment` over the same medium functions, its rows as
+    /// uniforms: the kind, the palette's size, the streaks, and the tooth; the
+    /// softness, the roughness, the amount, and the seed; the second pigment;
+    /// the palette; the drag's reach and the relief. A wet or oil stroke on
+    /// the canvas reads `ground`, the canvas drawn once more without such
+    /// strokes. `mediumFlip` is the surface's flip: -1 where its window rows
+    /// run down the canvas as the Mac's do, 1 where they run up, which turns
+    /// the screen y the relief is lit in and the row the ground is read at.
     static let mediumFragmentTail = """
     in vec4 vColor;
     in float vCoverage;
     in vec2 vCanvas;
     in vec4 vRibbon;
     flat in float vSeed;
-    uniform vec4 medium[11];
+    uniform vec4 medium[12];
+    uniform sampler2D ground;
+    uniform float hasGround;
+    uniform float pixelScale;
+    uniform float mediumFlip;
     out vec4 fragColor;
+    // The ground dragged into a wet pixel: eight taps back along the direction
+    // of travel, nearer taps weighed more, read as straight color.
+    vec3 ollin_medium_drag_ground(vec2 pixel, vec2 dir, float reach, vec3 fallback) {
+        vec2 size = vec2(textureSize(ground, 0));
+        vec3 sum = vec3(0.0);
+        float weight = 0.0;
+        for (int i = 0; i < 8; ++i) {
+            float f = (float(i) + 0.5) / 8.0;
+            float w = 1.0 - 0.5 * f;
+            vec2 p = pixel - dir * reach * f;
+            vec2 uv = vec2(p.x / size.x, mediumFlip > 0.0 ? p.y / size.y : 1.0 - p.y / size.y);
+            vec4 g = textureLod(ground, uv, 0.0);
+            vec3 c = g.a > 1e-4 ? g.rgb / g.a : fallback;
+            sum += c * w;
+            weight += w;
+        }
+        return sum / weight;
+    }
     void main() {
         float cov = perceptualCoverage(clamp(vCoverage, 0.0, 1.0));
         float density = clamp(vColor.a, 0.0, 1.0);
@@ -762,6 +788,44 @@ struct WebShaders {
         } else if (kind == 3) {
             alpha = ollin_medium_dry_brush(vCanvas, density, vRibbon.y, vRibbon.x, hw, vRibbon.w,
                                            vSeed, medium[0].w, medium[0].z, medium[1].z, medium[1].w);
+        } else {
+            // Wet paint and oil: the pigment mixes with the ground behind the
+            // pixel along the path, strongest toward the tail, the direction of
+            // travel the window gradient of the distance along.
+            vec2 grad = vec2(dFdx(vRibbon.x), dFdy(vRibbon.x));
+            float glen = length(grad);
+            vec3 paint = pigment;
+            if (hasGround > 0.5 && glen > 1e-6 && medium[1].z > 0.0) {
+                vec3 dragged = ollin_medium_drag_ground(gl_FragCoord.xy, grad / glen,
+                                                        medium[11].x * pixelScale, pigment);
+                float tail = smoothstep(0.0, 1.0, clamp(vRibbon.w, 0.0, 1.0));
+                float side = clamp(1.0 - vRibbon.y * vRibbon.y, 0.0, 1.0);
+                float streak = ollin_vnoise(vec2(vRibbon.x / (hw * 3.0) + vSeed,
+                                                 (vRibbon.y * 0.5 + 0.5) * 9.0));
+                float k = clamp(medium[1].z * (0.25 + 0.75 * tail) * (0.6 + 0.4 * side)
+                                * (0.55 + 0.9 * streak), 0.0, 1.0);
+                paint = mix(pigment, dragged, k);
+            }
+            if (kind == 5 && medium[11].y > 0.0) {
+                // Oil's relief, lit from the upper left, its slope read one pixel
+                // over through the ribbon coordinates' own window derivatives.
+                float seed = vSeed + medium[1].w;
+                float ys = -mediumFlip;
+                float h0 = ollin_medium_relief(vRibbon.x, vRibbon.y, hw, medium[0].z, seed);
+                float hx = ollin_medium_relief(vRibbon.x + dFdx(vRibbon.x), vRibbon.y + dFdx(vRibbon.y),
+                                               hw, medium[0].z, seed) - h0;
+                float hy = ollin_medium_relief(vRibbon.x + ys * dFdy(vRibbon.x), vRibbon.y + ys * dFdy(vRibbon.y),
+                                               hw, medium[0].z, seed) - h0;
+                float k = medium[11].y * hw * pixelScale * 0.35;
+                vec3 n = normalize(vec3(-hx * k, -hy * k, 1.0));
+                vec3 l = normalize(vec3(-0.5, -0.55, 0.67));
+                vec3 halfway = normalize(l + vec3(0.0, 0.0, 1.0));
+                float shade = 0.15 + 0.85 * max(dot(n, l), 0.0) / l.z;
+                float spec = pow(max(dot(n, halfway), 0.0), 40.0) * 0.22 * min(medium[11].y, 1.0);
+                paint = paint * shade + spec;
+            }
+            pigment = paint;
+            alpha = density;
         }
         fragColor = vec4(pigment, alpha * cov);
     }
@@ -3108,7 +3172,9 @@ enum WebPlayer {
         if (ribbon) return ribbon;
         var p = program(RIBBON_VS, MEDIUM_FS);
         ribbon = { p: p, viewport: gl.getUniformLocation(p, 'viewport'), flip: gl.getUniformLocation(p, 'ollin_flip'),
-                   medium: gl.getUniformLocation(p, 'medium') };
+                   medium: gl.getUniformLocation(p, 'medium'), ground: gl.getUniformLocation(p, 'ground'),
+                   hasGround: gl.getUniformLocation(p, 'hasGround'), pixelScale: gl.getUniformLocation(p, 'pixelScale'),
+                   mediumFlip: gl.getUniformLocation(p, 'mediumFlip') };
         return ribbon;
       }
       // The stencil the coat needs, on the buffer the surface draws into, made
@@ -3135,7 +3201,7 @@ enum WebPlayer {
         owner.stencilRB = rb;
         return rb;
       }
-      function drawRibbons(item, w, h, so, flip, g, surface, ms) {
+      function drawRibbons(item, w, h, so, flip, g, surface, ms, groundTex) {
         if (!expander || !expander.ribbons) return;
         var start = item[1], floats = item[2];
         var src = scratch.subarray(so + start, so + start + floats);
@@ -3172,7 +3238,16 @@ enum WebPlayer {
         gl.uniform2f(e.viewport, w, h);
         gl.uniform1f(e.flip, flip);
         var at = paramOffset(g) + item[3];
-        gl.uniform4fv(e.medium, scratch.subarray(at, at + 44));
+        gl.uniform4fv(e.medium, scratch.subarray(at, at + 48));
+        // A wet or oil stroke on the canvas drags the ground this frame drew
+        // first; anywhere else the slot holds the blank texture and is not read.
+        var drags = item[5] === 1 && !!groundTex;
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, drags ? groundTex : blank);
+        gl.uniform1i(e.ground, 0);
+        gl.uniform1f(e.hasGround, drags ? 1 : 0);
+        gl.uniform1f(e.pixelScale, surface.w / w);
+        gl.uniform1f(e.mediumFlip, flip);
         setBlend(item[4] || 0, true);
         gl.bindVertexArray(entry.vao);
         if (ensureStencil(surface, ms)) {
@@ -3354,6 +3429,17 @@ enum WebPlayer {
       // layer's texture this frame; `previous` the fronts of the feedback layers;
       // `sc` the frame's scene block when the surface marches 3D fields.
       function drawItems(items, surface, w, h, clear, results, previous, g, sc) {
+        // A wet or oil stroke drags the canvas under it: the same items drawn
+        // once more first with every such stroke left out, as the Mac's ground
+        // pass draws the frame, so a wet mark drags what lies under it whether
+        // it was drawn before or after, and never itself.
+        var groundTex = null;
+        if (items.some(function (it) { return it[0] === 'r' && it[5] === 1; })) {
+          var ground = acquire(surface.w, surface.h);
+          drawItems(items.filter(function (it) { return !(it[0] === 'r' && it[5] === 1); }),
+                    ground, w, h, clear, results, previous, g, sc);
+          groundTex = ground.tex;
+        }
         var ms = MSAA ? multisampled(surface) : null;
         var target = ms ? { fbo: ms.fbo, w: surface.w, h: surface.h } : surface;
         if (sc) { ensureDepth(surface); ensureDepthMS(ms, surface); }
@@ -3367,7 +3453,7 @@ enum WebPlayer {
           if (item[0] === 's') { drawShapes(item[1], item[2], item[3] || 0, w, h, flip); continue; }
           if (item[0] === 't') { drawTriangles(item[1], item[2], item[3] === 1, item[4] || 0, w, h, vo, flip); continue; }
           if (item[0] === 'x') { drawSources(item, item[4] === 1, item[5] || 0, w, h, so, flip); continue; }
-          if (item[0] === 'r') { drawRibbons(item, w, h, so, flip, g, surface, ms); continue; }
+          if (item[0] === 'r') { drawRibbons(item, w, h, so, flip, g, surface, ms, groundTex); continue; }
           if (item[0] === 'g') { drawGroups(item[1], item[2], item[3] || 0, w, h, flip, g); continue; }
           if (item[0] === 'f') {
             if (!sc) continue;

@@ -10,9 +10,9 @@
 // and only once, so the segment list itself carries no order (see ShaderIncludes).
 #include "ShaderCore.metal"
 
-// The dry media's shading, marked as a library section so the web page's
-// medium fragment reads the same functions: the tooth, its cells, and what a
-// dry stick, a bristle brush, and a dry brush lay at a pixel of the ribbon.
+// The media's shading, marked as a library section so the web page's medium
+// fragment reads the same functions: the tooth, its cells, what a dry stick, a
+// bristle brush, and a dry brush lay at a pixel of the ribbon, and oil's relief.
 // OLLIN_LIB_BEGIN medium
 
 // The paper's tooth at `p` (canvas points over the tooth's cell size): two
@@ -118,8 +118,6 @@ static inline float ollin_medium_dry_brush(float2 canvas, float density, float a
     return smoothstep(1.0 - load - 0.05, 1.0 - load + 0.05, grain);
 }
 
-// OLLIN_LIB_END medium
-
 // The relief of an oil stroke at a place on the ribbon: ridges stretched along
 // the path in two octaves, under a dome across the width, 0 at the edge.
 static inline float ollin_medium_relief(float arc, float across, float hw, float streaks, float seed) {
@@ -129,6 +127,8 @@ static inline float ollin_medium_relief(float arc, float across, float hw, float
     float dome = sqrt(clamp(1.0 - across * across, 0.0, 1.0));
     return dome * (0.35 + 0.65 * ridge);
 }
+
+// OLLIN_LIB_END medium
 
 // The ground dragged into a wet pixel: eight taps back along the direction of
 // travel (`dir`, in attachment pixels), out to `reach` pixels, nearer taps

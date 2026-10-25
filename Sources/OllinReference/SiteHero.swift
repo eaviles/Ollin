@@ -973,7 +973,9 @@ enum SiteHero {
         if (ribbon) return ribbon;
         var p = program(RIBBON_VS, MEDIUM_FS);
         ribbon = { p: p, viewport: gl.getUniformLocation(p, 'viewport'), flip: gl.getUniformLocation(p, 'ollin_flip'),
-                   medium: gl.getUniformLocation(p, 'medium') };
+                   medium: gl.getUniformLocation(p, 'medium'), ground: gl.getUniformLocation(p, 'ground'),
+                   hasGround: gl.getUniformLocation(p, 'hasGround'), pixelScale: gl.getUniformLocation(p, 'pixelScale'),
+                   mediumFlip: gl.getUniformLocation(p, 'mediumFlip') };
         return ribbon;
       }
       // The stencil the coat needs, on the buffer the surface draws into, made
@@ -1000,7 +1002,7 @@ enum SiteHero {
         owner.stencilRB = rb;
         return rb;
       }
-      function drawRibbons(item, w, h, so, flip, g, surface, ms) {
+      function drawRibbons(item, w, h, so, flip, g, surface, ms, groundTex) {
         if (!expander || !expander.ribbons) return;
         var start = item[1], floats = item[2];
         var src = scratch.subarray(so + start, so + start + floats);
@@ -1037,7 +1039,16 @@ enum SiteHero {
         gl.uniform2f(e.viewport, w, h);
         gl.uniform1f(e.flip, flip);
         var at = paramOffset(g) + item[3];
-        gl.uniform4fv(e.medium, scratch.subarray(at, at + 44));
+        gl.uniform4fv(e.medium, scratch.subarray(at, at + 48));
+        // A wet or oil stroke on the canvas drags the ground this frame drew
+        // first; anywhere else the slot holds the blank texture and is not read.
+        var drags = item[5] === 1 && !!groundTex;
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, drags ? groundTex : blank);
+        gl.uniform1i(e.ground, 0);
+        gl.uniform1f(e.hasGround, drags ? 1 : 0);
+        gl.uniform1f(e.pixelScale, surface.w / w);
+        gl.uniform1f(e.mediumFlip, flip);
         setBlend(item[4] || 0, true);
         gl.bindVertexArray(entry.vao);
         if (ensureStencil(surface, ms)) {
@@ -1219,6 +1230,17 @@ enum SiteHero {
       // layer's texture this frame; `previous` the fronts of the feedback layers;
       // `sc` the frame's scene block when the surface marches 3D fields.
       function drawItems(items, surface, w, h, clear, results, previous, g, sc) {
+        // A wet or oil stroke drags the canvas under it: the same items drawn
+        // once more first with every such stroke left out, as the Mac's ground
+        // pass draws the frame, so a wet mark drags what lies under it whether
+        // it was drawn before or after, and never itself.
+        var groundTex = null;
+        if (items.some(function (it) { return it[0] === 'r' && it[5] === 1; })) {
+          var ground = acquire(surface.w, surface.h);
+          drawItems(items.filter(function (it) { return !(it[0] === 'r' && it[5] === 1); }),
+                    ground, w, h, clear, results, previous, g, sc);
+          groundTex = ground.tex;
+        }
         var ms = MSAA ? multisampled(surface) : null;
         var target = ms ? { fbo: ms.fbo, w: surface.w, h: surface.h } : surface;
         if (sc) { ensureDepth(surface); ensureDepthMS(ms, surface); }
@@ -1232,7 +1254,7 @@ enum SiteHero {
           if (item[0] === 's') { drawShapes(item[1], item[2], item[3] || 0, w, h, flip); continue; }
           if (item[0] === 't') { drawTriangles(item[1], item[2], item[3] === 1, item[4] || 0, w, h, vo, flip); continue; }
           if (item[0] === 'x') { drawSources(item, item[4] === 1, item[5] || 0, w, h, so, flip); continue; }
-          if (item[0] === 'r') { drawRibbons(item, w, h, so, flip, g, surface, ms); continue; }
+          if (item[0] === 'r') { drawRibbons(item, w, h, so, flip, g, surface, ms, groundTex); continue; }
           if (item[0] === 'g') { drawGroups(item[1], item[2], item[3] || 0, w, h, flip, g); continue; }
           if (item[0] === 'f') {
             if (!sc) continue;

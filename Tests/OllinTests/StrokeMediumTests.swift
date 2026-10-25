@@ -383,15 +383,13 @@ struct StrokeMediumTests {
         #expect(body(try OllinApp.svg(of: shaded)) == body(try OllinApp.svg(of: plain)))
     }
 
-    @Test func theWebPageNamesTheWetCall() throws {
-        let sketch = MediumSketch(ground: .white) { s in
+    @Test func theWebPageCarriesEveryMedium() throws {
+        // A wet and a dry medium both cross (WebStrokeMediumTests has the page,
+        // and the one refusal left, a wet stroke over a kept canvas).
+        let wet = MediumSketch(ground: .white) { s in
             s.stroke(.black); s.strokeWeight(10); s.strokeMedium(.oil); s.drawLine(20, 20, 200, 200)
         }
-        let refusal = #expect(throws: WebExportRefusal.self) {
-            _ = try OllinApp.recordWebFrames(of: sketch, frames: 2, fps: 30)
-        }
-        #expect(refusal?.call.contains("strokeMedium(.wet) or strokeMedium(.oil)") == true)
-        // A dry medium crosses (WebStrokeMediumTests has the page).
+        #expect(throws: Never.self) { _ = try OllinApp.recordWebFrames(of: wet, frames: 2, fps: 30) }
         let dry = MediumSketch(ground: .white) { s in
             s.stroke(.black); s.strokeWeight(10); s.strokeMedium(.pencil); s.drawLine(20, 20, 200, 200)
         }

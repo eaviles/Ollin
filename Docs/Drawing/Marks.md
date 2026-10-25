@@ -418,7 +418,7 @@ A mark's **width** exports exactly. `--export-svg` and `--export-pdf` write the 
 
 A mark's **opacity flattens** to its average, weighted along the mark's length. A vector document draws one fill at one alpha per path, so a varying opacity has nowhere to go. Ollin says so once on the console rather than dropping it silently. For a plotter, with one pen and one ink, this costs nothing.
 
-A **medium** is raster. `--export-svg` and `--export-pdf` write the stroke as the flat ribbon it would be without one, the line a plotter draws, and say so once. The [web page](../Output/Web.md#strokes-and-fills-on-the-page) export carries the dry media, the bristles, and the dry brush, shaded on the page by the same functions; it stops at `.wet` and `.oil`, which drag the frame drawn without them, and names the call.
+A **medium** is raster. `--export-svg` and `--export-pdf` write the stroke as the flat ribbon it would be without one, the line a plotter draws, and say so once. The [web page](../Output/Web.md#strokes-and-fills-on-the-page) export carries every medium, shaded on the page by the same functions; a `.wet` or `.oil` stroke there drags the canvas the page draws first without it. It stops at a wet stroke on a canvas that keeps its paint (`noClear`), and names the call.
 
 A **fill medium** is raster too. A vector export writes the fill flat, in its color, and says so once. The web page export stops at a fill medium and names the call.
 
