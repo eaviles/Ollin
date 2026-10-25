@@ -533,7 +533,9 @@
     ],
     "Recreations/DoraMaurer": [
       "Recreations/DoraMaurer/Displacements",
-      "Recreations/DoraMaurer/QuasiImage"
+      "Recreations/DoraMaurer/QuasiImage",
+      "Recreations/DoraMaurer/FiveOutOfFour",
+      "Recreations/DoraMaurer/Overlappings"
     ],
     "Recreations/RomanVerostko": [
       "Recreations/RomanVerostko/Pathway",
@@ -8800,6 +8802,50 @@
       "stillSmall": "examples/Recreations/DoraMaurer/Displacements/still-640.jpg?v=e6fddf94",
       "width": 864
     },
+    "Recreations/DoraMaurer/FiveOutOfFour": {
+      "width": 2160,
+      "height": 864,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 11.901,
+      "sound": false,
+      "source": "a3db63bff01aa156",
+      "rendered": "2026-10-25",
+      "bytes": {
+        "loop": 153400,
+        "loopSmall": 57462,
+        "still": 31165,
+        "stillSmall": 16433
+      },
+      "loop": "examples/Recreations/DoraMaurer/FiveOutOfFour/loop.mp4?v=d2af511b",
+      "loopSmall": "examples/Recreations/DoraMaurer/FiveOutOfFour/loop-640.mp4?v=30cf3dc8",
+      "still": "examples/Recreations/DoraMaurer/FiveOutOfFour/still.jpg?v=af0d7326",
+      "stillSmall": "examples/Recreations/DoraMaurer/FiveOutOfFour/still-640.jpg?v=f7969a1c",
+      "seed": 1
+    },
+    "Recreations/DoraMaurer/Overlappings": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 2.109,
+      "sound": false,
+      "source": "316ade6b34536068",
+      "rendered": "2026-10-25",
+      "bytes": {
+        "loop": 1550786,
+        "loopSmall": 272470,
+        "still": 57816,
+        "stillSmall": 23478
+      },
+      "loop": "examples/Recreations/DoraMaurer/Overlappings/loop.mp4?v=6ca48605",
+      "loopSmall": "examples/Recreations/DoraMaurer/Overlappings/loop-640.mp4?v=2098a962",
+      "still": "examples/Recreations/DoraMaurer/Overlappings/still.jpg?v=4862774a",
+      "stillSmall": "examples/Recreations/DoraMaurer/Overlappings/still-640.jpg?v=6112ec9d",
+      "seed": 1
+    },
     "Recreations/DoraMaurer/QuasiImage": {
       "bytes": {
         "loop": 10524135,
@@ -13039,11 +13085,13 @@
       ]
     },
     "Recreations/DoraMaurer": {
-      "image": "groups/Recreations-DoraMaurer.jpg?v=221e4c11",
-      "imageSmall": "groups/Recreations-DoraMaurer-640.jpg?v=e9651741",
+      "image": "groups/Recreations-DoraMaurer.jpg?v=9a828de3",
+      "imageSmall": "groups/Recreations-DoraMaurer-640.jpg?v=aa3f7cdb",
       "of": [
         "Recreations/DoraMaurer/Displacements",
-        "Recreations/DoraMaurer/QuasiImage"
+        "Recreations/DoraMaurer/QuasiImage",
+        "Recreations/DoraMaurer/FiveOutOfFour",
+        "Recreations/DoraMaurer/Overlappings"
       ]
     },
     "Recreations/FriederNake": {

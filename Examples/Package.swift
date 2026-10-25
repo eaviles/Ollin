@@ -1054,9 +1054,14 @@ let package = Package(
         // the warm ones displaced a unit a step along the border and the cold
         // ones along the diagonal, ruled in thin lines with a few cells painted
         // in full, and one of those cells enlarged until its lines are bands of
-        // flat color, after Dóra Maurer.
+        // flat color; four frames cut into five equal panels and hung apart;
+        // and congruent sheets laid across one bent surface, each the one
+        // below it moved by a step, their overlaps mixed as paint, after Dóra
+        // Maurer.
         example("Recreations/DoraMaurer/Displacements"),
         example("Recreations/DoraMaurer/QuasiImage"),
+        example("Recreations/DoraMaurer/FiveOutOfFour"),
+        example("Recreations/DoraMaurer/Overlappings"),
         // One gesture cast from random control points, laid down once as a
         // brush stroke and again and again as fine pen strokes behind it, and
         // one curve repeated along a larger copy of itself until the close
