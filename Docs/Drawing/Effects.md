@@ -819,8 +819,8 @@ if let plane = julia.plane {
 [The `Complex` page](../Helpers/Complex.md#canvas) has the framing in full.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/22-IteratedForms/FractalPair-dark.jpg">
-  <img src="../../Guide/Images/22-IteratedForms/FractalPair.jpg" alt="Three panels in blue, gold, and cream. The whole Mandelbrot set with a small red circle marking a point on the edge of its left bulb; a Julia set of dense spiral filigree; and a deep zoom into the Mandelbrot boundary showing the same shapes recurring at a smaller scale" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/23-IteratedForms/FractalPair-dark.jpg">
+  <img src="../../Guide/Images/23-IteratedForms/FractalPair.jpg" alt="Three panels in blue, gold, and cream. The whole Mandelbrot set with a small red circle marking a point on the edge of its left bulb; a Julia set of dense spiral filigree; and a deep zoom into the Mandelbrot boundary showing the same shapes recurring at a smaller scale" width="680">
 </picture>
 
 **Newton's basins**: the same plane, asked where an orbit ends up rather than when it
@@ -843,8 +843,8 @@ scale, so the boundaries are dust where all the colors touch:
   side, the imaginary axis up.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/22-IteratedForms/NewtonBasins-dark.jpg">
-  <img src="../../Guide/Images/22-IteratedForms/NewtonBasins.jpg" alt="Three panels. Three basins in red, green, and blue meeting along borders beaded with the third color at every scale; five basins spiraling into each other with small islands thrown off; and three basins meeting around two dark pools where the method never lands" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/23-IteratedForms/NewtonBasins-dark.jpg">
+  <img src="../../Guide/Images/23-IteratedForms/NewtonBasins.jpg" alt="Three panels. Three basins in red, green, and blue meeting along borders beaded with the third color at every scale; five basins spiraling into each other with small islands thrown off; and three basins meeting around two dark pools where the method never lands" width="680">
 </picture>
 
 See `Examples/Effects/NewtonBasins`, where the roots move on slow orbits and the step's
@@ -1058,8 +1058,8 @@ Where a [`Filter`](#filter) transforms an image once, a `Sim` runs a **stateful 
 A `SimField` is **persistent** like `Feedback`, so make it once in `setup()` and hold it. Each frame the marks you draw in `withField` land on the field's current state. The renderer then steps the simulation, and the result is the field's `image`. The raw state is *data*, so recolor it through the same `Filter` catalog as everything else.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/23-GridSimulations/FeedKillMap-dark.jpg">
-  <img src="../../Guide/Images/23-GridSimulations/FeedKillMap.jpg" alt="A six-by-four grid of reaction-diffusion dishes at different feed and kill settings: most sit quiet, while a diagonal band grows spots, rings, mazes, and mitosing dots" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/24-GridSimulations/FeedKillMap-dark.jpg">
+  <img src="../../Guide/Images/24-GridSimulations/FeedKillMap.jpg" alt="A six-by-four grid of reaction-diffusion dishes at different feed and kill settings: most sit quiet, while a diagonal band grows spots, rings, mazes, and mitosing dots" width="680">
 </picture>
 
 ```swift
@@ -1248,7 +1248,7 @@ The rest of the shape:
 - A compile error is reported at the file and line you wrote the kernel in, the field keeps its last state, and a later clean compile picks it up again, the way every user shader behaves. `ollin check` reads a kernel file as the `simulation` shape (it calls `cell`) or the `inject` shape (it calls `mark`).
 - A field running a kernel of your own is not carried to the [web page](../Output/Web.md) yet; the export names it as the call that stopped it.
 
-See `Simulation/Wind` for a wind carrying dust under two kernels, and Guide [Chapter 23](../../Guide/23-GridSimulations.md#a-rule-of-your-own-simshader) for the walk through it.
+See `Simulation/Wind` for a wind carrying dust under two kernels, and Guide [Chapter 24](../../Guide/24-GridSimulations.md#a-rule-of-your-own-simshader) for the walk through it.
 
 <a id="compose"></a>
 ### compose(_:) and layer(_:)
@@ -1334,7 +1334,7 @@ They interleave with `.post(_:)` in call order. An aside can carry filters of it
 - **It is GPU-resident, by design.** Layers are Metal render targets, and filter inputs are texture samples. So a layer is never copied back to the CPU. The other approach is combining `createGraphics`-style buffers on the CPU, which forces a full-frame upload every frame.
 - **Linear light, premultiplied.** Layers composite in the same [linear-float](../Drawing/HDR.md) space as the canvas. So blur and bloom are physically correct, blurring in linear light rather than gamma. Tone-mapping and dithering still happen once, at present, so a layer holds raw linear color.
 - **Layers take 2D and 3D alike.** A `withTarget` block is a full drawing surface. 2D marks, meshes, point clouds, and GPU particles all render into it and composite back. A target a 3D scene is drawn into also captures depth, which is what [`depth`](#depth) reads.
-- **Filtered layers composite on the canvas, not inside another target.** Geometry layers are filled before the frame's filters run. So a `withTarget` block that draws a *filtered* layer's `image` samples it before it exists, and gets an empty texture. Composite filtered results on the canvas, or chain further `filtered(_:)` and `combined(_:)` calls, which resolve in order.
+- **A filtered layer can be drawn inside another layer.** A `withTarget` block may draw the `image` of a layer filtered or combined the same frame: the layer that draws it is filled after that filter runs, and every other layer keeps its usual place. Two kinds of layer are still filled before the frame's filters, so an image made the same frame reads empty in them: a simulation field's seed and a feedback layer. Draw a filtered result into those on the next frame, or composite it on the canvas.
 - **Pair bloom with `.add`.** Bloom output is self-contained, holding the sharp image plus its glow. Compositing it with [`blendMode(.add)`](../Drawing/Drawing.md#blendMode) over a scene reads as added light rather than a covering layer.
 - See the `Effects/Layers` example for a blurred backdrop behind a bloomed foreground.
 
