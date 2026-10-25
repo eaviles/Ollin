@@ -355,7 +355,7 @@ drawPoint(width / 2, height / 2, 12)     // one bigger dot
 ```
 
 > [!TIP]
-> **Sizes go all the way down.** Round points, circles, lines, and shape outlines stay smooth at sub-pixel sizes. A dot, a line, or a [`strokeWeight`](#strokeWeight) thinner than a pixel fades by ink. It does not pop in, snap to a 1px floor, or flicker as it moves. A field of tiny points, a hairline `drawLine`, or a barely visible rectangle outline reads as a soft, even wash rather than hard speckle. Draw at whatever size and stroke weight the sketch wants, down to a fraction of a pixel.
+> **Sizes go all the way down.** Round points, circles, lines, and shape outlines stay smooth at small sizes, and a dot, a line, or a [`strokeWeight`](#strokeWeight) thinner than a pixel fades by ink rather than snapping to a one-pixel floor. A field of tiny points, a hairline `drawLine`, or a barely visible rectangle outline reads as a soft wash rather than hard speckle. Below about a pixel the ink is not yet exact. A dot's ink wanders with where it lands on the pixel grid: a 0.3-pixel dot lays between 0.28 and 0.42 of a pixel's ink, and can go missing near one corner. A hairline's ink depends on its angle: a 0.3-pixel line lays 0.22 of a pixel along an axis and 0.43 at 30 degrees. A test records both and the design notes take them up. A mark a pixel or more across lays its own area.
 
 <a name="line"></a>
 
@@ -366,7 +366,7 @@ drawLine(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double)
 drawLine(_ a: Vector2, _ b: Vector2)
 ```
 
-A stroked line segment between two points. It honors [`strokeCap`](#strokeCap), which is butt by default, and takes solid, translucent, or gradient stroke paint. It renders through the high-quality stroke path, which expands the edges into triangles and adds a ~1px anti-aliasing fringe. The line therefore stays crisp and even at any angle and resolution, down to sub-pixel widths.
+A stroked line segment between two points. It honors [`strokeCap`](#strokeCap), which is butt by default, and takes solid, translucent, or gradient stroke paint. It renders through the high-quality stroke path, which expands the edges into triangles and adds a ~1px anti-aliasing fringe. The line therefore stays crisp and even at any angle and resolution. Its measured width is its weight within 2% from a pixel up. A weight whose fringe edge falls mid-pixel reads up to 6% thin, and a hairline under a pixel lays ink that depends on its angle. A test records both.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawLine-dark.jpg">
