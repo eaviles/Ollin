@@ -10,7 +10,8 @@
 # carried by more surfaces than anyone can hold in their head: the file itself,
 # both asset trees, the breadcrumb, the H1, two footer links per neighbor, the
 # contents list, the status table, the coverage matrix, Appendix D's table
-# per chapter, the section pointers in CAPABILITIES.md, the snippet preamble
+# per chapter, the section pointers in CAPABILITIES.md, the chapter credits
+# in ATTRIBUTION.md, the snippet preamble
 # and its recorded gaps, the Guide hero's list of finished sketches, and the
 # chapter links in the changelog's old entries. Doing that by hand
 # once is a long afternoon. Doing it eleven times is how a Guide quietly stops
@@ -122,6 +123,10 @@ FORMS = (
     r"|→ Chapter (?P<crumb>\d+)</sup>"
     r"|(?P<sect>\bCh\.? *(?P<sectnum>\d+)(?= *§))"
     r"|^# (?P<title>\d+)\. "
+    # ATTRIBUTION.md credits each chapter on a line of its own that opens
+    # `- **Chapter N, [Title](Guide/NN-Name.md#...)`; the link moves through
+    # the file-name form above, and the number in front of it through this.
+    r"|^(?P<creditpfx>- \*\*Chapter )(?P<credit>\d+)(?=, \[)"
 )
 
 # Two more only fire in files where a bare chapter token cannot mean anything
@@ -138,7 +143,7 @@ CHANGELOG = pathlib.Path("CHANGELOG.md")
 LINKED = re.compile(r"(\]\(Guide/)(\d\d)-([A-Za-z0-9]+)(\.md)")
 
 scope = sorted(GUIDE.glob("*.md"))
-scope += [pathlib.Path(p) for p in ("CAPABILITIES.md", "CLAUDE.md", "DESIGN-NOTES.md", "README.md", "ROADMAP.md", "ARCHITECTURE.md")]
+scope += [pathlib.Path(p) for p in ("CAPABILITIES.md", "CLAUDE.md", "DESIGN-NOTES.md", "README.md", "ROADMAP.md", "ARCHITECTURE.md", "ATTRIBUTION.md")]
 scope += sorted(pathlib.Path("Docs").rglob("*.md"))
 # The snippet gate keys its recorded gaps by page path, and the Guide's hero
 # names each chapter's finished sketch by its figure folder; both go stale on
@@ -188,6 +193,8 @@ def substitute(m):
         return m.group(0).replace(g["sectnum"], str(moved(g["sectnum"])))
     if g["title"] is not None:
         return f"# {moved(g['title'])}. "
+    if g["credit"] is not None:
+        return f"{g['creditpfx']}{moved(g['credit'])}"
     if g.get("row") is not None:
         return f"{g['rowpfx']}{moved(g['row'])}. "
     if g.get("barech") is not None:
