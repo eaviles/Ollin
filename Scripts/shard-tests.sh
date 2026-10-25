@@ -71,7 +71,16 @@ single() {
 # flags a runner wants and the desk does not (build.yml documents it; it is
 # empty today); the same flags on every compile keep SwiftPM from rebuilding
 # the world for a changed command line.
-if ! build=$(swift build --build-tests ${=OLLIN_SWIFT_FLAGS} 2>&1); then
+#
+# A caller that has built already and runs another SwiftPM command beside the
+# shards names the bin directory in OLLIN_SHARD_BIN, and then nothing here
+# calls SwiftPM at all. Both the build and `--show-bin-path` wait on the
+# .build lock, which a `swift test` holds until it ends. The runner's recipe
+# has started this beside one since 2026-09-08, and the shards sat in that
+# wait for the whole of the other process (sixteen and seventeen minutes in
+# the two runs read on 2026-10-25) before they began, so the two halves ran
+# one after the other and the step crept past its cap.
+if [[ -z ${OLLIN_SHARD_BIN:-} ]] && ! build=$(swift build --build-tests ${=OLLIN_SWIFT_FLAGS} 2>&1); then
     print -r -- "$build" >&2
     exit 1
 fi
@@ -87,7 +96,7 @@ helper="$(dirname "$(xcrun --find swift)")/../libexec/swift/pm/swiftpm-testing-h
 # back to OllinTests before it is dealt, and the count check below asks for
 # exactly that set. The layout is not a toolchain version, only a build
 # system: the same desk produces the merged form under --build-system native.
-bin=$(swift build --show-bin-path 2>/dev/null)
+bin=${OLLIN_SHARD_BIN:-$(swift build --show-bin-path 2>/dev/null)}
 bundle=""
 for candidate in "$bin/OllinTests.xctest/Contents/MacOS/OllinTests" \
     "$bin/OllinPackageTests.xctest/Contents/MacOS/OllinPackageTests"; do

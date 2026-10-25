@@ -331,7 +331,11 @@ jobs:
       # In one process the step measured 1330 s to 2000 s green across
       # 2026-09-03 to 09-06 (the spread is the runner's, not the suite's).
       # Forty-five stays until the sharded recipe has a few measurements of
-      # its own. A killed run always looks like it did less work than it
+      # its own. The step then grew to 34 to 43 minutes by 2026-10-24 and
+      # passed the cap the next day, and that was not the suite: the shards
+      # were waiting on the .build lock until the third process ended, so
+      # the halves ran one after the other (shard-tests.sh, at
+      # OLLIN_SHARD_BIN, says how they now run side by side). A killed run always looks like it did less work than it
       # did: an uncaught exception flushes stdio on the way out, a killed
       # process does not.
       #

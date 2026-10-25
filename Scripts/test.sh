@@ -240,6 +240,12 @@ ci)
     swift test --skip-build --filter "$loopback|$crowded" || exit 1
     echo "test.sh: phase 2 of 2, the shards and the rest"
     export OLLIN_SHARD_SKIP="$sensitive|$runner|$crowded"
+    # Resolved here, before either process starts, so the shards never ask
+    # SwiftPM for it: the `swift test` beside them holds the .build lock for
+    # its whole run, and a shard script waiting on that lock ran after it
+    # rather than beside it (shard-tests.sh, at OLLIN_SHARD_BIN).
+    bin=$(swift build --show-bin-path ${=OLLIN_SWIFT_FLAGS}) || exit 1
+    export OLLIN_SHARD_BIN=$bin
     Scripts/shard-tests.sh "${OLLIN_CI_SHARDS:-2}" > >(sed -l 's/^/[shards] /') 2>&1 &
     shardsPid=$!
     nice -n 10 swift test --skip-build --skip "$sensitive|$runner|$loopback|$crowded|^OllinTests\\." > >(sed -l 's/^/[rest] /') 2>&1 &
