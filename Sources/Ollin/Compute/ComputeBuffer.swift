@@ -207,6 +207,10 @@ struct RecordedDispatch {
     /// Total thread count, also the `OllinComputeUniforms.particleCount` value.
     var threadCount: Int { gridWidth * gridHeight * gridDepth }
 
+    /// Whether a texture this dispatch binds is a layer drawn this frame, which
+    /// the dispatch can read only once the layer passes have run.
+    var readsLayer: Bool { textures.contains { $0?.isLayer == true } }
+
     /// A 1-D buffer dispatch (`threadCount × 1`). Keeps the buffer call sites
     /// unchanged as the struct grew the texture/2-D fields.
     init(kernel: ComputeKernel, threadCount: Int, buffers: [ComputeBindable?], params: [UInt8]) {
@@ -216,6 +220,19 @@ struct RecordedDispatch {
         self.gridDepth = 1
         self.buffers = buffers
         self.textures = []
+        self.params = params
+    }
+
+    /// A 1-D buffer dispatch that also binds `textures` at texture indices 0…,
+    /// sampled through the linear clamped sampler at sampler index 0.
+    init(kernel: ComputeKernel, threadCount: Int, buffers: [ComputeBindable?],
+         textures: [ComputeTextureBindable?], params: [UInt8]) {
+        self.kernel = kernel
+        self.gridWidth = threadCount
+        self.gridHeight = 1
+        self.gridDepth = 1
+        self.buffers = buffers
+        self.textures = textures
         self.params = params
     }
 

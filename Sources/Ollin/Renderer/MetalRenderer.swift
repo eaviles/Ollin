@@ -2434,7 +2434,8 @@ final class MetalRenderer {
             returnFrameSlot()   // nothing encoded; hand the slot back
             return
         }
-        encodeCompute(drawer, into: commandBuffer)   // sim steps before the render pass
+        // Sim steps before the render pass; a step that reads a layer waits for the layers.
+        encodeCompute(drawer, into: commandBuffer, part: .beforeLayers)
         prepareVolumes(drawer, into: commandBuffer)  // the clouds' grids, lit, ahead of every pass
         encodeMeshFieldCulling(drawer, into: commandBuffer,
                                viewport: SIMD2<Float>(Float(width), Float(height)))
@@ -2507,6 +2508,7 @@ final class MetalRenderer {
                               geoMats: renderedShadow.giGeoMats,
                               supersample: false, pooled: true)
         encodeEffectTargets(drawer, into: commandBuffer, buffers: buffers, pooled: true, gi: gi)
+        encodeCompute(drawer, into: commandBuffer, part: .afterLayers)
         // The layers are drawn, so the passes from here on find their pictures on the
         // surfaces a traced ray reaches.
         renderedShadow.reflectGeoOffsets = tracedPictureTable(renderedShadow.reflectGeoOffsets,
@@ -3267,7 +3269,8 @@ final class MetalRenderer {
         // geometry pass reads finished textures and the frame's own shadow pass can
         // safely re-fill the accel/offsets rings the trace used. nil = pure raster.
         let pathTraced = encodePathTracePass(drawer, width: width, height: height)
-        encodeCompute(drawer, into: commandBuffer)   // sim steps before the render pass
+        // Sim steps before the render pass; a step that reads a layer waits for the layers.
+        encodeCompute(drawer, into: commandBuffer, part: .beforeLayers)
         prepareVolumes(drawer, into: commandBuffer)  // the clouds' grids, lit, ahead of every pass
         encodeMeshFieldCulling(drawer, into: commandBuffer,
                                viewport: SIMD2<Float>(Float(width), Float(height)))
@@ -3321,6 +3324,7 @@ final class MetalRenderer {
                               geoMats: renderedShadow.giGeoMats,
                               supersample: true, pooled: false)
         encodeEffectTargets(drawer, into: commandBuffer, buffers: buffers, pooled: false, gi: gi)
+        encodeCompute(drawer, into: commandBuffer, part: .afterLayers)
         // The layers are drawn, so the passes from here on find their pictures on the
         // surfaces a traced ray reaches.
         renderedShadow.reflectGeoOffsets = tracedPictureTable(renderedShadow.reflectGeoOffsets,
@@ -3788,7 +3792,7 @@ final class MetalRenderer {
             let passHasStencil = attachClipStencil(to: pass, active: drawer.usesCanvasStencil,
                                                    width: width, height: height, storage: storage)
             guard let cb = commandQueue.makeCommandBuffer() else { continue }
-            encodeCompute(drawer, into: cb)
+            encodeCompute(drawer, into: cb, part: .beforeLayers)
             prepareVolumes(drawer, into: cb)
             encodeMeshFieldCulling(drawer, into: cb,
                                    viewport: SIMD2<Float>(Float(width), Float(height)))
@@ -3822,6 +3826,7 @@ final class MetalRenderer {
                                   geoMats: renderedShadow.giGeoMats,
                                   supersample: false, pooled: false)
             encodeEffectTargets(drawer, into: cb, buffers: buffers, pooled: false, gi: gi)
+            encodeCompute(drawer, into: cb, part: .afterLayers)
             // The layers are drawn, so the passes from here on find their pictures on the
             // surfaces a traced ray reaches.
             renderedShadow.reflectGeoOffsets = tracedPictureTable(renderedShadow.reflectGeoOffsets,

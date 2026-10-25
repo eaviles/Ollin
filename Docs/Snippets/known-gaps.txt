@@ -1072,15 +1072,17 @@ f0c1976a3bd8  Docs/Output/ScreenSaver.md:35  cannot find 'Ripple' in scope
 6769d4f057a2  Docs/Output/Spatial.md:47  cannot find 'scene' in scope
 1f2cfde3b6d6  Docs/Output/Wallpaper.md:30  '@main' attribute cannot be applied to this declaration
 68da6254f5c3  Docs/QuickReference.md:30  '@main' attribute cannot be applied to this declaration
-04f155b00209  Docs/Shaders/Compute.md:109  cannot find 'sand' in scope
-0c5eda7debcd  Docs/Shaders/Compute.md:129  '@main' attribute cannot be applied to this declaration
-b1d2e70e3760  Docs/Shaders/Compute.md:193  cannot find 'generator' in scope
-ba1688758b15  Docs/Shaders/Compute.md:232  'module' is inaccessible due to 'internal' protection level
-17abb921a8d1  Docs/Shaders/Compute.md:276  cannot find type 'MyParticle' in scope
-0a3d3619a9fc  Docs/Shaders/Compute.md:288  cannot find 'sim' in scope
-01d73cff8aa9  Docs/Shaders/Compute.md:315  cannot find 'focalDistance' in scope
-e2eef799045a  Docs/Shaders/Compute.md:346  cannot use instance member 'makeSpatialHash' within property initializer; property initializers run before 'self' is available
-0da43f988b6b  Docs/Shaders/Compute.md:36  '@main' attribute cannot be applied to this declaration
+04f155b00209  Docs/Shaders/Compute.md:110  cannot find 'sand' in scope
+918225fecec8  Docs/Shaders/Compute.md:125  cannot find 'crowd' in scope
+0c5eda7debcd  Docs/Shaders/Compute.md:159  '@main' attribute cannot be applied to this declaration
+b1d2e70e3760  Docs/Shaders/Compute.md:223  cannot find 'generator' in scope
+ba1688758b15  Docs/Shaders/Compute.md:262  'module' is inaccessible due to 'internal' protection level
+17abb921a8d1  Docs/Shaders/Compute.md:306  cannot find type 'MyParticle' in scope
+d7d079ec7d87  Docs/Shaders/Compute.md:318  cannot find 'sim' in scope
+d7184a472a94  Docs/Shaders/Compute.md:345  cannot find 'steer' in scope
+0da43f988b6b  Docs/Shaders/Compute.md:37  '@main' attribute cannot be applied to this declaration
+01d73cff8aa9  Docs/Shaders/Compute.md:372  cannot find 'focalDistance' in scope
+e2eef799045a  Docs/Shaders/Compute.md:403  cannot use instance member 'makeSpatialHash' within property initializer; property initializers run before 'self' is available
 c9f48908e8ff  Docs/Shaders/ShaderLibrary.md:13  cannot find 'source' in scope
 fb6fa9118c0f  Docs/Shaders/Shaders.md:120  cannot find 'metalSource' in scope
 a938ccb90b53  Docs/Shaders/Shaders.md:154  cannot find 'metalSource' in scope

@@ -4933,6 +4933,16 @@ extension MetalRenderer {
         encoder.setVertexBytes(&restore, length: MemoryLayout<Uniforms>.stride, index: 1)
     }
 
+    /// Which of a frame's dispatches an `encodeCompute` call encodes.
+    enum ComputePart {
+        /// Every dispatch, for a drive with no layer passes.
+        case all
+        /// The dispatches recorded before the first one that reads a layer.
+        case beforeLayers
+        /// That dispatch and every one recorded after it.
+        case afterLayers
+    }
+
     /// Encode the frame's recorded compute dispatches into one compute encoder,
     /// ahead of the geometry render pass in the *same* command buffer — so a
     /// simulation step and the draw that reads its output stay ordered within the
@@ -4941,10 +4951,25 @@ extension MetalRenderer {
     /// dispatch's thread count as `particleCount`) and the custom params, if any, at
     /// index 11; the kernel's own buffers bind at 0…9. Threadgroup size comes from
     /// the pipeline, dispatched non-uniformly so the count needn't be a multiple.
-    func encodeCompute(_ drawer: Drawer, into commandBuffer: MTLCommandBuffer) {
-        guard !drawer.dispatches.isEmpty,
+    /// A dispatch with textures also gets a linear clamped sampler at index 0.
+    ///
+    /// `part` picks the dispatches around the layer passes: a drive that draws
+    /// layers encodes `.beforeLayers` ahead of them and `.afterLayers` right after
+    /// them, so a kernel reading a layer reads this frame's picture
+    /// (`Drawer.firstLayerReadingDispatch`); a drive with no layer passes encodes
+    /// `.all` at once.
+    func encodeCompute(_ drawer: Drawer, into commandBuffer: MTLCommandBuffer,
+                       part: ComputePart = .all) {
+        let split = drawer.firstLayerReadingDispatch
+        let range: Range<Int>
+        switch part {
+        case .all: range = drawer.dispatches.indices
+        case .beforeLayers: range = 0 ..< split
+        case .afterLayers: range = split ..< drawer.dispatches.endIndex
+        }
+        guard !range.isEmpty,
               let encoder = commandBuffer.makeComputeCommandEncoder() else { return }
-        for dispatch in drawer.dispatches {
+        for dispatch in drawer.dispatches[range] {
             guard dispatch.threadCount > 0,
                   let state = try? computePipeline(for: dispatch.kernel) else { continue }
             encoder.setComputePipelineState(state)
@@ -4953,6 +4978,9 @@ extension MetalRenderer {
             }
             for (index, bindable) in dispatch.textures.enumerated() {
                 encoder.setTexture(bindable?.metalTexture(for: device), index: index)
+            }
+            if !dispatch.textures.isEmpty {
+                encoder.setSamplerState(imageSampler, index: 0)
             }
             var uniforms = drawer.computeUniforms
             uniforms.particleCount = UInt32(dispatch.threadCount)

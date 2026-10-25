@@ -757,6 +757,40 @@ open class Sketch {
             buffers: buffers.map { $0 }, params: params.bytes))
     }
 
+    /// Run a compute `kernel` over `buffers` that also reads up to eight
+    /// pictures, bound at texture indices 0, 1, 2, … in the order given, with a
+    /// linear sampler that clamps at the edge bound at sampler index 0. This is
+    /// the form for particles that steer by what is drawn: a layer's `image`, a
+    /// filtered layer's (`scene.filtered(.gaussianBlur(radius: 48)).image`), a
+    /// `ComputeTexture`'s, or a loaded file's.
+    ///
+    /// Every picture reads as linear light, the units the canvas works in, with
+    /// its color multiplied by its alpha: a layer and a kernel's float output as
+    /// they hold it, a file decoded from sRGB on the read. Declare each as a
+    /// `texture2d<float>` at its index and the sampler as `sampler s
+    /// [[sampler(0)]]`, and sample with an explicit level, since a kernel has no
+    /// screen to choose one from: `field.sample(s, uv, level(0))`, with `uv` the
+    /// point over `u.resolution`. The first texel row is the top.
+    ///
+    /// A kernel that reads a layer reads the picture drawn *this* frame: it runs
+    /// after the frame's layers are drawn, and so does every dispatch recorded
+    /// after it, which keeps the order they were recorded in. Something drawn
+    /// into a layer from what such a kernel writes shows the frame before.
+    /// `count` is the thread count and defaults to the first buffer's element
+    /// count. Indices 10 and 11 stay the standard constants and `params`.
+    public func compute(_ kernel: ComputeKernel, buffers: [any ComputeBindable],
+                        textures: [Image], count: Int? = nil,
+                        params: ComputeParams = ComputeParams()) {
+        precondition(!buffers.isEmpty, "compute(_:buffers:textures:) needs at least one buffer")
+        precondition(buffers.count <= 10, "compute(_:buffers:textures:) binds at most ten buffers (indices 0…9)")
+        precondition(textures.count <= 8, "compute(_:buffers:textures:) binds at most eight textures (indices 0…7)")
+        drawer.recordDispatch(RecordedDispatch(
+            kernel: kernel, threadCount: count ?? buffers[0].count,
+            buffers: buffers.map { $0 },
+            textures: textures.map { ImageComputeTexture($0, readsLight: true) },
+            params: params.bytes))
+    }
+
     /// The active camera's view and projection matrices packed as `ComputeParams`
     /// (an `OllinCameraMatrices`, 128 bytes) for the canvas's aspect, so a kernel
     /// can project world points through the sketch's own camera with the library's
@@ -796,9 +830,14 @@ open class Sketch {
 
     /// Step a `Particles` system one frame (records its compute dispatch and swaps
     /// its ping-pong buffers). `custom` passes up to four live floats the kernel
-    /// reads as `custom.x…w`.
-    public func stepParticles(_ particles: Particles, custom: SIMD4<Float> = .zero) {
-        particles.recordStep(into: drawer, custom: custom)
+    /// reads as `custom.x…w`. `textures` hands the step up to four pictures, read
+    /// in the step as `picture(0, position)` through `picture(3, position)` (see
+    /// `Particles`), and a layer among them is read as drawn this frame, as
+    /// `compute(_:buffers:textures:count:params:)` describes.
+    public func stepParticles(_ particles: Particles, custom: SIMD4<Float> = .zero,
+                              textures: [Image] = []) {
+        precondition(textures.count <= 4, "stepParticles(_:custom:textures:) reads at most four textures")
+        particles.recordStep(into: drawer, custom: custom, textures: textures)
     }
 
     /// Draw a `Particles` system's current state as discs (see

@@ -215,6 +215,7 @@ let package = Package(
         // Drives the raw SpatialHash, so it constructs OllinParticle buffers directly
         // and needs the shared-struct module (which the typed sims hide).
         example("Compute/NeighborSearch", dependencies: [.product(name: "COllinShaders", package: "Ollin")]),
+        example("Compute/SteeredByAPicture"),
         example("3D/Geometry/PointCloud"),
         example("3D/Geometry/StrangeAttractor"),
         example("3D/Geometry/Transforms"),

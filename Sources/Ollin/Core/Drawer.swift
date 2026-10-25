@@ -1239,6 +1239,15 @@ final class Drawer {
     /// geometry to wipe).
     private(set) var dispatches: [RecordedDispatch] = []
 
+    /// Where the frame's dispatches split around its layer passes: every dispatch
+    /// before the first one that reads a layer drawn this frame runs ahead of the
+    /// layers, and that one and every dispatch recorded after it run once the
+    /// layers are drawn, so the recorded order holds on both sides. With no such
+    /// dispatch, all of them run ahead, as before.
+    var firstLayerReadingDispatch: Int {
+        dispatches.firstIndex(where: \.readsLayer) ?? dispatches.endIndex
+    }
+
     /// Whether this frame's clock is one a later run can come back to: an
     /// export's fixed step, or a take playing back its recorded one. Work whose
     /// only purpose is to make a run repeat (the neighbor search putting each
@@ -2148,14 +2157,16 @@ final class Drawer {
     /// resolve accumulates the reflection across frames). Like the accumulation surface, the
     /// headless frame-grab must render every warmup frame (not just step compute) for that
     /// state to evolve, so a single-frame export of an SSR scene captures the converged
-    /// reflection. See `OllinApp.image(of:)`.
+    /// reflection. See `OllinApp.image(of:)`. A compute dispatch that reads a layer
+    /// counts too: what it writes carries into the next frame, and it reads the layer
+    /// as drawn, so a frame that only stepped the compute would leave it reading none.
     var usesFeedback: Bool {
         renderTargets.contains {
             switch $0.origin { case .feedback, .simField, .accumulate: return true; default: return false }
         } || filterOps.contains {
             if case let .combine(_, _, op) = $0.origin, case .screenSpaceReflections = op.kind { return true }
             return false
-        }
+        } || firstLayerReadingDispatch < dispatches.endIndex
     }
 
     /// Record a procedural generator as a source layer the renderer fills before

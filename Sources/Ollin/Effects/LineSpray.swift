@@ -317,7 +317,7 @@ public final class LineSpray {
     public var picture: Image? {
         didSet {
             guard picture !== oldValue else { return }
-            pictureSource = picture.map(ImageComputeTexture.init)
+            pictureSource = picture.map { ImageComputeTexture($0) }
             reset()
         }
     }
@@ -878,7 +878,7 @@ public final class LineSpray {
         refreshQuads(frame: frame)
         if bokeh.aperture != apertureShape {
             apertureShape = bokeh.aperture
-            apertureSource = bokeh.aperture.picture.map(ImageComputeTexture.init)
+            apertureSource = bokeh.aperture.picture.map { ImageComputeTexture($0) }
         }
         let lineCount = pointsPerPass * passesPerFrame
         let quadCount = quadPointsPerPass * passesPerFrame

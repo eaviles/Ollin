@@ -4311,6 +4311,28 @@
       "stillSmall": "examples/Compute/ReactionDiffusion/still-640.jpg?v=5685b4e6",
       "width": 1080
     },
+    "Compute/SteeredByAPicture": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 3.5,
+      "sound": false,
+      "source": "e6b782fb6bcdab7b",
+      "rendered": "2026-10-25",
+      "bytes": {
+        "loop": 8014910,
+        "loopSmall": 2676605,
+        "still": 810743,
+        "stillSmall": 142955
+      },
+      "loop": "examples/Compute/SteeredByAPicture/loop.mp4?v=a5a89d06",
+      "loopSmall": "examples/Compute/SteeredByAPicture/loop-640.mp4?v=494c5fee",
+      "still": "examples/Compute/SteeredByAPicture/still.jpg?v=b2eb2981",
+      "stillSmall": "examples/Compute/SteeredByAPicture/still-640.jpg?v=5699b74a",
+      "seed": 1
+    },
     "Data/Edits": {
       "bytes": {
         "still": 11081,

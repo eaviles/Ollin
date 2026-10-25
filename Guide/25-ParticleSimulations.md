@@ -6,7 +6,7 @@
 
 <img src="Images/25-ParticleSimulations/Drift.jpg" alt="A dark canvas combed into two slow vortices by hundreds of thousands of particle trails, in interleaved threads of coral, teal, and violet light" width="560">
 
-Hundreds of thousands of individuals in one buffer, moved every frame by one small program on the GPU, make a particle system. Unlike a cell on a grid, a particle moves, and it can carry a species, leave marks for others, or be scored and bred. You build the plainest case first, the drift above: a quarter of a million particles reading one field and summed as light. Beyond it, particles follow a strange attractor, get neighbors, become matter, and run a search, and the same step runs over a grid.
+Hundreds of thousands of individuals in one buffer, moved every frame by one small program on the GPU, make a particle system. Unlike a cell on a grid, a particle moves, and it can carry a species, leave marks for others, or be scored and bred. You build the plainest case first, the drift above: a quarter of a million particles reading one field and summed as light. Beyond it, particles follow a strange attractor or a picture the sketch draws, get neighbors, become matter, and run a search, and the same step runs over a grid.
 
 ## A million grains: GPU particles
 
@@ -144,9 +144,9 @@ Before moving on, make it yours:
 
 The drift is motion, so keep it as a video. The command `swift run OllinLive MySketches/Drift.swift --export-video drift.mp4 --seconds 15` records the first fifteen seconds, which is when the trails fill in.
 
-## One field for a million particles: attractor flow
+## One field for a million particles: attractor flow and a picture
 
-The drift's particles followed a curl-noise field across the plane. The first family after it follows a different kind of field, a strange attractor. It is the one system here whose particles still never look at each other.
+The drift's particles followed a curl-noise field across the plane. The first family after it follows two other kinds of field: a strange attractor, and a picture the sketch draws. In both, the particles still never look at each other.
 
 ### A million following the same field: attractor flow
 
@@ -178,6 +178,35 @@ Notice what the sketch never says. It never says where the attractor is, how big
 The colors carry a second fact. A particle's color comes from how fast it is moving, which is what separates the fast outer sweeps from the slow, crowded core. But the picture is drawn additively, so brightness already means *how many particles are here*. Color is speed, and brightness is crowd. The default ramp shifts hue while holding its brightness roughly level, so those two facts stay on separate channels. A ramp that ran dark to light as well would make a slow crowded region and a fast empty one look the same.
 
 One more decision shows in the picture. The particles start spread over the attractor itself, sampled from a settled orbit, and then nudged off it by a tiny distance. The nudge is the part that matters. Sitting on the orbit itself, every particle follows the same trajectory forever. The picture can only ever be that one curve with dots sliding along it. A tiny distance off, chaos separates them within a few laps into as many trajectories as there are particles. That is the reason to run this many. Sensitivity to initial conditions is usually the thing that makes chaotic systems hard to work with. Here it is the mechanism.
+
+### Particles that follow what you draw: a picture as the field
+
+A picture can be the field too. Draw a word or a shape into a layer, blur it, and hand the blurred layer to the step: each particle reads it at two points ahead, one to each side, and turns toward the brighter. It is for particles that gather onto whatever the sketch draws, a word, a tracked hand, a shape under the pointer, and that follow it when it moves. The sensing is the one slime-mold agents use, which [Physarum](#agents-that-talk-through-the-floor-physarum) below reads off a trail it lays itself. Here the field is a picture you draw.
+
+<img src="Images/25-ParticleSimulations/PictureSteering.jpg" alt="The word LOOP twice on a dark ground. On the left a haze of particles fills the blurred letters, warm where the field is bright and blue in the dark. On the right the same particles trace each letter's center line as one thin bright stroke" width="640">
+
+```swift
+let marks = makeRenderTarget()
+withTarget(marks) {
+    background(.black)
+    fill(.white)
+    drawText("LOOP", width / 2, height / 2)
+}
+let field = marks.filtered(.gaussianBlur(radius: 16)).image
+stepParticles(crowd, textures: [field])
+```
+
+Inside the step, `picture(0, position)` reads the first picture at a point on the canvas:
+
+```metal
+float2 heading = normalize(velocity);
+float2 side = float2(-heading.y, heading.x);
+float left = picture(0, position + (heading + side * 0.6) * 16.0).r;
+float right = picture(0, position + (heading - side * 0.6) * 16.0).r;
+velocity = rotate2D(heading, (left - right) * 60.0 * u.dt);
+```
+
+The left half of the figure only colors each particle by the brightness where it stands, so the crowd fills the blurred letters evenly. The right half turns, and the particles climb until the two readings match, which happens on the ridge down the middle of each stroke. A blur is what gives the field its slope. A hard-edged letter is flat inside and flat outside, and a particle has nothing to turn toward. The layer is read as drawn on the same frame, after its blur, so moving a shape changes the field the particles feel at once. [`Examples/Compute/SteeredByAPicture`](../Examples/Compute/SteeredByAPicture/Sketch.swift) traces a word in a quarter of a million particles and adds a disc under the pressed pointer for them to chase. The [compute reference](../Docs/Shaders/Compute.md#pictures) has the rest, including a kernel of your own that reads up to eight pictures.
 
 ## Particles that see their neighbors: Particle Life, the Primordial Particle System, Physarum, and the flock at scale
 

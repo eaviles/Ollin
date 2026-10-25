@@ -14,6 +14,7 @@ var fluid: ParticleFluid!
 var blobs: SoftBodies!
 var run: Evolution!
 var chem: SwarmChemistry!
+var crowd: Particles!
 
 // The cities the ant colony tours.
 let points = [Vector2(120, 160), Vector2(860, 240), Vector2(540, 620), Vector2(200, 900), Vector2(920, 840)]

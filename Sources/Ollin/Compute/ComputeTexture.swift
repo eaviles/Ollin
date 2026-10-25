@@ -59,22 +59,41 @@ protocol ComputeTextureBindable: AnyObject {
     /// Realize (and cache) the Metal texture on `device`. Renderer-only — called on
     /// the main actor while encoding a frame.
     func metalTexture(for device: MTLDevice) -> MTLTexture?
+    /// Whether this is a layer the frame draws, so a dispatch reading it has to
+    /// wait for the layer passes (`RecordedDispatch.readsLayer`).
+    var isLayer: Bool { get }
+}
+
+extension ComputeTextureBindable {
+    var isLayer: Bool { false }
 }
 
 /// Binds a picture a sketch already has to a compute dispatch, resolving it
-/// through the image's own linear upload rather than a second one. Every kind of
-/// `Image` answers there, a decoded file as readily as a layer or another
+/// through one of the image's own uploads rather than a second one. Every kind
+/// of `Image` answers there, a decoded file as readily as a layer or another
 /// kernel's output, and the result is cached on the image, so a picture bound
 /// every frame is uploaded once.
+///
+/// `readsLight` picks the upload. Off, a decoded file reaches the kernel as its
+/// stored values (the data read a value map wants); on, it reaches it as linear
+/// light, decoded from sRGB on read, which is what a layer or a kernel's float
+/// output already holds, so every kind of picture reads in the same units.
 final class ImageComputeTexture: ComputeTextureBindable {
     let image: Image
+    let readsLight: Bool
 
-    init(_ image: Image) { self.image = image }
+    init(_ image: Image, readsLight: Bool = false) {
+        self.image = image
+        self.readsLight = readsLight
+    }
 
     var width: Int { image.width }
     var height: Int { image.height }
+    var isLayer: Bool { image.isLayer }
 
-    func metalTexture(for device: MTLDevice) -> MTLTexture? { image.linearTexture(for: device) }
+    func metalTexture(for device: MTLDevice) -> MTLTexture? {
+        readsLight ? image.texture(for: device) : image.linearTexture(for: device)
+    }
 }
 
 /// A persistent, GPU-resident 2-D texture a compute kernel reads and writes each

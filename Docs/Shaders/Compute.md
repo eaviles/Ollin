@@ -21,6 +21,7 @@ In both, you write the per-element update as a short snippet of Metal. Ollin the
 - [The kernel snippet](#snippet) - what's in scope
 - [The prelude](#prelude) - the shared shader library, spliced into every kernel
 - [Custom live parameters](#custom)
+- [Reading a picture](#pictures) - a layer, a filtered layer, or a file, read by a kernel
 - [Texture kernels & simulations](#textures) - `Simulation`, `ComputeTexture`
 - [Kernels in a `.metal` file](#metalfile)
 - [The typed core](#core) - `ComputeKernel`, `ComputeBuffer`, `compute`
@@ -115,6 +116,35 @@ stepParticles(sand, custom: SIMD4(focus, 0, 0, 0))
 // in the snippet:
 float defocus = abs(depth - custom.x);
 ```
+
+<a id="pictures"></a>
+### Reading a picture
+
+A step can read up to four pictures, which is how particles steer by something the sketch draws. Hand them to `stepParticles(_:custom:textures:)`, and read one in the snippet with `picture(index, point)`, which takes a point on the canvas and returns the color there. Here the particles turn toward the bright side of a blurred layer:
+
+```swift
+let marks = makeRenderTarget()
+withTarget(marks) {
+    background(.black)
+    fill(.white)
+    drawText("OLLIN", width / 2, height / 2)
+}
+let field = marks.filtered(.gaussianBlur(radius: 48)).image
+stepParticles(crowd, textures: [field])
+drawParticles(crowd)
+```
+
+```metal
+// in the snippet: compare the brightness ahead and to each side, and turn toward it.
+float2 heading = normalize(velocity);
+float2 side = float2(-heading.y, heading.x);
+float left = picture(0, position + (heading + side) * 12.0).r;
+float right = picture(0, position + (heading - side) * 12.0).r;
+velocity = rotate2D(velocity, (left - right) * 8.0 * u.dt);
+```
+
+The layer is read as drawn this frame, after its blur, so the field follows whatever the sketch draws into it. The colors are linear light with the alpha already multiplied in, the same units the canvas works in. A picture loaded from a file reads that way too, decoded from sRGB. The read is smooth between pixels and holds the edge color past the border. A slot no picture was handed to reads as clear, so `picture(1, position)` is zero when only one picture was passed. [The typed core](#compute) has the same reads for a kernel of your own.
+
 
 <a id="textures"></a>
 ### Texture kernels & simulations
@@ -298,6 +328,9 @@ pp.swap()
 // the thread count defaults to the first buffer's element count.
 compute(scatter, buffers: [segments, lookup, particles], count: particles.count, params: params)
 
+// The same, reading up to eight pictures at texture indices 0, 1, 2, … in order.
+compute(steer, buffers: [particles], textures: [field])
+
 // Textures, write one (texture 0), or read one and write another (0 → 1):
 compute(generator, writing: tex)
 compute(transform, reading: src, writing: dst)
@@ -305,7 +338,29 @@ compute(transform, reading: src, writing: dst)
 
 Use the `buffers:` form for a kernel that reads static geometry uploaded once and writes an `OllinParticle` buffer the renderer draws. The geometry is a `ComputeBuffer` of your own struct, and you can bind a table or two beside these buffers. Nothing has to be packed into a struct it isn't. Any `ComputeBuffer` is a `ComputeBindable`, whatever its element type.
 
-A table the CPU works out again every frame goes in a fresh `ComputeBuffer` each frame: build the array, bind `ComputeBuffer(values)` beside the others, and let last frame's go. The frame's command buffer keeps what it binds until the GPU is done with it, so the old buffer is freed safely, and the cost is one allocation and one copy (half a megabyte for 130,000 floats). A buffer is never rewritten in place, since a frame in flight may still be reading it. The buffer form binds buffers only, so a kernel that steers by a 2D field reads it from such a table: clamp the point, read the four neighbors at `y * width + x`, and mix them, with the field's width and height in the params.
+A table the CPU works out again every frame goes in a fresh `ComputeBuffer` each frame: build the array, bind `ComputeBuffer(values)` beside the others, and let last frame's go. The frame's command buffer keeps what it binds until the GPU is done with it, so the old buffer is freed safely, and the cost is one allocation and one copy (half a megabyte for 130,000 floats). A buffer is never rewritten in place, since a frame in flight may still be reading it.
+
+A field that is a picture does not need a table. `compute(_:buffers:textures:count:params:)` binds up to eight pictures beside the buffers, at texture indices 0, 1, 2, and on in the order given, with a linear sampler that clamps at the edge at sampler index 0. A picture is any `Image`: a layer's `image`, a filtered layer's, a `ComputeTexture`'s, or a loaded file. The kernel declares each as a `texture2d<float>` and reads it with an explicit level, since a kernel has no screen to choose one from:
+
+```swift
+compute(steer, buffers: [particles], textures: [marks.filtered(.gaussianBlur(radius: 48)).image])
+```
+
+```metal
+kernel void steer(device OllinParticle *p [[buffer(0)]],
+                  constant OllinComputeUniforms &u [[buffer(10)]],
+                  texture2d<float> field [[texture(0)]],
+                  sampler s [[sampler(0)]],
+                  uint id [[thread_position_in_grid]]) {
+    if (id >= u.particleCount) { return; }
+    float brightness = field.sample(s, p[id].position / u.resolution, level(0)).r;
+    // …
+}
+```
+
+Divide a canvas point by `u.resolution` to get the place to read, since the first row of a picture is its top. Every picture reads as linear light with its alpha multiplied in: a layer and a kernel's float output as they hold it, and a file decoded from sRGB on the read.
+
+A kernel that reads a layer reads the picture drawn this frame. To make that possible it runs after the frame's layers are drawn, and so does every dispatch recorded after it, so the order you recorded them in still holds. Dispatches recorded before it run ahead of the layers, as every dispatch does otherwise. One thing follows from the order: a layer that draws what such a kernel writes shows it a frame late, because the layer was drawn before the kernel ran. An export renders every frame such a kernel runs in, including the frames before the one it keeps, so the state it carries forward was read from each frame's own layer.
 
 Draw a `ComputeBuffer<OllinParticle>` directly with `drawParticles(_ buffer:)`. For a custom struct, draw it with your own geometry, either by reading the buffer in your own shader or by copying the positions out. Draw a `ComputeTexture` with its `image`, which is a texture-backed [`Image`](../Drawing/Drawing.md).
 

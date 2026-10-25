@@ -63,6 +63,21 @@ public enum ParticleStyle: Sendable, Equatable {
 /// The shader-library helpers (`hash12`, `valueNoise`, `curlNoise`, `discSample`,
 /// `palette`, …) are available. The particle struct is `OllinParticle`.
 ///
+/// A step can read pictures. Hand them to `stepParticles(_:custom:textures:)`
+/// and read one at a canvas point with `picture(index, point)`, which returns
+/// its color as linear light, multiplied by its alpha, sampled smoothly and held
+/// at the edge. A layer is read as drawn this frame, so particles can steer by
+/// what the sketch draws:
+///
+/// ```swift
+/// // In the step: turn along the brightness of a blurred layer.
+/// float here = picture(0, position).r;
+/// float ahead = picture(0, position + velocity * 4.0).r;
+/// velocity = rotate2D(velocity, (ahead - here) * 6.0 * u.dt);
+/// ```
+///
+/// A picture not handed over reads as clear.
+///
 /// For a custom signature or layout, pass a full `ComputeKernel` via
 /// `init(count:kernel:)`, or drop to the raw `compute(_:reading:writing:)` /
 /// `drawParticles(_ buffer:)` primitives.
@@ -77,13 +92,16 @@ public final class Particles {
     /// `step` body (see the type doc for the locals in scope).
     public convenience init(count: Int, step: String) {
         self.init(count: count, kernel: Particles.wrap(step))
+        readsFourPictures = true
     }
 
     /// Build a system from a full `ComputeKernel`. Its entry must have the
     /// signature `(device const OllinParticle* [[buffer(0)]], device OllinParticle*
     /// [[buffer(1)]], constant OllinComputeUniforms& [[buffer(10)]], constant
     /// float4& [[buffer(11)]], uint id [[thread_position_in_grid]])` and write
-    /// buffer 1 from buffer 0 — the layout `init(count:step:)` generates.
+    /// buffer 1 from buffer 0, the layout `init(count:step:)` generates. The
+    /// pictures handed to `stepParticles(_:custom:textures:)` bind at texture
+    /// indices 0… with a linear clamped sampler at sampler index 0.
     public init(count: Int, kernel: ComputeKernel) {
         precondition(count > 0, "Particles needs a positive count")
         self.count = count
@@ -91,17 +109,30 @@ public final class Particles {
         self.pingpong = PingPong(count: count)
     }
 
+    /// Whether the kernel declares all four picture slots (the generated step
+    /// does), so every slot is bound, with a clear stand-in where no picture
+    /// was handed over.
+    private var readsFourPictures = false
+
+    /// The clear one-pixel picture an unfilled slot of the generated step reads.
+    private static let clearPicture = ImageComputeTexture(Image(width: 1, height: 1), readsLight: true)
+
     /// The buffer holding the current particle state (what `drawParticles` draws).
     var current: ComputeBuffer<OllinParticle> { pingpong.read }
 
     /// Record one simulation step into `drawer` and swap the ping-pong so `current`
     /// becomes the freshly written buffer. Called by `Sketch.stepParticles`.
-    func recordStep(into drawer: Drawer, custom: SIMD4<Float>) {
+    func recordStep(into drawer: Drawer, custom: SIMD4<Float>, textures: [Image] = []) {
         let read = pingpong.read, write = pingpong.write
         var bytes: [UInt8] = []
         withUnsafeBytes(of: custom) { bytes.append(contentsOf: $0) }
+        var bound: [ComputeTextureBindable?] = textures.map { ImageComputeTexture($0, readsLight: true) }
+        if readsFourPictures {
+            while bound.count < 4 { bound.append(Particles.clearPicture) }
+        }
         drawer.recordDispatch(RecordedDispatch(
-            kernel: kernel, threadCount: count, buffers: [read, write], params: bytes))
+            kernel: kernel, threadCount: count, buffers: [read, write],
+            textures: bound, params: bytes))
         pingpong.swap()   // at record time, so the following draw reads the output
     }
 
@@ -110,11 +141,32 @@ public final class Particles {
     /// the user's statements, and write the result back.
     private static func wrap(_ body: String) -> ComputeKernel {
         let source = """
+        static inline float4 ollin_particles_picture(uint index, float2 point, float2 resolution,
+                                                     texture2d<float> p0, texture2d<float> p1,
+                                                     texture2d<float> p2, texture2d<float> p3,
+                                                     sampler s) {
+            float2 uv = point / max(resolution, float2(1.0));
+            switch (index) {
+                case 0: return p0.sample(s, uv, level(0));
+                case 1: return p1.sample(s, uv, level(0));
+                case 2: return p2.sample(s, uv, level(0));
+                case 3: return p3.sample(s, uv, level(0));
+                default: return float4(0.0);
+            }
+        }
+        #define picture(index, point) ollin_particles_picture((index), (point), u.resolution, \\
+            _picture0, _picture1, _picture2, _picture3, _pictureSampler)
+
         kernel void ollin_particles_step(
             device const OllinParticle *inBuf  [[buffer(0)]],
             device OllinParticle       *outBuf [[buffer(1)]],
             constant OllinComputeUniforms &u   [[buffer(10)]],
             constant float4 &custom            [[buffer(11)]],
+            texture2d<float> _picture0         [[texture(0)]],
+            texture2d<float> _picture1         [[texture(1)]],
+            texture2d<float> _picture2         [[texture(2)]],
+            texture2d<float> _picture3         [[texture(3)]],
+            sampler _pictureSampler            [[sampler(0)]],
             uint id [[thread_position_in_grid]]) {
             if (id >= u.particleCount) { return; }
             OllinParticle _p = inBuf[id];

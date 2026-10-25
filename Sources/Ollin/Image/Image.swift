@@ -87,6 +87,10 @@ public final class Image {
     /// picture: what the web recorder writes down in place of pixels.
     var webRenderTarget: RenderTarget? { renderTargetSource }
 
+    /// Whether this image is a layer's (or a filtered layer's) picture, which the
+    /// renderer fills during the frame rather than holding ahead of it.
+    var isLayer: Bool { renderTargetSource != nil }
+
     /// Whether this image has a CPU pixel buffer to read and write. A GPU-backed
     /// image (a live texture, a compute texture, an effects layer) has none: the
     /// pixel `subscript` reads `.clear` and writes are dropped. Pixel-reading
