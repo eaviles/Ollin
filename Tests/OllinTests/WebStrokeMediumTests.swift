@@ -43,11 +43,21 @@ import OllinWebGate
                 translate(150, 120); rotate(0.4 + time * 0.2)
                 drawLine(-30, 0, 30, 0)
             }
+            // A pen line written slowly at first and hurried at the end.
+            strokeMedium(.ink(feather: 2, pooling: 0.7, amount: 0.8))
+            stroke(Color(hex: 0x1B2A4A)); strokeWeight(4)
+            drawMark(WebStrokeMediumTests.penLine)
         }
     }
 
+    /// A mark across the lower sheet whose pace rises from a crawl to a flick.
+    static let penLine = StrokeMark(samples: (0 ... 40).map { i in
+        let u = Double(i) / 40
+        return StrokeMark.Sample(position: Vector2(20 + 160 * u, 160 + 12 * sin(u * 6)), speed: 100 + 2500 * u * u)
+    })
+
     /// Every ribbon vertex the shared expander gives back from one source's
-    /// records, thirteen floats each.
+    /// records, fourteen floats each.
     static func expanded(_ source: WebSource) -> [ArraySlice<Float>] {
         var floats: [Float] = []
         source.encode(into: &floats)
@@ -65,10 +75,15 @@ import OllinWebGate
         let g = recording.frames[0].graph
         #expect(g.hasRibbons)
         let items = g.canvas.filter { if case .ribbons = $0 { return true }; return false }
-        #expect(items.count == 5, "one item a stroke")
+        #expect(items.count == 6, "one item a stroke")
         let drawer = sketch.drawer
         let ribbons = drawer.webSources.filter { if case .ribbons = $0.kind { return true }; return false }
-        #expect(ribbons.count == 5)
+        #expect(ribbons.count == 6)
+        let paced = ribbons.contains { source in
+            if case let .ribbons(runs, _, _, _, _, _, _) = source.kind { return runs.contains { ($0.paces?.count ?? 0) > 1 } }
+            return false
+        }
+        #expect(paced, "the pen line carries a pace per point")
         let dashed = ribbons.contains { source in
             if case let .ribbons(runs, _, _, _, _, whole, _) = source.kind { return runs.count > 1 && whole != nil }
             return false
@@ -88,6 +103,7 @@ import OllinWebGate
                 worst.across = max(worst.across, abs(v[8] - r.aa.y))
                 worst.along = max(worst.along, abs(v[10] - r.color.z))
                 #expect(abs(v[9] - r.color.x) < 1e-3 && v[11] == r.color.y && abs(v[12] - r.color.w) < 1e-2)
+                #expect(v[13] == a.aa.y, "the pen's pace crosses as the Mac wrote it")
             }
         }
         // The points cross in single precision, so the page's ribbon sits a few
@@ -215,6 +231,8 @@ import OllinWebGate
                 translate(150, 120); rotate(0.4 + time * 0.2)
                 drawLine(-30, 0, 30, 0)
             }
+            stroke(Color(hex: 0x1B2A4A)); strokeWeight(4)
+            drawMark(WebStrokeMediumTests.penLine)
         }
     }
 }

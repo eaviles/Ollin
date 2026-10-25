@@ -61,12 +61,14 @@ typedef simd_ushort4 OllinHalf4;
 //
 // A ribbon run (a stroke drawn under a shader paint or a stroke medium) takes two
 // slots per vertex, read by `ollin_ribbon_vertex` as one 64-byte vertex: the first
-// slot is the vertex as above, the second carries the ribbon's own coordinates at
-// the same position, `aa` = (arcLength, across) and `color` = (halfWidth, seed,
-// along, length): the distance along the path in its own units, the signed place
-// across the width as a fraction of the half-width (+-1 at the true edge), the
-// local half-width, a per-stroke seed, the 0...1 fraction along, and the path's
-// whole length. Every other run keeps one slot, so a plain stroke is unchanged.
+// slot is the vertex as above (under a medium its `aa.y` is the pen's pace, the
+// speed the point was made at over the medium's writing speed, 1 for a point with
+// no timing), the second carries the ribbon's own coordinates at the same
+// position, `aa` = (arcLength, across) and `color` = (halfWidth, seed, along,
+// length): the distance along the path in its own units, the signed place across
+// the width as a fraction of the half-width (+-1 at the true edge), the local
+// half-width, a per-stroke seed, the 0...1 fraction along, and the path's whole
+// length. Every other run keeps one slot, so a plain stroke is unchanged.
 // A fill drawn under a fill medium takes two slots the same way (read by
 // `ollin_fill_medium_vertex`): the second carries `aa` = (distance, 0), the
 // distance to the fill's own edge in canvas points, and `color` = (outward.x,
@@ -1749,23 +1751,27 @@ typedef struct {
 // `ollin_ribbon_vertex`): the first is the stroke's ordinary fringe vertex, the
 // second carries the ribbon's own coordinates. `kind` is `StrokeMedium.Kind`'s
 // raw value. `second.r` below 0 means "no second pigment given" (a deeper shade
-// of the stroke's own is used). Stride 208 (16-aligned).
+// of the stroke's own is used). An ink stroke's ribbon is widened by three
+// times `reach` each side (`StrokeMedium.ribbonSpread`) so the feather has room
+// past the nib's edge; its fragment takes the nib's own half-width back off and
+// reads the pen's pace from the first slot's `aa.y`. Stride 208 (16-aligned).
 #define OLLIN_MEDIUM_PALETTE 8
 typedef struct {
-    unsigned int kind;          // 1 dry, 2 bristles, 3 dry brush, 4 wet, 5 oil
+    unsigned int kind;          // 1 dry, 2 bristles, 3 dry brush, 4 wet, 5 oil, 6 ink
     unsigned int paletteCount;  // dry: colors in `palette` (0 = the stroke's own)
     unsigned int hasGround;     // wet / oil: 1 when the ground texture holds the frame
     float streaks;              // bristles / dry brush / oil: streaks across the width
     float tooth;                // dry: tooth cell in canvas points; dry brush: finest grain
     float softness;             // dry: threshold softness, 0...1
     float roughness;            // dry: edge roughness, a fraction of the half-width
-    float amount;               // bristles: second share; dry brush: dryness; wet / oil: drag
-    float reach;                // wet / oil: drag distance in canvas points
+    float amount;               // bristles: second share; dry brush: dryness; wet / oil: drag; ink: thinning with speed
+    float reach;                // wet / oil: drag distance in canvas points; ink: the feather at writing speed
     float relief;               // oil: ridge height, 1 the default
     float seed;                 // the medium's own seed
-    float _mediumPad0;
+    float pooling;              // ink: how much denser the first and last pen width lie, 0...1
     simd_float2 pixelScale;     // attachment pixels per canvas point (x, y)
-    simd_float2 _mediumPad1;
+    float cap;                  // ink: the nib's end, 0 butt, 1 round, 2 square (the stroke's cap)
+    float _mediumPad1;
     simd_float4 second;         // bristles: the second pigment, straight sRGB + alpha
     simd_float4 palette[OLLIN_MEDIUM_PALETTE];  // dry: tooth-cell colors, straight sRGB + alpha
 } OllinStrokeMedium;

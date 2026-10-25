@@ -128,7 +128,7 @@ mark.record(_ position: Vector2, deltaTime: Double, pressure: Double = 1)
 mark.clear()
 mark.append(_ sample: StrokeMark.Sample)
 
-mark.samples      // [Sample], each a position + width + opacity
+mark.samples      // [Sample], each a position + width + opacity + speed (nil without timing)
 mark.positions    // just the path
 mark.count / .isEmpty / .length / .bounds
 
@@ -161,6 +161,8 @@ override func mouseReleased() {
 ```
 
 The first recorded point is held back until a second one gives it a heading, so a direction-driven brush starts with a real direction. A one-point mark draws nothing anyway, so `count` is `0` until the second point lands.
+
+Each recorded point also keeps the **speed** it was made at, in canvas points per second, smoothed as the dynamics read it. A point you `append` yourself carries whatever speed you give it, or none. The [pen](#ink) reads it: its ink soaks farther where the hand slowed and thins where it hurried.
 
 <a name="drawMark"></a>
 
@@ -323,8 +325,9 @@ The stroke's **color** is the pigment and its **alpha** is the density. A mark r
 | `.dryBrush(grain:amount:streaks:seed:)` | A brush running dry. Its load falls along the mark, and where it is short the paper's grain, at three scales, decides what catches. `amount` sets how soon it runs out. |
 | `.wet(amount:reach:)` | Wet paint that drags the ground. Each pixel mixes its pigment with what lies up to `reach` canvas points behind it along the path, most of all toward the tail. |
 | `.oil(amount:reach:relief:streaks:seed:)` | Wet paint under a dominant color, its ridges lit from the upper left. `relief` scales their height, and `0` lies flat. |
+| `.ink(feather:pooling:amount:speed:seed:)` | A pen. The ink soaks `feather` canvas points past the nib's edge along the paper's fibers, farther where the pen moved slowly, and lies denser over the first and last pen width by `pooling`. `amount` is how much the flow thins when the pen hurries, up to a ballpoint's skips. `speed` is the writing speed in canvas points per second. |
 
-`.bristles`, `.dryBrush`, `.wet`, and `.oil` are also there with their default settings, as `.pencil` is.
+`.bristles`, `.dryBrush`, `.wet`, `.oil`, and `.ink` are also there with their default settings, as `.pencil` is.
 
 ### The tooth belongs to the paper
 
@@ -336,7 +339,30 @@ A wet stroke reads the ground under it from the frame drawn once more with every
 
 ### One coat
 
-A translucent medium mark lays one coat. Where it crosses itself, the crossing reads as the rest of the mark does rather than twice as dark. Each stroke claims each pixel once, then clears its claim, so a second mark still layers over the first.
+A translucent medium mark lays one coat. Where it crosses itself, the crossing reads as the rest of the mark does rather than twice as dark. Each stroke claims each pixel once, then clears its claim, so a second mark still layers over the first. The pen is the exception, below.
+
+<a name="ink"></a>
+
+### Ink from a pen
+
+`.ink` reads how fast the pen moved. A mark recorded from the pointer carries the speed of every point (`StrokeMark.Sample.speed`), and the medium measures each against its `speed`, the writing speed. Slower than that, the ink soaks farther into the paper: at rest it reaches about two and a half times `feather`. Faster, the flow thins by `amount`, and at twice the writing speed with `amount` at `1` the line breaks into a ballpoint's skips. A line drawn without timing, a `drawLine` or a mark built from positions alone, counts as written at the writing speed everywhere.
+
+```swift
+var mark = StrokeMark()
+
+override func draw() {
+    background(.white)
+    if mouseIsPressed { record(into: &mark) }
+    stroke(Color(hex: 0x1B2A4A))
+    strokeWeight(4)
+    strokeMedium(.ink(feather: 2, pooling: 0.6, amount: 0.7, speed: 900))
+    drawMark(mark)
+}
+```
+
+The feather follows the paper's fibers, long thin strands at a few angles that the medium's `seed` chooses, fixed to the canvas like the dry media's tooth. So the soaked edge frays along the fibers rather than evenly, and two strokes over one spot fray the same way. The nib's end keeps the stroke's cap: a `.butt` cap is a flat nib, `.round` a round one, and `.square` a flat nib that runs half a width past the end. The feather spreads past whichever it is.
+
+A pen lays a second coat where it crosses itself, as a real one does, so a translucent ink reads darker at every crossing, its own or another stroke's. That is the one medium that does; the rest lay one coat.
 
 ### Your own shader on the same coordinates
 
@@ -412,13 +438,41 @@ A medium's swells, veins, grains, and facets sit in the shape's own coordinates.
 
 <a name="export"></a>
 
+<a name="hand-drawn"></a>
+
+## Lines drawn by hand
+
+`handDrawn(...)` makes any line look drawn by a hand. It is on `Contour`, on `Shape`, and on `StrokeMark`, and each returns its own type.
+
+```swift
+let frame = Contour([Vector2(100, 100), Vector2(400, 100), Vector2(400, 300), Vector2(100, 300)])
+drawShape(Shape(contours: [frame]).handDrawn(wobble: 1.2, bow: 2, seed: 1))
+
+let diagonal = Contour([Vector2(100, 300), Vector2(400, 100)], closed: false)
+drawPolyline(diagonal.handDrawn(overshoot: 6, seed: 2).points)
+
+let pen = StrokeMark(samples: diagonal.points.map { StrokeMark.Sample(position: $0) })
+drawMark(pen.handDrawn(blot: 10, seed: 3))
+```
+
+Four things happen to the line:
+
+- **A wobble.** The line wanders off its ideal by up to `wobble` canvas points (default `1`), by a smooth noise read along the line from its own start. The line is resampled about every three points first so it has points to move.
+- **A bow.** Each straight run between corners sags by up to `bow` points (default `1`) to one side or the other, a corner being a turn of more than about 35 degrees. A closed outline keeps its corners and stays closed, so a shape still fills.
+- **Ends that run short or long.** An open line's two ends move along their heading by up to `overshoot` points (default `3`), each its own way. A closed outline has no ends.
+- **A blot.** On a `StrokeMark` only, since only a mark has widths: the width swells by about half where the mark begins and settles over `blot` canvas points (default `0`, none).
+
+Everything is drawn from `seed` and measured in the line's own frame, so a line that moves across the canvas carries its wobble with it rather than boiling. Two lines with one seed wobble alike. Give each line of a family its own seed, the loop's index will do. A mark keeps its widths, opacities, and speeds through the bend, so a pen line made hand-drawn still feathers where the hand slowed.
+
 ## What exports
 
 A mark's **width** exports exactly. `--export-svg` and `--export-pdf` write the region it covers as a filled outline, not as a stroked path with one width. Any profiled stroke exports the same way, so a plotted or printed mark matches the screen.
 
 A mark's **opacity flattens** to its average, weighted along the mark's length. A vector document draws one fill at one alpha per path, so a varying opacity has nowhere to go. Ollin says so once on the console rather than dropping it silently. For a plotter, with one pen and one ink, this costs nothing.
 
-A **medium** is raster. `--export-svg` and `--export-pdf` write the stroke as the flat ribbon it would be without one, the line a plotter draws, and say so once. The [web page](../Output/Web.md#strokes-and-fills-on-the-page) export carries every medium, shaded on the page by the same functions; a `.wet` or `.oil` stroke there drags the canvas the page draws first without it. It stops at a wet stroke on a canvas that keeps its paint (`noClear`), and names the call.
+A **medium** is raster. `--export-svg` and `--export-pdf` write the stroke as the flat ribbon it would be without one, the line a plotter draws, and say so once. The [web page](../Output/Web.md#strokes-and-fills-on-the-page) export carries every medium, shaded on the page by the same functions; a `.wet` or `.oil` stroke there drags the canvas the page draws first without it, and an `.ink` stroke carries the speed of each point. It stops at a wet stroke on a canvas that keeps its paint (`noClear`), and names the call.
+
+A line made **hand-drawn** is ordinary geometry, so it exports as what it is: the bent outline, the bent polyline, or the mark with its blot in its width.
 
 A **fill medium** is raster too. A vector export writes the fill flat, in its color, and says so once. The web page export stops at a fill medium and names the call.
 

@@ -505,25 +505,37 @@ extension Drawer {
     /// stroke down once where it crosses itself (the first triangle to reach a
     /// sample claims it, and a core reaches first). Each vertex carries the
     /// ribbon's own coordinates in its second slot (see `appendRibbon`).
+    ///
+    /// An ink stroke is the exception: it lays a second coat where it crosses
+    /// itself, as a pen does, so it asks for no stencil and no batch of its own
+    /// (consecutive pen strokes share one). Its ribbon runs `ribbonSpread`
+    /// wider each side and square past the ends, room for the feather, and the
+    /// nib's own end keeps the stroke's cap, carried on the medium.
     private func appendMediumStroke(_ points: [Vector2], closed: Bool, paint: VertexPaint,
-                                    medium: StrokeMedium) {
+                                    medium given: StrokeMedium) {
+        var medium = given
         let runs = strokeRuns(points, closed: closed)
         // A dash reads its place on the whole path, so its distance along does too.
         let whole: Double? = runs.contains { $0.fractions != nil }
             ? Contour(points, closed: closed).length : nil
         guard let first = points.first else { return }
         let seed = Drawer.mediumSeed(first, transform: transform)
+        var cap = expanderCap
+        if medium.kind == .ink {
+            medium.cap = strokeCapStyle
+            cap = .square
+        }
         let savedMedium = currentPaintMedium, savedCoat = currentPaintCoat
         currentPaintMedium = medium
-        currentPaintCoat = mediumStrokeCount
+        currentPaintCoat = medium.laysOneCoat ? mediumStrokeCount : nil
         mediumStrokeCount += 1
         defer { currentPaintMedium = savedMedium; currentPaintCoat = savedCoat }
         if let target = currentTarget {
-            target.needsStencil = true
+            if medium.laysOneCoat { target.needsStencil = true }
             if medium.readsGround {
                 noteOnce("A wet stroke medium drags the canvas's ground; inside a layer it has no ground to drag and paints its pigment alone.")
             }
-        } else {
+        } else if medium.laysOneCoat {
             usesCoatStencil = true
         }
         replicated {
@@ -531,9 +543,9 @@ extension Drawer {
             var fringes: [OllinVertex] = []
             var recorded: [WebRibbonRun] = []
             for run in runs {
-                appendMediumRun(run.points, closed: run.closed, paint: paint, fractions: run.fractions,
-                                wholeLength: whole, seed: seed, cores: &cores, fringes: &fringes,
-                                recorded: &recorded)
+                appendMediumRun(run.points, closed: run.closed, paint: paint, medium: medium, cap: cap,
+                                fractions: run.fractions, wholeLength: whole, seed: seed,
+                                cores: &cores, fringes: &fringes, recorded: &recorded)
             }
             guard !cores.isEmpty || !fringes.isEmpty else { return }
             ensureBatch(.fringe)
@@ -541,7 +553,7 @@ extension Drawer {
             vertices.append(contentsOf: cores)
             vertices.append(contentsOf: fringes)
             if recordsWebSources, paint.shader == nil {
-                webSources.append(WebSource(kind: .ribbons(runs: recorded, join: expanderJoin, cap: expanderCap,
+                webSources.append(WebSource(kind: .ribbons(runs: recorded, join: expanderJoin, cap: cap,
                                                            fringe: 1.0 / ctmScale, ctmScale: ctmScale,
                                                            wholeLength: whole, seed: seed),
                                             points: [], transform: transformIsIdentity ? nil : transform,
@@ -552,8 +564,11 @@ extension Drawer {
 
     /// One run of a medium stroke, prepared as the plain expander path prepares
     /// it (de-duplicated, subdivided where a gradient or a profile asks, a
-    /// half-width and a color per path vertex), into `cores` and `fringes`.
+    /// half-width and a color per path vertex, and under ink the pen's pace per
+    /// path vertex with the half-widths spread for the feather), into `cores`
+    /// and `fringes`.
     private func appendMediumRun(_ points: [Vector2], closed: Bool, paint: VertexPaint,
+                                 medium: StrokeMedium, cap: StrokeExpanderCap,
                                  fractions: [Double]?, wholeLength: Double?, seed: Float,
                                  cores: inout [OllinVertex], fringes: inout [OllinVertex],
                                  recorded: inout [WebRibbonRun]) {
@@ -563,30 +578,38 @@ extension Drawer {
         }
         let n = pts.count
         guard n >= 2 else { return }
-        let hws = strokeHalfWidths(for: pts, closed: closed, fractions: ts)
+        var hws = strokeHalfWidths(for: pts, closed: closed, fractions: ts)
             ?? [Double](repeating: strokeWidth / 2, count: n)
+        let spread = medium.ribbonSpread
+        if spread > 0 { hws = hws.map { $0 + spread } }
         let varyingOpacity = !strokeOpacityShape.isUniform
+        let isInk = medium.kind == .ink
         var cols = [SIMD4<Float>](repeating: .zero, count: n)
-        if case .solid(let c) = paint, !varyingOpacity {
+        var paces: [Float]? = nil
+        if case .solid(let c) = paint, !varyingOpacity, !isInk || strokePaceShape == nil {
             for i in 0..<n { cols[i] = c }
         } else {
             var cum = [Double](repeating: 0, count: n)
             for i in 1..<n { cum[i] = cum[i - 1] + (pts[i] - pts[i - 1]).length }
             var total = cum[n - 1]
             if closed { total += (pts[0] - pts[n - 1]).length }
+            var pace = [Float](repeating: 1, count: n)
             for i in 0..<n {
                 let t = ts?[i] ?? (total > 0 ? cum[i] / total : 0)
                 var color = paint.color(at: pts[i], pathT: t)
                 if varyingOpacity { color.w *= Float(strokeOpacityShape(t)) }
                 cols[i] = color
+                if let shape = strokePaceShape { pace[i] = Float(max(shape(t), 0)) }
             }
+            if isInk, strokePaceShape != nil { paces = pace }
         }
+        if isInk, paces == nil { paces = [Float](repeating: 1, count: n) }
         appendRibbon(pts, fractions: ts, closed: closed, paint: paint, halfWidths: hws, colors: cols,
-                     opacity: nil, wholeLength: wholeLength, seed: seed, coreFirst: true,
-                     cores: &cores, fringes: &fringes)
+                     opacity: nil, paces: paces, wholeLength: wholeLength, seed: seed, cap: cap,
+                     coreFirst: true, cores: &cores, fringes: &fringes)
         if recordsWebSources {
             recorded.append(WebRibbonRun(points: pts.map { Point2D($0.x, $0.y) }, closed: closed,
-                                         halfWidths: hws, colors: cols, fractions: ts))
+                                         halfWidths: hws, colors: cols, fractions: ts, paces: paces))
         }
     }
 
@@ -606,9 +629,14 @@ extension Drawer {
     /// `opacity` is the shader paint's per-vertex opacity profile; `nil` writes
     /// the color as the plain fringe vertex does. A shader paint's first slot
     /// carries its uv, its fraction along (`colors[i].z`), and its offset.
+    /// `paces` is a pen's pace per path vertex (an ink stroke), written to the
+    /// first slot's `aa.y` where a shader paint writes its opacity; `nil` writes
+    /// 0 there. `cap` overrides the stroke's cap for the expansion (an ink
+    /// stroke runs square past its ends); `nil` is the stroke's own.
     func appendRibbon(_ pts: [Vector2], fractions ts: [Double]?, closed: Bool, paint: VertexPaint,
                       halfWidths hws: [Double], colors cols: [SIMD4<Float>], opacity: [Float]?,
-                      wholeLength: Double?, seed: Float, coreFirst: Bool,
+                      paces: [Float]? = nil, wholeLength: Double?, seed: Float,
+                      cap: StrokeExpanderCap? = nil, coreFirst: Bool,
                       cores: inout [OllinVertex], fringes: inout [OllinVertex]) {
         let n = pts.count
         guard n >= 2 else { return }
@@ -634,7 +662,7 @@ extension Drawer {
                 aaY = opacity[src]
             } else {
                 color = v.color
-                aaY = 0
+                aaY = paces?[src] ?? 0
             }
             var position = v.position
             if !identity {
@@ -649,7 +677,7 @@ extension Drawer {
         tri.reserveCapacity(3)
         StrokeExpander.expand(pts.map { Point2D($0.x, $0.y) }, closed: closed,
                               halfWidths: hws, colors: cols, fringe: fw, ctmScale: ctmScale,
-                              join: expanderJoin, cap: expanderCap) { v, source in
+                              join: expanderJoin, cap: cap ?? expanderCap) { v, source in
             tri.append((v, source))
             guard tri.count == 3 else { return }
             let wraps = frame.wraps(tri[0].1, tri[1].1, tri[2].1)

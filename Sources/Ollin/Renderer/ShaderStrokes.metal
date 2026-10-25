@@ -4,7 +4,9 @@
 // plus the distance along the path, the signed place across the width, the local
 // half-width, the fraction along, and a per-stroke seed. The stroke's color is the
 // pigment and its alpha the density; coverage is applied last, as the plain
-// fringe fragment applies it, so a medium never moves the stroke's edge.
+// fringe fragment applies it, so a medium never moves the stroke's edge. Ink is
+// the one medium drawn on a wider ribbon than its line: it finds the nib's edge
+// itself and feathers past it.
 
 // What this segment builds on. The resolver reads each one in ahead of this file
 // and only once, so the segment list itself carries no order (see ShaderIncludes).
@@ -128,6 +130,82 @@ static inline float ollin_medium_relief(float arc, float across, float hw, float
     return dome * (0.35 + 0.65 * ridge);
 }
 
+// The paper's fibers at `canvas`, fixed to the canvas like the tooth: three
+// families of long thin fibers, each a value noise stretched `fiber` points
+// along its own direction and about a point and a half across, the strongest
+// of the three at the pixel, cubed so its values spread about evenly over
+// 0...1. Where a fiber runs, ink is carried farther.
+static inline float ollin_medium_fibers(float2 canvas, float fiber, float seed) {
+    // Each family is a little thicker and shorter than the last, so the rim
+    // mixes fine hairs with broader lobes rather than one comb.
+    float best = 0.0;
+    for (int k = 0; k < 3; ++k) {
+        float angle = float(k) * 1.0472 + 0.37 + seed * 0.0131;
+        float c = cos(angle);
+        float s = sin(angle);
+        float2 q = float2(c * canvas.x - s * canvas.y, s * canvas.x + c * canvas.y);
+        float across = 1.2 + 0.7 * float(k);
+        float along = max(fiber * (1.0 - 0.2 * float(k)), 1.0);
+        float n = ollin_vnoise(float2(q.x / along, q.y / across + float(k) * 19.3 + seed * 3.1));
+        best = max(best, n);
+    }
+    return best * best * best;
+}
+
+// A pen's ink at a pixel of its ribbon, as a factor on the stroke's density.
+// The ribbon runs `3 * feather` wider than the nib each side, so the nib's own
+// line is drawn here as a signed distance (a box the path's length and the
+// nib's width, its ends flush, round, or square as `cap` says) and antialiased
+// on that edge. Past it the ink soaks into the paper along the fibers, to a
+// reach that grows where the pen rested (`pace` under 1) and over the pools,
+// the denser ink of the first and last pen width. When the pen hurries (`pace`
+// over 1) the flow thins by `amount`, and a ballpoint starts to skip: streaks of
+// bare paper along the path. `x` is the signed place across in canvas points,
+// `arc` the distance along (negative before the start), `total` the path's
+// whole length, `hw` the nib's half-width, `px` attachment pixels per canvas
+// point.
+static inline float ollin_medium_ink(float2 canvas, float x, float arc, float total, float hw,
+                                     float pace, float px, float cap, float feather,
+                                     float pooling, float amount, float seed) {
+    float past = max(-arc, arc - total);
+    float ax = abs(x) - hw;
+    float sd;
+    if (cap > 1.5) {
+        float2 q = float2(ax, past - hw);
+        sd = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);
+    } else if (cap > 0.5) {
+        sd = past <= 0.0 ? ax : length(float2(abs(x), past)) - hw;
+    } else {
+        float2 q = float2(ax, past);
+        sd = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);
+    }
+    // The pools, where the nib landed and lifted: denser ink over the first
+    // and last pen width.
+    float w = max(2.0 * hw, 0.5);
+    float pool = pooling * (exp(-max(arc, 0.0) / w) + exp(-max(total - arc, 0.0) / w));
+    // The flow thins as the pen hurries, and past the writing speed a ballpoint
+    // skips: streaks of bare paper a few pen widths long. At the writing speed
+    // the gate sits above the noise's whole range, so the line is whole.
+    float hurry = clamp(pace - 1.0, 0.0, 1.0) * amount;
+    float streak = ollin_vnoise(float2(arc / (hw * 3.0 + 1.0) + seed * 0.7, x / (hw + 0.5) * 1.5 + seed));
+    float keep = 1.1 - 0.65 * hurry;
+    float gate = 1.0 - smoothstep(keep - 0.1, keep + 0.1, streak);
+    float density = (1.0 + pool) * (1.0 - 0.5 * hurry) * gate;
+    // The feather: ink carried past the nib's edge along the fibers, out to a
+    // reach that grows where the pen rested and at the pools; a thin even halo
+    // under it, so the edge is never bare between two fibers.
+    float dwell = clamp(1.0 - pace, 0.0, 1.0);
+    float reach = feather * (1.0 + 1.5 * dwell) * (1.0 + 0.6 * pool);
+    float t = sd / max(reach, 0.01);
+    float fibers = ollin_medium_fibers(canvas, feather * 4.0 + 6.0, seed);
+    float carried = smoothstep(t - 0.15, t + 0.15, fibers) * (1.0 - 0.5 * clamp(t, 0.0, 1.0));
+    float halo = pow(clamp(1.0 - t, 0.0, 1.0), 3.0) * 0.5;
+    float soak = max(carried, halo) * 0.9;
+    // The nib's line, antialiased on its own edge.
+    float line = 1.0 - smoothstep(-0.5, 0.5, sd * px);
+    return max(perceptualCoverage(line), soak) * density;
+}
+
 // OLLIN_LIB_END medium
 
 // The ground dragged into a wet pixel: eight taps back along the direction of
@@ -177,6 +255,15 @@ fragment float4 ollin_medium_fragment(RibbonVertexOut in [[stage_in]],
     } else if (m.kind == 3u) {
         alpha = ollin_medium_dry_brush(in.canvas, density, in.across, in.arcLength, hw, in.along,
                                        in.seed, m.tooth, m.streaks, m.amount, m.seed);
+    } else if (m.kind == 6u) {
+        // Ink: the ribbon runs three feathers wider than the nib each side; the
+        // nib's own half-width is what is left after that, and the pen's pace
+        // rides the first slot's opacity channel.
+        float nib = max(in.halfWidth - m.reach * 3.0, 0.0);
+        float px = 0.5 * (m.pixelScale.x + m.pixelScale.y);
+        alpha = density * ollin_medium_ink(in.canvas, in.across * in.halfWidth, in.arcLength, in.length,
+                                           nib, in.opacity, px, m.cap, m.reach, m.pooling, m.amount,
+                                           in.seed + m.seed);
     } else {
         // Wet paint and oil: the pigment mixes with the ground lying behind the
         // pixel along the path, strongest toward the tail. The direction of

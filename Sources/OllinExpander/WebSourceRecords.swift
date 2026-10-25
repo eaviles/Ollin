@@ -20,8 +20,9 @@
 // fan's body is its points then its color. A tessellated fill's body is its
 // contour lengths, then every contour's points in order, then its color. A
 // ribbon's body is a stroke's, then a fraction along the whole path per point
-// when the run is a dash, then the whole path's length (-1 when the run is the
-// whole path) and the stroke's seed.
+// when the run is a dash, then under ink the pen's pace (one, or one per
+// point, as the flags say), then the whole path's length (-1 when the run is
+// the whole path) and the stroke's seed.
 
 package enum WebSourceLayout {
     package static let headerFloats = 12
@@ -48,6 +49,10 @@ package enum WebSourceLayout {
     package static let colorsPerPointFlag = 64
     package static let nonZeroFlag = 128
     package static let fractionsFlag = 256
+    /// A ribbon under ink carries the pen's pace: one value for the run, or one
+    /// per point.
+    package static let paceFlag = 512
+    package static let pacesPerPointFlag = 1024
 
     /// The floats a stroke of `n` points takes.
     package static func strokeFloats(points n: Int, widthsPerPoint: Bool, colorsPerPoint: Bool) -> Int {
@@ -56,9 +61,15 @@ package enum WebSourceLayout {
 
     /// The floats a ribbon run of `n` points takes.
     package static func ribbonFloats(points n: Int, widthsPerPoint: Bool, colorsPerPoint: Bool,
-                                     fractions: Bool) -> Int {
+                                     fractions: Bool, paces: Int = 0) -> Int {
         strokeFloats(points: n, widthsPerPoint: widthsPerPoint, colorsPerPoint: colorsPerPoint)
-            + (fractions ? n : 0) + 2
+            + (fractions ? n : 0) + paces + 2
+    }
+
+    /// How many pace values a ribbon record with `flags` carries for `n`
+    /// points: none, one, or one per point.
+    package static func paceCount(flags: Int, points n: Int) -> Int {
+        flags & pacesPerPointFlag != 0 ? n : (flags & paceFlag != 0 ? 1 : 0)
     }
 
     /// The floats a fan of `n` points takes.
@@ -110,7 +121,8 @@ package enum WebSourceLayout {
         } else if kind == ribbonKind {
             length = ribbonFloats(points: count, widthsPerPoint: flags & widthsPerPointFlag != 0,
                                   colorsPerPoint: flags & colorsPerPointFlag != 0,
-                                  fractions: flags & fractionsFlag != 0)
+                                  fractions: flags & fractionsFlag != 0,
+                                  paces: paceCount(flags: flags, points: count))
         } else if kind == fanKind {
             length = fanFloats(points: count)
         } else if kind == tessellatedKind {
@@ -257,9 +269,10 @@ package enum WebSourceExpander {
     /// position, the coverage, the color, then the ribbon's own coordinates
     /// (`RibbonFrame`: the distance along and the place across), the
     /// half-width of its path vertex, the fraction along, the stroke's seed,
-    /// and the length the fraction divides by. It is the pair a medium
-    /// stroke's vertex is on the renderer, laid end to end.
-    package static let ribbonVertexFloats = 13
+    /// the length the fraction divides by, and the pen's pace (0 under any
+    /// medium but ink). It is the pair a medium stroke's vertex is on the
+    /// renderer, laid end to end.
+    package static let ribbonVertexFloats = 14
 
     /// Expand the ribbon runs of one stroke under a medium into the vertices
     /// the renderer draws for it, `ribbonVertexFloats` each into `out`: every
@@ -322,6 +335,13 @@ package enum WebSourceExpander {
             fractions = ts
             cursor += count
         }
+        // The pen's pace: none under the other media (0 on every vertex), one
+        // value for the run, or one per point.
+        let paceCount = WebSourceLayout.paceCount(flags: flags, points: count)
+        var paces: [Float] = []
+        paces.reserveCapacity(count)
+        for i in 0..<count { paces.append(paceCount == 0 ? 0 : floats[cursor + (paceCount == 1 ? 0 : i)]) }
+        cursor += paceCount
         let whole: Double? = floats[cursor] >= 0 ? Double(floats[cursor]) : nil
         let seed = floats[cursor + 1]
         let closed = flags & WebSourceLayout.closedFlag != 0
@@ -350,7 +370,7 @@ package enum WebSourceExpander {
             list.append(u.coverage)
             list.append(u.color.x); list.append(u.color.y); list.append(u.color.z); list.append(u.color.w)
             list.append(Float(c.arc)); list.append(c.across); list.append(Float(hws[src]))
-            list.append(c.along); list.append(seed); list.append(lengthF)
+            list.append(c.along); list.append(seed); list.append(lengthF); list.append(paces[src])
         }
         strokeVertices(pts, closed: closed, halfWidths: hws, colors: cols, fringe: fw,
                        ctmScale: Double(floats[at + WebSourceLayout.ctmScaleColumn]),

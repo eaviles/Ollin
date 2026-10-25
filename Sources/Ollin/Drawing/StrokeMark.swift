@@ -50,11 +50,18 @@ public struct StrokeMark: Sendable {
         public var width: Double
         /// The opacity multiplier on the stroke color's alpha at this point.
         public var opacity: Double
+        /// How fast the pointer was moving when this point was recorded, in
+        /// canvas points per second, smoothed as the dynamics read it; `nil`
+        /// for a point added without timing. A pen (`StrokeMedium.ink`) reads
+        /// it: the ink feathers farther where the hand slowed and thins where
+        /// it hurried.
+        public var speed: Double?
 
-        public init(position: Vector2, width: Double = 1, opacity: Double = 1) {
+        public init(position: Vector2, width: Double = 1, opacity: Double = 1, speed: Double? = nil) {
             self.position = position
             self.width = width
             self.opacity = opacity
+            self.speed = speed
         }
     }
 
@@ -235,7 +242,7 @@ public struct StrokeMark: Sendable {
             let span = (position - last.position).length * max(limit, 0)
             m.width = min(max(m.width, last.width - span), last.width + span)
         }
-        samples.append(Sample(position: position, width: m.width, opacity: m.opacity))
+        samples.append(Sample(position: position, width: m.width, opacity: m.opacity, speed: input.speed))
     }
 
     /// A raw pressure reading through the dead zone and the curve, `0...1`.
@@ -325,5 +332,11 @@ public struct StrokeMark: Sendable {
     /// is touched at all.
     var variesOpacity: Bool {
         samples.contains { abs($0.opacity - 1) > 1e-9 }
+    }
+
+    /// Whether any recorded point carries the speed it was made at, which is
+    /// what a pen reads for its feather and its flow.
+    var hasTiming: Bool {
+        samples.contains { $0.speed != nil }
     }
 }

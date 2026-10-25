@@ -2680,7 +2680,8 @@ extension MetalRenderer {
     /// sample takes the first of the stroke's triangles to reach it, the cores
     /// ordered ahead of the fringes) and its coat bit cleared again under the same
     /// triangles, so the next stroke starts clear. With no stencil (it could not
-    /// be allocated) the run draws as one ordinary pass.
+    /// be allocated), or under a medium that lays a second coat where it crosses
+    /// itself (ink, as a pen does), the run draws as one ordinary pass.
     func encodeMediumRun(_ medium: StrokeMedium, vertexCount: Int, key: PipelineKey,
                          ground: MTLTexture?, standIn: MTLTexture?, pixelScale: SIMD2<Float>,
                          hasStencil: Bool, clipLevel: Int, depthTested: Bool,
@@ -2690,7 +2691,7 @@ extension MetalRenderer {
         encoder.setFragmentBytes(&u, length: MemoryLayout<OllinStrokeMedium>.stride, index: 0)
         if let texture = ground ?? standIn { encoder.setFragmentTexture(texture, index: 0) }
         encoder.setFragmentSamplerState(imageSampler, index: 0)
-        guard hasStencil else {
+        guard hasStencil, medium.laysOneCoat else {
             encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertexCount)
             return
         }

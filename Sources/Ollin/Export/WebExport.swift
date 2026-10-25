@@ -696,9 +696,9 @@ struct WebShaders {
 
     /// `ollin_ribbon_vertex`: the triangle path's vertex stage with the
     /// ribbon's own coordinates handed on, the distance along, the place
-    /// across, the half-width, and the fraction along, and the stroke's seed
-    /// flat. The expander lays the pair a renderer vertex is as one vertex of
-    /// thirteen floats.
+    /// across, the half-width, and the fraction along, the stroke's seed and
+    /// the path's whole length flat, and the pen's pace. The expander lays the
+    /// pair a renderer vertex is as one vertex of fourteen floats.
     static let ribbonVertex = """
     #version 300 es
     precision highp float;
@@ -706,7 +706,7 @@ struct WebShaders {
     layout(location = 1) in float aCoverage;
     layout(location = 2) in vec4 aColor;
     layout(location = 3) in vec4 aRibbon;
-    layout(location = 4) in vec2 aSeed;
+    layout(location = 4) in vec3 aSeed;
     uniform vec2 viewport;
     uniform float ollin_flip;
     out vec4 vColor;
@@ -714,6 +714,8 @@ struct WebShaders {
     out vec2 vCanvas;
     out vec4 vRibbon;
     flat out float vSeed;
+    flat out float vLength;
+    out float vPace;
     void main() {
         gl_Position = vec4((aPosition.x / viewport.x) * 2.0 - 1.0, (1.0 - (aPosition.y / viewport.y) * 2.0) * ollin_flip, 0.0, 1.0);
         vColor = aColor;
@@ -721,23 +723,28 @@ struct WebShaders {
         vCanvas = aPosition;
         vRibbon = aRibbon;
         vSeed = aSeed.x;
+        vLength = aSeed.y;
+        vPace = aSeed.z;
     }
     """
 
     /// `ollin_medium_fragment` over the same medium functions, its rows as
     /// uniforms: the kind, the palette's size, the streaks, and the tooth; the
     /// softness, the roughness, the amount, and the seed; the second pigment;
-    /// the palette; the drag's reach and the relief. A wet or oil stroke on
-    /// the canvas reads `ground`, the canvas drawn once more without such
-    /// strokes. `mediumFlip` is the surface's flip: -1 where its window rows
-    /// run down the canvas as the Mac's do, 1 where they run up, which turns
-    /// the screen y the relief is lit in and the row the ground is read at.
+    /// the palette; the drag's reach (ink's feather), the relief, ink's pooling,
+    /// and ink's nib end. A wet or oil stroke on the canvas reads `ground`, the
+    /// canvas drawn once more without such strokes. `mediumFlip` is the
+    /// surface's flip: -1 where its window rows run down the canvas as the
+    /// Mac's do, 1 where they run up, which turns the screen y the relief is lit
+    /// in and the row the ground is read at.
     static let mediumFragmentTail = """
     in vec4 vColor;
     in float vCoverage;
     in vec2 vCanvas;
     in vec4 vRibbon;
     flat in float vSeed;
+    flat in float vLength;
+    in float vPace;
     uniform vec4 medium[12];
     uniform sampler2D ground;
     uniform float hasGround;
@@ -788,6 +795,14 @@ struct WebShaders {
         } else if (kind == 3) {
             alpha = ollin_medium_dry_brush(vCanvas, density, vRibbon.y, vRibbon.x, hw, vRibbon.w,
                                            vSeed, medium[0].w, medium[0].z, medium[1].z, medium[1].w);
+        } else if (kind == 6) {
+            // Ink: the ribbon runs three feathers wider than the nib each side,
+            // the nib's own half-width is what is left, and the pen's pace rides
+            // its own attribute.
+            float nib = max(vRibbon.z - medium[11].x * 3.0, 0.0);
+            alpha = density * ollin_medium_ink(vCanvas, vRibbon.y * vRibbon.z, vRibbon.x, vLength, nib,
+                                               vPace, pixelScale, medium[11].w, medium[11].x, medium[11].z,
+                                               medium[1].z, vSeed + medium[1].w);
         } else {
             // Wet paint and oil: the pigment mixes with the ground behind the
             // pixel along the path, strongest toward the tail, the direction of
@@ -3166,7 +3181,7 @@ enum WebPlayer {
       // flips bit 0x80, so a second triangle over a sample fails), then the
       // same triangles with no color clear the bit. The cores come first, so
       // where the stroke crosses itself the solid part claims the sample.
-      var RV = 13, rlayout = [[2, 0], [1, 8], [4, 12], [4, 28], [2, 44]];
+      var RV = 14, rlayout = [[2, 0], [1, 8], [4, 12], [4, 28], [3, 44]];
       var ribbon = null;
       function ribbonProgram() {
         if (ribbon) return ribbon;
@@ -3250,7 +3265,10 @@ enum WebPlayer {
         gl.uniform1f(e.mediumFlip, flip);
         setBlend(item[4] || 0, true);
         gl.bindVertexArray(entry.vao);
-        if (ensureStencil(surface, ms)) {
+        // Ink (kind 6) lays a second coat where it crosses itself, as a pen
+        // does, so it draws without the one-coat stencil.
+        var oneCoat = Math.round(scratch[at]) !== 6;
+        if (oneCoat && ensureStencil(surface, ms)) {
           gl.enable(gl.STENCIL_TEST);
           gl.stencilMask(0x80);
           gl.stencilFunc(gl.EQUAL, 0, 0x80);

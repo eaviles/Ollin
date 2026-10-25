@@ -1502,6 +1502,12 @@ extension Drawer {
             }
         }
 
+        // A pen reads the speed each point was made at, as its pace over the
+        // ink's writing speed, keyed to the points' real fractions like the width.
+        if mark.hasTiming, let medium = strokeMediumShape, medium.kind == .ink {
+            strokePaceShape = StrokeProfile.values(mark.samples.map { medium.pace(of: $0.speed) }, at: fractions)
+        }
+
         if strokedAsBrush(points, closed: false) { return }
         if svgRecorder != nil {
             svgRecord(.polyline(points), fill: nil, stroke: strokePaint)

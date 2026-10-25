@@ -11025,6 +11025,28 @@
       "stillSmall": "examples/Shapes/Hulls/still-640.jpg?v=0851621d",
       "width": 1080
     },
+    "Shapes/InkPen": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 1.829,
+      "sound": false,
+      "source": "cb9542fe293ee8af",
+      "rendered": "2026-10-25",
+      "bytes": {
+        "loop": 1126364,
+        "loopSmall": 241989,
+        "still": 161821,
+        "stillSmall": 55155
+      },
+      "loop": "examples/Shapes/InkPen/loop.mp4?v=abd4a660",
+      "loopSmall": "examples/Shapes/InkPen/loop-640.mp4?v=efcf6c36",
+      "still": "examples/Shapes/InkPen/still.jpg?v=b1d33622",
+      "stillSmall": "examples/Shapes/InkPen/still-640.jpg?v=0547bd18",
+      "seed": 1
+    },
     "Shapes/InkRibbon": {
       "bytes": {
         "loop": 2657158,

@@ -118,12 +118,16 @@ struct WebSource {
                 if run.halfWidths.count > 1 { flags |= WebSourceLayout.widthsPerPointFlag }
                 if run.colors.count > 1 { flags |= WebSourceLayout.colorsPerPointFlag }
                 if run.fractions != nil { flags |= WebSourceLayout.fractionsFlag }
+                if let paces = run.paces {
+                    flags |= paces.count > 1 ? WebSourceLayout.pacesPerPointFlag : WebSourceLayout.paceFlag
+                }
                 header(kind: WebSourceLayout.ribbonKind, flags: flags, count: run.points.count,
                        fringe: fringe, ctmScale: ctmScale)
                 for p in run.points { point(p) }
                 for w in run.halfWidths { out.append(Float(w)) }
                 for c in run.colors { color(c) }
                 if let fractions = run.fractions { for t in fractions { out.append(Float(t)) } }
+                if let paces = run.paces { out.append(contentsOf: paces) }
                 out.append(wholeLength.map(Float.init) ?? -1)
                 out.append(seed)
             }
@@ -133,21 +137,25 @@ struct WebSource {
 
 /// One run of a stroke under a medium, prepared as the renderer expands it:
 /// its points, one half-width or one per point, one color or one per point,
-/// and its fractions along the whole path when it is a dash.
+/// its fractions along the whole path when it is a dash, and under ink the
+/// pen's pace, one or one per point.
 struct WebRibbonRun {
     var points: [Point2D]
     var closed: Bool
     var halfWidths: [Double]
     var colors: [SIMD4<Float>]
     var fractions: [Double]?
+    var paces: [Float]?
 
     /// A run with its per-point lists folded to one entry where every entry
     /// is the same.
-    init(points: [Point2D], closed: Bool, halfWidths: [Double], colors: [SIMD4<Float>], fractions: [Double]?) {
+    init(points: [Point2D], closed: Bool, halfWidths: [Double], colors: [SIMD4<Float>], fractions: [Double]?,
+         paces: [Float]? = nil) {
         self.points = points
         self.closed = closed
         self.halfWidths = halfWidths.allSatisfy { $0 == halfWidths.first } ? Array(halfWidths.prefix(1)) : halfWidths
         self.colors = colors.allSatisfy { $0 == colors.first } ? Array(colors.prefix(1)) : colors
         self.fractions = fractions
+        self.paces = paces.map { list in list.allSatisfy { $0 == list.first } ? Array(list.prefix(1)) : list }
     }
 }

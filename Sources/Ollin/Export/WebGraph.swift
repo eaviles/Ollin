@@ -449,8 +449,9 @@ enum WebNode3D {
 /// A stroke medium as the rows the page's medium fragment reads: the kind,
 /// the palette's size, the streaks, and the tooth; the softness, the edge
 /// roughness, the amount, and the seed; the second pigment; the eight
-/// palette slots; and the wet and oil drag's reach and the oil's relief, as
-/// `StrokeMedium.uniforms` fills them for the renderer. Twelve rows.
+/// palette slots; and the wet and oil drag's reach (ink's feather), the
+/// oil's relief, ink's pooling, and ink's nib end, as `StrokeMedium.uniforms`
+/// fills them for the renderer. Twelve rows.
 enum WebStrokeMedium {
     static let rows = 12
 
@@ -464,7 +465,7 @@ enum WebStrokeMedium {
         withUnsafeBytes(of: &u.palette) { raw in
             rows.append(contentsOf: raw.bindMemory(to: SIMD4<Float>.self))
         }
-        rows.append(SIMD4(u.reach, u.relief, 0, 0))
+        rows.append(SIMD4(u.reach, u.relief, u.pooling, u.cap))
         return rows
     }
 }

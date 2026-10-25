@@ -967,7 +967,7 @@ enum SiteHero {
       // flips bit 0x80, so a second triangle over a sample fails), then the
       // same triangles with no color clear the bit. The cores come first, so
       // where the stroke crosses itself the solid part claims the sample.
-      var RV = 13, rlayout = [[2, 0], [1, 8], [4, 12], [4, 28], [2, 44]];
+      var RV = 14, rlayout = [[2, 0], [1, 8], [4, 12], [4, 28], [3, 44]];
       var ribbon = null;
       function ribbonProgram() {
         if (ribbon) return ribbon;
@@ -1051,7 +1051,10 @@ enum SiteHero {
         gl.uniform1f(e.mediumFlip, flip);
         setBlend(item[4] || 0, true);
         gl.bindVertexArray(entry.vao);
-        if (ensureStencil(surface, ms)) {
+        // Ink (kind 6) lays a second coat where it crosses itself, as a pen
+        // does, so it draws without the one-coat stencil.
+        var oneCoat = Math.round(scratch[at]) !== 6;
+        if (oneCoat && ensureStencil(surface, ms)) {
           gl.enable(gl.STENCIL_TEST);
           gl.stencilMask(0x80);
           gl.stencilFunc(gl.EQUAL, 0, 0x80);

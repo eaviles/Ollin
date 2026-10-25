@@ -4,8 +4,9 @@ import COllinShaders
 
 /// The material a stroke is made in: graphite, charcoal, or pastel catching on
 /// the paper's tooth, a brush whose bristles streak two pigments, a brush running
-/// dry, wet paint that drags the ground under it, or oil lit by its own relief.
-/// Set it with `strokeMedium(_:)` beside `strokeWeight` and `stroke`:
+/// dry, wet paint that drags the ground under it, oil lit by its own relief, or
+/// ink from a pen's nib soaking into the paper. Set it with `strokeMedium(_:)`
+/// beside `strokeWeight` and `stroke`:
 ///
 /// ```swift
 /// stroke(Color(hex: "#2B2B33"))
@@ -37,6 +38,7 @@ public struct StrokeMedium: Hashable, Sendable {
         case dryBrush = 3
         case wet = 4
         case oil = 5
+        case ink = 6
     }
 
     let kind: Kind
@@ -64,6 +66,15 @@ public struct StrokeMedium: Hashable, Sendable {
     var reach: Double = 36
     /// The height of the paint's relief, `1` the default and `0` flat.
     var relief: Double = 1
+    /// Ink: how much denser the first and last pen width lie, `0` to `1`.
+    var pooling: Double = 0.5
+    /// Ink: the writing speed in canvas points per second, which a recorded
+    /// point's own speed is measured against.
+    var speed: Double = 900
+    /// Ink: the shape of the nib's end, the stroke's cap when it was drawn
+    /// (the drawer sets it; the ribbon itself always runs square past the ends
+    /// to leave the feather room).
+    var cap: StrokeCap = .butt
     var seed: Int = 0
 
     // MARK: Dry media
@@ -190,11 +201,65 @@ public struct StrokeMedium: Hashable, Sendable {
     /// Oil with its default settings.
     public static let oil = StrokeMedium.oil()
 
+    // MARK: Ink
+
+    /// A pen: ink from a nib. The ink soaks a little way into the paper past
+    /// the line's edge, out along the paper's fibers, and farther where the pen
+    /// moved slowly or rested; it lies denser in the first and last pen width,
+    /// where the nib landed and lifted; and it thins when the pen hurries, down
+    /// to a ballpoint's skips. A mark recorded from the pointer carries the speed
+    /// each point was made at (`StrokeMark.Sample.speed`), which is what the pen
+    /// reads; a line drawn without timing counts as written at `speed`.
+    ///
+    /// Unlike the other media, an ink stroke lays a second coat where it crosses
+    /// itself, as a pen does, so a translucent ink reads darker at every
+    /// crossing.
+    ///
+    /// - Parameters:
+    ///   - feather: how far the ink spreads past the nib's edge, in canvas
+    ///     points, where the pen moves at its writing speed; up to two and a
+    ///     half times that where it rests.
+    ///   - pooling: how much denser the first and last pen width lie, `0` none
+    ///     to `1`.
+    ///   - amount: how much the flow thins with speed, `0` the same ink at any
+    ///     speed to `1` a ballpoint that skips when hurried.
+    ///   - speed: the writing speed, in canvas points per second. Slower than it
+    ///     feathers more; faster thins the flow.
+    ///   - seed: which paper, the fibers the feather follows.
+    public static func ink(feather: Double = 3, pooling: Double = 0.5, amount: Double = 0.5,
+                           speed: Double = 900, seed: Int = 0) -> StrokeMedium {
+        StrokeMedium(kind: .ink, amount: min(max(amount, 0), 1), reach: max(feather, 0),
+                     pooling: min(max(pooling, 0), 1), speed: max(speed, 1), seed: seed)
+    }
+
+    /// A pen with its default settings.
+    public static let ink = StrokeMedium.ink()
+
     // MARK: Reading
 
     /// Whether this medium reads the ground under the stroke, which is what
     /// asks the renderer to draw the frame once more without the wet marks.
     var readsGround: Bool { kind == .wet || kind == .oil }
+
+    /// Whether a stroke in this medium lays one coat where it crosses itself
+    /// (every medium but ink, which lays a second as a pen does), which is what
+    /// asks the renderer for the coat stencil.
+    var laysOneCoat: Bool { kind != .ink }
+
+    /// How far past the nib's edge an ink stroke's ribbon is widened each side,
+    /// in canvas points: room for the feather at its farthest, at rest and over
+    /// a pool. The fragment takes it back off to find the nib's own edge.
+    var ribbonSpread: Double { kind == .ink ? reach * Self.inkSpread : 0 }
+
+    /// The feather's farthest reach over its reach at writing speed.
+    static let inkSpread = 3.0
+
+    /// The pen's pace at a recorded point: its speed over the writing speed, `1`
+    /// for a point without timing.
+    func pace(of sampleSpeed: Double?) -> Double {
+        guard let sampleSpeed else { return 1 }
+        return max(sampleSpeed, 0) / speed
+    }
 
     /// The uniform block the medium fragment reads, for a pass whose canvas
     /// points are `pixelScale` attachment pixels each.
@@ -210,6 +275,12 @@ public struct StrokeMedium: Hashable, Sendable {
         u.amount = Float(amount)
         u.reach = Float(reach)
         u.relief = Float(relief)
+        u.pooling = Float(pooling)
+        switch cap {
+        case .butt: u.cap = 0
+        case .round: u.cap = 1
+        case .square: u.cap = 2
+        }
         // A seed past a float's exact integers would round several seeds to
         // one; folding it into the hashes' period keeps every seed distinct
         // there.

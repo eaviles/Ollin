@@ -3616,6 +3616,7 @@ struct Contour: PlaneCurve, Tweenable, BidirectionalCollection, Collection, Equa
   func distance(to: Vector2) -> Double
   func fitted(tolerance: Double) -> Path
   func fraction(of: Vector2) -> Double
+  func handDrawn(wobble: Double = default, bow: Double = default, overshoot: Double = default, seed: Int = default) -> Contour
   func nearestPoint(to: Vector2) -> Vector2
   func normal(at: Double) -> Vector2
   func piece(from: Double, to: Double) -> Contour
@@ -6570,6 +6571,7 @@ struct Shape: Tweenable, BidirectionalCollection, Collection, Equatable, RandomA
   func fitted(tolerance: Double) -> [Path]
   func fractured(into: Int, around: Vector2, seed: Int = default) -> [Shape]
   func fractured(into: Int, seed: Int = default) -> [Shape]
+  func handDrawn(wobble: Double = default, bow: Double = default, overshoot: Double = default, seed: Int = default) -> Shape
   func intersection(_: Shape) -> Shape
   func mapPoints(_: (Vector2) -> Vector2) -> Shape
   func morphed(toward: Shape, _: Double, spacing: Double? = default) -> Shape
@@ -6917,15 +6919,17 @@ struct StrokeInput: Sendable
   var pressure: Double { get set }
   var speed: Double { get set }
 struct StrokeMark: Sendable
+  func handDrawn(wobble: Double = default, bow: Double = default, overshoot: Double = default, blot: Double = default, seed: Int = default) -> StrokeMark
   init(_: StrokeDynamics = default, smoothing: Double = default, minSpacing: Double = default)
   init(samples: [StrokeMark.Sample], dynamics: StrokeDynamics = default, smoothing: Double = default, minSpacing: Double = default)
   mutating func append(_: StrokeMark.Sample)
   mutating func clear()
   mutating func record(_: Vector2, deltaTime: Double, pressure: Double = default)
   struct Sample: Equatable, Sendable
-    init(position: Vector2, width: Double = default, opacity: Double = default)
+    init(position: Vector2, width: Double = default, opacity: Double = default, speed: Double? = default)
     var opacity: Double { get set }
     var position: Vector2 { get set }
+    var speed: Double? { get set }
     var width: Double { get set }
   var bounds: Rectangle? { get }
   var count: Int { get }
@@ -6943,12 +6947,14 @@ struct StrokeMedium: Equatable, Hashable, Sendable
   static func bristles(_: Color? = default, streaks: Int = default, amount: Double = default, seed: Int = default) -> StrokeMedium
   static func dry(tooth: Double, softness: Double = default, roughness: Double = default, palette: [Color] = default, seed: Int = default) -> StrokeMedium
   static func dryBrush(grain: Double = default, amount: Double = default, streaks: Int = default, seed: Int = default) -> StrokeMedium
+  static func ink(feather: Double = default, pooling: Double = default, amount: Double = default, speed: Double = default, seed: Int = default) -> StrokeMedium
   static func oil(amount: Double = default, reach: Double = default, relief: Double = default, streaks: Int = default, seed: Int = default) -> StrokeMedium
   static func pastel(palette: [Color], seed: Int = default) -> StrokeMedium
   static func wet(amount: Double = default, reach: Double = default) -> StrokeMedium
   static let bristles: StrokeMedium
   static let charcoal: StrokeMedium
   static let dryBrush: StrokeMedium
+  static let ink: StrokeMedium
   static let oil: StrokeMedium
   static let pastel: StrokeMedium
   static let pencil: StrokeMedium

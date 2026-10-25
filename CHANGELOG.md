@@ -4,6 +4,11 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ## [Unreleased]
 
+### Added
+
+- **A pen.** `strokeMedium(.ink(feather:pooling:amount:speed:seed:))` draws ink from a nib. The ink soaks `feather` canvas points past the line's edge along the paper's fibers, and farther where the hand slowed; it lies denser over the first and last pen width by `pooling`; it thins by `amount` when the pen hurries, down to a ballpoint's skips; and it lays a second coat where strokes cross, the one medium that does. A mark recorded from the pointer now keeps the speed of every point (`StrokeMark.Sample.speed`, in canvas points per second, `nil` on a point added without timing), which is what the pen reads against its writing `speed`; a line drawn without timing counts as written at that speed. The nib's end keeps the stroke's cap. The web page export carries it, the speed of each point beside its width. The `Shapes/InkPen` example writes a page at three paces. [Marks](Docs/Drawing/Marks.md#ink)
+- **Lines drawn by hand.** `handDrawn(wobble:bow:overshoot:seed:)` on `Contour` and `Shape`, and with `blot:` on `StrokeMark`, returns the same line as a hand would draw it: a wobble off the ideal, a bow in each straight run between corners, ends that run short or long, and on a mark a blot where the pen lands. Everything is drawn from the seed and measured along the line from its own start, so a line that moves keeps its character rather than boiling, and a closed outline stays closed and still fills. [Marks](Docs/Drawing/Marks.md#hand-drawn)
+
 ## [0.17.0] - 2026-10-25
 
 ### Added

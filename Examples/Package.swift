@@ -509,6 +509,7 @@ let package = Package(
         example("Shapes/Arrows"),
         example("Shapes/Booleans"),
         example("Shapes/Clipping"),
+        example("Shapes/InkPen"),
         example("Shapes/InkRibbon"),
         example("Shapes/Hulls"),
         example("Shapes/MedialAxis"),

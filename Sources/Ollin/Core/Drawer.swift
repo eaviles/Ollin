@@ -422,6 +422,11 @@ final class Drawer {
     // `.uniform` value leaves the per-vertex color untouched, so every other
     // stroke in the framework is byte-identical to before it existed.
     var strokeOpacityShape: StrokeProfile = .uniform
+    // The pen's pace along a path (a recorded point's speed over the ink's
+    // writing speed), the third sibling, set only by drawMark for a mark with
+    // timing under `StrokeMedium.ink`. `nil` is a line written at the writing
+    // speed everywhere.
+    var strokePaceShape: StrokeProfile? = nil
     // A shape repeated along a path in place of the continuous ribbon (see
     // strokeBrush). `nil` is the ribbon, so every stroke that does not ask for a
     // brush takes exactly the path it always did.
@@ -2514,6 +2519,7 @@ final class Drawer {
         var strokeCapStyle: StrokeCap
         var strokeProfileShape: StrokeProfile
         var strokeOpacityShape: StrokeProfile
+        var strokePaceShape: StrokeProfile?
         var strokeBrushShape: Brush?
         var strokeMediumShape: StrokeMedium?
         var fillMediumShape: FillMedium?
@@ -5411,6 +5417,7 @@ final class Drawer {
                                      strokeCapStyle: strokeCapStyle,
                                      strokeProfileShape: strokeProfileShape,
                                      strokeOpacityShape: strokeOpacityShape,
+                                     strokePaceShape: strokePaceShape,
                                      strokeBrushShape: strokeBrushShape,
                                      strokeMediumShape: strokeMediumShape,
                                      fillMediumShape: fillMediumShape,
@@ -5453,6 +5460,7 @@ final class Drawer {
         strokeCapStyle = s.strokeCapStyle
         strokeProfileShape = s.strokeProfileShape
         strokeOpacityShape = s.strokeOpacityShape
+        strokePaceShape = s.strokePaceShape
         strokeBrushShape = s.strokeBrushShape
         strokeMediumShape = s.strokeMediumShape
         fillMediumShape = s.fillMediumShape

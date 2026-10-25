@@ -57,7 +57,6 @@ See the [design notes](DESIGN-NOTES.md#technique-and-algorithm-helpers).
 
 This is the hand-drawn, mark-making axis. It is built on the variable-width stroke renderer, which gives a width per vertex, shaped by a `strokeProfile`. It also builds on the recorded marks that drive that renderer from the hand, and on the brushes that stamp a shape along a path. What is ahead is Apple Pencil tilt and azimuth as further drivers. They need a Pencil and a tablet, so they sit under [new input sources](#new-input-sources). Painterly simulation (the generative-watercolor family) stays a [technique-catalog](#technique-and-algorithm-helpers) recipe rather than a brush-engine feature. See the [design notes](DESIGN-NOTES.md#expressive-brushes-and-strokes).
 
-- **A pen.** Ink from a nib as a stroke medium: the ink feathering into the paper's fibers at the edge, more where the pen sat longer; pooling where the nib lands and lifts, and a second coat where two strokes cross; flow that thins along a fast stroke, down to a ballpoint's skips. Beside it, a helper that makes a line look drawn by hand (a wobble off the straight, a slight bow, ends that run short or long, a blot where the pen lands), seeded and tied to the mark so a line that moves keeps its character rather than boiling.
 
 ## iPhone as a sensor array
 

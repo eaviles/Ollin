@@ -384,8 +384,8 @@ struct StrokeMediumTests {
     }
 
     @Test func theWebPageCarriesEveryMedium() throws {
-        // A wet and a dry medium both cross (WebStrokeMediumTests has the page,
-        // and the one refusal left, a wet stroke over a kept canvas).
+        // A wet, a dry, and an ink medium all cross (WebStrokeMediumTests has
+        // the page, and the one refusal left, a wet stroke over a kept canvas).
         let wet = MediumSketch(ground: .white) { s in
             s.stroke(.black); s.strokeWeight(10); s.strokeMedium(.oil); s.drawLine(20, 20, 200, 200)
         }
@@ -394,6 +394,123 @@ struct StrokeMediumTests {
             s.stroke(.black); s.strokeWeight(10); s.strokeMedium(.pencil); s.drawLine(20, 20, 200, 200)
         }
         #expect(throws: Never.self) { _ = try OllinApp.recordWebFrames(of: dry, frames: 2, fps: 30) }
+        let ink = MediumSketch(ground: .white) { s in
+            s.stroke(.black); s.strokeWeight(10); s.strokeMedium(.ink)
+            s.drawMark(StrokeMediumTests.penLine(speed: 300))
+        }
+        #expect(throws: Never.self) { _ = try OllinApp.recordWebFrames(of: ink, frames: 2, fps: 30) }
+    }
+
+    // MARK: Ink
+
+    /// A horizontal mark across the middle, from `x0` to `x1` at `y`, every
+    /// point made at `speed` canvas points a second (`nil` for no timing).
+    nonisolated static func penLine(speed: Double?, from x0: Double = 20, to x1: Double = 236,
+                                    y: Double = 128) -> StrokeMark {
+        let count = Int((x1 - x0) / 4)
+        return StrokeMark(samples: (0 ... count).map { i in
+            StrokeMark.Sample(position: Vector2(x0 + (x1 - x0) * Double(i) / Double(count), y), speed: speed)
+        })
+    }
+
+    /// That mark drawn 12 wide under a pen, in black at `alpha`.
+    func pen(speed: Double?, alpha: Double = 1, medium: StrokeMedium = .ink(pooling: 0)) throws -> Pixels {
+        try render { s in
+            s.stroke(Color.black.withAlpha(alpha))
+            s.strokeWeight(12)
+            s.strokeMedium(medium)
+            s.drawMark(Self.penLine(speed: speed))
+        }
+    }
+
+    /// How many rows above the nib's top edge (y = 122 on the 12-wide line at
+    /// 128) still carry ink, read as the mean over the middle of the line.
+    func rim(_ p: Pixels) -> Int {
+        var rows = 0
+        for y in stride(from: 121, through: 90, by: -1) {
+            let mean = inkReading(p, x0: 80, x1: 176, y0: y, y1: y + 1).mean
+            if mean > 0.03 { rows += 1 }
+        }
+        return rows
+    }
+
+    @Test func theFeatherReachesFartherWhereThePenRested() throws {
+        // The nib's own line is inked solid at any pace; past its edge the ink
+        // soaks into the paper, and farther where the pen crawled than where it
+        // wrote at its writing speed. A line with no timing reads as written.
+        let slow = try pen(speed: 100)
+        let writing = try pen(speed: 900)
+        let untimed = try pen(speed: nil)
+        try look("ink-slow") { s in s.stroke(.black); s.strokeWeight(12); s.strokeMedium(.ink(pooling: 0)); s.drawMark(Self.penLine(speed: 100)) }
+        try look("ink-writing") { s in s.stroke(.black); s.strokeWeight(12); s.strokeMedium(.ink(pooling: 0)); s.drawMark(Self.penLine(speed: 900)) }
+        for p in [slow, writing, untimed] {
+            #expect(inkReading(p, x0: 60, x1: 196, y0: 124, y1: 132).lit > 0.98, "the nib's line is solid")
+        }
+        #expect(rim(slow) >= rim(writing) + 2, "a resting pen feathers \(rim(slow)) rows against \(rim(writing)) at writing speed")
+        #expect(rim(writing) >= 1, "the ink feathers past the nib even at writing speed")
+        #expect(rim(untimed) == rim(writing), "a line without timing is written at the writing speed")
+    }
+
+    @Test func theInkPoolsWhereThePenLandedAndLifted() throws {
+        // A translucent ink at full pooling lies denser over the first and last
+        // pen width than along the middle; with no pooling the ends read as the
+        // middle does.
+        let pooled = try pen(speed: 900, alpha: 0.55, medium: .ink(pooling: 1))
+        let flat = try pen(speed: 900, alpha: 0.55, medium: .ink(pooling: 0))
+        try look("ink-pooled") { s in s.stroke(Color.black.withAlpha(0.55)); s.strokeWeight(12); s.strokeMedium(.ink(pooling: 1)); s.drawMark(Self.penLine(speed: 900)) }
+        func ends(_ p: Pixels) -> Double {
+            (inkReading(p, x0: 21, x1: 33, y0: 124, y1: 132).mean + inkReading(p, x0: 223, x1: 235, y0: 124, y1: 132).mean) / 2
+        }
+        func middle(_ p: Pixels) -> Double { inkReading(p, x0: 100, x1: 156, y0: 124, y1: 132).mean }
+        #expect(ends(pooled) > middle(pooled) * 1.15, "the ends read \(ends(pooled)) against the middle's \(middle(pooled))")
+        #expect(abs(ends(flat) - middle(flat)) < 0.02 * max(middle(flat), 1e-6) + 0.01,
+                "without pooling the ends read \(ends(flat)) against \(middle(flat))")
+    }
+
+    @Test func anInkStrokeLaysASecondCoatWhereItCrossesItself() throws {
+        // The hourglass that lays one coat under every other medium lays two
+        // under ink, as a pen does: the crossing reads darker than a leg. Two
+        // separate pen strokes cross the same way.
+        let ink = try render { s in
+            s.stroke(Color.black.withAlpha(0.3))
+            s.strokeWeight(24)
+            s.strokeMedium(.ink(feather: 0, pooling: 0))
+            s.drawPolyline(Self.hourglass)
+        }
+        #expect(ink.gray(128, 128) < ink.gray(84, 94) - 10,
+                "the crossing reads \(ink.gray(128, 128)) and the leg \(ink.gray(84, 94))")
+        let two = try render { s in
+            s.stroke(Color.black.withAlpha(0.3))
+            s.strokeWeight(24)
+            s.strokeMedium(.ink(feather: 0, pooling: 0))
+            s.drawLine(40, 128, 216, 128)
+            s.drawLine(128, 40, 128, 216)
+        }
+        #expect(two.gray(128, 128) < two.gray(80, 128) - 10)
+    }
+
+    @Test func aHurriedPenSkipsAndASlowOneDoesNot() throws {
+        // At three times the writing speed and full thinning the flow breaks
+        // into a ballpoint's skips along the line; at the writing speed the
+        // line is whole.
+        func bare(_ p: Pixels) -> Double {
+            var n = 0, bare = 0
+            for x in 40 ..< 216 {
+                for y in 126 ..< 130 {
+                    n += 1
+                    if ink(p, x, y) < 0.3 { bare += 1 }
+                }
+            }
+            return Double(bare) / Double(n)
+        }
+        let hurried = try pen(speed: 2700, medium: .ink(pooling: 0, amount: 1))
+        let writing = try pen(speed: 900, medium: .ink(pooling: 0, amount: 1))
+        try look("ink-hurried") { s in s.stroke(.black); s.strokeWeight(12); s.strokeMedium(.ink(pooling: 0, amount: 1)); s.drawMark(Self.penLine(speed: 2700)) }
+        #expect(bare(hurried) > 0.15, "a hurried pen leaves \(bare(hurried)) of the line bare")
+        #expect(bare(writing) < 0.01, "a pen at writing speed leaves \(bare(writing)) bare")
+        // With no thinning the hurried pen writes a whole line too.
+        let steady = try pen(speed: 2700, medium: .ink(pooling: 0, amount: 0))
+        #expect(bare(steady) < 0.01)
     }
 
     // MARK: Pressure
@@ -436,8 +553,25 @@ struct StrokeMediumTests {
             ("pencil", .pencil), ("charcoal", .charcoal), ("pastel", .pastel),
             ("pastel-palette", .pastel(palette: [hex("#E4572E"), hex("#F3A712"), hex("#29335C")])),
             ("bristles", .bristles(hex("#F3A712"))), ("dry-brush", .dryBrush),
-            ("wet", .wet), ("oil", .oil),
+            ("wet", .wet), ("oil", .oil), ("ink", .ink),
         ]
+        // A page of pen lines at three paces, and the hourglass crossing itself.
+        try look("ink-page") { s in
+            s.noFill()
+            s.stroke(hex("#1B2A4A"))
+            s.strokeWeight(5)
+            s.strokeMedium(.ink(feather: 2, pooling: 0.6, amount: 0.7))
+            for (i, speed) in [120.0, 600, 2400].enumerated() {
+                let y = 40 + Double(i) * 44
+                s.drawMark(Self.penLine(speed: speed, from: 24, to: 232, y: y))
+            }
+            s.strokeWeight(3)
+            s.stroke(hex("#1B2A4A").withAlpha(0.7))
+            s.drawPolyline([Vector2(30, 170), Vector2(226, 236), Vector2(226, 170), Vector2(30, 236)])
+            s.strokeMedium(.ink(feather: 2, pooling: 0.6))
+            s.drawPolyline(Contour([Vector2(60, 200), Vector2(200, 180), Vector2(190, 230)], closed: false)
+                .handDrawn(wobble: 1.5, bow: 2, overshoot: 5, seed: 3).points)
+        }
         for (name, medium) in media {
             try look(name) { s in
                 // A ground with two colors for the wet media to drag.
