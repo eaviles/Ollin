@@ -14,8 +14,8 @@ averages the square around each pixel. `Filter.adaptiveThreshold` cuts each pixe
 average of its own surroundings, rather than against one number for the whole picture.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/21-PicturesYouSolve/LocalAverages-dark.jpg">
-  <img src="../../Guide/Images/21-PicturesYouSolve/LocalAverages.jpg" alt="Three panels. A page of printed text with diagonal bands of shadow falling across it; the same page cut to black and white by one threshold, which turns the shadow bands solid black; and the same page cut against each pixel's own neighborhood, where the text comes back through the bands and only dark streaks along their edges remain" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/22-PicturesYouSolve/LocalAverages-dark.jpg">
+  <img src="../../Guide/Images/22-PicturesYouSolve/LocalAverages.jpg" alt="Three panels. A page of printed text with diagonal bands of shadow falling across it; the same page cut to black and white by one threshold, which turns the shadow bands solid black; and the same page cut against each pixel's own neighborhood, where the text comes back through the bands and only dark streaks along their edges remain" width="680">
 </picture>
 
 ### Contents

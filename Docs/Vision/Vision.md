@@ -11,8 +11,8 @@ There are two pieces. The first is a [`Camera`](#camera). It captures frames and
 The second piece is a **tracker**. It attaches to a [frame source](#frame-sources), which is that camera or a playing [`VideoPlayer`](../Video/Video.md). It runs Apple's on-device perception on each frame and publishes typed results, which you read in `draw()`. Every tracker follows the same shape, from [`FaceTracker`](#facetracker) for faces through hands, bodies, segmentation, contours, and text. At the end of the catalog is [`ModelTracker`](#modeltracker), which runs **your own Core ML model** the same way.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/34-Seeing/TrackerFlow-dark.jpg">
-  <img src="../../Guide/Images/34-Seeing/TrackerFlow.jpg" alt="A diagram of three boxes: Camera producing frames, FaceTracker analyzing in the background, and typed results read in draw. Below, two panels show a normalized lower-left-origin point mapping into the drawn frame's rectangle" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/35-Seeing/TrackerFlow-dark.jpg">
+  <img src="../../Guide/Images/35-Seeing/TrackerFlow.jpg" alt="A diagram of three boxes: Camera producing frames, FaceTracker analyzing in the background, and typed results read in draw. Below, two panels show a normalized lower-left-origin point mapping into the drawn frame's rectangle" width="680">
 </picture>
 
 The usual flow starts in `setup()`. Make a camera, call `start()` on it, and attach the trackers you want. Then, in `draw()`, draw the feed with `drawFrame(camera)` and read each tracker's results. `drawFrame` letterboxes the latest frame, shows a standard waiting notice until the first frame arrives, and returns the rectangle you map results into.
@@ -211,8 +211,8 @@ It publishes the picture over and over rather than once, four times a second by 
 ### FaceTracker
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/34-Seeing/Landmarks-dark.jpg">
-  <img src="../../Guide/Images/34-Seeing/Landmarks.jpg" alt="Three panels: a hand skeleton of 21 dots wired finger by finger, a face of 76 dots grouped into contour, brows, eyes, nose and lips regions, and a body skeleton of 19 dots" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/35-Seeing/Landmarks-dark.jpg">
+  <img src="../../Guide/Images/35-Seeing/Landmarks.jpg" alt="Three panels: a hand skeleton of 21 dots wired finger by finger, a face of 76 dots grouped into contour, brows, eyes, nose and lips regions, and a body skeleton of 19 dots" width="680">
 </picture>
 
 ```swift
@@ -263,8 +263,8 @@ for face in faces.faces {
 ### ContourDetector
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/34-Seeing/Contours-dark.jpg">
-  <img src="../../Guide/Images/34-Seeing/Contours.jpg" alt="Two panels: a photograph of two open palms lit against a black ground, and the same hands traced as orange vector outlines, fingers and all, with the creases of each palm coming back as holes inside it" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/35-Seeing/Contours-dark.jpg">
+  <img src="../../Guide/Images/35-Seeing/Contours.jpg" alt="Two panels: a photograph of two open palms lit against a black ground, and the same hands traced as orange vector outlines, fingers and all, with the creases of each palm coming back as holes inside it" width="680">
 </picture>
 
 ```swift
@@ -554,8 +554,8 @@ struct Segmentation {
 ### RectangleDetector
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/34-Seeing/ReadingTheDesk-dark.jpg">
-  <img src="../../Guide/Images/34-Seeing/ReadingTheDesk.jpg" alt="Two panels: a photograph of a desk from above with a laptop, a cup, a plant and a notebook, and the same picture with orange quads on the trackpad, the cup and the notebook, and boxes around the five lines printed on the notebook's cover" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/35-Seeing/ReadingTheDesk-dark.jpg">
+  <img src="../../Guide/Images/35-Seeing/ReadingTheDesk.jpg" alt="Two panels: a photograph of a desk from above with a laptop, a cup, a plant and a notebook, and the same picture with orange quads on the trackpad, the cup and the notebook, and boxes around the five lines printed on the notebook's cover" width="680">
 </picture>
 
 ```swift
@@ -693,7 +693,7 @@ Read `confidence` to tell whether the patch is lost, since the box stays put whe
 
 ### TrajectoryTracker
 
-<img src="../../Guide/Images/34-Seeing/Trajectory.jpg" alt="Two panels: six frames of a made-up clip overlaid, showing a bright ball rising in six steps, and the same clip's newest frame with orange dots on the sightings, a fitted arc, and a dashed continuation passing through pale rings" width="680">
+<img src="../../Guide/Images/35-Seeing/Trajectory.jpg" alt="Two panels: six frames of a made-up clip overlaid, showing a bright ball rising in six steps, and the same clip's newest frame with orange dots on the sightings, a fitted arc, and a dashed continuation passing through pale rings" width="680">
 
 ```swift
 TrajectoryTracker(_ source: any FrameSource, minObservationCount: Int = 10,
@@ -744,8 +744,8 @@ An arc keeps its `id` as more of it comes into view. Accumulate results by `id` 
 ### FlowTracker
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/34-Seeing/FlowArrows-dark.jpg">
-  <img src="../../Guide/Images/34-Seeing/FlowArrows.jpg" alt="Two panels: a dancer on a plain studio ground with one arm swung out sideways, and the same frame with orange arrows running along both arms in opposite directions. A few sit on one leg and at one foot, and none on the chest" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/35-Seeing/FlowArrows-dark.jpg">
+  <img src="../../Guide/Images/35-Seeing/FlowArrows.jpg" alt="Two panels: a dancer on a plain studio ground with one arm swung out sideways, and the same frame with orange arrows running along both arms in opposite directions. A few sit on one leg and at one foot, and none on the chest" width="680">
 </picture>
 
 ```swift
@@ -854,8 +854,8 @@ var name: String { get }        // "blue sky", ready to draw
 ### SaliencyTracker
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/34-Seeing/AttentionAndLabels-dark.jpg">
-  <img src="../../Guide/Images/34-Seeing/AttentionAndLabels.jpg" alt="Two panels: a photograph of a woman standing before a wall of orange marigolds with an orange saliency glow concentrated on her face, and a bar chart with people and adult at 91 percent reaching well past a dashed line, then clothing, plant, maple tree and tree, with flower and marigold at 7 percent falling below it" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/35-Seeing/AttentionAndLabels-dark.jpg">
+  <img src="../../Guide/Images/35-Seeing/AttentionAndLabels.jpg" alt="Two panels: a photograph of a woman standing before a wall of orange marigolds with an orange saliency glow concentrated on her face, and a bar chart with people and adult at 91 percent reaching well past a dashed line, then clothing, plant, maple tree and tree, with flower and marigold at 7 percent falling below it" width="680">
 </picture>
 
 ```swift

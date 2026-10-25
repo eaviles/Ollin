@@ -130,8 +130,8 @@ The light is folded in one color at a time in linear light, so where two spots c
 Because the spots are placed by angle, a shape that wraps around the center reads best, and a part of the edge close to the center would see a spot only a few pixels long; within a few band widths of the center the spots blend into their average around the ring instead. A `width` of 0, or no colors, leaves the layer exactly as it was. See the `Effects/WipesAndCopies` example.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/21-PicturesYouSolve/EdgeGlow-dark.jpg">
-  <img src="../../Guide/Images/21-PicturesYouSolve/EdgeGlow.jpg" alt="Two dark panels: the word edge glowing blue and violet along its letters, and a five-pointed star with a wide band of pink, gold, and green light running around its edge" width="560">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/22-PicturesYouSolve/EdgeGlow-dark.jpg">
+  <img src="../../Guide/Images/22-PicturesYouSolve/EdgeGlow.jpg" alt="Two dark panels: the word edge glowing blue and violet along its letters, and a five-pointed star with a wide band of pink, gold, and green light running around its edge" width="560">
 </picture>
 
 <a name="stacking"></a>

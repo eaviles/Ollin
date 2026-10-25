@@ -264,7 +264,7 @@ Looks borrowed from the way pictures used to be carried and taken: on tape, thro
 codec, through a lens, on film, on paper. Three of them animate by a phase you feed
 `time`; the rest are still unless you move their numbers.
 
-<img src="../../Guide/Images/20-PicturesRestyled/TapeAndLens.jpg" alt="Eight panels of one street scene: on a worn videotape with its colors smeared right and its bottom lines torn, saved as a JPEG at low quality in flat 8 by 8 tiles, moshed so blocks drag the old picture along, through a tilt-shift lens with a sharp band across the middle, blurring in from the bottom, fogged by an orange light leak from the right edge, peeling up from its bottom-right corner over a dark ground, and in sepia under hairline scratches" width="680">
+<img src="../../Guide/Images/21-GlassChromeAndTape/TapeAndLens.jpg" alt="Eight panels of one street scene: on a worn videotape with its colors smeared right and its bottom lines torn, saved as a JPEG at low quality in flat 8 by 8 tiles, moshed so blocks drag the old picture along, through a tilt-shift lens with a sharp band across the middle, blurring in from the bottom, fogged by an orange light leak from the right edge, peeling up from its bottom-right corner over a dark ground, and in sepia under hairline scratches" width="680">
 
 - **`.vhs(smear:jitter:damage:amount:phase:)`** a worn videotape. Each of the tape's
   lines steps sideways by up to `jitter` pixels, re-rolled every frame. A slow wobble
@@ -419,7 +419,7 @@ The others transform the whole layer. `Effects/FilterCatalog`'s design family sh
 them, `Images/LuminanceMelt` shows the melt, `Effects/CrumpledFoil` the foil, and
 `Effects/ChromeLettering` the chrome.
 
-<img src="../../Guide/Images/20-PicturesRestyled/DesignFilters.jpg" alt="Six tiles in two labeled rows. The top row, 'these read the shape', shows the same heart silhouette as flowing chrome, as a red-and-blue thermal map with contour bands, and as pale swirling gem smoke. The bottom row, 'these read the picture', shows the same photograph of a hillside town behind angled glass flutes, refracted through rippling water, and pressed into a crumpled paper sheet" width="680">
+<img src="../../Guide/Images/21-GlassChromeAndTape/DesignFilters.jpg" alt="Six tiles in two labeled rows. The top row, 'these read the shape', shows the same heart silhouette as flowing chrome, as a red-and-blue thermal map with contour bands, and as pale swirling gem smoke. The bottom row, 'these read the picture', shows the same photograph of a hillside town behind angled glass flutes, refracted through rippling water, and pressed into a crumpled paper sheet" width="680">
 
 - **`.liquidMetal(repetition:softness:dispersion:distortion:contour:angle:tint:phase:)`**
   render the alpha shape as flowing chrome. Reflectance bands compress and wrap
@@ -532,7 +532,7 @@ them, `Images/LuminanceMelt` shows the melt, `Effects/CrumpledFoil` the foil, an
   to full light), a flat layer comes out mid-gray, and the layer's alpha is kept. Blur a
   drawing of soft blobs first and the knife reads them as a plume.
 
-<img src="../../Guide/Images/20-PicturesRestyled/CrumpledFoil.jpg" alt="Two panels. On the left a heart filled with crumpled holographic foil: a stepped rainbow of stripes that jumps at every crease, bright and dark crease lines, and small cross glints at some corners. On the right the same sheet drawn as flat gray triangles, each shaded by how it faces the light, with every crease inked" width="680">
+<img src="../../Guide/Images/21-GlassChromeAndTape/CrumpledFoil.jpg" alt="Two panels. On the left a heart filled with crumpled holographic foil: a stepped rainbow of stripes that jumps at every crease, bright and dark crease lines, and small cross glints at some corners. On the right the same sheet drawn as flat gray triangles, each shaded by how it faces the light, with every crease inked" width="680">
 
 ```swift
 let logo = makeRenderTarget()
@@ -558,7 +558,7 @@ The chrome is for lettering. Draw a word white into a layer sized to the word, s
 the ramps land inside the letters, and let the filter do the rest; the gold and the
 night palettes in the figure are the same call with other ramps.
 
-<img src="../../Guide/Images/20-PicturesRestyled/ChromeLettering.jpg" alt="The word CHROME in heavy letters filled with airbrushed chrome: deep blue sky fading to pale at a gently waving horizon, a thin white wire and a black break at the join, and an orange floor fading to gold below. Under it a heart in a gold palette and a disc in a violet and pink night palette, each with its own bent horizon" width="680">
+<img src="../../Guide/Images/21-GlassChromeAndTape/ChromeLettering.jpg" alt="The word CHROME in heavy letters filled with airbrushed chrome: deep blue sky fading to pale at a gently waving horizon, a thin white wire and a black break at the join, and an orange floor fading to gold below. Under it a heart in a gold palette and a disc in a violet and pink night palette, each with its own bent horizon" width="680">
 
 ```swift
 let word = makeRenderTarget()

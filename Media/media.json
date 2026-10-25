@@ -13430,8 +13430,8 @@
       "lead": 6,
       "leads": {
         "10-Vectors/Swarm": 2,
-        "23-GridSimulations/Organism": 10,
-        "25-ParticleSimulations/Drift": 30
+        "24-GridSimulations/Organism": 10,
+        "26-ParticleSimulations/Drift": 30
       },
       "of": "thirty-two of the sketches the guide's chapters build, in chapter order",
       "seconds": 6,
@@ -13455,19 +13455,19 @@
         "18-YourFirstShader/Aurora",
         "19-LayersAndEffects/Comets",
         "20-PicturesRestyled/HandColored",
-        "21-PicturesYouSolve/Lighthouse",
-        "23-GridSimulations/Organism",
-        "25-ParticleSimulations/Drift",
-        "26-3DGently/Plaza",
-        "28-MaterialsAndSurroundings/Bench",
-        "29-Landscapes/Valley",
-        "32-SculptingWithFields/Molten",
-        "33-TracedLight/LamplitRoom",
-        "34-Seeing/MotionBrush",
-        "35-Depth/GhostRoom",
-        "37-Listening/Resonator",
-        "43-Performing/Finale",
-        "45-Installations/WallOfBars"
+        "22-PicturesYouSolve/Lighthouse",
+        "24-GridSimulations/Organism",
+        "26-ParticleSimulations/Drift",
+        "27-3DGently/Plaza",
+        "29-MaterialsAndSurroundings/Bench",
+        "30-Landscapes/Valley",
+        "33-SculptingWithFields/Molten",
+        "34-TracedLight/LamplitRoom",
+        "35-Seeing/MotionBrush",
+        "36-Depth/GhostRoom",
+        "38-Listening/Resonator",
+        "44-Performing/Finale",
+        "46-Installations/WallOfBars"
       ],
       "width": 1600
     },

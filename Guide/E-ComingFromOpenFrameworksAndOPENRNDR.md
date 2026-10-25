@@ -254,7 +254,7 @@ override func draw() {
 }
 ```
 
-`cameraControl` orbits with the mouse the way `ofEasyCam` does. With no lights of your own, a default rig shades what you draw. Inside the camera, y points up and distances are world units, not pixels. An `ofMesh` becomes a `Mesh` value, built from positions and indices or from a generator such as `Mesh.box`, and drawn with `drawMesh`. `loadMesh` reads glTF, OBJ, STL, and PLY files, as ofxAssimpModelLoader does, and USD files too. It doesn't read FBX, Collada, or 3DS. [Chapter 27](27-Meshes.md) starts there.
+`cameraControl` orbits with the mouse the way `ofEasyCam` does. With no lights of your own, a default rig shades what you draw. Inside the camera, y points up and distances are world units, not pixels. An `ofMesh` becomes a `Mesh` value, built from positions and indices or from a generator such as `Mesh.box`, and drawn with `drawMesh`. `loadMesh` reads glTF, OBJ, STL, and PLY files, as ofxAssimpModelLoader does, and USD files too. It doesn't read FBX, Collada, or 3DS. [Chapter 28](28-Meshes.md) starts there.
 
 ### C++ habits that change
 
@@ -285,16 +285,16 @@ Most of the addons that sketches reach for, and a few core classes, have counter
 | openFrameworks | In Ollin | Reference |
 |---|---|---|
 | ofxGui | `@Param` properties, shown in the inspector | [Parameters](../Docs/Helpers/Parameters.md); [Chapter 1](01-HelloOllin.md#putting-it-together-a-breathing-ring) |
-| ofxOsc | `OSCReceiver` and `OSCSender`, in `OllinOSC` | [OSC](../Docs/Integration/OSC.md); [Chapter 38](38-ControlsAndSignals.md#parameters-from-anywhere-midi-and-osc) |
-| ofxMidi | `MIDIInput` and `MIDIOutput`, in `OllinMIDI` | [MIDI](../Docs/Integration/MIDI.md); [Chapter 38](38-ControlsAndSignals.md#parameters-from-anywhere-midi-and-osc) |
-| ofxOpenCv, ofxCv | `OllinVision`, on Apple's Vision framework: faces, hands, bodies, and `ContourDetector` for outlines | [Vision](../Docs/Vision/Vision.md); [Chapter 34](34-Seeing.md) |
+| ofxOsc | `OSCReceiver` and `OSCSender`, in `OllinOSC` | [OSC](../Docs/Integration/OSC.md); [Chapter 39](39-ControlsAndSignals.md#parameters-from-anywhere-midi-and-osc) |
+| ofxMidi | `MIDIInput` and `MIDIOutput`, in `OllinMIDI` | [MIDI](../Docs/Integration/MIDI.md); [Chapter 39](39-ControlsAndSignals.md#parameters-from-anywhere-midi-and-osc) |
+| ofxOpenCv, ofxCv | `OllinVision`, on Apple's Vision framework: faces, hands, bodies, and `ContourDetector` for outlines | [Vision](../Docs/Vision/Vision.md); [Chapter 35](35-Seeing.md) |
 | ofxBox2d | `World`, in `OllinPhysics`, with Box2D bundled | [Physics](../Docs/Simulation/Physics.md); [Chapter 11](11-ForcesAndPhysics.md) |
-| ofxSyphon | `SyphonServer` and `SyphonClient`, in `OllinSyphon` | [Syphon](../Docs/Integration/Syphon.md); [Chapter 43](43-Performing.md#live-feeds-into-other-apps) |
+| ofxSyphon | `SyphonServer` and `SyphonClient`, in `OllinSyphon` | [Syphon](../Docs/Integration/Syphon.md); [Chapter 44](44-Performing.md#live-feeds-into-other-apps) |
 | ofxFX | the `Filter` catalog, on layers | [Effects](../Docs/Drawing/Effects.md); [Chapter 19](19-LayersAndEffects.md) |
-| ofxAssimpModelLoader | `loadMesh` and `loadScene` | [Scenes](../Docs/3D/Scenes.md); [Chapter 27](27-Meshes.md) |
-| ofVideoGrabber, ofVideoPlayer | `Camera` in `OllinVision`, `VideoPlayer` in `OllinVideo` | [Vision](../Docs/Vision/Vision.md), [Video](../Docs/Video/Video.md); [Chapter 34](34-Seeing.md) |
-| ofSoundPlayer, ofSoundStream | `AudioPlayer` to play a file, `AudioInput` and `AudioAnalyzer` to listen, and `Synth` to make sound, in `OllinAudio` | [Audio](../Docs/Helpers/Audio.md), [Synthesis](../Docs/Helpers/Synthesis.md); [Chapter 37](37-Listening.md), [Chapter 39](39-MakingSound.md) |
-| ofxDmx | `DMXSender` and `DMXReceiver`, in `OllinDMX` | [DMX](../Docs/Integration/DMX.md); [Chapter 45](45-Installations.md#light-instead-of-pixels-dmx-and-led-maps) |
+| ofxAssimpModelLoader | `loadMesh` and `loadScene` | [Scenes](../Docs/3D/Scenes.md); [Chapter 28](28-Meshes.md) |
+| ofVideoGrabber, ofVideoPlayer | `Camera` in `OllinVision`, `VideoPlayer` in `OllinVideo` | [Vision](../Docs/Vision/Vision.md), [Video](../Docs/Video/Video.md); [Chapter 35](35-Seeing.md) |
+| ofSoundPlayer, ofSoundStream | `AudioPlayer` to play a file, `AudioInput` and `AudioAnalyzer` to listen, and `Synth` to make sound, in `OllinAudio` | [Audio](../Docs/Helpers/Audio.md), [Synthesis](../Docs/Helpers/Synthesis.md); [Chapter 38](38-Listening.md), [Chapter 40](40-MakingSound.md) |
+| ofxDmx | `DMXSender` and `DMXReceiver`, in `OllinDMX` | [DMX](../Docs/Integration/DMX.md); [Chapter 46](46-Installations.md#light-instead-of-pixels-dmx-and-led-maps) |
 
 Here is ofxGui beside its Ollin form, which has no panel code at all:
 
@@ -332,7 +332,7 @@ ollin new Spinner.swift                # one file
 ollin Spinner.swift                    # run it live
 ```
 
-The bigger change is the working loop. In openFrameworks you rebuild, relaunch, and start again from the first frame. Ollin's live host keeps the window open instead. Save the file and it recompiles just the sketch, then swaps it into the running window. A compile error leaves the last good version running. `--keep-clock` carries `time` across the swap, so an animation doesn't jump back to its start. [Chapter 1](01-HelloOllin.md) sets the host up. [Chapter 43](43-Performing.md) carries the clock across a swap on stage, and [Chapter 44](44-HandingItOver.md#in-your-pocket-the-sketch-on-the-phone) carries it across a reinstall on a phone. [The project generator](../Docs/Tools/ProjectGenerator.md) lists every kind of project it writes.
+The bigger change is the working loop. In openFrameworks you rebuild, relaunch, and start again from the first frame. Ollin's live host keeps the window open instead. Save the file and it recompiles just the sketch, then swaps it into the running window. A compile error leaves the last good version running. `--keep-clock` carries `time` across the swap, so an animation doesn't jump back to its start. [Chapter 1](01-HelloOllin.md) sets the host up. [Chapter 44](44-Performing.md) carries the clock across a swap on stage, and [Chapter 45](45-HandingItOver.md#in-your-pocket-the-sketch-on-the-phone) carries it across a reinstall on a phone. [The project generator](../Docs/Tools/ProjectGenerator.md) lists every kind of project it writes.
 
 ## From OPENRNDR
 
@@ -516,10 +516,10 @@ Anything else is a `Shader` over a layer, kept inside the shape by a mask. In a 
 | orx-compositor | `compose { }` | [Effects](../Docs/Drawing/Effects.md#compose); [Chapter 19](19-LayersAndEffects.md#the-whole-stack-in-one-block-compose) |
 | orx-gui, orx-parameters | `@Param` properties, shown in the inspector | [Parameters](../Docs/Helpers/Parameters.md); [Chapter 1](01-HelloOllin.md#putting-it-together-a-breathing-ring) |
 | orx-olive | the live host, `OllinLive` | [Chapter 1](01-HelloOllin.md) |
-| orx-camera | `cameraControl()` and `cameraShowcase()` | [Camera](../Docs/3D/Camera.md); [Chapter 26](26-3DGently.md) |
+| orx-camera | `cameraControl()` and `cameraShowcase()` | [Camera](../Docs/3D/Camera.md); [Chapter 27](27-3DGently.md) |
 | orx-noise | `noise`, `simplexNoise`, `fbm`, and the `signed…` forms | [Noise](../Docs/Generators/Noise.md); [Chapter 5](05-Noise.md) |
 | orx-shapes | `drawCurve(_:closed:spline:)` with `.hobby`, `convexHull(of:)`, `offset(by:join:)`, `simplified(tolerance:)` | [Geometry](../Docs/Drawing/Geometry.md); [Chapter 15](15-ShapesAsMaterial.md), [Chapter 16](16-CurvesAndFigures.md) |
-| orx-osc, orx-midi, orx-syphon | `OllinOSC`, `OllinMIDI`, `OllinSyphon` | [Integration](../Docs/Integration/README.md); [Chapter 38](38-ControlsAndSignals.md), [Chapter 43](43-Performing.md#live-feeds-into-other-apps) |
+| orx-osc, orx-midi, orx-syphon | `OllinOSC`, `OllinMIDI`, `OllinSyphon` | [Integration](../Docs/Integration/README.md); [Chapter 39](39-ControlsAndSignals.md), [Chapter 44](44-Performing.md#live-feeds-into-other-apps) |
 
 Parameters take one line rather than an annotated object registered with a panel. `@DoubleParameter("radius", 10.0, 300.0)` on a settings object, added with `gui.add`, is the same `@Param(10...300)` shown in the openFrameworks half.
 
@@ -531,7 +531,7 @@ orx-olive and `OllinLive` both keep the window open while you edit. Olive evalua
 swift run OllinLive Pulse.swift
 ```
 
-`extend(…)` is here too. A `SketchExtension` hooks setup and before and after the draw, as an OPENRNDR extension does, and it can also receive each finished frame. [Chapter 44](44-HandingItOver.md#adding-behavior-from-outside-draw-sketchextension) teaches it. It has no hook for when the sketch shuts down. Screenshots and screen recording are run flags, `--export` and `--export-video`, rather than extensions. Syphon reads almost the same in both:
+`extend(…)` is here too. A `SketchExtension` hooks setup and before and after the draw, as an OPENRNDR extension does, and it can also receive each finished frame. [Chapter 45](45-HandingItOver.md#adding-behavior-from-outside-draw-sketchextension) teaches it. It has no hook for when the sketch shuts down. Screenshots and screen recording are run flags, `--export` and `--export-video`, rather than extensions. Syphon reads almost the same in both:
 
 ```kotlin
 extend(SyphonServer("Pulse"))
@@ -559,9 +559,9 @@ The other thing that stays behind is years of community work. The `ofx` and `orx
 - [Appendix A](A-JustEnoughSwift.md): the Swift you need, including values and references.
 - [Chapter 19, Layers and effects](19-LayersAndEffects.md): layers, filters, feedback, and `compose`.
 - [Chapter 18, Your first shader](18-YourFirstShader.md): the `shade` contract, the shader library, and bringing GLSL over.
-- [Chapter 26, 3D, gently](26-3DGently.md): the camera, lights, and the built-in solids.
-- [Chapter 27, Meshes and maps](27-Meshes.md): meshes from files and from other meshes, and the maps on their surfaces.
-- [Chapter 28, Materials and surroundings](28-MaterialsAndSurroundings.md): surfaces set by measured numbers, the environments that light them, and the sky and air around a scene.
+- [Chapter 27, 3D, gently](27-3DGently.md): the camera, lights, and the built-in solids.
+- [Chapter 28, Meshes and maps](28-Meshes.md): meshes from files and from other meshes, and the maps on their surfaces.
+- [Chapter 29, Materials and surroundings](29-MaterialsAndSurroundings.md): surfaces set by measured numbers, the environments that light them, and the sky and air around a scene.
 - [Appendix D](D-CompleteToolbox.md): everything Ollin ships, one line each.
 
 ---

@@ -10,7 +10,7 @@ A field is a question you can ask at every point of the canvas, and its answer i
 
 ## Two kinds of field: a number or a direction at every point
 
-A field is a rule, not a grid of stored values. Hand it any point of the plane and it hands back an answer. The simulation fields of [Chapter 23](23-GridSimulations.md) and the measured fields of [Chapter 32](32-SculptingWithFields.md#any-field-as-a-mesh-isosurface) store a value per cell instead, and this chapter's fields never do. It has an answer at every point you could ever ask, between the samples as well as at them. Two kinds of answer make two kinds of field.
+A field is a rule, not a grid of stored values. Hand it any point of the plane and it hands back an answer. The simulation fields of [Chapter 24](24-GridSimulations.md) and the measured fields of [Chapter 33](33-SculptingWithFields.md#any-field-as-a-mesh-isosurface) store a value per cell instead, and this chapter's fields never do. It has an answer at every point you could ever ask, between the samples as well as at them. Two kinds of answer make two kinds of field.
 
 A **number field** answers with a number. [Chapter 5](05-Noise.md)'s `noise` is one, and so is any function you write that takes a point and returns a value. A number field makes two kinds of picture. Painted as tone, it is the cloudy gray you know from noise. Traced where it equals some chosen value, it is a set of curves. Those curves come after the print, in [Where the field equals something](#where-the-field-equals-something-contours).
 
@@ -171,7 +171,7 @@ Passing all the levels at once samples the field a single time and marches the g
 
 Two details show up the moment you use this. Curves come back **closed** when they close inside your region and **open** when they run off its edge. That is why `drawPolyline` wants `isClosed` rather than guessing. And there is a version that reads a picture instead of a function, `isolines(of: image, at:)`, which treats the image's tone as the field. That is how you get a contour map of a photograph, or clean vector outlines from anything you can draw.
 
-This is also how you get an outline out of any field. A shape's own outline is where its distance field reads zero, which is the level [Chapter 32](32-SculptingWithFields.md#a-shape-as-a-question-the-signed-distance-field) pulls a surface from in 3D. A metaball is a blob drawn where a few soft bumps add up past a level. Metaball silhouettes, the boundary of a simulation, and the nodal lines of the vibrating plate in the next section are all one `isolines` call. What comes back is ordinary geometry you can stroke, offset, or send to a plotter.
+This is also how you get an outline out of any field. A shape's own outline is where its distance field reads zero, which is the level [Chapter 33](33-SculptingWithFields.md#a-shape-as-a-question-the-signed-distance-field) pulls a surface from in 3D. A metaball is a blob drawn where a few soft bumps add up past a level. Metaball silhouettes, the boundary of a simulation, and the nodal lines of the vibrating plate in the next section are all one `isolines` call. What comes back is ordinary geometry you can stroke, offset, or send to a plotter.
 
 ### Standing waves: Chladni figures
 

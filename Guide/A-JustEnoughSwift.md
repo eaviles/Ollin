@@ -242,7 +242,7 @@ The guide uses five, all from Ollin:
 @Saved var visits = 0                                         // kept when the sketch restarts
 ```
 
-`@Param` shows the property as a live control in the host's inspector, which [Chapter 1](01-HelloOllin.md) sets up. Later chapters bind MIDI knobs and OSC faders to the same properties. A binding spells the property `$size` when it wants the parameter itself rather than its current value. [Chapter 3](03-MotionAndTime.md#values-that-chase-a-target-eased-and-sprung) teaches `@Eased` and `@Sprung`, and [Chapter 38](38-ControlsAndSignals.md#a-value-that-is-not-a-parameter-smoothed) teaches `@Smoothed`. All three change *when* the value moves, not what it is. `@Saved` keeps a value when the sketch starts again. [Chapter 43](43-Performing.md#performing-the-code-itself-live-coding) uses it to carry state across a live-coding edit, and [Chapter 45](45-Installations.md#picking-up-where-it-left-off-checkpoints-and-saved) to carry an installation across a relaunch. You won't write your own wrappers in this guide, and recognizing the `@` is enough.
+`@Param` shows the property as a live control in the host's inspector, which [Chapter 1](01-HelloOllin.md) sets up. Later chapters bind MIDI knobs and OSC faders to the same properties. A binding spells the property `$size` when it wants the parameter itself rather than its current value. [Chapter 3](03-MotionAndTime.md#values-that-chase-a-target-eased-and-sprung) teaches `@Eased` and `@Sprung`, and [Chapter 39](39-ControlsAndSignals.md#a-value-that-is-not-a-parameter-smoothed) teaches `@Smoothed`. All three change *when* the value moves, not what it is. `@Saved` keeps a value when the sketch starts again. [Chapter 44](44-Performing.md#performing-the-code-itself-live-coding) uses it to carry state across a live-coding edit, and [Chapter 46](46-Installations.md#picking-up-where-it-left-off-checkpoints-and-saved) to carry an installation across a relaunch. You won't write your own wrappers in this guide, and recognizing the `@` is enough.
 
 ## Strings, briefly
 
@@ -278,10 +278,10 @@ Beyond `+`, `-`, `*`, and `/`, the listings use a few more operators. The compar
 | `x.truncatingRemainder(dividingBy: n)` | The `%` of a `Double`. | [Chapter 16](16-CurvesAndFigures.md#a-corner-a-car-could-take-clothoids) |
 | `atan2(y, x)` | The angle of the arrow from the origin to `(x, y)`, between `-.pi` and `.pi`. It is how a vector's `angle` is worked out. | [Chapter 17](17-MarksAndMedia.md#painting-as-it-happens-stroke-dynamics) |
 | `i.isMultiple(of: 2)` | Whether `i` divides evenly by 2, the same test as `i % 2 == 0`. | [Chapter 17](17-MarksAndMedia.md#ink-on-water-marbling) |
-| `60_000` | Underscores group the digits of a long number, and Swift ignores them. | [Chapter 22](22-IteratedForms.md#the-same-fern-played-as-a-game-the-chaos-game) |
-| `SIMD4<Float>(…)` | Four `Float` values packed together, the shape a GPU reads them in. | [Chapter 25](25-ParticleSimulations.md#a-million-grains-gpu-particles) |
-| `x.squareRoot()`, `x.rounded()` | The square root of `x`, and the nearest whole number, still a `Double`. | [Chapter 27](27-Meshes.md#putting-it-together-the-raked-garden) |
-| `x &* y`, `x ^ y`, `x >> 29`, `1 << 23` | Arithmetic on the bits of a whole number, used to scramble a counter into noise. `&*` multiplies and lets a result that is too large wrap around, where `*` would stop the program. `^` mixes the bits of two numbers, and `>>` and `<<` slide the bits right or left by that many places. | The `StageMic` class that [Chapter 37](37-Listening.md#a-band-that-plays-the-same-every-run-stagemic) has you copy |
+| `60_000` | Underscores group the digits of a long number, and Swift ignores them. | [Chapter 23](23-IteratedForms.md#the-same-fern-played-as-a-game-the-chaos-game) |
+| `SIMD4<Float>(…)` | Four `Float` values packed together, the shape a GPU reads them in. | [Chapter 26](26-ParticleSimulations.md#a-million-grains-gpu-particles) |
+| `x.squareRoot()`, `x.rounded()` | The square root of `x`, and the nearest whole number, still a `Double`. | [Chapter 28](28-Meshes.md#putting-it-together-the-raked-garden) |
+| `x &* y`, `x ^ y`, `x >> 29`, `1 << 23` | Arithmetic on the bits of a whole number, used to scramble a counter into noise. `&*` multiplies and lets a result that is too large wrap around, where `*` would stop the program. `^` mixes the bits of two numbers, and `>>` and `<<` slide the bits right or left by that many places. | The `StageMic` class that [Chapter 38](38-Listening.md#a-band-that-plays-the-same-every-run-stagemic) has you copy |
 
 ### Loops and choices
 
@@ -296,11 +296,11 @@ The section on choosing and repeating covers `if`, the ternary, counted `for` lo
 | `guard depth > 0 else { return }` | Leaves early unless the condition holds, with `return` in a function or `continue` in a loop. `guard let` is the same move for an optional. | [Chapter 13](13-GrowingThings.md#a-tree-from-one-rule-recursion) |
 | A function that calls itself | Recursion. `branch` draws a line, then calls `branch` again with a shorter length, until its `guard` stops it. | [Chapter 13](13-GrowingThings.md#a-tree-from-one-rule-recursion) |
 | `stride(from: 0.3, through: 0.75, by: 0.045)` | Counts from one number to another in steps of any size. `through:` includes the last value, and `to:` stops before it. | [Chapter 14](14-FieldsAndFlow.md#where-the-field-equals-something-contours) |
-| `switch index { case 0: … default: … }` | Picks one branch by a value. Each `case` names a value, and `default` catches every other. | [Chapter 22](22-IteratedForms.md#putting-it-together-a-plate-of-four-orbits) |
-| `while true { … }` | Repeats until something inside leaves the loop, with a `return` or a `break`. | [Chapter 28](28-MaterialsAndSurroundings.md#putting-it-together-the-bench) |
-| `case .box(let w, let h, let d):` | A `Collider3D` is an enum whose cases carry values, such as a box's three sizes. This case matches a box and names its sizes `w`, `h`, and `d`. | [Chapter 30](30-WorldsWithWeight.md#putting-it-together-the-contraption) |
-| `break` | Leaves a loop or a `switch` at once. | [Chapter 30](30-WorldsWithWeight.md#putting-it-together-the-contraption) |
-| `if case .box(let w, let h, let d) = body.collider` | The same match for a single case, written as an `if`. | [Chapter 31](31-CharactersAndCloth.md#putting-it-together-the-yard) |
+| `switch index { case 0: … default: … }` | Picks one branch by a value. Each `case` names a value, and `default` catches every other. | [Chapter 23](23-IteratedForms.md#putting-it-together-a-plate-of-four-orbits) |
+| `while true { … }` | Repeats until something inside leaves the loop, with a `return` or a `break`. | [Chapter 29](29-MaterialsAndSurroundings.md#putting-it-together-the-bench) |
+| `case .box(let w, let h, let d):` | A `Collider3D` is an enum whose cases carry values, such as a box's three sizes. This case matches a box and names its sizes `w`, `h`, and `d`. | [Chapter 31](31-WorldsWithWeight.md#putting-it-together-the-contraption) |
+| `break` | Leaves a loop or a `switch` at once. | [Chapter 31](31-WorldsWithWeight.md#putting-it-together-the-contraption) |
+| `if case .box(let w, let h, let d) = body.collider` | The same match for a single case, written as an `if`. | [Chapter 32](32-CharactersAndCloth.md#putting-it-together-the-yard) |
 
 ### Lists, pairs, and tables
 
@@ -320,15 +320,15 @@ Arrays hold most of a sketch's data. The chapters use a few more of their calls,
 | `reduce(0) { $0 + $1 }` | Combines a list into one value, here a sum. `$1` names the closure's second argument. | [Chapter 15](15-ShapesAsMaterial.md#the-circle-they-were-scattered-around-fitminimize) |
 | `append(contentsOf: other)` | Adds every element of another list to the end. | [Chapter 15](15-ShapesAsMaterial.md#putting-it-together-the-plate) |
 | `flatMap { $0.contours }` | Maps each element to a list, then joins those lists into one. | [Chapter 17](17-MarksAndMedia.md#putting-it-together-the-monogram) |
-| `reserveCapacity(n)` | Sets room aside for `n` elements before a loop fills the list, so it never has to grow. | [Chapter 22](22-IteratedForms.md#putting-it-together-a-plate-of-four-orbits) |
-| `[Character: WireworldCell]` | A dictionary, a table from keys to values. `legend[ch]` looks a key up and answers an optional, since the key might be missing. | [Chapter 24](24-Automata.md#a-circuit-made-of-cells-wireworld) |
-| `[UInt8](repeating: 0, count: n)` | A list of `n` copies of one value. `UInt8` is a whole number from 0 to 255, one byte. | [Chapter 28](28-MaterialsAndSurroundings.md#putting-it-together-the-bench) |
-| `(x: Double, z: Double)` | A tuple whose parts have names, read as `.x` and `.z`. | [Chapter 27](27-Meshes.md#putting-it-together-the-raked-garden) |
-| `text.lowercased()`, `text.contains("red")` | A copy of a string in lowercase, and whether a string holds a piece of text. | [Chapter 37](37-Listening.md#words-as-they-are-spoken-speechlistener) |
-| `strokes[id, default: []]` | Reads the value for a key, or the default when the key is new, so the answer can be changed at once. | [Chapter 38](38-ControlsAndSignals.md#a-table-you-put-things-on-tuio) |
-| `Set(ids)` | A collection with no order and no repeats. Asking whether it holds a value is quick. | [Chapter 38](38-ControlsAndSignals.md#a-table-you-put-things-on-tuio) |
-| `[(drum, "C3")] as [(Shape, Pitch)]` | `as` gives Swift the type of a literal it cannot work out alone, here that `"C3"` is a `Pitch`. | [Chapter 39](39-MakingSound.md#putting-it-together-the-workbench) |
-| `samples[a ..< b]` | A slice, the elements from index `a` up to `b`, read in place without a copy. | [Chapter 39](39-MakingSound.md#putting-it-together-the-workbench) |
+| `reserveCapacity(n)` | Sets room aside for `n` elements before a loop fills the list, so it never has to grow. | [Chapter 23](23-IteratedForms.md#putting-it-together-a-plate-of-four-orbits) |
+| `[Character: WireworldCell]` | A dictionary, a table from keys to values. `legend[ch]` looks a key up and answers an optional, since the key might be missing. | [Chapter 25](25-Automata.md#a-circuit-made-of-cells-wireworld) |
+| `[UInt8](repeating: 0, count: n)` | A list of `n` copies of one value. `UInt8` is a whole number from 0 to 255, one byte. | [Chapter 29](29-MaterialsAndSurroundings.md#putting-it-together-the-bench) |
+| `(x: Double, z: Double)` | A tuple whose parts have names, read as `.x` and `.z`. | [Chapter 28](28-Meshes.md#putting-it-together-the-raked-garden) |
+| `text.lowercased()`, `text.contains("red")` | A copy of a string in lowercase, and whether a string holds a piece of text. | [Chapter 38](38-Listening.md#words-as-they-are-spoken-speechlistener) |
+| `strokes[id, default: []]` | Reads the value for a key, or the default when the key is new, so the answer can be changed at once. | [Chapter 39](39-ControlsAndSignals.md#a-table-you-put-things-on-tuio) |
+| `Set(ids)` | A collection with no order and no repeats. Asking whether it holds a value is quick. | [Chapter 39](39-ControlsAndSignals.md#a-table-you-put-things-on-tuio) |
+| `[(drum, "C3")] as [(Shape, Pitch)]` | `as` gives Swift the type of a literal it cannot work out alone, here that `"C3"` is a `Pitch`. | [Chapter 40](40-MakingSound.md#putting-it-together-the-workbench) |
+| `samples[a ..< b]` | A slice, the elements from index `a` up to `b`, read in place without a copy. | [Chapter 40](40-MakingSound.md#putting-it-together-the-workbench) |
 
 ### More about optionals
 
@@ -344,8 +344,8 @@ The section on optionals shows the four tools the guide uses most. These are the
 | `if let ball, ball.velocity.length > 900` | Unwraps and tests in one `if`, the two parts joined by a comma. | [Chapter 11](11-ForcesAndPhysics.md#putting-it-together-the-wrecking-ball) |
 | `held = nil`, `flock == nil` | Empties an optional, and asks whether it is empty. | [Chapter 11](11-ForcesAndPhysics.md#putting-it-together-the-wrecking-ball) |
 | `var flock: Boids!` | A property that starts empty and is filled in `setup()`. It is read afterward without unwrapping, on the promise that it was filled. | [Chapter 12](12-FlocksAndSwarms.md#the-flock-assembled-boids) |
-| `(index: Int, distance: Double)?` | An optional tuple, a named pair or nothing. | [Chapter 36](36-ThePhoneAsASensor.md#pointing-at-it-with-the-phone-the-wand) |
-| `timecode.map { "\($0)" }` | On an optional, `map` changes the value when there is one and stays `nil` when there isn't. | [Chapter 43](43-Performing.md#following-another-timeline-timecode) |
+| `(index: Int, distance: Double)?` | An optional tuple, a named pair or nothing. | [Chapter 37](37-ThePhoneAsASensor.md#pointing-at-it-with-the-phone-the-wand) |
+| `timecode.map { "\($0)" }` | On an optional, `map` changes the value when there is one and stays `nil` when there isn't. | [Chapter 44](44-Performing.md#following-another-timeline-timecode) |
 
 ### Functions and closures
 
@@ -359,12 +359,12 @@ The section on optionals shows the four tools the guide uses most. These are the
 | `crowd.preferredVelocity = { walker in … }` | A closure kept in a property, for the framework to call later. | [Chapter 12](12-FlocksAndSwarms.md#a-crowd-that-makes-room-crowd) |
 | `{ i -> Vector2 in … }` | A closure that says what type it returns, for when Swift cannot work it out alone. | [Chapter 15](15-ShapesAsMaterial.md#putting-it-together-the-plate) |
 | `func handwrite(_ path: Contour) -> StrokeMark` | A function that returns a value. The type after `->` is what comes back, and `return` hands it over. A body that is one expression returns it without the word. | [Chapter 17](17-MarksAndMedia.md#putting-it-together-the-monogram) |
-| `func midpoint<V: Vector>(_ a: V, _ b: V) -> V` | A generic function. `V` stands for any type that is a `Vector`, so one function serves `Vector2` and `Vector3`. | [Chapter 26](26-3DGently.md#where-things-are-in-the-world-vector3-and-world-units) |
-| `height: (Double, Double) -> Double` | An argument that is itself a function, here one that turns two numbers into one. The caller passes a closure. | [Chapter 27](27-Meshes.md#putting-it-together-the-raked-garden) |
-| `self.bareness(u, v)` | Inside a closure, `self.` names the sketch's own method. Some closures require it, and a listing may write it anyway to show whose method it is. | [Chapter 28](28-MaterialsAndSurroundings.md#putting-it-together-the-bench) |
-| `func draw(_ collider: Collider3D, tint: Color?)` | Two functions can share a name when their labels or argument types differ, as this one does with the sketch's `draw()`. | [Chapter 30](30-WorldsWithWeight.md#putting-it-together-the-contraption) |
-| `func facing(_ p: Vector3) -> Vector3 { … }` inside an `init?` | A function declared inside another, which only that one can call. | [Chapter 36](36-ThePhoneAsASensor.md#putting-it-together-the-dancer-in-solids) |
-| `scan.mesh { surface in switch surface { … } }` | A closure that picks its answer with a `switch`, one `return` for each case. | [Chapter 36](36-ThePhoneAsASensor.md#a-surface-the-phone-already-built-the-room-mesh) |
+| `func midpoint<V: Vector>(_ a: V, _ b: V) -> V` | A generic function. `V` stands for any type that is a `Vector`, so one function serves `Vector2` and `Vector3`. | [Chapter 27](27-3DGently.md#where-things-are-in-the-world-vector3-and-world-units) |
+| `height: (Double, Double) -> Double` | An argument that is itself a function, here one that turns two numbers into one. The caller passes a closure. | [Chapter 28](28-Meshes.md#putting-it-together-the-raked-garden) |
+| `self.bareness(u, v)` | Inside a closure, `self.` names the sketch's own method. Some closures require it, and a listing may write it anyway to show whose method it is. | [Chapter 29](29-MaterialsAndSurroundings.md#putting-it-together-the-bench) |
+| `func draw(_ collider: Collider3D, tint: Color?)` | Two functions can share a name when their labels or argument types differ, as this one does with the sketch's `draw()`. | [Chapter 31](31-WorldsWithWeight.md#putting-it-together-the-contraption) |
+| `func facing(_ p: Vector3) -> Vector3 { … }` inside an `init?` | A function declared inside another, which only that one can call. | [Chapter 37](37-ThePhoneAsASensor.md#putting-it-together-the-dancer-in-solids) |
+| `scan.mesh { surface in switch surface { … } }` | A closure that picks its answer with a `switch`, one `return` for each case. | [Chapter 37](37-ThePhoneAsASensor.md#a-surface-the-phone-already-built-the-room-mesh) |
 
 ### Types of your own
 
@@ -375,15 +375,15 @@ The section on optionals shows the four tools the guide uses most. These are the
 | `struct Shard { … }` | A struct of your own. It gets an initializer for free, `Shard(body:shape:color:)`, with its properties as the labels. | [Chapter 11](11-ForcesAndPhysics.md#putting-it-together-the-wrecking-ball) |
 | `private var tree` | A property that only this class can see. | [Chapter 13](13-GrowingThings.md#putting-it-together-a-garden) |
 | `.init(frequency: 3)` | Short for the initializer of the type Swift expects there. | [Chapter 16](16-CurvesAndFigures.md#curves-you-can-write-down-the-classic-curves) |
-| `lazy var sand = Particles(…)` | A property built the first time it is read, so it can use the sketch's other properties. | [Chapter 25](25-ParticleSimulations.md#a-million-grains-gpu-particles) |
-| `var paint = Material.glitter` | Copies a preset into a variable, so you can change the copy and leave the preset alone. | [Chapter 26](26-3DGently.md#materials) |
-| `hit.body === crate` | Asks whether two names point at the same object. `!==` asks whether they don't. | [Chapter 30](30-WorldsWithWeight.md#what-is-in-the-way-rays-sweeps-and-overlaps) |
-| `init?(_ body: PhoneBody) { … }` | An initializer of your own that can fail. `return nil` inside it gives back `nil` instead of a value, so what it makes is an optional. | [Chapter 36](36-ThePhoneAsASensor.md#putting-it-together-the-dancer-in-solids) |
-| `enum Style: String, CaseIterable, ParamOption { … }` | A type of your own with a fixed set of cases. The names after the colon give it abilities, such as listing its cases. | [Chapter 38](38-ControlsAndSignals.md#the-sketch-that-says-what-it-takes-oscquery) |
-| `MarkovChain<Int>` | A generic type. The type in angle brackets fills in what it holds, here whole numbers. | [Chapter 40](40-MusicByRule.md#putting-it-together-the-music-box) |
-| `final class MyOverlay: SketchExtension` | A protocol, a list of methods a type promises to have. `SketchExtension` gives each one a default that does nothing, so a class writes only the ones it needs. | [Chapter 44](44-HandingItOver.md#adding-behavior-from-outside-draw-sketchextension) |
-| `extension Sketch { public func drawSpiral(…) }` | Adds methods to a type from outside its declaration. `public` lets code in other packages call them. | [Chapter 44](44-HandingItOver.md#giving-it-to-somebody-else-an-extension-package) |
-| `Codable` | Marks a type that can be written to a file and read back, which is what lets `@Saved` keep it. | [Chapter 45](45-Installations.md#picking-up-where-it-left-off-checkpoints-and-saved) |
+| `lazy var sand = Particles(…)` | A property built the first time it is read, so it can use the sketch's other properties. | [Chapter 26](26-ParticleSimulations.md#a-million-grains-gpu-particles) |
+| `var paint = Material.glitter` | Copies a preset into a variable, so you can change the copy and leave the preset alone. | [Chapter 27](27-3DGently.md#materials) |
+| `hit.body === crate` | Asks whether two names point at the same object. `!==` asks whether they don't. | [Chapter 31](31-WorldsWithWeight.md#what-is-in-the-way-rays-sweeps-and-overlaps) |
+| `init?(_ body: PhoneBody) { … }` | An initializer of your own that can fail. `return nil` inside it gives back `nil` instead of a value, so what it makes is an optional. | [Chapter 37](37-ThePhoneAsASensor.md#putting-it-together-the-dancer-in-solids) |
+| `enum Style: String, CaseIterable, ParamOption { … }` | A type of your own with a fixed set of cases. The names after the colon give it abilities, such as listing its cases. | [Chapter 39](39-ControlsAndSignals.md#the-sketch-that-says-what-it-takes-oscquery) |
+| `MarkovChain<Int>` | A generic type. The type in angle brackets fills in what it holds, here whole numbers. | [Chapter 41](41-MusicByRule.md#putting-it-together-the-music-box) |
+| `final class MyOverlay: SketchExtension` | A protocol, a list of methods a type promises to have. `SketchExtension` gives each one a default that does nothing, so a class writes only the ones it needs. | [Chapter 45](45-HandingItOver.md#adding-behavior-from-outside-draw-sketchextension) |
+| `extension Sketch { public func drawSpiral(…) }` | Adds methods to a type from outside its declaration. `public` lets code in other packages call them. | [Chapter 45](45-HandingItOver.md#giving-it-to-somebody-else-an-extension-package) |
+| `Codable` | Marks a type that can be written to a file and read back, which is what lets `@Saved` keep it. | [Chapter 46](46-Installations.md#picking-up-where-it-left-off-checkpoints-and-saved) |
 
 ### Failures, files, and waiting
 
@@ -394,20 +394,20 @@ A call that can fail is marked `throws` where it is declared, and every call to 
 | `try? loadImage(path)` | Calls something that can fail, and turns a failure into `nil`. | [Chapter 2](02-Color.md#palettes-from-a-file) |
 | `try loadPalettes("1000.json")` | Calls something that can fail. In `setup()`, which may throw, a bare `try` stops the sketch with the failure's own sentence; `try!` is the same promise anywhere else, and crashes instead. | [Chapter 2](02-Color.md#palettes-from-a-file) |
 | `in: .module` | The folder the sketch's own files are read from. | [Chapter 9](09-Pictures.md#a-picture-on-the-canvas-loadimage-and-drawimage) |
-| `import Foundation` | Apple's base library. It brings `URL`, the address of a file, and `FileManager`, which asks the disk whether a file exists. | [Chapter 28](28-MaterialsAndSurroundings.md#putting-it-together-the-bench) |
-| `do { try … } catch { … }` | Runs calls that can fail. A failure jumps to `catch`, where `error` says what went wrong. | [Chapter 30](30-WorldsWithWeight.md#a-world-saved-as-it-stands-snapshot-and-restore) |
-| `try? waitFor { try await … }` | `await` marks a call that finishes later. `waitFor` waits for it and hands back the answer. | [Chapter 34](34-Seeing.md#the-body-as-a-controller-hands-faces-and-bodies) |
-| `import simd` | Apple's library of small vectors and matrices, the kind the GPU works in. | [Chapter 35](35-Depth.md#putting-it-together-the-ghost-room) |
-| `Date()` | The date and time right now. | [Chapter 38](38-ControlsAndSignals.md#the-weather-outside-weather) |
+| `import Foundation` | Apple's base library. It brings `URL`, the address of a file, and `FileManager`, which asks the disk whether a file exists. | [Chapter 29](29-MaterialsAndSurroundings.md#putting-it-together-the-bench) |
+| `do { try … } catch { … }` | Runs calls that can fail. A failure jumps to `catch`, where `error` says what went wrong. | [Chapter 31](31-WorldsWithWeight.md#a-world-saved-as-it-stands-snapshot-and-restore) |
+| `try? waitFor { try await … }` | `await` marks a call that finishes later. `waitFor` waits for it and hands back the answer. | [Chapter 35](35-Seeing.md#the-body-as-a-controller-hands-faces-and-bodies) |
+| `import simd` | Apple's library of small vectors and matrices, the kind the GPU works in. | [Chapter 36](36-Depth.md#putting-it-together-the-ghost-room) |
+| `Date()` | The date and time right now. | [Chapter 39](39-ControlsAndSignals.md#the-weather-outside-weather) |
 
 ### Comments and attributes
 
 | In a listing | What it does | First in |
 |---|---|---|
 | `/// …` | A comment that documents the declaration below it. Editors show it beside the name. | [Chapter 11](11-ForcesAndPhysics.md#breaking-things) |
-| `// MARK: …` | A comment that names a part of the file, for the editor's list of what the file holds. | [Chapter 28](28-MaterialsAndSurroundings.md#putting-it-together-the-bench) |
-| `@objc(RippleSaverView)` | Fixes the name the system uses to find the class. | [Chapter 44](44-HandingItOver.md#living-in-the-system-a-screen-saver) |
-| `@main` | Marks the place where a program starts. | [Chapter 44](44-HandingItOver.md#living-in-the-system-a-screen-saver) |
+| `// MARK: …` | A comment that names a part of the file, for the editor's list of what the file holds. | [Chapter 29](29-MaterialsAndSurroundings.md#putting-it-together-the-bench) |
+| `@objc(RippleSaverView)` | Fixes the name the system uses to find the class. | [Chapter 45](45-HandingItOver.md#living-in-the-system-a-screen-saver) |
+| `@main` | Marks the place where a program starts. | [Chapter 45](45-HandingItOver.md#living-in-the-system-a-screen-saver) |
 
 ## What the guide never needed
 
@@ -424,4 +424,4 @@ If a chapter's Swift still stops you, that's a bug in this guide, not in you. Th
 
 ---
 
-[Contents](README.md#contents) · Previous: [Chapter 45, Installations](45-Installations.md) · Next: [Appendix B, Just enough math, visually](B-JustEnoughMath.md)
+[Contents](README.md#contents) · Previous: [Chapter 46, Installations](46-Installations.md) · Next: [Appendix B, Just enough math, visually](B-JustEnoughMath.md)

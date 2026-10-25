@@ -90,7 +90,7 @@ The fourth pixel texture is a fold rather than a scatter. `Heightfield.creased(a
 
 The line kind hands back polylines and shapes and nothing else, so a plotter draws the material. `--export-svg` writes them as paths and `--export-gcode` as a route. Each is a value you trace or grow once and hold, and each repeats from its seed. The `Patterns/LineTextures` example draws all four the way a plotter would, stroke by stroke. Line work laid along one drawn path and its width, rather than over a region, is on [Gesture marks](GestureMarks.md).
 
-<img src="../../Guide/Images/42-MakingItPhysical/LineTextures.jpg" alt="Four panels of line work in one ink: wood grain as flowing lines that bunch into rings and circle a knot, frost as barbed needles standing in and out of a circle, crackle as wandering veins across a square that crowd along one diagonal, and three ikat stripes whose edges step up and down once per bundle" width="680">
+<img src="../../Guide/Images/43-MakingItPhysical/LineTextures.jpg" alt="Four panels of line work in one ink: wood grain as flowing lines that bunch into rings and circle a knot, frost as barbed needles standing in and out of a circle, crackle as wandering veins across a square that crowd along one diagonal, and three ikat stripes whose edges step up and down once per bundle" width="680">
 
 <a name="wood-grain"></a>
 

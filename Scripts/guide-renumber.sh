@@ -10,8 +10,9 @@
 # carried by more surfaces than anyone can hold in their head: the file itself,
 # both asset trees, the breadcrumb, the H1, two footer links per neighbor, the
 # contents list, the status table, the coverage matrix, Appendix D's table
-# per chapter, the section pointers in CAPABILITIES.md, and the chapter links
-# in the changelog's old entries. Doing that by hand
+# per chapter, the section pointers in CAPABILITIES.md, the snippet preamble
+# and its recorded gaps, the Guide hero's list of finished sketches, and the
+# chapter links in the changelog's old entries. Doing that by hand
 # once is a long afternoon. Doing it eleven times is how a Guide quietly stops
 # matching itself, so it is a command instead.
 #
@@ -139,6 +140,11 @@ LINKED = re.compile(r"(\]\(Guide/)(\d\d)-([A-Za-z0-9]+)(\.md)")
 scope = sorted(GUIDE.glob("*.md"))
 scope += [pathlib.Path(p) for p in ("CAPABILITIES.md", "CLAUDE.md", "DESIGN-NOTES.md", "README.md", "ROADMAP.md", "ARCHITECTURE.md")]
 scope += sorted(pathlib.Path("Docs").rglob("*.md"))
+# The snippet gate keys its recorded gaps by page path, and the Guide's hero
+# names each chapter's finished sketch by its figure folder; both go stale on
+# a renumber the way a link does. A gap's key also hashes its page's path, so
+# the gaps are re-recorded after the move (the closing note says how).
+scope += [GUIDE / "Snippets" / "known-gaps.txt", pathlib.Path("Media/media.json")]
 scope += [CHANGELOG]
 scope = [p for p in scope if p.exists()]
 
@@ -150,6 +156,8 @@ bare_scope = {p for p in scope if p.parts[0] == "Guide"}
 # A line often names two chapters ("the Chapter 10 flock, rebuilt"), so the
 # whole line is rewritten rather than its first match.
 figures = sorted(GUIDE.glob("Figures/**/*.swift"))
+# The snippet preambles name their chapter in a comment the same way.
+figures += sorted(GUIDE.glob("Snippets/*.swift"))
 CHAPTER = re.compile(r"\bChapter (\d+)\b")
 
 
@@ -265,6 +273,10 @@ for old, name in stems.items():
         source = GUIDE / tree / f"{old:02d}-{name}"
         if source.is_dir():
             moves.append((source, GUIDE / tree / new))
+    # The names a chapter's prose establishes for the snippet gate.
+    preamble = GUIDE / "Snippets" / f"{old:02d}-{name}.swift"
+    if preamble.exists():
+        moves.append((preamble, GUIDE / "Snippets" / f"{new}.swift"))
 
 # Two hops, through a scratch name, so a chapter moving onto a number another
 # chapter is vacating in the same run cannot collide on disk.
@@ -285,5 +297,6 @@ if dry_run:
     for path in changed:
         print(f"  {path}")
 else:
-    print("guide-renumber: now run Scripts/check-links.sh")
+    print("guide-renumber: now run Scripts/check-links.sh, then re-record the snippet gaps,")
+    print("    whose keys hash the page's path: Scripts/check-snippets.sh --record --only Guide/")
 PY
