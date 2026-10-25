@@ -4,6 +4,8 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-10-25
+
 ### Added
 
 - **Wet strokes on a web page.** `--export-web` now carries a stroke under `.wet` or `.oil`: the page draws the canvas once more without such strokes, as the Mac does, and each one drags that ground along its path, oil lighting its own ridges, within a tenth of a level of the Mac. A wet stroke over a canvas that keeps its paint (`noClear`) still stops the export by name. [Web page](Docs/Output/Web.md#strokes-and-fills-on-the-page)
@@ -906,7 +908,8 @@ The first tagged release. Ollin grew in one repository from May 2026 to this tag
 
 - Tags begin at 0.1.0. A breaking change or a new feature bumps the minor, a fix bumps the patch, and each release names its breaking renames in this file. Deprecation shims and a settled surface arrive at 1.0. Until then, pin `.upToNextMinor(from: "0.1.0")`.
 
-[Unreleased]: https://github.com/eaviles/Ollin/compare/0.16.0...HEAD
+[Unreleased]: https://github.com/eaviles/Ollin/compare/0.17.0...HEAD
+[0.17.0]: https://github.com/eaviles/Ollin/compare/0.16.0...0.17.0
 [0.16.0]: https://github.com/eaviles/Ollin/compare/0.15.0...0.16.0
 [0.15.0]: https://github.com/eaviles/Ollin/compare/0.14.0...0.15.0
 [0.14.0]: https://github.com/eaviles/Ollin/compare/0.13.0...0.14.0
