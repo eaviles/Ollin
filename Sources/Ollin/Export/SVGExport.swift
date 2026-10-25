@@ -124,7 +124,8 @@ func applyHatching(_ commands: [SVGCommand], _ options: Hatching) -> [SVGCommand
             let pen = SVGStyle(fill: nil, stroke: .color(opaque(tone)), strokeWidth: options.penWidth,
                                join: .miter, cap: .butt)
             for line in hatchLines(device, winding: winding, spacing: spacing,
-                                   angle: options.angle, crossHatches: options.crossHatches) {
+                                   angle: options.angle, crossHatches: options.crossHatches,
+                                   centered: options.centersLines) {
                 out.append(.draw(RecordedSVG(geometry: .polyline(line), style: pen,
                                              transform: matrix_identity_float3x3)))
             }

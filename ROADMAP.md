@@ -30,7 +30,6 @@ Ollin is pre-1.0, and the public API still changes freely. Semantic version tags
 These are near-term, fairly self-contained pieces. Each one is small and well-scoped.
 
 - **More SDF shapes, when a good fit appears.** A candidate is any canonical form parameterized by a size and a ratio or two. Such a shape drops into the instanced-SDF path as four small touch-points: a shape tag, a builder, a distance function, and a fragment case.
-- **Hatching centered in each shape.** Hatch lines evened across a shape's own extent, a whole number of them with equal margins, so a grid of equal cells hatches alike the way a hand fills a square. Today every fill shares one lattice, which lines neighboring fills up but gives equal cells a line more or less by where they sit.
 
 See the [design notes](DESIGN-NOTES.md#small-pieces).
 

@@ -25,6 +25,8 @@ public struct MeshInstance: Sendable {
     public var scale: Vector3
     /// A per-copy tint multiplied onto the surface color (the current `fill`
     /// times the mesh material's base color), or `nil` to leave it unchanged.
+    /// Nothing clamps it, so a component past 1 draws the copy brighter than
+    /// its surface color.
     public var color: Color?
 
     /// A placement from position, rotation, per-axis scale, and tint.

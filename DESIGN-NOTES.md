@@ -107,7 +107,6 @@ The transport is the proven live **USB** path (the standard usbmuxd device tunne
 
 The notes behind the smaller items on the roadmap's *Up next* list.
 
-- **Hatching centered in each shape.** `Hatching` scans one lattice for every fill (the half-steps of `spacing` in the frame rotated to the lines), which is right when neighboring fills should line up and wrong for a cell-by-cell drawing, where equal cells get six lines or seven and margins anywhere under a step by their position. A Boolean on `Hatching` (an assertion, `centersLines`) would place `n = max(1, round(extent / spacing))` lines at `extent / n` apart from half that step inside the top of the rotated extent, so the count and the margins follow the shape alone; the spacing then varies by under half a step over a step's count, which the doc comment says. The SVG exporter's tone density reads the spacing first and the centering after it.
 
 
 ## Generative geometry

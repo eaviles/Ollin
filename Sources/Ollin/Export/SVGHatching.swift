@@ -44,24 +44,37 @@ public struct Hatching: Equatable, Sendable {
     /// keeps a clean border, not just interior lines. Export-only.
     public var keepsOutline: Bool
 
+    /// Space each shape's lines across its own extent instead of on one lattice
+    /// shared by every fill. Off, the lines sit on the half-steps of `spacing`
+    /// wherever the shape is, so neighboring fills line up but two equal cells
+    /// can get a line more or less and uneven margins by where they sit. On, a
+    /// shape gets the whole number of lines nearest its extent over `spacing`
+    /// (at least one), evenly apart with half a step at each side, so equal
+    /// shapes hatch alike wherever they are; the step then differs from
+    /// `spacing` by less than half a step shared over the count. The exporter's
+    /// tone density sets the spacing first, and the centering works from that.
+    public var centersLines: Bool
+
     public init(spacing: Double = 4, angle: Double = .pi / 4, crossHatches: Bool = false,
-                usesToneDensity: Bool = true, penWidth: Double = 1, keepsOutline: Bool = true) {
+                usesToneDensity: Bool = true, penWidth: Double = 1, keepsOutline: Bool = true,
+                centersLines: Bool = false) {
         self.spacing = spacing
         self.angle = angle
         self.crossHatches = crossHatches
         self.usesToneDensity = usesToneDensity
         self.penWidth = penWidth
         self.keepsOutline = keepsOutline
+        self.centersLines = centersLines
     }
 
     /// The hatch lines (open polylines) filling `shape`, in the shape's own
     /// coordinates — ready to `drawPolyline` or feed a plotter. Uses `spacing`,
-    /// `angle`, and `crossHatches`; `shape.winding` decides which regions are
-    /// interior, so holes and concavities are respected.
+    /// `angle`, `crossHatches`, and `centersLines`; `shape.winding` decides which
+    /// regions are interior, so holes and concavities are respected.
     public func lines(filling shape: Shape) -> [[Vector2]] {
         let contours = shape.contours.map(\.points).filter { $0.count >= 3 }
         return hatchLines(contours, winding: shape.winding, spacing: spacing,
-                          angle: angle, crossHatches: crossHatches)
+                          angle: angle, crossHatches: crossHatches, centered: centersLines)
     }
 
     /// The hatch lines filling a rectangle.
@@ -84,20 +97,23 @@ public struct Hatching: Equatable, Sendable {
 /// world is rotated by `-angle` so the hatch lines become horizontal scan lines;
 /// each scan line's crossings with the (rotated) edges are paired by `winding`
 /// into interior spans, which are rotated back into world space. Adding the
-/// perpendicular pass gives cross-hatch.
+/// perpendicular pass gives cross-hatch. `centered` spaces each pass's lines
+/// across the contours' own extent (`Hatching.centersLines`).
 func hatchLines(_ contours: [[Vector2]], winding: FillWinding, spacing: Double,
-                angle: Double, crossHatches: Bool) -> [[Vector2]] {
+                angle: Double, crossHatches: Bool, centered: Bool = false) -> [[Vector2]] {
     guard spacing > 0, !contours.isEmpty else { return [] }
-    var out = hatchPass(contours, winding: winding, spacing: spacing, angle: angle)
+    var out = hatchPass(contours, winding: winding, spacing: spacing, angle: angle,
+                        centered: centered)
     if crossHatches {
-        out += hatchPass(contours, winding: winding, spacing: spacing, angle: angle + .pi / 2)
+        out += hatchPass(contours, winding: winding, spacing: spacing, angle: angle + .pi / 2,
+                         centered: centered)
     }
     return out
 }
 
 /// One direction of hatching.
 private func hatchPass(_ contours: [[Vector2]], winding: FillWinding,
-                       spacing: Double, angle: Double) -> [[Vector2]] {
+                       spacing: Double, angle: Double, centered: Bool) -> [[Vector2]] {
     // Rotate into a frame where the hatch lines are horizontal, then back.
     let c = cos(-angle), s = sin(-angle)
     func rot(_ p: Vector2) -> Vector2 { Vector2(p.x * c - p.y * s, p.x * s + p.y * c) }
@@ -120,9 +136,16 @@ private func hatchPass(_ contours: [[Vector2]], winding: FillWinding,
     var lines: [[Vector2]] = []
     // Every fill scans one lattice, the half-steps of the spacing in the rotated
     // frame, so neighboring fills hatched alike line up; the first scan line is
-    // the lattice line at or just under the top.
-    var y = ((minY / spacing - 0.5).rounded(.up) + 0.5) * spacing
-    while y < maxY {
+    // the lattice line at or just under the top. Centered, the lines divide the
+    // fill's own extent instead: a whole number of them, half a step in from
+    // each side. They are counted rather than stepped to, so rounding never adds
+    // or drops the last one.
+    let extent = maxY - minY
+    let count = centered ? max(1, (extent / spacing).int(rounded: .toNearestOrAwayFromZero) ?? 1) : 0
+    let step = centered ? extent / Double(count) : spacing
+    var y = centered ? minY + step / 2 : ((minY / spacing - 0.5).rounded(.up) + 0.5) * spacing
+    var placed = 0
+    while centered ? placed < count : y < maxY {
         // Crossings of this scan line with the edges; `dir` is the y-direction,
         // for the non-zero winding count.
         var crossings: [(x: Double, dir: Int)] = []
@@ -136,7 +159,8 @@ private func hatchPass(_ contours: [[Vector2]], winding: FillWinding,
         }
         crossings.sort { $0.x < $1.x }
         appendSpans(crossings, y: y, winding: winding, unrot: unrot, into: &lines)
-        y += spacing
+        placed += 1
+        y = centered ? minY + step * (Double(placed) + 0.5) : y + spacing
     }
     return lines
 }

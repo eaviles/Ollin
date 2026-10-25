@@ -203,6 +203,68 @@ struct SVGExportTests {
         }
     }
 
+    /// Centered, a shape is hatched across its own extent: equal squares get
+    /// the same count wherever they sit, half a step in at the top and the
+    /// bottom, with the step within half a spacing of `spacing` shared over the
+    /// count.
+    @Test func centeredHatchingFitsEachShapeAlone() {
+        let hatch = Hatching(spacing: 7.43, angle: 0, centersLines: true)
+        for top in stride(from: 90.0, to: 110, by: 0.37) {
+            let lines = hatch.lines(filling: Rectangle(x: 10, y: top, width: 52, height: 52))
+            let ys = lines.map { $0[0].y }.sorted()
+            // 52 / 7.43 = 7.0: seven lines, 52/7 apart, the first at half that.
+            #expect(ys.count == 7, "\(ys.count) lines at \(top)")
+            let step = 52.0 / 7
+            for (k, y) in ys.enumerated() {
+                #expect(abs(y - (top + step * (Double(k) + 0.5))) < 1e-9, "line \(k) at \(top)")
+            }
+        }
+        // The count is the nearest whole number of spacings, never zero: a
+        // sliver gets one line through its middle.
+        let wide = hatch.lines(filling: Rectangle(x: 0, y: 0, width: 40, height: 40 + 7.43 * 0.6))
+        #expect(wide.count == 6)
+        let sliver = hatch.lines(filling: Rectangle(x: 0, y: 0, width: 40, height: 2))
+        #expect(sliver.count == 1 && abs(sliver[0][0].y - 1) < 1e-9)
+    }
+
+    /// Centering holds at any angle and on both passes of a cross-hatch, so a
+    /// square turned on the lattice still gets the same lines in each copy.
+    @Test func centeredCrossHatchMatchesInEveryCopy() {
+        let hatch = Hatching(spacing: 5, angle: .pi / 5, crossHatches: true, centersLines: true)
+        let here = hatch.lines(filling: Rectangle(x: 0, y: 0, width: 30, height: 30))
+        let there = hatch.lines(filling: Rectangle(x: 73.3, y: 41.9, width: 30, height: 30))
+        #expect(here.count == there.count)
+        for (a, b) in zip(here, there) {
+            #expect((a[0] + Vector2(73.3, 41.9)).distance(to: b[0]) < 1e-9)
+            #expect((a[1] + Vector2(73.3, 41.9)).distance(to: b[1]) < 1e-9)
+        }
+        // Without centering the two copies sit differently on the shared lattice.
+        let latticed = Hatching(spacing: 5, angle: .pi / 5, crossHatches: true)
+        let a = latticed.lines(filling: Rectangle(x: 0, y: 0, width: 30, height: 30))
+        let b = latticed.lines(filling: Rectangle(x: 73.3, y: 41.9, width: 30, height: 30))
+        #expect(a.count != b.count || zip(a, b).contains {
+            ($0.0[0] + Vector2(73.3, 41.9)).distance(to: $0.1[0]) > 1e-6
+        })
+    }
+
+    /// The exporter centers each recorded fill when asked.
+    @Test func theExporterCentersEachFill() throws {
+        final class Cells: Sketch {
+            override var canvasSize: CanvasSize { .square(100) }
+            override func draw() {
+                background(.white); noStroke(); fill(.black)
+                drawRect(3, 3, 20, 20)
+                drawRect(51.7, 61, 20, 20)
+            }
+        }
+        func lineCount(_ svg: String) -> Int { svg.components(separatedBy: "<polyline").count - 1 }
+        let options = Hatching(spacing: 3.3, angle: 0, usesToneDensity: false, keepsOutline: false,
+                               centersLines: true)
+        // 20 / 3.3 = 6.06: six lines a cell, twelve in all, where the shared
+        // lattice puts seven in the second cell (its first line 0.05 in).
+        #expect(lineCount(try OllinApp.svg(of: Cells(), hatching: options)) == 12)
+    }
+
     @Test func crossHatchAddsLines() throws {
         func lineCount(_ svg: String) -> Int { svg.components(separatedBy: "<polyline").count - 1 }
         let single = try OllinApp.svg(of: Disk(), hatching: Hatching(spacing: 6, crossHatches: false))

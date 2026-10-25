@@ -164,6 +164,21 @@ struct MeshInstanceRenderTests {
                 "instanced vs per-mesh max difference \(diff.max) (mean \(diff.mean))")
     }
 
+    /// A tint past 1 is a highlight past white (the `Color` page's rule), so a
+    /// copy tinted 1.05 draws a little brighter than one tinted 1, lit or not,
+    /// with temporal antialiasing or without, and never vanishes. (Copies were
+    /// once seen to vanish at 1.05 in a live window; no drive here reproduces
+    /// it, and this holds the rule where it can be measured.)
+    @Test(.enabled(if: Snapshot.hasMetal), arguments: [(false, false), (true, false), (false, true), (true, true)])
+    func aTintPastWhiteBrightensACopy(lit: Bool, temporal: Bool) throws {
+        let plain = Pixels(try OllinApp.image(of: TintedCopySketch(tint: 1, lit: lit, temporal: temporal), frame: 4))
+        let bright = Pixels(try OllinApp.image(of: TintedCopySketch(tint: 1.05, lit: lit, temporal: temporal), frame: 4))
+        let mid = plain.width / 2
+        #expect(plain.gray(mid, mid) > 100, "the copy at tint 1 reads \(plain.gray(mid, mid))")
+        #expect(bright.gray(mid, mid) >= plain.gray(mid, mid),
+                "tint 1.05 reads \(bright.gray(mid, mid)) against \(plain.gray(mid, mid)) at 1")
+    }
+
     @Test(.enabled(if: Snapshot.hasMetal))
     func instancedShadowPipelinesBuild() throws {
         guard let device = MTLCreateSystemDefaultDevice() else { return }
@@ -364,5 +379,43 @@ private final class InstancedABSketch: Sketch {
                 }
             }
         }
+    }
+}
+
+/// One box filling the middle of a small canvas, drawn as a single instanced
+/// copy with a gray tint, under a light or without one, and with temporal
+/// antialiasing or without it.
+@MainActor
+private final class TintedCopySketch: Sketch {
+    override var canvasSize: CanvasSize { .square(64) }
+    private let tint: Double
+    private let lit: Bool
+    private let temporal: Bool
+
+    init(tint: Double, lit: Bool, temporal: Bool) {
+        self.tint = tint
+        self.lit = lit
+        self.temporal = temporal
+        super.init()
+    }
+
+    required init() {
+        self.tint = 1
+        self.lit = false
+        self.temporal = false
+        super.init()
+    }
+
+    override func draw() {
+        background(.black)
+        if temporal { temporalAntialiasing() }
+        camera(Camera3D(eye: Vector3(0, 0, 4), target: .zero))
+        if lit {
+            ambientLight(Color(white: 0.2))
+            directionalLight(Color(white: 1), direction: Vector3(0, 0, -1), intensity: 0.6)
+        }
+        fill(Color(white: 0.6))
+        drawMesh(Mesh.box(width: 2, height: 2, depth: 2),
+                 instances: [MeshInstance(color: Color(white: tint))])
     }
 }

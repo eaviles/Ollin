@@ -187,7 +187,7 @@ for line in hatch.lines(filling: shape) {
   <img src="Images/15-ShapesAsMaterial/HatchTones.jpg" alt="The same blob with a hole hatched three ways: wide-spaced lines for a light tone, tight lines for a dark one, and crosshatch for the darkest, each keeping a crisp outline" width="680">
 </picture>
 
-Spacing is the pen's whole idea of tone. Holes and concavities are respected, because the lines are clipped by the shape's own inside rule. For getting work *out*, every sketch already knows how. Run it with `--export-svg plate.svg` and the recorded geometry writes as true vector paths. Add `--hatch` and the exporter converts every fill to hatch line work by itself, spacing scaled by each fill's tone. Either way the file opens in any vector tool and feeds any plotter.
+Spacing is the pen's whole idea of tone. Holes and concavities are respected, because the lines are clipped by the shape's own inside rule. Every shape is hatched on one lattice shared across the canvas, so the lines of two shapes side by side line up. A grid of equal cells drawn one at a time wants each cell filled the same way instead, the way a hand fills a square. `Hatching(spacing: 6.5, centersLines: true)` does that: it spaces each shape's lines evenly across its own height, with half a step at the top and the bottom. For getting work *out*, every sketch already knows how. Run it with `--export-svg plate.svg` and the recorded geometry writes as true vector paths. Add `--hatch` and the exporter converts every fill to hatch line work by itself, spacing scaled by each fill's tone. Either way the file opens in any vector tool and feeds any plotter.
 
 ## Putting it together: the plate
 

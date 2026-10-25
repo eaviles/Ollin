@@ -4680,8 +4680,9 @@ struct Hatching: Equatable, Sendable
   func lines(filling: Circle) -> [[Vector2]]
   func lines(filling: Rectangle) -> [[Vector2]]
   func lines(filling: Shape) -> [[Vector2]]
-  init(spacing: Double = default, angle: Double = default, crossHatches: Bool = default, usesToneDensity: Bool = default, penWidth: Double = default, keepsOutline: Bool = default)
+  init(spacing: Double = default, angle: Double = default, crossHatches: Bool = default, usesToneDensity: Bool = default, penWidth: Double = default, keepsOutline: Bool = default, centersLines: Bool = default)
   var angle: Double { get set }
+  var centersLines: Bool { get set }
   var crossHatches: Bool { get set }
   var keepsOutline: Bool { get set }
   var penWidth: Double { get set }
