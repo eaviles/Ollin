@@ -5531,7 +5531,9 @@ static inline float4 ollin_scene_refraction(float3 worldPos, float3 n, float3 vi
 // hysteresis converge visually linearly; sampling decodes pow 2.5 per probe (leaving a
 // gamma-2 tail so the weighted blend stays roughly perceptual) and squares the blended
 // result back to linear. E/pi is the same convention as the IBL irradiance cube, so the
-// sampled value drops into `diffuse = irradiance * base` unchanged.
+// sampled value drops into `diffuse = irradiance * base` unchanged. The texel's alpha is
+// the probe's dimming slope in that direction (`ollin_gi_probe_slope`), which carries a
+// read back from where it stands to the surface it lights.
 
 // Octahedral mapping, unit sphere <-> unit square: fold the lower hemisphere's pyramid
 // out over the upper one's corners. The equal-ish-area parameterization the probe tiles
@@ -5567,32 +5569,50 @@ static inline float2 ollin_gi_atlas_uv(int probeIndex, float3 dir, int interior,
     return (corner + inTile) / float2(atlas.get_width(), atlas.get_height());
 }
 
-// Sample the probe field at a lit surface point: the eight surrounding probes, each
+// One read of a probe volume at a lit surface point: the eight surrounding probes, each
 // weighted by trilinear position x soft backface (a wrap term, never zero, so the cage
 // can't collapse) x the Chebyshev visibility test against the probe's stored distance
 // moments. The visibility query runs from a point offset off the surface along the
-// normal and toward the viewer (`light.giCounts.w`, the precomputed self-shadow bias)
-// because the variance is largest exactly at the surface. Returns E/pi in display-linear
-// units, scaled by the sketch's GI intensity; the caller multiplies by albedo.
-static inline float3 ollin_gi_sample(float3 worldPos, float3 n, float3 viewDir,
-                                     constant OllinLighting &light,
-                                     texture2d<float> giIrradiance,
-                                     texture2d<float> giDepth,
-                                     texture2d<float> giProbeOffsets) {
+// normal and toward the viewer (`bias`, the precomputed self-shadow bias) because the
+// variance is largest exactly at the surface. `phase` is the infinite-scroll wrap of a
+// camera cascade: grid coordinate g stores into physical tile (g + phase) mod counts
+// inside the `probeBase` atlas slot, so a stationary world lattice point keeps its texel
+// as the window scrolls (zero for the scene-fitted volume). Returns E/pi un-scaled by the
+// intensity dial, plus where the read stands (the probes' positions under the same
+// weights, which is where a field changing linearly would give the value read), the
+// share of the cage's trilinear weight whose probes see the point (`open`), and the
+// probes' dimming slopes under the same weights (`slope`, the irradiance atlas's alpha;
+// see `ollin_gi_sample_volume`).
+struct OllinGIGather {
+    float3 irradiance;
+    float3 at;
+    float weight;
+    float open;
+    float slope;
+};
+
+static inline OllinGIGather ollin_gi_gather(float3 worldPos, float3 n, float3 viewDir,
+                                            float3 origin, float3 spacing, int3 counts,
+                                            int3 phase, int probeBase, float bias,
+                                            texture2d<float> giIrradiance,
+                                            texture2d<float> giDepth,
+                                            texture2d<float> giProbeOffsets) {
     constexpr sampler giSamp(filter::linear, address::clamp_to_edge);
-    float3 origin = light.giOrigin.xyz;
-    float3 spacing = max(light.giSpacing.xyz, float3(1e-6));
-    int3 counts = int3(light.giCounts.xyz);
-    float3 biased = worldPos + (n * 0.2 + viewDir * 0.8) * light.giCounts.w;
+    float3 biased = worldPos + (n * 0.2 + viewDir * 0.8) * bias;
     float3 grid = (biased - origin) / spacing;
     int3 base = clamp(int3(floor(grid)), int3(0), max(counts - 2, int3(0)));
     float3 t = clamp(grid - float3(base), 0.0, 1.0);
     float3 sum = float3(0.0);
+    float3 at = float3(0.0);
     float wsum = 0.0;
+    float open = 0.0;
+    float slope = 0.0;
     for (int i = 0; i < 8; i++) {
         int3 off = int3(i & 1, (i >> 1) & 1, (i >> 2) & 1);
         int3 g = min(base + off, counts - 1);
-        int probe = g.x + g.y * counts.x + g.z * counts.x * counts.y;
+        int3 wrapped = (g + phase) % counts;
+        int probe = probeBase + wrapped.x + wrapped.y * counts.x
+                  + wrapped.z * counts.x * counts.y;
         // The cage and trilinear come from the unmoved grid; the probe's world
         // position (for the direction, backface, and visibility terms) honors its
         // relocation offset, matching where its rays were actually traced from.
@@ -5608,11 +5628,13 @@ static inline float3 ollin_gi_sample(float3 worldPos, float3 n, float3 viewDir,
         float dist = length(toBiased);
         float2 moments = giDepth.sample(giSamp,
             ollin_gi_atlas_uv(probe, toBiased / max(dist, 1e-6), 16, giDepth)).rg;
+        float seen = 1.0;
         if (dist > moments.x) {
             float variance = abs(moments.y - moments.x * moments.x) + 1e-6;
             float delta = dist - moments.x;
             float cheb = variance / (variance + delta * delta);
-            w *= max(cheb * cheb * cheb, 0.05);
+            seen = cheb * cheb * cheb;
+            w *= max(seen, 0.05);
         }
         w = max(w, 1e-6);
         // Perceptually crush small weights before the trilinear term: a barely-trusted
@@ -5620,15 +5642,104 @@ static inline float3 ollin_gi_sample(float3 worldPos, float3 n, float3 viewDir,
         const float crush = 0.2;
         if (w < crush) { w *= (w * w) / (crush * crush); }
         float3 tri = mix(1.0 - float3(off), float3(off), t);
-        w *= max(tri.x * tri.y * tri.z, 1e-5);
-        float3 probeIrr = giIrradiance.sample(giSamp,
-            ollin_gi_atlas_uv(probe, n, 8, giIrradiance)).rgb;
-        sum += w * pow(probeIrr, 2.5);
+        float cage = tri.x * tri.y * tri.z;
+        w *= max(cage, 1e-5);
+        float4 probeIrr = giIrradiance.sample(giSamp,
+            ollin_gi_atlas_uv(probe, n, 8, giIrradiance));
+        sum += w * pow(probeIrr.rgb, 2.5);
+        slope += w * probeIrr.a;
+        at += w * probePos;
         wsum += w;
+        open += cage * seen;
     }
-    if (wsum <= 1e-6) { return float3(0.0); }
+    OllinGIGather r;
+    r.weight = wsum;
+    r.open = open;
+    r.slope = wsum > 1e-6 ? slope / wsum : 0.0;
+    if (wsum <= 1e-6) {
+        r.irradiance = float3(0.0);
+        r.at = worldPos;
+        return r;
+    }
     float3 irr = sum / wsum;
-    return irr * irr * light.giSpacing.w;
+    r.irradiance = irr * irr;
+    r.at = at / wsum;
+    return r;
+}
+
+// How much dimmer the light is behind probe `p` than at it, per unit of distance along
+// `n`, which a surface the probe stands in front of reads from it (zero or less; the
+// irradiance blend stores it in the atlas's alpha beside each texel's light). The field
+// is read a second time a cell further along `n` from the probe, and the change from the
+// probe's own light `la` to that read is carried back: a first-order translational
+// gradient (the irradiance-gradient technique, Techniques list) taken as a difference of
+// two reads of the field rather than from one probe's rays. Only a dimming, since the
+// bias it corrects runs one way (the weights favor the probes that see the room), and
+// in reciprocal light, where a fall like the inverse square (from a lamp, or from a lit
+// patch of any size) is convex, so the straight extension of the chord stops short of
+// the true value instead of passing it. The second read is trusted only while the open
+// run the probe sees along `n` (`reach`, its stored mean distance) reaches it, and while
+// every probe around it sees it: one that stands past an occluder (above a table,
+// beyond a glowing slab) measures the light of another space.
+static inline float ollin_gi_probe_slope(float3 p, float3 n, float la, float reach,
+                                         float3 origin, float3 spacing, int3 counts,
+                                         int3 phase, int probeBase, float bias,
+                                         texture2d<float> giIrradiance,
+                                         texture2d<float> giDepth,
+                                         texture2d<float> giProbeOffsets) {
+    spacing = max(spacing, float3(1e-6));
+    // One cell along the normal, measured in the grid's own units.
+    float cell = 1.0 / length(n / spacing);
+    OllinGIGather b = ollin_gi_gather(p + n * cell, n, n, origin, spacing, counts,
+                                      phase, probeBase, bias,
+                                      giIrradiance, giDepth, giProbeOffsets);
+    // A second read that did not rise (clamped at the volume's edge, or pulled back by
+    // its own weights) measures no slope.
+    float rise = dot(b.at - p, n);
+    float lb = dot(b.irradiance, float3(0.2126, 0.7152, 0.0722));
+    if (b.weight <= 1e-6 || rise < 0.25 * cell || lb <= 1e-8) { return 0.0; }
+    float trust = saturate((reach - rise) / (0.25 * cell) + 1.0)
+                * saturate((b.open - 0.75) / 0.2);
+    return trust * (min(la / lb, 1.0) - 1.0) / rise;
+}
+
+// A probe volume read at the surface itself. The weights that keep light from leaking
+// through a wall also pull a read off the surface it lights: beside a wall, a floor, or
+// a ceiling, the probes past it are weighed out, so the read stands at the row inside,
+// up to a cell in front of the surface and nearer the room's light (left there, a ceiling
+// reads 1.12 to 1.21 of a deep path trace). So the read is carried back the distance the
+// surface lies behind where it stood, along the normal, by the probes' own dimming
+// slopes (`ollin_gi_probe_slope`) under the read's weights. Only the normal's share of
+// the offset is carried, since that is the share the weights bias (an offset along the
+// surface is the cage's own, centered, error), and the dimming is at most half.
+static inline float3 ollin_gi_sample_volume(float3 worldPos, float3 n, float3 viewDir,
+                                            float3 origin, float3 spacing, int3 counts,
+                                            int3 phase, int probeBase, float bias,
+                                            texture2d<float> giIrradiance,
+                                            texture2d<float> giDepth,
+                                            texture2d<float> giProbeOffsets) {
+    spacing = max(spacing, float3(1e-6));
+    OllinGIGather a = ollin_gi_gather(worldPos, n, viewDir, origin, spacing, counts,
+                                      phase, probeBase, bias,
+                                      giIrradiance, giDepth, giProbeOffsets);
+    float cell = 1.0 / length(n / spacing);
+    float behind = clamp(dot(worldPos - a.at, n), -cell, 0.0);
+    return a.irradiance / (1.0 + clamp(behind * a.slope, 0.0, 1.0));
+}
+
+// Sample the scene-fitted probe field at a lit surface point (the single-volume read
+// every room-scale scene takes), scaled by the sketch's GI intensity; the caller
+// multiplies by albedo.
+static inline float3 ollin_gi_sample(float3 worldPos, float3 n, float3 viewDir,
+                                     constant OllinLighting &light,
+                                     texture2d<float> giIrradiance,
+                                     texture2d<float> giDepth,
+                                     texture2d<float> giProbeOffsets) {
+    return ollin_gi_sample_volume(worldPos, n, viewDir, light.giOrigin.xyz,
+                                  light.giSpacing.xyz, int3(light.giCounts.xyz),
+                                  int3(0), 0, light.giCounts.w,
+                                  giIrradiance, giDepth, giProbeOffsets)
+         * light.giSpacing.w;
 }
 
 // A cascade table entry's scroll phase, unpacked from its base-32 float.
@@ -5637,71 +5748,12 @@ static inline int3 ollin_gi_unpack_phase(float packed) {
     return int3(p % 32, (p / 32) % 32, p / 1024);
 }
 
-// The generalized single-volume sampler behind the cascade wrapper: the same
-// four-term weight as `ollin_gi_sample` above (which is kept verbatim as the
-// shipped single-volume fast path; a change here changes both, keep them in
-// step), parameterized by an explicit window so a camera cascade's scrolled grid
-// uses the same math. `phase` is the infinite-scroll wrap: grid coordinate g
-// stores into physical tile (g + phase) mod counts inside the cascade's
-// `probeBase` atlas slot, so a stationary world lattice point keeps its texel as
-// the window scrolls. Returns E/pi UN-scaled by the intensity dial (the wrapper
-// applies it once across a cascade blend).
-static inline float3 ollin_gi_sample_volume(float3 worldPos, float3 n, float3 viewDir,
-                                            float3 origin, float3 spacing, int3 counts,
-                                            int3 phase, int probeBase, float bias,
-                                            texture2d<float> giIrradiance,
-                                            texture2d<float> giDepth,
-                                            texture2d<float> giProbeOffsets) {
-    constexpr sampler giSamp(filter::linear, address::clamp_to_edge);
-    spacing = max(spacing, float3(1e-6));
-    float3 biased = worldPos + (n * 0.2 + viewDir * 0.8) * bias;
-    float3 grid = (biased - origin) / spacing;
-    int3 base = clamp(int3(floor(grid)), int3(0), max(counts - 2, int3(0)));
-    float3 t = clamp(grid - float3(base), 0.0, 1.0);
-    float3 sum = float3(0.0);
-    float wsum = 0.0;
-    for (int i = 0; i < 8; i++) {
-        int3 off = int3(i & 1, (i >> 1) & 1, (i >> 2) & 1);
-        int3 g = min(base + off, counts - 1);
-        int3 wrapped = (g + phase) % counts;
-        int probe = probeBase + wrapped.x + wrapped.y * counts.x
-                  + wrapped.z * counts.x * counts.y;
-        float3 probePos = origin + float3(g) * spacing
-                        + giProbeOffsets.read(uint2(uint(probe), 0u)).xyz;
-        float wrap = (dot(normalize(probePos - worldPos), n) + 1.0) * 0.5;
-        float w = wrap * wrap + 0.2;
-        float3 toBiased = biased - probePos;
-        float dist = length(toBiased);
-        float2 moments = giDepth.sample(giSamp,
-            ollin_gi_atlas_uv(probe, toBiased / max(dist, 1e-6), 16, giDepth)).rg;
-        if (dist > moments.x) {
-            float variance = abs(moments.y - moments.x * moments.x) + 1e-6;
-            float delta = dist - moments.x;
-            float cheb = variance / (variance + delta * delta);
-            w *= max(cheb * cheb * cheb, 0.05);
-        }
-        w = max(w, 1e-6);
-        const float crush = 0.2;
-        if (w < crush) { w *= (w * w) / (crush * crush); }
-        float3 tri = mix(1.0 - float3(off), float3(off), t);
-        w *= max(tri.x * tri.y * tri.z, 1e-5);
-        float3 probeIrr = giIrradiance.sample(giSamp,
-            ollin_gi_atlas_uv(probe, n, 8, giIrradiance)).rgb;
-        sum += w * pow(probeIrr, 2.5);
-        wsum += w;
-    }
-    if (wsum <= 1e-6) { return float3(0.0); }
-    float3 irr = sum / wsum;
-    return irr * irr;
-}
-
 // Sample the cascaded probe field: the finest camera cascade covering the point
 // wins, fading over its outermost cell into the next coarser one (the ladder is
 // nested by construction, so the blend partner always covers the band), with the
 // scene-fitted volume (cascade 0, the `light.giOrigin` fields) the outermost
 // fallback that covers every shaded point. While no camera cascades exist
-// (`giCascadeInfo.x` <= 1, every room-scale scene) this IS `ollin_gi_sample`,
-// so the pre-cascade path stays byte-identical.
+// (`giCascadeInfo.x` <= 1, every room-scale scene) this is `ollin_gi_sample`.
 static inline float3 ollin_gi_sample_cascaded(float3 worldPos, float3 n, float3 viewDir,
                                               constant OllinLighting &light,
                                               texture2d<float> giIrradiance,

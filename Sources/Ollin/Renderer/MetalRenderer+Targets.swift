@@ -2877,7 +2877,8 @@ extension MetalRenderer {
     private func encodeGIBlend(_ pipe: MTLRenderPipelineState, surfels: MTLTexture,
                                previous: MTLTexture, output: MTLTexture,
                                params: [SIMD4<Float>], into cb: MTLCommandBuffer,
-                               offsets: MTLTexture? = nil) {
+                               offsets: MTLTexture? = nil,
+                               slopes: (lighting: OllinLighting, depth: MTLTexture)? = nil) {
         let pass = MTLRenderPassDescriptor()
         pass.colorAttachments[0].texture = output
         pass.colorAttachments[0].loadAction = .dontCare
@@ -2893,6 +2894,12 @@ extension MetalRenderer {
         // read (the scroll pass's invalidation flag; the same texture the trace took
         // its positions from).
         if let offsets { enc.setFragmentTexture(offsets, index: 2) }
+        // The irradiance blend also writes each texel's dimming slope, which reads the
+        // previous field through the grid the lighting struct describes.
+        if var slopes {
+            enc.setFragmentBytes(&slopes.lighting, length: MemoryLayout<OllinLighting>.stride, index: 1)
+            enc.setFragmentTexture(slopes.depth, index: 3)
+        }
         enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
         enc.endEncoding()
     }
@@ -3179,7 +3186,7 @@ extension MetalRenderer {
                                             cascadeCountParam)] + cascadeSlots
             encodeGIBlend(blendIrrPipe, surfels: surfels, previous: state.irrFront,
                           output: state.irrBack, params: blendParams, into: cb,
-                          offsets: state.offFront)
+                          offsets: state.offFront, slopes: (lighting, state.depFront))
             encodeGIBlend(blendDepPipe, surfels: surfels, previous: state.depFront,
                           output: state.depBack, params: blendParams, into: cb,
                           offsets: state.offFront)
@@ -3727,6 +3734,14 @@ extension MetalRenderer {
         let wantMaps = !pathTraceMats && batches.contains { b in
             b.kind == .mesh3D && !b.meshWireframe && !b.meshGrid && b.material?.texture != nil
         }
+        // An emissive map reaches the probe trace the same way, beside the picture, so a
+        // mapped panel glows by its map in the bounce rather than at its factor over its
+        // whole face. A projected (triplanar) mesh keeps its factor, as at a path-traced
+        // hit, where such a mesh reads only its base color and normal map.
+        let wantGlowMaps = giMats && !pathTraceMats && batches.contains { b in
+            b.kind == .mesh3D && !b.meshWireframe && !b.meshGrid && b.finish.triplanar == 0
+                && b.finish.emissive.w > 0 && b.material?.emissiveTexture != nil
+        }
         let wantFinishes = pathTraceMats || wantStylized || giMats || wantMaps
         // Coalesce maximal runs of contiguous caster batches into one geometry descriptor
         // each (a non-casting batch — wireframe, or a non-mesh kind — breaks the run). The
@@ -3846,6 +3861,12 @@ extension MetalRenderer {
                 // same one repeating differently, starts a new one.
                 if runStart >= 0, wantMaps,
                    ptMaps(batch).base !== runMaps.base || batch.finish.uvWrap != runFinish.uvWrap
+                       || batch.finish.triplanar != runFinish.triplanar {
+                    flushRun()
+                }
+                if runStart >= 0, wantGlowMaps,
+                   ptMaps(batch).emissive !== runMaps.emissive
+                       || batch.finish.uvWrap != runFinish.uvWrap
                        || batch.finish.triplanar != runFinish.triplanar {
                     flushRun()
                 }
@@ -4181,7 +4202,8 @@ extension MetalRenderer {
         // record reads as five `float4` rows. A frame with nothing stylized to say leaves
         // the block out and writes a zero base, which is the shader's gate.
         let finishWords = MemoryLayout<OllinRTFinish>.stride / MemoryLayout<UInt32>.stride
-        let finishBase = wantStylized || wantMaps ? ((tailStart + geoOffsets.count + 3) / 4) * 4 : 0
+        let finishBase = wantStylized || wantMaps || wantGlowMaps
+            ? ((tailStart + geoOffsets.count + 3) / 4) * 4 : 0
         head[1] = UInt32(finishBase)
         let tableWords = max(tailStart + geoOffsets.count,
                              finishBase == 0 ? 0 : finishBase + geoFinishes.count * finishWords)
@@ -4217,6 +4239,16 @@ extension MetalRenderer {
                 mapTextures.append(white)
                 for i in finishes.indices {
                     finishes[i].base = whiteID
+                    finishes[i].emissive = whiteID
+                    // A layer drawn as a glow map is drawn after this table, so it keeps
+                    // its factor in the bounce, as a copy does.
+                    if wantGlowMaps, i < geoTextures.count, geoFinishes[i].triplanar == 0,
+                       let image = geoTextures[i].emissive, image.webRenderTarget == nil,
+                       let glow = image.texture(for: device) {
+                        finishes[i].emissive = unsafeBitCast(glow.gpuResourceID, to: UInt64.self)
+                        finishes[i].coat.z = geoFinishes[i].uvWrap + 1
+                        mapTextures.append(glow)
+                    }
                     guard wantMaps, i < geoTextures.count, geoFinishes[i].triplanar == 0,
                           let image = geoTextures[i].base else { continue }
                     if image.webRenderTarget != nil {

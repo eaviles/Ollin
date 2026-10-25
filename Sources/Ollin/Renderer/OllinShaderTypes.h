@@ -1386,17 +1386,21 @@ typedef struct {
                          // w = the sheen lobe's perceptual roughness. Physically-based only,
                          // the gate the primary shade uses.
     simd_float4 coat;    // x = clearcoat intensity (0 = no coat), y = the coat's own perceptual
-                         // roughness, z and w pad the row. Physically-based only.
+                         // roughness (both physically-based only); z = the emissive map's
+                         // gate and wrap for the probe trace: 0 for none, else the
+                         // material's `uvWrap` plus one; w pads the row.
     // The surface's base-color picture (`Mesh.textured`), which a traced hit multiplies its
     // color by at the hit's uv, so a mirror or a pane shows the picture rather than the
     // plain color under it. Read only behind `cool.w`. The CPU writes the texture's GPU
-    // resource ID, and the white stand-in's where a geometry has no picture.
+    // resource ID, and the white stand-in's where a geometry has no picture. Beside it the
+    // emissive map (`Mesh.surfaceMapped(emissive:)`), which the probe trace multiplies the
+    // glow's factor by at a hit, read only behind `coat.z`, the white stand-in likewise.
 #ifdef __METAL_VERSION__
     texture2d<float> base;
-    ulong pad;           // keeps the stride a multiple of sixteen on both sides
+    texture2d<float> emissive;
 #else
     uint64_t base;
-    uint64_t pad;
+    uint64_t emissive;
 #endif
 } OllinRTFinish;
 

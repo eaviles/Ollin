@@ -4055,7 +4055,25 @@ ShaderCombine: it reuses Shader3D's RT surface fetch and ShaderEffects'
    per-slot `OllinGIGeo` table (the glow, the shading model, f0,
    transmission; stride 32) the accel build fills beside the caustic one,
    indexed by the hit record's slot, so a copy resolves the draw that placed
-   it; the build breaks a coalesced run where the record changes. A miss
+   it; the build breaks a coalesced run where the record changes. An
+   emissive *map* reaches the hit through the RT finish record, whose second
+   texture slot (`OllinRTFinish.emissive`, the old pad, so the stride stays
+   128) carries its handle behind `coat.z` (`uvWrap + 1`); the record is
+   written whenever a GI frame draws a uv-mapped glow map, and the build
+   breaks a run where the map changes, so `ollin_gi_glow_map` multiplies the
+   factor by the map at the hit's uv as the lit fragment does (a triplanar
+   mesh, a copy, and a layer drawn the same frame keep the factor, the base
+   picture's own exceptions). **A lobe narrower than an irradiance texel is
+   widened to one** (`OLLIN_GI_MIN_LOBE_ROUGHNESS`, 0.5: a GGX α of a
+   quarter radian, about the angle an 8×8 octahedral texel spans), the path
+   regularization of the Techniques list. A polished floor reflects a lamp
+   in a spike a probe's few hundred rays all but miss, and the rare hits are
+   crushed by the blend's perceptual encoding (the mean of x^(1/5) over
+   updates sits far under the mean's own root), so a copper floor at
+   roughness 0.1 threw 0.085 of a 16-deep trace's copper onto the ceiling
+   and nothing at 0.05; widened, 0.84, with the rest spread onto the walls
+   (the reflected pool is the field's grain wide rather than sharp). A
+   rough metal (0.5 and up) is untouched. A miss
    samples the environment's radiance times the IBL exposure (sky light with
    occlusion, for free); a backface hit stores zero radiance and a
    **negated, 80%-shortened** distance (the sign is the relocation pass's
@@ -4076,7 +4094,9 @@ ShaderCombine: it reuses Shader3D's RT surface fetch and ShaderEffects'
    sky-lit scene's whole field visibly pulsed (a real live-window defect,
    measured at ~25/255 swings on a lit sphere). Headless skips the pair
    entirely: its iterations converge a progressive mean, and either heuristic
-   would bias the estimator it is converging.
+   would bias the estimator it is converging. The alpha out is the texel's
+   **dimming slope** (`ollin_gi_probe_slope`, below), taken from the
+   *previous* update's field, which the pass already holds as its history.
 3. **Blend depth** (`ollin_gi_blend_depth`): mean distance + mean squared
    distance under a power-50 cosine lobe, at 16×16 per probe against the
    irradiance's 8×8, over the radiance columns (same skip).
@@ -4108,6 +4128,41 @@ perceptual space). Where it lands: under an environment the probe sample
 flat env ambient (the probes integrate the same environment, occlusion
 included); with no environment it adds a GI ambient the scene never had.
 Specular is untouched (GI is diffuse; mirrors are the RT reflections' job).
+
+**A read is carried back to its surface.** The sampling weights that keep
+light from leaking through a wall also pull a read off the surface it lights:
+beside a wall, a ceiling, or a floor the probes past it are weighed out
+(backface, visibility, the crush), so the read stands at the row inside, up
+to a cell in front of the surface and nearer the room's light. A ceiling read
+1.12 to 1.21 of a 64-deep path trace that way, and every boundary of the test
+room read high, 1.05 to 1.27 (2026-10-24). The correction is a first-order
+translational gradient (the irradiance-gradient technique, Techniques list)
+taken as a difference of two reads of the field: for each probe and texel
+direction n, the blend reads the previous field again a cell along n from the
+probe and stores, in the irradiance atlas's otherwise unused alpha, how much
+dimmer the light is behind the probe per unit distance; a lit point blends
+those slopes with its own weights (one more channel of the sample it already
+takes) and divides its read by 1 plus the normal's share of its offset from
+where the read stood times that slope, at most halving it. The choices were
+each measured on that room, with a table under the lamp and the emitter and
+copper probes beside it. *Along the normal only*: stepped along the line to
+where the read stood instead, the second read ran sideways along a sphere's
+underside and brightened it from 1.36 to 1.83 of the trace. *Dimming only*:
+every place an extrapolation brightened came out worse. *In reciprocal
+light*: a fall like the inverse square is convex there, so the straight
+extension of the chord between two probe rows stops short of the true value,
+where in log light it overshot (a low wall from 1.21 to 0.82; 0.97 in
+reciprocal light). *Trusted only in open space*: the probe's stored distance
+along n must reach the second read, and every probe around the second read
+must see it, or a floor under a glowing slab read the space above the slab
+and came out 2.7 times the trace. *Baked, never per pixel*: the same second
+read taken per fragment cost 7 ms a frame in a 1080 room (12.4 to 19.5 in the
+one-process saturated harness) and about 1 ms baked, with the same accuracy.
+The room's mean error by region went from 15 to 17% to 4 to 8%, the ceiling to
+0.99 to 1.03; what is left high is occlusion finer than the grid (a sphere's
+underside facing its own shadow, the floor under a table, 1.26 to 1.35), a
+little better than before. A one-update lag between a slope and the light it
+rides with never shows, since the field settles over many updates.
 
 **The volume is auto-fitted and held, and the grid's shape follows it.** The
 mesh batches' vertex AABB (folded over the same batch walk the accel build

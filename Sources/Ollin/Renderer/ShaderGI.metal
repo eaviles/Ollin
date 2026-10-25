@@ -30,6 +30,8 @@
 // makes the texture OLLIN_GI_FIXED_RAYS + radiance-ray columns wide. Mirrored by
 // `MetalRenderer.giFixedRays`; keep the two in step.
 #define OLLIN_GI_FIXED_RAYS 32
+// The narrowest lobe a probe ray's hit shades with (`ollin_gi_shade_hit`).
+#define OLLIN_GI_MIN_LOBE_ROUGHNESS 0.5
 
 // The i-th of n spherical-Fibonacci directions: near-uniform over the sphere, so a
 // probe's ray fan samples every direction about evenly at any count.
@@ -123,12 +125,11 @@ static inline bool ollin_gi_occluded(float3 origin, float3 dir, float tmax, floa
 // cosine-convolved field as its surround, and a mirror's sharp image of the room is the
 // reflection pass's to draw, never the bounce's. A panel's exact diffuse takes the same
 // weighted body, as the lit fragment does, and its highlight is not traced.
-// The glow is the emissive factor plus the surface's own color times its intensity,
-// the two terms the lit fragment adds; an emissive map's pattern is not read here, so
-// a mapped surface glows at its factor over its whole face in the bounce. `viewDir`
-// points back along the ray to the probe.
+// The glow is the emissive factor times its map (`glowMap`, white for a surface with
+// none) plus the surface's own color times its intensity, the terms the lit fragment
+// adds. `viewDir` points back along the ray to the probe.
 static inline float3 ollin_gi_shade_hit(OllinRTSurface s, OllinGIGeo gm, float3 viewDir,
-                                        float3 field, float eps,
+                                        float3 glowMap, float3 field, float eps,
                                         constant OllinLighting &light,
                                         instance_acceleration_structure accel,
                                         texture2d<float> ltcAmp,
@@ -137,6 +138,12 @@ static inline float3 ollin_gi_shade_hit(OllinRTSurface s, OllinGIGeo gm, float3 
                                         texture2d<float> brdfLUT) {
     bool physical = gm.lobe.x > 2.5;
     float metal = physical ? s.metal : 0.0;
+    // A lobe narrower than an irradiance texel (an 8 by 8 octahedral tile spans the
+    // sphere, about a quarter radian a texel) is widened to it for the bounce, path
+    // regularization (Techniques list): a polished floor reflects a lamp in a spike the
+    // probes' rays all but miss, so the spike's light would never reach the field; the
+    // widened lobe carries the same energy in a spread the field can hold.
+    float rough = max(s.rough, OLLIN_GI_MIN_LOBE_ROUGHNESS);
     float NoV = max(dot(s.N, viewDir), 1e-4);
     float3 F0 = mix(float3(gm.lobe.y), s.albedo, metal);
     // The lobe's directional albedo at this view: the split-sum scale and bias with the
@@ -145,7 +152,7 @@ static inline float3 ollin_gi_shade_hit(OllinRTSurface s, OllinGIGeo gm, float3 
     float3 specAlbedo = float3(0.0);
     if (physical) {
         constexpr sampler lutSamp(filter::linear, address::clamp_to_edge);
-        float2 brdf = brdfLUT.sample(lutSamp, float2(NoV, s.rough)).rg;
+        float2 brdf = brdfLUT.sample(lutSamp, float2(NoV, rough)).rg;
         ess = saturate(brdf.x + brdf.y);
         float3 FssEss = F0 * brdf.x + brdf.y;
         float Ems = 1.0 - ess;
@@ -212,15 +219,41 @@ static inline float3 ollin_gi_shade_hit(OllinRTSurface s, OllinGIGeo gm, float3 
             float3 h = normalize(toLight + viewDir);
             float NoH = max(dot(s.N, h), 0.0);
             float VoH = max(dot(viewDir, h), 0.0);
-            float D = ollin_pbr_D_GGX(NoH, s.rough);
-            float Vis = ollin_pbr_V_SmithGGX(NoV, NoL, s.rough);
+            float D = ollin_pbr_D_GGX(NoH, rough);
+            float Vis = ollin_pbr_V_SmithGGX(NoV, NoL, rough);
             float3 F = ollin_pbr_F_Schlick(VoH, F0);
             term += D * Vis * F * ollin_pbr_energy_comp(F0, ess) * NoL;
         }
         direct += L.color.rgb * term * (atten * vis * within);
     }
-    float3 glow = gm.emissive.rgb + gm.emissive.w * s.albedo;
+    float3 glow = gm.emissive.rgb * glowMap + gm.emissive.w * s.albedo;
     return glow + direct + field * (body + specAlbedo);
+}
+
+// The emissive map at a probe ray's hit, which multiplies the glow's factor as the lit
+// fragment's map does: read at the hit's uv through the material's own address mode, at
+// the full-size level, since a ray carries no footprint to choose a smaller one from
+// (the traced base picture's rule). White behind a closed gate (`fin.coat.z`), which is
+// every surface without a map, so the factor stands alone.
+static inline float3 ollin_gi_glow_map(thread intersection_query<triangle_data, instancing> &q,
+                                       const device OllinMeshVertex *verts,
+                                       const device uint *geoOffsets,
+                                       OllinRTFinish fin) {
+    if (fin.coat.z < 0.5) { return float3(1.0); }
+    OllinRTHit hit = ollin_rt_hit_lookup(geoOffsets, q.get_committed_instance_id(),
+                                         q.get_committed_geometry_id());
+    uint base = hit.base + q.get_committed_primitive_id() * 3u;
+    float2 bc = q.get_committed_triangle_barycentric_coord();
+    float2 uv = (1.0 - bc.x - bc.y) * verts[base + 0u].uv + bc.x * verts[base + 1u].uv
+              + bc.y * verts[base + 2u].uv;
+    float wrap = fin.coat.z - 1.0;
+    constexpr sampler clampSamp(filter::linear, address::clamp_to_edge);
+    constexpr sampler tileSamp(filter::linear, address::repeat);
+    constexpr sampler mirrorSamp(filter::linear, address::mirrored_repeat);
+    float4 glow = wrap >= 1.5 ? fin.emissive.sample(mirrorSamp, uv, level(0.0))
+                : wrap >= 0.5 ? fin.emissive.sample(tileSamp, uv, level(0.0))
+                : fin.emissive.sample(clampSamp, uv, level(0.0));
+    return glow.rgb;
 }
 
 // The probe trace: one texel per (ray x, probe y). Shades a front-face hit through
@@ -310,7 +343,9 @@ fragment float4 ollin_gi_trace(PresentOut in [[stage_in]],
     if (params[1].x > 0.5) {
         field = ollin_gi_sample(s.P, s.N, -dir, light, giIrradiance, giDepth, giProbeOffsets);
     }
-    float3 radiance = ollin_gi_shade_hit(s, gm, -dir, field, eps, light, accel,
+    float3 radiance = ollin_gi_shade_hit(s, gm, -dir,
+                                         ollin_gi_glow_map(q, verts, geoOffsets, s.fin),
+                                         field, eps, light, accel,
                                          ltcAmp, iesProfiles, cookies, brdfLUT);
     return float4(radiance, min(dist, farCap));
 }
@@ -321,8 +356,7 @@ fragment float4 ollin_gi_trace(PresentOut in [[stage_in]],
 // unchanged float expressions when its control flow grows, and even the ulp that
 // shifts is a byte off every dithered frame, a measured drift), so the shipped
 // fragment stays verbatim and the cascade awareness lives here. Keep the two
-// bodies in step (the `ollin_gi_sample` / `ollin_gi_sample_volume` rule); the
-// deltas are exactly three: the guard walks the 512-probe atlas slots, positions
+// bodies in step; the deltas are exactly three: the guard walks the 512-probe atlas slots, positions
 // come from `ollin_gi_probe_position_cascaded`, and the bounce recursion samples
 // the cascaded field.
 fragment float4 ollin_gi_trace_cascaded(PresentOut in [[stage_in]],
@@ -394,7 +428,9 @@ fragment float4 ollin_gi_trace_cascaded(PresentOut in [[stage_in]],
         field = ollin_gi_sample_cascaded(s.P, s.N, -dir, light,
                                          giIrradiance, giDepth, giProbeOffsets);
     }
-    float3 radiance = ollin_gi_shade_hit(s, gm, -dir, field, eps, light, accel,
+    float3 radiance = ollin_gi_shade_hit(s, gm, -dir,
+                                         ollin_gi_glow_map(q, verts, geoOffsets, s.fin),
+                                         field, eps, light, accel,
                                          ltcAmp, iesProfiles, cookies, brdfLUT);
     return float4(radiance, min(dist, farCap));
 }
@@ -438,12 +474,17 @@ static inline int2 ollin_gi_gutter_source(int2 local, int interior) {
 // spacing, 0) for cascade c + 1, and per-probe validity is stored in the offsets texture's
 // w channel (texture 2): a probe whose plane just scrolled in reads 0 there, so its
 // stale texels blend exactly like a refit's (fresh at full weight, the reference's
-// clear-then-zero-hysteresis semantics in one step).
+// clear-then-zero-hysteresis semantics in one step). The alpha out is the probe's dimming
+// slope in the texel's direction (`ollin_gi_probe_slope`), a second read of the previous
+// field through the grid `light` describes (buffer 1) and the depth atlas (texture 3),
+// computed here once a probe and direction so no lit pixel pays for it.
 fragment float4 ollin_gi_blend_irradiance(PresentOut in [[stage_in]],
                                           constant float4 *params [[buffer(0)]],
+                                          constant OllinLighting &light [[buffer(1)]],
                                           texture2d<float> surfels [[texture(0)]],
                                           texture2d<float> previous [[texture(1)]],
-                                          texture2d<float> offsets [[texture(2)]]) {
+                                          texture2d<float> offsets [[texture(2)]],
+                                          texture2d<float> depth [[texture(3)]]) {
     const int interior = 8;
     const int tile = interior + 2;
     int2 px = int2(in.position.xy);
@@ -453,7 +494,7 @@ fragment float4 ollin_gi_blend_irradiance(PresentOut in [[stage_in]],
     int cascade = probe >> 9;
     int localCount = cascade == 0 ? int(params[0].w) : int(params[1 + cascade].x);
     if (cascade >= max(int(params[1].w), 1) || (probe & 511) >= localCount) {
-        return float4(0.0, 0.0, 0.0, 1.0);
+        return float4(0.0);
     }
     int2 local = ollin_gi_gutter_source(px - tileIdx * tile, interior);
     float3 texelDir = ollin_gi_oct_decode((float2(local) - 0.5) / float(interior));
@@ -474,7 +515,32 @@ fragment float4 ollin_gi_blend_irradiance(PresentOut in [[stage_in]],
     // dropped by the scroll pass for a plane that just entered the window).
     bool hasHistory = params[1].x > 0.5 && offsets.read(uint2(uint(probe), 0u)).w > 0.5;
     float3 old = hasHistory ? previous.read(uint2(px)).rgb : float3(0.0);
-    if (wsum < 1e-4) { return float4(old, 1.0); }
+    // The alpha is the probe's dimming slope in this texel's direction, read off the
+    // previous update's field (one update behind the light it rides with, which a field
+    // that settles over many updates never shows), and zero without one.
+    float slope = 0.0;
+    if (hasHistory) {
+        constexpr sampler depthSamp(filter::linear, address::clamp_to_edge);
+        float3 p = ollin_gi_probe_position_cascaded(probe, light)
+                 + offsets.read(uint2(uint(probe), 0u)).xyz;
+        float reach = depth.sample(depthSamp,
+                                   ollin_gi_atlas_uv(probe, texelDir, 16, depth)).r;
+        float la = dot(pow(old, 5.0), float3(0.2126, 0.7152, 0.0722));
+        if (cascade == 0) {
+            slope = ollin_gi_probe_slope(p, texelDir, la, reach, light.giOrigin.xyz,
+                                         light.giSpacing.xyz, int3(light.giCounts.xyz),
+                                         int3(0), 0, light.giCounts.w,
+                                         previous, depth, offsets);
+        } else {
+            constant OllinGICascade &cas = light.giCascades[cascade - 1];
+            slope = ollin_gi_probe_slope(p, texelDir, la, reach, cas.originBias.xyz,
+                                         float3(cas.spacingBase.x), int3(cas.countsPhase.xyz),
+                                         ollin_gi_unpack_phase(cas.countsPhase.w),
+                                         int(cas.spacingBase.y), cas.originBias.w,
+                                         previous, depth, offsets);
+        }
+    }
+    if (wsum < 1e-4) { return float4(old, slope); }
     float3 fresh = pow(sum / wsum, 1.0 / 5.0);
     float h = params[0].z * (hasHistory ? 1.0 : 0.0);
     if (params[1].z > 0.5 && hasHistory) {
@@ -486,7 +552,7 @@ fragment float4 ollin_gi_blend_irradiance(PresentOut in [[stage_in]],
             fresh = old + delta * 0.25;
         }
     }
-    return float4(mix(fresh, old, h), 1.0);
+    return float4(mix(fresh, old, h), slope);
 }
 
 // Fold the traced rays into the visibility atlas: mean distance and mean squared
