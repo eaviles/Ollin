@@ -3149,8 +3149,26 @@ struct Bokeh: Equatable, Sendable
   var minSize: Double { get set }
   var power: Double { get set }
   var strength: Double { get set }
+struct BoundsIndex: Sendable
+  func forEachIndex(containing: Vector2, _: (Int) -> Void)
+  func forEachIndex(overlapping: Rectangle, _: (Int) -> Void)
+  func indices(containing: Vector2) -> [Int]
+  func indices(overlapping: Rectangle) -> [Int]
+  func overlappingPairs() -> [BoundsIndex.Pair]
+  func overlappingPairs(with: BoundsIndex) -> [BoundsIndex.Pair]
+  init(_: [Rectangle])
+  mutating func refit(to: [Rectangle])
+  struct Pair: Equatable, Hashable, Sendable
+    init(_: Int, _: Int)
+    let first: Int
+    let second: Int
+  var bounds: Rectangle? { get }
+  var boxes: [Rectangle] { get }
+  var count: Int { get }
+  var isEmpty: Bool { get }
 struct Box3: Decodable, Encodable, Equatable, Hashable, Sendable
   func contains(_: Vector3) -> Bool
+  func intersects(_: Box3) -> Bool
   func padded(by: Double) -> Box3
   func union(_: Box3) -> Box3
   init(center: Vector3, size: Vector3)
@@ -5276,6 +5294,24 @@ struct Matcap
   static let toon: Matcap
   static let toonDark: Matcap
   static let wax: Matcap
+struct Matching: Equatable, Sendable
+  func partner(of: Int) -> Int?
+  func reversed() -> Matching
+  init(pairs: [Matching.Pair], totalCost: Double, firstCount: Int, secondCount: Int)
+  let firstCount: Int
+  let pairs: [Matching.Pair]
+  let secondCount: Int
+  let totalCost: Double
+  static func greedy(_: [A], _: [B], cost: (A, B) -> Double) -> Matching
+  static func greedy(_: [Vector2], _: [Vector2]) -> Matching
+  static func optimal(_: [A], _: [B], cost: (A, B) -> Double) -> Matching
+  static func optimal(_: [Vector2], _: [Vector2]) -> Matching
+  static func optimal(_: [Vector3], _: [Vector3]) -> Matching
+  static func optimal(costs: [[Double]]) -> Matching
+  struct Pair: Equatable, Hashable, Sendable
+    init(_: Int, _: Int)
+    let first: Int
+    let second: Int
 struct Material: ParamChoices, ParamValue, Equatable, Sendable
   enum Shading: Int, Equatable, Hashable, RawRepresentable, Sendable
     case gooch
@@ -6225,7 +6261,10 @@ struct Ray3: Equatable, Sendable
 struct Rectangle: ParamValue, PlaneCurve, Decodable, Encodable, Equatable, Hashable, Sendable
   func contains(_: Vector2) -> Bool
   func inset(by: Insets) -> Rectangle
+  func intersection(_: Rectangle) -> Rectangle?
+  func intersects(_: Rectangle) -> Bool
   func point(u: Double, v: Double) -> Vector2
+  func union(_: Rectangle) -> Rectangle
   func uv(of: Vector2) -> Vector2
   init(center: Vector2, width: Double, height: Double)
   init(corner: Vector2, width: Double, height: Double)
@@ -6723,6 +6762,27 @@ struct SoundEvent: Equatable, Sendable
   let confidence: Double
   let label: String
   let time: Double
+struct SpatialIndex3D: Sendable
+  @discardableResult mutating func insert(_: Vector3) -> Int
+  enum Kind: Equatable, Hashable, Sendable
+    case grid
+    case tree
+  func anyNeighbor(of: Vector3, within: Double) -> Int?
+  func forEachNeighbor(of: Int, within: Double, _: (Int, Double) -> Void)
+  func forEachNeighbor(of: Vector3, within: Double, _: (Int, Double) -> Void)
+  func hasNeighbor(of: Vector3, within: Double) -> Bool
+  func indices(in: Box3) -> [Int]
+  func kNearest(_: Int, to: Vector3) -> [Int]
+  func nearest(to: Vector3) -> Int?
+  func neighbors(of: Int, within: Double) -> [Int]
+  func neighbors(of: Vector3, within: Double) -> [Int]
+  init(_: [Vector3], kind: SpatialIndex3D.Kind = default, cellSize: Double? = default)
+  init(bounds: Box3, cellSize: Double, kind: SpatialIndex3D.Kind = default)
+  let kind: SpatialIndex3D.Kind
+  var cellSize: Double { get }
+  var count: Int { get }
+  var isEmpty: Bool { get }
+  var points: [Vector3] { get }
 struct SpatialIndex: Sendable
   @discardableResult mutating func insert(_: Vector2) -> Int
   enum Kind: Equatable, Hashable, Sendable

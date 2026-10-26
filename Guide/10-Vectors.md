@@ -352,12 +352,60 @@ A swarm is motion, so keep it as a few seconds of video rather than a still:
 swift run OllinLive MySketches/Swarm.swift --export-video swarm.mp4 --seconds 6
 ```
 
+## After the swarm: a cloud that gathers into a word
+
+The swarm chased one lure. Give every mover a place of its own instead, a point inside a word's letters, and the chase becomes a flight that ends somewhere. One question comes before any vector arithmetic, and it decides how the flight looks: which dot goes to which point? Send each dot to the nearest point still free and the first dots take the points the last ones needed, so the last ones fly across the whole canvas and their roads cut through everyone else's. The pairing that makes the travel, added up over every dot, the least it can be is a known problem, the assignment problem, and Ollin solves it exactly.
+
+### Who goes where: `Matching`
+
+`Matching.optimal` takes two sets and answers who goes with whom. With points, the cost of a pair is the distance between them, and the pairing it returns is the one whose costs add up to the smallest total any pairing can have:
+
+```swift
+var dots: [Vector2] = []
+var targets: [Vector2] = []
+var match = Matching.optimal([Vector2](), [Vector2]())
+
+override func setup() {
+    dots = (0 ..< 600).map { _ in randomVector(in: canvasRectangle) }
+    textSize(300)
+    let letters = textToShapes("GO", at: .zero)
+    let boxes = letters.compactMap(\.bounds)
+    let box = boxes.dropFirst().reduce(boxes[0]) { $0.union($1) }
+    let shift = center - box.center
+    targets = letters.flatMap { randomPoints(in: $0, count: 300).map { $0 + shift } }
+    match = Matching.optimal(dots, targets)
+}
+
+override func draw() {
+    background(.black)
+    fill(.white)
+    for pair in match.pairs {
+        dots[pair.first] = dots[pair.first].lerp(to: targets[pair.second], 0.04)
+        drawCircle(center: dots[pair.first], radius: 3)
+    }
+}
+```
+
+Each `pair` names an index into the first set and an index into the second, so `dots[pair.first]` eases toward `targets[pair.second]` with the `lerp(to:)` from earlier in this chapter. The matching is found once, in `setup()`, and `draw()` only moves along the roads it gave. Finding it costs about the cube of the count, so a thousand dots pair in a fraction of a second and it is not a thing to do every frame.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/10-Vectors/GatherIntoLetters-dark.jpg">
+  <img src="Images/10-Vectors/GatherIntoLetters.jpg" alt="Two panels with the same scatter of orange dots part of the way along thin roads to the points of the word GO. On the left the roads fan cleanly and none crosses another; on the right they tangle across each other. Captions give each pairing's total travel, the right one larger." width="880">
+</picture>
+
+The figure is the same dots and the same word paired two ways. On the left, the least total: no two roads cross, because if two did, swapping their destinations would shorten both, and the least total has no shortening left in it. On the right, `Matching.greedy`, each dot in turn grabbing the nearest free point, with the tangle and the longer total that come with it. The calm you see in the left panel is not a property of the motion. It is a property of the pairing, and it is the whole reason to ask the question before the flight.
+
+The cost does not have to be a distance. The general form takes any two arrays and a closure that prices one element against one of the other, so two palettes match color to color, or a set of pieces matches a set of holes by size. When the sets differ in size, every element of the smaller one is paired and `partner(of:)` answers nil for the rest, and a cost of infinity forbids a pair outright, so one line in the closure keeps two things apart. The worked example is [`Examples/Patterns/GatherIntoLetters`](../Examples/Patterns/GatherIntoLetters/Sketch.swift), a cloud flying from one word into the next with the greedy pairing a key away, and the reference is [Matching](../Docs/Drawing/Matching.md).
+
 ## Where this comes from
 
 Vector notation took shape in the 1880s, mostly at the hands of Josiah Willard Gibbs and Oliver Heaviside. Position, velocity, and acceleration as arrows is Newton's mechanics written in that notation. The steering recipe, desired minus actual and capped, is Craig Reynolds' *steering behaviors*, from his 1999 paper "Steering Behaviors for Autonomous Characters". That paper generalizes the rules of his 1987 boids, which [Chapter 12](12-FlocksAndSwarms.md) builds. The teaching order of this chapter, arrows first, then the trio, then steering, follows Daniel Shiffman's *The Nature of Code*. That book made this progression the usual way into the subject. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
+The pairing under *Who goes where* is the assignment problem. Harold Kuhn's Hungarian method of 1955 solved it first, and the shortest-augmenting-path form Ollin runs is Roy Jonker and Anton Volgenant's from 1987, in the shape David Crouse gave it for sets of different sizes.
+
 ## Go deeper
 
+- [Matching](../Docs/Drawing/Matching.md): `Matching.optimal` and `Matching.greedy`, a cost of your own, sets of different sizes, and the cost and memory of the exact answer ([`Examples/Patterns/GatherIntoLetters`](../Examples/Patterns/GatherIntoLetters/Sketch.swift)).
 - [Geometry](../Docs/Drawing/Geometry.md#vector): the full vector tour, with a picture per operation, including the ones this chapter saved for later: `dot` (same way or opposite?), `cross` (which side?), `rotated(by:around:)`, and `projected(onto:)`. `dot` and `projected(onto:)` are the shared `Vector` surface and read the same for `Vector3`; `cross` and `rotated` are `Vector2`'s own.
 - [Drawing](../Docs/Drawing/Drawing.md#arrow): `drawArrow` and its head measurements, beside the other primitives.
 - [Math helpers](../Docs/Helpers/Math.md): `map`, `dist`, and the scalar kit the vector calls sit beside.

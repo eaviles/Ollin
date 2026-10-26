@@ -22,6 +22,7 @@ Every answer is an **index into `points`**. Your sketch keeps its own payload in
 - [Asking about a point in the set](#self)
 - [Cell size](#cell-size)
 - [Reproducibility](#reproducibility)
+- [In space: `SpatialIndex3D`](#space)
 - [Reference](#reference)
 
 <a name="quick-start"></a>
@@ -137,6 +138,31 @@ A seeded sketch has to draw the same picture twice, so the index is built to be 
 - Equal distances answer with the **lower index**, so a tie never depends on which cell the search reached first.
 - Cells are cut on the lattice that runs through the origin, so a given cell size always divides the plane the same way. An index rebuilt after its points moved sorts them into the same cells. A walk over them then reports the same neighbors in the same order. Without that, the last digits of a sum over neighbors drift from frame to frame, and over enough steps that drift moves a simulation.
 
+<a name="space"></a>
+
+### In space: `SpatialIndex3D`
+
+`SpatialIndex3D` is the same index over `Vector3`. A point cloud, a scatter over a surface, a swarm in a volume: it answers the same questions with the same calls, a `Box3` standing in for the `Rectangle` of the region query.
+
+```swift
+var positions: [Vector3] = []
+
+override func draw() {
+    let index = SpatialIndex3D(positions)
+    let probe = Vector3(0, 0.5, 0)
+    stroke(.orange)
+    for j in index.neighbors(of: probe, within: 0.5) { drawLine(probe, positions[j]) }
+    stroke(.white)
+    if let i = index.nearest(to: probe) { drawLine(probe, positions[i]) }
+    let inside = index.indices(in: Box3(center: .zero, size: Vector3(1, 1, 1)))
+    drawCaption("\(inside.count) in the box")
+}
+```
+
+The two kinds are the same two. `.grid` cuts space into cubic cells, and with no `cellSize` it sizes them so a cell holds about one point, spacing a set that lies on a plane or along a line over the axes it does have extent on. `.tree` is the k-d tree, and it is the better choice more often in space than on the canvas: points scattered over a surface leave most of a grid's cells empty, and the tree cuts around them. The growing form takes a `Box3`.
+
+Every rule above holds: each array answer equals a plain loop's, index for index and in order, ties go to the lower index, the cells sit on the lattice through the origin, and `forEachNeighbor` hands over the squared distance.
+
 <a name="reference"></a>
 
 ### Reference
@@ -160,7 +186,15 @@ A seeded sketch has to draw the same picture twice, so the index is built to be 
 | `hasNeighbor(of: Vector2, within: Double) -> Bool` | Whether anything is within the radius. |
 | `indices(in: Rectangle) -> [Int]` | Every point inside the region, ascending by index, boundary included. |
 
-Runnable: [`Examples/Shapes/Neighbors`](../../Examples/Shapes/Neighbors/Sketch.swift).
+| In space | Meaning |
+| --- | --- |
+| `SpatialIndex3D(_ points: [Vector3], kind: Kind = .grid, cellSize: Double? = nil)` | An index over a finished set in space. |
+| `SpatialIndex3D(bounds: Box3, cellSize: Double, kind: Kind = .grid)` | An empty index ready to be grown. |
+| `insert(_:)`, `points`, `count`, `isEmpty`, `cellSize`, `kind` | As above, over `Vector3`. |
+| `nearest(to:)`, `kNearest(_:to:)`, `neighbors(of:within:)`, `forEachNeighbor(of:within:_:)`, `anyNeighbor(of:within:)`, `hasNeighbor(of:within:)` | The same queries, around a `Vector3` or a point of the set. |
+| `indices(in: Box3) -> [Int]` | Every point inside the box, ascending by index, faces included. |
+
+Runnable: [`Examples/Shapes/Neighbors`](../../Examples/Shapes/Neighbors/Sketch.swift) on the canvas; in space, [`Examples/3D/Geometry/SurfaceScatter`](../../Examples/3D/Geometry/SurfaceScatter/Sketch.swift) reads the closest pair of its scattered spots off a `SpatialIndex3D`.
 
 ---
 

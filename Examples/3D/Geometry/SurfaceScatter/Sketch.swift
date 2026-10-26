@@ -100,13 +100,16 @@ final class SurfaceScatter: Sketch {
     }
 
     /// The distance between the two nearest spots, which is the number that
-    /// separates an even covering from a clumped one.
+    /// separates an even covering from a clumped one. Every spot asks the
+    /// index for its nearest other spot, so the answer costs a walk of a few
+    /// cells per spot rather than a test of every pair.
     private func closestPair(_ points: [Vector3]) -> Double {
+        let index = SpatialIndex3D(points, kind: .tree)
         var best = Double.infinity
         for i in points.indices {
-            for j in (i + 1) ..< points.count {
-                let d = (points[i] - points[j]).lengthSquared
-                if d < best { best = d }
+            // Two nearest, because the nearest point to a point is itself.
+            if let other = index.kNearest(2, to: points[i]).first(where: { $0 != i }) {
+                best = min(best, points[i].distanceSquared(to: points[other]))
             }
         }
         return best.isFinite ? best.squareRoot() : 0

@@ -581,6 +581,7 @@ let package = Package(
         example("Patterns/Guilloche"),
         example("Patterns/Roses"),
         example("Patterns/Flocking"),
+        example("Patterns/GatherIntoLetters"),
         example("Patterns/ForceGraph"),
         example("Patterns/Venation"),
         example("Patterns/LineTextures"),

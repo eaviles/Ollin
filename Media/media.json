@@ -7937,6 +7937,28 @@
       "stillSmall": "examples/Patterns/FractalFlame/still-640.jpg?v=7ed09709",
       "width": 1080
     },
+    "Patterns/GatherIntoLetters": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 23.932,
+      "sound": false,
+      "source": "104dbac4a608273c",
+      "rendered": "2026-10-26",
+      "bytes": {
+        "loop": 11412279,
+        "loopSmall": 3092229,
+        "still": 481752,
+        "stillSmall": 140801
+      },
+      "loop": "examples/Patterns/GatherIntoLetters/loop.mp4?v=3a1785af",
+      "loopSmall": "examples/Patterns/GatherIntoLetters/loop-640.mp4?v=bd784384",
+      "still": "examples/Patterns/GatherIntoLetters/still.jpg?v=616df47d",
+      "stillSmall": "examples/Patterns/GatherIntoLetters/still-640.jpg?v=000b9cac",
+      "seed": 1
+    },
     "Patterns/GestureMarks": {
       "width": 1080,
       "height": 1080,

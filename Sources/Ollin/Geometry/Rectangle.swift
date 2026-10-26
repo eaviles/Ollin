@@ -94,6 +94,33 @@ public struct Rectangle: Equatable, Hashable, Sendable, Codable, PlaneCurve {
         point.y >= corner.y && point.y <= corner.y + height
     }
 
+    /// Whether this rectangle and `other` share any point. Two rectangles that
+    /// touch along an edge or at a corner count as overlapping, the way the
+    /// boundary counts as inside for `contains(_:)`.
+    public func intersects(_ other: Rectangle) -> Bool {
+        corner.x <= other.corner.x + other.width && other.corner.x <= corner.x + width &&
+        corner.y <= other.corner.y + other.height && other.corner.y <= corner.y + height
+    }
+
+    /// The rectangle the two have in common, or nil when they share no point.
+    /// Two rectangles that only touch share a rectangle of zero width or
+    /// height.
+    public func intersection(_ other: Rectangle) -> Rectangle? {
+        let x0 = Swift.max(x, other.x), y0 = Swift.max(y, other.y)
+        let x1 = Swift.min(x + width, other.x + other.width)
+        let y1 = Swift.min(y + height, other.y + other.height)
+        guard x0 <= x1, y0 <= y1 else { return nil }
+        return Rectangle(x: x0, y: y0, width: x1 - x0, height: y1 - y0)
+    }
+
+    /// The smallest rectangle holding both this one and `other`.
+    public func union(_ other: Rectangle) -> Rectangle {
+        let x0 = Swift.min(x, other.x), y0 = Swift.min(y, other.y)
+        let x1 = Swift.max(x + width, other.x + other.width)
+        let y1 = Swift.max(y + height, other.y + other.height)
+        return Rectangle(x: x0, y: y0, width: x1 - x0, height: y1 - y0)
+    }
+
     /// The point at normalized coordinates inside the rectangle: `u` runs 0…1
     /// left to right, `v` 0…1 top to bottom, so `point(u: 0.5, v: 0.5)` is the
     /// center. Values outside 0…1 land proportionally outside (not clamped).

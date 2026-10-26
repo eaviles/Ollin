@@ -114,6 +114,8 @@ The reference is the authority on what exists and how it behaves; the guide teac
 - [Shape morphing](Docs/Drawing/Morphing.md): `ShapeMorph` tweens one `Shape` into another, and every in-between is a real vector shape (contour pairing, corner-keeping correspondence, holes that grow in and out). `Shape` is…
 - [Voronoi & Delaunay](Docs/Drawing/Voronoi.md): tessellate points into vector geometry: Voronoi cells (the "crystallization" look) and the dual Delaunay triangle mesh, with Lloyd relaxation and weighted power diagrams
 - [Spatial index](Docs/Drawing/SpatialIndex.md): `SpatialIndex`, the structure that answers what is near a point without reading every point.
+- [Bounds index](Docs/Drawing/BoundsIndex.md): `BoundsIndex`, the same idea over rectangles: which of thousands of boxes hold a point, which overlap a rectangle, and every overlapping pair within a set or across two, for…
+- [Matching](Docs/Drawing/Matching.md): `Matching.optimal` pairs two sets at the least total cost (the assignment problem, solved exactly), so a cloud of dots gathers into a word's letters along roads that never cross…
 - [Fitting](Docs/Drawing/Fitting.md): `RadialBasis`, a smooth field of numbers, vectors, or colors fitted through values you know at a few scattered places (a field of vectors also works as a warp), with its exact…
 - [Truchet tiling](Docs/Drawing/Truchet.md): one tile per grid cell, turned to a random orientation, so identical parts join into flowing loops (`.arcs`) or a maze (`.diagonals`)
 - [Hitomezashi stitching](Docs/Drawing/Hitomezashi.md): one bit per grid line sets the phase of its dashes, and the shifted lines weave into staircases, loops, and a two-tone cloth
@@ -323,7 +325,7 @@ The reference is the authority on what exists and how it behaves; the guide teac
 
 ## The project
 
-- [Examples](Examples/README.md): 660 runnable sketches by category, each with its whole source
+- [Examples](Examples/README.md): 661 runnable sketches by category, each with its whole source
 - [Ollin architecture & internals](ARCHITECTURE.md)
 - [Ollin: the shipped-capability inventory](CAPABILITIES.md)
 - [Changelog](CHANGELOG.md)

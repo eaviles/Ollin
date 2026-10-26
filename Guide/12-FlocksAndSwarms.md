@@ -235,6 +235,35 @@ for i in points.indices {
 
 Passing the point's *index* rather than its position leaves the point itself out of its own answer. That is what this kind of loop always wants. The distance comes back squared, because the search skips the square root to stay cheap. Compare it with a squared radius and the question is the same. It answers two other questions too: `nearest(to:)` for the single closest point, and `indices(in:)` for everything inside a rectangle. Build it fresh each frame when the points move. That costs one pass over them, which is small next to the work it saves.
 
+### The same trick in space, and over boxes: `SpatialIndex3D` and `BoundsIndex`
+
+The cells do not care how many axes there are. `SpatialIndex3D` is the same index over `Vector3`, cubic cells in place of square ones, and it answers the same questions with the same calls for a point cloud, a scatter over a surface, or a flock in a volume, with a `Box3` where the region query took a `Rectangle`. Its second kind, the k-d tree, is the better choice more often in space: points spread over a surface leave most of a grid's cells empty, and the tree cuts around them.
+
+The other thing a sketch asks a crowd is not "who is near this point" but "which of these *boxes* hold it", or "which boxes overlap". A thousand shapes under the pointer, every piece in a packing, the pairs in a pile that could be touching: each is a loop over boxes hiding a second loop, and `BoundsIndex` takes the second one out. Hand it every shape's `bounds` once, then ask:
+
+```swift
+var shapes: [Shape] = []
+var index = BoundsIndex([])
+
+override func setup() {
+    shapes = (0 ..< 3000).map { _ in
+        Shape(contours: [Circle(center: randomVector(in: canvasRectangle), radius: random(4, 24)).contour])
+    }
+    index = BoundsIndex(shapes.compactMap(\.bounds))
+}
+
+override func draw() {
+    background(.black)
+    fill(.gray)
+    for shape in shapes { drawShape(shape) }
+    fill(.orange)
+    if let top = index.indices(containing: mouse).last { drawShape(shapes[top]) }
+    drawCaption("\(index.overlappingPairs().count) pairs of circles whose boxes touch")
+}
+```
+
+`indices(containing:)` answers ascending, and a sketch draws in index order, so the last index is the shape on top. `overlappingPairs()` is the list of what *could* be touching, found by walking the tree against itself, and it is the first half of every collision test: the exact outline test then runs on those pairs alone. When the boxes drift a little each frame, `refit(to:)` keeps the tree and recomputes its boxes in one pass. Both indexes keep the rule the flat one has: every answer is exactly what a loop over everything would find, touching counts, and ties go to the lower index. The references are [Spatial index](../Docs/Drawing/SpatialIndex.md) and [Bounds index](../Docs/Drawing/BoundsIndex.md).
+
 ## Putting it together: the living flock
 
 The sketch at the top of the chapter composes four of the steps. The assembled flock runs with its three rule weights on parameters, and the trails fade the way the wanderers' did. One `Vehicle` from the start of the chapter hunts through it with `pursue`. Make `MySketches/Flock.swift`:
@@ -466,7 +495,8 @@ Boids are Craig Reynolds' invention. The 1987 SIGGRAPH paper "Flocks, Herds, and
 - [Coupled oscillators](../Docs/Simulation/Oscillators.md): the `Kuramoto` reference, the order parameter, the critical coupling, the lag, and the ring.
 - Appendix B draws this chapter's math, one picture per idea: [Vectors, motion, and forces](B-JustEnoughMath.md#vectors-motion-and-forces), [Local rules, global structure](B-JustEnoughMath.md#local-rules-global-structure).
 - Worked examples: [`Examples/Motion/Steering`](../Examples/Motion/Steering/Sketch.swift) (the behavior shelf in one scene), [`Examples/Patterns/Flocking`](../Examples/Patterns/Flocking/Sketch.swift) (a flock without trails), [`Examples/Simulation/Kuramoto`](../Examples/Simulation/Kuramoto/Sketch.swift) (a meadow of fireflies falling into step), and [`Examples/Simulation/Crowd`](../Examples/Simulation/Crowd/Sketch.swift) (a door, a corridor, four crossing streams, and the ring).
-- [Spatial index](../Docs/Drawing/SpatialIndex.md): the neighbor search behind the flock, on its own, with the k-d tree for clumped sets and the growing form for sets you build point by point ([`Examples/Shapes/Neighbors`](../Examples/Shapes/Neighbors/Sketch.swift)).
+- [Spatial index](../Docs/Drawing/SpatialIndex.md): the neighbor search behind the flock, on its own, with the k-d tree for clumped sets and the growing form for sets you build point by point ([`Examples/Shapes/Neighbors`](../Examples/Shapes/Neighbors/Sketch.swift)), and `SpatialIndex3D` for points in space ([`Examples/3D/Geometry/SurfaceScatter`](../Examples/3D/Geometry/SurfaceScatter/Sketch.swift) reads its closest pair off one).
+- [Bounds index](../Docs/Drawing/BoundsIndex.md): `BoundsIndex` over rectangles, the pick under the pointer, every overlapping pair within a set or across two, and the refit for boxes that drift.
 - The Reas homages in [`Examples/Recreations/CaseyReas/`](../Examples/Recreations/CaseyReas/): two written instructions that give elements their behaviors and leave the picture to what the elements do to each other. `Touching` never draws its circles at all, only a line between two of them while they touch, kept forever. `Planes` is a flock made of lines that turn toward what they touch and wander on their own. It carries the lesson this chapter's rules are built on: a behavior that reads every neighbor has to *average* what they ask for. Adding them up makes a crowd pull harder the bigger it gets, and then the flocks gather into three knots and leave the surface bare.
 - [Accumulation](../Docs/Drawing/Accumulation.md): what `noClear()` does under the hood, ahead of [Chapter 19](19-LayersAndEffects.md).
 

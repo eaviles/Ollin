@@ -58,6 +58,15 @@ public struct Box3: Equatable, Hashable, Sendable, Codable {
         point.z >= min.z && point.z <= max.z
     }
 
+    /// Whether this box and `other` share any point. Two boxes that touch
+    /// along a face, an edge, or a corner count as overlapping, the way the
+    /// faces count as inside for `contains(_:)`.
+    public func intersects(_ other: Box3) -> Bool {
+        min.x <= other.max.x && other.min.x <= max.x &&
+        min.y <= other.max.y && other.min.y <= max.y &&
+        min.z <= other.max.z && other.min.z <= max.z
+    }
+
     /// The box grown by `amount` on every side, so its size grows by twice
     /// that on each axis. A negative amount shrinks it.
     public func padded(by amount: Double) -> Box3 {

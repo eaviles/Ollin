@@ -294,7 +294,7 @@ Box3(containing: [Vector3])                   // nil for no points
 ```
 
 - **Reading it:** `center`, `size` (width, height, and depth as one `Vector3`), `longestSide`, `isEmpty` (no volume), and `contains(_:)`, with the faces counting as inside.
-- **Deriving one:** `padded(by:)` grows the box by that much on every side, and a negative amount shrinks it. `union(_:)` is the smallest box holding both.
+- **Deriving one:** `padded(by:)` grows the box by that much on every side, and a negative amount shrinks it. `union(_:)` is the smallest box holding both, and `intersects(_:)` says whether two boxes share any point, faces that touch included.
 - **Where it appears:** `Mesh.bounds`, `Scene.bounds`, and the phone room's mesh and planes each report one, and it is `.zero` when there is nothing yet. `Metaballs.bounds` is optional, because a field with no balls has no reach. `isosurface(at:in:resolution:)` and `shadowArt(in:)` march over one.
 
 ```swift
@@ -325,6 +325,7 @@ Rectangle(covering size: Vector2, in container: Rectangle)
 - **Outline:** `contour`, the four corners as a closed `Contour`, top left first and clockwise, ready for a `Shape`, a boolean, or [`regions(enclosedBy:)`](#regions); `edges`, the four sides as `LineSegment`s in that order.
 - **Crossings:** [`crossings(with:)`](#plane-curves) against any other curve.
 - **Test:** `contains(_ point: Vector2)` (the boundary counts as inside).
+- **Overlap:** `intersects(_ other: Rectangle)`, whether two rectangles share any point (touching along an edge or at a corner counts); `intersection(_:)`, the rectangle they share, or nil; `union(_:)`, the smallest rectangle holding both. A [`BoundsIndex`](./BoundsIndex.md) asks these of thousands of rectangles at once.
 - **Inset:** `inset(by: Insets)`, the rectangle shrunk inward by a per-edge margin (see [`Grid`](#grid)).
 - **Normalized coordinates:** `point(u:v:)` is the point at 0…1 fractions of the rectangle, so `point(u: 0.5, v: 0.5)` is `center`, and values outside 0…1 land proportionally outside. Its inverse is `uv(of:)`. The canvas-wide sugar is [`uv(u, v)`](../Core/Canvas.md#uv), and the curved counterpart, a four-sided region whose sides are curves, is [`CoonsPatch`](#coons-patch).
 
