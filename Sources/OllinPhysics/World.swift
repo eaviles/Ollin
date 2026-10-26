@@ -178,6 +178,10 @@ public final class World {
     /// Solver sub-steps per rigid step. Four is Box2D's recommended default.
     private let rigidSubSteps: Int32 = 4
 
+    /// The rigid bodies as the soft side sees them through one step, built
+    /// when the world has both and emptied once their impulses are handed over.
+    var rigidProxies: [RigidProxy] = []
+
     public init() {}
 
     deinit {
@@ -300,11 +304,13 @@ public final class World {
         lastTimestep = h
 
         for body in softBodies { body.begin(step: h) }
+        beginRigidContacts(step: h)
         for _ in 0 ..< Swift.max(1, iterations) {
             for spring in springs { spring.solve() }
             for body in softBodies { body.solve() }
             if particlesCollide { solveCollisions() }
             if !softBodies.isEmpty { solveSoftContacts() }
+            if !rigidProxies.isEmpty { solveRigidContacts(step: h) }
             if bounds != nil {
                 for particle in particles {
                     if particle.softBody == nil {
@@ -315,6 +321,7 @@ public final class World {
                 }
             }
         }
+        endRigidContacts()
     }
 
     /// Time-corrected Verlet: `next = position + velocity·(dt/lastDt)·keep +
@@ -431,8 +438,24 @@ public final class World {
     /// wall on the next step (ARCHITECTURE.md, *The 2D soft body*).
     private func holdInsideBounds(_ p: Particle) {
         guard let bounds else { return }
-        p.position = Vector2(Swift.min(Swift.max(p.position.x, bounds.x), bounds.x + bounds.width),
-                             Swift.min(Swift.max(p.position.y, bounds.y), bounds.y + bounds.height))
+        let held = Vector2(Swift.min(Swift.max(p.position.x, bounds.x), bounds.x + bounds.width),
+                           Swift.min(Swift.max(p.position.y, bounds.y), bounds.y + bounds.height))
+        let push = held - p.position
+        p.position = held
+        // The wall rubs with the body's own friction: the step's slide along
+        // it comes out, up to the coefficient times the push the wall made.
+        guard let friction = p.softBody?.friction, friction > 0 else { return }
+        let moved = p.position - p.previous
+        var rubbed = p.position
+        if push.x != 0 {
+            let cap = friction * abs(push.x)
+            rubbed = rubbed.with(y: rubbed.y - Swift.max(-cap, Swift.min(cap, moved.y)))
+        }
+        if push.y != 0 {
+            let cap = friction * abs(push.y)
+            rubbed = rubbed.with(x: rubbed.x - Swift.max(-cap, Swift.min(cap, moved.x)))
+        }
+        p.position = rubbed
     }
 
     /// Keep a particle inside `bounds`, reflecting its implicit velocity by

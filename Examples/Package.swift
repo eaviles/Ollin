@@ -790,6 +790,9 @@ let package = Package(
         // colliding discs; Blobs are soft bodies made from outlines that squish.
         example("Physics/Packing", [.physics]),
         example("Physics/Blobs", [.physics]),
+        // A jelly cube on a plank whose friction is a parameter, rigid balls
+        // dropped onto a slab of jelly, and a rope that folds onto itself.
+        example("Physics/SoftBodiesMeet", [.physics]),
         example("Physics/RigidBodies", [.physics]),
         example("Physics/Burst", [.physics]),
         // All four joint kinds side by side, each a small rig you can poke.

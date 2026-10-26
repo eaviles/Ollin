@@ -6,7 +6,7 @@
 
 <img src="Images/11-ForcesAndPhysics/Wrecker.jpg" alt="A wrecking ball on a chain of gray links hung from a peg near the top, the chain running down and to the right into a tower of colored bricks: three bricks shattered into shards flying to the right, the top brick flung whole above them, and the five below leaning right as one column" width="560">
 
-Things in the world fall, drift, and swing because forces push on them, and a sketch can push its shapes the same way. This chapter writes gravity, wind, and drag by hand, then hands the job to a physics world of bodies, springs, hinges, and pieces that break. It ends on the wrecking ball above, and you get to knock the tower down yourself. After it, a limb reaches, gravity works at the scale of a galaxy, a graph lays itself out, and any outline becomes a squishy body.
+Things in the world fall, drift, and swing because forces push on them, and a sketch can push its shapes the same way. This chapter writes gravity, wind, and drag by hand, then hands the job to a physics world of bodies, springs, hinges, and pieces that break. It ends on the wrecking ball above, and you get to knock the tower down yourself. After it, a limb reaches, gravity works at the scale of a galaxy, a graph lays itself out, and any outline becomes a squishy body that rubs, carries a ball, and folds onto itself.
 
 ## A force is a push: adding forces and dividing by mass
 
@@ -735,13 +735,42 @@ world.advance(by: deltaTime)
 for body in world.softBodies { drawShape(body.shape) }
 ```
 
-Four settings decide the feel. `stiffness` is how far the outline stretches and `bend` how hard its corners fold. `pressure` is how firmly it holds its area, and by default it holds it whatever presses on it. `shapeMemory` is the one to try first. At `0` a disc dropped from its own height lands like a water balloon and squashes by a third. At the default `0.3` it squashes by a tenth and comes back, and at `1` it is rigid. A hole stays a hole, so the O keeps its counter. The bodies never get inside each other, but nothing rubs: they slide on the floor and on each other, and rigid bodies pass straight through them. The worked example is [`Examples/Physics/Blobs`](../Examples/Physics/Blobs/Sketch.swift), nine lumpy blobs sloshing under a gravity that swings from side to side.
+Four settings decide the feel. `stiffness` is how far the outline stretches and `bend` how hard its corners fold. `pressure` is how firmly it holds its area, and by default it holds it whatever presses on it. `shapeMemory` is the one to try first. At `0` a disc dropped from its own height lands like a water balloon and squashes by a third. At the default `0.3` it squashes by a tenth and comes back, and at `1` it is rigid. A hole stays a hole, so the O keeps its counter. The bodies never get inside each other, and the next entry says what else they meet. The worked example is [`Examples/Physics/Blobs`](../Examples/Physics/Blobs/Sketch.swift), nine lumpy blobs sloshing under a gravity that swings from side to side.
+
+### What a soft body meets: friction, rigid bodies, and its own side
+
+A soft body touches three kinds of thing, and each touch is a contact the solver settles in the same passes as the body's own rules. The first is anything it rubs on. Every soft body has a `friction`, read the way a rigid body's is, `0` slick to `1` grippy, and the floor, the walls, other soft bodies, and rigid bodies all rub by it. The rule is the one a block on a ramp follows: the body holds still while its friction is above the ramp's tangent, and slides once it is under. Two surfaces meet with the geometric mean of their frictions. A round body rolls instead, as a ball on a rough floor does, so give a jelly flat sides if it should stay put. The friction is the position-based kind from Miles Macklin, Matthias Müller, Nuttapong Chentanez and Tae-Yong Kim's 2014 paper "Unified Particle Physics for Real-Time Applications". After a contact pushes a particle out, the part of its motion that ran along the surface is taken back out, all of it up to the friction times the push, and that much of it past that.
+
+The second is a rigid `Body`. A particle that enters a rigid shape is moved out, and the body is handed the matching impulse where they met, the two sharing the correction by their masses, so a ball dents a jelly and settles into the dent, and a jelly rests on a tilted plank. The third is the body's own far side. A long thin outline folded back on itself passes through its own side unless it is told not to: `collidesWithItself: true` keeps every particle a `thickness` from its own far edges, so a rope stood on its end buckles into folds that lie on each other.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/11-ForcesAndPhysics/SoftBodiesMeet-dark.jpg">
+  <img src="Images/11-ForcesAndPhysics/SoftBodiesMeet.jpg" alt="A box with a tilted plank on the left carrying two jelly cubes, the orange one holding near the plank's high end and the gray one slid down against a stop; in the middle a slab of jelly on the floor with a white ball resting in the dent it made; on the right a gray rope that has buckled into folds lying on one another" width="680">
+</picture>
+
+In the figure the two cubes sit on one plank and differ only in their friction, `1` for the one that holds and `0` for the one that slid to the stop. The plank is a static rigid body turned by its angle, and the cube is built already turned so it lies flat:
+
+```swift
+let plank = world.addBody(.box(width: 330, height: 22), at: Vector2(240, 290),
+                          kind: .static, friction: 1)
+plank.angle = 0.38
+let seat = plank.position + Vector2(-120, -47).rotated(by: 0.38)
+let cube = Shape([Vector2(-36, -36), Vector2(36, -36), Vector2(36, 36), Vector2(-36, 36)]
+    .map { seat + $0.rotated(by: 0.38) })
+try world.addSoftBody(from: cube, friction: 1)
+
+let rope = Shape([Vector2(693, 80), Vector2(707, 80), Vector2(707, 460), Vector2(693, 460)])
+try world.addSoftBody(from: rope, stiffness: 0.95, bend: 0.08, shapeMemory: 0,
+                      collidesWithItself: true)
+```
+
+The worked example is [`Examples/Physics/SoftBodiesMeet`](../Examples/Physics/SoftBodiesMeet/Sketch.swift): the cube's friction is a parameter, so you can slide it under the plank's tangent and watch the cube let go, a click drops a rigid ball onto the slab, and a switch lets the rope pass through itself again.
 
 ## Where this comes from
 
 The force half of this chapter walks the path Daniel Shiffman's *The Nature of Code* made standard. Accumulate forces, divide by mass, and let Newton do the rest. The soft half rests on Verlet integration, named for Loup Verlet, who used it to simulate molecules in 1967. Thomas Jakobsen's 2001 talk "Advanced Character Physics" showed game programmers how positions plus relaxation could make cloth, ropes, and ragdolls simple and stable. Relaxation nudges each constraint toward satisfied, a few passes a frame. Ollin's particle solver follows that approach. The rigid half is Box2D by Erin Catto, released as open source in 2007 and still the reference 2D engine. Ollin bundles it and wraps it in the same `World`.
 
-The soft body from an outline holds its constraints in the compliant form of Macklin, Müller and Chentanez's XPBD (2016) and springs back by the shape matching of Müller, Heidelberger, Teschner and Gross (2005), both named in its section above. Breaking a shape into pieces is a Voronoi fracture. The diagram is named for Georgy Voronoy, who described it in 1908. Cutting a solid along one to break it is the usual approach when a toolkit shatters something. Ollin's own implementation cuts each cell against the shape, in 2D and in 3D alike. The assembled systems name their own sources above. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The soft body from an outline holds its constraints in the compliant form of Macklin, Müller and Chentanez's XPBD (2016) and springs back by the shape matching of Müller, Heidelberger, Teschner and Gross (2005), both named in its section above. Its friction is the position-based friction of Macklin, Müller, Chentanez and Kim's "Unified Particle Physics for Real-Time Applications" (2014), named in the entry after it. Breaking a shape into pieces is a Voronoi fracture. The diagram is named for Georgy Voronoy, who described it in 1908. Cutting a solid along one to break it is the usual approach when a toolkit shatters something. Ollin's own implementation cuts each cell against the shape, in 2D and in 3D alike. The assembled systems name their own sources above. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
@@ -750,7 +779,7 @@ The soft body from an outline holds its constraints in the compliant form of Mac
 - [Breaking things](../Docs/Generators/Fracture.md): the full `fractured` reference for shapes and for solids, what a piece is guaranteed to be, and how a piece becomes a rigid body in either dimension.
 - [Force-directed layout](../Docs/Generators/ForceLayout.md): the full `ForceLayout` reference, including edge weights, gravity for disconnected graphs, the cooling schedule's settings, and the pin-and-drag idiom.
 - Appendix B draws this chapter's math, one picture per idea: [Vectors, motion, and forces](B-JustEnoughMath.md#vectors-motion-and-forces).
-- Worked examples, in [`Examples/Physics/`](../Examples/Physics/): `Packing` (discs settling into a jar), `Blobs` (lumpy soft bodies, each one `addSoftBody` call, sloshing under a swinging gravity), `RigidBodies` (a pyramid to knock down into a rain of mixed shapes), `Chain` (hanging chains to grab and fling), `Joints` (the four joint kinds side by side, one rig each), `Forces` (a windy yard where every push, kick, and spin is a force call), and `Burst` (shapes thrown up the canvas that break at the top of the arc, the pieces falling on their own).
+- Worked examples, in [`Examples/Physics/`](../Examples/Physics/): `Packing` (discs settling into a jar), `Blobs` (lumpy soft bodies, each one `addSoftBody` call, sloshing under a swinging gravity), `SoftBodiesMeet` (a jelly cube on a plank whose friction is a parameter, rigid balls dropped onto a slab, and a rope that folds onto itself), `RigidBodies` (a pyramid to knock down into a rain of mixed shapes), `Chain` (hanging chains to grab and fling), `Joints` (the four joint kinds side by side, one rig each), `Forces` (a windy yard where every push, kick, and spin is a force call), and `Burst` (shapes thrown up the canvas that break at the top of the arc, the pieces falling on their own).
 - The assembled systems at work, in [`Examples/Motion/`](../Examples/Motion/): `InverseKinematics` (five tentacles under a swimming lure, both IK properties exposed as parameters) and `NBody` (two galaxies on a grazing orbit).
 - A look ahead: the flocking in [`Examples/Patterns/Flocking`](../Examples/Patterns/Flocking/Sketch.swift) is force accumulation too, with the forces coming from neighbors. [Chapter 12](12-FlocksAndSwarms.md) builds it.
 

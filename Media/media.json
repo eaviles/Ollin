@@ -8486,6 +8486,28 @@
       "stillSmall": "examples/Physics/RigidBodies/still-640.jpg?v=dada2a72",
       "seed": 1
     },
+    "Physics/SoftBodiesMeet": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 4.035,
+      "sound": false,
+      "source": "245e30d6a96ae2c2",
+      "rendered": "2026-10-25",
+      "bytes": {
+        "loop": 706245,
+        "loopSmall": 119645,
+        "still": 43354,
+        "stillSmall": 17392
+      },
+      "loop": "examples/Physics/SoftBodiesMeet/loop.mp4?v=4b4739b8",
+      "loopSmall": "examples/Physics/SoftBodiesMeet/loop-640.mp4?v=50f0bd97",
+      "still": "examples/Physics/SoftBodiesMeet/still.jpg?v=d6741373",
+      "stillSmall": "examples/Physics/SoftBodiesMeet/still-640.jpg?v=249a2b82",
+      "seed": 1
+    },
     "Randomness/Gaussian": {
       "width": 1080,
       "height": 1080,

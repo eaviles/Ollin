@@ -77,6 +77,37 @@ public final class SoftBody {
         }
     }
 
+    /// How much the outline grips what it touches, `0` slick … `1` grippy,
+    /// read as a rigid `Body`'s is. Two soft bodies rub with the geometric
+    /// mean of theirs, a soft body and a rigid one likewise, and the walls of
+    /// `bounds` and a loose particle meet a soft body with its own. On a slope
+    /// a body holds still while the slope's tangent is under its friction and
+    /// slides once it is over, as a block does.
+    public var friction: Double {
+        didSet {
+            guard world.holds(friction, "softBody.friction") else { friction = oldValue; return }
+            friction = Swift.max(0, friction)
+        }
+    }
+
+    /// Whether the outline is kept out of itself: every particle held at least
+    /// `thickness` from every edge of its own ring but the few beside it, so a
+    /// long thin outline folded back on itself stops a thickness short of its
+    /// own far side instead of passing through it. Off by default: a blob or a
+    /// letter never folds onto itself, and the pass costs about as much as the
+    /// body has particles on every iteration.
+    public var collidesWithItself: Bool
+
+    /// How far the outline keeps from its own far side when it
+    /// `collidesWithItself`, in points: half the spacing it was made with
+    /// unless it was given one. A corner sharper than that is held open by it.
+    public var thickness: Double {
+        didSet {
+            guard world.holds(thickness, "softBody.thickness") else { thickness = oldValue; return }
+            thickness = Swift.max(0, thickness)
+        }
+    }
+
     /// Free-form tag so a sketch can hang its own data off a body (its color, a
     /// name) without a parallel array.
     public var userData: Any?
@@ -107,6 +138,11 @@ public final class SoftBody {
 
     /// The rest length of the edge from each particle to the next.
     let restLengths: [Double]
+
+    /// Each ring's shortest rest edge: what decides how many neighbors on
+    /// either side a particle's own ring skips when the outline is kept out
+    /// of itself.
+    let ringMinRest: [Double]
 
     /// The links that hold each corner's turn: from a particle to the one two
     /// and three along its ring, with their rest lengths.
@@ -146,7 +182,7 @@ public final class SoftBody {
 
     init(world: World, rings ringPoints: [[Vector2]], islands: [[Int]], mass: Double,
          stiffness: Double, bend: Double, pressure: Double, shapeMemory: Double,
-         pull: Double) {
+         friction: Double, collidesWithItself: Bool, thickness: Double, pull: Double) {
         self.world = world
         self.pull = pull
         self.mass = mass
@@ -154,6 +190,9 @@ public final class SoftBody {
         self.bend = bend
         self.pressure = pressure
         self.shapeMemory = shapeMemory
+        self.friction = friction
+        self.collidesWithItself = collidesWithItself
+        self.thickness = thickness
         self.islands = islands
 
         let count = ringPoints.reduce(0) { $0 + $1.count }
@@ -177,7 +216,9 @@ public final class SoftBody {
         self.previous = previous
 
         let rest = particles.map(\.position)
-        restLengths = rest.indices.map { (rest[next[$0]] - rest[$0]).length }
+        let lengths = rest.indices.map { (rest[next[$0]] - rest[$0]).length }
+        restLengths = lengths
+        ringMinRest = rings.map { ring in ring.reduce(Double.infinity) { Swift.min($0, lengths[$1]) } }
         // Two and three along the ring: two neighboring triangles of links
         // fix a corner's turn and keep it from folding through to its
         // mirror image. A ring too short for a step has no link for it.
@@ -523,11 +564,87 @@ public final class SoftBody {
         guard inside || radius > 0 else { return }
         let near = nearestEdge(to: p, on: islands[k])
         guard near.edge >= 0, inside || near.distance < radius else { return }
+        // Two outlines rub with the geometric mean of their frictions, the
+        // rigid side's rule; a loose particle has none of its own and meets
+        // the body with the body's.
+        let rub = particle.softBody.map { (friction * $0.friction).squareRoot() } ?? friction
         if inside {
-            separate(particle, toward: near, depth: near.distance + radius)
+            separate(particle, toward: near, depth: near.distance + radius, friction: rub)
         } else {
-            separate(particle, awayFrom: near, depth: radius - near.distance)
+            separate(particle, awayFrom: near, depth: radius - near.distance, friction: rub)
         }
+    }
+
+    /// Keep the outline out of itself: every particle of a ring at least
+    /// `thickness` from every edge of the same ring but the few on either side
+    /// of it, so a long outline folded back stops a thickness short of its own
+    /// far side. The edges a particle can reach are found through a grid over
+    /// the ring, a cell as wide as its longest edge plus the thickness, so an
+    /// edge within reach always starts in the cell under the particle or one
+    /// beside it, and the pass costs about as much as the ring has particles.
+    func keepOutOfItself() {
+        guard thickness > 0 else { return }
+        for r in rings.indices {
+            let ring = rings[r]
+            let count = ring.count
+            // The edges up to `skip` particles away in ring order lie closer
+            // than the thickness by construction (along a straight run the
+            // edge k away starts k spacings off), so they are not contacts.
+            let skip = Int((thickness / Swift.max(ringMinRest[r], 1e-9)).rounded(.up)) + 1
+            guard count > 2 * skip + 2 else { continue }
+            var longest = 0.0
+            for i in ring {
+                longest = Swift.max(longest, (particles[next[i]].position - particles[i].position).length)
+            }
+            let cell = longest + thickness
+            guard cell > 1e-9 else { continue }
+            var grid: [Cell: [Int]] = [:]
+            for i in ring { grid[Cell(particles[i].position, size: cell), default: []].append(i) }
+            // Walked in ring order with a fixed cell scan, so a seeded run
+            // folds the same way every time.
+            for i in ring {
+                let p = particles[i].position
+                let home = Cell(p, size: cell)
+                for dx in -1 ... 1 {
+                    for dy in -1 ... 1 {
+                        guard let starts = grid[Cell(x: home.x + dx, y: home.y + dy)] else { continue }
+                        for j in starts {
+                            let k = next[j]
+                            guard SoftBody.apart(i, j, in: count) > skip,
+                                  SoftBody.apart(i, k, in: count) > skip else { continue }
+                            let a = particles[j].position, b = particles[k].position
+                            let ab = b - a
+                            let lengthSquared = ab.lengthSquared
+                            let t = lengthSquared > 1e-18
+                                ? Swift.min(1, Swift.max(0, (p - a).dot(ab) / lengthSquared)) : 0
+                            let closest = a + ab * t
+                            let gap = p - closest
+                            let distance = gap.length
+                            guard distance < thickness else { continue }
+                            let near = (edge: j, t: t, point: closest, distance: distance)
+                            if distance > 1e-9 {
+                                apply(particles[i], along: gap / distance, depth: thickness - distance,
+                                      near: near, friction: friction)
+                            } else {
+                                // On the edge itself: out through it, the way
+                                // the ring winds.
+                                guard lengthSquared > 1e-18 else { continue }
+                                apply(particles[i], along: Vector2(ab.y, -ab.x).normalized,
+                                      depth: thickness, near: near, friction: friction)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// How many particles apart two indices of one ring are, the short way
+    /// round.
+    @inline(__always)
+    static func apart(_ i: Int, _ j: Int, in count: Int) -> Int {
+        let d = abs(i - j)
+        return Swift.min(d, count - d)
     }
 
     /// Keep each island's rings on the material's side of one another: a hole
@@ -546,7 +663,7 @@ public final class SoftBody {
                         guard other == outer ? !inside : inside else { continue }
                         let near = nearestEdge(to: p, on: [other])
                         guard near.edge >= 0 else { continue }
-                        separate(particles[i], toward: near, depth: near.distance)
+                        separate(particles[i], toward: near, depth: near.distance, friction: friction)
                     }
                 }
             }
@@ -557,7 +674,7 @@ public final class SoftBody {
     /// their share the other way.
     private func separate(_ particle: Particle,
                           toward near: (edge: Int, t: Double, point: Vector2, distance: Double),
-                          depth: Double) {
+                          depth: Double, friction: Double) {
         let p = particle.position
         var normal: Vector2
         if near.distance > 1e-9 {
@@ -572,23 +689,25 @@ public final class SoftBody {
             guard edge.lengthSquared > 1e-18 else { return }
             normal = Vector2(edge.y, -edge.x).normalized
         }
-        apply(particle, along: normal, depth: depth, near: near)
+        apply(particle, along: normal, depth: depth, near: near, friction: friction)
     }
 
     /// Move `particle` away from `near` by `depth`, for a particle with a
     /// radius that sits outside the outline but too close to it.
     private func separate(_ particle: Particle,
                           awayFrom near: (edge: Int, t: Double, point: Vector2, distance: Double),
-                          depth: Double) {
+                          depth: Double, friction: Double) {
         guard near.distance > 1e-9 else { return }
         apply(particle, along: (particle.position - near.point) / near.distance,
-              depth: depth, near: near)
+              depth: depth, near: near, friction: friction)
     }
 
     /// The contact's correction: `particle` along `normal`, the edge's ends
-    /// against it, by inverse mass and by how near each end the contact is.
+    /// against it, by inverse mass and by how near each end the contact is;
+    /// then the rub along the edge, with `friction` the pair's coefficient.
     private func apply(_ particle: Particle, along normal: Vector2, depth: Double,
-                       near: (edge: Int, t: Double, point: Vector2, distance: Double)) {
+                       near: (edge: Int, t: Double, point: Vector2, distance: Double),
+                       friction: Double) {
         let a = near.edge, b = next[near.edge], t = near.t
         let wp = particle.isPinned ? 0 : particle.inverseMass
         let wa = weight(a), wb = weight(b)
@@ -598,6 +717,24 @@ public final class SoftBody {
         particle.position += normal * (lambda * wp)
         particles[a].position -= normal * (lambda * wa * (1 - t))
         particles[b].position -= normal * (lambda * wb * t)
+
+        // Position-based friction (Macklin, Müller, Chentanez and Kim 2014):
+        // after the normal correction, the part of the step's relative motion
+        // that runs along the surface comes out, all of it while it is under
+        // the coefficient times the depth just corrected (the contact holds,
+        // static friction) and that much of it past that (it slides, kinetic).
+        guard friction > 0, depth > 0 else { return }
+        let pa = particles[a], pb = particles[b]
+        let relative = (particle.position - particle.previous)
+            - ((pa.position - pa.previous) * (1 - t) + (pb.position - pb.previous) * t)
+        let along = relative - normal * relative.dot(normal)
+        let slide = along.length
+        guard slide > 1e-12 else { return }
+        let rub = Swift.min(slide, friction * depth) / denominator
+        let tangent = along / slide
+        particle.position -= tangent * (rub * wp)
+        particles[a].position += tangent * (rub * wa * (1 - t))
+        particles[b].position += tangent * (rub * wb * t)
     }
 
     // MARK: Settings as numbers
@@ -645,8 +782,11 @@ extension World {
     /// Each outline is resampled to particles about `spacing` apart, keeping
     /// its corners (any turn sharper than 30 degrees) as particles of their
     /// own, so a star keeps its points. Particles with a positive radius, with
-    /// `particlesCollide` on, are pushed out of every soft body too. Rigid
-    /// `Body`s pass through soft ones, and a body never collides with itself.
+    /// `particlesCollide` on, are pushed out of every soft body too. A rigid
+    /// `Body` and a soft one push each other, so a ball lands on a jelly and
+    /// a jelly rests on a tilted plank, and everything a soft body touches
+    /// rubs by `friction`. A body is kept out of itself only when
+    /// `collidesWithItself` is on.
     ///
     /// - Parameters:
     ///   - shape: the outline, where the body starts.
@@ -664,19 +804,29 @@ extension World {
     ///     exactly and `0` lets it go.
     ///   - shapeMemory: how strongly the body is pulled back toward its own
     ///     shape, `0` not at all … `1` rigid.
+    ///   - friction: how much the outline grips what it touches, `0` slick …
+    ///     `1` grippy, the rigid body's reading and its default.
+    ///   - collidesWithItself: whether the outline is kept out of itself, for
+    ///     a rope or any long thin outline that can fold back on itself.
+    ///   - thickness: how far the outline keeps from its own far side when it
+    ///     `collidesWithItself`, in points; half the `spacing` by default.
     /// - Throws: `PhysicsError.unbuildable` for a shape with no closed outline
     ///   that encloses any area, or a setting that is not a number.
     @discardableResult
     public func addSoftBody(from shape: Shape, mass: Double = 1, spacing: Double = 8,
                             stiffness: Double = 0.8, bend: Double = 0.2,
                             pressure: Double = .infinity,
-                            shapeMemory: Double = 0.3) throws -> SoftBody {
+                            shapeMemory: Double = 0.3, friction: Double = 0.3,
+                            collidesWithItself: Bool = false,
+                            thickness: Double? = nil) throws -> SoftBody {
         try check(mass, "addSoftBody's mass")
         try check(spacing, "addSoftBody's spacing")
         try check(stiffness, "addSoftBody's stiffness")
         try check(bend, "addSoftBody's bend")
         try check(pressure, "addSoftBody's pressure", orUnbounded: true)
         try check(shapeMemory, "addSoftBody's shapeMemory")
+        try check(friction, "addSoftBody's friction")
+        try check(thickness, "addSoftBody's thickness")
         for contour in shape.contours {
             for point in contour.points {
                 if let complaint = SolverNumber.complaint(point) {
@@ -721,7 +871,9 @@ extension World {
         let pull = gravity.length > 1e-6 ? gravity.length : 980
         let body = SoftBody(world: self, rings: rings, islands: islands, mass: mass,
                             stiffness: stiffness, bend: bend, pressure: Swift.max(0, pressure),
-                            shapeMemory: shapeMemory, pull: pull)
+                            shapeMemory: shapeMemory, friction: Swift.max(0, friction),
+                            collidesWithItself: collidesWithItself,
+                            thickness: Swift.max(0, thickness ?? spacing / 2), pull: pull)
         register(body)
         return body
     }
@@ -800,7 +952,10 @@ extension World {
                 }
             }
         }
-        for body in softBodies { body.keepRingsApart() }
+        for body in softBodies {
+            body.keepRingsApart()
+            if body.collidesWithItself { body.keepOutOfItself() }
+        }
         guard particlesCollide else { return }
         for particle in particles where particle.radius > 0 && particle.softBody == nil {
             for (body, k) in pieces
@@ -820,6 +975,23 @@ extension SoftBody {
         func holds(_ point: Vector2, margin: Double) -> Bool {
             point.x >= minX - margin && point.x <= maxX + margin
                 && point.y >= minY - margin && point.y <= maxY + margin
+        }
+
+        /// Whether the two boxes share any point.
+        func overlaps(_ other: Box) -> Bool {
+            minX <= other.maxX && other.minX <= maxX && minY <= other.maxY && other.minY <= maxY
+        }
+    }
+
+    /// A cell of the grid a ring is bucketed into to find its own edges.
+    struct Cell: Hashable {
+        let x: Int, y: Int
+
+        init(x: Int, y: Int) { self.x = x; self.y = y }
+
+        init(_ point: Vector2, size: Double) {
+            x = Int((point.x / size).rounded(.down))
+            y = Int((point.y / size).rounded(.down))
         }
     }
 }

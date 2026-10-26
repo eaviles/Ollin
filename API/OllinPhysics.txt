@@ -253,11 +253,14 @@ final class SoftBody
   var area: Double { get }
   var bend: Double { get set }
   var center: Vector2 { get }
+  var collidesWithItself: Bool { get set }
+  var friction: Double { get set }
   var pressure: Double { get set }
   var restArea: Double { get set }
   var shape: Shape { get }
   var shapeMemory: Double { get set }
   var stiffness: Double { get set }
+  var thickness: Double { get set }
   var userData: Any? { get set }
   var velocity: Vector2 { get }
 final class Spring
@@ -351,7 +354,7 @@ final class Wheel3D
 final class World
   @discardableResult func addBody(_: Collider, at: Vector2, kind: Body.Kind = default, density: Double = default, friction: Double = default, restitution: Double? = default) -> Body
   @discardableResult func addParticle(at: Vector2, radius: Double = default, mass: Double = default) -> Particle
-  @discardableResult func addSoftBody(from: Shape, mass: Double = default, spacing: Double = default, stiffness: Double = default, bend: Double = default, pressure: Double = default, shapeMemory: Double = default) throws -> SoftBody
+  @discardableResult func addSoftBody(from: Shape, mass: Double = default, spacing: Double = default, stiffness: Double = default, bend: Double = default, pressure: Double = default, shapeMemory: Double = default, friction: Double = default, collidesWithItself: Bool = default, thickness: Double? = default) throws -> SoftBody
   @discardableResult func connect(_: Body, _: Body, _: JointKind) -> Joint
   @discardableResult func connect(_: Particle, _: Particle, length: Double? = default, stiffness: Double = default) -> Spring
   @discardableResult func grab(_: Body, at: Vector2) -> Joint

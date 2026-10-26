@@ -328,7 +328,7 @@ Each step first integrates every particle forward. The integration is time-corre
 
 ### Soft bodies
 
-A soft body is a squishy thing made from an outline. Hand `addSoftBody(from:)` any closed `Shape`, such as a lumpy circle, a star, or a letter, and it puts a ring of particles round the outline. The ring keeps the area it was made with, its corners keep their angle, and it springs back toward its own shape. Other soft bodies cannot get inside it, so a pile of them squashes together instead of overlapping.
+A soft body is a squishy thing made from an outline. Hand `addSoftBody(from:)` any closed `Shape`, such as a lumpy circle, a star, or a letter, and it puts a ring of particles round the outline. The ring keeps the area it was made with, its corners keep their angle, and it springs back toward its own shape. Other soft bodies cannot get inside it, so a pile of them squashes together instead of overlapping. A rigid `Body` and a soft one push each other, so a ball lands on a jelly and a jelly rests on a tilted plank, and everything a soft body touches rubs by its `friction`.
 
 ```swift
 let disc = Circle(center: Vector2(540, 300), radius: 120)
@@ -353,7 +353,9 @@ The particles go where the shape's points are, so build the shape where the body
 @discardableResult
 func addSoftBody(from shape: Shape, mass: Double = 1, spacing: Double = 8,
                  stiffness: Double = 0.8, bend: Double = 0.2,
-                 pressure: Double = .infinity, shapeMemory: Double = 0.3) throws -> SoftBody
+                 pressure: Double = .infinity, shapeMemory: Double = 0.3,
+                 friction: Double = 0.3, collidesWithItself: Bool = false,
+                 thickness: Double? = nil) throws -> SoftBody
 func remove(_ body: SoftBody)
 var softBodies: [SoftBody] { get }
 ```
@@ -363,6 +365,9 @@ var softBodies: [SoftBody] { get }
 - **`bend`** is how hard each corner resists folding. Each particle is linked to the particles two and three places along the ring, so a corner keeps its angle. A long straight side can still bow, and `shapeMemory` is what holds it.
 - **`pressure`** is how firmly the body holds its area, in gravities. The default, `.infinity`, holds the area whatever presses on it. A finite value lets the body's own weight press out about `1 / pressure` of its area when nothing else holds the shape: on a slack outline (`stiffness: 0.5`, `shapeMemory: 0`), `50` gives up 2%, `20` about 5%, and `5` about a seventh. A stiff outline with shape memory keeps its area by keeping its shape, so there `pressure` changes little. At `0` nothing holds the area, and a slack outline crumples like a loose loop of string.
 - **`shapeMemory`** is how strongly the body springs back toward its own shape, turned and moved to where the body is now (shape matching). Dropped from its own height onto the floor, a disc squashes by a third of its height at `0`, by a tenth at the default `0.3`, and by under 4% at `0.9`. At `1` the body is rigid.
+- **`friction`** is how much the outline grips what it touches, `0` slick to `1` grippy, read as a rigid body's `friction` is and with the same default. It reaches every contact the body makes: the walls, other soft bodies, rigid bodies, loose particles, and its own far side. See *What touches it* below for the rule.
+- **`collidesWithItself`** keeps the outline out of itself, for a rope or any long thin outline that can fold back on its own side. Off by default: a blob or a letter never folds onto itself, and the pass costs about as much as the body has particles on every iteration.
+- **`thickness`** is how far the outline keeps from its own far side when it `collidesWithItself`, in points: half the `spacing` unless given. A corner sharper than that is held open by it.
 
 Each setting is a compliance, an amount of give for a given load, rather than a share of the error fixed on each pass. That is why a setting means the same body at any frame rate and any `iterations`: a soft disc sagging under its own weight settles to the same height within 2% at 30, 60, 120, and 240 frames a second. More `iterations` or `substeps` still bring a stiff body closer to what its settings ask for.
 
@@ -390,10 +395,13 @@ var center: Vector2 { get }           // the average of its particles
 var velocity: Vector2 { get }         // their average velocity, per step
 let particles: [Particle]             // every particle, ring after ring
 let mass: Double
-var stiffness: Double                 // the four settings, which can change while it runs
+var stiffness: Double                 // the settings, which can change while it runs
 var bend: Double
 var pressure: Double
 var shapeMemory: Double
+var friction: Double
+var collidesWithItself: Bool
+var thickness: Double
 var userData: Any?
 
 func contains(_ point: Vector2) -> Bool
@@ -409,14 +417,16 @@ func move(by offset: Vector2)
 **What touches it**
 
 - Other soft bodies, and the separate pieces of one body, never get inside each other. Three bodies piled up sit within a pixel of each other's outlines through the whole fall.
+- Rigid `Body`s and soft bodies push each other. A particle that enters a rigid shape is moved out, and the body is handed the matching impulse where they met, the two sharing the correction by their masses at that point; a crate's corner is tested the other way round, against the soft outline, so it cannot sink between two of the outline's particles. A ball dropped on a slab of jelly dents it, bounces once, and settles in the dent; a jelly rests on a tilted plank; a kinematic belt carries a jelly along. Momentum crosses the contact whole: a soft disc hitting a free ball keeps the pair's total within 2%. The soft passes see the rigid body where it will be at the end of the step, and the impulse lands before the rigid side steps, so the answer is in the same frame.
+- Everything a soft body touches rubs by `friction`: the walls, other soft bodies, rigid bodies, loose particles, and its own far side. Two surfaces meet with the geometric mean of their frictions, the rigid side's rule; the walls and a loose particle meet a soft body with its own. The rule is Coulomb's. On a slope a body holds still while its friction is above the slope's tangent and slides once it is under, and a square jelly pushed across the floor at friction `1` stops in about its speed squared over twice gravity. A round body on a rough floor rolls rather than sliding, as a ball does, so a blob is slowed less than a cube. The friction is position-based (Macklin, Müller, Chentanez and Kim 2014): after a contact pushes a particle out, the part of its motion over the step that ran along the surface is taken back out, all of it while it is under the friction times the push, and that much of it past that.
 - With `particlesCollide` on, every loose particle with a positive radius is pushed out of every soft body by its radius. A soft body's own particles have no radius and never collide as disks.
 - The walls of `bounds` hold a soft body's particles by position, and the body bounces by its own give. A weightless blob gliding into a wall comes off at about half its speed at the defaults, whatever `restitution` says.
-- Rigid `Body`s pass through soft bodies, and a soft body does not collide with itself. Nothing rubs: there is no friction between soft bodies or against the walls, so a ball dropped on a blob rolls off.
+- A soft body is kept out of itself only when `collidesWithItself` is on: every particle stays at least `thickness` from every edge of its own ring but the few beside it, so a rope stood on its end buckles into folds that lie on each other instead of passing through. A body that cannot fold, a disc or a letter, steps exactly as it does with the pass off. A fold that closes faster than the thickness in one step can still pass through; `substeps` is the answer for a rope thrown hard.
 
-Contacts are the costly part. Each pair of bodies whose boxes overlap checks every particle of one against the other's outline. Nine blobs of about sixty particles each, piled together, step in about 4 ms a frame in a release build.
+Contacts are the costly part. Each pair of bodies whose boxes overlap checks every particle of one against the other's outline, and friction adds a few operations to each contact. Rigid contacts cost a particle of a soft body whose box overlaps a rigid body's one shape test a pass, and the pass that keeps a body out of itself costs about as much as the body has particles, through a grid over its ring. Nine blobs of about sixty particles each, piled together, step in about 4 ms a frame in a release build.
 
 **By hand**
 
 `addSoftBody` is built from particles and position constraints, the same parts as the rest of the world. For a structure no outline describes, link the particles yourself with `connect`. A ring of particles with springs round the rim and slack spokes to a hub is a blob, and giving the rim particles a radius with `particlesCollide` on keeps two such blobs apart.
 
-See the `Blobs` example for a complete sketch, with nine lumpy blobs sloshing under a gravity that swings from side to side.
+See the `Blobs` example for a complete sketch, with nine lumpy blobs sloshing under a gravity that swings from side to side, and `SoftBodiesMeet` for a jelly cube on a plank whose friction is a parameter, rigid balls dropped onto a slab, and a rope that folds onto itself.
