@@ -34,6 +34,7 @@ override func draw() {
 - [renderTarget](#rendertarget) - make an off-screen layer
 - [withTarget](#withtarget) - draw into a layer
 - [RenderTarget.image](#image) - composite a layer back
+- [snapshot](#snapshot) - a layer's pixels on the CPU, a frame late
 - [filtered](#filtered) - run a filter over a layer
 - [Filter](#filter) - the filter catalog (blur, bloom, color, stylize, [tape and lens](#tape-and-lens), [wipes and copies](#wipes-and-copies))
 - [combined / Combine](#combined) - combine two layers (mask, displace, disperse, mix, wipe, seamless clone, defocus, ambient occlusion, screen-space reflections)
@@ -42,6 +43,7 @@ override func draw() {
 - [postProcess](#postprocess) - filter the whole frame
 - [withOverlay](#withoverlay) - draw over the finished frame, after every pass
 - [feedback / withFeedback](#feedback) - a layer that remembers itself (trails, tunnels)
+- [layerHistory / slitScan](#layerhistory) - a slit scan of a layer's own past, on the GPU
 - [simField / Sim](#simfield) - a layer that runs a simulation (reaction-diffusion, Game of Life, fluid, the self-warp motion feedback, the datamosh)
 - [Sim.shader](#simfield-shader) - a simulation of your own: a kernel you write, the inject, the field's edge and precision, arrows, readback
 - [compose / layer](#compose) - declare a stack of layers as one block
@@ -101,6 +103,25 @@ blendMode(.add); drawImage(layer.image, 0, 0)      // added as light
 ```
 
 The image always shows what was drawn into the layer *this* frame.
+
+<a id="snapshot"></a>
+### snapshot()
+
+A layer's pixels on the CPU, as drawn the frame before. The result is an ordinary `Image` with CPU pixels, so everything that reads a picture can now read what the sketch draws: `image[x, y]`, a [dither](../Drawing/Images.md), a [stipple](../Generators/Stippling.md), a [slit scan](../Video/SlitScan.md), a glyph mosaic.
+
+```swift
+let scene = makeRenderTarget()
+withTarget(scene) { drawCircle(mouseX, mouseY, 60) }
+if let picture = scene.snapshot() {             // last frame's pixels, or nil on the first frame
+    fill(picture[Int(mouseX), Int(mouseY)])      // read it like any picture: a dither, a stipple, a SlitScan
+}
+```
+
+Calling it asks for this frame's pixels and returns the frame before's. The copy is made inside the frame's own command buffer and handed over once the GPU has finished that frame, so the window never waits for it. In the window the answer is one frame old, or older when the GPU is behind; measured on a full canvas, the ask adds a tenth of a millisecond to a six-millisecond frame. In an export every frame is rendered and read in turn, so the answer is exactly the frame before. The pixels are the layer as it would be shown, tone-mapped and sRGB-encoded, with the layer's coverage as alpha; the headless image of the same picture matches it to the byte.
+
+Two rules follow from the frame's delay. The first frame returns `nil`, and so does a layer nothing was drawn into. And a layer is a per-frame handle, so the requests are matched by position: the first `snapshot()` call in a frame reads what the first call of the frame before asked for, the second the second, each at the same size. A sketch that snapshots several layers keeps them in one order.
+
+A [web page](../Output/Web.md) has no frame before to read from, so the export stops at a sketch that reads a layer back and names the call. For a slit scan that keeps the picture on the GPU, see [`makeLayerHistory`](#layerhistory); the [glyph mosaic](../Drawing/GlyphMosaic.md) reads a layer's `image` directly, the same frame late.
 
 <a id="filtered"></a>
 ### filtered(_:)
@@ -380,6 +401,21 @@ drawImage(petal.filtered(.repeated(.ring(radius: 0.18, facesOut: true), count: 9
 
 See the `Effects/WipesAndCopies` example, which runs nine orders between two
 photographs and lays one petal out three ways.
+
+#### The layer's past
+
+- **`.slitScan(_:delay:)`** a slit scan of the layer over its own past, on the
+  GPU: the layer is appended to a [`LayerHistory`](#layerhistory) made once in
+  `setup()`, and every pixel of the result is read from the frame held there that
+  `delay` names, `0` the newest and `1` the oldest. `SlitScanDelay` is `.across`
+  (the left edge is now), `.down` (the top edge is now), `.radial` (the center is
+  now), or `.map(image)`, any picture read as a lens, black now and white the
+  oldest frame. It composes what [`SlitScan`](../Video/SlitScan.md) composes from
+  the same frames, to a quarter of a level, and keeps the picture on the GPU.
+
+```swift
+drawImage(scene.filtered(.slitScan(history, delay: .across)).image, 0, 0)
+```
 
 #### Distortion
 
@@ -1047,6 +1083,32 @@ override func draw() {
 - `makeFeedback(precision: .float32)` keeps the pair in single-precision float, for a loop that carries a long sum of faint light. Half float stops moving once each frame's contribution falls under one part in a thousand of the total. For a sum that should converge rather than grow, an [`Accumulator`](./Accumulation.md#accumulator) keeps the sum in single precision and divides by the passes for you.
 - Inside the block, `background(_:)` clears the feedback layer alone. The canvas's own `background(_:)`, before the block or after it, leaves the layer as it was.
 - See the `Effects/Feedback` example for a spiralling tunnel.
+
+<a id="layerhistory"></a>
+### makeLayerHistory(capacity:) and Filter.slitScan
+
+A `LayerHistory` keeps a layer's last frames in a ring on the GPU, and `Filter.slitScan(_:delay:)` composes a slit scan from them: every pixel of the result reads the frame its delay names, so a drawing that moves slowly along the delay stretches into ribbons and one that moves across it shears into combs. It is the GPU form of [`SlitScan`](../Video/SlitScan.md), which holds the same history as CPU pixels, and the one a large canvas wants.
+
+Like a [feedback layer](#feedback), the history is **persistent**: make it once in `setup()` and hold it, because its identity is what carries the frames from one `draw()` to the next. It takes the size and precision of the first layer scanned through it, and a layer of another size starts it over.
+
+```swift
+var history: LayerHistory!
+
+override func setup() { history = makeLayerHistory(capacity: 90) }    // once, held
+
+override func draw() {
+    let scene = makeRenderTarget()
+    withTarget(scene) { drawCircle(mouseX, mouseY, 60) }
+    drawImage(scene.filtered(.slitScan(history, delay: .across)).image, 0, 0)
+}
+```
+
+- The layer joins the ring once a frame, however many scans read the history that frame, so two delays over one history read the same frames.
+- `delay` is a `SlitScanDelay`: `.across` (left is now, right the oldest frame), `.down` (top is now), `.radial` (the center is now, the corners the past), or `.map(image)`, where any picture is the lens: black reads now, white the oldest frame held, a gray a frame between. A painted `Image`, a file, a layer's `image`, or a [generator](#generate)'s output all serve, sampled across the layer.
+- Each pixel reads its nearest frame, as the CPU scan does, so a shallow history steps visibly; `capacity` frames at the display's rate is the reach into the past, 90 at 60 frames a second being a second and a half.
+- **Memory is `capacity × width × height × 8` bytes** at half precision: a full 1080-pixel canvas at 90 frames is about 840 MB, and a 4K canvas four times that. The ring takes the scanned layer's size, so a layer made at a lower `scale` is the lever for a longer reach.
+- In an export every frame renders so the ring holds what it should. A [web page](../Output/Web.md) does not keep a history, so the export stops at the filter and names it.
+- See the `Effects/ScannedByItself` example: a sketch slit-scanning its own moving shapes, with its own word read back as a glyph mosaic beside it.
 
 <a id="simfield"></a>
 <a name="simfield"></a>

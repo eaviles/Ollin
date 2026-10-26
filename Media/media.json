@@ -5050,6 +5050,28 @@
       "stillSmall": "examples/Effects/Relight/still-640.jpg?v=d9d244ea",
       "width": 1080
     },
+    "Effects/ScannedByItself": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 9.621,
+      "sound": false,
+      "source": "c9e840d4a9510201",
+      "rendered": "2026-10-25",
+      "bytes": {
+        "loop": 1859820,
+        "loopSmall": 479680,
+        "still": 77377,
+        "stillSmall": 28854
+      },
+      "loop": "examples/Effects/ScannedByItself/loop.mp4?v=b1ba66ad",
+      "loopSmall": "examples/Effects/ScannedByItself/loop-640.mp4?v=46fd7cd4",
+      "still": "examples/Effects/ScannedByItself/still.jpg?v=e677df02",
+      "stillSmall": "examples/Effects/ScannedByItself/still-640.jpg?v=77a7aa7f",
+      "seed": 1
+    },
     "Effects/SeamlessClone": {
       "bytes": {
         "loop": 1912364,

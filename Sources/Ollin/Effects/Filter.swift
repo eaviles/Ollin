@@ -471,6 +471,10 @@ public struct Filter: Sendable {
         /// scaled, faded, and hue-shifted by the per-copy steps.
         case repeated(layout: CopyLayout, count: Int, scale: Double, rotation: Double,
                       opacity: Double, hueShift: Double, jitter: Double, seed: Int)
+        /// A slit scan over the layer's own past: the layer is appended to
+        /// `history`, a ring the renderer keeps across frames, and every pixel
+        /// of the output is read from the frame held that `delay` names there.
+        case slitScan(history: LayerHistory, delay: SlitScanDelay)
         /// Thermal-camera rendering of the layer's alpha shape: heat blooming
         /// inside, a halo radiating outside, mapped through a palette.
         case heatmap(colors: [SIMD4<Float>], contour: Double, innerGlow: Double,

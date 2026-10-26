@@ -117,6 +117,7 @@ let package = Package(
         example("3D/Raymarching/RaymarchedEnvironment"),
         example("3D/Raymarching/RaymarchedBlocks"),
         example("Effects/Feedback"),
+        example("Effects/ScannedByItself"),
         example("Effects/Fourier", [.samplePhotos]),
         example("Effects/Aside"),
         example("Effects/FlowStreaks"),

@@ -385,7 +385,8 @@ extension Filter {
         case .shader, .gaussianBlur, .bloom, .halation, .softProof, .fourier, .inverseFourier, .spectrum,
              .liquidMetal, .heatmap, .gemSmoke, .diffuse, .distanceField, .boxBlur,
              .adaptiveThreshold, .xdog, .brushwork, .shock, .hatching,
-             .outline, .shadow, .glow, .edgeGlow, .bevel, .jpeg, .tiltShift, .progressiveBlur:
+             .outline, .shadow, .glow, .edgeGlow, .bevel, .jpeg, .tiltShift, .progressiveBlur,
+             .slitScan:
             return nil
         }
     }

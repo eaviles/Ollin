@@ -296,19 +296,20 @@ b774992b6378  Docs/Drawing/Drawing.md:938  expected ',' separator
 1545ca2f9764  Docs/Drawing/Drawing.md:958  expected ',' separator
 0375abf145ad  Docs/Drawing/Drawing.md:979  expected ',' separator
 6d78937929ce  Docs/Drawing/Drawing.md:999  expected ',' separator
-f9dd3d125f11  Docs/Drawing/Effects.md:110  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-63ea4c842664  Docs/Drawing/Effects.md:1306  cannot find 'photo' in scope
-8528c8e05574  Docs/Drawing/Effects.md:136  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-de01af674fc3  Docs/Drawing/Effects.md:147  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-287a7fa55e41  Docs/Drawing/Effects.md:172  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-5aa234bd9c13  Docs/Drawing/Effects.md:235  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-cfebd0c142fa  Docs/Drawing/Effects.md:254  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-0cf1d8be56d4  Docs/Drawing/Effects.md:403  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-69cf570bc684  Docs/Drawing/Effects.md:575  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-314af6ac5659  Docs/Drawing/Effects.md:874  cannot find 'horizon' in scope
-1c1c7cea776b  Docs/Drawing/Effects.md:896  cannot find 'glow' in scope
-a8f0d552b0f0  Docs/Drawing/Effects.md:924  cannot find 'marks' in scope
-09c8e57cb7b7  Docs/Drawing/Effects.md:97  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'image'
+f9dd3d125f11  Docs/Drawing/Effects.md:131  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+63ea4c842664  Docs/Drawing/Effects.md:1368  cannot find 'photo' in scope
+8528c8e05574  Docs/Drawing/Effects.md:157  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+de01af674fc3  Docs/Drawing/Effects.md:168  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+287a7fa55e41  Docs/Drawing/Effects.md:193  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+5aa234bd9c13  Docs/Drawing/Effects.md:256  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+cfebd0c142fa  Docs/Drawing/Effects.md:275  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+664b1351cb25  Docs/Drawing/Effects.md:416  cannot find 'scene' in scope
+0cf1d8be56d4  Docs/Drawing/Effects.md:439  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+69cf570bc684  Docs/Drawing/Effects.md:611  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+314af6ac5659  Docs/Drawing/Effects.md:910  cannot find 'horizon' in scope
+1c1c7cea776b  Docs/Drawing/Effects.md:932  cannot find 'glow' in scope
+a8f0d552b0f0  Docs/Drawing/Effects.md:960  cannot find 'marks' in scope
+09c8e57cb7b7  Docs/Drawing/Effects.md:99  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'image'
 eb9d4c173b18  Docs/Drawing/Envelopes.md:105  expected ',' separator
 3ba94f2cae8b  Docs/Drawing/Envelopes.md:112  cannot find 'shore' in scope
 6959c47ac423  Docs/Drawing/Envelopes.md:41  expected ',' separator
@@ -1207,9 +1208,10 @@ ca46f27c17f3  Docs/Tools/SceneImport.md:50  attribute 'private' can only be used
 10b95537f19f  Docs/Tools/ShaderImport.md:61  cannot find 'imported' in scope
 a9a1aaeb971a  Docs/Tools/SingleFile.md:114  'module' is inaccessible due to 'internal' protection level
 07869a67f90f  Docs/Tools/SingleFile.md:55  expected a macro identifier for a pound literal expression
-1d4cc4e3c2c7  Docs/Video/SlitScan.md:25  cannot convert value of type '()' to expected argument type 'Int'
-5b96d2217e2f  Docs/Video/SlitScan.md:38  expected ',' separator
-19e4bd452c8e  Docs/Video/SlitScan.md:45  cannot find 'history' in scope
+1d4cc4e3c2c7  Docs/Video/SlitScan.md:26  cannot convert value of type '()' to expected argument type 'Int'
+5b96d2217e2f  Docs/Video/SlitScan.md:39  expected ',' separator
+19e4bd452c8e  Docs/Video/SlitScan.md:46  cannot find 'history' in scope
+76b2ee7b455c  Docs/Video/SlitScan.md:66  cannot find 'history' in scope
 12b52c152271  Docs/Video/Video.md:112  cannot find 'ContourDetector' in scope
 8b75c64907cb  Docs/Video/Video.md:119  expected '{' in body of function declaration
 5c8c3bc3a5fe  Docs/Video/Video.md:125  cannot find 'player' in scope

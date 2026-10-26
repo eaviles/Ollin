@@ -130,8 +130,6 @@ See the [design notes](DESIGN-NOTES.md#swift-playgrounds-and-ios).
 
 These are deeper uses of the Metal core and Apple displays. All are opt-in, so the 2D path stays untaxed:
 
-- **The CPU picture techniques over a sketch's own drawing.** A layer read back to the CPU a frame late, or GPU forms of the slit scan and the glyph mosaic, so a sketch can slit-scan or mosaic what it draws, not only a photograph or the camera.
-
 - **Dolby Vision.** Dynamic per-scene HDR metadata, in contrast to the static HDR10 metadata a video carries, which describes the whole file at once. It needs the licensed encoder path rather than AVFoundation's plain HDR writer, so it is a licensing question before it is an API one.
 
 See the [design notes](DESIGN-NOTES.md#rendering-and-color-frontier).

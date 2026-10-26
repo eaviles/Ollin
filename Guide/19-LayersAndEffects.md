@@ -6,7 +6,7 @@
 
 <img src="Images/19-LayersAndEffects/Comets.jpg" alt="A dark canvas full of glowing comet swarms: hundreds of small lights in orange, pink, and green, each dragging a soft luminous tail that curves with its flock's turn" width="560">
 
-A layer is a second canvas off screen, one you can filter, blend, and keep from frame to frame. You learn to draw into one, run the filter catalog over it, and let a canvas feed its own past back in. The flock of [Chapter 12](12-FlocksAndSwarms.md) comes back as the comets above, drawn into a feedback layer that returns bloomed and added as light. After them come the `compose` block, the running mean, and what to do when a frame gets slow. Last come two more ways to use a finished layer: wipes and copies.
+A layer is a second canvas off screen, one you can filter, blend, and keep from frame to frame. You learn to draw into one, run the filter catalog over it, and let a canvas feed its own past back in. The flock of [Chapter 12](12-FlocksAndSwarms.md) comes back as the comets above, drawn into a feedback layer that returns bloomed and added as light. After them come the `compose` block, the running mean, and what to do when a frame gets slow. Last come three more ways to use a finished layer: wipes, copies, and the layer read back by the sketch that drew it.
 
 ## A drawing you can hold: render targets
 
@@ -397,9 +397,9 @@ override func draw() {
 
 The rule of thumb: if the drawing does not change between frames, it belongs in a batch, and if it does change, leave it alone. A shape whose outline stays put while its color changes needs neither. A `Shape` kept in a property remembers its triangles and stroke from its second draw on, so drawing it again in a new color costs little more than a copy. A few things are per-frame by nature and cannot be recorded, namely 3D meshes and fields, GPU particles, layer blocks like `withTarget`, clipping, and `background`. The recording leaves them out, and Ollin prints a note once, at the call inside `makeBatch`, saying where to draw them instead.
 
-## Two more ways to use a finished layer: wipes and copies
+## More ways to use a finished layer: wipes, copies, and a readback
 
-A layer that is finished can still be taken away in an order, or laid out again around itself. Both are one pass over the layer. Both reach back to older crafts, the film editor's wipe and the printer's step and repeat.
+A layer that is finished can still be taken away in an order, laid out again around itself, or handed back to the sketch as pixels it can read. The first two are one pass over the layer, and reach back to older crafts, the film editor's wipe and the printer's step and repeat. The third turns every picture technique in [Chapter 9](09-Pictures.md) onto the sketch's own drawing.
 
 ### Taking a layer in an order: wipes
 
@@ -433,6 +433,40 @@ drawImage(petal.filtered(.repeated(.ring(radius: 0.18, facesOut: true), count: 9
 
 Each copy is the whole layer, moved so its middle lands on the copy's place. That is why the petal is drawn in the middle of its layer. Copy `i` is scaled by `scale` to the power `i` and turned `i` times `rotation`, and its hue moves `i` times `hueShift`. With `facesOut`, each copy on a ring points away from the center. The first copy is on top, so a line of shrinking copies reads as a trail behind its leader. The same example lays the petal out all three ways.
 
+### The drawing read back: snapshot and the slit scan
+
+Everything in [Chapter 9](09-Pictures.md) that reads a picture, the glyph mosaic, the stipple, the dither, `image[x, y]`, took a photograph or a picture painted on the CPU, because a layer lives on the GPU. **`snapshot()`** brings a layer's pixels back. It hands over the layer as drawn the *frame before*, as an ordinary `Image`, and it never waits for the GPU: the copy is made inside the frame's own work and arrives once the frame is done. In the window that is one frame of delay. In an export, where every frame is rendered and read in turn, it is exactly the frame before. The first frame has no frame before and returns `nil`.
+
+```swift
+let scene = makeRenderTarget()
+withTarget(scene) { drawCircle(mouseX, mouseY, 60) }
+if let picture = scene.snapshot() {        // last frame's pixels
+    scan.append(picture)                   // a SlitScan of what the sketch draws
+}
+```
+
+The **slit scan** is the technique that wants this most. [Chapter 35](35-Seeing.md) feeds one a camera, and here it reads the sketch: a history of the layer's frames, and every pixel of the result read from a different moment, so slow motion stretches into ribbons and fast motion shears into combs. A full canvas is too much to carry to the CPU every frame, so the scan has a form that stays on the GPU. A `LayerHistory`, made once in `setup()` and held like a `Feedback`, keeps the layer's last frames in a ring there, and `Filter.slitScan` composes the scan as a filter over the layer:
+
+```swift
+var history: LayerHistory!
+override func setup() { history = makeLayerHistory(capacity: 90) }
+
+override func draw() {
+    let scene = makeRenderTarget()
+    withTarget(scene) { drawCircle(mouseX, mouseY, 60) }
+    drawImage(scene.filtered(.slitScan(history, delay: .across)).image, 0, 0)
+}
+```
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/19-LayersAndEffects/ScannedByItself-dark.jpg">
+  <img src="Images/19-LayersAndEffects/ScannedByItself.jpg" alt="Three panels: a layer of three discs over drifting blue and violet bands as drawn, the same layer slit-scanned so the discs comb across time and the bands shear into diagonals, and the word OLLIN drawn into a layer and read back as a grid of typewriter characters" width="680">
+</picture>
+
+The `delay` says where the past is: `.across` puts now at the left edge and the oldest frame at the right, `.down` runs it top to bottom, `.radial` puts now in the middle, and `.map(image)` makes any picture the lens, black reading now and white the oldest frame. The GPU scan composes what the CPU one composes from the same frames, to a quarter of a level. What it costs is memory, `capacity` frames of the layer at eight bytes a pixel, so a layer made at a lower `scale` is how a long reach stays affordable.
+
+The glyph mosaic takes the shorter road: hand `drawGlyphMosaic` a layer's `image` and its cells are averaged on the GPU, a frame late, and drawn as text. [`Examples/Effects/ScannedByItself`](../Examples/Effects/ScannedByItself/Sketch.swift) does all three, a scan of its own moving shapes with its own word read back as glyphs beside it, and the [reference](../Docs/Drawing/Effects.md#snapshot) has the rules a readback follows, including the one that stops a web page at it.
+
 ## Where this comes from
 
 The shape the layers take here, a filter catalog and explicit compositing in a `compose` block, follows OPENRNDR's model, on Ollin's own Metal core. The compositing arithmetic descends from Thomas Porter and Tom Duff's 1984 paper "Compositing Digital Images". The everyday blend-mode vocabulary of multiply, screen, lightest, and darkest is the image editors' tradition that grew up after it.
@@ -447,7 +481,8 @@ Video feedback is the analog ancestor of the `Feedback` layer. Video artists poi
 
 ## Go deeper
 
-- [Layered effects](../Docs/Drawing/Effects.md): every filter, generator, combine op, and the full `compose` grammar, with [wipes and copies](../Docs/Drawing/Effects.md#wipes-and-copies).
+- [Layered effects](../Docs/Drawing/Effects.md): every filter, generator, combine op, and the full `compose` grammar, with [wipes and copies](../Docs/Drawing/Effects.md#wipes-and-copies), [`snapshot()`](../Docs/Drawing/Effects.md#snapshot), and the [layer history](../Docs/Drawing/Effects.md#layerhistory) behind the GPU slit scan.
+- [Slit scan](../Docs/Video/SlitScan.md): the CPU history, its delays and maps, and the GPU form over a layer.
 - [Layers](../Docs/Concepts/Layers.md): one screen on what a layer is, what one costs, and when you do not need one.
 - [What survives a frame](../Docs/Concepts/Persistence.md): the list of what carries into the next frame, from the ink state to a checkpoint on disk.
 - [Accumulation](../Docs/Drawing/Accumulation.md) and [HDR & tone mapping](../Docs/Drawing/HDR.md): the persistent canvas, the `Accumulator` that keeps a running mean, and the float pipeline underneath both.
@@ -456,7 +491,7 @@ Video feedback is the analog ancestor of the `Feedback` layer. Video artists poi
 - [Profiling](../Docs/Tools/Profiling.md): reading the cost row, what to do about each answer, and capturing a frame for a closer look.
 - [Retained batches](../Docs/Drawing/Batches.md): what a `Batch` can and can't record, how transforms apply at replay, and the measured numbers.
 - Appendix B draws this chapter's math, one picture per idea: [Shaping a value](B-JustEnoughMath.md#exponential-decay), [Color and light as numbers](B-JustEnoughMath.md#color-and-light-as-numbers).
-- Worked examples: [`Examples/Effects/Layers`](../Examples/Effects/Layers/Sketch.swift), [`Examples/Effects/Feedback`](../Examples/Effects/Feedback/Sketch.swift), [`Examples/Effects/PigmentMix`](../Examples/Effects/PigmentMix/Sketch.swift) (`.paintMix` and `.mix` over the same two layers at once), [`Examples/Rendering/Accumulation`](../Examples/Rendering/Accumulation/Sketch.swift), [`Examples/Rendering/DepthOfField`](../Examples/Rendering/DepthOfField/Sketch.swift) (a running mean of a million samples a frame), [`Examples/Rendering/ToneMapping`](../Examples/Rendering/ToneMapping/Sketch.swift), and [`Examples/Rendering/RetainedBatch`](../Examples/Rendering/RetainedBatch/Sketch.swift) (the same field drawn directly or replayed, on a switch).
+- Worked examples: [`Examples/Effects/Layers`](../Examples/Effects/Layers/Sketch.swift), [`Examples/Effects/Feedback`](../Examples/Effects/Feedback/Sketch.swift), [`Examples/Effects/PigmentMix`](../Examples/Effects/PigmentMix/Sketch.swift) (`.paintMix` and `.mix` over the same two layers at once), [`Examples/Rendering/Accumulation`](../Examples/Rendering/Accumulation/Sketch.swift), [`Examples/Rendering/DepthOfField`](../Examples/Rendering/DepthOfField/Sketch.swift) (a running mean of a million samples a frame), [`Examples/Rendering/ToneMapping`](../Examples/Rendering/ToneMapping/Sketch.swift), [`Examples/Rendering/RetainedBatch`](../Examples/Rendering/RetainedBatch/Sketch.swift) (the same field drawn directly or replayed, on a switch), and [`Examples/Effects/ScannedByItself`](../Examples/Effects/ScannedByItself/Sketch.swift) (a sketch slit-scanning its own shapes and reading its own word as glyphs).
 
 ---
 

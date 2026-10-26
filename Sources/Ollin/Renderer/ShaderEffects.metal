@@ -145,6 +145,85 @@ fragment float4 ollin_present_fragment(PresentOut in [[stage_in]],
     return ollin_present_finish(c, a, in.position.xy, u);
 }
 
+// MARK: - A layer read back
+
+// The glyph mosaic's cell tones, read off a layer on the GPU: one threadgroup
+// averages one cell of a `columns` by `rows` grid over the layer, its texels
+// encoded as the present pass stores them (tone-mapped, sRGB, premultiplied
+// under the coverage, the dither left out), so the mosaic of a layer chooses
+// the glyphs the mosaic of the layer's snapshot would. The cell bounds are the
+// CPU mosaic's, integer division included. grid = (columns, rows, width, height).
+kernel void ollin_layer_cells(texture2d<float, access::read> src [[texture(0)]],
+                              device float4 *cells [[buffer(0)]],
+                              constant OllinPresentUniforms &u [[buffer(1)]],
+                              constant uint4 &grid [[buffer(2)]],
+                              uint2 cell [[threadgroup_position_in_grid]],
+                              uint tid [[thread_index_in_threadgroup]],
+                              uint2 groupSize [[threads_per_threadgroup]],
+                              uint simdLane [[thread_index_in_simdgroup]],
+                              uint simdIndex [[simdgroup_index_in_threadgroup]],
+                              uint simdCount [[simdgroups_per_threadgroup]]) {
+    uint columns = grid.x, rows = grid.y, width = grid.z, height = grid.w;
+    uint lanes = groupSize.x * groupSize.y;
+    if (cell.x >= columns || cell.y >= rows) { return; }
+    uint px0 = min(cell.x * width / columns, width - 1);
+    uint px1 = max(min((cell.x + 1) * width / columns, width), px0 + 1);
+    uint py0 = min(cell.y * height / rows, height - 1);
+    uint py1 = max(min((cell.y + 1) * height / rows, height), py0 + 1);
+    uint cw = px1 - px0, n = cw * (py1 - py0);
+    float4 sum = float4(0.0);
+    for (uint i = tid; i < n; i += lanes) {
+        float4 s = src.read(uint2(px0 + i % cw, py0 + i / cw));
+        float a = ollin_present_alpha(s, u);
+        float3 c = ollin_present_map(s.rgb, a, u);
+        sum += float4(clamp(linearToSrgb(c), 0.0, 1.0) * a, a);
+    }
+    sum = simd_sum(sum);
+    threadgroup float4 partial[32];
+    if (simdLane == 0) { partial[simdIndex] = sum; }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    if (tid == 0) {
+        float4 total = float4(0.0);
+        for (uint i = 0; i < simdCount; i++) { total += partial[i]; }
+        cells[cell.y * columns + cell.x] = total / float(n);
+    }
+}
+
+// MARK: - Slit scan over a layer's history
+
+// Every pixel read from the frame its delay names in the ring: 0 the newest
+// slice, 1 the oldest held, rounded to the nearest frame as the CPU scan
+// rounds. params[0]: the newest slice, the frames held, the ring's capacity,
+// the delay mode (0 across, 1 down, 2 radial, 3 a map); params[1].x is 1 when
+// the map is a layer in linear light, whose brightness is read encoded, and 0
+// for a picture, whose stored bytes are read as they are (the premultiplied
+// luma the CPU scan reads). The layer itself is bound at 0 for the sampler's
+// sake and not read: the ring holds it.
+fragment float4 ollin_fx_slitscan(PresentOut in [[stage_in]],
+                                  texture2d<float> src [[texture(0)]],
+                                  texture2d_array<float> hist [[texture(1)]],
+                                  texture2d<float> map [[texture(2)]],
+                                  sampler samp [[sampler(0)]],
+                                  constant float4 *params [[buffer(0)]]) {
+    int newest = int(params[0].x), count = max(int(params[0].y), 1), capacity = max(int(params[0].z), 1);
+    int mode = int(params[0].w);
+    float d;
+    if (mode == 0) {
+        d = in.uv.x;
+    } else if (mode == 1) {
+        d = in.uv.y;
+    } else if (mode == 2) {
+        d = distance(in.uv, float2(0.5)) / 0.7071;
+    } else {
+        float4 m = map.sample(samp, in.uv);
+        float3 c = params[1].x > 0.5 ? clamp(linearToSrgb(m.rgb), 0.0, 1.0) : m.rgb;
+        d = dot(c, float3(0.2126, 0.7152, 0.0722));
+    }
+    int age = int(rint(clamp(d, 0.0, 1.0) * float(count - 1)));
+    int slice = (newest - age + capacity) % capacity;
+    return hist.sample(samp, in.uv, slice);
+}
+
 // MARK: - Present: wide gamut and high dynamic range
 //
 // The twin of `ollin_present_fragment` for a *float* destination (see

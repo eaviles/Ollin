@@ -515,6 +515,12 @@ extension MetalRenderer {
             }
         }
         keepDelayedInputs(into: cb)
+        // What the sketch asked to read back, copied out now that every layer
+        // and op has resolved, and delivered once the GPU is done with the frame.
+        encodeLayerReadbacks(drawer, into: cb)
+        if layerHistorySlots.contains(where: { $0.value.owner == nil }) {
+            layerHistorySlots = layerHistorySlots.filter { $0.value.owner != nil }
+        }
         // Advance each feedback layer drawn this frame (its back becomes next frame's
         // front), then prune slots whose owner the sketch has released (live reload,
         // or a layer no longer held) so the map stays bounded.
@@ -642,6 +648,48 @@ extension MetalRenderer {
             guard let output = acquireFilterTexture(width: width, height: height, pooled: pooled) else { return nil }
             encodeUserShader(shader, variant: .filter, inputs: [input], output: output,
                              width: width, height: height, into: cb)
+            return output
+        case let .slitScan(history, delay):
+            // The layer joins the ring once a frame (a second scan of the same
+            // history reads what the first appended, and a repeated encode of a
+            // frame appends nothing), then every pixel is read from the slice
+            // its delay names.
+            guard let slot = layerHistorySlot(for: history, width: input.width, height: input.height,
+                                              format: input.pixelFormat, into: cb),
+                  let output = acquireFilterTexture(width: width, height: height, pooled: pooled)
+            else { return nil }
+            if let stamp = lastStatefulEncode, !statefulEncodeIsRepeat,
+               slot.lastAppend?.drawer != stamp.drawer || slot.lastAppend?.frame != stamp.frame,
+               let blit = cb.makeBlitCommandEncoder() {
+                blit.copy(from: input, sourceSlice: 0, sourceLevel: 0,
+                          sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+                          sourceSize: MTLSize(width: input.width, height: input.height, depth: 1),
+                          to: slot.array, destinationSlice: slot.next, destinationLevel: 0,
+                          destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
+                blit.endEncoding()
+                slot.next = (slot.next + 1) % slot.capacity
+                slot.count = min(slot.count + 1, slot.capacity)
+                slot.lastAppend = stamp
+            }
+            // A map's brightness is read off its stored bytes for a picture (the
+            // premultiplied luma `SlitScan` reads) and off its linear light,
+            // encoded, for a layer; the shader is told which.
+            var map: MTLTexture? = nil
+            var mapIsLinear = false
+            if case let .map(image) = delay {
+                if let layer = image.layerTarget {
+                    map = layer.texture
+                    mapIsLinear = true
+                } else {
+                    map = image.linearTexture(for: device)
+                }
+            }
+            encodeEffectFragment("ollin_fx_slitscan", inputs: [input, slot.array, map ?? blankInput()],
+                                 output: output,
+                                 params: [f(Double(slot.newest), Double(slot.count), Double(slot.capacity),
+                                            Double(delay.rawIndex)),
+                                          f(mapIsLinear ? 1 : 0, 0, 0, 0)],
+                                 into: cb)
             return output
         case .gaussianBlur(let radius):
             guard let output = acquireFilterTexture(width: width, height: height, pooled: pooled) else { return nil }
@@ -958,7 +1006,7 @@ extension MetalRenderer {
     /// its image batches that are layers.
     func layerSources(of target: RenderTarget, in drawer: Drawer) -> [RenderTarget] {
         drawer.batches.compactMap { batch in
-            batch.target === target && batch.kind == .image ? batch.image?.webRenderTarget : nil
+            batch.target === target && batch.kind == .image ? batch.image?.layerTarget : nil
         }
     }
 
@@ -1955,6 +2003,231 @@ extension MetalRenderer {
             blit?.copy(from: source, to: kept)
         }
         blit?.endEncoding()
+    }
+
+    // MARK: Layer histories (the slit scan's ring)
+
+    /// `history`'s ring at the scanned layer's size and format, allocated on
+    /// first use, a size or format change, or after the address was reused by
+    /// another history, and cleared to transparent so a slice not yet written
+    /// reads as nothing rather than as what the memory held.
+    private func layerHistorySlot(for history: LayerHistory, width: Int, height: Int,
+                                  format: MTLPixelFormat, into cb: MTLCommandBuffer) -> LayerHistorySlot? {
+        let id = ObjectIdentifier(history)
+        if let slot = layerHistorySlots[id], slot.owner === history, slot.w == width, slot.h == height,
+           slot.format == format, slot.capacity == history.capacity {
+            return slot
+        }
+        let desc = MTLTextureDescriptor()
+        desc.textureType = .type2DArray
+        desc.pixelFormat = format
+        desc.width = width
+        desc.height = height
+        desc.arrayLength = history.capacity
+        desc.usage = [.shaderRead]
+        desc.storageMode = .private
+        guard let array = device.makeTexture(descriptor: desc) else { return nil }
+        if let blit = cb.makeBlitCommandEncoder() {
+            // A fill of zero bytes is transparent black in every float format.
+            let bytesPerRow = width * (format == .rgba32Float ? 16 : 8)
+            let zeros = device.makeBuffer(length: bytesPerRow * height, options: .storageModePrivate)
+            if let zeros {
+                blit.fill(buffer: zeros, range: 0..<zeros.length, value: 0)
+                for slice in 0..<history.capacity {
+                    blit.copy(from: zeros, sourceOffset: 0, sourceBytesPerRow: bytesPerRow,
+                              sourceBytesPerImage: zeros.length,
+                              sourceSize: MTLSize(width: width, height: height, depth: 1),
+                              to: array, destinationSlice: slice, destinationLevel: 0,
+                              destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
+                }
+            }
+            blit.endEncoding()
+        }
+        let slot = LayerHistorySlot(array: array, w: width, h: height, format: format,
+                                    capacity: history.capacity, owner: history)
+        layerHistorySlots[id] = slot
+        return slot
+    }
+
+    // MARK: Layer readbacks (a layer's pixels, or its cell tones, to the CPU)
+
+    /// Copy out what the sketch asked to read back this frame, inside the
+    /// frame's own command buffer: a layer's pixels through the present pass
+    /// into a display texture of the layer's size and a blit into a shared
+    /// buffer (the frame grab's road, so the bytes are the layer as it would be
+    /// shown), or its cell tones through the reduction kernel straight into a
+    /// shared buffer. The delivery is arranged for when the GPU is done; a
+    /// headless drive delivers it itself after its wait. A frame nobody asks
+    /// lets go of the storage.
+    private func encodeLayerReadbacks(_ drawer: Drawer, into cb: MTLCommandBuffer) {
+        guard !drawer.layerReadbacks.isEmpty else {
+            releaseLayerReadbackStorage()
+            return
+        }
+        // A repeated encode of the same frame delivers nothing new.
+        if statefulEncodeIsRepeat { return }
+        var items: [LayerReadbackBatch.Item?] = []
+        for request in drawer.layerReadbacks {
+            let target = request.target
+            guard let source = target.texture else {
+                items.append(nil)
+                continue
+            }
+            let width = source.width, height = source.height
+            switch request.kind {
+            case .pixels:
+                guard let texture = takeReadbackTexture(width: width, height: height),
+                      let presentEncoder = countedEncoder(cb, presentPass(into: texture),
+                                                          caller: "layer snapshot") else {
+                    items.append(nil)
+                    continue
+                }
+                encodePresent(from: source, drawer: drawer, into: presentEncoder, alpha: .premultiplied)
+                presentEncoder.endEncoding()
+                let bytesPerRow = width * displayBytesPerPixel
+                let byteCount = bytesPerRow * height
+                guard let buffer = takeReadbackBuffer(length: byteCount),
+                      let blit = cb.makeBlitCommandEncoder() else {
+                    readbackTextures.append(texture)
+                    items.append(nil)
+                    continue
+                }
+                blit.copy(from: texture, sourceSlice: 0, sourceLevel: 0,
+                          sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+                          sourceSize: MTLSize(width: width, height: height, depth: 1),
+                          to: buffer, destinationOffset: 0,
+                          destinationBytesPerRow: bytesPerRow, destinationBytesPerImage: byteCount)
+                blit.endEncoding()
+                items.append(.init(kind: .pixels, width: width, height: height,
+                                   buffer: buffer, texture: texture))
+            case let .cells(columns, rows):
+                let byteCount = columns * rows * MemoryLayout<SIMD4<Float>>.stride
+                guard columns >= 1, rows >= 1, let buffer = takeReadbackBuffer(length: byteCount) else {
+                    items.append(nil)
+                    continue
+                }
+                encodeLayerCells(from: source, columns: columns, rows: rows, drawer: drawer,
+                                 into: buffer, cb: cb)
+                items.append(.init(kind: request.kind, width: width, height: height,
+                                   buffer: buffer, texture: nil))
+            }
+        }
+        let batch = LayerReadbackBatch(items: items, drawer: drawer)
+        pendingLayerReadbacks.append(batch)
+        // Command buffers complete in the order they were committed and the run
+        // loop runs its blocks in order, so deliveries land in frame order; the
+        // run loop rather than the main queue so a frame lands during a drag or
+        // a test's wait, and a wake-up so it lands as soon as the GPU is done.
+        cb.addCompletedHandler { [weak self] _ in
+            RunLoop.main.perform(inModes: [.common]) {
+                MainActor.assumeIsolated { self?.finishLayerReadbacks(batch) }
+            }
+            CFRunLoopWakeUp(CFRunLoopGetMain())
+        }
+    }
+
+    /// The glyph mosaic's cell tones off a layer: one threadgroup per cell of
+    /// the `columns` by `rows` grid averages the cell's texels, each encoded as
+    /// the present would store it, into `buffer` (one `float4` a cell).
+    private func encodeLayerCells(from source: MTLTexture, columns: Int, rows: Int, drawer: Drawer,
+                                  into buffer: MTLBuffer, cb: MTLCommandBuffer) {
+        guard let state = try? libraryComputePipeline("ollin_layer_cells"),
+              let encoder = cb.makeComputeCommandEncoder() else { return }
+        var present = presentUniforms(for: drawer, alpha: .premultiplied)
+        var grid = SIMD4<UInt32>(UInt32(columns), UInt32(rows), UInt32(source.width), UInt32(source.height))
+        encoder.setComputePipelineState(state)
+        encoder.setTexture(source, index: 0)
+        encoder.setBuffer(buffer, offset: 0, index: 0)
+        encoder.setBytes(&present, length: MemoryLayout<OllinPresentUniforms>.stride, index: 1)
+        encoder.setBytes(&grid, length: MemoryLayout<SIMD4<UInt32>>.stride, index: 2)
+        let lanes = min(256, state.maxTotalThreadsPerThreadgroup)
+        profile.computeDispatches += 1
+        encoder.dispatchThreadgroups(MTLSize(width: columns, height: rows, depth: 1),
+                                     threadsPerThreadgroup: MTLSize(width: lanes, height: 1, depth: 1))
+        encoder.endEncoding()
+    }
+
+    /// The delivery half of a readback, on the main thread once the GPU has
+    /// finished the frame: build each answer from its bytes, hand the set to
+    /// the drawer as the results its next frame's requests read, and put the
+    /// storage back for a later frame. Runs once per batch, whichever road
+    /// reaches it first.
+    private func finishLayerReadbacks(_ batch: LayerReadbackBatch) {
+        guard !batch.delivered else { return }
+        batch.delivered = true
+        pendingLayerReadbacks.removeAll { $0 === batch }
+        var results: [LayerReadbackResult?] = []
+        for item in batch.items {
+            guard let item else {
+                results.append(nil)
+                continue
+            }
+            switch item.kind {
+            case .pixels:
+                let image = displayImage(from: item.buffer, width: item.width, height: item.height,
+                                         alpha: .premultiplied).map { Image(cgImage: $0) }
+                results.append(LayerReadbackResult(kind: .pixels, pixelWidth: item.width,
+                                                   pixelHeight: item.height, image: image, cells: nil))
+            case let .cells(columns, rows):
+                let count = columns * rows
+                let cells = Array(UnsafeBufferPointer(
+                    start: item.buffer.contents().bindMemory(to: SIMD4<Float>.self, capacity: count),
+                    count: count))
+                results.append(LayerReadbackResult(kind: item.kind, pixelWidth: item.width,
+                                                   pixelHeight: item.height, image: nil, cells: cells))
+            }
+            if readbackBuffers.count <= MetalRenderer.maxFramesInFlight * 2 { readbackBuffers.append(item.buffer) }
+            if let texture = item.texture, readbackTextures.count <= MetalRenderer.maxFramesInFlight {
+                readbackTextures.append(texture)
+            }
+        }
+        batch.drawer?.layerReadbackResults = results
+    }
+
+    /// Deliver every batch still pending, in order: the headless drives call
+    /// this after waiting for a frame, since no run loop turns between their
+    /// frames.
+    func finishPendingLayerReadbacks() {
+        for batch in pendingLayerReadbacks { finishLayerReadbacks(batch) }
+    }
+
+    /// Forget the pending batches of a frame the GPU threw away: their bytes
+    /// were never written, and the drawer keeps the results it had.
+    func dropPendingLayerReadbacks() {
+        for batch in pendingLayerReadbacks {
+            batch.delivered = true
+            for item in batch.items.compactMap({ $0 }) {
+                readbackBuffers.append(item.buffer)
+                if let texture = item.texture { readbackTextures.append(texture) }
+            }
+        }
+        pendingLayerReadbacks.removeAll()
+    }
+
+    /// A display texture of the readback's size: one put back by an earlier
+    /// delivery, or a fresh one. One of another size is dropped rather than kept.
+    private func takeReadbackTexture(width: Int, height: Int) -> MTLTexture? {
+        while let texture = readbackTextures.popLast() {
+            if texture.width == width, texture.height == height { return texture }
+        }
+        return makeDisplayTexture(width: width, height: height)
+    }
+
+    /// A shared buffer of the readback's byte count, the same way.
+    private func takeReadbackBuffer(length: Int) -> MTLBuffer? {
+        while let buffer = readbackBuffers.popLast() {
+            if buffer.length == length { return buffer }
+        }
+        return device.makeBuffer(length: length, options: .storageModeShared)
+    }
+
+    /// Let go of the readback storage on a frame nobody asked for. A delivery
+    /// still in flight puts its own back afterwards, and the next such frame
+    /// lets go of that too.
+    private func releaseLayerReadbackStorage() {
+        guard !readbackTextures.isEmpty || !readbackBuffers.isEmpty else { return }
+        readbackTextures.removeAll()
+        readbackBuffers.removeAll()
     }
 
     private func blankInput() -> MTLTexture {

@@ -4163,6 +4163,17 @@ open class Sketch {
         Feedback(width: width, height: height, scale: scale, drawer: drawer, precision: precision)
     }
 
+    /// Make a history of a layer's past frames for `Filter.slitScan(_:delay:)`:
+    /// a ring of `capacity` frames the renderer keeps on the GPU across frames.
+    /// Like a `Feedback` layer it is **persistent**: make it once in `setup()`
+    /// and hold it, since its identity is what carries the frames from one
+    /// `draw()` to the next. It takes the size of the first layer scanned
+    /// through it; a layer of another size starts it over. See `LayerHistory`
+    /// for what it costs.
+    public func makeLayerHistory(capacity: Int = 48) -> LayerHistory {
+        LayerHistory(capacity: capacity)
+    }
+
     /// Draw into `feedback`, with last frame's content handed in as `prev`. Read,
     /// fade, and transform `prev`, then draw new content on top; the result becomes
     /// next frame's `prev`. Composite the layer onto the canvas with

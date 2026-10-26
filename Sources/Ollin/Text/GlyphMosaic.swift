@@ -182,10 +182,6 @@ func mosaicCells(of image: Image,
                  font: ActiveFont) -> [GlyphMosaicCell] {
     guard columns >= 1, image.width > 0, image.height > 0,
           bounds.width > 0, bounds.height > 0 else { return [] }
-    guard let pixels = image.premultipliedPixels() else {
-        GlyphMosaicNotes.note("glyphMosaic needs CPU pixels; a texture-backed image has none. Read a video frame through its snapshot first.")
-        return []
-    }
     let ramp = glyphRamp(for: characters, font: font)
     guard !ramp.isEmpty else {
         GlyphMosaicNotes.note("glyphMosaic found no ink: none of the characters have a glyph in the active font.")
@@ -202,18 +198,28 @@ func mosaicCells(of image: Image,
     let rows = Swift.max(Int((fitted.height / cell).rounded()), 1)
     let gridTop = fitted.y + (fitted.height - Double(rows) * cell) / 2
 
-    let width = image.width, height = image.height
-    var cells: [GlyphMosaicCell] = []
-    cells.reserveCapacity(columns * rows)
-
-    for row in 0 ..< rows {
-        let py0 = Swift.min(row * height / rows, height - 1)
-        let py1 = Swift.max(Swift.min((row + 1) * height / rows, height), py0 + 1)
-        for column in 0 ..< columns {
+    // The average premultiplied color under each cell, as stored bytes in
+    // 0...1: summed here from a picture's CPU pixels, or read back from a
+    // layer, where a reduction kernel averaged the cells on the GPU a frame
+    // late (`LayerReadback.swift`), encoded the way the bytes would be.
+    let averageAt: (Int, Int) -> SIMD4<Double>
+    if let layer = image.layerTarget {
+        guard let drawer = layer.drawer,
+              let averages = drawer.requestLayerReadback(of: layer, .cells(columns: columns, rows: rows))?.cells,
+              averages.count == columns * rows
+        else { return [] }     // the first frame, or a layer the frame did not fill
+        averageAt = { column, row in SIMD4<Double>(averages[row * columns + column]) }
+    } else {
+        guard let pixels = image.premultipliedPixels() else {
+            GlyphMosaicNotes.note("glyphMosaic needs CPU pixels; a camera frame, a video frame, or a compute texture has none. Read a video frame through its snapshot first.")
+            return []
+        }
+        let width = image.width, height = image.height
+        averageAt = { column, row in
+            let py0 = Swift.min(row * height / rows, height - 1)
+            let py1 = Swift.max(Swift.min((row + 1) * height / rows, height), py0 + 1)
             let px0 = Swift.min(column * width / columns, width - 1)
             let px1 = Swift.max(Swift.min((column + 1) * width / columns, width), px0 + 1)
-
-            // Average the premultiplied bytes under the cell.
             var sumR = 0, sumG = 0, sumB = 0, sumA = 0
             for py in py0 ..< py1 {
                 var i = (py * width + px0) * 4
@@ -226,12 +232,22 @@ func mosaicCells(of image: Image,
                 }
             }
             let count = Double((px1 - px0) * (py1 - py0)) * 255
-            let alpha = Double(sumA) / count
+            return SIMD4<Double>(Double(sumR), Double(sumG), Double(sumB), Double(sumA)) / count
+        }
+    }
+
+    var cells: [GlyphMosaicCell] = []
+    cells.reserveCapacity(columns * rows)
+
+    for row in 0 ..< rows {
+        for column in 0 ..< columns {
+            let average = averageAt(column, row)
+            let alpha = average.w
             // Straight color: the premultiplied average divided back by
             // coverage (the ink convention stipple uses too).
-            let r = alpha > 0 ? Swift.min(Double(sumR) / count / alpha, 1) : 0
-            let g = alpha > 0 ? Swift.min(Double(sumG) / count / alpha, 1) : 0
-            let b = alpha > 0 ? Swift.min(Double(sumB) / count / alpha, 1) : 0
+            let r = alpha > 0 ? Swift.min(average.x / alpha, 1) : 0
+            let g = alpha > 0 ? Swift.min(average.y / alpha, 1) : 0
+            let b = alpha > 0 ? Swift.min(average.z / alpha, 1) : 0
 
             // Perceptually re-encoded brightness, so midtones land where the
             // eye expects.

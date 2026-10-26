@@ -719,6 +719,11 @@ enum SeamDirection: Equatable, Hashable, Sendable
 enum SeamEnergy: Equatable, Hashable, Sendable
   case forward
   case gradient
+enum SlitScanDelay: Sendable
+  case across
+  case down
+  case map(Image)
+  case radial
 enum SmoothingWeights: CaseIterable, Equatable, Hashable, Sendable
   case box
   case gaussian
@@ -1337,6 +1342,8 @@ final class Kuramoto
   var range: Int { get set }
   var rates: [Double] { get }
   var sites: Int { get }
+final class LayerHistory: Sendable
+  let capacity: Int
 final class LineSpray: Sendable
   enum Sampling: Equatable, Sendable
     case byLength(pointsPerPass: Int)
@@ -1567,6 +1574,7 @@ final class PushFeed: Sendable
 final class RenderTarget
   func combined(with: RenderTarget, _: Combine) -> RenderTarget
   func filtered(_: Filter) -> RenderTarget
+  func snapshot() -> Image?
   let height: Int
   let precision: LayerPrecision
   let scale: Double
@@ -2474,6 +2482,7 @@ open class Sketch: Sendable
   func makeEvolution(count: Int, genes: Int, from: Vector2, to: Vector2, seed: Int? = default) -> Evolution
   func makeFeedback(scale: Double = default, precision: LayerPrecision = default) -> Feedback
   func makeFeedback(width: Int, height: Int, scale: Double = default, precision: LayerPrecision = default) -> Feedback
+  func makeLayerHistory(capacity: Int = default) -> LayerHistory
   func makeLineSpray(_: [SprayLine], sampling: LineSpray.Sampling = default, passesPerFrame: Int = default, bokeh: Bokeh = default) -> LineSpray
   func makeOceanField(_: Ocean = default, resolution: Int = default) -> OceanField
   func makeOceanField(_: Ocean, at: Double, resolution: Int = default) -> OceanField
@@ -4240,6 +4249,7 @@ struct Filter: Sendable
   static func shader(_: Shader) -> Filter
   static func sharpen(amount: Double = default) -> Filter
   static func shock(iterations: Int = default, flow: Double = default, radius: Double = default, smoothing: Double = default, threshold: Double = default) -> Filter
+  static func slitScan(_: LayerHistory, delay: SlitScanDelay = default) -> Filter
   static func softProof(_: ICCProfile, intent: RenderingIntent = default, simulatesPaper: Bool = default, warning: Color? = default, amount: Double = default) -> Filter
   static func softProof(_: SoftProof, warning: Color? = default, amount: Double = default) -> Filter
   static func solarize(_: Double = default, softness: Double = default) -> Filter

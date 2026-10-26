@@ -1596,6 +1596,68 @@ final class MetalRenderer {
     /// their fields' slots once the filters have resolved.
     var delayedInputsThisFrame: [(field: SimField, index: Int, layer: RenderTarget)] = []
 
+    /// One `LayerHistory`'s ring: a texture array of `capacity` slices in the
+    /// scanned layer's format, each a past frame, written by a blit of the
+    /// layer into the `next` slice once a frame (Metal's hazard tracking orders
+    /// the write after the frame before's read, as for the accumulators). The
+    /// newest frame is the slice before `next`; `count` says how many slices
+    /// hold a frame while the ring fills. `owner` is weak so the slot is pruned
+    /// once the sketch releases its history.
+    final class LayerHistorySlot {
+        let array: MTLTexture
+        let w: Int, h: Int
+        let format: MTLPixelFormat
+        let capacity: Int
+        var count = 0
+        var next = 0
+        /// The frame last appended, so two scans of one history in a frame
+        /// append it once, and a repeated encode of a frame appends nothing.
+        var lastAppend: (drawer: UInt64, frame: UInt32)?
+        weak var owner: AnyObject?
+        init(array: MTLTexture, w: Int, h: Int, format: MTLPixelFormat, capacity: Int, owner: AnyObject) {
+            self.array = array; self.w = w; self.h = h; self.format = format
+            self.capacity = capacity; self.owner = owner
+        }
+        /// The slice holding the newest frame.
+        var newest: Int { (next - 1 + capacity) % capacity }
+    }
+    /// Persistent slit-scan storage, kept across frames like `feedbackSlots` and
+    /// pruned the same way.
+    var layerHistorySlots: [ObjectIdentifier: LayerHistorySlot] = [:]
+
+    /// One frame's layer readbacks between their encode and their delivery:
+    /// per request, the shared buffer the bytes were copied to, the display
+    /// texture a pixel read was presented into (put back for a later frame once
+    /// the delivery has run), and the request's kind and size; `nil` for a
+    /// request whose layer the frame did not fill. `@unchecked Sendable` so the
+    /// completed handler, off the main thread, can carry it back to the main
+    /// queue, where the drawer is touched.
+    final class LayerReadbackBatch: @unchecked Sendable {
+        struct Item {
+            let kind: LayerReadbackRequest.Kind
+            let width: Int, height: Int
+            let buffer: MTLBuffer
+            let texture: MTLTexture?
+        }
+        let items: [Item?]
+        weak var drawer: Drawer?
+        /// Set by whichever delivery runs first: the headless drive's, right
+        /// after its wait, or the run loop's, once the GPU is done.
+        var delivered = false
+        init(items: [Item?], drawer: Drawer) {
+            self.items = items
+            self.drawer = drawer
+        }
+    }
+    /// The batches encoded and not yet delivered, oldest first.
+    var pendingLayerReadbacks: [LayerReadbackBatch] = []
+    /// Display textures and shared buffers a readback is written into, each
+    /// handed to one delivery and put back when it has run, so nothing here is
+    /// written while a consumer still reads it. Let go of on a frame nobody
+    /// asks for.
+    var readbackTextures: [MTLTexture] = []
+    var readbackBuffers: [MTLBuffer] = []
+
     /// The 3D lookup textures a live soft proof samples, one per printing
     /// condition. Baking the lattice costs milliseconds and uploading it costs
     /// half a megabyte, while a sketch proofs against the same condition every
@@ -3679,8 +3741,13 @@ final class MetalRenderer {
         profile.gpuMS = (commandBuffer.gpuEndTime - commandBuffer.gpuStartTime) * 1000
         if let sentence = gpuFailures.failure(of: commandBuffer) {
             lastHeadlessFailure = sentence
+            dropPendingLayerReadbacks()
             return false
         }
+        // A headless frame is waited for, so what it read back is delivered
+        // here, before the sketch draws again: the next frame's `snapshot()`
+        // is then exactly this frame's layer.
+        finishPendingLayerReadbacks()
         return true
     }
 
@@ -3941,6 +4008,7 @@ final class MetalRenderer {
             }
             cb.commit()
             cb.waitUntilCompleted()
+            finishPendingLayerReadbacks()
             if i > 0 { totalMs += (cb.gpuEndTime - cb.gpuStartTime) * 1000; counted += 1 }
         }
         return counted > 0 ? totalMs / Double(counted) : 0

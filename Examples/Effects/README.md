@@ -21,10 +21,10 @@
 | [LayerStyles](LayerStyles/) | [Layers](Layers/) | [Light](Light/) | [MeshGradient](MeshGradient/) |
 | [![NewtonBasins](https://media.ollin.art/examples/Effects/NewtonBasins/still-640.jpg?v=61035e7b)](NewtonBasins/) | [![Phenomena](https://media.ollin.art/examples/Effects/Phenomena/still-640.jpg?v=477c9750)](Phenomena/) | [![PigmentMix](https://media.ollin.art/examples/Effects/PigmentMix/still-640.jpg?v=05a0eeeb)](PigmentMix/) | [![Relight](https://media.ollin.art/examples/Effects/Relight/still-640.jpg?v=d9d244ea)](Relight/) |
 | [NewtonBasins](NewtonBasins/) | [Phenomena](Phenomena/) | [PigmentMix](PigmentMix/) | [Relight](Relight/) |
-| [![SeamlessClone](https://media.ollin.art/examples/Effects/SeamlessClone/still-640.jpg?v=7a00749e)](SeamlessClone/) | [![SoapFilm](https://media.ollin.art/examples/Effects/SoapFilm/still-640.jpg?v=cc0d88e3)](SoapFilm/) | [![SummedArea](https://media.ollin.art/examples/Effects/SummedArea/still-640.jpg?v=56e55d42)](SummedArea/) | [![Textures](https://media.ollin.art/examples/Effects/Textures/still-640.jpg?v=6740dd17)](Textures/) |
-| [SeamlessClone](SeamlessClone/) | [SoapFilm](SoapFilm/) | [SummedArea](SummedArea/) | [Textures](Textures/) |
-| [![WipesAndCopies](https://media.ollin.art/examples/Effects/WipesAndCopies/still-640.jpg?v=0c8d9e74)](WipesAndCopies/) |  |  |  |
-| [WipesAndCopies](WipesAndCopies/) |  |  |  |
+| [![ScannedByItself](https://media.ollin.art/examples/Effects/ScannedByItself/still-640.jpg?v=77a7aa7f)](ScannedByItself/) | [![SeamlessClone](https://media.ollin.art/examples/Effects/SeamlessClone/still-640.jpg?v=7a00749e)](SeamlessClone/) | [![SoapFilm](https://media.ollin.art/examples/Effects/SoapFilm/still-640.jpg?v=cc0d88e3)](SoapFilm/) | [![SummedArea](https://media.ollin.art/examples/Effects/SummedArea/still-640.jpg?v=56e55d42)](SummedArea/) |
+| [ScannedByItself](ScannedByItself/) | [SeamlessClone](SeamlessClone/) | [SoapFilm](SoapFilm/) | [SummedArea](SummedArea/) |
+| [![Textures](https://media.ollin.art/examples/Effects/Textures/still-640.jpg?v=6740dd17)](Textures/) | [![WipesAndCopies](https://media.ollin.art/examples/Effects/WipesAndCopies/still-640.jpg?v=0c8d9e74)](WipesAndCopies/) |  |  |
+| [Textures](Textures/) | [WipesAndCopies](WipesAndCopies/) |  |  |
 
 These examples show layered effects. You draw into off-screen layers, filter them on the GPU, and composite them back with blend modes. They cover filters (`filtered(_:)` / `postProcess(_:)`), procedural sources (`generate(_:)`), previous-frame feedback (`withFeedback`), the declarative `compose { }` stack, and the two-input combine path (`combined(with:)` / `aside { }`). See the [Layered effects reference](../../Docs/Drawing/Effects.md).
 

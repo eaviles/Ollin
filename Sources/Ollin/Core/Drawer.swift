@@ -1355,6 +1355,16 @@ final class Drawer {
     /// Whole-frame filters from `postProcess(_:)`, applied to the finished frame
     /// before the present pass, in record order.
     private(set) var frameFilters: [Filter] = []
+    /// The layers the sketch asked to read back this frame (`snapshot()`, the
+    /// glyph mosaic of a layer), in call order; the renderer copies each out
+    /// inside the frame's command buffer and delivers the bytes once the GPU
+    /// has finished the frame (`LayerReadback.swift`).
+    var layerReadbacks: [LayerReadbackRequest] = []
+    /// What the last delivered frame's requests came back as, in the same
+    /// order (`nil` where a layer was not filled). Kept across frames: a
+    /// request reads the entry at its own position. Replaced whole on each
+    /// delivery, on the main thread.
+    var layerReadbackResults: [LayerReadbackResult?] = []
     /// The amplitude each sea state needs to stand the height it was asked for,
     /// kept because working it out sums the spectrum over the whole grid (65k
     /// terms at the default resolution) and a sea state rarely changes. Bounded
@@ -2170,6 +2180,10 @@ final class Drawer {
             switch $0.origin { case .feedback, .simField, .accumulate: return true; default: return false }
         } || filterOps.contains {
             if case let .combine(_, _, op) = $0.origin, case .screenSpaceReflections = op.kind { return true }
+            // A slit scan appends its layer to a history the renderer keeps
+            // across frames, so every frame has to render for the ring to hold
+            // the frames it should.
+            if case let .filter(_, filter) = $0.origin, case .slitScan = filter.kind { return true }
             return false
         } || firstLayerReadingDispatch < dispatches.endIndex
     }
@@ -5197,6 +5211,9 @@ final class Drawer {
         layerOwners.removeAll(keepingCapacity: true)
         filterOps.removeAll(keepingCapacity: true)
         frameFilters.removeAll(keepingCapacity: true)
+        // The requests are per-frame; the results they read stay until the
+        // next delivery replaces them.
+        layerReadbacks.removeAll(keepingCapacity: true)
         // Clip regions are per-frame (close any block left open by an early exit);
         // the canvas needs a stencil only on frames that actually clip.
         clipStack.removeAll(keepingCapacity: true)

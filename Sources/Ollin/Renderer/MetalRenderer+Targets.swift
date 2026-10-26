@@ -4243,7 +4243,7 @@ extension MetalRenderer {
                     // A layer drawn as a glow map is drawn after this table, so it keeps
                     // its factor in the bounce, as a copy does.
                     if wantGlowMaps, i < geoTextures.count, geoFinishes[i].triplanar == 0,
-                       let image = geoTextures[i].emissive, image.webRenderTarget == nil,
+                       let image = geoTextures[i].emissive, image.layerTarget == nil,
                        let glow = image.texture(for: device) {
                         finishes[i].emissive = unsafeBitCast(glow.gpuResourceID, to: UInt64.self)
                         finishes[i].coat.z = geoFinishes[i].uvWrap + 1
@@ -4251,7 +4251,7 @@ extension MetalRenderer {
                     }
                     guard wantMaps, i < geoTextures.count, geoFinishes[i].triplanar == 0,
                           let image = geoTextures[i].base else { continue }
-                    if image.webRenderTarget != nil {
+                    if image.layerTarget != nil {
                         pendingMaps.append(PendingTracedPicture(record: i, image: image,
                                                                 gate: geoFinishes[i].uvWrap + 1))
                         continue
@@ -4756,18 +4756,26 @@ extension MetalRenderer {
         encoder.setRenderPipelineState(state)
         encoder.setFragmentTexture(source, index: 0)
         encoder.setFragmentSamplerState(imageSampler, index: 0)
-        var present = OllinPresentUniforms(toneMapMode: drawer.toneMapMode.shaderIndex,
-                                           exposure: Float(drawer.toneMapExposure),
-                                           outputSpace: presentEncoding.rawValue,
-                                           ceiling: max(1, presentCeiling),
-                                           referenceNits: Float(ColorOutput.referenceWhiteNits),
-                                           peakNits: Float(ColorOutput.peakNits),
-                                           keepsAlpha: alpha.rawValue)
+        var present = presentUniforms(for: drawer, alpha: alpha)
         encoder.setFragmentBytes(&present, length: MemoryLayout<OllinPresentUniforms>.stride, index: 0)
         if var fit = place?.uniforms {
             encoder.setFragmentBytes(&fit, length: MemoryLayout<OllinProjectionUniforms>.stride, index: 1)
         }
         encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+    }
+
+    /// The present pass's settings for `drawer`: its exposure and tone map,
+    /// the output encoding, and how the alpha is written. Shared by the present
+    /// itself and by the glyph mosaic's cell reduction, which encodes a layer's
+    /// texels as the present would store them before averaging them.
+    func presentUniforms(for drawer: Drawer, alpha: PresentAlpha) -> OllinPresentUniforms {
+        OllinPresentUniforms(toneMapMode: drawer.toneMapMode.shaderIndex,
+                             exposure: Float(drawer.toneMapExposure),
+                             outputSpace: presentEncoding.rawValue,
+                             ceiling: max(1, presentCeiling),
+                             referenceNits: Float(ColorOutput.referenceWhiteNits),
+                             peakNits: Float(ColorOutput.peakNits),
+                             keepsAlpha: alpha.rawValue)
     }
 }
 

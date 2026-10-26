@@ -612,6 +612,11 @@ final class WebGraphRecorder {
         if !drawer.dispatches.isEmpty {
             throw refuse("compute work (a simulation or GPU particles)")
         }
+        // A read of a layer's pixels answers from the frame before on the Mac;
+        // the page has no frame before to read from.
+        if let readback = drawer.layerReadbacks.first {
+            throw refuse(readback.kind.callName)
+        }
         // The frame's gradient rows renumbered into the recording's table.
         let frameRows = drawer.gradientRows.map { gradientRow($0) }
 
@@ -661,7 +666,7 @@ final class WebGraphRecorder {
         /// What a `drawImage` quad samples: a layer the frame filled, a feedback
         /// layer's last frame, or a picture carried as an asset.
         func imageSource(_ image: Image) throws -> WebImageSource {
-            if let target = image.webRenderTarget {
+            if let target = image.layerTarget {
                 if let li = index[ObjectIdentifier(target)] { return .layer(li) }
                 if let pi = previousOf[ObjectIdentifier(target)] { return .previous(pi) }
                 throw refuse("drawImage of a layer the frame did not fill (a depth or normal layer)")

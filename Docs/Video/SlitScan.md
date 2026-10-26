@@ -15,7 +15,8 @@
 
 - [Building the history](#history)
 - [Reading it back](#reading)
-- [Feeding it video or camera](#feeds)
+- [Feeding it video, camera, or the sketch's own drawing](#feeds)
+- [The GPU form: a layer's own past](#gpu)
 - [Practical notes](#notes)
 
 <a name="history"></a>
@@ -58,9 +59,37 @@ The map form reads a gray image instead of calling a closure. Black means now, w
 
 <a name="feeds"></a>
 
-#### Feeding it video or camera
+#### Feeding it video, camera, or the sketch's own drawing
 
-The history takes CPU-pixel images. A painted `Image` and a `Camera` frame push straight in. A `VideoPlayer` frame is texture-backed, so read it through the player's `snapshot()` first and push the result. Under a headless export the pushes happen on the export clock, so a video-fed slit scan reproduces frame for frame.
+The history takes CPU-pixel images. A painted `Image` and a `Camera` frame push straight in. A `VideoPlayer` frame is texture-backed, so read it through the player's `snapshot()` first and push the result. A layer the sketch draws into is read the same way, through [`RenderTarget.snapshot()`](../Drawing/Effects.md#snapshot), which hands back the layer's pixels as drawn the frame before:
+
+```swift
+let scene = makeRenderTarget()
+withTarget(scene) { drawCircle(mouseX, mouseY, 60) }
+if let picture = scene.snapshot() { history.append(picture) }
+```
+
+Under a headless export the pushes happen on the export clock, and a snapshot there is exactly the frame before, so a slit scan fed by video or by the sketch's own drawing reproduces frame for frame.
+
+<a name="gpu"></a>
+
+#### The GPU form: a layer's own past
+
+A slit scan of a large layer wants to stay on the GPU. `makeLayerHistory(capacity:)` keeps a layer's last frames in a ring there, and `Filter.slitScan(_:delay:)` composes the scan from them as a filter over the layer:
+
+```swift
+var history: LayerHistory!
+
+override func setup() { history = makeLayerHistory(capacity: 90) }
+
+override func draw() {
+    let scene = makeRenderTarget()
+    withTarget(scene) { drawCircle(mouseX, mouseY, 60) }
+    drawImage(scene.filtered(.slitScan(history, delay: .across)).image, 0, 0)
+}
+```
+
+The delay is a `SlitScanDelay` rather than a closure: `.across`, `.down`, `.radial`, or `.map(image)`, where any picture is the lens, as in the map form above. The result matches this page's CPU scan fed the same frames to a quarter of a level. The history is persistent, like a feedback layer, and its memory is `capacity × width × height × 8` bytes; the [Effects reference](../Drawing/Effects.md#layerhistory) has the rest.
 
 <a name="notes"></a>
 
@@ -73,4 +102,4 @@ The history takes CPU-pixel images. A painted `Image` and a `Camera` frame push 
 
 ---
 
-Related: [`Video`](./Video.md) (playback and `snapshot()`), [`Vision`](../Vision/Vision.md) (the camera feed), [`Images`](../Drawing/Images.md) (the `Image` type). Also [`Effects`](../Drawing/Effects.md), the feedback layer, which is the GPU version of this idea and holds the previous frame rather than a frame history.
+Related: [`Video`](./Video.md) (playback and `snapshot()`), [`Vision`](../Vision/Vision.md) (the camera feed), [`Images`](../Drawing/Images.md) (the `Image` type). Also [`Effects`](../Drawing/Effects.md): the [layer history](../Drawing/Effects.md#layerhistory) behind the GPU form, [`snapshot()`](../Drawing/Effects.md#snapshot) for a layer's pixels, and the feedback layer, which holds the previous frame rather than a frame history.

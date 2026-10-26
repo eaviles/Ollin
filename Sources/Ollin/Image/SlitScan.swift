@@ -43,17 +43,19 @@ public final class SlitScan {
 
     /// Add the newest frame. The first push fixes the history's size; a frame
     /// of any other size is skipped (with a one-time note), as is a
-    /// texture-backed image, which has no CPU pixels.
+    /// texture-backed image, which has no CPU pixels: a video frame is read
+    /// through the player's `snapshot()` first, and a layer through its own
+    /// `snapshot()` (or scanned on the GPU with `Filter.slitScan`).
     public func append(_ frame: Image) {
         guard let pixels = frame.premultipliedPixels() else {
-            note("SlitScan.push skipped a texture-backed image; it has no CPU pixels. Read a video frame through its snapshot first.")
+            note("SlitScan.append skipped a texture-backed image; it has no CPU pixels. Read a video frame through its snapshot() first, and a layer through RenderTarget.snapshot(), or scan the layer on the GPU with Filter.slitScan.")
             return
         }
         if frames.isEmpty {
             width = frame.width
             height = frame.height
         } else if frame.width != width || frame.height != height {
-            note("SlitScan.push skipped a \(frame.width)x\(frame.height) frame; this history is \(width)x\(height).")
+            note("SlitScan.append skipped a \(frame.width)x\(frame.height) frame; this history is \(width)x\(height).")
             return
         }
         frames.append(pixels)

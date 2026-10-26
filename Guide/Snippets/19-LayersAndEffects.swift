@@ -17,6 +17,8 @@ var horizon: RenderTarget!
 // fragments resolve to the function.
 var layer: RenderTarget!
 var trail: Feedback!
+// The CPU slit scan the readback entry feeds with a layer's snapshot.
+var scan: SlitScan!
 let lamps: [Vector2] = [.zero, Vector2(40, 40)]
 var mask: RenderTarget!
 let ink = Color.black

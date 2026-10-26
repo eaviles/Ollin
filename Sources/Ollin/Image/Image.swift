@@ -85,7 +85,7 @@ public final class Image {
     private var renderTargetSource: RenderTarget?
     /// The layer this image draws, when it is a layer's `image` rather than a
     /// picture: what the web recorder writes down in place of pixels.
-    var webRenderTarget: RenderTarget? { renderTargetSource }
+    var layerTarget: RenderTarget? { renderTargetSource }
 
     /// Whether this image is a layer's (or a filtered layer's) picture, which the
     /// renderer fills during the frame rather than holding ahead of it.

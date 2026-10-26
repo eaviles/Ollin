@@ -3073,12 +3073,13 @@ public enum OllinApp {
                     if sketch.drawer.accumulates {
                         accumulated = renderer.accumulatedImage(of: sketch.drawer, viewport: viewport,
                                                                 width: width, height: height)
-                    } else if sketch.drawer.usesFeedback || pass > 0 {
+                    } else if sketch.drawer.usesFeedback || sketch.drawer.readsLayersBack || pass > 0 {
                         // Feedback state lives in render-pass-filled ping-pong textures, so
                         // (like accumulation) every intermediate frame must render (which also
                         // steps compute) for the layer to evolve; only the last frame is kept.
                         // A settle draw always renders, since rendering is what steps the
-                        // layer it is there to settle.
+                        // layer it is there to settle. A layer read back answers from the
+                        // frame before, so that frame has to have rendered too.
                         fedBack = renderer.image(of: sketch.drawer, viewport: viewport,
                                                  width: width, height: height)
                     } else {
@@ -3102,7 +3103,7 @@ public enum OllinApp {
         // next; nil for a frame that was not traced.
         defer { lastPathTraceReport = renderer.lastPathTraceReport }
         if sketch.drawer.accumulates { return accumulated }
-        if sketch.drawer.usesFeedback || settle > 1 { return fedBack }
+        if sketch.drawer.usesFeedback || sketch.drawer.readsLayersBack || settle > 1 { return fedBack }
         let image = renderer.image(of: sketch.drawer, viewport: viewport, width: width, height: height)
         reportHeadlessFrame(sketch, renderer: renderer, deltaTime: 1 / fps, fps: fps, drawSeconds: drawSeconds)
         return image

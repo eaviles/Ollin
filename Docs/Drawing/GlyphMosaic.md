@@ -38,7 +38,7 @@ drawGlyphMosaic(_ image: Image,
                 glyphScale: Double = 0.85)
 ```
 
-Draw `image` as a glyph mosaic, sampled `columns` cells across. The image keeps its aspect ratio inside `bounds`, which is the whole canvas by default. Glyphs draw in the current `fill` color. Pass `colored: true` instead, and each glyph takes the color of the image underneath it.
+Draw `image` as a glyph mosaic, sampled `columns` cells across. The image keeps its aspect ratio inside `bounds`, which is the whole canvas by default. Glyphs draw in the current `fill` color. Pass `colored: true` instead, and each glyph takes the color of the image underneath it. The image may be a layer's `image`, so a sketch can read its own drawing as glyphs: the cells are then averaged on the GPU and read a frame late (see the notes).
 
 ```swift
 textFont(BitmapFont.builtIn)     // the bundled bitmap font covers every mark
@@ -90,7 +90,8 @@ A custom set is easy because the measured ramp orders it for you. A set like `"Â
 - **It re-reads the image on every call**, so a mosaic over a live painting or a video frame animates with no extra work. The ramp itself is measured once per font and character set, then cached.
 - **The empty floor is deliberate.** A cell whose ink target is below half the coverage of the sparsest glyph draws nothing. That way, shadows read as true empty areas rather than a field of dots.
 - **Brightness is perceptual.** Each cell averages its pixels, then maps the average through the same transfer curve the eye expects. A midtone therefore lands midway up the ramp. A transparent pixel carries no ink, in the default mapping and in the inverted one.
-- **A texture-backed image has no CPU pixels.** A video frame or a camera image is read through its `snapshot()` first. Every CPU image pass works that way.
+- **A layer is read a frame late.** Given a layer's `image`, the mosaic averages the cells on the GPU, inside the frame's own command buffer, and reads the averages back once the GPU is done: the cells it draws are the layer's of the frame before, exactly so in an export. The first frame has no frame before and draws nothing. Each cell is averaged as the pixels would be stored, so the mosaic of a layer chooses the glyphs the mosaic of the layer's [`snapshot()`](Effects.md#snapshot) would. The `Effects/ScannedByItself` example reads its own word this way.
+- **A camera or video frame has no CPU pixels.** Read it through its `snapshot()` first. Every CPU image pass works that way.
 - **Bitmap fonts count lit pixels exactly.** Outline fonts measure the filled glyph area, and stroke fonts for plotters measure pen travel. Each kind of font is consistent within itself, and the ramp normalizes to its densest glyph.
 
 ---
