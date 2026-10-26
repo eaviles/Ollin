@@ -1079,5 +1079,10 @@ let package = Package(
         // that you walk through, after Jesús Rafael Soto.
         example("Recreations/JesusRafaelSoto/Vibracion"),
         example("Recreations/JesusRafaelSoto/Penetrable"),
+        // Blades standing over strips of color, so the picture is made where
+        // you stand, and three rooms of colored light the eye adapts to as
+        // you walk between them, after Carlos Cruz-Diez.
+        example("Recreations/CarlosCruzDiez/Physichromie"),
+        example("Recreations/CarlosCruzDiez/Chromosaturation"),
     ]
 )

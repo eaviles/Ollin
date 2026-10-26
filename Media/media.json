@@ -1,209 +1,101 @@
 {
   "base": "https://media.ollin.art",
-  "chapters": {
-    "01-HelloOllin": {
-      "clip": "guide/01-HelloOllin.mp4?v=310b645e",
-      "height": 1080,
-      "still": "Images/01-HelloOllin/HelloMotion.jpg",
-      "width": 1080
+  "heroes": {
+    "guide": {
+      "across": 8,
+      "cell": 200,
+      "clip": "heroes/guide-hero.mp4?v=7013ee12",
+      "fps": 30,
+      "height": 800,
+      "image": "heroes/guide-hero.jpg?v=e9e274ba",
+      "kind": "guide-payoffs",
+      "lead": 6,
+      "leads": {
+        "10-Vectors/Swarm": 2,
+        "24-GridSimulations/Organism": 10,
+        "26-ParticleSimulations/Drift": 30
+      },
+      "of": "thirty-two of the sketches the guide's chapters build, in chapter order",
+      "seconds": 6,
+      "sketches": [
+        "01-HelloOllin/HelloMotion",
+        "02-Color/ColorField",
+        "03-MotionAndTime/RingPulse",
+        "04-Randomness/DisorderGrid",
+        "05-Noise/Meadow",
+        "06-GridsAndRepetition/RoseWall",
+        "07-Tiles/Meander",
+        "09-Pictures/TypeMosaic",
+        "10-Vectors/Swarm",
+        "11-ForcesAndPhysics/Wrecker",
+        "12-FlocksAndSwarms/Flock",
+        "13-GrowingThings/Garden",
+        "14-FieldsAndFlow/FlowPrint",
+        "15-ShapesAsMaterial/Plate",
+        "16-CurvesAndFigures/Engraving",
+        "17-MarksAndMedia/Monogram",
+        "18-YourFirstShader/Aurora",
+        "19-LayersAndEffects/Comets",
+        "20-PicturesRestyled/HandColored",
+        "22-PicturesYouSolve/Lighthouse",
+        "24-GridSimulations/Organism",
+        "26-ParticleSimulations/Drift",
+        "27-3DGently/Plaza",
+        "29-MaterialsAndSurroundings/Bench",
+        "30-Landscapes/Valley",
+        "33-SculptingWithFields/Molten",
+        "34-TracedLight/LamplitRoom",
+        "35-Seeing/MotionBrush",
+        "36-Depth/GhostRoom",
+        "38-Listening/Resonator",
+        "44-Performing/Finale",
+        "46-Installations/WallOfBars"
+      ],
+      "width": 1600
     },
-    "02-Color": {
-      "clip": "guide/02-Color.mp4?v=ddf6a401",
-      "height": 1080,
-      "still": "Images/02-Color/ColorField.jpg",
-      "width": 1080
-    },
-    "03-MotionAndTime": {
-      "clip": "guide/03-MotionAndTime.mp4?v=0c85dd7c",
-      "height": 1080,
-      "still": "Images/03-MotionAndTime/RingPulse.gif",
-      "width": 1080
-    },
-    "04-Randomness": {
-      "clip": "guide/04-Randomness.mp4?v=45d3cc4d",
-      "height": 1080,
-      "still": "Images/04-Randomness/DisorderGrid.jpg",
-      "width": 1080
-    },
-    "05-Noise": {
-      "clip": "guide/05-Noise.mp4?v=f1bf4a58",
-      "height": 1080,
-      "still": "Images/05-Noise/Meadow.jpg",
-      "width": 1080
-    },
-    "06-GridsAndRepetition": {
-      "clip": "guide/06-GridsAndRepetition.mp4?v=0e222c2f",
-      "height": 1080,
-      "still": "Images/06-GridsAndRepetition/RoseWall.jpg",
-      "width": 1080
-    },
-    "07-Tiles": {
-      "clip": "guide/07-Tiles.mp4?v=35068d5c",
-      "height": 1080,
-      "still": "Images/07-Tiles/Meander.jpg",
-      "width": 1080
-    },
-    "08-Words": {
-      "clip": "guide/08-Words.mp4?v=2a2b6e4f",
-      "height": 1080,
-      "still": "Images/08-Words/Specimen.jpg",
-      "width": 1080
-    },
-    "09-Pictures": {
-      "clip": "guide/09-Pictures.mp4?v=1f96c921",
-      "height": 1080,
-      "still": "Images/09-Pictures/TypeMosaic.jpg",
-      "width": 1080
-    },
-    "10-Vectors": {
-      "clip": "guide/10-Vectors.mp4?v=5ab39aae",
-      "height": 1080,
-      "still": "Images/10-Vectors/Swarm.jpg",
-      "width": 1080
-    },
-    "11-ForcesAndPhysics": {
-      "clip": "guide/11-ForcesAndPhysics.mp4?v=9d1a829d",
-      "height": 1080,
-      "still": "Images/11-ForcesAndPhysics/Wrecker.jpg",
-      "width": 1080
-    },
-    "12-FlocksAndSwarms": {
-      "clip": "guide/12-FlocksAndSwarms.mp4?v=2e1806c2",
-      "height": 1080,
-      "still": "Images/12-FlocksAndSwarms/Flock.jpg",
-      "width": 1080
-    },
-    "13-GrowingThings": {
-      "clip": "guide/13-GrowingThings.mp4?v=7948ae45",
-      "height": 1080,
-      "still": "Images/13-GrowingThings/Garden.jpg",
-      "width": 1080
-    },
-    "14-FieldsAndFlow": {
-      "clip": "guide/14-FieldsAndFlow.mp4?v=4a9b3be4",
-      "height": 1080,
-      "still": "Images/14-FieldsAndFlow/FlowPrint.jpg",
-      "width": 1080
-    },
-    "15-ShapesAsMaterial": {
-      "clip": "guide/15-ShapesAsMaterial.mp4?v=0eb0b644",
-      "height": 1080,
-      "still": "Images/15-ShapesAsMaterial/Plate.jpg",
-      "width": 1080
-    },
-    "16-LayersAndEffects": {
-      "clip": "guide/16-LayersAndEffects.mp4?v=ccd1053d",
-      "height": 1080,
-      "still": "Images/16-LayersAndEffects/Comets.jpg",
-      "width": 1080
-    },
-    "17-YourFirstShader": {
-      "clip": "guide/17-YourFirstShader.mp4?v=076a0ddf",
-      "height": 1080,
-      "still": "Images/17-YourFirstShader/Aurora.jpg",
-      "width": 1080
-    },
-    "18-IteratedForms": {
-      "clip": "guide/18-IteratedForms.mp4?v=c4f64df5",
-      "height": 1080,
-      "still": "Images/18-IteratedForms/OrbitPlate.jpg",
-      "width": 1080
-    },
-    "19-GridSimulations": {
-      "clip": "guide/19-GridSimulations.mp4?v=1402c584",
-      "height": 1080,
-      "still": "Images/19-GridSimulations/Organism.jpg",
-      "width": 1080
-    },
-    "20-ParticleSimulations": {
-      "clip": "guide/20-ParticleSimulations.mp4?v=94a6e27c",
-      "height": 1080,
-      "still": "Images/20-ParticleSimulations/Drift.jpg",
-      "width": 1080
-    },
-    "21-3DGently": {
-      "clip": "guide/21-3DGently.mp4?v=410d7ebb",
-      "height": 1080,
-      "still": "Images/21-3DGently/Plaza.jpg",
-      "width": 1080
-    },
-    "22-IteratedForms": {
-      "clip": "guide/22-IteratedForms.mp4?v=3843b6dd",
-      "height": 1080,
-      "still": "Images/22-IteratedForms/OrbitPlate.jpg",
-      "width": 1080
-    },
-    "22-Meshes": {
-      "clip": "guide/22-Meshes.mp4?v=1481b342",
-      "height": 1080,
-      "still": "Images/22-Meshes/Bench.jpg",
-      "width": 1080
-    },
-    "23-Landscapes": {
-      "clip": "guide/23-Landscapes.mp4?v=975bde40",
-      "height": 1080,
-      "still": "Images/23-Landscapes/Valley.jpg",
-      "width": 1080
-    },
-    "24-WorldsWithWeight": {
-      "clip": "guide/24-WorldsWithWeight.mp4?v=843e4835",
-      "height": 1080,
-      "still": "Images/24-WorldsWithWeight/Contraption.jpg",
-      "width": 1080
-    },
-    "25-CharactersAndCloth": {
-      "clip": "guide/25-CharactersAndCloth.mp4?v=c4a85930",
-      "height": 1080,
-      "still": "Images/25-CharactersAndCloth/Yard.jpg",
-      "width": 1080
-    },
-    "26-SculptingWithFields": {
-      "clip": "guide/26-SculptingWithFields.mp4?v=286a551c",
-      "height": 1080,
-      "still": "Images/26-SculptingWithFields/Molten.jpg",
-      "width": 1080
-    },
-    "27-DepthAndThePhone": {
-      "clip": "guide/27-DepthAndThePhone.mp4?v=62759e32",
-      "height": 1080,
-      "still": "Images/27-DepthAndThePhone/GhostRoom.jpg",
-      "width": 1080
-    },
-    "28-SoundAndControl": {
-      "clip": "guide/28-SoundAndControl.mp4?v=352c0e43",
-      "height": 1080,
-      "still": "Images/28-SoundAndControl/Resonator.jpg",
-      "width": 1080
-    },
-    "29-Landscapes": {
-      "clip": "guide/29-Landscapes.mp4?v=defb9b9c",
-      "height": 1080,
-      "still": "Images/29-Landscapes/Valley.jpg",
-      "width": 1080
-    },
-    "29-MakingSound": {
-      "clip": "guide/29-MakingSound.mp4?v=80f843d4",
-      "height": 1080,
-      "still": "Images/29-MakingSound/MusicBox.jpg",
-      "width": 1080
-    },
-    "30-Seeing": {
-      "clip": "guide/30-Seeing.mp4?v=7f67a97c",
-      "height": 1080,
-      "still": "Images/30-Seeing/MotionBrush.jpg",
-      "width": 1080
-    },
-    "31-SharingAndPerforming": {
-      "clip": "guide/31-SharingAndPerforming.mp4?v=ba900a49",
-      "height": 1080,
-      "still": "Images/31-SharingAndPerforming/Finale.jpg",
-      "width": 1080
-    },
-    "32-Installations": {
-      "clip": "guide/32-Installations.mp4?v=ec68411d",
-      "height": 720,
-      "still": "Images/32-Installations/WallPiece.jpg",
-      "width": 1280
+    "readme": {
+      "across": 8,
+      "cell": 200,
+      "clip": "heroes/readme-hero.mp4?v=070642e7",
+      "height": 800,
+      "image": "heroes/readme-hero.jpg?v=d4678db0",
+      "kind": "example-clips",
+      "of": "thirty-two of the example sketches, from every area of the framework",
+      "sketches": [
+        "Patterns/Truchet",
+        "Patterns/FractalFlame",
+        "Patterns/Kaleidoscope",
+        "Patterns/Phyllotaxis",
+        "Motion/Mandala",
+        "Motion/Spokes",
+        "Motion/EllipseField",
+        "Motion/Petals",
+        "Effects/Droste",
+        "Effects/DiffusionCurves",
+        "Effects/NewtonBasins",
+        "Effects/Feedback",
+        "Simulation/GrayScott",
+        "Simulation/Physarum",
+        "Simulation/ParticleLife",
+        "Simulation/Fluid",
+        "3D/Geometry/Ocean",
+        "3D/Geometry/Planet",
+        "3D/Materials/Materials",
+        "3D/Effects/PathTraced",
+        "3D/Raymarching/RaymarchedFractals",
+        "3D/Lighting/AreaLights",
+        "3D/Physics/Contraption",
+        "3D/Geometry/MeshGrowth",
+        "Shapes/CombinatorsGradient",
+        "Shaders/VisualSynth",
+        "Rendering/Grassland",
+        "Text/GlyphWave",
+        "Images/LuminanceMelt",
+        "Physics/RigidBodies",
+        "Vision/PaintByClass",
+        "Web/BreathingRing"
+      ],
+      "width": 1600
     }
   },
   "covers": {
@@ -544,7 +436,833 @@
     "Recreations/JesusRafaelSoto": [
       "Recreations/JesusRafaelSoto/Vibracion",
       "Recreations/JesusRafaelSoto/Penetrable"
+    ],
+    "Recreations/CarlosCruzDiez": [
+      "Recreations/CarlosCruzDiez/Physichromie",
+      "Recreations/CarlosCruzDiez/Chromosaturation"
     ]
+  },
+  "groups": {
+    "3D": {
+      "of": [
+        "3D/Geometry/Ocean",
+        "3D/Materials/Materials",
+        "3D/Effects/PathTraced",
+        "3D/Raymarching/RaymarchedFractals"
+      ],
+      "image": "groups/3D.jpg?v=67781359",
+      "imageSmall": "groups/3D-640.jpg?v=93086923"
+    },
+    "3D/Camera": {
+      "of": [
+        "3D/Camera/CameraMoves",
+        "3D/Camera/CameraControl",
+        "3D/Camera/SceneViews"
+      ],
+      "image": "groups/3D-Camera.jpg?v=9e8a4133",
+      "imageSmall": "groups/3D-Camera-640.jpg?v=c76cca23"
+    },
+    "3D/Depth": {
+      "of": [
+        "3D/Depth/DepthCompositing",
+        "3D/Depth/ClosedLoopScan",
+        "3D/Depth/DepthCloud"
+      ],
+      "image": "groups/3D-Depth.jpg?v=64209b7c",
+      "imageSmall": "groups/3D-Depth-640.jpg?v=9f3a63a8"
+    },
+    "3D/Effects": {
+      "of": [
+        "3D/Effects/PathTraced",
+        "3D/Effects/ScreenSpaceReflections",
+        "3D/Effects/LensFlare",
+        "3D/Effects/SceneDefocus"
+      ],
+      "image": "groups/3D-Effects.jpg?v=b663254c",
+      "imageSmall": "groups/3D-Effects-640.jpg?v=f62f5b60"
+    },
+    "3D/Environments": {
+      "of": [
+        "3D/Environments/RemoteEnvironment",
+        "3D/Environments/EnvironmentGallery",
+        "3D/Environments/ImageBasedLighting",
+        "3D/Environments/Cloudscape"
+      ],
+      "image": "groups/3D-Environments.jpg?v=c09cccf2",
+      "imageSmall": "groups/3D-Environments-640.jpg?v=d68774a5"
+    },
+    "3D/Geometry": {
+      "of": [
+        "3D/Geometry/Solids",
+        "3D/Geometry/Ocean",
+        "3D/Geometry/Planet",
+        "3D/Geometry/MeshGrowth"
+      ],
+      "image": "groups/3D-Geometry.jpg?v=ff07b071",
+      "imageSmall": "groups/3D-Geometry-640.jpg?v=b55c02aa"
+    },
+    "3D/Lighting": {
+      "of": [
+        "3D/Lighting/AreaLights",
+        "3D/Lighting/Caustics",
+        "3D/Lighting/PointShadow",
+        "3D/Lighting/VolumetricLight"
+      ],
+      "image": "groups/3D-Lighting.jpg?v=1b8b02ce",
+      "imageSmall": "groups/3D-Lighting-640.jpg?v=c7355c05"
+    },
+    "3D/Materials": {
+      "of": [
+        "3D/Materials/Materials",
+        "3D/Materials/Glass",
+        "3D/Materials/ThinFilm",
+        "3D/Materials/Matcap"
+      ],
+      "image": "groups/3D-Materials.jpg?v=6e895b61",
+      "imageSmall": "groups/3D-Materials-640.jpg?v=ce2a007d"
+    },
+    "3D/Physics": {
+      "of": [
+        "3D/Physics/Contraption",
+        "3D/Physics/Rigging",
+        "3D/Physics/Crawler",
+        "3D/Physics/Tumble"
+      ],
+      "image": "groups/3D-Physics.jpg?v=5e6a9107",
+      "imageSmall": "groups/3D-Physics-640.jpg?v=54de510e"
+    },
+    "3D/Raymarching": {
+      "of": [
+        "3D/Raymarching/RaymarchedFractals",
+        "3D/Raymarching/RaymarchedDomain",
+        "3D/Raymarching/RaymarchedSculpt",
+        "3D/Raymarching/RaymarchedRadial"
+      ],
+      "image": "groups/3D-Raymarching.jpg?v=b3a0d1e1",
+      "imageSmall": "groups/3D-Raymarching-640.jpg?v=fb0b045e"
+    },
+    "Audio": {
+      "of": [
+        "Audio/OwnSampler",
+        "Audio/Spatial",
+        "Audio/Generative",
+        "Audio/Movement"
+      ],
+      "image": "groups/Audio.jpg?v=ff3d2d84",
+      "imageSmall": "groups/Audio-640.jpg?v=5229f117"
+    },
+    "Basic": {
+      "of": [
+        "Basic/Describing",
+        "Basic/NormalizedCoordinates",
+        "Basic/HelloCircle",
+        "Basic/Guides"
+      ],
+      "image": "groups/Basic.jpg?v=c69dc435",
+      "imageSmall": "groups/Basic-640.jpg?v=87cc5110"
+    },
+    "Color": {
+      "of": [
+        "Color/HSBWheel",
+        "Color/Gradients",
+        "Color/Colormaps",
+        "Color/ColorWaves"
+      ],
+      "image": "groups/Color.jpg?v=8b598582",
+      "imageSmall": "groups/Color-640.jpg?v=d25edf72"
+    },
+    "Compute": {
+      "of": [
+        "Compute/ReactionDiffusion",
+        "Compute/CurlField",
+        "Compute/NeighborSearch"
+      ],
+      "image": "groups/Compute.jpg?v=b0311571",
+      "imageSmall": "groups/Compute-640.jpg?v=cbbed8a4"
+    },
+    "Data": {
+      "of": [
+        "Data/Places",
+        "Data/Readings",
+        "Data/Outside",
+        "Data/Quakes"
+      ],
+      "image": "groups/Data.jpg?v=9cc39310",
+      "imageSmall": "groups/Data-640.jpg?v=0a0bcb08"
+    },
+    "Effects": {
+      "of": [
+        "Effects/Droste",
+        "Effects/DiffusionCurves",
+        "Effects/NewtonBasins",
+        "Effects/MeshGradient"
+      ],
+      "image": "groups/Effects.jpg?v=a42c38fa",
+      "imageSmall": "groups/Effects-640.jpg?v=800bb77d"
+    },
+    "Export": {
+      "of": [
+        "Export/Cutout",
+        "Export/LineDrawing",
+        "Export/Hatching",
+        "Export/Drafting"
+      ],
+      "image": "groups/Export.jpg?v=4c883f07",
+      "imageSmall": "groups/Export-640.jpg?v=81611d5e"
+    },
+    "Images": {
+      "of": [
+        "Images/PhotoMosaic",
+        "Images/PixelSort",
+        "Images/LuminanceMelt",
+        "Images/StringArt"
+      ],
+      "image": "groups/Images.jpg?v=5ee2305d",
+      "imageSmall": "groups/Images-640.jpg?v=7bf66de8"
+    },
+    "Input": {
+      "of": [
+        "Input/Drag",
+        "Input/Keys",
+        "Input/PanAndZoom",
+        "Input/RepelGrid"
+      ],
+      "image": "groups/Input.jpg?v=3a09db3a",
+      "imageSmall": "groups/Input-640.jpg?v=af47f1e4"
+    },
+    "Installation": {
+      "of": [
+        "Installation/ManyWindows",
+        "Installation/Fitted",
+        "Installation/Hours",
+        "Installation/Unattended"
+      ],
+      "image": "groups/Installation.jpg?v=4fc2fcb1",
+      "imageSmall": "groups/Installation-640.jpg?v=f10e701f"
+    },
+    "Integration": {
+      "of": [
+        "Integration/VirtualCamera"
+      ],
+      "image": "groups/Integration.jpg?v=9aef5021",
+      "imageSmall": "groups/Integration-640.jpg?v=b8331369"
+    },
+    "Live": {
+      "of": [
+        "Live/DragToEdit",
+        "Live/Cues",
+        "Live/Parameters"
+      ],
+      "image": "groups/Live.jpg?v=b5566de7",
+      "imageSmall": "groups/Live-640.jpg?v=3cb0d65a"
+    },
+    "Motion": {
+      "of": [
+        "Motion/Mandala",
+        "Motion/Spokes",
+        "Motion/EllipseField",
+        "Motion/Petals"
+      ],
+      "image": "groups/Motion.jpg?v=1446921e",
+      "imageSmall": "groups/Motion-640.jpg?v=d405aefc"
+    },
+    "Patterns": {
+      "of": [
+        "Patterns/Truchet",
+        "Patterns/FractalFlame",
+        "Patterns/Phyllotaxis",
+        "Patterns/Girih"
+      ],
+      "image": "groups/Patterns.jpg?v=0d8ffde3",
+      "imageSmall": "groups/Patterns-640.jpg?v=e420cadf"
+    },
+    "Physics": {
+      "of": [
+        "Physics/RigidBodies",
+        "Physics/Blobs",
+        "Physics/Packing",
+        "Physics/Chain"
+      ],
+      "image": "groups/Physics.jpg?v=db5740bc",
+      "imageSmall": "groups/Physics-640.jpg?v=22aef076"
+    },
+    "Randomness": {
+      "of": [
+        "Randomness/Variations",
+        "Randomness/Ring",
+        "Randomness/Gaussian",
+        "Randomness/Walk"
+      ],
+      "image": "groups/Randomness.jpg?v=5f86e3ef",
+      "imageSmall": "groups/Randomness-640.jpg?v=7f0bd6fe"
+    },
+    "Recreations": {
+      "of": [
+        "Recreations/OsamuSato/Totem",
+        "Recreations/JaredTarbell/Substrate",
+        "Recreations/BridgetRiley/Current",
+        "Recreations/ManfredMohr/CubicLimit"
+      ],
+      "image": "groups/Recreations.jpg?v=85af6f4f",
+      "imageSmall": "groups/Recreations-640.jpg?v=a68626bc"
+    },
+    "Recreations/AlmaThomas": {
+      "of": [
+        "Recreations/AlmaThomas/Rings",
+        "Recreations/AlmaThomas/Columns"
+      ],
+      "image": "groups/Recreations-AlmaThomas.jpg?v=27c2e83b",
+      "imageSmall": "groups/Recreations-AlmaThomas-640.jpg?v=b24a323f"
+    },
+    "Recreations/AnwarJalalShemza": {
+      "of": [
+        "Recreations/AnwarJalalShemza/Meem",
+        "Recreations/AnwarJalalShemza/Roots"
+      ],
+      "image": "groups/Recreations-AnwarJalalShemza.jpg?v=5007bcf3",
+      "imageSmall": "groups/Recreations-AnwarJalalShemza-640.jpg?v=fe8d5f11"
+    },
+    "Recreations/BridgetRiley": {
+      "of": [
+        "Recreations/BridgetRiley/Current",
+        "Recreations/BridgetRiley/Fragment3"
+      ],
+      "image": "groups/Recreations-BridgetRiley.jpg?v=b60256e3",
+      "imageSmall": "groups/Recreations-BridgetRiley-640.jpg?v=a2555ef2"
+    },
+    "Recreations/CarlosCruzDiez": {
+      "of": [
+        "Recreations/CarlosCruzDiez/Physichromie",
+        "Recreations/CarlosCruzDiez/Chromosaturation"
+      ],
+      "image": "groups/Recreations-CarlosCruzDiez.jpg?v=8dd0bcbe",
+      "imageSmall": "groups/Recreations-CarlosCruzDiez-640.jpg?v=9b2a9b55"
+    },
+    "Recreations/CaseyReas": {
+      "of": [
+        "Recreations/CaseyReas/Touching",
+        "Recreations/CaseyReas/Planes"
+      ],
+      "image": "groups/Recreations-CaseyReas.jpg?v=63108829",
+      "imageSmall": "groups/Recreations-CaseyReas-640.jpg?v=b8690208"
+    },
+    "Recreations/DoraMaurer": {
+      "of": [
+        "Recreations/DoraMaurer/Displacements",
+        "Recreations/DoraMaurer/QuasiImage",
+        "Recreations/DoraMaurer/FiveOutOfFour",
+        "Recreations/DoraMaurer/Overlappings"
+      ],
+      "image": "groups/Recreations-DoraMaurer.jpg?v=9a828de3",
+      "imageSmall": "groups/Recreations-DoraMaurer-640.jpg?v=aa3f7cdb"
+    },
+    "Recreations/FriederNake": {
+      "of": [
+        "Recreations/FriederNake/HommageAPaulKlee"
+      ],
+      "image": "groups/Recreations-FriederNake.jpg?v=6306d031",
+      "imageSmall": "groups/Recreations-FriederNake-640.jpg?v=61e41a0e"
+    },
+    "Recreations/Gego": {
+      "of": [
+        "Recreations/Gego/Reticularea",
+        "Recreations/Gego/DrawingWithoutPaper",
+        "Recreations/Gego/Tejedura",
+        "Recreations/Gego/Chorro"
+      ],
+      "image": "groups/Recreations-Gego.jpg?v=6bb23164",
+      "imageSmall": "groups/Recreations-Gego-640.jpg?v=a6997a69"
+    },
+    "Recreations/GeorgNees": {
+      "of": [
+        "Recreations/GeorgNees/Schotter"
+      ],
+      "image": "groups/Recreations-GeorgNees.jpg?v=58be61c0",
+      "imageSmall": "groups/Recreations-GeorgNees-640.jpg?v=7288a62b"
+    },
+    "Recreations/HassanSharif": {
+      "of": [
+        "Recreations/HassanSharif/DotsLinesForms",
+        "Recreations/HassanSharif/AngularLines",
+        "Recreations/HassanSharif/OctoberLines",
+        "Recreations/HassanSharif/BodyAndSquares"
+      ],
+      "image": "groups/Recreations-HassanSharif.jpg?v=50040bbf",
+      "imageSmall": "groups/Recreations-HassanSharif-640.jpg?v=68d4ada2"
+    },
+    "Recreations/HiroshiKawano": {
+      "of": [
+        "Recreations/HiroshiKawano/Design",
+        "Recreations/HiroshiKawano/ArtificialMondrian"
+      ],
+      "image": "groups/Recreations-HiroshiKawano.jpg?v=0a2b7cb6",
+      "imageSmall": "groups/Recreations-HiroshiKawano-640.jpg?v=6be3303d"
+    },
+    "Recreations/JaredTarbell": {
+      "of": [
+        "Recreations/JaredTarbell/Substrate"
+      ],
+      "image": "groups/Recreations-JaredTarbell.jpg?v=f7e68731",
+      "imageSmall": "groups/Recreations-JaredTarbell-640.jpg?v=1f6afc52"
+    },
+    "Recreations/JesusRafaelSoto": {
+      "of": [
+        "Recreations/JesusRafaelSoto/Vibracion",
+        "Recreations/JesusRafaelSoto/Penetrable"
+      ],
+      "image": "groups/Recreations-JesusRafaelSoto.jpg?v=d7ee845d",
+      "imageSmall": "groups/Recreations-JesusRafaelSoto-640.jpg?v=290c62d5"
+    },
+    "Recreations/JohnWhitney": {
+      "of": [
+        "Recreations/JohnWhitney/Permutations"
+      ],
+      "image": "groups/Recreations-JohnWhitney.jpg?v=159184a5",
+      "imageSmall": "groups/Recreations-JohnWhitney-640.jpg?v=1f957730"
+    },
+    "Recreations/JosefAlbers": {
+      "of": [
+        "Recreations/JosefAlbers/Homage"
+      ],
+      "image": "groups/Recreations-JosefAlbers.jpg?v=5644e399",
+      "imageSmall": "groups/Recreations-JosefAlbers-640.jpg?v=2ba8a030"
+    },
+    "Recreations/KazuyaSakai": {
+      "of": [
+        "Recreations/KazuyaSakai/Ondulaciones",
+        "Recreations/KazuyaSakai/RightOff"
+      ],
+      "image": "groups/Recreations-KazuyaSakai.jpg?v=cf28a4fe",
+      "imageSmall": "groups/Recreations-KazuyaSakai-640.jpg?v=db452603"
+    },
+    "Recreations/MacEntyreVidal": {
+      "of": [
+        "Recreations/MacEntyreVidal/Circunferencias",
+        "Recreations/MacEntyreVidal/Focos"
+      ],
+      "image": "groups/Recreations-MacEntyreVidal.jpg?v=5e1cc5a9",
+      "imageSmall": "groups/Recreations-MacEntyreVidal-640.jpg?v=57713eb4"
+    },
+    "Recreations/ManfredMohr": {
+      "of": [
+        "Recreations/ManfredMohr/CubicLimit",
+        "Recreations/ManfredMohr/DiagonalPath"
+      ],
+      "image": "groups/Recreations-ManfredMohr.jpg?v=6ac73115",
+      "imageSmall": "groups/Recreations-ManfredMohr-640.jpg?v=28d6a0af"
+    },
+    "Recreations/ManuelFelguerez": {
+      "of": [
+        "Recreations/ManuelFelguerez/EspacioMultiple",
+        "Recreations/ManuelFelguerez/MaquinaEstetica",
+        "Recreations/ManuelFelguerez/RelieveLacado"
+      ],
+      "image": "groups/Recreations-ManuelFelguerez.jpg?v=ecdd9c75",
+      "imageSmall": "groups/Recreations-ManuelFelguerez-640.jpg?v=7c958a19"
+    },
+    "Recreations/MohamedMelehi": {
+      "of": [
+        "Recreations/MohamedMelehi/Waves",
+        "Recreations/MohamedMelehi/Flamme",
+        "Recreations/MohamedMelehi/Soleil",
+        "Recreations/MohamedMelehi/Volcanique"
+      ],
+      "image": "groups/Recreations-MohamedMelehi.jpg?v=f2b10e3d",
+      "imageSmall": "groups/Recreations-MohamedMelehi-640.jpg?v=c95b06a0"
+    },
+    "Recreations/MonirFarmanfarmaian": {
+      "of": [
+        "Recreations/MonirFarmanfarmaian/MirrorFamily",
+        "Recreations/MonirFarmanfarmaian/BehindGlass",
+        "Recreations/MonirFarmanfarmaian/Geometric",
+        "Recreations/MonirFarmanfarmaian/Convertible"
+      ],
+      "image": "groups/Recreations-MonirFarmanfarmaian.jpg?v=82811db3",
+      "imageSmall": "groups/Recreations-MonirFarmanfarmaian-640.jpg?v=00787c9b"
+    },
+    "Recreations/NasreenMohamedi": {
+      "of": [
+        "Recreations/NasreenMohamedi/Registers",
+        "Recreations/NasreenMohamedi/Diagonals"
+      ],
+      "image": "groups/Recreations-NasreenMohamedi.jpg?v=dcb1db80",
+      "imageSmall": "groups/Recreations-NasreenMohamedi-640.jpg?v=9d06dd95"
+    },
+    "Recreations/OsamuSato": {
+      "of": [
+        "Recreations/OsamuSato/Totem",
+        "Recreations/OsamuSato/Alphabet",
+        "Recreations/OsamuSato/StraightLines",
+        "Recreations/OsamuSato/TotemBuilder"
+      ],
+      "image": "groups/Recreations-OsamuSato.jpg?v=9f70fbbd",
+      "imageSmall": "groups/Recreations-OsamuSato-640.jpg?v=f06909c7"
+    },
+    "Recreations/OwenSchuh": {
+      "of": [
+        "Recreations/OwenSchuh/CountingTheRationals",
+        "Recreations/OwenSchuh/DiagonalArgument"
+      ],
+      "image": "groups/Recreations-OwenSchuh.jpg?v=71dfa447",
+      "imageSmall": "groups/Recreations-OwenSchuh-640.jpg?v=316d6303"
+    },
+    "Recreations/RomanVerostko": {
+      "of": [
+        "Recreations/RomanVerostko/Pathway",
+        "Recreations/RomanVerostko/Cyberflower"
+      ],
+      "image": "groups/Recreations-RomanVerostko.jpg?v=aed8ec79",
+      "imageSmall": "groups/Recreations-RomanVerostko-640.jpg?v=8405fe17"
+    },
+    "Recreations/RyszardWiniarski": {
+      "of": [
+        "Recreations/RyszardWiniarski/Obszar",
+        "Recreations/RyszardWiniarski/LosowanieDwiemaKostkami"
+      ],
+      "image": "groups/Recreations-RyszardWiniarski.jpg?v=23aeac9e",
+      "imageSmall": "groups/Recreations-RyszardWiniarski-640.jpg?v=0da31836"
+    },
+    "Recreations/SalouaRaoudaChoucair": {
+      "of": [
+        "Recreations/SalouaRaoudaChoucair/Poem",
+        "Recreations/SalouaRaoudaChoucair/Duals"
+      ],
+      "image": "groups/Recreations-SalouaRaoudaChoucair.jpg?v=b9573c35",
+      "imageSmall": "groups/Recreations-SalouaRaoudaChoucair-640.jpg?v=c63b6730"
+    },
+    "Recreations/SolLeWitt": {
+      "of": [
+        "Recreations/SolLeWitt/FiftyPoints",
+        "Recreations/SolLeWitt/ArcsCirclesGrids"
+      ],
+      "image": "groups/Recreations-SolLeWitt.jpg?v=cce123ae",
+      "imageSmall": "groups/Recreations-SolLeWitt-640.jpg?v=edcbd044"
+    },
+    "Recreations/VeraMolnar": {
+      "of": [
+        "Recreations/VeraMolnar/DesOrdres",
+        "Recreations/VeraMolnar/Interruptions"
+      ],
+      "image": "groups/Recreations-VeraMolnar.jpg?v=c373c0a1",
+      "imageSmall": "groups/Recreations-VeraMolnar-640.jpg?v=b217beb4"
+    },
+    "Recreations/VicenteRojo": {
+      "of": [
+        "Recreations/VicenteRojo/Negaciones",
+        "Recreations/VicenteRojo/MexicoBajoLaLluvia",
+        "Recreations/VicenteRojo/Senales",
+        "Recreations/VicenteRojo/PiramidesYVolcanes"
+      ],
+      "image": "groups/Recreations-VicenteRojo.jpg?v=92622746",
+      "imageSmall": "groups/Recreations-VicenteRojo-640.jpg?v=5cdcc7ff"
+    },
+    "Recreations/VladimirBonacic": {
+      "of": [
+        "Recreations/VladimirBonacic/DynamicObject",
+        "Recreations/VladimirBonacic/GFE164",
+        "Recreations/VladimirBonacic/Random63",
+        "Recreations/VladimirBonacic/NamaFrieze"
+      ],
+      "image": "groups/Recreations-VladimirBonacic.jpg?v=b9becd4a",
+      "imageSmall": "groups/Recreations-VladimirBonacic-640.jpg?v=e091f195"
+    },
+    "Recreations/WaldemarCordeiro": {
+      "of": [
+        "Recreations/WaldemarCordeiro/Derivadas",
+        "Recreations/WaldemarCordeiro/Gente"
+      ],
+      "image": "groups/Recreations-WaldemarCordeiro.jpg?v=a825e3fe",
+      "imageSmall": "groups/Recreations-WaldemarCordeiro-640.jpg?v=64142fc3"
+    },
+    "Recreations/ZdenekSykora": {
+      "of": [
+        "Recreations/ZdenekSykora/Structure",
+        "Recreations/ZdenekSykora/Lines"
+      ],
+      "image": "groups/Recreations-ZdenekSykora.jpg?v=ff984a02",
+      "imageSmall": "groups/Recreations-ZdenekSykora-640.jpg?v=d76f49c7"
+    },
+    "Rendering": {
+      "of": [
+        "Rendering/Grassland",
+        "Rendering/MeshField",
+        "Rendering/InstancedMesh",
+        "Rendering/ToneMapping"
+      ],
+      "image": "groups/Rendering.jpg?v=44f925ed",
+      "imageSmall": "groups/Rendering-640.jpg?v=9e014439"
+    },
+    "Shaders": {
+      "of": [
+        "Shaders/VisualSynth",
+        "Shaders/DomainWarp",
+        "Shaders/ShaderBlend",
+        "Shaders/ShaderFilter"
+      ],
+      "image": "groups/Shaders.jpg?v=c1bb64df",
+      "imageSmall": "groups/Shaders-640.jpg?v=91f273a5"
+    },
+    "Shapes": {
+      "of": [
+        "Shapes/Primitives",
+        "Shapes/CombinatorsGradient",
+        "Shapes/Markers",
+        "Shapes/Superellipse"
+      ],
+      "image": "groups/Shapes.jpg?v=80b3c08b",
+      "imageSmall": "groups/Shapes-640.jpg?v=ee7af08f"
+    },
+    "Simulation": {
+      "of": [
+        "Simulation/GrayScott",
+        "Simulation/Physarum",
+        "Simulation/ParticleLife",
+        "Simulation/Fluid"
+      ],
+      "image": "groups/Simulation.jpg?v=11cc938d",
+      "imageSmall": "groups/Simulation-640.jpg?v=65db53d6"
+    },
+    "Text": {
+      "of": [
+        "Text/TypeAsGeometry",
+        "Text/GlyphWave",
+        "Text/PlaydateFont",
+        "Text/TextVolume"
+      ],
+      "image": "groups/Text.jpg?v=f2d2ff49",
+      "imageSmall": "groups/Text-640.jpg?v=07f581d8"
+    },
+    "Video": {
+      "of": [
+        "Video/VideoPlayback",
+        "Video/SoundReactive"
+      ],
+      "image": "groups/Video.jpg?v=a8a23b4a",
+      "imageSmall": "groups/Video-640.jpg?v=76b194e7"
+    },
+    "Vision": {
+      "of": [
+        "Vision/BodyPose",
+        "Vision/HandTracking",
+        "Vision/SceneLabels",
+        "Vision/FaceTracking"
+      ],
+      "image": "groups/Vision.jpg?v=d29e5cd3",
+      "imageSmall": "groups/Vision-640.jpg?v=dd4a2bb3"
+    },
+    "Web": {
+      "of": [
+        "Web/BreathingRing"
+      ],
+      "image": "groups/Web.jpg?v=7a143497",
+      "imageSmall": "groups/Web-640.jpg?v=fd88be70"
+    }
+  },
+  "chapters": {
+    "01-HelloOllin": {
+      "clip": "guide/01-HelloOllin.mp4?v=310b645e",
+      "height": 1080,
+      "still": "Images/01-HelloOllin/HelloMotion.jpg",
+      "width": 1080
+    },
+    "02-Color": {
+      "clip": "guide/02-Color.mp4?v=ddf6a401",
+      "height": 1080,
+      "still": "Images/02-Color/ColorField.jpg",
+      "width": 1080
+    },
+    "03-MotionAndTime": {
+      "clip": "guide/03-MotionAndTime.mp4?v=0c85dd7c",
+      "height": 1080,
+      "still": "Images/03-MotionAndTime/RingPulse.gif",
+      "width": 1080
+    },
+    "04-Randomness": {
+      "clip": "guide/04-Randomness.mp4?v=45d3cc4d",
+      "height": 1080,
+      "still": "Images/04-Randomness/DisorderGrid.jpg",
+      "width": 1080
+    },
+    "05-Noise": {
+      "clip": "guide/05-Noise.mp4?v=f1bf4a58",
+      "height": 1080,
+      "still": "Images/05-Noise/Meadow.jpg",
+      "width": 1080
+    },
+    "06-GridsAndRepetition": {
+      "clip": "guide/06-GridsAndRepetition.mp4?v=0e222c2f",
+      "height": 1080,
+      "still": "Images/06-GridsAndRepetition/RoseWall.jpg",
+      "width": 1080
+    },
+    "07-Tiles": {
+      "clip": "guide/07-Tiles.mp4?v=35068d5c",
+      "height": 1080,
+      "still": "Images/07-Tiles/Meander.jpg",
+      "width": 1080
+    },
+    "08-Words": {
+      "clip": "guide/08-Words.mp4?v=2a2b6e4f",
+      "height": 1080,
+      "still": "Images/08-Words/Specimen.jpg",
+      "width": 1080
+    },
+    "09-Pictures": {
+      "clip": "guide/09-Pictures.mp4?v=1f96c921",
+      "height": 1080,
+      "still": "Images/09-Pictures/TypeMosaic.jpg",
+      "width": 1080
+    },
+    "10-Vectors": {
+      "clip": "guide/10-Vectors.mp4?v=5ab39aae",
+      "height": 1080,
+      "still": "Images/10-Vectors/Swarm.jpg",
+      "width": 1080
+    },
+    "11-ForcesAndPhysics": {
+      "clip": "guide/11-ForcesAndPhysics.mp4?v=9d1a829d",
+      "height": 1080,
+      "still": "Images/11-ForcesAndPhysics/Wrecker.jpg",
+      "width": 1080
+    },
+    "12-FlocksAndSwarms": {
+      "clip": "guide/12-FlocksAndSwarms.mp4?v=2e1806c2",
+      "height": 1080,
+      "still": "Images/12-FlocksAndSwarms/Flock.jpg",
+      "width": 1080
+    },
+    "13-GrowingThings": {
+      "clip": "guide/13-GrowingThings.mp4?v=7948ae45",
+      "height": 1080,
+      "still": "Images/13-GrowingThings/Garden.jpg",
+      "width": 1080
+    },
+    "14-FieldsAndFlow": {
+      "clip": "guide/14-FieldsAndFlow.mp4?v=4a9b3be4",
+      "height": 1080,
+      "still": "Images/14-FieldsAndFlow/FlowPrint.jpg",
+      "width": 1080
+    },
+    "15-ShapesAsMaterial": {
+      "clip": "guide/15-ShapesAsMaterial.mp4?v=0eb0b644",
+      "height": 1080,
+      "still": "Images/15-ShapesAsMaterial/Plate.jpg",
+      "width": 1080
+    },
+    "16-LayersAndEffects": {
+      "clip": "guide/16-LayersAndEffects.mp4?v=ccd1053d",
+      "height": 1080,
+      "still": "Images/16-LayersAndEffects/Comets.jpg",
+      "width": 1080
+    },
+    "17-YourFirstShader": {
+      "clip": "guide/17-YourFirstShader.mp4?v=076a0ddf",
+      "height": 1080,
+      "still": "Images/17-YourFirstShader/Aurora.jpg",
+      "width": 1080
+    },
+    "18-IteratedForms": {
+      "clip": "guide/18-IteratedForms.mp4?v=c4f64df5",
+      "height": 1080,
+      "still": "Images/18-IteratedForms/OrbitPlate.jpg",
+      "width": 1080
+    },
+    "19-GridSimulations": {
+      "clip": "guide/19-GridSimulations.mp4?v=1402c584",
+      "height": 1080,
+      "still": "Images/19-GridSimulations/Organism.jpg",
+      "width": 1080
+    },
+    "20-ParticleSimulations": {
+      "clip": "guide/20-ParticleSimulations.mp4?v=94a6e27c",
+      "height": 1080,
+      "still": "Images/20-ParticleSimulations/Drift.jpg",
+      "width": 1080
+    },
+    "21-3DGently": {
+      "clip": "guide/21-3DGently.mp4?v=410d7ebb",
+      "height": 1080,
+      "still": "Images/21-3DGently/Plaza.jpg",
+      "width": 1080
+    },
+    "22-IteratedForms": {
+      "clip": "guide/22-IteratedForms.mp4?v=3843b6dd",
+      "height": 1080,
+      "still": "Images/22-IteratedForms/OrbitPlate.jpg",
+      "width": 1080
+    },
+    "22-Meshes": {
+      "clip": "guide/22-Meshes.mp4?v=1481b342",
+      "height": 1080,
+      "still": "Images/22-Meshes/Bench.jpg",
+      "width": 1080
+    },
+    "23-Landscapes": {
+      "clip": "guide/23-Landscapes.mp4?v=975bde40",
+      "height": 1080,
+      "still": "Images/23-Landscapes/Valley.jpg",
+      "width": 1080
+    },
+    "24-WorldsWithWeight": {
+      "clip": "guide/24-WorldsWithWeight.mp4?v=843e4835",
+      "height": 1080,
+      "still": "Images/24-WorldsWithWeight/Contraption.jpg",
+      "width": 1080
+    },
+    "25-CharactersAndCloth": {
+      "clip": "guide/25-CharactersAndCloth.mp4?v=c4a85930",
+      "height": 1080,
+      "still": "Images/25-CharactersAndCloth/Yard.jpg",
+      "width": 1080
+    },
+    "26-SculptingWithFields": {
+      "clip": "guide/26-SculptingWithFields.mp4?v=286a551c",
+      "height": 1080,
+      "still": "Images/26-SculptingWithFields/Molten.jpg",
+      "width": 1080
+    },
+    "27-DepthAndThePhone": {
+      "clip": "guide/27-DepthAndThePhone.mp4?v=62759e32",
+      "height": 1080,
+      "still": "Images/27-DepthAndThePhone/GhostRoom.jpg",
+      "width": 1080
+    },
+    "28-SoundAndControl": {
+      "clip": "guide/28-SoundAndControl.mp4?v=352c0e43",
+      "height": 1080,
+      "still": "Images/28-SoundAndControl/Resonator.jpg",
+      "width": 1080
+    },
+    "29-Landscapes": {
+      "clip": "guide/29-Landscapes.mp4?v=defb9b9c",
+      "height": 1080,
+      "still": "Images/29-Landscapes/Valley.jpg",
+      "width": 1080
+    },
+    "29-MakingSound": {
+      "clip": "guide/29-MakingSound.mp4?v=80f843d4",
+      "height": 1080,
+      "still": "Images/29-MakingSound/MusicBox.jpg",
+      "width": 1080
+    },
+    "30-Seeing": {
+      "clip": "guide/30-Seeing.mp4?v=7f67a97c",
+      "height": 1080,
+      "still": "Images/30-Seeing/MotionBrush.jpg",
+      "width": 1080
+    },
+    "31-SharingAndPerforming": {
+      "clip": "guide/31-SharingAndPerforming.mp4?v=ba900a49",
+      "height": 1080,
+      "still": "Images/31-SharingAndPerforming/Finale.jpg",
+      "width": 1080
+    },
+    "32-Installations": {
+      "clip": "guide/32-Installations.mp4?v=ec68411d",
+      "height": 720,
+      "still": "Images/32-Installations/WallPiece.jpg",
+      "width": 1280
+    }
   },
   "examples": {
     "3D/Camera/CameraControl": {
@@ -8804,6 +9522,50 @@
       "stillSmall": "examples/Recreations/BridgetRiley/Fragment3/still-640.jpg?v=bf51efdf",
       "width": 1080
     },
+    "Recreations/CarlosCruzDiez/Chromosaturation": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 40.089,
+      "sound": false,
+      "source": "b6a07cfbaf77beee",
+      "rendered": "2026-10-26",
+      "bytes": {
+        "loop": 7003642,
+        "loopSmall": 1225307,
+        "still": 50905,
+        "stillSmall": 20971
+      },
+      "loop": "examples/Recreations/CarlosCruzDiez/Chromosaturation/loop.mp4?v=fa0c0b47",
+      "loopSmall": "examples/Recreations/CarlosCruzDiez/Chromosaturation/loop-640.mp4?v=31906ebd",
+      "still": "examples/Recreations/CarlosCruzDiez/Chromosaturation/still.jpg?v=ee73f11a",
+      "stillSmall": "examples/Recreations/CarlosCruzDiez/Chromosaturation/still-640.jpg?v=2fe003c4",
+      "seed": 1
+    },
+    "Recreations/CarlosCruzDiez/Physichromie": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 2.763,
+      "sound": false,
+      "source": "ce8b29f394b66a0d",
+      "rendered": "2026-10-26",
+      "bytes": {
+        "loop": 2871550,
+        "loopSmall": 705779,
+        "still": 299139,
+        "stillSmall": 101573
+      },
+      "loop": "examples/Recreations/CarlosCruzDiez/Physichromie/loop.mp4?v=1b4ad435",
+      "loopSmall": "examples/Recreations/CarlosCruzDiez/Physichromie/loop-640.mp4?v=a2fa5345",
+      "still": "examples/Recreations/CarlosCruzDiez/Physichromie/still.jpg?v=1fe80f38",
+      "stillSmall": "examples/Recreations/CarlosCruzDiez/Physichromie/still-640.jpg?v=e78bc448",
+      "seed": 1
+    },
     "Recreations/CaseyReas/Planes": {
       "bytes": {
         "loop": 8078566,
@@ -12874,712 +13636,6 @@
       "still": "examples/Web/BreathingRing/still.jpg?v=c2d38b5d",
       "stillSmall": "examples/Web/BreathingRing/still-640.jpg?v=592802a2",
       "width": 1080
-    }
-  },
-  "groups": {
-    "3D": {
-      "image": "groups/3D.jpg?v=67781359",
-      "imageSmall": "groups/3D-640.jpg?v=93086923",
-      "of": [
-        "3D/Geometry/Ocean",
-        "3D/Materials/Materials",
-        "3D/Effects/PathTraced",
-        "3D/Raymarching/RaymarchedFractals"
-      ]
-    },
-    "3D/Camera": {
-      "image": "groups/3D-Camera.jpg?v=9e8a4133",
-      "imageSmall": "groups/3D-Camera-640.jpg?v=c76cca23",
-      "of": [
-        "3D/Camera/CameraMoves",
-        "3D/Camera/CameraControl",
-        "3D/Camera/SceneViews"
-      ]
-    },
-    "3D/Depth": {
-      "image": "groups/3D-Depth.jpg?v=64209b7c",
-      "imageSmall": "groups/3D-Depth-640.jpg?v=9f3a63a8",
-      "of": [
-        "3D/Depth/DepthCompositing",
-        "3D/Depth/ClosedLoopScan",
-        "3D/Depth/DepthCloud"
-      ]
-    },
-    "3D/Effects": {
-      "image": "groups/3D-Effects.jpg?v=b663254c",
-      "imageSmall": "groups/3D-Effects-640.jpg?v=f62f5b60",
-      "of": [
-        "3D/Effects/PathTraced",
-        "3D/Effects/ScreenSpaceReflections",
-        "3D/Effects/LensFlare",
-        "3D/Effects/SceneDefocus"
-      ]
-    },
-    "3D/Environments": {
-      "image": "groups/3D-Environments.jpg?v=c09cccf2",
-      "imageSmall": "groups/3D-Environments-640.jpg?v=d68774a5",
-      "of": [
-        "3D/Environments/RemoteEnvironment",
-        "3D/Environments/EnvironmentGallery",
-        "3D/Environments/ImageBasedLighting",
-        "3D/Environments/Cloudscape"
-      ]
-    },
-    "3D/Geometry": {
-      "image": "groups/3D-Geometry.jpg?v=ff07b071",
-      "imageSmall": "groups/3D-Geometry-640.jpg?v=b55c02aa",
-      "of": [
-        "3D/Geometry/Solids",
-        "3D/Geometry/Ocean",
-        "3D/Geometry/Planet",
-        "3D/Geometry/MeshGrowth"
-      ]
-    },
-    "3D/Lighting": {
-      "image": "groups/3D-Lighting.jpg?v=1b8b02ce",
-      "imageSmall": "groups/3D-Lighting-640.jpg?v=c7355c05",
-      "of": [
-        "3D/Lighting/AreaLights",
-        "3D/Lighting/Caustics",
-        "3D/Lighting/PointShadow",
-        "3D/Lighting/VolumetricLight"
-      ]
-    },
-    "3D/Materials": {
-      "image": "groups/3D-Materials.jpg?v=6e895b61",
-      "imageSmall": "groups/3D-Materials-640.jpg?v=ce2a007d",
-      "of": [
-        "3D/Materials/Materials",
-        "3D/Materials/Glass",
-        "3D/Materials/ThinFilm",
-        "3D/Materials/Matcap"
-      ]
-    },
-    "3D/Physics": {
-      "image": "groups/3D-Physics.jpg?v=5e6a9107",
-      "imageSmall": "groups/3D-Physics-640.jpg?v=54de510e",
-      "of": [
-        "3D/Physics/Contraption",
-        "3D/Physics/Rigging",
-        "3D/Physics/Crawler",
-        "3D/Physics/Tumble"
-      ]
-    },
-    "3D/Raymarching": {
-      "image": "groups/3D-Raymarching.jpg?v=b3a0d1e1",
-      "imageSmall": "groups/3D-Raymarching-640.jpg?v=fb0b045e",
-      "of": [
-        "3D/Raymarching/RaymarchedFractals",
-        "3D/Raymarching/RaymarchedDomain",
-        "3D/Raymarching/RaymarchedSculpt",
-        "3D/Raymarching/RaymarchedRadial"
-      ]
-    },
-    "Audio": {
-      "image": "groups/Audio.jpg?v=ff3d2d84",
-      "imageSmall": "groups/Audio-640.jpg?v=5229f117",
-      "of": [
-        "Audio/OwnSampler",
-        "Audio/Spatial",
-        "Audio/Generative",
-        "Audio/Movement"
-      ]
-    },
-    "Basic": {
-      "image": "groups/Basic.jpg?v=c69dc435",
-      "imageSmall": "groups/Basic-640.jpg?v=87cc5110",
-      "of": [
-        "Basic/Describing",
-        "Basic/NormalizedCoordinates",
-        "Basic/HelloCircle",
-        "Basic/Guides"
-      ]
-    },
-    "Color": {
-      "image": "groups/Color.jpg?v=8b598582",
-      "imageSmall": "groups/Color-640.jpg?v=d25edf72",
-      "of": [
-        "Color/HSBWheel",
-        "Color/Gradients",
-        "Color/Colormaps",
-        "Color/ColorWaves"
-      ]
-    },
-    "Compute": {
-      "image": "groups/Compute.jpg?v=b0311571",
-      "imageSmall": "groups/Compute-640.jpg?v=cbbed8a4",
-      "of": [
-        "Compute/ReactionDiffusion",
-        "Compute/CurlField",
-        "Compute/NeighborSearch"
-      ]
-    },
-    "Data": {
-      "image": "groups/Data.jpg?v=9cc39310",
-      "imageSmall": "groups/Data-640.jpg?v=0a0bcb08",
-      "of": [
-        "Data/Places",
-        "Data/Readings",
-        "Data/Outside",
-        "Data/Quakes"
-      ]
-    },
-    "Effects": {
-      "image": "groups/Effects.jpg?v=a42c38fa",
-      "imageSmall": "groups/Effects-640.jpg?v=800bb77d",
-      "of": [
-        "Effects/Droste",
-        "Effects/DiffusionCurves",
-        "Effects/NewtonBasins",
-        "Effects/MeshGradient"
-      ]
-    },
-    "Export": {
-      "image": "groups/Export.jpg?v=4c883f07",
-      "imageSmall": "groups/Export-640.jpg?v=81611d5e",
-      "of": [
-        "Export/Cutout",
-        "Export/LineDrawing",
-        "Export/Hatching",
-        "Export/Drafting"
-      ]
-    },
-    "Images": {
-      "image": "groups/Images.jpg?v=5ee2305d",
-      "imageSmall": "groups/Images-640.jpg?v=7bf66de8",
-      "of": [
-        "Images/PhotoMosaic",
-        "Images/PixelSort",
-        "Images/LuminanceMelt",
-        "Images/StringArt"
-      ]
-    },
-    "Input": {
-      "image": "groups/Input.jpg?v=3a09db3a",
-      "imageSmall": "groups/Input-640.jpg?v=af47f1e4",
-      "of": [
-        "Input/Drag",
-        "Input/Keys",
-        "Input/PanAndZoom",
-        "Input/RepelGrid"
-      ]
-    },
-    "Installation": {
-      "image": "groups/Installation.jpg?v=4fc2fcb1",
-      "imageSmall": "groups/Installation-640.jpg?v=f10e701f",
-      "of": [
-        "Installation/ManyWindows",
-        "Installation/Fitted",
-        "Installation/Hours",
-        "Installation/Unattended"
-      ]
-    },
-    "Integration": {
-      "image": "groups/Integration.jpg?v=9aef5021",
-      "imageSmall": "groups/Integration-640.jpg?v=b8331369",
-      "of": [
-        "Integration/VirtualCamera"
-      ]
-    },
-    "Live": {
-      "image": "groups/Live.jpg?v=b5566de7",
-      "imageSmall": "groups/Live-640.jpg?v=3cb0d65a",
-      "of": [
-        "Live/DragToEdit",
-        "Live/Cues",
-        "Live/Parameters"
-      ]
-    },
-    "Motion": {
-      "image": "groups/Motion.jpg?v=1446921e",
-      "imageSmall": "groups/Motion-640.jpg?v=d405aefc",
-      "of": [
-        "Motion/Mandala",
-        "Motion/Spokes",
-        "Motion/EllipseField",
-        "Motion/Petals"
-      ]
-    },
-    "Patterns": {
-      "image": "groups/Patterns.jpg?v=0d8ffde3",
-      "imageSmall": "groups/Patterns-640.jpg?v=e420cadf",
-      "of": [
-        "Patterns/Truchet",
-        "Patterns/FractalFlame",
-        "Patterns/Phyllotaxis",
-        "Patterns/Girih"
-      ]
-    },
-    "Physics": {
-      "image": "groups/Physics.jpg?v=db5740bc",
-      "imageSmall": "groups/Physics-640.jpg?v=22aef076",
-      "of": [
-        "Physics/RigidBodies",
-        "Physics/Blobs",
-        "Physics/Packing",
-        "Physics/Chain"
-      ]
-    },
-    "Randomness": {
-      "image": "groups/Randomness.jpg?v=5f86e3ef",
-      "imageSmall": "groups/Randomness-640.jpg?v=7f0bd6fe",
-      "of": [
-        "Randomness/Variations",
-        "Randomness/Ring",
-        "Randomness/Gaussian",
-        "Randomness/Walk"
-      ]
-    },
-    "Recreations": {
-      "image": "groups/Recreations.jpg?v=85af6f4f",
-      "imageSmall": "groups/Recreations-640.jpg?v=a68626bc",
-      "of": [
-        "Recreations/OsamuSato/Totem",
-        "Recreations/JaredTarbell/Substrate",
-        "Recreations/BridgetRiley/Current",
-        "Recreations/ManfredMohr/CubicLimit"
-      ]
-    },
-    "Recreations/AlmaThomas": {
-      "image": "groups/Recreations-AlmaThomas.jpg?v=27c2e83b",
-      "imageSmall": "groups/Recreations-AlmaThomas-640.jpg?v=b24a323f",
-      "of": [
-        "Recreations/AlmaThomas/Rings",
-        "Recreations/AlmaThomas/Columns"
-      ]
-    },
-    "Recreations/AnwarJalalShemza": {
-      "of": [
-        "Recreations/AnwarJalalShemza/Meem",
-        "Recreations/AnwarJalalShemza/Roots"
-      ],
-      "image": "groups/Recreations-AnwarJalalShemza.jpg?v=5007bcf3",
-      "imageSmall": "groups/Recreations-AnwarJalalShemza-640.jpg?v=fe8d5f11"
-    },
-    "Recreations/BridgetRiley": {
-      "image": "groups/Recreations-BridgetRiley.jpg?v=b60256e3",
-      "imageSmall": "groups/Recreations-BridgetRiley-640.jpg?v=a2555ef2",
-      "of": [
-        "Recreations/BridgetRiley/Current",
-        "Recreations/BridgetRiley/Fragment3"
-      ]
-    },
-    "Recreations/CaseyReas": {
-      "image": "groups/Recreations-CaseyReas.jpg?v=63108829",
-      "imageSmall": "groups/Recreations-CaseyReas-640.jpg?v=b8690208",
-      "of": [
-        "Recreations/CaseyReas/Touching",
-        "Recreations/CaseyReas/Planes"
-      ]
-    },
-    "Recreations/DoraMaurer": {
-      "image": "groups/Recreations-DoraMaurer.jpg?v=9a828de3",
-      "imageSmall": "groups/Recreations-DoraMaurer-640.jpg?v=aa3f7cdb",
-      "of": [
-        "Recreations/DoraMaurer/Displacements",
-        "Recreations/DoraMaurer/QuasiImage",
-        "Recreations/DoraMaurer/FiveOutOfFour",
-        "Recreations/DoraMaurer/Overlappings"
-      ]
-    },
-    "Recreations/FriederNake": {
-      "image": "groups/Recreations-FriederNake.jpg?v=6306d031",
-      "imageSmall": "groups/Recreations-FriederNake-640.jpg?v=61e41a0e",
-      "of": [
-        "Recreations/FriederNake/HommageAPaulKlee"
-      ]
-    },
-    "Recreations/Gego": {
-      "image": "groups/Recreations-Gego.jpg?v=6bb23164",
-      "imageSmall": "groups/Recreations-Gego-640.jpg?v=a6997a69",
-      "of": [
-        "Recreations/Gego/Reticularea",
-        "Recreations/Gego/DrawingWithoutPaper",
-        "Recreations/Gego/Tejedura",
-        "Recreations/Gego/Chorro"
-      ]
-    },
-    "Recreations/GeorgNees": {
-      "image": "groups/Recreations-GeorgNees.jpg?v=58be61c0",
-      "imageSmall": "groups/Recreations-GeorgNees-640.jpg?v=7288a62b",
-      "of": [
-        "Recreations/GeorgNees/Schotter"
-      ]
-    },
-    "Recreations/HassanSharif": {
-      "image": "groups/Recreations-HassanSharif.jpg?v=50040bbf",
-      "imageSmall": "groups/Recreations-HassanSharif-640.jpg?v=68d4ada2",
-      "of": [
-        "Recreations/HassanSharif/DotsLinesForms",
-        "Recreations/HassanSharif/AngularLines",
-        "Recreations/HassanSharif/OctoberLines",
-        "Recreations/HassanSharif/BodyAndSquares"
-      ]
-    },
-    "Recreations/HiroshiKawano": {
-      "image": "groups/Recreations-HiroshiKawano.jpg?v=0a2b7cb6",
-      "imageSmall": "groups/Recreations-HiroshiKawano-640.jpg?v=6be3303d",
-      "of": [
-        "Recreations/HiroshiKawano/Design",
-        "Recreations/HiroshiKawano/ArtificialMondrian"
-      ]
-    },
-    "Recreations/JaredTarbell": {
-      "image": "groups/Recreations-JaredTarbell.jpg?v=f7e68731",
-      "imageSmall": "groups/Recreations-JaredTarbell-640.jpg?v=1f6afc52",
-      "of": [
-        "Recreations/JaredTarbell/Substrate"
-      ]
-    },
-    "Recreations/JesusRafaelSoto": {
-      "of": [
-        "Recreations/JesusRafaelSoto/Vibracion",
-        "Recreations/JesusRafaelSoto/Penetrable"
-      ],
-      "image": "groups/Recreations-JesusRafaelSoto.jpg?v=d7ee845d",
-      "imageSmall": "groups/Recreations-JesusRafaelSoto-640.jpg?v=290c62d5"
-    },
-    "Recreations/JohnWhitney": {
-      "image": "groups/Recreations-JohnWhitney.jpg?v=159184a5",
-      "imageSmall": "groups/Recreations-JohnWhitney-640.jpg?v=1f957730",
-      "of": [
-        "Recreations/JohnWhitney/Permutations"
-      ]
-    },
-    "Recreations/JosefAlbers": {
-      "image": "groups/Recreations-JosefAlbers.jpg?v=5644e399",
-      "imageSmall": "groups/Recreations-JosefAlbers-640.jpg?v=2ba8a030",
-      "of": [
-        "Recreations/JosefAlbers/Homage"
-      ]
-    },
-    "Recreations/KazuyaSakai": {
-      "image": "groups/Recreations-KazuyaSakai.jpg?v=cf28a4fe",
-      "imageSmall": "groups/Recreations-KazuyaSakai-640.jpg?v=db452603",
-      "of": [
-        "Recreations/KazuyaSakai/Ondulaciones",
-        "Recreations/KazuyaSakai/RightOff"
-      ]
-    },
-    "Recreations/MacEntyreVidal": {
-      "image": "groups/Recreations-MacEntyreVidal.jpg?v=5e1cc5a9",
-      "imageSmall": "groups/Recreations-MacEntyreVidal-640.jpg?v=57713eb4",
-      "of": [
-        "Recreations/MacEntyreVidal/Circunferencias",
-        "Recreations/MacEntyreVidal/Focos"
-      ]
-    },
-    "Recreations/ManfredMohr": {
-      "image": "groups/Recreations-ManfredMohr.jpg?v=6ac73115",
-      "imageSmall": "groups/Recreations-ManfredMohr-640.jpg?v=28d6a0af",
-      "of": [
-        "Recreations/ManfredMohr/CubicLimit",
-        "Recreations/ManfredMohr/DiagonalPath"
-      ]
-    },
-    "Recreations/ManuelFelguerez": {
-      "image": "groups/Recreations-ManuelFelguerez.jpg?v=ecdd9c75",
-      "imageSmall": "groups/Recreations-ManuelFelguerez-640.jpg?v=7c958a19",
-      "of": [
-        "Recreations/ManuelFelguerez/EspacioMultiple",
-        "Recreations/ManuelFelguerez/MaquinaEstetica",
-        "Recreations/ManuelFelguerez/RelieveLacado"
-      ]
-    },
-    "Recreations/MohamedMelehi": {
-      "of": [
-        "Recreations/MohamedMelehi/Waves",
-        "Recreations/MohamedMelehi/Flamme",
-        "Recreations/MohamedMelehi/Soleil",
-        "Recreations/MohamedMelehi/Volcanique"
-      ],
-      "image": "groups/Recreations-MohamedMelehi.jpg?v=f2b10e3d",
-      "imageSmall": "groups/Recreations-MohamedMelehi-640.jpg?v=c95b06a0"
-    },
-    "Recreations/MonirFarmanfarmaian": {
-      "image": "groups/Recreations-MonirFarmanfarmaian.jpg?v=82811db3",
-      "imageSmall": "groups/Recreations-MonirFarmanfarmaian-640.jpg?v=00787c9b",
-      "of": [
-        "Recreations/MonirFarmanfarmaian/MirrorFamily",
-        "Recreations/MonirFarmanfarmaian/BehindGlass",
-        "Recreations/MonirFarmanfarmaian/Geometric",
-        "Recreations/MonirFarmanfarmaian/Convertible"
-      ]
-    },
-    "Recreations/NasreenMohamedi": {
-      "image": "groups/Recreations-NasreenMohamedi.jpg?v=dcb1db80",
-      "imageSmall": "groups/Recreations-NasreenMohamedi-640.jpg?v=9d06dd95",
-      "of": [
-        "Recreations/NasreenMohamedi/Registers",
-        "Recreations/NasreenMohamedi/Diagonals"
-      ]
-    },
-    "Recreations/OsamuSato": {
-      "image": "groups/Recreations-OsamuSato.jpg?v=9f70fbbd",
-      "imageSmall": "groups/Recreations-OsamuSato-640.jpg?v=f06909c7",
-      "of": [
-        "Recreations/OsamuSato/Totem",
-        "Recreations/OsamuSato/Alphabet",
-        "Recreations/OsamuSato/StraightLines",
-        "Recreations/OsamuSato/TotemBuilder"
-      ]
-    },
-    "Recreations/OwenSchuh": {
-      "image": "groups/Recreations-OwenSchuh.jpg?v=71dfa447",
-      "imageSmall": "groups/Recreations-OwenSchuh-640.jpg?v=316d6303",
-      "of": [
-        "Recreations/OwenSchuh/CountingTheRationals",
-        "Recreations/OwenSchuh/DiagonalArgument"
-      ]
-    },
-    "Recreations/RomanVerostko": {
-      "image": "groups/Recreations-RomanVerostko.jpg?v=aed8ec79",
-      "imageSmall": "groups/Recreations-RomanVerostko-640.jpg?v=8405fe17",
-      "of": [
-        "Recreations/RomanVerostko/Pathway",
-        "Recreations/RomanVerostko/Cyberflower"
-      ]
-    },
-    "Recreations/RyszardWiniarski": {
-      "image": "groups/Recreations-RyszardWiniarski.jpg?v=23aeac9e",
-      "imageSmall": "groups/Recreations-RyszardWiniarski-640.jpg?v=0da31836",
-      "of": [
-        "Recreations/RyszardWiniarski/Obszar",
-        "Recreations/RyszardWiniarski/LosowanieDwiemaKostkami"
-      ]
-    },
-    "Recreations/SalouaRaoudaChoucair": {
-      "image": "groups/Recreations-SalouaRaoudaChoucair.jpg?v=b9573c35",
-      "imageSmall": "groups/Recreations-SalouaRaoudaChoucair-640.jpg?v=c63b6730",
-      "of": [
-        "Recreations/SalouaRaoudaChoucair/Poem",
-        "Recreations/SalouaRaoudaChoucair/Duals"
-      ]
-    },
-    "Recreations/SolLeWitt": {
-      "image": "groups/Recreations-SolLeWitt.jpg?v=cce123ae",
-      "imageSmall": "groups/Recreations-SolLeWitt-640.jpg?v=edcbd044",
-      "of": [
-        "Recreations/SolLeWitt/FiftyPoints",
-        "Recreations/SolLeWitt/ArcsCirclesGrids"
-      ]
-    },
-    "Recreations/VeraMolnar": {
-      "image": "groups/Recreations-VeraMolnar.jpg?v=c373c0a1",
-      "imageSmall": "groups/Recreations-VeraMolnar-640.jpg?v=b217beb4",
-      "of": [
-        "Recreations/VeraMolnar/DesOrdres",
-        "Recreations/VeraMolnar/Interruptions"
-      ]
-    },
-    "Recreations/VicenteRojo": {
-      "image": "groups/Recreations-VicenteRojo.jpg?v=92622746",
-      "imageSmall": "groups/Recreations-VicenteRojo-640.jpg?v=5cdcc7ff",
-      "of": [
-        "Recreations/VicenteRojo/Negaciones",
-        "Recreations/VicenteRojo/MexicoBajoLaLluvia",
-        "Recreations/VicenteRojo/Senales",
-        "Recreations/VicenteRojo/PiramidesYVolcanes"
-      ]
-    },
-    "Recreations/VladimirBonacic": {
-      "image": "groups/Recreations-VladimirBonacic.jpg?v=b9becd4a",
-      "imageSmall": "groups/Recreations-VladimirBonacic-640.jpg?v=e091f195",
-      "of": [
-        "Recreations/VladimirBonacic/DynamicObject",
-        "Recreations/VladimirBonacic/GFE164",
-        "Recreations/VladimirBonacic/Random63",
-        "Recreations/VladimirBonacic/NamaFrieze"
-      ]
-    },
-    "Recreations/WaldemarCordeiro": {
-      "image": "groups/Recreations-WaldemarCordeiro.jpg?v=a825e3fe",
-      "imageSmall": "groups/Recreations-WaldemarCordeiro-640.jpg?v=64142fc3",
-      "of": [
-        "Recreations/WaldemarCordeiro/Derivadas",
-        "Recreations/WaldemarCordeiro/Gente"
-      ]
-    },
-    "Recreations/ZdenekSykora": {
-      "image": "groups/Recreations-ZdenekSykora.jpg?v=ff984a02",
-      "imageSmall": "groups/Recreations-ZdenekSykora-640.jpg?v=d76f49c7",
-      "of": [
-        "Recreations/ZdenekSykora/Structure",
-        "Recreations/ZdenekSykora/Lines"
-      ]
-    },
-    "Rendering": {
-      "image": "groups/Rendering.jpg?v=44f925ed",
-      "imageSmall": "groups/Rendering-640.jpg?v=9e014439",
-      "of": [
-        "Rendering/Grassland",
-        "Rendering/MeshField",
-        "Rendering/InstancedMesh",
-        "Rendering/ToneMapping"
-      ]
-    },
-    "Shaders": {
-      "image": "groups/Shaders.jpg?v=c1bb64df",
-      "imageSmall": "groups/Shaders-640.jpg?v=91f273a5",
-      "of": [
-        "Shaders/VisualSynth",
-        "Shaders/DomainWarp",
-        "Shaders/ShaderBlend",
-        "Shaders/ShaderFilter"
-      ]
-    },
-    "Shapes": {
-      "image": "groups/Shapes.jpg?v=80b3c08b",
-      "imageSmall": "groups/Shapes-640.jpg?v=ee7af08f",
-      "of": [
-        "Shapes/Primitives",
-        "Shapes/CombinatorsGradient",
-        "Shapes/Markers",
-        "Shapes/Superellipse"
-      ]
-    },
-    "Simulation": {
-      "image": "groups/Simulation.jpg?v=11cc938d",
-      "imageSmall": "groups/Simulation-640.jpg?v=65db53d6",
-      "of": [
-        "Simulation/GrayScott",
-        "Simulation/Physarum",
-        "Simulation/ParticleLife",
-        "Simulation/Fluid"
-      ]
-    },
-    "Text": {
-      "image": "groups/Text.jpg?v=f2d2ff49",
-      "imageSmall": "groups/Text-640.jpg?v=07f581d8",
-      "of": [
-        "Text/TypeAsGeometry",
-        "Text/GlyphWave",
-        "Text/PlaydateFont",
-        "Text/TextVolume"
-      ]
-    },
-    "Video": {
-      "image": "groups/Video.jpg?v=a8a23b4a",
-      "imageSmall": "groups/Video-640.jpg?v=76b194e7",
-      "of": [
-        "Video/VideoPlayback",
-        "Video/SoundReactive"
-      ]
-    },
-    "Vision": {
-      "image": "groups/Vision.jpg?v=d29e5cd3",
-      "imageSmall": "groups/Vision-640.jpg?v=dd4a2bb3",
-      "of": [
-        "Vision/BodyPose",
-        "Vision/HandTracking",
-        "Vision/SceneLabels",
-        "Vision/FaceTracking"
-      ]
-    },
-    "Web": {
-      "image": "groups/Web.jpg?v=7a143497",
-      "imageSmall": "groups/Web-640.jpg?v=fd88be70",
-      "of": [
-        "Web/BreathingRing"
-      ]
-    }
-  },
-  "heroes": {
-    "guide": {
-      "across": 8,
-      "cell": 200,
-      "clip": "heroes/guide-hero.mp4?v=7013ee12",
-      "fps": 30,
-      "height": 800,
-      "image": "heroes/guide-hero.jpg?v=e9e274ba",
-      "kind": "guide-payoffs",
-      "lead": 6,
-      "leads": {
-        "10-Vectors/Swarm": 2,
-        "24-GridSimulations/Organism": 10,
-        "26-ParticleSimulations/Drift": 30
-      },
-      "of": "thirty-two of the sketches the guide's chapters build, in chapter order",
-      "seconds": 6,
-      "sketches": [
-        "01-HelloOllin/HelloMotion",
-        "02-Color/ColorField",
-        "03-MotionAndTime/RingPulse",
-        "04-Randomness/DisorderGrid",
-        "05-Noise/Meadow",
-        "06-GridsAndRepetition/RoseWall",
-        "07-Tiles/Meander",
-        "09-Pictures/TypeMosaic",
-        "10-Vectors/Swarm",
-        "11-ForcesAndPhysics/Wrecker",
-        "12-FlocksAndSwarms/Flock",
-        "13-GrowingThings/Garden",
-        "14-FieldsAndFlow/FlowPrint",
-        "15-ShapesAsMaterial/Plate",
-        "16-CurvesAndFigures/Engraving",
-        "17-MarksAndMedia/Monogram",
-        "18-YourFirstShader/Aurora",
-        "19-LayersAndEffects/Comets",
-        "20-PicturesRestyled/HandColored",
-        "22-PicturesYouSolve/Lighthouse",
-        "24-GridSimulations/Organism",
-        "26-ParticleSimulations/Drift",
-        "27-3DGently/Plaza",
-        "29-MaterialsAndSurroundings/Bench",
-        "30-Landscapes/Valley",
-        "33-SculptingWithFields/Molten",
-        "34-TracedLight/LamplitRoom",
-        "35-Seeing/MotionBrush",
-        "36-Depth/GhostRoom",
-        "38-Listening/Resonator",
-        "44-Performing/Finale",
-        "46-Installations/WallOfBars"
-      ],
-      "width": 1600
-    },
-    "readme": {
-      "across": 8,
-      "cell": 200,
-      "clip": "heroes/readme-hero.mp4?v=070642e7",
-      "height": 800,
-      "image": "heroes/readme-hero.jpg?v=d4678db0",
-      "kind": "example-clips",
-      "of": "thirty-two of the example sketches, from every area of the framework",
-      "sketches": [
-        "Patterns/Truchet",
-        "Patterns/FractalFlame",
-        "Patterns/Kaleidoscope",
-        "Patterns/Phyllotaxis",
-        "Motion/Mandala",
-        "Motion/Spokes",
-        "Motion/EllipseField",
-        "Motion/Petals",
-        "Effects/Droste",
-        "Effects/DiffusionCurves",
-        "Effects/NewtonBasins",
-        "Effects/Feedback",
-        "Simulation/GrayScott",
-        "Simulation/Physarum",
-        "Simulation/ParticleLife",
-        "Simulation/Fluid",
-        "3D/Geometry/Ocean",
-        "3D/Geometry/Planet",
-        "3D/Materials/Materials",
-        "3D/Effects/PathTraced",
-        "3D/Raymarching/RaymarchedFractals",
-        "3D/Lighting/AreaLights",
-        "3D/Physics/Contraption",
-        "3D/Geometry/MeshGrowth",
-        "Shapes/CombinatorsGradient",
-        "Shaders/VisualSynth",
-        "Rendering/Grassland",
-        "Text/GlyphWave",
-        "Images/LuminanceMelt",
-        "Physics/RigidBodies",
-        "Vision/PaintByClass",
-        "Web/BreathingRing"
-      ],
-      "width": 1600
     }
   },
   "passedOver": {
