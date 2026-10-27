@@ -129,7 +129,7 @@ enum TessOption
 	TESS_REVERSE_CONTOURS
 };
 
-typedef float TESSreal;
+typedef double TESSreal;   /* Ollin: double, not the upstream float; see README.md */
 typedef int TESSindex;
 typedef struct TESStesselator TESStesselator;
 typedef struct TESSalloc TESSalloc;

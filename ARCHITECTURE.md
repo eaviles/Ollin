@@ -2657,10 +2657,51 @@ stand-in disc leaves the equirect (a radius of 0 in `sky[10].w`), and the
 skybox fragment draws the true disc analytically (half of 0.51 degrees, its
 mean radiance, area-conserving below a pixel), since a 1K equirect texel is
 wider than the sun. A cloudy sky keeps its baked disc (the clouds in front dim
-it) and its beam keeps 1 minus the coverage. The drawer joins the light after a
-set's own lamps in `activeLights(in:)`, so everything that reads the packed
-list sees it; `.automatic` joins only a set with no directional light of its
-own, and the frame's own set decides the bake and the backdrop.
+it). The drawer joins the light after a set's own lamps in
+`activeLights(in:)`, so everything that reads the packed list sees it;
+`.automatic` joins only a set with no directional light of its own, and the
+frame's own set decides the bake and the backdrop.
+
+**The sun-lit ground.** The dome is defined over the upper hemisphere; below
+the horizon the bake without a sun paints the sky's mirror dimmed by the ground
+albedo, a plausible bounce floor. With the sun a light that floor ignored the
+beam: a matte ground at albedo 0.3 is about four times the mirror (7.9 against
+2.0 in the sky's unit at turbidity 2 and elevation 0.6), so a face turned down
+and away from the sun read dark. The sun-lit bake fills the lower hemisphere
+with the ground a level matte surface really has, one radiance in every
+direction: the albedo times the level irradiance of sky and beam over pi. The
+sky's half is reduced off the baked upper hemisphere itself
+(`ollin_ibl_sky_ground_reduce`, one threadgroup, cosine and solid-angle
+weighted), so a cloudy sky's ground is lit by the cloudy sky; the beam's half
+arrives packed (`sky[13]`, the clouds' expected share of it); both generators
+return black for the mirrored hemisphere under the flag (the clouds twin skips
+its mirrored march with it) and `ollin_ibl_sky_ground_fill` paints the row.
+The CPU twin for the exposure is `SkySun.groundRadiance` over
+`SkySun.levelIrradiance`, a 64 by 128 quadrature of the closed form that reads
+the model's own numbers within 0.03%, and `litAverage` counts the ground's
+luminance over its half of the sphere in place of the mirror's, so a sun-lit
+scene's exposure drops a little (14% at that sky). The backdrop below the
+horizon follows, one flat ground. The sky without a sun keeps the mirror
+byte-identical.
+
+**The cloud before the sun.** The beam kept 1 minus the coverage, the expected
+share, whether the backdrop showed the sun in a gap or behind a cloud. The
+bake now marches the shell along the sun's own direction
+(`ollin_ibl_sky_sun_transmittance`, one thread, 128 steps) with the view
+march's own extinction, `1 - exp(-density * step / 140)` a step, and the
+horizon fade the backdrop applies, so the share is the dimming the backdrop
+gives the disc. It is written beside the ground into 32 bytes of shared memory
+(`IBLMaps.sunReadback`); the drawer never knows it directly. The renderer's
+`syncSkySunTransmittance` hands it to `Drawer.skySunTransmittance` at the top
+of every frame path, before `prepareVolumes`, the light cull, the tracer, and
+the geometry pass pack the lights: on the live path it reads what the last
+completed bake's command buffer landed (a frame late, nil on the first frame,
+when the drawer keeps the expected share; never a wait), and on the headless
+paths it bakes a missing key on a command buffer of its own and waits, so one
+`image(of:)` and an export's first frame read the exact share. `skySunLight()`
+scales the beam by it; the exposure keeps the expected share on purpose, so a
+sun passing behind a cloud darkens the scene rather than swinging the exposure
+of the whole picture, and an animated cloudscape never pumps.
 
 **Volumetric clouds** (`Environment.clouds(_:)`, the `Clouds` value) bake into
 this same generation, which is the design's whole payoff: the backdrop, the

@@ -2496,6 +2496,9 @@ final class MetalRenderer {
             returnFrameSlot()   // nothing encoded; hand the slot back
             return
         }
+        // The sky's sun through its clouds, before anything packs the frame's lights
+        // (what the last completed bake landed; never a wait, on the live path).
+        syncSkySunTransmittance(drawer, blocking: false)
         // Sim steps before the render pass; a step that reads a layer waits for the layers.
         encodeCompute(drawer, into: commandBuffer, part: .beforeLayers)
         prepareVolumes(drawer, into: commandBuffer)  // the clouds' grids, lit, ahead of every pass
@@ -3330,6 +3333,9 @@ final class MetalRenderer {
         // scene first, in its own completed command buffers, so the composite in the
         // geometry pass reads finished textures and the frame's own shadow pass can
         // safely re-fill the accel/offsets rings the trace used. nil = pure raster.
+        // The sky's sun through its clouds, before anything packs the frame's lights:
+        // a headless frame bakes the sky and waits, so the share is this frame's own.
+        syncSkySunTransmittance(drawer, blocking: true)
         let pathTraced = encodePathTracePass(drawer, width: width, height: height)
         // Sim steps before the render pass; a step that reads a layer waits for the layers.
         encodeCompute(drawer, into: commandBuffer, part: .beforeLayers)
@@ -3859,6 +3865,7 @@ final class MetalRenderer {
             let passHasStencil = attachClipStencil(to: pass, active: drawer.usesCanvasStencil,
                                                    width: width, height: height, storage: storage)
             guard let cb = commandQueue.makeCommandBuffer() else { continue }
+            syncSkySunTransmittance(drawer, blocking: true)
             encodeCompute(drawer, into: cb, part: .beforeLayers)
             prepareVolumes(drawer, into: cb)
             encodeMeshFieldCulling(drawer, into: cb,

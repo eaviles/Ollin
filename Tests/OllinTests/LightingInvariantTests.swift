@@ -479,6 +479,15 @@ struct LightingInvariantTests {
         return try render(sketch)
     }
 
+    /// The same, read back through the inverse of the Reinhard curve, for a probe that
+    /// tone-maps with it.
+    private func tracedUnrolled(_ sketch: Sketch, samples: Int) throws -> Frame {
+        let settings = PathTracing(samplesPerPixel: samples, denoises: false)
+        OllinApp.pathTracedExport = settings
+        defer { OllinApp.pathTracedExport = nil }
+        return try renderUnrolled(sketch)
+    }
+
     // MARK: The furnace from every side
 
     /// A white dielectric returns the field from every side: under a uniform field,
@@ -547,17 +556,20 @@ struct LightingInvariantTests {
     /// A clear day's light is mostly the sun's beam. The procedural sky's sun is the sky
     /// model's own solar radiance, integrated over the disc and through the observer
     /// into the sky's unit, so a white surface facing it stands out from one facing away
-    /// by the model's own ratio: 8.59 at turbidity 2 and this elevation, worked out from
+    /// by the model's own ratio: 4.76 at turbidity 2 and this elevation, worked out from
     /// the published model's full source in a separate program (the disc over 512 rings,
-    /// the sky's irradiance over 180,000 directions, the channels' plain mean as the
+    /// the sky's irradiance over 130,000 directions, the channels' plain mean as the
     /// frame's luma), where the sky without a sun gives 1.99 (the 2.0 this read before
-    /// the sun was a light, 2026-10-09).
+    /// the sun was a light, 2026-10-09). The surface facing away sees the ground over
+    /// half its hemisphere, and the ground is a matte ground the sun lights: the sky's
+    /// dimmed mirror stood there until 2026-10-26, about a quarter as bright, which read
+    /// 8.59 in the same program.
     ///
     /// Haze takes the beam and gives it to the sky, so a hazy day's shadows are softer: a
     /// white floor in the sun against the same floor in a slab's shadow reads 3.45 at
     /// turbidity 2 and 1.89 at 8 in that program. The surface facing the sun is not the
     /// reading for haze: the haze's glow gathers around the sun and lights that surface
-    /// too, so its contrast rises with haze (10.97 at turbidity 8 in the same program).
+    /// too, so its contrast rises with haze (5.29 at turbidity 8 in the same program).
     @Test(.enabled(if: Snapshot.hasMetal))
     func aClearerSkyCastsHarderLight() throws {
         let toward = mean(try renderUnrolled(SkyInvariantProbe.make(turbidity: 2, facing: true)),
@@ -566,8 +578,8 @@ struct LightingInvariantTests {
                         x: 86..<106, y: 86..<106)
         let facing = toward / away
         #expect(facing >= 4, "a clear sky's facing-to-away contrast was \(facing)")
-        #expect(abs(facing / 8.59 - 1) < 0.05,
-                "a clear sky's facing-to-away contrast was \(facing) where the model gives 8.59")
+        #expect(abs(facing / 4.76 - 1) < 0.05,
+                "a clear sky's facing-to-away contrast was \(facing) where the model gives 4.76")
         func shadow(_ turbidity: Double) throws -> Double {
             let probe = SkyShadowInvariantProbe.make(turbidity: turbidity)
             let f = try renderUnrolled(probe)
@@ -666,6 +678,122 @@ struct LightingInvariantTests {
         #expect(CGImageDestinationFinalize(dest))
         Self.ringMaps[key] = url
         return url
+    }
+
+    // MARK: The ground under the sky, and the cloud before the sun
+
+    /// The sky's irradiance on a level surface, worked out on the CPU for the sun-lit
+    /// ground's exposure, is the model's own: the numbers the floor test reads (over 23
+    /// million directions in a separate program), within half a percent.
+    @Test(arguments: [2.0, 8.0])
+    func theSkysLevelIrradianceIsTheModels(turbidity: Double) {
+        let model = turbidity == 2 ? SIMD3<Double>(12.584, 21.769, 37.616) : SIMD3<Double>(43.933, 47.375, 51.649)
+        let sun = SkySun(turbidity: turbidity, elevation: 0.6, groundAlbedo: 0.3)
+        for k in 0..<3 {
+            #expect(abs(sun.levelIrradiance[k] / model[k] - 1) < 0.005,
+                    "at turbidity \(turbidity) channel \(k) the level irradiance was \(sun.levelIrradiance[k]) where the model gives \(model[k])")
+        }
+    }
+
+    /// The ground under a sun-lit sky is a matte ground the sun lights: the backdrop
+    /// below the horizon is one radiance, the albedo times the level irradiance of sky
+    /// and beam over pi, at the bake's exposure. The bake reads the sky's half off its
+    /// own upper hemisphere on the GPU; the CPU's closed form says the same within 3%.
+    /// With the sun not a light the ground stays the sky's dimmed mirror, the ray
+    /// mirrored into the sky at the sky's own exposure.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func theGroundUnderASunlitSkyIsAMatteGroundTheSunLights() throws {
+        let sun = SkySun(turbidity: 2, elevation: 0.6, groundAlbedo: 0.3)
+        let lit = channels(try renderUnrolled(SkyGroundInvariantProbe.make(look: .ground)),
+                           Vector2(96, 96), radius: 6)
+        let model = sun.groundRadiance(coverage: nil) * Double(sun.exposure(sunLit: true, coverage: nil))
+        for k in 0..<3 {
+            #expect(abs(lit[k] / model[k] - 1) < 0.03,
+                    "channel \(k) of the sunlit ground read \(lit[k]) where the model gives \(model[k])")
+        }
+        let unlit = channels(try renderUnrolled(SkyGroundInvariantProbe.make(look: .ground, sunlight: .off)),
+                             Vector2(96, 96), radius: 2)
+        let (configs, radiances) = SkySun.configurations(turbidity: 2, albedo: 0.3, elevation: 0.6)
+        let d = SkyGroundInvariantProbe.groundRay
+        let s = SIMD3<Double>(0, sin(0.6), cos(0.6))
+        let gamma = acos(max(-1, min(1, d.x * s.x - d.y * s.y + d.z * s.z)))
+        let exposure = Double(sun.exposure(sunLit: false, coverage: nil))
+        for k in 0..<3 {
+            let mirror = 0.3 * SkySun.radiance(configs: configs, radiances: radiances,
+                                               cosTheta: -d.y, gamma: gamma, channel: k) * exposure
+            #expect(abs(unlit[k] / mirror - 1) < 0.05,
+                    "channel \(k) of the unlit ground read \(unlit[k]) where the sky's mirror gives \(mirror)")
+        }
+    }
+
+    /// The same ground against a trace: a white matte plane under the same sky, traced,
+    /// returns the irradiance of sky and sun over pi (a white dielectric returns the
+    /// field), so the baked ground over its albedo reads the traced plane within 5%.
+    @Test(.enabled(if: Snapshot.hasRaytracing))
+    func theGroundUnderTheSkyIsTheTracesGround() throws {
+        let ground = channels(try renderUnrolled(SkyGroundInvariantProbe.make(look: .ground)),
+                              Vector2(96, 96), radius: 6)
+        let plane = channels(try tracedUnrolled(SkyGroundInvariantProbe.make(look: .whitePlane), samples: 64),
+                             Vector2(96, 96), radius: 6)
+        for k in 0..<3 {
+            let ratio = (ground[k] / 0.3) / plane[k]
+            #expect(abs(ratio - 1) < 0.05,
+                    "channel \(k) of the baked ground over its albedo read \(ground[k] / 0.3) where the traced plane gives \(plane[k])")
+        }
+    }
+
+    /// A face turned down reads the ground the trace sees: a white plate high over a
+    /// matte floor of the sky's own ground albedo, its underside against its top, reads
+    /// the same ratio through the raster (the irradiance bake's lower half) as through
+    /// the trace (the floor itself), within 10%; a matte floor under the light that
+    /// lights the top gives the underside its albedo's share, 0.3. Over the sky's
+    /// mirror the raster read about a quarter of it.
+    @Test(.enabled(if: Snapshot.hasRaytracing))
+    func aFaceTurnedDownReadsTheGroundTheTraceSees() throws {
+        func ratio(_ render: (Sketch) throws -> Frame) throws -> Double {
+            let under = mean(try render(SkyGroundInvariantProbe.make(look: .underside)), x: 86..<106, y: 86..<106)
+            let top = mean(try render(SkyGroundInvariantProbe.make(look: .top)), x: 86..<106, y: 86..<106)
+            return under / top
+        }
+        let raster = try ratio { try renderUnrolled($0) }
+        let traced = try ratio { try tracedUnrolled($0, samples: 64) }
+        #expect(abs(raster / traced - 1) < 0.1,
+                "the underside read \(raster) of the top through the raster and \(traced) through the trace")
+        #expect(abs(raster / 0.3 - 1) < 0.1, "the underside read \(raster) of the top where a matte floor gives 0.3")
+    }
+
+    /// The sun's share follows the clouds the backdrop shows: the bake marches the cloud
+    /// shell toward the sun with the same extinction the backdrop composites its disc
+    /// with, so the beam's share is the disc's own dimming, 1 in a gap and under a fifth
+    /// behind a thick cloud, and the light scales by it under one exposure (the exposure
+    /// keeps the clouds' expected share, so a passing cloud never swings it). A headless
+    /// frame reads the share of its own bake, so one image already has it.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func theSunsShareFollowsTheCloudsTheBackdropShows() throws {
+        func sun(phase: Double) throws -> (share: Double?, disc: Double, light: Double?) {
+            let probe = SkyGroundInvariantProbe.make(look: .sun,
+                                                     clouds: Clouds(coverage: 0.45, tallness: 0.6, phase: phase))
+            let f = try renderUnrolled(probe)
+            return (probe.drawer.skySunTransmittance, mean(f, x: 90..<102, y: 90..<102),
+                    probe.drawer.skySunLight()?.intensity)
+        }
+        let gap = try sun(phase: 5), behind = try sun(phase: 3)
+        let gapShare = try #require(gap.share), behindShare = try #require(behind.share)
+        #expect(gapShare > 0.95, "the sun in a gap kept \(gapShare) of its beam")
+        #expect(behindShare < 0.2, "the sun behind a cloud kept \(behindShare) of its beam")
+        let discRatio = behind.disc / gap.disc
+        #expect(abs(discRatio - behindShare / gapShare) < 0.05,
+                "the backdrop dimmed the disc to \(discRatio) where the beam kept \(behindShare / gapShare)")
+        let gapLight = try #require(gap.light), behindLight = try #require(behind.light)
+        #expect(abs(behindLight / gapLight - behindShare / gapShare) < 1e-6,
+                "the light scaled by \(behindLight / gapLight) where the share is \(behindShare / gapShare)")
+        // A clear sky's sun keeps its whole beam, with nothing to read back.
+        let clear = SkyGroundInvariantProbe.make(look: .sun)
+        _ = try renderUnrolled(clear)
+        #expect(clear.drawer.skySunTransmittance == nil)
+        let sky = SkySun(turbidity: 2, elevation: 0.6, groundAlbedo: 0.3)
+        let expected = max(sky.beam.x, sky.beam.y, sky.beam.z) * Double(sky.exposure(sunLit: true, coverage: nil))
+        #expect(abs((clear.drawer.skySunLight()?.intensity ?? 0) / expected - 1) < 1e-6)
     }
 
     /// An environment's light reaches the scene whole: a small sun on a flat field adds
@@ -1487,6 +1615,79 @@ private final class SkyInvariantProbe: Sketch {
         fill(.white)
         material(Material(shading: .physicallyBased, metallic: 0, roughness: 1))
         drawSphere(radius: 2)
+    }
+}
+
+/// The sun-lit sky's ground and its sun through the clouds, through a Reinhard present:
+/// the backdrop below the horizon with nothing in view (a sphere far behind every look
+/// keeps the frame a 3D one, since a frame with no mesh draws no backdrop), a white
+/// matte plane filling the frame from above, a white plate's underside and its top over
+/// a matte floor, and the sun's own disc.
+private final class SkyGroundInvariantProbe: Sketch {
+    enum Look { case ground, whitePlane, underside, top, sun }
+    var look = Look.ground
+    var sunlight = Environment.Sunlight.automatic
+    var clouds: Clouds?
+
+    /// The `.ground` look's center ray: down and away from the sun.
+    static let groundRay: SIMD3<Double> = {
+        let d = SIMD3<Double>(0, -8, -10)
+        return d / (d.x * d.x + d.y * d.y + d.z * d.z).squareRoot()
+    }()
+
+    static func make(look: Look, sunlight: Environment.Sunlight = .automatic,
+                     clouds: Clouds? = nil) -> SkyGroundInvariantProbe {
+        let p = SkyGroundInvariantProbe()
+        p.look = look
+        p.sunlight = sunlight
+        p.clouds = clouds
+        return p
+    }
+
+    override var canvasSize: CanvasSize { .square(192) }
+
+    override func draw() {
+        background(.black)
+        toneMap(.reinhard)
+        let elevation = 0.6
+        let towardSun = Vector3(0, sin(elevation), cos(elevation))
+        switch look {
+        case .ground:
+            camera(Camera3D(eye: Vector3(0, 4, 0), target: Vector3(0, -4, -10),
+                            projection: .perspective(fieldOfView: .pi / 8)))
+        case .whitePlane:
+            camera(Camera3D(eye: Vector3(0, 30, 0), target: .zero, up: Vector3(0, 0, -1),
+                            projection: .perspective(fieldOfView: .pi / 8)))
+        case .underside:
+            camera(Camera3D(eye: Vector3(0, 0.5, 0), target: Vector3(0, 6, 0), up: Vector3(0, 0, -1),
+                            projection: .perspective(fieldOfView: .pi / 8)))
+        case .top:
+            camera(Camera3D(eye: Vector3(0, 12, 0), target: Vector3(0, 6, 0), up: Vector3(0, 0, -1),
+                            projection: .perspective(fieldOfView: .pi / 8)))
+        case .sun:
+            camera(Camera3D(eye: .zero, target: towardSun * 10,
+                            projection: .perspective(fieldOfView: .pi / 6)))
+        }
+        var env = Environment.sky(turbidity: 2, sunElevation: elevation).sunlight(sunlight)
+        if let clouds { env = env.clouds(clouds) }
+        environment(env)
+        material(Material(shading: .physicallyBased, metallic: 0, roughness: 1))
+        withState { translate(0, -300, 300); drawSphere(radius: 1) }
+        switch look {
+        case .whitePlane:
+            fill(.white)
+            drawPlane(width: 400, depth: 400)
+        case .underside, .top:
+            // The floor's albedo is the sky's ground albedo, a linear 0.3 (the bake's
+            // ground is the model's reflectance; a fill is specified in sRGB).
+            let albedo = Color.linearToSrgb(0.3)
+            fill(Color(red: albedo, green: albedo, blue: albedo))
+            drawPlane(width: 60, depth: 60)
+            fill(.white)
+            withState { translate(0, 6, 0); drawBox(width: 2, height: 0.2, depth: 2) }
+        case .ground, .sun:
+            break
+        }
     }
 }
 

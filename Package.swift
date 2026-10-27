@@ -418,16 +418,21 @@ let package = Package(
         ),
         // Vendored libtess2 (GLU-tessellator lineage), the polygon triangulator
         // behind concave/holed `Shape` fills. Bundled third-party C source under
-        // its own SGI-B license; see Sources/CLibtess2/README.md and the
+        // its own SGI-B license; see External/CLibtess2/README.md and the
         // repo-root THIRD-PARTY-NOTICES.md. Wrapped behind Ollin's own API; the
         // C symbols are not part of Ollin's public surface. The upstream
         // Source/ + Include/ split is preserved so its relative includes resolve;
-        // `publicHeadersPath: Include` exposes only tesselator.h.
+        // `publicHeadersPath: Include` exposes only tesselator.h. Its asserts are
+        // off in every configuration (NDEBUG, as the web page's build of the same
+        // source has always had it): they check the sweep's own ordering against
+        // a sketch's input, and a folded ring that put it out of order took a
+        // live window down rather than drawing a poor fill.
         .target(
             name: "CLibtess2",
             path: "External/CLibtess2",
             exclude: ["LICENSE.txt", "README.md"],
-            publicHeadersPath: "Include"
+            publicHeadersPath: "Include",
+            cSettings: [.define("NDEBUG")]
         ),
         // The stroke and fill expander the renderer and the web page share: the
         // fringe expander's geometry, the convex fan, the tessellator's glue,

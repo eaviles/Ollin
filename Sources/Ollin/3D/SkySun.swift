@@ -23,8 +23,15 @@ struct SkySun: Equatable {
     /// model's unit. No cloud is in it; `beam(coverage:)` takes a cloudscape's share out.
     let beam: SIMD3<Double>
     /// The sky's mean luminance over the whole sphere, the ground hemisphere read as
-    /// the bake reads it (the sky's dimmed mirror). The auto-exposure's average.
+    /// the bake without a sun reads it (the sky's dimmed mirror). The auto-exposure's
+    /// average while the sun is not a light.
     let skyAverage: Float
+    /// The sky hemisphere's mean luminance on its own, solid-angle weighted: the upper
+    /// half of the average above, for the bake whose ground is lit.
+    let skyHemisphereAverage: Float
+    /// The sky's irradiance on a level surface, linear sRGB in the model's unit (the
+    /// closed form over the upper hemisphere, cosine weighted), with no sun in it.
+    let levelIrradiance: SIMD3<Double>
     /// The sky's radiance along the horizon, averaged over every compass direction,
     /// linear sRGB in the model's unit: what the air far away converges to.
     let horizon: SIMD3<Double>
@@ -50,6 +57,9 @@ struct SkySun: Equatable {
         let sunDir = SkySun.bakedDirection(elevation: e)
         skyAverage = SkySun.averageLuminance(configs: configs, radiances: radiances,
                                              albedo: albedo, sunDir: sunDir)
+        skyHemisphereAverage = SkySun.skyHemisphereLuminance(configs: configs, radiances: radiances,
+                                                             sunDir: sunDir)
+        levelIrradiance = SkySun.levelIrradiance(configs: configs, radiances: radiances, sunDir: sunDir)
         beam = SkySun.beamIrradiance(turbidity: turb, elevation: e)
         horizon = SkySun.horizonRadiance(configs: configs, radiances: radiances, elevation: e)
     }
@@ -62,6 +72,23 @@ struct SkySun: Equatable {
         beam * (1 - min(max(coverage ?? 0, 0), 1))
     }
 
+    /// The beam's irradiance on level ground, the share the clouds leave of it: the
+    /// beam at normal incidence times the sine of the sun's elevation.
+    func levelBeam(coverage: Double?) -> SIMD3<Double> {
+        beam(coverage: coverage) * sin(elevation)
+    }
+
+    /// The radiance of the ground under a sky whose sun lights the scene, linear sRGB
+    /// in the model's unit: a level matte ground of the sky's albedo, lit by the sky's
+    /// irradiance and the share of the beam the clouds leave, one radiance in every
+    /// direction (a matte surface's radiance is its albedo times its irradiance over
+    /// pi). The bake fills the lower hemisphere of a sun-lit sky with it, with the
+    /// sky's irradiance read from the baked sky itself (clouds included); this is the
+    /// clear-sky value, for the exposure.
+    func groundRadiance(coverage: Double?) -> SIMD3<Double> {
+        (levelIrradiance + levelBeam(coverage: coverage)) * (groundAlbedo / Double.pi)
+    }
+
     /// The exposure the bake scales this sky by. When the sun lights the scene its beam
     /// joins the average, as a photographed sun's pixels do in a loaded map: the sun's
     /// light spread over the whole sphere is its irradiance over 4 pi.
@@ -69,12 +96,18 @@ struct SkySun: Equatable {
         SkySun.exposure(average: sunLit ? litAverage(coverage: coverage) : skyAverage)
     }
 
-    /// The average the exposure is set from while the sun lights the scene: the sky's,
-    /// plus the beam's luminance spread over the sphere.
+    /// The average the exposure is set from while the sun lights the scene: the sky
+    /// hemisphere's, the sun-lit ground's over the other half, and the beam's
+    /// luminance spread over the sphere. The ground is the clear-sky value and the
+    /// beam's share is the clouds' expected one (1 minus the coverage), so an exposure
+    /// never swings as the sun passes behind a cloud; the light on the scene follows
+    /// the clouds, the exposure does not.
     func litAverage(coverage: Double?) -> Float {
         let b = beam(coverage: coverage)
         let luminance = 0.2126 * b.x + 0.7152 * b.y + 0.0722 * b.z
-        return skyAverage + Float(luminance / (4 * Double.pi))
+        let g = groundRadiance(coverage: coverage)
+        let ground = Float(0.2126 * g.x + 0.7152 * g.y + 0.0722 * g.z)
+        return (skyHemisphereAverage + ground) / 2 + Float(luminance / (4 * Double.pi))
     }
 
     /// The auto-exposure for an average luminance: the target over the average, held
@@ -157,6 +190,64 @@ struct SkySun: Equatable {
             weightSum += rowWeight
         }
         return weightSum > 0 ? Float(lumSum / weightSum) : 1
+    }
+
+    /// The solid-angle-weighted mean luminance of the sky hemisphere alone, on the same
+    /// coarse grid as `averageLuminance`'s upper half.
+    static func skyHemisphereLuminance(configs: [Double], radiances: [Double],
+                                       sunDir: SIMD3<Float>) -> Float {
+        let sx = Double(sunDir.x), sy = Double(sunDir.y), sz = Double(sunDir.z)
+        let rows = 16, cols = 16
+        var lumSum = 0.0, weightSum = 0.0
+        for y in 0..<rows {
+            let lat = (Double(y) + 0.5) / Double(rows) * (Double.pi / 2)   // 0 top .. pi/2 horizon
+            let rowWeight = sin(lat)
+            var rowLum = 0.0
+            for x in 0..<cols {
+                let lon = (Double(x) + 0.5) / Double(cols) * 2 * Double.pi
+                let dy = cos(lat)
+                let dxz = sin(lat)
+                let dx = dxz * cos(lon), dz = dxz * sin(lon)
+                let gamma = acos(max(-1, min(1, dx * sx + dy * sy + dz * sz)))
+                rowLum += 0.2126 * radiance(configs: configs, radiances: radiances,
+                                            cosTheta: dy, gamma: gamma, channel: 0)
+                        + 0.7152 * radiance(configs: configs, radiances: radiances,
+                                            cosTheta: dy, gamma: gamma, channel: 1)
+                        + 0.0722 * radiance(configs: configs, radiances: radiances,
+                                            cosTheta: dy, gamma: gamma, channel: 2)
+            }
+            lumSum += rowLum / Double(cols) * rowWeight
+            weightSum += rowWeight
+        }
+        return weightSum > 0 ? Float(lumSum / weightSum) : 1
+    }
+
+    /// The sky's irradiance on a level surface: the closed form over the upper
+    /// hemisphere, weighted by the cosine from the zenith and the solid angle, on a
+    /// grid fine enough for the sun's halo (64 rows by 128 columns reads within half a
+    /// percent of a far finer one).
+    static func levelIrradiance(configs: [Double], radiances: [Double],
+                                sunDir: SIMD3<Float>) -> SIMD3<Double> {
+        let sx = Double(sunDir.x), sy = Double(sunDir.y), sz = Double(sunDir.z)
+        let rows = 64, cols = 128
+        let dTheta = (Double.pi / 2) / Double(rows), dPhi = 2 * Double.pi / Double(cols)
+        var sum = SIMD3<Double>.zero
+        for y in 0..<rows {
+            let theta = (Double(y) + 0.5) * dTheta
+            let cosTheta = cos(theta), sinTheta = sin(theta)
+            let weight = cosTheta * sinTheta * dTheta * dPhi
+            for x in 0..<cols {
+                let phi = (Double(x) + 0.5) * dPhi
+                let dx = sinTheta * cos(phi), dz = sinTheta * sin(phi)
+                let gamma = acos(max(-1, min(1, dx * sx + cosTheta * sy + dz * sz)))
+                sum += SIMD3<Double>(
+                    radiance(configs: configs, radiances: radiances, cosTheta: cosTheta, gamma: gamma, channel: 0),
+                    radiance(configs: configs, radiances: radiances, cosTheta: cosTheta, gamma: gamma, channel: 1),
+                    radiance(configs: configs, radiances: radiances, cosTheta: cosTheta, gamma: gamma, channel: 2)
+                ) * weight
+            }
+        }
+        return sum
     }
 
     /// The sky's horizon radiance averaged over 64 compass directions.

@@ -1170,15 +1170,26 @@ final class Drawer {
         return [light]
     }
 
+    /// The share of its beam the frame's cloudscape passes toward the sun, read off the
+    /// sky's bake by the renderer before the frame's lights pack (`syncSkySunTransmittance`:
+    /// a frame late in a window, exact in a headless frame). Nil while no bake has
+    /// answered, when the sun keeps the clouds' expected share, 1 minus the coverage.
+    var skySunTransmittance: Double?
+
     /// The sky's sun as a directional light: the beam less the clouds' share, in the units
     /// the sky's own image is drawn in (the bake's exposure, counted with the sun, times
-    /// the environment's intensity), from where the backdrop draws the disc. Nil with no
-    /// `.sky`, or with no beam left to cast (a full overcast, an intensity of zero).
+    /// the environment's intensity), from where the backdrop draws the disc. The share is
+    /// the cloud shell's transmittance toward the sun once the bake has reported it, so
+    /// the light follows the clouds the backdrop shows (1 in a gap, next to nothing
+    /// behind a thick cloud), and the clouds' expected share until then; the exposure
+    /// keeps the expected share either way. Nil with no `.sky`, or with no beam left to
+    /// cast (a sun behind a thick cloud, an intensity of zero).
     func skySunLight() -> Light? {
         guard let env = environment, let sun = skySun() else { return nil }
         let coverage = env.clouds?.coverage
         let exposure = Double(sun.exposure(sunLit: true, coverage: coverage))
-        let rgb = sun.beam(coverage: coverage) * (exposure * env.intensity)
+        let share = skySunTransmittance ?? (1 - min(max(coverage ?? 0, 0), 1))
+        let rgb = sun.beam * share * (exposure * env.intensity)
         let peak = max(rgb.x, rgb.y, rgb.z)
         guard peak > 0, peak.isFinite else { return nil }
         let color = Color(red: Color.linearToSrgb(rgb.x / peak),

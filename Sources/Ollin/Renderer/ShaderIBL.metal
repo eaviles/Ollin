@@ -162,6 +162,13 @@ fragment float4 ollin_ibl_equirect_to_cube(OllinIBLVaryings in [[stage_in]],
 //   sky[10]   : .xyz = unit direction to the sun (world, +Y up), .w = solar radius (rad);
 //               0 draws no disc (a clear sky whose sun lights the scene as a light, the
 //               backdrop drawing the disc at the sun's own size)
+//   sky[11-12]: the cloudscape's dials (read by the clouds twin alone; zero for a clear sky)
+//   sky[13]   : .xyz = the beam's irradiance on level ground, the clouds' expected share
+//               of it, in the model's unit; .w = 1 when the sun lights the scene. Then
+//               the lower hemisphere is not the sky's mirror: both generators leave it
+//               black and the ground kernels below fill it with one matte radiance, the
+//               albedo times the level irradiance of sky and beam over pi, the sky's
+//               half read off the baked upper hemisphere itself.
 constant float OLLIN_SKY_SUN_FACTOR = 25.0;   // sun-disc brightness, relative to the sky at the sun
 
 // Hosek-Wilkie sky-dome radiance for a view ray with the given cos(zenith) and angle to
@@ -196,6 +203,9 @@ fragment float4 ollin_ibl_sky_gen(OllinIBLVaryings in [[stage_in]],
     float ground = 1.0;
     bool mirrored = false;
     if (dir.y < 0.0) { dir.y = -dir.y; ground = albedo; mirrored = true; }
+    // A sun-lit sky's ground is filled by ollin_ibl_sky_ground_fill once the upper
+    // hemisphere is drawn (its radiance needs the sky's irradiance): nothing to do here.
+    if (mirrored && sky[13].w > 0.5) return float4(0.0, 0.0, 0.0, 1.0);
     float cosTheta = dir.y;
     float gamma = acos(clamp(dot(dir, sunDir), -1.0, 1.0));
     float3 col = ollin_sky_radiance(sky, cosTheta, gamma) * ground;
@@ -390,6 +400,9 @@ fragment float4 ollin_ibl_sky_gen_clouds(OllinIBLVaryings in [[stage_in]],
     float ground = 1.0;
     bool mirrored = false;
     if (dir.y < 0.0) { dir.y = -dir.y; ground = albedo; mirrored = true; }
+    // The sun-lit ground is one matte radiance under the clouds too (the fill kernel
+    // reads the baked sky, clouds included), so the mirrored march is skipped as well.
+    if (mirrored && sky[13].w > 0.5) return float4(0.0, 0.0, 0.0, 1.0);
     float cosTheta = dir.y;
     float gamma = acos(clamp(dot(dir, sunDir), -1.0, 1.0));
     float3 skyOnly = ollin_sky_radiance(sky, cosTheta, gamma) * ground;
@@ -462,6 +475,96 @@ fragment float4 ollin_ibl_sky_gen_clouds(OllinIBLVaryings in [[stage_in]],
     float cover = (1.0 - T) * horizonFade * share;
     col = col * (1.0 - cover) + acc * horizonFade * share * (mirrored ? albedo : 1.0);
     return float4(max(col, 0.0), 1.0);
+}
+
+// 1c') The sun-lit sky's ground, and the cloud before the sun. Three kernels the bake
+// runs after a sun-lit generator pass, on the same command buffer.
+//
+// The ground: a level matte surface of the sky's albedo has one radiance in every
+// direction, its albedo times its irradiance over pi, and its irradiance is the sky's
+// on level ground (the baked upper hemisphere, cosine weighted, clouds and all) plus
+// the beam's share packed in sky[13]. One threadgroup reduces the upper half of the
+// equirect, writes the ground's radiance (and the sky's irradiance luminance beside
+// it) to `out[0]`, and the fill kernel paints it over the lower half. With it, a face
+// turned down reads the sunlit ground rather than the sky's dimmed mirror, which was
+// about a quarter of it under a clear sky.
+kernel void ollin_ibl_sky_ground_reduce(texture2d<float, access::read> equirect [[texture(0)]],
+                                        constant float4 *sky [[buffer(0)]],
+                                        device float4 *out [[buffer(1)]],
+                                        uint tid [[thread_index_in_threadgroup]],
+                                        uint lane [[thread_index_in_simdgroup]],
+                                        uint sg [[simdgroup_index_in_threadgroup]]) {
+    const uint W = equirect.get_width(), H = equirect.get_height();
+    const uint rows = H / 2;
+    float3 sum = float3(0.0);
+    for (uint y = 0; y < rows; y++) {
+        // The row's zenith angle; its texels' cosine for a level surface and the sine
+        // of the equirect's area element, both one value per row.
+        float lat = (float(y) + 0.5) / float(H) * OLLIN_IBL_PI;
+        float weight = cos(lat) * sin(lat);
+        float3 row = float3(0.0);
+        for (uint x = tid; x < W; x += 256) row += equirect.read(uint2(x, y)).rgb;
+        sum += row * weight;
+    }
+    sum *= (2.0 * OLLIN_IBL_PI / float(W)) * (OLLIN_IBL_PI / float(H));
+    sum = simd_sum(sum);
+    threadgroup float3 partial[8];
+    if (lane == 0) partial[sg] = sum;
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    if (tid == 0) {
+        float3 irradiance = float3(0.0);
+        for (uint i = 0; i < 8; i++) irradiance += partial[i];
+        float albedo = sky[9].a;
+        float3 ground = (irradiance + sky[13].xyz) * (albedo / OLLIN_IBL_PI);
+        out[0] = float4(ground, dot(irradiance, float3(0.2126, 0.7152, 0.0722)));
+    }
+}
+
+kernel void ollin_ibl_sky_ground_fill(texture2d<float, access::write> equirect [[texture(0)]],
+                                      device const float4 *ground [[buffer(0)]],
+                                      uint2 id [[thread_position_in_grid]]) {
+    const uint W = equirect.get_width(), H = equirect.get_height();
+    if (id.x >= W || id.y >= H / 2) return;
+    equirect.write(float4(ground[0].rgb, 1.0), uint2(id.x, H / 2 + id.y));
+}
+
+// The cloud before the sun: the transmittance of the cloud shell along the sun's own
+// direction, the same extinction the view march composites the backdrop's disc with
+// (`1 - exp(-density * step / 140)` a step), so the share of the beam that reaches the
+// scene is the share of the disc the backdrop shows: 1 in a gap, next to nothing behind
+// a thick cloud, and a low sun's clouds fading out as the backdrop's do. One thread,
+// 128 steps through the shell; `out[1]` holds the share, the raw transmittance, and the
+// horizon fade. The renderer reads it back and the drawer scales the sun's beam by it,
+// in place of the clouds' expected share (1 minus the coverage), which the exposure
+// keeps so that a passing cloud never swings the exposure.
+kernel void ollin_ibl_sky_sun_transmittance(constant float4 *sky [[buffer(0)]],
+                                            device float4 *out [[buffer(1)]],
+                                            texture3d<float> baseNoise [[texture(0)]],
+                                            texture3d<float> detailNoise [[texture(1)]],
+                                            uint tid [[thread_position_in_grid]]) {
+    if (tid != 0) return;
+    float3 dir = sky[10].xyz;
+    float horizonFade = smoothstep(0.03, 0.12, dir.y);
+    float T = 1.0;
+    if (horizonFade > 0.0) {
+        float3 o = float3(0.0, OLLIN_CLOUD_EARTH, 0.0);
+        float tIn = ollin_cloud_shell_t(o, dir, OLLIN_CLOUD_EARTH + OLLIN_CLOUD_BASE);
+        float tOut = ollin_cloud_shell_t(o, dir, OLLIN_CLOUD_EARTH + OLLIN_CLOUD_TOP);
+        float span = min(tOut - tIn, 24000.0);
+        const int STEPS = 128;
+        float stepLen = span / float(STEPS);
+        for (int i = 0; i < STEPS; i++) {
+            float3 p = o + dir * (tIn + (float(i) + 0.5) * stepLen);
+            float alt = length(p) - OLLIN_CLOUD_EARTH;
+            float ph = saturate((alt - OLLIN_CLOUD_BASE) / (OLLIN_CLOUD_TOP - OLLIN_CLOUD_BASE));
+            float d = ollin_cloud_density(p, ph, sky, baseNoise, detailNoise, false);
+            if (d > 1e-3) {
+                T *= exp(-d * stepLen / 140.0);
+                if (T < 1e-3) { T = 0.0; break; }
+            }
+        }
+    }
+    out[1] = float4(1.0 - (1.0 - T) * horizonFade, T, horizonFade, 0.0);
 }
 
 // 1d) Live-feed environment generation. Fill an equirectangular target from a camera

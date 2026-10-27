@@ -20,6 +20,7 @@ redistributed inside this repository.
 - **Version:** commit `8dbd6483e920311a58c9af10a10beb278efebc36` (2025-10-15)
 - **License:** SGI Free Software License B, Version 2.0 — full text at [`External/CLibtess2/LICENSE.txt`](External/CLibtess2/LICENSE.txt)
 - **Also shipped as:** part of [`Sources/Ollin/Resources/WebExpander.wasm`](Sources/Ollin/Resources/WebExpander.wasm), the stroke and fill expander compiled to WebAssembly that a web page a sketch exports carries when its strokes and fills travel as points (`Scripts/build-web-expander.sh` builds it). The page's script carries the copyright notice and the license reference beside the module.
+- **Local change:** one line, `TESSreal` is `double` in `Include/tesselator.h` (upstream `float`), noted with its reason in [`External/CLibtess2/README.md`](External/CLibtess2/README.md); the source is otherwise unmodified.
 
 > Copyright (C) [dates of first publication] Silicon Graphics, Inc. All Rights Reserved.
 >

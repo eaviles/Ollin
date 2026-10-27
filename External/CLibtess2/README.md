@@ -16,10 +16,23 @@ is separate from Ollin's MIT license (see the repo-root `THIRD-PARTY-NOTICES.md`
 - **Date:** 2025-10-15
 - **License:** SGI Free Software License B, Version 2.0 (see `LICENSE.txt`)
 
-The source files are unmodified. Only the directory layout is preserved
-(`Source/` for the implementation and private headers, `Include/` for the public
-`tesselator.h`); the per-file SGI copyright headers and the upstream `LICENSE.txt`
-are kept intact, as the license requires.
+The source files are unmodified but for one line. Only the directory layout is
+preserved (`Source/` for the implementation and private headers, `Include/` for
+the public `tesselator.h`); the per-file SGI copyright headers and the upstream
+`LICENSE.txt` are kept intact, as the license requires.
+
+## Local change
+
+- **`TESSreal` is `double`** (`Include/tesselator.h`, upstream `float`), since
+  2026-10-26. The sweep keeps its order by comparing vertices, and in single
+  precision a folded ring that crosses itself hundreds of times within a few
+  pixels, with points on top of each other, put that order out and tripped its
+  asserts (`tesedgeEval`, `AddRightEdges`), which ended a live window. In double
+  the same rings, and a quarter million generated like them, tessellate without
+  one. The web page's player part is built from this same header, so a fill
+  triangulates there as it does here. The asserts are also compiled out
+  (`NDEBUG`, set in `Package.swift` and in the page's build), so an input the
+  double sweep still cannot order returns a poor fill rather than an abort.
 
 ## Updating
 

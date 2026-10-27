@@ -15,7 +15,12 @@ extension Shape {
     /// Re-evaluated per call, matching the immediate-mode model (like the convex
     /// `drawPolygon` fan). The heavy lifting is libtess2's, reached through the
     /// `OllinExpander` module the web page's player part shares, so a fill a
-    /// page carries as its contours triangulates there as it does here.
+    /// page carries as its contours triangulates there as it does here. Any
+    /// closed outline is safe to hand over, a folded one crossing itself hundreds
+    /// of times with points on top of each other included: the tessellator runs
+    /// in double precision with its asserts off, and the expander cleans its
+    /// input first (see `FillExpander.cleaned`), so a bad ring returns a poor
+    /// fill rather than ending the process.
     func triangulatedFill() -> [Vector2] {
         let fillable = fillableContours
         guard !fillable.isEmpty else { return [] }

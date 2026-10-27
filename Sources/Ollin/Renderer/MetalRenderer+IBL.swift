@@ -61,14 +61,34 @@ final class IBLMaps {
     /// is scaled to a common target average luminance, applied to both the lighting and the
     /// skybox. Keeps a bright noon or a night from blowing out or crushing.
     let normalization: Float
+    /// For a procedural sky whose sun lights the scene, the 32 bytes its bake writes
+    /// back: the ground's radiance and the sky's level irradiance (its luminance) in the
+    /// first float4, and in the second the share of the beam the clouds pass toward the
+    /// sun (1 for a clear sky), the raw transmittance, and the horizon fade. Shared
+    /// memory the CPU reads once the bake's command buffer has completed; nil for every
+    /// other bake.
+    let sunReadback: MTLBuffer?
+    /// The share of its beam the baked cloudscape passes toward the sun, read off
+    /// `sunReadback` when the bake completes (from its command buffer's completion, so
+    /// a window reads it a frame late; a headless frame waits for it). Nil until then.
+    let sunTransmittance = OSAllocatedUnfairLock<Float?>(initialState: nil)
+
     init(irradiance: MTLTexture, prefilter: MTLTexture, envCube: MTLTexture,
-         equirect: MTLTexture?, maxMip: Int, normalization: Float) {
+         equirect: MTLTexture?, maxMip: Int, normalization: Float, sunReadback: MTLBuffer? = nil) {
         self.irradiance = irradiance
         self.prefilter = prefilter
         self.envCube = envCube
         self.equirect = equirect
         self.maxMip = maxMip
         self.normalization = normalization
+        self.sunReadback = sunReadback
+    }
+
+    /// Read the sun's share off the readback, once its command buffer has completed.
+    func readSunTransmittance() {
+        guard let sunReadback else { return }
+        let share = sunReadback.contents().load(fromByteOffset: 16, as: Float.self)
+        sunTransmittance.withLock { $0 = share }
     }
 }
 
@@ -147,12 +167,14 @@ extension MetalRenderer {
         let loaded: MTLTexture, avg: Float
         var prescale: Float = 1
         let isSky: Bool
+        var sunReadback: MTLBuffer? = nil
         if case .sky(let t, let e, let a) = env.source {
             guard let sky = generateSkyEquirectTexture(turbidity: t, sunElevation: e,
                                                        groundAlbedo: a, clouds: key.clouds,
                                                        sunLit: key.sunLit,
                                                        commandBuffer: cb) else { return nil }
-            (loaded, avg) = sky
+            (loaded, avg) = (sky.texture, sky.avgLuminance)
+            sunReadback = sky.readback
             isSky = true
         } else {
             guard let bytes = equirectBytes(for: env, blocking: blocking),
@@ -163,7 +185,19 @@ extension MetalRenderer {
             isSky = false
         }
         guard let maps = bakeIBL(env, equirectTexture: loaded, avgLuminance: avg,
-                                 prescale: prescale, fastSky: isSky, commandBuffer: cb) else { return nil }
+                                 prescale: prescale, fastSky: isSky, sunReadback: sunReadback,
+                                 commandBuffer: cb) else { return nil }
+        if let sunReadback {
+            // The sun's share lands when the GPU has finished the bake: off the main
+            // actor, so the handler touches the lock alone (the buffer is kept alive by
+            // the capture, since the entry holding it may be evicted first).
+            nonisolated(unsafe) let readback = sunReadback
+            let landed = maps.sunTransmittance
+            cb.addCompletedHandler { _ in
+                let share = readback.contents().load(fromByteOffset: 16, as: Float.self)
+                landed.withLock { $0 = share }
+            }
+        }
         // An animated sky makes a fresh key each frame; drop the previous sky bake so its GPU
         // textures don't accumulate over the animation (a static sky keeps its one entry).
         if isSky {
@@ -569,6 +603,7 @@ extension MetalRenderer {
 
     private func bakeIBL(_ environment: Environment, equirectTexture loaded: MTLTexture,
                          avgLuminance: Float, prescale: Float = 1, fastSky: Bool = false,
+                         sunReadback: MTLBuffer? = nil,
                          commandBuffer cb: MTLCommandBuffer) -> IBLMaps? {
         guard let env = makeEnvCube(equirectTexture: loaded, commandBuffer: cb) else { return nil }
         let envCube = env.cube
@@ -607,7 +642,8 @@ extension MetalRenderer {
         let exposure = SkySun.exposure(average: avgLuminance)
         let normalization = exposure / max(prescale, 1e-6)
         return IBLMaps(irradiance: irradiance, prefilter: prefilter, envCube: envCube,
-                       equirect: env.equirect, maxMip: mips - 1, normalization: normalization)
+                       equirect: env.equirect, maxMip: mips - 1, normalization: normalization,
+                       sunReadback: sunReadback)
     }
 
     /// Reproject an equirect texture (a decoded HDRI or a generated sky) into an environment
@@ -659,12 +695,18 @@ extension MetalRenderer {
     /// scene (`sunLit`), a clear sky leaves its disc out (the directional light carries the
     /// sun's energy and the backdrop draws the disc itself, at the sun's own size, which a
     /// texel this coarse could not hold) and the beam joins the average the exposure is
-    /// set from; a cloudy sky keeps its disc, which the clouds in front of it dim.
+    /// set from; a cloudy sky keeps its disc, which the clouds in front of it dim. A
+    /// sun-lit sky's lower hemisphere is the sunlit ground rather than the sky's dimmed
+    /// mirror: one matte radiance, the albedo times the level irradiance of sky and beam
+    /// over pi, with the sky's half reduced off the baked upper hemisphere by a kernel
+    /// (so a cloudy sky's ground is lit by the cloudy sky); under a cloudscape a third
+    /// kernel marches the shell toward the sun and writes the beam's share through it.
+    /// Both land in `readback`, shared memory the CPU reads once the buffer completes.
     private func generateSkyEquirectTexture(turbidity: Double, sunElevation: Double,
                                             groundAlbedo: Double, clouds: Clouds?,
                                             sunLit: Bool,
                                             commandBuffer cb: MTLCommandBuffer)
-        -> (texture: MTLTexture, avgLuminance: Float)? {
+        -> (texture: MTLTexture, avgLuminance: Float, readback: MTLBuffer?)? {
         // A cloudy sky doubles the bake resolution: the clouds ARE the backdrop's
         // content, and 1K spreads a formation over too few texels to keep its billows.
         let width = clouds == nil ? 1024 : 2048
@@ -674,10 +716,12 @@ extension MetalRenderer {
         let elevation = min(max(sunElevation, 0.001), Double.pi / 2 - 0.001)
         let (configs, radiances) = SkySun.configurations(turbidity: turb, albedo: albedo,
                                                          elevation: elevation)
-        // Pack 11 float4s (see ollin_ibl_sky_gen): 9 coefficient rows (rgb = the R/G/B value of
-        // coefficient i), the per-channel radiance + ground albedo, the sun direction + radius.
-        // A cloudscape appends two more rows (read only by the clouds twin fragment).
-        var sky = [SIMD4<Float>](repeating: .zero, count: clouds == nil ? 11 : 13)
+        // Pack 14 float4s (see ollin_ibl_sky_gen): 9 coefficient rows (rgb = the R/G/B value of
+        // coefficient i), the per-channel radiance + ground albedo, the sun direction + radius,
+        // the cloudscape's two rows (zero for a clear sky; read only by the clouds twin), and
+        // the sun-lit ground's row.
+        var sky = [SIMD4<Float>](repeating: .zero, count: 14)
+        let sun = SkySun(turbidity: turb, elevation: elevation, groundAlbedo: albedo)
         for i in 0..<9 {
             sky[i] = SIMD4<Float>(Float(configs[i]), Float(configs[9 + i]), Float(configs[18 + i]), 0)
         }
@@ -695,12 +739,18 @@ extension MetalRenderer {
             sky[12] = SIMD4<Float>(Float(clouds.tallness), 0, 0, 0)
             noise = ensureCloudNoise(commandBuffer: cb)
         }
+        if sunLit {
+            // The beam on level ground, the clouds' expected share of it: what the ground
+            // kernel adds to the sky's irradiance. The flag turns the generators' mirror off.
+            let level = sun.levelBeam(coverage: clouds?.coverage)
+            sky[13] = SIMD4<Float>(Float(level.x), Float(level.y), Float(level.z), 1)
+        }
 
         // Render the sky equirect on the frame's command buffer (no read-back), mipmapped so the
         // cube bake and the skybox blur sample valid levels (makeEnvCube generates the mips).
         let desc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba16Float,
                                                             width: width, height: height, mipmapped: true)
-        desc.usage = [.renderTarget, .shaderRead]
+        desc.usage = [.renderTarget, .shaderRead, .shaderWrite]   // the ground kernel writes the lower half
         desc.storageMode = .private
         let fragment = (clouds != nil && noise != nil) ? "ollin_ibl_sky_gen_clouds"
                                                        : "ollin_ibl_sky_gen"
@@ -721,13 +771,77 @@ extension MetalRenderer {
         enc.endEncoding()
         var avg = SkySun.averageLuminance(configs: configs, radiances: radiances,
                                           albedo: albedo, sunDir: sunDir)
+        var readback: MTLBuffer? = nil
         if sunLit {
             // The beam's share, the same sum `SkySun.exposure(sunLit:coverage:)` makes, so
             // the drawer's light and this bake agree on one exposure to the last bit.
-            let sun = SkySun(turbidity: turb, elevation: elevation, groundAlbedo: albedo)
             avg = sun.litAverage(coverage: clouds?.coverage)
+            // The ground, then the cloud before the sun, into 32 bytes of shared memory.
+            // A clear sky's share is 1 and is written here, since no kernel writes it.
+            guard let buffer = device.makeBuffer(length: 2 * MemoryLayout<SIMD4<Float>>.stride,
+                                                 options: .storageModeShared),
+                  let reduce = try? libraryComputePipeline("ollin_ibl_sky_ground_reduce"),
+                  let fill = try? libraryComputePipeline("ollin_ibl_sky_ground_fill"),
+                  let compute = cb.makeComputeCommandEncoder() else { return nil }
+            buffer.contents().storeBytes(of: SIMD4<Float>(0, 0, 0, 0), as: SIMD4<Float>.self)
+            buffer.contents().storeBytes(of: SIMD4<Float>(1, 1, 0, 0), toByteOffset: 16, as: SIMD4<Float>.self)
+            compute.setComputePipelineState(reduce)
+            compute.setTexture(tex, index: 0)
+            compute.setBytes(&sky, length: sky.count * MemoryLayout<SIMD4<Float>>.stride, index: 0)
+            compute.setBuffer(buffer, offset: 0, index: 1)
+            compute.dispatchThreadgroups(MTLSize(width: 1, height: 1, depth: 1),
+                                         threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
+            compute.setComputePipelineState(fill)
+            compute.setTexture(tex, index: 0)
+            compute.setBuffer(buffer, offset: 0, index: 0)
+            compute.dispatchThreads(MTLSize(width: width, height: height / 2, depth: 1),
+                                    threadsPerThreadgroup: MTLSize(width: 16, height: 16, depth: 1))
+            if let noise, let transmittance = try? libraryComputePipeline("ollin_ibl_sky_sun_transmittance") {
+                compute.setComputePipelineState(transmittance)
+                compute.setBytes(&sky, length: sky.count * MemoryLayout<SIMD4<Float>>.stride, index: 0)
+                compute.setBuffer(buffer, offset: 0, index: 1)
+                compute.setTexture(noise.base, index: 0)
+                compute.setTexture(noise.detail, index: 1)
+                compute.dispatchThreads(MTLSize(width: 1, height: 1, depth: 1),
+                                        threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
+            }
+            compute.endEncoding()
+            readback = buffer
         }
-        return (tex, avg)
+        return (tex, avg, readback)
+    }
+
+    /// Hand the drawer the share of the sun's beam the frame's cloudscape passes toward
+    /// the sun, before anything packs the frame's lights: the value the bake of this
+    /// frame's sky wrote back. A window reads what the last completed bake landed (a
+    /// frame late, nil on the first frame, when the drawer keeps the clouds' expected
+    /// share); a headless frame bakes the sky on a command buffer of its own and waits,
+    /// so an export's first frame and a single image read the exact share. The bake is
+    /// cached by its key, so the frame's own resolve afterwards is free. A clear sky, a
+    /// sky whose sun is not a light, and every other environment set nothing.
+    func syncSkySunTransmittance(_ drawer: Drawer, blocking: Bool) {
+        drawer.skySunTransmittance = nil
+        guard drawer.skySunLit, let env = drawer.environment, case .sky = env.source,
+              env.clouds != nil else { return }
+        let key = IBLKey(source: env.source, clouds: env.clouds, sunLit: true)
+        if let entry = iblCache[key] {
+            if let share = entry.maps.sunTransmittance.withLock({ $0 }) {
+                drawer.skySunTransmittance = Double(share)
+                return
+            }
+            guard blocking else { return }
+            // Baked on an earlier headless frame, which waited for it: the completion
+            // may not have run yet, so read the buffer itself.
+            entry.maps.readSunTransmittance()
+            drawer.skySunTransmittance = entry.maps.sunTransmittance.withLock { $0 }.map { Double($0) }
+            return
+        }
+        guard blocking, let cb = commandQueue.makeCommandBuffer(),
+              let maps = bakeReady(env, sunLit: true, blocking: true, commandBuffer: cb) else { return }
+        cb.commit()
+        cb.waitUntilCompleted()
+        maps.readSunTransmittance()
+        drawer.skySunTransmittance = maps.sunTransmittance.withLock { $0 }.map { Double($0) }
     }
 
     /// The two tiling 3D noise fields the cloud march samples, baked once per process by
