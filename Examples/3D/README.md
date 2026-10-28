@@ -22,15 +22,15 @@ The section is large, so the sketches are grouped by topic, one page each.
 
 | Group | What it covers |
 | --- | --- |
-| [Geometry](Geometry/) | This group covers meshes, point clouds, and the 3D transform stack. (27 sketches) |
-| [Physics](Physics/) | This group covers bodies inside the scene, rigid and soft: stacks and joints, cloth, rope, and floating. A Jolt-backed `World3D` is stepped each frame (`import OllinPhysics`), and every body is drawn from its pose with `withBody`. See the [3D physics reference](../../Docs/Simulation/Physics3D.md). (22 sketches) |
+| [Geometry](Geometry/) | This group covers meshes, point clouds, and the 3D transform stack. (34 sketches) |
+| [Physics](Physics/) | This group covers bodies inside the scene, rigid and soft: stacks and joints, cloth, rope, and floating. A Jolt-backed `World3D` is stepped each frame (`import OllinPhysics`), and every body is drawn from its pose with `withBody`. See the [3D physics reference](../../Docs/Simulation/Physics3D.md). (23 sketches) |
 | [Camera](Camera/) | This group covers driving the view: interactive control, cinematic moves, and snaps to inspection views. (3 sketches) |
-| [Materials](Materials/) | This group covers what surfaces are made of: stylized finishes, physically based metal, glass, subsurface, thin film, and the map set that varies any of them per pixel. (17 sketches) |
-| [Lighting](Lighting/) | This group covers the light kinds, curated rigs, and cast shadows. (11 sketches) |
+| [Materials](Materials/) | This group covers what surfaces are made of: stylized finishes, physically based metal, glass, subsurface, thin film, and the map set that varies any of them per pixel. (19 sketches) |
+| [Lighting](Lighting/) | This group covers the light kinds, curated rigs, and cast shadows. (13 sketches) |
 | [Environments](Environments/) | This group covers image-based lighting, with HDRIs that are bundled, downloaded, loaded from a URL, or synthesized. (6 sketches) |
-| [Effects](Effects/) | This group covers the scene-wide realism passes over the 3D frame. (13 sketches) |
-| [Raymarching](Raymarching/) | This group covers the 3D SDF combinators: distance fields that merge, sphere-traced beside the meshes. (17 sketches) |
+| [Effects](Effects/) | This group covers the scene-wide realism passes over the 3D frame. (14 sketches) |
+| [Raymarching](Raymarching/) | This group covers the 3D SDF combinators: distance fields that merge, sphere-traced beside the meshes. (19 sketches) |
 | [Depth](Depth/) | This group covers depth feeds and depth-aware compositing: cameras, recordings, and metric space. (6 sketches) |
-| [Phone](Phone/) | These sketches read the **Ollin Capture** iPhone app, which streams ARKit perception, and what the phone hears, over USB. (17 sketches) |
+| [Phone](Phone/) | These sketches read the **Ollin Capture** iPhone app, which streams ARKit perception, and what the phone hears, over USB. (19 sketches) |
 
 See [`Docs/3D/3D.md`](../../Docs/3D/3D.md) for the 3D guide. Record3D recordings have their own guide in [`Docs/3D/Record3D.md`](../../Docs/3D/Record3D.md). The Ollin Capture stream is documented in [`Docs/3D/Phone.md`](../../Docs/3D/Phone.md).
