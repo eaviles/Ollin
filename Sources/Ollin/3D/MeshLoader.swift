@@ -160,8 +160,10 @@ extension Mesh {
                 let f = values.compactMap { Double($0) }
                 if f.count >= 3 { fileNormals.append(Vector3(f[0], f[1], f[2])) }
             case "vt":
+                // The format counts `v` from the bottom of the picture; the surface
+                // samples from the top-left, so flip here (the USD reader's rule).
                 let f = values.compactMap { Double($0) }
-                if f.count >= 2 { fileUVs.append(Vector2(f[0], f[1])) }
+                if f.count >= 2 { fileUVs.append(Vector2(f[0], 1 - f[1])) }
             case "f":
                 let outs = values.compactMap(corner).compactMap(emit)
                 guard outs.count >= 3 else { continue }

@@ -348,6 +348,40 @@ struct MeshLoaderTests {
         #expect(mat.texture?.width == 4)
     }
 
+    /// An OBJ counts `vt` from the bottom of the picture, and the surface samples
+    /// a texture from its top-left, the convention glTF writes and the USD reader
+    /// converts to. The OBJ reader converts too: the corner the file puts at the
+    /// bottom-left of the picture, `vt 0 0`, reads back as (0, 1), and the top
+    /// of the picture, `vt 0 1`, as (0, 0), so a textured scan draws upright
+    /// rather than with its atlas upside down.
+    @Test func objFlipsTextureCoordinatesToTheTopLeftOrigin() throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ollin-obj-flip-\(ProcessInfo.processInfo.globallyUniqueString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let obj = """
+        v 0 0 0
+        v 1 0 0
+        v 1 1 0
+        v 0 1 0
+        vt 0 0
+        vt 1 0
+        vt 1 1
+        vt 0 1
+        f 1/1 2/2 3/3 4/4
+        """
+        let objURL = dir.appendingPathComponent("flip.obj")
+        try obj.write(to: objURL, atomically: true, encoding: .utf8)
+
+        let mesh = try Mesh(contentsOf: objURL)
+        #expect(mesh.uvs.count == 4)
+        // The vertex at the origin carries `vt 0 0`; the one at (0, 1, 0) carries `vt 0 1`.
+        let atOrigin = try #require(mesh.positions.firstIndex { $0.lengthSquared < 1e-12 })
+        let atTop = try #require(mesh.positions.firstIndex { abs($0.x) < 1e-9 && abs($0.y - 1) < 1e-9 })
+        #expect(abs(mesh.uvs[atOrigin].x) < 1e-9 && abs(mesh.uvs[atOrigin].y - 1) < 1e-9, "\(mesh.uvs[atOrigin])")
+        #expect(abs(mesh.uvs[atTop].x) < 1e-9 && abs(mesh.uvs[atTop].y) < 1e-9, "\(mesh.uvs[atTop])")
+    }
+
     /// A small solid-color PNG as `Data`, for embedding a texture in a fixture.
     private static func solidPNG(width: Int, height: Int, rgb: (Double, Double, Double)) -> Data {
         let ctx = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8,
