@@ -107,9 +107,15 @@ struct CloudRenderProbes {
     @Test(.enabled(if: Snapshot.hasMetal))
     func overcastDimsTheScene() throws {
         // The clouds bake into the lighting, so a gray lid must darken a floor lit
-        // only by the environment.
-        let fair = CloudSkyProbe(); fair.clouds = Clouds(coverage: 0.15)
+        // only by the environment. The sky's sun stays out of both frames: as a
+        // light it carries the share of its beam the bake's march finds toward it,
+        // under an exposure set from the clouds' expected share, so two skies with
+        // the sun joined are two exposures, not one scene darker than the other
+        // (a fair sky whose sun happens to sit behind a cloud reads as dark as an
+        // overcast whose lid passes a little more than expected).
+        let fair = CloudSkyProbe(); fair.clouds = Clouds(coverage: 0.15); fair.sunlight = .off
         let overcast = CloudSkyProbe(); overcast.clouds = Clouds(coverage: 0.95, density: 1.4)
+        overcast.sunlight = .off
         let litRows = 200 ..< 240
         let a = meanLuminance(try pixels(fair), rows: litRows)
         let b = meanLuminance(try pixels(overcast), rows: litRows)
@@ -142,11 +148,12 @@ struct CloudRenderProbes {
 
 private final class CloudSkyProbe: Sketch {
     var clouds: Clouds = .scattered
+    var sunlight: Environment.Sunlight = .automatic
     override var canvasSize: CanvasSize { .square(256) }
     override func draw() {
         background(.black)
         camera(Camera3D(eye: Vector3(0, 1, 8), target: Vector3(0, 2.4, 0)))
-        environment(.sky(turbidity: 2.4, sunElevation: 0.6).clouds(clouds))
+        environment(.sky(turbidity: 2.4, sunElevation: 0.6).clouds(clouds).sunlight(sunlight))
         fill(Color(white: 0.6))
         withState { translate(0, -0.6, 0); drawBox(width: 30, height: 0.4, depth: 30) }
     }

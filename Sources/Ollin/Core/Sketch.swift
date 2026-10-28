@@ -2210,9 +2210,10 @@ open class Sketch {
     /// Draw a solid 3D `Mesh` through the active camera with depth testing (set a
     /// camera first with `camera`/`perspective`/`ortho`). The mesh follows the 3D
     /// transform stack — `translate`/`rotate`/`scale` place and orient it — and takes
-    /// the current `fill` color: flat (unlit) with no lights, Blinn-Phong shaded once
-    /// you add a light (`lights()`, `directionalLight`, …). A no-op without a camera.
-    /// The primitive calls below are sugar over this.
+    /// the current `fill` color, shaded by the default rig until you set lights of
+    /// your own (`lights()`, `directionalLight`, …) or call `noLights()`, which
+    /// draws it flat and unlit in its `fill`. A no-op without a camera. The
+    /// primitive calls below are sugar over this.
     public func drawMesh(_ mesh: Mesh) { drawer.drawMesh(mesh) }
 
     /// Draw a mesh that **changes shape** from frame to frame (a ribbon rebuilt
