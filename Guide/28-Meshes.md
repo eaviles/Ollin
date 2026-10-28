@@ -389,7 +389,7 @@ Tracks like the orrery's move whole nodes, rigid pieces on a hierarchy. A file c
 
 Loading a scene keeps the file in charge, which is what you want while the model is still moving. **Writing the scene as source** turns the file into a sketch whose `draw()` places every node itself. It is for a layout that has settled, which you now want to change as code rather than in the design tool. It is one of the project generators of the `ollin` command [Chapter 1](01-HelloOllin.md#a-shorter-way-to-run-things) set up. `ollin new Yard --from-scene yard.usdz` writes the project. Its `draw()` has the camera, the lights, and a `withState` block for every node, while the meshes are still read from the file. [Bringing a scene over](../Docs/Tools/SceneImport.md) shows the result beside the scene it draws, and says what carries over and what stays behind.
 
-## More ways to make a mesh: cuts, joins, shadow art, growth, sweeps, and the Hopf fibration
+## More ways to make a mesh: cuts, joins, shadow art, growth, sweeps, a gesture in space, and the Hopf fibration
 
 The garden rounded its stones from boxes, and the chapter opened on a mesh loaded from a file. There are more ways to get a mesh. One can be cut with a second solid or joined out of parts. One can be carved from the shadows you want it to throw, or grown from a rule until it folds. One can be a flat shape carried along a path. And one comes from a formula for a shape that does not fit in the room.
 
@@ -543,6 +543,26 @@ drawStrip(between: ts.map(lower), and: ts.map(upper), closed: true)
 ```
 
 Each rung of that ribbon now covers the same area, however the two loops bend. The [sweeps and strips page](../Docs/3D/Sweeps.md) has the rest. [`Examples/3D/Geometry/SweptKnot`](../Examples/3D/Geometry/SweptKnot/Sketch.swift) sweeps a star round a knot with carriages riding it, and [`Examples/3D/Geometry/LoftedVessels`](../Examples/3D/Geometry/LoftedVessels/Sketch.swift) lofts a bottle, a horn, and a hull.
+
+### A gesture in space: tubes and solids from a GestureMark
+
+[Chapter 17](17-MarksAndMedia.md#clouds-dashes-and-feathers-from-one-stroke-gesturemark) built marks from one gesture, a path with a width at every point of it, for a pen to draw. The same gesture has members in space. `tube` is the gesture as a mesh: a ring at every station of the path, as wide as the mark is there, joined into one surface, so the stroke's taper is the tube's. `solids` strings instances along it at the stations the flat chain uses, each as big as the width there and turned along the path. They are for a scene, a print, or a stroke that reads as a thing on a table, and they come from the same place the flat families do, a stroke's width taken as a size rather than a weight:
+
+```swift
+let gesture = GestureMark(points: [Vector2(100, 500), Vector2(400, 300), Vector2(700, 600), Vector2(950, 400)],
+                          widths: [90, 70, 50, 30])
+let stripes = Image(width: 64, height: 64)                 // a diagonal two-color stripe, drawn once
+withState {
+    rotateX(-.pi / 2); scale(0.01, 0.01, 0.01); translate(-width / 2, height / 2, 0)    // the sheet on the table
+    drawMesh(gesture.tube(sides: 20).textured(stripes, wrap: .tile))           // a candy-striped tube
+    drawMesh(gesture.tube(sides: 20, wobble: 0.6, wavelength: 3))             // wound round the path
+    drawMesh(Mesh.roundedBox(size: 1, radius: 0.16), instances: gesture.solids(spacing: 0.9, seed: 3))
+}
+```
+
+<img src="Images/28-Meshes/GestureInSpace.jpg" alt="One tapering stroke four ways on a pale table, seen from above and a little in front: a candy-striped tube as wide as the stroke, a teal tube wound round the same path like a phone cord, a chain of red cubes turned along it and shrinking toward its end, and the stroke's flat dots in five colors drawn on a sheet" width="560">
+
+The tube stands in the gesture's own plane at the gesture's scale, as the canvas shows it, which is why the block lays the sheet on the table first. Its texture coordinates run round the section and along the path in widths, so a diagonal stripe tiled on it runs round the tube as a candy stripe. `wobble` winds the tube round the path instead of along it, a phone cord's coil. A polished metal under `environment(.feed(layer))` reflects the flat marks drawn into a layer, since a layer is a feed. Both members keep the flat families' rule: a growing gesture never moves a ring or a solid it has placed. The [gesture marks page](../Docs/Generators/GestureMarks.md#space) has the rest, and [`Examples/3D/Geometry/GestureMarks3D`](../Examples/3D/Geometry/GestureMarks3D/Sketch.swift) grows one stroke as a striped tube, a wound one, a metal one, and a chain of cubes.
 
 ### A shape from four dimensions: the Hopf fibration
 

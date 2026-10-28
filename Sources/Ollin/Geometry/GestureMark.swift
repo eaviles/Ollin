@@ -165,10 +165,31 @@ public struct GestureMark: Equatable, Sendable {
     /// every `spacing` widths so neighbors overlap below 1. `roundness` is
     /// the corner radius as a fraction of half a side, 0 square to 1 round.
     public func chain(spacing: Double = 0.9, roundness: Double = 0.35, seed: Int = 0) -> [Piece] {
-        guard spine.isDrawable else { return [] }
         let roundness = Swift.min(Swift.max(roundness, 0), 1)
+        return chainStations(spacing: spacing, seed: seed).map { station in
+            Piece(contour: Self.roundedSquare(center: station.frame.position, side: station.side,
+                                              angle: station.angle, radius: roundness * station.side / 2),
+                  index: station.index, distance: station.distance)
+        }
+    }
+
+    /// One square of the chain: where it stands, its side, and its turn.
+    struct ChainStation {
+        let frame: GestureSpine.Frame
+        let side: Double
+        let angle: Double
+        let index: Int
+        let distance: Double
+    }
+
+    /// The chain's stations, one every `spacing` widths up to the settled length,
+    /// each square's side and turn drawn from the seed in that order. `chain` and
+    /// `solids` both walk this, so the flat squares and the solids in space stand
+    /// at the same places with the same sizes and turns.
+    func chainStations(spacing: Double, seed: Int) -> [ChainStation] {
+        guard spine.isDrawable else { return [] }
         var rng = Self.stream(seed, 2, 0)
-        var pieces: [Piece] = []
+        var stations: [ChainStation] = []
         var s = 0.0
         var i = 0
         while s <= spine.settled {
@@ -176,13 +197,11 @@ public struct GestureMark: Equatable, Sendable {
             let w = Swift.max(2 * frame.halfWidth, 0.5)
             let side = w * (0.85 + 0.15 * Self.unit(&rng))
             let angle = frame.tangent.angle + 0.18 * (2 * Self.unit(&rng) - 1)
-            pieces.append(Piece(contour: Self.roundedSquare(center: frame.position, side: side, angle: angle,
-                                                            radius: roundness * side / 2),
-                                index: i, distance: s))
+            stations.append(ChainStation(frame: frame, side: side, angle: angle, index: i, distance: s))
             s += Swift.max(spacing * w, 0.5)
             i += 1
         }
-        return pieces
+        return stations
     }
 
     /// The band of the width with spikes along both edges, one every
@@ -527,6 +546,104 @@ public struct GestureMark: Equatable, Sendable {
     public func wiggle(wavelength: Double = 1, amplitude: Double = 0.5) -> [Piece] {
         cycles(of: Swift.max(wavelength, 0.05), samples: 32) { frame, phase in
             frame.position + frame.normal * (frame.halfWidth * amplitude * sin(2 * .pi * phase))
+        }
+    }
+
+    // MARK: - In space
+
+    /// The gesture as a tube in space: a ring at every station of the path, each a
+    /// circle of `sides` round whose radius is half the width there, so the tube's
+    /// section at any point is the flat mark's width, and the rings joined into
+    /// one surface. The tube stands in the gesture's own plane as the canvas shows
+    /// it, x as drawn, the canvas's down as -y (the half turn `Mesh.text` gives a
+    /// word), its thickness along z, in the gesture's units; `scale(_:_:_:)` it
+    /// into a 3D scene. `wobble` winds the tube round the
+    /// path instead of along it: its center circles the path at `wobble` half
+    /// widths out, once every `wavelength` widths of length, a phone cord's coil,
+    /// and at 0 it runs on the path. The mesh carries uvs, `u` round the section
+    /// and `v` along the path in widths, so a texture tiles once a width and a
+    /// diagonal stripe wrapped on it runs round the tube as a candy stripe. The
+    /// normals follow the taper. Rings stand by their distance from the start,
+    /// so a growing gesture never moves a ring it has placed but the last.
+    public func tube(sides: Int = 16, wobble: Double = 0, wavelength: Double = 4) -> Mesh {
+        guard spine.isDrawable else { return Mesh(positions: [], indices: []) }
+        let sides = Swift.max(sides, 3)
+        let wavelength = Swift.max(wavelength, 0.05)
+        var stations: [Double] = []
+        var s = 0.0
+        while s <= spine.settled + 1e-9 {
+            stations.append(s)
+            s += GestureSpine.step
+        }
+        if let last = stations.last, spine.length - last > 1e-9 { stations.append(spine.length) }
+        // The centerline and the radius at every ring, then the ring's own
+        // direction along the tube for the normals' taper.
+        let frames = stations.map { spine.frame(at: $0) }
+        let radii = frames.map { Swift.max($0.halfWidth, 0.05) }
+        // The canvas's y runs down; the mesh stands as the canvas shows it, so y is
+        // mirrored throughout (the wobble's coil turns the other way with it).
+        let centers: [Vector3] = zip(stations, frames).map { s, f in
+            var c = Vector3(f.position.x, -f.position.y, 0)
+            if wobble != 0 {
+                let phi = 2 * Double.pi * spine.widthsAlong(s) / wavelength
+                let n = f.normal
+                let r = Swift.max(f.halfWidth, 0.05) * wobble
+                c = c + Vector3(n.x, -n.y, 0) * (cos(phi) * r) + Vector3(0, 0, sin(phi) * r)
+            }
+            return c
+        }
+        var positions: [Vector3] = []
+        var normals: [Vector3] = []
+        var uvs: [Vector2] = []
+        positions.reserveCapacity(stations.count * (sides + 1))
+        normals.reserveCapacity(stations.count * (sides + 1))
+        uvs.reserveCapacity(stations.count * (sides + 1))
+        for (k, f) in frames.enumerated() {
+            let prev = Swift.max(k - 1, 0), next = Swift.min(k + 1, frames.count - 1)
+            let along = centers[next] - centers[prev]
+            let tangent = along.lengthSquared > 1e-18 ? along.normalized : Vector3(f.tangent.x, -f.tangent.y, 0)
+            let span = Swift.max(stations[next] - stations[prev], 1e-9)
+            let taper = (radii[next] - radii[prev]) / span
+            let n = Vector3(f.normal.x, -f.normal.y, 0)
+            let b = Vector3(0, 0, 1)
+            let v = spine.widthsAlong(stations[k])
+            for j in 0 ... sides {
+                let phi = Double(j) / Double(sides) * 2 * .pi
+                let dir = n * cos(phi) + b * sin(phi)
+                positions.append(centers[k] + dir * radii[k])
+                let normal = dir - tangent * taper
+                normals.append(normal.lengthSquared > 1e-18 ? normal.normalized : dir)
+                uvs.append(Vector2(Double(j) / Double(sides), v))
+            }
+        }
+        var indices: [UInt32] = []
+        indices.reserveCapacity((stations.count - 1) * sides * 6)
+        let stride = sides + 1
+        for k in 0 ..< stations.count - 1 {
+            let a0 = k * stride, a1 = (k + 1) * stride
+            for j in 0 ..< sides {
+                let p = UInt32(a0 + j), q = UInt32(a0 + j + 1)
+                let r = UInt32(a1 + j + 1), t = UInt32(a1 + j)
+                indices.append(contentsOf: [p, q, r, p, r, t])
+            }
+        }
+        return Mesh(positions: positions, normals: normals, indices: indices, uvs: uvs)
+    }
+
+    /// Solids strung along the gesture: one at every station the flat `chain`
+    /// uses, one every `spacing` widths, as an instance of a unit mesh scaled to
+    /// the width there (a little less, drawn from the seed as the chain draws
+    /// its square), turned along the path about z, and standing in the
+    /// gesture's plane at the gesture's scale, as the canvas shows it (the
+    /// canvas's down as -y, like the tube). Draw them with
+    /// `drawMesh(_:instances:)` over a `Mesh.roundedBox(size: 1, radius:)` for the
+    /// chain's rounded squares as cubes, or any unit mesh; the same seed gives
+    /// the chain and the solids the same places, sizes, and turns, and a growing
+    /// gesture never moves a solid it has placed.
+    public func solids(spacing: Double = 0.9, seed: Int = 0) -> [MeshInstance] {
+        chainStations(spacing: spacing, seed: seed).map { station in
+            MeshInstance(position: Vector3(station.frame.position.x, -station.frame.position.y, 0),
+                         rotation: .aboutZ(-station.angle), scale: station.side)
         }
     }
 

@@ -72,3 +72,14 @@ enum FeedEnvironments {
     /// The feed registered under `id`, or nil once it has deallocated.
     static func feed(for id: Int) -> (any VideoFeed)? { feeds[id]?.feed }
 }
+
+extension Environment {
+    /// Whether this environment is a feed of a layer (`environment(.feed(layer))`):
+    /// the renderer bakes such a feed after the frame's layer passes, since the
+    /// layer is drawn by them and holds nothing before.
+    @MainActor
+    var feedsALayer: Bool {
+        guard case .feed(let id) = source else { return false }
+        return FeedEnvironments.feed(for: id) is RenderTarget
+    }
+}

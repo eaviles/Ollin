@@ -32,6 +32,7 @@ for piece in gesture.dashes(rows: 3, seed: 3) {  // pieces to color
 - [Sprouts: feather, leaves, fringe](#sprouts)
 - [The ribbon resampled: pixels, facets, lanes](#resampled)
 - [Around the path: spiral, strands, fragments, wiggle](#around)
+- [In space: tube and solids](#space)
 - [The whole gesture: hull, blob, figure](#whole)
 - [Spiked and wobbled fills](#fills)
 
@@ -157,6 +158,49 @@ gesture.wiggle(wavelength: 1, amplitude: 0.5)
 ```
 
 `spiral(cycle:loop:)` winds a coil along the path. A point circles the path once every `cycle` widths of length while its center walks it, across the full width and `loop` half widths along, so above about a third it throws loops. There is one piece per turn, so the count of pieces is the length over the cycle, rounded up. `strands(count:spread:wavelength:seed:)` is `count` copies of the path drifting across it on slow seeded waves, each up to `spread` of the half width either side, a wave about `wavelength` widths long, so they cross and recross. `fragments(density:length:spread:seed:)` scatters short copies beside the path. One starts every 0.15 to 0.65 widths (divided by `density`), runs about `length` widths, and sits up to `spread` of the half width to one side. A fragment appears once it is whole. `wiggle(wavelength:amplitude:)` is the path with one even wave, `amplitude` of the half width either side, once every `wavelength` widths.
+
+<a name="space"></a>
+
+#### In space: tube and solids
+
+```swift
+let gesture = GestureMark(points: [Vector2(100, 500), Vector2(400, 300), Vector2(700, 600), Vector2(950, 400)],
+                          widths: [90, 70, 50, 30])
+let stripes = Image(width: 64, height: 64)                 // a diagonal two-color stripe, drawn once
+withState {
+    rotateX(-.pi / 2); scale(0.01, 0.01, 0.01); translate(-width / 2, height / 2, 0)    // the sheet on the table
+    drawMesh(gesture.tube(sides: 20).textured(stripes, wrap: .tile))           // a candy-striped tube
+    drawMesh(gesture.tube(sides: 20, wobble: 0.6, wavelength: 3))             // wound round the path
+    drawMesh(Mesh.roundedBox(size: 1, radius: 0.16), instances: gesture.solids(spacing: 0.9, seed: 1))
+}
+```
+
+`tube(sides:wobble:wavelength:)` is the gesture as a `Mesh`: a ring at every station of the path,
+a circle `sides` round whose radius is half the width there, so the tube's section at any point
+is the flat mark's width, and the rings joined into one surface. It stands in the gesture's own
+plane as the canvas shows it, x as drawn and the canvas's down as -y (the half turn `Mesh.text`
+gives a word), its thickness along z, in the gesture's units; `scale(_:_:_:)` it into a scene.
+`wobble` winds the tube round the
+path instead of along it: its center circles the path at `wobble` half widths out, once every
+`wavelength` widths of length, a phone cord's coil, and at 0 it runs on the path. The mesh
+carries uvs, `u` round the section and `v` along the path in widths, so a texture tiles once a
+width and a diagonal stripe wrapped on it with `textured(_:baseColor:wrap:)` runs round the tube as a
+candy stripe. The normals follow the taper, and the tube takes any material: a `.polishedMetal`
+under `environment(.feed(layer))` reflects the flat marks drawn into that layer, the sketch's
+own canvas wrapped round it (a [layer is a feed](../Drawing/Effects.md#image)).
+
+`solids(spacing:seed:)` strings solids along the gesture at the stations the flat `chain`
+uses, one every `spacing` widths: each a `MeshInstance` of a unit mesh scaled to the width there
+(a little less, drawn from the seed as the chain draws its square), turned along the path about
+z, standing in the gesture's plane at the gesture's scale as the tube does. Draw them with `drawMesh(_:instances:)`
+over a `Mesh.roundedBox` of size 1 for the chain's rounded squares as cubes, or any unit
+mesh; the same seed gives the chain and the solids the same places, sizes, and turns.
+
+Both keep the rule the flat families keep: rings and solids stand by their distance from the
+start, so a growing gesture never moves one it has placed, only the last ring, which rides the
+unfinished step. The `3D/Geometry/GestureMarks3D` example draws one growing stroke as a
+candy-striped tube, a wound one in clay, a metal one reflecting its own flat marks, and a chain
+of cubes.
 
 <a name="whole"></a>
 

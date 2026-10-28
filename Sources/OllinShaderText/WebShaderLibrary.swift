@@ -26,14 +26,15 @@ package enum WebShaderLibrary {
     /// The sections `wanted` needs, with the library's own dependencies added:
     /// `base` always, `hash` under `noise`, both under `visual`, `color` under
     /// `complex` (the domain coloring reads the perceptual wheel), `sdf` under
-    /// `shapes`, `hash` under `present`, and `combinator`, `noise` (the 3D
-    /// roughening reads value noise), and `sdf` (the cone reads `dot2`) under
-    /// `raymarch`, and `noise` (with its `hash`) under `medium`.
+    /// `shapes`, `hash` under `present`, and `combinator`, `shapes` (a flat field
+    /// stood up reads the 2D distance functions), `noise` (the 3D roughening reads
+    /// value noise), and `sdf` (the cone reads `dot2`) under `raymarch`, and
+    /// `noise` (with its `hash`) under `medium`.
     package static func closure(of wanted: Set<String>) -> Set<String> {
         var sections = wanted
         sections.insert("base")
         if sections.contains("raymarch") {
-            sections.insert("combinator"); sections.insert("noise"); sections.insert("sdf")
+            sections.insert("combinator"); sections.insert("shapes"); sections.insert("noise"); sections.insert("sdf")
         }
         if sections.contains("medium") { sections.insert("noise") }
         if sections.contains("noise") { sections.insert("hash") }

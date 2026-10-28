@@ -753,6 +753,21 @@ static float ollin_sdf3d_field(float3 p0, const device SDFNode3D *nodes,
             }
             break;
         }
+        case 7u: {   // EVAL2D leaf -> a flat shape's distance at the point's x and y (the
+                     // lifted program sits in a half-turn scope, so the canvas's y
+                     // arrives as the walk's -y and the slab stands as the canvas shows it)
+            float d = ollin_sdf_distance(nd.sel, p.xy, nd.geo0.xy, nd.geo0.zw,
+                                         nd.geo1.xy, nd.geo1.zw, nd.extra);
+            if (sp < OLLIN_SDF3D_VALUE_STACK) { distStack[sp] = d; colStack[sp] = nd.color; sp++; }
+            break;
+        }
+        case 8u:     // EXTRUDE -> the flat distance on the stack and the depth (k = half
+                     // of it) combined as a box's two sides: the exact extrusion
+            if (sp >= 1) {
+                float2 w = float2(distStack[sp-1], abs(p.z) - nd.k);
+                distStack[sp-1] = min(max(w.x, w.y), 0.0) + length(max(w, 0.0));
+            }
+            break;
         default:     // RESTORE_P -> pop point, apply the scope's distance scale
             if (pp > 0) { pp--; p = pointStack[pp]; }
             if (nd.k != 1.0 && sp >= 1) { distStack[sp-1] *= nd.k; }

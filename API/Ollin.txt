@@ -1571,7 +1571,7 @@ final class PushFeed: Sendable
   var text: String? { get }
   var timeSinceUpdate: Double? { get }
   var updateCount: Int { get }
-final class RenderTarget
+final class RenderTarget: VideoFeed
   func combined(with: RenderTarget, _: Combine) -> RenderTarget
   func filtered(_: Filter) -> RenderTarget
   func snapshot() -> Image?
@@ -1580,7 +1580,10 @@ final class RenderTarget
   let scale: Double
   let width: Int
   var depth: RenderTarget { get }
+  var frame: Image? { get }
+  var frameSize: Vector2? { get }
   var image: Image { get }
+  var waitingMessage: String { get }
 final class SessionRecorder: SketchExtension, Sendable
   enum Audio: Equatable, Hashable, Sendable
     case microphone
@@ -4599,10 +4602,12 @@ struct GestureMark: Equatable, Sendable
   func lanes(count: Int = default, gap: Double = default, wander: Double = default, seed: Int = default) -> [GestureMark.Piece]
   func leaves(angle: Double = default, size: Double = default, seed: Int = default) -> [GestureMark.Piece]
   func pixels(cell: Double, roughness: Double = default, seed: Int = default) -> [GestureMark.Piece]
+  func solids(spacing: Double = default, seed: Int = default) -> [MeshInstance]
   func spikes(spacing: Double = default, height: Double = default, sharpness: Double = default, seed: Int = default) -> [GestureMark.Piece]
   func spiral(cycle: Double = default, loop: Double = default) -> [GestureMark.Piece]
   func strands(count: Int = default, spread: Double = default, wavelength: Double = default, seed: Int = default) -> [GestureMark.Piece]
   func strips(rows: Int = default, length: Double = default, seed: Int = default) -> [GestureMark.Piece]
+  func tube(sides: Int = default, wobble: Double = default, wavelength: Double = default) -> Mesh
   func wiggle(wavelength: Double = default, amplitude: Double = default) -> [GestureMark.Piece]
   init(_: Contour, width: Double)
   init(_: StrokeMark, width: Double)
@@ -6367,6 +6372,7 @@ struct SDF
   func columnsSubtract(_: SDF, radius: Double, count: Int) -> SDF
   func columnsUnion(_: SDF, radius: Double, count: Int) -> SDF
   func engrave(_: SDF, depth: Double) -> SDF
+  func extruded(depth: Double) -> SDF3D
   func groove(_: SDF, depth: Double, width: Double) -> SDF
   func intersect(_: SDF) -> SDF
   func mirrored(x: Bool = default, y: Bool = default) -> SDF

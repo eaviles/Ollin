@@ -1901,6 +1901,28 @@
       "stillSmall": "examples/3D/Geometry/FieldLines/still-640.jpg?v=39549fc6",
       "seed": 1
     },
+    "3D/Geometry/GestureMarks3D": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 15.163,
+      "sound": false,
+      "source": "f3988a0f5b2743a6",
+      "rendered": "2026-10-28",
+      "bytes": {
+        "loop": 2353195,
+        "loopSmall": 489646,
+        "still": 130484,
+        "stillSmall": 54847
+      },
+      "loop": "examples/3D/Geometry/GestureMarks3D/loop.mp4?v=f1754a1f",
+      "loopSmall": "examples/3D/Geometry/GestureMarks3D/loop-640.mp4?v=d850b94a",
+      "still": "examples/3D/Geometry/GestureMarks3D/still.jpg?v=79531c9c",
+      "stillSmall": "examples/3D/Geometry/GestureMarks3D/still-640.jpg?v=1404df35",
+      "seed": 1
+    },
     "3D/Geometry/HiddenLines": {
       "width": 1080,
       "height": 1080,
@@ -3970,6 +3992,28 @@
       "still": "examples/3D/Raymarching/RaymarchedStretch/still.jpg?v=836a2007",
       "stillSmall": "examples/3D/Raymarching/RaymarchedStretch/still-640.jpg?v=c0911f44",
       "width": 1080
+    },
+    "3D/Raymarching/StandingField": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 5.052,
+      "sound": false,
+      "source": "7a2e06815428b545",
+      "rendered": "2026-10-28",
+      "bytes": {
+        "loop": 1677480,
+        "loopSmall": 327421,
+        "still": 54943,
+        "stillSmall": 21706
+      },
+      "loop": "examples/3D/Raymarching/StandingField/loop.mp4?v=0130ae54",
+      "loopSmall": "examples/3D/Raymarching/StandingField/loop-640.mp4?v=814a6667",
+      "still": "examples/3D/Raymarching/StandingField/still.jpg?v=a11c55ac",
+      "stillSmall": "examples/3D/Raymarching/StandingField/still-640.jpg?v=1ebe8752",
+      "seed": 1
     },
     "Audio/Bowing": {
       "width": 1080,

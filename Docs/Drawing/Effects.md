@@ -104,6 +104,8 @@ blendMode(.add); drawImage(layer.image, 0, 0)      // added as light
 
 The image always shows what was drawn into the layer *this* frame.
 
+A layer is also a `VideoFeed`, its `frame` this live image at the layer's size, so it stands wherever a feed does: `drawFrame(layer)` draws it, and `environment(.feed(layer))` lights a [3D scene](../3D/3D.md#environment) with it, where a polished metal reflects the sketch's own drawing.
+
 <a id="snapshot"></a>
 ### snapshot()
 

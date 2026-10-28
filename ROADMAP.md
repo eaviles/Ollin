@@ -45,8 +45,6 @@ This tier is a set of classic generative-art building blocks. Each one emits vec
 - **Disk packings that stay fast with mixed sizes.** Colliding disks slow down most when their sizes vary. The collision pass divides the canvas into squares as wide as the largest disk and compares each disk with every disk in the squares around it, so a few large disks among many small ones means hundreds of comparisons for each small one. Taking particles out one at a time also reads through the whole world on every call. A collision pass whose cost holds when sizes vary, and one call that takes out many particles at once, would let a packing that keeps renewing itself run with thousands of disks.
 - **Noise read without the clamp.** `noise` raises its contrast and clamps the overshoot, so a few percent of the field sits flat at 0 and at 1. A form that keeps the whole field, for a curve that should never run flat.
 - **Points spread evenly over a sphere.** A list of any number of points on a sphere, each with about the same share of the surface and no clumping at the poles, for a dome of lights, a ball of dots, or directions to aim things along. Sketches write the golden-angle spiral that does this by hand today.
-- **Gesture marks in space.** A tube wound around a drawn path with candy stripes or a wobble, a metal tube that reflects the canvas, and a chain of flat-shaded solids strung along it, made from the same path, width, and seed as the flat gesture marks.
-- **A flat field as a slab.** A 2D field composition (`SDF`, its shapes and its combinators) extruded into a solid a set depth thick, so a drawn 2D field stands up in 3D, and with `voxelized` turns into pixel art or bricks.
 
 See the [design notes](DESIGN-NOTES.md#technique-and-algorithm-helpers).
 

@@ -328,3 +328,18 @@ struct DepthReconstruction {
         apertureBlades = max(0, camera.apertureBlades)
     }
 }
+
+// MARK: - A layer as a feed
+
+extension RenderTarget: VideoFeed {
+    /// The layer's live image, so a layer stands wherever a feed does: drawn with
+    /// `drawFrame(_:)`, and above all lighting a scene as its environment,
+    /// `environment(.feed(layer))`, where a polished metal reflects what the layer
+    /// holds, the sketch's own drawing wrapped round the scene. The bake reads the
+    /// layer as it stands when the frame's environment resolves, so a scene
+    /// reflects the layer a frame late at most.
+    public var frame: Image? { image }
+    /// The layer's size in canvas points.
+    public var frameSize: Vector2? { Vector2(Double(width), Double(height)) }
+    public var waitingMessage: String { "Waiting for the layer…" }
+}

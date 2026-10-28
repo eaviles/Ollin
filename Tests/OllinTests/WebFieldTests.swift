@@ -205,6 +205,25 @@ import OllinWebGate
         }
     }
 
+    /// A flat field stood up: a melt of a disc and a bar with a ring carved
+    /// through, extruded and turned, beside the same badge one block thick.
+    final class Standing: Sketch {
+        override var canvasSize: CanvasSize { .square(200) }
+        override func draw() {
+            background(Color(hex: 0x14161c))
+            camera(.orbiting(target: .zero, radius: 6.5, azimuth: 0.4 + time * 0.3, elevation: 0.45,
+                             fieldOfView: .pi / 4, near: 0.1, far: 40))
+            directionalLight(.white, direction: Vector3(-0.4, -0.8, -0.45), intensity: 1.1)
+            ambientLight(Color(white: 0.25))
+            fill(Color(hex: 0x6ab04c))
+            let badge = SDF.circle(radius: 1).colored(Color(hex: 0xe8a24a))
+                .smoothUnion(SDF.rect(width: 2, height: 0.5).at(0.8, -0.4).colored(Color(hex: 0x3e8fb0)), k: 0.35)
+                .subtract(SDF.ring(innerRadius: 0.25, outerRadius: 0.4).at(0.3, 0.4))
+            drawSDF3D(badge.extruded(depth: 0.5).rotatedX(-0.5).at(-1.4, 0, 0))
+            drawSDF3D(badge.extruded(depth: 0.2).at(0, 0, 0.1).voxelized(size: 0.2, seed: 2).rotatedX(-0.5).at(1.6, 0, 0))
+        }
+    }
+
     // MARK: The recorder
 
     @Test func aComposedFieldCrossesAsItsQuadAndProgram() throws {
@@ -434,6 +453,7 @@ import OllinWebGate
             ("Reduced (a half-resolution march)", { Reduced() }, 3, 1),
             ("Finished (metal, toon, Gooch)", { Finished() }, 1, 0),
             ("Blocks (a melt rebuilt as blocks)", { Blocks() }, 3, 2),
+            ("Standing (a flat field as a slab, and as pixel art)", { Standing() }, 3, 1),
         ]
         let pages = try cases.map { c in
             let recording = try OllinApp.recordWebFrames(of: c.make(), frames: c.frames, fps: 30)

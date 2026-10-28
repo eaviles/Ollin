@@ -54,6 +54,7 @@ public struct SDF3D {
         case modify(Modifier, SDF3D, Float, Float)   // round/onion/displace, child, amount, frequency (displace only)
         case transformed(Transform, SDF3D)           // a point-space scope around a child
         case voxelized(SDF3D, Voxels)                // the child rebuilt as blocks on a grid
+        case extruded(SDF, Float)                    // a flat field stood up, half this depth each way in z
     }
 
     /// How `voxelized` cuts and shades its blocks (field units and 0...1 amounts).
@@ -351,6 +352,8 @@ public extension SDF3D {
             return .init(.transformed(t, c.painting(color)))
         case let .voxelized(c, v):
             return .init(.voxelized(c.painting(color), v))
+        case let .extruded(f, h):
+            return .init(.extruded(f.colored(color), h))
         }
     }
 
@@ -369,7 +372,37 @@ public extension SDF3D {
             return .init(.transformed(t, c.strippingVoxels()))
         case let .voxelized(c, _):
             return c.strippingVoxels()
+        case .extruded:
+            return self
         }
+    }
+}
+
+// MARK: A flat field as a slab
+
+public extension SDF {
+    /// The flat field stood up as a solid `depth` thick: the 2D composition, every
+    /// shape, combine, modifier, and transform in it, read in the x and y plane of the
+    /// 3D field and extruded half of `depth` each way along z, centered on z = 0. The
+    /// result is an `SDF3D`, so it takes the 3D transforms, joins other 3D fields,
+    /// and voxelizes:
+    ///
+    /// ```swift
+    /// let badge = SDF.circle(radius: 1).smoothUnion(SDF.rect(width: 1.6, height: 0.5).at(0.9, 0), k: 0.3)
+    /// drawSDF3D(badge.extruded(depth: 0.4).rotatedX(-0.5))
+    /// drawSDF3D(badge.extruded(depth: 0.25).voxelized(size: 0.25).at(3, 0, 0))   // pixel art
+    /// ```
+    ///
+    /// The flat program is run as the 3D walk's own instructions, so a smooth union
+    /// melts in the plane and the slab's faces stay flat: the distance is the exact
+    /// extrusion of the 2D field's distance, which for a circle is the cylinder and
+    /// for a rectangle the box, to the last bit. The slab stands as the canvas shows
+    /// the field: the flat program was composed where y runs down, so the walk runs
+    /// it inside a half turn about x, the turn `Mesh.text` gives a word, and a
+    /// composition drawn with `drawSDF` stands up the way it was drawn. A `depth`
+    /// below a thousandth is raised to it.
+    func extruded(depth: Double) -> SDF3D {
+        SDF3D(.extruded(self, Float(max(depth, 1e-3) / 2)))
     }
 }
 
@@ -627,6 +660,32 @@ extension SDF3D {
                                  valueDepth: rc.valueDepth, pointDepth: rc.pointDepth + 1,
                                  unbounded: rc.unbounded, normalEpsilon: rc.normalEpsilon)
 
+        case let .extruded(field, h):
+            // The flat program lifted node for node into this walk (its leaves as the
+            // EVAL2D instruction over the 2D distance functions, its combines and
+            // modifiers as the shared ones, its transforms as the 3D ones in the
+            // plane), then EXTRUDE, which takes the flat distance off the stack and
+            // the depth and combines them as a box's two sides. The 2D flattener
+            // keeps its own bounds, depths, and grow rules. The whole sits in a
+            // half-turn scope about x, the turn `Mesh.text` gives a word: the flat
+            // program was composed on the canvas, where y runs down, and the slab
+            // stands as the canvas shows it. A turn rather than a mirror of y, since
+            // the walk's mirror folds onto one side and a fold's mirror image is not
+            // a fold; the extrusion reads the depth as its magnitude, so it sits
+            // inside the turn unchanged.
+            let turn = Transform.rotate(axis: SIMD3(1, 0, 0), angle: .pi)
+            nodes.append(Self.xformNode(turn))
+            var flat: [SDFNode] = []
+            let rf = field.flatten(defaultFill: defaultFill, into: &flat)
+            for n in flat { nodes.append(Self.lifted(n)) }
+            nodes.append(SDFNode3D(kind: 8, sel: 0, k: h, extra: 0,
+                                   color: .zero, geo0: .zero, geo1: .zero))
+            nodes.append(SDFNode3D(kind: 4, sel: 0, k: 1, extra: 0,
+                                   color: .zero, geo0: .zero, geo1: .zero))
+            let (lo, hi) = Self.transformBounds(turn, lo: SIMD3(rf.lo.x, rf.lo.y, -h),
+                                                hi: SIMD3(rf.hi.x, rf.hi.y, h))
+            return FlattenResult(lo: lo, hi: hi, valueDepth: rf.valueDepth, pointDepth: rf.pointDepth + 1)
+
         case let .transformed(t, c):
             nodes.append(Self.xformNode(t))
             let rc = c.flatten(defaultFill: defaultFill, into: &nodes)
@@ -702,6 +761,42 @@ extension SDF3D {
         case .mandelbox:    return g.w * 0.004   // of the clip half-side
         case .mengerSponge: return 0             // a clean signed bound: the default holds
         default:            return 0
+        }
+    }
+
+    /// A flat program's instruction as the 3D walk's: a 2D leaf becomes EVAL2D
+    /// (kind 7, the shape's distance read at the point's x and y, its geometry
+    /// carried as the 2D node carries it), a combine, a modifier, and RESTORE_P
+    /// keep their kinds (the arithmetic is shared), and a 2D transform becomes the
+    /// 3D one in the plane: a translate, a mirror, a repeat, and a stretch leave z
+    /// alone with their third component at zero, a rotate turns about z by the
+    /// angle the 2D node packs as its cosine and sine, a polar repeat folds about
+    /// z, and a per-axis scale keeps z at one, where a zero would blow the point
+    /// up ten thousandfold along the depth.
+    static func lifted(_ n: SDFNode) -> SDFNode3D {
+        switch n.kind {
+        case 0:
+            return SDFNode3D(kind: 7, sel: n.sel, k: 0, extra: n.extra,
+                             color: n.color, geo0: n.geo0, geo1: n.geo1)
+        case 3:
+            switch n.sel {
+            case 1:
+                let angle = atan2(n.geo0.y, n.geo0.x)
+                return SDFNode3D(kind: 3, sel: 1, k: 0, extra: 0, color: .zero,
+                                 geo0: SIMD4(0, 0, 1, 0), geo1: SIMD4(angle, 0, 0, 0))
+            case 5:
+                return SDFNode3D(kind: 3, sel: 5, k: 0, extra: 0, color: .zero,
+                                 geo0: SIMD4(0, 0, 1, 0), geo1: n.geo1)
+            case 6:
+                return SDFNode3D(kind: 3, sel: 6, k: 0, extra: 0, color: .zero,
+                                 geo0: SIMD4(n.geo0.x, n.geo0.y, 1, 0), geo1: .zero)
+            default:
+                return SDFNode3D(kind: 3, sel: n.sel, k: n.k, extra: n.extra, color: .zero,
+                                 geo0: n.geo0, geo1: n.geo1)
+            }
+        default:
+            return SDFNode3D(kind: n.kind, sel: n.sel, k: n.k, extra: n.extra, color: .zero,
+                             geo0: n.kind == 2 ? SIMD4(1, 0, 0, 0) : n.geo0, geo1: n.geo1)
         }
     }
 

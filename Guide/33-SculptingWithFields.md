@@ -6,7 +6,7 @@
 
 <img src="Images/33-SculptingWithFields/Molten.jpg" alt="A pale mint sculpture like a settling drop of glaze, glossy under studio light, one lobe drooping toward a dark floor that catches its soft shadow" width="560">
 
-A shape stored as a distance field can melt into its neighbors, carve them, and stay one surface however you push it. This chapter builds shapes that way, flat on the canvas and then in space, where a tracer finds the surface by hopping along each ray. The sculpture above is four melted lobes, twisted a little and breathing slowly, and you can orbit it with the mouse. Other ways to combine fields, a field rebuilt from cubes, space folded into copies, fractals, and the way out into a mesh follow it.
+A shape stored as a distance field can melt into its neighbors, carve them, and stay one surface however you push it. This chapter builds shapes that way, flat on the canvas and then in space, where a tracer finds the surface by hopping along each ray. The sculpture above is four melted lobes, twisted a little and breathing slowly, and you can orbit it with the mouse. Other ways to combine fields, a field rebuilt from cubes, space folded into copies, fractals, and the way out into a mesh follow it, and a flat field stood up as a slab.
 
 ## A shape as a question: the signed distance field
 
@@ -186,7 +186,7 @@ Then make it yours:
 
 The sculpture breathes and turns on its own, so keep it as a video. `swift run OllinLive MySketches/Molten.swift --export-video molten.mp4 --seconds 12` records the first twelve seconds. An export renders every frame of the field at full quality.
 
-## More ways to combine: the other verbs, joinery, the block form, sculpting, and voxels
+## More ways to combine: the other verbs, joinery, the block form, sculpting, voxels, and a slab
 
 Molten melts every lobe with one verb, `smoothUnion`. Fields combine in other ways too. They carve, keep only an overlap, or become a shape halfway between two. They meet in hard-edged joints, merge ordinary draw calls, and build up in a block the way clay does. And any of them can be rebuilt out of cubes.
 
@@ -267,6 +267,23 @@ drawSDF3D(melt.voxelized(size: 0.16))
 <img src="Images/33-SculptingWithFields/Blocks.jpg" alt="The same melt of an orange sphere, a blue ring, and a red cap three times: as a smooth surface, rebuilt from large blocks, and rebuilt from small ones, each block one flat color with darker seams and creases" width="560">
 
 The smooth union's blended seam lands a block at a time, since each block reads one color. The faces are flat and square to the grid. A thin seam runs along each face's edges, and a face darkens where a neighbor rises beside it. A slab one block thick reads as pixel art from the front. The tracer pays for the cubes: a block field costs about three times the field it came from. The [reference](../Docs/Drawing/Combinators.md#blocks) has the seams, the gaps, and why a slab has to sit on the cell centers. [`Examples/3D/Raymarching/RaymarchedBlocks`](../Examples/3D/Raymarching/RaymarchedBlocks/Sketch.swift) builds a model, an island, and a heart.
+
+### A flat field stood up: extruded
+
+`extruded(depth:)` stands a flat field up as a solid that thick. Everything the flat composition holds, its shapes, its melts, its carves, its turns and repeats, is read in the slab's own plane and pushed half the depth each way, and the slab stands as the canvas shows it, the way a word does. It is how a relief is carved: the drawing is flat, and the depth comes after. The result is an `SDF3D`, so it turns, joins other fields, and voxelizes. The extrusion of a distance field is the one Inigo Quilez wrote down with his 3D distance functions, the flat distance and the depth combined as a box's two sides:
+
+```swift
+let plum = Color(hex: 0x5B2A86), coral = Color(hex: 0xE8603C)
+let badge = SDF.circle(radius: 1.15).colored(plum)
+    .smoothUnion(SDF.rect(width: 2.6, height: 0.55, cornerRadius: 0.2).at(0.9, -0.5).colored(coral), k: 0.4)
+    .subtract(SDF.ring(innerRadius: 0.32, outerRadius: 0.5).at(0.35, 0.45))
+drawSDF(badge)                                            // flat on the canvas
+drawSDF3D(badge.extruded(depth: 0.5).rotatedX(-0.4))      // standing in the scene
+```
+
+<img src="Images/33-SculptingWithFields/StandingSlab.jpg" alt="A badge melted out of a purple disc, an orange bar, and a gold star with a mint ring carved through it, three times on a pale table: filled flat on the canvas at the left, standing as a thick slab in the middle with its faces flat and its sides straight, and rebuilt one block thick at the right so it reads as pixel art" width="560">
+
+The flat program runs inside the 3D walk as its own instructions, so the melt happens in the plane and the slab's faces stay flat. The same two shapes stood up first and melted in space would bulge where they overlap. The distance is the exact extrusion of the flat one, which makes an extruded circle the cylinder and an extruded rectangle the box, pixel for pixel. One block thick under `voxelized`, a slab is pixel art from the front and a row of bricks from the side, and it has to sit half a block off the grid to hold a row of cell centers. The [reference](../Docs/Drawing/Combinators.md#slab) has the rules, and [`Examples/3D/Raymarching/StandingField`](../Examples/3D/Raymarching/StandingField/Sketch.swift) turns the badge as a slab, as pixel art, and as bricks.
 
 ## Space folded and detail without end: domain repetition and fractals
 

@@ -230,14 +230,22 @@ extension MetalRenderer {
               let frame = feed.frame,
               let frameTexture = frame.texture(for: device) else { return nil }
         var state = feedBakeStates[feedID] ?? FeedBakeState()
+        if feedBakeStates[feedID] == nil {
+            // A feed seen for the first time: drop the states of feeds that have gone.
+            // A layer is a per-frame handle, so a layer fed to the environment is a
+            // new feed every frame, and its states would otherwise pile up one a frame.
+            feedBakeStates = feedBakeStates.filter { FeedEnvironments.feed(for: $0.key) != nil }
+        }
         if frame.hasCPUPixels {
             if state.image !== frame {
                 state.generation &+= 1
                 state.image = frame
             }
         } else {
+            // A texture-backed frame is new every time, and is never held: a layer's
+            // image owns its target, which would keep a per-frame layer alive forever.
             state.generation &+= 1
-            state.image = frame
+            state.image = nil
         }
         feedBakeStates[feedID] = state
         let key = IBLKey(source: env.source, clouds: nil, feedGeneration: state.generation)

@@ -1665,6 +1665,18 @@ struct WebShaders {
                 }
                 break;
             }
+            case 7u: {
+                float d = ollin_sdf_distance(nd.sel, p.xy, nd.geo0.xy, nd.geo0.zw,
+                                             nd.geo1.xy, nd.geo1.zw, nd.extra);
+                if (sp < 16) { distStack[sp] = d; colStack[sp] = nd.color; sp++; }
+                break;
+            }
+            case 8u:
+                if (sp >= 1) {
+                    vec2 w = vec2(distStack[sp-1], abs(p.z) - nd.k);
+                    distStack[sp-1] = min(max(w.x, w.y), 0.0) + length(max(w, 0.0));
+                }
+                break;
             default:
                 if (pp > 0) { pp--; p = pointStack[pp]; }
                 if (nd.k != 1.0 && sp >= 1) { distStack[sp-1] *= nd.k; }

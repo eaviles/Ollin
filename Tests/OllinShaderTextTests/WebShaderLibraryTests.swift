@@ -141,7 +141,7 @@ struct WebShaderLibraryTests {
         #expect(WebShaderLibrary.closure(of: ["shapes"]) == ["base", "sdf", "shapes"])
         #expect(WebShaderLibrary.closure(of: ["present"]) == ["base", "hash", "present"])
         #expect(WebShaderLibrary.closure(of: ["combinator"]) == ["base", "combinator"])
-        #expect(WebShaderLibrary.closure(of: ["raymarch"]) == ["base", "hash", "noise", "sdf", "combinator", "raymarch"])
+        #expect(WebShaderLibrary.closure(of: ["raymarch"]) == ["base", "hash", "noise", "sdf", "shapes", "combinator", "raymarch"])
         for section in WebShaderLibrary.segmentSectionNames {
             let translation = WebShaderLibrary.translate(text, wanted: [section])
             #expect(translation.isClean, "\(section): \(translation.unsupported.map(\.message))")

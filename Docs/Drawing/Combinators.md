@@ -37,6 +37,7 @@ the *whole* merged region or outline as one continuous surface instead. See
 - [3D fields](#fields-3d)
 - [Fractal leaves](#fractals)
 - [Blocks](#blocks)
+- [A flat field as a slab](#slab)
 - [Notes and limits](#notes)
 
 <a name="quick-start"></a>
@@ -601,6 +602,54 @@ times the field it is built from, whatever the block size, and `castShadows()` a
 that, since a shadow ray grazing the blocks reads them too. Keep the field simple, with few
 leaves, when it will be drawn live. See `Examples/3D/Raymarching/RaymarchedBlocks`, and the
 page export carries a block field like any other.
+
+<a name="slab"></a>
+
+#### A flat field as a slab
+
+`extruded(depth:)` on any 2D `SDF` stands the flat composition up as a solid `depth` thick:
+every shape, combine, modifier, and transform the flat field holds, read in the x and y plane of
+the 3D field and extruded half of `depth` each way along z, centered on z = 0, standing as the
+canvas shows it. The result is an `SDF3D`, so it takes the 3D transforms, joins other 3D
+fields, casts and receives shadows, and voxelizes.
+
+<picture>
+  <img src="../../Guide/Images/33-SculptingWithFields/StandingSlab.jpg" alt="A badge melted out of a purple disc, an orange bar, and a gold star with a mint ring carved through it, three times on a pale table: filled flat on the canvas at the left, standing as a thick slab in the middle with its faces flat and its sides straight, and rebuilt one block thick at the right so it reads as pixel art" width="680">
+</picture>
+
+```swift
+let plum = Color(hex: 0x5B2A86), coral = Color(hex: 0xE8603C), gold = Color(hex: 0xF2B134)
+let badge = SDF.circle(radius: 1.15).colored(plum)
+    .smoothUnion(SDF.rect(width: 2.6, height: 0.55, cornerRadius: 0.2).at(0.9, -0.5).colored(coral), k: 0.4)
+    .smoothUnion(SDF.star(outerRadius: 0.85, innerRadius: 0.4, points: 5).at(-1.25, 0.75).colored(gold), k: 0.3)
+    .subtract(SDF.ring(innerRadius: 0.32, outerRadius: 0.5).at(0.35, 0.45))
+drawSDF(badge)                                                     // flat, on the canvas
+drawSDF3D(badge.extruded(depth: 0.45).rotatedX(-0.35))             // standing, in the scene
+drawSDF3D(badge.extruded(depth: 0.16).at(0, 0, 0.08).voxelized(size: 0.16).at(3, 0, 0))   // pixel art
+```
+
+The flat program runs as the 3D walk's own instructions rather than being rebuilt from 3D
+leaves: each flat shape is read at the point's x and y through the 2D distance functions,
+the combines and modifiers are the ones both walks share, and a flat transform becomes the 3D
+one in the plane (a turn is a turn about z, a radial repeat folds about z, a per-axis scale
+leaves the depth alone). The distance is then the flat distance and the depth combined as a
+box's two sides, which is the exact extrusion: an extruded circle is the cylinder and an
+extruded rectangle the box, pixel for pixel. Because the melt happens in the plane, a smooth
+union's seam is a curve in the outline and the slab's faces stay flat; the same two shapes
+stood up first and melted in space would bulge where they overlap. A leaf's color crosses
+with it, and `colored(_:)` on the slab paints the leaves left unpainted.
+
+The flat program was composed on the canvas, where y runs down, so the walk runs it inside a
+half turn about x, the turn `Mesh.text` gives a word: a composition drawn with `drawSDF` stands
+up the way it was drawn, a shape placed down the canvas standing lower, a turn on the canvas the
+same turn seen from the front, and a flat `mirrored(x:y:)` keeping the canvas's right and lower
+halves, which stand as the slab's right and lower halves. A `depth` below a thousandth is raised
+to it. The flat program's nodes count
+toward the field's 256 and its stacks, with the turn, the extrusion, and its restore three nodes more. A slab meant to be one
+block thick under `voxelized` follows the blocks' rule above: give it the block's own depth and
+move it half a block along z, so it holds a row of cell centers.
+See `Examples/3D/Raymarching/StandingField`, and the page export carries a slab like any other
+field.
 
 <a name="notes"></a>
 

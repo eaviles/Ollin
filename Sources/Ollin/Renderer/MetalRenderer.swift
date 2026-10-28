@@ -2573,6 +2573,11 @@ final class MetalRenderer {
                               geoMats: renderedShadow.giGeoMats,
                               supersample: false, pooled: true)
         encodeEffectTargets(drawer, into: commandBuffer, buffers: buffers, pooled: true, gi: gi)
+        if drawer.environment?.feedsALayer == true {
+            // A layer fed to the environment was drawn by the pass above, so its bake
+            // comes after it: the scene reflects this frame's layer, not an empty one.
+            _ = resolveIBL(for: drawer.environment, sunLit: drawer.skySunLit, commandBuffer: commandBuffer)
+        }
         encodeCompute(drawer, into: commandBuffer, part: .afterLayers)
         // The layers are drawn, so the passes from here on find their pictures on the
         // surfaces a traced ray reaches.
@@ -3392,6 +3397,10 @@ final class MetalRenderer {
                               geoMats: renderedShadow.giGeoMats,
                               supersample: true, pooled: false)
         encodeEffectTargets(drawer, into: commandBuffer, buffers: buffers, pooled: false, gi: gi)
+        if drawer.environment?.feedsALayer == true {
+            _ = resolveIBL(for: drawer.environment, sunLit: drawer.skySunLit, commandBuffer: commandBuffer,
+                           blocking: true)
+        }
         encodeCompute(drawer, into: commandBuffer, part: .afterLayers)
         // The layers are drawn, so the passes from here on find their pictures on the
         // surfaces a traced ray reaches.
@@ -3900,6 +3909,9 @@ final class MetalRenderer {
                                   geoMats: renderedShadow.giGeoMats,
                                   supersample: false, pooled: false)
             encodeEffectTargets(drawer, into: cb, buffers: buffers, pooled: false, gi: gi)
+            if drawer.environment?.feedsALayer == true {
+                _ = resolveIBL(for: drawer.environment, sunLit: drawer.skySunLit, commandBuffer: cb)
+            }
             encodeCompute(drawer, into: cb, part: .afterLayers)
             // The layers are drawn, so the passes from here on find their pictures on the
             // surfaces a traced ray reaches.
