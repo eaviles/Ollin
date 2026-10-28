@@ -48,6 +48,7 @@ enum Satellite: String, CaseIterable {
     case haptics = "OllinHaptics"
     case bluetooth = "OllinBluetooth"
     case samplePhotos = "OllinSamplePhotos"
+    case sampleModels = "OllinSampleModels"
 
     var dependency: Target.Dependency { .byName(name: rawValue) }
 }
@@ -189,6 +190,7 @@ let package = Package(
         // its credit. A product of its own so an app that never imports it ships
         // none of them; the framework itself bundles no photograph.
         .library(name: "OllinSamplePhotos", targets: ["OllinSamplePhotos"]),
+        .library(name: "OllinSampleModels", targets: ["OllinSampleModels"]),
         // The shared CPU/GPU struct header as an importable module. A sketch
         // driving the raw `SpatialHash` builds `OllinParticle` buffers itself and
         // needs the declarations, which is why the compute examples `import
@@ -822,6 +824,14 @@ let package = Package(
             dependencies: ["Ollin"],
             resources: [.process("Resources")]
         ),
+        // The bundled sample 3D models, as `SampleModel` values that load
+        // through the library's own bundle: one `.glb` per model, its textures
+        // packed inside. Their credits and terms are in THIRD-PARTY-NOTICES.md.
+        .target(
+            name: "OllinSampleModels",
+            dependencies: ["Ollin"],
+            resources: [.process("Resources")]
+        ),
         // The structs shared between Swift and the Metal shaders (`OllinVertex`,
         // `Uniforms`, `SDFInstance`) are defined once in a C header so their
         // memory layout can't drift between the two sides. This thin C module
@@ -1129,6 +1139,12 @@ let package = Package(
         .testTarget(
             name: "OllinSamplePhotosTests",
             dependencies: ["OllinSamplePhotos"]
+        ),
+        // The sample models: every one loads with triangles and a textured
+        // material, stays under its size budget, and carries a complete credit.
+        .testTarget(
+            name: "OllinSampleModelsTests",
+            dependencies: ["Ollin", "OllinSampleModels"]
         ),
         // The headless-browser gate the web tests share: a browser as a GLSL
         // compiler and as a page renderer. A regular target kept under `Tests/`

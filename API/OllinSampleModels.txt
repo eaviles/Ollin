@@ -1,0 +1,16 @@
+// OllinSampleModels: the public surface, written by Scripts/api-surface.sh.
+// Change the source, then run it with --record; never edit this file by hand.
+struct SampleModel: Equatable, Hashable, Sendable
+  func load() -> Mesh
+  let credit: SampleModel.Credit
+  let name: String
+  let subject: String
+  static let all: [SampleModel]
+  static let duck: SampleModel
+  struct Credit: Equatable, Hashable, Sendable
+    let artist: String
+    let license: String
+    let licenseURL: String
+    let source: String
+    var line: String { get }
+  var url: Foundation.URL { get }

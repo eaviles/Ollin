@@ -10,7 +10,7 @@ A mesh can come from a file and take a picture for its color, or start as a roug
 
 ## A mesh from a file
 
-A generator, one of the `Mesh` builders from [Chapter 27](27-3DGently.md#a-catalog-of-solids)'s catalog, hands you a shape the framework knows how to build. A file hands you a shape somebody drew. Any model you make in a 3D tool can join a sketch. `loadMesh` reads the common formats (`.usdz`, `.obj`, `.gltf`/`.glb`, `.stl`, `.ply`) into a `Mesh`, materials and textures included:
+A generator, one of the `Mesh` builders from [Chapter 27](27-3DGently.md#a-catalog-of-solids)'s catalog, hands you a shape the framework knows how to build. A file hands you a shape somebody drew. Any model you make in a 3D tool can join a sketch. `loadMesh` reads the common formats (`.usdz`, `.obj`, `.gltf`/`.glb`, `.stl`, `.ply`) into a `Mesh`, materials and textures included. One file comes with Ollin, so there is something to load before you have drawn anything: `import OllinSampleModels`, and `SampleModel.duck.load()` hands you a rubber duck with its paint on. The listing reads a file of your own the same way:
 
 ```swift
 final class Loaded: Sketch {
@@ -31,7 +31,7 @@ final class Loaded: Sketch {
 }
 ```
 
-One habit matters here: **`normalized(scale:)`**. A file arrives at whatever size and position its author saved, anywhere from millimeters to kilometers. Normalizing recenters it and scales its longest side to the world units you ask for. Keep the `fill` white so the model's own colors show, because a colored fill tints it. Models you build yourself are yours to ship. Downloaded ones carry licenses to check before you bundle them.
+One habit matters here: **`normalized(scale:)`**. A file arrives at whatever size and position its author saved, anywhere from millimeters to kilometers. Normalizing recenters it and scales its longest side to the world units you ask for. Keep the `fill` white so the model's own colors show, because a colored fill tints it. Models you build yourself are yours to ship. Downloaded ones carry licenses to check before you bundle them; the bundled duck carries its own, and `SampleModel.duck.credit.line` is the artist and the terms as one sentence, ready to draw at the foot of the frame. The [Sample models](../Docs/3D/SampleModels.md) reference says what else it is good for.
 
 > **Swift note.** Loading can fail, and `loadMesh` throws when it does. As in [Chapter 2](02-Color.md), `try?` turns the throw into `nil`. So `(try? loadMesh(...))?.normalized(scale: 3)` stops at the `?.` when the file isn't there, and `model` stays `nil`. The `if let model` in `draw()` then skips drawing, so a missing file never crashes the sketch. Write `try!` instead to stop the sketch with the file's name and what was wrong with it.
 
@@ -558,6 +558,7 @@ Normal mapping descends from Jim Blinn's 1978 bump mapping, which perturbed the 
 - [Sweeps and strips](../Docs/3D/Sweeps.md): `Curve3D` and its frames, everything a sweep does with a shape (holes, sharp corners, caps, uvs), a loft's stations, seams, and blend, the strip's colors and normals, and `Pace` by length or by area, with what each costs.
 - [The Hopf fibration](../Docs/3D/HopfFibration.md): the base sets, taking the color from the base point, the straight one, and what it costs to draw.
 - [Scenes](../Docs/3D/Scenes.md): the whole `loadScene` reference, what carries over from a glTF file (nodes, cameras, punctual lights, animations, skins, and morph targets) and from a USD file (nodes, cameras, its UsdLux lights, its transform animation, and its UsdSkel skins and blend shapes), how intensities are normalized, and building a `Scene` in code.
+- [Sample models](../Docs/3D/SampleModels.md): the bundled rubber duck, what it is good for, and the credit it carries.
 - [Bringing a scene over](../Docs/Tools/SceneImport.md): `ollin new --from-scene` writes the sketch instead of loading the file, so the camera, the lights and every placement become source you own. What it leaves behind, and why, is listed there.
 - [Cutting solids](../Docs/3D/3D.md#booleans): the four set operations on a `Mesh`, what has to be true of the two solids, what carries over to the result, and the two shapes that come out awkward.
 - [Shadow art](../Docs/Generators/ShadowArt.md): the carving, what the solid really throws, and the rule for when two or three shadows can be cast at all.

@@ -22,6 +22,7 @@ builder:
         - OllinRecord3D
         - OllinRemote
         - OllinRoom
+        - OllinSampleModels
         - OllinSamplePhotos
         - OllinScreen
         - OllinSerial

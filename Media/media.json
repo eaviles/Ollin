@@ -1944,24 +1944,26 @@
       "width": 1080
     },
     "3D/Geometry/LoadedMesh": {
-      "bytes": {
-        "loop": 2350882,
-        "loopSmall": 463245,
-        "still": 109409,
-        "stillSmall": 43157
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
-      "length": "10s",
-      "loop": "examples/3D/Geometry/LoadedMesh/loop.mp4?v=cede7202",
-      "loopSmall": "examples/3D/Geometry/LoadedMesh/loop-640.mp4?v=5e858d8a",
-      "motion": 15.006,
-      "rendered": "2026-09-10",
+      "length": "10.0s",
       "seconds": 10.0,
-      "source": "ec5a28e005b34e4d",
-      "still": "examples/3D/Geometry/LoadedMesh/still.jpg?v=192c69bb",
-      "stillSmall": "examples/3D/Geometry/LoadedMesh/still-640.jpg?v=4c133c2f",
-      "width": 1080
+      "frame": 480,
+      "motion": 2.94,
+      "sound": false,
+      "source": "6b24516986e697cd",
+      "rendered": "2026-10-28",
+      "bytes": {
+        "loop": 1263987,
+        "loopSmall": 228839,
+        "still": 52362,
+        "stillSmall": 20722
+      },
+      "loop": "examples/3D/Geometry/LoadedMesh/loop.mp4?v=fd0c727c",
+      "loopSmall": "examples/3D/Geometry/LoadedMesh/loop-640.mp4?v=3d8dd256",
+      "still": "examples/3D/Geometry/LoadedMesh/still.jpg?v=e4947060",
+      "stillSmall": "examples/3D/Geometry/LoadedMesh/still-640.jpg?v=f16216b6",
+      "seed": 1
     },
     "3D/Geometry/LoadedScene": {
       "bytes": {

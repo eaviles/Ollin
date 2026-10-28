@@ -52,6 +52,7 @@ enum Satellite: String, CaseIterable {
     case bluetooth = "OllinBluetooth"
     case mqtt = "OllinMQTT"
     case samplePhotos = "OllinSamplePhotos"
+    case sampleModels = "OllinSampleModels"
 
     var dependency: Target.Dependency { .product(name: rawValue, package: "Ollin") }
 }
@@ -290,7 +291,7 @@ let package = Package(
         example("3D/Effects/PathTraced"),
         example("3D/Geometry/TexturedMesh"),
         example("3D/Geometry/Wireframe"),
-        example("3D/Geometry/LoadedMesh", resources: [.copy("model.gltf"), .copy("model.obj")]),
+        example("3D/Geometry/LoadedMesh", [.sampleModels], resources: [.copy("model.gltf"), .copy("model.obj")]),
         example("3D/Geometry/LoadedScene", resources: [.copy("scene.gltf"), .copy("stage.usda")]),
         example("3D/Geometry/SceneExplorer", resources: [.copy("scene.gltf"), .copy("stage.usda")]),
         example("3D/Geometry/AnimatedScene", resources: [.copy("scene.gltf"), .copy("stage.usda")]),

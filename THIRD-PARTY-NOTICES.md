@@ -298,6 +298,19 @@ A note on the history: Hershey drew the faces at the U.S. Naval Weapons Laborato
 
 ---
 
+## Sample models (example assets)
+
+- **Used for:** the `OllinSampleModels` library, which the `3D/Geometry/LoadedMesh` example sketch and the Guide read so a material, a light, an environment, or a camera move can be shown on a real object. A product of its own, so an app that never imports it ships none of it; the `Ollin` framework itself bundles no model.
+- **Location in this repo:** [`Sources/OllinSampleModels/Resources/`](Sources/OllinSampleModels/Resources/), one `.glb` per model, packed from the loose download by [`Scripts/pack-glb.py`](Scripts/pack-glb.py) with its textures held to 1024 pixels on a side and re-encoded. Each credit is also carried in code as `SampleModel.credit`, and the `3D/Geometry/LoadedMesh` example draws it in its caption.
+- **`duck.glb`:** *Yellow rubber duck* by Alexandr (Sketchfab user sanch_aozz). https://sketchfab.com/3d-models/yellow-rubber-duck-1990cda4c97e400f852d2b4078ebb958 (CC BY 4.0).
+- **License:** Creative Commons Attribution 4.0 International (https://creativecommons.org/licenses/by/4.0/)
+
+> CC BY 4.0 grants free use, commercial included, on the condition that the
+> author is credited and changes are noted, which is done here, in
+> `ATTRIBUTION.md`, and in code. **Changes:** the author's glTF, its binary
+> buffer, and its texture were folded into one `.glb`, the texture re-encoded
+> as JPEG at its own 1024 pixels. No other edits.
+
 ## Sample photographs (example assets)
 
 - **Used for:** the `OllinSamplePhotos` library (photographs and one short film), which the `Images`, `Color`, and `Effects` example sketches and the Guide's and reference's figures read so a filter, a mosaic, a dither, or a winding can be shown on a real picture. A product of its own, so an app that never imports it ships none of them; the `Ollin` framework itself bundles no photograph.

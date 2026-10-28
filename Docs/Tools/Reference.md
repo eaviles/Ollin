@@ -139,7 +139,7 @@ ollin api Param              # every way to declare a parameter
 ollin api Vector2.init       # every way to make a Vector2
 ```
 
-A type with more than sixty members lists just their names, so `ollin api Sketch` fits on a screen. A name nothing is called prints the names spelled like it instead. That is the question you have when you know roughly what a call is called and not its exact spelling:
+A type's cases carry their comments in that list, because a case's comment is the whole of its documentation: `ollin api Filter.Dispersion` says under each mode what its parameters mean, in which units, and what it hands back at zero, without a lookup per case. A type with more than sixty members lists just their names, so `ollin api Sketch` fits on a screen. A name nothing is called prints the names spelled like it instead. That is the question you have when you know roughly what a call is called and not its exact spelling:
 
 ```sh
 ollin api blom               # Filter.bloom, and the others spelled like it

@@ -487,6 +487,14 @@ struct OllinDocsCommand {
                     ?? APIListing.tidy(member.text)
                 let constraint = places[index]?.constraint.map { "  " + style.dim($0) } ?? ""
                 print("    " + spelled + constraint)
+                // A case's comment is the whole of its documentation (its
+                // units, its sign, what it hands back at zero), so the list
+                // carries it; a function's has a lookup of its own.
+                guard member.kind == .enumCase, let comment = places[index]?.comment, !comment.isEmpty else { continue }
+                for line in comment.prefix(8) { print("        " + style.dim(line)) }
+                if comment.count > 8 {
+                    print("        " + style.dim("(\(comment.count - 8) more lines: ollin api \(type.name).\(member.name))"))
+                }
             }
             return
         }
