@@ -38,9 +38,10 @@
 // at c^k of g (spread wider), a = c = 1/2 and b at most 0.43: under the
 // thinning, as Hillaire's energy rule (2016) asks (an octave whose share
 // outran its thinning would scatter more light than it stops), and set so a
-// white, even slab of any thickness lit and seen along its normal reads what
-// the exact solution for such a half-space gives, 1.06 of a white matte
-// surface under the same light. The medium's shadow grid therefore
+// thick white, even slab lit and seen along its normal reads what the exact
+// solution for such a half-space gives, 1.06 of a white matte surface under
+// the same light (the thick limit only: the single scattering under it keeps
+// the fog's convention, about four times nature's). The shadow grid therefore
 // holds optical depth rather than transmittance, so a deep octave still finds
 // light where exp(-tau) is below a half float. Every lit step works its light
 // out in full: lighting every other step and holding or interpolating it
