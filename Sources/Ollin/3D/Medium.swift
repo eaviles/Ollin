@@ -12,11 +12,11 @@
 /// as thick and glows half as bright as where it reads 1. Light passing through
 /// fades by Beer's law, `exp(-density * value * distance)`, so a box of value 1
 /// that is `1 / density` world units deep lets through about 37% of what is
-/// behind it. The scattered light is the scene's lights and ambient taken once
-/// off the medium, shadowed by the volume itself and by the solids around it;
-/// light bounced from one part of a cloud to another is not followed, so a thick
-/// white cloud lit from the front reads about half as bright as a white matte
-/// surface under the same light.
+/// behind it. The scattered light is the scene's lights and ambient, shadowed by
+/// the volume itself and by the solids around it, and with `bounce` the light
+/// the medium passes on to itself: a thick white cloud glows from inside and its
+/// far side keeps some of the light, the way a real one does, rather than
+/// going dark a short way past the lit face.
 public struct Medium: Equatable, Hashable, Sendable {
     /// How thickly the medium blocks light where the grid reads 1, in inverse
     /// world units (the unit `fog(_:density:heightFalloff:)` takes): light
@@ -41,16 +41,26 @@ public struct Medium: Equatable, Hashable, Sendable {
     /// glows at its edges, the silver lining), toward -1 mostly back toward the
     /// light. The same dial as `volumetricLight(_:anisotropy:)`.
     public var anisotropy: Double
+    /// How much of the light the medium stops it passes on to itself, `0…1`:
+    /// at 0 each point is lit once by what reaches it through the medium, so a
+    /// thick cloud is bright at its lit face and dark a short way in; at 1 (the
+    /// default) the light bounces around inside, the interior glows, the far
+    /// side keeps some light, and a cloud lit from behind shines through at
+    /// its thin edges. A thick white cloud lit from the front reads what the
+    /// exact solution for such a medium gives, about 1.06 of a white matte
+    /// surface under the same light. Clamped to `0…1`; costs nothing at 0.
+    public var bounce: Double
 
     /// A medium from its dials; the defaults are a white, evenly scattering
-    /// haze one unit thick at a grid value of 1.
+    /// haze one unit thick at a grid value of 1, bouncing its light inside.
     public init(density: Double = 1, color: Color = .white, glow: Color = .black,
-                glowIntensity: Double = 1, anisotropy: Double = 0) {
+                glowIntensity: Double = 1, anisotropy: Double = 0, bounce: Double = 1) {
         self.density = density
         self.color = color
         self.glow = glow
         self.glowIntensity = glowIntensity
         self.anisotropy = anisotropy
+        self.bounce = bounce
     }
 
     /// Gray smoke: thick, scattering half the light it stops, a little

@@ -405,6 +405,16 @@ extension MetalRenderer {
         let scatter = medium.color.linearRGBA
         let glow = medium.glow.linearRGBA * Float(max(0, medium.glowIntensity))
         let scatters: Float = density > 0 && max(scatter.x, scatter.y, scatter.z) > 0 ? 1 : 0
+        // The octave sum's contribution factor, the share each further octave
+        // keeps of the last: 0.43 at a bounce of 1, the value at which a white,
+        // evenly scattering slab of any thickness lit and seen along its normal
+        // reads what the exact solution for such a half-space gives, 1.057 of
+        // a white matte surface under the same light (Chandrasekhar's H
+        // function, H(1)^2 / 8; the sum over the octaves of b^k / (1 + 2^-k)
+        // reaches 1.06 there, where the paper's 1/2 reaches 1.26), and under
+        // the thinning factor of 1/2, which keeps an octave from scattering
+        // more light than it stops (Hillaire's rule).
+        let bounce = Float(min(1, max(0, medium.bounce))) * 0.43
         return OllinVolumeDraw(
             model: item.model,
             inverseModel: item.model.inverse,
@@ -412,7 +422,7 @@ extension MetalRenderer {
             medium: SIMD4(density, Float(min(0.95, max(-0.95, medium.anisotropy))),
                           phase, MetalRenderer.volumeMaxSteps),
             scatter: SIMD4(scatter.x, scatter.y, scatter.z, scatters),
-            glow: SIMD4(glow.x, glow.y, glow.z, 0),
+            glow: SIMD4(glow.x, glow.y, glow.z, bounce),
             litLights: SIMD4(repeating: -1))
     }
 

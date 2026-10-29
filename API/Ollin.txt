@@ -5445,7 +5445,7 @@ struct MedialAxis: Equatable, Sendable
     var contour: Contour { get }
   var contours: [Contour] { get }
 struct Medium: ParamChoices, ParamValue, Equatable, Hashable, Sendable
-  init(density: Double = default, color: Color = default, glow: Color = default, glowIntensity: Double = default, anisotropy: Double = default)
+  init(density: Double = default, color: Color = default, glow: Color = default, glowIntensity: Double = default, anisotropy: Double = default, bounce: Double = default)
   static let cloud: Medium
   static let fire: Medium
   static let ink: Medium
@@ -5453,6 +5453,7 @@ struct Medium: ParamChoices, ParamValue, Equatable, Hashable, Sendable
   static let smoke: Medium
   static var paramChoices: [(name: String, value: Medium)] { get }
   var anisotropy: Double { get set }
+  var bounce: Double { get set }
   var color: Color { get set }
   var density: Double { get set }
   var glow: Color { get set }

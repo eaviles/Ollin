@@ -383,7 +383,11 @@ typedef struct {
                                   // share of the extinguished light scattered back out);
                                   // w = 1 when the lights and ambient are read at all
     simd_float4 glow;             // rgb = the linear glow times its intensity, emitted
-                                  // per world unit at a grid value of 1; w unused
+                                  // per world unit at a grid value of 1; w = the bounce's
+                                  // contribution factor (0.43 times `Medium.bounce`: each
+                                  // further scattering octave adds this share of the last,
+                                  // with the medium's own shadow thinned by half each
+                                  // time; 0 lights every point once)
     simd_float4 litLights;        // the light-list index each light-transmittance texture
                                   // (fragment textures 4 to 7) belongs to, -1 for none;
                                   // a light past these four scatters unshadowed by the grid

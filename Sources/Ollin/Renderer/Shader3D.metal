@@ -1485,10 +1485,11 @@ static inline float ollin_volume_grid_read(texture3d<float> lit, float3 p) {
 // A cloud's shadow on a solid (`drawVolume` under `castShadows()`): per caster,
 // the light left after the volume's medium along the surface's ray toward that
 // caster's light, which the volume's light-transmittance grid (Behrens and
-// Ratering's attenuation volume) already holds for every point inside the box.
-// From a surface outside the box the ray enters it at one face, and the grid
-// there is the transmittance of the whole column beyond, so one trilinear read
-// at the entry point is the shadow; a surface inside the box reads at itself.
+// Ratering's attenuation volume, held as optical depth) already holds for every
+// point inside the box. From a surface outside the box the ray enters it at one
+// face, and the grid there is the optical depth of the whole column beyond, so
+// one trilinear read at the entry point, exponentiated, is the shadow; a
+// surface inside the box reads at itself.
 // A ray that misses the box, or whose light sits short of it, keeps the light.
 // The factors fold into the per-caster dimmer the marched fields' shadows use.
 static inline float4 ollin_resolve_volume_shadow(float3 worldPos, constant OllinLighting &light,
@@ -1516,7 +1517,7 @@ static inline float4 ollin_resolve_volume_shadow(float3 worldPos, constant Ollin
             float2 span = ollin_volume_box(o, d);
             float t0 = max(span.x, 0.0);
             if (span.y <= t0 || t0 >= reach) continue;
-            factor[c] *= ollin_volume_grid_read(vs.lit[c], o + d * t0);
+            factor[c] *= exp(-ollin_volume_grid_read(vs.lit[c], o + d * t0));
         }
     }
     return factor;

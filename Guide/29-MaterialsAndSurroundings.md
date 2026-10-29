@@ -511,6 +511,19 @@ override func draw() {
 
 The kernel writes a density into each sample's red channel from its `gid`, a kernel kept in a `.metal` file beside the sketch loads with `ComputeKernel(entry:resource:in:)`, and the grid never leaves the GPU, so 128 samples a side refill in under a millisecond. Drawing a fine grid costs more than filling it, since the march takes its steps from the grid's spacing; the [reference](../Docs/3D/Volumes.md#what-it-costs) has the numbers. The `3D/Effects/Volumes` example sends up a column from a kernel's noise that repeats over the column's height, with a ball hanging in it and the plume's shadow on the pedestal.
 
+### Light that bounces inside: the cloud's glow
+
+A real cloud is white all the way through, and against the sun it glows at its edges. The light that enters it is scattered again and again before it leaves. A volume lit once keeps none of that. Its face toward the lamp is bright, and a short way in it goes dark, which reads as smoke whatever the medium is called. **The bounce** is the light the medium passes on to itself. It is for a thick cloud, a plume that should read as lit from within, or steam against a window with the light behind it. Following every bounce is out of reach in a frame. So the medium uses the approximation Magnus Wrenninge, Chris Kulla, and Viktor Lundqvist built for a 2013 film's clouds, which the game renderers took up. Each light is added a few times over. Each time it comes through a shadow half as thick as the one before, at a smaller share, and spread wider. Eight such octaves add up to a cloud that glows deep inside. At full thickness it reads what the exact answer for a white medium gives, about as bright as a white wall under the same lamp.
+
+<img src="Images/29-MaterialsAndSurroundings/BouncedCloud.jpg" alt="Two identical puffs of white cloud side by side over a dark floor, lit by a low sun behind and above them. The left one is a dark gray mass with a thin bright rim along its top edge. The right one glows pale all through, brightest where it is thinnest, with the same rim now a wide soft halo" width="680">
+
+```swift
+let puff = Volume.noise(width: 48, height: 40, depth: 48, frequency: 3, octaves: 4, seed: 21)
+drawVolume(puff, size: 4, medium: Medium(density: 4, bounce: 1))
+```
+
+`bounce` is on every `Medium`, at 1 by default, so the presets glow from inside without being asked. Turn it down toward 0 for the once-lit look. Under `fog`, a volume takes the fog as a solid does, dimmed by the air in front of it at its mean depth. The [reference](../Docs/3D/Volumes.md#light-and-shadow) says what the sum keeps and what it never exceeds.
+
 ## More finishes you measure: the thin film and the hologram
 
 The bench's finishes were all picked by number. These two are measured finishes the bench did not need. Both color a surface with geometry instead of a pigment: a film by its thickness, and a grating by its grooves.
@@ -562,7 +575,7 @@ The measured finishes are the Cook-Torrance microfacet model. Their form is the 
 
 - [Environment lighting](../Docs/3D/3D.md#environment-lighting): all twenty curated environments listed by mood, which eight are bundled offline, `highResolution` backdrops, loading your own `.exr` or `.hdr`, where downloads cache, and the full procedural-sky arguments.
 - [Atmosphere](../Docs/3D/Atmosphere.md): `aerialPerspective` with its `density` and `haziness`, how it follows a `.sky` environment's sun, and how it trades places with `fog`.
-- [Volumes](../Docs/3D/Volumes.md): building a `Volume` from a function, a list, or noise, or a `ComputeTexture3D` from a kernel; every `Medium` dial and preset; which lights scatter, which shadows fall into the medium, and where the cloud's own falls; and what a march costs.
+- [Volumes](../Docs/3D/Volumes.md): building a `Volume` from a function, a list, or noise, or a `ComputeTexture3D` from a kernel; every `Medium` dial and preset, `bounce` among them; which lights scatter, which shadows fall into the medium, where the cloud's own falls, and how fog veils it; and what a march costs.
 - [Physically based materials](../Docs/3D/3D.md#materials): the metallic-roughness model in full, plus the ready-made metals and dielectrics and how they combine with the stylized finishes.
 - [Glass](../Docs/3D/3D.md#glass): every transmission argument with its units, the environment requirement, and the edges spelled out.
 - [The hologram](../Docs/3D/3D.md#hologram): the grating's three arguments, the grating equation in plain words, which lights it answers, and the normal map that turns its grooves; worked example [`Examples/3D/Materials/Hologram`](../Examples/3D/Materials/Hologram/Sketch.swift).

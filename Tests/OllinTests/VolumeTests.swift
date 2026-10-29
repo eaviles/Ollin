@@ -122,7 +122,7 @@ struct VolumeTests {
     func aLitSlabReturnsItsSingleScatteringIntegral(anisotropy g: Double) throws {
         let probe = VolumeProbe()
         probe.medium = Medium(density: 1.2, color: Color(linear: 1, green: 0.5, blue: 0.25),
-                              anisotropy: g)
+                              anisotropy: g, bounce: 0)
         probe.slabDepth = 1
         probe.volume = Volume(width: 16, height: 16, depth: 32, repeating: 1)
         probe.lightToward = Vector3(0, 0, -1)
@@ -134,6 +134,179 @@ struct VolumeTests {
             #expect(abs(measured - expected) < 0.0015,
                     "g \(g), channel \(channel): \(measured) against \(expected)")
         }
+    }
+
+    // MARK: The bounce
+
+    /// The share each further octave keeps of the last at a bounce of 1.
+    static let contribution = 0.43
+    /// What an even, white half-space lit and seen along its normal reads
+    /// against a white matte surface under the same light, from the exact
+    /// solution: Chandrasekhar's H function at 1 for conservative isotropic
+    /// scattering is 2.9078, and the reflected radiance is H(1)^2 / 8 of it.
+    static let halfSpaceReading = 2.9078 * 2.9078 / 8
+
+    /// Henyey-Greenstein at cosine `c`, normalized so an even medium reads 1.
+    static func phase(_ c: Double, _ g: Double) -> Double {
+        let denominator = 1 + g * g - 2 * g * c
+        return (1 - g * g) / (denominator * denominator.squareRoot())
+    }
+
+    /// The octave sum a uniform slab of thickness `depth` and extinction
+    /// `density` returns toward a light on the camera's side (`frontLit`) or
+    /// behind the slab, with the phase's cosine `cosine` and anisotropy `g`,
+    /// at a bounce whose contribution factor is `b`: octave k adds b^k of the
+    /// light through a shadow thinned to 2^-k of the depth, with the phase at
+    /// g / 2^k, each integrated exactly against the view's own transmittance.
+    static func octaveSum(density: Double, depth: Double, frontLit: Bool, cosine: Double,
+                          g: Double, b: Double, octaves: Int = 8) -> Double {
+        var sum = 0.0
+        var share = 1.0, thinning = 1.0, spread = g
+        for _ in 0 ..< octaves {
+            let p = phase(cosine, spread)
+            let term: Double
+            if frontLit {
+                // Light to depth s crosses s of the medium thinned, the view s whole.
+                let k = density * (1 + thinning)
+                term = (1 - exp(-k * depth)) / k
+            } else {
+                // Light to depth s crosses (depth - s) thinned, the view s whole.
+                let k = density * (1 - thinning)
+                term = k > 1e-9 ? exp(-thinning * density * depth) * (1 - exp(-k * depth)) / k
+                                : depth * exp(-density * depth)
+            }
+            sum += share * p * density * term
+            share *= b
+            thinning *= 0.5
+            spread *= 0.5
+            if share < 1e-4 { break }
+        }
+        return sum
+    }
+
+    /// A white slab lit from the camera's side, with the bounce on: the slab
+    /// returns the octave sum, each octave the single-scattering integral with
+    /// the light's shadow thinned by half again, its share halved, and its
+    /// phase spread toward even. Read in each channel's albedo.
+    @Test(.enabled(if: Snapshot.hasMetal), arguments: [0.0, 0.5])
+    func aLitSlabReturnsItsOctaveSum(anisotropy g: Double) throws {
+        let probe = VolumeProbe()
+        probe.medium = Medium(density: 1.2, color: Color(linear: 1, green: 0.5, blue: 0.25),
+                              anisotropy: g, bounce: 1)
+        probe.slabDepth = 1
+        probe.volume = Volume(width: 16, height: 16, depth: 32, repeating: 1)
+        probe.lightToward = Vector3(0, 0, -1)
+        let frame = try Self.render(probe)
+        let sum = Self.octaveSum(density: 1.2, depth: 1, frontLit: true, cosine: -1, g: g,
+                                 b: Self.contribution)
+        for (channel, albedo) in [1.0, 0.5, 0.25].enumerated() {
+            let expected = albedo * sum
+            let measured = frame.row(frame.height / 2, columns: 8 ..< frame.width - 8, channel: channel)
+            #expect(abs(measured - expected) < 0.0025,
+                    "g \(g), channel \(channel): \(measured) against \(expected)")
+        }
+        // And the sum is more than one scattering, which is what the bounce adds.
+        let single = Self.octaveSum(density: 1.2, depth: 1, frontLit: true, cosine: -1, g: g, b: 0)
+        #expect(sum > single * 1.3, "octaves \(sum) against one \(single)")
+    }
+
+    /// A thick white cloud lit from the front: with the bounce it reads
+    /// brighter than lit once, and what the exact solution for an even white
+    /// half-space gives, 1.06 of a white matte surface under the same light
+    /// (which reads the light's own color, 1 here), the reading the share is
+    /// set by. Lit from behind with a forward phase, the bounce brightens the
+    /// slab too, the light shining through: the silver lining.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aThickCloudBouncesMoreLightAndNeverPastTheLight() throws {
+        func reading(bounce: Double, lightToward z: Double, g: Double) throws -> Double {
+            let probe = VolumeProbe()
+            probe.medium = Medium(density: 2, color: .white, anisotropy: g, bounce: bounce)
+            probe.slabDepth = 4
+            probe.volume = Volume(width: 8, height: 8, depth: 48, repeating: 1)
+            probe.lightToward = Vector3(0, 0, z)
+            let frame = try Self.render(probe)
+            return frame.row(frame.height / 2, columns: 8 ..< frame.width - 8)
+        }
+        let once = try reading(bounce: 0, lightToward: -1, g: 0)
+        let bounced = try reading(bounce: 1, lightToward: -1, g: 0)
+        #expect(abs(once - 0.5) < 0.004, "lit once, a thick even slab returns half: \(once)")
+        #expect(bounced > once + 0.25, "bounced \(bounced) against once \(once)")
+        let expected = Self.octaveSum(density: 2, depth: 4, frontLit: true, cosine: -1, g: 0,
+                                      b: Self.contribution)
+        #expect(abs(expected - Self.halfSpaceReading) < 0.005,
+                "the share lands the sum on the half-space reading: \(expected)")
+        #expect(abs(bounced - expected) < 0.004, "\(bounced) against the sum \(expected)")
+        // Half a bounce sits between the two.
+        let half = try reading(bounce: 0.5, lightToward: -1, g: 0)
+        #expect(half > once + 0.05 && half < bounced - 0.05, "half a bounce reads \(half)")
+        // The silver lining: lit from behind through a forward phase.
+        let edgeOnce = try reading(bounce: 0, lightToward: 1, g: 0.5)
+        let edgeBounced = try reading(bounce: 1, lightToward: 1, g: 0.5)
+        #expect(edgeBounced > edgeOnce * 3, "lit from behind: \(edgeBounced) against \(edgeOnce)")
+    }
+
+    /// A slab so thick that no light survives it as a half float: lit from
+    /// behind, the camera's side would read nothing if the shadow grid held
+    /// transmittance, and reads the deep octaves' share because it holds the
+    /// optical depth. Against the closed form.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aDeepOctaveFindsLightThroughAThickSlab() throws {
+        let probe = VolumeProbe()
+        probe.medium = Medium(density: 10, color: .white, bounce: 1)
+        probe.slabDepth = 2.5
+        probe.volume = Volume(width: 8, height: 8, depth: 64, repeating: 1)
+        probe.lightToward = Vector3(0, 0, 1)
+        let frame = try Self.render(probe)
+        let measured = frame.row(frame.height / 2, columns: 8 ..< frame.width - 8)
+        let expected = Self.octaveSum(density: 10, depth: 2.5, frontLit: false, cosine: 1, g: 0,
+                                      b: Self.contribution)
+        #expect(expected > 0.015, "the closed form has light to find: \(expected)")
+        #expect(abs(measured - expected) < expected * 0.05, "\(measured) against \(expected)")
+        // Lit once, the same slab is black from this side.
+        let once = VolumeProbe()
+        once.medium = Medium(density: 10, color: .white, bounce: 0)
+        once.slabDepth = 2.5
+        once.volume = probe.volume
+        once.lightToward = Vector3(0, 0, 1)
+        #expect(try Self.render(once).row(frame.height / 2, columns: 8 ..< frame.width - 8) < 0.001)
+    }
+
+    // MARK: Fog
+
+    /// Under fog, a volume is veiled as a solid at its mean depth is: a dense
+    /// glowing slab that saturates to white a short way in reads, through the
+    /// fog, as a white solid standing one extinction length behind the slab's
+    /// face, within a level. Under a gray fog, with the air's own light added;
+    /// under a black one at twice the density and a thicker slab, where a veil
+    /// read at the slab's face instead would be two levels off.
+    @Test(.enabled(if: Snapshot.hasMetal), arguments: [(Color.gray, 0.12, 8.0), (Color.black, 0.2, 4.0)])
+    func fogVeilsAVolumeAsItVeilsASolid(fog: Color, fogDensity: Double, density: Double) throws {
+        // The solid is half a unit wide, a quarter of the view: read both at its middle.
+        func center(_ sketch: Sketch) throws -> Double {
+            let pixels = Pixels(try OllinApp.image(of: sketch, frame: 0))
+            let y = pixels.height / 2
+            let columns = pixels.width / 2 - 6 ..< pixels.width / 2 + 6
+            return columns.reduce(0.0) { $0 + Double(pixels.gray($1, y)) } / Double(columns.count)
+        }
+        let cloud = VolumeProbe()
+        cloud.medium = Medium(density: density, color: .black, glow: .white, glowIntensity: density,
+                              bounce: 0)
+        cloud.slabDepth = 2
+        cloud.volume = Volume(width: 8, height: 8, depth: 64, repeating: 1)
+        cloud.air = (fog, fogDensity)
+        let solid = VolumeProbe()
+        solid.volume = nil
+        solid.solidFrontZ = 1 - 1 / density   // the slab's face is at z = 1
+        solid.solidColor = .white
+        solid.air = (fog, fogDensity)
+        let veiledCloud = try center(cloud), veiledSolid = try center(solid)
+        #expect(abs(veiledCloud - veiledSolid) <= 1, "cloud \(veiledCloud), solid \(veiledSolid)")
+        // And the fog did something: the same solid with no fog reads white.
+        let clear = VolumeProbe()
+        clear.volume = nil
+        clear.solidFrontZ = solid.solidFrontZ
+        clear.solidColor = .white
+        #expect(try center(clear) > veiledSolid + 40)
     }
 
     /// The volume composites over the frame's finished solids, so the order of
@@ -376,9 +549,12 @@ private final class VolumeProbe: Sketch {
     var medium = Medium()
     var slabDepth = 1.0
     var ground: Color = .black
-    /// Where a black solid's front face sits, if one is drawn: a box centered
-    /// on the axis, its back well behind the slab.
+    /// Where a solid's front face sits, if one is drawn: a box centered on the
+    /// axis, its back well behind the slab, black unless `solidColor` says.
     var solidFrontZ: Double?
+    var solidColor: Color = .black
+    /// Fog over the scene, its color and density, if set.
+    var air: (color: Color, density: Double)?
     /// The way a directional light travels, if one is set.
     var lightToward: Vector3?
     /// Draw the volume before the solid instead of after it.
@@ -415,8 +591,11 @@ private final class VolumeProbe: Sketch {
         }
         if temporal { temporalAntialiasing() }
         noLights()
-        ambientLight(.black)
+        if let air { fog(air.color, density: air.density) }
         if let lightToward {
+            // A black ambient beside the one light; `ambientLight` turns the
+            // lighting on, so with no light the solids stay flat.
+            ambientLight(.black)
             castShadows()
             directionalLight(.white, direction: lightToward, intensity: 1,
                              castsShadow: blocksUpperHalf)
@@ -424,7 +603,7 @@ private final class VolumeProbe: Sketch {
         noStroke()
         if volumeFirst { drawTheVolume() }
         if let solidFrontZ {
-            fill(.black)
+            fill(solidColor)
             withState {
                 translate(0, 0, solidFrontZ - 2)
                 drawBox(width: 0.5, height: 0.5, depth: 4)

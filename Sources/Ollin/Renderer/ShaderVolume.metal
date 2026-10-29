@@ -28,6 +28,26 @@
 // the per-step form of Hillaire's energy-conserving integration (2015). A
 // uniform medium is therefore exact at any step count, and a thick one
 // never adds more than its source over its own extinction.
+//
+// The light arriving at a point is the scene's lights through the medium's own
+// shadow, and with a bounce (`glow.w`, the contribution factor b) the light
+// the medium passes on to itself, in the production approximation of
+// Wrenninge, Kulla, and Lundqvist (2013): the light is added over N octaves,
+// the k-th through a shadow thinned to a^k of the optical depth (light reaches
+// deeper), at b^k of the share (less of it), and with the phase's eccentricity
+// at c^k of g (spread wider), a = c = 1/2 and b at most 0.43: under the
+// thinning, as Hillaire's energy rule (2016) asks (an octave whose share
+// outran its thinning would scatter more light than it stops), and set so a
+// white, even slab of any thickness lit and seen along its normal reads what
+// the exact solution for such a half-space gives, 1.06 of a white matte
+// surface under the same light. The medium's shadow grid therefore
+// holds optical depth rather than transmittance, so a deep octave still finds
+// light where exp(-tau) is below a half float. Every lit step works its light
+// out in full: lighting every other step and holding or interpolating it
+// between saved nothing measurable on the M2 (the march's cost is in its
+// steps and their reads, not in the light; the numbers are in
+// DESIGN-NOTES.md). After the march the whole result is veiled by the frame's
+// fog as a solid at the medium's mean depth would be.
 
 // `ollin_volume_box` and `ollin_volume_uvw` (the box crossing and the lattice
 // coordinate) live in Shader3D.metal beside the solids' read of a cloud's shadow.
@@ -38,10 +58,12 @@ static inline float ollin_volume_density(texture3d<float> grid, float3 p, float3
 
 // The light-transmittance grid: from each of its lattice points, how much of a
 // light survives the volume's own medium on the way there (Behrens and
-// Ratering's light attenuation volume, 1998). Worked out once per light, and
-// again only when the volume, its placement, or the light changes, so a view
-// sample reads its self-shadow with one trilinear tap instead of marching
-// toward every light.
+// Ratering's light attenuation volume, 1998), stored as the optical depth
+// along that ray (the transmittance is exp of its negative), so the bounce's
+// thinned octaves and a thick medium's deep interior keep their precision.
+// Worked out once per light, and again only when the volume, its placement,
+// or the light changes, so a view sample reads its self-shadow with one
+// trilinear tap instead of marching toward every light.
 // `lightRay` is the direction to the light (w = 0) or its position (w = 1), in
 // world space; the march walks the world ray, so its steps are world distances.
 kernel void ollin_volume_light_kernel(texture3d<float, access::write> out [[texture(0)]],
@@ -77,7 +99,7 @@ kernel void ollin_volume_light_kernel(texture3d<float, access::write> out [[text
             tau += ollin_volume_density(grid, p + d * ((float(i) + 0.5) * dt), n) * dt;
         }
     }
-    out.write(float4(exp(-vol.medium.x * tau)), gid);
+    out.write(float4(vol.medium.x * tau), gid);
 }
 
 // Which blocks of a grid hold any medium, for the march to stride through the
@@ -200,8 +222,84 @@ vertex OllinVolumeOut ollin_volume_vertex(uint vid [[vertex_id]]) {
     return out;
 }
 
-static inline float ollin_volume_self_shadow(texture3d<float> lit, float3 p) {
-    return ollin_volume_grid_read(lit, p);
+// The octaves the bounce adds over the first (Wrenninge's N); with b = 0 the
+// loop ends after one, which is single scattering.
+#define OLLIN_VOLUME_OCTAVES 8
+
+// The light the scene's lights deliver to the unit-box point `p` (the world
+// point `world`) toward the eye along `rd`: each lit light's reach, cone, and
+// shaping, the solids' shadow through its 2D map, the medium's own shadow
+// through its optical-depth grid (the first four lit lights have one), and
+// the phase, summed over the bounce's octaves. Without the ambient, which the
+// caller adds once.
+static float3 ollin_volume_arriving(float3 p, float3 world, float3 rd,
+                                    constant OllinVolumeDraw &vol,
+                                    constant OllinLighting &light,
+                                    int lightCount, thread const int *casterOf,
+                                    depth2d_array<float> shadowMap, sampler shadowSamp,
+                                    texture3d<float> lit0, texture3d<float> lit1,
+                                    texture3d<float> lit2, texture3d<float> lit3,
+                                    texture2d_array<float> iesProfiles,
+                                    texture2d_array<float> cookies) {
+    float g = vol.medium.y;
+    float b = vol.glow.w;
+    float3 arriving = float3(0.0);
+    for (int li = 0; li < lightCount; li++) {
+        // Read in place: a copy of the light per step is a large record moved
+        // for the two fields shaping may tint.
+        constant OllinLight &L = light.lights[li];
+        float3 color = L.color.rgb;
+        float3 toLight;
+        float atten = 1.0;
+        if (L.kind == 0) {
+            toLight = normalize(L.direction.xyz);
+        } else if (L.kind == 1 || L.kind == 2) {
+            float3 v = L.position.xyz - world;
+            float distance = length(v);
+            toLight = v / max(distance, 1e-5);
+            atten = ollin_light_reach(distance, L.position.w);
+            if (L.kind == 2) {
+                atten *= smoothstep(L.cosOuter, L.cosInner,
+                                    dot(normalize(L.direction.xyz), -toLight));
+            }
+            if (atten <= 0.0) continue;
+            color *= ollin_light_shaping_tint(L, light, toLight, world, iesProfiles, cookies);
+        } else {
+            continue;   // the area kinds have no single direction to scatter from
+        }
+        // The solids' shadow, through the light's 2D map when it has one: a
+        // solid blocks every octave, since the bounce thins only the medium.
+        int cs = casterOf[li];
+        if (cs >= 0) {
+            float tap = ollin_fog_shadow_tap(world, light.shadowCasters[cs].lightViewProjection,
+                                             (uint)cs, shadowMap, shadowSamp);
+            atten *= 1.0 - light.shadowCasters[cs].strength * (1.0 - tap);
+            if (atten <= 0.0) continue;
+        }
+        // The medium's own shadow, as the optical depth toward the light from
+        // its grid. A light past the four grids scatters unshadowed, and takes
+        // one octave: the bounce stands in for what the shadow took away.
+        float tau = 0.0;
+        bool shadowed = true;
+        if (vol.litLights.x == float(li))      tau = ollin_volume_grid_read(lit0, p);
+        else if (vol.litLights.y == float(li)) tau = ollin_volume_grid_read(lit1, p);
+        else if (vol.litLights.z == float(li)) tau = ollin_volume_grid_read(lit2, p);
+        else if (vol.litLights.w == float(li)) tau = ollin_volume_grid_read(lit3, p);
+        else shadowed = false;
+        float cosine = dot(toLight, rd);
+        float sum = 0.0;
+        float share = 1.0, thinning = 1.0, spread = g;
+        for (int k = 0; k < OLLIN_VOLUME_OCTAVES; k++) {
+            sum += share * exp(-thinning * tau) * ollin_hg_phase(cosine, spread);
+            if (!shadowed) break;
+            share *= b;
+            thinning *= 0.5;
+            spread *= 0.5;
+            if (share < 1e-4) break;
+        }
+        arriving += color * (atten * sum);
+    }
+    return arriving;
 }
 
 fragment float4 ollin_volume_fragment(OllinVolumeOut in [[stage_in]],
@@ -272,7 +370,6 @@ fragment float4 ollin_volume_fragment(OllinVolumeOut in [[stage_in]],
     // shadow) would print that shared pattern as streaks along itself.
 
     float sigmaScale = vol.medium.x;
-    float g = vol.medium.y;
     bool scatters = vol.scatter.w > 0.0;
 
     // The light arriving from everywhere at once: the flat ambient, plus the
@@ -301,6 +398,10 @@ fragment float4 ollin_volume_fragment(OllinVolumeOut in [[stage_in]],
 
     float3 radiance = float3(0.0);
     float T = 1.0;
+    // Where along the ray the result sits, for the fog's veil: the depth of
+    // each step weighted by what it covers of the pixel (which sums to the
+    // alpha), and by the light it adds (for a glow that covers nothing).
+    float coverDepth = 0.0, lightDepth = 0.0, lightWeight = 0.0;
     for (int i = firstStep; i < endStep; i++) {
         float jitter = fract(ollin_ign(in.position.xy + float(i) * 5.588238) + vol.medium.z);
         float t = t0 + (float(i) + jitter) * dt;
@@ -321,46 +422,10 @@ fragment float4 ollin_volume_fragment(OllinVolumeOut in [[stage_in]],
         float sigma = sigmaScale * rho;
         float3 source = vol.glow.rgb * rho;
         if (scatters && sigma > 0.0) {
-            float3 world = ro + rd * t;
             float3 arriving = ambient;
-            for (int li = 0; li < lightCount; li++) {
-                // Read in place: a copy of the light per step is a large
-                // record moved for the two fields shaping may tint.
-                constant OllinLight &L = light.lights[li];
-                float3 color = L.color.rgb;
-                float3 toLight;
-                float atten = 1.0;
-                if (L.kind == 0) {
-                    toLight = normalize(L.direction.xyz);
-                } else if (L.kind == 1 || L.kind == 2) {
-                    float3 v = L.position.xyz - world;
-                    float distance = length(v);
-                    toLight = v / max(distance, 1e-5);
-                    atten = ollin_light_reach(distance, L.position.w);
-                    if (L.kind == 2) {
-                        atten *= smoothstep(L.cosOuter, L.cosInner,
-                                            dot(normalize(L.direction.xyz), -toLight));
-                    }
-                    if (atten <= 0.0) continue;
-                    color *= ollin_light_shaping_tint(L, light, toLight, world, iesProfiles, cookies);
-                } else {
-                    continue;   // the area kinds have no single direction to scatter from
-                }
-                // The solids' shadow, through the light's 2D map when it has one.
-                int cs = casterOf[li];
-                if (cs >= 0) {
-                    float tap = ollin_fog_shadow_tap(world, light.shadowCasters[cs].lightViewProjection,
-                                                     (uint)cs, shadowMap, shadowSamp);
-                    atten *= 1.0 - light.shadowCasters[cs].strength * (1.0 - tap);
-                    if (atten <= 0.0) continue;
-                }
-                // The volume's own shadow, from the light's transmittance grid.
-                if (vol.litLights.x == float(li))      atten *= ollin_volume_self_shadow(lit0, p);
-                else if (vol.litLights.y == float(li)) atten *= ollin_volume_self_shadow(lit1, p);
-                else if (vol.litLights.z == float(li)) atten *= ollin_volume_self_shadow(lit2, p);
-                else if (vol.litLights.w == float(li)) atten *= ollin_volume_self_shadow(lit3, p);
-                arriving += color * (atten * ollin_hg_phase(dot(toLight, rd), g));
-            }
+            arriving += ollin_volume_arriving(p, ro + rd * t, rd, vol, light, lightCount, casterOf,
+                                              shadowMap, shadowSamp, lit0, lit1, lit2, lit3,
+                                              iesProfiles, cookies);
             source += vol.scatter.rgb * sigma * arriving;
         }
         float opticalDepth = sigma * dt;
@@ -369,9 +434,45 @@ fragment float4 ollin_volume_fragment(OllinVolumeOut in [[stage_in]],
         // limit S * dt where the medium blocks nothing (a pure glow).
         float3 added = opticalDepth > 1e-4 ? source * ((1.0 - stepT) / sigma)
                                            : source * dt * (1.0 - 0.5 * opticalDepth);
-        radiance += T * added;
+        float3 stepRadiance = T * added;
+        radiance += stepRadiance;
+        coverDepth += T * (1.0 - stepT) * t;
+        float stepLight = dot(stepRadiance, float3(0.2126, 0.7152, 0.0722));
+        lightDepth += stepLight * t;
+        lightWeight += stepLight;
         T *= stepT;
         if (T < 1e-4) { T = 0.0; break; }
     }
-    return float4(radiance, 1.0 - T);
+    float alpha = 1.0 - T;
+    // The frame's fog veils the result as it veils a solid standing at the
+    // medium's mean depth: the medium's light dimmed by the air in front of it
+    // and the air's own light added over the share of the pixel it covers. A
+    // glow with no thickness covers nothing, and is only dimmed.
+    if (light.fogColor.w > 0.0 && (alpha > 1e-4 || lightWeight > 0.0)) {
+        float2 pixel = in.position.xy;
+        if (alpha > 1e-4) {
+            float3 world = ro + rd * (coverDepth / alpha);
+            float3 unveiled = radiance / alpha;
+            float3 veiled = (light.fogColor.w > 1.5)
+                ? ollin_apply_aerial(unveiled, world, pixel, light, shadowMap, shadowSamp, iesProfiles, cookies)
+                : ollin_apply_fog(unveiled, world, pixel, light, shadowMap, shadowSamp, iesProfiles, cookies);
+            radiance = veiled * alpha;
+        } else {
+            float tMean = lightDepth / lightWeight;
+            float3 origin = light.cameraPosition.xyz;
+            float3 world = ro + rd * tMean;
+            float3 v = world - origin;
+            float reach = length(v);
+            float tau = ollin_fog_optical_depth(origin, v / max(reach, 1e-5), reach,
+                                                light.fogParams.x, light.fogParams.y);
+            if (light.fogColor.w > 1.5) {
+                float3 T3, Lin;
+                ollin_aerial_split(tau, rd, light, T3, Lin);
+                radiance *= T3;
+            } else {
+                radiance *= exp(-tau);
+            }
+        }
+    }
+    return float4(radiance, alpha);
 }

@@ -28,12 +28,15 @@ import Ollin
 /// The `medium` parameter says what the plume is made of: gray `smoke`, a white
 /// `cloud` that scatters nearly everything, `fire` glowing from inside, `ink`
 /// that only darkens, a faint violet `nebula`. `thickness` scales the medium's
-/// density, and the lamp can be swung around above the plume.
+/// density, `bounce` is how much of the light the medium stops it passes on to
+/// itself (at 0 the plume is lit once and goes dark a short way in; at 1 it
+/// glows from inside), and the lamp can be swung around above the plume.
 @main
 final class Volumes: Sketch {
 
     @Param var medium: Medium = .smoke
     @Param(0.2 ... 3, icon: "aqi.medium", group: "Smoke") var thickness = 1.0
+    @Param(0 ... 1, icon: "sun.haze", group: "Smoke") var bounce = 1.0
     @Param(0 ... 6.28, icon: "lamp.desk", group: "Lamp") var lampAround = 0.8
 
     /// The plume's grid, and the kernel that fills it each frame.
@@ -80,6 +83,7 @@ final class Volumes: Sketch {
         }
         var look = medium
         look.density *= thickness
+        look.bounce = bounce
         withState {
             translate(0, 0.7 + 2.1, 0)
             drawVolume(plume, width: 2.8, height: 4.2, depth: 2.8, medium: look)
