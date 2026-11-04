@@ -87,7 +87,7 @@ withTarget(layer) {
 // back to drawing on the canvas
 ```
 
-Call [`background(_:)`](../Drawing/Drawing.md#background) inside the block to clear the layer. Inside a `withTarget` it clears *that layer*, meaning its fill color and its geometry so far, and it leaves the canvas untouched. A layer starts transparent, so a layer you never wrote, or wrote only in part, composites as nothing where you did not draw.
+Call [`background(_:)`](../Drawing/Drawing.md#background) inside the block to clear the layer. Inside a `withTarget` it clears *that layer*, meaning its fill color and its geometry so far, and it leaves the canvas untouched. A layer starts transparent, so a layer you never wrote, or wrote only in part, composites as nothing where you did not draw. It starts transparent every frame, in the window and in an export alike: a layer holds what its block drew this frame and nothing from the frame before, whether the handle was made in `draw()` or kept from `setup()`. A layer that should keep its marks across frames is a `Feedback` or an `Accumulator`.
 
 The canvas's own `background()` clears the canvas and nothing else. It drops what the canvas has recorded so far this frame, and every layer drawn before it keeps its marks. So a layer, a field's seed, or a feedback loop can come before the canvas background or after it (see [the frame](../Concepts/Frame.md)).
 
