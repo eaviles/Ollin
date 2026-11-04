@@ -151,7 +151,7 @@ public extension OllinApp {
                 software.identifier = .commonIdentifierSoftware
                 software.value = "Ollin" as NSString
                 writer.metadata = [description, software]
-                prepareSoundtrack(for: sketch, writer: writer)
+                prepareSoundtrack(for: sketch, writer: writer, skipSeconds: skipSeconds, clock: fps)
                 guard writer.startWriting() else {
                     throw ExportError(.unwritable, path: path, frame: 0,
                                       problem: "the spatial-video writer would not start: "
@@ -163,7 +163,7 @@ public extension OllinApp {
 
             // The sound for this frame goes first, so the audio track never lags the
             // picture; see the note on the ordinary video export for why that matters.
-            pumpSoundtrack(for: sketch, upTo: Double(index + 1) / fps)
+            pumpSoundtrack(for: sketch, frame: index)
             // Bounded, because a wedged writer never says so: it simply never
             // becomes ready again, and an export that hangs is worse than one
             // that explains itself.
@@ -209,7 +209,7 @@ public extension OllinApp {
 
         receiver?.finish()
         input?.markAsFinished()
-        finishSoundtrack(for: sketch, seconds: Double(frames) / fps)
+        finishSoundtrack(for: sketch, frames: frames)
         let finished = DispatchSemaphore(value: 0)
         writer.finishWriting { finished.signal() }
         finished.wait()

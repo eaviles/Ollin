@@ -180,7 +180,8 @@ A packaged sketch runs with `swift run <Target> <flags>`, and a single file with
 | Flag | What it does |
 | --- | --- |
 | `--export frame.png` | One still. `--frame N` picks the frame (from 0, default 0) or `--at S` names the moment in seconds, and `--fps` sets the rate (default 60). Every frame before it runs `draw()` first, and the GPU renders those only when the picture builds on them (a pile, a feedback or simulation layer, a compute step), so a still costs one frame of GPU work. |
-| `--export-sequence dir` | `frame-00001.png`, `frame-00002.png`, and so on, for `--seconds S` or `--frames N`. `--skip S` runs S seconds before the first file is written. |
+| `--export-sequence dir` | `frame-00001.png`, `frame-00002.png`, and so on, for `--seconds S` or `--frames N`. `--skip S` runs S seconds before the first file is written. A sketch that plays sound writes `soundtrack.wav` beside the frames, lossless, on the same clock. |
+| `--export-audio piece.wav` | The sketch's sound alone, as a lossless WAV on the export clock, with no GPU; the same file a sequence writes beside its frames. |
 | `--export-video out.mp4`, `--export-gif out.gif` | A movie or a GIF, with the same `--seconds`, `--frames`, `--fps`, and `--skip`. |
 | `--export-loop out.mp4` | Exactly one lap of `loopDuration`. |
 | `--seed N` | The variation to render, set before `setup()`. A `seed(n)` in `setup()` overrides it. |

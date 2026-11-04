@@ -128,6 +128,7 @@ _ollin() {
           _arguments \
             '--export[write one frame as a PNG]:file:_files' \
             '--export-sequence[write a numbered PNG sequence]:directory:_files -/' \
+            '--export-audio[write the sketch'\''s sound as a WAV, and nothing else]:file:_files' \
             '--export-video[write a movie]:file:_files' \
             '--export-gif[write an animated GIF]:file:_files' \
             '--export-loop[write one seamless lap of a looping sketch]:file:_files' \

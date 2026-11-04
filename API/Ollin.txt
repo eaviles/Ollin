@@ -411,6 +411,7 @@ enum OllinApp: Sendable
   static func dxf(of: Sketch, settings: DXF, frame: Int = default, fps: FrameRate = default, hatching: Hatching? = default) throws -> String
   static func embroidery(of: Sketch, settings: Embroidery, frame: Int = default, fps: FrameRate = default, label: String = default) throws -> Foundation.Data
   static func export(_: Sketch, to: String, frame: Int = default, fps: FrameRate = default, quality: RenderQuality = default) throws
+  static func exportAudio(_: Sketch, to: String, frames: Int, fps: FrameRate = default, skipSeconds: Double = default) throws
   static func exportContactSheet(_: () -> S, to: String, sweeping: KeyPath<S, Param<Double>>, values: [Double], seed: Int? = default, frame: Int = default, fps: FrameRate = default, columns: Int? = default, tileWidth: Int = default, quality: RenderQuality = default) throws
   static func exportContactSheet(_: () -> S, to: String, sweeping: KeyPath<S, Param<Int>>, values: [Int], seed: Int? = default, frame: Int = default, fps: FrameRate = default, columns: Int? = default, tileWidth: Int = default, quality: RenderQuality = default) throws
   static func exportContactSheet(_: () -> Sketch, to: String, seeds: [Int], frame: Int = default, fps: FrameRate = default, columns: Int? = default, tileWidth: Int = default, quality: RenderQuality = default) throws

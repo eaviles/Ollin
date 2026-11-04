@@ -87,6 +87,8 @@ Both render through Metal off-screen, with MSAA and then a resolve, so the pixel
 
 Use the sequence when you want raw material. It keeps every frame as a lossless PNG for an external encoder or an edit. When the goal is only a file to share, the next two sections encode a file directly and skip the stitching step.
 
+A sketch that plays sound writes its soundtrack beside the frames, as `soundtrack.wav` in the same folder: interleaved stereo 32-bit float at 44.1 kHz, lossless, on the same clock as the frames, so frame `k` begins at sample `k × 44100 / fps`. The printed `ffmpeg` line takes it as a second input. To write the sound without rendering a frame, `--export-audio FILE` drives the sketch on the same clock with no GPU and writes the same file (see [Sound](#sound)).
+
 The file name picks the format for a single frame. A `.heic` (or `.heif`) path writes HEIC instead of PNG:
 
 ```sh
@@ -251,6 +253,14 @@ A sketch that plays sound carries that sound into the video. Nothing needs to be
 The sound reproduces the way the picture does. The exporters drive the sketch on a fixed clock with nothing playing aloud, and the notes are written down as the frames are drawn. Then the soundtrack is rendered through the same code that would have fed the speakers, with one difference: the mixed soundtrack bends anything above 0.7 so that several instruments at once never clip, and a single instrument that loud meets the same bend. Export twice, and the audio comes back identical sample for sample.
 
 A sound the sketch [placed in the scene](../Helpers/Synthesis.md#placing-a-sound) is placed in the file as well. The position of each instrument, and the position it was heard from, are written down alongside the notes. So something that moves past you on screen also moves past you in the audio.
+
+A frame sequence carries the sound beside its frames, as `soundtrack.wav` in the sequence folder, lossless, so a muxer encodes it once. `--export-audio FILE` writes that file alone, driving the sketch on the export clock with no renderer, for the run that already has its frames:
+
+```sh
+swift run --package-path Examples Example-Audio-SoundInAnExport --export-audio piece.wav --seconds 20
+```
+
+A `--skip` stretch is dropped from the sound as it is from the frames, so every file starts where its picture does. Under slow motion the soundtrack follows the sketch's own clock, so it is shorter than the slowed picture; a slowed sound would need a stretch the exporter does not do. A sketch whose sound follows what the GPU computes has to render, so it exports a sequence rather than the sound alone.
 
 GIF has no way to hold sound. The details, and what stays out of the file, are on the [Synthesis](../Helpers/Synthesis.md#sound-in-an-export) page.
 

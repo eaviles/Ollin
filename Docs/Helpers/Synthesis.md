@@ -707,7 +707,8 @@ That works because the renderer takes events and gives back samples, and it has 
 
 What to know:
 
-- **`--export-video` and `--export-loop` carry sound.** GIF has no way to hold any, and the still and vector exports are one frame.
+- **`--export-video` and `--export-loop` carry sound**, and `--export-sequence` writes it beside the frames as `soundtrack.wav`, lossless, for a muxer to encode once. `--export-audio FILE` writes that file alone, with no renderer: the sketch is driven on the export clock and only the sound is made. GIF has no way to hold any, and the still and vector exports are one frame.
+- **A `--skip` stretch is dropped from the sound** as it is from the frames, so a file begins where its picture does. Under slow motion the soundtrack follows the sketch's own clock, so it is shorter than the slowed picture.
 - **An instrument has to be held by the sketch** by the end of `setup()`, so it can be found: as a property, or inside a struct, an array, an optional, a dictionary, or an object of the sketch's own that a property holds. One made and thrown away inside `draw()` cannot be found. A list is read through its first element, so a list that holds plain values first and an instrument later is read as the first says.
 - **A note's length travels in beats of real time, not samples**, so the file is written at its own rate. The hardware rate does not decide it.
 - **Delay and reverb are in the file**, because the export runs the same effects the output had.

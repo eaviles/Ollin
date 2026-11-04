@@ -131,6 +131,7 @@ public extension CommandFlag {
     private static let exports: [CommandFlag] = [
         .init("--export", .run, .file, "write one frame as a PNG"),
         .init("--export-sequence", .run, .directory, "write a numbered PNG sequence"),
+        .init("--export-audio", .run, .file, "write the sketch's sound as a WAV, and nothing else"),
         .init("--export-video", .run, .file, "write a movie"),
         .init("--export-gif", .run, .file, "write an animated GIF"),
         .init("--export-loop", .run, .file, "write one seamless lap of a looping sketch"),

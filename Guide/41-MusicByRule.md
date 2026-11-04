@@ -432,7 +432,7 @@ To keep it, export a video. The file carries the music:
 swift run OllinLive MySketches/MusicBox.swift --export-video music-box.mp4 --seconds 20
 ```
 
-Or keep the notes themselves: press S while it plays, and open `music-box.mid` in any program that edits music.
+Or keep the notes themselves: press S while it plays, and open `music-box.mid` in any program that edits music. A frame sequence writes the same music beside its frames as `soundtrack.wav`, and `--export-audio music-box.wav --seconds 20` writes only the sound.
 
 Twenty seconds at 96 beats a minute is eight bars. An export drives the sketch on a fixed clock with no window and no speakers. So the notes are written down as the frames are drawn. At the end, the soundtrack is rendered through the same code that would have fed the speakers. The sound repeats the way the picture does. Export the same sketch twice and the audio comes back the same, sample for sample, which is the promise the seed made in [Chapter 4](04-Randomness.md#seeds-randomness-you-can-keep). `Examples/Audio/SoundInAnExport` shows it on its own.
 

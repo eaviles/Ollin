@@ -291,7 +291,8 @@ public extension OllinApp {
                 writer.metadata = [description, software]
                 // Declared before writing starts, and after `setup()` has run,
                 // so an instrument made there is found.
-                prepareSoundtrack(for: sketch, writer: writer)
+                prepareSoundtrack(for: sketch, writer: writer, skipSeconds: skipSeconds,
+                                  clock: motion?.clockRate(playingAt: fps) ?? fps)
                 guard writer.startWriting() else {
                     throw ExportError(.unwritable, path: path, frame: 0, problem: "the video writer would not start: "
                                       + (writer.error?.localizedDescription ?? "no reason given"))
@@ -306,7 +307,7 @@ public extension OllinApp {
             // so the audio track never lags the video track. It cannot go any
             // further ahead than this: the notes for the next frame have not
             // been asked for yet.
-            pumpSoundtrack(for: sketch, upTo: Double(index + 1) / fps)
+            pumpSoundtrack(for: sketch, frame: index)
             while !input.isReadyForMoreMediaData {
                 usleep(1000)
                 videoWait += 1
@@ -403,7 +404,7 @@ public extension OllinApp {
         // The sound the sketch made while those frames were being drawn. A
         // sketch that holds no instrument declared no track, so it writes
         // exactly the file it wrote before.
-        finishSoundtrack(for: sketch, seconds: Double(frames) / fps)
+        finishSoundtrack(for: sketch, frames: frames)
         let finished = DispatchSemaphore(value: 0)
         writer.finishWriting { finished.signal() }
         finished.wait()
@@ -520,10 +521,22 @@ extension OllinApp {
     /// because a track has to be declared before anything is written and an
     /// instrument may have been made in `setup()`. Whether there is anything to
     /// play is not known yet: that is decided while the frames are drawn.
-    static func prepareSoundtrack(for sketch: Sketch, writer: AVAssetWriter) {
+    ///
+    /// `skipSeconds` of the sketch's own clock run before the first written
+    /// frame, and `clock` is the rate that clock steps at (finer than the file's
+    /// under slow motion). The notes are written down against that clock, so
+    /// the track is pumped in it: the skipped stretch is rendered and dropped
+    /// before the first frame's sound, and under slow motion the track follows
+    /// the sketch's time rather than the file's, since a slowed sound would
+    /// need a stretch the exporter does not do.
+    static func prepareSoundtrack(for sketch: Sketch, writer: AVAssetWriter,
+                                  skipSeconds: Double, clock: Double) {
         pendingSoundtrack = nil
         soundtrackSources = sketch.exportAudioSources()
         soundtrackWritten = 0
+        soundtrackSkip = max(0, skipSeconds)
+        soundtrackClock = clock
+        soundtrackDroppedSkip = false
         guard !soundtrackSources.isEmpty else { return }
 
         let settings: [String: Any] = [
@@ -557,8 +570,21 @@ extension OllinApp {
     /// until the sound catches up, and an export that looks like a hang is what
     /// that turns into. Everything the sketch asked for up to this moment has
     /// already been asked for, so there is always something to render.
+    static func pumpSoundtrack(for sketch: Sketch, frame index: Int) {
+        pumpSoundtrack(for: sketch, upTo: soundtrackSkip + Double(index + 1) / soundtrackClock)
+    }
+
+    /// Writes the sound up to `seconds` of the sketch's clock. The skipped
+    /// stretch goes first and is dropped.
     static func pumpSoundtrack(for sketch: Sketch, upTo seconds: Double) {
         guard let input = pendingSoundtrack else { return }
+        if !soundtrackDroppedSkip {
+            soundtrackDroppedSkip = true
+            if soundtrackSkip > 0 {
+                _ = sketch.renderSoundtrack(upTo: soundtrackSkip, sampleRate: soundtrackSampleRate,
+                                            sources: soundtrackSources)
+            }
+        }
         let samples = sketch.renderSoundtrack(upTo: seconds, sampleRate: soundtrackSampleRate,
                                               sources: soundtrackSources)
         guard !samples.isEmpty else { return }
@@ -573,9 +599,9 @@ extension OllinApp {
     }
 
     /// Finishes the track once the last frame is in.
-    static func finishSoundtrack(for sketch: Sketch, seconds: Double) {
+    static func finishSoundtrack(for sketch: Sketch, frames: Int) {
         guard let input = pendingSoundtrack else { return }
-        pumpSoundtrack(for: sketch, upTo: seconds)
+        pumpSoundtrack(for: sketch, upTo: soundtrackSkip + Double(frames) / soundtrackClock)
         input.markAsFinished()
         pendingSoundtrack = nil
         soundtrackSources = []
@@ -673,4 +699,7 @@ extension OllinApp {
     nonisolated(unsafe) private static var pendingSoundtrack: AVAssetWriterInput?
     nonisolated(unsafe) private static var soundtrackSources: [ExportAudioSource] = []
     nonisolated(unsafe) private static var soundtrackWritten = 0
+    nonisolated(unsafe) private static var soundtrackSkip = 0.0
+    nonisolated(unsafe) private static var soundtrackClock = 60.0
+    nonisolated(unsafe) private static var soundtrackDroppedSkip = false
 }

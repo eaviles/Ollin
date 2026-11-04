@@ -3256,9 +3256,18 @@ public enum OllinApp {
         print("Ollin: exporting \(frames) frames\(kind) at \(Int(fps)) fps\(skipNote) → \(directory) (\(size.width)×\(size.height))")
         if let motion { print(motion.note(written: frames, fps: fps)) }
 
+        // The sketch's own sound, beside the frames: opened at the first frame,
+        // once `setup()` has run and the instrument can be found, and pumped a
+        // frame at a time on the sketch's clock, the way the video track is.
+        var soundtrack: SoundtrackFile?
         let elapsed = try renderFrames(sketch, frames: frames, fps: fps, skipSeconds: skipSeconds,
                                        quality: quality, slowMotion: motion,
                                        capturesLinear: writesEXR, for: directory) { frame, index in
+            if index == 0 {
+                soundtrack = try SoundtrackFile(for: sketch, at: directory + "/" + SoundtrackFile.sequenceName,
+                                                skipSeconds: Double(skipFrames) / clock)
+            }
+            try soundtrack?.pump(sketch, upTo: Double(skipFrames + index + 1) / clock)
             // Captured per frame (cheap: the git lookup is cached) so each
             // file's recipe names the sketch-clock frame it shows.
             var meta = ExportMetadata.capture(from: sketch, frame: skipFrames + index, fps: clock)
@@ -3291,6 +3300,10 @@ public enum OllinApp {
         }
 
         print(String(format: "Ollin: exported %d frames in %.1fs → %@", frames, elapsed, directory))
+        if let soundtrack {
+            try soundtrack.finish(sketch, upTo: Double(skipFrames + frames) / clock)
+            print("Ollin: the sketch's sound → \(soundtrack.path) (\(soundtrack.framesWritten) samples a channel, 32-bit float)")
+        }
         if writesEXR {
             // No assembly line here: these are linear frames for a compositor,
             // not something to hand a video encoder as they are.
@@ -3299,8 +3312,56 @@ public enum OllinApp {
         }
         print("Assemble with ffmpeg (or use --export-video / --export-gif directly):")
         print("  ffmpeg -framerate \(Int(fps)) -start_number \(startFrame) \\")
-        print("    -i \(directory)/frame-%05d.png -c:v libx264 -pix_fmt yuv420p -crf 18 \\")
+        if let soundtrack {
+            print("    -i \(directory)/frame-%05d.png -i \(soundtrack.path) \\")
+            print("    -c:v libx264 -pix_fmt yuv420p -crf 18 -c:a aac -b:a 192k -shortest \\")
+        } else {
+            print("    -i \(directory)/frame-%05d.png -c:v libx264 -pix_fmt yuv420p -crf 18 \\")
+        }
         print("    \(directory)/out.mp4")
+    }
+
+    /// Write the sketch's own sound as a WAV and nothing else. The sketch is
+    /// driven on the export clock, `skipSeconds` and then `frames` at `fps`,
+    /// drawing into a recorder nothing renders, so no GPU is touched, and the
+    /// file is the soundtrack a sequence of those frames carries beside them,
+    /// sample for sample: for the run that cuts its video from a frame
+    /// sequence and muxes the sound once more. Interleaved stereo 32-bit float
+    /// at 44.1 kHz.
+    ///
+    /// Throws `ExportError` `.unsupported` for a sketch that holds no
+    /// instrument and `.unwritable` when the file cannot be written. A sketch
+    /// whose sound follows what the GPU computes has to render: export a
+    /// sequence, which writes the same file beside its frames.
+    public static func exportAudio(_ sketch: Sketch, to path: String, frames: Int,
+                                   fps: FrameRate = 60, skipSeconds: Double = 0) throws {
+        guard frames > 0 else {
+            throw ExportError(.unsupported, path: path,
+                              problem: "asks for \(frames) frames, and a soundtrack needs at least one")
+        }
+        let fps = fps.framesPerSecond
+        isRenderingHeadless = true
+        defer { isRenderingHeadless = false }
+        let size = sketch.canvasSizeForRun()
+        sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
+        try sketch.runSetup()
+        let skipFrames = max(0, Int((skipSeconds * fps).rounded()))
+        guard let soundtrack = try SoundtrackFile(for: sketch, at: path,
+                                                  skipSeconds: Double(skipFrames) / fps) else {
+            throw ExportError(.unsupported, path: path,
+                              problem: "the sketch holds no instrument, so there is no sound to write")
+        }
+        let skipNote = skipFrames > 0 ? String(format: " (after %gs warmup)", skipSeconds) : ""
+        print("Ollin: rendering the sound of \(frames) frames at \(Int(fps)) fps\(skipNote) → \(path)")
+        let start = CACurrentMediaTime()
+        for k in 0 ..< (skipFrames + frames) {
+            sketch.advance(time: Double(k) / fps, deltaTime: 1 / fps, frameRate: fps)
+            sketch.performDraw()
+            if k >= skipFrames { try soundtrack.pump(sketch, upTo: Double(k + 1) / fps) }
+        }
+        try soundtrack.finish(sketch, upTo: Double(skipFrames + frames) / fps)
+        print(String(format: "Ollin: rendered %.1fs of sound in %.1fs → %@",
+                     Double(frames) / fps, CACurrentMediaTime() - start, path))
     }
 
     /// One frame on its way out of the headless drive.
@@ -4166,6 +4227,28 @@ public extension OllinApp {
             defer { isRenderingHeadless = false }
             try sketch.runSetup()
             print(ParamListing.text(for: sketch))
+            return true
+        }
+        // `--export-audio <file> (--frames N | --seconds S) [--fps F] [--skip S]`
+        // writes the sketch's own sound as a WAV and nothing else, with no GPU.
+        if let i = args.firstIndex(of: "--export-audio"), i + 1 < args.count {
+            func value(_ flag: String) -> String? {
+                guard let j = args.firstIndex(of: flag), j + 1 < args.count else { return nil }
+                return args[j + 1]
+            }
+            let path = args[i + 1]
+            let fps = value("--fps").flatMap(FrameRate.init(parsing:)) ?? 60
+            var frames = value("--frames").flatMap(Int.init) ?? 0
+            if frames <= 0, let seconds = value("--seconds").flatMap(Double.init) {
+                frames = Int((seconds * fps.framesPerSecond).rounded())
+            }
+            let skip = value("--skip").flatMap(Double.init) ?? 0
+            guard frames > 0 else {
+                FileHandle.standardError.write(Data(
+                    "usage: --export-audio <file> (--frames N | --seconds S) [--fps F] [--skip S]\n".utf8))
+                return true
+            }
+            try OllinApp.exportAudio(make(), to: path, frames: frames, fps: fps, skipSeconds: skip)
             return true
         }
         // `--export-sequence <dir> (--frames N | --seconds S) [--fps F] [--start N]`
