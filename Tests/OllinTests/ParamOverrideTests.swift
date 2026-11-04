@@ -143,6 +143,30 @@ struct ParamOverrideTests {
                                           Color(hex: 0xFF0066)])
     }
 
+    /// A value the parameter cannot hold is refused rather than landed on its
+    /// neighbor: a twelve on a parameter stepping by five from ten would be
+    /// ten, and a run that rendered ten when asked for twelve would be wrong
+    /// in a way nothing shows. The sentence names the nearest value and what
+    /// the parameter takes, and the value is put back, since the run stops.
+    @Test func aValueTheParameterCannotHoldIsRefusedByName() throws {
+        final class Stepped: Sketch {
+            @Param("Lap", 10 ... 120, step: 5) var lap = 60.0
+            @Param(0 ... 1) var amount = 0.5
+        }
+        let sketch = Stepped()
+        let snapped = ParamOverride.apply([ParamOverride(name: "lap", text: "12")], to: sketch)
+        #expect(snapped.count == 1)
+        #expect(snapped.first?.contains("10 is the nearest") == true)
+        #expect(snapped.first?.contains("10...120, by 5") == true)
+        #expect(sketch.lap == 60)
+        let past = ParamOverride.apply([ParamOverride(name: "amount", text: "1.5")], to: sketch)
+        #expect(past.count == 1)
+        #expect(past.first?.contains("1 is the nearest") == true)
+        #expect(sketch.amount == 0.5)
+        #expect(ParamOverride.apply([ParamOverride(name: "lap", text: "15")], to: sketch).isEmpty)
+        #expect(sketch.lap == 15)
+    }
+
     @Test func aRangeReadsBothSpellingsAndEitherWayRound() throws {
         let sketch = ParamSketch()
         #expect(ParamOverride.apply([.init(name: "band", text: "0.1,0.9")], to: sketch).isEmpty)
@@ -172,10 +196,16 @@ struct ParamOverrideTests {
         #expect(sketch.ramp.space == .oklab)
     }
 
-    @Test func aValueOutsideTheRangeClampsTheWayTheRowDoes() throws {
+    /// A hand on the row clamps; a flag is a request, and one past the range
+    /// is refused with the value it would have landed on, the parameter left
+    /// as it was.
+    @Test func aValueOutsideTheRangeIsRefusedWhereTheRowWouldClamp() throws {
         let sketch = ParamSketch()
-        #expect(ParamOverride.apply([.init(name: "radius", text: "9999")], to: sketch).isEmpty)
-        #expect(sketch.radius == 200)
+        let before = sketch.radius
+        let problems = ParamOverride.apply([.init(name: "radius", text: "9999")], to: sketch)
+        #expect(problems.count == 1)
+        #expect(problems.first?.contains("200 is the nearest") == true)
+        #expect(sketch.radius == before)
     }
 
     @Test func aChoiceMatchesItsNameLoosely() throws {

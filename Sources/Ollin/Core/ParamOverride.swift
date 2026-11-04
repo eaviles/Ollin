@@ -11,7 +11,9 @@ import Foundation
 /// The text is read against the parameter's own kind, so a color, a vector, a menu
 /// choice and a swatch strip arrive as readily as a number, and the value lands
 /// through the same restore path the hosts use to carry a tuned parameter across a
-/// reload (so it clamps to the declared range, the way dragging the row does).
+/// reload. A value the parameter cannot hold, past its range or off its step,
+/// is refused by name rather than landed on its neighbor, since a run that
+/// rendered a value it was not asked for would be wrong in a way nothing shows.
 ///
 /// It lands before the canvas is sized and before `setup()`, and again after
 /// `setup()`: a `canvasSize` that reads a parameter is sized by the run's value,
@@ -267,7 +269,22 @@ extension ParamOverride {
             }
             switch stored(override.text, like: handle.param.stored) {
             case .value(let payload):
+                // Restoring clamps to the range and snaps to the step, the way
+                // a hand on the row would; a flag is a request, so a value that
+                // lands anywhere but where it asked is refused, with the value
+                // it would have been and what the parameter takes. Read back in
+                // the listing's spelling, so a color's eight-bit landing and a
+                // number's shortest exact form compare as a person reads them.
+                let before = handle.param.stored
                 handle.param.restore(payload)
+                let landed = handle.param.stored
+                if ParamListing.value(of: landed) != ParamListing.value(of: payload) {
+                    handle.param.restore(before)
+                    let takes = ParamListing.accepts(handle.control)
+                    problems.append("--param \(override.name)=\(override.text): not a value this parameter holds, "
+                                    + "and \(ParamListing.value(of: landed)) is the nearest"
+                                    + (takes.isEmpty ? "" : "; it takes \(takes)"))
+                }
             case .problem(let reason):
                 problems.append("--param \(override.name)=\(override.text): \(reason)")
             }

@@ -93,7 +93,7 @@ enum ParamListing {
 
     /// What the parameter will take: a range, a list of choices, or nothing to
     /// say (a color and a string take anything of their kind).
-    private static func accepts(_ control: ParamControl) -> String {
+    static func accepts(_ control: ParamControl) -> String {
         switch control {
         case .slider(let s):
             let step = s.step.map { ", by \(number($0))" } ?? ""

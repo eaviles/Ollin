@@ -185,7 +185,7 @@ A packaged sketch runs with `swift run <Target> <flags>`, and a single file with
 | `--export-video out.mp4`, `--export-gif out.gif` | A movie or a GIF, with the same `--seconds`, `--frames`, `--fps`, and `--skip`. |
 | `--export-loop out.mp4` | Exactly one lap of `loopDuration`. |
 | `--seed N` | The variation to render, set before `setup()`. A `seed(n)` in `setup()` overrides it. |
-| `--param name=value` | Sets a parameter, before `canvasSize` is read and before and after `setup()`. Repeat it for more. A color is `#RRGGBB`, a vector `x,y`, a menu its label. |
+| `--param name=value` | Sets a parameter, before `canvasSize` is read and before and after `setup()`. Repeat it for more. A color is `#RRGGBB`, a vector `x,y`, a menu its label. A value the parameter cannot hold (past its range, off its step) stops the run and names the nearest. |
 | `--list-params` | Prints every parameter in the form `--param` takes, and stops. |
 | `--help` | Prints the sketch's parameters as declared and every flag it reads, each with one line, and stops. No window opens and `setup()` never runs. |
 | `--settle N` | Draws each written frame N times with the clock held. A `LineSpray` and an `Accumulator` need it to converge. Anti-aliasing over time and path tracing don't. |
