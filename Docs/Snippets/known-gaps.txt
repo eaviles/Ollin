@@ -13,22 +13,22 @@
 # To shrink a page's share, add Docs/Snippets/<Group>-<Page>.swift declaring the
 # names its prose establishes; it is spliced into every probe from that page.
 
-59a8691ecc04  Docs/3D/3D.md:1055  overriding declaration requires an 'override' keyword
+59a8691ecc04  Docs/3D/3D.md:1056  overriding declaration requires an 'override' keyword
 f120c3e411c4  Docs/3D/3D.md:138  cannot find 'x' in scope
-76ba2c72194a  Docs/3D/3D.md:1425  cannot find 'ribbon' in scope
-344f7f4b3cc6  Docs/3D/3D.md:1635  cannot convert value of type '@MainActor (Int, Int, Insets, Double, Grid.Distribution) -> Grid' to expected argument type 'Image'
-b315a31afeb9  Docs/3D/3D.md:1658  cannot find 'planks' in scope
-e0187f40506d  Docs/3D/3D.md:1703  cannot find 'rockColor' in scope
-677c77a8c73e  Docs/3D/3D.md:1721  cannot find 'h' in scope
-d51355214a9e  Docs/3D/3D.md:1748  cannot find 'paint' in scope
-e74d2eeb069f  Docs/3D/3D.md:1765  cannot find 'ribbon' in scope
-2a67d7fc8d2c  Docs/3D/3D.md:1787  cannot find 'brickColor' in scope
-5193d7f3850b  Docs/3D/3D.md:1803  cannot find 'reliefImage' in scope
-124899510ce1  Docs/3D/3D.md:1823  cannot find 'rock' in scope
-d1a6a8c0f0eb  Docs/3D/3D.md:1854  cannot find 'rock' in scope
-b0d19a4efbe1  Docs/3D/3D.md:1878  cannot use instance member 'loadImage' within property initializer; property initializers run before 'self' is available
+76ba2c72194a  Docs/3D/3D.md:1428  cannot find 'ribbon' in scope
+344f7f4b3cc6  Docs/3D/3D.md:1638  cannot convert value of type '@MainActor (Int, Int, Insets, Double, Grid.Distribution) -> Grid' to expected argument type 'Image'
+b315a31afeb9  Docs/3D/3D.md:1661  cannot find 'planks' in scope
+e0187f40506d  Docs/3D/3D.md:1706  cannot find 'rockColor' in scope
+677c77a8c73e  Docs/3D/3D.md:1724  cannot find 'h' in scope
+d51355214a9e  Docs/3D/3D.md:1751  cannot find 'paint' in scope
+e74d2eeb069f  Docs/3D/3D.md:1768  cannot find 'ribbon' in scope
+2a67d7fc8d2c  Docs/3D/3D.md:1790  cannot find 'brickColor' in scope
+5193d7f3850b  Docs/3D/3D.md:1806  cannot find 'reliefImage' in scope
+124899510ce1  Docs/3D/3D.md:1826  cannot find 'rock' in scope
+d1a6a8c0f0eb  Docs/3D/3D.md:1857  cannot find 'rock' in scope
+b0d19a4efbe1  Docs/3D/3D.md:1881  cannot use instance member 'loadImage' within property initializer; property initializers run before 'self' is available
 7d5e1e905641  Docs/3D/3D.md:192  cannot find 'x' in scope
-945a0d5a84a5  Docs/3D/3D.md:1924  cannot find 'blob' in scope
+945a0d5a84a5  Docs/3D/3D.md:1927  cannot find 'blob' in scope
 f6d0fb32d6d9  Docs/3D/3D.md:231  cannot find 'block' in scope
 16f7145339d7  Docs/3D/3D.md:434  'module' is inaccessible due to 'internal' protection level
 9bd70590640e  Docs/3D/3D.md:447  cannot find 'eye' in scope
@@ -198,13 +198,13 @@ d6862f064245  Docs/Drawing/Color.md:568  cannot find 't' in scope
 c708de778678  Docs/Drawing/Color.md:64  cannot find 'userString' in scope
 3340ea233772  Docs/Drawing/Color.md:77  cannot find 'base' in scope
 a47e065ecf70  Docs/Drawing/Color.md:96  cannot find 'albedo' in scope
-688be5dd137a  Docs/Drawing/Combinators.md:136  cannot find 'a' in scope
-48a73e312322  Docs/Drawing/Combinators.md:153  cannot find 'a' in scope
-37573516968f  Docs/Drawing/Combinators.md:173  cannot find 'field' in scope
-159d41fcbd18  Docs/Drawing/Combinators.md:185  cannot find 'field' in scope
-09143c7b4d6b  Docs/Drawing/Combinators.md:207  cannot find 'warmRamp' in scope
-010007b214be  Docs/Drawing/Combinators.md:222  cannot find 'field' in scope
-76de28b817a4  Docs/Drawing/Combinators.md:242  cannot find 'field' in scope
+688be5dd137a  Docs/Drawing/Combinators.md:137  cannot find 'a' in scope
+48a73e312322  Docs/Drawing/Combinators.md:154  cannot find 'a' in scope
+37573516968f  Docs/Drawing/Combinators.md:174  cannot find 'field' in scope
+159d41fcbd18  Docs/Drawing/Combinators.md:186  cannot find 'field' in scope
+09143c7b4d6b  Docs/Drawing/Combinators.md:208  cannot find 'warmRamp' in scope
+010007b214be  Docs/Drawing/Combinators.md:223  cannot find 'field' in scope
+76de28b817a4  Docs/Drawing/Combinators.md:243  cannot find 'field' in scope
 3c5de8336af9  Docs/Drawing/CreasePattern.md:116  unary operator cannot be separated from its operand
 7cda209c9b9a  Docs/Drawing/CreasePattern.md:64  cannot find 'sheet' in scope
 f488fa76404d  Docs/Drawing/CreasePattern.md:76  cannot find 'placed' in scope
@@ -296,19 +296,19 @@ b774992b6378  Docs/Drawing/Drawing.md:938  expected ',' separator
 1545ca2f9764  Docs/Drawing/Drawing.md:958  expected ',' separator
 0375abf145ad  Docs/Drawing/Drawing.md:979  expected ',' separator
 6d78937929ce  Docs/Drawing/Drawing.md:999  expected ',' separator
-f9dd3d125f11  Docs/Drawing/Effects.md:131  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-63ea4c842664  Docs/Drawing/Effects.md:1368  cannot find 'photo' in scope
-8528c8e05574  Docs/Drawing/Effects.md:157  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-de01af674fc3  Docs/Drawing/Effects.md:168  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-287a7fa55e41  Docs/Drawing/Effects.md:193  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-5aa234bd9c13  Docs/Drawing/Effects.md:256  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-cfebd0c142fa  Docs/Drawing/Effects.md:275  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-664b1351cb25  Docs/Drawing/Effects.md:416  cannot find 'scene' in scope
-0cf1d8be56d4  Docs/Drawing/Effects.md:439  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-69cf570bc684  Docs/Drawing/Effects.md:611  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-314af6ac5659  Docs/Drawing/Effects.md:910  cannot find 'horizon' in scope
-1c1c7cea776b  Docs/Drawing/Effects.md:932  cannot find 'glow' in scope
-a8f0d552b0f0  Docs/Drawing/Effects.md:960  cannot find 'marks' in scope
+f9dd3d125f11  Docs/Drawing/Effects.md:133  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+63ea4c842664  Docs/Drawing/Effects.md:1370  cannot find 'photo' in scope
+8528c8e05574  Docs/Drawing/Effects.md:159  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+de01af674fc3  Docs/Drawing/Effects.md:170  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+287a7fa55e41  Docs/Drawing/Effects.md:195  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+5aa234bd9c13  Docs/Drawing/Effects.md:258  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+cfebd0c142fa  Docs/Drawing/Effects.md:277  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+664b1351cb25  Docs/Drawing/Effects.md:418  cannot find 'scene' in scope
+0cf1d8be56d4  Docs/Drawing/Effects.md:441  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+69cf570bc684  Docs/Drawing/Effects.md:613  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+314af6ac5659  Docs/Drawing/Effects.md:912  cannot find 'horizon' in scope
+1c1c7cea776b  Docs/Drawing/Effects.md:934  cannot find 'glow' in scope
+a8f0d552b0f0  Docs/Drawing/Effects.md:962  cannot find 'marks' in scope
 09c8e57cb7b7  Docs/Drawing/Effects.md:99  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'image'
 eb9d4c173b18  Docs/Drawing/Envelopes.md:105  expected ',' separator
 3ba94f2cae8b  Docs/Drawing/Envelopes.md:112  cannot find 'shore' in scope
@@ -324,10 +324,10 @@ e7f00e72aff0  Docs/Drawing/Epicycles.md:86  expected ',' separator
 886cada6cd4c  Docs/Drawing/Fitting.md:160  cannot find 'marks' in scope
 0ece64b5f13f  Docs/Drawing/Fitting.md:92  cannot find 'pins' in scope
 cf65e5c6f914  Docs/Drawing/Fourier.md:73  cannot find 'plate' in scope
-eb39bc6e25d9  Docs/Drawing/Geometry.md:1031  expected '{' in body of function declaration
-67e13e1a3864  Docs/Drawing/Geometry.md:1045  expected ',' separator
-c0091b46b433  Docs/Drawing/Geometry.md:1084  expected '{' in body of function declaration
-51c2624a28b7  Docs/Drawing/Geometry.md:1098  cannot convert value of type '[Vector2].Type' to expected argument type '[Vector2]'
+eb39bc6e25d9  Docs/Drawing/Geometry.md:1032  expected '{' in body of function declaration
+67e13e1a3864  Docs/Drawing/Geometry.md:1046  expected ',' separator
+c0091b46b433  Docs/Drawing/Geometry.md:1085  expected '{' in body of function declaration
+51c2624a28b7  Docs/Drawing/Geometry.md:1099  cannot convert value of type '[Vector2].Type' to expected argument type '[Vector2]'
 4089dff1acc6  Docs/Drawing/Geometry.md:184  cannot convert value of type 'Double.Type' to expected argument type 'Double'
 c8dd6a17c836  Docs/Drawing/Geometry.md:236  cannot convert value of type 'Double.Type' to expected argument type 'Double'
 c9abb7d3d7a5  Docs/Drawing/Geometry.md:250  cannot find 'crate' in scope
@@ -336,35 +336,35 @@ ce8f3399f803  Docs/Drawing/Geometry.md:274  cannot find 'eye' in scope
 7e1e37f3022c  Docs/Drawing/Geometry.md:290  cannot convert value of type 'Vector3.Type' to expected argument type 'Vector3'
 f0183ad35e80  Docs/Drawing/Geometry.md:300  cannot find 'scan' in scope
 a26850bfb449  Docs/Drawing/Geometry.md:315  expected ',' separator
-873b3abaf9b5  Docs/Drawing/Geometry.md:345  cannot find 'Distribution' in scope
-f0b0c6b3213b  Docs/Drawing/Geometry.md:354  cannot find 'filters' in scope
-02e6dae30b9f  Docs/Drawing/Geometry.md:380  value of type '@MainActor (Int, Int, Insets, Double, Grid.Distribution) -> Grid' has no member 'points'
-ff6c8a6ce068  Docs/Drawing/Geometry.md:408  cannot find 'thumbnails' in scope
-b75f4ac15c49  Docs/Drawing/Geometry.md:431  cannot infer contextual base in reference to member 'all'
-23b6891ea8c2  Docs/Drawing/Geometry.md:451  cannot convert value of type 'Vector2.Type' to expected argument type 'Vector2'
-cd001b4096fb  Docs/Drawing/Geometry.md:474  expected ',' separator
-963ed0e10650  Docs/Drawing/Geometry.md:499  cannot convert value of type 'Vector2.Type' to expected argument type 'Vector2'
-401af9738a19  Docs/Drawing/Geometry.md:522  cannot convert value of type 'Vector2.Type' to expected argument type 'Vector2'
+873b3abaf9b5  Docs/Drawing/Geometry.md:346  cannot find 'Distribution' in scope
+f0b0c6b3213b  Docs/Drawing/Geometry.md:355  cannot find 'filters' in scope
+02e6dae30b9f  Docs/Drawing/Geometry.md:381  value of type '@MainActor (Int, Int, Insets, Double, Grid.Distribution) -> Grid' has no member 'points'
+ff6c8a6ce068  Docs/Drawing/Geometry.md:409  cannot find 'thumbnails' in scope
+b75f4ac15c49  Docs/Drawing/Geometry.md:432  cannot infer contextual base in reference to member 'all'
+23b6891ea8c2  Docs/Drawing/Geometry.md:452  cannot convert value of type 'Vector2.Type' to expected argument type 'Vector2'
+cd001b4096fb  Docs/Drawing/Geometry.md:475  expected ',' separator
+963ed0e10650  Docs/Drawing/Geometry.md:500  cannot convert value of type 'Vector2.Type' to expected argument type 'Vector2'
+401af9738a19  Docs/Drawing/Geometry.md:523  cannot convert value of type 'Vector2.Type' to expected argument type 'Vector2'
 754645c0ed85  Docs/Drawing/Geometry.md:53  expected ',' separator
-85a6c158019e  Docs/Drawing/Geometry.md:548  expected '{' in body of function declaration
-f898a9fe80fd  Docs/Drawing/Geometry.md:582  expected ',' separator
-52354cad80b1  Docs/Drawing/Geometry.md:628  expected '{' in body of function declaration
-d557b13beb41  Docs/Drawing/Geometry.md:676  expected '{' in body of function declaration
-a9963fe5f8ea  Docs/Drawing/Geometry.md:712  expected '{' in body of function declaration
-f91432eb7c7b  Docs/Drawing/Geometry.md:768  expected ',' separator
-4fdce137d56e  Docs/Drawing/Geometry.md:814  expected ',' separator
-fae7a0c26a4e  Docs/Drawing/Geometry.md:844  cannot find 'shape' in scope
-ad8b1f537c9c  Docs/Drawing/Geometry.md:851  cannot find 'shape' in scope
-e2d750ef54f7  Docs/Drawing/Geometry.md:857  cannot find 'shape' in scope
-a852c71bbd89  Docs/Drawing/Geometry.md:883  use of 'randomPoints' refers to instance method rather than global function 'randomPoints(in:count:using:)' in module 'Ollin'
-1eb6f12247fb  Docs/Drawing/Geometry.md:894  expected '{' in body of function declaration
-c02c77676873  Docs/Drawing/Geometry.md:908  cannot find 'star' in scope
-c4ec6c299218  Docs/Drawing/Geometry.md:920  expected '{' in body of function declaration
-a1b0bb4e8556  Docs/Drawing/Geometry.md:926  cannot find 'blob' in scope
-7fa1c7078690  Docs/Drawing/Geometry.md:944  expected '{' in body of function declaration
-a70a7ea27883  Docs/Drawing/Geometry.md:951  function produces expected type '[Vector2]'; did you mean to call it with '()'?
-c4faa929d898  Docs/Drawing/Geometry.md:962  expected '{' in body of function declaration
-f987b34cd479  Docs/Drawing/Geometry.md:994  expected '{' in body of function declaration
+85a6c158019e  Docs/Drawing/Geometry.md:549  expected '{' in body of function declaration
+f898a9fe80fd  Docs/Drawing/Geometry.md:583  expected ',' separator
+52354cad80b1  Docs/Drawing/Geometry.md:629  expected '{' in body of function declaration
+d557b13beb41  Docs/Drawing/Geometry.md:677  expected '{' in body of function declaration
+a9963fe5f8ea  Docs/Drawing/Geometry.md:713  expected '{' in body of function declaration
+f91432eb7c7b  Docs/Drawing/Geometry.md:769  expected ',' separator
+4fdce137d56e  Docs/Drawing/Geometry.md:815  expected ',' separator
+fae7a0c26a4e  Docs/Drawing/Geometry.md:845  cannot find 'shape' in scope
+ad8b1f537c9c  Docs/Drawing/Geometry.md:852  cannot find 'shape' in scope
+e2d750ef54f7  Docs/Drawing/Geometry.md:858  cannot find 'shape' in scope
+a852c71bbd89  Docs/Drawing/Geometry.md:884  use of 'randomPoints' refers to instance method rather than global function 'randomPoints(in:count:using:)' in module 'Ollin'
+1eb6f12247fb  Docs/Drawing/Geometry.md:895  expected '{' in body of function declaration
+c02c77676873  Docs/Drawing/Geometry.md:909  cannot find 'star' in scope
+c4ec6c299218  Docs/Drawing/Geometry.md:921  expected '{' in body of function declaration
+a1b0bb4e8556  Docs/Drawing/Geometry.md:927  cannot find 'blob' in scope
+7fa1c7078690  Docs/Drawing/Geometry.md:945  expected '{' in body of function declaration
+a70a7ea27883  Docs/Drawing/Geometry.md:952  function produces expected type '[Vector2]'; did you mean to call it with '()'?
+c4faa929d898  Docs/Drawing/Geometry.md:963  expected '{' in body of function declaration
+f987b34cd479  Docs/Drawing/Geometry.md:995  expected '{' in body of function declaration
 336a733604c7  Docs/Drawing/GlyphMosaic.md:31  expected ',' separator
 cb89fe7408d3  Docs/Drawing/GlyphMosaic.md:43  cannot find 'picture' in scope
 f7a401ec53bc  Docs/Drawing/GlyphMosaic.md:55  expected ',' separator
@@ -457,11 +457,11 @@ ca96c5465ca7  Docs/Drawing/SeamCarving.md:125  cannot find 'picture' in scope
 027de3f90bf9  Docs/Drawing/SeamCarving.md:65  cannot find 'picture' in scope
 66a3919d2038  Docs/Drawing/SeamCarving.md:81  attribute 'private' can only be used in a non-local scope
 8812b9d2d228  Docs/Drawing/SeamCarving.md:94  cannot find 'image' in scope
-cdb4fd79e470  Docs/Drawing/SpatialIndex.md:104  cannot find 'points' in scope
-e592306e1cc2  Docs/Drawing/SpatialIndex.md:124  cannot find 'points' in scope
-b8967328df69  Docs/Drawing/SpatialIndex.md:31  cannot find 'points' in scope
-626370b43b6a  Docs/Drawing/SpatialIndex.md:56  cannot find 'points' in scope
-3a15fa371302  Docs/Drawing/SpatialIndex.md:78  cannot use instance member 'canvasRectangle' within property initializer; property initializers run before 'self' is available
+cdb4fd79e470  Docs/Drawing/SpatialIndex.md:105  cannot find 'points' in scope
+e592306e1cc2  Docs/Drawing/SpatialIndex.md:125  cannot find 'points' in scope
+b8967328df69  Docs/Drawing/SpatialIndex.md:32  cannot find 'points' in scope
+626370b43b6a  Docs/Drawing/SpatialIndex.md:57  cannot find 'points' in scope
+3a15fa371302  Docs/Drawing/SpatialIndex.md:79  cannot use instance member 'canvasRectangle' within property initializer; property initializers run before 'self' is available
 5a595ceec8d3  Docs/Drawing/Spectrum.md:21  cannot find 'someColor' in scope
 42962964f6ab  Docs/Drawing/Spectrum.md:40  cannot find 'a' in scope
 1fcce1341596  Docs/Drawing/Spectrum.md:55  cannot find 'glass' in scope
@@ -876,12 +876,12 @@ eaee9918e7ae  Docs/Helpers/Math.md:68  cannot find 'progress' in scope
 62c82222d99f  Docs/Helpers/Parameters.md:108  cannot find 'radius' in scope
 7e61c6f57b45  Docs/Helpers/Parameters.md:181  unary operator cannot be separated from its operand
 8b0cd896963b  Docs/Helpers/Parameters.md:196  property wrappers are not yet supported in top-level code
-abf53e647a2d  Docs/Helpers/Parameters.md:226  cannot find type 'Opacity' in scope
-c0829da400f9  Docs/Helpers/Parameters.md:268  cannot find '$toonBands' in scope
-c0df20275b80  Docs/Helpers/Parameters.md:295  invalid redeclaration of 'radius'
-1bd9827ae463  Docs/Helpers/Parameters.md:304  cannot find 'side' in scope
-a954d343551e  Docs/Helpers/Parameters.md:360  cannot find 'osc' in scope
-d5eb0c2ff7b4  Docs/Helpers/Parameters.md:376  cannot find '$radius' in scope
+379ac151b7a3  Docs/Helpers/Parameters.md:226  cannot find type 'Opacity' in scope
+c0829da400f9  Docs/Helpers/Parameters.md:272  cannot find '$toonBands' in scope
+c0df20275b80  Docs/Helpers/Parameters.md:299  invalid redeclaration of 'radius'
+1bd9827ae463  Docs/Helpers/Parameters.md:308  cannot find 'side' in scope
+a954d343551e  Docs/Helpers/Parameters.md:364  cannot find 'osc' in scope
+d5eb0c2ff7b4  Docs/Helpers/Parameters.md:380  cannot find '$radius' in scope
 1c6c8dbec021  Docs/Helpers/Parameters.md:93  property wrappers are not yet supported in top-level code
 c79734a3b2fe  Docs/Helpers/Sonification.md:101  cannot find 'reading' in scope
 c1fdf39373c0  Docs/Helpers/Sonification.md:114  cannot find 'confidence' in scope

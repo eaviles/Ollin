@@ -31,6 +31,9 @@ struct WebControl: Equatable {
     var name: String
     var label: String
     var group: String?
+    /// The sketch's `help:` for the parameter, which the page sets as the
+    /// label's tooltip, or `nil` for none.
+    var help: String? = nil
     var kind: Kind
     var parts: [Part]
     /// The value the recording was made with, by part.
@@ -47,6 +50,7 @@ struct WebControl: Equatable {
             },
         ]
         if let group { m["group"] = group }
+        if let help { m["help"] = help }
         return m
     }
 }
@@ -215,7 +219,8 @@ extension OllinApp {
                 continue
             }
             let index = controls.count
-            controls.append(WebControl(name: name, label: handle.label, group: handle.group, kind: kind,
+            controls.append(WebControl(name: name, label: handle.label, group: handle.group,
+                                       help: handle.help, kind: kind,
                                        parts: parts, values: values))
             for (i, p) in axisParts.enumerated() {
                 let settings: [(value: Double, isEnd: Bool)] = p.bool

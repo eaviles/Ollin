@@ -41,7 +41,7 @@ final class Bands: Sketch {
 ### Contents
 
 - [The typed family](#family)
-- [Groups and icons](#groups)
+- [Groups, icons, and a description](#groups)
 - [Show-rules: parameters that come and go](#show-rules)
 - [Where the controls appear](#controls)
 - [Saving what you turned](#saving)
@@ -226,8 +226,9 @@ The built-in constraint types are there to borrow: `ParamNumericConstraints` for
 ```swift
 extension Param where Value == Opacity {
     convenience init(wrappedValue: Opacity, _ range: ClosedRange<Double>,
-                     icon: String? = nil, group: ParamGroup? = nil) {
-        self.init(wrappedValue: wrappedValue, constraints: .init(range: range), icon: icon, group: group)
+                     icon: String? = nil, group: ParamGroup? = nil, help: String? = nil) {
+        self.init(wrappedValue: wrappedValue, constraints: .init(range: range),
+                  icon: icon, group: group, help: help)
     }
 }
 ```
@@ -236,17 +237,20 @@ From there your type is one more kind. The inspector shows the control the confo
 
 <a name="groups"></a>
 
-### Groups and icons
+### Groups, icons, and a description
 
-Every form takes an optional `icon:` and `group:`:
+Every form takes an optional `icon:`, `group:`, and `help:`:
 
 ```swift
 @Param(10...375, icon: "circle.dashed", group: "Rings") var radius = 175.0
 @Param(1...12, icon: "circle.grid.2x2", group: "Rings") var rings = 5
-@Param(0...4, icon: "speedometer", group: "Motion") var speed = 1.0
+@Param(0...4, icon: "speedometer", group: "Motion",
+       help: "How fast the rings breathe, in cycles a second.") var speed = 1.0
 ```
 
 `group:` names an inspector section. Each group renders as its own titled card, in the order the groups first appear in the sketch. Parameters without a group come first, under the default "Parameters" header. `icon:` is an SF Symbol name shown at the start of the row. Rows without an icon stay aligned with the others when a card mixes both.
+
+`help:` is a sentence about the parameter: what it is, its unit, where its value came from. The inspector shows it when the pointer rests on the row's label, so the explanation lives where the value is tuned. A label the row had to trim shows the whole name first, then the sentence. `--list-params` prints the sentence under the parameter's row, and a [web page](../Output/Web.md#parameters-as-controls) sets it as the label's tooltip. A parameter without one shows nothing.
 
 #### Folded groups
 
@@ -398,7 +402,7 @@ swift run --package-path Examples Example-Live-Parameters --export keeper.png --
 
 `--list-params` beside any sketch says what there is to set. Every parameter with its kind, what it accepts, and what it holds, each value in the spelling the flag reads back. See [Checking the machine](../Tools/Doctor.md#what-the-sketch-itself-declares).
 
-To build your own control surface, call `parameters()`. It returns the sketch's parameters as `[ParamHandle]`. Each handle carries a stable `name` key, a display `label`, the `icon` and `group` metadata, and the type-erased `param`. Its `control` describes the matching UI: the kind, the ranges, the options, and live get/set closures. `stored` and `restore(_:)` round-trip the value through the small `ParamStored` payload the hosts persist. The live host builds its inspector from exactly this, and most sketches never call it.
+To build your own control surface, call `parameters()`. It returns the sketch's parameters as `[ParamHandle]`. Each handle carries a stable `name` key, a display `label`, the `icon`, `group`, and `help` metadata, and the type-erased `param`. Its `control` describes the matching UI: the kind, the ranges, the options, and live get/set closures. `stored` and `restore(_:)` round-trip the value through the small `ParamStored` payload the hosts persist. The live host builds its inspector from exactly this, and most sketches never call it.
 
 A parameter can also follow a curve instead of your hand on a control. An [`Automation`](../Core/Automation.md) writes a parameter's values down over time, and the sketch sets the parameter each frame from that track of keys. It is the same parameter, directed rather than tuned, and any export renders it exactly as the track sets it.
 

@@ -58,6 +58,23 @@ struct ParamWriteTests {
         #expect(result.text.contains("@Param(0...10) var speed = 1.0"))   // untouched
     }
 
+    /// A description holds whatever a sentence holds: a comma, a parenthesis,
+    /// an equals sign, even the word `var`. The walk steps over the string
+    /// whole, so none of it is read as the declaration, and the value after
+    /// the attribute is the one written.
+    @Test func aDescriptionIsSteppedOverWhole() {
+        let source = """
+        @Param("Clock", 0...0.5, step: 0.001, group: "Plate",
+               help: "The clock (in turns a second), var speed = 2 is twice it.")
+        var clock = 0.045
+        """
+        let result = written(source, ("clock", .number(0.06)))
+        #expect(result.text.hasSuffix("var clock = 0.06"))
+        #expect(result.text.contains(#"help: "The clock (in turns a second), var speed = 2 is twice it.")"#))
+        #expect(result.written == ["clock"])
+        #expect(result.refused.isEmpty)
+    }
+
     /// A parameter nobody turned is not in the set, so its line is not even read.
     @Test func onlyTheNamedParametersMove() {
         let source = "@Param(0...5) var a = 1.0\n@Param(0...5) var b = 2.0"

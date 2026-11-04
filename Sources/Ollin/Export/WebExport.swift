@@ -3791,7 +3791,7 @@ enum WebPlayer {
       }
       function syncPanel() { for (var key in inputs) inputs[key].sync(); }
       player.params = controls.map(function (c) {
-        return { name: c.name, label: c.label, group: c.group || null, kind: c.kind,
+        return { name: c.name, label: c.label, group: c.group || null, help: c.help || null, kind: c.kind,
                  parts: c.parts.filter(function (p) { return p.axis >= 0; }).map(function (p) { return { name: p.name, min: p.lo, max: p.hi, step: p.step }; }) };
       });
       player.get = function (name) {
@@ -3921,6 +3921,7 @@ enum WebPlayer {
           lastGroup = group;
           var label = document.createElement('label');
           label.textContent = c.label;
+          if (c.help) label.title = c.help;
           panel.appendChild(label);
           var row = document.createElement('div');
           row.className = 'row';

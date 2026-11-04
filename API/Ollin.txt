@@ -61,46 +61,46 @@
   var target: Double { get }
   var wrappedValue: Double { get set }
 @propertyWrapper final class Param<Value where Value : ParamValue>: AnyParam, FrameAdvancing, Sendable
-  convenience init(wrappedValue: Bool, _: String, icon: String? = default, group: ParamGroup? = default)
-  convenience init(wrappedValue: Bool, icon: String? = default, group: ParamGroup? = default)
-  convenience init(wrappedValue: ClosedRange<Double>, _: String, in: ClosedRange<Double>, style: ParamNumericStyle = default, icon: String? = default, group: ParamGroup? = default)
-  convenience init(wrappedValue: ClosedRange<Double>, in: ClosedRange<Double>, style: ParamNumericStyle = default, icon: String? = default, group: ParamGroup? = default)
-  convenience init(wrappedValue: Color, _: String, icon: String? = default, group: ParamGroup? = default)
-  convenience init(wrappedValue: Color, icon: String? = default, group: ParamGroup? = default)
-  convenience init(wrappedValue: Double, _: ClosedRange<Double>, step: Double? = default, style: ParamNumericStyle = default, smoothing: ParamSmoothing? = default, icon: String? = default, group: ParamGroup? = default)
-  convenience init(wrappedValue: Double, _: String, _: ClosedRange<Double>, step: Double? = default, style: ParamNumericStyle = default, smoothing: ParamSmoothing? = default, icon: String? = default, group: ParamGroup? = default)
-  convenience init(wrappedValue: Insets, _: ClosedRange<Double>, icon: String? = default, group: ParamGroup? = default)
-  convenience init(wrappedValue: Insets, _: String, _: ClosedRange<Double>, icon: String? = default, group: ParamGroup? = default)
-  convenience init(wrappedValue: Int, _: ClosedRange<Int>, step: Int? = default, icon: String? = default, group: ParamGroup? = default)
-  convenience init(wrappedValue: Int, _: String, _: ClosedRange<Int>, step: Int? = default, icon: String? = default, group: ParamGroup? = default)
-  convenience init(wrappedValue: Palette, _: String, count: ClosedRange<Int> = default, icon: String? = default, group: ParamGroup? = default)
-  convenience init(wrappedValue: Palette, count: ClosedRange<Int> = default, icon: String? = default, group: ParamGroup? = default)
-  convenience init(wrappedValue: Ramp, _: String, count: ClosedRange<Int> = default, icon: String? = default, group: ParamGroup? = default)
-  convenience init(wrappedValue: Ramp, count: ClosedRange<Int> = default, icon: String? = default, group: ParamGroup? = default)
-  convenience init(wrappedValue: Rectangle, _: String, x: ClosedRange<Double>, y: ClosedRange<Double>, width: ClosedRange<Double>, height: ClosedRange<Double>, icon: String? = default, group: ParamGroup? = default)
-  convenience init(wrappedValue: Rectangle, x: ClosedRange<Double>, y: ClosedRange<Double>, width: ClosedRange<Double>, height: ClosedRange<Double>, icon: String? = default, group: ParamGroup? = default)
-  convenience init(wrappedValue: ResponseCurve, _: String, count: ClosedRange<Int> = default, icon: String? = default, group: ParamGroup? = default)
-  convenience init(wrappedValue: ResponseCurve, count: ClosedRange<Int> = default, icon: String? = default, group: ParamGroup? = default)
-  convenience init(wrappedValue: String, _: String, icon: String? = default, group: ParamGroup? = default)
-  convenience init(wrappedValue: String, icon: String? = default, group: ParamGroup? = default)
-  convenience init(wrappedValue: Tempo, _: ClosedRange<Double>, step: Double? = default, style: ParamNumericStyle = default, icon: String? = default, group: ParamGroup? = default)
-  convenience init(wrappedValue: Tempo, _: String, _: ClosedRange<Double>, step: Double? = default, style: ParamNumericStyle = default, icon: String? = default, group: ParamGroup? = default)
-  convenience init(wrappedValue: Value, _: String, constraints: Value.Constraints, icon: String? = default, group: ParamGroup? = default)
-  convenience init(wrappedValue: Value, _: String, icon: String? = default, group: ParamGroup? = default)
-  convenience init(wrappedValue: Value, _: String, style: ParamMenuStyle = default, icon: String? = default, group: ParamGroup? = default)
-  convenience init(wrappedValue: Value, _: String, style: ParamMenuStyle = default, icon: String? = default, group: ParamGroup? = default)
-  convenience init(wrappedValue: Value, constraints: Value.Constraints, icon: String? = default, group: ParamGroup? = default)
-  convenience init(wrappedValue: Value, icon: String? = default, group: ParamGroup? = default)
-  convenience init(wrappedValue: Value, style: ParamMenuStyle = default, icon: String? = default, group: ParamGroup? = default)
-  convenience init(wrappedValue: Value, style: ParamMenuStyle = default, icon: String? = default, group: ParamGroup? = default)
-  convenience init(wrappedValue: Vector2, _: String, x: ClosedRange<Double>, y: ClosedRange<Double>, style: ParamVectorStyle = default, icon: String? = default, group: ParamGroup? = default)
-  convenience init(wrappedValue: Vector2, x: ClosedRange<Double>, y: ClosedRange<Double>, style: ParamVectorStyle = default, icon: String? = default, group: ParamGroup? = default)
-  convenience init(wrappedValue: Vector3, _: String, x: ClosedRange<Double>, y: ClosedRange<Double>, z: ClosedRange<Double>, icon: String? = default, group: ParamGroup? = default)
-  convenience init(wrappedValue: Vector3, x: ClosedRange<Double>, y: ClosedRange<Double>, z: ClosedRange<Double>, icon: String? = default, group: ParamGroup? = default)
-  convenience init(wrappedValue: [Double], _: ClosedRange<Double>, step: Double? = default, icon: String? = default, group: ParamGroup? = default)
-  convenience init(wrappedValue: [Double], _: String, _: ClosedRange<Double>, step: Double? = default, icon: String? = default, group: ParamGroup? = default)
-  convenience init(wrappedValue: [Int], _: ClosedRange<Int>, step: Int? = default, icon: String? = default, group: ParamGroup? = default)
-  convenience init(wrappedValue: [Int], _: String, _: ClosedRange<Int>, step: Int? = default, icon: String? = default, group: ParamGroup? = default)
+  convenience init(wrappedValue: Bool, _: String, icon: String? = default, group: ParamGroup? = default, help: String? = default)
+  convenience init(wrappedValue: Bool, icon: String? = default, group: ParamGroup? = default, help: String? = default)
+  convenience init(wrappedValue: ClosedRange<Double>, _: String, in: ClosedRange<Double>, style: ParamNumericStyle = default, icon: String? = default, group: ParamGroup? = default, help: String? = default)
+  convenience init(wrappedValue: ClosedRange<Double>, in: ClosedRange<Double>, style: ParamNumericStyle = default, icon: String? = default, group: ParamGroup? = default, help: String? = default)
+  convenience init(wrappedValue: Color, _: String, icon: String? = default, group: ParamGroup? = default, help: String? = default)
+  convenience init(wrappedValue: Color, icon: String? = default, group: ParamGroup? = default, help: String? = default)
+  convenience init(wrappedValue: Double, _: ClosedRange<Double>, step: Double? = default, style: ParamNumericStyle = default, smoothing: ParamSmoothing? = default, icon: String? = default, group: ParamGroup? = default, help: String? = default)
+  convenience init(wrappedValue: Double, _: String, _: ClosedRange<Double>, step: Double? = default, style: ParamNumericStyle = default, smoothing: ParamSmoothing? = default, icon: String? = default, group: ParamGroup? = default, help: String? = default)
+  convenience init(wrappedValue: Insets, _: ClosedRange<Double>, icon: String? = default, group: ParamGroup? = default, help: String? = default)
+  convenience init(wrappedValue: Insets, _: String, _: ClosedRange<Double>, icon: String? = default, group: ParamGroup? = default, help: String? = default)
+  convenience init(wrappedValue: Int, _: ClosedRange<Int>, step: Int? = default, icon: String? = default, group: ParamGroup? = default, help: String? = default)
+  convenience init(wrappedValue: Int, _: String, _: ClosedRange<Int>, step: Int? = default, icon: String? = default, group: ParamGroup? = default, help: String? = default)
+  convenience init(wrappedValue: Palette, _: String, count: ClosedRange<Int> = default, icon: String? = default, group: ParamGroup? = default, help: String? = default)
+  convenience init(wrappedValue: Palette, count: ClosedRange<Int> = default, icon: String? = default, group: ParamGroup? = default, help: String? = default)
+  convenience init(wrappedValue: Ramp, _: String, count: ClosedRange<Int> = default, icon: String? = default, group: ParamGroup? = default, help: String? = default)
+  convenience init(wrappedValue: Ramp, count: ClosedRange<Int> = default, icon: String? = default, group: ParamGroup? = default, help: String? = default)
+  convenience init(wrappedValue: Rectangle, _: String, x: ClosedRange<Double>, y: ClosedRange<Double>, width: ClosedRange<Double>, height: ClosedRange<Double>, icon: String? = default, group: ParamGroup? = default, help: String? = default)
+  convenience init(wrappedValue: Rectangle, x: ClosedRange<Double>, y: ClosedRange<Double>, width: ClosedRange<Double>, height: ClosedRange<Double>, icon: String? = default, group: ParamGroup? = default, help: String? = default)
+  convenience init(wrappedValue: ResponseCurve, _: String, count: ClosedRange<Int> = default, icon: String? = default, group: ParamGroup? = default, help: String? = default)
+  convenience init(wrappedValue: ResponseCurve, count: ClosedRange<Int> = default, icon: String? = default, group: ParamGroup? = default, help: String? = default)
+  convenience init(wrappedValue: String, _: String, icon: String? = default, group: ParamGroup? = default, help: String? = default)
+  convenience init(wrappedValue: String, icon: String? = default, group: ParamGroup? = default, help: String? = default)
+  convenience init(wrappedValue: Tempo, _: ClosedRange<Double>, step: Double? = default, style: ParamNumericStyle = default, icon: String? = default, group: ParamGroup? = default, help: String? = default)
+  convenience init(wrappedValue: Tempo, _: String, _: ClosedRange<Double>, step: Double? = default, style: ParamNumericStyle = default, icon: String? = default, group: ParamGroup? = default, help: String? = default)
+  convenience init(wrappedValue: Value, _: String, constraints: Value.Constraints, icon: String? = default, group: ParamGroup? = default, help: String? = default)
+  convenience init(wrappedValue: Value, _: String, icon: String? = default, group: ParamGroup? = default, help: String? = default)
+  convenience init(wrappedValue: Value, _: String, style: ParamMenuStyle = default, icon: String? = default, group: ParamGroup? = default, help: String? = default)
+  convenience init(wrappedValue: Value, _: String, style: ParamMenuStyle = default, icon: String? = default, group: ParamGroup? = default, help: String? = default)
+  convenience init(wrappedValue: Value, constraints: Value.Constraints, icon: String? = default, group: ParamGroup? = default, help: String? = default)
+  convenience init(wrappedValue: Value, icon: String? = default, group: ParamGroup? = default, help: String? = default)
+  convenience init(wrappedValue: Value, style: ParamMenuStyle = default, icon: String? = default, group: ParamGroup? = default, help: String? = default)
+  convenience init(wrappedValue: Value, style: ParamMenuStyle = default, icon: String? = default, group: ParamGroup? = default, help: String? = default)
+  convenience init(wrappedValue: Vector2, _: String, x: ClosedRange<Double>, y: ClosedRange<Double>, style: ParamVectorStyle = default, icon: String? = default, group: ParamGroup? = default, help: String? = default)
+  convenience init(wrappedValue: Vector2, x: ClosedRange<Double>, y: ClosedRange<Double>, style: ParamVectorStyle = default, icon: String? = default, group: ParamGroup? = default, help: String? = default)
+  convenience init(wrappedValue: Vector3, _: String, x: ClosedRange<Double>, y: ClosedRange<Double>, z: ClosedRange<Double>, icon: String? = default, group: ParamGroup? = default, help: String? = default)
+  convenience init(wrappedValue: Vector3, x: ClosedRange<Double>, y: ClosedRange<Double>, z: ClosedRange<Double>, icon: String? = default, group: ParamGroup? = default, help: String? = default)
+  convenience init(wrappedValue: [Double], _: ClosedRange<Double>, step: Double? = default, icon: String? = default, group: ParamGroup? = default, help: String? = default)
+  convenience init(wrappedValue: [Double], _: String, _: ClosedRange<Double>, step: Double? = default, icon: String? = default, group: ParamGroup? = default, help: String? = default)
+  convenience init(wrappedValue: [Int], _: ClosedRange<Int>, step: Int? = default, icon: String? = default, group: ParamGroup? = default, help: String? = default)
+  convenience init(wrappedValue: [Int], _: String, _: ClosedRange<Int>, step: Int? = default, icon: String? = default, group: ParamGroup? = default, help: String? = default)
   func jump(to: Value)
   func reset()
   func restore(_: ParamStored)
@@ -109,6 +109,7 @@
   let declaredValue: Value
   let group: String?
   let groupIsFolded: Bool
+  let help: String?
   let icon: String?
   let label: String?
   let smoothing: ParamSmoothing?
@@ -2880,6 +2881,7 @@ protocol AnyParam: Sendable where Self : AnyObject, Self : Sendable
   var control: ParamControl { get }
   var group: String? { get }
   var groupIsFolded: Bool { get }
+  var help: String? { get }
   var icon: String? { get }
   var isShown: Bool { get }
   var label: String? { get }
@@ -5918,6 +5920,7 @@ struct ParamHandle: Identifiable
   var control: ParamControl { get }
   var group: String? { get }
   var groupIsFolded: Bool { get }
+  var help: String? { get }
   var icon: String? { get }
   var id: String { get }
   var isShown: Bool { get }

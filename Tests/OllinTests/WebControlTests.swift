@@ -24,7 +24,7 @@ import OllinWebGate
     final class Dial: Sketch {
         override var canvasSize: CanvasSize { .square(240) }
         override var loopDuration: Double? { 2 }
-        @Param(0 ... 200) var radius: Double = 60
+        @Param(0 ... 200, help: "The dial's radius, in pixels.") var radius: Double = 60
         @Param(0 ... 1) var fade: Double = 0.5
         @Param var ink: Color = .black
         @Param var paper: Color = .white
@@ -292,6 +292,11 @@ import OllinWebGate
         let meta = try #require(try JSONSerialization.jsonObject(with: Data(track.meta.utf8)) as? [String: Any])
         let controls = try #require(meta["controls"] as? [[String: Any]])
         #expect(controls.count == 6)
+        // A parameter's `help:` crosses as the control's, for the page to set
+        // as the label's tooltip, and a parameter without one carries none.
+        #expect(controls.first { $0["name"] as? String == "radius" }?["help"] as? String
+                == "The dial's radius, in pixels.")
+        #expect(controls.first { $0["name"] as? String == "fade" }?["help"] == nil)
         let axes = try #require(meta["axes"] as? [[String: Any]])
         let radius = try #require(axes.first { $0["name"] as? String == "radius" })
         let cols = try #require(radius["cols"] as? [[Double]])

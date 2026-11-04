@@ -32,15 +32,19 @@ enum RingStyle: String, CaseIterable, ParamOption { case rings, dots, beads }
 
 @main
 final class Parameters: Sketch {
-    @Param(10...375, icon: "circle.dashed", group: "Rings") var radius = 175.0
+    // A `help:` is the sentence the inspector shows when the pointer rests on
+    // the label: what the parameter is, its unit, where its value came from.
+    @Param(10...375, icon: "circle.dashed", group: "Rings",
+           help: "The spread of the rings, in pixels; the outer ring sits a quarter past it.") var radius = 175.0
     @Param(1...12, icon: "circle.grid.2x2", group: "Rings") var rings = 5
     @Param(style: .segmented, icon: "sparkles", group: "Rings") var style: RingStyle = .rings
     @Param(x: 0...1080, y: 0...1080, style: .pad,
            icon: "arrow.up.and.down.and.arrow.left.and.right",
            group: "Rings") var anchor = Vector2(540, 540)
 
-    @Param(0...4, icon: "speedometer", group: "Motion") var speed = 1.0
-    @Param(icon: "wind", group: "Motion") var breathe = true
+    @Param(0...4, icon: "speedometer", group: "Motion",
+           help: "The rings' breathing rate, in radians a second: at 1 a breath takes about six seconds.") var speed = 1.0
+    @Param(icon: "wind", group: "Motion", help: "Whether the rings breathe at all.") var breathe = true
     // A curve is a value like any other: this one spaces the rings, tight at
     // the ends and open in the middle, or the other way about.
     @Param("Spacing", icon: "chart.line.uptrend.xyaxis", group: "Motion")

@@ -46,6 +46,13 @@ enum ParamListing {
                 if !handles[index].isShown { line += "   (hidden right now)" }
                 while line.hasSuffix(" ") { line.removeLast() }
                 lines.append(line)
+                // The sketch's `help:` under the row it describes, indented
+                // past the row so it reads as the row's and never as a flag.
+                if let help = handles[index].help {
+                    for part in help.split(separator: "\n", omittingEmptySubsequences: false) {
+                        lines.append("    " + String(part))
+                    }
+                }
             }
         }
         block(nil, handles.indices.filter { handles[$0].group == nil })

@@ -342,8 +342,13 @@ struct ParamTests {
     }
 
     @Test func metadataRidesTheParam() {
-        let p = Param(wrappedValue: 1.0, "Sweep", 0...4, icon: "wind", group: "Motion")
+        let p = Param(wrappedValue: 1.0, "Sweep", 0...4, icon: "wind", group: "Motion",
+                      help: "How fast the field turns, in turns a second.")
         #expect(p.label == "Sweep" && p.icon == "wind" && p.group == "Motion")
+        #expect(p.help == "How fast the field turns, in turns a second.")
+        // A parameter that says nothing about itself carries nothing: the
+        // inspector then shows no tooltip at all.
+        #expect(Param(wrappedValue: 1.0, 0...4).help == nil)
     }
 
     // MARK: Curves

@@ -29,7 +29,7 @@ struct ParamListingTests {
         @Param var style: Style = .dots
         @Param var inks = Palette([.red, .blue])
         @Param var fade = Ramp([.black, .white], in: .oklab)
-        @Param(0...1, group: "Paper") var grain = 0.35
+        @Param(0...1, group: "Paper", help: "How much of the paper's tooth shows through.") var grain = 0.35
         @Param(0...1) var wobble = 0.007
 
         override func setup() {
@@ -116,7 +116,12 @@ struct ParamListingTests {
         let lines = ParamListing.text(for: sketch).split(separator: "\n", omittingEmptySubsequences: false)
         let paper = lines.firstIndex { $0 == "  Paper" }
         #expect(paper != nil)
-        if let paper { #expect(lines[paper + 1].contains("grain")) }
+        if let paper {
+            #expect(lines[paper + 1].contains("grain"))
+            // The description sits under its row, indented past it, so it
+            // reads as the row's and never as a flag to paste.
+            #expect(lines[paper + 2] == "    How much of the paper's tooth shows through.")
+        }
         #expect(lines.contains { $0.contains("wobble") && $0.contains("(hidden right now)") })
     }
 

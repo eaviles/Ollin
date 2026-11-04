@@ -7,7 +7,7 @@ import Ollin
 /// Reflection-based discovery, auto-derived vs explicit labels, declaration
 /// order, ranges, value clamping and step snapping, the typed control family
 /// (slider / stepper / toggle / menu / color well / swatch strip / curve graph /
-/// bars), group + icon metadata, and
+/// bars), group, icon, and help metadata, and
 /// the stored-value round-trip the hosts persist across reloads; then the rule
 /// field, through the timeline model the rows write to: a rule typed for a
 /// parameter drives it and reaches the file, a rule that cannot be read is
@@ -21,7 +21,7 @@ enum ParamTest {
         @Param("Tempo", 0.1...4) var speed = 1.0                  // explicit label "Tempo"
         @Param(0...1, step: 0.25) var quantized = 0.6             // snaps to 0.25s
         @Param(1...12, icon: "circle.grid.2x2", group: "Layout") var rings = 5
-        @Param("Visible", group: "Layout") var visible = true
+        @Param("Visible", group: "Layout", help: "Whether the rings are drawn at all.") var visible = true
         @Param var tint: Color = .purple
         @Param var style: Style = .dots
         @Param(x: 0...1080, y: 0...400) var anchor = Vector2(540, 200)
@@ -65,6 +65,8 @@ enum ParamTest {
               "group metadata wrong")
         check(params[19].group == "Advanced" && params[19].groupIsFolded && !params[4].groupIsFolded,
               "folded-group metadata wrong")
+        check(params[5].help == "Whether the rings are drawn at all." && params[4].help == nil,
+              "help metadata wrong")
 
         // Clamping: out-of-range writes are clamped to the range.
         subject.radius = 999

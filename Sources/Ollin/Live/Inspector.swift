@@ -1224,6 +1224,20 @@ private struct ParamRowLabel: View {
 
     @SwiftUI.Environment(\.paramReset) private var reset
 
+    /// What resting the pointer on the name shows: the sketch's `help:` when
+    /// it gave one, under the whole name when the name may be trimmed (a long
+    /// label can still be cut beside a control that cannot give way); the
+    /// whole name alone when it may be trimmed; nothing otherwise.
+    private var tooltip: String {
+        let mayBeTrimmed = handle.label.count > 12
+        switch (handle.help, mayBeTrimmed) {
+        case (let help?, true): return handle.label + "\n" + help
+        case (let help?, false): return help
+        case (nil, true): return handle.label
+        case (nil, false): return ""
+        }
+    }
+
     var body: some View {
         HStack(spacing: 7) {
             if let icon = handle.icon {
@@ -1237,9 +1251,7 @@ private struct ParamRowLabel: View {
             Text(handle.label)
                 .font(.system(size: 13, weight: .medium))
                 .lineLimit(1)
-                // A long label can still be trimmed beside a control that
-                // cannot give way; hovering it then shows the whole name.
-                .help(handle.label.count > 12 ? handle.label : "")
+                .help(tooltip)
             // The tuned mark: a dot in the accent after the name, only on a
             // row the host recorded as turned, and a click puts the value
             // back. A dot rather than a glyph, so it reads as a state (the

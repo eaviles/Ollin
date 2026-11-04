@@ -569,7 +569,7 @@ final class Wall: Sketch {
 }
 ```
 
-> **Swift note.** `enum Style` declares a type of your own with a fixed set of cases, here three. `String` gives each case a name as text, and `CaseIterable` lets code list the cases. `ParamOption` lets the inspector and OSCQuery offer them as a menu. `group:` puts a parameter under a heading in the inspector.
+> **Swift note.** `enum Style` declares a type of your own with a fixed set of cases, here three. `String` gives each case a name as text, and `CaseIterable` lets code list the cases. `ParamOption` lets the inspector and OSCQuery offer them as a menu. `group:` puts a parameter under a heading in the inspector. `help:` adds a sentence the inspector shows when the pointer rests on the label.
 
 Each parameter becomes a node at its own address. The group you declared becomes the folder in front of the name, which is why `radius` is published at `/Shape/radius`. The node carries what the parameter is (a number, a switch, a color) and what it accepts, such as `20...400`. So the app reads a range and lays out a fader that ends where your parameter ends.
 

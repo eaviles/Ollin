@@ -164,7 +164,7 @@ Some names from other frameworks mean something else here, or nothing. `ollin ap
 ```
 
 - An enum that is `ParamOption` (`CaseIterable`) becomes a menu, and `style: .segmented` shows every case at once. A built-in `Material`, `Easing`, `Fog`, or `Environment` is a menu too (`@Param var surroundings = Environment.studio`).
-- `group:` puts a parameter in a titled card, and parameters with no group come first. `icon:` takes an SF Symbol name.
+- `group:` puts a parameter in a titled card, and parameters with no group come first. `icon:` takes an SF Symbol name. `help:` is a sentence the inspector shows when the pointer rests on the label.
 - `$rate.show(when: $mode) { $0 == .fast }` in `setup()` hides a row. The value still holds.
 - A value tuned in the inspector lives in that window until "Save parameters to Sketch.swift" writes it into the source. An export never opens the inspector, so it uses the values written in the source. The dot after a tuned parameter's name, or Reset in its row's menu, puts it back to what the line declares, and Reset all puts every parameter back, with the sketch still running.
 - `ollin api Param` lists every form a parameter can be declared with.

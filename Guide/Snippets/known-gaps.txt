@@ -54,7 +54,7 @@ d7900de9175f  Guide/10-Vectors.md:187  cannot find 'target' in scope
 766fbe6bd4ab  Guide/11-ForcesAndPhysics.md:308  cannot convert value of type '@MainActor (Vector2, World3D) -> (body: Body3D, point: Vector3)?' to expected argument type 'Body'
 903bd8f5d681  Guide/11-ForcesAndPhysics.md:316  cannot convert value of type '@MainActor (Vector2, World3D) -> (body: Body3D, point: Vector3)?' to expected argument type 'Body'
 ffa12e764a7d  Guide/12-FlocksAndSwarms.md:17  cannot find 'position' in scope
-c75eb2a20310  Guide/12-FlocksAndSwarms.md:402  cannot find 'crowd' in scope
+c75eb2a20310  Guide/12-FlocksAndSwarms.md:431  cannot find 'crowd' in scope
 750461323d36  Guide/14-FieldsAndFlow.md:281  cannot find 'x' in scope
 bac6f70b2c26  Guide/15-ShapesAsMaterial.md:112  cannot find 'circles' in scope
 45fd2bf76c06  Guide/15-ShapesAsMaterial.md:294  cannot find 'path' in scope
@@ -119,7 +119,7 @@ e14013929298  Guide/30-Landscapes.md:490  cannot find 'weathered' in scope
 fdc04519f206  Guide/30-Landscapes.md:96  cannot find 'island' in scope
 298b8d77d963  Guide/32-CharactersAndCloth.md:196  labeled block needs 'do'
 c902bc376742  Guide/33-SculptingWithFields.md:202  cannot find 'a' in scope
-1a59c3d7b6ab  Guide/33-SculptingWithFields.md:284  cannot find 'cluster' in scope
+1a59c3d7b6ab  Guide/33-SculptingWithFields.md:301  cannot find 'cluster' in scope
 825b45b1b1cc  Guide/35-Seeing.md:127  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
 b8acc710158c  Guide/35-Seeing.md:228  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
 636cc8963091  Guide/35-Seeing.md:247  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
