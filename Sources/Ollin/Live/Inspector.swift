@@ -561,6 +561,21 @@ private struct MonitorStatStrip: View {
                 }
                 .fixedSize(horizontal: false, vertical: true)
             }
+            if let notice = stats.gpuNotice {
+                Hairline(palette: palette)
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    SwiftUI.Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 10))
+                        .foregroundStyle(OllinInspector.amber)
+                    Text(notice)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
+            }
         }
         .onChange(of: stats.frameCount) { previous, current in
             if current < previous { seenPaths.removeAll() }

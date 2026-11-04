@@ -1230,6 +1230,7 @@ final class FrameStats: Observable
   var fps: Double { get }
   var frameCount: Int { get }
   var frameTimeMS: Double { get }
+  var gpuNotice: String? { get }
   var hasData: Bool { get }
   var particleCount: Int { get }
   var pointCount: Int { get }

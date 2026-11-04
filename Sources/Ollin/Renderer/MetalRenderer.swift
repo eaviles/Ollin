@@ -619,7 +619,9 @@ final class MetalRenderer {
     }
 
     let device: MTLDevice
-    let commandQueue: MTLCommandQueue
+    /// The queue the frames go out on. Replaced when the GPU refuses it after a
+    /// hang (`replaceSpentQueue`); nothing else here is bound to it.
+    private(set) var commandQueue: MTLCommandQueue
     var library: MTLLibrary
     /// The display/drawable format. sRGB 8-bit by default; a wide-gamut or
     /// high-dynamic-range sketch presents into `rgba16Float` instead (see
@@ -825,6 +827,16 @@ final class MetalRenderer {
     /// program's victim, without anything having to fault the GPU. Empty in a
     /// normal run.
     var plantedDiscards: Set<Int> = []
+    /// How many live frames have had their completion armed, counted as each
+    /// is; the planted hang below is read against it.
+    private var liveCommits = 0
+    /// The live frame whose completion is read as a GPU hang although it ran,
+    /// planted by a test of the recovery; `nil` outside one.
+    var plantedLiveHang: Int?
+    /// How many times a spent command queue was replaced (`replaceSpentQueue`).
+    private(set) var queueReplacements = 0
+    /// The last replacement's sentence, until the runner takes it for the stats.
+    private var pendingRecoveryNotice: String?
     private var headlessCommits = 0
 
     /// Make a render encoder and count the pass. Every pass in the renderer
@@ -907,6 +919,48 @@ final class MetalRenderer {
     /// refresh does not draw, so it has nothing to throw away.
     var canStartFrame: Bool {
         framesInFlight.withLock { $0 } < MetalRenderer.maxFramesInFlight
+    }
+
+    /// How many live frames the GPU still holds, for the tests.
+    var inFlightFrames: Int { framesInFlight.withLock { $0 } }
+
+    /// Count a live frame whose completion is being armed, and say whether a
+    /// test planted a hang on it.
+    private func armLiveCommit() -> Bool {
+        defer { liveCommits += 1 }
+        return plantedLiveHang == liveCommits
+    }
+
+    /// Replace the command queue when the GPU has stopped taking its work. A
+    /// hang the system blames on one of this process's frames resets the GPU
+    /// and then refuses every later submission on the queue that carried it,
+    /// so a window that kept drawing showed its last finished frame for good;
+    /// a fresh queue from the same device is taken again at once, with every
+    /// texture and pipeline untouched (none is bound to a queue), so the sketch
+    /// carries on and only the frames between the hang and this call are lost.
+    /// Called at the top of a live frame, on the thread that draws, where every
+    /// frame of the old queue has either finished or been refused and handed
+    /// its slot back. Returns the sentence said for it, or `nil` when the queue
+    /// is fine.
+    @discardableResult
+    func replaceSpentQueue() -> String? {
+        guard gpuFailures.queueIsSpent, let queue = device.makeCommandQueue() else { return nil }
+        commandQueue = queue
+        gpuFailures.clearSpent()
+        // The readbacks the refused frames owed will never be delivered.
+        dropPendingLayerReadbacks()
+        queueReplacements += 1
+        let sentence = "the GPU hung on a frame and stopped taking this window's queue; "
+            + "the window carried on with a new one"
+        gpuFailures.note(sentence)
+        pendingRecoveryNotice = sentence
+        return sentence
+    }
+
+    /// The last replacement's sentence, once: the runner hands it to the stats.
+    func takeRecoveryNotice() -> String? {
+        defer { pendingRecoveryNotice = nil }
+        return pendingRecoveryNotice
     }
 
     /// Take a slot in the ring, blocking until one is free. Paired with
@@ -2391,6 +2445,7 @@ final class MetalRenderer {
     ///   recorder's image, a shared texture), delivered once the GPU is done.
     func render(_ drawer: Drawer, viewport: SIMD2<Float>, in view: MTKView,
                 also: [ExtraDisplay] = [], grab: FrameGrabRequest? = nil) {
+        replaceSpentQueue()
         if drawer.accumulates {
             renderAccumulating(drawer, viewport: viewport, in: view, also: also, grab: grab)
             return
@@ -2680,12 +2735,13 @@ final class MetalRenderer {
         // Runs off the main actor when the GPU finishes, so it touches only the
         // semaphore and the lock. The GPU's own timestamps are the honest half
         // of the frame split: everything else here is measured on the CPU.
+        let plantedHang = armLiveCommit()
         commandBuffer.addCompletedHandler { [frameBoundary, framesInFlight, gpuFrameMS, gpuFailures] buffer in
             // Read the timestamps out first: the command buffer is not `Sendable`,
             // so it must not be captured by the lock's own closure.
             let ms = (buffer.gpuEndTime - buffer.gpuStartTime) * 1000
             gpuFrameMS.withLock { $0 = ms }
-            gpuFailures.check(buffer)
+            gpuFailures.check(buffer, plantedHang: plantedHang)
             framesInFlight.withLock { $0 -= 1 }
             frameBoundary.signal()
         }
@@ -2899,10 +2955,11 @@ final class MetalRenderer {
             returnFrameSlot()      // nothing encoded; hand the slot back
             return
         }
+        let plantedHang = armLiveCommit()
         commandBuffer.addCompletedHandler { [frameBoundary, framesInFlight, gpuFrameMS, gpuFailures] buffer in
             let ms = (buffer.gpuEndTime - buffer.gpuStartTime) * 1000
             gpuFrameMS.withLock { $0 = ms }
-            gpuFailures.check(buffer)
+            gpuFailures.check(buffer, plantedHang: plantedHang)
             framesInFlight.withLock { $0 -= 1 }
             frameBoundary.signal()
         }

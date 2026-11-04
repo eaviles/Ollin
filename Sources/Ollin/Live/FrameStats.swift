@@ -42,6 +42,12 @@ public enum OllinHUD {
 public final class FrameStats {
     /// Smoothed frames per second.
     public internal(set) var fps: Double = 0
+    /// What the renderer last had to do about the GPU, or `nil` while nothing
+    /// happened: the sentence said when a hang spent the window's command queue
+    /// and a new one took over. The stats card shows it, so a picture that
+    /// froze and resumed has its reason on screen rather than only on standard
+    /// error.
+    public internal(set) var gpuNotice: String?
     /// Smoothed CPU time to tessellate and encode a frame, in milliseconds —
     /// the headroom against the frame budget, and the real signal when a sketch
     /// can't keep up (FPS alone saturates at the display rate).

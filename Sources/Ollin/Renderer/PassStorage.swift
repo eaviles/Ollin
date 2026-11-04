@@ -115,15 +115,62 @@ extension Drawer {
 /// from the completed handlers, off the main actor, so its state is guarded by
 /// a lock.
 final class GPUFailures: Sendable {
-    private let state = OSAllocatedUnfairLock(initialState: (overflowed: false, said: Set<String>()))
+    private struct State: Sendable {
+        var overflowed = false
+        var said = Set<String>()
+        var spent = false
+        var spendings = 0
+    }
+    private let state = OSAllocatedUnfairLock(initialState: State())
 
     /// Whether any frame has overflowed memoryless attachments.
     var hasOverflowed: Bool { state.withLock { $0.overflowed } }
 
+    /// Whether the command queue is spent: the system blamed one of its frames
+    /// for a hang and reset the GPU, after which it refuses every later
+    /// submission on that queue, or it is already refusing them. The live path
+    /// replaces the queue before its next frame (`replaceSpentQueue`).
+    var queueIsSpent: Bool { state.withLock { $0.spent } }
+
+    /// How many times the queue was found spent, for the tests.
+    var spendings: Int { state.withLock { $0.spendings } }
+
     /// Read a live frame's finished command buffer. Nothing happens unless it
-    /// failed.
-    func check(_ buffer: MTLCommandBuffer) {
-        if let sentence = failure(of: buffer) { note(sentence) }
+    /// failed, or a test planted a hang on this frame, which is read as one.
+    func check(_ buffer: MTLCommandBuffer, plantedHang: Bool = false) {
+        if plantedHang {
+            markSpent("a frame was read as a GPU hang, planted by a test")
+            return
+        }
+        guard let sentence = failure(of: buffer) else { return }
+        if GPUFailures.spendsQueue(buffer.error) { spend() }
+        note(sentence)
+    }
+
+    /// Mark the queue spent and say why.
+    func markSpent(_ sentence: String) {
+        spend()
+        note(sentence)
+    }
+
+    /// Forget that the queue was spent: a new one has taken its place.
+    func clearSpent() { state.withLock { $0.spent = false } }
+
+    private func spend() {
+        state.withLock { $0.spent = true; $0.spendings += 1 }
+    }
+
+    /// Whether a failure leaves the queue that carried it refused from here on.
+    /// The system prints its own code beside its sentence, and two of them say
+    /// so: 3, "Caused GPU Hang Error", the frame the GPU was reset for, after
+    /// which every later submission on the same queue comes back as 4,
+    /// "Ignored (for causing prior/excessive GPU errors)". A victim of another
+    /// process's reset (5) and a frame cut short for the interface's sake keep
+    /// their queue, which answers again at once. Matched by number, since the
+    /// names the Swift enum gives these codes do not match the sentences.
+    static func spendsQueue(_ error: Error?) -> Bool {
+        guard let error = error as NSError?, error.domain == MTLCommandBufferErrorDomain else { return false }
+        return error.code == 3 || error.code == 4
     }
 
     /// The sentence for a finished command buffer that failed, or nil when it

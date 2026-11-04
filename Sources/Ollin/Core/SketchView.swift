@@ -1367,6 +1367,15 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
                         viewport: SIMD2<Float>(Float(sketch.width), Float(sketch.height)),
                         in: view, also: wall, grab: grab)
 
+        if let notice = renderer.takeRecoveryNotice(), let stats = statsExtension?.stats {
+            // Published off the draw call stack, as the stats are: an observed
+            // value set inside the view's draw re-enters SwiftUI's layout. On
+            // the main loop rather than the main queue, the way the frame grab
+            // is handed over, so a loop turned by hand lands it too.
+            nonisolated(unsafe) let stats = stats   // main-bound, and this is the main thread
+            RunLoop.main.perform(inModes: [.common]) { stats.gpuNotice = notice }
+        }
+
         if capturing, let capture { renderer.endGPUCapture(at: capture) }
 
         // A sketch that stops the loop inside the draw that just ran will not be
@@ -1922,6 +1931,29 @@ final class OllinMTKView: MTKView {
     /// another screen or coming into view, the display setup changing.
     private var screenObservers: [(center: NotificationCenter, token: NSObjectProtocol)] = []
 
+    /// Whether the frame timer is held for the Mac's sleep. A frame committed
+    /// as the GPU powers down can be reported as a hang against the sketch,
+    /// after which the window's queue is refused, so the loop stops at the
+    /// will-sleep notice and starts again at the wake. Only a loop this held
+    /// is started again: a canvas its runner paused stays paused.
+    private var heldForSleep = false
+
+    /// Hold the loop for sleep (`NSWorkspace.willSleepNotification`).
+    func holdForSleep() {
+        guard !isPaused else { return }
+        heldForSleep = true
+        isPaused = true
+    }
+
+    /// Release a hold of the loop's own at the wake (`didWakeNotification`),
+    /// rebuilding the timer against the screen the window is on now.
+    func releaseSleepHold() {
+        guard heldForSleep else { return }
+        heldForSleep = false
+        isPaused = false
+        restartFrameTimer()
+    }
+
     /// Rebuild the frame timer, for a canvas that should be drawing. One the
     /// runner paused (a still sketch, a paused take, a night off) stays paused.
     func restartFrameTimer() {
@@ -1939,9 +1971,19 @@ final class OllinMTKView: MTKView {
         let restart: @Sendable (Notification) -> Void = { [weak self] _ in
             MainActor.assumeIsolated { self?.restartFrameTimer() }
         }
+        let hold: @Sendable (Notification) -> Void = { [weak self] _ in
+            MainActor.assumeIsolated { self?.holdForSleep() }
+        }
+        let release: @Sendable (Notification) -> Void = { [weak self] _ in
+            MainActor.assumeIsolated { self?.releaseSleepHold() }
+        }
         let workspace = NSWorkspace.shared.notificationCenter
         let local = NotificationCenter.default
         screenObservers = [
+            (workspace, workspace.addObserver(forName: NSWorkspace.willSleepNotification,
+                                              object: nil, queue: .main, using: hold)),
+            (workspace, workspace.addObserver(forName: NSWorkspace.didWakeNotification,
+                                              object: nil, queue: .main, using: release)),
             (workspace, workspace.addObserver(forName: NSWorkspace.screensDidWakeNotification,
                                               object: nil, queue: .main, using: restart)),
             (local, local.addObserver(forName: NSApplication.didChangeScreenParametersNotification,

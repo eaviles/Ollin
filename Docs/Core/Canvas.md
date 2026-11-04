@@ -150,6 +150,8 @@ override var windowMode: WindowMode { .fixed(0.5) }   // always half of canvasSi
 
 In either mode, a sketch written with `scale` composes the same at the preview size and at the export size. What you see while you work therefore matches the exported frame, so the export stays dependable for video and for Instagram.
 
+The window survives the GPU. A frame the GPU hangs on is thrown away, and the system then refuses every later frame on the queue that carried it. Before its next frame the window takes a new queue and carries on, with the sketch, every layer, and every parameter untouched, and the [performance panel](#stats-overlay) says what happened. The loop also holds while the Mac sleeps and starts again at the wake, so no frame is in flight as the GPU powers down.
+
 <a name="stats-overlay"></a>
 
 ### The performance panel
