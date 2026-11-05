@@ -3,7 +3,7 @@
 #
 # We use Xcode here, not the SwiftPM package, because a camera extension needs
 # automatic signing to provision the restricted `system-extension.install`
-# entitlement — the one thing the hand-rolled swiftc + package.sh build couldn't
+# entitlement, the one thing the hand-rolled swiftc + package.sh build couldn't
 # do. The targets reuse the existing Host/ and Extension/ sources unchanged.
 
 name: OllinCamera
@@ -19,8 +19,14 @@ settings:
     DEVELOPMENT_TEAM: "3ET6D79498"
     CODE_SIGN_STYLE: Automatic
     SWIFT_VERSION: "6.0"
+    # The one place the version is written: both Info.plists read these two.
+    # Raise CURRENT_PROJECT_VERSION for every build that is meant to replace an
+    # installed extension. The system offers the replacement only when the
+    # version or the build number differs from the installed one; a rebuild at
+    # the same numbers is taken for the extension already there and is never
+    # swapped in.
     MARKETING_VERSION: "0.1"
-    CURRENT_PROJECT_VERSION: "3"
+    CURRENT_PROJECT_VERSION: "4"
     GENERATE_INFOPLIST_FILE: NO
     ENABLE_HARDENED_RUNTIME: YES
 
