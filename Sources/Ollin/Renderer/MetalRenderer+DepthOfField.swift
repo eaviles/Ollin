@@ -321,7 +321,7 @@ extension MetalRenderer {
         guard let flattened = acquireFilterTexture(width: width, height: height, pooled: pooled),
               let list = acquireLensSpriteBuffer(slots: slots, pooled: pooled),
               let collect = try? libraryComputePipeline("ollin_lens_sprites_collect"),
-              let encoder = cb.makeComputeCommandEncoder() else { return nil }
+              let encoder = cb.namedComputeEncoder() else { return nil }
         let all = params + [rule, iris]
         encoder.setComputePipelineState(collect)
         encoder.setTexture(resolved, index: 0)

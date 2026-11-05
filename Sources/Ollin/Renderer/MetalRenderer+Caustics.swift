@@ -290,7 +290,7 @@ extension MetalRenderer {
               let treePipe = try? libraryComputePipeline("ollin_caustics_quadtree"),
               let tracePipe = try? libraryComputePipeline("ollin_caustics_trace"),
               let clampPipe = try? libraryComputePipeline("ollin_caustics_clamp_args"),
-              let compute = cb.makeComputeCommandEncoder() else { return nil }
+              let compute = cb.namedComputeEncoder() else { return nil }
         // Last frame's resolved layer, whose alpha the photons read as the
         // temporal variance. Before any history exists the splat target stands in
         // (a valid texture; the first frame's variance read is noise the density
@@ -448,7 +448,7 @@ extension MetalRenderer {
         causticsPhotons = device.makeBuffer(length: budget * MemoryLayout<OllinPhoton>.stride,
                                             options: .storageModePrivate)
         causticsArgs = device.makeBuffer(length: 16, options: .storageModePrivate)
-        if let blit = cb.makeBlitCommandEncoder() {
+        if let blit = cb.namedBlitEncoder() {
             for buffer in [causticsDensity, causticsFeedback, causticsTotals] {
                 if let buffer { blit.fill(buffer: buffer, range: 0..<buffer.length, value: 0) }
             }

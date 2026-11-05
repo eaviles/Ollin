@@ -470,7 +470,7 @@ public final class Image {
         guard texture.mipmapLevelCount > 1,
               let queue = device.makeCommandQueue(),
               let buffer = queue.makeCommandBuffer(),
-              let blit = buffer.makeBlitCommandEncoder() else { return }
+              let blit = buffer.namedBlitEncoder() else { return }
         blit.generateMipmaps(for: texture)
         blit.endEncoding()
         buffer.commit()

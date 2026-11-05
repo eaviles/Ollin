@@ -352,7 +352,7 @@ extension MetalRenderer {
             }
             let chunkStart = now()
             guard let cb = commandQueue.makeCommandBuffer(),
-                  let enc = cb.makeComputeCommandEncoder() else { return nil }
+                  let enc = cb.namedComputeEncoder() else { return nil }
             pt.window = SIMD4<UInt32>(UInt32(width), UInt32(height), UInt32(done), UInt32(n))
             pt.open = SIMD4<UInt32>(compacted ? UInt32(openPixels) : 0, reusing ? 1 : 0, streamOffset, 0)
             enc.setComputePipelineState(pipeline)
@@ -414,7 +414,7 @@ extension MetalRenderer {
             if adaptive, done == roundEnd, done < total,
                let converge, let dilate {
                 guard let checkCB = commandQueue.makeCommandBuffer(),
-                      let check = checkCB.makeComputeCommandEncoder() else { return nil }
+                      let check = checkCB.namedComputeEncoder() else { return nil }
                 openCount.contents().storeBytes(of: UInt32(0), as: UInt32.self)
                 var threshold = SIMD4<Float>(Float(settings.noiseThreshold), 0, 0, 0)
                 check.setComputePipelineState(converge)
@@ -543,7 +543,7 @@ extension MetalRenderer {
         ru.lens = lens
         ru.window = SIMD4<UInt32>(UInt32(width), UInt32(height), orthographic ? 1 : 0, 0)
 
-        guard let enc = cb.makeComputeCommandEncoder() else { return nil }
+        guard let enc = cb.namedComputeEncoder() else { return nil }
         let standIn = whiteStandIn()
         enc.setComputePipelineState(pipeline)
         enc.setBytes(&ru, length: MemoryLayout<OllinPathTraceReuseUniforms>.stride, index: 0)
@@ -597,7 +597,7 @@ extension MetalRenderer {
         let length = bytesPerRow * height
         guard let buffer = device.makeBuffer(length: length, options: .storageModeShared),
               let cb = commandQueue.makeCommandBuffer(),
-              let blit = cb.makeBlitCommandEncoder() else { return nil }
+              let blit = cb.namedBlitEncoder() else { return nil }
         blit.copy(from: stats, sourceSlice: 0, sourceLevel: 0, sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
                   sourceSize: MTLSize(width: width, height: height, depth: 1),
                   to: buffer, destinationOffset: 0, destinationBytesPerRow: bytesPerRow,
@@ -623,7 +623,7 @@ extension MetalRenderer {
         guard let kept = device.makeBuffer(length: length, options: .storageModeShared),
               let taken = device.makeBuffer(length: length, options: .storageModeShared),
               let cb = commandQueue.makeCommandBuffer(),
-              let blit = cb.makeBlitCommandEncoder() else { return nil }
+              let blit = cb.namedBlitEncoder() else { return nil }
         let size = MTLSize(width: width, height: height, depth: 1)
         let origin = MTLOrigin(x: 0, y: 0, z: 0)
         blit.copy(from: accum, sourceSlice: 0, sourceLevel: 0, sourceOrigin: origin, sourceSize: size,
@@ -681,7 +681,7 @@ extension MetalRenderer {
               let albedo = device.makeTexture(descriptor: guideOutDesc),
               let surface = device.makeTexture(descriptor: guideOutDesc),
               let cb = commandQueue.makeCommandBuffer(),
-              let enc = cb.makeComputeCommandEncoder() else { return }
+              let enc = cb.namedComputeEncoder() else { return }
         let grid = MTLSize(width: width, height: height, depth: 1)
         let group = MTLSize(width: 8, height: 8, depth: 1)
 
@@ -766,7 +766,7 @@ extension MetalRenderer {
               let lumBuffer = device.makeBuffer(length: W * H * MemoryLayout<Float>.stride,
                                                 options: .storageModeShared),
               let cb = commandQueue.makeCommandBuffer(),
-              let enc = cb.makeComputeCommandEncoder() else { return nil }
+              let enc = cb.namedComputeEncoder() else { return nil }
         var dims = SIMD4<UInt32>(UInt32(W), UInt32(H), 0, 0)
         enc.setComputePipelineState(reducePipe)
         enc.setBytes(&dims, length: MemoryLayout<SIMD4<UInt32>>.stride, index: 0)
@@ -838,14 +838,14 @@ extension MetalRenderer {
         guard let copy = device.makeTexture(descriptor: desc),
               let pipe = try? libraryComputePipeline("ollin_pt_env_mip"),
               let cb = commandQueue.makeCommandBuffer(),
-              let blit = cb.makeBlitCommandEncoder() else { return nil }
+              let blit = cb.namedBlitEncoder() else { return nil }
         blit.copy(from: equirect, sourceSlice: 0, sourceLevel: 0,
                   sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
                   sourceSize: MTLSize(width: equirect.width, height: equirect.height, depth: 1),
                   to: copy, destinationSlice: 0, destinationLevel: 0,
                   destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
         blit.endEncoding()
-        guard let enc = cb.makeComputeCommandEncoder() else { return nil }
+        guard let enc = cb.namedComputeEncoder() else { return nil }
         enc.setComputePipelineState(pipe)
         for level in 1 ..< copy.mipmapLevelCount {
             guard let source = copy.makeTextureView(pixelFormat: copy.pixelFormat, textureType: .type2D,

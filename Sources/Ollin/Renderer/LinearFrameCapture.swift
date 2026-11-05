@@ -50,7 +50,7 @@ extension MetalRenderer {
         let colorBytes = colorBytesPerRow * height
         guard width > 0, height > 0,
               let colorBuffer = device.makeBuffer(length: colorBytes, options: .storageModeShared),
-              let blit = commandBuffer.makeBlitCommandEncoder() else { return nil }
+              let blit = commandBuffer.namedBlitEncoder() else { return nil }
         blit.copy(from: color, sourceSlice: 0, sourceLevel: 0,
                   sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
                   sourceSize: MTLSize(width: width, height: height, depth: 1),

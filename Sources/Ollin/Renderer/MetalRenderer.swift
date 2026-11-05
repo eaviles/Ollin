@@ -851,7 +851,20 @@ final class MetalRenderer {
         // passes it is paying for and not only how many.
         if logsPassNames { passLog.append(caller) }
         profile.passes += 1
-        return buffer.makeRenderCommandEncoder(descriptor: descriptor)
+        return buffer.namedRenderEncoder(descriptor: descriptor, caller)
+    }
+
+    /// A command buffer for one frame. With `reportingPasses`, it keeps each
+    /// pass's outcome, so a frame the GPU throws away says which pass failed
+    /// (`GPUFailures.passReport`). A drive that waits for its frame always asks:
+    /// an export, a figure, and a test are where a failure is read by someone.
+    /// The live window asks once a frame of its own has failed, so a healthy
+    /// window's frames keep no record and name no pass.
+    func makeCommandBuffer(reportingPasses: Bool = true) -> MTLCommandBuffer? {
+        guard reportingPasses else { return commandQueue.makeCommandBuffer() }
+        let descriptor = MTLCommandBufferDescriptor()
+        descriptor.errorOptions = .encoderExecutionStatus
+        return commandQueue.makeCommandBuffer(descriptor: descriptor)
     }
 
     /// Triple-buffered vertex storage, gated by a semaphore so the CPU never
@@ -1205,6 +1218,37 @@ final class MetalRenderer {
     static func rayTracingAvailable(on device: MTLDevice) -> Bool {
         if ProcessInfo.processInfo.environment["OLLIN_NO_RAY_TRACING"] == "1" { return false }
         return device.supportsRaytracing && device.supportsRaytracingFromRender
+    }
+    /// Whether a point or area caster is shadowed by tracing on this renderer:
+    /// the device traces from the render stages and nothing has switched traced
+    /// shadows off. `OLLIN_NO_TRACED_SHADOWS=1` in the environment answers false
+    /// on a device that traces, and each such caster then casts through its
+    /// rasterized map, the way a device without ray tracing draws it, while
+    /// reflections, global illumination, caustics, and the traced export go on
+    /// tracing. It is the switch for a machine whose GPU cannot be trusted with
+    /// traced shadows. Read once, in this initializer, like the device check;
+    /// a variable only so a test can turn it off on a renderer of its own.
+    var tracesShadows: Bool
+    static func tracedShadowsWanted() -> Bool {
+        ProcessInfo.processInfo.environment["OLLIN_NO_TRACED_SHADOWS"] != "1"
+    }
+    /// How many frames in this process cast a shadow through a map that this
+    /// device would have traced, because traced shadows are switched off. A
+    /// drive that needs the traced picture reads it around a render to learn
+    /// that the frame it got is the other one (`OllinApp.tracedShadowFallbacks`).
+    static var tracedShadowFallbacks: Int { shadowFallbackTally.withLock { $0 } }
+    private static let shadowFallbackTally = OSAllocatedUnfairLock(initialState: 0)
+    /// Count one such frame, and say what is happening the first time.
+    static func noteTracedShadowFallback() {
+        let first = shadowFallbackTally.withLock { count -> Bool in
+            count += 1
+            return count == 1
+        }
+        if first {
+            FileHandle.standardError.write(Data(("Ollin: traced shadows are switched off "
+                + "(OLLIN_NO_TRACED_SHADOWS), so a point or area light casts through its "
+                + "shadow map, as it does on a GPU that cannot trace\n").utf8))
+        }
     }
     /// Whether this device can actually be *driven* through a mesh pipeline: the
     /// strand fields' gate, and the only thing standing between a virtual machine
@@ -2347,6 +2391,7 @@ final class MetalRenderer {
         }
         self.commandQueue = queue
         self.rayTracedShadows = MetalRenderer.rayTracingAvailable(on: device)
+        self.tracesShadows = rayTracedShadows && MetalRenderer.tracedShadowsWanted()
         self.hasHardwareRayTracing = device.supportsFamily(.apple9)
         self.hasMeshShaders = MetalRenderer.meshShadersAvailable(on: device)
 
@@ -2547,7 +2592,7 @@ final class MetalRenderer {
                                                width: renderWidth, height: renderHeight,
                                                storage: storage)
 
-        guard let commandBuffer = commandQueue.makeCommandBuffer() else {
+        guard let commandBuffer = makeCommandBuffer(reportingPasses: gpuFailures.hasFailed) else {
             returnFrameSlot()   // nothing encoded; hand the slot back
             return
         }
@@ -2916,7 +2961,7 @@ final class MetalRenderer {
 
         guard let pass = accumulationPass(drawer, width: width, height: height),
               let resolve = accumResolve,
-              let commandBuffer = commandQueue.makeCommandBuffer() else {
+              let commandBuffer = makeCommandBuffer(reportingPasses: gpuFailures.hasFailed) else {
             returnFrameSlot()      // nothing encoded; hand the slot back
             return
         }
@@ -3071,7 +3116,7 @@ final class MetalRenderer {
         guard width > 0, height > 0,
               let pass = accumulationPass(drawer, width: width, height: height),
               let resolve = accumResolve, let display = accumExportDisplay,
-              let commandBuffer = commandQueue.makeCommandBuffer() else { return nil }
+              let commandBuffer = makeCommandBuffer() else { return nil }
         // Counted and timed like `renderedFrame`, for the extensions' report.
         profile.resetCounts()
         profile.batches = drawer.batches.count
@@ -3150,7 +3195,7 @@ final class MetalRenderer {
 
         let bytesPerRow = width * displayBytesPerPixel, byteCount = bytesPerRow * height
         guard let readbackBuffer = makeReadbackBuffer(byteCount: byteCount),
-              let blit = commandBuffer.makeBlitCommandEncoder() else { return nil }
+              let blit = commandBuffer.namedBlitEncoder() else { return nil }
         blit.copy(from: display, sourceSlice: 0, sourceLevel: 0,
                   sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
                   sourceSize: MTLSize(width: width, height: height, depth: 1),
@@ -3390,7 +3435,7 @@ final class MetalRenderer {
         let byteCount = bytesPerRow * outHeight
 
         guard let readback = makeReadbackBuffer(byteCount: byteCount),
-              let commandBuffer = commandQueue.makeCommandBuffer() else { return nil }
+              let commandBuffer = makeCommandBuffer() else { return nil }
         // Path-traced export (`--path-traced`, headless only): trace the whole mesh
         // scene first, in its own completed command buffers, so the composite in the
         // geometry pass reads finished textures and the frame's own shadow pass can
@@ -3773,7 +3818,7 @@ final class MetalRenderer {
 
         // Copy the display texture into a CPU-readable buffer (works on every
         // Mac GPU, unlike texture.getBytes on discrete cards).
-        guard let blit = commandBuffer.makeBlitCommandEncoder() else { return nil }
+        guard let blit = commandBuffer.namedBlitEncoder() else { return nil }
         blit.copy(from: displayTexture, sourceSlice: 0, sourceLevel: 0,
                   sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
                   sourceSize: MTLSize(width: outWidth, height: outHeight, depth: 1),
@@ -4111,7 +4156,7 @@ final class MetalRenderer {
                 grabMipped = makeFloatResolveMipped(width: source.width, height: source.height,
                                                     format: source.pixelFormat)
             }
-            if let mipped = grabMipped, let blit = commandBuffer.makeBlitCommandEncoder() {
+            if let mipped = grabMipped, let blit = commandBuffer.namedBlitEncoder() {
                 blit.copy(from: source, sourceSlice: 0, sourceLevel: 0,
                           sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
                           sourceSize: MTLSize(width: source.width, height: source.height, depth: 1),
@@ -4140,7 +4185,7 @@ final class MetalRenderer {
             let bytesPerRow = grab.width * displayBytesPerPixel
             let byteCount = bytesPerRow * grab.height
             if let readback = takeGrabBuffer(length: byteCount),
-               let blit = commandBuffer.makeBlitCommandEncoder() {
+               let blit = commandBuffer.namedBlitEncoder() {
                 blit.copy(from: texture, sourceSlice: 0, sourceLevel: 0,
                           sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
                           sourceSize: MTLSize(width: grab.width, height: grab.height, depth: 1),
@@ -4322,5 +4367,23 @@ extension Color {
     var mtlClearColor: MTLClearColor {
         MTLClearColorMake(Color.srgbToLinear(red), Color.srgbToLinear(green),
                           Color.srgbToLinear(blue), alpha)
+    }
+}
+
+extension OllinApp {
+    /// How many frames this process has drawn with a shadow cast through a map
+    /// that the device would have traced, because traced shadows are switched
+    /// off (`OLLIN_NO_TRACED_SHADOWS=1`). The figure runner reads it around a
+    /// render: a figure drawn that way is not the committed picture, so the
+    /// runner skips it rather than recording it.
+    package static var tracedShadowFallbacks: Int { MetalRenderer.tracedShadowFallbacks }
+
+    /// Whether this machine would trace a point or area caster's shadow and has
+    /// traced shadows switched off: the case the figure runner skips a figure
+    /// for, before it renders, when the figure's source asks for such a shadow.
+    package static var tracedShadowsSwitchedOff: Bool {
+        guard !MetalRenderer.tracedShadowsWanted(),
+              let device = MTLCreateSystemDefaultDevice() else { return false }
+        return MetalRenderer.rayTracingAvailable(on: device)
     }
 }

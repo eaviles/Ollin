@@ -35,6 +35,8 @@ the output, the engine starts late or not at all and they fail after about a
 minute. Both pass on the runner and on an awake desk; rerun them there before
 reading anything into a red.
 
+A machine whose GPU cannot be trusted with ray-traced shadows sets `OLLIN_NO_TRACED_SHADOWS=1` in its environment, and `Scripts/test.sh` then switches ray tracing off for the whole run (`OLLIN_NO_RAY_TRACING=1`). That is the run a machine without ray tracing already makes: every test that needs it is gated on `Snapshot.hasRaytracing`, which reads that variable, and reports as skipped, while the rest take the rasterized paths. The script says so before it starts. A green run there has not checked the traced paths, so a change to them is checked on another machine or on the runner's pull-request build, which has no ray tracing either and says the same. A new test that renders a point or area caster and compares it with a traced reference takes that gate like the others; one that does not need the traced picture runs everywhere unchanged.
+
 ## The one rule behind the phases
 
 **A suite that measures the outside world against a clock, or that holds a

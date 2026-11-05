@@ -75,6 +75,21 @@
 
 cd "$(dirname "$0")/.." || exit 1
 
+# A machine whose GPU cannot be trusted with ray-traced shadows says so with
+# OLLIN_NO_TRACED_SHADOWS=1, and the renderer then casts those shadows through
+# their maps. A test run on such a machine goes one step further and switches
+# ray tracing off altogether (OLLIN_NO_RAY_TRACING=1), which is the run a
+# machine without ray tracing already makes: every test that needs it gates on
+# Snapshot.hasRaytracing, which reads that variable, and reports as skipped, so
+# nothing here sends a ray to the GPU. The traced paths are then unchecked on
+# this machine, and the run says so before it starts, so a green run is never
+# read as covering them. Tests/README.md has the case.
+if [[ "$OLLIN_NO_TRACED_SHADOWS" == "1" && "$OLLIN_NO_RAY_TRACING" != "1" ]]; then
+    export OLLIN_NO_RAY_TRACING=1
+    echo "test.sh: OLLIN_NO_TRACED_SHADOWS=1 is set on this machine, so this run switches ray tracing OFF (OLLIN_NO_RAY_TRACING=1)."
+    echo "test.sh: every test that needs ray tracing reports as SKIPPED, and the traced paths are NOT CHECKED by this run."
+fi
+
 # Phase one: the suites that want a device or a wall clock to themselves.
 # DataFeedTests counts polls per elapsed second, ListeningTests waits on the
 # speech stack, FrameSourceTests and ModelTrackerTests want the Vision compute

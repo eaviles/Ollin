@@ -246,7 +246,7 @@ extension MetalRenderer {
               }),
               let out = makeFilterTexture(width: width, height: height),
               let cb = commandQueue.makeCommandBuffer(),
-              let blit = cb.makeBlitCommandEncoder() else { return nil }
+              let blit = cb.namedBlitEncoder() else { return nil }
         blit.copy(from: dBuf, sourceOffset: 0, sourceBytesPerRow: width * 4,
                   sourceBytesPerImage: width * 4 * height,
                   sourceSize: MTLSize(width: width, height: height, depth: 1),
@@ -285,7 +285,7 @@ extension MetalRenderer {
         let bytesPerRow = width * 8
         guard let readback = device.makeBuffer(length: bytesPerRow * height,
                                                options: .storageModeShared),
-              let outBlit = cb.makeBlitCommandEncoder() else { return nil }
+              let outBlit = cb.namedBlitEncoder() else { return nil }
         outBlit.copy(from: out, sourceSlice: 0, sourceLevel: 0,
                      sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
                      sourceSize: MTLSize(width: width, height: height, depth: 1),

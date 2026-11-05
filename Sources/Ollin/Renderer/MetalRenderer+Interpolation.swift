@@ -176,7 +176,7 @@ extension MetalRenderer {
         // Keep this frame: the pair alternates, so writing the newer frame never
         // touches the older one the interpolator is about to read.
         let next = 1 - slot.newest
-        guard let blit = cb.makeBlitCommandEncoder() else { return nil }
+        guard let blit = cb.namedBlitEncoder() else { return nil }
         blit.copy(from: drawn, sourceSlice: 0, sourceLevel: 0,
                   sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
                   sourceSize: MTLSize(width: outputWidth, height: outputHeight, depth: 1),
@@ -293,7 +293,7 @@ extension MetalRenderer {
         }
         // Into the half of the pair the interpolator is not about to read.
         // `newest` moves in `exportMadeFrame`, once the pair has been used.
-        guard let blit = cb.makeBlitCommandEncoder() else { return }
+        guard let blit = cb.namedBlitEncoder() else { return }
         blit.copy(from: presented, sourceSlice: 0, sourceLevel: 0,
                   sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
                   sourceSize: MTLSize(width: outputWidth, height: outputHeight, depth: 1),
@@ -377,7 +377,7 @@ extension MetalRenderer {
         encodePresent(from: slot.output, drawer: drawer, into: presentEncoder,
                       alpha: .file(transparent: drawer.hasTransparentBackground))
         presentEncoder.endEncoding()
-        guard let blit = cb.makeBlitCommandEncoder() else { return nil }
+        guard let blit = cb.namedBlitEncoder() else { return nil }
         blit.copy(from: display, sourceSlice: 0, sourceLevel: 0,
                   sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
                   sourceSize: MTLSize(width: outWidth, height: outHeight, depth: 1),
@@ -452,7 +452,7 @@ extension MetalRenderer {
             guard let buf = plane.withUnsafeBytes({ raw in
                 device.makeBuffer(bytes: raw.baseAddress!, length: raw.count, options: .storageModeShared)
             }), let cb = commandQueue.makeCommandBuffer(),
-                  let blit = cb.makeBlitCommandEncoder() else { return nil }
+                  let blit = cb.namedBlitEncoder() else { return nil }
             blit.copy(from: buf, sourceOffset: 0, sourceBytesPerRow: width * 4,
                       sourceBytesPerImage: width * 4 * height,
                       sourceSize: MTLSize(width: width, height: height, depth: 1),
@@ -561,7 +561,7 @@ extension MetalRenderer {
         stagingDesc.usage = [.shaderRead]
         guard let staging = device.makeTexture(descriptor: stagingDesc),
               let cb = commandQueue.makeCommandBuffer(),
-              let blit = cb.makeBlitCommandEncoder() else { return false }
+              let blit = cb.namedBlitEncoder() else { return false }
         pixels.withUnsafeBytes { raw in
             staging.replace(region: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0,
                             withBytes: raw.baseAddress!, bytesPerRow: width * 8)
@@ -582,7 +582,7 @@ extension MetalRenderer {
         guard let readback = device.makeBuffer(length: bytesPerRow * height,
                                                options: .storageModeShared),
               let cb = commandQueue.makeCommandBuffer(),
-              let blit = cb.makeBlitCommandEncoder() else { return nil }
+              let blit = cb.namedBlitEncoder() else { return nil }
         blit.copy(from: texture, sourceSlice: 0, sourceLevel: 0,
                   sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
                   sourceSize: MTLSize(width: width, height: height, depth: 1),

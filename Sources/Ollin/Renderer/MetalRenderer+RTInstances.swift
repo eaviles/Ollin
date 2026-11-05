@@ -94,7 +94,7 @@ extension MetalRenderer {
                                 table: MTLBuffer, into commandBuffer: MTLCommandBuffer) -> Bool {
         guard !runs.isEmpty else { return true }
         guard let state = try? computePipeline(for: MetalRenderer.rtInstanceKernel),
-              let compute = commandBuffer.makeComputeCommandEncoder() else { return false }
+              let compute = commandBuffer.namedComputeEncoder() else { return false }
         let stride = MemoryLayout<OllinMeshInstance>.stride
         let width = state.threadExecutionWidth
         compute.setComputePipelineState(state)

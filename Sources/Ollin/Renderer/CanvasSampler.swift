@@ -70,7 +70,7 @@ package final class CanvasSampler {
         guard ensurePipeline(on: texture.device),
               let pipeline, let queue,
               let commandBuffer = queue.makeCommandBuffer(),
-              let encoder = commandBuffer.makeComputeCommandEncoder() else { return nil }
+              let encoder = commandBuffer.namedComputeEncoder() else { return nil }
 
         let count = points.count
         if pointsDirty || pointBuffer == nil {

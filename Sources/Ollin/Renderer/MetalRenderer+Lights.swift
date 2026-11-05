@@ -124,7 +124,7 @@ extension MetalRenderer {
         params.tileStride = UInt32(stride)
         params.culls = drawer.cullsLightTiles ? 1 : 0
 
-        guard let compute = commandBuffer.makeComputeCommandEncoder() else { return nil }
+        guard let compute = commandBuffer.namedComputeEncoder() else { return nil }
         compute.setComputePipelineState(cull)
         compute.setBuffer(lights, offset: 0, index: 0)
         compute.setBuffer(tiles, offset: 0, index: 1)

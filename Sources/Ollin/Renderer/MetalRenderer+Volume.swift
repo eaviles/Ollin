@@ -176,7 +176,7 @@ extension MetalRenderer {
             volumeOccupancyCache[key] = nil
         }
         guard !pending.isEmpty || !occupancyJobs.isEmpty,
-              let encoder = cb.makeComputeCommandEncoder() else { return }
+              let encoder = cb.namedComputeEncoder() else { return }
         encoder.label = "Ollin volume light"
         // The occupancy first: the tight box reset, the fine blocks (which
         // fold the tight box too), then the coarse ones. Dispatches on one

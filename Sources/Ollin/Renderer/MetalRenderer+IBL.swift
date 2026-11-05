@@ -615,7 +615,7 @@ extension MetalRenderer {
                          commandBuffer cb: MTLCommandBuffer) -> IBLMaps? {
         guard let env = makeEnvCube(equirectTexture: loaded, commandBuffer: cb) else { return nil }
         let envCube = env.cube
-        if let blit = cb.makeBlitCommandEncoder() {
+        if let blit = cb.namedBlitEncoder() {
             blit.generateMipmaps(for: envCube)   // the prefilter samples these mips
             blit.endEncoding()
         }
@@ -664,7 +664,7 @@ extension MetalRenderer {
         // Mip the equirect *before* the cube bake: a high-res equirect → small cube face is a
         // big minification, so the equirect→cube sample needs valid mips (and the skybox blur
         // samples them too). Generating them afterward would leave the cube reading empty mips.
-        if let blit = cb.makeBlitCommandEncoder() {
+        if let blit = cb.namedBlitEncoder() {
             blit.generateMipmaps(for: loaded)
             blit.endEncoding()
         }
@@ -790,7 +790,7 @@ extension MetalRenderer {
                                                  options: .storageModeShared),
                   let reduce = try? libraryComputePipeline("ollin_ibl_sky_ground_reduce"),
                   let fill = try? libraryComputePipeline("ollin_ibl_sky_ground_fill"),
-                  let compute = cb.makeComputeCommandEncoder() else { return nil }
+                  let compute = cb.namedComputeEncoder() else { return nil }
             buffer.contents().storeBytes(of: SIMD4<Float>(0, 0, 0, 0), as: SIMD4<Float>.self)
             buffer.contents().storeBytes(of: SIMD4<Float>(1, 1, 0, 0), toByteOffset: 16, as: SIMD4<Float>.self)
             compute.setComputePipelineState(reduce)
@@ -877,7 +877,7 @@ extension MetalRenderer {
             return device.makeTexture(descriptor: d)
         }
         guard let base = volume(128), let detail = volume(32),
-              let enc = cb.makeComputeCommandEncoder() else { return nil }
+              let enc = cb.namedComputeEncoder() else { return nil }
         let tg = MTLSize(width: 4, height: 4, depth: 4)
         enc.setComputePipelineState(basePipe)
         enc.setTexture(base, index: 0)

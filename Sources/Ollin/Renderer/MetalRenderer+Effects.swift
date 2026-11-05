@@ -660,7 +660,7 @@ extension MetalRenderer {
             else { return nil }
             if let stamp = lastStatefulEncode, !statefulEncodeIsRepeat,
                slot.lastAppend?.drawer != stamp.drawer || slot.lastAppend?.frame != stamp.frame,
-               let blit = cb.makeBlitCommandEncoder() {
+               let blit = cb.namedBlitEncoder() {
                 blit.copy(from: input, sourceSlice: 0, sourceLevel: 0,
                           sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
                           sourceSize: MTLSize(width: input.width, height: input.height, depth: 1),
@@ -1999,7 +1999,7 @@ extension MetalRenderer {
                 slot.textures[index] = kept
             }
             guard let kept else { continue }
-            if blit == nil { blit = cb.makeBlitCommandEncoder() }
+            if blit == nil { blit = cb.namedBlitEncoder() }
             blit?.copy(from: source, to: kept)
         }
         blit?.endEncoding()
@@ -2027,7 +2027,7 @@ extension MetalRenderer {
         desc.usage = [.shaderRead]
         desc.storageMode = .private
         guard let array = device.makeTexture(descriptor: desc) else { return nil }
-        if let blit = cb.makeBlitCommandEncoder() {
+        if let blit = cb.namedBlitEncoder() {
             // A fill of zero bytes is transparent black in every float format.
             let bytesPerRow = width * (format == .rgba32Float ? 16 : 8)
             let zeros = device.makeBuffer(length: bytesPerRow * height, options: .storageModePrivate)
@@ -2087,7 +2087,7 @@ extension MetalRenderer {
                 let bytesPerRow = width * displayBytesPerPixel
                 let byteCount = bytesPerRow * height
                 guard let buffer = takeReadbackBuffer(length: byteCount),
-                      let blit = cb.makeBlitCommandEncoder() else {
+                      let blit = cb.namedBlitEncoder() else {
                     readbackTextures.append(texture)
                     items.append(nil)
                     continue
@@ -2132,7 +2132,7 @@ extension MetalRenderer {
     private func encodeLayerCells(from source: MTLTexture, columns: Int, rows: Int, drawer: Drawer,
                                   into buffer: MTLBuffer, cb: MTLCommandBuffer) {
         guard let state = try? libraryComputePipeline("ollin_layer_cells"),
-              let encoder = cb.makeComputeCommandEncoder() else { return }
+              let encoder = cb.namedComputeEncoder() else { return }
         var present = presentUniforms(for: drawer, alpha: .premultiplied)
         var grid = SIMD4<UInt32>(UInt32(columns), UInt32(rows), UInt32(source.width), UInt32(source.height))
         encoder.setComputePipelineState(state)
@@ -2258,7 +2258,7 @@ extension MetalRenderer {
         let byteCount = bytesPerRow * h
         guard let buffer = device.makeBuffer(length: byteCount, options: .storageModeShared),
               let cb = commandQueue.makeCommandBuffer(),
-              let blit = cb.makeBlitCommandEncoder() else { return nil }
+              let blit = cb.namedBlitEncoder() else { return nil }
         blit.copy(from: tex, sourceSlice: 0, sourceLevel: 0,
                   sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
                   sourceSize: MTLSize(width: w, height: h, depth: 1),
@@ -2362,7 +2362,7 @@ extension MetalRenderer {
         // frame measures zero motion and shows the drawing itself, not a jump from
         // black.
         if !slot.primed {
-            if let blit = cb.makeBlitCommandEncoder() {
+            if let blit = cb.namedBlitEncoder() {
                 blit.copy(from: seed, to: slot.source)
                 blit.copy(from: seed, to: histFront)
                 blit.endEncoding()
@@ -2380,7 +2380,7 @@ extension MetalRenderer {
                              into: cb)
         // 4. This frame's drawing becomes next frame's "previous" source. The blit is
         //    ordered after the passes above, so they still read the old source.
-        if let blit = cb.makeBlitCommandEncoder() {
+        if let blit = cb.namedBlitEncoder() {
             blit.copy(from: seed, to: slot.source)
             blit.endEncoding()
         }
@@ -2432,7 +2432,7 @@ extension MetalRenderer {
         let histBack  = slot.flipped ? slot.histA : slot.histB
         // First use: the decoded picture starts as this frame's drawing.
         if !slot.primed {
-            if let blit = cb.makeBlitCommandEncoder() {
+            if let blit = cb.namedBlitEncoder() {
                 blit.copy(from: seed, to: slot.source)
                 blit.copy(from: seed, to: histFront)
                 blit.endEncoding()
@@ -2453,7 +2453,7 @@ extension MetalRenderer {
         encodeEffectFragment("ollin_mosh_decode", inputs: [histFront, seed, blocks], output: histBack,
                              params: [size], into: cb)
         // This frame's drawing becomes the next frame's last drawing.
-        if let blit = cb.makeBlitCommandEncoder() {
+        if let blit = cb.namedBlitEncoder() {
             blit.copy(from: seed, to: slot.source)
             blit.endEncoding()
         }
@@ -3272,7 +3272,7 @@ extension MetalRenderer {
     private func encodeAccumulate(_ acc: Accumulator, frame: MTLTexture, slot: AccumulatorSlot,
                                   into cb: MTLCommandBuffer) {
         guard let state = try? computePipeline(for: MetalRenderer.accumulateKernel),
-              let encoder = cb.makeComputeCommandEncoder() else { return }
+              let encoder = cb.namedComputeEncoder() else { return }
         let passes = max(1, acc.passesAtRecord)
         var params = SIMD4<Float>(1 / Float(passes), acc.needsClear ? 1 : 0, 0, 0)
         acc.needsClear = false
@@ -5242,7 +5242,7 @@ extension MetalRenderer {
         case .afterLayers: range = split ..< drawer.dispatches.endIndex
         }
         guard !range.isEmpty,
-              let encoder = commandBuffer.makeComputeCommandEncoder() else { return }
+              let encoder = commandBuffer.namedComputeEncoder() else { return }
         for dispatch in drawer.dispatches[range] {
             guard dispatch.threadCount > 0,
                   let state = try? computePipeline(for: dispatch.kernel) else { continue }
@@ -5334,7 +5334,7 @@ extension MetalRenderer {
         let lightPlanes: [SIMD4<Float>]? = castsShadows && lighting.shadowKind == 0
             ? MeshField.frustumPlanes(of: lighting.lightViewProjection) : nil
 
-        guard let reset = commandBuffer.makeBlitCommandEncoder() else { return }
+        guard let reset = commandBuffer.namedBlitEncoder() else { return }
         for (_, resources, _) in work {
             reset.fill(buffer: resources.counts, range: 0 ..< resources.counts.length, value: 0)
             reset.fill(buffer: resources.shadowCounts,
@@ -5342,7 +5342,7 @@ extension MetalRenderer {
         }
         reset.endEncoding()
 
-        guard let compute = commandBuffer.makeComputeCommandEncoder() else { return }
+        guard let compute = commandBuffer.namedComputeEncoder() else { return }
         for (batch, resources, field) in work {
             var params = OllinFieldCullParams()
             withUnsafeMutableBytes(of: &params.planes) { raw in

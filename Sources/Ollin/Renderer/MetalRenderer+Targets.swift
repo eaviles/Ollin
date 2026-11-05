@@ -379,7 +379,15 @@ extension MetalRenderer {
         var tracedPrimary = false
         var tracedPoints = false
         let pointCasters = shadowCasters(lighting).filter { $0.kind == 1 }
-        if !pointCasters.isEmpty, rayTracedShadows, let meshBuffer,
+        // Traced shadows switched off on a device that would trace these casters
+        // (`tracesShadows`): they take the maps below instead, and the frame is
+        // counted, so a drive that needs the traced picture knows this is not it.
+        if rayTracedShadows, !tracesShadows, meshBuffer != nil,
+           !meshVertices.isEmpty || !drawer.instancedMeshVertices.isEmpty || hasFieldCasters,
+           !pointCasters.isEmpty || (lighting.shadowLight >= 0 && casterGPUKind(lighting) >= 3) {
+            MetalRenderer.noteTracedShadowFallback()
+        }
+        if !pointCasters.isEmpty, tracesShadows, let meshBuffer,
            !meshVertices.isEmpty || !drawer.instancedMeshVertices.isEmpty || hasFieldCasters,
            let built = buildShadowAccel(drawer, into: commandBuffer, meshBuffer: meshBuffer,
                                         causticMats: wantCaustics, giMats: wantGI) {
@@ -403,7 +411,7 @@ extension MetalRenderer {
         // penumbra, including a rect's anisotropy). Elsewhere it falls through to the 2D
         // map below, whose PCSS penumbra the packing already sized from the panel's
         // extent, so both devices soften by the same physical size.
-        if !tracedPrimary, lighting.shadowLight >= 0, casterGPUKind(lighting) >= 3, rayTracedShadows,
+        if !tracedPrimary, lighting.shadowLight >= 0, casterGPUKind(lighting) >= 3, tracesShadows,
            let meshBuffer,
            !meshVertices.isEmpty || !drawer.instancedMeshVertices.isEmpty || hasFieldCasters {
             // A point caster beside it has already built the one structure; take that
@@ -1935,7 +1943,7 @@ extension MetalRenderer {
         let bytesPerRow = width * 4
         guard let readback = device.makeBuffer(length: bytesPerRow * height,
                                                options: .storageModeShared),
-              let blit = cb.makeBlitCommandEncoder() else { return nil }
+              let blit = cb.namedBlitEncoder() else { return nil }
         blit.copy(from: tex, sourceSlice: 0, sourceLevel: 0,
                   sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
                   sourceSize: MTLSize(width: width, height: height, depth: 1),
@@ -3388,7 +3396,7 @@ extension MetalRenderer {
         // The mip chain the roughness blur reads. Generated after the resolve wrote
         // level 0, in its own blit, so the whole layer is finished before any glass
         // fragment reads it.
-        if let blit = cb.makeBlitCommandEncoder() {
+        if let blit = cb.namedBlitEncoder() {
             blit.generateMipmaps(for: resolve)
             blit.endEncoding()
         }
@@ -3470,7 +3478,7 @@ extension MetalRenderer {
         }
         guard let msaa = strokeGroundMSAATex, let resolve = strokeGroundResolveTex else { return nil }
         if let pile, pile.sampleCount == msaa.sampleCount, pile.pixelFormat == msaa.pixelFormat,
-           pile.width == msaa.width, pile.height == msaa.height, let blit = cb.makeBlitCommandEncoder() {
+           pile.width == msaa.width, pile.height == msaa.height, let blit = cb.namedBlitEncoder() {
             blit.copy(from: pile, to: msaa)
             blit.endEncoding()
         }
@@ -4297,7 +4305,7 @@ extension MetalRenderer {
         guard encodeRTInstanceWrites(runs, descriptors: instanceBuffer, table: offsetsBuffer,
                                      into: commandBuffer) else { return nil }
         guard let accel = rtInstanceAccel, let scratch = shadowAccelScratch,
-              let enc = commandBuffer.makeAccelerationStructureCommandEncoder() else { return nil }
+              let enc = commandBuffer.namedStructureEncoder("traced scene: triangles") else { return nil }
         for (i, d) in descs.enumerated() {
             enc.build(accelerationStructure: structures[i], descriptor: d,
                       scratchBuffer: scratch, scratchBufferOffset: scratchOffsets[i])
@@ -4305,7 +4313,7 @@ extension MetalRenderer {
         enc.endEncoding()
         // The instance structure refers to the ones just built, so it takes its own
         // encoder: two encoders in one command buffer run in the order they were made.
-        guard let instanceEnc = commandBuffer.makeAccelerationStructureCommandEncoder() else { return nil }
+        guard let instanceEnc = commandBuffer.namedStructureEncoder("traced scene: instances") else { return nil }
         instanceEnc.build(accelerationStructure: accel, descriptor: instanceDesc,
                           scratchBuffer: scratch, scratchBufferOffset: instanceScratchOffset)
         instanceEnc.endEncoding()
@@ -4509,7 +4517,7 @@ extension MetalRenderer {
             tracedPictureStages[slot] = device.makeBuffer(length: stageLength, options: .storageModeShared)
         }
         guard let copy = tracedPictureTables[slot], let stage = tracedPictureStages[slot],
-              let blit = commandBuffer.makeBlitCommandEncoder() else { return table }
+              let blit = commandBuffer.namedBlitEncoder() else { return table }
         for (k, entry) in records.enumerated() {
             stage.contents().advanced(by: k * stride).storeBytes(of: entry.record, as: OllinRTFinish.self)
         }
@@ -4562,11 +4570,11 @@ extension MetalRenderer {
                                      instanceSizes.buildScratchBufferSize)),
                   options: .storageModePrivate),
               let cb = commandQueue.makeCommandBuffer(),
-              let enc = cb.makeAccelerationStructureCommandEncoder() else { return nil }
+              let enc = cb.namedStructureEncoder() else { return nil }
         enc.build(accelerationStructure: accel, descriptor: desc,
                   scratchBuffer: scratch, scratchBufferOffset: 0)
         enc.endEncoding()
-        guard let instanceEnc = cb.makeAccelerationStructureCommandEncoder() else { return nil }
+        guard let instanceEnc = cb.namedStructureEncoder() else { return nil }
         instanceEnc.build(accelerationStructure: instanceAccel, descriptor: instanceDesc,
                           scratchBuffer: scratch, scratchBufferOffset: 0)
         instanceEnc.endEncoding(); cb.commit(); cb.waitUntilCompleted()

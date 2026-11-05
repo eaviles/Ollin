@@ -114,12 +114,18 @@ extension Drawer {
 /// outgrew memoryless attachments, turns every later pass to backed ones. Read
 /// from the completed handlers, off the main actor, so its state is guarded by
 /// a lock.
+///
+/// A frame whose command buffer was asked to keep each pass's outcome
+/// (`MetalRenderer.makeCommandBuffer(reportingPasses:)`) also says which pass
+/// failed, by the name the pass was given when it was made, so one failed frame
+/// tells a scene's shadow map from its lit pass from a structure build.
 final class GPUFailures: Sendable {
     private struct State: Sendable {
         var overflowed = false
         var said = Set<String>()
         var spent = false
         var spendings = 0
+        var failed = false
     }
     private let state = OSAllocatedUnfairLock(initialState: State())
 
@@ -134,6 +140,12 @@ final class GPUFailures: Sendable {
 
     /// How many times the queue was found spent, for the tests.
     var spendings: Int { state.withLock { $0.spendings } }
+
+    /// Whether any frame has failed on this renderer. The live path reads it to
+    /// decide whether its next frame keeps each pass's outcome: a healthy
+    /// window asks for nothing, and one that has failed once names the pass
+    /// the next time.
+    var hasFailed: Bool { state.withLock { $0.failed } }
 
     /// Read a live frame's finished command buffer. Nothing happens unless it
     /// failed, or a test planted a hang on this frame, which is read as one.
@@ -157,7 +169,7 @@ final class GPUFailures: Sendable {
     func clearSpent() { state.withLock { $0.spent = false } }
 
     private func spend() {
-        state.withLock { $0.spent = true; $0.spendings += 1 }
+        state.withLock { $0.spent = true; $0.spendings += 1; $0.failed = true }
     }
 
     /// Whether a failure leaves the queue that carried it refused from here on.
@@ -179,7 +191,7 @@ final class GPUFailures: Sendable {
     func failure(of buffer: MTLCommandBuffer) -> String? {
         guard buffer.status == .error else { return nil }
         let (sentence, overflow) = GPUFailures.describe(buffer.error)
-        if overflow { state.withLock { $0.overflowed = true } }
+        state.withLock { $0.failed = true; if overflow { $0.overflowed = true } }
         return sentence
     }
 
@@ -201,6 +213,92 @@ final class GPUFailures: Sendable {
                     + "so the GPU drew none of it; every pass from here on draws on backed ones "
                     + "(\(error.localizedDescription))", true)
         }
-        return ("a frame failed on the GPU and came back empty: \(error.localizedDescription)", false)
+        return ("a frame failed on the GPU and came back empty: \(error.localizedDescription)"
+                + passReport(error), false)
+    }
+
+    /// What a failed command buffer says about its passes, as the tail of the
+    /// failure's sentence, or nothing when it kept no record of them.
+    ///
+    /// Metal marks each pass of a reporting command buffer completed, pending,
+    /// faulted, or affected. A faulted pass is the one the failure began in, so
+    /// it is named alone. With none faulted, the affected ones were running
+    /// when the GPU stopped and any of them may be the cause (the system makes
+    /// the same hedge, since a fault in one process reaches passes in others),
+    /// so they are listed as that. A pass is named by its label and by its
+    /// place in the frame, which finds it even when nothing labeled it.
+    static func passReport(_ error: NSError) -> String {
+        guard let passes = error.userInfo[MTLCommandBufferEncoderInfoErrorKey]
+                as? [any MTLCommandBufferEncoderInfo], !passes.isEmpty else { return "" }
+        func name(_ index: Int) -> String {
+            let label = passes[index].label
+            return (label.isEmpty ? "an unnamed pass" : "\"\(label)\"")
+                + " (\(index + 1) of \(passes.count))"
+        }
+        let faulted = passes.indices.filter { passes[$0].errorState == .faulted }
+        if !faulted.isEmpty {
+            return "; the pass that failed: " + faulted.map(name).joined(separator: ", ")
+        }
+        let completed = passes.filter { $0.errorState == .completed }.count
+        let affected = passes.indices.filter { passes[$0].errorState == .affected }
+        guard !affected.isEmpty else {
+            return "; the GPU names no pass as the cause (\(completed) of \(passes.count) had finished)"
+        }
+        let shown = affected.prefix(passListLimit).map(name).joined(separator: ", ")
+        let rest = affected.count - passListLimit
+        return "; the GPU names no pass as the cause, and these were running: " + shown
+            + (rest > 0 ? ", and \(rest) more" : "")
+    }
+
+    /// How many running passes a sentence lists before it counts the rest.
+    static let passListLimit = 4
+
+    /// The name a pass carries in a failure's sentence. A pass made without one
+    /// takes the function that made it, which arrives as a whole signature; the
+    /// name before its parenthesis says the same thing in a line a person reads.
+    /// A name with a space before the parenthesis was written by hand
+    /// ("canvas (headless)") and is kept whole.
+    static func passName(_ caller: String) -> String {
+        guard let open = caller.firstIndex(of: "("), open > caller.startIndex,
+              caller[caller.index(before: open)] != " " else { return caller }
+        return String(caller[..<open])
+    }
+}
+
+// MARK: - Naming a frame's passes
+
+extension MTLCommandBuffer {
+    /// Whether this command buffer keeps each pass's outcome, which is when a
+    /// pass is worth naming: the label is read only out of a failure.
+    var reportsPasses: Bool { errorOptions.contains(.encoderExecutionStatus) }
+
+    /// A compute pass, named after the function that made it when this command
+    /// buffer reports its passes.
+    func namedComputeEncoder(_ name: String = #function) -> MTLComputeCommandEncoder? {
+        let encoder = makeComputeCommandEncoder()
+        if reportsPasses { encoder?.label = GPUFailures.passName(name) }
+        return encoder
+    }
+
+    /// A blit pass, named the same way.
+    func namedBlitEncoder(_ name: String = #function) -> MTLBlitCommandEncoder? {
+        let encoder = makeBlitCommandEncoder()
+        if reportsPasses { encoder?.label = GPUFailures.passName(name) }
+        return encoder
+    }
+
+    /// A pass that builds acceleration structures, named the same way.
+    func namedStructureEncoder(_ name: String = #function) -> MTLAccelerationStructureCommandEncoder? {
+        let encoder = makeAccelerationStructureCommandEncoder()
+        if reportsPasses { encoder?.label = GPUFailures.passName(name) }
+        return encoder
+    }
+
+    /// A render pass made outside the counted helper, named the same way.
+    func namedRenderEncoder(descriptor: MTLRenderPassDescriptor,
+                            _ name: String = #function) -> MTLRenderCommandEncoder? {
+        let encoder = makeRenderCommandEncoder(descriptor: descriptor)
+        if reportsPasses { encoder?.label = GPUFailures.passName(name) }
+        return encoder
     }
 }

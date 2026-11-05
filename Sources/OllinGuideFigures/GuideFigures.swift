@@ -164,6 +164,45 @@ enum GuideFigures {
         /// How far a probe's render sits from the image committed beside it
         /// (the larger move of the two, for a themed figure).
         var movement: Movement?
+        /// Why the figure was left out of this run, or empty when it was not.
+        /// A skipped figure is neither rendered nor failed: its committed image
+        /// stands, nothing is recorded for it, and the run says so by name.
+        var skipped = ""
+    }
+
+    /// Why a figure that draws a ray-traced shadow is left out on a machine
+    /// that has them switched off. The renderer sends such a shadow through its
+    /// map there (`OLLIN_NO_TRACED_SHADOWS=1`), which is a different picture
+    /// from the committed one, so recording it would rewrite the image with the
+    /// wrong render and measuring it would report a move that is not one.
+    static let tracedShadowSkip = "it draws a ray-traced shadow, and traced shadows are"
+        + " switched off on this machine (OLLIN_NO_TRACED_SHADOWS)"
+
+    /// Whether a figure's source asks for a shadow a tracing device traces:
+    /// `castShadows()` beside a point, rectangle, or disk light that has not
+    /// opted out with `castsShadow: false`. Read before the figure renders, so
+    /// a machine with traced shadows switched off never starts such a figure
+    /// (one of them renders a whole traced export beside its shadowed panel).
+    /// It errs toward skipping: a light named in a comment counts. A shadow the
+    /// source does not show this way is still caught afterwards by the
+    /// renderer's own count of the frames it sent to a map.
+    static func sourceCastsTracedShadow(_ source: String) -> Bool {
+        guard source.contains("castShadows(") else { return false }
+        for call in ["pointLight(", "rectangleLight(", "diskLight("] {
+            var search = source.startIndex..<source.endIndex
+            while let hit = source.range(of: call, range: search) {
+                // The call's own arguments run to its closing parenthesis.
+                var depth = 1
+                var end = hit.upperBound
+                while end < source.endIndex, depth > 0 {
+                    if source[end] == "(" { depth += 1 } else if source[end] == ")" { depth -= 1 }
+                    end = source.index(after: end)
+                }
+                if !source[hit.upperBound..<end].contains("castsShadow: false") { return true }
+                search = end..<source.endIndex
+            }
+        }
+        return false
     }
 
     /// One figure to render, plus what may happen to its committed image.
@@ -281,7 +320,14 @@ enum GuideFigures {
             if let data = try? JSONEncoder().encode(results) {
                 try? data.write(to: URL(fileURLWithPath: resultsPath))
             }
-            exit(results.contains { !$0.ok } ? 1 : 0)
+            exit(results.contains { !$0.ok && $0.skipped.isEmpty } ? 1 : 0)
+        }
+
+        if ProcessInfo.processInfo.environment["OLLIN_NO_TRACED_SHADOWS"] == "1" {
+            print("guide-figures: traced shadows are switched off on this machine"
+                  + " (OLLIN_NO_TRACED_SHADOWS=1). A figure that draws one is SKIPPED:"
+                  + " its committed image stands, nothing is recorded for it, and this"
+                  + " run does not check it.")
         }
 
         var isDirectory: ObjCBool = false
@@ -470,7 +516,14 @@ enum GuideFigures {
         pruneBaselines(root: root, keeping: cache.framework)
 
         let elapsed = Date().timeIntervalSince(started)
-        let failures = results.filter { !$0.ok }
+        let failures = results.filter { !$0.ok && $0.skipped.isEmpty }
+        let left = results.filter { !$0.skipped.isEmpty }
+        if !left.isEmpty {
+            print("guide-figures: \(left.count) figure\(plural(left.count)) SKIPPED and NOT"
+                  + " CHECKED by this run; \(left.count == 1 ? "its" : "their") committed"
+                  + " image\(plural(left.count)) stand\(left.count == 1 ? "s" : ""):")
+            for result in left { print("  \(result.figure): \(result.skipped)") }
+        }
         for failure in failures where !failure.log.isEmpty {
             warn("FAILED \(failure.figure)\n\(failure.log)")
         }
@@ -483,8 +536,10 @@ enum GuideFigures {
         }
         reportSlowest(cache: cache, among: figures)
         if failures.isEmpty {
-            print("guide-figures: \(results.count) figure\(plural(results.count)) rendered"
-                  + " in \(format(elapsed))")
+            let rendered = results.count - left.count
+            print("guide-figures: \(rendered) figure\(plural(rendered)) rendered"
+                  + " in \(format(elapsed))"
+                  + (left.isEmpty ? "" : ", \(left.count) skipped"))
             exit(0)
         }
         warn("\(failures.count) of \(results.count) figures failed: "
@@ -542,7 +597,17 @@ enum GuideFigures {
         let results = workers <= 1
             ? render(work, root: root, progressPath: nil, echo: verbose)
             : renderSharded(work, workers: workers, verbose: verbose)
+        let skipped = results.filter { !$0.skipped.isEmpty }
+        if !skipped.isEmpty {
+            print("guide-figures: \(skipped.count) probe figure\(plural(skipped.count))"
+                  + " SKIPPED, so the sample has no witness for what"
+                  + " \(skipped.count == 1 ? "it draws" : "they draw"):")
+            for result in skipped { print("  \(result.figure): \(result.skipped)") }
+        }
         return results.compactMap { result -> (figure: String, movement: Movement?)? in
+            // A skipped figure was not measured, so it neither passes nor
+            // hands the run to the full render.
+            guard result.skipped.isEmpty else { return nil }
             guard result.ok, let movement = result.movement else { return (result.figure, nil) }
             return movement.identical ? nil : (result.figure, movement)
         }.sorted { $0.figure < $1.figure }
@@ -574,6 +639,14 @@ enum GuideFigures {
                 var held = ""
                 var movement: Movement?
                 var darkOutPath: String?
+                var skipped = ""
+                // The renderer counts each frame it drew with a shadow sent to
+                // its map that this device would have traced. A rise across
+                // this figure's renders means the picture is not the one the
+                // figure commits (see `tracedShadowSkip`), including a render
+                // the figure made inside its own draw and whose error it never
+                // saw.
+                let fallbacksBefore = OllinApp.tracedShadowFallbacks
 
                 if let data = FileManager.default.contents(atPath: sourcePath),
                    let source = String(data: data, encoding: .utf8) {
@@ -604,6 +677,9 @@ enum GuideFigures {
                         : directory + "/.new-" + name
 
                     if echo { print("guide-figures: \(relative)") }
+                    if OllinApp.tracedShadowsSwitchedOff, sourceCastsTracedShadow(source) {
+                        skipped = tracedShadowSkip
+                    } else {
                     switch SketchLoader(sketchPath: sourcePath).load() {
                     case .success(let sketch):
                         var failure: (any Error)?
@@ -620,7 +696,9 @@ enum GuideFigures {
                         } catch {
                             failure = error
                         }
-                        if failure == nil, FileManager.default.fileExists(atPath: writePath) {
+                        if OllinApp.tracedShadowFallbacks > fallbacksBefore {
+                            skipped = tracedShadowSkip
+                        } else if failure == nil, FileManager.default.fileExists(atPath: writePath) {
                             ok = true
                         } else {
                             log = failure.map { "\($0)" } ?? "no output written"
@@ -647,7 +725,13 @@ enum GuideFigures {
                                 } else {
                                     exportJPEG(sketch, to: darkWrite, frame: directive.frame)
                                 }
-                                if FileManager.default.fileExists(atPath: darkWrite) {
+                                if OllinApp.tracedShadowFallbacks > fallbacksBefore {
+                                    // Only the dark pass drew the shadow: the
+                                    // figure is still not the committed one.
+                                    skipped = tracedShadowSkip
+                                    ok = false
+                                    try? FileManager.default.removeItem(atPath: darkWrite)
+                                } else if FileManager.default.fileExists(atPath: darkWrite) {
                                     darkOutPath = directory + "/" + darkName
                                     if probing {
                                         movement = Movement.between(darkWrite, and: probeReference(
@@ -673,7 +757,7 @@ enum GuideFigures {
                                     + " `@Param var darkTheme = false` parameter to flip"
                             }
                         }
-                        if probing {
+                        if probing, skipped.isEmpty {
                             let light = Movement.between(writePath, and: probeReference(
                                 relative, dark: false, committed: outPath))
                             movement = movement.map { Movement.larger($0, light) } ?? light
@@ -681,13 +765,14 @@ enum GuideFigures {
                         if ok, directive.probe {
                             keepBaseline(writePath, for: relative, dark: false)
                         }
-                        if verifying || probing {
+                        if verifying || probing || !skipped.isEmpty {
                             try? FileManager.default.removeItem(atPath: writePath)
                         } else if ok, let kept = promote(writePath, over: outPath, exact: work.exact) {
                             held = held.isEmpty ? kept : kept + "; " + held
                         }
                     case .failure(let error):
                         log = "\(error)"
+                    }
                     }
                 } else {
                     log = "unreadable"
@@ -706,9 +791,14 @@ enum GuideFigures {
                     outputPath: (outPath as NSString).lastPathComponent, log: log,
                     unstable: unstable, darkOutput: darkHash,
                     darkPath: darkOutPath.map { ($0 as NSString).lastPathComponent },
-                    note: held, movement: work.probeOnly ? movement : nil))
-                if !ok { warn("FAILED \(relative)\(log.isEmpty ? "" : "\n" + log)") }
-                note(progressPath, ok ? "." : "x")
+                    note: held, movement: work.probeOnly && skipped.isEmpty ? movement : nil,
+                    skipped: skipped))
+                if !skipped.isEmpty {
+                    print("guide-figures: SKIPPED \(relative): \(skipped)")
+                } else if !ok {
+                    warn("FAILED \(relative)\(log.isEmpty ? "" : "\n" + log)")
+                }
+                note(progressPath, ok ? "." : skipped.isEmpty ? "x" : "-")
             }
         }
         return results
@@ -1315,6 +1405,12 @@ enum GuideFigures {
         Below that the committed image stays, and the run lists what it held.
         A figure whose own source changed is recorded on any move, since its
         author meant the new picture; --exact treats every figure that way.
+
+        On a machine with OLLIN_NO_TRACED_SHADOWS=1 in its environment, a figure
+        that draws a ray-traced shadow is skipped: the renderer would cast it
+        through a map there, which is not the committed picture. Its image and
+        its cache entry are left alone, it counts as neither failed nor moved,
+        and the run names it at the top and at the end.
         """)
         exit(0)
     }
