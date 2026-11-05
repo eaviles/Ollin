@@ -612,6 +612,11 @@ static float ollin_sdf3d_field(float3 p0, const device SDFNode3D *nodes,
     float3 vOrigin = float3(0.0);
     int vPhase = -1;
     float vProbe = 0.0;
+    // How many cells the open voxel scope has read. The scope reads by stepping
+    // the walk backward onto its child, and only the bookkeeping of which cells
+    // are read stops that, so the count is the walk's own limit: a scope has
+    // eight cells and reads each at most once.
+    int vReads = 0;
     outNormal = float3(0.0);
 
     for (uint i = 0u; i < count; i++) {
@@ -662,6 +667,7 @@ static float ollin_sdf3d_field(float3 p0, const device SDFNode3D *nodes,
             if (pp < OLLIN_SDF3D_POINT_STACK) { pointStack[pp] = p; pp++; }
             vOrigin = p;
             vPhase = -1;
+            vReads = 0;
             break;
         case 6u: {   // VOXEL_END -> take the child's read; read the next cell, or push the blocks
             float d = 1.0e9;
@@ -728,8 +734,13 @@ static float ollin_sdf3d_field(float3 p0, const device SDFNode3D *nodes,
                     float3 cell = cache.base + ollin_voxel_corner(bestK) * cache.oct;
                     next = ollin_voxel_crease_cell(vOrigin, cell, s, cache.base, cache.oct, cache.known, vProbe);
                 }
-                if (next >= 0) {
+                // A ninth read, or a cell that is not one of the eight, is the walk
+                // gone wrong (a point that is not a number reaches here as an index),
+                // and the scope then ends with what it has read rather than step
+                // backward again: a fragment that never leaves this loop stops the GPU.
+                if (next >= 0 && next < 8 && vReads < 8) {
                     vPhase = next;
+                    vReads++;
                 } else {
                     result = max(vProbe - b * 1.7320508, limit);
                     if (bestK >= 0) {
@@ -1007,6 +1018,10 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
                                                  , constant OllinPeel &peel [[buffer(10), function_constant(kOllinPeel)]]
                                                  , depth2d<float> peelDepth [[texture(29), function_constant(kOllinPeel)]]
                                                  ) {
+#if OLLIN_RT_SHADOWS
+    // This fragment's one ray query, handed to everything below that traces.
+    OllinRayQuery rtQuery;
+#endif
     RaymarchFragOut miss;
     miss.color = float4(0.0);
     miss.depth = 1.0;
@@ -1206,7 +1221,7 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
             }
 #if OLLIN_RT_SHADOWS
             else if (sc.kind == 2) {
-                f = min(f, meshRTShadowOne(pw, n, light, sc, accel));
+                f = min(f, meshRTShadowOne(pw, n, light, sc, accel, rtQuery));
             }
 #endif
             fieldShadow[c] = f;
@@ -1293,7 +1308,7 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
                                          // the flag set, the ambient's deferred branch would read
                                          // this zero stand-in and quietly leave the raw
                                          // environment in place of the traced scene.
-                                         , pw, accel, meshVerts, meshGeoOffsets, float4(0.0),
+                                         , pw, accel, rtQuery, meshVerts, meshGeoOffsets, float4(0.0),
                                          ltcAmp, iesProfiles, cookies, gi,
                                          giIrradianceTex, giDepthTex, giOffsetsTex
 #endif

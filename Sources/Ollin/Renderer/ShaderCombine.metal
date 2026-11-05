@@ -2072,6 +2072,8 @@ fragment RTReflectTraceOut ollin_rt_reflect_trace(PresentOut in [[stage_in]],
                                        instance_acceleration_structure accel [[buffer(3)]],
                                        const device OllinMeshVertex *verts [[buffer(6)]],
                                        const device uint *geoOffsets [[buffer(7)]]) {
+    // This fragment's one ray query, handed to every ray it traces.
+    OllinRayQuery rtQuery;
     // The G-buffer holds per-pixel surface data, so every read is nearest-filtered,
     // like the depth: a bilinear read at a geometry edge blends two surfaces' normals
     // (and materials) against a depth that picks one of them, and the reconstructed
@@ -2156,7 +2158,7 @@ fragment RTReflectTraceOut ollin_rt_reflect_trace(PresentOut in [[stage_in]],
             if (dot(Lw, n) > 1e-3) { R = Lw; }
         }
         float hitT = 0.0;
-        acc += ollin_rt_reflection_trace(P, n, R, accel, verts, geoOffsets, light,
+        acc += ollin_rt_reflection_trace(P, n, R, accel, rtQuery, verts, geoOffsets, light,
                                          irradianceTex, prefilterTex, cubeSamp, rot, ltcAmp,
                                          iesProfiles, cookies, sheenLUT,
                                          giIrradianceTex, giDepthTex, giOffsetsTex, &hitT,
