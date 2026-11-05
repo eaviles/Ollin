@@ -250,9 +250,14 @@ extension MetalRenderer {
             // not, and the layer is still a quarter of the memory of the
             // multisampled one, with none of its per-sample blend. Every Apple
             // GPU blends that format and only the newer ones multisample it,
-            // so anything else drawn into the accumulator keeps the half-float
-            // multisampled pass every layer has.
+            // so anything else drawn into the accumulator keeps the multisampled
+            // pass every layer has: half float, or single precision where the
+            // accumulator asked for it and this GPU multisamples that format
+            // (a pass of thousands of faint shapes on one pixel, which half
+            // float stops adding to), half float where it does not.
             let lightOnly = drawer.drawsOnlyLight(on: target)
+            let passFormat: MTLPixelFormat = target.pixelFormat == .rgba32Float && !multisamplesSinglePrecision
+                ? linearFormat : target.pixelFormat
             let frameTexture: MTLTexture
             let passHasStencil: Bool
             let pass = MTLRenderPassDescriptor()
@@ -268,7 +273,7 @@ extension MetalRenderer {
             } else {
                 let storage = attachmentStorage(for: drawer, target: target)
                 guard let tex = acquireTargetTextures(width: pw, height: ph, pooled: pooled,
-                                                      format: target.pixelFormat, storage: storage) else { continue }
+                                                      format: passFormat, storage: storage) else { continue }
                 pass.colorAttachments[0].texture = tex.msaa
                 pass.colorAttachments[0].resolveTexture = tex.resolve
                 pass.colorAttachments[0].storeAction = .multisampleResolve
@@ -285,7 +290,7 @@ extension MetalRenderer {
                    sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
                    sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode,
                    depthFormat: nil, stencil: passHasStencil, gi: gi, target: target,
-                   singleSample: lightOnly, layerFormat: lightOnly ? .rgba32Float : nil)
+                   singleSample: lightOnly, layerFormat: lightOnly ? .rgba32Float : passFormat)
             enc.endEncoding()
             target.texture = frameTexture
             encodeAccumulate(acc, frame: frameTexture, slot: slot, into: cb)

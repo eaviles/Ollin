@@ -44,6 +44,18 @@ public final class Accumulator {
     /// `RenderTarget.scale`. Clamped to a sane range.
     public let scale: Double
 
+    /// How many bits per channel a frame's pass is drawn in. The running sum is
+    /// single precision whatever this says; what it decides is the pass that is
+    /// added to it. Half float, the default, is plenty for a pass of paint or of
+    /// a few hundred faint marks. A pass that piles thousands of faint shapes
+    /// onto one pixel wants `.float32`: half float stops adding a shape once the
+    /// pixel holds about two thousand times what the shape brings, so five
+    /// thousand squares of one ten-thousandth leave an eighth where they should
+    /// leave a half, and in single precision the pass keeps every one, at twice
+    /// the memory. On a GPU that cannot multisample a single-precision layer the
+    /// pass stays half float.
+    public let precision: LayerPrecision
+
     /// How many passes the running sum holds so far: what `image` divides by. It
     /// counts at record time, so a sketch can read it in the same `draw()` that
     /// added a pass. Zero after `reset()` and before the first block.
@@ -65,7 +77,7 @@ public final class Accumulator {
     /// once the pixel holds one to two thousand times what that sample brings,
     /// so in half float an in-focus dot of sixteen thousand points keeps a
     /// twentieth of its light. Anything else drawn here takes the multisampled
-    /// half-float pass every layer has.
+    /// pass every layer has, in the accumulator's `precision`.
     let writeLayer: RenderTarget
 
     /// A read-only texture carrier the renderer points at the mean each frame,
@@ -90,13 +102,15 @@ public final class Accumulator {
     var pixelWidth: Int { max(1, Int((Double(width) * scale).rounded())) }
     var pixelHeight: Int { max(1, Int((Double(height) * scale).rounded())) }
 
-    init(width: Int, height: Int, scale: Double, drawer: Drawer?) {
+    init(width: Int, height: Int, scale: Double, drawer: Drawer?,
+         precision: LayerPrecision = .float16) {
         self.width = max(1, width)
         self.height = max(1, height)
         self.scale = min(4, max(0.05, scale))
+        self.precision = precision
         self.drawer = drawer
         self.writeLayer = RenderTarget(width: self.width, height: self.height,
-                                       scale: self.scale, drawer: drawer)
+                                       scale: self.scale, drawer: drawer, precision: precision)
         self.meanLayer = RenderTarget(width: self.width, height: self.height,
                                       scale: self.scale, drawer: drawer)
         self.sumLayer = RenderTarget(width: self.width, height: self.height,

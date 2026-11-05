@@ -217,11 +217,13 @@ struct FrameInvariantTests {
     }
 
     /// Under an environment the far backdrop turns with the camera, and the live
-    /// resolve follows it: the sky's sun, a disc about six pixels across, under a
-    /// camera turning about two pixels a frame stays the disc the plain frame
-    /// draws. Its centroid sits within 0.6 px of the plain disc's, its lit area is
-    /// at most 1.4 times the plain disc's (the jitter's own soft edge), and every
-    /// pixel inside the plain disc stays white.
+    /// resolve follows it: the sky's sun, a disc about six pixels across, stays the
+    /// disc the plain frame draws at every turn rate from a quarter of a pixel a
+    /// frame to six. Against the sun's computed place its centroid sits within
+    /// 0.6 px along the turn at each rate and within a quarter of a pixel on
+    /// average over them, its lit area is at most 1.65 times the plain disc's, and
+    /// every pixel inside the plain disc stays white. With the camera still it is
+    /// the plain disc to a tenth of a pixel.
     ///
     /// Measured 2026-10-18 off this loop, in 2D over a window around the sun. With
     /// the far plane kept at the identity the resolve blended each sun pixel with
@@ -231,52 +233,99 @@ struct FrameInvariantTests {
     /// the sky reprojected by its turn but the history resampled unclamped, the
     /// Catmull-Rom lobes rang on the disc (a thousand times its sky in linear
     /// light) into a halo that lit 1.53 times the plain area, with a pit inside.
-    /// Resampled in compressed space the disc came back a whole ring wider, 1.81
-    /// times the area. Clamped and linear, as shipped, the disc keeps 1.31 times
-    /// the area and leads the plain one by 0.51 px along the turn, the positive
-    /// lobe's spill of a few percent of an HDR disc into the pixel ahead of it:
-    /// the residual this pin allows.
+    ///
+    /// Measured 2026-11-05 over sixteen rates, 0.1 to 6.2 px a frame, against the
+    /// computed place rather than the plain frame's: the history is resampled in
+    /// linear light, where a pixel the sun covers by a twelfth is still eighty
+    /// times its sky, so the resolved disc is every pixel the true disc touches,
+    /// one pixel longer along the turn (1.12 to 1.55 times the plain area, 1.16
+    /// with the camera still). Its centroid is therefore half a pixel minus the
+    /// turn's fraction of a pixel off the true place, +0.33 to -0.47 px and -0.04
+    /// on average, where the plain frame's own snap to the grid is +0.18 to -0.35:
+    /// the half-pixel lead this test first pinned at one rate was one phase of
+    /// that. The history resampled in the resolve's compressed space was measured
+    /// beside it and left out: it follows the true place more closely (+0.16 to
+    /// -0.42 held to its footprint, +0.09 to -0.17 unheld) and wraps the whole
+    /// disc in a soft skirt, 93 to 232 over a sky of 83, 1.41 to 1.83 and 1.78 to
+    /// 2.07 times the plain area. Ruled 2026-11-05: the crisp disc stays, and the
+    /// area bound is the most any rate read, 45 pixels over 29, and two pixels.
     @Test(.enabled(if: Snapshot.hasMetal))
     func theSkyFollowsATurningCameraInTheLiveResolve() throws {
         let size = 192
-        let plain = try liveFrame(LiveSkyInvariantProbe.make(taa: false), size: size, refreshes: 41)
-        let resolved = try liveFrame(LiveSkyInvariantProbe.make(taa: true), size: size, refreshes: 41)
         func green(_ b: [UInt8], _ x: Int, _ y: Int) -> Int { Int(b[(y * size + x) * 4 + 1]) }
-        // The sun: the brightest pixel of the plain frame, and the sky well beside it.
-        var peak = 0, px = 0, py = 0
-        for y in 0..<size {
-            for x in 0..<size where green(plain, x, y) > peak { peak = green(plain, x, y); px = x; py = y }
-        }
-        #expect(peak > 200, "the sun drew nothing bright: \(peak) at (\(px), \(py))")
-        let sky = green(plain, max(px - 40, 0), py)
-        let window = (max(px - 15, 0)..<min(px + 15, size), max(py - 15, 0)..<min(py + 15, size))
-        func measure(_ b: [UInt8]) -> (cx: Double, cy: Double, lit: Int) {
-            var weight = 0.0, sx = 0.0, sy = 0.0, lit = 0
-            for y in window.1 {
-                for x in window.0 {
-                    let v = Double(max(0, green(b, x, y) - sky))
-                    weight += v; sx += v * Double(x); sy += v * Double(y)
-                    if green(b, x, y) > sky + 24 { lit += 1 }
+        struct Disc { var x = 0.0, y = 0.0, lit = 0 }
+        /// The sun in the plain frame and under the resolve at one turn rate: each
+        /// centroid weighted by its level over the sky, each count of lit pixels,
+        /// and the dimmest resolved pixel inside the plain disc.
+        func sun(rate: Double) throws -> (plain: Disc, resolved: Disc, dimmest: Int) {
+            let plain = try liveFrame(LiveSkyInvariantProbe.make(taa: false, rate: rate), size: size, refreshes: 41)
+            let resolved = try liveFrame(LiveSkyInvariantProbe.make(taa: true, rate: rate), size: size, refreshes: 41)
+            // The sun: the brightest pixel of the plain frame, and the sky well beside it.
+            var peak = 0, px = 0, py = 0
+            for y in 0..<size {
+                for x in 0..<size where green(plain, x, y) > peak { peak = green(plain, x, y); px = x; py = y }
+            }
+            #expect(peak > 200, "the sun drew nothing bright: \(peak) at (\(px), \(py))")
+            let sky = green(plain, max(px - 40, 0), py)
+            let window = (max(px - 15, 0)..<min(px + 15, size), max(py - 15, 0)..<min(py + 15, size))
+            func measure(_ b: [UInt8]) -> Disc {
+                var weight = 0.0, disc = Disc()
+                for y in window.1 {
+                    for x in window.0 {
+                        let v = Double(max(0, green(b, x, y) - sky))
+                        weight += v; disc.x += v * Double(x); disc.y += v * Double(y)
+                        if green(b, x, y) > sky + 24 { disc.lit += 1 }
+                    }
+                }
+                disc.x /= max(weight, 1); disc.y /= max(weight, 1)
+                return disc
+            }
+            // The disc's interior: every plain pixel whose eight neighbors are lit too.
+            var dimmest = 255
+            for y in window.1.dropFirst().dropLast() {
+                for x in window.0.dropFirst().dropLast() {
+                    var interior = true
+                    for dy in -1...1 { for dx in -1...1 where green(plain, x + dx, y + dy) <= sky + 24 { interior = false } }
+                    if interior { dimmest = min(dimmest, green(resolved, x, y)) }
                 }
             }
-            return (sx / max(weight, 1), sy / max(weight, 1), lit)
+            return (measure(plain), measure(resolved), dimmest)
         }
-        let p = measure(plain), r = measure(resolved)
-        #expect(p.lit >= 12 && p.lit <= 60, "the plain sun covers \(p.lit) pixels")
-        let shift = ((r.cx - p.cx) * (r.cx - p.cx) + (r.cy - p.cy) * (r.cy - p.cy)).squareRoot()
-        #expect(shift < 0.6, "under the live resolve the sun's centroid moved \(shift) px from the plain frame's")
-        #expect(r.lit <= Int(Double(p.lit) * 1.4),
-                "under the live resolve the sun covers \(r.lit) pixels against \(p.lit) plain")
-        // The disc's interior: every plain pixel whose eight neighbors are lit too.
-        var dimmest = 255
-        for y in window.1.dropFirst().dropLast() {
-            for x in window.0.dropFirst().dropLast() {
-                var interior = true
-                for dy in -1...1 { for dx in -1...1 where green(plain, x + dx, y + dy) <= sky + 24 { interior = false } }
-                if interior { dimmest = min(dimmest, green(resolved, x, y)) }
-            }
+
+        // The camera still: the sun's own place, and the resolve leaving it there.
+        let still = try sun(rate: 0)
+        #expect(still.plain.lit >= 12 && still.plain.lit <= 60, "the plain sun covers \(still.plain.lit) pixels")
+        let rest = ((still.resolved.x - still.plain.x) * (still.resolved.x - still.plain.x)
+            + (still.resolved.y - still.plain.y) * (still.resolved.y - still.plain.y)).squareRoot()
+        #expect(rest < 0.1, "with the camera still the live resolve moved the sun \(rest) px")
+        #expect(still.resolved.lit <= Int(Double(still.plain.lit) * 1.3),
+                "with the camera still the sun covers \(still.resolved.lit) pixels against \(still.plain.lit) plain")
+
+        // The probe's camera sits on the sun at frame 40, so the last frame shows
+        // one frame of the turn: the sun's true place is its still place carried
+        // that far, along the way the fastest turn carried the plain disc. The
+        // rates put the turn's fraction of a pixel across the whole of one.
+        let rates = [0.0005, 0.0015, 0.0025, 0.004, 0.005, 0.0055, 0.0065, 0.012]
+        let fastest = try sun(rate: rates[rates.count - 1])
+        let reach = ((fastest.plain.x - still.plain.x) * (fastest.plain.x - still.plain.x)
+            + (fastest.plain.y - still.plain.y) * (fastest.plain.y - still.plain.y)).squareRoot()
+        #expect(reach > 4, "the fastest turn carried the plain sun \(reach) px")
+        let way = (x: (fastest.plain.x - still.plain.x) / reach, y: (fastest.plain.y - still.plain.y) / reach)
+        var mean = 0.0
+        for rate in rates {
+            let frame = rate == rates[rates.count - 1] ? fastest : try sun(rate: rate)
+            let travel = LiveSkyInvariantProbe.sunTravel(rate: rate, size: size)
+            let ahead = (frame.resolved.x - still.plain.x - way.x * travel) * way.x
+                + (frame.resolved.y - still.plain.y - way.y * travel) * way.y
+            mean += ahead / Double(rates.count)
+            #expect(abs(ahead) < 0.6,
+                    "turning \(travel) px a frame, the resolved sun sits \(ahead) px ahead of its true place")
+            #expect(frame.resolved.lit <= Int(Double(frame.plain.lit) * 1.65),
+                    "turning \(travel) px a frame, the sun covers \(frame.resolved.lit) pixels against \(frame.plain.lit) plain")
+            #expect(frame.dimmest >= 240,
+                    "turning \(travel) px a frame, the live resolve reads \(frame.dimmest) inside the sun where the plain frame reads 255")
         }
-        #expect(dimmest >= 240, "inside the sun the live resolve reads \(dimmest) where the plain frame reads 255")
+        #expect(abs(mean) < 0.25, "over the rates the resolved sun sits \(mean) px ahead of its true place on average")
     }
 
     // MARK: Motion blur
@@ -929,23 +978,45 @@ private final class LiveHairlineInvariantProbe: Sketch {
 /// frame with a mesh in it.
 private final class LiveSkyInvariantProbe: Sketch {
     var taa = true
+    var rate = 0.004
 
-    static func make(taa: Bool) -> LiveSkyInvariantProbe {
+    static func make(taa: Bool, rate: Double = 0.004) -> LiveSkyInvariantProbe {
         let p = LiveSkyInvariantProbe()
         p.taa = taa
+        p.rate = rate
         return p
     }
 
     override var canvasSize: CanvasSize { .square(192) }
 
+    /// The camera's aim after `yaw` radians of turn off the sun.
+    private static func aim(yaw: Double) -> Vector3 {
+        let toSun = SkySun.worldDirection(elevation: 0.3, rotation: 0)
+        return Vector3(toSun.x * cos(yaw) - toSun.z * sin(yaw), toSun.y,
+                       toSun.x * sin(yaw) + toSun.z * cos(yaw))
+    }
+
+    /// How far across a square canvas of `size` pixels one frame's turn carries
+    /// the sun: the sun's direction read in the frame of a camera aimed one
+    /// `rate` past it, through the probe's lens.
+    static func sunTravel(rate: Double, size: Int) -> Double {
+        let toSun = SkySun.worldDirection(elevation: 0.3, rotation: 0)
+        let forward = aim(yaw: rate)
+        let side = forward.cross(Vector3(0, 1, 0))
+        let right = Vector3(side.x / side.length, side.y / side.length, side.z / side.length)
+        let up = right.cross(forward)
+        let focal = Double(size) / 2 / tan(fieldOfView / 2)
+        let across = toSun.dot(right), over = toSun.dot(up)
+        return focal * (across * across + over * over).squareRoot() / toSun.dot(forward)
+    }
+
+    private static let fieldOfView = Double.pi / 9
+
     override func draw() {
         background(.black)
         environment(.sky(turbidity: 3, sunElevation: 0.3).intensified(to: 0.08))
-        let toSun = SkySun.worldDirection(elevation: 0.3, rotation: 0)
-        let yaw = 0.004 * Double(frameCount - 40)
-        let aim = Vector3(toSun.x * cos(yaw) - toSun.z * sin(yaw), toSun.y,
-                          toSun.x * sin(yaw) + toSun.z * cos(yaw))
-        perspective(eye: .zero, target: aim, fieldOfView: .pi / 9, near: 0.5, far: 50)
+        let aim = Self.aim(yaw: rate * Double(frameCount - 40))
+        perspective(eye: .zero, target: aim, fieldOfView: Self.fieldOfView, near: 0.5, far: 50)
         if taa { temporalAntialiasing() }
         withState { translate(0, -3, -10); fill(.white); drawBox(width: 0.5, height: 0.5, depth: 0.5) }
     }

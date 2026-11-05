@@ -937,6 +937,7 @@ final class Accumulator
   func filtered(_: Filter) -> RenderTarget
   func reset()
   let height: Int
+  let precision: LayerPrecision
   let scale: Double
   let width: Int
   var image: Image { get }
@@ -2481,8 +2482,8 @@ open class Sketch: Sendable
   func loadTable(resource: String, withExtension: String? = default, in: Foundation.Bundle, format: TableFormat = default, hasHeader: Bool? = default) throws -> Table
   func loop()
   func loopProgress(over: Double, phase: Double = default) -> Double
-  func makeAccumulator(scale: Double = default) -> Accumulator
-  func makeAccumulator(width: Int, height: Int, scale: Double = default) -> Accumulator
+  func makeAccumulator(scale: Double = default, precision: LayerPrecision = default) -> Accumulator
+  func makeAccumulator(width: Int, height: Int, scale: Double = default, precision: LayerPrecision = default) -> Accumulator
   func makeAttractorFlow(count: Int, _: AttractorSystem, seed: Int? = default) -> AttractorFlow
   func makeBatch(_: () -> Void) -> Batch
   func makeEvolution(count: Int, genes: Int, from: Vector2, to: Vector2, seed: Int? = default) -> Evolution

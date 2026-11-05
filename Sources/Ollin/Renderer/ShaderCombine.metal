@@ -2412,9 +2412,16 @@ static inline float4 ollin_taa_clip(float4 lo, float4 hi, float4 p) {
 // and left out: in that space every pixel the jittered disc touches at all
 // blends to white, and a disc about six pixels across came back a whole ring
 // wider (58 pixels lit against 32) where the linear form keeps its size (42,
-// the jitter's soft edge). The linear form's residual is the positive lobe's
-// spill of a few percent of an HDR disc into the pixel ahead of it, a lead of
-// about half a pixel at two pixels of turn a frame, documented with the test.
+// the jitter's soft edge). Measured again 2026-11-05 over sixteen turn rates,
+// with every tap compressed before it is weighted: that form follows the
+// disc's true place more closely and wraps the whole disc in a soft skirt
+// (1.41 to 1.83 times the plain area held to the footprint, 1.78 to 2.07
+// unheld), so the linear form stays. What it costs: a pixel the disc covers by
+// any fraction is still many times its sky in linear light, so the resolved
+// disc is every pixel the true disc touches, one pixel longer along the turn,
+// and its centroid is off the true place by half a pixel minus the turn's
+// fraction of one (+0.33 to -0.47 px, zero on average, the size of the plain
+// frame's own snap to the grid). The numbers are with the test.
 static inline float4 ollin_taa_history(texture2d<float> tex, sampler samp,
                                        float2 uv, float2 texel) {
     float2 pos = uv / texel;

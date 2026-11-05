@@ -4493,9 +4493,12 @@ live loop. The history fetch is now held to the range of the 2×2 texels the
 bilinear fetch would read (the lobes keep their sharpening inside that range;
 a still pixel's fetch lands on one texel, where the clamp is inert, so the
 converged still frame is untouched). `theSkyFollowsATurningCameraInTheLiveResolve`
-reads the disc off the live loop against the plain frame in 2D: its centroid
-within 0.6 px, its lit area at most 1.4 times the plain disc's, its interior
-white. With the far plane at the identity the same disc had lagged 0.74 px
+reads the disc off the live loop in 2D at eight turn rates, a quarter of a
+pixel a frame to six, against the sun's computed place: its centroid within
+0.6 px at each rate and a quarter of a pixel on average, its lit area at most
+1.65 times the plain disc's, its interior white, and the still camera's disc
+within a tenth of a pixel of the plain one. With the far plane at the
+identity the same disc had lagged 0.74 px
 and read 95 to 122 where the plain frame reads 255, each sun pixel blended
 with the sky that stood there a frame before, and a glowing sphere at depth
 did the same under the geometry branch, so the dim smear of a bright mover
@@ -4503,10 +4506,47 @@ under a turning camera was the resolve's own, which the clamp fixes for both.
 The compressed-space resample the published treatments suggest was measured
 and left out: every pixel the jittered disc touches blends to white in that
 space, and the disc came back a whole ring wider (1.81 times the area against
-1.31 for the linear form). The linear form's residual is the positive lobe's
-spill of a few percent of an HDR disc into the pixel ahead of it, which after
-compression reads bright, a lead of about half a pixel at two pixels of turn
-a frame; it is filed under *Photorealistic 3D* in `DESIGN-NOTES.md`.
+1.31 for the linear form).
+
+**What the linear resample does to a bright disc, measured (2026-11-05).** The
+first reading of the sky's sun under a turn was a lead: at two pixels a frame
+the resolved disc's centroid sat half a pixel ahead of the plain frame's. Read
+again over sixteen turn rates, 0.1 to 6.2 px a frame, and against the sun's
+computed place (its still place carried by one frame's turn through the
+probe's lens) rather than the plain frame's, it is a snap, not a lead. In
+linear light a pixel the disc covers by a twelfth is still eighty times its
+sky, so after the resample every pixel the true disc touches is white: the
+resolved disc is one pixel longer along the turn (1.12 to 1.55 times the
+plain disc's lit area, against 1.16 with the camera still), with hard edges,
+and its centroid is off the true place by half a pixel minus the turn's
+fraction of a pixel, +0.33 px at a fraction of 0.08 through -0.47 at 0.86 and
+-0.04 on average. The plain frame snaps its own way, to the nearest pixel
+center, +0.18 to -0.35 px on the same scale, so the half pixel between the two
+at one rate was the difference of two snaps. Four other resamples were
+measured beside it, each compressing every texel before it is weighted (which
+takes point taps, sixteen for the bicubic, since a bilinear fetch has already
+mixed the sun into the sky in linear light). Catmull-Rom over compressed texels
+held to its 2×2 follows the true place more closely (+0.16 to -0.42) and
+wraps the whole disc in a soft skirt, ring pixels at 93 to 232 over a sky of
+83 and 1.41 to 1.83 times the plain area; unheld it is closer still (+0.09 to
+-0.17) and wider (1.78 to 2.07); a compressed bilinear reads -0.33 to +0.05
+and 1.44 to 1.83; and the linear form handed over to the compressed bilinear
+only where its footprint spans most of the compressed range reads -0.36 to
++0.45 and 1.03 to 1.55, no better placed than the linear form alone. The
+skirt is the history's own spread: each fractional resample widens an edge a
+little, the rectification box around a pixel beside the sun is as wide as the
+sun, and in compressed space a quarter of the way to the sun already reads
+bright. So the choice is between a crisp disc a pixel long that snaps with the
+grid and a placed disc with a soft ring around it, and the crisp one is
+nearer the plain frame's (ruled 2026-11-05: the crisp disc stays). The extra
+pixel is what remains, and one direction is untried: the rectification box
+around a pixel beside the sun is as wide as the sun, which is what lets that
+pixel stand, so a tighter limit on what the history may claim beside a very
+bright edge is the next thing to measure; it is filed under *Photorealistic
+3D* in `DESIGN-NOTES.md`. The pin was
+rewritten to say so at every phase, and it is red under the far plane at the
+identity (the place at seven rates, the average, the interior), under the
+unclamped history (the area), and under each compressed form (the area).
 
 **Headless/export** never touches the history (the deferred-reflection
 precedent): `image(of:)` renders the geometry N times under the fixed

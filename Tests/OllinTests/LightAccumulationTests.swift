@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import Metal
 import Testing
 import simd
 import COllinShaders
@@ -389,6 +390,57 @@ struct LightAccumulationTests {
         let single = centerLinear(of: try OllinApp.image(of: FaintPileSketch(precision: .float32), frame: 299))
         #expect(abs(single - expected) < 0.01, "single precision read \(single), expected \(expected)")
         #expect(expected - half > 0.05, "half float should fall well short of \(expected), read \(half)")
+    }
+
+    /// One pass that piles thousands of faint squares onto every pixel, each a
+    /// share of linear 0.5: a single-precision pass lands on the half the
+    /// arithmetic predicts at any count, and the half-float pass an accumulator
+    /// has by default stops adding once the pixel holds about two thousand
+    /// times what a square brings.
+    ///
+    /// Measured 2026-11-05 on an M2, one pass: half float read 0.491 at 100,
+    /// 500, 1,000, and 2,000 squares, 0.125 at 5,000 (it stopped at 1,250 times
+    /// a square, so 3,750 of them left nothing), and 0.063 at 16,000 (2,000
+    /// times, 14,000 lost); single precision read 0.503 at every count. Where
+    /// half float stops depends on how the GPU's blend rounds, so the half-float
+    /// side is held only to falling well short. On a GPU that cannot multisample
+    /// a single-precision layer the pass stays half float, and reads as it.
+    @Test(.enabled(if: Snapshot.hasMetal), arguments: [2_000, 5_000, 16_000])
+    func aPassOfFaintInkKeepsEveryShapeInSinglePrecision(shapes: Int) throws {
+        let half = centerLinear(of: try OllinApp.image(of: InkPileSketch(precision: .float16, shapes: shapes), frame: 0))
+        let sketch = InkPileSketch(precision: .float32, shapes: shapes)
+        let single = centerLinear(of: try OllinApp.image(of: sketch, frame: 0))
+        #expect(sketch.ink.precision == .float32)
+        if shapes <= 2_000 {
+            #expect(abs(half - 0.5) < 0.03, "\(shapes) squares are within half float's reach, read \(half)")
+        } else {
+            #expect(0.5 - half > 0.2, "\(shapes) squares in half float should fall well short of 0.5, read \(half)")
+        }
+        if MTLCreateSystemDefaultDevice()?.supports32BitMSAA == true {
+            #expect(abs(single - 0.5) < 0.01, "\(shapes) squares in single precision read \(single), expected 0.5")
+        } else {
+            #expect(single == half, "with no single-precision multisampling the pass read \(single), half float \(half)")
+        }
+    }
+
+    /// A single-precision pass on a GPU that cannot multisample that format is
+    /// the half-float pass, to the byte, and on one that can it is not. The
+    /// renderer is told which it is, on a renderer of the test's own.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aSinglePrecisionPassStaysHalfFloatWhereTheGPUCannotMultisampleIt() throws {
+        func image(_ precision: LayerPrecision, multisamples: Bool) throws -> CGImage {
+            let sketch = InkPileSketch(precision: precision, shapes: 5_000)
+            let renderer = try OllinApp.headlessRenderer(for: sketch)
+            renderer.multisamplesSinglePrecision = multisamples
+            OllinApp.isRenderingHeadless = true
+            defer { OllinApp.isRenderingHeadless = false }
+            return try #require(try OllinApp.renderImage(of: sketch, frame: 0, fps: 60, renderer: renderer))
+        }
+        let held = try image(.float32, multisamples: false)
+        let half = try image(.float16, multisamples: false)
+        let difference = try #require(imageDifference(held, half))
+        #expect(difference.max == 0, "the held pass differs from the half-float one by \(difference.max)")
+        #expect(0.5 - centerLinear(of: held) > 0.2, "the held pass read \(centerLinear(of: held))")
     }
 
     /// The develop filter prints the reference recipe: exposure, Reinhard, then the
@@ -1068,6 +1120,35 @@ private final class FaintPileSketch: Sketch {
         noStroke()
         fill(Color(white: 1, alpha: 0.00005))
         for _ in 0 ..< 8 { drawRect(0, 0, width, height) }
+    }
+}
+
+/// One pass of `shapes` faint additive squares over the whole layer, each a
+/// share of linear 0.5, into an accumulator whose pass is drawn in `precision`.
+@MainActor
+private final class InkPileSketch: Sketch {
+    var precision: LayerPrecision = .float16
+    var shapes = 5_000
+    var ink: Accumulator!
+    override var canvasSize: CanvasSize { .square(32) }
+
+    convenience init(precision: LayerPrecision, shapes: Int) {
+        self.init()
+        self.precision = precision
+        self.shapes = shapes
+    }
+
+    override func setup() { ink = makeAccumulator(precision: precision) }
+
+    override func draw() {
+        background(.black)
+        withAccumulator(ink) {
+            blendMode(.add)
+            noStroke()
+            fill(Color(white: 1, alpha: 0.5 / Double(shapes)))
+            for _ in 0 ..< shapes { drawRect(0, 0, width, height) }
+        }
+        drawImage(ink.image, 0, 0)
     }
 }
 

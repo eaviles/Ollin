@@ -855,14 +855,28 @@ open class Sketch {
     /// instead of brightening without end. Like `makeFeedback()`, it's
     /// **persistent**: create it once in `setup()` and store it. `scale` is its
     /// internal resolution as a fraction of the canvas (1 = full).
-    public func makeAccumulator(scale: Double = 1) -> Accumulator {
+    ///
+    /// `precision` is the bits per channel a frame's pass is drawn in; the
+    /// running sum is single precision either way. Leave it at half float
+    /// unless one pass piles thousands of faint shapes onto a pixel, which half
+    /// float stops adding once the pixel holds about two thousand times what a
+    /// shape brings: `.float32` keeps every one, at twice the memory (see
+    /// `Accumulator.precision`).
+    ///
+    /// ```swift
+    /// override func setup() {
+    ///     ink = makeAccumulator(precision: .float32)   // five thousand faint strokes a frame
+    /// }
+    /// ```
+    public func makeAccumulator(scale: Double = 1, precision: LayerPrecision = .float16) -> Accumulator {
         Accumulator(width: Int(width.rounded()), height: Int(height.rounded()),
-                    scale: scale, drawer: drawer)
+                    scale: scale, drawer: drawer, precision: precision)
     }
 
     /// Make an `Accumulator` of an explicit pixel size, rather than the canvas size.
-    public func makeAccumulator(width: Int, height: Int, scale: Double = 1) -> Accumulator {
-        Accumulator(width: width, height: height, scale: scale, drawer: drawer)
+    public func makeAccumulator(width: Int, height: Int, scale: Double = 1,
+                                precision: LayerPrecision = .float16) -> Accumulator {
+        Accumulator(width: width, height: height, scale: scale, drawer: drawer, precision: precision)
     }
 
     /// Draw one pass of samples into `accumulator`: everything drawn in `body` is

@@ -1232,6 +1232,13 @@ final class MetalRenderer {
     static func tracedShadowsWanted() -> Bool {
         ProcessInfo.processInfo.environment["OLLIN_NO_TRACED_SHADOWS"] != "1"
     }
+    /// Whether this GPU multisamples a single-precision float layer. Every
+    /// Apple GPU blends `rgba32Float`; multisampling it and resolving it is the
+    /// newer ones' (the device's own `supports32BitMSAA`). An accumulator that
+    /// asked for a single-precision pass gets one where this is true and the
+    /// half-float pass where it is not. Read once, in the initializer; a
+    /// variable only so a test can turn it off on a renderer of its own.
+    var multisamplesSinglePrecision: Bool
     /// How many frames in this process cast a shadow through a map that this
     /// device would have traced, because traced shadows are switched off. A
     /// drive that needs the traced picture reads it around a render to learn
@@ -2392,6 +2399,7 @@ final class MetalRenderer {
         self.commandQueue = queue
         self.rayTracedShadows = MetalRenderer.rayTracingAvailable(on: device)
         self.tracesShadows = rayTracedShadows && MetalRenderer.tracedShadowsWanted()
+        self.multisamplesSinglePrecision = device.supports32BitMSAA
         self.hasHardwareRayTracing = device.supportsFamily(.apple9)
         self.hasMeshShaders = MetalRenderer.meshShadersAvailable(on: device)
 
