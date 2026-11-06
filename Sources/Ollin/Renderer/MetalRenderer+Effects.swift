@@ -4029,6 +4029,12 @@ extension MetalRenderer {
         // when neither). The per-geometry offsets at buffer 7 feed the reflection hit fetch.
         let traceAccel = shadowAccel ?? reflectAccel
         let shadowAccelStructure = rayTracedShadows ? (traceAccel ?? ensureDummyShadowAccel()) : nil
+        // Whether this pass's lit fragments can trace at all. Every traced path asks
+        // the lighting first (a caster of the traced kind, `rtReflections`), and the
+        // lighting says so only when this pass was handed a structure: with neither
+        // one, nothing traces, and the lit kinds draw through the pipelines built
+        // without the traced paths. Only a device that traces has the two variants.
+        let passTracesNothing = rayTracedShadows && usesUntracedPipelines && traceAccel == nil
         let geoOffsetsBuffer = rayTracedShadows ? (reflectGeoOffsets ?? ensureDummyGeoOffsets()) : nil
 
         // Air fog backdrop: with atmosphere on, fill the frame with the air's own glow
@@ -4273,6 +4279,9 @@ extension MetalRenderer {
             // to declare the stencil format, clipped or not.
             if hasStencil { pipelineKey.stencilFormat = .stencil8 }
             if let passColorFormat { pipelineKey.colorFormat = passColorFormat }
+            // A pass with nothing to trace against draws its lit kinds through the
+            // variant that traces nothing (see `PipelineKey.untraced`).
+            if passTracesNothing, pipelineKey.holdsTracedPaths { pipelineKey.untraced = true }
             if singleSample {
                 if batch.kind == .particles, batch.particleStyle == .light {
                     pipelineKey.vertex = "ollin_particle_splat_vertex"

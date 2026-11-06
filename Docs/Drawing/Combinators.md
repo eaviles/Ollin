@@ -685,6 +685,7 @@ field.
   marches at full resolution unless the sketch asks for less. Parts that do not need to melt
   into each other are cheaper as separate `drawSDF3D` calls: each call is marched only inside
   its own bounds, and the calls still hide one another by depth.
+- **What a heavy 3D field has been measured to cost.** These are an M2's numbers at full resolution with no shadow. A field of 31 nodes (16 capsules joined by smooth unions) draws a 1080 by 1920 frame in about 0.2 s. One of 123 nodes (64 capsules) takes about 1.4 s. A slow frame is safe, since an export waits for it. What the GPU does not allow is too much work in one small area of the screen within one draw. That area's work is its pixels times the steps times the nodes, whatever the resolution. A field of about 250 nodes under `castShadows()` is past what has drawn clean on that GPU. Its frame can come back failed, with a note on standard error that names the pass. Fewer nodes in one call, or a smaller budget from `raymarchSteps(_:)`, bring it back under.
 
 ---
 

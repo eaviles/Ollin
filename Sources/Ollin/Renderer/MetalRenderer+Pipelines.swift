@@ -231,7 +231,8 @@ extension MetalRenderer {
                                 premultiplied: key.premultiplied, blend: key.blend,
                                 depthFormat: key.depthFormat, singleSample: key.singleSample,
                                 stencilFormat: key.stencilFormat, clipWrite: key.isClipWrite,
-                                colorFormat: key.colorFormat, peel: key.peel)
+                                colorFormat: key.colorFormat, peel: key.peel,
+                                untraced: key.untraced)
     }
 
     /// The fragment function a geometry pipeline draws through: the plain one, or,
@@ -241,13 +242,20 @@ extension MetalRenderer {
     /// specializing call, with no value set for the plain one: a function that
     /// names a function constant at all, even only to ask whether it is defined,
     /// cannot be built the plain way (Metal refuses the pipeline), and a function
-    /// that names none builds the same either way.
-    private func fragmentFunction(named name: String, peel: Bool,
+    /// that names none builds the same either way. `untraced` builds a lit
+    /// fragment with the traces constant (`kOllinTracesSet`, index 16) set to
+    /// false, which takes every traced path out of it (see `PipelineKey.untraced`);
+    /// left unset the constant reads true.
+    func fragmentFunction(named name: String, peel: Bool, untraced: Bool = false,
                                   using library: MTLLibrary) throws -> MTLFunction {
         let constants = MTLFunctionConstantValues()
         if peel {
             var on = true
             constants.setConstantValue(&on, type: .bool, index: MetalRenderer.peelConstantIndex)
+        }
+        if untraced {
+            var off = false
+            constants.setConstantValue(&off, type: .bool, index: MetalRenderer.tracesConstantIndex)
         }
         return try library.makeFunction(name: name, constantValues: constants)
     }
@@ -255,6 +263,10 @@ extension MetalRenderer {
     /// The function constant index the hidden layer's peel is set at
     /// (`kOllinPeelSet` in OllinShaderLib.metal).
     static let peelConstantIndex = 15
+
+    /// The function constant index that says whether a lit fragment traces
+    /// (`kOllinTracesSet` in OllinShaderLib.metal).
+    static let tracesConstantIndex = 16
 
     /// A shadow pass pipeline. Two shapes share this factory: the **2D map**
     /// (directional/spot, `ollin_mesh_shadow_vertex`) is depth-only — no fragment, no
@@ -360,11 +372,13 @@ extension MetalRenderer {
                               stencilFormat: MTLPixelFormat? = nil,
                               clipWrite: Bool = false,
                               colorFormat: MTLPixelFormat? = nil,
-                              peel: Bool = false) throws -> MTLRenderPipelineState {
+                              peel: Bool = false,
+                              untraced: Bool = false) throws -> MTLRenderPipelineState {
         guard let vertexFunction = library.makeFunction(name: vertex) else {
             throw RendererError.shaderFunctions
         }
-        let fragmentFunction = try self.fragmentFunction(named: fragment, peel: peel, using: library)
+        let fragmentFunction = try self.fragmentFunction(named: fragment, peel: peel,
+                                                         untraced: untraced, using: library)
 
         let descriptor = MTLRenderPipelineDescriptor()
         descriptor.vertexFunction = vertexFunction
@@ -418,7 +432,7 @@ extension MetalRenderer {
             throw RendererError.shaderFunctions
         }
         let fragmentFunction = try self.fragmentFunction(named: key.fragment, peel: key.peel,
-                                                         using: library)
+                                                         untraced: key.untraced, using: library)
         let descriptor = MTLMeshRenderPipelineDescriptor()
         descriptor.objectFunction = objectFunction
         descriptor.meshFunction = meshFunction

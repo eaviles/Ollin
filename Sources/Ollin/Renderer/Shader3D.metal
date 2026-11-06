@@ -1757,6 +1757,14 @@ static inline float3 ollin_apply_aerial(float3 rgb, float3 worldPos, float2 pixe
 // the passes holding one to ten traced the same scene.
 typedef intersection_query<triangle_data, instancing> OllinRayQuery;
 
+// Whether this fragment traces reflections and refractions: the lighting asks for
+// them, and the pipeline was built to trace (`kOllinTraces`). Every read of
+// `rtReflections` in a lit fragment goes through here, so a pipeline built for a
+// pass that traces nothing holds none of the traced paths.
+static inline bool ollin_rt_reflects(constant OllinLighting &light) {
+    return kOllinTraces && light.rtReflections != 0;
+}
+
 static inline intersection_params ollin_rt_params(bool anyHit = false) {
     intersection_params p;
     p.assume_geometry_type(geometry_type::triangle);
@@ -1930,7 +1938,7 @@ static inline float meshRTShadowOne(float3 worldPos, float3 normal,
                                     constant OllinShadowCaster &sc,
                                     instance_acceleration_structure accel,
                                     thread OllinRayQuery &q) {
-    if (sc.kind != 2) return 1.0;
+    if (!kOllinTraces || sc.kind != 2) return 1.0;
     OllinLight caster = light.lights[sc.lightIndex];
     if (caster.kind >= 3) {
         return shadowFactorRayTracedArea(worldPos, normalize(normal), caster,
@@ -2005,6 +2013,7 @@ static inline float4 meshRTThicknessAll(float3 worldPos, float3 normal,
                                         instance_acceleration_structure accel,
                                         thread OllinRayQuery &q) {
     float4 t = float4(0.0);
+    if (!kOllinTraces) return t;
     for (int c = 0; c < OLLIN_MAX_SHADOW_CASTERS; c++) {
         if (c >= light.shadowCasterCount) break;
         constant OllinShadowCaster &sc = light.shadowCasters[c];
@@ -6010,7 +6019,7 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
     // radiance over the environment by the accumulated hit coverage, so a temporally
     // converged reflection edge blends smoothly between scene and sky, then the same
     // primary-roughness glossy blend as the inline path (identical when coverage is 0/1).
-    if (light.rtReflections != 0) {
+    if (ollin_rt_reflects(light)) {
         if (light.rtReflectionDeferred != 0) {
             float3 hit = deferredReflection.rgb + prefiltered * (1.0 - deferredReflection.a);
             // A lobe-traced layer already carries the spread this surface's roughness
@@ -6063,7 +6072,7 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
         float3 Ft = ollin_env_refraction(n, viewDir, mat, light, prefilterTex, cubeSamp, rot);
         bool traced = false;
 #if OLLIN_RT_SHADOWS
-        if (light.rtReflections != 0) {
+        if (ollin_rt_reflects(light)) {
             if (mat.dispersion > 0.0) {
                 // A prism: one traced walk per channel, each at its own index.
                 float3 iors = ollin_channel_iors(mat);
@@ -6128,7 +6137,7 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
                                              roughKernel);
         float Fc = (0.04 + 0.96 * pow(1.0 - NoV, 5.0)) * mat.clearcoat;
 #if OLLIN_RT_SHADOWS
-        float3 coatRad = (light.rtReflections != 0)
+        float3 coatRad = (ollin_rt_reflects(light))
             ? prefiltered
             : prefilterTex.sample(cubeSamp, rot * Rmirror, level(coatRough * light.iblMaxMip)).rgb;
 #else
@@ -6268,7 +6277,7 @@ static inline float3 ollin_pbr_ibl_ambient_mapped(float3 base, float3 n, float3 
     // radiance over the environment by the accumulated hit coverage, so a temporally
     // converged reflection edge blends smoothly between scene and sky, then the same
     // primary-roughness glossy blend as the inline path (identical when coverage is 0/1).
-    if (light.rtReflections != 0) {
+    if (ollin_rt_reflects(light)) {
         if (light.rtReflectionDeferred != 0) {
             float3 hit = deferredReflection.rgb + prefiltered * (1.0 - deferredReflection.a);
             // A lobe-traced layer already carries the spread this surface's roughness
@@ -6321,7 +6330,7 @@ static inline float3 ollin_pbr_ibl_ambient_mapped(float3 base, float3 n, float3 
         float3 Ft = ollin_env_refraction(n, viewDir, mat, light, prefilterTex, cubeSamp, rot);
         bool traced = false;
 #if OLLIN_RT_SHADOWS
-        if (light.rtReflections != 0) {
+        if (ollin_rt_reflects(light)) {
             if (mat.dispersion > 0.0) {
                 // A prism: one traced walk per channel, each at its own index.
                 float3 iors = ollin_channel_iors(mat);
@@ -6386,7 +6395,7 @@ static inline float3 ollin_pbr_ibl_ambient_mapped(float3 base, float3 n, float3 
                                              roughKernel);
         float Fc = (0.04 + 0.96 * pow(1.0 - NoV, 5.0)) * mat.clearcoat;
 #if OLLIN_RT_SHADOWS
-        float3 coatRad = (light.rtReflections != 0)
+        float3 coatRad = (ollin_rt_reflects(light))
             ? prefiltered
             : prefilterTex.sample(cubeSamp, rot * Rmirror, level(coatRough * light.iblMaxMip)).rgb;
 #else
@@ -6638,7 +6647,7 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
         // position, guided by the surface where the layer is coarser than the
         // picture, and handed to the ambient below.
         float4 deferredRefl = float4(0.0);
-        if (light.rtReflections != 0 && light.rtReflectionDeferred != 0) {
+        if (ollin_rt_reflects(light) && light.rtReflectionDeferred != 0) {
             deferredRefl = ollin_rt_reflection_read(rtReflectionTex, rtReflectionGuideTex,
                                                     in.position.xy, in.normal, light);
         }
@@ -7025,7 +7034,7 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
 #if OLLIN_RT_SHADOWS
         // Deferred reflections: same screen-position read as the solid fragment.
         float4 deferredRefl = float4(0.0);
-        if (light.rtReflections != 0 && light.rtReflectionDeferred != 0) {
+        if (ollin_rt_reflects(light) && light.rtReflectionDeferred != 0) {
             deferredRefl = ollin_rt_reflection_read(rtReflectionTex, rtReflectionGuideTex,
                                                     in.position.xy, in.normal, light);
         }
@@ -7256,7 +7265,7 @@ fragment float4 ollin_mesh_nm_fragment(MeshTexturedNMOut in [[stage_in]],
         float3 viewDir = normalize(light.cameraPosition.xyz - in.worldPos);
 #if OLLIN_RT_SHADOWS
         float4 deferredRefl = float4(0.0);
-        if (light.rtReflections != 0 && light.rtReflectionDeferred != 0) {
+        if (ollin_rt_reflects(light) && light.rtReflectionDeferred != 0) {
             deferredRefl = ollin_rt_reflection_read(rtReflectionTex, rtReflectionGuideTex,
                                                     in.position.xy, in.normal, light);
         }
@@ -7770,7 +7779,7 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
         float3 viewDir = normalize(light.cameraPosition.xyz - in.worldPos);
 #if OLLIN_RT_SHADOWS
         float4 deferredRefl = float4(0.0);
-        if (light.rtReflections != 0 && light.rtReflectionDeferred != 0) {
+        if (ollin_rt_reflects(light) && light.rtReflectionDeferred != 0) {
             deferredRefl = ollin_rt_reflection_read(rtReflectionTex, rtReflectionGuideTex,
                                                     in.position.xy, in.normal, light);
         }

@@ -148,6 +148,26 @@ final class MetalRenderer {
         /// it. Part of the key because it is a different compiled function; every
         /// ordinary pipeline leaves it false.
         var peel = false
+        /// A lit pipeline for a pass that traces nothing (no acceleration structure
+        /// to trace against): the same fragment built with the traces constant set
+        /// to false, so the traced paths, and the software traversal a GPU without
+        /// ray-tracing hardware compiles in beside them, are not in it. That
+        /// traversal costs a fragment on every pixel whether a ray is traced or not
+        /// (a marched field drew in 8.7 ms without it and 170.8 ms with it), so the
+        /// pass that cannot trace does not carry it. Part of the key because it is
+        /// a different compiled function; set only on the fragments that hold
+        /// traced paths (`holdsTracedPaths`), and only on a device that traces.
+        var untraced = false
+        /// Whether this key's fragment is one of the lit ones the traced paths
+        /// live in (shadow rays, the thickness walk, reflections, refraction),
+        /// which are the ones with a variant that traces nothing.
+        var holdsTracedPaths: Bool { PipelineKey.tracingFragments.contains(fragment) }
+        /// The fragments that name the traces constant (`kOllinTraces`): the four
+        /// lit mesh fragments and the marched field's.
+        static let tracingFragments: Set<String> = [
+            "ollin_mesh_fragment", "ollin_mesh_textured_fragment", "ollin_mesh_nm_fragment",
+            "ollin_mesh_maps_fragment", "ollin_raymarch_fragment",
+        ]
         /// A mesh pipeline (Metal 3 [[object]]/[[mesh]] stages) when `mesh` is
         /// non-empty: `object` + `mesh` name the two stages, `vertex` is unused
         /// (""), and the factory builds an MTLMeshRenderPipelineDescriptor.
@@ -1232,6 +1252,11 @@ final class MetalRenderer {
     static func tracedShadowsWanted() -> Bool {
         ProcessInfo.processInfo.environment["OLLIN_NO_TRACED_SHADOWS"] != "1"
     }
+    /// Whether a pass with nothing to trace against draws its lit kinds through
+    /// the pipelines built without the traced paths (`PipelineKey.untraced`).
+    /// Always true in a run; a variable only so a test can draw one scene through
+    /// both variants on a renderer of its own and compare them.
+    var usesUntracedPipelines = true
     /// Whether this GPU multisamples a single-precision float layer. Every
     /// Apple GPU blends `rgba32Float`; multisampling it and resolving it is the
     /// newer ones' (the device's own `supports32BitMSAA`). An accumulator that

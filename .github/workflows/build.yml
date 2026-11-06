@@ -82,8 +82,9 @@ jobs:
     # build plus the tests fits under this cap (the build measured 458 s to
     # 732 s across the green runs of 2026-09-01 to 09-03 and 548 s on 09-08,
     # the test step 22 to 30 minutes in one process; see its note), and the
-    # test step carries its own tighter one.
-    timeout-minutes: 60
+    # test step carries its own tighter one. Seventy-five since the test
+    # step's cap went to sixty (2026-11-06; see its note).
+    timeout-minutes: 75
     # OLLIN_SWIFT_FLAGS is the seam for compiler flags this runner wants and
     # the desk does not; Scripts/test.sh and Scripts/shard-tests.sh read the
     # same variable, so every compile in the job carries the same command line
@@ -348,8 +349,17 @@ jobs:
       # diagnosis a machine nobody can attach to can still give, and it is
       # what found the synchronous texture loader parking the main thread
       # (2026-09-06). The cap below stays as the outer bound.
+      #
+      # Sixty since 2026-11-06. With the shards side by side the step took 31
+      # to 34 minutes green on 2026-10-25, 37 to 40 from 10-26 to 11-04, 39 and
+      # 43 on 11-05, and was killed at forty-five on 11-06 with no test failed
+      # and the tree's tests unchanged from the run before: the suite grows by
+      # about a minute for every two days of work, and the runner's own spread
+      # is three or four. Nearly all of it is the two shards' main threads, each
+      # drawing its half of the rendering suites one at a time; what that half
+      # hour is made of, suite by suite, has not been measured.
       - name: Test (the runner's recipe)
-        timeout-minutes: 45
+        timeout-minutes: 60
         run: Scripts/ci-test.sh --run Scripts/test.sh ci
 
       # Saved after the tests rather than after the build, so a red test run

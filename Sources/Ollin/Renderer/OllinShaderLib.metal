@@ -1860,6 +1860,23 @@ static inline float2 ollin_hopalong(float2 p, float a, float b, float c) {
 constant bool kOllinPeelSet [[function_constant(15)]];
 constant bool kOllinPeel = is_function_constant_defined(kOllinPeelSet) && kOllinPeelSet;
 
+// MARK: - A pipeline that traces nothing
+//
+// A GPU that traces rays in software has the traversal compiled into every
+// fragment that can trace, and a fragment carrying it pays on every pixel, traced
+// or not: a marched field that traces nothing drew in 8.7 ms without the
+// traversal and 170.8 ms with it, and at twice the field that one draw ran long
+// enough for the GPU to report a hang. So a lit pipeline for a pass with no
+// structure to trace against is built with this constant set to false: every
+// traced path folds away when the pipeline is compiled, and what is left is the
+// fragment a device without ray tracing runs. Left unset (the pipelines of a
+// pass that does trace), it reads true and nothing changes. Only the lit
+// fragments and the helpers reached from them alone may name it, since a
+// function that names a function constant can only be built through the
+// specializing call (see `MetalRenderer.fragmentFunction`).
+constant bool kOllinTracesSet [[function_constant(16)]];
+constant bool kOllinTraces = !is_function_constant_defined(kOllinTracesSet) || kOllinTracesSet;
+
 // Whether a fragment at `pixel` writing `depthValue` (its depth-buffer value) stays
 // out of the hidden layer. It stays out when it is the first layer's own surface: no
 // farther behind the first layer's distance than a relative tolerance, plus how far

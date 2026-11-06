@@ -1280,7 +1280,7 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
     // the march and passes the inert zero, which the walk reads as "trace it yourself".
     float4 bodyExit = float4(0.0);
     float3 bodyExitNormal = float3(0.0);
-    if (light.rtReflections != 0 && light.iblEnabled != 0 && mat.shadingModel == 3
+    if (ollin_rt_reflects(light) && light.iblEnabled != 0 && mat.shadingModel == 3
         && mat.transmission > 0.0 && mat.thickness > 0.0) {
         float3 viewDir = normalize(light.cameraPosition.xyz - pw);
         float3 rr = refract(-viewDir, n, 1.0 / mat.ior);   // the same leg the walk refracts

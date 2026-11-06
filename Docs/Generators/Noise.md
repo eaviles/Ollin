@@ -105,6 +105,8 @@ for p in points {
 
 Under the hood, the loop uses extra noise dimensions: the circle a lap follows takes two axes of its own beside the point's. So the two-coordinate form samples a 4D field and the three-coordinate form a 5D one. That is the standard construction for a looping animation, and nothing is blended between two reads, so the field keeps one character all the way round. The 5D field is scaled to spread like the 3D one: moving a sketch from `noise(x, y, z)` to its looping form keeps its contrast. Exports and snapshots stay deterministic, because `loop` wraps, so `loop: 0` and `loop: 1` are the same sample bit for bit.
 
+The value is stretched to fill its range and clipped where it passes the ends. About 6 samples in 100 of the looping forms therefore sit exactly at an end (`0` or `1`, and `-1` or `1` signed). A texture never shows that. A point placed by it rests at the end of its swing for a stretch each time. For motion, take the mean of two reads far apart in the field: `(signedNoise(x, loop: lap) + signedNoise(x + 100, loop: lap)) / 2`. It rests about 3 times in 1,000 and swings about three quarters as far.
+
 <a name="fbm"></a>
 
 #### fbm / signedFbm

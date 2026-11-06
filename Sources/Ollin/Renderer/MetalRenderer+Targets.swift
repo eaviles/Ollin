@@ -1404,8 +1404,12 @@ extension MetalRenderer {
                   let d = makeHalfResDepth(width: tw, height: th) else { return nil }
             halfResColor = c; halfResDepth = d; halfResSize = (tw, th)
         }
+        // With no structure to trace against, the field marches through the variant
+        // that traces nothing, as the inline march does (see `PipelineKey.untraced`).
+        var pipelineKey = PipelineKey.raymarchHalfRes(depth: depthPixelFormat)
+        pipelineKey.untraced = rayTracedShadows && usesUntracedPipelines && traceAccel == nil
         guard let color = halfResColor, let depth = halfResDepth,
-              let pipe = try? pipeline(.raymarchHalfRes(depth: depthPixelFormat)) else { return nil }
+              let pipe = try? pipeline(pipelineKey) else { return nil }
 
         // Upload the field buffers here: the pre-pass runs before the main encode (which
         // re-uploads the same bytes), and when the frame casts no shadow nothing else has
