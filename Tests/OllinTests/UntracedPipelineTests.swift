@@ -23,6 +23,8 @@ struct UntracedPipelineTests {
         /// The field drawn large and at the reduced march, so it goes through the
         /// pass of its own that the live tiers march in.
         var reducedMarch = false
+        /// The field with no mesh beside it: nothing for a traced shadow to trace against.
+        var fieldAlone = false
         override var canvasSize: CanvasSize { .size(200, 140) }
         let block = Mesh.box(width: 1.1, height: 1.1, depth: 1.1)
         let floor = Mesh.plane(width: 12, depth: 12)
@@ -39,8 +41,10 @@ struct UntracedPipelineTests {
             castShadows()
             fill(Color(white: 0.8))
             material(.glossy)
-            drawMesh(floor)
-            withState { translate(-1.3, 0.55, 0); drawMesh(block) }
+            if !fieldAlone {
+                drawMesh(floor)
+                withState { translate(-1.3, 0.55, 0); drawMesh(block) }
+            }
             if reducedMarch { raymarchQuality(.performance) }
             withState {
                 translate(1.3, 0.7, 0)
@@ -53,11 +57,12 @@ struct UntracedPipelineTests {
     }
 
     /// One frame on a renderer of its own, and the lit pipelines that renderer built.
-    private func render(pointCaster: Bool, untraced: Bool = true,
-                        reducedMarch: Bool = false) throws -> (image: CGImage, lit: [MetalRenderer.PipelineKey]) {
+    private func render(pointCaster: Bool, untraced: Bool = true, reducedMarch: Bool = false,
+                        fieldAlone: Bool = false) throws -> (image: CGImage, lit: [MetalRenderer.PipelineKey]) {
         let sketch = BlockAndField()
         sketch.pointCaster = pointCaster
         sketch.reducedMarch = reducedMarch
+        sketch.fieldAlone = fieldAlone
         let renderer = try OllinApp.headlessRenderer(for: sketch)
         renderer.usesUntracedPipelines = untraced
         OllinApp.isRenderingHeadless = true
@@ -84,6 +89,19 @@ struct UntracedPipelineTests {
                 "the scene drew no lit mesh or no field: \(fragments)")
         let untraced = frame.lit.filter(\.untraced)
         #expect(untraced.isEmpty, "a pass with a traced shadow drew through a pipeline that cannot trace: \(untraced.map(\.fragment))")
+    }
+
+    /// A field with no mesh in the frame, under a point light that casts: the
+    /// field shadows itself by its own march, and there is nothing for a traced
+    /// shadow to trace against, so no structure is built and the field marches
+    /// through the untraced build. A field beside a mesh under the same light
+    /// is the case that still pays for the tracer.
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
+    func aFieldAloneUnderAPointCasterTracesNothing() throws {
+        let frame = try render(pointCaster: true, fieldAlone: true)
+        let field = frame.lit.filter { $0.fragment == "ollin_raymarch_fragment" }
+        #expect(!field.isEmpty, "the field was not drawn")
+        #expect(field.allSatisfy { $0.untraced }, "a field with nothing to trace against marched through the traced build")
     }
 
     /// The reduced march's own pass picks its pipeline by the same rule as the
@@ -125,7 +143,7 @@ struct UntracedPipelineTests {
         let renderer = try OllinApp.headlessRenderer(for: BlockAndField())
         func bindsAStructure(untraced: Bool) throws -> Bool {
             let descriptor = MTLRenderPipelineDescriptor()
-            descriptor.vertexFunction = try #require(renderer.library.makeFunction(name: vertex))
+            descriptor.vertexFunction = renderer.library.makeFunction(name: vertex)
             descriptor.fragmentFunction = try renderer.fragmentFunction(named: fragment, peel: false,
                                                                         untraced: untraced,
                                                                         using: renderer.library)
