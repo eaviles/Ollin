@@ -6,7 +6,7 @@
 
 <img src="Images/45-HandingItOver/SkyClock.jpg" alt="A wide sky clock: the sun on its arch across a sky whose colors follow the hour, over a black ridge of land" width="560">
 
-Outside its window, a finished sketch lives where people already look, and nobody has to run code. This chapter makes it a screen saver, a wallpaper, a menu-bar strip, a widget, and an app a friend can double-click. One sketch, the sky clock above, follows the hour and goes to four of those places. After it, a phone takes a sketch in two ways, and other programmers take your behavior and your drawing calls.
+Outside its window, a finished sketch lives where people already look, and nobody has to run code. This chapter makes it a screen saver, a wallpaper, a menu-bar strip, an overlay, a widget, and an app a friend can double-click. One sketch, the sky clock above, follows the hour and goes to four of those places. After it, a phone takes a sketch in two ways, and other programmers take your behavior and your drawing calls.
 
 ## Living in the system: a screen saver
 
@@ -103,6 +103,16 @@ A strip 56 points wide appears among the status items, the icons at the right en
 The strip draws at 30 frames a second, because it stays on screen all day. The sketch inside sees a canvas of the strip's own points, so `width / 2` is still the middle. Everything this guide taught still works at that size. The strip takes no input either. A click opens its menu, which holds Quit.
 
 Both kinds write the same wrapper as an app, plus one line that keeps the app out of the Dock. A program with no window has nothing to show from a Dock icon. [An app to hand somebody](#an-app-to-hand-somebody-signing-and-notarizing) describes the wrapper. The reference pages ([wallpaper](../Docs/Output/Wallpaper.md), [menu bar](../Docs/Output/MenuBar.md)) carry the rest, including how to change the strip's width.
+
+### Over the desktop instead of behind it: `--overlay`
+
+An **overlay** is the wallpaper's opposite. The sketch floats above every other window, and wherever its canvas is clear you see what is underneath. It suits a piece that keeps you company while you work: a few drifting lights, a clock, a creature that watches the pointer. It needs no project of its own. Any sketch that clears its canvas with `background(.clear)` runs this way with one flag:
+
+```sh
+swift run Example-Installation-OverDesktop --overlay
+```
+
+A click lands on the piece only where it drew something. Ollin reads the frame's coverage back, looks up the spot under the pointer, and lets the click through when that spot is clear. So the window below still gets its clicks, and the piece still gets its own. The sketch reads `mouseX` and `mouseY` wherever the pointer is on the display, and it never takes the keyboard. Quit is in the sparkle's menu, as it is for a wallpaper. [`Examples/Installation/OverDesktop`](../Examples/Installation/OverDesktop/Sketch.swift) is a handful of fireflies that scatter when you press one. In a program of your own the call is `OllinApp.runAsOverlay { MySketch() }`, and the [overlay page](../Docs/Output/Overlay.md) covers the rest, including a sketch that decides for itself where it can be clicked.
 
 ## A widget, and what it does to a sketch
 
@@ -488,6 +498,7 @@ Most of this chapter wraps a sketch in something Apple's platforms already provi
 
 - [Screen saver](../Docs/Output/ScreenSaver.md): the project the generator writes, the sandbox a saver runs in, filling against fitting, and signing one for somebody else's machine.
 - [Wallpaper](../Docs/Output/Wallpaper.md) and [menu bar](../Docs/Output/MenuBar.md): a sketch behind the desktop and one in the menu bar.
+- [Overlay](../Docs/Output/Overlay.md): a sketch over the desktop, how large it is, where a click lands, and what reading the frame back costs.
 - [Widget](../Docs/Output/Widget.md): the three targets a widget needs and why, the run and its grid, the clock a picture is drawn on, `--export-widget`, and the order the widget and its app are signed in.
 - [Sketch as an app](../Docs/Output/App.md): the project the generator writes, the icon, and the one-time setup behind signing and notarizing.
 - [The project generator](../Docs/Tools/ProjectGenerator.md): every kind `ollin new` writes, how a project is named, and every option.

@@ -273,6 +273,56 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// device.
     var metalDevice: MTLDevice { renderer.device }
 
+    #if os(macOS)
+    // MARK: Windows of the sketch's own layers
+
+    /// The windows open for the sketch's `SketchWindow`s, one each.
+    private(set) var layerPanes: [LayerWindowPane] = []
+
+    /// Whether this run opens the windows its sketch asks for: it draws in a
+    /// window somebody can see, it is not an export, and its canvas takes input
+    /// (a wallpaper or a menu-bar strip is a surface, and puts no windows up).
+    func opensLayerWindows(for view: MTKView) -> Bool {
+        SketchRunner.opensLayerWindows(headless: OllinApp.isRenderingHeadless,
+                                       inVisibleWindow: view.window?.isVisible ?? false,
+                                       takesInput: (view as? OllinMTKView)?.ignoresInput != true)
+    }
+
+    /// The rule itself: all three, or no window opens.
+    static func opensLayerWindows(headless: Bool, inVisibleWindow: Bool, takesInput: Bool) -> Bool {
+        !headless && inVisibleWindow && takesInput
+    }
+
+    /// Match the open windows to the ones the sketch holds: close those whose
+    /// `SketchWindow` was closed or belongs to a sketch this run no longer
+    /// draws (a reload), and open the ones not yet up.
+    /// - Parameters:
+    ///   - opening: whether new windows may open (`opensLayerWindows`).
+    ///   - showing: whether an opened window is put on screen; a test leaves
+    ///     it off the machine's.
+    func syncLayerWindows(opening: Bool, showing: Bool = true, beside anchor: NSWindow? = nil) {
+        let wanted = sketch.layerWindows.filter { !$0.isDismissed }
+        layerPanes.removeAll { pane in
+            if wanted.contains(where: { $0 === pane.sketchWindow }) { return false }
+            pane.close()
+            return true
+        }
+        guard opening else { return }
+        for wantedWindow in wanted where !layerPanes.contains(where: { $0.sketchWindow === wantedWindow }) {
+            let pane = LayerWindowPane(showing: wantedWindow, device: renderer.device,
+                                       output: sketch.colorOutput, beside: anchor)
+            if showing { pane.show() }
+            layerPanes.append(pane)
+        }
+    }
+
+    /// Take every layer window down: the run's own window is going away.
+    func closeLayerWindows() {
+        layerPanes.forEach { $0.close() }
+        layerPanes = []
+    }
+    #endif
+
     /// Put the piece on these displays as well as the one it draws in. Called by
     /// the host that owns the windows, and again when a display is plugged in or
     /// unplugged.
@@ -1159,7 +1209,8 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         // may never be asked to draw again, and every display of a wall wants
         // the same frame rather than one made picture each.
         renderer.hostAllowsInterpolation = !carryingATake && sketch.isLooping
-            && otherDisplays.isEmpty && !isClockPaused
+            && otherDisplays.isEmpty && !isClockPaused && sketch.layerWindows.isEmpty
+            && !renderer.windowKeepsAlpha
 
         // A transport pass is the other exception beside a take: it is one
         // deliberate frame (a scrub, a step), so it waits for the ring rather
@@ -1346,6 +1397,14 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
             renderer.wallDemand = wallDemand(canvas: canvas, view: view)
             wall = otherDisplays.compactMap { $0.nextDisplay(canvas: canvas) }
         }
+        #if os(macOS)
+        // The sketch's windows of its own layers, each presented from this
+        // frame's command buffer like a display of a wall.
+        if !sketch.layerWindows.isEmpty || !layerPanes.isEmpty {
+            syncLayerWindows(opening: opensLayerWindows(for: view), beside: view.window)
+            wall += layerPanes.compactMap { $0.nextDisplay() }
+        }
+        #endif
 
         // The frame hooks: whoever asked for this frame's pixels gets them once
         // the GPU has finished it, from the frame the window shows, brought to
@@ -2048,6 +2107,8 @@ final class OllinMTKView: MTKView {
         if newWindow == nil, window?.firstResponder === self {
             window?.makeFirstResponder(nil)
         }
+        // A canvas leaving its window is a run ending: its sketch's own windows go too.
+        if newWindow == nil { (delegate as? SketchRunner)?.closeLayerWindows() }
         // The pressure monitor's teardown lives here (not deinit, which is
         // nonisolated and can't touch main-actor state); leaving the window
         // uninstalls it, and `viewDidMoveToWindow` reinstalls on re-attach.
@@ -3873,6 +3934,12 @@ public extension Sketch {
         // `swift run Example-X --export <path> [--frame N]` writes a PNG and
         // exits (no window); otherwise the sketch runs in a window as usual.
         if OllinApp.handleCommandLine(makeSketch: { Self() }) { return }
+        // `--overlay` floats the sketch over the desktop instead of giving it
+        // a window (`OllinApp.runAsOverlay`).
+        if CommandLine.arguments.contains("--overlay") {
+            OllinApp.runAsOverlay { Self() }
+            return
+        }
         OllinApp.run(Self())
     }
 }

@@ -304,6 +304,8 @@ These pages cover writing GPU code yourself. They describe fragment shaders that
 - [`Screen saver`](./Output/ScreenSaver.md) - wrap a sketch as the machine's screen saver: one command writes the project, one script installs it, and the sketch stays an ordinary sketch
 - [`Wallpaper`](./Output/Wallpaper.md) - run a sketch as the desktop wallpaper: one window per display at desktop level, behind the icons, with a menu-bar item to quit it
 - [`Menu bar`](./Output/MenuBar.md) - run a sketch as a small live strip among the menu bar's status items, drawn at a rate an all-day surface can afford
+- [`Overlay`](./Output/Overlay.md) - float a sketch over the desktop: see-through where its canvas is clear, clicked only where it drew something, with `--overlay` or `OllinApp.runAsOverlay`
+- [`Windows`](./Output/Windows.md) - a second window that shows one of the sketch's layers, with a pointer of its own: `makeWindow(showing:title:)` and `SketchWindow`
 - [`Widget`](./Output/Widget.md) - show a sketch as a widget on the desktop, drawn one picture per moment, so the sketch changes through the day rather than moving
 - [`Print separations`](./Output/PrintSeparations.md) - split a sketch into per-ink grayscale masters for risograph and screen printing, with an overprint preview, registration marks, and the plates slipped out of register on purpose
 - [`Print color`](./Output/PrintColor.md) - soft-proof a canvas against a press profile, flag the colors ink cannot reach, and split it into process-color plates with their total-ink figures

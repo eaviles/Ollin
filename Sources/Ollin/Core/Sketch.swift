@@ -106,6 +106,12 @@ open class Sketch {
     /// Smoothed frames-per-second estimate.
     public internal(set) var frameRate: Double = 0
 
+    // MARK: Windows of its own layers
+
+    /// The windows this sketch asked for (`makeWindow(showing:title:)`), which the
+    /// run that draws it opens beside its own and closes when the sketch goes.
+    var layerWindows: [SketchWindow] = []
+
     // MARK: Pointer (input)
 
     /// Cursor x in sketch coordinates (points, top-left origin). Seeded from the

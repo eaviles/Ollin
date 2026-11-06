@@ -6,7 +6,7 @@
 
 <img src="Images/46-Installations/WallOfBars.jpg" alt="A wide dark screen carrying a slow field of vertical bars in dusk colors, orange at a peak left of center, deep plum in a dip right of center, and red-orange again at the right edge, with a separate band of the same colors running along the bottom" width="680">
 
-Left in one place for days with nobody watching, a sketch becomes an installation, and it can light the room around it. You learn what keeps a sketch running that long, from checkpoints to opening hours, and how it sends light to lamps. In the wall of bars above, the bottom band lights a strip of lamps under the screen. Then come a lighting console, a show laser, projectors and many screens, ways to keep watch, and last, where to go next.
+Left in one place for days with nobody watching, a sketch becomes an installation, and it can light the room around it. You learn what keeps a sketch running that long, from checkpoints to opening hours, and how it sends light to lamps. In the wall of bars above, the bottom band lights a strip of lamps under the screen. Then come a lighting console, a show laser, projectors, many screens and a second window, ways to keep watch, and last, where to go next.
 
 ## Leaving it running: `Installation`
 
@@ -469,6 +469,33 @@ let onCanvas = (worldPoint - mine.corner) * (width / mine.width)   // the desk, 
 
 Windows on one machine can share a clock that way, because they read the same machine's time. Separate machines cannot, which is what a room is for.
 
+### A second view of the piece: a window for a layer
+
+Some pieces need two pictures from one run. The audience sees the piece on the projector, and you watch a view of controls on the laptop. A **layer** is a picture the sketch draws off to the side, which [Chapter 19](19-LayersAndEffects.md) introduced. `makeWindow(showing:title:)` gives a layer a window of its own:
+
+```swift
+final class Stage: Sketch {
+    var monitor: RenderTarget!
+    var controls: SketchWindow!
+
+    override func setup() {
+        monitor = makeRenderTarget(width: 480, height: 270)
+        controls = makeWindow(showing: monitor, title: "Controls")
+    }
+
+    override func draw() {
+        background(.black)
+        drawCircle(width / 2, height / 2, 200)              // the piece
+        withTarget(monitor) {                               // the view of controls
+            background(Color(white: 0.15))
+            drawCircle(controls.mouseX, controls.mouseY, 12)
+        }
+    }
+}
+```
+
+Both windows are drawn in the same `draw()`, so they show the same frame. The second window reports its own pointer in the layer's coordinates (`controls.mouseX`, `controls.mouseY`, `controls.mouseIsPressed`), which is what makes a view of controls clickable. Drag either window to the projector's display and press its green button to fill it. A frame still has one 3D camera, so the second view is a flat one for now: controls, a plan, a readout. [`Examples/Installation/SecondView`](../Examples/Installation/SecondView/Sketch.swift) is a stage and its plan, where a drag in the plan moves the lamp on the stage. The [windows page](../Docs/Output/Windows.md) has the rest.
+
 ### Several machines, one sketch: `Room`
 
 The two-machine wall told each machine which part of the canvas it shows, but not what time it is. Each sketch starts its clock when it starts. Switch on the machine at the left of the wall, walk to the one at the right, and switch that one on. The two are now seconds apart, and everything that moves shows it.
@@ -635,6 +662,7 @@ DMX512 was standardized by the United States Institute for Theatre Technology in
 
 ## Go deeper
 
+- [Windows](../Docs/Output/Windows.md): a second window for one of the sketch's layers, its own pointer, and where no window opens.
 - [Installation](../Docs/Output/Installation.md): leaving a sketch running, what each part of the declaration turns on, the checkpoint file's shape, the schedule's parts, projection and blending, several displays, and several windows.
 - [DMX](../Docs/Integration/DMX.md): universes and fixtures, Art-Net and sACN, the send cadence, the console-drives-the-sketch direction, and the LED map's sampling.
 - [Laser](../Docs/Integration/Laser.md): frames and colors, how the path is ordered and spaced, the point budget, the safety gate, the Ether Dream, and the ILDA file for a laser system the library does not drive directly.
@@ -642,7 +670,7 @@ DMX512 was standardized by the United States Institute for Theatre Technology in
 - [MQTT](../Docs/Integration/MQTT.md): the broker and the client, topics and their wildcards, what devices write in a payload, the two service levels, retained values, the last will, and reconnecting.
 - [Remote](../Docs/Integration/Remote.md): the `@Param` parameters served to a phone as touch controls, what each kind becomes, how values land, and who else can reach them.
 - [Room](../Docs/Integration/Room.md): several machines joining by name, the three ways to read what arrives, shared parameters, the clock they agree on and what it costs, seats, and who can join.
-- Worked examples, in [`Examples/Installation/`](../Examples/Installation/): `Unattended` (the one-line declaration), `Watched`, `Hours`, `Fitted`, `ManyDisplays`, and `ManyWindows`, plus [`Examples/Integration/DMXLoopback`](../Examples/Integration/DMXLoopback/Sketch.swift), [`Examples/Integration/LEDMapping`](../Examples/Integration/LEDMapping/Sketch.swift), [`Examples/Integration/LaserPreview`](../Examples/Integration/LaserPreview/Sketch.swift), [`Examples/Integration/MQTTRoom`](../Examples/Integration/MQTTRoom/Sketch.swift), [`Examples/Integration/RemoteSurface`](../Examples/Integration/RemoteSurface/Sketch.swift), [`Examples/Integration/RoomCanvas`](../Examples/Integration/RoomCanvas/Sketch.swift), and [`Examples/Integration/RoomLoopback`](../Examples/Integration/RoomLoopback/Sketch.swift).
+- Worked examples, in [`Examples/Installation/`](../Examples/Installation/): `Unattended` (the one-line declaration), `Watched`, `Hours`, `Fitted`, `ManyDisplays`, `ManyWindows`, and `SecondView`, plus [`Examples/Integration/DMXLoopback`](../Examples/Integration/DMXLoopback/Sketch.swift), [`Examples/Integration/LEDMapping`](../Examples/Integration/LEDMapping/Sketch.swift), [`Examples/Integration/LaserPreview`](../Examples/Integration/LaserPreview/Sketch.swift), [`Examples/Integration/MQTTRoom`](../Examples/Integration/MQTTRoom/Sketch.swift), [`Examples/Integration/RemoteSurface`](../Examples/Integration/RemoteSurface/Sketch.swift), [`Examples/Integration/RoomCanvas`](../Examples/Integration/RoomCanvas/Sketch.swift), and [`Examples/Integration/RoomLoopback`](../Examples/Integration/RoomLoopback/Sketch.swift).
 
 ## Where to go from here
 

@@ -7,8 +7,8 @@
 | [![Fitted](https://media.ollin.art/examples/Installation/Fitted/still-640.jpg?v=8ee22ea3)](Fitted/) | [![Hours](https://media.ollin.art/examples/Installation/Hours/still-640.jpg?v=9dd33c57)](Hours/) | [![ManyDisplays](https://media.ollin.art/examples/Installation/ManyDisplays/still-640.jpg?v=f6285962)](ManyDisplays/) | [![ManyWindows](https://media.ollin.art/examples/Installation/ManyWindows/still-640.jpg?v=8ce3c977)](ManyWindows/) |
 |---|---|---|---|
 | [Fitted](Fitted/) | [Hours](Hours/) | [ManyDisplays](ManyDisplays/) | [ManyWindows](ManyWindows/) |
-| [![Unattended](https://media.ollin.art/examples/Installation/Unattended/still-640.jpg?v=e221aa84)](Unattended/) | [![Watched](https://media.ollin.art/examples/Installation/Watched/still-640.jpg?v=bf750f02)](Watched/) |  |  |
-| [Unattended](Unattended/) | [Watched](Watched/) |  |  |
+| [![OverDesktop](https://media.ollin.art/examples/Installation/OverDesktop/still-640.jpg?v=8deba60c)](OverDesktop/) | [![SecondView](https://media.ollin.art/examples/Installation/SecondView/still-640.jpg?v=9202db33)](SecondView/) | [![Unattended](https://media.ollin.art/examples/Installation/Unattended/still-640.jpg?v=e221aa84)](Unattended/) | [![Watched](https://media.ollin.art/examples/Installation/Watched/still-640.jpg?v=bf750f02)](Watched/) |
+| [OverDesktop](OverDesktop/) | [SecondView](SecondView/) | [Unattended](Unattended/) | [Watched](Watched/) |
 
 These pieces are made to be left running: on a wall, in a shop window, or at a stand for the length of a fair.
 
@@ -20,6 +20,8 @@ These pieces are made to be left running: on a wall, in a shop window, or at a s
 | [Fitted](Fitted/Sketch.swift) | `projection`, which lines the picture up with the wall it is projected onto. Press **Command-K** and drag the four corners, and the numbers are kept under that display |
 | [ManyDisplays](ManyDisplays/Sketch.swift) | `displays`, one long canvas across every display the machine drives. Add `--rehearse 3` to lay that wall out as three windows on one desk |
 | [ManyWindows](ManyWindows/Sketch.swift) | `canvasOnScreen`, one world seen through several windows. Run it three times and drag the windows apart, and the dots drift out of one window and into the next |
+| [OverDesktop](OverDesktop/Sketch.swift) | a sketch over the desktop: with `--overlay` a few fireflies float above every window on a clear canvas, lean toward the pointer, and take a click only where one of them is |
+| [SecondView](SecondView/Sketch.swift) | one piece in two windows: a stage in the sketch's own window and its plan in a second one (`makeWindow(showing:title:)`), where a drag in the plan moves the lamp on the stage |
 
 Run one from this `Examples/` directory with `swift run Example-Installation-<Name>`, e.g. `swift run Example-Installation-Unattended`. It takes the whole screen, and Command-Q quits.
 

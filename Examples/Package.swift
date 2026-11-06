@@ -107,6 +107,8 @@ let package = Package(
         example("Installation/Fitted"),
         example("Installation/ManyWindows"),
         example("Installation/ManyDisplays"),
+        example("Installation/OverDesktop"),
+        example("Installation/SecondView"),
         example("Effects/Layers"),
         example("Shapes/Combinators"),
         example("Shapes/CombinatorsGradient"),

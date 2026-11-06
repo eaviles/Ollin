@@ -265,6 +265,7 @@ public extension CommandFlag {
     private static let live: [CommandFlag] = [
         .init("--debug", .run, .nothing, "run a debug build of the host"),
         .init("--keep-clock", .run, .nothing, "carry the clock across a reload"),
+        .init("--overlay", .run, .nothing, "float the sketch over the desktop, see-through where its canvas is clear"),
         .init("--no-optimize", .run, .nothing, "compile the sketch plain, for debugging it"),
         .init("--target", .run, .value("name"), "which of a package's sketch targets to run"),
     ]

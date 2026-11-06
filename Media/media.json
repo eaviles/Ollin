@@ -6679,6 +6679,40 @@
       "stillSmall": "examples/Installation/ManyWindows/still-640.jpg?v=8ce3c977",
       "width": 760
     },
+    "Installation/OverDesktop": {
+      "width": 1080,
+      "height": 1080,
+      "length": "still",
+      "stillBecause": "holds still",
+      "frame": 480,
+      "motion": 0.865,
+      "source": "db6b9967e47d53cf",
+      "rendered": "2026-11-06",
+      "bytes": {
+        "still": 20673,
+        "stillSmall": 7677
+      },
+      "still": "examples/Installation/OverDesktop/still.jpg?v=a1242abc",
+      "stillSmall": "examples/Installation/OverDesktop/still-640.jpg?v=8deba60c",
+      "seed": 1
+    },
+    "Installation/SecondView": {
+      "width": 1280,
+      "height": 720,
+      "length": "still",
+      "stillBecause": "holds still",
+      "frame": 480,
+      "motion": 0.0,
+      "source": "1ecbf95cd02764b5",
+      "rendered": "2026-11-06",
+      "bytes": {
+        "still": 37226,
+        "stillSmall": 15997
+      },
+      "still": "examples/Installation/SecondView/still.jpg?v=44869676",
+      "stillSmall": "examples/Installation/SecondView/still-640.jpg?v=9202db33",
+      "seed": 1
+    },
     "Installation/Unattended": {
       "width": 1080,
       "height": 1080,

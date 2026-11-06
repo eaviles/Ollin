@@ -435,6 +435,7 @@ enum OllinApp: Sendable
   static func pdf(of: Sketch, frame: Int = default, fps: FrameRate = default, hatching: Hatching? = default) throws -> Foundation.Data
   static func plates(of: Sketch, profile: ICCProfile? = default, intent: RenderingIntent = default, frame: Int = default, fps: FrameRate = default, quality: RenderQuality = default) throws -> ProcessSeparation
   static func run(_: Sketch)
+  static func runAsOverlay(hitTest: ((Sketch, Vector2) -> Bool)? = default, _: () -> Sketch)
   static func runAsWallpaper(_: () -> Sketch)
   static func runInMenuBar(width: Double = default, _: () -> Sketch)
   static func separations(of: Sketch, inks: [Ink]? = default, paper: Color = default, frame: Int = default, fps: FrameRate = default, quality: RenderQuality = default) throws -> PrintSeparation
@@ -1614,6 +1615,15 @@ final class Simulation: Sendable
   let width: Int
   var current: ComputeTexture { get }
   var image: Image { get }
+final class SketchWindow: Sendable
+  func close()
+  let layer: RenderTarget
+  let title: String
+  var isOpen: Bool { get }
+  var mouse: Vector2 { get }
+  var mouseIsPressed: Bool { get }
+  var mouseX: Double { get }
+  var mouseY: Double { get }
 final class SlitScan: Sendable
   func append(_: Image)
   func clear()
@@ -2075,6 +2085,7 @@ open class Sketch: Sendable
   @discardableResult func cue(_: Int, over: Double = default) -> Bool
   @discardableResult func cue(_: String, over: Double = default) -> Bool
   @discardableResult func drawFrame(_: some VideoFeed, in: Rectangle? = default, waiting: String? = default) -> Rectangle?
+  @discardableResult func makeWindow(showing: RenderTarget, title: String) -> SketchWindow
   @discardableResult func nextCue(over: Double = default) -> Bool
   @discardableResult func previousCue(over: Double = default) -> Bool
   final static func main()

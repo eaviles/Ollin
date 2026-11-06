@@ -13,6 +13,8 @@
 - [`Screen saver`](./ScreenSaver.md) - wrap a sketch as the machine's screen saver, so the work runs when nobody is at the desk
 - [`Wallpaper`](./Wallpaper.md) - run a sketch as the desktop wallpaper. It sits behind the icons on every display and moves all day while the machine is used for everything else
 - [`Menu bar`](./MenuBar.md) - run a sketch as a small live strip among the menu bar's status items. It sits beside the clock for the whole working day
+- [`Overlay`](./Overlay.md) - float a sketch over the desktop, see-through where its canvas is clear. A click lands on the piece only where it drew something
+- [`Windows`](./Windows.md) - give one of the sketch's layers a window of its own. The piece goes to the projector and a view of controls stays on the laptop
 - [`Widget`](./Widget.md) - show a sketch as a widget on the desktop. The system asks for a handful of pictures an hour, so the sketch changes through the day rather than moving
 - [`Fabrication`](./Fabrication.md) - write a `Mesh` as STL, OBJ, or 3MF for 3D printing, with real units and a printability check
 - [`G-code`](./GCode.md) - write a frame's line work as a program that a pen plotter, laser cutter, or CNC router runs directly. Ollin orders the paths to keep travel short

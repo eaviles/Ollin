@@ -1252,6 +1252,20 @@ final class MetalRenderer {
     static func tracedShadowsWanted() -> Bool {
         ProcessInfo.processInfo.environment["OLLIN_NO_TRACED_SHADOWS"] != "1"
     }
+    /// Whether the window's own frames carry the canvas's coverage as their
+    /// alpha: true for a run whose window is see-through (a sketch over the
+    /// desktop), where what the canvas left clear is whatever is behind the
+    /// window. False everywhere else, where the window's present is opaque and
+    /// byte-identical.
+    var windowKeepsAlpha = false
+
+    /// How the window's present writes alpha this frame: premultiplied, the form
+    /// the system composites a layer in, when the window is see-through and the
+    /// canvas's background is; opaque otherwise.
+    func windowAlpha(for drawer: Drawer) -> PresentAlpha {
+        windowKeepsAlpha && drawer.hasTransparentBackground ? .premultiplied : .opaque
+    }
+
     /// Whether a pass with nothing to trace against draws its lit kinds through
     /// the pipelines built without the traced paths (`PipelineKey.untraced`).
     /// Always true in a run; a variable only so a test can draw one scene through
@@ -2510,6 +2524,27 @@ final class MetalRenderer {
         /// What this display carries, worked out against its own size. Nil
         /// presents the whole canvas straight, as a desk does.
         let placement: ProjectionPlacement?
+        /// The layer this display shows in place of the canvas (a window of the
+        /// sketch's own, `SketchWindow`). Nil shows the canvas.
+        var layer: RenderTarget? = nil
+    }
+
+    /// What a display that shows a layer is given this frame: the texture the
+    /// layer was drawn into, or nil in a frame the sketch did not draw it. A
+    /// layer's texture is pooled, so one left from an earlier frame may hold
+    /// another layer's picture by now, and a window keeps its last frame
+    /// sooner than show that.
+    func presentedTexture(for layer: RenderTarget, drawer: Drawer) -> MTLTexture? {
+        guard drawer.renderTargets.contains(where: { $0 === layer }) else { return nil }
+        return layer.texture
+    }
+
+    /// What a display is presented this frame: the canvas for a display of a
+    /// wall, its own layer for a window of one, and nothing (nil) for a window
+    /// whose layer this frame did not draw.
+    func presentSource(layer: RenderTarget?, canvas: MTLTexture, drawer: Drawer) -> MTLTexture? {
+        guard let layer else { return canvas }
+        return presentedTexture(for: layer, drawer: drawer)
     }
 
     /// Encode and present one frame's worth of recorded geometry: composite into
@@ -2952,7 +2987,8 @@ final class MetalRenderer {
                                                 inputWidth: renderWidth, inputHeight: renderHeight,
                                                 outputWidth: width, outputHeight: height) ?? presented
         if let presentEncoder = countedEncoder(commandBuffer, presentPass(into: drawable.texture), caller: "present") {
-            encodePresent(from: toPresent, drawer: drawer, into: presentEncoder, projected: true)
+            encodePresent(from: toPresent, drawer: drawer, into: presentEncoder, projected: true,
+                          alpha: windowAlpha(for: drawer))
             presentEncoder.endEncoding()
         }
         commandBuffer.present(drawable)
@@ -3080,7 +3116,8 @@ final class MetalRenderer {
         // Present: tone-map the resolved float pile into the drawable. (The pile
         // itself stays in linear float, so faint samples keep summing next frame.)
         if let presentEncoder = countedEncoder(commandBuffer, presentPass(into: drawable.texture), caller: "present") {
-            encodePresent(from: shown, drawer: drawer, into: presentEncoder, projected: true)
+            encodePresent(from: shown, drawer: drawer, into: presentEncoder, projected: true,
+                          alpha: windowAlpha(for: drawer))
             presentEncoder.endEncoding()
         }
         commandBuffer.present(drawable)
@@ -3107,15 +3144,48 @@ final class MetalRenderer {
     private func encodeExtraDisplays(_ displays: [ExtraDisplay], from source: MTLTexture,
                                      drawer: Drawer, into commandBuffer: MTLCommandBuffer) {
         for display in displays {
+            // A window of one of the sketch's layers takes that layer, tone-mapped
+            // as the canvas is; in a frame that did not draw it, its drawable goes
+            // back unpresented and the window keeps the frame it has.
+            guard let shown = presentSource(layer: display.layer, canvas: source, drawer: drawer) else { continue }
             if let encoder = countedEncoder(commandBuffer,
                                             presentPass(into: display.drawable.texture),
                                             caller: "present") {
-                encodePresent(from: source, drawer: drawer, into: encoder,
+                encodePresent(from: shown, drawer: drawer, into: encoder,
                               projected: display.placement != nil, placement: display.placement)
                 encoder.endEncoding()
             }
             commandBuffer.present(display.drawable)
         }
+    }
+
+    /// The picture a window of `layer` shows, after a headless frame of `drawer`
+    /// has been drawn: the layer through the same present pass the window's
+    /// drawable gets, read back at the layer's own pixel size. Nil in a frame
+    /// that did not draw the layer. The headless twin of the window, which has
+    /// no drawable to read.
+    func layerImage(of layer: RenderTarget, drawer: Drawer) -> CGImage? {
+        guard let source = presentedTexture(for: layer, drawer: drawer) else { return nil }
+        let width = source.width, height = source.height
+        let bytesPerRow = width * displayBytesPerPixel, byteCount = bytesPerRow * height
+        guard let displayTexture = makeDisplayTexture(width: width, height: height),
+              let readback = makeReadbackBuffer(byteCount: byteCount),
+              let commandBuffer = makeCommandBuffer(reportingPasses: true),
+              let encoder = countedEncoder(commandBuffer, presentPass(into: displayTexture),
+                                           caller: "present") else { return nil }
+        encodePresent(from: source, drawer: drawer, into: encoder)
+        encoder.endEncoding()
+        guard let blit = commandBuffer.namedBlitEncoder() else { return nil }
+        blit.copy(from: displayTexture, sourceSlice: 0, sourceLevel: 0,
+                  sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+                  sourceSize: MTLSize(width: width, height: height, depth: 1),
+                  to: readback, destinationOffset: 0,
+                  destinationBytesPerRow: bytesPerRow, destinationBytesPerImage: byteCount)
+        blit.endEncoding()
+        commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
+        guard commandBuffer.status == .completed else { return nil }
+        return displayImage(from: readback, width: width, height: height)
     }
 
     /// Headless accumulation: render this frame's geometry onto the persistent

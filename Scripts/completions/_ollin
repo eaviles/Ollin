@@ -232,6 +232,7 @@ _ollin() {
             '--fresh[start over instead of carrying the sketch'\''s saved state]' \
             '--debug[run a debug build of the host]' \
             '--keep-clock[carry the clock across a reload]' \
+            '--overlay[float the sketch over the desktop, see-through where its canvas is clear]' \
             '--no-optimize[compile the sketch plain, for debugging it]' \
             '--target[which of a package'\''s sketch targets to run]:name:' \
             '*:file:_files'

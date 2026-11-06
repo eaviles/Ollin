@@ -333,7 +333,7 @@ final class OllinDisplayWindow: NSWindow {
 /// keyboard. A wall display has none of that: the frame arrives from the display
 /// that is drawing, so all this has to do is hold a layer of the right shape, in
 /// the right format, at the right scale.
-final class OllinDisplayView: NSView {
+class OllinDisplayView: NSView {
 
     let metalLayer = CAMetalLayer()
 
