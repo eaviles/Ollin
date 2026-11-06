@@ -1088,5 +1088,11 @@ let package = Package(
         // you walk between them, after Carlos Cruz-Diez.
         example("Recreations/CarlosCruzDiez/Physichromie"),
         example("Recreations/CarlosCruzDiez/Chromosaturation"),
+        // One structure of a square, two circles, and six lines, laid as a
+        // tabla of wool yarn whose strands follow the nearest edge of their
+        // field, and a sheet of drawings that each change its lines or the
+        // spaces between them, after Eduardo Terrazas.
+        example("Recreations/EduardoTerrazas/Cosmos"),
+        example("Recreations/EduardoTerrazas/Posibilidades"),
     ]
 )

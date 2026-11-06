@@ -440,6 +440,10 @@
     "Recreations/CarlosCruzDiez": [
       "Recreations/CarlosCruzDiez/Physichromie",
       "Recreations/CarlosCruzDiez/Chromosaturation"
+    ],
+    "Recreations/EduardoTerrazas": [
+      "Recreations/EduardoTerrazas/Cosmos",
+      "Recreations/EduardoTerrazas/Posibilidades"
     ]
   },
   "groups": {
@@ -488,8 +492,8 @@
         "3D/Environments/ImageBasedLighting",
         "3D/Environments/Cloudscape"
       ],
-      "image": "groups/3D-Environments.jpg?v=c09cccf2",
-      "imageSmall": "groups/3D-Environments-640.jpg?v=d68774a5"
+      "image": "groups/3D-Environments.jpg?v=71e8294e",
+      "imageSmall": "groups/3D-Environments-640.jpg?v=7c4b583f"
     },
     "3D/Geometry": {
       "of": [
@@ -528,8 +532,8 @@
         "3D/Physics/Crawler",
         "3D/Physics/Tumble"
       ],
-      "image": "groups/3D-Physics.jpg?v=5e6a9107",
-      "imageSmall": "groups/3D-Physics-640.jpg?v=54de510e"
+      "image": "groups/3D-Physics.jpg?v=2cc73ee2",
+      "imageSmall": "groups/3D-Physics-640.jpg?v=1ef1fbce"
     },
     "3D/Raymarching": {
       "of": [
@@ -755,6 +759,14 @@
       ],
       "image": "groups/Recreations-DoraMaurer.jpg?v=9a828de3",
       "imageSmall": "groups/Recreations-DoraMaurer-640.jpg?v=aa3f7cdb"
+    },
+    "Recreations/EduardoTerrazas": {
+      "of": [
+        "Recreations/EduardoTerrazas/Cosmos",
+        "Recreations/EduardoTerrazas/Posibilidades"
+      ],
+      "image": "groups/Recreations-EduardoTerrazas.jpg?v=cb09187f",
+      "imageSmall": "groups/Recreations-EduardoTerrazas-640.jpg?v=c1111454"
     },
     "Recreations/FriederNake": {
       "of": [
@@ -9784,6 +9796,50 @@
       "still": "examples/Recreations/DoraMaurer/QuasiImage/still.jpg?v=81cfe425",
       "stillSmall": "examples/Recreations/DoraMaurer/QuasiImage/still-640.jpg?v=f07fecc5",
       "width": 1080
+    },
+    "Recreations/EduardoTerrazas/Cosmos": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 12.673,
+      "sound": false,
+      "source": "2b7644e5cc9d6ec2",
+      "rendered": "2026-11-06",
+      "bytes": {
+        "loop": 3549773,
+        "loopSmall": 892405,
+        "still": 363569,
+        "stillSmall": 81395
+      },
+      "loop": "examples/Recreations/EduardoTerrazas/Cosmos/loop.mp4?v=3d76338a",
+      "loopSmall": "examples/Recreations/EduardoTerrazas/Cosmos/loop-640.mp4?v=2de40da2",
+      "still": "examples/Recreations/EduardoTerrazas/Cosmos/still.jpg?v=2f3eeb66",
+      "stillSmall": "examples/Recreations/EduardoTerrazas/Cosmos/still-640.jpg?v=a647e5d5",
+      "seed": 1
+    },
+    "Recreations/EduardoTerrazas/Posibilidades": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 5.955,
+      "sound": false,
+      "source": "1c4ecd9904927a38",
+      "rendered": "2026-11-06",
+      "bytes": {
+        "loop": 2836049,
+        "loopSmall": 1175742,
+        "still": 367895,
+        "stillSmall": 148982
+      },
+      "loop": "examples/Recreations/EduardoTerrazas/Posibilidades/loop.mp4?v=3ea5ff3a",
+      "loopSmall": "examples/Recreations/EduardoTerrazas/Posibilidades/loop-640.mp4?v=01265638",
+      "still": "examples/Recreations/EduardoTerrazas/Posibilidades/still.jpg?v=a0b35ea8",
+      "stillSmall": "examples/Recreations/EduardoTerrazas/Posibilidades/still-640.jpg?v=db08f27a",
+      "seed": 1
     },
     "Recreations/FriederNake/HommageAPaulKlee": {
       "bytes": {

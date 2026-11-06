@@ -666,8 +666,25 @@ field.
   sphere-trace the same kind of field in space, described under [3D fields](#fields-3d). The 3D
   form is opt-in and shares the same per-axis tools, and its gradient paint is screen-space
   rather than field-space.
-- A composition is bounded by a large node and nesting budget. A field past that budget is
-  skipped with a console note rather than mis-drawn.
+- **A field holds up to 256 nodes, nested 16 deep.** A leaf shape is one node, a combination
+  of two fields is one, a modifier is one, and a transform (a move, a turn, a repeat) is two.
+  So about 128 leaves joined one after another fill a field, and fewer when each is placed by
+  a transform. Combinations nest to 16 levels and transforms to 16. A chain written
+  `a.union(b).union(c)` stays two levels deep however long it grows, since each step joins the
+  result so far to one more leaf. It is a combination whose *second* field is itself a
+  combination that goes a level deeper. A field past any of the three limits is skipped with a
+  console note that says which, rather than mis-drawn. `SDF` and `SDF3D` share the numbers.
+- **Every sample evaluates every node.** A field has no index over its parts, so its cost
+  grows as samples × nodes. In 2D a sample is a pixel the field covers. In 3D it is a *step*
+  of a marched ray: up to the march budget for each pixel (64, 128, or 192 steps by quality
+  tier, or what `raymarchSteps(_:)` sets), a few more for the surface normal, and under a
+  light with `castShadows()` up to three eighths of the budget again for the field's shadow
+  on itself. A directional or spot caster also marches the whole field a second time, from
+  the light, to put it in the shadow map. A 3D field near the node limit, at full resolution,
+  under a shadow, is therefore among the heaviest things a sketch can draw, and an export
+  marches at full resolution unless the sketch asks for less. Parts that do not need to melt
+  into each other are cheaper as separate `drawSDF3D` calls: each call is marched only inside
+  its own bounds, and the calls still hide one another by depth.
 
 ---
 
