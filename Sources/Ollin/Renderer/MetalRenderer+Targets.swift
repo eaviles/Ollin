@@ -1385,12 +1385,23 @@ extension MetalRenderer {
         let baseScale = resolveRaymarchScale(drawer.raymarchQualitySetting)
         let groups3D = drawer.sdf3DGroups
         guard baseScale < 1.0, !groups3D.isEmpty, let groupBuffer, let nodeBuffer else { return nil }
-        for b in drawer.batches where b.kind == .sdfGroup3D && b.blendMode != .normal { return nil }
+        // The canvas's fields alone. This pass is the canvas's: a layer marches its own
+        // fields in its own pass, through its own camera, and one drawn here as well
+        // would show on the canvas (it did, wherever the canvas's camera saw it) and
+        // count toward the canvas's coverage.
+        let batches = drawer.batches
+        var canvasGroups: [SDF3DGroupInstance] = []
+        for i in batches.indices where batches[i].kind == .sdfGroup3D && batches[i].target == nil {
+            if batches[i].blendMode != .normal { return nil }
+            let end = i + 1 < batches.count ? batches[i + 1].sdf3DGroupStart : groups3D.count
+            canvasGroups.append(contentsOf: groups3D[batches[i].sdf3DGroupStart ..< end])
+        }
+        guard !canvasGroups.isEmpty else { return nil }
 
         // Coverage-adaptive scale: trace denser as the fields cover less of the screen, at the
         // same marched-pixel budget. At/above full resolution skip the pre-pass entirely: the
         // inline march is both crisper (no upsample) and cheaper (no second pass).
-        let coverage = Self.fieldScreenCoverage(groups3D,
+        let coverage = Self.fieldScreenCoverage(canvasGroups,
                                            viewProjection: uniforms3D.projection * uniforms3D.view)
         let scale = min(1.0, baseScale / max(coverage.squareRoot(), 1e-3))
         guard scale < 1.0 else { return nil }
@@ -1497,10 +1508,9 @@ extension MetalRenderer {
         }
 
         let group3DStride = MemoryLayout<SDF3DGroupInstance>.stride
-        let batches = drawer.batches
         for i in batches.indices {
             let batch = batches[i]
-            guard batch.kind == .sdfGroup3D else { continue }
+            guard batch.kind == .sdfGroup3D, batch.target == nil else { continue }
             let next = i + 1 < batches.count ? batches[i + 1] : nil
             let end = next?.sdf3DGroupStart ?? groups3D.count
             let count = end - batch.sdf3DGroupStart

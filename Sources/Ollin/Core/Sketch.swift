@@ -1162,12 +1162,28 @@ open class Sketch {
     /// 3D: the renderer adds a depth buffer and draws 3D geometry (point clouds)
     /// through the camera. Per-frame state — set it in `draw()`, where a 3D sketch
     /// usually animates an orbit; a 2D sketch never calls it and is unaffected.
+    ///
+    /// A camera set inside a layer's block (`withTarget`) is that layer's own: the
+    /// layer is drawn through it, and the canvas and every other layer keep
+    /// theirs, so one frame can show one world from several places. A layer whose
+    /// block sets none is drawn through the canvas's camera.
+    ///
+    /// ```swift
+    /// camera(.orbiting(target: .zero, radius: 8, azimuth: time * 0.3, elevation: 0.4))
+    /// drawWorld()                       // the canvas: the orbiting view
+    /// withTarget(plan) {
+    ///     camera(.orthographic(eye: Vector3(0, 10, 0), target: .zero, up: Vector3(0, 0, -1), height: 12))
+    ///     drawWorld()                   // the layer: the same world from above
+    /// }
+    /// ```
     public func camera(_ camera: Camera3D) { drawer.camera(camera) }
 
     /// The 3D camera in effect for this frame, if one has been set this `draw()` (by
     /// `camera`/`perspective`/`ortho`/`cameraMove`/`cameraControl`/`cameraShowcase`),
     /// else `nil`. Read it to find where the camera ended up (e.g. its `eye`) when
     /// an interactive rig (`cameraShowcase`) owns the pose. `nil` in a 2D frame.
+    /// Inside a layer's block (`withTarget`) it is the camera the layer is drawn
+    /// with: the layer's own when the block has set one, else the canvas's.
     public var activeCamera: Camera3D? { drawer.camera3D }
 
     /// A perspective 3D camera looking from `eye` at `target` (sugar over `camera`);
@@ -2762,13 +2778,14 @@ open class Sketch {
     /// whatever it is set to. See [`LineDrawing`](../3D/LineDrawing.md).
     public func lineDrawing(of meshes: [Mesh], creaseAngle: Double = .pi / 6,
                             spacing: Double = 2) -> LineDrawing {
-        guard let camera = activeCamera, width > 0, height > 0 else {
+        let surface = drawer.surfaceSize(canvas: Vector2(width, height))
+        guard let camera = activeCamera, surface.x > 0, surface.y > 0 else {
             return LineDrawing(of: [], camera: Camera3D(eye: .zero, target: Vector3(0, 0, -1)),
                                size: Vector2(1, 1))
         }
         let placed = drawer.modelMatrix == matrix_identity_float4x4
             ? meshes : meshes.map { $0.transformed(by: drawer.modelMatrix) }
-        return LineDrawing(of: placed, camera: camera, size: Vector2(width, height),
+        return LineDrawing(of: placed, camera: camera, size: surface,
                            creaseAngle: creaseAngle, spacing: spacing)
     }
 
@@ -2781,9 +2798,12 @@ open class Sketch {
 
     /// Project a world point through the active camera to its position on the canvas
     /// (top-left origin, points), or `nil` if there's no camera or the point is
-    /// behind it. The screen place to draw a 2D billboard for a 3D point.
+    /// behind it. The screen place to draw a 2D billboard for a 3D point. Inside a
+    /// layer's block (`withTarget`) the answer is a place on the layer, through
+    /// the camera the layer is drawn with.
     public func project(_ worldPoint: Vector3) -> Vector2? {
-        drawer.project(worldPoint, viewport: SIMD2<Float>(Float(width), Float(height)))
+        let surface = drawer.surfaceSize(canvas: Vector2(width, height))
+        return drawer.project(worldPoint, viewport: SIMD2<Float>(Float(surface.x), Float(surface.y)))
     }
 
     /// The inverse of `project`: the world-space ray from the active camera
@@ -2803,6 +2823,10 @@ open class Sketch {
     /// analytic inverse (a depth-feed intrinsics projection).
     public func cameraRay(through canvasPoint: Vector2)
         -> (origin: Vector3, direction: Vector3)? {
+        // Inside a layer's block the point is a place on the layer (where a
+        // window showing it reports its pointer), and the camera the layer's.
+        let surface = drawer.surfaceSize(canvas: Vector2(width, height))
+        let width = surface.x, height = surface.y
         guard let camera = activeCamera, width > 0, height > 0 else { return nil }
         let ndcX = 2 * (canvasPoint.x / width) - 1
         let ndcY = 1 - 2 * (canvasPoint.y / height)
@@ -5178,6 +5202,7 @@ open class Sketch {
         for e in extensions { e.beforeDraw(self) }
         draw()
         for e in extensions { e.afterDraw(self) }   // before the render — can draw
+        drawer.endFrame()
     }
 
     /// Fired after a frame renders, with its timing: by the runner after a

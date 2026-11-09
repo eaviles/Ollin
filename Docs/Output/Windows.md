@@ -68,17 +68,56 @@ In an export there is no second window. `isOpen` stays false, the pointer reads 
 
 An export writes the sketch's own canvas. To get the second view into a file, draw the layer onto the canvas (`drawImage(monitor.image, 0, 0)`) in a sketch made for that.
 
-### One camera to a frame
+### The same world from another place
 
-A frame has one 3D camera. A camera set inside the layer's block is the canvas's camera too, so a second window cannot yet show the same 3D world from another place. A flat view suits it today: controls, a plan, a readout, a waveform. Lights are the frame's as well. Set them once, and they light everything the frame draws.
+A camera set inside the layer's block is the layer's own. The layer is drawn through it and the canvas keeps its camera, so the second window can show the same 3D world from somewhere else: the stage from the audience's seat in one window, and from above in the other.
 
-[`Examples/Installation/SecondView`](../../Examples/Installation/SecondView/Sketch.swift) is a stage in the sketch's own window and its plan in a second one, where a drag moves the lamp.
+```swift
+import Ollin
+
+final class StageAndPlan: Sketch {
+    var plan: RenderTarget!
+    var planWindow: SketchWindow!
+
+    override func setup() {
+        plan = makeRenderTarget(width: 480, height: 480)
+        planWindow = makeWindow(showing: plan, title: "Plan")
+    }
+
+    func drawStage() {
+        drawPlane(width: 8, depth: 8)
+        withState { translate(0, 1, 0); drawBox(size: 1.5) }
+    }
+
+    override func draw() {
+        background(.black)
+        camera(.perspective(eye: Vector3(0, 2, 9), target: Vector3(0, 1, 0)))
+        drawStage()                              // the sketch's own window
+
+        withTarget(plan) {
+            background(.black)
+            camera(.orthographic(eye: Vector3(0, 10, 0), target: .zero,
+                                 up: Vector3(0, 0, -1), height: 10))
+            drawStage()                          // the second window: from above
+        }
+    }
+}
+```
+
+Lights are the frame's. Set them once, and they light everything the frame draws, in both windows.
+
+Inside the block, `cameraRay(through:)` reads the layer's camera and the layer's size. So `cameraRay(through: planWindow.mouse)`, called inside the layer's block, is the ray under the pointer in the second window, ready to pick with.
+
+A layer's solids receive no cast shadow, so a shadow that falls across the stage in the sketch's own window is missing from the second one. The [3D page](../3D/3D.md#layer-camera) lists what else stops at a layer.
+
+[`Examples/Installation/SecondView`](../../Examples/Installation/SecondView/Sketch.swift) is a stage in the sketch's own window and the same stage from above in a second one, where a drag moves the lamp.
 
 ---
 
 ## See also
 
 - [Effects](../Drawing/Effects.md) - layers: `makeRenderTarget`, `withTarget`, and what a layer can hold
+- [3D](../3D/3D.md#layer-camera) - a camera for a layer, and what stops at one
 - [Installation](./Installation.md) - one canvas across several displays, corner pinning, and edge blending
 - [Overlay](./Overlay.md) - a sketch floating over the desktop
 - [Canvas](../Core/Canvas.md) - the sketch's own window and its modes

@@ -24,9 +24,8 @@ struct LayerWindowTests {
         var monitor: RenderTarget!
         var controls: SketchWindow!
         var drawsTheLayer = true
-        /// Draw the layer through a camera of its own, from above: what a
-        /// second view of one world wants, and what a frame's one camera
-        /// does not yet give.
+        /// Draw the layer through a camera of its own, from above: a second
+        /// view of one world.
         var layerLooksFromAbove = false
         override var canvasSize: CanvasSize { .size(200, 140) }
         let block = Mesh.box(width: 1.2, height: 0.6, depth: 2)
@@ -130,20 +129,35 @@ struct LayerWindowTests {
         #expect(ink.max > 60, "the window's picture is blank")
     }
 
-    /// A frame has one 3D camera, so a camera set inside a layer's block is the
-    /// canvas's too, and a second window cannot yet show the same world from
-    /// somewhere else. Pinned as a known issue: the day a layer keeps a camera
-    /// of its own this stops failing, and the pin has to come off.
+    /// The layer above, as a canvas of its own: the block from overhead.
+    final class FromAboveAlone: Sketch {
+        override var canvasSize: CanvasSize { .size(160, 90) }
+        let block = Mesh.box(width: 1.2, height: 0.6, depth: 2)
+        override func draw() {
+            background(Color(white: 0.1))
+            directionalLight(.white, direction: Vector3(0.4, -0.8, -0.45), intensity: 1)
+            ambientLight(Color(white: 0.25))
+            camera(.perspective(eye: Vector3(0, 6, 0.01), target: .zero, fieldOfView: .pi / 4))
+            fill(Color(red: 0.9, green: 0.5, blue: 0.2))
+            material(.matte)
+            drawMesh(block)
+        }
+    }
+
+    /// A camera set inside a layer's block is the layer's, so a second window
+    /// shows the same world from somewhere else: the window against the scene
+    /// drawn alone from above, and the canvas against the scene drawn alone
+    /// from the stage, each view against its own twin.
     @Test(.enabled(if: Snapshot.hasMetal))
-    func aLayersCameraIsStillTheFramesCamera() throws {
+    func theWindowShowsTheSameWorldThroughItsOwnCamera() throws {
         let sketch = TwoViews()
         sketch.layerLooksFromAbove = true
         let shown = try frame(of: sketch)
-        let alone = try still(StageAlone())
-        withKnownIssue("a frame has one camera: the layer's replaces the canvas's") {
-            let stage = try #require(imageDifference(shown.canvas, alone))
-            #expect(stage.max <= 2, "the layer's camera moved the canvas by up to \(stage.max) levels")
-        }
+        let window = try #require(shown.window, "the window was given no picture")
+        let above = try #require(imageDifference(window, try still(FromAboveAlone())))
+        #expect(above.max <= 3, "the window is off the view from above by up to \(above.max) levels")
+        let stage = try #require(imageDifference(shown.canvas, try still(StageAlone())))
+        #expect(stage.max <= 3, "the layer's camera moved the canvas by up to \(stage.max) levels")
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))

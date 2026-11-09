@@ -494,7 +494,7 @@ final class Stage: Sketch {
 }
 ```
 
-Both windows are drawn in the same `draw()`, so they show the same frame. The second window reports its own pointer in the layer's coordinates (`controls.mouseX`, `controls.mouseY`, `controls.mouseIsPressed`), which is what makes a view of controls clickable. Drag either window to the projector's display and press its green button to fill it. A frame still has one 3D camera, so the second view is a flat one for now: controls, a plan, a readout. [`Examples/Installation/SecondView`](../Examples/Installation/SecondView/Sketch.swift) is a stage and its plan, where a drag in the plan moves the lamp on the stage. The [windows page](../Docs/Output/Windows.md) has the rest.
+Both windows are drawn in the same `draw()`, so they show the same frame. The second window reports its own pointer in the layer's coordinates (`controls.mouseX`, `controls.mouseY`, `controls.mouseIsPressed`), which is what makes a view of controls clickable. Drag either window to the projector's display and press its green button to fill it. The second view can be flat: controls, a readout, a waveform. It can also be the same 3D world from another place. A camera set inside the layer's block belongs to that layer, and the canvas keeps its own. So the projector can show the stage from the audience's seat while the laptop shows it from above. [`Examples/Installation/SecondView`](../Examples/Installation/SecondView/Sketch.swift) does that: a stage and the same stage from above, where a drag in the second window moves the lamp. A layer's solids take no cast shadow yet, so a shadow on the stage is missing from the second view. The [windows page](../Docs/Output/Windows.md) has the rest.
 
 ### Several machines, one sketch: `Room`
 

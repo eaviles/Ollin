@@ -614,6 +614,59 @@ final class Drawer {
     /// through it; a 2D-only frame leaves it `nil` and is untouched.
     private(set) var camera3D: Camera3D?
 
+    /// The camera each layer set for itself this frame, by the layer's identity.
+    /// A camera set inside a `withTarget` block belongs to that layer: its pass
+    /// draws through it, and the canvas keeps its own. A layer that set none is
+    /// drawn through the canvas's. Per-frame, like `camera3D`.
+    private(set) var layerCameras: [ObjectIdentifier: Camera3D] = [:]
+
+    /// The first camera a layer set this frame. A frame whose canvas set none
+    /// borrows it once the drawing is done (`endFrame`), for the passes that
+    /// belong to the frame rather than to a surface.
+    private var firstLayerCamera: Camera3D?
+
+    /// The open layer blocks as the camera sees them: each layer and the camera
+    /// that was current when its block opened, restored when it closes. Kept
+    /// apart from `targetStack`, which a batch recording sets aside, so a camera
+    /// set while recording inside a layer's block is still the layer's.
+    private var layerCameraScopes: [(target: RenderTarget, outer: Camera3D?)] = []
+
+    /// The canvas's camera, whatever layer block is open.
+    var canvasCamera3D: Camera3D? {
+        if let outermost = layerCameraScopes.first { return outermost.outer }
+        return camera3D
+    }
+
+    /// The size, in points, of the surface drawing lands on right now: the
+    /// innermost open layer's, else `canvas`. What a projection through the
+    /// current camera is measured against.
+    func surfaceSize(canvas: Vector2) -> Vector2 {
+        currentTarget.map { Vector2(Double($0.width), Double($0.height)) } ?? canvas
+    }
+
+    /// The camera `target`'s pass draws through: its own when it set one this
+    /// frame, else the canvas's. Read between frames (by the renderer), when no
+    /// layer block is open and `camera3D` is the canvas's.
+    func camera(for target: RenderTarget?) -> Camera3D? {
+        if let target, let own = layerCameras[ObjectIdentifier(target)] { return own }
+        return camera3D
+    }
+
+    /// Run `body` with `camera3D` reading as the camera `target`'s pass draws
+    /// through, for the renderer while it encodes that pass: everything a pass
+    /// asks of the camera (the view and projection, the lighting's eye, the fog's
+    /// framing, a light given in camera space, the depth it hands on) then
+    /// answers for the layer's own view. A layer with no camera of its own, and
+    /// the canvas, run `body` with nothing changed.
+    func withPassCamera<T>(for target: RenderTarget?, _ body: () throws -> T) rethrows -> T {
+        guard let target, !layerCameras.isEmpty,
+              let own = layerCameras[ObjectIdentifier(target)] else { return try body() }
+        let canvas = camera3D
+        camera3D = own
+        defer { camera3D = canvas }
+        return try body()
+    }
+
     /// Last frame's camera, kept across `beginFrame`: the cross-frame half of the
     /// motion-blur velocity computation (the mover registry's camera sibling). It
     /// lives here rather than on a renderer history slot so the live, repeat, and
@@ -2051,12 +2104,20 @@ final class Drawer {
             if let owner = target.owningLayer { layerOwners.append(owner) }
         }
         targetStack.append(TargetFrame(target: target, snapshot: snapshot()))
+        // The camera is per surface too: inside the block it is the layer's own
+        // when the layer has set one this frame, else the canvas's, and whatever
+        // the block sets is the layer's. The camera in force outside comes back
+        // when the block closes.
+        let canvasCamera = canvasCamera3D
+        layerCameraScopes.append((target, camera3D))
+        camera3D = layerCameras[ObjectIdentifier(target)] ?? canvasCamera
         currentKind = nil    // force the first draw inside the target into a fresh batch
         recomputeClipLevel() // clipping is per surface: the layer starts unclipped
         pushState()
         body()
         popState()
         targetStack.removeLast()
+        camera3D = layerCameraScopes.removeLast().outer
         currentKind = nil    // and force the next main draw into a fresh, untagged batch
         recomputeClipLevel() // back on the enclosing surface's clip level
     }
@@ -3012,7 +3073,16 @@ final class Drawer {
     /// frame, so set it from `draw()` (3D sketches typically animate it). Setting
     /// it is what puts the frame into 3D — the renderer allocates a depth buffer
     /// and draws 3D geometry through it. A 2D-only frame never calls this.
-    func camera(_ camera: Camera3D) { camera3D = camera }
+    ///
+    /// Inside a layer's block (`withTarget`) the camera is that layer's: the layer
+    /// is drawn through it, and the canvas and every other layer keep their own.
+    func camera(_ camera: Camera3D) {
+        camera3D = camera
+        if let layer = layerCameraScopes.last?.target {
+            layerCameras[ObjectIdentifier(layer)] = camera
+            if firstLayerCamera == nil { firstLayerCamera = camera }
+        }
+    }
 
     /// Re-aim the frame's camera after `draw()` has run, for the two renders the
     /// spatial-video export makes of a single drawn frame.
@@ -3039,16 +3109,16 @@ final class Drawer {
     /// A perspective 3D camera looking from `eye` at `target` (sugar over `camera`).
     func perspective(eye: Vector3, target: Vector3 = .zero, up: Vector3 = .unitY,
                      fieldOfView: Double = .pi / 3, near: Double = 0.1, far: Double = 1000) {
-        camera3D = .perspective(eye: eye, target: target, up: up,
-                                fieldOfView: fieldOfView, near: near, far: far)
+        camera(.perspective(eye: eye, target: target, up: up,
+                            fieldOfView: fieldOfView, near: near, far: far))
     }
 
     /// An orthographic 3D camera looking from `eye` at `target`, framing `height`
     /// world units top-to-bottom (sugar over `camera`).
     func ortho(eye: Vector3, target: Vector3 = .zero, up: Vector3 = .unitY,
                height: Double, near: Double = 0.1, far: Double = 1000) {
-        camera3D = .orthographic(eye: eye, target: target, up: up,
-                                 height: height, near: near, far: far)
+        camera(.orthographic(eye: eye, target: target, up: up,
+                             height: height, near: near, far: far))
     }
 
     /// Add a light to this frame's 3D scene (see `Light`). Per-frame, like the
@@ -5095,6 +5165,21 @@ final class Drawer {
 
     // MARK: Frame lifecycle
 
+    /// Close the frame once `draw()` has returned, before anything renders it.
+    ///
+    /// A frame whose canvas set no camera while a layer did keeps that layer's
+    /// camera as the frame's: the passes that belong to the frame and not to a
+    /// surface (the shadow maps and the structure rays are traced against, the
+    /// bounced-light probes, the grid of light lists) are still built, around
+    /// the one view the frame has, so a sketch whose only camera is its layer's
+    /// renders as it always did. Nothing was drawn on that canvas through it:
+    /// while `draw()` ran the canvas had no camera, and its 3D calls drew nothing.
+    func endFrame() {
+        if layerCameraScopes.isEmpty, camera3D == nil, let borrowed = firstLayerCamera {
+            camera3D = borrowed
+        }
+    }
+
     /// Drop last frame's geometry but keep drawing state. Called once per frame
     /// by the runner before `Sketch.draw()`.
     func beginFrame() {
@@ -5140,8 +5225,12 @@ final class Drawer {
         // Keep last frame's camera for the motion-blur velocity fill before the
         // slot resets; a frame that set none leaves the previous one in place so
         // one camera-less frame doesn't erase the cross-frame memory.
-        previousCamera3D = camera3D ?? previousCamera3D
+        // A block left open by an early exit still holds the canvas's camera.
+        previousCamera3D = canvasCamera3D ?? previousCamera3D
         camera3D = nil
+        layerCameras.removeAll(keepingCapacity: true)
+        layerCameraScopes.removeAll(keepingCapacity: true)
+        firstLayerCamera = nil
         // The mover registry: ranges and occurrence counters are per-frame; the
         // history persists (it's the cross-frame memory) but drops entries not
         // refreshed last frame, so a mover that skipped a frame starts over.

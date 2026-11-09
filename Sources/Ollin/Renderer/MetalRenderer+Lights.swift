@@ -63,6 +63,7 @@ extension MetalRenderer {
                          renderWidth: Int, renderHeight: Int,
                          frameIndex: Int?) -> LightGrid? {
         currentLightGrids.removeAll(keepingCapacity: true)
+        currentLightGridCamera = drawer.camera3D
         // One cull per light set that outruns the inline array: a set is its own
         // light list, so it is its own cull and its own pair of buffers (the cost
         // the per-set lighting note predicted). A frame with one set runs exactly

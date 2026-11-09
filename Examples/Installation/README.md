@@ -21,7 +21,7 @@ These pieces are made to be left running: on a wall, in a shop window, or at a s
 | [ManyDisplays](ManyDisplays/Sketch.swift) | `displays`, one long canvas across every display the machine drives. Add `--rehearse 3` to lay that wall out as three windows on one desk |
 | [ManyWindows](ManyWindows/Sketch.swift) | `canvasOnScreen`, one world seen through several windows. Run it three times and drag the windows apart, and the dots drift out of one window and into the next |
 | [OverDesktop](OverDesktop/Sketch.swift) | a sketch over the desktop: with `--overlay` a few fireflies float above every window on a clear canvas, lean toward the pointer, and take a click only where one of them is |
-| [SecondView](SecondView/Sketch.swift) | one piece in two windows: a stage in the sketch's own window and its plan in a second one (`makeWindow(showing:title:)`), where a drag in the plan moves the lamp on the stage |
+| [SecondView](SecondView/Sketch.swift) | one stage in two windows, from two places: from the house in the sketch's own window and from above in a second one (`makeWindow(showing:title:)`, with a camera of the layer's own), where a drag in the plan moves the lamp on the stage |
 
 Run one from this `Examples/` directory with `swift run Example-Installation-<Name>`, e.g. `swift run Example-Installation-Unattended`. It takes the whole screen, and Command-Q quits.
 

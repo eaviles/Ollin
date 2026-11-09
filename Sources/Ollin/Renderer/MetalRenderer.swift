@@ -1077,6 +1077,9 @@ final class MetalRenderer {
     /// lit pass that binds one. Frame state, like the resolved IBL: one cull per set
     /// that needs one, and every pass of that size shades against the same lists.
     var currentLightGrids: [Int: LightGrid] = [:]
+    /// The camera this frame's light grids were culled over (the frame's). A
+    /// pass looking through another one never reads them.
+    var currentLightGridCamera: Camera3D?
 
     /// The frame's own set's grid, which is what every reader outside the per-batch bind
     /// means by "the frame's grid".

@@ -106,7 +106,14 @@ extension MetalRenderer {
         // layer that waits on one) is drawn after that op runs, below; every
         // other layer is drawn here, before the ops, as it always was.
         let waiting = layersWaitingOnOps(drawer)
+        // A layer that set a camera of its own this frame is drawn through it:
+        // for the length of its pass the drawer answers every camera question
+        // (the view and projection, the lighting's eye, the fog's framing, the
+        // depth the layer hands on) with the layer's camera.
         func encodeGeometry(_ target: RenderTarget) {
+            drawer.withPassCamera(for: target) { encodeGeometryPass(target) }
+        }
+        func encodeGeometryPass(_ target: RenderTarget) {
             let pw = target.pixelWidth, ph = target.pixelHeight
             let storage = attachmentStorage(for: drawer, target: target)
             guard let tex = acquireTargetTextures(width: pw, height: ph, pooled: pooled,
@@ -215,14 +222,16 @@ extension MetalRenderer {
             let passHasStencil = attachClipStencil(to: pass, active: target.needsStencil,
                                                    width: pw, height: ph, storage: storage)
             guard let enc = countedEncoder(cb, pass) else { continue }
-            encode(drawer, viewport: SIMD2(Float(target.width), Float(target.height)), into: enc,
-                   triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf, imageBuffer: buffers.image,
-                   glyphBuffer: buffers.glyph, pointBuffer: buffers.point, meshBuffer: buffers.mesh, lineBuffer: buffers.line,
-                   instancedMeshBuffer: buffers.instancedMesh,
-                   meshInstanceBuffer: buffers.meshInstance,
-                   sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
-                   sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode,
-                   depthFormat: nil, stencil: passHasStencil, gi: gi, target: target)
+            drawer.withPassCamera(for: target) {
+                encode(drawer, viewport: SIMD2(Float(target.width), Float(target.height)), into: enc,
+                       triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf, imageBuffer: buffers.image,
+                       glyphBuffer: buffers.glyph, pointBuffer: buffers.point, meshBuffer: buffers.mesh, lineBuffer: buffers.line,
+                       instancedMeshBuffer: buffers.instancedMesh,
+                       meshInstanceBuffer: buffers.meshInstance,
+                       sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
+                       sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode,
+                       depthFormat: nil, stencil: passHasStencil, gi: gi, target: target)
+            }
             enc.endEncoding()
             target.texture = back                // `image` resolves to this frame
             feedbackUsedThisFrame.insert(ObjectIdentifier(fb))
@@ -282,15 +291,17 @@ extension MetalRenderer {
                 frameTexture = tex.resolve
             }
             guard let enc = countedEncoder(cb, pass) else { continue }
-            encode(drawer, viewport: SIMD2(Float(target.width), Float(target.height)), into: enc,
-                   triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf, imageBuffer: buffers.image,
-                   glyphBuffer: buffers.glyph, pointBuffer: buffers.point, meshBuffer: buffers.mesh, lineBuffer: buffers.line,
-                   instancedMeshBuffer: buffers.instancedMesh,
-                   meshInstanceBuffer: buffers.meshInstance,
-                   sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
-                   sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode,
-                   depthFormat: nil, stencil: passHasStencil, gi: gi, target: target,
-                   singleSample: lightOnly, layerFormat: lightOnly ? .rgba32Float : passFormat)
+            drawer.withPassCamera(for: target) {
+                encode(drawer, viewport: SIMD2(Float(target.width), Float(target.height)), into: enc,
+                       triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf, imageBuffer: buffers.image,
+                       glyphBuffer: buffers.glyph, pointBuffer: buffers.point, meshBuffer: buffers.mesh, lineBuffer: buffers.line,
+                       instancedMeshBuffer: buffers.instancedMesh,
+                       meshInstanceBuffer: buffers.meshInstance,
+                       sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
+                       sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode,
+                       depthFormat: nil, stencil: passHasStencil, gi: gi, target: target,
+                       singleSample: lightOnly, layerFormat: lightOnly ? .rgba32Float : passFormat)
+            }
             enc.endEncoding()
             target.texture = frameTexture
             encodeAccumulate(acc, frame: frameTexture, slot: slot, into: cb)
@@ -348,14 +359,16 @@ extension MetalRenderer {
             let passHasStencil = attachClipStencil(to: pass, active: target.needsStencil,
                                                    width: pw, height: ph, storage: storage)
             if let enc = countedEncoder(cb, pass) {
-                encode(drawer, viewport: SIMD2(Float(target.width), Float(target.height)), into: enc,
-                       triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf, imageBuffer: buffers.image,
-                       glyphBuffer: buffers.glyph, pointBuffer: buffers.point, meshBuffer: buffers.mesh, lineBuffer: buffers.line,
-                   instancedMeshBuffer: buffers.instancedMesh,
-                   meshInstanceBuffer: buffers.meshInstance,
-                   sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
-                   sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode,
-                       depthFormat: nil, stencil: passHasStencil, gi: gi, target: target)
+                drawer.withPassCamera(for: target) {
+                    encode(drawer, viewport: SIMD2(Float(target.width), Float(target.height)), into: enc,
+                           triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf, imageBuffer: buffers.image,
+                           glyphBuffer: buffers.glyph, pointBuffer: buffers.point, meshBuffer: buffers.mesh, lineBuffer: buffers.line,
+                           instancedMeshBuffer: buffers.instancedMesh,
+                           meshInstanceBuffer: buffers.meshInstance,
+                           sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
+                           sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode,
+                           depthFormat: nil, stencil: passHasStencil, gi: gi, target: target)
+                }
                 enc.endEncoding()
             }
             if let config = sf.sim.watercolorConfig {
@@ -3799,7 +3812,14 @@ extension MetalRenderer {
             // through to the frame's first `OLLIN_MAX_LIGHTS` instead.
             let gridSize = passTarget.map { SIMD2<Float>(Float($0.pixelWidth), Float($0.pixelHeight)) }
                 ?? renderSize ?? attachmentSize
-            applyLightGrid(to: &lighting, width: Int(gridSize.x), height: Int(gridSize.y), set: set)
+            // And a layer looking through another camera than the one the grid was
+            // culled over draws another view whatever its size, so it reads the
+            // inline lights as well.
+            if drawer.camera3D == currentLightGridCamera {
+                applyLightGrid(to: &lighting, width: Int(gridSize.x), height: Int(gridSize.y), set: set)
+            } else {
+                lighting.sceneLightCount = 0
+            }
             // Image-based lighting: when an environment baked successfully this frame (resolved
             // by the caller before this pass), light the physically-based materials through its
             // maps. Otherwise leave iblEnabled 0, the flat-ambient path, byte-identical.
@@ -5319,23 +5339,29 @@ extension MetalRenderer {
     func encodeMeshFieldCulling(_ drawer: Drawer, into commandBuffer: MTLCommandBuffer,
                                 viewport: SIMD2<Float>) {
         let fieldBatches = drawer.batches.filter { $0.kind == .meshField }
-        guard !fieldBatches.isEmpty, let camera = drawer.camera3D,
+        guard !fieldBatches.isEmpty,
               let cullState = try? computePipeline(for: MeshField.cullKernel),
               let encodeState = try? computePipeline(for: MeshField.encodeKernel) else { return }
         let ordered = drawer.runsOnFixedClock
         let countState = ordered ? try? computePipeline(for: MeshField.countKernel) : nil
         let scanState = ordered ? try? computePipeline(for: MeshField.scanKernel) : nil
         let placeState = ordered ? try? computePipeline(for: MeshField.placeKernel) : nil
-        let aspect = viewport.y > 0 ? Double(viewport.x / viewport.y) : 1
         // The unjittered view-projection: sub-pixel TAA jitter is far inside the
-        // bounding-sphere conservatism, so culling ignores it.
-        let planes = MeshField.frustumPlanes(of: camera.viewProjectionMatrix(aspect: aspect))
+        // bounding-sphere conservatism, so culling ignores it. The view is the one
+        // the draw's own pass looks through: the canvas's camera at the canvas's
+        // shape, or a layer's camera (its own, else the canvas's) at the layer's.
+        func viewPlanes(for batch: GeometryBatch) -> [SIMD4<Float>]? {
+            guard let camera = drawer.camera(for: batch.target) else { return nil }
+            let size = batch.target.map { SIMD2<Float>(Float($0.width), Float($0.height)) } ?? viewport
+            let aspect = size.y > 0 ? Double(size.x / size.y) : 1
+            return MeshField.frustumPlanes(of: camera.viewProjectionMatrix(aspect: aspect))
+        }
 
-        var work: [(GeometryBatch, MeshField.GPUResources, MeshField)] = []
+        var work: [(GeometryBatch, MeshField.GPUResources, MeshField, [SIMD4<Float>])] = []
         for batch in fieldBatches {
-            guard let field = batch.field,
+            guard let field = batch.field, let planes = viewPlanes(for: batch),
                   let resources = field.gpuResources(for: device) else { continue }
-            work.append((batch, resources, field))
+            work.append((batch, resources, field, planes))
         }
         guard !work.isEmpty else { return }
 
@@ -5349,7 +5375,7 @@ extension MetalRenderer {
             ? MeshField.frustumPlanes(of: lighting.lightViewProjection) : nil
 
         guard let reset = commandBuffer.namedBlitEncoder() else { return }
-        for (_, resources, _) in work {
+        for (_, resources, _, _) in work {
             reset.fill(buffer: resources.counts, range: 0 ..< resources.counts.length, value: 0)
             reset.fill(buffer: resources.shadowCounts,
                        range: 0 ..< resources.shadowCounts.length, value: 0)
@@ -5357,7 +5383,7 @@ extension MetalRenderer {
         reset.endEncoding()
 
         guard let compute = commandBuffer.namedComputeEncoder() else { return }
-        for (batch, resources, field) in work {
+        for (batch, resources, field, planes) in work {
             var params = OllinFieldCullParams()
             withUnsafeMutableBytes(of: &params.planes) { raw in
                 let dst = raw.bindMemory(to: SIMD4<Float>.self)
