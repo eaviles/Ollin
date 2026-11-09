@@ -92,8 +92,15 @@ public final class EtherDreamDAC: @unchecked Sendable {
 
     private enum Phase: Sendable {
         case idle, connecting, greeting, preparing, beginning, playing
-        /// The DAC answered with its stop condition: the clear has gone out on
-        /// the same connection, and its answer decides what comes next.
+        /// The DAC answered with its stop condition (its interlock, or an
+        /// emergency stop sent to it). The connection is kept and nothing is
+        /// sent: a stop that clears must not start the beam again on its own,
+        /// so the DAC waits here for `clearStopCondition()`, the deliberate
+        /// restart.
+        case stopped
+        /// `clearStopCondition()` sent the clear, and its answer decides what
+        /// comes next: an acknowledgment prepares again, a refusal (the
+        /// interlock still open) is the stop condition still.
         case clearing
     }
 
@@ -107,8 +114,6 @@ public final class EtherDreamDAC: @unchecked Sendable {
         var inbox = Data()
         var failure: String?
         var pointsSent = 0
-        /// A second clear is already waiting to go out.
-        var clearScheduled = false
     }
     private let stream = OSAllocatedUnfairLock(initialState: Stream())
 
@@ -137,8 +142,16 @@ public final class EtherDreamDAC: @unchecked Sendable {
     /// anything.
     public var status: EtherDreamStatus? { stream.withLock { $0.status } }
 
-    /// What went wrong, if anything has. Cleared by a fresh `connect()`.
+    /// What went wrong, if anything has. Cleared by a fresh `connect()`, and
+    /// when the stream plays again.
     public var lastError: String? { stream.withLock { $0.failure } }
+
+    /// Whether the DAC has answered with its stop condition and is waiting for
+    /// `clearStopCondition()`: its interlock tripped, or an emergency stop was
+    /// sent to it. The connection stands; nothing plays.
+    public var hasStopCondition: Bool {
+        stream.withLock { $0.phase == .stopped || $0.phase == .clearing }
+    }
 
     /// How many points have gone out since the connection opened.
     public var pointsSent: Int { stream.withLock { $0.pointsSent } }
@@ -190,6 +203,22 @@ public final class EtherDreamDAC: @unchecked Sendable {
             connection.cancel()
         })
         stream.withLock { $0.phase = .idle }
+    }
+
+    /// Clear the DAC's stop condition and start playing again, on the same
+    /// connection: the clear goes out, its acknowledgment prepares the DAC
+    /// again, and the points follow. This is the deliberate restart after an
+    /// emergency stop, and the DAC never takes it on its own; the projector's
+    /// `arm()` is what calls it. A stop the DAC still holds (its interlock
+    /// open) refuses the clear, and `lastError` says so until the next call.
+    public func clearStopCondition() {
+        let sends = stream.withLock { state -> Bool in
+            guard state.phase == .stopped else { return false }
+            state.phase = .clearing
+            return true
+        }
+        guard sends else { return }
+        send(EtherDreamWire.clearEmergencyStop())
     }
 
     // MARK: Feeding it
@@ -259,23 +288,19 @@ public final class EtherDreamDAC: @unchecked Sendable {
         case .stopped:
             // The DAC's own stop, from its interlock or an emergency stop sent
             // to it, refuses every command but the one that clears it. The
-            // connection is fine and is kept: the stop is said in `lastError`,
-            // cleared, and the handshake run again from the prepare on this
-            // same socket. Read as a lost connection instead, the socket
-            // would be dropped, the clear would go into nothing, and a laser
-            // whose interlock tripped once would stay dark until a restart. A stop
-            // the DAC holds on to (the interlock still open) refuses the clear
-            // too, and the clear is asked again after a second.
-            let wasClearing = stream.withLock { state -> Bool in
-                let was = state.phase == .clearing
-                state.failure = "the DAC is in a stop condition"
-                state.phase = .clearing
-                return was
-            }
-            if wasClearing {
-                clearAgain(after: 1)
-            } else {
-                send(EtherDreamWire.clearEmergencyStop())
+            // connection is fine and is kept, the stop is said in `lastError`,
+            // and nothing more is sent: the rule for an emergency stop is that
+            // releasing it never restarts the machine, so the restart waits
+            // for `clearStopCondition()`, which the projector's `arm()` calls.
+            // Read as a lost connection instead, the socket would be dropped
+            // and a laser whose interlock tripped once would stay dark until
+            // the sketch was restarted. A clear the DAC refuses (its interlock
+            // still open) lands here too, and says so.
+            stream.withLock { state in
+                state.failure = state.phase == .clearing
+                    ? "the DAC still holds its stop condition (the interlock is open); arm again once it is closed"
+                    : "the DAC is in a stop condition; arm again to clear it"
+                state.phase = .stopped
             }
         }
     }
@@ -302,7 +327,7 @@ public final class EtherDreamDAC: @unchecked Sendable {
             pump()
         case .playing:
             pump()
-        case .idle, .connecting:
+        case .idle, .connecting, .stopped:
             break
         }
     }
@@ -325,26 +350,6 @@ public final class EtherDreamDAC: @unchecked Sendable {
         }
         stream.withLock { $0.pointsSent += points.count }
         send(EtherDreamWire.write(points))
-    }
-
-    /// Wait, then ask the DAC to clear its stop once more, unless the stop has
-    /// cleared meanwhile or another clear is already on its way.
-    private func clearAgain(after delay: Double) {
-        let already = stream.withLock { state -> Bool in
-            let was = state.clearScheduled
-            state.clearScheduled = true
-            return was
-        }
-        guard !already else { return }
-        queue.asyncAfter(deadline: .now() + delay) { [weak self] in
-            guard let self else { return }
-            let still = self.stream.withLock { state -> Bool in
-                state.clearScheduled = false
-                return state.phase == .clearing
-            }
-            guard still else { return }
-            self.send(EtherDreamWire.clearEmergencyStop())
-        }
     }
 
     /// Wait, then ask the DAC how it is doing.

@@ -265,6 +265,8 @@ final class StandInDAC: @unchecked Sendable {
         /// The hardware stop is asserted: every command but the one that clears
         /// it is refused with the stop condition, and no point reaches the beam.
         var emergencyStopped = false
+        /// The interlock is still open, so the clear is refused too.
+        var interlockOpen = false
     }
 
     let capacity = 1_799
@@ -295,12 +297,18 @@ final class StandInDAC: @unchecked Sendable {
 
     /// Assert the stop a real DAC raises from its hardware interlock: playback
     /// ends, and the host has to clear it before anything else is accepted.
-    func raiseEmergencyStop() {
+    /// With `holdingInterlock`, the interlock stays open and the clear is
+    /// refused until `closeInterlock()`.
+    func raiseEmergencyStop(holdingInterlock: Bool = false) {
         state.withLock {
             $0.emergencyStopped = true
+            $0.interlockOpen = holdingInterlock
             $0.playing = false
         }
     }
+
+    /// Close the interlock, so the next clear is accepted.
+    func closeInterlock() { state.withLock { $0.interlockOpen = false } }
 
     private func accept(_ connection: NWConnection) {
         connection.stateUpdateHandler = { [weak self] update in
@@ -334,9 +342,10 @@ final class StandInDAC: @unchecked Sendable {
             while let (command, length, points) = Self.nextCommand(log.inbox) {
                 log.inbox.removeFirst(length)
                 log.commands.append(command)
-                // Under the stop, only the clear is taken; everything else is
-                // answered with the stop condition and does nothing.
-                let refused = log.emergencyStopped && command != 0x63
+                // Under the stop, only the clear is taken, and not while the
+                // interlock is open; everything else is answered with the stop
+                // condition and does nothing.
+                let refused = log.emergencyStopped && (command != 0x63 || log.interlockOpen)
                 if !refused {
                     switch command {
                     case 0x62:                                  // start playing

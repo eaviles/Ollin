@@ -26,6 +26,7 @@ enum ProjectorSpace
   static func transform(from: Rectangle) -> (Vector2) -> Vector2
 final class EtherDreamDAC: Sendable
   convenience init(device: EtherDreamDevice)
+  func clearStopCondition()
   func connect()
   func disconnect()
   func play(_: [LaserPoint])
@@ -33,6 +34,7 @@ final class EtherDreamDAC: Sendable
   let host: String
   let port: Int
   var bufferCapacity: Int { get set }
+  var hasStopCondition: Bool { get }
   var headroom: Double { get set }
   var isPlaying: Bool { get }
   var lastError: String? { get }
@@ -61,6 +63,7 @@ final class LaserProjector: Sendable
   func disarm()
   func disconnect()
   init()
+  var hasStopCondition: Bool { get }
   var isArmed: Bool { get }
   var isPlaying: Bool { get }
   var lastError: String? { get }

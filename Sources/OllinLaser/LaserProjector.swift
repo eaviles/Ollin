@@ -110,14 +110,25 @@ public final class LaserProjector: @unchecked Sendable {
 
     // MARK: The gate
 
-    /// Whether the beam may light. False until `arm()` is called.
+    /// Whether the beam may light. False until `arm()` is called, and false
+    /// again after the DAC reports its stop condition (its interlock tripped,
+    /// or an emergency stop was sent to it): a stop that clears must not bring
+    /// the beam back on its own, so the next `arm()` is the restart.
     public var isArmed: Bool { lock.withLock { $0.armed } }
 
     /// Allow the beam to light. Write this deliberately: it is the moment the
-    /// sketch stops being a picture on a screen.
+    /// sketch stops being a picture on a screen. After an emergency stop it is
+    /// also the restart: the DAC's stop condition is cleared and the stream
+    /// runs again, with light, on the same connection. A stop the DAC still
+    /// holds (its interlock open) refuses, `lastError` says so, and the
+    /// projector stays disarmed until `arm()` is called again.
     public func arm() {
         lock.withLock { $0.armed = true }
+        dac?.clearStopCondition()
     }
+
+    /// Whether the DAC has reported its stop condition and waits for `arm()`.
+    public var hasStopCondition: Bool { dac?.hasStopCondition ?? false }
 
     /// Blank the beam, keeping the connection and the stream. The projector
     /// goes on playing a dark hold, so the mirrors stay parked and the rig
@@ -136,6 +147,9 @@ public final class LaserProjector: @unchecked Sendable {
         let guarded = safety.guarded(optimizer.stream(frame))
         lock.withLock { $0.stream = guarded }
         if let dac {
+            // An emergency stop disarms the projector: the beam comes back
+            // only when somebody calls `arm()` again.
+            if dac.hasStopCondition { lock.withLock { $0.armed = false } }
             dac.stallTimeout = safety.stallTimeout
             dac.pointsPerSecond = optimizer.pointsPerSecond
             dac.play(isArmed ? guarded.points : LaserSafety.blankHold())
