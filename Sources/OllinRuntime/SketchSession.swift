@@ -23,13 +23,24 @@ import Ollin
 @MainActor
 @Observable
 public final class SketchSession {
-    /// The evaluation lifecycle. `.idle` means nothing is in flight that the
-    /// host waits on (a sketch may well be running, and an optimized build may
-    /// still be on its way; see `isOptimizing`); `.failed` carries the raw
-    /// compiler log.
+    /// Where the evaluation stands: one value, written by four transitions
+    /// (`evaluate` as a compile starts, the landings inside it, `keepPlainBuild`,
+    /// and `fail`) and read by every surface through `status`, `isSettled`, and
+    /// `isOptimizing`. A sketch may well be running in any of them: the stage
+    /// keeps the last build that landed.
     public enum Phase: Equatable, Sendable {
+        /// Nothing is in flight: the last evaluation landed whole, or nothing
+        /// has been evaluated yet.
         case idle
+        /// A compile the host waits on is running. The stage shows the build
+        /// before it, or nothing before the first lands.
         case compiling
+        /// The plain build is on stage and the optimized build of the same
+        /// text is still compiling; nothing is waited for (two-speed
+        /// evaluation, `landsPlainBuildFirst`).
+        case optimizing
+        /// The last evaluation did not compile or load; the raw compiler log.
+        /// The build before it stays on stage.
         case failed(String)
     }
 
@@ -75,9 +86,24 @@ public final class SketchSession {
     public var landsPlainBuildFirst: Bool
     /// Whether the optimized build of the sketch on stage is still compiling:
     /// a plain build has swapped in and the optimized one has not yet replaced
-    /// it. False the moment it does, or when it fails (the plain build then
-    /// stays).
-    public private(set) var isOptimizing = false
+    /// it (`phase == .optimizing`). False the moment it does, or when it fails
+    /// (the plain build then stays, and `optimizedBuildFailure` says why).
+    public var isOptimizing: Bool { phase == .optimizing }
+    /// Whether nothing is in flight: no compile the host waits on, and no
+    /// optimized build still on its way behind a plain one. The one meaning of
+    /// "settled" for a host or a test that waits on an evaluation.
+    public var isSettled: Bool {
+        switch phase {
+        case .compiling, .optimizing: return false
+        case .idle, .failed: return true
+        }
+    }
+    /// Why the stage runs the plain build of the last evaluation, in a
+    /// sentence: the optimized build of the same text failed to compile, or
+    /// did not load. `nil` while the optimized build is on stage or on its
+    /// way, and when there was only the one build; cleared by the next
+    /// evaluation. The plain build runs the same code, slower.
+    public private(set) var optimizedBuildFailure: String?
     /// The running sketch's `@Param` parameters, for the host's inspector surface.
     public private(set) var params: [ParamHandle] = []
     /// A user shader's compile error, reported by the runner after a frame
@@ -141,6 +167,25 @@ public final class SketchSession {
     public var errorMessage: String? {
         if case .failed(let message) = phase { return message }
         return setupError ?? shaderError
+    }
+
+    /// The lifecycle on the shared status chip: the one mapping both hosts
+    /// read, so their chips can never disagree. A compile the host waits on
+    /// comes first; then the failures, by how much of the sketch each stops
+    /// (the Swift compile, the `setup()` that holds the sketch, the shader it
+    /// runs without); then the two steady states still worth a word (the
+    /// optimized build on its way, the plain build kept for good); then
+    /// watching.
+    public var status: InspectorStatus {
+        switch phase {
+        case .compiling: return .compiling
+        case .failed: return .error
+        case .idle, .optimizing:
+            if setupError != nil { return .setupFailed }
+            if shaderError != nil { return .shaderError }
+            if phase == .optimizing { return .optimizing }
+            return optimizedBuildFailure == nil ? .watching : .plainBuild
+        }
     }
 
     /// Called by the host once the renderer's `SketchRunner` exists (from
@@ -299,7 +344,7 @@ public final class SketchSession {
                          onSuccess: (@MainActor (Sketch) -> Void)? = nil,
                          onFailure: (@MainActor (SketchLoader.LoadError) -> Void)? = nil) {
         phase = .compiling
-        isOptimizing = false
+        optimizedBuildFailure = nil
         let carryClock = keepClock ?? self.keepClock
         let twoSpeed = landsPlainBuildFirst && loader.optimization == .speed
         // Supersede any in-flight compile so a newer evaluation always wins:
@@ -327,8 +372,7 @@ public final class SketchSession {
                                      keepRun: keepRun, started: started, counts: true) {
                     case .success(let newSketch):
                         plainLanded = true
-                        self.isOptimizing = true
-                        self.phase = .idle
+                        self.phase = .optimizing
                         onSuccess?(newSketch)
                     case .failure(let error):
                         self.fail(error, onFailure)
@@ -346,12 +390,13 @@ public final class SketchSession {
                 if plainLanded {
                     // The silent second swap: the clock carries whatever the
                     // first did, and the host is not told again.
-                    if case .failure(let error) = self.land(dylibPath, with: loader, keepClock: true,
-                                                            keepRun: keepRun, started: started,
-                                                            counts: false) {
-                        print("Ollin: the optimized build did not load, so the plain build stays: \(error)")
+                    switch self.land(dylibPath, with: loader, keepClock: true,
+                                     keepRun: keepRun, started: started, counts: false) {
+                    case .success:
+                        self.phase = .idle
+                    case .failure(let error):
+                        self.keepPlainBuild("the optimized build did not load, so the plain build stays: \(error)")
                     }
-                    self.isOptimizing = false
                 } else {
                     switch self.land(dylibPath, with: loader, keepClock: carryClock,
                                      keepRun: keepRun, started: started, counts: true) {
@@ -364,8 +409,7 @@ public final class SketchSession {
                 }
             case .failure(let error):
                 if plainLanded {
-                    self.isOptimizing = false
-                    print("Ollin: the optimized build failed, so the plain build stays: \(error)")
+                    self.keepPlainBuild("the optimized build failed, so the plain build stays: \(error)")
                 } else {
                     self.fail(error, onFailure)
                 }
@@ -434,5 +478,14 @@ public final class SketchSession {
                       _ onFailure: (@MainActor (SketchLoader.LoadError) -> Void)?) {
         phase = .failed("\(error)")
         onFailure?(error)
+    }
+
+    /// The optimized build behind the plain one is not coming: the plain
+    /// build stays on stage, and the sentence says why, to the host (`status`
+    /// reads `.plainBuild` until the next evaluation) and on standard error.
+    private func keepPlainBuild(_ sentence: String) {
+        optimizedBuildFailure = sentence
+        phase = .idle
+        FileHandle.standardError.write(Data("Ollin: \(sentence)\n".utf8))
     }
 }

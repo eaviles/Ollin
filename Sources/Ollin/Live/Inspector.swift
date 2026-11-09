@@ -24,13 +24,26 @@ import UIKit
 /// its watcher state onto the first three; the detached panel (no watcher) uses
 /// `.running`.
 public enum InspectorStatus: Equatable, Sendable {
+    /// Nothing is in flight: the host watches its file, or waits for the
+    /// next evaluation.
     case watching
+    /// A compile the host waits on is running.
     case compiling
     /// The code is on stage as a plain build and its optimized build is
     /// still compiling (two-speed evaluation): a compile is running, but
     /// nothing is being waited for.
     case optimizing
+    /// The plain build stays on stage for good: the optimized build of the
+    /// same text failed to compile or did not load, which the host said on
+    /// standard error. The sketch runs the same code, slower.
+    case plainBuild
+    /// The last evaluation did not compile or load; the sketch before it
+    /// keeps running.
     case error
+    /// The sketch's `setup()` threw, and the sketch is held on it.
+    case setupFailed
+    /// A user shader does not compile; the sketch runs without it.
+    case shaderError
     case running
 
     var label: String {
@@ -38,7 +51,10 @@ public enum InspectorStatus: Equatable, Sendable {
         case .watching: return "Watching"
         case .compiling: return "Compiling…"   // the transient states take the ellipsis
         case .optimizing: return "Optimizing…"
+        case .plainBuild: return "Plain build"
         case .error: return "Compile error"
+        case .setupFailed: return "setup() failed"
+        case .shaderError: return "Shader error"
         case .running: return "Running"
         }
     }
@@ -46,19 +62,20 @@ public enum InspectorStatus: Equatable, Sendable {
     var tint: SwiftUI.Color {
         switch self {
         case .watching, .running: return OllinInspector.green
-        case .compiling, .optimizing: return OllinInspector.amber
-        case .error: return OllinInspector.red
+        case .compiling, .optimizing, .plainBuild: return OllinInspector.amber
+        case .error, .setupFailed, .shaderError: return OllinInspector.red
         }
     }
 
     /// The chip's text color: muted for the steady states, tinted for the
-    /// alerts. Optimizing is muted: the sketch is already on stage, and only
-    /// the dot says a compile is still running.
+    /// alerts. Optimizing and the kept plain build are muted: the sketch is
+    /// already on stage, and only the dot says a compile is still running,
+    /// or that the one on stage is the slower build.
     var labelColor: SwiftUI.Color {
         switch self {
-        case .watching, .running, .optimizing: return .secondary
+        case .watching, .running, .optimizing, .plainBuild: return .secondary
         case .compiling: return OllinInspector.amber
-        case .error: return OllinInspector.red
+        case .error, .setupFailed, .shaderError: return OllinInspector.red
         }
     }
 

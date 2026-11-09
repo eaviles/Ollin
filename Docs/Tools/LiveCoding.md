@@ -121,13 +121,15 @@ One failure is not in your code: the framework rebuilt while the window is open.
 
 A user shader that fails to compile reports through the same strip, at its own file and line. The shader can be an inline `Shader` or a `.metal` resource. The two kinds of error are independent. Fixing the Swift error does not hide a shader error, and fixing the shader error does not hide a Swift one.
 
+The chip at the top right of the stage says which it is: "Compile error" for the Swift compile, "Shader error" for a shader, and "setup() failed" when the sketch's `setup()` threw and the sketch is held on it. The chip is amber while a compile runs. It reads "Optimizing…" while the optimized build is still on its way behind the plain one on stage, and "Plain build" when that optimized build failed and the plain one stays, which is rare and means the sketch runs slower than it would. It is hidden while everything is well.
+
 ### Files, saving, and recovery
 
 The `.swift` file is the artifact, and nothing writes it but you:
 
 - **Evaluate never saves.** ⌘↩ compiles the buffer in memory, so you can improvise during a set without changing the file on disk.
 - **Saving is explicit.** **⌘S** saves, **⌘⇧S** saves a copy elsewhere, **⌘N** starts a fresh untitled buffer, and **⌘O** opens any sketch file. A new buffer starts on the starter sketch, and a dot in the window title marks unsaved changes.
-- **A crash loses nothing.** The buffer saves itself to a recovery file on every evaluation. It saves again at intervals while it has unsaved changes. If the app stops during a set, the next launch of the *same* document offers to restore what it recovered. A clean save clears the recovery file.
+- **A crash loses nothing.** The buffer saves itself to a recovery file on every evaluation. It saves again at intervals while it has unsaved changes. If the app stops during a set, the next launch of the *same* document offers to restore what it recovered. The offer stands until you answer it, across launches too, as long as you have not typed; opening another document, or starting a new buffer, withdraws it. A clean save clears the recovery file.
 
 Assets that sit beside the `.swift` file, such as an image or a `.metal` file, resolve against the open file's folder. `OllinLive` resolves them the same way. An untitled buffer has no folder yet, so save it first if the sketch needs assets. A `.metal` file you edit beside the sketch is picked up on the next ⌘↩.
 

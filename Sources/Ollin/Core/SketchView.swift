@@ -80,7 +80,9 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// overlay; a standalone run leaves it unset (the message also goes to stderr).
     /// Invoked on the main thread, deduped so it fires only when the error changes.
     public var onUserShaderError: (@MainActor (ShaderCompileError?) -> Void)?
-    private var lastForwardedShaderError: String?
+    /// What the host has been told about the user shaders, and whether the
+    /// next frame has to tell it again (`ShaderErrorRelay`).
+    private var shaderErrorRelay = ShaderErrorRelay()
 
     /// The sentence the sketch's `setup()` threw, while the sketch is held on
     /// it; `nil` once a later `setup()` runs through (a reload, an asset
@@ -998,6 +1000,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// thread.**
     public func reloadShaderLibrary(source: String) throws {
         try renderer.reloadLibrary(source: source)
+        shaderErrorRelay.invalidate()   // the user shaders compile again against it
     }
 
     /// Live shader reload from the framework's split `Shader*.metal` segments in
@@ -1009,6 +1012,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
             throw MetalRenderer.RendererError.shaderLibrary
         }
         try renderer.reloadLibrary(source: source)
+        shaderErrorRelay.invalidate()   // the user shaders compile again against it
     }
 
     /// `setup()`, with what it throws turned into the sentence the hosts show.
@@ -1045,9 +1049,12 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// file. The `Shader` value is unchanged (it holds the file path, not the source),
     /// so a property-initialized shader picks up the edit too. **Call on the main
     /// thread.** Forces one frame if the sketch paused itself with `noLoop()`, so a
-    /// still sketch still updates.
+    /// still sketch still updates. The next frame's shader state reaches the host
+    /// whether or not it changed, so a host that cleared its copy of the error on
+    /// the save hears again about a shader saved with the same mistake.
     public func invalidateUserShaders() {
         renderer.invalidateUserShaderCaches()
+        shaderErrorRelay.invalidate()
         if view?.isPaused == true { view?.draw() }
     }
 
@@ -1454,12 +1461,13 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         // Hand the frame's camera orientation to the axis widget (no-op if unused).
         publishOrientation()
 
-        // Surface any user-shader compile error to the host (deduped) for the error
-        // overlay. The draw callback runs on the main thread, so the handler does too.
+        // Surface any user-shader compile error to the host for the error overlay:
+        // once per change, and once more after the shaders were dropped to compile
+        // again, whatever the answer (the relay says when). The draw callback runs
+        // on the main thread, so the handler does too.
         if let handler = onUserShaderError {
             let current = renderer.currentUserShaderError
-            if current?.message != lastForwardedShaderError {
-                lastForwardedShaderError = current?.message
+            if shaderErrorRelay.shouldForward(current?.message) {
                 MainActor.assumeIsolated { handler(current) }
             }
         }

@@ -83,8 +83,13 @@ package final class ShapeDragController: ShapeDragging {
     /// Whether the modifier is held (or a drag is under way), which is when
     /// the running sketch records where each shape was written. A host whose
     /// pointer is usually somebody else's, the editor over the stage, reads
-    /// this to let the pointer through to the canvas.
+    /// this to let the pointer through to the canvas. A drag that outlives
+    /// the modifier keeps it armed until the drag ends, and no longer.
     package private(set) var isArmed = false
+    /// Whether the modifier is held right now, as the canvas last said. Kept
+    /// apart from `isArmed`, which a drag under way holds up on its own, so
+    /// that the drag's end can read whether the modifier went up during it.
+    @ObservationIgnored private var modifierHeld = false
 
     /// How near a handle the pointer has to be, in canvas points.
     package static let grabRadius = 11.0
@@ -108,6 +113,7 @@ package final class ShapeDragController: ShapeDragging {
     // MARK: What the canvas tells it
 
     package func modifierChanged(held: Bool, at canvasPoint: Vector2?) {
+        modifierHeld = held
         arm(held || isDragging)
         guard held else {
             if !isDragging { clear() }
@@ -173,7 +179,14 @@ package final class ShapeDragController: ShapeDragging {
     package func dragEnded() {
         isDragging = false
         let landed = preview
-        defer { offset = .zero; preview = []; factor = Vector2(1, 1); angle = 0; pick = nil }
+        defer {
+            offset = .zero; preview = []; factor = Vector2(1, 1); angle = 0; pick = nil
+            // A modifier released during the drag held the arming up for the
+            // drag alone: with the drag over, the controller stands down as it
+            // would have on the release, or the editor would go on ignoring
+            // clicks until the next modifier event.
+            if !modifierHeld { arm(false); clear() }
+        }
         guard let pick else { return }
         let wrote: Bool
         switch gesture {

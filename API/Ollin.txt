@@ -341,7 +341,10 @@ enum InspectorStatus: Equatable, Hashable, Sendable
   case compiling
   case error
   case optimizing
+  case plainBuild
   case running
+  case setupFailed
+  case shaderError
   case watching
 enum IsingSpin: Int, CaseIterable, Equatable, Hashable, RawRepresentable, Sendable
   case down

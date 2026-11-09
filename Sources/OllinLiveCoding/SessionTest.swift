@@ -71,18 +71,30 @@ enum SessionTest {
         var landings = 0
         var plain: Sketch?
         var optimizingAtLanding = false
+        var statusAtLanding = InspectorStatus.watching
+        guard session.isSettled, session.status == .watching else {
+            fail("a session nothing was asked of reads \(session.phase), \(session.status)")
+        }
         session.evaluate(loader, input: .source(source(radiusDefault: 100, speedDefault: 1))) { sketch in
             landings += 1
             plain = sketch
             optimizingAtLanding = session.isOptimizing
+            statusAtLanding = session.status
+        }
+        guard session.phase == .compiling, !session.isSettled, session.status == .compiling else {
+            fail("an evaluation just asked for reads \(session.phase), \(session.status)")
         }
         await settle(session)
         guard case .idle = session.phase, let plain else {
             fail("first evaluation didn't land: \(session.phase)")
         }
-        guard landings == 1, optimizingAtLanding, build(of: plain) == 1 else {
+        guard landings == 1, optimizingAtLanding, statusAtLanding == .optimizing, build(of: plain) == 1 else {
             fail("the first build to land was not the plain one, told once, with the optimized one behind it "
-                + "(landings \(landings), optimizing \(optimizingAtLanding), build \(build(of: plain)))")
+                + "(landings \(landings), optimizing \(optimizingAtLanding), status \(statusAtLanding), "
+                + "build \(build(of: plain)))")
+        }
+        guard session.status == .watching, session.optimizedBuildFailure == nil else {
+            fail("the optimized build landed but the session reads \(session.status)")
         }
         guard let optimized = session.sketch, optimized !== plain, value(of: "build", session) == 2 else {
             fail("the optimized build did not replace the plain one (build \(value(of: "build", session) ?? .nan))")
@@ -165,6 +177,33 @@ enum SessionTest {
         await settle(session)
         guard case .idle = session.phase, value(of: "build", session) == 2 else {
             fail("a good evaluation after the broken one did not land: \(session.phase)")
+        }
+
+        print("OllinLiveCoding sessiontest: the chip reads one mapping, by what stops the sketch …")
+        guard session.status == .watching else {
+            fail("a settled stage reads \(session.status), expected watching")
+        }
+        session.reportShaderError("Shader.metal:3: error: planted")
+        guard session.status == .shaderError, session.errorMessage?.contains("planted") == true else {
+            fail("a shader error reads \(session.status), \(session.errorMessage ?? "no message")")
+        }
+        session.evaluate(loader, input: .source("import Ollin\nfinal class SessionSketch: Sketch {\n    override func draw() { wat() }\n}\n"))
+        guard session.status == .compiling else {
+            fail("a compile under way reads \(session.status), expected compiling over the shader error")
+        }
+        await settle(session)
+        guard session.status == .error, session.shaderError != nil else {
+            fail("a failed compile reads \(session.status), and the shader error must stand behind it "
+                + "(\(session.shaderError ?? "cleared"))")
+        }
+        session.evaluate(loader, input: .source(source(radiusDefault: 300, speedDefault: 8)))
+        await settle(session)
+        guard session.status == .shaderError else {
+            fail("a good evaluation cleared the shader error, or reads \(session.status)")
+        }
+        session.reportShaderError(nil)
+        guard session.status == .watching, session.errorMessage == nil else {
+            fail("clearing the shader error reads \(session.status), \(session.errorMessage ?? "no message")")
         }
 
         print("OllinLiveCoding sessiontest: cue carry across an evaluation …")
@@ -415,10 +454,11 @@ enum SessionTest {
     }
 
     /// Wait for the in-flight evaluation to resolve, its optimized build
-    /// included.
+    /// included: the engine's own `isSettled`, the one meaning every test
+    /// and host waits on.
     @MainActor
     private static func settle(_ session: SketchSession) async {
-        await wait("the evaluation settling") { session.phase != .compiling && !session.isOptimizing }
+        await wait("the evaluation settling") { session.isSettled }
     }
 
     @MainActor

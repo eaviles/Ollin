@@ -196,23 +196,40 @@ enum DragTest {
         check(session.editor.text() == overlapping, "moving back should leave the buffer exactly as written")
         await settle(session)
 
+        print("OllinLiveCoding dragtest: a modifier released mid-drag disarms when the drag ends …")
+        _ = staged()
+        controller.modifierChanged(held: true, at: Vector2(240, 300))
+        check(controller.dragBegan(at: Vector2(240, 300)), "the press on the over circle was not taken")
+        controller.modifierChanged(held: false, at: nil)
+        check(controller.isArmed && controller.isDragging,
+              "a drag under way keeps the arming up while the modifier goes")
+        controller.dragEnded()   // let go where it was pressed: nothing to write
+        check(!controller.isArmed,
+              "with the drag over, the controller must stand down as it would have on the release")
+        check(controller.outline.isEmpty && controller.label == nil, "and the outline goes with it")
+        check(session.editor.text() == overlapping, "a drag that went nowhere must leave the buffer alone")
+        check(session.core.phase != .compiling, "a drag that went nowhere must not evaluate")
+
         controller.modifierChanged(held: false, at: nil)
         check(!controller.isArmed, "letting go of the modifier should disarm the drag")
         check(onDisk() == source, "through all of it the file on disk must stay as it was written")
 
         print("OllinLiveCoding dragtest: PASS: the drag wrote the buffer and evaluated it, the file "
             + "on disk stayed put, the shape was found where the drag left it, a drag over "
-            + "unevaluated code and a drag mid-compile were both refused by name, a parameter's "
+            + "unevaluated code and a drag mid-compile were both refused by name, a modifier "
+            + "released mid-drag disarmed when the drag ended, a parameter's "
             + "name set the parameter with no evaluation, and the bracket key reordered through "
             + "the buffer and back.")
         exit(0)
     }
 
-    /// Wait for the in-flight evaluation to resolve.
+    /// Wait for the in-flight evaluation to resolve, its optimized build
+    /// included (this host evaluates in two speeds): the engine's `isSettled`,
+    /// so a pick is never made against a plain build about to be replaced.
     @MainActor
     private static func settle(_ session: PerformanceSession) async {
         for _ in 0..<600 {   // a compile is seconds; cap at a minute
-            if session.core.phase != .compiling { return }
+            if session.core.isSettled { return }
             try? await Task.sleep(for: .milliseconds(100))
         }
         fail("evaluation never settled")

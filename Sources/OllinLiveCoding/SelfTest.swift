@@ -205,10 +205,11 @@ enum SelfTest {
             await checkTwoSpeed(loader: loader, dir: dir)
             checkCarryingTheRun(loader: loader)
             await checkATargetsOtherFiles(dir: dir)
+            await checkRecovery(dir: dir)
             print("OllinLiveCoding selftest passed: buffer compile, swap render "
                 + "(\(a.count) vs \(b.count) bytes), diagnostics, completion, "
                 + "the two-speed evaluation, carrying the run across an edit, "
-                + "and a target's other files all check out.")
+                + "a target's other files, and the recovery offer all check out.")
             exit(0)
         }
         RunLoop.main.run()   // pumped until the check above exits
@@ -255,7 +256,7 @@ enum SelfTest {
             fileURL: URL(fileURLWithPath: sketchFile), landsPlainBuildFirst: false,
             supportDirectory: URL(fileURLWithPath: (dir as NSString).appendingPathComponent("Support")))
         func settle() async {
-            for _ in 0..<600 where session.core.phase == .compiling {
+            for _ in 0..<600 where !session.core.isSettled {
                 try? await Task.sleep(for: .milliseconds(100))
             }
             guard case .idle = session.core.phase else { fail("the evaluation failed: \(session.core.phase)") }
@@ -286,6 +287,95 @@ enum SelfTest {
             fail("an edit to the helper carried the run: \(String(describing: session.lastChange))")
         }
         print("  the helper compiled with the buffer, and an edit to it restarted the run")
+    }
+
+    /// The crash net's offer, through the host's own session with a scratch
+    /// support folder: a recovery file left by a crash is offered when the same
+    /// document opens; the launch's own evaluation leaves the file alone while
+    /// the offer stands, so an offer left unanswered survives the window
+    /// closing; opening another document withdraws the offer, and the net then
+    /// protects the new document; restoring puts the recovered text in the
+    /// buffer, dirty, and takes the offer down.
+    @MainActor
+    private static func checkRecovery(dir: String) async {
+        print("OllinLiveCoding selftest: a recovery offer survives the launch, and another document withdraws it …")
+        let support = URL(fileURLWithPath: (dir as NSString).appendingPathComponent("RecoverySupport"))
+        try? FileManager.default.removeItem(at: support)
+        try! FileManager.default.createDirectory(at: support, withIntermediateDirectories: true)
+        let folder = (dir as NSString).appendingPathComponent("Recovered")
+        try? FileManager.default.removeItem(atPath: folder)
+        try! FileManager.default.createDirectory(atPath: folder, withIntermediateDirectories: true)
+        func sketch(_ radius: Int) -> String {
+            """
+            import Ollin
+            final class RecoveredSketch: Sketch {
+                override func draw() { background(.white); drawCircle(width / 2, height / 2, \(radius)) }
+            }
+            """
+        }
+        let document = (folder as NSString).appendingPathComponent("Sketch.swift")
+        let other = (folder as NSString).appendingPathComponent("Other.swift")
+        try! sketch(40).write(toFile: document, atomically: true, encoding: .utf8)
+        try! sketch(50).write(toFile: other, atomically: true, encoding: .utf8)
+        let recoveryFile = support.appendingPathComponent("recovery.swift")
+        let originFile = support.appendingPathComponent("recovery-origin.txt")
+        let recovered = sketch(90)
+        func plantTheNet() {
+            try! recovered.write(to: recoveryFile, atomically: true, encoding: .utf8)
+            try! document.write(to: originFile, atomically: true, encoding: .utf8)
+        }
+        func netHolds() -> String? { try? String(contentsOf: recoveryFile, encoding: .utf8) }
+        func origin() -> String? { try? String(contentsOf: originFile, encoding: .utf8) }
+        func wait(_ what: String, until done: @MainActor () -> Bool) async {
+            for _ in 0..<6000 {   // a compile is a second or two; cap at a minute
+                if done() { return }
+                try? await Task.sleep(for: .milliseconds(10))
+            }
+            fail("\(what) never happened")
+        }
+
+        plantTheNet()
+        let session = PerformanceSession(
+            fileURL: URL(fileURLWithPath: document), landsPlainBuildFirst: false, supportDirectory: support)
+        session.start()
+        await wait("the launch's evaluation settling") { session.core.isSettled }
+        guard case .idle = session.core.phase else { fail("the launch's evaluation failed: \(session.core.phase)") }
+        guard session.recoveryAvailable == recovered else {
+            fail("the recovery was not offered to the document it belonged to")
+        }
+        guard netHolds() == recovered else {
+            fail("the launch's own evaluation overwrote the recovery file, so an offer left unanswered "
+                + "would not survive the window closing")
+        }
+        guard !session.isDirty else { fail("the launched buffer reads dirty") }
+
+        session.open(URL(fileURLWithPath: other))
+        guard session.recoveryAvailable == nil else {
+            fail("opening another document left the offer up, to be restored into the wrong sketch")
+        }
+        await wait("the other document's evaluation settling") { session.core.isSettled }
+        guard netHolds() == sketch(50), origin() == other else {
+            fail("with the offer withdrawn, the net should hold the new document (\(netHolds() ?? "nothing"), "
+                + "origin \(origin() ?? "none"))")
+        }
+
+        // A second launch over the same document, with the offer answered.
+        plantTheNet()
+        let second = PerformanceSession(
+            fileURL: URL(fileURLWithPath: document), landsPlainBuildFirst: false, supportDirectory: support)
+        second.start()
+        await wait("the second launch's evaluation settling") { second.core.isSettled }
+        guard second.recoveryAvailable == recovered else { fail("the second launch did not offer the recovery") }
+        second.restoreRecovery()
+        guard second.editor.text() == recovered, second.recoveryAvailable == nil, second.isDirty else {
+            fail("restoring did not put the recovered text in the buffer, dirty, with the offer down")
+        }
+        await wait("the restored buffer's evaluation settling") { second.core.isSettled }
+        guard netHolds() == recovered, origin() == document else {
+            fail("the restored buffer is not in the net (\(netHolds() ?? "nothing"))")
+        }
+        print("  the offer survived the launch's evaluation, was withdrawn by another document, "
+            + "and restored into its own")
     }
 
     /// Two-speed evaluation, headless through `SketchSession` with no runner
@@ -365,7 +455,7 @@ enum SelfTest {
             plain = sketch
             optimizingAtLanding = session.isOptimizing
         }
-        await wait("the evaluation settling") { session.phase != .compiling && !session.isOptimizing }
+        await wait("the evaluation settling") { session.isSettled }
         let optimizedSeconds = Date().timeIntervalSince(started)
         guard case .idle = session.phase, let plain else {
             fail("the two-speed evaluation failed: \(session.phase)")

@@ -20,21 +20,6 @@ import OllinRuntime
 @MainActor
 @Observable
 final class LiveSession {
-    /// Reload lifecycle, surfaced in the inspector.
-    enum Status: Equatable {
-        case compiling
-        case watching
-        case error(String)
-
-        var label: String {
-            switch self {
-            case .compiling: return "Compiling…"
-            case .watching: return "Watching"
-            case .error: return "Compile error"
-            }
-        }
-    }
-
     /// The path argument as the user typed it, shown in the inspector.
     let displayName: String
 
@@ -53,13 +38,6 @@ final class LiveSession {
     /// The sketch to host, from the engine. `nil` until the first compile
     /// lands; later reloads swap inside the runner, not through this.
     var sketch: Sketch? { core.sketch }
-    var status: Status {
-        switch core.phase {
-        case .compiling: return .compiling
-        case .idle: return .watching
-        case .failed(let message): return .error(message)
-        }
-    }
     var reloadCount: Int { core.reloadCount }
     /// Wall-clock seconds of the last successful hot reload (compile + load),
     /// shown in the "Reloaded" toast. `nil` until the first reload.
@@ -76,24 +54,19 @@ final class LiveSession {
     func deleteCue(_ name: String) { core.deleteCue(name) }
     func callCue(_ request: CueRequest, over seconds: Double) { core.callCue(request, over: seconds) }
     /// A user shader's compile error (`nil` when every shader compiles).
-    /// Distinct from `status`, which tracks the Swift hot-reload, so a shader
-    /// error and a sketch-compile error don't clear each other.
+    /// Distinct from the engine's `phase`, which tracks the Swift hot-reload,
+    /// so a shader error and a sketch-compile error don't clear each other.
     var shaderError: String? { core.shaderError }
 
     /// The error shown in the overlay: the Swift compile error first (the sketch
     /// isn't even running), otherwise a user-shader compile error.
     var errorMessage: String? { core.errorMessage }
 
-    /// The watcher state mapped onto the shared inspector chip. A user-shader
-    /// error or a `setup()` that threw turns the chip red too, even while the
-    /// Swift side is happily watching.
-    var inspectorStatus: InspectorStatus {
-        switch status {
-        case .compiling: return .compiling
-        case .watching: return shaderError == nil && core.setupError == nil ? .watching : .error
-        case .error: return .error
-        }
-    }
+    /// The engine's lifecycle on the shared inspector chip: the engine's own
+    /// mapping (`SketchSession.status`), the one the performance host reads
+    /// too, so a user-shader error, a `setup()` that threw, and the two-speed
+    /// states read the same in both windows.
+    var inspectorStatus: InspectorStatus { core.status }
 
     /// The source file's name (`Sketch.swift`) for the monitor card header.
     var fileName: String { (sketchPath as NSString).lastPathComponent }
@@ -343,10 +316,13 @@ final class LiveSession {
     }
 
     /// A user's own `.metal` shader file changed: drop the compiled-shader cache so the
-    /// renderer re-reads and recompiles it on the next frame, and clear any stale error.
+    /// renderer re-reads and recompiles it on the next frame. The error channel is
+    /// left to that frame, which reports the shader's state whether or not it
+    /// changed: a shader saved with the same mistake stays red, a fixed one clears.
+    /// A host that clears the channel itself shows a clean stage over a shader
+    /// still broken, since the runner alone knows what the next frame compiled.
     private func reloadUserShaders() {
         core.runner?.invalidateUserShaders()
-        core.reportShaderError(nil)
         print("OllinLive: reloaded user shader ✓")
     }
 

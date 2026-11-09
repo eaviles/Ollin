@@ -47,6 +47,10 @@ final class PerformanceSession {
     private(set) var stageCanvas = CGSize(width: 1080, height: 1080)
     private(set) var title = "OllinLiveCoding"
     /// Recovered buffer text offered after a crash (`nil` when none pending).
+    /// An offer stands until it is restored or discarded, or until another
+    /// document is opened over it (a new buffer included), which withdraws
+    /// it: it was made for the document that was open, and restoring it into
+    /// another would pour one sketch's text into the other.
     private(set) var recoveryAvailable: String?
     /// Whether the stage is being recorded; the chip and the menu read this.
     private(set) var isRecording = false
@@ -92,18 +96,12 @@ final class PerformanceSession {
         }
     }
 
-    /// The engine state mapped onto the shared status chip. An optimized
-    /// build still on its way behind the plain one on stage keeps the chip
-    /// up, muted, until it lands.
-    var chipStatus: InspectorStatus {
-        switch core.phase {
-        case .compiling: return .compiling
-        case .idle:
-            if core.shaderError != nil || core.setupError != nil { return .error }
-            return core.isOptimizing ? .optimizing : .watching
-        case .failed: return .error
-        }
-    }
+    /// The engine's lifecycle on the shared status chip: the engine's own
+    /// mapping (`SketchSession.status`), the one OllinLive reads too. An
+    /// optimized build still on its way behind the plain one on stage keeps
+    /// the chip up, muted, until it lands, and a plain build kept for good
+    /// keeps it up for the rest of the set.
+    var chipStatus: InspectorStatus { core.status }
 
     /// The path the loader compiles *as*: the document's, or a stand-in under
     /// the support folder for an untitled buffer (the loader needs a path for
@@ -310,6 +308,7 @@ final class PerformanceSession {
     func newBuffer() {
         confirmDiscardIfNeeded {
             self.sourceOnStage = nil   // another document: nothing to carry from
+            self.recoveryAvailable = nil   // and the offer was the old one's
             self.fileURL = nil
             self.editor.setText(SketchTemplate.source)
             self.clearDirty()
@@ -335,6 +334,7 @@ final class PerformanceSession {
             return
         }
         sourceOnStage = nil        // another document: nothing to carry from
+        recoveryAvailable = nil    // and the offer was the old one's
         fileURL = url
         adoptCueFile(beside: url)
         editor.setText(text)
@@ -468,7 +468,15 @@ final class PerformanceSession {
     /// The crash net: the live buffer, written on every evaluation and every
     /// 15 s while dirty, removed by a clean save. Restore is offered on the
     /// next launch when its content differs from what the launch loaded.
+    ///
+    /// While an offer stands and the buffer is clean, nothing is written: the
+    /// file on disk already holds the buffer, so the write would only destroy
+    /// the one copy of the recovered text before anyone answered the offer
+    /// (the launch's own evaluation is the first write, so without this an
+    /// offer left open survives only until the window closes). The first edit
+    /// makes the buffer dirty, and the net protects it again.
     private func autosave(_ text: String? = nil) {
+        if recoveryAvailable != nil, !isDirty { return }
         let content = text ?? editor.text()
         try? FileManager.default.createDirectory(
             at: supportDirectory, withIntermediateDirectories: true)
@@ -540,6 +548,13 @@ extension PerformanceSession: ShapeDragHost {
             if core.phase == .compiling {
                 throw ShapeDragRefusal(
                     "The stage is still being built from the last change. Drag again when it lands.")
+            }
+            if sourceOnStage == nil {
+                // Opened, or started new, and not yet on stage: the sketch
+                // the stage shows was built from another document.
+                throw ShapeDragRefusal(
+                    "Nothing from this document is on stage yet. "
+                    + "Evaluate it (Command-Return), then drag.")
             }
             throw ShapeDragRefusal(
                 "The code has changed since the stage was built from it. "
