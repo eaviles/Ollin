@@ -56,8 +56,11 @@ VirtualCameraServer(deviceName: String = "Ollin Camera")
 var isAvailable: Bool           // is the camera installed and reachable?
 var unavailableReason: String?  // what to do when it isn't
 var isPublishing: Bool          // has at least one frame gone out?
+var phase: PublisherPhase       // .waiting, .publishing, .unavailable, or .stopped
 func stop()
 ```
+
+`phase` is where the server is in its life, in the words the [Syphon server](./Syphon.md) and the phone's screen use too: `.waiting` for the camera or its first frame, `.publishing` once one has gone out, `.unavailable` while the camera is not installed (`unavailableReason` says so, and the server keeps trying), and `.stopped`. `stop()` is for good: the server asks for no more frames, stops looking for the camera, and `phase` reads `.stopped`, and the camera shows its test card again within a second. To feed it again, call `publishVirtualCamera()` once more, which makes a new server.
 
 Call `publishVirtualCamera()` in `setup()`. From then on, the sketch's frames feed the camera. The call builds a `VirtualCameraServer` and registers it as a [`SketchExtension`](../Core/Sketch.md). It then returns the server, so you can check the connection:
 

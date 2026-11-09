@@ -170,13 +170,19 @@ public final class MQTTClient: @unchecked Sendable {
               let nwPort = NWEndpoint.Port(rawValue: exact) else {
             throw MQTTError.invalidPort
         }
-        let alreadyWanted = state.withLock { state -> Bool in
-            let wanted = state.wantsConnection
-            state.wantsConnection = true
-            state.wasRefused = false
-            return wanted
+        state.withLock {
+            $0.wantsConnection = true
+            $0.wasRefused = false
         }
-        guard !alreadyWanted else { return }
+        // What decides whether to dial is whether a connection stands or is
+        // being made, not whether one was wanted: after a drop with
+        // `reconnects` off nothing stands, and this call is the redial. A
+        // wish left set from before would read as a connection under way, and
+        // a sketch doing its own reconnecting could never get the line back.
+        // A redial pending on its own backoff finds the connection here and
+        // stands down.
+        let alreadyOpen = connectionStore.withLock { $0 != nil }
+        guard !alreadyOpen else { return }
         openConnection(to: nwPort)
         startHeartbeat()
     }

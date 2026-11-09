@@ -19,6 +19,7 @@ final class DMXReceiver: Sendable
   let dmxProtocol: DMXProtocol
   var boundPort: Int? { get }
   var isRunning: Bool { get }
+  var lastError: String? { get }
   var universeNumbers: [Int] { get }
 final class DMXSender
   func close()

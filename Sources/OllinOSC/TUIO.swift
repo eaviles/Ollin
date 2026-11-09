@@ -319,11 +319,16 @@ public final class TUIOReceiver: @unchecked Sendable {
     /// Stops listening. Safe to call when not running.
     public func stop() { osc.stop() }
 
-    /// Whether the socket is open.
+    /// Whether the socket is open or opening: false before `start()`, after
+    /// `stop()`, and after a bind the system refused, which `lastError` says.
     public var isRunning: Bool { osc.isRunning }
 
     /// The port actually in use once the socket is ready, or `nil` before then.
     public var boundPort: Int? { osc.boundPort }
+
+    /// Why the socket is not open, when a `start()` that returned has since
+    /// failed; `nil` once it is open.
+    public var lastError: String? { osc.lastError }
 
     // MARK: Reading the surface
 

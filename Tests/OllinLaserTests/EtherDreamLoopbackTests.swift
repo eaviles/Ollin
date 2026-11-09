@@ -262,6 +262,9 @@ final class StandInDAC: @unchecked Sendable {
         var lastDrain = Date()
         var inbox = Data()
         var playing = false
+        /// The hardware stop is asserted: every command but the one that clears
+        /// it is refused with the stop condition, and no point reaches the beam.
+        var emergencyStopped = false
     }
 
     let capacity = 1_799
@@ -285,8 +288,19 @@ final class StandInDAC: @unchecked Sendable {
     var pointsReceived: Int { state.withLock { $0.pointsReceived } }
     var pointRate: Int { state.withLock { $0.rate } }
 
+    var isEmergencyStopped: Bool { state.withLock { $0.emergencyStopped } }
+
     func forgetPoints() { state.withLock { $0.points = [] } }
     func stop() { listener.cancel() }
+
+    /// Assert the stop a real DAC raises from its hardware interlock: playback
+    /// ends, and the host has to clear it before anything else is accepted.
+    func raiseEmergencyStop() {
+        state.withLock {
+            $0.emergencyStopped = true
+            $0.playing = false
+        }
+    }
 
     private func accept(_ connection: NWConnection) {
         connection.stateUpdateHandler = { [weak self] update in
@@ -314,32 +328,42 @@ final class StandInDAC: @unchecked Sendable {
     /// Pull whole commands out of the byte stream and answer each one.
     private func consume(_ data: Data) -> [Data] {
         var replies: [Data] = []
-        let pending = state.withLock { log -> [UInt8] in
-            var taken: [UInt8] = []
+        let pending = state.withLock { log -> [(command: UInt8, refused: Bool)] in
+            var taken: [(command: UInt8, refused: Bool)] = []
             log.inbox.append(data)
             while let (command, length, points) = Self.nextCommand(log.inbox) {
                 log.inbox.removeFirst(length)
                 log.commands.append(command)
-                switch command {
-                case 0x62:                                  // start playing
-                    log.rate = points.rate
-                    log.playing = true
-                case 0x74:                                  // change the rate
-                    log.rate = points.rate
-                case 0x64:                                  // points
-                    log.points.append(contentsOf: points.points)
-                    log.pointsReceived += points.points.count
-                    log.buffered += points.points.count
-                case 0x73, 0x00, 0xFF:
-                    log.playing = false
-                default:
-                    break
+                // Under the stop, only the clear is taken; everything else is
+                // answered with the stop condition and does nothing.
+                let refused = log.emergencyStopped && command != 0x63
+                if !refused {
+                    switch command {
+                    case 0x62:                                  // start playing
+                        log.rate = points.rate
+                        log.playing = true
+                    case 0x74:                                  // change the rate
+                        log.rate = points.rate
+                    case 0x64:                                  // points
+                        log.points.append(contentsOf: points.points)
+                        log.pointsReceived += points.points.count
+                        log.buffered += points.points.count
+                    case 0x63:                                  // clear the stop
+                        log.emergencyStopped = false
+                        log.playing = false
+                    case 0x73, 0x00, 0xFF:
+                        log.playing = false
+                    default:
+                        break
+                    }
                 }
-                taken.append(command)
+                taken.append((command, refused))
             }
             return taken
         }
-        for command in pending { replies.append(reply(to: command)) }
+        for (command, refused) in pending {
+            replies.append(reply(to: command, code: refused ? .stopped : .ack))
+        }
         return replies
     }
 
@@ -354,7 +378,8 @@ final class StandInDAC: @unchecked Sendable {
             }
             log.lastDrain = now
             log.buffered = min(log.buffered, capacity)
-            return EtherDreamStatus(protocolVersion: 0, lightEngine: .ready,
+            return EtherDreamStatus(protocolVersion: 0,
+                                    lightEngine: log.emergencyStopped ? .emergencyStop : .ready,
                                     playback: log.playing ? .playing : .prepared, source: 0,
                                     lightEngineFlags: 0, playbackFlags: 0, sourceFlags: 0,
                                     bufferFullness: log.buffered, pointRate: log.rate,
@@ -362,8 +387,8 @@ final class StandInDAC: @unchecked Sendable {
         }
     }
 
-    private func reply(to command: UInt8) -> Data {
-        EtherDreamResponse(code: .ack, command: command, status: status()).encode()
+    private func reply(to command: UInt8, code: EtherDreamResponse.Code = .ack) -> Data {
+        EtherDreamResponse(code: code, command: command, status: status()).encode()
     }
 
     /// One whole command from the head of `data`, or `nil` when more bytes are

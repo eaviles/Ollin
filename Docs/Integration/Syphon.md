@@ -54,8 +54,11 @@ func publishSyphon(name: String = "Ollin") -> SyphonServer   // on Sketch
 SyphonServer(name: String = "Ollin")
 var hasClients: Bool        // is anyone reading right now?
 var isPublishing: Bool      // has at least one frame gone out?
+var phase: PublisherPhase   // .waiting, .publishing, .unavailable, or .stopped
 func stop()
 ```
+
+`phase` is where the server is in its life, in the words the virtual camera and the phone's screen use too: `.waiting` for its first frame, `.publishing` once one has gone out, `.unavailable` when it cannot publish (the Syphon server never is, but the virtual camera is while the camera is not installed), and `.stopped`. `stop()` is for good: the server asks for no more frames, refuses any that still arrive, and `phase` reads `.stopped`. To share again, call `publishSyphon(name:)` once more, which makes a new server.
 
 Call `publishSyphon(name:)` in `setup()`, and the sketch shares its frames from then on under that name. Consumers identify the source by that name, usually paired with the app's name in their menus. The name does not have to be unique. That is all the setup it needs:
 

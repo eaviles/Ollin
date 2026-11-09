@@ -33,8 +33,15 @@ public final class SyphonServer: SketchExtension {
     /// A command queue for Syphon's publish commands, on the sketch's device.
     private var queue: MTLCommandQueue?
 
+    /// Where the server is: waiting for its first frame, publishing, or
+    /// stopped. One value, read by every frame, so a stopped server stays
+    /// stopped: the server is an extension that asks for every rendered frame,
+    /// and without the phase the frame after `stop()` would stand the Syphon
+    /// server back up.
+    public private(set) var phase: PublisherPhase = .waiting
+
     /// `true` once at least one frame has been published.
-    public private(set) var isPublishing = false
+    public var isPublishing: Bool { phase == .publishing }
 
     /// Create a server that will publish under `name` (default `"Ollin"`).
     public init(name: String = "Ollin") {
@@ -46,22 +53,25 @@ public final class SyphonServer: SketchExtension {
     /// when nobody's watching.
     public var hasClients: Bool { server?.hasClients ?? false }
 
-    /// Stop announcing the source and release the Syphon server. Optional —
-    /// dropping all references to this extension has the same effect.
+    /// Stop announcing the source and release the Syphon server, for good: the
+    /// frames that follow are refused, and `phase` reads `.stopped`. To share
+    /// again, publish with a new server.
     public func stop() {
         server?.stop()
         server = nil
-        isPublishing = false
+        phase = .stopped
     }
 
     // MARK: SketchExtension
 
-    /// Always wants the rendered frame as a texture — that's what gets published.
-    public var wantsRenderedTexture: Bool { true }
+    /// Wants the rendered frame as a texture until stopped: that is what gets
+    /// published, and a stopped server asks for nothing.
+    public var wantsRenderedTexture: Bool { phase != .stopped }
 
     /// Publish each rendered frame. Runs on the main actor (the render loop),
     /// right after the frame is drawn.
     public func frameRendered(_ sketch: Sketch, texture: MTLTexture) {
+        guard phase != .stopped else { return }
         if server == nil {
             // First frame: stand up the server on the sketch's own device.
             queue = texture.device.makeCommandQueue()
@@ -91,7 +101,7 @@ public final class SyphonServer: SketchExtension {
         // before returning, or that write could race this read. The blit is
         // small and this runs on the main thread between frames.
         commandBuffer.waitUntilCompleted()
-        isPublishing = true
+        phase = .publishing
     }
 }
 

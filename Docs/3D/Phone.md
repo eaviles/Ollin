@@ -938,6 +938,7 @@ screen.drivesPointer = false          // leave the Mac's mouse alone and read de
 screen.frameRate                      // FrameRate, the most pictures a second it sends, 60 by default
 screen.device                         // PhoneDevice, the phone it belongs to
 screen.stop()                         // stop sending; tap another mode on the phone to leave
+screen.phase                          // PublisherPhase: .stopped after stop(), .publishing while showing, else .waiting
 ```
 
 **How the pictures travel.** Each frame is compressed as HEVC on the Mac's media engine, straight from the rendered texture. It goes out on a connection of its own, port 1339, beside the sensor stream on 1338. The phone decodes it on its own media engine. A picture is the canvas size, fitted under 1920 pixels on its long side. Most pictures carry only what changed since the one before, so a picture already made is never dropped: that would spoil every picture after it. When the cable cannot take the next picture yet, the frame is skipped before it is compressed. A picture that stands alone goes out every second, and whenever the phone connects or comes back to Sketch mode.

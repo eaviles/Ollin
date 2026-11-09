@@ -61,11 +61,21 @@ public final class PhoneScreen: SketchExtension {
         !isStopped && phoneMode() == .sketch && sender.hasSent
     }
 
+    /// Where the screen is, in the words the other publishers of the sketch's
+    /// frames use: `.stopped` after `stop()` (no later frame starts the
+    /// pictures again; showing the sketch again means a new screen),
+    /// `.publishing` while the phone is showing the sketch, and `.waiting`
+    /// otherwise (for the phone, or for its Sketch mode).
+    public var phase: PublisherPhase {
+        if isStopped { return .stopped }
+        return isShowing ? .publishing : .waiting
+    }
+    private var isStopped = false
+
     let sender: PhonePictureSender
     /// The mode the phone says it is in. The device's answer, unless a test says it.
     private let phoneMode: @MainActor () -> PhoneCaptureMode?
     private var encoder: PhonePictureEncoder?
-    private var isStopped = false
     private var lastMode: PhoneCaptureMode?
     private var lastSent: CFAbsoluteTime = 0
     private var pendingRelease = false

@@ -265,6 +265,7 @@ final class PhoneScreen: SketchExtension, Sendable
   let frameRate: FrameRate
   var drivesPointer: Bool { get set }
   var isShowing: Bool { get }
+  var phase: PublisherPhase { get }
   var wantsRenderedTexture: Bool { get }
 final class PhoneSounds: Sendable
   func confidence(of: String) -> Double

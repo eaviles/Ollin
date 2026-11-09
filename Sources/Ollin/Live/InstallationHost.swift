@@ -56,8 +56,55 @@ final class InstallationHost {
     /// Watches for the keys the handles answer to.
     private var keyMonitor: Any?
 
-    init(_ settings: Installation) {
+    /// What the host asks of the system, and the clock it reads.
+    private let power: Power
+    private let now: () -> Date
+
+    /// Whether this host has hidden the pointer. The system counts hides, so
+    /// one hide here is matched by one show, however many paths ask for it.
+    private(set) var pointerIsHidden = false
+
+    init(_ settings: Installation, power: Power = .live, now: @escaping () -> Date = Date.init) {
         self.settings = settings
+        self.power = power
+        self.now = now
+    }
+
+    /// What the host asks of the system to stay awake and hide the pointer.
+    /// The live one talks to the system; a test counts the calls instead,
+    /// since none of them can be read back from inside the process.
+    struct Power {
+        var beginActivity: () -> any NSObjectProtocol
+        var endActivity: (any NSObjectProtocol) -> Void
+        var declareUserActivity: (inout IOPMAssertionID) -> Void
+        var hidePointer: () -> Void
+        var unhidePointer: () -> Void
+        /// A repeating timer on the main run loop in `.common`, so it keeps
+        /// ticking while a menu is open.
+        var makeIdleTimer: (TimeInterval, @escaping @MainActor () -> Void) -> Timer
+
+        static var live: Power {
+            Power(
+                beginActivity: {
+                    ProcessInfo.processInfo.beginActivity(
+                        options: [.idleDisplaySleepDisabled, .idleSystemSleepDisabled, .userInitiated],
+                        reason: "Ollin installation")
+                },
+                endActivity: { ProcessInfo.processInfo.endActivity($0) },
+                declareUserActivity: { id in
+                    IOPMAssertionDeclareUserActivity("Ollin installation" as CFString,
+                                                     kIOPMUserActiveLocal, &id)
+                },
+                hidePointer: { NSCursor.hide() },
+                unhidePointer: { NSCursor.unhide() },
+                makeIdleTimer: { interval, body in
+                    let timer = Timer(timeInterval: interval, repeats: true) { _ in
+                        MainActor.assumeIsolated { body() }
+                    }
+                    RunLoop.main.add(timer, forMode: .common)
+                    return timer
+                })
+        }
     }
 
     // MARK: Taking over
@@ -75,9 +122,9 @@ final class InstallationHost {
         if settings.fillsScreen { fillScreen(window) }
         // Not while somebody is lining it up: the pointer is the tool.
         if settings.hidesPointer, !(wall?.calibrators.contains(where: \.isOpen) ?? false) {
-            NSCursor.hide()
+            hidePointer(true)
         }
-        if settings.keepsDisplayAwake { keepAwake() }
+        if settings.keepsDisplayAwake { holdAwake(true) }
         heartbeat = Heartbeat.start()
         watchKeys()
         watchTheSystem()
@@ -95,8 +142,8 @@ final class InstallationHost {
         if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
         keyMonitor = nil
         wall?.close()
-        releaseAwake()
-        if settings.hidesPointer { NSCursor.unhide() }
+        holdAwake(false)
+        hidePointer(false)
         for observer in appObservers { NotificationCenter.default.removeObserver(observer) }
         for observer in workspaceObservers { NSWorkspace.shared.notificationCenter.removeObserver(observer) }
         appObservers.removeAll()
@@ -170,18 +217,39 @@ final class InstallationHost {
 
     // MARK: Staying awake
 
-    private func keepAwake() {
-        activity = ProcessInfo.processInfo.beginActivity(
-            options: [.idleDisplaySleepDisabled, .idleSystemSleepDisabled, .userInitiated],
-            reason: "Ollin installation")
-        declareActivity()
-        // Well inside any screen-saver setting, and cheap: the shortest one the
-        // system offers is a minute.
-        let timer = Timer(timeInterval: 30, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated { self?.declareActivity() }
+    /// Whether the display is being held awake right now: one assertion and
+    /// one timer, begun once and ended once. Every path that wants the display
+    /// awake (taking over, the schedule opening, a wake) asks for the state
+    /// rather than beginning a hold of its own. A piece with hours asks twice
+    /// at its open, once from the take-over and once from its first reading of
+    /// the schedule, and a second hold begun then would write its timer over
+    /// the first's, leaving the first declaring activity every half minute
+    /// with nothing to stop it, so the display would never sleep through the
+    /// dark hours.
+    var isHoldingAwake: Bool { activity != nil }
+
+    /// Hold the display awake, or let it go. Asking for the state it is
+    /// already in does nothing.
+    private func holdAwake(_ holds: Bool) {
+        if holds, activity == nil {
+            activity = power.beginActivity()
+            declareActivity()
+            // Well inside any screen-saver setting, and cheap: the shortest one
+            // the system offers is a minute.
+            idleTimer = power.makeIdleTimer(30) { [weak self] in self?.declareActivity() }
+        } else if !holds, let held = activity {
+            idleTimer?.invalidate()
+            idleTimer = nil
+            power.endActivity(held)
+            activity = nil
         }
-        RunLoop.main.add(timer, forMode: .common)
-        idleTimer = timer
+    }
+
+    /// Let the hold go and take it again, for a wake: the assertion does not
+    /// always survive a sleep.
+    private func renewAwake() {
+        holdAwake(false)
+        holdAwake(true)
     }
 
     /// One reset of the system's input-idle timer, which is the timer the screen
@@ -194,20 +262,15 @@ final class InstallationHost {
     /// and five with the same id leave one. Over a week that is twenty thousand
     /// of them, from the one feature whose whole job is surviving the week.
     private func declareActivity() {
-        IOPMAssertionDeclareUserActivity("Ollin installation" as CFString,
-                                         kIOPMUserActiveLocal, &userActivity)
+        power.declareUserActivity(&userActivity)
     }
 
-    /// Give the display and the machine back their own idleness, for the hours
-    /// the piece is not on screen. Nothing is holding the screen saver off then,
-    /// which is the point: a dark piece should let the panel rest.
-    private func releaseAwake() {
-        idleTimer?.invalidate()
-        idleTimer = nil
-        if let activity {
-            ProcessInfo.processInfo.endActivity(activity)
-            self.activity = nil
-        }
+    /// Hide the pointer, or show it. The system counts hides, so a hide here
+    /// is matched by one show however many paths ask for it.
+    private func hidePointer(_ hidden: Bool) {
+        guard hidden != pointerIsHidden else { return }
+        pointerIsHidden = hidden
+        if hidden { power.hidePointer() } else { power.unhidePointer() }
     }
 
     // MARK: Keeping hours
@@ -224,8 +287,8 @@ final class InstallationHost {
         scheduleTimer = timer
     }
 
-    private func applySchedule() {
-        let now = Date()
+    func applySchedule() {
+        let now = now()
         let shows = settings.schedule.shows(at: now)
         if shows != showing {
             showing = shows
@@ -235,14 +298,14 @@ final class InstallationHost {
                 // Declaring activity here is also what wakes a display that
                 // went to sleep during the dark hours: nothing else in the
                 // process is touching the machine at nine in the morning.
-                if settings.keepsDisplayAwake { keepAwake() }
-                if settings.hidesPointer { NSCursor.hide() }
+                if settings.keepsDisplayAwake { holdAwake(true) }
+                if settings.hidesPointer { hidePointer(true) }
             } else {
                 log("dark\(until)")
                 // An ordinary pause, so the state goes down with it rather than
                 // waiting on a cadence that has just stopped ticking.
                 sketchRunner?.saveCheckpointNow()
-                releaseAwake()
+                holdAwake(false)
             }
         }
         // Pushed every reading rather than only on a change: the runner may
@@ -309,14 +372,13 @@ final class InstallationHost {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: work)
     }
 
-    private func reassert() {
+    func reassert() {
         guard settings.keepsDisplayAwake else { return }
         // Nothing to hold awake while the piece is off screen: the schedule put
         // it down, and a wake in the small hours must not stand it back up.
         guard showing ?? true else { return }
-        releaseAwake()
-        keepAwake()
-        if settings.hidesPointer { NSCursor.hide() }
+        renewAwake()
+        if settings.hidesPointer { hidePointer(true) }
     }
 
     // MARK: Plumbing

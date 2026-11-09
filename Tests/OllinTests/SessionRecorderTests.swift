@@ -1,6 +1,7 @@
 import AVFoundation
 import CoreGraphics
 import Testing
+import OllinTestSupport
 @testable import Ollin
 
 /// The live recorder's timeline, checked without any audio hardware.
@@ -252,5 +253,94 @@ struct SessionRecorderWriterTests {
             }
         }
         #expect(videoTracks == 1)
+    }
+}
+
+/// A take started while the last one's file is still being finished.
+///
+/// `stop()` returns before the file is closed, since that happens on the
+/// writer's queue, and a performer can press record again inside that window.
+/// The old file's completion used to read the recorder's current `url` and
+/// clear its current writer, both of which were the new take's by then: the
+/// second take could never be stopped, and `isRecording` stayed true for good.
+@Suite
+@MainActor
+struct SessionRecorderTakesTests {
+
+    private final class Still: Sketch {
+        override var canvasSize: CanvasSize { .square(64) }
+    }
+
+    private func solidFrame(_ size: Int) -> CGImage {
+        let context = CGContext(data: nil, width: size, height: size, bitsPerComponent: 8,
+                                bytesPerRow: 0, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue
+                                    | CGBitmapInfo.byteOrder32Little.rawValue)!
+        context.setFillColor(CGColor(red: 0.1, green: 0.4, blue: 0.9, alpha: 1))
+        context.fill(CGRect(x: 0, y: 0, width: size, height: size))
+        return context.makeImage()!
+    }
+
+    private func scratch(_ name: String) -> URL {
+        FileManager.default.temporaryDirectory
+            .appendingPathComponent("ollin-recorder-\(name)-\(UInt32.random(in: 0..<UInt32.max)).mov")
+    }
+
+    /// Feeds frames until the writer has had time to open and take some (the
+    /// first few are dropped by design; see above).
+    private func feed(_ recorder: SessionRecorder, _ sketch: Sketch, _ frame: CGImage) async throws {
+        for _ in 0..<30 {
+            recorder.frameRendered(sketch, image: frame)
+            try await Task.sleep(for: .milliseconds(20))
+        }
+    }
+
+    /// Whether a readable movie with one video track appears at `url` within
+    /// a couple of seconds: the finish is asynchronous.
+    private func movieAppears(at url: URL) async throws -> Bool {
+        for _ in 0..<100 {
+            let asset = AVURLAsset(url: url)
+            if let tracks = try? await asset.loadTracks(withMediaType: .video), tracks.count == 1 {
+                return true
+            }
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        return false
+    }
+
+    @Test func aTakeStartedBeforeTheLastFileFinishesLandsBothFiles() async throws {
+        let sketch = Still()
+        let recorder = SessionRecorder(audio: .none)
+        sketch.extend(recorder)
+        recorder.setup(sketch)
+        let first = scratch("first")
+        let second = scratch("second")
+        defer {
+            try? FileManager.default.removeItem(at: first)
+            try? FileManager.default.removeItem(at: second)
+        }
+        let frame = solidFrame(64)
+
+        recorder.start(to: first)
+        try #require(recorder.isRecording)
+        try await feed(recorder, sketch, frame)
+        // Not awaited: the first file finishes on the writer's queue while the
+        // second take begins.
+        recorder.stop()
+        recorder.start(to: second)
+        try #require(recorder.isRecording)
+        #expect(recorder.url == second)
+        try await feed(recorder, sketch, frame)
+
+        var saved: URL??
+        recorder.stop { saved = .some($0) }
+        let finished = try await waitFor(timeout: 10) { saved }
+        #expect(finished == second)
+        #expect(!recorder.isRecording)
+        #expect(recorder.lastError == nil)
+        #expect(recorder.phase == .idle)
+
+        #expect(try await movieAppears(at: first), "the first take")
+        #expect(try await movieAppears(at: second), "the second take")
     }
 }

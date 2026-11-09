@@ -55,7 +55,9 @@ public final class DMXReceiver: @unchecked Sendable {
     // unchecked locks; the resolved port is plain and Sendable.
     private let listenerStore = OSAllocatedUnfairLock<NWListener?>(uncheckedState: nil)
     private let groupStore = OSAllocatedUnfairLock<NWConnectionGroup?>(uncheckedState: nil)
-    private let resolvedPort = OSAllocatedUnfairLock<UInt16?>(initialState: nil)
+    /// The listener's life as one value: what `isRunning`, `boundPort`, and
+    /// `lastError` read.
+    private let lifecycle = ListenerLifecycle()
 
     /// How long a source stays authoritative for a universe with nothing
     /// heard from it (the E1.31 network data loss timeout).
@@ -96,12 +98,18 @@ public final class DMXReceiver: @unchecked Sendable {
     }
 
     /// Whether the listener is currently running.
-    public var isRunning: Bool { listenerStore.withLock { $0 != nil } }
+    public var isRunning: Bool { lifecycle.isRunning }
+
+    /// Why the socket is not open, when a `start()` that returned has since
+    /// failed: a port another program holds, a bind the system refused. The
+    /// system reports that a moment after `start()` returns, too late to
+    /// throw, so it is readable here instead; `nil` once the socket is open.
+    public var lastError: String? { lifecycle.lastError }
 
     /// The port actually in use once the listener is ready, or `nil` before
     /// then. Equals the requested port, or the system-assigned one when `0`
     /// was passed.
-    public var boundPort: Int? { resolvedPort.withLock { $0 }.map(Int.init) }
+    public var boundPort: Int? { lifecycle.port.map(Int.init) }
 
     /// Begins listening for unicast, and, when `universes` names any and the
     /// protocol is sACN, joins those universes' multicast groups too (the way
@@ -122,27 +130,41 @@ public final class DMXReceiver: @unchecked Sendable {
             listener = try NWListener(using: parameters, on: port)
         }
 
-        // Read the port back from the stored listener (set just below) rather
-        // than capturing the non-Sendable listener into this handler.
         listener.stateUpdateHandler = { [weak self] newState in
-            guard let self, case .ready = newState else { return }
-            let port = self.listenerStore.withLock { $0?.port?.rawValue }
-            self.resolvedPort.withLock { $0 = port }
+            guard let self else { return }
+            // One state for the listener's life: a failed bind is a state of
+            // the receiver, read by `isRunning` and `lastError`, and the
+            // listener that failed is let go so the next `start()` makes a
+            // new one. Reading `.ready` alone would leave a receiver whose
+            // port another program holds "running" for good.
+            let failed = self.lifecycle.listener(
+                newState, port: self.listenerStore.withLock { $0?.port?.rawValue })
+            if failed { self.dropListener() }
         }
         listener.newConnectionHandler = { [weak self] connection in
             self?.accept(ConnectionBox(connection))
         }
 
-        listenerStore.withLock { $0 = listener }
-        listener.start(queue: queue)
-
+        // The groups are joined before the listener starts, so a join that
+        // throws leaves nothing half-started behind it.
         if dmxProtocol == .sACN, !universes.isEmpty {
             try joinMulticast(universes: universes)
         }
+
+        listenerStore.withLock { $0 = listener }
+        lifecycle.starting(port: desiredPort)
+        listener.start(queue: queue)
     }
 
     /// Stops listening. Safe to call when not running.
     public func stop() {
+        dropListener()
+        lifecycle.stopped()
+    }
+
+    /// Lets the socket and the multicast groups go: on `stop()`, and on a bind
+    /// the system refused, so that `isRunning` false means nothing listens.
+    private func dropListener() {
         let listener = listenerStore.withLock { stored -> NWListener? in
             let value = stored
             stored = nil
@@ -155,7 +177,6 @@ public final class DMXReceiver: @unchecked Sendable {
             return value
         }
         group?.cancel()
-        resolvedPort.withLock { $0 = nil }
     }
 
     private func joinMulticast(universes: [Int]) throws {

@@ -363,7 +363,7 @@ When a mapping application already owns the wall, use [Syphon](../Integration/Sy
 
 A monitor that is unplugged, plugged back in, or set to a new resolution reaches the sketch as a burst of notifications. There can be dozens in a second. Ollin waits for the burst to end first. Then it puts the sketch back on a screen that still exists, and retimes the draw loop to the refresh rate of that screen. So a sketch moved from a 60 Hz panel to a 120 Hz one asks for the right rate from then on.
 
-Waking from sleep is handled the same way. The assertion that keeps the display awake is requested again, because it does not always survive a sleep.
+Waking from sleep is handled the same way. The assertion that keeps the display awake is requested again, because it does not always survive a sleep. However many things ask for the display awake, there is one hold: taking over the window, the schedule opening in the morning, and a wake each ask for the same one rather than adding another, and the dark hours release the only one there is. So a display that should sleep through the night does.
 
 ### The log
 

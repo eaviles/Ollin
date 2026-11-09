@@ -92,6 +92,9 @@ public final class EtherDreamDAC: @unchecked Sendable {
 
     private enum Phase: Sendable {
         case idle, connecting, greeting, preparing, beginning, playing
+        /// The DAC answered with its stop condition: the clear has gone out on
+        /// the same connection, and its answer decides what comes next.
+        case clearing
     }
 
     private struct Stream: Sendable {
@@ -104,6 +107,8 @@ public final class EtherDreamDAC: @unchecked Sendable {
         var inbox = Data()
         var failure: String?
         var pointsSent = 0
+        /// A second clear is already waiting to go out.
+        var clearScheduled = false
     }
     private let stream = OSAllocatedUnfairLock(initialState: Stream())
 
@@ -252,9 +257,26 @@ public final class EtherDreamDAC: @unchecked Sendable {
             stream.withLock { $0.phase = .preparing }
             send(EtherDreamWire.prepare())
         case .stopped:
-            fail("the DAC is in a stop condition")
-            send(EtherDreamWire.clearEmergencyStop())
-            stream.withLock { $0.phase = .preparing }
+            // The DAC's own stop, from its interlock or an emergency stop sent
+            // to it, refuses every command but the one that clears it. The
+            // connection is fine and is kept: the stop is said in `lastError`,
+            // cleared, and the handshake run again from the prepare on this
+            // same socket. Read as a lost connection instead, the socket
+            // would be dropped, the clear would go into nothing, and a laser
+            // whose interlock tripped once would stay dark until a restart. A stop
+            // the DAC holds on to (the interlock still open) refuses the clear
+            // too, and the clear is asked again after a second.
+            let wasClearing = stream.withLock { state -> Bool in
+                let was = state.phase == .clearing
+                state.failure = "the DAC is in a stop condition"
+                state.phase = .clearing
+                return was
+            }
+            if wasClearing {
+                clearAgain(after: 1)
+            } else {
+                send(EtherDreamWire.clearEmergencyStop())
+            }
         }
     }
 
@@ -263,14 +285,20 @@ public final class EtherDreamDAC: @unchecked Sendable {
     private func advance() {
         let phase = stream.withLock { $0.phase }
         switch phase {
-        case .greeting:
+        case .greeting, .clearing:
+            // Greeted, or the stop is cleared and the DAC idle again: prepare it.
             stream.withLock { $0.phase = .preparing }
             send(EtherDreamWire.prepare())
         case .preparing:
             stream.withLock { $0.phase = .beginning }
             send(EtherDreamWire.begin(pointsPerSecond: pointsPerSecond))
         case .beginning:
-            stream.withLock { $0.phase = .playing }
+            // Playing is the DAC working again, so whatever went wrong before
+            // is over.
+            stream.withLock {
+                $0.phase = .playing
+                $0.failure = nil
+            }
             pump()
         case .playing:
             pump()
@@ -297,6 +325,26 @@ public final class EtherDreamDAC: @unchecked Sendable {
         }
         stream.withLock { $0.pointsSent += points.count }
         send(EtherDreamWire.write(points))
+    }
+
+    /// Wait, then ask the DAC to clear its stop once more, unless the stop has
+    /// cleared meanwhile or another clear is already on its way.
+    private func clearAgain(after delay: Double) {
+        let already = stream.withLock { state -> Bool in
+            let was = state.clearScheduled
+            state.clearScheduled = true
+            return was
+        }
+        guard !already else { return }
+        queue.asyncAfter(deadline: .now() + delay) { [weak self] in
+            guard let self else { return }
+            let still = self.stream.withLock { state -> Bool in
+                state.clearScheduled = false
+                return state.phase == .clearing
+            }
+            guard still else { return }
+            self.send(EtherDreamWire.clearEmergencyStop())
+        }
     }
 
     /// Wait, then ask the DAC how it is doing.
@@ -407,8 +455,18 @@ public final class EtherDreamFinder: @unchecked Sendable {
         found.withLock { Array($0.values) }.sorted { $0.host < $1.host }
     }
 
-    /// Whether the listener is running.
-    public var isRunning: Bool { listenerStore.withLock { $0 != nil } }
+    /// The listener's life as one value: what `isRunning` and `lastError` read.
+    private let lifecycle = ListenerLifecycle()
+
+    /// Whether the socket is open or opening: false before `start()`, after
+    /// `stop()`, and after a bind the system refused, which `lastError` says.
+    public var isRunning: Bool { lifecycle.isRunning }
+
+    /// Why the socket is not open, when a `start()` that returned has since
+    /// failed: the broadcast port held by another program, a bind the system
+    /// refused. The system reports that a moment after `start()` returns, too
+    /// late to throw, so it is readable here instead; `nil` once it is open.
+    public var lastError: String? { lifecycle.lastError }
 
     /// Start listening for announcements.
     public func start() throws {
@@ -421,15 +479,30 @@ public final class EtherDreamFinder: @unchecked Sendable {
             throw StartError.badPort(EtherDreamWire.broadcastPort)
         }
         let listener = try NWListener(using: parameters, on: port)
+        listener.stateUpdateHandler = { [weak self] newState in
+            guard let self else { return }
+            // A failed bind is a state of the finder, read by `isRunning` and
+            // `lastError`, and the listener that failed is let go so the next
+            // `start()` makes a new one.
+            let failed = self.lifecycle.listener(
+                newState, port: self.listenerStore.withLock { $0?.port?.rawValue })
+            if failed { self.dropListener() }
+        }
         listener.newConnectionHandler = { [weak self] connection in
             self?.accept(connection)
         }
         listenerStore.withLock { $0 = listener }
+        lifecycle.starting(port: port.rawValue)
         listener.start(queue: queue)
     }
 
     /// Stop listening. What was already found stays readable.
     public func stop() {
+        dropListener()
+        lifecycle.stopped()
+    }
+
+    private func dropListener() {
         let listener = listenerStore.withLock { stored -> NWListener? in
             let value = stored
             stored = nil

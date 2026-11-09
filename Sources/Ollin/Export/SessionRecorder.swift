@@ -41,12 +41,31 @@ public final class SessionRecorder: SketchExtension {
     /// The codec frames are encoded with. Settable between recordings.
     public var codec: VideoCodec
 
+    /// Where the recorder is in a take. One value, moved in one place each,
+    /// so that a take started while the last file is still being finished is
+    /// its own take and never mistaken for the one on its way out.
+    enum Phase: Equatable, Sendable {
+        /// Nothing is recording, and the last file, if any, is finished.
+        case idle
+        /// Frames are being written.
+        case recording
+        /// `stop()` was called and the file is being finished on the writer's
+        /// queue; a new take may start meanwhile.
+        case finishing
+        /// The last take could not be finished; `lastError` says why.
+        case failed
+    }
+    private(set) var phase: Phase = .idle
+
     /// Whether a recording is running right now.
-    public private(set) var isRecording = false
+    public var isRecording: Bool { phase == .recording }
+    /// Why the last take could not be finished, in a sentence worth drawing,
+    /// or `nil`. Cleared when a take finishes well.
+    public private(set) var lastError: String?
     /// Where the current (or last) recording is being written.
     public private(set) var url: URL?
     /// Seconds since the recording started.
-    public var elapsed: Double { isRecording ? hostNow() - startSeconds : 0 }
+    public var elapsed: Double { isRecording ? hostNow() - (take?.startSeconds ?? 0) : 0 }
 
     public init(audio: Audio = .sketch, codec: VideoCodec = .h264) {
         self.audio = audio
@@ -66,7 +85,9 @@ public final class SessionRecorder: SketchExtension {
     }
 
     func start(to destination: URL?) {
-        guard !isRecording else { return }
+        // A take may begin while the last one's file is still being finished:
+        // each take holds its own writer, so the one finishing is left alone.
+        guard phase != .recording else { return }
         guard !OllinApp.isRenderingHeadless else {
             print("Ollin: a live recording needs the live window; use --export-video for an offline render")
             return
@@ -84,13 +105,17 @@ public final class SessionRecorder: SketchExtension {
         let begins = hostNow()
         guard let writer = RecorderWriter(url: url, width: size.width, height: size.height,
                                           codec: codec, output: sketch.colorOutput,
-                                          withSound: audio != .none, startSeconds: begins) else { return }
+                                          withSound: audio != .none, startSeconds: begins) else {
+            lastError = "a movie could not be opened at \(url.path)"
+            phase = .failed
+            print("Ollin: \(lastError ?? "the recording could not be started")")
+            return
+        }
+        let take = RecordingTake(writer: writer, url: url, startSeconds: begins)
         self.url = url
-        self.writer = writer
-        self.startSeconds = begins
-        self.droppedFrames = 0
+        self.take = take
         self.rescanCountdown = 0
-        isRecording = true
+        phase = .recording
         writerQueue.async { [writerQueue] in writer.begin(on: writerQueue) }
         if audio == .sketch || audio == .sketchAndMicrophone { rescanAudioSources(of: sketch) }
         if audio == .microphone || audio == .sketchAndMicrophone { startMicrophone() }
@@ -101,31 +126,41 @@ public final class SessionRecorder: SketchExtension {
     /// Stops recording and finishes the file. The completion runs on the main
     /// thread with the file's location, or `nil` when writing failed.
     public func stop(completion: (@MainActor (URL?) -> Void)? = nil) {
-        guard isRecording, let writer else { return }
-        isRecording = false
+        guard phase == .recording, let take else { return }
+        phase = .finishing
         endAudioCapture()
         let finishedAt = hostNow()
-        let dropped = droppedFrames
-        let began = startSeconds
         writerQueue.async { [weak self] in
-            writer.finish(at: finishedAt) { finished, frames, failure in
+            take.writer.finish(at: finishedAt) { finished, frames, failure in
                 Task { @MainActor in
                     guard let self else { return }
-                    let url = self.url
-                    self.writer = nil
-                    if finished, let url {
-                        var line = String(format: "Ollin: recorded %.1fs to %@ (%d frames",
-                                          finishedAt - began, url.path, frames)
-                        line += dropped > 0 ? ", \(dropped) dropped)" : ")"
-                        print(line)
-                        completion?(url)
-                    } else {
-                        print("Ollin: the recording could not be finished"
-                              + (failure.map { ": \($0)" } ?? ""))
-                        completion?(nil)
-                    }
+                    self.finished(take, well: finished, frames: frames, failure: failure, at: finishedAt)
+                    completion?(finished ? take.url : nil)
                 }
             }
+        }
+    }
+
+    /// The file of `take` is closed. The report is the take's own; the
+    /// recorder's state moves only when the take is still the current one,
+    /// since a take started while this one was finishing has taken its place.
+    private func finished(_ take: RecordingTake, well: Bool, frames: Int, failure: String?, at finishedAt: Double) {
+        if well {
+            var line = String(format: "Ollin: recorded %.1fs to %@ (%d frames",
+                              finishedAt - take.startSeconds, take.url.path, frames)
+            line += take.droppedFrames > 0 ? ", \(take.droppedFrames) dropped)" : ")"
+            print(line)
+        } else {
+            print("Ollin: the recording could not be finished" + (failure.map { ": \($0)" } ?? ""))
+        }
+        guard self.take === take else { return }
+        self.take = nil
+        if well {
+            phase = .idle
+            lastError = nil
+        } else {
+            phase = .failed
+            lastError = failure ?? "the recording could not be finished"
         }
     }
 
@@ -133,17 +168,18 @@ public final class SessionRecorder: SketchExtension {
     /// process ends that cannot wait for a callback: quitting the app,
     /// Control-C in the terminal.
     public func stopAndWait() {
-        guard isRecording, let writer else { return }
-        isRecording = false
+        guard phase == .recording, let take else { return }
+        phase = .finishing
         endAudioCapture()
         let finishedAt = hostNow()
         let done = DispatchSemaphore(value: 0)
         writerQueue.async {
-            writer.finish(at: finishedAt) { _, _, _ in done.signal() }
+            take.writer.finish(at: finishedAt) { _, _, _ in done.signal() }
         }
         _ = done.wait(timeout: .now() + 10)
-        self.writer = nil
-        if let url { print("Ollin: recording saved to \(url.path)") }
+        self.take = nil
+        phase = .idle
+        print("Ollin: recording saved to \(take.url.path)")
     }
 
     // MARK: The extension hooks
@@ -153,10 +189,10 @@ public final class SessionRecorder: SketchExtension {
         // Claim the sketch's recorder slot, so `isRecording` and the runner's
         // reload carry see this recorder however it was attached.
         if sketch.sessionRecorder == nil { sketch.sessionRecorder = self }
-        guard isRecording, let writer else { return }
+        guard isRecording, let take else { return }
         // A swapped-in sketch with a different canvas cannot continue this
         // file: a movie's frames are all one size. Finish cleanly, say so.
-        if sketch.canvasSize.width != writer.width || sketch.canvasSize.height != writer.height {
+        if sketch.canvasSize.width != take.writer.width || sketch.canvasSize.height != take.writer.height {
             print("Ollin: the canvas changed size, so the recording was finished")
             stop()
             return
@@ -167,7 +203,8 @@ public final class SessionRecorder: SketchExtension {
     public var wantsRenderedFrame: Bool { isRecording }
 
     public func frameRendered(_ sketch: Sketch, image: CGImage) {
-        guard isRecording, let writer else { return }
+        guard isRecording, let take else { return }
+        let writer = take.writer
         guard image.width == writer.width, image.height == writer.height else {
             print("Ollin: the canvas changed size, so the recording was finished")
             stop()
@@ -179,11 +216,11 @@ public final class SessionRecorder: SketchExtension {
             rescanCountdown = 60
             if audio == .sketch || audio == .sketchAndMicrophone { rescanAudioSources(of: sketch) }
         }
-        let seconds = hostNow() - startSeconds
+        let seconds = hostNow() - take.startSeconds
         guard writer.videoInput.isReadyForMoreMediaData else {
             // Real time cannot wait for the encoder; a frame it cannot take
             // now is a frame the file goes without.
-            droppedFrames += 1
+            take.droppedFrames += 1
             return
         }
         let grab = FrameGrab(image: image, seconds: seconds)
@@ -195,7 +232,8 @@ public final class SessionRecorder: SketchExtension {
     /// Matches the recorder's lanes to the sound sources the sketch is holding
     /// right now: new sources get a lane, departed ones lose theirs.
     private func rescanAudioSources(of sketch: Sketch) {
-        guard let writer else { return }
+        guard let take else { return }
+        let writer = take.writer
         let found = sketch.captureAudioSources()
         let foundIDs = Set(found.map { ObjectIdentifier($0) })
         for (id, source, _) in lanes where !foundIDs.contains(id) {
@@ -205,7 +243,7 @@ public final class SessionRecorder: SketchExtension {
         let known = Set(lanes.map(\.id))
         for source in found where !known.contains(ObjectIdentifier(source)) {
             let sink = AudioCaptureSink(sampleRate: RecorderWriter.audioSampleRate,
-                                        startHostSeconds: startSeconds)
+                                        startHostSeconds: take.startSeconds)
             source.beginAudioCapture(into: sink)
             lanes.append((ObjectIdentifier(source), source, sink))
         }
@@ -242,10 +280,11 @@ public final class SessionRecorder: SketchExtension {
     }
 
     private func startMicrophoneEngine() {
-        guard microphoneEngine == nil, let writer else { return }
+        guard microphoneEngine == nil, let take else { return }
+        let writer = take.writer
         let engine = AVAudioEngine()
         let sink = AudioCaptureSink(sampleRate: RecorderWriter.audioSampleRate,
-                                    startHostSeconds: startSeconds)
+                                    startHostSeconds: take.startSeconds)
         installCaptureTap(on: engine.inputNode, sink: sink)
         engine.prepare()
         do {
@@ -294,9 +333,8 @@ public final class SessionRecorder: SketchExtension {
     // MARK: Plumbing
 
     private weak var sketch: Sketch?
-    private var writer: RecorderWriter?
-    private var startSeconds: Double = 0
-    private var droppedFrames = 0
+    /// The take being recorded or finished, or `nil`.
+    private var take: RecordingTake?
     private var rescanCountdown = 0
     private var lanes: [(id: ObjectIdentifier, source: CaptureAudioSource, sink: AudioCaptureSink)] = []
     private var microphoneEngine: AVAudioEngine?
@@ -316,6 +354,23 @@ public final class SessionRecorder: SketchExtension {
         stamp.dateFormat = "yyyy-MM-dd 'at' HH.mm.ss"
         let name = "\(String(describing: type(of: sketch))) \(stamp.string(from: Date())).mov"
         return folder.appendingPathComponent(name)
+    }
+}
+
+/// One take: its writer, where it goes, and when it began. Each take holds its
+/// own, so the completion of a file being finished reads the take it belongs
+/// to and never the recorder's current one; the writer is only ever touched on
+/// the writer's queue, and the dropped count only on the main actor.
+private final class RecordingTake: @unchecked Sendable {
+    let writer: RecorderWriter
+    let url: URL
+    let startSeconds: Double
+    var droppedFrames = 0
+
+    init(writer: RecorderWriter, url: URL, startSeconds: Double) {
+        self.writer = writer
+        self.url = url
+        self.startSeconds = startSeconds
     }
 }
 

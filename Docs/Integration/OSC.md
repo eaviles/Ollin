@@ -86,6 +86,9 @@ UDP does not acknowledge delivery, so `send` returns right away and never waits 
 OSCReceiver(port: Int)        // port 0 = let the system pick (read it from boundPort)
 func start() throws           // OSCError.invalidPort for a port outside 0…65535
 func stop()
+var isRunning: Bool           // open or opening; false after a bind the system refused
+var boundPort: Int?           // the port in use once the socket is open
+var lastError: String?        // why it is not open, when a start() has since failed
 
 // 1. Latest value per address (continuous controls)
 func number(_ address: String) -> Double?
@@ -100,7 +103,7 @@ func arguments(_ address: String) -> [OSCArgument]?
 func messages() -> [OSCMessage]
 ```
 
-An `OSCReceiver` listens on a port, and the sketch reads what arrives. There are two main ways to read, and a third that binds an address to a parameter. The right one depends on what an address carries.
+An `OSCReceiver` listens on a port, and the sketch reads what arrives. `start()` throws for a port that is not a port number. A port another program already holds is refused by the system a moment after `start()` returns, too late to throw, so that failure is readable instead: `isRunning` turns false, `boundPort` stays `nil`, and `lastError` names the port and says why. Call `start()` again once the port is free. There are two main ways to read, and a third that binds an address to a parameter. The right one depends on what an address carries.
 
 **The latest value** suits a continuous control like a fader. Read it fresh each frame:
 

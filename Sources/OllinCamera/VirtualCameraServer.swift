@@ -35,8 +35,16 @@ public final class VirtualCameraServer: SketchExtension {
     /// The camera device to publish to — the name Ollin Camera registers.
     public let deviceName: String
 
+    /// Where the server is: waiting for the camera or its first frame,
+    /// publishing, unavailable (the camera is not installed, and the server
+    /// keeps trying), or stopped. One value, read by every frame, so a
+    /// stopped server stays stopped: the retry runs from the rendered frames,
+    /// and without the phase the frame after `stop()` would reconnect and
+    /// publish again.
+    public private(set) var phase: PublisherPhase = .waiting
+
     /// `true` once at least one frame has been handed to the camera.
-    public private(set) var isPublishing = false
+    public var isPublishing: Bool { phase == .publishing }
 
     /// Whether the virtual camera is reachable (installed and connected).
     public var isAvailable: Bool { connection != nil }
@@ -59,22 +67,25 @@ public final class VirtualCameraServer: SketchExtension {
         self.deviceName = deviceName
     }
 
-    /// Stop feeding the camera and disconnect. Optional — dropping all
-    /// references to this extension has the same effect. The camera falls back
-    /// to its "no signal" test card within a second.
+    /// Stop feeding the camera and disconnect, for good: the frames that
+    /// follow are refused and `phase` reads `.stopped`. The camera falls back
+    /// to its "no signal" test card within a second. To feed it again, publish
+    /// with a new server.
     public func stop() {
         connection = nil
-        isPublishing = false
+        phase = .stopped
     }
 
     // MARK: SketchExtension
 
-    /// Always wants the rendered frame as a texture — that's what gets published.
-    public var wantsRenderedTexture: Bool { true }
+    /// Wants the rendered frame as a texture until stopped: that is what gets
+    /// published, and a stopped server asks for nothing.
+    public var wantsRenderedTexture: Bool { phase != .stopped }
 
     /// Publish each rendered frame, paced to the camera's frame rate. Runs on
     /// the main actor (the render loop), right after the frame is drawn.
     public func frameRendered(_ sketch: Sketch, texture: MTLTexture) {
+        guard phase != .stopped else { return }
         let now = CFAbsoluteTimeGetCurrent()
         // The camera runs at a fixed rate; a sketch usually draws faster.
         // A small tolerance keeps a 60 fps sketch from publishing at 20.
@@ -88,9 +99,11 @@ public final class VirtualCameraServer: SketchExtension {
                 connection = sink
                 unavailableReason = nil
                 loggedUnavailable = false
+                phase = .waiting
                 logger.info("Connected to \(self.deviceName, privacy: .public).")
             case .failure(let error):
                 unavailableReason = error.description
+                phase = .unavailable
                 if !loggedUnavailable {
                     logger.warning("\(error.description, privacy: .public)")
                     loggedUnavailable = true
@@ -108,7 +121,7 @@ public final class VirtualCameraServer: SketchExtension {
         else { return }
 
         if connection.enqueue(sampleBuffer) {
-            isPublishing = true
+            phase = .publishing
             lastPublishAt = now
         }
     }

@@ -69,6 +69,7 @@ final class OSCReceiver: Sendable
   init(port: Int)
   var boundPort: Int? { get }
   var isRunning: Bool { get }
+  var lastError: String? { get }
 final class OSCSender
   func close()
   func send(_: OSCBundle)
@@ -89,6 +90,7 @@ final class TUIOReceiver: Sendable
   var cursors: [TUIOCursor] { get }
   var framesReceived: Int { get }
   var isRunning: Bool { get }
+  var lastError: String? { get }
   var objects: [TUIOObject] { get }
   var sourceName: String? { get }
 struct OSCBundle: Equatable, Sendable

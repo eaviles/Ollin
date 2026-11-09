@@ -686,6 +686,11 @@ enum Profile
   static func rectangle(width: Double = default, height: Double = default) -> [Vector2]
   static func star(points: Int = default, outerRadius: Double = default, innerRadius: Double = default) -> [Vector2]
   static func triangle(width: Double = default, height: Double = default) -> [Vector2]
+enum PublisherPhase: Equatable, Hashable, Sendable
+  case publishing
+  case stopped
+  case unavailable
+  case waiting
 enum RenderQuality: ParamOption, ParamValue, CaseIterable, Equatable, Hashable, Sendable
   case default
   case detail
@@ -1608,6 +1613,7 @@ final class SessionRecorder: SketchExtension, Sendable
   var codec: VideoCodec { get set }
   var elapsed: Double { get }
   var isRecording: Bool { get }
+  var lastError: String? { get }
   var url: Foundation.URL? { get }
   var wantsRenderedFrame: Bool { get }
 final class Simulation: Sendable

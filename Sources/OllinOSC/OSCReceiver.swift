@@ -50,7 +50,9 @@ public final class OSCReceiver: @unchecked Sendable {
     // resolved port (set once ready, e.g. when an ephemeral port-0 is assigned)
     // is plain and Sendable.
     private let listenerStore = OSAllocatedUnfairLock<NWListener?>(uncheckedState: nil)
-    private let resolvedPort = OSAllocatedUnfairLock<UInt16?>(initialState: nil)
+    /// The listener's life as one value: what `isRunning`, `boundPort`, and
+    /// `lastError` read.
+    private let lifecycle = ListenerLifecycle()
     private let serviceNameStore = OSAllocatedUnfairLock<String?>(initialState: nil)
 
     /// The name this port is advertised under on the local network as an OSC
@@ -96,12 +98,19 @@ public final class OSCReceiver: @unchecked Sendable {
         self.desiredPort = UInt16(clamping: port)
     }
 
-    /// Whether the listener is currently running.
-    public var isRunning: Bool { listenerStore.withLock { $0 != nil } }
+    /// Whether the socket is open or opening: false before `start()`, after
+    /// `stop()`, and after a bind the system refused, which `lastError` says.
+    public var isRunning: Bool { lifecycle.isRunning }
 
     /// The port actually in use once the listener is ready, or `nil` before then.
     /// Equals the requested port, or the system-assigned one when `0` was passed.
-    public var boundPort: Int? { resolvedPort.withLock { $0 }.map(Int.init) }
+    public var boundPort: Int? { lifecycle.port.map(Int.init) }
+
+    /// Why the socket is not open, when a `start()` that returned has since
+    /// failed: a port another program holds, a bind the system refused. The
+    /// system reports that a moment after `start()` returns, too late to
+    /// throw, so it is readable here instead; `nil` once the socket is open.
+    public var lastError: String? { lifecycle.lastError }
 
     /// Begins listening. Throws if the port is invalid or the socket can't open.
     public func start() throws {
@@ -122,30 +131,39 @@ public final class OSCReceiver: @unchecked Sendable {
             listener.service = NWListener.Service(name: serviceName, type: "_osc._udp")
         }
 
-        // Read the port back from the stored listener (set just below) rather than
-        // capturing the non-Sendable listener into this @Sendable handler.
         listener.stateUpdateHandler = { [weak self] newState in
-            guard let self, case .ready = newState else { return }
-            let port = self.listenerStore.withLock { $0?.port?.rawValue }
-            self.resolvedPort.withLock { $0 = port }
+            guard let self else { return }
+            // One state for the listener's life: a failed bind is a state of
+            // the receiver, read by `isRunning` and `lastError`, and the
+            // listener that failed is let go so the next `start()` makes a
+            // new one. Reading `.ready` alone would leave a receiver whose
+            // port another program holds "running" for good.
+            let failed = self.lifecycle.listener(
+                newState, port: self.listenerStore.withLock { $0?.port?.rawValue })
+            if failed { self.dropListener() }
         }
         listener.newConnectionHandler = { [weak self] connection in
             self?.accept(ConnectionBox(connection))
         }
 
         listenerStore.withLock { $0 = listener }
+        lifecycle.starting(port: desiredPort)
         listener.start(queue: queue)
     }
 
     /// Stops listening. Safe to call when not running.
     public func stop() {
+        dropListener()
+        lifecycle.stopped()
+    }
+
+    private func dropListener() {
         let listener = listenerStore.withLock { stored -> NWListener? in
             let value = stored
             stored = nil
             return value
         }
         listener?.cancel()
-        resolvedPort.withLock { $0 = nil }
     }
 
     // MARK: Reading — polling cache

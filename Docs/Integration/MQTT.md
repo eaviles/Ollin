@@ -184,7 +184,7 @@ The connection looks after itself, which is what a sketch left running for a mon
 
 A heartbeat goes out when the line has been quiet, so a broker does not hang up on a sketch that only ever reads. `keepAlive:` is how long quiet is allowed, in seconds, 30 by default. When the broker stops answering altogether, the client says so and reconnects.
 
-A lost connection is reopened on its own, after a delay that starts at a quarter second and doubles to eight so a broker rebooting is waited out rather than hammered. Every subscription goes back up with it, and so does anything published at `.atLeastOnce` that was never acknowledged. `connectionCount` counts how many times the broker has accepted this client, so a sketch that wants to know the line dropped can watch that number rather than catching `isConnected` between frames. Pass `reconnects: false` to do it yourself.
+A lost connection is reopened on its own, after a delay that starts at a quarter second and doubles to eight so a broker rebooting is waited out rather than hammered. Every subscription goes back up with it, and so does anything published at `.atLeastOnce` that was never acknowledged. `connectionCount` counts how many times the broker has accepted this client, so a sketch that wants to know the line dropped can watch that number rather than catching `isConnected` between frames. Pass `reconnects: false` to do it yourself: after a drop, `isConnected` turns false and stays there, and `connect()` opens the line again when you call it.
 
 <a name="binding"></a>
 

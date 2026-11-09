@@ -13,28 +13,28 @@
 # To shrink a page's share, add Docs/Snippets/<Group>-<Page>.swift declaring the
 # names its prose establishes; it is spliced into every probe from that page.
 
-59a8691ecc04  Docs/3D/3D.md:1056  overriding declaration requires an 'override' keyword
-f120c3e411c4  Docs/3D/3D.md:138  cannot find 'x' in scope
-76ba2c72194a  Docs/3D/3D.md:1428  cannot find 'ribbon' in scope
-344f7f4b3cc6  Docs/3D/3D.md:1638  cannot convert value of type '@MainActor (Int, Int, Insets, Double, Grid.Distribution) -> Grid' to expected argument type 'Image'
-b315a31afeb9  Docs/3D/3D.md:1661  cannot find 'planks' in scope
-e0187f40506d  Docs/3D/3D.md:1706  cannot find 'rockColor' in scope
-677c77a8c73e  Docs/3D/3D.md:1724  cannot find 'h' in scope
-d51355214a9e  Docs/3D/3D.md:1751  cannot find 'paint' in scope
-e74d2eeb069f  Docs/3D/3D.md:1768  cannot find 'ribbon' in scope
-2a67d7fc8d2c  Docs/3D/3D.md:1790  cannot find 'brickColor' in scope
-5193d7f3850b  Docs/3D/3D.md:1806  cannot find 'reliefImage' in scope
-124899510ce1  Docs/3D/3D.md:1826  cannot find 'rock' in scope
-d1a6a8c0f0eb  Docs/3D/3D.md:1857  cannot find 'rock' in scope
-b0d19a4efbe1  Docs/3D/3D.md:1881  cannot use instance member 'loadImage' within property initializer; property initializers run before 'self' is available
-7d5e1e905641  Docs/3D/3D.md:192  cannot find 'x' in scope
-945a0d5a84a5  Docs/3D/3D.md:1927  cannot find 'blob' in scope
-f6d0fb32d6d9  Docs/3D/3D.md:231  cannot find 'block' in scope
-16f7145339d7  Docs/3D/3D.md:434  'module' is inaccessible due to 'internal' protection level
-9bd70590640e  Docs/3D/3D.md:447  cannot find 'eye' in scope
+a5b3460feb06  Docs/3D/3D.md:1041  cannot find 'e' in scope
+59a8691ecc04  Docs/3D/3D.md:1107  overriding declaration requires an 'override' keyword
+76ba2c72194a  Docs/3D/3D.md:1481  cannot find 'ribbon' in scope
+344f7f4b3cc6  Docs/3D/3D.md:1691  cannot convert value of type '@MainActor (Int, Int, Insets, Double, Grid.Distribution) -> Grid' to expected argument type 'Image'
+b315a31afeb9  Docs/3D/3D.md:1714  cannot find 'planks' in scope
+e0187f40506d  Docs/3D/3D.md:1759  cannot find 'rockColor' in scope
+677c77a8c73e  Docs/3D/3D.md:1777  cannot find 'h' in scope
+d51355214a9e  Docs/3D/3D.md:1804  cannot find 'paint' in scope
+e74d2eeb069f  Docs/3D/3D.md:1821  cannot find 'ribbon' in scope
+2a67d7fc8d2c  Docs/3D/3D.md:1843  cannot find 'brickColor' in scope
+5193d7f3850b  Docs/3D/3D.md:1859  cannot find 'reliefImage' in scope
+124899510ce1  Docs/3D/3D.md:1879  cannot find 'rock' in scope
+f120c3e411c4  Docs/3D/3D.md:189  cannot find 'x' in scope
+d1a6a8c0f0eb  Docs/3D/3D.md:1910  cannot find 'rock' in scope
+b0d19a4efbe1  Docs/3D/3D.md:1934  cannot use instance member 'loadImage' within property initializer; property initializers run before 'self' is available
+945a0d5a84a5  Docs/3D/3D.md:1980  cannot find 'blob' in scope
+7d5e1e905641  Docs/3D/3D.md:243  cannot find 'x' in scope
+f6d0fb32d6d9  Docs/3D/3D.md:282  cannot find 'block' in scope
+16f7145339d7  Docs/3D/3D.md:485  'module' is inaccessible due to 'internal' protection level
+9bd70590640e  Docs/3D/3D.md:498  cannot find 'eye' in scope
 a0b9671c7ce3  Docs/3D/3D.md:59  '@main' attribute cannot be applied to this declaration
 f0ec15e3ed0a  Docs/3D/3D.md:90  cannot find 'a' in scope
-a5b3460feb06  Docs/3D/3D.md:990  cannot find 'e' in scope
 1fbb55b7ead2  Docs/3D/Atmosphere.md:13  cannot convert value of type '(UnboundedRange_) -> ()' to expected argument type 'Camera3D'
 c58bc0d079e5  Docs/3D/Atmosphere.md:96  cannot find 'gobo' in scope
 1eefcecfecc2  Docs/3D/Camera.md:138  cannot find 'stage' in scope
@@ -102,9 +102,9 @@ ce2562f59ad4  Docs/3D/Phone.md:831  cannot find 'device' in scope
 aa6b39505d99  Docs/3D/Phone.md:853  cannot find 'device' in scope
 cfacfcd36d59  Docs/3D/Phone.md:868  cannot find 'device' in scope
 c1dfed3638ac  Docs/3D/Phone.md:880  cannot find 'device' in scope
-1fe6d21c2a07  Docs/3D/Phone.md:934  cannot find 'device' in scope
-b6794226e9fd  Docs/3D/Phone.md:955  cannot find 'device' in scope
-499b37412097  Docs/3D/Phone.md:978  cannot find 'device' in scope
+598f5305c5dc  Docs/3D/Phone.md:934  cannot find 'device' in scope
+b6794226e9fd  Docs/3D/Phone.md:956  cannot find 'device' in scope
+499b37412097  Docs/3D/Phone.md:979  cannot find 'device' in scope
 cf446431401d  Docs/3D/RGBD.md:105  cannot find 'bodies' in scope
 afc9b452945e  Docs/3D/RGBD.md:54  expected ',' separator
 480ac8fd57b4  Docs/3D/RGBD.md:80  cannot find 'frame' in scope
@@ -133,7 +133,7 @@ ec1d089a4772  Docs/Core/Automation.md:127  cannot find '$radius' in scope
 f366797872e5  Docs/Core/Automation.md:141  cannot find '$eye' in scope
 1232b75d935e  Docs/Core/Automation.md:155  cannot find 'url' in scope
 4f9f5b4ff11a  Docs/Core/Automation.md:83  cannot find 'track' in scope
-2d3e7c3db3eb  Docs/Core/Canvas.md:173  overriding non-open instance method outside of its defining module
+2d3e7c3db3eb  Docs/Core/Canvas.md:175  overriding non-open instance method outside of its defining module
 97d72fc7c3cd  Docs/Core/Canvas.md:53  consecutive statements on a line must be separated by ';'
 eeb1b8b840a9  Docs/Core/Canvas.md:68  consecutive statements on a line must be separated by ';'
 449b8a7d3c1e  Docs/Core/Replay.md:90  cannot find 'url' in scope
@@ -296,20 +296,20 @@ b774992b6378  Docs/Drawing/Drawing.md:938  expected ',' separator
 1545ca2f9764  Docs/Drawing/Drawing.md:958  expected ',' separator
 0375abf145ad  Docs/Drawing/Drawing.md:979  expected ',' separator
 6d78937929ce  Docs/Drawing/Drawing.md:999  expected ',' separator
-f9dd3d125f11  Docs/Drawing/Effects.md:133  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-63ea4c842664  Docs/Drawing/Effects.md:1370  cannot find 'photo' in scope
-8528c8e05574  Docs/Drawing/Effects.md:159  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-de01af674fc3  Docs/Drawing/Effects.md:170  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-287a7fa55e41  Docs/Drawing/Effects.md:195  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-5aa234bd9c13  Docs/Drawing/Effects.md:258  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-cfebd0c142fa  Docs/Drawing/Effects.md:277  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-664b1351cb25  Docs/Drawing/Effects.md:418  cannot find 'scene' in scope
-0cf1d8be56d4  Docs/Drawing/Effects.md:441  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-69cf570bc684  Docs/Drawing/Effects.md:613  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-314af6ac5659  Docs/Drawing/Effects.md:912  cannot find 'horizon' in scope
-1c1c7cea776b  Docs/Drawing/Effects.md:934  cannot find 'glow' in scope
-a8f0d552b0f0  Docs/Drawing/Effects.md:962  cannot find 'marks' in scope
-09c8e57cb7b7  Docs/Drawing/Effects.md:99  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'image'
+09c8e57cb7b7  Docs/Drawing/Effects.md:101  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'image'
+f9dd3d125f11  Docs/Drawing/Effects.md:135  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+63ea4c842664  Docs/Drawing/Effects.md:1372  cannot find 'photo' in scope
+8528c8e05574  Docs/Drawing/Effects.md:161  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+de01af674fc3  Docs/Drawing/Effects.md:172  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+287a7fa55e41  Docs/Drawing/Effects.md:197  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+5aa234bd9c13  Docs/Drawing/Effects.md:260  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+cfebd0c142fa  Docs/Drawing/Effects.md:279  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+664b1351cb25  Docs/Drawing/Effects.md:420  cannot find 'scene' in scope
+0cf1d8be56d4  Docs/Drawing/Effects.md:443  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+69cf570bc684  Docs/Drawing/Effects.md:615  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+314af6ac5659  Docs/Drawing/Effects.md:914  cannot find 'horizon' in scope
+1c1c7cea776b  Docs/Drawing/Effects.md:936  cannot find 'glow' in scope
+a8f0d552b0f0  Docs/Drawing/Effects.md:964  cannot find 'marks' in scope
 eb9d4c173b18  Docs/Drawing/Envelopes.md:105  expected ',' separator
 3ba94f2cae8b  Docs/Drawing/Envelopes.md:112  cannot find 'shore' in scope
 6959c47ac423  Docs/Drawing/Envelopes.md:41  expected ',' separator
@@ -619,27 +619,27 @@ ed99fde1bb0f  Docs/Generators/LSystem.md:97  cannot convert value of type 'Strin
 6ecea86ce5d1  Docs/Generators/Meander.md:68  cannot find 'river' in scope
 e0fc5d99186d  Docs/Generators/MedialAxis.md:26  expected ',' separator
 7d1a8c0e7ac4  Docs/Generators/MedialAxis.md:34  cannot find 'blob' in scope
-91667d165def  Docs/Generators/Noise.md:112  expected ',' separator
-7b0056342e56  Docs/Generators/Noise.md:125  cannot find 'x' in scope
-70f63f323bc3  Docs/Generators/Noise.md:137  expected ',' separator
-70081d8ef017  Docs/Generators/Noise.md:148  cannot find 'x' in scope
-a2c382c85729  Docs/Generators/Noise.md:162  expected ',' separator
-72dd2efe43d8  Docs/Generators/Noise.md:182  cannot find 'p' in scope
-e7146dea4fe1  Docs/Generators/Noise.md:193  expected ',' separator
-16ff39be874f  Docs/Generators/Noise.md:200  cannot find 'x' in scope
-a64542220ed4  Docs/Generators/Noise.md:218  expected ',' separator
-be2607cb8267  Docs/Generators/Noise.md:238  cannot find 'x' in scope
-c871d96f961e  Docs/Generators/Noise.md:251  expected ',' separator
-88eb529b55b2  Docs/Generators/Noise.md:263  cannot find 'x' in scope
-5145b20174ad  Docs/Generators/Noise.md:275  expected ',' separator
-c2c8471ece96  Docs/Generators/Noise.md:283  cannot find 'x' in scope
-1b783e195485  Docs/Generators/Noise.md:294  expected ',' separator
-9967d3065c0c  Docs/Generators/Noise.md:320  cannot find 'x' in scope
-e13ed241945a  Docs/Generators/Noise.md:357  expected ',' separator
-5510c621a005  Docs/Generators/Noise.md:371  expected ',' separator
+91667d165def  Docs/Generators/Noise.md:114  expected ',' separator
+7b0056342e56  Docs/Generators/Noise.md:127  cannot find 'x' in scope
+70f63f323bc3  Docs/Generators/Noise.md:139  expected ',' separator
+70081d8ef017  Docs/Generators/Noise.md:150  cannot find 'x' in scope
+a2c382c85729  Docs/Generators/Noise.md:164  expected ',' separator
+72dd2efe43d8  Docs/Generators/Noise.md:184  cannot find 'p' in scope
+e7146dea4fe1  Docs/Generators/Noise.md:195  expected ',' separator
+16ff39be874f  Docs/Generators/Noise.md:202  cannot find 'x' in scope
+a64542220ed4  Docs/Generators/Noise.md:220  expected ',' separator
+be2607cb8267  Docs/Generators/Noise.md:240  cannot find 'x' in scope
+c871d96f961e  Docs/Generators/Noise.md:253  expected ',' separator
+88eb529b55b2  Docs/Generators/Noise.md:265  cannot find 'x' in scope
+5145b20174ad  Docs/Generators/Noise.md:277  expected ',' separator
+c2c8471ece96  Docs/Generators/Noise.md:285  cannot find 'x' in scope
+1b783e195485  Docs/Generators/Noise.md:296  expected ',' separator
+9967d3065c0c  Docs/Generators/Noise.md:322  cannot find 'x' in scope
+e13ed241945a  Docs/Generators/Noise.md:359  expected ',' separator
+5510c621a005  Docs/Generators/Noise.md:373  expected ',' separator
 fdeea8fbb768  Docs/Generators/Noise.md:38  expected ',' separator
-6733df6ef143  Docs/Generators/Noise.md:385  expected type before '->'
-57934667130c  Docs/Generators/Noise.md:392  cannot find 'points' in scope
+6733df6ef143  Docs/Generators/Noise.md:387  expected type before '->'
+57934667130c  Docs/Generators/Noise.md:394  cannot find 'points' in scope
 6836c883722c  Docs/Generators/Noise.md:44  cannot find 'x' in scope
 537a333e4b20  Docs/Generators/Noise.md:58  expected ',' separator
 0c94eef9ade2  Docs/Generators/Noise.md:73  expected ',' separator
@@ -905,15 +905,15 @@ c1f052f4e696  Docs/Helpers/Synthesis.md:459  cannot find 'synth' in scope
 71128f7d3f0d  Docs/Helpers/Synthesis.md:62  cannot find 'synth' in scope
 4667fec266a8  Docs/Helpers/Synthesis.md:667  cannot find 'synth' in scope
 704965646449  Docs/Helpers/Synthesis.md:70  cannot find 'synth' in scope
-c23316c59aa8  Docs/Helpers/Synthesis.md:778  cannot find 'synth' in scope
+c23316c59aa8  Docs/Helpers/Synthesis.md:779  cannot find 'synth' in scope
 a0885de8f8fa  Docs/Helpers/Synthesis.md:78  cannot find 'wasDown' in scope
-6ec305c76a35  Docs/Helpers/Synthesis.md:809  cannot find 'synth' in scope
-4934577a32f3  Docs/Helpers/Synthesis.md:839  'module' is inaccessible due to 'internal' protection level
-2f022144c85f  Docs/Helpers/Synthesis.md:890  cannot find 'synth' in scope
-68ea1f03622c  Docs/Helpers/Synthesis.md:910  cannot find 'synth' in scope
-b011e4ff81ce  Docs/Helpers/Synthesis.md:929  cannot find 'synth' in scope
-f7bf5ddf5ce5  Docs/Helpers/Synthesis.md:949  cannot find 'synth' in scope
-5ecdb5057d19  Docs/Helpers/Synthesis.md:967  reference to member 'custom' cannot be resolved without a contextual type
+6ec305c76a35  Docs/Helpers/Synthesis.md:810  cannot find 'synth' in scope
+4934577a32f3  Docs/Helpers/Synthesis.md:840  'module' is inaccessible due to 'internal' protection level
+2f022144c85f  Docs/Helpers/Synthesis.md:891  cannot find 'synth' in scope
+68ea1f03622c  Docs/Helpers/Synthesis.md:911  cannot find 'synth' in scope
+b011e4ff81ce  Docs/Helpers/Synthesis.md:930  cannot find 'synth' in scope
+f7bf5ddf5ce5  Docs/Helpers/Synthesis.md:950  cannot find 'synth' in scope
+5ecdb5057d19  Docs/Helpers/Synthesis.md:968  reference to member 'custom' cannot be resolved without a contextual type
 c190ec5bfb0a  Docs/Helpers/Weather.md:123  expected ',' separator
 9b223ddfebe9  Docs/Helpers/Weather.md:129  cannot find 'place' in scope
 6a7b53bf1b5a  Docs/Helpers/Weather.md:150  cannot find 'sky' in scope
@@ -930,9 +930,9 @@ d850fab201e9  Docs/Integration/Controller.md:171  argument passed to call that t
 9ba26d0ee7f0  Docs/Integration/Controller.md:7  '@main' attribute cannot be applied to this declaration
 d9384dec8a99  Docs/Integration/Controller.md:80  cannot find 'position' in scope
 7a4ee38fcdce  Docs/Integration/DMX.md:127  expected parameter name followed by ':'
-9d02aa38e111  Docs/Integration/DMX.md:159  expected '{' in body of function declaration
-3768bca73f76  Docs/Integration/DMX.md:198  expected '{' in body of function declaration
-99b414bd7f71  Docs/Integration/DMX.md:205  cannot find 'dmx' in scope
+f758436b563c  Docs/Integration/DMX.md:159  expected '{' in body of function declaration
+3768bca73f76  Docs/Integration/DMX.md:201  expected '{' in body of function declaration
+99b414bd7f71  Docs/Integration/DMX.md:208  cannot find 'dmx' in scope
 09714a261bfa  Docs/Integration/DMX.md:64  cannot find 'rig' in scope
 26e84d1e3d17  Docs/Integration/DMX.md:82  expected '{' in body of function declaration
 20bf1597d240  Docs/Integration/Haptics.md:11  cannot find 'ball' in scope
@@ -974,16 +974,16 @@ cd506c6783d2  Docs/Integration/MIDI.md:371  cannot find 'timecode' in scope
 d239cd3c7705  Docs/Integration/MIDI.md:53  cannot find 'message' in scope
 7f26d708f6c2  Docs/Integration/MIDI.md:69  cannot find 'message' in scope
 e8ff70162566  Docs/Integration/MIDI.md:84  expected '{' in body of function declaration
-e4f65cafbb75  Docs/Integration/OSC.md:107  cannot find 'osc' in scope
-ec3cf3dba0c3  Docs/Integration/OSC.md:115  cannot find 'osc' in scope
-831fac54d6a5  Docs/Integration/OSC.md:136  expected '{' in body of function declaration
-59db1866e0a2  Docs/Integration/OSC.md:145  cannot find 'osc' in scope
-533cd306a4b6  Docs/Integration/OSC.md:163  expected ',' separator
-c2b6142904db  Docs/Integration/OSC.md:169  cannot find 'out' in scope
+e4f65cafbb75  Docs/Integration/OSC.md:110  cannot find 'osc' in scope
+ec3cf3dba0c3  Docs/Integration/OSC.md:118  cannot find 'osc' in scope
+831fac54d6a5  Docs/Integration/OSC.md:139  expected '{' in body of function declaration
+59db1866e0a2  Docs/Integration/OSC.md:148  cannot find 'osc' in scope
+533cd306a4b6  Docs/Integration/OSC.md:166  expected ',' separator
+c2b6142904db  Docs/Integration/OSC.md:172  cannot find 'out' in scope
 a32230d000b5  Docs/Integration/OSC.md:50  cannot find 'value' in scope
 b23daca1043c  Docs/Integration/OSC.md:63  expected '{' in body of function declaration
 5c60ac125f3e  Docs/Integration/OSC.md:73  cannot find 'level' in scope
-53da3b024d9f  Docs/Integration/OSC.md:85  expected '{' in body of function declaration
+330b5285ccf0  Docs/Integration/OSC.md:85  expected '{' in body of function declaration
 c41450294985  Docs/Integration/OSCQuery.md:43  expected '{' in body of function declaration
 23c1cb0d4637  Docs/Integration/Remote.md:50  cannot find 'remote' in scope
 5db83bb08f32  Docs/Integration/Room.md:109  cannot find 'room' in scope
@@ -1016,34 +1016,34 @@ a721bdf41f62  Docs/Integration/Serial.md:44  expected type before '->'
 bcd673b4dbb9  Docs/Integration/Serial.md:64  expected '{' in body of function declaration
 b0deadcf6725  Docs/Integration/Serial.md:79  expected '{' in body of function declaration
 8277d6d1e29a  Docs/Integration/Serial.md:96  cannot find 'serial' in scope
-131fdb9a3e57  Docs/Integration/Syphon.md:117  expected type before '->'
-ea7ce851e283  Docs/Integration/Syphon.md:50  overriding non-open instance method outside of its defining module
-bf08f4a987cd  Docs/Integration/Syphon.md:70  cannot find 'drawTheExpensiveLayer' in scope
-0712b648cd2a  Docs/Integration/Syphon.md:82  expected '{' in body of function declaration
-3fbeb5046811  Docs/Integration/TUIO.md:105  cannot find 'touch' in scope
-a90ed57420fb  Docs/Integration/TUIO.md:112  cannot find 'touch' in scope
-d9072b0f79b3  Docs/Integration/TUIO.md:119  cannot find 'surface' in scope
-a66f46b1acdd  Docs/Integration/TUIO.md:132  cannot find 'surface' in scope
+131fdb9a3e57  Docs/Integration/Syphon.md:120  expected type before '->'
+c751157fe10a  Docs/Integration/Syphon.md:50  overriding non-open instance method outside of its defining module
+bf08f4a987cd  Docs/Integration/Syphon.md:73  cannot find 'drawTheExpensiveLayer' in scope
+0712b648cd2a  Docs/Integration/Syphon.md:85  expected '{' in body of function declaration
+3fbeb5046811  Docs/Integration/TUIO.md:106  cannot find 'touch' in scope
+a90ed57420fb  Docs/Integration/TUIO.md:113  cannot find 'touch' in scope
+d9072b0f79b3  Docs/Integration/TUIO.md:120  cannot find 'surface' in scope
+a66f46b1acdd  Docs/Integration/TUIO.md:133  cannot find 'surface' in scope
 3acec9840791  Docs/Integration/TUIO.md:63  cannot find 'surface' in scope
 f85d2e3756c9  Docs/Integration/TUIO.md:80  invalid redeclaration of 'surface'
-07533e7e3531  Docs/Integration/VirtualCamera.md:51  overriding non-open instance method outside of its defining module
+c9bf0d29547d  Docs/Integration/VirtualCamera.md:51  overriding non-open instance method outside of its defining module
 3501f503e78a  Docs/Output/DXF.md:15  cannot find 'sketch' in scope
 928afe067ea6  Docs/Output/DXF.md:40  cannot find 'contours' in scope
 9a034afa7d35  Docs/Output/Embroidery.md:15  cannot find 'sketch' in scope
 a12a5cbc54b8  Docs/Output/Embroidery.md:42  cannot find 'contours' in scope
-56eab423badd  Docs/Output/Export.md:177  cannot find 'sketch' in scope
-143aa3f7b2a6  Docs/Output/Export.md:224  cannot find 'sketch' in scope
-d6af9cd76d9a  Docs/Output/Export.md:279  cannot find 'images' in scope
-41c51b4217b5  Docs/Output/Export.md:372  cannot find 'sketch' in scope
-5c4ecfe60d45  Docs/Output/Export.md:392  cannot find 'sketch' in scope
-f4ea0f70c060  Docs/Output/Export.md:420  cannot find 'sketch' in scope
-7232b3dd06c7  Docs/Output/Export.md:437  cannot find 'MySketch' in scope
-c1560bc3ed9b  Docs/Output/Export.md:457  'canvasSize' has already been overridden
-9cce5cca05b5  Docs/Output/Export.md:512  cannot find 'MySketch' in scope
-69e3179f9546  Docs/Output/Export.md:519  cannot find 'someShape' in scope
-63d4bbf9aef5  Docs/Output/Export.md:531  cannot find 'sketch' in scope
-d687b05f736d  Docs/Output/Export.md:744  cannot find 'MySketch' in scope
-b050cb53bae3  Docs/Output/Export.md:771  cannot find 'MySketch' in scope
+56eab423badd  Docs/Output/Export.md:179  cannot find 'sketch' in scope
+143aa3f7b2a6  Docs/Output/Export.md:226  cannot find 'sketch' in scope
+d6af9cd76d9a  Docs/Output/Export.md:289  cannot find 'images' in scope
+41c51b4217b5  Docs/Output/Export.md:382  cannot find 'sketch' in scope
+5c4ecfe60d45  Docs/Output/Export.md:402  cannot find 'sketch' in scope
+f4ea0f70c060  Docs/Output/Export.md:430  cannot find 'sketch' in scope
+7232b3dd06c7  Docs/Output/Export.md:447  cannot find 'MySketch' in scope
+c1560bc3ed9b  Docs/Output/Export.md:467  'canvasSize' has already been overridden
+9cce5cca05b5  Docs/Output/Export.md:522  cannot find 'MySketch' in scope
+69e3179f9546  Docs/Output/Export.md:529  cannot find 'someShape' in scope
+63d4bbf9aef5  Docs/Output/Export.md:541  cannot find 'sketch' in scope
+d687b05f736d  Docs/Output/Export.md:756  cannot find 'MySketch' in scope
+b050cb53bae3  Docs/Output/Export.md:783  cannot find 'MySketch' in scope
 5d07534919d9  Docs/Output/Fabrication.md:104  expected expression in list of expressions
 bea28874882f  Docs/Output/Fabrication.md:21  cannot find 'sculpture' in scope
 ab8b301ea87b  Docs/Output/Fabrication.md:62  cannot find 'sculpture' in scope

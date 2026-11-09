@@ -49,6 +49,7 @@ final class EtherDreamFinder: Sendable
   init()
   var devices: [EtherDreamDevice] { get }
   var isRunning: Bool { get }
+  var lastError: String? { get }
 final class LaserProjector: Sendable
   @discardableResult func send(_: LaserFrame) -> LaserStream
   convenience init(device: EtherDreamDevice)
