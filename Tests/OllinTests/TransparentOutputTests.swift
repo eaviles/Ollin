@@ -18,15 +18,18 @@ struct TransparentOutputTests {
         var ground: Color = .clear
         var ink: Color = Color(red: 1, green: 0, blue: 0)
         var map: ToneMap? = nil
+        var exposure: Double = 1
         var blur: Double = 0
+        /// Moves the disk sideways, so its edge can fall across a pixel.
+        var shift: Double = 0
         override var canvasSize: CanvasSize { .square(128) }
         override func draw() {
             background(ground)
-            if let map { toneMap(map) }
+            if map != nil || exposure != 1 { toneMap(map ?? .clamp, exposure: exposure) }
             if blur > 0 { postProcess(.gaussianBlur(radius: blur)) }
             noStroke()
             fill(ink)
-            drawCircle(width / 2, height / 2, 40)
+            drawCircle(width / 2 + shift, height / 2, 40)
         }
     }
 
@@ -157,6 +160,83 @@ struct TransparentOutputTests {
         // (ten half-float sums of a tenth land a hair under 1).
         let middle = stored(seeThrough, x: 40, y: 64).a
         #expect(middle >= 252 && stored(seeThrough, x: 4, y: 4).a == 0, "\(map): the pile's middle stores an alpha of \(middle)")
+    }
+
+    /// The row through a disk's middle, from inside it to bare canvas across
+    /// its anti-aliased edge. The disk is 40 in radius about x 64 and is moved
+    /// half a pixel, so the pixel at x 104 is about half covered.
+    private static let edgeRow = Array(98 ... 110)
+
+    private func disk(ground: Color, ink: Color, exposure: Double = 1) throws -> CGImage {
+        let sketch = Disk()
+        sketch.ground = ground
+        sketch.ink = ink
+        sketch.exposure = exposure
+        sketch.shift = 0.5
+        return try OllinApp.image(of: sketch)
+    }
+
+    /// A stored pixel laid over an opaque backdrop byte, in linear light.
+    private func laid(_ byte: Int, alpha: Int, over backdrop: Int) -> Double {
+        let a = Double(alpha) / 255
+        return Color.linearToSrgb(Color.srgbToLinear(Double(byte) / 255) * a
+            + Color.srgbToLinear(Double(backdrop) / 255) * (1 - a)) * 255
+    }
+
+    /// The raise is not only for added light: any pixel holding more light
+    /// than its coverage can show takes it, so the soft edge of a shape
+    /// brighter than white, or of an ordinary shape under an exposure above 1,
+    /// stores more alpha than it covers. Over black that is the window's
+    /// picture, pixel for pixel along the edge. Over another backdrop the edge
+    /// shows less of the backdrop than the window drawing over that backdrop
+    /// does, never more: a stored color has four numbers and cannot hold a
+    /// light and a coverage both.
+    @Test(arguments: [0, 1])
+    func aBrightEdgeOverBlackIsTheWindowsPicture(exposed: Int) throws {
+        let ink = exposed == 1 ? Color(red: 0.9, green: 0.6, blue: 0.2) : Color(linear: 3.0, green: 1.2, blue: 0.3)
+        let exposure = exposed == 1 ? 2.0 : 1.0
+        let file = try disk(ground: .clear, ink: ink, exposure: exposure)
+        let overBlack = try disk(ground: .black, ink: ink, exposure: exposure)
+        let gray = Color(white: 0.5)
+        let overGray = try disk(ground: gray, ink: ink, exposure: exposure)
+        let plain = try disk(ground: .clear, ink: Color(red: 0.9, green: 0.6, blue: 0.2))
+        var raised = 0, shortfall = 0.0
+        for x in Self.edgeRow {
+            let s = stored(file, x: x, y: 64), b = stored(overBlack, x: x, y: 64), g = stored(overGray, x: x, y: 64)
+            for (channel, stored, black, grayed) in [("red", s.r, b.r, g.r), ("green", s.g, b.g, g.g), ("blue", s.b, b.b, g.b)] {
+                let shown = laid(stored, alpha: s.a, over: 0)
+                #expect(abs(shown - Double(black)) <= 2,
+                        "x \(x), \(channel): the file \(s) shows \(shown) over black where the window shows \(black)")
+                // The backdrop byte under the window's gray ground is its own corner.
+                let backdrop = self.stored(overGray, x: 4, y: 4).r
+                let onGray = laid(stored, alpha: s.a, over: backdrop)
+                #expect(onGray <= Double(grayed) + 2,
+                        "x \(x), \(channel): the file over gray shows \(onGray), brighter than the window's \(grayed)")
+                shortfall = max(shortfall, Double(grayed) - onGray)
+            }
+            if s.a > stored(plain, x: x, y: 64).a + 1 { raised += 1 }
+        }
+        // The edge is where the alpha is raised: at least one pixel of the row
+        // stores more than an ordinary color's coverage there.
+        #expect(raised >= 1, "no pixel of the edge stores more alpha than its coverage")
+        // Measured 2026-11-10 at the half-covered pixel: 11 levels for a color
+        // three times white, 42 for an ordinary color under an exposure of 2.
+        #expect(shortfall <= 48, "over mid gray the edge falls \(shortfall) levels short of the window")
+        print("transparent edge, \(exposed == 1 ? "an exposure of 2" : "a color three times white"): over mid gray the file falls short of the window by at most \(String(format: "%.1f", shortfall)) levels along the edge")
+    }
+
+    /// A color within its coverage is never touched: an ordinary shape's edge
+    /// stores the same alpha whatever its color.
+    @Test func anOrdinaryEdgeKeepsItsCoverage() throws {
+        let bright = try disk(ground: .clear, ink: Color(red: 1, green: 1, blue: 1))
+        let dim = try disk(ground: .clear, ink: Color(white: 0.3))
+        var partial = 0
+        for x in Self.edgeRow {
+            let a = stored(bright, x: x, y: 64).a, b = stored(dim, x: x, y: 64).a
+            #expect(abs(a - b) <= 1, "x \(x): white stores an alpha of \(a), a dark gray \(b)")
+            if a > 8, a < 247 { partial += 1 }
+        }
+        #expect(partial >= 1, "the row crosses no partly covered pixel")
     }
 
     /// The PNG on disk reads back with the alpha intact.

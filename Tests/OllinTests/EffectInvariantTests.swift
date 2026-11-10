@@ -1263,6 +1263,38 @@ struct EffectInvariantTests {
         #expect(held.worst(against: plain).by == 0, "after a hundred frames: \(describe(held.worst(against: plain)))")
     }
 
+    /// A layer that draws a feedback layer's image shows what the feedback
+    /// holds this frame, as the canvas drawing the same image does.
+    @Test func aLayerShowsAFeedbackLayersImageOfTheSameFrame() throws {
+        func shown(throughALayer: Bool) throws -> Frame {
+            let probe = Probe(); probe.holds = false; probe.side = 32
+            var tick = 0
+            probe.prepare = { s in s.feedback = s.makeFeedback() }
+            probe.body = { s in
+                s.background(.clear)
+                let fb = s.feedback!
+                // One square a frame, each in its own place, nothing kept.
+                s.withFeedback(fb) { _ in s.noStroke(); s.fill(.white); s.drawRect(Double(tick) * 8, 0, 8, 8) }
+                if throughALayer {
+                    let copy = s.makeRenderTarget()
+                    s.withTarget(copy) { s.drawImage(fb.image, 0, 0) }
+                    s.drawImage(copy.image, 0, 0)
+                } else {
+                    s.drawImage(fb.image, 0, 0)
+                }
+                tick += 1
+            }
+            return try Self.render(probe, frame: 2)
+        }
+        let direct = try shown(throughALayer: false)
+        #expect(direct.value(20, 4, 3) > 0.99 && direct.value(12, 4, 3) == 0, "on the canvas the feedback shows this frame's square")
+        let copied = try shown(throughALayer: true)
+        try pinned("every plain layer is filled before any feedback layer in a frame, so a layer that draws a feedback's image holds the frame before: the copy shows frame 1's square where frame 2's is (found in a sketch and measured 2026-11-10)") {
+            #expect(copied.value(20, 4, 3) > 0.99 && copied.value(12, 4, 3) == 0,
+                    "through a layer: this frame's square reads \(copied.value(20, 4, 3)), the frame before's \(copied.value(12, 4, 3))")
+        }
+    }
+
     /// A loop that draws last frame back at a gain fades as the gain to the
     /// number of frames.
     @Test(arguments: [LayerPrecision.float32, .float16])
