@@ -106,6 +106,59 @@ struct TransparentOutputTests {
         #expect(corner.b >= 254 && corner.r <= 1, "stored \(corner)")
     }
 
+    /// Lights added over a canvas whose background the test picks: ten faint
+    /// white discs piled on one spot, six orange ones beside and across them.
+    private final class Lights: Sketch {
+        var ground: Color = .clear
+        var map: ToneMap = .clamp
+        override var canvasSize: CanvasSize { .square(128) }
+        override func draw() {
+            background(ground)
+            toneMap(map)
+            noStroke()
+            blendMode(.add)
+            fill(Color(white: 1, alpha: 0.1))
+            for _ in 0 ..< 10 { drawCircle(48, 64, 30) }
+            fill(Color(red: 1, green: 0.4, blue: 0.1, alpha: 0.25))
+            for _ in 0 ..< 6 { drawCircle(84, 64, 30) }
+        }
+    }
+
+    /// A see-through frame laid over black is the picture the window shows.
+    /// Marks added over a clear canvas pile up more light than coverage (ten
+    /// whites at a tenth are full white at 65% cover), and a stored color
+    /// cannot pass white, so the file's alpha rises to hold the light. It
+    /// rises before the tone curve, so wherever the light fills the pixel the
+    /// curve sees what the window's curve sees; under the plain clamp the two
+    /// agree along a soft edge as well.
+    @Test(arguments: [ToneMap.clamp, .reinhard, .aces, .neutral])
+    func addedLightOverBlackIsTheWindowsPicture(map: ToneMap) throws {
+        let clear = Lights(), black = Lights()
+        clear.map = map
+        black.map = map
+        black.ground = .black
+        let seeThrough = try OllinApp.image(of: clear), window = try OllinApp.image(of: black)
+        #expect(seeThrough.alphaInfo == .first)
+        // Inside the white pile, where the piles cross, inside the orange one,
+        // near each pile's rim, and bare canvas; then, under the clamp, the
+        // white pile's own anti-aliased edge.
+        var places = [(40, 64), (66, 64), (92, 64), (48, 38), (104, 80), (4, 4)]
+        if map == .clamp { places += [(48, 34), (18, 64), (114, 64)] }
+        for (x, y) in places {
+            let s = stored(seeThrough, x: x, y: y), w = stored(window, x: x, y: y)
+            func over(_ byte: Int) -> Double {
+                Color.linearToSrgb(Color.srgbToLinear(Double(byte) / 255) * Double(s.a) / 255) * 255
+            }
+            let shown = (r: over(s.r), g: over(s.g), b: over(s.b))
+            #expect(abs(shown.r - Double(w.r)) <= 2 && abs(shown.g - Double(w.g)) <= 2 && abs(shown.b - Double(w.b)) <= 2,
+                    "\(map) at (\(x), \(y)): the file stores \(s), which over black shows \(shown) where the window shows \(w)")
+        }
+        // The pile's middle is not left see-through: its light fills the pixel
+        // (ten half-float sums of a tenth land a hair under 1).
+        let middle = stored(seeThrough, x: 40, y: 64).a
+        #expect(middle >= 252 && stored(seeThrough, x: 4, y: 4).a == 0, "\(map): the pile's middle stores an alpha of \(middle)")
+    }
+
     /// The PNG on disk reads back with the alpha intact.
     @Test func thePNGCarriesTheAlpha() throws {
         let path = NSTemporaryDirectory() + "ollin-transparent-\(UUID().uuidString).png"

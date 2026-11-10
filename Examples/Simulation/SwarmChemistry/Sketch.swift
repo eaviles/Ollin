@@ -40,9 +40,7 @@ final class SwarmChemistry_Example: Sketch {
         chem.mutationRate = mutation
         chem.mutationAmount = mutationSize
 
-        // A translucent wipe rather than a hard clear: these particles move a few points
-        // a step, so a still frame of dots shows density where the trails show movement.
-        background(Color(white: 0.04).withAlpha(0.14))
+        background(Color(white: 0.04))
         stepSwarmChemistry(chem)
         drawParticles(chem)
 

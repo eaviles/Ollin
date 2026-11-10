@@ -247,8 +247,13 @@ extension MetalRenderer {
     /// false, which takes every traced path out of it (see `PipelineKey.untraced`);
     /// left unset the constant reads true.
     func fragmentFunction(named name: String, peel: Bool, untraced: Bool = false,
+                                  blendForm: Int32 = 0,
                                   using library: MTLLibrary) throws -> MTLFunction {
         let constants = MTLFunctionConstantValues()
+        if blendForm != 0 {
+            var form = blendForm
+            constants.setConstantValue(&form, type: .int, index: MetalRenderer.blendFormConstantIndex)
+        }
         if peel {
             var on = true
             constants.setConstantValue(&on, type: .bool, index: MetalRenderer.peelConstantIndex)
@@ -267,6 +272,12 @@ extension MetalRenderer {
     /// The function constant index that says whether a lit fragment traces
     /// (`kOllinTracesSet` in OllinShaderLib.metal).
     static let tracesConstantIndex = 16
+
+    /// The function constant index that says what form a fragment hands its
+    /// color to the blend in (`kOllinBlendFormSet` in OllinShaderLib.metal; the
+    /// forms are `BlendMode.fragmentForm`). Left unset for the ordinary and the
+    /// additive blend, so those pipelines build the functions they always did.
+    static let blendFormConstantIndex = 17
 
     /// A shadow pass pipeline. Two shapes share this factory: the **2D map**
     /// (directional/spot, `ollin_mesh_shadow_vertex`) is depth-only — no fragment, no
@@ -378,7 +389,9 @@ extension MetalRenderer {
             throw RendererError.shaderFunctions
         }
         let fragmentFunction = try self.fragmentFunction(named: fragment, peel: peel,
-                                                         untraced: untraced, using: library)
+                                                         untraced: untraced,
+                                                         blendForm: clipWrite ? 0 : blend.fragmentForm,
+                                                         using: library)
 
         let descriptor = MTLRenderPipelineDescriptor()
         descriptor.vertexFunction = vertexFunction
@@ -432,7 +445,9 @@ extension MetalRenderer {
             throw RendererError.shaderFunctions
         }
         let fragmentFunction = try self.fragmentFunction(named: key.fragment, peel: key.peel,
-                                                         untraced: key.untraced, using: library)
+                                                         untraced: key.untraced,
+                                                         blendForm: key.blend.fragmentForm,
+                                                         using: library)
         let descriptor = MTLMeshRenderPipelineDescriptor()
         descriptor.objectFunction = objectFunction
         descriptor.meshFunction = meshFunction
@@ -1164,7 +1179,7 @@ extension MetalRenderer {
                                          constant OllinShaderUniforms &ollin_u [[buffer(1)]]) {
         ShaderInfo info = ollin_paint_info(ollin_params, ollin_u, in.canvas, in.color.w, in.color.z);
         float4 c = shade(in.color.xy, info);
-        return float4(srgbToLinear(c.rgb), c.a);
+        return ollin_blend_ready(float4(srgbToLinear(c.rgb), c.a));
     }
     // A stroke on the fringe path: the shader's alpha times the opacity profile
     // and the perceptual coverage, the two channels kept apart as the plain
@@ -1177,7 +1192,7 @@ extension MetalRenderer {
                                            in.arcLength, in.across, in.halfWidth);
         float4 c = shade(in.color.xy, info);
         float a = c.a * in.opacity * perceptualCoverage(clamp(in.coverage, 0.0, 1.0));
-        return float4(srgbToLinear(c.rgb), a);
+        return ollin_blend_ready(float4(srgbToLinear(c.rgb), a));
     }
     // An analytic shape: the slot (or both) whose kind is 5 is shaded, the other
     // resolved as the plain fragment resolves it, then the same composite.
@@ -1222,7 +1237,7 @@ extension MetalRenderer {
         float3 premul = strokePaint.rgb * strokeA + fillPaint.rgb * fillA * (1.0 - strokeA);
         float a = strokeA + fillA * (1.0 - strokeA);
         if (a <= 0.0) { discard_fragment(); }
-        return float4(premul / a, a);
+        return ollin_blend_ready(float4(premul / a, a));
     }
     """
 

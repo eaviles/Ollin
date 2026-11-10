@@ -57,6 +57,16 @@ extension BlendMode {
     /// (image) path, whose fragment outputs premultiplied color, and false for
     /// the straight-alpha paths (solid, SDF, glyph). `.normal` reproduces the
     /// renderer's original factors exactly, so existing renders are unchanged.
+    ///
+    /// Two rules hold across the table. A color reaches the blend weighted by
+    /// its coverage: the ordinary and the additive blend, and the subtraction,
+    /// weight a straight color in their own source factor, and the other four
+    /// cannot, so their pipelines build the fragment in the form
+    /// `fragmentForm` names. And the surface's alpha stays a coverage: a mode
+    /// that lightens (add, screen, lightest) covers as an ordinary shape does,
+    /// by the over rule, so over nothing it leaves the shape itself; a mode
+    /// that darkens (subtract, multiply, darkest) acts on what is already
+    /// there and leaves its coverage alone, so over nothing it leaves nothing.
     struct BlendState {
         var colorOperation: MTLBlendOperation
         var alphaOperation: MTLBlendOperation
@@ -77,29 +87,51 @@ extension BlendMode {
                               sourceColor: byCoverage, destinationColor: .oneMinusSourceAlpha,
                               sourceAlpha: .one, destinationAlpha: .oneMinusSourceAlpha)
         case .add:
+            // The light is summed whole; the coverage is the over rule's, so a
+            // layer of added marks never holds an alpha past 1.
             return BlendState(colorOperation: .add, alphaOperation: .add,
                               sourceColor: byCoverage, destinationColor: .one,
-                              sourceAlpha: .one, destinationAlpha: .one)
+                              sourceAlpha: .one, destinationAlpha: .oneMinusSourceAlpha)
         case .subtract:
             return BlendState(colorOperation: .reverseSubtract, alphaOperation: .add,
                               sourceColor: byCoverage, destinationColor: .one,
-                              sourceAlpha: .one, destinationAlpha: .one)
+                              sourceAlpha: .zero, destinationAlpha: .one)
         case .multiply:
+            // s * d + d * (1 - a), the fragment's color already weighted (form 1).
             return BlendState(colorOperation: .add, alphaOperation: .add,
                               sourceColor: .destinationColor, destinationColor: .oneMinusSourceAlpha,
-                              sourceAlpha: .one, destinationAlpha: .oneMinusSourceAlpha)
+                              sourceAlpha: .zero, destinationAlpha: .one)
         case .screen:
+            // s + d - s * d, the fragment's color already weighted (form 1).
             return BlendState(colorOperation: .add, alphaOperation: .add,
                               sourceColor: .oneMinusDestinationColor, destinationColor: .one,
                               sourceAlpha: .one, destinationAlpha: .oneMinusSourceAlpha)
         case .lightest:
-            return BlendState(colorOperation: .max, alphaOperation: .max,
-                              sourceColor: byCoverage, destinationColor: .one,
-                              sourceAlpha: .one, destinationAlpha: .one)
+            // The maximum ignores its factors; the fragment's color is the
+            // shape over black (form 2).
+            return BlendState(colorOperation: .max, alphaOperation: .add,
+                              sourceColor: .one, destinationColor: .one,
+                              sourceAlpha: .one, destinationAlpha: .oneMinusSourceAlpha)
         case .darkest:
-            return BlendState(colorOperation: .min, alphaOperation: .min,
-                              sourceColor: byCoverage, destinationColor: .one,
-                              sourceAlpha: .one, destinationAlpha: .one)
+            // The minimum ignores its factors; the fragment's color is the
+            // shape over white (form 3).
+            return BlendState(colorOperation: .min, alphaOperation: .add,
+                              sourceColor: .one, destinationColor: .one,
+                              sourceAlpha: .zero, destinationAlpha: .one)
+        }
+    }
+
+    /// The form a fragment hands its color to this mode's blend in: the value
+    /// of the `kOllinBlendForm` function constant its pipeline is built with
+    /// (see *What a fragment hands the blend* in OllinShaderLib.metal). 0 is
+    /// the color as written, 1 weighted by coverage, 2 the same for the
+    /// maximum, 3 the shape as it lies over white for the minimum.
+    var fragmentForm: Int32 {
+        switch self {
+        case .normal, .add, .subtract: 0
+        case .multiply, .screen: 1
+        case .lightest: 2
+        case .darkest: 3
         }
     }
 }

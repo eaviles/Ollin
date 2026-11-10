@@ -4469,10 +4469,13 @@ extension Color {
     /// are sRGB-encoded and Metal treats a clear value as *linear* (encoding it on
     /// store), so the RGB is linearized here to land the author's sRGB tone in the
     /// framebuffer — matching the shaders, which linearize their colors too. Alpha
-    /// isn't gamma-encoded, so it passes through.
+    /// isn't gamma-encoded, so it passes through, and the linear color is weighted
+    /// by it: a surface holds its color premultiplied by its coverage, so a
+    /// see-through background is stored as the same color drawn over the whole
+    /// surface would be. An opaque one is unchanged.
     var mtlClearColor: MTLClearColor {
-        MTLClearColorMake(Color.srgbToLinear(red), Color.srgbToLinear(green),
-                          Color.srgbToLinear(blue), alpha)
+        MTLClearColorMake(Color.srgbToLinear(red) * alpha, Color.srgbToLinear(green) * alpha,
+                          Color.srgbToLinear(blue) * alpha, alpha)
     }
 }
 

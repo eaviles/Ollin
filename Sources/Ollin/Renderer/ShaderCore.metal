@@ -108,7 +108,7 @@ fragment float4 ollin_fragment(VertexOut in [[stage_in]]) {
     // Output goes to the linear rgba16Float intermediate; the present pass
     // tone-maps, dithers, and sRGB-encodes to the drawable (see finalizeColor).
     float3 lin = srgbToLinear(in.color.rgb);
-    return float4(lin, in.color.a);
+    return ollin_blend_ready(float4(lin, in.color.a));
 }
 
 // Clip-region pipelines (stencil clipping, see `withClip`). Both draw with the
@@ -173,7 +173,7 @@ vertex FringeVertexOut ollin_fringe_vertex(uint vertexID [[vertex_id]],
 fragment float4 ollin_fringe_fragment(FringeVertexOut in [[stage_in]]) {
     float3 lin = srgbToLinear(in.color.rgb);
     float a = in.color.a * perceptualCoverage(clamp(in.coverage, 0.0, 1.0));
-    return float4(lin, a);
+    return ollin_blend_ready(float4(lin, a));
 }
 
 // Ribbon runs (a stroke under a shader paint or a stroke medium): the fringe
@@ -285,7 +285,7 @@ fragment float4 ollin_image_fragment(ImageOut in [[stage_in]],
     c *= in.tint.a;
     // A transparent texel writes nothing, not even depth under `depth(at:)`.
     if (c.a <= 0.0) { discard_fragment(); }
-    return c;
+    return ollin_blend_ready_premultiplied(c);
 }
 
 // MARK: - Depth scene (drawDepthScene)
@@ -332,6 +332,7 @@ fragment DepthSceneOut ollin_depthscene_fragment(ImageOut in [[stage_in]],
     if (kOllinPeel && ollin_peel_rejects(in.position.xy, out.depth, 1.0, peelDepth, peel)) {
         discard_fragment();
     }
+    out.color = ollin_blend_ready_premultiplied(out.color);
     return out;
 }
 
@@ -359,6 +360,6 @@ fragment float4 ollin_glyph_fragment(ImageOut in [[stage_in]],
     // nothing, not even depth under `depth(at:)`.
     if (in.tint.a * cov <= 0.0) { discard_fragment(); }
     // Linear output to the float intermediate; the present pass finalizes.
-    return float4(lin, in.tint.a * cov);
+    return ollin_blend_ready(float4(lin, in.tint.a * cov));
 }
 

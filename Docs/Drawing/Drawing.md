@@ -34,7 +34,9 @@ Clear the frame to `color`. The renderer clears every frame, so call this first 
 background(.white)
 ```
 
-`background(.clear)`, or any color with an alpha under 1, makes the canvas see-through. The window paints it over black, and every export keeps the coverage as the file's alpha, so the work lands over another layer. See [Transparent output](../Output/Export.md#transparent-output).
+`background(.clear)`, or any color with an alpha under 1, makes the canvas see-through. A see-through background is the same color drawn over the whole surface at that alpha, on the canvas and in a layer. The window paints it over black, and every export keeps the coverage as the file's alpha, so the work lands over another layer. See [Transparent output](../Output/Export.md#transparent-output).
+
+A see-through background is still a clear, not a fade. The frame starts from that color alone every time. For trails that fade, keep the canvas with [`noClear()`](./Accumulation.md) and paint a see-through rectangle over it each frame.
 
 <a name="fill"></a>
 
@@ -318,7 +320,27 @@ for p in particles {
 
 `.add` sums as light and lightens. `.screen` also lightens, more softly. `.multiply` stacks ink and darkens. `.subtract` darkens by removing light. `.lightest` and `.darkest` keep the lighter or the darker of the two colors, channel by channel. Blend mode applies to every primitive, including the SDF shapes, the tessellated paths, images, and text. Like other style, it is saved and restored by [`withState { }`](#isolated). You can scope an additive field that way and leave the rest of the frame normal.
 
-One known limit affects `.darkest`. The analytic shapes darken their whole covering rectangle, not just the shape, and that covers `drawCircle`, `drawRect`, and the rest of the SDF catalog. The reason is that the GPU's min blend cannot ignore a quad's empty pixels. Until that is fixed, draw `.darkest` shapes on the triangle path, using `drawPolygon` with a many-sided outline, or draw them through a layer mask.
+**A see-through shape counts for as much of the pixel as it covers.** Under every mode, what meets the canvas is the shape's color times its alpha, and that alpha includes the soft edge. A multiply at half alpha darkens half as much. A screen at a quarter alpha lightens a quarter as much. An anti-aliased rim blends in smoothly and never rings.
+
+`.lightest` and `.darkest` are the two the GPU's blend cannot weight this way, so they compare a stand-in. `.lightest` reads the shape as it would lie over black, and `.darkest` reads it as it would lie over white. A fully covered pixel is exact. A soft edge stays between the ground and the shape and comes out a little tighter than the exact edge. Under `.darkest`, a soft edge also cuts light brighter than white down to white.
+
+**Coverage stays coverage.** The canvas and every layer keep an alpha that says how much of each pixel is covered, and no mode pushes it past 1. The modes that lighten (`.add`, `.screen`, `.lightest`) cover the way an ordinary shape does. Drawn over nothing, in an empty layer, they leave the shape itself. The modes that darken (`.subtract`, `.multiply`, `.darkest`) work on what is already there and add no coverage. Drawn over nothing, they leave nothing. So a multiply wash over a layer tints the picture in it and leaves the bare parts bare.
+
+That decides how a mode works with a [layer](Effects.md). A layer starts empty, so a mode set inside its block only meets what the block has drawn so far. To make the whole layer act on the canvas, set the mode when you draw the layer back:
+
+```swift
+let lights = makeRenderTarget()
+withTarget(lights) {
+    blendMode(.add)                      // the lights sum with each other
+    noStroke()
+    fill(Color(hue: 0.08, saturation: 0.7, brightness: 1, alpha: 0.2))
+    for i in 0..<40 { drawCircle(300 + Double(i) * 12, 540, 60) }
+}
+blendMode(.add)                          // and the layer sums with the canvas
+drawImage(lights.image, 0, 0)
+```
+
+Laid back with `.normal`, the same layer covers like any picture. Where its lights are opaque they hide what is behind them, and where they are faint the canvas shows through.
 
 The canvas blends in linear light, the gamma-correct pipeline, so `.add` sums physically and two half-bright lights make a full-bright one. Against a dark background that reads as glowing accumulation. See `Examples/Rendering/ToneMapping`, where the flat `.normal` mode is the control case.
 

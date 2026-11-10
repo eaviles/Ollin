@@ -1018,6 +1018,9 @@ final class WebGraphRecorder {
             return (offset, p.count)
         }
         func clearOf(_ target: RenderTarget) -> [Float] {
+            // The color and its alpha apart: the page weights the one by the
+            // other as it clears (as `mtlClearColor` stores it), so each stays a
+            // straight line in the parameter that drives it.
             let c = target.clearColor
             return [Float(Color.srgbToLinear(c.red)), Float(Color.srgbToLinear(c.green)),
                     Float(Color.srgbToLinear(c.blue)), Float(c.alpha)]
@@ -1241,6 +1244,8 @@ final class WebGraphRecorder {
         // a fresh surface starts at the background color.
         let clears = frame == 0 || !drawer.accumulates || drawer.backgroundSetThisFrame
         let bg = drawer.backgroundColor
+        // The page's canvas is opaque, so the background's alpha reaches nothing
+        // there and its color is taken whole.
         let clear: SIMD3<Float>? = clears
             ? SIMD3<Float>(Float(Color.srgbToLinear(bg.red)), Float(Color.srgbToLinear(bg.green)),
                            Float(Color.srgbToLinear(bg.blue)))

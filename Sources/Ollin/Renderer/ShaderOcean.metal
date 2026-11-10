@@ -292,5 +292,5 @@ fragment float4 ollin_ocean_fragment(OceanOut in [[stage_in]],
     }
     color = mix(color, srgbToLinear(o.foamColor.rgb), saturate(foam));
 
-    return float4(color, 1.0);
+    return ollin_blend_ready(float4(color, 1.0));
 }

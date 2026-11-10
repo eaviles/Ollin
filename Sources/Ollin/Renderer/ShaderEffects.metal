@@ -91,9 +91,32 @@ static inline float ollin_present_alpha(float4 s, constant OllinPresentUniforms 
 // first, so a curve that bends the tone sees the color the sketch drew (a
 // half-covered white stays white, not gray), and the finish puts the coverage
 // back. Without it the color is read as it is, under alpha 1.
-static inline float3 ollin_present_map(float3 c, float a, constant OllinPresentUniforms &u) {
+//
+// With the alpha kept, a pixel can hold more light than coverage: marks added
+// over a clear canvas sum their light and cover as ordinary marks do, so ten
+// whites at a tenth are full white at 65% cover. A stored color cannot pass
+// white, so written as it is that pixel would show 65% over black where the
+// window shows white. The coverage is raised to hold the light instead (`a`
+// comes back as the larger of the coverage and the brightest channel's light,
+// up to 1, and the color as the light over it). This is done on the exposed
+// light, before the curve: a curve bends a color past white back under it,
+// which would hide the excess and leave the pixel dim, and raised first, a
+// pixel whose light fills it is handed to the curve as the opaque present
+// hands it, so the frame laid over black is the window's picture there under
+// every tone map. A pixel whose color is within its coverage, which is every
+// pixel of ordinary drawing, is not touched.
+static inline float3 ollin_present_map(float3 c, thread float &a, constant OllinPresentUniforms &u) {
     if (u.keepsAlpha != 0) c = a > 0.0 ? c / a : float3(0.0);
     c *= u.exposure;
+    if (u.keepsAlpha != 0) {
+        float3 light = c * a;
+        float peak = max(light.r, max(light.g, light.b));
+        if (peak > a) {
+            float held = min(peak, 1.0);
+            c = light / held;
+            a = held;
+        }
+    }
     if (u.toneMapMode == 1) {
         c = c / (1.0 + c);              // Reinhard: x / (1 + x), per channel
     } else if (u.toneMapMode == 2) {

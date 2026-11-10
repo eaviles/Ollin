@@ -87,7 +87,7 @@ vertex ParticleOut ollin_particle_vertex(uint vid [[vertex_id]],
 }
 
 fragment float4 ollin_particle_fragment(ParticleOut in [[stage_in]]) {
-    return particleMarkDeposit(in.local, in.radius, in.color);
+    return ollin_blend_ready(particleMarkDeposit(in.local, in.radius, in.color));
 }
 
 // The same mark as one point primitive. The point is a square of texels, so
@@ -125,7 +125,7 @@ vertex ParticlePointOut ollin_particle_point_vertex(uint vid [[vertex_id]],
 
 fragment float4 ollin_particle_point_fragment(ParticlePointOut in [[stage_in]],
                                               float2 pointCoord [[point_coord]]) {
-    return particleMarkDeposit((pointCoord - 0.5) * in.extent, in.radius, in.color);
+    return ollin_blend_ready(particleMarkDeposit((pointCoord - 0.5) * in.extent, in.radius, in.color));
 }
 
 // MARK: - GPU particles as light
@@ -227,7 +227,7 @@ vertex ParticleLightOut ollin_particle_light_vertex(uint vid [[vertex_id]],
 }
 
 fragment float4 ollin_particle_light_fragment(ParticleLightOut in [[stage_in]]) {
-    return particleLightDeposit(in.local, in.radius, in.color);
+    return ollin_blend_ready(particleLightDeposit(in.local, in.radius, in.color));
 }
 
 // The same light as one point primitive: the square's side is the quad's
@@ -275,7 +275,7 @@ vertex ParticlePointOut ollin_particle_light_point_vertex(uint vid [[vertex_id]]
 
 fragment float4 ollin_particle_light_point_fragment(ParticlePointOut in [[stage_in]],
                                                     float2 pointCoord [[point_coord]]) {
-    return particleLightDeposit((pointCoord - 0.5) * in.extent, in.radius, in.color);
+    return ollin_blend_ready(particleLightDeposit((pointCoord - 0.5) * in.extent, in.radius, in.color));
 }
 
 // MARK: - GPU particles as light, single-sample
@@ -405,7 +405,7 @@ fragment float4 ollin_point_fragment(PointOut in [[stage_in]],
         discard_fragment();
     }
     // Linearize the sRGB tone and emit straight-alpha into the linear float target.
-    return float4(srgbToLinear(in.color.rgb), a);
+    return ollin_blend_ready(float4(srgbToLinear(in.color.rgb), a));
 }
 
 // MARK: - Lines in 3D
@@ -464,7 +464,7 @@ static inline float4 ollin_line_color(LineOut in) {
 
 // A pass with no depth attachment (the accumulating canvas) draws the line over.
 fragment float4 ollin_line_fragment(LineOut in [[stage_in]]) {
-    return ollin_line_color(in);
+    return ollin_blend_ready(ollin_line_color(in));
 }
 
 // How far a line's depth is pulled toward the eye. A line drawn on a surface
@@ -512,7 +512,7 @@ fragment LineDepthOut ollin_line_depth_fragment(LineOut in [[stage_in]],
     float share = kLineDepthBase + reach * in.unitsPerPoint * kLineDepthSlope;
     float z = in.viewDepth + share * w;              // toward the eye, which looks down -z
     LineDepthOut out;
-    out.color = ollin_line_color(in);
+    out.color = ollin_blend_ready(ollin_line_color(in));
     out.depth = clamp((rows.x * z + rows.y) / (rows.z * z + rows.w), 0.0, 1.0);
     // The hidden layer keeps only what lies behind the first layer, tested on the
     // depth the line writes (a ribbon faces the eye, so it has no slope of its own).
@@ -703,7 +703,7 @@ fragment float4 ollin_edge_fragment(EdgeOut in [[stage_in]]) {
     float distance, along;
     float cover = ollin_edge_cover(in, distance, along);
     if (cover <= 0.0) discard_fragment();
-    return ollin_edge_color(in.color, cover);
+    return ollin_blend_ready(ollin_edge_color(in.color, cover));
 }
 
 // The core: whole coverage only, writing the pulled depth.
@@ -714,7 +714,7 @@ fragment LineDepthOut ollin_edge_core_fragment(EdgeOut in [[stage_in]],
     float cover = ollin_edge_cover(in, distance, along);
     if (cover < 1.0) discard_fragment();
     LineDepthOut out;
-    out.color = ollin_edge_color(in.color, 1.0);
+    out.color = ollin_blend_ready(ollin_edge_color(in.color, 1.0));
     out.depth = ollin_edge_depth(in, distance, along);
     if (kOllinPeel && ollin_peel_rejects(in.position.xy, out.depth, 1.0, peelDepth, peel)) {
         discard_fragment();
@@ -732,7 +732,7 @@ fragment LineDepthOut ollin_edge_fringe_fragment(EdgeOut in [[stage_in]],
     float cover = ollin_edge_cover(in, distance, along);
     if (cover <= 0.0 || cover >= 1.0) discard_fragment();
     LineDepthOut out;
-    out.color = ollin_edge_color(in.color, cover);
+    out.color = ollin_blend_ready(ollin_edge_color(in.color, cover));
     out.depth = ollin_edge_depth(in, distance, along);
     if (kOllinPeel && ollin_peel_rejects(in.position.xy, out.depth, 1.0, peelDepth, peel)) {
         discard_fragment();
@@ -815,7 +815,7 @@ vertex OutlineOut ollin_mesh_outline_vertex(uint vid [[vertex_id]],
 }
 
 fragment float4 ollin_mesh_outline_fragment(OutlineOut in [[stage_in]]) {
-    return in.color;
+    return ollin_blend_ready(in.color);
 }
 
 // MARK: - Mover velocity (temporal AA)
@@ -6711,7 +6711,7 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
             : ollin_apply_fog(c.rgb, in.worldPos, in.position.xy, light,
                               shadowMap, shadowSamp, iesProfiles, cookies);
     }
-    return c;
+    return ollin_blend_ready(c);
 }
 
 // MARK: - Ground grid (live host chrome)
@@ -6814,7 +6814,7 @@ fragment float4 ollin_grid_fragment(MeshOut in [[stage_in]],
 
     coverage *= 1.0 - t;
 
-    return float4(color, coverage);
+    return ollin_blend_ready(float4(color, coverage));
 }
 
 // MARK: - Textured 3D mesh
@@ -7093,7 +7093,7 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
             : ollin_apply_fog(c.rgb, in.worldPos, in.position.xy, light,
                               shadowMap, shadowSamp, iesProfiles, cookies);
     }
-    return c;
+    return ollin_blend_ready(c);
 }
 
 // MARK: - Normal-mapped textured 3D mesh
@@ -7323,7 +7323,7 @@ fragment float4 ollin_mesh_nm_fragment(MeshTexturedNMOut in [[stage_in]],
             : ollin_apply_fog(c.rgb, in.worldPos, in.position.xy, light,
                               shadowMap, shadowSamp, iesProfiles, cookies);
     }
-    return c;
+    return ollin_blend_ready(c);
 }
 
 // MARK: - Surface-mapped textured 3D mesh
@@ -7842,7 +7842,7 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
             : ollin_apply_fog(c.rgb, in.worldPos, in.position.xy, light,
                               shadowMap, shadowSamp, iesProfiles, cookies);
     }
-    return c;
+    return ollin_blend_ready(c);
 }
 
 // MARK: - Matcap 3D mesh
@@ -7898,7 +7898,7 @@ fragment float4 ollin_mesh_matcap_fragment(MeshMatcapOut in [[stage_in]],
     // The matcap is an sRGB texture, so the sample comes back already linear; tint it by
     // the linearized fill and output straight-alpha linear into the float target.
     float4 tex = matcap.sample(samp, in.uv);
-    return float4(tex.rgb * srgbToLinear(in.color.rgb), in.color.a);
+    return ollin_blend_ready(float4(tex.rgb * srgbToLinear(in.color.rgb), in.color.a));
 }
 
 // MARK: - Mesh normal G-buffer
@@ -8076,6 +8076,6 @@ fragment float4 ollin_mesh_wireframe_fragment(MeshWireOut in [[stage_in]]) {
     if (coverage <= 0.0) discard_fragment();
     // Perceptual coverage keeps the thin lines evenly dark at any angle (the thin-stroke
     // remap), straight alpha into the linear target.
-    return float4(srgbToLinear(in.color.rgb), in.color.a * perceptualCoverage(coverage));
+    return ollin_blend_ready(float4(srgbToLinear(in.color.rgb), in.color.a * perceptualCoverage(coverage)));
 }
 

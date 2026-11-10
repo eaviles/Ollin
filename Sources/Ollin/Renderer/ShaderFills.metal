@@ -314,7 +314,7 @@ fragment float4 ollin_fill_medium_fragment(FillMediumOut in [[stage_in]],
         float k = share <= 0.0 ? 0.0 : (share >= 1.0 ? 1.0 : smoothstep(threshold - w, threshold + w, patch));
         float3 paint = mix(pigment, second, k);
         float gloss = ollin_fill_gloss(n, 36.0) * 0.28 * min(relief, 1.0);
-        return float4(paint * ollin_fill_shade(n) + gloss, alpha);
+        return ollin_blend_ready(float4(paint * ollin_fill_shade(n) + gloss, alpha));
     }
 
     if (f.kind == 2u) {
@@ -348,7 +348,7 @@ fragment float4 ollin_fill_medium_fragment(FillMediumOut in [[stage_in]],
         paint *= 0.95 + 0.1 * hash12(cell.cell + 9.1);
         float shadow = onTop ? 1.0 : 1.0 - 0.28 * (1.0 - smoothstep(0.0, 5.0, cell.distance)) * dome.x;
         float gloss = ollin_fill_gloss(n, 44.0) * 0.3 * min(relief, 1.0);
-        return float4(paint * ollin_fill_shade(n) * shadow + gloss, alpha);
+        return ollin_blend_ready(float4(paint * ollin_fill_shade(n) * shadow + gloss, alpha));
     }
 
     if (f.kind == 3u) {
@@ -370,7 +370,7 @@ fragment float4 ollin_fill_medium_fragment(FillMediumOut in [[stage_in]],
         float pool = 1.0 + 0.55 * water * (1.0 - smoothstep(0.0, max(f.edge, 1e-3), d));
         float density = clamp(mix(1.0, uneven, water) * pool, 0.0, 1.0);
         if (!hasGround) {
-            return float4(pigment, alpha * density * (1.0 - 0.35 * water));
+            return ollin_blend_ready(float4(pigment, alpha * density * (1.0 - 0.35 * water)));
         }
         float3 under = ollin_fill_ground(ground, samp, in.position.xy, pigment);
         float3 dragged = under;
@@ -392,7 +392,7 @@ fragment float4 ollin_fill_medium_fragment(FillMediumOut in [[stage_in]],
         // Opaque paint picks the ground up where the brush dragged it, in streaks.
         float pickup = 0.35 * flow * smoothstep(0.45, 0.8, streak);
         float3 cover = mix(pigment, dragged, pickup);
-        return float4(mix(cover, glaze, water), alpha);
+        return ollin_blend_ready(float4(mix(cover, glaze, water), alpha));
     }
 
     if (f.kind == 4u || f.kind == 5u) {
@@ -422,7 +422,7 @@ fragment float4 ollin_fill_medium_fragment(FillMediumOut in [[stage_in]],
                 seen = mix(studio, around, share);
             }
             float gloss = ollin_fill_gloss(n, 90.0) * 1.4;
-            return float4(seen * pigment + gloss, alpha);
+            return ollin_blend_ready(float4(seen * pigment + gloss, alpha));
         }
         float3 under = pigment;
         float3 r = reflect(float3(0.0, 0.0, -1.0), n);
@@ -436,7 +436,7 @@ fragment float4 ollin_fill_medium_fragment(FillMediumOut in [[stage_in]],
         float3 seen = mix(under * tint, ollin_fill_studio(r.y - 0.25), fresnel);
         seen *= 1.0 - 0.35 * (1.0 - smoothstep(0.0, 1.6, d));
         float gloss = ollin_fill_gloss(n, 70.0) * 0.9;
-        return float4(seen + gloss, hasGround ? alpha : alpha * (0.35 + 0.65 * fresnel));
+        return ollin_blend_ready(float4(seen + gloss, hasGround ? alpha : alpha * (0.35 + 0.65 * fresnel)));
     }
 
     if (f.kind == 6u) {
@@ -464,7 +464,7 @@ fragment float4 ollin_fill_medium_fragment(FillMediumOut in [[stage_in]],
         seen = mix(seen, lit > 0.0 ? float3(1.1) : float3(0.12), crease * 0.35);
         seen *= 1.0 - 0.35 * (1.0 - smoothstep(0.0, 1.6, d));
         float gloss = ollin_fill_gloss(n, 70.0) * 0.8;
-        return float4(seen + gloss, hasGround ? alpha : alpha * (0.4 + 0.6 * fresnel));
+        return ollin_blend_ready(float4(seen + gloss, hasGround ? alpha : alpha * (0.4 + 0.6 * fresnel)));
     }
 
     if (f.kind == 7u) {
@@ -489,7 +489,7 @@ fragment float4 ollin_fill_medium_fragment(FillMediumOut in [[stage_in]],
         float grain = 0.9 + 0.2 * ollin_vnoise(m / 1.3 + f.seed);
         float3 stone = mix(pigment, second, smoothstep(0.35, 0.75, ollin_fbm(m / (scale * 2.2) + 4.4)) * clamp(f.amount, 0.0, 1.0));
         stone *= (0.55 + 0.45 * valley) * grain;
-        return float4(stone * ollin_fill_shade(n), alpha);
+        return ollin_blend_ready(float4(stone * ollin_fill_shade(n), alpha));
     }
 
     if (f.kind == 8u) {
@@ -514,7 +514,7 @@ fragment float4 ollin_fill_medium_fragment(FillMediumOut in [[stage_in]],
         float2 grad = relief * 0.35 * max(f.edge, 1e-3) * dome.y * -outward;
         float3 n = normalize(float3(-grad, 1.0));
         float gloss = ollin_fill_gloss(n, 80.0) * 0.45;
-        return float4(stone * ollin_fill_shade(n) + gloss, alpha);
+        return ollin_blend_ready(float4(stone * ollin_fill_shade(n) + gloss, alpha));
     }
 
     // Sand: grains the cells of a jittered grid (each the region nearest its
@@ -534,5 +534,5 @@ fragment float4 ollin_fill_medium_fragment(FillMediumOut in [[stage_in]],
     float3 n = normalize(float3(-grad, 1.0));
     float3 sand = hash12(cell + o + 8.3) < clamp(f.amount, 0.0, 1.0) ? second : pigment;
     sand *= 0.82 + 0.36 * h;
-    return float4(sand * ollin_fill_shade(n), alpha * alive);
+    return ollin_blend_ready(float4(sand * ollin_fill_shade(n), alpha * alive));
 }

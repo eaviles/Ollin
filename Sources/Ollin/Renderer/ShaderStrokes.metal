@@ -312,5 +312,5 @@ fragment float4 ollin_medium_fragment(RibbonVertexOut in [[stage_in]],
     // No discard where the medium leaves bare paper: the fragment still claims
     // its samples for the stroke's one coat (see the coat draws in
     // `encodeRibbonRun`), as the plain fringe fragment's zero-coverage edge does.
-    return float4(pigment, alpha * cov);
+    return ollin_blend_ready(float4(pigment, alpha * cov));
 }

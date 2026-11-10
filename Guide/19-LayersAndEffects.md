@@ -92,6 +92,8 @@ So far every mark, on the canvas or in a layer, has covered what was under it. T
 
 The one to learn first is `.add`. It sums colors the way light sums, so two faint marks make a brighter one and a thousand make a glow. Ollin blends color as physical amounts of light, called linear light. [Appendix B](B-JustEnoughMath.md#light-and-the-number-stored-for-it-linear-light) explains it in one picture. [Chapter 9](09-Pictures.md)'s photo mosaic averaged pixels in it. So the sum behaves like lamps overlapping. Against a dark background, additive drawing stops reading as paint and starts reading as light. `.multiply` does the opposite. It stacks color like layered ink or gels, and it works on light backgrounds. The rest are variations on lighter and darker, and the figure shows each of the seven on the same two discs.
 
+A mode set inside a layer's block only meets what that block has drawn, because a layer starts empty. There the modes that lighten leave the shape itself, and the modes that darken leave nothing, since there is nothing yet to darken. To make a whole layer lighten or darken the canvas, set the mode when you draw the layer back.
+
 One pairing comes back through the chapter. A bloomed layer drawn with `blendMode(.add)` reads as added light rather than as a sticker laid over the scene. The finished sketch composites its comets that way.
 
 ## The canvas that keeps everything: noClear

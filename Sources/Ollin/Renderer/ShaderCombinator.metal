@@ -379,6 +379,6 @@ fragment float4 ollin_sdfgroup_fragment(SDFGroupOut in [[stage_in]],
     // (the present pass tone-maps + dithers), matching ollin_sdf_fragment.
     float3 premul = strokeLin * strokeA + fillLin * fillA * (1.0 - strokeA);
     float a = strokeA + fillA * (1.0 - strokeA);
-    if (a <= 0.0) { return float4(0.0); }
-    return float4(premul / a, a);
+    if (a <= 0.0) { return ollin_blend_ready(float4(0.0)); }
+    return ollin_blend_ready(float4(premul / a, a));
 }

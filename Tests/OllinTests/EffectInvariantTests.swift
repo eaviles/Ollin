@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import OllinWebGate
 import Testing
 @testable import Ollin
 
@@ -16,11 +17,9 @@ import Testing
 ///
 /// A statement that fell is pinned where it fell: a `withKnownIssue` holding
 /// the measurement and its date, scoped by a plain `if` to the cases that
-/// fall, so the day a fix lands the pin fails and is removed. Two traps in
-/// writing these, both met. A see-through `background` is itself one of the
-/// pinned faults, so a half-clear test layer is filled with a rectangle. And
-/// `drawRect` spills its edge ramp into the neighboring texels, so a mask of
-/// exactly one texel is drawn as a polygon.
+/// fall, so the day a fix lands the pin fails and is removed. One trap in
+/// writing these: `drawRect` spills its edge ramp into the neighboring texels,
+/// so a mask of exactly one texel is drawn as a polygon.
 @Suite(.enabled(if: Snapshot.hasMetal))
 @MainActor
 struct EffectInvariantTests {
@@ -283,40 +282,55 @@ struct EffectInvariantTests {
         for c in 0..<3 { #expect(abs(got[c] - want[c]) < 0.002, "\(mode) channel \(c): \(got[c]) where the arithmetic gives \(want[c])") }
     }
 
-    /// A layer's alpha is how much of each pixel it covers, so it never passes
-    /// 1 whatever was drawn into it, and a layer of lights laid over a ground
-    /// never leaves the ground darker.
-    @Test(arguments: [BlendMode.add, .subtract, .screen, .lightest, .multiply, .darkest])
-    func aLayersAlphaStaysCoverage(mode: BlendMode) throws {
+    /// A surface's alpha is how much of each pixel is covered, under every mode:
+    /// over an opaque ground it stays 1, and over nothing a mode that lightens
+    /// covers as an ordinary shape does (two half-clear marks cover three
+    /// quarters) while a mode that darkens adds no coverage at all.
+    @Test(arguments: [BlendMode.add, .subtract, .screen, .lightest, .multiply, .darkest], [true, false])
+    func aLayersAlphaStaysCoverage(mode: BlendMode, grounded: Bool) throws {
         let f = try Self.render(side: 32) { s in
             s.background(.clear)
             let layer = s.makeRenderTarget()
             s.withTarget(layer) {
-                s.background(Color(linear: 0.1, green: 0.1, blue: 0.1))
-                s.noStroke(); s.blendMode(mode); s.fill(Color(linear: 0.3, green: 0.3, blue: 0.3))
+                if grounded { s.background(Color(linear: 0.1, green: 0.1, blue: 0.1)) }
+                s.noStroke(); s.blendMode(mode); s.fill(Color(linear: 0.3, green: 0.3, blue: 0.3, alpha: 0.5))
                 s.drawRect(8, 8, 16, 16); s.drawRect(12, 12, 8, 8)
             }
             s.drawImage(layer.image, 0, 0)
         }
-        try pinned("add and subtract sum the alpha as they sum the color, so two marks over an opaque ground leave an alpha of 3 (measured 2026-11-09)",
-                   when: mode == .add || mode == .subtract) {
-            #expect(f.value(16, 16, 3) <= 1.0005, "\(mode): two marks left an alpha of \(f.value(16, 16, 3))")
-        }
+        let alpha = f.value(16, 16, 3)
+        let lightens = mode == .add || mode == .screen || mode == .lightest
+        let want = grounded ? 1.0 : (lightens ? 0.75 : 0.0)
+        #expect(abs(alpha - want) < 0.001, "\(mode), \(grounded ? "over a ground" : "over nothing"): two half-clear marks left an alpha of \(alpha) where the coverage is \(want)")
     }
 
-    @Test func lightsAddedInALayerNeverDarkenTheGround() throws {
-        let f = try Self.render(side: 32) { s in
-            s.background(Color(linear: 0.8, green: 0.8, blue: 0.8))
-            let lights = s.makeRenderTarget()
-            s.withTarget(lights) {
-                s.noStroke(); s.blendMode(.add); s.fill(Color(linear: 0.1, green: 0.1, blue: 0.1))
-                for _ in 0..<3 { s.drawRect(8, 8, 16, 16) }
-            }
-            s.drawImage(lights.image, 0, 0)
+    /// Lights added in a layer are that layer's marks. Laid over a ground they
+    /// cover it as their coverage says, never by more than all of it; and the
+    /// layer added to the ground is the lights added to the ground.
+    @Test(arguments: [1.0, 0.5])
+    func lightsAddedInALayerAreTheLayersMarks(alpha: Double) throws {
+        let ground = 0.8, light = 0.1 / alpha
+        func lights(_ s: Probe) {
+            s.noStroke(); s.blendMode(.add); s.fill(Color(linear: light, green: light, blue: light, alpha: alpha))
+            for _ in 0..<3 { s.drawRect(8, 8, 16, 16) }
         }
-        try pinned("three lights of 0.1 added in a clear layer and laid over a ground of 0.8 read -1.3 where 1.1 is the sum: the layer's alpha is 3, and the ground is weighted by one minus it (measured 2026-11-09)") {
-            #expect(f.value(16, 16) >= 0.8, "under the lights the ground reads \(f.value(16, 16))")
+        func shown(_ back: BlendMode?) throws -> SIMD4<Double> {
+            try Self.render(side: 32) { s in
+                s.background(Color(linear: ground, green: ground, blue: ground))
+                guard let back else { lights(s); return }
+                let layer = s.makeRenderTarget()
+                s.withTarget(layer) { lights(s) }
+                s.blendMode(back)
+                s.drawImage(layer.image, 0, 0)
+            }.at(16, 16)
         }
+        let direct = try shown(nil), added = try shown(.add), laid = try shown(.normal)
+        #expect(abs(direct.x - (ground + 0.3)) < 0.002, "three lights added to the ground read \(direct.x)")
+        #expect(abs(added.x - direct.x) < 0.002, "the layer added back reads \(added.x), the lights added on the canvas \(direct.x)")
+        let uncovered = pow(1 - alpha, 3)
+        #expect(abs(laid.x - (0.3 + ground * uncovered)) < 0.002,
+                "the layer laid over the ground reads \(laid.x): its light is 0.3 and it leaves \(uncovered) of the ground")
+        #expect(abs(added.w - 1) < 0.001 && abs(laid.w - 1) < 0.001 && abs(direct.w - 1) < 0.001, "the canvas stays opaque")
     }
 
     /// A see-through `background` is the same color drawn over the whole surface.
@@ -334,56 +348,262 @@ struct EffectInvariantTests {
         }
         let cleared = try shown { $0.background(ink) }
         let drawn = try shown { s in s.background(.clear); s.noStroke(); s.fill(ink); s.drawRect(0, 0, 32, 32) }
-        try pinned("a clear color is stored as written, not multiplied by its alpha: the half-clear color reads (0.2, 0.5, 0.7, 0.5) cleared and (0.1, 0.25, 0.35, 0.5) drawn, twice as bright (measured 2026-11-09, in a layer and on the canvas)") {
-            for c in 0..<4 { #expect(abs(cleared[c] - drawn[c]) < 0.002, "channel \(c): cleared \(cleared[c]), drawn \(drawn[c])") }
+        for c in 0..<4 { #expect(abs(cleared[c] - drawn[c]) < 0.002, "channel \(c): cleared \(cleared[c]), drawn \(drawn[c])") }
+    }
+
+    /// The drawing paths a blend mode reaches, each laying one flat ink over
+    /// the middle of a 32-pixel canvas.
+    enum Laid: String, CaseIterable, Sendable, CustomTestStringConvertible {
+        case shape, fill, stroke, field, picture, paint, paintedShape, paintedStroke, solid
+        var testDescription: String { rawValue }
+
+        @MainActor func lay(_ ink: Color, mode: BlendMode, on s: Sketch) {
+            switch self {
+            case .shape:
+                s.noStroke(); s.blendMode(mode); s.fill(ink); s.drawRect(8, 8, 16, 16)
+            case .fill:
+                s.noStroke(); s.blendMode(mode); s.fill(ink)
+                s.drawPolygon([Vector2(x: 8, y: 8), Vector2(x: 24, y: 8), Vector2(x: 24, y: 24), Vector2(x: 8, y: 24)])
+            case .stroke:
+                s.noFill(); s.blendMode(mode); s.stroke(ink); s.strokeWeight(12)
+                s.drawLine(4, 16, 28, 16)
+            case .field:
+                s.noStroke(); s.blendMode(mode); s.fill(ink)
+                s.drawSDF(SDF.circle(radius: 9).at(16, 16))
+            case .picture:
+                let layer = s.makeRenderTarget()
+                s.withTarget(layer) { s.noStroke(); s.fill(ink); s.drawRect(8, 8, 16, 16) }
+                s.blendMode(mode)
+                s.drawImage(layer.image, 0, 0)
+            case .paint, .paintedShape, .paintedStroke:
+                let source = String(format: "float4 shade(float2 uv, ShaderInfo info) { return float4(%.9f, %.9f, %.9f, %.9f); }",
+                                    ink.red, ink.green, ink.blue, ink.alpha)
+                let paint = Shader(source)
+                s.blendMode(mode)
+                if self == .paintedStroke {
+                    s.noFill(); s.stroke(paint); s.strokeWeight(12); s.drawLine(4, 16, 28, 16)
+                } else if self == .paintedShape {
+                    s.noStroke(); s.fill(paint); s.drawRect(8, 8, 16, 16)
+                } else {
+                    s.noStroke(); s.fill(paint)
+                    s.drawPolygon([Vector2(x: 8, y: 8), Vector2(x: 24, y: 8), Vector2(x: 24, y: 24), Vector2(x: 8, y: 24)])
+                }
+            case .solid:
+                s.ortho(eye: Vector3(x: 0, y: 0, z: 10), height: 2)
+                s.noStroke(); s.blendMode(mode); s.fill(ink); s.drawMesh(.box(size: 1))
+            }
         }
     }
 
-    /// A shape drawn to darken never brightens, a shape drawn to lighten never
-    /// darkens, and neither opens a hole in an opaque canvas: at any alpha, and
-    /// along the shape's own soft edge.
-    @Test func aTranslucentShapeUnderAModeNeverOvershoots() throws {
-        func over(_ mode: BlendMode, _ v: Double, _ a: Double) throws -> SIMD4<Double> {
-            try Self.render(side: 32) { s in
-                s.background(Color(linear: 0.5, green: 0.5, blue: 0.5))
-                s.noStroke(); s.blendMode(mode)
-                s.fill(Color(linear: v, green: v, blue: v, alpha: a)); s.drawRect(8, 8, 16, 16)
+    /// A see-through ink under a mode is the mode's arithmetic weighted by the
+    /// ink's coverage, on every drawing path: the ink's color times its alpha
+    /// is what a multiply, a screen, a sum, and a difference work on; the
+    /// lighter of two compares the ink as it lies over black, and the darker of
+    /// two as it lies over white. The canvas stays opaque under all of them.
+    @Test(arguments: BlendMode.allCases, Laid.allCases)
+    func aSeeThroughInkUnderAModeIsItsWeightedArithmetic(mode: BlendMode, path: Laid) throws {
+        let g = SIMD3(0.3, 0.5, 0.7)
+        for (ink, a) in [(SIMD3(0.9, 0.6, 0.2), 0.5), (SIMD3(0.1, 0.4, 0.05), 0.9)] {
+            let got = try Self.render(side: 32) { s in
+                s.background(Color(linear: g))
+                path.lay(Color(linear: ink.x, green: ink.y, blue: ink.z, alpha: a), mode: mode, on: s)
             }.at(16, 16)
+            // A solid is shaded, so the color its alpha weights is the one it
+            // shows opaque, read off the same solid over black.
+            var c = ink
+            if path == .solid {
+                let lit = try Self.render(side: 32) { s in
+                    s.background(.black)
+                    path.lay(Color(linear: ink.x, green: ink.y, blue: ink.z), mode: .normal, on: s)
+                }.at(16, 16)
+                c = SIMD3(lit.x, lit.y, lit.z)
+            }
+            let weighted = c * a
+            let want: SIMD3<Double>
+            switch mode {
+            case .normal: want = weighted + g * (1 - a)
+            case .add: want = g + weighted
+            case .subtract: want = g - weighted
+            case .multiply: want = g * (SIMD3(repeating: 1 - a) + weighted)
+            case .screen: want = g + weighted * (SIMD3(repeating: 1) - g)
+            case .lightest: want = pointwiseMax(weighted, g)
+            case .darkest: want = pointwiseMin(weighted + SIMD3(repeating: 1 - a), g)
+            }
+            for i in 0..<3 {
+                #expect(abs(got[i] - want[i]) < 0.003, "\(mode), a \(path) at alpha \(a), channel \(i): \(got[i]) where the weighted arithmetic gives \(want[i])")
+            }
+            #expect(abs(got.w - 1) < 0.001, "\(mode), a \(path) at alpha \(a): the opaque canvas was left with an alpha of \(got.w)")
         }
-        let multiplied = try over(.multiply, 0.8, 0.5)
-        try pinned("the drawing paths hand the blend a color not yet weighted by its alpha, and multiply, screen, lightest, and darkest leave the weight out: a multiply of 0.8 at half alpha over 0.5 reads 0.65, brighter than the ground (0.45 weighted) (measured 2026-11-09)") {
-            #expect(multiplied.x <= 0.5005, "a multiply fill left the ground at \(multiplied.x)")
+    }
+
+    /// An ink of no alpha changes nothing under any mode, whatever the ground
+    /// holds: light past white, and less than none.
+    @Test(arguments: BlendMode.allCases, [Laid.fill, .stroke, .shape, .picture])
+    func anInkOfNoAlphaChangesNothing(mode: BlendMode, path: Laid) throws {
+        func ground(_ s: Sketch) {
+            s.background(Color(linear: 3.0, green: 0.5, blue: 0.1))
+            s.noStroke(); s.blendMode(.subtract); s.fill(Color(linear: 0, green: 0, blue: 0.3)); s.drawRect(0, 0, 32, 32)
+            s.blendMode(.normal)
         }
-        let screened = try over(.screen, 0.4, 0.25)
-        try pinned("a screen of 0.4 at a quarter alpha over 0.5 reads 0.70, the full screen, where the weighted one is 0.55 (measured 2026-11-09)") {
-            #expect(abs(screened.x - 0.55) < 0.01, "a quarter-alpha screen read \(screened.x)")
+        let bare = try Self.render(side: 32) { s in ground(s) }
+        let under = try Self.render(side: 32) { s in
+            ground(s)
+            path.lay(Color(linear: 0.4, green: 0.4, blue: 0.4, alpha: 0), mode: mode, on: s)
         }
-        let darkened = try over(.darkest, 0.1, 0.25)
-        try pinned("a quarter-alpha fill under darkest leaves the canvas with an alpha of 0.25: the minimum is taken of the alpha too (measured 2026-11-09)") {
-            #expect(darkened.w >= 0.999, "an opaque canvas was left with an alpha of \(darkened.w)")
+        #expect(bare.value(16, 16, 2) < -0.15, "the ground's blue is below nothing: \(bare.value(16, 16, 2))")
+        #expect(under.worst(against: bare).by == 0, "\(mode), a \(path): \(describe(under.worst(against: bare)))")
+    }
+
+    /// Over nothing, a mode that lightens leaves the shape itself, as the
+    /// ordinary blend would have drawn it, and a mode that darkens leaves
+    /// nothing: it works on what is already there.
+    @Test(arguments: [BlendMode.add, .screen, .lightest, .subtract, .multiply, .darkest])
+    func overNothingAModeLeavesTheShapeOrNothing(mode: BlendMode) throws {
+        func layered(_ mode: BlendMode, over ground: Color) throws -> Frame {
+            try Self.render(side: 64) { s in
+                s.background(ground)
+                let layer = s.makeRenderTarget()
+                s.withTarget(layer) {
+                    s.noStroke(); s.blendMode(mode)
+                    s.fill(Color(linear: 0.2, green: 0.7, blue: 0.9, alpha: 0.5)); s.drawCircle(20.3, 22.6, 12)
+                    s.fill(Color(linear: 0.9, green: 0.4, blue: 0.1)); s.drawRect(36, 30, 20, 24)
+                    s.stroke(Color(linear: 0.5, green: 0.9, blue: 0.3)); s.strokeWeight(3); s.noFill(); s.drawLine(6, 56, 58, 8)
+                }
+                s.drawImage(layer.image, 0, 0)
+            }
         }
-        let rim = try Self.render(side: 64) { s in
-            s.background(Color(linear: 0.5, green: 0.5, blue: 0.5))
-            s.noStroke(); s.blendMode(.multiply)
-            s.fill(Color(linear: 0.8, green: 0.8, blue: 0.8)); s.drawCircle(32.3, 31.6, 20)
+        if mode == .add || mode == .screen || mode == .lightest {
+            // The line crosses the two fills, and where marks overlap a mode is
+            // its own arithmetic, so the twin is read where each mark lies alone.
+            let got = try layered(mode, over: .clear), plain = try layered(.normal, over: .clear)
+            for (x, y) in [(20, 22), (12, 20), (40, 48), (52, 50), (8, 54), (56, 10), (2, 2), (60, 60)] {
+                let d = got.at(x, y) - plain.at(x, y)
+                #expect(abs(d.x) < 0.001 && abs(d.y) < 0.001 && abs(d.z) < 0.001 && abs(d.w) < 0.001,
+                        "\(mode) at (\(x), \(y)): \(fmt(got.at(x, y))) where the shape itself is \(fmt(plain.at(x, y)))")
+            }
+        } else {
+            let ground = Color(linear: 0.6, green: 0.6, blue: 0.6)
+            let got = try layered(mode, over: ground), bare = try Self.render(side: 64) { s in s.background(ground) }
+            #expect(got.worst(against: bare).by == 0, "\(mode): \(describe(got.worst(against: bare)))")
         }
-        var brightest = 0.0
-        for v in stride(from: 0, to: rim.rgba.count, by: 4) { brightest = max(brightest, Double(rim.rgba[v])) }
-        try pinned("a multiply disc of 0.8 over 0.5 has a rim reaching 0.90, a bright ring around a shape drawn to darken: the edge's coverage is left out of the color (measured 2026-11-09)") {
-            #expect(brightest <= 0.5005, "the rim of a multiply disc reached \(brightest)")
-        }
-        let soft = try Self.render(side: 64) { s in
-            s.background(Color(linear: 0.5, green: 0.5, blue: 0.5))
+    }
+
+    /// A wash multiplied over a layer tints what the layer holds, at every
+    /// coverage, and leaves the bare layer bare.
+    @Test func aMultiplyWashTintsWhatALayerHolds() throws {
+        let wash = SIMD3(0.6, 0.3, 0.1)
+        let f = try Self.render(side: 64) { s in
+            s.background(.clear)
             let layer = s.makeRenderTarget()
-            s.withTarget(layer) { s.noStroke(); s.fill(.white); s.drawCircle(32, 32, 16) }
-            s.blendMode(.darkest)
-            s.drawImage(layer.filtered(.gaussianBlur(radius: 4)).image, 0, 0)
+            s.withTarget(layer) {
+                s.noStroke(); s.fill(.white); s.drawCircle(32.3, 31.6, 16)
+                s.blendMode(.multiply); s.fill(Color(linear: wash)); s.drawRect(0, 0, 64, 64)
+            }
+            s.drawImage(layer.filtered(.gaussianBlur(radius: 3)).image, 0, 0)
         }
-        var lowest = SIMD4<Double>(repeating: 9)
-        for y in 0..<64 { for x in 0..<64 { lowest = pointwiseMin(lowest, soft.at(x, y)) } }
-        try pinned("a blurred white disc in a layer, drawn under darkest over 0.5, leaves a ring of black with no alpha where 0.5 should stay: a soft edge's premultiplied color falls toward nothing, and the minimum takes it (measured 2026-11-09)") {
-            #expect(lowest.x >= 0.499 && lowest.w >= 0.999, "the darkest pixel reads \(fmt(lowest))")
+        #expect(f.at(2, 2) == SIMD4(0, 0, 0, 0), "the bare corner reads \(fmt(f.at(2, 2)))")
+        var worst = 0.0, read = 0
+        for y in 0..<64 { for x in 0..<64 {
+            let p = f.at(x, y)
+            guard p.w > 0.02 else { continue }
+            read += 1
+            for c in 0..<3 { worst = max(worst, abs(p[c] / p.w - wash[c])) }
+        } }
+        #expect(read > 700 && worst < 0.01, "over \(read) covered pixels the color strays from the wash by \(worst)")
+    }
+
+    /// A shape's edge under a mode lies between the ground and the shape: along
+    /// an anti-aliased rim and through a blurred layer's skirt, no pixel is
+    /// brighter or darker than both, and none opens a hole in the canvas.
+    @Test(arguments: BlendMode.allCases, [false, true])
+    func aShapesEdgeUnderAModeStaysBetweenTheGroundAndTheShape(mode: BlendMode, soft: Bool) throws {
+        for (ground, ink) in [(0.5, 0.8), (0.5, 0.15)] {
+            let f = try Self.render(side: 64) { s in
+                s.background(Color(linear: ground, green: ground, blue: ground))
+                let color = Color(linear: ink, green: ink, blue: ink)
+                if soft {
+                    let layer = s.makeRenderTarget()
+                    s.withTarget(layer) { s.noStroke(); s.fill(color); s.drawCircle(32, 32, 16) }
+                    s.blendMode(mode)
+                    s.drawImage(layer.filtered(.gaussianBlur(radius: 4)).image, 0, 0)
+                } else {
+                    s.blendMode(mode)
+                    s.noStroke(); s.fill(color); s.drawCircle(32.3, 31.6, 20)
+                    s.noFill(); s.stroke(color); s.strokeWeight(3); s.drawLine(3, 60, 61, 57)
+                }
+            }
+            let inside = f.value(32, 32)
+            let low = min(ground, inside) - 0.0015, high = max(ground, inside) + 0.0015
+            var lowest = Double.infinity, highest = -Double.infinity, thinnest = Double.infinity
+            for y in 0..<64 { for x in 0..<64 {
+                // Where the line crosses nothing else: its own interior is a second full value.
+                if !soft && y > 52 { continue }
+                lowest = min(lowest, f.value(x, y)); highest = max(highest, f.value(x, y))
+            } }
+            for i in stride(from: 3, to: f.rgba.count, by: 4) { thinnest = min(thinnest, Double(f.rgba[i])) }
+            #expect(lowest >= low && highest <= high,
+                    "\(mode), \(soft ? "a blurred layer" : "a disc") of \(ink) over \(ground): the frame runs \(lowest) to \(highest) where the ground is \(ground) and the shape \(inside)")
+            #expect(thinnest >= 0.999, "\(mode): the canvas was left with an alpha of \(thinnest)")
+            if !soft {
+                // The line's rim, on its own: between the ground and the line's interior.
+                let core = f.value(32, 58)
+                var rimLow = Double.infinity, rimHigh = -Double.infinity
+                for y in 53..<64 { for x in 0..<64 { rimLow = min(rimLow, f.value(x, y)); rimHigh = max(rimHigh, f.value(x, y)) } }
+                #expect(rimLow >= min(ground, core) - 0.0015 && rimHigh <= max(ground, core) + 0.0015,
+                        "\(mode): a line of \(ink) over \(ground) runs \(rimLow) to \(rimHigh) where its interior is \(core)")
+            }
         }
+    }
+
+    /// Every mode in a column over bands of dark, middle, and light ground: a
+    /// see-through disc, a filled outline, a field, a stroke, and a layer laid
+    /// back, with a see-through layer background along the foot.
+    final class Blended: Sketch {
+        override var canvasSize: CanvasSize { .size(280, 240) }
+        override func draw() {
+            background(Color(white: 0.5))
+            noStroke()
+            let bands = [Color(red: 0.12, green: 0.2, blue: 0.3), Color(red: 0.55, green: 0.5, blue: 0.4),
+                         Color(red: 0.95, green: 0.9, blue: 0.8)]
+            for band in 0..<17 {
+                fill(bands[band % 3])
+                drawRect(0, Double(band) * 12, 280, 12)
+            }
+            let ink = Color(red: 0.9, green: 0.45, blue: 0.2, alpha: 0.6)
+            for (column, mode) in BlendMode.allCases.enumerated() {
+                let x = Double(column) * 40 + 20
+                let layer = makeRenderTarget()
+                withTarget(layer) { noStroke(); fill(ink); drawCircle(x, 180, 13) }
+                withState {
+                    blendMode(mode)
+                    noStroke(); fill(ink)
+                    drawCircle(x, 20, 14)
+                    drawPolygon([Vector2(x - 14, 46), Vector2(x + 14, 50), Vector2(x + 10, 74), Vector2(x - 12, 70)])
+                    drawSDF(SDF.circle(radius: 10).smoothUnion(SDF.rect(width: 24, height: 8).at(0, 7), k: 4).at(x, 136))
+                    noFill(); stroke(ink); strokeWeight(7)
+                    drawLine(x - 13, 92, x + 13, 108)
+                    drawImage(layer.image, 0, 0)
+                }
+            }
+            let veil = makeRenderTarget()
+            withTarget(veil) { background(Color(red: 0.2, green: 0.6, blue: 0.9, alpha: 0.5)) }
+            drawImage(veil.image, 0, 204, 280, 36)
+        }
+    }
+
+    /// The recorded page blends as the Mac does: the same weighted colors and
+    /// the same coverage under every mode, on each path the page plays.
+    @Test(.enabled("a browser with WebGL2 is needed") { await HeadlessBrowser.hasWebGL2() })
+    func thePageBlendsAsTheMacDoes() async throws {
+        let recording = try OllinApp.recordWebFrames(of: Blended(), frames: 2, fps: 30)
+        let page = try OllinApp.webPage(of: recording, form: .inline)
+        let played = try await WebExportTests.pagePixels(page, frame: 1)
+        let reference = try OllinApp.image(of: Blended(), frame: 1, fps: 30)
+        let difference = try WebExportTests.meanDifference(played, reference)
+        let far = WebTriangleTests.farFraction(played, reference)
+        print("web page against the Mac: every blend mode, mean difference \(String(format: "%.3f", difference)), \(String(format: "%.3f", far * 100))% of the pixels past 32 levels")
+        #expect(difference < Snapshot.tolerance, "mean difference \(difference)")
+        #expect(far < WebTriangleTests.farTolerance, "\(far * 100)% of the pixels past 32 levels")
     }
 
     /// A layer starts each frame holding nothing, whether its handle was made

@@ -1353,7 +1353,7 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
     // Straight-alpha linear, like the mesh fragment; the silhouette edge is carried in the
     // alpha (the .normal blend composites it over what's behind). A solid hit (coverage 1) is
     // the mesh path unchanged.
-    out.color = float4(lit.rgb, lit.a * coverage);
+    out.color = ollin_blend_ready(float4(lit.rgb, lit.a * coverage));
     out.depth = clip.z / clip.w;
     return out;
 }

@@ -737,7 +737,7 @@ struct WebShaders {
     /// surface's flip: -1 where its window rows run down the canvas as the
     /// Mac's do, 1 where they run up, which turns the screen y the relief is lit
     /// in and the row the ground is read at.
-    static let mediumFragmentTail = """
+    static let mediumFragmentTail = blendReadySource + """
     in vec4 vColor;
     in float vCoverage;
     in vec2 vCanvas;
@@ -842,31 +842,56 @@ struct WebShaders {
             pigment = paint;
             alpha = density;
         }
-        fragColor = vec4(pigment, alpha * cov);
+        fragColor = blendReady(vec4(pigment, alpha * cov));
     }
+    """
+
+    /// `ollin_blend_ready` and its premultiplied twin: what a fragment hands
+    /// the blend under each mode, the form chosen by a uniform where the Mac
+    /// builds the fragment with a constant (`setBlend` writes it beside the
+    /// factors). 0 is the color as written, 1 weighted by coverage (multiply
+    /// and screen), 2 the same for the maximum, 3 the shape over white for the
+    /// minimum; under 2 and 3 a fragment that covers nothing hands over a
+    /// color no ground can lose to.
+    static let blendReadySource = """
+    uniform int uBlendForm;
+    vec4 blendReady(vec4 c) {
+        if (uBlendForm == 0) return c;
+        if (uBlendForm == 1) return vec4(c.rgb * c.a, c.a);
+        if (uBlendForm == 2) return c.a > 0.0 ? vec4(c.rgb * c.a, c.a) : vec4(vec3(-60000.0), 0.0);
+        float cover = clamp(c.a, 0.0, 1.0);
+        return cover > 0.0 ? vec4(c.rgb * cover + (1.0 - cover), c.a) : vec4(vec3(60000.0), 0.0);
+    }
+    vec4 blendReadyPremultiplied(vec4 c) {
+        if (uBlendForm == 0 || uBlendForm == 1) return c;
+        if (uBlendForm == 2) return c.a > 0.0 ? c : vec4(vec3(-60000.0), 0.0);
+        float cover = clamp(c.a, 0.0, 1.0);
+        return cover > 0.0 ? vec4(c.rgb + (1.0 - cover), c.a) : vec4(vec3(60000.0), 0.0);
+    }
+
     """
 
     /// `ollin_fragment`: a fill's vertex color linearized, its alpha straight,
     /// the edge left to the multisampled raster.
-    static let triangleFragmentTail = """
+    static let triangleFragmentTail = blendReadySource + """
     in vec4 vColor;
     in float vCoverage;
     out vec4 fragColor;
     void main() {
-        fragColor = vec4(srgbToLinear(vColor.rgb), vColor.a);
+        fragColor = blendReady(vec4(srgbToLinear(vColor.rgb), vColor.a));
     }
     """
 
     /// `ollin_fringe_fragment`: the stroke's color linearized, its paint alpha
     /// scaled by the fringe coverage remapped to perceptual alpha, the two kept
     /// apart as the Mac keeps them.
-    static let fringeFragmentTail = """
+    static let fringeFragmentTail = blendReadySource + """
     in vec4 vColor;
     in float vCoverage;
     out vec4 fragColor;
     void main() {
         float a = vColor.a * perceptualCoverage(clamp(vCoverage, 0.0, 1.0));
-        fragColor = vec4(srgbToLinear(vColor.rgb), a);
+        fragColor = blendReady(vec4(srgbToLinear(vColor.rgb), a));
     }
     """
 
@@ -974,7 +999,7 @@ struct WebShaders {
     }
     """
 
-    static let sdfFragmentTail = resolvePaintSource + """
+    static let sdfFragmentTail = resolvePaintSource + blendReadySource + """
     in vec2 vLocal;
     in vec2 vSize;
     in vec4 vFill;
@@ -1005,8 +1030,8 @@ struct WebShaders {
         float strokeA = strokePaint.a * strokeCov;
         vec3 premul = strokePaint.rgb * strokeA + fillPaint.rgb * fillA * (1.0 - strokeA);
         float a = strokeA + fillA * (1.0 - strokeA);
-        if (a <= 0.0) { fragColor = vec4(0.0); return; }
-        fragColor = vec4(premul / a, a);
+        if (a <= 0.0) { fragColor = blendReady(vec4(0.0)); return; }
+        fragColor = blendReady(vec4(premul / a, a));
     }
     """
 
@@ -1123,7 +1148,7 @@ struct WebShaders {
     /// A draw with a source rectangle holds its read half a texel inside the
     /// part (`bounds`, whose minimum past its maximum means the whole texture),
     /// with the level chosen from the quad's own coordinates, as the Mac does.
-    static let imageFragmentTail = """
+    static let imageFragmentTail = blendReadySource + """
     uniform sampler2D tex;
     uniform float vflip;
     uniform vec4 bounds;
@@ -1142,7 +1167,7 @@ struct WebShaders {
         }
         c.rgb *= srgbToLinear(vTint.rgb);
         c *= vTint.a;
-        fragColor = c;
+        fragColor = blendReadyPremultiplied(c);
     }
     """
 
@@ -1150,7 +1175,7 @@ struct WebShaders {
     /// (0.5 at the edge) turned into screen-space coverage through its
     /// derivative, remapped to perceptual alpha as the Mac's is, over the tint
     /// linearized; straight alpha, like the solid path.
-    static let glyphFragmentTail = """
+    static let glyphFragmentTail = blendReadySource + """
     uniform sampler2D atlas;
     in vec2 vUV;
     in vec4 vTint;
@@ -1161,7 +1186,7 @@ struct WebShaders {
         float aa = fwidth(d);
         float cov = (aa > 0.0) ? smoothstep(-aa, aa, d) : step(0.0, d);
         cov = perceptualCoverage(clamp(cov, 0.0, 1.0));
-        fragColor = vec4(srgbToLinear(vTint.rgb), vTint.a * cov);
+        fragColor = blendReady(vec4(srgbToLinear(vTint.rgb), vTint.a * cov));
     }
     """
 
@@ -1198,7 +1223,7 @@ struct WebShaders {
     /// by the same two stacks over the translated leaf, combine, modify, and
     /// transform arithmetic, then the merged field's coverage and paints
     /// resolved exactly as the Mac's fragment resolves them.
-    static let groupFragmentTail = """
+    static let groupFragmentTail = blendReadySource + """
     layout(std140) uniform Nodes { vec4 nodeRows[1024]; };
     uniform vec4 group[7];
     in vec2 vField;
@@ -1281,8 +1306,8 @@ struct WebShaders {
         float strokeA = strokeBaseA * strokeCov;
         vec3 premul = strokeLin * strokeA + fillLin * fillA * (1.0 - strokeA);
         float a = strokeA + fillA * (1.0 - strokeA);
-        if (a <= 0.0) { fragColor = vec4(0.0); return; }
-        fragColor = vec4(premul / a, a);
+        if (a <= 0.0) { fragColor = blendReady(vec4(0.0)); return; }
+        fragColor = blendReady(vec4(premul / a, a));
     }
     """
 
@@ -1516,7 +1541,7 @@ struct WebShaders {
     /// and the normal step. `ollin_flip` turns the ray's clip position over
     /// where the surface is rasterized upright under multisampling, the way the
     /// other stages turn their positions.
-    static let fieldFragmentTail = """
+    static let fieldFragmentTail = blendReadySource + """
     layout(std140) uniform Nodes { vec4 nodeRows[1024]; };
     uniform vec4 field[9];
     uniform mat4 uView;
@@ -1819,7 +1844,7 @@ struct WebShaders {
         }
         vec4 lit = litColor(baseRGB, baseA, n, pw, fieldShadow);
         vec4 clip = uProj * (uView * vec4(pw, 1.0));
-        fragColor = vec4(lit.rgb, lit.a * coverage);
+        fragColor = blendReady(vec4(lit.rgb, lit.a * coverage));
         gl_FragDepth = clip.z / clip.w;
     }
     """
@@ -2731,7 +2756,10 @@ enum WebPlayer {
       function clearSurface(s, c) {
         gl.bindFramebuffer(gl.FRAMEBUFFER, s.fbo);
         gl.viewport(0, 0, s.w, s.h);
-        gl.clearColor(c[0], c[1], c[2], c.length > 3 ? c[3] : 1.0);
+        // A layer's clear carries its alpha, and a surface holds its color
+        // weighted by it; the canvas's clear has none and is opaque.
+        var ca = c.length > 3 ? c[3] : 1.0;
+        gl.clearColor(c[0] * ca, c[1] * ca, c[2] * ca, ca);
         gl.clear(gl.COLOR_BUFFER_BIT);
       }
       var blank = gl.createTexture();
@@ -3092,19 +3120,28 @@ enum WebPlayer {
         applyAxes(0, scratch, count + g.params, index + fraction, index, fraction);
       }
 
-      // The blend factors under each mode, as the Mac's pipelines set them: a
-      // straight-alpha fragment (a shape, a fill, a stroke) scales by its own
-      // alpha, a premultiplied one (an image) by one.
+      // The blend under each mode, as the Mac's pipelines set it: the factors,
+      // and the form the bound program's fragment hands its color over in
+      // (`blendReady`). A straight-alpha fragment (a shape, a fill, a stroke)
+      // is scaled by its own alpha under the over blend, the additive one, and
+      // the subtraction; a premultiplied one (an image) by one. The other four
+      // take the color already weighted. A mode that lightens covers by the
+      // over rule; one that darkens leaves the surface's coverage alone.
       function setBlend(mode, straight) {
         gl.enable(gl.BLEND);
+        var program = gl.getParameter(gl.CURRENT_PROGRAM);
+        if (program) {
+          if (program.blendForm === undefined) program.blendForm = gl.getUniformLocation(program, 'uBlendForm');
+          if (program.blendForm) gl.uniform1i(program.blendForm, mode === 3 || mode === 4 ? 1 : mode === 5 ? 2 : mode === 6 ? 3 : 0);
+        }
         var src = straight ? gl.SRC_ALPHA : gl.ONE;
         switch (mode) {
-          case 1: gl.blendEquation(gl.FUNC_ADD); gl.blendFuncSeparate(src, gl.ONE, gl.ONE, gl.ONE); break;
-          case 2: gl.blendEquationSeparate(gl.FUNC_REVERSE_SUBTRACT, gl.FUNC_ADD); gl.blendFuncSeparate(src, gl.ONE, gl.ONE, gl.ONE); break;
-          case 3: gl.blendEquation(gl.FUNC_ADD); gl.blendFuncSeparate(gl.DST_COLOR, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA); break;
+          case 1: gl.blendEquation(gl.FUNC_ADD); gl.blendFuncSeparate(src, gl.ONE, gl.ONE, gl.ONE_MINUS_SRC_ALPHA); break;
+          case 2: gl.blendEquationSeparate(gl.FUNC_REVERSE_SUBTRACT, gl.FUNC_ADD); gl.blendFuncSeparate(src, gl.ONE, gl.ZERO, gl.ONE); break;
+          case 3: gl.blendEquation(gl.FUNC_ADD); gl.blendFuncSeparate(gl.DST_COLOR, gl.ONE_MINUS_SRC_ALPHA, gl.ZERO, gl.ONE); break;
           case 4: gl.blendEquation(gl.FUNC_ADD); gl.blendFuncSeparate(gl.ONE_MINUS_DST_COLOR, gl.ONE, gl.ONE, gl.ONE_MINUS_SRC_ALPHA); break;
-          case 5: gl.blendEquation(gl.MAX); gl.blendFuncSeparate(src, gl.ONE, gl.ONE, gl.ONE); break;
-          case 6: gl.blendEquation(gl.MIN); gl.blendFuncSeparate(src, gl.ONE, gl.ONE, gl.ONE); break;
+          case 5: gl.blendEquationSeparate(gl.MAX, gl.FUNC_ADD); gl.blendFuncSeparate(gl.ONE, gl.ONE, gl.ONE, gl.ONE_MINUS_SRC_ALPHA); break;
+          case 6: gl.blendEquationSeparate(gl.MIN, gl.FUNC_ADD); gl.blendFuncSeparate(gl.ONE, gl.ONE, gl.ZERO, gl.ONE); break;
           default: gl.blendEquation(gl.FUNC_ADD); gl.blendFuncSeparate(src, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
         }
       }
@@ -3475,7 +3512,11 @@ enum WebPlayer {
         if (sc) { ensureDepth(surface); ensureDepthMS(ms, surface); }
         gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
         gl.viewport(0, 0, surface.w, surface.h);
-        if (clear && clear.length) { gl.clearColor(clear[0], clear[1], clear[2], clear.length > 3 ? clear[3] : 1.0); gl.clear(gl.COLOR_BUFFER_BIT); }
+        if (clear && clear.length) {
+          var clearAlpha = clear.length > 3 ? clear[3] : 1.0;
+          gl.clearColor(clear[0] * clearAlpha, clear[1] * clearAlpha, clear[2] * clearAlpha, clearAlpha);
+          gl.clear(gl.COLOR_BUFFER_BIT);
+        }
         if (sc) { gl.depthMask(true); gl.clear(gl.DEPTH_BUFFER_BIT); }
         var vo = vertexOffset(g), so = sourceOffset(g), flip = ms ? -1 : 1, reduced = false;
         for (var i = 0; i < items.length; i++) {

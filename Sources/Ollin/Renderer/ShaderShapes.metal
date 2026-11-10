@@ -723,6 +723,6 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]],
     // there, so a transparent corner hid whatever sat behind it (a ring cut by
     // its neighbor's square). Discarding writes neither color nor depth.
     if (a <= 0.0) { discard_fragment(); }
-    return float4(premul / a, a);
+    return ollin_blend_ready(float4(premul / a, a));
 }
 

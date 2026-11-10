@@ -1877,6 +1877,65 @@ constant bool kOllinPeel = is_function_constant_defined(kOllinPeelSet) && kOllin
 constant bool kOllinTracesSet [[function_constant(16)]];
 constant bool kOllinTraces = !is_function_constant_defined(kOllinTracesSet) || kOllinTracesSet;
 
+// MARK: - What a fragment hands the blend
+//
+// A fixed-function blend sees one color from the fragment and one from the
+// surface, and under most modes it cannot weight the fragment's color by its
+// coverage itself: multiply, screen, and the lighter and darker of two all
+// need the color already weighted, or a half-covered pixel takes the whole
+// effect (a multiply at half alpha brightens what it should darken, and a
+// shape's soft edge draws a bright or a black ring). So a pipeline built for
+// one of those modes sets this constant, and every fragment a blend mode
+// reaches passes its color through `ollin_blend_ready` on the way out:
+//
+//   0, or left unset: the color as the fragment wrote it. The ordinary over
+//      blend and the additive one weight a straight color by its alpha in
+//      their own factors, so those pipelines build the fragment as written.
+//   1: weighted by coverage (premultiplied). Nothing drawn is no light, which
+//      is the color that leaves a multiply, a screen, and a subtraction alone.
+//   2: weighted by coverage, for the lighter of two, which so compares the
+//      shape as it lies over black.
+//   3: the shape as it lies over white, for the darker of two. The minimum
+//      cannot be weighted at all, so the uncovered part of a pixel is given
+//      the color that loses to any ground up to white. Past white it does not
+//      lose: at a soft edge, light brighter than white is cut to white under
+//      this mode (and light below black is raised to black under form 2).
+//
+// Under 2 and 3 a fragment that covers nothing hands over a color no ground
+// can lose to, so the surface is left as it was without a discard: a fragment
+// that claims its samples or writes its depth under the ordinary blend still
+// does under these.
+//
+// `MetalRenderer.fragmentFunction` sets it from `BlendMode.fragmentForm`, and
+// a function that names a function constant can only be built through that
+// call, which every blended pipeline already goes through.
+constant int kOllinBlendFormSet [[function_constant(17)]];
+constant int kOllinBlendForm = is_function_constant_defined(kOllinBlendFormSet) ? kOllinBlendFormSet : 0;
+
+// Farther from any color a surface holds than a half float reaches.
+constant float kOllinBlendFar = 60000.0;
+
+// A fragment's color, straight (not yet weighted by its alpha), in the form
+// the pipeline's blend mode wants.
+static inline float4 ollin_blend_ready(float4 c) {
+    if (kOllinBlendForm == 0) { return c; }
+    if (kOllinBlendForm == 1) { return float4(c.rgb * c.a, c.a); }
+    if (kOllinBlendForm == 2) {
+        return c.a > 0.0 ? float4(c.rgb * c.a, c.a) : float4(float3(-kOllinBlendFar), 0.0);
+    }
+    float cover = saturate(c.a);
+    return cover > 0.0 ? float4(c.rgb * cover + (1.0 - cover), c.a) : float4(float3(kOllinBlendFar), 0.0);
+}
+
+// The same for a fragment whose color is already weighted by its alpha (a
+// picture, a layer drawn back).
+static inline float4 ollin_blend_ready_premultiplied(float4 c) {
+    if (kOllinBlendForm == 0 || kOllinBlendForm == 1) { return c; }
+    if (kOllinBlendForm == 2) { return c.a > 0.0 ? c : float4(float3(-kOllinBlendFar), 0.0); }
+    float cover = saturate(c.a);
+    return cover > 0.0 ? float4(c.rgb + (1.0 - cover), c.a) : float4(float3(kOllinBlendFar), 0.0);
+}
+
 // Whether a fragment at `pixel` writing `depthValue` (its depth-buffer value) stays
 // out of the hidden layer. It stays out when it is the first layer's own surface: no
 // farther behind the first layer's distance than a relative tolerance, plus how far
