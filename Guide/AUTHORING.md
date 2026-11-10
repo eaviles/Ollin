@@ -99,7 +99,7 @@ When a chapter does split, split it at a seam the prose already has, and give ea
 
 ## The code in the prose
 
-Every Swift block a reader could type is compiled, by `Scripts/check-snippets.sh`, in the chapters and in the reference pages under `Docs/` alike. Run it after touching a page, and after any rename in `Sources/`; `Scripts/preflight.sh` runs it on either. `--only Docs/` scopes a run to the reference, `--only 02-Color` to one chapter.
+Every Swift block a reader could type is compiled, by `Scripts/check-snippets.sh`, in the chapters and in the reference pages under `Docs/` alike. Run it after touching a page, and after any rename in `Sources/`; `Scripts/preflight.sh` runs it on either. `--only Docs/` scopes a run to the reference, `--only 02-Color` to one chapter. A run keeps each block's answer and compiles a block again only when its text, the compiler, or a module file its imports load has changed, so a run after a prose edit takes seconds; `--no-cache` compiles every block whatever the last run kept.
 
 This gate exists because the other three do not read code. Navigation, coverage and Vale all passed on a chapter that told the reader to write a radius of 0.216 where it meant 216, on a command that prints usage instead of a GIF, on a docs anchor that does not resolve, and on an example folder that does not exist. Those are the errors a reader actually hits, and none of them is a prose problem.
 

@@ -15,87 +15,112 @@
 # nonzero if any gate failed. Gates keep running after a failure so one pass
 # reports everything.
 #
-# What runs when, cheapest first, so a failure that takes seconds to find
-# is reported before the gate that takes minutes starts:
-#   always
+# What runs when. The gates that only read files come first and have all
+# reported within about fifteen seconds; the gates that build come after,
+# cheapest first, so a failure that takes seconds to find is on screen before
+# a gate that takes minutes starts. The run ends on a table of what each gate
+# cost.
+#
+#   reading only
+#     always
 #       -> the em-dash and invisible-character net over the added diff lines
 #       -> the parked-thread net over Tests/
 #       -> the attribute net (a doc comment directly under an attribute line)
 #          over every Swift file in Sources/, Examples/ and Tests/
+#       -> Scripts/check-names.sh (every backticked name in the prose is real,
+#          every labeled call matches a public overload, every pointer from
+#          the contributor files lands; a rename in Sources/ stales prose the
+#          diff never touched, so this one is not scoped to the diff; ~3 s)
+#       -> Scripts/check-api-names.sh (the public surface under API/ against
+#          the settled naming rules; a listing is recorded on purpose, so
+#          this reads the whole surface rather than the diff; under a second)
+#       -> Scripts/check-api-pages.sh (the same two sides the other way: every
+#          public name under API/ is named by some Docs page, or listed with
+#          its reason; a page deleted stales this whether or not the diff
+#          touched it, so it is not scoped either; ~1 s)
+#     any .md prose, any image, or anything under Examples/ changed
+#       -> Scripts/check-links.sh and Scripts/guide-coverage.sh
+#     Guide/ or Docs/ prose changed
+#       -> Scripts/prose-lint.sh over just those files
+#     Guide/ prose changed
+#       -> Scripts/prose-density.sh over just those pages, which fails when
+#          one framing device passes its per-page cap
+#     the expander's sources changed (Sources/OllinExpander, the wasm entry,
+#     the vendored tessellator)
+#       -> Scripts/build-web-expander.sh --check (the committed WebAssembly
+#          resource must have been built from these sources)
+#     Sources/, External/, Package.*, or API/ changed
+#       -> Scripts/api-diff.sh --summary (the listings against the last tag,
+#          read as a version: the bump the release needs and the shim rule,
+#          a rehearsal count before 1.0 and a gate from 1.0 on; its self-test
+#          runs first; about a second)
+#   building
+#     always
 #       -> Scripts/check-flags.sh (the command's flags against the table the
 #          shell completes from, and the checked-in completion file)
 #       -> Scripts/llms.sh --check (the checkout's llms.txt against what the
 #          reference writes; every line comes from a page title or an index
 #          line, so any prose change can stale it)
-#       -> Scripts/check-api-names.sh (the public surface under API/ against
-#          the settled naming rules; a listing is recorded on purpose, so
-#          this reads the whole surface rather than the diff; under a second)
-#       -> Scripts/check-names.sh (every backticked name in the prose is real,
-#          every labeled call matches a public overload, every pointer from
-#          the contributor files lands; a rename in Sources/ stales prose the
-#          diff never touched, so this one is not scoped to the diff; ~2 s)
-#       -> Scripts/check-api-pages.sh (the same two sides the other way: every
-#          public name under API/ is named by some Docs page, or listed with
-#          its reason; a page deleted stales this whether or not the diff
-#          touched it, so it is not scoped either; ~2 s)
-#   any .md prose, any image, or anything under Examples/ changed
-#       -> Scripts/check-links.sh and Scripts/guide-coverage.sh
-#     a Guide or Docs prose change, or a framework change
-#       -> Scripts/check-snippets.sh (the code in the prose, compiled)
-#   Guide/ or Docs/ prose changed
-#       -> Scripts/prose-lint.sh over just those files
-#   Guide/ prose changed
-#       -> Scripts/prose-density.sh over just those pages, which fails when
-#          one framing device passes its per-page cap
-#   a host app or the runtime they share changed (OllinLive,
-#   OllinLiveCoding, OllinRuntime, OllinRun, the generator, the gallery)
-#       -> Scripts/host-gates.sh (the hosts' own headless gates; --all,
-#          with the gallery's cycle, on a gallery change)
-#   the expander's sources changed (Sources/OllinExpander, the wasm entry,
-#   the vendored tessellator)
-#       -> Scripts/build-web-expander.sh --check (the committed WebAssembly
-#          resource must have been built from these sources)
-#   Sources/, External/, or Package.* changed
+#     Sources/, External/, or Package.* changed
 #       -> Scripts/api-surface.sh (the public surface of every library
 #          product, written down under API/; a change there has to be
 #          recorded on purpose, and from 1.0 on a removal needs its shim;
-#          about a minute warm, most of it the per-target build)
-#       -> Scripts/api-diff.sh --summary (the listings against the last tag,
-#          read as a version: the bump the release needs and the shim rule,
-#          a rehearsal count before 1.0 and a gate from 1.0 on; also on any
-#          change under API/; its self-test runs first; under a second)
+#          one build of the modules and about 13 s of reading them)
+#     a Guide or Docs prose change, or a framework change
+#       -> Scripts/check-snippets.sh (the code in the prose, compiled: only
+#          the blocks whose text, compiler, or module files changed since
+#          they last ran, so seconds after a prose edit and three and a half
+#          minutes when the core's interface moved)
+#     Sources/, External/, or Package.* changed
+#       -> Scripts/api-docs.sh (the generated API reference, the one gate
+#          that reads doc comments: a link at a symbol that has gone, or a
+#          parameter documented under a name the signature dropped; it
+#          builds in a folder of its own, about 20 s when nothing it reads
+#          changed and two minutes after a change to the core)
 #       -> xcodebuild for generic iOS (nothing else compiles the framework
 #          for the phone, and a macOS-only call in a core file broke it
-#          silently within a day of the last hand check; about 30 s warm)
+#          silently within a day of the last hand check; under 10 s warm,
+#          about a minute after a change to the core)
 #       -> Scripts/check-ci-swift.sh (every target under the CI runner's
 #          Swift, which refuses expressions the desk's newer compiler
 #          accepts; the tests too when Tests/ changed; about three minutes
-#          cold, six to eight with the tests; also on a change to Tests/ or the
-#          script)
-#       -> Scripts/api-docs.sh (the generated API reference, the one gate
-#          that reads doc comments: a link at a symbol that has gone, or a
-#          parameter documented under a name the signature dropped; about a
-#          minute and a half warm)
-#   the ring sketch, the web exporter, the shader rewriter, or the shaders
-#   changed
+#          cold, six to eight with the tests; also on a change to Tests/ or
+#          the script; when that toolchain is not installed the gate cannot
+#          check, and the table and the last line say NOT RUN)
+#     a host app or the runtime they share changed (OllinLive,
+#     OllinLiveCoding, OllinRuntime, OllinRun, the generator, the gallery)
+#       -> Scripts/host-gates.sh (the hosts' own headless gates; --all,
+#          with the gallery's cycle, on a gallery change)
+#     the ring sketch, the web exporter, the shader rewriter, or the shaders
+#     changed
 #       -> Scripts/site-hero.sh (the site's front-page ring is the sketch's
 #          recorded web page, committed as source; any of those moves it)
-#   Sources/, External/, Package.*, or figure sketches changed
+#     Sources/, External/, Package.*, or figure sketches changed
 #       -> Scripts/guide-figures.sh, last: the probe decides how much
-#          renders, and when it hands the run to the full render that is the
-#          one gate here that takes half an hour, so everything else has
-#          reported by then
+#          renders (about two minutes for the sample), and when it hands the
+#          run to the full render that is the one gate here that takes half
+#          an hour, so everything else has reported by then
 #   --milestone adds
 #       -> Scripts/test.sh milestone (both phases plus the five nested
 #          signed-bundle builds the everyday run leaves out), Scripts/test.sh
 #          tsan (the handoffs under Thread Sanitizer: a second, instrumented
 #          build of the non-GPU targets, which is why it is not a gate on
-#          every commit), guide-figures --force, site-hero, swift build
-#          --package-path Examples (the examples anti-rot guard; CI runs on
-#          pull requests only, so nothing else compiles them), and
-#          Scripts/check-determinism.sh (every example that runs alone,
-#          drawn twice in two processes under one seed and compared pixel
-#          for pixel; its self-test first; about an hour)
+#          every commit), guide-figures --force, check-snippets --no-cache
+#          (every block compiled, whatever the last run remembers),
+#          site-hero, swift build --package-path Examples (the examples
+#          anti-rot guard; CI runs on pull requests only, so nothing else
+#          compiles them), and Scripts/check-determinism.sh (every example
+#          that runs alone, drawn twice in two processes under one seed and
+#          compared pixel for pixel; its self-test first; about an hour)
+#
+# What a run costs on the M2 (8 GB), measured 2026-11-10 on a diff touching
+# the core, a test, a Docs page and a Guide page: ten and a half minutes when
+# the core's interface changed (every module downstream recompiles in three
+# build folders and every snippet compiles again), and a minute and a half
+# when the same run is repeated after a fix that touched no source. Both
+# figures leave out the runner's compiler, whose toolchain was not installed
+# that day: its own build adds to them (about three minutes cold by its
+# script's notes, six to eight with the tests, not measured here).
 #
 # The figure gate's worker count follows the machine's memory (see
 # defaultJobs in the runner; OLLIN_FIGURE_JOBS overrides it). Four workers on
@@ -113,7 +138,7 @@ milestone=0
 case "$1" in
 --milestone) milestone=1 ;;
 --help | -h)
-    sed -n '3,106p' "$0" | sed 's|^# \?||'
+    sed -n '3,131p' "$0" | sed 's|^# \?||'
     exit 0
     ;;
 esac
@@ -125,12 +150,30 @@ if [[ -z "$changed" && $milestone -eq 0 ]]; then
     exit 0
 fi
 
-typeset -a failures
+zmodload zsh/datetime
+preflight_began=$EPOCHREALTIME
+
+# Every gate is timed, and the run ends on a table of what each one cost, so
+# "preflight is slow" is a question with a row to point at.
+#
+# A gate that exits 77 is saying it could not check here (the runner's
+# compiler, when its toolchain is not installed). That is not a failure, and
+# it is not a pass: the table and the last line name it as not run.
+typeset -a failures timings unchecked
 run() {
     local label="$1"
     shift
     echo "preflight: running $label"
-    "$@" || failures+=("$label")
+    local began=$EPOCHREALTIME outcome=ok code=0
+    "$@" || code=$?
+    if (( code == 77 )); then
+        unchecked+=("$label")
+        outcome="NOT RUN"
+    elif (( code != 0 )); then
+        failures+=("$label")
+        outcome=FAILED
+    fi
+    timings+=("$(printf '%8.1f s  %-7s  %s' $((EPOCHREALTIME - began)) "$outcome" "$label")")
 }
 skip() { echo "preflight: skipping $1 ($2)"; }
 
@@ -208,6 +251,10 @@ if [[ -n "$stranded" ]]; then
     failures+=("an attribute off its declaration")
 fi
 
+# The gates from here to the next banner read files and build nothing, so all
+# of them have reported within about fifteen seconds: a stale name, a broken
+# link, or a prose rule is on screen before the first build starts.
+
 # Every name the prose puts in backticks, against the tree and the public
 # surface. Not scoped to the diff on purpose: a rename in Sources/ stales a
 # Docs page the diff never touched, and that is the case it exists for.
@@ -224,18 +271,6 @@ run "check-api-names" Scripts/check-api-names.sh
 # back to the backticks, which is the direction nothing else covers.
 run "check-api-pages" Scripts/check-api-pages.sh
 
-# The command's flags against the table the shell completes from, both ways,
-# and the checked-in completion file against what the table generates. Not
-# scoped to the diff either: a flag dropped from a host stales the table
-# whether or not the table was touched.
-run "check-flags" Scripts/check-flags.sh
-
-# The checkout's llms.txt, the map an assistant reads, against what the
-# reference writes for it. Every line comes from a page's title, the line the
-# reference index says about it, or the group it is filed under, so an edit to
-# any page or index can stale it; that is why this is not scoped to the diff.
-run "llms" Scripts/llms.sh --check
-
 # Navigation and coverage read the whole tree in seconds, so any prose or
 # image change buys both. A new example is a navigation change too: its folder
 # appears and the group README does not follow it by itself.
@@ -244,17 +279,6 @@ if [[ -n "$prose" || -n "$images" || -n "$examples" || $milestone -eq 1 ]]; then
     run "guide-coverage" Scripts/guide-coverage.sh
 else
     skip "check-links and guide-coverage" "no prose, image, or example change"
-fi
-
-# The code inside the prose, the Guide's and the reference pages'. A prose
-# change can break a snippet outright, and a framework change can rename what
-# every snippet calls, so both buy this one. About two minutes for both trees
-# on the M2, so it runs whole rather than scoped: a rename in Sources/ shows
-# up in a page the diff never touched.
-if [[ -n "$reader_prose" || -n "$framework" || $milestone -eq 1 ]]; then
-    run "check-snippets" Scripts/check-snippets.sh
-else
-    skip "check-snippets" "no Guide or Docs prose change, and no framework change"
 fi
 
 # Vale, scoped to the reader-facing files actually touched.
@@ -287,16 +311,6 @@ else
     skip "web-expander" "no change to the expander's sources"
 fi
 
-# The public surface: every library product's API is written down under API/
-# and diffed against the build, so a public change is a deliberate one
-# (Scripts/api-surface.sh --record) and shows up in review beside the change
-# that made it. From 1.0 on this is where a rename without its shim fails.
-if [[ -n "$framework" || $milestone -eq 1 ]]; then
-    run "api-surface" Scripts/api-surface.sh
-else
-    skip "api-surface" "no framework change"
-fi
-
 # The same listings read as a version: against the last tag, what was added,
 # removed, renamed, changed, or deprecated, and the bump that costs. Before
 # 1.0 the shim rule is a count in the output; from 1.0 on a public spelling
@@ -311,10 +325,57 @@ else
     skip "api-diff" "no framework or API/ change"
 fi
 
+# From here on every gate builds something, in the main build folder unless it
+# says otherwise. None of them may change how that folder is built: a gate
+# that builds it under other flags recompiles everything and makes the next
+# gate recompile everything back (the API reference's symbol graphs, built
+# there, cost 207 s of every run, measured 2026-11-10), so such a gate takes
+# a folder of its own.
+
+# The command's flags against the table the shell completes from, both ways,
+# and the checked-in completion file against what the table generates. Not
+# scoped to the diff either: a flag dropped from a host stales the table
+# whether or not the table was touched.
+run "check-flags" Scripts/check-flags.sh
+
+# The checkout's llms.txt, the map an assistant reads, against what the
+# reference writes for it. Every line comes from a page's title, the line the
+# reference index says about it, or the group it is filed under, so an edit to
+# any page or index can stale it; that is why this is not scoped to the diff.
+run "llms" Scripts/llms.sh --check
+
+# The public surface: every library product's API is written down under API/
+# and diffed against the build, so a public change is a deliberate one
+# (Scripts/api-surface.sh --record) and shows up in review beside the change
+# that made it. From 1.0 on this is where a rename without its shim fails.
+if [[ -n "$framework" || $milestone -eq 1 ]]; then
+    run "api-surface" Scripts/api-surface.sh
+else
+    skip "api-surface" "no framework change"
+fi
+
+# The code inside the prose, the Guide's and the reference pages'. A prose
+# change can break a snippet outright, and a framework change can rename what
+# every snippet calls, so both buy this one, over every page: a rename in
+# Sources/ shows up in a page the diff never touched. The checker keeps each
+# block's answer under a digest of what its compile read, so it compiles only
+# the blocks whose text, compiler, or module files changed: seconds after a
+# prose edit or a change inside a function body, three and a half minutes
+# when the core's interface moved. A milestone compiles every block.
+if [[ $milestone -eq 1 ]]; then
+    run "check-snippets --no-cache" Scripts/check-snippets.sh --no-cache
+elif [[ -n "$reader_prose" || -n "$framework" ]]; then
+    run "check-snippets" Scripts/check-snippets.sh
+else
+    skip "check-snippets" "no Guide or Docs prose change, and no framework change"
+fi
+
 # The generated API reference: DocC over every module `.spi.yml` publishes.
 # Nothing else here reads a doc comment, and the two things this catches are a
 # link at a symbol that no longer exists and a parameter documented under a
-# name the signature dropped. Warm, about a minute and a half.
+# name the signature dropped. Its symbol graphs build in a folder of their
+# own (see the script): about 20 s when nothing it reads changed, two minutes
+# after a change to the core.
 if [[ -n "$framework" || $milestone -eq 1 ]]; then
     run "api-docs" Scripts/api-docs.sh
 else
@@ -323,7 +384,8 @@ fi
 
 # The iOS build: nothing else compiles the framework for the phone, so a
 # macOS-only SwiftUI call in a core file breaks it without a word (2026-09-02:
-# a seed-box `onExitCommand`). Warm, this is about 30 s.
+# a seed-box `onExitCommand`). Under 10 s when nothing changed, about a minute
+# after a change to the core.
 if [[ -n "$framework" || $milestone -eq 1 ]]; then
     run "iOS build" xcodebuild -scheme Ollin -destination 'generic/platform=iOS' -quiet build
 else
@@ -392,8 +454,19 @@ if [[ $milestone -eq 1 ]]; then
 fi
 
 echo ""
+echo "preflight: what each gate cost"
+print -l -- $timings
+printf '%8.1f s           total\n' $((EPOCHREALTIME - preflight_began))
+echo ""
+if (( ${#unchecked} > 0 )); then
+    echo "preflight: NOT CHECKED HERE: ${(j:, :)unchecked} (each says why on its own line above)"
+fi
 if (( ${#failures} > 0 )); then
     echo "preflight: FAILED: ${(j:, :)failures}" >&2
     exit 1
 fi
-echo "preflight: every applicable gate passed"
+if (( ${#unchecked} > 0 )); then
+    echo "preflight: every gate that could run here passed, and ${#unchecked} could not run"
+else
+    echo "preflight: every applicable gate passed"
+fi

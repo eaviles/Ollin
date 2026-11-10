@@ -92,6 +92,8 @@ var only: String?
 var record = false
 var named: [String] = []
 var listSkips = false
+var remembering = true
+var listInputs = false
 var argv = Array(CommandLine.arguments.dropFirst())
 while let arg = argv.first {
     argv.removeFirst()
@@ -99,6 +101,8 @@ while let arg = argv.first {
     case "--only": only = argv.isEmpty ? nil : argv.removeFirst()
     case "--skips": listSkips = true
     case "--record": record = true
+    case "--no-cache": remembering = false
+    case "--inputs": listInputs = true
     case let path where path.hasSuffix(".md"): named.append(path)
     default:
         FileHandle.standardError.write(Data("check-snippets: unknown argument \(arg)\n".utf8))
@@ -170,31 +174,108 @@ if listSkips {
 
 // MARK: - Typecheck
 
+/// The file a job hands the compiler: its page's imports, then the block as
+/// wrapped.
+func compiled(_ job: Job) -> String {
+    job.prelude.isEmpty ? job.source : job.prelude + "\n" + job.source
+}
+
+let lock = NSLock()
+
+// What each job's compile reads, as the key its answer is kept under (see
+// Remembered.swift). The module files a set of imports loads are asked of the
+// compiler once per distinct set, of which a run has a few dozen, and a job
+// whose inputs cannot be listed gets no key and compiles every time.
+// `--no-cache` compiles every block and still writes the answers down.
+let remembered = Remembered(path: repo + "/.build/snippets/results.json", reading: remembering)
+let checkerFolder = repo + "/Sources/OllinGuideSnippets"
+let checkerSources = ((try? FileManager.default.contentsOfDirectory(atPath: checkerFolder)) ?? [])
+    .filter { $0.hasSuffix(".swift") }.map { checkerFolder + "/" + $0 }
+    + [repo + "/Sources/OllinRuntime/SketchLoader.swift"]
+let inputs = CompileInputs(loader: SketchLoader(sketchPath: trees[0].snippetsDir + "/Inputs.swift"),
+                           checker: checkerSources)
+let jobImports = jobs.map { CompileInputs.imports(in: compiled($0)) }
+let importSets = Array(Set(jobImports))
+let digestsBySet = Shelf<String>()
+DispatchQueue.concurrentPerform(iterations: importSets.count) { index in
+    guard let digest = inputs.digest(imports: importSets[index], index: index) else { return }
+    digestsBySet.put(digest, at: index)
+}
+if listInputs {
+    // What a kept answer rests on, for anyone who wants to see it rather than
+    // take it on trust: the C headers every block's digest carries, and per
+    // set of imports the module files the compiler loads, the framework's by
+    // name and the SDK's by count.
+    print("check-snippets: every block's digest carries the compiler, the SDK, the compile's flags, the "
+          + "checker's own \(checkerSources.count) source files, and \(inputs.headerFiles.count) C headers and module maps:")
+    for file in inputs.headerFiles { print("    " + file.replacingOccurrences(of: repo + "/", with: "")) }
+    for (index, set) in importSets.enumerated().sorted(by: { $0.element.count < $1.element.count }) {
+        let blocks = jobImports.filter { $0 == set }.count
+        let names = set.map { $0.replacingOccurrences(of: "import ", with: "") }.joined(separator: ", ")
+        guard let modules = inputs.modules(imports: set, index: importSets.count + index) else {
+            print("\(blocks) blocks import \(names): not every import resolves, so these compile every time")
+            continue
+        }
+        let own = modules.filter { $0.hasPrefix(repo + "/") }
+            .map { ($0 as NSString).pathComponents.suffix(2).first ?? $0 }
+        print("\(blocks) blocks import \(names): \(modules.count) module files, "
+              + "\(own.count) of them built here (\(own.joined(separator: ", ")))")
+    }
+    exit(0)
+}
+let setIndex = Dictionary(uniqueKeysWithValues: importSets.enumerated().map { ($0.element, $0.offset) })
+let keys: [String?] = jobs.indices.map { index in
+    let source = compiled(jobs[index])
+    guard !CompileInputs.asksAboutModules(source),
+          let set = setIndex[jobImports[index]], let digest = digestsBySet[set] else { return nil }
+    return CompileInputs.key(digest: digest, source: source)
+}
+/// How many blocks keep the answer of an earlier run.
+let reused = keys.filter { key in key.flatMap { remembered.results[$0] } != nil }.count
+
 /// One loader per job, run across the cores. `typecheck` writes its own work
 /// directory per call, so the runs do not collide.
-let lock = NSLock()
 var failures: [(Block, String)] = []
+let answers = Shelf<(key: String, message: String)>()
 var done = 0
 let total = jobs.count
 let quiet = ProcessInfo.processInfo.environment["OLLIN_SNIPPETS_QUIET"] != nil
 
 DispatchQueue.concurrentPerform(iterations: jobs.count) { index in
     let job = jobs[index]
-    let tree = trees[job.tree]
-    let source = job.prelude.isEmpty ? job.source : job.prelude + "\n" + job.source
-    let name = tree.preambleStem(for: job.block.page) + "_\(job.block.line).swift"
-    let loader = SketchLoader(sketchPath: tree.snippetsDir + "/" + name)
-    let result = loader.typecheck(source, fileName: name)
+    // A kept answer is "" for a block that compiled, else the error it gave.
+    var failed = false
+    var message = ""
+    var keep = true
+    let known = keys[index].flatMap { remembered.results[$0] }
+    if let known {
+        failed = !known.isEmpty
+        message = known
+    } else {
+        let tree = trees[job.tree]
+        let name = tree.preambleStem(for: job.block.page) + "_\(job.block.line).swift"
+        let loader = SketchLoader(sketchPath: tree.snippetsDir + "/" + name)
+        if case .failure(let error) = loader.typecheck(compiled(job), fileName: name) {
+            let log = "\(error)"
+            failed = true
+            message = firstError(log, preambleLines: job.preambleLines)
+            // Only a diagnostic is an answer worth keeping. A compiler that
+            // died or could not start says nothing about the block, and
+            // remembering that would repeat it on every later run.
+            keep = log.contains(": error: ") && !message.isEmpty
+        }
+    }
+    if keep, let key = keys[index] { answers.put((key, message), at: index) }
     lock.lock()
     done += 1
-    if case .failure(let error) = result {
-        failures.append((job.block, firstError("\(error)", preambleLines: job.preambleLines)))
-    }
+    if failed { failures.append((job.block, message)) }
     if !quiet && done % 25 == 0 {
         FileHandle.standardError.write(Data("  \(done)/\(total)\r".utf8))
     }
     lock.unlock()
 }
+remembered.save(Dictionary(answers.all.map { ($0.key, $0.message) }, uniquingKeysWith: { first, _ in first }),
+                whole: named.isEmpty && only == nil)
 
 // MARK: - Report
 
@@ -359,6 +440,11 @@ for problem in nameProblems.sorted(by: { ($0.page, $0.line) < ($1.page, $1.line)
 }
 problems.sort()
 for problem in problems { print(problem) }
+if reused > 0 {
+    print("check-snippets: \(total - reused) of \(total) blocks compiled; the other \(reused) read the same "
+          + "text against the same compiler and module files as when they last ran, and kept that answer "
+          + "(--no-cache compiles them all)")
+}
 print("check-snippets: \(jobs.count) Swift blocks checked, \(skipped.count) skipped, "
       + "\(shellBlocks.count) shell blocks read for commands, "
       + "\(failedNow.count) cannot stand alone, \(problems.count) problem(s)")

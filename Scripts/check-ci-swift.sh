@@ -24,7 +24,10 @@
 # read an SDK built by a newer Swift: this desk's macOS 27 SDK stops 6.3 at
 # Accelerate. The SDK is the one OLLIN_CI_SDK names, else a MacOSX26 SDK in an
 # installed Xcode, else the one the Swift Playground app carries. Missing
-# either, it says so and passes, since the runner still checks.
+# either, it says so and exits 77: the runner still checks, so that is not a
+# failure, and it is not a pass either. Preflight reads 77 as a gate that did
+# not run and says so in its table and on its last line, since a line reading
+# "ok" for ten days is how a missing toolchain went unnoticed (2026-11-10).
 #
 # When the runner moves to a new Swift, move `runner_swift` with it.
 
@@ -48,7 +51,7 @@ if [[ -z "$toolchain" ]]; then
 fi
 if [[ -z "$toolchain" || ! -x "$toolchain/usr/bin/swift" ]]; then
     echo "ci-swift: no Swift $runner_swift toolchain from swift.org installed, so the runner's compiler is not checked here (set OLLIN_CI_TOOLCHAIN to use one)"
-    exit 0
+    exit 77
 fi
 
 sdk=${OLLIN_CI_SDK:-}
@@ -65,7 +68,7 @@ if [[ -z "$sdk" ]]; then
 fi
 if [[ -z "$sdk" ]]; then
     echo "ci-swift: no macOS 26 SDK found (Swift $runner_swift cannot read a newer one), so the runner's compiler is not checked here; an Xcode 26 install or the Swift Playground app carries one, or set OLLIN_CI_SDK to a MacOSX26 SDK"
-    exit 0
+    exit 77
 fi
 
 swift="$toolchain/usr/bin/swift"

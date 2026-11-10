@@ -17,7 +17,13 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 out=".build/docs"
-graphs=".build/out/symbolgraph"
+# The symbol graphs are built in a folder of their own. The command that
+# writes them builds the whole package under other compiler flags, so in the
+# main build folder it recompiles everything (100 s), and the next ordinary
+# build there, the figure gate's, recompiles everything back (107 s more),
+# whether or not a source has changed (measured 2026-11-10). In its own
+# folder each of the two builds only what changed.
+scratch=".build/symbolgraph"
 open_it=""
 
 targets=()
@@ -59,8 +65,16 @@ CHECK
 fi
 
 echo "==> symbol graphs for the whole package"
-swift package dump-symbol-graph > "$out/symbol-graph.log" 2>&1 || {
+swift package --scratch-path "$scratch" dump-symbol-graph > "$out/symbol-graph.log" 2>&1 || {
     tail -20 "$out/symbol-graph.log"; exit 1; }
+# Where the command says it wrote them, since the folder's layout is the build
+# system's to choose.
+graphs=$(sed -n 's/^Files written to //p' "$out/symbol-graph.log" | tail -1)
+if [ -z "$graphs" ] || [ ! -d "$graphs" ]; then
+    echo "api-docs: the symbol graph command did not say where it wrote its files"
+    tail -5 "$out/symbol-graph.log"
+    exit 1
+fi
 
 failed=0
 for target in "${targets[@]}"; do

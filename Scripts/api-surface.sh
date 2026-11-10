@@ -52,8 +52,8 @@ done
 
 # Every library product with Swift sources. A C target (its sources under an
 # include/ folder) is a header, which is its own listing.
-products=$(swift package dump-package 2>/dev/null | jq -r '
-    .products[] | select(.type | has("library")) | .name' \
+manifest=$(swift package dump-package 2>/dev/null)
+products=$(jq -r '.products[] | select(.type | has("library")) | .name' <<<"$manifest" \
     | while read -r name; do
         [[ -d "Sources/$name/include" ]] && continue
         echo "$name"
@@ -66,13 +66,68 @@ if [[ -z "$products" ]]; then
     exit 2
 fi
 
+# One build for all of them. `swift build` takes a single --target, and a call
+# per module is two to three seconds of planning each even when nothing needs
+# compiling: 24 modules were 56 of this script's 61 seconds (2026-11-10). So
+# build the one executable whose dependencies reach the most of the modules
+# wanted (the snippet checker and the figure runner each import every
+# satellite), and then, by name, any module that executable does not reach, so
+# a satellite added to the package and to no tool is still built before it is
+# read. One module alone (--module) is built by name.
+mkdir -p API .build/api
 if [[ $build -eq 1 ]]; then
-    for module in ${(f)products}; do
-        swift build --target "$module" >/dev/null 2>&1 || {
-            echo "api-surface: swift build --target $module failed" >&2
+    print -r -- "$manifest" >.build/api/package.json
+    plan=$(python3 - .build/api/package.json ${(f)products} <<'PY'
+import json, pathlib, sys
+
+manifest = json.load(open(sys.argv[1]))
+wanted = set(sys.argv[2:])
+depends = {
+    target["name"]: [next(iter(entry.values()))[0] for entry in target["dependencies"]]
+    for target in manifest["targets"]
+}
+
+def reach(name):
+    seen, pending = set(), [name]
+    while pending:
+        current = pending.pop()
+        if current in seen:
+            continue
+        seen.add(current)
+        pending.extend(depends.get(current, []))
+    return seen
+
+# The one reaching the most of them. Seven executables tie on that (every host
+# imports every satellite), and the tie matters: the first by name is the
+# gallery, a large app nothing else in a preflight builds, and picking it
+# recompiled the gallery after every change to the core. So among equals take
+# the snippet checker, which preflight builds next anyway, and failing that
+# the one with the fewest sources of its own.
+def sources(name):
+    target = next(t for t in manifest["targets"] if t["name"] == name)
+    folder = pathlib.Path(target.get("path") or f"Sources/{name}")
+    return sum(1 for _ in folder.rglob("*.swift"))
+
+executables = sorted(t["name"] for t in manifest["targets"] if t["type"] == "executable")
+best = min(executables,
+           key=lambda name: (-len(reach(name) & wanted), name != "OllinGuideSnippets", sources(name), name),
+           default=None)
+covered = reach(best) & wanted if best else set()
+if len(covered) < 2:
+    covered = set()
+else:
+    print("product", best)
+for name in sorted(wanted - covered):
+    print("target", name)
+PY
+    ) || { echo "api-surface: could not read the package's targets" >&2; exit 2; }
+    while read -r kind name; do
+        [[ -n "$name" ]] || continue
+        swift build "--$kind" "$name" >/dev/null 2>&1 || {
+            echo "api-surface: swift build --$kind $name failed" >&2
             exit 1
         }
-    done
+    done <<<"$plan"
 fi
 
 bin=$(swift build --show-bin-path 2>/dev/null)
@@ -93,7 +148,6 @@ for map in "$bin"/../../Intermediates.noindex/GeneratedModuleMaps/*.modulemap "$
     [[ -f "$map" ]] && includes+=(-Xcc "-fmodule-map-file=$map")
 done
 
-mkdir -p API .build/api
 failed=0
 for module in ${(f)products}; do
     json=".build/api/$module.json"

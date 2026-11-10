@@ -11,6 +11,10 @@
 #                                                   # (a scoped run keeps the
 #                                                   # lines of pages it skipped)
 #   Scripts/check-snippets.sh --skips               # what is passed over, and why
+#   Scripts/check-snippets.sh --no-cache            # compile every block, whatever
+#                                                   # the last run remembers
+#   Scripts/check-snippets.sh --inputs              # what a kept answer rests on:
+#                                                   # the headers and module files
 #
 # The other gates verify that a page can be reached and reads well. None of them
 # opens a code block, which is how chapter 1 shipped with a radius wrong by a
@@ -25,8 +29,13 @@
 # rename into a failure here. It also resolves `ollin docs Page#section`
 # commands and the example names written as prose beside an Examples/ link.
 #
-# About two minutes for both trees on the M2, across the cores (the Guide's
-# 680 blocks in 35 seconds, the reference's 1,800 in the rest).
+# Three and a half minutes for both trees on the M2 when every block compiles
+# (2,918 of them, each its own compiler process, across the cores). A run
+# keeps each block's answer under a digest of what its compile read (the
+# block's text, the compiler, and the bytes of every module file its imports
+# load), so the next run compiles only the blocks for which one of those
+# changed: seconds after a prose edit, everything again after a change to a
+# module the pages import. The answers live in .build/snippets/results.json.
 # Conventions live in Guide/AUTHORING.md, "The code in the prose".
 
 cd "$(dirname "$0")/.." || exit 1
