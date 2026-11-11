@@ -123,16 +123,16 @@ public enum Effect: Sendable, Hashable, Codable {
     /// A unit that can do this kind of work. The settings are applied
     /// separately, so one unit serves every setting of its kind. For a custom
     /// effect the closure itself is the setting, which is what lets a sketch
-    /// swap the work without the chain being rewired; a convolution reverb,
-    /// the four motions, the three levels, and the two that work in the
-    /// spectrum use the same unit, each prepared and swapped in the same
-    /// way.
+    /// swap the work without the chain being rewired; an echo, a distortion,
+    /// a convolution reverb, the four motions, the three levels, and the two
+    /// that work in the spectrum use the same unit, each prepared and swapped
+    /// in the same way.
     static func makeUnit(for kind: Kind) -> AVAudioUnit {
         switch kind {
-        case .delay:       return AVAudioUnitDelay()
+        case .delay:       return ClosureAudioUnit.makeUnit()
         case .reverb:      return AVAudioUnitReverb()
         case .equalizer:   return AVAudioUnitEQ(numberOfBands: 3)
-        case .distortion:  return AVAudioUnitDistortion()
+        case .distortion:  return ClosureAudioUnit.makeUnit()
         case .chorus, .flanger, .phaser, .tremolo:
             return ClosureAudioUnit.makeUnit()
         case .compressor, .limiter, .gate:
@@ -149,8 +149,8 @@ public enum Effect: Sendable, Hashable, Codable {
     func apply(to unit: AVAudioUnit, sampleRate: Double) {
         switch self {
         case .delay(let delay):
-            guard let unit = unit as? AVAudioUnitDelay else { return }
-            Synth.configure(unit, with: delay)
+            guard let closureUnit = unit.auAudioUnit as? ClosureAudioUnit else { return }
+            closureUnit.setDelay(delay, sampleRate: sampleRate)
         case .reverb(let reverb):
             if let unit = unit as? AVAudioUnitReverb {
                 Synth.configure(unit, with: reverb)
@@ -162,8 +162,8 @@ public enum Effect: Sendable, Hashable, Codable {
             guard let unit = unit as? AVAudioUnitEQ else { return }
             equalizer.apply(to: unit)
         case .distortion(let distortion):
-            guard let unit = unit as? AVAudioUnitDistortion else { return }
-            distortion.apply(to: unit)
+            guard let closureUnit = unit.auAudioUnit as? ClosureAudioUnit else { return }
+            closureUnit.setDistortion(distortion, sampleRate: sampleRate)
         case .chorus, .flanger, .phaser, .tremolo:
             guard let closureUnit = unit.auAudioUnit as? ClosureAudioUnit,
                   let motion else { return }
@@ -280,66 +280,5 @@ public struct Equalizer: Sendable, Hashable, Codable {
 
         unit.globalGain = 0
         unit.bypass = lowGain == 0 && midGain == 0 && highGain == 0
-    }
-}
-
-// MARK: - Distortion
-
-/// Driving a sound past where it fits.
-///
-/// The mildest settings are a warm edge on something clean; the strongest stop
-/// being a treatment and become the instrument. `mix` is how much of the result
-/// is the driven sound rather than the original, so it can be dialed all the
-/// way back to nothing.
-///
-/// ```swift
-/// synth.effects = [.distortion(Distortion(.softClip, mix: 0.35))]
-/// ```
-public struct Distortion: Sendable, Hashable, Codable {
-    /// The character of the breaking up.
-    public enum Character: String, Sendable, Hashable, Codable, CaseIterable {
-        /// A gentle rounding of the peaks: warmth rather than damage.
-        case softClip
-        /// Harder, with the edge of something overdriven.
-        case overdrive
-        /// Broken into steps, the sound of too few bits to describe it with.
-        case bitCrush
-        /// A ring rather than a fuzz, which is metallic and unmusical on
-        /// purpose.
-        case ring
-        /// Squeezed through something much too small for it.
-        case squeeze
-
-        var preset: AVAudioUnitDistortionPreset {
-            switch self {
-            case .softClip:  return .multiEcho1
-            case .overdrive: return .drumsBitBrush
-            case .bitCrush:  return .speechRadioTower
-            case .ring:      return .multiCellphoneConcert
-            case .squeeze:   return .speechCosmicInterference
-            }
-        }
-    }
-
-    public var character: Character
-    /// How hard it is driven in, in decibels. More is more broken.
-    public var drive: Double
-    /// How much of the result is the driven sound, `0...1`.
-    public var mix: Double
-
-    public init(_ character: Character = .softClip, drive: Double = -6, mix: Double = 0.3) {
-        self.character = character
-        self.drive = min(max(-80, drive), 20)
-        self.mix = min(max(0, mix), 1)
-    }
-
-    func apply(to unit: AVAudioUnitDistortion) {
-        unit.loadFactoryPreset(character.preset)
-        unit.preGain = Float(drive)
-        unit.wetDryMix = Float(mix * 100)
-        // At mix 0 the unit still colors the sound it passes (a bell moved
-        // by 7% of its height), so a distortion asked for none of itself
-        // steps aside, as a flat equalizer does.
-        unit.bypass = mix == 0
     }
 }

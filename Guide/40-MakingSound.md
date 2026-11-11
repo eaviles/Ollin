@@ -560,7 +560,7 @@ Three presets come ready to play. `Voice.cloud` is a held moment spread wide, `V
 
 ## Other effects: movement, levels, the spectrum, and one of your own
 
-The workbench's chain uses a chorus, a delay, a drawn room, and a limiter. The chorus and the limiter each belong to a family of effects. Two more kinds follow them: effects that work on the spectrum, and an effect you write yourself. Each goes in `synth.effects` the same way, anywhere in the chain.
+The workbench's chain uses a chorus, a delay, a drawn room, and a limiter. The chorus and the limiter each belong to a family of effects. Four more kinds follow them: effects that work on the spectrum, the five distortions, an echo long enough to be a loop, and an effect you write yourself. Each goes in `synth.effects` the same way, anywhere in the chain.
 
 ### Something that moves: chorus, flanger, phaser, tremolo
 
@@ -639,6 +639,32 @@ A **freeze** holds an instant. The moment `amount` rises above 0, the spectrum o
 A **stretch** does the same kind of work once, to a recording. `stretched(by: 3)` gives a recording three times as long at the same pitch. It changes the length, so it is done in `setup()`, and a sampler plays the result like any other recording. To play `slow`, make it an instrument: `synth.instrument = SampledInstrument(name: "slow", recordings: [slow])`. The third panel is a struck recording and the same recording stretched, on one time axis.
 
 These have two limits. The pitch shift and the freeze arrive one slice late, about forty milliseconds. That is short enough for a phrase and long enough to blur the start of a drum. And a pitch shift moves every partial up together, including the ones that give a voice its character. So a voice an octave up sounds like a small voice rather than a high one. [`Examples/Audio/Spectral`](../Examples/Audio/Spectral/Sketch.swift) puts all three behind a parameter, with the freeze on the mouse.
+
+### Something that breaks the sound: the five distortions
+
+The first chain in this chapter began with a distortion and left it at one word, gritty. There are five, and each is a different piece of arithmetic on the samples. Use one to give a clean voice an edge, or to break it on purpose:
+
+```swift
+synth.effects = [.distortion(Distortion(.overdrive, drive: 0, mix: 0.6))]
+```
+
+A **soft clip** rounds the peaks of the wave, the same way above and below. A wave bent evenly like that gains only odd harmonics, the ones a clarinet has, so it sounds warm. An **overdrive** flattens the peaks, one side before the other. That lopsided bend adds the even harmonics too, which is the edge of a guitar amplifier turned up too far. A **bit crush** rounds every sample to the nearest step of a staircase and holds each step for several samples. That is the sound of an early sampler, which had too few bits to describe a wave. A **ring** multiplies the sound by a sine at 300 Hz. Each tone in the sound is replaced by two, one 300 Hz above it and one 300 Hz below. Those fit no chord, so a ring sounds like struck metal. A **squeeze** lets through only a band around 1,200 Hz and flattens it, the way a pocket radio's speaker does.
+
+`drive` is how hard the sound is pushed in, in decibels, and more is more broken. `mix` is how much of the result is the driven sound. None of the five delays the sound or rings on after it, so a note stops when it stops.
+
+Clipping became an effect when guitarists of the early 1950s kept the sound of an amplifier pushed past its limit. The ring was a telephone circuit before it was an instrument, and Karlheinz Stockhausen wrote for it in the 1960s. [`Examples/Audio/Drive`](../Examples/Audio/Drive/Sketch.swift) draws a tone going into each of the five and coming out.
+
+### Something that comes round again: a long echo
+
+The echo in the workbench waits a third of a second. Make the same echo wait eight seconds and it stops being an echo and becomes a loop:
+
+```swift
+synth.delay = Delay(time: 8, feedback: 0.85, mix: 0.5)
+```
+
+Whatever you play comes back `time` seconds later, under what you are playing by then, and goes round again a little quieter. One slow line of notes turns into a canon with itself. A few notes become a texture you can play over. `time` runs up to a minute. `feedback` is how much of each pass survives into the next, so 0.85 leaves a phrase at a fifth of its level after ten passes. `damping` takes a little of the top end on every pass, so the old layers sink behind the new ones.
+
+This is the tape loop. In 1963 Terry Riley ran one tape through two recorders. The first recorded, the second played back a few seconds later, and its sound was fed to the first again. He called it a time-lag accumulator. Pauline Oliveros composed with the same setup, and ten years later Robert Fripp and Brian Eno made the album *(No Pussyfooting)* with it. [`Examples/Audio/Loop`](../Examples/Audio/Loop/Sketch.swift) draws the loop as a ring, with a hand for now and each note lighting when the hand comes back to it.
 
 ### An effect nobody wrote for you: custom effects
 

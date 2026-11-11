@@ -4115,6 +4115,28 @@
       "stillSmall": "examples/Audio/ChordSymbols/still-640.jpg?v=6a3d4225",
       "seed": 1
     },
+    "Audio/Drive": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10.0s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 2.427,
+      "sound": true,
+      "source": "26153ab40be99c18",
+      "rendered": "2026-11-11",
+      "bytes": {
+        "loop": 1375055,
+        "loopSmall": 299882,
+        "still": 75835,
+        "stillSmall": 32490
+      },
+      "loop": "examples/Audio/Drive/loop.mp4?v=9c2f8dbc",
+      "loopSmall": "examples/Audio/Drive/loop-640.mp4?v=4cce7114",
+      "still": "examples/Audio/Drive/still.jpg?v=a0936224",
+      "stillSmall": "examples/Audio/Drive/still-640.jpg?v=6ed31dbd",
+      "seed": 1
+    },
     "Audio/Expression": {
       "width": 1080,
       "height": 1080,
@@ -4244,6 +4266,28 @@
       "loopSmall": "examples/Audio/Levels/loop-640.mp4?v=884a5c1c",
       "still": "examples/Audio/Levels/still.jpg?v=86c319c5",
       "stillSmall": "examples/Audio/Levels/still-640.jpg?v=4ed2b247",
+      "seed": 1
+    },
+    "Audio/Loop": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 0.48,
+      "sound": true,
+      "source": "df4bc704b6e0e964",
+      "rendered": "2026-11-11",
+      "bytes": {
+        "loop": 1410073,
+        "loopSmall": 348569,
+        "still": 149138,
+        "stillSmall": 59899
+      },
+      "loop": "examples/Audio/Loop/loop.mp4?v=89111ae4",
+      "loopSmall": "examples/Audio/Loop/loop-640.mp4?v=c8c726be",
+      "still": "examples/Audio/Loop/still.jpg?v=fbb8d6b4",
+      "stillSmall": "examples/Audio/Loop/still-640.jpg?v=c70524f0",
       "seed": 1
     },
     "Audio/MIDIFiles": {

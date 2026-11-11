@@ -685,17 +685,6 @@ public final class Synth: AudioSource {
 
     /// Settings applied in one place, because an export builds its own units
     /// and they have to come out sounding the same as the ones on the output.
-    nonisolated static func configure(_ unit: AVAudioUnitDelay, with delay: Delay?) {
-        guard let delay else {
-            unit.wetDryMix = 0
-            return
-        }
-        unit.delayTime = min(max(0, delay.time), Delay.maxTime)
-        unit.feedback = Float(min(max(0, delay.feedback), 0.95) * 100)
-        unit.lowPassCutoff = Float(delay.damping)
-        unit.wetDryMix = Float(min(max(0, delay.mix), 1) * 100)
-    }
-
     nonisolated static func configure(_ unit: AVAudioUnitReverb, with reverb: Reverb?) {
         guard let reverb else {
             unit.wetDryMix = 0
@@ -716,31 +705,6 @@ public final class Synth: AudioSource {
 }
 
 // MARK: - Effects
-
-/// An echo: the sound again, later and quieter each time.
-public struct Delay: Sendable, Hashable, Codable {
-    /// Seconds before the first repeat, `0...2`. Two seconds is the longest
-    /// the echo can wait, so a longer time is held at 2.
-    public var time: Double
-    /// How much of each repeat feeds the next, `0...0.95`. Higher runs longer.
-    public var feedback: Double
-    /// How much of the result is the echo rather than the sound itself, `0...1`.
-    public var mix: Double
-    /// Where the repeats start losing their top end, in Hz. Lower makes each
-    /// repeat duller than the last, the way a real one is.
-    public var damping: Double
-
-    public init(time: Double = 0.25, feedback: Double = 0.4, mix: Double = 0.3, damping: Double = 6000) {
-        self.time = min(max(0, time), Delay.maxTime)
-        self.feedback = min(max(0, feedback), 0.95)
-        self.mix = min(max(0, mix), 1)
-        self.damping = damping
-    }
-
-    /// The longest `time` the echo can wait, in seconds: what the unit under
-    /// it holds.
-    public static let maxTime = 2.0
-}
 
 /// A room the sound is heard in.
 ///

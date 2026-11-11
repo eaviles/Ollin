@@ -184,12 +184,6 @@ struct SoundInvariantTests {
 
     // MARK: Survey B (2026-10-11): pitch, modes, and the models' promises
 
-    /// A measured gap stands as a known issue only where it was measured; the
-    /// statement runs plain everywhere else.
-    private func pinned(_ reason: Comment, when active: Bool = true, _ body: () -> Void) {
-        if active { withKnownIssue(reason, body) } else { body() }
-    }
-
     /// Magnitude of the DFT at one frequency over a slice, by the direct sum.
     private func magnitude(_ s: ArraySlice<Float>, hz: Double, sampleRate: Double = sampleRate) -> Double {
         var re = 0.0, im = 0.0
@@ -264,6 +258,11 @@ struct SoundInvariantTests {
     /// (their junctions switch on sample boundaries, so the top of the range
     /// cannot hold the string's tenth of a cent): measured 2026-10-11 at up to
     /// four cents sharp from MIDI 69 up.
+    ///
+    /// Until 2026-11-11 the reedy and clarinet tubes read 6 to 14 cents flat
+    /// at MIDI 93 here, and stood as a known issue: the pitch of a tube near
+    /// the top of its range was pulled by the breath (see
+    /// `aBlownTubeHoldsItsPitchAtEveryPressure`).
     @Test(arguments: [("violin", Voice(bowed: .violin, gain: 0.7)), ("cello", Voice(bowed: .cello, gain: 0.7)),
                       ("clarinet", Voice(blown: .clarinet, gain: 0.6)), ("reedy", Voice(blown: .reedy, gain: 0.6)),
                       ("hollow", Voice(blown: .hollow, gain: 0.6))])
@@ -273,9 +272,81 @@ struct SoundInvariantTests {
             let slice = s[Int(0.4 * Self.sampleRate)...]
             let f = peak(slice, near: hertz(midi))
             let off = cents(f, hertz(midi))
-            pinned("the reedy and clarinet tubes leave their register at the top of the range: at MIDI 93 a tube speaks and jumps toward its twelfth within a tenth of breath of each other, so at pressure 0.8 the fundamental is a weak line read 6 to 14 cents flat (measured 2026-10-15)",
-                   when: (name == "reedy" || name == "clarinet") && midi == 93) {
-                #expect(abs(off) <= 5, "\(name) at MIDI \(midi) sounds \(off) cents off")
+            #expect(abs(off) <= 5, "\(name) at MIDI \(midi) sounds \(off) cents off")
+        }
+    }
+
+    /// The strongest line within three percent of `near`, found on a scan
+    /// fine enough that no line falls between two steps of it (half the
+    /// width a slice this long resolves), then refined by a parabola.
+    private func pitch(_ s: ArraySlice<Float>, near: Double, sampleRate: Double = sampleRate) -> (hz: Double, level: Double) {
+        let step = 0.5 * sampleRate / Double(s.count)
+        var best = near, bestMag = -1.0
+        var f = near * 0.97
+        while f <= near * 1.03 {
+            let m = magnitude(s, hz: f, sampleRate: sampleRate)
+            if m > bestMag { bestMag = m; best = f }
+            f += step
+        }
+        let a = magnitude(s, hz: best - step, sampleRate: sampleRate)
+        let c = magnitude(s, hz: best + step, sampleRate: sampleRate)
+        let denom = a - 2 * bestMag + c
+        return (best + (denom != 0 ? 0.5 * (a - c) / denom : 0) * step, bestMag / (Double(s.count) / 2))
+    }
+
+    /// A blown tube holds its pitch however hard it is blown, to the top of
+    /// its range: within five cents at every pressure from just speaking to
+    /// full, at both rates a sketch is likely to run at.
+    ///
+    /// Until 2026-11-11 the pitch was pulled by the breath near the top: the
+    /// clarinet at MIDI 95 read 25 cents sharp at full pressure and the reedy
+    /// tube at MIDI 92 read 36 cents sharp at two thirds, with 5 cents
+    /// already gone a sixth of the way up the dial. A reed blown hard makes a
+    /// wave with square edges; the loop delayed its harmonics differently
+    /// from the note, and an edge one sample wide can only sit on a sample,
+    /// so the period drifted toward a whole number of them. The note was
+    /// never lost, only moved: the line read as weak because it was measured
+    /// where the note should have been.
+    @Test(arguments: [("clarinet", BlownTube.clarinet), ("reedy", .reedy), ("hollow", .hollow)], [44100.0, 48000.0])
+    func aBlownTubeHoldsItsPitchAtEveryPressure(tube: (name: String, spec: BlownTube), rate: Double) {
+        for midi in [57.0, 69, 76, 81, 87, 90, 93, 95] {
+            for pressure in [0.4, 0.6, 0.8, 1.0] {
+                let events = EventRing()
+                let renderer = SynthRenderer(voice: Voice(blown: tube.spec, gain: 0.6), polyphony: 2,
+                                             sampleRate: rate, events: events, seed: 5)
+                renderer.gain = 1
+                renderer.pressure = pressure
+                events.push(SynthEvent(kind: .noteOn, pitch: midi, velocity: 0.9))
+                let count = Int(0.7 * rate)
+                var samples = [Float](repeating: 0, count: count)
+                samples.withUnsafeMutableBufferPointer { renderer.render(into: $0, frameCount: count) }
+                let read = pitch(samples[Int(0.3 * rate)...], near: hertz(midi), sampleRate: rate)
+                let off = cents(read.hz, hertz(midi))
+                #expect(abs(off) <= 5, "\(tube.name) at MIDI \(midi), pressure \(pressure), \(Int(rate)) Hz sounds \(off) cents off")
+                #expect(read.level > 0.02, "\(tube.name) at MIDI \(midi), pressure \(pressure) has a fundamental of \(read.level)")
+            }
+        }
+    }
+
+    /// Holding the pitch at the top costs the tube none of its level: full
+    /// pressure is as loud two octaves and a half up as it is in the middle,
+    /// within a decibel and a half, on every preset.
+    ///
+    /// The top of the range is blown less hard than the dial says (no more
+    /// than 0.85 of the reed's closing pressure) and the level is made up;
+    /// without the making up the reedy tube falls 7 dB over the octave above
+    /// middle C.
+    @Test(arguments: [("clarinet", BlownTube.clarinet), ("reedy", .reedy), ("hollow", .hollow)])
+    func aBlownTubeIsAsLoudAtTheTopAsInTheMiddle(tube: (name: String, spec: BlownTube)) {
+        func level(_ midi: Double, _ pressure: Double) -> Double {
+            let s = render(Voice(blown: tube.spec, gain: 0.6), midi: midi, seconds: 0.8, velocity: 0.9, drive: pressure)
+            return rms(s[Int(0.4 * Self.sampleRate)...])
+        }
+        for pressure in [0.6, 1.0] {
+            let middle = level(57, pressure)
+            for midi in [69.0, 81, 93] {
+                let decibels = 20 * log10(level(midi, pressure) / middle)
+                #expect(abs(decibels) <= 1.5, "\(tube.name) at MIDI \(midi), pressure \(pressure) is \(decibels) dB from the middle")
             }
         }
     }
@@ -532,25 +603,27 @@ struct SoundInvariantTests {
         }
     }
 
-    /// A delay waits as long as its `time` says: an echo at 1.5 s arrives at
-    /// 1.5 s and one at 2 s at 2 s, and a time past the longest the echo can
-    /// wait reads back as that longest, so what it says is what is heard.
+    /// A delay waits as long as its `time` says, to the sample, in the export
+    /// as on the output: an echo at 1.5 s arrives at 1.5 s, one at 5 s at 5 s.
     ///
     /// Until 2026-10-15 `Delay.time` kept whatever it was given while the unit
     /// under it held 2 s, so a time of 3 s read back as 3 and echoed at 2.000 s.
+    /// Until 2026-11-11 the longest was those 2 s and a repeat landed a sample
+    /// late, the system's unit being what waited; the line is Ollin's own now.
     @MainActor
     @Test func aDelayWaitsAsLongAsItsTimeSays() throws {
-        func echo(_ delay: Delay) -> Double {
-            let out = leftChannel(exported(effects: [Self.impulse(), .delay(delay)], seconds: delay.time + 1))
+        func echo(_ delay: Delay) -> Int {
+            let out = leftChannel(exported(effects: [Self.impulse(), .delay(delay)], seconds: delay.time + 0.5))
             var at = 0, best = 0.0
             for i in 200..<out.count where Double(abs(out[i])) > best { best = Double(abs(out[i])); at = i }
-            return Double(at) / Self.sampleRate
+            return at
         }
-        for time in [1.5, 2.0, 3.0] {
+        for time in [1.5, 2.0, 3.0, 5.0] {
             let delay = Delay(time: time, feedback: 0, mix: 1, damping: 20000)
-            #expect(delay.time == min(time, Delay.maxTime))
+            #expect(delay.time == time)
             let at = echo(delay)
-            #expect(abs(at - delay.time) < 0.002, "an echo at \(delay.time) s arrived at \(at) s")
+            let wanted = Int((time * Self.sampleRate).rounded())
+            #expect(abs(at - wanted) <= 1, "an echo at \(delay.time) s arrived on sample \(at), not \(wanted)")
         }
     }
 

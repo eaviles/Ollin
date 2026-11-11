@@ -290,6 +290,39 @@ final class ClosureAudioUnit: AUAudioUnit {
         slot.set(CustomEffectRunner { block in made.process(block) })
     }
 
+    /// The echo a delay runs on this unit, kept for the same reason the
+    /// motion is: a turn of a setting keeps the repeats in flight.
+    var echo: DelayEffect?
+
+    /// Puts an echo's settings onto this unit: the standing line while it is
+    /// long enough for the time asked, a longer one that reads the standing
+    /// line for what is already in flight otherwise.
+    func setDelay(_ delay: Delay, sampleRate: Double) {
+        if let echo, echo.serves(delay, at: sampleRate) {
+            echo.update(delay)
+            return
+        }
+        let made = DelayEffect(delay, sampleRate: sampleRate, replacing: echo)
+        echo = made
+        slot.set(CustomEffectRunner { block in made.process(block) })
+    }
+
+    /// The driving a distortion runs on this unit, kept so a turn of the
+    /// drive or a change of character carries on from the sample it is on.
+    var driving: DistortionEffect?
+
+    /// Puts a distortion's settings onto this unit: the standing one at the
+    /// same rate, a new one otherwise.
+    func setDistortion(_ distortion: Distortion, sampleRate: Double) {
+        if let driving, driving.serves(at: sampleRate) {
+            driving.update(distortion)
+            return
+        }
+        let made = DistortionEffect(distortion, sampleRate: sampleRate)
+        driving = made
+        slot.set(CustomEffectRunner { block in made.process(block) })
+    }
+
     private var inputBus: AUAudioUnitBus!
     private var outputBus: AUAudioUnitBus!
     private var inputBusArray: AUAudioUnitBusArray!
@@ -398,7 +431,7 @@ final class ClosureAudioUnit: AUAudioUnit {
         )
     }()
 
-    /// A unit ready to be wired, like `AVAudioUnitDelay()` for the built-ins.
+    /// A unit ready to be wired, like `AVAudioUnitReverb()` for the built-ins.
     ///
     /// Instantiating an in-process unit completes inline, but nothing promises
     /// that, so the wait has a way out: if the unit cannot be made, the chain
@@ -436,8 +469,8 @@ final class ClosureAudioUnit: AUAudioUnit {
         _ = done.wait(timeout: .now() + 2)
         if let unit = made.unit { return unit }
         audioNoteOnce("a custom effect could not be created; that link in the chain passes sound through.")
-        let passthrough = AVAudioUnitDelay()
-        passthrough.wetDryMix = 0
+        let passthrough = AVAudioUnitEQ(numberOfBands: 1)
+        passthrough.bypass = true
         return passthrough
     }
 }

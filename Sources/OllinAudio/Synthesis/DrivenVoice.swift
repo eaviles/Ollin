@@ -37,6 +37,17 @@ struct WaveguideLine {
         return buffer[read]
     }
 
+    /// Reads the sample written `distance` steps ago, `1...capacity - 1`,
+    /// whatever the line's own length is: what a read between two samples
+    /// is made from.
+    func sample(behind distance: Int) -> Double {
+        let read = write >= distance ? write - distance : write + capacity - distance
+        return buffer[read]
+    }
+
+    /// The longest distance `sample(behind:)` can reach.
+    var reach: Int { capacity - 1 }
+
     /// Writes the next sample in and advances one step.
     mutating func advance(_ value: Double) {
         buffer[write] = value
@@ -255,38 +266,61 @@ struct BowVoice {
 /// shutting the reed. And what is heard is the bore's pressure with its
 /// standing part taken out, since the breath holds the mouthpiece above the
 /// room's pressure while the sound the tube radiates swings about it.
+///
+/// **The round trip takes the same time at every frequency.** A reed blown
+/// hard makes a wave with square edges, and a square wave is its harmonics
+/// arriving together. So the loss is a filter that delays every frequency by
+/// exactly one sample, and the part of the trip that falls between two
+/// samples is read by interpolation; a filter that delayed the harmonics
+/// differently from the note pulled the pitch as the breath rose (25 cents
+/// at the top of the range).
+///
+/// **And at the top of the range the edge is kept wider than a sample.** Up
+/// there a period is a couple of dozen samples, and an edge one sample wide
+/// can only sit on a sample, so the period snaps to a whole number of them.
+/// Two things hold it, both coming in as the half period falls from
+/// `topFrom` samples to `topFull`: the bore loses more of its top end, and
+/// full pressure blows no more than `topBreath` closing pressures, with the
+/// level made up, so the reed is not driven far into shutting. A note below
+/// that is untouched by either.
 struct TubeVoice {
     private var bore: WaveguideLine
 
     private var loopGain = 0.99
-    private var shade = 0.4
-    private var lastFilterInput = 0.0
+    /// The loss filter's outer taps: `[edge, 1 - 2 edge, edge]`, one sample
+    /// of delay at every frequency.
+    private var edge = 0.08
+    private var lastArrival = 0.0
+    private var arrivalBefore = 0.0
     private var closingPressure = 1.0
     /// The breath, in closing pressures, at which this note starts to sound.
     private var onset = 0.5
     /// The breath, in closing pressures, full pressure blows.
     private var full = 1.1
-    private var eta = 0.0
-    private var lastAllpassInput = 0.0
-    private var lastAllpassOutput = 0.0
+    /// What the radiated sound is scaled by, which is 1 below the top of the
+    /// range and makes up there for the breath full pressure no longer blows.
+    private var makeup = 1.0
+    /// The bore's length in samples, less the loss filter's one: the whole
+    /// part, and the four weights that read the fraction.
+    private var whole = 2
+    private var weights = (0.0, 1.0, 0.0, 0.0)
     private var noiseState: UInt64
     /// The DC block on what radiates: its pole, and its last input and output.
     private var blockPole = 0.997
     private var lastRadiatedInput = 0.0
     private var lastRadiated = 0.0
 
-    static func memoryNeeded(capacity: Int) -> Int { max(4, capacity) }
+    static func memoryNeeded(capacity: Int) -> Int { max(8, capacity) }
 
     init(buffer: UnsafeMutablePointer<Double>, capacity: Int, seed: UInt64) {
-        bore = WaveguideLine(buffer: buffer, capacity: max(4, capacity))
+        bore = WaveguideLine(buffer: buffer, capacity: max(8, capacity))
         noiseState = seed | 1
     }
 
     mutating func reset() {
         bore.reset(length: 2)
-        lastFilterInput = 0
-        lastAllpassInput = 0
-        lastAllpassOutput = 0
+        lastArrival = 0
+        arrivalBefore = 0
         lastRadiatedInput = 0
         lastRadiated = 0
     }
@@ -302,20 +336,37 @@ struct TubeVoice {
     /// breath settles in a few milliseconds rather than holding an offset.
     static let blockedBelow = 20.0
 
+    /// The half period, in samples, under which the top of the range begins,
+    /// and the one at which its two holds are whole.
+    static let topFrom = 80.0
+    static let topFull = 40.0
+    /// The loss filter's outer tap at the top of the range: an eighth, which
+    /// is the two-sample average's loss.
+    static let topEdge = 0.125
+    /// The most full pressure blows at the top of the range, in closing
+    /// pressures.
+    static let topBreath = 0.85
+
     mutating func start(frequency: Double, spec: BlownTube, sampleRate: Double) {
-        shade = min(max(0, spec.damping), 1) * 0.5
+        // How far into the top of the range this note is, `0...1`, by how
+        // few samples its half period has.
+        let halfPeriod = sampleRate / max(1e-6, frequency) / 2
+        let top = min(max((TubeVoice.topFrom - halfPeriod) / (TubeVoice.topFrom - TubeVoice.topFull), 0), 1)
+
+        // The bore's loss of its top end. A one-zero filter of coefficient
+        // `shade` loses `shade (1 - shade) (1 - cos w)` of a frequency, to
+        // first order; the three taps lose `2 edge (1 - cos w)` and delay
+        // every frequency alike.
+        let shade = min(max(0, spec.damping), 1) * 0.5
+        edge = max(shade * (1 - shade) / 2, TubeVoice.topEdge * top)
 
         // The load-bearing line. The tube is stopped at the reed and open at
         // the far end, so it fits a quarter of a wave rather than a half, and
         // its round trip is half a period rather than a whole one. That is
         // exactly why only the odd harmonics survive and why the tone is hollow.
-        // Half a period, less what the loss filter itself delays. The leftover
-        // fraction goes to an allpass for the same reason it does on a string:
-        // rounding the loop to whole samples is inaudible low down and most of
-        // a semitone out at the top of the range.
-        let (whole, allpass) = length(frequency: frequency, sampleRate: sampleRate)
-        eta = allpass
-        bore.reset(length: whole)
+        // Half a period, less the sample the loss filter takes.
+        setLength(frequency: frequency, sampleRate: sampleRate)
+        bore.reset(length: whole + 2)
 
         // The loop runs twice per period, so a given fade takes twice as many
         // trips as it would on a string of the same pitch.
@@ -337,13 +388,18 @@ struct TubeVoice {
         // which gives the breath m there. Measured against a sweep of the
         // breath at five pitches on each preset, it lands within 0.005.
         let w = 2 * Double.pi * frequency / sampleRate
-        let response = (1 - 2 * shade * (1 - shade) * (1 - cos(w))).squareRoot()
+        let response = (1 - 2 * edge * (1 - cos(w))) * readGain(at: w)
         let x = (1 + 1 / (loopGain * response)) / 2
         let k = (1 + loopGain) / (2 * loopGain)
         onset = (x * x + 2 * (k - 1) * x) / (2 * k)
-        // Full pressure blows what it always did; a tube whose onset is
-        // nearly that still swells over the top of the dial.
-        full = max(1.1 / closingPressure, onset * 1.15)
+        // Full pressure blows what it always did below the top of the range,
+        // and no more than `topBreath` at it; a tube whose onset is nearly
+        // that still swells over the top of the dial. The level the breath
+        // gives up is made up, so a note is as loud at full pressure as it
+        // was: the tube's level runs with the breath well above its onset.
+        let open = max(1.1 / closingPressure, onset * 1.15)
+        full = max(open + (min(open, TubeVoice.topBreath) - open) * top, onset * 1.15)
+        makeup = open / full
         blockPole = exp(-2 * Double.pi * TubeVoice.blockedBelow / sampleRate)
     }
 
@@ -358,19 +414,30 @@ struct TubeVoice {
     /// Moves a sounding tube to another pitch without emptying it. The reed,
     /// the loss, and the ring time stay what the note started with.
     mutating func retune(frequency: Double, sampleRate: Double) {
-        let (whole, allpass) = length(frequency: frequency, sampleRate: sampleRate)
-        eta = allpass
-        bore.setLength(whole)
+        setLength(frequency: frequency, sampleRate: sampleRate)
     }
 
-    /// The bore's whole-sample length and the allpass coefficient for the
-    /// fraction, for half a period at `frequency`.
-    private func length(frequency: Double, sampleRate: Double) -> (whole: Int, eta: Double) {
+    /// Sets where the bore is read for half a period at `frequency`: the
+    /// whole samples, and the weights of the four samples around the
+    /// fraction (a cubic through them, read in its middle span, where it is
+    /// most exact).
+    private mutating func setLength(frequency: Double, sampleRate: Double) {
         let period = sampleRate / max(1e-6, frequency)
-        let target = max(2.2, period / 2 - shade)
-        let whole = max(1, Int((target - 0.2).rounded(.down)))
-        let fraction = min(max(0.2, target - Double(whole)), 1.2)
-        return (whole, (1 - fraction) / (1 + fraction))
+        let length = min(max(2, period / 2 - 1), Double(bore.reach - 2))
+        whole = Int(length)
+        let f = length - Double(whole) + 1
+        weights.0 = -(f - 1) * (f - 2) * (f - 3) / 6
+        weights.1 = f * (f - 2) * (f - 3) / 2
+        weights.2 = -f * (f - 1) * (f - 3) / 2
+        weights.3 = f * (f - 1) * (f - 2) / 6
+    }
+
+    /// How much of a frequency the read between samples keeps, which is all
+    /// of a low one and a little less of a high one.
+    private func readGain(at w: Double) -> Double {
+        let re = weights.0 + weights.1 * cos(w) + weights.2 * cos(2 * w) + weights.3 * cos(3 * w)
+        let im = weights.1 * sin(w) + weights.2 * sin(2 * w) + weights.3 * sin(3 * w)
+        return (re * re + im * im).squareRoot()
     }
 
     /// One sample, with the player blowing at `pressure`, `0...1`.
@@ -381,13 +448,14 @@ struct TubeVoice {
 
         // The far end of the tube: what comes back is quieter, duller, and
         // upside down, because an open end reflects pressure inverted.
-        let arriving = bore.head
-        let damped = (1 - shade) * arriving + shade * lastFilterInput
-        lastFilterInput = arriving
-        let allpassed = eta * damped + lastAllpassInput - eta * lastAllpassOutput
-        lastAllpassInput = damped
-        lastAllpassOutput = allpassed
-        let returned = -loopGain * allpassed
+        let arriving = weights.0 * bore.sample(behind: whole - 1)
+            + weights.1 * bore.sample(behind: whole)
+            + weights.2 * bore.sample(behind: whole + 1)
+            + weights.3 * bore.sample(behind: whole + 2)
+        let damped = edge * arriving + (1 - 2 * edge) * lastArrival + edge * arrivalBefore
+        arrivalBefore = lastArrival
+        lastArrival = arriving
+        let returned = -loopGain * damped
 
         // How far the reed is open. It is pushed shut by the very pressure
         // difference that drives it, which is the feedback that makes the whole
@@ -406,13 +474,15 @@ struct TubeVoice {
         let radiated = returned - lastRadiatedInput + blockPole * lastRadiated
         lastRadiatedInput = returned
         lastRadiated = radiated
-        return radiated
+        return radiated * makeup
     }
 
     /// The pitch the tube is set up to sound, for checking the tuning.
     func soundingFrequency(sampleRate: Double) -> Double {
-        let fraction = (1 - eta) / (1 + eta)
-        return sampleRate / (2 * (Double(bore.sampleLength) + shade + fraction))
+        // The four weights read `whole` and the fraction they were made for;
+        // the fraction is their first moment less the span's start.
+        let fraction = weights.1 + 2 * weights.2 + 3 * weights.3 - 1
+        return sampleRate / (2 * (Double(whole) + fraction + 1))
     }
 
     private mutating func nextNoise() -> Double {

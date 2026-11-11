@@ -384,7 +384,7 @@ The tube is stopped at the reed and open at the far end, and that one fact is mo
 synth.pressure = 0.6 + 0.4 * abs(sin(time * 2))
 ```
 
-`pressure` is `0...1`, read once every block of a few milliseconds, and shared by every note the instrument is playing. That is right for one bow and one breath. At zero there is nothing to hear, because nothing is driving the model. A tube also needs a minimum breath before it speaks. Every tube speaks from 0.3, at every pitch and with any reed, and below that it is silent: where a note starts depends on how much its tube loses, so each note's start is worked out from its own loss and placed at 0.3 on the dial. What a tube sends out swings about zero, so a held breath leaves no standing offset to eat into the headroom of a mix. One limit stays: near the top of the range a tube blown hard leaves its note for the one a twelfth above, the way a clarinet overblows, and from about MIDI 87 up the breath that makes a note speak and the breath that tips it over are close together. The sources that are set going once (a wave, a plucked string, a struck body) ignore it entirely. Adding it changed nothing that already worked. A note pressed on its own ([`press`](#expression)) is driven by that instead, from the first press on, which is what a surface with a finger on every note wants.
+`pressure` is `0...1`, read once every block of a few milliseconds, and shared by every note the instrument is playing. That is right for one bow and one breath. At zero there is nothing to hear, because nothing is driving the model. A tube also needs a minimum breath before it speaks. Every tube speaks from 0.3, at every pitch and with any reed, and below that it is silent: where a note starts depends on how much its tube loses, so each note's start is worked out from its own loss and placed at 0.3 on the dial. What a tube sends out swings about zero, so a held breath leaves no standing offset to eat into the headroom of a mix. And a tube holds its pitch however hard it is blown, within five cents from A2 to C7. Near the top of that range a wave is only a couple of dozen samples long. There the bore loses more of its top end. Full pressure also blows less hard there than lower down, and the level is made up. The note is as loud as it would have been, and a little purer. The sources that are set going once (a wave, a plucked string, a struck body) ignore it entirely. Adding it changed nothing that already worked. A note pressed on its own ([`press`](#expression)) is driven by that instead, from the first press on, which is what a surface with a finger on every note wants.
 
 This is the control an envelope cannot give you. An envelope is decided when the note starts, while `pressure` is whatever you are doing right now.
 
@@ -818,14 +818,21 @@ synth.delay = Delay(time: 0.25)
 
 ```swift
 Delay(time: 0.25, feedback: 0.4, mix: 0.3, damping: 6000)
+Delay(time: 8, feedback: 0.9, mix: 0.5)             // a phrase, coming round
 ```
 
 | Setting | What it does |
 |---|---|
-| `time` | seconds before the first repeat, `0...2`. Two seconds is the longest the echo can wait, `Delay.maxTime`, so a longer time is held at 2 and reads back as 2 |
+| `time` | seconds before the first repeat, `0...60`. The repeat lands on the sample that time names. Sixty seconds is the longest the echo can wait, `Delay.maxTime`, so a longer time is held at 60 and reads back as 60 |
 | `feedback` | how much of each repeat feeds the next, `0...0.95`. Higher runs longer |
 | `mix` | how much of the result is the echo rather than the sound, `0...1` |
-| `damping` | where the repeats start losing their top, in Hz. Lower makes each repeat duller than the last, the way a real echo is |
+| `damping` | where the repeats start losing their top, in Hz. Lower makes each repeat duller than the last, the way a real echo is. At 20,000 and above nothing is taken, and every repeat is the sound as it went in |
+
+A short `time` is an echo. A long one with a high `feedback` is a loop. What you play comes round again `time` seconds later, under whatever you play next, a little quieter on each pass. At a feedback of 0.9 a phrase is still at a third of its level after ten passes.
+
+The echo is one line of samples with one loop around it. What comes out of the line loses its top end to the `damping` and goes back in. So each repeat has been through that loss once more than the one before.
+
+Turning `time` while the echo sounds moves it across a short fade, so it does not click. What is already in the line keeps sounding across the turn. A line holds two seconds of sound, or four, or eight, and so on up to the full minute. An echo gets the first of those that is long enough for its time, so a short echo costs a short line. A time turned past the standing line starts a longer one, which still plays what the old one held.
 
 #### Reverb
 
@@ -884,7 +891,19 @@ There are three controls. Two of them are the bottom and the top, `lowGain` belo
 Distortion(.softClip, drive: -6, mix: 0.3)
 ```
 
-`.softClip` gives warmth rather than damage. `.overdrive`, `.bitCrush`, `.ring` and `.squeeze` get progressively harsher. `drive` is how hard the sound is pushed in, in decibels, and `mix` dials the whole thing back to nothing.
+| Character | What it does to the sound |
+|---|---|
+| `.softClip` | rounds the peaks, the same way above and below. That adds only odd harmonics. Full scale stays full scale, so the quieter parts of a sound come up toward it. Warmth rather than damage |
+| `.overdrive` | flattens the peaks, one side before the other, which adds the even harmonics a soft clip leaves out. Harder, with an edge |
+| `.bitCrush` | rounds the level to a staircase and holds each step for several samples, the sound of too few bits. At the default drive that is six bits at 11,025 samples a second |
+| `.ring` | multiplies the sound by a sine at 300 Hz. Each tone in it is replaced by two, one 300 Hz above and one 300 Hz below, which belong to no chord. Metallic and unmusical on purpose |
+| `.squeeze` | lets through only a band around 1,200 Hz and drives it until it flattens, the way a pocket radio's speaker does |
+
+`drive` is how hard the sound is pushed in, in decibels from -80 to 20, and more is more broken. On the soft clip, the overdrive, and the squeeze, six decibels more doubles the gain into the curve. On the bit crush, six decibels doubles the height of a step and twelve halve the rate. On the ring it is the level going in, held within full scale, with -6 the sound at its own level. `mix` dials the whole thing back to nothing, and at 0 the sound passes untouched.
+
+Each character is arithmetic on the samples as they pass. Nothing is delayed and nothing rings on, so a note stops when it stops. With almost no drive, a soft clip and an overdrive are the sound itself.
+
+One limit: the curves run at the rate the chain runs at. A high note driven hard makes harmonics above what that rate can hold. They fold back down as tones that are not in the note.
 
 #### The four that move
 
