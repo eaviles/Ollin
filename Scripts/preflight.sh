@@ -3,6 +3,11 @@
 # Scripts/preflight.sh: run exactly the gates the current diff calls for.
 #
 #   Scripts/preflight.sh              # gates for the working-tree diff vs HEAD
+#   Scripts/preflight.sh --plan       # say which gates that diff would run and
+#                                     # which it would pass over, and run none
+#   Scripts/preflight.sh --plan Sources/OllinLive/A.swift Docs/B.md
+#                                     # the same question for a change to
+#                                     # these paths, whatever the tree holds
 #   Scripts/preflight.sh --milestone  # everything, regardless of the diff:
 #                                     # every figure re-rendered, the whole
 #                                     # test suite, the Examples build, and the
@@ -54,33 +59,42 @@
 #          read as a version: the bump the release needs and the shim rule,
 #          a rehearsal count before 1.0 and a gate from 1.0 on; its self-test
 #          runs first; about a second)
-#   building
+#   building. A gate marked "reaches" runs on a change under Sources/,
+#   External/, or to Package.* only when that change can move what the gate
+#   reads: the changed file's target is the one the gate builds or one it
+#   depends on, by the package's own manifest (Scripts/preflight-reach.py). A
+#   change to a host app reaches none of them, a change to one satellite
+#   reaches all but the phone build, a change to the core reaches all, and any
+#   doubt (the manifest itself, a file in no target's folder) reaches all.
 #     always
 #       -> Scripts/check-flags.sh (the command's flags against the table the
 #          shell completes from, and the checked-in completion file)
 #       -> Scripts/llms.sh --check (the checkout's llms.txt against what the
 #          reference writes; every line comes from a page title or an index
 #          line, so any prose change can stale it)
-#     Sources/, External/, or Package.* changed
+#     a change that reaches a library product
 #       -> Scripts/api-surface.sh (the public surface of every library
 #          product, written down under API/; a change there has to be
 #          recorded on purpose, and from 1.0 on a removal needs its shim;
 #          one build of the modules and about 13 s of reading them)
-#     a Guide or Docs prose change, or a framework change
+#     a Guide or Docs prose change, or a change that reaches the snippet
+#     checker or a module a block can import
 #       -> Scripts/check-snippets.sh (the code in the prose, compiled: only
 #          the blocks whose text, compiler, or module files changed since
 #          they last ran, so seconds after a prose edit and three and a half
 #          minutes when the core's interface moved)
-#     Sources/, External/, or Package.* changed
+#     a change that reaches a library product
 #       -> Scripts/api-docs.sh (the generated API reference, the one gate
 #          that reads doc comments: a link at a symbol that has gone, or a
 #          parameter documented under a name the signature dropped; it
 #          builds in a folder of its own, about 20 s when nothing it reads
 #          changed and two minutes after a change to the core)
+#     a change that reaches the Ollin product
 #       -> xcodebuild for generic iOS (nothing else compiles the framework
 #          for the phone, and a macOS-only call in a core file broke it
 #          silently within a day of the last hand check; under 10 s warm,
 #          about a minute after a change to the core)
+#     Sources/, External/, Package.*, Tests/, or the script changed
 #       -> Scripts/check-ci-swift.sh (every target under the CI runner's
 #          Swift, which refuses expressions the desk's newer compiler
 #          accepts; the tests too when Tests/ changed; about three minutes
@@ -95,7 +109,8 @@
 #     changed
 #       -> Scripts/site-hero.sh (the site's front-page ring is the sketch's
 #          recorded web page, committed as source; any of those moves it)
-#     Sources/, External/, Package.*, or figure sketches changed
+#     a change that reaches the figure runner or a module a figure can
+#     import, or a figure sketch or image changed
 #       -> Scripts/guide-figures.sh, last: the probe decides how much
 #          renders (about two minutes for the sample), and when it hands the
 #          run to the full render that is the one gate here that takes half
@@ -135,15 +150,22 @@ cd "$(dirname "$0")/.." || exit 1
 emulate -L zsh
 
 milestone=0
+plan=0
 case "$1" in
 --milestone) milestone=1 ;;
+--plan) plan=1 ;;
 --help | -h)
-    sed -n '3,131p' "$0" | sed 's|^# \?||'
+    sed -n '3,146p' "$0" | sed -E 's|^# ?||'
     exit 0
     ;;
 esac
 
 changed=$({ git diff --name-only --diff-filter=d HEAD; git ls-files --others --exclude-standard; } | sort -u)
+# A plan can be asked about paths instead of the tree's own diff: what would a
+# change to these cost?
+if (( plan )) && [[ $# -gt 1 ]]; then
+    changed=$(print -l -- "${@:2}" | sort -u)
+fi
 
 if [[ -z "$changed" && $milestone -eq 0 ]]; then
     echo "preflight: nothing changed against HEAD, nothing to gate"
@@ -163,6 +185,10 @@ typeset -a failures timings unchecked
 run() {
     local label="$1"
     shift
+    if (( plan )); then
+        echo "preflight: would run $label"
+        return
+    fi
     echo "preflight: running $label"
     local began=$EPOCHREALTIME outcome=ok code=0
     "$@" || code=$?
@@ -188,6 +214,36 @@ hosts=$(grep -E '^(Sources/(OllinLive|OllinLiveCoding|OllinRuntime|OllinRun|Olli
 gallery=$(grep -E '^Sources/OllinExamples/' <<<"$changed")
 hero=$(grep -E '^(Examples/Web/BreathingRing/|Sources/Ollin/Export/Web|Sources/OllinShaderText/|Sources/Ollin/Renderer/Shader|Scripts/site-hero\.sh$)' <<<"$changed")
 expander=$(grep -E '^(Sources/OllinExpander/|Scripts/web-expander/|External/CLibtess2/|Scripts/build-web-expander\.sh$)' <<<"$changed")
+
+# Which build gates a framework change can reach. A gate reads what some
+# target builds, so a change to a target it neither is nor depends on cannot
+# move it: a host app's sources cannot move a figure, the phone build, the
+# public listings, or what a snippet compiles against. The package's own
+# manifest says who depends on whom (Scripts/preflight-reach.py, whose
+# self-test runs first so a change to it cannot pass on a wrong reading), and
+# every doubt reaches everything: a manifest that will not print, a path in no
+# target's folder, a milestone.
+reach_libraries=1 reach_snippets=1 reach_ios=1 reach_figures=1
+if [[ -n "$framework" && $milestone -eq 0 ]]; then
+    run "preflight-reach (selftest)" Scripts/preflight-reach.py --selftest
+    if reached=$(swift package dump-package 2>/dev/null | Scripts/preflight-reach.py ${(f)framework}); then
+        for line in ${(f)reached}; do
+            case "$line" in
+            libraries=0) reach_libraries=0 ;;
+            snippets=0) reach_snippets=0 ;;
+            ios=0) reach_ios=0 ;;
+            figures=0) reach_figures=0 ;;
+            esac
+        done
+    else
+        echo "preflight: could not read which targets the diff reaches, so every build gate runs"
+    fi
+fi
+# Why a build gate is passed over: no framework change at all, or one that
+# cannot reach what the gate reads.
+unreached() {
+    if [[ -n "$framework" ]]; then echo "the change reaches nothing $1"; else echo "no framework change"; fi
+}
 
 # The em-dash and invisible-character net over added lines, for text written
 # through heredocs or scripts that the editing hooks never saw. CLAUDE.md and
@@ -348,10 +404,10 @@ run "llms" Scripts/llms.sh --check
 # and diffed against the build, so a public change is a deliberate one
 # (Scripts/api-surface.sh --record) and shows up in review beside the change
 # that made it. From 1.0 on this is where a rename without its shim fails.
-if [[ -n "$framework" || $milestone -eq 1 ]]; then
+if [[ ( -n "$framework" && $reach_libraries -eq 1 ) || $milestone -eq 1 ]]; then
     run "api-surface" Scripts/api-surface.sh
 else
-    skip "api-surface" "no framework change"
+    skip "api-surface" "$(unreached "a library product builds")"
 fi
 
 # The code inside the prose, the Guide's and the reference pages'. A prose
@@ -364,10 +420,10 @@ fi
 # when the core's interface moved. A milestone compiles every block.
 if [[ $milestone -eq 1 ]]; then
     run "check-snippets --no-cache" Scripts/check-snippets.sh --no-cache
-elif [[ -n "$reader_prose" || -n "$framework" ]]; then
+elif [[ -n "$reader_prose" || ( -n "$framework" && $reach_snippets -eq 1 ) ]]; then
     run "check-snippets" Scripts/check-snippets.sh
 else
-    skip "check-snippets" "no Guide or Docs prose change, and no framework change"
+    skip "check-snippets" "no Guide or Docs prose change, and $(unreached "a snippet compiles against")"
 fi
 
 # The generated API reference: DocC over every module `.spi.yml` publishes.
@@ -376,20 +432,20 @@ fi
 # name the signature dropped. Its symbol graphs build in a folder of their
 # own (see the script): about 20 s when nothing it reads changed, two minutes
 # after a change to the core.
-if [[ -n "$framework" || $milestone -eq 1 ]]; then
+if [[ ( -n "$framework" && $reach_libraries -eq 1 ) || $milestone -eq 1 ]]; then
     run "api-docs" Scripts/api-docs.sh
 else
-    skip "api-docs" "no framework change"
+    skip "api-docs" "$(unreached "a library product builds")"
 fi
 
 # The iOS build: nothing else compiles the framework for the phone, so a
 # macOS-only SwiftUI call in a core file breaks it without a word (2026-09-02:
 # a seed-box `onExitCommand`). Under 10 s when nothing changed, about a minute
 # after a change to the core.
-if [[ -n "$framework" || $milestone -eq 1 ]]; then
+if [[ ( -n "$framework" && $reach_ios -eq 1 ) || $milestone -eq 1 ]]; then
     run "iOS build" xcodebuild -scheme Ollin -destination 'generic/platform=iOS' -quiet build
 else
-    skip "iOS build" "no framework change"
+    skip "iOS build" "$(unreached "the phone build compiles")"
 fi
 
 # The runner's compiler: CI builds with an older Swift than the desk, and the
@@ -439,10 +495,10 @@ fi
 # passing probe has trusted the new framework it renders nothing at all.
 if [[ $milestone -eq 1 ]]; then
     run "guide-figures --force" Scripts/guide-figures.sh --force
-elif [[ -n "$framework" || -n "$figures" || -n "$images" ]]; then
+elif [[ ( -n "$framework" && $reach_figures -eq 1 ) || -n "$figures" || -n "$images" ]]; then
     run "guide-figures" Scripts/guide-figures.sh
 else
-    skip "guide-figures" "no framework, figure, or image change"
+    skip "guide-figures" "no figure or image change, and $(unreached "a figure draws with")"
 fi
 
 if [[ $milestone -eq 1 ]]; then
@@ -453,6 +509,9 @@ if [[ $milestone -eq 1 ]]; then
     run "check-determinism (every example twice under one seed)" Scripts/check-determinism.sh
 fi
 
+if (( plan )); then
+    exit 0
+fi
 echo ""
 echo "preflight: what each gate cost"
 print -l -- $timings
