@@ -76,6 +76,48 @@ struct ParamTests {
         #expect(control.step == 0.25)
     }
 
+    /// A stepped value is the decimal its range and its step name. The sum
+    /// that finds a mark carries binary noise (the 140th hundredth above 0.1
+    /// comes out as 1.5000000000000002), and a value kept that way is not the
+    /// 1.5 a person types for it. Every mark of the grid is checked against
+    /// the number as written, on a grid from above zero and on one from below.
+    @Test func aSteppedValueIsTheDecimalItsStepNames() {
+        let zoom = Param(wrappedValue: 0.75, 0.1...2, step: 0.01)
+        for hundredths in 10 ... 200 {
+            let written = Double(hundredths) / 100
+            zoom.wrappedValue = written
+            #expect(zoom.wrappedValue == written, "\(written)")
+        }
+        zoom.wrappedValue = 1.504
+        #expect(zoom.wrappedValue == 1.5)
+        zoom.wrappedValue = 1.506
+        #expect(zoom.wrappedValue == 1.51)
+
+        let lean = Param(wrappedValue: 0.0, -1...1, step: 0.1)
+        for tenths in -10 ... 10 {
+            let written = Double(tenths) / 10
+            lean.wrappedValue = written
+            #expect(lean.wrappedValue == written, "\(written)")
+        }
+
+        // A list of numbers snaps each value the way its element does.
+        let bars = Param(wrappedValue: [0.3, 1.5, 1.7], 0.1...2, step: 0.01)
+        #expect(bars.wrappedValue == [0.3, 1.5, 1.7])
+    }
+
+    /// A step that is not a short decimal names no decimal to land on, so its
+    /// marks stay the arithmetic as it comes, bit for bit.
+    @Test func aStepThatNamesNoDecimalKeepsItsArithmetic() {
+        let third = 1.0 / 3
+        let p = Param(wrappedValue: 0.0, 0...2, step: third)
+        p.wrappedValue = 0.7
+        #expect(p.wrappedValue == 2 * third)
+        p.wrappedValue = 1.6
+        #expect(p.wrappedValue == 5 * third)
+        #expect(third.decimalDigits == nil)
+        #expect(0.01.decimalDigits == 2 && 5.0.decimalDigits == 0)
+    }
+
     @Test func intClampsAndSteps() {
         let p = Param(wrappedValue: 5, 1...12)
         p.wrappedValue = 99

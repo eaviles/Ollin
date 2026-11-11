@@ -480,8 +480,9 @@ extension Double: ParamValue {
     public static func clamped(_ value: Double, by constraints: Constraints) -> Double {
         var v = Swift.min(Swift.max(value, constraints.range.lowerBound), constraints.range.upperBound)
         if let step = constraints.step, step > 0 {
-            let lower = constraints.range.lowerBound
-            v = lower + ((v - lower) / step).rounded() * step
+            // The mark as the decimal the range and the step name, so the
+            // value held is the one a person would type for it.
+            v = v.onGrid(of: step, from: constraints.range.lowerBound)
             v = Swift.min(v, constraints.range.upperBound)
         }
         return v

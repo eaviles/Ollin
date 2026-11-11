@@ -3608,7 +3608,7 @@ private struct BarsParamRow: View {
     private func snapped(_ value: Double) -> Double {
         guard let step = control.step, step > 0 else { return value }
         let lower = control.range.lowerBound
-        let stepped = lower + ((value - lower) / step).rounded() * step
+        let stepped = value.onGrid(of: step, from: lower)
         return Swift.min(Swift.max(stepped, lower), control.range.upperBound)
     }
 

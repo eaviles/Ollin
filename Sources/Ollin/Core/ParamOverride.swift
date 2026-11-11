@@ -278,7 +278,7 @@ extension ParamOverride {
                 let before = handle.param.stored
                 handle.param.restore(payload)
                 let landed = handle.param.stored
-                if ParamListing.value(of: landed) != ParamListing.value(of: payload) {
+                if !landedWhereAsked(landed, payload) {
                     handle.param.restore(before)
                     let takes = ParamListing.accepts(handle.control)
                     problems.append("--param \(override.name)=\(override.text): not a value this parameter holds, "
@@ -290,6 +290,29 @@ extension ParamOverride {
             }
         }
         return problems
+    }
+
+    /// Whether a parameter landed on the value it was asked for.
+    ///
+    /// A number counts as itself within a few rounding units. A step's mark
+    /// has two spellings, the decimal it names and the sum that finds it
+    /// (1.5 and 1.5000000000000002 for the 140th hundredth above 0.1), and a
+    /// listing or a recipe written while a parameter held the sum carries the
+    /// long one; both ask for the same mark. A value between two marks is
+    /// whole steps away from either, so it is still refused. Every other kind
+    /// compares in the listing's spelling.
+    private static func landedWhereAsked(_ landed: ParamStored, _ asked: ParamStored) -> Bool {
+        func near(_ a: Double, _ b: Double) -> Bool {
+            a == b || abs(a - b) <= 4 * Swift.max(a.ulp, b.ulp)
+        }
+        switch (landed, asked) {
+        case (.number(let a), .number(let b)):
+            return near(a, b)
+        case (.numbers(let a), .numbers(let b)):
+            return a.count == b.count && zip(a, b).allSatisfy(near)
+        default:
+            return ParamListing.value(of: landed) == ParamListing.value(of: asked)
+        }
     }
 
     @MainActor

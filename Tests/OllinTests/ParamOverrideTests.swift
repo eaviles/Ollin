@@ -167,6 +167,57 @@ struct ParamOverrideTests {
         #expect(sketch.lap == 15)
     }
 
+    /// A round decimal on the parameter's step is a value it holds, and asking
+    /// for it by name is accepted: the 140th hundredth above 0.1 is 1.5, where
+    /// a value snapped by the sum alone was 1.5000000000000002 and every such
+    /// request was refused in favor of a number nobody would type. A value
+    /// between two marks is still refused, and its nearest is named as the
+    /// decimal it is.
+    @Test func aRoundDecimalOnTheStepIsAccepted() throws {
+        final class Zoomed: Sketch {
+            @Param("Zoom", 0.1 ... 2, step: 0.01) var zoom = 0.75
+        }
+        let sketch = Zoomed()
+        for text in ["1.5", "1.25", "0.3", "1.7", "0.7", "1.1", "1", "2", "0.1"] {
+            let problems = ParamOverride.apply([ParamOverride(name: "zoom", text: text)], to: sketch)
+            #expect(problems.isEmpty, "\(text): \(problems)")
+            #expect(sketch.zoom == Double(text))
+        }
+        let between = ParamOverride.apply([ParamOverride(name: "zoom", text: "1.504")], to: sketch)
+        #expect(between.count == 1)
+        #expect(between.first?.contains("1.5 is the nearest") == true)
+        #expect(between.first?.contains("0.1...2, by 0.01") == true)
+        #expect(sketch.zoom == 0.1)
+    }
+
+    /// A mark has two spellings, the decimal and the sum that finds it, and a
+    /// listing or a recipe written while a parameter held the sum carries the
+    /// long one: 1.5000000000000002 for the 140th hundredth above 0.1. Both
+    /// ask for the same mark, so both are accepted and both hold the decimal;
+    /// refusing the long one would stop every command line saved before the
+    /// value was held as a decimal. The nearest value one rounding unit wide
+    /// of a mark is the mark; a hundredth of a step away is not.
+    @Test func theSumThatFindsAStepIsAcceptedAsThatStep() throws {
+        final class Zoomed: Sketch {
+            @Param("Zoom", 0.1 ... 2, step: 0.01) var zoom = 0.75
+            @Param("Weights", 0.1 ... 2, step: 0.01) var weights = [0.5, 0.5]
+        }
+        let sketch = Zoomed()
+        for (text, held) in [("1.5000000000000002", 1.5), ("1.2500000000000002", 1.25),
+                             ("0.30000000000000004", 0.3), ("1.7000000000000002", 1.7)] {
+            let problems = ParamOverride.apply([ParamOverride(name: "zoom", text: text)], to: sketch)
+            #expect(problems.isEmpty, "\(text): \(problems)")
+            #expect(sketch.zoom == held)
+        }
+        let list = ParamOverride.apply([ParamOverride(name: "weights", text: "1.5000000000000002,0.3")],
+                                       to: sketch)
+        #expect(list.isEmpty, "\(list)")
+        #expect(sketch.weights == [1.5, 0.3])
+        let off = ParamOverride.apply([ParamOverride(name: "zoom", text: "1.5001")], to: sketch)
+        #expect(off.count == 1)
+        #expect(sketch.zoom == 1.7)
+    }
+
     @Test func aRangeReadsBothSpellingsAndEitherWayRound() throws {
         let sketch = ParamSketch()
         #expect(ParamOverride.apply([.init(name: "band", text: "0.1,0.9")], to: sketch).isEmpty)

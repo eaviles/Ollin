@@ -110,6 +110,19 @@ struct ParamListingTests {
     /// A group is a block under its own name, the way the inspector stacks its
     /// cards, and a parameter a show-rule is hiding says so rather than looking
     /// like a value nobody is reading.
+    /// A whole-number parameter that steps says its step, as a number with a
+    /// step does: a line reading `8...128` for a parameter that holds only
+    /// multiples of eight invites a value it will refuse.
+    @Test func aSteppedWholeNumberSaysItsStep() throws {
+        final class Sampled: Sketch {
+            @Param("Samples", 8 ... 128, step: 8) var samples = 32
+            @Param(1 ... 12) var rings = 5
+        }
+        let lines = ParamListing.text(for: Sampled()).split(separator: "\n").map(String.init)
+        #expect(lines.contains { $0.contains("samples") && $0.hasSuffix("8...128, by 8") })
+        #expect(lines.contains { $0.contains("rings") && $0.hasSuffix("1...12") })
+    }
+
     @Test func groupsAreBlocksAndAHiddenRowSaysSo() throws {
         let sketch = Listed()
         try sketch.runSetup()

@@ -99,7 +99,8 @@ enum ParamListing {
             let step = s.step.map { ", by \(number($0))" } ?? ""
             return "\(number(s.range.lowerBound))...\(number(s.range.upperBound))" + step
         case .stepper(let s):
-            return "\(s.range.lowerBound)...\(s.range.upperBound)"
+            let step = s.step > 1 ? ", by \(s.step)" : ""
+            return "\(s.range.lowerBound)...\(s.range.upperBound)" + step
         case .menu(let m):
             return m.options.joined(separator: ", ")
         case .vector(let v):

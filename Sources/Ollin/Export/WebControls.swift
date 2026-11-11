@@ -406,7 +406,7 @@ extension OllinApp {
         var out: [(value: Double, isEnd: Bool)] = []
         for (raw, isEnd) in [(lo, true), (hi, true), (lo + 0.381966 * (hi - lo), false), (lo + 0.618034 * (hi - lo), false)] {
             var x = raw
-            if let step, step > 0 { x = min(hi, lo + ((x - lo) / step).rounded() * step) }
+            if let step, step > 0 { x = min(hi, x.onGrid(of: step, from: lo)) }
             if integer { x = x.rounded() }
             let scale = max(1, abs(x), abs(base))
             if abs(x - base) <= 1e-9 * scale { continue }
