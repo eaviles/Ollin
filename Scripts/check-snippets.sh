@@ -15,6 +15,10 @@
 #                                                   # the last run remembers
 #   Scripts/check-snippets.sh --inputs              # what a kept answer rests on:
 #                                                   # the headers and module files
+#   Scripts/check-snippets.sh --no-direct           # compile through the sketch
+#                                                   # loader, four processes a block
+#   Scripts/check-snippets.sh --compare-routes      # compile every block both ways
+#                                                   # and fail on a difference
 #
 # The other gates verify that a page can be reached and reads well. None of them
 # opens a code block, which is how chapter 1 shipped with a radius wrong by a
@@ -29,8 +33,12 @@
 # rename into a failure here. It also resolves `ollin docs Page#section`
 # commands and the example names written as prose beside an Examples/ link.
 #
-# Three and a half minutes for both trees on the M2 when every block compiles
-# (2,918 of them, each its own compiler process, across the cores). A run
+# Every block is its own compile, 2,918 of them, across the cores. Through the
+# sketch loader that is four processes a block (the tool finder, the driver,
+# the driver's question about the target, the compiler). The checker asks the
+# driver once for the command it would run and then runs the compiler alone,
+# compiling a sample of each run through the loader as well and falling back
+# to the loader for everything if the two ever disagree. A run
 # keeps each block's answer under a digest of what its compile read (the
 # block's text, the compiler, and the bytes of every module file its imports
 # load), so the next run compiles only the blocks for which one of those

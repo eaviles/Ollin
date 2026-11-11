@@ -94,6 +94,8 @@ var named: [String] = []
 var listSkips = false
 var remembering = true
 var listInputs = false
+var usingDirect = true
+var comparingRoutes = false
 var argv = Array(CommandLine.arguments.dropFirst())
 while let arg = argv.first {
     argv.removeFirst()
@@ -103,6 +105,8 @@ while let arg = argv.first {
     case "--record": record = true
     case "--no-cache": remembering = false
     case "--inputs": listInputs = true
+    case "--no-direct": usingDirect = false
+    case "--compare-routes": comparingRoutes = true
     case let path where path.hasSuffix(".md"): named.append(path)
     default:
         FileHandle.standardError.write(Data("check-snippets: unknown argument \(arg)\n".utf8))
@@ -180,8 +184,6 @@ func compiled(_ job: Job) -> String {
     job.prelude.isEmpty ? job.source : job.prelude + "\n" + job.source
 }
 
-let lock = NSLock()
-
 // What each job's compile reads, as the key its answer is kept under (see
 // Remembered.swift). The module files a set of imports loads are asked of the
 // compiler once per distinct set, of which a run has a few dozen, and a job
@@ -233,49 +235,59 @@ let keys: [String?] = jobs.indices.map { index in
 /// How many blocks keep the answer of an earlier run.
 let reused = keys.filter { key in key.flatMap { remembered.results[$0] } != nil }.count
 
-/// One loader per job, run across the cores. `typecheck` writes its own work
-/// directory per call, so the runs do not collide.
-var failures: [(Block, String)] = []
-let answers = Shelf<(key: String, message: String)>()
-var done = 0
+// The compile pass (CompilePass.swift). A block is compiled by the compiler
+// process alone, with the command line the driver would have given it
+// (DirectCompile.swift), and a sample of each run's blocks goes through the
+// loader as well. If one of the sample disagrees, the direct answers are
+// thrown away and the loader compiles everything, which is what `--no-direct`
+// asks for outright. `--compare-routes` compiles every block both ways,
+// whatever is kept, and stops on what it finds.
 let total = jobs.count
 let quiet = ProcessInfo.processInfo.environment["OLLIN_SNIPPETS_QUIET"] != nil
-
-DispatchQueue.concurrentPerform(iterations: jobs.count) { index in
+let work: [CompileJob] = jobs.indices.map { index in
     let job = jobs[index]
-    // A kept answer is "" for a block that compiled, else the error it gave.
-    var failed = false
-    var message = ""
-    var keep = true
-    let known = keys[index].flatMap { remembered.results[$0] }
-    if let known {
-        failed = !known.isEmpty
-        message = known
-    } else {
-        let tree = trees[job.tree]
-        let name = tree.preambleStem(for: job.block.page) + "_\(job.block.line).swift"
-        let loader = SketchLoader(sketchPath: tree.snippetsDir + "/" + name)
-        if case .failure(let error) = loader.typecheck(compiled(job), fileName: name) {
-            let log = "\(error)"
-            failed = true
-            message = firstError(log, preambleLines: job.preambleLines)
-            // Only a diagnostic is an answer worth keeping. A compiler that
-            // died or could not start says nothing about the block, and
-            // remembering that would repeat it on every later run.
-            keep = log.contains(": error: ") && !message.isEmpty
-        }
-    }
-    if keep, let key = keys[index] { answers.put((key, message), at: index) }
-    lock.lock()
-    done += 1
-    if failed { failures.append((job.block, message)) }
-    if !quiet && done % 25 == 0 {
-        FileHandle.standardError.write(Data("  \(done)/\(total)\r".utf8))
-    }
-    lock.unlock()
+    let tree = trees[job.tree]
+    let name = tree.preambleStem(for: job.block.page) + "_\(job.block.line).swift"
+    return CompileJob(source: compiled(job), name: name, loaderPath: tree.snippetsDir + "/" + name,
+                      preambleLines: job.preambleLines,
+                      known: comparingRoutes ? nil : keys[index].flatMap { remembered.results[$0] },
+                      place: "\(job.block.page):\(job.block.line)")
 }
-remembered.save(Dictionary(answers.all.map { ($0.key, $0.message) }, uniquingKeysWith: { first, _ in first }),
-                whole: named.isEmpty && only == nil)
+let direct = usingDirect ? DirectCompile(moduleArguments: inputs.moduleArguments) : nil
+let compiling = work.indices.filter { work[$0].known == nil }
+// Every twenty-fourth block that compiles, the first among them, so a run
+// that compiles anything compares something.
+let sample = Set(comparingRoutes ? compiling
+                 : compiling.enumerated().filter { $0.offset % 24 == 0 }.map(\.element))
+let reader: FirstError = { log, preambleLines in firstError(log, preambleLines: preambleLines) }
+var pass = compileAll(work, direct: direct, compares: sample, firstError: reader, quiet: quiet)
+if comparingRoutes {
+    guard direct != nil else {
+        print("check-snippets: the driver's command could not be read, so there is no second route to compare")
+        exit(1)
+    }
+    for line in pass.disagreements { print(line) }
+    print("check-snippets: \(total) blocks compiled both ways, by the compiler alone and through the loader; "
+          + "\(pass.disagreements.count) disagree")
+    exit(pass.disagreements.isEmpty ? 0 : 1)
+}
+var route = direct == nil ? "through the loader" : "by the compiler alone, \(sample.count) of them through the loader too"
+if !pass.disagreements.isEmpty {
+    FileHandle.standardError.write(Data(("check-snippets: the compiler alone and the loader disagree on "
+        + "\(pass.disagreements.count) of \(sample.count) sampled blocks, so every block is compiled "
+        + "through the loader instead:\n" + pass.disagreements.prefix(5).map { "    " + $0 }.joined(separator: "\n")
+        + "\n").utf8))
+    pass = compileAll(work, direct: nil, compares: [], firstError: reader, quiet: quiet)
+    route = "through the loader, after the compiler alone disagreed with it"
+}
+
+var failures: [(Block, String)] = []
+var answers: [String: String] = [:]
+for (index, answer) in pass.answers.enumerated() {
+    if answer.failed { failures.append((jobs[index].block, answer.message)) }
+    if answer.keep, let key = keys[index] { answers[key] = answer.message }
+}
+remembered.save(answers, whole: named.isEmpty && only == nil)
 
 // MARK: - Report
 
@@ -444,6 +456,9 @@ if reused > 0 {
     print("check-snippets: \(total - reused) of \(total) blocks compiled; the other \(reused) read the same "
           + "text against the same compiler and module files as when they last ran, and kept that answer "
           + "(--no-cache compiles them all)")
+}
+if total > reused {
+    print("check-snippets: \(total - reused) blocks compiled \(route)")
 }
 print("check-snippets: \(jobs.count) Swift blocks checked, \(skipped.count) skipped, "
       + "\(shellBlocks.count) shell blocks read for commands, "

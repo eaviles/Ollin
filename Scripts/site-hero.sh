@@ -32,7 +32,14 @@ echo "site-hero: recording Examples/Web/BreathingRing as its inline page"
 # fresh seed and stamps it in the page's recipe, so the bytes moved every time
 # even though the ring is identical. The ring reads no randomness, so which
 # seed it is does not matter, only that it is always the same one.
-swift run --package-path Examples Example-Web-BreathingRing --export-web "$page" --inline --seed 1 || exit 1
+#
+# The sketch is compiled from its own file by the single-file runner, against
+# the framework the main build folder already holds. Running the example's own
+# target (`swift run --package-path Examples ...`) draws the same page, and
+# builds the whole framework a second time in the examples' build folder to do
+# it: 104 s of a preflight after any change to the shaders or the exporter,
+# against 42 s when that folder happened to be current (measured 2026-11-10).
+swift run OllinRun Examples/Web/BreathingRing/Sketch.swift --export-web "$page" --inline --seed 1 || exit 1
 if [[ ! -s "$page" ]]; then
     echo "site-hero: nothing was written to $page" >&2
     exit 1

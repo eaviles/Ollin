@@ -4,8 +4,8 @@ import OllinRuntime
 
 // MARK: - Results kept from one run to the next
 //
-// Every block is its own compiler process, and about three thousand of them
-// take three and a half minutes (measured 2026-11-10). A block's answer is a
+// Every block is its own compile, and about three thousand of them take
+// minutes however they are run (CompilePass.swift). A block's answer is a
 // function of what the compiler reads for it: its text, the compiler, the
 // flags, and the module files its imports load. So the answer is kept under a
 // digest of exactly those, and a block is compiled again only when one of
@@ -86,7 +86,8 @@ final class Shelf<Value>: @unchecked Sendable {
 /// Everything a block's compile reads besides the block's own text, as a
 /// digest per set of imports.
 final class CompileInputs: @unchecked Sendable {
-    private let moduleArguments: [String]
+    /// The search paths and module maps a compile is given, as the loader lists them.
+    let moduleArguments: [String]
     private let work: String
     /// The compiler, the SDK, the flags, the C headers the module maps name,
     /// and the checker's own sources: what every answer rests on whatever the

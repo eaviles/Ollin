@@ -81,8 +81,9 @@
 #     checker or a module a block can import
 #       -> Scripts/check-snippets.sh (the code in the prose, compiled: only
 #          the blocks whose text, compiler, or module files changed since
-#          they last ran, so seconds after a prose edit and three and a half
-#          minutes when the core's interface moved)
+#          they last ran, so seconds after a prose edit and about two
+#          minutes when the core's interface moved, by the compiler alone
+#          with a sample of them through the sketch loader as a check)
 #     a change that reaches a library product
 #       -> Scripts/api-docs.sh (the generated API reference, the one gate
 #          that reads doc comments: a link at a symbol that has gone, or a
@@ -416,8 +417,9 @@ fi
 # Sources/ shows up in a page the diff never touched. The checker keeps each
 # block's answer under a digest of what its compile read, so it compiles only
 # the blocks whose text, compiler, or module files changed: seconds after a
-# prose edit or a change inside a function body, three and a half minutes
-# when the core's interface moved. A milestone compiles every block.
+# prose edit or a change inside a function body, about two minutes when the
+# core's interface moved (1 min 44 s on a quiet M2, more with the machine
+# busy). A milestone compiles every block.
 if [[ $milestone -eq 1 ]]; then
     run "check-snippets --no-cache" Scripts/check-snippets.sh --no-cache
 elif [[ -n "$reader_prose" || ( -n "$framework" && $reach_snippets -eq 1 ) ]]; then
