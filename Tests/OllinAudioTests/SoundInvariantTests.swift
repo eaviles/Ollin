@@ -351,6 +351,36 @@ struct SoundInvariantTests {
         }
     }
 
+    /// Holding the pitch costs the tube little of its tone either: it stays
+    /// the odd series a stopped tube is, the third harmonic a third of the
+    /// note and the fifth a fifth, within two decibels through A5 at any
+    /// pressure, with the second harmonic all but absent. What the top of the
+    /// range gives up is above that: at E6 the third still holds, and the
+    /// harmonics past 8 kHz are 1 to 13 dB under where they were.
+    ///
+    /// Measured 2026-11-11 against the tube before its loop changed: the
+    /// third and fifth moved by about a decibel at most from A2 to A5 on
+    /// every preset, the ninth and eleventh by up to 6 dB at E5 and A5.
+    @Test(arguments: [("clarinet", BlownTube.clarinet), ("reedy", .reedy), ("hollow", .hollow)])
+    func aBlownTubeKeepsItsOddSeries(tube: (name: String, spec: BlownTube)) {
+        for midi in [57.0, 69, 81, 88] {
+            for pressure in [0.6, 1.0] {
+                let s = render(Voice(blown: tube.spec, gain: 0.6), midi: midi, seconds: 0.9, velocity: 0.9, drive: pressure)
+                let slice = s[Int(0.4 * Self.sampleRate)...]
+                let note = pitch(slice, near: hertz(midi))
+                func decibels(_ harmonic: Double) -> Double {
+                    20 * log10(max(pitch(slice, near: harmonic * note.hz).level, 1e-9) / note.level)
+                }
+                let label = "\(tube.name) at MIDI \(midi), pressure \(pressure)"
+                #expect(abs(decibels(3) + 9.54) <= 2, "\(label): the third harmonic is \(decibels(3)) dB")
+                #expect(decibels(2) < -25, "\(label): the second harmonic is \(decibels(2)) dB")
+                if midi <= 81 {
+                    #expect(abs(decibels(5) + 13.98) <= 2, "\(label): the fifth harmonic is \(decibels(5)) dB")
+                }
+            }
+        }
+    }
+
     /// A shape struck is a membrane of that shape: a disc rings at the Bessel
     /// zeros a circular membrane does, in order and in ratio.
     @Test func aStruckDiscRingsAtAMembranesModes() throws {
