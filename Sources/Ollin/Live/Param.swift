@@ -179,16 +179,90 @@ public enum ParamControl {
     }
 
     /// An enum parameter: a pop-up menu (or segmented control) over `options`,
-    /// addressed by index.
+    /// addressed by index. `groups` folds a long list into submenus; a host
+    /// that shows a flat list reads `options` alone and loses nothing.
     public struct Menu: Sendable {
         public let options: [String]
         public let style: ParamMenuStyle
+        /// The submenus the pop-up folds some of its options into, or none
+        /// for a flat list. An option no group names stays on the menu's
+        /// first level.
+        public let groups: [Group]
         public let read: @Sendable () -> Int
         public let write: @Sendable (Int) -> Void
         public init(options: [String], style: ParamMenuStyle = .menu,
+                    groups: [Group] = [],
                     read: @escaping @Sendable () -> Int,
                     write: @escaping @Sendable (Int) -> Void) {
-            self.options = options; self.style = style; self.read = read; self.write = write
+            self.options = options; self.style = style; self.groups = groups
+            self.read = read; self.write = write
+        }
+
+        /// One submenu: its title, and the options under it by their index
+        /// in `options`.
+        public struct Group: Sendable, Equatable {
+            public let title: String
+            public let indices: [Int]
+            public init(title: String, indices: [Int]) {
+                self.title = title; self.indices = indices
+            }
+        }
+
+        /// One row of the menu's first level: an option on its own, or a
+        /// submenu.
+        package enum Row: Sendable, Equatable {
+            case option(Int)
+            case group(Group)
+        }
+
+        /// The first level as it reads top to bottom, in the order of
+        /// `options`: an option no group names is a row where it stands, and
+        /// a submenu is a row where its first option stood. Every option is
+        /// reachable exactly once: an index outside `options` is dropped, an
+        /// option two groups name stays with the first, and a group left
+        /// with nothing is no row at all.
+        package var rows: [Row] {
+            var owner: [Int: Int] = [:]
+            var kept: [[Int]] = Array(repeating: [], count: groups.count)
+            for (g, group) in groups.enumerated() {
+                for index in group.indices where options.indices.contains(index) && owner[index] == nil {
+                    owner[index] = g
+                    kept[g].append(index)
+                }
+            }
+            var placed: Set<Int> = []
+            var rows: [Row] = []
+            for index in options.indices {
+                guard let g = owner[index] else {
+                    rows.append(.option(index))
+                    continue
+                }
+                if placed.insert(g).inserted {
+                    rows.append(.group(Group(title: groups[g].title, indices: kept[g])))
+                }
+            }
+            return rows
+        }
+
+        /// What an option reads inside the submenu titled `title`: its name
+        /// without the title's words where it ends or begins with them
+        /// ("Ease In Out Cubic" under "Cubic" reads "Ease In Out"), and its
+        /// whole name where that would leave nothing or the title is not
+        /// part of it.
+        package static func shortLabel(_ option: String, under title: String) -> String {
+            let words = option.split(separator: " ")
+            let drop = title.split(separator: " ")
+            guard !drop.isEmpty, words.count > drop.count else { return option }
+            func matches(_ slice: ArraySlice<Substring>) -> Bool {
+                zip(slice, drop).allSatisfy { $0.lowercased() == $1.lowercased() }
+            }
+            if matches(words.suffix(drop.count)) {
+                return words.dropLast(drop.count).joined(separator: " ")
+            }
+            if matches(words.prefix(drop.count)) {
+                return words.dropFirst(drop.count).joined(separator: " ")
+            }
+            return option
         }
     }
 
@@ -1004,9 +1078,25 @@ public protocol ParamChoices: ParamValue where Constraints == ParamMenuStyle {
     /// The menu's roster, in display order. Names are humanized for display
     /// ("goldenHour" reads "Golden Hour") and used as-is for persistence.
     static var paramChoices: [(name: String, value: Self)] { get }
+
+    /// The submenus a long roster folds into: each a title and the names of
+    /// the choices under it, as `paramChoices` spells them. A choice no group
+    /// names stays on the menu's first level, and a name the roster does not
+    /// hold is ignored. None by default, which is a flat menu; a roster of
+    /// thirty reads better as ten rows of three.
+    ///
+    /// ```swift
+    /// static var paramChoiceGroups: [(title: String, names: [String])] {
+    ///     [("Metal", ["brushedMetal", "polishedMetal"]),
+    ///      ("Glass", ["frostedGlass", "clearGlass"])]
+    /// }
+    /// ```
+    static var paramChoiceGroups: [(title: String, names: [String])] { get }
 }
 
 public extension ParamChoices {
+    static var paramChoiceGroups: [(title: String, names: [String])] { [] }
+
     static func clamped(_ value: Self, by _: ParamMenuStyle) -> Self { value }
 
     static func stored(_ value: Self) -> ParamStored {
@@ -1020,8 +1110,14 @@ public extension ParamChoices {
 
     static func control(for param: Param<Self>) -> ParamControl {
         let choices = paramChoices
+        let groups = paramChoiceGroups.map { group in
+            ParamControl.Menu.Group(
+                title: group.title,
+                indices: group.names.compactMap { name in choices.firstIndex { $0.name == name } })
+        }
         return .menu(.init(options: choices.map { ParamHandle.humanize($0.name) },
                            style: param.constraints,
+                           groups: groups,
                            read: {
                                let current = param.wrappedValue
                                return choices.firstIndex { $0.value == current } ?? 0
@@ -1081,6 +1177,15 @@ extension LightingPreset: ParamChoices {
 // entry, and a reload restores that rather than the closure.
 extension Easing: ParamChoices {
     public static var paramChoices: [(name: String, value: Easing)] { Easing.all }
+
+    /// The thirty curves that come in threes (in, out, in and out) fold into
+    /// one submenu per family, so the menu's first level is twelve rows:
+    /// linear, the ten families, and smoothstep.
+    public static var paramChoiceGroups: [(title: String, names: [String])] {
+        Easing.families.map { family in
+            (family, ["easeIn" + family, "easeOut" + family, "easeInOut" + family])
+        }
+    }
 }
 
 // MARK: - Tempo and note length

@@ -415,6 +415,8 @@ Only the parameters you moved are written, and only the value on the line change
 
 Going the other way is one click. Every parameter you turn shows a small dot after its name. Click it, or right-click the row and choose **Reset**. The value goes back to what the `@Param` line declares while the sketch keeps running. **Reset all** beside the save button puts every parameter back at once.
 
+A change you did not mean is one key away. Press ⌘Z and the last thing you turned goes back, a whole slider drag at a time. ⇧⌘Z brings it forward again. If that was the first time you turned the parameter, its dot leaves along with the value. A reset undoes the same way.
+
 A number keeps the shape you gave it. A whole default stays whole while the value is whole, and one written with a point keeps its point. That second rule matters because `86` and `86.0` are different types to Swift, and only `86.0` is the `Double` you declared.
 
 One limit applies. A default the sketch works out has no value to replace. See it for yourself by making the `Size` line a calculation and pressing the button again:

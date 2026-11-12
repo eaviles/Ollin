@@ -539,11 +539,16 @@ enum ParamControl
     let read: () -> Insets
     let write: (Insets) -> Void
   struct Menu: Sendable
-    init(options: [String], style: ParamMenuStyle = default, read: () -> Int, write: (Int) -> Void)
+    init(options: [String], style: ParamMenuStyle = default, groups: [ParamControl.Menu.Group] = default, read: () -> Int, write: (Int) -> Void)
+    let groups: [ParamControl.Menu.Group]
     let options: [String]
     let read: () -> Int
     let style: ParamMenuStyle
     let write: (Int) -> Void
+    struct Group: Equatable, Sendable
+      init(title: String, indices: [Int])
+      let indices: [Int]
+      let title: String
   struct RangeFields: Sendable
     init(outer: ClosedRange<Double>, style: ParamNumericStyle = default, read: () -> ClosedRange<Double>, write: (ClosedRange<Double>) -> Void)
     let outer: ClosedRange<Double>
@@ -2923,6 +2928,8 @@ protocol ParamChoices: ParamValue, Sendable, Equatable where Self : ParamValue, 
   static func control(for: Param<Self>) -> ParamControl
   static func restored(_: ParamStored) -> Self?
   static func stored(_: Self) -> ParamStored
+  static var paramChoiceGroups: [(title: String, names: [String])] { get }
+  static var paramChoiceGroups: [(title: String, names: [String])] { get }
   static var paramChoices: [(name: String, value: Self)] { get }
 protocol ParamOption: CaseIterable, ParamValue, Sendable, Equatable where Self : ParamValue, Self : CaseIterable, Self.Constraints == ParamMenuStyle
   static func clamped(_: Self, by: ParamMenuStyle) -> Self
@@ -3962,6 +3969,7 @@ struct Easing: ParamChoices, ParamValue, Equatable, Sendable
   static let easeOutSine: Easing
   static let linear: Easing
   static let smoothstep: Easing
+  static var paramChoiceGroups: [(title: String, names: [String])] { get }
   static var paramChoices: [(name: String, value: Easing)] { get }
 struct Ellipse: PlaneCurve, Decodable, Encodable, Equatable, Hashable, Sendable
   func contains(_: Vector2) -> Bool

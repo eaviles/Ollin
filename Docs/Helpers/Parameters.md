@@ -46,6 +46,7 @@ final class Bands: Sketch {
 - [Where the controls appear](#controls)
 - [Saving what you turned](#saving)
 - [Putting a parameter back](#reset)
+- [Undoing a change](#undo)
 - [Scrubbing values](#scrubbing)
 - [Smoothing](#smoothing)
 - [Driving a parameter from outside](#binding)
@@ -99,11 +100,29 @@ The menu shows the case names in humanized form, so `meshLines` reads as "Mesh L
 
 A type that is not an enum but has a fixed set of named built-in values gets a menu through `ParamChoices` instead. Provide `paramChoices`, a list of `(name, value)` pairs, and the inspector shows the humanized names. `LightingPreset`, `Material`, `Easing`, `Fog`, and `Environment` already conform, so `@Param var finish: Material = .glossy` puts the whole curated library on a menu and `@Param var surroundings = Environment.studio` the twenty built-in environments (an environment built another way, a `.sky(...)` or a built-in with `lightingOnly()` applied, is off that menu; keep the parameter on the plain built-in and apply the modifier where the sketch uses it). The menu finds the current selection through the type's `Equatable` conformance. That is why the parameterized `Material` helpers (`.glass(...)`, `.metal(...)`, `.skin(radius:)`) stay off the menu, because a menu needs fixed values. Pick the nearest built-in and adjust its parameters from there.
 
-The color well opens the system color panel, with its eyedropper, so you can tune a sketch's ink while it runs. The vector, rectangle, and insets forms take a range per field and clamp each field on its own. The min/max pair of a range parameter stays ordered inside its `in:` bounds. Drag the minimum past the maximum, and the maximum moves along with it.
+A long roster reads better folded. Give the type `paramChoiceGroups`, a list of titles with the names under each, and the menu shows one submenu per title:
+
+```swift
+struct Wood: ParamChoices, Equatable {
+    let grain: Int
+    static let pine = Wood(grain: 1), oak = Wood(grain: 2), redOak = Wood(grain: 3)
+
+    static var paramChoices: [(name: String, value: Wood)] {
+        [("pine", .pine), ("oak", .oak), ("redOak", .redOak)]
+    }
+    static var paramChoiceGroups: [(title: String, names: [String])] {
+        [("Oak", ["oak", "redOak"])]
+    }
+}
+```
+
+A choice no group names stays on the menu's first level, and a name the roster does not hold is ignored. Inside a submenu a choice drops the group's own word, so "Red Oak" under "Oak" reads "Red". The closed menu still shows the whole name, and the submenu that holds the current choice is checked. The segmented style shows every choice on one line and has no use for groups. A host of your own reads the grouping from `ParamControl.Menu`: `groups` is a list of `Group` values, each a title and the indices of its options, beside the flat `options` every host already reads.
+
+The color well opens the system color panel, with its eyedropper, so you can tune a sketch's ink while it runs. That panel is one window the whole system shares, and it comes back wherever it was last left. If that is on top of the inspector, it is moved beside the window as it opens, so the row you are editing stays in view. Once it is up, it stays where you put it. The vector, rectangle, and insets forms take a range per field and clamp each field on its own. The min/max pair of a range parameter stays ordered inside its `in:` bounds. Drag the minimum past the maximum, and the maximum moves along with it.
 
 #### Curves
 
-A shaping curve is a value like any other, so a parameter can hold one. `@Param var curve: Easing = .easeInOut` gets a menu of every built-in curve, and the sketch calls the curve as usual:
+A shaping curve is a value like any other, so a parameter can hold one. `@Param var curve: Easing = .easeInOut` gets a menu of every built-in curve, folded by family: Linear and Smoothstep stand on the first level, and each of the ten families (Sine, Quad, Cubic, and the rest) is a submenu of its ease-in, ease-out, and ease-in-out. The sketch calls the curve as usual:
 
 ```swift
 @Param var spacing: Easing = .linear
@@ -324,6 +343,20 @@ A parameter you turned shows a small dot after its name. Click the dot, or right
 A reset also forgets the value as tuned. The dot leaves, the save button skips the parameter, and the next reload takes the file's value, so a default you then edit by hand is read.
 
 From code, `$radius.reset()` puts one parameter back, and `resetParameters()` puts every one back (`resetParameters(named: ["radius", "speed"])` a chosen few); a live host is told, so its tuned record follows. `$radius.declaredValue` reads what the line gave it, clamped to the range like any other value. The [remote surface](../Integration/Remote.md) offers the same **Reset all** from the phone.
+
+<a name="undo"></a>
+
+### Undoing a change
+
+Every change made by hand in the inspector can be undone. Press ⌘Z, or choose Edit ▸ Undo, to put the last value back, and ⇧⌘Z to bring it forward again. The Edit menu names the step, as in "Undo Change Radius".
+
+One gesture is one step. A drag across a slider passes through many values, and undo takes the whole drag back at once. A number typed into a box is one step from its first key to Return, however slowly you type it. A held arrow key or **+** button is one step too. A drag that ends where it began leaves no step at all.
+
+Undo puts back the row's dot along with its value. If the change you undo was the first one to that parameter, the dot leaves and the save button skips the parameter again. A **Reset** is a single step, whether it was one row, a group, or everything, and undoing it brings back the values and their dots.
+
+A step names its parameter, so it survives a reload. Save the file, let the sketch hot-swap, and ⌘Z still puts the earlier value back. A step for a parameter the sketch no longer declares does nothing.
+
+Undo has three limits. Only changes made by hand in the inspector are steps, so a value moved by a fader, a cue, or a [timeline](../Tools/Timeline.md) track is not one, and the timeline panel keeps its own undo for keys. A parameter with `smoothing:` jumps on an undo rather than gliding, as it does on a reset. And the steps belong to the window: in the [performance host](../Tools/LiveCoding.md) they share one list with the typing in the code editor, in the order things happened.
 
 <a name="scrubbing"></a>
 

@@ -364,6 +364,28 @@ with `--all` on a gallery change and at a milestone. Before the first coverage
 read (2026-10-10) nothing ran them but a hand, and under the test suite alone
 every host read 0%.
 
+**What the inspector's gate reaches.** `OllinLive --inspectortest` hosts the
+parameters list in a window of its own process and drives it three ways, all
+of which work behind the lock screen. *A view AppKit built* is found by its
+class under the hosting view and clicked with a posted event: the switch, the
+number field, the color wells, and the grouped menu's pull-down, whose menu is
+read as built and chosen from with `performActionForItem` (opening it would
+start a tracking loop that no posted event ends). *A control SwiftUI draws
+itself* has no view, and is found through the accessibility tree. SwiftUI
+builds that tree only for a client that asked, and setting
+`AXEnhancedUserInterface` and `AXManualAccessibility` on the application is
+the ask; without it the tree holds one node. Each element then gives a role, a
+label, a value, and a frame on the screen, so a button is pressed by a click
+at its frame, and the slider is dragged from its `AXValueIndicator` by a
+mouse-down, a run of `leftMouseDragged`, and a mouse-up. *An action* (undo,
+redo) goes down the window's responder chain with `tryToPerform`, the route a
+menu item with no target takes. The Colors panel is a window of the process,
+so its frame and its color are read and set directly. The pump calls
+`updateWindows()` after each event, as the application's own loop does. What
+stays a desk check: the curve and bars rows, the palette strip, the XY pad,
+the timeline's lanes, and the cues card, none of which has been tried against
+the tree yet.
+
 **What the first read found.** 83.2% of 186,385 lines with the host gates
 (78.6% without them), the core module at 86.7%. Most of what stays unreached
 is SwiftUI views (the inspector, the timeline panel, the host windows), device
@@ -374,6 +396,17 @@ filter and visual catalogs, the SVG outlines of the distance-field shapes, the
 separations export, text along a path and per glyph, the USD parser's skipped
 statements, the triangle's accessors, Vision's failure sentences), or a
 filing with its reason under *Testing* in `DESIGN-NOTES.md`.
+
+**What the second read found** (2026-11-11). 84.1% of 205,899 lines, the core
+module at 88.8% of 131,523. The files a month of tests had been written for
+moved the most: the push transport from 52.6% to 91.9% (its web socket half
+had run under no test, and now dials a server on the loopback), `Sketch.swift`
+from 69.1% to 95.8% (the public forwarders, each paired with its core call in
+six tables), the text calls on the drawer from 58.5% to 79.6%. The read is
+short by one process: the gallery's cycle stopped at an example whose setup
+takes minutes in a debug build and exited without writing its profile, which
+`DESIGN-NOTES.md` files under *Testing*, so the inspector's own number (45%)
+is not the one to compare with the first read's.
 
 ## What the suites share
 

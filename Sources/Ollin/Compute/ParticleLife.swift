@@ -110,7 +110,9 @@ public final class ParticleLife {
     /// A random `kinds × kinds` interaction matrix in [-1, 1], row-major (`m[i*kinds+j]`
     /// is how kind i feels about kind j).
     private static func makeMatrix(kinds: Int, seed: UInt64) -> ComputeBuffer<Float> {
-        var rng = SplitMix64(seed: UInt64(bitPattern: Int64(seed)))
+        // The seed arrives as its bit pattern already; converting it through
+        // a signed integer again traps on every negative seed.
+        var rng = SplitMix64(seed: seed)
         var values = [Float](repeating: 0, count: kinds * kinds)
         for k in values.indices { values[k] = Float(Double.random(in: -1...1, using: &rng)) }
         return ComputeBuffer(values)

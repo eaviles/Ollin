@@ -837,6 +837,11 @@ public struct ParametersListView: View {
     let sketchName: String?
 
     @SwiftUI.Environment(\.colorScheme) private var scheme
+    @SwiftUI.Environment(\.undoManager) private var undoManager
+
+    /// What the rows' edits and the resets are written down in, so the
+    /// window's Undo puts a value back (`ParamUndoJournal`).
+    @State private var journal = ParamUndoJournal()
 
     /// The rows whose show-rule currently fails, seeded at init and re-polled by
     /// the body's task, so a rule flipping mid-run moves the list.
@@ -866,15 +871,43 @@ public struct ParametersListView: View {
 
     private var palette: OllinInspector.Palette { .resolve(scheme) }
 
-    /// The host's reset, which also takes the save's sentence away, wherever
-    /// it is pressed from (a row's mark or menu, a group card, the footer).
+    /// The host's reset, which also takes the save's sentence away and is
+    /// written down as one undo step, wherever it is pressed from (a row's
+    /// mark or menu, a group card, the footer).
     private var noteClearingReset: ParamResetAction? {
         reset.map { reset in
             ParamResetAction(tuned: reset.tuned) { names in
                 saveNote.changed()
+                journal.resetting(names) { reset.perform(names) }
+            }
+        }
+    }
+
+    /// Hand the journal this pass's parameters, host, and undo manager. Done
+    /// on every pass of the body, so an undo long after the edit reads the
+    /// parameters a reload brought and the host's present turned set.
+    ///
+    /// What the journal is handed holds the save's sentence and the host's
+    /// two calls, never this view: the view holds the journal, and a journal
+    /// that held the view back would outlive the list, its steps still on
+    /// the window's undo manager with nothing left to undo into.
+    private func briefJournal() {
+        let note = $saveNote
+        let onChange = onChange
+        // The reset as the journal runs it while undoing: the save's
+        // sentence goes, and nothing is written down a second time.
+        let reset = reset.map { reset in
+            ParamResetAction(tuned: reset.tuned) { names in
+                note.wrappedValue.changed()
                 reset.perform(names)
             }
         }
+        journal.adopt(parameters: parameters, sketch: sketchName,
+                      onChange: { name, stored in
+                          note.wrappedValue.changed()
+                          onChange(name, stored)
+                      },
+                      reset: reset, undoManager: undoManager)
     }
 
     /// The ids of the rows whose `show(when:_:)` rule currently fails.
@@ -928,6 +961,7 @@ public struct ParametersListView: View {
     }
 
     public var body: some View {
+        let _ = briefJournal()
         if parameters.isEmpty {
             section(title: "Parameters") { emptyState }
         } else {
@@ -955,8 +989,14 @@ public struct ParametersListView: View {
                     try? await Task.sleep(for: .milliseconds(100))
                     let hidden = Self.hiddenIDs(in: parameters)
                     if hidden != hiddenIDs { hiddenIDs = hidden }
+                    journal.observe()
                 }
             }
+            #if os(macOS)
+            // Where the list's column is, so the Colors panel a color row
+            // opens is moved off it.
+            .background(ColorPanelAnchor())
+            #endif
         }
     }
 
@@ -1047,7 +1087,16 @@ public struct ParametersListView: View {
             ForEach(Array(handles.enumerated()), id: \.element.id) { index, handle in
                 if index > 0 { Hairline(palette: palette) }
                 ParamRow(handle: handle, palette: palette, iconGutter: gutter,
-                         onChange: { saveNote.changed(); onChange(handle.name, $0) })
+                         onChange: { stored in
+                             saveNote.changed()
+                             // Before the host hears of it: whether the row
+                             // was already turned is part of what undo
+                             // puts back.
+                             journal.edited(handle.name, to: stored,
+                                            wasTuned: reset?.tuned.contains(handle.name) ?? true)
+                             onChange(handle.name, stored)
+                         })
+                    .environment(\.paramTyping) { journal.hold(handle.name, $0) }
                     .id(ObjectIdentifier(handle.param))   // reset state on reload
             }
         }
@@ -1331,10 +1380,23 @@ private struct ParamResetKey: EnvironmentKey {
     static var defaultValue: ParamResetAction? { nil }
 }
 
+/// What a field tells its row's undo step: `true` when it takes its first
+/// key, `false` when it commits. A field writes the parameter as it is typed
+/// in, and this is what keeps a number typed slowly one step. Set per row,
+/// so a field never needs to know whose it is.
+private struct ParamTypingKey: EnvironmentKey {
+    static var defaultValue: (@MainActor (Bool) -> Void)? { nil }
+}
+
 extension EnvironmentValues {
     var paramReset: ParamResetAction? {
         get { self[ParamResetKey.self] }
         set { self[ParamResetKey.self] = newValue }
+    }
+
+    fileprivate var paramTyping: (@MainActor (Bool) -> Void)? {
+        get { self[ParamTypingKey.self] }
+        set { self[ParamTypingKey.self] = newValue }
     }
 }
 
@@ -1457,6 +1519,7 @@ private struct ScrubbableField: View {
     @State private var scrubBase: Double?
     @State private var edit = ParamNumberEdit()
     @FocusState private var isTyping: Bool
+    @SwiftUI.Environment(\.paramTyping) private var typing
 
     var body: some View {
         let pill = HStack(spacing: 4) {
@@ -1505,6 +1568,7 @@ private struct ScrubbableField: View {
         #if os(macOS)
         return pill.onExitCommand {
             if let original = edit.cancel() { value = original }
+            typing?(false)
             isTyping = false
         }
         #else
@@ -1523,18 +1587,22 @@ private struct ScrubbableField: View {
                 // The field hands back the text it already shows as it takes
                 // or gives up the keys; only a real edit starts a draft.
                 guard text != edit.text(for: value) else { return }
+                // From the first key to the commit is one undo step.
+                typing?(true)
                 if let shown = edit.type(text, over: value, in: stepping.range, accepts: previews) { value = shown }
             })
     }
 
     private func commit() {
         if let committed = edit.commit(in: stepping.range) { value = committed }
+        typing?(false)
     }
 
     /// An arrow: what was typed so far is committed first, so "12" and an up
     /// arrow is the next mark past 12.
     private func nudge(_ direction: Int, pace: ParamStepping.Pace) {
         let start = edit.commit(in: stepping.range) ?? value
+        typing?(false)
         value = stepping.nudged(start, by: direction, pace: pace)
     }
 
@@ -2292,10 +2360,59 @@ private struct MenuParamRow: View {
     /// names).
     private var menuRow: some View {
         ControlRow(handle: handle, palette: palette, iconGutter: iconGutter, labelWins: true) {
-            basePicker.pickerStyle(.menu)
-                .frame(minWidth: 84, maxWidth: 170, alignment: .trailing)
+            Group {
+                if control.groups.isEmpty {
+                    basePicker.pickerStyle(.menu)
+                } else {
+                    groupedMenu
+                }
+            }
+            .frame(minWidth: 84, maxWidth: 170, alignment: .trailing)
         }
     }
+
+    /// A roster folded into submenus: the first level is the options no
+    /// group names and one row per group, so thirty-two curves read as twelve
+    /// rows. The closed control shows the pick's whole name, and inside a
+    /// submenu each option drops the group's own word ("Ease In Out" under
+    /// "Cubic"). The pick is checked where it stands, and so is the submenu
+    /// that holds it.
+    @ViewBuilder private var groupedMenu: some View {
+        #if os(macOS)
+        GroupedMenuButton(options: control.options, rows: control.rows, selection: selection,
+                          choose: { pushingSelection.wrappedValue = $0 })
+            .controlSize(.small)
+        #else
+        Menu {
+            ForEach(Array(control.rows.enumerated()), id: \.offset) { _, row in
+                switch row {
+                case .option(let index):
+                    choice(index, named: control.options[index])
+                case .group(let group):
+                    Menu(group.title) {
+                        ForEach(group.indices, id: \.self) { index in
+                            choice(index, named: ParamControl.Menu.shortLabel(control.options[index],
+                                                                              under: group.title))
+                        }
+                    }
+                }
+            }
+        } label: {
+            Text(control.options.indices.contains(selection) ? control.options[selection] : "")
+        }
+        .controlSize(.small)
+        #endif
+    }
+
+    #if !os(macOS)
+    /// One option of the grouped menu: checked while it is the pick, and
+    /// picking it goes through the same synchronous write the flat menu uses.
+    private func choice(_ index: Int, named name: String) -> some View {
+        Toggle(name, isOn: Binding(
+            get: { selection == index },
+            set: { isOn in if isOn { pushingSelection.wrappedValue = index } }))
+    }
+    #endif
 
     private var basePicker: some View {
         Picker("", selection: pushingSelection) {
@@ -2307,6 +2424,120 @@ private struct MenuParamRow: View {
         .controlSize(.small)
     }
 }
+
+#if os(macOS)
+/// The grouped menu as the system's own pop-up button, so it reads as the
+/// flat menu beside it does. SwiftUI's menu builds its items only while it is
+/// open, which leaves nothing to check the pick in and nothing a test can
+/// read; this one holds a real menu the whole time, so the pick and the
+/// submenu that holds it stay checked.
+///
+/// A pop-up shows its selected item closed, and only an item of the first
+/// level can be that, while the pick is usually inside a submenu. So the
+/// menu's first item is a hidden one that carries the pick's whole name and
+/// is always the selected one.
+private struct GroupedMenuButton: NSViewRepresentable {
+    let options: [String]
+    let rows: [ParamControl.Menu.Row]
+    let selection: Int
+    let choose: (Int) -> Void
+
+    final class Coordinator: NSObject {
+        var choose: (Int) -> Void = { _ in }
+        var built: (options: [String], rows: [ParamControl.Menu.Row])?
+
+        @objc func pick(_ sender: NSMenuItem) { choose(sender.tag) }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    func makeNSView(context: Context) -> NSPopUpButton {
+        let button = NSPopUpButton(frame: .zero, pullsDown: false)
+        button.cell?.lineBreakMode = .byTruncatingTail
+        // The row decides the width; a long name trims rather than pushing
+        // the label out.
+        button.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        button.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+        return button
+    }
+
+    func updateNSView(_ button: NSPopUpButton, context: Context) {
+        let coordinator = context.coordinator
+        coordinator.choose = choose
+        if coordinator.built?.options != options || coordinator.built?.rows != rows {
+            button.menu = menu(target: coordinator)
+            coordinator.built = (options, rows)
+        }
+        button.isEnabled = context.environment.isEnabled
+        // The size the row asks for, which SwiftUI would otherwise set to
+        // its own default over anything chosen when the button was made.
+        let size: NSControl.ControlSize
+        switch context.environment.controlSize {
+        case .mini: size = .mini
+        case .small: size = .small
+        case .large, .extraLarge: size = .large
+        default: size = .regular
+        }
+        let font = NSFont.systemFont(ofSize: NSFont.systemFontSize(for: size))
+        if button.controlSize != size || button.font != font {
+            button.controlSize = size
+            button.font = font
+            button.invalidateIntrinsicContentSize()
+        }
+        guard let menu = button.menu else { return }
+        // The hidden first item is what the closed control shows.
+        menu.items.first?.title = options.indices.contains(selection) ? options[selection] : ""
+        button.select(menu.items.first)
+        for item in menu.items.dropFirst() {
+            if let submenu = item.submenu {
+                var holdsPick = false
+                for leaf in submenu.items {
+                    leaf.state = leaf.tag == selection ? .on : .off
+                    holdsPick = holdsPick || leaf.tag == selection
+                }
+                item.state = holdsPick ? .on : .off
+            } else {
+                item.state = item.tag == selection ? .on : .off
+            }
+        }
+    }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, nsView: NSPopUpButton, context: Context) -> CGSize? {
+        let ideal = nsView.intrinsicContentSize
+        return CGSize(width: min(ideal.width, proposal.width ?? ideal.width), height: ideal.height)
+    }
+
+    private func menu(target: Coordinator) -> NSMenu {
+        let menu = NSMenu()
+        menu.autoenablesItems = false
+        let shown = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+        shown.isHidden = true
+        menu.addItem(shown)
+        func leaf(_ index: Int, _ title: String) -> NSMenuItem {
+            let item = NSMenuItem(title: title, action: #selector(Coordinator.pick(_:)), keyEquivalent: "")
+            item.target = target
+            item.tag = index
+            return item
+        }
+        for row in rows {
+            switch row {
+            case .option(let index):
+                menu.addItem(leaf(index, options[index]))
+            case .group(let group):
+                let parent = NSMenuItem(title: group.title, action: nil, keyEquivalent: "")
+                let submenu = NSMenu(title: group.title)
+                submenu.autoenablesItems = false
+                for index in group.indices {
+                    submenu.addItem(leaf(index, ParamControl.Menu.shortLabel(options[index], under: group.title)))
+                }
+                parent.submenu = submenu
+                menu.addItem(parent)
+            }
+        }
+        return menu
+    }
+}
+#endif
 
 /// A `Color` row: the native color well (its panel includes the eyedropper).
 private struct ColorParamRow: View {
@@ -2857,6 +3088,7 @@ private struct TextParamRow: View {
 
     @State private var text: String
     @FocusState private var isTyping: Bool
+    @SwiftUI.Environment(\.paramTyping) private var typing
 
     init(handle: ParamHandle, control: ParamControl.TextBox, palette: OllinInspector.Palette,
          iconGutter: Bool, onChange: @escaping (ParamStored) -> Void) {
@@ -2873,6 +3105,7 @@ private struct TextParamRow: View {
             TextField("", text: $text)
                 .textFieldStyle(.plain)
                 .focused($isTyping)
+                .onSubmit { typing?(false) }
                 .multilineTextAlignment(.trailing)
                 .font(.system(size: 12))
                 .lineLimit(1)
@@ -2885,8 +3118,14 @@ private struct TextParamRow: View {
         }
         .onChange(of: text) { _, newValue in
             guard newValue != control.read() else { return }
+            // A word typed is one undo step, from its first key until the
+            // field gives up the keys or Return is pressed.
+            if isTyping { typing?(true) }
             control.write(newValue)
             onChange(.text(newValue))
+        }
+        .onChange(of: isTyping) { _, isTyping in
+            if !isTyping { typing?(false) }
         }
         .task {
             while !Task.isCancelled {

@@ -246,6 +246,9 @@ public final class SketchSession {
         } else {
             forgetTunedParams(names ?? Array(paramValues.keys))
         }
+        // Under the timeline's hold no frame would show the values going
+        // back, as none would show a hand edit: draw one.
+        runner?.refreshClockFrame(keepingHandValues: true)
     }
 
     // MARK: - Cues

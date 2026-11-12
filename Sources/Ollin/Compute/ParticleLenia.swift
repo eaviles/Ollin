@@ -131,7 +131,9 @@ public final class ParticleLenia {
     static func seedPositions(count: Int, center: Vector2, spacing: Double,
                               seed: UInt64) -> [SIMD2<Float>] {
         let discRadius = (Double(count) / .pi).squareRoot() * spacing
-        var rng = SplitMix64(seed: UInt64(bitPattern: Int64(seed)))
+        // The seed arrives as its bit pattern already; converting it through
+        // a signed integer again traps on every negative seed.
+        var rng = SplitMix64(seed: seed)
         var out: [SIMD2<Float>] = []
         out.reserveCapacity(count)
         for _ in 0..<count {

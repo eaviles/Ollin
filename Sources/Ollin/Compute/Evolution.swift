@@ -215,7 +215,9 @@ public final class Evolution {
     /// job is then to bend the good ones, which it can do in a handful of generations
     /// rather than a hundred.
     static func seedGenomes(count: Int, genes: Int, seed: UInt64) -> [SIMD2<Float>] {
-        var rng = SplitMix64(seed: UInt64(bitPattern: Int64(seed)))
+        // The seed arrives as its bit pattern already; converting it through
+        // a signed integer again traps on every negative seed.
+        var rng = SplitMix64(seed: seed)
         var initial = [SIMD2<Float>]()
         initial.reserveCapacity(count * genes)
         for _ in 0..<count {

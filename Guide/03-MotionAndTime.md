@@ -191,7 +191,7 @@ Same start, same finish, same four seconds. The only difference is *when* each d
 
 The full table of thirty names is in the [Animation](../Docs/Helpers/Animation.md#catalog) reference, and the [EasingGallery example](../Examples/Motion/EasingGallery/Sketch.swift) plots them all side by side.
 
-Picking a curve by reading a table is slow work, so a curve can be a parameter instead. Write `@Param var curve: Easing = .easeInOut` and the inspector shows a menu of every named curve. Try them against the motion itself and keep the one that feels right. The finished sketch offers its pulse's curve this way.
+Picking a curve by reading a table is slow work, so a curve can be a parameter instead. Write `@Param var curve: Easing = .easeInOut` and the inspector shows a menu of every named curve. The menu is folded by family, so Cubic opens onto its ease-in, its ease-out, and its ease-in-out. Try them against the motion itself and keep the one that feels right. The finished sketch offers its pulse's curve this way.
 
 Once a curve is a value, you can make another from it. `curve.reversed()` runs the same curve from its other end, so an ease-in becomes its ease-out. The trip that lagged and then rushed now leaps and then settles. `curve.mirrored()` puts the curve on the way out and its reverse on the way back, squeezed into one trip. That is how the catalog builds most of its ease-in-out curves from their ease-ins. The back and elastic families carry their own constants instead. Reverse `easeInQuad` and you have `easeOutQuad`. Mirror it and you have `easeInOutQuad`. Mirror an ease-out instead and you get a curve the catalog does not carry, fast at both ends and slow through the middle.
 

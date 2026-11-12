@@ -309,6 +309,13 @@ public struct Easing: Sendable, Equatable {
         ("easeInOutBounce", .easeInOutBounce),
         ("smoothstep", .smoothstep),
     ]
+
+    /// The ten families that come as an ease-in, an ease-out, and an
+    /// ease-in-out, in the catalog's order: the name each of the three ends
+    /// with (`easeInCubic`, `easeOutCubic`, `easeInOutCubic`).
+    static let families = [
+        "Sine", "Quad", "Cubic", "Quart", "Quint", "Expo", "Circ", "Back", "Elastic", "Bounce",
+    ]
 }
 
 /// A value the sketch advances once per frame with the frame's `deltaTime`:

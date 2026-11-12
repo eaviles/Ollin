@@ -386,6 +386,26 @@ enum SessionTest {
         guard HeadlessStage.step(runner, view, restarted), mark(of: restarted) == 24 else {
             fail("the track did not win its parameter back on the next frame (\(mark(of: restarted) ?? .nan))")
         }
+
+        // The same reset with the clock held: no frame is on its way to show
+        // the value going back, so the reset asks for one, and that frame
+        // keeps the declared value rather than the track's.
+        print("OllinLiveCoding sessiontest: a reset under a held clock …")
+        runner.setClockPaused(true)
+        runner.draw(in: view)
+        session.recordParam("mark", .number(30))
+        restarted.parameters().first { $0.name == "mark" }?.param.restore(.number(30))
+        runner.draw(in: view)
+        view.isPaused = true
+        session.resetParams(["mark"])
+        guard !view.isPaused else {
+            fail("a reset under a held clock asked for no frame, so the picture would go on showing the old value")
+        }
+        runner.draw(in: view)
+        guard mark(of: restarted) == 18 else {
+            fail("the frame the reset asked for drew \(mark(of: restarted) ?? .nan), not the declared 18")
+        }
+        runner.setClockPaused(false)
     }
 
     /// A framework rebuilt under a running stage: the evaluation is refused

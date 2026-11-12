@@ -111,9 +111,25 @@ final class WebSocketTransport: NSObject, PushTransport, URLSessionWebSocketDele
                 }
                 self.receiveNext(on: task)
             case .failure(let error):
-                self.finish(saying: error.localizedDescription)
+                // A close the server announced reaches this loop first, as
+                // the socket's own error ("Socket is not connected"), which
+                // describes the socket afterwards and not what happened. The
+                // task already holds the close frame's code by then.
+                self.finish(saying: Self.closeSentence(task.closeCode, task.closeReason)
+                            ?? error.localizedDescription)
             }
         }
+    }
+
+    /// What a close frame says, as a sentence: its code, and its reason when
+    /// the server gave one in text. `nil` for a socket that got no close
+    /// frame at all.
+    static func closeSentence(_ code: URLSessionWebSocketTask.CloseCode, _ reason: Data?) -> String? {
+        guard code != .invalid else { return nil }
+        let said = reason.flatMap { String(data: $0, encoding: .utf8) }?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let sentence = "the server closed the connection (code \(code.rawValue))"
+        return said.isEmpty ? sentence : sentence + ": " + said
     }
 
     private func schedulePing() {
@@ -160,7 +176,7 @@ final class WebSocketTransport: NSObject, PushTransport, URLSessionWebSocketDele
     func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask,
                     didCloseWith closeCode: URLSessionWebSocketTask.CloseCode,
                     reason: Data?) {
-        finish(saying: "the connection closed (code \(closeCode.rawValue))")
+        finish(saying: Self.closeSentence(closeCode, reason) ?? "the connection closed")
     }
 
     func urlSession(_ session: URLSession, task: URLSessionTask,

@@ -3459,48 +3459,50 @@ open class Sketch {
         drawer.beginCombine(op: .smoothIntersect, k: k); body(); drawer.endCombine()
     }
     /// Merge the shapes drawn inside with a 45° chamfer of the given size along each seam
-    /// (a machined joint; colors stay a crisp pick per side, not a melt).
+    /// (a machined joint; colors stay a crisp pick per side, not a melt). A radius below
+    /// zero is held at zero, here and in the stairs and columns scopes, as the value
+    /// forms on `SDF` hold it.
     public func chamferUnion(radius: Double, _ body: () -> Void) {
-        drawer.beginCombine(op: .chamferUnion, k: radius); body(); drawer.endCombine()
+        drawer.beginCombine(op: .chamferUnion, k: max(radius, 0)); body(); drawer.endCombine()
     }
     /// Carve the later shapes out of the first, each cut's rim beveled at 45°.
     public func chamferSubtract(radius: Double, _ body: () -> Void) {
-        drawer.beginCombine(op: .chamferSubtract, k: radius); body(); drawer.endCombine()
+        drawer.beginCombine(op: .chamferSubtract, k: max(radius, 0)); body(); drawer.endCombine()
     }
     /// Keep only where every shape drawn inside overlaps, the edge beveled at 45°.
     public func chamferIntersect(radius: Double, _ body: () -> Void) {
-        drawer.beginCombine(op: .chamferIntersect, k: radius); body(); drawer.endCombine()
+        drawer.beginCombine(op: .chamferIntersect, k: max(radius, 0)); body(); drawer.endCombine()
     }
     /// Merge the shapes drawn inside through a staircase of `steps` steps over `radius`
     /// along each seam.
     public func stairsUnion(radius: Double, steps: Int, _ body: () -> Void) {
-        drawer.beginCombine(op: .stairsUnion, k: radius, extra: Double(max(steps, 1)))
+        drawer.beginCombine(op: .stairsUnion, k: max(radius, 0), extra: Double(max(steps, 1)))
         body(); drawer.endCombine()
     }
     /// Carve the later shapes out of the first, each cut's rim stepped.
     public func stairsSubtract(radius: Double, steps: Int, _ body: () -> Void) {
-        drawer.beginCombine(op: .stairsSubtract, k: radius, extra: Double(max(steps, 1)))
+        drawer.beginCombine(op: .stairsSubtract, k: max(radius, 0), extra: Double(max(steps, 1)))
         body(); drawer.endCombine()
     }
     /// Keep only where every shape drawn inside overlaps, the edge stepped.
     public func stairsIntersect(radius: Double, steps: Int, _ body: () -> Void) {
-        drawer.beginCombine(op: .stairsIntersect, k: radius, extra: Double(max(steps, 1)))
+        drawer.beginCombine(op: .stairsIntersect, k: max(radius, 0), extra: Double(max(steps, 1)))
         body(); drawer.endCombine()
     }
     /// Merge the shapes drawn inside through a row of `count` circular ribs of overall
     /// size `radius` along each seam (a fluted joint).
     public func columnsUnion(radius: Double, count: Int, _ body: () -> Void) {
-        drawer.beginCombine(op: .columnsUnion, k: radius, extra: Double(max(count, 1)))
+        drawer.beginCombine(op: .columnsUnion, k: max(radius, 0), extra: Double(max(count, 1)))
         body(); drawer.endCombine()
     }
     /// Carve the later shapes out of the first, each cut's rim fluted with ribs.
     public func columnsSubtract(radius: Double, count: Int, _ body: () -> Void) {
-        drawer.beginCombine(op: .columnsSubtract, k: radius, extra: Double(max(count, 1)))
+        drawer.beginCombine(op: .columnsSubtract, k: max(radius, 0), extra: Double(max(count, 1)))
         body(); drawer.endCombine()
     }
     /// Keep only where every shape drawn inside overlaps, the edge fluted with ribs.
     public func columnsIntersect(radius: Double, count: Int, _ body: () -> Void) {
-        drawer.beginCombine(op: .columnsIntersect, k: radius, extra: Double(max(count, 1)))
+        drawer.beginCombine(op: .columnsIntersect, k: max(radius, 0), extra: Double(max(count, 1)))
         body(); drawer.endCombine()
     }
 
