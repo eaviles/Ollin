@@ -3735,11 +3735,28 @@ extension MetalRenderer {
                     r.coat = SIMD4(f.clearcoat, min(max(f.clearcoatRoughness, 0.045), 1), 0, 0)
                 }
             }
+            // What a reflected or refracted hit reads past the picture: the gates of the
+            // surface's other maps (each lowered again below where its texture does not
+            // resolve), the composed factors a metallic-roughness map multiplies, and
+            // the light the surface adds of its own. The path-traced build leaves all of
+            // it out: the export resolves every map and every glow at its own hits. A
+            // surface projected by world position keeps its maps on the surface itself.
+            if !pathTraceMats {
+                if f.triplanar == 0, f.normalScale > 0 || f.mrGate > 0 || f.occlusionStrength > 0 {
+                    r.maps = SIMD4(f.normalScale, f.mrGate > 0 ? 1 : 0, f.occlusionStrength, f.uvWrap)
+                    if f.mrGate > 0 { r.factors = SIMD4(f.metallic, f.roughness, 0, 0) }
+                }
+                if f.emissive.x > 0 || f.emissive.y > 0 || f.emissive.z > 0 {
+                    r.glow = SIMD4(f.emissive.x, f.emissive.y, f.emissive.z, 0)
+                }
+                if f.emissiveIntensity > 0 { r.factors.z = f.emissiveIntensity }
+            }
             return r
         }
         func sameStylized(_ a: OllinRTFinish, _ b: OllinRTFinish) -> Bool {
             a.model == b.model && a.warm == b.warm && a.cool == b.cool
                 && a.rim == b.rim && a.sss == b.sss && a.sheen == b.sheen && a.coat == b.coat
+                && a.maps == b.maps && a.factors == b.factors && a.glow == b.glow
         }
         let plainFinish = OllinRTFinish()
         let wantStylized = batches.contains { b in
@@ -3760,11 +3777,19 @@ extension MetalRenderer {
         // mapped panel glows by its map in the bounce rather than at its factor over its
         // whole face. A projected (triplanar) mesh keeps its factor, as at a path-traced
         // hit, where such a mesh reads only its base color and normal map.
-        let wantGlowMaps = giMats && !pathTraceMats && batches.contains { b in
+        let wantGlowMaps = !pathTraceMats && batches.contains { b in
             b.kind == .mesh3D && !b.meshWireframe && !b.meshGrid && b.finish.triplanar == 0
                 && b.finish.emissive.w > 0 && b.material?.emissiveTexture != nil
         }
-        let wantFinishes = pathTraceMats || wantStylized || giMats || wantMaps
+        // The normal, metallic-roughness, and occlusion maps reach a reflected or
+        // refracted hit the same way, each geometry naming its own three.
+        let wantSurfaceMaps = !pathTraceMats && batches.contains { b in
+            b.kind == .mesh3D && !b.meshWireframe && !b.meshGrid && b.finish.triplanar == 0
+                && ((b.finish.normalScale > 0 && b.material?.normalTexture != nil)
+                    || (b.finish.mrGate > 0 && b.material?.metallicRoughnessTexture != nil)
+                    || (b.finish.occlusionStrength > 0 && b.material?.occlusionTexture != nil))
+        }
+        let wantFinishes = pathTraceMats || wantStylized || giMats || wantMaps || wantSurfaceMaps
         // Coalesce maximal runs of contiguous caster batches into one geometry descriptor
         // each (a non-casting batch — wireframe, or a non-mesh kind — breaks the run). The
         // caster vertices of a run are contiguous in `meshBuffer`, so one descriptor covers
@@ -3888,6 +3913,12 @@ extension MetalRenderer {
                 }
                 if runStart >= 0, wantGlowMaps,
                    ptMaps(batch).emissive !== runMaps.emissive
+                       || batch.finish.uvWrap != runFinish.uvWrap
+                       || batch.finish.triplanar != runFinish.triplanar {
+                    flushRun()
+                }
+                if runStart >= 0, wantSurfaceMaps,
+                   !PTGeoMaps.same(ptMaps(batch), runMaps)
                        || batch.finish.uvWrap != runFinish.uvWrap
                        || batch.finish.triplanar != runFinish.triplanar {
                     flushRun()
@@ -4224,7 +4255,7 @@ extension MetalRenderer {
         // record reads as five `float4` rows. A frame with nothing stylized to say leaves
         // the block out and writes a zero base, which is the shader's gate.
         let finishWords = MemoryLayout<OllinRTFinish>.stride / MemoryLayout<UInt32>.stride
-        let finishBase = wantStylized || wantMaps || wantGlowMaps
+        let finishBase = wantStylized || wantMaps || wantGlowMaps || wantSurfaceMaps
             ? ((tailStart + geoOffsets.count + 3) / 4) * 4 : 0
         head[1] = UInt32(finishBase)
         let tableWords = max(tailStart + geoOffsets.count,
@@ -4262,6 +4293,38 @@ extension MetalRenderer {
                 for i in finishes.indices {
                     finishes[i].base = whiteID
                     finishes[i].emissive = whiteID
+                    finishes[i].normalMap = whiteID
+                    finishes[i].metallicRoughness = whiteID
+                    finishes[i].occlusion = whiteID
+                    // The other three maps, each behind the gate its record raised. A
+                    // gate whose texture does not resolve here comes back down, a layer
+                    // drawn as one among them: it is drawn after this table is written.
+                    if finishes[i].maps.x > 0 || finishes[i].maps.y > 0 || finishes[i].maps.z > 0 {
+                        let maps = i < geoTextures.count ? geoTextures[i] : PTGeoMaps()
+                        // All three hold values rather than colors, so each is read
+                        // through the picture's linear view, the raster encode's own split.
+                        func resident(_ image: Image?) -> UInt64? {
+                            guard let image, image.layerTarget == nil,
+                                  let texture = image.linearTexture(for: device) else { return nil }
+                            mapTextures.append(texture)
+                            return unsafeBitCast(texture.gpuResourceID, to: UInt64.self)
+                        }
+                        if finishes[i].maps.x > 0 {
+                            if let id = resident(maps.normal) { finishes[i].normalMap = id }
+                            else { finishes[i].maps.x = 0 }
+                        }
+                        if finishes[i].maps.y > 0 {
+                            if let id = resident(maps.metallicRoughness) {
+                                finishes[i].metallicRoughness = id
+                            } else {
+                                finishes[i].maps.y = 0
+                            }
+                        }
+                        if finishes[i].maps.z > 0 {
+                            if let id = resident(maps.occlusion) { finishes[i].occlusion = id }
+                            else { finishes[i].maps.z = 0 }
+                        }
+                    }
                     // A layer drawn as a glow map is drawn after this table, so it keeps
                     // its factor in the bounce, as a copy does.
                     if wantGlowMaps, i < geoTextures.count, geoFinishes[i].triplanar == 0,

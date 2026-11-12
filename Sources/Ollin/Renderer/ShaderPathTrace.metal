@@ -474,6 +474,11 @@ struct OllinPTMapped {
     float3 emissive;
     float3 selfEmissive;   // the surface's own color times `emissiveIntensity`
     float ao;
+    float4 tangent;        // the interpolated vertex tangent (w = the bitangent's
+                           // handedness) where the mesh draws through a pipeline that
+                           // carries one in the raster, a surface-mapped mesh; zero
+                           // elsewhere, which is what tells the hologram's grating to
+                           // take the same world-derived frame the lit fragment takes
 };
 
 // The per-map mip level: the shared ray-cone footprint (`lodBias`, texel-density
@@ -529,6 +534,7 @@ static inline OllinPTMapped ollin_pt_apply_maps(thread OllinPTHit &h,
     out.emissive = h.mat.emissive.rgb;
     out.selfEmissive = float3(0.0);
     out.ao = 1.0;
+    out.tangent = float4(0.0);
     // One lookup for both halves: which material slot the hit uses (its own
     // geometry's for a plain mesh, its run's for a copy), and where its triangle
     // begins. A copy's slot carries the map gates down, so the reads below are
@@ -566,6 +572,11 @@ static inline OllinPTMapped ollin_pt_apply_maps(thread OllinPTHit &h,
     float wrap = h.mat.uvWrap;
     h.s.albedo *= ollin_pt_sample_map(maps.base, uv,
                                       ollin_pt_map_lod(lodBias, maps.base), wrap).rgb;
+    if (h.mat.normalScale > 0.0 || h.mat.mrGate > 0.0 || h.mat.occlusionStrength > 0.0
+        || h.mat.emissive.w > 0.0) {
+        out.tangent = float4(a.tangent) * w.x + float4(b.tangent) * w.y
+                    + float4(c.tangent) * w.z;
+    }
     if (h.mat.normalScale > 0.0) {
         float3 gn = a.normal.xyz * w.x + b.normal.xyz * w.y + c.normal.xyz * w.z;
         float4 tangent = float4(a.tangent) * w.x + float4(b.tangent) * w.y
@@ -735,6 +746,135 @@ static inline float3 ollin_pt_mesh_light(OllinPTHit h, float3 wo, float eps,
     return f * Le * vis * (NoL * cosL / (dist2 * areaPdf)) * w;
 }
 
+// MARK: - The look layer
+//
+// A finish's look is a picture of the light, not a transport of it. The lit fragment
+// paints cel bands, a warm-cool ramp, a highlight, a rainbow sheen, flakes, a glow
+// through the body, a rim, and a grating's rainbow over a surface by formulas of its
+// own, and a sketch is tuned on that picture. So the trace draws the same formulas
+// wherever the camera sees the surface: head on, through glass, and in a reflection,
+// which is every vertex a path reaches before it has scattered off a matte lobe (a
+// *look vertex*). The light terms in them take the traced visibility in place of a
+// shadow map, so a highlight is shadowed, tinted through glass, and blurred by the
+// lens like the body under it. Past a matte scatter the surface is its plain body
+// again: light that bounces off a toon ball onto the floor carries the ball's color
+// and nothing of its bands, its rim, or its sheen, which is what keeps a room of
+// stylized surfaces from feeding itself (a rim and a rainbow add light of their
+// own in the lit fragment, and here they add it to the picture alone).
+//
+// Whether a finish has any look to draw. A finish with none (the default material,
+// a physically-based one with no grating and no layer) never enters the branches
+// below, and takes the plain sum alone.
+static inline bool ollin_pt_has_look(OllinMaterial m) {
+    return m.shadingModel == 1 || m.shadingModel == 2
+        || (m.shadingModel != 3 && m.specular > 0.0)
+        || (m.shadingModel == 3 && m.grating.x > 0.0)
+        || m.iridescence > 0.0 || m.sparkleColor.a > 0.0
+        || m.rimColor.a > 0.0 || m.subsurfaceColor.a > 0.0;
+}
+
+// How much of a light behind a surface reaches it through the body the surface
+// belongs to: the glow of a wax or jade form is that light, and a shadow ray from the
+// lit side would be stopped by the form itself in every frame. The walk starts just
+// under the surface and runs toward the light. Nothing in the way (a leaf, a sheet)
+// passes it whole; a back face is the body's own far side, and from there on the
+// ordinary shadow walk decides, so another object between the body and the light
+// still shadows the glow; a front face first is something standing inside the body.
+static inline float3 ollin_pt_through(float3 P, float3 Ng, float3 target, float eps,
+                                      instance_acceleration_structure accel,
+                                      const device OllinMeshVertex *verts,
+                                      const device uint *geoOffsets,
+                                      const device OllinMaterial *geoMats,
+                                      bool anyTransmission) {
+    float3 o = P - Ng * eps;
+    float3 span = target - o;
+    float total = length(span);
+    float3 dir = span / max(total, 1e-5);
+    ray r;
+    r.origin = o;
+    r.direction = dir;
+    r.min_distance = eps * 0.05;
+    r.max_distance = max(total - eps, eps);
+    intersection_query<triangle_data, instancing> q;
+    if (!ollin_rt_query(q, r, accel)) return float3(1.0);
+    bool backface = false;
+    OllinRTSurface s = ollin_rt_fetch_surface(q, verts, geoOffsets, o, dir, backface);
+    if (!backface) return float3(0.0);
+    return ollin_pt_transmittance(s.P, target, eps, accel, verts, geoOffsets, geoMats,
+                                  anyTransmission);
+}
+
+// The layers of a look that no one light owns, added once at a look vertex after the
+// light list has run: the warm-cool ramp, the glow through the body, the rainbow
+// sheen (the plain view-angle one and the drifting film), the flakes, and the rim.
+// `incoming` is the light the list found reaching the surface (the flat ambient plus
+// each light's shadowed share), which the sheen and the flakes scale by, and
+// `sssAccum` the light the list found coming through the body. KEPT IN STEP BY HAND
+// with the tail of `meshLitColor`: these are its formulas, and the table in
+// `TracedLookTests` holds each traced finish to its raster twin.
+static inline float3 ollin_pt_look_layers(OllinPTHit h, float3 wo,
+                                          constant OllinLighting &light,
+                                          float3 incoming, float3 sssAccum,
+                                          float3 keyToLight) {
+    OllinMaterial m = h.mat;
+    float3 n = h.s.N;
+    float3 add = float3(0.0);
+    if (m.shadingModel == 2) {
+        float t = dot(n, keyToLight) * 0.5 + 0.5;
+        add += mix(m.goochCool.rgb, m.goochWarm.rgb, t) * h.s.albedo;
+    }
+    if (m.subsurfaceColor.a > 0.0) {
+        add += m.subsurfaceColor.a * m.subsurfaceColor.rgb * h.s.albedo * sssAccum;
+    }
+    float NoV = clamp(dot(n, wo), 0.0, 1.0);
+    if (m.iridescence > 0.0) {
+        float fres = pow(1.0 - NoV, 3.0);
+        float irrad = dot(incoming, float3(0.299, 0.587, 0.114));
+        if (m.iridescenceFlow > 0.0) {
+            float cell = max(light.sceneScale, 1e-4) * 0.35 * m.iridescenceFlowSize;
+            float3 q = h.s.P / cell;
+            float t = m.iridescencePhase;
+            float3 d1 = float3(0.12 * t, -0.30 * t, 0.0);
+            float3 d2 = float3(-0.22 * t, -0.50 * t, 0.09 * t);
+            float wa = fbm(q * 1.2 + d1) * 2.0 - 1.0;
+            float wb = fbm(q * 1.2 + d1 + float3(4.7, 9.1, 2.3)) * 2.0 - 1.0;
+            float wm = fbm(q * 2.3 + d2 + float3(wa, wb, 0.5 * (wa - wb)) * 3.2) * 2.0 - 1.0;
+            float head = 0.5 - 0.5 * clamp(n.y, -1.0, 1.0);
+            float d = m.iridescenceScale
+                    * max(0.18 + 1.1 * head * head
+                              + m.iridescenceFlow * (0.35 * wa + 0.55 * wm), 0.0);
+            float3 rate = float3(1.0, 1.2146, 1.4513);
+            float3 wave = 0.5 - 0.5 * cos(6.2831853 * d * rate);
+            float coh = exp(-0.18 * d);
+            float3 filmC = mix(float3(0.5), wave, coh);
+            float body = mix(0.35, 1.0, fres);
+            add += m.iridescence * body * filmC * (0.15 + 0.85 * irrad);
+        } else {
+            float phase = fres * m.iridescenceScale;
+            float3 rainbow = 0.5 + 0.5 * cos(6.2831853 * (phase + float3(0.0, 0.3333, 0.6667)));
+            add += m.iridescence * fres * rainbow * (0.15 + 0.85 * irrad);
+        }
+    }
+    if (m.sparkleColor.a > 0.0) {
+        float cell = max(light.sceneScale, 1e-4) * 0.0022 * m.sparkleSize;
+        float3 q = h.s.P / cell;
+        float3 rnd = hash33(floor(q));
+        float soft = max(0.05, 0.26 / m.sparkleSize);
+        float mask = smoothstep(0.5, 0.5 - soft, length(fract(q) - 0.5));
+        float3 flakeN = normalize(n + (rnd * 2.0 - 1.0) * 0.7);
+        float align = clamp(dot(flakeN, wo), 0.0, 1.0);
+        float flash = pow(align, m.sparkleSharpness)
+                    + 0.18 * pow(align, m.sparkleSharpness * 0.12);
+        float irrad = dot(incoming, float3(0.299, 0.587, 0.114));
+        add += m.sparkleColor.a * 1.6 * flash * mask * m.sparkleColor.rgb
+             * (0.15 + 0.85 * irrad);
+    }
+    if (m.rimColor.a > 0.0) {
+        add += m.rimColor.a * pow(1.0 - NoV, m.rimSharpness) * m.rimColor.rgb;
+    }
+    return add;
+}
+
 // Next-event estimation over the frame's light list: for each light, pick the point
 // the surface would see, trace one visibility ray, and add the light's contribution
 // through the surface's reflectance. A light that declines to throw a shadow
@@ -755,18 +895,71 @@ static inline float3 ollin_pt_direct(OllinPTHit h, float3 wo, float eps,
                                      const device OllinMeshVertex *verts,
                                      const device uint *geoOffsets,
                                      const device OllinMaterial *geoMats,
-                                     bool anyTransmission) {
+                                     bool anyTransmission,
+                                     // A look vertex of a finish that has a look (see
+                                     // *The look layer* above). False runs the plain sum
+                                     // below and none of the look's branches.
+                                     bool look,
+                                     // The hit's own roughness, before the light list's
+                                     // widening: the width of the grating's lobe.
+                                     float lookRough,
+                                     // The surface's tangent where its raster draw
+                                     // carries one, else zero (the grating's frame).
+                                     float4 tangent,
+                                     // The area lights' two tables: a cel band and a
+                                     // highlight under a panel are the panel's whole
+                                     // integrals, as the lit fragment reads them.
+                                     texture2d<float> ltcMat, texture2d<float> ltcAmp) {
     float3 direct = float3(0.0);
-    if (light.lightCount <= 0) return direct;
+    if (light.lightCount <= 0 && !look) return direct;
     float3 origin = h.s.P + h.Ng * eps;
+    int model = h.mat.shadingModel;
+    // The stylized body and its highlight belong to the three older shading models;
+    // the physically-based one keeps its lobes and only gains the grating.
+    bool styled = look && model != 3;
+    float specStrength = styled ? h.mat.specular : 0.0;
+    float sharpness = max(h.mat.specularSharpness, 1.0);
+    float bands = max(h.mat.toonBands, 1.0);
+    bool wantsSSS = look && h.mat.subsurfaceColor.a > 0.0;
+    bool wantsIncoming = look && (h.mat.iridescence > 0.0 || h.mat.sparkleColor.a > 0.0);
+    float grating = (look && model == 3) ? h.mat.grating.x : 0.0;
+    float3 gratingT = float3(0.0);
+    float gratingSigma = 0.0;
+    if (grating > 0.0) {
+        float3 gratingB;
+        ollin_surface_frame(h.s.N, tangent, h.mat.grating.z, h.mat.grating.w,
+                            gratingT, gratingB);
+        gratingSigma = 0.02 + 0.25 * lookRough * lookRough;
+    }
+    // The highlight under a panel: the lit fragment maps the exponent onto the
+    // microfacet lobe of the same width and scales that lobe's integral over the
+    // panel by the strength.
+    float roughEq = clamp(sqrt(sqrt(2.0 / (sharpness + 2.0))), 0.045, 1.0);
+    float3 incoming = light.ambient.rgb;
+    float3 sssAccum = float3(0.0);
+    float3 keyToLight = float3(0.0, 1.0, 0.0);
+    bool haveKey = false;
     for (int i = 0; i < light.lightCount; i++) {
         OllinLight L = light.lights[i];
+        // The warm-cool ramp turns on the first light that reaches the surface,
+        // whichever way the surface faces it.
+        if (look && model == 2 && !haveKey) {
+            bool reaches = L.kind == 0 || L.position.w <= 0.0
+                || ollin_light_reach(length(L.position.xyz - h.s.P), L.position.w) > 0.0;
+            if (reaches) {
+                keyToLight = (L.kind == 0) ? L.direction.xyz
+                                           : normalize(L.position.xyz - h.s.P);
+                haveKey = true;
+            }
+        }
         if (L.kind <= 2) {
             // Punctual: one ray to the light (or along a directional's axis).
             float3 toLight = (L.kind == 0) ? L.direction.xyz
                                            : normalize(L.position.xyz - h.s.P);
             float NoL = dot(h.s.N, toLight);
-            if (NoL <= 0.0) continue;
+            // A light behind the surface matters to the glow through the body alone.
+            bool front = NoL > 0.0;
+            if (!front && !wantsSSS) continue;
             float atten = 1.0;
             if (L.kind == 2) {
                 atten = smoothstep(L.cosOuter, L.cosInner, dot(-toLight, L.direction.xyz));
@@ -781,17 +974,62 @@ static inline float3 ollin_pt_direct(OllinPTHit h, float3 wo, float eps,
             float3 target = (L.kind == 0) ? h.s.P + toLight * 1e6 : L.position.xyz;
             float3 vis = float3(1.0);
             if (L.shaping.w < 0.5) {                 // this light throws
-                vis = ollin_pt_transmittance(origin, target, eps, accel,
-                                             verts, geoOffsets, geoMats,
-                                             anyTransmission);
+                if (front) {
+                    vis = ollin_pt_transmittance(origin, target, eps, accel,
+                                                 verts, geoOffsets, geoMats,
+                                                 anyTransmission);
+                } else {
+                    vis = ollin_pt_through(h.s.P, h.Ng, target, eps, accel,
+                                           verts, geoOffsets, geoMats, anyTransmission);
+                }
                 if (all(vis <= float3(0.0))) continue;
             }
-            // Raster parity: the physically-based finish shades the premultiplied
-            // color through the microfacet BRDF; a legacy finish keeps the raster's
-            // un-normalized Lambert (albedo · color · N·L, no 1/π).
-            float3 f = h.physical ? ollin_pt_bsdf(h, wo, toLight)
-                                  : h.s.albedo;
-            direct += f * L.color.rgb * vis * (NoL * atten);
+            if (front && !styled) {
+                // Raster parity: the physically-based finish shades the premultiplied
+                // color through the microfacet BRDF; a legacy finish keeps the raster's
+                // un-normalized Lambert (albedo · color · N·L, no 1/π).
+                float3 f = h.physical ? ollin_pt_bsdf(h, wo, toLight)
+                                      : h.s.albedo;
+                direct += f * L.color.rgb * vis * (NoL * atten);
+                if (grating > 0.0) {
+                    // The grating's rainbow: the half-vector sum's component along the
+                    // grooves picks the wavelength each order sends this way, reflected
+                    // by the surface's own Fresnel and faded in at the terminator.
+                    float3 hv = normalize(toLight + wo);
+                    float3 F0 = mix(float3(h.mat.f0), h.s.albedo, h.s.metal);
+                    float3 F = ollin_pbr_F_Schlick(max(dot(wo, hv), 0.0), F0);
+                    if (h.mat.thinFilm > 0.0) {
+                        F = ollin_pbr_film_F(F, F0, saturate(dot(h.s.N, wo)), h.mat.thinFilm,
+                                             h.mat.thinFilmThickness, h.mat.thinFilmIor);
+                    }
+                    float gu = abs(dot(toLight + wo, gratingT));
+                    float3 rainbow = ollin_grating_color(gu, h.mat.grating.y, gratingSigma, light);
+                    direct += rainbow * F * L.color.rgb * vis
+                            * (0.5 * grating * atten * smoothstep(0.0, 0.15, NoL));
+                }
+            } else if (front) {
+                // The stylized body, by the lit fragment's own formulas: cel bands on
+                // the diffuse and the highlight snapped to a blob, or the highlight
+                // alone over a warm-cool ramp, or Lambert with the highlight beside it.
+                float3 hv = normalize(toLight + wo);
+                float specRaw = pow(max(dot(h.s.N, hv), 0.0), sharpness);
+                if (model == 1) {
+                    float d = ceil(NoL * bands) / bands;
+                    float spec = (specRaw > 0.5) ? specStrength : 0.0;
+                    direct += vis * (atten * (L.color.rgb * h.s.albedo * d
+                                              + L.specular.rgb * spec));
+                } else if (model == 2) {
+                    direct += vis * (atten * (L.specular.rgb * (specRaw * specStrength)));
+                } else {
+                    direct += vis * (atten * (L.color.rgb * h.s.albedo * NoL
+                                              + L.specular.rgb * (specRaw * specStrength)));
+                }
+            }
+            if (front && wantsIncoming) incoming += L.color.rgb * vis * (NoL * atten);
+            if (wantsSSS) {
+                sssAccum += L.color.rgb * vis
+                          * (atten * ollin_sss_translucency(wo, toLight, h.s.N));
+            }
         } else {
             // Area (rect / disk / tube): sample one point on the emitting surface.
             float4 u = ollin_pt_rand4(gid, sampleIndex, dim + uint(i));
@@ -826,7 +1064,13 @@ static inline float3 ollin_pt_direct(OllinPTHit h, float3 wo, float eps,
             float dist2 = max(dot(toL, toL), 1e-6);
             float3 wi = toL * rsqrt(dist2);
             float NoL = dot(h.s.N, wi);
-            if (NoL <= 0.0) continue;
+            bool front = NoL > 0.0;
+            // A cel band and a highlight under a panel are the panel's whole
+            // integrals in the lit fragment (the exact diffuse one, banded, and the
+            // fitted one of the highlight's lobe), which no one sample holds.
+            bool tabled = styled && light.ltcEnabled != 0
+                       && (model == 1 || specStrength > 0.0);
+            if (!front && !wantsSSS && !tabled) continue;
             // The reach, measured from the panel's center as the raster measures it.
             float within = 1.0;
             if (L.position.w > 0.0) {
@@ -835,18 +1079,66 @@ static inline float3 ollin_pt_direct(OllinPTHit h, float3 wo, float eps,
             }
             float cosL = dot(-wi, lightN);
             if (L.direction.w > 0.5) cosL = abs(cosL);   // two-sided panel
-            if (cosL <= 0.0) continue;
+            bool facing = cosL > 0.0;
+            if (!facing && !tabled) continue;
             float3 vis = float3(1.0);
-            if (L.shaping.w < 0.5) {                 // this light throws
-                vis = ollin_pt_transmittance(origin, p, eps, accel,
-                                             verts, geoOffsets, geoMats,
-                                             anyTransmission);
-                if (all(vis <= float3(0.0))) continue;
+            if (facing && L.shaping.w < 0.5) {       // this light throws
+                if (front) {
+                    vis = ollin_pt_transmittance(origin, p, eps, accel,
+                                                 verts, geoOffsets, geoMats,
+                                                 anyTransmission);
+                } else {
+                    vis = ollin_pt_through(h.s.P, h.Ng, p, eps, accel,
+                                           verts, geoOffsets, geoMats, anyTransmission);
+                }
             }
-            float3 f = ollin_pt_bsdf(h, wo, wi);
-            direct += f * L.color.rgb * vis * (NoL * cosL * area / dist2 * within);
+            if (tabled) {
+                // Both are the fragment's own numbers, so an unshadowed band is flat
+                // and an unshadowed highlight is the window's to the last bit, with
+                // no grain. The sample only says whether its point on the panel is
+                // hidden: the shadow is the share of the panel's points this surface
+                // cannot see. A point the surface faces away from says nothing about
+                // a shadow and counts as seen.
+                float NoVt = saturate(dot(h.s.N, wo));
+                float2 ltcUV = ollin_ltc_uv(roughEq, NoVt);
+                float4 lt1 = ltcMat.sample(ollinLTCSampler, ltcUV, level(0.0));
+                float4 lt2 = ltcAmp.sample(ollinLTCSampler, ltcUV, level(0.0));
+                float3x3 Minv = float3x3(float3(lt1.x, 0.0, lt1.y),
+                                         float3(0.0,  1.0, 0.0),
+                                         float3(lt1.z, 0.0, lt1.w));
+                float diffI = 0.0, specI = 0.0;
+                ollin_ltc_light(L, h.s.N, wo, h.s.P, Minv, ltcAmp, diffI, specI);
+                float3 whole = L.specular.rgb * (specI * lt2.x * specStrength);
+                if (model == 1) {
+                    whole += h.s.albedo * L.color.rgb * (ceil(saturate(diffI) * bands) / bands);
+                }
+                float3 seenShare = (front && facing) ? vis : float3(1.0);
+                direct += whole * seenShare * within;
+            }
+            if (!facing || all(vis <= float3(0.0))) continue;
+            if (!front) {
+                // The glow through the body under a panel: what the sample pours on
+                // the far side, seen against the light.
+                float back = pow(max(dot(wo, -wi), 0.0), 3.0);
+                sssAccum += L.color.rgb * vis
+                          * (back * (-NoL) * cosL * area / dist2 * within * (1.0 / 3.14159265));
+                continue;
+            }
+            if (!styled) {
+                float3 f = ollin_pt_bsdf(h, wo, wi);
+                direct += f * L.color.rgb * vis * (NoL * cosL * area / dist2 * within);
+            } else if (model == 0 || (model == 1 && !tabled)) {
+                // The matte body under the highlight, sampled as any matte body is.
+                direct += h.s.albedo * L.color.rgb * vis
+                        * (NoL * cosL * area / dist2 * within * (1.0 / 3.14159265));
+            }
+            if (wantsIncoming) {
+                incoming += L.color.rgb * vis
+                          * (NoL * cosL * area / dist2 * within * (1.0 / 3.14159265));
+            }
         }
     }
+    if (look) direct += ollin_pt_look_layers(h, wo, light, incoming, sssAccum, keyToLight);
     return direct;
 }
 
@@ -907,7 +1199,12 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
                            // weighted by latitude (`ollin_pt_env_mip`), read at the
                            // footprint's level by both strategies of the pair; the
                            // backdrop reads the original.
-                           texture2d<float> equirectFiltered [[texture(9)]]) {
+                           texture2d<float> equirectFiltered [[texture(9)]],
+                           // The area lights' two tables: a cel band and a
+                           // highlight under a panel are the panel's whole integrals,
+                           // as the lit fragment reads them (see `ollin_pt_direct`).
+                           texture2d<float> ltcAmp [[texture(10)]],
+                           texture2d<float> ltcMat [[texture(11)]]) {
     uint2 gid = lane;
     if (pt.open.x > 0u) {
         if (lane.x >= pt.open.x) return;
@@ -1079,6 +1376,10 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
                                        // color (rgb) + distance (w); w = 0 outside
         float pathDi = -2.0;           // the path's wavelength under dispersion, -1 (red)
                                        // … 1 (blue); -2 = not drawn yet
+        bool seen = true;              // no matte scatter yet: the camera sees the next
+                                       // surface head on, through glass, or in a
+                                       // reflection, so it shows its look (see *The
+                                       // look layer*)
 
         for (uint depth = 0; depth < maxDepth; depth++) {
             ray r;
@@ -1392,14 +1693,21 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
                     F0d, ollin_pbr_ess(brdfLUT, NoVd, hDirect.s.rough));
                 hDirect.bodyKeep = ollin_pt_body_keep(hDirect, brdfLUT, F0d, NoVd);
             }
+            bool lookVertex = seen && ollin_pt_has_look(h.mat);
             ollin_pt_add(radiance, dropped,
                          throughput * ollin_pt_direct(hDirect, -rd, eps, accel, light,
                                                       gid, sampleIndex, dim,
                                                       iesProfiles, cookies,
                                                       verts, geoOffsets, geoMats,
-                                                      pt.meshLights.z > 0.5),
+                                                      pt.meshLights.z > 0.5,
+                                                      lookVertex, h.s.rough,
+                                                      mapped.tangent, ltcMat, ltcAmp),
                          bounded && bounce > 0, bounceLimit);
             dim += uint(light.lightCount) + 1u;
+            // A warm-cool surface the camera sees is its ramp and its highlight and
+            // nothing else: the ramp stands in for the ambient and the bounce as well
+            // as the diffuse, as it does in the lit fragment, so the path ends here.
+            if (lookVertex && h.mat.shadingModel == 2) break;
 
             // The emissive meshes' own strategy: one triangle drawn by its share
             // of the total power, credited against the lobe sample through the
@@ -1470,10 +1778,12 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
             float3 wo = -rd;
             float3 wi;
             float3 weight;
+            bool matte = true;      // whether this scatter leaves through a matte lobe
             if (h.physical) {
                 float a = h.s.rough * h.s.rough;
                 float pSpec = ollin_pt_spec_prob(h);
                 if (u.z < pSpec) {
+                    matte = false;
                     // Specular: sample the visible-normal distribution.
                     float3 t, b;
                     ollin_pt_basis(h.s.N, t, b);
@@ -1504,6 +1814,7 @@ kernel void ollin_pt_trace(uint2 lane [[thread_position_in_grid]],
             // one above, so unmapped scenes are untouched).
             if (dot(wi, h.Ng) <= 0.0) break;
             throughput *= weight;
+            if (matte) seen = false;
             coneSpread = ollin_pt_widen(coneSpread + spreadGain, prevPdf);
             prevNEE = true;
             legCarried = 0.0;

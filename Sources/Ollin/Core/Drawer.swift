@@ -667,6 +667,15 @@ final class Drawer {
         return try body()
     }
 
+    /// One pixel's cone under the frame's camera at the size the frame renders at,
+    /// which a traced hit reads its maps' level from: above zero, the angle a pixel
+    /// subtends in radians (a perspective camera); below zero, minus a pixel's width
+    /// in world units (an orthographic one); zero until a render has set it, and a
+    /// hit then reads full size. The renderer writes it once a frame, ahead of
+    /// everything that shades (`encodeLightCull`), since the drawer holds no
+    /// render size of its own.
+    var tracedPixelCone: Float = 0
+
     /// Last frame's camera, kept across `beginFrame`: the cross-frame half of the
     /// motion-blur velocity computation (the mover registry's camera sibling). It
     /// lives here rather than on a renderer history slot so the live, repeat, and
@@ -3639,7 +3648,7 @@ final class Drawer {
         var u = OllinLighting()
         u.shadowLight = -1   // no shadows unless a caster is found below
         if let eye = camera3D?.eye {
-            u.cameraPosition = SIMD4<Float>(Float(eye.x), Float(eye.y), Float(eye.z), 0)
+            u.cameraPosition = SIMD4<Float>(Float(eye.x), Float(eye.y), Float(eye.z), tracedPixelCone)
         }
         // Geometric specular anti-aliasing: the sketch's strength becomes the variance of
         // the pixel filter in image space, 0.25 at strength 1 for the published standard

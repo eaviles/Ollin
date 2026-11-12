@@ -52,6 +52,22 @@ extension MetalRenderer {
         return lightGridStandIn
     }
 
+    /// One pixel's cone under a camera at a render size, in the one number the
+    /// lighting uniform carries (`OllinLighting.cameraPosition.w`): the angle a pixel
+    /// subtends for a perspective camera (any projection whose rays leave one point),
+    /// minus a pixel's width in world units for an orthographic one, and zero where
+    /// there is no camera to measure.
+    static func pixelCone(of camera: Camera3D?, renderWidth: Int, renderHeight: Int) -> Float {
+        guard let camera, renderWidth > 0, renderHeight > 0 else { return 0 }
+        let projection = camera.projectionMatrix(aspect: Double(renderWidth) / Double(renderHeight))
+        let scale = abs(projection.columns.1.y)
+        guard scale > 1e-6 else { return 0 }
+        // The projection maps the frame's height onto two clip units, so a pixel is
+        // this much of the view's height at unit distance (or of its world height).
+        let perPixel = 2 / (scale * Float(renderHeight))
+        return projection.columns.3.w == 0 ? perPixel : -perPixel
+    }
+
     /// Cull the frame's lights into the screen tile grid, ahead of the geometry pass
     /// in the same command buffer. Returns nil for a frame on the inline path (eight
     /// lights or fewer), which is what leaves every binding on the stand-in.
@@ -64,6 +80,12 @@ extension MetalRenderer {
                          frameIndex: Int?) -> LightGrid? {
         currentLightGrids.removeAll(keepingCapacity: true)
         currentLightGridCamera = drawer.camera3D
+        // Every render path calls this once a frame with the size it renders at, ahead
+        // of everything that shades, which makes it the place the frame's pixel cone
+        // is measured for the traced hits' map levels.
+        drawer.tracedPixelCone = MetalRenderer.pixelCone(of: drawer.camera3D,
+                                                         renderWidth: renderWidth,
+                                                         renderHeight: renderHeight)
         // One cull per light set that outruns the inline array: a set is its own
         // light list, so it is its own cull and its own pair of buffers (the cost
         // the per-set lighting note predicted). A frame with one set runs exactly

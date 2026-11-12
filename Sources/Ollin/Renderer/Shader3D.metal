@@ -2058,6 +2058,8 @@ struct OllinRTSurface {
     float  metal;     // baked per-vertex metalness (normal.w)
     float  rough;     // baked per-vertex roughness (position.w), clamped
     OllinRTFinish fin;// the batch's stylized finish, all zero where the frame has none
+    float  ao;        // what an occlusion map leaves of the ambient here; 1 with none
+    float3 glow;      // the light the surface adds of its own (display-linear); 0 with none
 };
 
 // Where a hit's triangle sits, and what the copy that carries it does to the color.
@@ -2101,6 +2103,9 @@ static inline OllinRTFinish ollin_rt_plain_finish() {
     f.sss   = float4(0.0);
     f.sheen = float4(0.0);
     f.coat  = float4(0.0);
+    f.maps  = float4(0.0);
+    f.factors = float4(0.0);
+    f.glow  = float4(0.0);
     return f;
 }
 
@@ -2137,11 +2142,40 @@ static inline OllinRTHit ollin_rt_hit_lookup(const device uint *table,
     return h;
 }
 
+// A surface map read at a traced hit, through the material's address mode (0 clamp,
+// 1 repeat, 2 mirrored repeat), at the level the ray's footprint asks for.
+static inline float4 ollin_rt_sample_map(texture2d<float> tex, float2 uv, float lod, float wrap) {
+    constexpr sampler clampSamp(filter::linear, mip_filter::linear, address::clamp_to_edge);
+    constexpr sampler tileSamp(filter::linear, mip_filter::linear, address::repeat);
+    constexpr sampler mirrorSamp(filter::linear, mip_filter::linear, address::mirrored_repeat);
+    if (wrap >= 1.5) { return tex.sample(mirrorSamp, uv, level(lod)); }
+    if (wrap >= 0.5) { return tex.sample(tileSamp, uv, level(lod)); }
+    return tex.sample(clampSamp, uv, level(lod));
+}
+
+// The level a map of this size is read at: the footprint's share of the triangle's
+// texel density (`lodBias`, the same for every map on the triangle) plus the map's
+// own resolution, never finer than its full size.
+static inline float ollin_rt_map_lod(float lodBias, texture2d<float> tex) {
+    return max(lodBias + 0.5 * log2(float(tex.get_width()) * float(tex.get_height())), 0.0);
+}
+
+// `cone` is the footprint of the ray that found this surface: x its width where the ray
+// started and y how much it widens per unit of travel (a pixel's own angle, and the lobe
+// the ray was drawn from). A reflection or a refraction passes one, and the hit then
+// reads every map the surface binds (the picture, the normal map, the metallic-roughness
+// map, occlusion, and the glow) at the level whose texels match that footprint, so a
+// fine picture seen small in a mirror is averaged the way the same picture seen small
+// head on is, and a normal map's relief shows in the mirror. The default is no cone: the
+// picture alone at full size, which is what the walks that only need a surface's place
+// and color ask for (a shadow's tint, a probe's bounce, the path-traced export, which
+// resolves every map itself after this fetch).
 static inline OllinRTSurface ollin_rt_fetch_surface(thread OllinRayQuery &q,
                                                     const device OllinMeshVertex *verts,
                                                     const device uint *geoOffsets,
                                                     float3 origin, float3 dir,
-                                                    thread bool &backface) {
+                                                    thread bool &backface,
+                                                    float2 cone = float2(-1.0)) {
     // Fetch the hit triangle from the flat mesh buffer and interpolate its attributes.
     OllinRTHit hit = ollin_rt_hit_lookup(geoOffsets, q.get_committed_instance_id(),
                                          q.get_committed_geometry_id());
@@ -2152,7 +2186,8 @@ static inline OllinRTSurface ollin_rt_fetch_surface(thread OllinRayQuery &q,
     float2 bc = q.get_committed_triangle_barycentric_coord();
     float3 w = float3(1.0 - bc.x - bc.y, bc.x, bc.y);
     OllinRTSurface s;
-    s.N = normalize(w.x * a.normal.xyz + w.y * b.normal.xyz + w.z * c.normal.xyz);
+    float3 gn = w.x * a.normal.xyz + w.y * b.normal.xyz + w.z * c.normal.xyz;
+    s.N = normalize(gn);
     // A copy's vertices are in the base mesh's own space, so its normal needs the
     // copy's placement. The correct map for a normal is the inverse transpose of the
     // placement, which is the transpose of the world-to-object matrix the query
@@ -2170,23 +2205,86 @@ static inline OllinRTSurface ollin_rt_fetch_surface(thread OllinRayQuery &q,
     if (backface) s.N = -s.N;
     // Vertex color is straight sRGB (the baked `fill`), like the rasterized fragment.
     s.albedo = srgbToLinear(w.x * a.color.rgb + w.y * b.color.rgb + w.z * c.color.rgb) * hit.tint;
-    // A picture on the surface, read at the hit the way the raster draw reads it, at its
-    // full-size level: a ray carries no screen footprint to choose a smaller one from.
-    if (hit.fin.cool.w > 0.5) {
-        float2 uv = w.x * a.uv + w.y * b.uv + w.z * c.uv;
-        float wrap = hit.fin.cool.w - 1.0;
-        constexpr sampler clampSamp(filter::linear, address::clamp_to_edge);
-        constexpr sampler tileSamp(filter::linear, address::repeat);
-        constexpr sampler mirrorSamp(filter::linear, address::mirrored_repeat);
-        float4 picture = wrap >= 1.5 ? hit.fin.base.sample(mirrorSamp, uv, level(0.0))
-                       : wrap >= 0.5 ? hit.fin.base.sample(tileSamp, uv, level(0.0))
-                       : hit.fin.base.sample(clampSamp, uv, level(0.0));
-        s.albedo *= picture.rgb;
-    }
     // Metalness + roughness are baked per vertex into the spare w slots (constant across
     // the triangle), so a hit shades as the surface it is.
     s.metal = clamp(a.normal.w, 0.0, 1.0);
     s.rough = clamp(a.position.w, 0.045, 1.0);
+    s.ao = 1.0;
+    s.glow = float3(0.0);
+    bool mapped = cone.x >= 0.0;
+    bool wantsMaps = mapped && (hit.fin.maps.x > 0.0 || hit.fin.maps.y > 0.0
+                                || hit.fin.maps.z > 0.0 || hit.fin.coat.z > 0.5);
+    if (hit.fin.cool.w > 0.5 || wantsMaps) {
+        float2 uv = w.x * a.uv + w.y * b.uv + w.z * c.uv;
+        // The footprint over the triangle's texel density. With no cone the bias stays
+        // far below any map's size, so every read lands on its full-size level.
+        float lodBias = -1000.0;
+        if (mapped) {
+            float twoWorld = length(cross(b.position.xyz - a.position.xyz,
+                                          c.position.xyz - a.position.xyz));
+            float2 e1 = b.uv - a.uv, e2 = c.uv - a.uv;
+            float uvTwoArea = abs(e1.x * e2.y - e1.y * e2.x);
+            if (twoWorld > 1e-9 && uvTwoArea > 0.0) {
+                float footprint = cone.x + cone.y * q.get_committed_distance();
+                lodBias = 0.5 * log2(uvTwoArea / twoWorld)
+                        + log2(max(footprint, 1e-6) / max(abs(dot(s.N, dir)), 1e-3));
+            }
+        }
+        // A picture on the surface, read at the hit the way the raster draw reads it.
+        if (hit.fin.cool.w > 0.5) {
+            s.albedo *= ollin_rt_sample_map(hit.fin.base, uv,
+                                            ollin_rt_map_lod(lodBias, hit.fin.base),
+                                            hit.fin.cool.w - 1.0).rgb;
+        }
+        if (wantsMaps) {
+            float wrap = hit.fin.maps.w;
+            if (hit.fin.maps.x > 0.0) {
+                // The bend runs on the raw interpolated frame (the bitangent rebuilt as
+                // sign times cross(N, T)) and flips to the viewed side after, the lit
+                // fragment's own order.
+                float4 tangent = float4(a.tangent) * w.x + float4(b.tangent) * w.y
+                               + float4(c.tangent) * w.z;
+                float3 t = tangent.xyz;
+                float3 bt = cross(gn, t) * tangent.w;
+                float3 nm = ollin_rt_sample_map(hit.fin.normalMap, uv,
+                    ollin_rt_map_lod(lodBias, hit.fin.normalMap), wrap).xyz * 2.0 - 1.0;
+                nm.xy *= hit.fin.maps.x;
+                float3 bent = t * nm.x + bt * nm.y + gn * nm.z;
+                float bentLen = length(bent);
+                if (bentLen > 1e-6) {
+                    bent /= bentLen;
+                    // A bend that turns the surface away from the ray would shade its
+                    // far side; such a hit keeps the triangle's own normal.
+                    float3 turned = backface ? -bent : bent;
+                    if (dot(turned, dir) < 0.0) s.N = turned;
+                }
+            }
+            if (hit.fin.maps.y > 0.0) {
+                float4 mr = ollin_rt_sample_map(hit.fin.metallicRoughness, uv,
+                    ollin_rt_map_lod(lodBias, hit.fin.metallicRoughness), wrap);
+                s.rough = clamp(hit.fin.factors.y * mr.g, 0.045, 1.0);
+                s.metal = clamp(hit.fin.factors.x * mr.b, 0.0, 1.0);
+            }
+            if (hit.fin.maps.z > 0.0) {
+                float occ = ollin_rt_sample_map(hit.fin.occlusion, uv,
+                    ollin_rt_map_lod(lodBias, hit.fin.occlusion), wrap).r;
+                s.ao = 1.0 + hit.fin.maps.z * (occ - 1.0);
+            }
+        }
+        if (mapped && hit.fin.coat.z > 0.5) {
+            s.glow = hit.fin.glow.rgb
+                   * ollin_rt_sample_map(hit.fin.emissive, uv,
+                                         ollin_rt_map_lod(lodBias, hit.fin.emissive),
+                                         hit.fin.coat.z - 1.0).rgb;
+        }
+    }
+    // The light the surface adds of its own: its emissive factor (times the map, read
+    // above) and its own color times `emissiveIntensity`. Only a walk that shades what
+    // it finds asks (the cone), and a frame with no glowing surface holds zeros here.
+    if (mapped) {
+        if (hit.fin.coat.z <= 0.5) s.glow = hit.fin.glow.rgb;
+        s.glow += hit.fin.factors.z * s.albedo;
+    }
     // The rest of the finish, which no vertex slot can carry: the stylized shading model
     // and the two layers that apply to any model. Zero unless the frame declared one.
     s.fin = hit.fin;
@@ -2197,9 +2295,23 @@ static inline OllinRTSurface ollin_rt_fetch_surface(thread OllinRayQuery &q,
 static inline OllinRTSurface ollin_rt_fetch_surface(thread OllinRayQuery &q,
                                                     const device OllinMeshVertex *verts,
                                                     const device uint *geoOffsets,
-                                                    float3 origin, float3 dir) {
+                                                    float3 origin, float3 dir,
+                                                    float2 cone = float2(-1.0)) {
     bool backface = false;
-    return ollin_rt_fetch_surface(q, verts, geoOffsets, origin, dir, backface);
+    return ollin_rt_fetch_surface(q, verts, geoOffsets, origin, dir, backface, cone);
+}
+
+// The footprint of a ray leaving `origin`, for the level its hit reads its maps at: a
+// pixel's width there (its angle times the distance from the eye, or its own width
+// under an orthographic camera), widening by that angle and by the lobe the ray was
+// drawn from. A glossy ray stands for a whole lobe, about four of its alpha across at
+// the mirror direction, and the picture it finds is seen through that blur, so it is
+// read at that blur's level. `minRough` is the lobe's roughness, 0 for a mirror ray.
+static inline float2 ollin_rt_cone(constant OllinLighting &light, float3 origin,
+                                   float minRough) {
+    float pixel = light.cameraPosition.w;
+    float width = (pixel > 0.0) ? pixel * length(origin - light.cameraPosition.xyz) : -pixel;
+    return float2(width, max(pixel, 0.0) + 4.0 * minRough * minRough);
 }
 
 // Run one closest-hit query: reset, drain the candidates, and report whether a triangle
@@ -2372,7 +2484,14 @@ static inline float3 ollin_rt_direct(OllinRTSurface s, constant OllinLighting &l
 // primary path does when it withholds the IBL ambient and the probe field from that
 // model. Every other finish reads the plain product, as it always did.
 static inline float3 ollin_rt_ambient(OllinRTSurface s, float3 irr) {
-    return ((int)s.fin.model.x == 2) ? float3(0.0) : s.albedo * irr;
+    return ((int)s.fin.model.x == 2) ? float3(0.0) : s.albedo * irr * s.ao;
+}
+
+// The light a traced surface adds of its own, in the units its neighbors' terms are in
+// here: display-linear like the direct lights, so it takes the same divide by the
+// exposure the caller multiplies the whole reflection by.
+static inline float3 ollin_rt_glow(OllinRTSurface s, constant OllinLighting &light) {
+    return s.glow / max(light.iblIntensity, 1e-3);
 }
 
 // The environment reflected off a traced surface, sampled at a lobe width that accounts
@@ -2473,7 +2592,10 @@ static inline float3 ollin_rt_specular_tail(OllinRTSurface s, float3 inDir, int 
                                             // The arriving cone's width, as a roughness
                                             // (see `ollin_rt_reflection_trace`). It widens
                                             // every surface the walk meets from here on.
-                                            float minRough = 0.0) {
+                                            float minRough = 0.0,
+                                            // The ray's footprint at `s` (see
+                                            // `ollin_rt_cone`), which grows down the walk.
+                                            float2 cone = float2(0.0)) {
     int steps = min(extra, OLLIN_MAX_REFLECTION_BOUNCES);
     float3 acc = float3(0.0);
     float3 tp = float3(1.0);
@@ -2497,7 +2619,8 @@ static inline float3 ollin_rt_specular_tail(OllinRTSurface s, float3 inDir, int 
             acc += tp * lobe;             // the ray left the scene
             break;
         }
-        OllinRTSurface sn = ollin_rt_fetch_surface(q, verts, geoOffsets, r.origin, dir);
+        OllinRTSurface sn = ollin_rt_fetch_surface(q, verts, geoOffsets, r.origin, dir, cone);
+        cone.x += cone.y * length(sn.P - r.origin);
         sn.rough = max(sn.rough, minRough);   // no sharper than the cone that arrived
         // A rough surface cannot hold a sharp image of what it faces, so part of this
         // step reads the environment lobe and only the rest carries on down the chain.
@@ -2514,6 +2637,7 @@ static inline float3 ollin_rt_specular_tail(OllinRTSurface s, float3 inDir, int 
         acc += tp * (ollin_rt_ambient(sn, irrn)
                      + ollin_rt_direct(sn, light, -dir, ltcAmp, iesProfiles, cookies))
                * (1.0 - sn.metal);
+        acc += tp * ollin_rt_glow(sn, light);
         tp *= Fn;                         // what this surface hands to the one behind it
         s = sn;
         inDir = dir;
@@ -2579,7 +2703,12 @@ static inline float3 ollin_rt_hit_radiance(OllinRTSurface s1, float3 rayOrigin, 
                                            // reflects, which is where the speckle actually
                                            // comes from: a satin floor looking at a mirror
                                            // ball, whose own reflection is a pinpoint light.
-                                           float minRough = 0.0) {
+                                           float minRough = 0.0,
+                                           // The ray's footprint at `s1` (see
+                                           // `ollin_rt_cone`): the surfaces this shade
+                                           // reflects read their maps at the level it
+                                           // has grown to by then.
+                                           float2 cone = float2(0.0)) {
     float3 F0 = mix(float3(0.04), s1.albedo, s1.metal);
     if (s1.fin.coat.x > 0.0) F0 = mix(F0, ollin_pbr_coat_f0(F0), s1.fin.coat.x);
     float NoV = max(dot(s1.N, -rayDir), 0.0);
@@ -2595,7 +2724,8 @@ static inline float3 ollin_rt_hit_radiance(OllinRTSurface s1, float3 rayOrigin, 
     r2.max_distance = 1e9;
     float3 envAtHit;
     if (ollin_rt_query(q, r2, accel)) {
-        OllinRTSurface s2 = ollin_rt_fetch_surface(q, verts, geoOffsets, r2.origin, secDir);
+        OllinRTSurface s2 = ollin_rt_fetch_surface(q, verts, geoOffsets, r2.origin, secDir, cone);
+        float2 cone2 = float2(cone.x + cone.y * length(s2.P - r2.origin), cone.y);
         s2.rough = max(s2.rough, minRough);   // no sharper than the cone that arrived
         float3 F0b = mix(float3(0.04), s2.albedo, s2.metal);
         if (s2.fin.coat.x > 0.0) F0b = mix(F0b, ollin_pbr_coat_f0(F0b), s2.fin.coat.x);
@@ -2610,7 +2740,8 @@ static inline float3 ollin_rt_hit_radiance(OllinRTSurface s1, float3 rayOrigin, 
             env2 = ollin_rt_specular_tail(s2, secDir, light.rtReflectionBounces - 2, eps,
                                           accel, q, verts, geoOffsets, light, irradianceTex,
                                           prefilterTex, cubeSamp, rot, ltcAmp, iesProfiles,
-                                          cookies, giIrradiance, giDepth, giOffsets, minRough);
+                                          cookies, giIrradiance, giDepth, giOffsets, minRough,
+                                          cone2);
         } else {
             env2 = ollin_rt_env_lobe(prefilterTex, cubeSamp, rot, reflect(secDir, s2.N),
                                      s2.rough, NoVb, light.iblMaxMip);
@@ -2624,7 +2755,7 @@ static inline float3 ollin_rt_hit_radiance(OllinRTSurface s1, float3 rayOrigin, 
             : irradianceTex.sample(cubeSamp, rot * s2.N).rgb;
         float3 diffuse2 = ollin_rt_ambient(s2, irr2)
                         + ollin_rt_direct(s2, light, -secDir, ltcAmp, iesProfiles, cookies);
-        envAtHit = env2 * Fb + diffuse2 * (1.0 - s2.metal);
+        envAtHit = env2 * Fb + diffuse2 * (1.0 - s2.metal) + ollin_rt_glow(s2, light);
         // The second surface adds its own layered lobes over that body, its coat taking
         // the radiance the walk already found along its mirror direction.
         envAtHit = ollin_rt_layer_lobes(envAtHit, s2, NoVb, reflect(secDir, s2.N), env2,
@@ -2658,6 +2789,8 @@ static inline float3 ollin_rt_hit_radiance(OllinRTSurface s1, float3 rayOrigin, 
     float3 diffuse = ollin_rt_ambient(s1, irr1)
                    + ollin_rt_direct(s1, light, -rayDir, ltcAmp, iesProfiles, cookies);
     col += diffuse * (1.0 - s1.metal);
+    // The surface's own light, under its layers like the body it comes from.
+    col += ollin_rt_glow(s1, light);
     // The layered lobes over the finished body: the sheen's own broad environment gather,
     // then the coat's polished film taking the radiance this trace already found.
     col = ollin_rt_layer_lobes(col, s1, NoV, secDir, envAtHit,
@@ -2744,13 +2877,15 @@ static inline float4 ollin_rt_reflection_trace(float3 worldPos, float3 n, float3
     if (!ollin_rt_query(q, r, accel))
         return float4(0.0);               // the ray left the scene -> the environment (caller's fallback)
 
-    OllinRTSurface s1 = ollin_rt_fetch_surface(q, verts, geoOffsets, r.origin, R);
+    float2 cone = ollin_rt_cone(light, worldPos, minRough);
+    OllinRTSurface s1 = ollin_rt_fetch_surface(q, verts, geoOffsets, r.origin, R, cone);
+    cone.x += cone.y * length(s1.P - r.origin);
     if (hitT) { *hitT = length(s1.P - r.origin); }
     s1.rough = max(s1.rough, minRough);   // no sharper than the cone that arrived
     float3 col = ollin_rt_hit_radiance(s1, r.origin, R, eps, accel, q, verts, geoOffsets,
                                        light, irradianceTex, prefilterTex, cubeSamp, rot,
                                        ltcAmp, iesProfiles, cookies, sheenLUT,
-                                       giIrradiance, giDepth, giOffsets, minRough);
+                                       giIrradiance, giDepth, giOffsets, minRough, cone);
     return float4(col, 1.0);
 }
 
@@ -2841,6 +2976,9 @@ static inline float3 ollin_rt_refraction(float3 worldPos, float3 n, float3 viewD
     float index = ior > 0.0 ? ior : mat.ior;
     float3 col = envTransmitted;
     float3 absorb = float3(1.0);
+    // The view through the body carries a pixel's own footprint on, so a surface seen
+    // through glass reads its maps at the level it would read them at head on.
+    float2 cone = ollin_rt_cone(light, worldPos, 0.0);
 
     if (mat.thickness > 0.0) {
         // Solid: into the body along the refracted direction.
@@ -2858,7 +2996,8 @@ static inline float3 ollin_rt_refraction(float3 worldPos, float3 n, float3 viewD
         OllinRTSurface inside;
         if (ollin_rt_query(q, r, accel)) {
             bool backface = false;
-            OllinRTSurface s = ollin_rt_fetch_surface(q, verts, geoOffsets, r.origin, rr, backface);
+            OllinRTSurface s = ollin_rt_fetch_surface(q, verts, geoOffsets, r.origin, rr, backface,
+                                                      cone);
             float tracedSpan = length(s.P - worldPos);
             // A caller's own exit wins only while it really is the nearer surface, so an
             // object embedded in the body still shows through the entry interface alone.
@@ -2885,7 +3024,8 @@ static inline float3 ollin_rt_refraction(float3 worldPos, float3 n, float3 viewD
             col = ollin_rt_hit_radiance(inside, r.origin, rr, eps, accel, q, verts, geoOffsets,
                                         light, irradianceTex, prefilterTex, cubeSamp, rot,
                                         ltcAmp, iesProfiles, cookies, sheenLUT,
-                                        giIrradiance, giDepth, giOffsets);
+                                        giIrradiance, giDepth, giOffsets, 0.0,
+                                        float2(cone.x + cone.y * span, cone.y));
         } else if (haveExit) {
             // The body's exit: refract back out (the exit normal faces the interior ray,
             // exactly the side refract() wants) and trace the scene.
@@ -2897,12 +3037,15 @@ static inline float3 ollin_rt_refraction(float3 worldPos, float3 n, float3 viewD
             r2.min_distance = eps * 0.05;
             r2.max_distance = 1e9;
             if (ollin_rt_query(q, r2, accel)) {
+                float2 coneOut = float2(cone.x + cone.y * span, cone.y);
                 OllinRTSurface s2 = ollin_rt_fetch_surface(q, verts, geoOffsets,
-                                                           r2.origin, exitDir);
+                                                           r2.origin, exitDir, coneOut);
+                coneOut.x += coneOut.y * length(s2.P - r2.origin);
                 col = ollin_rt_hit_radiance(s2, r2.origin, exitDir, eps, accel, q, verts,
                                             geoOffsets, light, irradianceTex, prefilterTex,
                                             cubeSamp, rot, ltcAmp, iesProfiles, cookies,
-                                            sheenLUT, giIrradiance, giDepth, giOffsets);
+                                            sheenLUT, giIrradiance, giDepth, giOffsets, 0.0,
+                                            coneOut);
             } else {
                 col = prefilterTex.sample(cubeSamp, rot * exitDir,
                                           level(rough * light.iblMaxMip)).rgb;
@@ -2929,7 +3072,9 @@ static inline float3 ollin_rt_refraction(float3 worldPos, float3 n, float3 viewD
                 break;
             }
             bool backface = false;
-            OllinRTSurface s = ollin_rt_fetch_surface(q, verts, geoOffsets, origin, dir, backface);
+            OllinRTSurface s = ollin_rt_fetch_surface(q, verts, geoOffsets, origin, dir, backface,
+                                                      cone);
+            cone.x += cone.y * length(s.P - origin);
             if (backface) {
                 origin = s.P + dir * eps; // our own far shell: pass through
                 continue;
@@ -2937,7 +3082,7 @@ static inline float3 ollin_rt_refraction(float3 worldPos, float3 n, float3 viewD
             col = ollin_rt_hit_radiance(s, origin, dir, eps, accel, q, verts, geoOffsets,
                                         light, irradianceTex, prefilterTex, cubeSamp, rot,
                                         ltcAmp, iesProfiles, cookies, sheenLUT,
-                                        giIrradiance, giDepth, giOffsets);
+                                        giIrradiance, giDepth, giOffsets, 0.0, cone);
             break;
         }
     }

@@ -1033,7 +1033,12 @@ typedef struct {
 
 typedef struct {
     simd_float4 ambient;          // rgb linear ambient (lights every surface flatly); a unused
-    simd_float4 cameraPosition;   // world-space eye xyz (for the specular view direction); w unused
+    simd_float4 cameraPosition;   // world-space eye xyz (for the specular view direction);
+                                  // w = a pixel's cone, for the level a traced hit reads its
+                                  // maps at: above zero, the angle one pixel subtends, in
+                                  // radians (a perspective camera); below zero, minus the
+                                  // width of one pixel in world units (an orthographic
+                                  // one); zero = not known, and a hit reads full size
     OllinLight lights[OLLIN_MAX_LIGHTS];
     int lightCount;               // number of valid entries in `lights`
     int enabled;                  // 1 = lit shading (any light or ambient set); 0 = normal-as-color (unchanged)
@@ -1375,8 +1380,8 @@ typedef struct {
 // Every field is zero for a standard or physically-based finish with no rim and no
 // subsurface, which is what a frame of ordinary materials writes: the whole table is then
 // left out (the hit table's header says so with a zero base) and the traced shade is the
-// plain physically-based one. A frame that draws a mesh with a picture writes the table too,
-// so the picture reaches the hit (`base`). Stride 128.
+// plain physically-based one. A frame that draws a mesh with a picture, with any other
+// surface map, or with a glow writes the table too, so each reaches the hit. Stride 208.
 typedef struct {
     simd_float4 model;   // x = shading model: 0 standard/physically-based, 1 toon, 2 Gooch
                          // y = cel bands (toon), z = Blinn-Phong specular strength,
@@ -1395,18 +1400,38 @@ typedef struct {
                          // roughness (both physically-based only); z = the emissive map's
                          // gate and wrap for the probe trace: 0 for none, else the
                          // material's `uvWrap` plus one; w pads the row.
+    simd_float4 maps;    // the surface's other maps at a reflected or refracted hit, each
+                         // gate zero where the geometry binds none: x = the normal map's
+                         // strength (`OllinMaterial.normalScale`), y = 1 when a
+                         // metallic-roughness map is bound, z = the occlusion map's
+                         // strength; w = the address mode they share (`uvWrap`: 0 clamp,
+                         // 1 repeat, 2 mirrored repeat)
+    simd_float4 factors; // x, y = the composed metallic and roughness factors a
+                         // metallic-roughness map multiplies (read behind `maps.y`; the
+                         // vertex slots hold only the drawing-state half); z = how much of
+                         // its own color the surface adds as light
+                         // (`OllinMaterial.emissiveIntensity`); w pads the row
+    simd_float4 glow;    // rgb = the linear emissive factor a hit adds as light of its own
+                         // (times the emissive map behind `coat.z`); w pads the row
     // The surface's base-color picture (`Mesh.textured`), which a traced hit multiplies its
     // color by at the hit's uv, so a mirror or a pane shows the picture rather than the
     // plain color under it. Read only behind `cool.w`. The CPU writes the texture's GPU
     // resource ID, and the white stand-in's where a geometry has no picture. Beside it the
-    // emissive map (`Mesh.surfaceMapped(emissive:)`), which the probe trace multiplies the
-    // glow's factor by at a hit, read only behind `coat.z`, the white stand-in likewise.
+    // emissive map (`Mesh.surfaceMapped(emissive:)`), which a hit multiplies the glow's
+    // factor by, read only behind `coat.z`, and the normal, metallic-roughness, and
+    // occlusion maps behind their gates in `maps`, the white stand-in likewise in each.
 #ifdef __METAL_VERSION__
     texture2d<float> base;
     texture2d<float> emissive;
+    texture2d<float> normalMap;
+    texture2d<float> metallicRoughness;
+    texture2d<float> occlusion;
 #else
     uint64_t base;
     uint64_t emissive;
+    uint64_t normalMap;
+    uint64_t metallicRoughness;
+    uint64_t occlusion;
 #endif
 } OllinRTFinish;
 

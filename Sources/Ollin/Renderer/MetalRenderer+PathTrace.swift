@@ -127,6 +127,13 @@ extension MetalRenderer {
         if lighting.enabled != 0, !drawer.usedLightCookies.isEmpty {
             lighting.cookieEnabled = ensureCookieArray(drawer.usedLightCookies) ? 1 : 0
         }
+        // The area lights' tables, for the two traced terms that are a panel's whole
+        // integrals in the lit fragment: a cel band and the standard finishes'
+        // highlight. Every other traced term samples the panel itself.
+        if lighting.enabled != 0,
+           drawer.lights.contains(where: { $0.kind == .rectangle || $0.kind == .disk || $0.kind == .tube }) {
+            lighting.ltcEnabled = ensureLTCTables() ? 1 : 0
+        }
         guard let built = buildShadowAccel(drawer, into: setupCB, meshBuffer: meshBuffer,
                                            pathTraceMats: true),
               let finishes = built.ptMats, let scene = built.ptScene,
@@ -379,6 +386,9 @@ extension MetalRenderer {
             enc.setTexture(iblBRDFLUT, index: 7)
             enc.setTexture(stats, index: 8)
             enc.setTexture(envFiltered ?? envTexture, index: 9)
+            // Read only behind `ltcEnabled`, so any texture stands in when no panel is lit.
+            enc.setTexture(ltcAmpTexture ?? iblBRDFLUT, index: 10)
+            enc.setTexture(ltcMatTexture ?? iblBRDFLUT, index: 11)
             enc.setBuffer(openList, offset: 0, index: 13)
             if compacted {
                 enc.dispatchThreads(MTLSize(width: openPixels, height: 1, depth: 1),
