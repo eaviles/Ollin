@@ -98,7 +98,9 @@ import OllinWebGate
                 let v = Array(slice)
                 let a = pairs[2 * k], r = pairs[2 * k + 1]
                 worst.position = max(worst.position, abs(v[0] - a.position.x), abs(v[1] - a.position.y))
-                #expect(v[2] == a.aa.x && SIMD4(v[3], v[4], v[5], v[6]) == a.color)
+                // The coverage is not held to 0...1, so the page's, worked out from
+                // numbers that crossed as floats, differs in the last places.
+                #expect(abs(v[2] - a.aa.x) <= 1e-4 * max(1, abs(a.aa.x)) && SIMD4(v[3], v[4], v[5], v[6]) == a.color)
                 worst.arc = max(worst.arc, abs(v[7] - r.aa.x))
                 worst.across = max(worst.across, abs(v[8] - r.aa.y))
                 worst.along = max(worst.along, abs(v[10] - r.color.z))

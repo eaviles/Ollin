@@ -210,7 +210,7 @@ extension Drawer {
                               join: join, cap: cap) { vertex, source in
             triangle.append(OllinLineVertex(position: worlds[source],
                                             offset: vertex.position - anchors[source],
-                                            coverage: vertex.coverage, _pad0: 0,
+                                            coverage: vertex.coverage, far: vertex.far,
                                             color: vertex.color))
             guard triangle.count == 3 else { return }
             if triangle.allSatisfy({ $0.coverage >= 1 }) {

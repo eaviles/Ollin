@@ -927,7 +927,7 @@ final class MetalRenderer {
         let scale = max(pixelScale.x, pixelScale.y)
         let side: Float
         switch style {
-        case .marks: side = (maxSize + 4) * scale
+        case .marks: side = max(maxSize * scale, 0.5) + 2.5
         case .light: side = max(maxSize * scale + 2, 2.125)
         }
         return side <= maxPointSize

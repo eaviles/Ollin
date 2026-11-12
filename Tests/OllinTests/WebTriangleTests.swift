@@ -195,7 +195,7 @@ import OllinWebGate
         if case let .triangles(_, _, fringe, _) = g.canvas[0] { #expect(!fringe) } else { Issue.record("\(g.canvas)") }
         let v = sketch.drawer.vertices[0]
         let onWire = Array(frame.vector[g.vertexOffset ..< g.vertexOffset + WebVertex.floats])
-        #expect(onWire == [v.position.x, v.position.y, v.aa.x, v.color.x, v.color.y, v.color.z, v.color.w])
+        #expect(onWire == [v.position.x, v.position.y, v.aa.x, v.aa.y, v.color.x, v.color.y, v.color.z, v.color.w])
     }
 
     @Test func aBlendModeCrossesOnShapesAndStrokes() throws {
@@ -293,7 +293,8 @@ import OllinWebGate
         let shaders = try WebShaders.make()
         #expect(shaders.triangleFragment.contains("vec3 srgbToLinear(vec3 c)"))
         #expect(shaders.fringeFragment.contains("float perceptualCoverage(float c)"))
-        #expect(shaders.fringeFragment.contains("vColor.a * perceptualCoverage(clamp(vCoverage, 0.0, 1.0))"))
+        #expect(shaders.fringeFragment.contains("float ollin_fringe_coverage(vec2 aa)"))
+        #expect(shaders.fringeFragment.contains("vColor.a * perceptualCoverage(cover)"))
         #expect(!shaders.fringeFragment.contains("float3"))
     }
 

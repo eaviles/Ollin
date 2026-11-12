@@ -144,9 +144,9 @@ package enum WebSourceLayout {
 }
 
 /// One vertex as the renderer's triangle path holds it: the position in
-/// canvas space, the anti-aliasing coverage (0 on a fill), and the straight
-/// color with its alpha.
-package typealias WebSourceVertex = (x: Float, y: Float, coverage: Float, color: SIMD4<Float>)
+/// canvas space, the anti-aliasing coverage (a stroke's two edge distances,
+/// see `StrokeVertex`; 0 on a fill), and the straight color with its alpha.
+package typealias WebSourceVertex = (x: Float, y: Float, coverage: Float, far: Float, color: SIMD4<Float>)
 
 package enum WebSourceExpander {
     /// Expand every record in `floats` into the vertices the renderer would
@@ -221,13 +221,13 @@ package enum WebSourceExpander {
                            ctmScale: Double(floats[at + WebSourceLayout.ctmScaleColumn]),
                            join: join, cap: cap) { v, _ in
                 let p = place(v.position)
-                emit((p.x, p.y, v.coverage, v.color))
+                emit((p.x, p.y, v.coverage, v.far, v.color))
             }
         } else if kind == WebSourceLayout.fanKind {
             let c = color(at + h + 2 * count)
             func vertex(_ i: Int) {
                 let p = place(point(at + h + 2 * i).simd2)
-                emit((p.x, p.y, 0, c))
+                emit((p.x, p.y, 0, 0, c))
             }
             FillExpander.fan(count: count) { a, b, d in
                 vertex(a); vertex(b); vertex(d)
@@ -248,7 +248,7 @@ package enum WebSourceExpander {
             let triangles = FillExpander.triangulate(contours, nonZero: flags & WebSourceLayout.nonZeroFlag != 0)
             for t in triangles {
                 let p = place(t.simd2)
-                emit((p.x, p.y, 0, c))
+                emit((p.x, p.y, 0, 0, c))
             }
         }
     }
@@ -353,7 +353,7 @@ package enum WebSourceExpander {
         let cap = StrokeExpanderCap(rawValue: UInt8((flags >> WebSourceLayout.capShift) & 3)) ?? .butt
         // The expander hands each triangle's three corners in order; they are
         // held here until the third, which decides the triangle's list.
-        let none: StrokeVertex = (SIMD2<Float>(0, 0), 0, SIMD4<Float>(0, 0, 0, 0), 0)
+        let none: StrokeVertex = (SIMD2<Float>(0, 0), 0, 0, SIMD4<Float>(0, 0, 0, 0), 0)
         var c0 = none, c1 = none
         var s0 = 0, s1 = 0
         var held = 0

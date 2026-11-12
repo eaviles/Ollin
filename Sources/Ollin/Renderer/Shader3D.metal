@@ -21,11 +21,11 @@
 // spray of millions of sub-pixel points pays, so a known size halves its frame.
 // Each deposit is written once, as a helper both the quad fragment and the point
 // fragment call with the fragment's offset from the particle's center: the quad
-// interpolates it, the point reads it from `[[point_coord]]` scaled by the
-// square's extent. The fragments reuse the area-conserving sub-pixel disc
-// coverage (diskCoverage), the same path drawCircle uses, so a million jittered
-// sub-pixel marks fade by area instead of flickering, the earned depth-of-field
-// look. Straight-alpha out, so it composites under the active blend mode (.add
+// interpolates it, the point takes it from its own place on the attachment.
+// The fragments reuse the disc's coverage (diskCoverage, the share of each pixel
+// the disc covers, held at a pixel's footprint below a pixel), the same path
+// drawCircle uses, so a million jittered sub-pixel marks fade by area instead of
+// flickering, the earned depth-of-field look. Straight-alpha out, so it composites under the active blend mode (.add
 // sums it as light) exactly like the SDF disc.
 
 // The quad's four corners, a strip: two triangles over the diagonal from the
@@ -46,26 +46,58 @@ static inline float4 particleClip(float2 sketch, constant Uniforms &uniforms) {
     return float4(ndc, uniforms.clipDepth, 1.0);
 }
 
+// The unit disc's share of a pixel known to be the rectangle `q +- side`, as a
+// particle's always is: the forms of ollin_unit_disc_coverage that need no
+// walk round a parallelogram, so a fragment that can never need the walk does
+// not carry it (compiled in and never taken, it cost a million marks 1.8 ms).
+static inline float ollin_unit_disc_square_coverage(float2 q, float2 side) {
+    float reach = length(side);
+    float qq = dot(q, q);
+    if (qq >= (1.0 + reach) * (1.0 + reach)) { return 0.0; }
+    if (reach < 1.0 && qq <= (1.0 - reach) * (1.0 - reach)) { return 1.0; }
+    if (reach <= kOllinDiscSmallPixel) {
+        return ollin_unit_disc_edge_share(q, float2(side.x, 0.0), float2(0.0, side.y), sqrt(qq));
+    }
+    return ollin_unit_disc_rect_share(q, side);
+}
+
+// A particle's disc coverage: diskCoverage's fill for a pixel square to the
+// dot's axes and `pixel` across on each.
+static inline float squareDotCoverage(float2 p, float radius, float2 pixel) {
+    float2 ab = float2(max(radius, 0.0));
+    float2 least = max(0.5 * pixel, float2(1e-6));
+    float tent = ollin_dot_tent_share(ab, least);
+    float cover = 0.0;
+    if (tent > 0.0) {
+        float2 share = max(1.0 - abs(p) / max(pixel, float2(1e-6)), float2(0.0));
+        cover = tent * share.x * share.y * min(3.141592653589793 * ab.x * ab.y / max(pixel.x * pixel.y, 1e-20), 1.0);
+    }
+    if (tent < 1.0) {
+        float2 abE = max(ab, least);
+        cover += (1.0 - tent) * ollin_unit_disc_square_coverage(p / abE, 0.5 * pixel / abE) * (ab.x * ab.y) / (abE.x * abE.y);
+    }
+    return cover;
+}
+
 // The ink deposit of a `.marks` particle: the area-conserving disc coverage,
-// remapped to perceptual alpha inside diskCoverage, over the particle's own
-// alpha; the tone is sRGB, linearized here.
+// remapped to perceptual alpha, over the particle's own alpha. The tone arrives in linear light: a particle has one color, so its
+// vertex stage linearizes it once rather than every fragment doing so.
 static inline float4 particleMarkDeposit(float2 local, float radius, float4 color) {
-    float fillCov, strokeCov;
-    diskCoverage(local, float2(radius), 0.0, 0.0, 0.0, fillCov, strokeCov);
-    float a = color.a * fillCov;
+    float2 pixel = abs(float2(dfdx(local).x, dfdy(local).y));
+    float a = color.a * perceptualCoverage(squareDotCoverage(local, radius, pixel));
     // Discarded, not returned empty: under a depth write the quad's transparent
     // corners would otherwise hide what sits behind them (see the splat below).
     if (a <= 0.0) { discard_fragment(); }
-    // Linearize the sRGB tone and emit straight-alpha into the linear float target;
-    // the active blend mode composites it (additive sums it as light).
-    return float4(srgbToLinear(color.rgb), a);
+    // Straight alpha into the linear float target; the active blend mode
+    // composites it (additive sums it as light).
+    return float4(color.rgb, a);
 }
 
 struct ParticleOut {
     float4 position [[position]];
     float2 local;     // fragment offset from the particle center, in sketch points
     float  radius;    // disc radius in points
-    float4 color;     // straight RGBA (sRGB), linearized in the fragment
+    float4 color [[flat]];   // straight RGBA, the tone in linear light
 };
 
 vertex ParticleOut ollin_particle_vertex(uint vid [[vertex_id]],
@@ -74,15 +106,19 @@ vertex ParticleOut ollin_particle_vertex(uint vid [[vertex_id]],
                                          constant Uniforms &uniforms [[buffer(1)]]) {
     OllinParticle pt = particles[iid];
 
-    // The quad in [-1, 1], sized to the disc plus an AA margin.
+    // The quad in [-1, 1], sized to the disc plus a texel and a quarter: every
+    // texel the disc touches (their centers lie within its radius and a texel's
+    // half diagonal) is then whole inside the quad. A disc under half a texel
+    // across is drawn at a texel's footprint, so the quad is sized as for that.
+    float2 texel = 1.0 / max(uniforms.pixelScale, float2(1e-6));
     float radius = pt.size * 0.5;
-    float2 local = particleCorners[vid] * (radius + 2.0);
+    float2 local = particleCorners[vid] * (max(float2(radius), 0.25 * texel) + 1.25 * texel);
 
     ParticleOut out;
     out.position = particleClip(pt.position + local, uniforms);
     out.local = local;
     out.radius = radius;
-    out.color = pt.color;
+    out.color = float4(srgbToLinear(pt.color.rgb), pt.color.a);
     return out;
 }
 
@@ -92,15 +128,16 @@ fragment float4 ollin_particle_fragment(ParticleOut in [[stage_in]]) {
 
 // The same mark as one point primitive. The point is a square of texels, so
 // its size is the quad's extent in texels on the coarser axis, and the
-// fragment turns its point coordinate back into the quad's offset in points
-// (the extent per axis, so an anisotropic scale lands the disc where the quad
-// lands it). The square may reach past the quad on the finer axis; the extra
-// fragments have no coverage and are discarded.
+// fragment turns its place on the attachment back into the quad's offset in
+// points (a texel's size per axis, so an anisotropic scale lands the disc where
+// the quad lands it). The square may reach past the quad on the finer axis; the
+// extra fragments have no coverage and are discarded.
 
 struct ParticlePointOut {
     float4 position [[position]];
     float  pointSize [[point_size]];   // the square's side, in texels
-    float2 extent;    // the square's side per axis in the fragment's units
+    float2 center [[flat]];   // the particle's center, in the attachment's texels
+    float2 unit [[flat]];     // the fragment's units per texel, on each axis
     float  radius;    // disc radius in points; 0 marks a one-texel light point
     float4 color;
 };
@@ -111,21 +148,30 @@ vertex ParticlePointOut ollin_particle_point_vertex(uint vid [[vertex_id]],
     OllinParticle pt = particles[vid];
     float2 texel = 1.0 / max(uniforms.pixelScale, float2(1e-6));
     float radius = pt.size * 0.5;
-    float sideTexels = min((pt.size + 4.0) * max(uniforms.pixelScale.x, uniforms.pixelScale.y),
+    float sideTexels = min(max(pt.size * max(uniforms.pixelScale.x, uniforms.pixelScale.y), 0.5) + 2.5,
                            particleMaxPointSize);
 
     ParticlePointOut out;
     out.position = particleClip(pt.position, uniforms);
     out.pointSize = sideTexels;
-    out.extent = sideTexels * texel;
+    out.center = pt.position * uniforms.pixelScale;
+    out.unit = texel;
     out.radius = radius;
-    out.color = pt.color;
+    out.color = float4(srgbToLinear(pt.color.rgb), pt.color.a);
     return out;
 }
 
-fragment float4 ollin_particle_point_fragment(ParticlePointOut in [[stage_in]],
-                                              float2 pointCoord [[point_coord]]) {
-    return ollin_blend_ready(particleMarkDeposit((pointCoord - 0.5) * in.extent, in.radius, in.color));
+// A point's fragment reads its offset from the particle's center off its own
+// place on the attachment, which is exact; the point coordinate runs over the
+// square as the rasterizer sized and placed it, which is a little off the
+// square that was asked for (a light disc 1.2 texels across read up to 3% over
+// its area through it).
+static inline float2 particlePointOffset(ParticlePointOut in) {
+    return (in.position.xy - in.center) * in.unit;
+}
+
+fragment float4 ollin_particle_point_fragment(ParticlePointOut in [[stage_in]]) {
+    return ollin_blend_ready(particleMarkDeposit(particlePointOffset(in), in.radius, in.color));
 }
 
 // MARK: - GPU particles as light
@@ -148,17 +194,11 @@ static inline float4 particleLightDeposit(float2 local, float radius, float4 col
         if (color.a <= 0.0) { return float4(0.0); }
         return float4(color.rgb, color.a);
     }
-    // Plain area coverage: the ramp is one texel wide across the true edge and
-    // is never remapped. Over a curved edge the ramp's outer half covers a little
-    // more ground than its inner half loses (pi * px^2 / 12 for a disc, a third
-    // of a small disc's own area), so the coverage is scaled by the disc's area
-    // over the ramp's integral, which makes the total deposit the area exactly
-    // and continuous with the one-texel path at a one-texel diameter.
-    float d = sdEllipse(local, float2(radius));
-    float px = max(fwidth(d), 1e-5);
-    float coverage = clamp(0.5 - d / px, 0.0, 1.0);
-    float r2 = radius * radius;
-    coverage *= r2 / (r2 + px * px / 12.0);
+    // Plain area coverage, never remapped: the share of this texel the disc
+    // covers, so the total deposit is the disc's area wherever it lands on the
+    // texel grid, and continuous with the one-texel path at a one-texel diameter.
+    float2 pixel = abs(float2(dfdx(local).x, dfdy(local).y));
+    float coverage = ollin_unit_disc_square_coverage(local / radius, 0.5 * pixel / radius);
     float a = color.a * coverage;
     if (a <= 0.0) { discard_fragment(); }
     return float4(color.rgb, a);
@@ -232,14 +272,15 @@ fragment float4 ollin_particle_light_fragment(ParticleLightOut in [[stage_in]]) 
 
 // The same light as one point primitive: the square's side is the quad's
 // extent in texels on the coarser axis (a one-texel point is a one-texel
-// square either way), and the fragment reads its offset in points from the
-// point coordinate, as the mark does.
+// square either way), and the fragment reads its offset in points from its
+// own place on the attachment, as the mark does.
 
 static inline ParticlePointOut particlePointNothing() {
     ParticlePointOut out;
     out.position = float4(2.0, 2.0, 0.0, 1.0);
     out.pointSize = 0.0;
-    out.extent = float2(0.0);
+    out.center = float2(0.0);
+    out.unit = float2(0.0);
     out.radius = 0.0;
     out.color = float4(0.0);
     return out;
@@ -257,7 +298,8 @@ static inline ParticlePointOut particleLightPoint(OllinParticle pt, constant Uni
     ParticlePointOut out;
     out.position = particleClip(pt.position, uniforms);
     out.pointSize = sideTexels;
-    out.extent = localInTexels ? float2(sideTexels) : sideTexels * texel;
+    out.center = pt.position * uniforms.pixelScale;
+    out.unit = localInTexels ? float2(1.0) : texel;
     out.radius = radius;
     out.color = color;
     return out;
@@ -273,9 +315,8 @@ vertex ParticlePointOut ollin_particle_light_point_vertex(uint vid [[vertex_id]]
     return particleLightPoint(pt, uniforms, halfExtent, radius, color, false);
 }
 
-fragment float4 ollin_particle_light_point_fragment(ParticlePointOut in [[stage_in]],
-                                                    float2 pointCoord [[point_coord]]) {
-    return ollin_blend_ready(particleLightDeposit((pointCoord - 0.5) * in.extent, in.radius, in.color));
+fragment float4 ollin_particle_light_point_fragment(ParticlePointOut in [[stage_in]]) {
+    return ollin_blend_ready(particleLightDeposit(particlePointOffset(in), in.radius, in.color));
 }
 
 // MARK: - GPU particles as light, single-sample
@@ -326,7 +367,7 @@ fragment float4 ollin_particle_splat_fragment(ParticleLightOut in [[stage_in]]) 
 }
 
 // The splat as one point primitive: a square of 2.125 texels on the one-texel
-// path, whose extent is handed to the fragment in texels, the disc's in points.
+// path, whose offset the fragment reads in texels, the disc's in points.
 
 vertex ParticlePointOut ollin_particle_splat_point_vertex(uint vid [[vertex_id]],
                                                           const device OllinParticle *particles [[buffer(0)]],
@@ -338,9 +379,8 @@ vertex ParticlePointOut ollin_particle_splat_point_vertex(uint vid [[vertex_id]]
     return particleLightPoint(pt, uniforms, halfExtent, radius, color, radius <= 0.0);
 }
 
-fragment float4 ollin_particle_splat_point_fragment(ParticlePointOut in [[stage_in]],
-                                                    float2 pointCoord [[point_coord]]) {
-    return particleSplatDeposit((pointCoord - 0.5) * in.extent, in.radius, in.color);
+fragment float4 ollin_particle_splat_point_fragment(ParticlePointOut in [[stage_in]]) {
+    return particleSplatDeposit(particlePointOffset(in), in.radius, in.color);
 }
 
 // MARK: - 3D point cloud (instanced splats)
@@ -357,7 +397,7 @@ struct PointOut {
     float4 position [[position]];
     float2 local;     // billboard offset from the point center (view-space units)
     float  radius;    // disc radius (world units)
-    float4 color;     // straight RGBA (sRGB), linearized in the fragment
+    float4 color [[flat]];   // straight RGBA, the tone in linear light
 };
 
 vertex PointOut ollin_point_vertex(uint vid [[vertex_id]],
@@ -425,6 +465,7 @@ struct LineOut {
     float4 position [[position]];
     float4 color;                                // rgb = sRGB stroke color, a = paint alpha
     float coverage [[center_no_perspective]];    // the fringe's coverage, screen-linear
+    float far [[center_no_perspective]];         // the same toward the opposite edge
     float2 offset [[center_no_perspective]];     // canvas points from the centerline
     float viewDepth;                             // view z of the centerline under this pixel
     float4 depthRows [[flat]];                   // the projection's z and w rows (z, 1 terms)
@@ -444,6 +485,7 @@ vertex LineOut ollin_line_vertex(uint vid [[vertex_id]],
     out.position = float4(clip.xy + step * clip.w, clip.z, clip.w);
     out.color = v.color;
     out.coverage = v.coverage;
+    out.far = v.far;
     out.offset = v.offset;
     out.viewDepth = viewPos.z;
     // Clip z and w read only the view depth (a stereo eye's shear and a jitter
@@ -454,11 +496,12 @@ vertex LineOut ollin_line_vertex(uint vid [[vertex_id]],
     return out;
 }
 
-// The 2D fringe's arithmetic: coverage remapped to perceptual alpha, the paint's
-// own alpha kept linear.
+// The 2D fringe's arithmetic: how much of the pixel the line covers, from the
+// expander's two edge distances, remapped to perceptual alpha, the paint's own
+// alpha kept linear.
 static inline float4 ollin_line_color(LineOut in) {
     float3 lin = srgbToLinear(in.color.rgb);
-    float a = in.color.a * perceptualCoverage(clamp(in.coverage, 0.0, 1.0));
+    float a = in.color.a * perceptualCoverage(ollin_fringe_coverage(float2(in.coverage, in.far)));
     return float4(lin, a);
 }
 

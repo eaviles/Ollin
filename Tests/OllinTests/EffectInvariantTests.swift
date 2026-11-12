@@ -792,7 +792,6 @@ struct EffectInvariantTests {
         Named(name: "diffraction amount 0", filter: .diffraction(amount: 0)),
         Named(name: "thinFilm amount 0", filter: .thinFilm(amount: 0)),
         Named(name: "anaglyph amount 0", filter: .anaglyph(amount: 0)),
-        Named(name: "scanlines amount 0", filter: .scanlines(amount: 0)),
         Named(name: "glitch amount 0", filter: .glitch(amount: 0)),
         Named(name: "vhs amount 0", filter: .vhs(amount: 0)),
         Named(name: "swirl angle 0", filter: .swirl(angle: 0)),
@@ -835,6 +834,9 @@ struct EffectInvariantTests {
         Named(name: "iridescence amount 0", filter: .iridescence(amount: 0)),
         Named(name: "glitter amount 0", filter: .glitter(amount: 0)),
         Named(name: "pixelate size 1", filter: .pixelate(size: 1)),
+        // Scanlines takes the color out from under its alpha like the rest of
+        // this list (0.0005 at one soft-edged pixel, measured 2026-11-12).
+        Named(name: "scanlines amount 0", filter: .scanlines(amount: 0)),
     ]
 
     /// A filter at the setting that asks for none of its effect is its input:

@@ -232,7 +232,13 @@ fragment float4 ollin_medium_fragment(RibbonVertexOut in [[stage_in]],
                                       constant OllinStrokeMedium &m [[buffer(0)]],
                                       texture2d<float> ground [[texture(0)]],
                                       sampler samp [[sampler(0)]]) {
-    float cov = perceptualCoverage(clamp(in.coverage, 0.0, 1.0));
+    // How much of the pixel the stroke covers, as the plain stroke reads it.
+    // The ribbon's rim runs past where that ends (see the stroke expander); it
+    // is no part of the stroke, so it is dropped before it can claim a sample
+    // for the stroke's one coat.
+    float cover = ollin_ribbon_coverage(in.coverage, in.across * in.halfWidth);
+    if (cover <= kOllinNoCoverage) { discard_fragment(); }
+    float cov = perceptualCoverage(cover);
     float density = clamp(in.color.a, 0.0, 1.0);
     float3 pigment = srgbToLinear(in.color.rgb);
     float hw = max(in.halfWidth, 0.25);
@@ -309,8 +315,8 @@ fragment float4 ollin_medium_fragment(RibbonVertexOut in [[stage_in]],
         pigment = paint;
         alpha = density;
     }
-    // No discard where the medium leaves bare paper: the fragment still claims
-    // its samples for the stroke's one coat (see the coat draws in
-    // `encodeRibbonRun`), as the plain fringe fragment's zero-coverage edge does.
+    // No discard where the medium leaves bare paper inside the stroke: the
+    // fragment still claims its samples for the stroke's one coat (see the coat
+    // draws in `encodeMediumRun`).
     return ollin_blend_ready(float4(pigment, alpha * cov));
 }

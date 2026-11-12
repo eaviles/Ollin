@@ -175,11 +175,15 @@ struct Lines3DTests {
         #expect(loop.contains { $0.position.x == 1 && $0.position.z == -3 })
     }
 
-    /// The widest offset among the vertices built around the point nearest `z`.
+    /// The half-width the line was expanded at around the point nearest `z`,
+    /// read off the rim, the widest of the vertices built around that point:
+    /// the rim sits a fringe and a half past the body's edge, and a body held
+    /// at a pixel's footprint carries its thinness as the rim's coverage, so
+    /// the two give the line's own half-width whether it is a hairline or not.
     private func halfWidth(at z: Float, in d: Drawer) -> Float {
-        (d.lineCoreVertices + d.lineFringeVertices)
-            .filter { abs($0.position.z - z) < 1e-4 }
-            .map { simd_length($0.offset) }.max() ?? 0
+        let around = (d.lineCoreVertices + d.lineFringeVertices).filter { abs($0.position.z - z) < 1e-4 }
+        guard let rim = around.max(by: { simd_length($0.offset) < simd_length($1.offset) }) else { return 0 }
+        return (simd_length(rim.offset) - 1.5) * -rim.coverage
     }
 
     @Test func aScreenWeightHoldsAlongARecedingLineAndAWorldWeightShrinks() throws {
@@ -190,15 +194,15 @@ struct Lines3DTests {
         let d = drawer(camera: camera)
         d.strokeWidth = 4
         d.drawPolyline3D(points, closed: false, canvas: canvas)
-        // The outer edge sits half the weight plus half the fringe out, near and far.
-        #expect(abs(halfWidth(at: 0, in: d) - 2.5) < 1e-3)
-        #expect(abs(halfWidth(at: -40, in: d) - 2.5) < 1e-3)
+        // Half the weight, near and far.
+        #expect(abs(halfWidth(at: 0, in: d) - 2) < 1e-3)
+        #expect(abs(halfWidth(at: -40, in: d) - 2) < 1e-3)
 
         let w = drawer(camera: camera)
         w.strokeWidth = 0.1
         w.strokeUnitsMode = .world
         w.drawPolyline3D(points, closed: false, canvas: canvas)
-        let near = halfWidth(at: 0, in: w) - 0.5, far = halfWidth(at: -40, in: w) - 0.5
+        let near = halfWidth(at: 0, in: w), far = halfWidth(at: -40, in: w)
         // Half a world-tenth seen from the distances the two points stand at.
         let projection = camera.projectionMatrix(aspect: Double(canvas.x / canvas.y))
         let perUnit = Double(projection.columns.1.y) * Double(canvas.y) / 2

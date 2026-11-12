@@ -627,12 +627,14 @@ struct WebShaders {
         guard present.isClean else { throw WebShaderError(diagnostics: present.unsupported) }
         let base = WebShaderLibrary.translate(text, wanted: [])
         guard base.isClean else { throw WebShaderError(diagnostics: base.unsupported) }
+        let fringe = WebShaderLibrary.translate(text, wanted: ["fringe"])
+        guard fringe.isClean else { throw WebShaderError(diagnostics: fringe.unsupported) }
         let sdfFragment = WebShaderCompat.preamble + "\n" + shapes.support + "\n\n" + shapes.body + "\n" + sdfFragmentTail
         let presentFragment = WebShaderCompat.preamble + "\n" + present.support + "\n\n" + present.body + "\n" + presentFragmentTail
         let imageFragment = WebShaderCompat.preamble + "\n" + base.support + "\n\n" + base.body + "\n" + imageFragmentTail
         let glyphFragment = WebShaderCompat.preamble + "\n" + base.support + "\n\n" + base.body + "\n" + glyphFragmentTail
         let triangleFragment = WebShaderCompat.preamble + "\n" + base.support + "\n\n" + base.body + "\n" + triangleFragmentTail
-        let fringeFragment = WebShaderCompat.preamble + "\n" + base.support + "\n\n" + base.body + "\n" + fringeFragmentTail
+        let fringeFragment = WebShaderCompat.preamble + "\n" + fringe.support + "\n\n" + fringe.body + "\n" + fringeFragmentTail
 
         var effects: [String: String] = [:]
         for (name, rows) in wanted {
@@ -674,19 +676,19 @@ struct WebShaders {
 
     /// The triangle path's vertex stage, `ollin_vertex` and `ollin_fringe_vertex`
     /// in one: a vertex already in sketch space mapped into clip space with y
-    /// down, its color and its coverage handed on. A retained batch's draw-time
-    /// transform was applied to the recorded vertices on the Mac side, so no
-    /// transform is passed here.
+    /// down, its color and its coverage (a stroke's two edge distances) handed
+    /// on. A retained batch's draw-time transform was applied to the recorded
+    /// vertices on the Mac side, so no transform is passed here.
     static let triangleVertex = """
     #version 300 es
     precision highp float;
     layout(location = 0) in vec2 aPosition;
-    layout(location = 1) in float aCoverage;
+    layout(location = 1) in vec2 aCoverage;
     layout(location = 2) in vec4 aColor;
     uniform vec2 viewport;
     uniform float ollin_flip;
     out vec4 vColor;
-    out float vCoverage;
+    out vec2 vCoverage;
     void main() {
         gl_Position = vec4((aPosition.x / viewport.x) * 2.0 - 1.0, (1.0 - (aPosition.y / viewport.y) * 2.0) * ollin_flip, 0.0, 1.0);
         vColor = aColor;
@@ -770,7 +772,9 @@ struct WebShaders {
         return sum / weight;
     }
     void main() {
-        float cov = perceptualCoverage(clamp(vCoverage, 0.0, 1.0));
+        float cover = ollin_ribbon_coverage(vCoverage, vRibbon.y * vRibbon.z);
+        if (cover <= kOllinNoCoverage) { discard; }
+        float cov = perceptualCoverage(cover);
         float density = clamp(vColor.a, 0.0, 1.0);
         vec3 pigment = srgbToLinear(vColor.rgb);
         float hw = max(vRibbon.z, 0.25);
@@ -875,7 +879,7 @@ struct WebShaders {
     /// the edge left to the multisampled raster.
     static let triangleFragmentTail = blendReadySource + """
     in vec4 vColor;
-    in float vCoverage;
+    in vec2 vCoverage;
     out vec4 fragColor;
     void main() {
         fragColor = blendReady(vec4(srgbToLinear(vColor.rgb), vColor.a));
@@ -883,14 +887,17 @@ struct WebShaders {
     """
 
     /// `ollin_fringe_fragment`: the stroke's color linearized, its paint alpha
-    /// scaled by the fringe coverage remapped to perceptual alpha, the two kept
+    /// scaled by how much of the pixel the stroke covers (the translated
+    /// `ollin_fringe_coverage`) remapped to perceptual alpha, the two kept
     /// apart as the Mac keeps them.
     static let fringeFragmentTail = blendReadySource + """
     in vec4 vColor;
-    in float vCoverage;
+    in vec2 vCoverage;
     out vec4 fragColor;
     void main() {
-        float a = vColor.a * perceptualCoverage(clamp(vCoverage, 0.0, 1.0));
+        float cover = ollin_fringe_coverage(vCoverage);
+        if (cover <= kOllinNoCoverage) { discard; }
+        float a = vColor.a * perceptualCoverage(cover);
         fragColor = blendReady(vec4(srgbToLinear(vColor.rgb), a));
     }
     """
@@ -2334,7 +2341,7 @@ enum WebPlayer {
       // License B, Version 2.0 (http://oss.sgi.com/projects/FreeB/).
       var EXPANDER = @EXPANDER@;
       @HELPERS@
-      var F = 30, Q = 48, V = 7, G = 26, NF = 16, FF = 36, N3 = 16;
+      var F = 30, Q = 48, V = 8, G = 26, NF = 16, FF = 36, N3 = 16;
       var W = D.width, H = D.height;
       function ref(index) { return D.refs ? D.refs[index] : index; }
       function clearOf(index) { return D.clears ? D.clears[index] : D.clear; }
@@ -2900,13 +2907,13 @@ enum WebPlayer {
         gl.vertexAttribPointer(b, qlayout[b][0], gl.FLOAT, false, 32, qlayout[b][1]);
       }
       gl.bindVertexArray(null);
-      // One triangle vertex: position, coverage, color, the seven floats the
-      // recorder wrote.
+      // One triangle vertex: position, coverage (a stroke's two edge
+      // distances), color, the eight floats the recorder wrote.
       var tvao = gl.createVertexArray();
       var tvbo = gl.createBuffer();
       gl.bindVertexArray(tvao);
       gl.bindBuffer(gl.ARRAY_BUFFER, tvbo);
-      var tlayout = [[2, 0], [1, 8], [4, 12]];
+      var tlayout = [[2, 0], [2, 8], [4, 16]];
       for (var t = 0; t < tlayout.length; t++) {
         gl.enableVertexAttribArray(t);
         gl.vertexAttribPointer(t, tlayout[t][0], gl.FLOAT, false, V * 4, tlayout[t][1]);

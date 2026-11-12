@@ -7,8 +7,9 @@
 //
 // The page writes a run of source records (`WebSourceLayout`) into the
 // buffer `ollin_input` hands out, calls `ollin_expand`, and reads the
-// vertices back from `ollin_output`: seven floats each (the position, the
-// coverage, and the color), the layout the page's triangle programs bind.
+// vertices back from `ollin_output`: eight floats each (the position, the
+// coverage as a stroke's two edge distances, and the color), the layout the
+// page's triangle programs bind.
 // Both buffers live in the module's own memory and are grown as needed; a
 // pointer handed out stays good until the next call that hands one out.
 
@@ -40,8 +41,8 @@ public func ollinExpand(_ count: Int32) -> Int32 {
     let n = Int(max(0, count))
     guard let input, n <= inputCapacity else { return -1 }
     let records = WebSourceExpander.expand(UnsafeBufferPointer(start: input, count: n)) { v in
-        if outputCount + 7 > outputCapacity {
-            let grown = max(outputCount * 2, 7 * 4096)
+        if outputCount + 8 > outputCapacity {
+            let grown = max(outputCount * 2, 8 * 4096)
             let next = UnsafeMutablePointer<Float>.allocate(capacity: grown)
             if let output, outputCount > 0 { next.update(from: output, count: outputCount) }
             output?.deallocate()
@@ -52,14 +53,15 @@ public func ollinExpand(_ count: Int32) -> Int32 {
         o[outputCount] = v.x
         o[outputCount + 1] = v.y
         o[outputCount + 2] = v.coverage
-        o[outputCount + 3] = v.color.x
-        o[outputCount + 4] = v.color.y
-        o[outputCount + 5] = v.color.z
-        o[outputCount + 6] = v.color.w
-        outputCount += 7
+        o[outputCount + 3] = v.far
+        o[outputCount + 4] = v.color.x
+        o[outputCount + 5] = v.color.y
+        o[outputCount + 6] = v.color.z
+        o[outputCount + 7] = v.color.w
+        outputCount += 8
     }
     guard records != nil else { return -1 }
-    return Int32(outputCount / 7)
+    return Int32(outputCount / 8)
 }
 
 /// Expand the first `count` floats of the input as the ribbon runs of one

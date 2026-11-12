@@ -1,3 +1,4 @@
+import COllinShaders
 import CoreGraphics
 import Foundation
 import ImageIO
@@ -122,50 +123,79 @@ struct DrawingInvariantTests {
 
     // MARK: The disk: area-conserving coverage
 
+    /// A frame in linear light, read before the present pass dithers and
+    /// quantizes it: what a sum over a dot smaller than a pixel needs, since a
+    /// handful of pixels at one 8-bit level each would be most of the reading.
+    private func linearFrame(side: Int = 256, _ body: @escaping @MainActor (Sketch) -> Void) throws -> EffectInvariantTests.Frame {
+        let probe = EffectInvariantTests.Probe()
+        probe.side = side
+        probe.body = { s in s.background(.white); body(s) }
+        return try EffectInvariantTests.render(probe)
+    }
+
+    /// `shade` on a linear frame: black ink over white paper leaves the light
+    /// `1 - alpha`, and the perceptual paths choose the alpha whose display
+    /// value falls short of white by the coverage.
+    private func shade(_ f: EffectInvariantTests.Frame, _ x: Int, _ y: Int) -> Double {
+        1 - toDisplay(min(max(f.value(x, y), 0), 1))
+    }
+
+    /// The ten-by-ten grid's centers: a pitch of 20.1 puts each disk at its
+    /// own tenth of a pixel on both axes, so the hundred are the hundred phases.
+    private nonisolated static let gridCenters: [Vector2] = {
+        var centers: [Vector2] = []
+        for j in 0..<10 {
+            for i in 0..<10 { centers.append(Vector2(28 + 20.1 * Double(i), 28 + 20.1 * Double(j))) }
+        }
+        return centers
+    }()
+
+    /// The ink each mark of the grid laid, summed over its own box in the
+    /// perceptual reading the disk path promises. `reach` is how far from its
+    /// center a mark's ink may fall, in pixels.
+    private func gridInks(reach: Double, _ draw: @escaping @MainActor (Sketch) -> Void) throws -> [Double] {
+        let frame = try linearFrame(draw)
+        let half = max(3, Int(reach.rounded(.up)) + 3)
+        return Self.gridCenters.map { c in
+            let cx = Int(c.x.rounded(.down)), cy = Int(c.y.rounded(.down))
+            var total = 0.0
+            for y in (cy - half)...(cy + half) { for x in (cx - half)...(cx + half) { total += shade(frame, x, y) } }
+            return total
+        }
+    }
+
     /// A ten-by-ten grid of disks of one radius, each landing at a different
-    /// sub-pixel phase, summed each over its own box: the ink of each disk, in
-    /// the perceptual reading the disk path promises.
+    /// sub-pixel phase: the ink of each disk. `local` maps a center on the
+    /// canvas to the coordinates the sketch draws it at under `prepare`.
     private func diskInks(radius: Double, local: (Vector2) -> Vector2 = { $0 },
                           prepare: @escaping @MainActor (Sketch) -> Void = { _ in },
                           shape: @escaping @MainActor (Sketch, Vector2, Double) -> Void) throws -> [Double] {
-        var centers: [Vector2] = []
-        for j in 0..<10 {
-            for i in 0..<10 {
-                let x: Double = 28 + 20.1 * Double(i)
-                let y: Double = 28 + 20.1 * Double(j)
-                centers.append(Vector2(x, y))
-            }
-        }
-        let locals = centers.map(local)
-        let frame = try render { s in
+        let locals = Self.gridCenters.map(local)
+        return try gridInks(reach: radius) { s in
             s.noStroke(); s.fill(.black)
             prepare(s)
             for c in locals { shape(s, c, radius) }
-        }
-        let level = paper(frame, 0, 12, 0, 256, shade)
-        let half = max(3, Int(radius.rounded(.up)) + 3)
-        return centers.map { c in
-            let cx = Int(c.x.rounded(.down)), cy = Int(c.y.rounded(.down))
-            return ink(frame, cx - half, cx + half + 1, cy - half, cy + half + 1, paper: level, shade)
         }
     }
 
     private nonisolated static let diskRadii = [0.2, 0.35, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0]
 
-    /// A disk's ink is its area. Below a pixel the footprint is held at a pixel
-    /// and the alpha scaled by the true area over the footprint's, so the sum is
-    /// still pi r squared: a shrinking dot fades by area rather than snapping to
-    /// a floor.
+    /// A disk's ink is its area, wherever it lands on the pixel grid. Its
+    /// coverage at a pixel is the share of that pixel the disk covers, so the
+    /// sum is pi r squared whatever the radius; below a pixel across, the
+    /// footprint is held at a pixel and the coverage scaled by the true area
+    /// over the footprint's, so a shrinking dot fades by area rather than
+    /// snapping to a floor.
     @Test(arguments: diskRadii)
     func aDiskLaysDownItsArea(radius: Double) throws {
         let inks = try diskInks(radius: radius) { s, c, r in s.drawCircle(center: c, radius: r) }
         let mean = inks.reduce(0, +) / Double(inks.count)
         let area = Double.pi * radius * radius
-        try pinned("the centered ramp's skirt adds about 0.42 square pixels of ink to every disk whatever its radius (measured 2026-10-25: +15% at 0.2, +17% at 0.5, +14% at 1, +6% at 1.5, +3% at 2); here \(percent(mean, of: area))",
-                   when: radius <= 2.0) {
-            #expect(abs(mean - area) <= 0.03 * area + 0.002,
-                    "radius \(radius): mean ink \(mean) against the area \(area) (\(percent(mean, of: area)))")
-        }
+        #expect(abs(mean - area) <= 0.03 * area,
+                "radius \(radius): mean ink \(mean) against the area \(area) (\(percent(mean, of: area)))")
+        let worst = inks.max { abs($0 - area) < abs($1 - area) }!
+        #expect(abs(worst - area) <= 0.03 * area,
+                "radius \(radius): one phase lays \(worst) against the area \(area) (\(percent(worst, of: area)))")
     }
 
     /// Where a disk lands on the pixel grid changes nothing about how much ink
@@ -175,23 +205,79 @@ struct DrawingInvariantTests {
         let inks = try diskInks(radius: radius) { s, c, r in s.drawCircle(center: c, radius: r) }
         let mean = inks.reduce(0, +) / Double(inks.count)
         let spread = (inks.max()! - inks.min()!) / mean
-        if spread >= 0.06 {
+        if spread >= 0.02 {
             for j in 0..<10 { print("radius \(radius) phase y \(Double(j) / 10): " + inks[(j * 10)..<(j * 10 + 10)].map { String(format: "%.3f", $0) }.joined(separator: " ")) }
         }
-        try pinned("the footprint is the pixel step of the distance, which collapses when the 2x2 derivative quad straddles the disk's center: a 0.3 px disk reads 0.28 to 0.42 with its phase and vanishes past 0.9 (measured 2026-10-25; the spread is 128% at 0.3, 32% at 0.7, 15% at 1.2)",
-                   when: radius < 2) {
-            #expect(spread < 0.06, "radius \(radius): the ink varies by \(spread * 100)% with the disk's sub-pixel phase")
+        #expect(spread < 0.02, "radius \(radius): the ink varies by \(spread * 100)% with the disk's sub-pixel phase")
+    }
+
+    /// A dot under a pixel moves as its center moves: the ink's center of
+    /// mass follows the dot's across a pixel, rather than sitting in one
+    /// pixel and jumping to the next.
+    @Test(arguments: [0.2, 0.4])
+    func aSmallDiskMovesSmoothly(radius: Double) throws {
+        let frame = try linearFrame { s in
+            s.noStroke(); s.fill(.black)
+            for c in Self.gridCenters { s.drawCircle(center: c, radius: radius) }
+        }
+        var worst = 0.0
+        for c in Self.gridCenters {
+            let cx = Int(c.x.rounded(.down)), cy = Int(c.y.rounded(.down))
+            var total = 0.0, mx = 0.0, my = 0.0
+            for y in (cy - 4)...(cy + 4) { for x in (cx - 4)...(cx + 4) {
+                let v = shade(frame, x, y)
+                total += v; mx += v * (Double(x) + 0.5); my += v * (Double(y) + 0.5)
+            } }
+            worst = max(worst, abs(mx / total - c.x), abs(my / total - c.y))
+        }
+        #expect(worst < 0.08, "radius \(radius): the ink's center sits up to \(worst) px from the dot's")
+    }
+
+    /// A dot growing through a pixel across never steps: below a pixel it is
+    /// its area shared out by a tent, from a pixel up the exact share of a
+    /// disc, and the two place up to 4% of a pixel differently where they
+    /// meet, so the one is faded into the other over the last fifth of a
+    /// pixel. A thousandth of a pixel either side of one pixel across, no
+    /// pixel changes by more than the dot's own growth; as a circle, and as a
+    /// particle's mark drawn as a quad and as a point.
+    @Test func aDotDoesNotStepAsItGrowsThroughAPixel() throws {
+        func frames(_ draw: @escaping @MainActor (Sketch, Double) -> Void) throws -> Double {
+            let under = try linearFrame { s in draw(s, 0.4995) }
+            let over = try linearFrame { s in draw(s, 0.5005) }
+            var worst = 0.0
+            for c in Self.gridCenters {
+                let cx = Int(c.x.rounded(.down)), cy = Int(c.y.rounded(.down))
+                for y in (cy - 3)...(cy + 3) { for x in (cx - 3)...(cx + 3) {
+                    worst = max(worst, abs(shade(under, x, y) - shade(over, x, y)))
+                } }
+            }
+            return worst
+        }
+        let circle = try frames { s, r in
+            s.noStroke(); s.fill(.black)
+            for c in Self.gridCenters { s.drawCircle(center: c, radius: r) }
+        }
+        #expect(circle < 0.012, "a circle: one pixel changes by \(circle) across a pixel's width")
+        for maxSize in [nil, 1.1] as [Double?] {
+            let mark = try frames { [self] s, r in
+                s.drawParticles(self.gridParticles(radius: r, color: SIMD4(0, 0, 0, 1)), style: .marks, maxSize: maxSize)
+            }
+            #expect(mark < 0.012, "a mark as \(maxSize == nil ? "a quad" : "a point"): one pixel changes by \(mark) across a pixel's width")
         }
     }
 
     /// Each instance carries its own transform, so a disk drawn under a scale,
-    /// a rotation, or an anisotropic stretch lays the ink of the same disk drawn
-    /// plain: the anti-aliasing is a pixel wide on screen whatever the transform.
+    /// a rotation, an anisotropic stretch, or a canvas zoomed far out lays the
+    /// ink of the same disk drawn plain: its footprint is measured in pixels
+    /// on each of its own axes, whatever the transform.
     @Test(arguments: [0.4, 1.0, 2.5])
     func aDiskKeepsItsInkUnderAnyTransform(radius: Double) throws {
         let plain = try diskInks(radius: radius) { s, c, r in s.drawCircle(center: c, radius: r) }
         let scaled = try diskInks(radius: radius, local: { $0 / 4 }, prepare: { $0.scale(4) }) { s, c, r in
             s.drawCircle(center: c, radius: r / 4)
+        }
+        let zoomedOut = try diskInks(radius: radius, local: { $0 * 8 }, prepare: { $0.scale(0.125) }) { s, c, r in
+            s.drawCircle(center: c, radius: r * 8)
         }
         let angle = 0.6
         let turned = try diskInks(radius: radius, local: { p in
@@ -201,11 +287,244 @@ struct DrawingInvariantTests {
         }, prepare: { $0.rotate(angle); $0.scale(2, 0.5) }) { s, c, r in
             s.drawEllipse(center: c, radiusX: r / 2, radiusY: r / 0.5)
         }
-        let p = plain.reduce(0, +), q = scaled.reduce(0, +), t = turned.reduce(0, +)
-        #expect(abs(q - p) <= 0.03 * p, "radius \(radius): scaled \(percent(q, of: p)) against plain")
-        try pinned("the sub-pixel floor is one scalar in local units, so under scale(2, 0.5) a small disk's footprint is wrong on both axes and loses ink (measured 2026-10-25: -15% at 0.4, -13% at 1)",
-                   when: radius <= 1) {
-            #expect(abs(t - p) <= 0.03 * p, "radius \(radius): turned and stretched \(percent(t, of: p)) against plain")
+        let area = Double.pi * radius * radius
+        for (name, inks) in [("plain", plain), ("scaled up", scaled), ("zoomed out", zoomedOut), ("turned and stretched", turned)] {
+            let worst = inks.max { abs($0 - area) < abs($1 - area) }!
+            #expect(abs(worst - area) <= 0.03 * area,
+                    "radius \(radius), \(name): one phase lays \(worst) against the area \(area) (\(percent(worst, of: area)))")
+        }
+    }
+
+    /// A dot under a pixel across stays about a pixel wide under a stretched
+    /// transform: the footprint it is held at is a pixel on each of its own
+    /// axes, so under `scale(2, 0.5)` it is not smeared along the wide one.
+    /// (One number for both axes lays the same ink, which is why the ink alone
+    /// does not show it.)
+    @Test func aSmallDiskStaysAPixelWideUnderAStretch() throws {
+        let angle = 0.6, radius = 0.4
+        let locals = Self.gridCenters.map { p -> Vector2 in
+            let q = Vector2(p.x * cos(-angle) - p.y * sin(-angle), p.x * sin(-angle) + p.y * cos(-angle))
+            return Vector2(q.x / 2, q.y / 0.5)
+        }
+        let frame = try linearFrame { s in
+            s.noStroke(); s.fill(.black)
+            s.rotate(angle); s.scale(2, 0.5)
+            for c in locals { s.drawEllipse(center: c, radiusX: radius / 2, radiusY: radius / 0.5) }
+        }
+        var worst = 1.0
+        for c in Self.gridCenters {
+            let cx = Int(c.x.rounded(.down)), cy = Int(c.y.rounded(.down))
+            var near = 0.0, all = 0.0
+            for y in (cy - 5)...(cy + 5) { for x in (cx - 5)...(cx + 5) {
+                let v = shade(frame, x, y)
+                all += v
+                if abs(x - cx) <= 1 && abs(y - cy) <= 1 { near += v }
+            } }
+            worst = min(worst, near / all)
+        }
+        #expect(worst > 0.98, "one dot keeps only \(worst) of its ink within a pixel of its own")
+    }
+
+    /// The same for an ellipse thin on one axis alone: under the stretch its
+    /// thin axis is held at a pixel of its own, so its ink stays beside its
+    /// long axis. (One number for both axes would hold it at the wider axis's
+    /// pixel, four times too wide here, and the dot above cannot show that: a
+    /// dot under a pixel both ways is shared out on the screen's own axes.)
+    @Test func aThinEllipseStaysAPixelWideUnderAStretch() throws {
+        let angle = 0.6
+        // On the canvas: 0.3 px by 3 px in radius, the long axis along the
+        // stretched transform's second axis.
+        let thin = 0.3, long = 3.0
+        let locals = Self.gridCenters.map { p -> Vector2 in
+            let q = Vector2(p.x * cos(-angle) - p.y * sin(-angle), p.x * sin(-angle) + p.y * cos(-angle))
+            return Vector2(q.x / 2, q.y / 0.5)
+        }
+        let frame = try linearFrame { s in
+            s.noStroke(); s.fill(.black)
+            s.rotate(angle); s.scale(2, 0.5)
+            for c in locals { s.drawEllipse(center: c, radiusX: thin / 2, radiusY: long / 0.5) }
+        }
+        let axis = Vector2(-sin(angle), cos(angle))
+        var worst = 1.0
+        for c in Self.gridCenters {
+            let cx = Int(c.x.rounded(.down)), cy = Int(c.y.rounded(.down))
+            var near = 0.0, all = 0.0
+            for y in (cy - 7)...(cy + 7) { for x in (cx - 7)...(cx + 7) {
+                let v = shade(frame, x, y)
+                all += v
+                let dx = Double(x) + 0.5 - c.x, dy = Double(y) + 0.5 - c.y
+                if abs(dx * axis.y - dy * axis.x) <= 1.25 { near += v }
+            } }
+            worst = min(worst, near / all)
+        }
+        #expect(worst > 0.97, "one thin ellipse keeps only \(worst) of its ink within a pixel and a quarter of its long axis")
+    }
+
+    /// An ellipse's ink is its area too, at any turn, down to one thinner
+    /// than a pixel across: the floor is held on each axis by itself, so a
+    /// long thin ellipse keeps its length and fades across its width.
+    @Test(arguments: [[6.0, 2.0], [3.0, 0.3], [1.5, 0.6], [0.4, 0.2]])
+    func anEllipseLaysDownItsArea(radii: [Double]) throws {
+        let a = radii[0], b = radii[1], area = Double.pi * a * b
+        for angle in [0.0, 0.5, 1.2] {
+            let inks = try gridInks(reach: a) { s in
+                s.noStroke(); s.fill(.black)
+                for c in Self.gridCenters {
+                    s.withState {
+                        s.translate(c); s.rotate(angle)
+                        s.drawEllipse(center: .zero, radiusX: a, radiusY: b)
+                    }
+                }
+            }
+            let worst = inks.max { abs($0 - area) < abs($1 - area) }!
+            #expect(abs(worst - area) <= 0.03 * area,
+                    "\(a) by \(b) turned \(angle): one phase lays \(worst) against the area \(area) (\(percent(worst, of: area)))")
+        }
+    }
+
+    /// A disk far larger than the canvas has an edge as true as a small one's:
+    /// down every column the ink ends where the circle does. (Beside a circle
+    /// this size a pixel is too small for the exact shared area, which single
+    /// precision cannot hold there, so the edge is read as a line pulled in by
+    /// the arc's bow.)
+    @Test func aHugeDisksEdgeIsWhereTheCircleIs() throws {
+        let radius = 5000.0, center = Vector2(128, 5228.3)
+        let frame = try linearFrame { s in
+            s.noStroke(); s.fill(.black)
+            s.drawCircle(center: center, radius: radius)
+        }
+        var worst = 0.0
+        for x in 8..<248 {
+            var ink = 0.0
+            for y in 200..<256 { ink += shade(frame, x, y) }
+            let px = Double(x) + 0.5
+            let edge = center.y - (radius * radius - (px - center.x) * (px - center.x)).squareRoot()
+            worst = max(worst, abs(ink - (256 - edge)))
+        }
+        #expect(worst < 0.02, "a column's ink ends \(worst) px from the circle's edge")
+    }
+
+    /// One particle at each of the grid's centers, `radius` across twice.
+    private func gridParticles(radius: Double, color: SIMD4<Float>) -> ComputeBuffer<OllinParticle> {
+        ComputeBuffer(Self.gridCenters.map {
+            OllinParticle(position: SIMD2(Float($0.x), Float($0.y)), velocity: .zero, color: color,
+                          size: Float(2 * radius), life: 1, seedA: 0, seedB: 0)
+        })
+    }
+
+    /// A particle drawn as a mark is the same disk: its ink is its area at
+    /// every phase, as a quad and as the one point a named size makes it.
+    @Test(arguments: [0.3, 0.8, 1.6])
+    func aParticleMarkLaysDownItsArea(radius: Double) throws {
+        let buffer = gridParticles(radius: radius, color: SIMD4(0, 0, 0, 1))
+        let area = Double.pi * radius * radius
+        for maxSize in [nil, 2 * radius] as [Double?] {
+            let inks = try gridInks(reach: radius) { s in s.drawParticles(buffer, style: .marks, maxSize: maxSize) }
+            let worst = inks.max { abs($0 - area) < abs($1 - area) }!
+            #expect(abs(worst - area) <= 0.03 * area,
+                    "radius \(radius), \(maxSize == nil ? "quads" : "points"): one phase lays \(worst) against the area \(area) (\(percent(worst, of: area)))")
+        }
+    }
+
+    /// A particle drawn as light deposits its area times its weight, wherever
+    /// it lands: a disc over a texel across takes the share of each texel it
+    /// covers, never remapped.
+    @Test(arguments: [0.6, 0.9, 1.4, 2.5])
+    func aLightParticleDepositsItsArea(radius: Double) throws {
+        let weight = 0.5
+        let buffer = gridParticles(radius: radius, color: SIMD4(1, 1, 1, Float(weight)))
+        let area = Double.pi * radius * radius
+        for maxSize in [nil, 2 * radius] as [Double?] {
+            let probe = EffectInvariantTests.Probe()
+            probe.side = 256
+            probe.body = { s in s.background(.black); s.blendMode(.add); s.drawParticles(buffer, style: .light, maxSize: maxSize) }
+            let frame = try EffectInvariantTests.render(probe)
+            let half = Int(radius.rounded(.up)) + 3
+            let lights = Self.gridCenters.map { c -> Double in
+                let cx = Int(c.x.rounded(.down)), cy = Int(c.y.rounded(.down))
+                return frame.sum(0, x: (cx - half)..<(cx + half + 1), y: (cy - half)..<(cy + half + 1)) / weight
+            }
+            let worst = lights.max { abs($0 - area) < abs($1 - area) }!
+            #expect(abs(worst - area) <= 0.03 * area,
+                    "radius \(radius), \(maxSize == nil ? "quads" : "points"): one phase deposits \(worst) against the area \(area) (\(percent(worst, of: area))); the hundred run \(percent(lights.min()!, of: area)) to \(percent(lights.max()!, of: area))")
+        }
+    }
+
+    // MARK: A coarse layer
+
+    /// A frame whose marks were drawn into a layer `divisor` times coarser than
+    /// the canvas and drawn back with each of the layer's texels kept whole, in
+    /// linear light: every canvas pixel of a texel's block reads that texel, so
+    /// a sum over the canvas is the layer's own ink in canvas pixels.
+    private func coarseLayerFrame(divisor: Int, _ body: @escaping @MainActor (Sketch) -> Void) throws -> EffectInvariantTests.Frame {
+        try linearFrame { s in
+            let layer = s.makeRenderTarget(scale: 1 / Double(divisor))
+            s.withTarget(layer) { body(s) }
+            s.imageSampling(.nearest)
+            s.drawImage(layer.image, 0, 0)
+        }
+    }
+
+    /// A stroke drawn into a coarse layer is as wide as its weight there too,
+    /// wherever it falls on the layer's own texels: the ribbon's rim and a
+    /// hairline's footprint are sized by the texels of what is drawn into.
+    @Test(arguments: [2, 4])
+    func aStrokeIsAsWideAsItsWeightInACoarseLayer(divisor: Int) throws {
+        let texel = Double(divisor)
+        for weight in [0.5 * texel, 1.0 * texel, 2.5 * texel, 6.0 * texel] {
+            for angle in [0.0, 30.0, 90.0] {
+                let a = angle * .pi / 180
+                var worst = weight
+                for phase in Self.phases {
+                    let frame = try coarseLayerFrame(divisor: divisor) { s in
+                        s.stroke(.black); s.strokeWeight(weight); s.strokeCap(.butt)
+                        let d = Vector2(cos(a), sin(a)) * 104
+                        let middle = Vector2(128, 128) + Vector2(-sin(a), cos(a)) * (phase * texel)
+                        s.drawLine(middle - d, middle + d)
+                    }
+                    var widths: [Double] = []
+                    if angle == 90 {
+                        for y in 96..<160 { var t = 0.0; for x in 0..<256 { t += shade(frame, x, y) }; widths.append(t) }
+                    } else {
+                        for x in 96..<160 { var t = 0.0; for y in 0..<256 { t += shade(frame, x, y) }; widths.append(t * cos(a)) }
+                    }
+                    let measured = widths.reduce(0, +) / Double(widths.count)
+                    if abs(measured - weight) > abs(worst - weight) { worst = measured }
+                }
+                let allowed = weight < texel ? 0.05 : 0.03
+                #expect(abs(worst - weight) <= allowed * weight,
+                        "a layer 1/\(divisor) the canvas, weight \(weight) at \(angle) degrees: one position reads \(worst) wide (\(percent(worst, of: weight)))")
+            }
+        }
+    }
+
+    /// A disk drawn into a coarse layer lays its area there too, wherever it
+    /// lands on the layer's texels.
+    @Test(arguments: [2, 4])
+    func aDiskLaysDownItsAreaInACoarseLayer(divisor: Int) throws {
+        let texel = Double(divisor)
+        for radius in [0.4 * texel, 1.2 * texel, 3.0 * texel] {
+            // A five-by-five grid whose pitch is fractional in texels, so the
+            // disks land at many phases, and wide enough that no box holds two.
+            var centers: [Vector2] = []
+            for j in 0..<5 { for i in 0..<5 { centers.append(Vector2(30.3 + 48.37 * Double(i), 30.3 + 48.37 * Double(j))) } }
+            let frame = try coarseLayerFrame(divisor: divisor) { s in
+                s.noStroke(); s.fill(.black)
+                for c in centers { s.drawCircle(center: c, radius: radius) }
+            }
+            let area = Double.pi * radius * radius
+            let half = Int((radius + 1.5 * texel).rounded(.up)) + divisor
+            var worst = area
+            for c in centers {
+                // The box is snapped to the layer's texels, so no block is cut.
+                let x0 = (Int(c.x) - half) / divisor * divisor, x1 = ((Int(c.x) + half) / divisor + 1) * divisor
+                let y0 = (Int(c.y) - half) / divisor * divisor, y1 = ((Int(c.y) + half) / divisor + 1) * divisor
+                var total = 0.0
+                for y in max(0, y0)..<min(256, y1) { for x in max(0, x0)..<min(256, x1) { total += shade(frame, x, y) } }
+                if abs(total - area) > abs(worst - area) { worst = total }
+            }
+            #expect(abs(worst - area) <= 0.03 * area,
+                    "a layer 1/\(divisor) the canvas, radius \(radius): one disk lays \(worst) against the area \(area) (\(percent(worst, of: area)))")
         }
     }
 
@@ -410,13 +729,16 @@ struct DrawingInvariantTests {
 
     /// The width a line reads across its cross-section: the ink down each of 60
     /// columns through the middle of a line at `angle`, times the cosine that
-    /// turns a column's slant crossing into the perpendicular width.
-    private func measuredWidth(weight: Double, angle degrees: Double) throws -> Double {
+    /// turns a column's slant crossing into the perpendicular width. `phase`
+    /// slides the line across itself by that share of a pixel, so its edges
+    /// fall at a different place in the pixels they cross.
+    private func measuredWidth(weight: Double, angle degrees: Double, phase: Double = 0) throws -> Double {
         let a = degrees * .pi / 180
         let frame = try render { s in
             s.stroke(.black); s.strokeWeight(weight); s.strokeCap(.butt)
             let d = Vector2(cos(a), sin(a)) * 118
-            s.drawLine(Vector2(128, 128) - d, Vector2(128, 128) + d)
+            let middle = Vector2(128, 128) + Vector2(-sin(a), cos(a)) * phase
+            s.drawLine(middle - d, middle + d)
         }
         if degrees == 90 {
             let level = paper(frame, 2, 12, 2, 12, shade)
@@ -430,33 +752,132 @@ struct DrawingInvariantTests {
         return widths.reduce(0, +) / Double(widths.count)
     }
 
-    /// A stroke reads as wide as its weight at any angle: the fringe straddles
-    /// the true edge, so what the fringe adds outside it takes away inside.
-    @Test(arguments: [1.0, 2.5, 6.0, 11.0, 17.3])
+    private nonisolated static let phases = [0.0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875]
+
+    /// A stroke reads as wide as its weight at any angle and wherever its edges
+    /// fall in the pixels they cross: every triangle of the ribbon hands a pixel
+    /// the same coverage, read at the pixel's center, and the ribbon runs half a
+    /// pixel past where that coverage ends, so the multisample mask never cuts a
+    /// pixel that carries ink.
+    @Test(arguments: [1.0, 1.5, 2.5, 6.0, 11.0, 17.3])
     func aStrokeIsAsWideAsItsWeight(weight: Double) throws {
         for angle in [0.0, 30.0, 45.0, 90.0] {
-            let measured = try measuredWidth(weight: weight, angle: angle)
-            try pinned("the fringe renders under the multisample mask, which clips the outer band wherever its edge falls mid-pixel: a 2.5 px stroke on the axes reads 2.36 (measured 2026-10-25, -5.8%)",
-                       when: weight == 2.5 && (angle == 0 || angle == 90)) {
+            for phase in Self.phases {
+                let measured = try measuredWidth(weight: weight, angle: angle, phase: phase)
                 #expect(abs(measured - weight) <= 0.02 * weight,
-                        "weight \(weight) at \(angle) degrees reads \(measured) wide (\(percent(measured, of: weight)))")
+                        "weight \(weight) at \(angle) degrees, phase \(phase), reads \(measured) wide (\(percent(measured, of: weight)))")
             }
         }
     }
 
-    /// A hairline keeps its ink: a stroke under a pixel wide lays the ink of its
-    /// width, as the stroke band and the disk do, rather than the ink of the
-    /// pixel it is drawn into.
+    /// A hairline keeps its ink: a stroke under a pixel wide keeps a pixel's
+    /// footprint and lays the ink of its width, as the stroke band and the disk
+    /// do, at any angle and wherever it falls on the pixel grid.
     @Test(arguments: [0.3, 0.5, 0.7])
     func aHairlineKeepsItsInk(weight: Double) throws {
-        for angle in [0.0, 30.0] {
-            let measured = try measuredWidth(weight: weight, angle: angle)
-            try pinned("a sub-pixel stroke's fringe is a triangle of area (w/2 + 1/2) squared, clipped by the multisample mask, so its ink depends on its angle: 0.3 px lays 0.22 on the axis and 0.43 at 30 degrees, 0.5 lays 0.36 and 0.57 (measured 2026-10-25)",
-                       when: !(weight == 0.7 && angle == 30)) {
+        for angle in [0.0, 30.0, 90.0] {
+            for phase in Self.phases {
+                let measured = try measuredWidth(weight: weight, angle: angle, phase: phase)
                 #expect(abs(measured - weight) <= 0.05 * weight,
-                        "weight \(weight) at \(angle) degrees lays \(measured) px of ink (\(percent(measured, of: weight)))")
+                        "weight \(weight) at \(angle) degrees, phase \(phase), lays \(measured) px of ink (\(percent(measured, of: weight)))")
             }
         }
+    }
+
+    /// A stroke's ribbon runs past its edge, and that rim is no part of the
+    /// stroke: placed at a depth in a 3D scene it hides nothing drawn later
+    /// behind it, right up to the stroke's own edge.
+    @Test func aStrokesRimHidesNothing() throws {
+        let frame = try render { s in
+            s.camera(.perspective(eye: Vector3(0, 0, 4), target: .zero, fieldOfView: .pi / 3))
+            s.depth(at: Vector3(0, 0, 1))
+            s.noFill(); s.stroke(.black); s.strokeWeight(6); s.strokeCap(.butt)
+            s.drawLine(40, 128, 216, 128)          // its edges on rows 125 and 131
+            s.depth(at: Vector3(0, 0, -1))
+            s.noStroke(); s.fill(Color(red: 1, green: 0, blue: 0))
+            s.drawRect(60, 100, 136, 56)
+        }
+        #expect(frame.channel(1, 128, 128) < 8 && frame.channel(0, 128, 128) < 8, "the stroke is not in front of the fill behind it")
+        for y in [122, 123, 124, 131, 132, 133] {
+            #expect(frame.channel(0, 128, y) > 247 && frame.channel(1, 128, y) < 8,
+                    "row \(y), beside the stroke's edge: the fill behind is missing there (red \(frame.channel(0, 128, y)), green \(frame.channel(1, 128, y)))")
+        }
+    }
+
+    /// The light a hatch of 1 px lines leaves, by 24-pixel tiles over the middle
+    /// of the canvas: the tiles' mean, and how far the lightest and the darkest
+    /// tile are apart, as shares of full light. A tile is what the eye averages
+    /// from a normal distance, and it averages light, not display values.
+    private func hatchTone(angle degrees: Double, pitch: Double, ink: Color, paper: Color) throws -> (mean: Double, swing: Double) {
+        let a = degrees * .pi / 180
+        let dir = Vector2(cos(a), sin(a)), normal = Vector2(-sin(a), cos(a))
+        let probe = EffectInvariantTests.Probe()
+        probe.side = 256
+        probe.body = { s in
+            s.background(paper)
+            s.noFill(); s.stroke(ink); s.strokeWeight(1); s.strokeCap(.butt)
+            var k = -200.0
+            while k <= 200 {
+                let m = Vector2(128, 128) + normal * k
+                s.drawLine(m - dir * 200, m + dir * 200)
+                k += pitch
+            }
+        }
+        let frame = try EffectInvariantTests.render(probe)
+        var tiles: [Double] = []
+        for ty in stride(from: 56, to: 200, by: 24) {
+            for tx in stride(from: 56, to: 200, by: 24) {
+                tiles.append(frame.sum(0, x: tx..<(tx + 24), y: ty..<(ty + 24)) / 576)
+            }
+        }
+        return (tiles.reduce(0, +) / Double(tiles.count), tiles.max()! - tiles.min()!)
+    }
+
+    /// A hatch of thin lines reads one even tone, wherever its lines fall on
+    /// the pixel grid and whatever its angle, dark on light and light on dark.
+    /// This is what settled the stroke's edge (2026-11-12): a crisper edge that
+    /// holds every line's ink still reads a 45-degree hatch lighter than a
+    /// 10-degree one, and the edge before it banded.
+    @Test(arguments: [true, false])
+    func aHatchReadsOneToneAtEveryAngle(darkOnLight: Bool) throws {
+        let ink: Color = darkOnLight ? .black : .white, paper: Color = darkOnLight ? .white : .black
+        var means: [Double] = []
+        for angle in [45.0, 30.0, 10.0] {
+            let tone = try hatchTone(angle: angle, pitch: 3.37, ink: ink, paper: paper)
+            means.append(tone.mean)
+            #expect(tone.swing < 0.004, "\(darkOnLight ? "dark on light" : "light on dark") at \(angle) degrees: the tiles' light runs \(tone.swing) apart")
+        }
+        let spread = means.max()! - means.min()!
+        #expect(spread < 0.004, "\(darkOnLight ? "dark on light" : "light on dark"): the hatch's light at 45, 30, and 10 degrees is \(means)")
+    }
+
+    /// A turn too tight for the ribbon's rim still lays one coat: where the rim
+    /// would run past the neighboring segment along the shared crossing it is
+    /// held back, rather than folding the ribbon over itself or giving up the
+    /// crossing.
+    @Test func aTightTurnKeepsOneCoat() throws {
+        // An open arc of short segments, each turning 40 degrees: the crossing at
+        // every turn holds the visible stroke and not the whole rim.
+        var points: [Vector2] = []
+        let side = 2.25, turn = 40.0 * .pi / 180
+        var at = Vector2(13, 22), heading = 0.2
+        for _ in 0...5 {
+            points.append(at)
+            at = at + Vector2(cos(heading), sin(heading)) * side
+            heading += turn
+        }
+        let probe = Probe()
+        probe.side = 320
+        probe.body = { s in
+            s.scale(8)
+            s.noFill(); s.stroke(Color.black.withAlpha(0.3)); s.strokeWeight(4)
+            s.strokeJoin(.round); s.strokeCap(.butt)
+            s.drawPolyline(points)
+        }
+        let ink = InkProbe(try OllinApp.image(of: probe), inkDarkerThan: 250)
+        #expect(ink.coatArea > 1_500, "the probe missed the stroke: \(ink.coatArea) pixels at the coat's level \(ink.coat)")
+        #expect(ink.paintedTwice == 0, "\(ink.paintedTwice) pixels painted twice (coat \(ink.coat))")
+        #expect(ink.hairlines == 0, "\(ink.hairlines) pixels of hairline inside the ink")
     }
 
     /// The perceptual remap touches partial coverage only: a pixel a stroke

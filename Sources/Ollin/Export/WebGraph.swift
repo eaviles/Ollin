@@ -342,19 +342,19 @@ enum WebBlend {
 
 /// One vertex of the triangle path on the wire: the `OllinVertex` fields the
 /// page's vertex shader reads, as plain floats. The sketch-space position, the
-/// AA coverage a fringe vertex carries (0 on a fill's, where the pipeline
-/// ignores it), and the straight sRGB color with its alpha (a fringe vertex's
-/// paint alpha; the fragment applies the perceptual coverage remap to the
-/// coverage alone, as the Mac's does). A gradient on this path was baked into
-/// the vertex colors on the Mac, so it crosses as they are.
+/// AA coverage a fringe vertex carries (its two edge distances; 0 on a fill's,
+/// where the pipeline ignores them), and the straight sRGB color with its alpha
+/// (a fringe vertex's paint alpha; the fragment applies the perceptual coverage
+/// remap to the coverage alone, as the Mac's does). A gradient on this path was
+/// baked into the vertex colors on the Mac, so it crosses as they are.
 enum WebVertex {
-    static let floats = 7
+    static let floats = 8
     /// The leading fields that are the position, which the track carries
     /// exact; the rest are quantized.
     static let positionFloats = 2
 
     static func append(_ v: OllinVertex, into out: inout [Float]) {
-        out.append(contentsOf: [v.position.x, v.position.y, v.aa.x,
+        out.append(contentsOf: [v.position.x, v.position.y, v.aa.x, v.aa.y,
                                 v.color.x, v.color.y, v.color.z, v.color.w])
     }
 }

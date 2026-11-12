@@ -50,9 +50,13 @@ typedef simd_ushort4 OllinHalf4;
 // float4 @16, for a stride of 32 — `aa` lives in what was the float2→float4
 // alignment padding, so the stride (and the triangle buffer/ring) is unchanged.
 // The triangle pipeline ignores `aa`; the fringe pipeline (`ollin_fringe_vertex`)
-// reads `aa.x` as the AA coverage interpolant, with the stroke's own paint alpha
-// in `color.a` — so a fringe vertex carries rgb + paint-alpha + coverage as three
-// independent channels (the fragment applies perceptualCoverage to coverage only).
+// reads `aa` as the AA coverage interpolants (how far inside the stroke's nearer
+// edge the vertex sits, then how far inside the opposite one, in fringe widths
+// counted from half a fringe outside the edge; the fragment turns the pair into
+// how much of the pixel the stroke covers, see `ollin_fringe_coverage`), with
+// the stroke's own paint alpha in `color.a`, so a fringe vertex carries rgb +
+// paint-alpha + coverage as three independent channels (the fragment applies
+// perceptualCoverage to coverage only).
 // Under a *shader* paint the vertex carries no color at all: `color` is
 // (u, v, along, distance), the shape-box uv, the 0…1 fraction along a stroke, and
 // the signed distance to the shape's edge in its own units, and `aa.y` is the
@@ -76,7 +80,8 @@ typedef simd_ushort4 OllinHalf4;
 // edge on the canvas and the place in the shape's own coordinates, in canvas points.
 typedef struct {
     simd_float2 position;   // sketch-space, points, top-left origin, y-down
-    simd_float2 aa;         // fringe pipeline: x = AA coverage 0…1, y = opacity (shader paint); ignored elsewhere
+    simd_float2 aa;         // fringe pipeline: x = AA coverage toward the nearer edge, y = toward the
+                            // opposite edge (a shader paint: opacity; an ink ribbon: pace); ignored elsewhere
     simd_float4 color;      // straight (non-premultiplied) RGBA, 0...1 (fringe: a = paint alpha; shader paint: u, v, along, distance)
 } OllinVertex;
 
@@ -448,8 +453,9 @@ typedef struct {
 typedef struct {
     simd_float4 position;   // world-space xyz of the path vertex (w unused)
     simd_float2 offset;     // canvas points from that vertex's projection (x right, y down)
-    float coverage;         // anti-aliasing coverage, 1 in the core, 0 at the outer edge
-    float _pad0;            // pads the color to its 16-byte row
+    float coverage;         // how far inside the line's nearer edge, in fringe widths from half
+                            // a fringe outside it: 1 where the core begins, below zero on the rim
+    float far;              // the same toward the opposite edge (see OllinVertex)
     simd_float4 color;      // straight sRGB rgb + the paint's own alpha
 } OllinLineVertex;
 

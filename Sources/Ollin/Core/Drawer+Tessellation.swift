@@ -299,16 +299,29 @@ extension Drawer {
         return max(Double(sx + sy) / 2, 1e-6)
     }
 
+    /// The stroke expander's fringe in local units: one pixel of what is being
+    /// drawn into. That is a canvas pixel, or a texel of the layer where the
+    /// layer is coarser than the canvas (a half-scale layer's texel is two
+    /// canvas pixels), since the ribbon's rim has to reach past the edge by a
+    /// pixel and a half of the surface it is rasterized on, and a hairline is
+    /// held at that surface's pixel. A layer finer than the canvas keeps the
+    /// canvas pixel, so a mark looks the same drawn into it and scaled back.
+    private var fringeWidth: Double {
+        let target = currentTarget.map { min(1, $0.scale) } ?? 1
+        return 1.0 / (ctmScale * max(target, 1e-6))
+    }
+
     /// Append one fringe-stroke vertex (CTM-transformed) into `vertices`, which the
     /// caller has put under a `.fringe` batch (one check a stroke rather than one a
     /// vertex: nothing a batch is keyed on changes while a stroke expands). The AA
-    /// coverage is stored in `aa.x` (its own interpolant the fringe fragment remaps
-    /// to perceptual alpha), while `color` carries the stroke's rgb and its own
-    /// paint alpha, the two kept separate so a translucent stroke composites at its
-    /// true opacity.
-    private func emitFringe(_ position: SIMD2<Float>, cov: Float, opacity: Float = 0,
+    /// coverage is stored in `aa` as the expander's two edge distances (`aa.x`
+    /// toward the vertex's own edge, `aa.y` toward the opposite one; the fringe
+    /// fragment takes the smaller, holds it to 0...1, and remaps it to perceptual
+    /// alpha), while `color` carries the stroke's rgb and its own paint alpha, the
+    /// two kept separate so a translucent stroke composites at its true opacity.
+    private func emitFringe(_ position: SIMD2<Float>, cov: Float, far: Float,
                             color: SIMD4<Float>) {
-        let aa = SIMD2<Float>(cov, opacity)
+        let aa = SIMD2<Float>(cov, far)
         if transformIsIdentity {
             vertices.append(OllinVertex(position: position, aa: aa, color: color))
         } else {
@@ -413,7 +426,7 @@ extension Drawer {
         let n = pts.count
         guard n >= 2 else { return }
 
-        let fw = 1.0 / ctmScale                 // ~1px AA fringe in screen space
+        let fw = fringeWidth                    // ~1px AA fringe in screen space
         let miterLimit = 8.0
         // Half-width per path vertex. A uniform stroke keeps one constant, which is
         // what makes its geometry and coverage identical to the pre-profile path.
@@ -481,7 +494,7 @@ extension Drawer {
             StrokeExpander.expand(local, closed: closed,
                                   halfWidths: hws, colors: cols, fringe: fw, ctmScale: scale,
                                   join: join, cap: cap) { v in
-                emitFringe(v.position, cov: v.coverage, color: v.color)
+                emitFringe(v.position, cov: v.coverage, far: v.far, color: v.color)
             }
         }
         if recordsWebSources, paint.shader == nil {
@@ -554,7 +567,7 @@ extension Drawer {
             vertices.append(contentsOf: fringes)
             if recordsWebSources, paint.shader == nil {
                 webSources.append(WebSource(kind: .ribbons(runs: recorded, join: expanderJoin, cap: cap,
-                                                           fringe: 1.0 / ctmScale, ctmScale: ctmScale,
+                                                           fringe: fringeWidth, ctmScale: ctmScale,
                                                            wholeLength: whole, seed: seed),
                                             points: [], transform: transformIsIdentity ? nil : transform,
                                             vertexRange: start ..< vertices.count))
@@ -640,7 +653,7 @@ extension Drawer {
                       cores: inout [OllinVertex], fringes: inout [OllinVertex]) {
         let n = pts.count
         guard n >= 2 else { return }
-        let fw = 1.0 / ctmScale
+        let fw = fringeWidth
         let frame = RibbonFrame(pts.map { Point2D($0.x, $0.y) }, closed: closed, halfWidths: hws, fringe: fw,
                                 fractions: ts, wholeLength: wholeLength)
         let box: PaintBox? = {
@@ -732,7 +745,7 @@ extension Drawer {
     /// which a kept shape compares before reusing one.
     var plainStrokeKey: ShapeMemory.StrokeKey {
         ShapeMemory.StrokeKey(halfWidth: strokeWidth / 2, join: strokeJoinStyle, cap: strokeCapStyle,
-                              ctmScale: ctmScale)
+                              ctmScale: ctmScale, fringe: fringeWidth)
     }
 
     /// A plain stroke (see `strokeIsPlain`) along `points`, expanded before the
@@ -746,9 +759,9 @@ extension Drawer {
         StrokeExpander.expand(pts.map { Point2D($0.x, $0.y) }, closed: closed,
                               halfWidths: [Double](repeating: strokeWidth / 2, count: n),
                               colors: [SIMD4<Float>](repeating: .zero, count: n),
-                              fringe: 1.0 / ctmScale, ctmScale: ctmScale,
+                              fringe: fringeWidth, ctmScale: ctmScale,
                               join: expanderJoin, cap: expanderCap) { v in
-            expanded.append(ExpandedStrokeVertex(position: v.position, coverage: v.coverage))
+            expanded.append(ExpandedStrokeVertex(position: v.position, coverage: v.coverage, far: v.far))
         }
         return expanded
     }
@@ -760,13 +773,13 @@ extension Drawer {
         ensureBatch(.fringe)
         if transformIsIdentity {
             vertices.append(contentsOf: expanded.lazy.map {
-                OllinVertex(position: $0.position, aa: SIMD2<Float>($0.coverage, 0), color: color)
+                OllinVertex(position: $0.position, aa: SIMD2<Float>($0.coverage, $0.far), color: color)
             })
         } else {
             let t = transform
             vertices.append(contentsOf: expanded.lazy.map {
                 let p = t * SIMD3<Float>($0.position.x, $0.position.y, 1)
-                return OllinVertex(position: SIMD2<Float>(p.x, p.y), aa: SIMD2<Float>($0.coverage, 0), color: color)
+                return OllinVertex(position: SIMD2<Float>(p.x, p.y), aa: SIMD2<Float>($0.coverage, $0.far), color: color)
             })
         }
     }

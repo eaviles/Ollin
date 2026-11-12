@@ -230,8 +230,14 @@ struct LightAccumulationTests {
                 }
                 let quads = try image(points: false)
                 let points = try image(points: true)
+                // The two forms read a fragment's offset from its particle by
+                // different routes (the quad interpolates it from corners the
+                // rasterizer has snapped to its own grid, the point takes the
+                // pixel's place on the attachment), which agree to a few
+                // thousandths of a pixel. Over black a level is three
+                // ten-thousandths of full light, so that reads as up to three.
                 let worst = maxByteDifference(quads, points)
-                #expect(worst <= 1, "\(style) at size \(size): points and quads differ by \(worst) levels")
+                #expect(worst <= 3, "\(style) at size \(size): points and quads differ by \(worst) levels")
                 let a = linearSum(of: quads), b = linearSum(of: points)
                 #expect(abs(a - b) <= 0.002 * a + 1e-6,
                         "\(style) at size \(size): quads deposit \(a), points \(b)")
@@ -300,13 +306,16 @@ struct LightAccumulationTests {
         #expect(MetalRenderer.particlePointFits(maxSize: 0, style: .light, pixelScale: one))
         #expect(MetalRenderer.particlePointFits(maxSize: 509, style: .light, pixelScale: one))
         #expect(!MetalRenderer.particlePointFits(maxSize: 510, style: .light, pixelScale: one))
-        #expect(MetalRenderer.particlePointFits(maxSize: 507, style: .marks, pixelScale: one))
-        #expect(!MetalRenderer.particlePointFits(maxSize: 508, style: .marks, pixelScale: one))
+        // A mark's square is its disc and two and a half texels.
+        #expect(MetalRenderer.particlePointFits(maxSize: 508, style: .marks, pixelScale: one))
+        #expect(!MetalRenderer.particlePointFits(maxSize: 509, style: .marks, pixelScale: one))
         // A supersampled export at four texels a point: the same disc is four
         // times the square.
         let four = SIMD2<Float>(4, 4)
         #expect(MetalRenderer.particlePointFits(maxSize: 127, style: .light, pixelScale: four))
         #expect(!MetalRenderer.particlePointFits(maxSize: 128, style: .light, pixelScale: four))
+        #expect(MetalRenderer.particlePointFits(maxSize: 127, style: .marks, pixelScale: four))
+        #expect(!MetalRenderer.particlePointFits(maxSize: 128, style: .marks, pixelScale: four))
         // The coarser axis decides.
         #expect(!MetalRenderer.particlePointFits(maxSize: 200, style: .light, pixelScale: SIMD2(1, 3)))
         #expect(!MetalRenderer.particlePointFits(maxSize: .nan, style: .light, pixelScale: one))

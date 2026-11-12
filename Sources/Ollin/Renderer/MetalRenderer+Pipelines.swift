@@ -1191,7 +1191,10 @@ extension MetalRenderer {
         ShaderInfo info = ollin_paint_info(ollin_params, ollin_u, in.canvas, in.color.w, in.color.z,
                                            in.arcLength, in.across, in.halfWidth);
         float4 c = shade(in.color.xy, info);
-        float a = c.a * in.opacity * perceptualCoverage(clamp(in.coverage, 0.0, 1.0));
+        float cover = ollin_ribbon_coverage(in.coverage, in.across * in.halfWidth);
+        // The ribbon's rim past the stroke's edge: no color, and no depth either.
+        if (cover <= kOllinNoCoverage) { discard_fragment(); }
+        float a = c.a * in.opacity * perceptualCoverage(cover);
         return ollin_blend_ready(float4(srgbToLinear(c.rgb), a));
     }
     // An analytic shape: the slot (or both) whose kind is 5 is shaded, the other

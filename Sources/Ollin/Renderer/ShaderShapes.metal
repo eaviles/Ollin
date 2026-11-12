@@ -73,7 +73,30 @@ vertex SDFOut ollin_sdf_vertex(uint vid [[vertex_id]],
     // so it needs another half-stroke of margin.
     uint shapeAlign = (inst.shape >> 8) & 0x3u;
     float outset = (shapeAlign == 2u) ? inst.strokeWidth * 0.5 : 0.0;
-    float2 extent = inst.size + inst.bandWidth * 0.5 + inst.strokeWidth * 0.5 + outset + 2.0;
+    // The margin is two of the shape's own units. A solid disk is measured in
+    // pixels instead (one pixel along each local axis is the length of that row
+    // of the inverse of the shape-to-texel map): a pixel and a half past its
+    // edge holds every pixel its coverage reaches, whole, at any zoom and in a
+    // coarse layer, where a pixel is many units wide. With an outline it keeps
+    // the two units as well, for the outline's own edge. The other shapes keep
+    // the two units alone, which is what cuts their outer halo short in a
+    // coarse layer and leaves a cell drawn into a simulation field its own
+    // texels.
+    float2 margin = float2(2.0);
+    if ((inst.shape & 0xFFu) == 0u && inst.bandWidth <= 0.0) {
+        float2 axisX = inst.transform[0].xy;
+        float2 axisY = inst.transform[1].xy;
+        if (uniforms.batchTransformed != 0.0) {
+            axisX = (uniforms.batchTransform * float3(axisX, 0.0)).xy;
+            axisY = (uniforms.batchTransform * float3(axisY, 0.0)).xy;
+        }
+        axisX *= uniforms.pixelScale;
+        axisY *= uniforms.pixelScale;
+        float texelArea = max(abs(axisX.x * axisY.y - axisX.y * axisY.x), 1e-12);
+        float2 inPixels = 1.5 * float2(length(axisY), length(axisX)) / texelArea;
+        margin = inst.strokeWidth > 0.0 ? max(margin, inPixels) : inPixels;
+    }
+    float2 extent = inst.size + inst.bandWidth * 0.5 + inst.strokeWidth * 0.5 + outset + margin;
     float2 local = corners[vid] * extent;
     float3 sketch = inst.transform * float3(inst.center + local, 1.0);
     // Retained-batch replay transform (see ollin_vertex): only the covering quad's
@@ -161,24 +184,165 @@ static void regionFill(float d, float bandWidth, float hw, float strokeWidth, fl
     regionCoverage(d, hw, strokeWidth, strokeBias, fillCov, strokeCov);
 }
 
-// Disk (ellipse / circle / point) coverage with sub-pixel area conservation.
-// Unlike the inside-biased region ramp, a disk smaller than ~1px keeps a ~1px
-// screen footprint (so it can't fall between sample points and flicker) while
-// its alpha is scaled by the true/clamped *area* — total ink is conserved, so a
-// shrinking dot fades smoothly to nothing with no minimum-size floor. Disks
-// never tile edge-to-edge, so the region fills' seam-avoiding inside bias isn't
-// needed; a centered ramp gives crisp AA at any normal size. `px` is the pixel
-// footprint in local units (`fwidth`), so this holds under any transform. The
-// conserved coverage is remapped to perceptual alpha (see perceptualCoverage) so a
-// small dot reads as dark as its area warrants instead of washing out in linear.
+// The unit disc's share of one pixel, the pixel given in the disc's own space
+// (an ellipse is the unit circle where its radii are one). Three forms, by the
+// pixel's shape and size there; ARCHITECTURE.md (Coverage models) has why.
+
+// The area the disc shares with the rectangle from the origin to (x, y),
+// signed by quadrant; `hx`, `hy`: each coordinate's half sector less pi / 8.
+static inline float ollin_unit_disc_corner(float x, float y, float hx, float hy) {
+    return x * x + y * y <= 1.0 ? x * y : sign(x) * sign(y) * (hx + hy);
+}
+
+// The pixel is the rectangle `c +- side`: exact, four corner reads.
+static inline float ollin_unit_disc_rect_share(float2 c, float2 side) {
+    float2 lo = clamp(c - side, float2(-1.0), float2(1.0));
+    float2 hi = clamp(c + side, float2(-1.0), float2(1.0));
+    float4 m = abs(float4(lo, hi));
+    float4 h = 0.5 * (m * sqrt(max(1.0 - m * m, float4(0.0))) + asin(m)) - 0.39269908169872414;
+    float shared = ollin_unit_disc_corner(hi.x, hi.y, h.z, h.w) - ollin_unit_disc_corner(lo.x, hi.y, h.x, h.w)
+                 - ollin_unit_disc_corner(hi.x, lo.y, h.z, h.y) + ollin_unit_disc_corner(lo.x, lo.y, h.x, h.y);
+    return clamp(shared / (4.0 * side.x * side.y), 0.0, 1.0);
+}
+
+// The pixel is any parallelogram `q +- u +- v`: exact, by a walk round its
+// sides. Each adds the triangle under its part inside the circle and turns
+// `spin` by the arc since the walk last left the circle; one angle is read at
+// the end. No call and no skipped work: the 2x2 block pays for both anyway.
+static float ollin_unit_disc_walk(float2 q, float2 u, float2 v) {
+    float turn = u.x * v.y - u.y * v.x;
+    if (turn < 0.0) { v = -v; turn = -turn; }          // counterclockwise
+    float2 corner[5];
+    corner[0] = q - u - v;
+    corner[1] = q + u - v;
+    corner[2] = q + u + v;
+    corner[3] = q - u + v;
+    corner[4] = corner[0];
+    float area = 0.0;
+    float2 spin = float2(1.0, 0.0);
+    float2 exitAt = float2(1.0, 0.0);
+    float2 firstEntry = float2(1.0, 0.0);
+    bool hasExit = false;
+    bool hasFirst = false;
+    bool touched = false;
+    for (int i = 0; i < 4; ++i) {
+        float2 a = corner[i];
+        float2 e = corner[i + 1] - a;
+        float ee = max(dot(e, e), 1e-30);
+        float ae = dot(a, e);
+        float root = ae * ae - ee * (dot(a, a) - 1.0);
+        float r = sqrt(max(root, 0.0));
+        float per = 1.0 / ee;
+        float t0 = (-ae - r) * per;
+        float t1 = (-ae + r) * per;
+        bool hit = root > 0.0 && t1 > 0.0 && t0 < 1.0;
+        area += hit ? 0.5 * (a.x * e.y - a.y * e.x) * (min(t1, 1.0) - max(t0, 0.0)) : 0.0;
+        touched = touched || hit;
+        bool enters = hit && t0 > 0.0;
+        bool leaves = hit && t1 < 1.0;
+        float2 entry = a + e * t0;
+        // The arc from the last exit to this entry, as a turn of `spin`.
+        bool closes = enters && hasExit;
+        float2 arc = float2(dot(exitAt, entry), exitAt.x * entry.y - exitAt.y * entry.x);
+        spin = closes ? float2(spin.x * arc.x - spin.y * arc.y, spin.x * arc.y + spin.y * arc.x) : spin;
+        bool opens = enters && !hasExit && !hasFirst;
+        firstEntry = opens ? entry : firstEntry;
+        hasFirst = hasFirst || opens;
+        hasExit = (hasExit && !enters) || leaves;
+        exitAt = leaves ? a + e * t1 : exitAt;
+    }
+    bool wraps = hasExit && hasFirst;
+    float2 last = float2(dot(exitAt, firstEntry), exitAt.x * firstEntry.y - exitAt.y * firstEntry.x);
+    spin = wraps ? float2(spin.x * last.x - spin.y * last.y, spin.x * last.y + spin.y * last.x) : spin;
+    float angle = atan2(spin.y, spin.x);
+    angle = angle < 0.0 ? angle + 6.283185307179586 : angle;
+    float pixel = max(4.0 * turn, 1e-20);
+    // With no side meeting the circle, the circle is whole inside the pixel or apart from it.
+    bool within = abs(q.x * v.y - q.y * v.x) <= turn && abs(q.x * u.y - q.y * u.x) <= turn;
+    float shared = touched ? area + 0.5 * angle : (within ? 3.141592653589793 : 0.0);
+    return clamp(shared / pixel, 0.0, 1.0);
+}
+
+// The pixel is small beside the circle: a straight edge, pulled in by the
+// arc's mean bow. Single precision cannot hold the exact forms at this size.
+static inline float ollin_unit_disc_edge_share(float2 q, float2 u, float2 v, float away) {
+    float2 n = q / away;
+    float eu = abs(dot(u, n));
+    float ev = abs(dot(v, n));
+    float a = max(max(eu, ev), 1e-12);
+    float b = min(eu, ev);
+    float w = abs(u.x * n.y - u.y * n.x) + abs(v.x * n.y - v.y * n.x);
+    float d = (away - 1.0) + w * w / 6.0;
+    float x = abs(d);
+    float beyond = 0.0;
+    if (x < a + b) { beyond = (a + b - x) * (a + b - x) / max(8.0 * a * b, 1e-30); }
+    if (x < a - b) { beyond = (a - x) / (2.0 * a); }
+    return d >= 0.0 ? beyond : 1.0 - beyond;
+}
+
+// The straight edge from here: a circle three pixels in radius.
+constant float kOllinDiscSmallPixel = 0.2357;
+
+static float ollin_unit_disc_coverage(float2 q, float2 u, float2 v) {
+    float uu = dot(u, u);
+    float vv = dot(v, v);
+    float uv = dot(u, v);
+    float reach = sqrt(uu + vv + 2.0 * abs(uv));       // to the pixel's farthest corner
+    float qq = dot(q, q);
+    if (qq >= (1.0 + reach) * (1.0 + reach)) { return 0.0; }
+    if (reach < 1.0 && qq <= (1.0 - reach) * (1.0 - reach)) { return 1.0; }
+    if (reach <= kOllinDiscSmallPixel) { return ollin_unit_disc_edge_share(q, u, v, sqrt(qq)); }
+    // A circle, or an ellipse square to the screen: the pixel is a rectangle.
+    if (uv * uv <= 1e-6 * uu * vv && min(uu, vv) > 1e-20) {
+        float2 side = sqrt(float2(uu, vv));
+        return ollin_unit_disc_rect_share(float2(dot(q, u), dot(q, v)) / side, side);
+    }
+    return ollin_unit_disc_walk(q, u, v);
+}
+
+// How much of a dot is the tent below: all of it up to four fifths of a pixel
+// across, none from a pixel up, faded between so a growing dot never steps.
+static inline float ollin_dot_tent_share(float2 ab, float2 least) {
+    float across = max(ab.x / least.x, ab.y / least.y);
+    return clamp((1.0 - across) * 5.0, 0.0, 1.0);
+}
+
+// Disk (ellipse / circle / point) coverage: the share of each pixel the disk
+// covers, so its ink is its area wherever it lands. Under a pixel across it
+// keeps a one-pixel footprint on each of its own axes, its coverage scaled by
+// the true area over the footprint's; under a pixel on both, its area is
+// shared by a tent a pixel wide on each screen axis. The pixel is read from
+// the screen step of the coordinate, never of a distance, which collapses
+// where the 2x2 block straddles a small disk's center. Remapped to perceptual
+// alpha (see perceptualCoverage).
 static void diskCoverage(float2 p, float2 ab, float hw, float strokeWidth, float strokeBias,
                          thread float &fillCov, thread float &strokeCov) {
-    float px = max(fwidth(sdEllipse(p, ab)), 1e-5);
-    float2 abE = max(ab, 0.5 * px);                      // keep >= ~½px radius on screen
-    float d = sdEllipse(p, abE);
-    float areaScale = (ab.x * ab.y) / (abE.x * abE.y);   // < 1 only when enlarged
-    fillCov = perceptualCoverage(clamp(0.5 - d / px, 0.0, 1.0) * areaScale);
-    strokeCov = (strokeWidth > 0.0) ? strokeBandCoverage(abs(d - strokeBias), hw, px) : 0.0;
+    float2 jx = dfdx(p);
+    float2 jy = dfdy(p);
+    // One pixel in the disk's own units, along each of its axes.
+    float2 pixel = float2(length(float2(jx.x, jy.x)), length(float2(jx.y, jy.y)));
+    ab = max(ab, float2(0.0));
+    float2 least = max(0.5 * pixel, float2(1e-6));           // half a pixel, per axis
+    float2 abE = max(ab, least);                             // keep >= ~1/2px radius on screen
+    float tent = ollin_dot_tent_share(ab, least);
+    float cover = 0.0;
+    if (tent > 0.0) {
+        float det = jx.x * jy.y - jx.y * jy.x;
+        float unit = max(abs(det), 1e-20);                   // one pixel's area in the disk's units
+        float2 across = float2(p.x * jy.y - p.y * jy.x, p.y * jx.x - p.x * jx.y) / (det < 0.0 ? -unit : unit);
+        float2 share = max(1.0 - abs(across), float2(0.0));
+        cover = tent * share.x * share.y * min(3.141592653589793 * ab.x * ab.y / unit, 1.0);
+    }
+    if (tent < 1.0) {
+        float areaScale = (ab.x * ab.y) / (abE.x * abE.y);   // < 1 only when enlarged
+        cover += (1.0 - tent) * ollin_unit_disc_coverage(p / abE, 0.5 * jx / abE, 0.5 * jy / abE) * areaScale;
+    }
+    fillCov = perceptualCoverage(cover);
+    strokeCov = 0.0;
+    if (strokeWidth > 0.0) {
+        float px = max(fwidth(sdEllipse(p, ab)), 1e-5);
+        strokeCov = strokeBandCoverage(abs(sdEllipse(p, abE) - strokeBias), hw, px);
+    }
 }
 
 // Coverage for a thin round-capped stroke (line / quadratic curve): `s` is the

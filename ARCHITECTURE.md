@@ -220,14 +220,20 @@ Coverage is split by whether a shape tiles, and the split is load-bearing:
   geometric edge with the AA halo only outside, so abutting fills (tiled
   grids, gradient bands, the rotated wedges tiling a cell in `LifeQuilt`)
   leave no seam. Moving them onto a centered ramp brings the seams back.
-- **Area-conserving** (`diskCoverage` and the capsule case): the disk
-  (ellipse/circle/round point) and capsule/line use a centered AA ramp, but
-  any mark smaller than ~half a pixel keeps a ~1px footprint while its alpha
-  scales by the true/clamped **area** (disk) or **width** (line). Sizes run
-  0...n: tiny dots, small circles, and thin lines fade by area instead of
-  popping in, snapping to a 1px floor, or flickering as they move. Safe
-  because disks and lines never tile edge-to-edge, so they need no inside
-  bias.
+- **A disk takes the exact share of each pixel it covers** (`diskCoverage`
+  over `ollin_unit_disc_coverage`): the ellipse, the circle, the round point,
+  and the GPU particles' marks and light. The fragment works in the space
+  where the disk is the unit circle, where its own pixel is a parallelogram
+  (the center, and half the coordinate's screen step along each axis), and
+  takes the area the two share over the pixel's. A sum of such shares over the
+  pixel grid is the disk's area wherever it lands and under any transform,
+  which is the whole reason for the form. Under a pixel across a disk keeps a
+  one-pixel footprint, on each of its own axes, and its coverage is scaled by
+  its true area over the footprint's: the ink is still the area, and it moves
+  from pixel to pixel smoothly (the ink's center stays within 0.06 px of the
+  dot's) where a bare 0.2 px dot would sit in one pixel and jump to the next.
+  Disks never tile edge to edge, so they need no inside bias. The capsule and
+  the Bezier stroke cases (retained, unemitted) keep their centered ramp.
 - **Ink-conserving stroke bands** (`strokeBandCoverage`, shared by the region
   and disk outline paths): a band thinner than ~1px holds a ~1px footprint
   with alpha scaled by the width ratio (the capsule's trick), so an outline
@@ -236,8 +242,145 @@ Coverage is split by whether a shape tiles, and the split is load-bearing:
   a 0.4px and a 0.05px outline read alike. A band at or above ~1px reduces to
   the plain smoothstep edge it always was (byte-identical, snapshot-safe).
 
-These area-conserving paths and every stroke band then run their coverage
-through `perceptualCoverage` (see *Linear-light compositing* below).
+The disk and every stroke band then run their coverage through
+`perceptualCoverage` (see *Linear-light compositing* below).
+
+**Why the disk is not a ramp (2026-11-12).** It was one: a centered ramp one
+footprint wide over the ellipse's distance, the footprint read as `fwidth` of
+that distance and floored at half a pixel. Three things were wrong with it,
+found by the 2D survey of 2026-10-25, and the first is worth keeping in mind
+for any analytic shape. `fwidth` of a distance field is the pixel step
+everywhere but at the field's cusp: where the 2x2 derivative block straddles
+a small disk's center the two lanes' distances nearly agree, the footprint
+collapses, and the ramp becomes a hard step, so a 0.3 px disk laid 0.28 to
+0.42 of a pixel's ink with its place on the grid and nothing past phase 0.9.
+The pixel has to be read from the *coordinate's* screen step, which the
+transform alone decides. Second, a centered ramp around a curved edge covers
+more outside than it gives up inside, pi times the ramp's width squared over
+twelve (0.42 square pixels with the old L1 width; measured, 14 to 17% more
+than a disk's area up to a pixel in radius and 3% at two). Third, the floor was one number, wrong on both axes under an
+uneven scale (-13 to -15% under `scale(2, 0.5)`). Fixing those three on the
+ramp gets the *mean* ink right and no more: a radial ramp sampled on a square
+grid still swings with the disk's place on it, 18% below three quarters of a
+pixel and 9% at one (a numeric study of four candidates before any shader was
+written), because a cone is not a partition of unity over the lattice. The
+pixel's exact share is, by construction, and it measures within 3% of the
+area from 0.2 to 3 px at every one of a hundred phases, under a scale, a turn,
+an uneven stretch, and a canvas zoomed out eight times.
+
+**Three forms of the share, and a fourth below a pixel.** All take the pixel
+in the space where the disk is the unit circle, and which one runs is decided
+by the transform and the radii, so one disk never mixes them.
+
+- *The pixel is a rectangle there* (`ollin_unit_disc_rect_share`): a circle
+  under any turn and even scale, an ellipse square to the screen, every
+  particle. The area the disc shares with the rectangle from the origin to a
+  corner `(x, y)` is `x * y` while the corner is inside the circle; past it,
+  it is half of `x * sqrt(1 - x * x) + asin(x)` plus the same in `y`, less a
+  quarter of the disc. The pixel's share is four such reads, signed by the
+  corner's quadrant: four square roots and four arcsines, exact.
+- *The pixel is any parallelogram* (`ollin_unit_disc_walk`): an ellipse turned
+  off the axes, a sheared transform. A walk round the four sides adds, for
+  each, the triangle the origin makes with the part of the side inside the
+  circle, and turns a unit complex number by the arc from where the walk last
+  left the circle to where the side comes back in. The arcs are parts of one
+  circle, so their angles sum to a turn at most and one `atan2` at the end
+  reads all of them. Exact, and about twice the rectangle form's work.
+- *The pixel is small beside the circle* (`ollin_unit_disc_edge_share`): the
+  exact forms are differences of terms far larger than the pixel there
+  (single precision loses 1% of a pixel at a 500 px radius and everything at
+  2,000), so the pixel sees the edge as a straight line, pulled in by the mean
+  of what the arc bows away from its tangent across the pixel, and takes the
+  share of the parallelogram behind that line. It is also the cheapest of the
+  three, so the changeover is as low as it stays true: three pixels of radius,
+  where it agrees with the exact forms within 1.5% of a pixel and a disc's
+  whole ink within 0.7%. (Below two pixels it does not hold: a pixel there can
+  see both sides of the disc.)
+- *A dot under a pixel on both axes* needs none of them: its area, shared
+  among the pixels around it by a tent a pixel wide on each screen axis, which
+  is a pixel-wide square's exact share scaled to the dot's area. A dot thin on
+  one axis alone keeps the floor on that axis and the forms above
+  (`aThinEllipseStaysAPixelWideUnderAStretch`). At exactly a pixel across the
+  tent and the exact share of the disc place up to 4% of a pixel differently
+  (the same ink, since both sum to the area), which showed as a quad and a
+  point primitive disagreeing by 37 levels on a pile of one-pixel marks: the
+  quad's interpolated pixel came out a rounding under one and took the other
+  form. So the tent is faded into the exact share over the last fifth of a
+  pixel (`ollin_dot_tent_share`), a size running through a pixel never steps
+  (`aDotDoesNotStepAsItGrowsThroughAPixel`), and a rounding in the pixel's
+  size moves nothing.
+
+**What the exact share costs, and what was done about it.** The first exact
+form (one helper per side, an `atan2` per arc, every disk through it up to
+eight pixels of radius) drew a million particle marks one to three pixels
+across in 53.8 ms of GPU time where the ramp had taken 15.2 (an M2, release,
+`--bench 300 --gpu`, the commit before beside the new one). What brought it
+down, in the order it was found, each measured on that sketch: the walk as one
+loop with no call and no branch that skips work, one angle read at the end
+(31.1 ms; a fragment's neighbors in its 2x2 block pay for a skipped branch
+anyway); smaller squares round a particle, the straight edge from three pixels
+of radius, and the tent below a pixel (25.2); the rectangle form (22.1); and
+an entry for particles that never names the walk, `squareDotCoverage` (17.5).
+Of that last step's 4.6 ms, 1.8 is the walk itself, compiled into the fragment
+and never taken (measured by forcing the rectangle form), which is the part
+worth remembering: a fragment that cannot need a form should not carry it,
+the same lesson as the untraced lit pipelines. Another millisecond is a
+particle's color turned to linear light once in its vertex stage, where every
+fragment had done it, and the rest is the general entry's own arithmetic. The
+floor for this footprint, the same fragments with no coverage arithmetic at
+all, is 12.6 ms.
+
+What is left was put to @eaviles with the numbers and accepted on 2026-11-12:
+exact ink costs a sketch made of small dots or hairlines 7 to 18% of its GPU
+time. The commit before beside this one, the median of three alternating runs
+each:
+
+| Sketch | GPU, before | GPU, now | Frame, before | Frame, now |
+|---|---|---|---|---|
+| A million particle marks, 1 to 3 px across | 15.1 ms | 17.9 ms | 18.3 ms | 20.8 ms |
+| 200,000 circles, 0.4 to 3 px in radius | 10.8 ms | 12.8 ms | 65.1 ms | 65.9 ms |
+| `Rendering/LineSpray` (light discs through a lens) | 17.8 ms | 19.1 ms | 19.7 ms | 21.1 ms |
+| 24,000 lines, 0.5 to 3 px wide | 3.2 ms | 6.3 ms | 39.4 ms | 42.1 ms |
+| `Shapes/InkPen` | 1.3 ms | 1.9 ms | 5.6 ms | 6.2 ms |
+
+The two line sketches spend most of a frame on the CPU, so their GPU column
+is read off a GPU that is not busy and moves by a millisecond or two from run
+to run; their frame times are the steadier figure. A line's extra cost is its
+ribbon: the rim past each edge makes a one-pixel line four pixels of
+fragments wide where it was two. What a profile would look at next is under
+*What a dot's exact coverage still costs* in `DESIGN-NOTES.md`.
+
+**The disk's covering quad is sized in pixels, and only the disk's.**
+`ollin_sdf_vertex` adds two of the shape's own units around every shape. A
+solid disk is measured in pixels instead (from the rows of the inverse of the
+shape-to-texel map): a pixel and a half past its edge holds, whole, every
+pixel its coverage reaches (a center within half a pixel of the edge, or
+within a pixel of a dot held at a pixel's footprint), which the multisample
+mask needs. A canvas zoomed far out, or a coarse layer, makes a pixel many
+units wide, and a dot held at a pixel's footprint would otherwise reach past
+its quad and be cut; on an ordinary canvas the pixel and a half is less than
+the two units were (a quad of 25 pixels where 36 were, round a dot a pixel in
+radius). A disk with an
+outline keeps the two units as well, for the outline's own edge. The other
+shapes keep the two units alone, on purpose. Their fill ramp puts its halo
+outside the edge, a pixel wide, and in a coarse layer the two-unit quad cuts
+that halo short: a 4-unit cell drawn into a quarter-scale simulation field
+lands on its own texel and no other. Sizing every shape's quad in pixels was
+tried first and let the halo through, half a texel of conductor into each
+neighbor of a wireworld wire, which is how the snapshot of that automaton
+found it. A particle's quad and point square follow the same count (the disc
+and a texel and a quarter each way; `size × scale + 2.5` texels for the
+point).
+
+**A point sprite reads its pixel's own place.** A particle drawn as one point
+primitive took its offset from the particle's center out of `[[point_coord]]`,
+which runs over the square as the rasterizer sized and placed it, a little off
+the square that was asked for: under the exact share a light disc 1.2 texels
+across read up to 3.1% over its area that way. The point fragments now take
+`in.position.xy` less the center the vertex stage hands on (`particlePointOffset`),
+which is exact. The quad and the point then agree to a few thousandths of a
+pixel, the size of the rasterizer's own snapping of the quad's corners, which
+over black reads as up to three 8-bit levels.
 
 ### Adding an SDF shape
 
@@ -268,9 +411,11 @@ Every stroked path (`drawLine`, `drawBezier`, `drawPolyline`, the
 AGG/NanoVG-style fringe expander (`appendFringeStroke`, written from the
 technique; no SDF, no MSAA/SSAA). The path is edge-expanded CPU-side into
 per-segment butt quads plus a ~1px screen-space anti-aliasing fringe
-(`fw = 1/ctmScale`; coverage ramps 1 to 0 across it, GPU-interpolated so the
-edge stays smooth at *any* angle at native resolution, fixing the staircase
-the SDF capsule's single-sample `fwidth` left on shallow diagonals). It uses
+(`fw = 1/ctmScale`; the vertices carry how far inside the stroke's edges they
+sit, GPU-interpolated, and the fragment turns that into coverage, so the edge
+stays smooth at *any* angle at native resolution, fixing the staircase the
+SDF capsule's single-sample `fwidth` left on shallow diagonals; see *What the
+ribbon carries* below). It uses
 its own `.fringe` `GeometryKind`/pipeline (`ollin_fringe_vertex`/`_fragment`)
 but **reuses the triangle vertex buffer**: the coverage is stored in an `aa` field
 tucked into `OllinVertex`'s existing float2-to-float4 alignment padding
@@ -292,6 +437,112 @@ open ends), so `drawLine` (single segment, cap-only; now default **butt**, not
 the old always-round capsule) and `drawBezier` (flattened, then cap plus
 joins) honor them too. `appendStrokedPath` (the old tessellated join-filler
 path) is retained for text glyph stroking only.
+
+#### What the ribbon carries, and what the fragment works out (2026-11-12)
+
+The expander used to lay the coverage itself on the vertices, 1 across the
+core and ramping to 0 across the fringe, and the fragment clamped what the
+GPU interpolated. The strokes draw in the multisampled 2D pass, and that
+combination lost and gained ink with where a stroke's edges fell in the pixels
+they crossed, which the survey of 2026-10-25 pinned at one width (2.5 px read
+2.36 along an axis) and a sweep over eight positions showed at the thin ones:
+along an axis a 1 px line read from its weight to 6.9% under it, a 1.5 px one
+from 4.6% over to 10.1% under, a 2.5 px one from 6.0% under to 2.8% over, and
+a 6 px one within 1.2%. Two mechanisms, with a pixel center `a` of a pixel
+past the line where the core ends:
+
+- *The mask clips the outer band.* For `a > 1/2` part of the pixel lies past
+  the geometry's outer edge, the mask keeps only the samples inside it, and the
+  pixel loses `(1 - a)(a - 1/2)` of its coverage.
+- *A second triangle answers for the same pixel.* For `a < 1/2` part of the
+  pixel lies in the core band, whose triangles hand their samples a flat 1
+  where the fringe band's hand theirs `1 - a`: a gain of `a(1/2 - a)`. The same
+  happens at the centerline of any stroke under two pixels wide, where each
+  half's triangles extrapolate their own ramp past it.
+
+The two have opposite signs and average out over positions, which is why
+most widths passed a single-position probe; at a fixed position, as on an
+axis-aligned line, both edges of a stroke err the same way. Fixing the first
+alone does not settle a thin line either: with the rim in place and nothing
+else changed, a 1 px line at 45 degrees read from 12% over to 9% under.
+
+What the ribbon carries now is distance, and the fragment works out the
+coverage. Each vertex has two numbers in `aa`: how far inside the stroke's
+nearer edge it sits and how far inside the opposite one, in fringe widths
+counted from half a fringe outside the edge (one half on the edge, 1 where
+the core begins), never held to 0...1. Each is one flat ramp across the whole
+width of a segment, so every triangle of the ribbon that touches a pixel
+hands it the same pair at the pixel's center, whichever triangle the mask
+gave a sample to. The fragment (`ollin_fringe_coverage`) takes the screen
+steps of the pair and the exact share of the pixel between the two edges
+(`ollin_edge_share`: across a straight edge a pixel's extent is a trapezoid,
+and the share is the part of it past the line). Around a join, a round cap,
+or past a flat end there is one edge, and the second number is negative.
+
+- **The rim.** The geometry's outer edge runs a fringe and a half past the
+  stroke's edge with the ramp carried on below zero, so every pixel the stroke
+  touches, at any angle, is whole under the mask. Its fragments have no
+  coverage and are discarded (`kOllinNoCoverage`), so under `depth(at:)` the
+  rim writes no depth and under a one-coat medium it claims no sample. On the
+  inside of a turn the rim runs only as far along the shared crossing as stays
+  inside both neighboring segments (`innerRim`): the crossing's own test is
+  unchanged, so no turn loses its single coat to the wider ribbon.
+- **A hairline.** A stroke thinner than the fringe is expanded at the fringe's
+  width with both numbers scaled by its thinness (its width over that), which
+  the fragment reads back from the pair's sum, a constant across the body. Its
+  ink is its width and its footprint a pixel, so it moves smoothly.
+- **The derivatives are of the raw pair.** The first version worked out the
+  case (two edges or one) and the thinness per pixel and took `dfdx` of the
+  result. A neighbor in the 2x2 block the derivative reads can sit a pixel past
+  a thin stroke's far edge, where the second number has run below zero and
+  reads as the other case: the step came out doubled for half the samples and
+  a 1 px line through pixel centers read 0.64. The pair is flat over a
+  triangle, so its own derivatives are exact wherever the helper pixel sits.
+
+**The edge, as ruled.** Three edges were measured on 1 px lines and on hatches
+before one was kept, and the ruling went to the pixel's exact share.
+A ramp one pixel wide along the edge's normal (what the path drew before)
+puts a line's core at 0.98 of full black at 30 degrees but lays 12% too much
+or 9% too little at 45 degrees with the line's position, once nothing mixes
+samples. The share of the pixel's column alone, the crispest ramp that still
+holds the ink (core 1.00 at 30 degrees, 0.94 on average at 45), reads a hatch
+at 45 degrees five 8-bit levels lighter than the same hatch at 10 and bands by
+up to 1.7 levels, because concentrated ink reads lighter in linear light than
+the same ink spread over two pixels. The exact share puts the core at 0.92
+and reads a hatch as one tone at every angle and position, within 0.2 of a
+level. The instrument for this is a hatch at a fractional pitch, blurred in
+linear light; a single line's ink and peak say nothing about it.
+
+**Ribbon strokes rebuild the second number.** A ribbon vertex pair has room
+for the first number beside the ribbon's own coordinates. Its fragment
+(`ollin_ribbon_coverage`) takes the slope of that number against the signed
+offset across the stroke, both flat over a triangle, which gives the mirror
+of the number about the centerline without knowing which side of the stroke
+the triangle is on. Where the number falls off along the stroke instead (past
+a flat end) the two gradients are square to each other and it is read as the
+one edge it is. A medium and a shader paint therefore lay the plain stroke's
+coverage, which is what the media's "never darker than the plain stroke"
+statements compare against.
+
+**The fringe is a pixel of what is drawn into.** The expander's fringe sizes
+the rim and a hairline's floor, and it was one canvas pixel whatever the
+surface (`1 / ctmScale`). In a layer coarser than the canvas a canvas pixel
+is a fraction of a texel, the rim stops short of the texels the stroke
+touches, and a line there lost ink the same way the canvas's did before, only
+more: in a quarter-scale layer a line half a texel wide read 56% under its
+weight at some positions, one a texel wide 17% under, and in a half-scale
+layer 7% and 3.5% (read by drawing the layer back with its texels kept whole,
+in linear light; an upscaled layer read through display values is biased and
+says nothing). `Drawer.fringeWidth` is now a texel of the layer where the
+layer is coarser than the canvas, and a canvas pixel otherwise, so a mark
+drawn into a finer layer looks as it does on the canvas when the layer is
+scaled back. A kept shape's stroke is keyed by the fringe as well as the
+transform's scale.
+
+**The page.** The page rasterizes triangles through a four-sample buffer, so
+the same holds there: its triangle vertex is eight floats (the second number
+after the first), its stroke fragment is the translated `fringe` section, and
+its expander is the same Swift compiled to WebAssembly.
 
 **Fills stay on libtess2 plus 8x MSAA, byte-identical.** The empirical call
 (native-resolution A/B): MSAA fill edges are already smooth, and a fill fringe
@@ -536,9 +787,10 @@ their derivatives are the same over either diagonal, and the whole snapshot
 table held unrecorded through the change). When the sketch names the largest
 `size` in the buffer (`maxSize:`), the renderer draws each particle as one
 point primitive instead: the vertex emits `[[point_size]]`, the side of the
-covering square in texels, and the fragment turns `[[point_coord]]` back into
-the quad's offset through an extent the vertex hands it, so every deposit is
-one helper both fragments call. The GPU caps a point at 511 texels, so
+covering square in texels, and the fragment takes the quad's offset from its
+own place on the attachment less the center the vertex hands it (see *A point
+sprite reads its pixel's own place* under *Coverage models*), so every deposit
+is one helper both fragments call. The GPU caps a point at 511 texels, so
 `MetalRenderer.particlePointFits` decides per pass, against that pass's texels
 per point: a disc past the cap keeps the quad, and a one-texel light point
 always fits. A point primitive is clipped as its square rather than by its

@@ -1,11 +1,13 @@
 import Synchronization
 
 /// One vertex of a stroke's expansion before the transform: where it sits and
-/// how much of it the stroke covers. A solid stroke of one width lays its
-/// color on every vertex alike, so this is all of it a shape needs to keep.
+/// how much of it the stroke covers, as the expander's two edge distances. A
+/// solid stroke of one width lays its color on every vertex alike, so this is
+/// all of it a shape needs to keep.
 struct ExpandedStrokeVertex: Sendable {
     var position: SIMD2<Float>
     var coverage: Float
+    var far: Float
 }
 
 /// What a `Shape` remembers of being drawn, so a shape kept from one frame to
@@ -31,6 +33,9 @@ final class ShapeMemory: Sendable {
         var join: StrokeJoin
         var cap: StrokeCap
         var ctmScale: Double
+        /// The expander's fringe, which follows the surface drawn into as well
+        /// as the transform (see `Drawer.fringeWidth`).
+        var fringe: Double
     }
 
     private struct KeptStroke: Sendable {

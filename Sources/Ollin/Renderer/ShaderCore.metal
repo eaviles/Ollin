@@ -129,21 +129,97 @@ vertex VertexOut ollin_clip_cover_vertex(uint vertexID [[vertex_id]]) {
     return out;
 }
 
-// Fringe-stroke pipeline (edge-expansion AA). A stroke is expanded
-// CPU-side into a core band plus a ~1px fringe whose AA coverage is stored in the
-// vertex's `aa.x`; the GPU interpolates it across the geometry (1 at the core,
-// ramping to 0 across the fringe), so the edge stays smooth at *any* angle with no
-// fwidth/SDF and no supersampling. The stroke's own color is carried in `color` (rgb +
-// paint alpha). The fragment remaps coverage to perceptual alpha (so thin lines
-// stay dark in linear light) and scales by the paint alpha kept linear (so
-// translucent strokes composite correctly), the two channels kept separate.
+// OLLIN_LIB_BEGIN fringe
+// The coverage below which a stroke's fragment is dropped: under anything a
+// frame can show, over what single precision leaves at a pixel an edge only
+// touches.
+constant float kOllinNoCoverage = 1e-4;
+
+// The share of a pixel on the inner side of one straight edge. `e` is how far
+// inside the edge the pixel's center sits, in fringe widths with one half on
+// the edge itself, and `g` how much `e` changes over one pixel along each
+// screen axis, signs dropped. Across the edge a pixel's extent is a trapezoid
+// (a box seen edge on, a triangle seen corner on), and this is the part of it
+// past the line: exact at any angle and under any transform, and exactly zero
+// at a pixel the edge only touches. Why this edge and not a crisper one is in
+// ARCHITECTURE.md, under "What the ribbon carries".
+static inline float ollin_edge_share(float e, float2 g) {
+    float a = max(0.5 * max(g.x, g.y), 1e-12);
+    float b = 0.5 * min(g.x, g.y);
+    float x = abs(e - 0.5);
+    float beyond = 0.0;
+    if (x < a + b) { beyond = (a + b - x) * (a + b - x) / max(8.0 * a * b, 1e-30); }
+    if (x < a - b) { beyond = (a - x) / (2.0 * a); }
+    return e >= 0.5 ? 1.0 - beyond : beyond;
+}
+
+// A stroke's coverage of this pixel, from the pair its vertices carry and the
+// pair's steps over one pixel across and down the screen. With the second
+// number positive the pair is how far inside each of the stroke's two edges
+// the pixel sits, and the coverage is what the first edge keeps of the pixel
+// less what the second cuts off; with it negative (a join, a round cap, past a
+// flat end) there is one edge. Both numbers carry the stroke's thinness, read
+// back from their sum or from the second number, and the result is scaled by
+// it, so a hairline lays the ink of its width.
+static inline float ollin_fringe_share(float2 aa, float2 across, float2 down) {
+    bool body = aa.y > 0.0;
+    float thin = body ? min(0.5 * (aa.x + aa.y), 1.0) : -aa.y;
+    float scale = 1.0 / max(thin, 1e-12);
+    float share = ollin_edge_share(aa.x * scale, abs(float2(across.x, down.x)) * scale);
+    if (body) { share += ollin_edge_share(aa.y * scale, abs(float2(across.y, down.y)) * scale) - 1.0; }
+    return clamp(share * thin, 0.0, 1.0);
+}
+
+// The same from the pair alone. The steps are of the pair as it arrives, which
+// is flat over a triangle, and never of a value decided per pixel: a neighbor
+// in the 2x2 block the derivative reads can sit past a thin stroke's far edge,
+// where the second number has run below zero and reads as the other case.
+static inline float ollin_fringe_coverage(float2 aa) {
+    return ollin_fringe_share(aa, dfdx(aa), dfdy(aa));
+}
+
+// The same for a ribbon vertex, which carries the first number and the
+// ribbon's own coordinates; `off` is the pixel's signed offset from the
+// centerline. Across a body or around a join the number falls off in step with
+// the offset, and its mirror about the centerline is the second number: the
+// slope of one against the other is exact, and needs no knowledge of the side.
+// Past a flat end it falls off along the stroke instead, and is read as the
+// one edge it is.
+static inline float ollin_ribbon_coverage(float cov, float off) {
+    float2 covStep = float2(dfdx(cov), dfdy(cov));
+    float2 offStep = float2(dfdx(off), dfdy(off));
+    float together = dot(covStep, offStep);
+    float offStep2 = dot(offStep, offStep);
+    if (together * together <= 0.6 * dot(covStep, covStep) * offStep2) {
+        return ollin_fringe_share(float2(cov, -1.0), float2(covStep.x, 0.0), float2(covStep.y, 0.0));
+    }
+    float slope = together / max(offStep2, 1e-30);
+    float2 otherStep = covStep - 2.0 * slope * offStep;
+    return ollin_fringe_share(float2(cov, cov - 2.0 * slope * off),
+                              float2(covStep.x, otherStep.x), float2(covStep.y, otherStep.y));
+}
+// OLLIN_LIB_END fringe
+
+// Fringe-stroke pipeline (edge-expansion AA). A stroke is expanded CPU-side
+// into a ribbon whose vertices carry, in `aa`, how far inside the stroke's
+// edges they sit; the GPU interpolates the pair across the geometry and the
+// fragment turns it into how much of each pixel the stroke covers
+// (`ollin_fringe_coverage`), so the edge stays smooth at *any* angle with no
+// fwidth of a distance field and no supersampling, and the ribbon's rim runs
+// past the edge so that the multisample mask never cuts a pixel the stroke
+// touches. The stroke's own color is carried in `color` (rgb + paint alpha).
+// The fragment remaps coverage to perceptual alpha (so thin lines stay dark in
+// linear light) and scales by the paint alpha kept linear (so translucent
+// strokes composite correctly), the two channels kept separate.
 struct FringeVertexOut {
     float4 position [[position]];
     float4 color;        // rgb = sRGB stroke color, a = paint alpha (a shader paint
                          // carries (u, v, along, distance) here instead; see OllinVertex)
-    float coverage;      // AA fringe coverage; perceptualCoverage applied per-pixel
-    float opacity;       // a stroke opacity profile's value, read by the shader-paint
-                         // fragment alone (the plain path folds it into color.a)
+    float coverage;      // `aa.x`: how far inside the stroke's nearer edge (a medium
+                         // or a shader paint holds it to 0...1 as its coverage)
+    float opacity;       // `aa.y`: on a plain stroke how far inside the opposite
+                         // edge; under a shader paint a stroke opacity profile's value
+                         // (the plain path folds that into color.a)
     float2 canvas;       // the vertex in canvas points, the shader-paint `info.position`
 };
 
@@ -171,9 +247,12 @@ vertex FringeVertexOut ollin_fringe_vertex(uint vertexID [[vertex_id]],
 }
 
 fragment float4 ollin_fringe_fragment(FringeVertexOut in [[stage_in]]) {
-    float3 lin = srgbToLinear(in.color.rgb);
-    float a = in.color.a * perceptualCoverage(clamp(in.coverage, 0.0, 1.0));
-    return ollin_blend_ready(float4(lin, a));
+    float cover = ollin_fringe_coverage(float2(in.coverage, in.opacity));
+    // The rim past the stroke's edge carries no coverage. Discarded rather than
+    // returned empty, so under `depth(at:)` it writes no depth there either.
+    if (cover <= kOllinNoCoverage) { discard_fragment(); }
+    float a = in.color.a * perceptualCoverage(cover);
+    return ollin_blend_ready(float4(srgbToLinear(in.color.rgb), a));
 }
 
 // Ribbon runs (a stroke under a shader paint or a stroke medium): the fringe
