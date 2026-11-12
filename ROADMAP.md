@@ -12,7 +12,7 @@ Here are a few things to know before you pick something up:
 - A new drawing feature is built on the typed core first (the `Drawer` and the value types). Then it gets the bare p5-style call as sugar. Anything the bare API can do, the core should also be able to do, with more control.
 - A feature is not done until it has an example. Examples live in [`Examples/`](Examples/), one idea per sketch. CI compiles them, so they do not rot. Writing the example also checks the API, because an API that is awkward to write against probably needs work.
 - The items under [Up next](#up-next) are the most self-contained, so they tend to make the best first contributions.
-- Some sections carry a rough priority tag. The tag **Near-term** marks well-scoped items that make good next pickups. The tag **Later** marks bigger items that depend on earlier work. A section with no tag is substantial and wanted, but it is not the next thing to pick up. Speculative ideas live under [Further out / exploratory](#further-out--exploratory), and the platform-gated legs live under [On the horizon](#on-the-horizon).
+- Some sections carry a rough priority tag. The tag **Near-term** marks well-scoped items that make good next pickups. The tag **Later** marks bigger items that depend on earlier work. A section with no tag is substantial and wanted, but it is not the next thing to pick up. Speculative ideas live under [Further out / exploratory](#further-out--exploratory), and the platform-gated leg lives under [On the horizon](#on-the-horizon).
 
 If you come from p5.js or Processing, [the Guide's Appendix C](Guide/C-ComingFromP5.md) maps the API you already know onto Ollin, and [Appendix E](Guide/E-ComingFromOpenFrameworksAndOPENRNDR.md) covers the big moves from openFrameworks and OPENRNDR. The page [`Docs/Swift.md`](Docs/Swift.md) covers just enough Swift to get productive.
 
@@ -55,7 +55,7 @@ This is the hand-drawn, mark-making axis. It is built on the variable-width stro
 
 ## iPhone as a sensor array
 
-A Mac has no depth camera, no inertial sensors, and no spare Neural Engine for live perception. A tethered iPhone has all three. The idea is to let the phone act as a sensor and an on-device ML co-processor for a sketch that still renders on the Mac. The phone captures and perceives (LiDAR point clouds, face and body tracking, segmentation, device motion, and more). It streams typed results that the sketch reads in `draw()`. A recorded RGBD clip and a tethered phone's live USB RGBD stream already reconstruct on the Mac as point clouds (see [`Docs/3D/Record3D.md`](Docs/3D/Record3D.md)). That is the kind of world-facing depth feed an Intel RealSense once gave openFrameworks. A sweep of the phone's depth frames fuses by camera pose into one world cloud. That cloud stays registered, and it straightens itself when the phone comes back to a place it has already scanned. Alongside that world cloud, the phone reconstructs the room as a labeled surface (see [`Docs/3D/Phone.md`](Docs/3D/Phone.md)). The work ahead grows that stream into the rest of the phone's senses, over Ollin's own iPhone capture app. The wire protocol, the sensor catalog, and the build order are in the [design notes](DESIGN-NOTES.md#iphone-as-a-sensor-array).
+A Mac has no depth camera, no inertial sensors, and no spare Neural Engine for live perception. A tethered iPhone has all three. The idea is to let the phone act as a sensor and an on-device ML co-processor for a sketch that still renders on the Mac. The phone captures and perceives (LiDAR point clouds, face and body tracking, segmentation, device motion, and more). It streams typed results that the sketch reads in `draw()`. A recorded RGBD clip and a tethered phone's live USB RGBD stream already reconstruct on the Mac as point clouds (see [`Docs/3D/Record3D.md`](Docs/3D/Record3D.md)). That is the kind of world-facing depth feed an Intel RealSense once gave openFrameworks. A sweep of the phone's depth frames fuses by camera pose into one world cloud. That cloud stays registered, and it straightens itself when the phone comes back to a place it has already scanned. Alongside that world cloud, the phone reconstructs the room as a labeled surface (see [`Docs/3D/Phone.md`](Docs/3D/Phone.md)). The work ahead grows that stream into the rest of the phone's senses, over Ollin's own iPhone capture app. A recording of that stream, made on the phone with no cable and played back on the Mac, is the first step of the [AR sketches](#ar-sketches) work. The wire protocol, the sensor catalog, and the build order are in the [design notes](DESIGN-NOTES.md#iphone-as-a-sensor-array).
 
 ## 3D mode
 
@@ -120,6 +120,23 @@ A sketch renders through one view on either window system. `Apps/OllinSketchApp`
 
 See the [design notes](DESIGN-NOTES.md#swift-playgrounds-and-ios).
 
+## AR sketches
+
+**Later.** An AR sketch is drawn over the camera's picture and held in place by what the phone knows. That can be where the phone is in the room, where the walls and the floor are, a face, a body, or a printed picture. The [capture app](Docs/3D/Phone.md) already sends that tracking. What is ahead is the picture behind it, a way to work on a piece at the desk, and the phone as the place the sketch runs. The steps are in the order they build on each other.
+
+- **A recording of the phone's stream.** A Record button in the capture app writes the camera's video with everything the phone sensed beside it, frame for frame, with no cable. On the Mac a sketch plays the recording back as if the phone were there. Film a wall once, draw on it at the desk as often as you like, and export the result as video. Every phone example can then run from a recording too.
+- **Drawing on a real surface.** A wall or a floor becomes a canvas a sketch draws on in meters. A point clicked on one frame stays on its spot for the whole recording. A piece of the picture can be lifted off the wall and moved, carrying its own pixels. Two sketches this is for: the tiles of a wall pushed out by music, and a new picture over a poster.
+- **A surface that stays locked.** The phone's sense of where it is drifts a little, and a drawn thing slides against the picture by that much. The picture itself can correct it on a flat surface.
+- **The live loop on the cable.** The phone's camera reaches the Mac as video, the sketch draws over it with hot reload, and the finished frame goes back to the phone's screen. The phone in the hand becomes the viewfinder of a sketch running on the Mac.
+- **Faces.** The front camera with the face mesh: paint that follows the skin, things worn on a head and hidden behind it, and a blink or an open mouth as an event.
+- **The sketch on the phone, with the phone's own sensors.** The same sketch that read a recording at the desk, built as an app, with the camera behind it.
+- **Capture and share.** The effect's own output saved as a video or a still on the phone.
+- **Templates.** A generator kind with a starter for each tracker: a face, a surface, a printed picture, a body, hands. With a starter, an AR sketch is "fill in the `draw()`, the tracking is handed to you". It aims at the gap left by discontinued template-driven AR tools.
+
+Two things stay out. An effect leaves as a video or as an app built from the sketch, and nothing publishes it into somebody else's feed. There is no player app that loads effects either, since a phone runs only the code built into an app.
+
+What the phone does can be checked only with the phone in the room. Everything that reads a recording is tested at the desk. See the [design notes](DESIGN-NOTES.md#ar-mode-and-templates-the-meta-spark-gap).
+
 ## Rendering and color frontier
 
 These are deeper uses of the Metal core and Apple displays. All are opt-in, so the 2D path stays untaxed:
@@ -157,15 +174,14 @@ See the [design notes](DESIGN-NOTES.md#a-third-party-extension-ecosystem).
 
 ## Further out / exploratory
 
-These are lower-confidence ideas, kept on record but deliberately not near-term. Each is plausible on the platform, but it is speculative enough that it should not crowd the planned work above. This section is distinct from [On the horizon](#on-the-horizon), which holds the platform-gated later legs (visionOS, AR), not uncertain ones.
+These are lower-confidence ideas, kept on record but deliberately not near-term. Each is plausible on the platform, but it is speculative enough that it should not crowd the planned work above. This section is distinct from [On the horizon](#on-the-horizon), which holds the platform-gated later leg (visionOS), not an uncertain one.
 
 - **SharePlay co-creation.** Two people tune one sketch together over a FaceTime call. The shape is settled. A GroupActivities transport sits behind the room's transport seam and carries the wire it already speaks (parameters, seed, the shared clock). The sketch is bundled as an app and installed on both Macs, because the `com.apple.developer.group-session` entitlement applies to apps only. Tuning is all it covers. An edit to the sketch is a rebuild on both ends, so co-editing code never travels over the call. It waits on three gates, in order. The first is a public repository, because the other person must be able to get the app. The second is a verified real-signing run for the app kind. The third is demand. See the [design notes](DESIGN-NOTES.md#collaboration-and-multi-device).
 
 ## On the horizon
 
-These are larger, later directions. 2D on macOS stays the focus, and these do not change that.
+This is a larger, later direction. 2D on macOS stays the focus, and this does not change that.
 
 - **visionOS.** Immersive rendering uses a different render loop (CompositorServices rather than `MTKView`). So the per-frame loop stays behind a seam that either a normal view or a visionOS layer renderer can drive. It builds on the [3D mode](#3d-mode). [Design notes.](DESIGN-NOTES.md#3d-mode)
-- **AR mode and templates.** AR sketches on Apple platforms, with ready-made templates for face, world, and image tracking. With those templates, an AR sketch becomes "fill in the `draw()`, the tracking is handed to you". It is layered on the [phone](#the-sketch-on-a-phone-and-swift-playgrounds) and [3D](#3d-mode) work rather than being a separate engine. It aims at the gap left by discontinued template-driven AR tools. [Design notes.](DESIGN-NOTES.md#ar-mode-and-templates-the-meta-spark-gap)
 
-Neither can be verified at the desk alone. Both need the right SDKs and a device.
+It cannot be verified at the desk alone. It needs the right SDK and a device. [AR sketches](#ar-sketches) build on the same 3D mode and have a section of their own.
