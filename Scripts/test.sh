@@ -253,6 +253,13 @@ ci)
     # one-machine recipe below, since nothing else runs beside them. Neither
     # builds: a part that finds no bundle fails rather than paying for a
     # build the others would each pay for again.
+    #
+    # The other targets are dealt into three shards as well where one bundle
+    # holds them all (the native build system's merged bundle, which is the
+    # runner's), since in one process they queue on one main thread exactly
+    # as OllinTests does (shard-tests.sh, at OLLIN_SHARD_SCOPE). With a bundle
+    # per target, which is this desk's layout, they run under one `swift test`
+    # as they always have.
     case "$2" in
     <->/<->)
         echo "test.sh: the runner's recipe, part $2 of OllinTests as ${OLLIN_CI_SHARDS:-3} shards"
@@ -265,7 +272,15 @@ ci)
     rest)
         echo "test.sh: the runner's recipe, every target but OllinTests; phase 1 of 2, the suites that need the machine to themselves"
         swift test --skip-build --filter "$loopback|$crowded" || exit 1
-        echo "test.sh: phase 2 of 2, every other target"
+        bin=$(swift build --show-bin-path ${=OLLIN_SWIFT_FLAGS}) || exit 1
+        if [[ -f "$bin/OllinPackageTests.xctest/Contents/MacOS/OllinPackageTests" ]]; then
+            echo "test.sh: phase 2 of 2, every other target as ${OLLIN_CI_SHARDS:-3} shards"
+            export OLLIN_SHARD_SCOPE='.'
+            export OLLIN_SHARD_SKIP="$sensitive|$runner|$loopback|$crowded|^OllinTests\\."
+            export OLLIN_SHARD_BIN=$bin
+            exec Scripts/shard-tests.sh ${OLLIN_CI_SHARDS:-3}
+        fi
+        echo "test.sh: phase 2 of 2, every other target (a bundle per target here, so one swift test and no shards)"
         exec swift test --skip-build --skip "$sensitive|$runner|$loopback|$crowded|^OllinTests\\."
         ;;
     "") ;;

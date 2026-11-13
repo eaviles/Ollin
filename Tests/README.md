@@ -26,9 +26,12 @@ carries the mechanism behind `shard` and what it measured.
 The runner spreads the same recipe over four machines that each restore one
 build: `ci 1/3`, `ci 2/3`, and `ci 3/3` are the shards of OllinTests, three to
 a machine, and `ci rest` is every other target behind the suites that need a
-machine to themselves. A share never builds, so run `swift build --build-tests`
-before trying one at a desk. `.github/workflows/build.yml` says why the suite
-is spread over machines rather than processes.
+machine to themselves. The runner's build holds every target in one bundle, so
+`ci rest` deals the other targets into three shards there too; a desk's build
+has a bundle per target, and there it runs them under one `swift test`. A share
+never builds, so run `swift build --build-tests` before trying one at a desk.
+`.github/workflows/build.yml` says why the suite is spread over machines
+rather than processes.
 
 Filters and skips are unanchored regexes over the full test ID, so write
 `OllinTests.SnapshotTests` and never a bare `SnapshotTests`, which also matches

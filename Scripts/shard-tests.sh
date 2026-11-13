@@ -7,6 +7,9 @@
 #   OLLIN_SHARD_PART=2/3 Scripts/shard-tests.sh 9
 #                                   # one machine's share of nine shards
 #                                   # dealt over three machines (see below)
+#   OLLIN_SHARD_SCOPE='^OllinAudioTests\.' Scripts/shard-tests.sh 3
+#                                   # other targets than OllinTests, which
+#                                   # needs the merged bundle (see below)
 #
 # Why: OllinTests draws through `Sketch`, which is main-actor isolated, so
 # every render probe queues on one thread and the target uses 2.0 of 8 cores
@@ -50,6 +53,17 @@
 # machine k starts only every nth shard, counted from its own. Together the
 # machines run each shard exactly once. The count check above then holds a
 # machine to its own shards, so a part that ran short fails where it ran.
+#
+# The other targets queue on a main thread the same way once they share a
+# process, which they do in the merged bundle the native build system writes
+# (the runner's): 2,359 tests of the 29 other targets took 1,177 s there in
+# one process on a machine of their own (2026-11-13). OLLIN_SHARD_SCOPE, a
+# regex over the test ID, names what is dealt in place of OllinTests, and
+# OLLIN_SHARD_SKIP takes out of that whatever is not wanted. It asks for the
+# merged bundle and fails without one: with a bundle per target, which is
+# what this desk builds, one process cannot hold two targets, and running
+# only the part of the scope that OllinTests' own bundle lists would pass
+# having covered almost none of it.
 
 cd "$(dirname "$0")/.." || exit 1
 emulate -L zsh
@@ -66,6 +80,9 @@ apart='OllinTests.DataFeedTests|OllinTests.SpatialVideoTests'
 # a desk does not (a runner with no camera, no speech stack, no hardware
 # decoder), and useful by hand for a scoped shard run.
 skip=${OLLIN_SHARD_SKIP:-}
+# What is dealt, as a regex over the test ID: OllinTests unless a caller names
+# something else, which only the merged bundle can serve (the note above).
+scope=${OLLIN_SHARD_SCOPE:-}
 single() {
     # Loudly, because this is a silent no-op otherwise: the run still passes,
     # still says what it ran, and takes exactly as long as it would have without
@@ -73,6 +90,10 @@ single() {
     # the one line it printed went unread among ten thousand.
     print -r -- "shard-tests: ====== NOT SHARDING ======" >&2
     print -r -- "shard-tests: $1" >&2
+    if [[ -n "$scope" ]]; then
+        print -r -- "shard-tests: the scope '$scope' has no one-process form here; nothing ran" >&2
+        exit 1
+    fi
     print -r -- "shard-tests: running OllinTests in ONE process; expect no speedup" >&2
     exec swift test --filter '^OllinTests\.' --skip "$apart${skip:+|$skip}"
 }
@@ -109,12 +130,14 @@ helper="$(dirname "$(xcrun --find swift)")/../libexec/swift/pm/swiftpm-testing-h
 # system: the same desk produces the merged form under --build-system native.
 bin=${OLLIN_SHARD_BIN:-$(swift build --show-bin-path 2>/dev/null)}
 bundle=""
-for candidate in "$bin/OllinTests.xctest/Contents/MacOS/OllinTests" \
-    "$bin/OllinPackageTests.xctest/Contents/MacOS/OllinPackageTests"; do
+typeset -a candidates=("$bin/OllinTests.xctest/Contents/MacOS/OllinTests" \
+    "$bin/OllinPackageTests.xctest/Contents/MacOS/OllinPackageTests")
+[[ -n "$scope" ]] && candidates=("$bin/OllinPackageTests.xctest/Contents/MacOS/OllinPackageTests")
+for candidate in $candidates; do
     [[ -f "$candidate" ]] && { bundle="$candidate"; break; }
 done
 [[ -n "$platform" && -x "$helper" ]] || single "no swiftpm-testing-helper on this toolchain"
-[[ -n "$bundle" ]] || single "no test bundle under $bin (neither per-target nor merged)"
+[[ -n "$bundle" ]] || single "no test bundle under $bin (${scope:+a scope needs the merged one; }neither per-target nor merged)"
 
 export DYLD_FRAMEWORK_PATH="$platform/Developer/Library/Frameworks"
 export DYLD_LIBRARY_PATH="$platform/Developer/usr/lib"
@@ -122,13 +145,19 @@ export DYLD_LIBRARY_PATH="$platform/Developer/usr/lib"
 work=$(mktemp -d) || exit 1
 trap 'rm -rf "$work"' EXIT
 
+# The listing, cut to what will run: the scope, less the suites that run
+# apart and whatever the caller skips. The deal below reads this, so a suite
+# that is skipped whole weighs nothing in it (the snapshot table used to count
+# toward a shard on a runner that never ran it).
 "$helper" --test-bundle-path "$bundle" --list-tests --testing-library swift-testing "$bundle" 2>/dev/null \
-    | grep -E '^OllinTests\.' > "$work/ids.txt" || single "the bundle would not list OllinTests"
+    | grep -E "${scope:-^OllinTests\.}" | grep -vE "^($apart)/" > "$work/listed.txt" \
+    || single "the bundle would not list ${scope:-OllinTests}"
 if [[ -n "$skip" ]]; then
-    expected=$(grep -vE "^($apart)/" "$work/ids.txt" | grep -cvE "$skip") || true
+    grep -vE "$skip" "$work/listed.txt" > "$work/ids.txt" || true
 else
-    expected=$(grep -cvE "^($apart)/" "$work/ids.txt") || true
+    cp "$work/listed.txt" "$work/ids.txt"
 fi
+expected=$(grep -c . "$work/ids.txt") || true
 [[ $expected -gt 0 ]] || single "the bundle listed no tests"
 
 # Dealt by test count, the heaviest suite first into the lightest shard so
@@ -137,12 +166,11 @@ fi
 # simulation suites together and left one shard running twenty minutes after
 # the other had finished (2026-09-08, on the runner). The heartbeat below
 # prints the balance, so the next imbalance is read rather than guessed.
-python3 - "$work" "$shards" "$apart" <<'PY'
-import sys, re
+python3 - "$work" "$shards" <<'PY'
+import sys
 from collections import Counter
-work, shards, apart = sys.argv[1], int(sys.argv[2]), sys.argv[3]
-drop = re.compile('^(' + apart + ')/')
-counts = Counter(l.split('/')[0] for l in open(work + '/ids.txt') if l.strip() and not drop.match(l))
+work, shards = sys.argv[1], int(sys.argv[2])
+counts = Counter(l.split('/')[0] for l in open(work + '/ids.txt') if l.strip())
 dealt = [[] for _ in range(shards)]
 weight = [0] * shards
 for suite, count in sorted(counts.items(), key=lambda item: (-item[1], item[0])):
@@ -173,11 +201,7 @@ if [[ -n "$part" ]]; then
     done
     expected=0
     for i in $mine; do
-        if [[ -n "$skip" ]]; then
-            count=$(grep -E "$(<$work/shard$i.filter)" "$work/ids.txt" | grep -cvE "$skip") || true
-        else
-            count=$(grep -cE "$(<$work/shard$i.filter)" "$work/ids.txt") || true
-        fi
+        count=$(grep -cE "$(<$work/shard$i.filter)" "$work/ids.txt") || true
         expected=$((expected + ${count:-0}))
     done
     echo "shard-tests: part $k of $n starts shards ${mine[*]}: $expected tests"

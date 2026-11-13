@@ -342,8 +342,14 @@ private final class ShapedProbeSketch: Sketch {
         #expect(server.boundPort == nil)
 
         blocker.close()
-        server.start()
-        _ = try await waitFor { server.boundPort }
+        // The system can go on answering "address already in use" for a
+        // moment after the owner closed the port, so the wait asks again each
+        // time it looks: `start()` does nothing while an attempt is under
+        // way, and makes the next one once an attempt has failed.
+        _ = try await waitFor {
+            server.start()
+            return server.boundPort
+        }
         #expect(server.isRunning)
         #expect(server.unavailableReason == nil)
     }

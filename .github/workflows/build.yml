@@ -307,8 +307,8 @@ jobs:
   # saved. Nothing is compiled here: a machine restores the tree and runs its
   # share of `Scripts/test.sh ci`, which is `1/3`, `2/3`, or `3/3` of
   # OllinTests (three shards each, of nine dealt by test count), or `rest`,
-  # every other target behind the few suites that need a machine to
-  # themselves.
+  # every other target, as three shards of its own behind the few suites
+  # that need a machine to themselves.
   #
   # Why more machines and not more processes. OllinTests draws through
   # `Sketch`, which is main-actor isolated, so every render probe in a process
@@ -324,6 +324,17 @@ jobs:
   # its cap raised four times behind it. Nine shards on nine cores divide
   # that queue by more than four, and the other targets get a machine of
   # their own.
+  #
+  # The first run of this shape (2026-11-13, on a commit that changed no
+  # source): the compile took 2.3 minutes, the three shares of OllinTests
+  # 10.1, 14.9, and 18.5, the other targets 22.3 in one process, and the
+  # examples 26.6, which was the whole run. The nine shards finished between
+  # 301 s and 1,027 s and summed to 6,132 s, where the two shards of the day
+  # before summed to 6,261 s: the work is the same and only divided. So what
+  # is left to gain among them is an evener deal, since the deal goes by test
+  # count and one render probe outweighs a hundred string tests. The other
+  # targets spent 1,177 s in their one process, queued on its main thread
+  # the same way, which is why they are three shards now as well.
   #
   # The run goes through Scripts/test.sh ci, so the runner's knowledge
   # lives in one place with the rest of the suite's: which suites want a
@@ -366,8 +377,9 @@ jobs:
     runs-on: macos-26
     # The ceilings are the hang guard, and on one machine the step's was set
     # too low four times rather than too high, each time by measuring a suite
-    # that then grew. These two are deliberately loose until the shares have
-    # a few measured runs of their own.
+    # that then grew. These two are about twice the slowest share of the
+    # first run (22.3 minutes), and a share grows at a quarter of the rate
+    # the whole suite does.
     timeout-minutes: 50
     strategy:
       # A red share says which tests failed; the others still have theirs to

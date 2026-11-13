@@ -267,8 +267,14 @@ private final class ShapedRemoteSketch: Sketch {
         #expect(remote.boundPort == nil)
 
         blocker.close()
-        remote.start()
-        _ = try await waitFor { remote.boundPort }
+        // The system can go on answering "address already in use" for a
+        // moment after the owner closed the port, so the wait asks again each
+        // time it looks: `start()` does nothing while an attempt is under
+        // way, and makes the next one once an attempt has failed.
+        _ = try await waitFor {
+            remote.start()
+            return remote.boundPort
+        }
         #expect(remote.isRunning)
         #expect(remote.unavailableReason == nil)
 
