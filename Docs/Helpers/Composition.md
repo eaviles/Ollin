@@ -393,7 +393,7 @@ paints.learn("yellow", after: ["white", "black"], times: 24)
 paints.learn("white", after: ["red", "black"], times: 17)
 ```
 
-The [Hiroshi Kawano recreations](../../Examples/Recreations/HiroshiKawano/) are built that way. `Design` declares three tables counted cell by cell off two of his 1964 designs and walks a grid with them. `ArtificialMondrian` declares two small chains of its own: one for the gaps between lines, and one for whether a line runs on through a crossing.
+Two of the [Hiroshi Kawano recreations](../../Examples/Recreations/HiroshiKawano/) are built that way. `Design` declares three tables counted cell by cell off two of his 1964 designs and walks a grid with them. `ArtificialMondrian` declares two small chains of its own: one for the gaps between lines, and one for whether a line runs on through a crossing.
 
 Learning the same phrase twice counts it twice, which is how you make one phrase more likely than another. `continuations` reads the learned counts back as probabilities, most likely first, so a sketch can draw the chain as well as play it:
 

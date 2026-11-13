@@ -404,6 +404,8 @@
       "Web/BreathingRing"
     ],
     "Recreations/HiroshiKawano": [
+      "Recreations/HiroshiKawano/SimulatedColorMosaic",
+      "Recreations/HiroshiKawano/Flow",
       "Recreations/HiroshiKawano/Design",
       "Recreations/HiroshiKawano/ArtificialMondrian"
     ],
@@ -804,11 +806,13 @@
     },
     "Recreations/HiroshiKawano": {
       "of": [
+        "Recreations/HiroshiKawano/SimulatedColorMosaic",
+        "Recreations/HiroshiKawano/Flow",
         "Recreations/HiroshiKawano/Design",
         "Recreations/HiroshiKawano/ArtificialMondrian"
       ],
-      "image": "groups/Recreations-HiroshiKawano.jpg?v=0a2b7cb6",
-      "imageSmall": "groups/Recreations-HiroshiKawano-640.jpg?v=6be3303d"
+      "image": "groups/Recreations-HiroshiKawano.jpg?v=ded3dab0",
+      "imageSmall": "groups/Recreations-HiroshiKawano-640.jpg?v=7a93b602"
     },
     "Recreations/JaredTarbell": {
       "of": [
@@ -10165,6 +10169,50 @@
       "loopSmall": "examples/Recreations/HiroshiKawano/Design/loop-640.mp4?v=f761f43d",
       "still": "examples/Recreations/HiroshiKawano/Design/still.jpg?v=f2aaf57f",
       "stillSmall": "examples/Recreations/HiroshiKawano/Design/still-640.jpg?v=4d005352",
+      "seed": 1
+    },
+    "Recreations/HiroshiKawano/Flow": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 972,
+      "motion": 33.226,
+      "sound": false,
+      "source": "24a8f6797b2dd84a",
+      "rendered": "2026-11-13",
+      "bytes": {
+        "loop": 1649603,
+        "loopSmall": 384807,
+        "still": 209108,
+        "stillSmall": 74077
+      },
+      "loop": "examples/Recreations/HiroshiKawano/Flow/loop.mp4?v=6ff1d7c9",
+      "loopSmall": "examples/Recreations/HiroshiKawano/Flow/loop-640.mp4?v=cdd06d86",
+      "still": "examples/Recreations/HiroshiKawano/Flow/still.jpg?v=15f3e37d",
+      "stillSmall": "examples/Recreations/HiroshiKawano/Flow/still-640.jpg?v=a0e7e43c",
+      "seed": 1
+    },
+    "Recreations/HiroshiKawano/SimulatedColorMosaic": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 65.088,
+      "sound": false,
+      "source": "38e4ea32c55d1da5",
+      "rendered": "2026-11-13",
+      "bytes": {
+        "loop": 6107850,
+        "loopSmall": 1031618,
+        "still": 299354,
+        "stillSmall": 106986
+      },
+      "loop": "examples/Recreations/HiroshiKawano/SimulatedColorMosaic/loop.mp4?v=8d8a6031",
+      "loopSmall": "examples/Recreations/HiroshiKawano/SimulatedColorMosaic/loop-640.mp4?v=87f0e6d6",
+      "still": "examples/Recreations/HiroshiKawano/SimulatedColorMosaic/still.jpg?v=bbcc609d",
+      "stillSmall": "examples/Recreations/HiroshiKawano/SimulatedColorMosaic/still-640.jpg?v=393b4323",
       "seed": 1
     },
     "Recreations/JaredTarbell/Substrate": {

@@ -1045,6 +1045,12 @@ let package = Package(
         // regions, after Hiroshi Kawano.
         example("Recreations/HiroshiKawano/Design"),
         example("Recreations/HiroshiKawano/ArtificialMondrian"),
+        // The frieze of 1969, a chain reading the four cells already decided
+        // around each place, its counts taken off three data pictures, and
+        // the black and white strip of 40 by 200 cells, from the data
+        // pictures through the counts and the printout to the hand's drawing.
+        example("Recreations/HiroshiKawano/SimulatedColorMosaic"),
+        example("Recreations/HiroshiKawano/Flow"),
         // The Structures of 1964 on, half-discs placed by a computer under
         // rules of color and shape continuing across a side, and the Lines
         // of 1973 on, chains of tangents and arcs whose every number was

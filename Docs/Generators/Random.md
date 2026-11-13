@@ -159,7 +159,7 @@ paints.learn("blue", after: ["black"])
 let next = paints.next() ?? "black"
 ```
 
-The chain keeps its own generator, seeded by `seed`, so adding one never moves the sketch's other rolls. It is the same type the music helpers use to pick notes. [`MarkovChain`](../Helpers/Composition.md#markovchain) on the Composition page covers learning from a sequence, falling back to shorter contexts, and reading the counts back. The [Hiroshi Kawano recreations](../../Examples/Recreations/HiroshiKawano/) walk a grid of colors with a table counted off his 1964 designs.
+The chain keeps its own generator, seeded by `seed`, so adding one never moves the sketch's other rolls. It is the same type the music helpers use to pick notes. [`MarkovChain`](../Helpers/Composition.md#markovchain) on the Composition page covers learning from a sequence, falling back to shorter contexts, and reading the counts back. Among the [Hiroshi Kawano recreations](../../Examples/Recreations/HiroshiKawano/), `Design` walks a grid of colors with a table counted off his 1964 designs.
 
 ### Seeding
 
