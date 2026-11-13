@@ -12,7 +12,8 @@ Scripts/test.sh quick       # the sub-minute pass (no GPU snapshots, no nested b
 Scripts/test.sh shard       # the whole suite, OllinTests split across processes
 Scripts/test.sh             # the whole suite, one process per phase
 Scripts/test.sh milestone   # the whole suite plus the five signed-bundle builds
-Scripts/test.sh ci          # the runner's own recipe, as build.yml runs it
+Scripts/test.sh ci          # the runner's own recipe, on one machine
+Scripts/test.sh ci 2/3      # one machine's share of it, as build.yml runs it (or: ci rest)
 Scripts/test.sh tsan        # the non-GPU targets under Thread Sanitizer, a second build
 Scripts/test.sh coverage    # the shard run and the hosts' gates under code coverage
 Scripts/host-gates.sh       # the host apps' own headless gates (--all adds the gallery's)
@@ -21,6 +22,13 @@ Scripts/host-gates.sh       # the host apps' own headless gates (--all adds the 
 The whole suite takes many minutes, so run it in the background or with an
 explicit long timeout, never as a plain foreground call. `Scripts/shard-tests.sh`
 carries the mechanism behind `shard` and what it measured.
+
+The runner spreads the same recipe over four machines that each restore one
+build: `ci 1/3`, `ci 2/3`, and `ci 3/3` are the shards of OllinTests, three to
+a machine, and `ci rest` is every other target behind the suites that need a
+machine to themselves. A share never builds, so run `swift build --build-tests`
+before trying one at a desk. `.github/workflows/build.yml` says why the suite
+is spread over machines rather than processes.
 
 Filters and skips are unanchored regexes over the full test ID, so write
 `OllinTests.SnapshotTests` and never a bare `SnapshotTests`, which also matches

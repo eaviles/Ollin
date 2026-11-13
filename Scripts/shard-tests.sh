@@ -4,6 +4,9 @@
 #
 #   Scripts/shard-tests.sh          # four shards
 #   Scripts/shard-tests.sh <n>      # n shards
+#   OLLIN_SHARD_PART=2/3 Scripts/shard-tests.sh 9
+#                                   # one machine's share of nine shards
+#                                   # dealt over three machines (see below)
 #
 # Why: OllinTests draws through `Sketch`, which is main-actor isolated, so
 # every render probe queues on one thread and the target uses 2.0 of 8 cores
@@ -39,6 +42,14 @@
 # they differ. A filter that quietly matches nothing is the failure worth
 # catching here: everything else about a sharded run looks identical whether
 # it ran 2903 tests or 2900.
+#
+# One machine has one set of cores, and past them more shards only take
+# turns. OLLIN_SHARD_PART=k/n is for a run spread over n machines that all
+# hold the same built bundle (the test jobs of build.yml): every machine makes
+# the same deal, since the deal reads nothing but the bundle's listing, and
+# machine k starts only every nth shard, counted from its own. Together the
+# machines run each shard exactly once. The count check above then holds a
+# machine to its own shards, so a part that ran short fails where it ran.
 
 cd "$(dirname "$0")/.." || exit 1
 emulate -L zsh
@@ -145,7 +156,35 @@ for i in range(shards):
     print(f'shard-tests: shard {i} has {len(mine)} suites, {weight[i]} tests')
 PY
 
-echo "shard-tests: $expected tests over $shards shards"
+# Which shards this machine starts: all of them, or its share of a run spread
+# over several machines, in which case what it expects to run is counted
+# again from its own shards' filters.
+typeset -a mine=()
+part=${OLLIN_SHARD_PART:-}
+if [[ -n "$part" ]]; then
+    k=${part%/*}
+    n=${part#*/}
+    if [[ "$part" != <->/<-> ]] || (( k < 1 || k > n || n > shards )); then
+        echo "shard-tests: OLLIN_SHARD_PART is k/n with 1 <= k <= n <= the shard count; got '$part' for $shards shards" >&2
+        exit 1
+    fi
+    for i in {0..$((shards - 1))}; do
+        (( i % n == k - 1 )) && mine+=($i)
+    done
+    expected=0
+    for i in $mine; do
+        if [[ -n "$skip" ]]; then
+            count=$(grep -E "$(<$work/shard$i.filter)" "$work/ids.txt" | grep -cvE "$skip") || true
+        else
+            count=$(grep -cE "$(<$work/shard$i.filter)" "$work/ids.txt") || true
+        fi
+        expected=$((expected + ${count:-0}))
+    done
+    echo "shard-tests: part $k of $n starts shards ${mine[*]}: $expected tests"
+else
+    mine=({0..$((shards - 1))})
+    echo "shard-tests: $expected tests over $shards shards"
+fi
 started=$SECONDS
 # An array, because zsh does not word-split a parameter expansion: written
 # inline as ${skip:+--skip "$skip"} the flag and its pattern arrive as one
@@ -154,7 +193,7 @@ started=$SECONDS
 typeset -a skipArgs=()
 [[ -n "$skip" ]] && skipArgs=(--skip "$skip")
 typeset -a pids=()
-for i in {0..$((shards - 1))}; do
+for i in $mine; do
     "$helper" --test-bundle-path "$bundle" --testing-library swift-testing "$bundle" \
         --filter "$(<$work/shard$i.filter)" $skipArgs \
         > "$work/shard$i.log" 2>&1 &
@@ -173,7 +212,7 @@ while (( ${#pids} > 0 )); do
     for p in $pids; do kill -0 $p 2>/dev/null && still+=($p); done
     pids=($still)
     line="shard-tests: $((SECONDS - started))s"
-    for i in {0..$((shards - 1))}; do
+    for i in $mine; do
         count=$(grep -E '^[✔✘] Test ' "$work/shard$i.log" 2>/dev/null | grep -vc 'Test run with')
         if [[ -z "${finished[$i]}" ]] && grep -q 'Test run with' "$work/shard$i.log" 2>/dev/null; then
             finished[$i]=$((SECONDS - started))
@@ -186,7 +225,7 @@ elapsed=$((SECONDS - started))
 
 ran=0
 typeset -a failures
-for i in {0..$((shards - 1))}; do
+for i in $mine; do
     count=$(grep -oE 'Test run with [0-9]+ tests' "$work/shard$i.log" | grep -oE '[0-9]+' | head -1)
     ran=$((ran + ${count:-0}))
     # The per-test lines, not the run summary, which also says "failed after",
@@ -203,7 +242,7 @@ done
 echo "shard-tests: $ran tests in ${elapsed}s"
 
 if [[ $ran -ne $expected ]]; then
-    echo "shard-tests: ran $ran tests, the bundle lists $expected; the filters do not cover it" >&2
+    echo "shard-tests: ran $ran tests, the bundle lists $expected for these shards; the filters do not cover it" >&2
     exit 1
 fi
 if (( ${#failures} > 0 )); then

@@ -124,8 +124,8 @@
 #          every commit), guide-figures --force, check-snippets --no-cache
 #          (every block compiled, whatever the last run remembers),
 #          site-hero, swift build --package-path Examples (the examples
-#          anti-rot guard; CI runs on pull requests only, so nothing else
-#          compiles them), and Scripts/check-determinism.sh (every example
+#          anti-rot guard; CI's Examples job compiles them too, but only
+#          after the push), and Scripts/check-determinism.sh (every example
 #          that runs alone, drawn twice in two processes under one seed and
 #          compared pixel for pixel; its self-test first; about an hour)
 #

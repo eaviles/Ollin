@@ -10,9 +10,13 @@
 #                                # everyday run leaves out
 #   Scripts/test.sh shard        # the same suite with OllinTests split
 #                                # across processes: fewer minutes, more fans
-#   Scripts/test.sh ci           # the runner's recipe (build.yml), which is
-#                                # this same order with two shards and the
+#   Scripts/test.sh ci           # the runner's recipe on one machine, which
+#                                # is this same order with two shards and the
 #                                # other targets running beside them
+#   Scripts/test.sh ci 2/3       # one machine's share of that recipe when a
+#   Scripts/test.sh ci rest      # run is spread over several (build.yml's
+#                                # test jobs): a part of OllinTests' shards,
+#                                # or every other target; neither builds
 #   Scripts/test.sh tsan         # the handoffs under Thread Sanitizer: the
 #                                # targets whose tests run without the GPU,
 #                                # in a second, instrumented build of their
@@ -139,7 +143,7 @@ phases() {
 
 case "$1" in
 --help | -h)
-    sed -n '3,74p' "$0" | sed 's|^# \?||'
+    sed -n '3,78p' "$0" | sed 's|^# \?||'
     exit 0
     ;;
 quick)
@@ -240,6 +244,36 @@ coverage | --coverage)
     exit $failed
     ;;
 ci)
+    # A run spread over several machines, each holding the same built tree
+    # (build.yml builds once and its test jobs restore that build): `ci k/n`
+    # is machine k's share of OllinTests, three shards of the 3n the suites
+    # are dealt into (Scripts/shard-tests.sh, at OLLIN_SHARD_PART), and
+    # `ci rest` is every other target, behind the suites that need a machine
+    # to themselves, which it is here. Three shards rather than the two of the
+    # one-machine recipe below, since nothing else runs beside them. Neither
+    # builds: a part that finds no bundle fails rather than paying for a
+    # build the others would each pay for again.
+    case "$2" in
+    <->/<->)
+        echo "test.sh: the runner's recipe, part $2 of OllinTests as ${OLLIN_CI_SHARDS:-3} shards"
+        export OLLIN_SHARD_SKIP="$sensitive|$runner|$crowded"
+        bin=$(swift build --show-bin-path ${=OLLIN_SWIFT_FLAGS}) || exit 1
+        export OLLIN_SHARD_BIN=$bin
+        export OLLIN_SHARD_PART=$2
+        exec Scripts/shard-tests.sh $(( ${OLLIN_CI_SHARDS:-3} * ${2#*/} ))
+        ;;
+    rest)
+        echo "test.sh: the runner's recipe, every target but OllinTests; phase 1 of 2, the suites that need the machine to themselves"
+        swift test --skip-build --filter "$loopback|$crowded" || exit 1
+        echo "test.sh: phase 2 of 2, every other target"
+        exec swift test --skip-build --skip "$sensitive|$runner|$loopback|$crowded|^OllinTests\\."
+        ;;
+    "") ;;
+    *)
+        echo "test.sh: ci takes nothing (the whole recipe on one machine), k/n (a part of OllinTests), or rest (every other target); got '$2'" >&2
+        exit 1
+        ;;
+    esac
     # The loopback suites alone, then two shards of OllinTests and one process
     # for every other target at once. Everything is built first so that
     # neither the shards (which invoke the bundle directly) nor
