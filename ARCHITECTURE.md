@@ -9268,7 +9268,10 @@ Four decisions carry it:
   added since the last save joins the next. The walk mirrors SwiftPM's:
   hidden entries, `exclude:`, and resource paths skipped, `sources:` honored.
   `main.swift` is left out, because a library compile refuses its top-level
-  code and the factory shim is the entry point there.
+  code and the factory shim is the entry point there. An excluded *file* is
+  passed over without `skipDescendants()`: asked of a file, the enumerator
+  leaves the folder the file is in, and a fetched package that excluded its
+  `CMakeLists.txt` compiled from 2 of its 30 files.
 - **Paths are compared in one spelling, `realpath`'s.** Foundation's
   `resolvingSymlinksInPath` strips a leading `/private`, while the folder walk
   keeps it, so the sketch file came back from the walk under a second name
@@ -9298,6 +9301,23 @@ strings blanked (`SourceRegions.code(in:)`): a target is a sketch's when a
 starts). A target whose `@main` is something else, such as this repository's
 own hosts with their test sketches, is never offered; naming its sketch file
 still runs it.
+
+### What a package's sketch imports
+
+A target's `dependencies:` are read from the same manifest (`SketchTarget.links`: a target, a product of a package, or a bare name, each with its platform condition), and `dependencyOrder` walks them into a build order: every target the sketch's target needs, each after everything it needs itself, with the modules its own compile imports. The walk keeps its open targets on a list, since how deep a package graph goes is the manifests' to say. A module the host already holds (`hostModules()`: every Swift and C module in the host's build folder) is the framework's or one of its libraries', and is left out before its package is ever read.
+
+**Who builds a dependency was measured before it was chosen.** On a project of two targets, `swift build --target` in the project's own `.build` took 36.7 s and 498 MB the first time, because it builds the framework again; 1.4 s on a save that changed nothing, to learn that; and 1.8 s after a save to the library. It also waits out any build holding that folder, and its module is compiled against the project's framework, which need not be the one the host runs (a mismatch there is a crash, not an error). The host compiling the library's Swift files itself, against the modules the sketch compiles against, took 0.7 s for a 35-line library and 1.6 s for 2,000 lines, wrote nothing into the project, and has one framework to agree with. So the host builds, and what it cannot build it refuses by name (`DependencyError`): a target with C-family sources, a system library, a binary, a macro, a plugin, a product with `moduleAliases:`.
+
+Four decisions carry it (`SketchLoader.buildDependencies`):
+
+- **A library of its own, linked by path.** Each dependency compiles to a dylib whose install name is its own path, and the sketch's dylib (or the next dependency's) takes it among its inputs, so the dynamic loader opens it when the sketch is opened; nothing is opened first and no load order matters. Its link carries `-undefined dynamic_lookup` like the sketch's, so the framework's symbols are the host's in every library and the process still holds one `Sketch`.
+- **Built once per fingerprint.** The module's name ends in twelve hexadecimal digits of a SHA-256 over the target's place, its flags, the optimization level, the names of the builds it needs, and the bytes of every source. A fingerprint this process has built is handed back with no compile, behind a lock per fingerprint, so two evaluations asking at once compile it once (the plain and the optimized build of a two-speed evaluation ask for two different ones). A save to the sketch therefore compiles the sketch alone, and a reverted file finds the build made from that text.
+- **A name of its own per build, behind a module alias.** The module is compiled as `Petals_<fingerprint>` and every importer is passed `-module-alias Petals=Petals_<fingerprint>`, so sources keep `import Petals`. An image that has run Swift cannot be unloaded, and two images declaring one class name collide in the Objective-C runtime, which is why the sketch's own module has always had a unique name; the alias gives a dependency the same property. A compiler diagnostic has the build name put back to the real one (`naming`).
+- **State follows the library.** A dependency's stored globals live as long as its image, so they survive a save to the sketch and start over when the dependency is rebuilt. Rebuilding it on every save would match `swift run` and add its compile to every save; the kept library was the ruling.
+
+A fetched package is found through SwiftPM's own record, `.build/workspace-state.json` (`PackageWorkspace`), which lists every package of the resolved graph with its checkout. `swift package resolve` runs when the record is missing or older than `Package.swift`, once per manifest date per process, since a resolve that changes nothing leaves the record's date where it was. A dependency's resources get the `Bundle.module` the package build would write, over the same linked layout the sketch's target gets. Every target of one package compiles under `-package-name`, the package folder's name as an identifier, so `package` access compiles and crosses targets.
+
+The framework-rebuilt refusal reads each dependency's loaded-module trace too. OllinLive watches the folder of every dependency someone could be editing (`watchFolders`: never a checkout under `.build`), and asks again after each evaluation, since an edit to `Package.swift` can add one. OllinLiveCoding compares the text of every file the buffer compiles with (`companionSources`), and a change in any of them restarts the run: a rebuilt dependency is a new module, and the carried state's types would not be its types.
 
 ### The loose file on a wall (`OllinRun`)
 

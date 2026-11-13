@@ -92,6 +92,8 @@ final class LiveSession {
     /// exists). Its `Shader*.metal` segments are concatenated on each reload.
     @ObservationIgnored private let shaderDir: String?
     @ObservationIgnored private var watcher: FileWatcher?
+    /// The folders the watcher covers for the sketch (the shader folder apart).
+    @ObservationIgnored private var watchedFolders: [String] = []
     @ObservationIgnored private var didStart = false
     /// Whether this session has already said that a declared installation does
     /// not apply here; it is said once, on the first compile that carries one.
@@ -155,26 +157,30 @@ final class LiveSession {
     func start() {
         guard !didStart else { return }
         didStart = true
-        startWatching()
+        startWatching([(sketchPath as NSString).deletingLastPathComponent])
         print("OllinLive: compiling \(displayName) …")
         compileAndApply()
-        // A sketch kept in a folder of its target, below the target's own,
-        // has files above it that compile with it, so the target's folder is
-        // watched instead. Asked off the main thread: it can read the manifest.
-        let path = sketchPath
+        refreshWatch()
+    }
+
+    /// Watch every folder the loader compiles from. A sketch in a target has
+    /// files above it and in folders beside it that compile with it, and the
+    /// targets it depends on have folders of their own, so the watch covers
+    /// the target's folder and theirs. Asked off the main thread, since it
+    /// can read the manifest, and again after each evaluation, since an edit
+    /// to `Package.swift` can add a target to the list.
+    private func refreshWatch() {
+        let loader = self.loader
         Task.detached { [weak self] in
-            guard let directory = (try? SketchTarget.containing(file: path))?.directory else { return }
-            await self?.watchTarget(directory)
+            let folders = loader.watchFolders()
+            await self?.watch(folders)
         }
     }
 
-    /// Watch `directory`, the folder of the target the sketch is in, when the
-    /// sketch's own folder is below it.
-    private func watchTarget(_ directory: String) {
-        let own = SketchTarget.resolved((sketchPath as NSString).deletingLastPathComponent)
-        guard own != directory, SketchTarget.isInside(own, directory) else { return }
+    private func watch(_ folders: [String]) {
+        guard Set(folders) != Set(watchedFolders.map(SketchTarget.resolved)) else { return }
         watcher?.stop()
-        startWatching(directory)
+        startWatching(folders)
     }
 
     /// Called by the detail view once the renderer's `SketchRunner` exists (after
@@ -273,8 +279,10 @@ final class LiveSession {
         return summary
     }
 
-    private func startWatching(_ folder: String? = nil) {
-        var dirs = [folder ?? (sketchPath as NSString).deletingLastPathComponent]
+    private func startWatching(_ folders: [String]) {
+        let first = watcher == nil
+        watchedFolders = folders
+        var dirs = folders
         if let shaderDir {                    // also watch the shader folder
             dirs.append(shaderDir)
         }
@@ -283,6 +291,14 @@ final class LiveSession {
             Task { @MainActor in self?.handle(changed) }
         }
         watcher?.start()
+        guard first else {
+            // Said only when the sketch's own folder is not the whole of it.
+            if folders.count > 1 {
+                let names = folders.dropFirst().map { ($0 as NSString).lastPathComponent }
+                print("OllinLive: also watching \(names.joined(separator: ", ")), which the sketch depends on.")
+            }
+            return
+        }
         print("OllinLive: watching \(displayName); edit and save to hot-reload.")
         if shaderDir != nil { print("OllinLive: also live-reloading the framework shaders.") }
     }
@@ -344,9 +360,11 @@ final class LiveSession {
             self.title = sketchTitle.hasPrefix("Ollin")
                 ? "OllinLive" + sketchTitle.dropFirst("Ollin".count)
                 : sketchTitle
-        } onFailure: { error in
+            self.refreshWatch()
+        } onFailure: { [weak self] error in
             FileHandle.standardError.write(
                 Data("OllinLive: reload skipped (kept running): \(error)\n".utf8))
+            self?.refreshWatch()
         }
     }
 

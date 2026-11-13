@@ -12,8 +12,10 @@ import OllinRuntime
 /// `#!/usr/bin/env ollin` sketch must compile and render, and a broken one
 /// must still report diagnostics at the original line numbers. A loader told
 /// the framework was rebuilt after launch refuses the load with its sentence.
-/// The last covers a sketch split across a SwiftPM target: an edit to the
+/// One phase covers a sketch split across a SwiftPM target: an edit to the
 /// helper file reaches the render, and the one file alone still cannot compile.
+/// The last (`DependencyTest`) covers a sketch that imports another target of
+/// its package and other packages through it.
 enum SelfTest {
     @MainActor
     static func run() -> Never {
@@ -153,13 +155,19 @@ enum SelfTest {
         }
 
         let helperChanged = targetPhase(in: dir)
+        let imports = DependencyTest.run(in: dir)
+        func seconds(_ value: Double) -> String { String(format: "%.2f s", value) }
 
         print("OllinLive selftest: PASS: the edited sketch recompiled, loaded, and "
             + "rendered differently (\(a.count) vs \(b.count) bytes), the unoptimized "
             + "compile rendered the same bytes, the hashbang form compiled with "
             + "exact diagnostic lines, a framework rebuilt since launch refused the "
-            + "load with its sentence, and an edit to a target's helper file reached "
-            + "the render (\(helperChanged) bytes of the frame changed).")
+            + "load with its sentence, an edit to a target's helper file reached "
+            + "the render (\(helperChanged) bytes of the frame changed), and a sketch "
+            + "that imports another target and two other packages rebuilt what each save "
+            + "touched and nothing else (first compile \(seconds(imports.first)), a save to "
+            + "the sketch \(seconds(imports.sketchSave)), a save to the library "
+            + "\(seconds(imports.librarySave)), with a package fetched \(seconds(imports.fetched))).")
         exit(0)
     }
 

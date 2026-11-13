@@ -200,6 +200,8 @@ The generated README carries this list as a checklist. The first item is the one
 - **Name the repository `ollinx-yourthing`**, so it is recognizable and turns up in a search.
 - **Say which Ollin version it was built against**, and tag a version of your own, so that a dependent package can ask for one.
 
+A sketch in a package that depends on your extension runs under `swift run`, and in the live window too. The live window compiles an extension written in Swift itself, against the Ollin it is running, so the edit-and-save loop is the same for the person using your package. [Code shared between sketches](./SingleFile.md#code-shared-between-sketches) has the details, and [where the live route stops](./SingleFile.md#where-the-live-route-stops) lists what it refuses, a target with C code in it above all.
+
 ## See also
 
 - [Project generator](./ProjectGenerator.md) - the rest of what `ollin new` makes

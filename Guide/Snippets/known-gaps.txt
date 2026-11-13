@@ -74,7 +74,7 @@ c6308b0590b1  Guide/17-MarksAndMedia.md:163  cannot find 'navy' in scope
 1e41fd025294  Guide/17-MarksAndMedia.md:188  cannot find 'bath' in scope
 e393d3e0ab01  Guide/17-MarksAndMedia.md:419  cannot find 'blob' in scope
 d6f8fdb72cba  Guide/17-MarksAndMedia.md:68  cannot assign to value: 'mark' is a 'let' constant
-c51dbc7f841e  Guide/19-LayersAndEffects.md:410  cannot find 'day' in scope
+c51dbc7f841e  Guide/19-LayersAndEffects.md:412  cannot find 'day' in scope
 1ae291889181  Guide/20-PicturesRestyled.md:57  'module' is inaccessible due to 'internal' protection level
 84fcced24b8f  Guide/21-GlassChromeAndTape.md:234  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
 be3fc1a1ca07  Guide/21-GlassChromeAndTape.md:257  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'

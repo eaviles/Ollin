@@ -168,7 +168,7 @@ ollin                                 # from inside the folder
 ollin Sources/MySketch/Sketch.swift   # the same, by the file
 ```
 
-Everything the sketch loads lives beside it in `Sources/MySketch/`, and so does any code you split out of it. A second `.swift` file there compiles with the sketch in the live window, as it does under `swift run`, and a save to either file reloads it. [Growing into a package](SingleFile.md#growing-into-a-package) says what else the live window reads from the manifest, and [where it stops](SingleFile.md#where-the-live-route-stops).
+Everything the sketch loads lives beside it in `Sources/MySketch/`, and so does any code you split out of it. A second `.swift` file there compiles with the sketch in the live window, as it does under `swift run`, and a save to either file reloads it. [Growing into a package](SingleFile.md#growing-into-a-package) says what else the live window reads from the manifest. [Code shared between sketches](SingleFile.md#code-shared-between-sketches) covers a library target of your own, and [where it stops](SingleFile.md#where-the-live-route-stops) lists what still needs `swift run`.
 
 A folder the generator made is already declared in the manifest. A picture you drop into `Images/` is then reachable by name, with no manifest edit, under `swift run` and in the live window alike:
 

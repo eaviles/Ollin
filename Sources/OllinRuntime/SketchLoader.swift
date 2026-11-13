@@ -97,6 +97,10 @@ public struct SketchLoader: Sendable {
         /// cannot be read; SwiftPM's own words.
         case packageUnreadable(String)
         case compileFailed(String)
+        /// Something the sketch's target depends on cannot be built for a
+        /// live run, in a sentence that names it (a target that is not
+        /// Swift, a package that could not be fetched).
+        case dependencyUnbuildable(String)
         case loadFailed(String)
         /// A framework module the compile read was written after this process
         /// started: a build replaced the framework under a running host, so the
@@ -112,6 +116,7 @@ public struct SketchLoader: Sendable {
                 return "no `class …: Sketch` declaration found in \(p)"
             case .packageUnreadable(let message): return message
             case .compileFailed(let log): return "compile failed —\n\(log)"
+            case .dependencyUnbuildable(let message): return message
             case .loadFailed(let msg): return "load failed — \(msg)"
             case .frameworkRebuilt(let module, let date):
                 return "The framework was rebuilt since this window opened (\(module) at "
@@ -191,6 +196,16 @@ public struct SketchLoader: Sendable {
         }
         let thisFile = SketchTarget.resolved(sketchPath)
         let siblings = target?.swiftSources().filter { $0 != thisFile } ?? []
+        // What the target imports besides the framework, built before it:
+        // each a library of its own, compiled once and kept until its files
+        // change, so a save to the sketch compiles the sketch and nothing else.
+        var imports: [BuiltDependency] = []
+        if let target {
+            switch buildDependencies(of: target) {
+            case .success(let built): imports = built
+            case .failure(let error): return .failure(error)
+            }
+        }
         // The class the factory builds: declared in this file, or, in a
         // target, in one of its other files.
         guard let className = Self.sketchClassName(in: source) ?? siblings.lazy.compactMap({
@@ -288,22 +303,28 @@ public struct SketchLoader: Sendable {
         var args = Self.compileArguments(
             dylibPath: dylibPath, moduleName: "OllinRuntimeSketch_\(token)",
             sources: [sourceFile] + siblings + [factoryPath], optimization: optimization,
-            flags: target?.compilerFlags(debug: optimization == .none) ?? [])
+            flags: (target?.compilerFlags(debug: optimization == .none) ?? [])
+                + Self.importArguments(imports))
         args += moduleArguments()
         args += ["-emit-loaded-module-trace-path", tracePath]
         let result = Self.run("/usr/bin/xcrun", args)
         guard result.status == 0 else {
             let log = result.stderr.isEmpty ? result.stdout : result.stderr
-            var message = log.trimmingCharacters(in: .whitespacesAndNewlines)
-            if let target, let note = Self.unreachableDependencyNote(in: message, target: target) {
+            var message = Self.naming(imports, in: log.trimmingCharacters(in: .whitespacesAndNewlines))
+            if let target, let note = Self.missingModuleNote(in: message, target: target) {
                 message += "\n\n" + note
             }
             return .failure(.compileFailed(message))
         }
         // The framework modules this compile actually read, from the trace
-        // the compiler wrote: a sketch built against a module newer than this
-        // process would load into a host that does not match it.
-        let loaded = Self.frameworkModules(inTrace: tracePath, under: moduleSearchPaths())
+        // the compiler wrote, and the ones its dependencies' compiles read: a
+        // sketch built against a module newer than this process would load
+        // into a host that does not match it.
+        var read = Self.frameworkModules(inTrace: tracePath, under: moduleSearchPaths())
+        for module in imports.flatMap(\.frameworkModules) where !read.contains(module) {
+            read.append(module)
+        }
+        let loaded = read
         Self.lastLoadedModules.withLock { $0 = loaded }
         if let rebuilt = Self.rebuiltModule(loaded, since: launchedAt) {
             return .failure(rebuilt)
@@ -358,22 +379,27 @@ public struct SketchLoader: Sendable {
         return nil
     }
 
-    /// A sentence for a compile that failed on a module the target depends on
-    /// in its manifest, or `nil` when the failure is anything else. The live
-    /// compile reaches the framework and its libraries, which the host carries,
-    /// and nothing the package resolves for itself: another target of the
-    /// package, or another package's library. That limit would otherwise read
-    /// as a missing install.
-    static func unreachableDependencyNote(in log: String, target: SketchTarget) -> String? {
+    /// A sentence for a compile that failed on a module the package could
+    /// have given it, or `nil` when the failure is anything else: a target of
+    /// the package the sketch's target does not list among its dependencies,
+    /// or a dependency the manifest holds for other platforms only. Either
+    /// would otherwise read as a missing install.
+    static func missingModuleNote(in log: String, target: SketchTarget,
+                                  manifest: SketchTarget.Manifest? = nil) -> String? {
         guard let match = log.range(of: #"no such module '[^']+'"#, options: .regularExpression) else {
             return nil
         }
-        let module = log[match].dropFirst("no such module '".count).dropLast()
-        guard target.dependencies.contains(String(module)) else { return nil }
-        return "\(module) is a dependency of the target \(target.name) in Package.swift. "
-            + "A live run compiles the target's own files against Ollin and its libraries, "
-            + "and does not build another target or another package; run this one with "
-            + "`swift run \(target.name)`."
+        let module = String(log[match].dropFirst("no such module '".count).dropLast())
+        if let link = target.links.first(where: { SketchTarget.identifier($0.name) == module }),
+           !link.appliesHere {
+            return "\(module) is a dependency of the target \(target.name) in Package.swift on "
+                + "\(link.platforms.joined(separator: ", ")) only, so it is not built on the Mac."
+        }
+        let manifest = manifest ?? (try? SketchTarget.Manifest.read(root: target.packageRoot))
+        guard target.links.allSatisfy({ SketchTarget.identifier($0.name) != module }),
+              manifest?.targets.contains(where: { $0.moduleName == module }) == true else { return nil }
+        return "\(module) is a target of this package, and the target \(target.name) does not list it "
+            + "under `dependencies:` in Package.swift."
     }
 
     /// The `swiftc` line a sketch compile starts from, before the module search
@@ -480,7 +506,7 @@ public struct SketchLoader: Sendable {
     /// with "no such module 'Ollin'" or "missing required modules".
     /// One build layout does not put its C module maps anywhere `-I` can find
     /// them, so they are named outright; see `explicitModuleMaps()`.
-    private func moduleArguments() -> [String] {
+    func moduleArguments() -> [String] {
         var args: [String] = []
         let named = explicitModuleMaps()
         // A module named outright must not also be reachable through a search path,
@@ -548,7 +574,7 @@ public struct SketchLoader: Sendable {
     /// depends on one (the physics library's rigid side, say) needs that map on
     /// the search path, so those `include/` dirs are collected from the package
     /// root, the `.build` directory's parent.
-    private func moduleSearchPaths() -> [String] {
+    func moduleSearchPaths() -> [String] {
         let fm = FileManager.default
         var dirs: [String] = []
         func add(_ dir: String) {
@@ -609,7 +635,7 @@ public struct SketchLoader: Sendable {
     /// sketch (the Guide figures, `OllinLive`, the gallery, `ollin`) could stop
     /// working after a clean with nothing obviously wrong. Naming them outright is
     /// what the real build does too.
-    private func explicitModuleMaps() -> [String] {
+    func explicitModuleMaps() -> [String] {
         let fm = FileManager.default
         var out: [String] = []
         // The products dir is `<root>/Products/<config>`, so the intermediates sit
@@ -638,7 +664,7 @@ public struct SketchLoader: Sendable {
     /// The module a search directory would contribute, read from the
     /// `module.modulemap` it holds, or `nil` if it holds none (a Swift module
     /// directory, which never collides).
-    private func moduleName(declaredIn dir: String) -> String? {
+    func moduleName(declaredIn dir: String) -> String? {
         let map = (dir as NSString).appendingPathComponent("module.modulemap")
         guard let text = try? String(contentsOfFile: map, encoding: .utf8) else { return nil }
         for line in text.split(separator: "\n") {
@@ -662,7 +688,7 @@ public struct SketchLoader: Sendable {
     /// Escape a string so it's safe to splice into a Swift `"…"` literal in the
     /// generated factory (backslashes and quotes). Filesystem paths can in
     /// principle contain either.
-    private func escapedForSwiftLiteral(_ s: String) -> String {
+    func escapedForSwiftLiteral(_ s: String) -> String {
         s.replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "\"", with: "\\\"")
     }

@@ -229,73 +229,73 @@ f217cb6898e7  Docs/Drawing/DistanceFields.md:141  cannot find 'field' in scope
 20760d26b2ab  Docs/Drawing/DistanceFields.md:155  cannot find 'marks' in scope
 b2388a221e5e  Docs/Drawing/DistanceFields.md:177  cannot find 'marks' in scope
 674cbdf10ab3  Docs/Drawing/DistanceFields.md:93  cannot find 'marks' in scope
-2e4e9c502369  Docs/Drawing/Drawing.md:1019  expected ',' separator
-690fd7f321e9  Docs/Drawing/Drawing.md:103  expected ',' separator
-6a8858a2e0a2  Docs/Drawing/Drawing.md:1041  expected ',' separator
-18ad2a02b526  Docs/Drawing/Drawing.md:1064  expected ',' separator
-077bc486aafc  Docs/Drawing/Drawing.md:1085  expected ',' separator
-e53b4d2d8108  Docs/Drawing/Drawing.md:1128  expected ',' separator
-9c6087bd2b9f  Docs/Drawing/Drawing.md:1154  expected ',' separator
-680e41ce146a  Docs/Drawing/Drawing.md:1194  expected ',' separator
-e65b8eaf1117  Docs/Drawing/Drawing.md:1210  expected ',' separator
-011dda0d843f  Docs/Drawing/Drawing.md:1226  expected ',' separator
-d7e175ab4cc3  Docs/Drawing/Drawing.md:1243  expected ',' separator
-ee564943cad2  Docs/Drawing/Drawing.md:126  expected ',' separator
-62a57a467e83  Docs/Drawing/Drawing.md:1271  expected ',' separator
-613a9ba9ed9d  Docs/Drawing/Drawing.md:1303  expected ',' separator
-3dae88ad284d  Docs/Drawing/Drawing.md:1309  cannot find 'drawTheSketch' in scope
-4ed540340851  Docs/Drawing/Drawing.md:1333  expected expression in list of expressions
-64e7d0198175  Docs/Drawing/Drawing.md:1339  cannot find 'drawTheWholeSketch' in scope
-14769638dbef  Docs/Drawing/Drawing.md:1367  expected ',' separator
-5e56b7ee3652  Docs/Drawing/Drawing.md:1387  cannot find 'p' in scope
-7104eda5800a  Docs/Drawing/Drawing.md:143  expected ',' separator
-c3b0324127d0  Docs/Drawing/Drawing.md:160  expected ',' separator
-0f06a901f40d  Docs/Drawing/Drawing.md:206  expected ',' separator
-a6a70835050c  Docs/Drawing/Drawing.md:214  cannot find 'points' in scope
-b0f3854916bb  Docs/Drawing/Drawing.md:225  cannot find 'points' in scope
-19925afbdbaf  Docs/Drawing/Drawing.md:248  expected ',' separator
+0375abf145ad  Docs/Drawing/Drawing.md:1001  expected ',' separator
+6d78937929ce  Docs/Drawing/Drawing.md:1021  expected ',' separator
+2e4e9c502369  Docs/Drawing/Drawing.md:1041  expected ',' separator
+690fd7f321e9  Docs/Drawing/Drawing.md:105  expected ',' separator
+6a8858a2e0a2  Docs/Drawing/Drawing.md:1063  expected ',' separator
+18ad2a02b526  Docs/Drawing/Drawing.md:1086  expected ',' separator
+077bc486aafc  Docs/Drawing/Drawing.md:1107  expected ',' separator
+e53b4d2d8108  Docs/Drawing/Drawing.md:1150  expected ',' separator
+9c6087bd2b9f  Docs/Drawing/Drawing.md:1176  expected ',' separator
+680e41ce146a  Docs/Drawing/Drawing.md:1216  expected ',' separator
+e65b8eaf1117  Docs/Drawing/Drawing.md:1232  expected ',' separator
+011dda0d843f  Docs/Drawing/Drawing.md:1248  expected ',' separator
+d7e175ab4cc3  Docs/Drawing/Drawing.md:1265  expected ',' separator
+ee564943cad2  Docs/Drawing/Drawing.md:128  expected ',' separator
+62a57a467e83  Docs/Drawing/Drawing.md:1293  expected ',' separator
+613a9ba9ed9d  Docs/Drawing/Drawing.md:1325  expected ',' separator
+3dae88ad284d  Docs/Drawing/Drawing.md:1331  cannot find 'drawTheSketch' in scope
+4ed540340851  Docs/Drawing/Drawing.md:1355  expected expression in list of expressions
+64e7d0198175  Docs/Drawing/Drawing.md:1361  cannot find 'drawTheWholeSketch' in scope
+14769638dbef  Docs/Drawing/Drawing.md:1389  expected ',' separator
+5e56b7ee3652  Docs/Drawing/Drawing.md:1409  cannot find 'p' in scope
+7104eda5800a  Docs/Drawing/Drawing.md:145  expected ',' separator
+c3b0324127d0  Docs/Drawing/Drawing.md:162  expected ',' separator
+0f06a901f40d  Docs/Drawing/Drawing.md:208  expected ',' separator
+a6a70835050c  Docs/Drawing/Drawing.md:216  cannot find 'points' in scope
+b0f3854916bb  Docs/Drawing/Drawing.md:227  cannot find 'points' in scope
+19925afbdbaf  Docs/Drawing/Drawing.md:250  expected ',' separator
 5e3dae735ffa  Docs/Drawing/Drawing.md:27  expected ',' separator
-b059d8155501  Docs/Drawing/Drawing.md:273  expected ',' separator
-e9a7ab5ba9aa  Docs/Drawing/Drawing.md:288  expected ',' separator
-443fcb1a11e3  Docs/Drawing/Drawing.md:294  cannot find 'cloud' in scope
-653191384574  Docs/Drawing/Drawing.md:304  expected ',' separator
-cdd12b023df6  Docs/Drawing/Drawing.md:310  cannot find 'particles' in scope
-13b400817797  Docs/Drawing/Drawing.md:336  expected ',' separator
-6a341081f0b1  Docs/Drawing/Drawing.md:350  cannot find 'cloud' in scope
-16b5ffbd693d  Docs/Drawing/Drawing.md:364  expected ',' separator
-989597ac7312  Docs/Drawing/Drawing.md:385  expected ',' separator
-f5bebebcc0f6  Docs/Drawing/Drawing.md:398  cannot find 'p' in scope
-01f7b5276233  Docs/Drawing/Drawing.md:411  expected ',' separator
-f73e2a666dbf  Docs/Drawing/Drawing.md:43  expected ',' separator
-5897940c393a  Docs/Drawing/Drawing.md:436  expected ',' separator
-c027fffa5813  Docs/Drawing/Drawing.md:457  expected ',' separator
-b6c2aaf98e79  Docs/Drawing/Drawing.md:490  expected ',' separator
-3a9c799c6e0c  Docs/Drawing/Drawing.md:512  expected ',' separator
-c9dad3ec2189  Docs/Drawing/Drawing.md:539  expected ',' separator
-fd2a67f41615  Docs/Drawing/Drawing.md:566  expected ',' separator
-19ef973cc53e  Docs/Drawing/Drawing.md:591  expected ',' separator
-580e2f37d212  Docs/Drawing/Drawing.md:610  cannot find 'middle' in scope
-e600e3306e72  Docs/Drawing/Drawing.md:619  expected ',' separator
-2ebd1fa68dab  Docs/Drawing/Drawing.md:640  expected ',' separator
-75a80710c4b3  Docs/Drawing/Drawing.md:66  expected ',' separator
-80e9dcc056a0  Docs/Drawing/Drawing.md:661  expected ',' separator
-989aaeae4881  Docs/Drawing/Drawing.md:682  expected ',' separator
-dc089806cdfb  Docs/Drawing/Drawing.md:704  expected ',' separator
-dbfbe40fa9f2  Docs/Drawing/Drawing.md:725  expected ',' separator
-e7f33863e6a1  Docs/Drawing/Drawing.md:746  expected ',' separator
-22db4e012abd  Docs/Drawing/Drawing.md:767  expected ',' separator
-30f68c03e75e  Docs/Drawing/Drawing.md:788  expected ',' separator
-96de4189c763  Docs/Drawing/Drawing.md:809  expected ',' separator
-79775b304523  Docs/Drawing/Drawing.md:830  expected ',' separator
-b19cb6e95c72  Docs/Drawing/Drawing.md:851  expected ',' separator
-543da14d1693  Docs/Drawing/Drawing.md:87  expected ',' separator
-54663e6a9a1b  Docs/Drawing/Drawing.md:872  expected ',' separator
-6293a50aeb05  Docs/Drawing/Drawing.md:897  expected ',' separator
-1f3d372da7f1  Docs/Drawing/Drawing.md:918  expected ',' separator
-b774992b6378  Docs/Drawing/Drawing.md:938  expected ',' separator
-1545ca2f9764  Docs/Drawing/Drawing.md:958  expected ',' separator
-0375abf145ad  Docs/Drawing/Drawing.md:979  expected ',' separator
-6d78937929ce  Docs/Drawing/Drawing.md:999  expected ',' separator
+b059d8155501  Docs/Drawing/Drawing.md:275  expected ',' separator
+e9a7ab5ba9aa  Docs/Drawing/Drawing.md:290  expected ',' separator
+443fcb1a11e3  Docs/Drawing/Drawing.md:296  cannot find 'cloud' in scope
+653191384574  Docs/Drawing/Drawing.md:306  expected ',' separator
+cdd12b023df6  Docs/Drawing/Drawing.md:312  cannot find 'particles' in scope
+13b400817797  Docs/Drawing/Drawing.md:358  expected ',' separator
+6a341081f0b1  Docs/Drawing/Drawing.md:372  cannot find 'cloud' in scope
+16b5ffbd693d  Docs/Drawing/Drawing.md:386  expected ',' separator
+989597ac7312  Docs/Drawing/Drawing.md:407  expected ',' separator
+f5bebebcc0f6  Docs/Drawing/Drawing.md:420  cannot find 'p' in scope
+01f7b5276233  Docs/Drawing/Drawing.md:433  expected ',' separator
+f73e2a666dbf  Docs/Drawing/Drawing.md:45  expected ',' separator
+5897940c393a  Docs/Drawing/Drawing.md:458  expected ',' separator
+c027fffa5813  Docs/Drawing/Drawing.md:479  expected ',' separator
+b6c2aaf98e79  Docs/Drawing/Drawing.md:512  expected ',' separator
+3a9c799c6e0c  Docs/Drawing/Drawing.md:534  expected ',' separator
+c9dad3ec2189  Docs/Drawing/Drawing.md:561  expected ',' separator
+fd2a67f41615  Docs/Drawing/Drawing.md:588  expected ',' separator
+19ef973cc53e  Docs/Drawing/Drawing.md:613  expected ',' separator
+580e2f37d212  Docs/Drawing/Drawing.md:632  cannot find 'middle' in scope
+e600e3306e72  Docs/Drawing/Drawing.md:641  expected ',' separator
+2ebd1fa68dab  Docs/Drawing/Drawing.md:662  expected ',' separator
+75a80710c4b3  Docs/Drawing/Drawing.md:68  expected ',' separator
+80e9dcc056a0  Docs/Drawing/Drawing.md:683  expected ',' separator
+989aaeae4881  Docs/Drawing/Drawing.md:704  expected ',' separator
+dc089806cdfb  Docs/Drawing/Drawing.md:726  expected ',' separator
+dbfbe40fa9f2  Docs/Drawing/Drawing.md:747  expected ',' separator
+e7f33863e6a1  Docs/Drawing/Drawing.md:768  expected ',' separator
+22db4e012abd  Docs/Drawing/Drawing.md:789  expected ',' separator
+30f68c03e75e  Docs/Drawing/Drawing.md:810  expected ',' separator
+96de4189c763  Docs/Drawing/Drawing.md:831  expected ',' separator
+79775b304523  Docs/Drawing/Drawing.md:852  expected ',' separator
+b19cb6e95c72  Docs/Drawing/Drawing.md:873  expected ',' separator
+543da14d1693  Docs/Drawing/Drawing.md:89  expected ',' separator
+54663e6a9a1b  Docs/Drawing/Drawing.md:894  expected ',' separator
+6293a50aeb05  Docs/Drawing/Drawing.md:919  expected ',' separator
+1f3d372da7f1  Docs/Drawing/Drawing.md:940  expected ',' separator
+b774992b6378  Docs/Drawing/Drawing.md:960  expected ',' separator
+1545ca2f9764  Docs/Drawing/Drawing.md:980  expected ',' separator
 09c8e57cb7b7  Docs/Drawing/Effects.md:101  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'image'
 f9dd3d125f11  Docs/Drawing/Effects.md:135  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
 63ea4c842664  Docs/Drawing/Effects.md:1372  cannot find 'photo' in scope
@@ -873,16 +873,16 @@ b3812f188f90  Docs/Helpers/Math.md:26  expected ',' separator
 1af5b1655501  Docs/Helpers/Math.md:62  expected ',' separator
 eaee9918e7ae  Docs/Helpers/Math.md:68  cannot find 'progress' in scope
 7dfe97ef7006  Docs/Helpers/Math.md:78  expected ',' separator
-62c82222d99f  Docs/Helpers/Parameters.md:108  cannot find 'radius' in scope
-7e61c6f57b45  Docs/Helpers/Parameters.md:181  unary operator cannot be separated from its operand
-8b0cd896963b  Docs/Helpers/Parameters.md:196  property wrappers are not yet supported in top-level code
-379ac151b7a3  Docs/Helpers/Parameters.md:226  cannot find type 'Opacity' in scope
-c0829da400f9  Docs/Helpers/Parameters.md:272  cannot find '$toonBands' in scope
-c0df20275b80  Docs/Helpers/Parameters.md:299  invalid redeclaration of 'radius'
-1bd9827ae463  Docs/Helpers/Parameters.md:308  cannot find 'side' in scope
-a954d343551e  Docs/Helpers/Parameters.md:364  cannot find 'osc' in scope
-d5eb0c2ff7b4  Docs/Helpers/Parameters.md:380  cannot find '$radius' in scope
-1c6c8dbec021  Docs/Helpers/Parameters.md:93  property wrappers are not yet supported in top-level code
+62c82222d99f  Docs/Helpers/Parameters.md:127  cannot find 'radius' in scope
+7e61c6f57b45  Docs/Helpers/Parameters.md:200  unary operator cannot be separated from its operand
+8b0cd896963b  Docs/Helpers/Parameters.md:215  property wrappers are not yet supported in top-level code
+379ac151b7a3  Docs/Helpers/Parameters.md:245  cannot find type 'Opacity' in scope
+c0829da400f9  Docs/Helpers/Parameters.md:291  cannot find '$toonBands' in scope
+c0df20275b80  Docs/Helpers/Parameters.md:318  invalid redeclaration of 'radius'
+1bd9827ae463  Docs/Helpers/Parameters.md:327  cannot find 'side' in scope
+a954d343551e  Docs/Helpers/Parameters.md:397  cannot find 'osc' in scope
+d5eb0c2ff7b4  Docs/Helpers/Parameters.md:413  cannot find '$radius' in scope
+1c6c8dbec021  Docs/Helpers/Parameters.md:94  property wrappers are not yet supported in top-level code
 c79734a3b2fe  Docs/Helpers/Sonification.md:101  cannot find 'reading' in scope
 c1fdf39373c0  Docs/Helpers/Sonification.md:114  cannot find 'confidence' in scope
 7b95326d799b  Docs/Helpers/Sonification.md:32  cannot find 'numbers' in scope
@@ -908,12 +908,12 @@ c1f052f4e696  Docs/Helpers/Synthesis.md:459  cannot find 'synth' in scope
 c23316c59aa8  Docs/Helpers/Synthesis.md:779  cannot find 'synth' in scope
 a0885de8f8fa  Docs/Helpers/Synthesis.md:78  cannot find 'wasDown' in scope
 6ec305c76a35  Docs/Helpers/Synthesis.md:810  cannot find 'synth' in scope
-4934577a32f3  Docs/Helpers/Synthesis.md:840  'module' is inaccessible due to 'internal' protection level
-2f022144c85f  Docs/Helpers/Synthesis.md:891  cannot find 'synth' in scope
-68ea1f03622c  Docs/Helpers/Synthesis.md:911  cannot find 'synth' in scope
-b011e4ff81ce  Docs/Helpers/Synthesis.md:930  cannot find 'synth' in scope
-f7bf5ddf5ce5  Docs/Helpers/Synthesis.md:950  cannot find 'synth' in scope
-5ecdb5057d19  Docs/Helpers/Synthesis.md:968  reference to member 'custom' cannot be resolved without a contextual type
+4934577a32f3  Docs/Helpers/Synthesis.md:847  'module' is inaccessible due to 'internal' protection level
+2f022144c85f  Docs/Helpers/Synthesis.md:910  cannot find 'synth' in scope
+68ea1f03622c  Docs/Helpers/Synthesis.md:930  cannot find 'synth' in scope
+b011e4ff81ce  Docs/Helpers/Synthesis.md:949  cannot find 'synth' in scope
+f7bf5ddf5ce5  Docs/Helpers/Synthesis.md:969  cannot find 'synth' in scope
+5ecdb5057d19  Docs/Helpers/Synthesis.md:987  reference to member 'custom' cannot be resolved without a contextual type
 c190ec5bfb0a  Docs/Helpers/Weather.md:123  expected ',' separator
 9b223ddfebe9  Docs/Helpers/Weather.md:129  cannot find 'place' in scope
 6a7b53bf1b5a  Docs/Helpers/Weather.md:150  cannot find 'sky' in scope
@@ -1033,17 +1033,17 @@ c9bf0d29547d  Docs/Integration/VirtualCamera.md:51  overriding non-open instance
 a12a5cbc54b8  Docs/Output/Embroidery.md:42  cannot find 'contours' in scope
 56eab423badd  Docs/Output/Export.md:179  cannot find 'sketch' in scope
 143aa3f7b2a6  Docs/Output/Export.md:226  cannot find 'sketch' in scope
-d6af9cd76d9a  Docs/Output/Export.md:289  cannot find 'images' in scope
-41c51b4217b5  Docs/Output/Export.md:382  cannot find 'sketch' in scope
-5c4ecfe60d45  Docs/Output/Export.md:402  cannot find 'sketch' in scope
-f4ea0f70c060  Docs/Output/Export.md:430  cannot find 'sketch' in scope
-7232b3dd06c7  Docs/Output/Export.md:447  cannot find 'MySketch' in scope
-c1560bc3ed9b  Docs/Output/Export.md:467  'canvasSize' has already been overridden
-9cce5cca05b5  Docs/Output/Export.md:522  cannot find 'MySketch' in scope
-69e3179f9546  Docs/Output/Export.md:529  cannot find 'someShape' in scope
-63d4bbf9aef5  Docs/Output/Export.md:541  cannot find 'sketch' in scope
-d687b05f736d  Docs/Output/Export.md:756  cannot find 'MySketch' in scope
-b050cb53bae3  Docs/Output/Export.md:783  cannot find 'MySketch' in scope
+d6af9cd76d9a  Docs/Output/Export.md:291  cannot find 'images' in scope
+41c51b4217b5  Docs/Output/Export.md:384  cannot find 'sketch' in scope
+5c4ecfe60d45  Docs/Output/Export.md:404  cannot find 'sketch' in scope
+f4ea0f70c060  Docs/Output/Export.md:432  cannot find 'sketch' in scope
+7232b3dd06c7  Docs/Output/Export.md:449  cannot find 'MySketch' in scope
+c1560bc3ed9b  Docs/Output/Export.md:469  'canvasSize' has already been overridden
+9cce5cca05b5  Docs/Output/Export.md:524  cannot find 'MySketch' in scope
+69e3179f9546  Docs/Output/Export.md:531  cannot find 'someShape' in scope
+63d4bbf9aef5  Docs/Output/Export.md:543  cannot find 'sketch' in scope
+d687b05f736d  Docs/Output/Export.md:758  cannot find 'MySketch' in scope
+b050cb53bae3  Docs/Output/Export.md:785  cannot find 'MySketch' in scope
 5d07534919d9  Docs/Output/Fabrication.md:104  expected expression in list of expressions
 bea28874882f  Docs/Output/Fabrication.md:21  cannot find 'sculpture' in scope
 ab8b301ea87b  Docs/Output/Fabrication.md:62  cannot find 'sculpture' in scope
@@ -1053,8 +1053,8 @@ ab8b301ea87b  Docs/Output/Fabrication.md:62  cannot find 'sculpture' in scope
 12359ddcd771  Docs/Output/Installation.md:409  cannot find 'worldPoint' in scope
 a40222f7916b  Docs/Output/MenuBar.md:30  '@main' attribute cannot be applied to this declaration
 826ef6fcd6ec  Docs/Output/MenuBar.md:48  cannot find 'Pulse' in scope
-79619800883b  Docs/Output/PathTraced.md:176  cannot find 'sketch' in scope
-1929c6458bd3  Docs/Output/PathTraced.md:196  cannot find 'sketch' in scope
+79619800883b  Docs/Output/PathTraced.md:183  cannot find 'sketch' in scope
+1929c6458bd3  Docs/Output/PathTraced.md:203  cannot find 'sketch' in scope
 999b20ae038d  Docs/Output/PrintColor.md:101  cannot find 'plates' in scope
 b13f0cfd765a  Docs/Output/PrintColor.md:142  cannot find 'sketch' in scope
 ceadd572010a  Docs/Output/PrintColor.md:23  cannot find 'url' in scope
@@ -1206,8 +1206,10 @@ d6acdc662c79  Docs/Tools/ProjectGenerator.md:175  'module' is inaccessible due t
 ca46f27c17f3  Docs/Tools/SceneImport.md:50  attribute 'private' can only be used in a non-local scope
 7ca698702002  Docs/Tools/SceneImport.md:72  cannot find 'scene' in scope
 10b95537f19f  Docs/Tools/ShaderImport.md:61  cannot find 'imported' in scope
-a9a1aaeb971a  Docs/Tools/SingleFile.md:114  'module' is inaccessible due to 'internal' protection level
-07869a67f90f  Docs/Tools/SingleFile.md:55  expected a macro identifier for a pound literal expression
+a9a1aaeb971a  Docs/Tools/SingleFile.md:115  'module' is inaccessible due to 'internal' protection level
+3bc96979b29d  Docs/Tools/SingleFile.md:147  consecutive statements on a line must be separated by ';'
+4b4c355e5655  Docs/Tools/SingleFile.md:167  consecutive statements on a line must be separated by ';'
+07869a67f90f  Docs/Tools/SingleFile.md:56  expected a macro identifier for a pound literal expression
 1d4cc4e3c2c7  Docs/Video/SlitScan.md:26  cannot convert value of type '()' to expected argument type 'Int'
 5b96d2217e2f  Docs/Video/SlitScan.md:39  expected ',' separator
 19e4bd452c8e  Docs/Video/SlitScan.md:46  cannot find 'history' in scope

@@ -22,6 +22,7 @@ ollin MySketch              # a package's folder: its sketch, every file of it
 - [Exports and flags](#exports-and-flags)
 - [Assets and satellite libraries](#assets-and-satellite-libraries)
 - [Growing into a package](#growing-into-a-package)
+- [Code shared between sketches](#code-shared-between-sketches)
 - [Where the live route stops](#where-the-live-route-stops)
 - [How it works](#how-it-works)
 
@@ -139,12 +140,52 @@ The live compile reads `Package.swift` for what the package build does with the 
 
 A folder of loose sketches, each with its own `@main`, stays a folder of loose files. Only a file inside a target's folder compiles with its neighbors. A sketch kept loose inside a package, outside every target, still compiles alone.
 
+### Code shared between sketches
+
+A package can hold more than the sketch's own target. Code that several sketches use often moves into a library target beside them, and the manifest says which sketch depends on it:
+
+```swift
+// Package.swift
+targets: [
+    .target(name: "Petals", dependencies: [.product(name: "Ollin", package: "Ollin")]),
+    .executableTarget(name: "Garden", dependencies: [
+        "Petals",
+        .product(name: "Ollin", package: "Ollin"),
+    ]),
+]
+```
+
+The sketch in `Garden` writes `import Petals`, and `ollin` runs it live like any other sketch. The live window reads the manifest, compiles `Petals` itself, and then compiles the sketch against it. It watches both folders:
+
+- A save to the sketch compiles the sketch alone. The library is already built, so the save costs what it costs in a project of one target.
+- A save to a file of `Petals` rebuilds that library, anything else that imports it, and the sketch.
+
+A library can import another library, and the manifest gives the order they build in. On a small project with two libraries under the sketch, the first compile took between two and three seconds. A save to the sketch took 0.7 seconds, and a save to a library 1.3.
+
+Another package works the same way when it is written in Swift. That covers a package you name by its path, and one SwiftPM fetches, such as an [extension](Extensions.md):
+
+```swift
+dependencies: [
+    .package(path: "../Ollin"),
+    .package(url: "https://example.com/ollinx-ribbons", from: "1.0.0"),
+],
+```
+
+A package named by a path is watched like a target of your own. A fetched package is read from the project's `.build/checkouts` folder. When it is not there yet, or `Package.swift` was saved after the last fetch, the live window runs `swift package resolve` once to get it. That step needs the network the first time, and it waits while a `swift build` runs in the same folder.
+
+Three things differ from `swift run`, and each follows from the live window building the library itself:
+
+- **Every library is compiled against the Ollin the window is running.** The version of Ollin a fetched package asks for in its own manifest is not consulted, and neither is the one in yours.
+- **A library keeps its stored values across a save to the sketch.** It stays loaded until one of its own files changes, so a `static var` inside it holds its value when the sketch reloads. A save to the library starts it over. The sketch's own state starts over on every save, as it always has.
+- **Each build of a library has a longer name of its own.** It is the target's name and a short code, so that an edited library can load beside the one it replaces. The compiler's messages show the name you wrote. A type name the running sketch prints with `String(reflecting:)` shows the longer one.
+
 ### Where the live route stops
 
-The live window compiles the sketch's own target against Ollin and its libraries, which the host already carries. It does not build anything else the package resolves, and these cases need `swift run`:
+The live window builds Swift, against the framework it already carries. These cases need `swift run`, and each is refused with a sentence that names the target:
 
-- **Another target of the same package.** A sketch that imports a library target beside it, such as code shared by several sketches, does not compile live. The error names the module and says why.
-- **Another package.** A dependency on any package other than Ollin is out of reach the same way.
+- **A target with C, C++, Objective-C, or assembly in it.** [swift-numerics](https://github.com/apple/swift-numerics) has one under its real-number module, so a package that depends on it is out of reach as well.
+- **A system library, a prebuilt binary, a macro, or a plugin.**
+- **A product whose modules the manifest renames** with `moduleAliases:`.
 
 Two more differences are smaller:
 
@@ -158,3 +199,5 @@ Two more differences are smaller:
 `ollin` finds its own repository through the symlink, builds the host there if anything changed, and hands your file to that host. The flags decide which host it is. The live host runs the sketch normally, and the host that gives the sketch its own window takes over when you ask for an installation. Only your sketch is compiled against the built framework, the one file or the files of its target. That is what makes a save quick: your sketch recompiles and the framework never does. A headless flag skips the window entirely.
 
 For a sketch in a package, the host asks SwiftPM to read `Package.swift` once and keeps the answer until the manifest changes. The read evaluates the manifest and nothing more, so no dependency is fetched. It runs apart from the package's own build folder, so a `swift build` running in the package does not hold a save up.
+
+A library the sketch imports is compiled by the host as well, from its Swift files, into a loadable library of its own. The host does not ask SwiftPM to build it. SwiftPM would build Ollin a second time inside your project, which took 37 seconds and 498 MB when measured. Its library would also be compiled against that second copy, not the one the window runs. The host's own compile of a small library takes under a second and writes nothing into the project.

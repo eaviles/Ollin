@@ -218,13 +218,14 @@ final class PerformanceSession {
         var change: SourceRegions.SourceChange? = fresh
             ? nil : sourceOnStage.map { SourceRegions.change(from: $0, to: text) }
         // The reading of what changed covers the buffer only. A sketch in a
-        // target compiles with the target's other files from disk, and an
-        // edit to one of those is a change the reading never saw, so the run
-        // carries on only when they stand as the stage was built from them.
-        // Recorded as the change itself, so the toast says the run restarted.
+        // target compiles with the target's other files from disk and with
+        // the targets it depends on, and an edit to any of those is a change
+        // the reading never saw, so the run carries on only when they stand
+        // as the stage was built from them. Recorded as the change itself, so
+        // the toast says the run restarted.
         let siblings = siblingText()
         if let reading = change, reading.keepsTheRun, siblings != siblingsOnStage {
-            change = .restarts("another file of the sketch's target changed since the stage was built")
+            change = .restarts("another file the sketch compiles with changed since the stage was built")
         }
         let keepRun = change?.keepsTheRun ?? false
         let block = editor.evaluatedRegion()?.name
@@ -256,14 +257,13 @@ final class PerformanceSession {
         }
     }
 
-    /// The other files of the target the document sits in, each path then
-    /// its text, read as they stand; empty for an untitled buffer or a file in
-    /// no target.
+    /// The other files the document compiles with, each path then its text,
+    /// read as they stand: the rest of its target and the files of the
+    /// targets it depends on. Empty for an untitled buffer or a file in no
+    /// target.
     private func siblingText() -> String {
-        guard let path = fileURL?.path,
-              let target = try? SketchTarget.containing(file: path) else { return "" }
-        let buffer = SketchTarget.resolved(path)
-        return target.swiftSources().filter { $0 != buffer }.map { file in
+        guard let path = fileURL?.path else { return "" }
+        return SketchLoader(sketchPath: path, scope: .target).companionSources().map { file in
             file + "\n" + ((try? String(contentsOfFile: file, encoding: .utf8)) ?? "")
         }.joined(separator: "\n")
     }

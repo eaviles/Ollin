@@ -88,6 +88,11 @@ struct SketchTargetTests {
             .init(rule: .embedInCode, path: path(folder, "data.bin")),
         ])
         #expect(garden.dependencies == ["Shared", "Leaves", "Ollin"])
+        #expect(garden.links == [
+            .init(name: "Shared", kind: .byName),
+            .init(name: "Leaves", kind: .target),
+            .init(name: "Ollin", kind: .product(package: "Ollin")),
+        ])
         // Only the compiler's settings: a linker flag is not a sketch compile's.
         #expect(garden.settings.map(\.kind) == ["define", "defaultIsolation"])
         #expect(garden.packageLanguageMode == "6")
@@ -145,7 +150,7 @@ struct SketchTargetTests {
             setting("interoperabilityMode", ["Cxx"]),
         ]).compilerFlags(debug: false)
         #expect(flags == [
-            "-swift-version", "6",
+            "-package-name", "p", "-swift-version", "6",
             "-DGARDEN",
             "-enable-upcoming-feature", "ExistentialAny",
             "-enable-experimental-feature", "Lifetimes",
@@ -168,14 +173,32 @@ struct SketchTargetTests {
             setting("define", ["ON_MAC"], platforms: ["macos"]),
             setting("define", ["ON_PHONE"], platforms: ["ios"]),
         ])
-        #expect(conditioned.compilerFlags(debug: false) == ["-swift-version", "6", "-DIN_RELEASE", "-DON_MAC"])
-        #expect(conditioned.compilerFlags(debug: true) == ["-swift-version", "6", "-DIN_DEBUG", "-DON_MAC"])
+        #expect(conditioned.compilerFlags(debug: false).dropFirst(2)
+            == ["-swift-version", "6", "-DIN_RELEASE", "-DON_MAC"])
+        #expect(conditioned.compilerFlags(debug: true).dropFirst(2)
+            == ["-swift-version", "6", "-DIN_DEBUG", "-DON_MAC"])
     }
 
     @Test func aTargetsOwnLanguageModeWinsOverThePackages() {
         let flags = target(settings: [setting("swiftLanguageMode", ["5"])], mode: "6")
             .compilerFlags(debug: false)
-        #expect(flags == ["-swift-version", "5"])
+        #expect(flags.dropFirst(2) == ["-swift-version", "5"])
+    }
+
+    /// Every target of a package compiles under one package name, which is
+    /// what lets a `package` declaration in one be used from another, and
+    /// what the access level needs to compile at all.
+    @Test func thePackageNameIsThePackageFoldersAsAnIdentifier() {
+        func named(_ root: String) -> [String] {
+            let flags = SketchTarget(
+                packageRoot: root, name: "T", directory: root + "/Sources/T", excluded: [],
+                declaredSources: nil, resources: [], settings: [], packageLanguageMode: "6",
+                dependencies: []).compilerFlags(debug: false)
+            return Array(flags.prefix(2))
+        }
+        #expect(named("/Users/me/Garden") == ["-package-name", "garden"])
+        #expect(named("/x/.build/checkouts/swift-collections") == ["-package-name", "swift_collections"])
+        #expect(named("/x/2026 sketches") == ["-package-name", "_2026_sketches"])
     }
 
     // MARK: The files a compile takes in
@@ -202,6 +225,43 @@ struct SketchTargetTests {
         // A file added since is in the next walk; nothing is remembered.
         write("// later", path(folder, "Later.swift"))
         #expect(target.swiftSources().contains(path(folder, "Later.swift")))
+    }
+
+    /// An excluded file, or a resource that is one file, is passed over and
+    /// the walk goes on with the folder it is in. Skipping "what is below"
+    /// a file leaves that folder instead, and every entry after it goes
+    /// unread: a fetched package that excluded its `CMakeLists.txt` compiled
+    /// from 2 of its 30 files.
+    @Test func anExcludedFileDoesNotEndTheWalkOfItsFolder() {
+        let root = scratch()
+        let folder = path(root, "Sources/T")
+        let files = ["A.swift", "B.txt", "C.swift", "Deep/D.swift", "Deep/E.txt", "Deep/F.swift",
+                     "G.metal", "H.swift", "Zed/Z.swift"]
+        for file in files { write("// \(file)", path(folder, file)) }
+        let target = SketchTarget(
+            packageRoot: root, name: "T", directory: folder,
+            excluded: [path(folder, "B.txt"), path(folder, "Deep/E.txt")], declaredSources: nil,
+            resources: [.init(rule: .copy, path: path(folder, "G.metal"))],
+            settings: [], packageLanguageMode: "6", dependencies: [])
+        #expect(target.swiftSources() == files.filter { $0.hasSuffix(".swift") }.map { path(folder, $0) })
+    }
+
+    /// A source in a C-family language makes a target something a Swift
+    /// compile cannot build; an excluded one does not count.
+    @Test func aForeignSourceIsFoundUnlessItIsExcluded() {
+        let root = scratch()
+        let folder = path(root, "Sources/T")
+        for file in ["A.swift", "shim/shim.c", "shim/include/shim.h", "Old/legacy.mm"] {
+            write("// \(file)", path(folder, file))
+        }
+        func target(excluding: [String]) -> SketchTarget {
+            SketchTarget(packageRoot: root, name: "T", directory: folder,
+                         excluded: excluding.map { path(folder, $0) }, declaredSources: nil,
+                         resources: [], settings: [], packageLanguageMode: "6", dependencies: [])
+        }
+        #expect(target(excluding: []).foreignSource() == path(folder, "Old/legacy.mm"))
+        #expect(target(excluding: ["Old"]).foreignSource() == path(folder, "shim/shim.c"))
+        #expect(target(excluding: ["Old", "shim"]).foreignSource() == nil)
     }
 
     @Test func declaredSourcesNarrowTheWalk() {
@@ -475,21 +535,30 @@ struct SketchTargetTests {
         #expect(host.sketch()?.className == "Probe")
     }
 
-    // MARK: What the live route does not reach
+    // MARK: A module the compile could not find
 
-    @Test func aMissingModuleTheTargetDependsOnIsNamedForWhatItIs() {
-        let target = SketchTarget(
-            packageRoot: "/p", name: "Garden", directory: "/p/Sources/Garden", excluded: [],
-            declaredSources: nil, resources: [], settings: [], packageLanguageMode: "6",
-            dependencies: ["Shared", "Ollin"])
-        let log = "Sketch.swift:2:8: error: no such module 'Shared'\n2 | import Shared"
-        let note = SketchLoader.unreachableDependencyNote(in: log, target: target)
-        #expect(note?.contains("Shared is a dependency of the target Garden") == true)
-        #expect(note?.contains("swift run Garden") == true)
-        // A module the manifest never names is a typo, not the live route's limit.
-        #expect(SketchLoader.unreachableDependencyNote(
-            in: "error: no such module 'Sharde'", target: target) == nil)
-        #expect(SketchLoader.unreachableDependencyNote(
-            in: "error: cannot find 'petals' in scope", target: target) == nil)
+    @Test func aMissingModuleThePackageCouldHaveGivenIsNamedForWhatItIs() throws {
+        let root = scratch()
+        let package = try manifest(#"""
+        {"name": "Garden", "toolsVersion": {"_version": "6.0.0"}, "targets": [
+          {"name": "Shared", "type": "regular", "dependencies": []},
+          {"name": "Garden", "type": "executable", "dependencies": [
+            {"product": ["Ollin", "Ollin", null, null]},
+            {"byName": ["LinuxOnly", {"platformNames": ["linux"]}]}]}
+        ]}
+        """#, root: root)
+        let garden = try #require(package.targets.last)
+        func note(_ log: String) -> String? {
+            SketchLoader.missingModuleNote(in: log, target: garden, manifest: package)
+        }
+        // A target of the package the sketch's target never lists.
+        let unlisted = note("Sketch.swift:2:8: error: no such module 'Shared'\n2 | import Shared")
+        #expect(unlisted?.contains("Shared is a target of this package") == true)
+        #expect(unlisted?.contains("does not list it under `dependencies:`") == true)
+        // A dependency the manifest holds for another platform.
+        #expect(note("error: no such module 'LinuxOnly'")?.contains("on linux only") == true)
+        // A module the package never names is a typo, and any other failure is itself.
+        #expect(note("error: no such module 'Sharde'") == nil)
+        #expect(note("error: cannot find 'petals' in scope") == nil)
     }
 }

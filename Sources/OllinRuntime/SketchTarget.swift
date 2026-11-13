@@ -39,6 +39,89 @@ package struct SketchTarget: Sendable, Equatable {
     /// Everything the target depends on by name: the framework's products,
     /// other targets, other packages' products.
     package let dependencies: [String]
+    /// The same dependencies as the manifest declares them: what kind each
+    /// is, the package a product comes from, and the platforms it is
+    /// conditioned on. What `dependencyOrder` walks.
+    package let links: [Link]
+
+    package init(packageRoot: String, name: String, directory: String, excluded: [String],
+                 declaredSources: [String]?, resources: [Resource], settings: [Setting],
+                 packageLanguageMode: String, dependencies: [String], links: [Link] = []) {
+        self.packageRoot = packageRoot
+        self.name = name
+        self.directory = directory
+        self.excluded = excluded
+        self.declaredSources = declaredSources
+        self.resources = resources
+        self.settings = settings
+        self.packageLanguageMode = packageLanguageMode
+        self.dependencies = dependencies
+        self.links = links
+    }
+
+    /// One entry of a target's `dependencies:`.
+    package struct Link: Sendable, Equatable {
+        package enum Kind: Sendable, Equatable {
+            /// `.target(name:)`: another target of the same package.
+            case target
+            /// `.product(name:package:)`: a product of another package.
+            case product(package: String)
+            /// A bare name: a target of the package when it has one by that
+            /// name, else the product of that name in a package it depends on.
+            case byName
+        }
+
+        package let name: String
+        package let kind: Kind
+        /// The platforms the manifest conditions it on; empty is every one.
+        package let platforms: [String]
+        /// Whether the manifest renames the product's modules
+        /// (`moduleAliases:`), which the live compile does not carry.
+        package let renamesModules: Bool
+
+        package init(name: String, kind: Kind, platforms: [String] = [], renamesModules: Bool = false) {
+            self.name = name
+            self.kind = kind
+            self.platforms = platforms
+            self.renamesModules = renamesModules
+        }
+
+        /// Whether the dependency holds on the Mac, where the live hosts run.
+        package var appliesHere: Bool { platforms.isEmpty || platforms.contains("macos") }
+    }
+
+    /// A package the manifest depends on.
+    package struct PackageReference: Sendable, Equatable {
+        /// SwiftPM's name for it: the last component of its path or URL,
+        /// lowercased.
+        package let identity: String
+        /// Its folder, for a package named by a path; `nil` for one SwiftPM
+        /// fetches, which is found through the workspace (`PackageWorkspace`).
+        package let path: String?
+
+        package init(identity: String, path: String?) {
+            self.identity = identity
+            self.path = path
+        }
+    }
+
+    /// The name the target's module goes by in an `import`: the target's own
+    /// name, with anything an identifier cannot hold turned into `_`.
+    package var moduleName: String { Self.identifier(name) }
+
+    /// `text` as a C99 identifier, the way SwiftPM turns a target's or a
+    /// package's name into a module's or a package's.
+    package static func identifier(_ text: String) -> String {
+        var out = String(text.unicodeScalars.map { scalar -> Character in
+            let keeps = scalar.isASCII
+                && (CharacterSet.alphanumerics.contains(scalar) || scalar == "_")
+            return keeps ? Character(scalar) : "_"
+        })
+        if let first = out.unicodeScalars.first, CharacterSet.decimalDigits.contains(first) {
+            out = "_" + out
+        }
+        return out
+    }
 
     /// A resource rule from the manifest.
     package struct Resource: Sendable, Equatable {
@@ -120,6 +203,25 @@ package struct SketchTarget: Sendable, Equatable {
     /// top-level code does not compile there, and what it starts, the host
     /// starts instead.
     package func swiftSources() -> [String] {
+        sources(where: Self.isSwiftSource)
+    }
+
+    /// The first source file in a C-family language among the target's
+    /// files, or `nil` when it holds none. A target that has one is not a
+    /// Swift target, and a live compile, which hands `swiftc` Swift files,
+    /// cannot build it.
+    package func foreignSource() -> String? {
+        sources(where: { Self.foreignExtensions.contains(($0 as NSString).pathExtension) }).first
+    }
+
+    /// The extensions SwiftPM compiles with clang or the assembler.
+    private static let foreignExtensions: Set<String> = [
+        "c", "m", "mm", "cc", "cpp", "cxx", "c++", "s", "S", "asm",
+    ]
+
+    /// The target's files `keeps` accepts, sorted: under its source roots,
+    /// with hidden entries, excluded paths, and resources skipped.
+    private func sources(where keeps: (String) -> Bool) -> [String] {
         let roots = declaredSources ?? [directory]
         let skipped = excluded + resources.map(\.path)
         var found = Set<String>()
@@ -128,7 +230,7 @@ package struct SketchTarget: Sendable, Equatable {
             var isDir: ObjCBool = false
             guard fm.fileExists(atPath: root, isDirectory: &isDir) else { continue }
             if !isDir.boolValue {
-                if Self.isSwiftSource(root) { found.insert(root) }
+                if keeps(root) { found.insert(root) }
                 continue
             }
             guard let walk = fm.enumerator(
@@ -139,10 +241,15 @@ package struct SketchTarget: Sendable, Equatable {
                 // Built from the resolved folder, so already in its spelling.
                 let path = url.path
                 if skipped.contains(where: { Self.isInside(path, $0) }) {
-                    walk.skipDescendants()
+                    // Only a folder has anything below it to skip. Asked of
+                    // a file, the walk leaves the folder the file is in, and
+                    // every entry after an excluded file would go unread.
+                    let isFolder = (try? url.resourceValues(forKeys: [.isDirectoryKey]))?
+                        .isDirectory ?? false
+                    if isFolder { walk.skipDescendants() }
                     continue
                 }
-                if Self.isSwiftSource(path) { found.insert(path) }
+                if keeps(path) { found.insert(path) }
             }
         }
         return found.sorted()
@@ -168,7 +275,7 @@ package struct SketchTarget: Sendable, Equatable {
         }
         let mode = applying.last { $0.kind == "swiftLanguageMode" }?.values.first
             ?? packageLanguageMode
-        var flags = ["-swift-version", mode]
+        var flags = ["-package-name", packageName, "-swift-version", mode]
         for setting in applying {
             switch setting.kind {
             case "define":
@@ -190,6 +297,14 @@ package struct SketchTarget: Sendable, Equatable {
             }
         }
         return flags
+    }
+
+    /// The name the package's modules share for `package` access: the
+    /// package folder's name, lowercased, as an identifier. Every target of
+    /// one package is compiled under the same one, which is all the access
+    /// level asks; a declaration marked `package` does not compile without it.
+    package var packageName: String {
+        Self.identifier((packageRoot as NSString).lastPathComponent.lowercased())
     }
 
     /// Whether the manifest declares anything for the bundle. A target that
@@ -305,6 +420,24 @@ extension SketchTarget {
         /// tests, plugins, macros, and binaries are not anything a sketch
         /// host runs.
         package let targets: [SketchTarget]
+        /// The targets the list above leaves out that something can still
+        /// depend on, each with the manifest's word for its kind (`system`,
+        /// `binary`, `macro`, `plugin`), so a dependency on one is refused by
+        /// what it is.
+        package let otherTargets: [String: String]
+        /// The package's products, each with the targets it is made of.
+        package let products: [String: [String]]
+        /// The packages this one depends on.
+        package let packages: [PackageReference]
+
+        package init(root: String, targets: [SketchTarget], otherTargets: [String: String] = [:],
+                     products: [String: [String]] = [:], packages: [PackageReference] = []) {
+            self.root = root
+            self.targets = targets
+            self.otherTargets = otherTargets
+            self.products = products
+            self.packages = packages
+        }
 
         /// The package at `root`, read once and kept until its `Package.swift`
         /// changes.
@@ -340,10 +473,34 @@ extension SketchTarget {
             let mode = languageMode(
                 listed: json["swiftLanguageVersions"] as? [String],
                 toolsVersion: (json["toolsVersion"] as? [String: Any])?["_version"] as? String)
-            let targets = (json["targets"] as? [[String: Any]] ?? []).compactMap {
+            let described = json["targets"] as? [[String: Any]] ?? []
+            let targets = described.compactMap {
                 target(from: $0, root: root, languageMode: mode)
             }
-            return Manifest(root: root, targets: targets)
+            var others: [String: String] = [:]
+            for entry in described {
+                guard let name = entry["name"] as? String, let type = entry["type"] as? String,
+                      ["system", "binary", "macro", "plugin"].contains(type) else { continue }
+                others[name] = type
+            }
+            var products: [String: [String]] = [:]
+            for entry in json["products"] as? [[String: Any]] ?? [] {
+                guard let name = entry["name"] as? String,
+                      let members = entry["targets"] as? [String] else { continue }
+                products[name] = members
+            }
+            // Each package is one key (`fileSystem`, `sourceControl`,
+            // `registry`) over a list whose first entry describes it. Only a
+            // package named by a path says where it is.
+            let packages: [PackageReference] = (json["dependencies"] as? [[String: Any]] ?? []).compactMap {
+                guard let kind = $0.first,
+                      let described = (kind.value as? [[String: Any]])?.first,
+                      let identity = described["identity"] as? String else { return nil }
+                let path = kind.key == "fileSystem" ? described["path"] as? String : nil
+                return PackageReference(identity: identity, path: path.map(SketchTarget.resolved))
+            }
+            return Manifest(root: root, targets: targets, otherTargets: others,
+                            products: products, packages: packages)
         }
 
         /// The language mode the package build would use: the newest one the
@@ -389,16 +546,32 @@ extension SketchTarget {
                                platforms: condition?["platformNames"] as? [String] ?? [])
             }
             // Each dependency is one key (`byName`, `target`, `product`)
-            // over a list whose first entry is the name.
-            let dependencies = (json["dependencies"] as? [[String: Any]] ?? []).compactMap {
-                ($0.values.first as? [Any])?.first as? String
+            // over a list whose first entry is the name. A product's list
+            // goes on with its package, the modules it renames, and its
+            // condition; the other two with the condition alone.
+            let links: [Link] = (json["dependencies"] as? [[String: Any]] ?? []).compactMap { entry in
+                guard let kind = entry.first, let fields = kind.value as? [Any],
+                      let name = fields.first as? String else { return nil }
+                let condition = fields.last as? [String: Any]
+                let platforms = condition?["platformNames"] as? [String] ?? []
+                switch kind.key {
+                case "target":
+                    return Link(name: name, kind: .target, platforms: platforms)
+                case "product":
+                    let package = fields.count > 1 ? fields[1] as? String : nil
+                    let renames = fields.count > 2 ? fields[2] as? [String: Any] : nil
+                    return Link(name: name, kind: .product(package: package ?? name),
+                                platforms: platforms, renamesModules: !(renames ?? [:]).isEmpty)
+                default:
+                    return Link(name: name, kind: .byName, platforms: platforms)
+                }
             }
             return SketchTarget(
                 packageRoot: root, name: name, directory: directory,
                 excluded: (json["exclude"] as? [String] ?? []).map(inside),
                 declaredSources: (json["sources"] as? [String])?.map(inside),
                 resources: resources, settings: settings,
-                packageLanguageMode: languageMode, dependencies: dependencies)
+                packageLanguageMode: languageMode, dependencies: links.map(\.name), links: links)
         }
 
         /// Where SwiftPM looks for a target that names no path: its name under

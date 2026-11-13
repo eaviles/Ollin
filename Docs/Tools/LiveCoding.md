@@ -133,7 +133,7 @@ The `.swift` file is the artifact, and nothing writes it but you:
 
 Assets that sit beside the `.swift` file, such as an image or a `.metal` file, resolve against the open file's folder. `OllinLive` resolves them the same way. An untitled buffer has no folder yet, so save it first if the sketch needs assets. A `.metal` file you edit beside the sketch is picked up on the next ⌘↩.
 
-A sketch file that sits in a package's target compiles with the target's other files, as it does under `OllinLive`. The editor holds the sketch file, and the other files come from disk as they stand at ⌘↩. A helper edited in another editor lands with the next evaluation. `swift run OllinLiveCoding <package folder>` opens the package's sketch file, with `--target` to pick one of several. [Growing into a package](SingleFile.md#growing-into-a-package) covers what the compile reads from the manifest, and where it stops.
+A sketch file that sits in a package's target compiles with the target's other files, as it does under `OllinLive`. The editor holds the sketch file, and the other files come from disk as they stand at ⌘↩. A helper edited in another editor lands with the next evaluation. A library target the sketch imports, or another Swift package, is built the same way and read from disk too. An edit to one restarts the run on the next ⌘↩. `swift run OllinLiveCoding <package folder>` opens the package's sketch file, with `--target` to pick one of several. [Growing into a package](SingleFile.md#growing-into-a-package) covers what the compile reads from the manifest, and where it stops.
 
 ### Performance chrome
 
