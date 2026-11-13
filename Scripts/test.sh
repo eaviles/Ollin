@@ -256,10 +256,11 @@ ci)
     #
     # The other targets are dealt into three shards as well where one bundle
     # holds them all (the native build system's merged bundle, which is the
-    # runner's), since in one process they queue on one main thread exactly
-    # as OllinTests does (shard-tests.sh, at OLLIN_SHARD_SCOPE). With a bundle
-    # per target, which is this desk's layout, they run under one `swift test`
-    # as they always have.
+    # runner's). That buys them less than it buys OllinTests, 19.0 minutes
+    # against 22.3 for the job, because their work fills the cores rather
+    # than waiting on a main thread (shard-tests.sh, at OLLIN_SHARD_SCOPE,
+    # has the numbers). With a bundle per target, which is this desk's
+    # layout, they run under one `swift test` as they always have.
     case "$2" in
     <->/<->)
         echo "test.sh: the runner's recipe, part $2 of OllinTests as ${OLLIN_CI_SHARDS:-3} shards"

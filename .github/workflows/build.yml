@@ -24,9 +24,9 @@ name: Build
 # so what a run may now spend is machines: an account may run five macOS jobs
 # at once. The machine itself is the one it always was (three cores, 7 GB;
 # larger runners are not offered to a personal account, and bill by the
-# minute where they are), and the suite is held back by one main thread per
-# process rather than by the cores (see the test job), so more machines is
-# the lever and a faster machine is not on offer.
+# minute where they are), and most of the suite is held back by one main
+# thread per process rather than by the cores (see the test job), so more
+# machines is the lever and a faster machine is not on offer.
 #
 # The jobs count to that limit on purpose. The compile and the examples start
 # together; when the compile ends, the four test machines start beside the
@@ -325,16 +325,28 @@ jobs:
   # that queue by more than four, and the other targets get a machine of
   # their own.
   #
-  # The first run of this shape (2026-11-13, on a commit that changed no
-  # source): the compile took 2.3 minutes, the three shares of OllinTests
-  # 10.1, 14.9, and 18.5, the other targets 22.3 in one process, and the
-  # examples 26.6, which was the whole run. The nine shards finished between
-  # 301 s and 1,027 s and summed to 6,132 s, where the two shards of the day
-  # before summed to 6,261 s: the work is the same and only divided. So what
-  # is left to gain among them is an evener deal, since the deal goes by test
-  # count and one render probe outweighs a hundred string tests. The other
-  # targets spent 1,177 s in their one process, queued on its main thread
-  # the same way, which is why they are three shards now as well.
+  # Measured on 2026-11-13, on two commits that changed no framework source:
+  # the compile took 1.9 and 2.3 minutes, the three shares of OllinTests 10.1
+  # to 18.5, the other targets 22.3 in one process and 19.0 as three shards,
+  # and the examples 26.6 and 27.9, which was the whole run both times (26.6
+  # and 28.0 minutes, against 76 to 93 before), with the `build` job's answer
+  # in at 21.
+  #
+  # The nine shards of OllinTests finished between 301 s and 1,027 s and
+  # summed to 6,132 s, where the two shards of the day before summed to
+  # 6,261 s: that work is the same however it is divided, so what is left to
+  # gain among them is an evener deal. The deal goes by test count, and one
+  # render probe outweighs a hundred string tests: run one test at a time at
+  # a desk, half of OllinTests' 1,146 s sat in 23 of its 537 suites, and the
+  # cost that measurement gives each shard follows what the shard took here
+  # (a correlation of 0.84 over the nine).
+  #
+  # The other targets are a different kind of work. Three shards took 575 s,
+  # 1,028 s, and 1,028 s where the one process had taken 1,177 s: they fill
+  # the cores (sound rendered offline, physics, sketches compiled) rather
+  # than wait on a main thread, so more processes on the same machine bought
+  # little. What would is a second machine, and the five-job limit leaves no
+  # room for one while the examples build.
   #
   # The run goes through Scripts/test.sh ci, so the runner's knowledge
   # lives in one place with the rest of the suite's: which suites want a

@@ -54,16 +54,18 @@
 # machines run each shard exactly once. The count check above then holds a
 # machine to its own shards, so a part that ran short fails where it ran.
 #
-# The other targets queue on a main thread the same way once they share a
-# process, which they do in the merged bundle the native build system writes
-# (the runner's): 2,359 tests of the 29 other targets took 1,177 s there in
-# one process on a machine of their own (2026-11-13). OLLIN_SHARD_SCOPE, a
-# regex over the test ID, names what is dealt in place of OllinTests, and
-# OLLIN_SHARD_SKIP takes out of that whatever is not wanted. It asks for the
-# merged bundle and fails without one: with a bundle per target, which is
-# what this desk builds, one process cannot hold two targets, and running
-# only the part of the scope that OllinTests' own bundle lists would pass
-# having covered almost none of it.
+# OLLIN_SHARD_SCOPE, a regex over the test ID, names what is dealt in place
+# of OllinTests, and OLLIN_SHARD_SKIP takes out of that whatever is not
+# wanted. It asks for the merged bundle the native build system writes (the
+# runner's) and fails without one: with a bundle per target, which is what
+# this desk builds, one process cannot hold two targets, and running only the
+# part of the scope that OllinTests' own bundle lists would pass having
+# covered almost none of it. Do not expect of the other targets what the
+# shards buy OllinTests. Their 2,359 tests took 1,177 s in one process on a
+# runner of their own and 1,028 s as three shards (2026-11-13; the shards
+# finished at 575 s, 1,028 s, and 1,028 s, so together they ran more than
+# twice as long as the one process had): that work fills the cores already,
+# and three processes mostly take turns at it.
 
 cd "$(dirname "$0")/.." || exit 1
 emulate -L zsh
