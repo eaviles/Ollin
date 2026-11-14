@@ -43,6 +43,10 @@
 #          public name under API/ is named by some Docs page, or listed with
 #          its reason; a page deleted stales this whether or not the diff
 #          touched it, so it is not scoped either; ~1 s)
+#       -> Scripts/check-changelog.sh (every changelog entry since 0.17.0 is
+#          a bold title and at most 60 words, so the file and the release
+#          page made from it stay readable; its self-test runs when the
+#          script changed; milliseconds)
 #     any .md prose, any image, or anything under Examples/ changed
 #       -> Scripts/check-links.sh and Scripts/guide-coverage.sh
 #     Guide/ or Docs/ prose changed
@@ -156,7 +160,7 @@ case "$1" in
 --milestone) milestone=1 ;;
 --plan) plan=1 ;;
 --help | -h)
-    sed -n '3,146p' "$0" | sed -E 's|^# ?||'
+    sed -n '3,151p' "$0" | sed -E 's|^# ?||'
     exit 0
     ;;
 esac
@@ -327,6 +331,15 @@ run "check-api-names" Scripts/check-api-names.sh
 # reason. check-names reads a backtick back to the tree; this reads the tree
 # back to the backticks, which is the direction nothing else covers.
 run "check-api-pages" Scripts/check-api-pages.sh
+
+# A changelog entry is a title and a line or two. The entries are written one
+# a session, each by somebody with every number still in mind, and they grew
+# back to a median of 91 words within two months of being cut to two
+# sentences, so the form is a gate.
+if grep -q '^Scripts/check-changelog\.sh$' <<<"$changed"; then
+    run "check-changelog (selftest)" Scripts/check-changelog.sh --selftest
+fi
+run "check-changelog" Scripts/check-changelog.sh
 
 # Navigation and coverage read the whole tree in seconds, so any prose or
 # image change buys both. A new example is a navigation change too: its folder
