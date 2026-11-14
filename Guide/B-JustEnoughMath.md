@@ -28,22 +28,22 @@ Every position on the canvas is two numbers, counted in pixels from the top-left
   <img src="Images/18-YourFirstShader/UVSpace.jpg" alt="The uv gradient annotated: (0,0) at the top left, (1,1) at the bottom right, the center marked (0.5, 0.5)" width="680">
 </picture>
 
-Instead of pixels, an address can be a *fraction* of the whole, 0 at one edge and 1 at the other. So (0.5, 0.5) is the center of anything, at any resolution. A shader's `shade` function gets each position in these `uv` coordinates, and [Chapter 18](18-YourFirstShader.md) works in them. Subtracting 0.5 re-centers them, so distances measure from the middle. The same trick names positions inside a camera image regardless of its size ([Chapter 35](35-Seeing.md)).
+Instead of pixels, an address can be a *fraction* of the whole, 0 at one edge and 1 at the other. So (0.5, 0.5) is the center of anything, at any resolution. A shader's `shade` function gets each position in these `uv` coordinates, and [Chapter 18](18-YourFirstShader.md) works in them. Subtracting 0.5 re-centers them, so distances measure from the middle. The same trick names positions inside a camera image regardless of its size ([Chapter 36](36-Seeing.md)).
 
 ### Putting a normalized point onto the canvas
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/35-Seeing/TrackerFlow-dark.jpg">
-  <img src="Images/35-Seeing/TrackerFlow.jpg" alt="A diagram of camera frames flowing through a tracker, and a normalized lower-left-origin point mapping into the drawn frame's rectangle" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/36-Seeing/TrackerFlow-dark.jpg">
+  <img src="Images/36-Seeing/TrackerFlow.jpg" alt="A diagram of camera frames flowing through a tracker, and a normalized lower-left-origin point mapping into the drawn frame's rectangle" width="680">
 </picture>
 
-A point given as fractions of an image becomes a canvas point when you scale it into the rectangle you drew the image in. Vision results count y *up* from the bottom-left, while the canvas counts y *down* from the top-left. So the y fraction flips on the way (`1 - y`). In [Chapter 35](35-Seeing.md), the `in:` helpers such as `bounds(in:)` do the flip and the scale for you, with this same math.
+A point given as fractions of an image becomes a canvas point when you scale it into the rectangle you drew the image in. Vision results count y *up* from the bottom-left, while the canvas counts y *down* from the top-left. So the y fraction flips on the way (`1 - y`). In [Chapter 36](36-Seeing.md), the `in:` helpers such as `bounds(in:)` do the flip and the scale for you, with this same math.
 
 ### The 3D world frame
 
 <img src="Images/B-JustEnoughMath/WorldFrame.jpg" alt="Two labeled frames: the canvas with y growing down from a top-left origin, and the 3D world with y growing up and z coming toward the viewer" width="680">
 
-The 3D world uses its own frame. The origin sits wherever you like, x still grows right, y grows *up*, and z comes toward you. Positions are in world units rather than pixels. A sphere of radius 1 is one unit, and the camera's distance decides how big it looks. The canvas's y-down is a habit of 2D screens, and 3D keeps the y-up of school math. [Chapter 27](27-3DGently.md) makes the switch. Depth data in meters lands in the same kind of frame in [Chapter 36](36-Depth.md).
+The 3D world uses its own frame. The origin sits wherever you like, x still grows right, y grows *up*, and z comes toward you. Positions are in world units rather than pixels. A sphere of radius 1 is one unit, and the camera's distance decides how big it looks. The canvas's y-down is a habit of 2D screens, and 3D keeps the y-up of school math. [Chapter 27](27-3DGently.md) makes the switch. Depth data in meters lands in the same kind of frame in [Chapter 37](37-Depth.md).
 
 ## Angles and circles
 
@@ -168,7 +168,7 @@ A clock that only grows becomes a cycle by wrapping. The `%` remainder wraps who
   <img src="Images/07-Tiles/KolamLoops.jpg" alt="Three dark panels of chalk-colored looping line work around small dots. One continuous line over a field of seven by five dots; two interleaved loops in cream and orange over six by four; and the same seven by five field cut into three loops by two short walls" width="680">
 </picture>
 
-The greatest common divisor of two whole numbers is the largest number that divides both. For 6 and 4 it is 2, and for 7 and 5 it is 1. It decides how two repeating things line up. [Chapter 7](07-Tiles.md)'s kolam draws one unbroken line around a field of seven by five dots. Around six by four it draws two separate loops, as the first two panels show. The number of loops is the greatest divisor the two sides share. Euclid's method finds it by taking remainders again and again, and [Chapter 41](41-MusicByRule.md)'s Euclidean rhythms spread their hits by the same steps.
+The greatest common divisor of two whole numbers is the largest number that divides both. For 6 and 4 it is 2, and for 7 and 5 it is 1. It decides how two repeating things line up. [Chapter 7](07-Tiles.md)'s kolam draws one unbroken line around a field of seven by five dots. Around six by four it draws two separate loops, as the first two panels show. The number of loops is the greatest divisor the two sides share. Euclid's method finds it by taking remainders again and again, and [Chapter 42](42-MusicByRule.md)'s Euclidean rhythms spread their hits by the same steps.
 
 ### The perfect loop
 
@@ -197,7 +197,7 @@ A shaping function takes a 0…1 value and hands back a reshaped 0…1 value. It
 
 <img src="Images/19-LayersAndEffects/Comets.jpg" alt="Comet swarms of glowing dots, each dragging a soft luminous tail that fades with age" width="560">
 
-Multiply a value by a little less than 1 every frame, keeping 93% say, and it fades smoothly. It falls fast at first, then more and more slowly, and never quite reaches zero. That's exponential decay, and it is the shape of a fading trail. The newest mark is full strength, and each older one has been multiplied down one more time. [Chapter 19](19-LayersAndEffects.md) uses it as the feedback fade behind these comet tails. [Chapter 38](38-Listening.md) fades a pulse the same way, scaled by `deltaTime` so it falls at the same speed at any frame rate.
+Multiply a value by a little less than 1 every frame, keeping 93% say, and it fades smoothly. It falls fast at first, then more and more slowly, and never quite reaches zero. That's exponential decay, and it is the shape of a fading trail. The newest mark is full strength, and each older one has been multiplied down one more time. [Chapter 19](19-LayersAndEffects.md) uses it as the feedback fade behind these comet tails. [Chapter 39](39-Listening.md) fades a pulse the same way, scaled by `deltaTime` so it falls at the same speed at any frame rate.
 
 ## Randomness
 
@@ -340,11 +340,11 @@ Inversion in a circle moves every point along the line from the circle's center 
 ### Four corners anywhere: corner pinning
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/46-Installations/FittingTheWall-dark.jpg">
-  <img src="Images/46-Installations/FittingTheWall.jpg" alt="Left, a rectangle of grid lines landing on a wall as a lopsided four-sided shape, labeled as it lands. Right, the same grid sitting square inside the wall with a handle on each corner, labeled corner-pinned. Below, two colored blocks meeting in a shared band where each fades out, with a flat line across the top labeled added up, one coat" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/47-Installations/FittingTheWall-dark.jpg">
+  <img src="Images/47-Installations/FittingTheWall.jpg" alt="Left, a rectangle of grid lines landing on a wall as a lopsided four-sided shape, labeled as it lands. Right, the same grid sitting square inside the wall with a handle on each corner, labeled corner-pinned. Below, two colored blocks meeting in a shared band where each fades out, with a flat line across the top labeled added up, one coat" width="680">
 </picture>
 
-Translate, rotate, and scale keep parallel lines parallel. A projector aimed at a wall from an angle turns the picture's rectangle into a lopsided four-sided shape. Fixing that takes one more kind of move. A **projective map** sends the four corners of a square to any four points and carries everything between them along. Straight lines stay straight, but equal steps no longer stay equal, the way a road's stripes crowd together toward the horizon. [Chapter 46](46-Installations.md) fits a projector to a wall by dragging the four corners, and Paul Heckbert set out the math in 1989.
+Translate, rotate, and scale keep parallel lines parallel. A projector aimed at a wall from an angle turns the picture's rectangle into a lopsided four-sided shape. Fixing that takes one more kind of move. A **projective map** sends the four corners of a square to any four points and carries everything between them along. Straight lines stay straight, but equal steps no longer stay equal, the way a road's stripes crowd together toward the horizon. [Chapter 47](47-Installations.md) fits a projector to a wall by dragging the four corners, and Paul Heckbert set out the math in 1989.
 
 ## Vectors, motion, and forces
 
@@ -471,11 +471,11 @@ let around = uphill.perpendicular          // along the contour
 ### Optical flow: a measured field
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/35-Seeing/FlowArrows-dark.jpg">
-  <img src="Images/35-Seeing/FlowArrows.jpg" alt="A frame of a dancer, with arrows along both arms pointing opposite ways, a few on one leg and at one foot, and none on his chest" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/36-Seeing/FlowArrows-dark.jpg">
+  <img src="Images/36-Seeing/FlowArrows.jpg" alt="A frame of a dancer, with arrows along both arms pointing opposite ways, a few on one leg and at one foot, and none on his chest" width="680">
 </picture>
 
-Every field so far was invented, while optical flow is *measured*. Comparing one camera frame with the next assigns each point an arrow, "which way did the picture move here". The result is a direction field you can trace, carry particles through, or paint with, the same way as a field built from noise. The camera becomes a field generator in [Chapter 35](35-Seeing.md).
+Every field so far was invented, while optical flow is *measured*. Comparing one camera frame with the next assigns each point an arrow, "which way did the picture move here". The result is a direction field you can trace, carry particles through, or paint with, the same way as a field built from noise. The camera becomes a field generator in [Chapter 36](36-Seeing.md).
 
 ## Local rules, global structure
 
@@ -620,11 +620,11 @@ A picture file stores a number for each pixel. That number gives more of its ste
 ### What a device can show: gamut
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/43-MakingItPhysical/ProofBeforePrint-dark.jpg">
-  <img src="Images/43-MakingItPhysical/ProofBeforePrint.jpg" alt="Three panels of one photograph of a woman before a wall of marigolds: as the screen shows it, the same picture proofed for a four-ink press with the orange gone duller, and the gamut check with most of the wall replaced by gray" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/44-MakingItPhysical/ProofBeforePrint-dark.jpg">
+  <img src="Images/44-MakingItPhysical/ProofBeforePrint.jpg" alt="Three panels of one photograph of a woman before a wall of marigolds: as the screen shows it, the same picture proofed for a four-ink press with the orange gone duller, and the gamut check with most of the wall replaced by gray" width="680">
 </picture>
 
-The **gamut** of a screen or a printer is the range of colors it can make. The gamut of a color space is the range it can describe. A screen makes color from light, and a press from ink on paper, so each reaches colors the other cannot. The standard gamut for screens is sRGB. Display P3, a wider gamut that many Apple screens show, reaches more saturated reds and greens. Written in sRGB numbers, the way Ollin's `Color` holds it, a color outside sRGB has components below 0 or above 1. The gamut check of [Chapter 43](43-MakingItPhysical.md#seeing-the-print-before-you-print-it-soft-proofs) paints gray over what a press cannot print.
+The **gamut** of a screen or a printer is the range of colors it can make. The gamut of a color space is the range it can describe. A screen makes color from light, and a press from ink on paper, so each reaches colors the other cannot. The standard gamut for screens is sRGB. Display P3, a wider gamut that many Apple screens show, reaches more saturated reds and greens. Written in sRGB numbers, the way Ollin's `Color` holds it, a color outside sRGB has components below 0 or above 1. The gamut check of [Chapter 44](44-MakingItPhysical.md#seeing-the-print-before-you-print-it-soft-proofs) paints gray over what a press cannot print.
 
 ### Blend modes are arithmetic
 
@@ -750,52 +750,52 @@ A flat triangle faces one way, and the arrow standing straight out of it is its 
 ### The pinhole: a pixel plus a depth is a ray
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/36-Depth/Unproject-dark.jpg">
-  <img src="Images/36-Depth/Unproject.jpg" alt="A lens with its forward axis, an image plane with a marked pixel, and a dashed ray out to a 3D point. A dotted drop from the point meets the axis square, and the depth is marked along the axis from the lens to that foot. The recovered-coordinates formula sits below" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/37-Depth/Unproject-dark.jpg">
+  <img src="Images/37-Depth/Unproject.jpg" alt="A lens with its forward axis, an image plane with a marked pixel, and a dashed ray out to a 3D point. A dotted drop from the point meets the axis square, and the depth is marked along the axis from the lens to that foot. The recovered-coordinates formula sits below" width="680">
 </picture>
 
-A camera flattens the world by sliding every point down a ray through the lens. A depth sensor records how far in front of the camera each pixel's surface was. It measures along the camera's forward axis, not along the ray. Unprojection runs the flattening backward. Slide the pixel off the image center, scale by depth over focal length, and the 3D point returns. So a flat photo plus a flat depth map holds the 3D shape of everything the camera saw. [Chapter 36](36-Depth.md) builds its point clouds with this recipe.
+A camera flattens the world by sliding every point down a ray through the lens. A depth sensor records how far in front of the camera each pixel's surface was. It measures along the camera's forward axis, not along the ray. Unprojection runs the flattening backward. Slide the pixel off the image center, scale by depth over focal length, and the 3D point returns. So a flat photo plus a flat depth map holds the 3D shape of everything the camera saw. [Chapter 37](37-Depth.md) builds its point clouds with this recipe.
 
 ### A pose places points in the world
 
-<img src="Images/36-Depth/SweepFuse.jpg" alt="Three tinted captures of a room fused into one cloud, each camera position marked with a small sphere and sight line" width="680">
+<img src="Images/37-Depth/SweepFuse.jpg" alt="Three tinted captures of a room fused into one cloud, each camera position marked with a small sphere and sight line" width="680">
 
-Points recovered from a camera come out in *its* frame, "two meters ahead of me", wherever "me" was. A **pose** is the transform recording where the camera stood and how it was turned. Applying it carries camera-frame points into one shared world frame. Do that for every frame of a moving sweep and the fragments fuse into a single room, each capture placed where its camera stood. [Chapter 36](36-Depth.md) fuses its scans this way.
+Points recovered from a camera come out in *its* frame, "two meters ahead of me", wherever "me" was. A **pose** is the transform recording where the camera stood and how it was turned. Applying it carries camera-frame points into one shared world frame. Do that for every frame of a moving sweep and the fragments fuse into a single room, each capture placed where its camera stood. [Chapter 37](37-Depth.md) fuses its scans this way.
 
 ### Occlusion voids: what the camera could not see
 
-<img src="Images/36-Depth/CloudLift.jpg" alt="A flat frame stood up into a point cloud viewed from a new angle, with black voids stretching behind the ball and crate" width="560">
+<img src="Images/37-Depth/CloudLift.jpg" alt="A flat frame stood up into a point cloud viewed from a new angle, with black voids stretching behind the ball and crate" width="560">
 
-A depth image knows only what its rays touched, so nothing measured the space behind each object. View the cloud from where the camera stood and it looks whole. Step to the side and the voids open, holes in the shape of whatever stood in front. Only more viewpoints fill them. [Chapter 36](36-Depth.md) fills them by fusing frames from a moving camera.
+A depth image knows only what its rays touched, so nothing measured the space behind each object. View the cloud from where the camera stood and it looks whole. Step to the side and the voids open, holes in the shape of whatever stood in front. Only more viewpoints fill them. [Chapter 37](37-Depth.md) fills them by fusing frames from a moving camera.
 
 ## Sound as numbers
 
 ### The spectrum
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/38-Listening/Anatomy-dark.jpg">
-  <img src="Images/38-Listening/Anatomy.jpg" alt="Three stacked panels from one analyzed instant: the raw waveform, the spectrum with spikes at the kick, bass, and melody, and normalized band bars" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/39-Listening/Anatomy-dark.jpg">
+  <img src="Images/39-Listening/Anatomy.jpg" alt="Three stacked panels from one analyzed instant: the raw waveform, the spectrum with spikes at the kick, bass, and melody, and normalized band bars" width="680">
 </picture>
 
-Any sound, however messy, splits into a sum of pure vibrations. The spectrum reports the energy at each frequency in one moment, with bass at the left and treble at the right. To draw it well, you need one more fact. Hearing is logarithmic, and each *doubling* of frequency, an octave, sounds like one equal step. So band bars are usually log-spaced, which gives every octave the same width. If the bars were spaced evenly in hertz, the treble octaves would fill most of the axis. [Chapter 38](38-Listening.md) maps these bands onto pictures.
+Any sound, however messy, splits into a sum of pure vibrations. The spectrum reports the energy at each frequency in one moment, with bass at the left and treble at the right. To draw it well, you need one more fact. Hearing is logarithmic, and each *doubling* of frequency, an octave, sounds like one equal step. So band bars are usually log-spaced, which gives every octave the same width. If the bars were spaced evenly in hertz, the treble octaves would fill most of the axis. [Chapter 39](39-Listening.md) maps these bands onto pictures.
 
 ### Equal steps that multiply: log scales
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/41-MusicByRule/Sonification-dark.jpg">
-  <img src="Images/41-MusicByRule/Sonification.jpg" alt="A series of sixteen values shown as bars, then the same series as note positions spread evenly in semitones, again spread evenly in hertz where the high values bunch together near the top, and again snapped so every mark lands on a line of the scale" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/42-MusicByRule/Sonification-dark.jpg">
+  <img src="Images/42-MusicByRule/Sonification.jpg" alt="A series of sixteen values shown as bars, then the same series as note positions spread evenly in semitones, again spread evenly in hertz where the high values bunch together near the top, and again snapped so every mark lands on a line of the scale" width="680">
 </picture>
 
-Some amounts are felt by ratio rather than by difference. The step from 220 Hz to 440 sounds the same as the step from 440 to 880, though the second is twice as many hertz. A **logarithmic scale** spaces values by their ratios, so each doubling takes the same distance. Spread notes evenly in hertz and the high ones bunch together when you hear them. Spread them evenly in semitones, a log scale, and they sit evenly, as the second and third rows here show. [Chapter 41](41-MusicByRule.md) spreads data this way, and [Chapter 23](23-IteratedForms.md)'s flames take the logarithm of their counts to fit a huge range into one picture.
+Some amounts are felt by ratio rather than by difference. The step from 220 Hz to 440 sounds the same as the step from 440 to 880, though the second is twice as many hertz. A **logarithmic scale** spaces values by their ratios, so each doubling takes the same distance. Spread notes evenly in hertz and the high ones bunch together when you hear them. Spread them evenly in semitones, a log scale, and they sit evenly, as the second and third rows here show. [Chapter 42](42-MusicByRule.md) spreads data this way, and [Chapter 23](23-IteratedForms.md)'s flames take the logarithm of their counts to fit a huge range into one picture.
 
 ### Pitch as ratios: octaves, semitones, and cents
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/41-MusicByRule/Tunings-dark.jpg">
-  <img src="Images/41-MusicByRule/Tunings.jpg" alt="Seven tunings as rows of ticks on one axis in cents from the root to three times its frequency, with guides at the octave and at three times: equal temperament, just intonation, pythagorean, quarter tones, nineteen, thirty-one, and Bohlen-Pierce, the tick nearest a just major third marked in each octave tuning, with the row's step count and that third's value under its name" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/42-MusicByRule/Tunings-dark.jpg">
+  <img src="Images/42-MusicByRule/Tunings.jpg" alt="Seven tunings as rows of ticks on one axis in cents from the root to three times its frequency, with guides at the octave and at three times: equal temperament, just intonation, pythagorean, quarter tones, nineteen, thirty-one, and Bohlen-Pierce, the tick nearest a just major third marked in each octave tuning, with the row's step count and that third's value under its name" width="680">
 </picture>
 
-Doubling a frequency raises a note an octave, and every octave sounds like the same step, whatever note it starts on. Equal temperament splits the octave into twelve semitones of one ratio each. That ratio is the twelfth root of 2, about 1.0595, so twelve of them make exactly 2. **Cents** divide each semitone into a hundred, so an octave is 1200 cents. They measure how far apart two tunings put a note. A just major third, the ratio 5/4, is 386 cents, and equal temperament puts it at 400. [Chapter 41](41-MusicByRule.md) builds scales on the semitone and compares tunings in cents.
+Doubling a frequency raises a note an octave, and every octave sounds like the same step, whatever note it starts on. Equal temperament splits the octave into twelve semitones of one ratio each. That ratio is the twelfth root of 2, about 1.0595, so twelve of them make exactly 2. **Cents** divide each semitone into a hundred, so an octave is 1200 cents. They measure how far apart two tunings put a note. A just major third, the ratio 5/4, is 386 cents, and equal temperament puts it at 400. [Chapter 42](42-MusicByRule.md) builds scales on the semitone and compares tunings in cents.
 
 ### A level in steps: decibels
 
@@ -804,16 +804,16 @@ Doubling a frequency raises a note an octave, and every octave sounds like the s
   <img src="Images/B-JustEnoughMath/Decibels.jpg" alt="Nine bars from 0 dB down to -48 dB in steps of 6, each about half as long as the one above it: 1.0, 0.501, 0.251, and on down to 0.004. The -12 dB bar is orange, with the note that a mix usually sits below it" width="680">
 </picture>
 
-Decibels count a sound's level by ratio, the way a log scale counts pitch. A level in decibels is 20 times the base-10 logarithm of the level as a fraction of full scale. So 0 dB is as loud as a sample can be. Every 6 decibels down about halves the level, and every 20 down divides it by ten. The orange bar in the picture marks -12 dB, and a level you would mix at sits somewhere under it. [Chapter 40](40-MakingSound.md)'s compressor and gate set their thresholds, and its limiter its ceiling, in decibels below full scale.
+Decibels count a sound's level by ratio, the way a log scale counts pitch. A level in decibels is 20 times the base-10 logarithm of the level as a fraction of full scale. So 0 dB is as loud as a sample can be. Every 6 decibels down about halves the level, and every 20 down divides it by ten. The orange bar in the picture marks -12 dB, and a level you would mix at sits somewhere under it. [Chapter 41](41-MakingSound.md)'s compressor and gate set their thresholds, and its limiter its ceiling, in decibels below full scale.
 
 ### Events, not levels
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/38-Listening/BeatTimeline-dark.jpg">
-  <img src="Images/38-Listening/BeatTimeline.jpg" alt="Three rows over the same stretch of time: the loudness curve with regular peaks, a beat pulse that jumps up at each detection and fades, and a tick for each beat counted" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/39-Listening/BeatTimeline-dark.jpg">
+  <img src="Images/39-Listening/BeatTimeline.jpg" alt="Three rows over the same stretch of time: the loudness curve with regular peaks, a beat pulse that jumps up at each detection and fades, and a tick for each beat counted" width="680">
 </picture>
 
-Loudness is a level, while a beat is an *event*. You can't find events by watching a level's height, because a held chord stays loud without ever being "a hit". Detection compares each instant with the moment just before. A sudden rise above the recent trend is an arrival, and a short pause after each beat keeps one drum hit from counting twice. So the detector watches change over time rather than loudness. [Chapter 38](38-Listening.md) builds its beat-reactive sketches on that comparison.
+Loudness is a level, while a beat is an *event*. You can't find events by watching a level's height, because a held chord stays loud without ever being "a hit". Detection compares each instant with the moment just before. A sudden rise above the recent trend is an arrival, and a short pause after each beat keeps one drum hit from counting twice. So the detector watches change over time rather than loudness. [Chapter 39](39-Listening.md) builds its beat-reactive sketches on that comparison.
 
 ---
 

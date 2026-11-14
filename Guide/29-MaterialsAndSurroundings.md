@@ -440,7 +440,7 @@ Then make it yours:
 - Set the felt's `sheenColor` to white, and the two-tone velvet under the egg turns to dusty cloth.
 - Point `modelURL` at a model of your own. `normalized(scale:)` fits it to the bench whatever units its author saved it in.
 
-The bench holds still, so keep it as a still. `swift run OllinLive MySketches/Bench.swift --export bench.png` writes the frame at the size the canvas is. [Chapter 42](42-FinishingASketch.md) says how to size one for a print.
+The bench holds still, so keep it as a still. `swift run OllinLive MySketches/Bench.swift --export bench.png` writes the frame at the size the canvas is. [Chapter 43](43-FinishingASketch.md) says how to size one for a print.
 
 ## More surroundings: clouds and distant air
 

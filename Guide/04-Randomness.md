@@ -405,7 +405,7 @@ for i in 0 ..< 40 {
 }
 ```
 
-Each `learn(_:after:times:)` writes one line of the table: after this, that came next, so many times. `next()` picks by those counts, and `order` is how many picks back the chain reads. It keeps its own seeded generator, so adding one never moves the sketch's other rolls. The [`HiroshiKawano/Design`](../Examples/Recreations/HiroshiKawano/Design/Sketch.swift) homage walks a 40 by 39 grid at order 2, with counts taken cell by cell off two of his sheets. [Chapter 41](41-MusicByRule.md#what-comes-next-a-markovchain) uses the same chain to pick notes, and [a choice that remembers](../Docs/Generators/Random.md#markovchain) is the reference.
+Each `learn(_:after:times:)` writes one line of the table: after this, that came next, so many times. `next()` picks by those counts, and `order` is how many picks back the chain reads. It keeps its own seeded generator, so adding one never moves the sketch's other rolls. The [`HiroshiKawano/Design`](../Examples/Recreations/HiroshiKawano/Design/Sketch.swift) homage walks a 40 by 39 grid at order 2, with counts taken cell by cell off two of his sheets. [Chapter 42](42-MusicByRule.md#what-comes-next-a-markovchain) uses the same chain to pick notes, and [a choice that remembers](../Docs/Generators/Random.md#markovchain) is the reference.
 
 ## Chance spread evenly: blue noise and low-discrepancy sequences
 

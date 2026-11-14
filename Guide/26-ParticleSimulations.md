@@ -67,7 +67,7 @@ drawImage(mean.developed(exposure: 20).image, 0, 0)
 
 When you know the largest size your kernel writes, name it: `drawParticles(sand, style: .light, maxSize: 1)`. Each grain is then one vertex on the GPU instead of four, and a million grains draw in about half the time, on the same pixels.
 
-Grains drawn as light into a running mean are also how Ollin builds a lens that blurs by distance. [Chapter 34](34-TracedLight.md#a-lens-made-of-samples-depth-of-field-from-light) takes that up with the 3D camera.
+Grains drawn as light into a running mean are also how Ollin builds a lens that blurs by distance. [Chapter 35](35-TheLensAndTheSlowRender.md#a-lens-made-of-samples-depth-of-field-from-light) takes that up with the 3D camera.
 
 ## Putting it together: the drift
 
@@ -454,7 +454,7 @@ Particle systems as a graphics technique are William Reeves's, from 1983. The wh
 ## Go deeper
 
 - [Compute and GPU particles](../Docs/Shaders/Compute.md): the full `Particles` snippet vocabulary, every local in scope, the `custom` parameters, dropping to a raw `ComputeKernel` when the built-in layout is not enough, binding up to ten buffers, projecting through the sketch's camera from a kernel, and `Simulation`, the same kind of step over a texture.
-- [Depth of field from light](../Docs/Drawing/DepthOfField.md): the light particle style's deposit rules and the `develop` print, and the lens that [Chapter 34](34-TracedLight.md#a-lens-made-of-samples-depth-of-field-from-light) builds on them.
+- [Depth of field from light](../Docs/Drawing/DepthOfField.md): the light particle style's deposit rules and the `develop` print, and the lens that [Chapter 35](35-TheLensAndTheSlowRender.md#a-lens-made-of-samples-depth-of-field-from-light) builds on them.
 - [Strange attractors](../Docs/Drawing/Attractors.md): all eight systems with their constants, the `AttractorFlow` properties, and the velocity fields as [shader-library functions](../Docs/Shaders/ShaderLibrary.md#chaotic-systems-compute-only) you can call from a compute kernel of your own. [`Examples/Simulation/Attractor`](../Examples/Simulation/Attractor/Sketch.swift) runs the flow.
 - [Artificial life](../Docs/Simulation/ArtificialLife.md): all three systems with every argument and property, plus the matrix rolling and the reproducibility caveat.
 - [Ant colony](../Docs/Generators/AntColony.md): the trail and closeness pulls, evaporation, elitism, and reading the best tour back out.

@@ -6,7 +6,7 @@
 
 <img src="Images/34-TracedLight/LamplitRoom.jpg" alt="A room lit by one pendant lamp that flares in the lens: a waxed brown floor, a terracotta wall and a teal one, a glass ball on a white plinth focusing the lamp into a bright spot inside its own shadow, and a red ball beside it" width="560">
 
-Light in most 3D frames stops at the first surface it hits, and here you follow it off mirrors, between walls, and through glass. Then comes what the camera does with each frame: edges settle, a moving ball streaks, and a lamp flares in the lens. Each is a line or two added to a scene, and together they make the lamplit room above. Past it come the path-traced still, mirror tunnels, the shape of a blur, the frame through the camera's lens, and ways to draw fewer pixels and frames.
+Light in most 3D frames stops at the first surface it hits, and here you follow it off mirrors, between walls, and through glass. Then comes what the camera does with each frame: edges settle, a moving ball streaks, and a lamp flares in the lens. Each is a line or two added to a scene, and together they make the lamplit room above. Past it come mirror tunnels, highlights that hold still, and ways to draw fewer pixels and frames.
 
 ## Mirrors that see off screen: ray-traced reflections
 
@@ -147,9 +147,9 @@ The figure is one frame, and it already shows which sphere moves fastest. The fa
 
 The blur reads the motion between frames, so an export carries it the same way every time. Frame k streaks by how far things moved since frame k-1, so a video export looks like the live window. The first frame has nothing before it, so it comes out sharp.
 
-A streak keeps the light of the thing that made it. What spreads past a sphere's edge is taken from inside it, so a fast sphere fades a little as it smears, as it would in a long exposure. That is checked against an export that draws each frame at many moments while the shutter is open and averages them, which is the streak itself. [Chapter 42](42-FinishingASketch.md#blurred-the-slow-way-subframes) shows that export.
+A streak keeps the light of the thing that made it. What spreads past a sphere's edge is taken from inside it. So a fast sphere fades a little as it smears, as it would in a long exposure. That is checked against an export that draws each frame at many moments while the shutter is open. It averages those moments, which is the streak itself. [Chapter 43](43-FinishingASketch.md#blurred-the-slow-way-subframes) shows that export.
 
-The [`MotionBlur` example](../Examples/3D/Effects/MotionBlur/Sketch.swift) is a scene like the figure's, with the camera turning as well, and the toggle and the shutter on parameters. Slide the shutter while the spheres orbit and watch the same motion go from strobe to smear. An environment's backdrop streaks with a turning camera, by the same amount as a floor at the horizon. A plain background color never streaks, and neither does 2D drawing over it. A caption over the 3D scene, or over a sky, takes the motion of what is under it, so the example puts its caption in `withOverlay { }`, which the next section explains.
+The [`MotionBlur` example](../Examples/3D/Effects/MotionBlur/Sketch.swift) is a scene like the figure's, with the camera turning as well, and the toggle and the shutter on parameters. Slide the shutter while the spheres orbit and watch the same motion go from strobe to smear. An environment's backdrop streaks with a turning camera, by the same amount as a floor at the horizon. A plain background color never streaks, and neither does 2D drawing over it. A caption over the 3D scene, or over a sky, takes the motion of what is under it. So the example puts its caption in `withOverlay { }`, which [Chapter 35](35-TheLensAndTheSlowRender.md#the-frame-through-the-cameras-lens-depthoffield) explains.
 
 ## Light in the camera: lens flare
 
@@ -177,7 +177,7 @@ Every ghost in the figure is a hexagon. The iris has six blades, and a ghost is 
 
 None of the ghosts is quite a regular hexagon. Each one comes from following rays through the lens's glass. A curved surface bends rays near its rim a little more than rays near its middle. So a ghost's sides stretch a little, more the further the lamp sits from the middle. Where a ghost ends in a curve, the round barrel of the lens stopped rays the iris let past. A bright rim along one side is a caustic, where neighboring rays landed on top of one another.
 
-The ghosts are one half of a flare. The other half sits on the source itself. In the next figure the lens is opened wider, to f/5.6 on the photographer's scale, where a smaller f-number means a wider opening. Its ghosts spread into a faint round veil around the lamp. A lens near wide open throws ghosts so broad that they read as haze, which leaves the star to see.
+The ghosts are one half of a flare. The other half sits on the source itself. In the next figure the lens is opened wider, to f/5.6 on the photographer's scale. There a smaller f-number means a wider opening. Its ghosts spread into a faint round veil around the lamp. A lens near wide open throws ghosts so broad that they read as haze, which leaves the star to see.
 
 <img src="Images/34-TracedLight/StarPoints.jpg" alt="A dark room with a small bright lamp above a row of pale blue blocks. Six golden arms reach out from the lamp around a blown-out core, each a frayed pair of fine lines. A large faint round disc sits centered on the lamp inside a wider rounded veil, and a short row of faint dots lies to the upper right" width="680">
 
@@ -330,52 +330,7 @@ This one moves, so keep it as a movie. This writes twelve seconds of it:
 swift run OllinLive MySketches/LamplitRoom.swift --export-video lamplit-room.mp4 --seconds 12
 ```
 
-An export doesn't wait for anything to settle. Each frame averages its own shifted passes and gathers its bounce in full. So each frame is finished when it is written, and the file cannot flicker. A still of the room can go one step further, traced path by path, and [the slow render](#the-slow-render-path-tracing) shows how.
-
-## The slow render: path tracing
-
-The room draws its surfaces the usual way, triangle by triangle, filling each one in pixel by pixel. That is called **rasterizing**. The room adds its mirrors, its bounce, and its caustic on top, each worked out on its own, fast enough for a live window. A still can go one step further and trace the whole frame, light path by light path.
-
-### Light followed path by path: the path-traced export
-
-A **path tracer** renders a frame by following light. For each pixel it sends many paths into the scene. Each one bounces from surface to surface until it reaches a light, and the pixel is the average of what they bring back. It is for the finished still, where shadows, bounces, glass, and mirrors all have to agree. It goes back to James Kajiya's 1986 paper *The Rendering Equation*. The paper wrote all the light in a scene as one equation and introduced path tracing to estimate it.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/34-TracedLight/TracedLight-dark.jpg">
-  <img src="Images/34-TracedLight/TracedLight.jpg" alt="Three renders of the same set of three spheres on a pale floor under one softbox: rasterized, with a hard-edged shadow, a tinted glass shell, and a dark chrome ball; path-traced at 96 samples, with soft shadows, red bled onto the floor, the glass lit through, and grain; and the same trace denoised, the grain gone and the edges kept" width="680">
-</picture>
-
-The figure is one small set rendered three ways. Rasterized, the softbox throws a hard-edged shadow, and the floor is lit by the softbox alone. The glass sphere is a tinted shell, and the chrome one is a dark ball with a highlight. Traced at 96 paths a pixel, the shadows soften as they fall away from each sphere. The red sphere warms the floor beside it. The light goes through the amber glass and lands as a tinted pool where the first panel had a black shadow. The chrome shows the set. What is left at 96 is grain, and the third panel is the same trace through the grain filter of the next entry.
-
-Add `--path-traced` to an image or video export:
-
-```sh
-swift run OllinLive MySketches/LamplitRoom.swift --export room.png --path-traced 512
-```
-
-The number is light paths per pixel. More is smoother, and it takes proportionally longer. So you frame and tune in the live window, then let the export take its time.
-
-Not every pixel needs the whole count. The black around a subject settles in a few samples, a sharp, evenly lit face in a few more, and only a blurred or glossy region needs them all. `--pt-noise 0.04` lets each pixel stop once the grain it is left with falls under that figure, about four levels in 255 (0.01 is one level, a final still's figure), and the count becomes the most a pixel may trace. The tracer reads the spread of each pixel's own samples, the same measurement the grain filter uses, every eight samples past a minimum, and a pixel that is still sampling keeps its neighbors sampling. The samples go where the grain is: on the example scene the stop reached the same picture as a fixed count at half the samples, and a little better than a fixed count given the same time, since the pixels that settle first are also the cheap ones. The frame stays a pure function of its index, so a sequence cannot flicker from the stop, and the file's recipe records the mean count the pixels reached. The idea goes back to Don Mitchell's 1987 paper on sampling where the contrast is, and its measure to Holger Dammertz and colleagues, from 2010. A polished scene has grain the stop cannot read: a lamp caught off one polished surface onto another every few hundred samples, a bright dot that no count smooths. `--pt-clamp 4` holds what light bounced twice or more may add to a sample at four times white, so those dots go and the stop can settle, while a lamp seen in a mirror keeps its value. The light the bound took is written in the recipe, since a bound like that is a bias: a percent or two is a clean picture, and several percent beside grain that did not move means the grain was one-bounce light, which the bound leaves alone, and the scene wants its count instead. A polished surface small on the canvas is a third kind: a bead a dozen pixels wide mirrors a whole lit room, so each pixel's footprint on it fans over a wide cone of directions. The tracer reads the surroundings and the lights at that footprint rather than at one direction of it. A field of such beads then comes out clean at a count that left it grain, and a flat mirror reads as sharp as ever. A sequence has one more saving: most of a frame's light is last frame's. `--pt-reuse 8` carries up to eight frames' worth of samples into each frame, following every pixel back to where it was (a declared mover's own motion, or the camera's through the depth), taking only what belonged to the same surface, and trusting it only as far as the frame's own grain allows, so a reflection that slides over a ball is followed rather than smeared. A sequence at 32 samples a frame then shows the grain of 256, and that grain holds still from frame to frame. The idea is the temporal half of the Schied filter named below, written for an offline sequence. And when the hours are what is fixed, `--pt-seconds 10` gives each frame ten seconds in place of a count, the way production renderers offer a time limit beside a sample count, and the count follows the scene. The frame the clock leaves is a fixed render of the count it reached, byte for byte, and the recipe records that count, so a frame you liked re-renders exactly from it.
-
-The traced frame adds what the live one leaves out. Shadows from an area light sharpen at contact and soften with distance. Color bleeds between neighboring surfaces. Every polished surface mirrors the scene, including the other mirrors. A `.glass` material bends the view through a solid body. A colored one tints the light crossing it, so even its shadow glows with the light that got through. A mesh with an emissive material becomes a lamp with a shape and lights its neighbors like a softbox. A stylized finish keeps the look it has in the window. A toon ball keeps its bands, velvet its rim, glitter its flakes, and jade the glow at its edges, each with a traced shadow. Textures, normal maps, surface maps, and emissive maps all reach the traced light. So do the copies of [Chapter 30](30-Landscapes.md#ten-thousand-of-the-same-thing-instancing), so a field of ten thousand pebbles shadows and mirrors like ten thousand placed by hand.
-
-The camera also gains a real lens. Set `aperture` and `focusDistance` on your `Camera3D`, and the export has true depth of field, while the live window stays sharp for framing.
-
-Your light rig comes over as you left it. The tracer follows the light itself, so it needs no `castShadows()`, and every lamp in the frame throws a shadow. A light you told not to cast one still casts none, which matters because the fill light in a preset rig is such a light. It needs an Apple silicon Mac, and [the reference](../Docs/Output/PathTraced.md) lists what the traced frame adds and what stays with the usual drawing.
-
-### Grain filtered out: denoising
-
-What is left of the error in a traced render is grain. Taking it away by adding paths costs the square: four times the paths for half the grain. `--denoise` filters it out instead, for a clean still at a fraction of the time. Its filter is the edge-avoiding wavelet of Holger Dammertz and colleagues, from 2010. The variance-guided weights of Christoph Schied and colleagues, from 2017, steer it.
-
-The tracer wrote down what it hit, not only what it saw. It kept the first surface's own color, the way it faces, and how far off it is. It also kept how much each pixel's samples disagreed. The filter divides the light by that color, smooths the light alone, and multiplies the color back. A texture keeps its edges and a silhouette keeps its line, because neither was ever in the part being smoothed. The strength comes from the disagreement, so a thin render is smoothed hard and a nearly finished one only a little. On the scene of the [`PathTraced` example](../Examples/3D/Effects/PathTraced/Sketch.swift), 64 filtered samples land about where 240 raw ones would.
-
-It is off unless you ask. A raw render shows only what was traced, and a real sparkle reads softer once the filter has been over it. The lamplit room makes a still this way. Give its camera a real lens with `lens.aperture = 0.05` and `lens.focusDistance = 3.7`, after `lens.apertureBlades = 6` and before `camera(lens)`, then trace it:
-
-```sh
-swift run OllinLive MySketches/LamplitRoom.swift --export lamplit-room.png --path-traced 512 --denoise
-```
-
-The traced frame has true depth of field, focused on the glass, and its out-of-focus highlights are hexagons for the same six blades. The focused spot under the glass does not carry over. It comes from the live `caustics()`, so in the traced frame the glass throws a plain, paler shadow instead.
+An export doesn't wait for anything to settle. Each frame averages its own shifted passes and gathers its bounce in full. So each frame is finished when it is written, and the file cannot flicker. A still of the room can go one step further, traced path by path, and [Chapter 35](35-TheLensAndTheSlowRender.md#light-followed-path-by-path-the-path-traced-export) shows how.
 
 ## More for polished surfaces: reflection chains and specular anti-aliasing
 
@@ -418,81 +373,6 @@ It finds the detail on its own. A flat wall holds one direction across every pix
 It has two limits. A highlight so bright that it has already gone flat white cannot be calmed, and widening it only spreads that white. Turn the strength down if a picture reads softer rather than steadier. The measurement also comes from the pixels next door, so detail far below one pixel is guessed rather than measured.
 
 The [`SpecularAntialias` example](../Examples/3D/Effects/SpecularAntialias/Sketch.swift) is a bed of small polished balls under one hard light, with the toggle and the strength on parameters. The plate standing behind them is flat, so it never changes. Watch the balls at the back of the bed, where they are smallest.
-
-## The blur a lens makes: bokeh and depth of field from light
-
-The room's six blades shaped its ghosts and its star. The same opening shapes a blur. Out of focus, a point of light spreads into a picture of the opening its light came through. [Chapter 27](27-3DGently.md#what-the-depth-buffer-is-for-ambient-occlusion-and-defocus)'s `.defocus` blurs a scene by its depth, and it can take that opening's shape. `depthOfField()` blurs the whole frame through the camera's own lens. A blur can also be built another way, from samples of light that each pass through a lens.
-
-### The shape of a blur: bokeh
-
-Photographers call the look of out-of-focus light **bokeh**, from a Japanese word for blur. A point of light out of focus becomes a copy of the lens's opening. So a lens with six blades turns every blurred highlight into a hexagon. Near the corners of the frame, the lens barrel clips the opening from one side, and the highlight narrows into a lemon shape. That clipped shape is called a cat's eye, and the barrel's clip is called optical vignetting. Lawrence McIntosh, Bernhard Riecke, and Steve DiPaola showed in 2012 how a blur worked out from a finished frame can carry a polygon opening. Craig Kolb, Don Mitchell, and Pat Hanrahan reproduced that vignetting in 1995 by tracing rays through a whole lens.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/34-TracedLight/TheOpening-dark.jpg">
-  <img src="Images/34-TracedLight/TheOpening.jpg" alt="Three panels of the same handful of out-of-focus lights: round blobs through a round opening, clean pentagons through a five-bladed iris, and, once the barrel is added, highlights that read round in the middle and are clipped into lemons toward the corners" width="680">
-</picture>
-
-Hand `.defocus` a `blades` count and every highlight becomes a polygon of that many sides. `catsEye` adds the barrel. At full strength its round opening trims even the middle highlights, as the third panel shows, and toward the corners they clip into lemons. Add both to [Chapter 27](27-3DGently.md#what-the-depth-buffer-is-for-ambient-occlusion-and-defocus)'s `.defocus` line:
-
-```swift
-let focused = scene.combined(with: scene.depth,
-                             .defocus(focus: 0.46, range: 0.13, maxBlur: 16, blades: 5, catsEye: 1))
-```
-
-Leave `blades` out, and a scene defocused by its own depth takes the count from the camera that drew it. So one line, `lens.apertureBlades = 6`, shapes this blur, the flare ghosts of [the lens flare](#light-in-the-camera-lens-flare), and the path-traced export together. Name `blades` at the call only for a blur no camera knows about, such as one over a depth ramp you drew by hand. The blur gathers a fixed number of samples. A light smaller than the space between them shows the pattern of the gather instead of a clean edge. So keep a light a few pixels across, or raise `quality`.
-
-### The frame through the camera's lens: depthOfField()
-
-`.defocus` blurs a layer by a depth layer you hand it. `depthOfField()` blurs the main canvas itself, by its own depth, through the camera's lens. It is for a 3D scene that should read as photographed, with one distance sharp and the rest soft, while the window keeps running. How far each point spreads is the circle of confusion Michael Potmesil and Indranil Chakravarty worked out for a camera lens in 1981. The blur gathers each pixel's neighbors as if each one scattered its light into a disc, as Jorge Jimenez described in 2014. A small lamp then keeps its light as it opens.
-
-<img src="Images/34-TracedLight/ThroughTheLens.jpg" alt="Five balls standing on a wooden floor at five distances, with the lens focused on the red one in the middle: the red ball and the floor around it are sharp, the teal ball nearest the camera is soft and spreads past its own edge over the floor, the yellow one is a little soft, the green and violet ones behind soften, and a string of small lamps along the back opens into six-sided discs" width="680">
-
-The lens is the camera's own. Give it an `aperture`, a radius in world units, and call `depthOfField()` in `draw()`. It focuses on the target unless `focusDistance` says otherwise:
-
-```swift
-var lens = Camera3D.perspective(eye: Vector3(-1.6, 0.75, 4.6), target: Vector3(0.2, 0.35, 0))
-lens.aperture = 0.14          // 0 is a pinhole, sharp everywhere
-lens.apertureBlades = 6       // six-sided lamps, as in the room
-camera(lens)
-depthOfField()
-```
-
-The nearest ball turns into a veil over the floor, and the lamps along the back open into hexagons, each drawn as a disc of its own: a light only a few pixels across would slip between the gather's samples, so it is scattered instead, and its disc comes out even at every quality. `focusRange` holds a band sharp either side of the focus, for a whole subject in focus. The blur runs after the edge average and before the motion blur, so the lamplit room could carry all three. What a blurred foreground hides is read from a second drawing of the scene behind it. The nearest ball's halo over the horizon then carries the floor the ball hides, not the dark above it.
-
-A caption over the room would blur with the floor under it, since the pass reads only depth. `withOverlay` holds its block back and draws it after the lens, the edge average, the motion blur, and the frame filters, so a readout stays sharp over all of them:
-
-```swift
-withOverlay {
-    fill(.white)
-    drawText("f/1.4", 24, height - 24)
-}
-```
-
-The block lands over everything else in the frame whatever order it was called in, a blend mode inside it reads the finished picture, and over a canvas that piles up (`noClear()`) it is drawn each frame without joining the pile.
-
-### A lens made of samples: depth of field from light
-
-`.defocus` blurs a finished frame by reading each pixel's depth. A second route builds the blur out of light. [Chapter 26](26-ParticleSimulations.md#a-million-grains-gpu-particles) drew a million grains with `style: .light` into [Chapter 19](19-LayersAndEffects.md#converging-instead-of-brightening-the-running-mean)'s `Accumulator`, and the picture converged instead of brightening. Send each sample through a lens on its way in, and the running mean converges to a photograph with depth of field. It is for scenes made of many thin lines or points, where each sample can carry its own blur. It follows Anders Hoff's depth-of-field essays at inconvergent.net, and Domenico Bruzzese's Blurry library was read for its shape.
-
-The lens is a `Bokeh`, with a `focalDistance`, where things are sharp, and a `strength`, how fast the blur grows with distance from that plane. Here is a sphere of rings through three of them:
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/34-TracedLight/ThroughALens-dark.jpg">
-  <img src="Images/34-TracedLight/ThroughALens.jpg" alt="Three dark square panels of the same sphere made of rings of light, with a burst of bright spokes at its center. Left, labeled strength 0, every ring is crisp near and far and the sphere reads as a wire model. Middle, at the example's setting, the near rim stays sharp while the far side melts into pale fog. Right, wide open, the sphere is a soft glowing ball with only a faint rim and the central burst still readable" width="680">
-</picture>
-
-With the strength at zero every ring is sharp, near and far, and the sphere reads as a wire model. At the example's own setting, the near rim stays crisp while the far side dissolves, as it would in a photograph. Opened wide, only the plane of focus stays sharp. Each sample lands in a disc sized by its own distance from the plane of focus. The running mean adds those discs up until the bokeh appears. So a print takes a few hundred passes to settle, and an exported frame wants `--settle`, which [Chapter 42](42-FinishingASketch.md#settled-then-written-a-running-mean-in-a-video) explains.
-
-For a scene made of lines, `LineSpray` is that pipeline in one call. `makeLineSpray` takes the lines once in `setup()`, with a `Bokeh` as the lens, and `drawLineSpray` adds a few passes each frame:
-
-```swift
-spray = makeLineSpray(lines, sampling: .perLine(10), passesPerFrame: 5,
-                      bokeh: Bokeh(focalDistance: 49.19, strength: 0.095, minSize: 0.015))
-// …each frame, with a camera set:
-drawLineSpray(spray)
-```
-
-`sampling: .perLine(10)` gives every line ten points a pass, and the bokeh's `minSize` is the smallest disc a point is drawn as, so a line in focus keeps a little width. A line's `weight` asks for a share of the ten, so a faint line can take fewer, and a line with no light takes none. The `Rendering/LineSpray` example is the sphere of a hundred and fifty rings. The rings are bent by `curlNoise`, the three-coordinate relative of [Chapter 14](14-FieldsAndFlow.md)'s `curlField`. A curl never gathers or drains, so the rings wave as if a current had passed through the sphere, without tearing. The `Rendering/DepthOfField` example does the same from a kernel of its own, with millions of samples a frame over any geometry. The [depth of field page](../Docs/Drawing/DepthOfField.md) has the lens and the rules.
 
 ## What else reads the motion: a changing mesh, fewer pixels, and fewer frames
 
@@ -551,7 +431,7 @@ Your clock does not change. `time` still runs on real seconds, so the motion kee
 
 It has two costs. A drawn frame waits one refresh before it is shown, because the made frame belongs in front of it. So everything arrives about sixteen milliseconds later than it would, and a sketch steered by the mouse can feel that. A made frame is also a guess. Where something moves further than the interpolator can follow, it repeats the drawn frame instead of smearing it. The first frame after it starts has nothing to pair with, so it is repeated, and turning it on shows nothing odd.
 
-An ordinary export never interpolates, so a still or a video carries only the frames you drew. A slow-motion export can ask for made frames on purpose, which [Chapter 42](42-FinishingASketch.md#slower-than-it-happened-slow-motion) covers. The [`FrameInterpolation` example](../Examples/3D/Effects/FrameInterpolation/Sketch.swift) is a ring of orbiting blocks with a fast arm sweeping through them, with the toggle and a speed parameter. Turn the speed up until the arm stops keeping up, which is where the made frames fail.
+An ordinary export never interpolates, so a still or a video carries only the frames you drew. A slow-motion export can ask for made frames on purpose, which [Chapter 43](43-FinishingASketch.md#slower-than-it-happened-slow-motion) covers. The [`FrameInterpolation` example](../Examples/3D/Effects/FrameInterpolation/Sketch.swift) is a ring of orbiting blocks with a fast arm sweeping through them, with the toggle and a speed parameter. Turn the speed up until the arm stops keeping up, which is where the made frames fail.
 
 ## Where this comes from
 
@@ -561,15 +441,13 @@ The camera's side is written the same way. Temporal anti-aliasing is written fro
 
 ## Go deeper
 
-- [Depth effects](../Docs/Drawing/Effects.md#combined): `.screenSpaceReflections` and `.defocus`, with the iris `blades` and `catsEye` that shape a blur.
-- [The traced and temporal tiers](../Docs/3D/3D.md): ray-traced and glossy reflections and their depth, the global-illumination probe field, temporal anti-aliasing with `withMotion` and `drawMesh(_:previous:)`, specular anti-aliasing, [depth of field](../Docs/3D/3D.md#depth-of-field), motion blur, temporal upscaling, and frame interpolation, each with what it needs and what it costs.
+- [Depth effects](../Docs/Drawing/Effects.md#combined): `.screenSpaceReflections`, the reflection made from the finished picture and its depth layer.
+- [The traced and temporal tiers](../Docs/3D/3D.md): ray-traced and glossy reflections and their depth, the global-illumination probe field, temporal anti-aliasing with `withMotion` and `drawMesh(_:previous:)`, specular anti-aliasing, motion blur, temporal upscaling, and frame interpolation, each with what it needs and what it costs.
 - [Lights](../Docs/3D/3D.md#lights) and [which sources flare](../Docs/3D/LensFlare.md#sources): the spot light the room hangs, and a glowing body drawn where a light sits.
 - [Caustics](../Docs/3D/Caustics.md): what casts and what receives, the emitting light's priority, dispersion, the quality setting, and how the photon chain works.
 - [Lens flare](../Docs/3D/LensFlare.md): the lens as a stack of glass surfaces, the bundled prescriptions and writing your own, the iris and its blades, which sources flare, and how a flare follows what the camera can see.
-- [Depth of field from light](../Docs/Drawing/DepthOfField.md): `LineSpray` and the `Bokeh` lens, sampling lines by length or per line, the running mean underneath, and the same pipeline from a kernel over any geometry.
-- [Path-traced export](../Docs/Output/PathTraced.md): what the traced frame adds and what stays raster, the sample count and its timings, the real lens, and the grain filter.
-- Worked examples: [`Examples/3D/Effects/ScreenSpaceReflections`](../Examples/3D/Effects/ScreenSpaceReflections/Sketch.swift), [`RayTracedReflections`](../Examples/3D/Effects/RayTracedReflections/Sketch.swift), [`Examples/3D/Lighting/GlobalIllumination`](../Examples/3D/Lighting/GlobalIllumination/Sketch.swift), [`Caustics`](../Examples/3D/Lighting/Caustics/Sketch.swift), [`Examples/3D/Effects/TemporalAA`](../Examples/3D/Effects/TemporalAA/Sketch.swift), [`SpecularAntialias`](../Examples/3D/Effects/SpecularAntialias/Sketch.swift), [`MotionBlur`](../Examples/3D/Effects/MotionBlur/Sketch.swift), [`LensFlare`](../Examples/3D/Effects/LensFlare/Sketch.swift), [`SceneDefocus`](../Examples/3D/Effects/SceneDefocus/Sketch.swift), [`Upscaling`](../Examples/3D/Effects/Upscaling/Sketch.swift), [`FrameInterpolation`](../Examples/3D/Effects/FrameInterpolation/Sketch.swift), [`PathTraced`](../Examples/3D/Effects/PathTraced/Sketch.swift), and the lens made of samples in [`Examples/Rendering/DepthOfField`](../Examples/Rendering/DepthOfField/Sketch.swift) and [`LineSpray`](../Examples/Rendering/LineSpray/Sketch.swift).
+- Worked examples: [`Examples/3D/Effects/ScreenSpaceReflections`](../Examples/3D/Effects/ScreenSpaceReflections/Sketch.swift), [`RayTracedReflections`](../Examples/3D/Effects/RayTracedReflections/Sketch.swift), [`Examples/3D/Lighting/GlobalIllumination`](../Examples/3D/Lighting/GlobalIllumination/Sketch.swift), [`Caustics`](../Examples/3D/Lighting/Caustics/Sketch.swift), [`Examples/3D/Effects/TemporalAA`](../Examples/3D/Effects/TemporalAA/Sketch.swift), [`SpecularAntialias`](../Examples/3D/Effects/SpecularAntialias/Sketch.swift), [`MotionBlur`](../Examples/3D/Effects/MotionBlur/Sketch.swift), [`LensFlare`](../Examples/3D/Effects/LensFlare/Sketch.swift), [`Upscaling`](../Examples/3D/Effects/Upscaling/Sketch.swift), and [`FrameInterpolation`](../Examples/3D/Effects/FrameInterpolation/Sketch.swift).
 
 ---
 
-[Contents](README.md#contents) · Previous: [Chapter 33, Sculpting with fields](33-SculptingWithFields.md) · Next: [Chapter 35, Seeing](35-Seeing.md)
+[Contents](README.md#contents) · Previous: [Chapter 33, Sculpting with fields](33-SculptingWithFields.md) · Next: [Chapter 35, The lens and the slow render](35-TheLensAndTheSlowRender.md)

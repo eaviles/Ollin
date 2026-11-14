@@ -285,16 +285,16 @@ Most of the addons that sketches reach for, and a few core classes, have counter
 | openFrameworks | In Ollin | Reference |
 |---|---|---|
 | ofxGui | `@Param` properties, shown in the inspector | [Parameters](../Docs/Helpers/Parameters.md); [Chapter 1](01-HelloOllin.md#putting-it-together-a-breathing-ring) |
-| ofxOsc | `OSCReceiver` and `OSCSender`, in `OllinOSC` | [OSC](../Docs/Integration/OSC.md); [Chapter 39](39-ControlsAndSignals.md#parameters-from-anywhere-midi-and-osc) |
-| ofxMidi | `MIDIInput` and `MIDIOutput`, in `OllinMIDI` | [MIDI](../Docs/Integration/MIDI.md); [Chapter 39](39-ControlsAndSignals.md#parameters-from-anywhere-midi-and-osc) |
-| ofxOpenCv, ofxCv | `OllinVision`, on Apple's Vision framework: faces, hands, bodies, and `ContourDetector` for outlines | [Vision](../Docs/Vision/Vision.md); [Chapter 35](35-Seeing.md) |
+| ofxOsc | `OSCReceiver` and `OSCSender`, in `OllinOSC` | [OSC](../Docs/Integration/OSC.md); [Chapter 40](40-ControlsAndSignals.md#parameters-from-anywhere-midi-and-osc) |
+| ofxMidi | `MIDIInput` and `MIDIOutput`, in `OllinMIDI` | [MIDI](../Docs/Integration/MIDI.md); [Chapter 40](40-ControlsAndSignals.md#parameters-from-anywhere-midi-and-osc) |
+| ofxOpenCv, ofxCv | `OllinVision`, on Apple's Vision framework: faces, hands, bodies, and `ContourDetector` for outlines | [Vision](../Docs/Vision/Vision.md); [Chapter 36](36-Seeing.md) |
 | ofxBox2d | `World`, in `OllinPhysics`, with Box2D bundled | [Physics](../Docs/Simulation/Physics.md); [Chapter 11](11-ForcesAndPhysics.md) |
-| ofxSyphon | `SyphonServer` and `SyphonClient`, in `OllinSyphon` | [Syphon](../Docs/Integration/Syphon.md); [Chapter 44](44-Performing.md#live-feeds-into-other-apps) |
+| ofxSyphon | `SyphonServer` and `SyphonClient`, in `OllinSyphon` | [Syphon](../Docs/Integration/Syphon.md); [Chapter 45](45-Performing.md#live-feeds-into-other-apps) |
 | ofxFX | the `Filter` catalog, on layers | [Effects](../Docs/Drawing/Effects.md); [Chapter 19](19-LayersAndEffects.md) |
 | ofxAssimpModelLoader | `loadMesh` and `loadScene` | [Scenes](../Docs/3D/Scenes.md); [Chapter 28](28-Meshes.md) |
-| ofVideoGrabber, ofVideoPlayer | `Camera` in `OllinVision`, `VideoPlayer` in `OllinVideo` | [Vision](../Docs/Vision/Vision.md), [Video](../Docs/Video/Video.md); [Chapter 35](35-Seeing.md) |
-| ofSoundPlayer, ofSoundStream | `AudioPlayer` to play a file, `AudioInput` and `AudioAnalyzer` to listen, and `Synth` to make sound, in `OllinAudio` | [Audio](../Docs/Helpers/Audio.md), [Synthesis](../Docs/Helpers/Synthesis.md); [Chapter 38](38-Listening.md), [Chapter 40](40-MakingSound.md) |
-| ofxDmx | `DMXSender` and `DMXReceiver`, in `OllinDMX` | [DMX](../Docs/Integration/DMX.md); [Chapter 46](46-Installations.md#light-instead-of-pixels-dmx-and-led-maps) |
+| ofVideoGrabber, ofVideoPlayer | `Camera` in `OllinVision`, `VideoPlayer` in `OllinVideo` | [Vision](../Docs/Vision/Vision.md), [Video](../Docs/Video/Video.md); [Chapter 36](36-Seeing.md) |
+| ofSoundPlayer, ofSoundStream | `AudioPlayer` to play a file, `AudioInput` and `AudioAnalyzer` to listen, and `Synth` to make sound, in `OllinAudio` | [Audio](../Docs/Helpers/Audio.md), [Synthesis](../Docs/Helpers/Synthesis.md); [Chapter 39](39-Listening.md), [Chapter 41](41-MakingSound.md) |
+| ofxDmx | `DMXSender` and `DMXReceiver`, in `OllinDMX` | [DMX](../Docs/Integration/DMX.md); [Chapter 47](47-Installations.md#light-instead-of-pixels-dmx-and-led-maps) |
 
 Here is ofxGui beside its Ollin form, which has no panel code at all:
 
@@ -332,7 +332,7 @@ ollin new Spinner.swift                # one file
 ollin Spinner.swift                    # run it live
 ```
 
-The bigger change is the working loop. In openFrameworks you rebuild, relaunch, and start again from the first frame. Ollin's live host keeps the window open instead. Save the file and it recompiles just the sketch, then swaps it into the running window. A compile error leaves the last good version running. `--keep-clock` carries `time` across the swap, so an animation doesn't jump back to its start. [Chapter 1](01-HelloOllin.md) sets the host up. [Chapter 44](44-Performing.md) carries the clock across a swap on stage, and [Chapter 45](45-HandingItOver.md#in-your-pocket-the-sketch-on-the-phone) carries it across a reinstall on a phone. [The project generator](../Docs/Tools/ProjectGenerator.md) lists every kind of project it writes.
+The bigger change is the working loop. In openFrameworks you rebuild, relaunch, and start again from the first frame. Ollin's live host keeps the window open instead. Save the file and it recompiles just the sketch, then swaps it into the running window. A compile error leaves the last good version running. `--keep-clock` carries `time` across the swap, so an animation doesn't jump back to its start. [Chapter 1](01-HelloOllin.md) sets the host up. [Chapter 45](45-Performing.md) carries the clock across a swap on stage, and [Chapter 46](46-HandingItOver.md#in-your-pocket-the-sketch-on-the-phone) carries it across a reinstall on a phone. [The project generator](../Docs/Tools/ProjectGenerator.md) lists every kind of project it writes.
 
 ## From OPENRNDR
 
@@ -519,7 +519,7 @@ Anything else is a `Shader` over a layer, kept inside the shape by a mask. In a 
 | orx-camera | `cameraControl()` and `cameraShowcase()` | [Camera](../Docs/3D/Camera.md); [Chapter 27](27-3DGently.md) |
 | orx-noise | `noise`, `simplexNoise`, `fbm`, and the `signed…` forms | [Noise](../Docs/Generators/Noise.md); [Chapter 5](05-Noise.md) |
 | orx-shapes | `drawCurve(_:closed:spline:)` with `.hobby`, `convexHull(of:)`, `offset(by:join:)`, `simplified(tolerance:)` | [Geometry](../Docs/Drawing/Geometry.md); [Chapter 15](15-ShapesAsMaterial.md), [Chapter 16](16-CurvesAndFigures.md) |
-| orx-osc, orx-midi, orx-syphon | `OllinOSC`, `OllinMIDI`, `OllinSyphon` | [Integration](../Docs/Integration/README.md); [Chapter 39](39-ControlsAndSignals.md), [Chapter 44](44-Performing.md#live-feeds-into-other-apps) |
+| orx-osc, orx-midi, orx-syphon | `OllinOSC`, `OllinMIDI`, `OllinSyphon` | [Integration](../Docs/Integration/README.md); [Chapter 40](40-ControlsAndSignals.md), [Chapter 45](45-Performing.md#live-feeds-into-other-apps) |
 
 Parameters take one line rather than an annotated object registered with a panel. `@DoubleParameter("radius", 10.0, 300.0)` on a settings object, added with `gui.add`, is the same `@Param(10...300)` shown in the openFrameworks half.
 
@@ -531,7 +531,7 @@ orx-olive and `OllinLive` both keep the window open while you edit. Olive evalua
 swift run OllinLive Pulse.swift
 ```
 
-`extend(…)` is here too. A `SketchExtension` hooks setup and before and after the draw, as an OPENRNDR extension does, and it can also receive each finished frame. [Chapter 45](45-HandingItOver.md#adding-behavior-from-outside-draw-sketchextension) teaches it. It has no hook for when the sketch shuts down. Screenshots and screen recording are run flags, `--export` and `--export-video`, rather than extensions. Syphon reads almost the same in both:
+`extend(…)` is here too. A `SketchExtension` hooks setup and before and after the draw, as an OPENRNDR extension does, and it can also receive each finished frame. [Chapter 46](46-HandingItOver.md#adding-behavior-from-outside-draw-sketchextension) teaches it. It has no hook for when the sketch shuts down. Screenshots and screen recording are run flags, `--export` and `--export-video`, rather than extensions. Syphon reads almost the same in both:
 
 ```kotlin
 extend(SyphonServer("Pulse"))

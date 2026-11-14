@@ -32,7 +32,9 @@
 #   5. The footer chain is contiguous, and each Previous/Next title matches the
 #      title of the file it points at.
 #   6. A chapter's filename number, breadcrumb number and H1 number agree.
-#   7. Guide/README.md's contents list matches the files on disk.
+#   7. Guide/README.md's contents list matches the files on disk, and the
+#      chapter range "How to read it" gives each part is the one the contents
+#      list under that part.
 #   8. Guide/PLAN.md's status table matches the files on disk.
 #   9. Every chapter token names a chapter that exists: `Ch N` in PLAN.md and
 #      Appendix D, and `Guide Ch N § *Heading*` in CAPABILITIES.md, where the
@@ -351,6 +353,33 @@ for n, line in enumerate(lines[GUIDE / "README.md"], 1):
     m = re.match(r"^(\d+)\. \*\*\[[^\]]+\]\((\d\d)-[A-Za-z0-9]+\.md\)", line)
     if m and m.group(1) != str(int(m.group(2))):
         fail(f"Guide/README.md:{n}", f"contents entry is numbered {m.group(1)}, the chapter is {int(m.group(2))}")
+
+# "How to read it" names each part's chapters as a range, in lowercase prose
+# that no chapter form matches. A split shifts every part after it and a new
+# chapter widens the part it joins, and those ranges sat a release behind with
+# nothing reading them. Each has to be the first and last chapter the contents
+# list under that part's heading.
+part_chapters = {}
+current_part = None
+for line in lines[GUIDE / "README.md"]:
+    heading = re.match(r"^### Part ([IVX]+):", line)
+    if heading:
+        current_part = heading.group(1)
+    elif line.startswith("#"):
+        current_part = None
+    entry = re.match(r"^(\d+)\. \*\*\[", line)
+    if entry and current_part:
+        part_chapters.setdefault(current_part, []).append(int(entry.group(1)))
+for n, line in enumerate(lines[GUIDE / "README.md"], 1):
+    m = re.match(r"^- \*\*Part ([IVX]+), chapters (\d+) to (\d+)\.\*\*", line)
+    if not m:
+        continue
+    held = part_chapters.get(m.group(1))
+    if not held:
+        fail(f"Guide/README.md:{n}", f"Part {m.group(1)} is described here and the contents have no such part")
+    elif (int(m.group(2)), int(m.group(3))) != (min(held), max(held)):
+        fail(f"Guide/README.md:{n}", f"Part {m.group(1)} is described as chapters {m.group(2)} to {m.group(3)}, "
+             f"and the contents list {min(held)} to {max(held)} under it")
 
 # A row still at `not started` is a chapter the plan has reserved and nobody
 # has written yet, so it is the one row allowed to name a file that is not

@@ -10,7 +10,8 @@
 # carried by more surfaces than anyone can hold in their head: the file itself,
 # both asset trees, the breadcrumb, the H1, two footer links per neighbor, the
 # contents list, the status table, the coverage matrix, Appendix D's table
-# per chapter, the section pointers in CAPABILITIES.md, the chapter credits
+# per chapter, the part ranges in the Guide's "How to read it", the section
+# pointers in CAPABILITIES.md, the chapter credits
 # in ATTRIBUTION.md, the snippet preamble
 # and its recorded gaps, the Guide hero's list of finished sketches, and the
 # chapter links in the changelog's old entries. Doing that by hand
@@ -211,10 +212,24 @@ def relink(m):
     return f"{m.group(1)}{renumbered(n, name)}{m.group(4)}"
 
 
+# The README's "How to read it" list writes its chapters in lowercase prose
+# ("chapters 27 to 35", "chapter 31 also wants the physics from chapter 11"),
+# which no form above matches. On those lines every number is a chapter except
+# a page count, so each moves unless " pages" follows it or the capitalized
+# form in front of it has already moved it. A part that gains a new chapter
+# still needs its range's end set by hand, and check-links.sh says so.
+PART_LINE = re.compile(r"^- \*\*Part [IVX]+, chapters .*$", re.M)
+PART_NUMBER = re.compile(r"(?<!Chapter )\b(\d+)\b(?! pages)")
+
+
 def rewrite(path, body):
     if path == CHANGELOG:
         return LINKED.sub(relink, body)
-    return (NARROW if path in bare_scope else WIDE).sub(substitute, body)
+    body = (NARROW if path in bare_scope else WIDE).sub(substitute, body)
+    if path == GUIDE / "README.md":
+        body = PART_LINE.sub(
+            lambda line: PART_NUMBER.sub(lambda m: str(moved(m.group(1))), line.group(0)), body)
+    return body
 
 
 changed = []

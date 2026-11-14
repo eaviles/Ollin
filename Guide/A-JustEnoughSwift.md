@@ -242,7 +242,7 @@ The guide uses five, all from Ollin:
 @Saved var visits = 0                                         // kept when the sketch restarts
 ```
 
-`@Param` shows the property as a live control in the host's inspector, which [Chapter 1](01-HelloOllin.md) sets up. Later chapters bind MIDI knobs and OSC faders to the same properties. A binding spells the property `$size` when it wants the parameter itself rather than its current value. [Chapter 3](03-MotionAndTime.md#values-that-chase-a-target-eased-and-sprung) teaches `@Eased` and `@Sprung`, and [Chapter 39](39-ControlsAndSignals.md#a-value-that-is-not-a-parameter-smoothed) teaches `@Smoothed`. All three change *when* the value moves, not what it is. `@Saved` keeps a value when the sketch starts again. [Chapter 44](44-Performing.md#performing-the-code-itself-live-coding) uses it to carry state across a live-coding edit, and [Chapter 46](46-Installations.md#picking-up-where-it-left-off-checkpoints-and-saved) to carry an installation across a relaunch. You won't write your own wrappers in this guide, and recognizing the `@` is enough.
+`@Param` shows the property as a live control in the host's inspector, which [Chapter 1](01-HelloOllin.md) sets up. Later chapters bind MIDI knobs and OSC faders to the same properties. A binding spells the property `$size` when it wants the parameter itself rather than its current value. [Chapter 3](03-MotionAndTime.md#values-that-chase-a-target-eased-and-sprung) teaches `@Eased` and `@Sprung`, and [Chapter 40](40-ControlsAndSignals.md#a-value-that-is-not-a-parameter-smoothed) teaches `@Smoothed`. All three change *when* the value moves, not what it is. `@Saved` keeps a value when the sketch starts again. [Chapter 45](45-Performing.md#performing-the-code-itself-live-coding) uses it to carry state across a live-coding edit, and [Chapter 47](47-Installations.md#picking-up-where-it-left-off-checkpoints-and-saved) to carry an installation across a relaunch. You won't write your own wrappers in this guide, and recognizing the `@` is enough.
 
 ## Strings, briefly
 
@@ -281,7 +281,7 @@ Beyond `+`, `-`, `*`, and `/`, the listings use a few more operators. The compar
 | `60_000` | Underscores group the digits of a long number, and Swift ignores them. | [Chapter 23](23-IteratedForms.md#the-same-fern-played-as-a-game-the-chaos-game) |
 | `SIMD4<Float>(…)` | Four `Float` values packed together, the shape a GPU reads them in. | [Chapter 26](26-ParticleSimulations.md#a-million-grains-gpu-particles) |
 | `x.squareRoot()`, `x.rounded()` | The square root of `x`, and the nearest whole number, still a `Double`. | [Chapter 28](28-Meshes.md#putting-it-together-the-raked-garden) |
-| `x &* y`, `x ^ y`, `x >> 29`, `1 << 23` | Arithmetic on the bits of a whole number, used to scramble a counter into noise. `&*` multiplies and lets a result that is too large wrap around, where `*` would stop the program. `^` mixes the bits of two numbers, and `>>` and `<<` slide the bits right or left by that many places. | The `StageMic` class that [Chapter 38](38-Listening.md#a-band-that-plays-the-same-every-run-stagemic) has you copy |
+| `x &* y`, `x ^ y`, `x >> 29`, `1 << 23` | Arithmetic on the bits of a whole number, used to scramble a counter into noise. `&*` multiplies and lets a result that is too large wrap around, where `*` would stop the program. `^` mixes the bits of two numbers, and `>>` and `<<` slide the bits right or left by that many places. | The `StageMic` class that [Chapter 39](39-Listening.md#a-band-that-plays-the-same-every-run-stagemic) has you copy |
 
 ### Loops and choices
 
@@ -324,11 +324,11 @@ Arrays hold most of a sketch's data. The chapters use a few more of their calls,
 | `[Character: WireworldCell]` | A dictionary, a table from keys to values. `legend[ch]` looks a key up and answers an optional, since the key might be missing. | [Chapter 25](25-Automata.md#a-circuit-made-of-cells-wireworld) |
 | `[UInt8](repeating: 0, count: n)` | A list of `n` copies of one value. `UInt8` is a whole number from 0 to 255, one byte. | [Chapter 29](29-MaterialsAndSurroundings.md#putting-it-together-the-bench) |
 | `(x: Double, z: Double)` | A tuple whose parts have names, read as `.x` and `.z`. | [Chapter 28](28-Meshes.md#putting-it-together-the-raked-garden) |
-| `text.lowercased()`, `text.contains("red")` | A copy of a string in lowercase, and whether a string holds a piece of text. | [Chapter 38](38-Listening.md#words-as-they-are-spoken-speechlistener) |
-| `strokes[id, default: []]` | Reads the value for a key, or the default when the key is new, so the answer can be changed at once. | [Chapter 39](39-ControlsAndSignals.md#a-table-you-put-things-on-tuio) |
-| `Set(ids)` | A collection with no order and no repeats. Asking whether it holds a value is quick. | [Chapter 39](39-ControlsAndSignals.md#a-table-you-put-things-on-tuio) |
-| `[(drum, "C3")] as [(Shape, Pitch)]` | `as` gives Swift the type of a literal it cannot work out alone, here that `"C3"` is a `Pitch`. | [Chapter 40](40-MakingSound.md#putting-it-together-the-workbench) |
-| `samples[a ..< b]` | A slice, the elements from index `a` up to `b`, read in place without a copy. | [Chapter 40](40-MakingSound.md#putting-it-together-the-workbench) |
+| `text.lowercased()`, `text.contains("red")` | A copy of a string in lowercase, and whether a string holds a piece of text. | [Chapter 39](39-Listening.md#words-as-they-are-spoken-speechlistener) |
+| `strokes[id, default: []]` | Reads the value for a key, or the default when the key is new, so the answer can be changed at once. | [Chapter 40](40-ControlsAndSignals.md#a-table-you-put-things-on-tuio) |
+| `Set(ids)` | A collection with no order and no repeats. Asking whether it holds a value is quick. | [Chapter 40](40-ControlsAndSignals.md#a-table-you-put-things-on-tuio) |
+| `[(drum, "C3")] as [(Shape, Pitch)]` | `as` gives Swift the type of a literal it cannot work out alone, here that `"C3"` is a `Pitch`. | [Chapter 41](41-MakingSound.md#putting-it-together-the-workbench) |
+| `samples[a ..< b]` | A slice, the elements from index `a` up to `b`, read in place without a copy. | [Chapter 41](41-MakingSound.md#putting-it-together-the-workbench) |
 
 ### More about optionals
 
@@ -344,8 +344,8 @@ The section on optionals shows the four tools the guide uses most. These are the
 | `if let ball, ball.velocity.length > 900` | Unwraps and tests in one `if`, the two parts joined by a comma. | [Chapter 11](11-ForcesAndPhysics.md#putting-it-together-the-wrecking-ball) |
 | `held = nil`, `flock == nil` | Empties an optional, and asks whether it is empty. | [Chapter 11](11-ForcesAndPhysics.md#putting-it-together-the-wrecking-ball) |
 | `var flock: Boids!` | A property that starts empty and is filled in `setup()`. It is read afterward without unwrapping, on the promise that it was filled. | [Chapter 12](12-FlocksAndSwarms.md#the-flock-assembled-boids) |
-| `(index: Int, distance: Double)?` | An optional tuple, a named pair or nothing. | [Chapter 37](37-ThePhoneAsASensor.md#pointing-at-it-with-the-phone-the-wand) |
-| `timecode.map { "\($0)" }` | On an optional, `map` changes the value when there is one and stays `nil` when there isn't. | [Chapter 44](44-Performing.md#following-another-timeline-timecode) |
+| `(index: Int, distance: Double)?` | An optional tuple, a named pair or nothing. | [Chapter 38](38-ThePhoneAsASensor.md#pointing-at-it-with-the-phone-the-wand) |
+| `timecode.map { "\($0)" }` | On an optional, `map` changes the value when there is one and stays `nil` when there isn't. | [Chapter 45](45-Performing.md#following-another-timeline-timecode) |
 
 ### Functions and closures
 
@@ -363,8 +363,8 @@ The section on optionals shows the four tools the guide uses most. These are the
 | `height: (Double, Double) -> Double` | An argument that is itself a function, here one that turns two numbers into one. The caller passes a closure. | [Chapter 28](28-Meshes.md#putting-it-together-the-raked-garden) |
 | `self.bareness(u, v)` | Inside a closure, `self.` names the sketch's own method. Some closures require it, and a listing may write it anyway to show whose method it is. | [Chapter 29](29-MaterialsAndSurroundings.md#putting-it-together-the-bench) |
 | `func draw(_ collider: Collider3D, tint: Color?)` | Two functions can share a name when their labels or argument types differ, as this one does with the sketch's `draw()`. | [Chapter 31](31-WorldsWithWeight.md#putting-it-together-the-contraption) |
-| `func facing(_ p: Vector3) -> Vector3 { … }` inside an `init?` | A function declared inside another, which only that one can call. | [Chapter 37](37-ThePhoneAsASensor.md#putting-it-together-the-dancer-in-solids) |
-| `scan.mesh { surface in switch surface { … } }` | A closure that picks its answer with a `switch`, one `return` for each case. | [Chapter 37](37-ThePhoneAsASensor.md#a-surface-the-phone-already-built-the-room-mesh) |
+| `func facing(_ p: Vector3) -> Vector3 { … }` inside an `init?` | A function declared inside another, which only that one can call. | [Chapter 38](38-ThePhoneAsASensor.md#putting-it-together-the-dancer-in-solids) |
+| `scan.mesh { surface in switch surface { … } }` | A closure that picks its answer with a `switch`, one `return` for each case. | [Chapter 38](38-ThePhoneAsASensor.md#a-surface-the-phone-already-built-the-room-mesh) |
 
 ### Types of your own
 
@@ -378,12 +378,12 @@ The section on optionals shows the four tools the guide uses most. These are the
 | `lazy var sand = Particles(…)` | A property built the first time it is read, so it can use the sketch's other properties. | [Chapter 26](26-ParticleSimulations.md#a-million-grains-gpu-particles) |
 | `var paint = Material.glitter` | Copies a preset into a variable, so you can change the copy and leave the preset alone. | [Chapter 27](27-3DGently.md#materials) |
 | `hit.body === crate` | Asks whether two names point at the same object. `!==` asks whether they don't. | [Chapter 31](31-WorldsWithWeight.md#what-is-in-the-way-rays-sweeps-and-overlaps) |
-| `init?(_ body: PhoneBody) { … }` | An initializer of your own that can fail. `return nil` inside it gives back `nil` instead of a value, so what it makes is an optional. | [Chapter 37](37-ThePhoneAsASensor.md#putting-it-together-the-dancer-in-solids) |
-| `enum Style: String, CaseIterable, ParamOption { … }` | A type of your own with a fixed set of cases. The names after the colon give it abilities, such as listing its cases. | [Chapter 39](39-ControlsAndSignals.md#the-sketch-that-says-what-it-takes-oscquery) |
-| `MarkovChain<Int>` | A generic type. The type in angle brackets fills in what it holds, here whole numbers. | [Chapter 41](41-MusicByRule.md#putting-it-together-the-music-box) |
-| `final class MyOverlay: SketchExtension` | A protocol, a list of methods a type promises to have. `SketchExtension` gives each one a default that does nothing, so a class writes only the ones it needs. | [Chapter 45](45-HandingItOver.md#adding-behavior-from-outside-draw-sketchextension) |
-| `extension Sketch { public func drawSpiral(…) }` | Adds methods to a type from outside its declaration. `public` lets code in other packages call them. | [Chapter 45](45-HandingItOver.md#giving-it-to-somebody-else-an-extension-package) |
-| `Codable` | Marks a type that can be written to a file and read back, which is what lets `@Saved` keep it. | [Chapter 46](46-Installations.md#picking-up-where-it-left-off-checkpoints-and-saved) |
+| `init?(_ body: PhoneBody) { … }` | An initializer of your own that can fail. `return nil` inside it gives back `nil` instead of a value, so what it makes is an optional. | [Chapter 38](38-ThePhoneAsASensor.md#putting-it-together-the-dancer-in-solids) |
+| `enum Style: String, CaseIterable, ParamOption { … }` | A type of your own with a fixed set of cases. The names after the colon give it abilities, such as listing its cases. | [Chapter 40](40-ControlsAndSignals.md#the-sketch-that-says-what-it-takes-oscquery) |
+| `MarkovChain<Int>` | A generic type. The type in angle brackets fills in what it holds, here whole numbers. | [Chapter 42](42-MusicByRule.md#putting-it-together-the-music-box) |
+| `final class MyOverlay: SketchExtension` | A protocol, a list of methods a type promises to have. `SketchExtension` gives each one a default that does nothing, so a class writes only the ones it needs. | [Chapter 46](46-HandingItOver.md#adding-behavior-from-outside-draw-sketchextension) |
+| `extension Sketch { public func drawSpiral(…) }` | Adds methods to a type from outside its declaration. `public` lets code in other packages call them. | [Chapter 46](46-HandingItOver.md#giving-it-to-somebody-else-an-extension-package) |
+| `Codable` | Marks a type that can be written to a file and read back, which is what lets `@Saved` keep it. | [Chapter 47](47-Installations.md#picking-up-where-it-left-off-checkpoints-and-saved) |
 
 ### Failures, files, and waiting
 
@@ -396,9 +396,9 @@ A call that can fail is marked `throws` where it is declared, and every call to 
 | `in: .module` | The folder the sketch's own files are read from. | [Chapter 9](09-Pictures.md#a-picture-on-the-canvas-loadimage-and-drawimage) |
 | `import Foundation` | Apple's base library. It brings `URL`, the address of a file, and `FileManager`, which asks the disk whether a file exists. | [Chapter 29](29-MaterialsAndSurroundings.md#putting-it-together-the-bench) |
 | `do { try … } catch { … }` | Runs calls that can fail. A failure jumps to `catch`, where `error` says what went wrong. | [Chapter 31](31-WorldsWithWeight.md#a-world-saved-as-it-stands-snapshot-and-restore) |
-| `try? waitFor { try await … }` | `await` marks a call that finishes later. `waitFor` waits for it and hands back the answer. | [Chapter 35](35-Seeing.md#the-body-as-a-controller-hands-faces-and-bodies) |
-| `import simd` | Apple's library of small vectors and matrices, the kind the GPU works in. | [Chapter 36](36-Depth.md#putting-it-together-the-ghost-room) |
-| `Date()` | The date and time right now. | [Chapter 39](39-ControlsAndSignals.md#the-weather-outside-weather) |
+| `try? waitFor { try await … }` | `await` marks a call that finishes later. `waitFor` waits for it and hands back the answer. | [Chapter 36](36-Seeing.md#the-body-as-a-controller-hands-faces-and-bodies) |
+| `import simd` | Apple's library of small vectors and matrices, the kind the GPU works in. | [Chapter 37](37-Depth.md#putting-it-together-the-ghost-room) |
+| `Date()` | The date and time right now. | [Chapter 40](40-ControlsAndSignals.md#the-weather-outside-weather) |
 
 ### Comments and attributes
 
@@ -406,8 +406,8 @@ A call that can fail is marked `throws` where it is declared, and every call to 
 |---|---|---|
 | `/// …` | A comment that documents the declaration below it. Editors show it beside the name. | [Chapter 11](11-ForcesAndPhysics.md#breaking-things) |
 | `// MARK: …` | A comment that names a part of the file, for the editor's list of what the file holds. | [Chapter 29](29-MaterialsAndSurroundings.md#putting-it-together-the-bench) |
-| `@objc(RippleSaverView)` | Fixes the name the system uses to find the class. | [Chapter 45](45-HandingItOver.md#living-in-the-system-a-screen-saver) |
-| `@main` | Marks the place where a program starts. | [Chapter 45](45-HandingItOver.md#living-in-the-system-a-screen-saver) |
+| `@objc(RippleSaverView)` | Fixes the name the system uses to find the class. | [Chapter 46](46-HandingItOver.md#living-in-the-system-a-screen-saver) |
+| `@main` | Marks the place where a program starts. | [Chapter 46](46-HandingItOver.md#living-in-the-system-a-screen-saver) |
 
 ## What the guide never needed
 
@@ -424,4 +424,4 @@ If a chapter's Swift still stops you, that's a bug in this guide, not in you. Th
 
 ---
 
-[Contents](README.md#contents) · Previous: [Chapter 46, Installations](46-Installations.md) · Next: [Appendix B, Just enough math, visually](B-JustEnoughMath.md)
+[Contents](README.md#contents) · Previous: [Chapter 47, Installations](47-Installations.md) · Next: [Appendix B, Just enough math, visually](B-JustEnoughMath.md)

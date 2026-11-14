@@ -63,7 +63,8 @@ enum GuideFigures {
     /// Render configuration parsed from a figure's `// figure:` comment,
     /// scanned in the file's first lines. `frame=N` picks the still's frame
     /// and `format=png` makes it lossless; `gif` (plus optional `duration=`,
-    /// `fps=`, `width=`) renders an animated loop instead.
+    /// `fps=`, `width=`) renders an animated loop instead; `traced=N` (plus
+    /// optional `denoise`) renders the still through the path-traced export.
     struct Directive {
         var frame = 0
         var gif = false
@@ -90,6 +91,14 @@ enum GuideFigures {
         /// the same instance, so a themed figure must draw the same under a
         /// second `setup()` pass (assign state, never append). Stills only.
         var themed = false
+        /// `traced=N` renders the still through the path-traced export at N
+        /// light paths a pixel, the way `--path-traced N` does, and `denoise`
+        /// beside it turns the grain filter on. For a finished sketch whose
+        /// picture is its traced export: the figure stays the plain sketch a
+        /// reader copies, and the directive is the flag they would type.
+        /// Stills only.
+        var traced: Int?
+        var denoise = false
 
         init(source: String) {
             let head = source.split(separator: "\n", omittingEmptySubsequences: false).prefix(8)
@@ -106,6 +115,8 @@ enum GuideFigures {
                 case ("unstable", _): unstable = true
                 case ("probe", _): probe = true
                 case ("themed", _): themed = true
+                case ("denoise", _): denoise = true
+                case ("traced", let v?): traced = Int(v).flatMap { $0 > 0 ? $0 : nil }
                 case ("format", "png"): png = true
                 case ("format", "jpg"), ("format", "jpeg"): png = false
                 case ("frame", let v?): frame = Int(v) ?? frame
@@ -683,6 +694,15 @@ enum GuideFigures {
                     switch SketchLoader(sketchPath: sourcePath).load() {
                     case .success(let sketch):
                         var failure: (any Error)?
+                        // A traced figure sets the export mode the flag sets.
+                        // The mode is a global, so it goes back before the
+                        // next figure, and it stays up through the dark pass.
+                        let modeBefore = OllinApp.pathTracedExport
+                        if let samples = directive.traced, !directive.gif {
+                            OllinApp.pathTracedExport = PathTracing(samplesPerPixel: samples,
+                                                                    denoises: directive.denoise)
+                        }
+                        defer { OllinApp.pathTracedExport = modeBefore }
                         do {
                             if directive.gif {
                                 let frames = max(1, Int((directive.duration * directive.fps).rounded()))

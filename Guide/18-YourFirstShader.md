@@ -238,7 +238,7 @@ drawImage(generate(.chladni(m: 5, n: 2)).image, 0, 0)
 drawImage(generate(.chladni(m: 7, n: 3, style: .wave, phase: time)).image, 0, 0)
 ```
 
-`.sand` gathers grains onto the nodes, like the scattered sand in Chapter 14. `.wave` shows the plate swinging through its cycle instead. The same rule about `m` and `n` holds here: keep them apart, since equal modes cancel the plate to nothing. The mode numbers can also come from sound. [Chapter 38](38-Listening.md) teaches listening. The `Audio/ChladniResonance` example picks `m` and `n` by which pitches are loud. A piece of music then turns into the plate that would have produced it.
+`.sand` gathers grains onto the nodes, like the scattered sand in Chapter 14. `.wave` shows the plate swinging through its cycle instead. The same rule about `m` and `n` holds here: keep them apart, since equal modes cancel the plate to nothing. The mode numbers can also come from sound. [Chapter 39](39-Listening.md) teaches listening. The `Audio/ChladniResonance` example picks `m` and `n` by which pitches are loud. A piece of music then turns into the plate that would have produced it.
 
 This is the part to do rather than read. Take the gyroid, which is one line: a sum of three `sin` and `cos` products, read at one slice through space, the one `info.time` picks.
 

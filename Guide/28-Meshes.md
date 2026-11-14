@@ -333,7 +333,7 @@ A **metallic-roughness map** packs two dials into one image. Roughness is how sc
 
 An **occlusion map** is baked shadow for the crevices geometry doesn't have. It dims only the indirect light, the ambient and the environment. An environment is a photograph of a whole place used as light, and [Chapter 29](29-MaterialsAndSurroundings.md#surroundings-as-the-light-environments) begins with it. A lamp shining straight into a groove still lights it, which is how real crevices behave and why the convention exists. The second sphere pairs it with a normal map made from the same height field, the usual recipe. The relief catches the light, and the occlusion keeps its grooves dark.
 
-An **emissive map** makes texels give off light of their own, tinted and dimmed by an `emissiveColor` factor. It works with no lights at all, which is how the third sphere, a nearly black shell, shows engraved seams that glow. Emission is the surface's own radiance, so fog veils it with distance like everything else. A glowing surface doesn't light its neighbors unless [Chapter 34](34-TracedLight.md#light-that-bounces-global-illumination)'s global illumination is on, or the frame is path-traced for export.
+An **emissive map** makes texels give off light of their own, tinted and dimmed by an `emissiveColor` factor. It works with no lights at all, which is how the third sphere, a nearly black shell, shows engraved seams that glow. Emission is the surface's own radiance, so fog veils it with distance like everything else. A glowing surface doesn't light its neighbors unless [Chapter 34](34-TracedLight.md#light-that-bounces-global-illumination)'s global illumination is on, or the frame is [path-traced for export](35-TheLensAndTheSlowRender.md#light-followed-path-by-path-the-path-traced-export).
 
 `emissiveColor` is one color for the whole mesh. A mesh can also carry a color at each vertex, and under `emissiveColor` those either wash toward white or take one tint. To make a surface glow in its **own** colors, the fill, the vertex colors, and the texture all included, give it an intensity instead:
 
@@ -416,7 +416,7 @@ What comes back is an ordinary mesh. It draws the same and takes a material and 
 
 Before you cut, check these.
 
-**Both sides have to close.** A boolean asks what is inside each solid, so a surface with a hole in it has no answer to give. What comes back is meaningless rather than merely ugly. Most built-in generators close, but a plane, a Möbius strip, and a cylinder without caps do not. If you are unsure, `printCheck()` will tell you, the same examination [Chapter 43](43-MakingItPhysical.md#something-you-can-hold-a-3d-print) runs before it writes a mesh for a printer.
+**Both sides have to close.** A boolean asks what is inside each solid, so a surface with a hole in it has no answer to give. What comes back is meaningless rather than merely ugly. Most built-in generators close, but a plane, a Möbius strip, and a cylinder without caps do not. If you are unsure, `printCheck()` will tell you, the same examination [Chapter 44](44-MakingItPhysical.md#something-you-can-hold-a-3d-print) runs before it writes a mesh for a printer.
 
 **A cutter has to be the right way out.** Mirroring a mesh turns it inside out. So does swapping two of its coordinates, or scaling an axis by a negative number. An inside-out cutter takes away everything it should have left. Turn it instead. `mapPositions` hands you every vertex position and keeps what the closure returns, so swapping two coordinates with one sign flipped is a quarter turn:
 
