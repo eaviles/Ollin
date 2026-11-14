@@ -3,19 +3,19 @@ import Ollin
 import OllinSamplePhotos
 import OllinVision
 
-/// Objects found, boxed, and named in the live feed — a `ModelTracker` running
+/// Objects found, boxed, and named in the live feed: a `ModelTracker` running
 /// an object-detection model (YOLOv3-tiny). Where `SceneLabels` names the whole
 /// picture, a detector answers *where* and *how many*: one labeled box per
-/// thing it can name. Hold up a cup, a book, a phone — or step into frame
+/// thing it can name. Hold up a cup, a book, a phone, or step into frame
 /// yourself. An honest caveat: it's a small, dated model that misses small or
-/// far objects and knows only 80 everyday classes — the example shows the
+/// far objects and knows only 80 everyday classes. The example shows the
 /// `objects` surface, not the state of the art. The weights aren't in the
-/// repo — run `Scripts/fetch-models.sh` once and relaunch (the sketch says so
+/// repo: run `Scripts/fetch-models.sh` once and relaunch (the sketch says so
 /// on the canvas until then).
 ///
-/// Model: YOLOv3-tiny (the FP16 variant) — Apple's Core ML conversion of
+/// Model: YOLOv3-tiny (the FP16 variant), Apple's Core ML conversion of
 /// Joseph Redmon and Ali Farhadi's Darknet original (YOLO License v2, public
-/// domain) — downloaded by the fetch script, never bundled. Provenance in
+/// domain), downloaded by the fetch script, never bundled. Provenance in
 /// THIRD-PARTY-NOTICES.md.
 /// The fetched weights live in `Models/` at the repo root. This sketch runs both
 /// from there (the gallery compiles it where it sits) and from `Examples/` (a
@@ -45,8 +45,8 @@ final class ObjectDetection: Sketch {
     override func draw() {
         background(Color(white: 0.04))
 
-        // The weights are fetched, not committed — point at the script instead
-        // of failing silently when they aren't there yet.
+        // The weights are fetched, not committed, so point at the script
+        // instead of failing silently when they aren't there yet.
         guard FileManager.default.fileExists(atPath: Self.modelPath) else {
             return drawStatus("The detector model isn't downloaded yet.\n" +
                               "Run Scripts/fetch-models.sh, then relaunch.",
@@ -103,11 +103,13 @@ final class ObjectDetection: Sketch {
         label.unicodeScalars.reduce(0) { $0 &* 31 &+ Int($1.value) }
     }
 
-    /// "2× person, cup" — what's in frame, grouped and counted.
+    /// "2× person, cup": what's in frame, grouped and counted, the most of a kind
+    /// first. Two kinds with the same count go by name, since a dictionary alone
+    /// would list them in an order that changes from run to run.
     private func summary(of objects: [Detection]) -> String {
         var counts: [String: Int] = [:]
         for object in objects { counts[object.label, default: 0] += 1 }
-        return counts.sorted { $0.value > $1.value }
+        return counts.sorted { $0.value != $1.value ? $0.value > $1.value : $0.key < $1.key }
             .map { $0.value > 1 ? "\($0.value)× \($0.key)" : $0.key }
             .joined(separator: ", ")
     }

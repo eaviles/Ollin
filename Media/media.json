@@ -959,8 +959,8 @@
         "Recreations/VeraMolnar/DesOrdres",
         "Recreations/VeraMolnar/Interruptions"
       ],
-      "image": "groups/Recreations-VeraMolnar.jpg?v=c373c0a1",
-      "imageSmall": "groups/Recreations-VeraMolnar-640.jpg?v=b217beb4"
+      "image": "groups/Recreations-VeraMolnar.jpg?v=06eda3b6",
+      "imageSmall": "groups/Recreations-VeraMolnar-640.jpg?v=3681c702"
     },
     "Recreations/VicenteRojo": {
       "of": [
@@ -11071,20 +11071,21 @@
       "width": 1080
     },
     "Recreations/VeraMolnar/Interruptions": {
-      "bytes": {
-        "still": 303813,
-        "stillSmall": 112862
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "still",
-      "motion": 0.0,
-      "rendered": "2026-09-10",
-      "source": "17ef7406eddd92ba",
-      "still": "examples/Recreations/VeraMolnar/Interruptions/still.jpg?v=fdd33c6d",
       "stillBecause": "holds still",
-      "stillSmall": "examples/Recreations/VeraMolnar/Interruptions/still-640.jpg?v=45d718bd",
-      "width": 1080
+      "frame": 480,
+      "motion": 0.0,
+      "source": "0881e5c60a3d2662",
+      "rendered": "2026-11-13",
+      "bytes": {
+        "still": 444926,
+        "stillSmall": 159365
+      },
+      "still": "examples/Recreations/VeraMolnar/Interruptions/still.jpg?v=fd2faa1f",
+      "stillSmall": "examples/Recreations/VeraMolnar/Interruptions/still-640.jpg?v=ecf815ff",
+      "seed": 1
     },
     "Recreations/VicenteRojo/MexicoBajoLaLluvia": {
       "width": 1080,
@@ -13648,15 +13649,15 @@
       "length": "still",
       "stillBecause": "holds still",
       "frame": 480,
-      "motion": 0.033,
-      "source": "fb24212270696712",
-      "rendered": "2026-10-02",
+      "motion": 0.0,
+      "source": "6cac37b7a3e8707b",
+      "rendered": "2026-11-13",
       "bytes": {
-        "still": 426742,
-        "stillSmall": 153261
+        "still": 426793,
+        "stillSmall": 153270
       },
-      "still": "examples/Vision/ObjectDetection/still.jpg?v=4427d112",
-      "stillSmall": "examples/Vision/ObjectDetection/still-640.jpg?v=c29d5039",
+      "still": "examples/Vision/ObjectDetection/still.jpg?v=8bce4554",
+      "stillSmall": "examples/Vision/ObjectDetection/still-640.jpg?v=4b2e03c0",
       "seed": 1
     },
     "Vision/ObjectTracking": {

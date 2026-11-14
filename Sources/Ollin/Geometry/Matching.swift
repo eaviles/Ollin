@@ -102,6 +102,14 @@ public struct Matching: Equatable, Sendable {
 
     // MARK: - Finding one
 
+    // The finders and the solver under them are inlinable on purpose. A host
+    // compiles a sketch optimized whatever the framework it carries was built
+    // as, and with the bodies visible that compile makes its own copy for the
+    // sketch's types and its cost closure, so a pairing runs at the speed of
+    // an optimized build under a debug host. The point forms are forced inline
+    // as well: left to the optimizer, the greedy one stayed a call into the
+    // framework and ran forty times slower there.
+
     /// The pairing of `first` with `second` at the least total `cost`.
     ///
     /// A cost that is infinite, or not a number, **forbids** the pair: those
@@ -110,6 +118,7 @@ public struct Matching: Equatable, Sendable {
     /// element with no allowed partner is left out, so ``partner(of:)`` answers
     /// nil for it. Among pairings of equal total cost the one answered is
     /// fixed, so a seeded sketch reproduces.
+    @inlinable
     public static func optimal<A, B>(_ first: [A], _ second: [B],
                                      cost: (A, B) -> Double) -> Matching {
         let n = first.count, m = second.count
@@ -155,11 +164,13 @@ public struct Matching: Equatable, Sendable {
     }
 
     /// The pairing of two point sets at the least total distance.
+    @inlinable @inline(__always)
     public static func optimal(_ first: [Vector2], _ second: [Vector2]) -> Matching {
         optimal(first, second) { $0.distance(to: $1) }
     }
 
     /// The pairing of two point sets in space at the least total distance.
+    @inlinable @inline(__always)
     public static func optimal(_ first: [Vector3], _ second: [Vector3]) -> Matching {
         optimal(first, second) { $0.distance(to: $1) }
     }
@@ -178,6 +189,7 @@ public struct Matching: Equatable, Sendable {
     /// partner in `second` still free. Fast, and not the least total. A cost
     /// that is infinite, or not a number, forbids the pair here too, and an
     /// element with no allowed partner left is passed over.
+    @inlinable
     public static func greedy<A, B>(_ first: [A], _ second: [B],
                                     cost: (A, B) -> Double) -> Matching {
         let n = first.count, m = second.count
@@ -200,6 +212,7 @@ public struct Matching: Equatable, Sendable {
     }
 
     /// The pairing of two point sets by the greedy rule, by distance.
+    @inlinable @inline(__always)
     public static func greedy(_ first: [Vector2], _ second: [Vector2]) -> Matching {
         greedy(first, second) { $0.distance(to: $1) }
     }
@@ -215,71 +228,119 @@ public struct Matching: Equatable, Sendable {
     /// row on it keeps a column and the new row has one. Every row keeps the
     /// column it has unless a cheaper total moves it, so the assignment after
     /// the last row is the least total over the whole table.
-    private static func solve(rows: Int, columns: Int, _ cost: [Double]) -> [Int] {
-        var u = [Double](repeating: 0, count: rows)
-        var v = [Double](repeating: 0, count: columns)
-        var shortest = [Double](repeating: .infinity, count: columns)
-        var path = [Int](repeating: -1, count: columns)
-        var columnOfRow = [Int](repeating: -1, count: rows)
-        var rowOfColumn = [Int](repeating: -1, count: columns)
-        var rowSeen = [Bool](repeating: false, count: rows)
-        var columnSeen = [Bool](repeating: false, count: columns)
-        var remaining = [Int](repeating: 0, count: columns)
+    ///
+    /// The walk reads and writes raw memory in `while` loops on purpose. The
+    /// scan of the remaining columns runs about the cube of the count, and in
+    /// a build with no optimization every array read is a call and every step
+    /// of a `for` over a range is another, which made 1,600 points take twelve
+    /// seconds where this form takes under one (and two thirds of the time in
+    /// an optimized build). Every index is one the loops' own bounds keep
+    /// inside its buffer: `k` below `rows` or `columns`, `j` a column out of
+    /// `remaining`, and a row out of `rowOfColumn` only where a row was stored.
+    @inlinable
+    static func solve(rows: Int, columns: Int, _ costs: [Double]) -> [Int] {
+        precondition(rows >= 0 && rows <= columns && costs.count >= rows * columns)
+        let u = UnsafeMutablePointer<Double>.allocate(capacity: rows)
+        let v = UnsafeMutablePointer<Double>.allocate(capacity: columns)
+        let shortest = UnsafeMutablePointer<Double>.allocate(capacity: columns)
+        let path = UnsafeMutablePointer<Int>.allocate(capacity: columns)
+        let columnOfRow = UnsafeMutablePointer<Int>.allocate(capacity: rows)
+        let rowOfColumn = UnsafeMutablePointer<Int>.allocate(capacity: columns)
+        let rowSeen = UnsafeMutablePointer<Bool>.allocate(capacity: rows)
+        let columnSeen = UnsafeMutablePointer<Bool>.allocate(capacity: columns)
+        let remaining = UnsafeMutablePointer<Int>.allocate(capacity: columns)
+        defer {
+            u.deallocate(); v.deallocate(); shortest.deallocate(); path.deallocate()
+            columnOfRow.deallocate(); rowOfColumn.deallocate(); rowSeen.deallocate()
+            columnSeen.deallocate(); remaining.deallocate()
+        }
+        u.initialize(repeating: 0, count: rows)
+        v.initialize(repeating: 0, count: columns)
+        shortest.initialize(repeating: .infinity, count: columns)
+        path.initialize(repeating: -1, count: columns)
+        columnOfRow.initialize(repeating: -1, count: rows)
+        rowOfColumn.initialize(repeating: -1, count: columns)
+        rowSeen.initialize(repeating: false, count: rows)
+        columnSeen.initialize(repeating: false, count: columns)
+        remaining.initialize(repeating: 0, count: columns)
 
-        for current in 0 ..< rows {
-            var minValue = 0.0
-            var i = current
-            var remainingCount = columns
-            for k in 0 ..< columns { remaining[k] = columns - k - 1 }
-            for k in 0 ..< rows { rowSeen[k] = false }
-            for k in 0 ..< columns { columnSeen[k] = false; shortest[k] = .infinity }
-            var sink = -1
-            while sink < 0 {
-                var at = -1
-                var lowest = Double.infinity
-                rowSeen[i] = true
-                let base = i * columns
-                for k in 0 ..< remainingCount {
-                    let j = remaining[k]
-                    let reduced = minValue + cost[base + j] - u[i] - v[j]
-                    if reduced < shortest[j] {
-                        path[j] = i
-                        shortest[j] = reduced
-                    }
-                    // Among equal costs, prefer a column still free, which
-                    // ends the path now rather than growing it through a tie.
-                    if shortest[j] < lowest || (shortest[j] == lowest && rowOfColumn[j] < 0) {
-                        lowest = shortest[j]
-                        at = k
-                    }
+        costs.withUnsafeBufferPointer { table in
+            guard let cost = table.baseAddress else { return }
+            var current = 0
+            while current < rows {
+                var minValue = 0.0
+                var i = current
+                var remainingCount = columns
+                var k = 0
+                while k < columns {
+                    remaining[k] = columns - k - 1
+                    columnSeen[k] = false
+                    shortest[k] = .infinity
+                    k += 1
                 }
-                minValue = lowest
-                guard at >= 0 else { return columnOfRow }   // every cost infinite: cannot happen with finite costs
-                let j = remaining[at]
-                if rowOfColumn[j] < 0 { sink = j } else { i = rowOfColumn[j] }
-                columnSeen[j] = true
-                remainingCount -= 1
-                remaining[at] = remaining[remainingCount]
-            }
-            // Move the duals so every reduced cost on the path reads zero.
-            u[current] += minValue
-            for k in 0 ..< rows where rowSeen[k] && k != current {
-                u[k] += minValue - shortest[columnOfRow[k]]
-            }
-            for j in 0 ..< columns where columnSeen[j] {
-                v[j] -= minValue - shortest[j]
-            }
-            // Flip the path: every row on it takes the next column along.
-            var j = sink
-            while true {
-                let row = path[j]
-                rowOfColumn[j] = row
-                let previous = columnOfRow[row]
-                columnOfRow[row] = j
-                j = previous
-                if row == current { break }
+                k = 0
+                while k < rows {
+                    rowSeen[k] = false
+                    k += 1
+                }
+                var sink = -1
+                while sink < 0 {
+                    var at = -1
+                    var lowest = Double.infinity
+                    rowSeen[i] = true
+                    let row = cost + i * columns
+                    let ui = u[i]
+                    k = 0
+                    while k < remainingCount {
+                        let j = remaining[k]
+                        let reduced = minValue + row[j] - ui - v[j]
+                        var reach = shortest[j]
+                        if reduced < reach {
+                            path[j] = i
+                            shortest[j] = reduced
+                            reach = reduced
+                        }
+                        // Among equal costs, prefer a column still free, which
+                        // ends the path now rather than growing it through a tie.
+                        if reach < lowest || (reach == lowest && rowOfColumn[j] < 0) {
+                            lowest = reach
+                            at = k
+                        }
+                        k += 1
+                    }
+                    minValue = lowest
+                    if at < 0 { return }   // every cost infinite: cannot happen with finite costs
+                    let j = remaining[at]
+                    if rowOfColumn[j] < 0 { sink = j } else { i = rowOfColumn[j] }
+                    columnSeen[j] = true
+                    remainingCount -= 1
+                    remaining[at] = remaining[remainingCount]
+                }
+                // Move the duals so every reduced cost on the path reads zero.
+                u[current] += minValue
+                k = 0
+                while k < rows {
+                    if rowSeen[k] && k != current { u[k] += minValue - shortest[columnOfRow[k]] }
+                    k += 1
+                }
+                k = 0
+                while k < columns {
+                    if columnSeen[k] { v[k] -= minValue - shortest[k] }
+                    k += 1
+                }
+                // Flip the path: every row on it takes the next column along.
+                var j = sink
+                while true {
+                    let row = path[j]
+                    rowOfColumn[j] = row
+                    let previous = columnOfRow[row]
+                    columnOfRow[row] = j
+                    j = previous
+                    if row == current { break }
+                }
+                current += 1
             }
         }
-        return columnOfRow
+        return Array(UnsafeBufferPointer(start: columnOfRow, count: rows))
     }
 }

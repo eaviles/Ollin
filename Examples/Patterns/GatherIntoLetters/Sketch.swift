@@ -60,11 +60,17 @@ final class GatherIntoLetters_Example: Sketch {
         }
         // The places come round in a fixed order, so every flight's pairing is
         // found once here. A dot's next stop is the point its partner names.
+        // The solver is quicker with the spread-out set first, so a scatter (a
+        // word's points flying out to a cloud) is paired from the cloud's side
+        // and read in reverse: the same pairing, in about half the time.
         optimalStops = [places[0]]
         greedyStops = [places[0]]
         for k in places.indices {
             let next = places[(k + 1) % places.count]
-            let best = Matching.optimal(optimalStops[k], next)
+            let scatters = k % 2 == 1
+            let best = scatters
+                ? Matching.optimal(next, optimalStops[k]).reversed()
+                : Matching.optimal(optimalStops[k], next)
             optimalStops.append((0 ..< count).map { next[best.partner(of: $0) ?? 0] })
             optimalTravel.append(best.totalCost)
             let rough = Matching.greedy(greedyStops[k], next)

@@ -115,12 +115,16 @@ public struct PhoneFace: Sendable {
     /// Every reported blendshape coefficient, keyed by shape.
     public var blendShapes: [PhoneBlendShape: Double] { shapes }
 
-    /// The blendshapes sorted strongest-first — the few that are actually firing this
-    /// frame (a handy readout: the top of this list names the current expression).
+    /// The blendshapes sorted strongest-first: the few that are firing this frame
+    /// (a handy readout: the top of this list names the current expression). Two
+    /// shapes at the same value come in the order `PhoneBlendShape` lists them, so
+    /// the list reads the same in every run.
     public func strongestBlendShapes(count: Int = 5, above threshold: Double = 0.05)
         -> [(shape: PhoneBlendShape, value: Double)] {
         shapes.filter { $0.value > threshold }
-            .sorted { $0.value > $1.value }
+            .sorted {
+                $0.value != $1.value ? $0.value > $1.value : $0.key.rawValue < $1.key.rawValue
+            }
             .prefix(count)
             .map { (shape: $0.key, value: $0.value) }
     }

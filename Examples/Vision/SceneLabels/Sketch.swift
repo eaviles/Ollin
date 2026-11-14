@@ -3,8 +3,8 @@ import OllinSamplePhotos
 import OllinVision
 
 /// What the camera sees, named: an `ImageClassifier` reads each frame against
-/// its ~1,300-label vocabulary and the strongest labels race as animated bars —
-/// hold up a mug, a plant, a phone, and watch the picture get re-described.
+/// its ~1,300-label vocabulary and the strongest labels race as animated bars.
+/// Hold up a mug, a plant, a phone, and watch the picture get re-described.
 /// No boxes or positions, just *what's in the picture* and how confidently.
 @main
 final class SceneLabels: Sketch {
@@ -28,7 +28,7 @@ final class SceneLabels: Sketch {
         guard let rect = drawFrame(feed, in: videoArea) else { return }
 
         // If the model can't run on this Mac (no compute device), say so on the
-        // canvas instead of silently never naming anything — in the bar band,
+        // canvas instead of silently never naming anything, in the bar band
         // under the feed.
         if let reason = classifier.unavailableReason {
             return drawStatus(reason, style: .warning,
@@ -45,8 +45,10 @@ final class SceneLabels: Sketch {
             shown[label] = (target == 0 && value < 0.004) ? nil : value
         }
 
-        // The six strongest, as pill bars colored by confidence.
-        let bars = shown.sorted { $0.value > $1.value }.prefix(6)
+        // The six strongest, as pill bars colored by confidence. Two labels at
+        // the same value go by name, so the rows keep one order in every run.
+        let bars = shown.sorted { $0.value != $1.value ? $0.value > $1.value : $0.key < $1.key }
+            .prefix(6)
         let barArea = Rectangle(x: margin, y: rect.y + rect.height + 36 * scale,
                                 width: width - margin * 2, height: 0)
         let rowHeight = 48 * scale, rowGap = 14 * scale

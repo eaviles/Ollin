@@ -271,4 +271,113 @@ struct MatchingTests {
         #expect(match.partner(of: 0) == 2 && match.partner(of: 1) == 1 && match.partner(of: 2) == nil)
         #expect(match.reversed().partner(of: 2) == 0 && match.reversed().partner(of: 1) == 1)
     }
+
+    /// Pairing the second set with the first finds the same pairs, so
+    /// `reversed()` is the pairing found from the other side. A sketch leans on
+    /// this to hand the solver the spread-out set first, which is the quick
+    /// way round. Random points have one least pairing; the totals may differ
+    /// in their last digits, being summed in another order.
+    @Test(arguments: [(90, 90), (60, 140), (140, 60)])
+    func thePairingFromTheOtherSideIsTheSameOne(first: Int, second: Int) {
+        var dice = Dice(state: UInt64(first * 31 + second))
+        // One set spread wide and one packed tight, the case the docs name.
+        let spread = MatchingTests.points(first, &dice, over: 1000)
+        let packed = MatchingTests.points(second, &dice, over: 60).map { $0 + Vector2(470, 470) }
+        let forward = Matching.optimal(spread, packed)
+        let backward = Matching.optimal(packed, spread).reversed()
+        #expect(forward.pairs == backward.pairs)
+        #expect(abs(forward.totalCost - backward.totalCost) < 1e-6)
+        #expect(forward.firstCount == backward.firstCount && forward.secondCount == backward.secondCount)
+        for i in 0 ..< first { #expect(forward.partner(of: i) == backward.partner(of: i)) }
+    }
+
+    // MARK: - The walk over raw memory
+
+    /// The solver written the plain way, over arrays and ranges: the column of
+    /// every row of a `rows` by `columns` table with no more rows than
+    /// columns. The framework's solver walks raw memory for speed in a build
+    /// with no optimization, and this is what it has to keep answering.
+    static func plainSolve(rows: Int, columns: Int, _ cost: [Double]) -> [Int] {
+        var u = [Double](repeating: 0, count: rows)
+        var v = [Double](repeating: 0, count: columns)
+        var shortest = [Double](repeating: .infinity, count: columns)
+        var path = [Int](repeating: -1, count: columns)
+        var columnOfRow = [Int](repeating: -1, count: rows)
+        var rowOfColumn = [Int](repeating: -1, count: columns)
+        for current in 0 ..< rows {
+            var rowSeen = [Bool](repeating: false, count: rows)
+            var columnSeen = [Bool](repeating: false, count: columns)
+            var remaining = (0 ..< columns).map { columns - $0 - 1 }
+            for k in 0 ..< columns { shortest[k] = .infinity }
+            var minValue = 0.0, i = current, sink = -1
+            while sink < 0 {
+                var at = -1
+                var lowest = Double.infinity
+                rowSeen[i] = true
+                for (k, j) in remaining.enumerated() {
+                    let reduced = minValue + cost[i * columns + j] - u[i] - v[j]
+                    if reduced < shortest[j] {
+                        path[j] = i
+                        shortest[j] = reduced
+                    }
+                    if shortest[j] < lowest || (shortest[j] == lowest && rowOfColumn[j] < 0) {
+                        lowest = shortest[j]
+                        at = k
+                    }
+                }
+                minValue = lowest
+                let j = remaining[at]
+                if rowOfColumn[j] < 0 { sink = j } else { i = rowOfColumn[j] }
+                columnSeen[j] = true
+                remaining[at] = remaining[remaining.count - 1]
+                remaining.removeLast()
+            }
+            u[current] += minValue
+            for k in 0 ..< rows where rowSeen[k] && k != current {
+                u[k] += minValue - shortest[columnOfRow[k]]
+            }
+            for j in 0 ..< columns where columnSeen[j] {
+                v[j] -= minValue - shortest[j]
+            }
+            var j = sink
+            while true {
+                let row = path[j]
+                rowOfColumn[j] = row
+                let previous = columnOfRow[row]
+                columnOfRow[row] = j
+                j = previous
+                if row == current { break }
+            }
+        }
+        return columnOfRow
+    }
+
+    /// The pairing answered is the plain solver's, pair for pair, on square,
+    /// wide, and tall tables, on tables of whole numbers where many pairings
+    /// tie, and on one of a size where a slip in the walk's bookkeeping (a
+    /// column dropped from the scan, a dual moved for the wrong row) shows.
+    @Test(arguments: [(1, 1), (2, 5), (7, 7), (24, 40), (40, 24), (61, 61), (150, 150)])
+    func theWalkOverRawMemoryAnswersThePlainOne(rows: Int, columns: Int) {
+        var dice = Dice(state: UInt64(rows * 1000 + columns))
+        for whole in [false, true] {
+            let table = (0 ..< rows).map { _ in
+                (0 ..< columns).map { _ in whole ? (dice.next() * 6).rounded(.down) : dice.next() * 100 }
+            }
+            let answered = Matching.optimal(costs: table)
+            // The solver is handed the larger set as its columns.
+            let tall = rows > columns
+            let solverRows = tall ? columns : rows, solverColumns = tall ? rows : columns
+            var flat = [Double](repeating: 0, count: solverRows * solverColumns)
+            for i in 0 ..< solverRows {
+                for j in 0 ..< solverColumns {
+                    flat[i * solverColumns + j] = tall ? table[j][i] : table[i][j]
+                }
+            }
+            let plain = MatchingTests.plainSolve(rows: solverRows, columns: solverColumns, flat)
+            var expected = plain.enumerated().map { tall ? Matching.Pair($1, $0) : Matching.Pair($0, $1) }
+            expected.sort { $0.first < $1.first }
+            #expect(answered.pairs == expected, "\(rows) by \(columns), whole costs: \(whole)")
+            #expect(MatchingTests.isProper(answered))
+        }
+    }
 }

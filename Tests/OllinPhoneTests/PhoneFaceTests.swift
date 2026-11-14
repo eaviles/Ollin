@@ -105,4 +105,20 @@ import Ollin
         #expect(face.meshUVs.count == 1)
         #expect(abs(face.meshUVs[0].y - 0.75) < 1e-6)
     }
+
+    @Test func tiedBlendShapesComeInTheirListedOrder() {
+        // Every shape at one value: the only order left is the tie's. A dictionary
+        // walks its keys in an order seeded per process, so without a rule for the
+        // tie this list would differ from run to run, and fifty-two keys do not
+        // fall into their listed order by chance.
+        let all = PhoneBlendShape.allCases
+        let level = PhoneFace(blendShapes: Dictionary(uniqueKeysWithValues: all.map { ($0, 0.5) }))
+        #expect(level.strongestBlendShapes(count: all.count).map(\.shape) == all)
+
+        // A stronger shape still leads, and the tie under it keeps the listed order.
+        var raised = Dictionary(uniqueKeysWithValues: all.map { ($0, 0.5) })
+        raised[.jawOpen] = 0.9
+        let strongest = PhoneFace(blendShapes: raised).strongestBlendShapes(count: 4).map(\.shape)
+        #expect(strongest == [.jawOpen] + all.filter { $0 != .jawOpen }.prefix(3))
+    }
 }

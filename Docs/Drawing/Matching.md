@@ -91,7 +91,11 @@ When the sets differ in size, every element of the smaller set is paired and the
 
 ### Cost and size
 
-`optimal` finds the pairing exactly, by the shortest-augmenting-path method of Jonker and Volgenant. Its work grows with about the cube of the count, and it holds the cost of every pair in memory while it runs (the two counts multiplied, as numbers). In a release build a thousand on a side pairs in about sixty milliseconds, two thousand in a third of a second, and three thousand in under a second with seventy megabytes held for the table. Find the pairing once when the sets are set, not every frame: a cloud that gathers into a word matches once at the start of the flight and then moves along fixed roads.
+`optimal` finds the pairing exactly, by the shortest-augmenting-path method of Jonker and Volgenant. Its work grows with about the cube of the count, and it holds the cost of every pair in memory while it runs (the two counts multiplied, as numbers). In a release build a thousand random points on a side pair in forty milliseconds, two thousand in a quarter of a second, and three thousand in just over half a second, with seventy megabytes held for the table. Find the pairing once when the sets are set, not every frame: a cloud that gathers into a word matches once at the start of the flight and then moves along fixed roads.
+
+Those times hold under `ollin`, the live window, and the gallery, however they were built. A host compiles the sketch optimized, and the solver is compiled with it. A plain `swift run` builds with no optimization, and there a pairing is about ten times slower: a second and a half for 1,600 on a side.
+
+How the points lie matters as much as how many there are. Random points against random points is the easy case. A cloud against the points of a word takes two to three times as long, because many dots want the same few points. The order of the two sets matters too, when one is spread out and the other packed together: hand the solver the spread one first. Dots flying out of a word into a cloud pair in about half the time when the call is `Matching.optimal(cloud, word).reversed()`. The pairs are the same ones.
 
 Among pairings that share the least total, the one answered is fixed, so a seeded sketch reproduces.
 

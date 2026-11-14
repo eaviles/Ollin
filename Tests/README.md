@@ -415,9 +415,11 @@ had run under no test, and now dials a server on the loopback), `Sketch.swift`
 from 69.1% to 95.8% (the public forwarders, each paired with its core call in
 six tables), the text calls on the drawer from 58.5% to 79.6%. The read is
 short by one process: the gallery's cycle stopped at an example whose setup
-takes minutes in a debug build and exited without writing its profile, which
-`DESIGN-NOTES.md` files under *Testing*, so the inspector's own number (45%)
-is not the one to compare with the first read's.
+took minutes in a debug build and exited without writing its profile, so the
+inspector's own number (45%) is not the one to compare with the first read's.
+The cycle runs through since 2026-11-13 (the pairing solver that example
+calls, `CAPABILITIES.md` under **Optimal matching**), so the next read
+counts it.
 
 ## What the suites share
 
