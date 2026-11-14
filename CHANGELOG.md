@@ -4,6 +4,8 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-11-14
+
 This release adds a pen and lines drawn by hand, soft bodies that touch what is around them, a layer a sketch can read back, and a sketch that floats over the desktop. Small dots and thin lines now lay exactly their own ink, and lit 3D that traces nothing is about ten times faster on an M1 or M2. A few looks and defaults moved, so read **Changed** before you update.
 
 ### Added
@@ -1040,7 +1042,8 @@ The first tagged release. Ollin grew in one repository from May 2026 to this tag
 
 - Tags begin at 0.1.0. A breaking change or a new feature bumps the minor, a fix bumps the patch, and each release names its breaking renames in this file. Deprecation shims and a settled surface arrive at 1.0. Until then, pin `.upToNextMinor(from: "0.1.0")`.
 
-[Unreleased]: https://github.com/eaviles/Ollin/compare/0.17.0...HEAD
+[Unreleased]: https://github.com/eaviles/Ollin/compare/0.18.0...HEAD
+[0.18.0]: https://github.com/eaviles/Ollin/compare/0.17.0...0.18.0
 [0.17.0]: https://github.com/eaviles/Ollin/compare/0.16.0...0.17.0
 [0.16.0]: https://github.com/eaviles/Ollin/compare/0.15.0...0.16.0
 [0.15.0]: https://github.com/eaviles/Ollin/compare/0.14.0...0.15.0
