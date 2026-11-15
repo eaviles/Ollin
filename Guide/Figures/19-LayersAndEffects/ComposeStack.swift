@@ -15,7 +15,7 @@ final class ComposeStack: Sketch {
                 fill(Color(hex: 0x1F7A6B)); drawCircle(width * 0.68, height * 0.62, 300)
                 fill(Color(hex: 0x6B2C58)); drawCircle(width * 0.45, height * 0.78, 240)
             }
-            .post(.gaussianBlur(radius: 60))
+            .post(.gaussianBlur(radius: 120))
             .scaled(0.5)
 
             layer {                                   // on top: lights that glow

@@ -238,7 +238,7 @@ public struct Combine: Sendable {
     /// far, the same reading `.defocus` makes, so a 3D layer's own `depth` is the
     /// natural aux). At each pixel the red channel is read from a copy of the base
     /// shifted one way and the green and blue from a copy shifted the other, by
-    /// `separation` layer pixels times how far the depth there sits from `focus`:
+    /// `separation` canvas pixels times how far the depth there sits from `focus`:
     /// a pixel at the focus depth stays put, one nearer the eye than the focus
     /// shifts one way, one farther shifts the other, and the shift grows with
     /// the distance, which through red-and-cyan glasses is what places it in
@@ -274,7 +274,7 @@ public struct Combine: Sendable {
     ///   - focus: the depth (0…1) that stays in focus.
     ///   - range: half-width of the sharp band, *and* the width of the falloff beyond
     ///     it (full blur is reached `2 × range` from `focus`). Smaller racks focus tighter.
-    ///   - maxBlur: the largest blur radius, in layer pixels.
+    ///   - maxBlur: the largest blur radius, in canvas pixels.
     ///   - quality: the bokeh sample-count tier (`.default`/`.performance`/`.detail`,
     ///     hardware-relative). More taps trade frame rate for creamier, structure-free blur.
     ///   - blades: how many blades the iris has, which is the shape an out-of-focus

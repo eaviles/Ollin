@@ -896,19 +896,351 @@ struct EffectInvariantTests {
         #expect(abs(got / want - 1) < 0.015, "a box of radius \(radius) spread the disc by \(got) where \(width) pixels give \(want)")
     }
 
-    /// A layer's `scale` is how finely it is kept, so what a filter does to the
-    /// picture is the same at any scale: a blur is as wide, an outline as thick.
-    @Test func aFiltersSizesDoNotFollowTheLayersScale() throws {
-        let base = Self.spread(try Self.disc(filter: nil, layerScale: 0.5))
-        let g = Self.spread(try Self.disc(filter: .gaussianBlur(radius: 4), layerScale: 0.5))
-        let sigma = (g.varX - base.varX).squareRoot()
-        try pinned("a filter's pixel sizes are the layer's own texels: on a half-scale layer a Gaussian of radius 4 spreads by a sigma of 7.98 canvas pixels, an outline of 6 grows the disc by 12.03, a pixelate of 8 makes 16-pixel cells, and a shadow's offset of 40 lands 80 away (measured 2026-11-09)") {
-            #expect(abs(sigma / 4 - 1) < 0.05, "on a half-scale layer a radius of 4 spread the disc by \(sigma)")
-            let plain = try Self.disc(radius: 16, filter: nil, layerScale: 0.5).sum(3)
-            let outlined = try Self.disc(radius: 16, filter: .outline(width: 6, color: .white, align: .outside), layerScale: 0.5).sum(3)
-            let grew = (outlined / .pi).squareRoot() - (plain / .pi).squareRoot()
-            #expect(abs(grew - 6) < 0.3, "on a half-scale layer an outline of 6 grew the disc by \(grew)")
+    // MARK: Sizes at any layer scale
+
+    /// Bands of rising gray eight pixels wide, set two pixels back so no band's
+    /// edge falls on the edge of an eight-pixel cell, in a layer through `filter`.
+    static func bands(filter: Filter?, layerScale: Double) throws -> Frame {
+        try render(side: 128) { s in
+            s.background(.clear)
+            let layer = layerScale == 1 ? s.makeRenderTarget() : s.makeRenderTarget(scale: layerScale)
+            s.withTarget(layer) {
+                s.noStroke()
+                for b in 0...16 {
+                    let v = Double(b + 1) / 18
+                    s.fill(Color(linear: v, green: v, blue: v))
+                    s.drawRect(Double(b) * 8 - 2, 0, 8, 128)
+                }
+            }
+            s.drawImage((filter.map { layer.filtered($0) } ?? layer).image, 0, 0, 128, 128)
         }
+    }
+
+    /// Where channel `c` sits along x, weighed by its own light.
+    static func centerX(_ f: Frame, _ c: Int) -> Double {
+        var sum = 0.0, at = 0.0
+        for y in 0..<f.height { for x in 0..<f.width {
+            let v = f.value(x, y, c); sum += v; at += v * (Double(x) + 0.5)
+        } }
+        return at / sum
+    }
+
+    /// A layer's `scale` is how finely it is kept, so what a filter does to the
+    /// picture is the same at any scale: a blur is as wide, an outline as thick,
+    /// a mosaic's cells as large, a shadow as far away.
+    @Test(arguments: [0.25, 0.5, 1.0, 2.0])
+    func aFiltersSizesAreCanvasPixelsAtAnyLayerScale(layerScale: Double) throws {
+        let base = Self.spread(try Self.disc(filter: nil, layerScale: layerScale))
+        let g = Self.spread(try Self.disc(filter: .gaussianBlur(radius: 4), layerScale: layerScale))
+        let sigma = ((g.varX - base.varX).squareRoot() + (g.varY - base.varY).squareRoot()) / 2
+        #expect(abs(sigma / 4 - 1) < 0.05, "on a layer at \(layerScale) a radius of 4 spread the disc by a sigma of \(sigma)")
+
+        let plain = try Self.disc(radius: 16, filter: nil, layerScale: layerScale).sum(3)
+        let outlined = try Self.disc(radius: 16, filter: .outline(width: 6, color: .white, align: .outside),
+                                     layerScale: layerScale).sum(3)
+        let grew = (outlined / .pi).squareRoot() - (plain / .pi).squareRoot()
+        #expect(abs(grew - 6) < 0.3, "on a layer at \(layerScale) an outline of 6 grew the disc by \(grew)")
+
+        // A mosaic of 8 has cells eight canvas pixels across: one value inside
+        // each cell, and the next band's value in the next cell.
+        let mosaic = try Self.bands(filter: .pixelate(size: 8), layerScale: layerScale)
+        var within = 0.0, smallestStep = 9.0
+        for k in 0..<16 {
+            within = max(within, abs(mosaic.value(8 * k + 2, 67) - mosaic.value(8 * k + 5, 67)))
+            if k < 15 { smallestStep = min(smallestStep, mosaic.value(8 * k + 11, 67) - mosaic.value(8 * k + 3, 67)) }
+        }
+        #expect(within < 0.002, "on a layer at \(layerScale) a cell of 8 holds two values \(within) apart")
+        #expect(smallestStep > 0.04, "on a layer at \(layerScale) two cells of 8 side by side differ by \(smallestStep), a band is \(1.0 / 18)")
+
+        // A shadow's offset of 40 lands 40 away.
+        let shadowed = try Self.render(side: 128, wide: 192) { s in
+            s.background(.clear)
+            let layer = layerScale == 1 ? s.makeRenderTarget() : s.makeRenderTarget(scale: layerScale)
+            s.withTarget(layer) { s.noStroke(); s.fill(.blue); s.drawCircle(50.3, 63.8, 10) }
+            s.drawImage(layer.filtered(.dropShadow(offset: Vector2(40, 0), radius: 2, color: .red)).image, 0, 0, 192, 128)
+        }
+        let away = Self.centerX(shadowed, 0) - Self.centerX(shadowed, 2)
+        #expect(abs(away - 40) < 0.3, "on a layer at \(layerScale) a shadow offset by 40 lands \(away) away")
+    }
+
+    /// Something that takes a size, with every size it takes multiplied by `k`.
+    struct Sized<Made: Sendable>: Sendable, CustomTestStringConvertible {
+        let name: String
+        let make: @Sendable (Double) -> Made
+        var testDescription: String { name }
+        init(_ name: String, _ make: @escaping @Sendable (Double) -> Made) { self.name = name; self.make = make }
+    }
+
+    /// A layer kept at `layerScale` beside its twin: a full-size layer that
+    /// many times as large, holding the same texels, where a canvas pixel is a
+    /// texel. `draw(k, twin)` draws one or the other with every size
+    /// multiplied by `k`. The scaled layer with its sizes as written must be
+    /// the twin with its sizes multiplied by the scale, and must be far from
+    /// the twin with its sizes as written, which is what sizes read in the
+    /// layer's own texels drew.
+    private func judge(_ name: String, at layerScale: Double, within share: Double = 0.25,
+                       _ draw: (_ k: Double, _ twin: Bool) throws -> Frame) throws {
+        let got = try draw(1, false), same = try draw(layerScale, true), texels = try draw(1, true)
+        let off = got.mean(against: same), gap = texels.mean(against: same)
+        #expect(gap > 0.002, "\(name): the same sizes read in texels change the picture by only \(gap), which proves nothing")
+        #expect(off < share * gap, "\(name) on a layer at \(layerScale) is \(off) from its twin; sizes read in texels would be \(gap) from it")
+    }
+
+    /// The picture in a layer kept at `layerScale`, or in its twin, with
+    /// `between` turning the layer into what is drawn back.
+    static func scaled(_ layerScale: Double, twin: Bool, _ fill: @escaping @MainActor (Probe) -> Void = { picture($0) },
+                       _ between: @escaping @MainActor (Probe, RenderTarget) -> RenderTarget) throws -> Frame {
+        try render { s in
+            s.background(.clear)
+            let layer = Self.layer(s, layerScale, twin: twin, fill)
+            s.drawImage(between(s, layer).image, 0, 0, 96, 96)
+        }
+    }
+
+    /// A layer over the 96-pixel canvas kept at `layerScale`, or its twin.
+    static func layer(_ s: Probe, _ layerScale: Double, twin: Bool,
+                      _ fill: @escaping @MainActor (Probe) -> Void) -> RenderTarget {
+        let side = Int((96 * layerScale).rounded())
+        let layer = twin ? s.makeRenderTarget(width: side, height: side)
+                         : (layerScale == 1 ? s.makeRenderTarget() : s.makeRenderTarget(scale: layerScale))
+        s.withTarget(layer) {
+            s.withState {
+                if twin { s.scale(layerScale) }
+                fill(s)
+            }
+        }
+        return layer
+    }
+
+    nonisolated static let sizedFilters: [Sized<Filter>] = [
+        Sized("gaussianBlur") { .gaussianBlur(radius: 3 * $0) },
+        Sized("boxBlur") { .boxBlur(radius: 4 * $0) },
+        Sized("bloom") { .bloom(threshold: 0.2, amount: 2, radius: 4 * $0) },
+        Sized("halation") { .halation(threshold: 0.3, radius: 4 * $0) },
+        Sized("tiltShift") { .tiltShift(radius: 6 * $0) },
+        Sized("progressiveBlur") { .progressiveBlur(start: 0.2, radius: 6 * $0) },
+        Sized("dither") { .dither(levels: 3, pixelSize: 2 * $0) },
+        Sized("two-color dither") { .dither(dark: .black, light: .white, pixelSize: 2 * $0) },
+        Sized("filmGrain") { .filmGrain(amount: 0.4, size: 4 * $0) },
+        Sized("pixelate") { .pixelate(size: 6 * $0) },
+        Sized("chrome") { .chrome(warp: 6 * $0, coreWidth: 8 * $0, breakWidth: 3 * $0) },
+        Sized("anaglyph") { .anaglyph(separation: 6 * $0) },
+        Sized("mirage") { .mirage(amount: 8 * $0) },
+        Sized("flutedGlass margins") { .flutedGlass(flutes: 12, margins: Insets(top: 12 * $0, right: 12 * $0, bottom: 12 * $0, left: 12 * $0)) },
+        Sized("outline") { .outline(width: 4 * $0, color: .red) },
+        Sized("dropShadow") { .dropShadow(offset: Vector2(6, 4) * $0, radius: 3 * $0, color: .red) },
+        Sized("innerShadow") { .innerShadow(offset: Vector2(4, 3) * $0, radius: 2 * $0, color: .red) },
+        Sized("outerGlow") { .outerGlow(radius: 8 * $0, color: .red) },
+        Sized("innerGlow") { .innerGlow(radius: 6 * $0, color: .red) },
+        Sized("edgeGlow") { .edgeGlow(width: 6 * $0) },
+        Sized("bevel") { .bevel(width: 5 * $0) },
+        Sized("adaptiveThreshold") { .adaptiveThreshold(window: 12 * $0) },
+        Sized("fieldMap of a measured field") { _ in .distanceField() },
+    ]
+
+    /// Filters that take a size and also hold a length of their own (an edge's
+    /// antialiasing ramp, the blur under a direction field, a count of taps, a
+    /// sheet laid out over the canvas). That length is canvas pixels too, and
+    /// the twin reads it in its own texels, so these sit near their twin where
+    /// the ones above sit on it.
+    nonisolated static let sizedWithALengthOfTheirOwn: [Sized<Filter>] = [
+        Sized("bilateral") { .bilateral(radius: 2 * $0, sigma: 4) },
+        Sized("oilPaint") { .oilPaint(radius: 2 * $0) },
+        Sized("xdog") { .xdog(radius: 2 * $0, flow: 4 * $0) },
+        Sized("brushwork") { .brushwork(radius: 4 * $0) },
+        Sized("hatching") { .hatching(spacing: 6 * $0, length: 12 * $0) },
+        Sized("arrows") { .arrows(spacing: 12 * $0, scale: 10 * $0, width: 2 * $0) },
+        Sized("bubbleWrap") { .bubbleWrap(radius: 10 * $0, gap: 3 * $0) },
+        Sized("holographicFoil") { .holographicFoil(spacing: 24 * $0, bandWidth: 12 * $0, bandShift: 30 * $0) },
+    ]
+
+    /// Two whose own lengths are most of what they draw (the tape's lines and
+    /// tears, the rounds of a shock), so no twin holds them.
+    nonisolated static let sizedAgainstTheFullSize: [Sized<Filter>] = [
+        Sized("shock") { .shock(flow: 8 * $0, radius: 4 * $0, smoothing: 4 * $0) },
+        Sized("vhs") { .vhs(smear: 24 * $0, jitter: 8 * $0, damage: 0) },
+    ]
+
+    /// Every filter that takes a size takes it in canvas pixels, on a layer
+    /// kept at half size and on one kept at twice.
+    @Test(arguments: sizedFilters, [0.5, 2.0])
+    func aSizedFilterKeepsItsSizesOnAScaledLayer(_ item: Sized<Filter>, layerScale: Double) throws {
+        try judge(item.name, at: layerScale, within: 0.05) { k, twin in
+            try Self.scaled(layerScale, twin: twin) { _, layer in
+                if item.name.hasPrefix("fieldMap") {
+                    // The field's own numbers are the size here: a ramp that
+                    // reads them spans the same canvas pixels at any scale.
+                    return layer.filtered(.distanceField(maxDistance: 24 * k))
+                        .filtered(.fieldMap(Ramp([.black, .white]), from: -8 * k, to: 12 * k))
+                }
+                return layer.filtered(item.make(k))
+            }
+        }
+    }
+
+    @Test(arguments: sizedWithALengthOfTheirOwn, [0.5, 2.0])
+    func aFilterWithALengthOfItsOwnStaysNearItsTwin(_ item: Sized<Filter>, layerScale: Double) throws {
+        try judge(item.name, at: layerScale, within: 0.5) { k, twin in
+            try Self.scaled(layerScale, twin: twin) { _, layer in layer.filtered(item.make(k)) }
+        }
+    }
+
+    /// Read against the full-size picture on a layer kept at twice the size:
+    /// nearer to it than to the full-size picture with its sizes halved, which
+    /// is what sizes read in texels drew.
+    @Test(arguments: sizedAgainstTheFullSize)
+    func aFilterMadeOfItsOwnLengthsKeepsThemOnAFinerLayer(_ item: Sized<Filter>) throws {
+        let right = try Self.filtered(item.make(1)), got = try Self.filtered(item.make(1), layerScale: 2)
+        let texels = try Self.filtered(item.make(0.5))
+        let off = got.mean(against: right), gap = texels.mean(against: right)
+        #expect(gap > 0.002, "\(item.name): the same sizes halved change the picture by only \(gap), which proves nothing")
+        #expect(off < 0.6 * gap, "\(item.name) on a layer at 2 is \(off) from the full-size picture; sizes read in texels would be \(gap) from it")
+    }
+
+    /// A measured field's distances are canvas pixels at any layer scale, and so
+    /// is the reach it is held to.
+    @Test(arguments: [0.5, 2.0])
+    func aMeasuredFieldReadsCanvasPixelsAtAnyLayerScale(layerScale: Double) throws {
+        let c = Vector2(64, 64)
+        let field = try Self.render(side: 128) { s in
+            s.background(.clear)
+            let layer = s.makeRenderTarget(scale: layerScale, precision: .float32)
+            s.withTarget(layer) { s.noStroke(); s.fill(.white); s.drawCircle(c.x, c.y, 30) }
+            s.drawImage(layer.filtered(.distanceField(maxDistance: 20)).image, 0, 0, 128, 128)
+        }
+        var worst = 0.0
+        for y in stride(from: 10, to: 118, by: 4) { for x in stride(from: 10, to: 118, by: 4) {
+            let analytic = (Vector2(Double(x) + 0.5, Double(y) + 0.5) - c).length - 30
+            guard abs(analytic) > 3, abs(analytic) < 16 else { continue }
+            worst = max(worst, abs(field.value(x, y) - analytic))
+        } }
+        #expect(worst < 1.5 / min(layerScale, 1), "on a layer at \(layerScale) the field strays from the true distance by \(worst) canvas pixels")
+        #expect(field.value(64, 64) == -20 && field.value(4, 4) == 20, "the reach of 20 is held as 20: \(field.value(64, 64)) inside, \(field.value(4, 4)) outside")
+    }
+
+    nonisolated static let sizedCombines: [Sized<Combine>] = [
+        Sized("defocus") { .defocus(focus: 0.1, range: 0.05, maxBlur: 8 * $0) },
+        Sized("anaglyph by depth") { .anaglyph(separation: 16 * $0, focus: 0.2) },
+        Sized("light") { .light(reach: 24 * $0) },
+    ]
+
+    /// A combine's sizes are canvas pixels too: the largest blur of a defocus,
+    /// the parallax of an anaglyph, how far a flat scene's light travels.
+    @Test(arguments: sizedCombines, [0.5, 2.0])
+    func aSizedCombineKeepsItsSizesOnAScaledLayer(_ item: Sized<Combine>, layerScale: Double) throws {
+        let lit = item.name == "light"
+        try judge(item.name, at: layerScale, within: 0.05) { k, twin in
+            try Self.scaled(layerScale, twin: twin, { s in
+                // A flat scene of two walls, or the picture.
+                if lit { s.noStroke(); s.fill(.white); s.drawRect(20, 10, 6, 60); s.drawRect(60, 50, 30, 6) }
+                else { Self.picture(s) }
+            }) { s, base in
+                let other = Self.layer(s, layerScale, twin: twin) { s in
+                    s.noStroke()
+                    // A lamp, or a depth map: near on the left, far on the right.
+                    if lit { s.fill(.orange); s.drawCircle(46, 34, 5) }
+                    else { for i in 0..<12 { s.fill(Color(white: Double(i) / 11)); s.drawRect(Double(i) * 8, 0, 8, 96) } }
+                }
+                return base.combined(with: other, item.make(k))
+            }
+        }
+    }
+
+    nonisolated static let sizedGenerators: [Sized<Generator>] = [
+        Sized("gaborNoise") { .gaborNoise(wavelength: 12 * $0, seed: 3) },
+        Sized("rust") { .rust(count: 6, radius: 10 * $0 ... 22 * $0, seed: 2) },
+        Sized("terrazzo") { .terrazzo(chipRadius: 12 * $0, gap: 2 * $0, seed: 2) },
+        Sized("scratches") { .scratches(count: 8, thickness: 2 * $0, wobble: 5 * $0, seed: 2) },
+        Sized("pulsingBorder margins") { .pulsingBorder(margins: Insets(top: 14 * $0, right: 14 * $0, bottom: 14 * $0, left: 14 * $0)) },
+    ]
+
+    /// A pattern's sizes are canvas pixels on a layer kept at any scale. A
+    /// pattern is drawn from nothing, so it is read against the full-size one:
+    /// nearer to it than to the full-size pattern with its sizes divided by
+    /// the scale, which is what sizes read in texels drew.
+    @Test(arguments: sizedGenerators, [0.5, 2.0])
+    func aSizedPatternKeepsItsSizesOnAScaledLayer(_ item: Sized<Generator>, layerScale: Double) throws {
+        func pattern(_ k: Double, _ scale: Double) throws -> Frame {
+            try Self.render { s in
+                s.background(.clear)
+                s.drawImage(s.generate(item.make(k), scale: scale).image, 0, 0, 96, 96)
+            }
+        }
+        let right = try pattern(1, 1), got = try pattern(1, layerScale), texels = try pattern(1 / layerScale, 1)
+        let off = got.mean(against: right), gap = texels.mean(against: right)
+        #expect(gap > 0.002, "\(item.name): the same sizes divided by \(layerScale) change the pattern by only \(gap), which proves nothing")
+        #expect(off < 0.5 * gap, "\(item.name) on a layer at \(layerScale) is \(off) from the full-size pattern; sizes read in texels would be \(gap) from it")
+    }
+
+    /// A smooth hill of light and a few soft marks: nothing in it is sharper
+    /// than a few pixels, so a filter that reads slopes reads the same ones on
+    /// a layer kept finer.
+    static func smooth(_ filter: Filter?, layerScale: Double, softness: Double = 2.5) throws -> Frame {
+        try render(side: 128) { s in
+            s.background(.clear)
+            let layer = layerScale == 1 ? s.makeRenderTarget() : s.makeRenderTarget(scale: layerScale)
+            s.withTarget(layer) {
+                s.background(Color(linear: 0.02, green: 0.02, blue: 0.02))
+                s.noStroke()
+                for i in 0..<40 {
+                    let t = Double(i) / 40
+                    s.fill(Color(linear: 0.05 + 0.6 * t, green: 0.04 + 0.5 * t * t, blue: 0.1 + 0.3 * t, alpha: 0.12))
+                    s.drawCircle(52 + 14 * t, 60 + 6 * t, 56 * (1 - t) + 2)
+                    s.drawCircle(96 - 10 * t, 36 + 8 * t, 30 * (1 - t) + 1)
+                }
+            }
+            let soft = layer.filtered(.gaussianBlur(radius: softness))
+            s.drawImage((filter.map { soft.filtered($0) } ?? soft).image, 0, 0, 128, 128)
+        }
+    }
+
+    nonisolated static let reachOnePixel: [Named] = [
+        Named(name: "edges", filter: .edges(amount: 4)), Named(name: "sharpen", filter: .sharpen(amount: 12)),
+        Named(name: "emboss", filter: .emboss(amount: 8)), Named(name: "normalMap", filter: .normalMap(amount: 4)),
+        Named(name: "relight", filter: .relight(.metal)), Named(name: "schlieren", filter: .schlieren(amount: 4)),
+        Named(name: "toon", filter: .toon(levels: 4, edges: 4)),
+        Named(name: "chromaticAberration along edges", filter: .chromaticAberration(amount: 0.08, mode: .edges)),
+    ]
+
+    /// A filter with no size reaches one pixel, and that pixel is the canvas's:
+    /// on a layer kept at twice the size it changes a smooth picture by as much
+    /// as it does on a full-size one. Read in texels, a slope there is half as
+    /// steep and a second difference a quarter.
+    @Test(arguments: reachOnePixel)
+    func aOnePixelReachIsACanvasPixel(_ item: Named) throws {
+        // A second difference of a very smooth picture is too small to read,
+        // so the two filters that take one read a picture half as soft.
+        let softness = (item.name == "sharpen" || item.name.hasPrefix("chromatic")) ? 1.2 : 2.5
+        func strength(_ scale: Double) throws -> Double {
+            try Self.smooth(item.filter, layerScale: scale, softness: softness)
+                .mean(against: try Self.smooth(nil, layerScale: scale, softness: softness))
+        }
+        let full = try strength(1), fine = try strength(2)
+        #expect(full > 0.0005, "\(item.name) changes the smooth picture by only \(full), which proves nothing")
+        #expect(abs(fine / full - 1) < 0.2, "\(item.name) changes the picture by \(fine) on a layer at 2 and by \(full) at 1")
+    }
+
+    /// The median takes a two-pixel speck out at any layer scale: its three by
+    /// three is three canvas pixels across, never three texels.
+    @Test(arguments: [1.0, 2.0])
+    func theMedianTakesOutASpeckAtAnyLayerScale(layerScale: Double) throws {
+        func specks(_ filter: Filter?) throws -> Double {
+            try Self.render(side: 96) { s in
+                s.background(.clear)
+                let layer = layerScale == 1 ? s.makeRenderTarget() : s.makeRenderTarget(scale: layerScale)
+                s.withTarget(layer) {
+                    s.background(.black); s.noStroke(); s.fill(.white)
+                    for j in 0..<8 { for i in 0..<8 {
+                        let x = Double(8 + i * 11), y = Double(8 + j * 11)
+                        s.drawPolygon([Vector2(x, y), Vector2(x + 2, y), Vector2(x + 2, y + 2), Vector2(x, y + 2)])
+                    } }
+                }
+                s.drawImage((filter.map { layer.filtered($0) } ?? layer).image, 0, 0, 96, 96)
+            }.sum(0)
+        }
+        let before = try specks(nil), after = try specks(.median())
+        #expect(before > 200, "the specks are there: \(before)")
+        #expect(after < 0.05 * before, "on a layer at \(layerScale) the median left \(after) of \(before)")
     }
 
     /// The straight color of a one-color shape is that color at every pixel a

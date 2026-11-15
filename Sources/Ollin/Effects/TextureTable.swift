@@ -16,8 +16,9 @@ import simd
 /// - the candidate list: record indices, four to a texel;
 /// - `texelsPerRecord` texels per record, in the order they were given.
 ///
-/// Positions are layer pixels, so the strip does not depend on the layer's
-/// size and a scatter built in canvas units lands where the sketch put it.
+/// Positions are canvas pixels, so the strip does not depend on the layer's
+/// size or its scale, and a scatter built in canvas units lands where the
+/// sketch put it.
 enum TextureTable {
     /// The most candidates one cell lists; the cap bounds the fragment's loop.
     static let maxCandidatesPerCell = 32

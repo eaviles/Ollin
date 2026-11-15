@@ -2557,12 +2557,12 @@ enum WebPlayer {
         fieldPool.push(made);
         return made;
       }
-      // rows: (threshold, source, reach, -); the steps follow `MeasuredField`.
+      // rows: (threshold, source, reach in texels, canvas pixels to a texel); the steps follow `MeasuredField`.
       function runField(input, rows, out) {
         var reach = rows[2], rung = 1, steps = [1];
         while (2 * rung - 1 < reach) rung *= 2;
         while (rung >= 1) { steps.push(rung); rung = Math.floor(rung / 2); }
-        var cut = [rows[0], rows[1], rows[2], 0];
+        var cut = [rows[0], rows[1], rows[2], rows[3]];
         var front = acquireField(out.w, out.h), back = acquireField(out.w, out.h);
         runFragment('ollin_field_seed', [input], cut, front);
         var read = front, write = back;

@@ -52,7 +52,7 @@ final class Aside_Example: Sketch {
                                blue: 0.5, alpha: 0.6))
                     drawCircle(x, y, 360)
                 }
-            }.post(.gaussianBlur(radius: 40)).scaled(0.5),
+            }.post(.gaussianBlur(radius: 80)).scaled(0.5),
             amount: 0.05)
 
             // A fine grid of bright dots, revealed only under a soft spotlight and

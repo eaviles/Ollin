@@ -5380,20 +5380,21 @@
       "seed": 1
     },
     "Effects/Coherence": {
-      "bytes": {
-        "still": 197125,
-        "stillSmall": 84048
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "still",
-      "motion": 0.0,
-      "rendered": "2026-09-10",
-      "source": "3227a00e0150690b",
-      "still": "examples/Effects/Coherence/still.jpg?v=c10c95d1",
       "stillBecause": "holds still",
-      "stillSmall": "examples/Effects/Coherence/still-640.jpg?v=2366f0ea",
-      "width": 1080
+      "frame": 480,
+      "motion": 0.0,
+      "source": "55624aa35aba3ea3",
+      "rendered": "2026-11-15",
+      "bytes": {
+        "still": 216905,
+        "stillSmall": 94806
+      },
+      "still": "examples/Effects/Coherence/still.jpg?v=30192e22",
+      "stillSmall": "examples/Effects/Coherence/still-640.jpg?v=3fbce4b0",
+      "seed": 1
     },
     "Effects/CrumpledFoil": {
       "width": 1080,

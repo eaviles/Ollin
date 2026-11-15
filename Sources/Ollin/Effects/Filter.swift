@@ -1484,7 +1484,7 @@ public struct Filter: Sendable {
     /// bends the flute layout, `distortion` scales the refraction, `shift` slides
     /// it, `stretch` streaks the image along the flutes near their borders,
     /// `blur` frosts the glass, `edges` softens samples pushed off the layer,
-    /// `margins` (layer pixels) leaves a plain undistorted frame around the
+    /// `margins` (canvas pixels) leaves a plain undistorted frame around the
     /// glass, and `angle` (radians) rotates the whole assembly.
     public static func flutedGlass(flutes: Double = 80, shape: FluteShape = .lines,
                                    profile: FluteProfile = .prism,
@@ -1563,8 +1563,8 @@ public struct Filter: Sendable {
 
     /// Holographic foil: render the layer's alpha shape as a crumpled sheet of
     /// holographic foil. The sheet is a `FacetField`, `facets` when handed one
-    /// (in layer pixels, so a sheet built over the canvas lands where it was
-    /// built), otherwise `FacetField.crumpled` over the layer at `spacing`
+    /// (in canvas pixels, so a sheet built over the canvas lands where it was
+    /// built, on a layer kept at any scale), otherwise `FacetField.crumpled` over the layer at `spacing`
     /// pixels and `crinkle` depth from `seed`, which a sketch can build for
     /// itself to draw the same creases. A stepped rainbow of `bands` (the
     /// `Ramp`; `.holographic` by default) runs across the sheet at `bandAngle`
@@ -1602,7 +1602,7 @@ public struct Filter: Sendable {
 
     /// Bubble wrap: a sheet of bubble wrap laid over the layer, over whatever
     /// is already drawn. The bubbles sit on a hex lattice, each a lens
-    /// `radius` layer pixels across with `gap` pixels of flat film between
+    /// `radius` canvas pixels across with `gap` pixels of flat film between
     /// them, and each magnifies what lies under it by `magnification`, bending
     /// the picture more toward its rim as a dome does. A light at
     /// `lightAngle` in the canvas plane puts a bright meniscus arc on the
@@ -1650,7 +1650,7 @@ public struct Filter: Sendable {
 
     /// Anaglyph: the layer as a red-and-cyan stereo print at one parallax.
     /// The red channel is read from a copy of the layer shifted left by half
-    /// of `separation` (layer pixels) and the green and blue channels from a
+    /// of `separation` (canvas pixels) and the green and blue channels from a
     /// copy shifted right by the same, the way the two eyes' pictures are
     /// printed over each other for red-and-cyan glasses. A dark mark on a
     /// light ground comes out as a cyan copy and a red copy that overlap in a
@@ -1667,7 +1667,7 @@ public struct Filter: Sendable {
 
     /// Mirage: the shimmer over a hot road. Above the `horizon` (a fraction of
     /// the layer's height, 0 the top and 1 the bottom) every row is shifted
-    /// sideways by a wavering amount, up to `amount` layer pixels at the
+    /// sideways by a wavering amount, up to `amount` canvas pixels at the
     /// horizon and fading to nothing at the top, since the hot air sits on
     /// the ground. The waver is two slow waves down the rows and a stepped
     /// jump at every fault, a band of rows that share one offset, `faults`
@@ -1685,7 +1685,7 @@ public struct Filter: Sendable {
                              amount: max(amount, 0), phase: phase))
     }
 
-    /// The sideways shift, in layer pixels, that `.mirage` gives the row at
+    /// The sideways shift, in canvas pixels, that `.mirage` gives the row at
     /// `y` (a fraction of the layer's height, 0 the top) above its horizon:
     /// the two slow waves and the stepped faults, scaled by how near the row
     /// is to the horizon. Rows at or below the horizon carry the inverted
@@ -2136,7 +2136,7 @@ public struct Filter: Sendable {
     /// drawImage(page.filtered(.adaptiveThreshold()).image, 0, 0)
     /// ```
     ///
-    /// `window` is how wide that neighborhood is, in the layer's pixels, and it is
+    /// `window` is how wide that neighborhood is, in canvas pixels, and it is
     /// bounded on both sides. It wants to be wider than the marks, so every window
     /// holds both ink and paper: too small and the middle of a thick stroke reads as
     /// its own background and hollows out. And it wants to be narrower than the

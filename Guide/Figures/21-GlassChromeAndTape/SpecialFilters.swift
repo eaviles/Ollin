@@ -37,7 +37,7 @@ final class SpecialFilters: Sketch {
 
         drawImage(source.filtered(.dither(dark: Color(hex: 0x1B2A4A),
                                           light: Color(hex: 0xF2CC8F),
-                                          pixelSize: 3)).image,
+                                          pixelSize: 6)).image,
                   in: panels[1])
 
         // The warp centers on a point given in 0…1 layer coordinates, so it

@@ -52,7 +52,7 @@ final class Fluid_Example: Sketch {
         // The dye covers the canvas, bloomed for glow. (`drawImage` already fills the
         // frame, so no `background` is needed — and a main-canvas `background` here would
         // wipe the seed drawn above, since it runs before the field is composited.)
-        drawImage(fluid.filtered(.bloom(threshold: 0.15, amount: 0.9)).image, 0, 0)
+        drawImage(fluid.filtered(.bloom(threshold: 0.15, amount: 0.9, radius: 32)).image, 0, 0)
         drawCaption("Fluid · a SimField evolving on the GPU · drag to stir")
     }
 }

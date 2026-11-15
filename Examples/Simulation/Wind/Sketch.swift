@@ -21,7 +21,7 @@ final class Wind: Sketch {
     /// How hard the weather turns the wind.
     @Param(0 ... 1) var stirring = 0.35
     /// Pixels of arrow per unit of wind.
-    @Param(0 ... 80) var arrowScale = 36.0
+    @Param(0 ... 160) var arrowScale = 72.0
     /// Draw the wind's arrows over the dust.
     @Param var drawsArrows = true
     /// Whether the field wraps around (a torus) or stops at walls.
@@ -112,8 +112,8 @@ final class Wind: Sketch {
         // The picture: dust through a ramp, the wind's arrows over it.
         drawImage(wind.filtered(.shader(dust)).filtered(.gradientMap(.mako)).image, 0, 0)
         if drawsArrows {
-            drawImage(wind.filtered(.arrows(spacing: 36, scale: arrowScale,
-                                            color: Color(white: 1, alpha: 0.7), width: 1.5)).image, 0, 0)
+            drawImage(wind.filtered(.arrows(spacing: 72, scale: arrowScale,
+                                            color: Color(white: 1, alpha: 0.7), width: 3)).image, 0, 0)
         }
 
         // The readback: every half second, the mean wind speed over the whole field.

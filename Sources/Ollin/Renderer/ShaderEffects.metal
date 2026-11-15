@@ -3420,13 +3420,15 @@ fragment float4 ollin_field_flood(PresentOut in [[stage_in]],
 }
 
 // Resolve: the flooded positions read out as the field a sketch uses. Red is the distance
-// in pixels, signed negative inside the shape; green and blue are the unit direction from
-// this pixel toward the nearest edge, so `pixel + direction * abs(distance)` lands on the
-// edge point itself and a sketch can look up whatever was drawn there. A pixel the ladder
+// in canvas pixels, signed negative inside the shape; green and blue are the unit direction
+// from this pixel toward the nearest edge, so `pixel + direction * abs(distance)` lands on
+// the edge point itself and a sketch can look up whatever was drawn there. The ladder works
+// in the layer's texels, and the last slot says how many canvas pixels one texel is, so a
+// layer kept at half size reports the distances a full-size one does. A pixel the ladder
 // never reached (an empty layer, or a seed farther away than the caller asked for) reads
 // the far value with a zero direction, which says "nothing within reach" rather than
 // pointing somewhere untrue.
-// params[0] = (threshold, source mode, far distance, -)
+// params[0] = (threshold, source mode, far distance in texels, canvas pixels to a texel)
 fragment float4 ollin_field_resolve(PresentOut in [[stage_in]],
                                     texture2d<float> seeds [[texture(0)]],
                                     texture2d<float> src [[texture(1)]],
@@ -3434,14 +3436,15 @@ fragment float4 ollin_field_resolve(PresentOut in [[stage_in]],
     float threshold = params[0].x;
     float mode = params[0].y;
     float far = params[0].z;
+    float unit = params[0].w;
     int2 p = int2(in.position.xy);
     bool inside = ollin_field_value(src.read(uint2(p)), mode) >= threshold;
     float2 seed = seeds.read(uint2(p)).xy;
-    if (seed.x < 0.0) { return float4(inside ? -far : far, 0.0, 0.0, 1.0); }
+    if (seed.x < 0.0) { return float4((inside ? -far : far) * unit, 0.0, 0.0, 1.0); }
     float2 toEdge = seed - (float2(p) + 0.5);
     float d = length(toEdge);
     float2 dir = (d > 1e-6) ? toEdge / d : float2(0.0);
-    d = min(d, far);
+    d = min(d, far) * unit;
     return float4(inside ? -d : d, dir.x, dir.y, 1.0);
 }
 
@@ -3893,8 +3896,12 @@ fragment float4 ollin_gen_gabor(PresentOut in [[stage_in]],
 // A pixel asks the arrows of its own cell and the eight around it, which is every
 // arrow that can reach it once a shaft is held to the spacing (a longer vector is
 // cut to it, since the arrows say direction and the scale says how much is drawn).
-// Coverage is a one-pixel ramp about the half width, so the ink anti-aliases and
-// composites over anything; a vector shorter than half a pixel draws nothing.
+// Coverage is a ramp about the half width, one canvas pixel wide or one texel
+// of a coarser layer (params[0].z, a texel's width in canvas pixels), so the
+// ink anti-aliases and composites over anything; a vector shorter than half
+// that ramp (half a pixel, or half a texel of a coarser layer) draws nothing.
+// Every length here is in canvas pixels: params[0].xy is one of them in the
+// layer's coordinates.
 fragment float4 ollin_fx_arrows(PresentOut in [[stage_in]],
                                 texture2d<float> src [[texture(0)]],
                                 sampler samp [[sampler(0)]],
@@ -3904,6 +3911,7 @@ fragment float4 ollin_fx_arrows(PresentOut in [[stage_in]],
     float spacing = max(2.0, params[1].x);
     float scale = params[1].y;
     float width = max(0.5, params[1].z);
+    float soft = 0.5 * max(params[0].z, 1.0);
     float4 color = params[2];
     float2 p = in.uv * size;
     float2 home = floor(p / spacing);
@@ -3914,7 +3922,7 @@ fragment float4 ollin_fx_arrows(PresentOut in [[stage_in]],
             if (c.x < 0.0 || c.y < 0.0 || c.x >= size.x || c.y >= size.y) { continue; }
             float2 v = src.sample(samp, c * texel, level(0.0)).xy * scale;
             float len = length(v);
-            if (len < 0.5) { continue; }
+            if (len < soft) { continue; }
             float shown = min(len, spacing * 0.9);
             float2 dir = v / len;
             float2 head = c + dir * shown;
@@ -3924,7 +3932,7 @@ fragment float4 ollin_fx_arrows(PresentOut in [[stage_in]],
             float2 b1 = head - dir * barb + n * barb * 0.55;
             float2 b2 = head - dir * barb - n * barb * 0.55;
             d = min(d, min(sdSegment(p, head, b1), sdSegment(p, head, b2)));
-            coverage = max(coverage, 1.0 - smoothstep(width * 0.5 - 0.5, width * 0.5 + 0.5, d));
+            coverage = max(coverage, 1.0 - smoothstep(width * 0.5 - soft, width * 0.5 + soft, d));
         }
     }
     float a = color.a * coverage;

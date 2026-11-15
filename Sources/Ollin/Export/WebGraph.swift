@@ -1090,6 +1090,9 @@ final class WebGraphRecorder {
             if target.needsStencil { throw refuse("withClip inside a layer") }
             if target.depthLayer != nil || target.normalLayer != nil { throw refuse("a layer's depth") }
             let pw = target.pixelWidth, ph = target.pixelHeight
+            // A size is canvas pixels at any layer scale, as on the Mac: the
+            // same measure turns it into what each pass needs.
+            let measure = LayerMeasure(width: pw, height: ph, scale: target.scale)
             var layer = WebLayer(key: -1, width: target.width, height: target.height,
                                  pixelWidth: pw, pixelHeight: ph, kind: .geometry(clear: [], items: []))
             switch target.origin {
@@ -1109,32 +1112,33 @@ final class WebGraphRecorder {
                 if case let .shader(shader) = filter.kind {
                     let (si, r) = try userIndex(shader, variant: 1)
                     layer.kind = .user(shader: si, inputs: [li], paramOffset: r.offset, paramRows: r.rows)
-                } else if let pass = filter.singlePass(width: pw, height: ph, resolve: Self.exportQuality) {
+                } else if let pass = filter.singlePass(width: pw, height: ph, scale: target.scale,
+                                                       resolve: Self.exportQuality) {
                     layer.kind = .filter(input: li, node(pass))
-                } else if let pair = filter.pairPass(width: pw, height: ph) {
+                } else if let pair = filter.pairPass(width: pw, height: ph, scale: target.scale) {
                     layer.kind = .filter(input: li, pairNode(pair))
                 } else if case let .gaussianBlur(radius) = filter.kind {
                     // The Mac runs a hardware Gaussian; the page runs its own
                     // separable one over the same sigma (see `WebPlayer`).
-                    let r = rows([SIMD4(Float(max(0.1, radius)), 0, 0, 0)])
+                    let r = rows([SIMD4(Float(max(0.1, measure.inTexels(radius))), 0, 0, 0)])
                     layer.kind = .filter(input: li, WebPassNode(fragment: WebPassNode.blur, inputs: [.layer(0)],
                                                                 paramOffset: r.offset, paramRows: r.rows))
                 } else if case let .bloom(threshold, intensity, radius) = filter.kind {
-                    let r = rows([SIMD4(Float(max(0.1, radius)), Float(threshold), Float(intensity), 0)])
+                    let r = rows([SIMD4(Float(max(0.1, measure.inTexels(radius))), Float(threshold), Float(intensity), 0)])
                     layer.kind = .filter(input: li, WebPassNode(fragment: WebPassNode.bloom, inputs: [.layer(0)],
                                                                 paramOffset: r.offset, paramRows: r.rows))
                 } else if case let .halation(threshold, radius, tint, amount) = filter.kind {
-                    let r = rows([SIMD4(Float(max(0.1, radius)), Float(threshold), Float(amount), 0), tint])
+                    let r = rows([SIMD4(Float(max(0.1, measure.inTexels(radius))), Float(threshold), Float(amount), 0), tint])
                     layer.kind = .filter(input: li, WebPassNode(fragment: WebPassNode.halation, inputs: [.layer(0)],
                                                                 paramOffset: r.offset, paramRows: r.rows))
                 } else if case let .distanceField(source, threshold, maxDistance) = filter.kind {
                     // The page runs the Mac's own seed, flood, and resolve over the same ladder.
                     let field = MeasuredField(source: source, threshold: threshold, maxDistance: maxDistance,
-                                              width: pw, height: ph)
+                                              width: pw, height: ph, scale: target.scale)
                     let r = rows([field.row])
                     layer.kind = .filter(input: li, WebPassNode(fragment: WebPassNode.field, inputs: [.layer(0)],
                                                                 paramOffset: r.offset, paramRows: r.rows))
-                } else if let styled = filter.styledPass(width: pw, height: ph) {
+                } else if let styled = filter.styledPass(width: pw, height: ph, scale: target.scale) {
                     // A layer style: the page prepares the field or the blur from the first
                     // row, then runs the style's own fragment with the rows after it.
                     let prepared: String, first: SIMD4<Float>
@@ -1154,7 +1158,8 @@ final class WebGraphRecorder {
                 if case let .shader(shader) = op.kind {
                     let (si, r) = try userIndex(shader, variant: 2)
                     layer.kind = .user(shader: si, inputs: [bi, ai], paramOffset: r.offset, paramRows: r.rows)
-                } else if let pass = op.singlePass(width: pw, height: ph, resolve: Self.exportQuality) {
+                } else if let pass = op.singlePass(width: pw, height: ph, scale: target.scale,
+                                                   resolve: Self.exportQuality) {
                     layer.kind = .combine(base: bi, aux: ai, node(pass))
                 } else {
                     throw refuse("the \(Self.caseName(op.kind)) combine")

@@ -17,8 +17,8 @@ import simd
 /// - two texels per facet: the corners `a` and `b`, then `c` and the heights of
 ///   `b` and `c` above `a`, which is all a normal needs.
 ///
-/// Positions are layer pixels, so the strip does not depend on the layer's size
-/// and a sheet built in canvas units lands where the sketch put it. Every
+/// Positions are canvas pixels, so the strip does not depend on the layer's size
+/// or its scale, and a sheet built in canvas units lands where the sketch put it. Every
 /// number is an exact small integer or a position, and the strip is 32-bit
 /// float, so nothing rounds.
 enum FoilTable {

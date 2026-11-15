@@ -11,6 +11,9 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ### Changed
 
+- **A filter's sizes are canvas pixels at any layer scale.** A blur, an outline, a shadow's offset, and every other size mean canvas pixels on a layer made with `makeRenderTarget(scale:)` or `.scaled(_:)`. At 0.5 a filter spreads half as far as it did: divide a size by the scale to keep an old look. [Effects](Docs/Drawing/Effects.md#rendertarget)
+- **A one-pixel filter reaches a canvas pixel.** On a scaled layer `.edges`, `.sharpen`, `.emboss`, `.median`, `.toon`, `.normalMap`, and `.schlieren` step by a canvas pixel, so a slope is as steep and an edge carries the same ink at any scale. `.antialias`, `.grain`, and `.jpeg` still work on the layer's own pixels. [Effects](Docs/Drawing/Effects.md#rendertarget)
+- **A measured field and the patterns read canvas pixels too.** On a scaled layer `.distanceField` reports its distances, and takes `maxDistance`, in canvas pixels. So do the sizes of `.defocus`, `.light`, the `.anaglyph` combine, `.rust`, `.verdigris`, `.terrazzo`, `.scratches`, and the pulsing border's margins. [Effects](Docs/Drawing/Effects.md#rendertarget)
 - **The Guide's Chapter 34 is two chapters.** *Traced light* keeps the mirrors, the bounce, the caustic, and the camera's effects. The new Chapter 35, [The lens and the slow render](Guide/35-TheLensAndTheSlowRender.md), teaches depth of field and the path-traced export. Chapters 35 to 46 are now 36 to 47.
 
 ## [0.18.0] - 2026-11-14

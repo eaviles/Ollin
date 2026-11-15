@@ -46,13 +46,73 @@ enum EffectQuality {
     }
 }
 
+/// How a layer's texels stand to the canvas's pixels: the one place a pass
+/// turns a size a sketch wrote into what its fragment needs. A layer keeps
+/// `scale` texels to a canvas pixel (`RenderTarget.scale`); the canvas itself,
+/// and so every whole-frame filter, keeps one. At a scale of 1 every value
+/// here is the number it was handed, so a full-size layer's passes are the
+/// same bytes with or without it.
+struct LayerMeasure {
+    /// The layer's size in texels.
+    var width: Int
+    var height: Int
+    /// Texels to a canvas pixel.
+    var scale: Double
+
+    init(width: Int, height: Int, scale: Double) {
+        self.width = max(1, width)
+        self.height = max(1, height)
+        self.scale = scale > 0 && scale.isFinite ? scale : 1
+    }
+
+    /// One canvas pixel in the layer's own 0 to 1 coordinates: the step a
+    /// kernel takes, so its reach is a canvas pixel however finely the layer
+    /// is kept. The third slot is how wide a texel is in canvas pixels, and
+    /// never under one: the ramp a fragment that draws its own edges
+    /// antialiases over, so a mark drawn on a coarse layer keeps an edge one
+    /// texel soft where a canvas pixel would leave it stepped.
+    var pixel: SIMD4<Float> {
+        SIMD4(Float(scale) / Float(width), Float(scale) / Float(height), Float(max(1, 1 / scale)), 0)
+    }
+
+    /// The layer's size in canvas pixels, for a fragment that turns a
+    /// coordinate into pixels itself and measures there.
+    var canvas: (width: Double, height: Double) {
+        (Double(width) / scale, Double(height) / scale)
+    }
+
+    /// The same size as whole pixels, for a table laid out over the canvas.
+    var canvasWidth: Int { max(1, Int(canvas.width.rounded())) }
+    var canvasHeight: Int { max(1, Int(canvas.height.rounded())) }
+
+    /// A size in canvas pixels as the layer's texels, for a fragment that
+    /// addresses texels (a blur's taps, a style's field, a dither's cells).
+    func inTexels(_ pixels: Double) -> Double { pixels * scale }
+}
+
 extension Filter {
     /// The single fragment pass this filter is, at a layer of `width` by
-    /// `height` pixels, or `nil` for one that takes several. `resolve` turns a
-    /// `.default` quality into the tier it means here.
-    func singlePass(width: Int, height: Int,
+    /// `height` texels that keeps `scale` texels to a canvas pixel, or `nil`
+    /// for one that takes several. `resolve` turns a `.default` quality into
+    /// the tier it means here.
+    ///
+    /// Everything a filter measures is in canvas pixels, so a layer's scale
+    /// changes how finely the result is kept and never its sizes. Three
+    /// values carry that into a pass, and each fragment takes the one that
+    /// suits how it works: `pixel` is one canvas pixel in the layer's own
+    /// coordinates, what a kernel steps by; `canvas` is the layer's size in
+    /// canvas pixels, for a fragment that turns a coordinate into pixels
+    /// itself; and `inTexels` turns a size into the layer's texels, for a
+    /// fragment that addresses them. A filter that is about the layer's own
+    /// texels (`antialias`, `grain`, `jpeg`) is handed none of the three, and
+    /// neither is `relight`, which measures against the layer's whole width.
+    func singlePass(width: Int, height: Int, scale: Double = 1,
                     resolve: (RenderQuality) -> RenderQuality) -> EffectPass? {
+        let measure = LayerMeasure(width: width, height: height, scale: scale)
         let texel = SIMD4<Float>(1 / Float(width), 1 / Float(height), 0, 0)
+        let pixel = measure.pixel
+        let canvas = measure.canvas
+        let inTexels = measure.inTexels
         let aspect = Float(width) / Float(max(1, height))
         let f = { (a: Double, b: Double, c: Double, d: Double) in
             SIMD4<Float>(Float(a), Float(b), Float(c), Float(d)) }
@@ -86,7 +146,7 @@ extension Filter {
             return pass("ollin_fx_gradient_map", [f(amount, 0, 0, 0)],
                         inputs: [.layer(0), .table(lut)])
         case let .arrows(spacing, scale, color, width):
-            return pass("ollin_fx_arrows", [texel, f(spacing, scale, width, 0), color])
+            return pass("ollin_fx_arrows", [pixel, f(spacing, scale, width, 0), color])
         case let .lut(table, amount):
             // The curves form is a strip, the same kind of table a gradient
             // map reads; a cube is a 3D texture the renderer keeps by contents.
@@ -102,9 +162,9 @@ extension Filter {
                         [SIMD4(texel.x, texel.y, Float(threshold), Float(threshold) * 0.5),
                          SIMD4(Float(amount), Float(EffectQuality.antialiasSteps(resolve(quality))), 0, 0)])
         case .edges(let intensity):
-            return pass("ollin_fx_edges", [SIMD4(texel.x, texel.y, Float(intensity), 0)])
+            return pass("ollin_fx_edges", [SIMD4(pixel.x, pixel.y, Float(intensity), 0)])
         case .sharpen(let amount):
-            return pass("ollin_fx_sharpen", [SIMD4(texel.x, texel.y, Float(amount), 0)])
+            return pass("ollin_fx_sharpen", [SIMD4(pixel.x, pixel.y, Float(amount), 0)])
         case let .vignette(amount, radius, softness):
             return pass("ollin_fx_vignette", [SIMD4(Float(amount), Float(radius), Float(softness), aspect)])
         case let .chromaticAberration(amount, mode, spectral, quality):
@@ -113,14 +173,14 @@ extension Filter {
             let taps = spectral ? Float(EffectQuality.dispersionTaps(resolve(quality))) : 3
             return pass("ollin_fx_chromatic",
                         [SIMD4(Float(amount), mode.rawIndex, mode.shapeA, mode.shapeB),
-                         SIMD4(aspect, taps, 0, 0), texel],
+                         SIMD4(aspect, taps, 0, 0), SIMD4(pixel.x, pixel.y, 0, 0)],
                         inputs: [.layer(0), .layer(0)])
         case let .halftone(scale, angle):
             return pass("ollin_fx_halftone", [SIMD4(Float(scale), Float(angle), aspect, 0)])
         case let .dither(levels, pixelSize):
-            return pass("ollin_fx_dither", [f(levels, pixelSize, 0, 0)])
+            return pass("ollin_fx_dither", [f(levels, inTexels(pixelSize), 0, 0)])
         case let .ditherDuo(dark, light, bias, pixelSize):
-            return pass("ollin_fx_dither_duo", [f(bias, pixelSize, 0, 0), dark, light])
+            return pass("ollin_fx_dither_duo", [f(bias, inTexels(pixelSize), 0, 0), dark, light])
         case let .grain(amount, seed):
             return pass("ollin_fx_grain", [f(amount, seed, 0, 0)])
         case let .filmGrain(amount, size, seed):
@@ -128,9 +188,10 @@ extension Filter {
             // bits, so a fractional seed is its own pattern, a frame count past
             // a few hours is not a float's rounding of one, and the page plays
             // the same value the Mac drew.
-            return pass("ollin_fx_film_grain", [f(amount, size, Double(Filter.grainPattern(of: seed)), 0)])
+            return pass("ollin_fx_film_grain",
+                        [f(amount, inTexels(size), Double(Filter.grainPattern(of: seed)), 0)])
         case let .pixelate(size, channel, tint):
-            let cols = max(1, (Double(width) / size).rounded())
+            let cols = max(1, (canvas.width / size).rounded())
             return pass("ollin_fx_pixelate",
                         [SIMD4(Float(cols), aspect, channel.rawIndex, tint == nil ? 0 : 1),
                          tint ?? SIMD4<Float>(repeating: 0)])
@@ -162,28 +223,32 @@ extension Filter {
         case .radialBlur(let amount):
             return pass("ollin_fx_radial_blur", [f(amount, 0, 0, 0)])
         case let .bilateral(radius, sigma):
-            return pass("ollin_fx_bilateral", [SIMD4(texel.x, texel.y, Float(radius), Float(sigma))])
+            return pass("ollin_fx_bilateral", [SIMD4(pixel.x, pixel.y, Float(radius), Float(sigma))])
 
         // Stylize & optical (continued)
         case let .emboss(amount, angle):
-            return pass("ollin_fx_emboss", [SIMD4(texel.x, texel.y, Float(amount), Float(angle))])
+            return pass("ollin_fx_emboss", [SIMD4(pixel.x, pixel.y, Float(amount), Float(angle))])
         case .oilPaint(let radius):
-            return pass("ollin_fx_oilpaint", [SIMD4(texel.x, texel.y, Float(radius), 0)])
+            return pass("ollin_fx_oilpaint", [SIMD4(pixel.x, pixel.y, Float(radius), 0)])
         case let .crosshatch(scale, foreground, background):
             return pass("ollin_fx_crosshatch",
                         [SIMD4(Float(scale), aspect, 0, 0), foreground, background])
         case let .toon(levels, edges):
-            return pass("ollin_fx_toon", [SIMD4(Float(levels), Float(edges), texel.x, texel.y)])
+            return pass("ollin_fx_toon", [SIMD4(Float(levels), Float(edges), pixel.x, pixel.y)])
         case .median:
-            return pass("ollin_fx_median", [SIMD4(texel.x, texel.y, 0, 0)])
+            return pass("ollin_fx_median", [SIMD4(pixel.x, pixel.y, 0, 0)])
         case let .contour(levels, intensity):
             return pass("ollin_fx_contour", [f(levels, intensity, 0, 0)])
         case .cmykHalftone(let scale):
             return pass("ollin_fx_cmyk_halftone", [SIMD4(Float(scale), aspect, 0, 0)])
         case .normalMap(let strength):
-            return pass("ollin_fx_normal_map", [SIMD4(texel.x, texel.y, Float(strength), 0)])
+            return pass("ollin_fx_normal_map", [SIMD4(pixel.x, pixel.y, Float(strength), 0)])
         case let .relight(finish, angle, elevation, height, intensity, color):
             return pass("ollin_fx_relight",
+                        // Relight keeps the layer's own texel: its fragment divides
+                        // the slope by the layer's width and widens its stencil with
+                        // the texel count, so the relief never followed the layer's
+                        // scale, and its taps must not fall under a texel.
                         [SIMD4(texel.x, texel.y, Float(height), finish.rawIndex),
                          SIMD4(Float(angle), Float(elevation), Float(intensity),
                                color == nil ? 0 : 1),
@@ -292,12 +357,12 @@ extension Filter {
                         [SIMD4(Float(flutes), aspect, shape.rawIndex, profile.rawIndex),
                          SIMD4(Float(distortion), Float(shift), Float(stretch), Float(blur)),
                          SIMD4(Float(edges), Float(highlights), Float(shadows), Float(angle)),
-                         SIMD4(Float(margins.left / Double(width)),
-                               Float(margins.right / Double(width)),
-                               Float(margins.top / Double(max(1, height))),
-                               Float(margins.bottom / Double(max(1, height)))),
+                         SIMD4(Float(margins.left / canvas.width),
+                               Float(margins.right / canvas.width),
+                               Float(margins.top / canvas.height),
+                               Float(margins.bottom / canvas.height)),
                          SIMD4<Float>(1, 1, 1, 1), SIMD4<Float>(0, 0, 0, 1),
-                         SIMD4(Float(max(1, height)), 0, 0, 0)])
+                         SIMD4(Float(canvas.height), 0, 0, 0)])
         case let .water(scale, waves, refraction, layering, edges, highlights, highlight, phase):
             return pass("ollin_fx_water",
                         [SIMD4(Float(scale), Float(waves), Float(refraction), Float(edges)),
@@ -318,36 +383,36 @@ extension Filter {
         case let .holographicFoil(facets, spacing, crinkle, seed, bands, bandWidth, bandAngle,
                                   bandShift, lightAngle, lightElevation, relief, creases,
                                   glints, amount, phase):
-            // The sheet travels as a lookup strip in layer pixels (FoilTable):
+            // The sheet travels as a lookup strip in canvas pixels (FoilTable):
             // the one handed in, packed, or the default crumple over this layer.
             let strip = facets.map(FoilTable.pack)
-                ?? FoilTable.defaultStrip(width: width, height: height, spacing: spacing,
-                                          crinkle: crinkle, seed: seed)
+                ?? FoilTable.defaultStrip(width: measure.canvasWidth, height: measure.canvasHeight,
+                                          spacing: spacing, crinkle: crinkle, seed: seed)
             let spectrum = FoilTable.bandStrip(bands)
             return pass("ollin_fx_holographic_foil",
                         [f(bandWidth, bandAngle, bandShift, phase),
                          f(lightAngle, lightElevation, relief, creases),
-                         f(glints, amount, Double(spectrum.count), Double(width)),
-                         f(Double(height), Double(max(bands.stops.count, 1)), 0, 0)],
+                         f(glints, amount, Double(spectrum.count), canvas.width),
+                         f(canvas.height, Double(max(bands.stops.count, 1)), 0, 0)],
                         inputs: [.layer(0), .table(strip), .table(spectrum)])
         case let .bubbleWrap(radius, gap, magnification, lightAngle, highlight, amount):
             return pass("ollin_fx_bubble_wrap",
                         [f(radius, gap, magnification, lightAngle),
-                         f(highlight, amount, Double(width), Double(height))])
+                         f(highlight, amount, canvas.width, canvas.height)])
         case let .anaglyph(separation, amount):
             // One parallax for every pixel: the depth flag is 0, so the second
             // texture is never read and the input stands in for it.
             return pass("ollin_fx_anaglyph",
-                        [f(separation, 0, 0.5, amount), f(Double(width), Double(height), 0, 0)],
+                        [f(separation, 0, 0.5, amount), f(canvas.width, canvas.height, 0, 0)],
                         inputs: [.layer(0), .layer(0)])
         case let .mirage(horizon, faults, amount, phase):
             return pass("ollin_fx_mirage",
-                        [f(horizon, faults, amount, phase), f(Double(width), Double(height), 0, 0)])
+                        [f(horizon, faults, amount, phase), f(canvas.width, canvas.height, 0, 0)])
         case let .schlieren(angle, amount):
-            return pass("ollin_fx_schlieren", [SIMD4(texel.x, texel.y, Float(angle), Float(amount))])
+            return pass("ollin_fx_schlieren", [SIMD4(pixel.x, pixel.y, Float(angle), Float(amount))])
         case let .vhs(smear, jitter, damage, amount, phase):
             return pass("ollin_fx_vhs",
-                        [f(smear, jitter, damage, amount), f(phase, Double(width), Double(height), 0)])
+                        [f(smear, jitter, damage, amount), f(phase, canvas.width, canvas.height, 0)])
         case let .lightLeak(anchor, spread, streaks, colors, flicker, intensity, phase, seed):
             return pass("ollin_fx_light_leak",
                         [f(anchor.x, anchor.y, spread, intensity),
@@ -374,8 +439,8 @@ extension Filter {
             // texels so a web page needs no float filtering.
             return pass("ollin_fx_chrome",
                         [f(horizon, warp, waves, phase),
-                         f(coreWidth, breakWidth, amount, Double(width)),
-                         f(Double(height), 0, 0, 0),
+                         f(coreWidth, breakWidth, amount, canvas.width),
+                         f(canvas.height, 0, 0, 0),
                          core, wire],
                         inputs: [.layer(0), .table(FoilTable.bandStrip(sky)),
                                  .table(FoilTable.bandStrip(floor))])
@@ -392,12 +457,15 @@ extension Filter {
     }
 
     /// The two fragment passes this filter is, at a layer of `width` by
-    /// `height` pixels, or `nil` for any other. The first reads the layer and
-    /// writes a scratch texture of the pair's scratch size; the second writes
-    /// the result, reading the layer as `.layer(0)` and the scratch as
-    /// `.layer(1)`. The renderer and the web recorder both run it from this
-    /// one description.
-    func pairPass(width: Int, height: Int) -> EffectPair? {
+    /// `height` texels that keeps `scale` texels to a canvas pixel, or `nil`
+    /// for any other. The first reads the layer and writes a scratch texture
+    /// of the pair's scratch size; the second writes the result, reading the
+    /// layer as `.layer(0)` and the scratch as `.layer(1)`. The renderer and
+    /// the web recorder both run it from this one description. The variable
+    /// blur walks the layer's own texels, so its radius arrives in them; the
+    /// block transform is about the layer's texels and takes no scale.
+    func pairPass(width: Int, height: Int, scale: Double = 1) -> EffectPair? {
+        let inTexels = LayerMeasure(width: width, height: height, scale: scale).inTexels
         let f = { (a: Double, b: Double, c: Double, d: Double) in
             SIMD4<Float>(Float(a), Float(b), Float(c), Float(d)) }
         switch kind {
@@ -416,10 +484,10 @@ extension Filter {
                                                  inputs: [.layer(0), .layer(1)], params: [size, flag]),
                               scratchWidth: pw, scratchHeight: ph)
         case let .tiltShift(focus, angle, band, falloff, radius):
-            return Self.varblur(head: f(0, radius, Double(width), Double(height)),
+            return Self.varblur(head: f(0, inTexels(radius), Double(width), Double(height)),
                                 shape: f(focus, angle, band, falloff), width: width, height: height)
         case let .progressiveBlur(angle, start, end, radius):
-            return Self.varblur(head: f(1, radius, Double(width), Double(height)),
+            return Self.varblur(head: f(1, inTexels(radius), Double(width), Double(height)),
                                 shape: f(angle, start, end, 0), width: width, height: height)
         default:
             return nil
@@ -454,19 +522,30 @@ struct EffectPair: Equatable {
 struct MeasuredField: Equatable {
     var source: Filter.FieldSource
     var threshold: Double
-    /// The farthest distance measured, in pixels: the caller's cap, or the
-    /// layer's diagonal when it set none.
+    /// The farthest distance measured, in the layer's texels: the caller's
+    /// cap, or the layer's diagonal when it set none.
     var reach: Double
+    /// How many texels the layer keeps to a canvas pixel. The ladder works
+    /// in texels and the resolve divides by this, so the field a sketch
+    /// reads is in canvas pixels whatever the layer's scale.
+    var scale: Double
 
-    init(source: Filter.FieldSource, threshold: Double, maxDistance: Double?, width: Int, height: Int) {
+    /// A field over a layer of `width` by `height` texels. `maxDistance` is
+    /// in canvas pixels, as the distances the field reports are; a layer
+    /// style, which works in texels throughout, leaves `scale` at 1.
+    init(source: Filter.FieldSource, threshold: Double, maxDistance: Double?, width: Int, height: Int,
+         scale: Double = 1) {
         let diagonal = (Double(width) * Double(width) + Double(height) * Double(height)).squareRoot()
+        let texels = LayerMeasure(width: width, height: height, scale: scale)
         self.source = source
         self.threshold = threshold
-        self.reach = maxDistance.map { min($0, diagonal) } ?? diagonal
+        self.scale = texels.scale
+        self.reach = maxDistance.map { min(texels.inTexels($0), diagonal) } ?? diagonal
     }
 
-    /// The row the seed and resolve passes bind.
-    var row: SIMD4<Float> { SIMD4(Float(threshold), source.rawIndex, Float(reach), 0) }
+    /// The row the seed and resolve passes bind: the cut, the reach in texels,
+    /// and the canvas pixels one texel is.
+    var row: SIMD4<Float> { SIMD4(Float(threshold), source.rawIndex, Float(reach), Float(1 / scale)) }
 
     /// The flood's step sizes: one step-1 pass, then the smallest power of two
     /// whose ladder reaches `reach` (a rung of `k` followed by every halving of it
@@ -487,7 +566,7 @@ struct StyledPass: Equatable {
     enum Preparation: Equatable {
         /// The distance field of the layer's alpha.
         case field(MeasuredField)
-        /// The layer blurred by a Gaussian of this sigma, in pixels.
+        /// The layer blurred by a Gaussian of this sigma, in texels.
         case blur(sigma: Double)
     }
     var preparation: Preparation
@@ -496,8 +575,13 @@ struct StyledPass: Equatable {
 
 extension Filter {
     /// The preparation and composite this filter is when it is a layer style, at
-    /// a layer of `width` by `height` pixels, or `nil` for every other filter.
-    func styledPass(width: Int, height: Int) -> StyledPass? {
+    /// a layer of `width` by `height` texels that keeps `scale` texels to a
+    /// canvas pixel, or `nil` for every other filter. A style composites texel
+    /// by texel against a field measured in texels, which is what keeps its
+    /// edges one texel soft, so its widths, radius, and offset arrive in
+    /// texels.
+    func styledPass(width: Int, height: Int, scale: Double = 1) -> StyledPass? {
+        let inTexels = LayerMeasure(width: width, height: height, scale: scale).inTexels
         // The field is measured only as far as the style reads it, plus room for
         // the antialiasing ramp, which keeps a thin outline's ladder short.
         func field(reaching distance: Double) -> StyledPass.Preparation {
@@ -508,15 +592,18 @@ extension Filter {
             EffectPass(fragment: fragment, inputs: [.layer(0), .layer(1)], params: params)
         }
         switch kind {
-        case let .outline(width, color, align):
+        case let .outline(canvasWidth, color, align):
+            let width = inTexels(canvasWidth)
             let code: Float = align == .center ? 0 : (align == .inside ? 1 : 2)
             return StyledPass(preparation: field(reaching: align == .center ? width / 2 : width),
                               pass: pass("ollin_fx_outline", [SIMD4(Float(width), code, 0, 0), color]))
-        case let .glow(radius, color, inside):
+        case let .glow(canvasRadius, color, inside):
+            let radius = inTexels(canvasRadius)
             return StyledPass(preparation: field(reaching: radius),
                               pass: pass("ollin_fx_glow", [SIMD4(Float(radius), inside ? 1 : 0, 0, 0), color]))
-        case let .edgeGlow(glowWidth, colors, spots, spotSize, pulse, bloom, center, phase):
+        case let .edgeGlow(canvasWidth, colors, spots, spotSize, pulse, bloom, center, phase):
             // The spots spill past the band, to two and a half widths out.
+            let glowWidth = inTexels(canvasWidth)
             let aspect = Float(width) / Float(max(1, height))
             return StyledPass(preparation: field(reaching: glowWidth * 2.5),
                               pass: pass("ollin_fx_edge_glow",
@@ -524,17 +611,20 @@ extension Filter {
                                           SIMD4(Float(pulse), Float(bloom), Float(phase), aspect),
                                           SIMD4(Float(center.x), Float(center.y), 0, 0)]
                                          + colors))
-        case let .bevel(width, depth, profile, angle, elevation, highlight, shadow):
-            // The slope's stencil reads two pixels past the band.
+        case let .bevel(canvasWidth, depth, profile, angle, elevation, highlight, shadow):
+            // The slope's stencil reads two texels past the band. The depth is
+            // a rise over a run, so it has no size to convert.
+            let width = inTexels(canvasWidth)
             return StyledPass(preparation: field(reaching: width + 3),
                               pass: pass("ollin_fx_bevel",
                                          [SIMD4(Float(width), Float(depth), profile.rawIndex, 0),
                                           SIMD4(Float(angle), Float(elevation), 0, 0),
                                           highlight, shadow]))
         case let .shadow(offset, radius, color, inside):
-            return StyledPass(preparation: .blur(sigma: max(0.1, radius)),
+            return StyledPass(preparation: .blur(sigma: max(0.1, inTexels(radius))),
                               pass: pass("ollin_fx_shadow",
-                                         [SIMD4(Float(offset.x), Float(offset.y), inside ? 1 : 0, 0), color]))
+                                         [SIMD4(Float(inTexels(offset.x)), Float(inTexels(offset.y)),
+                                                inside ? 1 : 0, 0), color]))
         default:
             return nil
         }
@@ -542,10 +632,13 @@ extension Filter {
 }
 
 extension Combine {
-    /// The single fragment pass this combine is over its base and aux, or `nil`
-    /// for one that takes several.
-    func singlePass(width: Int, height: Int,
+    /// The single fragment pass this combine is over its base and aux, at a
+    /// base of `width` by `height` texels that keeps `scale` texels to a
+    /// canvas pixel, or `nil` for one that takes several. Sizes are canvas
+    /// pixels, as a filter's are (`Filter.singlePass`).
+    func singlePass(width: Int, height: Int, scale: Double = 1,
                     resolve: (RenderQuality) -> RenderQuality) -> EffectPass? {
+        let measure = LayerMeasure(width: width, height: height, scale: scale)
         func pass(_ fragment: String, _ params: [SIMD4<Float>]) -> EffectPass {
             EffectPass(fragment: fragment, inputs: [.layer(0), .layer(1)], params: params)
         }
@@ -570,7 +663,7 @@ extension Combine {
             return pass("ollin_fx_chromatic",
                         [SIMD4(Float(amount), mode.rawIndex, mode.shapeA, mode.shapeB),
                          SIMD4(aspect, taps, 1, 0),
-                         SIMD4(1 / Float(width), 1 / Float(height), 0, 0)])
+                         SIMD4(measure.pixel.x, measure.pixel.y, 0, 0)])
         case let .mix(amount):
             return pass("ollin_fx_mix", [SIMD4(Float(amount), 0, 0, 0)])
         case let .wipe(order, progress, feather):
@@ -583,7 +676,7 @@ extension Combine {
             // The depth flag is 1: the aux is read as the depth map.
             return pass("ollin_fx_anaglyph",
                         [SIMD4(Float(separation), 1, Float(focus), Float(amount)),
-                         SIMD4(Float(width), Float(height), 0, 0)])
+                         SIMD4(Float(measure.canvas.width), Float(measure.canvas.height), 0, 0)])
         case let .paintMix(amount, quality):
             return pass("ollin_fx_paint_mix",
                         [SIMD4(Float(amount), 0, 0, 0)]
@@ -595,9 +688,13 @@ extension Combine {
 }
 
 extension Generator {
-    /// The fragment pass that fills a layer of `width` by `height` pixels with
-    /// this pattern; `nil` for a user shader, which the renderer compiles itself.
+    /// The fragment pass that fills a layer of `width` by `height` texels,
+    /// kept at `scale` texels to a canvas pixel, with this pattern; `nil` for
+    /// a user shader, which the renderer compiles itself. A pattern's sizes
+    /// are canvas pixels, as a filter's are (`Filter.singlePass`).
     func pass(width: Int, height: Int, scale: Double = 1) -> EffectPass? {
+        let measure = LayerMeasure(width: width, height: height, scale: scale)
+        let canvas = measure.canvas
         let aspect = Float(width) / Float(max(1, height))
         let f = { (a: Double, b: Double, c: Double, d: Double) in
             SIMD4<Float>(Float(a), Float(b), Float(c), Float(d)) }
@@ -609,25 +706,26 @@ extension Generator {
         case .shader:
             return nil
 
-        // Material textures. The scatter travels as a lookup strip in layer
+        // Material textures. The scatter travels as a lookup strip in canvas
         // pixels (TextureTable): the one handed in, packed, or the default
         // over this layer.
         case let .patina(blobs, count, radius, seed, tones, background, lightAngle, lip, blisters, tide,
                          drips, crust, grain):
             let strip = blobs.map(TextureTable.pack)
-                ?? TextureTable.defaultPatinaStrip(width: width, height: height, count: count,
-                                                   radius: radius, seed: seed)
+                ?? TextureTable.defaultPatinaStrip(width: measure.canvasWidth, height: measure.canvasHeight,
+                                                   count: count, radius: radius, seed: seed)
             return pass("ollin_gen_patina",
-                        [f(Double(width), Double(height), lightAngle, lip),
+                        [f(canvas.width, canvas.height, lightAngle, lip),
                          f(blisters, tide, grain, Double(seed % 1024)),
                          background] + tones + [f(drips, crust, 0, 0)],
                         inputs: [.table(strip)])
         case let .terrazzo(chips, chipRadius, density, gap, seed, tones, background, hatching, grain):
             let strip = chips.map(TextureTable.pack)
-                ?? TextureTable.defaultTerrazzoStrip(width: width, height: height, chipRadius: chipRadius,
-                                                     density: density, gap: gap, tones: tones.count, seed: seed)
+                ?? TextureTable.defaultTerrazzoStrip(width: measure.canvasWidth, height: measure.canvasHeight,
+                                                     chipRadius: chipRadius, density: density, gap: gap,
+                                                     tones: tones.count, seed: seed)
             return pass("ollin_gen_terrazzo",
-                        [f(Double(width), Double(height), hatching, grain),
+                        [f(canvas.width, canvas.height, hatching, grain),
                          f(Double(tones.count), Double(seed % 1024), 0, 0),
                          background] + tones,
                         inputs: [.table(strip)])
@@ -645,12 +743,13 @@ extension Generator {
                         [SIMD4(Float(scale), Float(jitter), aspect, Float(phase)),
                          SIMD4(style.rawIndex, 0, 0, 0), fg, bg])
         case let .gaborNoise(wavelength, bandwidth, angle, spread, impulses, phase, seed, fg, bg):
-            // Measured in pixels, so the wavelength scales with the layer (a
-            // 2x export keeps the picture) and the CPU form reads the same
-            // field at the same point. The seed is passed as a plain integer in a
+            // Measured in canvas pixels, so the wavelength scales with the
+            // layer and the CPU form reads the same field at the same point.
+            // The kernels are filtered to a texel's footprint, so this one
+            // works in texels. The seed is passed as a plain integer in a
             // float (24 bits is every seed a sketch hands out).
             return pass("ollin_gen_gabor",
-                        [SIMD4(Float(wavelength * scale), Float(bandwidth), Float(angle), Float(spread)),
+                        [SIMD4(Float(measure.inTexels(wavelength)), Float(bandwidth), Float(angle), Float(spread)),
                          SIMD4(Float(impulses), Float(phase), Float(GaborNoise.seedBits(seed)), 0),
                          SIMD4(Float(width), Float(height), 0, 0), fg, bg])
 
@@ -710,17 +809,17 @@ extension Generator {
             return pass("ollin_gen_grain_gradient",
                         [SIMD4(Float(colors.count), aspect, shape.rawIndex, Float(softness)),
                          SIMD4(Float(intensity), Float(noise), Float(phase),
-                               Float(max(1, height))),
+                               Float(canvas.height)),
                          background] + colors)
         case let .pulsingBorder(colors, background, roundness, thickness, softness, intensity,
                                 bloom, spots, spotSize, pulse, smoke, smokeScale, margins, phase):
-            // Margins arrive in layer pixels; the border lives in centered
+            // Margins arrive in canvas pixels; the border lives in centered
             // square units, so convert per side.
             let unit = Double(min(aspect, 1))
-            let mL = margins.left / Double(width) * Double(aspect) / unit
-            let mR = margins.right / Double(width) * Double(aspect) / unit
-            let mT = margins.top / Double(max(1, height)) / unit
-            let mB = margins.bottom / Double(max(1, height)) / unit
+            let mL = margins.left / canvas.width * Double(aspect) / unit
+            let mR = margins.right / canvas.width * Double(aspect) / unit
+            let mT = margins.top / canvas.height / unit
+            let mB = margins.bottom / canvas.height / unit
             return pass("ollin_gen_pulsing_border",
                         [SIMD4(Float(colors.count), aspect, Float(roundness), Float(thickness)),
                          SIMD4(Float(softness), Float(intensity), Float(bloom), Float(spots)),
@@ -740,7 +839,7 @@ extension Generator {
             return pass("ollin_gen_scratches",
                         [f(Double(count), thickness, length, angle),
                          f(wobble, flicker, phase, Double(seed % 4096)),
-                         f(Double(width), Double(height), 0, 0), color])
+                         f(canvas.width, canvas.height, 0, 0), color])
 
         // Pattern fields: scalars in the leading rows, background at params[2],
         // the palette (where one applies) as trailing rows.

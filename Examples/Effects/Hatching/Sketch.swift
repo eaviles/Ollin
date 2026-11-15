@@ -11,9 +11,10 @@ import Ollin
 /// strokes that carry it, keep moving. Watch where the marks go: horizontal
 /// across the sky, where the light changes with height alone; in rings around the
 /// sun; and along each hill's own slope, which is what makes the hills read as
-/// solid. The filter counts in pixels, so the scene is drawn into a layer at
-/// `Scale` of the canvas, which is what sets how heavy the pen looks on a big
-/// canvas. `Spacing` is the distance between strokes and `Length` how far one
+/// solid. The scene is drawn into a layer kept at `Scale` of the canvas. The
+/// filter counts in canvas pixels at any scale, so a lower scale costs less and
+/// softens the strokes without moving them; how heavy the pen looks is
+/// `Spacing`'s to set. `Spacing` is the distance between strokes and `Length` how far one
 /// runs before it ends: a short length is a stipple of dashes, a long one a comb.
 /// `Directions` is how many layers stack as the tone darkens, 1 hatching one way
 /// only and 2 crossing the first once it has laid all it may. `Compare` shows the

@@ -32,7 +32,7 @@ final class StreaksFigure: Sketch {
                 drawCircle(m.x * width, m.y * height, m.r * width)
             }
         }
-        let field = discs.filtered(.gaussianBlur(radius: 70))
+        let field = discs.filtered(.gaussianBlur(radius: 140))
 
         // The base: flat gray, grained so the walk has something to average.
         let base = makeRenderTarget()

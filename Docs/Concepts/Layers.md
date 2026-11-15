@@ -29,7 +29,7 @@ A filter reads a whole picture and writes a new one, so it needs a picture to re
 
 ### What a layer costs
 
-A layer costs a texture in memory and one more pass over its pixels. Effects are limited by fill rate, so the cost follows pixels times passes, not the number of marks. A layer you are going to blur rarely needs full detail, so `makeRenderTarget(scale: 0.5)` is the first setting to try. Nothing is copied back to the CPU at any point in the chain.
+A layer costs a texture in memory and one more pass over its pixels. Effects are limited by fill rate, so the cost follows pixels times passes, not the number of marks. A layer you are going to blur rarely needs full detail, so `makeRenderTarget(scale: 0.5)` is the first setting to try. A filter's sizes are canvas pixels at any scale, so the lower scale costs sharpness and nothing else. Nothing is copied back to the CPU at any point in the chain.
 
 ### The canvas is a layer too
 

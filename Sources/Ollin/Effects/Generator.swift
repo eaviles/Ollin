@@ -294,7 +294,7 @@ public struct Generator: Sendable {
     /// layer. `blobs` is the `Patina` to paint, so the blooms a sketch holds
     /// and strokes are the blooms the GPU paints; with none, `count` blooms
     /// are scattered over the layer at a mean radius drawn from `radius` (in
-    /// layer pixels) from `seed`. `lip` scales the flaked edge, `blisters` the
+    /// canvas pixels) from `seed`. `lip` scales the flaked edge, `blisters` the
     /// blisters, `drips` the rust stains that run down from a bloom (their
     /// length, as a share of the radius), `grain` the speckle in the bloom,
     /// each `0` to leave it out. Static by design: nothing here moves without
@@ -356,7 +356,7 @@ public struct Generator: Sendable {
     /// a `Terrazzo` (`chips`, so the chips a sketch holds and strokes are the
     /// chips the GPU paints) or, with none, one scattered over the layer by
     /// dart throwing in three size tiers from `seed`: the largest tier at
-    /// `chipRadius` (in layer pixels) and the others at 0.55 and 0.3 of it,
+    /// `chipRadius` (in canvas pixels) and the others at 0.55 and 0.3 of it,
     /// together covering about `density` of the floor, every chip clear of
     /// every other by `gap` pixels. Each chip is a polygon of five to eight
     /// corners in one of the `tones` (up to eight), and the larger chips are
@@ -558,7 +558,7 @@ public struct Generator: Sendable {
     }
 
     /// A glowing rounded border hugging the layer's edges (inset by `margins`,
-    /// in layer pixels), with up to eight light
+    /// in canvas pixels), with up to eight light
     /// spots per color racing the perimeter, an optional heartbeat `pulse`,
     /// additive `bloom`, and smoke wisps bleeding inward. `roundness` and
     /// `thickness` shape the border, `softness` feathers it, `amount` scales

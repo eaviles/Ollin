@@ -13,10 +13,10 @@ import OllinSamplePhotos
 /// The picture is one of the bundled sample photographs, a young woman in a lace
 /// headdress and an embroidered blouse: the lace and the embroidery snap into
 /// flat shapes, the skin into a few bands, and the edges between them stay
-/// crisp. The filter counts in pixels, so the photograph is drawn into a layer
-/// at `Scale` of the canvas: at 0.5 the shock's reach and the flow's length are
-/// twice what they would be at full size, which is what makes the bands read on
-/// a big canvas. `Rounds` is how many times the smoothing and the shock are
+/// crisp. The photograph is drawn into a layer kept at `Scale` of the canvas.
+/// The filter counts in canvas pixels at any scale, so the scale changes only
+/// how fine the layer is, and flat bands hide a coarse one: at 0.5 the rounds
+/// cost a quarter of what they do at full size. `Rounds` is how many times the smoothing and the shock are
 /// applied, and so the level of abstraction (2 is a light clean-up, 10 a
 /// poster). `Flow` is how far along the flow each round smooths, `Radius` how
 /// far across an edge the shock reaches, `Smoothing` the blur on the brightness
@@ -27,8 +27,8 @@ import OllinSamplePhotos
 final class Coherence: Sketch {
 
     @Param("Rounds", 1 ... 10, icon: "arrow.clockwise", group: "Filter") var rounds = 3
-    @Param("Flow", 1 ... 16, icon: "wind", group: "Filter") var flow = 6.0
-    @Param("Radius", 1 ... 6, icon: "bolt", group: "Filter") var radius = 2.0
+    @Param("Flow", 1 ... 16, icon: "wind", group: "Filter") var flow = 12.0
+    @Param("Radius", 1 ... 6, icon: "bolt", group: "Filter") var radius = 4.0
     @Param("Smoothing", 0 ... 6, icon: "drop", group: "Filter") var smoothing = 0.0
     @Param("Threshold", 0 ... 0.02, icon: "circle.lefthalf.filled", group: "Filter") var threshold = 0.005
     @Param("Scale", 0.25 ... 1, icon: "arrow.down.right.and.arrow.up.left", group: "Layer") var layerScale = 0.5

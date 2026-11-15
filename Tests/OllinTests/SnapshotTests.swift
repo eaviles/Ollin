@@ -322,7 +322,7 @@ private let snapshotMetalCases: [SnapshotCase] = [
                  note: "A Sim.shader field: a heat kernel of the sketch's own (a four-neighbor blend that cools, three substeps a frame) under a clamped edge, fed by an inject kernel that adds a hot disc where the marks land, with a per-frame input layer that shades one side of the plate colder, evolved to frame 40 and recolored. Pins the user-kernel wrapper end to end: the cell readers through the field's edge sampler (the clamped rim keeps the heat in, a wrapping one would leak it across), the mark reader of the inject variant, the input layer bound at its slot, the sim rows the wrapper appends after the user's parameters, and the raw tail that stores the state as returned.",
                  make: { EffectsSimFieldShader() }),
     SnapshotCase("effects-arrows", frame: 30,
-                 note: "A two-channel field drawn as arrows over its own recoloring: a Sim.shader kernel that turns a wind slowly around the center and adds a swirl from a noise layer, read through .arrows at 30-pixel spacing over a .gradientMap of its speed. Pins the arrows fragment (cell centers, the shaft and barbs as segment distances over the 3x3 neighborhood, the shown length held to the spacing) and its pass description.",
+                 note: "A two-channel field drawn as arrows over its own recoloring: a Sim.shader kernel that turns a wind slowly around the center and adds a swirl from a noise layer, read through .arrows at 60-pixel spacing over a .gradientMap of its speed. Pins the arrows fragment (cell centers, the shaft and barbs as segment distances over the 3x3 neighborhood, the shown length held to the spacing) and its pass description.",
                  make: { EffectsArrows() }),
     SnapshotCase("effects-fluid", frame: 48,
                  note: "A fluid SimField driven by a fixed brush path, run to frame 48. Pins the multi-field fluid pipeline end to end: the velocity + dye splat, curl and vorticity confinement, the Jacobi pressure projection, semi-Lagrangian advection, and the persistent two-pair ping-pong with render-every-frame warmup.",
@@ -7887,9 +7887,12 @@ private final class EffectsXDoG: Sketch {
 
     override func draw() {
         background(Color(white: 0.05))
-        let scene = makeRenderTarget(scale: 0.5)
-        withTarget(scene) { paintEffectsStillLife() }
-        // A half-scale layer's image is canvas-sized, so each tile names its quarter.
+        // The still life at half size in a layer of its own pixels, so a
+        // filter's sizes are the tile's pixels one to one (a layer kept at
+        // `scale: 0.5` would count them in canvas pixels, two to a texel).
+        let scene = makeRenderTarget(width: 256, height: 128)
+        withTarget(scene) { withState { scale(0.5); paintEffectsStillLife() } }
+        // The layer is a quarter of the canvas, and each tile names its quarter.
         func tile(_ col: Int, _ row: Int) -> Rectangle {
             Rectangle(x: Double(col) * 256, y: Double(row) * 128, width: 256, height: 128)
         }
@@ -7943,18 +7946,23 @@ private final class EffectsBrushwork: Sketch {
 
     override func draw() {
         background(Color(white: 0.05))
-        let scene = makeRenderTarget(scale: 0.5)
+        // The still life at half size in a layer of its own pixels, as in
+        // effects-xdog, so a filter's sizes are the tile's pixels one to one.
+        let scene = makeRenderTarget(width: 256, height: 128)
         withTarget(scene) {
-            paintEffectsStillLife()
-            // A fixed hatch, one way in shadow and the other in light, over everything.
-            strokeWeight(1)
-            stroke(Color(white: 0, alpha: 0.35))
-            for i in stride(from: -Int(height), to: Int(width), by: 5) {
-                drawLine(Double(i), 0, Double(i) + height, height)
-            }
-            stroke(Color(white: 1, alpha: 0.3))
-            for i in stride(from: 0, to: Int(width + height), by: 7) {
-                drawLine(Double(i), 0, Double(i) - height, height)
+            withState {
+                scale(0.5)
+                paintEffectsStillLife()
+                // A fixed hatch, one way in shadow and the other in light, over everything.
+                strokeWeight(1)
+                stroke(Color(white: 0, alpha: 0.35))
+                for i in stride(from: -Int(height), to: Int(width), by: 5) {
+                    drawLine(Double(i), 0, Double(i) + height, height)
+                }
+                stroke(Color(white: 1, alpha: 0.3))
+                for i in stride(from: 0, to: Int(width + height), by: 7) {
+                    drawLine(Double(i), 0, Double(i) - height, height)
+                }
             }
         }
         func tile(_ col: Int, _ row: Int) -> Rectangle {
@@ -7977,8 +7985,10 @@ private final class EffectsShock: Sketch {
 
     override func draw() {
         background(Color(white: 0.05))
-        let scene = makeRenderTarget(scale: 0.5)
-        withTarget(scene) { paintEffectsStillLife() }
+        // The still life at half size in a layer of its own pixels, as in
+        // effects-xdog, so a filter's sizes are the tile's pixels one to one.
+        let scene = makeRenderTarget(width: 256, height: 128)
+        withTarget(scene) { withState { scale(0.5); paintEffectsStillLife() } }
         func tile(_ col: Int, _ row: Int) -> Rectangle {
             Rectangle(x: Double(col) * 256, y: Double(row) * 128, width: 256, height: 128)
         }
@@ -8028,8 +8038,10 @@ private final class EffectsHatching: Sketch {
 
     override func draw() {
         background(Color(white: 0.05))
-        let scene = makeRenderTarget(scale: 0.5)
-        withTarget(scene) { paintEffectsStillLife() }
+        // The still life at half size in a layer of its own pixels, as in
+        // effects-xdog, so a filter's sizes are the tile's pixels one to one.
+        let scene = makeRenderTarget(width: 256, height: 128)
+        withTarget(scene) { withState { scale(0.5); paintEffectsStillLife() } }
         func tile(_ col: Int, _ row: Int) -> Rectangle {
             Rectangle(x: Double(col) * 256, y: Double(row) * 128, width: 256, height: 128)
         }
@@ -11627,7 +11639,8 @@ private final class EffectsArrows: Sketch {
         }
         """)
         drawImage(wind.filtered(.shader(speed)).filtered(.gradientMap(.viridis)).image, 0, 0)
-        drawImage(wind.filtered(.arrows(spacing: 30, scale: 22, color: .white, width: 1.5)).image, 0, 0)
+        // The field is kept at half size and the arrows are measured on the canvas.
+        drawImage(wind.filtered(.arrows(spacing: 60, scale: 44, color: .white, width: 3)).image, 0, 0)
     }
 }
 

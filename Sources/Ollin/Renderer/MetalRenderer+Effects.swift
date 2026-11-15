@@ -484,7 +484,7 @@ extension MetalRenderer {
                 guard let src = input.texture else { return }
                 output.texture = applyFilter(filter, input: src,
                                              width: output.pixelWidth, height: output.pixelHeight,
-                                             into: cb, pooled: pooled)
+                                             scale: output.scale, into: cb, pooled: pooled)
             case let .combine(base, aux, op):
                 guard let b = base.texture, let a = aux.texture else { return }
                 // Ambient occlusion reads the base's mesh-normal G-buffer when it was
@@ -493,7 +493,7 @@ extension MetalRenderer {
                 output.texture = applyCombine(op, base: b, aux: a, depth: aux.depthReconstruction,
                                               normals: base.normalLayer?.texture,
                                               width: output.pixelWidth, height: output.pixelHeight,
-                                              into: cb, pooled: pooled)
+                                              scale: output.scale, into: cb, pooled: pooled)
             default:
                 return
             }
@@ -616,15 +616,23 @@ extension MetalRenderer {
     /// kernel, bloom a bright-pass + blur + add-back chain, and the solves and
     /// ladders run their own sequences. Every pass reads premultiplied-linear
     /// input and writes the same. `f` is the float vector of the type's parameters.
+    ///
+    /// `scale` is how many texels the layer keeps to a canvas pixel (1 for the
+    /// canvas itself, so for every whole-frame filter). A filter's sizes are
+    /// canvas pixels, and `LayerMeasure` is where each pass turns them into what
+    /// its fragments need, so the scale changes how finely a result is kept and
+    /// never how wide a blur is or how far an outline reaches.
     private func applyFilter(_ filter: Filter, input: MTLTexture, width: Int, height: Int,
-                             into cb: MTLCommandBuffer, pooled: Bool) -> MTLTexture? {
-        if let single = filter.singlePass(width: width, height: height, resolve: effectiveQuality) {
+                             scale: Double = 1, into cb: MTLCommandBuffer, pooled: Bool) -> MTLTexture? {
+        let measure = LayerMeasure(width: width, height: height, scale: scale)
+        if let single = filter.singlePass(width: width, height: height, scale: scale,
+                                          resolve: effectiveQuality) {
             return encodeSinglePass(single, layers: [input], width: width, height: height,
                                     into: cb, pooled: pooled)
         }
         // Two passes through one scratch texture, kept in single precision so a
         // block transform's coefficients and a blur's first direction lose nothing.
-        if let pair = filter.pairPass(width: width, height: height) {
+        if let pair = filter.pairPass(width: width, height: height, scale: scale) {
             guard let scratch = acquireSATTexture(width: pair.scratchWidth, height: pair.scratchHeight,
                                                   pooled: pooled) else { return nil }
             encodeEffectFragment(pair.first.fragment, inputs: [input], output: scratch,
@@ -633,7 +641,7 @@ extension MetalRenderer {
                                     width: width, height: height, into: cb, pooled: pooled)
         }
         // A layer style: the field or the blur it reads, then its composite over the layer.
-        if let styled = filter.styledPass(width: width, height: height) {
+        if let styled = filter.styledPass(width: width, height: height, scale: scale) {
             let prepared: MTLTexture?
             switch styled.preparation {
             case .field(let field):
@@ -711,7 +719,7 @@ extension MetalRenderer {
             return output
         case .gaussianBlur(let radius):
             guard let output = acquireFilterTexture(width: width, height: height, pooled: pooled) else { return nil }
-            let blur = MPSImageGaussianBlur(device: device, sigma: Float(max(0.1, radius)))
+            let blur = MPSImageGaussianBlur(device: device, sigma: Float(max(0.1, measure.inTexels(radius))))
             blur.edgeMode = .clamp
             blur.encode(commandBuffer: cb, sourceTexture: input, destinationTexture: output)
             return output
@@ -722,7 +730,7 @@ extension MetalRenderer {
             // Bright-pass → blur → add the glow back onto the original.
             encodeEffectFragment("ollin_fx_brightpass", inputs: [input], output: bright,
                                  params: [f(threshold, 0, 0, 0)], into: cb)
-            let blur = MPSImageGaussianBlur(device: device, sigma: Float(max(0.1, radius)))
+            let blur = MPSImageGaussianBlur(device: device, sigma: Float(max(0.1, measure.inTexels(radius))))
             blur.edgeMode = .clamp
             blur.encode(commandBuffer: cb, sourceTexture: bright, destinationTexture: blurred)
             encodeEffectFragment("ollin_fx_bloom_combine", inputs: [input, blurred], output: output,
@@ -735,7 +743,7 @@ extension MetalRenderer {
             // The same bright pass and blur as bloom; the add-back is the film's.
             encodeEffectFragment("ollin_fx_brightpass", inputs: [input], output: bright,
                                  params: [f(threshold, 0, 0, 0)], into: cb)
-            let blur = MPSImageGaussianBlur(device: device, sigma: Float(max(0.1, radius)))
+            let blur = MPSImageGaussianBlur(device: device, sigma: Float(max(0.1, measure.inTexels(radius))))
             blur.edgeMode = .clamp
             blur.encode(commandBuffer: cb, sourceTexture: bright, destinationTexture: blurred)
             encodeEffectFragment("ollin_fx_halation_combine", inputs: [input, blurred], output: output,
@@ -806,7 +814,7 @@ extension MetalRenderer {
                                                 Float(dispersion), Float(distortion)),
                                           SIMD4(Float(contour), Float(angle), Float(phase), aspect),
                                           tint,
-                                          SIMD4(Float(max(1, height)), 0, 0, 0)], into: cb)
+                                          SIMD4(Float(measure.canvas.height), 0, 0, 0)], into: cb)
             return output
         case let .heatmap(colors, contour, innerGlow, outerGlow, angle, noise, phase):
             guard let (wide, tight) = blurredAlphaFields(of: input, width: width, height: height,
@@ -842,15 +850,17 @@ extension MetalRenderer {
         case let .distanceField(source, threshold, maxDistance):
             return measuredDistanceField(of: input, width: width, height: height,
                                          source: source, threshold: threshold,
-                                         maxDistance: maxDistance, into: cb, pooled: pooled)
+                                         maxDistance: maxDistance, scale: scale, into: cb, pooled: pooled)
         case let .boxBlur(radius):
             guard let sat = summedAreaTable(of: input, width: width, height: height,
                                             into: cb, pooled: pooled) else { return nil }
-            return pass("ollin_fx_box_blur", [sat, input], [f(radius.rounded(), 0, 0, 0)])
+            // The table is read at whole texels, so the radius is the nearest
+            // whole number of them.
+            return pass("ollin_fx_box_blur", [sat, input], [f(measure.inTexels(radius).rounded(), 0, 0, 0)])
         case let .adaptiveThreshold(window, bias, invert):
             // The published default window is an eighth of the image width; the radius is
             // half of it, since the window is measured across and the shader reaches out.
-            let side = window ?? (Double(width) / 8)
+            let side = window.map(measure.inTexels) ?? (Double(width) / 8)
             guard let sat = summedAreaTable(of: input, width: width, height: height,
                                             into: cb, pooled: pooled) else { return nil }
             return pass("ollin_fx_adaptive_threshold", [sat, input],
@@ -867,12 +877,14 @@ extension MetalRenderer {
                   let smoothed = acquireFilterTexture(width: width, height: height, pooled: pooled),
                   let response = acquireFilterTexture(width: width, height: height, pooled: pooled),
                   let output = acquireFilterTexture(width: width, height: height, pooled: pooled) else { return nil }
-            let texel = SIMD2<Float>(1 / Float(width), 1 / Float(height))
+            // Every pass steps by a canvas pixel, and the tensor's blur is two of
+            // them, so the line scale is the canvas's at any layer scale.
+            let texel = measure.pixel
             let paperLuma = background.x * 0.2126 + background.y * 0.7152 + background.z * 0.0722
             let paper = paperLuma * background.w + (1 - background.w)
             encodeEffectFragment("ollin_fx_xdog_tensor", inputs: [input], output: tensor,
                                  params: [SIMD4(texel.x, texel.y, paper, 0)], into: cb)
-            let blur = MPSImageGaussianBlur(device: device, sigma: 2)
+            let blur = MPSImageGaussianBlur(device: device, sigma: Float(measure.inTexels(2)))
             blur.edgeMode = .clamp
             blur.encode(commandBuffer: cb, sourceTexture: tensor, destinationTexture: smoothed)
             encodeEffectFragment("ollin_fx_xdog_across", inputs: [input, smoothed], output: response,
@@ -891,10 +903,10 @@ extension MetalRenderer {
             guard let tensor = acquireFilterTexture(width: width, height: height, pooled: pooled),
                   let smoothed = acquireFilterTexture(width: width, height: height, pooled: pooled),
                   let output = acquireFilterTexture(width: width, height: height, pooled: pooled) else { return nil }
-            let texel = SIMD2<Float>(1 / Float(width), 1 / Float(height))
+            let texel = measure.pixel
             encodeEffectFragment("ollin_fx_brushwork_tensor", inputs: [input], output: tensor,
                                  params: [SIMD4(texel.x, texel.y, 0, 0)], into: cb)
-            let blur = MPSImageGaussianBlur(device: device, sigma: 2)
+            let blur = MPSImageGaussianBlur(device: device, sigma: Float(measure.inTexels(2)))
             blur.edgeMode = .clamp
             blur.encode(commandBuffer: cb, sourceTexture: tensor, destinationTexture: smoothed)
             // The stretch is the brush's aspect ratio at full anisotropy, so the
@@ -929,10 +941,11 @@ extension MetalRenderer {
             let softens = smoothing > 0.01
             let gray = softens ? acquireFilterTexture(width: width, height: height, pooled: pooled) : nil
             if softens && gray == nil { return nil }
-            let texel = SIMD2<Float>(1 / Float(width), 1 / Float(height))
-            let tensorBlur = MPSImageGaussianBlur(device: device, sigma: 2)
+            let texel = measure.pixel
+            let tensorBlur = MPSImageGaussianBlur(device: device, sigma: Float(measure.inTexels(2)))
             tensorBlur.edgeMode = .clamp
-            let grayBlur = softens ? MPSImageGaussianBlur(device: device, sigma: Float(smoothing)) : nil
+            let grayBlur = softens
+                ? MPSImageGaussianBlur(device: device, sigma: Float(measure.inTexels(smoothing))) : nil
             grayBlur?.edgeMode = .clamp
             // The gradient magnitude under which a texel keeps its previous direction,
             // the technique's own relaxation threshold on a 0…1 display scale.
@@ -975,14 +988,14 @@ extension MetalRenderer {
             guard let tensor = acquireFilterTexture(width: width, height: height, pooled: pooled),
                   let smoothed = acquireFilterTexture(width: width, height: height, pooled: pooled),
                   let output = acquireFilterTexture(width: width, height: height, pooled: pooled) else { return nil }
-            let texel = SIMD2<Float>(1 / Float(width), 1 / Float(height))
+            let texel = measure.pixel
             // The tensor is normalized before it is stored, so a gradient as gentle
             // as a tone crossing the whole canvas still says which way the picture
             // runs; unnormalized it would be far under a half float's smallest
             // number and read as flat, and every stroke would fall back to level.
             encodeEffectFragment("ollin_fx_brushwork_tensor", inputs: [input], output: tensor,
                                  params: [SIMD4(texel.x, texel.y, 1, 0)], into: cb)
-            let blur = MPSImageGaussianBlur(device: device, sigma: 2)
+            let blur = MPSImageGaussianBlur(device: device, sigma: Float(measure.inTexels(2)))
             blur.edgeMode = .clamp
             blur.encode(commandBuffer: cb, sourceTexture: tensor, destinationTexture: smoothed)
             // Half the stroke each way from the pixel, so the walk is the length.
@@ -1179,11 +1192,11 @@ extension MetalRenderer {
     /// whole of a 1080 square canvas is 12.
     private func measuredDistanceField(of input: MTLTexture, width: Int, height: Int,
                                        source: Filter.FieldSource, threshold: Double,
-                                       maxDistance: Double?, into cb: MTLCommandBuffer,
-                                       pooled: Bool) -> MTLTexture? {
+                                       maxDistance: Double?, scale: Double = 1,
+                                       into cb: MTLCommandBuffer, pooled: Bool) -> MTLTexture? {
         measuredDistanceField(of: input, MeasuredField(source: source, threshold: threshold,
                                                       maxDistance: maxDistance,
-                                                      width: width, height: height),
+                                                      width: width, height: height, scale: scale),
                               width: width, height: height, into: cb, pooled: pooled)
     }
 
@@ -1714,9 +1727,11 @@ extension MetalRenderer {
     /// in size; the fragment samples by normalized coordinates, so it doesn't matter.
     private func applyCombine(_ op: Combine, base: MTLTexture, aux: MTLTexture,
                               depth: DepthReconstruction? = nil, normals: MTLTexture? = nil,
-                              width: Int, height: Int,
+                              width: Int, height: Int, scale: Double = 1,
                               into cb: MTLCommandBuffer, pooled: Bool) -> MTLTexture? {
-        if let single = op.singlePass(width: width, height: height, resolve: effectiveQuality) {
+        let measure = LayerMeasure(width: width, height: height, scale: scale)
+        if let single = op.singlePass(width: width, height: height, scale: scale,
+                                      resolve: effectiveQuality) {
             return encodeSinglePass(single, layers: [base, aux], width: width, height: height,
                                     into: cb, pooled: pooled)
         }
@@ -1749,13 +1764,13 @@ extension MetalRenderer {
                                  output: out,
                                  params: [SIMD4(Float(amount), Float(threshold), 0, 0)], into: cb)
             return out
-        case let .defocus(focus, range, maxBlur, quality, blades, irisAngle, catsEye):
+        case let .defocus(focus, range, canvasBlur, quality, blades, irisAngle, catsEye):
             // The canvas depth of field's own gather over a layer (`applyDepthOfField`
             // runs the same five passes), fed by the layer prepass, which reads the aux
             // depth map and resolves its anti-aliased rims to their nearer side, and
             // the ramp law: zero blur inside `focus +- range`, growing with the
-            // distance from the band to reach `maxBlur` (in layer pixels, which at
-            // this resolution are the gather's texels) at the map's ends. The tile passes bound how far each pixel gathers,
+            // distance from the band to reach `maxBlur` (canvas pixels, turned here
+            // into the texels the gather walks) at the map's ends. The tile passes bound how far each pixel gathers,
             // and the median after the gather takes out the disc grain the moved
             // spiral leaves. The shape of the opening goes in the spare slots: the
             // blade count falls back to the camera that drew the depth layer, so a
@@ -1763,6 +1778,7 @@ extension MetalRenderer {
             // and its path-traced export do; a hand-drawn depth map carries no camera,
             // so it stays round until the call names a blade count itself. `maxBlur`
             // under half a pixel is a pass-through, so the op is free to leave in.
+            let maxBlur = measure.inTexels(canvasBlur)
             guard maxBlur >= 0.5 else { return base }
             let taps = Float(resolveDofTaps(quality))
             let irisBlades = Double(max(0, blades ?? depth?.apertureBlades ?? 0))
@@ -1822,7 +1838,7 @@ extension MetalRenderer {
             return out
         case let .light(reach, brightness, bounces, sky, quality):
             return radianceCascades(scene: base, lights: aux, width: width, height: height,
-                                    reach: reach, brightness: brightness, bounces: bounces,
+                                    reach: reach.map(measure.inTexels), brightness: brightness, bounces: bounces,
                                     sky: sky, quality: quality, into: cb, pooled: pooled)
         case let .screenSpaceReflections(intensity, maxDistance, thickness, roughness, fresnel, edgeFade, quality):
             // Four passes: a screen-space ray march (rebuilding view-space position + normal from

@@ -240,7 +240,7 @@ override func draw() {
         fill(Color(hue: time * 0.07, saturation: 0.85, brightness: 1))
         drawCircle(center: brush, radius: 15)
     }
-    drawImage(fluid.filtered(.bloom(threshold: 0.4, amount: 1.1, radius: 14)).image, 0, 0)
+    drawImage(fluid.filtered(.bloom(threshold: 0.4, amount: 1.1, radius: 28)).image, 0, 0)
 }
 ```
 

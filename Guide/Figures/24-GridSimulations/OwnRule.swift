@@ -50,7 +50,7 @@ final class OwnRule: Sketch {
         }
         """)
         drawImage(plate.filtered(.shader(heat)).filtered(.gradientMap(.magma)).image, 0, 0)
-        drawImage(plate.filtered(.arrows(spacing: 24, scale: 400, color: Color(white: 1, alpha: 0.7),
-                                         width: 1.5)).image, 0, 0)
+        drawImage(plate.filtered(.arrows(spacing: 48, scale: 800, color: Color(white: 1, alpha: 0.7),
+                                         width: 3)).image, 0, 0)
     }
 }

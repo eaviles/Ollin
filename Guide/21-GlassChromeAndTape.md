@@ -216,7 +216,7 @@ drawCircle(width / 2, height / 2, 300)        // whatever the frame holds
 postProcess(.bubbleWrap(radius: 26, gap: 6, lightAngle: -2.2))
 ```
 
-`radius` and `gap` are in layer pixels, and `magnification` is how much each lens enlarges. `lightAngle` turns the arcs and the highlight around the bubbles, and `highlight` scales the spot. A radius of 0 changes nothing, which is the filter's resting state. It sits among the material textures that [Chapter 18](18-YourFirstShader.md#surfaces-by-name-rust-verdigris-and-terrazzo) paints from nothing. The [`Effects/Textures`](../Examples/Effects/Textures/Sketch.swift) example has it on the same picker as the rust and the terrazzo. The parameters are on the [Effects](../Docs/Drawing/Effects.md#design) page.
+`radius` and `gap` are in canvas pixels, and `magnification` is how much each lens enlarges. `lightAngle` turns the arcs and the highlight around the bubbles, and `highlight` scales the spot. A radius of 0 changes nothing, which is the filter's resting state. It sits among the material textures that [Chapter 18](18-YourFirstShader.md#surfaces-by-name-rust-verdigris-and-terrazzo) paints from nothing. The [`Effects/Textures`](../Examples/Effects/Textures/Sketch.swift) example has it on the same picker as the rust and the terrazzo. The parameters are on the [Effects](../Docs/Drawing/Effects.md#design) page.
 
 ## Filters that read the layer as something else: height, tone, a center, a ring, and a pour
 
@@ -233,7 +233,7 @@ Every filter in the title card read the layer as a picture or a silhouette and h
 
 ```swift
 layer.filtered(.relight(.metal, angle: -.pi * 0.7, elevation: 0.55))
-layer.filtered(.dither(dark: navy, light: sand, pixelSize: 3))
+layer.filtered(.dither(dark: navy, light: sand, pixelSize: 6))
 layer.filtered(.swirl(angle: 4.2, radius: 0.42, center: Vector2(0.3, 0.34)))
 ```
 

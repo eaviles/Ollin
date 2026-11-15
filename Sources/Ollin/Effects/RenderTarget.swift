@@ -58,7 +58,10 @@ public final class RenderTarget {
     /// Internal resolution as a fraction of the logical size (1 = full). Drop it
     /// below 1 to render a layer at fewer pixels: effects are fill-rate bound, so
     /// a blurred or glow layer rarely needs full resolution, and the result
-    /// upsamples when drawn back. Clamped to a sane range.
+    /// upsamples when drawn back. It sets how finely the layer is kept and
+    /// nothing else: a filter's sizes are canvas pixels at any scale, so a blur
+    /// of 8 is as wide and an outline of 4 as thick on a layer kept at half
+    /// size. Clamped to a sane range.
     public let scale: Double
 
     /// Bits per channel in the backing texture (`makeRenderTarget(precision:)`).

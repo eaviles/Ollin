@@ -286,7 +286,7 @@ final class ComposeStack: Sketch {
                 fill(Color(hex: 0x1F7A6B)); drawCircle(width * 0.68, height * 0.62, 300)
                 fill(Color(hex: 0x6B2C58)); drawCircle(width * 0.45, height * 0.78, 240)
             }
-            .post(.gaussianBlur(radius: 60))
+            .post(.gaussianBlur(radius: 120))
             .scaled(0.5)
 
             layer {                                   // on top: lights that glow
@@ -308,7 +308,7 @@ final class ComposeStack: Sketch {
 
 <img src="Images/19-LayersAndEffects/ComposeStack.jpg" alt="A ring of fifteen small warm lights and a thin gold circle glowing over a deeply blurred field of indigo, teal, and plum" width="560">
 
-Layers composite bottom to top in the order written. `.post(_:)` filters a layer, `.blended(_:)` sets its mode, and `.scaled(0.5)` renders it at half resolution, which a layer about to be blurred can afford. All of it is shorthand, since everything `compose` does, the calls you already know can do by hand. What the block adds is that it holds the in-between layers for you. Some effects need *two* layers, a mask or a displacement map. For those the same block takes an `aside { }`, a helper layer drawn only to feed another one. The [effects reference](../Docs/Drawing/Effects.md#aside) covers it.
+Layers composite bottom to top in the order written. `.post(_:)` filters a layer, `.blended(_:)` sets its mode, and `.scaled(0.5)` renders it at half resolution, which a layer about to be blurred can afford. The scale changes how sharp the layer is and never how big its effects are: the blur above is 120 canvas pixels wide at any scale. All of it is shorthand, since everything `compose` does, the calls you already know can do by hand. What the block adds is that it holds the in-between layers for you. Some effects need *two* layers, a mask or a displacement map. For those the same block takes an `aside { }`, a helper layer drawn only to feed another one. The [effects reference](../Docs/Drawing/Effects.md#aside) covers it.
 
 ## Converging instead of brightening: the running mean
 

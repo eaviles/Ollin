@@ -31,7 +31,7 @@ final class Layers_Example: Sketch {
         if usesCompose {
             compose {
                 layer { drawBlobs() }
-                    .post(.gaussianBlur(radius: 48))
+                    .post(.gaussianBlur(radius: 96))
                     .scaled(0.5)
 
                 layer { drawRing() }
@@ -44,7 +44,7 @@ final class Layers_Example: Sketch {
         } else {
             let backdrop = makeRenderTarget(scale: 0.5)
             withTarget(backdrop) { background(.clear); drawBlobs() }
-            drawImage(backdrop.filtered(.gaussianBlur(radius: 48)).image, 0, 0)
+            drawImage(backdrop.filtered(.gaussianBlur(radius: 96)).image, 0, 0)
 
             let ring = makeRenderTarget()
             withTarget(ring) { background(.clear); drawRing() }

@@ -51,7 +51,7 @@ override func draw() {
 
 The layer is drawn the ordinary way, and nothing in it knows about the styles. Each style is measured off it afterward.
 
-Every width, radius, and offset is in the layer's pixels, the unit `gaussianBlur` uses. Every color's alpha is that style's strength. A clear color, or a width or radius of 0, hands back the layer's own bytes. A style faded to nothing by a `@Param` costs its passes and changes nothing.
+Every width, radius, and offset is in canvas pixels, the unit `gaussianBlur` uses, on a layer kept at any `scale`. Every color's alpha is that style's strength. A clear color, or a width or radius of 0, hands back the layer's own bytes. A style faded to nothing by a `@Param` costs its passes and changes nothing.
 
 <a name="outline"></a>
 

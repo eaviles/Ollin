@@ -60,7 +60,13 @@ let layer = makeRenderTarget()              // full canvas
 let haze  = makeRenderTarget(scale: 0.5)    // half-resolution, for a layer you'll blur
 ```
 
-Effects are **fill-rate bound**, because the cost tracks pixels × passes. So a layer you are going to blur or glow rarely needs full detail. Lower `scale` and the layer upsamples when you draw it back. There is also an explicit-size form for a layer that is not full-canvas:
+Effects are **fill-rate bound**, because the cost tracks pixels × passes. So a layer you are going to blur or glow rarely needs full detail. Lower `scale` and the layer upsamples when you draw it back.
+
+`scale` sets how finely the layer is kept and nothing else. Every size a filter, a combine, or a pattern takes is in canvas pixels at any scale. A blur of 8 is as wide and an outline of 4 as thick on a layer kept at half size as on a full one. So are a mosaic's cells and a shadow's offset. A measured field reports canvas pixels too. A filter that takes no size reaches one canvas pixel (`.edges`, `.sharpen`, `.emboss`, `.median`, `.toon`, `.normalMap`, `.schlieren`), so a slope is as steep and an edge carries the same ink. `.relight` measures its slope against the layer's whole width, so its relief does not depend on the scale either. What a lower scale costs is sharpness: the result is the full-size one, softer.
+
+Three filters work on the layer's own pixels, because those pixels are their subject: `.antialias` smooths the layer's own stair-steps, `.grain` draws once per layer pixel, and `.jpeg` cuts the layer into its own eight-pixel blocks. A [simulation field](#simfield) is a grid, and its `scale` is the size of that grid: its rule runs cell by cell. A [`Shader`](../Shaders/Shaders.md) of your own is handed the layer as it is kept.
+
+There is also an explicit-size form for a layer that is not full-canvas:
 
 ```swift
 let badge = makeRenderTarget(width: 256, height: 256)
@@ -476,7 +482,7 @@ them, `Images/LuminanceMelt` shows the melt, `Effects/CrumpledFoil` the foil, an
   `FluteProfile` picks how (`.prism` / `.lens` / `.contour` / `.cascade` / `.flat`).
   `FluteShape` bends the flute layout (`.lines` / `.irregular` / `.wave` / `.zigzag` /
   `.eggCrate`). You also get boundary hairlines, shadow ramps, a frost `blur`, and
-  `margins` in layer pixels, which leave a plain frame around the glass. The filter is
+  `margins` in canvas pixels, which leave a plain frame around the glass. The filter is
   static by design, so animate its parameters.
 - **`.water(scale:waves:refraction:layering:edges:highlightAmount:highlightColor:phase:)`** the image
   under shallow rippling water. Broad waves wobble it, caustics shimmer it, and bright
@@ -530,7 +536,7 @@ them, `Images/LuminanceMelt` shows the melt, `Effects/CrumpledFoil` the foil, an
   lettering chrome, where `.liquidMetal`'s inflated bands read as a blob.
 - **`.bubbleWrap(radius:gap:magnification:lightAngle:highlight:amount:)`** a sheet
   of bubble wrap over the layer, over whatever is already drawn. The bubbles sit on a
-  hex lattice, each a lens `radius` layer pixels across with `gap` pixels of flat film
+  hex lattice, each a lens `radius` canvas pixels across with `gap` pixels of flat film
   between them, and each magnifies what lies under it by `magnification`, bending the
   picture more toward its rim as a dome does. A light at `lightAngle` in the canvas
   plane puts a bright meniscus arc on the side of each bubble toward it and a dark arc
@@ -540,7 +546,7 @@ them, `Images/LuminanceMelt` shows the melt, `Effects/CrumpledFoil` the foil, an
   `postProcess` it wraps the whole frame. See `Effects/Textures`.
 - **`.anaglyph(separation:amount:)`** the layer as a red-and-cyan stereo print at one
   parallax, the kind seen through red-and-cyan glasses. The red channel is read from a
-  copy of the layer shifted left by half of `separation` (layer pixels) and the green
+  copy of the layer shifted left by half of `separation` (canvas pixels) and the green
   and blue from a copy shifted right by the same, so a dark mark on a light ground
   comes out as a cyan copy and a red copy that overlap in a fused dark, which is what
   reads as solid through the glasses, and a photograph comes out as the classic
@@ -552,7 +558,7 @@ them, `Images/LuminanceMelt` shows the melt, `Effects/CrumpledFoil` the foil, an
   the [`.anaglyph` combine](#combine) below.
 - **`.mirage(horizon:faults:amount:phase:)`** the shimmer over a hot road. Above the
   `horizon` (a fraction of the layer's height, 0 the top and 1 the bottom) every row is
-  shifted sideways by a wavering amount, up to `amount` layer pixels at the horizon and
+  shifted sideways by a wavering amount, up to `amount` canvas pixels at the horizon and
   fading to nothing at the top, since the hot air sits on the ground. The waver is two
   slow waves down the rows plus a stepped jump at every fault, a band of rows that share
   one offset, with `faults` setting how hard the steps are (0 none, 1 as wide as the
@@ -628,7 +634,7 @@ A `Combine` is a value descriptor like `Filter`. A value descriptor cannot hold 
 - **`.disperse(amount:mode:spectral:quality:)`** chromatic aberration over the base, its amount scaled per pixel by the aux's brightness. A white aux splits by the full `amount`, and a black one leaves the base alone. So the aux decides *where* the color comes apart rather than how much. `mode`, `spectral`, and `quality` mean what they mean on [`.chromaticAberration`](#filter).
 - **`.mix(amount:)`** cross-dissolve the base toward the aux by `amount` (0 = base, 1 = aux). It is the everyday transition.
 - **`.wipe(_:progress:feather:)`** wipe from the base to the aux in a [`WipeOrder`](#wipes-and-copies): as `progress` climbs from 0 to 1, each pixel turns from the base to the aux when the progress passes its place in the order, across a front `feather` of the order's run wide. At 0 the result is the base and at 1 the aux, each exactly, and at 0.5 a straight wipe holds one layer on each half with the front centered on the middle. Only the mix changes, one pointwise pass, so the two layers can be two scenes, a picture and its filtered self, or anything else.
-- **`.anaglyph(separation:focus:amount:)`** the base as a red-and-cyan stereo print whose parallax follows the aux, read as a **depth map** (luminance, 0 near and 1 far, the reading `.defocus` makes, so a 3D layer's own [`depth`](#depth) is the natural aux). At each pixel the red channel is read from a copy of the base shifted one way and the green and blue from a copy shifted the other, by `separation` layer pixels times how far the depth there sits from `focus`: a pixel at the focus depth stays put, one nearer than the focus shifts one way, one farther shifts the other, and the shift grows with the distance, which through the glasses is what places it in front of or behind the page. A dark mark comes out as a cyan copy and a red copy that meet in a fused dark, and a transparent pixel counts as white paper. `amount` mixes the print over the base. [`Filter.anaglyph`](#filter) is the one-parallax form for a layer with no depth.
+- **`.anaglyph(separation:focus:amount:)`** the base as a red-and-cyan stereo print whose parallax follows the aux, read as a **depth map** (luminance, 0 near and 1 far, the reading `.defocus` makes, so a 3D layer's own [`depth`](#depth) is the natural aux). At each pixel the red channel is read from a copy of the base shifted one way and the green and blue from a copy shifted the other, by `separation` canvas pixels times how far the depth there sits from `focus`: a pixel at the focus depth stays put, one nearer than the focus shifts one way, one farther shifts the other, and the shift grows with the distance, which through the glasses is what places it in front of or behind the page. A dark mark comes out as a cyan copy and a red copy that meet in a fused dark, and a transparent pixel counts as white paper. `amount` mixes the print over the base. [`Filter.anaglyph`](#filter) is the one-parallax form for a layer with no depth.
 - **`.light(reach:brightness:bounces:sky:quality:)`** light a flat scene. The base is what light meets, and its alpha stops a ray. The aux is what gives light off, and the result is the light arriving at every pixel. One measurement gives you shadows that are sharp at the shape and soft further away, falloff, beams through a gap, and the color a lit wall gives back. The cost does not follow how much was drawn. See [Light in a flat sketch](Light.md) and the `Effects/Light` example.
 - **`.paintMix(amount:quality:)`** blend the base toward the aux the way scattering paints blend, rather than the way lights cross-dissolve. At each pixel both colors become reflectance spectra and mix through the Kubelka-Munk model, over a `quality`-sized set of wavelength taps. It is the GPU form of `Color.mix(_:_:t:in: .paint)` (see [Spectral color](Spectrum.md)). A yellow wash over a blue field meets it in green, and overlaps darken like glazes. The aux's own coverage gates the mix. Where the aux layer is empty the base passes through untouched, and the aux reads as paint laid over the base. `amount` is the mix where the aux is opaque.
 - **`.seamlessClone(amount:threshold:)`** drop the aux layer into the base so the join disappears. The patch keeps its own detail and takes on the base's color and brightness, which is what stops a cut-out reading as a cut-out. It lands on **the aux's opaque region**, so draw the patch into a layer of its own, transparent everywhere else, positioned where you want it. Around the rim of the patch the op measures how far the patch's color sits from the base's. It spreads that difference across the inside as smoothly as it can, and adds it back. The rim then matches the base exactly, and the inside is nudged by the gentlest correction that reaches it. `amount` dials that correction: 1 is fully seamless, and 0 is a plain paste with the seam left in, which makes a useful before picture. `threshold` is the alpha a texel needs to count as part of the patch. Raise it if a soft-edged patch reads as larger than it looks. Two limits follow from what the op does rather than from how it is written. First, only the low, slow part of the patch's color is replaced, so the patch's **range of tone is kept**. Drop a contrasty patch somewhere much darker than itself and its shadows are pushed below black and clip. Second, the rim is where the whole answer comes from, so a rim laid **across a hard edge** in the base smears that edge inward. Keep the rim on quiet ground. See the `Effects/SeamlessClone` example.
@@ -714,7 +720,7 @@ seed is a new surface, and a scatter rebuilt each frame moves the paint with it.
   that run down from a bloom (their length as a share of the radius). `background`
   is the steel under the blooms, or `.clear` to rust whatever is drawn under the
   layer. With no `blobs`, `count` blooms are scattered at a mean radius drawn from
-  `radius`, in layer pixels. `lip`, `blisters`, `drips`, and `grain` scale their
+  `radius`, in canvas pixels. `lip`, `blisters`, `drips`, and `grain` scale their
   parts, `0` to leave one out.
 - **`.verdigris(blobs:count:radius:seed:tones:background:lightAngle:lip:blisters:tide:drips:grain:)`**
   a crust rather than a bloom, over the same blobs, in the greens of weathered
@@ -729,7 +735,7 @@ seed is a new surface, and a scatter rebuilt each frame moves the paint with it.
 - **`.terrazzo(chips:chipRadius:density:gap:seed:tones:background:hatching:grain:)`**
   a terrazzo floor: chips of stone set in a `background` binder. With no `chips`,
   one is scattered by dart throwing in three size tiers, the largest at `chipRadius`
-  (in layer pixels) and the others at 0.55 and 0.3 of it, together covering about
+  (in canvas pixels) and the others at 0.55 and 0.3 of it, together covering about
   `density` of the floor with every chip clear of every other by `gap` pixels. Each
   chip is a polygon of five to eight corners in one of up to eight `tones`, and the
   larger chips are hatched with fine lines at their own angle, the spacing following
@@ -768,7 +774,7 @@ drawImage(generate(.meshGradient(phase: time)).image, 0, 0)
   banded gradients over an animated field (`GrainShape`: `.wave` / `.dots` / `.truchet` /
   `.corners` / `.ripple` / `.blob` / `.sphere`), the band edges chewed by film grain.
 - **`.pulsingBorder(colors:background:roundness:thickness:softness:amount:bloom:spots:spotSize:pulse:smoke:smokeScale:margins:phase:)`**
-  a glowing rounded border hugging the layer edge (inset by `margins`, in layer pixels),
+  a glowing rounded border hugging the layer edge (inset by `margins`, in canvas pixels),
   up to eight light spots per color racing the perimeter, with a heartbeat `pulse` and
   smoke wisps.
 - **`.godRays(colors:background:center:density:breakup:coreSize:coreIntensity:intensity:bloom:bloomTint:phase:)`**
@@ -1353,7 +1359,7 @@ The layer modifiers chain in any order:
 
 - `.post(_:)` runs a filter over the layer before it composites. Chain calls, or pass several to `.post(_:_:)`, to stack filters: `.post(.threshold()).post(.bloom())`.
 - `.blended(_:)` sets the [blend mode](../Drawing/Drawing.md#blendMode) the layer composites with (default `.normal`).
-- `.scaled(_:)` renders the layer at a fraction of the canvas resolution (default `1`), like [`makeRenderTarget(scale:)`](#rendertarget). Lower it for a layer a blur or glow will soften anyway.
+- `.scaled(_:)` renders the layer at a fraction of the canvas resolution (default `1`), like [`makeRenderTarget(scale:)`](#rendertarget). Lower it for a layer a blur or glow will soften anyway: the sizes in its `.post(...)` filters stay canvas pixels.
 
 Notes:
 
