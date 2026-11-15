@@ -11,7 +11,7 @@ import Ollin
 /// the canvas as it is written. The card in the corner holds the picture it
 /// learned from, and under it the cells it reads, numbered nearest first.
 ///
-/// `reach` is how many of those four cells are read. At 1 a row only
+/// `order` is how many of those four cells are read. At 1 a row only
 /// remembers along itself, so the town is loose stripes. At 2 the rows line
 /// up under one another, but nothing holds a street open and the buildings
 /// run together. At 3 a block keeps its far side straight, and at 4 its near
@@ -31,7 +31,7 @@ final class MarkovGridSketch: Sketch {
     }
 
     @Param(icon: "square.grid.3x3") var motif = Motif.town
-    @Param(1 ... 4, icon: "scope") var reach = 4
+    @Param(1 ... 4, icon: "scope") var order = 4
     @Param(1 ... 20, icon: "speedometer") var pace = 5.0
 
     override var canvasSize: CanvasSize { .square(1080) }
@@ -141,7 +141,7 @@ final class MarkovGridSketch: Sketch {
     private var strip: [[Character]] = []
     private var written = 0
     private var dealtAt = 0.0
-    private var dealtFor: (motif: Motif, reach: Int, seed: Int)?
+    private var dealtFor: (motif: Motif, order: Int, seed: Int)?
     private var pressed = false
 
     override func setup() {
@@ -159,7 +159,7 @@ final class MarkovGridSketch: Sketch {
         }
         let cell = width / Double(Self.columns)
         let down = height / cell
-        let wanted = (motif: motif, reach: reach, seed: variation)
+        let wanted = (motif: motif, order: order, seed: variation)
         if let dealt = dealtFor, dealt != wanted {
             // A new strip starts with the canvas full, from this moment.
             dealtAt = time
@@ -214,7 +214,7 @@ final class MarkovGridSketch: Sketch {
 
     /// The picture the chain learned from, and the cells it reads around a
     /// place: the heavy box is the cell being decided, and the numbered
-    /// cells are the ones within `reach`, nearest first.
+    /// cells are the ones within `order`, nearest first.
     private func drawCard(_ paints: [(letter: Character, color: Color)]) {
         let picture = picture
         let side = 168.0
@@ -246,7 +246,7 @@ final class MarkovGridSketch: Sketch {
         let spots = [(0.0, 1.0, 1), (1.0, 0.0, 2), (0.0, 0.0, 3), (2.0, 0.0, 4)]
         for (column, row, rank) in spots {
             let cell = Rectangle(x: left + column * box, y: top + row * box, width: box, height: box)
-            let read = rank <= reach
+            let read = rank <= order
             fill(read ? pencil : card)
             stroke(pencil.withAlpha(read ? 1 : 0.35))
             strokeWeight(1)
@@ -261,14 +261,14 @@ final class MarkovGridSketch: Sketch {
         strokeWeight(2.5)
         drawRect(left + box, top + box, box, box)
         noStroke()
-        drawText("reach \(reach)", left + 3 * box + 12, top + box, size: 13, color: pencil, align: .left, .middle)
+        drawText("order \(order)", left + 3 * box + 12, top + box, size: 13, color: pencil, align: .left, .middle)
     }
 
     /// Reads the picture and starts the strip over. The chain is told its
     /// letters before it reads anything, so a seed deals the same strip
     /// however the picture happens to begin.
     private func deal() {
-        chain = MarkovGrid(vocabulary: paints.map(\.letter), order: reach, seed: variation)
+        chain = MarkovGrid(vocabulary: paints.map(\.letter), order: order, seed: variation)
         // The pictures are written above, every row of one length.
         try! chain.learn(picture)
         strip = []
