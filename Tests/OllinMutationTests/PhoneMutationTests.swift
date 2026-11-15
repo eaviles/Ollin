@@ -57,6 +57,10 @@ import OllinMutation
                                                SIMD3<Float>(0.6, 0, 0.4), SIMD3<Float>(-0.6, 0, 0.4)])),
             .plane(PhonePlaneSample(isTracked: true, timestamp: 2, id: UUID(), transform: transform,
                                     width: 1, height: 1, alignment: .vertical, surface: .wall)),
+            .camera(PhoneCameraSample(isTracked: true, timestamp: 9.5, frameIndex: 0,
+                                      imageWidth: 1920, imageHeight: 1440,
+                                      fx: 1450, fy: 1451, cx: 960.5, cy: 719.25,
+                                      transform: transform, quarterTurnsCW: 1)),
             .light(PhoneLightSample(timestamp: 1, ambientIntensity: 800, colorTemperature: 5600, hasDirection: true,
                                     direction: SIMD3<Float>(0, -1, 0), directionalIntensity: 900,
                                     sphericalHarmonics: [Float](repeating: 0.1, count: 27))),
@@ -117,6 +121,11 @@ import OllinMutation
             for body in bodies { _ = body.joints.count }
         case .face(let faces):
             for face in faces { _ = face.meshVertices.count + face.triangleIndices.count }
+        case .camera(let sample):
+            // As a sketch reads it: turned upright, then made into a 3D camera.
+            let view = PhoneCamera(sample)
+            _ = view.pictureRectangle(covering: Vector2(640, 480))
+            _ = view.camera3D(covering: Vector2(1080, 1080)).viewProjectionMatrix(aspect: 1)
         case .depth(let sample):
             _ = sample.depth.count == sample.depthWidth * sample.depthHeight
         case .segmentation(let sample):
@@ -151,6 +160,64 @@ import OllinMutation
             Self.read(message, room: &room, planes: &planes)
             _ = PhoneWire.encode(message)
             return true
+        }
+        #expect(report.seedsRefused.isEmpty, "\(report)")
+    }
+
+    /// A recording's stream file: the wire's messages behind the file's own
+    /// framing, a camera record for each of three frames among them, and one
+    /// record big enough to be stored compressed. Walked the way a recording
+    /// is opened, then every record opened in turn.
+    @Test func aRecordingsStreamFile() {
+        func stream(finishing: Bool) -> [UInt8] {
+            var data = PhoneRecordingStream.fileHeader()
+            var frame: UInt32 = 0
+            for (index, message) in Self.messages().enumerated() {
+                var stored = message
+                if case .camera(var camera) = message {
+                    camera.frameIndex = frame
+                    frame += 1
+                    stored = .camera(camera)
+                }
+                data.append(PhoneRecordingStream.record(time: 100 + Double(index) / 60,
+                                                        frame: PhoneWire.encode(stored)))
+                if index % 4 == 0 {
+                    let camera = PhoneCameraSample(isTracked: true, timestamp: 100 + Double(index) / 60,
+                                                   frameIndex: frame, imageWidth: 640, imageHeight: 480,
+                                                   fx: 500, fy: 500, cx: 320, cy: 240, transform: Self.transform)
+                    frame += 1
+                    data.append(PhoneRecordingStream.record(time: camera.timestamp,
+                                                            frame: PhoneWire.encode(.camera(camera))))
+                }
+            }
+            // A depth map large enough that the file stores it compressed.
+            let big = PhoneDepthSample(isTracked: true, timestamp: 101, depthWidth: 64, depthHeight: 48,
+                                       fx: 50, fy: 50, cx: 32, cy: 24, cameraTransform: Self.transform,
+                                       colorJPEG: Data(), depth: (0..<64 * 48).map { 1 + Float($0 % 64) * 0.01 },
+                                       confidence: nil)
+            data.append(PhoneRecordingStream.record(time: 101, frame: PhoneWire.encode(.depth(big))))
+            if !finishing { data.append(contentsOf: [1, 2, 3]) }
+            return [UInt8](data)
+        }
+        let report = MutationRun.run("phone-recording-stream",
+                                     seeds: [stream(finishing: true), stream(finishing: false)],
+                                     count: 300) { bytes in
+            let data = Data(bytes)
+            guard PhoneRecordingStream.version(ofFileHeader: data) != nil else { return false }
+            var room = PhoneSceneMesh()
+            var planes = PhonePlanes()
+            var opened = 0
+            for finished in [true, false] {
+                guard let index = try? PhoneRecording.index(data, isFinished: finished) else { continue }
+                for entry in index.entries {
+                    _ = PhoneRecordingStream.frame(of: entry.header, in: data, at: entry.offset)
+                    if let message = PhoneRecordingStream.message(of: entry.header, in: data, at: entry.offset) {
+                        Self.read(message, room: &room, planes: &planes)
+                        opened += 1
+                    }
+                }
+            }
+            return opened > 0
         }
         #expect(report.seedsRefused.isEmpty, "\(report)")
     }

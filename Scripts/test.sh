@@ -97,10 +97,10 @@ fi
 # Phase one: the suites that want a device or a wall clock to themselves.
 # DataFeedTests counts polls per elapsed second, ListeningTests waits on the
 # speech stack, FrameSourceTests and ModelTrackerTests want the Vision compute
-# device, and SpatialVideoTests and PhonePictureRoundTripTests go through the
-# hardware video decoder, whose wait has wedged rather than failed under a full
-# parallel run.
-sensitive='OllinTests.DataFeedTests|OllinVisionTests.FrameSourceTests|OllinVisionTests.ModelTrackerTests|OllinAudioTests.ListeningTests|OllinTests.SpatialVideoTests|OllinPhoneTests.PhonePictureRoundTripTests'
+# device, and SpatialVideoTests and PhoneMediaTests (the phone's pictures and
+# its recordings) go through the hardware video decoder, whose wait has wedged
+# rather than failed under a full parallel run.
+sensitive='OllinTests.DataFeedTests|OllinVisionTests.FrameSourceTests|OllinVisionTests.ModelTrackerTests|OllinAudioTests.ListeningTests|OllinTests.SpatialVideoTests|OllinPhoneTests.PhoneMediaTests'
 
 # Phase two, part one: the suites that send something through a real system
 # service and measure what comes back (Core MIDI, the Link session's socket,

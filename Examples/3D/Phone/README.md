@@ -4,7 +4,11 @@
 
 ## Phone
 
-These sketches read the **Ollin Capture** iPhone app, which streams ARKit perception, and what the phone hears, over USB.
+| [![PhoneRecordingPins](https://media.ollin.art/examples/3D/Phone/PhoneRecordingPins/still-640.jpg?v=dffbda60)](PhoneRecordingPins/) |  |  |  |
+|---|---|---|---|
+| [PhoneRecordingPins](PhoneRecordingPins/) |  |  |  |
+
+These sketches read the **Ollin Capture** iPhone app, which streams ARKit perception, and what the phone hears, over USB. One of them plays a recording the app made, so it runs with no phone at all.
 
 
 | Sketch | What it shows |
@@ -27,6 +31,7 @@ These sketches read the **Ollin Capture** iPhone app, which streams ARKit percep
 | [PhoneFlow](PhoneFlow/) | How the phone's picture is moving (tap **Flow**). The motion field shows as a grid of streaks colored by speed over the live frame, and a drift of dust is carried by it: wave a hand and the dust scatters, hold still and it settles. Needs no LiDAR. Needs `import OllinPhone`. |
 | [PhoneTouches](PhoneTouches/) | The phone played rather than watching (tap **Touch**). Every finger on its screen lands on the canvas as a disc sized by how wide the contact is, each tap rings out where it fell, and with **Air** on, lifting the phone off the table warms the color. No camera runs. Needs `import OllinPhone`. |
 | [PhoneCanvas](PhoneCanvas/) | A sketch run on the Mac and played on the phone (it asks for **Sketch** mode itself). The Mac sends each frame down the cable as video, a finger paints, the drops fall the way the phone is tilted, and every finger on the glass shows as a ring. Nothing is installed on the phone. Needs `import OllinPhone`. |
+| [PhoneRecordingPins](PhoneRecordingPins/) | A recording the phone made, played back with no phone and no cable. The camera's picture fills the canvas, a 3D camera matches the phone's, and five pins hold their places in the room as the camera moves. It ships with a small recording of a room drawn on the Mac; set `OLLIN_PHONE_RECORDING` to play one of your own. Keys: **space**, **←**, **→**. Needs `import OllinPhone`. |
 | [PhoneSounds](PhoneSounds/) | What the phone hears (tap **Hear**, beside any mode). Every sound its classifier notices rings out in its own place as it starts, the strongest label is named, and the levels of a few familiar sounds run along the bottom, with the threshold as a parameter. Needs no camera. Needs `import OllinPhone`. |
 
 Run one with `swift run Example-3D-Phone-<Name>`, for example `swift run Example-3D-Phone-PhoneBodyPose`.

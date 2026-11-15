@@ -11,7 +11,11 @@ import Ollin
 /// them over, the way `Camera` boxes its frames.
 struct PhoneDepthFrameBox: @unchecked Sendable {
     let sequence: Int
-    let color: CGImage
+    /// The frame's own small color picture, or `nil` for a frame out of a
+    /// recording, whose picture is the matching frame of its video.
+    let color: CGImage?
+    /// The frame's capture time, which is how a recording finds that frame.
+    let timestamp: Double
     let depth: [Float]
     let confidence: [UInt8]?
     let depthWidth: Int
@@ -24,7 +28,8 @@ struct PhoneDepthFrameBox: @unchecked Sendable {
 /// and build the depth-grid `CameraIntrinsics`. The sample's intrinsics already
 /// sit on the depth grid (the phone scales them before sending), so they tie to
 /// `depthWidth × depthHeight` directly. Returns `nil` if the color won't decode or
-/// the depth is empty.
+/// the depth is empty. A sample that carries no color at all is a recording's,
+/// and decodes with none.
 ///
 /// Free function (not a method) so the reader thread calls it without main-actor
 /// isolation — the executor-assertion lesson the audio/camera code documents.
@@ -32,8 +37,12 @@ func decodePhoneDepth(_ sample: PhoneDepthSample, sequence: Int) -> PhoneDepthFr
     guard sample.depthWidth > 0, sample.depthHeight > 0,
           sample.depth.count >= sample.depthWidth * sample.depthHeight else { return nil }
 
-    guard let source = CGImageSourceCreateWithData(sample.colorJPEG as CFData, nil),
-          let color = CGImageSourceCreateImageAtIndex(source, 0, nil) else { return nil }
+    var color: CGImage?
+    if !sample.colorJPEG.isEmpty {
+        guard let source = CGImageSourceCreateWithData(sample.colorJPEG as CFData, nil),
+              let decoded = CGImageSourceCreateImageAtIndex(source, 0, nil) else { return nil }
+        color = decoded
+    }
 
     // A confidence map only counts if it matches the depth grid; otherwise drop it
     // (the cloud builder would ignore a mismatched one anyway).
@@ -43,7 +52,8 @@ func decodePhoneDepth(_ sample: PhoneDepthSample, sequence: Int) -> PhoneDepthFr
                                       cx: Double(sample.cx), cy: Double(sample.cy),
                                       width: sample.depthWidth, height: sample.depthHeight)
 
-    return PhoneDepthFrameBox(sequence: sequence, color: color, depth: sample.depth,
+    return PhoneDepthFrameBox(sequence: sequence, color: color, timestamp: sample.timestamp,
+                              depth: sample.depth,
                               confidence: confidence, depthWidth: sample.depthWidth,
                               depthHeight: sample.depthHeight, intrinsics: intrinsics,
                               transform: sample.cameraTransform)

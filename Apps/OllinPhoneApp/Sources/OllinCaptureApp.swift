@@ -13,7 +13,9 @@ import simd
 /// phone (SoundAnalysis, behind the Hear switch), the air it is standing in
 /// (CoreMotion's barometer, behind the Air switch), every finger on its own screen
 /// (Touch mode, no camera at all), and CoreMotion device motion, and
-/// streams them to a tethered Mac over USB. In Sketch mode it runs the other way
+/// streams them to a tethered Mac over USB. With no cable at all, Record writes
+/// the same stream to a folder in the app's own documents, with the camera's
+/// video beside it, for a sketch on the Mac to play back. In Sketch mode it runs the other way
 /// as well: the screen shows a sketch the Mac is running, sent down the cable as
 /// video, and the fingers on it go back (usbmuxd → `PhoneWire.streamPort`), where an Ollin
 /// sketch reads them in `draw()` via `OllinPhone`'s `PhoneDevice`.
@@ -164,6 +166,11 @@ final class SensorStreamer {
     var gravity = SIMD3<Float>(0, 0, 0)
     var motionLive = false
     var status = "Starting…"
+    /// Whether a recording is being written, and what the screen says about it
+    /// (or about the last one). Mirrored from the recorder, which is not
+    /// observable on its own.
+    var recording = false
+    var recordingInfo = ""
 
     let bodySupported = ARBodyTrackingConfiguration.isSupported
     let faceSupported = ARFaceTrackingConfiguration.isSupported
@@ -202,6 +209,10 @@ final class SensorStreamer {
     private let sound = SoundStreamer()
     private let air = AirStreamer()
     private let motion = MotionStreamer()
+    /// Writes the stream to a folder when Record is on, cable or no cable.
+    private let recorder = Recorder()
+    /// The camera's frames of this run of the app, counted for the cable.
+    private var cameraFrames: UInt32 = 0
 
     /// How many blocks of the room have gone out, and how many were dropped for
     /// being too big to carry, so the screen can report both.
@@ -262,7 +273,7 @@ final class SensorStreamer {
 
         motion.onSample = { [weak self] sample in
             guard let self else { return }
-            self.server?.send(PhoneWire.encode(.motion(sample)))
+            self.send(.motion(sample))
             self.motionLive = true
             self.gravity = sample.gravity
         }
@@ -270,14 +281,14 @@ final class SensorStreamer {
 
         ar.onBodies = { [weak self] samples in
             guard let self else { return }
-            self.server?.send(PhoneWire.encode(.pose(samples)))
+            self.send(.pose(samples))
             self.bodyTracked = samples.contains { $0.isTracked }
             self.jointCount = samples.first?.joints.count ?? 0
         }
 
         face.onFaces = { [weak self] samples in
             guard let self else { return }
-            self.server?.send(PhoneWire.encode(.face(samples)))
+            self.send(.face(samples))
             self.faceTracked = samples.contains { $0.isTracked }
             if let primary = samples.first {
                 let expr = Self.describe(primary.blendShapes)
@@ -289,14 +300,14 @@ final class SensorStreamer {
 
         depth.onDepth = { [weak self] sample in
             guard let self else { return }
-            self.server?.send(PhoneWire.encode(.depth(sample)))
+            self.send(.depth(sample))
             self.depthTracked = sample.isTracked
             self.depthInfo = "\(sample.depthWidth)×\(sample.depthHeight) · \(sample.colorJPEG.count / 1024) KB"
         }
 
         seg.onSegmentation = { [weak self] sample in
             guard let self else { return }
-            self.server?.send(PhoneWire.encode(.segmentation(sample)))
+            self.send(.segmentation(sample))
             self.segTracked = sample.isTracked
             self.segInfo = "\(sample.matteWidth)×\(sample.matteHeight) · \(sample.colorJPEG.count / 1024) KB"
         }
@@ -305,14 +316,14 @@ final class SensorStreamer {
         // reads whichever mode is running through the same accessors.
         selfie.onSegmentation = { [weak self] sample in
             guard let self else { return }
-            self.server?.send(PhoneWire.encode(.segmentation(sample)))
+            self.send(.segmentation(sample))
             self.selfiePresent = sample.isTracked
             self.selfieInfo = "\(sample.matteWidth)×\(sample.matteHeight) · \(sample.colorJPEG.count / 1024) KB"
         }
 
         room.onChunk = { [weak self] sample in
             guard let self else { return }
-            self.server?.send(PhoneWire.encode(.sceneMesh(sample)))
+            self.send(.sceneMesh(sample))
             self.meshBlocksSent += 1
             self.meshTracked = sample.isTracked
             self.meshInfo = "\(self.meshBlocksSent) blocks"
@@ -327,7 +338,7 @@ final class SensorStreamer {
 
         room.onPlane = { [weak self] sample in
             guard let self else { return }
-            self.server?.send(PhoneWire.encode(.plane(sample)))
+            self.send(.plane(sample))
             self.planesSent += 1
             if sample.isRemoved { self.livePlanes.remove(sample.id) } else { self.livePlanes.insert(sample.id) }
             self.planeInfo = "\(self.livePlanes.count) found"
@@ -335,7 +346,7 @@ final class SensorStreamer {
 
         hands.onHands = { [weak self] samples in
             guard let self else { return }
-            self.server?.send(PhoneWire.encode(.hands(samples)))
+            self.send(.hands(samples))
             self.handsTracked = !samples.isEmpty
             if samples.isEmpty {
                 self.handsInfo = "no hands in view"
@@ -347,7 +358,7 @@ final class SensorStreamer {
 
         text.onTexts = { [weak self] samples in
             guard let self else { return }
-            self.server?.send(PhoneWire.encode(.texts(samples)))
+            self.send(.texts(samples))
             self.textTracked = !samples.isEmpty
             if samples.isEmpty {
                 self.textInfo = "no text in view"
@@ -359,7 +370,7 @@ final class SensorStreamer {
 
         markers.onMarkers = { [weak self] samples in
             guard let self else { return }
-            self.server?.send(PhoneWire.encode(.markers(samples)))
+            self.send(.markers(samples))
             let following = samples.filter(\.isTracked)
             self.markersFound = !following.isEmpty
             if following.isEmpty {
@@ -374,7 +385,7 @@ final class SensorStreamer {
 
         wand.onWand = { [weak self] sample in
             guard let self else { return }
-            self.server?.send(PhoneWire.encode(.wand(sample)))
+            self.send(.wand(sample))
             self.wandTracked = sample.isTracked
             var parts = [sample.isTracked ? "tracking" : "finding its place…"]
             if sample.isPressed { parts.append("pressed") }
@@ -384,7 +395,7 @@ final class SensorStreamer {
 
         attention.onSaliency = { [weak self] sample in
             guard let self else { return }
-            self.server?.send(PhoneWire.encode(.saliency(sample)))
+            self.send(.saliency(sample))
             self.attentionLive = true
             let lifted = sample.regions.contains(where: \.hasWorldCenter)
             self.attentionInfo = sample.regions.isEmpty
@@ -394,7 +405,7 @@ final class SensorStreamer {
 
         flow.onFlow = { [weak self] sample in
             guard let self else { return }
-            self.server?.send(PhoneWire.encode(.flow(sample)))
+            self.send(.flow(sample))
             self.flowLive = true
             self.flowInfo = String(format: "%d×%d · %.0f ms apart", sample.flowWidth, sample.flowHeight,
                                    sample.interval * 1000)
@@ -402,7 +413,7 @@ final class SensorStreamer {
 
         touch.onTouches = { [weak self] sample in
             guard let self else { return }
-            self.server?.send(PhoneWire.encode(.touch(sample)))
+            self.send(.touch(sample))
             self.touchLive = true
             if sample.touches.isEmpty {
                 self.touchInfo = "nothing on the glass"
@@ -426,7 +437,7 @@ final class SensorStreamer {
         // stopped by a mode switch; only the Hear switch starts and stops them.
         sound.onSound = { [weak self] sample in
             guard let self else { return }
-            self.server?.send(PhoneWire.encode(.sound(sample)))
+            self.send(.sound(sample))
             self.soundLive = true
             if let top = sample.classifications.first {
                 self.soundInfo = String(format: "%@ %.0f%%", top.label, top.confidence * 100)
@@ -446,7 +457,7 @@ final class SensorStreamer {
         // and only its own switch starts and stops it.
         air.onAir = { [weak self] sample in
             guard let self else { return }
-            self.server?.send(PhoneWire.encode(.air(sample)))
+            self.send(.air(sample))
             self.airLive = true
             self.airInfo = String(format: "%.2f kPa · %+.2f m", sample.pressure, sample.altitude)
         }
@@ -464,9 +475,15 @@ final class SensorStreamer {
         let reporters: [any LightReporting] = [ar, face, depth, seg, room, hands, text,
                                                markers, wand, attention, flow]
         for reporter in reporters {
+            // Every frame of every one of these modes: where the camera stood
+            // and what its lens was, to the cable, and the frame itself to a
+            // recording.
+            reporter.lightSampler.onFrame = { [weak self] frame in
+                self?.frameArrived(frame)
+            }
             reporter.lightSampler.onLight = { [weak self] sample in
                 guard let self else { return }
-                self.server?.send(PhoneWire.encode(.light(sample)))
+                self.send(.light(sample))
                 self.lightLive = true
                 self.lightInfo = String(format: "%.0f lm · %.0f K",
                                         sample.ambientIntensity, sample.colorTemperature)
@@ -474,15 +491,80 @@ final class SensorStreamer {
             }
         }
 
+        recorder.onChange = { [weak self] in
+            guard let self else { return }
+            self.recording = self.recorder.isRecording
+            self.recordingInfo = self.recorder.info
+        }
+
         applyMode()
         hearing = UserDefaults.standard.bool(forKey: Self.hearingKey)
         reading = UserDefaults.standard.bool(forKey: Self.airKey)
+    }
+
+    // MARK: Sending and recording
+
+    /// One message to both places it can go: the cable, when a Mac is on it,
+    /// and the recording, when one is being written.
+    private func send(_ message: PhoneMessage) {
+        server?.send(PhoneWire.encode(message))
+        recorder.record(message)
+    }
+
+    /// One frame of whichever ARKit session is running. The camera's record
+    /// goes to the cable here; the recorder takes the frame's picture with the
+    /// same record, and writes both or neither.
+    private func frameArrived(_ frame: ARFrame) {
+        let camera = frame.camera
+        let lens = camera.intrinsics
+        let size = camera.imageResolution
+        let tracked: Bool = if case .normal = camera.trackingState { true } else { false }
+        let sample = PhoneCameraSample(
+            isTracked: tracked, timestamp: frame.timestamp, frameIndex: cameraFrames,
+            imageWidth: Int(size.width), imageHeight: Int(size.height),
+            fx: lens.columns.0.x, fy: lens.columns.1.y, cx: lens.columns.2.x, cy: lens.columns.2.y,
+            transform: camera.transform, quarterTurnsCW: captureQuarterTurns())
+        cameraFrames &+= 1
+        if clientCount > 0 { server?.send(PhoneWire.encode(.camera(sample))) }
+        recorder.record(picture: frame.capturedImage, camera: sample)
+    }
+
+    /// Whether the mode the phone is in can be recorded: it has to run a camera
+    /// through ARKit, since the recording is that camera's video and where the
+    /// camera stood.
+    var canRecord: Bool {
+        switch mode {
+        case .selfie, .touch, .sketch: return false
+        default: return supports(mode) || mode == .room
+        }
+    }
+
+    /// Start a recording, or close the one being written.
+    func toggleRecording() {
+        if recorder.isRecording {
+            recorder.stop()
+            return
+        }
+        guard canRecord else { return }
+        recorder.start(mode: mode, quarterTurnsCW: captureQuarterTurns())
+        // What the Mac learns once, on connecting, a recording has to be told
+        // at its start: the mode, and the room built so far.
+        sendState(force: true)
+        if mode == .room { room.resend() }
+    }
+
+    /// Close the recording being written, if there is one. A mode switch calls
+    /// it, since a new mode is a new session with a new origin, and so does the
+    /// app leaving the screen, since the camera stops there.
+    func stopRecording() {
+        if recorder.isRecording { recorder.stop() }
     }
 
     /// Switch the active camera/tracker. Only one ARKit session runs at a time, so
     /// the other is paused first; device motion keeps streaming across the switch.
     func setMode(_ newMode: CaptureMode) {
         guard newMode != mode else { return }
+        stopRecording()
         if newMode == .sketch { modeBeforeSketch = mode }
         mode = newMode
         applyMode()
@@ -534,7 +616,7 @@ final class SensorStreamer {
         probe.timestamp = lastState?.timestamp ?? -1
         guard force || probe != lastState else { return }
         lastState = state
-        server?.send(PhoneWire.encode(.state(state)))
+        send(.state(state))
     }
 
     /// Whether this device can do a mode's headline sensor. Room reports the
@@ -668,6 +750,7 @@ final class SensorStreamer {
 
 struct ContentView: View {
     @State private var streamer = SensorStreamer()
+    @Environment(\.scenePhase) private var scenePhase
 
     /// Whether the thumb is on the wand pad, kept here because the gesture reports
     /// a change rather than a landing, and the first change after a release is what
@@ -689,6 +772,11 @@ struct ContentView: View {
             }
         }
         .onAppear { streamer.start() }
+        .onChange(of: scenePhase) { _, phase in
+            // The camera stops when the app leaves the screen, so the
+            // recording closes there rather than holding a frozen frame.
+            if phase != .active { streamer.stopRecording() }
+        }
     }
 
     /// Everything but the sketch's full screen: the title, the modes, the status.
@@ -834,6 +922,10 @@ struct ContentView: View {
                         : "starting…",
                         ok: streamer.motionLive)
                     row("Port", "\(PhoneWire.streamPort) · over USB", ok: connected)
+                    row("Record", streamer.recordingInfo.isEmpty
+                        ? (streamer.canRecord ? "ready · needs no cable" : "needs a camera mode")
+                        : streamer.recordingInfo,
+                        ok: streamer.recording)
                 }
                 .padding(20)
                 .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 16))
@@ -841,6 +933,7 @@ struct ContentView: View {
 
                 if streamer.mode == .wand { wandPad }
                 if streamer.mode == .touch { touchPad }
+                if streamer.canRecord || streamer.recording { recordButton }
 
                 Text(streamer.status)
                     .font(.footnote)
@@ -988,6 +1081,28 @@ struct ContentView: View {
             }
         }
         .frame(minHeight: 200, maxHeight: .infinity)
+        .padding(.horizontal, 28)
+    }
+
+    /// Record: a recording of everything the phone senses, with the camera's
+    /// video, written to the app's own folder. It needs no cable, and it runs
+    /// beside one. Changing mode closes it.
+    private var recordButton: some View {
+        Button {
+            streamer.toggleRecording()
+        } label: {
+            HStack(spacing: 10) {
+                RoundedRectangle(cornerRadius: streamer.recording ? 4 : 9)
+                    .fill(Color.red)
+                    .frame(width: 18, height: 18)
+                Text(streamer.recording ? "Stop" : "Record")
+                    .font(.system(.headline, design: .rounded))
+                    .foregroundStyle(.white)
+            }
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity)
+            .background(Color.white.opacity(streamer.recording ? 0.2 : 0.1), in: Capsule())
+        }
         .padding(.horizontal, 28)
     }
 

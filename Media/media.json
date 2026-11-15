@@ -3161,6 +3161,29 @@
       "stillSmall": "examples/3D/Materials/Triplanar/still-640.jpg?v=800a89ba",
       "width": 1080
     },
+    "3D/Phone/PhoneRecordingPins": {
+      "width": 1080,
+      "height": 1440,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 10.424,
+      "sound": false,
+      "source": "0a9894d47bb5dfd9",
+      "rendered": "2026-11-14",
+      "bytes": {
+        "loop": 663536,
+        "loopSmall": 151817,
+        "still": 43234,
+        "stillSmall": 17659
+      },
+      "loop": "examples/3D/Phone/PhoneRecordingPins/loop.mp4?v=31f2d73d",
+      "loopSmall": "examples/3D/Phone/PhoneRecordingPins/loop-640.mp4?v=8d9ecb82",
+      "still": "examples/3D/Phone/PhoneRecordingPins/still.jpg?v=1a6afd54",
+      "stillSmall": "examples/3D/Phone/PhoneRecordingPins/still-640.jpg?v=dffbda60",
+      "seed": 1,
+      "staged": "a recording that ships with the sketch plays in place of the phone"
+    },
     "3D/Physics/Bagatelle": {
       "bytes": {
         "loop": 1079907,

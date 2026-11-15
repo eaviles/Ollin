@@ -46,6 +46,14 @@ sure it is cross the cable, never the audio. **Air** is the second such switch:
 the barometer reads the pressure and how far the phone has risen since it started
 measuring, and the altimeter asks its own permission once.
 
+**Record** needs no cable. The button under the modes writes the stream to a folder in the app's own
+documents: the camera's video with the microphone's sound, every message the cable would have
+carried, and where the camera stood on each frame. It works in every mode that runs the camera
+through ARKit, which is all of them but Selfie, Touch, and Sketch. Changing mode closes the
+recording, and so does leaving the app. The folder ends in `.ollinrecording`; the Files app and
+Finder both show it, and a sketch on the Mac plays it back through `PhoneRecording`
+(see [the Phone reference](../../Docs/3D/Phone.md#a-recording)).
+
 ## How it fits together
 
 - **The wire format is shared, not duplicated.** [`PhoneWire.swift`](../../Sources/OllinPhone/PhoneWire.swift)
@@ -55,6 +63,9 @@ measuring, and the altimeter asks its own permission once.
   [`PhonePictureCoding.swift`](../../Sources/OllinPhone/PhonePictureCoding.swift) is
   shared the same way (CoreMedia only): it rebuilds a picture off the wire into the
   sample buffer the display layer decodes, so the Mac's tests run what the phone runs.
+  [`PhoneRecordingFormat.swift`](../../Sources/OllinPhone/PhoneRecordingFormat.swift) is
+  the third shared file (AVFoundation and Compression only): a recording's folder and
+  the writer that fills it, so the Mac's tests write a recording with the phone's writer.
 - **Transport is the standard usbmuxd USB tunnel.** The app opens an `NWListener` on
   TCP `PhoneWire.streamPort` (1338, distinct from Record3D's 1337); the Mac's
   `PhoneDevice` tunnels to it through usbmuxd. No Wi-Fi, no pairing — just the cable.

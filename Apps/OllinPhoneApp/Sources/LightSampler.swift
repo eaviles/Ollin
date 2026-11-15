@@ -19,6 +19,13 @@ final class LightSampler {
     /// Fired (on the main thread) each time a reading is due.
     var onLight: ((PhoneLightSample) -> Void)?
 
+    /// Fired (on the main thread) for every frame, before the light is judged.
+    /// Every mode that runs an ARKit session reports each of its frames here
+    /// before anything else, so this is also the one place a frame of any mode
+    /// passes through: the camera's record is read from it, and a recording
+    /// takes its picture from it.
+    var onFrame: ((ARFrame) -> Void)?
+
     /// How often a reading goes out, in seconds.
     private let interval: TimeInterval = 0.2
 
@@ -26,6 +33,7 @@ final class LightSampler {
 
     /// Report this frame's light, if one is due.
     func report(_ frame: ARFrame) {
+        onFrame?(frame)
         guard let estimate = frame.lightEstimate else { return }
         guard frame.timestamp - lastSent >= interval else { return }
         lastSent = frame.timestamp

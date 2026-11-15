@@ -43,7 +43,9 @@ private final class PictureProbe: Sketch {
 /// compared with the frame it started as.
 ///
 /// It uses the media engine's decoder, so it runs in the device phase
-/// (`Scripts/test.sh`), beside the other suite that reads video back.
+/// (`Scripts/test.sh`), beside the other suite that reads video back, and
+/// inside `PhoneMediaTests`, which keeps the two from running at once.
+extension PhoneMediaTests {
 @MainActor
 @Suite struct PhonePictureRoundTripTests {
 
@@ -288,6 +290,7 @@ private final class PictureProbe: Sketch {
         if let session { VTDecompressionSessionWaitForAsynchronousFrames(session) }
         return decoded.withLockUnchecked { $0 }
     }
+}
 }
 
 /// A frame as tightly packed BGRA bytes, eight bits a channel, alpha ignored.

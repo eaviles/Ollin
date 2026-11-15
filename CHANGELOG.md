@@ -4,6 +4,11 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ## [Unreleased]
 
+### Added
+
+- **A recording of the phone's stream.** Press Record in the capture app, with no cable, and play the folder back with `PhoneDevice(playing: PhoneRecording(path:))`. It plays on the sketch's clock, so an export shows the same frames every time. Rebuild the capture app to get the button. [Phone](Docs/3D/Phone.md#a-recording)
+- **The phone's camera as a 3D camera.** `device.latestCamera` says where the camera stood and what its lens was, in every ARKit mode. `drawPhonePicture(_:)` and `camera(_:)` put a sketch in the room the phone saw. [Phone](Docs/3D/Phone.md#the-cameras-place-and-lens)
+
 ### Changed
 
 - **The Guide's Chapter 34 is two chapters.** *Traced light* keeps the mirrors, the bounce, the caustic, and the camera's effects. The new Chapter 35, [The lens and the slow render](Guide/35-TheLensAndTheSlowRender.md), teaches depth of field and the path-traced export. Chapters 35 to 46 are now 36 to 47.

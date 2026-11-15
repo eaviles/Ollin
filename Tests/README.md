@@ -62,8 +62,12 @@ per elapsed second. `ListeningTests` waits on the system speech stack.
 `FrameSourceTests` and `ModelTrackerTests` want the Vision compute device.
 `SpatialVideoTests` is here for a different reason than the rest: its stereo
 HEVC readback goes through the hardware video decoder, and under a full parallel
-run that wait has wedged indefinitely rather than failing. `PhonePictureRoundTripTests`
-decodes the phone's pictures through the same decoder, so it sits beside it. `DataFeedTests` keeps
+run that wait has wedged indefinitely rather than failing. `PhoneMediaTests` sits beside
+it for the same decoder: it holds `PhonePictureRoundTripTests`, which decodes the phone's
+pictures, and `PhoneRecordingTests`, which writes a recording's video and reads every
+frame of it back. The two are nested in one serialized suite because they cannot run at
+once inside their own target either: the first drives a sender that closes after two
+seconds without a frame, and the second holds the main actor longer than that. `DataFeedTests` keeps
 its place even though the two rules below kill most of what looks like load: its
 last test loads through the real system rather than a stub, and that load timed
 out inside a batch of every target at once with both rules already applied.

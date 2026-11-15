@@ -22,6 +22,7 @@ DEVICE_SKETCHES=(Input/Pen Audio/Listening Audio/PlayAlong)
 # `staged`, so a clip of a round trip says what played the far end.
 typeset -A RUNS_ALONE
 RUNS_ALONE=(
+  3D/Phone/PhoneRecordingPins             "a recording that ships with the sketch plays in place of the phone"
   Audio/Expression                        "a hand of the sketch's own plays the phrase"
   Integration/DMXLoopback                 "a receiver on this Mac reads the universe back"
   Integration/LaserPreview                "no projector: the beam's path is drawn and nothing goes out"

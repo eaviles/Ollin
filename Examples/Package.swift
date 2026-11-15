@@ -422,6 +422,9 @@ let package = Package(
         // on the canvas, each tap rings out, and lifting the phone warms it.
         example("3D/Phone/PhoneTouches", [.phone]),
         example("3D/Phone/PhoneCanvas", [.phone]),
+        // A recording the capture app made, played back with no phone: the camera's
+        // picture fills the canvas and a few pins hold their places in the room.
+        example("3D/Phone/PhoneRecordingPins", [.phone], resources: [.copy("Room.ollinrecording")]),
         example("Motion/SineSweep"),
         example("Motion/Easing"),
         example("Motion/EasingGallery"),

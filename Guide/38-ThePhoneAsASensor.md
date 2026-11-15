@@ -60,6 +60,19 @@ The depth and the pose land in the types [Chapter 37](37-Depth.md) used, and the
 
 On the phone, the app runs one of these streams at a time, as a **mode** you tap by name on its screen. Two switches, Hear and Air, run beside whichever mode is on. The app is built onto the phone from its Xcode project, since an iOS app cannot run from `swift run`. It needs an iPhone with an A12 chip or later on iOS 17 or later. The LiDAR streams need a Pro model, and the face and gaze streams the front TrueDepth camera. The [Record3D](../Docs/3D/Record3D.md) and [Phone](../Docs/3D/Phone.md) references cover the setup, and the `3D/Depth` and `3D/Phone` example groups are live starting points for each stream.
 
+The app also **records**. Press Record, with no cable, and the phone writes its stream to a folder, with the camera's video beside it. A sketch plays that recording back through the same `PhoneDevice`, so a piece can be worked on with no phone in the room:
+
+```swift
+let device = PhoneDevice(playing: try! PhoneRecording(path: "~/Movies/Walk.ollinrecording"))
+device.start()                  // in setup()
+// …in draw():
+guard let view = device.latestCamera else { return }
+drawPhonePicture(view)          // the camera's picture, covering the canvas
+camera(view)                    // a 3D camera that matches the phone's
+```
+
+A recording keeps where the camera stood on every frame. Whatever you draw in 3D after those two calls stays in its place in the room as the camera moves. The recording plays on the sketch's clock, so an export shows the same frames every time. The [`PhoneRecordingPins`](../Examples/3D/Phone/PhoneRecordingPins/Sketch.swift) example plays a small recording that ships with it and stands five pins in its room. The [Phone reference](../Docs/3D/Phone.md#a-recording) covers making a recording of your own.
+
 ## A pose you can dress in solids: the body
 
 Of everything the app sends, the finished sketch reads one stream, the body. [Chapter 36](36-Seeing.md#the-body-as-a-controller-hands-faces-and-bodies)'s `BodyTracker3D` estimated a person in meters from a flat picture. The phone's version comes from ARKit's body tracking, which runs on the phone and estimates the person's size, as `scaleFactor` reports.
@@ -599,10 +612,11 @@ The entries name their own sources as they go. Recorded clips and the live strea
 
 - [Record3D](../Docs/3D/Record3D.md): recorded `.r3d` clips and the live USB stream, frame by frame.
 - [The iPhone capture app](../Docs/3D/Phone.md): setup, body, faces and gaze, hands, world depth with pose, the room mesh, the flat surfaces, the room's light, segmentation, text, attention, flow, markers, the wand, what the phone hears, touches, the air, and world fusion.
+- [A recording of the phone's stream](../Docs/3D/Phone.md#a-recording): the Record button, playing a recording on the sketch's clock, any frame by its number, and [the camera's place and lens](../Docs/3D/Phone.md#the-cameras-place-and-lens) that a sketch draws in the room through.
 - [BodyTracker3D](../Docs/Vision/Vision.md#bodytracker3d): a body in meters from a webcam or a film, in place of the phone's body when no phone is there.
 - [Sample photos and the film](../Docs/Drawing/SamplePhotos.md#film): the dance clip the finished sketch reads, with its credit.
 - [RGBD frames](../Docs/3D/RGBD.md): the frame type both sources hand over, the same one [Chapter 37](37-Depth.md) read from a pretend camera.
-- Worked examples: [`Examples/3D/Depth/Record3DCloud`](../Examples/3D/Depth/Record3DCloud/Sketch.swift), [`Examples/3D/Phone/PhoneDepthCloud`](../Examples/3D/Phone/PhoneDepthCloud/Sketch.swift), [`Examples/3D/Phone/PhoneWorldScan`](../Examples/3D/Phone/PhoneWorldScan/Sketch.swift), [`Examples/3D/Phone/PhoneRoomMesh`](../Examples/3D/Phone/PhoneRoomMesh/Sketch.swift), [`Examples/3D/Phone/PhoneRoomPlanes`](../Examples/3D/Phone/PhoneRoomPlanes/Sketch.swift), [`Examples/3D/Phone/PhoneSounds`](../Examples/3D/Phone/PhoneSounds/Sketch.swift), [`Examples/3D/Phone/PhoneFlow`](../Examples/3D/Phone/PhoneFlow/Sketch.swift), [`PhoneBodyFigure`](../Examples/3D/Phone/PhoneBodyFigure/Sketch.swift), [`PhoneHands`](../Examples/3D/Phone/PhoneHands/Sketch.swift), [`PhoneGaze`](../Examples/3D/Phone/PhoneGaze/Sketch.swift), [`PhoneWorldText`](../Examples/3D/Phone/PhoneWorldText/Sketch.swift), [`PhoneAttention`](../Examples/3D/Phone/PhoneAttention/Sketch.swift), [`PhoneMarkers`](../Examples/3D/Phone/PhoneMarkers/Sketch.swift), [`PhonePointer`](../Examples/3D/Phone/PhonePointer/Sketch.swift), and [`PhoneTouches`](../Examples/3D/Phone/PhoneTouches/Sketch.swift).
+- Worked examples: [`Examples/3D/Depth/Record3DCloud`](../Examples/3D/Depth/Record3DCloud/Sketch.swift), [`Examples/3D/Phone/PhoneRecordingPins`](../Examples/3D/Phone/PhoneRecordingPins/Sketch.swift), [`Examples/3D/Phone/PhoneDepthCloud`](../Examples/3D/Phone/PhoneDepthCloud/Sketch.swift), [`Examples/3D/Phone/PhoneWorldScan`](../Examples/3D/Phone/PhoneWorldScan/Sketch.swift), [`Examples/3D/Phone/PhoneRoomMesh`](../Examples/3D/Phone/PhoneRoomMesh/Sketch.swift), [`Examples/3D/Phone/PhoneRoomPlanes`](../Examples/3D/Phone/PhoneRoomPlanes/Sketch.swift), [`Examples/3D/Phone/PhoneSounds`](../Examples/3D/Phone/PhoneSounds/Sketch.swift), [`Examples/3D/Phone/PhoneFlow`](../Examples/3D/Phone/PhoneFlow/Sketch.swift), [`PhoneBodyFigure`](../Examples/3D/Phone/PhoneBodyFigure/Sketch.swift), [`PhoneHands`](../Examples/3D/Phone/PhoneHands/Sketch.swift), [`PhoneGaze`](../Examples/3D/Phone/PhoneGaze/Sketch.swift), [`PhoneWorldText`](../Examples/3D/Phone/PhoneWorldText/Sketch.swift), [`PhoneAttention`](../Examples/3D/Phone/PhoneAttention/Sketch.swift), [`PhoneMarkers`](../Examples/3D/Phone/PhoneMarkers/Sketch.swift), [`PhonePointer`](../Examples/3D/Phone/PhonePointer/Sketch.swift), and [`PhoneTouches`](../Examples/3D/Phone/PhoneTouches/Sketch.swift).
 - [`Examples/Vision/BodyPose3D`](../Examples/Vision/BodyPose3D/Sketch.swift) draws a webcam's body from the side, with the tracker the finished sketch reads the film through.
 
 ---

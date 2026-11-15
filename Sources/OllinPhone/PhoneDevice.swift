@@ -86,10 +86,20 @@ import Darwin
 /// `latestState` is what the phone answers: where it landed, and what it could not
 /// use.
 ///
+/// `latestCamera` is where the phone's camera stood and what its lens was, for
+/// the frame the rest belongs to. It arrives in every mode that runs an ARKit
+/// session, and it is what a sketch draws in the room through: `camera(view)`
+/// sets a 3D camera that matches the phone's.
+///
 /// Launch the Ollin capture app on the iPhone and connect the cable; the device
 /// keeps retrying, so plugging in or starting the app mid-run just works. The
 /// transport is the standard `usbmuxd` tunnel (port 1338); the wire format is
 /// Ollin's own (`PhoneWire`).
+///
+/// The same device plays a **recording** the capture app made with no cable at
+/// all: `PhoneDevice(playing:)` takes a `PhoneRecording`, and everything above
+/// reads the same, at the frame it was sensed on, with the camera's own
+/// picture beside it.
 @MainActor
 public final class PhoneDevice: FrameSource, VideoFeed {
 
@@ -136,20 +146,76 @@ public final class PhoneDevice: FrameSource, VideoFeed {
     private var cachedFlowFrameSequence: Int?
     private var cachedFlowFrame: Image?
 
+    /// The recording this device plays, or `nil` for a device on the cable.
+    /// Pause it, seek it, and read any of its frames through this.
+    public let recording: PhoneRecording?
+
+    // What a recording has handed over so far: whether the device is taking
+    // its records at all, the frame it last took, and the last record of it.
+    private var isFeeding = false
+    private var fedFrame: Int?
+    private var fedThrough = -1
+
     /// Create a device bound to the capture app's stream port.
     public init(port: UInt16 = PhoneDevice.streamPort) {
+        recording = nil
         reader = PhoneStreamReader(port: port, sounds: sounds, touches: touches)
     }
 
+    /// Create a device that plays a recording in place of a phone on the cable.
+    ///
+    /// Keep the device in a property of the sketch: the sketch hands its clock
+    /// to what it holds, and that clock is what moves the recording. It
+    /// advances with the sketch's `time`, so it holds while the sketch is
+    /// paused, and an export lands on the same frames in every run.
+    public init(playing recording: PhoneRecording) {
+        self.recording = recording
+        reader = PhoneStreamReader(port: PhoneDevice.streamPort, sounds: sounds, touches: touches)
+    }
+
     /// Begin connecting and streaming. Safe to call once; the reader retries on its
-    /// own until the phone is attached and the app is serving.
-    public func start() { reader.start() }
+    /// own until the phone is attached and the app is serving. A device that
+    /// plays a recording begins handing its frames over.
+    public func start() {
+        guard recording == nil else {
+            isFeeding = true
+            return
+        }
+        reader.start()
+    }
 
     /// Stop streaming and close the connection. Safe to call when not started.
-    public func stop() { reader.stop() }
+    /// A device that plays a recording stops taking its frames; what it last
+    /// read stays readable.
+    public func stop() {
+        guard recording == nil else {
+            isFeeding = false
+            return
+        }
+        reader.stop()
+    }
 
-    /// Whether sensor frames are currently arriving from the phone.
-    public var isRunning: Bool { reader.isConnected }
+    /// Whether sensor frames are currently arriving, from the phone or from the
+    /// recording.
+    public var isRunning: Bool {
+        recording == nil ? reader.isConnected : (isFeeding && fedFrame != nil)
+    }
+
+    // MARK: - The camera (every mode that runs an ARKit session)
+
+    /// Where the phone's camera stood on the latest frame, and what its lens
+    /// was, or `nil` before one arrives. Upright for how the phone was held.
+    ///
+    /// From a recording it carries the frame's picture too, so
+    /// `drawPhonePicture(_:)` and `camera(_:)` put a sketch in the room the
+    /// phone saw. On the cable it is the camera's place and lens alone.
+    public var latestCamera: PhoneCamera? {
+        guard let sample = reader.latestCamera else { return nil }
+        if let recording, let fedFrame {
+            return recording.camera(for: sample, frame: fedFrame)
+        }
+        return PhoneCamera(sample)
+    }
 
     /// Every body the phone is tracking, newest set each frame, empty before any
     /// arrive or when nobody is in view. ARKit follows one body today; the list
@@ -252,7 +318,19 @@ public final class PhoneDevice: FrameSource, VideoFeed {
     public var latestFrame: RGBDFrame? {
         guard let box = reader.latestDepth else { return nil }
         if cachedSequence == box.sequence, let cachedFrame { return cachedFrame }
-        let frame = RGBDFrame(color: Image(cgImage: box.color), depth: box.depth,
+        // A frame off the cable brings its own small picture. One out of a
+        // recording takes the matching frame of the video, as the sensor
+        // delivered it, since that is the frame the depth map lines up with.
+        let color: Image
+        if let own = box.color {
+            color = Image(cgImage: own)
+        } else if let recording, let index = recording.frame(atCaptureTime: box.timestamp),
+                  let picture = recording.sensorPicture(at: index) {
+            color = picture
+        } else {
+            return nil
+        }
+        let frame = RGBDFrame(color: color, depth: box.depth,
                               confidence: box.confidence, depthWidth: box.depthWidth,
                               depthHeight: box.depthHeight, intrinsics: box.intrinsics)
         cachedSequence = box.sequence
@@ -518,12 +596,67 @@ public final class PhoneDevice: FrameSource, VideoFeed {
     /// The pixel size of the latest World-mode color frame (`VideoFeed`).
     public var frameSize: Vector2? {
         guard let box = reader.latestDepth else { return nil }
-        return Vector2(Double(box.color.width), Double(box.color.height))
+        if let color = box.color { return Vector2(Double(color.width), Double(color.height)) }
+        return recording?.sensorPictureSize
     }
 
     /// The notice to show before frames arrive — reflects the live connection state
-    /// (no device, refused, reconnecting).
-    public var waitingMessage: String { reader.statusMessage ?? "Connecting to the phone…" }
+    /// (no device, refused, reconnecting). For a recording it says why nothing
+    /// is playing.
+    public var waitingMessage: String {
+        guard recording != nil else { return reader.statusMessage ?? "Connecting to the phone…" }
+        if !isFeeding { return "Call start() to play the recording." }
+        return "The recording is not playing. Keep the device in a property of the sketch."
+    }
+
+    // MARK: - Playing a recording
+
+    /// Take in whatever the recording holds up to the frame it now stands on.
+    ///
+    /// Playing forward takes the records since the last frame. A frame behind
+    /// the last one taken (a loop, a seek backward) starts from the recording's
+    /// first record, so what adds up over a recording (the room's blocks, its
+    /// surfaces) is exactly what it was on that frame.
+    private func feed(_ recording: PhoneRecording) {
+        let frame = recording.frameIndex
+        guard frame != fedFrame else { return }
+        var start = fedThrough + 1
+        if let fedFrame, frame < fedFrame {
+            reader.resetForReplay()
+            start = 0
+        }
+        let end = recording.entryEnd(forFrame: frame)
+        if start < end {
+            for index in recording.entriesToFeed(start ..< end) {
+                if let message = recording.message(atEntry: index) { reader.ingest(message) }
+            }
+        }
+        fedThrough = end - 1
+        fedFrame = frame
+        // A vision tracker reading this device sees the frame the sketch is
+        // about to draw, from the thread that drives the frame, so it answers
+        // on the same frames in every run.
+        if let frameTap, let picture = recording.uprightCGImage(at: frame) {
+            frameTap(picture)
+        }
+    }
+}
+
+// MARK: The sketch's clock
+
+/// The per-frame advance pass (the one that steps `@Eased` and `Timeline`)
+/// hands the device the sketch's clock, and a device that plays a recording
+/// moves the recording to it and takes in that frame. A device on the cable
+/// has nothing to follow. The conformance is main-actor isolated, matching the
+/// pass that calls it.
+extension PhoneDevice: @MainActor FrameAdvancing {
+    package func advance(by dt: Double) {}
+
+    package func advance(to time: Double) {
+        guard let recording, isFeeding else { return }
+        recording.follow(clock: time)
+        feed(recording)
+    }
 }
 
 /// Owns the usbmuxd connection and the background read loop, decoding framed
@@ -558,6 +691,7 @@ final class PhoneStreamReader: @unchecked Sendable {
         var latestLight: PhoneLightSample?
         var latestAir: PhoneAirSample?
         var latestState: PhoneStateSample?
+        var latestCamera: PhoneCameraSample?
         /// What the sketch has asked for, kept whether or not a phone is attached.
         /// The declarations are the durable intent; the connection is not, so both
         /// are re-sent on every connect and a cable plugged in later just works.
@@ -607,6 +741,7 @@ final class PhoneStreamReader: @unchecked Sendable {
     var latestLight: PhoneLightSample? { lock.withLock { $0.latestLight } }
     var latestAir: PhoneAirSample? { lock.withLock { $0.latestAir } }
     var latestState: PhoneStateSample? { lock.withLock { $0.latestState } }
+    var latestCamera: PhoneCameraSample? { lock.withLock { $0.latestCamera } }
     var isConnected: Bool { lock.withLock { $0.connected } }
     var statusMessage: String? { lock.withLock { $0.message } }
 
@@ -734,109 +869,8 @@ final class PhoneStreamReader: @unchecked Sendable {
                 // on connect, so the wait it costs a read is paid once.
                 guard sendPending(fd) else { break readLoop }
                 switch readMessage(fd) {
-                case .message(.depth(let sample)):
-                    // Decode the RGBD frame (JPEG + intrinsics) on this thread, off
-                    // the main actor (the executor-assertion lesson), then fire the
-                    // FrameSource tap with the color image.
-                    let seq = lock.withLock { state -> Int in state.depthSequence += 1; return state.depthSequence }
-                    if let box = decodePhoneDepth(sample, sequence: seq) {
-                        let tap = lock.withLock { state -> FrameTap? in
-                            state.latestDepth = box
-                            return state.tap
-                        }
-                        tap?(box.color)
-                    }
-                case .message(.segmentation(let sample)):
-                    // JPEG-decode the color on this thread (off the main actor), then
-                    // store the boxed frame; the matte/cutout images are built lazily
-                    // on the main actor when the sketch reads them.
-                    let seq = lock.withLock { state -> Int in state.segSequence += 1; return state.segSequence }
-                    if let box = decodePhoneSegmentation(sample, sequence: seq) {
-                        lock.withLock { $0.latestSegmentation = box }
-                    }
-                case .message(.saliency(let sample)):
-                    // JPEG-decode the color on this thread (off the main actor), then
-                    // store the boxed reading; the heat-map and frame images are built
-                    // lazily on the main actor when the sketch reads them.
-                    let seq = lock.withLock { state -> Int in state.saliencySequence += 1; return state.saliencySequence }
-                    if let box = decodePhoneSaliency(sample, sequence: seq) {
-                        lock.withLock { $0.latestSaliency = box }
-                    }
-                case .message(.flow(let sample)):
-                    // Stand the map upright, build the field, and JPEG-decode the
-                    // color on this thread (off the main actor); the frame image
-                    // is built lazily on the main actor when the sketch reads it.
-                    let seq = lock.withLock { state -> Int in state.flowSequence += 1; return state.flowSequence }
-                    if let box = decodePhoneFlow(sample, sequence: seq) {
-                        lock.withLock { $0.latestFlow = box }
-                    }
-                case .message(.sceneMesh(let sample)):
-                    // Place the block into world space on this thread, off the main
-                    // actor and outside the lock (a block carries thousands of
-                    // vertices, and the lock is held by every read in draw()).
-                    let chunk = sample.isRemoved ? nil : phoneSceneChunk(from: sample)
-                    guard sample.isRemoved || chunk != nil else { continue }
-                    lock.withLock { state in
-                        // A new run of the scanner resets the phone's world origin,
-                        // so blocks from the run before it are in a space that no
-                        // longer exists. Drop the old room rather than mixing them.
-                        if state.sceneMeshScan != sample.scan {
-                            state.sceneMeshScan = sample.scan
-                            state.sceneMesh.reset()
-                        }
-                        if let chunk {
-                            state.sceneMesh.apply(chunk)
-                        } else {
-                            state.sceneMesh.remove(sample.id)
-                        }
-                        state.sceneMeshVersion = (state.sceneMeshVersion ?? 0) + 1
-                    }
-                case .message(.sound(let sample)):
-                    // The ears keep their own state under their own lock; the
-                    // threshold crossing is judged there, off the main actor.
-                    sounds.hear(sample)
-                case .message(.touch(let sample)):
-                    // The surface keeps its own state under its own lock, the
-                    // ears' shape: the landings are found there, off the main
-                    // actor, so a tap between two draws is never missed.
-                    touches.feel(sample)
-                case .message(.plane(let sample)):
-                    // Place the surface into world space on this thread, off the main
-                    // actor and outside the lock, the way a mesh block is.
-                    let plane = sample.isRemoved ? nil : phonePlane(from: sample)
-                    guard sample.isRemoved || plane != nil else { continue }
-                    lock.withLock { state in
-                        // A new run of the scanner moves the world origin, so surfaces
-                        // from the run before it describe a space that is gone.
-                        if state.planesScan != sample.scan {
-                            state.planesScan = sample.scan
-                            state.planes.reset()
-                        }
-                        if let plane {
-                            state.planes.apply(plane)
-                        } else {
-                            state.planes.remove(sample.id)
-                        }
-                        state.planesVersion = (state.planesVersion ?? 0) + 1
-                    }
                 case .message(let message):
-                    lock.withLock { state in
-                        switch message {
-                        case .motion(let m): state.latestMotion = m
-                        case .pose(let p): state.latestPoses = p
-                        case .face(let f): state.latestFaces = f
-                        case .hands(let h): state.latestHands = h
-                        case .texts(let t): state.latestTexts = t
-                        case .markers(let m): state.latestMarkers = m
-                        case .wand(let w): state.latestWand = w
-                        case .light(let l): state.latestLight = l
-                        case .air(let a): state.latestAir = a
-                        case .state(let st): state.latestState = st
-                        case .depth, .segmentation, .saliency, .flow, .sceneMesh, .plane,
-                             .sound, .touch:
-                            break   // handled above
-                        }
-                    }
+                    ingest(message)
                 case .skip:
                     continue            // a bad frame, but the stream is still in sync
                 case .desync:
@@ -866,6 +900,158 @@ final class PhoneStreamReader: @unchecked Sendable {
             if stillOurs { close(fd) }
             if isRunning { Thread.sleep(forTimeInterval: 0.5) }
         }
+    }
+
+    // MARK: Taking a message in
+
+    /// Take one decoded message into the latest of its kind. The cable's read
+    /// thread calls this for every frame it reads, and a recording calls it for
+    /// every record it plays, so both sources reach a sketch through one path.
+    ///
+    /// The heavy decodes (a JPEG, a block of the room placed in the world) run
+    /// here, outside the lock, on whichever thread is calling.
+    func ingest(_ message: PhoneMessage) {
+        switch message {
+        case .depth(let sample):
+            // Decode the RGBD frame (JPEG + intrinsics) on this thread, off
+            // the main actor (the executor-assertion lesson), then fire the
+            // FrameSource tap with the color image.
+            let seq = lock.withLock { state -> Int in state.depthSequence += 1; return state.depthSequence }
+            if let box = decodePhoneDepth(sample, sequence: seq) {
+                let tap = lock.withLock { state -> FrameTap? in
+                    state.latestDepth = box
+                    return state.tap
+                }
+                // A frame out of a recording carries no color of its own; the
+                // device hands the tap that frame of the video instead.
+                if let color = box.color { tap?(color) }
+            }
+        case .segmentation(let sample):
+            // JPEG-decode the color on this thread (off the main actor), then
+            // store the boxed frame; the matte/cutout images are built lazily
+            // on the main actor when the sketch reads them.
+            let seq = lock.withLock { state -> Int in state.segSequence += 1; return state.segSequence }
+            if let box = decodePhoneSegmentation(sample, sequence: seq) {
+                lock.withLock { $0.latestSegmentation = box }
+            }
+        case .saliency(let sample):
+            // JPEG-decode the color on this thread (off the main actor), then
+            // store the boxed reading; the heat-map and frame images are built
+            // lazily on the main actor when the sketch reads them.
+            let seq = lock.withLock { state -> Int in state.saliencySequence += 1; return state.saliencySequence }
+            if let box = decodePhoneSaliency(sample, sequence: seq) {
+                lock.withLock { $0.latestSaliency = box }
+            }
+        case .flow(let sample):
+            // Stand the map upright, build the field, and JPEG-decode the
+            // color on this thread (off the main actor); the frame image
+            // is built lazily on the main actor when the sketch reads it.
+            let seq = lock.withLock { state -> Int in state.flowSequence += 1; return state.flowSequence }
+            if let box = decodePhoneFlow(sample, sequence: seq) {
+                lock.withLock { $0.latestFlow = box }
+            }
+        case .sceneMesh(let sample):
+            // Place the block into world space on this thread, off the main
+            // actor and outside the lock (a block carries thousands of
+            // vertices, and the lock is held by every read in draw()).
+            let chunk = sample.isRemoved ? nil : phoneSceneChunk(from: sample)
+            guard sample.isRemoved || chunk != nil else { return }
+            lock.withLock { state in
+                // A new run of the scanner resets the phone's world origin,
+                // so blocks from the run before it are in a space that no
+                // longer exists. Drop the old room rather than mixing them.
+                if state.sceneMeshScan != sample.scan {
+                    state.sceneMeshScan = sample.scan
+                    state.sceneMesh.reset()
+                }
+                if let chunk {
+                    state.sceneMesh.apply(chunk)
+                } else {
+                    state.sceneMesh.remove(sample.id)
+                }
+                state.sceneMeshVersion = (state.sceneMeshVersion ?? 0) + 1
+            }
+        case .sound(let sample):
+            // The ears keep their own state under their own lock; the
+            // threshold crossing is judged there, off the main actor.
+            sounds.hear(sample)
+        case .touch(let sample):
+            // The surface keeps its own state under its own lock, the
+            // ears' shape: the landings are found there, off the main
+            // actor, so a tap between two draws is never missed.
+            touches.feel(sample)
+        case .plane(let sample):
+            // Place the surface into world space on this thread, off the main
+            // actor and outside the lock, the way a mesh block is.
+            let plane = sample.isRemoved ? nil : phonePlane(from: sample)
+            guard sample.isRemoved || plane != nil else { return }
+            lock.withLock { state in
+                // A new run of the scanner moves the world origin, so surfaces
+                // from the run before it describe a space that is gone.
+                if state.planesScan != sample.scan {
+                    state.planesScan = sample.scan
+                    state.planes.reset()
+                }
+                if let plane {
+                    state.planes.apply(plane)
+                } else {
+                    state.planes.remove(sample.id)
+                }
+                state.planesVersion = (state.planesVersion ?? 0) + 1
+            }
+        default:
+            lock.withLock { state in
+                switch message {
+                case .motion(let m): state.latestMotion = m
+                case .pose(let p): state.latestPoses = p
+                case .face(let f): state.latestFaces = f
+                case .hands(let h): state.latestHands = h
+                case .texts(let t): state.latestTexts = t
+                case .markers(let m): state.latestMarkers = m
+                case .wand(let w): state.latestWand = w
+                case .light(let l): state.latestLight = l
+                case .air(let a): state.latestAir = a
+                case .state(let st): state.latestState = st
+                case .camera(let c): state.latestCamera = c
+                case .depth, .segmentation, .saliency, .flow, .sceneMesh, .plane,
+                     .sound, .touch:
+                    break   // handled above
+                }
+            }
+        }
+    }
+
+    /// Forget everything taken in so far, so a recording that starts over (a
+    /// loop, a seek backward) builds its state again from its first record.
+    func resetForReplay() {
+        lock.withLock { state in
+            state.latestPoses = []
+            state.latestFaces = []
+            state.latestHands = []
+            state.latestTexts = []
+            state.latestMarkers = []
+            state.latestWand = nil
+            state.latestMotion = nil
+            state.latestDepth = nil
+            state.latestSegmentation = nil
+            state.latestSaliency = nil
+            state.latestFlow = nil
+            state.latestLight = nil
+            state.latestAir = nil
+            state.latestState = nil
+            state.latestCamera = nil
+            if state.sceneMeshVersion != nil {
+                state.sceneMesh.reset()
+                state.sceneMeshVersion = (state.sceneMeshVersion ?? 0) + 1
+            }
+            state.sceneMeshScan = nil
+            if state.planesVersion != nil {
+                state.planes.reset()
+                state.planesVersion = (state.planesVersion ?? 0) + 1
+            }
+            state.planesScan = nil
+        }
+        touches.releaseAll()
     }
 
     /// Write whatever the sketch has declared since the last look. Returns false

@@ -56,55 +56,57 @@ fec8f6d8ac5d  Docs/3D/Instancing.md:83  cannot find 'stone' in scope
 bec1cad205c6  Docs/3D/LineDrawing.md:53  for-in loop requires 'LineDrawing' to conform to 'Sequence'
 53deb147e8de  Docs/3D/LineDrawing.md:85  cannot find 'scene' in scope
 03afe1b01e53  Docs/3D/LineDrawing.md:9  for-in loop requires 'LineDrawing' to conform to 'Sequence'
-89e4d2ea37de  Docs/3D/Phone.md:113  cannot find 'device' in scope
-df2b7a61c936  Docs/3D/Phone.md:127  cannot find 'body' in scope
-5992515a7f38  Docs/3D/Phone.md:142  cannot find 'body' in scope
-2df9a5624ab5  Docs/3D/Phone.md:153  cannot find 'body' in scope
-4811875e3ea9  Docs/3D/Phone.md:178  cannot find 'device' in scope
-f4879e166444  Docs/3D/Phone.md:199  cannot find 'face' in scope
-56761869e16d  Docs/3D/Phone.md:212  cannot find 'face' in scope
-73ce2b7ca8b2  Docs/3D/Phone.md:234  cannot find 'device' in scope
-d7ae0890d8bb  Docs/3D/Phone.md:262  cannot find 'device' in scope
-d7d5e4c7a266  Docs/3D/Phone.md:289  cannot find 'device' in scope
-ed2d714ae14d  Docs/3D/Phone.md:317  cannot find 'device' in scope
-aa50201a3785  Docs/3D/Phone.md:338  'module' is inaccessible due to 'internal' protection level
-28b77be058c9  Docs/3D/Phone.md:351  cannot find 'device' in scope
-cd52aa432ca6  Docs/3D/Phone.md:380  cannot find 'device' in scope
-99be21e026a2  Docs/3D/Phone.md:398  cannot find 'balls' in scope
-e5dc2ea249e1  Docs/3D/Phone.md:419  cannot find 'device' in scope
-09c01475e157  Docs/3D/Phone.md:443  cannot find 'device' in scope
-b052fb9b5d7e  Docs/3D/Phone.md:472  cannot find 'world' in scope
-cf3d32b543b2  Docs/3D/Phone.md:490  cannot find 'world' in scope
-ecbd4c6ff46d  Docs/3D/Phone.md:505  cannot find 'cameraCloud' in scope
-0916b30d362c  Docs/3D/Phone.md:521  cannot find 'update' in scope
-8b328b4bd70a  Docs/3D/Phone.md:556  cannot find 'device' in scope
-0fa742730514  Docs/3D/Phone.md:566  cannot find 'device' in scope
-47781ccd5094  Docs/3D/Phone.md:581  unary operator cannot be separated from its operand
-d4aeba848259  Docs/3D/Phone.md:592  cannot find 'scan' in scope
-f6f39e6371ff  Docs/3D/Phone.md:612  cannot find 'device' in scope
-64961a44b09d  Docs/3D/Phone.md:620  cannot find 'device' in scope
-16fc91318be5  Docs/3D/Phone.md:634  unary operator cannot be separated from its operand
-3ada032ec232  Docs/3D/Phone.md:649  cannot find 'device' in scope
-4b39ac917156  Docs/3D/Phone.md:665  cannot find 'device' in scope
-5f30c7ac01bb  Docs/3D/Phone.md:677  cannot find 'device' in scope
-9fa280ebe85c  Docs/3D/Phone.md:685  value of type '@MainActor (Light) -> ()' has no member 'direction'
-73798537a0b5  Docs/3D/Phone.md:692  cannot find 'device' in scope
-6e76d190e7fe  Docs/3D/Phone.md:698  cannot find 'device' in scope
-a265e10930ee  Docs/3D/Phone.md:712  cannot find 'device' in scope
-90f5c5e41eec  Docs/3D/Phone.md:719  cannot find 'device' in scope
-b04a39d51409  Docs/3D/Phone.md:736  cannot find 'device' in scope
-5891ba6f04a9  Docs/3D/Phone.md:765  cannot find 'device' in scope
-ef5ff4dcdc03  Docs/3D/Phone.md:781  cannot find 'device' in scope
-abd0d3efd585  Docs/3D/Phone.md:804  cannot find 'device' in scope
-dfcb15f63246  Docs/3D/Phone.md:812  cannot find 'device' in scope
-0efaf3e1b543  Docs/3D/Phone.md:821  cannot find 'device' in scope
-ce2562f59ad4  Docs/3D/Phone.md:831  cannot find 'device' in scope
-aa6b39505d99  Docs/3D/Phone.md:853  cannot find 'device' in scope
-cfacfcd36d59  Docs/3D/Phone.md:868  cannot find 'device' in scope
-c1dfed3638ac  Docs/3D/Phone.md:880  cannot find 'device' in scope
-598f5305c5dc  Docs/3D/Phone.md:934  cannot find 'device' in scope
-b6794226e9fd  Docs/3D/Phone.md:956  cannot find 'device' in scope
-499b37412097  Docs/3D/Phone.md:979  cannot find 'device' in scope
+b6794226e9fd  Docs/3D/Phone.md:1011  cannot find 'device' in scope
+499b37412097  Docs/3D/Phone.md:1034  cannot find 'device' in scope
+89e4d2ea37de  Docs/3D/Phone.md:118  cannot find 'device' in scope
+df2b7a61c936  Docs/3D/Phone.md:132  cannot find 'body' in scope
+5992515a7f38  Docs/3D/Phone.md:147  cannot find 'body' in scope
+2df9a5624ab5  Docs/3D/Phone.md:158  cannot find 'body' in scope
+4811875e3ea9  Docs/3D/Phone.md:183  cannot find 'device' in scope
+f4879e166444  Docs/3D/Phone.md:204  cannot find 'face' in scope
+56761869e16d  Docs/3D/Phone.md:217  cannot find 'face' in scope
+73ce2b7ca8b2  Docs/3D/Phone.md:239  cannot find 'device' in scope
+d7ae0890d8bb  Docs/3D/Phone.md:267  cannot find 'device' in scope
+d7d5e4c7a266  Docs/3D/Phone.md:294  cannot find 'device' in scope
+ed2d714ae14d  Docs/3D/Phone.md:322  cannot find 'device' in scope
+aa50201a3785  Docs/3D/Phone.md:343  'module' is inaccessible due to 'internal' protection level
+28b77be058c9  Docs/3D/Phone.md:356  cannot find 'device' in scope
+cd52aa432ca6  Docs/3D/Phone.md:385  cannot find 'device' in scope
+99be21e026a2  Docs/3D/Phone.md:403  cannot find 'balls' in scope
+d469b02518d2  Docs/3D/Phone.md:424  cannot find 'device' in scope
+b5157808a548  Docs/3D/Phone.md:441  cannot find 'view' in scope
+e5dc2ea249e1  Docs/3D/Phone.md:474  cannot find 'device' in scope
+09c01475e157  Docs/3D/Phone.md:498  cannot find 'device' in scope
+b052fb9b5d7e  Docs/3D/Phone.md:527  cannot find 'world' in scope
+cf3d32b543b2  Docs/3D/Phone.md:545  cannot find 'world' in scope
+ecbd4c6ff46d  Docs/3D/Phone.md:560  cannot find 'cameraCloud' in scope
+0916b30d362c  Docs/3D/Phone.md:576  cannot find 'update' in scope
+8b328b4bd70a  Docs/3D/Phone.md:611  cannot find 'device' in scope
+0fa742730514  Docs/3D/Phone.md:621  cannot find 'device' in scope
+47781ccd5094  Docs/3D/Phone.md:636  unary operator cannot be separated from its operand
+d4aeba848259  Docs/3D/Phone.md:647  cannot find 'scan' in scope
+f6f39e6371ff  Docs/3D/Phone.md:667  cannot find 'device' in scope
+64961a44b09d  Docs/3D/Phone.md:675  cannot find 'device' in scope
+16fc91318be5  Docs/3D/Phone.md:689  unary operator cannot be separated from its operand
+3ada032ec232  Docs/3D/Phone.md:704  cannot find 'device' in scope
+4b39ac917156  Docs/3D/Phone.md:720  cannot find 'device' in scope
+5f30c7ac01bb  Docs/3D/Phone.md:732  cannot find 'device' in scope
+9fa280ebe85c  Docs/3D/Phone.md:740  value of type '@MainActor (Light) -> ()' has no member 'direction'
+73798537a0b5  Docs/3D/Phone.md:747  cannot find 'device' in scope
+6e76d190e7fe  Docs/3D/Phone.md:753  cannot find 'device' in scope
+a265e10930ee  Docs/3D/Phone.md:767  cannot find 'device' in scope
+90f5c5e41eec  Docs/3D/Phone.md:774  cannot find 'device' in scope
+b04a39d51409  Docs/3D/Phone.md:791  cannot find 'device' in scope
+5891ba6f04a9  Docs/3D/Phone.md:820  cannot find 'device' in scope
+ef5ff4dcdc03  Docs/3D/Phone.md:836  cannot find 'device' in scope
+abd0d3efd585  Docs/3D/Phone.md:859  cannot find 'device' in scope
+dfcb15f63246  Docs/3D/Phone.md:867  cannot find 'device' in scope
+0efaf3e1b543  Docs/3D/Phone.md:876  cannot find 'device' in scope
+ce2562f59ad4  Docs/3D/Phone.md:886  cannot find 'device' in scope
+aa6b39505d99  Docs/3D/Phone.md:908  cannot find 'device' in scope
+cfacfcd36d59  Docs/3D/Phone.md:923  cannot find 'device' in scope
+c1dfed3638ac  Docs/3D/Phone.md:935  cannot find 'device' in scope
+598f5305c5dc  Docs/3D/Phone.md:989  cannot find 'device' in scope
 cf446431401d  Docs/3D/RGBD.md:105  cannot find 'bodies' in scope
 afc9b452945e  Docs/3D/RGBD.md:54  expected ',' separator
 480ac8fd57b4  Docs/3D/RGBD.md:80  cannot find 'frame' in scope

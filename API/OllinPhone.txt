@@ -127,6 +127,7 @@ enum PhoneMarkerKind: UInt8, CaseIterable, Equatable, Hashable, RawRepresentable
   case object
 enum PhoneMessage: Equatable, Sendable
   case air(PhoneAirSample)
+  case camera(PhoneCameraSample)
   case depth(PhoneDepthSample)
   case face([PhoneFaceSample])
   case flow(PhoneFlowSample)
@@ -148,6 +149,7 @@ enum PhoneMessage: Equatable, Sendable
 enum PhoneMessageKind: UInt8, CaseIterable, Equatable, Hashable, RawRepresentable, Sendable
   case air
   case bodyPose
+  case camera
   case depth
   case deviceMotion
   case face
@@ -167,6 +169,16 @@ enum PhoneMessageKind: UInt8, CaseIterable, Equatable, Hashable, RawRepresentabl
 enum PhonePlaneAlignment: UInt8, CaseIterable, Equatable, Hashable, RawRepresentable, Sendable
   case horizontal
   case vertical
+enum PhoneRecordingError: CustomStringConvertible, Error, Sendable
+  case frameOutOfRange(Int, count: Int)
+  case framesDisagree(frame: Int)
+  case newerFormat(Int)
+  case notARecording(String)
+  case notFound(String)
+  case pictureUnavailable(Int)
+  case resourceNotFound(String)
+  case unreadable(String)
+  var description: String { get }
 enum PhoneRequest: Equatable, Sendable
   case library(count: Int)
   case mode(PhoneCaptureMode)
@@ -198,6 +210,7 @@ enum PhoneWire
   static func markerWidth(fromName: String, fallback: Double = default) -> (meters: Double, stated: Bool)
   static func sceneMeshPayloadSize(vertexCount: Int, indexCount: Int, surfaceCount: Int) -> Int
   static func takeRequests(from: Foundation.Data) -> [PhoneRequest]?
+  static func uprightLens(fx: Float, fy: Float, cx: Float, cy: Float, width: Int, height: Int, quarterTurnsCW: UInt8) -> (fx: Float, fy: Float, cx: Float, cy: Float, width: Int, height: Int)
   static func wandFrame(fromCamera: simd.simd_float4x4, quarterTurnsCW: UInt8) -> simd.simd_float4x4
   static let headerByteCount: Int
   static let magic: UInt32
@@ -209,7 +222,7 @@ enum PhoneWire
   static let requestMagic: UInt32
   static let streamPort: UInt16
   static let version: UInt8
-final class PhoneDevice: FrameSource, VideoFeed, Sendable
+final class PhoneDevice: FrameAdvancing, FrameSource, VideoFeed, Sendable
   @discardableResult func show(_: Sketch, frameRate: FrameRate = default) -> PhoneScreen
   func look(for: [PhoneReference])
   func marker(named: String) -> PhoneMarker?
@@ -219,7 +232,9 @@ final class PhoneDevice: FrameSource, VideoFeed, Sendable
   func start()
   func stop()
   func use(_: PhoneCaptureMode)
+  init(playing: PhoneRecording)
   init(port: UInt16 = default)
+  let recording: PhoneRecording?
   let sounds: PhoneSounds
   let touches: PhoneTouches
   nonisolated static let streamPort: UInt16
@@ -230,6 +245,7 @@ final class PhoneDevice: FrameSource, VideoFeed, Sendable
   var latestAir: PhoneAir? { get }
   var latestBodies: [PhoneBody] { get }
   var latestBody: PhoneBody? { get }
+  var latestCamera: PhoneCamera? { get }
   var latestFace: PhoneFace? { get }
   var latestFaces: [PhoneFace] { get }
   var latestFlow: PhoneFlow? { get }
@@ -257,6 +273,31 @@ final class PhoneDevice: FrameSource, VideoFeed, Sendable
   var sceneMesh: PhoneSceneMesh { get }
   var sceneMeshVersion: Int? { get }
   var waitingMessage: String { get }
+final class PhoneRecording: Sendable
+  convenience init(path: String) throws
+  convenience init(resource: String, withExtension: String, in: Foundation.Bundle) throws
+  func camera(at: Int) throws -> PhoneCamera
+  func pause()
+  func picture(at: Int) throws -> Image
+  func play()
+  func seek(to: Double)
+  func seek(toFrame: Int)
+  func time(at: Int) throws -> Double
+  let duration: Double
+  let frameCount: Int
+  let frameRate: Double
+  let hasSound: Bool
+  let isComplete: Bool
+  let mode: PhoneCaptureMode
+  let name: String
+  let path: String
+  let pictureSize: Vector2
+  static func availableRecordings(in: String) -> [String]
+  var currentTime: Double { get }
+  var frameIndex: Int { get }
+  var isPlaying: Bool { get }
+  var lastError: String? { get }
+  var loops: Bool { get set }
 final class PhoneScreen: SketchExtension, Sendable
   func beforeDraw(_: Sketch)
   func frameRendered(_: Sketch, texture: any Metal.MTLTexture)
@@ -291,6 +332,9 @@ final class PhoneTouches: Sendable
   var readingCount: Int { get }
   var tapCount: Int { get }
   var timeSinceTap: Double { get }
+open extension Ollin.Sketch
+  func camera(_: PhoneCamera, near: Double = default, far: Double = default)
+  func drawPhonePicture(_: PhoneCamera)
 struct PhoneAir: Equatable, Sendable
   init(_: PhoneAirSample)
   init(timestamp: Double, pressure: Double, altitude: Double)
@@ -322,6 +366,33 @@ struct PhoneBody: Sendable
   var center: Vector3 { get }
   var positions: [PhoneJoint : Vector3] { get }
   var worldCenter: Vector3 { get }
+struct PhoneCamera
+  func camera3D(covering: Vector2, near: Double = default, far: Double = default) -> Camera3D
+  func pictureRectangle(covering: Vector2) -> Rectangle
+  init(pose: simd.simd_float4x4, intrinsics: CameraIntrinsics, isTracked: Bool = default, timestamp: Double = default, frameIndex: Int = default, picture: Image? = default)
+  var forward: Vector3 { get }
+  var frameIndex: Int { get set }
+  var intrinsics: CameraIntrinsics { get set }
+  var isTracked: Bool { get set }
+  var picture: Image? { get }
+  var pictureSize: Vector2 { get }
+  var pose: simd.simd_float4x4 { get set }
+  var position: Vector3 { get }
+  var timestamp: Double { get set }
+  var up: Vector3 { get }
+struct PhoneCameraSample: Equatable, Sendable
+  init(isTracked: Bool, timestamp: Double, frameIndex: UInt32, imageWidth: Int, imageHeight: Int, fx: Float, fy: Float, cx: Float, cy: Float, transform: simd.simd_float4x4, quarterTurnsCW: UInt8 = default)
+  var cx: Float { get set }
+  var cy: Float { get set }
+  var frameIndex: UInt32 { get set }
+  var fx: Float { get set }
+  var fy: Float { get set }
+  var imageHeight: Int { get set }
+  var imageWidth: Int { get set }
+  var isTracked: Bool { get set }
+  var quarterTurnsCW: UInt8 { get set }
+  var timestamp: Double { get set }
+  var transform: simd.simd_float4x4 { get set }
 struct PhoneDepthSample: Equatable, Sendable
   init(isTracked: Bool, timestamp: Double, depthWidth: Int, depthHeight: Int, fx: Float, fy: Float, cx: Float, cy: Float, cameraTransform: simd.simd_float4x4, colorJPEG: Foundation.Data, depth: [Float], confidence: [UInt8]?)
   var cameraTransform: simd.simd_float4x4 { get set }

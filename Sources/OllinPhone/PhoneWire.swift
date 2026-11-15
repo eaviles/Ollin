@@ -168,6 +168,12 @@ public enum PhoneMessageKind: UInt8, Sendable, CaseIterable {
     /// answer to the traffic that runs the other way (`PhoneRequest`), so a
     /// sketch that declares a picture learns whether the phone could use it.
     case state = 18
+    /// Where the camera stood and what its lens was for one frame of its picture:
+    /// the pose in ARKit world space, the lens at the picture's own size, and the
+    /// frame's number. It is sent for every frame of every mode that runs an ARKit
+    /// session, so a sketch can draw in the room whatever the phone is tracking,
+    /// and it is the record a recording keeps beside each frame of its video.
+    case camera = 19
 }
 
 /// The named joints the stream carries — a practical subset of ARKit's ~91-joint
@@ -775,7 +781,82 @@ public struct PhoneWandSample: Sendable, Equatable {
     }
 }
 
+/// Where the camera stood, and what its lens was, for one frame of its picture.
+///
+/// `transform` is the camera's pose in ARKit world space exactly as ARKit reports
+/// it, with its axes fixed to the **landscape** sensor however the phone is held,
+/// and the lens (`fx`, `fy`, `cx`, `cy`) is measured in pixels of the picture as
+/// the sensor delivers it, `imageWidth` by `imageHeight`. `quarterTurnsCW` is the
+/// count that stands both upright for the hold; the Mac turns the picture, the
+/// lens, and the axes by the same amount, so the three cannot disagree.
+///
+/// `frameIndex` counts the frames of one run of the camera from zero. In a
+/// recording it is the number of the video frame this record belongs to, which
+/// is what lets a reader prove that picture `k` and record `k` are one instant.
+public struct PhoneCameraSample: Sendable, Equatable {
+    /// Whether ARKit is tracking the room normally. False while it is starting up
+    /// or has lost its place, when the pose is worth nothing.
+    public var isTracked: Bool
+    /// The frame's capture time, in seconds on the phone's own clock.
+    public var timestamp: Double
+    /// The frame's number, counted from zero.
+    public var frameIndex: UInt32
+    /// The picture's size in pixels as the sensor delivers it (landscape).
+    public var imageWidth: Int
+    public var imageHeight: Int
+    /// The lens, in pixels of that picture: the focal lengths and the point the
+    /// lens looks through.
+    public var fx: Float
+    public var fy: Float
+    public var cx: Float
+    public var cy: Float
+    /// The camera pose in ARKit world space (meters, y up, the origin where the
+    /// session started), landscape axes.
+    public var transform: simd_float4x4
+    /// Quarter turns clockwise that stand the picture upright for how the phone
+    /// is held. Portrait is 1, the same count the other streams carry.
+    public var quarterTurnsCW: UInt8
+
+    public init(isTracked: Bool, timestamp: Double, frameIndex: UInt32,
+                imageWidth: Int, imageHeight: Int,
+                fx: Float, fy: Float, cx: Float, cy: Float,
+                transform: simd_float4x4, quarterTurnsCW: UInt8 = 1) {
+        self.isTracked = isTracked
+        self.timestamp = timestamp
+        self.frameIndex = frameIndex
+        self.imageWidth = imageWidth
+        self.imageHeight = imageHeight
+        self.fx = fx
+        self.fy = fy
+        self.cx = cx
+        self.cy = cy
+        self.transform = transform
+        self.quarterTurnsCW = quarterTurnsCW
+    }
+}
+
 public extension PhoneWire {
+
+    /// The lens of a picture after the picture is turned upright: the same
+    /// quarter turns clockwise applied to the focal lengths, the point the lens
+    /// looks through, and the picture's size.
+    ///
+    /// A picture turned a quarter clockwise puts its old top edge on its new
+    /// right, so a point `(u, v)` lands at `(height - v, u)`: the two focal
+    /// lengths trade places and the point the lens looks through moves with the
+    /// pixels. Lives here, in the file both ends share, beside the turn of the
+    /// axes it has to agree with (`wandFrame(fromCamera:quarterTurnsCW:)`).
+    static func uprightLens(fx: Float, fy: Float, cx: Float, cy: Float,
+                            width: Int, height: Int, quarterTurnsCW: UInt8)
+        -> (fx: Float, fy: Float, cx: Float, cy: Float, width: Int, height: Int) {
+        let w = Float(width), h = Float(height)
+        switch quarterTurnsCW % 4 {
+        case 1:  return (fy, fx, h - cy, cx, height, width)
+        case 2:  return (fx, fy, w - cx, h - cy, width, height)
+        case 3:  return (fy, fx, cy, w - cx, height, width)
+        default: return (fx, fy, cx, cy, width, height)
+        }
+    }
 
     /// Turn ARKit's camera pose into the frame of the phone **as it is held**: x
     /// across the screen to the right, y up the screen, z out of the screen toward
@@ -1284,6 +1365,9 @@ public enum PhoneMessage: Sendable, Equatable {
     /// The one message that answers the traffic running the other way, sent
     /// whenever any of it changes rather than per frame.
     case state(PhoneStateSample)
+    /// Where the camera stood and what its lens was for one frame, in every mode
+    /// that runs an ARKit session.
+    case camera(PhoneCameraSample)
 
     public var kind: PhoneMessageKind {
         switch self {
@@ -1305,6 +1389,7 @@ public enum PhoneMessage: Sendable, Equatable {
         case .touch: return .touch
         case .air: return .air
         case .state: return .state
+        case .camera: return .camera
         }
     }
 }
@@ -1364,6 +1449,7 @@ public extension PhoneWire {
         case .touch(let t): payload = encodeTouchPayload(t)
         case .air(let a): payload = encodeAirPayload(a)
         case .state(let s): payload = encodeStatePayload(s)
+        case .camera(let c): payload = encodeCameraPayload(c)
         }
         var out = Data()
         appendU32(&out, magic)
@@ -1675,6 +1761,19 @@ public extension PhoneWire {
         return p
     }
 
+    private static func encodeCameraPayload(_ c: PhoneCameraSample) -> Data {
+        var p = Data()
+        p.append(c.isTracked ? 1 : 0)
+        appendF64(&p, c.timestamp)
+        appendU32(&p, c.frameIndex)
+        appendU32(&p, UInt32(clamping: max(0, c.imageWidth)))
+        appendU32(&p, UInt32(clamping: max(0, c.imageHeight)))
+        for v in [c.fx, c.fy, c.cx, c.cy] { appendF32(&p, v) }
+        appendMatrix(&p, c.transform)
+        p.append(c.quarterTurnsCW)
+        return p
+    }
+
     private static func encodeSaliencyPayload(_ s: PhoneSaliencySample) -> Data {
         var p = Data()
         p.append(s.isTracked ? 1 : 0)
@@ -1842,6 +1941,7 @@ public extension PhoneWire {
         case .touch: return decodeTouch(payload).map(PhoneMessage.touch)
         case .air: return decodeAir(payload).map(PhoneMessage.air)
         case .state: return decodeState(payload).map(PhoneMessage.state)
+        case .camera: return decodeCamera(payload).map(PhoneMessage.camera)
         }
     }
 
@@ -2310,6 +2410,27 @@ public extension PhoneWire {
         return PhoneWandSample(isTracked: tracked, timestamp: timestamp, transform: transform,
                                quarterTurnsCW: turns, isPressed: pressed, pressCount: pressCount,
                                hasTouch: hasTouch, touch: touch)
+    }
+
+    private static func decodeCamera(_ data: Data) -> PhoneCameraSample? {
+        // tracked(1) + timestamp(8) + frameIndex(4) + size(8) + lens(16)
+        // + transform(64) + turns(1).
+        guard data.count >= 102 else { return nil }
+        let s = data.startIndex
+        var o = 0
+        func f32() -> Float { defer { o += 4 }; return readF32(data, s + o) }
+        let tracked = data[s + o] != 0; o += 1
+        let timestamp = readF64(data, s + o); o += 8
+        let frameIndex = readU32(data, s + o); o += 4
+        let width = Int(readU32(data, s + o)); o += 4
+        let height = Int(readU32(data, s + o)); o += 4
+        let fx = f32(), fy = f32(), cx = f32(), cy = f32()
+        let transform = readMatrix(data, s + o); o += 64
+        let turns = data[s + o]
+        return PhoneCameraSample(isTracked: tracked, timestamp: timestamp, frameIndex: frameIndex,
+                                 imageWidth: width, imageHeight: height,
+                                 fx: fx, fy: fy, cx: cx, cy: cy,
+                                 transform: transform, quarterTurnsCW: turns)
     }
 
     private static func decodeSaliency(_ data: Data) -> PhoneSaliencySample? {

@@ -120,6 +120,14 @@ final class RoomStreamer: NSObject, ARSessionDelegate, LightReporting, @unchecke
         oversized = 0
     }
 
+    /// Report the whole room again: every block and every surface the session
+    /// holds now goes back in line. A recording asks for this when it starts,
+    /// since the room built before it began is not in its file otherwise.
+    func resend() {
+        guard let anchors = session.currentFrame?.anchors else { return }
+        read(anchors)
+    }
+
     // MARK: ARSessionDelegate
 
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
