@@ -387,6 +387,10 @@ enum LightSource: Equatable, Sendable
   case parallel(Double)
   case point(Vector2)
   func direction(reaching: Vector2) -> Vector2
+enum MarkovGridError: CustomStringConvertible, Equatable, Error, Sendable
+  case empty
+  case ragged(row: Int, count: Int, expected: Int)
+  var description: String { get }
 enum MeshFileFormat: CaseIterable, Equatable, Hashable, Sendable
   case obj
   case stl
@@ -5300,6 +5304,21 @@ struct MarkovChain<Element where Element : Hashable, Element : Sendable>: Sendab
   mutating func start(with: [Element])
   var context: [Element] { get }
   var continuations: [(element: Element, probability: Double)] { get }
+  var isEmpty: Bool { get }
+  var vocabulary: [Element] { get }
+struct MarkovGrid<Element where Element : Hashable, Element : Sendable>: Sendable
+  func continuations(around: [Element?]) -> [(element: Element, probability: Double)]
+  func count(of: Element, around: [Element?]) -> Int
+  init(learning: [[Element]], order: Int = default, seed: Int = default) throws
+  init(vocabulary: [Element] = default, order: Int = default, seed: Int = default)
+  let order: Int
+  mutating func learn(_: Element, around: [Element?], times: Int = default)
+  mutating func learn(_: [Element], after: [Element]?) throws
+  mutating func learn(_: [[Element]]) throws
+  mutating func nextRow(columns: Int) -> [Element]
+  mutating func nextRows(_: Int, columns: Int) -> [[Element]]
+  mutating func reset()
+  mutating func start(after: [Element])
   var isEmpty: Bool { get }
   var vocabulary: [Element] { get }
 struct Matcap

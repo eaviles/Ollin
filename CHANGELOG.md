@@ -8,6 +8,7 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 - **A recording of the phone's stream.** Press Record in the capture app, with no cable, and play the folder back with `PhoneDevice(playing: PhoneRecording(path:))`. It plays on the sketch's clock, so an export shows the same frames every time. Rebuild the capture app to get the button. [Phone](Docs/3D/Phone.md#a-recording)
 - **The phone's camera as a 3D camera.** `device.latestCamera` says where the camera stood and what its lens was, in every ARKit mode. `drawPhonePicture(_:)` and `camera(_:)` put a sketch in the room the phone saw. [Phone](Docs/3D/Phone.md#the-cameras-place-and-lens)
+- **A chain that learns a picture.** `MarkovGrid` learns small pictures, written as rows of any value, and writes new grids with the same local habits: `nextRows(_:columns:)` for a whole field, `nextRow(columns:)` for a strip without end. `order` sets how many cells around a place it reads. The `Patterns/MarkovGrid` example writes a town, a maze, and a wall. [MarkovGrid](Docs/Generators/MarkovGrid.md)
 
 ### Changed
 

@@ -8501,6 +8501,28 @@
       "stillSmall": "examples/Patterns/Marbling/still-640.jpg?v=7831d714",
       "width": 1080
     },
+    "Patterns/MarkovGrid": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 42.716,
+      "sound": false,
+      "source": "f45023ca8c34c97a",
+      "rendered": "2026-11-15",
+      "bytes": {
+        "loop": 2321386,
+        "loopSmall": 547236,
+        "still": 168179,
+        "stillSmall": 79632
+      },
+      "loop": "examples/Patterns/MarkovGrid/loop.mp4?v=0ab2294c",
+      "loopSmall": "examples/Patterns/MarkovGrid/loop-640.mp4?v=43aaa0ff",
+      "still": "examples/Patterns/MarkovGrid/still.jpg?v=72a872bc",
+      "stillSmall": "examples/Patterns/MarkovGrid/still-640.jpg?v=6a52fec5",
+      "seed": 1
+    },
     "Patterns/Maze": {
       "bytes": {
         "loop": 588150,
@@ -10203,7 +10225,7 @@
       "frame": 972,
       "motion": 33.226,
       "sound": false,
-      "source": "24a8f6797b2dd84a",
+      "source": "68482b259c0a0dab",
       "rendered": "2026-11-13",
       "bytes": {
         "loop": 1649603,
@@ -10225,7 +10247,7 @@
       "frame": 480,
       "motion": 65.088,
       "sound": false,
-      "source": "38e4ea32c55d1da5",
+      "source": "78aab661208bfc11",
       "rendered": "2026-11-13",
       "bytes": {
         "loop": 6107850,

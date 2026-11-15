@@ -170,6 +170,7 @@ The reference is the authority on what exists and how it behaves; the guide teac
 ## Generators
 
 - [Random](Docs/Generators/Random.md): `random`, `randomGaussian`, and the `randomVector`/`ring` scatter helpers
+- [MarkovGrid](Docs/Generators/MarkovGrid.md): a chain over a grid: it learns small pictures cell by cell and writes new grids with the same local habits, at any size or as a strip without end
 - [Noise](Docs/Generators/Noise.md): Perlin `noise` / `signedNoise`, seamlessly looping `noise(loop:)`, layered `fbm`, and `curlNoise` flow fields
 - [Blue noise](Docs/Generators/BlueNoise.md): `poissonDisk`, an even but organic scatter with no clumps or gaps (Poisson-disk sampling), over a rectangle or inside a `Shape`
 - [Low-discrepancy sampling](Docs/Generators/LowDiscrepancy.md): `haltonPoints` / `sobolPoints`, even coverage as an ordered stream: growing the count only adds points and never moves them
@@ -329,7 +330,7 @@ The reference is the authority on what exists and how it behaves; the guide teac
 
 ## The project
 
-- [Examples](Examples/README.md): 672 runnable sketches by category, each with its whole source
+- [Examples](Examples/README.md): 673 runnable sketches by category, each with its whole source
 - [Ollin architecture & internals](ARCHITECTURE.md)
 - [Ollin: the shipped-capability inventory](CAPABILITIES.md)
 - [Changelog](CHANGELOG.md)

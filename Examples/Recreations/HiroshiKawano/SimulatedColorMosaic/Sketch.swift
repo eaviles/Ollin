@@ -220,8 +220,7 @@ final class SimulatedColorMosaic: Sketch {
         var codes: Batch?
     }
 
-    private var chain = MosaicChain(values: 5)
-    private var random = SplitMix64(seed: 0)
+    private var chain = MarkovGrid<Int>()
     private var strip: [Line] = []
     private var written = 0
     private var dealtAt = 0.0
@@ -260,7 +259,7 @@ final class SimulatedColorMosaic: Sketch {
         }
         let kept = Int(across.rounded(.up)) + 2
         while written < begun {
-            let next = chain.line(after: strip.last?.cells, places: cells, using: &random)
+            let next = chain.nextRow(columns: cells)
             strip.append(Line(cells: next))
             written += 1
             if strip.count > kept { strip.removeFirst() }
@@ -311,9 +310,11 @@ final class SimulatedColorMosaic: Sketch {
         return codes
     }
 
-    /// Reads the chosen data pictures and starts the strip over.
+    /// Reads the chosen data pictures and starts the strip over. The chain
+    /// knows the five paints in the order of their letters before it reads
+    /// anything, so a seed deals the same strip whichever pictures it read.
     private func deal() {
-        chain = MosaicChain(values: Self.letters.count)
+        chain = MarkovGrid(vocabulary: Array(Self.letters.indices), seed: variation)
         for index in data.pictures {
             // A picture is scanned as the strip is written: a line is one of
             // its columns, read top to bottom, and the lines go left to right.
@@ -321,70 +322,10 @@ final class SimulatedColorMosaic: Sketch {
                 row.map { Self.letters.firstIndex(of: $0) ?? 0 }
             }
             let lines = rows[0].indices.map { x in rows.map { $0[x] } }
-            chain.learn(lines)
+            // The pictures are written above, forty rows of forty.
+            try! chain.learn(lines)
         }
-        random = SplitMix64(seed: UInt64(bitPattern: Int64(variation)))
         strip = []
         written = 0
-    }
-}
-
-/// A chain over a sheet of cells. What a cell holds is drawn from the counts
-/// of what held that place, in the data, after the same cells around it.
-private struct MosaicChain {
-    /// How many values a cell can hold. A place off the sheet reads as one more.
-    let values: Int
-    private var counts: [[Int]: [Int]] = [:]
-
-    init(values: Int) {
-        self.values = values
-    }
-
-    /// The cells already decided around place `p` of a line, nearest first:
-    /// the one before it in its line, then the same place, the place before,
-    /// and the place after in the line before.
-    func around(_ p: Int, in line: [Int], after before: [Int]?) -> [Int] {
-        func value(_ cells: [Int]?, _ i: Int) -> Int {
-            guard let cells, cells.indices.contains(i) else { return values }
-            return cells[i]
-        }
-        return [value(line, p - 1), value(before, p), value(before, p - 1), value(before, p + 1)]
-    }
-
-    /// Counts a data picture, given as its lines. Every cell is counted
-    /// under its whole arrangement and under each shorter one, so the walk
-    /// can forget the farthest cell when it has to.
-    mutating func learn(_ lines: [[Int]]) {
-        for (l, line) in lines.enumerated() {
-            for (p, value) in line.enumerated() {
-                let cells = around(p, in: line, after: l > 0 ? lines[l - 1] : nil)
-                for n in 0 ... cells.count {
-                    counts[Array(cells.prefix(n)), default: Array(repeating: 0, count: values)][value] += 1
-                }
-            }
-        }
-    }
-
-    /// The line after `before`, `places` cells long.
-    func line(after before: [Int]?, places: Int, using random: inout SplitMix64) -> [Int] {
-        var line: [Int] = []
-        for p in 0 ..< places {
-            var cells = around(p, in: line, after: before)
-            // An arrangement the data never showed: forget the farthest cell
-            // and ask again. With none left, the counts are the paints' shares.
-            while counts[cells] == nil, !cells.isEmpty { cells.removeLast() }
-            guard let tally = counts[cells] else {
-                line.append(0)
-                continue
-            }
-            var roll = Int(random.next() % UInt64(tally.reduce(0, +)))
-            var value = 0
-            while roll >= tally[value] {
-                roll -= tally[value]
-                value += 1
-            }
-            line.append(value)
-        }
-        return line
     }
 }

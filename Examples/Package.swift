@@ -580,6 +580,7 @@ let package = Package(
         example("Patterns/Meander"),
         example("Patterns/WaveFunctionCollapse"),
         example("Patterns/TextureSynthesis"),
+        example("Patterns/MarkovGrid"),
         example("Patterns/ElementaryCA"),
         example("Patterns/Turmites"),
         example("Patterns/ShapePacking"),

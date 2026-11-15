@@ -5,6 +5,7 @@
 ## Generators
 
 - [`Random`](./Random.md) - `random`, `randomGaussian`, and the `randomVector`/`ring` scatter helpers
+- [`MarkovGrid`](./MarkovGrid.md) - a chain over a grid: it learns small pictures cell by cell and writes new grids with the same local habits, at any size or as a strip without end
 - [`Noise`](./Noise.md) - Perlin `noise`, `signedNoise`, and `curlNoise` flow fields
 - [`Blue noise`](./BlueNoise.md) - `poissonDisk`, Poisson-disk sampling: a scatter that is even but still looks natural, with no clumps and no gaps, over a rectangle or inside a `Shape`
 - [`Low-discrepancy sampling`](./LowDiscrepancy.md) - `haltonPoints` / `sobolPoints`, even coverage as an ordered stream, so raising the count adds points without moving the ones already placed

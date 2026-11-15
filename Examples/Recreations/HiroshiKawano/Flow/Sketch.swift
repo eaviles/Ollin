@@ -371,28 +371,26 @@ final class Flow: Sketch {
             let rows = picture.map { row in row.map { $0 == "K" ? 1 : 0 } }
             return rows[0].indices.map { x in rows.map { $0[x] } }
         }
-        var chain = FlowChain(values: 2)
+        var chain = MarkovGrid<Int>(vocabulary: [0, 1], seed: variation)
         counted = [Self.table(of: chain)]
         for index in data.pictures {
             for (l, line) in pictures[index].enumerated() {
-                chain.learn(line, after: l > 0 ? pictures[index][l - 1] : nil)
+                // The pictures are written above, forty rows of forty.
+                try! chain.learn(line, after: l > 0 ? pictures[index][l - 1] : nil)
                 counted.append(Self.table(of: chain))
             }
         }
 
-        var random = SplitMix64(seed: UInt64(bitPattern: Int64(variation)))
-        sheet = []
-        for _ in 0 ..< Self.lines {
-            sheet.append(chain.line(after: sheet.last, places: Self.places, using: &random))
-        }
+        sheet = chain.nextRows(Self.lines, columns: Self.places)
         drawing = trace()
     }
 
     /// The counts of the sixteen arrangements that lie wholly on the sheet,
     /// indexed by their four cells as bits.
-    private static func table(of chain: FlowChain) -> [[Int]] {
+    private static func table(of chain: MarkovGrid<Int>) -> [[Int]] {
         (0 ..< 16).map { arrangement in
-            chain.tally(after: (0 ..< 4).map { (arrangement >> $0) & 1 }) ?? [0, 0]
+            let around = (0 ..< 4).map { (arrangement >> $0) & 1 }
+            return [chain.count(of: 0, around: around), chain.count(of: 1, around: around)]
         }
     }
 
@@ -443,68 +441,5 @@ final class Flow: Sketch {
                 return sum / 16
             }
         }
-    }
-}
-
-/// A chain over a sheet of cells. What a cell holds is drawn from the counts
-/// of what held that place, in the data, after the same cells around it.
-private struct FlowChain {
-    /// How many values a cell can hold. A place off the sheet reads as one more.
-    let values: Int
-    private var counts: [[Int]: [Int]] = [:]
-
-    init(values: Int) {
-        self.values = values
-    }
-
-    /// The cells already decided around place `p` of a line, nearest first:
-    /// the one before it in its line, then the same place, the place before,
-    /// and the place after in the line before.
-    func around(_ p: Int, in line: [Int], after before: [Int]?) -> [Int] {
-        func value(_ cells: [Int]?, _ i: Int) -> Int {
-            guard let cells, cells.indices.contains(i) else { return values }
-            return cells[i]
-        }
-        return [value(line, p - 1), value(before, p), value(before, p - 1), value(before, p + 1)]
-    }
-
-    /// Counts one line of a data picture. Every cell is counted under its
-    /// whole arrangement and under each shorter one, so the walk can forget
-    /// the farthest cell when it has to.
-    mutating func learn(_ line: [Int], after before: [Int]?) {
-        for (p, value) in line.enumerated() {
-            let cells = around(p, in: line, after: before)
-            for n in 0 ... cells.count {
-                counts[Array(cells.prefix(n)), default: Array(repeating: 0, count: values)][value] += 1
-            }
-        }
-    }
-
-    /// How often each value followed these cells, if they ever came up.
-    func tally(after cells: [Int]) -> [Int]? {
-        counts[cells]
-    }
-
-    /// The line after `before`, `places` cells long.
-    func line(after before: [Int]?, places: Int, using random: inout SplitMix64) -> [Int] {
-        var line: [Int] = []
-        for p in 0 ..< places {
-            var cells = around(p, in: line, after: before)
-            // An arrangement the data never showed: forget the farthest cell
-            // and ask again. With none left, the counts are the tones' shares.
-            while counts[cells] == nil, !cells.isEmpty { cells.removeLast() }
-            guard let tally = counts[cells] else {
-                line.append(0)
-                continue
-            }
-            var roll = Int(random.next() % UInt64(tally.reduce(0, +)))
-            var value = 0
-            while roll >= tally[value] {
-                roll -= tally[value]
-                value += 1
-            }
-            line.append(value)
-        }
-        return line
     }
 }

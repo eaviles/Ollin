@@ -618,6 +618,11 @@ ed99fde1bb0f  Docs/Generators/LSystem.md:97  cannot convert value of type 'Strin
 8a32a7eabfa4  Docs/Generators/Marbling.md:56  cannot find 'bath' in scope
 02a52de5644b  Docs/Generators/Marbling.md:67  cannot find 'bath' in scope
 6f96a65d9a26  Docs/Generators/Marbling.md:85  cannot find 'bath' in scope
+74eda4e23ab1  Docs/Generators/MarkovGrid.md:182  expected '{' to start getter definition
+63365c254538  Docs/Generators/MarkovGrid.md:201  cannot find type 'Element' in scope
+99b3fcb4b3b3  Docs/Generators/MarkovGrid.md:221  expected '{' to start getter definition
+333b5a01185b  Docs/Generators/MarkovGrid.md:63  expected ',' separator
+477d6c645574  Docs/Generators/MarkovGrid.md:96  cannot find type 'Element' in scope
 6ecea86ce5d1  Docs/Generators/Meander.md:68  cannot find 'river' in scope
 e0fc5d99186d  Docs/Generators/MedialAxis.md:26  expected ',' separator
 7d1a8c0e7ac4  Docs/Generators/MedialAxis.md:34  cannot find 'blob' in scope

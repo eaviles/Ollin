@@ -21,7 +21,7 @@
 bb59795f7264  Guide/02-Color.md:326  cannot find 'blue' in scope
 c896c6da23a4  Guide/02-Color.md:67  cannot find 'blue' in scope
 04660022f6ba  Guide/02-Color.md:89  cannot find 'ink' in scope
-2ab302b50dae  Guide/04-Randomness.md:456  cannot find 'pool' in scope
+2ab302b50dae  Guide/04-Randomness.md:476  cannot find 'pool' in scope
 34bad064ce01  Guide/04-Randomness.md:63  cannot find 'colors' in scope
 b455e4f737c2  Guide/06-GridsAndRepetition.md:295  cannot find 'drawPetals' in scope
 60af001c8df1  Guide/06-GridsAndRepetition.md:377  cannot find 'spiral' in scope
