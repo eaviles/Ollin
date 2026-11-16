@@ -48,6 +48,7 @@ final class Pose: Sketch {
 - [Saying what to look for, from the sketch](#saying-what-to-look-for-from-the-sketch) - `look(for:)`, `use(_:)`, `PhoneReference`, `latestState`
 - [The phone as a pointer](#the-phone-as-a-pointer) - `PhoneWand`, the beam, the button, the thumb
 - [The camera's place and lens](#the-cameras-place-and-lens) - `latestCamera`, `PhoneCamera`, `drawPhonePicture(_:)`, `camera(_:)`, drawing in the room the phone sees
+- [Drawing on what the phone saw](#drawing-on-what-the-phone-saw) - a wall as somewhere to draw, pinned points, `painted(with:)`, `occluding`, `ray(through:covering:)`
 - [World depth](#world-depth) - `latestFrame`, `pointCloud(...)`, the camera pose
 - [World fusion](#world-fusion) - `WorldCloud`, sweeping a room into one cloud, [keeping it registered](#drift), and [recognizing a place already scanned](#loops) with `ScanGraph`
 - [The room mesh](#the-room-mesh) - `sceneMesh`, the room as a labeled surface, the Room mode
@@ -453,7 +454,7 @@ Under the two calls are typed values, for a sketch that wants to place things it
 
 **The picture comes with a recording.** On the cable the camera arrives as its place and its lens, and `picture` is `nil`. A [recording](#a-recording) carries the camera's own picture for every frame, and reads it when `picture` is asked for.
 
-**A drawn thing does not hide behind a real one.** Nothing writes the room's depth under the picture, so a box placed behind a real table draws over the table.
+**A drawn thing hides behind a real one when you say where the real one is.** Nothing writes the room's depth under the picture by itself, so a box placed behind a real table draws over the table. Draw the room's surfaces inside `occluding { }` first and they hide what goes behind them. See [Drawing on what the phone saw](#drawing-on-what-the-phone-saw).
 
 `PhoneCamera` can be made on its own, from a pose and a lens, so the arithmetic can be tried with no phone attached:
 
@@ -466,6 +467,54 @@ let view = PhoneCamera(pose: matrix_identity_float4x4,
                        intrinsics: CameraIntrinsics(fx: 1450, fy: 1450, cx: 960, cy: 720,
                                                     width: 1920, height: 1440))
 ```
+
+## Drawing on what the phone saw
+
+With the camera's picture on the canvas and the camera matched, a sketch can work on the surfaces the picture shows. A wall becomes somewhere to draw in meters. A clicked point stays on its spot. A piece of the wall lifts off still showing the picture's own pixels. The real wall hides a drawn thing that goes behind it. [Drawing on a real surface](Surfaces.md) is the reference for these calls. This section has the forms that take what the phone reports.
+
+It needs a surface, so it needs **Room** mode, the one that finds them. A recording made in World mode carries the picture, the depth, and the camera's place, and no surface.
+
+```swift
+guard let view = device.latestCamera,
+      let wall = device.planes.largest(of: .wall) else { return }
+drawPhonePicture(view)
+camera(view)
+
+occluding { drawMesh(device.planes.mesh) }  // the room's surfaces hide what goes behind them
+
+withPlane(wall) {                           // x along the wall, y up it, z out of it, in meters
+    translate(0.5, 0.2)                     // a place on the wall
+    painted(with: view) {                   // what is drawn here carries the picture's pixels
+        translate(0, 0, 0.1)                // ten centimeters out of the wall
+        drawBox(width: 0.25, height: 0.25, depth: 0.01)
+    }
+}
+```
+
+- **`wall.plane`** is a `PhonePlane` as a [`Plane3`](../Drawing/Geometry.md#plane3): its origin is the surface's `center`, and it faces along `normal`. On a wall, x runs to the right of someone facing it and y climbs it. On a floor or a table top, x is the room's x and y runs along the room's -z. The directions hold still while the phone widens the surface. The origin moves with the outline's middle, so keep a `Plane3` of your own once the surface has settled if a drawing must not shift.
+- **`withPlane(_:)`** takes a `PhonePlane` directly and draws in those coordinates.
+- **`painted(with:)`** takes a `PhoneCamera` and paints the meshes in its block with the camera's picture as the phone saw it. A mesh takes its pixels where it stands when the block opens, and a transform inside the block moves it afterwards. With no picture on the frame, which is the cable today, the block draws plain meshes.
+- **`view.pictureCamera(near:far:)`** is the `Camera3D` whose view is the whole picture, uncropped. It is the camera the paint is taken from, where `camera3D(covering:near:far:)` is the one a canvas is looked through.
+
+A click becomes a point of the room through the camera value itself, with no frame drawing, so an input hook can ask:
+
+```swift
+var pins: [Vector3] = []
+
+override func mousePressed() {
+    guard let view = device.latestCamera,
+          let wall = device.planes.largest(of: .wall) else { return }
+    let ray = view.ray(through: mouse, covering: Vector2(width, height))
+    if let spot = wall.plane.intersection(with: ray) { pins.append(spot) }
+}
+```
+
+- **`view.ray(through:covering:)`** is the line of sight through a point of a canvas the picture covers, as a `Ray3`.
+- **`view.canvasPoint(of:covering:)`** goes the other way: where a point of the room falls on that canvas, or `nil` behind the camera.
+
+A pin made on one frame holds for the whole recording, because every frame carries where the camera stood. Four of them are a poster's corners, and [`drawImage(_:topLeft:topRight:bottomRight:bottomLeft:)`](Surfaces.md#an-image-on-four-points) lays a layer on the four. Hold the recording (`recording.pause()`) while you click, so the frame under the pointer is the one the pin is made on.
+
+Two bundled examples play a small recording that ships with them. `swift run --package-path Examples Example-3D-Phone-PhoneWallTiles` pushes the wall's own tiles out of it in time with a beat. `swift run --package-path Examples Example-3D-Phone-PhonePoster` lays a layer on a poster's four corners and sends three balls through the wall.
 
 ## World depth
 
@@ -680,6 +729,7 @@ for plane in device.planes.flat {
     plane.area                       // Double, square meters, measured on the outline
     plane.boundary                   // [Vector3], the real outline, a convex polygon
     plane.mesh                       // Mesh, the outline filled in
+    plane.plane                      // Plane3, the surface as somewhere to draw in meters
     plane.outline                    // [Vector3], a closed loop, ready for drawTube
 }
 ```
@@ -1138,7 +1188,7 @@ Reading the place of every frame decodes nothing. So a sketch can draw the camer
 
 **A vision tracker reads it too.** The device's `frameTap` receives each frame's upright picture, so the [`OllinVision`](../Vision/Vision.md) trackers run over a recording, on the same frames in every run.
 
-Three things a recording does not do. Its sound is in the video file and is not played with the sketch. A drawn thing does not hide behind a real one. And the tracker's limits travel with it: the LiDAR's depth is coarse and reaches a few meters, and the phone's sense of where it is drifts a little over a long walk, so a pinned thing slides by that much.
+Two things to know about a recording. Its sound is in the video file and is not played with the sketch. And the tracker's limits travel with it: the LiDAR's depth is coarse and reaches a few meters, and the phone's sense of where it is drifts a little over a long walk, so a pinned thing slides by that much.
 
 The bundled example is `swift run --package-path Examples Example-3D-Phone-PhoneRecordingPins`. It plays a small recording of a room drawn on the Mac, so it runs with no phone, and it stands a pin on each thing in the room. Set `OLLIN_PHONE_RECORDING` to a recording of your own and it plays that.
 

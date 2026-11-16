@@ -4,7 +4,7 @@
 
 ## Geometry
 
-`Vector2`, `Vector3`, `Rotation3D`, `Ray3`, `Rectangle`, `Circle`, `LineSegment`, `Arc`, `Ellipse`, `Contour`, `Shape`, and `Path` are Ollin's geometry value types. Primitives take them as data, and you pass them around and compose them. Canvas coordinates use a top-left origin, with y increasing downward. The two vector types share most of their surface through the `Vector` protocol, so it is documented once below and each type's own section is short.
+`Vector2`, `Vector3`, `Rotation3D`, `Ray3`, `Plane3`, `Rectangle`, `Circle`, `LineSegment`, `Arc`, `Ellipse`, `Contour`, `Shape`, and `Path` are Ollin's geometry value types. Primitives take them as data, and you pass them around and compose them. Canvas coordinates use a top-left origin, with y increasing downward. The two vector types share most of their surface through the `Vector` protocol, so it is documented once below and each type's own section is short.
 
 ### Contents
 
@@ -19,6 +19,7 @@
 - [What `Vector3` adds](#vector3)
 - [Rotation3D](#rotation3d)
 - [Ray3](#ray3)
+- [Plane3](#plane3)
 - [Box3](#box3)
 - [Rectangle](#rectangle)
 - [Grid](#grid)
@@ -279,7 +280,37 @@ if let distance = ray.hit(sphereAt: ball, radius: 0.2) {
 }
 ```
 
+`hit(_:)` takes a [`Plane3`](#plane3) too, and returns the distance to it the same way.
+
 Its 2D counterpart is [`Ray2`](./Envelopes.md). That type carries a family of lines rather than a pointer, and it leaves its direction as given.
+
+<a name="plane3"></a>
+
+### `Plane3`
+
+A flat surface in space with two directions of its own: a wall, a floor, a table top. A place on it is two numbers. Use it to [draw on a surface a camera's picture shows](../3D/Surfaces.md), or wherever points in space want coordinates on a sheet.
+
+```swift
+Plane3(origin: Vector3, normal: Vector3, up: Vector3 = .unitY)   // through a point, facing a way
+Plane3(origin: Vector3, right: Vector3, up: Vector3)             // failable: its two directions named
+Plane3(through: [Vector3], facing: Vector3? = nil, up: Vector3 = .unitY)   // failable: fitted to points
+```
+
+It keeps an `origin`, a `right`, and an `up`, the last two at length 1 and square to each other. `normal` is the direction out of its front, `right` crossed with `up`. Its coordinates are in the units of the space it stands in. The surface has no edges: it runs on in every direction.
+
+- **Which way is up on it.** `up` does not have to lie in the surface. Its part along the surface is kept. The room's up, the default, gives a wall whose y climbs it and whose x runs to the right of someone facing it. A floor or a ceiling faces along the room's up, which leaves nothing to keep, and takes -z, so its x is still the room's x.
+- **Fitted to points.** `Plane3(through:)` returns the surface nearest to three or more points: through their middle, turned so the squared distances to it add up to the least they can. Three points give the surface through all three. The fit cannot say which side is the front. `facing` names a point on the front side, such as where the camera stood. Without it, the front is the side from which the points run counter-clockwise in the order given. It is `nil` for fewer than three points, and for points along one line.
+- **Places on it:** `point(at:lift:)` is the point of space at a place on the surface, lifted off its front by `lift`. `coordinates(of:)` is the place straight under a point, and `distance(to:)` is how far the point stands off the surface, positive in front.
+- **Where a line meets it:** `intersection(with:)` takes a `Ray3` and returns the point, or `nil` when the ray runs along the surface or away from it. Either side counts.
+- **Other surfaces from it:** `moved(by:lift:)` counts from another of its points, `turned(by:)` turns its two directions counter-clockwise for someone facing it, and `flipped` is the same surface seen from behind, with `up` still up.
+- **`matrix`** carries the surface's coordinates into space, and is what [`withPlane(_:)`](../3D/Surfaces.md#withPlane) hands to `transform(_:)`.
+
+```swift
+let wall = Plane3(origin: Vector3(0, 1.5, -2), normal: .unitZ)
+if let ray = cameraRay(through: mouse), let spot = wall.intersection(with: ray) {
+    let onWall = wall.coordinates(of: spot)     // the same place as two numbers
+}
+```
 
 <a name="box3"></a>
 

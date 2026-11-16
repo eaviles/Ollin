@@ -2318,7 +2318,7 @@ extension MetalRenderer {
               let accel = reflectAccel, let geoOffsets = reflectGeoOffsets,
               let irradiance = currentIBLIrradiance, let prefilter = currentIBLPrefilter,
               drawer.batches.contains(where: { $0.kind == .mesh3D && $0.target == nil
-                                               && !$0.meshWireframe && !$0.meshGrid })
+                                               && !$0.meshWireframe && !$0.meshOutsideLighting })
         else { return nil }
 
         // Same-frame repeat (live): the history already holds this frame's accumulation,
@@ -2410,7 +2410,7 @@ extension MetalRenderer {
         for i in batches.indices {
             let batch = batches[i]
             guard batch.kind == .mesh3D, batch.target == nil,
-                  !batch.meshWireframe, !batch.meshGrid else { continue }
+                  !batch.meshWireframe, !batch.meshOutsideLighting else { continue }
             let next = i + 1 < batches.count ? batches[i + 1] : nil
             let end = next?.meshStart ?? meshCount
             let count = end - batch.meshStart
@@ -2818,7 +2818,7 @@ extension MetalRenderer {
             for i in batches.indices {
                 let batch = batches[i]
                 guard batch.kind == .mesh3D,
-                      !batch.meshWireframe, !batch.meshGrid else { continue }
+                      !batch.meshWireframe, !batch.meshOutsideLighting else { continue }
                 let next = i + 1 < batches.count ? batches[i + 1] : nil
                 let end = next?.meshStart ?? count
                 guard end > batch.meshStart else { continue }
@@ -3559,7 +3559,7 @@ extension MetalRenderer {
         guard drawer.contactShadowsEnabled, let camera = drawer.camera3D, let meshBuffer,
               !drawer.meshVertices.isEmpty,
               drawer.batches.contains(where: {
-                  $0.kind == .mesh3D && $0.target == nil && !$0.meshWireframe && !$0.meshGrid
+                  $0.kind == .mesh3D && $0.target == nil && !$0.meshWireframe && !$0.meshOutsideLighting
               }) else { return nil }
         var lighting = drawer.makeLighting()
         let rayLen = lighting.contactShadow.x
@@ -3602,7 +3602,7 @@ extension MetalRenderer {
             // is live chrome, and a target-drawn mesh isn't on this canvas): the
             // scatter-mask walk's filter.
             guard batch.kind == .mesh3D, batch.target == nil,
-                  !batch.meshWireframe, !batch.meshGrid else { continue }
+                  !batch.meshWireframe, !batch.meshOutsideLighting else { continue }
             let next = i + 1 < batches.count ? batches[i + 1] : nil
             let end = next?.meshStart ?? meshCount
             let count = end - batch.meshStart
@@ -3771,20 +3771,20 @@ extension MetalRenderer {
         // leaves it out: the export resolves every map at its own hits, from its own
         // table, after the same fetch.
         let wantMaps = !pathTraceMats && batches.contains { b in
-            b.kind == .mesh3D && !b.meshWireframe && !b.meshGrid && b.material?.texture != nil
+            b.kind == .mesh3D && !b.meshWireframe && !b.meshOutsideLighting && b.material?.texture != nil
         }
         // An emissive map reaches the probe trace the same way, beside the picture, so a
         // mapped panel glows by its map in the bounce rather than at its factor over its
         // whole face. A projected (triplanar) mesh keeps its factor, as at a path-traced
         // hit, where such a mesh reads only its base color and normal map.
         let wantGlowMaps = !pathTraceMats && batches.contains { b in
-            b.kind == .mesh3D && !b.meshWireframe && !b.meshGrid && b.finish.triplanar == 0
+            b.kind == .mesh3D && !b.meshWireframe && !b.meshOutsideLighting && b.finish.triplanar == 0
                 && b.finish.emissive.w > 0 && b.material?.emissiveTexture != nil
         }
         // The normal, metallic-roughness, and occlusion maps reach a reflected or
         // refracted hit the same way, each geometry naming its own three.
         let wantSurfaceMaps = !pathTraceMats && batches.contains { b in
-            b.kind == .mesh3D && !b.meshWireframe && !b.meshGrid && b.finish.triplanar == 0
+            b.kind == .mesh3D && !b.meshWireframe && !b.meshOutsideLighting && b.finish.triplanar == 0
                 && ((b.finish.normalScale > 0 && b.material?.normalTexture != nil)
                     || (b.finish.mrGate > 0 && b.material?.metallicRoughnessTexture != nil)
                     || (b.finish.occlusionStrength > 0 && b.material?.occlusionTexture != nil))
@@ -3877,7 +3877,7 @@ extension MetalRenderer {
             // finish (the glowing prop a sketch draws exactly over an area light), so
             // it keeps rastering over the traced layer instead, and its body must not
             // swallow the light's own next-event visibility rays.
-            let isCaster = batch.kind == .mesh3D && !batch.meshWireframe && !batch.meshGrid
+            let isCaster = batch.kind == .mesh3D && !batch.meshWireframe && !batch.meshOutsideLighting
                 && !(pathTraceMats && batch.matcap != nil)
             let end = i + 1 < batches.count ? batches[i + 1].meshStart : meshVertices.count
             if isCaster {
@@ -3982,7 +3982,7 @@ extension MetalRenderer {
            meshBuffer.length >= (copyVertexBase + copyVertices.count) * meshStride {
             for (i, batch) in batches.enumerated() where batch.kind == .meshInstanced {
                 guard batch.instancedVertexCount >= 3 else { continue }
-                if pathTraceMats, batch.matcap != nil || batch.meshWireframe || batch.meshGrid {
+                if pathTraceMats, batch.matcap != nil || batch.meshWireframe || batch.meshOutsideLighting {
                     continue
                 }
                 // The material slot is claimed only once the group is certain to
@@ -4042,7 +4042,7 @@ extension MetalRenderer {
                       field.entries.contains(where: { $0.copyCount > 0 && $0.vertexCount >= 3 }),
                       meshBuffer.length >= (offset + field.baseVertices.count) * meshStride
                 else { continue }
-                if pathTraceMats, batch.matcap != nil || batch.meshWireframe || batch.meshGrid {
+                if pathTraceMats, batch.matcap != nil || batch.meshWireframe || batch.meshOutsideLighting {
                     continue
                 }
                 field.baseVertices.withUnsafeBytes { raw in
@@ -4689,7 +4689,7 @@ extension MetalRenderer {
             // Solid/textured meshes cast; wireframe (see-through edges) and the live
             // ground-grid overlay (a mostly-transparent sheet) do not; a grid that cast
             // would flood the whole floor below it into shadow.
-            guard batch.kind == .mesh3D, !batch.meshWireframe, !batch.meshGrid else { continue }
+            guard batch.kind == .mesh3D, !batch.meshWireframe, !batch.meshOutsideLighting else { continue }
             let next = i + 1 < batches.count ? batches[i + 1] : nil
             let end = next?.meshStart ?? meshVertices.count
             let count = end - batch.meshStart

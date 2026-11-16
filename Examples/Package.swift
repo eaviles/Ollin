@@ -425,6 +425,12 @@ let package = Package(
         // A recording the capture app made, played back with no phone: the camera's
         // picture fills the canvas and a few pins hold their places in the room.
         example("3D/Phone/PhoneRecordingPins", [.phone], resources: [.copy("Room.ollinrecording")]),
+        // Drawing on a wall a recording shows: the wall's own tiles pushed out of
+        // it by a beat the sketch plays, each block carrying the picture's pixels.
+        example("3D/Phone/PhoneWallTiles", [.phone, .audio], resources: [.copy("Wall.ollinrecording")]),
+        // A layer laid on a poster's four pinned corners, and drawn balls that
+        // pass through the real wall and are hidden behind it.
+        example("3D/Phone/PhonePoster", [.phone], resources: [.copy("Wall.ollinrecording")]),
         example("Motion/SineSweep"),
         example("Motion/Easing"),
         example("Motion/EasingGallery"),

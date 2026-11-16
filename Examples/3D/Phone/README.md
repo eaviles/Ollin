@@ -4,11 +4,11 @@
 
 ## Phone
 
-| [![PhoneRecordingPins](https://media.ollin.art/examples/3D/Phone/PhoneRecordingPins/still-640.jpg?v=dffbda60)](PhoneRecordingPins/) |  |  |  |
+| [![PhonePoster](https://media.ollin.art/examples/3D/Phone/PhonePoster/still-640.jpg?v=b105ebbc)](PhonePoster/) | [![PhoneRecordingPins](https://media.ollin.art/examples/3D/Phone/PhoneRecordingPins/still-640.jpg?v=dffbda60)](PhoneRecordingPins/) | [![PhoneWallTiles](https://media.ollin.art/examples/3D/Phone/PhoneWallTiles/still-640.jpg?v=0b4b6259)](PhoneWallTiles/) |  |
 |---|---|---|---|
-| [PhoneRecordingPins](PhoneRecordingPins/) |  |  |  |
+| [PhonePoster](PhonePoster/) | [PhoneRecordingPins](PhoneRecordingPins/) | [PhoneWallTiles](PhoneWallTiles/) |  |
 
-These sketches read the **Ollin Capture** iPhone app, which streams ARKit perception, and what the phone hears, over USB. One of them plays a recording the app made, so it runs with no phone at all.
+These sketches read the **Ollin Capture** iPhone app, which streams ARKit perception, and what the phone hears, over USB. Three of them play a recording the app made, so they run with no phone at all.
 
 
 | Sketch | What it shows |
@@ -32,6 +32,8 @@ These sketches read the **Ollin Capture** iPhone app, which streams ARKit percep
 | [PhoneTouches](PhoneTouches/) | The phone played rather than watching (tap **Touch**). Every finger on its screen lands on the canvas as a disc sized by how wide the contact is, each tap rings out where it fell, and with **Air** on, lifting the phone off the table warms the color. No camera runs. Needs `import OllinPhone`. |
 | [PhoneCanvas](PhoneCanvas/) | A sketch run on the Mac and played on the phone (it asks for **Sketch** mode itself). The Mac sends each frame down the cable as video, a finger paints, the drops fall the way the phone is tilted, and every finger on the glass shows as a ring. Nothing is installed on the phone. Needs `import OllinPhone`. |
 | [PhoneRecordingPins](PhoneRecordingPins/) | A recording the phone made, played back with no phone and no cable. The camera's picture fills the canvas, a 3D camera matches the phone's, and five pins hold their places in the room as the camera moves. It ships with a small recording of a room drawn on the Mac; set `OLLIN_PHONE_RECORDING` to play one of your own. Keys: **space**, **←**, **→**. Needs `import OllinPhone`. |
+| [PhoneWallTiles](PhoneWallTiles/) | The tiles of a real wall, pushed out of it by music. A recording plays, and each tile of its wall comes out as a block still showing the camera's own pixels, in time with a beat the sketch plays. `withPlane` draws in the wall's meters and `painted(with:)` makes a block carry the picture. Key: **space**. Needs `import OllinPhone` and `import OllinAudio`. |
+| [PhonePoster](PhonePoster/) | A new picture over a poster on a real wall. A layer the sketch draws is laid on the poster's four pinned corners and stays on them as the camera moves, and three balls circle out of it and back through the wall, which hides the half behind it (`occluding`). Hold with **space** and click four corners to pin your own; **R** forgets them. Needs `import OllinPhone`. |
 | [PhoneSounds](PhoneSounds/) | What the phone hears (tap **Hear**, beside any mode). Every sound its classifier notices rings out in its own place as it starts, the strongest label is named, and the levels of a few familiar sounds run along the bottom, with the threshold as a parameter. Needs no camera. Needs `import OllinPhone`. |
 
 Run one with `swift run Example-3D-Phone-<Name>`, for example `swift run Example-3D-Phone-PhoneBodyPose`.

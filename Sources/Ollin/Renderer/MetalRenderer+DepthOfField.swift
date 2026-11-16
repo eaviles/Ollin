@@ -64,7 +64,7 @@ extension MetalRenderer {
         for batch in drawer.batches where batch.target == nil && !batch.overlay {
             switch batch.kind {
             case .mesh3D:
-                if batch.meshWireframe || batch.meshGrid { continue }
+                if batch.meshWireframe || batch.meshOutsideLighting { continue }
             case .retained:
                 // A replay's only 3D content is a point cloud; a 2D replay stands nowhere.
                 if batch.retained?.hasPointContent != true { continue }

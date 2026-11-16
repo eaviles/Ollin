@@ -138,6 +138,10 @@ final class MetalRenderer {
         /// A clip-write pipeline (the stencil-clipping push/pop): rasterizes into the
         /// stencil only, with the color write mask empty and blending off.
         var isClipWrite = false
+        /// A depth-only geometry pipeline (a mesh inside `occluding { }`): the
+        /// fragment runs and its depth is tested and written like any mesh's,
+        /// with every color channel masked off and blending off.
+        var isDepthOnly = false
         /// An effect drawn inside a multisampled geometry pass rather than a pass of
         /// its own (the overlay pass's copy of the finished frame): the view's
         /// sample count, and the pass's depth and stencil formats declared.
@@ -405,6 +409,19 @@ final class MetalRenderer {
             PipelineKey(vertex: "ollin_mesh_matcap_vertex", fragment: "ollin_mesh_matcap_fragment",
                         blend: blend, depthFormat: depth)
         }
+        // picture-painted 3D triangle mesh: each vertex carries its place in a
+        // picture a camera took, read per pixel. Premultiplied, like the image
+        // path whose textures it samples. Depth-tested.
+        static func meshPicture(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
+            PipelineKey(vertex: "ollin_mesh_picture_vertex", fragment: "ollin_mesh_picture_fragment",
+                        blend: blend, premultiplied: true, depthFormat: depth)
+        }
+        // depth-only 3D triangle mesh: hides what is drawn behind it afterwards
+        // and writes no color. The blend mode has nothing to act on.
+        static func meshOccluder(depth: MTLPixelFormat? = nil) -> PipelineKey {
+            PipelineKey(vertex: "ollin_mesh_picture_vertex", fragment: "ollin_mesh_occluder_fragment",
+                        depthFormat: depth, isDepthOnly: true)
+        }
         // the live ground-grid overlay: a large y=0 plane whose fragment draws an
         // anti-aliased reference grid from the interpolated world XZ (reusing the mesh
         // vertex stage). Alpha-blended, depth-tested but not depth-writing (the no-write
@@ -604,7 +621,8 @@ final class MetalRenderer {
                              wireframe: Bool = false, matcap: Bool = false,
                              grid: Bool = false, normalMapped: Bool = false,
                              surfaceMapped: Bool = false, light: Bool = false,
-                             edges: Bool = false) -> PipelineKey {
+                             edges: Bool = false, picture: Bool = false,
+                             occluder: Bool = false) -> PipelineKey {
             switch kind {
             case .triangles:  return .solid(blend, depth: depth)
             case .fringe:     return .fringe(blend, depth: depth)
@@ -618,6 +636,8 @@ final class MetalRenderer {
             case .lines3D:    return edges ? .meshEdges(blend, depth: depth) : .lines3D(blend, depth: depth)
             case .mesh3D:
                 return grid          ? .grid(blend, depth: depth)
+                     : occluder      ? .meshOccluder(depth: depth)
+                     : picture       ? .meshPicture(blend, depth: depth)
                      : wireframe     ? .meshWireframe(blend, depth: depth)
                      : matcap        ? .meshMatcap(blend, depth: depth)
                      : surfaceMapped ? .meshSurfaceMapped(blend, depth: depth)

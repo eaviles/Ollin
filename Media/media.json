@@ -3163,6 +3163,29 @@
       "stillSmall": "examples/3D/Materials/Triplanar/still-640.jpg?v=800a89ba",
       "width": 1080
     },
+    "3D/Phone/PhonePoster": {
+      "width": 1080,
+      "height": 1440,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 27.418,
+      "sound": false,
+      "source": "526936ecb16f7607",
+      "rendered": "2026-11-16",
+      "bytes": {
+        "loop": 1243642,
+        "loopSmall": 307768,
+        "still": 80575,
+        "stillSmall": 33429
+      },
+      "loop": "examples/3D/Phone/PhonePoster/loop.mp4?v=aadb3579",
+      "loopSmall": "examples/3D/Phone/PhonePoster/loop-640.mp4?v=eedd710e",
+      "still": "examples/3D/Phone/PhonePoster/still.jpg?v=993bf801",
+      "stillSmall": "examples/3D/Phone/PhonePoster/still-640.jpg?v=b105ebbc",
+      "seed": 1,
+      "staged": "a recording that ships with the sketch plays in place of the phone"
+    },
     "3D/Phone/PhoneRecordingPins": {
       "width": 1080,
       "height": 1440,
@@ -3183,6 +3206,29 @@
       "loopSmall": "examples/3D/Phone/PhoneRecordingPins/loop-640.mp4?v=8d9ecb82",
       "still": "examples/3D/Phone/PhoneRecordingPins/still.jpg?v=1a6afd54",
       "stillSmall": "examples/3D/Phone/PhoneRecordingPins/still-640.jpg?v=dffbda60",
+      "seed": 1,
+      "staged": "a recording that ships with the sketch plays in place of the phone"
+    },
+    "3D/Phone/PhoneWallTiles": {
+      "width": 1080,
+      "height": 1440,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 28.406,
+      "sound": true,
+      "source": "a0781c3a1f291568",
+      "rendered": "2026-11-16",
+      "bytes": {
+        "loop": 1958461,
+        "loopSmall": 469830,
+        "still": 84098,
+        "stillSmall": 33660
+      },
+      "loop": "examples/3D/Phone/PhoneWallTiles/loop.mp4?v=ccb3b35d",
+      "loopSmall": "examples/3D/Phone/PhoneWallTiles/loop-640.mp4?v=ec32aed2",
+      "still": "examples/3D/Phone/PhoneWallTiles/still.jpg?v=d1624ed1",
+      "stillSmall": "examples/3D/Phone/PhoneWallTiles/still-640.jpg?v=0b4b6259",
       "seed": 1,
       "staged": "a recording that ships with the sketch plays in place of the phone"
     },

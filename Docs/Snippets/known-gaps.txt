@@ -41,11 +41,11 @@ c58bc0d079e5  Docs/3D/Atmosphere.md:96  cannot find 'gobo' in scope
 57855206ca07  Docs/3D/Camera.md:151  cannot find 'locked' in scope
 81e956ba5271  Docs/3D/Caustics.md:13  cannot convert value of type '(UnboundedRange_) -> ()' to expected argument type 'Camera3D'
 011012edb95c  Docs/3D/Caustics.md:77  cannot find 'triangle' in scope
-b33f1f70c329  Docs/3D/DepthCompositing.md:119  cannot find 'device' in scope
+205ca78097b5  Docs/3D/DepthCompositing.md:101  cannot find 'cameraFrame' in scope
+b33f1f70c329  Docs/3D/DepthCompositing.md:121  cannot find 'device' in scope
 cbd56e33cfb0  Docs/3D/DepthCompositing.md:31  cannot find 'cloud' in scope
 d51768b50cfe  Docs/3D/DepthCompositing.md:70  cannot find 'distance' in scope
-d3c80cc947f0  Docs/3D/DepthCompositing.md:83  cannot find 'orbCenter' in scope
-205ca78097b5  Docs/3D/DepthCompositing.md:99  cannot find 'cameraFrame' in scope
+d3c80cc947f0  Docs/3D/DepthCompositing.md:85  cannot find 'orbCenter' in scope
 efb8bedfd031  Docs/3D/HopfFibration.md:30  cannot find 'color' in scope
 31879e132211  Docs/3D/Instancing.md:119  cannot find 'field' in scope
 b812ed7cfc27  Docs/3D/Instancing.md:64  cannot find type 'OllinMeshInstance' in scope
@@ -56,57 +56,59 @@ fec8f6d8ac5d  Docs/3D/Instancing.md:83  cannot find 'stone' in scope
 bec1cad205c6  Docs/3D/LineDrawing.md:53  for-in loop requires 'LineDrawing' to conform to 'Sequence'
 53deb147e8de  Docs/3D/LineDrawing.md:85  cannot find 'scene' in scope
 03afe1b01e53  Docs/3D/LineDrawing.md:9  for-in loop requires 'LineDrawing' to conform to 'Sequence'
-b6794226e9fd  Docs/3D/Phone.md:1011  cannot find 'device' in scope
-499b37412097  Docs/3D/Phone.md:1034  cannot find 'device' in scope
-89e4d2ea37de  Docs/3D/Phone.md:118  cannot find 'device' in scope
-df2b7a61c936  Docs/3D/Phone.md:132  cannot find 'body' in scope
-5992515a7f38  Docs/3D/Phone.md:147  cannot find 'body' in scope
-2df9a5624ab5  Docs/3D/Phone.md:158  cannot find 'body' in scope
-4811875e3ea9  Docs/3D/Phone.md:183  cannot find 'device' in scope
-f4879e166444  Docs/3D/Phone.md:204  cannot find 'face' in scope
-56761869e16d  Docs/3D/Phone.md:217  cannot find 'face' in scope
-73ce2b7ca8b2  Docs/3D/Phone.md:239  cannot find 'device' in scope
-d7ae0890d8bb  Docs/3D/Phone.md:267  cannot find 'device' in scope
-d7d5e4c7a266  Docs/3D/Phone.md:294  cannot find 'device' in scope
-ed2d714ae14d  Docs/3D/Phone.md:322  cannot find 'device' in scope
-aa50201a3785  Docs/3D/Phone.md:343  'module' is inaccessible due to 'internal' protection level
-28b77be058c9  Docs/3D/Phone.md:356  cannot find 'device' in scope
-cd52aa432ca6  Docs/3D/Phone.md:385  cannot find 'device' in scope
-99be21e026a2  Docs/3D/Phone.md:403  cannot find 'balls' in scope
-d469b02518d2  Docs/3D/Phone.md:424  cannot find 'device' in scope
-b5157808a548  Docs/3D/Phone.md:441  cannot find 'view' in scope
-e5dc2ea249e1  Docs/3D/Phone.md:474  cannot find 'device' in scope
-09c01475e157  Docs/3D/Phone.md:498  cannot find 'device' in scope
-b052fb9b5d7e  Docs/3D/Phone.md:527  cannot find 'world' in scope
-cf3d32b543b2  Docs/3D/Phone.md:545  cannot find 'world' in scope
-ecbd4c6ff46d  Docs/3D/Phone.md:560  cannot find 'cameraCloud' in scope
-0916b30d362c  Docs/3D/Phone.md:576  cannot find 'update' in scope
-8b328b4bd70a  Docs/3D/Phone.md:611  cannot find 'device' in scope
-0fa742730514  Docs/3D/Phone.md:621  cannot find 'device' in scope
-47781ccd5094  Docs/3D/Phone.md:636  unary operator cannot be separated from its operand
-d4aeba848259  Docs/3D/Phone.md:647  cannot find 'scan' in scope
-f6f39e6371ff  Docs/3D/Phone.md:667  cannot find 'device' in scope
-64961a44b09d  Docs/3D/Phone.md:675  cannot find 'device' in scope
-16fc91318be5  Docs/3D/Phone.md:689  unary operator cannot be separated from its operand
-3ada032ec232  Docs/3D/Phone.md:704  cannot find 'device' in scope
-4b39ac917156  Docs/3D/Phone.md:720  cannot find 'device' in scope
-5f30c7ac01bb  Docs/3D/Phone.md:732  cannot find 'device' in scope
-9fa280ebe85c  Docs/3D/Phone.md:740  value of type '@MainActor (Light) -> ()' has no member 'direction'
-73798537a0b5  Docs/3D/Phone.md:747  cannot find 'device' in scope
-6e76d190e7fe  Docs/3D/Phone.md:753  cannot find 'device' in scope
-a265e10930ee  Docs/3D/Phone.md:767  cannot find 'device' in scope
-90f5c5e41eec  Docs/3D/Phone.md:774  cannot find 'device' in scope
-b04a39d51409  Docs/3D/Phone.md:791  cannot find 'device' in scope
-5891ba6f04a9  Docs/3D/Phone.md:820  cannot find 'device' in scope
-ef5ff4dcdc03  Docs/3D/Phone.md:836  cannot find 'device' in scope
-abd0d3efd585  Docs/3D/Phone.md:859  cannot find 'device' in scope
-dfcb15f63246  Docs/3D/Phone.md:867  cannot find 'device' in scope
-0efaf3e1b543  Docs/3D/Phone.md:876  cannot find 'device' in scope
-ce2562f59ad4  Docs/3D/Phone.md:886  cannot find 'device' in scope
-aa6b39505d99  Docs/3D/Phone.md:908  cannot find 'device' in scope
-cfacfcd36d59  Docs/3D/Phone.md:923  cannot find 'device' in scope
-c1dfed3638ac  Docs/3D/Phone.md:935  cannot find 'device' in scope
-598f5305c5dc  Docs/3D/Phone.md:989  cannot find 'device' in scope
+598f5305c5dc  Docs/3D/Phone.md:1039  cannot find 'device' in scope
+b6794226e9fd  Docs/3D/Phone.md:1061  cannot find 'device' in scope
+499b37412097  Docs/3D/Phone.md:1084  cannot find 'device' in scope
+89e4d2ea37de  Docs/3D/Phone.md:119  cannot find 'device' in scope
+df2b7a61c936  Docs/3D/Phone.md:133  cannot find 'body' in scope
+5992515a7f38  Docs/3D/Phone.md:148  cannot find 'body' in scope
+2df9a5624ab5  Docs/3D/Phone.md:159  cannot find 'body' in scope
+4811875e3ea9  Docs/3D/Phone.md:184  cannot find 'device' in scope
+f4879e166444  Docs/3D/Phone.md:205  cannot find 'face' in scope
+56761869e16d  Docs/3D/Phone.md:218  cannot find 'face' in scope
+73ce2b7ca8b2  Docs/3D/Phone.md:240  cannot find 'device' in scope
+d7ae0890d8bb  Docs/3D/Phone.md:268  cannot find 'device' in scope
+d7d5e4c7a266  Docs/3D/Phone.md:295  cannot find 'device' in scope
+ed2d714ae14d  Docs/3D/Phone.md:323  cannot find 'device' in scope
+aa50201a3785  Docs/3D/Phone.md:344  'module' is inaccessible due to 'internal' protection level
+28b77be058c9  Docs/3D/Phone.md:357  cannot find 'device' in scope
+cd52aa432ca6  Docs/3D/Phone.md:386  cannot find 'device' in scope
+99be21e026a2  Docs/3D/Phone.md:404  cannot find 'balls' in scope
+d469b02518d2  Docs/3D/Phone.md:425  cannot find 'device' in scope
+b5157808a548  Docs/3D/Phone.md:442  cannot find 'view' in scope
+b7a28da1847b  Docs/3D/Phone.md:477  cannot find 'device' in scope
+b02f11246782  Docs/3D/Phone.md:501  cannot find 'device' in scope
+e5dc2ea249e1  Docs/3D/Phone.md:523  cannot find 'device' in scope
+09c01475e157  Docs/3D/Phone.md:547  cannot find 'device' in scope
+b052fb9b5d7e  Docs/3D/Phone.md:576  cannot find 'world' in scope
+cf3d32b543b2  Docs/3D/Phone.md:594  cannot find 'world' in scope
+ecbd4c6ff46d  Docs/3D/Phone.md:609  cannot find 'cameraCloud' in scope
+0916b30d362c  Docs/3D/Phone.md:625  cannot find 'update' in scope
+8b328b4bd70a  Docs/3D/Phone.md:660  cannot find 'device' in scope
+0fa742730514  Docs/3D/Phone.md:670  cannot find 'device' in scope
+47781ccd5094  Docs/3D/Phone.md:685  unary operator cannot be separated from its operand
+d4aeba848259  Docs/3D/Phone.md:696  cannot find 'scan' in scope
+f6f39e6371ff  Docs/3D/Phone.md:716  cannot find 'device' in scope
+5ec7c06e7733  Docs/3D/Phone.md:724  cannot find 'device' in scope
+16fc91318be5  Docs/3D/Phone.md:739  unary operator cannot be separated from its operand
+3ada032ec232  Docs/3D/Phone.md:754  cannot find 'device' in scope
+4b39ac917156  Docs/3D/Phone.md:770  cannot find 'device' in scope
+5f30c7ac01bb  Docs/3D/Phone.md:782  cannot find 'device' in scope
+9fa280ebe85c  Docs/3D/Phone.md:790  value of type '@MainActor (Light) -> ()' has no member 'direction'
+73798537a0b5  Docs/3D/Phone.md:797  cannot find 'device' in scope
+6e76d190e7fe  Docs/3D/Phone.md:803  cannot find 'device' in scope
+a265e10930ee  Docs/3D/Phone.md:817  cannot find 'device' in scope
+90f5c5e41eec  Docs/3D/Phone.md:824  cannot find 'device' in scope
+b04a39d51409  Docs/3D/Phone.md:841  cannot find 'device' in scope
+5891ba6f04a9  Docs/3D/Phone.md:870  cannot find 'device' in scope
+ef5ff4dcdc03  Docs/3D/Phone.md:886  cannot find 'device' in scope
+abd0d3efd585  Docs/3D/Phone.md:909  cannot find 'device' in scope
+dfcb15f63246  Docs/3D/Phone.md:917  cannot find 'device' in scope
+0efaf3e1b543  Docs/3D/Phone.md:926  cannot find 'device' in scope
+ce2562f59ad4  Docs/3D/Phone.md:936  cannot find 'device' in scope
+aa6b39505d99  Docs/3D/Phone.md:958  cannot find 'device' in scope
+cfacfcd36d59  Docs/3D/Phone.md:973  cannot find 'device' in scope
+c1dfed3638ac  Docs/3D/Phone.md:985  cannot find 'device' in scope
 cf446431401d  Docs/3D/RGBD.md:105  cannot find 'bodies' in scope
 afc9b452945e  Docs/3D/RGBD.md:54  expected ',' separator
 480ac8fd57b4  Docs/3D/RGBD.md:80  cannot find 'frame' in scope
@@ -128,6 +130,13 @@ fbf920eccea7  Docs/3D/Scenes.md:179  cannot find 'scene' in scope
 46b3aaaa1676  Docs/3D/Scenes.md:87  cannot find 'stage' in scope
 41d4c4f9c184  Docs/3D/Strands.md:11  cannot convert value of type '(UnboundedRange_) -> ()' to expected argument type 'Camera3D'
 0f2d9a50c363  Docs/3D/Strands.md:42  unary operator cannot be separated from its operand
+ea3bd1d2121f  Docs/3D/Surfaces.md:11  cannot find 'drawPhonePicture' in scope
+7e155423f1e4  Docs/3D/Surfaces.md:128  cannot find 'drawPhonePicture' in scope
+9ebf03153a4e  Docs/3D/Surfaces.md:145  cannot find 'pins' in scope
+4beaee7bec44  Docs/3D/Surfaces.md:42  cannot find 'corners' in scope
+187253034898  Docs/3D/Surfaces.md:60  cannot find 'wall' in scope
+0aefa6f0ac0a  Docs/3D/Surfaces.md:77  cannot find 'wall' in scope
+7bf123fb6ebb  Docs/3D/Surfaces.md:98  cannot find 'wall' in scope
 1a03c91d853b  Docs/3D/Sweeps.md:32  cannot find 'knot' in scope
 5d8b350196a0  Docs/Concepts/Values.md:13  cannot find 'x' in scope
 a692fef14436  Docs/Concepts/Values.md:37  cannot find 'x' in scope
@@ -326,47 +335,48 @@ e7f00e72aff0  Docs/Drawing/Epicycles.md:86  expected ',' separator
 886cada6cd4c  Docs/Drawing/Fitting.md:160  cannot find 'marks' in scope
 0ece64b5f13f  Docs/Drawing/Fitting.md:92  cannot find 'pins' in scope
 cf65e5c6f914  Docs/Drawing/Fourier.md:73  cannot find 'plate' in scope
-eb39bc6e25d9  Docs/Drawing/Geometry.md:1032  expected '{' in body of function declaration
-67e13e1a3864  Docs/Drawing/Geometry.md:1046  expected ',' separator
-c0091b46b433  Docs/Drawing/Geometry.md:1085  expected '{' in body of function declaration
-51c2624a28b7  Docs/Drawing/Geometry.md:1099  cannot convert value of type '[Vector2].Type' to expected argument type '[Vector2]'
-4089dff1acc6  Docs/Drawing/Geometry.md:184  cannot convert value of type 'Double.Type' to expected argument type 'Double'
-c8dd6a17c836  Docs/Drawing/Geometry.md:236  cannot convert value of type 'Double.Type' to expected argument type 'Double'
-c9abb7d3d7a5  Docs/Drawing/Geometry.md:250  cannot find 'crate' in scope
-fdcf3efae578  Docs/Drawing/Geometry.md:263  cannot convert value of type 'Vector3.Type' to expected argument type 'Vector3'
-ce8f3399f803  Docs/Drawing/Geometry.md:274  cannot find 'eye' in scope
-7e1e37f3022c  Docs/Drawing/Geometry.md:290  cannot convert value of type 'Vector3.Type' to expected argument type 'Vector3'
-f0183ad35e80  Docs/Drawing/Geometry.md:300  cannot find 'scan' in scope
-a26850bfb449  Docs/Drawing/Geometry.md:315  expected ',' separator
-873b3abaf9b5  Docs/Drawing/Geometry.md:346  cannot find 'Distribution' in scope
-f0b0c6b3213b  Docs/Drawing/Geometry.md:355  cannot find 'filters' in scope
-02e6dae30b9f  Docs/Drawing/Geometry.md:381  value of type '@MainActor (Int, Int, Insets, Double, Grid.Distribution) -> Grid' has no member 'points'
-ff6c8a6ce068  Docs/Drawing/Geometry.md:409  cannot find 'thumbnails' in scope
-b75f4ac15c49  Docs/Drawing/Geometry.md:432  cannot infer contextual base in reference to member 'all'
-23b6891ea8c2  Docs/Drawing/Geometry.md:452  cannot convert value of type 'Vector2.Type' to expected argument type 'Vector2'
-cd001b4096fb  Docs/Drawing/Geometry.md:475  expected ',' separator
-963ed0e10650  Docs/Drawing/Geometry.md:500  cannot convert value of type 'Vector2.Type' to expected argument type 'Vector2'
-401af9738a19  Docs/Drawing/Geometry.md:523  cannot convert value of type 'Vector2.Type' to expected argument type 'Vector2'
-754645c0ed85  Docs/Drawing/Geometry.md:53  expected ',' separator
-85a6c158019e  Docs/Drawing/Geometry.md:549  expected '{' in body of function declaration
-f898a9fe80fd  Docs/Drawing/Geometry.md:583  expected ',' separator
-52354cad80b1  Docs/Drawing/Geometry.md:629  expected '{' in body of function declaration
-d557b13beb41  Docs/Drawing/Geometry.md:677  expected '{' in body of function declaration
-a9963fe5f8ea  Docs/Drawing/Geometry.md:713  expected '{' in body of function declaration
-f91432eb7c7b  Docs/Drawing/Geometry.md:769  expected ',' separator
-4fdce137d56e  Docs/Drawing/Geometry.md:815  expected ',' separator
-fae7a0c26a4e  Docs/Drawing/Geometry.md:845  cannot find 'shape' in scope
-ad8b1f537c9c  Docs/Drawing/Geometry.md:852  cannot find 'shape' in scope
-e2d750ef54f7  Docs/Drawing/Geometry.md:858  cannot find 'shape' in scope
-a852c71bbd89  Docs/Drawing/Geometry.md:884  use of 'randomPoints' refers to instance method rather than global function 'randomPoints(in:count:using:)' in module 'Ollin'
-1eb6f12247fb  Docs/Drawing/Geometry.md:895  expected '{' in body of function declaration
-c02c77676873  Docs/Drawing/Geometry.md:909  cannot find 'star' in scope
-c4ec6c299218  Docs/Drawing/Geometry.md:921  expected '{' in body of function declaration
-a1b0bb4e8556  Docs/Drawing/Geometry.md:927  cannot find 'blob' in scope
-7fa1c7078690  Docs/Drawing/Geometry.md:945  expected '{' in body of function declaration
-a70a7ea27883  Docs/Drawing/Geometry.md:952  function produces expected type '[Vector2]'; did you mean to call it with '()'?
-c4faa929d898  Docs/Drawing/Geometry.md:963  expected '{' in body of function declaration
-f987b34cd479  Docs/Drawing/Geometry.md:995  expected '{' in body of function declaration
+f987b34cd479  Docs/Drawing/Geometry.md:1026  expected '{' in body of function declaration
+eb39bc6e25d9  Docs/Drawing/Geometry.md:1063  expected '{' in body of function declaration
+67e13e1a3864  Docs/Drawing/Geometry.md:1077  expected ',' separator
+c0091b46b433  Docs/Drawing/Geometry.md:1116  expected '{' in body of function declaration
+51c2624a28b7  Docs/Drawing/Geometry.md:1130  cannot convert value of type '[Vector2].Type' to expected argument type '[Vector2]'
+4089dff1acc6  Docs/Drawing/Geometry.md:185  cannot convert value of type 'Double.Type' to expected argument type 'Double'
+c8dd6a17c836  Docs/Drawing/Geometry.md:237  cannot convert value of type 'Double.Type' to expected argument type 'Double'
+c9abb7d3d7a5  Docs/Drawing/Geometry.md:251  cannot find 'crate' in scope
+fdcf3efae578  Docs/Drawing/Geometry.md:264  cannot convert value of type 'Vector3.Type' to expected argument type 'Vector3'
+ce8f3399f803  Docs/Drawing/Geometry.md:275  cannot find 'eye' in scope
+795d1a6a517c  Docs/Drawing/Geometry.md:293  cannot convert value of type 'Vector3.Type' to expected argument type 'Vector3'
+7e1e37f3022c  Docs/Drawing/Geometry.md:321  cannot convert value of type 'Vector3.Type' to expected argument type 'Vector3'
+f0183ad35e80  Docs/Drawing/Geometry.md:331  cannot find 'scan' in scope
+a26850bfb449  Docs/Drawing/Geometry.md:346  expected ',' separator
+873b3abaf9b5  Docs/Drawing/Geometry.md:377  cannot find 'Distribution' in scope
+f0b0c6b3213b  Docs/Drawing/Geometry.md:386  cannot find 'filters' in scope
+02e6dae30b9f  Docs/Drawing/Geometry.md:412  value of type '@MainActor (Int, Int, Insets, Double, Grid.Distribution) -> Grid' has no member 'points'
+ff6c8a6ce068  Docs/Drawing/Geometry.md:440  cannot find 'thumbnails' in scope
+b75f4ac15c49  Docs/Drawing/Geometry.md:463  cannot infer contextual base in reference to member 'all'
+23b6891ea8c2  Docs/Drawing/Geometry.md:483  cannot convert value of type 'Vector2.Type' to expected argument type 'Vector2'
+cd001b4096fb  Docs/Drawing/Geometry.md:506  expected ',' separator
+963ed0e10650  Docs/Drawing/Geometry.md:531  cannot convert value of type 'Vector2.Type' to expected argument type 'Vector2'
+754645c0ed85  Docs/Drawing/Geometry.md:54  expected ',' separator
+401af9738a19  Docs/Drawing/Geometry.md:554  cannot convert value of type 'Vector2.Type' to expected argument type 'Vector2'
+85a6c158019e  Docs/Drawing/Geometry.md:580  expected '{' in body of function declaration
+f898a9fe80fd  Docs/Drawing/Geometry.md:614  expected ',' separator
+52354cad80b1  Docs/Drawing/Geometry.md:660  expected '{' in body of function declaration
+d557b13beb41  Docs/Drawing/Geometry.md:708  expected '{' in body of function declaration
+a9963fe5f8ea  Docs/Drawing/Geometry.md:744  expected '{' in body of function declaration
+f91432eb7c7b  Docs/Drawing/Geometry.md:800  expected ',' separator
+4fdce137d56e  Docs/Drawing/Geometry.md:846  expected ',' separator
+fae7a0c26a4e  Docs/Drawing/Geometry.md:876  cannot find 'shape' in scope
+ad8b1f537c9c  Docs/Drawing/Geometry.md:883  cannot find 'shape' in scope
+e2d750ef54f7  Docs/Drawing/Geometry.md:889  cannot find 'shape' in scope
+a852c71bbd89  Docs/Drawing/Geometry.md:915  use of 'randomPoints' refers to instance method rather than global function 'randomPoints(in:count:using:)' in module 'Ollin'
+1eb6f12247fb  Docs/Drawing/Geometry.md:926  expected '{' in body of function declaration
+c02c77676873  Docs/Drawing/Geometry.md:940  cannot find 'star' in scope
+c4ec6c299218  Docs/Drawing/Geometry.md:952  expected '{' in body of function declaration
+a1b0bb4e8556  Docs/Drawing/Geometry.md:958  cannot find 'blob' in scope
+7fa1c7078690  Docs/Drawing/Geometry.md:976  expected '{' in body of function declaration
+a70a7ea27883  Docs/Drawing/Geometry.md:983  function produces expected type '[Vector2]'; did you mean to call it with '()'?
+c4faa929d898  Docs/Drawing/Geometry.md:994  expected '{' in body of function declaration
 336a733604c7  Docs/Drawing/GlyphMosaic.md:31  expected ',' separator
 cb89fe7408d3  Docs/Drawing/GlyphMosaic.md:43  cannot find 'picture' in scope
 f7a401ec53bc  Docs/Drawing/GlyphMosaic.md:55  expected ',' separator

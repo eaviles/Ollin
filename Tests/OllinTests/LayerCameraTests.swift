@@ -375,7 +375,7 @@ struct LayerCameraTests {
         // through the layer's camera; outside, in the canvas's, through its own.
         let point = Vector3(0.5, 0.2, -0.3)
         var onLayer: Vector2?, onCanvas: Vector2?
-        var ray: (origin: Vector3, direction: Vector3)?
+        var ray: Ray3?
         var lines: [[Vector2]] = []
         let sketch = stage { s in
             s.withTarget(s.view) {

@@ -335,6 +335,8 @@ final class PhoneTouches: Sendable
 open extension Ollin.Sketch
   func camera(_: PhoneCamera, near: Double = default, far: Double = default)
   func drawPhonePicture(_: PhoneCamera)
+  func painted(with: PhoneCamera, _: () -> Void)
+  func withPlane(_: PhonePlane, _: () -> Void)
 struct PhoneAir: Equatable, Sendable
   init(_: PhoneAirSample)
   init(timestamp: Double, pressure: Double, altitude: Double)
@@ -368,7 +370,10 @@ struct PhoneBody: Sendable
   var worldCenter: Vector3 { get }
 struct PhoneCamera
   func camera3D(covering: Vector2, near: Double = default, far: Double = default) -> Camera3D
+  func canvasPoint(of: Vector3, covering: Vector2) -> Vector2?
+  func pictureCamera(near: Double = default, far: Double = default) -> Camera3D
   func pictureRectangle(covering: Vector2) -> Rectangle
+  func ray(through: Vector2, covering: Vector2) -> Ray3
   init(pose: simd.simd_float4x4, intrinsics: CameraIntrinsics, isTracked: Bool = default, timestamp: Double = default, frameIndex: Int = default, picture: Image? = default)
   var forward: Vector3 { get }
   var frameIndex: Int { get set }
@@ -609,6 +614,7 @@ struct PhonePlane: Identifiable, Sendable
   var area: Double { get }
   var mesh: Mesh { get }
   var outline: [Vector3] { get }
+  var plane: Plane3 { get }
 struct PhonePlaneSample: Equatable, Sendable
   init(isTracked: Bool, timestamp: Double, id: Foundation.UUID, scan: UInt32 = default, isRemoved: Bool = default, transform: simd.simd_float4x4, center: SIMD3<Float> = default, width: Float = default, height: Float = default, rotationOnYAxis: Float = default, alignment: PhonePlaneAlignment = default, surface: PhoneSurface = default, boundary: [SIMD3<Float>] = default)
   var alignment: PhonePlaneAlignment { get set }

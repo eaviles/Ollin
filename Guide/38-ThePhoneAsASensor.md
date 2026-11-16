@@ -73,6 +73,21 @@ camera(view)                    // a 3D camera that matches the phone's
 
 A recording keeps where the camera stood on every frame. Whatever you draw in 3D after those two calls stays in its place in the room as the camera moves. The recording plays on the sketch's clock, so an export shows the same frames every time. The [`PhoneRecordingPins`](../Examples/3D/Phone/PhoneRecordingPins/Sketch.swift) example plays a small recording that ships with it and stands five pins in its room. The [Phone reference](../Docs/3D/Phone.md#a-recording) covers making a recording of your own.
 
+A recording made in Room mode also carries the room's flat surfaces, and a sketch can work on one of them. `withPlane(_:)` draws in a wall's own meters. `painted(with:)` paints what is drawn inside it with the camera's picture, so a piece of the wall can lift off still showing its own pixels:
+
+```swift
+guard let wall = device.planes.largest(of: .wall) else { return }
+withPlane(wall) {
+    translate(0.5, 0.2)                 // a place on the wall, in meters
+    painted(with: view) {
+        translate(0, 0, 0.1)            // ten centimeters out, pixels and all
+        drawBox(width: 0.25, height: 0.25, depth: 0.01)
+    }
+}
+```
+
+The block takes its pixels where it stands when `painted` opens, flat on the wall, and the `translate` inside moves it afterwards. The [`PhoneWallTiles`](../Examples/3D/Phone/PhoneWallTiles/Sketch.swift) example pushes a wall's own tiles out this way, in time with a beat. [`PhonePoster`](../Examples/3D/Phone/PhonePoster/Sketch.swift) lays a layer on a poster's four pinned corners, and lets the real wall hide a ball that goes behind it. [Drawing on a real surface](../Docs/3D/Surfaces.md) is the reference for all of it.
+
 ## A pose you can dress in solids: the body
 
 Of everything the app sends, the finished sketch reads one stream, the body. [Chapter 36](36-Seeing.md#the-body-as-a-controller-hands-faces-and-bodies)'s `BodyTracker3D` estimated a person in meters from a flat picture. The phone's version comes from ARKit's body tracking, which runs on the phone and estimates the person's size, as `scaleFactor` reports.

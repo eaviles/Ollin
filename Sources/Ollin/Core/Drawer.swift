@@ -249,6 +249,22 @@ struct GeometryBatch {
     /// texture and lighting/material/shadow are bypassed. `nil` for a lit mesh. A matcap
     /// mesh opens its own batch (one texture per batch), like a textured one.
     var matcap: Image?
+    /// The picture a `.mesh3D` batch is painted with (`painted(with:from:)`, and
+    /// an image laid on four points of space), selecting the picture pipeline.
+    /// Each vertex carries its own place in the picture where a lit mesh carries
+    /// its color, so the look is the picture alone: no lighting, no finish.
+    /// Consecutive meshes painted with the same picture share a batch.
+    var picture: Image?
+    /// Whether a `.mesh3D` batch draws as depth alone (`occluding { }`): it hides
+    /// what is drawn behind it afterwards and writes no color of its own.
+    var meshOccluder = false
+    /// Whether a `.mesh3D` batch stands outside the lit scene: the ground grid,
+    /// a picture-painted mesh, and a depth-only one. The passes that work the
+    /// lighting out (the shadow casters, the traced scene, the reflection and
+    /// caustics buffers, the scatter mask) leave these runs out, since the
+    /// vertices of the last two carry no surface color for a hit to read and
+    /// neither is a thing the sketch's lights fall on.
+    var meshOutsideLighting: Bool { meshGrid || picture != nil || meshOccluder }
     /// The off-screen effects layer this run draws into. `nil` (the default) is the
     /// main canvas. Set while inside a `withTarget` block, so the renderer routes the
     /// run into that target's texture in a pass before the main one (see `RenderTarget`).
@@ -454,6 +470,11 @@ final class Drawer {
     /// The edge sets of the meshes drawn under `featureEdges`, found once a mesh.
     var featureEdgeCache = FeatureEdgeCache()
     private var currentMatcap: Image?           // 3D mesh: a matcap sphere texture replacing the lit look (see matcap(_:))
+    /// 3D mesh: the picture meshes are painted with inside a `painted` block,
+    /// and what it takes to find a vertex's place in it. `nil` outside one.
+    private var currentPicturePaint: PicturePaint?
+    /// 3D mesh: whether meshes draw as depth alone (inside an `occluding` block).
+    private var currentOccluding = false
     var currentFont: ActiveFont = .outline(.systemMedium)   // active text font (see textFont / drawText)
     var textPixelSize: Double = 24               // rendered glyph height in points (see textSize)
     var textAlignH: HorizontalTextAlign = .left           // horizontal text anchor (see textAlign)
@@ -1471,6 +1492,10 @@ final class Drawer {
     /// change opens a fresh batch (the finish is bound once per batch as a uniform).
     private var currentBatchMaterial = Material()
     private var currentBatchMeshClosed = true
+    /// The picture the open `.mesh3D` run is painted with, and whether it is a
+    /// depth-only run (see `ensureFlatMeshBatch`). Both clear for a lit run.
+    private var currentBatchPicture: Image?
+    private var currentBatchOccluder = false
 
     // MARK: Clipping (withClip)
 
@@ -1968,7 +1993,8 @@ final class Drawer {
         if currentKind == .mesh3D, currentBatchBlend == currentBlend,
            currentBatchDepth == currentDepth, currentBatchMaterial == m,
            currentBatchClip == activeClipLevel, currentBatchLightSet == set,
-           currentBatchMeshClosed == closed {
+           currentBatchMeshClosed == closed,
+           currentBatchPicture == nil, !currentBatchOccluder {
             return
         }
         currentKind = .mesh3D
@@ -1978,6 +2004,8 @@ final class Drawer {
         currentBatchMaterial = m
         currentBatchClip = activeClipLevel
         currentBatchMeshClosed = closed
+        currentBatchPicture = nil
+        currentBatchOccluder = false
         batches.append(GeometryBatch(kind: .mesh3D, vertexStart: vertices.count,
                                      instanceStart: sdfInstances.count,
                                      imageStart: imageVertices.count,
@@ -1991,6 +2019,45 @@ final class Drawer {
                                      clipLevel: activeClipLevel,
                                      lightSet: currentBatchLightSet))
         batches[batches.count - 1].meshClosed = closed
+    }
+
+    /// Open or continue a `.mesh3D` run that stands outside the lit scene: meshes
+    /// painted with `picture`, or (with none) meshes drawn as depth alone. Nothing
+    /// is bound per mesh (a painted vertex carries its own place in the picture),
+    /// so consecutive ones merge the way solid meshes do, and a wall of lifted
+    /// tiles is one draw. A change of picture, blend, depth, or clip opens a
+    /// fresh run.
+    private func ensureFlatMeshBatch(picture: Image?, closed: Bool) {
+        let occluder = picture == nil
+        if currentKind == .mesh3D, currentBatchBlend == currentBlend,
+           currentBatchDepth == currentDepth, currentBatchClip == activeClipLevel,
+           currentBatchMeshClosed == closed,
+           currentBatchPicture === picture, currentBatchOccluder == occluder {
+            return
+        }
+        currentKind = .mesh3D
+        currentBatchLightSet = resolveLightSet()
+        currentBatchBlend = currentBlend
+        currentBatchDepth = currentDepth
+        currentBatchClip = activeClipLevel
+        currentBatchMeshClosed = closed
+        currentBatchPicture = picture
+        currentBatchOccluder = occluder
+        batches.append(GeometryBatch(kind: .mesh3D, vertexStart: vertices.count,
+                                     instanceStart: sdfInstances.count,
+                                     imageStart: imageVertices.count,
+                                     glyphStart: glyphVertices.count,
+                                     pointStart: points.count,
+                                     meshStart: meshVertices.count,
+                                     sdfGroupStart: sdfGroups.count,
+                                     sdf3DGroupStart: sdf3DGroups.count,
+                                     blendMode: currentBlend, depth: currentDepth,
+                                     finish: OllinMaterial(), target: currentTarget,
+                                     clipLevel: activeClipLevel,
+                                     lightSet: currentBatchLightSet))
+        batches[batches.count - 1].meshClosed = closed
+        batches[batches.count - 1].picture = picture
+        batches[batches.count - 1].meshOccluder = occluder
     }
 
     /// Open a new `.sdfGroup3D` batch when the blend, depth, or surface finish changes;
@@ -3266,6 +3333,197 @@ final class Drawer {
     /// Stop matcap shading — subsequent meshes light through the normal material model.
     func noMatcap() { currentMatcap = nil }
 
+    // MARK: Picture paint and depth-only meshes
+
+    /// What a `painted` block holds: the picture, the matrix that carries a
+    /// point of space to its place in the picture, and where the block opened.
+    struct PicturePaint {
+        var image: Image
+        /// Space to the picture: a point `(x, y, z, 1)` comes out as its place in
+        /// the picture (0…1 across and down from the top left) times its distance
+        /// from the camera that took it, with that distance in `w`.
+        var toPicture: simd_double4x4
+        /// The model matrix when the block opened: where a mesh's own points
+        /// stood when they were painted, whatever moves them afterwards.
+        var restModel: simd_double4x4
+    }
+
+    /// The matrix that carries a point of space to its place in a picture
+    /// `camera` took, the picture filling the camera's whole view (see
+    /// `PicturePaint.toPicture`).
+    static func pictureMatrix(of camera: Camera3D, aspect: Double) -> simd_double4x4 {
+        let vp = camera.viewProjectionMatrix(aspect: aspect)
+        func row(_ i: Int) -> SIMD4<Double> {
+            SIMD4<Double>(Double(vp.columns.0[i]), Double(vp.columns.1[i]),
+                          Double(vp.columns.2[i]), Double(vp.columns.3[i]))
+        }
+        // Clip space runs -1…1 with y up; the picture runs 0…1 with y down.
+        // Both are taken before the divide, so the distance stays a factor.
+        let x = row(0), y = row(1), w = row(3)
+        return simd_double4x4(rows: [(x + w) * 0.5, (w - y) * 0.5, SIMD4<Double>(repeating: 0), w])
+    }
+
+    /// A single-precision matrix in doubles, entry for entry.
+    static func doubled(_ m: simd_float4x4) -> simd_double4x4 {
+        func column(_ c: SIMD4<Float>) -> SIMD4<Double> {
+            SIMD4<Double>(Double(c.x), Double(c.y), Double(c.z), Double(c.w))
+        }
+        return simd_double4x4(columns: (column(m.columns.0), column(m.columns.1),
+                                        column(m.columns.2), column(m.columns.3)))
+    }
+
+    /// Paint the meshes drawn in `body` with `image` as `camera` saw it. A
+    /// mesh's place in the picture is taken where it stands when the block
+    /// opens: a transform made inside the block moves the mesh and leaves what
+    /// it is painted with alone.
+    func painted(with image: Image, from camera: Camera3D, _ body: () -> Void) {
+        guard image.width > 0, image.height > 0 else { return body() }
+        let saved = (currentPicturePaint, currentOccluding)
+        currentPicturePaint = PicturePaint(
+            image: image,
+            toPicture: Drawer.pictureMatrix(of: camera,
+                                            aspect: Double(image.width) / Double(image.height)),
+            restModel: Drawer.doubled(modelMatrix))
+        currentOccluding = false
+        pushState()
+        body()
+        popState()
+        (currentPicturePaint, currentOccluding) = saved
+    }
+
+    /// Draw the meshes in `body` as depth alone: each hides what is drawn
+    /// behind it afterwards and puts no color of its own on the canvas.
+    func occluding(_ body: () -> Void) {
+        let saved = (currentPicturePaint, currentOccluding)
+        currentPicturePaint = nil
+        currentOccluding = true
+        pushState()
+        body()
+        popState()
+        (currentPicturePaint, currentOccluding) = saved
+    }
+
+    /// The gates a mesh drawn outside the lit scene shares with `drawMesh`,
+    /// which hands it over here before working out any material: `mesh` painted
+    /// with the open block's picture, or drawn as depth alone.
+    private func drawFlatMesh(_ mesh: Mesh) {
+        if wireframeEnabled || currentMatcap != nil {
+            noteOnce("a mesh inside painted { } or occluding { } draws as the block says; wireframe() and a matcap do not apply to it.")
+        }
+        let paint = currentOccluding ? nil : currentPicturePaint
+        ensureFlatMeshBatch(picture: paint?.image, closed: mesh.isClosed ?? true)
+        let m = modelMatrix
+        let nm = modelIsIdentity ? matrix_identity_float3x3 : m.normalMatrix
+        if !batches.isEmpty {
+            let last = batches.count - 1
+            batches[last].worldBounds = unionWorldBounds(batches[last].worldBounds, mesh.bounds,
+                                                         through: modelIsIdentity ? nil : m)
+        }
+        // The fill tints a painted mesh. It rides in the tangent's four half
+        // floats, since the color's slot holds the place in the picture.
+        let fill = meshSurfaceColor.simd4
+        let tint = SIMD4<UInt16>(Float16(fill.x).bitPattern, Float16(fill.y).bitPattern,
+                                 Float16(fill.z).bitPattern, Float16(fill.w).bitPattern)
+        let moverStart = meshVertices.count
+        meshVertices.reserveCapacity(meshVertices.count + mesh.indices.count)
+        for idx in mesh.indices {
+            let i = Int(idx)
+            guard i < mesh.positions.count else { continue }
+            let p = mesh.positions[i]
+            let n = i < mesh.normals.count ? mesh.normals[i] : Vector3.unitZ
+            var v = OllinMeshVertex()
+            // Roughness 1 and metalness 0 in the spare slots, the lit path's
+            // reading of a plain surface, for a pass that reads them.
+            let wp = m * SIMD4<Float>(Float(p.x), Float(p.y), Float(p.z), 1)
+            v.position = SIMD4<Float>(wp.x, wp.y, wp.z, 1)
+            let wn = simd_normalize(nm * SIMD3<Float>(Float(n.x), Float(n.y), Float(n.z)))
+            v.normal = SIMD4<Float>(wn.x, wn.y, wn.z, 0)
+            if let paint {
+                // Where this point stood when the block opened, and from there
+                // its place in the picture, in doubles: the three numbers run
+                // straight across a triangle, and the fragment takes their ratio.
+                let rest = paint.restModel * SIMD4<Double>(p.x, p.y, p.z, 1)
+                let place = paint.toPicture * rest
+                v.color = SIMD4<Float>(Float(place.x), Float(place.y), 0, Float(place.w))
+                v.tangent = tint
+            }
+            meshVertices.append(v)
+        }
+        recordMoverRange(from: moverStart, wireframe: false, mesh: mesh)
+    }
+
+    /// Lay `image` on four points of space, its corners on the four and
+    /// everything between where a flat sheet through them would carry it. The
+    /// points go through the 3D transform like a mesh's.
+    func drawImage(_ image: Image, topLeft: Vector3, topRight: Vector3,
+                   bottomRight: Vector3, bottomLeft: Vector3) {
+        if isRecordingBatch {
+            noteBatchRecording("an image laid on points of space inside makeBatch { } is not recorded; draw it where the batch is drawn.")
+            return
+        }
+        guard camera3D != nil else {
+            noteOnce("drawImage(_:topLeft:topRight:bottomRight:bottomLeft:) lays an image on points of space and needs a camera; set one with camera(_:) first.")
+            return
+        }
+        guard image.width > 0, image.height > 0, svgRecorder == nil, spatialRecorder == nil,
+              combineStack.isEmpty else { return }
+        // Where the sheet's two diagonals cross, measured along each. A sheet
+        // seen at a slant maps its picture through that crossing: each corner
+        // takes a weight from how the crossing divides its own diagonal, and
+        // the picture's coordinates times those weights run straight across
+        // the two triangles, where the coordinates alone would bend at the
+        // diagonal between them.
+        let corners = [topLeft, topRight, bottomRight, bottomLeft]
+        let d1 = bottomRight - topLeft, d2 = bottomLeft - topRight
+        let between = topRight - topLeft
+        let normal = d1.cross(d2)
+        let size = normal.lengthSquared
+        guard size > 1e-30 else { return }      // the four along one line
+        let t = between.cross(d2).dot(normal) / size      // along topLeft to bottomRight
+        let s = between.cross(d1).dot(normal) / size      // along topRight to bottomLeft
+        guard t > 1e-6, t < 1 - 1e-6, s > 1e-6, s < 1 - 1e-6 else {
+            noteOnce("drawImage(_:topLeft:topRight:bottomRight:bottomLeft:) wants its four points in order around a sheet that does not fold; these cross over and nothing was drawn.")
+            return
+        }
+        // Corner i sits (its share) of the way along its diagonal from the
+        // crossing; its weight is the whole diagonal over the far share.
+        let weights = [1 / (1 - t), 1 / (1 - s), 1 / t, 1 / s]
+        let uvs = [Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)]
+
+        currentTarget?.needsDepth = true
+        ensureFlatMeshBatch(picture: image, closed: false)
+        let m = modelMatrix
+        var facing = m * SIMD4<Float>(Float(normal.x), Float(normal.y), Float(normal.z), 0)
+        let length = simd_length(SIMD3<Float>(facing.x, facing.y, facing.z))
+        if length > 0 { facing /= length }
+        let tintColor = (self.tintColor ?? .white).simd4
+        let tint = SIMD4<UInt16>(Float16(tintColor.x).bitPattern, Float16(tintColor.y).bitPattern,
+                                 Float16(tintColor.z).bitPattern, Float16(tintColor.w).bitPattern)
+        var placed: [Vector3] = []
+        for index in [0, 1, 2, 0, 2, 3] {
+            let p = corners[index]
+            var v = OllinMeshVertex()
+            let wp = m * SIMD4<Float>(Float(p.x), Float(p.y), Float(p.z), 1)
+            v.position = SIMD4<Float>(wp.x, wp.y, wp.z, 1)
+            v.normal = SIMD4<Float>(-facing.x, -facing.y, -facing.z, 0)
+            let q = weights[index]
+            v.color = SIMD4<Float>(Float(uvs[index].x * q), Float(uvs[index].y * q), 0, Float(q))
+            v.tangent = tint
+            meshVertices.append(v)
+            placed.append(Vector3(Double(wp.x), Double(wp.y), Double(wp.z)))
+        }
+        if !batches.isEmpty {
+            var lo = placed[0], hi = placed[0]
+            for p in placed {
+                lo = Vector3(Swift.min(lo.x, p.x), Swift.min(lo.y, p.y), Swift.min(lo.z, p.z))
+                hi = Vector3(Swift.max(hi.x, p.x), Swift.max(hi.y, p.y), Swift.max(hi.z, p.z))
+            }
+            let last = batches.count - 1
+            batches[last].worldBounds = unionWorldBounds(batches[last].worldBounds,
+                                                         Box3(min: lo, max: hi), through: nil)
+        }
+    }
+
     /// Cast shadows from the scene's primary directional light this frame. Per-frame
     /// state like the lights — set it in `draw()`. The renderer renders a depth pass
     /// from that light and dims the light on meshes it can't reach. A no-op without a
@@ -4288,6 +4546,19 @@ final class Drawer {
         }
         // SVG export is 2D vector only; a shaded solid has no vector outline.
         if svgRecorder != nil { return }
+        // A mesh inside a `painted` or `occluding` block stands outside the lit
+        // scene and takes none of the material work below. A spatial export has
+        // no camera picture to paint with and nothing to show for a mesh that
+        // only hides: the first goes as a plain surface, the second not at all.
+        if currentOccluding || currentPicturePaint != nil {
+            if spatialRecorder == nil {
+                currentTarget?.needsDepth = true
+                drawFlatMesh(mesh)
+                return
+            }
+            if currentOccluding { return }
+            noteOnce("a mesh painted with a camera's picture exports as a plain surface: the picture belongs to one view, which a spatial file has nowhere to put.")
+        }
         // Spatial export wants the mesh itself, not a rasterization of it: the
         // geometry in its own space beside the matrix that placed it.
         if let spatialRecorder {

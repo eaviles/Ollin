@@ -2807,22 +2807,23 @@ open class Sketch {
     }
 
     /// The inverse of `project`: the world-space ray from the active camera
-    /// through a canvas point, as an origin and a unit direction. The way from
-    /// a click to the 3D thing under it: march it, intersect it with the
-    /// scene's own geometry, or hand it to a physics query.
+    /// through a canvas point, with its origin and a unit direction. The way
+    /// from a click to the 3D thing under it: march it, intersect it with the
+    /// scene's own geometry, meet it with a surface, or hand it to a physics
+    /// query.
     ///
     /// ```swift
     /// if let ray = cameraRay(through: mouse) {
     ///     let hit = world.raycast(from: ray.origin, to: ray.origin + ray.direction * 100)
+    ///     let onWall = wall.intersection(with: ray)       // a `Plane3`
     /// }
     /// ```
     ///
-    /// A perspective camera's rays share its eye; an orthographic camera's are
-    /// parallel, each starting on its view plane. `nil` when there is no
-    /// active camera, the canvas has no size yet, or the projection has no
-    /// analytic inverse (a depth-feed intrinsics projection).
-    public func cameraRay(through canvasPoint: Vector2)
-        -> (origin: Vector3, direction: Vector3)? {
+    /// A perspective camera's rays share its eye, and so do those of a camera
+    /// built from a real lens (`Camera3D.intrinsic(_:)`, a phone's camera); an
+    /// orthographic camera's are parallel, each starting on its view plane.
+    /// `nil` when there is no active camera or the canvas has no size yet.
+    public func cameraRay(through canvasPoint: Vector2) -> Ray3? {
         // Inside a layer's block the point is a place on the layer (where a
         // window showing it reports its pointer), and the camera the layer's.
         let surface = drawer.surfaceSize(canvas: Vector2(width, height))
@@ -2837,18 +2838,159 @@ open class Sketch {
         switch camera.projection {
         case .perspective(let fieldOfView):
             let tanHalf = tan(fieldOfView / 2)
-            let direction = (forward
+            let direction = forward
                 + right * (ndcX * tanHalf * aspect)
-                + up * (ndcY * tanHalf)).normalized
-            return (camera.eye, direction)
+                + up * (ndcY * tanHalf)
+            return Ray3(origin: camera.eye, direction: direction)
         case .orthographic(let frameHeight):
             let origin = camera.eye
                 + right * (ndcX * frameHeight / 2 * aspect)
                 + up * (ndcY * frameHeight / 2)
-            return (origin, forward)
-        default:
-            return nil
+            return Ray3(origin: origin, direction: forward)
+        case .intrinsic(let lens):
+            // The lens's own frustum, undone: the picture is fitted into the
+            // canvas with its proportion kept (the projection's rule), so the
+            // canvas point is first carried back onto the picture, and the
+            // pinhole rule read backward gives the direction one unit ahead.
+            let w = Double(lens.width), h = Double(lens.height)
+            guard w > 0, h > 0, lens.fx != 0, lens.fy != 0 else { return nil }
+            let imageAspect = w / h
+            var fitX = 1.0, fitY = 1.0
+            if aspect > imageAspect { fitX = imageAspect / aspect } else { fitY = aspect / imageAspect }
+            let column = (ndcX / fitX + 1) / 2 * w
+            let row = (1 - ndcY / fitY) / 2 * h
+            let direction = forward
+                + right * ((column - lens.cx) / lens.fx)
+                + up * (-(row - lens.cy) / lens.fy)
+            return Ray3(origin: camera.eye, direction: direction)
         }
+    }
+
+    /// The point of `plane` under a canvas point, through the active camera:
+    /// `cameraRay(through:)` met with the surface. The way a click becomes a
+    /// place on a wall or a floor that a sketch can keep.
+    ///
+    /// ```swift
+    /// override func mousePressed() {
+    ///     if let spot = unproject(mouse, onto: wall) { pins.append(spot) }
+    /// }
+    /// ```
+    ///
+    /// `nil` when there is no camera, or the surface is not in front of the
+    /// camera along that line.
+    public func unproject(_ canvasPoint: Vector2, onto plane: Plane3) -> Vector3? {
+        cameraRay(through: canvasPoint).flatMap(plane.intersection(with:))
+    }
+
+    /// Draw in a flat surface's own coordinates: inside `body`, x runs along
+    /// the surface's `right`, y along its `up`, and z out of its front, in the
+    /// units the surface stands in (meters, for a wall a phone found), with
+    /// (0, 0, 0) at its `origin`. So a wall is somewhere to stand things: a
+    /// box drawn at `(0.5, 0.2, 0)` sits half a meter along it and twenty
+    /// centimeters up.
+    ///
+    /// ```swift
+    /// withPlane(wall) {
+    ///     translate(0.5, 0.2, 0.05)       // on the wall, 5 cm out of it
+    ///     drawBox(size: 0.1)
+    /// }
+    /// ```
+    ///
+    /// It is the 3D transform `plane.matrix`, scoped the way `withState` scopes
+    /// one, so everything 3D follows it (meshes, lines between `Vector3`
+    /// points, solid type) and a 2D call still draws on the canvas. To put a
+    /// flat composition on the surface, draw it into a layer and lay the
+    /// layer's image on four of the surface's points with
+    /// `drawImage(_:topLeft:topRight:bottomRight:bottomLeft:)`.
+    public func withPlane(_ plane: Plane3, _ body: () -> Void) {
+        withState {
+            transform(plane.matrix)
+            body()
+        }
+    }
+
+    /// Paint the meshes drawn in `body` with a picture as a camera saw it:
+    /// every point of a mesh shows the pixel `camera` had of that point, the
+    /// picture filling the camera's whole view. Drawn over the same picture
+    /// through the same camera, a painted mesh left where it is changes
+    /// nothing on the canvas. Moved, it carries its pixels along.
+    ///
+    /// **A mesh takes its pixels where it stands when the block opens.** A
+    /// transform made before the block places the mesh. A transform made
+    /// inside it moves the mesh afterwards and leaves what it is painted with
+    /// alone, which is how a piece of a wall lifts off still showing the wall:
+    ///
+    /// ```swift
+    /// withPlane(wall) {
+    ///     translate(tile.x, tile.y)               // where the tile is on the wall
+    ///     painted(with: picture, from: lens) {
+    ///         translate(0, 0, 0.1)                // ten centimeters out, pixels and all
+    ///         drawBox(width: 0.2, height: 0.2, depth: 0.01)
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// The place in the picture is worked out for each pixel, so a mesh of a
+    /// few large triangles seen at a slant is exact. A part of a mesh the
+    /// camera did not see (outside its view, or behind it) has no pixel and is
+    /// not drawn. The current `fill` tints the paint, and white leaves it as
+    /// the picture has it. A painted mesh is unlit, since the picture already
+    /// holds the light of the place it was taken in, and it stands outside the
+    /// sketch's lighting altogether: it casts no shadow and shows in no
+    /// reflection. It still writes depth, so it hides what is behind it.
+    ///
+    /// `camera` is the one that took `image`, as a `Camera3D` whose view the
+    /// whole image fills (for a phone's camera, `OllinPhone` has the form that
+    /// takes a `PhoneCamera`). Instanced meshes, mesh fields, and marched
+    /// fields inside the block draw as they always do.
+    public func painted(with image: Image, from camera: Camera3D, _ body: () -> Void) {
+        drawer.painted(with: image, from: camera, body)
+    }
+
+    /// Draw the meshes in `body` as depth alone: each hides whatever is drawn
+    /// behind it afterwards and puts no color of its own on the canvas. This
+    /// is for the real things in a camera's picture. Stand a mesh where a
+    /// table or a wall is, draw it inside this block before the rest, and a
+    /// drawn thing that goes behind the real one disappears behind it, the
+    /// picture of the real one showing through untouched.
+    ///
+    /// ```swift
+    /// drawPhonePicture(view)
+    /// camera(view)
+    /// occluding { drawMesh(device.planes.mesh) }      // the room's own surfaces
+    /// drawSphere(radius: 0.2)                         // hidden where a wall is nearer
+    /// ```
+    ///
+    /// Order matters, as it does for anything that hides: what was drawn
+    /// before the block is already on the canvas and stays. Like a painted
+    /// mesh, one drawn here stands outside the sketch's lighting: no shadow
+    /// cast, no place in a reflection.
+    public func occluding(_ body: () -> Void) {
+        drawer.occluding(body)
+    }
+
+    /// Lay an image on four points of space: its corners go to the four, and
+    /// the rest of it lands where a flat sheet through them would carry it,
+    /// exactly, however the sheet is turned to the camera. The points go
+    /// through the 3D transform, so inside `withPlane(_:)` they are places on
+    /// the surface. A layer's image goes on a wall this way, and a new picture
+    /// onto a poster whose corners were pinned:
+    ///
+    /// ```swift
+    /// withTarget(layer) { drawTheNewPoster() }
+    /// drawImage(layer.image, topLeft: pins[0], topRight: pins[1],
+    ///           bottomRight: pins[2], bottomLeft: pins[3])
+    /// ```
+    ///
+    /// The four are taken in order around the sheet and should lie on one flat
+    /// surface, since two triangles carry it. The image is unlit and outside
+    /// the sketch's lighting, tinted by `tint(_:)` like any image, hidden by
+    /// what is nearer, and it hides what is behind it where it is not clear.
+    /// It needs a camera, and draws nothing in a vector export.
+    public func drawImage(_ image: Image, topLeft: Vector3, topRight: Vector3,
+                          bottomRight: Vector3, bottomLeft: Vector3) {
+        drawer.drawImage(image, topLeft: topLeft, topRight: topRight,
+                         bottomRight: bottomRight, bottomLeft: bottomLeft)
     }
 
     /// Draw `string` anchored to a world point: the point is projected through

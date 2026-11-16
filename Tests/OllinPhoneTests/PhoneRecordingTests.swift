@@ -562,19 +562,6 @@ extension PhoneMediaTests {
         let folder = URL(fileURLWithPath: (path as NSString).expandingTildeInPath)
         try? FileManager.default.removeItem(at: folder)
 
-        func plane(_ index: UInt8, _ surface: PhoneSurface, _ alignment: PhonePlaneAlignment,
-                   _ transform: simd_float4x4, width: Float, height: Float, at time: Double) -> PhoneMessage {
-            let id = UUID(uuid: (0x0A, 0x11, 0x1E, 0x50, 0, 0, 0x40, 0, 0x80, 0, 0, 0, 0, 0, 0, index))
-            return .plane(PhonePlaneSample(isTracked: true, timestamp: time, id: id, scan: 1,
-                                           transform: transform, width: width, height: height,
-                                           alignment: alignment, surface: surface))
-        }
-        func placed(_ x: SIMD3<Float>, _ y: SIMD3<Float>, _ z: SIMD3<Float>, _ t: SIMD3<Float>) -> simd_float4x4 {
-            simd_float4x4(SIMD4<Float>(x, 0), SIMD4<Float>(y, 0), SIMD4<Float>(z, 0), SIMD4<Float>(t, 1))
-        }
-        let level = (SIMD3<Float>(1, 0, 0), SIMD3<Float>(0, 1, 0), SIMD3<Float>(0, 0, 1))
-        let table = SyntheticRoom.solids[0]
-
         let made = try await SyntheticRecording.write(
             named: "sample", width: 540, height: 720, frames: 150, quarterTurnsCW: 1, mode: .room,
             to: folder, isLoop: true, showsMarks: false, bitRate: 1_100_000
@@ -585,19 +572,7 @@ extension PhoneMediaTests {
                     timestamp: time, mode: .room, isSupported: true, referenceCount: 0,
                     referencesAreDeclared: false, status: "A recording of a synthetic room", notes: [])))
                 // The floor, the back wall's face, and the top of the first solid.
-                messages.append(plane(1, .floor, .horizontal,
-                                      placed(level.0, level.1, level.2, .zero),
-                                      width: 7, height: 7, at: time))
-                messages.append(plane(2, .wall, .vertical,
-                                      placed(SIMD3<Float>(1, 0, 0), SIMD3<Float>(0, 0, 1), SIMD3<Float>(0, -1, 0),
-                                             SIMD3<Float>(0, 1.5, -1.55)),
-                                      width: 7, height: 3, at: time))
-                messages.append(plane(3, .table, .horizontal,
-                                      placed(level.0, level.1, level.2,
-                                             SIMD3<Float>(Float(table.center.x),
-                                                          Float(table.center.y + table.size.y / 2),
-                                                          Float(table.center.z))),
-                                      width: Float(table.size.x), height: Float(table.size.z), at: time))
+                messages += SyntheticRecording.surfaces(at: time)
             }
             if frame % 6 == 0 {
                 messages.append(.light(PhoneLightSample(timestamp: time, ambientIntensity: 1000,

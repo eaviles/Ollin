@@ -16,7 +16,7 @@ There are two kinds of scene to composite against. One is a **3D-camera** scene,
 
 - [Placing 2D at a world depth](#depth) - `depth(at:)`, `noDepth()` (a 3D-camera scene)
 - [Projecting a world point to the canvas](#project) - `project`
-- [From the canvas back into the world](#cameraRay) - `cameraRay(through:)`
+- [From the canvas back into the world](#cameraRay) - `cameraRay(through:)`, `unproject(_:onto:)`
 - [Billboards](#billboard) - `withBillboard(at:)`
 - [A depth-map scene](#scene) - `drawDepthScene`, `depth(_:)` (a depth feed)
 - [A metric depth scene](#metric) - `Camera3D.intrinsic`, `drawDepthScene(_:)` (true meters)
@@ -65,7 +65,7 @@ drawText("sun", at: Vector3(0, 2.2, 0), size: 26, color: .white, align: .center)
 <a id="cameraRay"></a>
 ### From the canvas back into the world
 
-`cameraRay(through:)` is the inverse of `project`. It returns the world-space ray from the active camera through a canvas point, as an origin and a unit direction. That ray is how you get from a click to the 3D thing under it. You can march along it, intersect it, or hand it to a physics query:
+`cameraRay(through:)` is the inverse of `project`. It returns the world-space ray from the active camera through a canvas point, as a [`Ray3`](../Drawing/Geometry.md#ray3): an origin and a unit direction. That ray is how you get from a click to the 3D thing under it. You can march along it, intersect it, or hand it to a physics query:
 
 ```swift
 if let ray = cameraRay(through: mouse) {
@@ -73,7 +73,9 @@ if let ray = cameraRay(through: mouse) {
 }
 ```
 
-The rays of a perspective camera all start at its eye. The rays of an orthographic camera are parallel, and each starts on its view plane. The call returns `nil` when there is no active camera. It also returns `nil` for a depth-feed (intrinsics) projection, because that projection has no analytic inverse. The physics pickers (`grabBody`, `body(under:in:)`) use this same ray.
+The rays of a perspective camera all start at its eye. So do those of a camera built from a real lens (`Camera3D.intrinsic(_:)`, the camera a phone reports). The rays of an orthographic camera are parallel, and each starts on its view plane. The call returns `nil` when there is no active camera. The physics pickers (`grabBody`, `body(under:in:)`) use this same ray.
+
+`unproject(_:onto:)` meets that ray with a flat surface, a [`Plane3`](../Drawing/Geometry.md#plane3), and returns the point of the surface under the canvas point. That is how a click becomes a place on a wall that a sketch can keep. See [Drawing on a real surface](Surfaces.md#pinned-points).
 
 <a id="billboard"></a>
 ### Billboards

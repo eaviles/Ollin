@@ -2126,7 +2126,7 @@ open class Sketch: Sendable
   func cameraMove(_: CameraMove, from: Camera3D, near: Double? = default, far: Double? = default)
   func cameraMove(_: CameraMove, target: Vector3 = default, radius: Double = default, elevation: Double = default, fieldOfView: Double = default, near: Double = default, far: Double = default)
   func cameraParams() -> ComputeParams
-  func cameraRay(through: Vector2) -> (origin: Vector3, direction: Vector3)?
+  func cameraRay(through: Vector2) -> Ray3?
   func cameraShowcase(_: CameraMove = default, from: Camera3D, near: Double? = default, far: Double? = default, idleReturn: Double = default, returnDuration: Double = default)
   func cameraShowcase(_: CameraMove = default, target: Vector3 = default, radius: Double = default, elevation: Double = default, fieldOfView: Double = default, near: Double = default, far: Double = default, idleReturn: Double = default, returnDuration: Double = default)
   func cameraView(_: CameraView, animated: Bool = default, duration: Double = default)
@@ -2250,6 +2250,7 @@ open class Sketch: Sendable
   func drawImage(_: Image, in: Rectangle)
   func drawImage(_: Image, in: Rectangle, fit: ImageFit)
   func drawImage(_: Image, in: Rectangle, source: Rectangle)
+  func drawImage(_: Image, topLeft: Vector3, topRight: Vector3, bottomRight: Vector3, bottomLeft: Vector3)
   func drawKlein(scale: Double = default, segments: Int = default, sides: Int = default)
   func drawKnotwork(in: Rectangle? = default, columns: Int, rows: Int, mirrors: [Kolam.Mirror] = default, weight: Double = default, cordColor: Color = default, rounding: Int = default)
   func drawKolam(in: Rectangle? = default, columns: Int, rows: Int, mirrors: [Kolam.Mirror] = default, rounding: Int = default)
@@ -2587,6 +2588,7 @@ open class Sketch: Sendable
   func noise(loop: Double, radius: Double = default) -> Double
   func noiseField() -> Formula.NoiseField
   func noiseSeed(_: Int)
+  func occluding(_: () -> Void)
   func ortho(eye: Vector3, target: Vector3 = default, up: Vector3 = default, height: Double, near: Double = default, far: Double = default)
   func outline(width: Double, color: Color = default)
   func packCircles(around: [Vector2], in: Rectangle? = default, minRadius: Double = default, maxRadius: Double = default, padding: Double = default) -> [Circle]
@@ -2594,6 +2596,7 @@ open class Sketch: Sendable
   func packRectangles(_: [Vector2], in: Rectangle? = default, padding: Double = default, allowsRotation: Bool = default) -> RectanglePacking
   func packShapes(_: [Shape], around: [Vector2], in: Rectangle? = default, minRadius: Double = default, maxRadius: Double = default, padding: Double = default, rotation: ClosedRange<Double> = default, scale: Double = default) -> [Shape]
   func packShapes(_: [Shape], in: Rectangle? = default, count: Int, minRadius: Double, maxRadius: Double = default, padding: Double = default, rotation: ClosedRange<Double> = default, scale: Double = default) -> [Shape]
+  func painted(with: Image, from: Camera3D, _: () -> Void)
   func parameters() -> [ParamHandle]
   func parquetDeformation(in: Rectangle? = default, columns: Int, rows: Int, from: ParquetDeformation.Profile, to: ParquetDeformation.Profile, sweep: ParquetDeformation.Sweep = default) -> ParquetDeformation
   func penroseTiling(_: Penrose.Variant = default, in: Rectangle? = default, tileEdge: Double = default, center: Vector2? = default) -> [Penrose.Tile]
@@ -2791,6 +2794,7 @@ open class Sketch: Sendable
   func typedText() -> String
   func ulamSpiral(in: Rectangle? = default, size: Int, start: Int = default, padding: Insets = default) -> UlamSpiral
   func union(_: () -> Void)
+  func unproject(_: Vector2, onto: Plane3) -> Vector3?
   func uv(_: Double, _: Double) -> Vector2
   func viewControl(center: Vector2? = default, zoom: Double = default, in: ClosedRange<Double> = default)
   func volumetricLight(_: Double = default, anisotropy: Double = default)
@@ -2819,6 +2823,7 @@ open class Sketch: Sendable
   func withMotion(_: String, _: () -> Void)
   func withMotion(file: String = default, line: Int = default, _: () -> Void)
   func withOverlay(_: () -> Void)
+  func withPlane(_: Plane3, _: () -> Void)
   func withState(_: () -> Void)
   func withState(at: Vector2, rotation: Double = default, scale: Double = default, _: () -> Void)
   func withState(at: Vector3, _: () -> Void)
@@ -6142,6 +6147,22 @@ struct Place: Equatable, Hashable, Sendable
   init(latitude: Double, longitude: Double)
   var latitude: Double { get set }
   var longitude: Double { get set }
+struct Plane3: Equatable, Sendable
+  func coordinates(of: Vector3) -> Vector2
+  func distance(to: Vector3) -> Double
+  func intersection(with: Ray3) -> Vector3?
+  func moved(by: Vector2, lift: Double = default) -> Plane3
+  func point(at: Vector2, lift: Double = default) -> Vector3
+  func turned(by: Double) -> Plane3
+  init(origin: Vector3, normal: Vector3, up: Vector3 = default)
+  init?(origin: Vector3, right: Vector3, up: Vector3)
+  init?(through: [Vector3], facing: Vector3? = default, up: Vector3 = default)
+  let origin: Vector3
+  let right: Vector3
+  let up: Vector3
+  var flipped: Plane3 { get }
+  var matrix: simd.simd_float4x4 { get }
+  var normal: Vector3 { get }
 struct PointCloud: Sendable
   func transformed(by: simd.simd_float4x4) -> PointCloud
   init(points: [PointCloud.Point] = default)
@@ -6309,6 +6330,7 @@ struct Ray2: Equatable, Sendable
 struct Ray3: Equatable, Sendable
   func distance(to: Vector3) -> Double
   func distanceAlong(_: Vector3) -> Double
+  func hit(_: Plane3) -> Double?
   func hit(boxAt: Vector3, size: Vector3) -> Double?
   func hit(planeAt: Vector3, normal: Vector3) -> Double?
   func hit(sphereAt: Vector3, radius: Double) -> Double?

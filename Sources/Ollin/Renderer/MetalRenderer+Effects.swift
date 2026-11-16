@@ -4282,7 +4282,13 @@ extension MetalRenderer {
             // texture). Skip the batch if it can't be built (never expected; same shaders).
             let meshWireframe = batch.kind == .mesh3D && batch.meshWireframe
             let meshGrid = batch.kind == .mesh3D && batch.meshGrid
+            // A run outside the lit scene: painted with a picture, or depth alone.
+            // The drawer opens one only for those, so neither is ever a wireframe,
+            // a matcap, or a material's run.
+            let meshOccluder = batch.kind == .mesh3D && batch.meshOccluder
+            let meshPicture = batch.kind == .mesh3D && !meshOccluder && batch.picture != nil
             let meshMatcap = batch.kind == .mesh3D && !batch.meshWireframe && !meshGrid && batch.matcap != nil
+                && !meshPicture && !meshOccluder
             // A surface-mapped batch (any of the PBR map-set gates the drawer verified
             // and packed into the finish: metallic-roughness, occlusion, an emissive
             // map or constant emissive factor) takes the textured path's second twin.
@@ -4291,7 +4297,7 @@ extension MetalRenderer {
             // mesh can receive a stamp too (its map gates all stay zero, so it
             // shades as before, and a frame with no decals keeps its exact routing).
             let meshSurfaceMapped = batch.kind == .mesh3D && !batch.meshWireframe && !meshGrid
-                && !meshMatcap
+                && !meshMatcap && !meshPicture && !meshOccluder
                 && (batch.finish.usesSurfaceMaps || !drawer.placedDecals.isEmpty)
             // A normal-mapped batch (nonzero `finish.normalScale`, set only when the
             // drawer verified uvs + tangents) takes the textured path's twin pipeline;
@@ -4310,7 +4316,8 @@ extension MetalRenderer {
                                                    normalMapped: meshNormalMapped,
                                                    surfaceMapped: meshSurfaceMapped,
                                                    light: batch.particleStyle == .light,
-                                                   edges: batch.edgeSet != nil)
+                                                   edges: batch.edgeSet != nil,
+                                                   picture: meshPicture, occluder: meshOccluder)
             // A stencil-carrying pass (clipping active) needs every pipeline in it
             // to declare the stencil format, clipped or not.
             if hasStencil { pipelineKey.stencilFormat = .stencil8 }
@@ -4751,7 +4758,7 @@ extension MetalRenderer {
                 // content holds); wireframe, the grid, and matcap batches (the unlit
                 // stylized finish, e.g. an area light's glowing prop) are not in the
                 // traced scene and keep rastering, depth-tested against the traced depth.
-                if let pathTraced, !batch.meshWireframe, !batch.meshGrid, batch.matcap == nil {
+                if let pathTraced, !batch.meshWireframe, !batch.meshOutsideLighting, batch.matcap == nil {
                     compositePathTraced(pathTraced)
                     continue
                 }
@@ -4850,6 +4857,13 @@ extension MetalRenderer {
                     guard let texture = batch.matcap?.texture(for: device) else { continue }
                     encoder.setFragmentTexture(texture, index: 0)
                     encoder.setFragmentSamplerState(imageSampler, index: 0)
+                } else if meshPicture {
+                    // The picture through the plain sampler, the one a picture drawn
+                    // flat on the canvas reads through: a mesh painted with the
+                    // picture and left where it was has to come out as that picture.
+                    guard let texture = batch.picture?.texture(for: device) else { continue }
+                    encoder.setFragmentTexture(texture, index: 0)
+                    encoder.setFragmentSamplerState(imageSampler, index: 0)
                 }
                 encoder.setRenderPipelineState(state)
                 encoder.setVertexBuffer(meshBuffer, offset: batch.meshStart * meshStride, index: 0)
@@ -4860,7 +4874,7 @@ extension MetalRenderer {
                 if meshGrid {
                     var grid = batch.gridParams
                     encoder.setFragmentBytes(&grid, length: MemoryLayout<OllinGridParams>.stride, index: 0)
-                } else if !meshWireframe && !meshMatcap {
+                } else if !meshWireframe && !meshMatcap && !meshPicture && !meshOccluder {
                     bindLitMeshFragment(batch.finish, set: batch.lightSet)
                 }
                 profile.countDraw(batch.kind, count)
@@ -4873,7 +4887,8 @@ extension MetalRenderer {
                 // counter-clockwise seen from outside, which is what makes `.front`
                 // the faces toward the eye. Nothing else in the frame culls, so the
                 // cull mode goes back to none before the next batch.
-                if batch.finish.outline.w > 0, !meshWireframe, !meshGrid, !meshMatcap, peel == nil {
+                if batch.finish.outline.w > 0, !meshWireframe, !meshGrid, !meshMatcap,
+                   !meshPicture, !meshOccluder, peel == nil {
                     var outlineKey = PipelineKey.meshOutline(batch.blendMode, depth: depthFormat)
                     if hasStencil { outlineKey.stencilFormat = .stencil8 }
                     if let passColorFormat { outlineKey.colorFormat = passColorFormat }

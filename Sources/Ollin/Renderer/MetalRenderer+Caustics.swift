@@ -40,7 +40,7 @@ extension MetalRenderer {
         else { return false }
         return drawer.batches.contains { batch in
             batch.kind == .mesh3D && batch.target == nil
-                && !batch.meshWireframe && !batch.meshGrid
+                && !batch.meshWireframe && !batch.meshOutsideLighting
                 && Self.causticCasterFinish(batch.finish)
         }
     }
@@ -141,7 +141,7 @@ extension MetalRenderer {
         for i in batches.indices {
             let batch = batches[i]
             guard batch.kind == .mesh3D, batch.target == nil,
-                  !batch.meshWireframe, !batch.meshGrid,
+                  !batch.meshWireframe, !batch.meshOutsideLighting,
                   Self.causticCasterFinish(batch.finish) else { continue }
             let end = i + 1 < batches.count ? batches[i + 1].meshStart : meshVertices.count
             for v in batch.meshStart..<end {
@@ -273,7 +273,7 @@ extension MetalRenderer {
         for i in batches.indices {
             let batch = batches[i]
             guard batch.kind == .mesh3D, batch.target == nil,
-                  !batch.meshWireframe, !batch.meshGrid else { continue }
+                  !batch.meshWireframe, !batch.meshOutsideLighting else { continue }
             let end = i + 1 < batches.count ? batches[i + 1].meshStart : meshVertices.count
             let count = end - batch.meshStart
             guard count > 0 else { continue }

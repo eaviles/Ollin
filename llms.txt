@@ -163,6 +163,7 @@ The reference is the authority on what exists and how it behaves; the guide teac
 - [Atmosphere: fog, aerial perspective & volumetric light](Docs/3D/Atmosphere.md): the air between the camera and the scene. `fog` fades surfaces with distance and pools low with a height falloff (exact closed-form transmittance). `aerialPerspective` splits the…
 - [Volumes](Docs/3D/Volumes.md): a cloud placed in the scene.
 - [Depth compositing](Docs/3D/DepthCompositing.md): place 2D drawing *inside* a 3D scene, so it occludes the geometry and is occluded by it: `depth(at:)`, `project`, and `withBillboard` (a 2D label hidden when it swings behind the…
+- [Drawing on a real surface](Docs/3D/Surfaces.md): work on a wall or a floor that a camera's picture shows. `Plane3` is the surface as a value, and `withPlane(_:)` draws in its meters. `unproject(_:onto:)` turns a click into a…
 - [Record3D (RGBD recordings)](Docs/3D/Record3D.md): `import OllinRecord3D` turns an iPhone's color-plus-depth into a 3D point cloud, from a recorded `.r3d` file or a tethered phone's live USB stream
 - [RGBD frames and depth-lifted pose](Docs/3D/RGBD.md): the one `RGBDFrame` (color + depth + intrinsics) that any depth source produces.
 - [Phone (iPhone sensor stream)](Docs/3D/Phone.md): `import OllinPhone` reads a tethered iPhone's live on-device ARKit sensor stream from Ollin's own capture app, over the USB cable.
@@ -330,7 +331,7 @@ The reference is the authority on what exists and how it behaves; the guide teac
 
 ## The project
 
-- [Examples](Examples/README.md): 673 runnable sketches by category, each with its whole source
+- [Examples](Examples/README.md): 675 runnable sketches by category, each with its whole source
 - [Ollin architecture & internals](ARCHITECTURE.md)
 - [Ollin: the shipped-capability inventory](CAPABILITIES.md)
 - [Changelog](CHANGELOG.md)

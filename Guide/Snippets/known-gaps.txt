@@ -138,6 +138,7 @@ f3d818131e23  Guide/36-Seeing.md:470  argument type '@MainActor (Camera3D) -> ()
 92eee42032eb  Guide/36-Seeing.md:498  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
 0efaa6bbe105  Guide/36-Seeing.md:541  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
 87607515e1e0  Guide/36-Seeing.md:613  value of type '@MainActor (Camera3D) -> ()' has no member 'frame'
+f5e48713ab24  Guide/38-ThePhoneAsASensor.md:78  cannot find 'view' in scope
 4faac2f179b2  Guide/39-Listening.md:370  'module' is inaccessible due to 'internal' protection level
 104b31a4394e  Guide/39-Listening.md:40  'module' is inaccessible due to 'internal' protection level
 5d5750a0f86d  Guide/41-MakingSound.md:204  'module' is inaccessible due to 'internal' protection level

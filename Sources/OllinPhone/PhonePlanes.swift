@@ -93,6 +93,23 @@ public struct PhonePlane: Sendable, Identifiable {
                     indices: indices)
     }
 
+    /// The surface as a `Plane3`: somewhere to draw in meters. Its origin is
+    /// the surface's `center` and it faces along `normal`. On a wall, `x` runs
+    /// to the right of someone facing it and `y` climbs it. On a floor or a
+    /// table top, `x` is the room's x and `y` runs along the room's -z.
+    ///
+    /// ```swift
+    /// if let wall = device.planes.largest(of: .wall) {
+    ///     withPlane(wall.plane) { drawBox(size: 0.2) }
+    /// }
+    /// ```
+    ///
+    /// The directions come from the way the surface faces and the room's up,
+    /// so they hold still while the phone widens the outline. The origin moves
+    /// with the outline's middle as the surface grows; keep a `Plane3` of your
+    /// own once the surface has settled if a drawing must not shift.
+    public var plane: Plane3 { Plane3(origin: center, normal: normal) }
+
     /// The outline as a closed loop of points, the first point repeated at the end,
     /// ready to draw as a line around the edge.
     ///

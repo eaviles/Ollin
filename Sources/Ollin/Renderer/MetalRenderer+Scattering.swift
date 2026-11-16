@@ -120,7 +120,7 @@ extension MetalRenderer {
     /// textured mesh on the main canvas whose finish asked for it (a matcap bypasses
     /// lighting and material entirely, so it only ever occludes).
     private func batchScatters(_ b: GeometryBatch) -> Bool {
-        b.kind == .mesh3D && b.target == nil && !b.meshWireframe && !b.meshGrid
+        b.kind == .mesh3D && b.target == nil && !b.meshWireframe && !b.meshOutsideLighting
             && b.matcap == nil && b.finish.scatterStrength > 0 && b.finish.scatter.w > 0
     }
 
@@ -219,7 +219,7 @@ extension MetalRenderer {
             // scattering surface must suppress it); wireframes have no surface and
             // the grid is live chrome, matching the mesh-normal pass's walk.
             guard batch.kind == .mesh3D, batch.target == nil,
-                  !batch.meshWireframe, !batch.meshGrid else { continue }
+                  !batch.meshWireframe, !batch.meshOutsideLighting else { continue }
             let next = i + 1 < batches.count ? batches[i + 1] : nil
             let end = next?.meshStart ?? meshCount
             let count = end - batch.meshStart

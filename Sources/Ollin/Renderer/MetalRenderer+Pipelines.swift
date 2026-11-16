@@ -232,7 +232,7 @@ extension MetalRenderer {
                                 depthFormat: key.depthFormat, singleSample: key.singleSample,
                                 stencilFormat: key.stencilFormat, clipWrite: key.isClipWrite,
                                 colorFormat: key.colorFormat, peel: key.peel,
-                                untraced: key.untraced)
+                                untraced: key.untraced, depthOnly: key.isDepthOnly)
     }
 
     /// The fragment function a geometry pipeline draws through: the plain one, or,
@@ -384,7 +384,8 @@ extension MetalRenderer {
                               clipWrite: Bool = false,
                               colorFormat: MTLPixelFormat? = nil,
                               peel: Bool = false,
-                              untraced: Bool = false) throws -> MTLRenderPipelineState {
+                              untraced: Bool = false,
+                              depthOnly: Bool = false) throws -> MTLRenderPipelineState {
         guard let vertexFunction = library.makeFunction(name: vertex) else {
             throw RendererError.shaderFunctions
         }
@@ -416,9 +417,10 @@ extension MetalRenderer {
         // Geometry composites into the linear-float intermediate, not the drawable
         // (or into a single-precision layer, when the key names one).
         attachment.pixelFormat = colorFormat ?? linearFormat
-        if clipWrite {
-            // The clip push/pop draw only into the stencil: color fully masked off,
-            // blending irrelevant (and disabled).
+        if clipWrite || depthOnly {
+            // The clip push/pop draw only into the stencil, and a depth-only mesh
+            // only into the depth: color fully masked off, blending irrelevant
+            // (and disabled).
             attachment.writeMask = []
             attachment.isBlendingEnabled = false
             return try device.makeRenderPipelineState(descriptor: descriptor)

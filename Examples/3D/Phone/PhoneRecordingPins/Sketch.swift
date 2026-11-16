@@ -20,8 +20,9 @@ import OllinPhone
 /// documents) and set `OLLIN_PHONE_RECORDING` to its path. The pins then stand
 /// in a row two meters in front of where your recording began.
 ///
-/// Nothing drawn here hides behind a real thing yet: a pin placed behind a
-/// table draws over the table.
+/// Nothing here is hidden by a real thing: every pin stands in front of what
+/// the picture shows. `occluding { }` is how a real surface hides a drawn
+/// thing, and `PhonePoster` beside this sketch uses it.
 ///
 /// Keys: **space** holds the recording and carries on, and while it is held
 /// the **left** and **right** arrows step a frame at a time.

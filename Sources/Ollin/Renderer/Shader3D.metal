@@ -8089,6 +8089,83 @@ fragment float4 ollin_mesh_matcap_fragment(MeshMatcapOut in [[stage_in]],
     return ollin_blend_ready(float4(tex.rgb * srgbToLinear(in.color.rgb), in.color.a));
 }
 
+// MARK: - Picture-painted 3D mesh
+//
+// A mesh colored by a picture as a camera saw it: each point of the surface
+// shows the pixel that camera had of it. The drawer works out, for every
+// vertex, where the point stood in the picture when it was painted, and hands
+// that over as three numbers that run straight across a triangle (the place
+// times its distance from the camera, and that distance). Their ratio is the
+// place in the picture, and it is taken here for each pixel, so a wall-sized
+// triangle seen at a slant is still exact. The mesh may have moved since it
+// was painted: the numbers are of where it stood, the position of where it is.
+//
+// The vertex's `color` slot carries those numbers (xy = the place times w,
+// w = the distance) and its `tangent` slot the fill as four half floats, since
+// the paint leaves no room for a color of its own. Unlit: the picture already
+// holds the light of the room it was taken in.
+
+struct MeshPictureOut {
+    float4 position [[position]];
+    float4 paint;        // the place in the picture, 0…1 from its top left, times w; w = the distance
+    float4 tint;         // the fill, straight alpha
+    float3 viewNormal;   // the view-space normal and position, for the hidden layer's
+    float3 viewPos;      // facing test (the fragment has no camera of its own)
+};
+
+vertex MeshPictureOut ollin_mesh_picture_vertex(uint vid [[vertex_id]],
+                                                const device OllinMeshVertex *verts [[buffer(0)]],
+                                                constant Uniforms3D &u [[buffer(2)]]) {
+    OllinMeshVertex v = verts[vid];
+    MeshPictureOut out;
+    float4 viewPos = u.view * float4(v.position.xyz, 1.0);
+    out.position = u.projection * viewPos;
+    out.viewPos = viewPos.xyz;
+    out.viewNormal = normalize(float3x3(u.view[0].xyz, u.view[1].xyz, u.view[2].xyz) * v.normal.xyz);
+    out.paint = v.color;
+    out.tint = float4(v.tangent);
+    return out;
+}
+
+fragment float4 ollin_mesh_picture_fragment(MeshPictureOut in [[stage_in]],
+                                            texture2d<float> picture [[texture(0)]],
+                                            sampler samp [[sampler(0)]],
+                                            constant OllinPeel &peel [[buffer(10), function_constant(kOllinPeel)]],
+                                            depth2d<float> peelDepth [[texture(29), function_constant(kOllinPeel)]]) {
+    // The place in the picture, and how fast it moves across the screen, both
+    // taken before anything is thrown away: a read after a per-pixel discard
+    // has no footprint of its own to choose a level from.
+    float distance = in.paint.w;
+    float2 uv = in.paint.xy / max(distance, 1e-20);
+    float2 across = dfdx(uv), down = dfdy(uv);
+    if (kOllinPeel && ollin_peel_rejects(in.position.xy, in.position.z,
+            dot(normalize(in.viewNormal), normalize(-in.viewPos)), peelDepth, peel)) {
+        discard_fragment();
+    }
+    // Behind the camera that took the picture, or outside what it saw, there
+    // is no pixel to paint with, and nothing is drawn: not even depth.
+    if (distance <= 0.0 || any(uv < 0.0) || any(uv > 1.0)) { discard_fragment(); }
+    // The picture is an sRGB texture, so the sample is linear and premultiplied
+    // (the image path's convention); the fill tints it, white leaving it as it was.
+    float4 c = picture.sample(samp, uv, gradient2d(across, down));
+    c.rgb *= srgbToLinear(in.tint.rgb);
+    c *= in.tint.a;
+    if (c.a <= 0.0) { discard_fragment(); }
+    return ollin_blend_ready_premultiplied(c);
+}
+
+// MARK: - Depth-only 3D mesh
+//
+// A mesh that hides what is behind it and shows nothing of itself: its pipeline
+// writes depth with every color channel masked off, so whatever was already on
+// the canvas there (a camera's picture of the real thing this mesh stands for)
+// stays, and anything drawn later behind it fails the depth test. The vertex
+// stage is the picture mesh's; the color returned here is never written.
+
+fragment float4 ollin_mesh_occluder_fragment(MeshPictureOut in [[stage_in]]) {
+    return ollin_blend_ready(float4(0.0));
+}
+
 // MARK: - Mesh normal G-buffer
 //
 // A depth-tested pass that writes each mesh's view-space surface normal into a float

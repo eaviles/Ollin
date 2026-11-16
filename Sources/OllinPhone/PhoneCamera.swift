@@ -139,6 +139,62 @@ public struct PhoneCamera {
         return Camera3D(eye: eye, target: eye + forward, up: up, near: near, far: far,
                         projection: .intrinsic(lens))
     }
+
+    /// A 3D camera whose view is the whole picture, uncropped: the phone's own
+    /// lens at the picture's own size. This is the camera a picture is painted
+    /// from (`painted(with:from:)`), where `camera3D(covering:)` is the one a
+    /// canvas is looked through.
+    public func pictureCamera(near: Double = 0.01, far: Double = 100) -> Camera3D {
+        let eye = position
+        return Camera3D(eye: eye, target: eye + forward, up: up, near: near, far: far,
+                        projection: .intrinsic(intrinsics))
+    }
+
+    /// The line of sight through a point of a canvas of `size` that the
+    /// picture covers (`pictureRectangle(covering:)`): from where the camera
+    /// stood, out through that point of the picture, into the room.
+    ///
+    /// Met with a surface, it is the place in the room under a click, and it
+    /// needs no frame to be drawing, so an input hook can ask:
+    ///
+    /// ```swift
+    /// override func mousePressed() {
+    ///     guard let view = device.latestCamera else { return }
+    ///     let ray = view.ray(through: mouse, covering: Vector2(width, height))
+    ///     if let spot = wall.intersection(with: ray) { pins.append(spot) }
+    /// }
+    /// ```
+    public func ray(through canvasPoint: Vector2, covering size: Vector2) -> Ray3 {
+        let placed = pictureRectangle(covering: size)
+        let w = Double(intrinsics.width)
+        let scale = w > 0 && placed.width > 0 ? placed.width / w : 1
+        // The canvas point carried back onto the picture, then the pinhole rule
+        // read backward for the direction one unit ahead of the lens.
+        let column = (canvasPoint.x - placed.x) / scale
+        let row = (canvasPoint.y - placed.y) / scale
+        let fx = intrinsics.fx != 0 ? intrinsics.fx : 1
+        let fy = intrinsics.fy != 0 ? intrinsics.fy : 1
+        let right = Vector3(Double(pose.columns.0.x), Double(pose.columns.0.y), Double(pose.columns.0.z))
+        let direction = forward + right * ((column - intrinsics.cx) / fx)
+            + up * (-(row - intrinsics.cy) / fy)
+        return Ray3(origin: position, direction: direction)
+    }
+
+    /// Where a point of the room falls on a canvas of `size` that the picture
+    /// covers, or `nil` when the point is behind the camera. The same answer
+    /// `project(_:)` gives after `camera(_:)`, without a frame to be drawing.
+    public func canvasPoint(of point: Vector3, covering size: Vector2) -> Vector2? {
+        let d = point - position
+        let ahead = d.dot(forward)
+        guard ahead > 1e-9 else { return nil }
+        let right = Vector3(Double(pose.columns.0.x), Double(pose.columns.0.y), Double(pose.columns.0.z))
+        let column = intrinsics.fx * d.dot(right) / ahead + intrinsics.cx
+        let row = intrinsics.cy - intrinsics.fy * d.dot(up) / ahead
+        let placed = pictureRectangle(covering: size)
+        let w = Double(intrinsics.width)
+        let scale = w > 0 ? placed.width / w : 1
+        return Vector2(placed.x + column * scale, placed.y + row * scale)
+    }
 }
 
 public extension Sketch {
@@ -161,5 +217,39 @@ public extension Sketch {
     /// meters.
     func camera(_ view: PhoneCamera, near: Double = 0.01, far: Double = 100) {
         camera(view.camera3D(covering: Vector2(width, height), near: near, far: far))
+    }
+
+    /// Paint the meshes drawn in `body` with the phone camera's picture, as
+    /// the phone saw it: every point of a mesh shows the pixel the camera had
+    /// of that point. After `drawPhonePicture(_:)` and `camera(_:)` for the
+    /// same `PhoneCamera`, a painted mesh left where it is changes nothing on
+    /// the canvas, and one moved inside the block carries its pixels along:
+    ///
+    /// ```swift
+    /// drawPhonePicture(view)
+    /// camera(view)
+    /// withPlane(wall) {
+    ///     translate(tile.x, tile.y)           // where the tile is on the wall
+    ///     painted(with: view) {
+    ///         translate(0, 0, 0.1)            // ten centimeters out of it
+    ///         drawBox(width: 0.2, height: 0.2, depth: 0.01)
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// A mesh takes its pixels where it stands when the block opens, and a
+    /// transform inside the block moves it afterwards. See
+    /// `painted(with:from:_:)` for the rest of what a painted mesh does. With
+    /// no picture on the frame (the cable sends none) the block draws its
+    /// meshes as plain ones.
+    func painted(with view: PhoneCamera, _ body: () -> Void) {
+        guard let picture = view.picture else { return body() }
+        painted(with: picture, from: view.pictureCamera(), body)
+    }
+
+    /// Draw in the coordinates of a surface the phone found: `withPlane(_:)`
+    /// for the surface's own `plane`.
+    func withPlane(_ surface: PhonePlane, _ body: () -> Void) {
+        withPlane(surface.plane, body)
     }
 }

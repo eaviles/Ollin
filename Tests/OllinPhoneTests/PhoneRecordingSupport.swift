@@ -41,6 +41,77 @@ final class SyntheticRoom: Sketch {
 
     static let markRadius = 0.05
 
+    // MARK: The back wall, for drawing on
+
+    /// The back wall's face: every point of it has this z, and it faces +z.
+    static let wallZ = -1.55
+    /// The side of one of the wall's square tiles, in meters. The tiles' edges
+    /// fall on whole multiples of it in x and in y.
+    static let tileSize = 0.25
+
+    /// A poster on the wall: its four corners in order, top left first as
+    /// someone facing the wall sees it.
+    static let posterCorners: [Vector3] = [
+        Vector3(0.2, 2.225, wallZ), Vector3(0.9, 2.225, wallZ),
+        Vector3(0.9, 1.275, wallZ), Vector3(0.2, 1.275, wallZ),
+    ]
+
+    /// How far off the wall's face the poster's marks lie: they are flat disks
+    /// on the poster, which itself stands a few millimeters proud of the wall.
+    /// A mark on a wall has to be flat. A ball sunk into the wall shows a
+    /// half-ball, whose visible middle from the side is not over its center.
+    static let posterMarkLift = 0.01
+
+    /// A mark on each corner of the poster. Each `point` is the middle of the
+    /// mark's own disk, on the wall's surface moved out by `posterMarkLift`.
+    /// They take the colors of the room's own marks, which a video codec keeps
+    /// apart (two saturated hues a step apart, a blue and a violet, bleed into
+    /// each other at their edges and pull each other's middle by pixels), so a
+    /// room that shows its wall's detail leaves the floating marks out.
+    static let posterMarks: [Mark] = {
+        let proud = Vector3(0, 0, posterMarkLift)
+        return zip(posterCorners, marks).map { corner, mark in
+            Mark(point: corner + proud, color: mark.color, matches: mark.matches)
+        }
+    }()
+
+    /// A flat disk facing the room, for a mark that lies on the wall.
+    static let markDisk: Mesh = {
+        let sides = 48
+        var positions = [Vector3.zero]
+        var indices: [UInt32] = []
+        for i in 0..<sides {
+            let a = 2 * Double.pi * Double(i) / Double(sides)
+            positions.append(Vector3(cos(a) * markRadius, sin(a) * markRadius, 0))
+            indices += [0, UInt32(1 + i), UInt32(1 + (i + 1) % sides)]
+        }
+        return Mesh(positions: positions, normals: [Vector3](repeating: .unitZ, count: positions.count),
+                    indices: indices)
+    }()
+
+    /// The wall's tiles as one mesh, a hair in front of the wall's face: square
+    /// cells with the darker wall showing between them as grout, in four muted
+    /// tones laid out by a fixed rule.
+    static let wallTiles: Mesh = {
+        let tones = [Color(hex: 0x8E9AA6), Color(hex: 0x7C8894), Color(hex: 0x99A3AD), Color(hex: 0x86929E)]
+        var positions: [Vector3] = [], normals: [Vector3] = [], colors: [Color] = []
+        var indices: [UInt32] = []
+        let grout = 0.012, z = wallZ + 0.002
+        for row in 0..<18 {
+            for column in -14..<14 {
+                let x0 = Double(column) * tileSize + grout, x1 = Double(column + 1) * tileSize - grout
+                let y0 = Double(row) * tileSize + grout, y1 = Double(row + 1) * tileSize - grout
+                let base = UInt32(positions.count)
+                positions += [Vector3(x0, y0, z), Vector3(x1, y0, z), Vector3(x1, y1, z), Vector3(x0, y1, z)]
+                normals += [Vector3](repeating: .unitZ, count: 4)
+                let tone = tones[abs(column * 7 + row * 13 + (column * row) % 5) % tones.count]
+                colors += [Color](repeating: tone, count: 4)
+                indices += [base, base + 1, base + 2, base, base + 2, base + 3]
+            }
+        }
+        return Mesh(positions: positions, normals: normals, indices: indices, colors: colors)
+    }()
+
     /// The solids standing in the room: each one's middle, its size, and its
     /// color, muted so none is mistaken for a mark.
     static let solids: [(center: Vector3, size: Vector3, color: Color)] = [
@@ -61,6 +132,13 @@ final class SyntheticRoom: Sketch {
     /// Whether the marks are drawn. A recording made to be looked at leaves
     /// them out; one made to be measured keeps them.
     var showsMarks = true
+    /// Whether the back wall is tiled and carries its poster: the surface the
+    /// drawing-on-a-wall work is measured on. Off, the wall is the plain one
+    /// the first recordings were made of.
+    var showsWallDetail = false
+    /// Whether the walk passes close along the back wall (a loop), where a
+    /// thing lifted off the wall slides plainly against it.
+    var facesWall = false
 
     /// The lens the room is drawn through. The point it looks through sits off
     /// the middle on purpose, and its two focal lengths differ.
@@ -83,8 +161,17 @@ final class SyntheticRoom: Sketch {
 
     /// Where the camera stands on a frame of the walk: it moves about a meter
     /// across the room, looks at a point that sways, and rolls a little.
-    static func walk(at frame: Int, of total: Int,
-                     loop: Bool = false) -> (eye: Vector3, target: Vector3, up: Vector3) {
+    static func walk(at frame: Int, of total: Int, loop: Bool = false,
+                     wall: Bool = false) -> (eye: Vector3, target: Vector3, up: Vector3) {
+        if wall {
+            // Side to side a little over two meters from the back wall, looking
+            // at it, the last frame one step short of the first.
+            let a = 2 * Double.pi * Double(frame) / Double(max(1, total))
+            let eye = Vector3(0.9 * sin(a), 1.45 + 0.1 * sin(2 * a), 0.75 + 0.2 * cos(a))
+            let target = Vector3(0.35 * sin(a + 0.5), 1.45 + 0.08 * cos(a), wallZ)
+            let roll = 0.04 * sin(a)
+            return (eye, target, Vector3(sin(roll), cos(roll), 0))
+        }
         if loop {
             // Once round a flattened circle in front of the room, swaying as it
             // goes, the last frame one step short of the first.
@@ -103,8 +190,9 @@ final class SyntheticRoom: Sketch {
 
     /// The camera's place on a frame as a camera-to-world matrix: x to the
     /// picture's right, y to its top, looking along -z.
-    static func pose(at frame: Int, of total: Int, loop: Bool = false) -> simd_float4x4 {
-        let (eye, target, up) = walk(at: frame, of: total, loop: loop)
+    static func pose(at frame: Int, of total: Int, loop: Bool = false,
+                     wall: Bool = false) -> simd_float4x4 {
+        let (eye, target, up) = walk(at: frame, of: total, loop: loop, wall: wall)
         let e = SIMD3<Double>(eye.x, eye.y, eye.z)
         let z = simd_normalize(e - SIMD3<Double>(target.x, target.y, target.z))
         let x = simd_normalize(simd_cross(SIMD3<Double>(up.x, up.y, up.z), z))
@@ -119,7 +207,7 @@ final class SyntheticRoom: Sketch {
     /// the pinhole rule written out here on its own: nothing of the framework's
     /// projection is asked.
     func pixel(of point: Vector3, at frame: Int) -> Vector2 {
-        let pose = Self.pose(at: frame, of: frameTotal, loop: isLoop)
+        let pose = Self.pose(at: frame, of: frameTotal, loop: isLoop, wall: facesWall)
         let d = SIMD3<Double>(point.x, point.y, point.z)
             - SIMD3<Double>(Double(pose.columns.3.x), Double(pose.columns.3.y), Double(pose.columns.3.z))
         func axis(_ c: SIMD4<Float>) -> SIMD3<Double> { SIMD3<Double>(Double(c.x), Double(c.y), Double(c.z)) }
@@ -130,7 +218,7 @@ final class SyntheticRoom: Sketch {
     }
 
     override func draw() {
-        let (eye, target, up) = Self.walk(at: walkFrame, of: frameTotal, loop: isLoop)
+        let (eye, target, up) = Self.walk(at: walkFrame, of: frameTotal, loop: isLoop, wall: facesWall)
         background(Color(hex: 0x1B1D21))
         camera(Camera3D(eye: eye, target: target, up: up, near: 0.01, far: 100,
                         projection: .intrinsic(lens)))
@@ -147,6 +235,29 @@ final class SyntheticRoom: Sketch {
             translate(0, 2.25, -1.6)
             fill(Color(hex: 0x4E5661))
             drawBox(width: 7, height: 4.5, depth: 0.1)
+        }
+        if showsWallDetail {
+            // The tiles take their own colors, so the fill is white. Then the
+            // poster: a dark frame, a pale sheet, and three flat shapes on it.
+            fill(.white)
+            drawMesh(Self.wallTiles)
+            let c = Self.posterCorners
+            func sheet(_ color: Color, left: Double, right: Double, bottom: Double, top: Double, lift: Double) {
+                // Fractions of the poster's own width and height, from its bottom left.
+                let x0 = c[3].x + (c[1].x - c[3].x) * left, x1 = c[3].x + (c[1].x - c[3].x) * right
+                let y0 = c[3].y + (c[1].y - c[3].y) * bottom, y1 = c[3].y + (c[1].y - c[3].y) * top
+                let z = Self.wallZ + lift
+                fill(color)
+                drawMesh(Mesh(positions: [Vector3(x0, y0, z), Vector3(x1, y0, z),
+                                          Vector3(x1, y1, z), Vector3(x0, y1, z)],
+                              normals: [Vector3](repeating: .unitZ, count: 4),
+                              indices: [0, 1, 2, 0, 2, 3]))
+            }
+            sheet(Color(hex: 0x2E2A26), left: 0, right: 1, bottom: 0, top: 1, lift: 0.004)
+            sheet(Color(hex: 0xD8D0BE), left: 0.04, right: 0.96, bottom: 0.03, top: 0.97, lift: 0.006)
+            sheet(Color(hex: 0xB5533C), left: 0.14, right: 0.86, bottom: 0.52, top: 0.88, lift: 0.008)
+            sheet(Color(hex: 0x35506B), left: 0.14, right: 0.47, bottom: 0.14, top: 0.44, lift: 0.008)
+            sheet(Color(hex: 0xC59B3B), left: 0.53, right: 0.86, bottom: 0.14, top: 0.44, lift: 0.008)
         }
         withState {
             noLights()
@@ -167,13 +278,22 @@ final class SyntheticRoom: Sketch {
             }
         }
 
-        // The marks, flat and saturated.
-        for mark in Self.marks where showsMarks {
+        // The marks, flat and saturated: balls in the room's air, and flat
+        // disks on the poster's corners when the wall carries its poster.
+        for mark in Self.marks where showsMarks && !showsWallDetail {
             withState {
                 noLights()
                 translate(mark.point)
                 fill(mark.color)
                 drawSphere(radius: Self.markRadius, segments: 32, rings: 16)
+            }
+        }
+        for mark in Self.posterMarks where showsMarks && showsWallDetail {
+            withState {
+                noLights()
+                translate(mark.point)
+                fill(mark.color)
+                drawMesh(Self.markDisk)
             }
         }
     }
@@ -207,6 +327,7 @@ struct SyntheticRecording {
                       repeatingTimeAt stuck: Set<Int> = [],
                       finish: Bool = true, to destination: URL? = nil,
                       isLoop: Bool = false, showsMarks: Bool = true, bitRate: Int? = nil,
+                      wallDetail: Bool = false, facesWall: Bool = false,
                       also: (_ frame: Int, _ time: Double) -> [PhoneMessage] = { _, _ in [] })
         async throws -> SyntheticRecording {
         let folder = destination ?? FileManager.default.temporaryDirectory
@@ -215,6 +336,8 @@ struct SyntheticRecording {
         let room = SyntheticRoom(width: width, height: height, frames: frames)
         room.isLoop = isLoop
         room.showsMarks = showsMarks
+        room.showsWallDetail = wallDetail
+        room.facesWall = facesWall
         let writer = try PhoneRecordingWriter(folder: folder, mode: mode, quarterTurnsCW: quarterTurnsCW,
                                               device: "Synthetic", started: Date(timeIntervalSince1970: 1_794_614_400),
                                               framesPerSecond: framesPerSecond,
@@ -257,7 +380,7 @@ struct SyntheticRecording {
     /// sensor y = upright x. A pixel `(u, v)` of the upright picture was the
     /// sensor's `(v, W - u)`, `W` the upright width.
     func sensorCamera(at frame: Int) -> PhoneCameraSample {
-        let upright = SyntheticRoom.pose(at: frame, of: frames, loop: room.isLoop)
+        let upright = SyntheticRoom.pose(at: frame, of: frames, loop: room.isLoop, wall: room.facesWall)
         let k = room.lens
         let w = Double(k.width), h = Double(k.height)
         var transform = upright
@@ -286,6 +409,37 @@ struct SyntheticRecording {
     }
 
     func remove() { try? FileManager.default.removeItem(at: folder) }
+
+    /// The room's flat surfaces as the messages a phone in Room mode sends:
+    /// the floor, the back wall's face, and the top of the first solid.
+    static func surfaces(at time: Double) -> [PhoneMessage] {
+        func plane(_ index: UInt8, _ surface: PhoneSurface, _ alignment: PhonePlaneAlignment,
+                   _ transform: simd_float4x4, width: Float, height: Float) -> PhoneMessage {
+            let id = UUID(uuid: (0x0A, 0x11, 0x1E, 0x50, 0, 0, 0x40, 0, 0x80, 0, 0, 0, 0, 0, 0, index))
+            return .plane(PhonePlaneSample(isTracked: true, timestamp: time, id: id, scan: 1,
+                                           transform: transform, width: width, height: height,
+                                           alignment: alignment, surface: surface))
+        }
+        func placed(_ x: SIMD3<Float>, _ y: SIMD3<Float>, _ z: SIMD3<Float>, _ t: SIMD3<Float>) -> simd_float4x4 {
+            simd_float4x4(SIMD4<Float>(x, 0), SIMD4<Float>(y, 0), SIMD4<Float>(z, 0), SIMD4<Float>(t, 1))
+        }
+        let level = (SIMD3<Float>(1, 0, 0), SIMD3<Float>(0, 1, 0), SIMD3<Float>(0, 0, 1))
+        let table = SyntheticRoom.solids[0]
+        return [
+            plane(1, .floor, .horizontal, placed(level.0, level.1, level.2, .zero), width: 7, height: 7),
+            // A surface lies in its anchor's own x and z, its up along the
+            // anchor's y: for the wall that y is the room's +z.
+            plane(2, .wall, .vertical,
+                  placed(SIMD3<Float>(1, 0, 0), SIMD3<Float>(0, 0, 1), SIMD3<Float>(0, -1, 0),
+                         SIMD3<Float>(0, 1.5, Float(SyntheticRoom.wallZ))),
+                  width: 7, height: 3),
+            plane(3, .table, .horizontal,
+                  placed(level.0, level.1, level.2,
+                         SIMD3<Float>(Float(table.center.x), Float(table.center.y + table.size.y / 2),
+                                      Float(table.center.z))),
+                  width: Float(table.size.x), height: Float(table.size.z)),
+        ]
+    }
 }
 
 /// A `CGImage` as the BGRA pixel buffer a video writer takes.
