@@ -288,7 +288,9 @@
       "Recreations/JaredTarbell/Substrate"
     ],
     "Recreations/JohnWhitney": [
-      "Recreations/JohnWhitney/Permutations"
+      "Recreations/JohnWhitney/Permutations",
+      "Recreations/JohnWhitney/Arabesque",
+      "Recreations/JohnWhitney/Matrix"
     ],
     "Recreations/JosefAlbers": [
       "Recreations/JosefAlbers/Homage"
@@ -831,10 +833,12 @@
     },
     "Recreations/JohnWhitney": {
       "of": [
-        "Recreations/JohnWhitney/Permutations"
+        "Recreations/JohnWhitney/Permutations",
+        "Recreations/JohnWhitney/Arabesque",
+        "Recreations/JohnWhitney/Matrix"
       ],
-      "image": "groups/Recreations-JohnWhitney.jpg?v=159184a5",
-      "imageSmall": "groups/Recreations-JohnWhitney-640.jpg?v=1f957730"
+      "image": "groups/Recreations-JohnWhitney.jpg?v=f3e72bf4",
+      "imageSmall": "groups/Recreations-JohnWhitney-640.jpg?v=3b6b7cd9"
     },
     "Recreations/JosefAlbers": {
       "of": [
@@ -10377,6 +10381,50 @@
       "loopSmall": "examples/Recreations/JesusRafaelSoto/Vibracion/loop-640.mp4?v=a197ff60",
       "still": "examples/Recreations/JesusRafaelSoto/Vibracion/still.jpg?v=8663d1cd",
       "stillSmall": "examples/Recreations/JesusRafaelSoto/Vibracion/still-640.jpg?v=b0f8bd13",
+      "seed": 1
+    },
+    "Recreations/JohnWhitney/Arabesque": {
+      "width": 1440,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 455,
+      "motion": 11.158,
+      "sound": false,
+      "source": "623e3cf9eb279c43",
+      "rendered": "2026-11-16",
+      "bytes": {
+        "loop": 29706295,
+        "loopSmall": 3047591,
+        "still": 129002,
+        "stillSmall": 53399
+      },
+      "loop": "examples/Recreations/JohnWhitney/Arabesque/loop.mp4?v=cbd0c841",
+      "loopSmall": "examples/Recreations/JohnWhitney/Arabesque/loop-640.mp4?v=31e79427",
+      "still": "examples/Recreations/JohnWhitney/Arabesque/still.jpg?v=eff1671f",
+      "stillSmall": "examples/Recreations/JohnWhitney/Arabesque/still-640.jpg?v=55b81612",
+      "seed": 1
+    },
+    "Recreations/JohnWhitney/Matrix": {
+      "width": 1440,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 340,
+      "motion": 12.265,
+      "sound": false,
+      "source": "01f0d9f8e5f89fee",
+      "rendered": "2026-11-16",
+      "bytes": {
+        "loop": 53459478,
+        "loopSmall": 3027083,
+        "still": 44377,
+        "stillSmall": 21619
+      },
+      "loop": "examples/Recreations/JohnWhitney/Matrix/loop.mp4?v=373d9d69",
+      "loopSmall": "examples/Recreations/JohnWhitney/Matrix/loop-640.mp4?v=07009686",
+      "still": "examples/Recreations/JohnWhitney/Matrix/still.jpg?v=e182e33a",
+      "stillSmall": "examples/Recreations/JohnWhitney/Matrix/still-640.jpg?v=cf5c6824",
       "seed": 1
     },
     "Recreations/JohnWhitney/Permutations": {

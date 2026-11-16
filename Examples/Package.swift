@@ -942,6 +942,11 @@ let package = Package(
         // after Josef Albers's "Homage to the Square".
         example("Recreations/JosefAlbers/Homage"),
         example("Recreations/JohnWhitney/Permutations"),
+        // A ring of numbered points all moving right, each at its number's
+        // rate, stopping at whole-number fractions of the cycle to turn over;
+        // and squares at whole-number rates on a path that is never drawn.
+        example("Recreations/JohnWhitney/Arabesque"),
+        example("Recreations/JohnWhitney/Matrix"),
         // A wall drawing is a written instruction that somebody else draws, after
         // Sol LeWitt: fifty points all connected, and the compass alphabet's
         // two-part combinations.

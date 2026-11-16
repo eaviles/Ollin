@@ -11,6 +11,7 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 - **A point pinned from a click, and a layer on four of them.** `unproject(_:onto:)` turns a click into a point that stays on a wall. `drawImage(_:topLeft:topRight:bottomRight:bottomLeft:)` lays an image or a layer on four points of space. The `PhoneWallTiles` and `PhonePoster` examples use both. [Surfaces](Docs/3D/Surfaces.md#pinned-points)
 - **The phone's camera as a 3D camera.** `device.latestCamera` says where the camera stood and what its lens was, in every ARKit mode. `drawPhonePicture(_:)` and `camera(_:)` put a sketch in the room the phone saw. [Phone](Docs/3D/Phone.md#the-cameras-place-and-lens)
 - **A chain that learns a picture.** `MarkovGrid` learns small pictures, written as rows of any value, and writes new grids with the same local habits: `nextRows(_:columns:)` for a whole field, `nextRow(columns:)` for a strip without end. `order` sets how many cells around a place it reads. The `Patterns/MarkovGrid` example writes a town, a maze, and a wall. [MarkovGrid](Docs/Generators/MarkovGrid.md)
+- **A second visit to John Whitney.** Two more homages join `Permutations`. `Arabesque` is a ring of 360 points all moving right at whole-number rates, stopping at each fifth of its cycle to turn over. `Matrix` is twenty-four squares at whole-number rates on a path that is never drawn. Both loop exactly. [John Whitney](Examples/Recreations/JohnWhitney/)
 
 ### Changed
 
