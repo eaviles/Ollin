@@ -32,7 +32,7 @@ final class SummedArea_Example: Sketch {
     @Param(24 ... 400, icon: "square.dashed") var window = 150.0
     @Param(0 ... 0.4, icon: "slider.horizontal.below.rectangle") var bias = 0.15
     @Param(0 ... 400, icon: "drop") var blur = 30.0
-    @Param(0 ... 1, icon: "circle.lefthalf.filled") var cut = 0.5
+    @Param(0 ... 1, icon: "circle.lefthalf.filled") var cut = 0.73
 
     let paper = Color(hex: 0xF2ECE0)
     let ink = Color(hex: 0x1B2028)

@@ -17,6 +17,13 @@
 // aux is sampled by the same normalized uv, so it can render at a different scale.
 // All stay premultiplied-linear in and out, like the rest of the chain.
 
+// A map texel as the numbers a sketch wrote, 0 to 1: what the two-input ops below
+// read where the aux is a gray or a vector and not a picture. Its alpha is left to
+// the caller, as the weight of whatever the numbers ask for.
+static inline float3 ollin_map_written(float4 m) {
+    return saturate(ollin_as_written(ollin_unpremul(m)));
+}
+
 // mask: keep the base where the aux reads bright (luminance) or opaque (alpha),
 // fading to transparent elsewhere. params[0].x selects the channel (0 = luminance,
 // 1 = alpha), .y inverts. The base is premultiplied, so scaling the whole texel by
@@ -28,43 +35,67 @@ fragment float4 ollin_fx_mask(PresentOut in [[stage_in]],
                               constant float4 *params [[buffer(0)]]) {
     float4 b = base.sample(samp, in.uv);
     float4 m = msk.sample(samp, in.uv);
-    // Luminance reads the premultiplied rgb directly, so a transparent texel (rgb 0)
-    // masks out and coverage is honored; alpha reads the matte straight.
-    float k = (params[0].x < 0.5) ? ollin_luma(m.rgb) : m.a;
+    // Luminance is the gray as written under its coverage, so `Color(white: 0.5)`
+    // keeps half, a transparent texel masks out, and a soft white mark is its own
+    // alpha; alpha reads the matte straight.
+    float k = (params[0].x < 0.5)
+        ? saturate(ollin_as_written(float3(ollin_luma(ollin_unpremul(m)))).x) * m.a
+        : m.a;
     if (params[0].y > 0.5) k = 1.0 - k;
     return b * clamp(k, 0.0, 1.0);
 }
 
-// displace: offset the base's sample by the aux read as a vector field — red/green
-// recentered from [0,1] to [-amount, amount] (mid-gray = no shift). params[0].x is
-// the max shift as a fraction of the layer. The classic displacement map: feed it
-// noise or a gradient for ripples, smearing, and refraction.
+// How far a map's red and green sit from mid-gray, -1 to 1, weighted by the map's
+// alpha: the vector `displace` shifts by and the line integral convolution walks
+// along. The numbers are the ones written, so `Color(white: 0.5)` is no vector, and
+// so is a texel nothing was drawn into; a soft-edged mark on a clear layer fades
+// out with its alpha. A layer cannot hold 0.5 as written exactly (a half float
+// lands a step under it, an 8-bit picture has 127 and 128 on either side), so a
+// vector shorter than one 8-bit step counts as none. A longer one is shortened by
+// that step, which keeps the push continuous, and stretched so a full push along
+// an axis is still 1; its direction is untouched.
+static inline float2 ollin_map_vector(float4 m) {
+    const float still = 1.0 / 255.0;
+    float2 d = ollin_map_written(m).rg - 0.5;
+    float len = length(d);
+    if (len <= still) return float2(0.0);
+    return d * ((len - still) / (len * (0.5 - still))) * m.a;
+}
+
+// displace: offset the base's sample by the aux read as a vector field: red and
+// green as written, from -amount at 0 to amount at 1 with mid-gray no shift, under
+// the map's alpha (see ollin_map_vector). params[0].x is the max shift as a
+// fraction of the layer. The classic displacement map: draw it over mid-gray, or
+// on a clear layer, for ripples, smearing, and refraction.
 fragment float4 ollin_fx_displace(PresentOut in [[stage_in]],
                                   texture2d<float> base [[texture(0)]],
                                   texture2d<float> map [[texture(1)]],
                                   sampler samp [[sampler(0)]],
                                   constant float4 *params [[buffer(0)]]) {
-    float2 v = ollin_unpremul(map.sample(samp, in.uv)).rg;
-    float2 off = (v - 0.5) * 2.0 * params[0].x;
+    float2 off = ollin_map_vector(map.sample(samp, in.uv)) * params[0].x;
     return base.sample(samp, clamp(in.uv + off, 0.0, 1.0));
 }
 
 // The unit direction of a line-integral-convolution field at `uv`, or zero where
 // the field is still, by the encoding in `mode`: 0 reads red/green as a vector
-// around mid-gray (the displace reading), 1 reads brightness as an angle of
-// `turns` turns, 2 runs along the contour, across the brightness gradient by
-// central differences. Directions are in texel space, so a step along one is
+// around mid-gray (the displace reading, ollin_map_vector), 1 reads the written
+// brightness as an angle of `turns` turns, 2 runs along the contour, across the
+// brightness gradient by central differences (a contour is the same line whichever
+// way the brightness is counted). The angle is not held to the range black to white:
+// a field of signed values (a noise about zero) turns the other way below zero and
+// stays smooth through it, which the mirrored curve keeps. Directions are in texel
+// space, so a step along one is
 // scaled by the texel size per axis. The level is named because the walk that
 // calls this breaks per pixel.
 static inline float2 ollin_lic_direction(texture2d<float> map, sampler samp, float2 uv,
                                          float2 t, float mode, float turns) {
     if (mode < 0.5) {
-        float2 v = (ollin_unpremul(map.sample(samp, uv, level(0.0))).rg - 0.5) * 2.0;
+        float2 v = ollin_map_vector(map.sample(samp, uv, level(0.0)));
         float len = length(v);
         return len > 0.01 ? v / len : float2(0.0);
     }
     if (mode < 1.5) {
-        float l = ollin_luma(ollin_unpremul(map.sample(samp, uv, level(0.0))));
+        float l = ollin_as_written(float3(ollin_luma(ollin_unpremul(map.sample(samp, uv, level(0.0)))))).x;
         float a = l * turns * 6.283185307;
         return float2(cos(a), sin(a));
     }

@@ -39,7 +39,7 @@ final class StreaksFigure: Sketch {
         withTarget(base) { background(Color(white: 0.62)) }
         let streaks = base.filtered(.grain(amount: 1))
             .combined(with: field, .lineIntegralConvolution(length: 0.1, field: .angle(turns: 2)))
-            .filtered(.levels(blackPoint: 0.3, whitePoint: 0.7))   // the averaged grain is faint; stretch it
+            .filtered(.levels(blackPoint: 0.5, whitePoint: 0.74))   // the averaged grain is faint; stretch it
 
         drawImage(field.image, gap, gap, panel, panel)
         drawImage(streaks.image, gap * 2 + panel, gap, panel, panel)

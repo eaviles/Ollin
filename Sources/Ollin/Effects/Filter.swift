@@ -592,10 +592,16 @@ public struct Filter: Sendable {
 
     // MARK: Color & tone
 
-    /// A color grade in linear light: an additive `brightness` offset, `contrast`
-    /// pivoting around mid-gray (1 = unchanged), `saturation` toward or past gray
-    /// (0 = grayscale, 1 = unchanged, >1 = punchier), and a `hue` rotation in turns
-    /// (0…1 wraps the wheel). All default to no-op, so pass only what you want.
+    /// A color grade: an additive `brightness` offset, `contrast` pivoting around
+    /// mid-gray (1 = unchanged), `saturation` toward or past gray (0 = grayscale,
+    /// 1 = unchanged, >1 = punchier), and a `hue` rotation in turns (0…1 wraps the
+    /// wheel). All default to no-op, so pass only what you want.
+    ///
+    /// Contrast works on grays as a sketch writes them: at 0 every pixel is
+    /// `Color(white: 0.5)`, and at 2 `Color(white: 0.4)` becomes `Color(white: 0.3)`
+    /// while `Color(white: 0.6)` becomes `Color(white: 0.7)`. The other three work
+    /// on light, so `brightness` adds light and `saturation` keeps a color's
+    /// luminance.
     public static func colorGrade(brightness: Double = 0, contrast: Double = 1,
                                   saturation: Double = 1, hue: Double = 0) -> Filter {
         Filter(kind: .colorGrade(brightness: brightness, contrast: max(0, contrast),
@@ -603,19 +609,23 @@ public struct Filter: Sendable {
     }
 
     /// Invert toward the photographic negative. `amount` 1 is a full invert; lower
-    /// values cross-fade with the original.
+    /// values cross-fade with the original. The negative is of the color as
+    /// written: `Color(white: 0.25)` comes back `Color(white: 0.75)`.
     public static func invert(amount: Double = 1) -> Filter {
         Filter(kind: .invert(amount: min(max(amount, 0), 1)))
     }
 
     /// Posterize: quantize each channel to `levels` flat steps for a banded,
-    /// screen-printed look. `levels` is clamped to at least 2.
+    /// screen-printed look. `levels` is clamped to at least 2. The steps are evenly
+    /// spaced as written, so three levels are black, `Color(white: 0.5)`, and white.
     public static func posterize(levels: Double = 4) -> Filter {
         Filter(kind: .posterize(levels: max(2, levels)))
     }
 
     /// Threshold to two tones at `value` brightness (0…1). `softness` widens the
-    /// transition into a smooth ramp; 0 is a hard cut.
+    /// transition into a smooth ramp; 0 is a hard cut. The value is a gray as a
+    /// sketch writes it: `threshold(0.5)` cuts at `Color(white: 0.5)`, and a color
+    /// falls on the side of the gray that is as bright as it is.
     public static func threshold(_ value: Double = 0.5, softness: Double = 0) -> Filter {
         Filter(kind: .threshold(value: value, softness: max(0, softness)))
     }
@@ -946,6 +956,7 @@ public struct Filter: Sendable {
 
     /// Solarize (Sabattier): invert the tones above `value` while leaving the shadows,
     /// the part-positive, part-negative darkroom look. `softness` blurs the fold.
+    /// The value and the negative are of the color as written, channel by channel.
     public static func solarize(_ value: Double = 0.5, softness: Double = 0.05) -> Filter {
         Filter(kind: .solarize(value: min(max(value, 0), 1), softness: max(0, softness)))
     }
@@ -984,6 +995,9 @@ public struct Filter: Sendable {
 
     /// Levels: pull `blackPoint` down to black and `whitePoint` up to white (both 0…1),
     /// then bend the midtones by `gamma` (>1 darkens, <1 lifts). The photo-tool staple.
+    /// Both points are grays as a sketch writes them, so `blackPoint: 0.25` sends
+    /// `Color(white: 0.25)` to black. A channel above the white point is white, and
+    /// light that was already past white stays as bright as it was.
     public static func levels(blackPoint: Double = 0, whitePoint: Double = 1,
                               gamma: Double = 1) -> Filter {
         Filter(kind: .levels(blackPoint: min(max(blackPoint, 0), 1),
@@ -998,6 +1012,8 @@ public struct Filter: Sendable {
 
     /// Luma key: make the image transparent outside the `low`…`high` brightness band (so a
     /// dark or light backdrop drops out). `inverted` keeps the band and cuts the rest instead.
+    /// The band's ends are grays as a sketch writes them: `low: 0.5` drops what is
+    /// darker than `Color(white: 0.5)`.
     public static func lumaKey(low: Double = 0.1, high: Double = 1, inverted: Bool = false) -> Filter {
         Filter(kind: .lumaKey(low: min(max(low, 0), 1), high: min(max(high, 0), 1), inverted: inverted))
     }
@@ -1172,8 +1188,9 @@ public struct Filter: Sendable {
     }
 
     /// Normal map: read the image as a height field and output its surface normal as an RGB
-    /// vector (the bluish bump-map look), ready to feed `displace` or a lighting pass.
-    /// `strength` exaggerates the slope.
+    /// vector (the bluish bump-map look), ready to feed `displace` or the `.vector` field of
+    /// `lineIntegralConvolution`. `amount` exaggerates the slope. A flat area is written as
+    /// `Color(red: 0.5, green: 0.5, blue: 1)`, the color those two read as no direction.
     public static func normalMap(amount: Double = 1) -> Filter {
         Filter(kind: .normalMap(strength: max(0, amount)))
     }

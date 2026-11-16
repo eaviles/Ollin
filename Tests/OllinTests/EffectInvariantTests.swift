@@ -812,6 +812,8 @@ struct EffectInvariantTests {
         Named(name: "edgeGlow width 0", filter: .edgeGlow(width: 0)),
         Named(name: "wipe progress 1", filter: .wipe(.directional(), progress: 1)),
         Named(name: "levels 0 1 1", filter: .levels(blackPoint: 0, whitePoint: 1, gamma: 1)),
+        Named(name: "invert 0", filter: .invert(amount: 0)),
+        Named(name: "lumaKey 0 to 1", filter: .lumaKey(low: 0, high: 1)),
         Named(name: "lightLeak intensity 0", filter: .lightLeak(intensity: 0)),
     ]
 
@@ -822,7 +824,6 @@ struct EffectInvariantTests {
         Named(name: "temperature 0 0", filter: .temperature(amount: 0, tint: 0)),
         Named(name: "vibrance 0", filter: .vibrance(amount: 0)),
         Named(name: "sepia 0", filter: .sepia(amount: 0)),
-        Named(name: "invert 0", filter: .invert(amount: 0)),
         Named(name: "duotone 0", filter: .duotone(dark: .blue, light: .yellow, amount: 0)),
         Named(name: "gradientMap 0", filter: .gradientMap(Ramp([.black, .red, .white]), amount: 0)),
         Named(name: "lut identity", filter: .lut(.identity())),
@@ -845,10 +846,6 @@ struct EffectInvariantTests {
     func aFilterAskedForNothingReturnsItsInput(_ item: Named) throws {
         let w = try Self.filtered(item.filter).worst(against: try Self.plain())
         switch item.name {
-        case "levels 0 1 1":
-            try pinned("levels clamps to 0...1 before its curve, so at 0, 1, 1 light past white is cut: 3.0 comes back 1.0 (measured 2026-11-09)") {
-                #expect(w.by == 0, "\(item.name): \(describe(w))")
-            }
         case "lightLeak intensity 0":
             try pinned("the leak's dither is added before the intensity's floor, so at intensity 0 half the pixels gain up to 0.002 of light and of alpha (measured 2026-11-09)") {
                 #expect(w.by == 0, "\(item.name): \(describe(w))")
@@ -865,6 +862,123 @@ struct EffectInvariantTests {
         // One step of a half float at the value that moved: 2^-10 of it.
         let step = max(abs(plain.value(w.x, w.y, w.channel)), 0.5) / 1024
         #expect(w.by <= step * 1.01, "\(item.name): \(describe(w)), a step there is \(step)")
+    }
+
+    // MARK: Tones as written
+
+    /// A gray named the way a sketch names it, through a tone filter, and the
+    /// gray (or the share of its coverage) that must come back, named the same way.
+    struct Tone: Sendable, CustomTestStringConvertible {
+        let name: String
+        let filter: Filter
+        let white: Double
+        /// The gray that comes back, as written; nil where only the coverage is read.
+        var gives: Double?
+        /// The coverage that comes back.
+        var alpha = 1.0
+        var testDescription: String { "\(name) of \(white)" }
+    }
+
+    nonisolated static let tones: [Tone] = [
+        Tone(name: "threshold 0.5", filter: .threshold(0.5), white: 0.49, gives: 0),
+        Tone(name: "threshold 0.5", filter: .threshold(0.5), white: 0.51, gives: 1),
+        Tone(name: "soft threshold 0.5", filter: .threshold(0.5, softness: 0.25), white: 0.5, gives: 0.5),
+        Tone(name: "soft threshold 0.5", filter: .threshold(0.5, softness: 0.25), white: 0.8, gives: 1),
+        Tone(name: "invert", filter: .invert(), white: 0.25, gives: 0.75),
+        Tone(name: "invert", filter: .invert(), white: 1, gives: 0),
+        Tone(name: "invert 0.5", filter: .invert(amount: 0.5), white: 0.2, gives: 0.5),
+        Tone(name: "posterize 3", filter: .posterize(levels: 3), white: 0.3, gives: 0),
+        Tone(name: "posterize 3", filter: .posterize(levels: 3), white: 0.4, gives: 0.5),
+        Tone(name: "posterize 3", filter: .posterize(levels: 3), white: 0.7, gives: 1),
+        Tone(name: "solarize 0.5", filter: .solarize(0.5, softness: 0), white: 0.25, gives: 0.25),
+        Tone(name: "solarize 0.5", filter: .solarize(0.5, softness: 0), white: 0.75, gives: 0.25),
+        Tone(name: "levels 0.25 to 0.75", filter: .levels(blackPoint: 0.25, whitePoint: 0.75), white: 0.25, gives: 0),
+        Tone(name: "levels 0.25 to 0.75", filter: .levels(blackPoint: 0.25, whitePoint: 0.75), white: 0.5, gives: 0.5),
+        Tone(name: "levels 0.25 to 0.75", filter: .levels(blackPoint: 0.25, whitePoint: 0.75), white: 0.75, gives: 1),
+        Tone(name: "levels 0.25 to 0.75", filter: .levels(blackPoint: 0.25, whitePoint: 0.75), white: 0.9, gives: 1),
+        Tone(name: "levels gamma 2", filter: .levels(gamma: 2), white: 0.5, gives: 0.25),
+        Tone(name: "contrast 0", filter: .colorGrade(contrast: 0), white: 0.9, gives: 0.5),
+        Tone(name: "contrast 0", filter: .colorGrade(contrast: 0), white: 0.1, gives: 0.5),
+        Tone(name: "contrast 2", filter: .colorGrade(contrast: 2), white: 0.4, gives: 0.3),
+        Tone(name: "contrast 2", filter: .colorGrade(contrast: 2), white: 0.6, gives: 0.7),
+        Tone(name: "contrast 0.5", filter: .colorGrade(contrast: 0.5), white: 1, gives: 0.75),
+        Tone(name: "lumaKey from 0.5", filter: .lumaKey(low: 0.5), white: 0.4, alpha: 0),
+        Tone(name: "lumaKey from 0.5", filter: .lumaKey(low: 0.5), white: 0.5, alpha: 0.5),
+        Tone(name: "lumaKey from 0.5", filter: .lumaKey(low: 0.5), white: 0.6, gives: 0.6),
+        Tone(name: "lumaKey to 0.5", filter: .lumaKey(low: 0, high: 0.5), white: 0.6, alpha: 0),
+    ]
+
+    /// A tone filter's levels and its arithmetic are in the grays a sketch
+    /// writes: a cut at 0.5 falls at `Color(white: 0.5)`, a negative of
+    /// `Color(white: 0.25)` is `Color(white: 0.75)`, a contrast of 0 is mid-gray.
+    @Test(arguments: tones)
+    func aToneFilterWorksOnTheGrayAsWritten(_ tone: Tone) throws {
+        let out = mean(try flat(32, Color(white: tone.white), tone.filter))
+        #expect(abs(out.w - tone.alpha) < 0.002, "\(tone.name): Color(white: \(tone.white)) came back with a coverage of \(fmt(out.w)) where \(tone.alpha) is due")
+        guard let gives = tone.gives else { return }
+        for c in 0 ..< 3 {
+            let written = Color.linearToSrgb(out[c] / out.w)
+            #expect(abs(written - gives) < 0.002, "\(tone.name): Color(white: \(tone.white)) came back as \(fmt(written)) as written where \(gives) is due (channel \(c))")
+        }
+    }
+
+    /// A ramp of written grays through `threshold(0.5)` is black up to its
+    /// middle and white from there on, and the cut moves with the value.
+    @Test(arguments: [0.25, 0.5, 0.75])
+    func aThresholdSplitsAWrittenRampAtItsValue(_ value: Double) throws {
+        let out = try Self.render { s in
+            s.background(.clear)
+            let layer = s.makeRenderTarget()
+            s.withTarget(layer) {
+                s.noStroke()
+                for x in 0 ..< 96 {
+                    s.fill(Color(white: (Double(x) + 0.5) / 96))
+                    let x0 = Double(x), x1 = Double(x + 1)
+                    s.drawPolygon([Vector2(x0, 0), Vector2(x1, 0), Vector2(x1, 96), Vector2(x0, 96)])
+                }
+            }
+            s.drawImage(layer.filtered(.threshold(value)).image, 0, 0)
+        }
+        let cut = Int(value * 96)
+        for x in 0 ..< 96 {
+            #expect(out.value(x, 48) == (x < cut ? 0 : 1), "column \(x), written as \((Double(x) + 0.5) / 96), came back \(out.value(x, 48)) under a cut at \(value)")
+        }
+    }
+
+    /// Levels a hair off its neutral setting is a hair off the picture, light
+    /// past white included: the curve carries on past the white point.
+    @Test func levelsNearItsNeutralSettingIsNearThePicture() throws {
+        let plain = try Self.plain()
+        let w = try Self.filtered(.levels(blackPoint: 0, whitePoint: 1, gamma: 1.001)).worst(against: plain)
+        #expect(w.by < 0.01, "levels at a gamma of 1.001: \(describe(w)), where the picture holds \(plain.value(w.x, w.y, w.channel))")
+    }
+
+    /// A stretch makes white and never more: under a white point of 0.5 the
+    /// picture's light past white is as bright as it was, and its channel
+    /// between the white point and white comes out white.
+    @Test func levelsMakesWhiteAndNeverMore() throws {
+        let plain = try Self.plain()
+        let out = try Self.filtered(.levels(whitePoint: 0.5))
+        // Inside the flat that holds (3.0, 1.6, 0.4) in light.
+        #expect(plain.at(20, 43) == SIMD4(3.0, 1.599609375, 0.39990234375, 1), "the picture's bright flat reads \(fmt(plain.at(20, 43)))")
+        let got = out.at(20, 43)
+        #expect(abs(got.x - 3.0) < 0.004 && abs(got.y - 1.6) < 0.002 && abs(got.z - 1) < 0.001, "under a white point of 0.5 the flat (3.0, 1.6, 0.4) came back \(fmt(got)) where (3.0, 1.6, 1.0) is due")
+        #expect(out.rgba.enumerated().allSatisfy { $0.element <= max(plain.rgba[$0.offset], 1) + 0.001 }, "a stretch made light past white that was not there")
+    }
+
+    /// A color falls on the side of a cut that the gray as bright as it is falls
+    /// on: its luminance, read as a written gray.
+    @Test func aCutReadsAColorAsTheGrayOfItsLuminance() throws {
+        // Three colors of one luminance, the one `Color(white: 0.5)` has, a tenth over and a tenth under.
+        let half = Color.srgbToLinear(0.5)
+        for (name, r, g, b) in [("a gray", 1.0, 1.0, 1.0), ("an orange", 2.2, 0.7, 0.3), ("a blue", 0.3, 0.9, 3.0)] {
+            let luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
+            for (side, k) in [(1.0, 1.1), (0.0, 0.9)] {
+                let scale = half * k / luminance
+                let out = mean(try flat(32, Color(linear: r * scale, green: g * scale, blue: b * scale), .threshold(0.5)))
+                #expect(out.x == side, "\(name) \(k) times as bright as mid-gray came back \(fmt(out)) under threshold(0.5)")
+            }
+        }
     }
 
     // MARK: Blurs
@@ -1478,7 +1592,7 @@ struct EffectInvariantTests {
         case 1: s.background(.black)
         case 2: s.noStroke(); s.fill(.white); s.drawCircle(-50, -50, 2)
         case 3: s.background(Color(linear: 0.1, green: 0.4, blue: 0.2)); s.noStroke(); s.fill(.orange); s.drawCircle(48, 48, 30)
-        default: s.background(Color(linear: 0.5, green: 0.5, blue: 0.5))
+        default: s.background(Color(white: 0.5))
         }
     }
 
@@ -1497,7 +1611,10 @@ struct EffectInvariantTests {
         Mixed(name: "mask by white", op: .mask(), aux: 0), Mixed(name: "mask by opaque, alpha", op: .mask(channel: .alpha), aux: 0),
         Mixed(name: "inverted mask by black", op: .mask(inverted: true), aux: 1),
         Mixed(name: "mix 0", op: .mix(amount: 0), aux: 3), Mixed(name: "wipe 0", op: .wipe(.directional(), progress: 0), aux: 3),
-        Mixed(name: "displace 0", op: .displace(amount: 0), aux: 3), Mixed(name: "displace by linear mid-gray", op: .displace(amount: 0.1), aux: 4),
+        Mixed(name: "displace 0", op: .displace(amount: 0), aux: 3), Mixed(name: "displace by mid-gray", op: .displace(amount: 0.1), aux: 4),
+        Mixed(name: "displace by nothing", op: .displace(amount: 0.1), aux: 2),
+        Mixed(name: "streaks along mid-gray", op: .lineIntegralConvolution(length: 0.1), aux: 4),
+        Mixed(name: "streaks along nothing", op: .lineIntegralConvolution(length: 0.1), aux: 2),
         Mixed(name: "disperse by black", op: .disperse(amount: 0.02), aux: 1), Mixed(name: "disperse 0", op: .disperse(amount: 0), aux: 0),
         Mixed(name: "paintMix 0", op: .paintMix(amount: 0), aux: 3), Mixed(name: "paintMix with nothing", op: .paintMix(), aux: 2),
         Mixed(name: "seamlessClone of nothing", op: .seamlessClone(), aux: 2),
@@ -1539,27 +1656,232 @@ struct EffectInvariantTests {
         }
     }
 
-    /// A displacement map's mid-gray is no shift: the gray a sketch writes, and
-    /// the nothing around a map drawn on a clear layer.
+    // MARK: A layer read as numbers
+
+    /// A base whose red is its own column and whose green is its own row, so a
+    /// shift can be read off the result: 96 strips each way, one texel wide,
+    /// drawn as polygons since a rectangle's edge ramp spills into its neighbors.
+    static func coordinates(_ s: Sketch) {
+        s.noStroke()
+        for i in 0 ..< 96 {
+            let a = Double(i), b = Double(i + 1)
+            s.blendMode(.normal)
+            s.fill(Color(linear: a / 96, green: 0, blue: 0))
+            s.drawPolygon([Vector2(a, 0), Vector2(b, 0), Vector2(b, 96), Vector2(a, 96)])
+        }
+        s.blendMode(.add)
+        for i in 0 ..< 96 {
+            let a = Double(i), b = Double(i + 1)
+            s.fill(Color(linear: 0, green: a / 96, blue: 0))
+            s.drawPolygon([Vector2(0, a), Vector2(96, a), Vector2(96, b), Vector2(0, b)])
+        }
+        s.blendMode(.normal)
+    }
+
+    /// The picture, or the coordinate base, moved by `map`.
+    static func displaced(coordinates: Bool = false, amount: Double = 0.1,
+                          _ map: (@MainActor (Probe) -> Void)?) throws -> Frame {
+        try render { s in
+            s.background(.clear)
+            let base = s.makeRenderTarget()
+            s.withTarget(base) { if coordinates { Self.coordinates(s) } else { Self.picture(s) } }
+            guard let map else { s.drawImage(base.image, 0, 0); return }
+            let field = s.makeRenderTarget()
+            s.withTarget(field) { map(s) }
+            s.drawImage(base.combined(with: field, .displace(amount: amount)).image, 0, 0)
+        }
+    }
+
+    /// A displacement map's mid-gray is no shift, to the number: the gray a sketch
+    /// writes, a picture's two middle levels, and the nothing around a map drawn
+    /// on a clear layer.
     @Test func aDisplacementMapsMidGrayIsNoShift() throws {
         let plain = try Self.plain()
-        func displaced(_ map: @escaping @MainActor (Probe) -> Void) throws -> Frame {
+        let gray = try Self.displaced { $0.background(Color(white: 0.5)) }
+        #expect(gray.worst(against: plain).by == 0, "a mid-gray map moved the layer: \(describe(gray.worst(against: plain)))")
+        for level in [127.0, 128.0] {
+            let eightBit = try Self.displaced { $0.background(Color(white: level / 255)) }
+            #expect(eightBit.worst(against: plain).by == 0, "a map at \(Int(level)) of 255 moved the layer: \(describe(eightBit.worst(against: plain)))")
+        }
+        let clear = try Self.displaced { s in s.noStroke(); s.fill(Color(white: 0.5)); s.drawCircle(48, 48, 10) }
+        #expect(clear.worst(against: plain).by == 0, "a map with nothing around its mark moved the layer: \(describe(clear.worst(against: plain)))")
+    }
+
+    /// A map's colors are the shift as written, and its alpha is the weight: a
+    /// full push to the right moves the layer by the amount, a weaker one by its
+    /// share less the step that counts as none, in the direction its two
+    /// channels name, and a soft-edged mark on a clear layer pushes by its own
+    /// alpha at every pixel, a ramp and never a step.
+    @Test func aDisplacementMapPushesByItsColorUnderItsAlpha() throws {
+        // What a texel reads is the place it came from, so the shift in pixels
+        // is its reading less the unmoved base's own.
+        let rest = try Self.displaced(coordinates: true, nil)
+        func shift(_ f: Frame, _ x: Int, _ y: Int) -> SIMD2<Double> {
+            SIMD2((f.value(x, y, 0) - rest.value(x, y, 0)) * 96, (f.value(x, y, 1) - rest.value(x, y, 1)) * 96)
+        }
+        // A push `d` from mid-gray, as written, in the share of the amount it asks for.
+        func share(_ d: Double) -> Double { (d - 1.0 / 255) / (0.5 - 1.0 / 255) }
+
+        let full = shift(try Self.displaced(coordinates: true) { $0.background(Color(red: 1, green: 0.5, blue: 0)) }, 40, 48)
+        #expect(abs(full.x - 9.6) < 0.06 && full.y == 0, "a full push to the right moved a texel by \(full) px where the amount is 9.6 across")
+        let quarter = shift(try Self.displaced(coordinates: true) { $0.background(Color(red: 0.625, green: 0.5, blue: 0)) }, 40, 48)
+        #expect(abs(quarter.x - 9.6 * share(0.125)) < 0.06 && quarter.y == 0, "a quarter push moved a texel by \(quarter) px where \(9.6 * share(0.125)) across is due")
+        let up = shift(try Self.displaced(coordinates: true) { $0.background(Color(red: 0.5, green: 0, blue: 0)) }, 40, 48)
+        #expect(abs(up.y + 9.6) < 0.06 && up.x == 0, "a full push up moved a texel by \(up) px where the amount is 9.6 up")
+
+        // A weak push keeps its direction: twice as far across as down.
+        let weak = shift(try Self.displaced(coordinates: true, amount: 0.5) { $0.background(Color(red: 0.54, green: 0.52, blue: 0)) }, 40, 40)
+        let length = 48 * share((0.04 * 0.04 + 0.02 * 0.02).squareRoot())
+        #expect(abs(weak.x - length * 0.8944) < 0.08 && abs(weak.y - length * 0.4472) < 0.08,
+                "a weak push of (0.04, 0.02) moved a texel by \(weak) px where (\(length * 0.8944), \(length * 0.4472)) is due")
+
+        let mark: @MainActor (Probe) -> Void = { s in
+            s.noStroke(); s.fill(Color(red: 1, green: 0.5, blue: 0)); s.drawCircle(36, 48, 14)
+        }
+        func soft(_ s: Probe) -> RenderTarget {
+            let map = s.makeRenderTarget()
+            s.withTarget(map) { mark(s) }
+            return map.filtered(.gaussianBlur(radius: 6))
+        }
+        let weight = try Self.render { s in s.background(.clear); s.drawImage(soft(s).image, 0, 0) }
+        let moved = try Self.render { s in
+            s.background(.clear)
+            let base = s.makeRenderTarget()
+            s.withTarget(base) { Self.coordinates(s) }
+            s.drawImage(base.combined(with: soft(s), .displace(amount: 0.1)).image, 0, 0)
+        }
+        var worst = 0.0, jump = 0.0, still = 0.0
+        for x in 2 ..< 80 {
+            let a = weight.value(x, 48, 3)
+            worst = max(worst, abs(shift(moved, x, 48).x - 9.6 * a))
+            jump = max(jump, abs(shift(moved, x + 1, 48).x - shift(moved, x, 48).x))
+            if a == 0 { still = max(still, abs(shift(moved, x, 48).x)) }
+        }
+        #expect(worst < 0.1, "a soft mark's push strays from its alpha by \(worst) px")
+        #expect(jump < 1.5, "the push steps by \(jump) px between two neighbors: a soft edge on the map is a hard edge in the push")
+        #expect(still == 0, "a pixel the map never reached moved \(still) px")
+    }
+
+    /// A mask keeps the share its gray is written as, under the gray's own
+    /// coverage: half for `Color(white: 0.5)`, a quarter for the same gray at
+    /// half alpha, and a soft white mark's own alpha.
+    @Test func aMaskKeepsTheShareItsGrayIsWrittenAs() throws {
+        let plain = try Self.plain()
+        func masked(_ mask: @escaping @MainActor (Probe) -> Void) throws -> Frame {
             try Self.render { s in
                 s.background(.clear)
                 let base = s.makeRenderTarget()
                 s.withTarget(base) { Self.picture(s) }
-                let field = s.makeRenderTarget()
-                s.withTarget(field) { map(s) }
-                s.drawImage(base.combined(with: field, .displace(amount: 0.1)).image, 0, 0)
+                let other = s.makeRenderTarget()
+                s.withTarget(other) { mask(s) }
+                s.drawImage(base.combined(with: other, .mask()).image, 0, 0)
             }
         }
-        let gray = try displaced { $0.background(Color(white: 0.5)) }
-        try pinned("the map is read as stored, in linear light, and centered on 0.5 there: `Color(white: 0.5)` stores 0.214 and moves the whole layer 5.5 px of a 96-pixel canvas at an amount of 0.1; the gray that is no shift is `Color(white: 0.735)` (measured 2026-11-09)") {
-            #expect(gray.mean(against: plain) < 0.001, "a mid-gray map moved the layer: a mean of \(gray.mean(against: plain)) from the base")
+        func share(_ out: Frame, x: Range<Int>) -> Double { out.sum(3, x: x) / plain.sum(3, x: x) }
+        let gray = try masked { $0.background(Color(white: 0.5)) }
+        #expect(abs(share(gray, x: 0 ..< 96) - 0.5) < 0.002, "a mask of mid-gray kept \(share(gray, x: 0 ..< 96)) of the layer")
+        let quarter = try masked { $0.background(Color(white: 0.25)) }
+        #expect(abs(share(quarter, x: 0 ..< 96) - 0.25) < 0.002, "a mask of Color(white: 0.25) kept \(share(quarter, x: 0 ..< 96)) of the layer")
+        // A half-clear gray over nothing, drawn as a polygon so its edge is a texel's.
+        let veiled = try masked { s in
+            s.noStroke(); s.fill(Color(white: 0.5, alpha: 0.5))
+            s.drawPolygon([Vector2(0, 0), Vector2(48, 0), Vector2(48, 96), Vector2(0, 96)])
         }
-        let clear = try displaced { s in s.noStroke(); s.fill(Color(linear: 0.5, green: 0.5, blue: 0.5)); s.drawCircle(48, 48, 10) }
-        try pinned("a clear texel of the map reads as red 0 and green 0, the largest shift there is: a map drawn on a clear layer moves everything outside its marks by the full amount, and a soft edge on the map is a hard step (measured 2026-11-09)") {
-            #expect(clear.mean(against: plain) < 0.001, "a map with nothing around its mark moved the layer: a mean of \(clear.mean(against: plain)) from the base")
+        #expect(abs(share(veiled, x: 0 ..< 48) - 0.25) < 0.002, "mid-gray at half alpha kept \(share(veiled, x: 0 ..< 48)) of the layer")
+        #expect(veiled.sum(3, x: 48 ..< 96) == 0, "a mask kept something where it holds nothing")
+
+        func spot(_ s: Probe) -> RenderTarget {
+            let layer = s.makeRenderTarget()
+            s.withTarget(layer) { s.noStroke(); s.fill(.white); s.drawCircle(48, 48, 24) }
+            return layer.filtered(.gaussianBlur(radius: 6))
+        }
+        let weight = try Self.render { s in s.background(.clear); s.drawImage(spot(s).image, 0, 0) }
+        let lit = try Self.render { s in
+            s.background(.clear)
+            let base = s.makeRenderTarget()
+            s.withTarget(base) { Self.picture(s) }
+            s.drawImage(base.combined(with: spot(s), .mask()).image, 0, 0)
+        }
+        var worst = 0.0
+        for i in 0 ..< lit.width * lit.height {
+            let a = Double(weight.rgba[i * 4 + 3])
+            for c in 0 ..< 4 { worst = max(worst, abs(Double(lit.rgba[i * 4 + c]) - Double(plain.rgba[i * 4 + c]) * a)) }
+        }
+        #expect(worst < 0.004, "a soft white mask strays from its own alpha by \(worst)")
+    }
+
+    /// The angle reading of a streak field takes the gray as written: at one turn
+    /// `Color(white: 0.25)` is a quarter turn, straight down, and
+    /// `Color(white: 0.5)` half a turn, straight across.
+    @Test(arguments: [(0.25, false), (0.5, true)])
+    func aStreakFieldsAngleIsTheGrayAsWritten(white: Double, across: Bool) throws {
+        let out = try Self.render { s in
+            s.background(.clear)
+            let base = s.makeRenderTarget()
+            s.withTarget(base) { s.noStroke(); s.fill(.white); s.drawCircle(48.3, 47.8, 3) }
+            let field = s.makeRenderTarget()
+            s.withTarget(field) { s.background(Color(white: white)) }
+            s.drawImage(base.combined(with: field, .lineIntegralConvolution(length: 0.3, field: .angle(turns: 1))).image, 0, 0)
+        }
+        let spread = Self.spread(out)
+        let (along, beside) = across ? (spread.varX, spread.varY) : (spread.varY, spread.varX)
+        #expect(along > 12 * beside, "a field of Color(white: \(white)) smeared a dot \(spread.varX) across and \(spread.varY) down (variances)")
+    }
+
+    /// The angle runs on past black: a field below zero turns the other way by
+    /// the same curve, so a signed field (a noise about zero) is one smooth
+    /// field and not a flat half. An eighth of a turn each way smears a dot
+    /// down to the right and up to the right.
+    @Test(arguments: [1.0, -1.0])
+    func aStreakFieldsAngleRunsOnBelowBlack(sign: Double) throws {
+        let stored = sign * Color.srgbToLinear(0.125)
+        let out = try Self.render { s in
+            s.background(.clear)
+            let base = s.makeRenderTarget()
+            s.withTarget(base) { s.noStroke(); s.fill(.white); s.drawCircle(48.3, 47.8, 3) }
+            let field = s.makeRenderTarget(precision: .float32)
+            s.withTarget(field) { s.background(Color(linear: stored, green: stored, blue: stored)) }
+            s.drawImage(base.combined(with: field, .lineIntegralConvolution(length: 0.3, field: .angle(turns: 1))).image, 0, 0)
+        }
+        // The smear's tilt: how its coverage leans, across against down, about its center.
+        var sum = 0.0, mx = 0.0, my = 0.0
+        for y in 0 ..< out.height { for x in 0 ..< out.width { let v = out.value(x, y, 3); sum += v; mx += v * Double(x); my += v * Double(y) } }
+        mx /= sum; my /= sum
+        var lean = 0.0, spread = 0.0
+        for y in 0 ..< out.height { for x in 0 ..< out.width {
+            let v = out.value(x, y, 3), dx = Double(x) - mx, dy = Double(y) - my
+            lean += v * dx * dy; spread += v * (dx * dx + dy * dy)
+        } }
+        let tilt = 2 * lean / spread   // 1 along the falling diagonal, -1 along the rising one, 0 flat or upright
+        #expect(tilt * sign > 0.8, "a field of \(sign < 0 ? "minus " : "")an eighth of a turn smeared a dot with a tilt of \(tilt), where \(sign) is the diagonal due")
+    }
+
+    /// A flat layer's normal map is the color a sketch would write for "no
+    /// direction", and it moves nothing as a displacement map or a streak field.
+    @Test func aFlatNormalMapIsMidGrayAsWritten() throws {
+        let flat = try Self.render(side: 64) { s in
+            s.background(.clear)
+            let layer = s.makeRenderTarget()
+            s.withTarget(layer) { s.background(Color(white: 0.3)) }
+            s.drawImage(layer.filtered(.normalMap(amount: 4)).image, 0, 0)
+        }
+        let half = Color.srgbToLinear(0.5)
+        let want = [half, half, 1.0]
+        let got = flat.at(32, 32)
+        for c in 0 ..< 3 {
+            #expect(abs(got[c] - want[c]) < 0.0005, "a flat layer's normal map holds \(fmt(got)) where the color written as (0.5, 0.5, 1) is stored as \(want)")
+        }
+        let plain = try Self.plain()
+        for (name, op) in [("displace", Combine.displace(amount: 0.1)), ("streaks", .lineIntegralConvolution(length: 0.1))] {
+            let out = try Self.render { s in
+                s.background(.clear)
+                let base = s.makeRenderTarget()
+                s.withTarget(base) { Self.picture(s) }
+                let level = s.makeRenderTarget()
+                s.withTarget(level) { s.background(Color(white: 0.3)) }
+                s.drawImage(base.combined(with: level.filtered(.normalMap(amount: 4)), op).image, 0, 0)
+            }
+            #expect(out.worst(against: plain).by == 0, "\(name) by a flat layer's normal map moved the layer: \(describe(out.worst(against: plain)))")
         }
     }
 

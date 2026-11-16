@@ -30,6 +30,7 @@ That is the only point where a frame is reduced to eight bits per channel. Expor
 - **Blur and bloom keep their brightness.** A blurred layer is blurred in linear light, so it does not darken.
 - **Bright can stay bright.** On a display with headroom, [`colorOutput`](../Drawing/ColorOutput.md) presents through Display P3. Highlights then go past white instead of clipping at it.
 - **A clear color is a color too.** The background is converted like everything else. So the frame starts from the same light that the shapes composite into.
+- **A gray level in an effect is the gray you write.** A layer stores light, so `Color(white: 0.5)` sits in it as 0.214. An effect that takes a gray as a number reads the layer back into written values first: `threshold(0.5)` cuts at `Color(white: 0.5)`, and a displacement map of `Color(white: 0.5)` moves nothing. The [tone filters](../Drawing/Effects.md#filter) and the [maps](../Drawing/Effects.md#combined) say which ones.
 - **You can name a color by its light.** `Color(linear:green:blue:)` takes linear numbers and stores the sRGB color that means them, and `linearRGB` reads a color back as light. A shade worked out in light, or a `SprayLine`'s `light`, never has to pass through the curve by hand.
 
 There is one deliberate exception. Ollin remaps the *coverage* of a thin stroke or a small dot, so that a fine mark does not read faint or beaded. The remap touches partial coverage only, never a color or an alpha you set.

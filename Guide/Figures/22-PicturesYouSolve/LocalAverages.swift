@@ -49,7 +49,7 @@ final class LocalAverages: Sketch {
             case 0:
                 drawImage(page.image, in: frame)
             case 1:
-                drawImage(page.filtered(.threshold(0.3)).image, in: frame)
+                drawImage(page.filtered(.threshold(0.58)).image, in: frame)
             default:
                 drawImage(page.filtered(.adaptiveThreshold(window: 16)).image, in: frame)
             }

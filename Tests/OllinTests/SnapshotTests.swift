@@ -8491,7 +8491,7 @@ private final class SummedAreaScene: Sketch {
     override func draw() {
         background(Color(white: 0.05))
         let side = 96.0
-        let readings: [Filter?] = [nil, .boxBlur(radius: 10), .threshold(0.34),
+        let readings: [Filter?] = [nil, .boxBlur(radius: 10), .threshold(0.62),
                                    .adaptiveThreshold(window: 34, bias: 0.15)]
         for (index, filter) in readings.enumerated() {
             let page = makeRenderTarget(width: Int(side), height: Int(side))

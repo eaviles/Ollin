@@ -2104,24 +2104,26 @@
       "width": 1080
     },
     "3D/Geometry/Planet": {
-      "bytes": {
-        "loop": 2550012,
-        "loopSmall": 587081,
-        "still": 187772,
-        "stillSmall": 65873
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
-      "length": "10s",
-      "loop": "examples/3D/Geometry/Planet/loop.mp4?v=671b3324",
-      "loopSmall": "examples/3D/Geometry/Planet/loop-640.mp4?v=1f08df44",
-      "motion": 7.023,
-      "rendered": "2026-09-10",
+      "length": "10.0s",
       "seconds": 10.0,
-      "source": "93ffff6f36d47e70",
-      "still": "examples/3D/Geometry/Planet/still.jpg?v=c202741a",
-      "stillSmall": "examples/3D/Geometry/Planet/still-640.jpg?v=0c173659",
-      "width": 1080
+      "frame": 480,
+      "motion": 7.023,
+      "sound": false,
+      "source": "063f8de45cb827cb",
+      "rendered": "2026-11-15",
+      "bytes": {
+        "loop": 2436693,
+        "loopSmall": 576915,
+        "still": 188028,
+        "stillSmall": 66095
+      },
+      "loop": "examples/3D/Geometry/Planet/loop.mp4?v=2441e2a1",
+      "loopSmall": "examples/3D/Geometry/Planet/loop-640.mp4?v=0880a667",
+      "still": "examples/3D/Geometry/Planet/still.jpg?v=ab51b07e",
+      "stillSmall": "examples/3D/Geometry/Planet/still-640.jpg?v=48e518d3",
+      "seed": 1
     },
     "3D/Geometry/PointCloud": {
       "bytes": {
@@ -5302,24 +5304,26 @@
       "width": 1080
     },
     "Effects/Aside": {
-      "bytes": {
-        "loop": 2057429,
-        "loopSmall": 578302,
-        "still": 119418,
-        "stillSmall": 50267
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
-      "length": "10s",
-      "loop": "examples/Effects/Aside/loop.mp4?v=271e0c57",
-      "loopSmall": "examples/Effects/Aside/loop-640.mp4?v=2fe90258",
-      "motion": 11.099,
-      "rendered": "2026-09-10",
+      "length": "10.0s",
       "seconds": 10.0,
-      "source": "6ab6e9eba6ea125d",
-      "still": "examples/Effects/Aside/still.jpg?v=49d047e6",
-      "stillSmall": "examples/Effects/Aside/still-640.jpg?v=a4edb23d",
-      "width": 1080
+      "frame": 480,
+      "motion": 11.247,
+      "sound": false,
+      "source": "5dcd8eaa0c45fe94",
+      "rendered": "2026-11-15",
+      "bytes": {
+        "loop": 2092459,
+        "loopSmall": 585342,
+        "still": 120240,
+        "stillSmall": 50962
+      },
+      "loop": "examples/Effects/Aside/loop.mp4?v=78293902",
+      "loopSmall": "examples/Effects/Aside/loop-640.mp4?v=4afeefe4",
+      "still": "examples/Effects/Aside/still.jpg?v=f2f7d37e",
+      "stillSmall": "examples/Effects/Aside/still-640.jpg?v=d5608212",
+      "seed": 1
     },
     "Effects/Brushwork": {
       "bytes": {
@@ -5624,24 +5628,26 @@
       "width": 1080
     },
     "Effects/FlowStreaks": {
-      "bytes": {
-        "loop": 7985756,
-        "loopSmall": 1242054,
-        "still": 198147,
-        "stillSmall": 44881
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
-      "length": "10s",
-      "loop": "examples/Effects/FlowStreaks/loop.mp4?v=c94aef27",
-      "loopSmall": "examples/Effects/FlowStreaks/loop-640.mp4?v=8b090321",
-      "motion": 5.325,
-      "rendered": "2026-09-10",
+      "length": "10.0s",
       "seconds": 10.0,
-      "source": "09c4926b192e827d",
-      "still": "examples/Effects/FlowStreaks/still.jpg?v=989cd159",
-      "stillSmall": "examples/Effects/FlowStreaks/still-640.jpg?v=15aec062",
-      "width": 1080
+      "frame": 480,
+      "motion": 5.981,
+      "sound": false,
+      "source": "e31216a5dd95baa2",
+      "rendered": "2026-11-15",
+      "bytes": {
+        "loop": 8052310,
+        "loopSmall": 1793387,
+        "still": 208762,
+        "stillSmall": 45763
+      },
+      "loop": "examples/Effects/FlowStreaks/loop.mp4?v=99982ebe",
+      "loopSmall": "examples/Effects/FlowStreaks/loop-640.mp4?v=8f28b787",
+      "still": "examples/Effects/FlowStreaks/still.jpg?v=f20d2bb5",
+      "stillSmall": "examples/Effects/FlowStreaks/still-640.jpg?v=14844f7e",
+      "seed": 1
     },
     "Effects/Fourier": {
       "bytes": {
@@ -5982,24 +5988,26 @@
       "width": 1080
     },
     "Effects/SummedArea": {
-      "bytes": {
-        "loop": 1240549,
-        "loopSmall": 367617,
-        "still": 131423,
-        "stillSmall": 51130
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
-      "length": "10s",
-      "loop": "examples/Effects/SummedArea/loop.mp4?v=f0a85100",
-      "loopSmall": "examples/Effects/SummedArea/loop-640.mp4?v=bc42c4d3",
-      "motion": 21.565,
-      "rendered": "2026-09-10",
+      "length": "10.0s",
       "seconds": 10.0,
-      "source": "d20d6d69470c8dcd",
-      "still": "examples/Effects/SummedArea/still.jpg?v=2705ab53",
-      "stillSmall": "examples/Effects/SummedArea/still-640.jpg?v=56e55d42",
-      "width": 1080
+      "frame": 480,
+      "motion": 21.166,
+      "sound": false,
+      "source": "f7d3bbca40fc42a1",
+      "rendered": "2026-11-15",
+      "bytes": {
+        "loop": 1097854,
+        "loopSmall": 364723,
+        "still": 132551,
+        "stillSmall": 51524
+      },
+      "loop": "examples/Effects/SummedArea/loop.mp4?v=672adf50",
+      "loopSmall": "examples/Effects/SummedArea/loop-640.mp4?v=f22ca066",
+      "still": "examples/Effects/SummedArea/still.jpg?v=3edc7b59",
+      "stillSmall": "examples/Effects/SummedArea/still-640.jpg?v=f7e4a148",
+      "seed": 1
     },
     "Effects/Textures": {
       "width": 1080,

@@ -62,7 +62,7 @@ The `scale: 0.08` matters, because a sim field's `scale` sets its internal resol
 Life's `image` already reads as a picture, because a cell is black or white. Most fields do not. The raw field is *data*. Reaction-diffusion stores two chemicals as dim red and green. The ripple pool stores a height and a velocity, and the falling sand stores each cell's material as a gray level. `image` hands you that data as stored, which is useful for seeing what a field is doing and rarely what you want on the canvas. So you give a field a look by filtering it, through the same catalog [Chapter 19](19-LayersAndEffects.md#filters) used on a layer. Three filters do most of the work:
 
 - `.gradientMap` reads each texel's brightness and looks a color up along a `Ramp` from [Chapter 2](02-Color.md), or a `Colormap` such as `.viridis` or `.magma`. One color per level is how an automaton's few states become a picture. A smooth ramp is how a chemical's concentration becomes skin.
-- `.levels(blackPoint:whitePoint:)` stretches a narrow band of values to the full range. A field whose state sits in one narrow band maps to nearly one gray. Pull the band's two ends to black and white, and the structure inside it appears. Do this before the gradient map, so the ramp gets the full range to work with.
+- `.levels(blackPoint:whitePoint:)` stretches a narrow band of values to the full range. A field whose state sits in one narrow band maps to nearly one gray. Pull the band's two ends to black and white, and the structure inside it appears. The two ends are grays as you would write them, so read them off the raw `image`: the darkest gray the structure shows and the lightest. Do this before the gradient map, so the ramp gets the full range to work with.
 - `.relight` from [Chapter 21](21-GlassChromeAndTape.md#height-tone-and-a-center-relight-the-two-tone-dither-and-the-warps) reads the field as height and lights it, which turns ridges into relief and a height field into water.
 
 ```swift
@@ -70,7 +70,7 @@ let inks = Ramp([Color(hex: 0x06131F), Color(hex: 0x3FA893)])
 drawImage(life.filtered(.gradientMap(inks)).image, 0, 0)
 ```
 
-Filters chain, so `.filtered(.levels(blackPoint: 0.16, whitePoint: 0.42)).filtered(.gradientMap(inks))` runs one after the other. The organism, the finished sketch after the next step, stacks all three. The `.threshold` filter is there for hard ink. The raw `image` stays the view to reach for when a field is doing something you did not expect.
+Filters chain, so `.filtered(.levels(blackPoint: 0.44, whitePoint: 0.68)).filtered(.gradientMap(inks))` runs one after the other. The organism, the finished sketch after the next step, stacks all three. The `.threshold` filter is there for hard ink. The raw `image` stays the view to reach for when a field is doing something you did not expect.
 
 ## Two chemicals: reaction-diffusion
 
@@ -134,7 +134,7 @@ final class Organism: Sketch {
 
         let skin = Ramp([Color(hex: 0x06131F), Color(hex: 0x0E4C5C),
                          Color(hex: 0x3FA893), Color(hex: 0xF2E3C2)])
-        drawImage(dish.filtered(.levels(blackPoint: 0.16, whitePoint: 0.42))
+        drawImage(dish.filtered(.levels(blackPoint: 0.44, whitePoint: 0.68))
                       .filtered(.gradientMap(skin))
                       .filtered(.relight(.liquid, height: 0.08)).image, 0, 0)
     }
@@ -144,7 +144,7 @@ final class Organism: Sketch {
 Run it live and draw. Your marks do not appear on the canvas. They enter the chemistry, and thirty frames later something is growing where your hand was. You set the conditions, and the picture grows from them. What each piece contributes:
 
 - `poissonDisk(radius:)` from [Chapter 4](04-Randomness.md) scatters the spores evenly, and `seed(7)` in `setup()` makes the same scatter every run. `feed: 0.055` and `kill: 0.062` sit in the maze regime of the map above.
-- The levels stretch pulls the dish's dim state, most of it between 0.16 and 0.42, out to the full range. The four-color ramp then paints it from the deep gaps to the pale ridges.
+- The levels stretch pulls the dish's dim state, most of it between the grays 0.44 and 0.68, out to the full range. The four-color ramp then paints it from the deep gaps to the pale ridges.
 - `.relight(.liquid, height: 0.08)` reads the ramped picture as height and lights it wet. A small height keeps the ridges' colors, where a large one turns the surface sideways to the light and grays it. `toneMap(.aces, exposure: 1.15)` from [Chapter 19](19-LayersAndEffects.md#brighter-than-the-screen-tonemap) keeps the highlights from clipping.
 
 Then make it yours:

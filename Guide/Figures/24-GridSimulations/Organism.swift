@@ -31,7 +31,7 @@ final class Organism: Sketch {
 
         let skin = Ramp([Color(hex: 0x06131F), Color(hex: 0x0E4C5C),
                          Color(hex: 0x3FA893), Color(hex: 0xF2E3C2)])
-        drawImage(dish.filtered(.levels(blackPoint: 0.16, whitePoint: 0.42))
+        drawImage(dish.filtered(.levels(blackPoint: 0.44, whitePoint: 0.68))
                       .filtered(.gradientMap(skin))
                       .filtered(.relight(.liquid, height: 0.08)).image, 0, 0)
     }

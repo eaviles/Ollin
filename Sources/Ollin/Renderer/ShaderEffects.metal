@@ -486,13 +486,44 @@ fragment float4 ollin_fx_halation_combine(PresentOut in [[stage_in]],
                   min(1.0, b.a + g.a * amount * (1.0 - key)));
 }
 
+// A stored value as the number a sketch wrote for it, and back. A layer holds
+// light, and a sketch names a gray by its display value: `Color(white: 0.5)` is
+// stored as 0.214. An effect that takes a gray level (a cut, a black point, a
+// pivot), works on tones (a negative, a band), or reads a layer as numbers (a
+// map's mid-gray) reads through `ollin_as_written`, does its arithmetic on the
+// written values, and writes through `ollin_as_stored`, so 0.5 means the gray
+// seen as half on both sides of the call.
+//
+// The curve is carried past white and mirrored about zero, where `linearToSrgb`
+// cuts both off, so light past white and a negative an earlier filter left come
+// back from the round trip. It is written to return exactly 1 at 1 (the library's
+// form lands one float short), so a white map is a weight of one and not of
+// 0.99999994, which a half float stores a whole step lower. The pair lives in
+// this segment and not in the library's core, which every program on an exported
+// page carries whole.
+static inline float3 ollin_as_written(float3 c) {
+    float3 v = abs(c);
+    float3 lo = v * 12.92;
+    float3 hi = 1.055 * (pow(v, float3(1.0 / 2.4)) - 1.0) + 1.0;
+    return sign(c) * select(lo, hi, v > 0.0031308);
+}
+static inline float3 ollin_as_stored(float3 c) { return srgbToLinear(c); }
+
 // MARK: - Color & tone filters
 //
 // Each reads premultiplied-linear input, transforms straight color, and writes
 // premultiplied-linear out. Parameters arrive in params[0] (and params[1..] for
-// the ones that carry colors). Operating in linear light keeps the grades physical.
+// the ones that carry colors). The ones that mix light (saturation, the hue turn,
+// exposure, white balance) work on the stored values, which keeps them physical.
+// The ones that take a gray level or work on tones (contrast, the negative,
+// posterize, threshold, solarize, levels, the luma key) work on the values a
+// sketch writes, through ollin_as_written and back, so 0.5 is the gray seen as
+// half. A color's brightness there is the gray of the same luminance.
 
 // colorGrade: brightness offset, contrast around mid-gray, saturation, hue (turns).
+// Contrast spreads the written values about 0.5, so a contrast of 0 is the gray
+// seen as half and two grays as far apart as written stay as far apart; at 1 the
+// step is skipped, so the default touches nothing.
 fragment float4 ollin_fx_color_grade(PresentOut in [[stage_in]],
                                      texture2d<float> src [[texture(0)]],
                                      sampler samp [[sampler(0)]],
@@ -502,7 +533,9 @@ fragment float4 ollin_fx_color_grade(PresentOut in [[stage_in]],
     float brightness = params[0].x, contrast = params[0].y;
     float saturation = params[0].z, hue = params[0].w;
     c += brightness;                                   // additive lift
-    c = (c - 0.5) * contrast + 0.5;                    // contrast pivots on mid-gray
+    if (contrast != 1.0) {                             // contrast pivots on mid-gray, as written
+        c = ollin_as_stored((ollin_as_written(c) - 0.5) * contrast + 0.5);
+    }
     float l = ollin_luma(max(c, 0.0));
     c = mix(float3(l), c, saturation);                 // toward/away from gray
     if (hue != 0.0) {                                  // rotate about the gray axis
@@ -513,38 +546,42 @@ fragment float4 ollin_fx_color_grade(PresentOut in [[stage_in]],
     return ollin_premul(max(c, 0.0), s.a);
 }
 
-// invert: cross-fade toward the photographic negative (operates on straight color).
+// invert: cross-fade toward the photographic negative of the written values, so
+// `Color(white: 0.25)` comes back `Color(white: 0.75)`. An amount of 0 is the texel.
 fragment float4 ollin_fx_invert(PresentOut in [[stage_in]],
                                 texture2d<float> src [[texture(0)]],
                                 sampler samp [[sampler(0)]],
                                 constant float4 *params [[buffer(0)]]) {
     float4 s = src.sample(samp, in.uv);
-    float3 c = ollin_unpremul(s);
-    return ollin_premul(mix(c, 1.0 - c, params[0].x), s.a);
+    if (params[0].x <= 0.0) return s;
+    float3 c = ollin_as_written(ollin_unpremul(s));
+    return ollin_premul(ollin_as_stored(mix(c, 1.0 - c, params[0].x)), s.a);
 }
 
-// posterize: quantize each channel to N flat steps.
+// posterize: quantize each channel to N flat steps, evenly spaced as written.
 fragment float4 ollin_fx_posterize(PresentOut in [[stage_in]],
                                    texture2d<float> src [[texture(0)]],
                                    sampler samp [[sampler(0)]],
                                    constant float4 *params [[buffer(0)]]) {
     float4 s = src.sample(samp, in.uv);
-    float3 c = ollin_unpremul(s);
+    float3 c = ollin_as_written(ollin_unpremul(s));
     float n = params[0].x;
     c = floor(c * n) / max(n - 1.0, 1.0);
-    return ollin_premul(clamp(c, 0.0, 1.0), s.a);
+    return ollin_premul(ollin_as_stored(clamp(c, 0.0, 1.0)), s.a);
 }
 
-// threshold: two tones at a luminance cut, with a soft ramp.
+// threshold: two tones at a cut of the written brightness, with a soft ramp that
+// is itself a ramp of written grays. The hard cut writes 0 and 1 as they are.
 fragment float4 ollin_fx_threshold(PresentOut in [[stage_in]],
                                    texture2d<float> src [[texture(0)]],
                                    sampler samp [[sampler(0)]],
                                    constant float4 *params [[buffer(0)]]) {
     float4 s = src.sample(samp, in.uv);
-    float l = ollin_luma(ollin_unpremul(s));
+    float l = ollin_as_written(float3(ollin_luma(ollin_unpremul(s)))).x;
     float t = params[0].x, soft = params[0].y;
-    float v = soft <= 0.0 ? step(t, l) : smoothstep(t - soft, t + soft, l);
-    return ollin_premul(float3(v), s.a);
+    if (soft <= 0.0) return ollin_premul(float3(step(t, l)), s.a);
+    float v = smoothstep(t - soft, t + soft, l);
+    return ollin_premul(v >= 1.0 ? float3(1.0) : ollin_as_stored(float3(v)), s.a);
 }
 
 // sepia: a warm monochrome tone, blended over the original.
@@ -1278,16 +1315,18 @@ static inline float3 ollin_hsv2rgb(float3 c) {
     return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
 }
 
-// solarize (Sabattier): invert the tones above `value` with a soft fold (params: value, softness).
+// solarize (Sabattier): invert the tones above `value` with a soft fold (params:
+// value, softness), on the written values: above the cut `Color(white: 0.75)`
+// comes back `Color(white: 0.25)`.
 fragment float4 ollin_fx_solarize(PresentOut in [[stage_in]],
                                   texture2d<float> src [[texture(0)]],
                                   sampler samp [[sampler(0)]],
                                   constant float4 *params [[buffer(0)]]) {
     float4 s = src.sample(samp, in.uv);
-    float3 c = ollin_unpremul(s);
+    float3 c = ollin_as_written(ollin_unpremul(s));
     float v = params[0].x, soft = params[0].y;
     float3 w = soft <= 0.0 ? step(v, c) : smoothstep(v - soft, v + soft, c);
-    return ollin_premul(clamp(mix(c, 1.0 - c, w), 0.0, 1.0), s.a);
+    return ollin_premul(ollin_as_stored(clamp(mix(c, 1.0 - c, w), 0.0, 1.0)), s.a);
 }
 
 // temperature & tint (white balance): warm/cool by trading red against blue, tint toward
@@ -1345,7 +1384,14 @@ fragment float4 ollin_fx_develop(PresentOut in [[stage_in]],
     return float4(srgbToLinear(display), 1.0);
 }
 
-// levels: pull [black,white] to [0,1], then bend midtones by gamma.
+// levels: pull [black,white] to [0,1], then bend midtones by gamma, all on the
+// written values, so a black point of 0.25 is `Color(white: 0.25)`. A channel
+// above the white point is white, as a photo tool leaves it, and the one thing
+// let past white is light that came in past it, which stays as bright as it was:
+// the result is never brighter than the brighter of white and the texel. So a
+// stretch cannot blow a channel out (white through a white point of 0.5 would be
+// five times white by the curve alone), a highlight under it is not cut to
+// white, and at 0, 1, 1 the texel is handed back as it is.
 fragment float4 ollin_fx_levels(PresentOut in [[stage_in]],
                                 texture2d<float> src [[texture(0)]],
                                 sampler samp [[sampler(0)]],
@@ -1353,9 +1399,10 @@ fragment float4 ollin_fx_levels(PresentOut in [[stage_in]],
     float4 s = src.sample(samp, in.uv);
     float3 c = ollin_unpremul(s);
     float b = params[0].x, w = params[0].y, g = params[0].z;
-    c = clamp((c - b) / max(w - b, 1e-4), 0.0, 1.0);
-    c = pow(c, float3(g));
-    return ollin_premul(c, s.a);
+    if (b == 0.0 && w == 1.0 && g == 1.0) return s;
+    float3 leveled = max((ollin_as_written(c) - b) / max(w - b, 1e-4), 0.0);
+    leveled = ollin_as_stored(pow(leveled, float3(g)));
+    return ollin_premul(min(leveled, max(c, 1.0)), s.a);
 }
 
 // colorama: cycle the hue wheel by luminance (params: cycles, shift) — rainbow banding.
@@ -1370,8 +1417,9 @@ fragment float4 ollin_fx_colorama(PresentOut in [[stage_in]],
     return ollin_premul(ollin_hsv2rgb(hsv), s.a);
 }
 
-// lumaKey: set alpha from a luminance band (params: low, high, invert). Keeps the color,
-// scales alpha, so a too-dark or too-light backdrop drops out (premultiplied stays valid).
+// lumaKey: set alpha from a band of the written brightness (params: low, high,
+// invert). Keeps the color, scales alpha, so a too-dark or too-light backdrop drops
+// out (premultiplied stays valid). A band that keeps everything is the texel.
 fragment float4 ollin_fx_lumakey(PresentOut in [[stage_in]],
                                  texture2d<float> src [[texture(0)]],
                                  sampler samp [[sampler(0)]],
@@ -1379,7 +1427,8 @@ fragment float4 ollin_fx_lumakey(PresentOut in [[stage_in]],
     float4 s = src.sample(samp, in.uv);
     float3 c = ollin_unpremul(s);
     float lo = params[0].x, hi = params[0].y; bool inv = params[0].z > 0.5;
-    float l = ollin_luma(c);
+    if (!inv && lo <= 0.001 && hi >= 0.999) return s;
+    float l = ollin_as_written(float3(ollin_luma(c))).x;
     float soft = 0.03;
     float kLow = lo <= 0.001 ? 1.0 : smoothstep(lo - soft, lo + soft, l);
     float kHigh = hi >= 0.999 ? 1.0 : 1.0 - smoothstep(hi - soft, hi + soft, l);
@@ -2186,7 +2235,8 @@ fragment float4 ollin_fx_cmyk_halftone(PresentOut in [[stage_in]],
 }
 
 // normal map: encode the luma gradient as an RGB surface normal (params: texel.xy, strength).
-// Written into the linear layer as raw data (no decode), so `displace` reads the rg straight.
+// Written as a color a sketch could have written, flat being (0.5, 0.5, 1), which is
+// what `displace` and the vector field of the line integral convolution read.
 fragment float4 ollin_fx_normal_map(PresentOut in [[stage_in]],
                                     texture2d<float> src [[texture(0)]],
                                     sampler samp [[sampler(0)]],
@@ -2204,7 +2254,7 @@ fragment float4 ollin_fx_normal_map(PresentOut in [[stage_in]],
     float gx = (l20 + 2.0 * l21 + l22) - (l00 + 2.0 * l01 + l02);
     float gy = (l02 + 2.0 * l12 + l22) - (l00 + 2.0 * l10 + l20);
     float3 nrm = normalize(float3(-gx * strength, -gy * strength, 1.0));
-    return float4(nrm * 0.5 + 0.5, 1.0);
+    return float4(ollin_as_stored(nrm * 0.5 + 0.5), 1.0);
 }
 
 // relight: read the layer as a height map (luma, Sobel gradient -> screen-space

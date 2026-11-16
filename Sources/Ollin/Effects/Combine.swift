@@ -28,7 +28,8 @@ public struct Combine: Sendable {
 
     /// Which channel of the aux layer a `mask` reads as its mask value: the aux's
     /// luminance (draw the mask in white/gray, the default) or its alpha (draw any
-    /// opaque shape, transparent elsewhere).
+    /// opaque shape, transparent elsewhere). A gray keeps the share it is written
+    /// as: `Color(white: 0.5)` keeps half.
     public enum MaskChannel: Sendable {
         case luminance, alpha
 
@@ -40,11 +41,15 @@ public struct Combine: Sendable {
     public enum FieldEncoding: Sendable, Equatable {
         /// Red and green as a vector, recentered from mid-gray (the same reading
         /// `displace` makes): a layer of `.normalMap`, or one you drew with the
-        /// field's x and y in its colors.
+        /// field's x and y in its colors, `Color(white: 0.5)` being no direction.
+        /// The aux's alpha weights it, so a field drawn on a clear layer is still
+        /// wherever nothing was drawn.
         case vector
         /// Brightness as an angle: black is a stroke to the right, white a full
-        /// `turns` turns around from it. A gray noise layer through this is the
-        /// quickest flow field. Keep it smooth: at a hard edge between two tones
+        /// `turns` turns around from it, and `Color(white: 0.25)` a quarter of
+        /// the way. A value below black turns the other way, so a noise that
+        /// swings about zero is one smooth field. A gray noise layer through
+        /// this is the quickest flow field. Keep it smooth: at a hard edge between two tones
         /// the half-covered texel reads as the angle between them, a line along
         /// the edge that a streak follows instead of crossing.
         case angle(turns: Double = 1)
@@ -152,8 +157,13 @@ public struct Combine: Sendable {
 
     /// Displace: offset the base's pixels by the aux layer, read as a vector field
     /// (red → horizontal, green → vertical, mid-gray = no shift). `amount` is the
-    /// maximum shift as a fraction of the layer, so 0.05 nudges by up to 5%. Feed it
-    /// a noise or gradient layer for ripples, smearing, and refraction looks.
+    /// maximum shift as a fraction of the layer, so 0.05 nudges by up to 5%.
+    ///
+    /// The map is read as its colors were written: `Color(white: 0.5)` is no shift,
+    /// `Color(red: 1, green: 0.5, blue: 0)` the full shift to the right. The map's
+    /// alpha weights the shift, so a map can be marks on a clear layer, and a soft
+    /// edge on a mark fades its push out. Draw it over mid-gray, or run a height
+    /// picture through `.normalMap`, for ripples, smearing, and refraction looks.
     public static func displace(amount: Double = 0.05) -> Combine {
         Combine(kind: .displace(amount: amount))
     }

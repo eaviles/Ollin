@@ -31,7 +31,10 @@ struct FilterCatalogTests {
         Case(name: "temperature", filter: .temperature(amount: 0.5)),
         Case(name: "levels", filter: .levels(blackPoint: 0.2, whitePoint: 0.8, gamma: 1.4)),
         Case(name: "colorama", filter: .colorama()),
-        Case(name: "luma key", filter: .lumaKey()),
+        // Not the default: `low: 0.1` drops what is nearly black, and over this
+        // sketch's black canvas a dropped black is the same bytes. 0.35 reaches
+        // the picture's dark gray ground.
+        Case(name: "luma key", filter: .lumaKey(low: 0.35)),
         Case(name: "motion blur", filter: .motionBlur()),
         Case(name: "radial blur", filter: .radialBlur()),
         Case(name: "bilateral", filter: .bilateral()),
