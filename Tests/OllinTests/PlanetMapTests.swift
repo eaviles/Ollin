@@ -127,8 +127,10 @@ struct PlanetMapTests {
 
     // MARK: The finish
 
-    /// Water is nearly a mirror and ground is not, which is the whole reason a sun
-    /// appears on the sea and nowhere else.
+    /// Water is smoother than ground, which is the whole reason the sun shows on the
+    /// sea and nowhere else. It is not a mirror: a sea under wind spreads the sun
+    /// into a wide soft patch, so its roughness sits in the middle of the range, and
+    /// the thing to hold is the gap between it and the land.
     @Test(.enabled(if: Snapshot.hasMetal))
     func waterIsSmootherThanLand() throws {
         let maps = try #require(PlanetMaps.sharedDefault())
@@ -150,7 +152,7 @@ struct PlanetMapTests {
         }
         #expect(water.count > 0 && ground.count > 0)
         let wet = water.sum / Double(water.count), dry = ground.sum / Double(ground.count)
-        #expect(wet < 0.3 && dry > 0.7, "water \(wet), ground \(dry)")
+        #expect(wet < 0.6 && dry > 0.8 && dry - wet > 0.3, "water \(wet), ground \(dry)")
 
         // And nothing is metal: a planet is a dielectric all over.
         #expect(finish.reduce(0.0) { max($0, $1.b) } < 0.01)
@@ -292,9 +294,10 @@ private final class PlanetMaps: Sketch {
         compute(bakeSurface, reading: heightMap, writing: surfaceMap, params: seed)
 
         var relief = ComputeParams()
-        relief.append(Float(4.5))
+        relief.append(Float(0.017))
+        relief.append(Float(0))
         compute(bakeRelief, reading: heightMap, writing: reliefMap, params: relief)
-        compute(bakeFinish, reading: heightMap, writing: finishMap)
+        compute(bakeFinish, reading: heightMap, writing: finishMap, params: seed)
         compute(bakeLights, reading: heightMap, writing: lightMap, params: seed)
 
         var sky = ComputeParams()

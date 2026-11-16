@@ -874,7 +874,7 @@ private let snapshotMetalCases: [SnapshotCase] = [
                  note: "A retained MeshField of three mesh kinds (boxes, spheres, cones) in a ring, drawn by GPU-written indirect draws with per-copy frustum culling ON and the camera framed so part of the ring sits outside the view. Pins the field build (entry table, compact regions), the cull + encode kernels, the per-entry indirect draws, the per-copy tints, and the field casters in the 2D shadow map beside a plain floor. Culling must not change a pixel (a culled copy is off-screen), so this reference also pins that no visible copy is ever lost. No rng and no time, deterministic.",
                  make: { MeshFieldScene() }),
     SnapshotCase("planet",
-                 note: "The procedural planet: six compute kernels bake the height, surface, relief, finish, city-light and cloud maps into textures the sketch keeps, a sphere wears them under one directional sun, and the night lights are drawn into a second layer and masked by the darkness of the lit one (Combine.mask, inverted), so the terminator decides where a city shows. Pins the whole chain, the compute-texture-as-mesh-texture path (base color, normal, metallic-roughness and emissive maps all GPU-written), the layer mask, and the bloom. The kernels are read from the example's own .metal files. t = 0, one world, deterministic.",
+                 note: "The procedural planet: six compute kernels bake the height, surface, relief, finish, city-light and cloud maps into textures the sketch keeps, a seventh writes the shadow the cloud throws on the ground, spheres carry them under one directional sun, the cities go into a second layer with the cloud over them in black, and the example's own air shader (a two-input user shader) follows each pixel's sight line through a shell of air: the scattered light along it, the reddened light at the terminator, and the cities where the sun has set. Pins the whole chain, the compute-texture-as-mesh-texture path (base color, normal, metallic-roughness and emissive maps all GPU-written, two of them 8-bit), a kernel sampling a texture, a user combine carrying values brighter than white through, and the bloom. The kernels and shaders are read from the example's own .metal files. t = 0, one world, deterministic.",
                  make: { PlanetScene() }),
     SnapshotCase("black-hole",
                  note: "A black hole drawn by its own user shader (the Shaders/BlackHole example's blackhole.metal and the physics.metal it includes, read from the example's folder): every pixel's ray bent by the orbit equation for light, the thin disk crossed where the ray's plane meets it (the far side standing over the hole and under it), each crossing shining as a black body at the temperature the Page-Thorne flux gives it shifted by g (blue-white where the disk turns toward the camera, red where it turns away), the lensed star field and the beacon's ring, four rays a pixel, tone-mapped and bloomed as the example does. The disk's clock at 0, so the texture is fixed; deterministic.",
@@ -10245,9 +10245,10 @@ private final class StrandsScene: Sketch {
     }
 }
 
-/// A world baked on the GPU and then lit like any other solid. The kernels and the
-/// star shader are read from the example's own files, so this pins what ships. Half
-/// the example's map size and segment count, t = 0, one world, deterministic.
+/// A world baked on the GPU, lit like any other solid, and seen through its own air.
+/// The kernels, the star shader, and the air shader are read from the example's own
+/// files, so this pins what ships. An eighth of the example's map size, t = 0, one
+/// world, deterministic.
 private final class PlanetScene: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
 
@@ -10261,39 +10262,42 @@ private final class PlanetScene: Sketch {
     private static func kernel(_ entry: String) -> ComputeKernel? {
         (try? ComputeKernel(entry: entry, contentsOf: exampleFile("planet.metal")))
     }
+    private static func source(_ name: String) -> String? {
+        try? String(contentsOf: exampleFile(name), encoding: .utf8)
+    }
+
+    private static let cloudHeight = 0.003
 
     private let heightMap = ComputeTexture(width: 512, height: 256)
     private let surfaceMap = ComputeTexture(width: 512, height: 256)
-    private let reliefMap = ComputeTexture(width: 512, height: 256)
-    private let finishMap = ComputeTexture(width: 512, height: 256)
+    private let reliefMap = ComputeTexture(width: 512, height: 256, format: .rgba8Unorm)
+    private let finishMap = ComputeTexture(width: 512, height: 256, format: .rgba8Unorm)
     private let lightMap = ComputeTexture(width: 512, height: 256)
-    private let cloudMap = ComputeTexture(width: 256, height: 128)
-    private let cloudReliefMap = ComputeTexture(width: 256, height: 128)
+    private let cloudMap = ComputeTexture(width: 512, height: 256)
+    private let cloudReliefMap = ComputeTexture(width: 512, height: 256, format: .rgba8Unorm)
+    private let shadowMap = ComputeTexture(width: 256, height: 128, format: .rgba8Unorm)
 
     private var globe = Mesh(positions: [], normals: [], indices: [])
     private var cities = Mesh(positions: [], normals: [], indices: [])
+    private var shade = Mesh(positions: [], normals: [], indices: [])
     private var weather = Mesh(positions: [], normals: [], indices: [])
-    private var air = Mesh(positions: [], normals: [], indices: [])
-    private var stars: Shader?
+    private var overcast = Mesh(positions: [], normals: [], indices: [])
 
     override func setup() {
         toneMap(.aces)
-        let ball = Mesh.sphere(radius: 1, segments: 128, rings: 64)
+        let ball = Mesh.sphere(radius: 1, segments: 96, rings: 48)
         globe = ball.textured(surfaceMap.image)
             .normalMapped(reliefMap.image, scale: 1)
             .surfaceMapped(metallicRoughness: finishMap.image)
         cities = ball.textured(lightMap.image, baseColor: .black)
         cities.material?.emissiveTexture = lightMap.image
-        cities.material?.emissiveColor = Color(white: 1.4)
-        weather = Mesh.sphere(radius: 1.003, segments: 128, rings: 64)
-            .textured(cloudMap.image)
+        cities.material?.emissiveColor = .white
+        let shell = Mesh.sphere(radius: 1 + Self.cloudHeight, segments: 96, rings: 48)
+        weather = shell.textured(cloudMap.image)
             .normalMapped(cloudReliefMap.image, scale: 1)
-        air = Mesh.sphere(radius: 1.028, segments: 96, rings: 48)
-        air.material = MeshMaterial(baseColor: .black)
-        if let source = try? String(contentsOf: Self.exampleFile("stars.metal"),
-                                    encoding: .utf8) {
-            stars = Shader(source)
-        }
+        overcast = shell.textured(cloudMap.image, baseColor: .black)
+        shade = Mesh.sphere(radius: 1 + Self.cloudHeight / 2, segments: 96, rings: 48)
+            .textured(shadowMap.image, baseColor: .black)
     }
 
     override func draw() {
@@ -10303,71 +10307,87 @@ private final class PlanetScene: Sketch {
               let bakeRelief = Self.kernel("planet_relief"),
               let bakeFinish = Self.kernel("planet_finish"),
               let bakeLights = Self.kernel("planet_lights"),
-              let bakeClouds = Self.kernel("planet_clouds") else { return }
+              let bakeClouds = Self.kernel("planet_clouds"),
+              let castShadow = Self.kernel("planet_shadow"),
+              let starSource = Self.source("stars.metal"),
+              let airSource = Self.source("air.metal") else { return }
 
         var seed = ComputeParams(); seed.append(Float(3))
         compute(bakeHeight, writing: heightMap, params: seed)
         compute(bakeSurface, reading: heightMap, writing: surfaceMap, params: seed)
-        var relief = ComputeParams(); relief.append(Float(5.5)); relief.append(Float(0))
+        var relief = ComputeParams(); relief.append(Float(0.017)); relief.append(Float(0))
         compute(bakeRelief, reading: heightMap, writing: reliefMap, params: relief)
-        compute(bakeFinish, reading: heightMap, writing: finishMap)
+        compute(bakeFinish, reading: heightMap, writing: finishMap, params: seed)
         compute(bakeLights, reading: heightMap, writing: lightMap, params: seed)
-        var sky = ComputeParams(); sky.append(Float(3)); sky.append(Float(0.66))
+        var sky = ComputeParams(); sky.append(Float(3)); sky.append(Float(0.6))
         compute(bakeClouds, writing: cloudMap, params: sky)
         var cloudRelief = ComputeParams()
-        cloudRelief.append(Float(3.0)); cloudRelief.append(Float(1))
+        cloudRelief.append(Float(0.0045)); cloudRelief.append(Float(1))
         compute(bakeRelief, reading: cloudMap, writing: cloudReliefMap, params: cloudRelief)
 
-        let eye = Camera3D.perspective(eye: Vector3(0, 0.26, 3.55), target: .zero,
-                                       fieldOfView: .pi / 4.6)
+        let lean = Rotation3D.aboutZ(.degrees(-23.4))
+        let toSun = Vector3(0.86, 0.36, 0.36)
+        let sunlight = 2.0
+        let sunOverGround = toSun.rotated(by: lean.inverse)
+        var cast = ComputeParams()
+        cast.append(Float(sunOverGround.x))
+        cast.append(Float(sunOverGround.y))
+        cast.append(Float(sunOverGround.z))
+        cast.append(Float(0)); cast.append(Float(Self.cloudHeight)); cast.append(Float(0.50))
+        compute(castShadow, reading: cloudMap, writing: shadowMap, params: cast)
+
+        let lens = Double.focalLength(35)
+        let view = Camera3D.perspective(eye: Vector3(0, 0.26, 3.55), target: .zero,
+                                        fieldOfView: lens)
         let scene = makeRenderTarget()
         withTarget(scene) {
             background(.black)
-            if let stars { drawImage(generate(stars).image, 0, 0) }
-            camera(eye)
-            light(.directional(.white, direction: Vector3(-0.86, -0.36, -0.36),
-                               intensity: 2.1, castsShadow: false))
+            drawImage(generate(Shader(starSource)).image, 0, 0)
+            camera(view)
+            light(.directional(.white, direction: -toSun, intensity: sunlight,
+                               castsShadow: false))
             fill(.white)
-            var surface = Material.physicallyBased(metallic: 1, roughness: 1)
-            surface.rim = 0.16
-            surface.rimSharpness = 5.0
-            surface.rimColor = Color(hex: 0x8FC0FF)
-            material(surface)
+            rotate(lean)
+            material(.physicallyBased(metallic: 1, roughness: 1))
             drawMesh(globe)
-            material(.dielectric(roughness: 0.92))
+            drawMesh(shade)
+            material(.dielectric(roughness: 0.95))
             drawMesh(weather)
         }
         let lights = makeRenderTarget()
         withTarget(lights) {
-            camera(eye)
+            camera(view)
             fill(.white)
             material(Material())
+            rotate(lean)
             drawMesh(cities)
+            drawMesh(overcast)
         }
-        let atmosphere = makeRenderTarget()
-        withTarget(atmosphere) {
-            camera(eye)
-            fill(.white)
-            var shell = Material()
-            shell.rim = 0.42
-            shell.rimSharpness = 4.0
-            shell.rimColor = Color(hex: 0x6EA8FF)
-            material(shell)
-            drawMesh(air)
-        }
-        let night = lights.combined(with: scene, .mask(channel: .luminance, inverted: true))
-        let daylight = scene.filtered(.gaussianBlur(radius: 30))
-        let halo = atmosphere.combined(with: daylight, .mask(channel: .luminance))
 
-        drawImage(scene.image, 0, 0)
+        let frame = view.basis
+        let spread = tan(lens / 2)
+        func air(citiesOnly: Bool) -> Shader {
+            let right = frame.right * spread, up = frame.up * spread, ahead = -frame.back
+            return Shader(airSource, params: [
+                Float(view.eye.x), Float(view.eye.y), Float(view.eye.z),
+                Float(right.x), Float(right.y), Float(right.z),
+                Float(up.x), Float(up.y), Float(up.z),
+                Float(ahead.x), Float(ahead.y), Float(ahead.z),
+                Float(toSun.x), Float(toSun.y), Float(toSun.z),
+                1, Float(sunlight), 1.2,
+                citiesOnly ? 1 : 0,
+            ], file: Self.exampleFile("air.metal").path)
+        }
+        let planet = scene.combined(with: lights, .shader(air(citiesOnly: false)))
+        let night = scene.combined(with: lights, .shader(air(citiesOnly: true)))
+
+        drawImage(planet.image, 0, 0)
         withState {
             blendMode(.add)
-            drawImage(night.image, 0, 0)
-            drawImage(halo.filtered(.gaussianBlur(radius: 4)).image, 0, 0)
-            drawImage(scene.filtered(.bloom(threshold: 0.80, amount: 0.5,
-                                            radius: 46)).image, 0, 0)
-            drawImage(night.filtered(.bloom(threshold: 0.12, amount: 0.7,
-                                            radius: 14)).image, 0, 0)
+            drawImage(planet.filtered(.bloom(threshold: 1.0, amount: 0.22,
+                                             radius: 36)).image, 0, 0)
+            drawImage(night.filtered(.bloom(threshold: 0.10, amount: 0.55,
+                                            radius: 9)).image, 0, 0)
         }
     }
 }

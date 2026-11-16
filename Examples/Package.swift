@@ -238,7 +238,7 @@ let package = Package(
         // The maps are baked by compute kernels in their own .metal file, and the
         // star field by a fragment shader in another; both ship as flat copies.
         example("3D/Geometry/Planet",
-                resources: [.copy("planet.metal"), .copy("stars.metal")]),
+                resources: [.copy("planet.metal"), .copy("stars.metal"), .copy("air.metal")]),
         // 3D rigid bodies (Jolt-backed World3D): a crate pyramid under cannon
         // fire, a mixed-solid pile you can drag, a wrecking-ball chain, and a
         // motor-driven windmill with spring-shut gates.

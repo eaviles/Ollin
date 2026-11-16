@@ -504,8 +504,8 @@
         "3D/Geometry/Planet",
         "3D/Geometry/MeshGrowth"
       ],
-      "image": "groups/3D-Geometry.jpg?v=ff07b071",
-      "imageSmall": "groups/3D-Geometry-640.jpg?v=b55c02aa"
+      "image": "groups/3D-Geometry.jpg?v=83ad42c5",
+      "imageSmall": "groups/3D-Geometry-640.jpg?v=2a00c6a9"
     },
     "3D/Lighting": {
       "of": [
@@ -2109,20 +2109,20 @@
       "length": "10.0s",
       "seconds": 10.0,
       "frame": 480,
-      "motion": 7.023,
+      "motion": 8.334,
       "sound": false,
-      "source": "063f8de45cb827cb",
+      "source": "7230d9d65d02660d",
       "rendered": "2026-11-15",
       "bytes": {
-        "loop": 2436693,
-        "loopSmall": 576915,
-        "still": 188028,
-        "stillSmall": 66095
+        "loop": 6194281,
+        "loopSmall": 970375,
+        "still": 327770,
+        "stillSmall": 99205
       },
-      "loop": "examples/3D/Geometry/Planet/loop.mp4?v=2441e2a1",
-      "loopSmall": "examples/3D/Geometry/Planet/loop-640.mp4?v=0880a667",
-      "still": "examples/3D/Geometry/Planet/still.jpg?v=ab51b07e",
-      "stillSmall": "examples/3D/Geometry/Planet/still-640.jpg?v=48e518d3",
+      "loop": "examples/3D/Geometry/Planet/loop.mp4?v=1002d308",
+      "loopSmall": "examples/3D/Geometry/Planet/loop-640.mp4?v=1292cf56",
+      "still": "examples/3D/Geometry/Planet/still.jpg?v=a256bd88",
+      "stillSmall": "examples/3D/Geometry/Planet/still-640.jpg?v=ac0a348a",
       "seed": 1
     },
     "3D/Geometry/PointCloud": {
