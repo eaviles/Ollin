@@ -751,6 +751,9 @@ final class SensorStreamer {
 struct ContentView: View {
     @State private var streamer = SensorStreamer()
     @Environment(\.scenePhase) private var scenePhase
+    /// Compact when the phone is held sideways, which is when the one column
+    /// no longer fits the screen.
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     /// Whether the thumb is on the wand pad, kept here because the gesture reports
     /// a change rather than a landing, and the first change after a release is what
@@ -780,174 +783,226 @@ struct ContentView: View {
     }
 
     /// Everything but the sketch's full screen: the title, the modes, the status.
+    ///
+    /// The phone is held either way, since a recording keeps the hold it began
+    /// in and the phone may be turned before it is stopped. Upright the screen
+    /// is one column. Sideways that column is taller than the screen, so it
+    /// scrolls, and what a hand has to reach stands beside it: the pads and
+    /// Record.
     private var modes: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            VStack(spacing: 28) {
-                Spacer()
+            if verticalSizeClass == .compact { wide } else { tall }
+        }
+    }
 
-                // Title
-                VStack(spacing: 6) {
-                    Text("OLLIN")
-                        .font(.system(size: 44, weight: .heavy, design: .rounded))
-                        .foregroundStyle(.white)
-                    Text("CAPTURE")
-                        .font(.system(size: 18, weight: .semibold, design: .rounded))
-                        .tracking(8)
-                        .foregroundStyle(.white.opacity(0.55))
+    private var showsRecord: Bool { streamer.canRecord || streamer.recording }
+
+    /// Held upright: one column, centered.
+    private var tall: some View {
+        VStack(spacing: 28) {
+            Spacer()
+            readout
+            if streamer.mode == .wand { wandPad }
+            if streamer.mode == .touch { touchPad }
+            if showsRecord { recordButton }
+            statusLine
+            Spacer()
+            Text("Connect the cable and run a sketch on the Mac")
+                .font(.caption)
+                .foregroundStyle(.white.opacity(0.3))
+                .padding(.bottom, 12)
+        }
+    }
+
+    /// Held sideways: the readout scrolls on the left, and the pads and Record
+    /// stay put on the right. The pads are kept out of the scrolling column on
+    /// purpose, since a scrolling view holds a touch back before passing it on.
+    private var wide: some View {
+        HStack(spacing: 0) {
+            ScrollView {
+                VStack(spacing: 20) {
+                    readout
+                    statusLine
                 }
-
-                // Connection lamp
-                HStack(spacing: 10) {
-                    Circle()
-                        .fill(connected ? Color.red : Color.gray)
-                        .frame(width: 14, height: 14)
-                        .shadow(color: connected ? .red : .clear, radius: 8)
-                    Text(connected ? "ON AIR · Mac connected" : "READY · waiting for the Mac")
-                        .font(.system(.headline, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.9))
-                }
-
-                // Capture mode: one camera session at a time (rear: body/world/
-                // segment/room/hands/text/markers/wand/attention/flow, front:
-                // face/selfie), so the modes are mutually exclusive; Touch runs no
-                // camera at all, and neither does Sketch. Fourteen modes outgrew the
-                // segmented control, so they wrap as five rows of chips.
-                VStack(spacing: 8) {
-                    modeRow([.body, .face, .world])
-                    modeRow([.segment, .selfie, .room])
-                    modeRow([.hands, .text, .markers])
-                    modeRow([.wand, .attention, .flow])
-                    modeRow([.touch, .sketch], padTo: 3)
-                    // Hearing and the air are switches rather than modes: neither
-                    // needs a camera, so both run beside whichever mode is on.
-                    // Drawn as chips so they sit with the others, but they toggle
-                    // rather than select.
-                    switchRow
-                }
-                .padding(.horizontal, 28)
-
-                // Status rows
-                VStack(alignment: .leading, spacing: 12) {
-                    switch streamer.mode {
-                    case .body:
-                        row("Body", streamer.bodySupported
-                            ? (streamer.bodyTracked ? "tracking · \(streamer.jointCount) joints" : "searching…")
-                            : "unsupported on this device",
-                            ok: streamer.bodyTracked)
-                    case .face:
-                        row("Face", streamer.faceSupported
-                            ? (streamer.faceTracked ? "tracking · \(streamer.topExpression)" : "searching…")
-                            : "unsupported on this device",
-                            ok: streamer.faceTracked)
-                    case .world:
-                        row("Depth", streamer.depthSupported
-                            ? (streamer.depthTracked ? "streaming · \(streamer.depthInfo)" : "starting…")
-                            : "needs LiDAR (Pro)",
-                            ok: streamer.depthTracked)
-                    case .segment:
-                        row("Person", streamer.segSupported
-                            ? (streamer.segTracked ? "streaming · \(streamer.segInfo)" : "starting…")
-                            : "needs A12+ for segmentation",
-                            ok: streamer.segTracked)
-                    case .selfie:
-                        row("Person", streamer.selfieSupported
-                            ? (streamer.selfieInfo.isEmpty ? "starting…"
-                               : "streaming · \(streamer.selfieInfo)\(streamer.selfiePresent ? "" : " · nobody in view")")
-                            : "no front camera",
-                            ok: streamer.selfiePresent)
-                    case .hands:
-                        row("Hands", streamer.handsInfo.isEmpty
-                            ? "looking for hands…"
-                            : "streaming · \(streamer.handsInfo)",
-                            ok: streamer.handsTracked)
-                    case .text:
-                        row("Text", streamer.textInfo.isEmpty
-                            ? "looking for readable text…"
-                            : "streaming · \(streamer.textInfo)",
-                            ok: streamer.textTracked)
-                    case .markers:
-                        row("Markers", streamer.markerInfo.isEmpty
-                            ? "reading the folder…"
-                            : streamer.markerInfo,
-                            ok: streamer.markersFound)
-                        markerLibrary
-                    case .wand:
-                        row("Wand", streamer.wandInfo.isEmpty
-                            ? "looking around the room…"
-                            : streamer.wandInfo,
-                            ok: streamer.wandTracked)
-                    case .attention:
-                        row("Attention", streamer.attentionInfo.isEmpty
-                            ? "mapping the picture…"
-                            : "streaming · \(streamer.attentionInfo)",
-                            ok: streamer.attentionLive)
-                    case .flow:
-                        row("Flow", streamer.flowInfo.isEmpty
-                            ? "measuring the first pair…"
-                            : "streaming · \(streamer.flowInfo)",
-                            ok: streamer.flowLive)
-                    case .touch:
-                        row("Touch", streamer.touchInfo.isEmpty
-                            ? "waiting for a finger…"
-                            : streamer.touchInfo,
-                            ok: streamer.touchLive)
-                    case .sketch:
-                        // Drawn full screen instead; this row is never on screen.
-                        row("Sketch", "showing", ok: true)
-                    case .room:
-                        row("Surface", streamer.meshSupported
-                            ? (streamer.meshInfo.isEmpty ? "walk around to build it…" : "streaming · \(streamer.meshInfo)")
-                            : "needs LiDAR (Pro)",
-                            ok: streamer.meshTracked)
-                        row("Planes", streamer.planeInfo.isEmpty
-                            ? "looking for flat surfaces…" : "streaming · \(streamer.planeInfo)",
-                            ok: !streamer.planeInfo.isEmpty)
+                .padding(.vertical, 20)
+            }
+            if streamer.mode == .wand || streamer.mode == .touch || showsRecord {
+                VStack(spacing: 14) {
+                    if streamer.mode == .wand { wandPad }
+                    if streamer.mode == .touch { touchPad }
+                    if showsRecord {
+                        recordButton
+                        // The Record row may have scrolled away, so the count
+                        // is repeated under the button.
+                        Text(streamer.recordingInfo)
+                            .font(.system(.footnote, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.7))
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 28)
                     }
-                    row("Sound", streamer.hearing
-                        ? (streamer.soundInfo.isEmpty ? "listening…" : streamer.soundInfo)
-                        : "off · tap Hear",
-                        ok: streamer.hearing && streamer.soundLive)
-                    row("Air", streamer.reading
-                        ? (streamer.airInfo.isEmpty ? "reading…" : streamer.airInfo)
-                        : (streamer.airSupported ? "off · tap Air" : "no barometer"),
-                        ok: streamer.reading && streamer.airLive)
-                    row("Light", streamer.mode == .selfie
-                        ? "paused (Selfie runs no ARKit)"
-                        : (streamer.lightLive ? streamer.lightInfo : "measuring…"),
-                        ok: streamer.mode != .selfie && streamer.lightLive)
-                    row("Motion", streamer.motionLive
-                        ? String(format: "live · gravity (% .2f, % .2f, % .2f)",
-                                 streamer.gravity.x, streamer.gravity.y, streamer.gravity.z)
-                        : "starting…",
-                        ok: streamer.motionLive)
-                    row("Port", "\(PhoneWire.streamPort) · over USB", ok: connected)
-                    row("Record", streamer.recordingInfo.isEmpty
-                        ? (streamer.canRecord ? "ready · needs no cable" : "needs a camera mode")
-                        : streamer.recordingInfo,
-                        ok: streamer.recording)
                 }
-                .padding(20)
-                .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 16))
-                .padding(.horizontal, 28)
-
-                if streamer.mode == .wand { wandPad }
-                if streamer.mode == .touch { touchPad }
-                if streamer.canRecord || streamer.recording { recordButton }
-
-                Text(streamer.status)
-                    .font(.footnote)
-                    .foregroundStyle(.white.opacity(0.4))
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
-
-                Spacer()
-                Text("Connect the cable and run a sketch on the Mac")
-                    .font(.caption)
-                    .foregroundStyle(.white.opacity(0.3))
-                    .padding(.bottom, 12)
+                .frame(width: 300)
+                .padding(.vertical, 20)
             }
         }
+    }
+
+    private var statusLine: some View {
+        Text(streamer.status)
+            .font(.footnote)
+            .foregroundStyle(.white.opacity(0.4))
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, 32)
+    }
+
+    /// The title, the lamp, the modes, and the status rows, in the order they
+    /// stand in either hold.
+    @ViewBuilder private var readout: some View {
+        // Title
+        VStack(spacing: 6) {
+            Text("OLLIN")
+                .font(.system(size: 44, weight: .heavy, design: .rounded))
+                .foregroundStyle(.white)
+            Text("CAPTURE")
+                .font(.system(size: 18, weight: .semibold, design: .rounded))
+                .tracking(8)
+                .foregroundStyle(.white.opacity(0.55))
+        }
+
+        // Connection lamp
+        HStack(spacing: 10) {
+            Circle()
+                .fill(connected ? Color.red : Color.gray)
+                .frame(width: 14, height: 14)
+                .shadow(color: connected ? .red : .clear, radius: 8)
+            Text(connected ? "ON AIR · Mac connected" : "READY · waiting for the Mac")
+                .font(.system(.headline, design: .rounded))
+                .foregroundStyle(.white.opacity(0.9))
+        }
+
+        // Capture mode: one camera session at a time (rear: body/world/
+        // segment/room/hands/text/markers/wand/attention/flow, front:
+        // face/selfie), so the modes are mutually exclusive; Touch runs no
+        // camera at all, and neither does Sketch. Fourteen modes are too many
+        // for a segmented control, so they wrap as five rows of chips.
+        VStack(spacing: 8) {
+            modeRow([.body, .face, .world])
+            modeRow([.segment, .selfie, .room])
+            modeRow([.hands, .text, .markers])
+            modeRow([.wand, .attention, .flow])
+            modeRow([.touch, .sketch], padTo: 3)
+            // Hearing and the air are switches rather than modes: neither
+            // needs a camera, so both run beside whichever mode is on.
+            // Drawn as chips so they sit with the others, but they toggle
+            // rather than select.
+            switchRow
+        }
+        .padding(.horizontal, 28)
+
+        // Status rows
+        VStack(alignment: .leading, spacing: 12) {
+            switch streamer.mode {
+            case .body:
+                row("Body", streamer.bodySupported
+                    ? (streamer.bodyTracked ? "tracking · \(streamer.jointCount) joints" : "searching…")
+                    : "unsupported on this device",
+                    ok: streamer.bodyTracked)
+            case .face:
+                row("Face", streamer.faceSupported
+                    ? (streamer.faceTracked ? "tracking · \(streamer.topExpression)" : "searching…")
+                    : "unsupported on this device",
+                    ok: streamer.faceTracked)
+            case .world:
+                row("Depth", streamer.depthSupported
+                    ? (streamer.depthTracked ? "streaming · \(streamer.depthInfo)" : "starting…")
+                    : "needs LiDAR (Pro)",
+                    ok: streamer.depthTracked)
+            case .segment:
+                row("Person", streamer.segSupported
+                    ? (streamer.segTracked ? "streaming · \(streamer.segInfo)" : "starting…")
+                    : "needs A12+ for segmentation",
+                    ok: streamer.segTracked)
+            case .selfie:
+                row("Person", streamer.selfieSupported
+                    ? (streamer.selfieInfo.isEmpty ? "starting…"
+                       : "streaming · \(streamer.selfieInfo)\(streamer.selfiePresent ? "" : " · nobody in view")")
+                    : "no front camera",
+                    ok: streamer.selfiePresent)
+            case .hands:
+                row("Hands", streamer.handsInfo.isEmpty
+                    ? "looking for hands…"
+                    : "streaming · \(streamer.handsInfo)",
+                    ok: streamer.handsTracked)
+            case .text:
+                row("Text", streamer.textInfo.isEmpty
+                    ? "looking for readable text…"
+                    : "streaming · \(streamer.textInfo)",
+                    ok: streamer.textTracked)
+            case .markers:
+                row("Markers", streamer.markerInfo.isEmpty
+                    ? "reading the folder…"
+                    : streamer.markerInfo,
+                    ok: streamer.markersFound)
+                markerLibrary
+            case .wand:
+                row("Wand", streamer.wandInfo.isEmpty
+                    ? "looking around the room…"
+                    : streamer.wandInfo,
+                    ok: streamer.wandTracked)
+            case .attention:
+                row("Attention", streamer.attentionInfo.isEmpty
+                    ? "mapping the picture…"
+                    : "streaming · \(streamer.attentionInfo)",
+                    ok: streamer.attentionLive)
+            case .flow:
+                row("Flow", streamer.flowInfo.isEmpty
+                    ? "measuring the first pair…"
+                    : "streaming · \(streamer.flowInfo)",
+                    ok: streamer.flowLive)
+            case .touch:
+                row("Touch", streamer.touchInfo.isEmpty
+                    ? "waiting for a finger…"
+                    : streamer.touchInfo,
+                    ok: streamer.touchLive)
+            case .sketch:
+                // Drawn full screen instead; this row is never on screen.
+                row("Sketch", "showing", ok: true)
+            case .room:
+                row("Surface", streamer.meshSupported
+                    ? (streamer.meshInfo.isEmpty ? "walk around to build it…" : "streaming · \(streamer.meshInfo)")
+                    : "needs LiDAR (Pro)",
+                    ok: streamer.meshTracked)
+                row("Planes", streamer.planeInfo.isEmpty
+                    ? "looking for flat surfaces…" : "streaming · \(streamer.planeInfo)",
+                    ok: !streamer.planeInfo.isEmpty)
+            }
+            row("Sound", streamer.hearing
+                ? (streamer.soundInfo.isEmpty ? "listening…" : streamer.soundInfo)
+                : "off · tap Hear",
+                ok: streamer.hearing && streamer.soundLive)
+            row("Air", streamer.reading
+                ? (streamer.airInfo.isEmpty ? "reading…" : streamer.airInfo)
+                : (streamer.airSupported ? "off · tap Air" : "no barometer"),
+                ok: streamer.reading && streamer.airLive)
+            row("Light", streamer.mode == .selfie
+                ? "paused (Selfie runs no ARKit)"
+                : (streamer.lightLive ? streamer.lightInfo : "measuring…"),
+                ok: streamer.mode != .selfie && streamer.lightLive)
+            row("Motion", streamer.motionLive
+                ? String(format: "live · gravity (% .2f, % .2f, % .2f)",
+                         streamer.gravity.x, streamer.gravity.y, streamer.gravity.z)
+                : "starting…",
+                ok: streamer.motionLive)
+            row("Port", "\(PhoneWire.streamPort) · over USB", ok: connected)
+            row("Record", streamer.recordingInfo.isEmpty
+                ? (streamer.canRecord ? "ready · needs no cable" : "needs a camera mode")
+                : streamer.recordingInfo,
+                ok: streamer.recording)
+        }
+        .padding(20)
+        .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 16))
+        .padding(.horizontal, 28)
     }
 
     /// What the phone is looking for: one line per reference, what it assumed about

@@ -25,6 +25,10 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 - **`.normalMap` writes the usual normal-map color.** A flat area is `Color(red: 0.5, green: 0.5, blue: 1)`, a deeper blue than before, and the result feeds `.displace` and the `.vector` field as it did. A shader of your own that reads its red and green now reads them through `linearToSrgb`. [Effects](Docs/Drawing/Effects.md#filter)
 - **The Guide's Chapter 34 is two chapters.** *Traced light* keeps the mirrors, the bounce, the caustic, and the camera's effects. The new Chapter 35, [The lens and the slow render](Guide/35-TheLensAndTheSlowRender.md), teaches depth of field and the path-traced export. Chapters 35 to 46 are now 36 to 47.
 
+### Fixed
+
+- **The capture app, held sideways.** With the phone turned sideways, the Record button and the Wand and Touch pads were off the screen. They now sit on the right, and the modes and status rows scroll on the left. Upright is unchanged. Rebuild the capture app to get it. [Phone](Docs/3D/Phone.md#a-recording)
+
 ## [0.18.0] - 2026-11-14
 
 This release adds a pen and lines drawn by hand, soft bodies that touch what is around them, a layer a sketch can read back, and a sketch that floats over the desktop. Small dots and thin lines now lay exactly their own ink, and lit 3D that traces nothing is about ten times faster on an M1 or M2. A few looks and defaults moved, so read **Changed** before you update.
