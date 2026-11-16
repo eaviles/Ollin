@@ -1125,7 +1125,7 @@ final class Pins: Sketch {
 
 1. Open Ollin Capture and choose a mode that runs the camera. That is every mode except Selfie, Touch, and Sketch.
 2. Press **Record**. No cable is needed, and a connected cable does no harm: the Mac keeps receiving. The screen counts the time and the frames.
-3. Press **Stop**. Changing mode stops it too, and so does leaving the app.
+3. Press **Stop**. Changing mode stops it too, after asking first, and so does leaving the app.
 
 The recording is a folder named for the mode and the time, ending in `.ollinrecording`, in the app's own documents. The Files app shows it under *On My iPhone ▸ Ollin Capture*. With the cable in, Finder shows it under the phone's *Files* tab. AirDrop it, or drag it across.
 

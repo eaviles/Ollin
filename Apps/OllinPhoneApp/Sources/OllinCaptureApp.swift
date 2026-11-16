@@ -754,6 +754,9 @@ struct ContentView: View {
     /// Compact when the phone is held sideways, which is when the one column
     /// no longer fits the screen.
     @Environment(\.verticalSizeClass) private var verticalSizeClass
+    /// The mode tapped while a recording is being written, held until the
+    /// question it raises is answered.
+    @State private var modeAskedFor: CaptureMode?
 
     /// Whether the thumb is on the wand pad, kept here because the gesture reports
     /// a change rather than a landing, and the first change after a release is what
@@ -793,6 +796,27 @@ struct ContentView: View {
         ZStack {
             Color.black.ignoresSafeArea()
             if verticalSizeClass == .compact { wide } else { tall }
+        }
+        .alert("Stop the recording?", isPresented: asksBeforeSwitching, presenting: modeAskedFor) { mode in
+            Button("Keep recording", role: .cancel) {}
+            Button("Stop and switch to \(mode.title)") { streamer.setMode(mode) }
+        } message: { _ in
+            Text("Changing mode ends the recording. It is saved first.")
+        }
+    }
+
+    /// Whether the question about a mode tapped during a recording is up.
+    private var asksBeforeSwitching: Binding<Bool> {
+        Binding(get: { modeAskedFor != nil }, set: { if !$0 { modeAskedFor = nil } })
+    }
+
+    /// A tap on a mode. Changing mode closes a recording, since a new mode is
+    /// a new camera session, so while one is being written the tap asks first.
+    private func pick(_ mode: CaptureMode) {
+        if streamer.recording, mode != streamer.mode {
+            modeAskedFor = mode
+        } else {
+            streamer.setMode(mode)
         }
     }
 
@@ -1141,7 +1165,7 @@ struct ContentView: View {
 
     /// Record: a recording of everything the phone senses, with the camera's
     /// video, written to the app's own folder. It needs no cable, and it runs
-    /// beside one. Changing mode closes it.
+    /// beside one. Changing mode closes it, after the question `pick` raises.
     private var recordButton: some View {
         Button {
             streamer.toggleRecording()
@@ -1195,7 +1219,7 @@ struct ContentView: View {
         HStack(spacing: 8) {
             ForEach(modes) { mode in
                 let selected = streamer.mode == mode
-                Button(mode.title) { streamer.setMode(mode) }
+                Button(mode.title) { pick(mode) }
                     .font(.system(.subheadline, design: .rounded).weight(.semibold))
                     .foregroundStyle(selected ? Color.black : Color.white.opacity(0.85))
                     .padding(.vertical, 8)

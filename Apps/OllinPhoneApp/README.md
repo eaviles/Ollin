@@ -50,7 +50,7 @@ measuring, and the altimeter asks its own permission once.
 documents: the camera's video with the microphone's sound, every message the cable would have
 carried, and where the camera stood on each frame. It works in every mode that runs the camera
 through ARKit, which is all of them but Selfie, Touch, and Sketch. Changing mode closes the
-recording, and so does leaving the app. The folder ends in `.ollinrecording`; the Files app and
+recording, after asking, and so does leaving the app. The folder ends in `.ollinrecording`; the Files app and
 Finder both show it, and a sketch on the Mac plays it back through `PhoneRecording`
 (see [the Phone reference](../../Docs/3D/Phone.md#a-recording)).
 

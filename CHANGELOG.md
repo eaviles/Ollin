@@ -6,7 +6,7 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ### Added
 
-- **A recording of the phone's stream.** Press Record in the capture app, with no cable, and play the folder back with `PhoneDevice(playing: PhoneRecording(path:))`. It plays on the sketch's clock, so an export shows the same frames every time. Rebuild the capture app to get the button. [Phone](Docs/3D/Phone.md#a-recording)
+- **A recording of the phone's stream.** Press Record in the capture app, with no cable, and play the folder back with `PhoneDevice(playing: PhoneRecording(path:))`. It plays on the sketch's clock, so an export shows the same frames every time. Changing mode during a recording asks first. Rebuild the capture app to get the button. [Phone](Docs/3D/Phone.md#a-recording)
 - **Drawing on a real surface.** `withPlane(wall)` draws in a wall's own meters. `painted(with: view)` makes a mesh carry the camera picture's pixels, so a piece of the wall can lift off. `occluding { }` lets a real surface hide a drawn thing. `Plane3` is the surface as a value. [Surfaces](Docs/3D/Surfaces.md)
 - **A point pinned from a click, and a layer on four of them.** `unproject(_:onto:)` turns a click into a point that stays on a wall. `drawImage(_:topLeft:topRight:bottomRight:bottomLeft:)` lays an image or a layer on four points of space. The `PhoneWallTiles` and `PhonePoster` examples use both. [Surfaces](Docs/3D/Surfaces.md#pinned-points)
 - **The phone's camera as a 3D camera.** `device.latestCamera` says where the camera stood and what its lens was, in every ARKit mode. `drawPhonePicture(_:)` and `camera(_:)` put a sketch in the room the phone saw. [Phone](Docs/3D/Phone.md#the-cameras-place-and-lens)
