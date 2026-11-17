@@ -29,6 +29,7 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 ### Fixed
 
 - **The capture app, held sideways.** With the phone turned sideways, the Record button and the Wand and Touch pads were off the screen. They now sit on the right, and the modes and status rows scroll on the left. Upright is unchanged. Rebuild the capture app to get it. [Phone](Docs/3D/Phone.md#a-recording)
+- **A camera mode entered from Selfie.** Switching from Selfie to another camera mode could leave that mode's camera delivering nothing, and a recording made there ended on an error. Leaving Selfie now waits for the front camera to stop. The Record row also shows its whole sentence. Rebuild the capture app. [Phone](Docs/3D/Phone.md#a-recording)
 
 ## [0.18.0] - 2026-11-14
 

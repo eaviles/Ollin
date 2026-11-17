@@ -1022,7 +1022,7 @@ struct ContentView: View {
             row("Record", streamer.recordingInfo.isEmpty
                 ? (streamer.canRecord ? "ready · needs no cable" : "needs a camera mode")
                 : streamer.recordingInfo,
-                ok: streamer.recording)
+                ok: streamer.recording, wraps: true)
         }
         .padding(20)
         .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 16))
@@ -1233,7 +1233,10 @@ struct ContentView: View {
         }
     }
 
-    private func row(_ label: String, _ value: String, ok: Bool) -> some View {
+    /// One status row. A row whose value is a sentence to act on (a saved
+    /// recording's name, what went wrong) passes `wraps`, so all of it shows
+    /// on as many lines as it needs; the others keep to one line.
+    private func row(_ label: String, _ value: String, ok: Bool, wraps: Bool = false) -> some View {
         HStack(alignment: .firstTextBaseline) {
             Text(label)
                 .font(.system(.subheadline, design: .rounded).weight(.semibold))
@@ -1242,6 +1245,7 @@ struct ContentView: View {
             Text(value)
                 .font(.system(.subheadline, design: .monospaced))
                 .foregroundStyle(ok ? Color.green.opacity(0.9) : .white.opacity(0.75))
+                .fixedSize(horizontal: false, vertical: wraps)
             Spacer(minLength: 0)
         }
     }

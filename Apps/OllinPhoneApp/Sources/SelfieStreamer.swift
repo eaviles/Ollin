@@ -74,10 +74,18 @@ final class SelfieStreamer: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
         }
     }
 
+    /// Stop the camera, and return only once it has stopped.
+    ///
+    /// The mode that follows starts an ARKit session in the same breath, and a
+    /// session that asks for the camera while this one still holds it starts
+    /// and then never delivers a frame. So this waits, which holds the main
+    /// thread for the fraction of a second the camera takes to let go, once,
+    /// on the way out of Selfie. Nothing on the capture queue waits on the
+    /// main thread, so the wait cannot lock.
     func stop() {
-        queue.async { [weak self] in
-            guard let self, self.session.isRunning else { return }
-            self.session.stopRunning()
+        queue.sync {
+            guard session.isRunning else { return }
+            session.stopRunning()
         }
     }
 
