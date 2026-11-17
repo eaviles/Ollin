@@ -50,9 +50,10 @@ protocol CanvasOutput: AnyObject {
 /// temporal state (`frameCount` / `time` / `deltaTime` / `frameRate`), runs the
 /// user's `draw()`, and hands the recorded geometry to the renderer.
 ///
-/// The MTKView is configured for continuous redraw (`isPaused = false`,
-/// `enableSetNeedsDisplay = false`), so this fires every display refresh — no
-/// `loop()` toggling needed to animate.
+/// The view's frame timer runs from the start, so this fires every display
+/// refresh, and nothing has to call `loop()` to animate. Whether the timer
+/// stands still is decided in one place, from every reason anything has to
+/// hold it: see `LoopHold` and `applyPause()`.
 @MainActor
 public final class SketchRunner: NSObject, MTKViewDelegate {
 
@@ -69,6 +70,103 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// asks before it starts one, so a refresh it cannot take is dropped
     /// rather than waited on.
     var canStartFrame: Bool { renderer.canStartFrame }
+
+    // MARK: Holding the loop (see `LoopHold`)
+
+    /// The reasons the loop stands still that live nowhere else: the
+    /// timeline's hold, a replay's pause, a night off, the Mac's sleep, a
+    /// host's stop, the canvas put away. The sketch's own stillness is read
+    /// from the sketch each time (`loopHolds`), because the instance drawing
+    /// changes under a swap and the one replaced may still call `noLoop()`.
+    private var heldFor: LoopHold = [] { didSet { applyPause() } }
+
+    /// Every reason the loop stands still right now.
+    var loopHolds: LoopHold {
+        var holds = heldFor
+        if !sketch.isLooping { holds.insert(.still) }
+        if sketch.takePlayer != nil {
+            // A replay owns the whole transport. It draws every frame its take
+            // holds, so the sketch's own stillness does not hold it (a still
+            // sketch was recorded one asked-for frame at a time, and the asks
+            // are in the take), and the timeline's hold has no say.
+            holds.subtract([.still, .clock])
+        } else {
+            holds.remove(.replay)
+        }
+        return holds
+    }
+
+    /// The frames owed right now: work that asked for one, read from where
+    /// each kind of work keeps what it is waiting to do. Every property read
+    /// here decides the pause again when it is set.
+    var owedPasses: LoopPass {
+        var owed: LoopPass = []
+        if !didSetup { owed.insert(.setup) }
+        if didReload { owed.insert(.reload) }
+        if pendingSetupRerun { owed.insert(.setupRerun) }
+        if pendingCameraView != nil { owed.insert(.cameraSnap) }
+        if pauseHoldover { owed.insert(.settling) }
+        if drawsOneFrame { owed.insert(.oneFrame) }
+        if pendingClockNudge != nil { owed.insert(.clockPass) }
+        if pendingScrubTarget != nil { owed.insert(.scrub) }
+        return owed
+    }
+
+    /// Whether the loop is standing still: what the view's frame timer was
+    /// last told. Nothing else stops or starts that timer, so in a window
+    /// this is the timer's own state.
+    private(set) var isLoopHeld = false
+
+    /// How many sets of changes are open (a frame being drawn, a reload, a
+    /// transport key). The pause is decided once when the last one closes, so
+    /// the timer is not stopped and started on the way through.
+    private var openLoopChanges = 0
+
+    private func beginLoopChanges() { openLoopChanges += 1 }
+
+    private func endLoopChanges() {
+        openLoopChanges -= 1
+        applyPause()
+    }
+
+    /// Decide whether the frame timer runs, and tell the view when the answer
+    /// changed. **The one place the view's `isPaused` is written**
+    /// (`LoopHoldTests` reads the sources and fails on any other): every
+    /// reason to hold the loop and every frame owed is in the two sets read
+    /// here, so nothing that holds the loop can be undone by something else
+    /// starting it.
+    ///
+    /// With `rebuildingTimer`, a timer that is running is stopped and started,
+    /// which is what builds it again against the screen the window is on now.
+    /// Returns whether it was.
+    @discardableResult
+    private func applyPause(rebuildingTimer: Bool = false) -> Bool {
+        guard openLoopChanges == 0, let view else { return false }
+        let held = loopHolds.holdsLoop(owing: owedPasses)
+        if held != isLoopHeld {
+            isLoopHeld = held
+            view.isPaused = held
+        } else if rebuildingTimer, !held, !view.isPaused {
+            view.isPaused = true
+            view.isPaused = false
+            return true
+        }
+        return false
+    }
+
+    /// Hold the loop for a reason of the host's or the system's (a host's
+    /// stop, the Mac's sleep, the canvas put away). It stands until the same
+    /// reason is let go, whatever else asks for frames meanwhile.
+    func holdLoop(_ reason: LoopHold) { heldFor.insert(reason) }
+
+    /// Let a reason go. The loop runs again only when no other still stands.
+    func releaseLoop(_ reason: LoopHold) { heldFor.remove(reason) }
+
+    /// Build the frame timer again against the screen the window is on now,
+    /// when it is running. A loop that is held stays held. Returns whether
+    /// the timer was rebuilt.
+    @discardableResult
+    func rebuildFrameTimer() -> Bool { applyPause(rebuildingTimer: true) }
 
     /// The built-in stats observer (overlay + inspector), kept here so it can be
     /// re-attached to each freshly reloaded sketch — extensions otherwise reset
@@ -94,9 +192,12 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// it the way it shows a compile error and clears it the same way.
     public var onSetupError: (@MainActor (String?) -> Void)?
 
-    private var didSetup = false
-    private var didReload = false        // call reloaded() after the post-reload setup()
-    private var pendingSetupRerun = false // re-run setup() in place (e.g. an asset changed)
+    private var didSetup = false { didSet { applyPause() } }
+    /// Call `reloaded()` after the post-reload `setup()`, or on the first
+    /// frame of a swap that carried the run.
+    private var didReload = false { didSet { applyPause() } }
+    /// Re-run `setup()` in place (an asset changed).
+    private var pendingSetupRerun = false { didSet { applyPause() } }
     private var clockCarry: Double?      // seconds to continue `time` from across a reload
     private var elapsed: Double = 0      // the sketch clock: the sum of the frame steps so far
     private var lastTime: CFTimeInterval = 0
@@ -111,7 +212,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// A camera-view snap requested from the host menu (`OllinCameraCommands`),
     /// applied at the top of the next frame so it goes through the rig exactly like a
     /// `cameraView(_:)` call from `draw()`.
-    private var pendingCameraView: CameraView?
+    private var pendingCameraView: CameraView? { didSet { applyPause() } }
 
     /// The orientation holder the axis widget reads, fed each frame by `publishOrientation`.
     private var cameraOrientation: CameraOrientationState?
@@ -124,24 +225,24 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     private var lastAxisFlag: Bool?
     private var lastGridFlag: Bool?
 
-    /// True while something has un-paused a `noLoop()` sketch for one piece of
-    /// work: a camera snap or an axis-widget drag so the glide can animate, or
-    /// a swap that carried the run so the frame showing the edit is drawn. The
-    /// pause must be handed back once that work settles: the sketch itself
-    /// can't re-pause (its one-shot `noLoop()` already ran, and `setLooping`
-    /// only reacts to changes), so without this a single ⌘-view press would
-    /// leave a still sketch redrawing at full refresh forever.
+    /// True while a `noLoop()` sketch is owed frames for one piece of work: a
+    /// camera snap or an axis-widget drag so the glide can animate, or a swap
+    /// that carried the run so the frame showing the edit is drawn. The loop
+    /// runs through the sketch's stillness while this stands
+    /// (`LoopPass.settling`) and holds again once the work settles.
     /// `holdoverPose` is the previous frame's resolved camera; two equal
     /// consecutive poses (with no pending snap or drag) mean settled, and a 2D
     /// sketch has none, so it settles on the frame it drew.
-    private var pauseHoldover = false
+    private var pauseHoldover = false { didSet { applyPause() } }
 
-    /// True while a still sketch has been woken for the one frame `redraw()`
-    /// asked for. The frame that draws hands the pause back; a refresh that
-    /// draws nothing (the ring full, a held frame shown) leaves it set, so the
-    /// frame is late rather than lost. Asked for inside a frame, it is spent
-    /// by that frame, which is how a `redraw()` in `draw()` draws nothing more.
-    private var drawsOneFrame = false
+    /// True while one frame is owed (`LoopPass.oneFrame`): the one `redraw()`
+    /// asked a still sketch for, the one that shows a shader saved under a
+    /// hold, the one a reload or a setup rerun has not had drawn yet. The
+    /// frame that draws spends it; a refresh that draws nothing (the ring
+    /// full, a held frame shown) leaves it set, so the frame is late rather
+    /// than lost. Asked for inside a frame, it is spent by that frame, which
+    /// is how a `redraw()` in `draw()` draws nothing more.
+    private var drawsOneFrame = false { didSet { applyPause() } }
 
     /// True while the open panel a sketch asked for is up, so a second ask
     /// waits for it to close rather than stacking a second panel.
@@ -371,7 +472,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
 
     /// Whether the piece is on screen at all. A schedule that shuts for the
     /// night takes the canvas away; nothing else ever does.
-    private var isShowing = true
+    private var isShowing: Bool { !heldFor.contains(.hidden) }
 
     /// Put the piece on screen, or take it away, as the schedule's part of the
     /// day changes. Called by the host that owns the window.
@@ -379,14 +480,16 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// Taking it away stops the frames as well as hiding them, and stopping the
     /// frames is what makes the night cost nothing: the clock is the sum of the
     /// frames the piece draws, so a piece that comes back in the morning comes
-    /// back where it stopped rather than fourteen hours further on. A still
-    /// sketch keeps its own pause across it, since a `noLoop()` piece must not
-    /// start redrawing just because the day did.
+    /// back where it stopped rather than fourteen hours further on. The night
+    /// is one reason among the others the loop can be held for, so nothing
+    /// that asks for a frame during it (a reload, a `redraw()`, the sketch
+    /// starting its loop) draws one, and the morning starts only a loop
+    /// nothing else still holds: a `noLoop()` piece does not start redrawing
+    /// just because the day did.
     func setShowing(_ showing: Bool) {
         guard showing != isShowing else { return }
-        isShowing = showing
+        if showing { heldFor.remove(.hidden) } else { heldFor.insert(.hidden) }
         view?.isHidden = !showing
-        view?.isPaused = showing ? !sketch.isLooping : true
         // Every other display of the wall goes down with it. They are fed from
         // this frame loop, so a night without frames would otherwise leave the
         // last one of the evening lit on all of them.
@@ -442,9 +545,9 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// Whether this runner is playing a recorded take back.
     public var isReplaying: Bool { sketch.takePlayer != nil }
     /// The transport's own pause, distinct from `noLoop()`.
-    private var replayPaused = false
+    private var replayPaused: Bool { heldFor.contains(.replay) }
     /// A jump asked for by the transport keys: the `frameCount` to land on.
-    private var pendingScrubTarget: Int?
+    private var pendingScrubTarget: Int? { didSet { applyPause() } }
 
     /// Start recording this run into a fresh take. The run restarts (same
     /// seed, fresh `setup()`) so the take begins at frame 0, which is what
@@ -452,8 +555,10 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// down as its starting point. Pass a file to also write the take there,
     /// on a growing autosave cadence and at `finishTake()`.
     public func beginTake(writingTo url: URL? = nil) {
+        beginLoopChanges()
+        defer { endLoopChanges() }
         sketch.takePlayer = nil
-        isClockPaused = false      // a recording wants the live clock
+        heldFor.remove(.clock)     // a recording wants the live clock
         takeRecordURL = url
         restart(variation: sketch.variation)
         attachTakeRecorder()
@@ -494,10 +599,12 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// resumes, the arrows step a frame, with shift they jump thirty, Home and
     /// End go to the ends, and space at the end starts over).
     public func replay(_ take: Take) {
+        beginLoopChanges()
+        defer { endLoopChanges() }
         finishTake()
-        isClockPaused = false      // a replay owns the whole transport
+        heldFor.remove(.clock)     // a replay owns the whole transport
         take.install(on: sketch)
-        replayPaused = false
+        heldFor.remove(.replay)
         pendingScrubTarget = nil
         restartForTransport()
     }
@@ -510,7 +617,6 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         didSetup = false
         clockCarry = nil
         sketch.loop()
-        view?.isPaused = false
     }
 
     /// Back to frame 0 of the replay, on a fresh instance of the sketch.
@@ -525,6 +631,8 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// and sounded nothing.
     private func rewindReplay() {
         guard let player = sketch.takePlayer else { return }
+        beginLoopChanges()
+        defer { endLoopChanges() }
         let take = player.take
         let fresh = type(of: sketch).init()
         reload(to: fresh)
@@ -539,25 +647,27 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// lands paused, so stepping inspects still frames.
     public func scrub(to frame: Int) {
         guard let player = sketch.takePlayer else { return }
+        // The jump is owed the one pass that lands it, through the pause it
+        // lands in.
         pendingScrubTarget = min(max(1, frame), player.take.frameCount)
-        replayPaused = true
-        view?.isPaused = false     // wake the loop for the one pass that lands it
+        heldFor.insert(.replay)
     }
 
     /// The transport keys, fed by the view during a replay (live keys never
     /// reach a replayed sketch, so they are free to drive the transport).
     func handleTransportKey(character: Character?, code: KeyCode?, shift: Bool) {
         guard let player = sketch.takePlayer else { return }
+        beginLoopChanges()
+        defer { endLoopChanges() }
         let step = shift ? SketchRunner.audibleScrubSpan : 1
         let lastFrame = player.take.frameCount
         switch (character, code) {
         case (" ", _):
             if sketch.frameCount >= lastFrame {
                 rewindReplay()               // space at the end starts over
-                replayPaused = false
+                heldFor.remove(.replay)
             } else {
-                replayPaused.toggle()
-                view?.isPaused = replayPaused
+                heldFor.formSymmetricDifference(.replay)
             }
         case ("0", _):
             scrub(to: 1)
@@ -634,9 +744,9 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     }
 
     /// The transport's end of frame: autosave a recording on its growing
-    /// cadence, and hold a replay that reached its last frame (or a transport
-    /// pause) by stopping the display link until a key wakes it.
-    private func endTakeFrame(in view: MTKView) {
+    /// cadence, and hold a replay that reached its last frame until a key
+    /// lets it go.
+    private func endTakeFrame() {
         if let recorder = sketch.takeRecorder, takeRecordURL != nil,
            recorder.take.frameCount >= takeAutosaveDue {
             takeAutosaveGap = min(takeAutosaveGap * 2, 3600)
@@ -649,8 +759,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
             }
         }
         if let player = sketch.takePlayer {
-            if player.isPastEnd(sketch.frameCount) { replayPaused = true }
-            if replayPaused, pendingScrubTarget == nil { view.isPaused = true }
+            if player.isPastEnd(sketch.frameCount) { heldFor.insert(.replay) }
             updateReplayTitle(player)
         }
     }
@@ -675,7 +784,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// Whether the timeline transport is holding the clock still. Distinct from
     /// `noLoop()` (the sketch's own stillness, which the sketch may lift) and
     /// from a replay's pause (a take owns the whole transport while it plays).
-    package private(set) var isClockPaused = false
+    package var isClockPaused: Bool { heldFor.contains(.clock) }
     /// While the clock runs, wrap it inside this span of seconds when it passes
     /// the top end. The region lives on the transport, not in the automation
     /// file, so looping a stretch changes nothing about what the file holds.
@@ -683,7 +792,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// One deliberate pass under a held clock: the clock moves by this much and
     /// the frame advances with that step (never negative; a backward nudge
     /// places the clock and hands the frame a zero step).
-    private var pendingClockNudge: Double?
+    private var pendingClockNudge: Double? { didSet { applyPause() } }
     /// Whether the pending pass keeps the parameters as the hand set them (a
     /// hand edit under a hold wants its picture) rather than letting the
     /// automation set them at the clock.
@@ -695,19 +804,18 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// The sketch clock as the transport reads it: where the next frame draws.
     package var clockTime: Double { elapsed }
 
-    /// Hold the clock still, or let it run again. While held, the display link
+    /// Hold the clock still, or let it run again. While held, the frame timer
     /// stops (no frames are drawn and thrown away, and an accumulating canvas
-    /// keeps its ink); a scrub or a step wakes it for exactly one pass. Quiet
-    /// during a replay, which owns the transport.
+    /// keeps its ink); a scrub or a step is owed exactly one pass through the
+    /// hold. Quiet during a replay, which owns the transport.
     package func setClockPaused(_ paused: Bool) {
         guard sketch.takePlayer == nil, paused != isClockPaused else { return }
-        isClockPaused = paused
         if paused {
-            view?.isPaused = true
+            heldFor.insert(.clock)
         } else {
             // Resume from now: the held stretch must not arrive as one step.
             lastTime = CACurrentMediaTime()
-            if sketch.isLooping { view?.isPaused = false }
+            heldFor.remove(.clock)
         }
     }
 
@@ -739,12 +847,11 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     }
 
     private func runClockPass(nudge: Double, keepingHandValues: Bool = false) {
-        pendingClockNudge = nudge
         pendingPassKeepsHands = keepingHandValues
         // A frame the interpolator held belongs to the run before the hold;
         // presenting it would eat this deliberate pass and show a stale frame.
         renderer.dropHeldFrame()
-        view?.isPaused = false     // wake the loop for the one pass
+        pendingClockNudge = nudge  // owed the one pass, through the hold
     }
 
     /// The Camera menu's projection override starts every launch in perspective.
@@ -778,11 +885,14 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         wireLoopControl(sketch)
     }
 
-    /// Route a sketch's `noLoop()`/`loop()` to pausing/resuming the view's
-    /// display timer. Re-applied to each freshly reloaded sketch.
+    /// Hear a sketch's `noLoop()`/`loop()`, so the pause is decided again
+    /// when either is called. Re-applied to each freshly reloaded sketch; the
+    /// one it replaces stops being heard, since it may still call either from
+    /// a timer or a callback and no longer speaks for the window.
     private func wireLoopControl(_ sketch: Sketch) {
-        sketch.loopStateDidChange = { [weak self] looping in
-            self?.view?.isPaused = !looping
+        if self.sketch !== sketch { self.sketch.loopStateDidChange = nil }
+        sketch.loopStateDidChange = { [weak self] _ in
+            self?.applyPause()
         }
         sketch.host = self
         #if os(macOS)
@@ -799,9 +909,10 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// goes through the camera rig like a `cameraView(_:)` call from `draw()`; a
     /// sketch that doesn't use the rig (or is 2D) simply ignores it.
     func requestCameraView(_ view: CameraView) {
+        // A `noLoop()` sketch must still snap on demand: the snap is owed its
+        // frame, and the glide after it the frames it takes to settle.
+        if !sketch.isLooping { pauseHoldover = true }
         pendingCameraView = view
-        if !sketch.isLooping { pauseHoldover = true }   // hand the pause back once settled
-        self.view?.isPaused = false   // a noLoop() sketch must still snap on demand
     }
 
     /// Restart the running sketch at a chosen variation seed, requested from a
@@ -812,6 +923,8 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// A sketch whose `setup()` pins its own seed simply reproduces that one
     /// variation. **Call on the main thread.**
     public func restart(variation: Int) {
+        beginLoopChanges()
+        defer { endLoopChanges() }
         // A seed restart is a new run: it deliberately ends a replay, and a
         // recording starts over on the new seed (a take that changed seed
         // mid-stream could never reproduce).
@@ -824,11 +937,9 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         renderer.resetAccumulation()   // a fresh variation starts on a clean canvas
         didSetup = false               // re-run setup() and restart the clock next frame
         clockCarry = nil
-        // Restore the running state rather than just unpausing the view: a
-        // still sketch's fresh `noLoop()` must be a *change* to fire the pause
-        // again, or the restarted still image would redraw forever.
+        // A new run loops until its own `setup()` or `draw()` says otherwise:
+        // the stillness of the run before it is not carried in.
         sketch.loop()
-        view?.isPaused = false
     }
 
     /// Drive the camera orbit from a drag on the axis widget's puck by feeding the
@@ -852,8 +963,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
             sketch.setMouseButtonState(false)
             widgetDragBase = nil
         }
-        if !sketch.isLooping { pauseHoldover = true }   // hand the pause back once settled
-        view?.isPaused = false
+        if !sketch.isLooping { pauseHoldover = true }   // owed frames until the orbit settles
     }
 
     /// Swap in a freshly loaded sketch without tearing down the window or GPU
@@ -876,6 +986,8 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     ///     reading what the edit changed, and starts the run over whenever it
     ///     cannot tell.
     public func reload(to newSketch: Sketch, keepClock: Bool = false, keepRun: Bool = false) {
+        beginLoopChanges()
+        defer { endLoopChanges() }
         // A reload ends the take on either side of the transport: an edited
         // sketch is a different run (its take is written out, so nothing is
         // lost), and a replay's recorded inputs belong to the code they drove.
@@ -934,10 +1046,12 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         pauseHoldover = false       // any holdover belonged to the sketch being replaced
         holdoverPose = nil
         drawsOneFrame = false       // and so did any frame it asked for
-        view?.isPaused = false      // a prior noLoop() must not freeze the reload
-        // A run that carries on keeps a still sketch still: the `noLoop()` that
-        // paused it is in a `setup()` that is not going to run again, so the
-        // pause is handed back once the frame that shows the edit is drawn.
+        // The swap is owed its frame through the stillness of the sketch it
+        // replaced and through the timeline's hold (`didReload`, and `didSetup`
+        // for a run that starts over). A run that carries on keeps a still
+        // sketch still: the `noLoop()` that stopped it is in a `setup()` that
+        // is not going to run again, so the loop holds again once the frame
+        // that shows the edit has settled.
         if keepRun, !newSketch.isLooping { pauseHoldover = true }
     }
 
@@ -1048,14 +1162,14 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// and recompiled on the next frame: the live-reload hook for a user's own shader
     /// file. The `Shader` value is unchanged (it holds the file path, not the source),
     /// so a property-initialized shader picks up the edit too. **Call on the main
-    /// thread.** Forces one frame if the sketch paused itself with `noLoop()`, so a
-    /// still sketch still updates. The next frame's shader state reaches the host
+    /// thread.** A loop standing still (a `noLoop()` sketch, a held timeline) is
+    /// owed the one frame that shows the edit. The next frame's shader state reaches the host
     /// whether or not it changed, so a host that cleared its copy of the error on
     /// the save hears again about a shader saved with the same mistake.
     public func invalidateUserShaders() {
         renderer.invalidateUserShaderCaches()
         shaderErrorRelay.invalidate()
-        if view?.isPaused == true { view?.draw() }
+        if isLoopHeld { drawsOneFrame = true }
     }
 
     public func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
@@ -1090,6 +1204,15 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     }
 
     public func draw(in view: MTKView) {
+        // Whatever this refresh does to the holds and to the frames owed
+        // (a `noLoop()` in `setup()`, a pass spent, a replay reaching its
+        // end) is decided once, when the refresh is over.
+        beginLoopChanges()
+        defer { endLoopChanges() }
+        drawFrame(in: view)
+    }
+
+    private func drawFrame(in view: MTKView) {
         // The drawing runner is the one a host menu command should reach.
         OllinActiveSketch.runner = self
 
@@ -1103,29 +1226,23 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         if let target = pendingScrubTarget {
             pendingScrubTarget = nil
             performScrub(to: target)
-        } else if replayPaused, sketch.takePlayer != nil {
-            // The pause is enforced here, not only by stopping the display
-            // link: a tick can already be queued when the pause lands (the
-            // scrub pass re-simulates the take, so there is time for one),
-            // and advancing in it would walk off the frame a single back
-            // step just landed on.
-            view.isPaused = true
-            return
-        } else if isClockPaused, sketch.takePlayer == nil, didSetup,
-                  pendingClockNudge == nil, !pendingSetupRerun, pendingCameraView == nil,
-                  !drawsOneFrame {
-            // The timeline transport's hold, enforced the same way: a queued
-            // tick must not advance a clock the panel just placed, and an
-            // accumulating canvas must not composite the held frame twice.
-            // A reload's first frame, a setup rerun, a camera snap, and a
-            // still sketch's `redraw()` still pass (each runs one pass under a
-            // zero step and holds again).
-            view.isPaused = true
+        } else if loopHolds.refusesFrame(owing: owedPasses) {
+            // A hold is enforced here, not only by stopping the frame timer:
+            // a tick can already be queued when it lands. Under a replay's
+            // pause (the scrub pass re-simulates the take, so there is time
+            // for one) advancing in it would walk off the frame a single back
+            // step just landed on. Under the timeline's hold it would advance
+            // a clock the panel just placed, and an accumulating canvas would
+            // composite the held frame twice. A frame that is owed still
+            // passes (a reload's first frame, a setup rerun, a camera snap, a
+            // `redraw()`, each under a zero step), and which hold it passes is
+            // `LoopPass.passesThrough`.
             return
         }
 
         let now = CACurrentMediaTime()
 
+        var owesDrawnFrame = false
         if !didSetup {
             // A launch that asked to record starts its take here, ahead of
             // `setup()`, so the take begins at the run's own frame 0.
@@ -1161,12 +1278,14 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
             applyLaunchParams()
             nextCheckpoint = elapsed + (checkpointInterval ?? .infinity)
             didSetup = true
+            owesDrawnFrame = true
             if didReload {            // setup() just ran on a hot-swapped sketch
                 didReload = false
                 sketch.reloaded()
             }
         } else if pendingSetupRerun {
             pendingSetupRerun = false
+            owesDrawnFrame = true
             performSetup()            // in-place asset reload; clock keeps running
         } else if didReload {
             // A swap that carried the run: `setup()` did not run, so this is
@@ -1175,6 +1294,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
             // one a mouse-driven sketch reads (0, 0) until the pointer next
             // moves, and whatever follows the cursor jumps to the corner.
             didReload = false
+            owesDrawnFrame = true
             #if os(macOS)
             (view as? OllinMTKView)?.seedPointer()
             #endif
@@ -1186,6 +1306,12 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         // stderr and in a host's error strip, and the next `setup()` that runs
         // through (a reload, an asset rerun) lets the frames go again.
         if setupError != nil { return }
+
+        // The work above was owed a frame through a hold, and it has only run
+        // so far: nothing is drawn yet, and this refresh can still be dropped
+        // (the ring full, a held frame shown). The frame it owes is asked for
+        // as one frame, which only a refresh that draws spends.
+        if owesDrawnFrame { drawsOneFrame = true }
 
         // A refresh the GPU has no room for is dropped whole, here, before the
         // sketch draws anything. Starting it instead would park this thread in
@@ -1502,11 +1628,11 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
             saveCheckpointNow()
         }
 
-        // Hand the pause back to a `noLoop()` sketch once the camera work that
-        // un-paused it has settled (see `pauseHoldover`). A 2D or hand-`camera()`
+        // A `noLoop()` sketch holds again once the camera work it was owed
+        // frames for has settled (see `pauseHoldover`). A 2D or hand-`camera()`
         // sketch has no rig-resolved camera, so it settles right away; a glide or
-        // release momentum keeps the pose changing frame to frame and holds the
-        // view running until it comes to rest.
+        // release momentum keeps the pose changing frame to frame and keeps
+        // the frames coming until it comes to rest.
         if pauseHoldover {
             if sketch.isLooping {
                 pauseHoldover = false          // the sketch runs continuously anyway
@@ -1518,22 +1644,17 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
                 if settled {
                     pauseHoldover = false
                     holdoverPose = nil
-                    view.isPaused = true
                 }
             } else {
                 holdoverPose = sketch.activeCamera
             }
         }
 
-        // The one frame a still sketch asked for is drawn: hold again, unless
-        // the sketch started looping meanwhile or camera work still owns the
-        // pause and will hand it back itself.
-        if drawsOneFrame {
-            drawsOneFrame = false
-            if !sketch.isLooping, !pauseHoldover { view.isPaused = true }
-        }
+        // The one frame that was asked for is drawn. Whether the loop holds
+        // again is decided as this refresh closes, from what still stands.
+        if drawsOneFrame { drawsOneFrame = false }
 
-        endTakeFrame(in: view)
+        endTakeFrame()
     }
 
     /// Whether two consecutive frames' camera poses are close enough to call the
@@ -1606,9 +1727,8 @@ extension SketchRunner: SketchHost {
     func sketchWantsFrame(_ sketch: Sketch) {
         // Only the instance drawing gets a frame: one a swap replaced may still
         // run a timer or a callback that asks.
-        guard sketch === self.sketch, !sketch.isLooping, let view else { return }
+        guard sketch === self.sketch, !sketch.isLooping else { return }
         drawsOneFrame = true
-        view.isPaused = false
     }
 
     func sketchPointerChanged(_ sketch: Sketch) {
@@ -1998,36 +2118,35 @@ final class OllinMTKView: MTKView {
     /// another screen or coming into view, the display setup changing.
     private var screenObservers: [(center: NotificationCenter, token: NSObjectProtocol)] = []
 
-    /// Whether the frame timer is held for the Mac's sleep. A frame committed
-    /// as the GPU powers down can be reported as a hang against the sketch,
-    /// after which the window's queue is refused, so the loop stops at the
-    /// will-sleep notice and starts again at the wake. Only a loop this held
-    /// is started again: a canvas its runner paused stays paused.
-    private var heldForSleep = false
+    /// The runner driving this canvas. It alone decides whether the frame
+    /// timer runs (`SketchRunner.applyPause()`), so what the canvas hears
+    /// about the system goes to it as a reason to hold the loop or as a
+    /// request to build the timer again, never as a pause written here.
+    private var loopRunner: SketchRunner? { delegate as? SketchRunner }
 
-    /// Hold the loop for sleep (`NSWorkspace.willSleepNotification`).
+    /// Hold the loop for sleep (`NSWorkspace.willSleepNotification`). A frame
+    /// committed as the GPU powers down can be reported as a hang against the
+    /// sketch, after which the window's queue is refused, so the loop holds
+    /// at the will-sleep notice and nothing that asks for a frame during the
+    /// sleep draws one.
     func holdForSleep() {
-        guard !isPaused else { return }
-        heldForSleep = true
-        isPaused = true
+        loopRunner?.holdLoop(.asleep)
     }
 
-    /// Release a hold of the loop's own at the wake (`didWakeNotification`),
-    /// rebuilding the timer against the screen the window is on now.
+    /// Let the sleep's hold go at the wake (`didWakeNotification`), building
+    /// the timer again against the screen the window is on now. The wake
+    /// starts only a loop nothing else holds: a still sketch, a paused take,
+    /// and a night off each stay as they were.
     func releaseSleepHold() {
-        guard heldForSleep else { return }
-        heldForSleep = false
-        isPaused = false
+        guard let loopRunner, loopRunner.loopHolds.contains(.asleep) else { return }
+        loopRunner.releaseLoop(.asleep)
         restartFrameTimer()
     }
 
-    /// Rebuild the frame timer, for a canvas that should be drawing. One the
-    /// runner paused (a still sketch, a paused take, a night off) stays paused.
+    /// Rebuild the frame timer, for a canvas that should be drawing. One whose
+    /// loop is held (a still sketch, a paused take, a night off) stays held.
     func restartFrameTimer() {
-        guard !isPaused else { return }
-        isPaused = true
-        isPaused = false
-        frameTimerRestarts += 1
+        if loopRunner?.rebuildFrameTimer() == true { frameTimerRestarts += 1 }
     }
 
     /// How many times the frame timer was rebuilt, for the tests.
@@ -2511,8 +2630,9 @@ func configureOllinCanvas(_ view: MTKView, sketch: Sketch) {
     // The drawable is the present target: single-sample. MSAA is done in the
     // renderer's float intermediate, then resolved before the present pass.
     view.sampleCount = 1
-    view.isPaused = false                    // run continuously...
-    view.enableSetNeedsDisplay = false       // ...driven by the display timer
+    // Driven by the frame timer, which runs from the start (the view's own
+    // default) and stands still only while the runner holds the loop.
+    view.enableSetNeedsDisplay = false
 }
 
 #if os(macOS)
@@ -2731,11 +2851,11 @@ private struct MetalCanvas: CanvasRepresentable {
 
     /// Stop the old view's loop when SwiftUI removes it — notably when the gallery
     /// swaps one example for another (the detail pane is keyed by example `id`, so
-    /// each switch dismantles the previous `MetalCanvas`). Pausing the display
-    /// timer and dropping the delegate keeps an abandoned view from ticking after
+    /// each switch dismantles the previous `MetalCanvas`). Holding the loop
+    /// and dropping the delegate keeps an abandoned view from ticking after
     /// it leaves the hierarchy, and releases the runner (and its renderer).
     private static func dismantleCanvas(_ view: MTKView, _ coordinator: Coordinator) {
-        view.isPaused = true
+        coordinator.runner?.holdLoop(.closed)
         view.delegate = nil
         coordinator.runner = nil
     }

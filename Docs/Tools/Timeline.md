@@ -44,7 +44,7 @@ The rule lands in the same automation file as the keys, written as the text you 
 
 ### The transport
 
-The playhead follows the automation's own position. When the automation loops, the playhead comes around again while the clock runs on, and the readout follows the playhead. The ruler keeps the playhead in view. It spans a breath past the last key, and it grows while the clock runs past that, so a running clock never leaves it. It holds still while you drag, on the ruler or on a lane. Pausing holds the clock still and draws no wasted frames, which is what an accumulating canvas needs. A frame step holds the clock first, the way a video editor does.
+The playhead follows the automation's own position. When the automation loops, the playhead comes around again while the clock runs on, and the readout follows the playhead. The ruler keeps the playhead in view. It spans a breath past the last key, and it grows while the clock runs past that, so a running clock never leaves it. It holds still while you drag, on the ruler or on a lane. Pausing holds the clock still and draws no wasted frames, which is what an accumulating canvas needs. A saved edit, a changed asset, and a saved shader each still draw one frame at the held time. The picture follows what you changed. A frame step holds the clock first, the way a video editor does.
 
 The **loop button** repeats a stretch of time while you work on it. Option-drag the ruler to choose the region, and use the button to arm and disarm the loop. The region belongs to the transport only, and it is never written into the file. So looping two seconds while you shape a curve changes nothing about the sketch.
 

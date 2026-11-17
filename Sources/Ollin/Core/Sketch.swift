@@ -3226,7 +3226,9 @@ open class Sketch {
     /// normals per pass, so the spare is held for the next call (see Random.swift).
     var gaussianSpare: Double?
 
-    /// Set by the runner so `loop()`/`noLoop()` can pause/resume the MTKView.
+    /// Set by the runner, which decides again whether the frame loop runs when
+    /// `loop()` or `noLoop()` is called. The sketch's stillness is one reason
+    /// among several the loop can be held for (`LoopHold`).
     var loopStateDidChange: ((Bool) -> Void)?
 
     /// Whatever is showing this sketch, for the few things a sketch asks of

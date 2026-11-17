@@ -117,7 +117,7 @@ final class MenuBarHost: NSObject, NSApplicationDelegate {
     }
 
     func remove() {
-        canvas?.isPaused = true
+        runner?.holdLoop(.closed)
         canvas?.delegate = nil
         canvas?.removeFromSuperview()
         canvas = nil

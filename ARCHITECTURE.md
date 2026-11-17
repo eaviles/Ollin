@@ -37,6 +37,7 @@ capability index regardless.
 | --- | --- |
 | Renderer core (frame lifecycle, pipeline families, vertex-buffer ring) | This doc, *The renderer at a glance*; the rules live in CLAUDE.md *Shaders & the Metal back end* / *Rendering performance* |
 | The 2D drawing paths (SDF primitives + coverage models, fringe strokes, libtess2 fills, linear-light present) | **This doc**, *The 2D drawing paths* |
+| The frame loop's holds (what stops and starts a window's frame timer) | **This doc**, *The frame loop's holds*; the invariants are under *Holding the frame loop* in CAPABILITIES.md |
 | Live reload, `@Param`, stats, and the live-coding hosts | **This doc**, *Live reload and the live-coding hosts*; the rules stay in CLAUDE.md *Live reload* |
 | Screen-space combine effects (SSAO, SSR, depth of field) | **This doc** |
 | SDF combinators (2D VM + raymarched 3D) | **This doc** |
@@ -5616,7 +5617,8 @@ own: `Shader(resource:in:)` reads lazily (it stores the bundle-resolved path,
 not the content; `Bundle.module` resolves to the sketch dir under OllinLive
 too), the renderer reads and caches the file, and a watched-`.metal` change
 routes through `LiveSession.handle` to `SketchRunner.invalidateUserShaders()`
-(clears the source/library/pipeline caches; forces one frame if `noLoop`), so
+(clears the source/library/pipeline caches; a loop standing still is owed one
+frame, through a `noLoop()` and through the timeline's hold), so
 the next frame re-reads and recompiles with no swiftc pass (verified
 end-to-end: edit reloads, a break shows the line-accurate overlay error, a fix
 recovers). A framework-segment `.metal` (under the repo's `Renderer` dir) still
@@ -9166,6 +9168,37 @@ verified red by sabotage.
 
 ---
 
+## The frame loop's holds
+
+A window's loop is its view's frame timer asking for a frame on every refresh, and `view.isPaused` is the one switch on it. Until 2026-11-16 that switch was written from thirty places (eighteen in the runner, six in the canvas view and its setup and teardown, six across the screen saver, the menu-bar strip, the wallpaper, and the overlay), each for its own reason: the sketch's `noLoop()`, the timeline's held clock, a replay's pause, a schedule's night, the Mac's sleep, a screen saver between runs, a canvas being put away. Every release was written as if its reason were the only one. `loop()` started the timer whatever else held it, a wake from sleep started a piece its schedule had shut, a reload started a saver the system had stopped, and the allow-list of work that may pass the timeline's hold named six kinds and missed the others.
+
+**Two sets and one decision.** `LoopHold` (`Core/LoopHold.swift`) is the set of standing reasons. `LoopPass` is the set of frames owed: work that needs a frame while the loop may be standing still. `SketchRunner.applyPause()` reads both and is the only code under `Sources/` that writes a view's `isPaused`. The loop runs when every standing reason is passed by some owed frame, and `LoopPass.passesThrough` is the whole table:
+
+| Owed frame | Goes through |
+|---|---|
+| `setup`, `reload`, `setupRerun`, `cameraSnap`, `oneFrame`, `clockPass` (a frame that was asked for) | the sketch's stillness and the timeline's hold, drawn at the held time |
+| `settling` (a still sketch's camera coming to rest) | the sketch's stillness only: under a held clock time stands still, so it waits |
+| `scrub` (a replay's jump) | the sketch's stillness and the replay's own pause |
+| anything | never a night off, the Mac's sleep, a host's stop, or a canvas put away |
+
+Work owed under one of the last four is late and never lost: it stays in the set, and has its frame when the reason lets go.
+
+**Where each set lives.** The reasons with no other home are stored in the runner (`heldFor`), and `isClockPaused`, the replay's pause, and "shut for the night" are now readings of that set rather than flags of their own. The sketch's stillness is the exception: it is read from the instance drawing each time the decision is made (`loopHolds`), never mirrored. A swap changes the instance, and the one replaced can still call `noLoop()` from a timer of its own; with a mirror that call stopped the new sketch's window, and a sketch already still when its runner arrived never got the `noLoop()` *change* that would stop it after its first frame. The owed frames are not stored as a set at all. Each kind of work already keeps what it is waiting to do (`didSetup`, `didReload`, `pendingSetupRerun`, `pendingCameraView`, `pauseHoldover`, `drawsOneFrame`, `pendingClockNudge`, `pendingScrubTarget`), `owedPasses` reads them, and each of those properties decides the pause again when it is set, so there is no second copy to fall out of step.
+
+**A replay owns the transport.** With a take playing, `still` and `clock` are dropped from the reasons. The timeline's hold never had a say there. The stillness is the fix for a stall: a sketch that stopped its own loop was recorded one asked-for frame at a time, the clicks that asked are in the take, and they are delivered by the frame they asked for, so a replay that waited for them stopped on its first frame.
+
+**The decision is written only when it changes.** `applyPause()` keeps what it last told the view (`isLoopHeld`) and writes on a change. In a window nothing else writes the switch, so that is the timer's own state. In a test, a view stopped by hand before the runner had it stays stopped while the runner's answer stays "runs", which is what lets some forty suites turn a looping sketch one `draw(in:)` at a time. It is decided once per refresh (`draw(in:)` opens a set of changes and closes it on every exit) and once per compound call (`reload`, `restart`, the replay transport), so the timer is not stopped and started on the way through a call that sets five things.
+
+**A hold is enforced inside the frame too.** A tick can already be queued when a hold lands. `LoopHold.refusingFrames` (`clock`, `replay`, `hidden`, `asleep`, `closed`) refuses that tick at the top of the frame unless an owed frame passes the reason, which is the old replay gate and the old timeline gate as one line, now covering a night off and the sleep as well. `still` and `stopped` are not in it: a still piece is put on a display that arrives late by drawing it directly (`redrawOnce`), and a host with no timer of its own turns a run by hand.
+
+**Owed work that runs is not yet a frame drawn.** `setup()`, a setup rerun, and a swap's `reloaded()` run at the top of a refresh, which can still be dropped before anything is drawn (the frame ring full, a held frame shown). Each converts to `oneFrame` as it runs, and only a refresh that draws spends that. Without it a rerun under the timeline's hold could run and never show; `aFrameOwedThroughAHoldOutlivesARefreshTheRingDrops` fills the ring to prove it.
+
+**What the tables found.** `LoopHoldTests` drives every ordered pair of reasons through the calls their owners make (hold A, hold B, release A: still held; release B: runs) and every kind of owed frame against every reason. Against the code as it stood, 17 of 26 pairs and 24 of 40 cells failed. The ones a person could meet: a screen saver started a second time set a `noLoop()` sketch redrawing for good; a take of a still sketch replayed one frame; an asset saved under OllinLive did not redraw a still sketch, and neither it nor a saved shader showed under a held timeline; a timeline scrub left a still sketch redrawing; and a `redraw()`, a `loop()`, a reload, or the wake arriving first could start a piece its schedule or the sleep was holding. One filed defect was real in the runner and unreachable in a shipped host: a swap that carries the run draws nothing under the timeline's hold, but the timeline is OllinLive's and only OllinLiveCoding carries a run.
+
+**Not covered.** No test counts writes to the switch, so the once-per-call rule is held by reading. The feel of a pause and a resume in a real window, and a real sleep and wake, are on the desk's list.
+
+---
+
 ## Live reload and the live-coding hosts
 
 `swift run OllinLive <path/to/Sketch.swift>` opens a window, watches the file,
@@ -9408,11 +9441,12 @@ the carried session recorder already relied on. The third of the kind is the
 pointer: the `else if didReload` branch seeds it the way the setup branch
 does, or a cursor-following sketch reads (0, 0) until the mouse next moves.
 
-A still sketch is why the camera snap's holdover flag is now named
+A still sketch is why the camera snap's holdover flag is named
 `pauseHoldover`: the `noLoop()`
-that paused it stands in a `setup()` that is not going to run again, so the
-swap un-pauses the view for the frame that shows the edit and hands the pause
-back once it settles, which is the same shape the camera snap already needed.
+that stopped it stands in a `setup()` that is not going to run again, so the
+swap is owed the frame that shows the edit and the loop holds again once it
+settles, which is the same shape the camera snap already needed (both are
+`LoopPass.settling`, see *The frame loop's holds*).
 
 `SourceRegions` (in `OllinRuntime`, so both hosts could use it) is the reading
 half. It is a bracket-counting line scan rather than a parser, on the same

@@ -61,7 +61,7 @@ The sketch restarts under the take's seed and parameter values, and the recordin
 
 Stepping backward restarts from frame 0 and simulates forward again. Because the replay is deterministic, the result is exact. The cost is the time to simulate the frames in between. Scrubbing near the start is instant, but scrubbing deep into a long, heavy take can take a moment.
 
-When the take runs out, the replay holds its last frame. Space starts it over.
+When the take runs out, the replay holds its last frame. Space starts it over. A take of a sketch that stopped its own loop with `noLoop()` plays the same way. The replay draws every frame the take holds, since the clicks that asked for those frames are in the take.
 
 ### Re-rendering a performance
 

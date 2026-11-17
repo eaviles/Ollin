@@ -80,15 +80,20 @@ open class SketchSaverView: ScreenSaverView {
 
     // MARK: Lifecycle
 
+    /// The system starts and stops a saver more than once (the preview in
+    /// System Settings does it each time its pane comes forward), so stopping
+    /// is one reason among the others the loop can be held for, and starting
+    /// gives back that reason and no other: a sketch that stopped its own
+    /// loop with `noLoop()` stays stopped.
     open override func startAnimation() {
         super.startAnimation()
         if canvas == nil { build() }
-        canvas?.isPaused = false
+        runner?.releaseLoop(.stopped)
     }
 
     open override func stopAnimation() {
         super.stopAnimation()
-        canvas?.isPaused = true
+        runner?.holdLoop(.stopped)
     }
 
     open override func layout() {
@@ -141,7 +146,7 @@ open class SketchSaverView: ScreenSaverView {
     }
 
     private func release() {
-        canvas?.isPaused = true
+        runner?.holdLoop(.closed)
         canvas?.delegate = nil
         canvas?.removeFromSuperview()
         canvas = nil

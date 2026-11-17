@@ -179,7 +179,7 @@ final class OverlayPane {
     func close() {
         monitors.forEach { NSEvent.removeMonitor($0) }
         monitors = []
-        canvas.isPaused = true
+        runner.holdLoop(.closed)
         canvas.delegate = nil
         canvas.removeFromSuperview()
         window.orderOut(nil)

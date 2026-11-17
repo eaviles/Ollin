@@ -42,7 +42,7 @@ final class RippleSaverView: SketchSaverView {
 }
 ```
 
-`SketchSaverView` is the framework's host. It builds the canvas when the system starts the saver. It then drives the frames from the display's own clock, and releases everything when the saver ends. The only thing you write is the `makeSketch()` override.
+`SketchSaverView` is the framework's host. It builds the canvas when the system starts the saver. It then drives the frames from the display's own clock, and releases everything when the saver ends. The system stops and starts a saver more than once, as the preview in System Settings does each time its pane comes forward. A sketch that stopped its own loop with `noLoop()` stays still through that. The only thing you write is the `makeSketch()` override.
 
 ### The sketch is an ordinary sketch
 

@@ -64,6 +64,60 @@ struct ScreenSaverHostTests {
         #expect(saver.subviews.isEmpty, "an abandoned copy would go on drawing frames nobody sees")
     }
 
+    // MARK: Stopping and starting
+
+    /// A sketch that draws once and holds, the way a still image does.
+    final class StillSketch: Sketch {
+        override var canvasSize: CanvasSize { .square(64) }
+        override func setup() { noLoop() }
+    }
+
+    final class StillSaverView: SketchSaverView {
+        override func makeSketch() -> Sketch { StillSketch() }
+    }
+
+    /// The system stops and starts a saver more than once (the preview in
+    /// System Settings does it every time the pane comes forward). Starting
+    /// again must give back what stopping took and nothing more: a sketch
+    /// that stopped its own loop stays stopped.
+    @Test func startingAgainLeavesAStillSketchStill() throws {
+        try #require(MTLCreateSystemDefaultDevice() != nil, "no Metal device on this machine")
+        let saver = try #require(StillSaverView(frame: NSRect(x: 0, y: 0, width: 320, height: 200),
+                                                isPreview: false))
+        saver.startAnimation()
+        let canvas = try #require(saver.subviews.first as? OllinMTKView)
+        let runner = try #require(saver.runner)
+        runner.draw(in: canvas)
+        #expect(canvas.isPaused, "a still sketch draws its frame and holds")
+
+        saver.stopAnimation()
+        saver.startAnimation()
+        #expect(canvas.isPaused, "starting the saver again set a still sketch redrawing for good")
+        saver.removeFromSuperview()
+    }
+
+    @Test func stoppingHoldsARunningSketchAndStartingLetsItGo() throws {
+        try #require(MTLCreateSystemDefaultDevice() != nil, "no Metal device on this machine")
+        let saver = try #require(TestSaverView(frame: NSRect(x: 0, y: 0, width: 320, height: 200),
+                                               isPreview: false))
+        saver.startAnimation()
+        let canvas = try #require(saver.subviews.first as? OllinMTKView)
+        let sketch = try #require(canvas.sketch)
+        try #require(saver.runner).draw(in: canvas)
+        #expect(!canvas.isPaused)
+
+        saver.stopAnimation()
+        #expect(canvas.isPaused)
+        // Something of the sketch's own asking for frames (a timer, a message
+        // from outside) does not start a saver the system stopped.
+        sketch.noLoop()
+        sketch.loop()
+        #expect(canvas.isPaused, "a stopped saver was started by its own sketch")
+        saver.startAnimation()
+        #expect(!canvas.isPaused)
+        saver.removeFromSuperview()
+    }
+
     // MARK: The click that gives the machine back
 
     @Test func theCanvasStaysOutOfTheEventPath() throws {

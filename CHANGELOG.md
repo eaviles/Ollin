@@ -29,6 +29,10 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 ### Fixed
 
 - **The capture app, held sideways.** With the phone turned sideways, the Record button and the Wand and Touch pads were off the screen. They now sit on the right, and the modes and status rows scroll on the left. Upright is unchanged. Rebuild the capture app to get it. [Phone](Docs/3D/Phone.md#a-recording)
+- **A still sketch keeps up with what you save.** Under `OllinLive`, a `noLoop()` sketch redraws once when an asset it loads changes, and a saved shader or asset shows while the timeline holds the clock. Scrubbing the timeline no longer leaves a still sketch redrawing. [Timeline](Docs/Tools/Timeline.md#the-transport)
+- **A screen saver's still sketch stays still.** The system stops and starts a saver more than once, and the second start set a `noLoop()` sketch redrawing at full rate for good. Starting now gives back only what stopping took. Rebuild the saver to get it. [Screen saver](Docs/Output/ScreenSaver.md)
+- **A take of a still sketch replays.** `--replay` on a sketch that calls `noLoop()` stopped on its first frame until Space was pressed twice. The replay now draws every frame the take holds and stops at its end. [Replay](Docs/Core/Replay.md#replaying-in-the-window)
+- **A night off and the Mac's sleep hold against everything.** A piece shut by its `schedule`, or held for sleep, could be set drawing again by a `redraw()`, a `loop()`, a reload, or the wake arriving first. Each now waits until the reason that holds the loop lets go. [Installation](Docs/Output/Installation.md#keeping-hours)
 - **A camera mode entered from Selfie.** Switching from Selfie to another camera mode could leave that mode's camera delivering nothing, and a recording made there ended on an error. Leaving Selfie now waits for the front camera to stop. The Record row also shows its whole sentence. Rebuild the capture app. [Phone](Docs/3D/Phone.md#a-recording)
 
 ## [0.18.0] - 2026-11-14

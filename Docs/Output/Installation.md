@@ -204,7 +204,7 @@ Installation(schedule: .open(from: 10, to: 18))
 
 (`Installation.off` is the only one whose `runsUnattended` is false. Anything you build by hand is something you mean to leave running.)
 
-Outside those hours the screen goes dark, the frames stop, and the display is allowed to sleep. In the morning the sketch comes back where it stopped. The clock adds up only the frames it drew, so a night off costs it nothing. The state is saved on the way into the dark, so a sketch that checkpoints also survives the night.
+Outside those hours the screen goes dark, the frames stop, and the display is allowed to sleep. In the morning the sketch comes back where it stopped. The clock adds up only the frames it drew, so a night off costs it nothing. Nothing starts the frames again before the morning. A `redraw()` or a `loop()` the sketch calls in the dark, from a timer or a message, has its frame when the hours come round. The state is saved on the way into the dark, so a sketch that checkpoints also survives the night.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/47-Installations/GalleryHours-dark.jpg">

@@ -396,7 +396,9 @@ enum SessionTest {
         session.recordParam("mark", .number(30))
         restarted.parameters().first { $0.name == "mark" }?.param.restore(.number(30))
         runner.draw(in: view)
-        view.isPaused = true
+        guard view.isPaused else {
+            fail("the hold did not come back after the frame the hand edit asked for")
+        }
         session.resetParams(["mark"])
         guard !view.isPaused else {
             fail("a reset under a held clock asked for no frame, so the picture would go on showing the old value")

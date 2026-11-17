@@ -199,7 +199,7 @@ final class WallpaperPane {
     }
 
     func close() {
-        canvas.isPaused = true
+        runner.holdLoop(.closed)
         canvas.delegate = nil
         canvas.removeFromSuperview()
         window.orderOut(nil)
