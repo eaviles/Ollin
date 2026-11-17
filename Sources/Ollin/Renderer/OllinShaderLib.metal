@@ -1877,6 +1877,21 @@ constant bool kOllinPeel = is_function_constant_defined(kOllinPeelSet) && kOllin
 constant bool kOllinTracesSet [[function_constant(16)]];
 constant bool kOllinTraces = !is_function_constant_defined(kOllinTracesSet) || kOllinTracesSet;
 
+// MARK: - A pipeline that traces its shadows and nothing else
+//
+// Most of what the traversal costs a fragment is the traced reflection and
+// refraction paths, and they cost it whether a reflection is asked for or not:
+// a frame whose one traced thing is a point light's shadow drew in 153.5 ms on
+// an M2 with them compiled in and in 11.2 ms without them (four rays a pixel,
+// 1080 by 1080), the same picture. So a lit pipeline for a pass that has a
+// structure to cast shadows against, and no traced reflections, is built with
+// this constant set to false: the reflection and refraction paths fold away,
+// and the shadow rays and the thickness walk stay. Left unset (a pass that
+// traces reflections), it reads true and nothing changes. The same rule as the
+// constant above holds for who may name it.
+constant bool kOllinReflectsSet [[function_constant(18)]];
+constant bool kOllinReflects = !is_function_constant_defined(kOllinReflectsSet) || kOllinReflectsSet;
+
 // MARK: - What a fragment hands the blend
 //
 // A fixed-function blend sees one color from the fragment and one from the

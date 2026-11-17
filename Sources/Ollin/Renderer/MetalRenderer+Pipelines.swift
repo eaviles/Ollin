@@ -232,7 +232,8 @@ extension MetalRenderer {
                                 depthFormat: key.depthFormat, singleSample: key.singleSample,
                                 stencilFormat: key.stencilFormat, clipWrite: key.isClipWrite,
                                 colorFormat: key.colorFormat, peel: key.peel,
-                                untraced: key.untraced, depthOnly: key.isDepthOnly)
+                                untraced: key.untraced, tracesShadowsOnly: key.tracesShadowsOnly,
+                                depthOnly: key.isDepthOnly)
     }
 
     /// The fragment function a geometry pipeline draws through: the plain one, or,
@@ -245,8 +246,11 @@ extension MetalRenderer {
     /// that names none builds the same either way. `untraced` builds a lit
     /// fragment with the traces constant (`kOllinTracesSet`, index 16) set to
     /// false, which takes every traced path out of it (see `PipelineKey.untraced`);
-    /// left unset the constant reads true.
+    /// left unset the constant reads true. `tracesShadowsOnly` does the same with
+    /// the reflects constant (`kOllinReflectsSet`, index 18), which takes out the
+    /// traced reflection and refraction paths alone.
     func fragmentFunction(named name: String, peel: Bool, untraced: Bool = false,
+                                  tracesShadowsOnly: Bool = false,
                                   blendForm: Int32 = 0,
                                   using library: MTLLibrary) throws -> MTLFunction {
         let constants = MTLFunctionConstantValues()
@@ -262,6 +266,10 @@ extension MetalRenderer {
             var off = false
             constants.setConstantValue(&off, type: .bool, index: MetalRenderer.tracesConstantIndex)
         }
+        if tracesShadowsOnly {
+            var off = false
+            constants.setConstantValue(&off, type: .bool, index: MetalRenderer.reflectsConstantIndex)
+        }
         return try library.makeFunction(name: name, constantValues: constants)
     }
 
@@ -272,6 +280,10 @@ extension MetalRenderer {
     /// The function constant index that says whether a lit fragment traces
     /// (`kOllinTracesSet` in OllinShaderLib.metal).
     static let tracesConstantIndex = 16
+
+    /// The function constant index that says whether a lit fragment that traces
+    /// also traces reflections (`kOllinReflectsSet` in OllinShaderLib.metal).
+    static let reflectsConstantIndex = 18
 
     /// The function constant index that says what form a fragment hands its
     /// color to the blend in (`kOllinBlendFormSet` in OllinShaderLib.metal; the
@@ -385,12 +397,14 @@ extension MetalRenderer {
                               colorFormat: MTLPixelFormat? = nil,
                               peel: Bool = false,
                               untraced: Bool = false,
+                              tracesShadowsOnly: Bool = false,
                               depthOnly: Bool = false) throws -> MTLRenderPipelineState {
         guard let vertexFunction = library.makeFunction(name: vertex) else {
             throw RendererError.shaderFunctions
         }
         let fragmentFunction = try self.fragmentFunction(named: fragment, peel: peel,
                                                          untraced: untraced,
+                                                         tracesShadowsOnly: tracesShadowsOnly,
                                                          blendForm: clipWrite ? 0 : blend.fragmentForm,
                                                          using: library)
 
@@ -448,6 +462,7 @@ extension MetalRenderer {
         }
         let fragmentFunction = try self.fragmentFunction(named: key.fragment, peel: key.peel,
                                                          untraced: key.untraced,
+                                                         tracesShadowsOnly: key.tracesShadowsOnly,
                                                          blendForm: key.blend.fragmentForm,
                                                          using: library)
         let descriptor = MTLMeshRenderPipelineDescriptor()

@@ -308,6 +308,10 @@ static void ollin_sdf3d_combine(uint op, float da, float4 ca, float db, float4 c
         break;
     case 1u: {                                        // smooth union
         float h = clamp(0.5 + 0.5 * (db - da) / kk, 0.0, 1.0);
+        // Past the blend's reach the union is its first operand, handed back as it
+        // came rather than through the blend's arithmetic, which rounds: a walk
+        // that steps past the far operand (SKIP) has to find this very value.
+        if (h >= 1.0) { outD = da; outC = ca; break; }
         outD = mix(db, da, h) - kk * h * (1.0 - h);
         outC = mix(cb, ca, h);
         break;
@@ -317,6 +321,7 @@ static void ollin_sdf3d_combine(uint op, float da, float4 ca, float db, float4 c
         break;
     case 3u: {                                        // smooth subtract: a minus b
         float h = clamp(0.5 - 0.5 * (da + db) / kk, 0.0, 1.0);
+        if (h <= 0.0) { outD = da; outC = ca; break; }   // past the reach: a, as it came
         outD = mix(da, -db, h) + kk * h * (1.0 - h);
         outC = ca;
         break;
@@ -779,6 +784,21 @@ static float ollin_sdf3d_field(float3 p0, const device SDFNode3D *nodes,
                 distStack[sp-1] = min(max(w.x, w.y), 0.0) + length(max(w, 0.0));
             }
             break;
+        case 9u:     // SKIP -> step past a combine's second operand and the combine
+                     // The next `extra` instructions are that operand and its combine
+                     // (or a run of them), all inside the box this carries, and outside
+                     // the box the operand's distance is at least `geo0.w` times the
+                     // distance to it. Where that is more than the first operand's
+                     // distance plus the blend's reach (k), the combine would hand the
+                     // first operand back untouched, so the stack stays as it is and
+                     // the walk goes on after them. It only ever steps forward.
+            if (sp >= 1) {
+                float3 q = abs(p - nd.geo0.xyz) - nd.geo1.xyz;
+                if (length(max(q, 0.0)) * nd.geo0.w > abs(distStack[sp-1]) + nd.k) {
+                    i += uint(nd.extra);
+                }
+            }
+            break;
         default:     // RESTORE_P -> pop point, apply the scope's distance scale
             if (pp > 0) { pp--; p = pointStack[pp]; }
             if (nd.k != 1.0 && sp >= 1) { distStack[sp-1] *= nd.k; }
@@ -911,6 +931,24 @@ static float2 ollin_ray_aabb(float3 ro, float3 rd, float3 lo, float3 hi) {
     return float2(t0, t1);
 }
 
+// Whether this pass leaves the pixel to another one. A field whose march is too much
+// work for one draw is drawn in several render passes into a target of its own, and
+// each pass shades some of the sixteen 8-pixel blocks of every 32-pixel screen tile,
+// so the passes together shade every pixel once and no pass asks a tile for more
+// than its share. The share is given in blocks and not in single pixels because the
+// GPU shades neighboring pixels together and a group takes as long as its busiest
+// pixel: a stipple one pixel wide leaves every group busy in every pass and divides
+// nothing (two passes cost twice one), where blocks of 8 divide the work at about
+// one and a half times its total. `packed` is the pass count (16 at most) times 256
+// plus this pass's place among them; zero is the single pass, which shades everything.
+static bool ollin_stippled_out(float packed, float2 position) {
+    int code = int(packed);
+    if (code <= 0) { return false; }
+    int n = max(code >> 8, 1);
+    int slot = ((int(position.x) >> 3) & 3) | (((int(position.y) >> 3) & 3) << 2);
+    return (slot % n) != (code & 255);
+}
+
 // A *mesh* receiver's occlusion by the marched SDF fields under a point / ray-traced caster (a
 // directional/spot caster instead has each field render into the 2D map, so this isn't used
 // there). March each field from the surface toward the light position and keep the darkest;
@@ -1018,13 +1056,16 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
                                                  , constant OllinPeel &peel [[buffer(10), function_constant(kOllinPeel)]]
                                                  , depth2d<float> peelDepth [[texture(29), function_constant(kOllinPeel)]]
                                                  ) {
+    RaymarchFragOut miss;
+    miss.color = float4(0.0);
+    miss.depth = 1.0;
+    // One of several passes over a heavy field: a pixel that is another pass's
+    // leaves before anything is read or marched.
+    if (ollin_stippled_out(u.raymarchScale.y, in.position.xy)) { discard_fragment(); return miss; }
 #if OLLIN_RT_SHADOWS
     // This fragment's one ray query, handed to everything below that traces.
     OllinRayQuery rtQuery;
 #endif
-    RaymarchFragOut miss;
-    miss.color = float4(0.0);
-    miss.depth = 1.0;
 
     SDF3DGroupInstance g = groups[in.gid];
 
@@ -1410,6 +1451,8 @@ fragment RaymarchShadowOut ollin_raymarch_shadow_fragment(
         constant OllinRaymarchShadowUniforms &u [[buffer(2)]]) {
     RaymarchShadowOut out;
     out.depth = 1.0;
+    // One of several passes over a heavy field, as in the camera's march.
+    if (ollin_stippled_out(u.stipple, in.position.xy)) { discard_fragment(); return out; }
 
     SDF3DGroupInstance g = groups[in.gid];
 

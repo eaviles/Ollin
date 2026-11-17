@@ -414,7 +414,8 @@ enum WebField {
     /// The unbounded flag and the program's start and length.
     static let structuralColumns = [23, 28, 29]
 
-    static func append(_ f: SDF3DGroupInstance, nodeStart: Int, fillRow: Float, into out: inout [Float]) {
+    static func append(_ f: SDF3DGroupInstance, nodeStart: Int, nodeCount: Int, fillRow: Float,
+                       into out: inout [Float]) {
         let m = f.inverseModel
         for column in [m.columns.0, m.columns.1, m.columns.2, m.columns.3] {
             out.append(contentsOf: [column.x, column.y, column.z, column.w])
@@ -423,7 +424,7 @@ enum WebField {
             f.boundsMin.x, f.boundsMin.y, f.boundsMin.z, f.modelScale,
             f.boundsMax.x, f.boundsMax.y, f.boundsMax.z, f.unbounded,
             f.fillGradientGeo.x, f.fillGradientGeo.y, f.fillGradientGeo.z, f.fillGradientGeo.w,
-            Float(nodeStart), Float(f.nodeCount), f.fillGradientKind, fillRow,
+            Float(nodeStart), Float(nodeCount), f.fillGradientKind, fillRow,
             f.normalEpsilon, 0, 0, 0,
         ])
     }
@@ -722,23 +723,28 @@ final class WebGraphRecorder {
             WebGroup.append(placed, nodeStart: local, fillRow: fillRow, strokeRow: strokeRow, into: &groups)
             groupCount += 1
         }
-        /// Appends a raymarched 3D field and its instructions the same way.
-        var placedPrograms3D: [Int: Int] = [:]
+        /// Appends a raymarched 3D field and its instructions the same way. A
+        /// program the Mac wrote with skips goes to the page without them: it is
+        /// the same field read in full, it fits the page's block of instructions
+        /// whatever its length, and its instructions keep their places from frame
+        /// to frame, where a skip comes and goes as the parts move.
+        var placedPrograms3D: [Int: (start: Int, count: Int)] = [:]
         func appendField(_ f: SDF3DGroupInstance, rows: [Int]) throws {
             let ns = Int(f.nodeStart), nc = Int(f.nodeCount)
             guard nc > 0, ns >= 0, ns + nc <= drawer.sdf3DNodes.count else {
                 throw refuse("drawSDF3D (a field whose program the frame did not hold)")
             }
-            let local: Int
+            let local: (start: Int, count: Int)
             if let found = placedPrograms3D[ns] {
                 local = found
             } else {
-                local = node3DCount
-                for node in drawer.sdf3DNodes[ns ..< ns + nc] { WebNode3D.append(node, into: &nodes3D); node3DCount += 1 }
+                let program = SDF3D.strippingSkips(Array(drawer.sdf3DNodes[ns ..< ns + nc]))
+                local = (node3DCount, program.count)
+                for node in program { WebNode3D.append(node, into: &nodes3D); node3DCount += 1 }
                 placedPrograms3D[ns] = local
             }
             let fillRow = f.fillGradientKind != 0 ? try row(f.fillGradientRow, in: rows) : 0
-            WebField.append(f, nodeStart: local, fillRow: fillRow, into: &fields)
+            WebField.append(f, nodeStart: local.start, nodeCount: local.count, fillRow: fillRow, into: &fields)
             fieldCount += 1
         }
         /// Appends the vertices `[from, to)` of `list`, placed by `transform`,

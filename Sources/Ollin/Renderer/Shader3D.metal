@@ -1801,11 +1801,13 @@ static inline float3 ollin_apply_aerial(float3 rgb, float3 worldPos, float2 pixe
 typedef intersection_query<triangle_data, instancing> OllinRayQuery;
 
 // Whether this fragment traces reflections and refractions: the lighting asks for
-// them, and the pipeline was built to trace (`kOllinTraces`). Every read of
+// them, and the pipeline was built to trace them (`kOllinTraces`, and
+// `kOllinReflects` for a pass that traces its shadows alone). Every read of
 // `rtReflections` in a lit fragment goes through here, so a pipeline built for a
-// pass that traces nothing holds none of the traced paths.
+// pass that traces nothing holds none of the traced paths, and one built for a
+// pass with no traced reflections holds none of theirs.
 static inline bool ollin_rt_reflects(constant OllinLighting &light) {
-    return kOllinTraces && light.rtReflections != 0;
+    return kOllinTraces && kOllinReflects && light.rtReflections != 0;
 }
 
 static inline intersection_params ollin_rt_params(bool anyHit = false) {

@@ -13,8 +13,10 @@
 #   dof     — depth-of-field bokeh tap count, measured at the `.defocus` layer's canvas size.
 #   ssao    — ambient-occlusion hemisphere sample count, measured at the
 #             `.ambientOcclusion` layer's canvas size.
-#   raymarch— raymarched-3D-SDF (drawSDF3D) camera-march step count, measured at the live
-#             drawable (the fullscreen sphere-tracer runs in the main pass).
+#   raymarch: raymarched-3D-SDF (drawSDF3D) camera-march step count, measured at the live
+#             drawable (the fullscreen sphere-tracer runs in the main pass at the drawable).
+#             Also what a field costs beside a traced shadow against a mapped one, and
+#             what dividing a march into passes costs on a light field (1 to 16 passes).
 #   lights  : what the per-tile light grid buys. A courtyard of lamps rendered with the
 #             grid culling and with every tile taking every light, at a sweep of counts.
 #   lightsets: what per-batch lighting costs and buys. A hall of rooms drawn as one light

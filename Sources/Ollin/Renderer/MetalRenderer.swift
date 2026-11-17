@@ -162,6 +162,15 @@ final class MetalRenderer {
         /// a different compiled function; set only on the fragments that hold
         /// traced paths (`holdsTracedPaths`), and only on a device that traces.
         var untraced = false
+        /// A lit pipeline for a pass that traces its shadows and no reflections
+        /// (a structure to cast against, and traced reflections off): the same
+        /// fragment built with the reflects constant set to false, so the traced
+        /// reflection and refraction paths are not in it. Those paths are most of
+        /// what the software traversal costs, asked for or not: a point light's
+        /// traced shadow drew in 11.2 ms without them and 153.5 ms with them, the
+        /// same picture. Part of the key for the same reason `untraced` is, and
+        /// never set together with it.
+        var tracesShadowsOnly = false
         /// Whether this key's fragment is one of the lit ones the traced paths
         /// live in (shadow rays, the thickness walk, reflections, refraction),
         /// which are the ones with a variant that traces nothing.
@@ -4420,6 +4429,17 @@ final class MetalRenderer {
     /// hook `Scripts/benchmark.sh raymarch` sweeps to measure the real per-GPU march cost.
     /// `nil` in normal use. (The shadow budget tracks it at the same 3/8 ratio.)
     var raymarchStepsOverride: Int?
+    /// The pass count a field's march is divided into, in place of the one the
+    /// tile budget gives (`fieldPasses`): a test draws one light field in several
+    /// passes with it and compares the picture with the single pass.
+    var fieldPassesOverride: Int?
+    /// The one pass of a divided march to draw, the others left out: a test reads
+    /// what each pass shades. `nil` in normal use.
+    var fieldPassShown: Int?
+    /// How many passes the last frame's field march took, and its last cast into a
+    /// shadow map: 1 for the single pass. Read by tests and by the cost report.
+    var lastFieldPasses = 1
+    var lastFieldShadowPasses = 1
 }
 
 // MARK: - What the renderer holds

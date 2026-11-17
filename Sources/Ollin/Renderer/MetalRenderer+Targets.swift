@@ -505,9 +505,29 @@ extension MetalRenderer {
             // write its depth, z-tested against the mesh casters already there, so meshes receive a
             // field's shadow too. The field keeps its analytic self-shadow in the main pass and
             // doesn't sample this map, so there's no double-shadowing (directional/spot only).
-            encodeFieldShadowCasters(drawer, encoder: encoder, lightViewProjection: caster.lightViewProjection,
-                                     groupBuffer: sdf3DGroupBuffer, nodeBuffer: sdf3DNodeBuffer)
+            let fieldPasses = encodeFieldShadowCasters(
+                drawer, encoder: encoder, lightViewProjection: caster.lightViewProjection,
+                groupBuffer: sdf3DGroupBuffer, nodeBuffer: sdf3DNodeBuffer)
             encoder.endEncoding()
+            // A field too heavy to cast in one pass: the pass above marched the first
+            // share of the map's pixels, and each of these marches another into the
+            // same layer, tested against what is already there.
+            for passIndex in 1 ..< max(fieldPasses, 1) {
+                let more = MTLRenderPassDescriptor()
+                more.depthAttachment.texture = shadowMap
+                more.depthAttachment.slice = layer
+                more.depthAttachment.loadAction = .load
+                more.depthAttachment.storeAction = .store
+                let name = "field shadow (pass \(passIndex + 1) of \(fieldPasses))"
+                guard let fieldEncoder = countedEncoder(commandBuffer, more, caller: name) else { break }
+                fieldEncoder.setDepthStencilState(depthTestState)
+                fieldEncoder.setDepthBias(0.0015, slopeScale: 2.0, clamp: 0.01)
+                encodeFieldShadowCasters(
+                    drawer, encoder: fieldEncoder, lightViewProjection: caster.lightViewProjection,
+                    groupBuffer: sdf3DGroupBuffer, nodeBuffer: sdf3DNodeBuffer,
+                    pass: passIndex, of: fieldPasses)
+                fieldEncoder.endEncoding()
+            }
         }
         return maps(twoD: shadowMap)
     }
@@ -600,14 +620,22 @@ extension MetalRenderer {
     /// is one instanced fullscreen triangle whose fragment sphere-traces it from the light's
     /// point of view and writes the hit's light-clip depth (depth-only, z-tested against the
     /// mesh casters already in the map). A no-op when the frame has no fields or no buffers.
+    ///
+    /// Returns how many passes the cast takes (`fieldPasses`: the light's march reads
+    /// the field up to the camera's step budget a pixel). The first call, with no
+    /// `passes`, works the count out and draws the first of them; the caller then
+    /// makes a pass for each of the rest and hands the count back.
+    @discardableResult
     private func encodeFieldShadowCasters(_ drawer: Drawer, encoder: MTLRenderCommandEncoder,
                                           lightViewProjection: simd_float4x4,
-                                          groupBuffer: MTLBuffer?, nodeBuffer: MTLBuffer?) {
+                                          groupBuffer: MTLBuffer?, nodeBuffer: MTLBuffer?,
+                                          pass passIndex: Int = 0, of passes: Int? = nil) -> Int {
         let groups3D = drawer.sdf3DGroups
         let nodes3D = drawer.sdf3DNodes
+        if passes == nil { lastFieldShadowPasses = 1 }
         guard !groups3D.isEmpty, !nodes3D.isEmpty,
               let groupBuffer, let nodeBuffer,
-              let fieldPipeline = try? pipeline(.raymarchShadow) else { return }
+              let fieldPipeline = try? pipeline(.raymarchShadow) else { return 1 }
         // Fill the field buffers here: the shadow pass runs before the main encode (which
         // re-uploads the same bytes), so the GPU sees the geometry when it marches the map.
         groups3D.withUnsafeBytes { raw in
@@ -617,16 +645,22 @@ extension MetalRenderer {
             nodeBuffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
         }
         let casterSteps = resolveRaymarchSteps(drawer.raymarchQualitySetting).march
+        let count = passes ?? fieldPassesOverride
+            ?? Self.fieldPasses(walkWeight: Self.walkWeight(of: groups3D, in: nodes3D),
+                                readsPerPixel: Int(casterSteps))
+        if passes == nil { lastFieldShadowPasses = count }
         var u = OllinRaymarchShadowUniforms(
             lightViewProjection: lightViewProjection,
             inverseLightViewProjection: simd_inverse(lightViewProjection),
-            raymarchSteps: Float(casterSteps))
+            raymarchSteps: Float(casterSteps),
+            stipple: Self.stipple(pass: passIndex, of: count))
         encoder.setRenderPipelineState(fieldPipeline)
         encoder.setFragmentBuffer(groupBuffer, offset: 0, index: 0)
         encoder.setFragmentBuffer(nodeBuffer, offset: 0, index: 1)
         encoder.setFragmentBytes(&u, length: MemoryLayout<OllinRaymarchShadowUniforms>.stride, index: 2)
         encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3,
                                instanceCount: groups3D.count)
+        return count
     }
 
     /// The omnidirectional (point) shadow pass: render the scene into all six faces of
@@ -1199,6 +1233,88 @@ extension MetalRenderer {
         }
     }
 
+    // MARK: A heavy field in bounded passes
+
+    /// What one render pass may ask of one screen tile when it marches a field, counted
+    /// in the walk's plain instructions: the reads a pixel can make, times what one
+    /// read can cost (`SDF3D.walkWeight`), times the pixels of a tile. The GPU checks
+    /// its progress through a pass tile by tile, and a tile that takes too long ends
+    /// the frame as a hang however short the frame is. On an M2 a pass whose busiest
+    /// tile read about seventeen million instructions has drawn clean (2026-11-17,
+    /// counted on the CPU); the budget is half that, and it is counted as if every
+    /// pixel of the tile took every step, where a real tile comes to about a third
+    /// of it. `ARCHITECTURE.md` (*A heavy field in bounded passes*) has the
+    /// measurements.
+    nonisolated static let fieldTileBudget = 8_000_000
+    /// The pixels of the tile the budget is counted over (32 by 32).
+    nonisolated static let fieldTilePixels = 1_024
+    /// How much dearer every read is in a fragment compiled with the traced
+    /// reflection paths, on a GPU that traces in software (170.8 ms against 8.7 ms
+    /// for one field).
+    nonisolated static let tracedFieldCost = 20.0
+    /// The same for a fragment that carries the shadow rays alone, which is what a
+    /// field marches through beside a traced shadow when no reflection is traced:
+    /// 48.0 ms against 44.7 ms measured, taken a little high.
+    nonisolated static let tracedShadowFieldCost = 1.25
+    /// The most passes a field is divided into: one for each of the sixteen 8-pixel
+    /// blocks of a 32-pixel tile, which is as finely as the stipple shares a tile out
+    /// (`ollin_stippled_out`). A field past sixteen times the budget is drawn in
+    /// sixteen, each pass asking for more than the budget.
+    nonisolated static let maxFieldPasses = 16
+
+    /// How many render passes a march is divided into so that none asks a tile for
+    /// more than `fieldTileBudget`: one for nearly every field, more for a field
+    /// near the node limit, under a shadow, or in a frame that traces. The count
+    /// assumes every instruction is read and every step is taken, which is what
+    /// the busiest tile of a heavy field comes to, so it is a bound and never a
+    /// guess about the picture.
+    nonisolated static func fieldPasses(walkWeight: Int, readsPerPixel: Int, costFactor: Double = 1) -> Int {
+        let work = Double(max(walkWeight, 0)) * Double(max(readsPerPixel, 0))
+            * Double(fieldTilePixels) * max(costFactor, 1)
+        let passes = Int((work / Double(fieldTileBudget)).rounded(.up))
+        return max(1, min(passes, maxFieldPasses))
+    }
+
+    /// What the build a field marches through costs each of its reads, against the
+    /// build that traces nothing: one on a GPU that traces in hardware or not at
+    /// all, and on one that traces in software, what the traversal compiled into
+    /// the fragment adds (the shadow rays alone, or the reflection paths too).
+    func fieldCostFactor(traces: Bool, reflects: Bool) -> Double {
+        guard rayTracedShadows, !hasHardwareRayTracing else { return 1 }
+        guard usesUntracedPipelines else { return Self.tracedFieldCost }
+        guard traces else { return 1 }
+        return reflects ? Self.tracedFieldCost : Self.tracedShadowFieldCost
+    }
+
+    /// The reads of its field one pixel of the camera's march can make: the march's
+    /// steps, a shadow march toward each caster, the four reads of the normal and
+    /// the one at a near miss, and the walk out through a glass body when the
+    /// frame traces.
+    nonisolated static func fieldReadsPerPixel(steps: SIMD2<Float>, lighting: OllinLighting,
+                                               traces: Bool) -> Int {
+        let march = Int(steps.x), shadow = Int(steps.y)
+        let casters = lighting.enabled != 0 ? Int(max(lighting.shadowCasterCount, 0)) : 0
+        return march + casters * shadow + 6 + (traces ? march + 4 : 0)
+    }
+
+    /// What one read of every listed field costs together, since a pixel under
+    /// several fields marches each of them.
+    nonisolated static func walkWeight(of groups: [SDF3DGroupInstance], in nodes: [SDFNode3D]) -> Int {
+        var weight = 0
+        for group in groups {
+            let start = Int(group.nodeStart), end = start + Int(group.nodeCount)
+            guard start >= 0, end <= nodes.count, start < end else { continue }
+            weight += SDF3D.walkWeight(nodes[start ..< end])
+        }
+        return weight
+    }
+
+    /// The stipple a pass hands its fragment (`ollin_stippled_out`): the pass count
+    /// times 256 plus the pass's place, or zero for the single pass.
+    nonisolated static func stipple(pass index: Int, of passes: Int) -> Float {
+        passes > 1 ? Float(passes * 256 + index) : 0
+    }
+
     /// The fraction of the screen the frame's 3D fields cover, estimated from each field's
     /// world AABB projected through the camera (per box, the smaller of its corners' clipped
     /// NDC bounding rect and their convex hull's area; summed and capped at 1). Conservative
@@ -1382,9 +1498,10 @@ extension MetalRenderer {
                                        giTextures: (irradiance: MTLTexture, depth: MTLTexture, offsets: MTLTexture)? = nil,
                                        fullWidth: Int, fullHeight: Int)
         -> (color: MTLTexture, depth: MTLTexture, region: SIMD4<Float>)? {
+        lastFieldPasses = 1
         let baseScale = resolveRaymarchScale(drawer.raymarchQualitySetting)
         let groups3D = drawer.sdf3DGroups
-        guard baseScale < 1.0, !groups3D.isEmpty, let groupBuffer, let nodeBuffer else { return nil }
+        guard !groups3D.isEmpty, let groupBuffer, let nodeBuffer else { return nil }
         // The canvas's fields alone. This pass is the canvas's: a layer marches its own
         // fields in its own pass, through its own camera, and one drawn here as well
         // would show on the canvas (it did, wherever the canvas's camera saw it) and
@@ -1404,7 +1521,19 @@ extension MetalRenderer {
         let coverage = Self.fieldScreenCoverage(canvasGroups,
                                            viewProjection: uniforms3D.projection * uniforms3D.view)
         let scale = min(1.0, baseScale / max(coverage.squareRoot(), 1e-3))
-        guard scale < 1.0 else { return nil }
+        // A field heavy enough to stall a screen tile is drawn here at any scale, in
+        // as many passes as keep each one inside the tile budget (`fieldPasses`):
+        // this target is the field's own, so the passes can each shade their share
+        // of its pixels and the one composite shows them all.
+        let passes = fieldPassesOverride
+            ?? Self.fieldPasses(walkWeight: Self.walkWeight(of: canvasGroups, in: drawer.sdf3DNodes),
+                                readsPerPixel: Self.fieldReadsPerPixel(steps: uniforms3D.raymarchSteps,
+                                                                       lighting: lighting,
+                                                                       traces: traceAccel != nil),
+                                costFactor: fieldCostFactor(traces: traceAccel != nil,
+                                                            reflects: lighting.rtReflections != 0))
+        lastFieldPasses = passes
+        guard scale < 1.0 || passes > 1 else { return nil }
 
         let w = max(1, Int((Double(fullWidth) * scale).rounded()))
         let h = max(1, Int((Double(fullHeight) * scale).rounded()))
@@ -1419,6 +1548,10 @@ extension MetalRenderer {
         // that traces nothing, as the inline march does (see `PipelineKey.untraced`).
         var pipelineKey = PipelineKey.raymarchHalfRes(depth: depthPixelFormat)
         pipelineKey.untraced = rayTracedShadows && usesUntracedPipelines && traceAccel == nil
+        // And with a structure to cast against but no traced reflections, through
+        // the one that traces its shadows alone (`PipelineKey.tracesShadowsOnly`).
+        pipelineKey.tracesShadowsOnly = rayTracedShadows && usesUntracedPipelines
+            && traceAccel != nil && lighting.rtReflections == 0
         guard let color = halfResColor, let depth = halfResDepth,
               let pipe = try? pipeline(pipelineKey) else { return nil }
 
@@ -1431,96 +1564,101 @@ extension MetalRenderer {
             nodes3D.withUnsafeBytes { nodeBuffer.contents().copyMemory(from: $0.baseAddress!, byteCount: $0.count) }
         }
 
-        let pass = MTLRenderPassDescriptor()
-        pass.colorAttachments[0].texture = color
-        pass.colorAttachments[0].loadAction = .clear
-        pass.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)  // over transparent → premultiplied
-        pass.colorAttachments[0].storeAction = .store
-        pass.depthAttachment.texture = depth
-        pass.depthAttachment.loadAction = .clear
-        pass.depthAttachment.clearDepth = 1.0
-        pass.depthAttachment.storeAction = .store
-        guard let enc = countedEncoder(cb, pass) else { return nil }
-        enc.setViewport(MTLViewport(originX: 0, originY: 0, width: Double(w), height: Double(h), znear: 0, zfar: 1))
-        enc.setRenderPipelineState(pipe)
-        enc.setDepthStencilState(depthTestState)
-        var u3 = uniforms3D
-        // The internal render scale, so the fragment's pixel-cone AA matches the texel this
-        // subrect actually shades (a full-res cone under-blurs the low-res image and the
-        // upsample magnifies the aliasing into a staircase).
-        u3.raymarchScale = SIMD2<Float>(Float(scale), 0)
-        var lit = lighting
-        // Many lights: the grid was culled over the full-res target, and the fragment
-        // divides its own reduced position by `raymarchScale` to land on the same tile.
-        applyLightGrid(to: &lit, width: fullWidth, height: fullHeight)
-        enc.setFragmentBuffer(nodeBuffer, offset: 0, index: 1)
-        enc.setFragmentBytes(&lit, length: MemoryLayout<OllinLighting>.stride, index: 2)
-        bindLightGrid(enc)
-        enc.setFragmentBytes(&u3, length: MemoryLayout<Uniforms3D>.stride, index: 4)
-        enc.setFragmentTexture(shadowTexture, index: 1)
-        enc.setFragmentTexture(shadowCubeTexture, index: 2)
-        if let shadowSampler { enc.setFragmentSamplerState(shadowSampler, index: 1) }
-        if let shadowCubeSampler { enc.setFragmentSamplerState(shadowCubeSampler, index: 2) }
-        let strip = gradientStripTexture(for: drawer.gradientRows)
-        enc.setFragmentTexture(strip, index: 0)
-        enc.setFragmentSamplerState(imageSampler, index: 0)
-        // The image-based-lighting maps (tex 4/5/6), matching the main pass, so a half-res
-        // field takes the same environment ambient; stand-ins when no environment baked.
-        if iblPlaceholderCube == nil { iblPlaceholderCube = makeCubeTexture(face: 1, mipped: false) }
-        enc.setFragmentTexture(currentIBLIrradiance ?? iblPlaceholderCube, index: 4)
-        enc.setFragmentTexture(currentIBLPrefilter ?? iblPlaceholderCube, index: 5)
-        enc.setFragmentTexture(iblBRDFLUTTexture ?? strip, index: 6)
-        // The LTC tables (tex 8/9) for area lights, matching the main pass; never-sampled
-        // stand-ins when unloaded (`lighting.ltcEnabled` gates the read).
-        enc.setFragmentTexture(ltcMatTexture ?? strip, index: 8)
-        enc.setFragmentTexture(ltcAmpTexture ?? strip, index: 9)
-        // The light-shaping arrays (tex 10/11), matching the main pass; the array
-        // stand-in otherwise (`iesEnabled`/`cookieEnabled` gate).
-        enc.setFragmentTexture(iesArrayTexture ?? shapingStandIn(), index: 10)
-        enc.setFragmentTexture(cookieArrayTexture ?? shapingStandIn(), index: 11)
-        // The sheen directional-albedo LUT (tex 12), matching the main pass; a
-        // never-sampled stand-in unless a material carries sheen.
-        enc.setFragmentTexture(sheenLUT ?? strip, index: 12)
-        // The GI probe atlases (tex 13/14), matching the main pass; never-sampled
-        // stand-ins unless the frame resolved a probe field (`giOrigin.w` gates).
-        if rayTracedShadows {
-            enc.setFragmentTexture(giTextures?.irradiance ?? strip, index: 13)
-            enc.setFragmentTexture(giTextures?.depth ?? strip, index: 14)
-            enc.setFragmentTexture(giTextures?.offsets ?? strip, index: 15)
-        }
-        // The mesh acceleration structure at buffer 5, matching the main pass: RT point
-        // shadows received by the field, and the reflection trace when `rtReflections`
-        // is set. A dummy when neither is active, never traced.
-        if let accel = rayTracedShadows ? (traceAccel ?? ensureDummyShadowAccel()) : nil {
-            useTracedScene(enc, accel)
-            enc.setFragmentAccelerationStructure(accel, bufferIndex: 5)
-        }
-        // The reflection-trace inputs (buffers 6/7), read only under `lighting.rtReflections`;
-        // the offsets dummy stands in for both on a mesh-less RT frame (see the main pass).
-        if rayTracedShadows {
-            let offsets = reflectGeoOffsets ?? ensureDummyGeoOffsets()
-            if let verts = meshBuffer ?? offsets {
-                enc.setFragmentBuffer(verts, offset: 0, index: 6)
+        for passIndex in 0 ..< passes where fieldPassShown == nil || fieldPassShown == passIndex {
+            let first = passIndex == 0 || fieldPassShown != nil
+            let pass = MTLRenderPassDescriptor()
+            pass.colorAttachments[0].texture = color
+            // The first pass clears the target; each later one adds its pixels to it.
+            pass.colorAttachments[0].loadAction = first ? .clear : .load
+            pass.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)  // over transparent → premultiplied
+            pass.colorAttachments[0].storeAction = .store
+            pass.depthAttachment.texture = depth
+            pass.depthAttachment.loadAction = first ? .clear : .load
+            pass.depthAttachment.clearDepth = 1.0
+            pass.depthAttachment.storeAction = .store
+            let name = passes > 1 ? "field march (pass \(passIndex + 1) of \(passes))" : #function
+            guard let enc = countedEncoder(cb, pass, caller: name) else { return nil }
+            enc.setViewport(MTLViewport(originX: 0, originY: 0, width: Double(w), height: Double(h), znear: 0, zfar: 1))
+            enc.setRenderPipelineState(pipe)
+            enc.setDepthStencilState(depthTestState)
+            var u3 = uniforms3D
+            // The internal render scale, so the fragment's pixel-cone AA matches the texel this
+            // subrect actually shades (a full-res cone under-blurs the low-res image and the
+            // upsample magnifies the aliasing into a staircase).
+            u3.raymarchScale = SIMD2<Float>(Float(scale), Self.stipple(pass: passIndex, of: passes))
+            var lit = lighting
+            // Many lights: the grid was culled over the full-res target, and the fragment
+            // divides its own reduced position by `raymarchScale` to land on the same tile.
+            applyLightGrid(to: &lit, width: fullWidth, height: fullHeight)
+            enc.setFragmentBuffer(nodeBuffer, offset: 0, index: 1)
+            enc.setFragmentBytes(&lit, length: MemoryLayout<OllinLighting>.stride, index: 2)
+            bindLightGrid(enc)
+            enc.setFragmentBytes(&u3, length: MemoryLayout<Uniforms3D>.stride, index: 4)
+            enc.setFragmentTexture(shadowTexture, index: 1)
+            enc.setFragmentTexture(shadowCubeTexture, index: 2)
+            if let shadowSampler { enc.setFragmentSamplerState(shadowSampler, index: 1) }
+            if let shadowCubeSampler { enc.setFragmentSamplerState(shadowCubeSampler, index: 2) }
+            let strip = gradientStripTexture(for: drawer.gradientRows)
+            enc.setFragmentTexture(strip, index: 0)
+            enc.setFragmentSamplerState(imageSampler, index: 0)
+            // The image-based-lighting maps (tex 4/5/6), matching the main pass, so a half-res
+            // field takes the same environment ambient; stand-ins when no environment baked.
+            if iblPlaceholderCube == nil { iblPlaceholderCube = makeCubeTexture(face: 1, mipped: false) }
+            enc.setFragmentTexture(currentIBLIrradiance ?? iblPlaceholderCube, index: 4)
+            enc.setFragmentTexture(currentIBLPrefilter ?? iblPlaceholderCube, index: 5)
+            enc.setFragmentTexture(iblBRDFLUTTexture ?? strip, index: 6)
+            // The LTC tables (tex 8/9) for area lights, matching the main pass; never-sampled
+            // stand-ins when unloaded (`lighting.ltcEnabled` gates the read).
+            enc.setFragmentTexture(ltcMatTexture ?? strip, index: 8)
+            enc.setFragmentTexture(ltcAmpTexture ?? strip, index: 9)
+            // The light-shaping arrays (tex 10/11), matching the main pass; the array
+            // stand-in otherwise (`iesEnabled`/`cookieEnabled` gate).
+            enc.setFragmentTexture(iesArrayTexture ?? shapingStandIn(), index: 10)
+            enc.setFragmentTexture(cookieArrayTexture ?? shapingStandIn(), index: 11)
+            // The sheen directional-albedo LUT (tex 12), matching the main pass; a
+            // never-sampled stand-in unless a material carries sheen.
+            enc.setFragmentTexture(sheenLUT ?? strip, index: 12)
+            // The GI probe atlases (tex 13/14), matching the main pass; never-sampled
+            // stand-ins unless the frame resolved a probe field (`giOrigin.w` gates).
+            if rayTracedShadows {
+                enc.setFragmentTexture(giTextures?.irradiance ?? strip, index: 13)
+                enc.setFragmentTexture(giTextures?.depth ?? strip, index: 14)
+                enc.setFragmentTexture(giTextures?.offsets ?? strip, index: 15)
             }
-            if let offsets {
-                enc.setFragmentBuffer(offsets, offset: 0, index: 7)
+            // The mesh acceleration structure at buffer 5, matching the main pass: RT point
+            // shadows received by the field, and the reflection trace when `rtReflections`
+            // is set. A dummy when neither is active, never traced.
+            if let accel = rayTracedShadows ? (traceAccel ?? ensureDummyShadowAccel()) : nil {
+                useTracedScene(enc, accel)
+                enc.setFragmentAccelerationStructure(accel, bufferIndex: 5)
             }
-        }
+            // The reflection-trace inputs (buffers 6/7), read only under `lighting.rtReflections`;
+            // the offsets dummy stands in for both on a mesh-less RT frame (see the main pass).
+            if rayTracedShadows {
+                let offsets = reflectGeoOffsets ?? ensureDummyGeoOffsets()
+                if let verts = meshBuffer ?? offsets {
+                    enc.setFragmentBuffer(verts, offset: 0, index: 6)
+                }
+                if let offsets {
+                    enc.setFragmentBuffer(offsets, offset: 0, index: 7)
+                }
+            }
 
-        let group3DStride = MemoryLayout<SDF3DGroupInstance>.stride
-        for i in batches.indices {
-            let batch = batches[i]
-            guard batch.kind == .sdfGroup3D, batch.target == nil else { continue }
-            let next = i + 1 < batches.count ? batches[i + 1] : nil
-            let end = next?.sdf3DGroupStart ?? groups3D.count
-            let count = end - batch.sdf3DGroupStart
-            guard count > 0 else { continue }
-            enc.setFragmentBuffer(groupBuffer, offset: batch.sdf3DGroupStart * group3DStride, index: 0)
-            var finish = batch.finish
-            enc.setFragmentBytes(&finish, length: MemoryLayout<OllinMaterial>.stride, index: 3)
-            enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3, instanceCount: count)
+            let group3DStride = MemoryLayout<SDF3DGroupInstance>.stride
+            for i in batches.indices {
+                let batch = batches[i]
+                guard batch.kind == .sdfGroup3D, batch.target == nil else { continue }
+                let next = i + 1 < batches.count ? batches[i + 1] : nil
+                let end = next?.sdf3DGroupStart ?? groups3D.count
+                let count = end - batch.sdf3DGroupStart
+                guard count > 0 else { continue }
+                enc.setFragmentBuffer(groupBuffer, offset: batch.sdf3DGroupStart * group3DStride, index: 0)
+                var finish = batch.finish
+                enc.setFragmentBytes(&finish, length: MemoryLayout<OllinMaterial>.stride, index: 3)
+                enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3, instanceCount: count)
+            }
+            enc.endEncoding()
         }
-        enc.endEncoding()
         // The subrect the pass rendered, as the upsample's UV mapping: .xy scales full-frame UV
         // into the subrect, .zw clamps half a texel inside it so bilinear filtering never reads
         // the (cleared) texels past the marched region of the grow-only texture.

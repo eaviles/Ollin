@@ -555,6 +555,9 @@ final class Drawer {
     var sdfNodes: [SDFNode] = []
     var sdf3DGroups: [SDF3DGroupInstance] = []
     var sdf3DNodes: [SDFNode3D] = []
+    /// When `drawSDF3D` writes a field's program with skips. A setting of the
+    /// drawer rather than of a frame, so a test can draw one field both ways.
+    var sdf3DSkipPolicy = SDF3D.SkipPolicy.automatic
     /// The volumes drawn this frame (`drawVolume`), in call order. They sit
     /// outside `batches`: each composites over its pass's finished geometry.
     var volumeDraws: [VolumeDraw] = []

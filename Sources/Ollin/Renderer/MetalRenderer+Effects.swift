@@ -4071,6 +4071,12 @@ extension MetalRenderer {
         // one, nothing traces, and the lit kinds draw through the pipelines built
         // without the traced paths. Only a device that traces has the two variants.
         let passTracesNothing = rayTracedShadows && usesUntracedPipelines && traceAccel == nil
+        // A pass that has a structure to cast shadows against and traces no
+        // reflections (`rtReflections` is set above from this same structure) draws
+        // its lit kinds through the build without the reflection and refraction
+        // paths, which are most of what the traversal costs.
+        let passTracesShadowsOnly = rayTracedShadows && usesUntracedPipelines
+            && traceAccel != nil && reflectAccel == nil
         let geoOffsetsBuffer = rayTracedShadows ? (reflectGeoOffsets ?? ensureDummyGeoOffsets()) : nil
 
         // Air fog backdrop: with atmosphere on, fill the frame with the air's own glow
@@ -4325,6 +4331,7 @@ extension MetalRenderer {
             // A pass with nothing to trace against draws its lit kinds through the
             // variant that traces nothing (see `PipelineKey.untraced`).
             if passTracesNothing, pipelineKey.holdsTracedPaths { pipelineKey.untraced = true }
+            if passTracesShadowsOnly, pipelineKey.holdsTracedPaths { pipelineKey.tracesShadowsOnly = true }
             if singleSample {
                 if batch.kind == .particles, batch.particleStyle == .light {
                     pipelineKey.vertex = "ollin_particle_splat_vertex"

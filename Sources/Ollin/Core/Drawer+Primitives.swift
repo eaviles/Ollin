@@ -1007,6 +1007,23 @@ extension Drawer {
             return
         }
 
+        // A field of many parts is written a second time with skips, so each march
+        // step reads the parts near its point and steps past the rest. The limit
+        // above counts the field's own instructions; the skips ride beside them,
+        // and the field's value is the same with them.
+        let writesSkips: Bool
+        switch sdf3DSkipPolicy {
+        case .automatic: writesSkips = nodes.count >= SDF3D.skipMinNodes
+        case .always:    writesSkips = true
+        case .never:     writesSkips = false
+        }
+        if writesSkips {
+            var skipping: [SDFNode3D] = []
+            skipping.reserveCapacity(nodes.count * 2)
+            _ = sdf.flatten(defaultFill: defaultFill, skips: true, into: &skipping)
+            nodes = skipping
+        }
+
         // Place the field in world space by the current 3D model matrix. The march runs
         // in world space and maps each sample back into the field's local frame, so the
         // group carries the inverse model + the uniform scale (local distance → world

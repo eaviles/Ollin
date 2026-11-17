@@ -133,7 +133,10 @@ typedef struct {
                                // sized to the full-res pixel under-blurs the low-res image
                                // and the upsample magnifies the aliasing into a staircase).
                                // Always 1 for the full-res inline march (byte-identical:
-                               // `viewport.y * 1` is exact). .y unused.
+                               // `viewport.y * 1` is exact). .y = the stipple of a field
+                               // drawn in several passes: the pass count times 256 plus
+                               // this pass's place among them, or 0 for the single pass
+                               // (`ollin_stippled_out`).
 } Uniforms3D;
 
 // The hidden layer's peel (the canvas depth of field's second layer): the test a
@@ -319,12 +322,24 @@ typedef struct {
 //                 angle), 2 scale (k = factor s, p /= s). Translate/rotate are rigid;
 //                 scale multiplies the child distance back at RESTORE_P.
 //   kind 4 RESTORE_P  pop the point; k = the distance scale (s for a scale scope, else 1).
+//   kind 9 SKIP   ahead of a combine's second operand (or of a run of operands and
+//                 their combines): geo0.xyz and geo1.xyz are the center and half extent
+//                 of the box that holds what follows, geo0.w the rate its distance is
+//                 known to grow at outside that box, k how far the combine reaches, and
+//                 extra how many instructions follow. Where the point is far enough
+//                 from the box that the combine would hand back its first operand
+//                 untouched, the walk steps past all of them; the stack is not read
+//                 past its top and is left as it was. Written by the flattener for a
+//                 field with many parts (`SDF3D.flatten(skips:)`), and the field's
+//                 value is the same with and without it, bit for bit.
+// (Kinds 5 and 6 open and close a voxelized scope, 7 is a flat shape's leaf and 8 its
+// extrusion; the walk in ShaderRaymarch.metal documents them.)
 // Stride 64 (four 16-byte rows), matching `SDFNode`.
 typedef struct {
-    unsigned int kind;     // 0 EVAL, 1 OP, 2 MOD, 3 XFORM, 4 RESTORE_P
+    unsigned int kind;     // 0 EVAL, 1 OP, 2 MOD, 3 XFORM, 4 RESTORE_P, 9 SKIP
     unsigned int sel;      // shape tag / op kind / mod kind / xform kind
-    float k;               // OP smin k or morph; MOD radius/thickness; XFORM scale s; RESTORE_P distance scale
-    float extra;           // reserved (spare per-kind scalar)
+    float k;               // OP smin k or morph; MOD radius/thickness; XFORM scale s; RESTORE_P distance scale; SKIP reach
+    float extra;           // a spare per-kind scalar (a SKIP's instruction count, a joint's step count)
     simd_float4 color;     // EVAL leaf straight RGBA
     simd_float4 geo0;      // EVAL shape params; XFORM vector param (translate xyz / rotate axis xyz)
     simd_float4 geo1;      // EVAL extra params; XFORM scalar param (rotate angle in .x)
@@ -407,6 +422,9 @@ typedef struct {
     simd_float4x4 inverseLightViewProjection;  // light clip -> world (rebuilds the march ray)
     float raymarchSteps;                       // the field's camera-march budget (the
                                                // RenderQuality dial; default 128 unchanged)
+    float stipple;                             // the pass count (16 at most) times 256 plus
+                                               // this pass's place, when a heavy field is cast
+                                               // in several passes; 0 for the single pass
 } OllinRaymarchShadowUniforms;
 
 // One particle for the GPU compute path: a persistent buffer of these is updated

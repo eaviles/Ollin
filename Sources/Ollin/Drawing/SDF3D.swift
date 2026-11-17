@@ -538,6 +538,70 @@ public extension SDF3D {
 // MARK: Flattening (tree -> SDFNode3D program + bounds)
 
 extension SDF3D {
+    /// What a skip may assume of a subtree: outside the box `lo…hi` its distance is at
+    /// least `slope` times the distance to that box. A slope of zero says nothing is
+    /// known (an estimated leaf, a plane, a flat program stood up), and no skip steps
+    /// past such a subtree. This is not the drawing bounds beside it, which are padded
+    /// for the march: this box is the one the inequality is proven against, node by
+    /// node, and the proofs are in `ARCHITECTURE.md` (*A field's skips*).
+    struct SkipBound {
+        var lo: SIMD3<Float> = .zero
+        var hi: SIMD3<Float> = .zero
+        var slope: Float = 0
+
+        static let none = SkipBound()
+
+        var holds: Bool {
+            guard slope > 0, slope.isFinite else { return false }
+            for axis in 0 ..< 3 {
+                guard lo[axis].isFinite, hi[axis].isFinite, lo[axis] <= hi[axis] else { return false }
+            }
+            return true
+        }
+
+        /// Both subtrees in one box, at the lower of their slopes: the lesser of two
+        /// distances is at least the distance to the box that holds both.
+        func hull(_ other: SkipBound) -> SkipBound {
+            guard holds, other.holds else { return .none }
+            return SkipBound(lo: simd_min(lo, other.lo), hi: simd_max(hi, other.hi),
+                             slope: min(slope, other.slope))
+        }
+
+        /// The bound once the distance may read up to `amount` lower (a rounding, a
+        /// blend's bulge, a displacement): the box grows by that much over the slope,
+        /// since a box grown by a length is at least that much nearer every point.
+        func lowered(by amount: Float) -> SkipBound {
+            guard holds, amount.isFinite else { return .none }
+            guard amount > 0 else { return self }
+            let grow = SIMD3<Float>(repeating: amount / slope)
+            return SkipBound(lo: lo - grow, hi: hi + grow, slope: slope)
+        }
+
+        var volume: Float {
+            let size = hi - lo
+            return size.x * size.y * size.z
+        }
+
+        /// Whether the box holds another one whole.
+        func contains(lo otherLo: SIMD3<Float>, hi otherHi: SIMD3<Float>) -> Bool {
+            for axis in 0 ..< 3 where otherLo[axis] < lo[axis] || otherHi[axis] > hi[axis] { return false }
+            return true
+        }
+    }
+
+    /// When a field's program is written with skips (`Drawer.sdf3DSkipPolicy`).
+    enum SkipPolicy {
+        /// A program of `skipMinNodes` instructions or more: a field of many parts,
+        /// where most of them are far from any one point.
+        case automatic
+        case always
+        case never
+    }
+
+    /// The program length from which a field is written with skips. Below it a skip
+    /// costs about what it saves; the picture is the same either way.
+    static let skipMinNodes = 24
+
     /// The conservative local AABB plus the stack depths a composition needs.
     struct FlattenResult {
         var lo: SIMD3<Float>
@@ -548,12 +612,15 @@ extension SDF3D {
         var normalEpsilon: Float = 0  // the widest gradient step a leaf asked for (local units;
                                       // 0 = the shader's default), so a fractal's normal reads
                                       // its surface rather than the estimate's sub-step noise
+        var skip = SkipBound.none     // what a skip ahead of this subtree may assume of it
     }
 
     /// Append this field's instruction nodes to `nodes` (in evaluation order) and
     /// return its bounds + required stack depths. `defaultFill` colors leaves left
-    /// unpainted.
-    func flatten(defaultFill: Color, into nodes: inout [SDFNode3D]) -> FlattenResult {
+    /// unpainted. With `skips`, a SKIP instruction is written ahead of each combine's
+    /// second operand that the walk can step past where the point is far from it
+    /// (`skipReach`); the field's value is the same with and without them.
+    func flatten(defaultFill: Color, skips: Bool = false, into nodes: inout [SDFNode3D]) -> FlattenResult {
         switch node {
         case let .leaf(shape, geo0, geo1, color):
             let rgba = (color ?? defaultFill).simd4
@@ -563,64 +630,22 @@ extension SDF3D {
                 // The one leaf not centered at the origin: bound the two endpoints + radius.
                 let a = SIMD3(geo0.x, geo0.y, geo0.z), b = SIMD3(geo1.x, geo1.y, geo1.z)
                 let pad = SIMD3<Float>(repeating: geo0.w)
-                return FlattenResult(lo: simd_min(a, b) - pad, hi: simd_max(a, b) + pad,
-                                     valueDepth: 1, pointDepth: 0)
+                let lo = simd_min(a, b) - pad, hi = simd_max(a, b) + pad
+                return FlattenResult(lo: lo, hi: hi, valueDepth: 1, pointDepth: 0,
+                                     skip: SkipBound(lo: lo, hi: hi, slope: 1))
             }
             let half = SDF3D.leafHalfExtent(shape, geo0)
             return FlattenResult(lo: -half, hi: half, valueDepth: 1, pointDepth: 0,
                                  unbounded: shape == .plane,
-                                 normalEpsilon: SDF3D.leafNormalEpsilon(shape, geo0))
+                                 normalEpsilon: SDF3D.leafNormalEpsilon(shape, geo0),
+                                 skip: SDF3D.leafReadsItsDistance(shape)
+                                     ? SkipBound(lo: -half, hi: half, slope: 1) : .none)
 
-        case let .combine(op, a, b, k, n):
-            let ra = a.flatten(defaultFill: defaultFill, into: &nodes)
-            let rb = b.flatten(defaultFill: defaultFill, into: &nodes)
-            nodes.append(SDFNode3D(kind: 1, sel: op.rawValue, k: k, extra: n,
-                                   color: .zero, geo0: .zero, geo1: .zero))
-            var lo: SIMD3<Float>, hi: SIMD3<Float>
-            var unbounded: Bool
-            switch op {
-            case .union, .smoothUnion, .morph, .chamferUnion, .stairsUnion, .columnsUnion:
-                lo = simd_min(ra.lo, rb.lo); hi = simd_max(ra.hi, rb.hi)
-                unbounded = ra.unbounded || rb.unbounded
-            case .subtract, .smoothSubtract, .chamferSubtract, .stairsSubtract,
-                 .columnsSubtract, .engrave, .groove, .tongue:
-                lo = ra.lo; hi = ra.hi   // result ⊆ lhs (a tongue's ridge is the k-grow below)
-                unbounded = ra.unbounded
-            case .intersect, .smoothIntersect, .chamferIntersect, .stairsIntersect,
-                 .columnsIntersect, .pipe:
-                lo = simd_max(ra.lo, rb.lo); hi = simd_min(ra.hi, rb.hi)
-                unbounded = ra.unbounded && rb.unbounded    // bounded once either operand is
-            }
-            // The k-grow is each op's provable outward reach, not a blanket k. A polynomial
-            // smooth op's surface bulges at most k/4 past its operands (the k*h*(1-h) term
-            // tops out at k/4) and a chamfer/stairs seam reaches k/2 (its surface stays
-            // within k/2 of one operand), both padded to k/2 so a bound-type child SDF
-            // (ellipsoid, displaced) under-reporting distance stays covered; columns' rib
-            // band, pipe's bead, and tongue's ridge genuinely reach k. The subtract,
-            // intersect, and morph families cannot leave the hard op's region at all
-            // (their distance is a max over terms that include the operands' own, and
-            // morph is a convex blend), so they take no grow; morph's k is the blend
-            // fraction, not a length. Over-padding is not harmless: the AABB drives the
-            // march span, the shadow early-out, and the screen-coverage estimate behind
-            // the adaptive raymarch resolution, where a blanket k compounding per nested
-            // op reads a dollied-out field as near-screen-filling and holds it at reduced
-            // internal resolution long after it has shrunk on screen.
-            let grow: Float
-            switch op {
-            case .smoothUnion, .chamferUnion, .stairsUnion: grow = k / 2
-            case .columnsUnion, .pipe, .tongue:             grow = k
-            default:                                        grow = 0
-            }
-            if grow > 0 { lo -= SIMD3(repeating: grow); hi += SIMD3(repeating: grow) }
-            if hi.x < lo.x || hi.y < lo.y || hi.z < lo.z { lo = .zero; hi = .zero }  // empty intersection
-            return FlattenResult(lo: lo, hi: hi,
-                                 valueDepth: max(ra.valueDepth, 1 + rb.valueDepth),
-                                 pointDepth: max(ra.pointDepth, rb.pointDepth),
-                                 unbounded: unbounded,
-                                 normalEpsilon: max(ra.normalEpsilon, rb.normalEpsilon))
+        case .combine:
+            return flattenChain(defaultFill: defaultFill, skips: skips, into: &nodes)
 
         case let .modify(m, c, amount, frequency):
-            let rc = c.flatten(defaultFill: defaultFill, into: &nodes)
+            let rc = c.flatten(defaultFill: defaultFill, skips: skips, into: &nodes)
             // A displaced field's gradient steepens to 1 + amplitude·frequency·C (C the
             // displacement's own slope bound: √3 for the sine product, ~2 for value noise),
             // so the shader multiplies the result by this factor to keep sphere tracing
@@ -635,10 +660,18 @@ extension SDF3D {
             nodes.append(SDFNode3D(kind: 2, sel: m.rawValue, k: amount, extra: frequency,
                                    color: .zero, geo0: SIMD4(lipschitz, 0, 0, 0), geo1: .zero))
             let grow = max(amount, 0)   // round and displacement both reach `amount` outward
+            // A rounding or a shell lowers the distance by its amount; a displacement by
+            // up to its amplitude, and then the whole is scaled by the factor above.
+            var skip = rc.skip.lowered(by: abs(amount))
+            if m == .displaceSine || m == .displaceNoise {
+                skip = lipschitz > 0 && lipschitz <= 1
+                    ? SkipBound(lo: skip.lo, hi: skip.hi, slope: skip.slope * lipschitz) : .none
+            }
             return FlattenResult(lo: rc.lo - SIMD3(repeating: grow),
                                  hi: rc.hi + SIMD3(repeating: grow),
                                  valueDepth: rc.valueDepth, pointDepth: rc.pointDepth,
-                                 unbounded: rc.unbounded, normalEpsilon: rc.normalEpsilon)
+                                 unbounded: rc.unbounded, normalEpsilon: rc.normalEpsilon,
+                                 skip: skip)
 
         case let .voxelized(c, v):
             // A scope the shader loops over: BEGIN keeps the query point, the child
@@ -648,7 +681,7 @@ extension SDF3D {
             let begin = nodes.count
             nodes.append(SDFNode3D(kind: 5, sel: 0, k: v.size, extra: 0,
                                    color: .zero, geo0: .zero, geo1: .zero))
-            let rc = c.strippingVoxels().flatten(defaultFill: defaultFill, into: &nodes)
+            let rc = c.strippingVoxels().flatten(defaultFill: defaultFill, skips: skips, into: &nodes)
             nodes.append(SDFNode3D(kind: 6, sel: 0, k: v.size, extra: Float(nodes.count - begin),
                                    color: .zero,
                                    geo0: SIMD4(v.gap, v.jitter, v.seams, v.occlusion),
@@ -656,9 +689,12 @@ extension SDF3D {
             // A block reaches half a cell past the center that decides it, and that
             // center lies inside the child's bounds.
             let grow = SIMD3<Float>(repeating: v.size)
+            // The blocks' distance is never less than the child's at the point less a
+            // block's half diagonal, and a block is at most half a cell a side.
             return FlattenResult(lo: rc.lo - grow, hi: rc.hi + grow,
                                  valueDepth: rc.valueDepth, pointDepth: rc.pointDepth + 1,
-                                 unbounded: rc.unbounded, normalEpsilon: rc.normalEpsilon)
+                                 unbounded: rc.unbounded, normalEpsilon: rc.normalEpsilon,
+                                 skip: rc.skip.lowered(by: 0.8660254 * max(v.size, 0)))
 
         case let .extruded(field, h):
             // The flat program lifted node for node into this walk (its leaves as the
@@ -688,7 +724,7 @@ extension SDF3D {
 
         case let .transformed(t, c):
             nodes.append(Self.xformNode(t))
-            let rc = c.flatten(defaultFill: defaultFill, into: &nodes)
+            let rc = c.flatten(defaultFill: defaultFill, skips: skips, into: &nodes)
             // RESTORE_P rescales the child distance back to world units: a uniform scale by `s`,
             // a non-uniform scale by its *min* component (the conservative Lipschitz bound that
             // keeps the march safe), a twist/bend by 1/(1 + rate·reach): the distortion shears
@@ -717,10 +753,297 @@ extension SDF3D {
             nodes.append(SDFNode3D(kind: 4, sel: 0, k: distanceScale, extra: 0,
                                    color: .zero, geo0: .zero, geo1: .zero))
             let (lo, hi) = Self.transformBounds(t, lo: rc.lo, hi: rc.hi)
+            var skip = SkipBound.none
+            if rc.skip.holds, let factor = Self.skipSlopeFactor(t, distanceScale: distanceScale) {
+                let (skipLo, skipHi) = Self.transformBounds(t, lo: rc.skip.lo, hi: rc.skip.hi)
+                skip = SkipBound(lo: skipLo, hi: skipHi, slope: rc.skip.slope * factor)
+            }
             return FlattenResult(lo: lo, hi: hi,
                                  valueDepth: rc.valueDepth, pointDepth: rc.pointDepth + 1,
                                  unbounded: rc.unbounded,
-                                 normalEpsilon: rc.normalEpsilon * distanceScale)
+                                 normalEpsilon: rc.normalEpsilon * distanceScale,
+                                 skip: skip)
+        }
+    }
+
+    /// The bounds and depths of `op` over two flattened operands.
+    private static func combined(_ op: Combine, _ ra: FlattenResult, _ rb: FlattenResult,
+                                 k: Float, extra n: Float) -> FlattenResult {
+        var lo: SIMD3<Float>, hi: SIMD3<Float>
+        var unbounded: Bool
+        switch op {
+        case .union, .smoothUnion, .morph, .chamferUnion, .stairsUnion, .columnsUnion:
+            lo = simd_min(ra.lo, rb.lo); hi = simd_max(ra.hi, rb.hi)
+            unbounded = ra.unbounded || rb.unbounded
+        case .subtract, .smoothSubtract, .chamferSubtract, .stairsSubtract,
+             .columnsSubtract, .engrave, .groove, .tongue:
+            lo = ra.lo; hi = ra.hi   // result ⊆ lhs (a tongue's ridge is the k-grow below)
+            unbounded = ra.unbounded
+        case .intersect, .smoothIntersect, .chamferIntersect, .stairsIntersect,
+             .columnsIntersect, .pipe:
+            lo = simd_max(ra.lo, rb.lo); hi = simd_min(ra.hi, rb.hi)
+            unbounded = ra.unbounded && rb.unbounded    // bounded once either operand is
+        }
+        // The k-grow is each op's provable outward reach, not a blanket k. A polynomial
+        // smooth op's surface bulges at most k/4 past its operands (the k*h*(1-h) term
+        // tops out at k/4) and a chamfer/stairs seam reaches k/2 (its surface stays
+        // within k/2 of one operand), both padded to k/2 so a bound-type child SDF
+        // (ellipsoid, displaced) under-reporting distance stays covered; columns' rib
+        // band, pipe's bead, and tongue's ridge genuinely reach k. The subtract,
+        // intersect, and morph families cannot leave the hard op's region at all
+        // (their distance is a max over terms that include the operands' own, and
+        // morph is a convex blend), so they take no grow; morph's k is the blend
+        // fraction, not a length. Over-padding is not harmless: the AABB drives the
+        // march span, the shadow early-out, and the screen-coverage estimate behind
+        // the adaptive raymarch resolution, where a blanket k compounding per nested
+        // op reads a dollied-out field as near-screen-filling and holds it at reduced
+        // internal resolution long after it has shrunk on screen.
+        let grow: Float
+        switch op {
+        case .smoothUnion, .chamferUnion, .stairsUnion: grow = k / 2
+        case .columnsUnion, .pipe, .tongue:             grow = k
+        default:                                        grow = 0
+        }
+        if grow > 0 { lo -= SIMD3(repeating: grow); hi += SIMD3(repeating: grow) }
+        if hi.x < lo.x || hi.y < lo.y || hi.z < lo.z { lo = .zero; hi = .zero }  // empty intersection
+        // What a skip may assume of the result, from what it may assume of the two
+        // operands. A union is the lesser of two distances; the smooth, chamfered,
+        // and stepped ones read at most a quarter, 0.71, and a half of their size
+        // below it. A cut, an engraving, or a groove never reads below its first
+        // operand, a ridge or a bead by at most its size, and an intersection never
+        // below either operand. The ribbed joints are left unknown.
+        let skip: SkipBound
+        switch op {
+        case .union:
+            skip = ra.skip.hull(rb.skip)
+        case .morph:
+            skip = k >= 0 && k <= 1 ? ra.skip.hull(rb.skip) : .none
+        case .smoothUnion:
+            skip = ra.skip.hull(rb.skip).lowered(by: max(k, 1e-5) / 4)
+        case .chamferUnion:
+            skip = ra.skip.hull(rb.skip).lowered(by: max(k, 0) * 0.70710678)
+        case .stairsUnion:
+            skip = ra.skip.hull(rb.skip).lowered(by: max(k, 0) / 2)
+        case .subtract, .smoothSubtract, .chamferSubtract, .stairsSubtract, .engrave, .groove:
+            skip = ra.skip
+        case .tongue, .pipe:
+            skip = ra.skip.lowered(by: max(k, 0))
+        case .intersect, .smoothIntersect, .chamferIntersect, .stairsIntersect:
+            if ra.skip.holds, rb.skip.holds {
+                skip = rb.skip.volume < ra.skip.volume ? rb.skip : ra.skip
+            } else {
+                skip = ra.skip.holds ? ra.skip : rb.skip
+            }
+        case .columnsUnion, .columnsSubtract, .columnsIntersect:
+            skip = .none
+        }
+        return FlattenResult(lo: lo, hi: hi,
+                             valueDepth: max(ra.valueDepth, 1 + rb.valueDepth),
+                             pointDepth: max(ra.pointDepth, rb.pointDepth),
+                             unbounded: unbounded,
+                             normalEpsilon: max(ra.normalEpsilon, rb.normalEpsilon),
+                             skip: skip.holds ? skip : .none)
+    }
+
+    // MARK: Skips
+
+    /// How far `op` reaches: where its second operand's distance is more than the
+    /// first's magnitude plus this, the combine returns its first operand untouched,
+    /// distance and color (`ollin_sdf3d_combine`, read case by case). `nil` for a
+    /// combine whose result depends on the second operand however far it is: an
+    /// intersection, a bead along the crossing, a morph.
+    static func skipReach(_ op: Combine, k: Float, extra n: Float) -> Float? {
+        let reach: Float
+        switch op {
+        case .union, .subtract:
+            reach = 0
+        case .smoothUnion, .smoothSubtract:
+            reach = max(k, 1e-5)
+        case .chamferUnion, .chamferSubtract, .stairsUnion, .stairsSubtract,
+             .columnsUnion, .columnsSubtract, .engrave:
+            reach = max(k, 0)
+        case .groove, .tongue:
+            reach = max(n, 0)
+        case .intersect, .smoothIntersect, .chamferIntersect, .stairsIntersect,
+             .columnsIntersect, .pipe, .morph:
+            return nil
+        }
+        return reach.isFinite ? reach : nil
+    }
+
+    /// The SKIP instruction (kind 9) that steps past the next `count` instructions
+    /// where the point is far from `bound`. The slope is taken 2% low and the reach
+    /// 1% high with a small length added, so what single precision loses in the
+    /// operand's own distance never puts the walk on the other side of the test
+    /// from the combine it stands for.
+    static func skipNode(past bound: SkipBound, reach: Float, count: Int) -> SDFNode3D {
+        let center = (bound.lo + bound.hi) / 2, half = (bound.hi - bound.lo) / 2
+        let scale = max(simd_reduce_max(simd_abs(bound.lo)), simd_reduce_max(simd_abs(bound.hi)))
+        return SDFNode3D(kind: 9, sel: 0, k: reach * 1.01 + 1e-4 * (1 + scale), extra: Float(count),
+                         color: .zero,
+                         geo0: SIMD4(center.x, center.y, center.z, bound.slope * 0.98),
+                         geo1: SIMD4(half.x, half.y, half.z, 0))
+    }
+
+    /// A chain of combines down the left side of the tree, which is what a loop of
+    /// unions builds, written link by link. The chain is walked on a list rather than
+    /// by recursion (its length is the sketch's to choose, and a call a link is a
+    /// stack the sketch can spend), and the program it writes is the one the tree
+    /// reads as: the first operand, then each link's operand and its combine.
+    ///
+    /// With `skips`, each link's operand is flattened aside so its length and box are
+    /// known, and a skip is written ahead of every operand the walk can step past
+    /// (`skipReach`), and ahead of a run of neighboring operands that sit together in
+    /// a box much smaller than the chain's, one skip past the whole run. Stepping
+    /// past a run is right for the same reason stepping past one operand is: every
+    /// operand in the box is at least as far as the box, and a combine that hands
+    /// back its first operand leaves that operand in place for the next.
+    private func flattenChain(defaultFill: Color, skips: Bool, into nodes: inout [SDFNode3D]) -> FlattenResult {
+        var links: [(op: Combine, operand: SDF3D, k: Float, extra: Float)] = []
+        var base = self
+        while case let .combine(op, a, b, k, n) = base.node {
+            links.append((op, b, k, n))
+            base = a
+        }
+        links.reverse()
+        var running = base.flatten(defaultFill: defaultFill, skips: skips, into: &nodes)
+        func combine(_ link: Int) -> SDFNode3D {
+            SDFNode3D(kind: 1, sel: links[link].op.rawValue, k: links[link].k, extra: links[link].extra,
+                      color: .zero, geo0: .zero, geo1: .zero)
+        }
+        guard skips else {
+            for link in links.indices {
+                let operand = links[link].operand.flatten(defaultFill: defaultFill, into: &nodes)
+                nodes.append(combine(link))
+                running = Self.combined(links[link].op, running, operand, k: links[link].k, extra: links[link].extra)
+            }
+            return running
+        }
+
+        var programs: [[SDFNode3D]] = []
+        var operands: [FlattenResult] = []
+        var reaches: [Float?] = []
+        var chain = SkipBound.none
+        for link in links {
+            var program: [SDFNode3D] = []
+            let operand = link.operand.flatten(defaultFill: defaultFill, skips: true, into: &program)
+            // A skip that can never be taken is left out: one whose operand's box
+            // holds everything the chain has drawn so far.
+            var reach = Self.skipReach(link.op, k: link.k, extra: link.extra)
+            if !operand.skip.holds || operand.skip.contains(lo: running.lo, hi: running.hi) { reach = nil }
+            if reach != nil { chain = chain.holds ? chain.hull(operand.skip) : operand.skip }
+            programs.append(program)
+            operands.append(operand)
+            reaches.append(reach)
+            running = Self.combined(link.op, running, operand, k: link.k, extra: link.extra)
+        }
+
+        let runLength = max(4, Int(Double(links.count).squareRoot().rounded()))
+        var index = 0
+        while index < links.count {
+            // A run: up to `runLength` neighboring links that each take a skip.
+            var end = index
+            var runBound = SkipBound.none
+            var runReach: Float = 0
+            var runCount = 0
+            while end < links.count, end - index < runLength, let reach = reaches[end] {
+                runBound = end == index ? operands[end].skip : runBound.hull(operands[end].skip)
+                runReach = max(runReach, reach)
+                runCount += programs[end].count + 2
+                end += 1
+            }
+            if end - index >= 3, runBound.holds, chain.holds, runBound.volume <= 0.5 * chain.volume {
+                nodes.append(Self.skipNode(past: runBound, reach: runReach, count: runCount))
+            }
+            end = max(end, index + 1)
+            for link in index ..< end {
+                if let reach = reaches[link] {
+                    nodes.append(Self.skipNode(past: operands[link].skip, reach: reach,
+                                               count: programs[link].count + 1))
+                }
+                nodes.append(contentsOf: programs[link])
+                nodes.append(combine(link))
+            }
+            index = end
+        }
+        return running
+    }
+
+    /// The program with its skips taken out: the same field, every instruction read.
+    /// A voxelized scope's end says how far back its start is, so that count is
+    /// written again without the skips between them.
+    static func strippingSkips(_ nodes: [SDFNode3D]) -> [SDFNode3D] {
+        var out: [SDFNode3D] = []
+        out.reserveCapacity(nodes.count)
+        var scopes: [Int] = []
+        for var node in nodes where node.kind != 9 {
+            if node.kind == 5 { scopes.append(out.count) }
+            if node.kind == 6, let begin = scopes.popLast() { node.extra = Float(out.count - begin) }
+            out.append(node)
+        }
+        return out
+    }
+
+    /// The most one walk of a program can cost, counted in plain instructions: every
+    /// instruction read (no skip taken), a fractal leaf at its iterations, a noise
+    /// displacement at its lattice reads, and a voxelized scope at the nine reads of
+    /// its child it can make. What the renderer divides a heavy field's march by
+    /// (`MetalRenderer.fieldPasses`).
+    static func walkWeight(_ nodes: ArraySlice<SDFNode3D>) -> Int {
+        var outer: [Int] = []
+        var weight = 0
+        for node in nodes {
+            switch node.kind {
+            case 0:
+                switch node.sel {
+                case SDF3DShape.mandelbulb.rawValue:   weight += 1 + 6 * Int(max(0, min(node.geo0.z, 64)))
+                case SDF3DShape.mengerSponge.rawValue: weight += 1 + 2 * Int(max(0, min(node.geo0.y, 64)))
+                case SDF3DShape.mandelbox.rawValue:    weight += 1 + 2 * Int(max(0, min(node.geo0.z, 64)))
+                default:                               weight += 1
+                }
+            case 2:
+                weight += node.sel == Modifier.displaceNoise.rawValue ? 3 : 1
+            case 5:
+                outer.append(weight)
+                weight = 0
+            case 6:
+                weight = (outer.popLast() ?? 0) + weight * 9 + 2
+            default:
+                weight += 1
+            }
+        }
+        return weight + outer.reduce(0, +)
+    }
+
+    /// Whether a leaf's distance is never less than the distance to its box, outside
+    /// it: true of every shape whose function is its true distance, and of the two
+    /// fractals clipped to a cube. False of the ellipsoid (an approximation that reads
+    /// low off its axes), the Mandelbulb (an estimate), and the plane (no box).
+    static func leafReadsItsDistance(_ shape: SDF3DShape) -> Bool {
+        switch shape {
+        case .ellipsoid, .mandelbulb, .plane: return false
+        default: return true
+        }
+    }
+
+    /// What a transform scope does to the slope a skip may assume, or `nil` where
+    /// nothing can be assumed. A move, a turn, a uniform scale, a stretch, a mirror,
+    /// and both repeats keep it (the folded point is never nearer the child's box
+    /// than the point is to the scope's); a per-axis scale loses the ratio of its
+    /// least factor to its greatest; a twist or a bend loses its own distance scale.
+    static func skipSlopeFactor(_ t: Transform, distanceScale: Float) -> Float? {
+        switch t {
+        case .translate, .rotate, .scale, .mirror, .polar:
+            return 1
+        case .stretch(let h):
+            return h.x >= 0 && h.y >= 0 && h.z >= 0 ? 1 : nil
+        case .repeatTiles(let spacing, let count):
+            return simd_reduce_min(spacing) >= 0 && simd_reduce_min(count) >= 0 ? 1 : nil
+        case .scaleXYZ(let v):
+            let least = simd_reduce_min(v), most = simd_reduce_max(v)
+            return least > 0 ? least / most : nil
+        case .twist, .bend:
+            return distanceScale > 0 && distanceScale <= 1 ? distanceScale : nil
         }
     }
 
