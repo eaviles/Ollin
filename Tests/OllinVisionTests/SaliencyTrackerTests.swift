@@ -54,14 +54,10 @@ import Ollin
     }
 
     @Test(modelRuns) func queriesReadTheRightPartOfThePicture() async throws {
-        // The disk sits OFF-center, in the picture's top quarter, and
+        // The disk sits off-center, in the picture's top quarter, and
         // objectness boxes it: the query surface must put the heat *inside*
-        // that box, not in its vertical mirror. Pins the **top-down** indexing
-        // of Vision's `pixel(at:)` behind the query's internal y-flip (queries
-        // used to read the vertically mirrored spot — a real bug the
-        // vertically-centered fixtures couldn't catch, being invariant under
-        // the flip; the published heat-map image was always upright, only the
-        // queries were mirrored).
+        // that box, not in its vertical mirror. A fixture centered top to
+        // bottom cannot tell the two apart, being the same under the flip.
         let image = Image(width: 320, height: 240, color: Color(white: 0.05))
         let cx = 160, cy = 56, radius = 44
         for y in (cy - radius)...(cy + radius) {
@@ -92,11 +88,56 @@ import Ollin
         #expect(meanSalience(in: box) > meanSalience(in: mirrored) * 3)
     }
 
+    /// The largest gap between a query at a heat-map cell's center and that
+    /// cell of the published picture, and the brightest cell, so a caller can
+    /// tell a map that agrees from a map that is merely dark.
+    private func disagreement(of heat: Image,
+                              with query: (Vector2) -> Double) -> (worst: Double, peak: Double) {
+        var worst = 0.0, peak = 0.0
+        for y in 0..<heat.height {
+            for x in 0..<heat.width {
+                let alpha = heat[x, y].alpha
+                peak = max(peak, alpha)
+                let point = Vector2((Double(x) + 0.5) / Double(heat.width) * diskRect.width,
+                                    (Double(y) + 0.5) / Double(heat.height) * diskRect.height)
+                worst = max(worst, abs(query(point) - alpha))
+            }
+        }
+        return (worst, peak)
+    }
+
+    /// A disk off-center both ways, so a query that reads another row or
+    /// another column of the map cannot agree with the picture by symmetry.
+    private func cornerDiskImage() -> Image {
+        let image = Image(width: 320, height: 240, color: Color(white: 0.05))
+        let cx = 236, cy = 66, radius = 44
+        for y in (cy - radius)...(cy + radius) {
+            for x in (cx - radius)...(cx + radius)
+            where (x - cx) * (x - cx) + (y - cy) * (y - cy) <= radius * radius {
+                image[x, y] = Color(red: 1.0, green: 0.6, blue: 0.1)
+            }
+        }
+        return image
+    }
+
+    @Test(modelRuns) func theQueriesAndThePictureAreOneSurface() async throws {
+        // Every cell of the published heat map, asked through the query at
+        // its own center, is the picture's value to its 8 bits. A query that
+        // read the map's rows without their padding would agree on the first
+        // row and nowhere else, and a marker placed by it would sit beside
+        // the glow it follows.
+        let saliency = try await SaliencyTracker.detect(in: cornerDiskImage())
+        let (worst, peak) = disagreement(of: saliency.heatMap) {
+            saliency.salience(at: $0, in: diskRect)
+        }
+        #expect(peak > 0.2, "the model lit the map at all (peak \(peak))")
+        #expect(worst <= 1.5 / 255, "a query and its cell differ by \(worst)")
+    }
+
     @Test(modelRuns) func edgeQueriesClampInsteadOfTrapping() async throws {
         let saliency = try #require(await Self.attention.value)
-        // The optical-flow regression, re-pinned here: Vision's nearest-neighbor
-        // pixel lookup traps when a coordinate rounds past the last pixel, so
-        // any of these would crash without the clamp.
+        // A point on or past the map's last row or column reads the edge
+        // cell: the byte plane clamps its indices, so none of these traps.
         _ = saliency.salienceNormalized(at: Vector2(1, 1))
         _ = saliency.salienceNormalized(at: Vector2(0.999999, 0.5))
         _ = saliency.salienceNormalized(at: Vector2(-2, 3))
@@ -148,5 +189,20 @@ import Ollin
         // the disk's center out-heats a corner here too.
         #expect(saliency.salience(at: Vector2(160, 120), in: diskRect)
                 > saliency.salience(at: Vector2(8, 8), in: diskRect))
+    }
+
+    @MainActor
+    @Test(modelRuns) func theLiveQueriesAndTheLivePictureAreOneSurface() async throws {
+        let source = FrameSourceTests.ManualFrameSource()
+        let saliency = SaliencyTracker(source)
+        _ = saliency.heatMap   // the first read arms the picture
+        let frame = cornerDiskImage().currentCGImage()
+        await SourceAnalyzers.analyzer(for: source).analyzeNow(FrameBox(frame))
+        let heat = try #require(saliency.heatMap)
+        let (worst, peak) = disagreement(of: heat) {
+            saliency.salience(at: $0, in: diskRect)
+        }
+        #expect(peak > 0.2, "the model lit the map at all (peak \(peak))")
+        #expect(worst <= 1.5 / 255, "a query and its cell differ by \(worst)")
     }
 }

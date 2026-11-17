@@ -44,8 +44,10 @@ public struct Detection: Sendable {
 /// points agree with the observation's own `cgImage`, the rest land at
 /// scattered offsets — read live as diagonal banding). The observation's
 /// `cgImage` is stride-aware and upright, so the bytes come from it instead.
-/// (`pixel(at:)` behaves on *single-channel* buffers — the saliency heat map,
-/// optical flow — where it stays in use.)
+/// A single-channel output is no safer: where its rows carry padding (a
+/// saliency heat map 68 wide in rows of 80), `pixel(at:)` reads every row
+/// after the first from the wrong place, so the heat map's queries read this
+/// plane too.
 struct MapBytes: Sendable {
     let bytes: [UInt8]
     let width: Int

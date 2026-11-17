@@ -30,6 +30,7 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ### Fixed
 
+- **A salience query reads the right place.** On macOS 27, `salience(at:in:)` on a `SaliencyTracker` or a `Saliency` answered from the wrong part of the heat map, so a marker steered by it sat beside the glow. The query now reads the map the picture is drawn from. [Vision](Docs/Vision/Vision.md#saliencytracker)
 - **Traced shadows on an M1 or M2 are fast again.** A point light's or a rect or disk panel's traced shadow drew about thirteen times slower than it should: every such frame also carried the traced reflection code, used or not. A frame with no traced reflections now leaves it out, and draws the same picture. [3D](Docs/3D/3D.md#shadows)
 - **The capture app, held sideways.** With the phone turned sideways, the Record button and the Wand and Touch pads were off the screen. They now sit on the right, and the modes and status rows scroll on the left. Upright is unchanged. Rebuild the capture app to get it. [Phone](Docs/3D/Phone.md#a-recording)
 - **A still sketch keeps up with what you save.** Under `OllinLive`, a `noLoop()` sketch redraws once when an asset it loads changes, and a saved shader or asset shows while the timeline holds the clock. Scrubbing the timeline no longer leaves a still sketch redrawing. [Timeline](Docs/Tools/Timeline.md#the-transport)
