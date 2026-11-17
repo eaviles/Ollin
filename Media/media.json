@@ -13682,20 +13682,21 @@
       "width": 1080
     },
     "Vision/EyeCatcher": {
-      "bytes": {
-        "still": 193435,
-        "stillSmall": 73603
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "still",
-      "motion": 0.0,
-      "rendered": "2026-09-10",
-      "source": "d1f8af29d88dfbc1",
-      "still": "examples/Vision/EyeCatcher/still.jpg?v=18835ba3",
       "stillBecause": "holds still",
-      "stillSmall": "examples/Vision/EyeCatcher/still-640.jpg?v=823b3e80",
-      "width": 1080
+      "frame": 480,
+      "motion": 0.0,
+      "source": "d1f8af29d88dfbc1",
+      "rendered": "2026-11-17",
+      "bytes": {
+        "still": 193919,
+        "stillSmall": 73787
+      },
+      "still": "examples/Vision/EyeCatcher/still.jpg?v=88a24cda",
+      "stillSmall": "examples/Vision/EyeCatcher/still-640.jpg?v=1b10f51f",
+      "seed": 1
     },
     "Vision/FaceAlign": {
       "width": 1080,
