@@ -19,6 +19,14 @@
 # longer carries `seconds` in its manifest row, and that row is kept across
 # runs. The still is the frame at eight seconds unless the row names another.
 #
+# No clip runs past thirty seconds. A row that asks for more is filmed for
+# thirty, and a lap longer than that shows its first thirty: the clip then
+# jumps once each time the page repeats it, which is the price of a piece
+# whose lap cannot be shortened without spoiling it. A sketch that can take a
+# thirty-second lap should have one, so that its clip is a whole loop. The
+# reason is weight: a clip streams at up to 6 Mbit/s, so a 72-second lap of
+# moving line work was 53 MB on one page.
+#
 # Every example gets a picture. Two things change what it gets.
 #
 # A sketch that needs something plugged in (a camera, the phone, a controller,
@@ -83,6 +91,7 @@ trap 'rm -rf $OUT' EXIT
 MANIFEST=$ROOT/Media/media.json
 BIN=$ROOT/Examples/.build/out/Products/Release
 SECONDS_DEFAULT=10
+CLIP_LIMIT=30                # seconds: no clip on the site runs longer
 FPS=60
 STILL_FRAME_DEFAULT=480      # eight seconds at sixty
 SEED=1                       # the one variation every render of an example draws
@@ -224,6 +233,10 @@ for example in $list; do
     || { echo "  build failed" >&2; continue; }
 
   [[ $want_seconds == "-" ]] && want_seconds=$SECONDS_DEFAULT
+  if (( want_seconds > CLIP_LIMIT )); then
+    echo "  its row asks for ${want_seconds}s, and a clip is held to $CLIP_LIMIT"
+    want_seconds=$CLIP_LIMIT
+  fi
   [[ $want_frame == "-" ]] && want_frame=$STILL_FRAME_DEFAULT
 
   # A sketch that carries light past white films in HDR, and the page's clip
@@ -290,15 +303,24 @@ for example in $list; do
   else
     audio=(-an)
   fi
-  ffmpeg -y -loglevel error -i $master -vf $(cap 1080) -c:v libx264 -profile:v high -level 4.0 \
+  # A lap longer than the limit shows its first part, and both clips are cut
+  # from the same master so they stay one picture.
+  duration=$(ffprobe -v error -show_entries format=duration -of csv=p=0 $master 2>/dev/null)
+  cut=()
+  if (( ${duration:-0} > CLIP_LIMIT + 0.05 )); then
+    echo "  a lap of $(printf '%.0f' $duration)s, so its first $CLIP_LIMIT"
+    cut=(-t $CLIP_LIMIT)
+    length="first ${CLIP_LIMIT}s of a lap"
+    duration=$CLIP_LIMIT
+  fi
+  ffmpeg -y -loglevel error -i $master $cut -vf $(cap 1080) -c:v libx264 -profile:v high -level 4.0 \
     -crf 20 -preset slow -pix_fmt yuv420p -color_primaries bt709 -color_trc bt709 \
     -colorspace bt709 -maxrate 6M -bufsize 12M -g 120 $audio -movflags +faststart $OUT/$key-loop.mp4
   # The grid's clip plays under the pointer, so it is held to 2 Mbit/s and to
   # about 3 MB in all: a lap longer than twelve seconds lowers its rate to
   # fit, since a long lap at the full rate was 6 to 10 MB on a phone.
-  duration=$(ffprobe -v error -show_entries format=duration -of csv=p=0 $master 2>/dev/null)
   small_rate=$(python3 -c "import sys; d=float(sys.argv[1] or 10); print(f'{min(2.0, 24.0 / max(d, 1)):.3f}')" "$duration")
-  ffmpeg -y -loglevel error -i $master -vf $(cap 640) -r 30 -c:v libx264 -profile:v high -level 4.0 \
+  ffmpeg -y -loglevel error -i $master $cut -vf $(cap 640) -r 30 -c:v libx264 -profile:v high -level 4.0 \
     -crf 24 -preset slow -pix_fmt yuv420p -color_primaries bt709 -color_trc bt709 \
     -colorspace bt709 -maxrate ${small_rate}M -bufsize $(python3 -c "print(f'{2 * float(\"$small_rate\"):.3f}')")M \
     -g 60 -an -movflags +faststart $OUT/$key-loop-640.mp4

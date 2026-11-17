@@ -6846,23 +6846,23 @@
     "Installation/Unattended": {
       "width": 1080,
       "height": 1080,
-      "length": "lap",
+      "length": "first 30s of a lap",
       "seconds": 10.0,
       "frame": 480,
-      "motion": 3.226,
+      "motion": 3.18,
       "sound": false,
       "source": "55a3b76b39191b42",
-      "rendered": "2026-10-06",
+      "rendered": "2026-11-16",
       "bytes": {
-        "loop": 48317344,
-        "loopSmall": 3036224,
-        "still": 281935,
-        "stillSmall": 118008
+        "loop": 6810303,
+        "loopSmall": 1788189,
+        "still": 280723,
+        "stillSmall": 118116
       },
-      "loop": "examples/Installation/Unattended/loop.mp4?v=874421d0",
-      "loopSmall": "examples/Installation/Unattended/loop-640.mp4?v=1da900fe",
-      "still": "examples/Installation/Unattended/still.jpg?v=3d862b26",
-      "stillSmall": "examples/Installation/Unattended/still-640.jpg?v=e221aa84",
+      "loop": "examples/Installation/Unattended/loop.mp4?v=9b40d69e",
+      "loopSmall": "examples/Installation/Unattended/loop-640.mp4?v=bdd7b141",
+      "still": "examples/Installation/Unattended/still.jpg?v=a9978bf2",
+      "stillSmall": "examples/Installation/Unattended/still-640.jpg?v=e9867521",
       "seed": 1
     },
     "Installation/Watched": {
@@ -10388,27 +10388,27 @@
       "height": 1080,
       "length": "lap",
       "seconds": 10.0,
-      "frame": 455,
-      "motion": 11.158,
+      "frame": 357,
+      "motion": 4.704,
       "sound": false,
-      "source": "623e3cf9eb279c43",
+      "source": "f3685638bb39ad5f",
       "rendered": "2026-11-16",
       "bytes": {
-        "loop": 29706295,
-        "loopSmall": 3047591,
-        "still": 129002,
-        "stillSmall": 53399
+        "loop": 22537702,
+        "loopSmall": 3077490,
+        "still": 117099,
+        "stillSmall": 49834
       },
-      "loop": "examples/Recreations/JohnWhitney/Arabesque/loop.mp4?v=cbd0c841",
-      "loopSmall": "examples/Recreations/JohnWhitney/Arabesque/loop-640.mp4?v=31e79427",
-      "still": "examples/Recreations/JohnWhitney/Arabesque/still.jpg?v=eff1671f",
-      "stillSmall": "examples/Recreations/JohnWhitney/Arabesque/still-640.jpg?v=55b81612",
+      "loop": "examples/Recreations/JohnWhitney/Arabesque/loop.mp4?v=a2c367a8",
+      "loopSmall": "examples/Recreations/JohnWhitney/Arabesque/loop-640.mp4?v=6372cd2b",
+      "still": "examples/Recreations/JohnWhitney/Arabesque/still.jpg?v=cd70fd77",
+      "stillSmall": "examples/Recreations/JohnWhitney/Arabesque/still-640.jpg?v=0f8430a4",
       "seed": 1
     },
     "Recreations/JohnWhitney/Matrix": {
       "width": 1440,
       "height": 1080,
-      "length": "lap",
+      "length": "first 30s of a lap",
       "seconds": 10.0,
       "frame": 340,
       "motion": 12.265,
@@ -10416,13 +10416,13 @@
       "source": "01f0d9f8e5f89fee",
       "rendered": "2026-11-16",
       "bytes": {
-        "loop": 53459478,
-        "loopSmall": 3027083,
+        "loop": 22225518,
+        "loopSmall": 3059502,
         "still": 44377,
         "stillSmall": 21619
       },
-      "loop": "examples/Recreations/JohnWhitney/Matrix/loop.mp4?v=373d9d69",
-      "loopSmall": "examples/Recreations/JohnWhitney/Matrix/loop-640.mp4?v=07009686",
+      "loop": "examples/Recreations/JohnWhitney/Matrix/loop.mp4?v=b3691eec",
+      "loopSmall": "examples/Recreations/JohnWhitney/Matrix/loop-640.mp4?v=719b26d2",
       "still": "examples/Recreations/JohnWhitney/Matrix/still.jpg?v=e182e33a",
       "stillSmall": "examples/Recreations/JohnWhitney/Matrix/still-640.jpg?v=cf5c6824",
       "seed": 1
@@ -10796,26 +10796,26 @@
       "width": 1080
     },
     "Recreations/MonirFarmanfarmaian/Geometric": {
-      "bytes": {
-        "loop": 3078628,
-        "loopSmall": 1205358,
-        "still": 455210,
-        "stillSmall": 148215
-      },
-      "frame": 1860,
+      "width": 1400,
       "height": 1000,
-      "length": "32.0s",
-      "loop": "examples/Recreations/MonirFarmanfarmaian/Geometric/loop.mp4?v=7dc96207",
-      "loopSmall": "examples/Recreations/MonirFarmanfarmaian/Geometric/loop-640.mp4?v=cedf6f4e",
-      "motion": 1.443,
-      "rendered": "2026-09-26",
-      "seconds": 32.0,
-      "seed": 1,
+      "length": "30s",
+      "seconds": 30.0,
+      "frame": 1860,
+      "motion": 1.377,
       "sound": false,
       "source": "e0df547db4179661",
-      "still": "examples/Recreations/MonirFarmanfarmaian/Geometric/still.jpg?v=35154fc5",
-      "stillSmall": "examples/Recreations/MonirFarmanfarmaian/Geometric/still-640.jpg?v=44ad4639",
-      "width": 1400
+      "rendered": "2026-11-16",
+      "bytes": {
+        "loop": 2753180,
+        "loopSmall": 1078789,
+        "still": 447418,
+        "stillSmall": 147936
+      },
+      "loop": "examples/Recreations/MonirFarmanfarmaian/Geometric/loop.mp4?v=ce93d432",
+      "loopSmall": "examples/Recreations/MonirFarmanfarmaian/Geometric/loop-640.mp4?v=509e5236",
+      "still": "examples/Recreations/MonirFarmanfarmaian/Geometric/still.jpg?v=53bcf0c5",
+      "stillSmall": "examples/Recreations/MonirFarmanfarmaian/Geometric/still-640.jpg?v=64125a6d",
+      "seed": 1
     },
     "Recreations/MonirFarmanfarmaian/MirrorFamily": {
       "bytes": {
@@ -11437,23 +11437,23 @@
     "Recreations/WaldemarCordeiro/Gente": {
       "width": 1920,
       "height": 1080,
-      "length": "lap",
+      "length": "first 30s of a lap",
       "seconds": 10.0,
       "frame": 30,
-      "motion": 67.671,
+      "motion": 67.684,
       "sound": false,
       "source": "83b336f88f4b2316",
-      "rendered": "2026-10-06",
+      "rendered": "2026-11-16",
       "bytes": {
-        "loop": 30549564,
-        "loopSmall": 2755077,
-        "still": 174999,
-        "stillSmall": 33900
+        "loop": 19141813,
+        "loopSmall": 2609907,
+        "still": 174973,
+        "stillSmall": 33843
       },
-      "loop": "examples/Recreations/WaldemarCordeiro/Gente/loop.mp4?v=8d69f5e2",
-      "loopSmall": "examples/Recreations/WaldemarCordeiro/Gente/loop-640.mp4?v=aa217912",
-      "still": "examples/Recreations/WaldemarCordeiro/Gente/still.jpg?v=a43d6803",
-      "stillSmall": "examples/Recreations/WaldemarCordeiro/Gente/still-640.jpg?v=c720d5ae",
+      "loop": "examples/Recreations/WaldemarCordeiro/Gente/loop.mp4?v=024f4913",
+      "loopSmall": "examples/Recreations/WaldemarCordeiro/Gente/loop-640.mp4?v=8c1b4817",
+      "still": "examples/Recreations/WaldemarCordeiro/Gente/still.jpg?v=968230c6",
+      "stillSmall": "examples/Recreations/WaldemarCordeiro/Gente/still-640.jpg?v=f842578c",
       "seed": 1
     },
     "Recreations/ZdenekSykora/Lines": {
@@ -11634,21 +11634,21 @@
       "height": 1080,
       "length": "lap",
       "seconds": 10.0,
-      "frame": 480,
-      "motion": 4.204,
+      "frame": 360,
+      "motion": 4.141,
       "sound": false,
-      "source": "563df8ba72b82a98",
-      "rendered": "2026-10-06",
+      "source": "8efc9e41ede73092",
+      "rendered": "2026-11-16",
       "bytes": {
-        "loop": 30608335,
-        "loopSmall": 2838063,
-        "still": 432968,
-        "stillSmall": 103657
+        "loop": 23093458,
+        "loopSmall": 3022024,
+        "still": 428515,
+        "stillSmall": 96529
       },
-      "loop": "examples/Rendering/RetainedBatch/loop.mp4?v=312af427",
-      "loopSmall": "examples/Rendering/RetainedBatch/loop-640.mp4?v=3b7d8d9a",
-      "still": "examples/Rendering/RetainedBatch/still.jpg?v=c21f837c",
-      "stillSmall": "examples/Rendering/RetainedBatch/still-640.jpg?v=ed95b587",
+      "loop": "examples/Rendering/RetainedBatch/loop.mp4?v=98c681bc",
+      "loopSmall": "examples/Rendering/RetainedBatch/loop-640.mp4?v=d9f2b84c",
+      "still": "examples/Rendering/RetainedBatch/still.jpg?v=76f620f5",
+      "stillSmall": "examples/Rendering/RetainedBatch/still-640.jpg?v=0ca05d2f",
       "seed": 1
     },
     "Rendering/ToneMapping": {

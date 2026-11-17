@@ -44,7 +44,7 @@ final class Arabesque: Sketch {
     /// so that every stop puts the same number on each ring. His is 360.
     @Param(60...720) var points = 360
     /// Seconds for the whole cycle, which is the period of the loop.
-    @Param(10...180) var cycle = 40.0
+    @Param(10...180) var cycle = 30.0
     /// The whole number the cycle is cut into. The action stops at each
     /// of these fractions.
     @Param(2...12) var parts = 5
@@ -53,8 +53,9 @@ final class Arabesque: Sketch {
     @Param(0.2...1) var proportion = 0.5
     /// How many copies of the action play, one behind the other.
     @Param(1...6) var voices = 3
-    /// Seconds between one copy and the next. The film's are 32 frames apart.
-    @Param(0...4) var canon = 1.3
+    /// Seconds between one copy and the next: near enough for all of them to
+    /// share one switch. The film's enter 32 frames apart.
+    @Param(0...4) var canon = 1.0
     /// How big the marks are.
     @Param(1...8) var dotSize = 3.2
 

@@ -4,7 +4,7 @@
 
 ## Waldemar Cordeiro
 
-| [![Derivadas](https://media.ollin.art/examples/Recreations/WaldemarCordeiro/Derivadas/still-640.jpg?v=f5a0cbe2)](Derivadas/) | [![Gente](https://media.ollin.art/examples/Recreations/WaldemarCordeiro/Gente/still-640.jpg?v=c720d5ae)](Gente/) |  |  |
+| [![Derivadas](https://media.ollin.art/examples/Recreations/WaldemarCordeiro/Derivadas/still-640.jpg?v=f5a0cbe2)](Derivadas/) | [![Gente](https://media.ollin.art/examples/Recreations/WaldemarCordeiro/Gente/still-640.jpg?v=f842578c)](Gente/) |  |  |
 |---|---|---|---|
 | [Derivadas](Derivadas/) | [Gente](Gente/) |  |  |
 

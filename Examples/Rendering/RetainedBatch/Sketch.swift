@@ -17,7 +17,7 @@ import Ollin
 /// once instead of every frame.
 @main
 final class RetainedBatch: Sketch {
-    override var loopDuration: Double? { 40 }
+    override var loopDuration: Double? { 30 }
 
     @Param var retained = true   // off = re-record all 150k stars every frame
 
@@ -48,7 +48,7 @@ final class RetainedBatch: Sketch {
         // so the 150k recorded stars turn with one rotate about the canvas center.
         withState {
             translate(center)
-            rotate(loopProgress(over: 40) * .tau)
+            rotate(loopProgress(over: 30) * .tau)
             translate(-width / 2, -height / 2)
             if retained {
                 drawBatch(field)
@@ -64,7 +64,7 @@ final class RetainedBatch: Sketch {
             let orbit = shortSide * 0.42
             withState {
                 translate(width / 2 + cos(a) * orbit, height / 2 + sin(a) * orbit)
-                rotate(a + loopProgress(over: 40) * .tau)
+                rotate(a + loopProgress(over: 30) * .tau)
                 scale(i == 0 ? 1.0 : 0.55)
                 drawBatch(rosette)
             }

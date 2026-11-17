@@ -4,7 +4,7 @@
 
 ## John Whitney
 
-| [![Arabesque](https://media.ollin.art/examples/Recreations/JohnWhitney/Arabesque/still-640.jpg?v=55b81612)](Arabesque/) | [![Matrix](https://media.ollin.art/examples/Recreations/JohnWhitney/Matrix/still-640.jpg?v=cf5c6824)](Matrix/) | [![Permutations](https://media.ollin.art/examples/Recreations/JohnWhitney/Permutations/still-640.jpg?v=a2722897)](Permutations/) |  |
+| [![Arabesque](https://media.ollin.art/examples/Recreations/JohnWhitney/Arabesque/still-640.jpg?v=0f8430a4)](Arabesque/) | [![Matrix](https://media.ollin.art/examples/Recreations/JohnWhitney/Matrix/still-640.jpg?v=cf5c6824)](Matrix/) | [![Permutations](https://media.ollin.art/examples/Recreations/JohnWhitney/Permutations/still-640.jpg?v=a2722897)](Permutations/) |  |
 |---|---|---|---|
 | [Arabesque](Arabesque/) | [Matrix](Matrix/) | [Permutations](Permutations/) |  |
 
@@ -42,7 +42,7 @@ Learn more:
   swift run Example-Recreations-JohnWhitney-Permutations --export-video permutations.mp4 --seconds 30
   ```
 
-- [**Arabesque**](Arabesque/): a ring of 360 numbered points, all moving to the right, point 1 at one rate and point 360 at three hundred and sixty times it. A point that leaves on the right comes back on the left, so the ring is combed out across the field until it reads as scatter. At every fifth of the cycle the points stand on five rings again. There the action stops and the picture turns over, in X, in Y, or in both, which is his switch of polarity, and then the run goes on. Three copies play a second and a third apart, as a canon, each in its own color. `points` sets how many make the ring, `cycle` how long a lap takes, and `parts` the whole number the cycle is cut into. `proportion` shapes the ring, from the circle that opens the film to the upright ellipse of its third section. `voices` and `canon` set the copies and the delay between them, and `dotSize` the marks. An original Ollin interpretation, written from his own analysis of the film in chapter IX of the book. Chapter XII also prints a short Pascal program for the ring's first action. It was read to check the reading, and none of it was copied. How long a run and a switch take, the ring's size, the copies, and the color are the sketch's own.
+- [**Arabesque**](Arabesque/): a ring of 360 numbered points, all moving to the right, point 1 at one rate and point 360 at three hundred and sixty times it. A point that leaves on the right comes back on the left, so the ring is combed out across the field until it reads as scatter. At every fifth of the cycle the points stand on five rings again. There the action stops and the picture turns over, in X, in Y, or in both, which is his switch of polarity, and then the run goes on. Three copies play a second apart, as a canon, each in its own color. `points` sets how many make the ring, `cycle` how long a lap takes, and `parts` the whole number the cycle is cut into. `proportion` shapes the ring, from the circle that opens the film to the upright ellipse of its third section. `voices` and `canon` set the copies and the delay between them, and `dotSize` the marks. An original Ollin interpretation, written from his own analysis of the film in chapter IX of the book. Chapter XII also prints a short Pascal program for the ring's first action. It was read to check the reading, and none of it was copied. How long a run and a switch take, the ring's size, the copies, and the color are the sketch's own.
 
   ```sh
   swift run Example-Recreations-JohnWhitney-Arabesque
