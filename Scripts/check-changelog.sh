@@ -2,7 +2,7 @@
 #
 # Scripts/check-changelog.sh: keep a changelog entry short enough to read.
 #
-#   Scripts/check-changelog.sh             # CHANGELOG.md, from 0.18.0 up
+#   Scripts/check-changelog.sh             # CHANGELOG.md, from 0.7.0 up
 #   Scripts/check-changelog.sh --selftest  # a long entry and an untitled one must fail
 #
 # Somebody reading the changelog, or the release page made from it, wants two
@@ -10,7 +10,7 @@
 # measurements, the cause of a defect, and the full list of what a call takes
 # live on the reference page the entry links, and in CAPABILITIES.md.
 #
-# The form, for every entry from 0.18.0 on:
+# The form, for every entry from 0.7.0 on:
 #
 #   - **A title in plain words.** One or two short sentences with the call to
 #     type. For a change: what is different, and what to do to get the old
@@ -25,8 +25,9 @@
 #     section).
 #
 # Under a heading, a bold line by itself (**Drawing**) groups the entries by
-# area once a list is long. The sections for 0.17.0 and before keep the form
-# they were published in, so this reads only what stands above that heading.
+# area once a list is long. The sections for 0.7.0 to 0.17.0 were rewritten in
+# this form on 2026-11-19; 0.6.0 and before keep the two sentences they were cut
+# to on 2026-09-12, so this reads only what stands above the 0.6.0 heading.
 #
 # Why a gate: the entries were cut to two sentences once, on 2026-09-12, and
 # were back at a median of 91 words with one of 401 two months later, each
@@ -40,7 +41,7 @@ import re, sys, pathlib
 
 ENTRY_WORDS = 60
 PARAGRAPH_WORDS = 80
-FLOOR = "## [0.17.0]"
+FLOOR = "## [0.6.0]"
 
 
 def words(line):
@@ -107,5 +108,5 @@ if problems:
     print(f"check-changelog: {len(problems)} problem(s). An entry is a title and a line or two; "
           "the rest belongs on the page it links (Scripts/check-changelog.sh has the form).")
     sys.exit(1)
-print("check-changelog: every entry since 0.17.0 is a title and a line or two")
+print("check-changelog: every entry from 0.7.0 on is a title and a line or two")
 PY

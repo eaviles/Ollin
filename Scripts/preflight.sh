@@ -43,7 +43,7 @@
 #          public name under API/ is named by some Docs page, or listed with
 #          its reason; a page deleted stales this whether or not the diff
 #          touched it, so it is not scoped either; ~1 s)
-#       -> Scripts/check-changelog.sh (every changelog entry since 0.17.0 is
+#       -> Scripts/check-changelog.sh (every changelog entry from 0.7.0 on is
 #          a bold title and at most 60 words, so the file and the release
 #          page made from it stay readable; its self-test runs when the
 #          script changed; milliseconds)
