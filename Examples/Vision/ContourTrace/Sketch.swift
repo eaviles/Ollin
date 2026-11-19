@@ -92,11 +92,13 @@ final class ContourTrace: Sketch {
         }
 
         // Screen-space label with the live contour count (dark by hand; the
-        // standard caption is white, and this canvas is paper).
+        // standard caption is white, and this canvas is paper). It sits in the
+        // margin under the picture: a square picture fills the container to its
+        // bottom edge, and its traced border is a line the label must clear.
         fill(Color(white: 0.1))
         noStroke()
         textAlign(.center, .bottom)
         textSize(15 * scale)
-        drawText("ContourTrace: \(contours.count) contours", width / 2, height - 28 * scale)
+        drawText("ContourTrace: \(contours.count) contours", width / 2, height - 12 * scale)
     }
 }

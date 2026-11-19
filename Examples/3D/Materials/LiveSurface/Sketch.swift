@@ -40,8 +40,10 @@ final class LiveSurface: Sketch {
         // The room as the light: the same frames the globe shows.
         environment(.feed(feed))
 
-        cameraShowcase(.sway(amplitude: 0.3, period: .tau / 0.08), target: .zero,
-                       radius: 7.5, elevation: 0.14, fieldOfView: .pi / 4.6)
+        // Aimed between the globe and the ball beside it, and far enough back that
+        // both stay whole at either end of the sway.
+        cameraShowcase(.sway(amplitude: 0.3, period: .tau / 0.08), target: Vector3(1.0, 0, 0),
+                       radius: 8.6, elevation: 0.14, fieldOfView: .pi / 4.6)
 
         // The room as the surface: a fresh image each frame, one upload each.
         withState {

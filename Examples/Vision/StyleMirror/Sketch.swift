@@ -3,23 +3,24 @@ import Ollin
 import OllinSamplePhotos
 import OllinVision
 
-/// The camera through *your own* style-transfer model — a live painted mirror.
+/// The camera through *your own* style-transfer model: a live painted mirror.
 /// Nothing to download for this one: one script command trains a style-transfer
 /// model from a single style image in a couple of minutes, and the model is
-/// yours — no license to check, no weights to fetch. The
+/// yours, with no license to check and no weights to fetch. The
 /// surface doing the work is `image`: where `DepthRelief` reads its
 /// model's output as a gray value *map*, a style model *paints a picture*, and
 /// `image` hands it over in full color, drawn like any image. Slide the
-/// mouse left and right to crossfade between the camera and the painting.
+/// mouse left and right to crossfade between the camera and the painting;
+/// until you do, the sketch fades out to the painting and back by itself.
 ///
-/// To train a model (a couple of minutes, one command — the Create ML app no
+/// To train a model (a couple of minutes, one command; the Create ML app no
 /// longer offers its Style Transfer template, but the CreateML framework still
 /// trains them, and `Scripts/train-style-model.swift` wraps it):
 ///
 ///     swift Scripts/train-style-model.swift path/to/any-image.jpg
 ///
-/// Any image works as the style — a painting, a texture, an export of one of
-/// your own sketches. Relaunch — or train while this runs; the sketch is
+/// Any image works as the style: a painting, a texture, an export of one of
+/// your own sketches. Relaunch, or train while this runs; the sketch is
 /// watching for the file. Details and options in `Examples/Vision/README.md`.
 /// The fetched weights live in `Models/` at the repo root. This sketch runs both
 /// from there (the gallery compiles it where it sits) and from `Examples/` (a
@@ -43,10 +44,14 @@ final class StyleMirror: Sketch {
     let feed = Camera.orStill(SamplePhoto.portrait.load())
     var styler: ModelTracker?
 
+    /// Where the mouse was a frame ago, and whether it has moved since launch.
+    var lastMouse: Vector2?
+    var isSteered = false
+
     override func draw() {
         background(Color(white: 0.04))
 
-        // The model is trained, not fetched — keep looking for it, so saving
+        // The model is trained, not fetched: keep looking for it, so saving
         // the Create ML export while the sketch runs picks it up live.
         if styler == nil, let path = Self.modelPath {
             styler = ModelTracker(feed, modelAt: URL(fileURLWithPath: path))
@@ -60,10 +65,10 @@ final class StyleMirror: Sketch {
         noTint()
 
         guard let styler else {
-            return drawStatus("No style model yet — train your own from any " +
+            return drawStatus("No style model yet. Train your own from any " +
                               "image (a couple of minutes):\n" +
                               "swift Scripts/train-style-model.swift your-image.jpg\n" +
-                              "Train while this runs — the sketch is watching for\n" +
+                              "Train while this runs: the sketch is watching for\n" +
                               "Models/StyleTransfer.mlmodel.",
                               style: .warning)
         }
@@ -78,12 +83,19 @@ final class StyleMirror: Sketch {
 
         if let painting = styler.image {
             // Crossfade by mouse: camera at the left edge, painting at the right.
-            let blend = map(mouseX, rect.x, rect.x + rect.width, 0, 1, clamped: true)
+            // Until a hand moves it the sketch fades out and back by itself, so
+            // an untouched window, and an export, which has no mouse, still
+            // shows the painting.
+            if let lastMouse, lastMouse != mouse { isSteered = true }
+            lastMouse = mouse
+            let blend = isSteered
+                ? map(mouseX, rect.x, rect.x + rect.width, 0, 1, clamped: true)
+                : Easing.easeInOut(pingPong(over: 16))
             tint(Color(white: 1, alpha: blend))
             drawImage(painting, in: rect)
             noTint()
         }
 
-        drawCaption("StyleMirror — slide the mouse: camera ↔ painting")
+        drawCaption("StyleMirror: slide the mouse, camera ↔ painting")
     }
 }

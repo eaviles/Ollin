@@ -2943,25 +2943,26 @@
       "width": 1080
     },
     "3D/Materials/LiveSurface": {
-      "bytes": {
-        "loop": 2692536,
-        "loopSmall": 557316,
-        "still": 149577,
-        "stillSmall": 51244
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "10.0s",
-      "loop": "examples/3D/Materials/LiveSurface/loop.mp4?v=234fbfbe",
-      "loopSmall": "examples/3D/Materials/LiveSurface/loop-640.mp4?v=ec3277fb",
-      "motion": 7.692,
-      "rendered": "2026-09-26",
       "seconds": 10.0,
+      "frame": 480,
+      "motion": 6.11,
       "sound": false,
-      "source": "3145cefe4e913504",
-      "still": "examples/3D/Materials/LiveSurface/still.jpg?v=5b8ce82f",
-      "stillSmall": "examples/3D/Materials/LiveSurface/still-640.jpg?v=784066fa",
-      "width": 1080
+      "source": "217d73cf72ef8d53",
+      "rendered": "2026-11-19",
+      "bytes": {
+        "loop": 3257023,
+        "loopSmall": 545584,
+        "still": 157991,
+        "stillSmall": 50973
+      },
+      "loop": "examples/3D/Materials/LiveSurface/loop.mp4?v=85a03a26",
+      "loopSmall": "examples/3D/Materials/LiveSurface/loop-640.mp4?v=afe88564",
+      "still": "examples/3D/Materials/LiveSurface/still.jpg?v=69a61c67",
+      "stillSmall": "examples/3D/Materials/LiveSurface/still-640.jpg?v=1de00b20",
+      "seed": 1
     },
     "3D/Materials/Matcap": {
       "bytes": {
@@ -13603,23 +13604,23 @@
     "Vision/ContourTrace": {
       "width": 1080,
       "height": 1080,
-      "length": "10s",
+      "length": "10.0s",
       "seconds": 10.0,
       "frame": 480,
-      "motion": 2.908,
+      "motion": 2.96,
       "sound": false,
-      "source": "2ad12eef015854b4",
-      "rendered": "2026-10-02",
+      "source": "01606e109b172bea",
+      "rendered": "2026-11-19",
       "bytes": {
-        "loop": 2124244,
-        "loopSmall": 544872,
-        "still": 49614,
-        "stillSmall": 20504
+        "loop": 2033835,
+        "loopSmall": 538385,
+        "still": 49390,
+        "stillSmall": 20295
       },
-      "loop": "examples/Vision/ContourTrace/loop.mp4?v=58b08bce",
-      "loopSmall": "examples/Vision/ContourTrace/loop-640.mp4?v=acb1b946",
-      "still": "examples/Vision/ContourTrace/still.jpg?v=35200625",
-      "stillSmall": "examples/Vision/ContourTrace/still-640.jpg?v=f2f34b95",
+      "loop": "examples/Vision/ContourTrace/loop.mp4?v=0655c8fb",
+      "loopSmall": "examples/Vision/ContourTrace/loop-640.mp4?v=1a3ffdbe",
+      "still": "examples/Vision/ContourTrace/still.jpg?v=1106d477",
+      "stillSmall": "examples/Vision/ContourTrace/still-640.jpg?v=f45cb072",
       "seed": 1
     },
     "Vision/DepthContours": {
@@ -13837,20 +13838,20 @@
       "length": "10.0s",
       "seconds": 10.0,
       "frame": 480,
-      "motion": 10.563,
+      "motion": 11.509,
       "sound": false,
-      "source": "7cb65757c372a6cf",
-      "rendered": "2026-10-17",
+      "source": "25b474f4ef8245b9",
+      "rendered": "2026-11-19",
       "bytes": {
-        "loop": 8086266,
-        "loopSmall": 2693091,
-        "still": 140794,
-        "stillSmall": 58738
+        "loop": 8062091,
+        "loopSmall": 2715989,
+        "still": 117304,
+        "stillSmall": 51507
       },
-      "loop": "examples/Vision/OpticalFlow/loop.mp4?v=cbc5b40d",
-      "loopSmall": "examples/Vision/OpticalFlow/loop-640.mp4?v=355758c6",
-      "still": "examples/Vision/OpticalFlow/still.jpg?v=27b43ae7",
-      "stillSmall": "examples/Vision/OpticalFlow/still-640.jpg?v=ce8d7ead",
+      "loop": "examples/Vision/OpticalFlow/loop.mp4?v=02489021",
+      "loopSmall": "examples/Vision/OpticalFlow/loop-640.mp4?v=1f0a35b7",
+      "still": "examples/Vision/OpticalFlow/still.jpg?v=addfd7e2",
+      "stillSmall": "examples/Vision/OpticalFlow/still-640.jpg?v=e229c9ea",
       "seed": 1
     },
     "Vision/PaintByClass": {

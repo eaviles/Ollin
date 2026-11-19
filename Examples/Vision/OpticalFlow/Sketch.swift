@@ -53,13 +53,23 @@ final class OpticalFlow: Sketch {
             // between two frames depends on what it is: a hand waved at a
             // camera crosses tens of pixels, a dancer a few, and a fixed scale
             // that suits one draws nothing for the other.
+            //
+            // A scale that follows the frame needs a floor, or a still room is
+            // all streaks: a camera pointed at nothing moving still reports
+            // about a fifth of a pixel of motion a frame, which is its own
+            // noise, and the fastest of that would be drawn full length in the
+            // hottest color. So nothing slower than `stillness` is drawn, and
+            // the scale never falls below `slowest`, which keeps something
+            // that barely moves short and cool. Both are canvas pixels a frame.
             let spacing = 36 * scale
+            let stillness = 0.5 * scale
+            let slowest = 2 * scale
             let samples = field.samples(in: view, every: spacing)
-            let fastest = max(samples.map(\.flow.length).max() ?? 0, 0.001)
+            let fastest = max(samples.map(\.flow.length).max() ?? 0, slowest)
             strokeWeight(2 * scale)
             for sample in samples {
                 let speed = sample.flow.length
-                guard speed > fastest * 0.06 else { continue }
+                guard speed > max(fastest * 0.06, stillness) else { continue }
                 let t = min(speed / fastest, 1)
                 let tone = Colormap.turbo.color(at: t)
                 stroke(Color(red: tone.red, green: tone.green, blue: tone.blue,
