@@ -269,6 +269,26 @@ echo "shard-tests: $ran tests in ${elapsed}s"
 
 if [[ $ran -ne $expected ]]; then
     echo "shard-tests: ran $ran tests, the bundle lists $expected for these shards; the filters do not cover it" >&2
+    # The shard that ran short is the one to read, and its log sits in a temp
+    # dir this script deletes on the way out. Without the log's two ends the
+    # job reports a count and nothing about why (2026-11-17: a share ran 5 of
+    # its 796 tests on the runner and left no word of what stopped it).
+    for i in $mine; do
+        want=$(grep -cE "$(<$work/shard$i.filter)" "$work/ids.txt") || true
+        got=$(grep -oE 'Test run with [0-9]+ tests' "$work/shard$i.log" | grep -oE '[0-9]+' | head -1)
+        if [[ ${got:-0} -ne ${want:-0} ]]; then
+            lines=$(grep -c '' "$work/shard$i.log") || true
+            echo "shard-tests: shard $i ran ${got:-none} of $want; its log is $lines lines" >&2
+            if (( lines <= 90 )); then
+                cat "$work/shard$i.log" >&2
+            else
+                head -n 30 "$work/shard$i.log" >&2
+                echo "shard-tests: [...]" >&2
+                tail -n 60 "$work/shard$i.log" >&2
+            fi
+        fi
+    done
+    (( ${#failures} > 0 )) && print -l -- $failures >&2
     exit 1
 fi
 if (( ${#failures} > 0 )); then
