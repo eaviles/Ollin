@@ -13912,20 +13912,20 @@
       "length": "10.0s",
       "seconds": 10.0,
       "frame": 480,
-      "motion": 1.813,
+      "motion": 1.631,
       "sound": false,
-      "source": "1f0b5a203c5ff638",
-      "rendered": "2026-10-02",
+      "source": "d3b8f145c14aa101",
+      "rendered": "2026-11-19",
       "bytes": {
-        "loop": 1038671,
-        "loopSmall": 393221,
-        "still": 263104,
-        "stillSmall": 104647
+        "loop": 1012773,
+        "loopSmall": 387934,
+        "still": 262817,
+        "stillSmall": 103671
       },
-      "loop": "examples/Vision/SceneLabels/loop.mp4?v=0dfb9158",
-      "loopSmall": "examples/Vision/SceneLabels/loop-640.mp4?v=f839b5ac",
-      "still": "examples/Vision/SceneLabels/still.jpg?v=a3e2ad4a",
-      "stillSmall": "examples/Vision/SceneLabels/still-640.jpg?v=75214c89",
+      "loop": "examples/Vision/SceneLabels/loop.mp4?v=69b69e62",
+      "loopSmall": "examples/Vision/SceneLabels/loop-640.mp4?v=83bd0a25",
+      "still": "examples/Vision/SceneLabels/still.jpg?v=b28c632d",
+      "stillSmall": "examples/Vision/SceneLabels/still-640.jpg?v=91a2bfdd",
       "seed": 1
     },
     "Vision/StyleMirror": {

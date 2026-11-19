@@ -51,7 +51,11 @@ final class SceneLabels: Sketch {
             .prefix(6)
         let barArea = Rectangle(x: margin, y: rect.y + rect.height + 36 * scale,
                                 width: width - margin * 2, height: 0)
-        let rowHeight = 48 * scale, rowGap = 14 * scale
+        // The rows share the band between the feed and the caption's line, so
+        // the sixth ends clear of the caption whatever shape the feed is.
+        let rowGap = 12 * scale
+        let band = height - 64 * scale - barArea.y
+        let rowHeight = min(48 * scale, (band - rowGap * 5) / 6)
         textSize(19 * scale)
 
         for (i, (label, value)) in bars.enumerated() {
