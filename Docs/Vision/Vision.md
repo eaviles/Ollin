@@ -192,6 +192,10 @@ final class Poses: Sketch {
 
 Everything downstream takes either one, because both are a `FrameSource` and a `VideoFeed`, so nothing but that one line knows which it got. The picture is only built when it is needed, so a machine with a camera never decodes it. The [sample photographs](../Drawing/SamplePhotos.md) are what the examples fall back to, but any `Image` works.
 
+**On a Mac that has never been asked for its camera, the picture stands in while the system asks.** The prompt goes up when the window first reads the feed. The camera takes over at its first frame, with nothing relaunched. The feed is one object throughout, so a tracker attached to it follows the hand-over. A run with no window, such as an export, never asks, because nobody is there to answer. It draws the picture.
+
+**A refusal leaves the picture, and one line in the terminal says why.** The line names the place to allow the camera: System Settings, Privacy & Security, Camera. Nothing is drawn on the canvas, so a piece on a wall never shows it. A `Camera` you start yourself reports the same through its `unavailableReason`.
+
 **`--photo` on launch takes the picture even where a camera would have worked.** That is how a still is made of a sketch that is normally live: a screenshot, a gallery thumbnail, a figure. It also keeps every camera closed. A `Camera` the sketch starts itself throws from `start()` under the flag and never touches the device. So a run with `--photo` never films whoever is at the machine.
 
 `StillFrames` is the feed underneath, and it is public, for the case where the choice is not the camera's to make:
@@ -1237,4 +1241,4 @@ if let reason = bodies.unavailableReason {
 
 ### Permission
 
-Using the camera needs the user's permission, and `start()` requests it the first time it runs. Until the user grants it, `frame` stays `nil` and the trackers report nothing. From `swift run`, the system prompts on first use. A packaged app should include a camera-usage description (`NSCameraUsageDescription`).
+Using the camera needs the user's permission, and `start()` requests it the first time it runs. Until the user grants it, `frame` stays `nil` and the trackers report nothing. A feed from `Camera.orStill` shows its picture during that wait ([When there is no camera](#nocamera)). From `swift run`, the system prompts on first use. A packaged app should include a camera-usage description (`NSCameraUsageDescription`).

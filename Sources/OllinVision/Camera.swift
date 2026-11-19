@@ -110,14 +110,16 @@ public final class Camera: FrameSource, VideoFeed {
             throw VisionError.unavailable("the camera stays closed under --photo")
         }
         unavailableReason = nil
-        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        isRefused = false
+        switch Camera.authorizationStatus() {
         case .authorized:
             try configureAndRun()
         case .notDetermined:
-            AVCaptureDevice.requestAccess(for: .video) { granted in
+            Camera.requestAccess { granted in
                 Task { @MainActor in
                     guard granted else {
                         self.unavailableReason = "camera access was refused"
+                        self.isRefused = true
                         return
                     }
                     // The prompt has already returned, so there is nobody left
@@ -129,6 +131,7 @@ public final class Camera: FrameSource, VideoFeed {
             }
         default:
             unavailableReason = "camera access is denied or restricted for this app"
+            isRefused = true
         }
     }
 
@@ -136,6 +139,25 @@ public final class Camera: FrameSource, VideoFeed {
     /// (`--photo` on launch), read once from the arguments. The tests set it,
     /// since the arguments cannot be.
     package static var photoOnly = CommandLine.arguments.contains("--photo")
+
+    /// Where the permission stands, and the call that puts the system's prompt
+    /// up. The tests replace both: a test must never put a real prompt on
+    /// somebody's screen, or wait on the answer to one.
+    package static var authorizationStatus: () -> AVAuthorizationStatus = {
+        AVCaptureDevice.authorizationStatus(for: .video)
+    }
+    package static var requestAccess: (@escaping @Sendable (Bool) -> Void) -> Void = { answer in
+        AVCaptureDevice.requestAccess(for: .video, completionHandler: answer)
+    }
+
+    /// Where a line meant for the developer goes: stderr. The tests replace it.
+    package static var note: (String) -> Void = { line in
+        FileHandle.standardError.write(Data("⚠️ OllinVision: \(line)\n".utf8))
+    }
+
+    /// Whether the reason there are no frames is that permission was refused,
+    /// at the prompt or before it, as against a camera that could not start.
+    private(set) var isRefused = false
 
     /// Why there are no frames, in a sentence worth drawing, or `nil` while
     /// nothing has gone wrong. `start()` throws for what it can see itself;

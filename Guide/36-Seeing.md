@@ -40,7 +40,7 @@ import OllinSamplePhotos
 let feed = Camera.orStill(SamplePhoto.reaching.load())
 ```
 
-It starts the camera itself, so a sketch that uses it has no `start()` to call. What comes back is a **feed**, anything that hands out frames, the way a camera does. `drawFrame` and every tracker take a feed, so `drawFrame(feed)` draws it, and a tracker attaches to it as it attaches to a camera. On the first run, before you have allowed the camera, it hands back the still, and the next run finds the camera.
+It starts the camera itself, so a sketch that uses it has no `start()` to call. What comes back is a **feed**, anything that hands out frames, the way a camera does. `drawFrame` and every tracker take a feed, so `drawFrame(feed)` draws it, and a tracker attaches to it as it attaches to a camera. On the first run the system asks whether the sketch may use the camera. The still stands in while it asks, and the camera takes over when you allow it.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/36-Seeing/StandingIn-dark.jpg">

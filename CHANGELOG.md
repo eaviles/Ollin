@@ -30,6 +30,7 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ### Fixed
 
+- **The camera takes over after the first Allow.** On a Mac never asked for its camera, a sketch made with `Camera.orStill` showed its picture and kept it after Allow, until a relaunch. The picture now stands in only while the prompt is up, a refusal says why in the terminal, and an export never asks. [Vision](Docs/Vision/Vision.md#nocamera)
 - **A salience query reads the right place.** On macOS 27, `salience(at:in:)` on a `SaliencyTracker` or a `Saliency` answered from the wrong part of the heat map, so a marker steered by it sat beside the glow. The query now reads the map the picture is drawn from. [Vision](Docs/Vision/Vision.md#saliencytracker)
 - **Traced shadows on an M1 or M2 are fast again.** A point light's or a rect or disk panel's traced shadow drew about thirteen times slower than it should: every such frame also carried the traced reflection code, used or not. A frame with no traced reflections now leaves it out, and draws the same picture. [3D](Docs/3D/3D.md#shadows)
 - **The capture app, held sideways.** With the phone turned sideways, the Record button and the Wand and Touch pads were off the screen. They now sit on the right, and the modes and status rows scroll on the left. Upright is unchanged. Rebuild the capture app to get it. [Phone](Docs/3D/Phone.md#a-recording)
