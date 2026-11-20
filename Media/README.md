@@ -23,6 +23,8 @@ carries four kinds of thing now, so it lives here instead:
 
 `base` is the host. Moving it is one edit here.
 
+`held.txt`, beside the manifest, lists the examples whose media on the site is not to be replaced: one folder to a line, with the sentence that says why. A held example could be rendered, but its picture is not cleared for publishing. `Scripts/media.sh` leaves it alone on every kind of run, so its row here and its files on the host stay as they are, and the site goes on showing them. `Scripts/media.sh --held` prints the list. A line comes off only at the maintainer's word.
+
 Uploading needs `~/.config/ollin/r2.env`; every script that writes the manifest
 reads that file and pushes with rclone, or renders only when told to.
 

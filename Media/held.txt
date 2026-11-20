@@ -1,0 +1,20 @@
+# Media/held.txt: examples whose media on the site stays as it is.
+#
+# One example to a line: its folder under Examples/, spelled as the folder is,
+# then the sentence that says why. `Scripts/media.sh` leaves a listed example
+# alone on every kind of run (named, --category, --all, --force, --missing,
+# with or without --no-upload). Nothing is rendered, its row in media.json is
+# not touched, and nothing is uploaded, so the site goes on showing what it
+# shows today, and the run prints the sentence in place of a render.
+#
+# A hold is about what may be published, not about what can be drawn. An
+# example that needs something plugged in waits under
+# `Scripts/example-devices.zsh` instead, which is read off its imports.
+#
+# A hold is lifted by deleting its line, at the word of the maintainer
+# (@eaviles) and of nobody else. The script stops before it renders anything
+# when this file is missing, when a line gives no reason, or when a line names
+# a folder that is not an example, since a renamed example would otherwise
+# leave its hold behind.
+
+Vision/StyleMirror  its painting is drawn by a style model trained on the machine that renders it, and that model's style image has not been cleared for the site, so the page keeps the photograph

@@ -10042,6 +10042,8 @@ or its far end serves only a live window) is held under `HELD_BECAUSE` with
 that reason rather than the device it imports. Nothing is decided in silence:
 every example is under one heading or the other with its reason.
 
+**An example held off the site.** A third case has nothing to do with what can be drawn. `Media/held.txt` lists the examples whose picture is not cleared for publishing, one folder to a line with the sentence that says why. `Scripts/media.sh` leaves a listed example exactly as it stands: nothing is built or rendered, its row is not read or written, and nothing is uploaded. The check is the first thing the loop does, ahead of `--force`, `--missing`, and the digest, so no flag reaches past it, and the site goes on showing the row's old files. Three things keep a hold from lifting unnoticed. The list is read before anything renders, and a missing list, a line with no reason, or a line naming a folder that is not an example stops the run, since a renamed example would otherwise leave its hold behind. A name from the command line is matched to the folder's own spelling whatever its case and slashes, because the file system here answers to `vision/stylemirror` as well and the hold is kept under one name. And `--selftest` copies the script into a planted repository, with stand-ins for the build, the render, and the upload, and makes every kind of run twice. Held, the example's row, hosted file, and call log must come through untouched. With nothing held, the same run must reach the example, or the first run proved nothing. The scripts downstream (`example-covers.py`, `example-grids.py`, the README's hero) read published rows and render nothing, so they show what the row names. A line comes off the list only at the maintainer's word.
+
 **One seed per example.** The clip and the still are separate renders, and a
 sketch that rolls its variation deals a new piece for each, so every render
 passes the same `--seed` and the row records it as `seed`. A row without one
@@ -10079,7 +10081,7 @@ does not understand; one of them dropped an unknown key and deleted both page
 heroes, which turned the guide's playing grid back into a still.
 
 Uploading reads `~/.config/ollin/r2.env`, outside the repository. Without it,
-`--no-upload` writes the files locally.
+`--no-upload` renders and sends nothing. It is not a preview: the files are deleted when the run ends, and each rendered example's row is still rewritten with addresses for files that were never sent, so the manifest is restored from git after one.
 
 ## Status of this document
 

@@ -49,6 +49,11 @@
 #          script changed; milliseconds)
 #     any .md prose, any image, or anything under Examples/ changed
 #       -> Scripts/check-links.sh and Scripts/guide-coverage.sh
+#     anything under Examples/ changed, or the media script or its lists
+#       -> Scripts/media.sh --held (the list of examples whose media on the
+#          site is not to be replaced, read and checked: every line names an
+#          example's folder as it is spelled and says why, so a renamed
+#          example cannot leave its hold behind; milliseconds)
 #     Guide/ or Docs/ prose changed
 #       -> Scripts/prose-lint.sh over just those files
 #     Guide/ prose changed
@@ -63,6 +68,12 @@
 #          read as a version: the bump the release needs and the shim rule,
 #          a rehearsal count before 1.0 and a gate from 1.0 on; its self-test
 #          runs first; about a second)
+#     the media script, the manifest writer, or either of its lists changed
+#       -> Scripts/media.sh --selftest (the script run over a planted
+#          repository with stand-ins for the build, the render, and the
+#          upload: a held example comes through every kind of run untouched
+#          and is reached once nothing is held; about 25 s, which is why it
+#          is the last of these)
 #   building. A gate marked "reaches" runs on a change under Sources/,
 #   External/, or to Package.* only when that change can move what the gate
 #   reads: the changed file's target is the one the gate builds or one it
@@ -351,6 +362,18 @@ else
     skip "check-links and guide-coverage" "no prose, image, or example change"
 fi
 
+# The site's media. An example on the held list is one whose picture is not
+# cleared for the site, and Scripts/media.sh leaves it alone on every kind of
+# run. The list is read on any change that could strand one of its lines (an
+# example moved or renamed, the list, the script). The script's proof of the
+# hold itself runs further down, after everything that reports in a second.
+media_tools=$(grep -E '^(Media/held\.txt|Scripts/(media\.sh|media-manifest\.py|example-devices\.zsh))$' <<<"$changed")
+if [[ -n "$examples" || -n "$media_tools" || $milestone -eq 1 ]]; then
+    run "media --held" Scripts/media.sh --held
+else
+    skip "media --held" "no example, held list, or media script change"
+fi
+
 # Vale, scoped to the reader-facing files actually touched.
 if [[ -n "$reader_prose" ]]; then
     run "prose-lint" Scripts/prose-lint.sh ${(f)reader_prose}
@@ -393,6 +416,12 @@ if [[ -n "$framework" || -n "$api" || $milestone -eq 1 ]]; then
     run "api-diff" Scripts/api-diff.sh --summary
 else
     skip "api-diff" "no framework or API/ change"
+fi
+
+# The media script against its own planted repository: the last of the gates
+# that build nothing, since it takes about 25 s where the others take one.
+if [[ -n "$media_tools" || $milestone -eq 1 ]]; then
+    run "media (selftest)" Scripts/media.sh --selftest
 fi
 
 # From here on every gate builds something, in the main build folder unless it
