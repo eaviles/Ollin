@@ -6060,6 +6060,28 @@
       "stillSmall": "examples/Effects/SummedArea/still-640.jpg?v=f7e4a148",
       "seed": 1
     },
+    "Effects/TapeAndLens": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 27.445,
+      "sound": false,
+      "source": "3c23e5197fa502c2",
+      "rendered": "2026-11-20",
+      "bytes": {
+        "loop": 9414783,
+        "loopSmall": 2948030,
+        "still": 457909,
+        "stillSmall": 154911
+      },
+      "loop": "examples/Effects/TapeAndLens/loop.mp4?v=420579e6",
+      "loopSmall": "examples/Effects/TapeAndLens/loop-640.mp4?v=8471b4e4",
+      "still": "examples/Effects/TapeAndLens/still.jpg?v=bea6108e",
+      "stillSmall": "examples/Effects/TapeAndLens/still-640.jpg?v=3dad08ab",
+      "seed": 1
+    },
     "Effects/Textures": {
       "width": 1080,
       "height": 1080,
