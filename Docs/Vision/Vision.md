@@ -1006,7 +1006,7 @@ Model weights are yours to bring, because Ollin bundles none. The examples fetch
 - **DeepLabV3**. Apache-2.0, about 4 MB, for `PaintByClass`, the class-mask surface.
 - **Video Depth Anything (small)**. Apache-2.0, about 55 MB, for [`DepthTracker`](#depthtracker) and the `DepthContours` example. Nobody publishes a Core ML version, so the script builds this one on your Mac. That is a one-time Python step of a few minutes.
 
-The `StyleMirror` example's model is not fetched at all. You train it yourself from any style image in a couple of minutes with `swift Scripts/train-style-model.swift <image>`. The CreateML framework does the training, because the Create ML app no longer offers its Style Transfer template. The weights are therefore your own work, with no license to check.
+The `StyleMirror` example's model is not fetched at all. You train it yourself from any style image in a couple of minutes with `swift Scripts/train-style-model.swift <image>`. The CreateML framework does the training, because the Create ML app no longer offers its Style Transfer template. The weights are therefore your own work, with no model license to check. The style image stays the work of whoever made it, so train on one you may use if you plan to publish what the model paints.
 
 <a name="modeloutput"></a>
 

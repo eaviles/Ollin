@@ -416,7 +416,8 @@ A note on the history: Hershey drew the faces at the U.S. Naval Weapons Laborato
 > (The `StyleMirror` example needs no entry here at all: its style-transfer
 > model is trained by the user — `Scripts/train-style-model.swift`, over the
 > CreateML framework — so the weights are the user's own work; nothing is
-> fetched or redistributed.)
+> fetched or redistributed. The style image is the user's to choose and to
+> clear, and none ships with this repository.)
 
 ---
 

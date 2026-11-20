@@ -47,7 +47,7 @@ Computer vision on the Mac. Vision lives in a separate library, so add `import O
 | [ObjectDetection](ObjectDetection/Sketch.swift) | objects found, boxed, and named in the live feed; SceneLabels names the whole picture, but a detector answers *where* and *how many*, with one labeled, color-coded box per thing the model can name; run `Scripts/fetch-models.sh` once to download the model (`ModelTracker`, `objects`, `bounds(in:)`) |
 | [PaintByClass](PaintByClass/Sketch.swift) | every pixel named and painted: a semantic-segmentation model (DeepLabV3) colors each class's pixels its own steady color, a legend counts what's in frame, and the cursor reads the class under it; run `Scripts/fetch-models.sh` once to download the model (`ModelTracker`, `classMask`, `mask(of:)`, `coverage(of:)`) |
 | [DigitReader](DigitReader/Sketch.swift) | a model reading the sketch's *own* pixels: draw a digit with the mouse onto a pixel-authored `Image`, and MNIST classifies it on every mouse lift; there is no camera anywhere, which is the point, because a sketch can point a model at its own output (`ModelTracker`, still `detect(in:)`, `mouseIsPressed`, `Image[x, y]`) |
-| [StyleMirror](StyleMirror/Sketch.swift) | the camera through a style-transfer model *you train yourself* with one command (any style image, no download, no license to check; see [Training the StyleMirror model](#training-the-stylemirror-model) below); slide the mouse to crossfade between the camera and the painted frame (`ModelTracker`, `image`, `tint`) |
+| [StyleMirror](StyleMirror/Sketch.swift) | the camera through a style-transfer model *you train yourself* with one command (one style image, no download, no model license to check; see [Training the StyleMirror model](#training-the-stylemirror-model) below); slide the mouse to crossfade between the camera and the painted frame (`ModelTracker`, `image`, `tint`) |
 | [TugOfWords](TugOfWords/Sketch.swift) | typed phrases as live parameters: two phrases pull on one rope by how well each matches the frame, and rewriting a phrase in the inspector (⌘/) re-anchors the rope; run `Scripts/fetch-models.sh` once to download the model (`ConceptTracker`, `confidence(of:)`, `similarity(of:)`) |
 | [TrajectoryTracking](TrajectoryTracking/Sketch.swift) | ballistic arcs found and *predicted* in a synthetic ball-launcher feed; the example conforms its own `FrameSource`, so a simulation is the tracker's camera (`TrajectoryTracker`, `DetectedTrajectory`) |
 
@@ -55,13 +55,13 @@ These examples read a camera, and they ask for camera permission on first run (t
 
 ### Training the StyleMirror model
 
-StyleMirror runs a model that is *your own work*, so there is nothing to download and no license to check. The Create ML app no longer offers its Style Transfer template, but the CreateML framework still trains them. The repo wraps that training in one command, which you run from the repo root:
+StyleMirror runs a model that you train yourself, so there is nothing to download and no model license to check. The style image is the one thing to check. It stays the work of whoever made it, and everything the model paints is made from it. To publish a painted picture, train on an image you may use that way, such as your own work or one in the public domain. The Create ML app no longer offers its Style Transfer template, but the CreateML framework still trains them. The repo wraps that training in one command, which you run from the repo root:
 
 ```sh
 swift Scripts/train-style-model.swift path/to/any-image.jpg
 ```
 
-Any image works as the style: a painting, a texture, or an export of one of your own sketches. A couple of minutes later `Models/StyleTransfer.mlmodel` exists and StyleMirror starts painting. The sketch watches for the file, so you can train while it runs and see the style arrive.
+Any image trains a style: a texture, an export of one of your own sketches, or a painting you have the right to use. A couple of minutes later `Models/StyleTransfer.mlmodel` exists and StyleMirror starts painting. The sketch watches for the file, so you can train while it runs and see the style arrive.
 
 The flags, all optional:
 

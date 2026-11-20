@@ -6,7 +6,9 @@ import OllinVision
 /// The camera through *your own* style-transfer model: a live painted mirror.
 /// Nothing to download for this one: one script command trains a style-transfer
 /// model from a single style image in a couple of minutes, and the model is
-/// yours, with no license to check and no weights to fetch. The
+/// yours, with no weights to fetch and no model license to check. The style
+/// image is the one thing to check: it stays the work of whoever made it, so
+/// train on one you may use if you mean to publish what the sketch paints. The
 /// surface doing the work is `image`: where `DepthRelief` reads its
 /// model's output as a gray value *map*, a style model *paints a picture*, and
 /// `image` hands it over in full color, drawn like any image. Slide the
@@ -19,9 +21,10 @@ import OllinVision
 ///
 ///     swift Scripts/train-style-model.swift path/to/any-image.jpg
 ///
-/// Any image works as the style: a painting, a texture, an export of one of
-/// your own sketches. Relaunch, or train while this runs; the sketch is
-/// watching for the file. Details and options in `Examples/Vision/README.md`.
+/// Any image trains a style: a texture, an export of one of your own
+/// sketches, a painting you have the right to use. Relaunch, or train while
+/// this runs; the sketch is watching for the file. Details and options in
+/// `Examples/Vision/README.md`.
 /// The fetched weights live in `Models/` at the repo root. This sketch runs both
 /// from there (the gallery compiles it where it sits) and from `Examples/` (a
 /// direct `swift run`), so the folder is found by walking up from this file
