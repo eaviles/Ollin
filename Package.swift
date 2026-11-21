@@ -731,7 +731,19 @@ let package = Package(
         // `Image`/`Vector2`/`Rectangle` types results map onto.
         .target(
             name: "OllinVision",
-            dependencies: ["Ollin"]
+            dependencies: ["Ollin", "COllinHeapWalk"]
+        ),
+        // The walk that finds the pixel buffers the 3D body pose request leaves
+        // behind. Kept in C because it runs with the allocator locked and must
+        // not take or return memory, which generic Swift in a debug build does.
+        .target(
+            name: "COllinHeapWalk",
+            path: "Sources/COllinHeapWalk",
+            publicHeadersPath: "include",
+            linkerSettings: [
+                .linkedFramework("CoreFoundation"),
+                .linkedFramework("CoreVideo"),
+            ]
         ),
         // Syphon: publish/consume live GPU frames to/from other Mac apps over the
         // vendored Syphon Framework, wrapped behind Ollin's own SyphonServer /

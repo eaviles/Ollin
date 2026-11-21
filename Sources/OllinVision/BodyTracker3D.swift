@@ -213,8 +213,40 @@ public final class BodyTracker3D: VisionTracking, @unchecked Sendable {
     /// Detect 3D body pose in a still image, once. `nil` when no person is found.
     public static func detect(in image: Image) async throws -> Body3D? {
         let request = DetectHumanBodyPose3DRequest()
-        let observations = try await request.perform(on: image.currentCGImage())
+        let cgImage = image.currentCGImage()
+        let observations = try await BodyPose3DLeftovers.counted {
+            try await request.perform(on: cgImage)
+        }
         return observations.first.map(Body3D.init)
+    }
+
+    /// Whether the buffers the system's 3D body pose model leaves behind are
+    /// found and freed while a tracker runs. On by default.
+    ///
+    /// The model leaves one buffer of about a third of a megabyte behind on
+    /// every analysis, which at a camera's pace is a gigabyte every minute and
+    /// a half. With this on, every thirty analyses the leftovers are found and
+    /// freed, and only those that match what was measured exactly: where they
+    /// look any different, or on a system that leaves none, nothing is freed.
+    /// Finding them holds the process's memory allocator for a fraction of a
+    /// millisecond, and for a few milliseconds about once a minute, so a
+    /// thread that asks for memory in that moment waits that long.
+    ///
+    /// Set it to `false` to leave the leftovers alone. macOS only: elsewhere
+    /// it reads `false` and setting it does nothing.
+    public static var freesLeftoverBuffers: Bool {
+        get {
+            #if os(macOS)
+            BodyPose3DLeftovers.shared.isOn
+            #else
+            false
+            #endif
+        }
+        set {
+            #if os(macOS)
+            BodyPose3DLeftovers.shared.isOn = newValue
+            #endif
+        }
     }
 
     // MARK: VisionTracking
@@ -229,7 +261,9 @@ public final class BodyTracker3D: VisionTracking, @unchecked Sendable {
             return state.request!
         }
         do {
-            let observations = try await request.perform(on: cgImage)
+            let observations = try await BodyPose3DLeftovers.counted {
+                try await request.perform(on: cgImage)
+            }
             status.recordSuccess()
             lock.withLock { $0.result = observations.first.map(Body3D.init) }
         } catch {

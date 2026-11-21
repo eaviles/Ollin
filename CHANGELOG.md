@@ -30,6 +30,7 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ### Fixed
 
+- **A 3D body tracker no longer grows by a gigabyte every minute and a half.** The system's 3D pose model leaves a buffer behind on every analysis. `BodyTracker3D` now finds and frees them as it runs, on macOS. `BodyTracker3D.freesLeftoverBuffers = false` turns that off. [Vision](Docs/Vision/Vision.md#bodytracker3d)
 - **The camera takes over after the first Allow.** On a Mac never asked for its camera, a sketch made with `Camera.orStill` showed its picture and kept it after Allow, until a relaunch. The picture now stands in only while the prompt is up, a refusal says why in the terminal, and an export never asks. [Vision](Docs/Vision/Vision.md#nocamera)
 - **A salience query reads the right place.** On macOS 27, `salience(at:in:)` on a `SaliencyTracker` or a `Saliency` answered from the wrong part of the heat map, so a marker steered by it sat beside the glow. The query now reads the map the picture is drawn from. [Vision](Docs/Vision/Vision.md#saliencytracker)
 - **Traced shadows on an M1 or M2 are fast again.** A point light's or a rect or disk panel's traced shadow drew about thirteen times slower than it should: every such frame also carried the traced reflection code, used or not. A frame with no traced reflections now leaves it out, and draws the same picture. [3D](Docs/3D/3D.md#shadows)

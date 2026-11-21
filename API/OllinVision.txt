@@ -109,6 +109,7 @@ final class BarcodeScanner: VisionAvailability, Sendable
 final class BodyTracker3D: VisionAvailability, Sendable
   init(_: any FrameSource)
   static func detect(in: Image) throws -> Body3D?
+  static var freesLeftoverBuffers: Bool { get set }
   var body: Body3D? { get }
   var isAvailable: Bool { get }
   var unavailableReason: String? { get }

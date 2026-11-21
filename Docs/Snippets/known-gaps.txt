@@ -15,20 +15,20 @@
 
 a5b3460feb06  Docs/3D/3D.md:1041  cannot find 'e' in scope
 59a8691ecc04  Docs/3D/3D.md:1107  overriding declaration requires an 'override' keyword
-76ba2c72194a  Docs/3D/3D.md:1481  cannot find 'ribbon' in scope
-344f7f4b3cc6  Docs/3D/3D.md:1691  cannot convert value of type '@MainActor (Int, Int, Insets, Double, Grid.Distribution) -> Grid' to expected argument type 'Image'
-b315a31afeb9  Docs/3D/3D.md:1714  cannot find 'planks' in scope
-e0187f40506d  Docs/3D/3D.md:1759  cannot find 'rockColor' in scope
-677c77a8c73e  Docs/3D/3D.md:1777  cannot find 'h' in scope
-d51355214a9e  Docs/3D/3D.md:1804  cannot find 'paint' in scope
-e74d2eeb069f  Docs/3D/3D.md:1821  cannot find 'ribbon' in scope
-2a67d7fc8d2c  Docs/3D/3D.md:1843  cannot find 'brickColor' in scope
-5193d7f3850b  Docs/3D/3D.md:1859  cannot find 'reliefImage' in scope
-124899510ce1  Docs/3D/3D.md:1879  cannot find 'rock' in scope
+76ba2c72194a  Docs/3D/3D.md:1483  cannot find 'ribbon' in scope
+344f7f4b3cc6  Docs/3D/3D.md:1693  cannot convert value of type '@MainActor (Int, Int, Insets, Double, Grid.Distribution) -> Grid' to expected argument type 'Image'
+b315a31afeb9  Docs/3D/3D.md:1716  cannot find 'planks' in scope
+e0187f40506d  Docs/3D/3D.md:1761  cannot find 'rockColor' in scope
+677c77a8c73e  Docs/3D/3D.md:1779  cannot find 'h' in scope
+d51355214a9e  Docs/3D/3D.md:1806  cannot find 'paint' in scope
+e74d2eeb069f  Docs/3D/3D.md:1823  cannot find 'ribbon' in scope
+2a67d7fc8d2c  Docs/3D/3D.md:1845  cannot find 'brickColor' in scope
+5193d7f3850b  Docs/3D/3D.md:1861  cannot find 'reliefImage' in scope
+124899510ce1  Docs/3D/3D.md:1881  cannot find 'rock' in scope
 f120c3e411c4  Docs/3D/3D.md:189  cannot find 'x' in scope
-d1a6a8c0f0eb  Docs/3D/3D.md:1910  cannot find 'rock' in scope
-b0d19a4efbe1  Docs/3D/3D.md:1934  cannot use instance member 'loadImage' within property initializer; property initializers run before 'self' is available
-945a0d5a84a5  Docs/3D/3D.md:1980  cannot find 'blob' in scope
+d1a6a8c0f0eb  Docs/3D/3D.md:1912  cannot find 'rock' in scope
+b0d19a4efbe1  Docs/3D/3D.md:1936  cannot use instance member 'loadImage' within property initializer; property initializers run before 'self' is available
+945a0d5a84a5  Docs/3D/3D.md:1982  cannot find 'blob' in scope
 7d5e1e905641  Docs/3D/3D.md:243  cannot find 'x' in scope
 f6d0fb32d6d9  Docs/3D/3D.md:282  cannot find 'block' in scope
 16f7145339d7  Docs/3D/3D.md:485  'module' is inaccessible due to 'internal' protection level
@@ -1238,50 +1238,50 @@ a9a1aaeb971a  Docs/Tools/SingleFile.md:115  'module' is inaccessible due to 'int
 70bd7a0335ec  Docs/Video/Video.md:41  'throws' may only occur before '->'
 18628713c27a  Docs/Video/Video.md:55  expected '{' in body of function declaration
 9275119a4b5c  Docs/Video/Video.md:76  overriding non-open instance method outside of its defining module
-006426c05db9  Docs/Vision/Vision.md:1011  expected '{' in body of function declaration
-5c5a08dabc9f  Docs/Vision/Vision.md:1036  expected '{' to start getter definition
+006426c05db9  Docs/Vision/Vision.md:1025  expected '{' in body of function declaration
 be62f39682e0  Docs/Vision/Vision.md:104  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
-26580fe6f2aa  Docs/Vision/Vision.md:1059  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-34c07e1c39dd  Docs/Vision/Vision.md:1078  expected ',' separator
-b6753b0533d8  Docs/Vision/Vision.md:1119  expected ',' separator
-bdca8b7007b6  Docs/Vision/Vision.md:1138  class 'SnippetProbe' has no initializers
-bf93c06e1fd8  Docs/Vision/Vision.md:1176  expected ',' separator
-ab4b590c81f4  Docs/Vision/Vision.md:1184  expected ',' separator
-207ac16b7787  Docs/Vision/Vision.md:1195  'async' call in a function that does not support concurrency
+5c5a08dabc9f  Docs/Vision/Vision.md:1050  expected '{' to start getter definition
+26580fe6f2aa  Docs/Vision/Vision.md:1073  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+34c07e1c39dd  Docs/Vision/Vision.md:1092  expected ',' separator
+b6753b0533d8  Docs/Vision/Vision.md:1133  expected ',' separator
+bdca8b7007b6  Docs/Vision/Vision.md:1152  class 'SnippetProbe' has no initializers
+bf93c06e1fd8  Docs/Vision/Vision.md:1190  expected ',' separator
+ab4b590c81f4  Docs/Vision/Vision.md:1198  expected ',' separator
 1eeb10f31606  Docs/Vision/Vision.md:120  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
-dabd491a4320  Docs/Vision/Vision.md:1205  cannot find 'image' in scope
-b37d2de5f126  Docs/Vision/Vision.md:1215  cannot find 'minimumScore' in scope
-1cb517a75c42  Docs/Vision/Vision.md:1228  cannot find 'bodies' in scope
-a6be6ecbcd02  Docs/Vision/Vision.md:199  expected ',' separator
-30373466cede  Docs/Vision/Vision.md:218  expected ',' separator
-dea9b68f19a8  Docs/Vision/Vision.md:238  expected '{' in body of function declaration
-5d5c16f5ccac  Docs/Vision/Vision.md:253  cannot find 'faces' in scope
-1da1647e8644  Docs/Vision/Vision.md:270  expected parameter name followed by ':'
-a9413a0ef7ac  Docs/Vision/Vision.md:297  cannot find type 'Node' in scope
-2cf42ccf6dda  Docs/Vision/Vision.md:312  expected ',' separator
-52166dfc11a5  Docs/Vision/Vision.md:338  cannot find type 'Chirality' in scope
-af9590cae86a  Docs/Vision/Vision.md:358  expected ',' separator
-84c6d58f3e23  Docs/Vision/Vision.md:384  expected ',' separator
-62a08cfbf4fe  Docs/Vision/Vision.md:403  expected '{' to start getter definition
-b7b045af9d05  Docs/Vision/Vision.md:434  cannot find 'tracker' in scope
-ab5db32f2c65  Docs/Vision/Vision.md:447  expected ',' separator
-f3c88e3b9780  Docs/Vision/Vision.md:456  cannot find 'drawMyBackground' in scope
-6bca905e0b7b  Docs/Vision/Vision.md:474  expected ',' separator
-070e4cf64081  Docs/Vision/Vision.md:499  expected ',' separator
-227417b04092  Docs/Vision/Vision.md:519  cannot find 'encoderURL' in scope
-d9332481baa6  Docs/Vision/Vision.md:561  expected parameter name followed by ':'
-9a3fb8aecfe9  Docs/Vision/Vision.md:587  expected ',' separator
-89d002609bbe  Docs/Vision/Vision.md:613  expected ',' separator
-de264bce6eb7  Docs/Vision/Vision.md:640  expected ',' separator
-6f077e6e8bb9  Docs/Vision/Vision.md:682  expected '{' to start getter definition
-d1425fc54681  Docs/Vision/Vision.md:698  expected ',' separator
-9b7a1d5882a9  Docs/Vision/Vision.md:728  expected '{' to start getter definition
-dee10b654a59  Docs/Vision/Vision.md:751  expected ',' separator
-74524523d73d  Docs/Vision/Vision.md:770  expected '{' to start getter definition
-ddfc90dfdf31  Docs/Vision/Vision.md:810  expected ',' separator
-3c4a18f23a50  Docs/Vision/Vision.md:844  expected '{' to start getter definition
-bc92ab8b42ae  Docs/Vision/Vision.md:861  expected ',' separator
+207ac16b7787  Docs/Vision/Vision.md:1209  'async' call in a function that does not support concurrency
+dabd491a4320  Docs/Vision/Vision.md:1219  cannot find 'image' in scope
+b37d2de5f126  Docs/Vision/Vision.md:1229  cannot find 'minimumScore' in scope
+1cb517a75c42  Docs/Vision/Vision.md:1242  cannot find 'bodies' in scope
+a6be6ecbcd02  Docs/Vision/Vision.md:203  expected ',' separator
+30373466cede  Docs/Vision/Vision.md:222  expected ',' separator
+dea9b68f19a8  Docs/Vision/Vision.md:242  expected '{' in body of function declaration
+5d5c16f5ccac  Docs/Vision/Vision.md:257  cannot find 'faces' in scope
+1da1647e8644  Docs/Vision/Vision.md:274  expected parameter name followed by ':'
+a9413a0ef7ac  Docs/Vision/Vision.md:301  cannot find type 'Node' in scope
+2cf42ccf6dda  Docs/Vision/Vision.md:316  expected ',' separator
+52166dfc11a5  Docs/Vision/Vision.md:342  cannot find type 'Chirality' in scope
+af9590cae86a  Docs/Vision/Vision.md:362  expected ',' separator
+3672b99868c9  Docs/Vision/Vision.md:388  expected '{' to start getter definition
+62a08cfbf4fe  Docs/Vision/Vision.md:417  expected '{' to start getter definition
+b7b045af9d05  Docs/Vision/Vision.md:448  cannot find 'tracker' in scope
+ab5db32f2c65  Docs/Vision/Vision.md:461  expected ',' separator
+f3c88e3b9780  Docs/Vision/Vision.md:470  cannot find 'drawMyBackground' in scope
+6bca905e0b7b  Docs/Vision/Vision.md:488  expected ',' separator
+070e4cf64081  Docs/Vision/Vision.md:513  expected ',' separator
+227417b04092  Docs/Vision/Vision.md:533  cannot find 'encoderURL' in scope
+d9332481baa6  Docs/Vision/Vision.md:575  expected parameter name followed by ':'
+9a3fb8aecfe9  Docs/Vision/Vision.md:601  expected ',' separator
+89d002609bbe  Docs/Vision/Vision.md:627  expected ',' separator
+de264bce6eb7  Docs/Vision/Vision.md:654  expected ',' separator
+6f077e6e8bb9  Docs/Vision/Vision.md:696  expected '{' to start getter definition
+d1425fc54681  Docs/Vision/Vision.md:712  expected ',' separator
+9b7a1d5882a9  Docs/Vision/Vision.md:742  expected '{' to start getter definition
+dee10b654a59  Docs/Vision/Vision.md:765  expected ',' separator
+74524523d73d  Docs/Vision/Vision.md:784  expected '{' to start getter definition
+ddfc90dfdf31  Docs/Vision/Vision.md:824  expected ',' separator
+3c4a18f23a50  Docs/Vision/Vision.md:858  expected '{' to start getter definition
+bc92ab8b42ae  Docs/Vision/Vision.md:875  expected ',' separator
 1f6728d0dc5c  Docs/Vision/Vision.md:88  expected ',' separator
-f178c1b8e0e9  Docs/Vision/Vision.md:899  expected '{' in body of function declaration
-aa1d08606449  Docs/Vision/Vision.md:914  expected ',' separator
-cfa1e0f3ccb4  Docs/Vision/Vision.md:956  expected ',' separator
+f178c1b8e0e9  Docs/Vision/Vision.md:913  expected '{' in body of function declaration
+aa1d08606449  Docs/Vision/Vision.md:928  expected ',' separator
+cfa1e0f3ccb4  Docs/Vision/Vision.md:970  expected ',' separator

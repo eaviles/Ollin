@@ -389,6 +389,7 @@ override func draw() {
 BodyTracker3D(_ source: any FrameSource)
 var body: Body3D? { get }
 static func detect(in: Image) async throws -> Body3D?
+static var freesLeftoverBuffers: Bool { get set }    // on by default
 ```
 
 `BodyTracker3D` finds one person's pose **in space** from an ordinary 2D camera. `BodyTracker` gives flat picture coordinates, but here every joint gets a 3D position in meters. The camera is still the same single webcam. Even so, the sketch knows how far away the person is, how tall they are, and what their figure looks like from the side.
@@ -399,6 +400,15 @@ It differs from the 2D tracker in two ways, and both matter before you choose it
 - **The full skeleton, always.** All 17 joints are placed every time, so joints the camera cannot see are the model's best guess. Their canvas projections land outside the frame's rectangle rather than disappearing, and there is no per-joint confidence. The 2D tracker does the opposite, because it drops what it cannot see.
 
 It is a heavier neural model, so see [Availability](#availability).
+
+**Memory over a long run.** The system's 3D pose model leaves one buffer behind on every analysis, about a third of a megabyte that nothing uses again. At a camera's pace that is a gigabyte every minute and a half. The tracker finds those buffers as it runs and frees them, so the sketch's memory holds steady. In detail:
+
+- **It frees only what it is sure of.** A buffer goes only when it matches what was measured: its size and format, two owners that never let go, and exactly one more of them for each analysis. Where the leftovers look any different, or on a system that leaves none, it frees nothing and stops looking. In the first case it says so once on stderr.
+- **Some growth is left.** The model also leaves a few small objects behind each time, about 3 KB an analysis, and those stay. At a camera's pace that is about 300 MB an hour.
+- **It pauses memory for a moment.** Finding the buffers holds the process's memory allocator, once every thirty analyses, for about a third of a millisecond. About once a minute it reads the whole heap instead. That took 1 ms at the start of a run and 10 ms ten minutes in, and it takes longer in a sketch that holds a great many small objects, so it happens less often as it grows. A thread that asks for memory in that moment waits that long. An audio thread that takes no memory while it renders never waits.
+- **One switch turns it off.** `BodyTracker3D.freesLeftoverBuffers = false` leaves the leftovers alone. The cleanup runs on macOS only.
+
+The 2D `BodyTracker` leaves nothing behind, so a sketch that needs no depth can run it for any length of time.
 
 <a name="body3d"></a>
 
