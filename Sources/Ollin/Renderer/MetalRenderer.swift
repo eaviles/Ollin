@@ -945,6 +945,13 @@ final class MetalRenderer {
     /// to show the two leave the same bytes.
     nonisolated(unsafe) static var skipsEmptyVolumeBlocks = true
 
+    /// Whether a solid glass body's walk through the scene behind it
+    /// (`sceneThroughGlass()`) passes over the blocks of the layer its ray cannot
+    /// meet anything in. On, always, outside a test: off, every walk reads every
+    /// pixel on its ray, which is what a probe draws beside the skipping walk to
+    /// show the two leave the same bytes.
+    nonisolated(unsafe) static var skipsSceneBlocks = true
+
     /// Whether a particle batch's covering square is drawn as one point
     /// primitive for `style` at this pass's `pixelScale` (texels per canvas
     /// point), given the largest particle it holds in points: the square the
@@ -1593,10 +1600,20 @@ final class MetalRenderer {
     /// (the mip chain is the roughness blur, so a frosted body softens the scene the way
     /// it softens the environment). Cached by size, rewritten whole each frame the
     /// feature is on. `.private`, so nothing round-trips to the CPU.
+    ///
+    /// Beside them, the lens walk's skip table (`sceneBehindBoundsTex`,
+    /// `ollin_scene_depth_bounds`): for each block of the resolved depth's pixels a
+    /// plane nothing in it is nearer than and its farthest depth, with the same for
+    /// each region of blocks in the rows under those. Two small passes fill it
+    /// after the pre-pass (the blocks from the pixels into `sceneBehindBlocksTex`,
+    /// the table from the blocks), and a solid body's walk reads it to pass over
+    /// the stretches of its ray that meet nothing.
     var sceneBehindMSAATex: MTLTexture?
     var sceneBehindDepthTex: MTLTexture?
     var sceneBehindDepthResolveTex: MTLTexture?
     var sceneBehindResolveTex: MTLTexture?
+    var sceneBehindBlocksTex: MTLTexture?
+    var sceneBehindBoundsTex: MTLTexture?
     var sceneBehindSize = (width: 0, height: 0)
 
     /// The wet-ground pre-pass targets (`encodeStrokeGroundPass`): the frame drawn

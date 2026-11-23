@@ -1055,6 +1055,20 @@ typedef struct {
 // behind it), so a larger ceiling would buy picture nobody can see.
 #define OLLIN_MAX_REFLECTION_BOUNCES 8
 
+// The lens walk's skip table (`sceneThroughGlass()`, a solid body): the scene-behind
+// layer's pixels are grouped into blocks of this many a side, and the blocks into
+// regions of this many a side, and the table holds the nearest and the farthest view
+// depth of each. The walk tests every pixel its ray crosses and uses the table to
+// pass over a block or a region whole, where nothing in it can change what a
+// pixel-by-pixel walk would decide. The table is one texture: the blocks' rows
+// first, the regions' rows under them.
+#define OLLIN_SCENE_BLOCK 8
+#define OLLIN_SCENE_REGION 64
+// The most a lens walk reads along one ray, the table and the pixels together: the
+// bound on what one glass pixel can cost. A ray that spends it reads the last pixel
+// it stood in front of.
+#define OLLIN_SCENE_WALK_READS 192
+
 typedef struct {
     simd_float4 ambient;          // rgb linear ambient (lights every surface flatly); a unused
     simd_float4 cameraPosition;   // world-space eye xyz (for the specular view direction);
@@ -1222,10 +1236,13 @@ typedef struct {
                                   // screen-edge fade width in uv (a lookup that leaves the frame
                                   // dissolves back into the environment instead of smearing the
                                   // border pixel, which is the honest edge of a screen-space
-                                  // read), w unused. A solid body (thickness > 0) reads the
+                                  // read), w = 1 to have the lens walk read every pixel on its
+                                  // ray without the skip table (a test's switch; 0 always
+                                  // otherwise). A solid body (thickness > 0) reads the
                                   // layer's depth too: it refracts out through its far side and
                                   // walks that exiting ray to the scene, so the picture inside it
                                   // is a lens's (inverted past the focus), not a shifted copy.
+                                  // The walk's skip table is bound at fragment texture 30.
     simd_float4x4 sceneViewProjection;
                                   // world -> clip of the frame being rendered, carrying the same
                                   // temporal-AA jitter the geometry does, so a refracted exit

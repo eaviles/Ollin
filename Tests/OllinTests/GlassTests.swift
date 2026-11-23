@@ -481,6 +481,85 @@ struct SceneThroughGlassProbes {
         #expect(inside < 20, "the post printed inside the sphere: \(inside)")
     }
 
+    /// The column of one edge of a block inside the lens, row by row. The red block
+    /// shows in the right half of the picture and the blue one in the left; `outer`
+    /// is the edge toward the ball's rim (the last red pixel of a row, the first
+    /// blue one) and the other is the edge toward its middle.
+    private func blockEdge(_ img: CGImage, red: Bool, outer: Bool, rows: Range<Int>) -> [Int] {
+        let d = pixels(of: img)
+        let w = img.width
+        return rows.compactMap { y in
+            let columns = red ? Array(w / 2 ..< w * 3 / 4) : Array(w / 4 ..< w / 2)
+            let inked = columns.filter { x in
+                let r = Int(d[(y * w + x) * 4]), b = Int(d[(y * w + x) * 4 + 2])
+                return (red ? r - b : b - r) > 60
+            }
+            return red == outer ? inked.last : inked.first
+        }
+    }
+
+    /// The rows where an edge stands a pixel and a half or more off the line through
+    /// the rows two above and two below it. A curved edge drawn a pixel at a time
+    /// stays within one.
+    private func strays(_ edge: [Int]) -> Int {
+        guard edge.count > 4 else { return 0 }
+        return (2 ..< edge.count - 2).filter { i in
+            abs(Double(edge[i]) - Double(edge[i - 2] + edge[i + 2]) / 2) >= 1.5
+        }.count
+    }
+
+    /// A block seen through a solid ball has an edge as even as a pixel grid can
+    /// draw it. The ray that leaves the ball is walked across the layer one pixel
+    /// at a time, so a ray that meets the block's face just inside its edge finds
+    /// it. A walk that samples the path every so many pixels steps over that short
+    /// stretch for some rays and not for their neighbors, and the edge comes out in
+    /// uneven steps of several pixels: under a walk that steps 1/40 of the frame
+    /// this probe reads 6 and 11 straying rows on the two edges. The edges measured
+    /// are the two toward the ball's rim; the two toward its middle are the image
+    /// of the blocks' steep side faces, which the walk's continuity test still
+    /// turns down on some rows.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aBlockSeenThroughALensKeepsAnEvenEdge() throws {
+        let img = try OllinApp.image(of: LensEdgeProbe(), frame: 1)
+        let rows = 190 ..< 345
+        let red = blockEdge(img, red: true, outer: true, rows: rows)
+        let blue = blockEdge(img, red: false, outer: true, rows: rows)
+        // Both blocks are in the lens on every row measured, or there is no edge to read.
+        #expect(red.count == rows.count, "the red block is missing on \(rows.count - red.count) rows")
+        #expect(blue.count == rows.count, "the blue block is missing on \(rows.count - blue.count) rows")
+        #expect(strays(red) == 0, "the red block's edge strays on \(strays(red)) rows")
+        #expect(strays(blue) == 0, "the blue block's edge strays on \(strays(blue)) rows")
+    }
+
+    /// The walk passes over the blocks and regions of the layer its ray cannot meet
+    /// anything in, and leaves the bytes it leaves reading every pixel on the ray:
+    /// a lens over a wall, a seam, a foreground post, a prism's three walks, the
+    /// two blocks over a floor, and a post in front of the glass where the rays
+    /// that cross it are traveling behind a panel (a ray behind something may pass
+    /// over a block only when nothing in the block stands in front of the glass,
+    /// or the walk would miss the refusal the post is owed).
+    @Test(.enabled(if: Snapshot.hasMetal), arguments: 0 ..< 6)
+    func passingOverBlocksLeavesTheSameBytes(scene: Int) throws {
+        func render(skipping: Bool) throws -> [UInt8] {
+            MetalRenderer.skipsSceneBlocks = skipping
+            defer { MetalRenderer.skipsSceneBlocks = true }
+            let sketch: Sketch
+            switch scene {
+            case 0: sketch = SceneThroughGlassProbe.make(kind: .lensSolid)
+            case 1: sketch = SceneThroughGlassProbe.make(kind: .barsSolid)
+            case 2: sketch = SceneThroughGlassProbe.make(kind: .frontPost)
+            case 3: sketch = SceneThroughGlassProbe.make(kind: .prismDispersive)
+            case 4: sketch = LensEdgeProbe()
+            default: sketch = SceneThroughGlassProbe.make(kind: .postAcrossAHiddenRay)
+            }
+            return pixels(of: try OllinApp.image(of: sketch, frame: 1))
+        }
+        let skipped = try render(skipping: true)
+        let stepped = try render(skipping: false)
+        let differing = zip(skipped, stepped).filter { $0 != $1 }.count
+        #expect(differing == 0, "\(differing) bytes differ between the two walks")
+    }
+
     /// The bytes of a region, for the pixels a change must leave alone.
     private func bytes(_ img: CGImage, x: ClosedRange<Double>, y: ClosedRange<Double>) -> [UInt8] {
         let d = pixels(of: img)
@@ -590,6 +669,39 @@ private final class PaneOverWall: Sketch {
     }
 }
 
+/// A solid glass ball in front of two blocks standing on a floor, well past its
+/// focus: the ball shows them turned over, the red one on its right and the blue one
+/// on its left, each with one edge the walk has to find pixel by pixel.
+private final class LensEdgeProbe: Sketch {
+    override var canvasSize: CanvasSize { .square(512) }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        camera(.orbiting(target: Vector3(0, 1.0, 0), radius: 7, azimuth: 0, elevation: 0.16,
+                         fieldOfView: .pi / 4, near: 1, far: 40))
+        environment(.studio)
+        sceneThroughGlass()
+        withState {
+            material(.dielectric(roughness: 0.8))
+            fill(Color(white: 0.25))
+            translate(0, -0.55, 0)
+            drawBox(width: 30, height: 1.0, depth: 18)
+        }
+        for (x, color) in [(-1.0, Color(hex: 0xe6533c)), (0.9, Color(hex: 0x3f7fd6))] {
+            withState {
+                material(.dielectric(roughness: 0.6))
+                fill(color)
+                translate(x, 1.5, -3.0)
+                drawBox(width: 1.0, height: 4.0, depth: 0.5)
+            }
+        }
+        material(.glass(thickness: 2.4))
+        fill(.white)
+        translate(0, 1.2, 0.8)
+        drawSphere(radius: 1.2)
+    }
+}
+
 private final class SceneThroughGlassProbe: Sketch {
     enum Kind {
         case wallShown, wallEnvOnly
@@ -603,6 +715,7 @@ private final class SceneThroughGlassProbe: Sketch {
         case prismClear, prismDispersive
         case envPrismClear, envPrismDispersive
         case tracedPrismClear, tracedPrismDispersive
+        case postAcrossAHiddenRay
     }
     var kind: Kind = .wallShown
 
@@ -755,6 +868,35 @@ private final class SceneThroughGlassProbe: Sketch {
                 || kind == .tracedPrismDispersive
             material(.glass(ior: 1.8, thickness: 2.4, dispersion: prism ? 1 : 0))
             drawSphere(radius: 1.2)
+
+        case .postAcrossAHiddenRay:
+            // A panel stands behind the ball on its right, a far wall behind both,
+            // and a post in front of the ball, off to its right, inside the panel's
+            // span on screen. The rays that leave the ball's left half cross over to
+            // the right, pass behind the panel's near edge, and are still behind it
+            // where their paths cross the post.
+            sceneThroughGlass()
+            withState {
+                fill(Color(hex: 0xd94430))
+                material(.dielectric(roughness: 0.8))
+                translate(0, 0, -8)
+                drawBox(width: 30, height: 30, depth: 0.4)
+            }
+            withState {
+                fill(Color(hex: 0x2a4fd6))
+                material(.dielectric(roughness: 0.8))
+                translate(1.6, 0, -2.0)
+                drawBox(width: 2.0, height: 8, depth: 0.1)
+            }
+            withState {
+                fill(Color(hex: 0xe8c23a))
+                material(.dielectric(roughness: 0.8))
+                translate(0.435, 0, 3.5)
+                drawBox(width: 0.2, height: 8, depth: 0.1)
+            }
+            fill(.white)
+            material(.glass(thickness: 2.0))
+            drawSphere(radius: 1.0)
         }
     }
 }

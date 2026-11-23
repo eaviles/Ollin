@@ -3483,6 +3483,86 @@ it), so every pre-glass frame is bit-identical. The moving parts:
   a follow-up). Roughness on the traced path blends toward the env-refraction
   sample by the reflection wrapper's constants (a single ray cannot frost).
 
+### The scene through glass: the lens walk and its table
+
+`sceneThroughGlass()` draws the frame once more without the glass, and a solid body
+walks the ray that leaves it across that layer's depth to where the ray meets the
+scene (`ollin_scene_march` in `Shader3D.metal`). The walk has had two forms, and the
+difference between them is the whole of this section.
+
+- **The first form sampled the path.** It stepped up to 1/40 of the frame (27
+  pixels at 1080), at most 64 samples, and bisected the first sample found behind
+  the layer. A ray that meets a block's face just inside the block's edge is
+  behind that face for only a few pixels of its path before it leaves the block's
+  outline, so whether a sample landed in that stretch was a matter of where the
+  ray's samples happened to fall. Neighboring rays disagreed, and the edge of
+  everything seen through a ball came out in uneven steps of several pixels. It
+  was found by coloring each outcome of the walk for one render (met, left the
+  frame, refused, hidden, spent) and reading which outcomes sat either side of a
+  ragged edge: met against missed. Cutting the stride to a quarter shrank the
+  steps to a quarter, and testing every pixel removed them. Bisection cannot help:
+  it sharpens a crossing a sample has already found.
+- **The second form tests every pixel.** One step is one pixel along the path's
+  longer axis, and each pixel is tested against the span of depth the ray covers
+  across it, from half a step before to half a step after. The rules the first
+  form had found from pictures carry over in that form: a crossing counts where
+  the layer is continuous with the pixel before, a jump is a silhouette passed
+  behind, and a ray that ends hidden reads the last pixel it stood in front of.
+  Everything is in one over the depth, which is linear along the path and linear
+  across a flat surface, so the walk divides nothing.
+- **Reading every pixel needs a way past the empty ones.** A table holds, for each
+  8-pixel block and each 64-pixel region of blocks, a bound on what the cell
+  holds. The usual bound is the nearest depth in the cell, and it was the first
+  one tried here: it fails over a floor, where a cell's nearest point is its
+  bottom edge and a ray passing over the top of the cell is deeper than that
+  without being behind anything. With it, a ray over a floor read 17 to 32
+  times. The bound kept is a plane in 1/depth that nothing in the cell is nearer
+  than, the tilt taken from three of the block's corners and the plane raised
+  until it clears every pixel. A floor or a wall is exactly such a plane, the
+  ray is a straight line in the same measure, and so one read says for how many
+  steps the ray stays in front: the walk passes over those and no more. Where a
+  cell holds an edge, the level plane through its nearest pixel is kept instead,
+  whichever stands lower over the cell's middle. The cell's farthest depth is
+  kept beside the plane for a ray traveling behind something, which the nearest
+  alone cannot pass over anything.
+- **The table is exact by construction and by test.** It only ever removes reads
+  whose answer is already decided, so the walk with it must leave the bytes the
+  walk without it leaves, and a test draws the two side by side over six scenes
+  (`passingOverBlocksLeavesTheSameBytes`, with `MetalRenderer.skipsSceneBlocks`
+  off for the second). That test caught every fault planted in the table and in
+  the passing-over arithmetic. One guard is reached by no scene: a step that
+  lands exactly on a cell's wall is checked against the cell before it is passed
+  over, and a ray starts on an exact pixel boundary about once in thirty thousand.
+- **What the table costs is where it is written, not how much.** The first table
+  pass built each region from its 4,096 pixels. That is 289 fragments at 1080
+  square, each a loop of thousands of reads, all in one corner of a small
+  target: work the GPU cannot spread across itself, and it measured 3 ms a frame
+  for a table whose blocks, eighteen thousand fragments of 64 reads, cost a
+  fraction of that. Regions are now built from their 64 blocks' planes (a
+  region's plane takes the blocks' mean tilt and is raised to clear each block's
+  own plane at its corners), and both passes together cost 0.2 ms.
+- **Measured** on an M2 at 1080 square, old shaders against new in one process
+  with the GPU kept busy: a solid ball filling the frame draws in 11.4 ms against
+  8.5 (the walk alone 5.4 against 2.6); the pre-pass is 2.3 of that either way.
+- **A frame time can hide a GPU cost, and did.** The example's own row of five
+  bodies read 7.6 ms old and new, which looked like no cost at all. A debug
+  build's CPU sets the pace at 7.5 ms in that scene, and anything the GPU does
+  inside that span is invisible. Giving both walks four rays a pixel, then
+  eight, lifts the GPU past the CPU, and the difference between the two divided
+  by four is one walk: 1.3 ms old, 4.4 ms new. When a variant reads the same as
+  its baseline, read the baseline against a scene with the feature off before
+  believing it: there the pre-pass itself, a whole second draw of the scene,
+  also read as free.
+- **The mean read count is not the cost.** In that scene the bodies cover a
+  tenth of the frame and nine in ten of their pixels read 16 times or fewer,
+  yet a walk costs almost what it costs with glass over the whole frame. The
+  GPU shades neighboring pixels together and a group runs as long as its
+  longest walk, and the long walks (a tenth of the pixels, along the gaps
+  between the blocks' images, where a ray passes over one 8-pixel block at a
+  time because no 64-pixel region there is clear) are spread through the
+  groups. Lowering the bound on the reads trades picture for little: 48 reads
+  takes a walk to 3.1 ms and moves 6,752 pixels of the frame.
+
 ### Clearcoat and sheen
 
 The two layered lobes on the physically-based finish (`Material.clearcoat` /

@@ -1420,6 +1420,110 @@ fragment float4 ollin_fx_depth_normalize(PresentOut in [[stage_in]],
     return float4(srgbToLinear(float3(t)), 1.0);
 }
 
+// The lens walk's skip table (`sceneThroughGlass()`, a solid body), one texel for each
+// block of `OLLIN_SCENE_BLOCK` pixels a side of the scene-behind layer and, in the
+// rows under those, one for each region of `OLLIN_SCENE_REGION`. A texel holds a
+// plane no pixel of its cell stands nearer than, and the cell's farthest pixel, all
+// in one over the view depth (`ollin_layer_inverse_depth`), where a flat surface is
+// a plane across the screen:
+//
+//   xyz = (a, b, c): every pixel's 1/depth is at most a x + b y + c, with x and y
+//         counted in pixels from the cell's first one;
+//   w   = the smallest 1/depth in the cell.
+//
+// Over a floor or a wall the plane is the surface itself, and a ray passing in
+// front of it is cleared across the whole cell in one read. `ollin_scene_march`
+// reads the table to pass over what its ray cannot meet anything in. Two passes
+// write it, because a loop over a region's 4,096 pixels in each of a few hundred
+// fragments is work the GPU cannot spread out (it measured 3 ms of a frame):
+// `ollin_scene_depth_blocks` reads the pixels into the blocks, and
+// `ollin_scene_depth_bounds` copies the blocks and builds each region from its own.
+
+// The plane to keep for a cell, between a tilted one (`slope`, raised by `lift` to
+// clear everything) and the level one through the nearest thing in it: whichever
+// stands lower over the middle of the cell, which is where it stands on average.
+// The walk raises a tilted plane by half a pixel of its slope, which counts against
+// it. `mid` is the cell's middle, counted from its first pixel.
+static inline float3 ollin_scene_bound_plane(float2 slope, float lift, float nearest, float2 mid) {
+    float tilted = dot(slope, mid) + lift + 0.5 * (abs(slope.x) + abs(slope.y));
+    return tilted < nearest ? float3(slope, lift) : float3(0.0, 0.0, nearest);
+}
+
+// The blocks, from the layer's resolved depth. A block's plane takes its tilt from
+// three of the block's corners, which is the surface's own tilt wherever the block
+// holds one flat surface, and is then raised until it clears every pixel.
+// params[0] = the last row of the layer's inverse view projection. A block on the
+// frame's right or bottom edge covers the pixels the frame has.
+fragment float4 ollin_scene_depth_blocks(PresentOut in [[stage_in]],
+                                         depth2d<float> depthTex [[texture(0)]],
+                                         constant float4 *params [[buffer(0)]]) {
+    uint2 dims = uint2(depthTex.get_width(), depthTex.get_height());
+    float4 unprojectRow = ollin_layer_unproject_row(params[0], 1.0 / float2(dims));
+    uint2 from = uint2(in.position.xy) * OLLIN_SCENE_BLOCK;
+    if (from.x >= dims.x || from.y >= dims.y) return float4(0.0);
+    uint2 count = min(from + OLLIN_SCENE_BLOCK, dims) - from;
+    float2 reach = float2(count) - 1.0;
+    float corner = ollin_layer_inverse_depth(from, unprojectRow, depthTex);
+    float2 slope = float2(
+        count.x > 1 ? (ollin_layer_inverse_depth(from + uint2(count.x - 1, 0), unprojectRow, depthTex)
+                       - corner) / reach.x : 0.0,
+        count.y > 1 ? (ollin_layer_inverse_depth(from + uint2(0, count.y - 1), unprojectRow, depthTex)
+                       - corner) / reach.y : 0.0);
+    float lift = -1e30, nearest = 0.0, farthest = 1e30;
+    for (uint y = 0; y < count.y; ++y) {
+        for (uint x = 0; x < count.x; ++x) {
+            float w = ollin_layer_inverse_depth(from + uint2(x, y), unprojectRow, depthTex);
+            lift = max(lift, w - dot(slope, float2(x, y)));
+            nearest = max(nearest, w);
+            farthest = min(farthest, w);
+        }
+    }
+    return float4(ollin_scene_bound_plane(slope, lift, nearest, reach * 0.5), farthest);
+}
+
+// The table: the blocks as they are, and under them each region built from the
+// blocks it holds. A region's plane takes the mean tilt of its blocks and is raised
+// until it clears every block's own plane, which clears every pixel under those.
+// params[0].xy = the layer's size in pixels. A texel past the regions is never read.
+fragment float4 ollin_scene_depth_bounds(PresentOut in [[stage_in]],
+                                         texture2d<float> blocksTex [[texture(0)]],
+                                         constant float4 *params [[buffer(0)]]) {
+    uint2 at = uint2(in.position.xy);
+    uint2 blocks = uint2(blocksTex.get_width(), blocksTex.get_height());
+    if (at.y < blocks.y) return blocksTex.read(at);
+    at.y -= blocks.y;
+    uint2 dims = uint2(params[0].xy);
+    uint per = OLLIN_SCENE_REGION / OLLIN_SCENE_BLOCK;        // blocks a side of a region
+    uint2 from = at * per;
+    if (from.x >= blocks.x || from.y >= blocks.y) return float4(0.0);
+    uint2 count = min(from + per, blocks) - from;
+    float2 slope = float2(0.0);
+    for (uint y = 0; y < count.y; ++y) {
+        for (uint x = 0; x < count.x; ++x) slope += blocksTex.read(from + uint2(x, y)).xy;
+    }
+    slope /= float(count.x * count.y);
+    float lift = -1e30, nearest = 0.0, farthest = 1e30;
+    for (uint y = 0; y < count.y; ++y) {
+        for (uint x = 0; x < count.x; ++x) {
+            float4 block = blocksTex.read(from + uint2(x, y));
+            // The block's first pixel, counted from the region's, and how far its
+            // pixels reach from there (the frame's edge may cut a block short).
+            uint2 first = (from + uint2(x, y)) * OLLIN_SCENE_BLOCK;
+            float2 origin = float2(uint2(x, y) * OLLIN_SCENE_BLOCK);
+            float2 reach = float2(min(first + OLLIN_SCENE_BLOCK, dims) - first) - 1.0;
+            // The block's plane over the region's is largest at one of its corners.
+            float2 over = block.xy - slope;
+            lift = max(lift, block.z - dot(slope, origin)
+                             + max(over.x, 0.0) * reach.x + max(over.y, 0.0) * reach.y);
+            nearest = max(nearest, block.z + max(block.x, 0.0) * reach.x + max(block.y, 0.0) * reach.y);
+            farthest = min(farthest, block.w);
+        }
+    }
+    uint2 first = from * OLLIN_SCENE_BLOCK;
+    float2 reach = float2(min(first + OLLIN_SCENE_REGION, dims) - first) - 1.0;
+    return float4(ollin_scene_bound_plane(slope, lift, nearest, reach * 0.5), farthest);
+}
+
 // Rebuild a view-space position from the gray depth layer (decoded to a 0…1 distance
 // fraction `t`) and the camera geometry packed in params[2..3]. View-space distance is
 // near + t·(far−near); the lateral offset is the frustum half-extent at that distance

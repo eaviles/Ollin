@@ -3475,7 +3475,7 @@ extension MetalRenderer {
                                gi: GIResolved? = nil,
                                caustics: MTLTexture? = nil,
                                pathTraced: PathTracedLayer? = nil)
-        -> (texture: MTLTexture, depth: MTLTexture,
+        -> (texture: MTLTexture, depth: MTLTexture, bounds: MTLTexture,
             viewProjection: simd_float4x4, inverseViewProjection: simd_float4x4)? {
         guard drawer.sceneThroughGlassEnabled else { return nil }
         guard let camera = drawer.camera3D else {
@@ -3498,17 +3498,23 @@ extension MetalRenderer {
             guard let msaa = makeFloatMSAA(width: width, height: height, storage: storage),
                   let depth = makeDepthMSAA(width: width, height: height, storage: storage),
                   let depthResolve = makeDepthResolve(width: width, height: height),
-                  let resolve = makeFloatResolveMipped(width: width, height: height)
+                  let resolve = makeFloatResolveMipped(width: width, height: height),
+                  let blocks = makeSceneBounds(width: width, height: height, regions: false),
+                  let bounds = makeSceneBounds(width: width, height: height, regions: true)
             else { return nil }
             sceneBehindMSAATex = msaa
             sceneBehindDepthTex = depth
             sceneBehindDepthResolveTex = depthResolve
             sceneBehindResolveTex = resolve
+            sceneBehindBlocksTex = blocks
+            sceneBehindBoundsTex = bounds
             sceneBehindSize = (width, height)
         }
         guard let msaa = sceneBehindMSAATex, let depth = sceneBehindDepthTex,
               let depthResolve = sceneBehindDepthResolveTex,
-              let resolve = sceneBehindResolveTex else { return nil }
+              let resolve = sceneBehindResolveTex,
+              let blocks = sceneBehindBlocksTex,
+              let bounds = sceneBehindBoundsTex else { return nil }
 
         let pass = MTLRenderPassDescriptor()
         pass.colorAttachments[0].texture = msaa
@@ -3554,7 +3560,37 @@ extension MetalRenderer {
         }
         let u3 = makeUniforms3D(drawer, camera: camera, viewport: viewport)
         let viewProjection = u3.projection * u3.view
-        return (resolve, depthResolve, viewProjection, simd_inverse(viewProjection))
+        let inverse = simd_inverse(viewProjection)
+        // The lens walk's skip table, from the depth the pass just resolved: the
+        // blocks from the pixels, then the table from the blocks. The first pass is
+        // handed the one row of the inverse that turns a stored depth into one over
+        // a view depth, the same row the walk itself reads a pixel through.
+        let inverseW = SIMD4<Float>(inverse.columns.0.w, inverse.columns.1.w,
+                                    inverse.columns.2.w, inverse.columns.3.w)
+        encodeEffectFragment("ollin_scene_depth_blocks", inputs: [depthResolve], output: blocks,
+                             params: [inverseW], into: cb)
+        encodeEffectFragment("ollin_scene_depth_bounds", inputs: [blocks], output: bounds,
+                             params: [SIMD4(Float(width), Float(height), 0, 0)], into: cb)
+        return (resolve, depthResolve, bounds, viewProjection, inverse)
+    }
+
+    /// The lens walk's skip table for a scene-behind layer of this size: one texel
+    /// per block of `OLLIN_SCENE_BLOCK` pixels a side and, with `regions`, under
+    /// those rows one per region of `OLLIN_SCENE_REGION`, each holding a plane
+    /// nothing in its cell is nearer than and the cell's farthest depth, in single
+    /// precision (a half float's three digits would round a depth across the
+    /// walk's comparison). Without `regions` it is the blocks alone, which the
+    /// table is built from.
+    func makeSceneBounds(width: Int, height: Int, regions: Bool) -> MTLTexture? {
+        let block = Int(OLLIN_SCENE_BLOCK), region = Int(OLLIN_SCENE_REGION)
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .rgba32Float,
+            width: max(1, (width + block - 1) / block),
+            height: max(1, (height + block - 1) / block + (regions ? (height + region - 1) / region : 0)),
+            mipmapped: false)
+        desc.usage = [.renderTarget, .shaderRead]
+        desc.storageMode = .private
+        return device.makeTexture(descriptor: desc)
     }
 
     /// Whether this frame's canvas draws a stroke or a fill whose medium reads

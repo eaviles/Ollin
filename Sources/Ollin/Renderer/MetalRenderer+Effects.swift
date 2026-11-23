@@ -3646,6 +3646,7 @@ extension MetalRenderer {
                         caustics: MTLTexture? = nil,
                         pathTraced: PathTracedLayer? = nil,
                         sceneBehind: (texture: MTLTexture, depth: MTLTexture,
+                                      bounds: MTLTexture,
                                       viewProjection: simd_float4x4,
                                       inverseViewProjection: simd_float4x4)? = nil,
                         skippingTransmissive: Bool = false,
@@ -3934,10 +3935,12 @@ extension MetalRenderer {
             // the layer was actually drawn with, so an exit point lands on the texel it
             // holds; the layer's top mip drives the roughness blur, and the fade band is a
             // fixed fraction of the frame. The inverse turns the layer's depth back into
-            // scene points, the ground a solid body's exiting ray walks to.
+            // scene points, the ground a solid body's exiting ray walks to. The last
+            // value is the walk's test switch (`MetalRenderer.skipsSceneBlocks`).
             if let sceneBehind {
                 lighting.sceneBehind = SIMD4(1, Float(sceneBehind.texture.mipmapLevelCount - 1),
-                                             Float(sceneBehindEdgeFade), 0)
+                                             Float(sceneBehindEdgeFade),
+                                             MetalRenderer.skipsSceneBlocks ? 0 : 1)
                 lighting.sceneViewProjection = sceneBehind.viewProjection
                 lighting.sceneInverseViewProjection = sceneBehind.inverseViewProjection
             }
@@ -4216,6 +4219,9 @@ extension MetalRenderer {
             // Its resolved depth (tex 28), the ground the lens walk reads; the slot
             // is a `depth2d`, so the stand-in is a depth texture too.
             encoder.setFragmentTexture(sceneBehind?.depth ?? ensureDummyDepth(), index: 28)
+            // The lens walk's skip table (tex 30): that depth's nearest and farthest
+            // by block and by region; a never-sampled stand-in otherwise.
+            encoder.setFragmentTexture(sceneBehind?.bounds ?? strip, index: 30)
             // The pre-traced reflection layer (tex 7) when the deferred path is on;
             // a never-sampled stand-in otherwise (`rtReflectionDeferred` gates the
             // read). Only part of the RT-compiled fragment signature.
