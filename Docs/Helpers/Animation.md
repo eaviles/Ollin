@@ -331,6 +331,8 @@ let clean = filter.filter(noisy, deltaTime: deltaTime)
 
 The [Smoothing example](../../Examples/Motion/Smoothing/Sketch.swift) adds jitter to a moving target so you can watch the filter pass smoothly through the noise.
 
+`@Smoothed` steadies one value. For a list of things a detector found, where the things come and go and each has to be told from the others first, there is [`@Steadied`](./Steadied.md).
+
 <a name="sprung"></a>
 
 ### `@Sprung`

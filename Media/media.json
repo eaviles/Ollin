@@ -13822,14 +13822,14 @@
       "stillBecause": "holds still",
       "frame": 480,
       "motion": 0.0,
-      "source": "6cac37b7a3e8707b",
-      "rendered": "2026-11-13",
+      "source": "7bb75f40c4369234",
+      "rendered": "2026-11-23",
       "bytes": {
-        "still": 426793,
-        "stillSmall": 153270
+        "still": 426720,
+        "stillSmall": 153143
       },
-      "still": "examples/Vision/ObjectDetection/still.jpg?v=8bce4554",
-      "stillSmall": "examples/Vision/ObjectDetection/still-640.jpg?v=4b2e03c0",
+      "still": "examples/Vision/ObjectDetection/still.jpg?v=faa6f954",
+      "stillSmall": "examples/Vision/ObjectDetection/still-640.jpg?v=55abb5be",
       "seed": 1
     },
     "Vision/ObjectTracking": {
@@ -13914,20 +13914,21 @@
       "width": 1080
     },
     "Vision/RectangleScan": {
-      "bytes": {
-        "still": 203202,
-        "stillSmall": 67803
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "still",
-      "motion": 0.0,
-      "rendered": "2026-09-10",
-      "source": "06dda1d495e943f7",
-      "still": "examples/Vision/RectangleScan/still.jpg?v=56443417",
       "stillBecause": "holds still",
-      "stillSmall": "examples/Vision/RectangleScan/still-640.jpg?v=1ed20762",
-      "width": 1080
+      "frame": 480,
+      "motion": 0.0,
+      "source": "0c5bc7451e48c75d",
+      "rendered": "2026-11-23",
+      "bytes": {
+        "still": 202260,
+        "stillSmall": 67597
+      },
+      "still": "examples/Vision/RectangleScan/still.jpg?v=2dafb8ca",
+      "stillSmall": "examples/Vision/RectangleScan/still-640.jpg?v=6dfef088",
+      "seed": 1
     },
     "Vision/SceneLabels": {
       "width": 1080,

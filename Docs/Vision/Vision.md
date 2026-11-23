@@ -43,7 +43,8 @@ final class Faces: Sketch {
 
 - [Camera](#camera) - capture the webcam (built-in, Continuity, or external)
 - [Frame sources](#frame-sources) - trackers over any source of frames (a video, your own)
-- [When there is no camera](#nocamera) - `Camera.orStill` and `StillFrames`, so a sketch still has something to read
+- [When there is no camera](#nocamera) - `Camera.orStill`, `Camera.or`, and `StillFrames`, so a sketch still has something to read
+- [Holding found things steady](#steadied) - `@Steadied`, for boxes and corners that shake and blink
 - [FaceTracker](#facetracker) - find faces, landmarks, and head pose
 - [Face](#face) - one detected face, and reading its parts
 - [ContourDetector](#contourdetector) - trace edges into vector contours, read as `contourTree`
@@ -208,7 +209,63 @@ StillFrames(_ picture: Image, rate: Double = 4)
     func start()
 ```
 
-It publishes the picture over and over rather than once, four times a second by default. That is because an analyzer drops frames it cannot keep up with, as every tracker does, so a source that published a single frame could have that one frame dropped and never be read at all. Four times a second is far below what a camera asks of the same analyzer. During an export it publishes at `rate` times a second of the sketch's clock instead, starting on the first frame. A held clock, like a `--settle` draw, publishes nothing.
+**A stand-in of any kind: `Camera.or`.** A still picture is one stand-in. `Camera.or` takes any feed: a film, a screen capture, a feed the sketch draws itself.
+
+```swift
+static func or(_ standIn: () -> any FrameSource & VideoFeed) -> any FrameSource & VideoFeed
+```
+
+```swift
+let feed = Camera.or {
+    let film = try! VideoPlayer(path: "dance.mp4")
+    film.loops = true
+    film.isMuted = true
+    film.play()
+    return film
+}
+lazy var flow = FlowTracker(feed)
+```
+
+The closure builds the stand-in and sets it going. It runs only when the stand-in is needed, so a machine with a camera never opens the film. Everything above holds for it as it does for a picture: `--photo` takes it, a Mac never asked plays it while the system asks, a run with no window never asks, and a refusal leaves it playing with one line in the terminal. When the camera takes over, the stand-in is let go, and a film stops there.
+
+Build the stand-in inside the closure, and do not hold it in a property of the sketch as well. During an export the feed handed back steps its stand-in on the export's clock, and a film the sketch also holds would be stepped twice a frame.
+
+**`isLive` says which one a frame is reading.** Every feed has it. It is `true` for a camera that is running, a screen being captured, and a phone on the cable. It is `false` for a film, a still picture, and a recording. On a feed from `Camera.or` or `Camera.orStill` it is `false` while the stand-in shows and `true` from the camera's first frame.
+
+```swift
+var isLive: Bool { get }        // on every VideoFeed; false unless the feed says otherwise
+```
+
+A sketch reads it to treat the room and footage differently, and it reads it every frame, because the answer can change during a run:
+
+```swift
+// A film has nobody there to click, so a detector gives it its first lock.
+if !feed.isLive { lockFromTheFace() }
+```
+
+[`Examples/Vision/ObjectTracking`](../../Examples/Vision/ObjectTracking), [`OpticalFlow`](../../Examples/Vision/OpticalFlow), and [`ContourTrace`](../../Examples/Vision/ContourTrace) each stand a film in for the camera this way.
+
+`StillFrames` publishes the picture over and over rather than once, four times a second by default. That is because an analyzer drops frames it cannot keep up with, as every tracker does, so a source that published a single frame could have that one frame dropped and never be read at all. Four times a second is far below what a camera asks of the same analyzer. During an export it publishes at `rate` times a second of the sketch's clock instead, starting on the first frame. A held clock, like a `--settle` draw, publishes nothing.
+
+<a name="steadied"></a>
+
+### Holding found things steady
+
+A detector answers each frame on its own. On a live feed its boxes shake by a few pixels, and a thing it is unsure of blinks in and out. [`@Steadied`](../Helpers/Steadied.md) holds the findings steady. Assign what the detector found every frame, and read the same things back: each matched to the one before it and smoothed, shown once it has been found for a moment, and kept through the frames the detector misses it.
+
+```swift
+@Steadied var objects: [Detection] = []
+
+override func draw() {
+    guard let view = drawFrame(feed) else { return }
+    objects = detector.objects          // as found
+    for object in objects {             // steady
+        drawRect(object.bounds(in: view))
+    }
+}
+```
+
+`Detection` (what a [`ModelTracker`](#modeltracker) finds) and `DetectedRectangle` (what a [`RectangleDetector`](#rectangledetector) finds) can be steadied. The detector's own property is unchanged, so the findings as found are always there to read. `$objects.things` gives each thing a number that stays with it and says how long it has gone unfound. The [`Steadied` page](../Helpers/Steadied.md) has the settings, what was measured, and how to steady a type of your own.
 
 <a name="facetracker"></a>
 
@@ -591,6 +648,8 @@ override func draw() {
     for r in rects.rectangles { drawPolygon(r.corners(in: bounds)) }
 }
 ```
+
+On a live feed the corners shake, a rectangle drops out for a frame or two, and anything with an edge is given a different rectangle on every frame. [`@Steadied`](#steadied) takes those out, with settings of its own for this detector.
 
 A `DetectedRectangle` carries `corners(in:)`, `center(in:)`, `bounds(in:)`, and a `confidence`. `corners(in:)` gives the four corners in perimeter order, ready to `drawPolygon` as a closed quad. `bounds(in:)` gives the axis-aligned box that contains them, ready to `drawRect`. The corners come back in perspective, which is what a document scanner uses to warp a page flat. The same type carries [`SaliencyTracker`](#saliencytracker)'s salient regions. Those arrive upright, so `bounds(in:)` is the natural read there.
 
@@ -989,7 +1048,7 @@ A model fills the surfaces that match what it outputs, decoded the same way the 
 
 - **Classifier** (label + confidence outputs) → `classifications` / `topClassification` / `confidence(of:)`, like [`ImageClassifier`](#imageclassifier) but over your model's own vocabulary.
 - **Image-to-image** (a depth estimator, a custom matte, a style-transfer model) → two readings of the same output. `map` is the output as a *value field*: a white-alpha `Image` like the segmentation matte. `tint(_:)` recolors it, and drawing it into the frame's rectangle stretches it onto the picture. `value(at:in:)` gives the value under any canvas point, the same field-shaped query that [`SaliencyTracker`](#saliencytracker) offers. It answers `0…1`, and out-of-range points clamp to the edge. `image` is the output as a *picture*, in full color, for a model that paints rather than measures. A style-transfer model's stylized frame draws as any image would (the `StyleMirror` example). Each surface converts only once something reads it, so a sketch pays only for the reading it uses.
-- **Object detector** (a detector exported with its non-maximum-suppression head, the form Apple's gallery ships) → `objects`, labeled boxes that `bounds(in:)` maps onto the canvas.
+- **Object detector** (a detector exported with its non-maximum-suppression head, the form Apple's gallery ships) → `objects`, labeled boxes that `bounds(in:)` maps onto the canvas. On a live feed those boxes shake and blink, and [`@Steadied`](#steadied) holds them steady.
 - **Semantic segmenter** (a model whose output is a plane of class indices, one per pixel, the DeepLabV3 form) → `classMask`, a [`ClassMask`](#classmask). A class mask reads three ways. It says which classes are in frame and how much of the picture they fill. It gives the class under any canvas point. And it hands over each class as a drawable, tintable mask. The model's own vocabulary comes along when it declares one, as Apple's gallery models do.
 
 ```swift

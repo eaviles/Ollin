@@ -33,6 +33,18 @@ public struct Detection: Sendable {
     }
 }
 
+/// A detection can be held steady from frame to frame (`@Steadied`): its box
+/// is followed by its two opposite corners, as a share of the picture, and
+/// its label and confidence are the newest finding's.
+extension Detection: Steadiable {
+    public var steadyPoints: [Vector2] { boundsN.steadyPoints }
+    public var steadyConfidence: Double { confidence }
+
+    public func steadied(at points: [Vector2]) -> Detection {
+        Detection(label: label, confidence: confidence, boundsN: boundsN.steadied(at: points))
+    }
+}
+
 /// An image-typed model output held as bytes Ollin extracted itself: one gray
 /// 8-bit plane, top-left origin — the same plane the drawable `map` is built
 /// from, so point queries and the picture agree by construction.

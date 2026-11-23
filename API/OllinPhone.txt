@@ -241,6 +241,7 @@ final class PhoneDevice: FrameAdvancing, FrameSource, VideoFeed, Sendable
   var frame: Image? { get }
   var frameSize: Vector2? { get }
   var frameTap: FrameTap? { get set }
+  var isLive: Bool { get }
   var isRunning: Bool { get }
   var latestAir: PhoneAir? { get }
   var latestBodies: [PhoneBody] { get }

@@ -120,24 +120,25 @@ fdc04519f206  Guide/30-Landscapes.md:96  cannot find 'island' in scope
 298b8d77d963  Guide/32-CharactersAndCloth.md:196  labeled block needs 'do'
 c902bc376742  Guide/33-SculptingWithFields.md:202  cannot find 'a' in scope
 1a59c3d7b6ab  Guide/33-SculptingWithFields.md:301  cannot find 'cluster' in scope
-bf0d51f5b035  Guide/36-Seeing.md:127  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-61552bb4a54e  Guide/36-Seeing.md:228  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-966ebfa7e954  Guide/36-Seeing.md:247  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-d73e49577827  Guide/36-Seeing.md:278  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-07a542801faa  Guide/36-Seeing.md:299  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-b380cfa137a1  Guide/36-Seeing.md:313  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-8b185ae41960  Guide/36-Seeing.md:327  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-af4830ee75ab  Guide/36-Seeing.md:342  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-39034bac4599  Guide/36-Seeing.md:372  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-1fae212d3f31  Guide/36-Seeing.md:406  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-50726a7e934f  Guide/36-Seeing.md:421  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-ec4e3ecdc83e  Guide/36-Seeing.md:442  cannot find 'encoderURL' in scope
-492acbe459b1  Guide/36-Seeing.md:456  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-f3d818131e23  Guide/36-Seeing.md:470  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-31e2258486fa  Guide/36-Seeing.md:484  cannot find 'rect' in scope
-92eee42032eb  Guide/36-Seeing.md:498  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-0efaa6bbe105  Guide/36-Seeing.md:541  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
-87607515e1e0  Guide/36-Seeing.md:613  value of type '@MainActor (Camera3D) -> ()' has no member 'frame'
+ca8dd525bebc  Guide/36-Seeing.md:133  cannot find 'faces' in scope
+bf0d51f5b035  Guide/36-Seeing.md:154  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+61552bb4a54e  Guide/36-Seeing.md:255  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+966ebfa7e954  Guide/36-Seeing.md:274  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+d73e49577827  Guide/36-Seeing.md:305  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+07a542801faa  Guide/36-Seeing.md:326  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+b380cfa137a1  Guide/36-Seeing.md:340  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+8b185ae41960  Guide/36-Seeing.md:354  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+af4830ee75ab  Guide/36-Seeing.md:369  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+39034bac4599  Guide/36-Seeing.md:399  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+1fae212d3f31  Guide/36-Seeing.md:433  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+50726a7e934f  Guide/36-Seeing.md:448  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+ec4e3ecdc83e  Guide/36-Seeing.md:469  cannot find 'encoderURL' in scope
+492acbe459b1  Guide/36-Seeing.md:483  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+f3d818131e23  Guide/36-Seeing.md:497  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+31e2258486fa  Guide/36-Seeing.md:511  cannot find 'rect' in scope
+92eee42032eb  Guide/36-Seeing.md:525  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+0efaa6bbe105  Guide/36-Seeing.md:568  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
+87607515e1e0  Guide/36-Seeing.md:640  value of type '@MainActor (Camera3D) -> ()' has no member 'frame'
 f5e48713ab24  Guide/38-ThePhoneAsASensor.md:78  cannot find 'view' in scope
 4faac2f179b2  Guide/39-Listening.md:370  'module' is inaccessible due to 'internal' protection level
 104b31a4394e  Guide/39-Listening.md:40  'module' is inaccessible due to 'internal' protection level

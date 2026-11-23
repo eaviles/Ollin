@@ -1070,7 +1070,8 @@ let package = Package(
         // tracker running over a playing VideoPlayer.
         .testTarget(
             name: "OllinVisionTests",
-            dependencies: ["Ollin", "OllinVision", "OllinVideo", "OllinSamplePhotos", "OllinTestSupport"]
+            dependencies: ["Ollin", "OllinVision", "OllinVideo", "OllinSamplePhotos", "OllinTestSupport"],
+            resources: [.copy("Recordings")]
         ),
         // Syphon correctness: a directory smoke test (always on) plus a
         // Metal-gated in-process publish→discover→receive loopback that

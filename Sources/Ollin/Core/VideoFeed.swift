@@ -19,10 +19,24 @@ public protocol VideoFeed: AnyObject {
     /// override it to name themselves ("Waiting for camera…"); the default is
     /// "Waiting for video…".
     var waitingMessage: String { get }
+
+    /// Whether the feed shows the world as it happens: `true` for a camera
+    /// that is running, a screen being captured, a phone on the cable, and
+    /// `false` for a film, a still picture, or a recording, however much
+    /// they move. A sketch reads it to treat the room and footage
+    /// differently: a mirrored view, a prompt to step into frame, a detector
+    /// that stands in for the click nobody is there to make. The default is
+    /// `false`.
+    ///
+    /// It is a reading of this frame and can change during a run: a feed from
+    /// `Camera.or` turns `true` when the camera takes over from its stand-in.
+    var isLive: Bool { get }
 }
 
 extension VideoFeed {
     public var waitingMessage: String { "Waiting for video…" }
+
+    public var isLive: Bool { false }
 
     /// The letterboxed rectangle that fits this feed's frame inside `container`
     /// without stretching — draw the frame into it and map any analysis results

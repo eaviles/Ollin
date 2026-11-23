@@ -110,6 +110,10 @@ public final class ScreenCapture: FrameSource, VideoFeed {
     /// arriving, as opposed to still looking for the window it was told to find.
     public var isReceiving: Bool { streamIsLive && store.hasDelivered }
 
+    /// Whether the feed shows the world as it happens (`VideoFeed`): `true`
+    /// while the screen's frames arrive.
+    public var isLive: Bool { isReceiving }
+
     /// Whether screen capture can run at all: whether this Mac has granted the
     /// screen-recording permission to whatever launched the sketch. Reads the
     /// system's answer each time, so it flips to `true` in the same session the

@@ -107,7 +107,7 @@ The source is a live property, so a sketch can switch targets from a parameter o
 screen.source = .app("Music")
 ```
 
-**A source that names something not on screen yet is not an error.** The capture keeps looking. It starts by itself the moment the window appears, so you can name a window and then go and open it. `isRunning` stays `true` through the wait, where it means "wanted", and `isReceiving` tells you whether frames are actually arriving.
+**A source that names something not on screen yet is not an error.** The capture keeps looking. It starts by itself the moment the window appears, so you can name a window and then go and open it. `isRunning` stays `true` through the wait, where it means "wanted", and `isReceiving` tells you whether frames are actually arriving. `isLive`, which every feed has, follows `isReceiving`.
 
 <a name="listing-what-is-there"></a>
 

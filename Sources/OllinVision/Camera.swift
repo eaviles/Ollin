@@ -43,6 +43,10 @@ public final class Camera: FrameSource, VideoFeed {
     /// Whether capture is currently running.
     public private(set) var isRunning = false
 
+    /// Whether the feed shows the world as it happens (`VideoFeed`): `true`
+    /// while the camera runs.
+    public var isLive: Bool { isRunning }
+
     private let session = AVCaptureSession()
     private let output = AVCaptureVideoDataOutput()
     private let queue = DispatchQueue(label: "co.eavl.ollin.vision.camera")

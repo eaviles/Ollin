@@ -56,66 +56,66 @@ fec8f6d8ac5d  Docs/3D/Instancing.md:83  cannot find 'stone' in scope
 bec1cad205c6  Docs/3D/LineDrawing.md:53  for-in loop requires 'LineDrawing' to conform to 'Sequence'
 53deb147e8de  Docs/3D/LineDrawing.md:85  cannot find 'scene' in scope
 03afe1b01e53  Docs/3D/LineDrawing.md:9  for-in loop requires 'LineDrawing' to conform to 'Sequence'
-598f5305c5dc  Docs/3D/Phone.md:1039  cannot find 'device' in scope
-b6794226e9fd  Docs/3D/Phone.md:1061  cannot find 'device' in scope
-499b37412097  Docs/3D/Phone.md:1084  cannot find 'device' in scope
-89e4d2ea37de  Docs/3D/Phone.md:119  cannot find 'device' in scope
-df2b7a61c936  Docs/3D/Phone.md:133  cannot find 'body' in scope
-5992515a7f38  Docs/3D/Phone.md:148  cannot find 'body' in scope
-2df9a5624ab5  Docs/3D/Phone.md:159  cannot find 'body' in scope
-4811875e3ea9  Docs/3D/Phone.md:184  cannot find 'device' in scope
-f4879e166444  Docs/3D/Phone.md:205  cannot find 'face' in scope
-56761869e16d  Docs/3D/Phone.md:218  cannot find 'face' in scope
-73ce2b7ca8b2  Docs/3D/Phone.md:240  cannot find 'device' in scope
-d7ae0890d8bb  Docs/3D/Phone.md:268  cannot find 'device' in scope
-d7d5e4c7a266  Docs/3D/Phone.md:295  cannot find 'device' in scope
-ed2d714ae14d  Docs/3D/Phone.md:323  cannot find 'device' in scope
-aa50201a3785  Docs/3D/Phone.md:344  'module' is inaccessible due to 'internal' protection level
-28b77be058c9  Docs/3D/Phone.md:357  cannot find 'device' in scope
-cd52aa432ca6  Docs/3D/Phone.md:386  cannot find 'device' in scope
-99be21e026a2  Docs/3D/Phone.md:404  cannot find 'balls' in scope
-d469b02518d2  Docs/3D/Phone.md:425  cannot find 'device' in scope
-b5157808a548  Docs/3D/Phone.md:442  cannot find 'view' in scope
-b7a28da1847b  Docs/3D/Phone.md:477  cannot find 'device' in scope
-b02f11246782  Docs/3D/Phone.md:501  cannot find 'device' in scope
-e5dc2ea249e1  Docs/3D/Phone.md:523  cannot find 'device' in scope
-09c01475e157  Docs/3D/Phone.md:547  cannot find 'device' in scope
-b052fb9b5d7e  Docs/3D/Phone.md:576  cannot find 'world' in scope
-cf3d32b543b2  Docs/3D/Phone.md:594  cannot find 'world' in scope
-ecbd4c6ff46d  Docs/3D/Phone.md:609  cannot find 'cameraCloud' in scope
-0916b30d362c  Docs/3D/Phone.md:625  cannot find 'update' in scope
-8b328b4bd70a  Docs/3D/Phone.md:660  cannot find 'device' in scope
-0fa742730514  Docs/3D/Phone.md:670  cannot find 'device' in scope
-47781ccd5094  Docs/3D/Phone.md:685  unary operator cannot be separated from its operand
-d4aeba848259  Docs/3D/Phone.md:696  cannot find 'scan' in scope
-f6f39e6371ff  Docs/3D/Phone.md:716  cannot find 'device' in scope
-5ec7c06e7733  Docs/3D/Phone.md:724  cannot find 'device' in scope
-16fc91318be5  Docs/3D/Phone.md:739  unary operator cannot be separated from its operand
-3ada032ec232  Docs/3D/Phone.md:754  cannot find 'device' in scope
-4b39ac917156  Docs/3D/Phone.md:770  cannot find 'device' in scope
-5f30c7ac01bb  Docs/3D/Phone.md:782  cannot find 'device' in scope
-9fa280ebe85c  Docs/3D/Phone.md:790  value of type '@MainActor (Light) -> ()' has no member 'direction'
-73798537a0b5  Docs/3D/Phone.md:797  cannot find 'device' in scope
-6e76d190e7fe  Docs/3D/Phone.md:803  cannot find 'device' in scope
-a265e10930ee  Docs/3D/Phone.md:817  cannot find 'device' in scope
-90f5c5e41eec  Docs/3D/Phone.md:824  cannot find 'device' in scope
-b04a39d51409  Docs/3D/Phone.md:841  cannot find 'device' in scope
-5891ba6f04a9  Docs/3D/Phone.md:870  cannot find 'device' in scope
-ef5ff4dcdc03  Docs/3D/Phone.md:886  cannot find 'device' in scope
-abd0d3efd585  Docs/3D/Phone.md:909  cannot find 'device' in scope
-dfcb15f63246  Docs/3D/Phone.md:917  cannot find 'device' in scope
-0efaf3e1b543  Docs/3D/Phone.md:926  cannot find 'device' in scope
-ce2562f59ad4  Docs/3D/Phone.md:936  cannot find 'device' in scope
-aa6b39505d99  Docs/3D/Phone.md:958  cannot find 'device' in scope
-cfacfcd36d59  Docs/3D/Phone.md:973  cannot find 'device' in scope
-c1dfed3638ac  Docs/3D/Phone.md:985  cannot find 'device' in scope
+598f5305c5dc  Docs/3D/Phone.md:1040  cannot find 'device' in scope
+b6794226e9fd  Docs/3D/Phone.md:1062  cannot find 'device' in scope
+499b37412097  Docs/3D/Phone.md:1085  cannot find 'device' in scope
+89e4d2ea37de  Docs/3D/Phone.md:120  cannot find 'device' in scope
+df2b7a61c936  Docs/3D/Phone.md:134  cannot find 'body' in scope
+5992515a7f38  Docs/3D/Phone.md:149  cannot find 'body' in scope
+2df9a5624ab5  Docs/3D/Phone.md:160  cannot find 'body' in scope
+4811875e3ea9  Docs/3D/Phone.md:185  cannot find 'device' in scope
+f4879e166444  Docs/3D/Phone.md:206  cannot find 'face' in scope
+56761869e16d  Docs/3D/Phone.md:219  cannot find 'face' in scope
+73ce2b7ca8b2  Docs/3D/Phone.md:241  cannot find 'device' in scope
+d7ae0890d8bb  Docs/3D/Phone.md:269  cannot find 'device' in scope
+d7d5e4c7a266  Docs/3D/Phone.md:296  cannot find 'device' in scope
+ed2d714ae14d  Docs/3D/Phone.md:324  cannot find 'device' in scope
+aa50201a3785  Docs/3D/Phone.md:345  'module' is inaccessible due to 'internal' protection level
+28b77be058c9  Docs/3D/Phone.md:358  cannot find 'device' in scope
+cd52aa432ca6  Docs/3D/Phone.md:387  cannot find 'device' in scope
+99be21e026a2  Docs/3D/Phone.md:405  cannot find 'balls' in scope
+d469b02518d2  Docs/3D/Phone.md:426  cannot find 'device' in scope
+b5157808a548  Docs/3D/Phone.md:443  cannot find 'view' in scope
+b7a28da1847b  Docs/3D/Phone.md:478  cannot find 'device' in scope
+b02f11246782  Docs/3D/Phone.md:502  cannot find 'device' in scope
+e5dc2ea249e1  Docs/3D/Phone.md:524  cannot find 'device' in scope
+09c01475e157  Docs/3D/Phone.md:548  cannot find 'device' in scope
+b052fb9b5d7e  Docs/3D/Phone.md:577  cannot find 'world' in scope
+cf3d32b543b2  Docs/3D/Phone.md:595  cannot find 'world' in scope
+ecbd4c6ff46d  Docs/3D/Phone.md:610  cannot find 'cameraCloud' in scope
+0916b30d362c  Docs/3D/Phone.md:626  cannot find 'update' in scope
+8b328b4bd70a  Docs/3D/Phone.md:661  cannot find 'device' in scope
+0fa742730514  Docs/3D/Phone.md:671  cannot find 'device' in scope
+47781ccd5094  Docs/3D/Phone.md:686  unary operator cannot be separated from its operand
+d4aeba848259  Docs/3D/Phone.md:697  cannot find 'scan' in scope
+f6f39e6371ff  Docs/3D/Phone.md:717  cannot find 'device' in scope
+5ec7c06e7733  Docs/3D/Phone.md:725  cannot find 'device' in scope
+16fc91318be5  Docs/3D/Phone.md:740  unary operator cannot be separated from its operand
+3ada032ec232  Docs/3D/Phone.md:755  cannot find 'device' in scope
+4b39ac917156  Docs/3D/Phone.md:771  cannot find 'device' in scope
+5f30c7ac01bb  Docs/3D/Phone.md:783  cannot find 'device' in scope
+9fa280ebe85c  Docs/3D/Phone.md:791  value of type '@MainActor (Light) -> ()' has no member 'direction'
+73798537a0b5  Docs/3D/Phone.md:798  cannot find 'device' in scope
+6e76d190e7fe  Docs/3D/Phone.md:804  cannot find 'device' in scope
+a265e10930ee  Docs/3D/Phone.md:818  cannot find 'device' in scope
+90f5c5e41eec  Docs/3D/Phone.md:825  cannot find 'device' in scope
+b04a39d51409  Docs/3D/Phone.md:842  cannot find 'device' in scope
+5891ba6f04a9  Docs/3D/Phone.md:871  cannot find 'device' in scope
+ef5ff4dcdc03  Docs/3D/Phone.md:887  cannot find 'device' in scope
+abd0d3efd585  Docs/3D/Phone.md:910  cannot find 'device' in scope
+dfcb15f63246  Docs/3D/Phone.md:918  cannot find 'device' in scope
+0efaf3e1b543  Docs/3D/Phone.md:927  cannot find 'device' in scope
+ce2562f59ad4  Docs/3D/Phone.md:937  cannot find 'device' in scope
+aa6b39505d99  Docs/3D/Phone.md:959  cannot find 'device' in scope
+cfacfcd36d59  Docs/3D/Phone.md:974  cannot find 'device' in scope
+c1dfed3638ac  Docs/3D/Phone.md:986  cannot find 'device' in scope
 cf446431401d  Docs/3D/RGBD.md:105  cannot find 'bodies' in scope
 afc9b452945e  Docs/3D/RGBD.md:54  expected ',' separator
 480ac8fd57b4  Docs/3D/RGBD.md:80  cannot find 'frame' in scope
 4a52e2b0935d  Docs/3D/RGBD.md:95  cannot find 'body' in scope
 17480a764a3b  Docs/3D/Record3D.md:103  cannot find type 'simd_float4x4' in scope
-ce1dc30b4421  Docs/3D/Record3D.md:137  expected ',' separator
-f597ef94e666  Docs/3D/Record3D.md:159  expected ',' separator
+e0a6fe4e5e6d  Docs/3D/Record3D.md:137  expected ',' separator
+f597ef94e666  Docs/3D/Record3D.md:160  expected ',' separator
 b87dbe4c4c89  Docs/3D/Record3D.md:45  'throws' may only occur before '->'
 1de63acaf82d  Docs/3D/Record3D.md:64  expected '{' in body of function declaration
 6428f704266c  Docs/3D/Record3D.md:81  expected '{' in body of function declaration
@@ -783,8 +783,8 @@ d9cad8cc61bb  Docs/Helpers/Animation.md:227  expected ',' separator
 822e706211a5  Docs/Helpers/Animation.md:27  expected ',' separator
 4eb6bf83bfe1  Docs/Helpers/Animation.md:280  cannot find '$x' in scope
 b2be1fcf6add  Docs/Helpers/Animation.md:327  cannot find 'noisy' in scope
-16b9acb8ebfe  Docs/Helpers/Animation.md:365  cannot find 'target' in scope
-340f89d95270  Docs/Helpers/Animation.md:378  cannot find 'x' in scope
+16b9acb8ebfe  Docs/Helpers/Animation.md:367  cannot find 'target' in scope
+340f89d95270  Docs/Helpers/Animation.md:380  cannot find 'x' in scope
 476cfba14ab9  Docs/Helpers/Animation.md:61  expected ',' separator
 566254870042  Docs/Helpers/Animation.md:98  expected ',' separator
 89fac67e9339  Docs/Helpers/Audio.md:123  expected '{' in body of function declaration
@@ -906,6 +906,11 @@ c1fdf39373c0  Docs/Helpers/Sonification.md:114  cannot find 'confidence' in scop
 3343e913935a  Docs/Helpers/Sonification.md:53  cannot find 'numbers' in scope
 306833112ab4  Docs/Helpers/Sonification.md:72  cannot infer contextual base in reference to member 'extremes'
 f04e1f957599  Docs/Helpers/Sonification.md:9  cannot find 'table' in scope
+6448decb3633  Docs/Helpers/Steadied.md:102  cannot convert value of type '()' to expected argument type 'Double'
+9249d83bc620  Docs/Helpers/Steadied.md:186  expected ',' separator
+bfde6c145011  Docs/Helpers/Steadied.md:194  cannot find 'boxes' in scope
+f9c2bfdbe10a  Docs/Helpers/Steadied.md:70  consecutive statements on a line must be separated by ';'
+aeb764fc10bc  Docs/Helpers/Steadied.md:86  cannot find '$objects' in scope
 ce617da83e59  Docs/Helpers/Synthesis.md:112  expected '{' in body of function declaration
 69561a5ccbb1  Docs/Helpers/Synthesis.md:125  cannot find 'synth' in scope
 0325ad3f60c8  Docs/Helpers/Synthesis.md:153  cannot find 'synth' in scope
@@ -1238,50 +1243,54 @@ a9a1aaeb971a  Docs/Tools/SingleFile.md:115  'module' is inaccessible due to 'int
 70bd7a0335ec  Docs/Video/Video.md:41  'throws' may only occur before '->'
 18628713c27a  Docs/Video/Video.md:55  expected '{' in body of function declaration
 9275119a4b5c  Docs/Video/Video.md:76  overriding non-open instance method outside of its defining module
-006426c05db9  Docs/Vision/Vision.md:1025  expected '{' in body of function declaration
-be62f39682e0  Docs/Vision/Vision.md:104  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
-5c5a08dabc9f  Docs/Vision/Vision.md:1050  expected '{' to start getter definition
-26580fe6f2aa  Docs/Vision/Vision.md:1073  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
-34c07e1c39dd  Docs/Vision/Vision.md:1092  expected ',' separator
-b6753b0533d8  Docs/Vision/Vision.md:1133  expected ',' separator
-bdca8b7007b6  Docs/Vision/Vision.md:1152  class 'SnippetProbe' has no initializers
-bf93c06e1fd8  Docs/Vision/Vision.md:1190  expected ',' separator
-ab4b590c81f4  Docs/Vision/Vision.md:1198  expected ',' separator
-1eeb10f31606  Docs/Vision/Vision.md:120  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
-207ac16b7787  Docs/Vision/Vision.md:1209  'async' call in a function that does not support concurrency
-dabd491a4320  Docs/Vision/Vision.md:1219  cannot find 'image' in scope
-b37d2de5f126  Docs/Vision/Vision.md:1229  cannot find 'minimumScore' in scope
-1cb517a75c42  Docs/Vision/Vision.md:1242  cannot find 'bodies' in scope
-a6be6ecbcd02  Docs/Vision/Vision.md:203  expected ',' separator
-30373466cede  Docs/Vision/Vision.md:222  expected ',' separator
-dea9b68f19a8  Docs/Vision/Vision.md:242  expected '{' in body of function declaration
-5d5c16f5ccac  Docs/Vision/Vision.md:257  cannot find 'faces' in scope
-1da1647e8644  Docs/Vision/Vision.md:274  expected parameter name followed by ':'
-a9413a0ef7ac  Docs/Vision/Vision.md:301  cannot find type 'Node' in scope
-2cf42ccf6dda  Docs/Vision/Vision.md:316  expected ',' separator
-52166dfc11a5  Docs/Vision/Vision.md:342  cannot find type 'Chirality' in scope
-af9590cae86a  Docs/Vision/Vision.md:362  expected ',' separator
-3672b99868c9  Docs/Vision/Vision.md:388  expected '{' to start getter definition
-62a08cfbf4fe  Docs/Vision/Vision.md:417  expected '{' to start getter definition
-b7b045af9d05  Docs/Vision/Vision.md:448  cannot find 'tracker' in scope
-ab5db32f2c65  Docs/Vision/Vision.md:461  expected ',' separator
-f3c88e3b9780  Docs/Vision/Vision.md:470  cannot find 'drawMyBackground' in scope
-6bca905e0b7b  Docs/Vision/Vision.md:488  expected ',' separator
-070e4cf64081  Docs/Vision/Vision.md:513  expected ',' separator
-227417b04092  Docs/Vision/Vision.md:533  cannot find 'encoderURL' in scope
-d9332481baa6  Docs/Vision/Vision.md:575  expected parameter name followed by ':'
-9a3fb8aecfe9  Docs/Vision/Vision.md:601  expected ',' separator
-89d002609bbe  Docs/Vision/Vision.md:627  expected ',' separator
-de264bce6eb7  Docs/Vision/Vision.md:654  expected ',' separator
-6f077e6e8bb9  Docs/Vision/Vision.md:696  expected '{' to start getter definition
-d1425fc54681  Docs/Vision/Vision.md:712  expected ',' separator
-9b7a1d5882a9  Docs/Vision/Vision.md:742  expected '{' to start getter definition
-dee10b654a59  Docs/Vision/Vision.md:765  expected ',' separator
-74524523d73d  Docs/Vision/Vision.md:784  expected '{' to start getter definition
-ddfc90dfdf31  Docs/Vision/Vision.md:824  expected ',' separator
-3c4a18f23a50  Docs/Vision/Vision.md:858  expected '{' to start getter definition
-bc92ab8b42ae  Docs/Vision/Vision.md:875  expected ',' separator
-1f6728d0dc5c  Docs/Vision/Vision.md:88  expected ',' separator
-f178c1b8e0e9  Docs/Vision/Vision.md:913  expected '{' in body of function declaration
-aa1d08606449  Docs/Vision/Vision.md:928  expected ',' separator
-cfa1e0f3ccb4  Docs/Vision/Vision.md:970  expected ',' separator
+cfa1e0f3ccb4  Docs/Vision/Vision.md:1029  expected ',' separator
+be62f39682e0  Docs/Vision/Vision.md:105  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
+006426c05db9  Docs/Vision/Vision.md:1084  expected '{' in body of function declaration
+5c5a08dabc9f  Docs/Vision/Vision.md:1109  expected '{' to start getter definition
+26580fe6f2aa  Docs/Vision/Vision.md:1132  argument type '@MainActor (Camera3D) -> ()' does not conform to expected type 'FrameSource'
+34c07e1c39dd  Docs/Vision/Vision.md:1151  expected ',' separator
+b6753b0533d8  Docs/Vision/Vision.md:1192  expected ',' separator
+1eeb10f31606  Docs/Vision/Vision.md:121  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
+bdca8b7007b6  Docs/Vision/Vision.md:1211  class 'SnippetProbe' has no initializers
+bf93c06e1fd8  Docs/Vision/Vision.md:1249  expected ',' separator
+ab4b590c81f4  Docs/Vision/Vision.md:1257  expected ',' separator
+207ac16b7787  Docs/Vision/Vision.md:1268  'async' call in a function that does not support concurrency
+dabd491a4320  Docs/Vision/Vision.md:1278  cannot find 'image' in scope
+b37d2de5f126  Docs/Vision/Vision.md:1288  cannot find 'minimumScore' in scope
+1cb517a75c42  Docs/Vision/Vision.md:1301  cannot find 'bodies' in scope
+a6be6ecbcd02  Docs/Vision/Vision.md:204  expected ',' separator
+7beb51018128  Docs/Vision/Vision.md:214  expected '{' in body of function declaration
+00dac766adb1  Docs/Vision/Vision.md:235  expected '{' to start getter definition
+f3edb81c3f8e  Docs/Vision/Vision.md:241  cannot find 'feed' in scope
+b8047b7bee78  Docs/Vision/Vision.md:256  cannot find 'feed' in scope
+30373466cede  Docs/Vision/Vision.md:279  expected ',' separator
+dea9b68f19a8  Docs/Vision/Vision.md:299  expected '{' in body of function declaration
+5d5c16f5ccac  Docs/Vision/Vision.md:314  cannot find 'faces' in scope
+1da1647e8644  Docs/Vision/Vision.md:331  expected parameter name followed by ':'
+a9413a0ef7ac  Docs/Vision/Vision.md:358  cannot find type 'Node' in scope
+2cf42ccf6dda  Docs/Vision/Vision.md:373  expected ',' separator
+52166dfc11a5  Docs/Vision/Vision.md:399  cannot find type 'Chirality' in scope
+af9590cae86a  Docs/Vision/Vision.md:419  expected ',' separator
+3672b99868c9  Docs/Vision/Vision.md:445  expected '{' to start getter definition
+62a08cfbf4fe  Docs/Vision/Vision.md:474  expected '{' to start getter definition
+b7b045af9d05  Docs/Vision/Vision.md:505  cannot find 'tracker' in scope
+ab5db32f2c65  Docs/Vision/Vision.md:518  expected ',' separator
+f3c88e3b9780  Docs/Vision/Vision.md:527  cannot find 'drawMyBackground' in scope
+6bca905e0b7b  Docs/Vision/Vision.md:545  expected ',' separator
+070e4cf64081  Docs/Vision/Vision.md:570  expected ',' separator
+227417b04092  Docs/Vision/Vision.md:590  cannot find 'encoderURL' in scope
+d9332481baa6  Docs/Vision/Vision.md:632  expected parameter name followed by ':'
+9a3fb8aecfe9  Docs/Vision/Vision.md:660  expected ',' separator
+89d002609bbe  Docs/Vision/Vision.md:686  expected ',' separator
+de264bce6eb7  Docs/Vision/Vision.md:713  expected ',' separator
+6f077e6e8bb9  Docs/Vision/Vision.md:755  expected '{' to start getter definition
+d1425fc54681  Docs/Vision/Vision.md:771  expected ',' separator
+9b7a1d5882a9  Docs/Vision/Vision.md:801  expected '{' to start getter definition
+dee10b654a59  Docs/Vision/Vision.md:824  expected ',' separator
+74524523d73d  Docs/Vision/Vision.md:843  expected '{' to start getter definition
+ddfc90dfdf31  Docs/Vision/Vision.md:883  expected ',' separator
+1f6728d0dc5c  Docs/Vision/Vision.md:89  expected ',' separator
+3c4a18f23a50  Docs/Vision/Vision.md:917  expected '{' to start getter definition
+bc92ab8b42ae  Docs/Vision/Vision.md:934  expected ',' separator
+f178c1b8e0e9  Docs/Vision/Vision.md:972  expected '{' in body of function declaration
+aa1d08606449  Docs/Vision/Vision.md:987  expected ',' separator

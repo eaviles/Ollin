@@ -201,6 +201,11 @@ public final class PhoneDevice: FrameSource, VideoFeed {
         recording == nil ? reader.isConnected : (isFeeding && fedFrame != nil)
     }
 
+    /// Whether the feed shows the world as it happens (`VideoFeed`): `true`
+    /// while the phone's frames arrive over the cable, and `false` for a
+    /// device that plays a recording.
+    public var isLive: Bool { recording == nil && reader.isConnected }
+
     // MARK: - The camera (every mode that runs an ARKit session)
 
     /// Where the phone's camera stood on the latest frame, and what its lens

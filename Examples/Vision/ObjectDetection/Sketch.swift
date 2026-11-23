@@ -13,6 +13,13 @@ import OllinVision
 /// repo: run `Scripts/fetch-models.sh` once and relaunch (the sketch says so
 /// on the canvas until then).
 ///
+/// A detector answers each frame on its own, so on a live feed its boxes
+/// shake by a few pixels and a thing it is unsure of blinks in and out. The
+/// sketch draws them through `@Steadied`: each box is matched to the one
+/// before it and smoothed, a thing shows once it has been found for a tenth
+/// of a second, and it stays, fading, through the frames the detector misses
+/// it. `detector.objects` is still what the detector found, shake and all.
+///
 /// Model: YOLOv3-tiny (the FP16 variant), Apple's Core ML conversion of
 /// Joseph Redmon and Ali Farhadi's Darknet original (YOLO License v2, public
 /// domain), downloaded by the fetch script, never bundled. Provenance in
@@ -35,8 +42,10 @@ final class ObjectDetection: Sketch {
     let feed = Camera.orStill(SamplePhoto.breakfast.load())
     lazy var detector = ModelTracker(feed, modelAt: URL(fileURLWithPath: Self.modelPath))
 
-    /// Below this the model is guessing more often than seeing.
-    let confidenceFloor = 0.45
+    /// What the detector finds, held steady. Below 0.45 the model is guessing
+    /// more often than seeing, so a thing has to be found that surely to
+    /// appear; once it is there a fainter finding still counts as it.
+    @Steadied(minConfidence: 0.45) var objects: [Detection] = []
 
     /// One steady color per class name, so a person stays one color while a cup
     /// stays another as boxes come and go.
@@ -68,11 +77,17 @@ final class ObjectDetection: Sketch {
                               "after that it starts instantly.")
         }
 
-        let found = detector.objects.filter { $0.confidence >= confidenceFloor }
+        // What was found goes in as found, and the same things come back
+        // steady. `$objects.things` adds what a plain list cannot carry: how
+        // long each has gone unfound, which fades a thing out over the time
+        // it is held rather than cutting it off.
+        objects = detector.objects
         textSize(17 * scale)
-        for object in found {
+        for thing in $objects.things {
+            let object = thing.value
             let box = object.bounds(in: rect)
-            let accent = tagColors[colorIndex(of: object.label)]
+            let presence = 1 - thing.unseenFor / $objects.steadiness.holdTime
+            let accent = tagColors[colorIndex(of: object.label)].withAlpha(presence)
 
             noFill()
             stroke(accent)
@@ -87,14 +102,14 @@ final class ObjectDetection: Sketch {
             noStroke()
             fill(accent)
             drawRect(box.x, tagY, textWidth(title) + pad * 2, tagHeight)
-            fill(.black)
+            fill(Color.black.withAlpha(presence))
             textAlign(.left, .middle)
             drawText(title, box.x + pad, tagY + tagHeight / 2)
         }
 
-        drawCaption(found.isEmpty
-            ? "ObjectDetection — show it a cup, a book, a phone, yourself…"
-            : "ObjectDetection — \(summary(of: found))")
+        drawCaption(objects.isEmpty
+            ? "ObjectDetection: show it a cup, a book, a phone, yourself…"
+            : "ObjectDetection: \(summary(of: objects))")
     }
 
     /// A stable palette slot per class name (the wrapping subscript takes care

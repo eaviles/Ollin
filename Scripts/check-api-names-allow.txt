@@ -34,3 +34,13 @@ boolean WebSocketFraming.Frame.fin # RFC 6455's FIN bit, read and written under 
 # rather than a question put to the system. `available…()` is for the latter
 # (ScreenCapture.availableDisplays(), SerialPort.availableDevices()).
 listing EtherDreamFinder.devices   # what the listening scan has heard, not a fresh ask
+
+# lifecycle: `isLive` is the `VideoFeed` requirement every feed answers (ruled
+# 2026-11-23), and it is not the state that follows `start()`: it says what
+# kind of picture a frame reads, the world as it happens or footage. A film
+# that is playing is running and is not live, and each of these also keeps
+# its `isRunning`.
+lifecycle Camera.isLive            # true while the camera runs; the protocol's question, beside isRunning
+lifecycle ScreenCapture.isLive     # true while the screen's frames arrive; beside isRunning and isReceiving
+lifecycle PhoneDevice.isLive       # true on the cable, false playing a recording; beside isRunning
+lifecycle Record3DDevice.isLive    # true while the phone's frames arrive; beside isRunning

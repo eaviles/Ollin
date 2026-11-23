@@ -145,6 +145,14 @@
   var target: Value { get }
   var velocity: Value { get set }
   var wrappedValue: Value { get set }
+@propertyWrapper final class Steadied<Thing where Thing : Steadiable>: FrameAdvancing
+  func reset()
+  init(wrappedValue: [Thing] = default, appearDelay: Double = default, holdTime: Double = default, minConfidence: Double = default, minKeptConfidence: Double = default, minOverlap: Double = default, minKeptOverlap: Double = default, minCutoff: Double = default, beta: Double = default)
+  var projectedValue: Steadied<Thing> { get }
+  var rawValue: [Thing] { get }
+  var steadiness: Steadiness { get set }
+  var things: [Steady<Thing>] { get }
+  var wrappedValue: [Thing] { get set }
 @resultBuilder enum ComposeBuilder
   static func buildArray(_: [[ComposeLayer]]) -> [ComposeLayer]
   static func buildBlock(_: [ComposeLayer]...) -> [ComposeLayer]
@@ -2995,6 +3003,13 @@ protocol Smoothable: Sendable where Self : Sendable
   static func +(_: Self, _: Self) -> Self
   static func -(_: Self, _: Self) -> Self
   var smoothingSpeed: Double { get }
+protocol Steadiable: Sendable where Self : Sendable
+  func steadied(at: [Vector2]) -> Self
+  static var steadiness: Steadiness { get }
+  static var steadiness: Steadiness { get }
+  var steadyConfidence: Double { get }
+  var steadyConfidence: Double { get }
+  var steadyPoints: [Vector2] { get }
 protocol Tweenable
   static func lerp(_: Self, _: Self, _: Double) -> Self
 protocol Vector: Sendable, Equatable where Self : Equatable, Self : Sendable
@@ -3027,6 +3042,8 @@ protocol VideoFeed where Self : AnyObject
   func fittedRectangle(in: Rectangle) -> Rectangle?
   var frame: Image? { get }
   var frameSize: Vector2? { get }
+  var isLive: Bool { get }
+  var isLive: Bool { get }
   var waitingMessage: String { get }
   var waitingMessage: String { get }
 struct Anamorphosis: Equatable, Sendable
@@ -6339,12 +6356,13 @@ struct Ray3: Equatable, Sendable
   init(origin: Vector3, direction: Vector3)
   let direction: Vector3
   let origin: Vector3
-struct Rectangle: ParamValue, PlaneCurve, Decodable, Encodable, Equatable, Hashable, Sendable
+struct Rectangle: ParamValue, PlaneCurve, Steadiable, Decodable, Encodable, Equatable, Hashable, Sendable
   func contains(_: Vector2) -> Bool
   func inset(by: Insets) -> Rectangle
   func intersection(_: Rectangle) -> Rectangle?
   func intersects(_: Rectangle) -> Bool
   func point(u: Double, v: Double) -> Vector2
+  func steadied(at: [Vector2]) -> Rectangle
   func union(_: Rectangle) -> Rectangle
   func uv(of: Vector2) -> Vector2
   init(center: Vector2, width: Double, height: Double)
@@ -6367,6 +6385,7 @@ struct Rectangle: ParamValue, PlaneCurve, Decodable, Encodable, Equatable, Hasha
   var contour: Contour { get }
   var edges: [LineSegment] { get }
   var perimeter: Double { get }
+  var steadyPoints: [Vector2] { get }
   var topLeft: Vector2 { get }
   var topRight: Vector2 { get }
   var x: Double { get }
@@ -6949,6 +6968,28 @@ struct SprayQuad: Equatable, Sendable
 struct StatusChip: Sendable, View
   init(status: InspectorStatus)
   var body: some SwiftUI.View { get }
+struct Steadier<Thing where Thing : Steadiable>: Sendable
+  @discardableResult mutating func steady(_: [Thing], deltaTime: Double) -> [Steady<Thing>]
+  init(_: Steadiness = default)
+  mutating func reset()
+  var steadiness: Steadiness { get set }
+  var things: [Steady<Thing>] { get }
+struct Steadiness: Equatable, Sendable
+  init(appearDelay: Double = default, holdTime: Double = default, minConfidence: Double = default, minKeptConfidence: Double = default, minOverlap: Double = default, minKeptOverlap: Double = default, minCutoff: Double = default, beta: Double = default)
+  var appearDelay: Double { get set }
+  var beta: Double { get set }
+  var holdTime: Double { get set }
+  var minConfidence: Double { get set }
+  var minCutoff: Double { get set }
+  var minKeptConfidence: Double { get set }
+  var minKeptOverlap: Double { get set }
+  var minOverlap: Double { get set }
+struct Steady<Thing where Thing : Steadiable>: Identifiable, Sendable
+  let age: Double
+  let found: Thing
+  let id: Int
+  let unseenFor: Double
+  let value: Thing
 struct StereoGeometry: Equatable, Sendable
   func resolved(for: Camera3D, aspect: Double = default) -> (interocular: Double, convergence: Double)
   init(interocular: Double? = default, convergence: Double? = default)

@@ -16,17 +16,13 @@ import OllinVision
 /// the film even where a camera would have worked.
 @main
 final class OpticalFlow: Sketch {
-    let feed: any FrameSource & VideoFeed = {
-        if !CommandLine.arguments.contains("--photo") {
-            let camera = Camera()
-            if (try? camera.start()) != nil, camera.isRunning { return camera }
-        }
+    let feed = Camera.or {
         let film = try! VideoPlayer(url: SampleClip.dance.url)
         film.loops = true
         film.isMuted = true
         film.play()
         return film
-    }()
+    }
 
     lazy var flow = FlowTracker(feed)
 

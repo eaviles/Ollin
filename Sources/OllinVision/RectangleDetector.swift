@@ -44,6 +44,33 @@ public struct DetectedRectangle: Sendable {
     }
 }
 
+/// A detected rectangle can be held steady from frame to frame (`@Steadied`):
+/// its four corners are followed one by one, as a share of the picture.
+extension DetectedRectangle: Steadiable {
+    public var steadyPoints: [Vector2] { [topLeftN, topRightN, bottomRightN, bottomLeftN] }
+    public var steadyConfidence: Double { confidence }
+
+    /// Harder to be admitted than the default. The detector reports
+    /// rectangles it sees for one frame in anything with an edge (a cup, a
+    /// plant), a different one each frame and each at full confidence, and
+    /// those overlap one another enough to pass for one rectangle that hops.
+    /// A real rectangle overlaps itself almost wholly from frame to frame
+    /// and is found for seconds on end, so a high overlap and a longer wait
+    /// tell the two apart. Once a rectangle is showing it is followed more
+    /// loosely, since the detector gives a real one slightly different
+    /// corners from frame to frame. The cost is at the start: a rectangle
+    /// has to hold nearly still for a quarter of a second to appear.
+    public static var steadiness: Steadiness {
+        Steadiness(appearDelay: 0.25, minOverlap: 0.8, minKeptOverlap: 0.5)
+    }
+
+    public func steadied(at points: [Vector2]) -> DetectedRectangle {
+        guard points.count == 4 else { return self }
+        return DetectedRectangle(confidence: confidence, topLeftN: points[0], topRightN: points[1],
+                                 bottomRightN: points[2], bottomLeftN: points[3])
+    }
+}
+
 extension DetectedRectangle {
     /// Decode from the Vision observation (also the shape saliency's salient
     /// regions arrive in), keeping the Vision type off the public surface.

@@ -26,6 +26,7 @@ final class Record3DDevice: FrameSource, VideoFeed, Sendable
   var frame: Image? { get }
   var frameSize: Vector2? { get }
   var frameTap: FrameTap? { get set }
+  var isLive: Bool { get }
   var isRunning: Bool { get }
   var latestFrame: RGBDFrame? { get }
   var latestPose: Record3DPose? { get }

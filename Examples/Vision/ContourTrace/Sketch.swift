@@ -13,8 +13,9 @@ import OllinVision
 /// (a face, hands, objects on a light desk) for the cleanest lines. Where there
 /// is no camera it reads the film that ships with Ollin, a dancer on a plain
 /// ground, which is about the cleanest silhouette a tracer can be given, and
-/// `--photo` takes that film even where a camera would have worked. Pass a clip
-/// path on launch and the same detector traces the footage as it plays instead:
+/// `--photo` takes that film even where a camera would have worked. `Camera.or`
+/// makes that choice. Pass a clip path on launch and the same detector traces
+/// the footage as it plays instead:
 ///
 /// ```
 /// swift run Example-Vision-ContourTrace /path/to/your/clip.mp4
@@ -31,36 +32,38 @@ import OllinVision
 final class ContourTrace: Sketch {
     var feed: (any FrameSource & VideoFeed)?
     var contours: ContourDetector?
+    /// Whether `contours` was made for the camera or for footage.
+    var tracesTheCamera = false
 
     override func setup() {
         // A clip named on launch wins, then a camera, then the bundled film, so
         // there is always something moving to trace.
         if let path = clipPath(), let player = try? VideoPlayer(path: path) {
-            trace(player)
-        } else if let camera = liveCamera() {
-            feed = camera
-            contours = ContourDetector(camera, detectsDarkOnLight: false)
+            feed = playing(player)
         } else {
-            trace(try! VideoPlayer(url: SampleClip.dance.url))
+            feed = Camera.or { self.playing(try! VideoPlayer(url: SampleClip.dance.url)) }
         }
     }
 
-    /// A running camera, or nothing: `--photo` refuses one the way it does
-    /// everywhere else, and a Mac without one falls through to the film.
-    private func liveCamera() -> Camera? {
-        guard !CommandLine.arguments.contains("--photo") else { return nil }
-        let camera = Camera()
-        guard (try? camera.start()) != nil, camera.isRunning else { return nil }
-        return camera
-    }
-
-    /// Recorded footage benefits from a contrast boost before tracing.
-    private func trace(_ player: VideoPlayer) {
+    private func playing(_ player: VideoPlayer) -> VideoPlayer {
         player.loops = true
         player.isMuted = true
         player.play()
-        feed = player
-        contours = ContourDetector(player, detectsDarkOnLight: false, contrastFactor: 3)
+        return player
+    }
+
+    /// The detector for what this frame reads. Recorded footage benefits from
+    /// a contrast boost before tracing and the camera does not, and the feed
+    /// can go from one to the other during a run (the film plays while the
+    /// system asks about the camera), so the detector is made again when it
+    /// does.
+    private func detector(for feed: any FrameSource & VideoFeed) -> ContourDetector {
+        if let contours, tracesTheCamera == feed.isLive { return contours }
+        tracesTheCamera = feed.isLive
+        let made = ContourDetector(feed, detectsDarkOnLight: false,
+                                   contrastFactor: tracesTheCamera ? 1 : 3)
+        contours = made
+        return made
     }
 
     /// A readable file path passed on launch, if any; it swaps the camera for a
@@ -76,7 +79,8 @@ final class ContourTrace: Sketch {
 
         let margin = 40 * scale
         let container = Rectangle(x: margin, y: margin, width: width - 2 * margin, height: height - 2 * margin)
-        guard let feed, let contours else { return }
+        guard let feed else { return }
+        let contours = detector(for: feed)
 
         // The feed, faint, so it's clear what's being traced.
         tint(Color(white: 1, alpha: 0.16))

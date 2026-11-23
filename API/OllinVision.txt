@@ -130,10 +130,12 @@ final class Camera: FrameSource, VideoFeed, Sendable
   func start() throws
   func stop()
   init(_: Camera.Device = default)
+  static func or(_: () -> any FrameSource & VideoFeed) -> any FrameSource & VideoFeed
   static func orStill(_: () -> Image, rate: Double = default) -> any FrameSource & VideoFeed
   var frame: Image? { get }
   var frameSize: Vector2? { get }
   var frameTap: FrameTap? { get set }
+  var isLive: Bool { get }
   var isRunning: Bool { get }
   var unavailableReason: String? { get }
   var waitingMessage: String { get }
@@ -418,11 +420,15 @@ struct DetectedContours: Sendable
     init(points: [Vector2], children: [DetectedContours.Node])
     let children: [DetectedContours.Node]
     let points: [Vector2]
-struct DetectedRectangle: Sendable
+struct DetectedRectangle: Steadiable, Sendable
   func bounds(in: Rectangle, mirrored: Bool = default) -> Rectangle
   func center(in: Rectangle, mirrored: Bool = default) -> Vector2
   func corners(in: Rectangle, mirrored: Bool = default) -> [Vector2]
+  func steadied(at: [Vector2]) -> DetectedRectangle
   let confidence: Double
+  static var steadiness: Steadiness { get }
+  var steadyConfidence: Double { get }
+  var steadyPoints: [Vector2] { get }
 struct DetectedText: Sendable
   func bounds(in: Rectangle, mirrored: Bool = default) -> Rectangle
   func corners(in: Rectangle, mirrored: Bool = default) -> [Vector2]
@@ -438,11 +444,14 @@ struct DetectedTrajectory: Identifiable, Sendable
   let normalizedRadius: Double
   let projectedPointsNormalized: [Vector2]
   let timeRange: ClosedRange<Double>?
-struct Detection: Sendable
+struct Detection: Steadiable, Sendable
   func bounds(in: Rectangle, mirrored: Bool = default) -> Rectangle
   func center(in: Rectangle, mirrored: Bool = default) -> Vector2
+  func steadied(at: [Vector2]) -> Detection
   let confidence: Double
   let label: String
+  var steadyConfidence: Double { get }
+  var steadyPoints: [Vector2] { get }
 struct Face: Identifiable, Sendable
   func bounds(in: Rectangle, mirrored: Bool = default) -> Rectangle
   func center(in: Rectangle, mirrored: Bool = default) -> Vector2

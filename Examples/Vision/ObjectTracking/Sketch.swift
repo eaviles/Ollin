@@ -16,25 +16,28 @@ import OllinVision
 /// again only when the tracker's `confidence` says it has lost the patch, which
 /// is what a cut or the film's loop does. A click still re-locks anywhere.
 ///
+/// `Camera.or` makes the choice, and `feed.isLive` says each frame which of the
+/// two the sketch is reading. On a Mac that has never been asked for its
+/// camera the film plays while the system's prompt is up and the camera takes
+/// over once it is allowed, so the sketch asks every frame rather than once.
+///
 /// It's a classical tracker with no neural model, so it runs on any Mac. The
 /// box fades as the tracker grows unsure, and a trail shows where the patch has
 /// been since the last lock.
 @main
 final class ObjectTracking: Sketch {
-    let feed: any FrameSource & VideoFeed = {
-        if !CommandLine.arguments.contains("--photo") {
-            let camera = Camera()
-            if (try? camera.start()) != nil, camera.isRunning { return camera }
-        }
+    let feed = Camera.or {
         let film = try! VideoPlayer(url: SampleClip.dance.url)
         film.loops = true
         film.isMuted = true
         film.play()
         return film
-    }()
+    }
     lazy var tracker = ObjectTracker(feed)
     /// The detector that hands the film its first lock; a camera has a hand to click.
-    lazy var faces: FaceTracker? = feed is Camera ? nil : FaceTracker(feed)
+    var faces: FaceTracker?
+    /// Which feed the last frame read, to notice the camera taking over.
+    var wasLive = false
 
     /// Below this the patch counts as lost.
     let lostBelow = 0.3
@@ -55,6 +58,7 @@ final class ObjectTracking: Sketch {
 
         guard let rect = drawFrame(feed) else { return }
         view = rect
+        followTheFeed()
         lockFromTheFace()
 
         if let object = tracker.trackedObject {
@@ -87,7 +91,7 @@ final class ObjectTracking: Sketch {
             textAlign(.center, .bottom)
             textSize(13 * scale)
             drawText("\(Int(c * 100))%", center.x, box.y - 8 * scale)
-        } else if faces == nil {
+        } else if feed.isLive {
             // Nothing locked yet: show the patch a click would grab.
             noFill()
             stroke(Color(red: 0.3, green: 1.0, blue: 0.6))
@@ -98,6 +102,24 @@ final class ObjectTracking: Sketch {
         let how = locks == 0 ? "click to lock onto what's under the cursor"
             : "lock \(locks), from the \(lockedBy); click to re-lock"
         drawCaption("ObjectTracking: \(how)")
+    }
+
+    /// The face detector runs while the film plays and is let go when the
+    /// camera takes over, and a lock made on the film is dropped with it: the
+    /// patch it followed is no longer in the picture.
+    func followTheFeed() {
+        let isLive = feed.isLive
+        if isLive {
+            faces = nil
+        } else if faces == nil {
+            faces = FaceTracker(feed)
+        }
+        if isLive, !wasLive, locks > 0 {
+            tracker.stopTracking()
+            trail.removeAll()
+            locks = 0
+        }
+        wasLive = isLive
     }
 
     /// With the film, a face the detector finds seeds the tracker whenever the

@@ -23,6 +23,7 @@ final class ScreenCapture: FrameSource, VideoFeed, Sendable
   var frameRate: Double { get set }
   var frameSize: Vector2? { get }
   var frameTap: FrameTap? { get set }
+  var isLive: Bool { get }
   var isReceiving: Bool { get }
   var isRunning: Bool { get }
   var scale: Double { get set }

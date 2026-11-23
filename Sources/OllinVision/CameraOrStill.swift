@@ -42,51 +42,98 @@ public extension Camera {
     /// it may use never decodes it.
     static func orStill(_ picture: @autoclosure () -> Image,
                         rate: Double = 4) -> any FrameSource & VideoFeed {
+        or(shown: "its picture") {
+            let still = StillFrames(picture(), rate: rate)
+            still.start()
+            return still
+        }
+    }
+
+    /// A running camera when this machine has one, and a feed of your own
+    /// when it does not: a film, a screen, a feed the sketch draws itself.
+    /// The same choice `orStill` makes, with anything that is both a
+    /// `FrameSource` and a `VideoFeed` standing in.
+    ///
+    /// ```swift
+    /// let feed = Camera.or {
+    ///     let film = try! VideoPlayer(path: "dance.mp4")
+    ///     film.loops = true
+    ///     film.isMuted = true
+    ///     film.play()
+    ///     return film
+    /// }
+    /// lazy var flow = FlowTracker(feed)
+    /// ```
+    ///
+    /// The closure builds the stand-in and sets it going, and it runs only
+    /// when the stand-in is needed, so a machine with a camera it may use
+    /// never opens the film. Build it there rather than holding it in a
+    /// property of the sketch as well: the feed handed back is what follows
+    /// an export's clock, and a stand-in the sketch also holds is stepped
+    /// twice a frame.
+    ///
+    /// Everything `orStill` says of its picture holds for the stand-in:
+    /// `--photo` takes it where a camera would have worked; on a machine never
+    /// asked it plays while the system's prompt is up and the camera takes
+    /// over at its first frame, at which point the stand-in is let go; a run
+    /// with no window never asks; and a refusal leaves it playing with one
+    /// line on stderr.
+    ///
+    /// `isLive` on the feed handed back says which of the two a frame is
+    /// reading: `false` while the stand-in plays and `true` once the camera
+    /// has a frame, so a sketch that treats footage and the room differently
+    /// asks each frame rather than once.
+    static func or(_ standIn: () -> any FrameSource & VideoFeed) -> any FrameSource & VideoFeed {
+        or(shown: "its stand-in", standIn)
+    }
+
+    /// The choice both doors make. `shown` names what the sketch is left
+    /// showing, for the line a refusal writes.
+    private static func or(shown: String,
+                           _ standIn: () -> any FrameSource & VideoFeed) -> any FrameSource & VideoFeed {
         if !photoOnly {
             let camera = Camera()
             if authorizationStatus() == .notDetermined {
                 // Never asked. The prompt stays up for as long as the person
                 // takes to answer it, so this hands back one feed that is the
-                // picture until the camera's first frame and the camera after.
-                let still = StillFrames(picture(), rate: rate)
-                still.start()
-                return StandInFeed(camera, standIn: still, begin: { _ = try? camera.start() },
-                                   whyNot: { camera.whyThePicture }, note: note)
+                // stand-in until the camera's first frame and the camera after.
+                return StandInFeed(camera, standIn: standIn(), begin: { _ = try? camera.start() },
+                                   whyNot: { camera.whyNot(shown: shown) }, note: note)
             }
             if (try? camera.start()) != nil, camera.isRunning { return camera }
-            // Refused before this run. The sketch gets its picture and has no
+            // Refused before this run. The sketch gets its stand-in and has no
             // property to read the reason from, so the developer is told.
-            if let line = camera.whyThePicture { note(line) }
+            if let line = camera.whyNot(shown: shown) { note(line) }
         }
-        let still = StillFrames(picture(), rate: rate)
-        still.start()
-        return still
+        return standIn()
     }
 }
 
 extension Camera {
     /// The line for the developer when a sketch that asked for the camera
-    /// through `orStill` is showing its picture because the camera said no,
-    /// or `nil` while nothing has gone wrong.
-    var whyThePicture: String? {
+    /// through `orStill` or `or` is showing its stand-in because the camera
+    /// said no, or `nil` while nothing has gone wrong. `shown` names the
+    /// stand-in ("its picture").
+    func whyNot(shown: String) -> String? {
         guard let reason = unavailableReason else { return nil }
         guard isRefused else {
-            return "the camera could not start (\(reason)), so the sketch shows its picture instead."
+            return "the camera could not start (\(reason)), so the sketch shows \(shown) instead."
         }
-        return "\(reason), so the sketch shows its picture instead. To use the camera, allow the app that launched the sketch (the terminal, under swift run) in System Settings > Privacy & Security > Camera, then relaunch."
+        return "\(reason), so the sketch shows \(shown) instead. To use the camera, allow the app that launched the sketch (the terminal, under swift run) in System Settings > Privacy & Security > Camera, then relaunch."
     }
 }
 
-/// A feed that is not delivering yet, with a still picture standing in until
-/// it does. `Camera.orStill` hands one back on a machine where the camera has
-/// never been asked for: the sketch draws the picture while the system's
-/// prompt is up, and the camera takes over at its first frame.
+/// A feed that is not delivering yet, with another standing in until it does:
+/// a still picture, a film, any feed. `Camera.orStill` and `Camera.or` hand
+/// one back on a machine where the camera has never been asked for: the
+/// sketch draws the stand-in while the system's prompt is up, and the camera
+/// takes over at its first frame.
 ///
 /// It is one object from the first frame to the last, because a tracker finds
 /// its analyzer by the identity of the source it was given. Whatever taps this
-/// feed is handed the picture until the live feed delivers and the live
-/// frames from then on, never both: the two taps share one lock, so no
-/// picture is handed over after a live frame has been.
+/// feed is handed the stand-in's frames until the live feed delivers and the
+/// live frames from then on, never both: the two taps share one lock, so no
+/// stand-in frame is handed over after a live frame has been.
 ///
 /// The live feed is asked to begin the first time a window reads this one,
 /// and never while a run with no window drives the sketch: an export has
@@ -96,8 +143,8 @@ final class StandInFeed: FrameSource, VideoFeed {
 
     /// The feed being waited for.
     let live: any FrameSource & VideoFeed
-    /// The picture in its place, let go once the live feed has a frame.
-    private(set) var standIn: StillFrames?
+    /// The feed in its place, let go once the live feed has a frame.
+    private(set) var standIn: (any FrameSource & VideoFeed)?
     /// Starts the live feed; run once, then dropped.
     private var begin: (() -> Void)?
     /// The line for the developer once the live feed has said it will not
@@ -107,7 +154,7 @@ final class StandInFeed: FrameSource, VideoFeed {
     /// Whether the live feed has delivered, shared by the two taps.
     private let delivered = OSAllocatedUnfairLock(initialState: false)
 
-    init(_ live: any FrameSource & VideoFeed, standIn: StillFrames, begin: @escaping () -> Void,
+    init(_ live: any FrameSource & VideoFeed, standIn: any FrameSource & VideoFeed, begin: @escaping () -> Void,
          whyNot: (() -> String?)? = nil, note: @escaping (String) -> Void = { _ in }) {
         self.live = live
         self.standIn = standIn
@@ -116,7 +163,7 @@ final class StandInFeed: FrameSource, VideoFeed {
         self.note = note
     }
 
-    /// The analysis tap (`FrameSource`), handed to both feeds: the picture's
+    /// The analysis tap (`FrameSource`), handed to both feeds: the stand-in's
     /// side stops forwarding at the live feed's first frame.
     var frameTap: FrameTap? {
         didSet {
@@ -132,8 +179,8 @@ final class StandInFeed: FrameSource, VideoFeed {
         }
     }
 
-    /// The live feed's frame once it has one, and the picture until then
-    /// (`VideoFeed`). Never `nil` while the picture stands in.
+    /// The live feed's frame once it has one, and the stand-in's until then
+    /// (`VideoFeed`).
     var frame: Image? {
         beginInAWindow()
         settle()
@@ -153,7 +200,13 @@ final class StandInFeed: FrameSource, VideoFeed {
         return live.frameSize
     }
 
-    var waitingMessage: String { live.waitingMessage }
+    /// The stand-in's notice while it has no frame of its own yet (a film
+    /// still opening), and the live feed's after the hand-over.
+    var waitingMessage: String { (standIn ?? live).waitingMessage }
+
+    /// Which of the two a frame is reading: the stand-in's answer until the
+    /// live feed has delivered, and the live feed's from then on.
+    var isLive: Bool { (standIn ?? live).isLive }
 
     /// Ask the live feed to begin, once, and only where a window is drawing.
     private func beginInAWindow() {
@@ -171,13 +224,14 @@ final class StandInFeed: FrameSource, VideoFeed {
     }
 }
 
-/// The picture follows an export's clock the way it does on its own.
+/// The stand-in follows an export's clock the way it does on its own.
 extension StandInFeed: @MainActor FrameAdvancing {
-    func advance(by dt: Double) { standIn?.advance(by: dt) }
+    func advance(by dt: Double) { (standIn as? any FrameAdvancing)?.advance(by: dt) }
+    func advance(to time: Double) { (standIn as? any FrameAdvancing)?.advance(to: time) }
 }
 
 // Both taps are formed in free functions, never inside the main-actor class,
-// so they carry no actor isolation: a capture queue and the picture's own
+// so they carry no actor isolation: a capture queue and the stand-in's own
 // thread call them.
 
 private func liveTap(_ tap: @escaping FrameTap, _ delivered: OSAllocatedUnfairLock<Bool>) -> FrameTap {
@@ -190,7 +244,8 @@ private func liveTap(_ tap: @escaping FrameTap, _ delivered: OSAllocatedUnfairLo
 private func standInTap(_ tap: @escaping FrameTap, _ delivered: OSAllocatedUnfairLock<Bool>) -> FrameTap {
     { image in
         // Forwarded inside the lock, so the live feed's first frame either
-        // waits for this hand-off or stops it, and no picture arrives after.
+        // waits for this hand-off or stops it, and no stand-in frame arrives
+        // after.
         delivered.withLockUnchecked { arrived in
             if !arrived { tap(image) }
         }

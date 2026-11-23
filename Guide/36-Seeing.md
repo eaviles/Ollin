@@ -73,6 +73,19 @@ override func draw() {
 
 While you build a sketch that reads people, rehearse it on footage. Standing in front of the camera for every change is tiring, and no two takes move the same way. A clip moves the same way every run, so the change you just made is the only thing that changed. Swap the camera back in once the sketch reads the film well. A tracker reads a clip in an export too. Each frame under the playhead is read before the frame that shows it is drawn, so every run reads the same frames.
 
+`Camera.or` puts the two together: the camera where there is one, and the film where there is not.
+
+```swift
+let feed = Camera.or {
+    let film = try! VideoPlayer(url: SampleClip.dance.url)
+    film.loops = true
+    film.play()
+    return film
+}
+```
+
+It is `Camera.orStill` with a feed of any kind standing in, and it behaves the same way. `--photo` takes the film, and on a first run the film plays while the system asks about the camera. `feed.isLive` says which one a frame is reading: `true` for the camera, `false` for the film. A sketch asks when it treats the two differently. [`ObjectTracking`](../Examples/Vision/ObjectTracking/Sketch.swift) waits for a click on the camera and lets a face detector choose what to follow in the film, where nobody is there to click.
+
 ## Trackers: attach, then read
 
 Seeing more than pixels is the job of the **trackers**. Each one attaches to a feed and runs one kind of perception over its frames, publishing typed results your sketch reads every frame:
@@ -114,6 +127,20 @@ Every tracker follows that pattern. The analysis runs on a background thread, th
 The second half of the diagram is about coordinates. Trackers report geometry in **normalized** coordinates, `0...1` across the frame, with the origin at the lower left and y pointing up. The canvas is pixels from the top left, with y pointing down, and the frame usually landed letterboxed somewhere inside it. So every result has to be flipped and scaled into the rectangle you drew the frame in. You never do that math yourself. Every result type carries `in:` helpers, among them `bounds(in: rect)`, `point(_:in:)`, and `landmarks(_:in:)`. Each takes the rectangle `drawFrame` returned and answers in canvas terms.
 
 Pass `mirrored: true` to them when the sketch should answer like a bathroom mirror, left for left. It usually feels right for a sketch you stand in front of. `drawFrame` has no such switch. To show the feed flipped as well, draw it as `withState { translate(width, 0); scale(-1, 1); drawFrame(camera) }`, which flips the canvas left for right.
+
+What a tracker hands back shakes. Each frame is analyzed on its own, so a box moves a few pixels between two frames of a scene where nothing moved, and a thing the tracker is unsure of blinks in and out. `@Steadied` holds found things steady. You assign what was found every frame, and read the same things back:
+
+```swift
+@Steadied var boxes: [Rectangle] = []
+
+// in draw(), after `guard let rect = drawFrame(camera) else { return }`
+boxes = faces.faces.map { $0.bounds(in: rect) }     // as found
+for box in boxes { drawRect(box) }                  // steady
+```
+
+Each box is matched to the one before it and smoothed. A new one shows once it has been found for a tenth of a second. One that goes missing stays for three tenths, so a frame the tracker misses is not a blink. `$boxes.things` gives each box a number that stays with it for as long as it lasts, which is how a sketch keeps one color on one face.
+
+It steadies any list of boxes. It also takes the labeled boxes and the four-cornered outlines of the detectors later in this chapter as they are, with no `map`. [`ObjectDetection`](../Examples/Vision/ObjectDetection/Sketch.swift) and [`RectangleScan`](../Examples/Vision/RectangleScan/Sketch.swift) draw through it, and the [reference](../Docs/Helpers/Steadied.md) has its settings.
 
 ## The picture as a field: optical flow
 
@@ -640,6 +667,7 @@ Camera art that answers the people in front of it goes back to the 1970s. Myron 
 - [Vision](../Docs/Vision/Vision.md): every tracker in detail, coordinate mapping, still images, availability.
 - [Video](../Docs/Video/Video.md): loading and playing footage, analysis, the soundtrack, deterministic export.
 - [Sample photos](../Docs/Drawing/SamplePhotos.md): the twenty bundled pictures and the film, with their credits.
+- [Found things held steady](../Docs/Helpers/Steadied.md): `@Steadied` in full, with its settings, each thing's number, what was measured on the detectors, and how to steady a type of your own.
 - [A live camera environment](../Docs/3D/3D.md#live-environment): `Environment.feed` with any `VideoFeed`, how the unseen half is filled, and the neutral sky before the first frame. The `3D/Environments/LiveEnvironment` and `3D/Materials/LiveSurface` examples run it with the webcam.
 - [Screen capture](../Docs/Integration/ScreenCapture.md): naming a display, app, or window, listing what's there, the permission story in full, and the feedback tunnel.
 - [Slit scan](../Docs/Video/SlitScan.md): the frame history, both delay forms, memory cost, and the delay maps to try.

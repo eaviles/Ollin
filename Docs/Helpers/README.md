@@ -6,6 +6,7 @@
 
 - [`Math`](./Math.md) - `map`, `dist`, `lerp`, and `Double.tau`
 - [`Animation`](./Animation.md) - the `Easing` curves, `@Eased` (ease toward a target), `@Smoothed` (smooth a noisy signal), and `@Sprung` (spring toward a target with momentum)
+- [`Steadied`](./Steadied.md) - `@Steadied`, found things held steady: a detector's boxes and corners without the shake and the blinking, each with a number that stays with it
 - [`Parameters`](./Parameters.md) - `@Param` tunable parameters: live sliders in the inspector, optional smoothing, and binding from OSC or MIDI
 - [`Input`](./Input.md) - mouse and keyboard
 - [`Accessibility`](./Accessibility.md) - color vision simulation, a palette check, the published safe set, and the reduce-motion setting

@@ -86,6 +86,7 @@ let device = PhoneDevice()
 device.start()                       // begins connecting; safe to call once
 
 device.isRunning                   // Bool, frames currently arriving
+device.isLive                      // Bool, true on the cable and false playing a recording
 device.waitingMessage                // a notice reflecting the live connection state
 device.latestBody                    // PhoneBody?, the tracked skeleton (Body mode)
 device.latestBodies                  // [PhoneBody], every tracked body (= one today)
