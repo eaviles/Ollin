@@ -281,7 +281,12 @@ struct MQTTSessionTests {
         _ = try await waitFor(timeout: 8) { client.connectionCount >= 2 ? true : nil }
         #expect(client.isConnected)
         // The subscription went back up on its own, so a publish still arrives.
-        #expect(broker.subscribed.filter { $0.filter == "room/#" }.count >= 2)
+        // The client counts the connection when the broker accepts it and sends
+        // the subscription after, so the broker's record is waited for: read at
+        // once, it can still hold only the first.
+        _ = try await waitFor(timeout: 8) {
+            broker.subscribed.filter { $0.filter == "room/#" }.count >= 2 ? true : nil
+        }
         #expect(broker.subscribed.last?.qos == .atLeastOnce)
         broker.publish("room/a", "back")
         let again = try await waitFor(timeout: 8) { client.text("room/a") }
