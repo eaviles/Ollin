@@ -248,9 +248,11 @@ struct SweepTests {
                     #expect(abs((corners[a] - corners[b]).length - want) < 1e-12)
                 }
             }
-            // The uvs: `v` along the path, `u` round the outline.
+            // The uvs: `v` along the path from its start, `u` round the
+            // outline against its walk, 1 where the walk opens and 0 where it
+            // closes.
             #expect(abs(mesh.uvs[i * width].y - fraction) < 1e-12)
-            #expect(mesh.uvs[i * width].x == 0 && mesh.uvs[i * width + 7].x == 1)
+            #expect(mesh.uvs[i * width].x == 1 && mesh.uvs[i * width + 7].x == 0)
         }
     }
 
@@ -322,7 +324,8 @@ struct SweepTests {
     // MARK: - Strips
 
     /// Rung `i` joins `first[i]` to `second[i]`; each rung's color paints both
-    /// its ends; `u` counts rungs and `v` crosses them; the normals are the
+    /// its ends; `u` counts rungs and `v` crosses them from the second line
+    /// to the first; the normals are the
     /// lines' direction crossed with the rung, and the triangles face the
     /// same way.
     @Test func aStripsRungsColorsAndUVsAreExact() {
@@ -347,7 +350,7 @@ struct SweepTests {
                 #expect(strip.positions[row * 2 + 1] == second[i])
                 #expect(strip.colors[row * 2] == colors[i] && strip.colors[row * 2 + 1] == colors[i])
                 let u = Double(row) / Double(rows - 1)
-                #expect(strip.uvs[row * 2] == Vector2(u, 0) && strip.uvs[row * 2 + 1] == Vector2(u, 1))
+                #expect(strip.uvs[row * 2] == Vector2(u, 1) && strip.uvs[row * 2 + 1] == Vector2(u, 0))
                 let rung = second[i] - first[i]
                 let along: Vector3 = closed
                     ? first[(i + 1) % n] - first[(i - 1 + n) % n]

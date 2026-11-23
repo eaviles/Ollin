@@ -30,8 +30,16 @@ public extension Mesh {
     /// 30° keeps a hard edge down the whole sweep, and a gentler one is
     /// smoothed, so a square stays square and a circle reads round.
     /// `capped` closes the two ends of an open path with the shape's fill.
-    /// The mesh carries uvs: `u` runs round each contour by walked length and
-    /// `v` along the path, and a cap maps the shape's bounds.
+    ///
+    /// The mesh carries uvs, laid so a picture reads the right way round from
+    /// outside. `v` runs along the path, 0 at its start and 1 at its end by
+    /// walked length. `u` runs round each contour by walked length, 0 and 1
+    /// meeting at the contour's first point, left to right as you face the
+    /// wall with the path's start at the top. So a picture's top edge lies at
+    /// the path's start, and it stands upright on a path that runs downward;
+    /// on a path that climbs, give the uvs a half turn
+    /// (`Vector2(1 - u, 1 - v)`). A cap maps the shape's bounds, the shape's
+    /// `+y` as the picture's top, read from outside at either end.
     ///
     /// On a closed path the last copy joins the first, so `scale` should come
     /// back to its starting value and `twist` to its start plus a whole number
@@ -88,10 +96,11 @@ public extension Mesh {
     /// The walls follow the sweep's rules: a closed contour becomes a wall
     /// facing out and an open one a sheet; a corner sharper than 30° on any
     /// section keeps a hard edge down the whole loft, which softens where the
-    /// other sections round it off; `u` runs round each outline by walked
-    /// length and `v` along the path; `scale` and `twist` are read at the
-    /// fraction along the path; and `capped` closes an open path with the
-    /// first and last section's fill. Sections are matched contour by
+    /// other sections round it off; `v` runs along the path from its start
+    /// and `u` round each outline by walked length, left to right as you
+    /// face the wall with the path's start at the top; `scale` and `twist`
+    /// are read at the fraction along the path; and `capped` closes an open
+    /// path with the first and last section's fill. Sections are matched contour by
     /// contour in order, closed with closed and open with open, and a contour
     /// some section lacks is left out of the loft. On a closed path the last
     /// section blends back into the first, which keeps its seam where it was
@@ -258,6 +267,9 @@ private enum SweepBuilder {
                 guard fill.count >= 3 else { sealed = false; continue }
                 let box = SweepProfile.CapMap(fill)
                 let normal = place.frame.tangent * outward
+                // Facing the far cap from outside, the shape's x runs to the
+                // right; facing the near one, to the left.
+                let leftToRight = outward > 0
                 var k = 0
                 while k + 2 < fill.count {
                     var tri = [fill[k], fill[k + 1], fill[k + 2]]
@@ -270,7 +282,7 @@ private enum SweepBuilder {
                     for p in tri {
                         positions.append(place.place(p))
                         normals.append(normal)
-                        uvs.append(box.map(p))
+                        uvs.append(box.map(p, leftToRight: leftToRight))
                     }
                     indices += [first, first + 1, first + 2]
                 }
@@ -318,7 +330,10 @@ private enum SweepBuilder {
                 }
                 positions.append(grid[row * width + c])
                 normals.append(normal.lengthSquared > 0 ? normal.normalized : place.frame.normal)
-                uvs.append(Vector2(column.u, place.fraction))
+                // The wall faces across × along. With `v` counting along the
+                // path, a picture reads the right way round from that side
+                // only when `u` counts against the outline's walk.
+                uvs.append(Vector2(1 - column.walked, place.fraction))
             }
         }
         for row in 0..<(rows - 1) {
@@ -536,15 +551,17 @@ private struct LoftBlend {
 }
 
 /// A shape's contours prepared for sweeping: walls facing out of the solid,
-/// corners split where they are sharp, and a `u` for every column.
+/// corners split where they are sharp, and every column's place along the
+/// outline's walk.
 private enum SweepProfile {
 
     /// One column of the sweep's grid: a point of the outline, the direction
-    /// the outline runs there (for the surface normal), and its `u`.
+    /// the outline runs there (for the surface normal), and the fraction of
+    /// the outline's length walked to it (the wall's `u` is one minus that).
     struct Column {
         let point: Vector2
         let direction: Vector2
-        let u: Double
+        let walked: Double
     }
 
     struct Prepared {
@@ -615,7 +632,7 @@ private enum SweepProfile {
         var walked = [0.0]
         for i in 1...m { walked.append(walked[i - 1] + (points[i % m] - points[i - 1]).length) }
         let total = walked[m]
-        func u(_ i: Int) -> Double { total > 0 ? walked[i] / total : Double(i) / Double(m) }
+        func fraction(_ i: Int) -> Double { total > 0 ? walked[i] / total : Double(i) / Double(m) }
         func edge(_ i: Int) -> Vector2 { (points[(i + 1) % m] - points[i]).normalized }
         func smooth(_ i: Int) -> Vector2 {
             let d = points[(i + 1) % m] - points[(i - 1 + m) % m]
@@ -624,21 +641,21 @@ private enum SweepProfile {
         var columns: [Column] = []
         var edges: [(from: Int, to: Int)] = []
         // The seam at point 0 opens the walk (its outgoing side) and closes it
-        // again at u = 1 (its incoming side), one column each.
-        columns.append(Column(point: points[0], direction: sharp[0] ? edge(0) : smooth(0), u: 0))
+        // again a whole walk later (its incoming side), one column each.
+        columns.append(Column(point: points[0], direction: sharp[0] ? edge(0) : smooth(0), walked: 0))
         for i in 1..<m {
             let incoming = columns.count - 1
             if sharp[i] {
-                columns.append(Column(point: points[i], direction: edge(i - 1), u: u(i)))
+                columns.append(Column(point: points[i], direction: edge(i - 1), walked: fraction(i)))
                 edges.append((incoming, columns.count - 1))
-                columns.append(Column(point: points[i], direction: edge(i), u: u(i)))
+                columns.append(Column(point: points[i], direction: edge(i), walked: fraction(i)))
             } else {
-                columns.append(Column(point: points[i], direction: smooth(i), u: u(i)))
+                columns.append(Column(point: points[i], direction: smooth(i), walked: fraction(i)))
                 edges.append((incoming, columns.count - 1))
             }
         }
         let last = columns.count - 1
-        columns.append(Column(point: points[0], direction: sharp[0] ? edge(m - 1) : smooth(0), u: 1))
+        columns.append(Column(point: points[0], direction: sharp[0] ? edge(m - 1) : smooth(0), walked: 1))
         edges.append((last, columns.count - 1))
         return Prepared(columns: columns, edges: edges)
     }
@@ -650,26 +667,26 @@ private enum SweepProfile {
         var walked = [0.0]
         for i in 1..<m { walked.append(walked[i - 1] + (points[i] - points[i - 1]).length) }
         let total = walked[m - 1]
-        func u(_ i: Int) -> Double { total > 0 ? walked[i] / total : Double(i) / Double(m - 1) }
+        func fraction(_ i: Int) -> Double { total > 0 ? walked[i] / total : Double(i) / Double(m - 1) }
         func edge(_ i: Int) -> Vector2 { (points[i + 1] - points[i]).normalized }
         var columns: [Column] = []
         var edges: [(from: Int, to: Int)] = []
         for i in 0..<m {
             if i == 0 {
-                columns.append(Column(point: points[0], direction: edge(0), u: 0))
+                columns.append(Column(point: points[0], direction: edge(0), walked: 0))
                 continue
             }
             let incoming = columns.count - 1
             if i == m - 1 {
-                columns.append(Column(point: points[i], direction: edge(i - 1), u: 1))
+                columns.append(Column(point: points[i], direction: edge(i - 1), walked: 1))
                 edges.append((incoming, columns.count - 1))
             } else if sharp[i] {
-                columns.append(Column(point: points[i], direction: edge(i - 1), u: u(i)))
+                columns.append(Column(point: points[i], direction: edge(i - 1), walked: fraction(i)))
                 edges.append((incoming, columns.count - 1))
-                columns.append(Column(point: points[i], direction: edge(i), u: u(i)))
+                columns.append(Column(point: points[i], direction: edge(i), walked: fraction(i)))
             } else {
                 let d = points[i + 1] - points[i - 1]
-                columns.append(Column(point: points[i], direction: d.normalized, u: u(i)))
+                columns.append(Column(point: points[i], direction: d.normalized, walked: fraction(i)))
                 edges.append((incoming, columns.count - 1))
             }
         }
@@ -761,7 +778,8 @@ private enum SweepProfile {
         return (ap - ab * t).lengthSquared <= 1e-24 * len2
     }
 
-    /// The box a cap's uvs map: the bounds of `points`, read as `0...1`.
+    /// The box a cap's uvs map: the bounds of `points`, read as `0...1` with
+    /// the shape's `+y` as the picture's top.
     struct CapMap {
         let low: Vector2
         let size: Vector2
@@ -776,8 +794,13 @@ private enum SweepProfile {
             size = hi - lo
         }
 
-        func map(_ p: Vector2) -> Vector2 {
-            Vector2(size.x > 0 ? (p.x - low.x) / size.x : 0, size.y > 0 ? (p.y - low.y) / size.y : 0)
+        /// The uv of the shape's point `p`. `leftToRight` says whether the
+        /// shape's x runs to the viewer's right on this cap, seen from
+        /// outside, or to the left.
+        func map(_ p: Vector2, leftToRight: Bool) -> Vector2 {
+            let across = size.x > 0 ? (p.x - low.x) / size.x : 0
+            let up = size.y > 0 ? (p.y - low.y) / size.y : 0
+            return Vector2(leftToRight ? across : 1 - across, 1 - up)
         }
     }
 }
@@ -793,13 +816,16 @@ public extension Mesh {
     ///
     /// `colors`, one per rung, paints both ends of each rung (the mesh's
     /// vertex colors, which multiply the `fill`); any other count is ignored.
+    /// The normals come from the strip itself: at each end of a rung, the
+    /// direction its line runs crossed with the rung, so a ribbon that twists
+    /// shades with its twist. The front is the side from which `first` runs
+    /// left to right beneath `second`.
+    ///
     /// The uvs run `u` from 0 at the first rung to 1 at the last, by rung
     /// rather than by distance, so rungs spaced evenly (a `Pace` hands out
-    /// even spacing) lay a texture evenly, and `v` from 0 on `first` to 1 on
-    /// `second`. The normals come from the strip itself: at each end of a
-    /// rung, the direction its line runs crossed with the rung, so a ribbon
-    /// that twists shades with its twist. The front is the side from which
-    /// `first` runs left to right beneath `second`.
+    /// even spacing) lay a texture evenly, and `v` from 0 on `second` to 1 on
+    /// `first`. So a picture's top edge lies on `second`, and from the front
+    /// it reads as the image does: hand the lower rail first.
     ///
     /// `closed` joins the last rung back to the first (the closing rung is
     /// the first one again, so `u` can reach 1). When the two lines have
@@ -845,7 +871,9 @@ public extension Mesh {
             let u = Double(row) / Double(rows - 1)
             positions.append(a[i]); positions.append(b[i])
             normals.append(along(a, i).cross(rung)); normals.append(along(b, i).cross(rung))
-            uvs.append(Vector2(u, 0)); uvs.append(Vector2(u, 1))
+            // The front faces along × rung, so the picture's top is the far
+            // end of the rung: `v` counts from `second`.
+            uvs.append(Vector2(u, 1)); uvs.append(Vector2(u, 0))
             if rungColors { vertexColors.append(colors[i]); vertexColors.append(colors[i]) }
         }
         var indices: [UInt32] = []

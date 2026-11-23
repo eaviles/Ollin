@@ -63,7 +63,7 @@ let horn = Mesh.sweep(Profile.rectangle(width: 0.55, height: 0.55), along: rise,
 - **Every closed contour becomes a wall**, holes included. The walls face out of the solid whichever way each outline was drawn, read from the shape's own fill rule. An open contour becomes a sheet.
 - **Corners keep their edges.** Where an outline turns more than 30°, the wall keeps a hard edge down the whole sweep; a gentler turn is shaded smooth. A square stays square, a hexagon stays faceted, and a circle of a dozen points or more reads round.
 - **`capped`** (the default) closes the two ends of an open path with the shape's fill, so the sweep is a closed solid you can cut or print.
-- **The mesh carries uvs.** `u` runs round each contour by walked length and `v` along the path. A cap maps the shape's bounds.
+- **The mesh carries uvs.** `v` runs along the path, 0 at its start and 1 at its end. `u` runs round each contour by walked length, with 0 and 1 meeting at the contour's first point. A cap maps the shape's bounds. [A picture on one](#pictures) says which way round a picture sits.
 
 On a **closed path** the last copy joins the first. So `scale` should come back to where it started, and `twist` to its start plus a whole number of turns. Otherwise the join shows.
 
@@ -87,7 +87,7 @@ drawLoft([Profile.rectangle(width: 1, height: 1), round(0.7), round(0.2), round(
 - **`at`** says where each section sits, as a fraction of the path's walked length from 0 to 1, one per section in ascending order. Left out, the sections are spaced evenly from the start to the end, or evenly round a closed path. A section sits exactly where it was asked for, its own corners and all, even between two of the path's points.
 - **The outlines are matched round their lengths.** Every corner of every section is kept as a point on all of them, so a square stays a square at its station and the circle beside it gets four more points on its sides. Each closed outline's seam is turned to where it sits nearest the section before it, so the skin does not twist on its own. A section turned a little from the one before stays with its nearest corners, rather than jumping a whole corner round.
 - **`smoothed`** (the default) runs the surface as a smooth curve through three or more sections. Off, it runs straight from each section to the next, like planks laid over ribs, and the stations show as soft ridges. Between two sections the blend is straight either way, and a section that is the halfway blend of its neighbors changes nothing.
-- **The walls follow the sweep's rules.** A closed contour becomes a wall facing out and an open one a sheet. A corner sharper than 30° on any section keeps a hard edge down the whole loft, which softens where the other sections round it off, so a square foot's edges fade out on the way up to a round neck. `scale` and `twist` are read at the fraction along the path, `u` runs round each outline by its own walked length and `v` along the path, and `capped` closes an open path with the first and last section's fill.
+- **The walls follow the sweep's rules.** A closed contour becomes a wall facing out and an open one a sheet. A corner sharper than 30° on any section keeps a hard edge down the whole loft, which softens where the other sections round it off, so a square foot's edges fade out on the way up to a round neck. `scale` and `twist` are read at the fraction along the path, `v` runs along the path and `u` round each outline by its own walked length, and `capped` closes an open path with the first and last section's fill.
 - **Sections are matched contour by contour, in order.** Closed contours pair with closed and open with open, first with first; a contour some section lacks is left out of the loft.
 - **On a closed path** the sections run all the way round, and the one placed last blends back into the one placed first, which keeps its seam where it was drawn.
 
@@ -98,10 +98,30 @@ A loft of one shape is that shape's sweep, down to the last byte. A hull wants o
 `Mesh.strip(between:and:colors:closed:)` is a ribbon between two lines in space: rung `i` joins `first[i]` to `second[i]`, and each rung joins the next with two triangles. It is the surface a moving segment sweeps, a loft between two rails, the band a pair of hands traces through the air. `drawStrip` is the bare call.
 
 - **`colors`**, one per rung, paints both ends of each rung. They are the mesh's vertex colors, so they multiply the `fill`. Any other count is ignored.
-- **The uvs** run `u` from 0 at the first rung to 1 at the last, counted by rung rather than by distance, and `v` from 0 on the first line to 1 on the second. Rungs spaced evenly lay a texture evenly.
+- **The uvs** run `u` from 0 at the first rung to 1 at the last, counted by rung rather than by distance, and `v` from 0 on the second line to 1 on the first. Rungs spaced evenly lay a texture evenly.
 - **The normals come from the strip itself.** At each end of a rung, the direction its line runs is crossed with the rung, so a ribbon that twists shades with its twist. The front is the side from which the first line runs left to right beneath the second.
 - **`closed`** joins the last rung back to the first.
 - **Lines of different counts** still make a strip. The line with more points sets the rungs, and each rung meets the other line at the same fraction of its walked length. A line of one point makes a fan.
+
+<a id="pictures"></a>
+### A picture on one
+
+All three carry uvs, so `textured(_:)` puts a picture on them, and a normal map or a height map follows the picture. Seen from the side the normals face, the picture reads as the image does and never as in a mirror. Where its top goes depends on the path.
+
+<img src="../Images/PictureAlongAPath.jpg" alt="Five panels on a dark ground. First the picture, flat: the word OLLIN written twice under an orange top edge. Then a tube swept down its path, the word upright with the orange edge at the top. Then the same tube swept up, the word upside down with the orange edge at the bottom. Then that tube with its uvs given a half turn, the word upright again. Last a gently waving strip handed its lower rail first, both words upright" width="680">
+
+- **A sweep or a loft hangs the picture from the path's start.** `v` counts along the path, so the picture's top edge is at the start and its bottom edge at the end. `u` runs round the section, left to right as you face the wall with the start at the top. A picture stands upright on a path that runs down.
+- **On a path that climbs, the picture is upside down.** A bottle lofted from its foot to its neck is the usual case. A half turn of the uvs stands it up:
+
+  ```swift
+  let spine = Curve3D([Vector3(0, -1, 0), Vector3(0, 1, 0)])        // foot to neck
+  var bottle = Mesh.loft([Profile.rectangle(width: 0.8, height: 0.8),
+                          Profile.ellipse(radiusX: 0.2, radiusY: 0.2)], along: spine)
+  bottle.uvs = bottle.uvs.map { Vector2(1 - $0.x, 1 - $0.y) }
+  ```
+
+- **A cap shows the picture upright from outside**, at both ends. It maps the shape's bounds, with the shape's +y as the picture's top.
+- **A strip lays the picture's top edge on its second line.** Hand it the lower line first, running left to right, and the picture reads upright from the strip's front.
 
 ### An even pace
 

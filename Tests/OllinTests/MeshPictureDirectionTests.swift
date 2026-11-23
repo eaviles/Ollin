@@ -32,7 +32,9 @@ struct MeshPictureDirectionTests {
     /// corners go round counter-clockwise too when the picture reads right,
     /// and that is a negative area in (u, v), since those axes are a
     /// left-handed pair. A triangle of no size on either side is left out.
-    static func readingShare(_ mesh: Mesh) -> Double {
+    /// With `facing`, only the triangles whose three normals point that way
+    /// are read, which is how one flat cap is told from the rest of a solid.
+    static func readingShare(_ mesh: Mesh, facing: Vector3? = nil) -> Double {
         guard mesh.uvs.count == mesh.positions.count,
               mesh.normals.count == mesh.positions.count else { return .nan }
         var right = 0.0, total = 0.0
@@ -40,6 +42,7 @@ struct MeshPictureDirectionTests {
         while i + 2 < mesh.indices.count {
             let a = Int(mesh.indices[i]), b = Int(mesh.indices[i + 1]), c = Int(mesh.indices[i + 2])
             i += 3
+            if let facing, ![a, b, c].allSatisfy({ mesh.normals[$0].dot(facing) > 0.999 }) { continue }
             let face = (mesh.positions[b] - mesh.positions[a])
                 .cross(mesh.positions[c] - mesh.positions[a])
             let out = mesh.normals[a] + mesh.normals[b] + mesh.normals[c]
@@ -53,8 +56,6 @@ struct MeshPictureDirectionTests {
         }
         return total > 0 ? right / total : .nan
     }
-
-    private static let upward = Curve3D([Vector3(0, -1, 0), Vector3(0, 0, 0), Vector3(0, 1, 0)])
 
     /// Every built-in generator whose picture reads the right way round.
     @Test func aPictureReadsTheRightWayRoundFromOutside() {
@@ -81,24 +82,187 @@ struct MeshPictureDirectionTests {
         }
     }
 
-    /// The meshes built along a path still carry a picture mirrored: a swept or
-    /// lofted wall and a strip between two rails read the right way round on
-    /// none of their area (measured 2026-11-23). Pinned until they are turned,
-    /// so the day they are this fails and the three join the list above.
-    @Test func theMeshesBuiltAlongAPathAreStillMirrored() {
+    // MARK: The meshes built along a path
+
+    private static let climbing = Curve3D([Vector3(0, -1, 0), Vector3(0, 0, 0), Vector3(0, 1, 0)])
+    private static let descending = Curve3D([Vector3(0, 1, 0), Vector3(0, 0, 0), Vector3(0, -1, 0)])
+    private static let round = Profile.ellipse(radiusX: 0.6, radiusY: 0.6, segments: 48)
+
+    /// A path that bends in space, first one way and then the other, and out
+    /// of any one plane. Its tightest bend has a radius past 1.4, wider than
+    /// every section swept along it here, so no wall folds over on the inside
+    /// of a bend (a fold is real geometry, and it reads as a mirror).
+    private static let bending = Curve3D((0...64).map { k in
+        let x = -2 + Double(k) / 16
+        return Vector3(x, 0.5 * sin(x), 0.3 * cos(1.3 * x))
+    })
+
+    private static func ring(radius: Double, count: Int, y: Double = 0) -> [Vector3] {
+        (0..<count).map { k in
+            let t = Double(k) / Double(count) * 2 * .pi
+            return Vector3(radius * cos(t), y, radius * sin(t))
+        }
+    }
+
+    /// A swept wall, a lofted wall, and a strip between two rails read the
+    /// right way round over all of their area, whatever the path, the section,
+    /// or the taper. A sheet (an open outline swept) and a strip have two
+    /// sides, and the side read is the one their normals face.
+    @Test func thePathBuiltMeshesReadTheRightWayRound() {
+        let rail = [Vector3(-1, 0, 0), Vector3(0, 0, 0.2), Vector3(1, 0, 0)]
+        let washer = Shape(outer: Profile.rectangle(width: 1, height: 0.8),
+                           holes: [Profile.ellipse(radiusX: 0.25, radiusY: 0.2, segments: 20)])
+        let sheet = Shape([Vector2(-0.5, 0), Vector2(-0.1, 0.25), Vector2(0.5, 0.1)], closed: false)
+        let square = Profile.rectangle(width: 0.6, height: 0.6)
+        let circle = Profile.ellipse(radiusX: 0.2, radiusY: 0.2, segments: 16)
+        let carriers: [(name: String, mesh: Mesh)] = [
+            ("sweep up", Mesh.sweep(Self.round, along: Self.climbing, capped: false)),
+            ("sweep down", Mesh.sweep(Self.round, along: Self.descending, capped: false)),
+            ("sweep, capped", Mesh.sweep(Profile.star(points: 5, outerRadius: 0.5, innerRadius: 0.2),
+                                         along: Self.climbing)),
+            ("sweep, bending, tapered, twisted",
+             Mesh.sweep(Profile.rectangle(width: 0.4, height: 0.25), along: Self.bending,
+                        scale: { 1 - 0.6 * $0 }, twist: { 2.2 * $0 })),
+            ("sweep of a shape with a hole", Mesh.sweep(washer, along: Self.bending)),
+            ("sweep of an open outline", Mesh.sweep(sheet, along: Self.bending)),
+            ("sweep round a closed path",
+             Mesh.sweep(circle, along: Curve3D(Self.ring(radius: 1.2, count: 40), closed: true))),
+            ("loft", Mesh.loft([square, circle], along: Self.climbing, capped: false)),
+            ("loft, capped, three sections",
+             Mesh.loft([square, Profile.ellipse(radiusX: 0.5, radiusY: 0.5, segments: 24), circle],
+                       along: Self.bending, at: [0, 0.4, 1])),
+            ("loft, planked", Mesh.loft([square, circle, square], along: Self.bending, smoothed: false)),
+            ("strip", Mesh.strip(between: rail, and: rail.map { $0 + Vector3(0, 0.6, 0) })),
+            ("strip, upper rail first", Mesh.strip(between: rail.map { $0 + Vector3(0, 0.6, 0) }, and: rail)),
+            ("strip, closed", Mesh.strip(between: Self.ring(radius: 1, count: 30),
+                                         and: Self.ring(radius: 1.4, count: 30, y: 0.5), closed: true)),
+            ("strip, rails of different counts",
+             Mesh.strip(between: rail, and: Array(Self.ring(radius: 2, count: 9, y: 1).prefix(5).reversed()))),
+            ("strip to one point", Mesh.strip(between: rail, and: [Vector3(0, 1, 0)])),
+        ]
+        for entry in carriers {
+            let share = Self.readingShare(entry.mesh)
+            #expect(share > 0.999, "\(entry.name) reads the right way round on \(share) of its area")
+        }
+    }
+
+    /// Each of a capped sweep's two ends, read alone from outside. They are
+    /// told apart by their normals, which on a straight path are the path's
+    /// direction and its opposite, and which no wall shares.
+    @Test func bothCapsReadTheRightWayRound() {
+        let shapes: [(name: String, shape: Shape)] = [
+            ("star", Shape(Profile.star(points: 5, outerRadius: 0.5, innerRadius: 0.2))),
+            ("washer", Shape(outer: Profile.rectangle(width: 1, height: 0.8),
+                             holes: [Profile.ellipse(radiusX: 0.25, radiusY: 0.2, segments: 20)])),
+        ]
+        let paths: [(name: String, from: Vector3, to: Vector3)] = [
+            ("up", Vector3(0, -1, 0), Vector3(0, 1, 0)),
+            ("toward +z", Vector3(0, 0, -1), Vector3(0, 0, 1)),
+            ("askew", Vector3(0.2, -0.4, 1), Vector3(-0.7, 0.9, -0.3)),
+        ]
+        for entry in shapes {
+            for path in paths {
+                let along = (path.to - path.from).normalized
+                let solid = Mesh.sweep(entry.shape, along: Curve3D([path.from, path.to]))
+                let far = Self.readingShare(solid, facing: along)
+                let near = Self.readingShare(solid, facing: -along)
+                #expect(far > 0.999, "\(entry.name) \(path.name): the far cap reads right on \(far) of its area")
+                #expect(near > 0.999, "\(entry.name) \(path.name): the near cap reads right on \(near) of its area")
+            }
+        }
+    }
+
+    /// Reading right leaves a half turn open, and the reference closes it: a
+    /// wall's `v` counts from the path's start, so the picture hangs from the
+    /// start, and `u` runs to the right as you face the wall with the start at
+    /// the top. On a tube swept straight down, with the section's x on world x
+    /// and its y toward the viewer, that is the angle round the tube counted
+    /// from the right limb, backwards.
+    @Test func aWallHangsItsPictureFromThePathsStart() {
+        let tube = Mesh.sweep(Self.round, along: Self.descending, capped: false)
+        #expect(tube.uvs.count == tube.positions.count)
+        for (p, uv) in zip(tube.positions, tube.uvs) {
+            #expect(abs(uv.y - (1 - p.y) / 2) < 1e-12, "v is the share of the path walked from its start")
+            // Round from +x by +z (the front), as a share of a turn.
+            let round = atan2(p.z, p.x) / (2 * .pi)
+            let apart = (1 - uv.x - round) - (1 - uv.x - round).rounded()
+            #expect(abs(apart) < 1e-9, "at \(p): u should be \(1 - round), not \(uv.x)")
+        }
+        // The same statement with no frame in it, on a sweep that bends, tapers,
+        // and twists: down one column of a wall (two corners of a triangle
+        // that share a `u`), `v` grows the way the path runs.
+        let horn = Mesh.sweep(Profile.rectangle(width: 0.4, height: 0.25), along: Self.bending,
+                              scale: { 1 - 0.6 * $0 }, twist: { 2.2 * $0 }, capped: false)
+        let path = Self.bending
+        var pairs = 0
+        var k = 0
+        while k + 2 < horn.indices.count {
+            let corners = (0..<3).map { Int(horn.indices[k + $0]) }
+            k += 3
+            for a in corners {
+                for b in corners where horn.uvs[b].x == horn.uvs[a].x && horn.uvs[b].y > horn.uvs[a].y {
+                    let ahead = path.point(at: horn.uvs[b].y) - path.point(at: horn.uvs[a].y)
+                    let step = (horn.positions[b] - horn.positions[a]).dot(ahead)
+                    #expect(step > 0, "a corner at v \(horn.uvs[b].y) lies behind one at \(horn.uvs[a].y)")
+                    pairs += 1
+                }
+            }
+        }
+        #expect(pairs > 100)
+    }
+
+    /// A strip's `u` counts rungs from the first and its `v` counts from the
+    /// second rail, so the picture's top edge lies on the second rail.
+    @Test func aStripLaysThePicturesTopOnItsSecondRail() {
+        let lower = (0...8).map { Vector3(-1 + Double($0) / 4, -0.5, 0) }
+        let upper = lower.map { $0 + Vector3(0, 1, 0) }
+        let banner = Mesh.strip(between: lower, and: upper)
+        for (p, uv) in zip(banner.positions, banner.uvs) {
+            #expect(abs(uv.x - (p.x + 1) / 2) < 1e-12)
+            #expect(uv.y == (p.y > 0 ? 0 : 1), "the second rail carries v = 0, the first v = 1")
+        }
+        // Its front is the side from which the first rail runs left to right
+        // beneath the second: here, +z.
+        #expect(banner.normals.allSatisfy { ($0 - Vector3(0, 0, 1)).length < 1e-12 })
+    }
+
+    /// A cap maps the shape's bounds with the shape's +y as the picture's top,
+    /// read from outside: on the far cap the shape's x runs to the right, on
+    /// the near one to the left. Swept along +z a shape's x and y are the
+    /// world's, so the formula is checked in world coordinates.
+    @Test func aCapMapsTheShapesBoundsUprightFromOutside() {
+        // No symmetry: wider than tall, off center, one corner cut.
+        let outline = [Vector2(-0.2, -0.3), Vector2(1.0, -0.3), Vector2(1.0, 0.5),
+                       Vector2(0.4, 0.9), Vector2(-0.2, 0.9)]
+        let solid = Mesh.sweep(outline, along: Curve3D([Vector3(0, 0, -1), Vector3(0, 0, 1)]))
+        var far = 0, near = 0
+        for ((p, n), uv) in zip(zip(solid.positions, solid.normals), solid.uvs) where abs(n.z) > 0.999 {
+            let across = (p.x + 0.2) / 1.2, up = (p.y + 0.3) / 1.2
+            if n.z > 0 {
+                far += 1
+                #expect((uv - Vector2(across, 1 - up)).length < 1e-12, "far cap at \(p): \(uv)")
+            } else {
+                near += 1
+                #expect((uv - Vector2(1 - across, 1 - up)).length < 1e-12, "near cap at \(p): \(uv)")
+            }
+        }
+        #expect(far >= 3 && near >= 3)
+    }
+
+    /// The basis a normal map is read in is right-handed wherever the picture
+    /// is not mirrored, so on these meshes it is right-handed everywhere.
+    @Test func thePathBuiltMeshesCarryARightHandedBasis() {
         let rail = [Vector3(-1, 0, 0), Vector3(0, 0, 0.2), Vector3(1, 0, 0)]
         let carriers: [(name: String, mesh: Mesh)] = [
-            ("sweep", Mesh.sweep(Profile.ellipse(radiusX: 0.4, radiusY: 0.4, segments: 16),
-                                 along: Self.upward, capped: false)),
-            ("loft", Mesh.loft([Profile.rectangle(width: 0.6, height: 0.6),
-                                Profile.ellipse(radiusX: 0.2, radiusY: 0.2, segments: 16)],
-                               along: Self.upward, capped: false)),
+            ("sweep", Mesh.sweep(Self.round, along: Self.bending)),
+            ("loft", Mesh.loft([Profile.rectangle(width: 0.6, height: 0.6), Self.round], along: Self.climbing)),
             ("strip", Mesh.strip(between: rail, and: rail.map { $0 + Vector3(0, 0.6, 0) })),
         ]
         for entry in carriers {
-            withKnownIssue("a \(entry.name) carries its picture mirrored: 0 of its area reads right, 2026-11-23") {
-                #expect(Self.readingShare(entry.mesh) > 0.99)
-            }
+            let based = entry.mesh.generatingTangents()
+            #expect(based.tangents.count == based.positions.count)
+            let mirrored = based.tangents.filter { $0.handedness != 1 }.count
+            #expect(mirrored == 0, "\(entry.name): \(mirrored) of \(based.tangents.count) tangents are left-handed")
         }
     }
 
@@ -331,6 +495,83 @@ struct MeshPictureDirectionTests {
                 "the stripe at u = 0.25 should stand at the frame's middle, not \(stripeColumn(frame))")
     }
 
+    // MARK: The path-built meshes, read off a frame
+
+    /// One mesh wearing the ramp, straight on from +z under even light.
+    final class CarrierProbe: Sketch {
+        var mesh = Mesh(positions: [], indices: [])
+        var picture = MeshPictureDirectionTests.ramp()
+        override var canvasSize: CanvasSize { .square(240) }
+
+        override func draw() {
+            background(.black)
+            ortho(eye: Vector3(0, 0, 10), target: .zero, up: .unitY, height: 2.4)
+            ambientLight(.white)
+            fill(.white)
+            drawMesh(mesh.textured(picture))
+        }
+    }
+
+    /// Which way the ramp runs across a frame: red from the left third to the
+    /// right third, green from the upper third to the lower. Positive is the
+    /// way the image has it.
+    private func rampRuns(on mesh: Mesh) throws -> (across: Double, down: Double) {
+        let probe = CarrierProbe()
+        probe.mesh = mesh
+        let frame = try render(probe)
+        return (patch(frame, 0.66, 0.5, channel: 0) - patch(frame, 0.34, 0.5, channel: 0),
+                patch(frame, 0.5, 0.7, channel: 1) - patch(frame, 0.5, 0.3, channel: 1))
+    }
+
+    /// A tube swept down its path shows the picture upright: red rising to the
+    /// right, green rising down the frame. Swept up, the picture is the same
+    /// one a half turn round (upside down and still not mirrored), and the
+    /// half turn of the uvs the reference names stands it up again.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aTubeShowsItsPictureHangingFromThePathsStart() throws {
+        let down = try rampRuns(on: Mesh.sweep(Self.round, along: Self.descending, capped: false))
+        #expect(down.across > 20 && down.down > 60, "swept down, the picture is upright: \(down)")
+
+        var climbing = Mesh.sweep(Self.round, along: Self.climbing, capped: false)
+        let up = try rampRuns(on: climbing)
+        #expect(up.across < -20 && up.down < -60, "swept up, the picture is a half turn round: \(up)")
+
+        climbing.uvs = climbing.uvs.map { Vector2(1 - $0.x, 1 - $0.y) }
+        let turned = try rampRuns(on: climbing)
+        #expect(turned.across > 20 && turned.down > 60, "a half turn of the uvs stands it up: \(turned)")
+
+        // A loft is the same wall: a square foot to a round neck, built from
+        // the top down.
+        let vessel = Mesh.loft([Profile.ellipse(radiusX: 0.5, radiusY: 0.5, segments: 32),
+                                Profile.rectangle(width: 1.1, height: 1.1)],
+                               along: Self.descending, capped: false)
+        let lofted = try rampRuns(on: vessel)
+        #expect(lofted.across > 20 && lofted.down > 60, "a loft built downward shows it upright: \(lofted)")
+    }
+
+    /// A banner handed its lower rail first shows the picture upright from the
+    /// side its normals face.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aBannerShowsItsPictureUprightFromItsFront() throws {
+        let lower = (0...12).map { Vector3(-1 + Double($0) / 6, -0.8, 0) }
+        let upper = lower.map { $0 + Vector3(0, 1.6, 0) }
+        let banner = Mesh.strip(between: lower, and: upper)
+        let runs = try rampRuns(on: banner)
+        #expect(runs.across > 40 && runs.down > 60, "the banner's picture is upright: \(runs)")
+    }
+
+    /// Both ends of a capped sweep, each turned to the camera in its turn: a
+    /// path toward the viewer shows its far cap, a path away shows its near
+    /// one, and each shows the picture upright.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func bothCapsShowThePictureUprightFromOutside() throws {
+        let slab = Profile.rectangle(width: 1.8, height: 1.4)
+        let far = try rampRuns(on: Mesh.sweep(slab, along: Curve3D([Vector3(0, 0, -0.5), Vector3(0, 0, 0.5)])))
+        #expect(far.across > 40 && far.down > 60, "the far cap's picture is upright: \(far)")
+        let near = try rampRuns(on: Mesh.sweep(slab, along: Curve3D([Vector3(0, 0, 0.5), Vector3(0, 0, -0.5)])))
+        #expect(near.across > 40 && near.down > 60, "the near cap's picture is upright: \(near)")
+    }
+
     // MARK: The surroundings, seen from inside
 
     final class SkyProbe: Sketch {
@@ -398,6 +639,7 @@ struct MeshPictureDirectionTests {
         /// Where the one light comes from, as the viewer sees it.
         var lightFrom = Vector3(1, 0, 0)
         var leansUp = false
+        var mesh = Mesh.sphere(radius: 1, segments: 48, rings: 24)
         override var canvasSize: CanvasSize { .square(240) }
 
         override func draw() {
@@ -407,15 +649,15 @@ struct MeshPictureDirectionTests {
             directionalLight(.white, direction: Vector3(-lightFrom.x, -lightFrom.y, -0.6))
             fill(.white)
             material(.dielectric(roughness: 1))
-            drawMesh(Mesh.sphere(radius: 1, segments: 48, rings: 24)
-                .normalMapped(MeshPictureDirectionTests.leaning(up: leansUp)))
+            drawMesh(mesh.normalMapped(MeshPictureDirectionTests.leaning(up: leansUp)))
         }
     }
 
-    private func frontBrightness(leansUp: Bool, lightFrom: Vector3) throws -> Double {
+    private func frontBrightness(leansUp: Bool, lightFrom: Vector3, on mesh: Mesh? = nil) throws -> Double {
         let probe = ReliefProbe()
         probe.leansUp = leansUp
         probe.lightFrom = lightFrom
+        if let mesh { probe.mesh = mesh }
         return patch(try render(probe), 0.5, 0.5, channel: 0)
     }
 
@@ -439,5 +681,28 @@ struct MeshPictureDirectionTests {
         let ball = Mesh.sphere(radius: 1, segments: 16, rings: 8).generatingTangents()
         #expect(ball.tangents.count == ball.positions.count)
         #expect(ball.tangents.allSatisfy { $0.handedness == 1 })
+    }
+
+    /// The same on a tube swept down its path and on a banner, the two places
+    /// where the picture stands upright: relief leaning to the picture's right
+    /// takes more of a light from the viewer's right, and relief leaning up
+    /// the picture more of a light from above.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func reliefOnATubeAndABannerLeansTheWayThePictureReads() throws {
+        let lower = (0...12).map { Vector3(-1 + Double($0) / 6, -0.8, 0) }
+        let carriers: [(name: String, mesh: Mesh)] = [
+            ("tube", Mesh.sweep(Self.round, along: Self.descending, capped: false)),
+            ("banner", Mesh.strip(between: lower, and: lower.map { $0 + Vector3(0, 1.6, 0) })),
+        ]
+        for entry in carriers {
+            let fromRight = try frontBrightness(leansUp: false, lightFrom: Vector3(1, 0, 0), on: entry.mesh)
+            let fromLeft = try frontBrightness(leansUp: false, lightFrom: Vector3(-1, 0, 0), on: entry.mesh)
+            #expect(fromRight > fromLeft + 40,
+                    "\(entry.name), leaning right: lit from the right \(fromRight), from the left \(fromLeft)")
+            let fromAbove = try frontBrightness(leansUp: true, lightFrom: Vector3(0, 1, 0), on: entry.mesh)
+            let fromBelow = try frontBrightness(leansUp: true, lightFrom: Vector3(0, -1, 0), on: entry.mesh)
+            #expect(fromAbove > fromBelow + 40,
+                    "\(entry.name), leaning up: lit from above \(fromAbove), from below \(fromBelow)")
+        }
     }
 }

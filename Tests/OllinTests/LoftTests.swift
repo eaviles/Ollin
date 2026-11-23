@@ -202,9 +202,11 @@ struct LoftTests {
             let mesh = Mesh.loft(sides.map(square), along: straight, at: [0, 0.5, 1],
                                  smoothed: smoothed, capped: false)
             let rows = rows(of: mesh)
+            // A `v` with no row reads as not a number, so the expectation fails
+            // there and the run goes on.
             func side(at v: Double) -> Double {
-                let row = rows.first { abs($0.v - v) < 1e-12 }!
-                return row.points.map { max(abs($0.x), abs($0.y)) }.max()! * 2
+                guard let row = rows.first(where: { abs($0.v - v) < 1e-12 }) else { return .nan }
+                return (row.points.map { max(abs($0.x), abs($0.y)) }.max() ?? .nan) * 2
             }
             #expect(abs(side(at: 0) - 1) < 1e-12 && abs(side(at: 0.5) - 1.2) < 1e-12 && abs(side(at: 1) - 2) < 1e-12)
             if smoothed {
@@ -328,9 +330,9 @@ struct LoftTests {
         #expect(splits == 3, "three corners split inside the row (the fourth is the seam)")
     }
 
-    /// `u` runs round each ring by that ring's own walked length, 0 and 1 at
-    /// the seam, and `v` is the fraction along the path, the inserted
-    /// station's row included.
+    /// `u` runs round each ring by that ring's own walked length, against the
+    /// walk, 1 and 0 at the seam, and `v` is the fraction along the path, the
+    /// inserted station's row included.
     @Test func uvsRunByLengthRoundEachRingAndAlongThePath() {
         let path = bending
         let mesh = Mesh.loft([square(1), circle(0.5)], along: path, at: [0, 0.37], capped: false)
@@ -341,12 +343,12 @@ struct LoftTests {
         for row in rows {
             let width = row.points.count
             let us = (0..<width).map { mesh.uvs[k + $0].x }
-            #expect(us[0] == 0 && us[width - 1] == 1)
+            #expect(us[0] == 1 && us[width - 1] == 0)
             // Walked length round the row against its `u`.
             var walked = [0.0]
             for c in 1..<width { walked.append(walked[c - 1] + (row.points[c] - row.points[c - 1]).length) }
             for c in 0..<width {
-                #expect(abs(us[c] - walked[c] / walked[width - 1]) < 1e-9, "v \(row.v), column \(c)")
+                #expect(abs(us[c] - (1 - walked[c] / walked[width - 1])) < 1e-9, "v \(row.v), column \(c)")
             }
             k += width
         }
