@@ -24,24 +24,41 @@ struct PlanetMapTests {
     /// Longitude wraps, so the first column and the last are neighbors. A field
     /// worked out in map coordinates instead of on the sphere would show its seam
     /// here as a step; on the sphere there is nothing to step over.
+    ///
+    /// Read off a strip baked fine enough that two neighboring texels stand closer
+    /// than the field's finest detail: 16,384 across, where the last octave of the
+    /// coast turns about once in eleven texels. On a strip that fine a row is
+    /// smooth, so every step is close to the mean of the two steps beside it, and
+    /// that has to hold across the join as it does anywhere else: a seam is a
+    /// step with no like beside it. On the small map every texel is a place of
+    /// its own, and a steep coast lying on the join reads as a seam: measured
+    /// there, the step across the join is 0.425 against 0.191 beside it, on a
+    /// field with no seam in it.
     @Test(.enabled(if: Snapshot.hasMetal))
     func theMapMeetsItselfAroundTheEquator() throws {
         let maps = try #require(PlanetMaps.sharedDefault())
-        let height = try #require(maps.read(maps.heightMap))
+        let height = try #require(maps.read(maps.joinStrip))
+        let w = PlanetMaps.stripWidth
 
-        // Measured the same way on both sides, as a worst case rather than an
-        // average: a mean would hide a seam that only shows where a coast crosses
-        // it, and a max against a mean would fail on an honest map.
-        var worstWrap = 0.0, worstNeighbor = 0.0
-        for row in 0 ..< PlanetMaps.mapHeight {
-            let left = height.value(0, row).r
-            let right = height.value(PlanetMaps.mapWidth - 1, row).r
-            worstWrap = max(worstWrap, abs(left - right))
-            worstNeighbor = max(worstNeighbor, abs(height.value(1, row).r
-                                                   - height.value(2, row).r))
+        // The step from a column to the next one round, and how far that step
+        // stands from the mean of its two neighbors in the same row.
+        func step(_ x: Int, _ row: Int) -> Double {
+            height.value((x + 1) % w, row).r - height.value(x % w, row).r
         }
-        #expect(worstWrap < worstNeighbor * 1.5 + 0.005,
-                "seam \(worstWrap) against a neighboring step of \(worstNeighbor)")
+        func oddOneOut(_ x: Int, _ row: Int) -> Double {
+            abs(step(x, row) - (step(x + w - 1, row) + step(x + 1, row)) / 2)
+        }
+
+        // Worst cases rather than averages, since a seam may show only where a
+        // coast crosses it. The join is the step out of the last column; it is
+        // held against the same measure at four places on the ground beside it.
+        var atTheJoin = 0.0, beside = 0.0
+        for row in 0 ..< PlanetMaps.stripHeight {
+            atTheJoin = max(atTheJoin, oddOneOut(w - 1, row))
+            for x in [3, 9, w - 5, w - 11] { beside = max(beside, oddOneOut(x, row)) }
+        }
+        #expect(atTheJoin < beside * 2 + 0.0005,
+                "the step across the join stands \(atTheJoin) from its neighbors, against \(beside) beside it")
     }
 
     /// Land and sea in a believable proportion. The point is the contrast spread in
@@ -266,6 +283,11 @@ private final class PlanetMaps: Sketch {
     let lightMap = ComputeTexture(width: PlanetMaps.mapWidth, height: PlanetMaps.mapHeight)
     let cloudMap = ComputeTexture(width: PlanetMaps.mapWidth, height: PlanetMaps.mapHeight)
 
+    /// The elevation again as a strip many times finer round the equator, for the
+    /// one probe that asks whether the map's two side edges meet.
+    static let stripWidth = 16384, stripHeight = 64
+    let joinStrip = ComputeTexture(width: PlanetMaps.stripWidth, height: PlanetMaps.stripHeight)
+
     var world = 3.0
     var cover = 0.55
 
@@ -291,6 +313,7 @@ private final class PlanetMaps: Sketch {
         var seed = ComputeParams()
         seed.append(Float(world))
         compute(bakeHeight, writing: heightMap, params: seed)
+        compute(bakeHeight, writing: joinStrip, params: seed)
         compute(bakeSurface, reading: heightMap, writing: surfaceMap, params: seed)
 
         var relief = ComputeParams()

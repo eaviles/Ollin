@@ -23,19 +23,21 @@ constant float PI = 3.14159265359;
 constant float TWO_PI = 6.28318530718;
 
 // The point on the unit sphere a map texel stands for. Matches the sphere mesh:
-// u is longitude, v runs from the +y pole down, so latitude is (0.5 - v) * pi.
+// u goes round from the back (-z) by -x, the front (u = 0.5 on +z), and +x, which
+// is west to east for someone looking at the ball; v runs from the +y pole down,
+// so latitude is (0.5 - v) * pi.
 static float3 planet_direction(float2 uv) {
-    float lon = uv.x * TWO_PI;
+    float turn = uv.x * TWO_PI;
     float lat = (0.5 - uv.y) * PI;
     float cl = cos(lat);
-    return float3(cl * cos(lon), sin(lat), cl * sin(lon));
+    return float3(-cl * sin(turn), sin(lat), -cl * cos(turn));
 }
 
 // And back: the place on the map a direction lands.
 static float2 planet_place(float3 dir) {
-    float lon = atan2(dir.z, dir.x);
+    float turn = atan2(-dir.x, -dir.z);
     float lat = asin(clamp(dir.y, -1.0, 1.0));
-    return float2(fract(lon / TWO_PI + 1.0), 0.5 - lat / PI);
+    return float2(fract(turn / TWO_PI + 1.0), 0.5 - lat / PI);
 }
 
 // Fractal noise over a direction, 0 to 1 with its middle at a half. Each octave

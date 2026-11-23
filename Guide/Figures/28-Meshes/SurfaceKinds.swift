@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide figure (Chapter 28): three ways to dress the same mesh. A lit surface,
 // the triangle net that surface is made of, and an image wrapped through the

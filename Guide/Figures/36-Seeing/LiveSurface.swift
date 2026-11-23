@@ -34,7 +34,7 @@ final class LiveSurface: Sketch {
         if let frame = feed.frame {
             withState {
                 translate(-0.6, 0, 0)
-                rotateY(-0.9)
+                rotateY(2.5)
                 fill(.white)
                 material(.dielectric(roughness: 0.5))
                 drawMesh(globe.textured(frame))

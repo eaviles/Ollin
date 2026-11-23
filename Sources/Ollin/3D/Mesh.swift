@@ -296,27 +296,45 @@ public extension Mesh {
     /// A UV sphere centered at the origin: `segments` divisions around the equator
     /// (longitude) and `rings` from pole to pole (latitude). Normals point radially
     /// outward.
+    ///
+    /// A picture on it reads the right way round from outside, with its middle
+    /// on the front: `u` runs left to right as a viewer on +z sees it, 0.5 on
+    /// +z, 0.25 on -x, 0.75 on +x, and the picture's two side edges meeting on
+    /// -z, at the back. `v` runs from the +y pole (0) down to the -y pole (1).
+    /// The point a uv stands for is
+    /// `(-sin(2πu) · sin(πv), cos(πv), -cos(2πu) · sin(πv))` times the radius,
+    /// which is what a map written for the ball needs to know.
     static func sphere(radius: Double = 0.5, segments: Int = 32, rings: Int = 16) -> Mesh {
         let segs = max(segments, 3), rng = max(rings, 2)
         var b = Builder()
-        // A (rng+1) × (segs+1) grid of vertices, θ down from the +y pole, φ around y.
+        // A (rng+1) × (segs+1) grid of vertices, θ down from the +y pole. The
+        // columns start at the back and go round by -x, the front, and +x, which
+        // is left to right for a viewer in front, so `u` reads as the image does.
+        // The first and last columns stand in one place and carry the picture's
+        // two side edges.
         for i in 0...rng {
             let theta = Double(i) / Double(rng) * .pi
             let st = sin(theta), ct = cos(theta)
             for j in 0...segs {
-                let phi = Double(j) / Double(segs) * 2 * .pi
-                let n = Vector3(st * cos(phi), ct, st * sin(phi))
+                let turn = Double(j) / Double(segs) * 2 * .pi
+                let n = Vector3(-st * sin(turn), ct, -st * cos(turn))
                 // u wraps around (longitude), v runs pole to pole (latitude).
                 let uv = Vector2(Double(j) / Double(segs), Double(i) / Double(rng))
                 b.vertex(n * radius, normal: n, uv: uv)
             }
         }
         let stride = segs + 1
+        // Each band's quads are listed from +x round by the front and then the
+        // back, whatever column the join sits on. Nothing culls back faces, so
+        // a see-through ball blends its faces in listed order, and that order
+        // is part of its picture: it stays this one.
+        let first = 3 * segs / 4 - 1
         for i in 0..<rng {
-            for j in 0..<segs {
+            for step in 0..<segs {
+                let j = ((first - step) % segs + segs) % segs
                 let a = UInt32(i * stride + j)
                 let bIdx = UInt32((i + 1) * stride + j)
-                b.gridQuad(a, a + 1, bIdx + 1, bIdx)
+                b.gridQuad(a + 1, a, bIdx, bIdx + 1)
             }
         }
         return b.mesh()
