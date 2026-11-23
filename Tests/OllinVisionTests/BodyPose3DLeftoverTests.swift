@@ -1,4 +1,5 @@
 import CoreVideo
+import Foundation
 import IOSurface
 import Ollin
 import OllinSamplePhotos
@@ -172,6 +173,19 @@ import Testing
         await blank.value != nil
     }
 
+    /// Whether this process runs in a virtual machine, which a CI runner is.
+    /// The request leaves no buffer behind on the runner (macOS 26, no Neural
+    /// Engine: 132 analyses on 2026-11-21 and none of the shape, while a
+    /// planted one was counted), so there the two tests that run the model
+    /// take either answer. Whether the system's version or the machine decides
+    /// is not known, so on a real Mac they still ask for the leftovers, and a
+    /// Mac that leaves none fails them, which is news worth having.
+    private static let inVirtualMachine: Bool = {
+        var present: Int32 = 0
+        var size = MemoryLayout<Int32>.size
+        return sysctlbyname("kern.hv_vmm_present", &present, &size, nil, 0) == 0 && present != 0
+    }()
+
     /// A pixel buffer made the way a leftover is: its shape, its format, a
     /// surface from Core Video.
     private func plant() throws -> CVPixelBuffer {
@@ -219,16 +233,13 @@ import Testing
     @Test(walks) func aBufferNoAnalysisMadeIsRefused() throws {
         let ledger = Self.ledger
         let wasOn = ledger.isOn
-        let gap = BodyPose3DLeftovers.shortestWholeLookGap
         defer {
             ledger.isOn = wasOn
-            BodyPose3DLeftovers.shortestWholeLookGap = gap
             ledger.startOver()
         }
         ledger.isOn = true
-        BodyPose3DLeftovers.shortestWholeLookGap = 0
         ledger.startOver()
-        ledger.sweepNow()   // whatever is in the heap already is on the books
+        ledger.sweepNow(whole: true)   // whatever is in the heap already is on the books
 
         // A leftover in every way the walk can see: the shape, the format, the
         // maker, two owners that hold on. Only no analysis made it.
@@ -236,13 +247,58 @@ import Testing
         let second = Unmanaged.passRetained(buffer)
         defer { second.release() }
         let witness = try surface(of: buffer)
-        let freedBefore = ledger.tally.freed
+        let opening = ledger.tally
         for _ in 0..<4 {
-            ledger.sweepNow()
+            ledger.sweepNow(whole: true)
             #expect(IOSurfaceIsInUse(witness))
         }
-        #expect(ledger.tally.freed == freedBefore)
+        let tally = ledger.tally
+        #expect(tally.freed == opening.freed)
+        // Each of the four was a look at the whole heap, the buffer in it: a
+        // sweep that waits its turn would prove nothing here.
+        #expect(tally.wholeLooks == opening.wholeLooks + 4, "\(tally)")
+        #expect(tally.alive >= 1)
         #expect(CVPixelBufferGetHeight(buffer) == BodyPose3DLeftovers.height)
+    }
+
+    @Test(walks) func whereNothingIsLeftBehindTheSweepStandsDown() throws {
+        defer { BodyPose3DLeftovers.wholeLooksWait = true }
+        BodyPose3DLeftovers.wholeLooksWait = false
+        // A ledger of its own, so no other suite's analyses are counted in,
+        // and analyses that leave nothing, as the request's do on a system
+        // without the leak.
+        let ledger = BodyPose3DLeftovers()
+        let (interval, patience) = (BodyPose3DLeftovers.interval, BodyPose3DLeftovers.patience)
+
+        // On a system with the leak, earlier tests' leftovers are alive in
+        // this process. They go on the books first, accounted for.
+        ledger.isOn = false
+        let aliveBefore = try #require(ledger.census())
+        for _ in 0..<aliveBefore { ledger.began(); ledger.ended() }
+        ledger.isOn = true
+        ledger.sweepNow(whole: true)
+
+        // With those in the heap a run of looks that find no new one is a
+        // leak that does not add up, which is said out loud at the last of
+        // them: that case stops well short. On a clean heap it runs out.
+        let looks = aliveBefore == 0 ? patience : patience / 2
+        for look in 1...looks {
+            #expect(ledger.tally.stoodDown == nil)
+            for _ in 0..<interval { ledger.began(); ledger.ended() }
+            #expect(ledger.tally.wholeLooks == look + 1, "\(ledger.tally)")
+        }
+        let tally = ledger.tally
+        #expect(tally.freed == 0)
+        #expect(tally.agreed <= 1)   // the opening look, and none after it
+        guard aliveBefore == 0, try #require(ledger.census()) == 0 else {
+            #expect(tally.alive >= aliveBefore)
+            return
+        }
+        // Nothing of the shape anywhere: the reason nobody is told.
+        #expect(tally.stoodDown == BodyPose3DLeftovers.nothingLeftBehind)
+        // Stood down, it never looks again.
+        for _ in 0..<(2 * interval) { ledger.began(); ledger.ended() }
+        #expect(ledger.tally.looks == tally.looks)
     }
 
     @Test(walks, modelRuns) @MainActor
@@ -263,23 +319,24 @@ import Testing
         let analyses = 12
         for _ in 0..<analyses { await analyzer.analyzeNow(frame) }
         let after = try #require(ledger.census())
+        let left = after - before
+        if Self.inVirtualMachine, left == 0 { return }   // this system leaves none
         // At least: another suite may run the model in this process too.
-        #expect(after - before >= analyses)
+        #expect(left >= analyses)
     }
 
     @Test(walks, modelRuns) @MainActor
     func withTheSwitchOnTheLeftoversAreFreed() async throws {
         let ledger = Self.ledger
         let wasOn = ledger.isOn
-        let gap = BodyPose3DLeftovers.shortestWholeLookGap
         defer {
             ledger.isOn = wasOn
-            BodyPose3DLeftovers.shortestWholeLookGap = gap
+            BodyPose3DLeftovers.wholeLooksWait = true
             ledger.startOver()
         }
-        // Every sweep may take a whole look when it needs one, so the count of
+        // Every sweep takes a whole look when it needs one, so the count of
         // looks does not hang on how fast this machine runs the model.
-        BodyPose3DLeftovers.shortestWholeLookGap = 0
+        BodyPose3DLeftovers.wholeLooksWait = false
 
         let source = FrameSourceTests.ManualFrameSource()
         let tracker = BodyTracker3D(source)
@@ -292,7 +349,7 @@ import Testing
         // Start from the heap as it stands: what earlier tests left is on the
         // books and stays there.
         ledger.startOver()
-        ledger.sweepNow()
+        ledger.sweepNow(whole: true)
         ledger.isOn = true
         let before = try #require(ledger.census())
 
@@ -301,14 +358,22 @@ import Testing
 
         let after = try #require(ledger.census())
         let tally = ledger.tally
-        // Without the sweep there would be 4 intervals more. With it, the last
-        // interval's are waiting their turn and the rest are gone.
-        #expect(after - before < 2 * interval, "\(after - before) more leftovers alive; \(tally)")
-        #expect(tally.freed >= interval, "\(tally)")
         #expect(tally.stoodDown == nil)
-        // Once the first leftovers are freed, the next land where they sat,
-        // and a look at those places alone settles the count.
-        #expect(tally.looks > tally.wholeLooks, "no quick look settled; \(tally)")
+        if Self.inVirtualMachine, after == before, tally.freed == 0 {
+            // This system leaves none. Then every sweep looked at the whole
+            // heap with the model's own memory in it, found nothing of the
+            // shape, and freed nothing; four looks are short of standing down.
+            #expect(tally.wholeLooks >= 5, "\(tally)")
+            #expect(tally.alive == 0, "\(tally)")
+        } else {
+            // Without the sweep there would be 4 intervals more. With it, the
+            // last interval's are waiting their turn and the rest are gone.
+            #expect(after - before < 2 * interval, "\(after - before) more leftovers alive; \(tally)")
+            #expect(tally.freed >= interval, "\(tally)")
+            // Once the first leftovers are freed, the next land where they
+            // sat, and a look at those places alone settles the count.
+            #expect(tally.looks > tally.wholeLooks, "no quick look settled; \(tally)")
+        }
 
         // The pose that comes back is the pose from before anything was freed.
         let last = try #require(tracker.body)

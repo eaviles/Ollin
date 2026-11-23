@@ -166,9 +166,20 @@ final class BodyPose3DLeftovers: @unchecked Sendable {
     /// this, and never less than `shortestWholeLookGap`.
     static let wholeLookShare = 0.003
 
-    /// The least time between two whole looks, in seconds. The tests set it
-    /// to zero so every sweep may look at once.
-    nonisolated(unsafe) static var shortestWholeLookGap = 1.0
+    /// The least time between two whole looks, in seconds.
+    static let shortestWholeLookGap = 1.0
+
+    /// Whether a whole look waits its turn, by the two limits above. The tests
+    /// turn the wait off, so a sweep that needs a whole look takes it at once,
+    /// however fast the machine runs the analyses between two sweeps.
+    nonisolated(unsafe) static var wholeLooksWait = true
+
+    /// Why the sweep stands down on a system that leaves nothing behind.
+    static let nothingLeftBehind = "no buffers are left behind on this system"
+
+    /// Why it stands down where buffers of the leftovers' shape are there and
+    /// do not add up.
+    static let doNotAddUp = "the buffers the 3D body pose request leaves behind do not add up as they were measured"
 
     /// The leftovers' shape: the pose network's 57 maps of 48 by 48, stacked.
     static let width = 48
@@ -282,9 +293,11 @@ final class BodyPose3DLeftovers: @unchecked Sendable {
         }
     }
 
-    /// One sweep now, whatever the count stands at. The tests' way in.
-    func sweepNow() {
-        state.withLockUnchecked { sweep(&$0) }
+    /// One sweep now, whatever the count stands at. The tests' way in. With
+    /// `whole`, the sweep is a whole look: no quick look first, and no wait
+    /// for its turn.
+    func sweepNow(whole: Bool = false) {
+        state.withLockUnchecked { sweep(&$0, whole: whole) }
     }
 
     /// How many leftover-shaped buffers with two owners are alive right now,
@@ -344,7 +357,7 @@ final class BodyPose3DLeftovers: @unchecked Sendable {
         return heap
     }
 
-    private func sweep(_ state: inout State) {
+    private func sweep(_ state: inout State, whole: Bool = false) {
         guard state.tally.stoodDown == nil, var heap = learned(&state) else { return }
         let begun = DispatchTime.now().uptimeNanoseconds
         state.sinceSweep = 0
@@ -353,7 +366,7 @@ final class BodyPose3DLeftovers: @unchecked Sendable {
         // before. Every so often it is skipped, so a whole look checks the rest.
         let sinceWhole = Double(begun - state.lastWholeLook) / 1e9
         let auditGap = max(Self.auditGap, state.lastWholePause / Self.auditShare)
-        if state.regionCount > 0, sinceWhole < auditGap {
+        if !whole, state.regionCount > 0, sinceWhole < auditGap {
             var report = ollin_heap_walk_report()
             ollin_heap_probe(&heap.mark, heap.regions, state.regionCount, heap.copy, Self.regionLimit,
                              heap.scratch, Self.room, &report)
@@ -374,7 +387,7 @@ final class BodyPose3DLeftovers: @unchecked Sendable {
 
         // The whole look, when its turn has come.
         let gap = max(Self.shortestWholeLookGap, state.lastWholePause / Self.wholeLookShare)
-        guard state.lastWholeLook == 0 || sinceWhole >= gap else {
+        guard whole || !Self.wholeLooksWait || state.lastWholeLook == 0 || sinceWhole >= gap else {
             state.tally.waits += 1
             return
         }
@@ -449,9 +462,7 @@ final class BodyPose3DLeftovers: @unchecked Sendable {
             // Nothing of the shape in sight is a system with no leak, and
             // there is nothing to say. Buffers of the shape that do not add
             // up is a leak this cleanup does not know.
-            standDown(&state, state.books.missesMetLeftovers
-                ? "the buffers the 3D body pose request leaves behind do not add up as they were measured"
-                : nil)
+            standDown(&state, state.books.missesMetLeftovers ? Self.doNotAddUp : nil)
         }
         if reports, state.tally.looks % 10 == 0 || state.tally.stoodDown != nil {
             let tally = state.tally
@@ -468,7 +479,7 @@ final class BodyPose3DLeftovers: @unchecked Sendable {
     /// Stops the sweep for the rest of the run. With a reason, the developer
     /// is told once; without one (no leak here) nothing is said.
     private func standDown(_ state: inout State, _ reason: String?) {
-        state.tally.stoodDown = reason ?? "no buffers are left behind on this system"
+        state.tally.stoodDown = reason ?? Self.nothingLeftBehind
         guard let reason else { return }
         Self.note("BodyTracker3D's cleanup is off for this run: \(reason), so nothing is freed and memory may grow while the tracker runs.")
     }
