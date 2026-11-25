@@ -2,7 +2,7 @@
 #
 # Scripts/check-changelog.sh: keep a changelog entry short enough to read.
 #
-#   Scripts/check-changelog.sh             # CHANGELOG.md, from 0.7.0 up
+#   Scripts/check-changelog.sh             # CHANGELOG.md, every section
 #   Scripts/check-changelog.sh --selftest  # a long entry and an untitled one must fail
 #
 # Somebody reading the changelog, or the release page made from it, wants two
@@ -10,7 +10,7 @@
 # measurements, the cause of a defect, and the full list of what a call takes
 # live on the reference page the entry links, and in CAPABILITIES.md.
 #
-# The form, for every entry from 0.7.0 on:
+# The form, for every entry:
 #
 #   - **A title in plain words.** One or two short sentences with the call to
 #     type. For a change: what is different, and what to do to get the old
@@ -25,9 +25,9 @@
 #     section).
 #
 # Under a heading, a bold line by itself (**Drawing**) groups the entries by
-# area once a list is long. The sections for 0.7.0 to 0.17.0 were rewritten in
-# this form on 2026-11-19; 0.6.0 and before keep the two sentences they were cut
-# to on 2026-09-12, so this reads only what stands above the 0.6.0 heading.
+# area once a list is long. Every section is read, the first release included:
+# 0.7.0 to 0.17.0 were rewritten in this form on 2026-11-19 and 0.1.0 to 0.6.0
+# on 2026-11-25. The link reference lines at the foot of the file are skipped.
 #
 # Why a gate: the entries were cut to two sentences once, on 2026-09-12, and
 # were back at a median of 91 words with one of 401 two months later, each
@@ -41,7 +41,6 @@ import re, sys, pathlib
 
 ENTRY_WORDS = 60
 PARAGRAPH_WORDS = 80
-FLOOR = "## [0.6.0]"
 
 
 def words(line):
@@ -53,8 +52,6 @@ def check(text, name="CHANGELOG.md"):
     inside = False
     for number, line in enumerate(text.split("\n"), 1):
         if line.startswith("## ["):
-            if line.startswith(FLOOR):
-                break
             inside = True
             continue
         if not inside or not line.strip() or line.startswith("#"):
@@ -88,7 +85,9 @@ if "--selftest" in sys.argv[1:]:
         ("a title with a work's name in italics", "## [Unreleased]\n\n- **A *plate* redrawn.** It is.\n", 0),
         ("link targets are not counted", f"## [Unreleased]\n\n{link_heavy}\n", 0),
         ("a long paragraph", "## [Unreleased]\n\n" + " ".join(["word"] * (PARAGRAPH_WORDS + 1)) + "\n", 1),
-        ("the sections already published", f"## [Unreleased]\n\n{good}\n\n{FLOOR} - 2026-10-25\n\n{old}\n", 0),
+        ("the oldest section is read too", f"## [Unreleased]\n\n{good}\n\n## [0.1.0] - 2026-09-02\n\n{old}\n", 2),
+        ("the link lines at the foot", f"## [0.1.0] - 2026-09-02\n\n{good}\n\n[0.1.0]: https://example.com/{'x' * 400}\n", 0),
+        ("the lines above the first section", " ".join(["word"] * 200) + f"\n\n## [Unreleased]\n\n{good}\n", 0),
     ]
     failed = 0
     for label, text, expected in cases:
@@ -108,5 +107,5 @@ if problems:
     print(f"check-changelog: {len(problems)} problem(s). An entry is a title and a line or two; "
           "the rest belongs on the page it links (Scripts/check-changelog.sh has the form).")
     sys.exit(1)
-print("check-changelog: every entry from 0.7.0 on is a title and a line or two")
+print("check-changelog: every entry is a title and a line or two")
 PY
