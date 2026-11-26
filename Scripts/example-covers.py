@@ -3,6 +3,7 @@
 
     Scripts/example-covers.py            # every group
     Scripts/example-covers.py --no-upload
+    Scripts/example-covers.py Recreations/NickCave   # the groups named, the rest kept as written
 
 A group's cell in a listing shows four of its sketches in a 2x2 rather than
 one of them, so it reads as a group rather than as a sketch that happens to be
@@ -53,10 +54,19 @@ def main():
     if not isinstance(next(iter(covers.values()), []), list):
         sys.exit("covers must be a list of examples per group")
 
-    written = {}
+    # Naming groups draws only those. Every other group keeps the picture it
+    # has, so adding one group uploads one group's files.
+    only = [a for a in sys.argv[1:] if not a.startswith("--")]
+    unknown = [g for g in only if g not in covers]
+    if unknown:
+        sys.exit(f"no list under covers in the manifest for {', '.join(unknown)}")
+    written = dict(data.get("groups", {})) if only else {}
+    drawn = 0
     with tempfile.TemporaryDirectory() as tmp:
         work = pathlib.Path(tmp)
         for group, examples in sorted(covers.items()):
+            if only and group not in only:
+                continue
             rows = [data["examples"][e] for e in examples if e in data["examples"]]
             if not rows:
                 print(f"{group}: none of its sketches has a picture")
@@ -81,6 +91,7 @@ def main():
                     ], check=True, capture_output=True)
                 entry["image" if not suffix else "imageSmall"] = f"{path}?v={token}"
             written[group] = entry
+            drawn += 1
             print(f"{group}: {len(rows[:4])} of {len(examples)}")
 
     data["groups"] = dict(sorted(written.items()))
@@ -93,7 +104,7 @@ def main():
     with open(MANIFEST, "w") as f:
         json.dump(ordered, f, indent=2)
         f.write("\n")
-    print(f"covers: {len(written)} groups")
+    print(f"covers: {drawn} drawn, {len(written)} groups in the manifest")
 
 
 BUCKET = ""

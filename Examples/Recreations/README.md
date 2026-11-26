@@ -96,7 +96,7 @@ This work needs time or light to be seen. It includes films of moving points, wa
 
 This work is made in three dimensions. Some of it hangs from the ceiling, some is cut from a block, and some is worn. You can walk around it, and sometimes into it.
 
-| [![Gego](https://media.ollin.art/groups/Recreations-Gego-640.jpg?v=a6997a69)](Gego/) | [![Saloua Raouda Choucair](https://media.ollin.art/groups/Recreations-SalouaRaoudaChoucair-640.jpg?v=c63b6730)](SalouaRaoudaChoucair/) | [![Nick Cave](https://media.ollin.art/examples/Recreations/NickCave/Soundsuit/still-640.jpg?v=7b4f4c3f)](NickCave/) |  |
+| [![Gego](https://media.ollin.art/groups/Recreations-Gego-640.jpg?v=a6997a69)](Gego/) | [![Saloua Raouda Choucair](https://media.ollin.art/groups/Recreations-SalouaRaoudaChoucair-640.jpg?v=c63b6730)](SalouaRaoudaChoucair/) | [![Nick Cave](https://media.ollin.art/groups/Recreations-NickCave-640.jpg?v=90be9aa3)](NickCave/) |  |
 |---|---|---|---|
 | [**Gego**](Gego/), 1912 to 1994. An architect who came to art in her forties and drew in space with wire. | [**Saloua Raouda Choucair**](SalouaRaoudaChoucair/), 1916 to 2017. One of the first abstract artists in the Arab world. | [**Nick Cave**](NickCave/), born 1959. Makes the Soundsuits, sculptures to be worn and danced in. |  |
 

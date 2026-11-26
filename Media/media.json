@@ -450,6 +450,9 @@
     "Recreations/EduardoTerrazas": [
       "Recreations/EduardoTerrazas/Cosmos",
       "Recreations/EduardoTerrazas/Posibilidades"
+    ],
+    "Recreations/NickCave": [
+      "Recreations/NickCave/Soundsuit"
     ]
   },
   "groups": {
@@ -911,6 +914,13 @@
       ],
       "image": "groups/Recreations-NasreenMohamedi.jpg?v=dcb1db80",
       "imageSmall": "groups/Recreations-NasreenMohamedi-640.jpg?v=9d06dd95"
+    },
+    "Recreations/NickCave": {
+      "of": [
+        "Recreations/NickCave/Soundsuit"
+      ],
+      "image": "groups/Recreations-NickCave.jpg?v=8a3ae4e3",
+      "imageSmall": "groups/Recreations-NickCave-640.jpg?v=90be9aa3"
     },
     "Recreations/OsamuSato": {
       "of": [
