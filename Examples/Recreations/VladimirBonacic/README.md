@@ -8,9 +8,17 @@
 |---|---|---|---|
 | [DynamicObject](DynamicObject/) | [GFE164](GFE164/) | [NamaFrieze](NamaFrieze/) | [Random63](Random63/) |
 
-**Vladimir Bonačić** (Novi Sad, 1938 to Bonn, 1999) grew up in Zagreb and studied electronics at the University of Zagreb. From 1964 he worked at the Ruđer Bošković Institute, heading its Laboratory of Cybernetics from 1969 to 1973, and he took his doctorate in pattern recognition along the way. He came to art from engineering. His pieces ran on hardware he designed, and he described them in the mathematics that drove them.
+| Born | Died | Wing |
+|---|---|---|
+| Novi Sad, 1938 | Bonn, 1999 | [Time and light](../README.md#time-and-light) |
+
+### His life
+
+**Vladimir Bonačić** grew up in Zagreb and studied electronics at the University of Zagreb. From 1964 he worked at the Ruđer Bošković Institute, heading its Laboratory of Cybernetics from 1969 to 1973, and he took his doctorate in pattern recognition along the way. He came to art from engineering. His pieces ran on hardware he designed, and he described them in the mathematics that drove them.
 
 His way in was the New Tendencies, the international movement that met in Zagreb from 1961 and treated art as a kind of research. In 1968 and 1969 its fourth meeting, *tendencies 4*, was given over to computers and visual research, one of the first exhibitions of computer art anywhere. Bonačić showed seventeen works there, among them *t4*, a panel of lamps made with the painter Ivan Picelj, and took one of the prizes. The jury praised his way of solving a problem "by including a picture and not a number as a parameter".
+
+### What he made
 
 Between 1968 and 1971 he made what he called **dynamic objects**: panels of lamps driven by special-purpose computers he designed, five of them for public spaces. Nearly all of them ran on the arithmetic of Galois fields, the finite fields of abstract algebra. He was openly skeptical of computer art that leaned on commercially available display equipment, or on play with randomness and deliberately introduced errors. A random generator, he wrote, "creates an accidental and unique presentation, which has neither value nor importance for human beings." His own objects follow a program in which every pattern is a lawful consequence of the one before. The critique produced one piece that does use chance, *Random 63* (1969), with sixty-three independent sources of true randomness. The rest are pseudo-random, which means their laws can be watched.
 
@@ -23,19 +31,13 @@ In 1971 he founded the cybernetic art team bcd with the programmer Miro Cimerman
 
 He wrote up the dynamic objects for *Leonardo* in 1974. The article prints the polynomials, which is rare in writing about art, and it names what he found most interesting, something he had seen and mathematicians had not: "One of the most interesting aspects of this work is the demonstration of the different visual appearance of the patterns resulting from the polynomials that had not been noted before by mathematicians who have studied Galois fields."
 
-He belongs in this set because his program survives on the page. The article gives the field, the polynomial, and the rule that assigns each lamp, which is enough to build GF.E 32-S again, and GF.E (16,4) with its relief and its sixty-four tones. The lamps themselves, and the square at night, are what a sketch adds.
+### Rebuilding his work
 
-Learn more:
+His program survives on the page. The article gives the field, the polynomial, and the rule that assigns each lamp, which is enough to build GF.E 32-S again, and GF.E (16,4) with its relief and its sixty-four tones. The lamps themselves, and the square at night, are what a sketch adds.
 
-- Vladimir Bonačić, [*Kinetic Art: Application of Abstract Algebra to Objects with Computer-Controlled Flashing Lights and Sound Combinations*](https://www.jstor.org/stable/1572890), *Leonardo* 7:3 (1974), the artist's own account, with the polynomials and the figures
-- Darko Fritz, [*Vladimir Bonačić: Early Works, Zagreb 1968-1971*](https://darkofritz.net/text/bonacic.html), the fullest short account of the dynamic objects, the public installations, and the critique of randomness
-- [*Vladimir Bonačić*](https://digitalna-umjetnost-u-hrvatskoj.eu/en/autori/vladimir-bonacic) in *Digital Art in Croatia 1968-1984*, with the measurements of the NaMa frieze and its degree-18 polynomial
-- [*Vladimir Bonačić & bcd: CyberneticArt*](https://zkm.de/en/event/2019/11/vladimir-bonacic-bcd-cyberneticart) at ZKM Karlsruhe (2019), and his [biography](https://zkm.de/en/persons/vladimir-bonacic) there
-- Darko Fritz, [*Vladimir Bonačić: Computer-Generated Works Made within Zagreb's New Tendencies Network (1961-1973)*](https://direct.mit.edu/leon/article-abstract/41/2/175/45183), *Leonardo* 41:2 (2008), the scholarly account of the whole body of work
+- [**DynamicObject**](DynamicObject/): after *GF.E 32-S 69/70*.
 
-### Recreations here
-
-- [**DynamicObject**](DynamicObject/): after *GF.E 32-S 69/70*. The 32 by 32 square of lamps, built from the arithmetic in the article. Each lamp belongs to one of 32 residue classes, its row and column combined bit by bit, so every class holds one lamp in each row and each column and every pattern is symmetric about the diagonal. The pattern is an element of the field of 2^32 elements modulo x^32 + x^22 + x^2 + x + 1, and bit i of it lights class i. Each tick of the clock multiplies it by x, and because that polynomial is primitive the walk shows every one of its 4,294,967,295 patterns before it repeats one. The back of the object is drawn along the bottom: 32 indicators that show the element in binary, and 32 buttons. Click a button to flip its bit and the walk carries on from there. `clock` is the seconds per pattern and `isRunning` the start and stop; space starts and stops it too. The seed decides where on its walk the object is switched on.
+  The 32 by 32 square of lamps, built from the arithmetic in the article. Each lamp belongs to one of 32 residue classes, its row and column combined bit by bit, so every class holds one lamp in each row and each column and every pattern is symmetric about the diagonal. The pattern is an element of the field of 2^32 elements modulo x^32 + x^22 + x^2 + x + 1, and bit i of it lights class i. Each tick of the clock multiplies it by x, and because that polynomial is primitive the walk shows every one of its 4,294,967,295 patterns before it repeats one. The back of the object is drawn along the bottom: 32 indicators that show the element in binary, and 32 buttons. Click a button to flip its bit and the walk carries on from there. `clock` is the seconds per pattern and `isRunning` the start and stop; space starts and stops it too. The seed decides where on its walk the object is switched on.
 
   ```sh
   swift run Example-Recreations-VladimirBonacic-DynamicObject
@@ -48,7 +50,9 @@ Learn more:
   swift run Example-Recreations-VladimirBonacic-DynamicObject --export-svg b.svg --frame 6060 --seed 55
   ```
 
-- [**NamaFrieze**](NamaFrieze/): after *DIN. PR 18* (1969). The eighteen panels across the store front at night, drawn to scale at fifty pixels to the meter, so the frieze is as wide as the picture and each panel a small thing in it. Nothing records how the eighteen bits reached the lamps, so the reading here is the plainest one: a panel for each bit, its fifteen lamps together. The seed decides where on the walk it is switched on, and the count in the corner says which image is showing. Image 1 is a single panel at the left, and the walk comes back to it after 262,143 images. The rhythm is a second, shorter field: a degree-4 register gates the clock, so the frieze moves on eight ticks in fifteen and waits on the other seven, always in the same irregular order. The lamps light the wall around them and the square in front. `clock` is the seconds per tick and `usesRhythm` turns the gate off. Set `sendsToWall` and the panels go out as DMX over sACN, universe 1, channels 1 to 18, at the level they are drawn at, so eighteen dimmers make a frieze of your own; `wallAddress` names one node, or leave it empty to multicast.
+- [**NamaFrieze**](NamaFrieze/): after *DIN. PR 18* (1969).
+
+  The eighteen panels across the store front at night, drawn to scale at fifty pixels to the meter, so the frieze is as wide as the picture and each panel a small thing in it. Nothing records how the eighteen bits reached the lamps, so the reading here is the plainest one: a panel for each bit, its fifteen lamps together. The seed decides where on the walk it is switched on, and the count in the corner says which image is showing. Image 1 is a single panel at the left, and the walk comes back to it after 262,143 images. The rhythm is a second, shorter field: a degree-4 register gates the clock, so the frieze moves on eight ticks in fifteen and waits on the other seven, always in the same irregular order. The lamps light the wall around them and the square in front. `clock` is the seconds per tick and `usesRhythm` turns the gate off. Set `sendsToWall` and the panels go out as DMX over sACN, universe 1, channels 1 to 18, at the level they are drawn at, so eighteen dimmers make a frieze of your own; `wallAddress` names one node, or leave it empty to multicast.
 
   ```sh
   swift run Example-Recreations-VladimirBonacic-NamaFrieze
@@ -62,7 +66,9 @@ Learn more:
   swift run Example-Recreations-VladimirBonacic-NamaFrieze --export-svg b.svg --frame 1617 --seed 18
   ```
 
-- [**GFE164**](GFE164/): after *GF.E (16,4) 69/71*, the relief of 1,024 squares of colored glass, built from the appendix of the article. The panel is four planes woven together, and his mask turns each square's number into its class, one of sixteen. The class is the square's color and its tone, and its two low bits pick the length of its tube. A square lights when two generators both say so. The first is an element of the field of 2^16 elements modulo x^16 + x^12 + x^3 + x + 1, whose bit i sets class i; the second has a bit for each plane. A third register gates the clock, so the relief moves on some ticks and waits on others. Each class has a tone in each plane, sixty-four in all from 64 hertz to 15,360, and a tone sounds whenever its square could light. The sixteen colors are ours, since the article gives their number and not the glasses. `view` walks past the relief in a dark room, looks at it straight on, or shows its flat plan, where the frame round each glass is as light as its tube is long. The row of lamps along the bottom is the console. `clock`, `rhythm`, `planeRule`, `isRunning` and `volume` are the things a visitor could change. The keys 1 to 4 silence a plane's tones, R replays the sequence from where it was switched on, and space starts and stops it.
+- [**GFE164**](GFE164/): after *GF.E (16,4) 69/71*, the relief of 1,024 squares of colored glass, built from the appendix of the article.
+
+  The panel is four planes woven together, and his mask turns each square's number into its class, one of sixteen. The class is the square's color and its tone, and its two low bits pick the length of its tube. A square lights when two generators both say so. The first is an element of the field of 2^16 elements modulo x^16 + x^12 + x^3 + x + 1, whose bit i sets class i; the second has a bit for each plane. A third register gates the clock, so the relief moves on some ticks and waits on others. Each class has a tone in each plane, sixty-four in all from 64 hertz to 15,360, and a tone sounds whenever its square could light. The sixteen colors are ours, since the article gives their number and not the glasses. `view` walks past the relief in a dark room, looks at it straight on, or shows its flat plan, where the frame round each glass is as light as its tube is long. The row of lamps along the bottom is the console. `clock`, `rhythm`, `planeRule`, `isRunning` and `volume` are the things a visitor could change. The keys 1 to 4 silence a plane's tones, R replays the sequence from where it was switched on, and space starts and stops it.
 
   ```sh
   swift run Example-Recreations-VladimirBonacic-GFE164
@@ -75,7 +81,9 @@ Learn more:
   swift run Example-Recreations-VladimirBonacic-GFE164 --export-svg b.svg --frame 15050 --seed 77 --param view=plan
   ```
 
-- [**Random63**](Random63/): after *Random 63* (1969), the one object of his made from chance, hung beside a panel that is not his, the same sixty-three bulbs driven by a field. The accounts say the places of the bulbs were generated with a Galois field. Read off a photograph of the object, the sixty-three places are exactly the powers of x modulo x^8 + x^5 + x^2 + x + 1. The low four bits of x^k count the row from the top, and the high four the column from the right. No other polynomial of degree eight fits, and the identification is ours. On the left, each bulb has a generator of its own standing in for its starter, seeded apart from the others. A quick one blinks often and a slow one seldom, and each burns about four fifths of the time, the share lit in the photograph. On the right, bulb k is lit while x^(k + t) lies in the left half of the panel, where t counts the ticks of `clock`. Every bulb there blinks the same sequence, a tick behind the next, and thirty-four are always lit. Every sixty-three ticks the left half is lit and nothing else. Set `sendsToWall` and the bulbs go out as DMX over sACN on universe 1, read from the drawn picture: channels 1 to 63 carry the panel of chance and 64 to 126 the field's, each in the order of the powers of x.
+- [**Random63**](Random63/): after *Random 63* (1969), the one object of his made from chance, hung beside a panel that is not his, the same sixty-three bulbs driven by a field.
+
+  The accounts say the places of the bulbs were generated with a Galois field. Read off a photograph of the object, the sixty-three places are exactly the powers of x modulo x^8 + x^5 + x^2 + x + 1. The low four bits of x^k count the row from the top, and the high four the column from the right. No other polynomial of degree eight fits, and the identification is ours. On the left, each bulb has a generator of its own standing in for its starter, seeded apart from the others. A quick one blinks often and a slow one seldom, and each burns about four fifths of the time, the share lit in the photograph. On the right, bulb k is lit while x^(k + t) lies in the left half of the panel, where t counts the ticks of `clock`. Every bulb there blinks the same sequence, a tick behind the next, and thirty-four are always lit. Every sixty-three ticks the left half is lit and nothing else. Set `sendsToWall` and the bulbs go out as DMX over sACN on universe 1, read from the drawn picture: channels 1 to 63 carry the panel of chance and 64 to 126 the field's, each in the order of the powers of x.
 
   ```sh
   swift run Example-Recreations-VladimirBonacic-Random63
@@ -88,5 +96,15 @@ Learn more:
   swift run Example-Recreations-VladimirBonacic-Random63 --export-svg a.svg --frame 50 --seed 63
   swift run Example-Recreations-VladimirBonacic-Random63 --export-sequence run --frames 400 --fps 1/15 --seed 63
   ```
+
+### Further reading
+
+- Vladimir Bonačić, [*Kinetic Art: Application of Abstract Algebra to Objects with Computer-Controlled Flashing Lights and Sound Combinations*](https://www.jstor.org/stable/1572890), *Leonardo* 7:3 (1974), the artist's own account, with the polynomials and the figures
+- Darko Fritz, [*Vladimir Bonačić: Early Works, Zagreb 1968-1971*](https://darkofritz.net/text/bonacic.html), the fullest short account of the dynamic objects, the public installations, and the critique of randomness
+- [*Vladimir Bonačić*](https://digitalna-umjetnost-u-hrvatskoj.eu/en/autori/vladimir-bonacic) in *Digital Art in Croatia 1968-1984*, with the measurements of the NaMa frieze and its degree-18 polynomial
+- [*Vladimir Bonačić & bcd: CyberneticArt*](https://zkm.de/en/event/2019/11/vladimir-bonacic-bcd-cyberneticart) at ZKM Karlsruhe (2019), and his [biography](https://zkm.de/en/persons/vladimir-bonacic) there
+- Darko Fritz, [*Vladimir Bonačić: Computer-Generated Works Made within Zagreb's New Tendencies Network (1961-1973)*](https://direct.mit.edu/leon/article-abstract/41/2/175/45183), *Leonardo* 41:2 (2008), the scholarly account of the whole body of work
+
+### About these homages
 
 These are homages after Vladimir Bonačić, made for learning. They are not reproductions of specific works, they are not affiliated with or endorsed by the artist's estate, and none of his work was used to make them.
