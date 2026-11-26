@@ -919,6 +919,8 @@ let package = Package(
         example("Recreations/VeraMolnar/DesOrdres"),
         example("Recreations/GeorgNees/Schotter"),
         example("Recreations/FriederNake/HommageAPaulKlee"),
+        example("Recreations/FriederNake/WalkThroughRaster"),
+        example("Recreations/FriederNake/RandomPolygon"),
         example("Recreations/BridgetRiley/Fragment3"),
         example("Recreations/BridgetRiley/Current"),
         example("Recreations/OsamuSato/Totem"),

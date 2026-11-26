@@ -267,7 +267,9 @@
       "Recreations/CaseyReas/Planes"
     ],
     "Recreations/FriederNake": [
-      "Recreations/FriederNake/HommageAPaulKlee"
+      "Recreations/FriederNake/HommageAPaulKlee",
+      "Recreations/FriederNake/WalkThroughRaster",
+      "Recreations/FriederNake/RandomPolygon"
     ],
     "Recreations/Gego": [
       "Recreations/Gego/Reticularea",
@@ -645,8 +647,8 @@
         "Installation/Hours",
         "Installation/Unattended"
       ],
-      "image": "groups/Installation.jpg?v=4fc2fcb1",
-      "imageSmall": "groups/Installation-640.jpg?v=f10e701f"
+      "image": "groups/Installation.jpg?v=e2f95c1d",
+      "imageSmall": "groups/Installation-640.jpg?v=22aa96af"
     },
     "Integration": {
       "of": [
@@ -774,10 +776,12 @@
     },
     "Recreations/FriederNake": {
       "of": [
-        "Recreations/FriederNake/HommageAPaulKlee"
+        "Recreations/FriederNake/HommageAPaulKlee",
+        "Recreations/FriederNake/WalkThroughRaster",
+        "Recreations/FriederNake/RandomPolygon"
       ],
-      "image": "groups/Recreations-FriederNake.jpg?v=6306d031",
-      "imageSmall": "groups/Recreations-FriederNake-640.jpg?v=61e41a0e"
+      "image": "groups/Recreations-FriederNake.jpg?v=730dd05e",
+      "imageSmall": "groups/Recreations-FriederNake-640.jpg?v=30e5b30d"
     },
     "Recreations/Gego": {
       "of": [
@@ -837,8 +841,8 @@
         "Recreations/JohnWhitney/Arabesque",
         "Recreations/JohnWhitney/Matrix"
       ],
-      "image": "groups/Recreations-JohnWhitney.jpg?v=f3e72bf4",
-      "imageSmall": "groups/Recreations-JohnWhitney-640.jpg?v=3b6b7cd9"
+      "image": "groups/Recreations-JohnWhitney.jpg?v=d45cc780",
+      "imageSmall": "groups/Recreations-JohnWhitney-640.jpg?v=fa28eeae"
     },
     "Recreations/JosefAlbers": {
       "of": [
@@ -897,8 +901,8 @@
         "Recreations/MonirFarmanfarmaian/Geometric",
         "Recreations/MonirFarmanfarmaian/Convertible"
       ],
-      "image": "groups/Recreations-MonirFarmanfarmaian.jpg?v=82811db3",
-      "imageSmall": "groups/Recreations-MonirFarmanfarmaian-640.jpg?v=00787c9b"
+      "image": "groups/Recreations-MonirFarmanfarmaian.jpg?v=d0508b1b",
+      "imageSmall": "groups/Recreations-MonirFarmanfarmaian-640.jpg?v=37c73075"
     },
     "Recreations/NasreenMohamedi": {
       "of": [
@@ -991,8 +995,8 @@
         "Recreations/WaldemarCordeiro/Derivadas",
         "Recreations/WaldemarCordeiro/Gente"
       ],
-      "image": "groups/Recreations-WaldemarCordeiro.jpg?v=a825e3fe",
-      "imageSmall": "groups/Recreations-WaldemarCordeiro-640.jpg?v=64142fc3"
+      "image": "groups/Recreations-WaldemarCordeiro.jpg?v=59867714",
+      "imageSmall": "groups/Recreations-WaldemarCordeiro-640.jpg?v=3197384f"
     },
     "Recreations/ZdenekSykora": {
       "of": [
@@ -1067,8 +1071,8 @@
         "Vision/SceneLabels",
         "Vision/FaceTracking"
       ],
-      "image": "groups/Vision.jpg?v=d29e5cd3",
-      "imageSmall": "groups/Vision-640.jpg?v=dd4a2bb3"
+      "image": "groups/Vision.jpg?v=4a3e766b",
+      "imageSmall": "groups/Vision-640.jpg?v=f0f89b1e"
     },
     "Web": {
       "of": [
@@ -10090,6 +10094,50 @@
       "stillBecause": "holds still",
       "stillSmall": "examples/Recreations/FriederNake/HommageAPaulKlee/still-640.jpg?v=4b1402e3",
       "width": 1080
+    },
+    "Recreations/FriederNake/RandomPolygon": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 1430,
+      "motion": 5.335,
+      "sound": false,
+      "source": "739908c99a6910e9",
+      "rendered": "2026-11-26",
+      "bytes": {
+        "loop": 1789917,
+        "loopSmall": 327789,
+        "still": 114451,
+        "stillSmall": 49225
+      },
+      "loop": "examples/Recreations/FriederNake/RandomPolygon/loop.mp4?v=3d1c6957",
+      "loopSmall": "examples/Recreations/FriederNake/RandomPolygon/loop-640.mp4?v=765270da",
+      "still": "examples/Recreations/FriederNake/RandomPolygon/still.jpg?v=2073d36a",
+      "stillSmall": "examples/Recreations/FriederNake/RandomPolygon/still-640.jpg?v=071ef2ca",
+      "seed": 1
+    },
+    "Recreations/FriederNake/WalkThroughRaster": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 840,
+      "motion": 9.037,
+      "sound": false,
+      "source": "d83ed372fe1c22e9",
+      "rendered": "2026-11-26",
+      "bytes": {
+        "loop": 1968941,
+        "loopSmall": 680937,
+        "still": 139689,
+        "stillSmall": 51118
+      },
+      "loop": "examples/Recreations/FriederNake/WalkThroughRaster/loop.mp4?v=ae1f50cc",
+      "loopSmall": "examples/Recreations/FriederNake/WalkThroughRaster/loop-640.mp4?v=c53eb9bb",
+      "still": "examples/Recreations/FriederNake/WalkThroughRaster/still.jpg?v=a2675e27",
+      "stillSmall": "examples/Recreations/FriederNake/WalkThroughRaster/still-640.jpg?v=1f3aa7da",
+      "seed": 1
     },
     "Recreations/Gego/Chorro": {
       "bytes": {
