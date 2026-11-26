@@ -143,7 +143,7 @@ extension MetalRenderer {
                                caustics: MTLTexture? = nil,
                                pathTraced: PathTracedLayer? = nil,
                                sceneBehind: (texture: MTLTexture, depth: MTLTexture,
-                                             bounds: MTLTexture,
+                                             bounds: MTLTexture, spans: MTLTexture,
                                              viewProjection: simd_float4x4,
                                              inverseViewProjection: simd_float4x4)? = nil,
                                taaJitter: SIMD2<Float> = .zero)

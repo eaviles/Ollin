@@ -481,18 +481,19 @@ struct SceneThroughGlassProbes {
         #expect(inside < 20, "the post printed inside the sphere: \(inside)")
     }
 
-    /// The column of one edge of a block inside the lens, row by row. The red block
-    /// shows in the right half of the picture and the blue one in the left; `outer`
-    /// is the edge toward the ball's rim (the last red pixel of a row, the first
-    /// blue one) and the other is the edge toward its middle.
-    private func blockEdge(_ img: CGImage, red: Bool, outer: Bool, rows: Range<Int>) -> [Int] {
-        let d = pixels(of: img)
-        let w = img.width
-        return rows.compactMap { y in
-            let columns = red ? Array(w / 2 ..< w * 3 / 4) : Array(w / 4 ..< w / 2)
+    /// The column of one edge of a block inside the lens, row by row, in a picture
+    /// `width` pixels wide. The red block shows in the right half of the picture and
+    /// the blue one in the left; `outer` is the edge toward the ball's rim (the last
+    /// red pixel of a row, the first blue one) and the other is the edge toward its
+    /// middle. The inner edge is the edge of the block's *side* face, which stands
+    /// in less light than its front, so it counts a fainter color as the block's,
+    /// and it stops short of the highlights in the ball's middle.
+    private func blockEdge(_ d: [UInt8], width w: Int, red: Bool, outer: Bool, rows: Range<Int>) -> [Int] {
+        rows.compactMap { y in
+            let columns = red ? Array(w * 17 / 32 ..< w * 3 / 4) : Array(w / 4 ..< w * 15 / 32)
             let inked = columns.filter { x in
                 let r = Int(d[(y * w + x) * 4]), b = Int(d[(y * w + x) * 4 + 2])
-                return (red ? r - b : b - r) > 60
+                return (red ? r - b : b - r) > (outer ? 60 : 30)
             }
             return red == outer ? inked.last : inked.first
         }
@@ -508,27 +509,153 @@ struct SceneThroughGlassProbes {
         }.count
     }
 
-    /// A block seen through a solid ball has an edge as even as a pixel grid can
-    /// draw it. The ray that leaves the ball is walked across the layer one pixel
-    /// at a time, so a ray that meets the block's face just inside its edge finds
-    /// it. A walk that samples the path every so many pixels steps over that short
-    /// stretch for some rays and not for their neighbors, and the edge comes out in
-    /// uneven steps of several pixels: under a walk that steps 1/40 of the frame
-    /// this probe reads 6 and 11 straying rows on the two edges. The edges measured
-    /// are the two toward the ball's rim; the two toward its middle are the image
-    /// of the blocks' steep side faces, which the walk's continuity test still
-    /// turns down on some rows.
+    /// A picture `factor` times smaller, each pixel the mean of the square it stands for.
+    private func shrunk(_ d: [UInt8], width w: Int, by factor: Int) -> [UInt8] {
+        let side = w / factor
+        var out = [UInt8](repeating: 0, count: side * side * 4)
+        for y in 0 ..< side {
+            for x in 0 ..< side {
+                for c in 0 ..< 4 {
+                    var sum = 0
+                    for v in 0 ..< factor {
+                        for u in 0 ..< factor { sum += Int(d[((y * factor + v) * w + x * factor + u) * 4 + c]) }
+                    }
+                    out[(y * side + x) * 4 + c] = UInt8(sum / (factor * factor))
+                }
+            }
+        }
+        return out
+    }
+
+    /// A block seen through a solid ball has edges as even as a pixel grid can draw
+    /// them. The ray that leaves the ball is walked across the layer one pixel at a
+    /// time, so a ray that meets the block's face just inside its edge finds it. A
+    /// walk that samples the path every so many pixels steps over that short stretch
+    /// for some rays and not for their neighbors, and the edge comes out in uneven
+    /// steps of several pixels: under a walk that steps 1/40 of the frame this probe
+    /// reads 6 and 11 straying rows on the two edges toward the ball's rim.
+    ///
+    /// The two edges toward its middle are the edges of the blocks' side faces, which
+    /// the camera sees along their length: a pixel and a half wide in the layer, and
+    /// 5% deep. A walk that takes each pixel's depth for the whole of what is in it
+    /// turns most of those rays down as having passed behind the block, and which
+    /// ones depends on where the samples fell: 4 and 21 straying rows. The rows
+    /// measured there start below the blocks' feet, where a side face meets the
+    /// floor and its picture ends in a point.
     @Test(.enabled(if: Snapshot.hasMetal))
     func aBlockSeenThroughALensKeepsAnEvenEdge() throws {
-        let img = try OllinApp.image(of: LensEdgeProbe(), frame: 1)
+        let d = pixels(of: try OllinApp.image(of: LensEdgeProbe(), frame: 1))
         let rows = 190 ..< 345
-        let red = blockEdge(img, red: true, outer: true, rows: rows)
-        let blue = blockEdge(img, red: false, outer: true, rows: rows)
+        let red = blockEdge(d, width: 512, red: true, outer: true, rows: rows)
+        let blue = blockEdge(d, width: 512, red: false, outer: true, rows: rows)
         // Both blocks are in the lens on every row measured, or there is no edge to read.
         #expect(red.count == rows.count, "the red block is missing on \(rows.count - red.count) rows")
         #expect(blue.count == rows.count, "the blue block is missing on \(rows.count - blue.count) rows")
         #expect(strays(red) == 0, "the red block's edge strays on \(strays(red)) rows")
         #expect(strays(blue) == 0, "the blue block's edge strays on \(strays(blue)) rows")
+        let inner = 200 ..< 345
+        let redSide = blockEdge(d, width: 512, red: true, outer: false, rows: inner)
+        let blueSide = blockEdge(d, width: 512, red: false, outer: false, rows: inner)
+        #expect(strays(redSide) == 0, "the red block's side strays on \(strays(redSide)) rows")
+        #expect(strays(blueSide) == 0, "the blue block's side strays on \(strays(blueSide)) rows")
+    }
+
+    /// The side of a block seen through a solid ball is whole, and it stands where a
+    /// finer layer puts it. The reference is the same scene drawn three times the
+    /// size and shrunk: there the side face is five pixels wide in the layer and
+    /// steps 1% from one to the next, so even a walk that knows nothing inside a
+    /// pixel finds it. Four things are read, the first against it:
+    ///
+    /// - each side's edge, row by row, within two pixels of the reference's (a walk
+    ///   that turns the side face down draws the block ten pixels narrower; a span
+    ///   carried on too far draws it four to six wider);
+    /// - no hole in the 24 pixels behind that edge (two neighboring pixels' spans
+    ///   that do not quite meet leave a dotted line down the face);
+    /// - the side's own color in the four pixels behind it, 53 and 63 of red over
+    ///   blue here (a pixel the side face partly covers is a blend with the dark
+    ///   behind it, and a read that lands there draws a fringe of 32 and 43);
+    /// - nothing of either block's color in the strip between them, off the
+    ///   highlights (a read that blends across a block's outline tints the floor
+    ///   beside it, in a dotted line an outline's width wide).
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func theSideOfABlockSeenThroughALensIsWholeAndInPlace() throws {
+        let d = pixels(of: try OllinApp.image(of: LensEdgeProbe(), frame: 1))
+        let fine = shrunk(pixels(of: try OllinApp.image(of: LensEdgeProbe.make(side: 1536), frame: 1)),
+                          width: 1536, by: 3)
+        let rows = 200 ..< 345
+        func tint(_ x: Int, _ y: Int, red: Bool) -> Int {
+            let r = Int(d[(y * 512 + x) * 4]), b = Int(d[(y * 512 + x) * 4 + 2])
+            return red ? r - b : b - r
+        }
+        func isBlock(_ x: Int, _ y: Int, red: Bool) -> Bool { tint(x, y, red: red) > 30 }
+        for red in [true, false] {
+            let name = red ? "red" : "blue"
+            let here = blockEdge(d, width: 512, red: red, outer: false, rows: rows)
+            let there = blockEdge(fine, width: 512, red: red, outer: false, rows: rows)
+            #expect(here.count == rows.count && there.count == rows.count,
+                    "the \(name) block is missing on some rows")
+            guard here.count == rows.count, there.count == rows.count else { continue }
+            let off = zip(here, there).map { abs($0 - $1) }.max() ?? 0
+            #expect(off <= 2, "the \(name) block's side stands \(off) pixels from the finer layer's")
+            var holes = 0, faint = 0
+            for (edge, y) in zip(here, rows) {
+                for step in 0 ..< 24 where !isBlock(red ? edge + step : edge - step, y, red: red) { holes += 1 }
+                for step in 0 ..< 4 where tint(red ? edge + step : edge - step, y, red: red) < 45 { faint += 1 }
+            }
+            #expect(holes == 0, "\(holes) holes in the \(name) block's side")
+            #expect(faint == 0, "\(faint) pixels along the \(name) block's side are a blend with what is behind it")
+        }
+        // Between the two sides: each row's own middle value of red less blue, and
+        // the pixels more than 15 from it that are not a highlight.
+        var tinted = 0
+        for y in 200 ..< 330 {
+            let strip = (226 ..< 288).map { x -> (tint: Int, bright: Int) in
+                let i = (y * 512 + x) * 4
+                return (Int(d[i]) - Int(d[i + 2]), Int(max(d[i], d[i + 1], d[i + 2])))
+            }
+            let middle = strip.map(\.tint).sorted()[strip.count / 2]
+            tinted += strip.filter { abs($0.tint - middle) > 15 && $0.bright < 150 }.count
+        }
+        #expect(tinted == 0, "\(tinted) pixels between the blocks carry a block's color")
+    }
+
+    /// On a surface that covers its pixels whole, the walk reads the layer at the
+    /// point where its ray met it, between the pixels around that point. A seam on
+    /// a wall close behind a solid ball shows several times its size, and its
+    /// picture falls from the one color to the other over a dozen pixels without
+    /// once stepping back. A read that took the nearest pixel whole draws the same
+    /// stretch in plateaus, and in steps back where two rays side by side land on
+    /// pixels in the other order (three of them here, of 50 levels and more).
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aSeamSeenLargeThroughALensRunsSmoothly() throws {
+        let d = pixels(of: try render(.seamUpClose))
+        let row = (96 ..< 126).map { x in Int(d[(96 * 192 + x) * 4]) - Int(d[(96 * 192 + x) * 4 + 2]) }
+        #expect((row.first ?? 0) > 90 && (row.last ?? 0) < -120,
+                "expected the stretch to run from the red half to the blue: \(row)")
+        let back = zip(row, row.dropFirst()).filter { $1 > $0 + 8 }.count
+        #expect(back == 0, "the seam's picture steps back \(back) times: \(row)")
+    }
+
+    /// Only a solid body walks its ray across the layer, so only a frame with one in
+    /// it pays for what the walk reads: the two passes that build the skip table and
+    /// the one that measures each pixel's span, with the pre-pass's depth samples
+    /// kept for it. The same scene behind a thin wall draws three passes fewer.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func onlyASolidBodyPaysForTheWalk() throws {
+        final class Passes: SketchExtension {
+            var last = 0
+            func afterFrame(_ sketch: Sketch, _ info: FrameInfo) { last = info.profile.passes }
+        }
+        func passes(_ kind: SceneThroughGlassProbe.Kind) throws -> Int {
+            let sketch = SceneThroughGlassProbe.make(kind: kind)
+            let counter = Passes()
+            sketch.extend(counter)
+            _ = try OllinApp.image(of: sketch, frame: 1)
+            return counter.last
+        }
+        let solid = try passes(.lensSolid), thin = try passes(.lensThin)
+        #expect(thin > 0, "the frame counted no passes")
+        #expect(solid - thin == 3, "a solid body's frame drew \(solid) passes, a thin wall's \(thin)")
     }
 
     /// The walk passes over the blocks and regions of the layer its ray cannot meet
@@ -673,7 +800,15 @@ private final class PaneOverWall: Sketch {
 /// focus: the ball shows them turned over, the red one on its right and the blue one
 /// on its left, each with one edge the walk has to find pixel by pixel.
 private final class LensEdgeProbe: Sketch {
-    override var canvasSize: CanvasSize { .square(512) }
+    var side = 512
+
+    static func make(side: Int) -> LensEdgeProbe {
+        let probe = LensEdgeProbe()
+        probe.side = side
+        return probe
+    }
+
+    override var canvasSize: CanvasSize { .square(side) }
 
     override func draw() {
         background(Color(white: 0.05))
@@ -716,6 +851,7 @@ private final class SceneThroughGlassProbe: Sketch {
         case envPrismClear, envPrismDispersive
         case tracedPrismClear, tracedPrismDispersive
         case postAcrossAHiddenRay
+        case seamUpClose
     }
     var kind: Kind = .wallShown
 
@@ -792,6 +928,23 @@ private final class SceneThroughGlassProbe: Sketch {
             // A high index bends hard enough for the shift to clear the seam by a
             // comfortable margin rather than by a pixel or two.
             material(kind == .barsSolid ? .glass(ior: 2.4, thickness: 2.4) : .glass(ior: 2.4))
+            drawSphere(radius: 1.2)
+
+        case .seamUpClose:
+            // A wall of two colors close behind a solid ball, inside the distance it
+            // focuses at, so the ball shows the seam between them several times its
+            // size. The two halves are flush, one surface as far as depth can tell.
+            sceneThroughGlass()
+            for (x, color) in [(-3.9, Color(hex: 0xd94430)), (4.1, Color(hex: 0x2a4fd6))] {
+                withState {
+                    fill(color)
+                    material(.dielectric(roughness: 0.8))
+                    translate(x, 0, -2.0)
+                    drawBox(width: 8, height: 8, depth: 0.4)
+                }
+            }
+            fill(.white)
+            material(.glass(thickness: 2.4))
             drawSphere(radius: 1.2)
 
         case .stripesClear, .stripesFrosted:

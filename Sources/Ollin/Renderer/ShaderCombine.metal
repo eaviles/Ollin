@@ -1524,6 +1524,69 @@ fragment float4 ollin_scene_depth_bounds(PresentOut in [[stage_in]],
     return float4(ollin_scene_bound_plane(slope, lift, nearest, reach * 0.5), farthest);
 }
 
+// What the lens walk needs to know about each pixel of the scene-behind layer that
+// its resolved depth cannot say, from the layer's own multisample depth.
+//
+// x: how far the surface nearest the camera runs on in depth inside the pixel. The
+// resolved depth keeps one number a pixel, the nearest sample, and that is the
+// whole surface only where the surface faces the camera. A face seen along its
+// length (the side of a box beside the view axis, a floor toward the horizon)
+// falls away across the pixel, and a ray that goes under its nearest point may
+// still meet it lower down. The samples say how far down it goes: sorted from the
+// nearest, each one within 2% of the one before is the same surface carried on,
+// and the first gap wider than that is something else behind it. The span ends
+// one sample's step past the last sample on the surface, since the samples stand
+// inside the pixel and the surface runs on a little way to its wall or its own
+// edge. Stored as the share of the nearest 1/depth the span takes.
+//
+// y: for a pixel that surface only partly covers, which of the eight pixels
+// around it lies further onto the surface, 1 to 8 counted from +x toward +y, and
+// 0 for a pixel it covers whole or runs through the middle of. The layer's color
+// in a partly covered pixel is a blend with whatever stands behind, so a ray that
+// met the surface there reads its neighbor instead. The way is from the middle of
+// the samples off the surface to the middle of the samples on it.
+//
+// params[0] = the last row of the layer's inverse view projection;
+// params[1...4] = where the samples stand in a pixel, two to a row.
+fragment float4 ollin_scene_depth_spans(PresentOut in [[stage_in]],
+                                        depth2d_ms<float> depthTex [[texture(0)]],
+                                        constant float4 *params [[buffer(0)]]) {
+    uint2 px = uint2(in.position.xy);
+    uint2 dims = uint2(depthTex.get_width(), depthTex.get_height());
+    float4 unprojectRow = ollin_layer_unproject_row(params[0], 1.0 / float2(dims));
+    uint count = min(depthTex.get_num_samples(), 8u);
+    // One over each sample's view depth, as read and then the nearest first.
+    float raw[8], w[8];
+    for (uint i = 0; i < count; ++i) {
+        float v = max(dot(unprojectRow, float4(float2(px), depthTex.read(px, i), 1.0)), 0.0);
+        raw[i] = v;
+        uint at = i;
+        while (at > 0 && w[at - 1] < v) { w[at] = w[at - 1]; at -= 1; }
+        w[at] = v;
+    }
+    float nearest = w[0];
+    if (!(nearest > 0.0)) return float4(0.0);
+    uint held = 1;
+    while (held < count && w[held - 1] - w[held] <= 0.02 * w[held - 1]) held += 1;
+    float span = nearest - w[held - 1];
+    float share = (span + span / float(max(held, 2u) - 1u)) / nearest;
+    if (held == count) return float4(share, 0.0, 0.0, 0.0);
+    // The way onto the surface, when its edge crosses the pixel to one side.
+    float2 on = float2(0.0), off = float2(0.0);
+    for (uint i = 0; i < count; ++i) {
+        float4 pair = params[1 + i / 2];
+        float2 at = (i & 1u) == 0u ? pair.xy : pair.zw;
+        if (raw[i] >= w[held - 1]) on += at; else off += at;
+    }
+    float2 way = on / float(held) - off / float(count - held);
+    float code = 0.0;
+    if (dot(way, way) > 0.0625 * 0.0625) {
+        float turn = atan2(way.y, way.x) * (4.0 / M_PI_F);       // eighths of a half turn
+        code = fmod(round(turn) + 8.0, 8.0) + 1.0;
+    }
+    return float4(share, code, 0.0, 0.0);
+}
+
 // Rebuild a view-space position from the gray depth layer (decoded to a 0…1 distance
 // fraction `t`) and the camera geometry packed in params[2..3]. View-space distance is
 // near + t·(far−near); the lateral offset is the frustum half-extent at that distance

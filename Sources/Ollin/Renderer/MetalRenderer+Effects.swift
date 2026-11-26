@@ -3646,7 +3646,7 @@ extension MetalRenderer {
                         caustics: MTLTexture? = nil,
                         pathTraced: PathTracedLayer? = nil,
                         sceneBehind: (texture: MTLTexture, depth: MTLTexture,
-                                      bounds: MTLTexture,
+                                      bounds: MTLTexture, spans: MTLTexture,
                                       viewProjection: simd_float4x4,
                                       inverseViewProjection: simd_float4x4)? = nil,
                         skippingTransmissive: Bool = false,
@@ -4222,6 +4222,9 @@ extension MetalRenderer {
             // The lens walk's skip table (tex 30): that depth's nearest and farthest
             // by block and by region; a never-sampled stand-in otherwise.
             encoder.setFragmentTexture(sceneBehind?.bounds ?? strip, index: 30)
+            // How far each pixel's own surface runs on in depth (tex 31), read where
+            // the walk's ray goes under a pixel; a never-sampled stand-in otherwise.
+            encoder.setFragmentTexture(sceneBehind?.spans ?? strip, index: 31)
             // The pre-traced reflection layer (tex 7) when the deferred path is on;
             // a never-sampled stand-in otherwise (`rtReflectionDeferred` gates the
             // read). Only part of the RT-compiled fragment signature.

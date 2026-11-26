@@ -1608,12 +1608,20 @@ final class MetalRenderer {
     /// after the pre-pass (the blocks from the pixels into `sceneBehindBlocksTex`,
     /// the table from the blocks), and a solid body's walk reads it to pass over
     /// the stretches of its ray that meet nothing.
+    ///
+    /// And how far each pixel's own surface runs on in depth (`sceneBehindSpanTex`,
+    /// `ollin_scene_depth_spans`), measured from the pre-pass's depth samples before
+    /// they are resolved to one a pixel. In a frame with a solid body in it the
+    /// multisample depth is kept for that one pass to read, `.private` whatever the
+    /// color attachment is; a frame of thin walls alone, which never walk, keeps
+    /// nothing and runs none of the three passes.
     var sceneBehindMSAATex: MTLTexture?
     var sceneBehindDepthTex: MTLTexture?
     var sceneBehindDepthResolveTex: MTLTexture?
     var sceneBehindResolveTex: MTLTexture?
     var sceneBehindBlocksTex: MTLTexture?
     var sceneBehindBoundsTex: MTLTexture?
+    var sceneBehindSpanTex: MTLTexture?
     var sceneBehindSize = (width: 0, height: 0)
 
     /// The wet-ground pre-pass targets (`encodeStrokeGroundPass`): the frame drawn

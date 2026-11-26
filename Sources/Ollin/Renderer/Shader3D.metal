@@ -5634,6 +5634,45 @@ static inline float ollin_layer_inverse_depth(uint2 px, float4 unprojectRow,
     return max(dot(unprojectRow, float4(float2(px), sceneDepthTex.read(px), 1.0)), 0.0);
 }
 
+/// Where the layer is read for a ray that met it in the pixel `px`, as a uv. The
+/// color in a pixel is the mean of what covers it, so it is the surface's own only
+/// where the surface covers it whole:
+///
+/// - a pixel the surface partly covers (`code`, from `ollin_scene_depth_spans`)
+///   holds a blend with what stands behind, and the read moves to the middle of
+///   the neighbor further onto the surface;
+/// - a point whose four nearest pixels are not all the one surface (one of them
+///   partly covered, or its depth more than 2% from this pixel's) would blend
+///   across an outline, and the read takes this pixel's middle alone;
+/// - anywhere else it is the point itself, `at` in pixels, between the pixels
+///   around it.
+static inline float2 ollin_scene_meeting_read(uint2 px, float2 at, float w, float code,
+                                              uint2 dims, float4 unprojectRow,
+                                              depth2d<float> sceneDepthTex,
+                                              texture2d<float> sceneSpanTex) {
+    float2 invSize = 1.0 / float2(dims);
+    if (code > 0.5) {
+        float turn = (code - 1.0) * (M_PI_F / 4.0);
+        int2 to = int2(px) + int2(round(float2(cos(turn), sin(turn))));
+        to = clamp(to, int2(0), int2(dims) - 1);
+        return (float2(to) + 0.5) * invSize;
+    }
+    float2 middle = (float2(px) + 0.5) * invSize;
+    // The four pixels a read at `at` stands between, in the order a gather gives
+    // them (from the lower left, counter-clockwise), `px` among them.
+    constexpr sampler around(filter::nearest, address::clamp_to_edge);
+    float2 uv = at * invSize;
+    float4 depths = sceneDepthTex.gather(around, uv);
+    float4 codes = sceneSpanTex.gather(around, uv, int2(0), component::y);
+    float2 first = floor(at - 0.5);
+    float4 there = max(float4(dot(unprojectRow, float4(first + float2(0.0, 1.0), depths.x, 1.0)),
+                              dot(unprojectRow, float4(first + float2(1.0, 1.0), depths.y, 1.0)),
+                              dot(unprojectRow, float4(first + float2(1.0, 0.0), depths.z, 1.0)),
+                              dot(unprojectRow, float4(first, depths.w, 1.0))), 0.0);
+    if (any(abs(there - w) > 0.02 * w) || any(codes > 0.5)) return middle;
+    return uv;
+}
+
 /// Walks a solid body's exiting ray through the scene-behind layer to the first
 /// point where it meets what the frame drew, in the layer's own pixels: the screen
 /// path runs from the exit point's pixel toward the vanishing point of the ray's
@@ -5647,12 +5686,23 @@ static inline float ollin_layer_inverse_depth(uint2 px, float4 unprojectRow,
 ///
 /// - leaving in front of the layer, the ray is still in the open, and this is the
 ///   last pixel it was seen in front of;
-/// - entering in front (or within 2% behind) and leaving behind, on a layer that is
-///   continuous with the pixel before, the ray has met a surface, and the walk
-///   ends at the point along the span where the ray is at the layer's depth;
-/// - entering well behind, or where the layer jumps, the ray has passed *behind* a
-///   silhouette, and it carries on, meeting nothing, until a pixel finds it in
-///   front again.
+/// - leaving behind the pixel's nearest point, having entered no deeper than the
+///   surface in the pixel runs, the ray has met that surface. The layer's depth
+///   is one number a pixel, the nearest sample, and that is the whole surface
+///   only where it faces the camera: one seen along its length (the side of a
+///   box, a floor toward the horizon) falls away by several percent inside the
+///   pixel. `sceneSpanTex` holds how far (`ollin_scene_depth_spans`, measured from
+///   the layer's depth samples before they were resolved to one);
+/// - entering deeper than that, the ray has still met the surface where it
+///   carries on from the pixel before, in front of which the ray still was: the
+///   two pixels hold one surface when the far end of this one stands within 2%
+///   of that one's depth;
+/// - entering deeper than all of that, the ray has passed *behind* a silhouette,
+///   and it carries on, meeting nothing, until a pixel finds it in front again.
+///
+/// What the ray shows where it met the layer is `ollin_scene_meeting_read`'s to
+/// say: the point itself where the pixels around it are one surface, and a whole
+/// pixel of that surface where they are not.
 ///
 /// The far plane is a surface like any other, so a ray that reaches it reads the
 /// frame's own backdrop, the way a thin wall does. A ray that goes behind something
@@ -5684,7 +5734,8 @@ static inline float ollin_layer_inverse_depth(uint2 px, float4 unprojectRow,
 static inline float4 ollin_scene_march(float2 uv0, float zExit, float4 vanishClip, float3 worldPos,
                                        constant OllinLighting &light,
                                        depth2d<float> sceneDepthTex,
-                                       texture2d<float> sceneBoundsTex) {
+                                       texture2d<float> sceneBoundsTex,
+                                       texture2d<float> sceneSpanTex) {
     // One over a depth, everywhere below: the glass fragment's, the exit point's.
     float wFront = 1.0 / (light.sceneViewProjection * float4(worldPos, 1.0)).w;
     float w0 = 1.0 / zExit;
@@ -5800,21 +5851,33 @@ static inline float4 ollin_scene_march(float2 uv0, float zExit, float4 vanishCli
             lastFront = (float2(px) + 0.5) * invSize;
             behind = false;
         } else if (!behind) {
-            // Entering no more than 2% deeper than the layer.
+            // Leaving behind the pixel's nearest point. The ray has met the surface
+            // if it entered no deeper than the surface itself runs in the pixel
+            // (`own.x`, the share of its 1/depth the pixel's surface spans: next
+            // to nothing for a face seen square on, several percent for one seen
+            // along its length).
             float wEntering = w0 - (at - 0.5) * wStep;
-            if (wEntering * 1.02 > w) {
+            float2 own = sceneSpanTex.read(px).rg;
+            float ends = w * (1.0 - own.x);
+            bool met = wEntering >= ends;
+            if (!met) {
+                // Deeper than that, it has still met the surface where the surface
+                // carries on from the pixel before, the ray having been in front of
+                // that one: the far end here within 2% of the depth there. A jump
+                // between the two is a silhouette the ray passed behind.
                 if (!prevKnown) {
                     wPrev = ollin_layer_inverse_depth(uint2(P0 + stepPx * (at - 1.0)),
                                                       unprojectRow, sceneDepthTex);
                 }
-                // A surface met: the ray entered the pixel on the layer's near side,
-                // and the layer is continuous with the pixel before (their depths
-                // within 2% of this one's). A jump there is a silhouette the ray
-                // passed behind.
-                if (abs(wPrev - w) < 0.02 * wPrev) {
-                    float met = clamp((1.0 - w * zExit) * major, at - 0.5, min(at + 0.5, major));
-                    return float4((P0 + stepPx * met) * invSize, 0.0, 1.0);
-                }
+                met = wPrev >= 0.98 * ends;
+            }
+            if (met) {
+                // The point along the span where the ray is at the layer's depth,
+                // or the point it entered at for a ray that came in under it.
+                float at0 = clamp((1.0 - w * zExit) * major, at - 0.5, min(at + 0.5, major));
+                return float4(ollin_scene_meeting_read(px, P0 + stepPx * at0, w, own.y, dims,
+                                                       unprojectRow, sceneDepthTex, sceneSpanTex),
+                              0.0, 1.0);
             }
             behind = true;
         }
@@ -5830,7 +5893,8 @@ static inline float4 ollin_scene_refraction_at(float3 worldPos, float3 n, float3
                                                constant OllinLighting &light,
                                                texture2d<float> sceneTex,
                                                depth2d<float> sceneDepthTex,
-                                               texture2d<float> sceneBoundsTex) {
+                                               texture2d<float> sceneBoundsTex,
+                                               texture2d<float> sceneSpanTex) {
     constexpr sampler sceneSamp(filter::linear, mip_filter::linear, address::clamp_to_edge);
     float etaIR = 1.0 / ior;
     float rough = clamp((float)mat.roughness, 0.0, 1.0);
@@ -5859,7 +5923,8 @@ static inline float4 ollin_scene_refraction_at(float3 worldPos, float3 n, float3
         float4 vc = light.sceneViewProjection * float4(dir, 0.0);
         float rate = vc.w;
         if (rate > 1e-4) {
-            float4 r = ollin_scene_march(uv, zExit, vc, worldPos, light, sceneDepthTex, sceneBoundsTex);
+            float4 r = ollin_scene_march(uv, zExit, vc, worldPos, light, sceneDepthTex, sceneBoundsTex,
+                                         sceneSpanTex);
             if (r.w <= 0.0) return float4(0.0);
             uv = r.xy;
         }
@@ -5881,22 +5946,23 @@ static inline float4 ollin_scene_refraction(float3 worldPos, float3 n, float3 vi
                                             constant OllinLighting &light,
                                             texture2d<float> sceneTex,
                                             depth2d<float> sceneDepthTex,
-                                            texture2d<float> sceneBoundsTex) {
+                                            texture2d<float> sceneBoundsTex,
+                                            texture2d<float> sceneSpanTex) {
     if (mat.dispersion <= 0.0)
         return ollin_scene_refraction_at(worldPos, n, viewDir, mat, mat.ior, light,
-                                         sceneTex, sceneDepthTex, sceneBoundsTex);
+                                         sceneTex, sceneDepthTex, sceneBoundsTex, sceneSpanTex);
     // A prism: one march per channel, each along its own exit ray. The middle of the
     // spectrum decides whether the read stands at all (its coverage is the pixel's),
     // and a side channel whose own ray was refused reads where the green one did,
     // so a fringe never punches a hole in the body.
     float3 iors = ollin_channel_iors(mat);
     float4 g = ollin_scene_refraction_at(worldPos, n, viewDir, mat, iors.g, light,
-                                         sceneTex, sceneDepthTex, sceneBoundsTex);
+                                         sceneTex, sceneDepthTex, sceneBoundsTex, sceneSpanTex);
     if (g.w <= 0.0) return float4(0.0);
     float4 r = ollin_scene_refraction_at(worldPos, n, viewDir, mat, iors.r, light,
-                                         sceneTex, sceneDepthTex, sceneBoundsTex);
+                                         sceneTex, sceneDepthTex, sceneBoundsTex, sceneSpanTex);
     float4 b = ollin_scene_refraction_at(worldPos, n, viewDir, mat, iors.b, light,
-                                         sceneTex, sceneDepthTex, sceneBoundsTex);
+                                         sceneTex, sceneDepthTex, sceneBoundsTex, sceneSpanTex);
     return float4(r.w > 0.0 ? r.r : g.r, g.g, b.w > 0.0 ? b.b : g.b, g.w);
 }
 
@@ -6846,6 +6912,9 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
                                     // The lens walk's skip table (tex 30): the layer's nearest and farthest
                                     // depth by block and by region; the same stand-in rule.
                                     texture2d<float> sceneBehindBoundsTex [[texture(30)]],
+                                    // How far each pixel's own surface runs on in depth (tex 31), which the
+                                    // walk reads where a ray goes under one; the same stand-in rule.
+                                    texture2d<float> sceneBehindSpanTex [[texture(31)]],
                                     constant OllinPeel &peel [[buffer(10), function_constant(kOllinPeel)]],
                                     depth2d<float> peelDepth [[texture(29), function_constant(kOllinPeel)]]
 #if OLLIN_RT_SHADOWS
@@ -6971,7 +7040,7 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
         if (light.sceneBehind.x > 0.0 && mat.transmission > 0.0) {
             sceneBehind = ollin_scene_refraction(in.worldPos, normalize(in.normal), viewDir,
                                                  mat, light, sceneBehindTex, sceneBehindDepthTex,
-                                                 sceneBehindBoundsTex);
+                                                 sceneBehindBoundsTex, sceneBehindSpanTex);
         }
         c.rgb += ollin_pbr_ibl_ambient(base, normalize(in.normal), viewDir, mat, light,
                                        iblIrradiance, iblPrefilter, iblBRDF, sheenLUT
@@ -7261,6 +7330,9 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
                                              // The lens walk's skip table (tex 30): the layer's nearest and farthest
                                              // depth by block and by region; the same stand-in rule.
                                              texture2d<float> sceneBehindBoundsTex [[texture(30)]],
+                                             // How far each pixel's own surface runs on in depth (tex 31), which the
+                                             // walk reads where a ray goes under one; the same stand-in rule.
+                                             texture2d<float> sceneBehindSpanTex [[texture(31)]],
                                              constant OllinPeel &peel [[buffer(10), function_constant(kOllinPeel)]],
                                              depth2d<float> peelDepth [[texture(29), function_constant(kOllinPeel)]]
 #if OLLIN_RT_SHADOWS
@@ -7362,7 +7434,7 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
         if (light.sceneBehind.x > 0.0 && mat.transmission > 0.0) {
             sceneBehind = ollin_scene_refraction(in.worldPos, normalize(in.normal), viewDir,
                                                  mat, light, sceneBehindTex, sceneBehindDepthTex,
-                                                 sceneBehindBoundsTex);
+                                                 sceneBehindBoundsTex, sceneBehindSpanTex);
         }
         c.rgb += ollin_pbr_ibl_ambient(base, normalize(in.normal), viewDir, mat, light,
                                        iblIrradiance, iblPrefilter, iblBRDF, sheenLUT
@@ -7491,6 +7563,9 @@ fragment float4 ollin_mesh_nm_fragment(MeshTexturedNMOut in [[stage_in]],
                                        // The lens walk's skip table (tex 30): the layer's nearest and farthest
                                        // depth by block and by region; the same stand-in rule.
                                        texture2d<float> sceneBehindBoundsTex [[texture(30)]],
+                                       // How far each pixel's own surface runs on in depth (tex 31), which the
+                                       // walk reads where a ray goes under one; the same stand-in rule.
+                                       texture2d<float> sceneBehindSpanTex [[texture(31)]],
                                        constant OllinPeel &peel [[buffer(10), function_constant(kOllinPeel)]],
                                        depth2d<float> peelDepth [[texture(29), function_constant(kOllinPeel)]],
                                        texture2d<float> normalMapTex [[texture(17)]]
@@ -7597,7 +7672,7 @@ fragment float4 ollin_mesh_nm_fragment(MeshTexturedNMOut in [[stage_in]],
         if (light.sceneBehind.x > 0.0 && mat.transmission > 0.0) {
             sceneBehind = ollin_scene_refraction(in.worldPos, N, viewDir,
                                                  mat, light, sceneBehindTex, sceneBehindDepthTex,
-                                                 sceneBehindBoundsTex);
+                                                 sceneBehindBoundsTex, sceneBehindSpanTex);
         }
         c.rgb += ollin_pbr_ibl_ambient(base, N, viewDir, mat, light,
                                        iblIrradiance, iblPrefilter, iblBRDF, sheenLUT
@@ -7861,6 +7936,9 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
                                          // The lens walk's skip table (tex 30): the layer's nearest and farthest
                                          // depth by block and by region; the same stand-in rule.
                                          texture2d<float> sceneBehindBoundsTex [[texture(30)]],
+                                         // How far each pixel's own surface runs on in depth (tex 31), which the
+                                         // walk reads where a ray goes under one; the same stand-in rule.
+                                         texture2d<float> sceneBehindSpanTex [[texture(31)]],
                                          constant OllinPeel &peel [[buffer(10), function_constant(kOllinPeel)]],
                                          depth2d<float> peelDepth [[texture(29), function_constant(kOllinPeel)]],
                                          texture2d<float> normalMapTex [[texture(17)]],
@@ -8117,7 +8195,7 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
         if (light.sceneBehind.x > 0.0 && mat.transmission > 0.0) {
             sceneBehind = ollin_scene_refraction(in.worldPos, N, viewDir,
                                                  mat, light, sceneBehindTex, sceneBehindDepthTex,
-                                                 sceneBehindBoundsTex);
+                                                 sceneBehindBoundsTex, sceneBehindSpanTex);
         }
         c.rgb += pxAO * ollin_pbr_ibl_ambient_mapped(base, N, viewDir, pxMetal, pxRough, mat, light,
                                        iblIrradiance, iblPrefilter, iblBRDF, sheenLUT

@@ -33,12 +33,13 @@ extension MetalRenderer {
     /// size and sample count. Memoryless for an ordinary pass, since depth is
     /// consumed within the pass (storeAction `.dontCare`); private for a pass with
     /// more geometry than tile memory alone can bin (`attachmentStorage`).
-    func makeDepthMSAA(width: Int, height: Int, storage: MTLStorageMode) -> MTLTexture? {
+    func makeDepthMSAA(width: Int, height: Int, storage: MTLStorageMode,
+                       read: Bool = false) -> MTLTexture? {
         let desc = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: depthPixelFormat, width: width, height: height, mipmapped: false)
         desc.textureType = .type2DMultisample
         desc.sampleCount = sampleCount
-        desc.usage = .renderTarget
+        desc.usage = read ? [.renderTarget, .shaderRead] : .renderTarget
         desc.storageMode = storage
         return device.makeTexture(descriptor: desc)
     }
@@ -3455,6 +3456,14 @@ extension MetalRenderer {
     /// meets the scene, which is what makes the picture inside it a lens's rather
     /// than a shifted copy of the exit point's pixel.
     ///
+    /// One number a pixel loses what the walk needs at an outline: how far the
+    /// surface in the pixel runs on in depth, and whether it covers the pixel at
+    /// all. So in a frame with a solid body the pass keeps its depth samples
+    /// (`.storeAndMultisampleResolve`, a `.private` attachment whatever the color's
+    /// is), and one more pass reads them into `spans` before the next frame
+    /// overwrites them. A frame of thin walls alone never walks: it keeps nothing,
+    /// and `bounds` and `spans` are left as they were, unread.
+    ///
     /// Returns nil, leaving `sceneBehind.x` 0 and every carrier's branch untaken, when
     /// the sketch did not ask for it, when there is no camera or environment (transmission
     /// needs one either way), when nothing in the frame transmits, or when ray-traced
@@ -3475,7 +3484,7 @@ extension MetalRenderer {
                                gi: GIResolved? = nil,
                                caustics: MTLTexture? = nil,
                                pathTraced: PathTracedLayer? = nil)
-        -> (texture: MTLTexture, depth: MTLTexture, bounds: MTLTexture,
+        -> (texture: MTLTexture, depth: MTLTexture, bounds: MTLTexture, spans: MTLTexture,
             viewProjection: simd_float4x4, inverseViewProjection: simd_float4x4)? {
         guard drawer.sceneThroughGlassEnabled else { return nil }
         guard let camera = drawer.camera3D else {
@@ -3493,14 +3502,25 @@ extension MetalRenderer {
         guard reflectAccel == nil else { return nil }
 
         let storage = attachmentStorage(for: drawer, target: nil)
+        // Only a solid body walks its ray across the layer's depth, so only a frame
+        // with one in it keeps the depth samples and builds what the walk reads.
+        let walks = drawer.batches.contains {
+            $0.isTransmissive && $0.target == nil && $0.finish.thickness > 0
+        }
+        let depthStorage: MTLStorageMode = walks ? .private : storage
         if sceneBehindSize != (width, height) || sceneBehindResolveTex == nil
-            || sceneBehindMSAATex?.storageMode != storage {
+            || sceneBehindMSAATex?.storageMode != storage
+            || sceneBehindDepthTex?.storageMode != depthStorage
+            || sceneBehindDepthTex?.usage.contains(.shaderRead) != walks {
             guard let msaa = makeFloatMSAA(width: width, height: height, storage: storage),
-                  let depth = makeDepthMSAA(width: width, height: height, storage: storage),
+                  // Kept past the pass, for the spans to be read from its samples.
+                  let depth = makeDepthMSAA(width: width, height: height, storage: depthStorage,
+                                            read: walks),
                   let depthResolve = makeDepthResolve(width: width, height: height),
                   let resolve = makeFloatResolveMipped(width: width, height: height),
                   let blocks = makeSceneBounds(width: width, height: height, regions: false),
-                  let bounds = makeSceneBounds(width: width, height: height, regions: true)
+                  let bounds = makeSceneBounds(width: width, height: height, regions: true),
+                  let spans = makeSceneSpans(width: width, height: height)
             else { return nil }
             sceneBehindMSAATex = msaa
             sceneBehindDepthTex = depth
@@ -3508,13 +3528,15 @@ extension MetalRenderer {
             sceneBehindResolveTex = resolve
             sceneBehindBlocksTex = blocks
             sceneBehindBoundsTex = bounds
+            sceneBehindSpanTex = spans
             sceneBehindSize = (width, height)
         }
         guard let msaa = sceneBehindMSAATex, let depth = sceneBehindDepthTex,
               let depthResolve = sceneBehindDepthResolveTex,
               let resolve = sceneBehindResolveTex,
               let blocks = sceneBehindBlocksTex,
-              let bounds = sceneBehindBoundsTex else { return nil }
+              let bounds = sceneBehindBoundsTex,
+              let spans = sceneBehindSpanTex else { return nil }
 
         let pass = MTLRenderPassDescriptor()
         pass.colorAttachments[0].texture = msaa
@@ -3526,7 +3548,7 @@ extension MetalRenderer {
         pass.depthAttachment.loadAction = .clear
         pass.depthAttachment.clearDepth = 1.0
         pass.depthAttachment.resolveTexture = depthResolve
-        pass.depthAttachment.storeAction = .multisampleResolve
+        pass.depthAttachment.storeAction = walks ? .storeAndMultisampleResolve : .multisampleResolve
         pass.depthAttachment.depthResolveFilter = .min
         let hasStencil = attachClipStencil(to: pass, active: drawer.usesCanvasStencil,
                                            width: width, height: height, storage: storage)
@@ -3561,6 +3583,7 @@ extension MetalRenderer {
         let u3 = makeUniforms3D(drawer, camera: camera, viewport: viewport)
         let viewProjection = u3.projection * u3.view
         let inverse = simd_inverse(viewProjection)
+        guard walks else { return (resolve, depthResolve, bounds, spans, viewProjection, inverse) }
         // The lens walk's skip table, from the depth the pass just resolved: the
         // blocks from the pixels, then the table from the blocks. The first pass is
         // handed the one row of the inverse that turns a stored depth into one over
@@ -3571,7 +3594,39 @@ extension MetalRenderer {
                              params: [inverseW], into: cb)
         encodeEffectFragment("ollin_scene_depth_bounds", inputs: [blocks], output: bounds,
                              params: [SIMD4(Float(width), Float(height), 0, 0)], into: cb)
-        return (resolve, depthResolve, bounds, viewProjection, inverse)
+        // How far each pixel's own surface runs on in depth, from the samples the
+        // resolve reduced to one: what the walk reads where a ray goes under a pixel.
+        encodeEffectFragment("ollin_scene_depth_spans", inputs: [depth], output: spans,
+                             params: [inverseW] + samplePositionRows, into: cb)
+        return (resolve, depthResolve, bounds, spans, viewProjection, inverse)
+    }
+
+    /// Where the multisample pattern's samples stand in a pixel, two to a row and
+    /// four rows whatever the count (the rows past it are never read), counted from
+    /// the pixel's middle: what `ollin_scene_depth_spans` needs to say which way a
+    /// surface's edge crosses a pixel.
+    var samplePositionRows: [SIMD4<Float>] {
+        let places = device.getDefaultSamplePositions(sampleCount: sampleCount)
+        return (0 ..< 4).map { row in
+            func place(_ i: Int) -> SIMD2<Float> {
+                i < places.count ? SIMD2(places[i].x - 0.5, places[i].y - 0.5) : .zero
+            }
+            let a = place(row * 2), b = place(row * 2 + 1)
+            return SIMD4(a.x, a.y, b.x, b.y)
+        }
+    }
+
+    /// The lens walk's span layer for a scene-behind layer of this size: for each
+    /// pixel, the share of its nearest 1/depth that its own surface runs on through,
+    /// and which neighbor lies further onto that surface where it only partly
+    /// covers the pixel (`ollin_scene_depth_spans`). A half float holds a share to
+    /// three digits, which is finer than the samples it is measured from.
+    func makeSceneSpans(width: Int, height: Int) -> MTLTexture? {
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .rg16Float, width: max(1, width), height: max(1, height), mipmapped: false)
+        desc.usage = [.renderTarget, .shaderRead]
+        desc.storageMode = .private
+        return device.makeTexture(descriptor: desc)
     }
 
     /// The lens walk's skip table for a scene-behind layer of this size: one texel
