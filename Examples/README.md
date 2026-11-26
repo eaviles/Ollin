@@ -53,7 +53,7 @@ Examples are grouped into **category** folders, and each example gets its own fo
 | [Video](Video/) | recorded footage as drawing material (`import OllinVideo`) |
 | [Vision](Vision/) | the camera plus on-device perception (`import OllinVision`) |
 | [Web](Web/) | sketches made for a web page, limited to what a browser supports |
-| [Recreations](Recreations/) | homages to past computer artists, by artist |
+| [Recreations](Recreations/) | homages to artists we admire, by artist |
 
 ### Running
 
@@ -92,7 +92,7 @@ By convention, a feature is not done until it has an example, and every example 
 
 ### Recreations
 
-`Recreations/` is a special section. Its sketches **recreate the work of past computer artists**, and they are organized by artist. SFPC's [Recreating the Past](https://sfpc.io/recreatingthepast-spring2020/) class inspired the section. Each sketch is a homage after the artist, not a reproduction, and the artist has not endorsed it. A short per-artist `README.md` introduces each artist. Each target name includes the artist's name:
+`Recreations/` is a special section. Its sketches are **homages to artists we admire**, and they are organized by artist. Some of those artists worked on the first computers, and many never used one. SFPC's [Recreating the Past](https://sfpc.io/recreatingthepast-spring2020/) class inspired the section. Each sketch is a homage after the artist, not a reproduction, and the artist has not endorsed it. Each artist has a page about their life and their work, and the section's index groups the artists by how they made it. Each target name includes the artist's name:
 
 ```sh
 swift run Example-Recreations-VeraMolnar-Interruptions

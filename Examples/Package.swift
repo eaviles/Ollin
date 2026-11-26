@@ -913,8 +913,8 @@ let package = Package(
         example("Vision/TrajectoryTracking", [.vision]),
         // Web: sketches made for a web page.
         example("Web/BreathingRing"),
-        // Recreations — sketches recreating past computer artists, namespaced by
-        // artist (see Examples/Recreations/README.md).
+        // Recreations: homages to artists, namespaced by artist (see
+        // Examples/Recreations/README.md).
         example("Recreations/VeraMolnar/Interruptions"),
         example("Recreations/VeraMolnar/DesOrdres"),
         example("Recreations/GeorgNees/Schotter"),

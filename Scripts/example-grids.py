@@ -26,6 +26,12 @@ An example with no row in the manifest has no picture and simply does not
 appear in the grid; it is still in the listing table underneath with the
 sentence that says what it shows. Running this twice changes nothing: an
 existing grid is recognized by its shape and replaced.
+
+A listing that holds more than one grid was arranged by hand, the way the
+recreations index groups its artists into wings with a line under each
+picture. Such a page keeps its arrangement: only the address of each picture
+is brought up to date, and a group or sketch the page shows nowhere is named
+so it can be given a place.
 """
 import json
 import pathlib
@@ -86,6 +92,48 @@ def grid(listing, media):
     return out
 
 
+CELL = re.compile(r"\[!\[([^\]]*)\]\(([^)]*)\)\]\(([^)]*)\)")
+
+
+def grids(lines):
+    """Where each grid starts: a row of linked stills with no table row above it."""
+    return [i for i, l in enumerate(lines)
+            if l.startswith("| [![") and (i == 0 or not lines[i - 1].startswith("|"))]
+
+
+def picture(folder, media):
+    """The address of a group's cover or a sketch's still, if the manifest has one."""
+    cover = media.get("groups", {}).get(folder)
+    if cover:
+        return f"{media['base']}/{cover['imageSmall']}"
+    entry = media["examples"].get(folder)
+    if entry:
+        return f"{media['base']}/{entry['stillSmall']}"
+    return None
+
+
+def refreshed(listing, lines, media):
+    """A page arranged by hand, with each picture's address brought up to date."""
+    home = listing.parent
+    shown = set()
+
+    def address(match):
+        alt, old, target = match.groups()
+        if "://" in target or target.startswith(".."):
+            return match.group(0)
+        folder = (home / target.rstrip("/")).relative_to(EXAMPLES).as_posix()
+        shown.add(folder)
+        return f"[![{alt}]({picture(folder, media) or old})]({target})"
+
+    out = [CELL.sub(address, l) if l.startswith("| [![") else l for l in lines]
+    listed = [g for g in delegated(listing)] + owned(listing)
+    for folder in listed:
+        key = folder.relative_to(EXAMPLES).as_posix()
+        if key not in shown and picture(key, media):
+            print(f"{listing}: {key} has a picture and no place on the page")
+    return out
+
+
 def place(lines, table):
     """Put the grid straight under the title, wherever the last one sat."""
     lines = list(lines)
@@ -119,14 +167,19 @@ def main():
     for listing in sorted(EXAMPLES.rglob("README.md")):
         if only and only not in listing.parent.as_posix():
             continue
-        table = grid(listing, media)
         text = listing.read_text()
         lines = text.split("\n")
-        placed = place(lines, table)
+        if len(grids(lines)) > 1:
+            placed = refreshed(listing, lines, media)
+            rows = sum(1 for l in placed if l.startswith("| [!["))
+        else:
+            table = grid(listing, media)
+            placed = place(lines, table)
+            rows = sum(1 for l in table if l.startswith("| [!"))
         if placed != lines:
             listing.write_text("\n".join(placed))
             written += 1
-            print(f"{listing}: {sum(1 for l in table if l.startswith('| [!'))} rows of pictures")
+            print(f"{listing}: {rows} rows of pictures")
     print(f"grids: {written} listings rewritten")
 
 
