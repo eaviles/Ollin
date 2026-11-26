@@ -124,4 +124,16 @@ final class SensorServer: @unchecked Sendable {
             }
         }
     }
+
+    /// Send one already-framed message to the client, and say when the
+    /// connection has taken it (or when there was nobody to take it). For a
+    /// server that keeps only its newest client, where "taken" is how the
+    /// sender learns whether the cable is keeping up: the camera's video is
+    /// compressed only while what was sent before it has left.
+    func send(_ data: Data, whenTaken: @escaping @Sendable () -> Void) {
+        queue.async { [weak self] in
+            guard let self, let conn = self.connections.values.first else { return whenTaken() }
+            conn.send(content: data, completion: .contentProcessed { _ in whenTaken() })
+        }
+    }
 }

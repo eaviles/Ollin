@@ -431,6 +431,10 @@ let package = Package(
         // A layer laid on a poster's four pinned corners, and drawn balls that
         // pass through the real wall and are hidden behind it.
         example("3D/Phone/PhonePoster", [.phone], resources: [.copy("Wall.ollinrecording")]),
+        // The phone as the viewfinder of a sketch on the Mac: the camera's picture
+        // up the cable, things stood in the room over it, the result back on the
+        // phone's screen. Plays a recording when no phone is attached.
+        example("3D/Phone/PhoneViewfinder", [.phone], resources: [.copy("Room.ollinrecording")]),
         example("Motion/SineSweep"),
         example("Motion/Easing"),
         example("Motion/EasingGallery"),

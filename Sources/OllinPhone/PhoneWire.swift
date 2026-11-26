@@ -44,6 +44,18 @@ public enum PhoneWire {
     /// mode request would wait behind a picture.
     public static let picturePort: UInt16 = 1339
 
+    /// The TCP port the capture app listens on for a sketch that wants the
+    /// camera's picture: the phone compresses its camera as video and sends each
+    /// frame here with where the camera stood (`PhoneMessageKind.cameraPicture`),
+    /// in every mode that runs an ARKit session. A connection of its own, for
+    /// two reasons. The connection is the asking: the phone compresses only
+    /// while a client is on this port, so a sketch that reads no picture costs
+    /// the phone nothing. And a picture that is built on the one before it
+    /// cannot be dropped once it is made, so the phone has to know, picture by
+    /// picture, whether this cable is keeping up, which it can only know of a
+    /// connection that carries nothing else.
+    public static let cameraPort: UInt16 = 1340
+
     /// Defensive upper bound on a single payload, so a garbage header can't steer
     /// a huge read (a body pose is well under a kilobyte; motion is 60 bytes).
     /// Both framings hold to it, so it is also what bounds a picture traveling
@@ -174,6 +186,11 @@ public enum PhoneMessageKind: UInt8, Sendable, CaseIterable {
     /// session, so a sketch can draw in the room whatever the phone is tracking,
     /// and it is the record a recording keeps beside each frame of its video.
     case camera = 19
+    /// One frame of the camera's picture, as compressed video, with the camera
+    /// record of that same frame inside it: the picture and where the camera
+    /// stood are one message, so they cannot part. Sent on a connection of its
+    /// own (`PhoneWire.cameraPort`), and only while a sketch is on it.
+    case cameraPicture = 20
 }
 
 /// The named joints the stream carries — a practical subset of ARKit's ~91-joint
@@ -835,6 +852,54 @@ public struct PhoneCameraSample: Sendable, Equatable {
     }
 }
 
+/// One frame of the camera's picture on the cable: the compressed picture, and
+/// the camera record of the frame it is a picture of.
+///
+/// `camera` is the same record the sensor connection carries for this frame
+/// (`PhoneMessage.camera`), repeated here so the picture never has to be
+/// matched to it by time: a reader that has decoded this picture holds where
+/// the camera stood when it was taken.
+///
+/// `sequence` counts the pictures sent on one connection from zero. The phone
+/// skips a frame it cannot send before it compresses it, so the camera's own
+/// `frameIndex` has gaps that mean nothing; a gap in `sequence` means a picture
+/// was lost after it was made, and every picture built on it is unusable until
+/// the next keyframe.
+///
+/// The three color values say how the picture's numbers are to be read, in the
+/// code points video standards share (ITU-T H.273: 1 is BT.709, 6 is the
+/// BT.601 matrix a phone's camera uses, 2 is "unspecified"). The compressed
+/// stream's own parameter sets do not carry them across, and a picture read
+/// with the wrong matrix is off by tens of levels in its strong colors.
+public struct PhoneCameraPicture: Sendable, Equatable {
+    /// Where the camera stood and what its lens was for this picture.
+    public var camera: PhoneCameraSample
+    /// This picture's number on its connection, counted from zero.
+    public var sequence: UInt32
+    /// How the picture's colors are to be read (H.273 code points).
+    public var colorPrimaries: UInt8
+    public var transferFunction: UInt8
+    public var yCbCrMatrix: UInt8
+    /// The compressed picture, as the sensor delivered it (not yet upright).
+    public var picture: PhonePicture
+
+    /// The code point that says a color value was not given.
+    public static let unspecified: UInt8 = 2
+
+    public init(camera: PhoneCameraSample, sequence: UInt32,
+                colorPrimaries: UInt8 = PhoneCameraPicture.unspecified,
+                transferFunction: UInt8 = PhoneCameraPicture.unspecified,
+                yCbCrMatrix: UInt8 = PhoneCameraPicture.unspecified,
+                picture: PhonePicture) {
+        self.camera = camera
+        self.sequence = sequence
+        self.colorPrimaries = colorPrimaries
+        self.transferFunction = transferFunction
+        self.yCbCrMatrix = yCbCrMatrix
+        self.picture = picture
+    }
+}
+
 public extension PhoneWire {
 
     /// The lens of a picture after the picture is turned upright: the same
@@ -1290,10 +1355,16 @@ public struct PhoneStateSample: Sendable, Equatable {
     public var status: String
     /// What the phone could not use and what it assumed, in plain sentences.
     public var notes: [String]
+    /// Whether the phone's screen is given over to the sketch's own pictures.
+    /// Always true in Sketch mode. In a camera mode it is true while a sketch
+    /// is sending its frames and the person holding the phone has not put them
+    /// away, which is the phone as a viewfinder; the Mac sends pictures only
+    /// while this holds, so the person keeps the last word.
+    public var showsSketch: Bool
 
     public init(timestamp: Double, mode: PhoneCaptureMode, isSupported: Bool = true,
                 referenceCount: Int = 0, referencesAreDeclared: Bool = false,
-                status: String = "", notes: [String] = []) {
+                status: String = "", notes: [String] = [], showsSketch: Bool? = nil) {
         self.timestamp = timestamp
         self.mode = mode
         self.isSupported = isSupported
@@ -1301,6 +1372,7 @@ public struct PhoneStateSample: Sendable, Equatable {
         self.referencesAreDeclared = referencesAreDeclared
         self.status = status
         self.notes = notes
+        self.showsSketch = showsSketch ?? (mode == .sketch)
     }
 }
 
@@ -1368,6 +1440,9 @@ public enum PhoneMessage: Sendable, Equatable {
     /// Where the camera stood and what its lens was for one frame, in every mode
     /// that runs an ARKit session.
     case camera(PhoneCameraSample)
+    /// One frame of the camera's picture with its own camera record, on the
+    /// camera connection.
+    case cameraPicture(PhoneCameraPicture)
 
     public var kind: PhoneMessageKind {
         switch self {
@@ -1390,6 +1465,7 @@ public enum PhoneMessage: Sendable, Equatable {
         case .air: return .air
         case .state: return .state
         case .camera: return .camera
+        case .cameraPicture: return .cameraPicture
         }
     }
 }
@@ -1450,6 +1526,7 @@ public extension PhoneWire {
         case .air(let a): payload = encodeAirPayload(a)
         case .state(let s): payload = encodeStatePayload(s)
         case .camera(let c): payload = encodeCameraPayload(c)
+        case .cameraPicture(let c): payload = encodeCameraPicturePayload(c)
         }
         var out = Data()
         appendU32(&out, magic)
@@ -1774,6 +1851,18 @@ public extension PhoneWire {
         return p
     }
 
+    /// The camera record at its fixed length, then the picture's number, the
+    /// three color code points, and the picture itself.
+    private static func encodeCameraPicturePayload(_ c: PhoneCameraPicture) -> Data {
+        var p = encodeCameraPayload(c.camera)
+        appendU32(&p, c.sequence)
+        p.append(c.colorPrimaries)
+        p.append(c.transferFunction)
+        p.append(c.yCbCrMatrix)
+        appendPicture(&p, c.picture)
+        return p
+    }
+
     private static func encodeSaliencyPayload(_ s: PhoneSaliencySample) -> Data {
         var p = Data()
         p.append(s.isTracked ? 1 : 0)
@@ -1892,6 +1981,9 @@ public extension PhoneWire {
         // shows a handful).
         p.append(UInt8(min(st.notes.count, 255)))
         for note in st.notes.prefix(255) { appendString(&p, note) }
+        // Added after the notes, so a state written before it existed still
+        // reads (a recording keeps its state messages).
+        p.append(st.showsSketch ? 1 : 0)
         return p
     }
 
@@ -1942,6 +2034,7 @@ public extension PhoneWire {
         case .air: return decodeAir(payload).map(PhoneMessage.air)
         case .state: return decodeState(payload).map(PhoneMessage.state)
         case .camera: return decodeCamera(payload).map(PhoneMessage.camera)
+        case .cameraPicture: return decodeCameraPicture(payload).map(PhoneMessage.cameraPicture)
         }
     }
 
@@ -2412,10 +2505,29 @@ public extension PhoneWire {
                                hasTouch: hasTouch, touch: touch)
     }
 
+    /// The length of a camera record's payload: tracked(1) + timestamp(8) +
+    /// frameIndex(4) + size(8) + lens(16) + transform(64) + turns(1).
+    internal static let cameraPayloadByteCount = 102
+
+    private static func decodeCameraPicture(_ data: Data) -> PhoneCameraPicture? {
+        // The camera record, then sequence(4) + three color code points(3),
+        // then the picture.
+        let fixed = cameraPayloadByteCount + 4 + 3
+        guard data.count >= fixed else { return nil }
+        let s = data.startIndex
+        guard let camera = decodeCamera(data.subdata(in: s ..< (s + cameraPayloadByteCount)))
+        else { return nil }
+        var o = cameraPayloadByteCount
+        let sequence = readU32(data, s + o); o += 4
+        let primaries = data[s + o], transfer = data[s + o + 1], matrix = data[s + o + 2]
+        o += 3
+        guard let picture = readPicture(data, &o) else { return nil }
+        return PhoneCameraPicture(camera: camera, sequence: sequence, colorPrimaries: primaries,
+                                  transferFunction: transfer, yCbCrMatrix: matrix, picture: picture)
+    }
+
     private static func decodeCamera(_ data: Data) -> PhoneCameraSample? {
-        // tracked(1) + timestamp(8) + frameIndex(4) + size(8) + lens(16)
-        // + transform(64) + turns(1).
-        guard data.count >= 102 else { return nil }
+        guard data.count >= cameraPayloadByteCount else { return nil }
         let s = data.startIndex
         var o = 0
         func f32() -> Float { defer { o += 4 }; return readF32(data, s + o) }
@@ -2613,9 +2725,12 @@ private extension PhoneWire {
             guard let note = readString(data, &o) else { return nil }
             notes.append(note)
         }
+        // A state written before the screen flag existed ends here, and its
+        // screen was the sketch's exactly when its mode was Sketch.
+        let showsSketch: Bool? = data.count >= o + 1 ? data[s + o] != 0 : nil
         return PhoneStateSample(timestamp: timestamp, mode: mode, isSupported: supported,
                                 referenceCount: count, referencesAreDeclared: declared,
-                                status: status, notes: notes)
+                                status: status, notes: notes, showsSketch: showsSketch)
     }
 }
 
@@ -2871,21 +2986,7 @@ public extension PhoneWire {
             appendU32(&payload, UInt32(reference.contents.count))
             payload.append(reference.contents)
         case .picture(let picture):
-            // width(4) + height(4) + flags(1) + parameter-set count(1), each set
-            // behind a 16-bit length (they are tens of bytes), then the coded
-            // picture behind a 32-bit one.
-            appendU32(&payload, UInt32(clamping: picture.width))
-            appendU32(&payload, UInt32(clamping: picture.height))
-            payload.append(picture.isKeyframe ? 1 : 0)
-            let sets = picture.parameterSets.prefix(Int(UInt8.max))
-            payload.append(UInt8(sets.count))
-            for set in sets {
-                let bytes = set.prefix(Int(UInt16.max))
-                appendU16(&payload, UInt16(bytes.count))
-                payload.append(bytes)
-            }
-            appendU32(&payload, UInt32(picture.data.count))
-            payload.append(picture.data)
+            appendPicture(&payload, picture)
         }
         var out = Data()
         appendU32(&out, requestMagic)
@@ -2925,30 +3026,60 @@ public extension PhoneWire {
             return .reference(PhoneReference(name: name, kind: kind,
                                              printedWidth: width, contents: contents))
         case .picture:
-            guard payload.count >= 10 else { return nil }
-            let width = Int(readU32(payload, s)), height = Int(readU32(payload, s + 4))
-            guard width > 0, height > 0 else { return nil }
-            let isKeyframe = payload[s + 8] != 0
-            let setCount = Int(payload[s + 9])
-            var o = 10
-            var sets: [Data] = []
-            for _ in 0..<setCount {
-                guard payload.count >= o + 2 else { return nil }
-                let count = Int(UInt16(payload[s + o]) | (UInt16(payload[s + o + 1]) << 8)); o += 2
-                guard payload.count >= o + count else { return nil }
-                sets.append(payload.subdata(in: (s + o)..<(s + o + count)))
-                o += count
-            }
-            // A picture with nothing to decode it from is refused here rather than
-            // handed to a decoder that has no format yet.
-            guard !isKeyframe || !sets.isEmpty else { return nil }
-            guard payload.count >= o + 4 else { return nil }
-            let byteCount = Int(readU32(payload, s + o)); o += 4
-            guard byteCount > 0, payload.count >= o + byteCount else { return nil }
-            let data = payload.subdata(in: (s + o)..<(s + o + byteCount))
-            return .picture(PhonePicture(width: width, height: height, isKeyframe: isKeyframe,
-                                         parameterSets: sets, data: data))
+            var o = 0
+            return readPicture(payload, &o).map(PhoneRequest.picture)
         }
+    }
+
+    /// One compressed picture, the same bytes in both directions: the sketch's
+    /// frames going down the cable and the camera's coming up it.
+    ///
+    /// width(4) + height(4) + flags(1) + parameter-set count(1), each set behind
+    /// a 16-bit length (they are tens of bytes), then the coded picture behind a
+    /// 32-bit one.
+    internal static func appendPicture(_ payload: inout Data, _ picture: PhonePicture) {
+        appendU32(&payload, UInt32(clamping: picture.width))
+        appendU32(&payload, UInt32(clamping: picture.height))
+        payload.append(picture.isKeyframe ? 1 : 0)
+        let sets = picture.parameterSets.prefix(Int(UInt8.max))
+        payload.append(UInt8(sets.count))
+        for set in sets {
+            let bytes = set.prefix(Int(UInt16.max))
+            appendU16(&payload, UInt16(bytes.count))
+            payload.append(bytes)
+        }
+        appendU32(&payload, UInt32(picture.data.count))
+        payload.append(picture.data)
+    }
+
+    /// Read one picture starting `o` bytes into `payload`, moving `o` past it.
+    /// Returns `nil` on a short or malformed picture.
+    internal static func readPicture(_ payload: Data, _ o: inout Int) -> PhonePicture? {
+        let s = payload.startIndex
+        guard o >= 0, payload.count >= o + 10 else { return nil }
+        let width = Int(readU32(payload, s + o)), height = Int(readU32(payload, s + o + 4))
+        guard width > 0, height > 0 else { return nil }
+        let isKeyframe = payload[s + o + 8] != 0
+        let setCount = Int(payload[s + o + 9])
+        o += 10
+        var sets: [Data] = []
+        for _ in 0..<setCount {
+            guard payload.count >= o + 2 else { return nil }
+            let count = Int(UInt16(payload[s + o]) | (UInt16(payload[s + o + 1]) << 8)); o += 2
+            guard payload.count >= o + count else { return nil }
+            sets.append(payload.subdata(in: (s + o)..<(s + o + count)))
+            o += count
+        }
+        // A picture with nothing to decode it from is refused here rather than
+        // handed to a decoder that has no format yet.
+        guard !isKeyframe || !sets.isEmpty else { return nil }
+        guard payload.count >= o + 4 else { return nil }
+        let byteCount = Int(readU32(payload, s + o)); o += 4
+        guard byteCount > 0, payload.count >= o + byteCount else { return nil }
+        let data = payload.subdata(in: (s + o)..<(s + o + byteCount))
+        o += byteCount
+        return PhonePicture(width: width, height: height, isKeyframe: isKeyframe,
+                            parameterSets: sets, data: data)
     }
 }
 

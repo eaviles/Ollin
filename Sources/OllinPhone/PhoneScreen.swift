@@ -5,10 +5,16 @@ import Ollin
 /// A sketch shown on the phone's screen while it runs on the Mac.
 ///
 /// The Mac draws, compresses each frame as video, and sends it down the cable;
-/// the capture app shows it full screen in **Sketch** mode and sends every finger
-/// on it back. So the sketch keeps the Mac's live reload, its inspector, and its
-/// console, and the question "does it look and feel right on the phone" is
-/// answered in the hand, with nothing built or installed.
+/// the capture app shows it full screen and sends every finger on it back. So
+/// the sketch keeps the Mac's live reload, its inspector, and its console, and
+/// the question "does it look and feel right on the phone" is answered in the
+/// hand, with nothing built or installed.
+///
+/// With no mode asked for, the phone goes to **Sketch** mode, which runs no
+/// camera: the screen is the sketch and nothing else. With a camera mode asked
+/// for (`device.use(.room)` beside `device.show(self)`), the phone keeps that
+/// mode running under the picture, so a sketch that draws over the camera's
+/// own picture makes the phone in the hand its viewfinder.
 ///
 /// ```swift
 /// let device = PhoneDevice()
@@ -55,17 +61,19 @@ public final class PhoneScreen: SketchExtension {
         }
     }
 
-    /// Whether the phone is showing this sketch: it is in **Sketch** mode and a
-    /// picture has reached it on the current connection.
+    /// Whether the phone is showing this sketch: its screen is given over to
+    /// the sketch (in **Sketch** mode, or as the viewfinder of a camera mode)
+    /// and a picture has reached it on the current connection.
     public var isShowing: Bool {
-        !isStopped && phoneMode() == .sketch && sender.hasSent
+        !isStopped && phoneShowsSketch() && sender.hasSent
     }
 
     /// Where the screen is, in the words the other publishers of the sketch's
     /// frames use: `.stopped` after `stop()` (no later frame starts the
     /// pictures again; showing the sketch again means a new screen),
     /// `.publishing` while the phone is showing the sketch, and `.waiting`
-    /// otherwise (for the phone, or for its Sketch mode).
+    /// otherwise (for the phone, or for its screen, which the person holding
+    /// it can take back).
     public var phase: PublisherPhase {
         if isStopped { return .stopped }
         return isShowing ? .publishing : .waiting
@@ -73,21 +81,23 @@ public final class PhoneScreen: SketchExtension {
     private var isStopped = false
 
     let sender: PhonePictureSender
-    /// The mode the phone says it is in. The device's answer, unless a test says it.
-    private let phoneMode: @MainActor () -> PhoneCaptureMode?
+    /// Whether the phone says its screen is the sketch's. The device's answer,
+    /// unless a test says it.
+    private let phoneShowsSketch: @MainActor () -> Bool
     private var encoder: PhonePictureEncoder?
-    private var lastMode: PhoneCaptureMode?
+    private var wasShowing = false
     private var lastSent: CFAbsoluteTime = 0
     private var pendingRelease = false
     /// Whether a finger on the phone holds the sketch's pointer down.
     private var holdsPress = false
 
     init(device: PhoneDevice, frameRate: FrameRate, sender: PhonePictureSender = PhonePictureSender(),
-         phoneMode: (@MainActor () -> PhoneCaptureMode?)? = nil) {
+         phoneShowsSketch: (@MainActor () -> Bool)? = nil) {
         self.device = device
         self.frameRate = frameRate
         self.sender = sender
-        self.phoneMode = phoneMode ?? { [device] in device.latestState?.mode }
+        self.phoneShowsSketch = phoneShowsSketch
+            ?? { [device] in device.latestState?.isShowingSketch ?? false }
         device.touches.armPointer()
     }
 
@@ -112,13 +122,13 @@ public final class PhoneScreen: SketchExtension {
         guard !isStopped else { return }
         sender.keepWanted()
 
-        // Coming back to Sketch mode, the phone has nothing to build on.
-        let mode = phoneMode()
-        if mode == .sketch, lastMode != .sketch { sender.requestKeyframe() }
-        lastMode = mode
+        // A screen that has just been given to the sketch has nothing to build on.
+        let showing = phoneShowsSketch()
+        if showing, !wasShowing { sender.requestKeyframe() }
+        wasShowing = showing
 
         guard drivesPointer else { return }
-        apply(device.touches.takePointerEvents(), to: sketch, showing: mode == .sketch)
+        apply(device.touches.takePointerEvents(), to: sketch, showing: showing)
     }
 
     public var wantsRenderedTexture: Bool { canSend }
@@ -142,11 +152,12 @@ public final class PhoneScreen: SketchExtension {
 
     // MARK: Inside
 
-    /// Whether a frame should be compressed now: the phone is in Sketch mode and
-    /// connected, nothing is waiting to go or being compressed, and the rate
-    /// allows it (a little early is allowed, so 60 on a 60 Hz display is 60).
+    /// Whether a frame should be compressed now: the phone's screen is the
+    /// sketch's and it is connected, nothing is waiting to go or being
+    /// compressed, and the rate allows it (a little early is allowed, so 60 on
+    /// a 60 Hz display is 60).
     private var canSend: Bool {
-        guard !isStopped, lastMode == .sketch, sender.isReady,
+        guard !isStopped, wasShowing, sender.isReady,
               (encoder?.inFlight ?? 0) == 0 else { return false }
         let interval = frameRate.frameDuration
         return CFAbsoluteTimeGetCurrent() - lastSent >= interval - 0.004
@@ -213,13 +224,35 @@ public extension PhoneDevice {
     /// Show this sketch on the phone's screen while it runs here, and take the
     /// phone's fingers back as its pointer.
     ///
-    /// Call it in `setup()`. It asks the phone for **Sketch** mode and starts the
-    /// device if it has not started, so it is the whole setup:
+    /// Call it in `setup()`. It starts the device if it has not started, and
+    /// with no mode asked for it asks the phone for **Sketch** mode, which runs
+    /// no camera, so it is the whole setup:
     ///
     /// ```swift
     /// let device = PhoneDevice()
     /// override func setup() { device.show(self) }
     /// ```
+    ///
+    /// `show` keeps a mode the sketch asked for. With a camera mode running
+    /// under it the phone is a viewfinder: the camera's picture comes up the
+    /// cable, the sketch draws over it, and what it drew goes back to the
+    /// screen in the hand.
+    ///
+    /// ```swift
+    /// override func setup() {
+    ///     device.use(.room)       // the phone tracks the room
+    ///     device.show(self)       // and its screen shows this sketch
+    /// }
+    /// override func draw() {
+    ///     guard let view = device.latestCamera else { return }
+    ///     drawPhonePicture(view)
+    ///     camera(view)
+    ///     // whatever is drawn here stands in the room on the phone's screen
+    /// }
+    /// ```
+    ///
+    /// The order of the two calls does not matter, and a later `use(_:)`
+    /// changes the mode under the picture.
     ///
     /// The pictures are HEVC at the canvas size, fitted under 1920 pixels on the
     /// long side, on a connection of their own beside the sensor stream. Returns
@@ -228,7 +261,7 @@ public extension PhoneDevice {
     func show(_ sketch: Sketch, frameRate: FrameRate = 60) -> PhoneScreen {
         let screen = PhoneScreen(device: self, frameRate: frameRate)
         sketch.extend(screen)
-        use(.sketch)
+        if !hasAskedForMode { use(.sketch) }
         start()
         return screen
     }

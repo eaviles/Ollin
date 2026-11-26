@@ -73,6 +73,8 @@ camera(view)                    // a 3D camera that matches the phone's
 
 A recording keeps where the camera stood on every frame. Whatever you draw in 3D after those two calls stays in its place in the room as the camera moves. The recording plays on the sketch's clock, so an export shows the same frames every time. The [`PhoneRecordingPins`](../Examples/3D/Phone/PhoneRecordingPins/Sketch.swift) example plays a small recording that ships with it and stands five pins in its room. The [Phone reference](../Docs/3D/Phone.md#a-recording) covers making a recording of your own.
 
+The same two calls work with the phone plugged in. Reading the picture asks the phone to send it up the cable as video, each frame with where the camera stood for it. [Chapter 46](46-HandingItOver.md#a-viewfinder-the-cameras-picture-under-the-sketch) sends the result back to the phone's screen, which makes the phone a viewfinder.
+
 A recording made in Room mode also carries the room's flat surfaces, and a sketch can work on one of them. `withPlane(_:)` draws in a wall's own meters. `painted(with:)` paints what is drawn inside it with the camera's picture, so a piece of the wall can lift off still showing its own pixels:
 
 ```swift

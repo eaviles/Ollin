@@ -6,9 +6,9 @@
 
 A sketch that renders on the Mac can use what an iPhone connected by a cable detects on the phone itself. The phone side is **Ollin Capture**, Ollin's own iOS app ([`Apps/OllinPhoneApp`](../../Apps/OllinPhoneApp/README.md)). The app runs ARKit on the phone's Neural Engine and streams the results over the USB cable. On the Mac, `PhoneDevice` reads them as typed values you use in `draw()`.
 
-Eighteen payloads come over the cable. The first is a **3D body skeleton**. Next are **faces**, up to 3 at once, each a deforming mesh plus the 52 expression blendshapes. The **hands** in view come as up to 4 skeletons of 21 joints each, lifted to metric 3D where the phone has LiDAR. The lines of **text** the phone can read arrive with their corners lifted the same way. The **pictures and objects it knows** each arrive as a named 6DoF placement in the room, with the real size. A map of **where the picture draws the eye** arrives as a heat map with the regions where it peaks. **How the picture is moving** arrives as a field of motion vectors between consecutive frames, read the way the Mac's own optical-flow field is read. A world-facing **RGBD depth frame** from the rear LiDAR unprojects into a point cloud and carries the camera's 6DoF pose. The **room mesh** is the space itself, reconstructed as a labeled triangle surface. The **flat surfaces** in that room arrive beside it, as somewhere to stand something. The **room's light** reports how bright and how warm the space is. A **person-segmentation matte** from the rear camera comes as a silhouette and a cutout. **Device motion** streams too. The phone itself **held as a pointer** is the one payload that describes the person rather than the room. **What the phone hears** is every sound its classifier names, with how sure it is, from the phone's own microphone. Two need no camera at all: **every finger on its own screen**, which turns the phone into something you play, and **the air it is standing in**, read off its barometer. The last comes with every camera frame: **where the camera stood and what its lens was**, which is what lets a sketch draw in the room the phone is looking at.
+Eighteen payloads come over the cable. The first is a **3D body skeleton**. Next are **faces**, up to 3 at once, each a deforming mesh plus the 52 expression blendshapes. The **hands** in view come as up to 4 skeletons of 21 joints each, lifted to metric 3D where the phone has LiDAR. The lines of **text** the phone can read arrive with their corners lifted the same way. The **pictures and objects it knows** each arrive as a named 6DoF placement in the room, with the real size. A map of **where the picture draws the eye** arrives as a heat map with the regions where it peaks. **How the picture is moving** arrives as a field of motion vectors between consecutive frames, read the way the Mac's own optical-flow field is read. A world-facing **RGBD depth frame** from the rear LiDAR unprojects into a point cloud and carries the camera's 6DoF pose. The **room mesh** is the space itself, reconstructed as a labeled triangle surface. The **flat surfaces** in that room arrive beside it, as somewhere to stand something. The **room's light** reports how bright and how warm the space is. A **person-segmentation matte** from the rear camera comes as a silhouette and a cutout. **Device motion** streams too. The phone itself **held as a pointer** is the one payload that describes the person rather than the room. **What the phone hears** is every sound its classifier names, with how sure it is, from the phone's own microphone. Two need no camera at all: **every finger on its own screen**, which turns the phone into something you play, and **the air it is standing in**, read off its barometer. The last comes with every camera frame: **where the camera stood and what its lens was**, which is what lets a sketch draw in the room the phone is looking at. A sketch that reads that frame's picture gets [the camera's own picture](#the-cameras-picture-on-the-cable) too, sent up the cable as video.
 
-Traffic runs the other way too. The sketch can say [which mode to run and what to look for](#saying-what-to-look-for-from-the-sketch), sending the reference pictures down the cable, and the phone answers with what it is doing and what it made of them. A sketch can also [put itself on the phone's screen](#the-sketch-on-the-phones-screen). The Mac draws, the phone shows each frame, and the fingers on it come back as the pointer.
+Traffic runs the other way too. The sketch can say [which mode to run and what to look for](#saying-what-to-look-for-from-the-sketch), sending the reference pictures down the cable, and the phone answers with what it is doing and what it made of them. A sketch can also [put itself on the phone's screen](#the-sketch-on-the-phones-screen). The Mac draws, the phone shows each frame, and the fingers on it come back as the pointer. With a camera mode running under that picture, the phone in the hand is the sketch's [viewfinder](#the-phone-as-a-viewfinder).
 
 The cable is not the only source. The app's **Record** button writes the same stream to a folder on the phone, with the camera's video beside it, and a sketch [plays that recording back](#a-recording) as if the phone were plugged in.
 
@@ -47,7 +47,7 @@ final class Pose: Sketch {
 - [The pictures and objects it knows](#the-pictures-and-objects-it-knows) - `PhoneMarker`, the reference folder, `placement`
 - [Saying what to look for, from the sketch](#saying-what-to-look-for-from-the-sketch) - `look(for:)`, `use(_:)`, `PhoneReference`, `latestState`
 - [The phone as a pointer](#the-phone-as-a-pointer) - `PhoneWand`, the beam, the button, the thumb
-- [The camera's place and lens](#the-cameras-place-and-lens) - `latestCamera`, `PhoneCamera`, `drawPhonePicture(_:)`, `camera(_:)`, drawing in the room the phone sees
+- [The camera's place and lens](#the-cameras-place-and-lens) - `latestCamera`, `PhoneCamera`, `drawPhonePicture(_:)`, `camera(_:)`, drawing in the room the phone sees, and [the camera's picture on the cable](#the-cameras-picture-on-the-cable)
 - [Drawing on what the phone saw](#drawing-on-what-the-phone-saw) - a wall as somewhere to draw, pinned points, `painted(with:)`, `occluding`, `ray(through:covering:)`
 - [World depth](#world-depth) - `latestFrame`, `pointCloud(...)`, the camera pose
 - [World fusion](#world-fusion) - `WorldCloud`, sweeping a room into one cloud, [keeping it registered](#drift), and [recognizing a place already scanned](#loops) with `ScanGraph`
@@ -59,7 +59,7 @@ final class Pose: Sketch {
 - [How the picture is moving](#how-the-picture-is-moving) - `latestFlow`, the motion field, read like the Mac's own
 - [What the phone hears](#what-the-phone-hears) - `sounds`, a level and a trigger for every sound the phone names
 - [The screen as a control surface](#the-screen-as-a-control-surface) - `touches`, every finger on the glass, and the taps you cannot miss
-- [The sketch on the phone's screen](#the-sketch-on-the-phones-screen) - `show(_:)`, `PhoneScreen`, the Mac's frames on the glass and the finger as the pointer
+- [The sketch on the phone's screen](#the-sketch-on-the-phones-screen) - `show(_:)`, `PhoneScreen`, the Mac's frames on the glass and the finger as the pointer, and [the phone as a viewfinder](#the-phone-as-a-viewfinder)
 - [The air around it](#the-air-around-it) - `latestAir`, the pressure and how far the phone has risen
 - [Device motion](#device-motion) - `PhoneMotion`, the transport smoke-test
 - [A recording](#a-recording) - `PhoneRecording`, `PhoneDevice(playing:)`, the Record button, playing on the sketch's clock, any frame by its number
@@ -364,6 +364,7 @@ if let state = device.latestState {
     state.referencesAreDeclared      // true when the sketch sent them
     state.statusMessage              // the sentence on the phone's own screen
     state.notes                      // what it could not use, in plain sentences
+    state.isShowingSketch            // whether its screen is showing the sketch's own frames
 }
 ```
 
@@ -434,7 +435,7 @@ if let view = device.latestCamera {
     view.isTracked            // Bool, false while the phone is finding its place
     view.frameIndex           // Int, the frame's number
     view.timestamp            // Double, seconds on the phone's clock
-    view.picture              // Image?, the camera's picture, when the source carries one
+    view.picture              // Image?, the camera's picture of this frame, or nil before one arrives
 }
 ```
 
@@ -453,7 +454,7 @@ Under the two calls are typed values, for a sketch that wants to place things it
 
 **The room is ARKit's world.** Positions are in meters with y up, and the origin is where the phone's session began. The [flat surfaces](#the-flat-surfaces), the [markers](#the-pictures-and-objects-it-knows), the lifted [hands](#the-hands), and the [world cloud](#world-fusion) are all reported in that same space. So a point the phone reports is a point the sketch can draw at.
 
-**The picture comes with a recording.** On the cable the camera arrives as its place and its lens, and `picture` is `nil`. A [recording](#a-recording) carries the camera's own picture for every frame, and reads it when `picture` is asked for.
+**The picture comes from both sources.** A [recording](#a-recording) carries the camera's own picture for every frame, and reads it when `picture` is asked for. On the cable the phone sends it as video once a sketch asks, which the next section covers.
 
 **A drawn thing hides behind a real one when you say where the real one is.** Nothing writes the room's depth under the picture by itself, so a box placed behind a real table draws over the table. Draw the room's surfaces inside `occluding { }` first and they hide what goes behind them. See [Drawing on what the phone saw](#drawing-on-what-the-phone-saw).
 
@@ -468,6 +469,49 @@ let view = PhoneCamera(pose: matrix_identity_float4x4,
                        intrinsics: CameraIntrinsics(fx: 1450, fy: 1450, cx: 960, cy: 720,
                                                     width: 1920, height: 1440))
 ```
+
+<a name="the-cameras-picture-on-the-cable"></a>
+
+### The camera's picture on the cable
+
+The same two calls work with the phone plugged in. `view.picture` is the camera's picture of that frame, sent up the cable as video, in every mode that runs an ARKit session.
+
+```swift
+import Ollin
+import OllinPhone
+
+final class Room: Sketch {
+    let device = PhoneDevice()
+
+    override func setup() {
+        device.use(.room)
+        device.start()
+    }
+
+    override func draw() {
+        background(.black)
+        guard let view = device.latestCamera else {
+            return drawStatus(device.waitingMessage, style: .info)
+        }
+        drawPhonePicture(view)        // reading the picture is what asks the phone for it
+        camera(view)
+        translate(0, 0, -1)
+        drawBox(size: 0.2)            // a box one meter in front of where the session began
+    }
+}
+```
+
+**Reading the picture is the asking.** Nothing has to be switched on. The first read of `picture` opens a connection of its own to the phone, and the phone begins compressing its camera for it. `picture` is `nil` for the first few frames and then it is there, so `drawPhonePicture(_:)` draws nothing at first and then the room. When nothing has read the picture for two seconds the connection closes and the phone stops compressing. A sketch that reads only where the camera stood never opens it, so it costs the phone no video and no heat.
+
+**While the picture arrives, `latestCamera` is the picture's own frame.** A picture has to be compressed, sent, decoded, and turned upright, so it reaches the sketch a little after the phone sensed it. The camera a sketch reads is then the one that took the newest picture decoded. `view.picture` and `view.pose` are one instant, so a thing drawn in the room keeps its place in the picture while the phone moves. With no picture arriving, `latestCamera` is the newest frame the phone has sensed.
+
+**What was read from a frame waits for that frame's picture.** Ten readings are each taken from one camera frame. They are the faces, the body, the hands, the text, the markers, the wand, the depth frame, the matte, the attention map, and the motion field. While the picture is arriving, each becomes the latest of its kind once the picture of its frame has been decoded. A face's mesh then sits on the face in the picture, as it does out of a recording. The flat surfaces and the room mesh are places in the room and do not wait. Neither do the light, the phone's motion, the touches, the sounds, the air, or the phone's state. Nothing waits at all in a sketch that does not read the picture.
+
+**How the picture travels.** Each camera frame is compressed as HEVC on the phone's media engine, at the size the camera delivers it. It is sent with its own camera record on port 1340. The Mac decodes it on its media engine and turns it upright. Most pictures carry only what changed since the one before, so a picture already made is never dropped. When the cable has not taken the pictures before it, the phone skips a camera frame whole, before compressing it. A picture that stands alone goes out every second and whenever a sketch connects. The phone reads how its camera encodes color off each frame and sends that beside the picture. The colors then arrive as the camera saw them.
+
+**A picture that will not decode says so.** `device.lastError` is a sentence when the camera's picture could not be decoded. It is `nil` again once one has. A `picture` that is `nil` with no error has not arrived yet.
+
+The delay from the phone's camera to the canvas has not been measured on a phone yet. It is the time the video takes to cross. The pose waits with it, so drawn things stay registered whatever it turns out to be.
 
 ## Drawing on what the phone saw
 
@@ -1031,15 +1075,15 @@ final class Pour: Sketch {
 }
 ```
 
-`show(_:)` is the whole setup. It asks the phone for **Sketch** mode, starts the device, and adds a `PhoneScreen` to the sketch. Once the cable is in and the app is open, the phone's screen turns into the canvas.
+`show(_:)` is the whole setup. With no mode asked for it asks the phone for **Sketch** mode, which runs no camera. It starts the device and adds a `PhoneScreen` to the sketch. Once the cable is in and the app is open, the phone's screen turns into the canvas.
 
 This answers a different question from [installing the sketch](../Tools/OnThePhone.md). The picture is the Mac's, so you see how the sketch looks and plays in the hand. You do not see whether the phone's own GPU keeps up with it, which the installed app answers. In return, the loop is the Mac's. Save under the live window, and the phone shows the edit as soon as the Mac has compiled it. The inspector, the console, and the timeline stay on the Mac too.
 
-**The first finger is the pointer.** `mouseX`, `mouseY`, `mouseIsPressed`, `mousePressed()`, and `mouseReleased()` follow it the way they follow a finger when the sketch is installed on the phone. `pressure` reads the press where the glass measures force, and reads a plain full press where it cannot. A second finger never moves the pointer. Neither does a finger that is still resting when the first one lifts, so lifting one hand does not throw the pointer across the canvas. The first two fingers are also a [pinch and a turn](../Helpers/Input.md#pinch). Spreading them reads on `pinchScale` and turning them on `turnAngle`, measured on the canvas, as two fingers on the Mac's trackpad read. The fingers press only while the phone is in Sketch mode, since on any other screen the glass is not the canvas. Every finger still arrives on `device.touches`, and the tilt on `device.latestMotion`, as in any mode.
+**The first finger is the pointer.** `mouseX`, `mouseY`, `mouseIsPressed`, `mousePressed()`, and `mouseReleased()` follow it the way they follow a finger when the sketch is installed on the phone. `pressure` reads the press where the glass measures force, and reads a plain full press where it cannot. A second finger never moves the pointer. Neither does a finger that is still resting when the first one lifts, so lifting one hand does not throw the pointer across the canvas. The first two fingers are also a [pinch and a turn](../Helpers/Input.md#pinch). Spreading them reads on `pinchScale` and turning them on `turnAngle`, measured on the canvas, as two fingers on the Mac's trackpad read. The fingers press only while the phone's screen is showing the sketch, since on any other screen the glass is not the canvas. Every finger still arrives on `device.touches`, and the tilt on `device.latestMotion`, as in any mode.
 
 ```swift
 let screen = device.show(self)
-screen.isShowing                      // Bool, the phone is in Sketch mode and a picture has reached it
+screen.isShowing                      // Bool, the phone's screen is the sketch's and a picture has reached it
 screen.drivesPointer = false          // leave the Mac's mouse alone and read device.touches yourself
 screen.frameRate                      // FrameRate, the most pictures a second it sends, 60 by default
 screen.device                         // PhoneDevice, the phone it belongs to
@@ -1047,13 +1091,54 @@ screen.stop()                         // stop sending; tap another mode on the p
 screen.phase                          // PublisherPhase: .stopped after stop(), .publishing while showing, else .waiting
 ```
 
-**How the pictures travel.** Each frame is compressed as HEVC on the Mac's media engine, straight from the rendered texture. It goes out on a connection of its own, port 1339, beside the sensor stream on 1338. The phone decodes it on its own media engine. A picture is the canvas size, fitted under 1920 pixels on its long side. Most pictures carry only what changed since the one before, so a picture already made is never dropped: that would spoil every picture after it. When the cable cannot take the next picture yet, the frame is skipped before it is compressed. A picture that stands alone goes out every second, and whenever the phone connects or comes back to Sketch mode.
+**How the pictures travel.** Each frame is compressed as HEVC on the Mac's media engine, straight from the rendered texture. It goes out on a connection of its own, port 1339, beside the sensor stream on 1338. The phone decodes it on its own media engine. A picture is the canvas size, fitted under 1920 pixels on its long side. Most pictures carry only what changed since the one before, so a picture already made is never dropped: that would spoil every picture after it. When the cable cannot take the next picture yet, the frame is skipped before it is compressed. A picture that stands alone goes out every second, and whenever the phone connects or gives its screen back to the sketch.
 
 **A reload hands the phone over.** `PhoneScreen` belongs to the sketch it shows, so a reloaded sketch makes its own in `setup()`. The phone keeps only the newest picture connection, and the old sketch lets go of its own once it stops drawing.
 
 To leave the full screen, tap the arrow in the phone's top corner. The phone goes back to the mode it was in before. As with any mode, a tap on the phone is the last word, and the sketch does not switch it back.
 
 The bundled example is `swift run --package-path Examples Example-3D-Phone-PhoneCanvas`. A finger paints, the paint falls the way the phone is tilted, and every finger on the glass shows as a ring.
+
+<a name="the-phone-as-a-viewfinder"></a>
+
+### The phone as a viewfinder
+
+`show(_:)` keeps a mode the sketch asked for. Ask for a camera mode beside it, and the phone runs that mode under the picture. The camera's picture comes up the cable, the sketch draws over it, and what it drew goes back to the screen in the hand.
+
+```swift
+import Ollin
+import OllinPhone
+
+final class Viewfinder: Sketch {
+    let device = PhoneDevice()
+
+    override func setup() {
+        device.use(.room)             // the phone tracks the room
+        device.show(self)             // and its screen shows this sketch
+    }
+
+    override func draw() {
+        background(.black)
+        guard let view = device.latestCamera else {
+            return drawStatus(device.waitingMessage, style: .info)
+        }
+        drawPhonePicture(view)
+        camera(view)
+        translate(0, 0, -1)
+        drawBox(size: 0.2)
+    }
+}
+```
+
+The order of the two calls does not matter, and a later `use(_:)` changes the mode under the picture. The sketch still runs on the Mac. A save under the live window reaches the phone's screen as soon as the Mac has compiled it.
+
+**The finger is still the pointer.** A tap on the phone's screen is a press on the canvas, so `view.ray(through: mouse, covering:)` turns a tap into a place in the room.
+
+**The person holding the phone keeps the screen.** The arrow in the top corner puts the picture away and shows the mode's own controls. The mode keeps running, and **Show the sketch** brings the picture back. `device.latestState?.isShowingSketch` says which it is, and the Mac sends frames only while it is true.
+
+**It suits working on a piece.** The picture on the phone has crossed the cable twice, so it trails the camera by both crossings. That delay has not been measured on a phone yet. The sketch [built for the phone](../Tools/OnThePhone.md) is what suits showing a finished one.
+
+The bundled example is `swift run --package-path Examples Example-3D-Phone-PhoneViewfinder`.
 
 ## The air around it
 
@@ -1207,8 +1292,8 @@ The recording decodes through the path the cable uses, so a payload the cable ga
 
 - **The wire runs both ways, in two tag spaces.** Sensor frames go up; requests (a mode, a library of references, the pictures of a sketch) come back down. Both use the same 12-byte framing, and both number their kinds from 1, because a frame's direction is decided by which end reads it rather than by its bytes. The one place the two framings part is the magic word, so a frame written the wrong way down the cable fails at its header instead of decoding as whatever happens to share its number.
 - **The wire is Ollin's own, shared verbatim.** Both ends are Swift, so the protocol skips the packed-image trick that cross-language tools use. It is a length-prefixed stream of tagged binary messages, `PhoneWire`. That one source file is compiled into *both* the Mac satellite and the iOS app, so the framing cannot drift between them.
-- **USB only.** The transport is the `usbmuxd` tunnel over the cable, on port 1338, which `PhoneDevice.streamPort` spells. A sketch's pictures take port 1339 (`PhoneWire.picturePort`), so a picture never waits behind a sensor reading. Record3D uses port 1337, as `Record3DDevice.streamPort`. Wi-Fi is deliberately left out.
+- **USB only.** The transport is the `usbmuxd` tunnel over the cable, on port 1338, which `PhoneDevice.streamPort` spells. A sketch's pictures take port 1339 (`PhoneWire.picturePort`), so a picture never waits behind a sensor reading. The camera's picture takes port 1340 (`PhoneWire.cameraPort`), and that connection is open only while a sketch reads the picture. Record3D uses port 1337, as `Record3DDevice.streamPort`. Wi-Fi is deliberately left out.
 - **Per-frame clouds are camera-relative, and fusion is world-space.** A single `pointCloud(...)` is in the camera's own frame, with its root at the lens. The skeleton is in model space, with its root at the origin. The [world fusion](#world-fusion) step lifts a sweep into one fixed world cloud by applying each frame's `latestPose`. It fuses the clouds from several poses into a single *registered* scene. [Keeping a long sweep registered](#drift) and [recognizing a place already scanned](#loops) then correct ARKit's own drift on top of that. The body's anchor lives in the same world, so a skeleton and a swept room combine directly.
 - **Depth is raw over the wire.** The LiDAR depth map ships uncompressed. A 256×192 frame is ~196 KB, which is comfortable over USB. LZFSE compression is a later optimization. The color image is sent as a downscaled JPEG.
-- **The catalog is still growing.** Today's payloads are body pose, face, hands, the text in view, the pictures and objects it knows, where the eye goes, how the picture is moving, world depth, the room mesh, the flat surfaces, the room's light, person segmentation, motion, the phone held as a pointer, what the phone hears, every finger on its screen, the air around it, and the camera's place and lens. Adding a richer sensor means the same app sends a new tagged payload, with no new pipeline.
+- **The catalog is still growing.** Today's payloads are body pose, face, hands, the text in view, the pictures and objects it knows, where the eye goes, how the picture is moving, world depth, the room mesh, the flat surfaces, the room's light, person segmentation, motion, the phone held as a pointer, what the phone hears, every finger on its screen, the air around it, the camera's place and lens, and the camera's picture as video. Adding a richer sensor means the same app sends a new tagged payload, with no new pipeline.
 - **A mesh block is carried raw.** Sending is what is throttled. The phone reads a block's geometry the moment ARKit hands it over, because those buffers belong to the session. Then it queues the block and sends a few blocks at a time. A block too big for one payload is skipped, and the app counts it on its own screen.

@@ -6,9 +6,10 @@ import os
 
 /// The phone as the screen of a sketch running on the Mac.
 ///
-/// In **Sketch** mode the Mac sends its rendered frames as HEVC on a connection of
-/// their own (`PhoneWire.picturePort`), and this shows each one the moment it
-/// arrives. The phone decodes on its media engine through a sample-buffer display
+/// In **Sketch** mode, and over any other mode while a sketch is sending its
+/// frames (the viewfinder), the Mac sends its rendered frames as HEVC on a
+/// connection of their own (`PhoneWire.picturePort`), and this shows each one
+/// the moment it arrives. The phone decodes on its media engine through a sample-buffer display
 /// layer, so a picture never passes through the CPU as pixels here either. The
 /// fingers on the picture go back through the touch streamer, measured against
 /// the picture rather than the screen, so -1 to 1 is the sketch's canvas.

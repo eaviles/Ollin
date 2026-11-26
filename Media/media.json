@@ -3214,6 +3214,29 @@
       "seed": 1,
       "staged": "a recording that ships with the sketch plays in place of the phone"
     },
+    "3D/Phone/PhoneViewfinder": {
+      "width": 1080,
+      "height": 1440,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 9.095,
+      "sound": false,
+      "source": "bf928ec1ae070e0e",
+      "rendered": "2026-11-26",
+      "bytes": {
+        "loop": 531411,
+        "loopSmall": 123294,
+        "still": 40771,
+        "stillSmall": 17735
+      },
+      "loop": "examples/3D/Phone/PhoneViewfinder/loop.mp4?v=6fa8dd6c",
+      "loopSmall": "examples/3D/Phone/PhoneViewfinder/loop-640.mp4?v=29a028d6",
+      "still": "examples/3D/Phone/PhoneViewfinder/still.jpg?v=432dc2e4",
+      "stillSmall": "examples/3D/Phone/PhoneViewfinder/still-640.jpg?v=9b5884f3",
+      "seed": 1,
+      "staged": "a recording that ships with the sketch plays in place of the phone"
+    },
     "3D/Phone/PhoneWallTiles": {
       "width": 1080,
       "height": 1440,

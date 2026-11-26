@@ -1,0 +1,15 @@
+{
+  "device" : "Synthetic",
+  "droppedFrames" : 0,
+  "duration" : 4.966666666666697,
+  "format" : 1,
+  "frameCount" : 150,
+  "hasSound" : false,
+  "isFinished" : true,
+  "mode" : 6,
+  "modeName" : "Room",
+  "pictureHeight" : 540,
+  "pictureWidth" : 720,
+  "quarterTurnsCW" : 1,
+  "started" : "2026-11-14T00:00:00Z"
+}

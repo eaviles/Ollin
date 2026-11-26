@@ -128,6 +128,7 @@ enum PhoneMarkerKind: UInt8, CaseIterable, Equatable, Hashable, RawRepresentable
 enum PhoneMessage: Equatable, Sendable
   case air(PhoneAirSample)
   case camera(PhoneCameraSample)
+  case cameraPicture(PhoneCameraPicture)
   case depth(PhoneDepthSample)
   case face([PhoneFaceSample])
   case flow(PhoneFlowSample)
@@ -150,6 +151,7 @@ enum PhoneMessageKind: UInt8, CaseIterable, Equatable, Hashable, RawRepresentabl
   case air
   case bodyPose
   case camera
+  case cameraPicture
   case depth
   case deviceMotion
   case face
@@ -212,6 +214,7 @@ enum PhoneWire
   static func takeRequests(from: Foundation.Data) -> [PhoneRequest]?
   static func uprightLens(fx: Float, fy: Float, cx: Float, cy: Float, width: Int, height: Int, quarterTurnsCW: UInt8) -> (fx: Float, fy: Float, cx: Float, cy: Float, width: Int, height: Int)
   static func wandFrame(fromCamera: simd.simd_float4x4, quarterTurnsCW: UInt8) -> simd.simd_float4x4
+  static let cameraPort: UInt16
   static let headerByteCount: Int
   static let magic: UInt32
   static let markerImageExtensions: Set<String>
@@ -243,6 +246,7 @@ final class PhoneDevice: FrameAdvancing, FrameSource, VideoFeed, Sendable
   var frameTap: FrameTap? { get set }
   var isLive: Bool { get }
   var isRunning: Bool { get }
+  var lastError: String? { get }
   var latestAir: PhoneAir? { get }
   var latestBodies: [PhoneBody] { get }
   var latestBody: PhoneBody? { get }
@@ -386,6 +390,15 @@ struct PhoneCamera
   var position: Vector3 { get }
   var timestamp: Double { get set }
   var up: Vector3 { get }
+struct PhoneCameraPicture: Equatable, Sendable
+  init(camera: PhoneCameraSample, sequence: UInt32, colorPrimaries: UInt8 = default, transferFunction: UInt8 = default, yCbCrMatrix: UInt8 = default, picture: PhonePicture)
+  static let unspecified: UInt8
+  var camera: PhoneCameraSample { get set }
+  var colorPrimaries: UInt8 { get set }
+  var picture: PhonePicture { get set }
+  var sequence: UInt32 { get set }
+  var transferFunction: UInt8 { get set }
+  var yCbCrMatrix: UInt8 { get set }
 struct PhoneCameraSample: Equatable, Sendable
   init(isTracked: Bool, timestamp: Double, frameIndex: UInt32, imageWidth: Int, imageHeight: Int, fx: Float, fy: Float, cx: Float, cy: Float, transform: simd.simd_float4x4, quarterTurnsCW: UInt8 = default)
   var cx: Float { get set }
@@ -770,7 +783,8 @@ struct PhoneSoundSample: Equatable, Sendable
   var timestamp: Double { get set }
 struct PhoneState: Equatable, Sendable
   init(_: PhoneStateSample)
-  init(timestamp: Double, mode: PhoneCaptureMode, isSupported: Bool = default, referenceCount: Int = default, referencesAreDeclared: Bool = default, statusMessage: String = default, notes: [String] = default)
+  init(timestamp: Double, mode: PhoneCaptureMode, isSupported: Bool = default, referenceCount: Int = default, referencesAreDeclared: Bool = default, statusMessage: String = default, notes: [String] = default, isShowingSketch: Bool? = default)
+  let isShowingSketch: Bool
   let isSupported: Bool
   let mode: PhoneCaptureMode
   let notes: [String]
@@ -780,12 +794,13 @@ struct PhoneState: Equatable, Sendable
   let timestamp: Double
   var isLookingForAnything: Bool { get }
 struct PhoneStateSample: Equatable, Sendable
-  init(timestamp: Double, mode: PhoneCaptureMode, isSupported: Bool = default, referenceCount: Int = default, referencesAreDeclared: Bool = default, status: String = default, notes: [String] = default)
+  init(timestamp: Double, mode: PhoneCaptureMode, isSupported: Bool = default, referenceCount: Int = default, referencesAreDeclared: Bool = default, status: String = default, notes: [String] = default, showsSketch: Bool? = default)
   var isSupported: Bool { get set }
   var mode: PhoneCaptureMode { get set }
   var notes: [String] { get set }
   var referenceCount: Int { get set }
   var referencesAreDeclared: Bool { get set }
+  var showsSketch: Bool { get set }
   var status: String { get set }
   var timestamp: Double { get set }
 struct PhoneTap: Equatable, Sendable

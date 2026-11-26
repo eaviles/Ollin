@@ -46,6 +46,20 @@ sure it is cross the cable, never the audio. **Air** is the second such switch:
 the barometer reads the pressure and how far the phone has risen since it started
 measuring, and the altimeter asks its own permission once.
 
+**The camera's picture goes to a sketch that reads it.** In every mode that runs the camera
+through ARKit, a sketch on the Mac that reads `device.latestCamera?.picture` gets the camera's
+own picture as HEVC video, each frame with where the camera stood when it was taken. The phone
+compresses only while such a sketch is connected, so a sketch that wants only the tracking
+costs it no video and no heat. The **Picture** row on the screen says what is going out: the
+size, how many frames were sent, and how many were skipped because the cable had not taken the
+ones before.
+
+**The phone as a viewfinder.** A sketch that asks for a camera mode and for the screen
+(`device.use(.room)` beside `device.show(self)`) gets both: the mode keeps running under the
+sketch's picture, so the Mac draws over what the camera sees and the phone shows the result.
+The arrow in the top corner puts the picture away and shows the mode's own controls, with
+**Show the sketch** to bring it back; the mode never stops.
+
 **Record** needs no cable. The button under the modes writes the stream to a folder in the app's own
 documents: the camera's video with the microphone's sound, every message the cable would have
 carried, and where the camera stood on each frame. It works in every mode that runs the camera
@@ -66,12 +80,19 @@ Finder both show it, and a sketch on the Mac plays it back through `PhoneRecordi
   [`PhoneRecordingFormat.swift`](../../Sources/OllinPhone/PhoneRecordingFormat.swift) is
   the third shared file (AVFoundation and Compression only): a recording's folder and
   the writer that fills it, so the Mac's tests write a recording with the phone's writer.
+  [`PhonePictureCompressor.swift`](../../Sources/OllinPhone/PhonePictureCompressor.swift)
+  is the fourth (the media frameworks only): the compressor both directions use, and
+  the phone's half of the camera's video, which decides frame by frame whether the
+  cable can take another picture before one is compressed.
 - **Transport is the standard usbmuxd USB tunnel.** The app opens an `NWListener` on
   TCP `PhoneWire.streamPort` (1338, distinct from Record3D's 1337); the Mac's
   `PhoneDevice` tunnels to it through usbmuxd. No Wi-Fi, no pairing — just the cable.
   A second listener on `PhoneWire.picturePort` (1339) takes a sketch's pictures in
   Sketch mode, so a picture never waits behind a sensor reading; it keeps only its
   newest client, which is how a sketch reloaded on the Mac takes the screen over.
+  A third on `PhoneWire.cameraPort` (1340) sends the camera's picture as video to a
+  sketch that reads it. A client on that port is the asking, so nothing is compressed
+  while nobody is there.
 - **Readings push out.** Each ARKit body/face/depth update and motion sample is
   encoded with `PhoneWire` and broadcast to the connected Mac. The device-motion
   payload is the cheap transport smoke-test: it moves the instant the wire is alive,
@@ -164,7 +185,11 @@ Requirements:
    out where it fell. For **Sketch** the sketch asks for the mode itself:
    `swift run --package-path Examples Example-3D-Phone-PhoneCanvas`, and the phone's
    screen turns into the Mac's canvas; paint with a finger and tilt the phone to
-   pour it. The arrow in the top corner leaves the full screen. With **Hear** switched
+   pour it. The arrow in the top corner leaves the full screen. For the phone as a
+   viewfinder: `swift run --package-path Examples Example-3D-Phone-PhoneViewfinder`
+   asks for **Room** mode and the screen together; move the phone slowly until it
+   finds a floor or a table, then tap the screen to stand a stack of blocks there.
+   With **Hear** switched
    on beside any mode:
    `swift run --package-path Examples Example-3D-Phone-PhoneSounds`, then clap, talk,
    or knock, and each sound the phone names rings out on the Mac's canvas as it

@@ -1,5 +1,6 @@
 import Foundation
 import CoreGraphics
+import CoreVideo
 import simd
 import os
 import Ollin
@@ -89,7 +90,9 @@ import Darwin
 /// `latestCamera` is where the phone's camera stood and what its lens was, for
 /// the frame the rest belongs to. It arrives in every mode that runs an ARKit
 /// session, and it is what a sketch draws in the room through: `camera(view)`
-/// sets a 3D camera that matches the phone's.
+/// sets a 3D camera that matches the phone's. Its `picture` is the camera's own
+/// picture of that frame, sent up the cable as video once a sketch reads it,
+/// so `drawPhonePicture(view)` puts the room behind whatever is drawn in it.
 ///
 /// Launch the Ollin capture app on the iPhone and connect the cable; the device
 /// keeps retrying, so plugging in or starting the app mid-run just works. The
@@ -107,7 +110,7 @@ public final class PhoneDevice: FrameSource, VideoFeed {
     /// defined once in `PhoneWire` so both ends agree.
     public nonisolated static let streamPort: UInt16 = PhoneWire.streamPort
 
-    private let reader: PhoneStreamReader
+    let reader: PhoneStreamReader
 
     /// What the phone hears, named: every label its sound classifier reports
     /// with how sure it is, the strongest one, and the sounds that just started.
@@ -156,10 +159,39 @@ public final class PhoneDevice: FrameSource, VideoFeed {
     private var fedFrame: Int?
     private var fedThrough = -1
 
+    /// The camera's picture off the cable, on a connection of its own that
+    /// opens only while a sketch reads the picture. `nil` for a device that
+    /// plays a recording, whose picture is the recording's video.
+    let cameraFeed: PhoneCameraFeed?
+    private let cameraTextures = PhonePictureTextures()
+    /// The newest picture as an image, kept by the frame it was made from, so
+    /// two reads in one `draw()` wrap one texture.
+    private var cachedCameraPicture: (number: Int, image: Image)?
+    private var isStarted = false
+    /// Whether `start()` opens the sensor connection. False only for a test
+    /// that feeds the device itself and must not find a phone on the desk.
+    private let dialsCable: Bool
+
     /// Create a device bound to the capture app's stream port.
     public init(port: UInt16 = PhoneDevice.streamPort) {
         recording = nil
-        reader = PhoneStreamReader(port: port, sounds: sounds, touches: touches)
+        dialsCable = true
+        let reader = PhoneStreamReader(port: port, sounds: sounds, touches: touches)
+        self.reader = reader
+        cameraFeed = PhoneCameraFeed(onPictureTime: Self.pictureClock(of: reader))
+    }
+
+    /// A device for a test that stands in for the phone: its sensor connection
+    /// is never opened (the test hands messages to `reader`), and its camera
+    /// connection is opened by `connect`, one end of a socket pair.
+    init(cameraConnect connect: @escaping @Sendable (UInt16) throws -> Int32,
+         pictureWantedFor wantedFor: TimeInterval = PhoneCameraFeed.wantedFor) {
+        recording = nil
+        dialsCable = false
+        let reader = PhoneStreamReader(port: PhoneDevice.streamPort, sounds: sounds, touches: touches)
+        self.reader = reader
+        cameraFeed = PhoneCameraFeed(wantedFor: wantedFor, onPictureTime: Self.pictureClock(of: reader),
+                                     connect: connect)
     }
 
     /// Create a device that plays a recording in place of a phone on the cable.
@@ -170,7 +202,19 @@ public final class PhoneDevice: FrameSource, VideoFeed {
     /// paused, and an export lands on the same frames in every run.
     public init(playing recording: PhoneRecording) {
         self.recording = recording
+        dialsCable = false
         reader = PhoneStreamReader(port: PhoneDevice.streamPort, sounds: sounds, touches: touches)
+        cameraFeed = nil
+    }
+
+    deinit { cameraFeed?.stop() }
+
+    /// What the camera feed calls as each picture becomes the newest, built
+    /// outside the main actor so the decoder's thread carries no executor
+    /// assertion into it.
+    nonisolated private static func pictureClock(of reader: PhoneStreamReader)
+        -> @Sendable (Double?) -> Void {
+        { time in reader.pictureArrived(at: time) }
     }
 
     /// Begin connecting and streaming. Safe to call once; the reader retries on its
@@ -181,7 +225,8 @@ public final class PhoneDevice: FrameSource, VideoFeed {
             isFeeding = true
             return
         }
-        reader.start()
+        isStarted = true
+        if dialsCable { reader.start() }
     }
 
     /// Stop streaming and close the connection. Safe to call when not started.
@@ -192,7 +237,10 @@ public final class PhoneDevice: FrameSource, VideoFeed {
             isFeeding = false
             return
         }
+        isStarted = false
         reader.stop()
+        cameraFeed?.stop()
+        cachedCameraPicture = nil
     }
 
     /// Whether sensor frames are currently arriving, from the phone or from the
@@ -211,16 +259,70 @@ public final class PhoneDevice: FrameSource, VideoFeed {
     /// Where the phone's camera stood on the latest frame, and what its lens
     /// was, or `nil` before one arrives. Upright for how the phone was held.
     ///
-    /// From a recording it carries the frame's picture too, so
-    /// `drawPhonePicture(_:)` and `camera(_:)` put a sketch in the room the
-    /// phone saw. On the cable it is the camera's place and lens alone.
+    /// It carries the frame's picture too, so `drawPhonePicture(_:)` and
+    /// `camera(_:)` put a sketch in the room the phone sees. A recording
+    /// always has the picture. On the cable the phone sends it as video once
+    /// a sketch reads `picture`, and stops when nothing has read it for two
+    /// seconds, so a sketch that wants only where the camera stood costs the
+    /// phone no video.
+    ///
+    /// **While the picture is arriving, this is the picture's own frame**: the
+    /// newest picture decoded, with where the camera stood when it was taken,
+    /// which is what keeps a thing drawn in the room on its place in the
+    /// picture while the phone moves. That frame is a few behind the newest
+    /// one the phone has sensed, by the time the video takes to cross. With no
+    /// picture arriving it is the newest frame sensed, and its `picture` is
+    /// `nil`.
     public var latestCamera: PhoneCamera? {
-        guard let sample = reader.latestCamera else { return nil }
-        if let recording, let fedFrame {
+        if let recording {
+            guard let sample = reader.latestCamera, let fedFrame else {
+                return reader.latestCamera.map { PhoneCamera($0) }
+            }
             return recording.camera(for: sample, frame: fedFrame)
         }
-        return PhoneCamera(sample)
+        if let frame = cameraFeed?.latest {
+            var camera = PhoneCamera(frame.sample)
+            // The lens is brought to the picture's own size, should the two differ.
+            let w = CVPixelBufferGetWidth(frame.buffer), h = CVPixelBufferGetHeight(frame.buffer)
+            if camera.intrinsics.width != w || camera.intrinsics.height != h {
+                camera.intrinsics = camera.intrinsics.scaled(toWidth: w, height: h)
+            }
+            camera.pictureSource = { [weak self] in self?.cameraPicture(of: frame) }
+            return camera
+        }
+        guard let sample = reader.latestCamera else { return nil }
+        var camera = PhoneCamera(sample)
+        // Reading the picture is the asking: the first read opens the camera
+        // connection, and the picture is there a few frames later.
+        camera.pictureSource = { [weak self] in
+            self?.wantCameraPicture()
+            return nil
+        }
+        return camera
     }
+
+    /// Say that the sketch is reading the camera's picture, which is what
+    /// keeps the phone sending it.
+    private func wantCameraPicture() {
+        guard isStarted else { return }
+        cameraFeed?.keepWanted()
+    }
+
+    /// One decoded frame as an image, wrapped once however often it is read.
+    private func cameraPicture(of frame: PhoneCameraFeed.Frame) -> Image? {
+        wantCameraPicture()
+        if let cached = cachedCameraPicture, cached.number == frame.number { return cached.image }
+        guard let image = cameraTextures.image(from: frame.buffer) else { return nil }
+        cachedCameraPicture = (frame.number, image)
+        return image
+    }
+
+    /// The last thing that went wrong with the camera's picture on the cable,
+    /// as a sentence worth drawing, or `nil`. It is cleared when a picture
+    /// decodes again. A `picture` that is `nil` with no error here has not
+    /// arrived yet, which is not a failure. A device that plays a recording
+    /// reports through `recording.lastError`.
+    public var lastError: String? { cameraFeed?.lastError }
 
     /// Every body the phone is tracking, newest set each frame, empty before any
     /// arrive or when nobody is in view. ARKit follows one body today; the list
@@ -552,6 +654,9 @@ public final class PhoneDevice: FrameSource, VideoFeed {
     /// running piece. `latestState` is how the sketch learns where it ended up.
     public func use(_ mode: PhoneCaptureMode) { reader.declare(mode: mode) }
 
+    /// Whether the sketch has asked the phone for a mode.
+    var hasAskedForMode: Bool { reader.declaredMode != nil }
+
     /// Tell the phone what to look for in **Markers** mode: the pictures and the
     /// scanned objects, each with the width it was printed at.
     ///
@@ -747,6 +852,7 @@ final class PhoneStreamReader: @unchecked Sendable {
     var latestAir: PhoneAirSample? { lock.withLock { $0.latestAir } }
     var latestState: PhoneStateSample? { lock.withLock { $0.latestState } }
     var latestCamera: PhoneCameraSample? { lock.withLock { $0.latestCamera } }
+    var declaredMode: PhoneCaptureMode? { lock.withLock { $0.declaredMode } }
     var isConnected: Bool { lock.withLock { $0.connected } }
     var statusMessage: String? { lock.withLock { $0.message } }
 
@@ -875,7 +981,7 @@ final class PhoneStreamReader: @unchecked Sendable {
                 guard sendPending(fd) else { break readLoop }
                 switch readMessage(fd) {
                 case .message(let message):
-                    ingest(message)
+                    arrive(message)
                 case .skip:
                     continue            // a bad frame, but the stream is still in sync
                 case .desync:
@@ -902,9 +1008,121 @@ final class PhoneStreamReader: @unchecked Sendable {
             // The phone sends touches only on a change, so a finger that was
             // down when the cable came out would otherwise stay down forever.
             touches.releaseAll()
+            // Nothing waits on a picture from a connection that has gone.
+            releaseHeld()
             if stillOurs { close(fd) }
             if isRunning { Thread.sleep(forTimeInterval: 0.5) }
         }
+    }
+
+    // MARK: Holding what was read from a frame until its picture is here
+
+    /*
+     The camera's picture crosses the cable as video on its own connection, and
+     it reaches a sketch a few frames after the readings taken from the same
+     frame do: a face's mesh, a body, the hands, a depth map are small or are
+     sent the moment they are found, and a picture has to be compressed, sent,
+     decoded, and turned. Drawn as they arrive, a face's mesh would sit a few
+     frames ahead of the face in the picture and slide on it whenever the head
+     moves.
+
+     So while the picture is arriving, a reading that was taken from a camera
+     frame waits here until the picture of that frame (or a later one) is the
+     newest decoded, and only then becomes the latest of its kind. What a
+     sketch reads then belongs to one frame, the way it does out of a
+     recording. Nothing waits when no picture is arriving, so a sketch that
+     reads no picture gets every reading the moment it lands.
+
+     Only readings taken from a camera frame wait. The phone's motion, its
+     touches, its sounds, its state, the room's surfaces and blocks (which are
+     places in the room and do not move with the picture), and the light go
+     straight through.
+     */
+
+    /// How long after the last decoded picture the picture still counts as
+    /// arriving. Past it nothing is held, so a picture that stops (the sketch
+    /// stopped reading it, the phone left its camera mode) never strands a
+    /// reading.
+    static let pictureArrivesFor: TimeInterval = 0.25
+
+    /// The most readings that wait at once. One more lets the oldest through.
+    static let maxHeld = 240
+
+    private struct Held {
+        var time: Double
+        var message: PhoneMessage
+    }
+
+    /// Serializes taking messages in, since two threads now do it: the cable's
+    /// read thread, and the camera decoder's when a picture lets readings go.
+    private let intake = NSLock()
+    // Under `intake`:
+    private var held: [Held] = []
+    private var pictureTime: Double?
+    private var pictureSeenAt: TimeInterval = 0
+
+    /// Take one message off the cable: straight in, or held for its picture.
+    func arrive(_ message: PhoneMessage, now: TimeInterval = ProcessInfo.processInfo.systemUptime) {
+        intake.lock()
+        defer { intake.unlock() }
+        guard let clock = pictureTime, now - pictureSeenAt <= Self.pictureArrivesFor else {
+            pictureTime = nil
+            drainHeld()
+            return ingest(message)
+        }
+        guard case .with(let stamp) = message.pictureStep else { return ingest(message) }
+        // An empty list (nobody in view) has no time of its own; it belongs
+        // with whatever was read before it.
+        let time = stamp ?? held.last?.time ?? clock
+        if held.isEmpty, time <= clock + Self.sameFrame {
+            ingest(message)
+        } else {
+            held.append(Held(time: time, message: message))
+            if held.count > Self.maxHeld { ingest(held.removeFirst().message) }
+        }
+    }
+
+    /// The camera feed decoded a picture taken at `time`, or (`nil`) let go of
+    /// its connection. Called on the decoder's thread.
+    func pictureArrived(at time: Double?, now: TimeInterval = ProcessInfo.processInfo.systemUptime) {
+        intake.lock()
+        defer { intake.unlock() }
+        guard let time else {
+            pictureTime = nil
+            return drainHeld()
+        }
+        pictureTime = time
+        pictureSeenAt = now
+        while let first = held.first, first.time <= time + Self.sameFrame {
+            ingest(held.removeFirst().message)
+        }
+    }
+
+    /// Two capture times this close are one frame: the phone stamps a reading
+    /// with the time of the frame it was read from, to the bit.
+    private static let sameFrame = 0.0005
+
+    /// Let everything that is waiting through, in order. Under `intake`.
+    private func drainHeld() {
+        guard !held.isEmpty else { return }
+        let waiting = held
+        held.removeAll(keepingCapacity: true)
+        for entry in waiting { ingest(entry.message) }
+    }
+
+    /// Let everything that is waiting through, from outside the intake.
+    private func releaseHeld() {
+        intake.lock()
+        defer { intake.unlock() }
+        pictureTime = nil
+        drainHeld()
+    }
+
+    /// How many readings are waiting on a picture. For the tests.
+    var heldCount: Int {
+        intake.lock()
+        defer { intake.unlock() }
+        return held.count
     }
 
     // MARK: Taking a message in
@@ -1018,6 +1236,8 @@ final class PhoneStreamReader: @unchecked Sendable {
                 case .air(let a): state.latestAir = a
                 case .state(let st): state.latestState = st
                 case .camera(let c): state.latestCamera = c
+                case .cameraPicture:
+                    break   // travels on the camera connection, to the camera feed
                 case .depth, .segmentation, .saliency, .flow, .sceneMesh, .plane,
                      .sound, .touch:
                     break   // handled above
@@ -1098,6 +1318,38 @@ final class PhoneStreamReader: @unchecked Sendable {
             return "Launch the Ollin capture app on the iPhone."
         case .connectFailed, .handshakeFailed:
             return "Waiting for the Ollin capture stream…"
+        }
+    }
+}
+
+/// Whether a message was read from a camera frame, and which.
+enum PhonePictureStep {
+    /// Not read from a camera frame: it never waits on a picture.
+    case free
+    /// Read from the camera frame taken at this time, or from no frame it can
+    /// name (an empty list, which says only that nothing is in view).
+    case with(Double?)
+}
+
+extension PhoneMessage {
+    /// The camera frame this message was read from, for the kinds that are read
+    /// from one. Those are the ones a sketch draws over the picture and expects
+    /// to sit on it.
+    var pictureStep: PhonePictureStep {
+        switch self {
+        case .pose(let bodies): return .with(bodies.first?.timestamp)
+        case .face(let faces): return .with(faces.first?.timestamp)
+        case .hands(let hands): return .with(hands.first?.timestamp)
+        case .texts(let texts): return .with(texts.first?.timestamp)
+        case .markers(let markers): return .with(markers.first?.timestamp)
+        case .wand(let wand): return .with(wand.timestamp)
+        case .depth(let depth): return .with(depth.timestamp)
+        case .segmentation(let matte): return .with(matte.timestamp)
+        case .saliency(let saliency): return .with(saliency.timestamp)
+        case .flow(let flow): return .with(flow.timestamp)
+        case .motion, .sceneMesh, .plane, .light, .sound, .touch, .air, .state, .camera,
+             .cameraPicture:
+            return .free
         }
     }
 }

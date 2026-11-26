@@ -37,6 +37,10 @@ targets:
       # The picture's step between the codec and the wire, shared the same way so
       # the Mac's tests run what the phone runs. CoreMedia only, never Ollin.
       - path: ../../Sources/OllinPhone/PhonePictureCoding.swift
+      # The compressor both directions use, and the phone's half of the camera's
+      # video (the gate, the sender), shared the same way. The media frameworks
+      # only, never Ollin.
+      - path: ../../Sources/OllinPhone/PhonePictureCompressor.swift
       # A recording's folder on disk, shared the same way so the Mac's tests write
       # a recording with the writer the phone runs. AVFoundation and Compression
       # only, never Ollin.

@@ -407,6 +407,37 @@ The loop is the live window's. Save, and the phone shows the edit as soon as the
 
 The two ways answer different questions. The picture from the Mac shows how a sketch looks and plays in the hand while you shape it. The installed app shows whether the phone's own GPU keeps up, and that the sketch runs with no Mac nearby. [The sketch on the phone's screen](../Docs/3D/Phone.md#the-sketch-on-the-phones-screen) has how the pictures travel and what happens on a reload.
 
+### A viewfinder: the camera's picture under the sketch
+
+`show` keeps whatever mode the sketch asked the phone for. Ask for a camera mode, and the phone runs it under the sketch's picture. The camera's picture comes up the cable, the sketch draws over it, and the result goes back to the phone. The phone in your hand becomes a **viewfinder** for a sketch that is still running on the Mac. It is for a sketch that draws in the room, where you have to walk around to see whether things sit right. Film crews call the arrangement a simulcam. On *Avatar*, in 2009, the computer's picture was laid over the camera's and shown in the camera's own monitor while it filmed.
+
+```swift
+import Ollin
+import OllinPhone
+
+final class Viewfinder: Sketch {
+    let device = PhoneDevice()
+
+    override func setup() {
+        device.use(.room)           // the phone follows the room
+        device.show(self)           // and its screen shows this sketch
+    }
+
+    override func draw() {
+        background(.black)
+        guard let view = device.latestCamera else { return }
+        drawPhonePicture(view)      // the camera's picture, off the cable
+        camera(view)                // the camera that took it
+        translate(0, 0, -1)
+        drawBox(size: 0.2)          // a box that stays put as you walk
+    }
+}
+```
+
+These are the two calls [Chapter 38](38-ThePhoneAsASensor.md#ollins-own-app-ollin-capture) made on a recording, and one `draw()` serves both. Reading the picture is what asks the phone to send it, as video on a third connection. Each picture arrives with where the camera stood when it was taken, and that is the camera `latestCamera` hands you. So the pose a sketch draws through is the pose of the picture it draws on, and the box stays put while the phone moves.
+
+A tap on the phone is still a press on the canvas. `view.ray(through:covering:)` turns the tap into a line of sight into the room, and a surface the phone found says where that line lands. [`Examples/3D/Phone/PhoneViewfinder`](../Examples/3D/Phone/PhoneViewfinder/Sketch.swift) stands a stack of blocks wherever you tap. With no phone attached it plays a recording, so you can read it at the desk first. The person holding the phone can put the picture away with the arrow in its corner, and bring it back. The picture on the phone has crossed the cable twice, so it trails the camera a little. [The phone as a viewfinder](../Docs/3D/Phone.md#the-phone-as-a-viewfinder) has the rest.
+
 ## Behavior and packages for other programmers
 
 The sky clock was handed over whole, as a file each project copies. Some of what you write is smaller than a sketch. It may be behavior you want in every sketch, or a drawing call you keep copying from one sketch to the next. A sketch extension adds behavior to a sketch without editing its `draw()`. An extension package hands your calls to other programmers.

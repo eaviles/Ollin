@@ -256,7 +256,7 @@ import simd
         let sketch = Pointed()
         sketch.setCanvasSize(width: 800, height: 400)
         let screen = PhoneScreen(device: device, frameRate: 60,
-                                 sender: PhonePictureSender(dials: false), phoneMode: { .sketch })
+                                 sender: PhonePictureSender(dials: false), phoneShowsSketch: { true })
 
         // The phone's middle is the canvas's middle, and up on the glass is up.
         device.touches.feel([PhoneTouch(id: 1, position: Vector2(0, 0), force: 0.5)], at: 1)
@@ -287,7 +287,7 @@ import simd
         let sketch = Pointed()
         sketch.setCanvasSize(width: 800, height: 400)
         let screen = PhoneScreen(device: device, frameRate: 60,
-                                 sender: PhonePictureSender(dials: false), phoneMode: { .sketch })
+                                 sender: PhonePictureSender(dials: false), phoneShowsSketch: { true })
         device.touches.feel([PhoneTouch(id: 1, position: Vector2(0, 0))], at: 1)
         screen.beforeDraw(sketch)
         #expect(sketch.mouseIsPressed)
@@ -309,7 +309,7 @@ import simd
         sketch.setCanvasSize(width: 800, height: 400)
         var mode = PhoneCaptureMode.touch
         let screen = PhoneScreen(device: device, frameRate: 60,
-                                 sender: PhonePictureSender(dials: false), phoneMode: { mode })
+                                 sender: PhonePictureSender(dials: false), phoneShowsSketch: { mode == .sketch })
         device.touches.feel([PhoneTouch(id: 1, position: Vector2(0, 0))], at: 1)
         screen.beforeDraw(sketch)
         #expect(!sketch.mouseIsPressed && sketch.presses == 0)
@@ -342,7 +342,7 @@ import simd
         sketch.setCanvasSize(width: 800, height: 400)
         var mode = PhoneCaptureMode.sketch
         let screen = PhoneScreen(device: device, frameRate: 60,
-                                 sender: PhonePictureSender(dials: false), phoneMode: { mode })
+                                 sender: PhonePictureSender(dials: false), phoneShowsSketch: { mode == .sketch })
         func frame() {
             screen.beforeDraw(sketch)
             sketch.advance(time: Double(sketch.frameCount + 1) / 60, deltaTime: 1.0 / 60, frameRate: 60)

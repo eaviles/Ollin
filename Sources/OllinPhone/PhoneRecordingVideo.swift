@@ -40,8 +40,7 @@ final class PhoneRecordingVideo {
     private var turner: PictureTurner?
     private var upright: (index: Int, buffer: CVPixelBuffer)?
 
-    private var textureCache: CVMetalTextureCache?
-    private var inFlightTextures: [CVMetalTexture] = []
+    private let textures = PhonePictureTextures()
     private lazy var ciContext = CIContext()
 
     /// How far ahead of the pass a request may be before a new pass is cheaper
@@ -88,23 +87,7 @@ final class PhoneRecordingVideo {
     /// A decoded frame wrapped as a Metal texture the image pipeline samples
     /// in linear light. A fresh texture each call, never one written in place,
     /// since a frame still on its way to the screen may be reading the last.
-    func image(from buffer: CVPixelBuffer) -> Image? {
-        if textureCache == nil {
-            guard let device = MTLCreateSystemDefaultDevice() else { return nil }
-            var cache: CVMetalTextureCache?
-            CVMetalTextureCacheCreate(nil, nil, device, nil, &cache)
-            textureCache = cache
-        }
-        guard let cache = textureCache else { return nil }
-        var cvTexture: CVMetalTexture?
-        CVMetalTextureCacheCreateTextureFromImage(
-            nil, cache, buffer, nil, .bgra8Unorm_srgb,
-            CVPixelBufferGetWidth(buffer), CVPixelBufferGetHeight(buffer), 0, &cvTexture)
-        guard let cvTexture, let texture = CVMetalTextureGetTexture(cvTexture) else { return nil }
-        inFlightTextures.append(cvTexture)
-        if inFlightTextures.count > 6 { inFlightTextures.removeFirst() }
-        return Image(texture: texture)
-    }
+    func image(from buffer: CVPixelBuffer) -> Image? { textures.image(from: buffer) }
 
     /// A decoded frame as a `CGImage`, for a reader that wants pixels on the
     /// CPU (a vision tracker's tap).
@@ -272,9 +255,41 @@ final class PhoneRecordingVideo {
     }
 }
 
+/// Wraps decoded pictures as Metal textures the image pipeline samples in linear
+/// light, for the recording's video and the cable's camera feed alike.
+///
+/// A fresh texture each call, never one written in place, since a frame still
+/// on its way to the screen may be reading the last. The wrappers of the last
+/// few are kept, which is what keeps their buffers out of a pool until no
+/// frame can be reading them.
+@MainActor
+final class PhonePictureTextures {
+    private var cache: CVMetalTextureCache?
+    private var inFlight: [CVMetalTexture] = []
+
+    func image(from buffer: CVPixelBuffer) -> Image? {
+        if cache == nil {
+            guard let device = MTLCreateSystemDefaultDevice() else { return nil }
+            var made: CVMetalTextureCache?
+            CVMetalTextureCacheCreate(nil, nil, device, nil, &made)
+            cache = made
+        }
+        guard let cache else { return nil }
+        var cvTexture: CVMetalTexture?
+        CVMetalTextureCacheCreateTextureFromImage(
+            nil, cache, buffer, nil, .bgra8Unorm_srgb,
+            CVPixelBufferGetWidth(buffer), CVPixelBufferGetHeight(buffer), 0, &cvTexture)
+        guard let cvTexture, let texture = CVMetalTextureGetTexture(cvTexture) else { return nil }
+        inFlight.append(cvTexture)
+        if inFlight.count > 6 { inFlight.removeFirst() }
+        return Image(texture: texture)
+    }
+}
+
 /// Owns the session that turns a frame by quarter turns, and closes it when
-/// the video lets go. A class of its own so the closing needs no actor.
-private final class PictureTurner {
+/// its owner lets go. A class of its own so the closing needs no actor. The
+/// recording's video and the cable's camera feed each keep one.
+final class PictureTurner {
     let session: VTPixelRotationSession
 
     init?(quarterTurnsCW: Int) {

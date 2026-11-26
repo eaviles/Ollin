@@ -11,8 +11,9 @@ import Ollin
 /// Two steps, both on the GPU and the media engine, so a picture never passes
 /// through the CPU as pixels. The frame texture is drawn into a pixel buffer
 /// backed by an IOSurface, which the compressor reads where it lies; the
-/// compressor writes HEVC in real time with no reordering, so a picture goes out
-/// the moment it is made rather than waiting on a later one.
+/// compressor (`PhonePictureCompressor`, the one the phone compresses its
+/// camera with) writes HEVC in real time with no reordering, so a picture goes
+/// out the moment it is made rather than waiting on a later one.
 ///
 /// The copy runs synchronously inside the frame hook, because the renderer takes
 /// the texture back the moment the hook returns and may write the next frame into
@@ -39,17 +40,14 @@ final class PhonePictureEncoder: @unchecked Sendable {
     private let queue: MTLCommandQueue
     private let pipeline: MTLRenderPipelineState
 
-    // The compressor and its size are made, used, and replaced on the thread that
-    // calls `encode` (the main thread, live), which is what `@unchecked Sendable`
-    // asserts. Only the count of pictures in flight is also written by the
-    // compressor's thread, so only it sits behind the lock.
-    private var session: VTCompressionSession?
+    // The compressor is made, used, and replaced on the thread that calls
+    // `encode` (the main thread, live), which is what `@unchecked Sendable`
+    // asserts. Its own count of pictures in flight is the one thing the
+    // compressor's thread also writes, and it keeps that behind a lock.
+    private var compressor: PhonePictureCompressor?
     private var pool: CVPixelBufferPool?
-    private var width = 0
-    private var height = 0
     private var failedSize: (width: Int, height: Int)?
     private var frameIndex: Int64 = 0
-    private let pending = OSAllocatedUnfairLock(initialState: 0)
 
     init?(device: MTLDevice, framesPerSecond: Double, maxSide: Int = PhonePictureEncoder.defaultMaxSide,
           onPicture: @escaping @Sendable (PhonePicture) -> Void) {
@@ -71,12 +69,8 @@ final class PhonePictureEncoder: @unchecked Sendable {
         self.onPicture = onPicture
     }
 
-    deinit {
-        if let session { VTCompressionSessionInvalidate(session) }
-    }
-
     /// How many pictures have been handed to the compressor and not come back.
-    var inFlight: Int { pending.withLock { $0 } }
+    var inFlight: Int { compressor?.inFlight ?? 0 }
 
     /// The size a canvas of `width` by `height` pixels is sent at: fitted under
     /// `maxSide` with its proportion kept, and rounded down to even numbers,
@@ -88,12 +82,9 @@ final class PhonePictureEncoder: @unchecked Sendable {
         return (even(Double(width) * scale), even(Double(height) * scale))
     }
 
-    /// The bit rate a picture size runs at: about an eighth of a bit for every
-    /// pixel of every frame, which keeps a hairline and a grain of noise intact
-    /// on a screen held a hand away, and inside what the cable carries.
+    /// The bit rate a picture size runs at, which is the shared compressor's rule.
     static func bitRate(width: Int, height: Int, framesPerSecond: Double) -> Int {
-        let rate = Double(width * height) * framesPerSecond * 0.125
-        return Int(min(max(rate, 4_000_000), 40_000_000))
+        PhonePictureCompressor.bitRate(width: width, height: height, framesPerSecond: framesPerSecond)
     }
 
     /// Copy `texture` into a pixel buffer and hand it to the compressor.
@@ -104,126 +95,60 @@ final class PhonePictureEncoder: @unchecked Sendable {
     @discardableResult
     func encode(_ texture: MTLTexture, forceKeyframe: Bool) -> Bool {
         let size = Self.pictureSize(width: texture.width, height: texture.height, maxSide: maxSide)
-        guard size.width > 0, let (session, pool) = sessionFitting(size) else { return false }
+        guard size.width > 0, let (compressor, pool) = compressorFitting(size) else { return false }
         guard let pixelBuffer = copy(texture, into: pool, width: size.width, height: size.height)
         else { return false }
 
         let index = frameIndex
         frameIndex += 1
-        pending.withLock { $0 += 1 }
-        let scale = Int32(max(1, (framesPerSecond * 1000).rounded()))
-        let time = CMTime(value: index * 1000, timescale: scale)
-        let duration = CMTime(value: 1000, timescale: scale)
-        let properties: CFDictionary? = forceKeyframe
-            ? [kVTEncodeFrameOptionKey_ForceKeyFrame: kCFBooleanTrue] as CFDictionary : nil
-
         let deliver = onPicture
-        let pending = pending
-        let status = VTCompressionSessionEncodeFrame(
-            session, imageBuffer: pixelBuffer, presentationTimeStamp: time, duration: duration,
-            frameProperties: properties, infoFlagsOut: nil
-        ) { status, _, sampleBuffer in
-            // Read the picture before the count drops, so a caller that waits for
-            // nothing in flight has the picture in hand by then.
-            let picture = status == noErr ? sampleBuffer.flatMap(PhonePicture.init(sampleBuffer:)) : nil
+        return compressor.encode(pixelBuffer, at: Double(index) / framesPerSecond,
+                                 forceKeyframe: forceKeyframe) { picture in
             if let picture { deliver(picture) }
-            pending.withLock { $0 = max(0, $0 - 1) }
         }
-        if status != noErr {
-            pending.withLock { $0 = max(0, $0 - 1) }
-            return false
-        }
-        return true
     }
 
     /// Wait for every submitted picture to come back. The tests use it; the live
     /// path never waits on the compressor.
-    func finish() {
-        if let session {
-            VTCompressionSessionCompleteFrames(session, untilPresentationTimeStamp: .invalid)
-        }
-    }
+    func finish() { compressor?.finish() }
 
     // MARK: The compressor
 
-    /// The session for this picture size, made on first use and made again when
-    /// the canvas changes size. A new session starts on a keyframe by itself.
-    private func sessionFitting(_ size: (width: Int, height: Int))
-        -> (VTCompressionSession, CVPixelBufferPool)? {
-        if let session, let pool, width == size.width, height == size.height {
-            return (session, pool)
+    /// The compressor for this picture size, made on first use and made again
+    /// when the canvas changes size. A new one starts on a keyframe by itself.
+    private func compressorFitting(_ size: (width: Int, height: Int))
+        -> (PhonePictureCompressor, CVPixelBufferPool)? {
+        if let compressor, let pool, compressor.width == size.width, compressor.height == size.height {
+            return (compressor, pool)
         }
         // A size the machine could not compress once is not asked for every frame.
         if let failedSize, failedSize == size { return nil }
 
-        if let old = session {
-            VTCompressionSessionCompleteFrames(old, untilPresentationTimeStamp: .invalid)
-            VTCompressionSessionInvalidate(old)
-        }
-        session = nil
+        // What the old one still holds comes back before it is let go.
+        compressor?.finish()
+        compressor = nil
         pool = nil
 
-        guard let made = makeSession(width: size.width, height: size.height),
-              let madePool = VTCompressionSessionGetPixelBufferPool(made) else {
-            failedSize = size
-            return nil
-        }
-        session = made
-        pool = madePool
-        width = size.width
-        height = size.height
-        failedSize = nil
-        return (made, madePool)
-    }
-
-    private func makeSession(width: Int, height: Int) -> VTCompressionSession? {
+        // The copy draws into buffers from the compressor's own pool, which it
+        // reads where they lie.
         let sourceAttributes: [CFString: Any] = [
             kCVPixelBufferPixelFormatTypeKey: kCVPixelFormatType_32BGRA,
-            kCVPixelBufferWidthKey: width,
-            kCVPixelBufferHeightKey: height,
+            kCVPixelBufferWidthKey: size.width,
+            kCVPixelBufferHeightKey: size.height,
             kCVPixelBufferIOSurfacePropertiesKey: [CFString: Any](),
             kCVPixelBufferMetalCompatibilityKey: true,
         ]
-        // Low-latency rate control where the machine has it, the plain real-time
-        // compressor where it does not.
-        let specifications: [[CFString: Any]] = [
-            [kVTVideoEncoderSpecification_EnableLowLatencyRateControl: true],
-            [:],
-        ]
-        for specification in specifications {
-            var made: VTCompressionSession?
-            let status = VTCompressionSessionCreate(
-                allocator: kCFAllocatorDefault, width: Int32(width), height: Int32(height),
-                codecType: kCMVideoCodecType_HEVC,
-                encoderSpecification: specification.isEmpty ? nil : specification as CFDictionary,
-                imageBufferAttributes: sourceAttributes as CFDictionary,
-                compressedDataAllocator: nil, outputCallback: nil, refcon: nil,
-                compressionSessionOut: &made)
-            guard status == noErr, let session = made else { continue }
-            configure(session, width: width, height: height)
-            VTCompressionSessionPrepareToEncodeFrames(session)
-            return session
+        guard let made = PhonePictureCompressor(
+                width: size.width, height: size.height, framesPerSecond: framesPerSecond,
+                colors: .sRGBCanvas, sourceAttributes: sourceAttributes),
+              let madePool = made.pixelBufferPool else {
+            failedSize = size
+            return nil
         }
-        return nil
-    }
-
-    private func configure(_ session: VTCompressionSession, width: Int, height: Int) {
-        func set(_ key: CFString, _ value: Any) {
-            VTSessionSetProperty(session, key: key, value: value as CFTypeRef)
-        }
-        set(kVTCompressionPropertyKey_RealTime, kCFBooleanTrue!)
-        set(kVTCompressionPropertyKey_AllowFrameReordering, kCFBooleanFalse!)
-        set(kVTCompressionPropertyKey_ProfileLevel, kVTProfileLevel_HEVC_Main_AutoLevel)
-        set(kVTCompressionPropertyKey_ExpectedFrameRate, framesPerSecond as NSNumber)
-        set(kVTCompressionPropertyKey_MaxKeyFrameIntervalDuration, 1.0 as NSNumber)
-        set(kVTCompressionPropertyKey_MaxKeyFrameInterval,
-            Int(framesPerSecond.rounded()) as NSNumber)
-        set(kVTCompressionPropertyKey_AverageBitRate,
-            Self.bitRate(width: width, height: height, framesPerSecond: framesPerSecond) as NSNumber)
-        // The canvas is sRGB, and saying so is what lets the phone show it as drawn.
-        set(kVTCompressionPropertyKey_ColorPrimaries, kCVImageBufferColorPrimaries_ITU_R_709_2)
-        set(kVTCompressionPropertyKey_TransferFunction, kCVImageBufferTransferFunction_sRGB)
-        set(kVTCompressionPropertyKey_YCbCrMatrix, kCVImageBufferYCbCrMatrix_ITU_R_709_2)
+        compressor = made
+        pool = madePool
+        failedSize = nil
+        return (made, madePool)
     }
 
     // MARK: The copy

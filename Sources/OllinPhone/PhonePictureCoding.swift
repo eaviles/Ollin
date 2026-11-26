@@ -88,9 +88,15 @@ extension PhonePicture {
     ///
     /// The buffer is marked to be shown the moment it is decoded, since a live
     /// picture has no timeline to wait on.
-    func sampleBuffer(reusing format: inout PhonePictureFormat?) -> CMSampleBuffer? {
-        if isKeyframe, format?.parameterSets != parameterSets {
-            guard let rebuilt = PhonePictureFormat(parameterSets: parameterSets) else { return nil }
+    ///
+    /// `colors` says how the picture's numbers are to be read, for a picture
+    /// whose sender said (the camera's). The sketch's own frames need none: both
+    /// ends know they are an sRGB canvas.
+    func sampleBuffer(reusing format: inout PhonePictureFormat?,
+                      colors: PhonePictureColors? = nil) -> CMSampleBuffer? {
+        if isKeyframe, format?.parameterSets != parameterSets || format?.colors != colors {
+            guard let rebuilt = PhonePictureFormat(parameterSets: parameterSets, colors: colors)
+            else { return nil }
             format = rebuilt
         }
         guard let format, !data.isEmpty else { return nil }
@@ -137,9 +143,11 @@ extension PhonePicture {
 /// keyframe can tell whether it needs a new one.
 struct PhonePictureFormat {
     let parameterSets: [Data]
+    /// How the picture's colors are to be read, when the sender said.
+    let colors: PhonePictureColors?
     let description: CMVideoFormatDescription
 
-    init?(parameterSets: [Data]) {
+    init?(parameterSets: [Data], colors: PhonePictureColors? = nil) {
         guard !parameterSets.isEmpty, parameterSets.allSatisfy({ !$0.isEmpty }) else { return nil }
         // Hold every set in one buffer so the pointers stay valid for the call.
         let joined = parameterSets.reduce(Data(), +)
@@ -153,14 +161,19 @@ struct PhonePictureFormat {
                 offset += set.count
             }
             let sizes = parameterSets.map(\.count)
+            // The parameter sets say the picture's size and range and nothing of
+            // its colors, so a sender's color values go in beside them.
+            let extensions = colors?.formatExtensions ?? [:]
             return CMVideoFormatDescriptionCreateFromHEVCParameterSets(
                 allocator: kCFAllocatorDefault, parameterSetCount: parameterSets.count,
                 parameterSetPointers: pointers, parameterSetSizes: sizes,
                 nalUnitHeaderLength: Int32(PhonePicture.nalLengthByteCount),
-                extensions: nil, formatDescriptionOut: &made)
+                extensions: extensions.isEmpty ? nil : extensions as CFDictionary,
+                formatDescriptionOut: &made)
         }
         guard status == noErr, let made else { return nil }
         self.parameterSets = parameterSets
+        self.colors = colors
         self.description = made
     }
 }

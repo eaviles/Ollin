@@ -16,6 +16,7 @@ import Ollin
 ///     state.isSupported                // false when the hardware isn't there
 ///     state.referenceCount             // how many pictures it is looking for
 ///     state.notes                      // what it could not use, in sentences
+///     state.isShowingSketch            // whether its screen is the sketch's
 /// }
 /// ```
 ///
@@ -50,10 +51,19 @@ public struct PhoneState: Sendable, Equatable {
     /// guess. Empty when it has nothing to report.
     public let notes: [String]
 
+    /// Whether the phone's screen is given over to a sketch's own frames
+    /// (`device.show(self)`). Always true in **Sketch** mode. In a camera mode
+    /// it is true while the sketch is on the cable and the person holding the
+    /// phone has not put its picture away, which they can at any time: the
+    /// phone is theirs, and the Mac sends frames only while this holds.
+    public let isShowingSketch: Bool
+
     /// Stage a reading with no phone attached (the tests and the Guide figure do).
+    /// `isShowingSketch` left out follows the mode: true for Sketch mode.
     public init(timestamp: Double, mode: PhoneCaptureMode, isSupported: Bool = true,
                 referenceCount: Int = 0, referencesAreDeclared: Bool = false,
-                statusMessage: String = "", notes: [String] = []) {
+                statusMessage: String = "", notes: [String] = [],
+                isShowingSketch: Bool? = nil) {
         self.timestamp = timestamp
         self.mode = mode
         self.isSupported = isSupported
@@ -61,6 +71,7 @@ public struct PhoneState: Sendable, Equatable {
         self.referencesAreDeclared = referencesAreDeclared
         self.statusMessage = statusMessage
         self.notes = notes
+        self.isShowingSketch = isShowingSketch ?? (mode == .sketch)
     }
 
     /// Wrap a decoded wire sample.
@@ -72,6 +83,7 @@ public struct PhoneState: Sendable, Equatable {
         referencesAreDeclared = sample.referencesAreDeclared
         statusMessage = sample.status
         notes = sample.notes
+        isShowingSketch = sample.showsSketch
     }
 
     /// Whether the phone is looking for anything at all.

@@ -157,7 +157,7 @@ extension PhoneMediaTests {
             return macEnd
         })
         let screen = PhoneScreen(device: PhoneDevice(), frameRate: 1000, sender: sender,
-                                 phoneMode: { .sketch })
+                                 phoneShowsSketch: { true })
         let sketch = PictureProbe()
 
         // The phone's end, read on a thread of its own the way the app's server

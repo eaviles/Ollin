@@ -18,7 +18,10 @@ import simd
 /// video beside it, for a sketch on the Mac to play back. In Sketch mode it runs the other way
 /// as well: the screen shows a sketch the Mac is running, sent down the cable as
 /// video, and the fingers on it go back (usbmuxd → `PhoneWire.streamPort`), where an Ollin
-/// sketch reads them in `draw()` via `OllinPhone`'s `PhoneDevice`.
+/// sketch reads them in `draw()` via `OllinPhone`'s `PhoneDevice`. A sketch that reads the
+/// camera's picture gets it as video on a connection of its own, in every mode that runs
+/// an ARKit session, and one that shows itself on the screen while such a mode runs makes
+/// the phone its viewfinder.
 @main
 struct OllinCaptureApp: App {
     var body: some Scene {
@@ -62,6 +65,10 @@ struct OllinCaptureApp: App {
 /// Sketch is Touch turned into a screen: the Mac sends the sketch it is running as
 /// video, the phone shows it full screen, and the fingers on the picture go back
 /// as the sketch's input. No camera runs in it either.
+///
+/// The same screen comes up over any other mode while a sketch is sending its
+/// frames (the viewfinder): the mode keeps running under it, and the person
+/// holding the phone can put the picture away and bring it back.
 ///
 /// The room's light streams in every ARKit mode, so it is not a mode of its own.
 /// Selfie runs no ARKit session, so it is the one mode with no light readings.
@@ -183,10 +190,28 @@ final class SensorStreamer {
     let attentionLift = ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth)
     let airSupported = AirStreamer.isSupported
 
+    /// Whether a sketch on the Mac is sending its own frames for this screen (a
+    /// client is on the picture port).
+    var sketchIsOnTheCable = false
+    /// Whether the person holding the phone put the sketch's picture away. It
+    /// lasts until the sketch leaves the cable; a sketch that arrives then is a
+    /// new one, and is shown.
+    var sketchIsPutAway = false
+    /// Whether the screen is given over to the sketch's frames: always in Sketch
+    /// mode, and in any other mode while a sketch is sending them and has not
+    /// been put away, which is the phone as a viewfinder.
+    var showsSketch: Bool { mode == .sketch || (sketchIsOnTheCable && !sketchIsPutAway) }
+    /// What the screen says about the camera's video going to the Mac, or empty
+    /// when no sketch is asking for it.
+    var cameraVideoInfo = ""
+
     private var server: SensorServer?
     /// The connection pictures arrive on. It keeps only its newest client, so a
     /// sketch reloaded on the Mac takes the screen over from the one before it.
     private var pictureServer: SensorServer?
+    /// The camera's video, to a sketch that reads the picture, on its own port.
+    private var cameraVideo: CameraVideoStreamer?
+    private var cameraVideoReported: TimeInterval = 0
     private let ar = ARStreamer()
     private let face = FaceStreamer()
     private let depth = DepthStreamer()
@@ -259,13 +284,16 @@ final class SensorStreamer {
             // anything else on this connection is a request like any other.
             let sink = screen.sink
             pictureServer = try SensorServer(port: PhoneWire.picturePort, keepsOnlyNewest: true,
-                                             onRequest: { [weak self] request in
+                                             onClientCountChange: { [weak self] count in
+                Task { @MainActor in self?.sketchOnTheCable(count > 0) }
+            }, onRequest: { [weak self] request in
                 if case .picture(let picture) = request {
                     sink.receive(picture)
                 } else {
                     Task { @MainActor in self?.apply(request) }
                 }
             })
+            cameraVideo = try CameraVideoStreamer()
         } catch {
             status = "Couldn't open the listener: \(error.localizedDescription)"
             return
@@ -526,7 +554,25 @@ final class SensorStreamer {
             transform: camera.transform, quarterTurnsCW: captureQuarterTurns())
         cameraFrames &+= 1
         if clientCount > 0 { server?.send(PhoneWire.encode(.camera(sample))) }
+        // The picture, as video, to a sketch that reads it. A frame the cable
+        // cannot take is skipped there before it is compressed.
+        cameraVideo?.sender.frame(frame.capturedImage, camera: sample)
+        reportCameraVideo(at: frame.timestamp, size: size)
         recorder.record(picture: frame.capturedImage, camera: sample)
+    }
+
+    /// Say on the screen, a few times a second, what is going to the Mac.
+    private func reportCameraVideo(at time: TimeInterval, size: CGSize) {
+        guard let sender = cameraVideo?.sender, time - cameraVideoReported >= 0.25 else { return }
+        cameraVideoReported = time
+        guard sender.hasClient else {
+            if !cameraVideoInfo.isEmpty { cameraVideoInfo = "" }
+            return
+        }
+        var parts = ["\(Int(size.width))×\(Int(size.height))", "\(sender.sentCount) sent"]
+        if sender.skippedCount > 0 { parts.append("\(sender.skippedCount) skipped") }
+        if sender.lostCount > 0 { parts.append("\(sender.lostCount) lost") }
+        cameraVideoInfo = parts.joined(separator: " · ")
     }
 
     /// Whether the mode the phone is in can be recorded: it has to run a camera
@@ -570,9 +616,45 @@ final class SensorStreamer {
         applyMode()
     }
 
-    /// Leave the sketch's full screen for the mode the phone was in before it.
+    /// Leave the sketch's full screen. In Sketch mode that is back to the mode
+    /// the phone was in before it. Over a camera mode the mode keeps running and
+    /// the picture is put away, until `bringSketchBack()` or a new sketch.
     func leaveSketch() {
-        setMode(modeBeforeSketch == .sketch ? .touch : modeBeforeSketch)
+        sketchIsPutAway = true
+        if mode == .sketch {
+            setMode(modeBeforeSketch == .sketch ? .touch : modeBeforeSketch)
+        } else {
+            screenChanged()
+        }
+    }
+
+    /// Give the screen back to the sketch that is sending its frames.
+    func bringSketchBack() {
+        sketchIsPutAway = false
+        screenChanged()
+    }
+
+    /// A sketch began sending its frames, or the last one stopped.
+    private func sketchOnTheCable(_ present: Bool) {
+        guard present != sketchIsOnTheCable else { return }
+        sketchIsOnTheCable = present
+        // Putting a picture away is about the sketch that was sending it.
+        if !present { sketchIsPutAway = false }
+        screenChanged()
+    }
+
+    /// The screen may have changed hands between the mode's own controls and
+    /// the sketch's picture: the pad under the picture follows, a picture put
+    /// away is forgotten so the next one starts at a keyframe, and the Mac is
+    /// told, since it sends frames only while the screen is the sketch's.
+    private func screenChanged() {
+        if showsSketch {
+            touch.start()
+        } else {
+            screen.end()
+            if mode != .touch { touch.stop() }
+        }
+        sendState()
     }
 
     // MARK: What the Mac asks for
@@ -609,7 +691,7 @@ final class SensorStreamer {
                                      mode: mode, isSupported: supports(mode),
                                      referenceCount: markerReferences.count,
                                      referencesAreDeclared: markersAreDeclared,
-                                     status: status, notes: markerNotes)
+                                     status: status, notes: markerNotes, showsSketch: showsSketch)
         // The clock moves on every call, so hold it level to ask the real question:
         // has anything the sketch cares about changed since the last answer?
         var probe = state
@@ -716,6 +798,9 @@ final class SensorStreamer {
                 ? "Streaming the room surface and its flat planes"
                 : "Streaming flat planes (this device has no LiDAR to build a surface)"
         }
+        // A sketch that is being shown keeps the screen through a change of mode,
+        // and its fingers with it.
+        if showsSketch { touch.start() }
         // Every path above lands here, so a tap on the phone and a request from the
         // Mac both report the same way.
         sendState()
@@ -734,9 +819,10 @@ final class SensorStreamer {
         ar.stop(); face.stop(); depth.stop(); seg.stop(); selfie.stop()
         room.stop(); hands.stop(); text.stop(); markers.stop(); wand.stop()
         attention.stop(); flow.stop(); touch.stop()
-        // Whatever picture was up belongs to the mode being left; coming back to
-        // Sketch starts again from the Mac's next keyframe.
-        screen.end()
+        // A picture that is no longer shown is forgotten; coming back to it
+        // starts again from the Mac's next keyframe. One that stays up through
+        // the change of mode (the viewfinder) is left alone.
+        if !showsSketch { screen.end() }
     }
 
     /// Name the strongest-firing blendshape, for the status readout.
@@ -769,7 +855,7 @@ struct ContentView: View {
 
     var body: some View {
         Group {
-            if streamer.mode == .sketch {
+            if streamer.showsSketch {
                 SketchScreenView(screen: streamer.screen, touch: streamer.touch) {
                     streamer.leaveSketch()
                 }
@@ -822,6 +908,10 @@ struct ContentView: View {
 
     private var showsRecord: Bool { streamer.canRecord || streamer.recording }
 
+    /// Whether a sketch is sending its frames and its picture was put away, so
+    /// there is something to bring back.
+    private var showsSketchButton: Bool { streamer.sketchIsOnTheCable && streamer.sketchIsPutAway }
+
     /// Held upright: one column, centered.
     private var tall: some View {
         VStack(spacing: 28) {
@@ -829,6 +919,7 @@ struct ContentView: View {
             readout
             if streamer.mode == .wand { wandPad }
             if streamer.mode == .touch { touchPad }
+            if showsSketchButton { sketchButton }
             if showsRecord { recordButton }
             statusLine
             Spacer()
@@ -851,10 +942,11 @@ struct ContentView: View {
                 }
                 .padding(.vertical, 20)
             }
-            if streamer.mode == .wand || streamer.mode == .touch || showsRecord {
+            if streamer.mode == .wand || streamer.mode == .touch || showsRecord || showsSketchButton {
                 VStack(spacing: 14) {
                     if streamer.mode == .wand { wandPad }
                     if streamer.mode == .touch { touchPad }
+                    if showsSketchButton { sketchButton }
                     if showsRecord {
                         recordButton
                         // The Record row may have scrolled away, so the count
@@ -1019,6 +1111,9 @@ struct ContentView: View {
                 : "starting…",
                 ok: streamer.motionLive)
             row("Port", "\(PhoneWire.streamPort) · over USB", ok: connected)
+            if !streamer.cameraVideoInfo.isEmpty {
+                row("Picture", streamer.cameraVideoInfo, ok: true)
+            }
             row("Record", streamer.recordingInfo.isEmpty
                 ? (streamer.canRecord ? "ready · needs no cable" : "needs a camera mode")
                 : streamer.recordingInfo,
@@ -1160,6 +1255,26 @@ struct ContentView: View {
             }
         }
         .frame(minHeight: 200, maxHeight: .infinity)
+        .padding(.horizontal, 28)
+    }
+
+    /// Brings back the picture of the sketch the Mac is running, after the
+    /// chevron on it put it away. The mode under it never stopped.
+    private var sketchButton: some View {
+        Button {
+            streamer.bringSketchBack()
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "rectangle.inset.filled")
+                    .foregroundStyle(.white)
+                Text("Show the sketch")
+                    .font(.system(.headline, design: .rounded))
+                    .foregroundStyle(.white)
+            }
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity)
+            .background(Color.white.opacity(0.1), in: Capsule())
+        }
         .padding(.horizontal, 28)
     }
 
