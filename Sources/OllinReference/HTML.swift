@@ -446,7 +446,7 @@ public enum HTML {
             cells.append(trimmed)
         }
         guard let header = cells.first else { return "" }
-        if header.allSatisfy({ $0.hasPrefix("[![") }) { return gallery(cells, resolve: resolve) }
+        if isPictureRow(header) { return gallery(cells, resolve: resolve) }
 
         var out = "<div class=\"table\"><table>\n<thead><tr>"
         for cell in header { out += "<th>\(inline(cell, resolve: resolve))</th>" }
@@ -461,6 +461,17 @@ public enum HTML {
         }
         out += "</tbody>\n</table></div>"
         return out
+    }
+
+    /// Whether a table's first row is a row of linked stills.
+    ///
+    /// A listing pads its last row with empty cells, and a group with fewer
+    /// sketches than the grid is wide has only that row, so its first row
+    /// ends in empty cells too. Those cells are padding: a row is a picture
+    /// row when it holds at least one still and nothing but stills.
+    static func isPictureRow(_ cells: [String]) -> Bool {
+        let filled = cells.filter { !$0.isEmpty }
+        return !filled.isEmpty && filled.allSatisfy { $0.hasPrefix("[![") }
     }
 
     /// A listing's picture grid, which a table of linked stills is written as

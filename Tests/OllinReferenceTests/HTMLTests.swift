@@ -38,6 +38,25 @@ struct HTMLTests {
         #expect(!plain.contains("gallery"))
     }
 
+    @Test("A grid whose only row is padded with empty cells is still a grid")
+    func galleryWithAShortFirstRow() {
+        // A group with two sketches in a grid four wide: the first row is
+        // also the last, so it ends in the padding.
+        let markdown = """
+        | [![One](a/still-640.jpg)](One/) | [![Two](b/still-640.jpg)](Two/) |  |  |
+        |---|---|---|---|
+        | [One](One/) | [Two](Two/) |  |  |
+        """
+        let html = HTML.render(markdown, resolve: Self.identity).body
+        #expect(html.contains("<div class=\"gallery\">"))
+        #expect(!html.contains("<table>"))
+        #expect(html.components(separatedBy: "<figure>").count - 1 == 2, "the padding makes no figure of its own")
+
+        // A row of nothing but empty cells is not a picture row.
+        #expect(!HTML.isPictureRow(["", ""]))
+        #expect(!HTML.isPictureRow(["[![One](a.jpg)](One/)", "words"]))
+    }
+
     // MARK: - Inline
 
     @Test("Markers become tags and text is escaped")

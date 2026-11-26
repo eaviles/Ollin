@@ -43,6 +43,7 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ### Fixed
 
+- **A short row of pictures shows as cards on the website.** A listing with fewer sketches than its grid is wide was laid out there as a plain table. It is a card grid now, like every other listing.
 - **Glass shows the scene with clean edges.** Under `sceneThroughGlass()`, things seen through solid glass had edges in uneven steps, and a box's side seen nearly edge-on was missing. The ray leaving the body is now tested against every pixel it crosses. A frame filled by solid glass costs about 4 ms more on an M2. [The scene through glass](Docs/3D/3D.md#scene-through-glass)
 - **A 3D body tracker no longer grows by a gigabyte every minute and a half.** The system's 3D pose model leaves a buffer behind on every analysis. `BodyTracker3D` now finds and frees them as it runs, on macOS. `BodyTracker3D.freesLeftoverBuffers = false` turns that off. [Vision](Docs/Vision/Vision.md#bodytracker3d)
 - **The camera takes over after the first Allow.** On a Mac never asked for its camera, a sketch made with `Camera.orStill` showed its picture and kept it after Allow, until a relaunch. The picture now stands in only while the prompt is up, a refusal says why in the terminal, and an export never asks. [Vision](Docs/Vision/Vision.md#nocamera)
