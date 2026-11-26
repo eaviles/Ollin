@@ -5760,24 +5760,26 @@
       "width": 1080
     },
     "Effects/GeneratorCatalog": {
-      "bytes": {
-        "loop": 3158601,
-        "loopSmall": 1041016,
-        "still": 149434,
-        "stillSmall": 69767
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
-      "length": "10s",
-      "loop": "examples/Effects/GeneratorCatalog/loop.mp4?v=a1623875",
-      "loopSmall": "examples/Effects/GeneratorCatalog/loop-640.mp4?v=9c0bca0c",
-      "motion": 37.896,
-      "rendered": "2026-09-10",
+      "length": "10.0s",
       "seconds": 10.0,
+      "frame": 480,
+      "motion": 37.875,
+      "sound": false,
       "source": "77fe30f6c81e3342",
-      "still": "examples/Effects/GeneratorCatalog/still.jpg?v=5f832ca9",
-      "stillSmall": "examples/Effects/GeneratorCatalog/still-640.jpg?v=99c84940",
-      "width": 1080
+      "rendered": "2026-11-26",
+      "bytes": {
+        "loop": 3079659,
+        "loopSmall": 882095,
+        "still": 140893,
+        "stillSmall": 66058
+      },
+      "loop": "examples/Effects/GeneratorCatalog/loop.mp4?v=75182b36",
+      "loopSmall": "examples/Effects/GeneratorCatalog/loop-640.mp4?v=d380a408",
+      "still": "examples/Effects/GeneratorCatalog/still.jpg?v=803f1f7b",
+      "stillSmall": "examples/Effects/GeneratorCatalog/still-640.jpg?v=1b47380b",
+      "seed": 1
     },
     "Effects/Glitter": {
       "bytes": {

@@ -800,6 +800,7 @@ struct EffectInvariantTests {
         Named(name: "ripple amplitude 0", filter: .ripple(amplitude: 0)),
         Named(name: "polar amount 0", filter: .polar(amount: 0)),
         Named(name: "tile count 1", filter: .tile(count: 1)),
+        Named(name: "tile count 1 mirrored", filter: .tile(count: 1, mirrored: true)),
         Named(name: "perturb amount 0", filter: .perturb(amount: 0)),
         Named(name: "lensDistortion 0", filter: .lensDistortion(amount: 0, quartic: 0)),
         Named(name: "cornerPin identity", filter: .cornerPin()),
@@ -845,14 +846,7 @@ struct EffectInvariantTests {
     @Test(arguments: exactlyNeutral)
     func aFilterAskedForNothingReturnsItsInput(_ item: Named) throws {
         let w = try Self.filtered(item.filter).worst(against: try Self.plain())
-        switch item.name {
-        case "lightLeak intensity 0":
-            try pinned("the leak's dither is added before the intensity's floor, so at intensity 0 half the pixels gain up to 0.002 of light and of alpha (measured 2026-11-09)") {
-                #expect(w.by == 0, "\(item.name): \(describe(w))")
-            }
-        default:
-            #expect(w.by == 0, "\(item.name): \(describe(w))")
-        }
+        #expect(w.by == 0, "\(item.name): \(describe(w))")
     }
 
     @Test(arguments: neutralWithinAStep)
@@ -1194,9 +1188,29 @@ struct EffectInvariantTests {
 
     @Test(arguments: sizedWithALengthOfTheirOwn, [0.5, 2.0])
     func aFilterWithALengthOfItsOwnStaysNearItsTwin(_ item: Sized<Filter>, layerScale: Double) throws {
+        // The oil paint flattens detail and leaves flats as they are, so it is
+        // read on a picture that has detail.
+        let detailed = item.name == "oilPaint"
         try judge(item.name, at: layerScale, within: 0.5) { k, twin in
-            try Self.scaled(layerScale, twin: twin) { _, layer in layer.filtered(item.make(k)) }
+            try Self.scaled(layerScale, twin: twin, { detailed ? Self.speckled($0) : Self.picture($0) }) { _, layer in
+                layer.filtered(item.make(k))
+            }
         }
+    }
+
+    /// A picture that is detail all over: squares three pixels across in
+    /// colors that jump from one to the next, under the half-clear disc.
+    static func speckled(_ s: Sketch) {
+        s.noStroke()
+        var state: UInt32 = 0x9E37_79B9
+        func next() -> Double { state = state &* 1_664_525 &+ 1_013_904_223; return Double(state >> 8) / Double(1 << 24) }
+        for j in 0 ..< 32 { for i in 0 ..< 32 {
+            s.fill(Color(linear: next(), green: next(), blue: next()))
+            s.drawPolygon([Vector2(Double(i) * 3, Double(j) * 3), Vector2(Double(i) * 3 + 3, Double(j) * 3),
+                           Vector2(Double(i) * 3 + 3, Double(j) * 3 + 3), Vector2(Double(i) * 3, Double(j) * 3 + 3)])
+        } }
+        s.fill(Color(red: 0.2, green: 0.7, blue: 0.9, alpha: 0.5))
+        s.drawCircle(64, 56, 19)
     }
 
     /// Read against the full-size picture on a layer kept at twice the size:
@@ -1380,10 +1394,7 @@ struct EffectInvariantTests {
             guard p.w > 0.02 else { continue }
             for c in 0..<3 { worst = max(worst, abs(p[c] / p.w / ink[c] - 1)) }
         } }
-        try pinned("the region means are taken of colors already divided by their alpha, where an empty neighbor counts as black: a half-clear shape's rim comes back 4% dark (measured 2026-11-09)",
-                   when: item.name == "oilPaint") {
-            #expect(worst < 0.006, "\(item.name): the straight color strays by \(worst * 100)%")
-        }
+        #expect(worst < 0.006, "\(item.name): the straight color strays by \(worst * 100)%")
     }
 
     // MARK: Glows
@@ -1434,6 +1445,59 @@ struct EffectInvariantTests {
         #expect(try chain([.invert(), .invert()]).worst(against: plain).by < 0.002)
     }
 
+    /// Vibrance turned down dulls a color toward the gray of its own
+    /// brightness and stops there: at -1 every color is that gray, and on the
+    /// way no color passes through gray into the opposite hue.
+    @Test(arguments: [-1.0, -0.75, -0.5, -0.25])
+    func vibranceTurnedDownStopsAtGray(amount: Double) throws {
+        let red = try flat(32, Color(linear: 1, green: 0, blue: 0), .vibrance(amount: amount)).at(16, 16)
+        let gray = 0.2126
+        #expect(red.x >= red.y - 0.002 && red.x >= red.z - 0.002, "at \(amount) pure red came back \(fmt(red)), its hue turned")
+        #expect(abs(red.y - red.z) < 0.002, "at \(amount) pure red came back \(fmt(red))")
+        if amount <= -0.5 {
+            #expect(abs(red.x - gray) < 0.003 && abs(red.y - gray) < 0.003, "at \(amount) pure red came back \(fmt(red)), where its gray is \(gray)")
+        }
+        // A muted color is dulled less than a vivid one, and at -1 is gray too.
+        let muted = try flat(32, Color(linear: 0.5, green: 0.4, blue: 0.4), .vibrance(amount: amount)).at(16, 16)
+        #expect(muted.x >= muted.y - 0.002, "at \(amount) a muted red came back \(fmt(muted))")
+        if amount == -1 { #expect(abs(muted.x - muted.y) < 0.003, "at -1 a muted red came back \(fmt(muted))") }
+    }
+
+    /// Colorama lays the hue wheel along brightness: a pixel takes the wheel's
+    /// color for its own brightness and keeps its brightness. So a ramp of
+    /// written grays comes back as the wheel in order, one turn from black to
+    /// white, each column as bright as its gray, black still black; `shift`
+    /// turns the wheel; and a color keeps its own value under its new hue.
+    @Test(arguments: [(1.0, 0.0), (2.0, 0.0), (1.0, 0.25)])
+    func coloramaLaysTheWheelAlongBrightness(cycles: Double, shift: Double) throws {
+        let f = try Self.render(side: 128) { s in
+            s.background(.clear)
+            let layer = s.makeRenderTarget()
+            s.withTarget(layer) {
+                s.noStroke()
+                for x in 0..<128 {
+                    s.fill(Color(white: (Double(x) + 0.5) / 128))
+                    s.drawPolygon([Vector2(Double(x), 0), Vector2(Double(x) + 1, 0), Vector2(Double(x) + 1, 128), Vector2(Double(x), 128)])
+                }
+            }
+            s.drawImage(layer.filtered(.colorama(cycles: cycles, shift: shift)).image, 0, 0)
+        }
+        var worst = 0.0
+        for x in stride(from: 2, to: 128, by: 5) {
+            let gray = (Double(x) + 0.5) / 128
+            let turn = gray * cycles + shift
+            let want = Color(hue: turn - turn.rounded(.down), saturation: 1, brightness: gray).linearRGBA
+            let got = f.at(x, 64)
+            for c in 0..<3 { worst = max(worst, abs(got[c] - Double(want[c]))) }
+        }
+        #expect(worst < 0.02, "a written gray ramp under \(cycles) turns shifted \(shift) strays from the wheel by \(worst)")
+        #expect(f.at(0, 64).x < 0.001 && f.at(0, 64).w > 0.99, "black came back \(fmt(f.at(0, 64)))")
+        // A color keeps its value, the largest channel as written.
+        let color = try flat(32, Color(red: 0.2, green: 0.7, blue: 0.9), .colorama(cycles: cycles, shift: shift)).at(16, 16)
+        let value = Color.linearToSrgb(max(color.x, color.y, color.z))
+        #expect(abs(value - 0.9) < 0.01, "a color whose largest channel is written 0.9 came back with \(value)")
+    }
+
     /// `mirror` keeps one half of the layer and shows its reflection on the
     /// other, and `tile(count: 2)` is four half-size copies, each what
     /// `drawImage` draws at half size.
@@ -1455,13 +1519,43 @@ struct EffectInvariantTests {
         #expect(tiled.worst(against: drawn).by == 0, "tiling by two: \(describe(tiled.worst(against: drawn)))")
     }
 
-    /// One mirrored tile is the picture: mirroring flips every other cell, and
-    /// the first is not one of them.
-    @Test func aMirroredTileOfOneIsThePicture() throws {
-        let plain = try Self.plain(), out = try Self.filtered(.tile(count: 1, mirrored: true))
-        try pinned("the mirrored fold is one minus the coordinate on the first cell, so the first cell is a flipped one: one mirrored tile is the picture turned half round, to the number (measured 2026-11-09)") {
-            #expect(out.mean(against: plain) < 0.001, "one mirrored tile differs from the picture by a mean of \(out.mean(against: plain))")
+    /// Mirroring flips every other cell, and the first is not one of them: the
+    /// first cell of a mirrored tiling is the first cell of the plain one, and
+    /// the cell beside it is that cell's reflection in the line between them.
+    /// (One mirrored tile is the picture itself, held with the neutral settings.)
+    @Test func aMirroredTilingStartsWithThePictureAndReflectsTheNext() throws {
+        let tiled = try Self.filtered(.tile(count: 2)), mirrored = try Self.filtered(.tile(count: 2, mirrored: true))
+        var first = 0.0, across = 0.0, down = 0.0
+        for y in 0..<48 { for x in 0..<48 { for c in 0..<4 {
+            first = max(first, abs(mirrored.value(x, y, c) - tiled.value(x, y, c)))
+            across = max(across, abs(mirrored.value(95 - x, y, c) - tiled.value(x, y, c)))
+            down = max(down, abs(mirrored.value(x, 95 - y, c) - tiled.value(x, y, c)))
+        } } }
+        #expect(first < 0.001, "the first cell of a mirrored tiling strays from the plain one by \(first)")
+        #expect(across < 0.001 && down < 0.001, "the next cell is not the reflection: \(across) across, \(down) down")
+    }
+
+    /// A kaleidoscope shows the wedge of the picture it is turned to: the one
+    /// from the picture's middle toward its right edge, as wide as half a
+    /// segment. A mark inside that wedge shows in every wedge of the wheel, and
+    /// at its own place among them; a mark at the same place on the far side of
+    /// the middle is in no wedge and shows nowhere.
+    @Test func aKaleidoscopeShowsTheWedgeItIsTurnedTo() throws {
+        // Four segments: the wedge kept runs from the +x axis a quarter of a
+        // right angle down, so a mark 22.5 degrees below the axis sits in its middle.
+        let away = SIMD2(28 * cos(Double.pi / 8), 28 * sin(Double.pi / 8))
+        func wheel(markAt sign: Double, folded: Bool = true) throws -> Frame {
+            try Self.render { s in
+                s.background(.clear)
+                let layer = s.makeRenderTarget()
+                s.withTarget(layer) { s.noStroke(); s.fill(.white); s.drawCircle(48 + sign * away.x, 48 + sign * away.y, 5) }
+                s.drawImage((folded ? layer.filtered(.kaleidoscope(segments: 4, angle: 0)) : layer).image, 0, 0)
+            }
         }
+        let mark = try wheel(markAt: 1, folded: false).sum(3), shown = try wheel(markAt: 1), hidden = try wheel(markAt: -1)
+        #expect(abs(shown.sum(3) / (8 * mark) - 1) < 0.05, "a mark in the wedge shows as \(shown.sum(3) / mark) marks where the wheel has eight")
+        #expect(shown.value(Int(48 + away.x), Int(48 + away.y), 3) > 0.99, "the mark is not at its own place")
+        #expect(hidden.sum(3) < 0.01 * mark, "a mark across the middle from the wedge shows as \(hidden.sum(3) / mark) marks")
     }
 
     nonisolated static let roundWarps: [Named] = [
@@ -1487,10 +1581,12 @@ struct EffectInvariantTests {
             return ((f.varX - base.varX).squareRoot(), max(0, f.varY - base.varY).squareRoot())
         }
         let across = try smeared(0), down = try smeared(.pi / 2), diagonal = try smeared(.pi / 4)
-        try pinned("the blur's step is taken in the layer's own 0 to 1 coordinates with no aspect, so on a 2:1 layer the same distance smears 14.8 px across and 7.4 down, and an angle of 45 degrees runs at 27 (measured 2026-11-09)") {
-            #expect(abs(down.y / across.x - 1) < 0.03, "the smear is \(across.x) across and \(down.y) down")
-            #expect(abs(diagonal.y / diagonal.x - 1) < 0.03, "at 45 degrees the smear runs \(diagonal.x) across and \(diagonal.y) down")
-        }
+        #expect(abs(down.y / across.x - 1) < 0.03, "the smear is \(across.x) across and \(down.y) down")
+        #expect(abs(diagonal.y / diagonal.x - 1) < 0.03, "at 45 degrees the smear runs \(diagonal.x) across and \(diagonal.y) down")
+        // The length is `distance` of the layer's height, 24 px here, and a
+        // streak that long spreads a mark by its length over the root of twelve.
+        let streak = 0.25 * 96 / 12.0.squareRoot()
+        #expect(abs(across.x / streak - 1) < 0.03, "a smear of 24 px spreads a mark by \(across.x), where a streak that long spreads it \(streak)")
         let comb = try Self.render(side: 128) { s in
             s.background(.clear)
             let layer = s.makeRenderTarget()
@@ -1498,9 +1594,27 @@ struct EffectInvariantTests {
             s.drawImage(layer.filtered(.motionBlur(angle: 0, distance: 0.5)).image, 0, 0)
         }
         let inside = (40..<88).map { comb.value($0, 64, 3) }
-        try pinned("sixteen taps however long the smear: a one-pixel line smeared over half a 128-pixel layer is sixteen copies with gaps that read 0 between them (measured 2026-11-09)") {
-            #expect(inside.min()! > inside.max()! * 0.5, "inside the streak the coverage runs from \(inside.min()!) to \(inside.max()!)")
-        }
+        #expect(inside.min()! > inside.max()! * 0.9, "inside the streak the coverage runs from \(inside.min()!) to \(inside.max()!)")
+        // The line's light is all still there, spread along the streak.
+        let line = try Self.render(side: 128) { s in
+            s.background(.clear); s.noStroke(); s.fill(.white); s.drawRect(64, 0, 1, 128)
+        }.sum(3, y: 64..<65)
+        #expect(abs(comb.sum(3, y: 64..<65) / line - 1) < 0.01, "a row of the smeared line holds \(comb.sum(3, y: 64..<65)) of the line's \(line)")
+    }
+
+    /// The two rows a motion blur takes are one long row of taps: together they
+    /// span the smear's length, no tap is over a texel from the next up to
+    /// 4,096 texels, neither row asks for more than the fragment's 64, and a
+    /// smear of no length is one tap.
+    @Test(arguments: [0.0, 0.4, 1.0, 6.4, 16.0, 43.2, 64.0, 540.0, 1920.0, 4096.0, 100_000.0, .infinity, .nan])
+    func aMotionBlursTwoRowsAreOneLongRow(length: Double) {
+        let taps = Filter.motionBlurTaps(length: length)
+        let held = length.isFinite ? min(length, 65536) : 0
+        #expect((1...64).contains(taps.fine) && (1...64).contains(taps.coarse))
+        #expect(abs(Double(taps.fine * taps.coarse) * taps.fineStep - held) < 1e-9 * max(1, held), "the taps span \(Double(taps.fine * taps.coarse) * taps.fineStep) of \(held)")
+        #expect(abs(taps.coarseStep - Double(taps.fine) * taps.fineStep) < 1e-9 * max(1, held), "a tap of the second row is not one first row from the next")
+        if held <= 4096 { #expect(taps.fineStep <= 1, "taps \(taps.fineStep) texels apart leave gaps") }
+        if held == 0 { #expect(taps.fine == 1 && taps.coarse == 1) }
     }
 
     /// A flat field has no contour lines, whatever its brightness.
@@ -1508,8 +1622,34 @@ struct EffectInvariantTests {
         let gray = try flat(32, Color(linear: 0.33, green: 0.33, blue: 0.33), .contour(levels: 10, amount: 1)).at(16, 16)
         #expect(abs(gray.x - 0.33) < 0.002, "a flat 0.33 came back \(gray.x)")
         let white = try flat(32, .white, .contour(levels: 10, amount: 1)).at(16, 16)
-        try pinned("a flat field whose brightness sits on a level has a zero distance to the line and a zero pixel step, which the line's ramp reads as on the line: flat white comes back solid black (measured 2026-11-09)") {
-            #expect(white.x > 0.99, "flat white came back \(white.x)")
+        #expect(white.x > 0.99, "flat white came back \(white.x)")
+    }
+
+    /// A slope has its lines: a ramp from black to white under four levels is
+    /// crossed by three dark lines, each where the ramp passes a level, and
+    /// between them the ramp is as it was.
+    @Test func contourDrawsALineWhereARampCrossesALevel() throws {
+        func ramp(_ filter: Filter?) throws -> Frame {
+            try Self.render(side: 128) { s in
+                s.background(.clear)
+                let layer = s.makeRenderTarget()
+                s.withTarget(layer) {
+                    s.noStroke()
+                    for x in 0..<128 {
+                        let v = (Double(x) + 0.5) / 128
+                        s.fill(Color(linear: v, green: v, blue: v))
+                        s.drawPolygon([Vector2(Double(x), 0), Vector2(Double(x) + 1, 0), Vector2(Double(x) + 1, 128), Vector2(Double(x), 128)])
+                    }
+                }
+                s.drawImage((filter.map { layer.filtered($0) } ?? layer).image, 0, 0)
+            }
+        }
+        let plain = try ramp(nil), lined = try ramp(.contour(levels: 4, amount: 1))
+        for level in 1...3 {
+            let x = level * 32
+            let darkest = (x - 2...x + 1).map { lined.value($0, 64) / plain.value($0, 64) }.min()!
+            #expect(darkest < 0.6, "where the ramp crosses level \(level) the line leaves \(darkest) of it")
+            #expect(abs(lined.value(x + 16, 64) - plain.value(x + 16, 64)) < 0.002, "between two lines the ramp moved")
         }
     }
 
@@ -1517,10 +1657,14 @@ struct EffectInvariantTests {
     /// of a flat field is the field's value.
     @Test(arguments: [(0.5, 2.0), (0.25, 2.0), (0.6, 4.0), (0.5, 8.0)])
     func anOrderedDitherKeepsTheMeanBrightness(value: Double, levels: Double) throws {
-        let got = mean(try flat(64, Color(linear: value, green: value, blue: value), .dither(levels: levels))).x
-        try pinned("the quantizer multiplies by the number of levels and divides by one less, so the mean comes back n / (n - 1) times the value: 0.5 at two levels is all white, 0.6 at four reads 0.79, 0.5 at eight reads 0.571 (measured 2026-11-09)") {
-            #expect(abs(got - value) < 0.02, "a flat \(value) dithered to \(levels) levels has a mean of \(got)")
-        }
+        let out = try flat(64, Color(linear: value, green: value, blue: value), .dither(levels: levels))
+        let got = mean(out).x
+        #expect(abs(got - value) < 0.02, "a flat \(value) dithered to \(levels) levels has a mean of \(got)")
+        // And every pixel sits on one of the levels: a whole number of steps
+        // from black to white.
+        var off = 0.0
+        for y in 0..<64 { for x in 0..<64 { let v = out.value(x, y) * (levels - 1); off = max(off, abs(v - v.rounded())) } }
+        #expect(off < 0.005, "a pixel sits \(off) of a step off the nearest of \(levels) levels")
     }
 
     nonisolated static let inked: [Named] = [
@@ -1534,23 +1678,58 @@ struct EffectInvariantTests {
     /// layer holds: no color is brighter than its own coverage allows.
     @Test(arguments: inked)
     func whatAFilterWritesIsPremultiplied(_ item: Named) throws {
-        let f = try flat(64, Color(linear: 0.6, green: 0.6, blue: 0.6), item.filter)
-        var past = 0.0
-        for y in 0..<64 { for x in 0..<64 { let p = f.at(x, y); past = max(past, max(p.x, p.y, p.z) - p.w) } }
-        try pinned("the two colors are mixed as written, with a clear background's white still in it: color past its coverage by 1.0 under crosshatch and 0.15 under lineScreen, which composites as added white (measured 2026-11-09)",
-                   when: item.name == "crosshatch" || item.name == "lineScreen") {
-            #expect(past < 0.002, "\(item.name) wrote a color \(past) past its own alpha")
-        }
+        let f = try Self.filtered(item.filter)
+        var past = 0.0, stray = 0.0, inked = 0.0
+        for y in 0..<96 { for x in 0..<96 {
+            let p = f.at(x, y)
+            past = max(past, max(p.x, p.y, p.z) - p.w); stray = max(stray, max(p.x, p.y, p.z)); inked += p.w
+        } }
+        #expect(past < 0.002, "\(item.name) wrote a color \(past) past its own alpha")
+        // Black ink over a background that is clear is black wherever it is,
+        // at the soft edge of a mark too: the clear color brings none of its own.
+        #expect(stray < 0.002, "\(item.name) left \(stray) of the clear background's white in its ink")
+        #expect(inked > 40, "\(item.name) drew no ink to read")
     }
 
-    @Test func whatAGeneratorOrAGlitchWritesIsPremultiplied() throws {
-        let half = try Self.render(side: 64) { s in
+    struct NamedPattern: Sendable, CustomTestStringConvertible {
+        let name: String
+        let generator: Generator
+        var testDescription: String { name }
+    }
+
+    /// The six basic patterns in a half-clear white over nothing.
+    nonisolated static let seeThroughPatterns: [NamedPattern] = {
+        let ink = Color(white: 1, alpha: 0.5), none = Color.clear
+        return [
+            NamedPattern(name: "checkers", generator: .checkers(scale: 4, foreground: ink, background: none)),
+            NamedPattern(name: "gridLines", generator: .gridLines(scale: 4, weight: 0.3, foreground: ink, background: none)),
+            NamedPattern(name: "bars", generator: .bars(scale: 4, foreground: ink, background: none)),
+            NamedPattern(name: "noise", generator: .noise(scale: 4, foreground: ink, background: none)),
+            NamedPattern(name: "cellular", generator: .cellular(scale: 4, foreground: ink, background: none)),
+            NamedPattern(name: "gaborNoise", generator: .gaborNoise(wavelength: 12, foreground: ink, background: none)),
+        ]
+    }()
+
+    /// A pattern's see-through color is held as a layer holds one, under its
+    /// alpha: half-clear white is half of white at half coverage, at every
+    /// pixel and every share of the pattern.
+    @Test(arguments: seeThroughPatterns)
+    func whatAPatternWritesIsPremultiplied(_ item: NamedPattern) throws {
+        let f = try Self.render(side: 64) { s in
             s.background(.clear)
-            s.drawImage(s.generate(.checkers(scale: 4, foreground: Color(white: 1, alpha: 0.5), background: .clear)).image, 0, 0)
-        }.at(4, 4)
-        try pinned("the pattern generators return their colors as written: a half-clear white cell holds (1, 1, 1, 0.5) where a layer holds (0.5, 0.5, 0.5, 0.5) (measured 2026-11-09)") {
-            #expect(abs(half.x - 0.5) < 0.002, "a half-clear white cell holds \(fmt(half))")
+            s.drawImage(s.generate(item.generator).image, 0, 0)
         }
+        var off = 0.0, most = 0.0
+        for y in 0..<64 { for x in 0..<64 {
+            let p = f.at(x, y)
+            for c in 0..<3 { off = max(off, abs(p[c] - p.w)) }
+            most = max(most, p.w)
+        } }
+        #expect(off < 0.002, "\(item.name) holds a white \(off) away from its own coverage")
+        #expect(most > 0.4 && most < 0.502, "\(item.name) at its fullest covers \(most), where the color's alpha is a half")
+    }
+
+    @Test func whatAGlitchWritesIsPremultiplied() throws {
         let glitch = try Self.render(side: 96) { s in
             s.background(.clear)
             let layer = s.makeRenderTarget()
@@ -1559,9 +1738,7 @@ struct EffectInvariantTests {
         }
         var past = 0.0
         for y in 0..<96 { for x in 0..<96 { let p = glitch.at(x, y); past = max(past, max(p.x, p.y, p.z) - p.w) } }
-        try pinned("the three channels are read from three places under the green one's alpha: beside a shifted white bar a pixel holds (0, 0.11, 0.83, 0.11), a color 0.72 past its coverage (measured 2026-11-09)") {
-            #expect(past < 0.002, "a glitched bar wrote a color \(past) past its own alpha")
-        }
+        #expect(past < 0.002, "a glitched bar wrote a color \(past) past its own alpha")
     }
 
     /// Grain is noise at any seed, the frame count of a long run included.
@@ -1570,10 +1747,31 @@ struct EffectInvariantTests {
         let g = try flat(64, Color(linear: 0.4, green: 0.4, blue: 0.4), .grain(amount: 0.5, seed: seed))
         var values = Set<Float>()
         for i in stride(from: 0, to: g.rgba.count, by: 4) { values.insert(g.rgba[i]) }
-        try pinned("the seed is added to the pixel's position before the hash, and single precision has no fraction left at that size: at a seed of 200,000, an hour of frames, 4,096 pixels hold 16 values and one in six neighbors is its pair (1,605 values at seed 0) (measured 2026-11-09)",
-                   when: seed > 1000) {
-            #expect(values.count > 800, "at seed \(seed) the grain holds \(values.count) distinct values")
+        #expect(values.count > 800, "at seed \(seed) the grain holds \(values.count) distinct values")
+        // The next frame's grain is another pattern, not this one again.
+        let next = try flat(64, Color(linear: 0.4, green: 0.4, blue: 0.4), .grain(amount: 0.5, seed: seed + 1))
+        var same = 0
+        for i in stride(from: 0, to: g.rgba.count, by: 4) where g.rgba[i] == next.rgba[i] { same += 1 }
+        #expect(same < 200, "at seed \(seed) and the one after, \(same) of 4,096 pixels hold the same grain")
+    }
+
+    /// Film grain is even about each displayed value, so a flat gray keeps its
+    /// average as displayed. The light it sends out rises with it, since the
+    /// lighter half of the grain adds more light than the darker half takes
+    /// away: a little at the default amount, about a fifth at 0.2.
+    @Test(arguments: [(0.05, 0.005, 0.03), (0.2, 0.15, 0.28)])
+    func filmGrainKeepsAFlatsMeanAsDisplayed(amount: Double, least: Double, most: Double) throws {
+        let out = try flat(128, Color(white: 0.5), .filmGrain(amount: amount, size: 1))
+        var displayed = 0.0, light = 0.0
+        for i in stride(from: 0, to: out.rgba.count, by: 4) {
+            let v = Double(out.rgba[i])
+            light += v; displayed += Color.linearToSrgb(v)
         }
+        let count = Double(out.rgba.count / 4)
+        displayed /= count; light /= count
+        let lift = light / Color.srgbToLinear(0.5) - 1
+        #expect(abs(displayed - 0.5) < 0.004, "at \(amount) a flat mid-gray is displayed at a mean of \(displayed)")
+        #expect(lift > least && lift < most, "at \(amount) the flat sends out \(lift * 100)% more light")
     }
 
     // MARK: Combines
@@ -2184,9 +2382,21 @@ struct EffectInvariantTests {
         }
         // Lines sit at the middle of each 15-pixel cell: 7.5, 22.5, and so on.
         #expect(f.value(22, 40) < 0.1, "the line itself is drawn")
-        try pinned("the line's pixel step is taken of a coordinate that wraps at the cell's edge, and where the wrap falls inside one 2 by 2 block of pixels the step is a whole cell: two pixels at such an edge read 0.81, a faint second line between the lines (measured 2026-11-09 on a 120-pixel layer, at x 14 and 15)") {
-            for x in 11...18 { #expect(f.value(x, 40) > 0.99, "between two lines, at x \(x), the background reads \(f.value(x, 40))") }
+        for x in 11...18 { #expect(f.value(x, 40) > 0.99, "between two lines, at x \(x), the background reads \(f.value(x, 40))") }
+    }
+
+    /// A grid's ink is its lines' width: lines a share `weight` of a cell wide,
+    /// both ways, cover `1 - (1 - weight)²` of the layer, whether a line is
+    /// wider than a pixel or thinner, and lines of no weight are no lines.
+    @Test(arguments: [0.0, 0.02, 0.1, 0.3, 1.0])
+    func gridLinesCoverTheShareTheirWeightSays(weight: Double) throws {
+        let f = try Self.render(side: 120) { s in
+            s.background(.clear)
+            s.drawImage(s.generate(.gridLines(scale: 8, weight: weight, foreground: .white, background: .clear)).image, 0, 0)
         }
+        let covered = f.sum(3) / (120 * 120), want = 1 - (1 - weight) * (1 - weight)
+        #expect(abs(covered - want) < 0.002, "lines of weight \(weight) cover \(covered) of the layer, where their width covers \(want)")
+        if weight == 0 { #expect(f.rgba.allSatisfy { $0 == 0 }, "lines of no weight still drew") }
     }
 
     /// A field at rest stays at rest: the reaction's resting mix for thirty

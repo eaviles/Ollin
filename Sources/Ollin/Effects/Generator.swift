@@ -21,18 +21,18 @@ public struct Generator: Sendable {
     /// The concrete patterns the renderer knows how to evaluate. Internal: a sketch
     /// builds a `Generator` through the static factories below.
     enum Kind: Sendable {
-        /// A checkerboard, `scale` cells across.
+        /// A checkerboard, `scale` cells down the layer's height.
         case checkers(scale: Double, foreground: SIMD4<Float>, background: SIMD4<Float>)
-        /// A grid of lines, `scale` cells across, `weight` (0…1) of a cell wide.
+        /// A grid of lines, `scale` cells down the height, `weight` (0…1) of a cell wide.
         case gridLines(scale: Double, weight: Double, foreground: SIMD4<Float>, background: SIMD4<Float>)
-        /// Parallel bars, `scale` across; `vertical` chooses the axis.
+        /// Parallel bars, each one of `scale` parts of the height wide; `vertical` chooses the axis.
         case bars(scale: Double, vertical: Bool, foreground: SIMD4<Float>, background: SIMD4<Float>)
-        /// Fractal value noise, `scale` features across. `sharpness` 0 is a soft
+        /// Fractal value noise, `scale` features down the height. `sharpness` 0 is a soft
         /// cloud blending `background`→`foreground`; 1 is a hard two-tone threshold.
         /// `warp` > 0 domain-warps the field (0 leaves it byte-identical).
         case noise(scale: Double, sharpness: Double, warp: Double,
                    foreground: SIMD4<Float>, background: SIMD4<Float>)
-        /// Worley cellular noise: `scale` cells across, styled by `style`
+        /// Worley cellular noise: `scale` cells down the height, styled by `style`
         /// (cells / borders / mosaic), feature points wandering with `phase`.
         case cellular(scale: Double, jitter: Double, style: CellularStyle,
                       foreground: SIMD4<Float>, background: SIMD4<Float>, phase: Double)
@@ -163,7 +163,8 @@ public struct Generator: Sendable {
 
     let kind: Kind
 
-    /// A checkerboard, `scale` cells across the layer's width.
+    /// A checkerboard, `scale` cells down the layer's height. The cells are
+    /// square, so a wider layer holds more of them across.
     public static func checkers(scale: Double = 8,
                                 foreground: Color = .white,
                                 background: Color = .black) -> Generator {
@@ -172,7 +173,9 @@ public struct Generator: Sendable {
                                   background: background.linearRGBA))
     }
 
-    /// A line grid, `scale` cells across, each line `weight` (0…1) of a cell wide.
+    /// A line grid, `scale` square cells down the layer's height, with a line
+    /// through the middle of each cell both ways, `weight` (0…1) of a cell wide.
+    /// A weight of 0 draws no lines.
     public static func gridLines(scale: Double = 8, weight: Double = 0.1,
                                  foreground: Color = .black,
                                  background: Color = .white) -> Generator {
@@ -181,8 +184,9 @@ public struct Generator: Sendable {
                                    background: background.linearRGBA))
     }
 
-    /// Parallel bars, `scale` across; `vertical` runs them up the canvas (the
-    /// default) or across it.
+    /// Parallel bars, each as wide as one of `scale` equal parts of the
+    /// layer's height; `vertical` runs them up the canvas (the default) or
+    /// across it.
     public static func bars(scale: Double = 8, vertical: Bool = true,
                             foreground: Color = .black,
                             background: Color = .white) -> Generator {
@@ -191,7 +195,7 @@ public struct Generator: Sendable {
                               background: background.linearRGBA))
     }
 
-    /// Fractal value noise, `scale` features across. `sharpness` runs from a soft
+    /// Fractal value noise, `scale` features down the layer's height. `sharpness` runs from a soft
     /// cloud (0, blending the two colors) to a hard two-tone split (1). `warp`
     /// domain-warps the field (the layers displace their own sampling
     /// coordinates, twice over): 0 is the plain field, 1 the classic flowing
@@ -227,7 +231,7 @@ public struct Generator: Sendable {
     }
 
     /// Worley cellular noise: space shaded into organic cells (stone, foam,
-    /// cracked earth), `scale` cells across. `jitter` runs the cells from a
+    /// cracked earth), `scale` cells down the layer's height. `jitter` runs the cells from a
     /// regular grid (0) to fully organic (1), `style` picks the look (see
     /// `CellularStyle`), and `phase` makes the feature points wander on their
     /// own small orbits so the cells crawl and reform; it is periodic over 2π,

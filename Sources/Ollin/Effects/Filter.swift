@@ -220,13 +220,13 @@ public struct Filter: Sendable {
         case develop(exposure: Double, ground: SIMD4<Float>)
         /// Remap tones: lift `blackPoint` to 0 and `whitePoint` to 1, then apply `gamma`.
         case levels(blackPoint: Double, whitePoint: Double, gamma: Double)
-        /// Cycle the hue wheel `cycles` times across the luminance range (rainbow banding).
+        /// The hue wheel laid `cycles` times along the brightness range (rainbow banding).
         case colorama(cycles: Double, shift: Double)
         /// Set alpha from a luminance band (`low`…`high`), optionally inverted — a luma key.
         case lumaKey(low: Double, high: Double, inverted: Bool)
 
         // Blur ---------------------------------------------------------------
-        /// Directional (motion) blur: average `samples` taps along `angle`, span `distance`.
+        /// Directional (motion) blur: a streak along `angle`, `distance` of the layer's height long.
         case motionBlur(angle: Double, distance: Double)
         /// Zoom (radial) blur: average taps along the ray from center, strength `amount`.
         case radialBlur(amount: Double)
@@ -897,12 +897,24 @@ public struct Filter: Sendable {
                                 bias: min(max(bias, -1), 1), pixelSize: max(1, pixelSize)))
     }
 
-    /// Per-pixel noise at `amount`, the same at every tone. `seed` shifts the
-    /// pattern; feed it `time` or `frameCount` for noise that moves. It clamps at
-    /// black, so a black field comes up as a scatter of specks; for the grain of
-    /// a film stock, which leaves black black, see `filmGrain`.
+    /// Per-pixel noise at `amount`, the same at every tone. `seed` picks the
+    /// pattern; feed it `time` or `frameCount` for noise that moves, and it stays
+    /// noise however large the number gets. It clamps at black, so a black field
+    /// comes up as a scatter of specks; for the grain of a film stock, which
+    /// leaves black black, see `filmGrain`.
     public static func grain(amount: Double = 0.08, seed: Double = 0) -> Filter {
         Filter(kind: .grain(amount: max(0, amount), seed: seed))
+    }
+
+    /// Where in its noise `grain` reads for a seed: an offset in pixels, under
+    /// 8,300 across and 12,500 down, laid out from `grainPattern(of:)`. The
+    /// noise is a hash of the pixel's position, and a float keeps a position's
+    /// fraction only while the position is small, so the seed is turned into a
+    /// nearby place here, where the arithmetic is exact, rather than added to
+    /// the position at whatever size it came in. A seed of 0 reads at 0.
+    static func grainPlace(of seed: Double) -> (x: Double, y: Double) {
+        let pattern = grainPattern(of: seed)
+        return (Double(pattern % 64) * 131, Double(pattern / 64) * 197)
     }
 
     /// Film grain, the way a stock carries it. A developed frame is a scatter of
@@ -912,8 +924,11 @@ public struct Filter: Sendable {
     /// on the displayed picture rather than in linear light, so `amount` is the
     /// grain's spread at mid-gray as a fraction of the way to white (0.05 is about
     /// twelve levels of a display byte). The grains are clumps `size` pixels
-    /// across, and the mean of any flat region is kept, so grain never lifts or
-    /// darkens a picture. Relative to the tone the spread is largest in the darkest
+    /// across, and a flat region keeps its mean as displayed, so grain never
+    /// lifts or darkens the picture you see. (In light the same flat rises a
+    /// little, 1.3% over mid-gray at the default and a fifth at 0.2, since the
+    /// lighter half of the grain adds more light than the darker half takes away.)
+    /// Relative to the tone the spread is largest in the darkest
     /// shades, so a near-black area shows the speckle first while a true black
     /// stays clean. `seed` picks the pattern; feed it `frameCount` for the
     /// fresh grain every frame of a film has.
@@ -1004,8 +1019,12 @@ public struct Filter: Sendable {
                              whitePoint: min(max(whitePoint, 0), 1), gamma: max(0.01, gamma)))
     }
 
-    /// Colorama: cycle the hue wheel `cycles` times across the image's luminance, turning a
-    /// gradient into rainbow bands. `shift` rotates the whole wheel (animate it to spin).
+    /// Colorama: the hue wheel laid `cycles` times along the image's brightness, turning a
+    /// gradient into rainbow bands. Each pixel takes the wheel's color for its own
+    /// brightness and keeps its brightness, so black stays black, a gray takes a color,
+    /// and white is the wheel's color where its turns end. The bands sit evenly along a
+    /// ramp of grays as a sketch writes them. `shift` rotates the whole wheel (animate it
+    /// to spin).
     public static func colorama(cycles: Double = 1, shift: Double = 0) -> Filter {
         Filter(kind: .colorama(cycles: cycles, shift: shift))
     }
@@ -1020,10 +1039,40 @@ public struct Filter: Sendable {
 
     // MARK: Blur (continued)
 
-    /// Directional (motion) blur: smear along `angle` (radians) over `distance` (a fraction
-    /// of the layer), the streak of a moving subject.
+    /// Directional (motion) blur: smear along `angle` (radians) over `distance`, a
+    /// fraction of the layer's height, the streak of a moving subject. The smear
+    /// is one length whichever way it runs, on a layer of any shape, and a thin
+    /// mark comes out as one streak however long the smear is.
     public static func motionBlur(angle: Double = 0, distance: Double = 0.04) -> Filter {
         Filter(kind: .motionBlur(angle: angle, distance: max(0, distance)))
+    }
+
+    /// How a motion blur lays its taps over a smear `length` texels long. The
+    /// smear is a row of taps a texel apart or closer, and it is taken in two
+    /// rows: `fine` taps close together that cover one stride, then `coarse`
+    /// taps a stride apart over that result. Tap for tap the two rows are the
+    /// one long row of `fine * coarse` taps (a tap of the second row lands the
+    /// first row's taps exactly where the long row's next `fine` taps sit), for
+    /// about twice the square root of its taps. A smear of no length is one
+    /// tap in each row, which hands the texel back as it is.
+    struct MotionBlurTaps: Equatable {
+        /// Taps in the first row, and the texels from one to the next.
+        var fine: Int
+        var fineStep: Double
+        /// Taps in the second row, and the texels from one to the next.
+        var coarse: Int
+        var coarseStep: Double
+    }
+
+    static func motionBlurTaps(length: Double) -> MotionBlurTaps {
+        // Each row holds 64 taps at most (the fragment's own limit), which
+        // covers a smear of 4,096 texels with no tap over a texel from the
+        // next. Past that the taps spread, and past 65,536 the length is held.
+        let length = length.isFinite ? min(max(0, length), 65536) : 0
+        let coarse = min(64, max(1, Int(length.squareRoot().rounded(.up))))
+        let stride = length / Double(coarse)
+        let fine = min(64, max(1, Int(stride.rounded(.up))))
+        return MotionBlurTaps(fine: fine, fineStep: stride / Double(fine), coarse: coarse, coarseStep: stride)
     }
 
     /// Zoom (radial) blur: smear outward from the center by `amount` (a fraction of the

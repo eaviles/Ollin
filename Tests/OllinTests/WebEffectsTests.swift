@@ -601,6 +601,34 @@ import OllinWebGate
         }
     }
 
+    /// The filters whose arithmetic was corrected together: a long motion blur
+    /// at an angle (two rows of taps through a scratch, its length changing
+    /// from frame to frame), a mirrored tiling under a colorama, a
+    /// kaleidoscope under a dither, grain at a frame count in the hundred
+    /// thousands, and a see-through grid over all four.
+    final class Corrected: Sketch {
+        override var canvasSize: CanvasSize { .square(120) }
+        func scene() {
+            background(Color(hex: 0xD8CFC0))
+            noStroke()
+            fill(Color(hex: 0x2B6C8C)); drawCircle(18 + time * 6, 20, 10)
+            fill(Color(hex: 0xC2452D)); drawCircle(42, 40, 9)
+            fill(Color(hex: 0x3D7A4A)); drawRect(8, 46, 40, 5)
+            fill(.white); drawRect(30, 4, 1, 30)
+        }
+        override func draw() {
+            background(Color(hex: 0x1A1B1E))
+            let scene = makeRenderTarget(width: 60, height: 60)
+            withTarget(scene) { self.scene() }
+            drawImage(scene.filtered(.motionBlur(angle: 0.5, distance: 0.6 + 0.05 * time)).image, 0, 0)
+            drawImage(scene.filtered(.tile(count: 2, mirrored: true)).filtered(.colorama(cycles: 2, shift: time)).image, 60, 0)
+            drawImage(scene.filtered(.kaleidoscope(segments: 5, angle: 0.2)).filtered(.dither(levels: 3)).image, 0, 60)
+            drawImage(scene.filtered(.grain(amount: 0.3, seed: 200_000 + Double(frameCount))).image, 60, 60)
+            drawImage(generate(.gridLines(scale: 6, weight: 0.12, foreground: Color(white: 1, alpha: 0.5),
+                                          background: .clear)).image, 0, 0)
+        }
+    }
+
     /// The page peeling over the canvas, a progressive blur, and the scratches
     /// generator over it.
     final class Peeled: Sketch {
@@ -1031,6 +1059,7 @@ import OllinWebGate
             ("Looked", { Looked() }, 4, 2),
             ("Taped", { Taped() }, 4, 2),
             ("Peeled", { Peeled() }, 4, 2),
+            ("Corrected", { Corrected() }, 4, 3),
             ("Wiped, copied, and glowing", { Wiped() }, 4, 2),
             ("Measured", { Measured() }, 4, 2),
             ("Outlined", { Outlined() }, 4, 2),

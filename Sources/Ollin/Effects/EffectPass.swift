@@ -182,7 +182,11 @@ extension Filter {
         case let .ditherDuo(dark, light, bias, pixelSize):
             return pass("ollin_fx_dither_duo", [f(bias, inTexels(pixelSize), 0, 0), dark, light])
         case let .grain(amount, seed):
-            return pass("ollin_fx_grain", [f(amount, seed, 0, 0)])
+            // The seed reaches the shader as a place in the noise, a few thousand
+            // pixels off at most, so the hash keeps the position's fraction
+            // whatever the seed was (`Filter.grainPlace`).
+            let place = Filter.grainPlace(of: seed)
+            return pass("ollin_fx_grain", [f(amount, place.x, place.y, 0)])
         case let .filmGrain(amount, size, seed):
             // The seed reaches the shader as a small integer picked from its
             // bits, so a fractional seed is its own pattern, a frame count past
@@ -218,8 +222,6 @@ extension Filter {
             return pass("ollin_fx_lumakey", [f(low, high, invert ? 1 : 0, 0)])
 
         // Blur
-        case let .motionBlur(angle, distance):
-            return pass("ollin_fx_motion_blur", [f(angle, distance, 0, 0)])
         case .radialBlur(let amount):
             return pass("ollin_fx_radial_blur", [f(amount, 0, 0, 0)])
         case let .bilateral(radius, sigma):
@@ -451,7 +453,7 @@ extension Filter {
              .liquidMetal, .heatmap, .gemSmoke, .diffuse, .distanceField, .boxBlur,
              .adaptiveThreshold, .xdog, .brushwork, .shock, .hatching,
              .outline, .shadow, .glow, .edgeGlow, .bevel, .jpeg, .tiltShift, .progressiveBlur,
-             .slitScan:
+             .slitScan, .motionBlur:
             return nil
         }
     }
@@ -463,7 +465,8 @@ extension Filter {
     /// layer as `.layer(0)` and the scratch as `.layer(1)`. The renderer and
     /// the web recorder both run it from this one description. The variable
     /// blur walks the layer's own texels, so its radius arrives in them; the
-    /// block transform is about the layer's texels and takes no scale.
+    /// block transform is about the layer's texels and takes no scale; and the
+    /// motion blur's length is a fraction of the layer, which no scale changes.
     func pairPass(width: Int, height: Int, scale: Double = 1) -> EffectPair? {
         let inTexels = LayerMeasure(width: width, height: height, scale: scale).inTexels
         let f = { (a: Double, b: Double, c: Double, d: Double) in
@@ -489,9 +492,32 @@ extension Filter {
         case let .progressiveBlur(angle, start, end, radius):
             return Self.varblur(head: f(1, inTexels(radius), Double(width), Double(height)),
                                 shape: f(angle, start, end, 0), width: width, height: height)
+        case let .motionBlur(angle, distance):
+            // The smear in two rows of taps: a short row of close ones into the
+            // scratch, then a row one short row apart over it. `distance` is a
+            // fraction of the layer's height, so the length in texels is the
+            // same whatever the layer's shape or scale.
+            let taps = Filter.motionBlurTaps(length: distance * Double(height))
+            return EffectPair(first: Filter.motionBlurRow(angle: angle, step: taps.fineStep, count: taps.fine,
+                                                          width: width, height: height, input: .layer(0)),
+                              second: Filter.motionBlurRow(angle: angle, step: taps.coarseStep, count: taps.coarse,
+                                                           width: width, height: height, input: .layer(1)),
+                              scratchWidth: width, scratchHeight: height)
         default:
             return nil
         }
+    }
+
+    /// One row of a motion blur's taps: `count` of them, `step` texels apart
+    /// along `angle`, read from `input`. The step is turned into the layer's own
+    /// coordinates one axis at a time, so a texel along the angle is a texel on
+    /// a layer of any shape.
+    static func motionBlurRow(angle: Double, step: Double, count: Int,
+                              width: Int, height: Int, input: EffectInput) -> EffectPass {
+        EffectPass(fragment: "ollin_fx_motion_blur", inputs: [input],
+                   params: [SIMD4(Float(cos(angle) * step / Double(max(1, width))),
+                                  Float(sin(angle) * step / Double(max(1, height))),
+                                  Float(count), 0)])
     }
 
     /// The variable blur as its two passes: across, then down.

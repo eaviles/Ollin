@@ -931,7 +931,13 @@ fullscreen-triangle fragment pass on the `.effect` pipeline, reusing
 premultiplied linear. Most are single-sample; a handful (`bilateral`,
 `motionBlur`, `radialBlur`, `oilPaint`, `median`, the halftones) gather several
 taps; only `.gaussianBlur` and bloom's internal blur use MPS
-(`MPSImageGaussianBlur`). `.bloom` is bright-pass, blur, add-back.
+(`MPSImageGaussianBlur`). `motionBlur` takes its taps in two rows through a
+scratch texture (`Filter.motionBlurTaps`, a pair from `pairPass`): a short row
+of taps a texel apart or closer, then a row one short row apart over that
+result. Tap for tap that is one long row a texel apart, so a thin mark smears
+into a streak at any length, for about twice the square root of the long
+row's taps. Its length is a fraction of the layer's height, turned into the
+layer's own coordinates one axis at a time. `.bloom` is bright-pass, blur, add-back.
 `.gradientMap` binds a baked 256-step LUT (`rgba32Float`) as a second texture.
 
 A few filter internals are worth pinning. `.relight` (the height-map material

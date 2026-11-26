@@ -509,6 +509,24 @@ static inline float3 ollin_as_written(float3 c) {
 }
 static inline float3 ollin_as_stored(float3 c) { return srgbToLinear(c); }
 
+// Two colors as a sketch wrote them, mixed by how much of the pixel each covers:
+// `t` of `b` over the rest of `a`. Each is weighted by its own alpha before the
+// mix, which is what a layer holds, so a clear color brings no color of its own
+// into the pixels it shares (a clear white under black ink leaves the ink's edge
+// black, where a mix of the written colors leaves it gray, or white past its
+// coverage when nothing weights it afterwards).
+static inline float4 ollin_mix_inks(float4 a, float4 b, float t) {
+    return mix(float4(a.rgb * a.a, a.a), float4(b.rgb * b.a, b.a), t);
+}
+
+// A coordinate folded so the picture repeats as itself and its reflection in
+// turn: the first cell is the picture, the next its mirror image. Written so the
+// first cell comes back as the same number it went in as.
+static inline float2 ollin_mirror_repeat(float2 uv) {
+    float2 t = fract(uv * 0.5) * 2.0;
+    return min(t, 2.0 - t);
+}
+
 // MARK: - Color & tone filters
 //
 // Each reads premultiplied-linear input, transforms straight color, and writes
@@ -1154,9 +1172,12 @@ fragment float4 ollin_fx_halftone(PresentOut in [[stage_in]],
     return float4(float3(disk), 1.0);
 }
 
-// dither: ordered Bayer 4×4 threshold, then quantize to N steps per channel.
-// params[0].y is the cell size in pixels (>1 = chunky retro blocks, and survives
-// being drawn at a smaller size (a 1px pattern is averaged away by minification).
+// dither: ordered Bayer 4×4 threshold, then quantize to N levels per channel.
+// N levels are N - 1 steps from black to white, and a value between two of them
+// takes the upper one over the share of the pattern that keeps its mean, so a
+// flat field comes back as bright as it went in. params[0].y is the cell size in
+// pixels (>1 = chunky retro blocks, and survives being drawn at a smaller size:
+// a 1px pattern is averaged away by minification).
 fragment float4 ollin_fx_dither(PresentOut in [[stage_in]],
                                 texture2d<float> src [[texture(0)]],
                                 sampler samp [[sampler(0)]],
@@ -1168,7 +1189,8 @@ fragment float4 ollin_fx_dither(PresentOut in [[stage_in]],
     float threshold = (bayer[(ip.y & 3) * 4 + (ip.x & 3)] + 0.5) / 16.0 - 0.5;
     float4 s = src.sample(samp, in.uv);
     float3 c = ollin_unpremul(s);
-    c = floor(c * n + threshold + 0.5) / max(n - 1.0, 1.0);  // patterned quantization
+    float steps = max(n - 1.0, 1.0);
+    c = floor(c * steps + threshold + 0.5) / steps;          // patterned quantization
     return ollin_premul(clamp(c, 0.0, 1.0), s.a);
 }
 
@@ -1195,15 +1217,20 @@ fragment float4 ollin_fx_dither_duo(PresentOut in [[stage_in]],
     return ollin_premul(c.rgb, c.a * s.a);
 }
 
-// grain: add per-pixel hashed noise (params: amount, seed). Feed seed `time` to move it.
+// grain: add per-pixel hashed noise (params: amount, then where in the noise
+// this seed reads). The seed arrives as a place a few thousand pixels away at
+// most, picked from its bits on the CPU, so the position keeps its fraction in a
+// float whatever the seed is: a seed added to the position as it stands takes
+// that fraction away once it is large, and a frame count of 200,000 leaves 16
+// values in the whole picture. A seed of 0 reads at 0.
 fragment float4 ollin_fx_grain(PresentOut in [[stage_in]],
                                texture2d<float> src [[texture(0)]],
                                sampler samp [[sampler(0)]],
                                constant float4 *params [[buffer(0)]]) {
-    float amount = params[0].x, seed = params[0].y;
+    float amount = params[0].x;
     float4 s = src.sample(samp, in.uv);
     float3 c = ollin_unpremul(s);
-    float n = hash12(in.position.xy + seed * 113.0) - 0.5;  // [-0.5, 0.5]
+    float n = hash12(in.position.xy + params[0].yz) - 0.5;  // [-0.5, 0.5]
     c += n * amount;
     return ollin_premul(max(c, 0.0), s.a);
 }
@@ -1296,19 +1323,12 @@ fragment float4 ollin_fx_linescreen(PresentOut in [[stage_in]],
     float d = abs(p.x - col) * 2.0;                         // 0 at center … 1 at cell edge
     float val = mix(-soft, 1.0 + soft, clamp(l, 0.0, 1.0)); // brighter → wider bar
     float bar = smoothstep(val - soft, val + soft, d);      // 0 inside the bar
-    return mix(params[1], params[2], bar);                  // fg inside, bg outside
+    return ollin_mix_inks(params[1], params[2], bar);       // fg inside, bg outside
 }
 
 // MARK: - More color & tone filters
 
-// Hue/value helpers (a branchless rgb<->hsv, written from the technique).
-static inline float3 ollin_rgb2hsv(float3 c) {
-    float4 K = float4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
-    float4 p = mix(float4(c.bg, K.wz), float4(c.gb, K.xy), step(c.b, c.g));
-    float4 q = mix(float4(p.xyw, c.r), float4(c.r, p.yzx), step(p.x, c.r));
-    float d = q.x - min(q.w, q.y);
-    return float3(abs(q.z + (q.w - q.y) / (6.0 * d + 1e-10)), d / (q.x + 1e-10), q.x);
-}
+// A hue, saturation, and value as a color (branchless, written from the technique).
 static inline float3 ollin_hsv2rgb(float3 c) {
     float4 K = float4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
     float3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
@@ -1345,7 +1365,9 @@ fragment float4 ollin_fx_temperature(PresentOut in [[stage_in]],
 }
 
 // vibrance: lift saturation most on the muted colors, least on the already-vivid ones
-// (params: amount). Negative dulls.
+// (params: amount). Negative dulls, the vivid colors first, and stops at gray: the
+// share of its color a pixel keeps never goes under zero, since under zero a color
+// comes out the other side of gray as its opposite hue (pure red at -1 as cyan).
 fragment float4 ollin_fx_vibrance(PresentOut in [[stage_in]],
                                   texture2d<float> src [[texture(0)]],
                                   sampler samp [[sampler(0)]],
@@ -1355,7 +1377,7 @@ fragment float4 ollin_fx_vibrance(PresentOut in [[stage_in]],
     float amount = params[0].x;
     float sat = max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b));
     float l = ollin_luma(c);
-    c = mix(float3(l), c, 1.0 + amount * (1.0 - sign(amount) * sat));
+    c = mix(float3(l), c, max(1.0 + amount * (1.0 - sign(amount) * sat), 0.0));
     return ollin_premul(max(c, 0.0), s.a);
 }
 
@@ -1405,16 +1427,25 @@ fragment float4 ollin_fx_levels(PresentOut in [[stage_in]],
     return ollin_premul(min(leveled, max(c, 1.0)), s.a);
 }
 
-// colorama: cycle the hue wheel by luminance (params: cycles, shift) — rainbow banding.
+// colorama: the hue wheel laid along brightness (params: cycles, shift). A pixel
+// takes the wheel's color for its own brightness and keeps its own value: the
+// hue is `cycles` turns of the wheel from black to white plus `shift`, read on
+// the gray a sketch writes for that brightness, so the bands sit evenly along a
+// written ramp; the color is the wheel's at full strength, scaled by the pixel's
+// largest channel as written. So a gray takes a color (a turn of the pixel's own
+// hue would leave a gray gray, since it has none to turn), black stays black, and
+// white is the wheel's color where its turns end.
 fragment float4 ollin_fx_colorama(PresentOut in [[stage_in]],
                                   texture2d<float> src [[texture(0)]],
                                   sampler samp [[sampler(0)]],
                                   constant float4 *params [[buffer(0)]]) {
     float4 s = src.sample(samp, in.uv);
     float3 c = ollin_unpremul(s);
-    float3 hsv = ollin_rgb2hsv(c);
-    hsv.x = fract(hsv.x + ollin_luma(c) * params[0].x + params[0].y);
-    return ollin_premul(ollin_hsv2rgb(hsv), s.a);
+    float3 written = ollin_as_written(c);
+    float value = max(max(written.r, max(written.g, written.b)), 0.0);
+    float gray = ollin_as_written(float3(ollin_luma(c))).x;
+    float3 wheel = ollin_hsv2rgb(float3(fract(gray * params[0].x + params[0].y), 1.0, 1.0));
+    return ollin_premul(ollin_as_stored(wheel * value), s.a);
 }
 
 // lumaKey: set alpha from a band of the written brightness (params: low, high,
@@ -1439,20 +1470,28 @@ fragment float4 ollin_fx_lumakey(PresentOut in [[stage_in]],
 
 // MARK: - Blur filters
 
-// motion blur: average taps along a direction (params: angle, distance fraction).
+// motion blur: the mean of a row of taps along a line, centered on the pixel
+// (params[0].xy: the step from one tap to the next, in the layer's own
+// coordinates; .z: how many taps, 64 at most). The CPU lays the row out
+// (`Filter.motionBlurTaps`): the step is measured in texels along the angle, so
+// the smear is one length whichever way it runs on a layer of any shape, and the
+// taps sit a texel apart or closer, so a thin mark comes out a streak and never a
+// row of copies. A smear too long for one row runs the fragment twice: a short
+// row of close taps first, then a row of taps one short row apart over its
+// result, which is the long row taken in two steps.
 fragment float4 ollin_fx_motion_blur(PresentOut in [[stage_in]],
                                      texture2d<float> src [[texture(0)]],
                                      sampler samp [[sampler(0)]],
                                      constant float4 *params [[buffer(0)]]) {
-    float angle = params[0].x, dist = params[0].y;
-    float2 dir = float2(cos(angle), sin(angle)) * dist;
-    const int N = 16;
+    float2 step = params[0].xy;
+    int count = clamp(int(params[0].z), 1, 64);
+    float middle = 0.5 * float(count - 1);
     float4 acc = float4(0.0);
-    for (int i = 0; i < N; i++) {
-        float t = float(i) / float(N - 1) - 0.5;            // -0.5 … 0.5
-        acc += src.sample(samp, clamp(in.uv + dir * t, 0.0, 1.0));
+    for (int i = 0; i < 64; i++) {
+        if (i >= count) break;
+        acc += src.sample(samp, clamp(in.uv + step * (float(i) - middle), 0.0, 1.0));
     }
-    return acc / float(N);
+    return acc / float(count);
 }
 
 // radial (zoom) blur: average taps along the ray from center, scaling inward (params: amount).
@@ -1519,6 +1558,11 @@ fragment float4 ollin_fx_emboss(PresentOut in [[stage_in]],
 // oil paint (Kuwahara region filter, written from the technique): replace each pixel with
 // the mean of whichever of its four corner quadrants has the least color variance, so
 // detail flattens into paint patches but edges stay crisp (params: texel.xy, radius).
+// The means are taken of what the layer holds, color under its alpha, and a
+// quadrant's color is its summed light over its summed coverage: an empty texel
+// then weighs nothing, where a mean of colors already divided by their alpha
+// counts it as black and darkens a see-through shape's rim. A quadrant that
+// holds nothing has no color to give and is passed over.
 fragment float4 ollin_fx_oilpaint(PresentOut in [[stage_in]],
                                   texture2d<float> src [[texture(0)]],
                                   sampler samp [[sampler(0)]],
@@ -1531,20 +1575,20 @@ fragment float4 ollin_fx_oilpaint(PresentOut in [[stage_in]],
     float bestVar = 1e9;
     int2 quad[4] = { int2(-1, -1), int2(1, -1), int2(-1, 1), int2(1, 1) };
     for (int k = 0; k < 4; k++) {
-        float3 m = float3(0.0), s2 = float3(0.0);
+        float4 m = float4(0.0), s2 = float4(0.0);
         for (int j = 0; j <= 8; j++) {
             if (j > radius) break;
             for (int i = 0; i <= 8; i++) {
                 if (i > radius) break;
                 float2 off = float2(float(i * quad[k].x), float(j * quad[k].y)) * t;
-                float3 c = ollin_unpremul(src.sample(samp, in.uv + off));
+                float4 c = src.sample(samp, in.uv + off);
                 m += c; s2 += c * c;
             }
         }
-        m /= n;
-        float3 v3 = abs(s2 / n - m * m);
-        float v = v3.r + v3.g + v3.b;
-        if (v < bestVar) { bestVar = v; bestMean = m; }
+        float4 mean = m / n;
+        float4 v4 = abs(s2 / n - mean * mean);
+        float v = v4.r + v4.g + v4.b + v4.a;
+        if (m.a > 1e-4 && v < bestVar) { bestVar = v; bestMean = m.rgb / m.a; }
     }
     return ollin_premul(bestMean, center.a);
 }
@@ -1569,8 +1613,8 @@ fragment float4 ollin_fx_crosshatch(PresentOut in [[stage_in]],
     if (l < 0.85) ink = min(ink, ollin_hatch(p, 0.785, 0.0));     //  /
     if (l < 0.60) ink = min(ink, ollin_hatch(p, -0.785, 0.0));    //  \
     if (l < 0.35) ink = min(ink, ollin_hatch(p, 0.0, 0.0));       //  |
-    if (l < 0.15) ink = min(ink, ollin_hatch(p, 1.5708, 0.0));    //  —
-    return mix(params[1], params[2], ink);
+    if (l < 0.15) ink = min(ink, ollin_hatch(p, 1.5708, 0.0));    //  -
+    return ollin_mix_inks(params[1], params[2], ink);
 }
 
 // toon: quantize brightness into bands (keeping hue) and ink the Sobel edges over them
@@ -1743,8 +1787,7 @@ fragment float4 ollin_fx_xdog_along(PresentOut in [[stage_in]],
     float footprint = max(fwidth(u), 1e-5);
     float v = (ollin_xdog_cut_integral(u + 0.5 * footprint, threshold, softness)
              - ollin_xdog_cut_integral(u - 0.5 * footprint, threshold, softness)) / footprint;
-    float4 c = mix(params[2], params[3], clamp(v, 0.0, 1.0));
-    return ollin_premul(c.rgb, c.a);
+    return ollin_mix_inks(params[2], params[3], clamp(v, 0.0, 1.0));
 }
 
 // brushwork: the anisotropic Kuwahara filter, paint patches drawn out along the
@@ -2147,8 +2190,7 @@ fragment float4 ollin_fx_hatching(PresentOut in [[stage_in]],
         ink += (1.0 - ink) * mark;
         remaining = saturate((remaining - share) / max(1.0 - share, 1e-4));
     }
-    float4 c = mix(params[3], params[2], saturate(ink));
-    return ollin_premul(c.rgb, c.a);
+    return ollin_mix_inks(params[3], params[2], saturate(ink));
 }
 
 // 3×3 median via a min/max sorting network (written from the technique), per-channel,
@@ -2196,8 +2238,11 @@ fragment float4 ollin_fx_contour(PresentOut in [[stage_in]],
     float f = ollin_luma(c) * levels;
     float ff = fract(f);
     float dist = min(ff, 1.0 - ff);                    // 0 on a contour line
-    float aa = fwidth(f) + 1e-4;
-    float line = 1.0 - smoothstep(0.0, aa, dist);
+    // A line is where the brightness crosses a level, a pixel wide. A field with
+    // no slope crosses nothing, so it has no line, whatever level it sits on:
+    // flat white sits on the top one and stays white.
+    float aa = fwidth(f);
+    float line = aa > 0.0 ? 1.0 - smoothstep(0.0, aa, dist) : 0.0;
     return ollin_premul(mix(c, c * (1.0 - intensity), line), s.a);
 }
 
@@ -2616,6 +2661,9 @@ fragment float4 ollin_fx_scanlines(PresentOut in [[stage_in]],
 }
 
 // glitch: shove random bands of rows sideways and split their channels (params: amount, seed).
+// The three channels are read from three places, so the pixel is covered wherever
+// any of them is: its alpha is the largest of the three, and no channel is then
+// brighter than its own coverage.
 fragment float4 ollin_fx_glitch(PresentOut in [[stage_in]],
                                 texture2d<float> src [[texture(0)]],
                                 sampler samp [[sampler(0)]],
@@ -2629,7 +2677,7 @@ fragment float4 ollin_fx_glitch(PresentOut in [[stage_in]],
     float4 r = src.sample(samp, float2(fract(uv.x + split), uv.y));
     float4 g = src.sample(samp, uv);
     float4 b = src.sample(samp, float2(fract(uv.x - split), uv.y));
-    return float4(r.r, g.g, b.b, g.a);
+    return float4(r.r, g.g, b.b, max(g.a, max(r.a, b.a)));
 }
 
 // crt: barrel-warp, scanline, corner vignette, and a touch of aberration in one pass
@@ -2674,8 +2722,7 @@ fragment float4 ollin_fx_kaleidoscope(PresentOut in [[stage_in]],
     a = a - seg * floor(a / seg);                      // into [0, seg)
     a = abs(a - seg * 0.5);                             // mirror within the wedge
     float2 uv = float2(cos(a), sin(a)) * r / float2(aspect, 1.0) + 0.5;
-    uv = abs(fract(uv * 0.5) * 2.0 - 1.0);             // mirror-repeat into [0,1]
-    return src.sample(samp, uv);
+    return src.sample(samp, ollin_mirror_repeat(uv));  // past the edge, the picture's reflection
 }
 
 // swirl (twirl): rotate around `center`, strongest at the middle, fading to `radius`
@@ -3104,7 +3151,10 @@ fragment float4 ollin_fx_light_leak(PresentOut in [[stage_in]],
     }
     float reach = exp(-max(along, 0.0) / (spread * 1.5)) * smoothstep(-0.05, 0.1, along);
     float heat = (1.25 * bloom + shoulder + 0.85 * streaks * reach * bands / 3.0) * intensity * 2.2 * breathe;
-    heat = max(heat + (hash12(in.uv * params[2].yz + fract(t)) - 0.5) / 255.0, 0.0);
+    // The dither is weighed by the heat it breaks up, up to one step of a display
+    // byte, so it stirs the light that is there and adds none where there is none:
+    // an intensity of 0 is the layer, and the heat never goes under zero.
+    heat += (hash12(in.uv * params[2].yz + fract(t)) - 0.5) / 255.0 * saturate(heat * 255.0);
     float3 tint = mix(params[3].rgb, params[4].rgb, smoothstep(0.0, 0.45, heat));
     tint = mix(tint, params[5].rgb, smoothstep(0.45, 1.0, heat));
     tint = mix(tint, float3(1.0), smoothstep(1.0, 2.0, heat));
@@ -3258,7 +3308,7 @@ fragment float4 ollin_fx_tile(PresentOut in [[stage_in]],
                               constant float4 *params [[buffer(0)]]) {
     float count = params[0].x; bool mir = params[0].y > 0.5;
     float2 uv = in.uv * count;
-    uv = mir ? abs(fract(uv * 0.5) * 2.0 - 1.0) : fract(uv);
+    uv = mir ? ollin_mirror_repeat(uv) : fract(uv);
     return src.sample(samp, uv);
 }
 
@@ -3840,37 +3890,48 @@ fragment float4 ollin_fx_adaptive_threshold(PresentOut in [[stage_in]],
 //
 // Each fills a layer from its parameters alone (params[0] geometry + aspect,
 // params[1] foreground, params[2] background), keeping cells square via aspect.
+// The two colors arrive as a sketch wrote them and leave weighted by their own
+// alpha (`ollin_mix_inks`), as everything a layer holds is, so a see-through
+// color composites as that much of itself and never as added light.
 
-// checkers: a two-color board, `scale` cells across.
+// checkers: a two-color board, `scale` cells down the layer.
 fragment float4 ollin_gen_checkers(PresentOut in [[stage_in]],
                                    constant float4 *params [[buffer(0)]]) {
     float scale = params[0].x, aspect = params[0].y;
     float2 cell = floor(float2(in.uv.x * aspect, in.uv.y) * scale);
     float m = fmod(cell.x + cell.y, 2.0);
-    return m < 1.0 ? params[1] : params[2];
+    return ollin_mix_inks(params[1], params[2], m < 1.0 ? 0.0 : 1.0);
 }
 
-// gridLines: a line grid, `scale` cells across, lines params[0].y of a cell wide.
+// gridLines: a line grid, `scale` cells down the layer, lines params[0].y of a
+// cell wide, one through the middle of each cell. A pixel takes the share of
+// itself the lines cover: across each axis, the overlap of the line's band with
+// the pixel's own span, so a line's ink is its width at any size, a weight of 0
+// draws nothing, and a line thinner than a pixel is that much fainter. The
+// pixel's span is the step of the coordinate before it wraps into a cell: the
+// step of the wrapped one is a whole cell wherever the wrap falls inside one 2
+// by 2 block of pixels, which draws a faint second line at such a cell edge.
 fragment float4 ollin_gen_grid(PresentOut in [[stage_in]],
                                constant float4 *params [[buffer(0)]]) {
     float scale = params[0].x, weight = params[0].y, aspect = params[0].z;
-    float2 g = fract(float2(in.uv.x * aspect, in.uv.y) * scale) - 0.5;
-    float2 aa = fwidth(g) + 1e-4;
+    float2 q = float2(in.uv.x * aspect, in.uv.y) * scale;
+    float2 g = abs(fract(q) - 0.5);                         // distance from the cell's line
+    float2 px = max(fwidth(q), 1e-6);
     float hw = max(weight, 0.0) * 0.5;
-    float lx = 1.0 - smoothstep(hw - aa.x, hw + aa.x, abs(g.x));
-    float ly = 1.0 - smoothstep(hw - aa.y, hw + aa.y, abs(g.y));
-    float lines = clamp(lx + ly, 0.0, 1.0);
-    return mix(params[2], params[1], lines);                // fg lines over bg
+    float2 cover = clamp((min(g + 0.5 * px, hw) - max(g - 0.5 * px, -hw)) / px, 0.0, 1.0);
+    float lines = cover.x + cover.y - cover.x * cover.y;    // either line, counted once where they cross
+    return ollin_mix_inks(params[2], params[1], lines);     // fg lines over bg
 }
 
-// bars: parallel stripes, `scale` across; params[0].y selects the axis.
+// bars: parallel stripes, `scale` of them down the layer's height (and as wide
+// when they stand upright); params[0].y selects the axis.
 fragment float4 ollin_gen_bars(PresentOut in [[stage_in]],
                                constant float4 *params [[buffer(0)]]) {
     float scale = params[0].x, aspect = params[0].z;
     bool vertical = params[0].y > 0.5;
     float coord = vertical ? in.uv.x * aspect : in.uv.y;
     float m = fmod(floor(coord * scale), 2.0);
-    return m < 1.0 ? params[1] : params[2];
+    return ollin_mix_inks(params[1], params[2], m < 1.0 ? 0.0 : 1.0);
 }
 
 // noise: fractal value noise, soft cloud (sharpness 0) to hard two-tone (1).
@@ -3884,7 +3945,7 @@ fragment float4 ollin_gen_noise(PresentOut in [[stage_in]],
     // sharpness widens the smoothstep from a full ramp (soft) to a hard edge at 0.5.
     float w = mix(0.5, 0.002, sharpness);
     float t = smoothstep(0.5 - w, 0.5 + w, n);
-    return mix(params[2], params[1], t);
+    return ollin_mix_inks(params[2], params[1], t);
 }
 
 // cellular: Worley cell distances, styled. params[0] = (scale, jitter, aspect,
@@ -3922,7 +3983,7 @@ fragment float4 ollin_gen_cellular(PresentOut in [[stage_in]],
     } else {
         t = hash12(winner);
     }
-    return mix(params[3], params[2], t);
+    return ollin_mix_inks(params[3], params[2], t);
 }
 
 // gaborNoise: sparse Gabor convolution (see `gaborNoise` in the library).
@@ -3936,7 +3997,7 @@ fragment float4 ollin_gen_gabor(PresentOut in [[stage_in]],
     OllinGabor g = ollin_gabor_setup(params[0].x, params[0].y, params[0].z, params[0].w,
                                      params[1].x, params[1].y, uint(params[1].z));
     float t = clamp(0.5 + 0.5 * ollin_gabor_sum(g, p) * g.norm, 0.0, 1.0);
-    return mix(params[4], params[3], t);
+    return ollin_mix_inks(params[4], params[3], t);
 }
 
 // arrows: a two-channel field drawn as arrows, one per cell of `spacing` pixels
