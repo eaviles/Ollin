@@ -168,7 +168,19 @@ struct WatercolorSimTests {
                              .paint(frame: 20, at: Vector2(80, 70), radius: 16, pigment: 1, load: 0.6, water: 0.8)]
             return pixels(of: try OllinApp.image(of: sketch, frame: 90))
         }
-        #expect(try run() == run())
+        // When the two runs disagree, how they disagree is the evidence:
+        // one byte off by a level is rounding somewhere, a patch of them is
+        // a field that began from something other than its declared state.
+        let first = try run(), second = try run()
+        let differing = first.indices.filter { $0 >= second.count || first[$0] != second[$0] }
+        let largest = differing.map { $0 < second.count ? abs(Int(first[$0]) - Int(second[$0])) : 255 }.max() ?? 0
+        let rows = Set(differing.map { $0 / (128 * 4) })
+        #expect(first.count == second.count && differing.isEmpty,
+                """
+                \(differing.count) of \(first.count) bytes differ between two runs of one script, the largest by \(largest) levels, \
+                over \(rows.count) rows from \(rows.min() ?? 0) to \(rows.max() ?? 0), the first at pixel \
+                (\((differing.first ?? 0) / 4 % 128), \((differing.first ?? 0) / 4 / 128))
+                """)
     }
 
     // MARK: Readback helpers
