@@ -26,6 +26,8 @@ The machine made drawings, not pictures. Felguérez kept the ones he wanted and 
 
 ### Rebuilding his work
 
+The machine's rules are short and they were published: a field of six by eight units, an alphabet of eight elements, every edge touched, and a test of balance. A sketch can carry all four, with the seed as the design. The alphabet itself was never published, so the eight elements here are a reading of his shapes.
+
 - [**EspacioMultiple**](EspacioMultiple/): one form-idea in its three states.
 
   A square with rounded corners (the circle and the square at once), a rectangle, a disk, a half disk and a right triangle are the whole vocabulary, and the form-idea is a large rounded square with a displaced twin under it, a band that crosses it and ends in a half disk, a disk, and triangles cut into the corners. The sketch paints it flat in a silver or a gold scheme, raises the planes into a relief under a light that rakes across the wall, takes the relief apart into a standing piece (the sheet becomes the floor, the band a shelf through the square, the displacement depth) and folds it back, with a new combination each cycle. `stage` holds one state still, `unlit` shows that the relief seen straight on is the painting again, and the painting exports as a plan. An original Ollin interpretation, written from the work and from his own account of the method.

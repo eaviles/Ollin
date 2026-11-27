@@ -46,7 +46,7 @@ The pictures in this wing grow by themselves. The artist writes a small rule for
 
 | [![Casey Reas](https://media.ollin.art/groups/Recreations-CaseyReas-640.jpg?v=b8690208)](CaseyReas/) | [![Jared Tarbell](https://media.ollin.art/groups/Recreations-JaredTarbell-640.jpg?v=1f6afc52)](JaredTarbell/) |  |  |
 |---|---|---|---|
-| [**Casey Reas**](CaseyReas/), born 1972. Writes instructions for software to carry out. | [**Jared Tarbell**](JaredTarbell/). Draws cities and sand paintings that grow from simple rules. |  |  |
+| [**Casey Reas**](CaseyReas/), born 1972. Writes instructions for software to carry out. | [**Jared Tarbell**](JaredTarbell/), born 1973. Draws cities and sand paintings that grow from simple rules. |  |  |
 
 ### What the work is made of
 
