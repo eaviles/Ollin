@@ -575,21 +575,34 @@ public struct SiteBuilder {
 
     // MARK: - An example page
 
+    /// The folders an example is filed under, outermost first, each with the
+    /// listing that stands for it, when it has one, and the name it goes by.
+    /// A folder with a page of its own goes by that page's title, which is
+    /// how an artist's folder reads as the artist's name, accents and all,
+    /// with no second list of names to keep beside the pages; a folder with
+    /// no page has only its spelling.
+    static func folders(above entry: ExampleEntry, plan: Plan) -> [(name: String, listing: Page?)] {
+        var walked = "Examples"
+        return entry.group.split(separator: "/").map { level in
+            walked += "/\(level)"
+            let listing = plan.byRepoPath["\(walked)/README.md"]
+            return (listing?.title ?? String(level), listing)
+        }
+    }
+
     func examplePage(_ entry: ExampleEntry, page: Page, plan: Plan, log: LinkLog) -> String {
         let source = (try? String(contentsOf: entry.sketch, encoding: .utf8)) ?? ""
-        log.search.append(SiteSearch.entry(for: entry, page: page, source: source))
-        let category = entry.group.split(separator: "/").map(String.init)
+        let folders = Self.folders(above: entry, plan: plan)
+        log.search.append(SiteSearch.entry(for: entry, page: page, source: source, filedUnder: folders.map(\.name)))
 
         // The trail walks the category folders, linking each level that has
-        // a listing of its own.
+        // a listing of its own, under the name that listing is titled with.
         var trail = "<a href=\"\(relative(from: page.siteDirectory, to: "examples/index.html"))\">Examples</a>"
-        var walked = "Examples"
-        for level in category {
-            walked += "/\(level)"
-            if let listing = plan.byRepoPath["\(walked)/README.md"] {
-                trail += " → <a href=\"\(relative(from: page.siteDirectory, to: listing.sitePath))\">\(HTML.escape(level))</a>"
+        for folder in folders {
+            if let listing = folder.listing {
+                trail += " → <a href=\"\(relative(from: page.siteDirectory, to: listing.sitePath))\">\(HTML.escape(folder.name))</a>"
             } else {
-                trail += " → \(HTML.escape(level))"
+                trail += " → \(HTML.escape(folder.name))"
             }
         }
 
@@ -1316,10 +1329,13 @@ public struct SiteBuilder {
     /// groups, the example categories, or the project pages.
     func sidebar(for page: Page, plan: Plan) -> String {
         let here = page.siteDirectory
-        func item(_ target: Page, label: String? = nil) -> String {
+        func item(_ target: Page, label: String? = nil, holding: Bool = false) -> String {
             // By site path, not source: the front page and the About page
-            // are two pages of one file.
-            let current = target.sitePath == page.sitePath ? " aria-current=\"page\"" : ""
+            // are two pages of one file. A row that stands for a folder is
+            // marked too while the page open is one of the folder's own, so
+            // every page has its place in the menu.
+            var current = target.sitePath == page.sitePath ? " aria-current=\"page\"" : ""
+            if current.isEmpty, holding { current = " aria-current=\"true\"" }
             return "<li><a href=\"\(relative(from: here, to: target.sitePath))\"\(current)>\(HTML.escape(label ?? target.title))</a></li>"
         }
         func group(_ name: String, open: Bool, _ items: [String]) -> String {
@@ -1382,12 +1398,31 @@ public struct SiteBuilder {
                 if let listing = plan.byRepoPath[categoryPath + "/README.md"] {
                     items.append(item(listing, label: "All \(category.name)"))
                 }
+                // A folder inside the category that has a page of its own (an
+                // artist, a part of the 3D set) is one row, under that page's
+                // title, and its sketches are listed on that page. A sketch in
+                // a folder with no page keeps a row of its own, since nothing
+                // else leads to it.
+                var folders: [Page] = []
+                var sketches: [String] = []
                 for target in plan.pages {
                     guard case .example(let entry) = target.kind, entry.path.hasPrefix(category.path + "/") else { continue }
                     let rest = entry.path.dropFirst(category.path.count + 1)
-                    let subgroup = rest.split(separator: "/").dropLast().joined(separator: "/")
-                    items.append(item(target, label: subgroup.isEmpty ? entry.name : "\(subgroup) / \(entry.name)"))
+                    let subgroup = rest.split(separator: "/").dropLast().map(String.init)
+                    if let first = subgroup.first, let folder = plan.byRepoPath["\(categoryPath)/\(first)/README.md"] {
+                        if !folders.contains(where: { $0.sitePath == folder.sitePath }) { folders.append(folder) }
+                        continue
+                    }
+                    sketches.append(item(target, label: subgroup.isEmpty ? entry.name : "\(subgroup.joined(separator: "/")) / \(entry.name)"))
                 }
+                // In the order of the names shown, which is not the folders'
+                // order once a folder goes by another name than its spelling.
+                folders.sort { Self.menuOrder($0.title, $0.sitePath) < Self.menuOrder($1.title, $1.sitePath) }
+                for folder in folders {
+                    let holds = page.sitePath != folder.sitePath && page.repoPath.hasPrefix(folder.repoPath.dropLast("README.md".count))
+                    items.append(item(folder, holding: holds))
+                }
+                items += sketches
                 out += group(category.name, open: inside, items)
             }
         }
@@ -1398,6 +1433,13 @@ public struct SiteBuilder {
     func group(_ name: String, open: Bool, _ items: [String]) -> String {
         guard !items.isEmpty else { return "" }
         return "<details\(open ? " open" : "")><summary>\(HTML.escape(name))</summary><ul>\n\(items.joined(separator: "\n"))\n</ul></details>"
+    }
+
+    /// What a menu sorts a title by: the title without its case and its
+    /// accents, so `Dóra` files under D and `Zdeněk` under Z on any machine,
+    /// then the path, so two rows with one name keep one order.
+    static func menuOrder(_ title: String, _ path: String) -> (String, String) {
+        (title.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "en_US_POSIX")), path)
     }
 
     /// The page's own headings, for a long page.

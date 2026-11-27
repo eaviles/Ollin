@@ -130,9 +130,19 @@ struct SiteTests {
         var checked = 0
         var dead: [String] = []
         var leftovers: [String] = []
+        var unmarked: [String] = []
+        let examplesFolder = output.appendingPathComponent("examples").resolvingSymlinksInPath().path + "/"
         for case let url as URL in walker where url.pathExtension == "html" {
             let html = try String(contentsOf: url, encoding: .utf8)
             let folder = url.deletingLastPathComponent()
+            // Every page of the examples says where it is in its menu, once:
+            // itself, or the row that holds it.
+            if url.resolvingSymlinksInPath().path.hasPrefix(examplesFolder),
+               let menu = html.range(of: "<nav class=\"sidebar\""),
+               let menuEnd = html.range(of: "</nav>", range: menu.upperBound ..< html.endIndex) {
+                let marks = html[menu.upperBound ..< menuEnd.lowerBound].components(separatedBy: " aria-current=\"").count - 1
+                if marks != 1 { unmarked.append("\(url.lastPathComponent): \(marks)") }
+            }
             for target in Self.targets(in: html) {
                 guard !target.hasPrefix("#"), !target.contains("://"), !target.hasPrefix("mailto:") else { continue }
                 let path = String(target.split(separator: "#", maxSplits: 1)[0])
@@ -175,6 +185,32 @@ struct SiteTests {
         let example = try String(contentsOf: output.appendingPathComponent("examples/basic/hellocircle.html"), encoding: .utf8)
         #expect(example.contains("language-swift"))
         #expect(example.contains("Example-Basic-HelloCircle"))
+
+        // The artists: one row of the menu each, under the name the artist's
+        // page is titled with, that page marked when it is the one open, and
+        // a sketch's trail and menu naming the artist the same way.
+        let artist = try String(contentsOf: output.appendingPathComponent("examples/recreations/vladimirbonacic/index.html"), encoding: .utf8)
+        let artistRows = Self.labels(in: artist, group: "Recreations")
+        let artistFolders = try FileManager.default.contentsOfDirectory(atPath: root.appendingPathComponent("Examples/Recreations").path)
+            .filter { FileManager.default.fileExists(atPath: root.appendingPathComponent("Examples/Recreations/\($0)/README.md").path) }
+        #expect(artistFolders.count > 30, "found \(artistFolders.count) artists")
+        #expect(artistRows.count == artistFolders.count + 1, "the menu lists \(artistRows.count) rows for \(artistFolders.count) artists")
+        #expect(artistRows.contains("Vladimir Bonačić") && !artistRows.contains { $0.contains(" / ") },
+                "the menu lists sketches where it has an artist's page to list: \(artistRows.prefix(4))")
+        #expect(artist.contains("aria-current=\"page\">Vladimir Bonačić</a>"), "the artist's own page is not marked in the menu")
+        #expect(artist.contains("<nav class=\"trail\" aria-label=\"Breadcrumb\">") && artist.contains("→ Vladimir Bonačić</nav>"),
+                "the artist's page ends its trail on something other than the name")
+        let artistSketch = try String(contentsOf: output.appendingPathComponent("examples/recreations/vladimirbonacic/dynamicobject.html"), encoding: .utf8)
+        #expect(artistSketch.contains("<a href=\"index.html\">Vladimir Bonačić</a></nav>"), "a sketch's trail spells the artist's folder")
+        #expect(artistSketch.contains("aria-current=\"true\">Vladimir Bonačić</a>"), "a sketch marks nothing in the menu")
+        // A sketch's follow-on paragraph and its command stay under its bullet.
+        let bullet = try #require(artist.range(of: "<li><p><a href=\"dynamicobject.html\"><strong>DynamicObject</strong></a>"),
+                                  "the artist's page does not open a bullet on its first sketch")
+        let item = artist[bullet.upperBound...]
+        let itemEnd = try #require(item.range(of: "</li>"))
+        #expect(item[..<itemEnd.lowerBound].contains("<pre><code class=\"language-sh\"><span class=\"tk-keyword\">swift</span>"),
+                "the command under a sketch's bullet left the bullet, or kept the indent that nests it")
+        #expect(unmarked.isEmpty, "example pages that mark no row, or more than one, of their menu: \(unmarked.prefix(6)) (\(unmarked.count))")
 
         // The logo: the favicon is the small form on nothing in two inks,
         // Safari's pinned-tab icon the small form alone, every page's bar
@@ -439,6 +475,9 @@ struct SiteTests {
                              excerpt: "A color is a value.", words: ["oklab", "ramps"]),
             SiteSearch.Entry(kind: "examples", title: "Brushwork", heading: "Effects", url: "examples/effects/brushwork.html",
                              excerpt: "A photo as paint.", words: ["kuwahara", "painterly"]),
+            SiteSearch.Entry(kind: "examples", title: "DynamicObject", heading: "Recreations / Vladimir Bonačić",
+                             url: "examples/recreations/vladimirbonacic/dynamicobject.html",
+                             excerpt: "A square of lamps.", words: ["galois", "lamps"]),
         ])
         let list = try String(decoding: JSONSerialization.data(withJSONObject: queries), as: UTF8.self)
         return """
@@ -507,7 +546,7 @@ struct SiteTests {
         // Virtual time, so the index build's small steps and the library's
         // arrival both finish before the page is read.
         let flags = HeadlessBrowser.baseFlags + ["--virtual-time-budget=20000"]
-        let queries = ["kuwahara", "effects", "kuwa", "colour", "kuwa colour", "nothinghere"]
+        let queries = ["kuwahara", "effects", "kuwa", "colour", "kuwa colour", "nothinghere", "bonacic", "Bonačić"]
         let dom = try await HeadlessBrowser.dom(of: Self.searchProbe(queries: queries), flags: flags, timeout: 120)
         let report = try #require(HeadlessBrowser.text(of: "r0", in: dom))
         try #require(!report.hasPrefix("FAIL") && !report.hasPrefix("PENDING"), "\(report)")
@@ -542,6 +581,16 @@ struct SiteTests {
         #expect(blocks[3].first == "1 match" && blocks[3].dropFirst().first?.hasPrefix("../guide/02-color.html|") == true, "\(report)")
         #expect(blocks[4].first == "Nothing matches “kuwa colour”.", "\(report)")
         #expect(blocks[5].first == "Nothing matches “nothinghere”.", "\(report)")
+
+        // A name is found with its accents or without them, and marked where
+        // it stands in the row either way.
+        for typed in [6, 7] {
+            #expect(blocks[typed].first == "1 match", "\(report)")
+            let row = blocks[typed].dropFirst().first ?? ""
+            #expect(row.hasPrefix("../examples/recreations/vladimirbonacic/dynamicobject.html|"), "\(report)")
+            #expect(row.contains("Vladimir Bonačić") && row.split(separator: "|").dropFirst(2).first == "1",
+                    "the name is not marked where it stands: \(report)")
+        }
     }
 
     // MARK: - The front page
@@ -945,6 +994,166 @@ struct SiteTests {
         #expect(found.map(\.name) == ["Patterns", "3D"], "actual: \(found)")
         #expect(found.allSatisfy { !$0.path.contains("media.example") },
                 "a picture's address is not a category")
+    }
+
+    // MARK: - A group whose folders have pages of their own
+
+    /// A checkout small enough to write in a test: one flat category, and one
+    /// whose folders have pages of their own, each titled as a person is
+    /// named rather than as the folder is spelled. One folder has no page.
+    static func checkoutWithArtists() throws -> URL {
+        let root = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("ollin-artists-\(UUID().uuidString)")
+        func write(_ path: String, _ text: String) throws {
+            let file = root.appendingPathComponent(path)
+            try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try text.write(to: file, atomically: true, encoding: .utf8)
+        }
+        for index in ["README.md", "Docs/README.md", "Guide/README.md"] {
+            try write(index, "# Ollin\n\nA sketch.\n")
+        }
+        try write("Examples/README.md", """
+        ## Examples
+
+        | Category | What it holds |
+        |---|---|
+        | [Motion](Motion/) | animation |
+        | [Recreations](Recreations/) | homages, by artist |
+        """)
+        try write("Examples/Motion/README.md", "#### <sup>[Examples](../README.md) → Motion</sup>\n\n---\n\n## Motion\n")
+        try write("Examples/Motion/ArcModes/Sketch.swift", "import Ollin\n")
+        try write("Examples/Recreations/README.md", "#### <sup>[Examples](../README.md) → Recreations</sup>\n\n---\n\n## Recreations\n")
+        try write("Examples/Recreations/VladimirBonacic/README.md", """
+        #### <sup>[Examples](../../README.md) → [Recreations](../README.md) → Vladimir Bonačić</sup>
+
+        ---
+
+        ## Vladimir Bonačić
+
+        - [**DynamicObject**](DynamicObject/): after *GF.E 32-S*.
+
+          The square of lamps.
+
+          ```sh
+          swift run Example-Recreations-VladimirBonacic-DynamicObject
+          ```
+
+        - [**GFE164**](GFE164/): after *GF.E (16,4)*.
+        """)
+        try write("Examples/Recreations/VladimirBonacic/DynamicObject/Sketch.swift", "import Ollin\n")
+        try write("Examples/Recreations/VladimirBonacic/GFE164/Sketch.swift", "import Ollin\n")
+        try write("Examples/Recreations/DoraMaurer/README.md", "## Dóra Maurer\n")
+        try write("Examples/Recreations/DoraMaurer/Overlappings/Sketch.swift", "import Ollin\n")
+        // Filed under M, named under E: the menu is in the order of what it shows.
+        try write("Examples/Recreations/MacEntyreVidal/README.md", "## Eduardo Mac Entyre and Miguel Ángel Vidal\n")
+        try write("Examples/Recreations/MacEntyreVidal/Generative/Sketch.swift", "import Ollin\n")
+        try write("Examples/Recreations/ZdenekSykora/README.md", "## Zdeněk Sýkora\n")
+        try write("Examples/Recreations/ZdenekSykora/Lines/Sketch.swift", "import Ollin\n")
+        try write("Examples/Recreations/Studies/Grid/Sketch.swift", "import Ollin\n")
+        return root
+    }
+
+    /// The labels under one group of a sidebar, in the order it lists them.
+    static func labels(in sidebar: String, group: String) -> [String] {
+        guard let open = sidebar.range(of: "<summary>\(group)</summary>"),
+              let close = sidebar.range(of: "</details>", range: open.upperBound ..< sidebar.endIndex) else { return [] }
+        var found: [String] = []
+        var rest = sidebar[open.upperBound ..< close.lowerBound]
+        while let link = rest.range(of: "<a "), let text = rest[link.upperBound...].firstIndex(of: ">"),
+              let end = rest[text...].range(of: "</a>") {
+            found.append(String(rest[rest.index(after: text) ..< end.lowerBound]))
+            rest = rest[end.upperBound...]
+        }
+        return found
+    }
+
+    @Test("A group whose folders have pages of their own lists those pages by their titles, and marks the one you are in")
+    func sidebarListsFoldersWithPages() throws {
+        let root = try Self.checkoutWithArtists()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let builder = SiteBuilder(root: root)
+        let plan = builder.plan()
+        let artist = try #require(plan.byRepoPath["Examples/Recreations/VladimirBonacic/README.md"])
+        let sketch = try #require(plan.examples["Examples/Recreations/VladimirBonacic/DynamicObject"])
+        let flat = try #require(plan.examples["Examples/Motion/ArcModes"])
+
+        // One row for an artist, under the name the page is titled with, in
+        // the order of the names shown; a folder with no page of its own
+        // still lists its sketches, since nothing else leads to them.
+        let onArtist = builder.sidebar(for: artist, plan: plan)
+        #expect(Self.labels(in: onArtist, group: "Recreations")
+                == ["All Recreations", "Dóra Maurer", "Eduardo Mac Entyre and Miguel Ángel Vidal",
+                    "Vladimir Bonačić", "Zdeněk Sýkora", "Studies / Grid"],
+                "actual: \(Self.labels(in: onArtist, group: "Recreations"))")
+        #expect(onArtist.contains("<a href=\"index.html\" aria-current=\"page\">Vladimir Bonačić</a>"),
+                "an artist's own page is not marked in the menu")
+        #expect(!onArtist.contains("VladimirBonacic"), "the menu spells a folder")
+
+        // On a sketch, the row that holds it is marked: the sketch itself is
+        // listed on that page, not in the menu.
+        let onSketch = builder.sidebar(for: sketch, plan: plan)
+        #expect(onSketch.contains("<a href=\"index.html\" aria-current=\"true\">Vladimir Bonačić</a>"),
+                "a sketch's page marks nothing in the menu")
+        #expect(!onSketch.contains("aria-current=\"page\""))
+        #expect(onSketch.contains("<details open><summary>Recreations</summary>"))
+
+        // A category with no folders of its own lists its sketches as before.
+        #expect(Self.labels(in: onArtist, group: "Motion") == ["All Motion", "ArcModes"])
+        let onFlat = builder.sidebar(for: flat, plan: plan)
+        #expect(onFlat.contains("<a href=\"arcmodes.html\" aria-current=\"page\">ArcModes</a>"))
+        #expect(!onFlat.contains("aria-current=\"true\""))
+    }
+
+    @Test("A sketch's trail and its search entry name the folders above it as their own pages do")
+    func trailNamesAreThePagesOwn() throws {
+        let root = try Self.checkoutWithArtists()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let builder = SiteBuilder(root: root)
+        let plan = builder.plan()
+        let log = SiteBuilder.LinkLog()
+
+        let sketch = try #require(plan.examples["Examples/Recreations/VladimirBonacic/DynamicObject"])
+        guard case .example(let entry) = sketch.kind else { Issue.record("not an example"); return }
+        let html = builder.examplePage(entry, page: sketch, plan: plan, log: log)
+        #expect(html.contains("<nav class=\"trail\" aria-label=\"Breadcrumb\"><a href=\"../../index.html\">Examples</a> → <a href=\"../index.html\">Recreations</a> → <a href=\"index.html\">Vladimir Bonačić</a></nav>"),
+                "the trail spells the folder")
+        #expect(log.search.last?.heading == "Recreations / Vladimir Bonačić", "actual: \(log.search.last?.heading ?? "")")
+
+        // A folder with no page of its own has only its spelling to go by.
+        let loose = try #require(plan.examples["Examples/Recreations/Studies/Grid"])
+        guard case .example(let looseEntry) = loose.kind else { Issue.record("not an example"); return }
+        let looseHTML = builder.examplePage(looseEntry, page: loose, plan: plan, log: log)
+        #expect(looseHTML.contains("<a href=\"../index.html\">Recreations</a> → Studies</nav>"))
+        #expect(log.search.last?.heading == "Recreations / Studies")
+
+        // The artist's page keeps a sketch's follow-on lines under its bullet.
+        let artist = try #require(plan.byRepoPath["Examples/Recreations/VladimirBonacic/README.md"])
+        let markdown = try String(contentsOf: root.appendingPathComponent(artist.repoPath), encoding: .utf8)
+        let page = builder.markdownPage(markdown, page: artist, plan: plan, log: log).replacingOccurrences(of: "\n", with: "")
+        #expect(page.contains("<li><p><a href=\"dynamicobject.html\"><strong>DynamicObject</strong></a>: after <em>GF.E 32-S</em>.</p><p>The square of lamps.</p><pre>"),
+                "the paragraph under a sketch's bullet left the bullet")
+    }
+
+    @Test("Every examples listing's trail ends on the page's own title")
+    func listingTrailsNameThePage() throws {
+        // The trail is written by hand at the top of each listing, and its last
+        // step is the page itself, so it reads as the title does: an artist's
+        // name with its accents, never the folder's spelling.
+        let root = try #require(Self.repositoryRoot())
+        let plan = try #require(Self.checkoutPlan)
+        var checked = 0
+        // The index above them all is the one exception: its trail ends on the
+        // section, and its title says whose examples they are.
+        for page in plan.pages where page.repoPath != "Examples/README.md" {
+            guard case .examples = page.kind else { continue }
+            var lines = try String(contentsOf: root.appendingPathComponent(page.repoPath), encoding: .utf8)
+                .components(separatedBy: "\n")
+            guard let trail = HTML.takeTrail(&lines) else { continue }
+            let last = HTML.plainText(String(trail.components(separatedBy: "→").last ?? ""))
+            #expect(last == page.title, "\(page.repoPath) ends its trail on \"\(last)\" under the title \"\(page.title)\"")
+            checked += 1
+        }
+        #expect(checked > 60, "read \(checked) trails")
     }
 
     @Test("A clip carries what a phone needs to play it inline")

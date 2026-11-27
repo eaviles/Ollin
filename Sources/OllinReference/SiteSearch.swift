@@ -95,9 +95,12 @@ enum SiteSearch {
     /// An example's entry: its name, the category it is filed under, the line
     /// its listing says about it, and the words of that line, its imports, and
     /// the comment the sketch opens with, which is where a sketch says what it
-    /// is and who it is after.
-    static func entry(for example: ExampleEntry, page: SiteBuilder.Page, source: String) -> Entry {
-        let heading = example.group.split(separator: "/").joined(separator: " / ")
+    /// is and who it is after. `names` are the folders it is filed under as
+    /// their own pages title them, for a folder that goes by another name
+    /// than its spelling; without them the folders are named as spelled.
+    static func entry(for example: ExampleEntry, page: SiteBuilder.Page, source: String,
+                      filedUnder names: [String]? = nil) -> Entry {
+        let heading = (names ?? example.group.split(separator: "/").map(String.init)).joined(separator: " / ")
         let comment = leadingComment(of: source)
         let titleWords = Set(tokens(example.name))
         let headingWords = Set(tokens(heading))

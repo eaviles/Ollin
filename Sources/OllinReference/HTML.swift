@@ -65,11 +65,9 @@ public enum HTML {
         let trailSource = takeTrail(&lines)
         lines = Markdown.joined(lines)
 
-        var out: [String] = []
         var headings: [(level: Int, text: String, anchor: String)] = []
         var anchors: [String: Int] = [:]
         var title: String?
-        var index = 0
         var sections = [""]
         func note(_ markdown: String) {
             let text = plainText(markdown)
@@ -77,106 +75,122 @@ public enum HTML {
             sections[sections.count - 1] += sections[sections.count - 1].isEmpty ? text : " " + text
         }
 
-        while index < lines.count {
-            let line = lines[index]
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
+        // The blocks of a run of lines, one string each. A list item's own
+        // lines come back through here with the item's indent taken off, so
+        // whatever sits under a bullet is rendered exactly as it would be at
+        // the margin, and lands inside the bullet.
+        func blocks(_ source: [String]) -> [String] {
+            var lines = source
+            var out: [String] = []
+            var index = 0
+            while index < lines.count {
+                let line = lines[index]
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
 
-            if trimmed.hasPrefix("```") {
-                let language = String(trimmed.dropFirst(3)).trimmingCharacters(in: .whitespaces)
-                index += 1
-                var code: [String] = []
-                while index < lines.count, !lines[index].trimmingCharacters(in: .whitespaces).hasPrefix("```") {
-                    code.append(lines[index])
+                if trimmed.hasPrefix("```") {
+                    let language = String(trimmed.dropFirst(3)).trimmingCharacters(in: .whitespaces)
                     index += 1
-                }
-                index += 1
-                out.append(codeBlock(code.joined(separator: "\n"), language: language))
-                continue
-            }
-
-            if trimmed.hasPrefix("|") {
-                var rows: [String] = []
-                while index < lines.count, lines[index].trimmingCharacters(in: .whitespaces).hasPrefix("|") {
-                    rows.append(lines[index].trimmingCharacters(in: .whitespaces))
+                    var code: [String] = []
+                    while index < lines.count, !lines[index].trimmingCharacters(in: .whitespaces).hasPrefix("```") {
+                        code.append(lines[index])
+                        index += 1
+                    }
                     index += 1
+                    out.append(codeBlock(code.joined(separator: "\n"), language: language))
+                    continue
                 }
-                out.append(table(rows, resolve: resolve))
-                for cell in tableCells(rows) { note(cell) }
-                continue
-            }
 
-            // A note to the tools (the snippet checker's skips) is for whoever
-            // edits the page, never for the reader, so it leaves no trace.
-            // Prose wrapped onto the closing line is joined to it, so what
-            // follows the close is read again as a line of its own.
-            if trimmed.hasPrefix("<!--") {
-                while index < lines.count, !lines[index].contains("-->") { index += 1 }
-                guard index < lines.count, let close = lines[index].range(of: "-->") else { break }
-                let rest = lines[index][close.upperBound...].trimmingCharacters(in: .whitespaces)
-                if rest.isEmpty { index += 1 } else { lines[index] = rest }
-                continue
-            }
+                if trimmed.hasPrefix("|") {
+                    var rows: [String] = []
+                    while index < lines.count, lines[index].trimmingCharacters(in: .whitespaces).hasPrefix("|") {
+                        rows.append(lines[index].trimmingCharacters(in: .whitespaces))
+                        index += 1
+                    }
+                    out.append(table(rows, resolve: resolve))
+                    for cell in tableCells(rows) { note(cell) }
+                    continue
+                }
 
-            if isRawBlock(trimmed) {
-                out.append(rewritten(line, resolve: resolve))
-                index += 1
-                continue
-            }
+                // A note to the tools (the snippet checker's skips) is for whoever
+                // edits the page, never for the reader, so it leaves no trace.
+                // Prose wrapped onto the closing line is joined to it, so what
+                // follows the close is read again as a line of its own.
+                if trimmed.hasPrefix("<!--") {
+                    while index < lines.count, !lines[index].contains("-->") { index += 1 }
+                    guard index < lines.count, let close = lines[index].range(of: "-->") else { break }
+                    let rest = lines[index][close.upperBound...].trimmingCharacters(in: .whitespaces)
+                    if rest.isEmpty { index += 1 } else { lines[index] = rest }
+                    continue
+                }
 
-            if trimmed.hasPrefix("#") {
-                let level = trimmed.prefix { $0 == "#" }.count
-                let text = trimmed.dropFirst(level).trimmingCharacters(in: .whitespaces)
-                let plain = Markdown.plain(text)
-                let anchor = uniqueAnchor(slug(plain), used: &anchors)
-                if title == nil, level <= 2 { title = plain }
-                headings.append((level, plain, anchor))
-                sections.append("")
-                out.append("<h\(level) id=\"\(anchor)\">\(inline(text, resolve: resolve))</h\(level)>")
-                index += 1
-                continue
-            }
-
-            if trimmed == "---" || trimmed == "***" || trimmed == "___" {
-                out.append("<hr>")
-                index += 1
-                continue
-            }
-
-            if trimmed.hasPrefix(">") {
-                var quoted: [String] = []
-                while index < lines.count {
-                    let candidate = lines[index].trimmingCharacters(in: .whitespaces)
-                    guard candidate.hasPrefix(">") else { break }
-                    quoted.append(String(candidate.dropFirst(1)).trimmingCharacters(in: .whitespaces))
+                if isRawBlock(trimmed) {
+                    out.append(rewritten(line, resolve: resolve))
                     index += 1
+                    continue
                 }
-                out.append(blockquote(quoted, resolve: resolve))
-                for line in quoted { note(line) }
-                continue
-            }
 
-            if Markdown.listItem(line) != nil {
-                var items: [(indent: Int, ordered: Bool, text: String)] = []
-                while index < lines.count, let item = Markdown.listItem(lines[index]) {
-                    items.append((item.indent, item.ordered, item.text))
+                if trimmed.hasPrefix("#") {
+                    let level = trimmed.prefix { $0 == "#" }.count
+                    let text = trimmed.dropFirst(level).trimmingCharacters(in: .whitespaces)
+                    let plain = Markdown.plain(text)
+                    let anchor = uniqueAnchor(slug(plain), used: &anchors)
+                    if title == nil, level <= 2 { title = plain }
+                    headings.append((level, plain, anchor))
+                    sections.append("")
+                    out.append("<h\(level) id=\"\(anchor)\">\(inline(text, resolve: resolve))</h\(level)>")
                     index += 1
+                    continue
                 }
-                out.append(list(items, resolve: resolve))
-                for item in items { note(item.text) }
-                continue
-            }
 
-            if trimmed.isEmpty {
+                if trimmed == "---" || trimmed == "***" || trimmed == "___" {
+                    out.append("<hr>")
+                    index += 1
+                    continue
+                }
+
+                if trimmed.hasPrefix(">") {
+                    var quoted: [String] = []
+                    while index < lines.count {
+                        let candidate = lines[index].trimmingCharacters(in: .whitespaces)
+                        guard candidate.hasPrefix(">") else { break }
+                        quoted.append(String(candidate.dropFirst(1)).trimmingCharacters(in: .whitespaces))
+                        index += 1
+                    }
+                    out.append(blockquote(quoted, resolve: resolve))
+                    for line in quoted { note(line) }
+                    continue
+                }
+
+                if Markdown.listItem(line) != nil {
+                    let found = listItems(in: lines, from: index)
+                    index = found.next
+                    var rendered: [String] = []
+                    for item in found.items {
+                        // An item's first line is text whatever it opens with;
+                        // what follows it is read as blocks.
+                        note(item.text)
+                        var parts = ["<p>\(inline(item.text, resolve: resolve))</p>"] + blocks(item.body)
+                        if !found.spread { parts = tight(parts) }
+                        rendered.append(parts.joined(separator: found.spread ? "\n" : ""))
+                    }
+                    out.append(list(rendered, ordered: found.ordered, start: found.start, spread: found.spread))
+                    continue
+                }
+
+                if trimmed.isEmpty {
+                    index += 1
+                    continue
+                }
+
+                let paragraphClass = paragraphClass(trimmed)
+                out.append("<p\(paragraphClass)>\(inline(trimmed, resolve: resolve))</p>")
+                if paragraphClass.isEmpty { note(trimmed) }
                 index += 1
-                continue
             }
-
-            let paragraphClass = paragraphClass(trimmed)
-            out.append("<p\(paragraphClass)>\(inline(trimmed, resolve: resolve))</p>")
-            if paragraphClass.isEmpty { note(trimmed) }
-            index += 1
+            return out
         }
 
+        let out = blocks(lines)
         let trail = trailSource.map { inline($0, resolve: resolve) } ?? ""
         return Page(body: out.joined(separator: "\n"),
                     title: title ?? "",
@@ -388,30 +402,120 @@ public enum HTML {
         return "<blockquote>\n\(body)\n</blockquote>"
     }
 
-    /// Items nested by their indent. An item opens a deeper list inside
-    /// itself when the next one is indented past it, and a shallower item
-    /// closes everything above its own level first.
-    static func list(_ items: [(indent: Int, ordered: Bool, text: String)], resolve: Resolver) -> String {
-        var out = ""
-        var stack: [(indent: Int, tag: String)] = []
-        for item in items {
-            while let top = stack.last, item.indent < top.indent {
-                out += "</li></\(top.tag)>"
-                stack.removeLast()
+    /// One list read off a run of lines: its items, each with the lines that
+    /// belong under it, and where the list ends.
+    ///
+    /// A line belongs to an item when it is indented to where the item's text
+    /// starts (two columns past a bullet, past the number and its space in a
+    /// numbered list), which is the rule the pages are already written to,
+    /// since it is the one GitHub reads them by. A deeper list item belongs
+    /// too, wherever it is indented. Blank lines belong when what follows
+    /// them does. The lines come back with the item's
+    /// indent taken off, so a paragraph, a fenced command, a table, or a
+    /// deeper list under a bullet reads as it would at the margin.
+    ///
+    /// The list is `spread` when a blank line separates two of its items, or
+    /// two blocks one item holds directly: its items then carry paragraphs,
+    /// where a list with nothing between its items carries bare text.
+    static func listItems(in lines: [String], from start: Int)
+        -> (items: [(text: String, body: [String])], ordered: Bool, start: Int, spread: Bool, next: Int) {
+        guard let first = Markdown.listItem(lines[start]) else { return ([], false, 1, false, start + 1) }
+        func isBlank(_ line: String) -> Bool { line.trimmingCharacters(in: .whitespaces).isEmpty }
+        func indent(of line: String) -> Int { line.prefix { $0 == " " }.count }
+
+        var items: [(text: String, body: [String])] = []
+        var spread = false
+        var index = start
+        while index < lines.count, let item = Markdown.listItem(lines[index]),
+              item.indent == first.indent, item.ordered == first.ordered {
+            let content = item.indent + item.marker.count + 1
+            func belongs(_ line: String) -> Bool {
+                let depth = indent(of: line)
+                if depth >= content { return true }
+                return depth > item.indent && Markdown.listItem(line) != nil
             }
-            if let top = stack.last, item.indent == top.indent {
-                out += "</li>\n"
-            } else {
-                let tag = item.ordered ? "ol" : "ul"
-                out += "<\(tag)>\n"
-                stack.append((item.indent, tag))
+            var body: [String] = []
+            index += 1
+            while index < lines.count {
+                var ahead = index
+                while ahead < lines.count, isBlank(lines[ahead]) { ahead += 1 }
+                guard ahead < lines.count, belongs(lines[ahead]) else { break }
+                body.append(contentsOf: Array(repeating: "", count: ahead - index))
+                body.append(String(lines[ahead].dropFirst(min(content, indent(of: lines[ahead])))))
+                index = ahead + 1
             }
-            out += "<li>\(inline(item.text, resolve: resolve))"
+            if holdsSeparatedBlocks(body) { spread = true }
+            items.append((item.text, body))
+
+            // Blank lines and then a sibling: the list goes on, spread.
+            var ahead = index
+            while ahead < lines.count, isBlank(lines[ahead]) { ahead += 1 }
+            if ahead > index, ahead < lines.count, let next = Markdown.listItem(lines[ahead]),
+               next.indent == first.indent, next.ordered == first.ordered {
+                spread = true
+                index = ahead
+            }
         }
-        while let top = stack.popLast() {
-            out += "</li></\(top.tag)>"
+        let number = Int(first.marker.dropLast()) ?? 1
+        return (items, first.ordered, first.ordered ? number : 1, spread, index)
+    }
+
+    /// Whether an item's own lines hold a blank line between two blocks that
+    /// are directly the item's: its text and a paragraph under it, a paragraph
+    /// and a fenced command. A blank line inside a fence, or between two items
+    /// of a deeper list, separates nothing of this item's.
+    static func holdsSeparatedBlocks(_ body: [String]) -> Bool {
+        var inFence = false
+        var afterBlank = false
+        // The item's text is a paragraph, so a list has not opened yet.
+        var inList = false
+        for line in body {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix("```") {
+                if !inFence, afterBlank, !line.hasPrefix(" ") { return true }
+                inFence.toggle()
+                afterBlank = false
+                if !line.hasPrefix(" ") { inList = false }
+                continue
+            }
+            if inFence { continue }
+            if trimmed.isEmpty { afterBlank = true; continue }
+            if !line.hasPrefix(" ") {
+                let isItem = Markdown.listItem(line) != nil
+                if afterBlank, !(isItem && inList) { return true }
+                inList = isItem
+            }
+            afterBlank = false
+        }
+        return false
+    }
+
+    /// An item's blocks for a list with nothing between its items: its text
+    /// bare, with whatever it holds straight after it, and two runs of text
+    /// joined by a space.
+    static func tight(_ parts: [String]) -> [String] {
+        var out: [String] = []
+        var lastWasText = false
+        for part in parts {
+            if part.hasPrefix("<p>"), part.hasSuffix("</p>") {
+                let text = String(part.dropFirst(3).dropLast(4))
+                out.append(lastWasText ? " " + text : text)
+                lastWasText = true
+            } else {
+                out.append(part)
+                lastWasText = false
+            }
         }
         return out
+    }
+
+    /// A list around its rendered items. A numbered list that opens past one
+    /// says so, since a list a paragraph interrupted carries on counting.
+    static func list(_ items: [String], ordered: Bool, start: Int, spread: Bool) -> String {
+        let tag = ordered ? "ol" : "ul"
+        var attributes = spread ? " class=\"spread\"" : ""
+        if ordered, start != 1 { attributes += " start=\"\(start)\"" }
+        return "<\(tag)\(attributes)>\n" + items.map { "<li>\($0)" }.joined(separator: "</li>\n") + "</li></\(tag)>"
     }
 
     /// The cells of a table's rows, the rule row dropped, as the table

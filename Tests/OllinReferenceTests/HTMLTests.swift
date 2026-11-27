@@ -159,6 +159,79 @@ struct HTMLTests {
         #expect(flat.contains("<ol><li>first</li><li>second</li></ol>"))
     }
 
+    @Test("What is indented under a list item stays inside it: a paragraph, a code block, and the item after them")
+    func listItemsHoldTheirBlocks() {
+        let source = """
+        Before.
+
+        - [**One**](One/): the first.
+
+          A paragraph of its own, with `code`.
+
+          ```sh
+          swift run One
+          ```
+
+          And a last line.
+
+        - [**Two**](Two/): the second.
+
+        After.
+        """
+        let page = HTML.render(source, resolve: Self.identity)
+        let flat = page.body.replacingOccurrences(of: "\n", with: "")
+        #expect(flat.components(separatedBy: "<ul").count - 1 == 1, "two bullets with a blank line between them are one list")
+        #expect(flat.components(separatedBy: "<li>").count - 1 == 2)
+        #expect(flat.hasPrefix("<p>Before.</p><ul class=\"spread\"><li><p><a href=\"One/\"><strong>One</strong></a>: the first.</p>"),
+                "actual: \(flat.prefix(160))")
+        #expect(flat.contains("the first.</p><p>A paragraph of its own, with <code>code</code>.</p><pre><code class=\"language-sh\">"),
+                "the paragraph and the command left their bullet")
+        // The two spaces that put the command under the bullet are the list's,
+        // not the command's.
+        #expect(page.body.contains("<code class=\"language-sh\"><span class=\"tk-keyword\">swift</span> <span class=\"tk-keyword\">run</span> One</code></pre>"),
+                "the code kept the indent that nests it")
+        #expect(flat.hasSuffix("</pre><p>And a last line.</p></li><li><p><a href=\"Two/\"><strong>Two</strong></a>: the second.</p></li></ul><p>After.</p>"),
+                "actual: \(flat.suffix(200))")
+        // The search reads the bullet's own paragraphs as prose, and still
+        // leaves the code out.
+        #expect(page.sections == ["Before. One: the first. A paragraph of its own, with code. And a last line. Two: the second. After."])
+    }
+
+    @Test("A numbered list keeps counting across the blocks its items hold, and starts where it says")
+    func numberedItemsHoldTheirBlocks() {
+        let source = """
+        1. Build it:
+
+           ```sh
+           swift build
+           ```
+
+        2. Run it.
+
+        Then:
+
+        3. Third.
+        4. Fourth.
+        """
+        let flat = HTML.render(source, resolve: Self.identity).body.replacingOccurrences(of: "\n", with: "")
+        #expect(flat.hasPrefix("<ol class=\"spread\"><li><p>Build it:</p><pre><code class=\"language-sh\">"), "actual: \(flat.prefix(120))")
+        #expect(flat.contains("</pre></li><li><p>Run it.</p></li></ol><p>Then:</p>"), "the second step opened a list of its own, numbered 1 again")
+        #expect(flat.hasSuffix("<ol start=\"3\"><li>Third.</li><li>Fourth.</li></ol>"), "actual: \(flat.suffix(80))")
+    }
+
+    @Test("A list with nothing between its items carries bare text, and a block right under an item is the item's")
+    func tightListsAreUnchanged() {
+        // A block right under an item, with no blank line, is the item's too,
+        // and the list stays tight: no paragraph tags around its text.
+        let source = "- one\n  ```sh\n  x\n  ```\n- two\n    - deep\n\nA paragraph.\n\n- alone\n"
+        let flat = HTML.render(source, resolve: Self.identity).body.replacingOccurrences(of: "\n", with: "")
+        #expect(flat == "<ul><li>one<pre><code class=\"language-sh\">x</code></pre></li><li>two<ul><li>deep</li></ul></li></ul><p>A paragraph.</p><ul><li>alone</li></ul>",
+                "actual: \(flat)")
+        // A bullet's own first line is text whatever it opens with.
+        let odd = HTML.render("- |x| is a size\n- # is a mark\n", resolve: Self.identity).body.replacingOccurrences(of: "\n", with: "")
+        #expect(odd == "<ul><li>|x| is a size</li><li># is a mark</li></ul>", "actual: \(odd)")
+    }
+
     @Test("A quote holds its paragraphs")
     func blockquote() {
         let source = "> **Status: alpha.** Read on.\n>\n> Second.\n"

@@ -127,7 +127,9 @@ enum SiteStyle {
     .sidebar ul, .rail ul { list-style: none; margin: 0; padding: 0; }
     .sidebar li a, .rail li a { display: block; padding: 0.3rem 0.6rem; margin: 0 -0.6rem; border-radius: 8px; color: var(--text-2); line-height: 1.35; }
     .sidebar li a:hover, .rail li a:hover { color: var(--text); background: var(--surface); text-decoration: none; }
-    .sidebar li a[aria-current="page"] { color: var(--text); font-weight: 600; background: var(--surface); }
+    /* The page open, or the row that holds it: a sketch filed under an
+       artist marks the artist, so every page has its place in the menu. */
+    .sidebar li a[aria-current] { color: var(--text); font-weight: 600; background: var(--surface); }
     .sidebar-title, .rail-title { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 0 0 0.6rem; }
     .sidebar details { margin-top: 1rem; }
     .sidebar summary { cursor: pointer; font-weight: 600; color: var(--text); padding: 0.3rem 0; list-style: none; display: flex; align-items: center; gap: 0.4rem; }
@@ -155,6 +157,12 @@ enum SiteStyle {
     .prose ul, .prose ol { padding-left: 1.4rem; }
     .prose li { margin: 0.3rem 0; }
     .prose li > ul, .prose li > ol { margin: 0.3rem 0 0; }
+    /* A list written with a blank line between its items, or with paragraphs
+       and code under them: the items stand as far apart as paragraphs do,
+       and what an item holds ends flush with it. */
+    .spread > li { margin: 1.1rem 0; }
+    .prose li > pre { margin-top: 0.5rem; }
+    .prose li > :last-child { margin-bottom: 0; }
     .prose blockquote { border-left: 3px solid var(--border); padding: 0.25rem 0 0.25rem 1.1rem; color: var(--text-2); }
     .prose blockquote p:last-child { margin-bottom: 0; }
     .prose picture, .prose > img { margin-top: 1.5rem; margin-bottom: 1.5rem; }
@@ -251,15 +259,15 @@ enum SiteStyle {
     .home-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3rem; padding: 3.5rem 0; border-top: 1px solid var(--border); }
     .home-pair > .home-section { border-top: 0; padding: 0; min-width: 0; }
     .home-pair p:last-child, .home-pair pre:last-child { margin-bottom: 0; }
-    /* The section is the grid, since the README's spaced bullets render as
-       one list each; the lists dissolve into it and every item is a card. */
+    /* The section is the grid: the README's list dissolves into it and
+       every item is a card. */
     .home-whats-in-it { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; }
     .home-whats-in-it > h2, .home-whats-in-it > p { grid-column: 1 / -1; max-width: 820px; margin: 0; }
     .home-section.home-whats-in-it > h2:first-child { margin-bottom: 0.25rem; }
     .home-whats-in-it > p:last-child { margin-top: 0.5rem; }
     .home-whats-in-it > ul { display: contents; }
     .home-whats-in-it > ul > li { list-style: none; margin: 0; padding: 1.5rem 1.6rem; background: var(--surface); border-radius: 18px; font-size: 15px; line-height: 1.5; color: var(--text-2); }
-    .home-whats-in-it > ul > li > strong:first-child { display: block; color: var(--text); font-size: 19px; line-height: 1.3; letter-spacing: -0.015em; margin-bottom: 0.5rem; }
+    .home-whats-in-it > ul > li > strong:first-child, .home-whats-in-it > ul > li > p > strong:first-child { display: block; color: var(--text); font-size: 19px; line-height: 1.3; letter-spacing: -0.015em; margin-bottom: 0.5rem; }
     .home-whats-in-it > ul > li code { background: var(--surface-2); }
     .home-more > ul { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 0.6rem; }
     .home-more > ul > li { margin: 0; }
@@ -498,6 +506,8 @@ enum SiteStyle {
       if (key) key.textContent = shortcut;
       toggle.title = 'Search (' + shortcut + ')';
 
+      const fold = (text) => String(text).normalize('NFD').replace(/\p{M}/gu, '');
+
       const script = (src, sri) => new Promise((resolve, reject) => {
         const element = document.createElement('script');
         element.src = src;
@@ -518,6 +528,9 @@ enum SiteStyle {
           const built = new MiniSearch({
             fields: ['t', 'h', 'x', 'w'],
             storeFields: ['k', 't', 'h', 'u', 'x'],
+            // A name is found with or without its accents: the index and the
+            // query both drop them, so `bonacic` reaches Bonačić.
+            processTerm: (term) => fold(term).toLowerCase(),
             searchOptions: {
               boost: { t: 6, h: 4, x: 2, w: 1 },
               boostDocument: (id, term, fields) => (fields && fields.h === '' ? 1.25 : 1),
@@ -539,16 +552,21 @@ enum SiteStyle {
       };
 
       const escape = (text) => String(text).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+      // The matched terms arrive without accents, so they are looked for in
+      // the text with each accented letter as its plain one, letter for
+      // letter: a match sits at the same place in the text that is shown.
+      const unaccented = (text) => text.replace(/[À-ɏḀ-ỿ]/g, (c) => { const plain = fold(c); return plain.length === 1 ? plain : c; });
       const marked = (text, terms) => {
         text = String(text);
         if (!terms.length) return escape(text);
         const alternatives = terms.map((term) => term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
         const pattern = new RegExp('(^|[^\\p{L}\\p{N}])(' + alternatives + ')', 'giu');
         let out = '', last = 0;
-        for (const match of text.matchAll(pattern)) {
+        for (const match of unaccented(text).matchAll(pattern)) {
           const start = match.index + match[1].length;
-          out += escape(text.slice(last, start)) + '<mark>' + escape(match[2]) + '</mark>';
-          last = start + match[2].length;
+          const end = start + match[2].length;
+          out += escape(text.slice(last, start)) + '<mark>' + escape(text.slice(start, end)) + '</mark>';
+          last = end;
         }
         return out + escape(text.slice(last));
       };
