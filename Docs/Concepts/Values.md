@@ -1,4 +1,4 @@
-#### <sup>[Ollin](../../README.md) → [Documentation](../README.md) → [Concepts](./README.md) → `Values and bare calls`</sup>
+#### <sup>[Ollin](../../README.md) → [Reference](../README.md) → [Concepts](./README.md) → `Values and bare calls`</sup>
 
 ---
 

@@ -143,6 +143,13 @@ struct SiteTests {
         var unfolded: [String] = []
         var unskippable: [String] = []
         var untinted: [String] = []
+        // One look across the sections: a page opens on one title at the
+        // first level, its trail starts at the root and names the section
+        // as the bar does, and its list of sections has a top level.
+        var untitled: [String] = []
+        var rootless: [String] = []
+        var misnamed: [String] = []
+        var indented: [String] = []
         var pictures = 0
         let mediaBase = ExampleMedia.read(inRepository: root).base
         let examplesFolder = output.appendingPathComponent("examples").resolvingSymlinksInPath().path + "/"
@@ -203,6 +210,31 @@ struct SiteTests {
                     unfolded.append("\(name): the fold is not under the title")
                 }
             }
+            let levels = Self.headingLevels(inMainOf: html)
+            if levels.first != 1 || levels.filter({ $0 == 1 }).count != 1 {
+                untitled.append("\(name): \(levels.prefix(6))")
+            }
+            let trail = Self.trail(of: html)
+            if name != "index.html", name != "404.html" {
+                // The first step is a link to the front page, called Ollin.
+                let first = Self.hrefs(in: trail).first ?? ""
+                let home = output.appendingPathComponent("index.html").standardized.resolvingSymlinksInPath().path
+                if !trail.hasPrefix("<a href=\"\(first)\">Ollin</a> → ")
+                    || folder.appendingPathComponent(first).standardized.resolvingSymlinksInPath().path != home {
+                    rootless.append("\(name): \(Self.words(of: trail))")
+                }
+            }
+            let steps = Self.words(of: trail).components(separatedBy: " → ")
+            let section = name.split(separator: "/").first.map(String.init) ?? ""
+            if let called = ["guide": "Guide", "docs": "Reference", "examples": "Examples"][section], name.contains("/"),
+               steps.count < 2 || steps[1] != called {
+                misnamed.append("\(name): \(steps.prefix(3))")
+            }
+            if let rail = html.range(of: "<nav class=\"rail\""),
+               let railEnd = html.range(of: "</nav>", range: rail.upperBound ..< html.endIndex),
+               !html[rail.upperBound ..< railEnd.lowerBound].contains("<li class=\"level-2\">") {
+                indented.append(name)
+            }
             if let body = html.range(of: "<body>") {
                 let after = html[body.upperBound...]
                 let stops = ["<a ", "<button", "<input", "<summary", "<select", "<textarea", "<video", "tabindex=\"0\""]
@@ -239,6 +271,56 @@ struct SiteTests {
         #expect(unwired.isEmpty, "pages whose menu has no way in on a phone or is not placed and followed, or pages with no menu that carry one: \(unwired.prefix(6)) (\(unwired.count))")
         #expect(unfolded.isEmpty, "pages whose list of sections is not also folded under the title, link for link: \(unfolded.prefix(6)) (\(unfolded.count))")
         #expect(FileManager.default.fileExists(atPath: output.appendingPathComponent("assets/menus.js").path))
+        #expect(untitled.isEmpty, "pages that do not open on one first-level title: \(untitled.prefix(6)) (\(untitled.count))")
+        #expect(rootless.isEmpty, "pages whose trail does not start at the front page: \(rootless.prefix(6)) (\(rootless.count))")
+        #expect(misnamed.isEmpty, "pages whose trail calls their section something the bar does not: \(misnamed.prefix(6)) (\(misnamed.count))")
+        #expect(indented.isEmpty, "pages whose list of sections has no top level, so every entry is set in: \(indented.prefix(6)) (\(indented.count))")
+
+        // The examples' menu names the categories in the order the index
+        // shows them: the names under its pictures, row by row.
+        let examplesIndex = try String(contentsOf: root.appendingPathComponent("Examples/README.md"), encoding: .utf8)
+        var shown: [String] = []
+        for line in examplesIndex.components(separatedBy: "\n") where line.hasPrefix("| [") && !line.hasPrefix("| [![") {
+            let cells = line.split(separator: "|").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+            // The grid's rows of names hold links and nothing else.
+            guard cells.count > 1, cells.allSatisfy({ $0.hasPrefix("[") && $0.hasSuffix(")") }) else { continue }
+            shown += cells.map { String($0.dropFirst().prefix { $0 != "]" }) }
+        }
+        let examplesMenu = Self.menu(of: try String(contentsOf: output.appendingPathComponent("examples/index.html"), encoding: .utf8))
+        let listedGroups = examplesMenu.components(separatedBy: "<summary>").dropFirst().map { String($0.prefix { $0 != "<" }) }
+        #expect(shown.count > 20 && listedGroups == shown, "the menu lists \(listedGroups.prefix(8)) where the index shows \(shown.prefix(8))")
+
+        // The changelog's list is its releases, by name alone.
+        let changelog = try String(contentsOf: output.appendingPathComponent("changelog.html"), encoding: .utf8)
+        let releases = Self.railLabels(of: changelog)
+        #expect(releases.count > 15 && releases.first == "Unreleased", "the changelog lists \(releases.prefix(4))")
+        #expect(releases.dropFirst().allSatisfy { name in name.split(separator: ".").count == 3 && name.allSatisfy { $0.isNumber || $0 == "." } },
+                "the changelog's list holds something that is not a release: \(releases.filter { !$0.allSatisfy { $0.isNumber || $0 == "." } })")
+        #expect(changelog.contains(">[Unreleased]</h2>"), "the page itself no longer writes a release as its file does")
+
+        // The project pages go by short names in the menu and the trail,
+        // and each still opens on its own file's title.
+        let conduct = try String(contentsOf: output.appendingPathComponent("code_of_conduct.html"), encoding: .utf8)
+        let projectRows = Self.words(of: Self.menu(of: conduct))
+        #expect(projectRows.contains("Home About Contributing Changelog Roadmap Architecture Capabilities Design notes Attribution Third-party notices Code of conduct Security"),
+                "the project pages' menu reads: \(projectRows)")
+        #expect(Self.words(of: Self.trail(of: conduct)) == "Ollin → Code of conduct")
+        #expect(conduct.contains(">Contributor Covenant Code of Conduct</h1>"), "the page lost its own title")
+
+        // The reference's menu has a row for every page of the reference:
+        // the two beside the index sit with the overview, and a folder's
+        // own index is its group's first row.
+        for (file, row) in [("docs/quickreference.html", "Ollin quick reference"), ("docs/swift.html", "Swift quick reference"),
+                            ("docs/core/index.html", "All Core"), ("docs/tools/index.html", "All Tools")] {
+            let menu = Self.menu(of: try String(contentsOf: output.appendingPathComponent(file), encoding: .utf8))
+            #expect(menu.contains(" aria-current=\"page\">\(row)</a>"), "\(file) is not marked in the reference's menu as \(row)")
+        }
+        var unlisted: [String] = []
+        for file in try FileManager.default.subpathsOfDirectory(atPath: output.appendingPathComponent("docs").path) where file.hasSuffix(".html") {
+            let menu = Self.menu(of: try String(contentsOf: output.appendingPathComponent("docs/\(file)"), encoding: .utf8))
+            if menu.components(separatedBy: " aria-current=\"page\"").count - 1 != 1 { unlisted.append(file) }
+        }
+        #expect(unlisted.isEmpty, "reference pages with no row of their own in the menu: \(unlisted.prefix(8)) (\(unlisted.count))")
 
         // Every chapter and appendix ends on its cards, with nothing left of
         // the line they were made from; the first has no chapter before it
@@ -319,6 +401,10 @@ struct SiteTests {
         let example = try String(contentsOf: output.appendingPathComponent("examples/basic/hellocircle.html"), encoding: .utf8)
         #expect(example.contains("language-swift"))
         #expect(example.contains("Example-Basic-HelloCircle"))
+        #expect(example.contains("<nav class=\"trail\" aria-label=\"Breadcrumb\"><a href=\"../../index.html\">Ollin</a> → <a href=\"../index.html\">Examples</a> → <a href=\"index.html\">Basic</a> → HelloCircle</nav>"),
+                "an example's trail does not run from the front page to the sketch")
+        #expect(example.contains("<p class=\"lede\">The smallest program: a breathing circle. <code>draw()</code> runs"),
+                "an example's first line lost its capital or its code type")
         #expect(!example.contains("class=\"pager\""), "an example's page gained cards nobody wrote a line for")
 
         // The artists: one row of the menu each, under the name the artist's
@@ -336,7 +422,7 @@ struct SiteTests {
         #expect(artist.contains("<nav class=\"trail\" aria-label=\"Breadcrumb\">") && artist.contains("→ Vladimir Bonačić</nav>"),
                 "the artist's page ends its trail on something other than the name")
         let artistSketch = try String(contentsOf: output.appendingPathComponent("examples/recreations/vladimirbonacic/dynamicobject.html"), encoding: .utf8)
-        #expect(artistSketch.contains("<a href=\"index.html\">Vladimir Bonačić</a></nav>"), "a sketch's trail spells the artist's folder")
+        #expect(artistSketch.contains("<a href=\"index.html\">Vladimir Bonačić</a> → DynamicObject</nav>"), "a sketch's trail spells the artist's folder, or does not end on the sketch")
         #expect(artistSketch.contains("aria-current=\"true\">Vladimir Bonačić</a>"), "a sketch marks nothing in the menu")
         // A sketch's follow-on paragraph and its command stay under its bullet.
         let bullet = try #require(artist.range(of: "<li><p><a href=\"dynamicobject.html\"><strong>DynamicObject</strong></a>"),
@@ -425,7 +511,8 @@ struct SiteTests {
         #expect(!home.contains("class=\"badges\""), "the badge row reached the front page")
         #expect(!home.contains("id=\"live-reload\"") && !home.contains("id=\"built-with-ai\""), "a section left for the About page is on the front page")
         #expect(about.contains("id=\"live-reload\"") && about.contains("id=\"built-with-ai\"") && about.contains("id=\"hello-circle\""), "the About page is not the whole README")
-        #expect(about.contains("class=\"badges\"") && about.contains("class=\"trail\"") == false, "the About page is the README as written")
+        #expect(about.contains("class=\"badges\""), "the About page is the README as written")
+        #expect(Self.words(of: Self.trail(of: about)) == "Ollin → About", "the About page's trail, which its place gives it since the README writes none")
         #expect(about.contains("<nav class=\"sidebar\"") && about.contains("<nav class=\"rail\""), "the About page reads like a project page")
         let aboutIds = Self.ids(in: about)
         let homeIds = Self.ids(in: home)
@@ -1145,6 +1232,39 @@ struct SiteTests {
                 "a picture's address is not a category")
     }
 
+    @Test("The categories are named in the order a reader meets them, row by row across the grid")
+    func categoriesReadAcrossTheGrid() throws {
+        let file = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("ollin-index-\(UUID().uuidString).md")
+        defer { try? FileManager.default.removeItem(at: file) }
+        // Two rows of a grid three across, the second one short, over a
+        // table that names the same folders in another order and says a
+        // word about each, one of them with a link of its own.
+        try """
+        ## Examples
+
+        | [![3D](https://media.example/a.jpg)](3D/) | [![Audio](https://media.example/b.jpg)](Audio/) | [![Basic](https://media.example/c.jpg)](Basic/) |
+        |---|---|---|
+        | [3D](3D/) | [Audio](Audio/) | [Basic](Basic/) |
+        | [![Color](https://media.example/d.jpg)](Color/) | [![Data](https://media.example/e.jpg)](Data/) |  |
+        | [Color](Color/) | [Data](Data/) |  |
+
+        | Category | What it holds |
+        |---|---|
+        | [Data](Data/) | tables, and [a feed](Data/Feed/) |
+        | [3D](3D/) | scenes with a camera |
+        | [Audio](Audio/) | sound |
+        | [Basic](Basic/) | the smallest |
+        | [Color](Color/) | palettes |
+        | [Late](Late/) | one the grid does not show yet |
+        """.write(to: file, atomically: true, encoding: .utf8)
+
+        let found = SiteBuilder.categories(readingIndexAt: file)
+        #expect(found.map(\.name) == ["3D", "Audio", "Basic", "Color", "Data", "Late"],
+                "a row's first cell alone reads down the first column: \(found.map(\.name))")
+        #expect(!found.contains { $0.path.contains("Feed") }, "a link inside a cell of prose is not a category")
+    }
+
     // MARK: - A group whose folders have pages of their own
 
     /// A checkout small enough to write in a test: one flat category, and one
@@ -1264,15 +1384,15 @@ struct SiteTests {
         let sketch = try #require(plan.examples["Examples/Recreations/VladimirBonacic/DynamicObject"])
         guard case .example(let entry) = sketch.kind else { Issue.record("not an example"); return }
         let html = builder.examplePage(entry, page: sketch, plan: plan, log: log)
-        #expect(html.contains("<nav class=\"trail\" aria-label=\"Breadcrumb\"><a href=\"../../index.html\">Examples</a> → <a href=\"../index.html\">Recreations</a> → <a href=\"index.html\">Vladimir Bonačić</a></nav>"),
-                "the trail spells the folder")
+        #expect(html.contains("<nav class=\"trail\" aria-label=\"Breadcrumb\"><a href=\"../../../index.html\">Ollin</a> → <a href=\"../../index.html\">Examples</a> → <a href=\"../index.html\">Recreations</a> → <a href=\"index.html\">Vladimir Bonačić</a> → DynamicObject</nav>"),
+                "the trail spells the folder, or does not run from the front page to the sketch")
         #expect(log.search.last?.heading == "Recreations / Vladimir Bonačić", "actual: \(log.search.last?.heading ?? "")")
 
         // A folder with no page of its own has only its spelling to go by.
         let loose = try #require(plan.examples["Examples/Recreations/Studies/Grid"])
         guard case .example(let looseEntry) = loose.kind else { Issue.record("not an example"); return }
         let looseHTML = builder.examplePage(looseEntry, page: loose, plan: plan, log: log)
-        #expect(looseHTML.contains("<a href=\"../index.html\">Recreations</a> → Studies</nav>"))
+        #expect(looseHTML.contains("<a href=\"../index.html\">Recreations</a> → Studies → Grid</nav>"))
         #expect(log.search.last?.heading == "Recreations / Studies")
 
         // The artist's page keeps a sketch's follow-on lines under its bullet.
@@ -1722,6 +1842,84 @@ struct SiteTests {
         }
     }
 
+    // MARK: - The edge of a picture
+
+    @Test("Every picture and clip has an edge: a picture carries the line, and a clip's is on its frame, exactly over the video",
+          .enabled("a browser is needed") { HeadlessBrowser.isInstalled })
+    func picturesAndClipsHaveAnEdge() async throws {
+        // The site's own stylesheet over one of each thing that holds a
+        // picture: a figure in prose, a plain picture, an example's clip, a
+        // chapter's opening clip, a slide of the front page's band, a
+        // thumbnail in a grid, and a badge, which is no picture of a sketch.
+        let dot = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=="
+        let page = """
+        <!doctype html><html><head><meta charset="utf-8"><style>\(SiteStyle.css)</style></head><body>
+        <main><article class="prose">
+        <img id="plain" src="\(dot)" width="400" height="400">
+        <picture><img id="figure" src="\(dot)" width="400" height="400"></picture>
+        <figure class="example-clip" id="clip"><video width="1080" height="1080"></video></figure>
+        <figure class="page-hero" id="hero"><video width="1080" height="1080"></video></figure>
+        <div class="gallery"><figure><a href="#"><img src="\(dot)" width="640" height="640"></a><figcaption><a href="#">Name</a></figcaption></figure></div>
+        <p class="badges"><img id="badge" src="\(dot)" width="80" height="20"></p>
+        </article></main>
+        <div class="band-slide"><figure id="band"><video width="1080" height="1080"></video></figure></div>
+        <div id="r0">PENDING</div>
+        <script>
+        (function () {
+          var report = [];
+          ['plain', 'figure', 'badge'].forEach(function (id) {
+            var style = getComputedStyle(document.getElementById(id));
+            report.push(id + ' ' + style.outlineStyle + ' ' + style.outlineWidth + ' ' + style.outlineOffset);
+          });
+          // The thumbnail's link is found as the page has it, with no
+          // name of its own: a link in prose that carries one is an
+          // anchor, and the stylesheet lays those out another way.
+          ['clip', 'hero', 'band', 'thumb'].forEach(function (id) {
+            var frame = id === 'thumb' ? document.querySelector('.gallery figure > a') : document.getElementById(id), held = frame.querySelector('video, img');
+            var line = getComputedStyle(frame, '::after'), f = frame.getBoundingClientRect(), h = held.getBoundingClientRect();
+            var over = line.position === 'absolute' && line.top === '0px' && line.left === '0px' && line.right === '0px' && line.bottom === '0px'
+              && line.pointerEvents === 'none' && getComputedStyle(frame).position === 'relative'
+              // A frame that is laid out in a line gives the line over it
+              // no box in every browser: one of them measures such a frame
+              // by its lines of text, and a link around a picture has none.
+              && getComputedStyle(frame).display !== 'inline';
+            // The frame is the size of what it holds, and so is the line
+            // itself: its own used size, which is what goes wrong when the
+            // frame is not a box the line can be laid over.
+            var fits = h.width > 100 && Math.abs(f.left - h.left) < 0.5 && Math.abs(f.top - h.top) < 0.5
+              && Math.abs(f.width - h.width) < 0.5 && Math.abs(f.height - h.height) < 0.5
+              && Math.abs(parseFloat(line.width) - h.width) < 0.5 && Math.abs(parseFloat(line.height) - h.height) < 0.5;
+            report.push(id + ' ' + (line.boxShadow.indexOf('inset') >= 0 ? 1 : 0) + ' ' + (over ? 1 : 0) + ' ' + (fits ? 1 : 0)
+              + ' ' + getComputedStyle(held).outlineStyle + ' ' + (line.borderTopLeftRadius === getComputedStyle(held).borderTopLeftRadius ? 1 : 0));
+          });
+          report.push('name ' + getComputedStyle(document.querySelector('.gallery figcaption a'), '::after').content);
+          document.getElementById('r0').textContent = report.join('|');
+        })();
+        </script></body></html>
+        """
+        let dom = try await HeadlessBrowser.dom(of: page, flags: HeadlessBrowser.baseFlags + ["--window-size=1280,900"], timeout: 90)
+        let report = try #require(HeadlessBrowser.text(of: "r0", in: dom))
+        try #require(report != "PENDING", "the probe did not run")
+        var read: [String: [String]] = [:]
+        for line in report.split(separator: "|") {
+            let parts = line.split(separator: " ").map(String.init)
+            read[parts[0]] = Array(parts.dropFirst())
+        }
+        // A picture carries a hairline just inside its own frame, which
+        // takes no room; a badge is not a picture of a sketch and has none.
+        #expect(read["plain"] == ["solid", "1px", "-1px"] && read["figure"] == ["solid", "1px", "-1px"], "\(report)")
+        #expect(read["badge"]?.first == "none", "a badge gained an edge: \(report)")
+        // A clip's line is on the frame around it: drawn over the video,
+        // covering exactly the video's box with its corners, out of the
+        // pointer's way, and not set on the video, where a browser that
+        // composites video would draw the video over it.
+        for frame in ["clip", "hero", "band", "thumb"] {
+            #expect(read[frame] == ["1", "1", "1", "none", "1"],
+                    "\(frame): a line, laid over its frame, the frame the size of what it holds, nothing on the thing itself, the same corners: \(report)")
+        }
+        #expect(read["name"] == ["none"], "the name under a thumbnail gained a frame: \(report)")
+    }
+
     // MARK: - The menus
 
     /// The anchors a block of a page links to, in order: the block that
@@ -1730,6 +1928,41 @@ struct SiteTests {
         guard let start = html.range(of: open),
               let end = html.range(of: close, range: start.upperBound ..< html.endIndex) else { return [] }
         return hrefs(in: String(html[start.upperBound ..< end.lowerBound])).filter { $0.hasPrefix("#") }
+    }
+
+    /// The level of every heading inside a page's `<main>`, in order, with
+    /// the code listings left out (a sketch's source can hold anything).
+    static func headingLevels(inMainOf html: String) -> [Int] {
+        guard let open = html.range(of: "<main"), let close = html.range(of: "</main>", range: open.upperBound ..< html.endIndex) else { return [] }
+        var levels: [Int] = []
+        var rest = html[open.upperBound ..< close.lowerBound]
+        while let tag = rest.range(of: "<") {
+            let after = rest[tag.upperBound...]
+            if after.hasPrefix("pre"), let end = after.range(of: "</pre>") {
+                rest = after[end.upperBound...]
+                continue
+            }
+            if after.first == "h", let digit = after.dropFirst().first, let level = digit.wholeNumberValue, (1 ... 6).contains(level),
+               let next = after.dropFirst(2).first, next == " " || next == ">" {
+                levels.append(level)
+            }
+            rest = after
+        }
+        return levels
+    }
+
+    /// A page's trail: what stands inside its breadcrumb, or nothing.
+    static func trail(of html: String) -> String {
+        guard let open = html.range(of: "<nav class=\"trail\" aria-label=\"Breadcrumb\">"),
+              let close = html.range(of: "</nav>", range: open.upperBound ..< html.endIndex) else { return "" }
+        return String(html[open.upperBound ..< close.lowerBound])
+    }
+
+    /// The names in the list of sections beside a page, in order.
+    static func railLabels(of html: String) -> [String] {
+        guard let open = html.range(of: "<nav class=\"rail\""),
+              let close = html.range(of: "</nav>", range: open.upperBound ..< html.endIndex) else { return [] }
+        return html[open.upperBound ..< close.lowerBound].components(separatedBy: "<li ").dropFirst().map { Self.words(of: "<li " + $0) }
     }
 
     /// A page's menu, from its opening tag to its close.
@@ -1789,6 +2022,28 @@ struct SiteTests {
         }
     }
 
+    @Test("A list of sections names a release by its name alone, and leaves out a level of names that repeat")
+    func listsOfSections() {
+        typealias Heading = (level: Int, text: String, anchor: String)
+        // A changelog: every release holds the same few headings.
+        let changelog: [Heading] = [(1, "Changelog", "changelog"), (2, "[Unreleased]", "unreleased"), (3, "Added", "added"), (3, "Fixed", "fixed"),
+                                    (2, "[0.2.0] - 2026-01-02", "020---2026-01-02"), (3, "Added", "added-1"), (3, "Fixed", "fixed-1"), (3, "Removed", "removed")]
+        let releases = SiteBuilder.listed(changelog, title: "Changelog")
+        #expect(releases.map(\.text) == ["Unreleased", "0.2.0"], "actual: \(releases.map(\.text))")
+        #expect(releases.map(\.anchor) == ["unreleased", "020---2026-01-02"], "a listed name still leads to its own heading")
+
+        // A page whose sections each name their own parts keeps both levels,
+        // and one name that happens to come twice among many is no habit.
+        let page: [Heading] = [(1, "Sketch", "sketch"), (2, "Lifecycle", "lifecycle"), (3, "setup", "setup"), (3, "draw", "draw"), (3, "Notes", "notes"),
+                               (2, "Canvas", "canvas"), (3, "width", "width"), (3, "height", "height"), (3, "Notes", "notes-1")]
+        #expect(SiteBuilder.listed(page, title: "Sketch").map(\.level) == [2, 3, 3, 3, 2, 3, 3, 3])
+
+        #expect(SiteBuilder.listedName("[0.18.0] - 2026-11-14") == "0.18.0" && SiteBuilder.listedName("[Unreleased]") == "Unreleased")
+        // Brackets that are part of a sentence are left where they are.
+        #expect(SiteBuilder.listedName("[x] and more words") == "[x] and more words")
+        #expect(SiteBuilder.listedName("Plain") == "Plain" && SiteBuilder.listedName("[]") == "[]")
+    }
+
     @Test("The list of a page's sections is one list in two places, and the fold goes right under the title")
     func sectionsFoldUnderTheTitle() throws {
         let root = try #require(Self.repositoryRoot())
@@ -1843,7 +2098,7 @@ struct SiteTests {
         </div></header>
         <div class="layout with-sidebar with-rail">
         <nav class="sidebar" id="menu" aria-label="Section" tabindex="-1">
-        <p class="sidebar-title">The Guide</p><ul>
+        <p class="sidebar-title">Guide</p><ul>
         \(menuRows)
         </ul>
         </nav>

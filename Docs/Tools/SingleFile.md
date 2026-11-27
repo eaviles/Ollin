@@ -1,4 +1,4 @@
-#### <sup>[Ollin](../../README.md) → [Documentation](../README.md) → [Tools](./README.md) → `Single-file sketches`</sup>
+#### <sup>[Ollin](../../README.md) → [Reference](../README.md) → [Tools](./README.md) → `Single-file sketches`</sup>
 
 ---
 

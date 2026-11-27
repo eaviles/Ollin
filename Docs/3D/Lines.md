@@ -1,4 +1,4 @@
-#### <sup>[Ollin](../../README.md) → [Documentation](../README.md) → [3D](./README.md) → `Lines in 3D`</sup>
+#### <sup>[Ollin](../../README.md) → [Reference](../README.md) → [3D](./README.md) → `Lines in 3D`</sup>
 
 ---
 

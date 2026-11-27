@@ -1,3 +1,7 @@
+#### <sup>[Ollin](../../README.md) → [Reference](../README.md) → [Helpers](./README.md) → `Accessibility`</sup>
+
+---
+
 # Accessibility
 
 A sketch can do three things for somebody whose eyes or preferences differ from yours. It can describe what it shows, check that its colors hold apart, and offer quieter motion.

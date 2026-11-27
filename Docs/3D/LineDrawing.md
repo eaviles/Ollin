@@ -1,4 +1,4 @@
-#### <sup>[Ollin](../../README.md) → [Documentation](../README.md) → [3D](./README.md) → `Line drawing`</sup>
+#### <sup>[Ollin](../../README.md) → [Reference](../README.md) → [3D](./README.md) → `Line drawing`</sup>
 
 ---
 
@@ -110,4 +110,4 @@ Each kept edge is then walked. At every step the point is tested against the fac
 
 ---
 
-<sup>[Ollin](../../README.md) → [Documentation](../README.md) → [3D](./README.md) → `Line drawing`</sup>
+<sup>[Ollin](../../README.md) → [Reference](../README.md) → [3D](./README.md) → `Line drawing`</sup>

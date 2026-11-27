@@ -219,6 +219,64 @@ public struct SiteBuilder {
         "DESIGN-NOTES.md", "ATTRIBUTION.md", "THIRD-PARTY-NOTICES.md", "CODE_OF_CONDUCT.md", "SECURITY.md",
     ]
 
+    /// What the site calls each project page in a menu and a trail.
+    ///
+    /// Each file's own title is written to stand alone at the top of the
+    /// file ("Contributor Covenant Code of Conduct", "Ollin architecture &
+    /// internals"), which is right there and too long for a row in a list
+    /// of ten. The page keeps its title; the row and the trail take the
+    /// short name. A page with no line here goes by its title.
+    static let aboutLabels = [
+        "CONTRIBUTING.md": "Contributing", "CHANGELOG.md": "Changelog", "ROADMAP.md": "Roadmap",
+        "ARCHITECTURE.md": "Architecture", "CAPABILITIES.md": "Capabilities", "DESIGN-NOTES.md": "Design notes",
+        "ATTRIBUTION.md": "Attribution", "THIRD-PARTY-NOTICES.md": "Third-party notices",
+        "CODE_OF_CONDUCT.md": "Code of conduct", "SECURITY.md": "Security",
+    ]
+
+    /// The name a page goes by in a menu row and as a trail's last step.
+    static func label(of page: Page) -> String {
+        if case .about = page.kind, let short = aboutLabels[page.repoPath] { return short }
+        return page.title
+    }
+
+    /// What each section is called, everywhere the site names it: the bar,
+    /// the menu's heading, a trail, and the cards.
+    static func name(of section: Section) -> String {
+        switch section {
+        case .home: return "Ollin"
+        case .guide: return "Guide"
+        case .docs: return "Reference"
+        case .examples: return "Examples"
+        }
+    }
+
+    /// The index each section opens on.
+    static func index(of section: Section) -> String {
+        switch section {
+        case .home: return "index.html"
+        case .guide: return "guide/index.html"
+        case .docs: return "docs/index.html"
+        case .examples: return "examples/index.html"
+        }
+    }
+
+    /// The trail of a page whose file opens on none: the root, the section,
+    /// and the page. Every page but the front one stands somewhere, and a
+    /// trail says where from the root down.
+    func trail(for page: Page) -> String {
+        let home = "<a href=\"\(relative(from: page.siteDirectory, to: "index.html"))\">Ollin</a>"
+        switch page.kind {
+        case .home:
+            return ""
+        case .about:
+            return "\(home) → \(HTML.escape(Self.label(of: page)))"
+        case .guide, .docs, .examples, .example:
+            let index = Self.index(of: page.section)
+            guard page.sitePath != index else { return "\(home) → \(Self.name(of: page.section))" }
+            return "\(home) → <a href=\"\(relative(from: page.siteDirectory, to: index))\">\(Self.name(of: page.section))</a> → \(HTML.escape(page.title))"
+        }
+    }
+
     /// The address GitHub Pages serves a repository's site at, from the
     /// repository's own address (`https://github.com/owner/name` becomes
     /// `https://owner.github.io/name/`), or nil for a repository hosted
@@ -266,23 +324,36 @@ public struct SiteBuilder {
         return groups.filter { !$0.topics.isEmpty }
     }
 
-    /// The example categories, in the order the listing's table names them.
+    /// The example categories, in the order the listing names them: as a
+    /// reader meets them, row by row and left to right.
+    ///
+    /// A category is a table cell that holds one link and nothing else. The
+    /// listing opens on a grid of pictures, four to a row, with the names
+    /// on the row beneath; each of those names is such a cell, so the grid's
+    /// reading order is the menu's. Taking only a row's first cell read the
+    /// grid's first column and left the rest to be found further down, in
+    /// another order.
     static func categories(readingIndexAt url: URL) -> [(name: String, path: String)] {
         guard let text = try? String(contentsOf: url, encoding: .utf8) else { return [] }
         var found: [(name: String, path: String)] = []
         for rawLine in text.components(separatedBy: "\n") {
             let line = rawLine.trimmingCharacters(in: .whitespaces)
-            // A picture grid's rows start the same way, and their first link
-            // is the still rather than the category, so they are stepped over.
-            guard line.hasPrefix("| ["), !line.hasPrefix("| [!["),
-                  let link = ReferenceLibrary.firstLink(in: line) else { continue }
-            let name = Markdown.plain(String(line.dropFirst(3).prefix { $0 != "]" }))
-            var path = link.target
-            while path.hasSuffix("/") { path.removeLast() }
-            // The grid's names sit under its pictures and link the same
-            // folders, so a category reached twice is still one category.
-            guard !found.contains(where: { $0.path == path }) else { continue }
-            found.append((name, path))
+            guard line.hasPrefix("|") else { continue }
+            for rawCell in line.split(separator: "|", omittingEmptySubsequences: false) {
+                let cell = rawCell.trimmingCharacters(in: .whitespaces)
+                // A picture's cell opens the same way, and its link is the
+                // still rather than the category, so it is stepped over; so
+                // is a cell of prose that happens to hold a link.
+                guard cell.hasPrefix("["), !cell.hasPrefix("[!["), cell.hasSuffix(")"),
+                      let link = ReferenceLibrary.firstLink(in: cell), link.end == cell.endIndex else { continue }
+                let name = Markdown.plain(String(cell.dropFirst().prefix { $0 != "]" }))
+                var path = link.target
+                while path.hasSuffix("/") { path.removeLast() }
+                // The grid's names and the table further down link the same
+                // folders, so a category reached twice is still one category.
+                guard !found.contains(where: { $0.path == path }) else { continue }
+                found.append((name, path))
+            }
         }
         return found
     }
@@ -420,7 +491,7 @@ public struct SiteBuilder {
         if case .home = page.kind {
             return homePage(markdown, page: page, plan: plan, log: log)
         }
-        let rendered = HTML.render(markdown) { target, image in
+        let rendered = HTML.render(markdown, asPage: true) { target, image in
             resolve(target, image: image, from: page, plan: plan, log: log)
         }
         log.search.append(contentsOf: SiteSearch.entries(for: page, rendered: rendered))
@@ -433,7 +504,8 @@ public struct SiteBuilder {
         let body = "<article class=\"prose\">\n\(sizingPictures(in: played, page: page, plan: plan, log: log))\n</article>"
         let title = page.title
         let description = page.summary.isEmpty ? Self.tagline : page.summary
-        return layout(page: page, title: title, description: description, trail: rendered.trail,
+        return layout(page: page, title: title, description: description,
+                      trail: rendered.trail.isEmpty ? trail(for: page) : rendered.trail,
                       body: body, headings: rendered.headings, plan: plan)
     }
 
@@ -598,9 +670,9 @@ public struct SiteBuilder {
         let sketches = plan.examples.count
         return """
         <section class="cards">
-          <a class="card" href="\(address("guide/index.html"))"><h2>Guide</h2><p>Creative coding from zero, taught through Ollin in \(chapters) chapters.</p></a>
-          <a class="card" href="\(address("docs/index.html"))"><h2>Reference</h2><p>\(references) pages, one for each type and helper, grouped the way you meet them.</p></a>
-          <a class="card" href="\(address("examples/index.html"))"><h2>Examples</h2><p>\(sketches) runnable sketches by category, each with its source.</p></a>
+          <a class="card" href="\(address(Self.index(of: .guide)))"><h2>\(Self.name(of: .guide))</h2><p>Creative coding from zero, taught through Ollin in \(chapters) chapters.</p></a>
+          <a class="card" href="\(address(Self.index(of: .docs)))"><h2>\(Self.name(of: .docs))</h2><p>\(references) pages, one for each type and helper, grouped the way you meet them.</p></a>
+          <a class="card" href="\(address(Self.index(of: .examples)))"><h2>\(Self.name(of: .examples))</h2><p>\(sketches) runnable sketches by category, each with its source.</p></a>
         </section>
         """
     }
@@ -668,9 +740,12 @@ public struct SiteBuilder {
         let folders = Self.folders(above: entry, plan: plan)
         log.search.append(SiteSearch.entry(for: entry, page: page, source: source, filedUnder: folders.map(\.name)))
 
-        // The trail walks the category folders, linking each level that has
-        // a listing of its own, under the name that listing is titled with.
-        var trail = "<a href=\"\(relative(from: page.siteDirectory, to: "examples/index.html"))\">Examples</a>"
+        // The trail starts at the root, as every page's does, and walks the
+        // category folders, linking each level that has a listing of its
+        // own, under the name that listing is titled with. Its last step is
+        // the sketch itself.
+        var trail = "<a href=\"\(relative(from: page.siteDirectory, to: "index.html"))\">Ollin</a>"
+        trail += " → <a href=\"\(relative(from: page.siteDirectory, to: "examples/index.html"))\">\(Self.name(of: .examples))</a>"
         for folder in folders {
             if let listing = folder.listing {
                 trail += " → <a href=\"\(relative(from: page.siteDirectory, to: listing.sitePath))\">\(HTML.escape(folder.name))</a>"
@@ -678,6 +753,7 @@ public struct SiteBuilder {
                 trail += " → \(HTML.escape(folder.name))"
             }
         }
+        trail += " → \(HTML.escape(entry.name))"
 
         let run = "swift run --package-path Examples \(entry.target)"
         let github = "\(repository)/blob/\(branch)/Examples/\(entry.path)/Sketch.swift"
@@ -694,8 +770,11 @@ public struct SiteBuilder {
 
         var body = "<article class=\"prose example\">\n"
         body += "<h1 id=\"\(HTML.slug(entry.name))\">\(HTML.escape(entry.name))</h1>\n"
+        // The listing's line about the sketch, as a sentence of its own: with
+        // its capital, and with the code it names still in code type.
         if !entry.summary.isEmpty {
-            body += "<p class=\"lede\">\(HTML.escape(entry.summary))</p>\n"
+            let written = entry.summaryWritten.isEmpty ? entry.summary : HTML.unlinked(entry.summaryWritten)
+            body += "<p class=\"lede\">\(HTML.inline(HTML.sentence(written)) { target, _ in target })</p>\n"
         }
         if let media = plan.media[entry.path], media.loop != nil {
             body += Self.clip(media, in: plan.media, named: entry.name) + "\n"
@@ -704,7 +783,7 @@ public struct SiteBuilder {
         body += HTML.codeBlock(source, language: "swift") + "\n"
         body += "</article>"
 
-        let description = entry.summary.isEmpty ? "An Ollin example sketch." : entry.summary
+        let description = entry.summary.isEmpty ? "An Ollin example sketch." : HTML.sentence(entry.summary)
         return layout(page: page, title: entry.name, description: description, trail: trail,
                       body: body, headings: [], plan: plan)
     }
@@ -1367,9 +1446,9 @@ public struct SiteBuilder {
           <div class="bar-inner">
             <a class="wordmark" href="\(asset("index.html"))" aria-label="Ollin home">\(plan.mark)<span class="name">Ollin</span></a>\(markOpener)
             <nav class="sections" aria-label="Sections">
-              \(navItem("Guide", .guide, "guide/index.html"))
-              \(navItem("Reference", .docs, "docs/index.html"))
-              \(navItem("Examples", .examples, "examples/index.html"))
+              \(navItem(Self.name(of: .guide), .guide, Self.index(of: .guide)))
+              \(navItem(Self.name(of: .docs), .docs, Self.index(of: .docs)))
+              \(navItem(Self.name(of: .examples), .examples, Self.index(of: .examples)))
               <a href="\(HTML.escape(repository))" rel="noopener">GitHub</a>
             </nav>
             <button class="search-toggle" type="button" aria-label="Search" title="Search" hidden>\(SiteStyle.searchIcon)<span class="key" aria-hidden="true"></span></button>
@@ -1462,7 +1541,7 @@ public struct SiteBuilder {
             for target in plan.pages {
                 switch target.kind {
                 case .home: items.append(item(target, label: "Home"))
-                case .about: items.append(item(target))
+                case .about: items.append(item(target, label: Self.label(of: target)))
                 default: break
                 }
             }
@@ -1482,16 +1561,33 @@ public struct SiteBuilder {
                     appendices.append(item(target))
                 }
             }
-            out += "<p class=\"sidebar-title\">The Guide</p><ul>\n\(overview.joined())\n</ul>"
+            out += "<p class=\"sidebar-title\">\(Self.name(of: .guide))</p><ul>\n\(overview.joined())\n</ul>"
             out += group("Chapters", open: true, chapters)
             out += group("Appendices", open: page.repoPath.dropFirst("Guide/".count).first?.isNumber != true, appendices)
 
         case .docs:
             if let index = plan.byRepoPath["Docs/README.md"] {
-                out += "<p class=\"sidebar-title\">Reference</p><ul>\n\(item(index, label: "Overview"))\n</ul>"
+                // A page that sits beside the index, in no folder, is about
+                // the reference as a whole (the quick reference, the Swift
+                // primer), so it is listed with the overview rather than
+                // under a group.
+                let beside = plan.pages.filter {
+                    guard case .docs = $0.kind else { return false }
+                    return $0.repoPath != index.repoPath && $0.repoPath.split(separator: "/").count == 2
+                }
+                let rows = [item(index, label: "Overview")] + beside.map { item($0) }
+                out += "<p class=\"sidebar-title\">\(Self.name(of: .docs))</p><ul>\n\(rows.joined(separator: "\n"))\n</ul>"
             }
             for group in plan.docsGroups {
-                let items = group.topics.compactMap { plan.byRepoPath["Docs/\($0).md"] }.map { item($0) }
+                var items = group.topics.compactMap { plan.byRepoPath["Docs/\($0).md"] }.map { item($0) }
+                // A group whose pages share one folder opens on that
+                // folder's own index, as a category of the examples does,
+                // so the index has a row to be marked on.
+                let folders = Set(group.topics.compactMap { $0.split(separator: "/").first.map(String.init) })
+                if folders.count == 1, let folder = folders.first, group.topics.allSatisfy({ $0.contains("/") }),
+                   let listing = plan.byRepoPath["Docs/\(folder)/README.md"] {
+                    items.insert(item(listing, label: "All \(group.name)"), at: 0)
+                }
                 // A folder's own index opens the groups its pages are in.
                 // The overview is every folder's parent, and it opens none:
                 // all of them open at once is a menu eight screens tall.
@@ -1505,7 +1601,7 @@ public struct SiteBuilder {
 
         case .examples:
             if let index = plan.byRepoPath["Examples/README.md"] {
-                out += "<p class=\"sidebar-title\">Examples</p><ul>\n\(item(index, label: "Overview"))\n</ul>"
+                out += "<p class=\"sidebar-title\">\(Self.name(of: .examples))</p><ul>\n\(item(index, label: "Overview"))\n</ul>"
             }
             for category in plan.exampleCategories {
                 let categoryPath = "Examples/\(category.path)"
@@ -1561,10 +1657,31 @@ public struct SiteBuilder {
     /// The headings a page lists as its own map: its sections and the ones
     /// under them, without the title, and none at all for a page too short
     /// to need a map.
+    ///
+    /// Two things a list is no good for are left out of it. A section named
+    /// in brackets with a date after it, as a changelog names a release
+    /// (`[0.18.0] - 2026-11-14`), is listed by the name alone. And where the
+    /// headings under the sections mostly repeat one another (`Added`,
+    /// `Changed`, `Fixed` under every release), they say nothing about
+    /// where a reader is, so the list is the sections alone.
     static func listed(_ headings: [(level: Int, text: String, anchor: String)],
                        title: String) -> [(level: Int, text: String, anchor: String)] {
-        let listed = headings.filter { $0.level == 2 || $0.level == 3 }.filter { $0.text != title }
+        var listed = headings.filter { $0.level == 2 || $0.level == 3 }.filter { $0.text != title }
+        let under = listed.filter { $0.level == 3 }
+        let repeated = under.filter { entry in under.filter { $0.text == entry.text }.count > 1 }
+        if under.count >= 4, repeated.count * 2 > under.count { listed.removeAll { $0.level == 3 } }
+        listed = listed.map { ($0.level, Self.listedName($0.text), $0.anchor) }
         return listed.count >= 2 ? listed : []
+    }
+
+    /// A heading's name in a list: what stands in its opening brackets when
+    /// it opens on a pair, and the heading as written otherwise.
+    static func listedName(_ heading: String) -> String {
+        guard heading.hasPrefix("["), let close = heading.firstIndex(of: "]") else { return heading }
+        let inside = heading[heading.index(after: heading.startIndex) ..< close]
+        let after = heading[heading.index(after: close)...].trimmingCharacters(in: .whitespaces)
+        guard !inside.isEmpty, after.isEmpty || after.hasPrefix("-") else { return heading }
+        return String(inside)
     }
 
     static func rows(_ listed: [(level: Int, text: String, anchor: String)]) -> String {

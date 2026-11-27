@@ -1,4 +1,4 @@
-#### <sup>[Ollin](../../README.md) → [Documentation](../README.md) → [Tools](./README.md) → `The reference offline`</sup>
+#### <sup>[Ollin](../../README.md) → [Reference](../README.md) → [Tools](./README.md) → `The reference offline`</sup>
 
 ---
 
@@ -170,6 +170,8 @@ Open the folder's `index.html` to start reading. The front page opens on the rin
 
 The site shows the same files rather than a second copy of them. A page's prose arrives exactly as the file spells it, and its links point at the same neighbors they do on GitHub. The site does not render every kind of file. A link to one it skips, such as a source file or a folder of figures, points at that file on GitHub instead. Paths mirror the repository in lower case, so `Docs/Drawing/Color.md` becomes `docs/drawing/color.html`.
 
+Every page reads the same way, whichever section it is in. It opens on one title, at one size, whatever level its file writes the title at. Its sections are set under that title, so the list on the right has a top level. The trail above the title starts at Ollin and names the section as the bar does: Guide, Reference, or Examples. An example's trail ends on the sketch. The examples menu lists the categories in the order the index shows them. The project pages go by short names in their menu, such as Changelog and Code of conduct, and each still opens on its own file's title. The changelog's list is its releases alone. Every picture and clip has a thin edge, so a white sketch does not float on a white page.
+
 Every page has a search. Press `/`, or the command key with K, or the button in the bar, and type. It looks through the Guide, the reference, and the examples one section at a time. A page's title counts most, then its heading, then its first line, then the words of its prose. So `color` puts the color page first, and `kuwa` finds the brushwork filter by a word its prose uses. A typo in a longer word is forgiven, and every word you type has to match. A name is found with or without its accents, so `bonacic` finds Vladimir Bonačić. No page takes more than three rows, and the words that matched are marked. The index is written with the site as `assets/search-index.js`, one entry per section. The matching runs in your browser through [MiniSearch](https://lucaong.github.io/minisearch/), a small open-source library. The page loads it from a content network the first time you search, pinned to one release and checked against its published hash. That is the one thing on the site that comes from outside it. A folder you opened off the disk with no connection has every page, and its search says the library did not load.
 
 The pages are built to be read on a phone and from a keyboard. On a narrow screen a long call in code type folds between its labels, so no page is wider than the screen. A code listing or a table too wide for its column scrolls inside its own box. The first Tab on any page reaches a "Skip to content" link, which steps over the bar and the menu. Wherever the focus is, a ring in the page's ink shows it. Every picture's tag carries the picture's size, so its place is held before the file arrives. All but a page's first picture load as you come near them. A file in the checkout is read for its size when the site is built. A picture on the media host gets its size from `Media/media.json`.
@@ -194,7 +196,7 @@ The commands print pages for a person to read. The two maps above point at those
 
 ### See also
 
-- [Documentation index](../README.md): the same map, in a browser
+- [Reference index](../README.md): the same map, in a browser
 - [Examples](../../Examples/README.md): the sketches, by category
 - [Project generator](./ProjectGenerator.md): starting a project from a template or from an example
 - [Single-file sketches](./SingleFile.md): the rest of what the `ollin` command does

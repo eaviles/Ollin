@@ -1,4 +1,4 @@
-#### <sup>[Ollin](../../README.md) → [Documentation](../README.md) → [Generators](./README.md) → Chaotic maps & bifurcation</sup>
+#### <sup>[Ollin](../../README.md) → [Reference](../README.md) → [Generators](./README.md) → Chaotic maps & bifurcation</sup>
 
 ---
 

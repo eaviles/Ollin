@@ -1,4 +1,4 @@
-#### <sup>[Ollin](../README.md) → [Documentation](./README.md) → `QuickReference`</sup>
+#### <sup>[Ollin](../README.md) → [Reference](./README.md) → `QuickReference`</sup>
 
 ---
 
@@ -263,7 +263,7 @@ Each of these gives a wrong or empty picture and no error.
 
 ### See also
 
-- [Documentation index](./README.md): every page, by area
+- [Reference index](./README.md): every page, by area
 - [Swift quick reference](./Swift.md): the language, at the same length
 - [The reference offline](./Tools/Reference.md): `ollin docs`, `ollin examples`, and `ollin api`
 - [Guide Chapter 1](../Guide/01-HelloOllin.md): the first sketch, run and changed

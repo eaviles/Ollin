@@ -1,4 +1,4 @@
-#### <sup>[Ollin](../../README.md) → [Documentation](../README.md) → [Core](./README.md) → `Variations`</sup>
+#### <sup>[Ollin](../../README.md) → [Reference](../README.md) → [Core](./README.md) → `Variations`</sup>
 
 ---
 

@@ -1,4 +1,4 @@
-#### <sup>[Ollin](../../README.md) → [Documentation](../README.md) → [Helpers](./README.md) → `Synthesis`</sup>
+#### <sup>[Ollin](../../README.md) → [Reference](../README.md) → [Helpers](./README.md) → `Synthesis`</sup>
 
 ---
 

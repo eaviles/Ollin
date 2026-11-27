@@ -1,4 +1,4 @@
-#### <sup>[Ollin](../../README.md) → [Documentation](../README.md) → [Integration](./README.md) → `MQTT`</sup>
+#### <sup>[Ollin](../../README.md) → [Reference](../README.md) → [Integration](./README.md) → `MQTT`</sup>
 
 ---
 

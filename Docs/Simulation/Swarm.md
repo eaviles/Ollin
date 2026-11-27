@@ -1,4 +1,4 @@
-#### <sup>[Ollin](../../README.md) → [Documentation](../README.md) → [Simulation](./README.md) → `Swarm`</sup>
+#### <sup>[Ollin](../../README.md) → [Reference](../README.md) → [Simulation](./README.md) → `Swarm`</sup>
 
 ---
 

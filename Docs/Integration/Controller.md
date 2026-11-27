@@ -1,3 +1,7 @@
+#### <sup>[Ollin](../../README.md) → [Reference](../README.md) → [Integration](./README.md) → `Game controllers`</sup>
+
+---
+
 # Game controllers
 
 `import OllinController` to read a game controller in `draw()`. You get two

@@ -60,12 +60,22 @@ public enum HTML {
 
     // MARK: - Whole pages
 
-    public static func render(_ markdown: String, resolve: @escaping Resolver) -> Page {
+    /// `asPage` says the markdown is a whole page, whose first heading is its
+    /// title: the headings are then set at the levels `outline(_:)` gives,
+    /// so a page written under `##` opens on the same title as one written
+    /// under `#`. A part of a page (a section of the front page, a line of
+    /// its own) keeps the levels it was written at.
+    public static func render(_ markdown: String, asPage: Bool = false, resolve: @escaping Resolver) -> Page {
         var lines = markdown.components(separatedBy: "\n")
         let trailSource = takeTrail(&lines)
         lines = Markdown.joined(lines)
 
         var headings: [(level: Int, text: String, anchor: String)] = []
+        // What each heading holds, set aside until every heading is known:
+        // the level one is written at depends on the ones after it. Its
+        // place in the body is kept by a mark no page can write.
+        var headingInsides: [String] = []
+        lines = lines.map { $0.contains(headingMark) ? $0.replacingOccurrences(of: String(headingMark), with: "") : $0 }
         var anchors: [String: Int] = [:]
         var title: String?
         var sections = [""]
@@ -135,9 +145,10 @@ public enum HTML {
                     let plain = Markdown.plain(text)
                     let anchor = uniqueAnchor(slug(plain), used: &anchors)
                     if title == nil, level <= 2 { title = plain }
+                    out.append("\(headingMark)\(headings.count)\(headingMark)")
                     headings.append((level, plain, anchor))
+                    headingInsides.append(inline(text, resolve: resolve))
                     sections.append("")
-                    out.append("<h\(level) id=\"\(anchor)\">\(inline(text, resolve: resolve))</h\(level)>")
                     index += 1
                     continue
                 }
@@ -191,12 +202,94 @@ public enum HTML {
         }
 
         let out = blocks(lines)
+        if asPage {
+            for (index, level) in outline(headings.map(\.level)).enumerated() { headings[index].level = level }
+        }
+        // The body, with each heading written where its mark stands.
+        var body = ""
+        for (index, piece) in out.joined(separator: "\n").split(separator: headingMark, omittingEmptySubsequences: false).enumerated() {
+            guard index % 2 == 1, let number = Int(piece), headings.indices.contains(number) else {
+                body += piece
+                continue
+            }
+            let heading = headings[number]
+            body += "<h\(heading.level) id=\"\(heading.anchor)\">\(headingInsides[number])</h\(heading.level)>"
+        }
         let trail = trailSource.map { inline($0, resolve: resolve) } ?? ""
-        return Page(body: out.joined(separator: "\n"),
+        return Page(body: body,
                     title: title ?? "",
                     trail: trail,
                     headings: headings,
                     sections: sections)
+    }
+
+    /// A line of a listing as a sentence on a page of its own.
+    ///
+    /// A listing's cell is written to follow a name ("`HelloCircle`: the
+    /// smallest program"), so it opens in lower case; standing alone under a
+    /// title it is a sentence and opens with a capital. A line that opens on
+    /// a name somebody types is left as written: one in code type, or one
+    /// spelled as a name is (`drawArc`, `iPhone`, `p5`, `rotate(_:)`).
+    static func sentence(_ line: String) -> String {
+        guard let first = line.first, first.isLowercase else { return line }
+        let word = line.prefix { !$0.isWhitespace }
+        let typed = word.contains { $0.isNumber || $0 == "_" || $0 == "(" }
+            || zip(word, word.dropFirst()).contains { $0.isLowercase && $1.isUppercase }
+        return typed ? line : first.uppercased() + line.dropFirst()
+    }
+
+    /// Markdown with each link reduced to its words and each picture taken
+    /// out, and everything else as written: for a line shown somewhere its
+    /// links' own paths would not hold.
+    static func unlinked(_ markdown: String) -> String {
+        var out = ""
+        var rest = Substring(markdown)
+        while let character = rest.first {
+            if character == "`", let close = rest.dropFirst().firstIndex(of: "`") {
+                out += rest[...close]
+                rest = rest[rest.index(after: close)...]
+                continue
+            }
+            if character == "!" || character == "[", let link = Markdown.link(in: rest) {
+                if !link.image { out += unlinked(link.text) }
+                rest = link.rest
+                continue
+            }
+            out.append(character)
+            rest = rest.dropFirst()
+        }
+        return out
+    }
+
+    /// Where a heading goes in a body that is still being written.
+    static let headingMark: Character = "\u{1}"
+
+    /// The levels a page's headings are set at, from the levels they were
+    /// written at.
+    ///
+    /// A page is one title and the sections under it. Most pages of the
+    /// reference and every listing of the examples write the title as `##`
+    /// and the sections as `###`, where a chapter writes `#` and `##`; set
+    /// as written, the first kind opens on a smaller title and has no
+    /// first-level heading at all. So where no heading stands above the
+    /// first, the first is the title, at level 1, and every other heading
+    /// is set one level under the nearest heading before it that was
+    /// written above it, or at level 2 when there is none. The nesting the
+    /// file wrote is kept and its gaps are closed: sections written at the
+    /// title's own level are sections, beside the ones written under it,
+    /// and no heading sits more than one level below the one it follows.
+    static func outline(_ written: [Int]) -> [Int] {
+        guard let first = written.first, !written.contains(where: { $0 < first }) else { return written }
+        // The headings still open above the one being placed, innermost last.
+        var open: [(written: Int, set: Int)] = []
+        var levels = [1]
+        for level in written.dropFirst() {
+            while let last = open.last, last.written >= level { open.removeLast() }
+            let set = (open.last?.set ?? 1) + 1
+            open.append((level, set))
+            levels.append(set)
+        }
+        return levels
     }
 
     /// Prose as text alone: markers and links reduced to their words, pictures

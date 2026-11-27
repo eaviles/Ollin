@@ -1,8 +1,8 @@
-#### <sup>[Ollin](../README.md) → Documentation</sup>
+#### <sup>[Ollin](../README.md) → Reference</sup>
 
 ---
 
-## Ollin API
+## Ollin reference
 
 This is the reference for Ollin's drawing surface and helpers. The bare calls you write in `draw()` forward to an internal `Drawer` (see [How it works](../README.md#how-it-works)). Everything on these pages is callable bare inside a `Sketch`.
 

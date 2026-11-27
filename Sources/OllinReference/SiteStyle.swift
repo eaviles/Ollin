@@ -298,6 +298,23 @@ enum SiteStyle {
     .prose blockquote p:last-child { margin-bottom: 0; }
     .prose picture, .prose > img { margin-top: 1.5rem; margin-bottom: 1.5rem; }
     .prose picture img, .prose > img { border-radius: 14px; }
+    /* A picture or a clip that is white at its edge has no edge on a white
+       page, and then it floats and the column beside it looks out of line.
+       A hairline just inside its own frame gives every one the same edge,
+       in the color every other hairline here is drawn in, and takes no
+       room. A picture carries the line itself. A clip's is drawn on the
+       frame around it, over the video: a browser that hands a video to its
+       compositor draws the video over anything set on the video's own box,
+       and the line would show only where the corners are cut. A thumbnail
+       takes the frame's way too, since a clip stands in for it on hover;
+       its frame is the link around it, made a box of its own, because a
+       frame laid out in a line of text is measured by that line in one
+       browser, and a link around a picture has no text. */
+    .prose picture img, .prose > img { outline: 1px solid var(--border); outline-offset: -1px; }
+    .gallery figure > a, .example-clip, .page-hero, .band-slide figure { position: relative; }
+    .gallery figure > a { display: block; }
+    .gallery figure > a::after, .example-clip::after, .page-hero::after, .band-slide figure::after { content: ""; position: absolute; inset: 0; border-radius: 14px; box-shadow: inset 0 0 0 1px var(--border); pointer-events: none; }
+    .gallery figure > a::after { border-radius: 12px; }
     .prose .badges { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: -0.25rem; }
     .prose .badges img { display: inline-block; height: 20px; border-radius: 4px; }
     .prose .lede { font-size: 21px; line-height: 1.4; color: var(--text-2); letter-spacing: -0.01em; margin-bottom: 1.75rem; }

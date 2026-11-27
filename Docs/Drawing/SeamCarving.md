@@ -1,4 +1,4 @@
-#### <sup>[Ollin](../../README.md) → [Documentation](../README.md) → [Drawing](./README.md) → `Seam carving`</sup>
+#### <sup>[Ollin](../../README.md) → [Reference](../README.md) → [Drawing](./README.md) → `Seam carving`</sup>
 
 ---
 

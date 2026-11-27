@@ -1,4 +1,4 @@
-#### <sup>[Ollin](../../README.md) → [Documentation](../README.md) → [Helpers](./README.md) → `Steadied`</sup>
+#### <sup>[Ollin](../../README.md) → [Reference](../README.md) → [Helpers](./README.md) → `Steadied`</sup>
 
 ## Found things held steady
 

@@ -1,4 +1,4 @@
-#### <sup>[Ollin](../../README.md) → [Documentation](../README.md) → [Tools](./README.md) → `Profiling`</sup>
+#### <sup>[Ollin](../../README.md) → [Reference](../README.md) → [Tools](./README.md) → `Profiling`</sup>
 
 ---
 

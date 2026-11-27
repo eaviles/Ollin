@@ -1,3 +1,7 @@
+#### <sup>[Ollin](../../README.md) → [Reference](../README.md) → [Tools](./README.md) → `The project generator`</sup>
+
+---
+
 # The project generator
 
 The generator starts a sketch for you, so you do not have to copy boilerplate out of somewhere else. It asks a few questions and hands back a folder that already runs. Use `ollin new` in the terminal, or `ollin generate` in a window.

@@ -1,3 +1,7 @@
+#### <sup>[Ollin](../../README.md) → [Reference](../README.md) → [Drawing](./README.md) → `Marks`</sup>
+
+---
+
 # Marks
 
 Stroke dynamics drive width and opacity from how a mark is being made, rather than from where you are along it.

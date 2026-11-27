@@ -1,4 +1,4 @@
-#### <sup>[Ollin](../../README.md) → [Documentation](../README.md) → [Tools](./README.md) → `Checking the machine`</sup>
+#### <sup>[Ollin](../../README.md) → [Reference](../README.md) → [Tools](./README.md) → `Checking the machine`</sup>
 
 ---
 

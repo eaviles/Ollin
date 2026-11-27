@@ -1,3 +1,7 @@
+#### <sup>[Ollin](../../README.md) → [Reference](../README.md) → [Tools](./README.md) → `Bringing a shader over`</sup>
+
+---
+
 # Bringing a shader over
 
 A great deal of GLSL is already written and shared. Shadertoy alone holds tens of thousands of fragment shaders, and most of them have the same shape. Each one has a single `mainImage` function that gets a pixel position and returns a color, and a handful of values arrive each frame.

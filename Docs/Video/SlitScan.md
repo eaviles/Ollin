@@ -1,4 +1,4 @@
-#### <sup>[Ollin](../../README.md) → [Documentation](../README.md) → [Video](./README.md) → `Slit scan`</sup>
+#### <sup>[Ollin](../../README.md) → [Reference](../README.md) → [Video](./README.md) → `Slit scan`</sup>
 
 ---
 

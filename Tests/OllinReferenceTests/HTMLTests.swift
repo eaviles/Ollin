@@ -126,6 +126,59 @@ struct HTMLTests {
         #expect(page.headings.map(\.anchor) == ["notes", "notes-1"])
     }
 
+    // MARK: - A page's outline
+
+    @Test("A page written under a second-level title opens on a first-level one, with its sections lifted under it")
+    func pageOutline() {
+        // The reference's shape: the title at two, sections at three.
+        let page = HTML.render("## Sketch\n\ntext\n\n### Lifecycle\n\n#### setup\n\n### Canvas\n", asPage: true, resolve: Self.identity)
+        #expect(page.headings.map(\.level) == [1, 2, 3, 2])
+        #expect(page.body.contains("<h1 id=\"sketch\">Sketch</h1>") && page.body.contains("<h2 id=\"lifecycle\">Lifecycle</h2>")
+            && page.body.contains("<h3 id=\"setup\">setup</h3>") && page.body.contains("<h2 id=\"canvas\">Canvas</h2>"))
+        #expect(page.title == "Sketch" && page.headings.map(\.anchor) == ["sketch", "lifecycle", "setup", "canvas"], "a heading's name and anchor are what the file wrote")
+
+        // A page that writes some sections at the title's own level has
+        // those as sections beside the ones written under the title, and
+        // what was under each stays under it.
+        #expect(HTML.outline([2, 3, 3, 2, 3]) == [1, 2, 2, 2, 3])
+        // A chapter's shape is already the one wanted.
+        #expect(HTML.outline([1, 2, 3, 2]) == [1, 2, 3, 2])
+        // A skipped level is closed, under the title and further down, and
+        // two headings written at one level under one parent stay level.
+        #expect(HTML.outline([2, 4, 4, 5]) == [1, 2, 2, 3])
+        #expect(HTML.outline([1, 2, 4, 4, 3, 2]) == [1, 2, 3, 3, 3, 2])
+        #expect(HTML.outline([3]) == [1] && HTML.outline([]).isEmpty)
+        // No heading is ever more than one level below the one it follows.
+        for written in [[2, 3, 2, 2, 3, 3], [2, 5, 3, 6, 2, 4], [1, 3, 3, 2, 6, 2], [2, 2, 2]] {
+            let set = HTML.outline(written)
+            #expect(set.first == 1 && set.dropFirst().allSatisfy { $0 >= 2 } && zip(set, set.dropFirst()).allSatisfy { $1 <= $0 + 1 },
+                    "\(written) is set as \(set)")
+        }
+        // Something above the first heading means the first is no title.
+        #expect(HTML.outline([3, 2, 3]) == [3, 2, 3])
+
+        // A part of a page keeps the levels it was written at.
+        let part = HTML.render("## Run it\n\n### Install\n", resolve: Self.identity)
+        #expect(part.headings.map(\.level) == [2, 3] && part.body.contains("<h2 id=\"run-it\">Run it</h2>"))
+        // A heading under a bullet is placed like any other, and a page
+        // cannot write the mark that keeps a heading's place.
+        let nested = HTML.render("## Title\n\n- item\n\n  ### Under a bullet\n\nplain \u{1}0\u{1} text\n", asPage: true, resolve: Self.identity)
+        #expect(nested.body.contains("<h2 id=\"under-a-bullet\">Under a bullet</h2>") && !nested.body.contains("\u{1}"))
+        #expect(nested.body.contains("plain 0 text") && nested.body.components(separatedBy: "<h1 ").count == 2)
+    }
+
+    @Test("A listing's line reads as a sentence on a page of its own, and a link in it is reduced to its words")
+    func listingLines() {
+        #expect(HTML.sentence("the smallest program: a breathing circle") == "The smallest program: a breathing circle")
+        #expect(HTML.sentence("`describe`: a sketch that says what it shows") == "`describe`: a sketch that says what it shows", "a line that opens in code type opens on a name")
+        for typed in ["drawArc as a pie", "iPhone's depth feed", "p5-style ellipses", "rotate(_:) about a point", "frame_count per tile"] {
+            #expect(HTML.sentence(typed) == typed, "\(typed) opens on a name somebody types")
+        }
+        #expect(HTML.sentence("weighted-Voronoi stippling") == "Weighted-Voronoi stippling")
+        #expect(HTML.sentence("Already a sentence.") == "Already a sentence." && HTML.sentence("").isEmpty)
+        #expect(HTML.unlinked("see [the `Guides` page](../Guides/) and ![a picture](p.png)`[not](a link)`") == "see the `Guides` page and `[not](a link)`")
+    }
+
     // MARK: - Blocks
 
     @Test("The trail comes off the top with its rule and is rendered apart")

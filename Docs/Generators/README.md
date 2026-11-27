@@ -1,4 +1,4 @@
-#### <sup>[Ollin](../../README.md) → [Documentation](../README.md) → Generators</sup>
+#### <sup>[Ollin](../../README.md) → [Reference](../README.md) → Generators</sup>
 
 ---
 

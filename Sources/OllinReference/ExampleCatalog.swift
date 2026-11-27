@@ -14,6 +14,11 @@ public struct ExampleEntry: Sendable, Hashable, Comparable {
     /// listing has not caught up with the folder.
     public let summary: String
 
+    /// The same line as the listing wrote it, with its code marks and its
+    /// emphasis: what a page sets in type where the terminal prints
+    /// `summary`. Empty when the listing has no line.
+    public let summaryWritten: String
+
     /// The satellites it imports beyond the core.
     public let modules: [String]
 
@@ -26,10 +31,11 @@ public struct ExampleEntry: Sendable, Hashable, Comparable {
     public let header: String
 
     public init(path: String, directory: URL, summary: String, modules: [String], resources: [String],
-                header: String = "") {
+                header: String = "", summaryWritten: String = "") {
         self.path = path
         self.directory = directory
         self.summary = summary
+        self.summaryWritten = summaryWritten
         self.modules = modules
         self.resources = resources
         self.header = header
@@ -78,10 +84,11 @@ public enum ExampleCatalog {
         return found.map {
             ExampleEntry(path: $0.path,
                          directory: $0.directory,
-                         summary: lines[$0.path.lowercased()] ?? "",
+                         summary: lines[$0.path.lowercased()]?.summary ?? "",
                          modules: $0.modules,
                          resources: $0.resources,
-                         header: header(ofSketchAt: $0.directory.appendingPathComponent("Sketch.swift")))
+                         header: header(ofSketchAt: $0.directory.appendingPathComponent("Sketch.swift")),
+                         summaryWritten: lines[$0.path.lowercased()]?.written ?? "")
         }.sorted()
     }
 
@@ -114,7 +121,7 @@ public enum ExampleCatalog {
     /// listing's own folder rather than read as text. A row linking the sketch
     /// file is the one that describes it, so it wins over a row linking the
     /// folder wherever a listing has both.
-    static func summaries(inExamples folder: URL) -> [String: String] {
+    static func summaries(inExamples folder: URL) -> [String: (summary: String, written: String)] {
         let manager = FileManager.default
         guard let walker = manager.enumerator(at: folder,
                                               includingPropertiesForKeys: nil,
@@ -128,12 +135,12 @@ public enum ExampleCatalog {
             .filter { $0.lastPathComponent == "README.md" }
             .sorted { $0.path < $1.path }
 
-        var lines: [String: String] = [:]
+        var lines: [String: (summary: String, written: String)] = [:]
         var fromSketch: Set<String> = []
         for url in listings {
             guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
             let directory = url.deletingLastPathComponent()
-            for (target, summary) in rows(text) {
+            for (target, summary, written) in rows(text) {
                 let resolved = directory.appendingPathComponent(target)
                     .standardized
                     .resolvingSymlinksInPath()
@@ -144,7 +151,7 @@ public enum ExampleCatalog {
                       Array(parts.prefix(rootParts.count)) == rootParts else { continue }
                 let path = parts.dropFirst(rootParts.count).joined(separator: "/").lowercased()
                 if lines[path] == nil || (linksSketch && !fromSketch.contains(path)) {
-                    lines[path] = summary
+                    lines[path] = (summary, written)
                     if linksSketch { fromSketch.insert(path) }
                 }
             }
@@ -162,8 +169,8 @@ public enum ExampleCatalog {
     /// sketches on a row of links with no words of their own (`| [A](A/) |
     /// [B](B/) |`); such a row describes nothing and is passed over, or the
     /// first sketch on it would be described by its neighbors' names.
-    static func rows(_ text: String) -> [(target: String, summary: String)] {
-        var found: [(String, String)] = []
+    static func rows(_ text: String) -> [(target: String, summary: String, written: String)] {
+        var found: [(String, String, String)] = []
         for rawLine in text.components(separatedBy: "\n") {
             let line = rawLine.trimmingCharacters(in: .whitespaces)
             let table = line.hasPrefix("| [")
@@ -187,7 +194,8 @@ public enum ExampleCatalog {
                     summary = summary.trimmingCharacters(in: .whitespaces)
                 }
             }
-            found.append((link.target, Markdown.plain(summary).trimmingCharacters(in: .whitespaces)))
+            found.append((link.target, Markdown.plain(summary).trimmingCharacters(in: .whitespaces),
+                          summary.trimmingCharacters(in: .whitespaces)))
         }
         return found
     }

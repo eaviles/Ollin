@@ -1,3 +1,7 @@
+#### <sup>[Ollin](../../README.md) → [Reference](../README.md) → [Tools](./README.md) → `Writing an extension`</sup>
+
+---
+
 # Writing an extension
 
 An Ollin extension is an ordinary Swift package that depends on Ollin. There is no plug-in format, no registry, and nothing to register at run time. Someone adds your package and writes `import OllinxYourThing`. After that, your calls sit beside the framework's own calls.

@@ -1,4 +1,4 @@
-#### <sup>[Ollin](../../README.md) → [Documentation](../README.md) → [Generators](./README.md) → `Noise`</sup> The same fields are also a value you can hand to another thread, [`noiseFields`](#noiseFields).
+#### <sup>[Ollin](../../README.md) → [Reference](../README.md) → [Generators](./README.md) → `Noise`</sup> The same fields are also a value you can hand to another thread, [`noiseFields`](#noiseFields).
 
 ---
 

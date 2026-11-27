@@ -1,3 +1,7 @@
+#### <sup>[Ollin](../../README.md) → [Reference](../README.md) → [Tools](./README.md) → `Bringing a scene over`</sup>
+
+---
+
 # Bringing a scene over
 
 You have a 3D scene, such as a model somebody built, a room laid out in Blender, or a file exported from a design tool. Ollin can already [load one whole](../3D/Scenes.md) and draw it with `drawScene`. This command does something different: it writes you a sketch.
