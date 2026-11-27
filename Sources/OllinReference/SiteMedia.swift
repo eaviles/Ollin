@@ -75,6 +75,16 @@ public struct ExampleMedia: Sendable {
         public var height: Int
     }
 
+    /// A folder's cover, the four stills a listing shows for it, as paths
+    /// under `base`.
+    public struct Group: Sendable, Decodable {
+        public var image: String
+        public var imageSmall: String
+    }
+
+    /// The covers, by the folder they stand for (`3D`, `Recreations/Gego`).
+    public var groups: [String: Group] = [:]
+
     public static let none = ExampleMedia(base: "", entries: [:], heroes: [:], showcase: [])
 
     private struct File: Decodable {
@@ -83,6 +93,7 @@ public struct ExampleMedia: Sendable {
         var heroes: [String: Hero]?
         var showcase: [Showpiece]?
         var chapters: [String: Chapter]?
+        var groups: [String: Group]?
     }
 
     /// Read the manifest. It sits at `Media/media.json` in the repository
@@ -94,12 +105,70 @@ public struct ExampleMedia: Sendable {
               let file = try? JSONDecoder().decode(File.self, from: data) else { return .none }
         var base = file.base
         while base.hasSuffix("/") { base.removeLast() }
-        return ExampleMedia(base: base, entries: file.examples, heroes: file.heroes ?? [:],
-                            showcase: file.showcase ?? [], chapters: file.chapters ?? [:])
+        var media = ExampleMedia(base: base, entries: file.examples, heroes: file.heroes ?? [:],
+                                 showcase: file.showcase ?? [], chapters: file.chapters ?? [:])
+        media.groups = file.groups ?? [:]
+        return media
     }
 
     public subscript(example: String) -> Entry? { entries[example] }
 
     /// The full address of one file the manifest named.
     public func address(of path: String) -> String { "\(base)/\(path)" }
+
+    // MARK: - How big a picture is
+
+    /// The side a small copy is fitted into, which its name carries
+    /// (`still-640.jpg`).
+    public static let smallSide = 640
+    /// The side of a folder's cover at full size. A cover is a square.
+    public static let coverSide = 1080
+
+    /// The size the pipeline gives a small copy of a picture: fitted inside
+    /// a square of `smallSide` with its shape kept, the shorter side taken to
+    /// the nearest even number, since a clip's sides have to be even and the
+    /// still is cut with the same rule (`cap` in `Scripts/media.sh`). So a
+    /// 1080 by 608 canvas is 640 by 360 and a 940 by 1080 one is 558 by 640.
+    public static func smallSize(width: Int, height: Int) -> (width: Int, height: Int) {
+        guard width > 0, height > 0 else { return (smallSide, smallSide) }
+        func even(_ long: Int, _ short: Int) -> Int {
+            2 * Int((Double(smallSide) * Double(short) / Double(long) / 2).rounded())
+        }
+        return width >= height ? (smallSide, max(2, even(width, height))) : (max(2, even(height, width)), smallSide)
+    }
+
+    /// The pixel size of a picture the manifest names, by its path under
+    /// `base` with or without the version it carries (`?v=1f5259ec`), or nil
+    /// for a path the manifest does not know.
+    ///
+    /// The files are on another host, so a page cannot read them when it is
+    /// built; what it has is the canvas size each row records and the rule
+    /// the pipeline cuts a small copy by. That is enough to give every
+    /// picture its size in its tag, which is what holds its place on the page
+    /// before the file arrives.
+    public func pictureSize(at path: String) -> (width: Int, height: Int)? {
+        pictureSizes[Self.unversioned(path)]
+    }
+
+    static func unversioned(_ path: String) -> String {
+        String(path.prefix { $0 != "?" })
+    }
+
+    /// Every picture the manifest names, by its unversioned path. Built on
+    /// each read, so a caller with many pictures to size keeps the table.
+    public var pictureSizes: [String: (width: Int, height: Int)] {
+        var found: [String: (width: Int, height: Int)] = [:]
+        for entry in entries.values {
+            found[Self.unversioned(entry.still)] = (entry.width, entry.height)
+            found[Self.unversioned(entry.stillSmall)] = Self.smallSize(width: entry.width, height: entry.height)
+        }
+        for group in groups.values {
+            found[Self.unversioned(group.image)] = (Self.coverSide, Self.coverSide)
+            found[Self.unversioned(group.imageSmall)] = (Self.smallSide, Self.smallSide)
+        }
+        for hero in heroes.values {
+            found[Self.unversioned(hero.image)] = (hero.width, hero.height)
+        }
+        return found
+    }
 }

@@ -131,6 +131,15 @@ struct SiteTests {
         var dead: [String] = []
         var leftovers: [String] = []
         var unmarked: [String] = []
+        // The floor under every page: its pictures say their size and all
+        // but the first wait, a Tab reaches the way past the menu before
+        // anything else, and a phone's bars take the page's own ground.
+        var unsized: [String] = []
+        var eager: [String] = []
+        var unskippable: [String] = []
+        var untinted: [String] = []
+        var pictures = 0
+        let mediaBase = ExampleMedia.read(inRepository: root).base
         let examplesFolder = output.appendingPathComponent("examples").resolvingSymlinksInPath().path + "/"
         for case let url as URL in walker where url.pathExtension == "html" {
             let html = try String(contentsOf: url, encoding: .utf8)
@@ -152,6 +161,33 @@ struct SiteTests {
                 }
                 checked += 1
             }
+            let name = url.resolvingSymlinksInPath().path
+                .replacingOccurrences(of: output.resolvingSymlinksInPath().path + "/", with: "")
+            for (index, tag) in Self.pictureTags(in: html).enumerated() {
+                pictures += 1
+                let source = Self.value(of: "src", in: tag)
+                // A picture from a host that is neither the site nor its
+                // media (a badge) is the one kind whose size nothing knows.
+                let known = !source.contains("://") || (!mediaBase.isEmpty && source.hasPrefix(mediaBase + "/"))
+                if known, Int(Self.value(of: "width", in: tag)) == nil || Int(Self.value(of: "height", in: tag)) == nil {
+                    unsized.append("\(name): \(source)")
+                }
+                if index > 0, !tag.contains(" loading=\"lazy\"") { eager.append("\(name): \(source)") }
+                if index == 0, tag.contains(" loading=\"lazy\"") { eager.append("\(name): its first picture waits") }
+            }
+            if let body = html.range(of: "<body>") {
+                let after = html[body.upperBound...]
+                let stops = ["<a ", "<button", "<input", "<summary", "<select", "<textarea", "<video", "tabindex=\"0\""]
+                let first = stops.compactMap { after.range(of: $0)?.lowerBound }.min()
+                if first.map({ after[$0...].hasPrefix("<a class=\"skip\" href=\"#main\">") }) != true
+                    || !html.contains("<main id=\"main\" tabindex=\"-1\">") {
+                    unskippable.append(name)
+                }
+            }
+            if !html.contains("<meta name=\"theme-color\" media=\"(prefers-color-scheme: light)\" content=\"\(SiteStyle.ground)\">")
+                || !html.contains("<meta name=\"theme-color\" media=\"(prefers-color-scheme: dark)\" content=\"\(SiteStyle.groundDark)\">") {
+                untinted.append(name)
+            }
             if Self.prose(of: html).contains("](") {
                 // Both sides resolved, since a temporary directory walks out
                 // with a `/private` in front of it and a plain prefix strip
@@ -167,6 +203,41 @@ struct SiteTests {
         #expect(checked > 5_000, "checked \(checked) targets")
         #expect(dead.isEmpty, "dead: \(dead.prefix(10).joined(separator: "; ")) (\(dead.count))")
         #expect(leftovers.isEmpty, "markdown left in: \(leftovers.prefix(10).joined(separator: ", "))")
+        #expect(pictures > 1_500, "read \(pictures) pictures")
+        #expect(unsized.isEmpty, "pictures with no size, which take no room until they arrive: \(unsized.prefix(6)) (\(unsized.count))")
+        #expect(eager.isEmpty, "pictures below a page's first that load with the page, or a first one that waits: \(eager.prefix(6)) (\(eager.count))")
+        #expect(unskippable.isEmpty, "pages where a Tab does not reach the skip link first, or it has nowhere to land: \(unskippable.prefix(6)) (\(unskippable.count))")
+        #expect(untinted.isEmpty, "pages that do not tell a phone the color of their ground: \(untinted.prefix(6)) (\(untinted.count))")
+        // A size that is the picture's own: a chapter's figure written at a
+        // width keeps it and gains the height that goes with its file.
+        let figures = try String(contentsOf: output.appendingPathComponent("guide/19-layersandeffects.html"), encoding: .utf8)
+        let layers = try #require(Self.pictureTags(in: figures).first { $0.contains("/layers.jpg\"") }, "chapter 19 lost its layer diagram")
+        let onDisk = try #require(SiteBuilder.pixelSize(ofPictureAt: root.appendingPathComponent("Guide/Images/19-LayersAndEffects/Layers.jpg")))
+        let written = (Double(Self.value(of: "width", in: layers)) ?? 0, Double(Self.value(of: "height", in: layers)) ?? 0)
+        #expect(abs(written.0 / written.1 - Double(onDisk.width) / Double(onDisk.height)) < 0.01,
+                "the layer diagram is \(onDisk.width) by \(onDisk.height) and its tag says \(layers)")
+
+        // The page a wrong address gets: in the site's chrome, with the search
+        // and the three sections, every path from the root so it works at
+        // whatever depth the host serves it, and out of every index.
+        let wrongAddress = try String(contentsOf: output.appendingPathComponent("404.html"), encoding: .utf8)
+        #expect(wrongAddress.contains("<h1>\(SiteBuilder.notFoundTitle)</h1>") && wrongAddress.contains(HTML.escape(SiteBuilder.notFoundLine)))
+        #expect(wrongAddress.contains("<header class=\"bar\">") && wrongAddress.contains("<dialog id=\"search\" class=\"search\" data-root=\"/\" aria-label=\"Search\">"),
+                "the page for a wrong address has no bar, or its search cannot find the index")
+        #expect(wrongAddress.contains("<button class=\"button\" type=\"button\" data-search-open hidden>"), "it offers no search of its own")
+        for section in ["guide", "docs", "examples"] {
+            #expect(wrongAddress.contains("<a class=\"card\" href=\"/\(section)/index.html\">"), "it does not offer the \(section) section")
+        }
+        #expect(wrongAddress.contains("<meta name=\"robots\" content=\"noindex\">"))
+        #expect(!wrongAddress.contains("rel=\"canonical\"") && !wrongAddress.contains("rel=\"alternate\"") && !wrongAddress.contains("og:url"),
+                "a page with no address of its own claims one")
+        #expect(!wrongAddress.contains("<nav class=\"sidebar\"") && !wrongAddress.contains("<nav class=\"rail\""))
+        var unrooted: [String] = []
+        for target in Self.targets(in: wrongAddress) where !target.hasPrefix("#") && !target.contains("://") {
+            if !target.hasPrefix("/") { unrooted.append(target) }
+        }
+        #expect(unrooted.isEmpty, "paths that only work at the root: \(unrooted)")
+        #expect(wrongAddress.contains("'/favicon-dark.svg':'/favicon.svg'"), "its favicon is swapped by a relative path")
 
         // The front page opens on the hero with the ring in it, and a chapter
         // opens on its trail.
@@ -412,6 +483,8 @@ struct SiteTests {
             #expect(address == base || address.hasSuffix(".html"), "\(address) is not a page")
         }
         #expect(addresses.contains(base), "the front page is missing, or listed as its file")
+        #expect(!addresses.contains { $0.contains("404") } && !llms.contains("404") && !entries.contains { ($0["u"] ?? "").contains("404") },
+                "the page for a wrong address is listed somewhere")
 
         // The whole point of the file is that a crawler and the page agree on
         // where the page lives, so one listed address is read back off the
@@ -929,6 +1002,8 @@ struct SiteTests {
         let quiet = try nowhere.build(into: anonymous)
         #expect(!FileManager.default.fileExists(atPath: anonymous.appendingPathComponent("sitemap.xml").path))
         #expect(!FileManager.default.fileExists(atPath: anonymous.appendingPathComponent("robots.txt").path))
+        #expect(!FileManager.default.fileExists(atPath: anonymous.appendingPathComponent("404.html").path),
+                "a page whose paths start at the root was written without knowing the root")
         #expect(quiet.notes.contains { $0.contains("no sitemap") }, "and the build says so")
     }
 
@@ -1241,6 +1316,335 @@ struct SiteTests {
             let sketch = root.appendingPathComponent("Examples/\(example)/Sketch.swift")
             #expect(FileManager.default.fileExists(atPath: sketch.path),
                     "Media/media.json names \(example), which is not in the checkout")
+        }
+    }
+
+    // MARK: - The floor under every page
+
+    /// Every `<img>` tag on a page, without its closing bracket.
+    static func pictureTags(in html: String) -> [String] {
+        var found: [String] = []
+        var rest = Substring(html)
+        while let open = rest.range(of: "<img ") {
+            var quoted = false
+            var end = open.upperBound
+            while end < rest.endIndex, quoted || rest[end] != ">" {
+                if rest[end] == "\"" { quoted.toggle() }
+                end = rest.index(after: end)
+            }
+            found.append(String(rest[open.lowerBound ..< end]))
+            rest = rest[end...]
+        }
+        return found
+    }
+
+    /// One attribute's value in a tag, or empty.
+    static func value(of attribute: String, in tag: String) -> String {
+        guard let open = tag.range(of: " \(attribute)=\""),
+              let close = tag[open.upperBound...].firstIndex(of: "\"") else { return "" }
+        return String(tag[open.upperBound ..< close])
+    }
+
+    /// A PNG of one flat color at a given size, for a test that reads a
+    /// picture's size off its file.
+    static func writePicture(width: Int, height: Int, to url: URL) throws {
+        let context = try #require(CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+                                             space: CGColorSpaceCreateDeviceRGB(),
+                                             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        context.setFillColor(red: 0.5, green: 0.5, blue: 0.5, alpha: 1)
+        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        let image = try #require(context.makeImage())
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let destination = try #require(CGImageDestinationCreateWithURL(url as CFURL, "public.png" as CFString, 1, nil))
+        CGImageDestinationAddImage(destination, image, nil)
+        try #require(CGImageDestinationFinalize(destination))
+    }
+
+    @Test("A picture's tag gains its own size, the height that goes with a written width, and every one after the first waits")
+    func picturesSayTheirSize() throws {
+        let root = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("ollin-pictures-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        try Self.writePicture(width: 300, height: 200, to: root.appendingPathComponent("Docs/Images/A.png"))
+        try "not a picture".write(to: root.appendingPathComponent("Docs/Images/B.png"), atomically: true, encoding: .utf8)
+
+        let builder = SiteBuilder(root: root)
+        let page = SiteBuilder.Page(repoPath: "Docs/Topic.md", sitePath: "docs/topic.html", kind: .docs, title: "Topic", summary: "")
+        var plan = SiteBuilder.Plan()
+        plan.media = ExampleMedia(base: "https://media.example", entries: [
+            "Group/Wide": .init(loop: nil, loopSmall: nil, still: "examples/Group/Wide/still.jpg?v=1",
+                                stillSmall: "examples/Group/Wide/still-640.jpg?v=2", width: 1080, height: 608, sound: nil),
+        ])
+        let log = SiteBuilder.LinkLog()
+        log.pictureSources = ["docs/images/a.png": "Docs/Images/A.png", "docs/images/b.png": "Docs/Images/B.png"]
+
+        let body = """
+        <p><img src="images/a.png" alt="first"></p>
+        <img src="images/a.png" alt="a &gt; b, and a > c" width="150">
+        <img src="https://media.example/examples/Group/Wide/still-640.jpg?v=2" alt="Wide">
+        <img src="https://media.example/examples/Group/Wide/still.jpg?v=1" alt="Wide, whole">
+        <img src="https://badges.example/x-y-blue" alt="badge">
+        <img src="images/a.png" alt="closed" />
+        <img src="images/a.png" alt="kept" width="90" height="10" loading="eager">
+        <img src="images/b.png" alt="unreadable">
+        <img src="images/missing.png" alt="nowhere">
+        <p>after</p>
+        """
+        let out = builder.sizingPictures(in: body, page: page, plan: plan, log: log).components(separatedBy: "\n")
+        try #require(out.count == 10, "\(out)")
+        // The first is the one most likely to be showing when the page opens.
+        #expect(out[0] == "<p><img src=\"images/a.png\" alt=\"first\" width=\"300\" height=\"200\"></p>")
+        // A written width is kept, and a bracket inside the caption does not end the tag.
+        #expect(out[1] == "<img src=\"images/a.png\" alt=\"a &gt; b, and a > c\" width=\"150\" height=\"100\" loading=\"lazy\" decoding=\"async\">")
+        // On the media host a size comes from the manifest's row and the name.
+        #expect(out[2].hasSuffix("alt=\"Wide\" width=\"640\" height=\"360\" loading=\"lazy\" decoding=\"async\">"), "\(out[2])")
+        #expect(out[3].hasSuffix("alt=\"Wide, whole\" width=\"1080\" height=\"608\" loading=\"lazy\" decoding=\"async\">"), "\(out[3])")
+        // Nothing knows a badge's size, so it gets none rather than a wrong one.
+        #expect(out[4] == "<img src=\"https://badges.example/x-y-blue\" alt=\"badge\" loading=\"lazy\" decoding=\"async\">")
+        #expect(out[5] == "<img src=\"images/a.png\" alt=\"closed\" width=\"300\" height=\"200\" loading=\"lazy\" decoding=\"async\" />")
+        // What a page wrote out in full is left as written.
+        #expect(out[6] == "<img src=\"images/a.png\" alt=\"kept\" width=\"90\" height=\"10\" loading=\"eager\">")
+        // A file that is not a picture, and one that is not there, get no size.
+        #expect(out[7] == "<img src=\"images/b.png\" alt=\"unreadable\" loading=\"lazy\" decoding=\"async\">")
+        #expect(out[8] == "<img src=\"images/missing.png\" alt=\"nowhere\" loading=\"lazy\" decoding=\"async\">")
+        #expect(out[9] == "<p>after</p>")
+        #expect(builder.sizingPictures(in: "<p>no pictures</p>", page: page, plan: plan, log: log) == "<p>no pictures</p>")
+    }
+
+    @Test("A small copy's size follows the pipeline's rule, and a cover is a square")
+    func mediaPictureSizes() throws {
+        // Each pair was read off a real file on the media host on 2026-11-26:
+        // the canvas a row records, and the size of its small still.
+        let measured: [(canvas: (Int, Int), small: (Int, Int))] = [
+            ((1080, 1080), (640, 640)), ((1080, 608), (640, 360)), ((1080, 1440), (480, 640)),
+            ((940, 1080), (558, 640)), ((1000, 1400), (458, 640)), ((1296, 1080), (640, 534)),
+            ((1400, 1000), (640, 458)), ((764, 1080), (452, 640)), ((760, 520), (640, 438)),
+            ((920, 1200), (490, 640)), ((1620, 1080), (640, 426)), ((1080, 1472), (470, 640)),
+            ((1919, 1003), (640, 334)), ((3200, 900), (640, 180)), ((1100, 1000), (640, 582)),
+        ]
+        for pair in measured {
+            let size = ExampleMedia.smallSize(width: pair.canvas.0, height: pair.canvas.1)
+            #expect(size == pair.small, "a \(pair.canvas) canvas: \(size), and the file is \(pair.small)")
+        }
+        var media = ExampleMedia(
+            base: "https://media.example",
+            entries: ["A/Tall": .init(loop: nil, loopSmall: nil, still: "examples/A/Tall/still.jpg?v=1",
+                                      stillSmall: "examples/A/Tall/still-640.jpg?v=2", width: 1080, height: 1440, sound: nil)],
+            heroes: ["guide": .init(image: "heroes/g.jpg?v=1", clip: "heroes/g.mp4?v=2", width: 1600, height: 800, of: "sketches")])
+        media.groups = ["A": .init(image: "groups/A.jpg?v=3", imageSmall: "groups/A-640.jpg?v=4")]
+        // With the version a page writes or without it.
+        #expect(try #require(media.pictureSize(at: "examples/A/Tall/still-640.jpg?v=2")) == (480, 640))
+        #expect(try #require(media.pictureSize(at: "examples/A/Tall/still.jpg")) == (1080, 1440))
+        #expect(try #require(media.pictureSize(at: "groups/A-640.jpg?v=4")) == (640, 640))
+        #expect(try #require(media.pictureSize(at: "groups/A.jpg?v=3")) == (1080, 1080))
+        #expect(try #require(media.pictureSize(at: "heroes/g.jpg?v=1")) == (1600, 800))
+        #expect(media.pictureSize(at: "examples/A/Other/still.jpg") == nil)
+        // The checkout's own manifest names its covers, so a listing's grid is sized.
+        let root = try #require(Self.repositoryRoot())
+        #expect(ExampleMedia.read(inRepository: root).groups.count > 30, "the manifest's covers did not read")
+    }
+
+    @Test("The page for a wrong address is written from the site's root, wherever the root is")
+    func wrongAddressFromTheRoot() throws {
+        #expect(SiteBuilder.rootPath(of: "https://ollin.art/") == "/")
+        #expect(SiteBuilder.rootPath(of: "https://someone.github.io/Thing/") == "/Thing/")
+        #expect(SiteBuilder.rootPath(of: "https://someone.github.io/Thing") == "/Thing/")
+        #expect(SiteBuilder.rootPath(of: "https://ollin.art") == "/")
+
+        let root = try #require(Self.repositoryRoot())
+        let plan = try #require(Self.checkoutPlan)
+        let page = SiteBuilder(root: root).notFoundPage(plan: plan, root: "/Thing/")
+        let local = Self.targets(in: page).filter { !$0.hasPrefix("#") && !$0.contains("://") }
+        #expect(local.count > 8, "read \(local.count) paths")
+        #expect(local.allSatisfy { $0.hasPrefix("/Thing/") }, "paths off the root: \(local.filter { !$0.hasPrefix("/Thing/") })")
+        #expect(page.contains("data-root=\"/Thing/\""), "the search looks for its index somewhere else")
+    }
+
+    /// The color variables one scheme sets, by name, as `#rrggbb`. The dark
+    /// scheme changes some and keeps the rest, so it is read over the light.
+    static func palette(dark: Bool) throws -> [String: String] {
+        let css = SiteStyle.css
+        func block(after marker: String) throws -> Substring {
+            let open = try #require(css.range(of: marker))
+            let close = try #require(css[open.upperBound...].firstIndex(of: "}"))
+            return css[open.upperBound ..< close]
+        }
+        func variables(_ block: Substring) -> [String: String] {
+            var found: [String: String] = [:]
+            for line in block.split(separator: "\n") {
+                let parts = line.split(separator: ":", maxSplits: 1).map { $0.trimmingCharacters(in: .whitespaces) }
+                guard parts.count == 2, parts[0].hasPrefix("--") else { continue }
+                let value = parts[1].trimmingCharacters(in: CharacterSet(charactersIn: "; "))
+                if value.hasPrefix("#"), value.count == 7 { found[parts[0]] = value }
+            }
+            return found
+        }
+        var colors = variables(try block(after: ":root {"))
+        if dark {
+            let media = try #require(css.range(of: "@media (prefers-color-scheme: dark) {"))
+            let open = try #require(css.range(of: ":root {", range: media.upperBound ..< css.endIndex))
+            let close = try #require(css[open.upperBound...].firstIndex(of: "}"))
+            colors.merge(variables(css[open.upperBound ..< close])) { _, new in new }
+        }
+        return colors
+    }
+
+    /// How far apart two colors read, by the accessibility guidelines' own
+    /// arithmetic: 1 for the same color, 21 for black on white.
+    static func contrast(_ first: String, _ second: String) -> Double {
+        func luminance(_ hex: String) -> Double {
+            let value = Int(hex.dropFirst(), radix: 16) ?? 0
+            let channels = [(value >> 16) & 0xFF, (value >> 8) & 0xFF, value & 0xFF].map { channel -> Double in
+                let unit = Double(channel) / 255
+                return unit <= 0.04045 ? unit / 12.92 : pow((unit + 0.055) / 1.055, 2.4)
+            }
+            return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2]
+        }
+        let (a, b) = (luminance(first), luminance(second))
+        return (max(a, b) + 0.05) / (min(a, b) + 0.05)
+    }
+
+    @Test("Every text color reads at 4.5 to 1 or better on each ground it is set on, in both schemes")
+    func textContrast() throws {
+        // Each ink with the grounds the stylesheet sets it on: prose and the
+        // menus on the page, a card, and the darker chip inside a card or under
+        // the pointer; a link on the page and on a card; the bar's open tab;
+        // and every color of a code listing on the listing's own ground.
+        let pairs: [(ink: String, grounds: [String])] = [
+            ("--text", ["--bg", "--surface", "--surface-2", "--code-bg"]),
+            ("--text-2", ["--bg", "--surface", "--surface-2"]),
+            ("--muted", ["--bg", "--surface", "--surface-2"]),
+            ("--accent", ["--bg", "--surface"]),
+            ("--tab-ink", ["--tab"]),
+            ("--tk-comment", ["--code-bg"]), ("--tk-string", ["--code-bg"]), ("--tk-number", ["--code-bg"]),
+            ("--tk-keyword", ["--code-bg"]), ("--tk-type", ["--code-bg"]), ("--tk-attribute", ["--code-bg"]),
+        ]
+        for dark in [false, true] {
+            let colors = try Self.palette(dark: dark)
+            #expect(colors.count >= 15, "read \(colors.count) colors")
+            for pair in pairs {
+                let ink = try #require(colors[pair.ink], "\(pair.ink) is not a plain color")
+                for name in pair.grounds {
+                    let ground = try #require(colors[name], "\(name) is not a plain color")
+                    let ratio = Self.contrast(ink, ground)
+                    #expect(ratio >= 4.5, "\(dark ? "dark" : "light"): \(pair.ink) \(ink) on \(name) \(ground) reads at \(String(format: "%.2f", ratio)) to 1")
+                }
+            }
+        }
+        // The arithmetic itself, on the two ends of its scale.
+        #expect(abs(Self.contrast("#000000", "#ffffff") - 21) < 0.001 && Self.contrast("#777777", "#777777") == 1)
+        // The grounds a phone tints its bars with are the page's own.
+        #expect(try Self.palette(dark: false)["--bg"] == SiteStyle.ground)
+        #expect(try Self.palette(dark: true)["--bg"] == SiteStyle.groundDark)
+    }
+
+    /// A phone-wide column holding the shapes that run off a phone's screen
+    /// when nothing lets them break, in the site's own stylesheet and as the
+    /// site renders them,
+    /// with the script that makes a scrolling block reachable. It reports
+    /// each one's width against its box, how many lines a long call takes
+    /// and how many of its labels were cut in two, and, in a column as wide
+    /// as a desk's, how many lines a call takes that fits on one.
+    static func narrowProbe() -> String {
+        let ids = ["name", "heading", "address", "joined", "block", "short", "table"]
+        func rendered(_ markdown: String) -> String { HTML.inline(markdown, resolve: { target, _ in target }) }
+        let call = rendered("`drawSomethingWithAVeryLongName(aLabel:anotherLabel:andAThird:yetAnother:andTheLast:)`")
+        let whole = rendered("`drawImage(_:topLeft:topRight:bottomRight:bottomLeft:)`")
+        return """
+        <!doctype html><html><head><meta charset="utf-8"><style>\(SiteStyle.css)</style></head><body>
+        <div id="column" style="width: 350px; flex: none;">
+        <article class="prose">
+        <p id="name">A call such as \(call) in a line.</p>
+        <h2 id="heading">\(rendered("`ExampleMedia.pictureSizeOfSomethingVeryLongIndeed(at:scaledBy:)`"))</h2>
+        <ul><li id="address">Upstream: https://example.com/a/very/long/address/with/no/space/in/it/anywhere/at/all/file.html</li></ul>
+        <p id="joined" class="lede">The views (Front/Back/Left/Right/Top/Bottom/Isometric/Perspective/Orthographic) in one word.</p>
+        <pre id="block"><code>let aLine = "of code that is far too long to fit a phone's column and has to scroll inside its own box"</code></pre>
+        <pre id="short"><code>let x = 1</code></pre>
+        <div class="table" id="table"><table><tr><td>\(rendered("`aVeryLongNameInATableCellThatStaysWhole(with:labels:andMore:)`"))</td><td>What it does, at some length, in words.</td></tr></table></div>
+        </article>
+        </div>
+        <div style="width: 700px; flex: none;"><article class="prose">
+        <p id="whole">A line of prose long enough that the call after it cannot share it: \(whole) follows.</p>
+        </article></div>
+        \(SiteStyle.scrollerScript)
+        <div id="r0">PENDING</div>
+        <script>
+        (function () {
+          var lines = \(ids).map(function (id) {
+            var box = document.getElementById(id);
+            return id + ' ' + box.scrollWidth + ' ' + box.clientWidth + ' ' + box.tabIndex;
+          });
+          lines.push('column ' + document.getElementById('column').scrollWidth + ' 350 -1');
+          // The pieces of a call between its marks are its text nodes: one
+          // that takes two lines was cut inside a label.
+          var call = document.querySelector('#name code');
+          var cut = 0;
+          call.childNodes.forEach(function (node) {
+            if (node.nodeType !== 3) return;
+            var range = document.createRange();
+            range.selectNodeContents(node);
+            if (range.getClientRects().length > 1) cut += 1;
+          });
+          lines.push('fold ' + call.getClientRects().length + ' ' + cut + ' ' + call.querySelectorAll('wbr').length);
+          lines.push('whole ' + document.querySelector('#whole code').getClientRects().length + ' ' + innerWidth + ' 0');
+          document.getElementById('r0').textContent = lines.join('|');
+        })();
+        </script>
+        </body></html>
+        """
+    }
+
+    /// What the probe reported, by the name each line opens with.
+    static func narrowReport(windowWidth: Int) async throws -> (read: [String: (Int, Int, Int)], text: String) {
+        let flags = HeadlessBrowser.baseFlags + ["--window-size=\(windowWidth),900"]
+        let dom = try await HeadlessBrowser.dom(of: Self.narrowProbe(), flags: flags, timeout: 90)
+        let report = try #require(HeadlessBrowser.text(of: "r0", in: dom))
+        try #require(report != "PENDING", "the probe did not run")
+        var read: [String: (Int, Int, Int)] = [:]
+        for line in report.split(separator: "|") {
+            let parts = line.split(separator: " ")
+            try #require(parts.count == 4, "\(report)")
+            read[String(parts[0])] = (Int(parts[1]) ?? -1, Int(parts[2]) ?? -1, Int(parts[3]) ?? -9)
+        }
+        return (read, report)
+    }
+
+    @Test("At a phone's width a long name folds between its labels, nothing is wider than its column, and a block that scrolls can be reached from the keyboard",
+          .enabled("a browser is needed") { HeadlessBrowser.isInstalled })
+    func nothingRunsOffAPhone() async throws {
+        let (read, report) = try await Self.narrowReport(windowWidth: 600)
+        // A name in code type, a heading that is one, an address written
+        // out, and names joined by slashes all break where the line ends.
+        for id in ["name", "heading", "address", "joined", "column"] {
+            let box = try #require(read[id], "\(report)")
+            #expect(box.0 <= box.1, "\(id) is \(box.0) wide in a box of \(box.1): \(report)")
+        }
+        // The call takes more than one line, and every break in it falls
+        // at one of its marks: no label is cut in two.
+        let fold = try #require(read["fold"], "\(report)")
+        #expect(fold.0 > 1 && fold.2 >= 5, "the call did not fold, or carries no marks: \(report)")
+        #expect(fold.1 == 0, "\(fold.1) of the call's labels were cut in two: \(report)")
+        // A listing and a table keep their lines whole and scroll inside
+        // their own boxes, and a box that scrolls takes a place in the Tab
+        // order; a listing that fits adds none.
+        for id in ["block", "table"] {
+            let box = try #require(read[id], "\(report)")
+            #expect(box.0 > box.1, "\(id) no longer scrolls inside itself: \(report)")
+            #expect(box.2 == 0, "\(id) scrolls and a keyboard cannot reach it: \(report)")
+        }
+        #expect(read["short"]?.2 == -1, "a listing that fits took a place in the Tab order: \(report)")
+    }
+
+    @Test("On a wide page a call that fits on one line moves to the next line whole",
+          .enabled("a browser is needed") { HeadlessBrowser.isInstalled })
+    func aNameStaysWholeOnAWidePage() async throws {
+        let (read, report) = try await Self.narrowReport(windowWidth: 1280)
+        let whole = try #require(read["whole"], "\(report)")
+        try #require(whole.1 > 860, "the window is \(whole.1) wide, which is a phone's rules: \(report)")
+        #expect(whole.0 == 1, "the call was folded across \(whole.0) lines on a wide page: \(report)")
+        // The phone-wide column on the same page still holds its text.
+        for id in ["name", "heading", "address", "joined", "column"] {
+            let box = try #require(read[id], "\(report)")
+            #expect(box.0 <= box.1, "\(id) is \(box.0) wide in a box of \(box.1): \(report)")
         }
     }
 

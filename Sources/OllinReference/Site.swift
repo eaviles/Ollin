@@ -121,7 +121,14 @@ public struct SiteBuilder {
         var hasTouchIcon = false
         /// The clips and stills the examples have, which is however many
         /// `Scripts/media.sh` has rendered so far.
-        var media = ExampleMedia.none
+        var media = ExampleMedia.none {
+            didSet { pictureSizes = media.pictureSizes }
+        }
+        /// How big each picture on the media host is, by its path there,
+        /// which is how a page gives a picture it cannot read its size.
+        /// Kept beside the manifest it is read from, since a build asks it
+        /// once for every picture.
+        private(set) var pictureSizes: [String: (width: Int, height: Int)] = [:]
     }
 
     /// The pages the site will hold, with their titles read ahead of time so
@@ -296,8 +303,14 @@ public struct SiteBuilder {
         if let base = siteBase {
             try write(sitemap(plan: plan, base: base), to: output.appendingPathComponent("sitemap.xml"))
             try write(robots(base: base), to: output.appendingPathComponent("robots.txt"))
+            // The page a wrong address gets. The host serves this one file
+            // for every address with no page behind it, at whatever depth
+            // that address has, so its paths are written from the site's root
+            // and it too waits on the site knowing where it is served.
+            try write(notFoundPage(plan: plan, root: Self.rootPath(of: base)),
+                      to: output.appendingPathComponent("404.html"))
         } else {
-            report.notes.append("no sitemap and no robots.txt: the site does not know its own address; pass --domain")
+            report.notes.append("no sitemap, no robots.txt, and no page for a wrong address: the site does not know its own address; pass --domain")
         }
 
         for page in plan.pages {
@@ -389,6 +402,11 @@ public struct SiteBuilder {
     /// targets that pointed at nothing, and the sections the search lists.
     final class LinkLog {
         var images: [String: String] = [:]
+        /// The same pictures the other way round, by where the site put
+        /// them, and the size each file turned out to be once one page has
+        /// asked (zero for a file that is not a picture).
+        var pictureSources: [String: String] = [:]
+        var pictureSizes: [String: (width: Int, height: Int)] = [:]
         var missing: [String] = []
         var search: [SiteSearch.Entry] = []
         /// What a page went without, for the report.
@@ -405,8 +423,11 @@ public struct SiteBuilder {
             resolve(target, image: image, from: page, plan: plan, log: log)
         }
         log.search.append(contentsOf: SiteSearch.entries(for: page, rendered: rendered))
-        let played = Self.playingChapterHook(in: rendered.body, page: page, media: plan.media)
-        let body = "<article class=\"prose\">\n\(Self.playingHeroes(in: played, media: plan.media))\n</article>"
+        // The clips are swapped in first, so a picture that became a clip's
+        // poster is not counted as the page's first picture.
+        let played = Self.playingHeroes(in: Self.playingChapterHook(in: rendered.body, page: page, media: plan.media),
+                                        media: plan.media)
+        let body = "<article class=\"prose\">\n\(sizingPictures(in: played, page: page, plan: plan, log: log))\n</article>"
         let title = page.title
         let description = page.summary.isEmpty ? Self.tagline : page.summary
         return layout(page: page, title: title, description: description, trail: rendered.trail,
@@ -503,7 +524,7 @@ public struct SiteBuilder {
         }
 
         return layout(page: page, title: page.title, description: Self.tagline, trail: "",
-                      body: "\(hero)\n<article class=\"prose home\">\n\(body)</article>",
+                      body: "\(hero)\n<article class=\"prose home\">\n\(sizingPictures(in: body, page: page, plan: plan, log: log))</article>",
                       headings: [], plan: plan)
     }
 
@@ -542,11 +563,6 @@ public struct SiteBuilder {
         markdown = lines.joined(separator: "\n")
 
         let guide = relative(from: page.siteDirectory, to: "guide/index.html")
-        let docs = relative(from: page.siteDirectory, to: "docs/index.html")
-        let examples = relative(from: page.siteDirectory, to: "examples/index.html")
-        let chapters = plan.pages.filter { $0.repoPath.hasPrefix("Guide/") && $0.repoPath.dropFirst(6).first?.isNumber == true }.count
-        let references = plan.pages.filter { if case .docs = $0.kind { return !$0.repoPath.hasSuffix("README.md") }; return false }.count
-        let sketches = plan.examples.count
         let ring = SiteHero.fragment.isEmpty ? "" : """
           <div class="hero-canvas" aria-hidden="true">
         \(SiteHero.fragment)
@@ -565,12 +581,66 @@ public struct SiteBuilder {
             <p class="hero-actions"><a class="button" href="#run-it">Run a sketch</a><a class="button quiet" href="\(guide)">Start with the Guide</a></p>
           </div>
         \(ring)</section>
+        \(sectionCards(plan: plan) { relative(from: page.siteDirectory, to: $0) })
+        """
+    }
+
+    /// The three sections as cards, each with the one line that counts what
+    /// it holds. The front page shows them under its opening and the page for
+    /// a wrong address shows them as the ways back in; `address` turns a site
+    /// path into the link the page showing them needs.
+    func sectionCards(plan: Plan, address: (String) -> String) -> String {
+        let chapters = plan.pages.filter { $0.repoPath.hasPrefix("Guide/") && $0.repoPath.dropFirst(6).first?.isNumber == true }.count
+        let references = plan.pages.filter { if case .docs = $0.kind { return !$0.repoPath.hasSuffix("README.md") }; return false }.count
+        let sketches = plan.examples.count
+        return """
         <section class="cards">
-          <a class="card" href="\(guide)"><h2>Guide</h2><p>Creative coding from zero, taught through Ollin in \(chapters) chapters.</p></a>
-          <a class="card" href="\(docs)"><h2>Reference</h2><p>\(references) pages, one for each type and helper, grouped the way you meet them.</p></a>
-          <a class="card" href="\(examples)"><h2>Examples</h2><p>\(sketches) runnable sketches by category, each with its source.</p></a>
+          <a class="card" href="\(address("guide/index.html"))"><h2>Guide</h2><p>Creative coding from zero, taught through Ollin in \(chapters) chapters.</p></a>
+          <a class="card" href="\(address("docs/index.html"))"><h2>Reference</h2><p>\(references) pages, one for each type and helper, grouped the way you meet them.</p></a>
+          <a class="card" href="\(address("examples/index.html"))"><h2>Examples</h2><p>\(sketches) runnable sketches by category, each with its source.</p></a>
         </section>
         """
+    }
+
+    // MARK: - The page for a wrong address
+
+    /// What the page for a wrong address says: its heading and the line
+    /// under it. The site writes almost no prose of its own, so these two
+    /// are kept here where they are easy to find and change.
+    static let notFoundTitle = "Page not found"
+    static let notFoundLine = "Nothing lives at this address. Search the site, or start from the Guide, the Reference, or the Examples."
+
+    /// The site's root as a path with a slash at each end, from the address
+    /// the site is served at: `/` on a domain of its own, `/Name/` under the
+    /// address a project is given.
+    static func rootPath(of base: String) -> String {
+        guard let scheme = base.range(of: "://"),
+              let slash = base[scheme.upperBound...].firstIndex(of: "/") else { return "/" }
+        let path = String(base[slash...])
+        return path.hasSuffix("/") ? path : path + "/"
+    }
+
+    /// The page a reader lands on at an address that has no page: the site's
+    /// own bar, with its search and its three sections, two lines that say
+    /// what happened, a button that opens the search, and the sections again
+    /// as the cards the front page shows them as.
+    ///
+    /// The host serves this one file wherever the wrong address was, so
+    /// nothing in it is written relative to where it sits (`layout`'s
+    /// `rootedAt`). The search button stays hidden until the script that
+    /// runs it has loaded, as the bar's does.
+    func notFoundPage(plan: Plan, root: String) -> String {
+        let page = Page(repoPath: "", sitePath: "404.html", kind: .about, title: Self.notFoundTitle, summary: "")
+        let body = """
+        <article class="prose notfound">
+        <h1>\(HTML.escape(Self.notFoundTitle))</h1>
+        <p class="lede">\(HTML.escape(Self.notFoundLine))</p>
+        <p><button class="button" type="button" data-search-open hidden>Search</button></p>
+        </article>
+        \(sectionCards(plan: plan) { root + $0 })
+        """
+        return layout(page: page, title: Self.notFoundTitle, description: Self.tagline, trail: "",
+                      body: body, headings: [], plan: plan, rootedAt: root)
     }
 
     // MARK: - An example page
@@ -1120,6 +1190,7 @@ public struct SiteBuilder {
             }
             let sitePath = repoPath.lowercased()
             log.images[repoPath] = sitePath
+            log.pictureSources[sitePath] = repoPath
             return relative(from: page.siteDirectory, to: sitePath)
         }
 
@@ -1195,19 +1266,29 @@ public struct SiteBuilder {
 
     // MARK: - The chrome
 
+    /// One page in the site's chrome.
+    ///
+    /// `root` is for the one page that is served at addresses it was never
+    /// written to, the page for a wrong address: every path it carries is
+    /// then written from the site's root (`/`, or `/Name/` under a project's
+    /// address), since a path relative to where the page sits would point
+    /// somewhere else at every depth. Such a page has no place in a menu, no
+    /// markdown behind it, and no address of its own to call canonical, and
+    /// it asks not to be indexed.
     func layout(page: Page, title: String, description: String, trail: String,
-                body: String, headings: [(level: Int, text: String, anchor: String)], plan: Plan) -> String {
+                body: String, headings: [(level: Int, text: String, anchor: String)], plan: Plan,
+                rootedAt root: String? = nil) -> String {
         let here = page.siteDirectory
-        let asset = { (name: String) in relative(from: here, to: name) }
+        let asset = { (name: String) in root.map { $0 + name } ?? relative(from: here, to: name) }
         let isHome: Bool
         if case .home = page.kind { isHome = true } else { isHome = false }
         let fullTitle = isHome ? "Ollin" : "\(title) · Ollin"
         let pagePath = Self.pagePath(of: page)
-        let canonical = domain.map { "<link rel=\"canonical\" href=\"https://\($0)/\(pagePath)\">" } ?? ""
+        var canonical = domain.map { "<link rel=\"canonical\" href=\"https://\($0)/\(pagePath)\">" } ?? ""
         // The two relations the convention asks for, so a machine that lands
         // on the rendered page can find the markdown behind it and the index
         // that describes the site, without being told either address.
-        let machine = """
+        var machine = """
         <link rel="alternate" type="text/markdown" href="\(asset(Self.markdownPath(for: page.sitePath)))">
         <link rel="describedby" type="text/markdown" href="\(asset("llms.txt"))">
         """
@@ -1217,7 +1298,10 @@ public struct SiteBuilder {
         // before there is one, the address GitHub Pages serves the repository
         // at, and left out when neither is known.
         var share = ""
-        if let base = siteBase {
+        if root != nil {
+            canonical = ""
+            machine = "<meta name=\"robots\" content=\"noindex\">"
+        } else if let base = siteBase {
             share += "<meta property=\"og:url\" content=\"\(HTML.escape(base + pagePath))\">\n"
             if plan.hasSocialCard {
                 share += """
@@ -1257,7 +1341,10 @@ public struct SiteBuilder {
         // nothing; the index is loaded on the first search, from the site's
         // root, which the dialog carries as the path back up to it.
         let siteRoot = String(asset("index.html").dropLast("index.html".count))
+        // Ahead of the bar, so it is the first thing a Tab reaches: a reader
+        // on a keyboard steps over the bar and the whole menu to the page.
         let nav = """
+        <a class="skip" href="#main">Skip to content</a>
         <header class="bar">
           <div class="bar-inner">
             <a class="wordmark" href="\(asset("index.html"))" aria-label="Ollin home">\(plan.mark)<span class="name">Ollin</span></a>
@@ -1283,8 +1370,9 @@ public struct SiteBuilder {
         <script src="\(asset("assets/search.js"))" defer></script>
         """
 
-        let sidebar = isHome ? "" : self.sidebar(for: page, plan: plan)
-        let rail = isHome ? "" : self.rail(headings, title: title)
+        let alone = isHome || root != nil
+        let sidebar = alone ? "" : self.sidebar(for: page, plan: plan)
+        let rail = alone ? "" : self.rail(headings, title: title)
         let trailBlock = trail.isEmpty ? "" : "<nav class=\"trail\" aria-label=\"Breadcrumb\">\(trail)</nav>\n"
         let layoutClass = isHome ? "home" : (sidebar.isEmpty ? "single" : (rail.isEmpty ? "with-sidebar" : "with-sidebar with-rail"))
 
@@ -1295,6 +1383,8 @@ public struct SiteBuilder {
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="color-scheme" content="light dark">
+        <meta name="theme-color" media="(prefers-color-scheme: light)" content="\(SiteStyle.ground)">
+        <meta name="theme-color" media="(prefers-color-scheme: dark)" content="\(SiteStyle.groundDark)">
         <title>\(HTML.escape(fullTitle))</title>
         <meta name="description" content="\(HTML.escape(description))">
         <meta property="og:title" content="\(HTML.escape(fullTitle))">
@@ -1309,12 +1399,13 @@ public struct SiteBuilder {
         \(nav)
         <div class="layout \(layoutClass)">
         \(sidebar)
-        <main id="main">
+        <main id="main" tabindex="-1">
         \(trailBlock)\(body)
         </main>
         \(rail)
         </div>
         \(search)
+        \(SiteStyle.scrollerScript)
         <footer class="foot">
           <div class="foot-inner">
             <p>Ollin is MIT licensed and built in public. <a href="\(HTML.escape(repository))" rel="noopener">The repository</a> holds everything on this site.</p>

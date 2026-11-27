@@ -73,6 +73,28 @@ struct HTMLTests {
         #expect(html.contains("<img src=\"img:Images/wheel.jpg\" alt=\"a wheel\">"))
     }
 
+    @Test("A long name in code type is marked where it may fold, and a short one is left alone")
+    func longNamesFold() {
+        // Between the labels of a call, after the parenthesis that opens
+        // them, and before a dot that opens a member's name.
+        #expect(HTML.inline("`drawImage(_:topLeft:topRight:)`", resolve: Self.identity)
+                == "<code>drawImage(<wbr>_:<wbr>topLeft:<wbr>topRight:<wbr>)</code>")
+        #expect(HTML.inline("`Palette.shades(of:count:)`", resolve: Self.identity)
+                == "<code>Palette<wbr>.shades(<wbr>of:<wbr>count:<wbr>)</code>")
+        // A path folds after its slashes, and a list after its commas.
+        #expect(HTML.breakable("Sources/Ollin/Core/Sketch.swift") == "Sources/<wbr>Ollin/<wbr>Core/<wbr>Sketch<wbr>.swift")
+        #expect(HTML.breakable(".standard,.threePoint,.noir") == ".standard,<wbr>.threePoint,<wbr>.noir")
+        // A number keeps its point, a run of dots stays a run, and nothing
+        // is marked at either end.
+        #expect(HTML.breakable("lerp(0.25, 0...1, amount)") == "lerp(<wbr>0.25,<wbr> 0...1,<wbr> amount)")
+        #expect(HTML.breakable(".holographicFoil(facets:)") == ".holographicFoil(<wbr>facets:<wbr>)")
+        // The characters a page escapes are not cut into.
+        #expect(HTML.inline("`Array<Double>.init(repeating:count:)`", resolve: Self.identity)
+                == "<code>Array&lt;Double&gt;<wbr>.init(<wbr>repeating:<wbr>count:<wbr>)</code>")
+        // Short of the length that could ever need folding, a name is as written.
+        #expect(HTML.inline("`fill(.coral)` and `x: 4`", resolve: Self.identity) == "<code>fill(.coral)</code> and <code>x: 4</code>")
+    }
+
     @Test("A web address is marked as leaving the site")
     func externalLinks() {
         let html = HTML.inline("[web](https://example.org)", resolve: Self.identity)

@@ -328,6 +328,44 @@ public enum HTML {
         return out
     }
 
+    /// A long name in code type with the places it may fold marked: after a
+    /// colon, a comma, a slash, or an opening parenthesis, and before a dot.
+    ///
+    /// A call written with its labels has no space in it, so on a narrow
+    /// screen it can only break wherever the line happens to end, which is
+    /// the middle of a word as often as not. The marks let it fold between
+    /// its labels instead (`drawImage(_:topLeft:` then `topRight:`). They add
+    /// no character to the text, so a copied name is the name, and the
+    /// stylesheet honors them only where the column is narrow: on a wide page
+    /// a name moves whole to the next line. A short name is left alone, since
+    /// it never needs to fold.
+    static func breakable(_ escaped: String) -> String {
+        guard escaped.count >= breakableLength else { return escaped }
+        let characters = Array(escaped)
+        var out = ""
+        out.reserveCapacity(escaped.count + 32)
+        var marked = true   // nothing before the first character
+        for (index, character) in characters.enumerated() {
+            // Before a dot that opens a name (`.shades`), never inside a
+            // number or a run of dots.
+            if character == ".", !marked, index + 1 < characters.count,
+               characters[index + 1].isLetter || characters[index + 1] == "_" {
+                out += "<wbr>"
+            }
+            out.append(character)
+            marked = false
+            if character == ":" || character == "," || character == "/" || character == "(" {
+                out += "<wbr>"
+                marked = true
+            }
+        }
+        if out.hasSuffix("<wbr>") { out.removeLast(5) }
+        return out
+    }
+
+    /// The length from which a name in code type is given places to fold.
+    static let breakableLength = 20
+
     /// Prose with its markers turned into tags. A `<sup>` written into the
     /// prose is kept, since two pages close on one; every other angle bracket
     /// is text.
@@ -340,7 +378,7 @@ public enum HTML {
             case "`":
                 if let close = rest.dropFirst().firstIndex(of: "`") {
                     let body = String(rest[rest.index(after: rest.startIndex) ..< close])
-                    out += "<code>\(escape(body))</code>"
+                    out += "<code>\(breakable(escape(body)))</code>"
                     rest = rest[rest.index(after: close)...]
                     continue
                 }

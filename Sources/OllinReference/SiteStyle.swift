@@ -10,6 +10,13 @@ import Foundation
 /// the favicon are the logo's own files, read from the checkout (`SiteLogo`).
 enum SiteStyle {
 
+    /// The page's ground in the light scheme and in the dark one. The
+    /// stylesheet's `--bg` and the color a phone's browser tints its own bars
+    /// with (`theme-color`) are both written from these, so the bars and the
+    /// page cannot drift apart.
+    static let ground = "#ffffff"
+    static let groundDark = "#0e0d0d"
+
     static let css = """
     /* Ollin · site */
 
@@ -17,27 +24,32 @@ enum SiteStyle {
     html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; scroll-padding-top: 72px; }
     body, h1, h2, h3, h4, h5, h6, p, figure, blockquote, dl, dd, pre { margin: 0; }
     img, picture, video, canvas, svg { display: block; max-width: 100%; }
-    picture img { height: auto; }
+    /* A picture says its size in its tag, so its place is held before it
+       arrives; its height follows whatever width the column leaves it. */
+    img { height: auto; }
     @media (prefers-reduced-motion: reduce) {
       *, ::before, ::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
     }
 
     :root {
       color-scheme: light dark;
-      --bg: #ffffff;
+      --bg: \(ground);
       --surface: #f5f5f7;
       --surface-2: #ececef;
       --border: rgba(0, 0, 0, 0.09);
       --text: #1d1d1f;
-      --text-2: #6e6e73;
-      --muted: #a1a1a6;
+      /* Every text color reads at 4.5 to 1 or better on each ground it is
+         set on, which is why the faint labels are no fainter than the
+         secondary text. */
+      --text-2: #69696e;
+      --muted: #69696e;
       --accent: #8e44e6;
       --accent-ink: #ffffff;
       --tab: #1d1d1f;
       --tab-ink: #ffffff;
       --bar: rgba(255, 255, 255, 0.72);
       --code-bg: #f5f5f7;
-      --tk-comment: #8a8a8e;
+      --tk-comment: #6e6e73;
       --tk-string: #c41a16;
       --tk-number: #1c00cf;
       --tk-keyword: #ad3da4;
@@ -52,20 +64,20 @@ enum SiteStyle {
     }
     @media (prefers-color-scheme: dark) {
       :root {
-        --bg: #0e0d0d;
+        --bg: \(groundDark);
         --surface: #1c1a1a;
         --surface-2: #262323;
         --border: rgba(255, 255, 255, 0.08);
         --text: #f0eeee;
         --text-2: #8d8c8c;
-        --muted: #5a5858;
+        --muted: #8d8c8c;
         --accent: #bf5af2;
         --accent-ink: #0e0d0d;
         --tab: #f0eeee;
         --tab-ink: #0e0d0d;
         --bar: rgba(14, 13, 13, 0.72);
         --code-bg: #1c1a1a;
-        --tk-comment: #7f7c7c;
+        --tk-comment: #868484;
         --tk-string: #fc6a5d;
         --tk-number: #d0bf69;
         --tk-keyword: #fc5fa3;
@@ -83,15 +95,48 @@ enum SiteStyle {
       min-height: 100dvh;
       display: flex;
       flex-direction: column;
+      /* A word too long for its line (an address written out, a run of
+         names joined by slashes) breaks at the line's end and nowhere
+         else, so no line of prose is wider than its column. */
+      overflow-wrap: break-word;
     }
     a { color: var(--accent); text-decoration: none; }
     a:hover { text-decoration: underline; text-underline-offset: 0.15em; }
+    /* A link set in gray text has only its hue to tell it from the words
+       around it, and a reader who does not see the hue has nothing. There
+       it takes a thin underline; in ordinary prose the ink is far enough
+       from the link's color to do without one. */
+    .prose blockquote a, .home-opening > ul > li a, .home-whats-in-it > ul > li a, .band-code > p a { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.18em; text-decoration-color: color-mix(in srgb, currentColor 45%, transparent); }
+    .prose blockquote a:hover, .home-opening > ul > li a:hover, .home-whats-in-it > ul > li a:hover, .band-code > p a:hover { text-decoration-color: currentColor; }
     code, pre, kbd { font-family: var(--mono); font-size: 0.88em; }
-    code { background: var(--surface); padding: 0.1em 0.35em; border-radius: 6px; }
+    /* A long name in code type breaks where the line ends, since it has no
+       space to break at and would otherwise push the page wider than a
+       phone. Inside a block of code and inside a table it stays whole: both
+       scroll within their own box. */
+    code { background: var(--surface); padding: 0.1em 0.35em; border-radius: 6px; overflow-wrap: anywhere; }
     pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 14px; padding: 1.1rem 1.25rem; overflow-x: auto; line-height: 1.6; font-size: 13.5px; }
-    pre code { background: none; padding: 0; font-size: inherit; }
+    pre code { background: none; padding: 0; font-size: inherit; overflow-wrap: normal; }
+    table code { overflow-wrap: normal; }
+    /* A long call carries marks between its labels where it may fold. They
+       count only where the column is narrow: on a wide page a name moves
+       whole to the next line, and in a table it stays whole. */
+    wbr { display: none; }
+    @media (max-width: 860px) {
+      wbr { display: inline; }
+      table wbr { display: none; }
+    }
     hr { border: 0; border-top: 1px solid var(--border); margin: 2.5rem 0; }
     sup { font-size: 0.75em; line-height: 0; }
+
+    /* The keyboard: one ring in the page's ink wherever the focus is, and
+       a link ahead of everything else that steps over the bar and the menu
+       to the page. It stays out of sight until a Tab reaches it. */
+    :focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+    main:focus { outline: 0; }
+    .sidebar a:focus-visible, .rail a:focus-visible, .sidebar summary:focus-visible, .search-results a:focus-visible { outline-offset: -2px; }
+    .skip { position: absolute; left: var(--pad); top: 0.55rem; z-index: 20; padding: 0.5rem 1rem; border-radius: 999px; background: var(--text); color: var(--bg); font-size: 14px; font-weight: 500; transform: translateY(-300%); transition: transform 150ms var(--ease); }
+    .skip:focus { transform: none; }
+    .skip:hover { text-decoration: none; }
 
     /* The bar */
     .bar {
@@ -203,8 +248,8 @@ enum SiteStyle {
     .band-arrow[data-band-step="-1"] .icon { transform: scaleX(-1); }
     .band-dots { display: flex; align-items: center; margin: 0 0.35rem; }
     /* The mark is small and the button is not: a dot you can hit with a
-       thumb is 22px of target around 8px of ink. */
-    .band-dot { position: relative; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 999px; background: none; cursor: pointer; }
+       thumb is 24px of target around 8px of ink. */
+    .band-dot { position: relative; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 999px; background: none; cursor: pointer; }
     .band-dot::before { content: ''; position: absolute; top: 50%; left: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 999px; background: var(--border); transition: background 150ms var(--ease), transform 150ms var(--ease); }
     .band-dot:hover::before { background: var(--text-2); }
     .band-dot[aria-current="true"]::before { background: var(--text); transform: scale(1.25); }
@@ -236,6 +281,11 @@ enum SiteStyle {
     .button { display: inline-flex; align-items: center; padding: 0.7rem 1.25rem; border-radius: 999px; background: var(--text); color: var(--bg); font-weight: 500; font-size: 15px; transition: transform 300ms var(--ease), opacity 150ms; }
     .button:hover { text-decoration: none; transform: translateY(-1px); opacity: 0.9; }
     .button.quiet { background: transparent; color: var(--text); border: 1.5px solid var(--text); }
+    button.button { border: 0; font-family: inherit; cursor: pointer; }
+    /* The page for a wrong address: two lines and a way to search, held to
+       the width prose is read at, over the three sections. */
+    .notfound { max-width: 760px; padding-top: clamp(1rem, 5vw, 3.5rem); margin-bottom: 2.5rem; }
+    .notfound p:last-child { margin-bottom: 0; }
     .hero-canvas { width: 100%; max-width: 460px; justify-self: center; }
     .hero-canvas canvas { width: 100%; height: auto; }
     .cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.25rem; margin-bottom: 3rem; }
@@ -318,6 +368,11 @@ enum SiteStyle {
       .sections { gap: 0; }
       .sections a { padding: 0 0.5rem; font-size: 12.5px; }
     }
+    /* The narrowest phones: the bar holds the mark, the three sections, and
+       the search, and the link out to the repository waits in the foot. */
+    @media (max-width: 350px) {
+      .sections a[rel] { display: none; }
+    }
 
     /* Search: a button in the bar, a panel over the page */
     .search-toggle { display: inline-flex; align-items: center; gap: 0.45rem; height: 30px; padding: 0 0.6rem 0 0.55rem; margin-left: 0.25rem; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text-2); font: inherit; font-size: 13px; cursor: pointer; transition: color 150ms var(--ease), background 150ms var(--ease); }
@@ -377,6 +432,18 @@ enum SiteStyle {
       paint();
       matchMedia('(prefers-color-scheme: dark)').addEventListener('change', paint);
     })();
+    """
+
+    /// A block of code or a table too wide for its column scrolls sideways
+    /// inside its own box, and a box that scrolls has to be reachable from the
+    /// keyboard or its right half is out of reach without a pointer. Only the
+    /// blocks that do overflow take a place in the Tab order, so a page of
+    /// short listings adds nothing between its links, and the check runs
+    /// again when the window changes width.
+    static let scrollerScript = """
+    <script>(()=>{const mark=()=>{for(const box of document.querySelectorAll('pre, .table')){\
+    if(box.scrollWidth>box.clientWidth)box.tabIndex=0;else box.removeAttribute('tabindex');}};\
+    mark();addEventListener('resize',mark);})();</script>
     """
 
     /// The magnifier, drawn in the page's ink, for the bar's button and the
@@ -627,6 +694,12 @@ enum SiteStyle {
       const close = () => { if (dialog.open) dialog.close(); };
 
       toggle.addEventListener('click', open);
+      // A page may carry a button of its own that opens the search, hidden
+      // like the bar's until this script is here to answer it.
+      document.querySelectorAll('[data-search-open]').forEach((button) => {
+        button.hidden = false;
+        button.addEventListener('click', open);
+      });
       dialog.addEventListener('click', (event) => { if (event.target === dialog) close(); });
       dialog.querySelector('form').addEventListener('submit', (event) => event.preventDefault());
       input.addEventListener('input', render);

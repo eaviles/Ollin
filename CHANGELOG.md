@@ -18,6 +18,7 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 - **Found things held steady.** `@Steadied var objects: [Detection] = []` takes what a detector found each frame and hands the same things back without the shake: matched to the frame before, smoothed, shown once found for a moment, and kept through a gap. `$objects.things` gives each one a number that stays with it. [Steadied](Docs/Helpers/Steadied.md)
 - **A camera stand-in of any kind.** `Camera.or { film }` gives a sketch the camera, or a feed you build when there is none: a film, a screen, a feed of your own. On a first run and under `--photo` it behaves as `Camera.orStill` does. [Vision](Docs/Vision/Vision.md#nocamera)
 - **`isLive` on every feed.** `feed.isLive` is `true` for a running camera, a captured screen, and a phone on the cable, and `false` for a film, a still, and a recording. A feed from `Camera.or` or `Camera.orStill` turns `true` when the camera takes over. [Vision](Docs/Vision/Vision.md#nocamera)
+- **A page for a wrong address.** A wrong address on the website gets a page in the site's own look, with the search and the three sections, where it got the host's. `ollin site` writes it as `404.html` when the site knows its address. [The reference offline](Docs/Tools/Reference.md#in-a-browser)
 
 ### Changed
 
@@ -42,6 +43,8 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 - **`motionBlur` is one length at any angle.** `distance` is a fraction of the layer's height whichever way the blur runs. Across a layer that is not square it was a fraction of the width: on a 16:9 canvas, multiply a sideways `distance` by 16/9 to keep its length. [Effects](Docs/Drawing/Effects.md#blur--glow)
 - **`colorama` colors a gray.** It turned the hues a picture already had, so a gray ramp stayed gray. Each pixel now takes the wheel's color for its own brightness and keeps its brightness, so black stays black. A colored picture looks different under it; the old look is a hue turn by brightness in a `Shader`. [Effects](Docs/Drawing/Effects.md#color--tone)
 - **`kaleidoscope` repeats the wedge it is turned to.** It read the picture turned half round, so the wedge it repeated came from the left of the middle. It now comes from the right, as `angle: 0` says. To keep an old wheel, draw the picture into its layer under `rotate(.pi)` about the middle. [Effects](Docs/Drawing/Effects.md#distortion)
+- **The website holds a picture's place and loads it as you reach it.** Every picture's tag carries its size, so the text under it no longer jumps as it arrives. All but a page's first picture load as you come near. Chapter 19 fetched 3.8 MB on opening and now fetches 1.2 MB. [The reference offline](Docs/Tools/Reference.md#in-a-browser)
+- **The website from a keyboard, and at low contrast.** The first Tab reaches a "Skip to content" link, and the focus shows as a ring in the page's ink. The faint gray labels and the comments in code now read at 4.5 to 1 or better, and a link inside gray text is underlined. [The reference offline](Docs/Tools/Reference.md#in-a-browser)
 
 ### Fixed
 
@@ -68,6 +71,7 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 - **`glitch` covers what it shifts.** Its three channels are read from three places, and a pixel took the alpha of one of them, so a shifted edge held color with no coverage under it. A pixel is now covered wherever any channel is. [Effects](Docs/Drawing/Effects.md#retro--optical)
 - **`grain` stays noise at any seed.** Fed a frame count of 200,000, about an hour of frames, the grain fell to 16 values in a blocky lattice. Every seed now picks a full pattern, and a seed of 0 draws the grain it drew. [Effects](Docs/Drawing/Effects.md#stylize--optical)
 - **Three filters at their edges.** `lightLeak(intensity: 0)` is the layer, where it still added its dither. `vibrance` under -0.5 stops at gray, where pure red at -1 came back cyan. `oilPaint` keeps a see-through shape's color at its rim, which came back 4% dark. [Effects](Docs/Drawing/Effects.md#filter)
+- **Nothing on the website runs off a phone's screen.** A long call in code type now folds between its labels, and an address written out breaks at the end of its line. 67 pages were wider than a phone and dragged sideways. A code listing and a table still scroll inside their own box. [The reference offline](Docs/Tools/Reference.md#in-a-browser)
 
 ## [0.18.0] - 2026-11-14
 
