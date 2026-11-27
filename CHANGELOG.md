@@ -50,6 +50,7 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 ### Fixed
 
 - **The website's search button is called what it shows.** On a wide screen the button shows its keys beside the magnifier, and its spoken name was only "Search". The name now holds the keys, so voice control and a screen reader meet the same button.
+- **The website's menu on a phone takes the focus when you asked for less motion.** With Reduce Motion on, opening the menu left the keyboard focus on its button, so a screen reader stayed where it was. The menu now opens at once and takes the focus.
 - **With scripts off, the website shows no button that does nothing.** The search button in the bar, and the one on the page for a wrong address, showed with scripts off and did nothing. Each now stays hidden until its script is there to answer it.
 - **A short row of pictures shows as cards on the website.** A listing with fewer sketches than its grid is wide was laid out there as a plain table. It is a card grid now, like every other listing.
 - **On the website, what sits under a bullet stays under it.** A paragraph or a command indented under a list item was set outside the list, and a numbered list began again at 1 after it. Both now read as they do on GitHub, so the Guide's contents number each part's chapters as written. [Reference](Docs/Tools/Reference.md#in-a-browser)

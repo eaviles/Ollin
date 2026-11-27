@@ -34,8 +34,14 @@ enum SiteStyle {
        so nothing beside it moves when it arrives. */
     [hidden] { display: none !important; }
     .js .search-toggle[hidden], .js button.button[hidden] { display: inline-flex !important; visibility: hidden; }
+    /* A reader who asked for less motion gets none, and gets each change
+       of style at once. A transition of no length and no delay is not a
+       transition, so what a script sets it can read back in the same
+       breath; one too short to see would still start a frame later and
+       begin from the old value, and the menu on a phone, hidden for that
+       frame, could not take the focus. */
     @media (prefers-reduced-motion: reduce) {
-      *, ::before, ::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+      *, ::before, ::after { animation-duration: 0.01ms !important; transition-duration: 0s !important; transition-delay: 0s !important; scroll-behavior: auto !important; }
     }
 
     :root {
@@ -724,16 +730,14 @@ enum SiteStyle {
       };
       const release = () => { pinned = -1; landed = null; clearTimeout(settling); };
 
-      // A reader who asked for less motion has every change of style land a
-      // frame late (the stylesheet turns each into a transition too short
-      // to see), so a list that was just made shorter is looked at now and
-      // again a frame on. Two requests, because the first can still be
-      // answered inside the frame that is being worked out.
+      // A list that was just made shorter is looked at in the same breath:
+      // nothing that sets its height is a transition, with motion or
+      // without it.
       let queued = false;
       const follow = () => {
         queued = false;
         if (pairs.length) show(reading());
-        if (fit()) { keep(); requestAnimationFrame(() => requestAnimationFrame(keep)); }
+        if (fit()) keep();
         settled = true;
       };
       const ask = () => { if (!queued) { queued = true; requestAnimationFrame(follow); } };

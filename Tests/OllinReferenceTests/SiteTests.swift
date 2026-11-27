@@ -1887,7 +1887,7 @@ struct SiteTests {
           function go(y) { window.scrollTo(0, y); window.dispatchEvent(new Event('scroll')); }
           root.style.scrollBehavior = 'auto';
           rail.scrollTo = function (to) { rail.scrollTop = to.top; };
-          report.push('window ' + innerWidth + ' ' + innerHeight + ' ' + bar);
+          report.push('window ' + innerWidth + ' ' + innerHeight + ' ' + bar + ' ' + (matchMedia('(prefers-reduced-motion: reduce)').matches ? 1 : 0));
           report.push('placed ' + window.placed);
           report.push('shown ' + shown(rail) + ' ' + shown(fold) + ' ' + shown(toggle) + ' ' + shown(document.querySelector('.sections a.has-menu')));
           if (!matchMedia('(max-width: 860px)').matches) {
@@ -1958,8 +1958,15 @@ struct SiteTests {
     }
 
     /// What the probe wrote down, by the word each line opens with.
-    static func menusReport(windowWidth: Int) async throws -> (read: [String: [String]], text: String) {
-        let flags = HeadlessBrowser.baseFlags + ["--window-size=\(windowWidth),800"]
+    ///
+    /// The browser is told which reader it is, one who asked the system for
+    /// less motion or one who did not, and the probe says which it found.
+    /// Left unsaid, the machine's own setting decides, so a desk with motion
+    /// on and a build machine with it off each test half of the page and
+    /// neither says so.
+    static func menusReport(windowWidth: Int, reducedMotion: Bool) async throws -> (read: [String: [String]], text: String) {
+        let motion = reducedMotion ? "--force-prefers-reduced-motion" : "--force-prefers-no-reduced-motion"
+        let flags = HeadlessBrowser.baseFlags + ["--window-size=\(windowWidth),800", motion]
         let dom = try await HeadlessBrowser.dom(of: Self.menusProbe(), flags: flags, timeout: 90)
         let report = try #require(HeadlessBrowser.text(of: "r0", in: dom))
         try #require(report != "PENDING", "the probe did not run")
@@ -1968,6 +1975,9 @@ struct SiteTests {
             let parts = line.split(separator: " ").map(String.init)
             read[parts[0]] = Array(parts.dropFirst())
         }
+        let window = try #require(read["window"], "\(report)")
+        try #require(window.count == 4 && window[3] == (reducedMotion ? "1" : "0"),
+                     "the browser was asked for \(reducedMotion ? "less motion" : "motion") and the page read the other: \(report)")
         return (read, report)
     }
 
@@ -1983,9 +1993,9 @@ struct SiteTests {
     }
 
     @Test("The list beside a page marks the section being read, the menu opens on the page being read, and both stop at the foot",
-          .enabled("a browser is needed") { HeadlessBrowser.isInstalled })
-    func menusFollowTheReader() async throws {
-        let (read, report) = try await Self.menusReport(windowWidth: 1280)
+          .enabled("a browser is needed") { HeadlessBrowser.isInstalled }, arguments: [false, true])
+    func menusFollowTheReader(reducedMotion: Bool) async throws {
+        let (read, report) = try await Self.menusReport(windowWidth: 1280, reducedMotion: reducedMotion)
         let window = try #require(read["window"], "\(report)")
         try #require((Int(window[0]) ?? 0) > 1100, "the window is \(window[0]) wide, too narrow for the list beside the page: \(report)")
         let bar = Int(window[2]) ?? -1
@@ -2022,9 +2032,9 @@ struct SiteTests {
     }
 
     @Test("On a phone the section's tab opens the menu as a sheet on the page being read, and Escape hands the page back",
-          .enabled("a browser is needed") { HeadlessBrowser.isInstalled })
-    func aPhoneOpensTheMenuFromTheBar() async throws {
-        let (read, report) = try await Self.menusReport(windowWidth: 600)
+          .enabled("a browser is needed") { HeadlessBrowser.isInstalled }, arguments: [false, true])
+    func aPhoneOpensTheMenuFromTheBar(reducedMotion: Bool) async throws {
+        let (read, report) = try await Self.menusReport(windowWidth: 600, reducedMotion: reducedMotion)
         let window = try #require(read["window"], "\(report)")
         try #require((Int(window[0]) ?? 9_999) <= 860, "the window is \(window[0]) wide, which is not a phone's rules: \(report)")
         try Self.expectWaitingControl(read, report)
@@ -2039,9 +2049,11 @@ struct SiteTests {
                 "open, the page behind out of reach, the open page's row in view, the sheet shown, the focus in it: \(report)")
         // As tall as the window under the bar. It slides the last few
         // pixels into place, so at the moment it opens it stands that much
-        // above where it comes to rest, top and foot alike.
+        // above where it comes to rest, top and foot alike; for a reader
+        // who asked for less motion it does not slide, and is there at once.
         let above = Int(open[5]) ?? 99
-        #expect((-12 ... 0).contains(above) && Int(open[6]) == -above, "the sheet does not run from the bar to the window's foot: \(report)")
+        #expect((reducedMotion ? 0 ... 0 : -12 ... 0).contains(above) && Int(open[6]) == -above,
+                "the sheet does not run from the bar to the window's foot: \(report)")
         #expect(read["closed"] == ["1", "1", "1"], "Escape did not close the sheet, free the page, and hand the focus back: \(report)")
     }
 
