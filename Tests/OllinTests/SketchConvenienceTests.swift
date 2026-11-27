@@ -254,6 +254,12 @@ struct SketchConvenienceTests {
     }
 
     @Test func everyShapeIsASystemCursor() throws {
+        // The arrow and the I-beam are the window server's own, and a process
+        // reaches it through its application object. A test process has none
+        // until a test that makes a window has run, and before that the two
+        // come back with no image, so the answer depended on which test ran
+        // first. A sketch always runs inside an application.
+        _ = NSApplication.shared
         for shape in PointerShape.allCases {
             #expect(shape.systemCursor.image.size.width > 0, "\(shape)")
         }
