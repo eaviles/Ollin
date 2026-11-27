@@ -27,6 +27,13 @@ enum SiteStyle {
     /* A picture says its size in its tag, so its place is held before it
        arrives; its height follows whatever width the column leaves it. */
     img { height: auto; }
+    /* A control that waits for its script says so with `hidden`, and a
+       rule here that sets how it is laid out must not show it early. With
+       no script it takes no room at all. With one on its way, its room is
+       held from the first paint and only the control is kept out of sight,
+       so nothing beside it moves when it arrives. */
+    [hidden] { display: none !important; }
+    .js .search-toggle[hidden], .js button.button[hidden] { display: inline-flex !important; visibility: hidden; }
     @media (prefers-reduced-motion: reduce) {
       *, ::before, ::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
     }
@@ -133,7 +140,8 @@ enum SiteStyle {
        to the page. It stays out of sight until a Tab reaches it. */
     :focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
     main:focus { outline: 0; }
-    .sidebar a:focus-visible, .rail a:focus-visible, .sidebar summary:focus-visible, .search-results a:focus-visible { outline-offset: -2px; }
+    .search-results a:focus-visible { outline-offset: -2px; }
+    .sidebar:focus { outline: 0; }
     .skip { position: absolute; left: var(--pad); top: 0.55rem; z-index: 20; padding: 0.5rem 1rem; border-radius: 999px; background: var(--text); color: var(--bg); font-size: 14px; font-weight: 500; transform: translateY(-300%); transition: transform 150ms var(--ease); }
     .skip:focus { transform: none; }
     .skip:hover { text-decoration: none; }
@@ -160,18 +168,52 @@ enum SiteStyle {
       background: var(--tab); border-radius: 0 0 8px 8px;
     }
 
+    /* What opens the section's menu on a phone: the tab of the section the
+       page is in, as a button with a small arrow, standing where the link
+       stands on a wide screen. It is shown further down, only where the
+       screen is narrow and a script is there to answer it. */
+    .menu-toggle { display: none; position: relative; align-items: center; gap: 0.3rem; padding: 0 0.55rem; border: 0; background: none; color: var(--tab-ink); font: inherit; font-size: 13px; font-weight: 500; letter-spacing: -0.005em; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .menu-toggle::before { content: ""; position: absolute; left: 0; right: 0; top: -12px; bottom: 7px; z-index: -1; background: var(--tab); border-radius: 0 0 8px 8px; }
+    .menu-toggle .icon { width: 10px; height: 10px; flex: none; transition: transform 300ms var(--ease); }
+    .menu-toggle[aria-expanded="true"] .icon { transform: rotate(180deg); }
+    .menu-toggle.beside-mark { height: 100%; width: 30px; padding: 0; justify-content: center; margin-left: -1.25rem; color: var(--text-2); }
+    .menu-toggle.beside-mark::before { content: none; }
+
     /* The layout */
     .layout { flex: 1; width: 100%; max-width: var(--max); margin: 0 auto; padding: 0 var(--pad); display: grid; gap: 3rem; grid-template-columns: minmax(0, 1fr); }
     .layout.with-sidebar { grid-template-columns: 240px minmax(0, 1fr); }
     .layout.with-rail { grid-template-columns: 240px minmax(0, 1fr) 200px; }
+    /* Where the page is already as wide as prose is read at, the room left
+       over goes to the list of its sections. */
+    @media (min-width: 1424px) {
+      .layout.with-rail { grid-template-columns: 240px minmax(0, 1fr) 232px; }
+    }
     main { min-width: 0; padding: 2.5rem 0 5rem; max-width: 760px; }
     .layout.single main, .layout.home main { max-width: none; }
     .layout.home main { padding-top: 0; }
 
-    .sidebar, .rail { position: sticky; top: var(--bar-height); align-self: start; max-height: calc(100dvh - var(--bar-height)); overflow-y: auto; padding: 2.5rem 0 3rem; font-size: 13.5px; scrollbar-width: thin; }
+    /* The two lists beside the page. Each is a window of its own that
+       scrolls, a rem wider on either side than the column it sits in, so a
+       row's highlight and the ring around a row the keyboard is on are
+       drawn whole. `--cut` is how far the layout's end has risen into the
+       window: the script takes that much off the list's height near a
+       page's end, so the list stops at the foot and is not pushed up under
+       the bar. Where a list runs past its window, the edge it runs past
+       fades (`more-above`, `more-below`, set by the same script). */
+    .sidebar, .rail {
+      position: sticky; top: var(--bar-height); align-self: start;
+      max-height: calc(100dvh - var(--bar-height) - var(--cut, 0px));
+      overflow-y: auto; overscroll-behavior: contain;
+      padding: 2.5rem 1rem 3rem; margin: 0 -1rem; font-size: 13.5px; scrollbar-width: thin;
+      -webkit-mask-image: linear-gradient(to bottom, transparent, #000 var(--fade-above, 0px), #000 calc(100% - var(--fade-below, 0px)), transparent);
+      mask-image: linear-gradient(to bottom, transparent, #000 var(--fade-above, 0px), #000 calc(100% - var(--fade-below, 0px)), transparent);
+    }
+    .more-above { --fade-above: 2.5rem; }
+    .more-below { --fade-below: 3.5rem; }
     .sidebar ul, .rail ul { list-style: none; margin: 0; padding: 0; }
     .sidebar li a, .rail li a { display: block; padding: 0.3rem 0.6rem; margin: 0 -0.6rem; border-radius: 8px; color: var(--text-2); line-height: 1.35; }
-    .sidebar li a:hover, .rail li a:hover { color: var(--text); background: var(--surface); text-decoration: none; }
+    .sidebar li a:hover, .rail li a:hover { color: var(--text); text-decoration: none; }
+    .sidebar li a:hover { background: var(--surface); }
     /* The page open, or the row that holds it: a sketch filed under an
        artist marks the artist, so every page has its place in the menu. */
     .sidebar li a[aria-current] { color: var(--text); font-weight: 600; background: var(--surface); }
@@ -182,7 +224,45 @@ enum SiteStyle {
     .sidebar summary::before { content: ""; width: 6px; height: 6px; border-right: 1.5px solid var(--muted); border-bottom: 1.5px solid var(--muted); transform: rotate(-45deg); transition: transform 200ms var(--ease); margin-right: 0.1rem; }
     .sidebar details[open] > summary::before { transform: rotate(45deg); }
     .sidebar details ul { margin-top: 0.2rem; }
-    .rail li.level-3 a { padding-left: 1.4rem; font-size: 12.5px; }
+    /* The list of the page's own sections hangs off a hairline, and the
+       section being read is marked on it: its name in the page's ink, and a
+       short bar on the line that slides to it as the page scrolls. */
+    .rail ul { position: relative; border-left: 1px solid var(--border); }
+    .rail li a { margin: 0; padding-left: 0.9rem; border-radius: 0 8px 8px 0; transition: color 150ms var(--ease); }
+    .rail li.level-3 a { padding-left: 1.75rem; font-size: 12.5px; }
+    .rail li a[aria-current] { color: var(--text); }
+    .rail ul::before { content: ""; position: absolute; left: -1px; top: 0; width: 2px; height: var(--marker-height, 0px); transform: translateY(var(--marker-top, 0px)); background: var(--text); border-radius: 1px; opacity: 0; transition: opacity 150ms var(--ease); }
+    .rail ul.following::before { opacity: 1; transition: opacity 150ms var(--ease), transform 300ms var(--ease), height 300ms var(--ease); }
+
+    /* The same list as a fold under the page's title, where the screen is
+       too narrow for the list beside the page. */
+    .onpage { display: none; margin: 0 0 1.5rem; background: var(--surface); border-radius: 14px; }
+    .onpage summary { display: flex; align-items: center; justify-content: space-between; padding: 0.8rem 1.1rem; font-size: 14px; font-weight: 600; cursor: pointer; list-style: none; border-radius: 14px; -webkit-tap-highlight-color: transparent; }
+    .onpage summary::-webkit-details-marker { display: none; }
+    .onpage summary::after { content: ""; width: 7px; height: 7px; margin: -3px 0.2rem 0 0; border-right: 1.5px solid var(--text-2); border-bottom: 1.5px solid var(--text-2); transform: rotate(45deg); transition: transform 200ms var(--ease); }
+    .onpage[open] > summary::after { transform: rotate(225deg); margin-top: 3px; }
+    .prose .onpage ul { list-style: none; margin: 0; padding: 0 0.5rem 0.6rem; }
+    .prose .onpage li { margin: 0; }
+    .onpage li a { display: block; padding: 0.45rem 0.6rem; border-radius: 8px; font-size: 15px; line-height: 1.35; color: var(--text-2); }
+    .onpage li a:hover { color: var(--text); text-decoration: none; }
+    .onpage li.level-3 a { padding-left: 1.6rem; font-size: 14px; }
+
+    /* A chapter's end: the chapter before and the chapter after as two
+       cards, and the way back to the contents under them. */
+    .pager { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-top: 3.5rem; padding-top: 2.5rem; border-top: 1px solid var(--border); }
+    .pager-card { display: flex; flex-direction: column; gap: 0.35rem; padding: 1rem 1.25rem 1.1rem; border: 1px solid var(--border); border-radius: 14px; color: var(--text); transition: background 150ms var(--ease); }
+    .pager-card:hover { background: var(--surface); text-decoration: none; }
+    .pager-previous { grid-column: 1; }
+    .pager-next { grid-column: 2; align-items: flex-end; text-align: right; }
+    .pager-way { display: inline-flex; align-items: center; gap: 0.45rem; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+    .pager-previous .pager-way::before, .pager-next .pager-way::after { content: ""; width: 6px; height: 6px; border-right: 1.5px solid var(--muted); border-bottom: 1.5px solid var(--muted); transition: transform 300ms var(--ease); }
+    .pager-previous .pager-way::before { transform: rotate(135deg); }
+    .pager-next .pager-way::after { transform: rotate(-45deg); }
+    .pager-previous:hover .pager-way::before { transform: translateX(-3px) rotate(135deg); }
+    .pager-next:hover .pager-way::after { transform: translateX(3px) rotate(-45deg); }
+    .pager-name { font-size: 17px; font-weight: 600; line-height: 1.3; letter-spacing: -0.01em; }
+    .pager-up { grid-column: 1 / -1; justify-self: center; padding: 0.25rem 0.75rem; font-size: 13px; color: var(--text-2); }
+    .pager-up:hover { color: var(--text); }
 
     /* The trail */
     .trail { font-size: 13px; color: var(--text-2); margin-bottom: 1.75rem; }
@@ -333,13 +413,28 @@ enum SiteStyle {
     @media (max-width: 1100px) {
       .layout.with-rail { grid-template-columns: 240px minmax(0, 1fr); }
       .rail { display: none; }
+      .onpage { display: block; }
     }
     @media (max-width: 860px) {
       .layout.with-sidebar, .layout.with-rail { grid-template-columns: minmax(0, 1fr); gap: 0; }
-      /* The section's map goes under the page on a phone, where a reader
-         wants the page first and the map after. */
-      .sidebar { order: 2; position: static; max-height: none; padding: 1.5rem 0 2.5rem; border-top: 1px solid var(--border); }
+      /* With no script, the section's map goes under the page on a phone,
+         where a reader wants the page first and the map after. */
+      .sidebar { order: 2; position: static; max-height: none; margin: 0; padding: 1.5rem 0 2.5rem; border-top: 1px solid var(--border); -webkit-mask-image: none; mask-image: none; }
       .sidebar details { margin-top: 0.5rem; }
+      /* With one, the map is a sheet under the bar, opened by the tab of
+         the section the page is in. It is out of the page's flow from the
+         first paint, so the page never waits on it or moves for it, and it
+         opens on the row of the page being read. */
+      .js .sidebar { position: fixed; z-index: 9; inset: var(--bar-height) 0 0 0; align-self: stretch; order: 0; padding: 1.5rem var(--pad) 4rem; border-top: 0; background: var(--bg); font-size: 16px; visibility: hidden; opacity: 0; transform: translateY(-0.6rem); transition: opacity 200ms var(--ease), transform 300ms var(--ease), visibility 0s linear 300ms; }
+      .js.menu-open .sidebar { visibility: visible; opacity: 1; transform: none; transition-delay: 0s; }
+      .js.menu-open { overflow: hidden; }
+      .js .sidebar li a { padding: 0.55rem 0.75rem; margin: 0 -0.75rem; }
+      .js .sidebar summary { padding: 0.55rem 0; }
+      .js .sidebar-title { font-size: 13px; }
+      .js .menu-toggle { display: inline-flex; }
+      .js .sections a.has-menu { display: none; }
+      .pager { grid-template-columns: minmax(0, 1fr); margin-top: 2.5rem; padding-top: 2rem; }
+      .pager-previous, .pager-next { grid-column: 1; }
       main { padding-top: 1.75rem; padding-bottom: 2.5rem; }
       .hero { grid-template-columns: minmax(0, 1fr); }
       .hero-canvas { max-width: 320px; order: -1; }
@@ -366,12 +461,19 @@ enum SiteStyle {
       .wordmark .name { display: none; }
       .bar-inner { gap: 0.75rem; }
       .sections { gap: 0; }
-      .sections a { padding: 0 0.5rem; font-size: 12.5px; }
+      .sections a, .sections .menu-toggle { padding: 0 0.5rem; font-size: 12.5px; }
+      .menu-toggle.beside-mark { margin-left: -0.75rem; width: 24px; }
+      /* A phone's bar holds the mark, the three sections, and the search;
+         the link out to the repository waits in the foot. With no script
+         there is no search and no arrow in the bar, and the link stays
+         until the screen is narrower still. */
+      .js .sections a[rel] { display: none; }
     }
-    /* The narrowest phones: the bar holds the mark, the three sections, and
-       the search, and the link out to the repository waits in the foot. */
     @media (max-width: 350px) {
       .sections a[rel] { display: none; }
+      .bar-inner { gap: 0.5rem; }
+      .sections a, .sections .menu-toggle { padding: 0 0.35rem; }
+      .search-toggle { margin-left: 0; }
     }
 
     /* Search: a button in the bar, a panel over the page */
@@ -445,6 +547,252 @@ enum SiteStyle {
     if(box.scrollWidth>box.clientWidth)box.tabIndex=0;else box.removeAttribute('tabindex');}};\
     mark();addEventListener('resize',mark);})();</script>
     """
+
+    /// The first thing a page's head runs: it says a script is here. The
+    /// stylesheet reads that for the one arrangement that only works with
+    /// one, the section's menu as a sheet on a phone, and it has to be said
+    /// before the first paint, or a phone would draw the menu under the page
+    /// and then take it away.
+    static let scriptedMark = "<script>document.documentElement.className='js'</script>"
+
+    /// The section's menu opens on the page being read.
+    ///
+    /// The script sits right after the menu in the page, so it runs as soon
+    /// as the menu is there and before anything is drawn: a reader never
+    /// sees the menu at its top and then somewhere else. A page near the
+    /// menu's top leaves it at its top; a page further down is put two
+    /// fifths of the way down the menu's window, which is the same place on
+    /// every page, so stepping from one chapter to the next moves the menu
+    /// by one row. A page with no row of its own (a folder's index) shows
+    /// the first group it opened. Nothing is stored between pages.
+    static let menuPlaceScript = """
+    <script>(()=>{const m=document.currentScript.previousElementSibling,\
+    c=m&&(m.querySelector('[aria-current]')||m.querySelector('details[open]'));if(!c)return;\
+    const b=m.getBoundingClientRect(),r=c.getBoundingClientRect();\
+    if(r.bottom>b.bottom-96)m.scrollTop=r.top-b.top-(b.height-r.height)*0.4;})();</script>
+    """
+
+    /// The small arrow on what opens the section's menu on a phone. It
+    /// points down, and turns over while the menu is open.
+    static let disclosure = """
+    <svg class="icon" aria-hidden="true" focusable="false" viewBox="0 0 12 12"><path d="m2.25 4.25 3.75 3.75 3.75-3.75" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    """
+
+    /// The two lists beside a page follow the reader, written to
+    /// `assets/menus.js` and loaded by every page that has a menu.
+    ///
+    /// **The section being read.** The list of the page's own sections marks
+    /// the last heading that has passed a line just under the bar, and keeps
+    /// that entry inside the list's own window when the list is long. The
+    /// last sections of a page can never reach that line, since the page
+    /// stops scrolling first, so over the last screenful the line slides
+    /// down to the window's foot: every section is marked somewhere, in
+    /// order, and the last one at the page's end. A section a reader asked
+    /// for by name (a click on its entry, a link that ends in its anchor)
+    /// stays marked whatever the line says, until the reader scrolls by
+    /// hand.
+    ///
+    /// **The lists' own windows.** A list longer than its window fades at
+    /// the edge it runs past. Near a page's end, where the layout stops
+    /// short of the window's foot, the lists are shortened by that much, so
+    /// they stop at the foot and are not pushed up under the bar.
+    ///
+    /// **The menu on a phone.** The tab of the section the page is in opens
+    /// the section's menu as a sheet under the bar, on the row of the page
+    /// being read. While it is open the page behind it is out of reach of a
+    /// Tab and of a screen reader; the tab again, or Escape, closes it and
+    /// hands the focus back.
+    ///
+    /// With no script none of this runs: the lists are plain links, and a
+    /// phone has the menu under the page.
+    static let menusScript = #"""
+    (() => {
+      const root = document.documentElement;
+      const side = document.querySelector('.sidebar');
+      const rail = document.querySelector('.rail');
+      const layout = document.querySelector('.layout');
+      const bar = document.querySelector('.bar');
+      const still = matchMedia('(prefers-reduced-motion: reduce)');
+      const narrow = matchMedia('(max-width: 860px)');
+      const boxes = [side, rail].filter(Boolean);
+
+      // A list that runs past its window fades at that edge.
+      const edges = (box) => {
+        const more = box.scrollHeight - box.clientHeight;
+        box.classList.toggle('more-above', more > 1 && box.scrollTop > 1);
+        box.classList.toggle('more-below', more > 1 && box.scrollTop < more - 1);
+      };
+      boxes.forEach((box) => box.addEventListener('scroll', () => edges(box), { passive: true }));
+
+      // The row a list should not lose sight of, brought back inside the
+      // list's window when it has slipped out of it.
+      const inside = (box, row, margin) => {
+        const frame = box.getBoundingClientRect(), at = row.getBoundingClientRect();
+        return at.top >= frame.top + margin && at.bottom <= frame.bottom - margin;
+      };
+      const center = (box, row, smooth) => {
+        const frame = box.getBoundingClientRect(), at = row.getBoundingClientRect();
+        const top = box.scrollTop + at.top - frame.top - (frame.height - at.height) / 2;
+        box.scrollTo({ top, behavior: smooth && !still.matches ? 'smooth' : 'auto' });
+      };
+
+      // Near the page's end the lists stop where the layout does. A list
+      // made shorter keeps the row it was showing: the section being read
+      // in the list of sections, and the page being read in the menu,
+      // unless the reader has scrolled the menu somewhere else by hand.
+      let cut = -1, handled = false;
+      if (side) ['wheel', 'touchmove', 'keydown'].forEach((kind) => side.addEventListener(kind, () => { handled = true; }, { passive: true }));
+      const fit = () => {
+        if (!layout) return false;
+        const over = Math.max(0, Math.round(innerHeight - layout.getBoundingClientRect().bottom));
+        if (over === cut) return false;
+        cut = over;
+        boxes.forEach((box) => box.style.setProperty('--cut', over + 'px'));
+        return true;
+      };
+      const keep = () => {
+        const page = side && !handled && !narrow.matches ? side.querySelector('[aria-current]') : null;
+        if (page && !inside(side, page, 0)) center(side, page, false);
+        if (current >= 0 && !inside(rail, pairs[current].link, 0)) center(rail, pairs[current].link, false);
+        boxes.forEach(edges);
+      };
+
+      // The section being read.
+      const list = rail && rail.querySelector('ul');
+      const pairs = [];
+      if (list) {
+        list.querySelectorAll('a[href^="#"]').forEach((link) => {
+          let heading = null;
+          try { heading = document.getElementById(decodeURIComponent(link.hash.slice(1))); } catch (error) {}
+          if (heading) pairs.push({ link, heading });
+        });
+      }
+      let current = -1, pinned = -1, landed = null, settling = 0, settled = false;
+      const show = (index) => {
+        if (index === current) return;
+        if (current >= 0) pairs[current].link.removeAttribute('aria-current');
+        current = index;
+        if (index < 0) { list.classList.remove('following'); return; }
+        const link = pairs[index].link, item = link.parentElement;
+        link.setAttribute('aria-current', 'location');
+        list.style.setProperty('--marker-top', item.offsetTop + 'px');
+        list.style.setProperty('--marker-height', item.offsetHeight + 'px');
+        if (!list.classList.contains('following')) {
+          // The bar appears where it belongs rather than sliding in from
+          // the list's top: its place is read before it is shown.
+          getComputedStyle(list, '::before').transform;
+          list.classList.add('following');
+        }
+        if (!inside(rail, link, 64)) center(rail, link, settled);
+      };
+      // Where a section asked for by name comes to rest under the bar (the
+      // stylesheet's `scroll-padding-top`), and the line a heading has to
+      // pass to be the one being read, a little under that.
+      const rests = parseFloat(getComputedStyle(root).scrollPaddingTop) || 72;
+      const reading = () => {
+        if (pinned >= 0) return pinned;
+        const most = Math.max(0, root.scrollHeight - innerHeight);
+        const tops = pairs.map((pair) => pair.heading.getBoundingClientRect().top);
+        let line = rests + 16;
+        // The page's last sections cannot be brought up to that line: the
+        // page ends first. From where the last section that can be has
+        // come to rest, the line slides down, and reaches the last heading
+        // exactly as the page reaches its end.
+        const tail = tops.findIndex((top) => top + scrollY - rests > most - 1);
+        if (tail >= 0) {
+          const from = tail > 0 ? Math.min(most, tops[tail - 1] + scrollY - rests + 1) : 0;
+          const end = Math.max(line, tops[tops.length - 1] + scrollY - most + 1);
+          if (most > from && scrollY > from) line += (end - line) * Math.min(1, (scrollY - from) / Math.max(1, most - 2 - from));
+        }
+        let found = -1;
+        for (let n = 0; n < tops.length; n++) {
+          if (tops[n] > line) break;
+          found = n;
+        }
+        return found;
+      };
+      // A section asked for by name stays marked until the page moves off
+      // the place the asking brought it to.
+      const rest = () => { clearTimeout(settling); settling = setTimeout(() => { landed = scrollY; }, 180); };
+      const pin = (id) => {
+        const index = pairs.findIndex((pair) => pair.heading.id === id);
+        if (index < 0) return false;
+        pinned = index;
+        landed = null;
+        rest();
+        return true;
+      };
+      const release = () => { pinned = -1; landed = null; clearTimeout(settling); };
+
+      // A reader who asked for less motion has every change of style land a
+      // frame late (the stylesheet turns each into a transition too short
+      // to see), so a list that was just made shorter is looked at now and
+      // again a frame on. Two requests, because the first can still be
+      // answered inside the frame that is being worked out.
+      let queued = false;
+      const follow = () => {
+        queued = false;
+        if (pairs.length) show(reading());
+        if (fit()) { keep(); requestAnimationFrame(() => requestAnimationFrame(keep)); }
+        settled = true;
+      };
+      const ask = () => { if (!queued) { queued = true; requestAnimationFrame(follow); } };
+      // A browser hands a page its scrolling once a frame, so the answer is
+      // worked out right there and needs no frame of its own.
+      addEventListener('scroll', () => {
+        if (pinned >= 0) { if (landed === null) rest(); else if (Math.abs(scrollY - landed) > 2) release(); }
+        follow();
+      }, { passive: true });
+      addEventListener('resize', () => { boxes.forEach(edges); follow(); });
+      addEventListener('load', ask);
+      if (pairs.length) {
+        const named = (hash) => { try { if (pin(decodeURIComponent(hash.slice(1)))) ask(); } catch (error) {} };
+        addEventListener('hashchange', () => named(location.hash));
+        document.addEventListener('click', (event) => {
+          const link = event.target.closest && event.target.closest('a[href^="#"]');
+          if (link) named(link.hash);
+        });
+        // A scroll by hand lets the line decide again at once.
+        ['wheel', 'touchmove', 'keydown'].forEach((kind) => addEventListener(kind, release, { passive: true, capture: true }));
+        named(location.hash);
+      }
+
+      // The fold under the title closes as it sends the reader on, so the
+      // page is its own length again before the browser works out where the
+      // section is.
+      const fold = document.querySelector('.onpage');
+      if (fold) fold.addEventListener('click', (event) => { if (event.target.closest('a')) fold.open = false; });
+
+      // The menu on a phone.
+      const toggle = document.querySelector('.menu-toggle');
+      if (side && toggle) {
+        const behind = [document.querySelector('main'), document.querySelector('.foot')].filter(Boolean);
+        const place = () => {
+          const row = side.querySelector('[aria-current]') || side.querySelector('details[open]');
+          if (!row) { side.scrollTop = 0; return; }
+          const box = side.getBoundingClientRect(), at = row.getBoundingClientRect();
+          side.scrollTop += at.top - box.top - (box.height - at.height) * 0.4;
+        };
+        const isOpen = () => root.classList.contains('menu-open');
+        const set = (open) => {
+          if (open === isOpen()) return;
+          root.classList.toggle('menu-open', open);
+          toggle.setAttribute('aria-expanded', String(open));
+          behind.forEach((element) => { element.inert = open; });
+          if (open) { place(); side.focus({ preventScroll: true }); }
+          else if (side.contains(document.activeElement) || document.activeElement === side) toggle.focus({ preventScroll: true });
+        };
+        toggle.addEventListener('click', () => set(!isOpen()));
+        document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && isOpen()) { set(false); toggle.focus({ preventScroll: true }); } });
+        narrow.addEventListener('change', () => { if (!narrow.matches) set(false); });
+        // A page brought back by the Back button comes back closed.
+        addEventListener('pageshow', (event) => { if (event.persisted) set(false); });
+      }
+
+      boxes.forEach(edges);
+      follow();
+    })();
+    """#
 
     /// The magnifier, drawn in the page's ink, for the bar's button and the
     /// search box.
@@ -572,6 +920,14 @@ enum SiteStyle {
       const shortcut = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘K' : 'Ctrl K';
       if (key) key.textContent = shortcut;
       toggle.title = 'Search (' + shortcut + ')';
+      // The button's spoken name holds what the button shows: the keys
+      // beside the magnifier on a wide screen, and the word alone where
+      // the keys are not shown. The keys follow a comma, not brackets: a
+      // checker of names sets aside whatever a name says in brackets.
+      const roomy = matchMedia('(min-width: 861px)');
+      const name = () => toggle.setAttribute('aria-label', roomy.matches ? 'Search, ' + shortcut : 'Search');
+      name();
+      roomy.addEventListener('change', name);
 
       const fold = (text) => String(text).normalize('NFD').replace(/\p{M}/gu, '');
 

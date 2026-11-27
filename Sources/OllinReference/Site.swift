@@ -348,6 +348,7 @@ public struct SiteBuilder {
         let entries = SiteSearch.pruned(log.search)
         try write(try SiteSearch.script(entries), to: output.appendingPathComponent("assets/search-index.js"))
         try write(SiteStyle.searchScript, to: output.appendingPathComponent("assets/search.js"))
+        try write(SiteStyle.menusScript, to: output.appendingPathComponent("assets/menus.js"))
         report.sections = entries.count
 
         try write(SiteStyle.css, to: output.appendingPathComponent("assets/site.css"))
@@ -425,7 +426,9 @@ public struct SiteBuilder {
         log.search.append(contentsOf: SiteSearch.entries(for: page, rendered: rendered))
         // The clips are swapped in first, so a picture that became a clip's
         // poster is not counted as the page's first picture.
-        let played = Self.playingHeroes(in: Self.playingChapterHook(in: rendered.body, page: page, media: plan.media),
+        var written = rendered.body
+        if case .guide = page.kind { written = Self.pager(in: written) }
+        let played = Self.playingHeroes(in: Self.playingChapterHook(in: written, page: page, media: plan.media),
                                         media: plan.media)
         let body = "<article class=\"prose\">\n\(sizingPictures(in: played, page: page, plan: plan, log: log))\n</article>"
         let title = page.title
@@ -1331,10 +1334,25 @@ public struct SiteBuilder {
             icons += "<link rel=\"apple-touch-icon\" href=\"\(asset("apple-touch-icon.png"))\">\n"
         }
 
-        func navItem(_ label: String, _ section: Section, _ path: String) -> String {
-            let active = page.section == section && !isHome ? " class=\"active\" aria-current=\"true\"" : ""
-            return "<a href=\"\(asset(path))\"\(active)>\(label)</a>"
+        let alone = isHome || root != nil
+        let sidebar = alone ? "" : self.sidebar(for: page, plan: plan)
+        let rail = alone ? "" : self.rail(headings, title: title)
+        // On a phone the section's menu is a sheet under the bar, and what
+        // opens it is the bar's own tab for the section the page is in: a
+        // button beside the link, which the stylesheet shows in the link's
+        // place where the screen is narrow and a script is there to answer
+        // it. A project page has no tab, so its button sits beside the mark.
+        let opener = { (extra: String) in
+            "<button type=\"button\" class=\"menu-toggle\(extra)\" aria-expanded=\"false\" aria-controls=\"menu\""
         }
+        func navItem(_ label: String, _ section: Section, _ path: String) -> String {
+            guard page.section == section, !isHome else { return "<a href=\"\(asset(path))\">\(label)</a>" }
+            guard !sidebar.isEmpty else { return "<a href=\"\(asset(path))\" class=\"active\" aria-current=\"true\">\(label)</a>" }
+            return "<a href=\"\(asset(path))\" class=\"active has-menu\" aria-current=\"true\">\(label)</a>"
+                + "\(opener(""))>\(label)\(SiteStyle.disclosure)</button>"
+        }
+        let markOpener = page.section == .home && !sidebar.isEmpty
+            ? "\(opener(" beside-mark")) aria-label=\"Ollin pages\">\(SiteStyle.disclosure)</button>" : ""
         // The search opens from the bar and lives in a dialog at the end of
         // the page. Its button is hidden until the script that runs it has
         // loaded, so a reader with no script sees no control that does
@@ -1347,7 +1365,7 @@ public struct SiteBuilder {
         <a class="skip" href="#main">Skip to content</a>
         <header class="bar">
           <div class="bar-inner">
-            <a class="wordmark" href="\(asset("index.html"))" aria-label="Ollin home">\(plan.mark)<span class="name">Ollin</span></a>
+            <a class="wordmark" href="\(asset("index.html"))" aria-label="Ollin home">\(plan.mark)<span class="name">Ollin</span></a>\(markOpener)
             <nav class="sections" aria-label="Sections">
               \(navItem("Guide", .guide, "guide/index.html"))
               \(navItem("Reference", .docs, "docs/index.html"))
@@ -1370,9 +1388,11 @@ public struct SiteBuilder {
         <script src="\(asset("assets/search.js"))" defer></script>
         """
 
-        let alone = isHome || root != nil
-        let sidebar = alone ? "" : self.sidebar(for: page, plan: plan)
-        let rail = alone ? "" : self.rail(headings, title: title)
+        // Where the list beside the page is out of sight, the same list
+        // folds under the page's title.
+        let fold = alone ? "" : self.onPage(headings, title: title)
+        let body = fold.isEmpty ? body : Self.inserting(fold, afterTheFirstHeadingOf: body)
+        let menus = alone ? "" : "<script src=\"\(asset("assets/menus.js"))\" defer></script>\n"
         let trailBlock = trail.isEmpty ? "" : "<nav class=\"trail\" aria-label=\"Breadcrumb\">\(trail)</nav>\n"
         let layoutClass = isHome ? "home" : (sidebar.isEmpty ? "single" : (rail.isEmpty ? "with-sidebar" : "with-sidebar with-rail"))
 
@@ -1393,7 +1413,8 @@ public struct SiteBuilder {
         <meta property="og:site_name" content="Ollin">
         \(share)\(canonical)
         \(machine)
-        \(icons)<link rel="stylesheet" href="\(asset("assets/site.css"))">
+        \(icons)\(SiteStyle.scriptedMark)
+        <link rel="stylesheet" href="\(asset("assets/site.css"))">
         </head>
         <body>
         \(nav)
@@ -1405,7 +1426,7 @@ public struct SiteBuilder {
         \(rail)
         </div>
         \(search)
-        \(SiteStyle.scrollerScript)
+        \(menus)\(SiteStyle.scrollerScript)
         <footer class="foot">
           <div class="foot-inner">
             <p>Ollin is MIT licensed and built in public. <a href="\(HTML.escape(repository))" rel="noopener">The repository</a> holds everything on this site.</p>
@@ -1434,7 +1455,7 @@ public struct SiteBuilder {
             return "<details\(open ? " open" : "")><summary>\(HTML.escape(name))</summary><ul>\n\(items.joined(separator: "\n"))\n</ul></details>"
         }
 
-        var out = "<nav class=\"sidebar\" aria-label=\"Section\">\n"
+        var out = "<nav class=\"sidebar\" id=\"menu\" aria-label=\"Section\" tabindex=\"-1\">\n"
         switch page.section {
         case .home:
             var items: [String] = []
@@ -1471,9 +1492,13 @@ public struct SiteBuilder {
             }
             for group in plan.docsGroups {
                 let items = group.topics.compactMap { plan.byRepoPath["Docs/\($0).md"] }.map { item($0) }
+                // A folder's own index opens the groups its pages are in.
+                // The overview is every folder's parent, and it opens none:
+                // all of them open at once is a menu eight screens tall.
                 let holdsPage = group.topics.contains { "Docs/\($0).md" == page.repoPath }
                     || group.topics.contains { topic in
-                        page.repoPath.hasSuffix("README.md") && "Docs/\(topic)".hasPrefix(page.repoPath.replacingOccurrences(of: "README.md", with: ""))
+                        page.repoPath.hasSuffix("README.md") && page.repoPath != "Docs/README.md"
+                            && "Docs/\(topic)".hasPrefix(page.repoPath.replacingOccurrences(of: "README.md", with: ""))
                     }
                 out += self.group(group.name, open: holdsPage, items)
             }
@@ -1517,7 +1542,7 @@ public struct SiteBuilder {
                 out += group(category.name, open: inside, items)
             }
         }
-        out += "\n</nav>"
+        out += "\n</nav>\n\(SiteStyle.menuPlaceScript)"
         return out
     }
 
@@ -1533,16 +1558,84 @@ public struct SiteBuilder {
         (title.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "en_US_POSIX")), path)
     }
 
-    /// The page's own headings, for a long page.
-    func rail(_ headings: [(level: Int, text: String, anchor: String)], title: String) -> String {
+    /// The headings a page lists as its own map: its sections and the ones
+    /// under them, without the title, and none at all for a page too short
+    /// to need a map.
+    static func listed(_ headings: [(level: Int, text: String, anchor: String)],
+                       title: String) -> [(level: Int, text: String, anchor: String)] {
         let listed = headings.filter { $0.level == 2 || $0.level == 3 }.filter { $0.text != title }
-        guard listed.count >= 2 else { return "" }
-        var out = "<nav class=\"rail\" aria-label=\"On this page\"><p class=\"rail-title\">On this page</p><ul>\n"
-        for heading in listed {
-            out += "<li class=\"level-\(heading.level)\"><a href=\"#\(heading.anchor)\">\(HTML.escape(heading.text))</a></li>\n"
-        }
-        out += "</ul></nav>"
+        return listed.count >= 2 ? listed : []
+    }
+
+    static func rows(_ listed: [(level: Int, text: String, anchor: String)]) -> String {
+        listed.map { "<li class=\"level-\($0.level)\"><a href=\"#\($0.anchor)\">\(HTML.escape($0.text))</a></li>\n" }.joined()
+    }
+
+    /// The page's own headings, for a long page. The script the page loads
+    /// marks the one being read as the page scrolls.
+    func rail(_ headings: [(level: Int, text: String, anchor: String)], title: String) -> String {
+        let listed = Self.listed(headings, title: title)
+        guard !listed.isEmpty else { return "" }
+        return "<nav class=\"rail\" aria-label=\"On this page\"><p class=\"rail-title\">On this page</p><ul>\n\(Self.rows(listed))</ul></nav>"
+    }
+
+    /// The same list as a fold, for the widths where the list beside the
+    /// page is not shown. It is the page's own markup rather than something
+    /// a script builds, so it is there with scripts off and takes its room
+    /// before the page is drawn.
+    func onPage(_ headings: [(level: Int, text: String, anchor: String)], title: String) -> String {
+        let listed = Self.listed(headings, title: title)
+        guard !listed.isEmpty else { return "" }
+        return "<details class=\"onpage\"><summary>On this page</summary><ul>\n\(Self.rows(listed))</ul></details>"
+    }
+
+    /// A block set right under a page's first heading, which is its title.
+    /// A page with no heading keeps its body as it is.
+    static func inserting(_ block: String, afterTheFirstHeadingOf body: String) -> String {
+        let closes = (1 ... 6).compactMap { body.range(of: "</h\($0)>") }
+        guard let first = closes.min(by: { $0.lowerBound < $1.lowerBound }) else { return body }
+        var out = body
+        out.insert(contentsOf: "\n" + block, at: first.upperBound)
         return out
+    }
+
+    /// A chapter's last line, set as two cards.
+    ///
+    /// Every chapter ends on a rule and one line of links: the contents,
+    /// the chapter before, the chapter after. The words and the links are
+    /// that line's own and none is added: `Previous` and `Next` become the
+    /// small label on each card, the link's text its name, and a link with
+    /// no label (the contents) stays a plain link under the two. A page
+    /// that does not end on such a line is handed back as it came.
+    static func pager(in body: String) -> String {
+        guard let rule = body.range(of: "<hr>", options: .backwards) else { return body }
+        let tail = body[rule.upperBound...].trimmingCharacters(in: .whitespacesAndNewlines)
+        guard tail.hasPrefix("<p>"), tail.hasSuffix("</p>"), tail.components(separatedBy: "<p>").count == 2 else { return body }
+        var cards: [String] = []
+        var plain: [String] = []
+        for part in tail.dropFirst(3).dropLast(4).components(separatedBy: " · ") {
+            var link = Substring(part)
+            var way: (word: String, relation: String)?
+            for (word, relation) in [("Previous", "prev"), ("Next", "next")] where link.hasPrefix(word + ": ") {
+                way = (word, relation)
+                link = link.dropFirst(word.count + 2)
+            }
+            let opening = "<a href=\""
+            guard link.hasPrefix(opening), link.hasSuffix("</a>"), link.components(separatedBy: "<a ").count == 2,
+                  let quote = link.dropFirst(opening.count).firstIndex(of: "\""),
+                  link[quote...].hasPrefix("\">") else { return body }
+            let address = link[link.index(link.startIndex, offsetBy: opening.count) ..< quote]
+            let name = link[link.index(quote, offsetBy: 2)...].dropLast(4)
+            if let way {
+                cards.append("<a class=\"pager-card pager-\(way.word.lowercased())\" rel=\"\(way.relation)\" href=\"\(address)\">"
+                    + "<span class=\"pager-way\">\(way.word)</span><span class=\"pager-name\">\(name)</span></a>")
+            } else {
+                plain.append("<a class=\"pager-up\" href=\"\(address)\">\(name)</a>")
+            }
+        }
+        guard !cards.isEmpty else { return body }
+        let pager = "<nav class=\"pager\" aria-label=\"Previous and next\">\n\((cards + plain).joined(separator: "\n"))\n</nav>"
+        return body[..<rule.lowerBound] + pager
     }
 
     // MARK: - The checkout

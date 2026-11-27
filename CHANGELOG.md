@@ -23,6 +23,7 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 ### Changed
 
 - **The Recreations are grouped by how the work was made.** The index sorts its 35 artists into ten wings, such as Chance, Instructions, and Color, with a line about each artist under their picture. Every artist's page now reads the same way: a life, the work, the sketches that rebuild it, and where to read more. [Recreations](Examples/Recreations/)
+- **The website's side menus follow where you are.** The menu opens on the page you are reading, and the list of sections marks the one on screen. On a phone the section's tab opens the menu, and the list folds under the title. A chapter ends on two cards, previous and next. [The reference offline](Docs/Tools/Reference.md#in-a-browser)
 - **The website lists the Recreations by artist.** The examples menu has one row for each artist, under the name the artist's page carries, where it listed every sketch as `Folder / Sketch`. A sketch's page marks its artist in the menu and names the artist in its trail. The 3D menu lists its ten parts. [Recreations](Examples/Recreations/)
 - **`show(_:)` keeps a mode the sketch asked for.** `device.show(self)` always asked the phone for Sketch mode. It now asks only when no `use(_:)` was called, so `use(_:)` beside it chooses the mode under the picture. A sketch that called both and wants Sketch mode drops its `use(_:)`. `state.isShowingSketch` says whether the phone's screen is the sketch's. [Phone](Docs/3D/Phone.md#the-phone-as-a-viewfinder)
 - **`cameraRay(through:)` returns a `Ray3`.** It returned a tuple, `(origin:direction:)`. `.origin` and `.direction` read as before, so only a destructuring `let (o, d) =` needs rewriting. It also answers under a camera built from a real lens (`Camera3D.intrinsic(_:)`), where it returned `nil`. [Depth compositing](Docs/3D/DepthCompositing.md#cameraRay)
@@ -48,6 +49,8 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ### Fixed
 
+- **The website's search button is called what it shows.** On a wide screen the button shows its keys beside the magnifier, and its spoken name was only "Search". The name now holds the keys, so voice control and a screen reader meet the same button.
+- **With scripts off, the website shows no button that does nothing.** The search button in the bar, and the one on the page for a wrong address, showed with scripts off and did nothing. Each now stays hidden until its script is there to answer it.
 - **A short row of pictures shows as cards on the website.** A listing with fewer sketches than its grid is wide was laid out there as a plain table. It is a card grid now, like every other listing.
 - **On the website, what sits under a bullet stays under it.** A paragraph or a command indented under a list item was set outside the list, and a numbered list began again at 1 after it. Both now read as they do on GitHub, so the Guide's contents number each part's chapters as written. [Reference](Docs/Tools/Reference.md#in-a-browser)
 - **The website's search finds a name without its accents.** `bonacic` finds Vladimir Bonačić and `dora` finds Dóra Maurer, each marked where it stands. A sketch filed under an artist is listed under the artist's name. [Reference](Docs/Tools/Reference.md#in-a-browser)

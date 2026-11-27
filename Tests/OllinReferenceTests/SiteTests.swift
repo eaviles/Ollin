@@ -136,6 +136,11 @@ struct SiteTests {
         // anything else, and a phone's bars take the page's own ground.
         var unsized: [String] = []
         var eager: [String] = []
+        // The menus: a page with a menu carries what opens it on a phone and
+        // the two scripts that place and follow, and a page with a list of
+        // its sections carries the same list folded under its title.
+        var unwired: [String] = []
+        var unfolded: [String] = []
         var unskippable: [String] = []
         var untinted: [String] = []
         var pictures = 0
@@ -175,6 +180,29 @@ struct SiteTests {
                 if index > 0, !tag.contains(" loading=\"lazy\"") { eager.append("\(name): \(source)") }
                 if index == 0, tag.contains(" loading=\"lazy\"") { eager.append("\(name): its first picture waits") }
             }
+            let hasMenu = html.contains("<nav class=\"sidebar\"")
+            let openers = html.components(separatedBy: " aria-controls=\"menu\"").count - 1
+            let wired = html.contains("<nav class=\"sidebar\" id=\"menu\" aria-label=\"Section\" tabindex=\"-1\">")
+                && html.contains("</nav>\n" + SiteStyle.menuPlaceScript + "\n<main ")
+                && html.contains("assets/menus.js\" defer></script>")
+                && html.contains("<head>") && html.contains(SiteStyle.scriptedMark)
+            if hasMenu ? (openers != 1 || !wired) : (openers != 0 || html.contains("assets/menus.js")) {
+                unwired.append("\(name): \(openers) openers")
+            }
+            let beside = Self.anchors(in: html, from: "<nav class=\"rail\"", to: "</nav>")
+            let folded = Self.anchors(in: html, from: "<details class=\"onpage\">", to: "</details>")
+            if beside != folded || beside.count == 1 {
+                unfolded.append("\(name): \(beside.count) beside the page, \(folded.count) in the fold")
+            } else if !folded.isEmpty, let article = html.range(of: "<article"),
+                      let fold = html.range(of: "<details class=\"onpage\">") {
+                // Right under the title: one heading stands between the
+                // article's opening and the fold, and it closes just before it.
+                let above = html[article.upperBound ..< fold.lowerBound]
+                let headings = (1 ... 6).reduce(0) { $0 + above.components(separatedBy: "</h\($1)>").count - 1 }
+                if headings != 1 || !(1 ... 6).contains(where: { above.hasSuffix("</h\($0)>\n") }) {
+                    unfolded.append("\(name): the fold is not under the title")
+                }
+            }
             if let body = html.range(of: "<body>") {
                 let after = html[body.upperBound...]
                 let stops = ["<a ", "<button", "<input", "<summary", "<select", "<textarea", "<video", "tabindex=\"0\""]
@@ -208,6 +236,41 @@ struct SiteTests {
         #expect(eager.isEmpty, "pictures below a page's first that load with the page, or a first one that waits: \(eager.prefix(6)) (\(eager.count))")
         #expect(unskippable.isEmpty, "pages where a Tab does not reach the skip link first, or it has nowhere to land: \(unskippable.prefix(6)) (\(unskippable.count))")
         #expect(untinted.isEmpty, "pages that do not tell a phone the color of their ground: \(untinted.prefix(6)) (\(untinted.count))")
+        #expect(unwired.isEmpty, "pages whose menu has no way in on a phone or is not placed and followed, or pages with no menu that carry one: \(unwired.prefix(6)) (\(unwired.count))")
+        #expect(unfolded.isEmpty, "pages whose list of sections is not also folded under the title, link for link: \(unfolded.prefix(6)) (\(unfolded.count))")
+        #expect(FileManager.default.fileExists(atPath: output.appendingPathComponent("assets/menus.js").path))
+
+        // Every chapter and appendix ends on its cards, with nothing left of
+        // the line they were made from; the first has no chapter before it
+        // and the last none after.
+        var unpaged: [String] = []
+        var chapters = 0
+        for file in try FileManager.default.contentsOfDirectory(atPath: output.appendingPathComponent("guide").path).sorted()
+        where file.hasSuffix(".html") && file != "index.html" {
+            let page = try String(contentsOf: output.appendingPathComponent("guide/\(file)"), encoding: .utf8)
+            chapters += 1
+            let cards = page.components(separatedBy: "<a class=\"pager-card ").count - 1
+            if !page.contains("<nav class=\"pager\" aria-label=\"Previous and next\">") || cards < 1
+                || page.contains(" · Previous: ") || page.contains(" · Next: ") || !page.contains("<a class=\"pager-up\" href=\"index.html#contents\">Contents</a>") {
+                unpaged.append(file)
+            }
+        }
+        #expect(chapters >= 52, "read \(chapters) chapters and appendices")
+        #expect(unpaged.isEmpty, "chapters that do not end on their cards: \(unpaged.prefix(6)) (\(unpaged.count))")
+        let firstChapter = try String(contentsOf: output.appendingPathComponent("guide/01-helloollin.html"), encoding: .utf8)
+        #expect(firstChapter.contains("pager-next") && !firstChapter.contains("pager-previous"))
+        let nineteenth = try String(contentsOf: output.appendingPathComponent("guide/19-layersandeffects.html"), encoding: .utf8)
+        #expect(nineteenth.contains("<a class=\"pager-card pager-previous\" rel=\"prev\" href=\"18-yourfirstshader.html\"><span class=\"pager-way\">Previous</span><span class=\"pager-name\">Chapter 18, Your first shader</span></a>"),
+                "chapter 19's card for the chapter before it is not the line's own link")
+
+        // The reference's overview opens none of its groups, a page opens
+        // the one it is in, and a folder's index the ones its pages are in.
+        let overviewMenu = Self.menu(of: try String(contentsOf: output.appendingPathComponent("docs/index.html"), encoding: .utf8))
+        #expect(!overviewMenu.isEmpty && !overviewMenu.contains("<details open>"), "the reference's overview opens groups of its menu")
+        let pageMenu = Self.menu(of: try String(contentsOf: output.appendingPathComponent("docs/core/sketch.html"), encoding: .utf8))
+        #expect(pageMenu.components(separatedBy: "<details open>").count - 1 == 1)
+        let folderMenu = Self.menu(of: try String(contentsOf: output.appendingPathComponent("docs/core/index.html"), encoding: .utf8))
+        #expect(folderMenu.contains("<details open>"), "a folder's index opens no group")
         // A size that is the picture's own: a chapter's figure written at a
         // width keeps it and gains the height that goes with its file.
         let figures = try String(contentsOf: output.appendingPathComponent("guide/19-layersandeffects.html"), encoding: .utf8)
@@ -256,6 +319,7 @@ struct SiteTests {
         let example = try String(contentsOf: output.appendingPathComponent("examples/basic/hellocircle.html"), encoding: .utf8)
         #expect(example.contains("language-swift"))
         #expect(example.contains("Example-Basic-HelloCircle"))
+        #expect(!example.contains("class=\"pager\""), "an example's page gained cards nobody wrote a line for")
 
         // The artists: one row of the menu each, under the name the artist's
         // page is titled with, that page marked when it is the one open, and
@@ -590,6 +654,8 @@ struct SiteTests {
               });
               return [status.textContent].concat(rows).join('\\n');
             });
+            // Last, what the button is called and what it shows.
+            blocks.push('name|' + toggle.getAttribute('aria-label') + '|' + toggle.querySelector('.key').textContent + '|' + innerWidth);
             out.textContent = blocks.join('\\n---\\n');
           }
           poll();
@@ -618,13 +684,21 @@ struct SiteTests {
     func searchInABrowser() async throws {
         // Virtual time, so the index build's small steps and the library's
         // arrival both finish before the page is read.
-        let flags = HeadlessBrowser.baseFlags + ["--virtual-time-budget=20000"]
+        // A window wide enough that the button shows its keys.
+        let flags = HeadlessBrowser.baseFlags + ["--virtual-time-budget=20000", "--window-size=1280,800"]
         let queries = ["kuwahara", "effects", "kuwa", "colour", "kuwa colour", "nothinghere", "bonacic", "Bonačić"]
         let dom = try await HeadlessBrowser.dom(of: Self.searchProbe(queries: queries), flags: flags, timeout: 120)
         let report = try #require(HeadlessBrowser.text(of: "r0", in: dom))
         try #require(!report.hasPrefix("FAIL") && !report.hasPrefix("PENDING"), "\(report)")
         let blocks = report.components(separatedBy: "\n---\n").map { $0.split(separator: "\n").map(String.init) }
-        try #require(blocks.count == queries.count, "\(report)")
+        try #require(blocks.count == queries.count + 1, "\(report)")
+
+        // The button's spoken name holds the keys the button shows, after a
+        // comma: a reader who says what is on the button reaches it, and a
+        // checker of names sets aside whatever a name says in brackets.
+        let name = (blocks.last?.first ?? "").split(separator: "|", omittingEmptySubsequences: false).map(String.init)
+        try #require(name.count == 4 && name[0] == "name" && (Int(name[3]) ?? 0) > 860, "the window is too narrow for the keys to show: \(report)")
+        #expect(!name[2].isEmpty && name[1] == "Search, " + name[2], "the search button shows \(name[2]) and is called \(name[1])")
 
         // A word only the prose says finds both sections that say it, each
         // marked nowhere (the word is not in what is shown) and the first row active.
@@ -1646,6 +1720,329 @@ struct SiteTests {
             let box = try #require(read[id], "\(report)")
             #expect(box.0 <= box.1, "\(id) is \(box.0) wide in a box of \(box.1): \(report)")
         }
+    }
+
+    // MARK: - The menus
+
+    /// The anchors a block of a page links to, in order: the block that
+    /// opens on `open` and runs to the next `close`.
+    static func anchors(in html: String, from open: String, to close: String) -> [String] {
+        guard let start = html.range(of: open),
+              let end = html.range(of: close, range: start.upperBound ..< html.endIndex) else { return [] }
+        return hrefs(in: String(html[start.upperBound ..< end.lowerBound])).filter { $0.hasPrefix("#") }
+    }
+
+    /// A page's menu, from its opening tag to its close.
+    static func menu(of html: String) -> String {
+        guard let start = html.range(of: "<nav class=\"sidebar\""),
+              let end = html.range(of: "</nav>", range: start.upperBound ..< html.endIndex) else { return "" }
+        return String(html[start.lowerBound ..< end.upperBound])
+    }
+
+    /// What a reader reads of a run of markup: its tags taken out.
+    static func words(of html: String) -> String {
+        var out = ""
+        var inTag = false
+        for character in html {
+            if character == "<" { inTag = true } else if character == ">" { inTag = false; out.append(" ") } else if !inTag { out.append(character) }
+        }
+        return out.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+    }
+
+    @Test("A chapter's last line becomes two cards in the line's own words, and any other ending is left alone")
+    func chapterEndsOnItsCards() throws {
+        let contents = "<a href=\"index.html#contents\">Contents</a>"
+        let before = "Previous: <a href=\"18-a.html\">Chapter 18, Your first shader</a>"
+        let after = "Next: <a href=\"20-b.html\">Chapter 20, <code>Pictures</code> restyled</a>"
+        let page = "<p>Early.</p>\n<hr>\n<p>Text.</p>\n<hr>\n<p>\(contents) · \(before) · \(after)</p>\n"
+        let paged = SiteBuilder.pager(in: page)
+        #expect(paged.hasPrefix("<p>Early.</p>\n<hr>\n<p>Text.</p>\n<nav class=\"pager\" aria-label=\"Previous and next\">\n"),
+                "the page above the line moved, or a rule further up was taken: \(paged)")
+        #expect(paged.components(separatedBy: "<hr>").count == 2, "the line's own rule was kept beside the cards")
+        #expect(paged.contains("<a class=\"pager-card pager-previous\" rel=\"prev\" href=\"18-a.html\"><span class=\"pager-way\">Previous</span><span class=\"pager-name\">Chapter 18, Your first shader</span></a>"))
+        #expect(paged.contains("<a class=\"pager-card pager-next\" rel=\"next\" href=\"20-b.html\"><span class=\"pager-way\">Next</span><span class=\"pager-name\">Chapter 20, <code>Pictures</code> restyled</span></a>"))
+        #expect(paged.contains("<a class=\"pager-up\" href=\"index.html#contents\">Contents</a>"))
+        // Nothing is written that the line did not say: the cards' words,
+        // in order, are the line's words without its marks.
+        let line = Self.words(of: "\(contents) · \(before) · \(after)")
+            .replacingOccurrences(of: " · ", with: " ").replacingOccurrences(of: ": ", with: " ")
+        let opening = try #require(paged.range(of: "<nav class=\"pager\""), "the line was not made into cards: \(paged)")
+        let cards = Self.words(of: String(paged[opening.lowerBound...]))
+        #expect(Set(cards.split(separator: " ")) == Set(line.split(separator: " ")), "the cards read \(cards), the line \(line)")
+
+        // The first chapter has nothing before it and the last nothing after.
+        let first = SiteBuilder.pager(in: "<hr>\n<p>\(contents) · \(after)</p>")
+        #expect(first.contains("pager-next") && !first.contains("pager-previous") && first.contains("pager-up"))
+        let last = SiteBuilder.pager(in: "<hr>\n<p>\(contents) · \(before)</p>")
+        #expect(last.contains("pager-previous") && !last.contains("pager-next"))
+
+        // Left as they came: a page with no rule, a rule with more than one
+        // paragraph after it, a closing line of prose, a line of links that
+        // names no chapter, and a part that is more than its link.
+        for other in ["<p>\(contents) · \(before)</p>",
+                      "<hr>\n<p>\(contents) · \(before)</p>\n<p>And more.</p>",
+                      "<hr>\n<p>If you get stuck, <a href=\"x\">open an issue</a>.</p>",
+                      "<hr>\n<p>\(contents)</p>",
+                      "<hr>\n<p>\(contents) · \(before), and <a href=\"y\">another</a></p>",
+                      "<hr>\n<p>\(contents) · Previously: \(before.dropFirst(10))</p>"] {
+            #expect(SiteBuilder.pager(in: other) == other, "rewritten: \(other)")
+        }
+    }
+
+    @Test("The list of a page's sections is one list in two places, and the fold goes right under the title")
+    func sectionsFoldUnderTheTitle() throws {
+        let root = try #require(Self.repositoryRoot())
+        let builder = SiteBuilder(root: root)
+        let headings: [(level: Int, text: String, anchor: String)] = [
+            (2, "Title", "title"), (2, "First", "first"), (3, "Under & inside", "under-inside"),
+            (4, "Too deep", "too-deep"), (2, "Second", "second"),
+        ]
+        let rows = "<li class=\"level-2\"><a href=\"#first\">First</a></li>\n"
+            + "<li class=\"level-3\"><a href=\"#under-inside\">Under &amp; inside</a></li>\n"
+            + "<li class=\"level-2\"><a href=\"#second\">Second</a></li>\n"
+        #expect(builder.rail(headings, title: "Title")
+                == "<nav class=\"rail\" aria-label=\"On this page\"><p class=\"rail-title\">On this page</p><ul>\n\(rows)</ul></nav>")
+        #expect(builder.onPage(headings, title: "Title")
+                == "<details class=\"onpage\"><summary>On this page</summary><ul>\n\(rows)</ul></details>")
+        // A page with one section needs no map, beside it or under its title.
+        #expect(builder.rail(Array(headings.prefix(2)), title: "Title").isEmpty)
+        #expect(builder.onPage(Array(headings.prefix(2)), title: "Title").isEmpty)
+
+        let body = "<article class=\"prose\">\n<h2 id=\"t\">Title</h2>\n<p>One.</p>\n<h3 id=\"a\">A</h3>\n</article>"
+        #expect(SiteBuilder.inserting("<details>x</details>", afterTheFirstHeadingOf: body)
+                == "<article class=\"prose\">\n<h2 id=\"t\">Title</h2>\n<details>x</details>\n<p>One.</p>\n<h3 id=\"a\">A</h3>\n</article>")
+        // Whatever the first heading's level, and nothing for a page with none.
+        #expect(SiteBuilder.inserting("F", afterTheFirstHeadingOf: "<p>x</p><h3>Late</h3><h1>Big</h1>") == "<p>x</p><h3>Late</h3>\nF<h1>Big</h1>")
+        #expect(SiteBuilder.inserting("F", afterTheFirstHeadingOf: "<p>No heading.</p>") == "<p>No heading.</p>")
+    }
+
+    /// A page in the site's own stylesheet with the site's own scripts: a
+    /// menu of ninety rows with the page open far down it, forty sections
+    /// (most a screen tall, a few a line or two, the last three too short
+    /// for the page to bring them up under the bar), the list of them beside
+    /// the page and folded under the title, a bar with the section's tab,
+    /// and a foot. The probe at its end walks the page and writes down what
+    /// it finds.
+    ///
+    /// The probe is one synchronous pass, since the page is read once its
+    /// scripts have run: it scrolls and then says so with a `scroll` event
+    /// of its own, which is what the browser would send a frame later, and
+    /// it makes the list's own scrolling land at once rather than glide.
+    static func menusProbe() -> String {
+        let menuRows = (1 ... 90).map { "<li><a href=\"#\"\($0 == 70 ? " aria-current=\"page\"" : "")>Row \($0)</a></li>" }.joined(separator: "\n")
+        let heights = (0 ..< 40).map { $0 >= 37 ? 60 : ($0 % 7 == 3 ? 90 : 900) }
+        let sections = heights.enumerated().map { "<h2 id=\"s\($0.offset)\">Section \($0.offset)</h2>\n<div style=\"height: \($0.element)px\"></div>" }.joined(separator: "\n")
+        let rows = (0 ..< 40).map { "<li class=\"level-2\"><a href=\"#s\($0)\">Section \($0), under a name long enough to take two lines of the list</a></li>" }.joined(separator: "\n")
+        return """
+        <!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+        \(SiteStyle.scriptedMark)<style>\(SiteStyle.css)</style></head><body>
+        <header class="bar"><div class="bar-inner">
+        <a class="wordmark" href="#">Ollin</a>
+        <nav class="sections"><a href="#" class="active has-menu" aria-current="true">Guide</a><button type="button" class="menu-toggle" aria-expanded="false" aria-controls="menu">Guide\(SiteStyle.disclosure)</button><a href="#">Reference</a></nav>
+        <button class="search-toggle" type="button" hidden>Search</button>
+        </div></header>
+        <div class="layout with-sidebar with-rail">
+        <nav class="sidebar" id="menu" aria-label="Section" tabindex="-1">
+        <p class="sidebar-title">The Guide</p><ul>
+        \(menuRows)
+        </ul>
+        </nav>
+        \(SiteStyle.menuPlaceScript)
+        <script>
+        // Read here, before the page under the menu exists and long before
+        // the script that follows the reader runs: where the menu stands
+        // now is where a reader first sees it.
+        window.placed = (function () {
+          var side = document.querySelector('.sidebar'), row = side.querySelector('[aria-current]');
+          var b = side.getBoundingClientRect(), r = row.getBoundingClientRect();
+          return ((r.top >= b.top && r.bottom <= b.bottom) ? 1 : 0) + ' ' + Math.round(side.scrollTop);
+        })();
+        </script>
+        <main id="main" tabindex="-1"><article class="prose">
+        <h1 id="t">Title</h1>
+        <details class="onpage"><summary>On this page</summary><ul>
+        \(rows)
+        </ul></details>
+        \(sections)
+        </article></main>
+        <nav class="rail" aria-label="On this page"><p class="rail-title">On this page</p><ul>
+        \(rows)
+        </ul></nav>
+        </div>
+        <footer class="foot"><div class="foot-inner"><p>The foot.</p></div></footer>
+        <script>\(SiteStyle.menusScript)</script>
+        <div id="r0">PENDING</div>
+        <script>
+        (function () {
+          var report = [];
+          var root = document.documentElement;
+          var side = document.querySelector('.sidebar'), rail = document.querySelector('.rail'), fold = document.querySelector('.onpage');
+          var toggle = document.querySelector('.menu-toggle'), main = document.querySelector('main');
+          var bar = Math.round(document.querySelector('.bar').getBoundingClientRect().bottom);
+          var links = [].slice.call(rail.querySelectorAll('a'));
+          var page = side.querySelector('[aria-current]');
+          function inside(box, row) { var b = box.getBoundingClientRect(), r = row.getBoundingClientRect(); return (r.top >= b.top - 0.5 && r.bottom <= b.bottom + 0.5) ? 1 : 0; }
+          function shown(element) { return getComputedStyle(element).display === 'none' ? 0 : 1; }
+          function marked() { var all = rail.querySelectorAll('[aria-current]'); return all.length === 1 ? links.indexOf(all[0]) : -1 - all.length; }
+          function go(y) { window.scrollTo(0, y); window.dispatchEvent(new Event('scroll')); }
+          root.style.scrollBehavior = 'auto';
+          rail.scrollTo = function (to) { rail.scrollTop = to.top; };
+          report.push('window ' + innerWidth + ' ' + innerHeight + ' ' + bar);
+          report.push('placed ' + window.placed);
+          report.push('shown ' + shown(rail) + ' ' + shown(fold) + ' ' + shown(toggle) + ' ' + shown(document.querySelector('.sections a.has-menu')));
+          if (!matchMedia('(max-width: 860px)').matches) {
+            // The menu opened on the page being read, and not at its top.
+            report.push('menu ' + inside(side, page) + ' ' + Math.round(side.scrollTop));
+            var most = root.scrollHeight - innerHeight;
+            go(0);
+            report.push('top ' + marked());
+            // Each section that can be brought up under the bar is the one
+            // marked when it is there, and its entry is in the list's window.
+            var wrong = [], out = 0, tail = 0;
+            links.forEach(function (link, n) {
+              var heading = document.getElementById(link.hash.slice(1));
+              var y = Math.round(heading.getBoundingClientRect().top + scrollY - 72);
+              if (y > most) { tail += 1; return; }
+              go(y);
+              if (marked() !== n) wrong.push(n + ':' + marked()); else if (!inside(rail, link)) out += 1;
+            });
+            report.push('scrolled ' + wrong.length + ' ' + out + ' ' + tail + ' ' + (wrong.join(',') || '-'));
+            // The page's end: the last section, its entry in view, and
+            // neither list pushed up under the bar.
+            go(most);
+            report.push('end ' + marked() + ' ' + inside(rail, links[links.length - 1]) + ' '
+              + Math.round(side.getBoundingClientRect().top) + ' ' + Math.round(rail.getBoundingClientRect().top) + ' '
+              + Math.round(root.clientHeight - document.querySelector('.layout').getBoundingClientRect().bottom) + ' '
+              + Math.round(root.clientHeight - rail.getBoundingClientRect().bottom));
+            // Every one of the last sections has its turn on the way there.
+            var seen = [];
+            for (var y = Math.max(0, most - innerHeight); y <= most; y += 4) { go(y); if (seen[seen.length - 1] !== marked()) seen.push(marked()); }
+            go(most);
+            if (seen[seen.length - 1] !== marked()) seen.push(marked());
+            report.push('turns ' + seen.slice(-4).join(' '));
+            // A section asked for by name is the one marked, though the
+            // page cannot bring it up under the bar.
+            links[links.length - 2].click();
+            window.dispatchEvent(new Event('scroll'));
+            report.push('asked ' + marked() + ' ' + inside(rail, links[links.length - 2]));
+          } else {
+            // A phone: the menu is a sheet, out of the page until the tab
+            // opens it on the page being read, and Escape hands it back.
+            report.push('sheet ' + (getComputedStyle(side).position === 'fixed' ? 1 : 0) + ' ' + (getComputedStyle(side).visibility === 'hidden' ? 1 : 0)
+              + ' ' + (root.scrollWidth <= innerWidth ? 1 : 0));
+            toggle.focus();
+            toggle.click();
+            var box = side.getBoundingClientRect();
+            report.push('open ' + (toggle.getAttribute('aria-expanded') === 'true' ? 1 : 0) + ' ' + (main.inert ? 1 : 0) + ' ' + inside(side, page)
+              + ' ' + (getComputedStyle(side).visibility === 'visible' ? 1 : 0) + ' ' + (document.activeElement === side ? 1 : 0)
+              + ' ' + Math.round(box.top - bar) + ' ' + Math.round(innerHeight - box.bottom));
+            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+            report.push('closed ' + (toggle.getAttribute('aria-expanded') === 'false' ? 1 : 0) + ' ' + (main.inert ? 0 : 1) + ' ' + (document.activeElement === toggle ? 1 : 0));
+          }
+          // A control that waits on its script. Read last, since it turns
+          // the page's own mark off for a moment: out of sight either way,
+          // its room held while a script is on its way, and no room at all
+          // with none.
+          var search = document.querySelector('.search-toggle'), style = getComputedStyle(search);
+          var unseen = (style.display === 'none' || style.visibility === 'hidden') ? 1 : 0;
+          var held = style.display !== 'none' ? 1 : 0;
+          root.className = '';
+          var gone = getComputedStyle(search).display === 'none' ? 1 : 0;
+          root.className = 'js';
+          report.push('waiting ' + unseen + ' ' + held + ' ' + gone);
+          document.getElementById('r0').textContent = report.join('|');
+        })();
+        </script>
+        </body></html>
+        """
+    }
+
+    /// What the probe wrote down, by the word each line opens with.
+    static func menusReport(windowWidth: Int) async throws -> (read: [String: [String]], text: String) {
+        let flags = HeadlessBrowser.baseFlags + ["--window-size=\(windowWidth),800"]
+        let dom = try await HeadlessBrowser.dom(of: Self.menusProbe(), flags: flags, timeout: 90)
+        let report = try #require(HeadlessBrowser.text(of: "r0", in: dom))
+        try #require(report != "PENDING", "the probe did not run")
+        var read: [String: [String]] = [:]
+        for line in report.split(separator: "|") {
+            let parts = line.split(separator: " ").map(String.init)
+            read[parts[0]] = Array(parts.dropFirst())
+        }
+        return (read, report)
+    }
+
+    /// A control that waits on its script (the search button) is out of
+    /// sight until the script shows it. While a script is on its way its
+    /// room is held, so the bar's tabs do not move when it appears; with no
+    /// script it takes no room and nothing is left that does nothing.
+    static func expectWaitingControl(_ read: [String: [String]], _ report: String) throws {
+        let waiting = try #require(read["waiting"], "\(report)")
+        #expect(waiting[0] == "1", "a control marked hidden is shown: \(report)")
+        #expect(waiting[1] == "1", "a control that waits on its script holds no room, so what stands beside it moves when it arrives: \(report)")
+        #expect(waiting[2] == "1", "with no script, a control marked hidden still takes its room or shows: \(report)")
+    }
+
+    @Test("The list beside a page marks the section being read, the menu opens on the page being read, and both stop at the foot",
+          .enabled("a browser is needed") { HeadlessBrowser.isInstalled })
+    func menusFollowTheReader() async throws {
+        let (read, report) = try await Self.menusReport(windowWidth: 1280)
+        let window = try #require(read["window"], "\(report)")
+        try #require((Int(window[0]) ?? 0) > 1100, "the window is \(window[0]) wide, too narrow for the list beside the page: \(report)")
+        let bar = Int(window[2]) ?? -1
+        try Self.expectWaitingControl(read, report)
+        // On a wide screen the list is beside the page, and neither the
+        // fold nor the tab's button is shown.
+        #expect(read["shown"] == ["1", "0", "0", "1"], "\(report)")
+        // The menu opened with the page being read in its window, which for
+        // row seventy of ninety means it was moved, and it was there before
+        // the page under it was drawn: the script right after the menu put
+        // it there, not the one that loads later and would be seen moving it.
+        let placed = try #require(read["placed"], "\(report)")
+        #expect(placed[0] == "1" && (Int(placed[1]) ?? 0) > 0, "the menu was first drawn at its top with the open page out of sight: \(report)")
+        let menu = try #require(read["menu"], "\(report)")
+        #expect(menu[0] == "1" && menu[1] == placed[1], "the menu moved again after it was placed: \(report)")
+        // At the page's top nothing is marked; every section that can be
+        // brought up under the bar is the one marked when it is there, with
+        // its entry inside the list's own window.
+        #expect(read["top"] == ["-1"], "\(report)")
+        let scrolled = try #require(read["scrolled"], "\(report)")
+        #expect(scrolled[0] == "0", "sections marked wrongly when brought up under the bar (asked:marked): \(report)")
+        #expect(scrolled[1] == "0", "\(scrolled[1]) marked entries were outside the list's window: \(report)")
+        #expect((Int(scrolled[2]) ?? 0) >= 2, "the page has no section it cannot bring up under the bar, so the end is not being tested: \(report)")
+        // At the end the last section is marked and in view, the lists
+        // stand under the bar, and the list of sections stops at the foot.
+        let end = try #require(read["end"], "\(report)")
+        #expect(end[0] == "39" && end[1] == "1", "the page's end does not mark its last section, or its entry is out of the list's window: \(report)")
+        #expect(Int(end[2]) == bar && Int(end[3]) == bar, "at the page's end a list is pushed up under the bar: \(report)")
+        #expect((Int(end[4]) ?? 0) > 0 && end[4] == end[5], "the list of sections does not stop where the layout does: \(report)")
+        // The sections too short to reach the bar are each marked in turn.
+        #expect(read["turns"] == ["36", "37", "38", "39"], "\(report)")
+        // A section asked for by name is the one marked.
+        #expect(read["asked"] == ["38", "1"], "\(report)")
+    }
+
+    @Test("On a phone the section's tab opens the menu as a sheet on the page being read, and Escape hands the page back",
+          .enabled("a browser is needed") { HeadlessBrowser.isInstalled })
+    func aPhoneOpensTheMenuFromTheBar() async throws {
+        let (read, report) = try await Self.menusReport(windowWidth: 600)
+        let window = try #require(read["window"], "\(report)")
+        try #require((Int(window[0]) ?? 9_999) <= 860, "the window is \(window[0]) wide, which is not a phone's rules: \(report)")
+        try Self.expectWaitingControl(read, report)
+        // The list beside the page is gone and folded under the title; the
+        // tab is a button, standing where the link stood.
+        #expect(read["shown"] == ["0", "1", "1", "0"], "\(report)")
+        // Out of the page and out of sight until asked for, and the page no
+        // wider for it.
+        #expect(read["sheet"] == ["1", "1", "1"], "\(report)")
+        let open = try #require(read["open"], "\(report)")
+        #expect(Array(open.prefix(5)) == ["1", "1", "1", "1", "1"],
+                "open, the page behind out of reach, the open page's row in view, the sheet shown, the focus in it: \(report)")
+        // As tall as the window under the bar. It slides the last few
+        // pixels into place, so at the moment it opens it stands that much
+        // above where it comes to rest, top and foot alike.
+        let above = Int(open[5]) ?? 99
+        #expect((-12 ... 0).contains(above) && Int(open[6]) == -above, "the sheet does not run from the bar to the window's foot: \(report)")
+        #expect(read["closed"] == ["1", "1", "1"], "Escape did not close the sheet, free the page, and hand the focus back: \(report)")
     }
 
     /// Every `href`, `src`, and `srcset` on a page.
