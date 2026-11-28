@@ -19,6 +19,7 @@ Every point comes back as a `SurfaceSample(position:normal:uv:triangle:barycentr
 - [SurfaceSample](#sample)
 - [Standing something up](#alignment)
 - [surfaceArea](#area)
+- [A sphere, by formula: `spherePoints`](#sphere)
 - [Standalone (outside a sketch)](#standalone)
 
 <a name="surfacePoints"></a>
@@ -140,6 +141,32 @@ This is every triangle's area added up, in the square of the mesh's own units. I
 ```swift
 let trees = surfacePoints(on: island, count: Int(island.surfaceArea * 12))
 ```
+
+<a name="sphere"></a>
+
+#### A sphere, by formula: `spherePoints`
+
+```swift
+spherePoints(count: Int, radius: Double = 1) -> [Vector3]
+hemispherePoints(count: Int, radius: Double = 1) -> [Vector3]
+```
+
+A sphere needs no mesh and no random draw. `spherePoints` returns exactly `count` points on a sphere around the origin, each with close to the same share of the surface. Use it for a ball of dots, a dome of lights, or a set of directions to aim rays along. At the default radius of 1, every point is also a unit direction.
+
+<img src="../Images/SphereLattice.jpg" alt="Three dark blue globes side by side, each tipped so its pole faces the viewer and each wearing four hundred yellow dots: on the first the dots sit on rings and crowd together at the pole, on the second they clump and leave bare patches, on the third they are spread evenly over the whole globe, pole included" width="640">
+
+The obvious way to cover a sphere is rings of latitude and longitude, and it crowds the poles. A ring near a pole holds as many points as the one at the equator and is much shorter. Points drawn at random clump. `spherePoints` is the Fibonacci lattice. It cuts the sphere into `count` bands of equal height, which on a sphere are also bands of equal area. One point goes at the middle height of each band, the golden angle further around the vertical axis than the one before. It is the sunflower's arrangement, [`phyllotaxis`](../Drawing/Curves.md#phyllotaxis), wrapped onto a ball.
+
+```swift
+for p in spherePoints(count: 800, radius: 2) {
+    drawPoint(p.x, p.y, p.z)
+}
+```
+
+- **The spread.** Measured from 10 to 100,000 points, the distance from a point to its nearest neighbor varies by less than 1.15 to 1 over the whole sphere. Points drawn at random measure 12 to 1 at a hundred points and 150 to 1 at ten thousand.
+- **The count is exact** and nothing is random, so the same call always returns the same points. `surfacePoints` on a sphere mesh is the tool when the scatter should look natural. This one is for when it should look even.
+- **The order is top to bottom.** The points run from the top (`+y`) down, no two at the same height and none on a pole. So the array index is also a height, which is the handle for a ramp of size or color.
+- **`hemispherePoints`** covers the upper half only: a dome. Its points are the upper half of `spherePoints(count: 2 * count)`, so a dome and the sphere it was cut from agree point for point.
 
 <a name="standalone"></a>
 

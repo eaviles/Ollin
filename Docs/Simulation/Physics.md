@@ -74,6 +74,8 @@ func addParticle(at position: Vector2, radius: Double = 0, mass: Double = 1) -> 
 func connect(_ a: Particle, _ b: Particle, length: Double? = nil, stiffness: Double = 1) -> Spring
 func remove(_ spring: Spring)
 func remove(_ particle: Particle)
+func remove(_ particles: [Particle])
+func remove(_ springs: [Spring])
 func remove(_ body: Body)
 func removeAll()
 
@@ -87,7 +89,14 @@ A [soft body](#soft-bodies) made from an outline has its own `addSoftBody(from:)
 
 `addParticle` returns the new [`Particle`](#particle), so you can pin it, push it, or connect it to a spring. A `radius` of `0` (the default) makes a point that does not collide. A positive radius makes the particle collide as a disk. `connect` links two particles with a [`Spring`](#spring). By default the spring's rest length is the distance between the two particles at that moment.
 
-`remove(_ particle:)` takes the particle out along with every spring attached to it. Each call reads through all of the world's springs and particles. Taking out a hundred particles a frame from thousands is a hundred of those reads. A sketch that retires disks and adds new ones all the time does better to keep the retired ones and reuse them. Set a retired disk's `radius` to `0`, which the collision pass skips. When the next disk is born, hand it the old particle with its new radius. Move it with [`place(at:)`](#particle), which carries the previous position along, so the jump adds no speed.
+`remove(_ particle:)` takes the particle out along with every spring attached to it. Each call reads through all of the world's springs and particles. Taking out a hundred particles one at a time is a hundred of those reads. `remove(_ particles:)` takes a list and reads through the world once:
+
+```swift
+let gone = world.particles.filter { $0.position.y > height + $0.radius }
+world.remove(gone)
+```
+
+The world is left exactly as it would be after removing each one in turn. A particle named twice, or one that is not in this world, changes nothing, and a [soft body](#soft-bodies) goes whole when one of its particles is named. Measured in a release build on an M2, in a world of 9,000 particles and 4,000 springs: a hundred removals take 7 ms one at a time and 0.4 ms as a list. For 750 it is 50 ms against 0.6. A sketch that retires disks and adds new ones every frame gathers the retired ones as it walks the world and removes them together at the end. `remove(_ springs:)` is the same call for springs, for a cloth torn in many places at once.
 
 **The rules**
 
@@ -105,7 +114,9 @@ var maxTimestep: Double = 1.0 / 30       // clamp on dt, for stability
 - **`gravity`** is a constant acceleration on every unpinned particle. Set it to `.zero` for a weightless field where everything floats freely.
 - **`drag`** stands in for air friction. At `0` motion is conserved, so things drift forever. A small value removes energy, so things settle. It is the share of speed lost every sixtieth of a second, whatever the frame rate: the default of `0.01` removes 45% of a particle's speed in a second at 30, 60, or 120 frames a second alike. A rigid [`Body`](#rigid-bodies) reads the same number, on its speed and on its spin. Set it at any time, since a change reaches every body already in the world.
 - **`bounds`** keeps particles inside a rectangle, and it accounts for each particle's `radius`. `restitution` then sets how much speed a particle keeps when it hits a wall. At `0` the particle sticks, and at `1` it loses nothing at the wall, though `drag` still takes its share in flight. It is also what a rigid body gets when `addBody` names none. A [soft body](#soft-bodies) bounces off a wall by its own give instead, so `restitution` does not reach it.
-- **`particlesCollide`** turns on disk-against-disk separation. It is off by default for two reasons. A cloth should not have its own points collide, and the check costs a pass every frame. Turn it on for packings and piles. Points with `radius == 0` never collide, and the pass skips them. The broad phase runs through a spatial hash, so the cost grows with the number of disks rather than with its square. Each cell of the hash is as wide as the largest disk, and each disk is compared with every disk in its own cell and the eight around it. So the sizes matter as much as the count. Disks of one size meet a handful of others each, while a few large disks among many small ones make each small one meet hundreds. Measured in a release build on an M2, a settled packing of 3,650 disks steps in about 22 ms at four passes, about 1.5 µs a disk a pass. Its largest radius is 32 px and its median about 10. At 60 frames a second, a packing like it has room for two to three thousand disks at four passes, and fewer as the largest disk grows against the rest.
+- **`particlesCollide`** turns on disk-against-disk separation. It is off by default for two reasons. A cloth should not have its own points collide, and the check costs a pass every frame. Turn it on for packings and piles. Points with `radius == 0` never collide, and the pass skips them. The cost grows with the number of disks rather than with its square, and it holds when the sizes vary. The pass sorts the disks into a grid of several cell sizes, the widest as wide as the largest disk and each one under it half as wide, with every disk filed where the cell just spans it. A disk is then compared only with the disks around it at its own size and at each larger size. So a few large disks among many small ones cost the small ones nothing, where a single grid as wide as the largest disk makes each small one meet hundreds. Measured in a release build on an M2 at four passes, a step of 9,000 disks takes 8 ms when every disk is 8 px, 14 ms when the radii run from 5 to 80 px with most of them small, and 9 ms when 8,999 disks of 4 px share the world with one of 600. A packing of 3,650 disks with radii from 8 to 32 px steps in 5 ms, about 0.34 µs a disk a pass. So nine thousand disks fit inside a frame at 60 frames a second and four passes, with half the frame to spare at one size and a little at mixed sizes.
+
+  A seeded pile settles the same on every run, on every machine: the disks are walked in the order they were added, and the cells around each in one fixed order. Resolving a pair moves both disks, so that order is part of the result.
 - **`iterations`** is how many relaxation passes the solver runs to hold springs and collisions together. More passes make stiff stacks and tight packings firmer, and the cost grows linearly with the count.
 - **`substeps`** cuts each step into pieces, each integrated and relaxed on its own. A bob on a rod gives back only 70% of its height on its first swing at one piece a frame, because projecting a step onto the rod drops the share of the motion that pointed along it. The loss shrinks in proportion to the count: 98% at sixteen pieces, and at sixty-four the bob holds its height within 5% for ten seconds. The cost grows with the count, so it is for a pendulum or a chain of a few particles rather than a pile.
 

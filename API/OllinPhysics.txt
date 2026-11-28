@@ -363,6 +363,8 @@ final class World
   func remove(_: Particle)
   func remove(_: SoftBody)
   func remove(_: Spring)
+  func remove(_: [Particle])
+  func remove(_: [Spring])
   func removeAll()
   init()
   var bodies: [Body] { get }

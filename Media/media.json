@@ -9510,26 +9510,26 @@
       "width": 1080
     },
     "Physics/Packing": {
-      "bytes": {
-        "loop": 8012808,
-        "loopSmall": 2609021,
-        "still": 266796,
-        "stillSmall": 106524
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "10.0s",
-      "loop": "examples/Physics/Packing/loop.mp4?v=6ecaf668",
-      "loopSmall": "examples/Physics/Packing/loop-640.mp4?v=f6e78be8",
-      "motion": 74.231,
-      "rendered": "2026-09-26",
       "seconds": 10.0,
-      "seed": 1,
+      "frame": 480,
+      "motion": 74.331,
       "sound": false,
       "source": "d48b2fd3c4bb0425",
-      "still": "examples/Physics/Packing/still.jpg?v=307854cf",
-      "stillSmall": "examples/Physics/Packing/still-640.jpg?v=abdd0bbc",
-      "width": 1080
+      "rendered": "2026-11-27",
+      "bytes": {
+        "loop": 8002847,
+        "loopSmall": 2519417,
+        "still": 265478,
+        "stillSmall": 106537
+      },
+      "loop": "examples/Physics/Packing/loop.mp4?v=6b2c623d",
+      "loopSmall": "examples/Physics/Packing/loop-640.mp4?v=b4ac4838",
+      "still": "examples/Physics/Packing/still.jpg?v=0d7b322d",
+      "stillSmall": "examples/Physics/Packing/still-640.jpg?v=da1feec6",
+      "seed": 1
     },
     "Physics/RigidBodies": {
       "width": 1080,

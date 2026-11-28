@@ -2027,6 +2027,7 @@ func guilloche(rings: Int, innerRadius: Double, outerRadius: Double, bumps: Int,
 func guilloche(rings: Int, innerRadius: Double, outerRadius: Double, rosettes: [Rosette], twist: Double = default, samples: Int? = default) -> [Contour]
 func halton(_: Int, base: Int = default) -> Double
 func haltonPoints(count: Int, in: Rectangle, bases: (Int, Int) = default, startIndex: Int = default) -> [Vector2]
+func hemispherePoints(count: Int, radius: Double = default) -> [Vector3]
 func hilbertIndex(of: Vector2, in: Rectangle, level: Int = default) -> Int
 func hilbertOrder(of: [Vector2], level: Int = default) -> [Int]
 func hilbertSorted(_: [Vector2], level: Int = default) -> [Vector2]
@@ -2091,6 +2092,7 @@ func sketchResource(_: String, in: String = default, from: String = default) -> 
 func smoothstep(_: Double, _: Double, _: Double) -> Double
 func sobolPoints(count: Int, in: Rectangle, startIndex: Int = default) -> [Vector2]
 func spanningTree(through: [Vector2]) -> [Contour]
+func spherePoints(count: Int, radius: Double = default) -> [Vector3]
 func spherical(_: Double, _: Double, _: Double, around: Vector3 = default) -> Vector3
 func spirolateral(order: Int, turn: Double = default, step: Double = default, reversed: Set<Int> = default, repeats: Int? = default, maxRepeats: Int = default) -> Spirolateral
 func step(_: Double, _: Double) -> Double
@@ -2590,10 +2592,17 @@ open class Sketch: Sendable
   func noise(_: Double) -> Double
   func noise(_: Double, _: Double) -> Double
   func noise(_: Double, _: Double, _: Double) -> Double
+  func noise(_: Double, _: Double, _: Double, clamped: Bool) -> Double
   func noise(_: Double, _: Double, _: Double, loop: Double, radius: Double = default) -> Double
+  func noise(_: Double, _: Double, _: Double, loop: Double, radius: Double = default, clamped: Bool) -> Double
+  func noise(_: Double, _: Double, clamped: Bool) -> Double
   func noise(_: Double, _: Double, loop: Double, radius: Double = default) -> Double
+  func noise(_: Double, _: Double, loop: Double, radius: Double = default, clamped: Bool) -> Double
+  func noise(_: Double, clamped: Bool) -> Double
   func noise(_: Double, loop: Double, radius: Double = default) -> Double
+  func noise(_: Double, loop: Double, radius: Double = default, clamped: Bool) -> Double
   func noise(loop: Double, radius: Double = default) -> Double
+  func noise(loop: Double, radius: Double = default, clamped: Bool) -> Double
   func noiseField() -> Formula.NoiseField
   func noiseSeed(_: Int)
   func occluding(_: () -> Void)
@@ -2693,10 +2702,17 @@ open class Sketch: Sendable
   func signedNoise(_: Double) -> Double
   func signedNoise(_: Double, _: Double) -> Double
   func signedNoise(_: Double, _: Double, _: Double) -> Double
+  func signedNoise(_: Double, _: Double, _: Double, clamped: Bool) -> Double
   func signedNoise(_: Double, _: Double, _: Double, loop: Double, radius: Double = default) -> Double
+  func signedNoise(_: Double, _: Double, _: Double, loop: Double, radius: Double = default, clamped: Bool) -> Double
+  func signedNoise(_: Double, _: Double, clamped: Bool) -> Double
   func signedNoise(_: Double, _: Double, loop: Double, radius: Double = default) -> Double
+  func signedNoise(_: Double, _: Double, loop: Double, radius: Double = default, clamped: Bool) -> Double
+  func signedNoise(_: Double, clamped: Bool) -> Double
   func signedNoise(_: Double, loop: Double, radius: Double = default) -> Double
+  func signedNoise(_: Double, loop: Double, radius: Double = default, clamped: Bool) -> Double
   func signedNoise(loop: Double, radius: Double = default) -> Double
+  func signedNoise(loop: Double, radius: Double = default, clamped: Bool) -> Double
   func signedSimplexNoise(_: Double) -> Double
   func signedSimplexNoise(_: Double, _: Double) -> Double
   func signedSimplexNoise(_: Double, _: Double, _: Double) -> Double
@@ -5745,10 +5761,17 @@ struct NoiseFields: Sendable
   func noise(_: Double) -> Double
   func noise(_: Double, _: Double) -> Double
   func noise(_: Double, _: Double, _: Double) -> Double
+  func noise(_: Double, _: Double, _: Double, clamped: Bool) -> Double
   func noise(_: Double, _: Double, _: Double, loop: Double, radius: Double = default) -> Double
+  func noise(_: Double, _: Double, _: Double, loop: Double, radius: Double = default, clamped: Bool) -> Double
+  func noise(_: Double, _: Double, clamped: Bool) -> Double
   func noise(_: Double, _: Double, loop: Double, radius: Double = default) -> Double
+  func noise(_: Double, _: Double, loop: Double, radius: Double = default, clamped: Bool) -> Double
+  func noise(_: Double, clamped: Bool) -> Double
   func noise(_: Double, loop: Double, radius: Double = default) -> Double
+  func noise(_: Double, loop: Double, radius: Double = default, clamped: Bool) -> Double
   func noise(loop: Double, radius: Double = default) -> Double
+  func noise(loop: Double, radius: Double = default, clamped: Bool) -> Double
   func ridgedFbm(_: Double, _: Double, _: Double, loop: Double, radius: Double = default, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
   func ridgedFbm(_: Double, _: Double, _: Double, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
   func ridgedFbm(_: Double, _: Double, loop: Double, radius: Double = default, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
@@ -5762,10 +5785,17 @@ struct NoiseFields: Sendable
   func signedNoise(_: Double) -> Double
   func signedNoise(_: Double, _: Double) -> Double
   func signedNoise(_: Double, _: Double, _: Double) -> Double
+  func signedNoise(_: Double, _: Double, _: Double, clamped: Bool) -> Double
   func signedNoise(_: Double, _: Double, _: Double, loop: Double, radius: Double = default) -> Double
+  func signedNoise(_: Double, _: Double, _: Double, loop: Double, radius: Double = default, clamped: Bool) -> Double
+  func signedNoise(_: Double, _: Double, clamped: Bool) -> Double
   func signedNoise(_: Double, _: Double, loop: Double, radius: Double = default) -> Double
+  func signedNoise(_: Double, _: Double, loop: Double, radius: Double = default, clamped: Bool) -> Double
+  func signedNoise(_: Double, clamped: Bool) -> Double
   func signedNoise(_: Double, loop: Double, radius: Double = default) -> Double
+  func signedNoise(_: Double, loop: Double, radius: Double = default, clamped: Bool) -> Double
   func signedNoise(loop: Double, radius: Double = default) -> Double
+  func signedNoise(loop: Double, radius: Double = default, clamped: Bool) -> Double
   func signedSimplexNoise(_: Double) -> Double
   func signedSimplexNoise(_: Double, _: Double) -> Double
   func signedSimplexNoise(_: Double, _: Double, _: Double) -> Double

@@ -246,7 +246,7 @@ Each of these gives a wrong or empty picture and no error.
 - **A texture on a mesh with no texture coordinates.** The texture is ignored, and the mesh draws in its base color.
 - **`redraw()`, `copyFrame()`, `chooseFiles`, and `pointerShape` in an export.** There is no window, so each does nothing. A `redraw()` inside `draw()` asks for nothing either: that frame is the one being drawn.
 - **Noise offsets 256 apart.** Every Perlin field repeats every 256 units on each axis, so copies told apart by an offset of `32 * i` read the same noise every eighth copy. Use an offset that is not a power of two, or a seed per copy.
-- **Noise at its ends.** `noise` is clamped after its contrast is raised, so about 2% of `noise(x, y)` sits exactly at 0 and 2% exactly at 1, about 3.2% at each end in three dimensions, and none in one, and a curve read straight from it runs flat there.
+- **Noise at its ends.** `noise` is clamped after its contrast is raised, so about 2% of `noise(x, y)` sits exactly at 0 and 2% exactly at 1, about 3.2% at each end in three dimensions, and none in one, and a curve read straight from it runs flat there. `noise(x, y, clamped: false)` reads the field before the clamp, a little past both ends.
 - **A `print` during an exported sequence.** It lands on the same terminal line as the progress text, and later than expected when the output is piped. Write to standard error with a newline first, or read the value after the run.
 
 <a name="checking"></a>

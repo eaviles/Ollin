@@ -52,6 +52,31 @@ struct PerlinNoise: Sendable {
         Swift.max(-1, Swift.min(1, rawValue(x, y, z) * PerlinNoise.gain))
     }
 
+    // MARK: The field before the clamp
+
+    /// The signed 1D field with its contrast and nothing cut off. A line's
+    /// field never leaves `-1...1`, so this is `signedValue(_:)` itself.
+    func unclampedSignedValue(_ x: Double) -> Double {
+        rawValue(x) * PerlinNoise.gain
+    }
+
+    /// The signed field with its contrast and nothing cut off: `signedValue`
+    /// wherever that is inside `-1...1`, and past the ends where it rests on
+    /// one (as far as about -2 and 2).
+    func unclampedSignedValue(_ x: Double, _ y: Double, _ z: Double) -> Double {
+        rawValue(x, y, z) * PerlinNoise.gain
+    }
+
+    /// The signed 4D field with its contrast and nothing cut off.
+    func unclampedSignedValue(_ x: Double, _ y: Double, _ z: Double, _ w: Double) -> Double {
+        rawValue(x, y, z, w) * PerlinNoise.gain4
+    }
+
+    /// The signed 5D field with its contrast and nothing cut off.
+    func unclampedSignedValue(_ x: Double, _ y: Double, _ z: Double, _ w: Double, _ v: Double) -> Double {
+        rawValue(x, y, z, w, v) * PerlinNoise.gain5
+    }
+
     /// Unsigned 1D noise in `0...1`, the line's own field (see `rawValue(_:)`).
     func value(_ x: Double) -> Double {
         (signedValue(x) + 1) / 2
@@ -420,6 +445,98 @@ public extension NoiseFields {
         return perlin.signedValue(x, y, z, cx, cy)
     }
 
+    // MARK: Noise with nothing cut off
+
+    /// 1D Perlin noise at `x`, with a say over the clamp. A line's field
+    /// never leaves `0...1`, so both answers are `noise(x)`; the label is
+    /// here so a sketch can write one call for every dimension.
+    func noise(_ x: Double, clamped: Bool) -> Double {
+        clamped ? perlin.value(x) : (perlin.unclampedSignedValue(x) + 1) / 2
+    }
+    /// 2D Perlin noise at `(x, y)`, with a say over the clamp.
+    ///
+    /// `noise` stretches its field to fill `0...1` and cuts off what runs
+    /// past, so about 4 reads in 100 sit exactly on 0 or on 1, and a curve
+    /// drawn from them runs flat there. With `clamped: false` nothing is cut:
+    /// the value equals `noise(x, y)` wherever that is strictly between its
+    /// ends, and where `noise` rests on an end this one keeps going, rarely
+    /// as far as -0.5 and 1.5. With `clamped: true` it is `noise(x, y)`.
+    ///
+    /// ```swift
+    /// let lift = noise(x * 0.01, y * 0.01, clamped: false)   // never flat
+    /// let held = 0.5 + (lift - 0.5) / 2                      // back inside 0...1
+    /// ```
+    func noise(_ x: Double, _ y: Double, clamped: Bool) -> Double {
+        clamped ? perlin.value(x, y, 0) : (perlin.unclampedSignedValue(x, y, 0) + 1) / 2
+    }
+    /// 3D Perlin noise at `(x, y, z)`, with a say over the clamp (see
+    /// `noise(_:_:clamped:)`). About 6 reads in 100 of the clamped field rest
+    /// on an end.
+    func noise(_ x: Double, _ y: Double, _ z: Double, clamped: Bool) -> Double {
+        clamped ? perlin.value(x, y, z) : (perlin.unclampedSignedValue(x, y, z) + 1) / 2
+    }
+
+    /// 1D signed Perlin noise at `x`, with a say over the clamp. A line's
+    /// field never leaves `-1...1`, so both answers are `signedNoise(x)`.
+    func signedNoise(_ x: Double, clamped: Bool) -> Double {
+        clamped ? perlin.signedValue(x) : perlin.unclampedSignedValue(x)
+    }
+    /// 2D signed Perlin noise at `(x, y)`, with a say over the clamp: with
+    /// `clamped: false` it equals `signedNoise(x, y)` wherever that is
+    /// strictly inside `-1...1`, and runs past the ends where that one rests,
+    /// rarely as far as -2 and 2 (see `noise(_:_:clamped:)`).
+    func signedNoise(_ x: Double, _ y: Double, clamped: Bool) -> Double {
+        clamped ? perlin.signedValue(x, y, 0) : perlin.unclampedSignedValue(x, y, 0)
+    }
+    /// 3D signed Perlin noise at `(x, y, z)`, with a say over the clamp (see
+    /// `signedNoise(_:_:clamped:)`).
+    func signedNoise(_ x: Double, _ y: Double, _ z: Double, clamped: Bool) -> Double {
+        clamped ? perlin.signedValue(x, y, z) : perlin.unclampedSignedValue(x, y, z)
+    }
+
+    /// Looping noise with a say over the clamp (see `noise(loop:radius:)` and
+    /// `noise(_:_:clamped:)`). A lap still closes: the field is the same one,
+    /// read before the cut.
+    func noise(loop: Double, radius: Double = 1, clamped: Bool) -> Double {
+        (signedNoise(loop: loop, radius: radius, clamped: clamped) + 1) / 2
+    }
+    /// 1D looping noise at `x` with a say over the clamp.
+    func noise(_ x: Double, loop: Double, radius: Double = 1, clamped: Bool) -> Double {
+        (signedNoise(x, loop: loop, radius: radius, clamped: clamped) + 1) / 2
+    }
+    /// 2D looping noise at `(x, y)` with a say over the clamp.
+    func noise(_ x: Double, _ y: Double, loop: Double, radius: Double = 1, clamped: Bool) -> Double {
+        (signedNoise(x, y, loop: loop, radius: radius, clamped: clamped) + 1) / 2
+    }
+    /// 3D looping noise at `(x, y, z)` with a say over the clamp.
+    func noise(_ x: Double, _ y: Double, _ z: Double, loop: Double, radius: Double = 1, clamped: Bool) -> Double {
+        (signedNoise(x, y, z, loop: loop, radius: radius, clamped: clamped) + 1) / 2
+    }
+
+    /// Signed looping noise with a say over the clamp (see
+    /// `signedNoise(loop:radius:)` and `signedNoise(_:_:clamped:)`). This is
+    /// the form for a position that should drift all lap and never rest at
+    /// the end of its range.
+    func signedNoise(loop: Double, radius: Double = 1, clamped: Bool) -> Double {
+        let (cx, cy) = loopPoint(loop, radius)
+        return clamped ? perlin.signedValue(cx, cy, 0) : perlin.unclampedSignedValue(cx, cy, 0)
+    }
+    /// 1D signed looping noise at `x` with a say over the clamp.
+    func signedNoise(_ x: Double, loop: Double, radius: Double = 1, clamped: Bool) -> Double {
+        let (cx, cy) = loopPoint(loop, radius)
+        return clamped ? perlin.signedValue(x, cx, cy) : perlin.unclampedSignedValue(x, cx, cy)
+    }
+    /// 2D signed looping noise at `(x, y)` with a say over the clamp.
+    func signedNoise(_ x: Double, _ y: Double, loop: Double, radius: Double = 1, clamped: Bool) -> Double {
+        let (cx, cy) = loopPoint(loop, radius)
+        return clamped ? perlin.signedValue(x, y, cx, cy) : perlin.unclampedSignedValue(x, y, cx, cy)
+    }
+    /// 3D signed looping noise at `(x, y, z)` with a say over the clamp.
+    func signedNoise(_ x: Double, _ y: Double, _ z: Double, loop: Double, radius: Double = 1, clamped: Bool) -> Double {
+        let (cx, cy) = loopPoint(loop, radius)
+        return clamped ? perlin.signedValue(x, y, z, cx, cy) : perlin.unclampedSignedValue(x, y, z, cx, cy)
+    }
+
     // MARK: Layered noise (fbm)
 
     /// 1D fractal (layered) noise in `0...1`: `octaves` samples of the field,
@@ -786,6 +903,65 @@ public extension Sketch {
     /// 3D signed looping noise in `-1...1`.
     func signedNoise(_ x: Double, _ y: Double, _ z: Double, loop: Double, radius: Double = 1) -> Double {
         noiseFields.signedNoise(x, y, z, loop: loop, radius: radius)
+    }
+
+    /// 1D Perlin noise at `x`, with a say over the clamp; a line's field never
+    /// leaves `0...1`, so both answers are `noise(x)`.
+    func noise(_ x: Double, clamped: Bool) -> Double { noiseFields.noise(x, clamped: clamped) }
+    /// 2D Perlin noise at `(x, y)`. With `clamped: false` nothing is cut off:
+    /// the value equals `noise(x, y)` wherever that is strictly between 0 and
+    /// 1, and where `noise` rests on an end (about 4 reads in 100) this one
+    /// keeps going, rarely as far as -0.5 and 1.5, so a curve drawn from it
+    /// never runs flat (see `NoiseFields.noise(_:_:clamped:)`).
+    func noise(_ x: Double, _ y: Double, clamped: Bool) -> Double { noiseFields.noise(x, y, clamped: clamped) }
+    /// 3D Perlin noise at `(x, y, z)`, with a say over the clamp.
+    func noise(_ x: Double, _ y: Double, _ z: Double, clamped: Bool) -> Double {
+        noiseFields.noise(x, y, z, clamped: clamped)
+    }
+    /// 1D signed Perlin noise at `x`, with a say over the clamp; a line's
+    /// field never leaves `-1...1`.
+    func signedNoise(_ x: Double, clamped: Bool) -> Double { noiseFields.signedNoise(x, clamped: clamped) }
+    /// 2D signed Perlin noise at `(x, y)`: with `clamped: false`, rarely as
+    /// far as -2 and 2 where `signedNoise(x, y)` rests on an end.
+    func signedNoise(_ x: Double, _ y: Double, clamped: Bool) -> Double {
+        noiseFields.signedNoise(x, y, clamped: clamped)
+    }
+    /// 3D signed Perlin noise at `(x, y, z)`, with a say over the clamp.
+    func signedNoise(_ x: Double, _ y: Double, _ z: Double, clamped: Bool) -> Double {
+        noiseFields.signedNoise(x, y, z, clamped: clamped)
+    }
+    /// Looping noise with a say over the clamp (see `noise(loop:radius:)`).
+    func noise(loop: Double, radius: Double = 1, clamped: Bool) -> Double {
+        noiseFields.noise(loop: loop, radius: radius, clamped: clamped)
+    }
+    /// 1D looping noise at `x` with a say over the clamp.
+    func noise(_ x: Double, loop: Double, radius: Double = 1, clamped: Bool) -> Double {
+        noiseFields.noise(x, loop: loop, radius: radius, clamped: clamped)
+    }
+    /// 2D looping noise at `(x, y)` with a say over the clamp.
+    func noise(_ x: Double, _ y: Double, loop: Double, radius: Double = 1, clamped: Bool) -> Double {
+        noiseFields.noise(x, y, loop: loop, radius: radius, clamped: clamped)
+    }
+    /// 3D looping noise at `(x, y, z)` with a say over the clamp.
+    func noise(_ x: Double, _ y: Double, _ z: Double, loop: Double, radius: Double = 1, clamped: Bool) -> Double {
+        noiseFields.noise(x, y, z, loop: loop, radius: radius, clamped: clamped)
+    }
+    /// Signed looping noise with a say over the clamp: the form for a
+    /// position that should drift all lap and never rest at an end.
+    func signedNoise(loop: Double, radius: Double = 1, clamped: Bool) -> Double {
+        noiseFields.signedNoise(loop: loop, radius: radius, clamped: clamped)
+    }
+    /// 1D signed looping noise at `x` with a say over the clamp.
+    func signedNoise(_ x: Double, loop: Double, radius: Double = 1, clamped: Bool) -> Double {
+        noiseFields.signedNoise(x, loop: loop, radius: radius, clamped: clamped)
+    }
+    /// 2D signed looping noise at `(x, y)` with a say over the clamp.
+    func signedNoise(_ x: Double, _ y: Double, loop: Double, radius: Double = 1, clamped: Bool) -> Double {
+        noiseFields.signedNoise(x, y, loop: loop, radius: radius, clamped: clamped)
+    }
+    /// 3D signed looping noise at `(x, y, z)` with a say over the clamp.
+    func signedNoise(_ x: Double, _ y: Double, _ z: Double, loop: Double, radius: Double = 1, clamped: Bool) -> Double {
+        noiseFields.signedNoise(x, y, z, loop: loop, radius: radius, clamped: clamped)
     }
 
     /// 1D fractal (layered) noise in `0...1` (see `NoiseFields.fbm(_:octaves:gain:lacunarity:)`).

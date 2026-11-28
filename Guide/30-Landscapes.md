@@ -113,6 +113,12 @@ And because a sample knows the surface, a scatter can be filtered by what the su
 let flat = surfacePoints(on: terrain, count: 800).filter { $0.normal.y > 0.85 }
 ```
 
+A sphere needs none of this. `spherePoints(count: 400)` returns 400 points spread evenly over a ball, by formula. There is no mesh, nothing random, and no crowding at the poles. `hemispherePoints` does the same for a dome of lamps. [Points on a surface § spherePoints](../Docs/Generators/SurfaceSampling.md#sphere) has the picture and the measure of how even it is.
+
+```swift
+let lamps = hemispherePoints(count: 60, radius: 4)
+```
+
 ## A world the camera trims: MeshField
 
 A hillside scattered this way can run to a quarter of a million copies. Rebuilding that many placements every frame is not cheap. Drawing them all is worse when the camera can only ever see a corner of them. A **`MeshField`** is for that case. You build the world once and draw it with one call, and every frame the GPU itself decides which copies the camera can see.

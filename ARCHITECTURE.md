@@ -6362,6 +6362,36 @@ swap unrecorded.
 
 ---
 
+## The disk collision pass
+
+With `particlesCollide` on, every relaxation pass of the 2D `World` pushes overlapping disks apart (`Sources/OllinPhysics/DiskPass.swift`, called from `World.solveCollisions`). The work is in finding the pairs.
+
+**What it replaced.** One grid as wide as the largest disk, kept in a dictionary of cells rebuilt each pass, each disk compared with its own cell and the eight around it. That is right for disks of one size and wrong for a mix: the cell is sized for the largest disk, so a small disk is compared with every small disk in an area nine large disks wide. At 9,000 disks and four passes it took 37 ms a step at one size (most of it the dictionary) and 442 ms with radii from 5 to 80 px, and one disk of 600 px among 8,999 of 4 px took 4.5 s.
+
+**What it is.** A grid of several cell sizes in one table.
+
+- *Levels.* The coarsest cell is the largest disk's diameter, and each level under it halves the cell. A disk is filed once, by its center, at the finest level whose cell still spans it: `level = exponent(largest / radius)`, the whole part of a base-two logarithm read from the float's own exponent, 30 at most. Two disks of one level can only touch from the same or a neighboring cell. A disk and a larger one can only touch if the larger one's center is within the small one's radius plus half a cell of the small one's center, at the larger one's level. So each disk scans its own level for higher indices and then each coarser level that holds anything (a bit mask says which), and every pair is found exactly once, from the finer disk's side.
+- *The table.* Every (level, cell) is hashed to a bucket, with the three primes of the spatial hash and then the high bits of one more multiply, since the table's size is a power of two. The table is filled by a counting sort: count each bucket's disks, turn the counts into end offsets with a running sum, and walk the disks backward dropping each index at its bucket's offset. That leaves one contiguous array with each bucket's disks in ascending order, and nothing is allocated per cell. Two cells share a bucket, and so do two levels, so a disk found in a bucket is taken only when the cell and the level it was filed under are the ones being looked in. `DiskPassTests` builds the case where a small disk and a large one share a bucket and a cell's numbers, which only the level tells apart.
+- *The gather.* Positions, radii, and weights are copied into one array of plain values for the pass and the positions written back after it. Springs and soft bodies move particles between two passes, so the copy is once a pass.
+
+**The order is part of the result.** Resolving a pair moves both disks, so a different order settles a different pile. Disks are walked by index, the cells in one fixed scan, a bucket's disks ascending, and nothing in it depends on a hash that changes from one process to the next. When every disk is within a factor of two of the largest there is one level, the cells are the old grid's cells, and the scan is the old scan, so such a pile is resolved pair for pair as it always was and settles on the same bits. Two details keep that true. The cells a disk scans are worked out from where the disk is when its turn comes, while the table keeps where every disk was when the pass began, which is what the old pass did. And the scan of a disk's own level stays the full nine cells: narrowing it to the cells its radius reaches finds every pair that touched when the table was built, but not a pair that an earlier push of the same pass brought together across a cell line, and the old pass found those.
+
+The coarser levels are narrowed, to the cells within the disk's radius plus half a cell (two an axis for a disk much smaller than the cell, never more than three). That took the mixed pile from 16.1 ms a step to 14.3.
+
+**Read and declined: filing a large disk in every cell it covers.** With the cell sized to the typical disk, a large disk is entered in each cell its box overlaps and a pair is resolved in the one cell that holds the lower corner of the two boxes' overlap. It handles a modest spread of sizes. Its cost is the square of the size ratio, though: a disk of 2,000 px among disks of 2 px is a million entries on every pass. The levels cost one entry a disk whatever the ratio.
+
+**Measured**, release build, M2, 9,000 disks over 1080 by 1920 at four passes unless said, a step in milliseconds:
+
+| Pile | One grid | Several cell sizes |
+|---|---|---|
+| every disk 8 px | 37.4 | 8.2 |
+| radii 7 to 9 px | 40.8 | 8.7 |
+| radii 5 to 80 px, most of them small | 442 | 14.3 |
+| 8,999 at 4 px and one at 600 px | 4,480 | 8.5 |
+| 3,650 at 8 to 32 px | 26.2 | 5.0 |
+
+The first two settle on the same bits under both. The harness is a sketch that builds each pile from a seed and times forty steps after twenty, run through the release runner before and after.
+
 ## The 2D soft body
 
 `World.addSoftBody(from:)` (`Sources/OllinPhysics/SoftBody.swift`) turns a `Shape` into a ring of ordinary `Particle`s per contour and holds them with four constraint families inside the world's own relaxation passes: an edge back to its rest length (`stiffness`), links from each particle to the ones two and three along its ring (`bend`), each ring's signed area back to its rest (`pressure`), and every particle toward a rigid fit of the rest shape (`shapeMemory`, shape matching after Müller, Heidelberger, Teschner and Gross 2005, the best turn in the plane read in closed form as `atan2` of the summed cross and dot products). Each is written in the compliant form of XPBD (Macklin, Müller and Chentanez 2016, read from the paper: Δλ = (−C − α̃λ) / (∇C M⁻¹ ∇Cᵀ + α̃), α̃ = α / h², λ cleared at the start of every step), which is what lets a setting mean one body at any step: a disc sagging under its own weight settles to heights within 2% at 30, 60, 120 and 240 Hz. Contacts are hard (no compliance, no multiplier, as the paper treats them).

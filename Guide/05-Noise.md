@@ -102,6 +102,21 @@ final class Clouds: Sketch {
 
 That is clouds, in about twenty lines. Each cell asks the field at its own position, times the zoom multiplier, and paints the answer as a gray. `Color(white:)` runs from 0, black, to 1, white. Neighboring cells ask neighboring places, so the shades drift instead of flickering, and cloudy continents appear. The right panel of the figure is the same field with its answers drawn as dot *sizes* instead. That pointillist look is a two-line change: a fixed fill, and a `drawCircle` sized by `n`. This move, compute a value per position and let it drive any visual property you like, is most of what noise is *for*.
 
+The grays hide one thing. To reach all the way to black and to white, `noise` stretches its field and cuts off whatever runs past. So about four cells in a hundred are exactly 0 or exactly 1. As shades that never shows. Drawn as heights, though, a row of the field runs flat along the top and the bottom wherever it was cut:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/05-Noise/NoiseUnclamped-dark.jpg">
+  <img src="Images/05-Noise/NoiseUnclamped.jpg" alt="Two readings of one row of a noise field between lines marked 1 and 0: in the upper one the curve runs flat along each line for a stretch, marked heavily; in the lower one the same curve passes through both lines and comes back, with no flat stretch" width="680">
+</picture>
+
+When a curve should never rest, ask for the field before the cut:
+
+```swift
+let lift = noise(x * 0.006, y * 0.006, clamped: false)
+```
+
+It is the same number wherever `noise` is between its ends. Where `noise` stops, it keeps going, rarely as far as -0.5 and 1.5. `signedNoise` takes the same label. [Noise § clamped](../Docs/Generators/Noise.md#clamped) has the range and the way back inside it.
+
 ## The third dimension is time
 
 The `Clouds` field holds still. To move it, ask for one more dimension. `noise(x, y, z)` is a smooth *volume* of answers. Slide `z` gently while keeping `x` and `y` put, and every point of your 2D field changes, smoothly, each at its own pace. In `Clouds`, change one line:

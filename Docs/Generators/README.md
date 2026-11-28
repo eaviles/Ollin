@@ -9,7 +9,7 @@
 - [`Noise`](./Noise.md) - Perlin `noise`, `signedNoise`, and `curlNoise` flow fields
 - [`Blue noise`](./BlueNoise.md) - `poissonDisk`, Poisson-disk sampling: a scatter that is even but still looks natural, with no clumps and no gaps, over a rectangle or inside a `Shape`
 - [`Low-discrepancy sampling`](./LowDiscrepancy.md) - `haltonPoints` / `sobolPoints`, even coverage as an ordered stream, so raising the count adds points without moving the ones already placed
-- [`Points on a surface`](./SurfaceSampling.md) - `surfacePoints`, points scattered over the surface of a mesh rather than over its vertex list. They are evenly spaced by default, and each point carries the normal, the texture coordinate, and the triangle it landed on
+- [`Points on a surface`](./SurfaceSampling.md) - `surfacePoints`, points scattered over the surface of a mesh rather than over its vertex list. They are evenly spaced by default, and each point carries the normal, the texture coordinate, and the triangle it landed on. `spherePoints` and `hemispherePoints` spread any number of points evenly over a ball or a dome by formula.
 - [`Stippling`](./Stippling.md) - `stipple`, weighted-Voronoi stippling: dots packed to reproduce the tone of an image, or any density function
 - [`De Bruijn sequences`](./DeBruijn.md) - `deBruijnSequence` + `DeBruijnCode`, a cyclic sequence that holds every window of a given length exactly once. That means a few symbols in a row tell you where in the sequence they came from
 - [`Ford circles`](./FordCircles.md) - `fordCircles`, one circle for every fraction, each touching its neighbors and overlapping nothing, built over `fareySequence` and the exact `Fraction` type

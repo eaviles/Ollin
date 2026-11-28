@@ -19,6 +19,9 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 - **A camera stand-in of any kind.** `Camera.or { film }` gives a sketch the camera, or a feed you build when there is none: a film, a screen, a feed of your own. On a first run and under `--photo` it behaves as `Camera.orStill` does. [Vision](Docs/Vision/Vision.md#nocamera)
 - **`isLive` on every feed.** `feed.isLive` is `true` for a running camera, a captured screen, and a phone on the cable, and `false` for a film, a still, and a recording. A feed from `Camera.or` or `Camera.orStill` turns `true` when the camera takes over. [Vision](Docs/Vision/Vision.md#nocamera)
 - **A page for a wrong address.** A wrong address on the website gets a page in the site's own look, with the search and the three sections, where it got the host's. `ollin site` writes it as `404.html` when the site knows its address. [The reference offline](Docs/Tools/Reference.md#in-a-browser)
+- **Points spread evenly over a sphere.** `spherePoints(count:)` returns exactly that many points on a sphere, each about the same distance from its neighbors, with no crowding at the poles. `hemispherePoints(count:)` is the upper half, a dome. Both take a `radius`, and nothing in them is random. [Points on a surface](Docs/Generators/SurfaceSampling.md#sphere)
+- **Noise with nothing cut off.** `noise(x, y, clamped: false)` reads the field before `noise` cuts it off at 0 and 1, so a curve drawn from it never runs flat. It runs a little past both ends, as far as -0.5 and 1.5. `signedNoise` and the looping forms take the label too. [Noise](Docs/Generators/Noise.md#clamped)
+- **Removing many particles at once.** `world.remove(particles)` takes a list out of a physics world in one pass, with the springs attached, where a hundred single removals each read the whole world. `world.remove(springs)` does the same for a list of springs. [Physics](Docs/Simulation/Physics.md#world)
 
 ### Changed
 
@@ -48,6 +51,7 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 - **`kaleidoscope` repeats the wedge it is turned to.** It read the picture turned half round, so the wedge it repeated came from the left of the middle. It now comes from the right, as `angle: 0` says. To keep an old wheel, draw the picture into its layer under `rotate(.pi)` about the middle. [Effects](Docs/Drawing/Effects.md#distortion)
 - **The website holds a picture's place and loads it as you reach it.** Every picture's tag carries its size, so the text under it no longer jumps as it arrives. All but a page's first picture load as you come near. Chapter 19 fetched 3.8 MB on opening and now fetches 1.2 MB. [The reference offline](Docs/Tools/Reference.md#in-a-browser)
 - **The website from a keyboard, and at low contrast.** The first Tab reaches a "Skip to content" link, and the focus shows as a ring in the page's ink. The faint gray labels and the comments in code now read at 4.5 to 1 or better, and a link inside gray text is underlined. [The reference offline](Docs/Tools/Reference.md#in-a-browser)
+- **Colliding disks stay fast when their sizes vary.** A step of 9,000 disks with radii from 5 to 80 px took 442 ms and takes 14. At one size it took 37 and takes 8. A pile of one size settles where it did. A pile of mixed sizes settles differently once, then the same on every run. [Physics](Docs/Simulation/Physics.md#world)
 
 ### Fixed
 

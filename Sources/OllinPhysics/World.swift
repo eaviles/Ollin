@@ -182,6 +182,9 @@ public final class World {
     /// when the world has both and emptied once their impulses are handed over.
     var rigidProxies: [RigidProxy] = []
 
+    /// The disk collision pass and its working storage, kept between passes.
+    private var diskPass = DiskPass()
+
     public init() {}
 
     deinit {
@@ -222,6 +225,15 @@ public final class World {
         springs.removeAll { $0 === spring }
     }
 
+    /// Remove many springs in one pass over the world, which is what a cloth
+    /// torn in many places at once wants: each single removal reads through
+    /// every spring, and this reads through them once.
+    public func remove(_ springs: [Spring]) {
+        guard !springs.isEmpty else { return }
+        let gone = Set(springs.map(ObjectIdentifier.init))
+        self.springs.removeAll { gone.contains(ObjectIdentifier($0)) }
+    }
+
     /// Remove a particle and any springs attached to it. A particle that is
     /// part of a soft body takes the whole body with it, since a ring with a
     /// gap in it is no longer an outline.
@@ -232,6 +244,51 @@ public final class World {
         }
         springs.removeAll { $0.a === particle || $0.b === particle }
         particles.removeAll { $0 === particle }
+    }
+
+    /// Remove many particles in one pass over the world, with the springs
+    /// attached to them. The world is left as it would be after removing each
+    /// one in turn, a soft body going whole when one of its particles is
+    /// named, but the particles and the springs are read through once rather
+    /// than once a particle. A packing that retires hundreds of disks a frame
+    /// gathers them and calls this.
+    ///
+    /// ```swift
+    /// let gone = world.particles.filter { $0.position.y > height + $0.radius }
+    /// world.remove(gone)
+    /// ```
+    public func remove(_ particles: [Particle]) {
+        guard !particles.isEmpty else { return }
+        var gone = Set<ObjectIdentifier>(minimumCapacity: particles.count)
+        var goneBodies = Set<ObjectIdentifier>()
+        for particle in particles {
+            if let body = particle.softBody {
+                goneBodies.insert(ObjectIdentifier(body))
+            } else {
+                gone.insert(ObjectIdentifier(particle))
+            }
+        }
+        // A body that is not in this world takes nothing with it.
+        if !goneBodies.isEmpty {
+            let here = Set(softBodies.map(ObjectIdentifier.init))
+            goneBodies.formIntersection(here)
+        }
+        if goneBodies.isEmpty {
+            guard !gone.isEmpty else { return }
+            springs.removeAll { gone.contains(ObjectIdentifier($0.a)) || gone.contains(ObjectIdentifier($0.b)) }
+            self.particles.removeAll { gone.contains(ObjectIdentifier($0)) }
+            return
+        }
+        func leaves(_ particle: Particle) -> Bool {
+            if gone.contains(ObjectIdentifier(particle)) { return true }
+            guard let body = particle.softBody else { return false }
+            return goneBodies.contains(ObjectIdentifier(body))
+        }
+        // The bodies go last: a particle knows its body by a weak reference,
+        // and the world's list is what keeps a body alive.
+        springs.removeAll { leaves($0.a) || leaves($0.b) }
+        self.particles.removeAll(where: leaves)
+        softBodies.removeAll { goneBodies.contains(ObjectIdentifier($0)) }
     }
 
     /// Take a soft body out of the world, with its particles and any springs
@@ -364,68 +421,27 @@ public final class World {
         b2Body_SetAngularDamping(body.id, rate)
     }
 
-    /// A cell key for the collision spatial hash.
-    private struct Cell: Hashable { let x: Int; let y: Int }
-
-    /// Push overlapping disks apart, broad-phased through a uniform spatial hash:
-    /// bucket each disk into a grid sized to the largest radius, then test only
-    /// the same and neighboring cells. That drops the pass from O(n²) toward
-    /// O(n), so thousands of disks stay interactive.
+    /// Push overlapping disks apart. The disks are gathered into `diskPass`,
+    /// which finds the pairs through a grid of several cell sizes and resolves
+    /// them in a fixed order, and their positions are written back after it.
+    /// Springs and soft bodies move particles between two passes, so the
+    /// gather is once a pass and not once a step.
     private func solveCollisions() {
-        var maxRadius = 0.0
-        for p in particles where p.radius > 0 { maxRadius = Swift.max(maxRadius, p.radius) }
-        guard maxRadius > 0 else { return }
-
-        // A cell spans the largest disk, so two disks can only touch if they sit
-        // in the same or an adjacent cell.
-        let cellSize = maxRadius * 2
-        var grid: [Cell: [Int]] = [:]
-        for i in particles.indices where particles[i].radius > 0 {
-            let p = particles[i].position
-            let cell = Cell(x: Int((p.x / cellSize).rounded(.down)),
-                            y: Int((p.y / cellSize).rounded(.down)))
-            grid[cell, default: []].append(i)
+        diskPass.removeAll()
+        for index in particles.indices {
+            let particle = particles[index]
+            let radius = particle.radius
+            guard radius > 0 else { continue }
+            let at = particle.position
+            diskPass.add(x: at.x, y: at.y, radius: radius,
+                         weight: particle.isPinned ? 0 : particle.inverseMass, index: index)
         }
-
-        // Each disk against its own and the eight neighboring buckets, walked
-        // in particle-index order with a fixed cell scan. Resolution shifts
-        // positions as it goes, so the pair order changes the outcome; a
-        // Dictionary walk here would reorder per process and a seeded pile
-        // would settle differently on every run. The `j > i` guard resolves
-        // every pair exactly once.
-        for i in particles.indices where particles[i].radius > 0 {
-            let p = particles[i].position
-            let cx = Int((p.x / cellSize).rounded(.down))
-            let cy = Int((p.y / cellSize).rounded(.down))
-            for dx in -1 ... 1 {
-                for dy in -1 ... 1 {
-                    guard let neighbors = grid[Cell(x: cx + dx, y: cy + dy)] else { continue }
-                    for j in neighbors where j > i {
-                        resolveCollision(particles[i], particles[j])
-                    }
-                }
-            }
+        guard diskPass.disks.count > 1 else { return }
+        diskPass.build()
+        diskPass.resolve()
+        for disk in diskPass.disks {
+            particles[Int(disk.index)].position = Vector2(disk.x, disk.y)
         }
-    }
-
-    private func resolveCollision(_ a: Particle, _ b: Particle) {
-        let minDistance = a.radius + b.radius
-        let delta = b.position - a.position
-        let distanceSquared = delta.lengthSquared
-        guard distanceSquared < minDistance * minDistance else { return }
-
-        let wA = a.isPinned ? 0 : a.inverseMass
-        let wB = b.isPinned ? 0 : b.inverseMass
-        let wSum = wA + wB
-        guard wSum > 0 else { return }
-
-        // Almost-coincident disks have no reliable normal; shove them apart along
-        // x so they separate rather than stay locked together.
-        let distance = distanceSquared.squareRoot()
-        let normal = distance > 1e-9 ? delta / distance : .unitX
-        let overlap = minDistance - distance
-        a.position -= normal * (overlap * (wA / wSum))
-        b.position += normal * (overlap * (wB / wSum))
     }
 
     /// Keep a soft body's particle inside `bounds` by its position alone. The

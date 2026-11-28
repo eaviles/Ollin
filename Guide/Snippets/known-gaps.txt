@@ -51,8 +51,8 @@ ae33653cb376  Guide/09-Pictures.md:70  cannot find 'c' in scope
 7856a82b5957  Guide/10-Vectors.md:105  cannot find 'target' in scope
 d7900de9175f  Guide/10-Vectors.md:187  cannot find 'target' in scope
 5f55cca8347f  Guide/10-Vectors.md:93  cannot find 'home' in scope
-766fbe6bd4ab  Guide/11-ForcesAndPhysics.md:308  cannot convert value of type '@MainActor (Vector2, World3D) -> (body: Body3D, point: Vector3)?' to expected argument type 'Body'
-903bd8f5d681  Guide/11-ForcesAndPhysics.md:316  cannot convert value of type '@MainActor (Vector2, World3D) -> (body: Body3D, point: Vector3)?' to expected argument type 'Body'
+766fbe6bd4ab  Guide/11-ForcesAndPhysics.md:314  cannot convert value of type '@MainActor (Vector2, World3D) -> (body: Body3D, point: Vector3)?' to expected argument type 'Body'
+903bd8f5d681  Guide/11-ForcesAndPhysics.md:322  cannot convert value of type '@MainActor (Vector2, World3D) -> (body: Body3D, point: Vector3)?' to expected argument type 'Body'
 ffa12e764a7d  Guide/12-FlocksAndSwarms.md:17  cannot find 'position' in scope
 c75eb2a20310  Guide/12-FlocksAndSwarms.md:431  cannot find 'crowd' in scope
 750461323d36  Guide/14-FieldsAndFlow.md:281  cannot find 'x' in scope
@@ -108,13 +108,13 @@ c16c7a492674  Guide/28-Meshes.md:54  cannot find 'planks' in scope
 065e7cce3310  Guide/29-MaterialsAndSurroundings.md:259  cannot find 'picture' in scope
 3a68ceb00213  Guide/29-MaterialsAndSurroundings.md:345  extraneous '}' at top level
 87febb19eda0  Guide/30-Landscapes.md:112  cannot find 'terrain' in scope
-253f73297f5f  Guide/30-Landscapes.md:122  cannot find 'stone' in scope
-79d4d92f990c  Guide/30-Landscapes.md:147  cannot convert value of type '(UnboundedRange_) -> ()' to expected argument type 'Camera3D'
-36c57a603360  Guide/30-Landscapes.md:168  expected '}' in class
+253f73297f5f  Guide/30-Landscapes.md:128  cannot find 'stone' in scope
+79d4d92f990c  Guide/30-Landscapes.md:153  cannot convert value of type '(UnboundedRange_) -> ()' to expected argument type 'Camera3D'
+36c57a603360  Guide/30-Landscapes.md:174  expected '}' in class
 3c18b3cd74f1  Guide/30-Landscapes.md:24  cannot find 'land' in scope
-39cb8dca0194  Guide/30-Landscapes.md:303  cannot find 'floorLevel' in scope
-074d5a59079a  Guide/30-Landscapes.md:410  extraneous '}' at top level
-e14013929298  Guide/30-Landscapes.md:490  cannot find 'weathered' in scope
+39cb8dca0194  Guide/30-Landscapes.md:309  cannot find 'floorLevel' in scope
+074d5a59079a  Guide/30-Landscapes.md:416  extraneous '}' at top level
+e14013929298  Guide/30-Landscapes.md:496  cannot find 'weathered' in scope
 0649a06223a3  Guide/30-Landscapes.md:60  cannot find 'seats' in scope
 fdc04519f206  Guide/30-Landscapes.md:96  cannot find 'island' in scope
 298b8d77d963  Guide/32-CharactersAndCloth.md:196  labeled block needs 'do'

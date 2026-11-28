@@ -15,6 +15,7 @@ Perlin `noise` is coherent, which means nearby inputs give nearby outputs. That 
 
 - [noise](#noise)
 - [signedNoise](#signedNoise)
+- [Noise with nothing cut off: `clamped:`](#clamped)
 - [Looping noise: `loop:`](#loop)
 - [fbm / signedFbm](#fbm)
 - [Tiling noise: a picture that repeats](#tiling)
@@ -49,7 +50,7 @@ drawCircle(x, y, n * 20)
 Two facts about every Perlin form here, the looping ones included, follow from how it is built:
 
 - **The field repeats every 256 units on each axis.** The lattice is hashed through a table of 256 entries, so `noise(x)` and `noise(x + 256)` are the same value, and so are two reads 256 apart in `y` or `z`. An offset used to give each copy of something a noise of its own should not be a multiple of 256, and a step whose multiples land on 256 repeats: copies offset by `32 * i` read the same field every eighth copy. An offset that is not a power of two (`37.3 * i`) or a seed of its own per copy avoids it.
-- **The ends of the range are flat.** Contrast-calibrated means the raw field is scaled up and the overshoot clamped, which is what lets it reach 0 and 1. The price is that a share of the field sits exactly on an end: over 800,000 samples, 1.9% of `noise(x, y)` is exactly 0 and 2.0% exactly 1, and the looping forms 2 to 3.5% at each end. In three dimensions the share is larger: over 2 million samples, `noise(x, y, z)` is exactly 0 3.2% of the time and exactly 1 3.2%, with a deviation of 0.265 against 0.252 in two. `noise(x)` never reaches either end. A curve read straight from the field runs flat there. Two reads at unrelated offsets averaged and rescaled are flat only where both clamp at once.
+- **The ends of the range are flat.** Contrast-calibrated means the raw field is scaled up and the overshoot clamped, which is what lets it reach 0 and 1. The price is that a share of the field sits exactly on an end: over 800,000 samples, 1.9% of `noise(x, y)` is exactly 0 and 2.0% exactly 1, and the looping forms 2 to 3.5% at each end. In three dimensions the share is larger: over 2 million samples, `noise(x, y, z)` is exactly 0 3.2% of the time and exactly 1 3.2%, with a deviation of 0.265 against 0.252 in two. `noise(x)` never reaches either end. A curve read straight from the field runs flat there. [`clamped: false`](#clamped) reads the same field with nothing cut off.
 
 <a name="signedNoise"></a>
 
@@ -65,6 +66,40 @@ The same field in `-1...1`, following the `ofSignedNoise` and OPENRNDR conventio
 let dx = signedNoise(time * 0.5) * 40   // drift left and right
 drawCircle(width / 2 + dx, height / 2, 30)
 ```
+
+<a name="clamped"></a>
+
+#### Noise with nothing cut off: `clamped:`
+
+```swift
+noise(_ x: Double[, _ y: Double[, _ z: Double]], clamped: Bool) -> Double
+signedNoise(_ x: Double[, _ y: Double[, _ z: Double]], clamped: Bool) -> Double
+```
+
+The same field, read before the cut. `noise` stretches its field to fill `0...1` and cuts off whatever runs past. That is why about 4 reads in 100 of a 2D field sit exactly on 0 or on 1, and 6 in 100 in 3D. With `clamped: false` nothing is cut off. The value is `noise` itself, bit for bit, wherever `noise` is strictly between its ends. Where `noise` rests on an end, this one keeps going. So a curve drawn from it never runs flat, and a point placed by it never rests.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/05-Noise/NoiseUnclamped-dark.jpg">
+  <img src="../../Guide/Images/05-Noise/NoiseUnclamped.jpg" alt="Two readings of one row of a noise field between lines marked 1 and 0: in the upper one the curve runs flat along each line for a stretch, marked heavily; in the lower one the same curve passes through both lines and comes back, with no flat stretch" width="680">
+</picture>
+
+```swift
+// A ridge line that keeps moving where noise(x, y) would run flat.
+let row = 3.2, base = height / 2
+for x in stride(from: 0.0, to: width, by: 4) {
+    let lift = noise(x * 0.01, row, clamped: false)
+    let next = noise((x + 4) * 0.01, row, clamped: false)
+    drawLine(x, base - lift * 80, x + 4, base - next * 80)
+}
+```
+
+The price is the range. The field runs past both ends, rarely and not far. Over 800,000 reads of a 2D field, 96 in 100 were inside `0...1`, the least was about -0.5, and the most about 1.5. The signed form runs as far as about -2 and 2. A color or a blend amount has to stay inside `0...1`. For those, halve the value's distance from the middle, which trades the flat ends for a lower contrast:
+
+```swift
+let held = 0.5 + (noise(x, y, clamped: false) - 0.5) / 2    // always inside 0...1
+```
+
+`clamped: true` is the plain call. A line's field, `noise(x)`, never leaves its range, so for it both answers are the same number. The label is there so one call can be written for every dimension. Every [looping form](#loop) takes the label too, after `radius:`, and a lap still closes. `signedNoise(x, loop: lap, clamped: false)` is the form for a position that should drift all lap and never rest at the end of its swing.
 
 <a name="loop"></a>
 
@@ -105,7 +140,7 @@ for p in points {
 
 Under the hood, the loop uses extra noise dimensions: the circle a lap follows takes two axes of its own beside the point's. So the two-coordinate form samples a 4D field and the three-coordinate form a 5D one. That is the standard construction for a looping animation, and nothing is blended between two reads, so the field keeps one character all the way round. The 5D field is scaled to spread like the 3D one: moving a sketch from `noise(x, y, z)` to its looping form keeps its contrast. Exports and snapshots stay deterministic, because `loop` wraps, so `loop: 0` and `loop: 1` are the same sample bit for bit.
 
-The value is stretched to fill its range and clipped where it passes the ends. About 6 samples in 100 of the looping forms therefore sit exactly at an end (`0` or `1`, and `-1` or `1` signed). A texture never shows that. A point placed by it rests at the end of its swing for a stretch each time. For motion, take the mean of two reads far apart in the field: `(signedNoise(x, loop: lap) + signedNoise(x + 100, loop: lap)) / 2`. It rests about 3 times in 1,000 and swings about three quarters as far.
+The value is stretched to fill its range and clipped where it passes the ends. About 6 samples in 100 of the looping forms therefore sit exactly at an end (`0` or `1`, and `-1` or `1` signed). A texture never shows that. A point placed by it rests at the end of its swing for a stretch each time. For motion there are two ways round it. Read it with [`clamped: false`](#clamped), which never rests and swings past the range's ends. Or take the mean of two reads far apart in the field, which stays inside the range: `(signedNoise(x, loop: lap) + signedNoise(x + 100, loop: lap)) / 2`. The mean rests about 3 times in 1,000 and swings about three quarters as far.
 
 <a name="fbm"></a>
 
