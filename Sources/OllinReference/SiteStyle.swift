@@ -119,8 +119,8 @@ enum SiteStyle {
        around it, and a reader who does not see the hue has nothing. There
        it takes a thin underline; in ordinary prose the ink is far enough
        from the link's color to do without one. */
-    .prose blockquote a, .home-opening > ul > li a, .home-whats-in-it > ul > li a, .band-code > p a { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.18em; text-decoration-color: color-mix(in srgb, currentColor 45%, transparent); }
-    .prose blockquote a:hover, .home-opening > ul > li a:hover, .home-whats-in-it > ul > li a:hover, .band-code > p a:hover { text-decoration-color: currentColor; }
+    .prose blockquote a, .home-facts > ul > li a, .home-whats-in-it > ul > li a, .band-code > p a { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.18em; text-decoration-color: color-mix(in srgb, currentColor 45%, transparent); }
+    .prose blockquote a:hover, .home-facts > ul > li a:hover, .home-whats-in-it > ul > li a:hover, .band-code > p a:hover { text-decoration-color: currentColor; }
     code, pre, kbd { font-family: var(--mono); font-size: 0.88em; }
     /* A long name in code type breaks where the line ends, since it has no
        space to break at and would otherwise push the page wider than a
@@ -130,6 +130,55 @@ enum SiteStyle {
     pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 14px; padding: 1.1rem 1.25rem; overflow-x: auto; line-height: 1.6; font-size: 13.5px; }
     pre code { background: none; padding: 0; font-size: inherit; overflow-wrap: normal; }
     table code { overflow-wrap: normal; }
+    /* A block of code stands in a frame that does not scroll, so what is
+       set on the frame stays put while a long line slides under it: the
+       button that copies the block, and a fade at whichever edge a line
+       runs past, which is the cue that the block scrolls. The button shows
+       when the pointer is over the block or the keyboard is on the button.
+       Where there is no pointer to hover with it shows once the block has
+       been touched, and until then it is not there to be hit: on a phone
+       nearly every line reaches the block's edge, and a button standing on
+       every block would cover the code it is there to copy. Both are the
+       script's: with none, the frame is a box and nothing more. */
+    .code { position: relative; }
+    .code::before, .code::after { content: ""; position: absolute; z-index: 1; top: 1px; bottom: 1px; width: 3rem; pointer-events: none; opacity: 0; transition: opacity 150ms var(--ease); }
+    .code::before { left: 1px; border-radius: 13px 0 0 13px; background: linear-gradient(to left, transparent, var(--code-bg)); }
+    .code::after { right: 1px; border-radius: 0 13px 13px 0; background: linear-gradient(to right, transparent, var(--code-bg)); }
+    .code.more-before::before, .code.more-after::after { opacity: 1; }
+    .copy { position: absolute; z-index: 2; top: 0.85rem; right: 0.85rem; display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; padding: 0; border: 1px solid var(--border); border-radius: 9px; background: var(--bg); color: var(--text-2); cursor: pointer; opacity: 0; transition: opacity 150ms var(--ease), color 150ms var(--ease); -webkit-tap-highlight-color: transparent; }
+    .code:hover .copy, .code.touched .copy, .copy:focus-visible, .code.copied .copy { opacity: 1; }
+    .copy:hover, .code.copied .copy { color: var(--text); }
+    .copy .icon { width: 16px; height: 16px; }
+    .copy .icon-done, .code.copied .copy .icon-copy { display: none; }
+    .code.copied .copy .icon-done { display: block; }
+    @media (hover: none) {
+      .code:hover .copy { opacity: 0; }
+      .code.touched .copy, .code.copied .copy, .code .copy:focus-visible { opacity: 1; }
+      .code:not(.touched):not(.copied) .copy:not(:focus-visible) { pointer-events: none; }
+    }
+    /* A heading's own address: a mark at the end of the heading, shown while
+       the pointer is over the heading or the keyboard is on the mark, that
+       goes to the heading itself. The mark takes no room in the line (its
+       margin gives back its own width) and stands no taller than the words,
+       so it never moves a word. The heading keeps that much room clear at
+       its end instead, which is where the mark hangs: a heading whose words
+       reach the end of their line would otherwise push its mark out past
+       the column, and the page would scroll sideways for a mark nobody can
+       see. Where there is no pointer to hover with, the mark and the room
+       for it are both left out: the list of the page's sections already
+       hands a phone every address. */
+    .anchor { display: none; align-items: center; justify-content: center; width: 1.05em; height: 1em; margin: 0 -1.25em 0 0.2em; border-radius: 6px; color: var(--text-2); opacity: 0; transition: opacity 150ms var(--ease), color 150ms var(--ease); }
+    .anchor .icon { width: 0.72em; height: 0.72em; }
+    h2:hover > .anchor, h3:hover > .anchor, h4:hover > .anchor, .anchor:focus-visible, .anchor.copied { opacity: 1; }
+    .anchor:hover, .anchor.copied { color: var(--text); text-decoration: none; }
+    .anchor .icon-done, .anchor.copied .icon-link { display: none; }
+    .anchor.copied .icon-done { display: block; }
+    @media (hover: hover) {
+      .anchor { display: inline-flex; }
+      .prose h2, .prose h3, .prose h4 { padding-right: 1.25em; }
+    }
+    /* What a screen reader is told and nobody is shown. */
+    .spoken { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
     /* A long call carries marks between its labels where it may fold. They
        count only where the column is narrow: on a wide page a name moves
        whole to the next line, and in a table it stays whole. */
@@ -284,7 +333,7 @@ enum SiteStyle {
     .prose h4 { font-size: 17px; font-weight: 600; margin: 1.75rem 0 0.5rem; }
     .prose h5, .prose h6 { font-size: 15px; font-weight: 600; margin: 1.5rem 0 0.5rem; color: var(--text-2); }
     .prose h1 code, .prose h2 code, .prose h3 code, .prose h4 code { font-size: 0.85em; background: none; padding: 0; }
-    .prose p, .prose ul, .prose ol, .prose blockquote, .prose .table, .prose pre, .prose picture, .prose > img { margin: 0 0 1.1rem; }
+    .prose p, .prose ul, .prose ol, .prose blockquote, .prose .table, .prose .code, .prose picture, .prose > img { margin: 0 0 1.1rem; }
     .prose ul, .prose ol { padding-left: 1.4rem; }
     .prose li { margin: 0.3rem 0; }
     .prose li > ul, .prose li > ol { margin: 0.3rem 0 0; }
@@ -292,7 +341,7 @@ enum SiteStyle {
        and code under them: the items stand as far apart as paragraphs do,
        and what an item holds ends flush with it. */
     .spread > li { margin: 1.1rem 0; }
-    .prose li > pre { margin-top: 0.5rem; }
+    .prose li > .code { margin-top: 0.5rem; }
     .prose li > :last-child { margin-bottom: 0; }
     .prose blockquote { border-left: 3px solid var(--border); padding: 0.25rem 0 0.25rem 1.1rem; color: var(--text-2); }
     .prose blockquote p:last-child { margin-bottom: 0; }
@@ -340,7 +389,8 @@ enum SiteStyle {
     .band-slide video { width: 100%; height: auto; border-radius: 14px; background: var(--surface); }
     .band-code { min-width: 0; }
     .band-code > h3 { margin: 0 0 0.85rem; font-size: 19px; font-weight: 600; letter-spacing: -0.015em; }
-    .band-code pre { margin: 0; font-size: 12.5px; line-height: 1.55; }
+    .band-code .code { margin: 0; }
+    .band-code pre { font-size: 12.5px; line-height: 1.55; }
     .band-code > p { margin: 1rem 0 0; font-size: 15px; line-height: 1.5; color: var(--text-2); }
     .band-code > p code { background: var(--surface-2); }
     .band-controls { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-top: 1.75rem; }
@@ -357,7 +407,7 @@ enum SiteStyle {
     .band-dot:hover::before { background: var(--text-2); }
     .band-dot[aria-current="true"]::before { background: var(--text); transform: scale(1.25); }
     .page-hero { margin: 0 0 2rem; }
-    .page-hero video { width: 100%; height: auto; border-radius: 14px; background: var(--surface); }
+    .page-hero video, .page-hero img { width: 100%; height: auto; border-radius: 14px; background: var(--surface); }
     .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem; margin: 0 0 2rem; }
     .gallery figure { margin: 0; }
     .gallery img, .gallery video { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 12px; background: var(--surface); }
@@ -401,17 +451,52 @@ enum SiteStyle {
        sections, each laid out for the width of a page. The blocks are the
        README's own markup; only the classes on the sections are the site's. */
     .home-section { padding: 3.5rem 0; border-top: 1px solid var(--border); }
-    .home-section > h2:first-child, .home-pair h2 { font-size: 34px; letter-spacing: -0.025em; margin: 0 0 1.5rem; }
+    .home-section > h2:first-child { font-size: 34px; letter-spacing: -0.025em; margin: 0 0 1.5rem; }
+    /* The opening: the README's paragraphs, then its facts (what Ollin runs
+       on and is made with, and where it stands) as a sheet of ruled rows,
+       each fact's name hanging to the left of what it says. On a wide page
+       the sheet stands beside the paragraphs, which is what fills the page
+       to its right edge; on a narrower one it goes under them. */
     .home-opening { border-top: 0; padding-top: 0.5rem; }
-    .home-opening > p, .home-opening > blockquote { max-width: 820px; }
-    .home-opening > p:first-child { font-size: 22px; line-height: 1.4; letter-spacing: -0.012em; margin-bottom: 1.5rem; }
-    .home-opening > ul { list-style: none; padding: 0; margin: 2rem 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
-    .home-opening > ul > li { margin: 0; padding: 1.1rem 1.25rem; background: var(--surface); border-radius: 14px; font-size: 15px; line-height: 1.5; color: var(--text-2); }
-    .home-opening > ul > li strong { color: var(--text); }
-    .home-opening > ul > li code { background: var(--surface-2); }
-    .home-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3rem; padding: 3.5rem 0; border-top: 1px solid var(--border); }
-    .home-pair > .home-section { border-top: 0; padding: 0; min-width: 0; }
-    .home-pair p:last-child, .home-pair pre:last-child { margin-bottom: 0; }
+    .home-opening > p, .home-lede, .home-facts { max-width: 820px; }
+    .home-opening > p:first-child, .home-lede > p:first-child { font-size: 22px; line-height: 1.4; letter-spacing: -0.012em; margin-bottom: 1.5rem; }
+    .home-lede > :last-child { margin-bottom: 0; }
+    .home-facts { margin-top: 2.5rem; }
+    .home-facts > ul { list-style: none; padding: 0; margin: 0; }
+    .home-facts > ul > li { position: relative; margin: 0; padding: 0.95rem 0 0.95rem 7.25rem; border-top: 1px solid var(--border); font-size: 15px; line-height: 1.5; color: var(--text-2); }
+    .home-facts > ul > li > strong:first-child { position: absolute; left: 0; top: 0.95rem; color: var(--text); }
+    .home-facts > blockquote { margin: 0; padding: 0.95rem 0 0; border: 0; border-top: 1px solid var(--border); font-size: 15px; line-height: 1.5; }
+    .home-facts > blockquote strong { color: var(--text); }
+    @media (min-width: 1180px) {
+      .home-opening { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); column-gap: 4.5rem; align-items: start; padding-bottom: 4rem; }
+      .home-lede, .home-facts { max-width: none; }
+      .home-facts { margin-top: 0; }
+    }
+    /* A section whose text runs in two columns under its heading. The
+       browser ends the first column where the two come out even, and no
+       paragraph or block of code is cut between them. The space under each
+       is the block's own padding there, not a margin: one browser drops a
+       margin that meets a column's end and another carries it to the top of
+       the next column, which then starts a line's gap lower than the first.
+       Padding belongs to the block and both leave it where it is. */
+    .home-flow > :last-child, .home-part > :last-child { margin-bottom: 0; }
+    /* A section whose parts stand side by side, each under its own heading;
+       whatever the section says before its first part runs across them. */
+    .home-part { min-width: 0; }
+    .home-part > h3:first-child { margin-top: 0; }
+    .home-part + .home-part { margin-top: 2.25rem; }
+    @media (min-width: 1000px) {
+      .home-flow { columns: 2; column-gap: 4rem; }
+      .home-flow > h2 { column-span: all; }
+      .home-flow > * { break-inside: avoid; }
+      .home-flow > p, .home-flow > .code { margin-bottom: 0; padding-bottom: 1.1rem; }
+      .home-flow > .code::before, .home-flow > .code::after { bottom: calc(1.1rem + 1px); }
+      .home-flow > :last-child { padding-bottom: 0; }
+      .home-flow > .code:last-child::before, .home-flow > .code:last-child::after { bottom: 1px; }
+      .home-split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 4rem; }
+      .home-split > :not(.home-part) { grid-column: 1 / -1; }
+      .home-part + .home-part { margin-top: 0; }
+    }
     /* The section is the grid: the README's list dissolves into it and
        every item is a card. */
     .home-whats-in-it { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; }
@@ -427,10 +512,24 @@ enum SiteStyle {
     .home-more a { display: inline-flex; align-items: center; padding: 0.55rem 1rem; border: 1px solid var(--border); border-radius: 999px; color: var(--text); font-size: 15px; font-weight: 500; transition: background 150ms var(--ease); }
     .home-more a:hover { text-decoration: none; background: var(--surface); }
 
-    /* The foot */
+    /* The foot: the mark, the line that says what Ollin is, and the
+       release it stands at; then the ways into every part of the site, in
+       columns; then one sentence under a hairline. */
     .foot { border-top: 1px solid var(--border); margin-top: auto; }
-    .foot-inner { max-width: var(--max); margin: 0 auto; padding: 2rem var(--pad); font-size: 13px; color: var(--text-2); }
-    .foot a { color: var(--text-2); text-decoration: underline; text-underline-offset: 0.15em; }
+    .foot-inner { max-width: var(--max); margin: 0 auto; padding: 3.5rem var(--pad) 2rem; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 2fr); column-gap: 4rem; row-gap: 3rem; font-size: 14px; color: var(--text-2); }
+    .foot-lead .wordmark { margin-bottom: 0.9rem; }
+    .foot-line { max-width: 21rem; line-height: 1.45; }
+    .foot-release { margin-top: 1.25rem; }
+    .foot-release a { display: inline-flex; align-items: center; padding: 0.3rem 0.8rem; border: 1px solid var(--border); border-radius: 999px; color: var(--text); font-size: 13px; font-weight: 500; transition: background 150ms var(--ease); }
+    .foot-release a:hover { text-decoration: none; background: var(--surface); }
+    .foot-nav { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2.5rem 2rem; }
+    .foot-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 0.75rem; }
+    .foot-nav ul { list-style: none; margin: 0; padding: 0; }
+    .foot-nav li + li { margin-top: 0.5rem; }
+    .foot-nav a { color: var(--text-2); transition: color 150ms var(--ease); }
+    .foot-nav a:hover { color: var(--text); text-decoration: none; }
+    .foot-note { grid-column: 1 / -1; padding-top: 1.5rem; border-top: 1px solid var(--border); font-size: 13px; }
+    .foot-note a { color: var(--text-2); text-decoration: underline; text-underline-offset: 0.15em; }
 
     /* Narrower */
     @media (max-width: 1100px) {
@@ -460,7 +559,9 @@ enum SiteStyle {
       .pager-previous, .pager-next { grid-column: 1; }
       main { padding-top: 1.75rem; padding-bottom: 2.5rem; }
       .hero { grid-template-columns: minmax(0, 1fr); }
-      .hero-canvas { max-width: 320px; order: -1; }
+      /* Stacked, the words come first: a phone opens on what Ollin is,
+         with the ring under the two ways in. */
+      .hero-canvas { max-width: 320px; }
       /* Stacked, the cards' own spacing already separates them from what
          follows, so the margin under the row reads as a hole, not a break. */
       .cards { grid-template-columns: minmax(0, 1fr); margin-bottom: 1.5rem; }
@@ -472,16 +573,23 @@ enum SiteStyle {
       .band-code pre { font-size: 11.5px; }
       .band-controls { justify-content: center; margin-top: 1.25rem; }
       .home-section { padding: 2.5rem 0; }
-      .home-section > h2:first-child, .home-pair h2 { font-size: 28px; }
-      .home-opening > p:first-child { font-size: 19px; }
-      .home-opening > ul, .home-pair, .home-whats-in-it { grid-template-columns: minmax(0, 1fr); }
-      .home-pair { gap: 2.5rem; padding: 2.5rem 0; }
+      .home-section > h2:first-child { font-size: 28px; }
+      .home-opening > p:first-child, .home-lede > p:first-child { font-size: 19px; }
+      .home-whats-in-it { grid-template-columns: minmax(0, 1fr); }
+      .foot-inner { grid-template-columns: minmax(0, 1fr); padding-top: 2.5rem; row-gap: 2.5rem; }
+      .foot-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .foot-nav li + li { margin-top: 0.15rem; }
+      .foot-nav a { display: inline-block; padding: 0.3rem 0; }
       .prose h1 { font-size: 32px; }
       .prose h2 { font-size: 24px; }
       .sections a { padding: 0 0.55rem; font-size: 13px; }
     }
     @media (max-width: 480px) {
-      .wordmark .name { display: none; }
+      .bar .wordmark .name { display: none; }
+      /* Too narrow for a fact's name beside what it says: the name goes
+         over it. */
+      .home-facts > ul > li { padding-left: 0; }
+      .home-facts > ul > li > strong:first-child { position: static; display: block; margin-bottom: 0.15rem; }
       .bar-inner { gap: 0.75rem; }
       .sections { gap: 0; }
       .sections a, .sections .menu-toggle { padding: 0 0.5rem; font-size: 12.5px; }
@@ -559,16 +667,139 @@ enum SiteStyle {
     })();
     """
 
-    /// A block of code or a table too wide for its column scrolls sideways
-    /// inside its own box, and a box that scrolls has to be reachable from the
-    /// keyboard or its right half is out of reach without a pointer. Only the
-    /// blocks that do overflow take a place in the Tab order, so a page of
-    /// short listings adds nothing between its links, and the check runs
-    /// again when the window changes width.
-    static let scrollerScript = """
-    <script>(()=>{const mark=()=>{for(const box of document.querySelectorAll('pre, .table')){\
-    if(box.scrollWidth>box.clientWidth)box.tabIndex=0;else box.removeAttribute('tabindex');}};\
-    mark();addEventListener('resize',mark);})();</script>
+    /// What a page's own parts do once a script is there, written to
+    /// `assets/page.js` and loaded by every page: a block of code that
+    /// scrolls says so and can be copied, and a heading hands over its
+    /// address.
+    ///
+    /// **A block that scrolls.** A block of code or a table too wide for its
+    /// column scrolls sideways inside its own box, and a box that scrolls has
+    /// to be reachable from the keyboard or its right half is out of reach
+    /// without a pointer. Only the blocks that do overflow take a place in
+    /// the Tab order, so a page of short listings adds nothing between its
+    /// links. A block of code that overflows also says so: its frame fades at
+    /// the edge a line runs past, and stops fading there once the reader has
+    /// scrolled to that end. Both are looked at again when the window changes
+    /// width.
+    ///
+    /// **Copying.** Each block's frame gains a button that puts the block's
+    /// text on the clipboard, as written and with no line added at its end,
+    /// and says so for a moment: the button shows a check, its name reads
+    /// "Copied", and a screen reader is told. The button is made here, not
+    /// written into the page, so a reader with no script sees no control
+    /// that does nothing, and a browser that cannot write to the clipboard
+    /// gets none either. Where there is no pointer to hover with, the button
+    /// of a block shows once that block has been touched, and the last one
+    /// touched is the only one showing.
+    ///
+    /// **A heading's address.** The link at the end of a heading goes to the
+    /// heading, as it does with no script. With one, pressing it also puts
+    /// the section's whole address on the clipboard and says so the same
+    /// way: the mark becomes a check for a moment, and a screen reader is
+    /// told.
+    static let pageScript = #"""
+    (() => {
+      const edges = (box) => {
+        const more = box.scrollWidth - box.clientWidth;
+        if (more > 1) box.tabIndex = 0; else box.removeAttribute('tabindex');
+        const frame = box.parentElement;
+        if (!frame || !frame.classList.contains('code')) return;
+        frame.classList.toggle('more-before', more > 1 && box.scrollLeft > 1);
+        frame.classList.toggle('more-after', more > 1 && box.scrollLeft < more - 1);
+      };
+      const measure = () => document.querySelectorAll('pre, .table').forEach(edges);
+      document.querySelectorAll('.code > pre').forEach((box) => box.addEventListener('scroll', () => edges(box), { passive: true }));
+      measure();
+      addEventListener('resize', measure);
+      addEventListener('load', measure);
+
+      const modern = navigator.clipboard && typeof navigator.clipboard.writeText === 'function';
+      const old = typeof document.execCommand === 'function';
+      if (!modern && !old) return;
+      // The older way, for a page that is not served securely and for a
+      // browser that refuses the newer one where the page stands.
+      const older = (text) => new Promise((resolve, reject) => {
+        const area = document.createElement('textarea');
+        area.value = text;
+        area.setAttribute('readonly', '');
+        area.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+        document.body.appendChild(area);
+        area.select();
+        let done = false;
+        try { done = document.execCommand('copy'); } catch (error) {}
+        area.remove();
+        if (done) resolve(); else reject(new Error('copy'));
+      });
+      const write = (text) => (modern ? navigator.clipboard.writeText(text).catch(() => older(text)) : older(text));
+      // One place on the page that says what was copied, made the first
+      // time there is something to say.
+      let said = null;
+      const say = (text) => {
+        if (!said) {
+          said = document.createElement('p');
+          said.className = 'spoken';
+          said.setAttribute('aria-live', 'polite');
+          document.body.appendChild(said);
+        }
+        said.textContent = text;
+      };
+      // What was just copied wears its mark for a moment.
+      const marked = new Map();
+      const confirm = (element, words, after) => {
+        element.classList.add('copied');
+        say(words);
+        clearTimeout(marked.get(element));
+        marked.set(element, setTimeout(() => { element.classList.remove('copied'); say(''); if (after) after(); }, 1600));
+      };
+      document.querySelectorAll('.code').forEach((frame) => {
+        const block = frame.querySelector('pre');
+        if (!block) return;
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'copy';
+        const name = (text) => { button.setAttribute('aria-label', text); button.title = text; };
+        name('Copy');
+        button.innerHTML = '\#(copyIcon)\#(copiedIcon)';
+        button.addEventListener('click', () => {
+          write(block.textContent.replace(/\n$/, '')).then(() => {
+            name('Copied');
+            confirm(frame, 'Copied', () => name('Copy'));
+          }, () => {});
+        });
+        frame.appendChild(button);
+      });
+      // A heading's link still goes to the heading; its address is copied
+      // on the way.
+      document.addEventListener('click', (event) => {
+        const link = event.target.closest ? event.target.closest('a.anchor') : null;
+        if (link) write(link.href).then(() => confirm(link, 'Link copied'), () => {});
+      });
+      let touched = null;
+      addEventListener('pointerdown', (event) => {
+        if (event.pointerType === 'mouse') return;
+        const frame = event.target.closest ? event.target.closest('.code') : null;
+        if (frame === touched) return;
+        if (touched) touched.classList.remove('touched');
+        touched = frame;
+        if (frame) frame.classList.add('touched');
+      }, { passive: true });
+    })();
+    """#
+
+    /// Two sheets, one over the other: the button that copies a block.
+    static let copyIcon = """
+    <svg class="icon icon-copy" aria-hidden="true" focusable="false" viewBox="0 0 20 20"><rect x="7.75" y="7.75" width="9" height="9" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12.25 5.25v-.5a1.5 1.5 0 0 0-1.5-1.5h-6a1.5 1.5 0 0 0-1.5 1.5v6a1.5 1.5 0 0 0 1.5 1.5h.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+    """
+
+    /// Two links of a chain: the mark at the end of a heading that goes to
+    /// the heading itself.
+    static let linkIcon = """
+    <svg class="icon icon-link" aria-hidden="true" focusable="false" viewBox="0 0 20 20"><path d="M8.6 11.4a3.1 3.1 0 0 0 4.4 0l2.5-2.5a3.1 3.1 0 0 0-4.4-4.4l-.85.85M11.4 8.6a3.1 3.1 0 0 0-4.4 0l-2.5 2.5a3.1 3.1 0 0 0 4.4 4.4l.85-.85" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    """
+
+    /// The check the same button shows for a moment once the block is copied.
+    static let copiedIcon = """
+    <svg class="icon icon-done" aria-hidden="true" focusable="false" viewBox="0 0 20 20"><path d="m4.75 10.75 3.5 3.5 7-8.25" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
     """
 
     /// The first thing a page's head runs: it says a script is here. The
@@ -907,12 +1138,24 @@ enum SiteStyle {
     static let searchLibrary = "https://cdnjs.cloudflare.com/ajax/libs/minisearch/7.2.0/umd/index.min.js"
     static let searchLibraryIntegrity = "sha512-bxNn8csqHSaI1AgYVvi4ejDdG9GfPbmth/TBcxd6J02ShNFQRqRJVPqqCvRHYV1nnvwCTeteqWuoOAeNewQ9CQ=="
 
+    /// How many sections the search adds to its index before it hands the
+    /// page a turn.
+    ///
+    /// The library's own step is ten, and a browser makes a page wait about
+    /// four thousandths of a second between two turns it asks for in a row.
+    /// At ten, the site's 4,782 sections were 478 waits: 3.1 s to build an
+    /// index whose own work is 0.19 s, on a first search that had spent only
+    /// 0.3 s fetching (measured on the live site, 2026-11-27). At five
+    /// hundred the waits are ten, and no single step holds the page for
+    /// longer than a twentieth of a second on the machine that measured it.
+    static let searchBuildStep = 500
+
     /// The search, written to `assets/search.js` and loaded by every page.
     ///
     /// The button in the bar, `/`, or the command (or control) key with K
     /// opens the dialog; the first time, the library and then the index come
-    /// in, and the index is built in the browser in small steps so the field
-    /// stays live while it does. A query matches by prefix (so `kuwa` finds
+    /// in, and the index is built in the browser in a few steps
+    /// (`searchBuildStep`) so the field stays live while it does. A query matches by prefix (so `kuwa` finds
     /// `kuwahara`), tolerates a typo in a longer word, and needs every word
     /// it has, with a page's title counting most, its heading next, its first
     /// line after that, and the words of its prose least. A page's own entry
@@ -933,7 +1176,7 @@ enum SiteStyle {
       const integrity = '\#(searchLibraryIntegrity)';
       const labels = { docs: 'Reference', guide: 'Guide', examples: 'Examples', home: 'Ollin' };
       const order = { docs: 0, guide: 1, examples: 2, home: 3 };
-      const perPage = 3, atMost = 30;
+      const perPage = 3, atMost = 30, buildStep = \#(searchBuildStep);
       let engine = null, count = 0, loading = false, failed = '', active = -1;
 
       toggle.hidden = false;
@@ -983,7 +1226,7 @@ enum SiteStyle {
               combineWith: 'AND'
             }
           });
-          await built.addAllAsync(entries);
+          await built.addAllAsync(entries, { chunkSize: buildStep });
           engine = built;
           count = entries.length;
         } catch (error) {

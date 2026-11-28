@@ -119,6 +119,9 @@ public struct SiteBuilder {
         /// writes: the social card and the touch icon.
         var hasSocialCard = false
         var hasTouchIcon = false
+        /// The newest release the changelog has a section for, which the
+        /// foot of every page names; nil while there is none to name.
+        var release: (version: String, anchor: String)?
         /// The clips and stills the examples have, which is however many
         /// `Scripts/media.sh` has rendered so far.
         var media = ExampleMedia.none {
@@ -138,6 +141,9 @@ public struct SiteBuilder {
         plan.mark = SiteLogo.inline(readingAt: root.appendingPathComponent(SiteLogo.mark), className: "mark")
         plan.hasSocialCard = exists(SiteLogo.socialCard)
         plan.hasTouchIcon = exists(SiteLogo.touchIcon)
+        if let changelog = try? String(contentsOf: root.appendingPathComponent("CHANGELOG.md"), encoding: .utf8) {
+            plan.release = Self.latestRelease(inChangelog: changelog)
+        }
 
         func add(_ repoPath: String, _ kind: Page.Kind, title: String? = nil, summary: String = "") {
             let url = root.appendingPathComponent(repoPath)
@@ -420,6 +426,7 @@ public struct SiteBuilder {
         try write(try SiteSearch.script(entries), to: output.appendingPathComponent("assets/search-index.js"))
         try write(SiteStyle.searchScript, to: output.appendingPathComponent("assets/search.js"))
         try write(SiteStyle.menusScript, to: output.appendingPathComponent("assets/menus.js"))
+        try write(SiteStyle.pageScript, to: output.appendingPathComponent("assets/page.js"))
         report.sections = entries.count
 
         try write(SiteStyle.css, to: output.appendingPathComponent("assets/site.css"))
@@ -499,14 +506,21 @@ public struct SiteBuilder {
         // poster is not counted as the page's first picture.
         var written = rendered.body
         if case .guide = page.kind { written = Self.pager(in: written) }
-        let played = Self.playingHeroes(in: Self.playingChapterHook(in: written, page: page, media: plan.media),
+        var played = Self.playingHeroes(in: Self.playingChapterHook(in: written, page: page, media: plan.media),
                                         media: plan.media)
+        if case .guide = page.kind { played = Self.framingOpeningPicture(in: played) }
         let body = "<article class=\"prose\">\n\(sizingPictures(in: played, page: page, plan: plan, log: log))\n</article>"
         let title = page.title
         let description = page.summary.isEmpty ? Self.tagline : page.summary
+        // A link to a chapter unfurls as the picture the chapter opens on,
+        // read before a clip takes that picture's place on the page.
+        var card: ShareCard?
+        if case .guide = page.kind {
+            card = shareCard(fromTheFirstPictureIn: written, page: page, plan: plan, log: log)
+        }
         return layout(page: page, title: title, description: description,
                       trail: rendered.trail.isEmpty ? trail(for: page) : rendered.trail,
-                      body: body, headings: rendered.headings, plan: plan)
+                      body: body, headings: rendered.headings, plan: plan, card: card)
     }
 
     static let tagline = "A Metal-rendered creative-coding framework for Swift on Apple platforms."
@@ -515,8 +529,9 @@ public struct SiteBuilder {
 
     /// The front page: the hero and the cards, then the README's opening and
     /// the sections `SiteHome.rows` names, each in a block of its own so the
-    /// stylesheet can lay it out for the width of a page (the code beside its
-    /// paragraph, two short sections side by side, a list as a grid of cards),
+    /// stylesheet can lay it out for the width of a page (the opening's facts
+    /// beside its paragraphs, the code beside its paragraph, a section's text
+    /// in two columns, its two parts side by side, a list as a grid of cards),
     /// and a row of links to every section left for the About page. A link
     /// inside the shown text at a section that is not shown goes to the About
     /// page, where every anchor is. The search lists the front page once, by
@@ -549,7 +564,7 @@ public struct SiteBuilder {
            let end = opened.range(of: "</figure>", range: start.upperBound ..< opened.endIndex) {
             opened.removeSubrange(start.lowerBound ..< end.upperBound)
         }
-        var body = "<section class=\"home-section home-opening\">\n\(opened)\n</section>\n"
+        var body = "<section class=\"home-section home-opening\">\n\(SiteHome.openingColumns(opened))\n</section>\n"
 
         // The README's run command names the sketch the band opens on, which
         // is what lets the band rewrite that one word as you page through it.
@@ -564,7 +579,7 @@ public struct SiteBuilder {
             return nil
         }
 
-        func block(_ heading: String) -> String {
+        func block(_ heading: String, as row: SiteHome.Row) -> String {
             guard let section = sections.first(where: { $0.heading == heading }) else {
                 log.notes.append("the front page names a README section that is not there: \(heading)")
                 return ""
@@ -575,14 +590,13 @@ public struct SiteBuilder {
                 html.replaceSubrange(found, with: "<span data-run-target>\(target)</span>")
                 runTarget = nil
             }
-            return "<section class=\"home-section home-\(section.anchor)\">\n\(html)\n</section>\n"
+            if case .split = row { html = SiteHome.parted(html) }
+            return "<section class=\"home-section home-\(section.anchor)\(row.layoutClass)\">\n\(html)\n</section>\n"
         }
         for row in SiteHome.rows {
             switch row {
-            case .section(let heading):
-                body += block(heading)
-            case .pair(let left, let right):
-                body += "<div class=\"home-pair\">\n\(block(left))\(block(right))</div>\n"
+            case .section(let heading), .flowing(let heading), .split(let heading):
+                body += block(heading, as: row)
             case .carousel(let heading, let example):
                 guard let section = sections.first(where: { $0.heading == heading }) else {
                     log.notes.append("the front page names a README section that is not there: \(heading)")
@@ -784,8 +798,14 @@ public struct SiteBuilder {
         body += "</article>"
 
         let description = entry.summary.isEmpty ? "An Ollin example sketch." : HTML.sentence(entry.summary)
+        // A link to the sketch unfurls as the sketch: its own still, the
+        // frame its clip opens on.
+        let card = plan.media[entry.path].map {
+            ShareCard(address: plan.media.address(of: $0.still), width: $0.width, height: $0.height,
+                      alt: "A frame of \(entry.name)")
+        }
         return layout(page: page, title: entry.name, description: description, trail: trail,
-                      body: body, headings: [], plan: plan)
+                      body: body, headings: [], plan: plan, card: card)
     }
 
     /// One example's clip, with its own still as the poster.
@@ -1346,6 +1366,53 @@ public struct SiteBuilder {
         return (ups + to).joined(separator: "/")
     }
 
+    // MARK: - What a link to a page unfurls as
+
+    /// The picture a link to a page shows where it is shared: an absolute
+    /// address, the picture's size, and what it shows in words.
+    struct ShareCard: Equatable {
+        var address: String
+        var width: Int
+        var height: Int
+        var alt: String
+
+        /// Whether the picture is wide enough to be shown large, across the
+        /// card. A square one cut to that shape would lose its top and its
+        /// bottom, so it is shown small and whole instead.
+        var isWide: Bool { width * 2 >= height * 3 }
+    }
+
+    /// The smallest side a picture may have and still be offered as a card:
+    /// under it the places that show cards fall back to no picture at all.
+    static let smallestCardSide = 300
+
+    /// A card from the first picture a rendered page shows, or nil when the
+    /// page opens on no picture a card can be: one whose size the site
+    /// cannot know, one too small, or a drawing in a format the places that
+    /// show cards do not draw.
+    func shareCard(fromTheFirstPictureIn body: String, page: Page, plan: Plan, log: LinkLog) -> ShareCard? {
+        guard let base = siteBase,
+              let open = body.range(of: "<img "),
+              let close = Self.tagEnd(in: Substring(body), from: open.upperBound) else { return nil }
+        let tag = String(body[open.lowerBound ..< close])
+        let source = Self.attribute("src", in: tag).map(Self.unescaped) ?? ""
+        let file = source.prefix { $0 != "?" && $0 != "#" }.lowercased()
+        guard [".png", ".jpg", ".jpeg"].contains(where: { file.hasSuffix($0) }),
+              let size = pictureSize(of: source, page: page, plan: plan, log: log),
+              min(size.width, size.height) >= Self.smallestCardSide else { return nil }
+        let address: String
+        if source.contains("://") {
+            address = source
+        } else {
+            let folder = page.siteDirectory.split(separator: "/").map(String.init)
+            guard let sitePath = Self.joined(folder, String(source.prefix { $0 != "?" && $0 != "#" })) else { return nil }
+            address = base + sitePath
+        }
+        let alt = Self.attribute("alt", in: tag).map(Self.unescaped) ?? ""
+        return ShareCard(address: address, width: size.width, height: size.height,
+                         alt: alt.isEmpty ? "The picture \(page.title) opens on" : alt)
+    }
+
     // MARK: - The chrome
 
     /// One page in the site's chrome.
@@ -1359,7 +1426,7 @@ public struct SiteBuilder {
     /// it asks not to be indexed.
     func layout(page: Page, title: String, description: String, trail: String,
                 body: String, headings: [(level: Int, text: String, anchor: String)], plan: Plan,
-                rootedAt root: String? = nil) -> String {
+                card: ShareCard? = nil, rootedAt root: String? = nil) -> String {
         let here = page.siteDirectory
         let asset = { (name: String) in root.map { $0 + name } ?? relative(from: here, to: name) }
         let isHome: Bool
@@ -1375,23 +1442,27 @@ public struct SiteBuilder {
         <link rel="describedby" type="text/markdown" href="\(asset("llms.txt"))">
         """
         // What a link to the page unfurls as, in a message or a feed: the
-        // page's title and line, and the social card. A card has to be an
-        // absolute address, so it is written against the custom domain or,
-        // before there is one, the address GitHub Pages serves the repository
-        // at, and left out when neither is known.
+        // page's title and line, and a picture. A page that has a picture of
+        // its own (`ShareCard`) shows that one; every other page shows the
+        // mark's card. A card has to be an absolute address, so it is
+        // written against the custom domain or, before there is one, the
+        // address GitHub Pages serves the repository at, and left out when
+        // neither is known.
         var share = ""
         if root != nil {
             canonical = ""
             machine = "<meta name=\"robots\" content=\"noindex\">"
         } else if let base = siteBase {
             share += "<meta property=\"og:url\" content=\"\(HTML.escape(base + pagePath))\">\n"
-            if plan.hasSocialCard {
+            let marks = plan.hasSocialCard
+                ? ShareCard(address: base + "assets/social.png", width: 1200, height: 630, alt: "The Ollin mark") : nil
+            if let shown = card ?? marks {
                 share += """
-                <meta property="og:image" content="\(HTML.escape(base))assets/social.png">
-                <meta property="og:image:width" content="1200">
-                <meta property="og:image:height" content="630">
-                <meta property="og:image:alt" content="The Ollin mark">
-                <meta name="twitter:card" content="summary_large_image">
+                <meta property="og:image" content="\(HTML.escape(shown.address))">
+                <meta property="og:image:width" content="\(shown.width)">
+                <meta property="og:image:height" content="\(shown.height)">
+                <meta property="og:image:alt" content="\(HTML.escape(shown.alt))">
+                <meta name="twitter:card" content="\(shown.isWide ? "summary_large_image" : "summary")">
 
                 """
             }
@@ -1444,7 +1515,7 @@ public struct SiteBuilder {
         <a class="skip" href="#main">Skip to content</a>
         <header class="bar">
           <div class="bar-inner">
-            <a class="wordmark" href="\(asset("index.html"))" aria-label="Ollin home">\(plan.mark)<span class="name">Ollin</span></a>\(markOpener)
+            <a class="wordmark" href="\(asset("index.html"))" aria-label="Ollin home">\(Self.named(plan.mark))<span class="name">Ollin</span></a>\(markOpener)
             <nav class="sections" aria-label="Sections">
               \(navItem(Self.name(of: .guide), .guide, Self.index(of: .guide)))
               \(navItem(Self.name(of: .docs), .docs, Self.index(of: .docs)))
@@ -1470,7 +1541,7 @@ public struct SiteBuilder {
         // Where the list beside the page is out of sight, the same list
         // folds under the page's title.
         let fold = alone ? "" : self.onPage(headings, title: title)
-        let body = fold.isEmpty ? body : Self.inserting(fold, afterTheFirstHeadingOf: body)
+        let body = Self.framingCode(in: Self.linkingHeadings(in: fold.isEmpty ? body : Self.inserting(fold, afterTheFirstHeadingOf: body)))
         let menus = alone ? "" : "<script src=\"\(asset("assets/menus.js"))\" defer></script>\n"
         let trailBlock = trail.isEmpty ? "" : "<nav class=\"trail\" aria-label=\"Breadcrumb\">\(trail)</nav>\n"
         let layoutClass = isHome ? "home" : (sidebar.isEmpty ? "single" : (rail.isEmpty ? "with-sidebar" : "with-sidebar with-rail"))
@@ -1505,15 +1576,104 @@ public struct SiteBuilder {
         \(rail)
         </div>
         \(search)
-        \(menus)\(SiteStyle.scrollerScript)
-        <footer class="foot">
-          <div class="foot-inner">
-            <p>Ollin is MIT licensed and built in public. <a href="\(HTML.escape(repository))" rel="noopener">The repository</a> holds everything on this site.</p>
-          </div>
-        </footer>
+        \(menus)<script src="\(asset("assets/page.js"))" defer></script>
+        \(foot(page: page, plan: plan, address: asset))
         </body>
         </html>
         """
+    }
+
+    /// A page's body with a link at the end of every heading that has an
+    /// address of its own: the second level to the fourth, each carrying the
+    /// anchor the renderer gave it. The link goes to the heading itself, so a
+    /// reader who wants to send somebody one section of a long page has its
+    /// address to copy; the stylesheet shows the link's mark while the
+    /// pointer is over the heading, and the page's script copies the address
+    /// when the mark is pressed. A page's title has no link (its address is
+    /// the page's), and neither has a heading with no anchor.
+    static func linkingHeadings(in body: String) -> String {
+        var out = ""
+        out.reserveCapacity(body.count + 1024)
+        var rest = Substring(body)
+        while let open = rest.range(of: "<h") {
+            out += rest[..<open.upperBound]
+            rest = rest[open.upperBound...]
+            // `<h2 id="...">` and its like; anything else that opens on
+            // `<h` (the page's title, a rule, a heading with no anchor) is
+            // passed over.
+            guard let level = rest.first, "234".contains(level), rest.dropFirst().hasPrefix(" id=\"") else { continue }
+            let afterID = rest.dropFirst(6)
+            guard let quote = afterID.firstIndex(of: "\""),
+                  let tagEnd = Self.tagEnd(in: rest, from: rest.index(after: quote)),
+                  let close = rest.range(of: "</h\(level)>", range: tagEnd ..< rest.endIndex) else { continue }
+            let anchor = String(afterID[..<quote])
+            let inner = rest[rest.index(after: tagEnd) ..< close.lowerBound]
+            // A heading that already carries a link at itself is left alone.
+            guard !anchor.isEmpty, !inner.contains("class=\"anchor\"") else { continue }
+            let name = Self.plainText(of: inner).replacingOccurrences(of: "\"", with: "&quot;")
+            out += rest[..<close.lowerBound]
+            out += "<a class=\"anchor\" href=\"#\(anchor)\" aria-label=\"Link to this section: \(name)\">\(SiteStyle.linkIcon)\(SiteStyle.copiedIcon)</a>"
+            rest = rest[close.lowerBound...]
+        }
+        out += rest
+        return out
+    }
+
+    /// The words of a piece of rendered text, with its tags taken out and
+    /// its spaces closed up. What a page escaped stays escaped, so the words
+    /// can be written into an attribute as they are.
+    static func plainText(of html: Substring) -> String {
+        var text = ""
+        var inTag = false
+        for character in html {
+            if character == "<" { inTag = true } else if character == ">" { inTag = false } else if !inTag { text.append(character) }
+        }
+        return text.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
+    }
+
+    /// A chapter's body with the picture it opens on in the frame a
+    /// chapter's opening clip stands in, so the two kinds of opening are the
+    /// same size: the width of the column. The picture is the chapter's
+    /// opening one when nothing stands between the title and it; a picture
+    /// further down is a figure of the text and keeps the width the chapter
+    /// wrote for it. A chapter whose opening is already a clip is not
+    /// touched, and neither is a picture in two schemes.
+    static func framingOpeningPicture(in body: String) -> String {
+        guard let title = body.range(of: "</h1>") else { return body }
+        var index = title.upperBound
+        while index < body.endIndex, body[index].isWhitespace { index = body.index(after: index) }
+        guard body[index...].hasPrefix("<img "),
+              let close = Self.tagEnd(in: Substring(body), from: body.index(index, offsetBy: 5)) else { return body }
+        var out = body
+        out.insert(contentsOf: "\n</figure>", at: body.index(after: close))
+        out.insert(contentsOf: "<figure class=\"page-hero\">\n", at: index)
+        return out
+    }
+
+    /// A page's body with every block of code in a frame of its own.
+    ///
+    /// The block itself is what scrolls when a line is too long, so anything
+    /// set on it would slide away with the line. The frame around it stays
+    /// put, and it is what the button that copies the block and the fade at
+    /// the block's edge are set on (`SiteStyle.pageScript`). The frame is
+    /// the site's chrome, which is why it is added here and the renderer's
+    /// own markup for a block of code is left as it is. Only a block the
+    /// renderer wrote is framed: a `<pre` a page wrote by hand, with
+    /// attributes of its own, is left as written.
+    static func framingCode(in body: String) -> String {
+        var out = ""
+        out.reserveCapacity(body.count + 512)
+        var rest = Substring(body)
+        while let open = rest.range(of: "<pre>"),
+              let close = rest.range(of: "</pre>", range: open.upperBound ..< rest.endIndex) {
+            out += rest[..<open.lowerBound]
+            out += "<div class=\"code\">"
+            out += rest[open.lowerBound ..< close.upperBound]
+            out += "</div>"
+            rest = rest[close.upperBound...]
+        }
+        out += rest
+        return out
     }
 
     /// The section's own map, beside the page: the chapters, the reference

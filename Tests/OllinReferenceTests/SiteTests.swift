@@ -296,7 +296,7 @@ struct SiteTests {
         #expect(releases.count > 15 && releases.first == "Unreleased", "the changelog lists \(releases.prefix(4))")
         #expect(releases.dropFirst().allSatisfy { name in name.split(separator: ".").count == 3 && name.allSatisfy { $0.isNumber || $0 == "." } },
                 "the changelog's list holds something that is not a release: \(releases.filter { !$0.allSatisfy { $0.isNumber || $0 == "." } })")
-        #expect(changelog.contains(">[Unreleased]</h2>"), "the page itself no longer writes a release as its file does")
+        #expect(changelog.contains("<h2 id=\"unreleased\">[Unreleased]<a class=\"anchor\" href=\"#unreleased\""), "the page itself no longer writes a release as its file does")
 
         // The project pages go by short names in the menu and the trail,
         // and each still opens on its own file's title.
@@ -461,13 +461,39 @@ struct SiteTests {
         #expect(FileManager.default.fileExists(atPath: output.appendingPathComponent("apple-touch-icon.png").path))
         #expect(FileManager.default.fileExists(atPath: output.appendingPathComponent("assets/social.png").path))
 
-        // What a link to a page unfurls as: the card, at an absolute address
-        // under the domain, on every page.
-        for (name, page, path) in [("the front page", home, ""), ("a chapter", chapter, "guide/02-color.html"), ("an example", example, "examples/basic/hellocircle.html")] {
-            #expect(page.contains("<meta property=\"og:image\" content=\"https://ollin.example/assets/social.png\">"), "\(name) has no card")
+        // What a link to a page unfurls as: a picture at an absolute
+        // address, on every page. A page with a picture of its own shows
+        // that one: an example its own still, a chapter the picture it opens
+        // on. Every other page shows the mark's card.
+        let stills = ExampleMedia.read(inRepository: root)
+        let helloStill = try #require(stills["Basic/HelloCircle"], "the manifest has no row for Basic/HelloCircle")
+        // The picture a chapter opens on, as its own markdown names it; the
+        // site writes the path in lower case.
+        let chapterSource = try String(contentsOf: root.appendingPathComponent("Guide/02-Color.md"), encoding: .utf8)
+        let chapterTag = try #require(Self.pictureTags(in: chapterSource).first, "Chapter 2 opens on no picture")
+        let chapterPicture = Self.value(of: "src", in: chapterTag).lowercased()
+        let reference = try String(contentsOf: output.appendingPathComponent("docs/tools/dragtoedit.html"), encoding: .utf8)
+        let cards: [(name: String, page: String, path: String, card: String, shape: String)] = [
+            ("the front page", home, "", "https://ollin.example/assets/social.png", "summary_large_image"),
+            ("a reference page", reference, "docs/tools/dragtoedit.html", "https://ollin.example/assets/social.png", "summary_large_image"),
+            ("a chapter", chapter, "guide/02-color.html", "https://ollin.example/guide/" + chapterPicture, ""),
+            ("an example", example, "examples/basic/hellocircle.html", stills.address(of: helloStill.still),
+             helloStill.width * 2 >= helloStill.height * 3 ? "summary_large_image" : "summary"),
+        ]
+        for (name, page, path, card, shape) in cards {
+            #expect(page.contains("<meta property=\"og:image\" content=\"\(HTML.escape(card))\">"),
+                    "\(name) does not unfurl as \(card): \(Self.metas(named: "og:image", in: page))")
+            #expect(page.components(separatedBy: "<meta property=\"og:image\" ").count - 1 == 1, "\(name) names more than one card")
+            #expect(page.contains("<meta property=\"og:image:width\" content=\"") && page.contains("<meta property=\"og:image:alt\" content=\""),
+                    "\(name)'s card says no size, or not what it shows")
             #expect(page.contains("<meta property=\"og:url\" content=\"https://ollin.example/\(path)\">"), "\(name) has no address")
-            #expect(page.contains("<meta name=\"twitter:card\" content=\"summary_large_image\">"))
+            if !shape.isEmpty {
+                #expect(page.contains("<meta name=\"twitter:card\" content=\"\(shape)\">"), "\(name)'s card is not shown as \(shape)")
+            }
         }
+        #expect(chapterPicture.hasSuffix(".png") || chapterPicture.hasSuffix(".jpg"), "Chapter 2's card is \(chapterPicture), which no feed draws")
+        #expect(FileManager.default.fileExists(atPath: output.appendingPathComponent("guide/" + chapterPicture).path),
+                "Chapter 2's card is a picture the build did not write")
 
         // The front page shows the README's opening and the sections SiteHome
         // names, laid out in blocks, and hands every other section to the
@@ -486,8 +512,8 @@ struct SiteTests {
                 continue
             }
             for heading in row.headings {
-                #expect(home.contains("<section class=\"home-section home-\(HTML.slug(heading))\">"),
-                        "the front page has no block for \(heading)")
+                #expect(home.contains("<section class=\"home-section home-\(HTML.slug(heading))\(row.layoutClass)\">"),
+                        "the front page has no block for \(heading), or the block does not say how it is laid out")
             }
         }
         // Every sketch in the band has a dot, and only the one on arrival
@@ -505,8 +531,23 @@ struct SiteTests {
                 "a sketch in the band cannot say how to run it")
         #expect(home.components(separatedBy: "<span data-run-target>").count - 1 == 1, "the run command is not marked once")
         #expect(!about.contains("data-run-target"), "the About page carries the front page's marking")
-        #expect(home.contains("<div class=\"home-pair\">"))
-        #expect(home.contains("<section class=\"home-section home-opening\">"))
+        // The opening is two boxes in the README's own order: its
+        // paragraphs, then its facts, which hold the list and the note on
+        // where Ollin stands. The section with two ways to install has each
+        // way in a box of its own, under its own heading.
+        let openingStart = try #require(home.range(of: "<section class=\"home-section home-opening\">"), "the front page has no opening")
+        let openingEnd = try #require(home.range(of: "</section>", range: openingStart.upperBound ..< home.endIndex))
+        let opening = String(home[openingStart.upperBound ..< openingEnd.lowerBound])
+        let lede = try #require(opening.range(of: "<div class=\"home-lede\">"), "the opening's paragraphs have no box")
+        let facts = try #require(opening.range(of: "<div class=\"home-facts\">"), "the opening's facts have no box")
+        #expect(lede.lowerBound < facts.lowerBound, "the facts come before the paragraphs")
+        #expect(!opening[lede.upperBound ..< facts.lowerBound].contains("<ul") && opening[lede.upperBound ..< facts.lowerBound].contains("<p>"),
+                "the paragraphs' box holds a list, or no paragraph")
+        #expect(opening[facts.upperBound...].contains("<li><strong>Platform:</strong>") && opening[facts.upperBound...].contains("<blockquote>"),
+                "the facts' box lost the list or the note on where Ollin stands")
+        #expect(home.components(separatedBy: "<div class=\"home-part\">\n<h3 id=\"").count - 1 == 2,
+                "the two ways to install are not each in a box that opens on its own heading")
+        #expect(!home.contains("class=\"home-pair\""), "two sections are still set side by side")
         #expect(home.contains("<section class=\"home-section home-more\">"))
         #expect(!home.contains("class=\"badges\""), "the badge row reached the front page")
         #expect(!home.contains("id=\"live-reload\"") && !home.contains("id=\"built-with-ai\""), "a section left for the About page is on the front page")
@@ -555,6 +596,91 @@ struct SiteTests {
             #expect(page.contains("<script src=\"\(up)assets/search.js\" defer></script>"), "\(name) does not load the search")
         }
         #expect(FileManager.default.fileExists(atPath: output.appendingPathComponent("assets/search.js").path))
+        // The index is built in a few large steps: at the library's own
+        // step of ten, the waits between steps were most of a first search.
+        let searchScript = try String(contentsOf: output.appendingPathComponent("assets/search.js"), encoding: .utf8)
+        #expect(searchScript.contains("addAllAsync(entries, { chunkSize: buildStep })") && searchScript.contains("buildStep = \(SiteStyle.searchBuildStep);"),
+                "the search builds its index at the library's own step")
+        #expect(SiteStyle.searchBuildStep >= 200 && report.sections / SiteStyle.searchBuildStep <= 40,
+                "\(report.sections) sections in steps of \(SiteStyle.searchBuildStep) is \(report.sections / SiteStyle.searchBuildStep) waits")
+
+        // Every block of code stands in a frame, which is what the button
+        // that copies it and the fade at its edge are set on, and every page
+        // loads the script that makes both.
+        let wrongPage = wrongAddress
+        for (name, page, up) in [("the front page", home, ""), ("a chapter", chapter, "../"), ("an example", example, "../../"), ("the page for a wrong address", wrongPage, "/")] {
+            let blocks = page.components(separatedBy: "<pre>").count - 1
+            #expect(page.components(separatedBy: "<div class=\"code\"><pre>").count - 1 == blocks
+                    && page.components(separatedBy: "</pre></div>").count - 1 == blocks,
+                    "\(name) has \(blocks) blocks of code, and not every one is in a frame")
+            #expect(page.contains("<script src=\"\(up)assets/page.js\" defer></script>"), "\(name) does not load what copies a block")
+        }
+        #expect(home.components(separatedBy: "<pre>").count - 1 >= 4 && example.contains("<div class=\"code\"><pre><code class=\"language-swift\">"),
+                "the front page or an example lost its code")
+        #expect(FileManager.default.fileExists(atPath: output.appendingPathComponent("assets/page.js").path))
+
+        // Every heading that has an address of its own ends on a link to
+        // itself, and an example, which has only its title, carries none.
+        for (name, page) in [("the front page", home), ("a chapter", chapter), ("the changelog", try String(contentsOf: output.appendingPathComponent("changelog.html"), encoding: .utf8))] {
+            let headings = ["2", "3", "4"].reduce(0) { $0 + page.components(separatedBy: "<h\($1) id=\"").count - 1 }
+            let links = page.components(separatedBy: "<a class=\"anchor\" href=\"#").count - 1
+            #expect(headings > 3 && links == headings, "\(name) has \(headings) headings with an address and \(links) links at them")
+        }
+        #expect(!example.contains("class=\"anchor\""), "an example's page, which has only its title, gained a link at a heading")
+
+        // Every numbered chapter opens on its picture or its clip in one
+        // frame, the width of the column; an appendix, whose first picture
+        // is a figure of its text, has no such frame.
+        var unframed: [String] = []
+        var chaptersSeen = 0
+        for file in try FileManager.default.contentsOfDirectory(atPath: output.appendingPathComponent("guide").path).sorted()
+        where file.hasSuffix(".html") && file.first?.isNumber == true {
+            chaptersSeen += 1
+            let page = try String(contentsOf: output.appendingPathComponent("guide/\(file)"), encoding: .utf8)
+            guard let frame = page.range(of: "<figure class=\"page-hero\">\n"),
+                  let frameEnd = page.range(of: "</figure>", range: frame.upperBound ..< page.endIndex) else { unframed.append(file); continue }
+            let held = page[frame.upperBound ..< frameEnd.lowerBound]
+            if held.components(separatedBy: "<img ").count + held.components(separatedBy: "<video ").count - 2 != 1 { unframed.append(file) }
+            if page.components(separatedBy: "<figure class=\"page-hero\">").count - 1 != 1 { unframed.append(file + " (more than one)") }
+        }
+        #expect(chaptersSeen > 40 && unframed.isEmpty, "chapters that do not open on one framed picture or clip: \(unframed)")
+        let appendix = try String(contentsOf: output.appendingPathComponent("guide/a-justenoughswift.html"), encoding: .utf8)
+        #expect(!appendix.contains("class=\"page-hero\""), "an appendix's first figure was taken for an opening picture")
+
+        // The foot of every page: the mark and the line, the release the
+        // changelog's newest section names, the three sections, and every
+        // project page, each link written for the depth of the page it is on
+        // (the walk above already found every one of them a file). The
+        // release's link lands on that release's own section.
+        let changelogPage = try String(contentsOf: output.appendingPathComponent("changelog.html"), encoding: .utf8)
+        let changelogText = try String(contentsOf: root.appendingPathComponent("CHANGELOG.md"), encoding: .utf8)
+        let release = try #require(SiteBuilder.latestRelease(inChangelog: changelogText), "the changelog names no release")
+        #expect(Self.ids(in: changelogPage).contains(release.anchor), "the changelog's page has no section at #\(release.anchor)")
+        for (name, page, up, folder) in [("the front page", home, "", ""), ("a chapter", chapter, "../", "guide"),
+                                         ("an example", example, "../../", "examples/basic"), ("the page for a wrong address", wrongPage, "/", "")] {
+            let start = try #require(page.range(of: "<footer class=\"foot\">"), "\(name) has no foot")
+            let end = try #require(page.range(of: "</footer>", range: start.upperBound ..< page.endIndex))
+            let foot = String(page[start.upperBound ..< end.lowerBound])
+            #expect(foot.contains("<a href=\"\(up)changelog.html#\(release.anchor)\">Version \(release.version)</a>"),
+                    "\(name)'s foot does not name release \(release.version) at its section")
+            let links = Self.hrefs(in: foot)
+            for target in ["index.html", "guide/index.html", "docs/index.html", "examples/index.html", "about.html", "changelog.html",
+                           "roadmap.html", "contributing.html", "capabilities.html", "architecture.html", "attribution.html"] {
+                // The shortest way from the page's own folder, as every
+                // link on the site is written; from the root, for the one
+                // page that is served at any depth.
+                let written = up == "/" ? up + target : builder.relative(from: folder, to: target)
+                #expect(links.contains(written), "\(name)'s foot has no link to \(target) as \(written): \(links)")
+            }
+            #expect(foot.contains("<use href=\"#\(SiteBuilder.markName)\"/>") && page.contains(" id=\"\(SiteBuilder.markName)\">"),
+                    "\(name)'s foot draws the mark by a name the bar's mark does not carry")
+            #expect(foot.contains(SiteBuilder.tagline) && foot.contains("<p class=\"foot-note\">"), "\(name)'s foot lost its line or its closing sentence")
+        }
+        // A page says where it is in the foot too, once.
+        let changelogFoot = changelogPage[try #require(changelogPage.range(of: "<footer class=\"foot\">")).upperBound...]
+        #expect(changelogFoot.contains("<a href=\"changelog.html\" aria-current=\"page\">Changelog</a>")
+                && changelogFoot.components(separatedBy: "aria-current=").count - 1 == 1,
+                "the changelog's foot does not mark the changelog, or marks more than it")
         let indexText = try String(contentsOf: output.appendingPathComponent("assets/search-index.js"), encoding: .utf8)
         #expect(report.sections > 3_000, "indexed \(report.sections) sections")
         #expect(indexText.utf8.count < 3_000_000, "the index is \(indexText.utf8.count) bytes")
@@ -661,6 +787,11 @@ struct SiteTests {
 
     /// Every `id` on a page.
     /// Every `href` on a page.
+    /// What a page's head says under one name, for a failure to show.
+    static func metas(named name: String, in html: String) -> [String] {
+        html.components(separatedBy: "<meta property=\"\(name)\" content=\"").dropFirst().map { String($0.prefix { $0 != "\"" }) }
+    }
+
     static func hrefs(in html: String) -> [String] {
         var found: [String] = []
         var searchFrom = html.startIndex
@@ -1399,7 +1530,7 @@ struct SiteTests {
         let artist = try #require(plan.byRepoPath["Examples/Recreations/VladimirBonacic/README.md"])
         let markdown = try String(contentsOf: root.appendingPathComponent(artist.repoPath), encoding: .utf8)
         let page = builder.markdownPage(markdown, page: artist, plan: plan, log: log).replacingOccurrences(of: "\n", with: "")
-        #expect(page.contains("<li><p><a href=\"dynamicobject.html\"><strong>DynamicObject</strong></a>: after <em>GF.E 32-S</em>.</p><p>The square of lamps.</p><pre>"),
+        #expect(page.contains("<li><p><a href=\"dynamicobject.html\"><strong>DynamicObject</strong></a>: after <em>GF.E 32-S</em>.</p><p>The square of lamps.</p><div class=\"code\"><pre>"),
                 "the paragraph under a sketch's bullet left the bullet")
     }
 
@@ -1759,7 +1890,9 @@ struct SiteTests {
         <div style="width: 700px; flex: none;"><article class="prose">
         <p id="whole">A line of prose long enough that the call after it cannot share it: \(whole) follows.</p>
         </article></div>
-        \(SiteStyle.scrollerScript)
+        <script>
+        \(SiteStyle.pageScript)
+        </script>
         <div id="r0">PENDING</div>
         <script>
         (function () {

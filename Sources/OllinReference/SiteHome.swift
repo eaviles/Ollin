@@ -18,16 +18,33 @@ enum SiteHome {
     enum Row: Equatable {
         /// One section across the page.
         case section(String)
-        /// Two sections side by side.
-        case pair(String, String)
+        /// One section across the page, its text running in two columns
+        /// under its heading where the page is wide enough for two. The
+        /// browser decides where the first column ends, so the two stay even
+        /// however the README's paragraphs change.
+        case flowing(String)
+        /// One section across the page, the parts its `###` headings open
+        /// standing side by side: two ways to do one thing, each read down
+        /// its own column.
+        case split(String)
         /// One section leading a band of sketches you page through, its own
         /// program the first of them, playing as the example named here.
         case carousel(String, running: String)
 
         var headings: [String] {
             switch self {
-            case .section(let heading), .carousel(let heading, _): return [heading]
-            case .pair(let left, let right): return [left, right]
+            case .section(let heading), .flowing(let heading), .split(let heading), .carousel(let heading, _):
+                return [heading]
+            }
+        }
+
+        /// The class the row's section wears beside its own name, which is
+        /// what the stylesheet lays it out by.
+        var layoutClass: String {
+            switch self {
+            case .section, .carousel: return ""
+            case .flowing: return " home-flow"
+            case .split: return " home-split"
             }
         }
     }
@@ -36,7 +53,8 @@ enum SiteHome {
     /// their `## ` headings.
     static let rows: [Row] = [
         .carousel("Hello, circle", running: "Basic/HelloCircle"),
-        .pair("Run it", "Install"),
+        .flowing("Run it"),
+        .split("Install"),
         .section("What's in it"),
     ]
 
@@ -130,5 +148,42 @@ enum SiteHome {
             rest = link.rest.drop { $0 == " " || $0 == "·" }
         }
         return links >= 2 && rest.isEmpty
+    }
+
+    // MARK: - Laying a section out
+
+    /// A rendered section with each part a `###` heading opens in a box of
+    /// its own, so the stylesheet can stand the parts side by side. What
+    /// comes before the first such heading (the section's own heading, a line
+    /// of introduction) stays outside the boxes and runs across them. A
+    /// section with fewer than two parts is handed back as it came: one box
+    /// beside nothing is not a layout.
+    static func parted(_ html: String) -> String {
+        let pieces = html.components(separatedBy: "<h3")
+        guard pieces.count > 2 else { return html }
+        // Each piece opens inside its heading's own tag, so only what
+        // trails it is trimmed: the space ahead of the tag's first attribute
+        // is part of the tag.
+        let parts = pieces.dropFirst().map { piece -> String in
+            var body = Substring(piece)
+            while let last = body.last, last.isWhitespace { body.removeLast() }
+            return "<div class=\"home-part\">\n<h3\(body)\n</div>\n"
+        }
+        return pieces[0] + parts.joined()
+    }
+
+    /// The rendered opening in two boxes: the paragraphs it starts with, and
+    /// the facts that follow them, from its first list to its end (the list
+    /// of what Ollin runs on and is made with, and the note on where it
+    /// stands). On a wide page the stylesheet sets the second beside the
+    /// first as a sheet of facts; on a narrow one they stack in the README's
+    /// own order, which the markup keeps. An opening with no list is handed
+    /// back as it came.
+    static func openingColumns(_ html: String) -> String {
+        guard let list = html.range(of: "<ul") else { return html }
+        let lede = html[..<list.lowerBound].trimmingCharacters(in: .whitespacesAndNewlines)
+        let facts = html[list.lowerBound...].trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !lede.isEmpty else { return html }
+        return "<div class=\"home-lede\">\n\(lede)\n</div>\n<div class=\"home-facts\">\n\(facts)\n</div>"
     }
 }

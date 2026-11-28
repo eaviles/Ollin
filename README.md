@@ -58,7 +58,7 @@ swift run --package-path Examples Example-Basic-HelloCircle
 
 You should see a black circle outline breathing on a white canvas. **Try one edit:** close the window, open [`Examples/Basic/HelloCircle/Sketch.swift`](Examples/Basic/HelloCircle/Sketch.swift), change `stroke(.black)` to `stroke(.red)`, and run the last command again. The circle now breathes in red.
 
-More than five hundred runnable sketches live in [`Examples/`](Examples/README.md), grouped by topic. From the repo root, `swift run OllinExamples` opens a gallery with all of them in a sidebar. The [examples' running guide](Examples/README.md#running) covers individual targets and browsing from the terminal.
+More than six hundred runnable sketches live in [`Examples/`](Examples/README.md), grouped by topic. From the repo root, `swift run OllinExamples` opens a gallery with all of them in a sidebar. The [examples' running guide](Examples/README.md#running) covers individual targets and browsing from the terminal.
 
 The canvas is 1080×1080 by default, previewed fit to your screen. `canvasSize` sets the resolution a sketch renders and exports at, and `windowMode` sizes the preview window. The [Canvas](Docs/Core/Canvas.md) page covers the presets and how to write resolution-independent sketches. Coordinates use a top-left origin with y increasing downward, the same as p5, Processing, and OPENRNDR; [Where a point is](Docs/Concepts/Coordinates.md) covers units and other frames.
 

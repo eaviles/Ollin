@@ -627,6 +627,39 @@ for row in catalog_block:
                               f"{counted} ({spelled(counted)})")
 
 
+# The root README also says how many sketches there are, in hundreds, in the
+# sentence that links their listing ("More than six hundred runnable sketches
+# live in `Examples/`"). It said five hundred a screen below a card that
+# counted 680 for itself. The claim is read against the sketches on disk:
+# "more than N hundred" holds from N hundred and one to the next hundred, so
+# the sentence is rewritten once per hundred and never in between, and a
+# number written in digits there has to be the count itself.
+sketch_count = len(list(examples.rglob("Sketch.swift")))
+HUNDREDS = re.compile(r"\b(?:(more than|over|nearly|almost|about)\s+)?(" +
+                      "|".join(UNITS[1:10]) + r")\s+hundred\b", re.IGNORECASE)
+for sentence in re.split(r"(?<=[.!?])\s+", text[root_readme]):
+    if "](Examples/README.md)" not in sentence and "](Examples/)" not in sentence:
+        continue
+    if not re.search(r"\bsketch(es)?\b", sentence):
+        continue
+    for said in HUNDREDS.finditer(sentence):
+        floor = UNITS.index(said.group(2).lower()) * 100
+        hedge = (said.group(1) or "").lower()
+        if hedge in ("more than", "over"):
+            holds = floor < sketch_count <= floor + 100
+        elif hedge in ("nearly", "almost"):
+            holds = floor - 100 < sketch_count < floor
+        else:
+            holds = abs(sketch_count - floor) < 50
+        if not holds:
+            fail("README.md", f"says `{said.group(0)}` runnable sketches, and "
+                              f"Examples/ holds {sketch_count}")
+    for digits in re.findall(r"\b(\d{3,})\s+(?:runnable\s+)?sketches\b", sentence):
+        if int(digits) != sketch_count:
+            fail("README.md", f"says {digits} sketches, and Examples/ holds "
+                              f"{sketch_count}")
+
+
 # ------------------------------------------------------------------- report
 for message in notes if list_notes else notes[:12]:
     print(f"check-links: note: {message}")
@@ -636,7 +669,7 @@ if notes and not list_notes and len(notes) > 12:
 for message in errors:
     print(f"check-links: {message}", file=sys.stderr)
 
-sketches = len(list(examples.rglob("Sketch.swift")))
+sketches = sketch_count
 print(
     f"check-links: {len(pages)} Guide pages, {len(docs_pages)} Docs pages, "
     f"{len(chapters)} chapters, {len(referenced)} images, {sketches} examples, "
