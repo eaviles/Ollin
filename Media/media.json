@@ -287,7 +287,9 @@
       "Recreations/HassanSharif/BodyAndSquares"
     ],
     "Recreations/JaredTarbell": [
-      "Recreations/JaredTarbell/Substrate"
+      "Recreations/JaredTarbell/Substrate",
+      "Recreations/JaredTarbell/HappyPlace",
+      "Recreations/JaredTarbell/SandTraveler"
     ],
     "Recreations/JohnWhitney": [
       "Recreations/JohnWhitney/Permutations",
@@ -825,10 +827,12 @@
     },
     "Recreations/JaredTarbell": {
       "of": [
-        "Recreations/JaredTarbell/Substrate"
+        "Recreations/JaredTarbell/Substrate",
+        "Recreations/JaredTarbell/HappyPlace",
+        "Recreations/JaredTarbell/SandTraveler"
       ],
-      "image": "groups/Recreations-JaredTarbell.jpg?v=f7e68731",
-      "imageSmall": "groups/Recreations-JaredTarbell-640.jpg?v=1f6afc52"
+      "image": "groups/Recreations-JaredTarbell.jpg?v=7ce08dc6",
+      "imageSmall": "groups/Recreations-JaredTarbell-640.jpg?v=44fc7832"
     },
     "Recreations/JesusRafaelSoto": {
       "of": [
@@ -10423,6 +10427,50 @@
       "loopSmall": "examples/Recreations/HiroshiKawano/SimulatedColorMosaic/loop-640.mp4?v=87f0e6d6",
       "still": "examples/Recreations/HiroshiKawano/SimulatedColorMosaic/still.jpg?v=bbcc609d",
       "stillSmall": "examples/Recreations/HiroshiKawano/SimulatedColorMosaic/still-640.jpg?v=393b4323",
+      "seed": 1
+    },
+    "Recreations/JaredTarbell/HappyPlace": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 1560,
+      "motion": 25.816,
+      "sound": false,
+      "source": "7802df7e1f20a2c9",
+      "rendered": "2026-11-28",
+      "bytes": {
+        "loop": 11827682,
+        "loopSmall": 2675517,
+        "still": 294203,
+        "stillSmall": 91953
+      },
+      "loop": "examples/Recreations/JaredTarbell/HappyPlace/loop.mp4?v=d9e94af4",
+      "loopSmall": "examples/Recreations/JaredTarbell/HappyPlace/loop-640.mp4?v=db7b7c32",
+      "still": "examples/Recreations/JaredTarbell/HappyPlace/still.jpg?v=8e4d2ea6",
+      "stillSmall": "examples/Recreations/JaredTarbell/HappyPlace/still-640.jpg?v=3042d816",
+      "seed": 1
+    },
+    "Recreations/JaredTarbell/SandTraveler": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 1260,
+      "motion": 28.744,
+      "sound": false,
+      "source": "6b59628b72138c7a",
+      "rendered": "2026-11-28",
+      "bytes": {
+        "loop": 8138881,
+        "loopSmall": 2382170,
+        "still": 406665,
+        "stillSmall": 125047
+      },
+      "loop": "examples/Recreations/JaredTarbell/SandTraveler/loop.mp4?v=6609f54a",
+      "loopSmall": "examples/Recreations/JaredTarbell/SandTraveler/loop-640.mp4?v=e4e8fd5a",
+      "still": "examples/Recreations/JaredTarbell/SandTraveler/still.jpg?v=82d2dc3c",
+      "stillSmall": "examples/Recreations/JaredTarbell/SandTraveler/still-640.jpg?v=4f9d1c3b",
       "seed": 1
     },
     "Recreations/JaredTarbell/Substrate": {

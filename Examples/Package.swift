@@ -931,6 +931,14 @@ let package = Package(
         // after Nick Cave's Soundsuits; the tethered phone can wear it live.
         example("Recreations/NickCave/Soundsuit", [.audio, .phone]),
         example("Recreations/JaredTarbell/Substrate"),
+        // A ring of nodes that step toward their friends and away from the
+        // rest, the friendships laid as sand, after Jared Tarbell's "Happy
+        // Place".
+        example("Recreations/JaredTarbell/HappyPlace"),
+        // Travelers thrown out from the middle, each chasing another, with
+        // sand laid between chaser and chased, after Jared Tarbell's "Sand
+        // Traveler".
+        example("Recreations/JaredTarbell/SandTraveler"),
         // A machine that composes in an artist's own language and weighs the
         // result, after Manuel Felguerez's "La maquina estetica".
         example("Recreations/ManuelFelguerez/MaquinaEstetica"),
