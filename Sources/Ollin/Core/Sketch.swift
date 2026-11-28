@@ -2333,8 +2333,11 @@ open class Sketch {
     /// Build the field in `setup()` (`field.place(mesh, at: copies)`), hold it,
     /// and draw it here; the transform stack moves the whole field, and copies
     /// out of view cost (almost) nothing. A field also stands in the ray-traced
-    /// scene, up to its `tracedCopyBudget`. Once per frame per field; a no-op
-    /// without a camera.
+    /// scene, up to its `tracedCopyBudget`. Drawn again in the same frame, on
+    /// the canvas and in a layer through another camera, it is the same copies
+    /// seen twice, each view culled for itself; drawn again under another
+    /// transform, it is the copies placed a second time. A no-op without a
+    /// camera.
     public func drawMeshField(_ field: MeshField) { drawer.drawMeshField(field) }
 
     /// Draw a `StrandField`: a patch of grass-like blades the GPU grows inside

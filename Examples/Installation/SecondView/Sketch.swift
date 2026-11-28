@@ -5,7 +5,8 @@ import Ollin
 /// window, "Plan", is the same stage from straight above: a layer the sketch
 /// draws in the same `draw()` through a camera of its own, which
 /// `makeWindow(showing:title:)` gives a window. Press and drag in the plan to
-/// move the lamp and the stage follows, since both pictures are one world.
+/// move the lamp and the stage follows, since both pictures are one world:
+/// the blocks' shadows swing round in both windows at once.
 /// Drag either window to another display and make it full screen to put
 /// that view on a projector.
 ///
@@ -90,10 +91,12 @@ final class SecondView: Sketch {
             }
         }
 
-        // The lights are the frame's: set once, they light both views.
+        // The lights are the frame's: set once, they light both views. So are
+        // the shadows: rendered once, they fall in the plan as on the stage.
         ambientLight(Color(white: 0.18))
         pointLight(Color(red: 1, green: 0.9, blue: 0.75), at: Vector3(lamp.x, lampHeight, lamp.y),
                    intensity: 6)
+        castShadows()
 
         // The stage, from the house.
         camera(.perspective(eye: Vector3(0, 3.2, 8.5), target: Vector3(0, 0.6, 0), fieldOfView: .pi / 4))

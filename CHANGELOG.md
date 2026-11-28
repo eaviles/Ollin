@@ -25,9 +25,12 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 - **Removing many particles at once.** `world.remove(particles)` takes a list out of a physics world in one pass, with the springs attached, where a hundred single removals each read the whole world. `world.remove(springs)` does the same for a list of springs. [Physics](Docs/Simulation/Physics.md#world)
 - **Why a Bluetooth link dropped.** `device.lastError` says why the link to a device last dropped or would not come up, in the radio's own words when it gave any. It is `nil` again once the device is back, and after a `disconnect()`. `device.name` is `nil` while nothing is connected. [Bluetooth](Docs/Integration/Bluetooth.md)
 - **A runner says when it records a take.** `runner.isRecordingTake` is the twin of `isReplaying`, for a host that shows it. It turns false by itself when the take ends: at `finishTake()`, when a replay starts, and when the sketch is swapped. [Record and replay](Docs/Core/Replay.md)
+- **One mesh field in two views.** `drawMeshField(field)` can be called more than once a frame. On the canvas and again in a layer through another camera, each view is culled for itself. Under another transform, the copies are placed a second time. The second draw used to be skipped with a note. [Instancing](Docs/3D/Instancing.md#meshfield)
 
 ### Changed
 
+- **A layer's solids receive the frame's shadows.** Under `castShadows()`, a solid drawn into a layer is shadowed as one on the canvas is, through the layer's camera or the canvas's, so a second window shows the first one's shadows. A sketch with solids in a layer under `castShadows()` now sees their shadows there. [A camera for a layer](Docs/3D/3D.md#layer-camera)
+- **A layer's camera has two eyes in a spatial video.** A layer that looks through a camera of its own showed both eyes one picture. Each eye now gets that camera's own view, so a 3D scene inside a layer has depth in `--export-spatial`. A feedback layer or an accumulator still shows one picture. [Spatial](Docs/Output/Spatial.md#spatial-video)
 - **A layer can draw a layer opened after it.** Layers are filled in the order they read each other, so a block can draw another layer's image, a feedback layer's, or an accumulator's mean, and show this frame's picture wherever that block sits. A sketch that leaned on the old one-frame lag can read a feedback layer's `previous`. [Layers](Docs/Drawing/Effects.md#withtarget)
 - **`background` inside a layer clears the whole layer.** In a layer's second block it also takes what the first block drew, and it leaves a second layer drawn inside the block alone. Its color holds through a later block. To keep earlier marks, call it only in the layer's first block. [Layers](Docs/Drawing/Effects.md#withtarget)
 - **A layer is empty on a frame that draws nothing into it.** A layer kept from `setup()` showed an older picture, or another layer's, on a frame that left it alone, and kept its last `background` color. To keep a picture across frames, use `makeFeedback()`. [Layers](Docs/Drawing/Effects.md#withtarget)
@@ -216,7 +219,7 @@ Each of these can change what a sketch draws, sounds like, or accepts.
 - **The live window carries on after a GPU hang.** It used to show its last finished frame for good. The frame loop also holds while the Mac sleeps.
 - **A glowing surface glows in a traced reflection.** A mirror showed a surface with an `emissiveColor` or `Mesh.glowing(_:)` as its unlit body.
 - **A marched field drawn in a layer showed on the canvas too.** It happened when the canvas marched its own `drawSDF3D` fields at reduced resolution. The canvas now draws its own fields alone.
-- **A mesh field in a layer is culled through the layer's own view.** A `MeshField` in a layer of another shape lost copies at its sides. [Instancing](Docs/3D/Instancing.md#a-field-that-culls-itself)
+- **A mesh field in a layer is culled through the layer's own view.** A `MeshField` in a layer of another shape lost copies at its sides. [Instancing](Docs/3D/Instancing.md#meshfield)
 - **A textured OBJ drew its texture upside down.** The reader now flips `vt` as it reads, as the USD reader already did. [3D](Docs/3D/3D.md#meshes-from-file)
 
 **Sound and simulation**

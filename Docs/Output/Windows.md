@@ -108,7 +108,7 @@ Lights are the frame's. Set them once, and they light everything the frame draws
 
 Inside the block, `cameraRay(through:)` reads the layer's camera and the layer's size. So `cameraRay(through: planWindow.mouse)`, called inside the layer's block, is the ray under the pointer in the second window, ready to pick with.
 
-A layer's solids receive no cast shadow, so a shadow that falls across the stage in the sketch's own window is missing from the second one. The [3D page](../3D/3D.md#layer-camera) lists what else stops at a layer.
+The shadows are the frame's as well. With `castShadows()` on, a shadow that falls across the stage in the sketch's own window falls across it in the second one. The [3D page](../3D/3D.md#layer-camera) says how far a shadow reaches in a second view, and lists what stops at a layer.
 
 [`Examples/Installation/SecondView`](../../Examples/Installation/SecondView/Sketch.swift) is a stage in the sketch's own window and the same stage from above in a second one, where a drag moves the lamp.
 

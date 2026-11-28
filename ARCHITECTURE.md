@@ -2487,6 +2487,12 @@ shadow-cull dispatch read the just-bound draw-arguments buffer as instance
 matrices until the instance buffer was explicitly rebound. The
 culled-vs-unculled A/B surfaced it as a single 37-pixel shadow sliver.
 
+### A field in more than one view
+
+A field's cull products were the field's: one visible count per entry, one compacted index buffer, one set of draw arguments. Two draws of one field in a frame would both write them, the second appending past the first's counts, so a second draw was refused. The products are a draw's now. Each `.meshField` batch carries `fieldView`, its place among the frame's draws of that field, and `MeshField.cullProducts(view:for:)` hands that draw buffers of its own: view 0 is made with the field, a later view the first time a frame draws the field that often, and all of them are dropped when the field regrows. The cull runs once for every draw, through the camera and the shape of the pass the draw belongs to, and the draw arm binds its own draw's products. The ordered compaction's scratch stays one per field, since a view's count, scan, and place finish before the next view's begin in the one compute encoder that runs them.
+
+Whatever counts the world and not a view has to know that two draws can be one thing. A draw whose field and matrix an earlier draw already used is the same copies in the same place (`fieldPlacementRepeats`), seen from a second view, and the shadow cull, both shadow draws, the traced structure, and the room reserved for it pass over it. A draw under another matrix is a second placement and casts like one. The check is on the frame's dispatch count, since a shadow cast twice into the same depths changes no picture: one field in two views runs two dispatches fewer than two fields holding the same copies.
+
 ---
 
 ### Feature edges over a mesh that moves
@@ -3372,6 +3378,16 @@ soft-by-default, and the penumbra change measured sub-tolerance (~0.2 mean
 against the 2.0 snapshot threshold, a localized shadow-edge change), so
 `mesh-shadows`/`spot-shadows`/`rt-reflections-3d` stayed within tolerance and
 were not re-recorded (the SSAO silhouette-AA precedent).
+
+#### A layer reads the frame's shadows by the frame's fit
+
+A frame renders its shadows once, ahead of every pass: one layer of the map array for each directional, spot, or panel caster, one cube for each point caster that is not traced, and one structure when any caster traces. All of it is in world space, so a layer's pass can read it whatever camera the layer looks through, and `encodeEffectTargets` takes the frame's `ShadowMaps` and hands every layer pass the same three things the canvas's pass takes.
+
+What is not in world space is how a pass finds the map. A caster's `lightViewProjection` is built in `Drawer.makeLighting` from the camera: the box or the frustum is placed at the camera's target and sized by its distance. A layer's pass packs its lighting with the layer's camera in force (`withPassCamera`), which is right for the eye, the fog, and a light read relative to the camera, and wrong for the casters: they would describe a map fitted around the layer's camera, which nobody rendered. Read that way the frame's map is taken for a box somewhere else, and the shadow lands on another part of the floor (a plant of exactly this moved 1,461 pixels around a shadow of 392). So `withPassCamera` also sets `shadowFitCamera`, the camera the maps were fitted around, and the caster block is packed from that one alone. With equal targets and distances the two fits are the same matrix, which is the case the suite holds to three levels against a twin drawn alone.
+
+Two consequences are accepted and said on the page. A directional or spot map covers what the frame's camera frames, so a layer aimed far from it is lit where the map does not reach, the envelope every 2D caster already has at the edge of its fit. And a lamp read `relativeTo(.camera)` resolves against the pass's camera, so in a layer's own view it hangs somewhere no map was rendered from: it keeps its slot there, because a slot is a layer of the map array and the slots after it must not move, and its strength is zero.
+
+The structure is the one of the three that costs a pass something to hold. A pass handed a structure draws its lit fragments through a traced build, which a GPU that traces in software pays for on every pixel. `ShadowMaps.accel` is set only in a frame where a caster traces, so a layer takes the traced build only then, and since a layer is handed no reflection structure it takes the build that carries the shadow paths alone (`tracesShadowsOnly`). Measured on an M2 as a difference of two differences (a 480 by 480 layer beside a 1280 by 720 canvas, nine solids): 0.36 ms under a sun, 0.23 ms under a lamp's cube, about 1.5 ms under a traced lamp, against 0.84, 0.59, and about 2.4 ms for the canvas's own.
 
 ### Ray-traced reflections: integration and plumbing
 
@@ -9979,6 +9995,12 @@ for one video track is nothing. A sound-carrying spatial export is therefore two
 realtime inputs and interleaves without either gating the other (verified: a
 6 second clip and a 3 second sound-carrying one, both complete and both read as
 spatial).
+
+### A layer's two eyes
+
+A layer that set a camera of its own is a second view of the world, and before this it was the one view an export left alone: `aimStereoEye` re-aimed the frame's camera, the layer's pass read the layer's, and both eyes were shown one picture of it. `Drawer.layerViews` now lists the layers that set a camera this frame with each one's shape, and the export re-aims each to its own pair, resolved by `StereoGeometry.resolved(for:aspect:)` from that layer's camera at that layer's aspect. A number the sketch declared applies to every view as it stands; a number it left out is one percent of each view's own frame, never the canvas's figure carried over (a canvas camera standing farther off derives a wider separation, and a layer through a nearer camera shown with it would be pulled several times too deep).
+
+A layer that keeps its picture across frames is left on the camera it set. Its pass runs once a frame however many times the frame is rendered (`statefulEncodeIsRepeat`), so re-aimed it would be filled through the left eye and served to both: one picture, half a separation off its place. Left alone it is one picture where the sketch put it, and the export says so once.
 
 ---
 

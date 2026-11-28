@@ -6,8 +6,8 @@ import Metal
 import simd
 import Testing
 
-/// CPU checks on the retained `MeshField` (place, the entry table, the
-/// once-per-frame gate); the GPU behavior gets its Metal-gated suite below.
+/// CPU checks on the retained `MeshField` (place, the entry table, a view and
+/// a placement for every draw); the GPU behavior gets its Metal-gated suite below.
 @Suite
 @MainActor
 struct MeshFieldTests {
@@ -48,7 +48,7 @@ struct MeshFieldTests {
         #expect(field.isEmpty)
     }
 
-    @Test func drawRecordsOneBatchOncePerFrame() throws {
+    @Test func everyDrawRecordsABatchWithAViewOfItsOwn() throws {
         let drawer = Drawer()
         drawer.beginFrame()
         drawer.camera(Camera3D(eye: Vector3(0, 0, 6), target: .zero))
@@ -56,13 +56,41 @@ struct MeshFieldTests {
         field.place(box, at: [MeshInstance()])
         drawer.translate(5, 0, 0)
         drawer.drawMeshField(field)
-        drawer.drawMeshField(field)   // second draw in one frame: skipped, noted
+        drawer.drawMeshField(field)   // the same copies in the same place, seen again
+        drawer.translate(0, 3, 0)
+        drawer.drawMeshField(field)   // the copies placed again, somewhere else
         let fieldBatches = drawer.batches.filter { $0.kind == .meshField }
-        #expect(fieldBatches.count == 1)
-        #expect(fieldBatches[0].field === field)
+        #expect(fieldBatches.count == 3)
+        #expect(fieldBatches.allSatisfy { $0.field === field })
+        // Each draw is culled into products of its own, by its place in the frame.
+        #expect(fieldBatches.map(\.fieldView) == [0, 1, 2])
+        // Only a draw under a matrix an earlier one used is a repeat.
+        #expect(fieldBatches.map(\.fieldPlacementRepeats) == [false, true, false])
         // The draw-time CTM rides the batch, not the copies.
         #expect(fieldBatches[0].fieldTransform.columns.3.x == 5)
+        #expect(fieldBatches[2].fieldTransform.columns.3.y == 3)
         #expect(field.instances[0].model.columns.3.x == 0)
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aLaterViewsProductsAreItsOwnAndFollowTheField() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let field = MeshField()
+        field.place(box, at: [MeshInstance(), MeshInstance(position: Vector3(3, 0, 0))])
+        let first = try #require(field.cullProducts(view: 0, for: device))
+        let second = try #require(field.cullProducts(view: 1, for: device))
+        let third = try #require(field.cullProducts(view: 2, for: device))
+        #expect(first.compacted !== second.compacted && second.compacted !== third.compacted)
+        #expect(first.drawArguments !== second.drawArguments)
+        #expect(first.shadowCompacted !== second.shadowCompacted)
+        // Asked again, a view gets the buffers it had.
+        #expect(try #require(field.cullProducts(view: 1, for: device)).compacted === second.compacted)
+        // A field that grew is rebuilt, and its later views with it: the old
+        // ones were sized for fewer copies.
+        field.place(box, at: (0 ..< 64).map { MeshInstance(position: Vector3(Double($0), 0, 0)) })
+        let regrown = try #require(field.cullProducts(view: 1, for: device))
+        #expect(regrown.compacted !== second.compacted)
+        #expect(regrown.compacted.length >= field.copyCount * 4)
     }
 
     @Test func refusedInsideABatchRecordingAndWithoutACamera() throws {
@@ -130,7 +158,8 @@ struct MeshFieldRenderTests {
         let sketch = FieldOrderProbe()
         _ = try OllinApp.image(of: sketch)
         let device = try #require(MTLCreateSystemDefaultDevice())
-        let gpu = try #require(sketch.field.gpuResources(for: device))
+        let entryCount = try #require(sketch.field.gpuResources(for: device)).entryCount
+        let gpu = try #require(sketch.field.cullProducts(view: 0, for: device))
         // The compacted indices live in private storage, so copy them out.
         let queue = try #require(device.makeCommandQueue())
         let readable = try #require(device.makeBuffer(length: gpu.compacted.length,
@@ -142,7 +171,7 @@ struct MeshFieldRenderTests {
         blit.endEncoding()
         commands.commit()
         commands.waitUntilCompleted()
-        let counts = gpu.counts.contents().bindMemory(to: UInt32.self, capacity: gpu.entryCount)
+        let counts = gpu.counts.contents().bindMemory(to: UInt32.self, capacity: entryCount)
         let compacted = readable.contents().bindMemory(to: UInt32.self,
                                                        capacity: gpu.compacted.length / 4)
         var drawn = 0

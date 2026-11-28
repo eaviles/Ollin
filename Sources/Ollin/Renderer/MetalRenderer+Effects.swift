@@ -80,9 +80,18 @@ extension MetalRenderer {
         }
     }
 
+    /// Fill every layer the frame drew into or made from another, ahead of the
+    /// canvas's own pass, which samples them.
+    ///
+    /// `shadows` is what the frame's shadow pass rendered, for the solids a layer
+    /// holds: the maps and the cubes are in world space, so a layer looking from
+    /// anywhere reads them, and the structure is there only in a frame where a
+    /// caster traces (a pass handed one draws through the traced build of the
+    /// lit fragments, which costs every pixel on a GPU that traces in software).
     func encodeEffectTargets(_ drawer: Drawer, into cb: MTLCommandBuffer,
                                      buffers: GeometryBuffers, pooled: Bool,
-                                     gi: GIResolved? = nil) {
+                                     gi: GIResolved? = nil,
+                                     shadows: ShadowMaps = ShadowMaps()) {
         // A feedback layer's last frame is ready before the frame starts, so it
         // is resolved here, ahead of every pass and on a frame with no layer to
         // fill: a frame that leaves the layer alone reads the last block's
@@ -151,7 +160,9 @@ extension MetalRenderer {
                    sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
                    sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode,
                    depthFormat: depthResolve != nil ? depthPixelFormat : nil,
-                   stencil: passHasStencil, gi: gi, target: target)
+                   stencil: passHasStencil,
+                   shadowMap: shadows.twoD, shadowCube: shadows.cube, shadowAccel: shadows.accel,
+                   gi: gi, target: target)
             enc.endEncoding()
             encodeVolumes(drawer, target: target, color: tex.resolve, depth: depthResolve,
                           phase: 0, into: cb)
@@ -223,7 +234,9 @@ extension MetalRenderer {
                        meshInstanceBuffer: buffers.meshInstance,
                        sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
                        sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode,
-                       depthFormat: nil, stencil: passHasStencil, gi: gi, target: target)
+                       depthFormat: nil, stencil: passHasStencil,
+                       shadowMap: shadows.twoD, shadowCube: shadows.cube, shadowAccel: shadows.accel,
+                       gi: gi, target: target)
             }
             enc.endEncoding()
             target.texture = back                // `image` resolves to this frame
@@ -291,7 +304,9 @@ extension MetalRenderer {
                        meshInstanceBuffer: buffers.meshInstance,
                        sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
                        sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode,
-                       depthFormat: nil, stencil: passHasStencil, gi: gi, target: target,
+                       depthFormat: nil, stencil: passHasStencil,
+                       shadowMap: shadows.twoD, shadowCube: shadows.cube, shadowAccel: shadows.accel,
+                       gi: gi, target: target,
                        singleSample: lightOnly, layerFormat: lightOnly ? .rgba32Float : passFormat)
             }
             enc.endEncoding()
@@ -358,7 +373,9 @@ extension MetalRenderer {
                            meshInstanceBuffer: buffers.meshInstance,
                            sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
                            sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode,
-                           depthFormat: nil, stencil: passHasStencil, gi: gi, target: target)
+                           depthFormat: nil, stencil: passHasStencil,
+                           shadowMap: shadows.twoD, shadowCube: shadows.cube, shadowAccel: shadows.accel,
+                           gi: gi, target: target)
                 }
                 enc.endEncoding()
             }
@@ -4947,13 +4964,17 @@ extension MetalRenderer {
                     compositePathTraced(pathTraced)
                     continue
                 }
+                // The visible set is this draw's own (`fieldView`): the cull
+                // ran once for every draw of the field, each through its pass's view.
                 guard depthFormat != nil, drawer.camera3D != nil,
                       let fieldHandle = batch.field,
-                      let resources = fieldHandle.gpuResources(for: device) else { continue }
+                      let resources = fieldHandle.gpuResources(for: device),
+                      let visible = fieldHandle.cullProducts(view: batch.fieldView, for: device)
+                else { continue }
                 encoder.setRenderPipelineState(state)
                 encoder.setVertexBuffer(resources.vertices, offset: 0, index: 0)
                 encoder.setVertexBuffer(resources.instances, offset: 0, index: 4)
-                encoder.setVertexBuffer(resources.compacted, offset: 0, index: 5)
+                encoder.setVertexBuffer(visible.compacted, offset: 0, index: 5)
                 var fieldModel = batch.fieldTransform
                 encoder.setVertexBytes(&fieldModel, length: MemoryLayout<simd_float4x4>.stride,
                                        index: 6)
@@ -4965,7 +4986,7 @@ extension MetalRenderer {
                 for entry in 0 ..< resources.entryCount {
                     if entry > 0 { profile.drawCalls += 1 }
                     encoder.drawPrimitives(type: .triangle,
-                                           indirectBuffer: resources.drawArguments,
+                                           indirectBuffer: visible.drawArguments,
                                            indirectBufferOffset: entry * argStride)
                 }
             case .strands:
@@ -5344,9 +5365,11 @@ extension MetalRenderer {
     /// passes in the same command buffer (hazard tracking orders them before the
     /// draws): zero the visible counts (one blit), then cull every copy and
     /// GPU-write each entry's `MTLDrawPrimitivesIndirectArguments` (one compute
-    /// encoder). Runs once per frame per field; the depth-carrying drives all
-    /// call it, and the `.meshField` draw arm requires a depth pass, so a field
-    /// can never draw stale arguments. A frame whose clock can repeat
+    /// encoder). Runs once per frame for every draw of a field, each into that
+    /// draw's own products (`MeshField.cullProducts`), so a field drawn on the
+    /// canvas and in a layer is culled through each view; the depth-carrying
+    /// drives all call it, and the `.meshField` draw arm requires a depth pass,
+    /// so a field can never draw stale arguments. A frame whose clock can repeat
     /// (`Drawer.runsOnFixedClock`) compacts the camera's set in copy order, so
     /// copies meeting at equal depth resolve the same way on every run; the
     /// shadow set keeps the one-pass append, since a depth map keeps the nearest
@@ -5372,11 +5395,13 @@ extension MetalRenderer {
             return MeshField.frustumPlanes(of: camera.viewProjectionMatrix(aspect: aspect))
         }
 
-        var work: [(GeometryBatch, MeshField.GPUResources, MeshField, [SIMD4<Float>])] = []
+        var work: [(batch: GeometryBatch, resources: MeshField.GPUResources,
+                    products: MeshField.CullProducts, field: MeshField, planes: [SIMD4<Float>])] = []
         for batch in fieldBatches {
             guard let field = batch.field, let planes = viewPlanes(for: batch),
-                  let resources = field.gpuResources(for: device) else { continue }
-            work.append((batch, resources, field, planes))
+                  let resources = field.gpuResources(for: device),
+                  let products = field.cullProducts(view: batch.fieldView, for: device) else { continue }
+            work.append((batch, resources, products, field, planes))
         }
         guard !work.isEmpty else { return }
 
@@ -5390,15 +5415,15 @@ extension MetalRenderer {
             ? MeshField.frustumPlanes(of: lighting.lightViewProjection) : nil
 
         guard let reset = commandBuffer.namedBlitEncoder() else { return }
-        for (_, resources, _, _) in work {
-            reset.fill(buffer: resources.counts, range: 0 ..< resources.counts.length, value: 0)
-            reset.fill(buffer: resources.shadowCounts,
-                       range: 0 ..< resources.shadowCounts.length, value: 0)
+        for item in work {
+            reset.fill(buffer: item.products.counts, range: 0 ..< item.products.counts.length, value: 0)
+            reset.fill(buffer: item.products.shadowCounts,
+                       range: 0 ..< item.products.shadowCounts.length, value: 0)
         }
         reset.endEncoding()
 
         guard let compute = commandBuffer.namedComputeEncoder() else { return }
-        for (batch, resources, field, planes) in work {
+        for (batch, resources, products, field, planes) in work {
             var params = OllinFieldCullParams()
             withUnsafeMutableBytes(of: &params.planes) { raw in
                 let dst = raw.bindMemory(to: SIMD4<Float>.self)
@@ -5411,8 +5436,8 @@ extension MetalRenderer {
             let width = cullState.threadExecutionWidth
             compute.setBuffer(resources.instances, offset: 0, index: 0)
             compute.setBuffer(resources.entries, offset: 0, index: 1)
-            compute.setBuffer(resources.counts, offset: 0, index: 2)
-            compute.setBuffer(resources.compacted, offset: 0, index: 3)
+            compute.setBuffer(products.counts, offset: 0, index: 2)
+            compute.setBuffer(products.compacted, offset: 0, index: 3)
             compute.setBytes(&params, length: MemoryLayout<OllinFieldCullParams>.stride, index: 4)
             let copies = MTLSize(width: field.copyCount, height: 1, depth: 1)
             let group = MTLSize(width: width, height: 1, depth: 1)
@@ -5438,13 +5463,16 @@ extension MetalRenderer {
                 compute.dispatchThreads(copies, threadsPerThreadgroup: group)
             }
             compute.setComputePipelineState(encodeState)
-            compute.setBuffer(resources.drawArguments, offset: 0, index: 0)
+            compute.setBuffer(products.drawArguments, offset: 0, index: 0)
             compute.dispatchThreads(MTLSize(width: resources.entryCount, height: 1, depth: 1),
                                     threadsPerThreadgroup: MTLSize(width: min(width, resources.entryCount),
                                                                    height: 1, depth: 1))
             profile.computeDispatches += 2
 
-            guard castsShadows else { continue }
+            // The shadow set belongs to a placement, and a draw that repeats an
+            // earlier one's (the same copies seen from a second view) casts
+            // nothing of its own.
+            guard castsShadows, !batch.fieldPlacementRepeats else { continue }
             var shadowParams = params
             if let lightPlanes {
                 withUnsafeMutableBytes(of: &shadowParams.planes) { raw in
@@ -5458,14 +5486,14 @@ extension MetalRenderer {
             // Rebind the instance buffer: the encode dispatch above repointed
             // index 0 at the draw-arguments buffer.
             compute.setBuffer(resources.instances, offset: 0, index: 0)
-            compute.setBuffer(resources.shadowCounts, offset: 0, index: 2)
-            compute.setBuffer(resources.shadowCompacted, offset: 0, index: 3)
+            compute.setBuffer(products.shadowCounts, offset: 0, index: 2)
+            compute.setBuffer(products.shadowCompacted, offset: 0, index: 3)
             compute.setBytes(&shadowParams, length: MemoryLayout<OllinFieldCullParams>.stride,
                              index: 4)
             compute.dispatchThreads(MTLSize(width: field.copyCount, height: 1, depth: 1),
                                     threadsPerThreadgroup: MTLSize(width: width, height: 1, depth: 1))
             compute.setComputePipelineState(encodeState)
-            compute.setBuffer(resources.shadowArguments, offset: 0, index: 0)
+            compute.setBuffer(products.shadowArguments, offset: 0, index: 0)
             compute.dispatchThreads(MTLSize(width: resources.entryCount, height: 1, depth: 1),
                                     threadsPerThreadgroup: MTLSize(width: min(width, resources.entryCount),
                                                                    height: 1, depth: 1))

@@ -391,6 +391,27 @@ extension OllinApp {
                 let center = sketch.drawer.camera3D
                 let pair = center?.stereoPair(geometry, aspect: aspect)
                 let resolved = center.map { geometry.resolved(for: $0, aspect: aspect) }
+                // A layer that looks through a camera of its own is a second view
+                // of the world, and it has two eyes as well: each is that camera's
+                // own pair, worked out from the layer's camera and shape the way
+                // the canvas's is from its own, so what the sketch left out of the
+                // geometry is measured against the view it applies to.
+                let layerViews = sketch.drawer.layerViews
+                func layerEyes(_ eye: StereoEye) -> [ObjectIdentifier: Camera3D] {
+                    var eyes: [ObjectIdentifier: Camera3D] = [:]
+                    for view in layerViews where view.rendersPerView {
+                        let spacing = geometry.resolved(for: view.camera, aspect: view.aspect)
+                        eyes[view.layer] = view.camera.stereoEye(eye, interocular: spacing.interocular,
+                                                                 convergence: spacing.convergence)
+                    }
+                    return eyes
+                }
+                if !accumulates, pair != nil, layerViews.contains(where: { !$0.rendersPerView }) {
+                    sketch.drawer.noteOnce(
+                        "Ollin: a layer that keeps its picture across frames (a feedback layer, an "
+                        + "accumulator, a simulation field) is filled once a frame, so its spatial video "
+                        + "shows the same picture of it to both eyes, through the camera it set")
+                }
 
                 // A persistent picture renders through the warmup, as in the
                 // flat export's loop (`renderFrames`).
@@ -412,16 +433,27 @@ extension OllinApp {
                                             fieldOfView: center?.horizontalFieldOfView(
                                                 aspect: aspect, convergence: convergence) ?? .pi / 3)
                     } else if let pair, let resolved {
-                        sketch.drawer.aimStereoEye(pair.left, previous: previous?.left)
+                        sketch.drawer.aimStereoEye(pair.left, previous: previous?.left,
+                                                   layers: layerEyes(.left))
                         guard let left = renderer.image(of: sketch.drawer, viewport: viewport,
                                                         width: width, height: height) else {
                             throw unrendered
                         }
-                        sketch.drawer.aimStereoEye(pair.right, previous: previous?.right)
+                        sketch.drawer.aimStereoEye(pair.right, previous: previous?.right,
+                                                   layers: layerEyes(.right))
                         guard let right = renderer.image(of: sketch.drawer, viewport: viewport,
                                                          width: width, height: height) else {
                             throw unrendered
                         }
+                        // Leave the cameras as `draw()` set them. A frame the sketch
+                        // holds is rendered again without being drawn again, and its
+                        // pair is worked out from what is found here: left on the
+                        // right eye, every eye of the held frame would stand half a
+                        // separation to the right.
+                        var centers: [ObjectIdentifier: Camera3D] = [:]
+                        for view in layerViews { centers[view.layer] = view.camera }
+                        sketch.drawer.aimStereoEye(center, previous: sketch.drawer.previousCamera3D,
+                                                   layers: centers)
                         frame = StereoFrame(left: left, right: right,
                                             interocular: resolved.interocular,
                                             fieldOfView: pair.left.horizontalFieldOfView(

@@ -127,6 +127,8 @@ swift run --package-path Examples Example-3D-Geometry-SpatialVideo --export-spat
 
 Each frame is drawn **once** and rendered twice, from two cameras a short distance apart. That distinction matters, because drawing twice would roll the sketch's randomness twice and step every simulation twice. The simulations that are documented as not reproducing frame for frame would then give the two eyes different worlds. With one draw and two renders, both eyes see the same instant.
 
+A [layer that looks through a camera of its own](../3D/3D.md#layer-camera) is a second view of the world, and it gets two eyes as well. The layer is rendered once for each eye, through that camera's own pair. So a 3D view shown inside a flat page has depth of its own. A number left out of the geometry is worked out from the layer's camera and shape, as the canvas's is from its own.
+
 ### The two numbers
 
 A stereo pair needs exactly two numbers. Both are choices about the work, not settings with one correct value.
@@ -172,6 +174,7 @@ The file records the distance between the eyes that shot it, in real units. A pl
 
 - **An accumulating sketch reads flat**, and the export says so once. The accumulated picture is held in a persistent surface, and there is only one of those, so both eyes receive the same picture. A screen-space accumulation has no depth to give anyway.
 - **A 2D sketch reads flat** for the same reason, and the export says so too.
+- **A layer that keeps its picture reads flat.** A feedback layer, an accumulator, and a simulation field are filled once a frame. So both eyes get the one picture, drawn through the camera the layer set. The export says so once.
 - **Anything the sketch flattened itself during `draw()`** stays where it was flattened, whether that flattening was a `project()`, a `depth(at:)` placement, or a billboard. Those land on the screen plane in both eyes. For the notices and overlays that use them, that is usually what you want.
 - Sound is included exactly as it is in an ordinary video export.
 

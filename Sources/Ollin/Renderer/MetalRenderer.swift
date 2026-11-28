@@ -2820,7 +2820,8 @@ final class MetalRenderer {
                               geoOffsets: renderedShadow.giGeoOffsets,
                               geoMats: renderedShadow.giGeoMats,
                               supersample: false, pooled: true)
-        encodeEffectTargets(drawer, into: commandBuffer, buffers: buffers, pooled: true, gi: gi)
+        encodeEffectTargets(drawer, into: commandBuffer, buffers: buffers, pooled: true, gi: gi,
+                            shadows: renderedShadow)
         if drawer.environment?.feedsALayer == true {
             // A layer fed to the environment was drawn by the pass above, so its bake
             // comes after it: the scene reflects this frame's layer, not an empty one.
@@ -3681,7 +3682,8 @@ final class MetalRenderer {
                               geoOffsets: renderedShadow.giGeoOffsets,
                               geoMats: renderedShadow.giGeoMats,
                               supersample: true, pooled: false)
-        encodeEffectTargets(drawer, into: commandBuffer, buffers: buffers, pooled: false, gi: gi)
+        encodeEffectTargets(drawer, into: commandBuffer, buffers: buffers, pooled: false, gi: gi,
+                            shadows: renderedShadow)
         if drawer.environment?.feedsALayer == true {
             _ = resolveIBL(for: drawer.environment, sunLit: drawer.skySunLit, commandBuffer: commandBuffer,
                            blocking: true)
@@ -4197,7 +4199,8 @@ final class MetalRenderer {
                                   geoOffsets: renderedShadow.giGeoOffsets,
                                   geoMats: renderedShadow.giGeoMats,
                                   supersample: false, pooled: false)
-            encodeEffectTargets(drawer, into: cb, buffers: buffers, pooled: false, gi: gi)
+            encodeEffectTargets(drawer, into: cb, buffers: buffers, pooled: false, gi: gi,
+                                shadows: renderedShadow)
             if drawer.environment?.feedsALayer == true {
                 _ = resolveIBL(for: drawer.environment, sunLit: drawer.skySunLit, commandBuffer: cb)
             }

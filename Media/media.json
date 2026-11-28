@@ -6899,14 +6899,14 @@
       "stillBecause": "holds still",
       "frame": 480,
       "motion": 0.0,
-      "source": "1ecbf95cd02764b5",
-      "rendered": "2026-11-06",
+      "source": "f61d24a6c6a99ebe",
+      "rendered": "2026-11-28",
       "bytes": {
-        "still": 37226,
-        "stillSmall": 15997
+        "still": 43889,
+        "stillSmall": 18283
       },
-      "still": "examples/Installation/SecondView/still.jpg?v=44869676",
-      "stillSmall": "examples/Installation/SecondView/still-640.jpg?v=9202db33",
+      "still": "examples/Installation/SecondView/still.jpg?v=71d7abeb",
+      "stillSmall": "examples/Installation/SecondView/still-640.jpg?v=3ba9a7af",
       "seed": 1
     },
     "Installation/Unattended": {

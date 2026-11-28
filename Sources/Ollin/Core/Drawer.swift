@@ -209,6 +209,16 @@ struct GeometryBatch {
     /// field vertex shader; identity when the field is drawn untransformed).
     var field: MeshField?
     var fieldTransform: simd_float4x4 = matrix_identity_float4x4
+    /// Which of the frame's draws of `field` this one is, counted from 0 in draw
+    /// order. Each draw is culled through the view of its own pass into cull
+    /// products of its own (`MeshField.cullProducts(view:for:)`), so one field
+    /// drawn on the canvas and in a layer shows each view its own visible set.
+    var fieldView = 0
+    /// Whether an earlier draw of the frame placed the same field by the same
+    /// matrix: the same copies in the world, seen again. Whatever counts the
+    /// world and not a view (the shadow casters, the traced structure) takes the
+    /// first placement and passes over its repeats.
+    var fieldPlacementRepeats = false
     /// The strand parameters for a `.strands` batch (`nil` otherwise); the
     /// draw-time CTM is carried in `fieldTransform` like a mesh field's.
     var strandField: StrandField?
@@ -687,9 +697,23 @@ final class Drawer {
               let own = layerCameras[ObjectIdentifier(target)] else { return try body() }
         let canvas = camera3D
         camera3D = own
-        defer { camera3D = canvas }
+        // The one answer that stays the frame's: the shadow maps were rendered
+        // once, around the frame's camera, before any pass was drawn.
+        shadowFitCamera = own == canvas ? nil : canvas
+        defer {
+            camera3D = canvas
+            shadowFitCamera = nil
+        }
         return try body()
     }
+
+    /// The camera the frame's shadow maps were fitted around, while a layer's
+    /// pass draws through another one (`withPassCamera`); nil everywhere else,
+    /// where `camera3D` is that camera. A directional, spot, or panel caster's
+    /// map is a box or a frustum placed by the camera's target and its distance,
+    /// so a pass that samples the map must pack its casters from the camera the
+    /// map was rendered for, whatever eye the pass itself looks from.
+    private(set) var shadowFitCamera: Camera3D?
 
     /// One pixel's cone under the frame's camera at the size the frame renders at,
     /// which a traced hit reads its maps' level from: above zero, the angle a pixel
@@ -3226,9 +3250,41 @@ final class Drawer {
     /// the center camera's answer in both eyes, which puts them flat on the
     /// screen plane, and for the notices and overlays that use them that is
     /// usually what you want anyway.
-    func aimStereoEye(_ camera: Camera3D?, previous: Camera3D?) {
+    ///
+    /// `layers` re-aims the layers that look through cameras of their own
+    /// (`layerViews`), each to its own eye: a layer is a second view of the
+    /// world, and a view has two eyes like the canvas's.
+    func aimStereoEye(_ camera: Camera3D?, previous: Camera3D?,
+                      layers: [ObjectIdentifier: Camera3D] = [:]) {
         camera3D = camera
         previousCamera3D = previous
+        for (layer, eye) in layers where layerCameras[layer] != nil { layerCameras[layer] = eye }
+    }
+
+    /// One layer that set a camera of its own this frame: the camera as `draw()`
+    /// set it, and the layer's shape.
+    struct LayerView {
+        var layer: ObjectIdentifier
+        var camera: Camera3D
+        var aspect: Double
+        /// Whether the layer is rendered again for a second view of the frame.
+        /// A layer that keeps its picture across frames (a feedback layer, an
+        /// accumulator, a simulation field's seeds) is filled once a frame,
+        /// however many times the frame is rendered, so it has one picture.
+        var rendersPerView: Bool
+    }
+
+    /// The layers looking through cameras of their own this frame, in the order
+    /// the frame opened them. Read once `draw()` has run, by a drive that renders
+    /// the one drawn frame from more than one eye.
+    var layerViews: [LayerView] {
+        renderTargets.compactMap { target in
+            guard let camera = layerCameras[ObjectIdentifier(target)] else { return nil }
+            let perView = if case .geometry = target.origin { true } else { false }
+            return LayerView(layer: ObjectIdentifier(target), camera: camera,
+                             aspect: target.height > 0 ? Double(target.width) / Double(target.height) : 1,
+                             rendersPerView: perView)
+        }
     }
 
     /// A perspective 3D camera looking from `eye` at `target` (sugar over `camera`).
@@ -4094,7 +4150,13 @@ final class Drawer {
         // leaves the list empty rather than naming a slot whose map was rendered from
         // another set's lamp. What it does still receive: an unlit set needs no
         // shadow at all, and a lit one reads the frame's ambient and its own lamps.
-        if castsShadows, set == 0, let camera = camera3D {
+        if castsShadows, set == 0, let camera = shadowFitCamera ?? camera3D {
+            // A lamp that follows the camera hangs somewhere else in a view through
+            // another camera, and no map was rendered from there: in a layer's own
+            // view it lights and casts nothing. It keeps its slot (a slot is a
+            // layer of the map array) with no strength.
+            let followers: Set<Int> = shadowFitCamera == nil || state.mode != .custom ? []
+                : Set(state.lights.indices.filter { state.lights[$0].frame == .camera })
             let target = camera.target.simd3
             // The eye→target distance (the orbit radius) is the scene-size proxy that
             // frames the box / fits the frustum, matching what the camera frames.
@@ -4249,6 +4311,7 @@ final class Drawer {
                 case .tube:
                     break   // never eligible: a tube has no facing axis to render a map from
                 }
+                if followers.contains(index) { c.strength = 0 }
                 return c
             }
 
@@ -5137,9 +5200,10 @@ final class Drawer {
     /// Draw a retained `MeshField`: the whole world of placed meshes in one
     /// GPU-culled indirect draw. The 3D CTM at this call composes onto every
     /// copy (the field moves as a unit); the current `material(_:)` finish
-    /// shades it. Once per frame per field: the cull results live on the field's
-    /// own buffers, so a second draw of the same field in one frame is skipped
-    /// with a note.
+    /// shades it. A field can be drawn more than once a frame: each draw is
+    /// culled through its own pass's view into products of its own, so the same
+    /// copies show on the canvas and in a layer, and a draw under another
+    /// matrix is the field's copies placed again somewhere else.
     func drawMeshField(_ field: MeshField) {
         if isRecordingBatch {
             noteBatchRecording("a MeshField inside makeBatch { } is not recorded (it is already retained and GPU-resident); draw it where the batch is drawn.")
@@ -5174,9 +5238,13 @@ final class Drawer {
         if !moverStack.isEmpty {
             noteOnce("withMotion streaks instanced copies placed from a [MeshInstance] list; a MeshField's copies keep the camera's motion only.")
         }
-        if batches.contains(where: { $0.kind == .meshField && $0.field === field }) {
-            noteOnce("a MeshField can be drawn once per frame (its cull results live on the field); place more copies in it instead of drawing it twice.")
-            return
+        // The frame's earlier draws of this field: this one takes the next view,
+        // and is a repeat when one of them placed the copies by the same matrix.
+        let transform = modelIsIdentity ? matrix_identity_float4x4 : modelMatrix
+        var view = 0, repeats = false
+        for batch in batches where batch.kind == .meshField && batch.field === field {
+            view += 1
+            if batch.fieldTransform == transform { repeats = true }
         }
         currentTarget?.needsDepth = true
         currentBatchLightSet = resolveLightSet()
@@ -5190,7 +5258,9 @@ final class Drawer {
                                      sdf3DGroupStart: sdf3DGroups.count,
                                      blendMode: currentBlend, depth: currentDepth,
                                      field: field,
-                                     fieldTransform: modelIsIdentity ? matrix_identity_float4x4 : modelMatrix,
+                                     fieldTransform: transform,
+                                     fieldView: view,
+                                     fieldPlacementRepeats: repeats,
                                      finish: currentMaterial.gpuMaterial(),
                                      target: currentTarget, clipLevel: activeClipLevel,
                                      lightSet: currentBatchLightSet))

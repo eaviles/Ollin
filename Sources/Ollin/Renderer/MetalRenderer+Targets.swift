@@ -4264,7 +4264,10 @@ extension MetalRenderer {
         var fieldRuns: [FieldRun] = []
         do {
             var offset = copyVertexBase + copyVertices.count
-            for (i, batch) in batches.enumerated() where batch.kind == .meshField {
+            // A draw that repeats an earlier placement adds nothing to the
+            // scene: the copies are in the structure once, where they stand.
+            for (i, batch) in batches.enumerated()
+            where batch.kind == .meshField && !batch.fieldPlacementRepeats {
                 guard let field = batch.field, !field.baseVertices.isEmpty,
                       field.fitsTracedBudget(),
                       let resources = field.gpuResources(for: device),
@@ -4973,18 +4976,21 @@ extension MetalRenderer {
                                         faces: Int) {
         let instStride = MemoryLayout<OllinMeshInstance>.stride
         let argStride = MemoryLayout<MTLDrawPrimitivesIndirectArguments>.stride
-        for batch in drawer.batches where batch.kind == .meshField {
+        // A draw that repeats an earlier placement is the same copies seen
+        // again (a second view), and they have already cast.
+        for batch in drawer.batches where batch.kind == .meshField && !batch.fieldPlacementRepeats {
             guard let field = batch.field,
-                  let resources = field.gpuResources(for: device) else { continue }
+                  let resources = field.gpuResources(for: device),
+                  let products = field.cullProducts(view: batch.fieldView, for: device) else { continue }
             encoder.setVertexBuffer(resources.vertices, offset: 0, index: 0)
             var fieldModel = batch.fieldTransform
             encoder.setVertexBytes(&fieldModel, length: MemoryLayout<simd_float4x4>.stride, index: 6)
             if faces == 1 {
                 encoder.setVertexBuffer(resources.instances, offset: 0, index: 4)
-                encoder.setVertexBuffer(resources.shadowCompacted, offset: 0, index: 5)
+                encoder.setVertexBuffer(products.shadowCompacted, offset: 0, index: 5)
                 for entry in 0 ..< resources.entryCount {
                     encoder.drawPrimitives(type: .triangle,
-                                           indirectBuffer: resources.shadowArguments,
+                                           indirectBuffer: products.shadowArguments,
                                            indirectBufferOffset: entry * argStride)
                 }
             } else {

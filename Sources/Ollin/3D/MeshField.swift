@@ -184,6 +184,11 @@ public final class MeshField {
     /// written by GPU passes inside the frame's own command buffer, so the
     /// triple-buffer hazard the CPU rings guard against does not arise.
     ///
+    /// The cull products are a view's: a field drawn twice in a frame (on the
+    /// canvas and in a layer, or placed again by another matrix) is culled once
+    /// for each draw, into products of that draw's own (`cullProducts`), so
+    /// neither view reads the other's visible set.
+    ///
     /// The draws are GPU-authored but issued as per-entry INDIRECT draws rather
     /// than through an `MTLIndirectCommandBuffer`: the lit mesh fragment carries
     /// the ray-tracing intersector on an RT device, and Metal refuses that
@@ -196,6 +201,23 @@ public final class MeshField {
         var vertices: MTLBuffer
         var instances: MTLBuffer
         var entries: MTLBuffer
+        /// The cull products of the frame's first draw of the field, which is
+        /// every draw of a field drawn once a frame.
+        var first: CullProducts
+        /// The in-order compaction's scratch (a frame whose clock can repeat):
+        /// one visible count per SIMD group of copies, scanned in place into
+        /// offsets, and one visible-copy base per entry. One scratch serves
+        /// every view: a view's three passes finish before the next view's
+        /// begin, in the one compute encoder that runs them all.
+        var blockOffsets: MTLBuffer
+        var entryBases: MTLBuffer
+        var entryCount: Int
+    }
+
+    /// What one draw of the field is culled into, rewritten every frame: the
+    /// visible count per entry, the visible copies' indices, and the entry
+    /// draws the GPU writes from them.
+    struct CullProducts {
         var counts: MTLBuffer
         var compacted: MTLBuffer
         var drawArguments: MTLBuffer
@@ -203,20 +225,51 @@ public final class MeshField {
         /// the LIGHT's frustum (the 2D map's box), so a directional or spot
         /// shadow pass also skips what its map cannot hold. Casters outside the
         /// camera frustum but inside the light's still cast, exactly as before.
+        /// Written for a draw that places the copies somewhere new; a draw that
+        /// repeats an earlier placement casts nothing of its own.
         var shadowCounts: MTLBuffer
         var shadowCompacted: MTLBuffer
         var shadowArguments: MTLBuffer
-        /// The in-order compaction's scratch (a frame whose clock can repeat):
-        /// one visible count per SIMD group of copies, scanned in place into
-        /// offsets, and one visible-copy base per entry.
-        var blockOffsets: MTLBuffer
-        var entryBases: MTLBuffer
-        var entryCount: Int
     }
 
     private var gpu: GPUResources?
     private var gpuDevice: ObjectIdentifier?
     private var gpuGeneration = -1
+    /// The cull products of the frame's second draw of the field and on, made
+    /// the first time a frame draws it that many times and kept with the rest.
+    private var laterViews: [CullProducts] = []
+
+    /// The cull products the frame's `view`-th draw of the field writes and
+    /// reads (`GeometryBatch.fieldView`, counted from 0).
+    func cullProducts(view: Int, for device: MTLDevice) -> CullProducts? {
+        guard let resources = gpuResources(for: device) else { return nil }
+        guard view > 0 else { return resources.first }
+        while laterViews.count < view {
+            guard let more = makeCullProducts(on: device) else { return nil }
+            laterViews.append(more)
+        }
+        return laterViews[view - 1]
+    }
+
+    private func makeCullProducts(on device: MTLDevice) -> CullProducts? {
+        let argsLength = max(1, entries.count) * MemoryLayout<MTLDrawPrimitivesIndirectArguments>.stride
+        guard let counts = device.makeBuffer(length: max(1, entries.count) * 4,
+                                             options: .storageModeShared),
+              let compacted = device.makeBuffer(length: max(1, instances.count) * 4,
+                                                options: .storageModePrivate),
+              let drawArguments = device.makeBuffer(length: argsLength,
+                                                    options: .storageModePrivate),
+              let shadowCounts = device.makeBuffer(length: max(1, entries.count) * 4,
+                                                   options: .storageModeShared),
+              let shadowCompacted = device.makeBuffer(length: max(1, instances.count) * 4,
+                                                      options: .storageModePrivate),
+              let shadowArguments = device.makeBuffer(length: argsLength,
+                                                      options: .storageModePrivate)
+        else { return nil }
+        return CullProducts(counts: counts, compacted: compacted, drawArguments: drawArguments,
+                            shadowCounts: shadowCounts, shadowCompacted: shadowCompacted,
+                            shadowArguments: shadowArguments)
+    }
 
     /// Realize (or reuse) the field's GPU state on `device`. Rebuilt when the
     /// field changed (`generation`) or a different device asks.
@@ -231,22 +284,10 @@ public final class MeshField {
                                   options: .storageModeShared)
             }
         }
-        let argsLength = max(1, entries.count) * MemoryLayout<MTLDrawPrimitivesIndirectArguments>.stride
         guard let vertices = buffer(baseVertices),
               let instanceBuffer = buffer(instances),
               let entryBuffer = buffer(entries),
-              let counts = device.makeBuffer(length: max(1, entries.count) * 4,
-                                             options: .storageModeShared),
-              let compacted = device.makeBuffer(length: max(1, instances.count) * 4,
-                                                options: .storageModePrivate),
-              let drawArguments = device.makeBuffer(length: argsLength,
-                                                    options: .storageModePrivate),
-              let shadowCounts = device.makeBuffer(length: max(1, entries.count) * 4,
-                                                   options: .storageModeShared),
-              let shadowCompacted = device.makeBuffer(length: max(1, instances.count) * 4,
-                                                      options: .storageModePrivate),
-              let shadowArguments = device.makeBuffer(length: argsLength,
-                                                      options: .storageModePrivate),
+              let first = makeCullProducts(on: device),
               // One count per SIMD group of copies, 32 wide at the narrowest,
               // plus the total the scan leaves in the last entry.
               let blockOffsets = device.makeBuffer(length: (instances.count / 32 + 2) * 4,
@@ -255,13 +296,11 @@ public final class MeshField {
                                                  options: .storageModePrivate)
         else { return nil }
         let resources = GPUResources(vertices: vertices, instances: instanceBuffer,
-                                     entries: entryBuffer, counts: counts,
-                                     compacted: compacted, drawArguments: drawArguments,
-                                     shadowCounts: shadowCounts,
-                                     shadowCompacted: shadowCompacted,
-                                     shadowArguments: shadowArguments,
+                                     entries: entryBuffer, first: first,
                                      blockOffsets: blockOffsets, entryBases: entryBases,
                                      entryCount: entries.count)
+        // The later views were sized for the field as it was.
+        laterViews.removeAll()
         gpu = resources
         gpuDevice = ObjectIdentifier(device)
         gpuGeneration = generation

@@ -103,7 +103,7 @@ These are ways a sketch leaves the window:
 
 - **Rumble on a game controller.** A game controller's motors are an output of the same kind as [haptics](Docs/Integration/Haptics.md). So they belong with haptics rather than with reading the controller. This needs a controller on the desk to write against.
 - **The rest of the sketch on the web page.** The [page export](Docs/Output/Web.md) already carries these parts of a sketch. It carries the analytic shapes, strokes and fills, text and pictures, and the composed and raymarched fields. It also carries the layered effects and the parameters as controls, and it expands strokes and fills on the page from the points the sketch gave, the strokes under a medium among them. Some things stay with the video export. Those are the effects that are a solve or a ladder on the Mac, lit meshes, ray tracing, and compute work. Pictures that arrive as a texture every frame stay there too. This is not a browser runtime for the framework. That stays out, and the platform stance in `CLAUDE.md` says why.
-- **Shadows inside a layer.** A layer can look at a 3D world through a camera of its own, and its solids receive no cast shadow, so a second window shows the stage without the shadows the first one has. Handing a layer the frame's shadows would make the two views match.
+- **A layer's shadows past the canvas's view.** A layer that looks at a 3D world through a camera of its own receives the frame's shadows. A sun's or a spot's shadow map is fitted around what the canvas's camera frames, so a layer aimed far from that is lit with no shadow there. A map fitted for each camera would shadow every view whole.
 
 See the [design notes](DESIGN-NOTES.md#new-output-surfaces).
 

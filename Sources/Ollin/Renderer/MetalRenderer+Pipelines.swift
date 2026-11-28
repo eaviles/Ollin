@@ -678,7 +678,7 @@ extension MetalRenderer {
     /// never per copy, so the room is the field's mesh set rather than its world.
     func tracedMeshVertexCount(_ drawer: Drawer) -> Int {
         var fields = 0
-        for batch in drawer.batches where batch.kind == .meshField {
+        for batch in drawer.batches where batch.kind == .meshField && !batch.fieldPlacementRepeats {
             guard let field = batch.field, field.withinTracedBudget else { continue }
             fields += field.baseVertices.count
         }

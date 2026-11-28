@@ -95,7 +95,9 @@ override func draw() {
 }
 ```
 
-A field is retained, like a `Batch`. Build it in `setup()` and hold it. Its surface colors bake when a mesh is placed. Each one is the mesh material's base color times its per-vertex colors, tinted per copy by `MeshInstance.color`. The draw-time `fill` does not tint a field. The transform stack still moves the whole field as a unit, and the current `material(_:)` finish shades it. Its copies cast into the shadow maps even outside the camera's view. So a tree behind the camera still casts its shadow into view. Draw a field once per frame. A second draw in the same frame is skipped with a note.
+A field is retained, like a `Batch`. Build it in `setup()` and hold it. Its surface colors bake when a mesh is placed. Each one is the mesh material's base color times its per-vertex colors, tinted per copy by `MeshInstance.color`. The draw-time `fill` does not tint a field. The transform stack still moves the whole field as a unit, and the current `material(_:)` finish shades it. Its copies cast into the shadow maps even outside the camera's view. So a tree behind the camera still casts its shadow into view.
+
+A field can be drawn more than once a frame. Draw it on the canvas and again in a [layer with a camera of its own](./3D.md#layer-camera). It is then the same copies seen from two places, and each view is culled for itself. Drawn again under another transform, it is the copies placed a second time. Two draws under one transform are the same copies in the same place, so they cast one shadow between them.
 
 A field says how much it holds: `entryCount` is how many distinct meshes were placed in it, and `copyCount` how many copies across all of them.
 
