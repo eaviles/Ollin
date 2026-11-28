@@ -624,9 +624,7 @@ struct EffectInvariantTests {
         }
         let f = try Self.render(probe, frame: 1)
         #expect(f.value(24, 24, 3) == 1 && f.value(4, 4) != 1, "the second frame's mark is there and the first frame's is gone")
-        try pinned("a kept handle keeps the color its last `background` cleared to: the frame after reads (0.5, 0, 0, 1) where it drew nothing (measured 2026-11-09)") {
-            #expect(f.value(14, 14, 3) == 0, "the layer's untouched middle reads \(fmt(f.at(14, 14)))")
-        }
+        #expect(f.value(14, 14, 3) == 0, "the layer's untouched middle reads \(fmt(f.at(14, 14)))")
     }
 
     /// The order layers are filled in follows what they show, not the order
@@ -640,9 +638,7 @@ struct EffectInvariantTests {
             s.withTarget(b) { s.drawImage(a.image, 0, 0) }
             s.drawImage(b.image, 0, 0)
         }
-        try pinned("layers are filled in the order their first block opened, so a layer opened first draws a later layer's image before that layer is filled: the disc is missing (measured 2026-11-09)") {
-            #expect(f.value(16, 16) > 0.9, "the later layer's disc reads \(f.value(16, 16)) inside the earlier layer")
-        }
+        #expect(f.value(16, 16) > 0.9, "the later layer's disc reads \(f.value(16, 16)) inside the earlier layer")
     }
 
     /// `background` inside a layer's block clears that layer, whatever it holds
@@ -656,9 +652,7 @@ struct EffectInvariantTests {
             s.drawImage(a.image, 0, 0)
         }
         #expect(abs(second.value(24, 16, 2) - 0.5) < 0.002, "the background's color reached the layer")
-        try pinned("a background in a layer's second block clears that block only: the first block's white half is still there (measured 2026-11-09)") {
-            #expect(second.value(8, 16) < 0.01, "the earlier block's mark reads \(second.value(8, 16)) under the new background")
-        }
+        #expect(second.value(8, 16) < 0.01, "the earlier block's mark reads \(second.value(8, 16)) under the new background")
         let nested = try Self.render(side: 32) { s in
             s.background(.clear)
             let a = s.makeRenderTarget(), b = s.makeRenderTarget()
@@ -669,9 +663,7 @@ struct EffectInvariantTests {
             }
             s.drawImage(a.image, 0, 0)
         }
-        try pinned("a background in a layer's block also drops what a second layer drew inside that block: the inner layer comes back empty (measured 2026-11-09)") {
-            #expect(nested.value(16, 16, 3) > 0.99, "the inner layer reads \(fmt(nested.at(16, 16)))")
-        }
+        #expect(nested.value(16, 16, 3) > 0.99, "the inner layer reads \(fmt(nested.at(16, 16)))")
     }
 
     /// A `compose` block is the same calls written by hand: the same layers, the
@@ -733,9 +725,7 @@ struct EffectInvariantTests {
             s.compose { s.layer { s.noStroke(); s.fill(.white); s.drawRect(20, 20, 10, 10) } }
         }
         #expect(span(direct) == 30...39)
-        try pinned("the transform carries into the layer's drawing and then moves the finished layer again: under translate(10, 0) the mark lands at 40 to 49 where the same drawing lands at 30 to 39 (measured 2026-11-09)") {
-            #expect(span(composed) == span(direct), "compose drew the mark at \(String(describing: span(composed)))")
-        }
+        #expect(span(composed) == span(direct), "compose drew the mark at \(String(describing: span(composed)))")
     }
 
     /// What a frame makes of a layer does not depend on what else the frame
@@ -2093,9 +2083,7 @@ struct EffectInvariantTests {
             s.drawImage(base.combined(with: s.makeRenderTarget(), .mix(amount: 0)).image, 0, 0)
         }
         let plain = try Self.plain()
-        try pinned("a combine is skipped when either layer was never drawn into, and a skipped result is empty: a mix of 0 with such a layer returns nothing where it returns the base over a layer holding one off-canvas mark (measured 2026-11-09)") {
-            #expect(out.worst(against: plain).by == 0, "the result holds a summed alpha of \(out.sum(3))")
-        }
+        #expect(out.worst(against: plain).by == 0, "the result holds a summed alpha of \(out.sum(3))")
     }
 
     // MARK: What a layer keeps between frames
@@ -2143,10 +2131,8 @@ struct EffectInvariantTests {
         let direct = try shown(throughALayer: false)
         #expect(direct.value(20, 4, 3) > 0.99 && direct.value(12, 4, 3) == 0, "on the canvas the feedback shows this frame's square")
         let copied = try shown(throughALayer: true)
-        try pinned("every plain layer is filled before any feedback layer in a frame, so a layer that draws a feedback's image holds the frame before: the copy shows frame 1's square where frame 2's is (found in a sketch and measured 2026-11-10)") {
-            #expect(copied.value(20, 4, 3) > 0.99 && copied.value(12, 4, 3) == 0,
-                    "through a layer: this frame's square reads \(copied.value(20, 4, 3)), the frame before's \(copied.value(12, 4, 3))")
-        }
+        #expect(copied.value(20, 4, 3) > 0.99 && copied.value(12, 4, 3) == 0,
+                "through a layer: this frame's square reads \(copied.value(20, 4, 3)), the frame before's \(copied.value(12, 4, 3))")
     }
 
     /// A loop that draws last frame back at a gain fades as the gain to the
@@ -2253,10 +2239,7 @@ struct EffectInvariantTests {
             return try Self.render(probe, frame: frame).value(8, 8)
         }
         let after = try [10, 11, 14].map { try value(at: $0) }
-        try pinned("the block has counted its pass before the reset zeroes the count, so the sum starts over and the count does not: with the reset after the block the mean reads a tenth of the pass on that frame, twice it on the next, and one pass too many from then on (0.023, 0.500, 0.375 for a pass of 0.25, measured 2026-11-09)",
-                   when: !beforeTheBlock) {
-            for v in after { #expect(abs(v - 0.25) < 0.002, "after the reset the mean reads \(after)") }
-        }
+        for v in after { #expect(abs(v - 0.25) < 0.002, "after the reset the mean reads \(after)") }
     }
 
     // MARK: The frequency domain and the measured field

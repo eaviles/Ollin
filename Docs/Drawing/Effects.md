@@ -93,7 +93,31 @@ withTarget(layer) {
 // back to drawing on the canvas
 ```
 
-Call [`background(_:)`](../Drawing/Drawing.md#background) inside the block to clear the layer. Inside a `withTarget` it clears *that layer*, meaning its fill color and its geometry so far, and it leaves the canvas untouched. A layer starts transparent, so a layer you never wrote, or wrote only in part, composites as nothing where you did not draw. It starts transparent every frame, in the window and in an export alike: a layer holds what its block drew this frame and nothing from the frame before, whether the handle was made in `draw()` or kept from `setup()`. A layer that should keep its marks across frames is a `Feedback` or an `Accumulator`.
+Call [`background(_:)`](../Drawing/Drawing.md#background) inside the block to clear the layer. Inside a `withTarget` it clears *that layer*: its fill color, and everything the frame has drawn into it so far. That includes what an earlier block of the frame drew. It leaves the canvas untouched, and a second layer drawn inside the block too. A layer starts transparent, so a layer you never wrote, or wrote only in part, composites as nothing where you did not draw. It starts transparent every frame, in the window and in an export alike. A layer holds what this frame drew into it and nothing from the frame before, whether the handle was made in `draw()` or kept from `setup()`. A frame that draws nothing into a layer leaves it empty. So a kept layer never shows an older picture, and a filter or a combine over it reads an empty layer. A layer that should keep its marks across frames is a `Feedback` or an `Accumulator`.
+
+**The order of the blocks decides nothing.** A layer is filled after the layers it reads. So a block can draw the image of a layer whose own block comes later in `draw()`, and it shows this frame's picture:
+
+```swift
+let card = makeRenderTarget(), stamp = makeRenderTarget()
+withTarget(card) { drawImage(stamp.image, 0, 0) }     // this frame's stamp, drawn below
+withTarget(stamp) { drawCircle(mouseX, mouseY, 40) }
+```
+
+The same holds for a filter's result, a feedback layer's `image`, an accumulator's mean, and a field. Two layers that draw each other have no such order. One of them is drawn first and shows the other as it stood before this frame. That is a frame late for a layer the sketch keeps, and empty for one made this frame. A note in the console says which, once. A loop made on purpose reads a feedback layer's [`previous`](#feedback), which waits on nothing.
+
+**A block draws into a layer you made.** A filter's or a combine's result, a generated pattern, and a layer's `depth` are each made by the renderer from something else. A `withTarget` on one of them is skipped, and a note says so once. To draw over a result, draw its image into a layer of your own first:
+
+```swift
+let art = makeRenderTarget()
+withTarget(art) { drawCircle(mouseX, mouseY, 40) }
+let glow = art.filtered(.bloom())
+
+let labeled = makeRenderTarget()
+withTarget(labeled) {
+    drawImage(glow.image, 0, 0)        // the result, as a picture
+    drawText("glow", 40, 60)           // and marks over it
+}
+```
 
 A [camera](../3D/3D.md#layer-camera) set inside the block is the layer's own. The layer is drawn through it and the canvas keeps its camera, so a layer can show the same 3D world from another place. A layer whose block sets none is drawn through the canvas's.
 
@@ -950,9 +974,24 @@ drawImage(sources.filtered(.diffuse()).image, 0, 0)
 ```
 
 The solve is the frame's cost, about 24 ms of GPU at 1080 square on an M2, and it runs
-every frame while the marks move. When they do not move, solve once instead. Hold the
-filtered layer in a property, fill it in `setup()`, and draw it each frame like any other
-image.
+every frame while the marks move. When they do not move, solve once instead. Keep the
+answer in a [feedback layer](#feedback), the layer that holds a picture across frames.
+On a frame the marks changed, draw the solve into it. On every other frame, draw its own
+last frame back:
+
+```swift
+withFeedback(solved) { last in                      // solved = makeFeedback(), made in setup()
+    if marksChanged {
+        drawImage(sources.filtered(.diffuse()).image, 0, 0)
+    } else {
+        drawImage(last, 0, 0)
+    }
+}
+drawImage(solved.image, 0, 0)
+```
+
+A filter's result is a per-frame layer like any other. One kept in a property is not a
+picture a later frame can draw.
 
 
 **Measured distance fields**: a question asked of a layer rather than a look laid over it.
@@ -1092,10 +1131,10 @@ override func draw() {
 ```
 
 - `withFeedback(_:_:)` hands the previous frame in as the closure parameter. The `withTarget(feedback) { … }` form works too, reading last frame by name with `feedback.previous` inside.
-- `feedback.previous` is last frame's content, and `feedback.image` is this frame's, for compositing.
+- `feedback.previous` is last frame's content, and `feedback.image` is this frame's, for compositing. On a frame that opens no block on the layer, both are what the last block drew.
 - `feedback.filtered(_:)` runs this frame's result through a `Filter` like any layer, so you can bloom the trails or recolor them through a gradient map. `feedback.combined(with:_:)` makes it the base of a [`Combine`](#combined), so the trails can be masked, displaced, or mixed by another layer. The state the loop carries forward stays untouched either way. An `Accumulator` and a `SimField` take both calls too.
 - `makeFeedback(precision: .float32)` keeps the pair in single-precision float, for a loop that carries a long sum of faint light. Half float stops moving once each frame's contribution falls under one part in a thousand of the total. For a sum that should converge rather than grow, an [`Accumulator`](./Accumulation.md#accumulator) keeps the sum in single precision and divides by the passes for you.
-- Inside the block, `background(_:)` clears the feedback layer alone. The canvas's own `background(_:)`, before the block or after it, leaves the layer as it was.
+- Inside the block, `background(_:)` clears the feedback layer alone, and the color holds through a second block of the same frame. The canvas's own `background(_:)`, before the block or after it, leaves the layer as it was.
 - See the `Effects/Feedback` example for a spiralling tunnel.
 
 <a id="layerhistory"></a>
@@ -1318,7 +1357,7 @@ The rest of the shape:
 
 - **`substeps`** runs the step that many times a frame, for a rule that wants to settle faster than once a frame. **`rest`** is the state every cell starts at, `(0, 0, 0, 1)` unless you say otherwise.
 - **`inputs`** are extra layers the kernels read with `input(info, i)`, up to `SimField.maxInputs`, which is four. Like `modulation`, each is a per-frame layer: draw or generate it every frame before reading the field, and it arrives exactly as stored. A layer not drawn this frame reads as zero.
-- **A filtered layer arrives a frame late.** Filters resolve after the sims step, so a `filtered(_:)` or `combined(with:_:)` output in `inputs` arrives as it stood at the end of the frame before, kept for the field in a texture of its own. That is how a field reads a measurement of what the sketch drew, such as the distance to the drawn marks (`.distanceField()`): a wake that trails a moving mass is pushed by where the mass was a frame ago. On the first frame, and after a frame in which the layer did not resolve, it reads as zero. The delay is per field and per slot, so naming a different layer in a slot hands the next step the old one's last frame once. A layer that draws a filtered image is no way around the delay, since every layer draws before any filter resolves, so it arrives empty.
+- **A filtered layer arrives a frame late.** A field waits on no filter, since the filter a field is handed is most often one of its own picture. So a `filtered(_:)` or `combined(with:_:)` output in `inputs` arrives as it stood at the end of the frame before, kept for the field in a texture of its own. That is how a field reads a measurement of what the sketch drew, such as the distance to the drawn marks (`.distanceField()`): a wake that trails a moving mass is pushed by where the mass was a frame ago. On the first frame, and after a frame in which the layer did not resolve, it reads as zero. The delay is per field and per slot, so naming a different layer in a slot hands the next step the old one's last frame once. A layer that draws a filtered image is no way around the delay, since every layer draws before any filter resolves, so it arrives empty.
 - **`edge`** and **`precision`** are the field's, above. A kernel that counts wants `.float32`; a plate that must not leak wants `.clamped`.
 - **`.arrows`** draws a two-channel state as arrows, and **`snapshot()`** reads any state back as numbers.
 - A compile error is reported at the file and line you wrote the kernel in, the field keeps its last state, and a later clean compile picks it up again, the way every user shader behaves. `ollin check` reads a kernel file as the `simulation` shape (it calls `cell`) or the `inject` shape (it calls `mark`).
@@ -1369,7 +1408,8 @@ Notes:
 
 - **Order is bottom-to-top.** Layers composite in the order written, so the first sits beneath the rest.
 - **A layer clears to transparent.** A `layer { }` that does not call `background(_:)` composites only what it draws. Call `background(_:)` inside to give it an opaque backdrop, and that clears just that layer.
-- **Call it near the top of `draw()`.** Layers composite onto whatever is already on the canvas. So draw a `background(_:)`, or a base layer, first. As with `withTarget`, an active transform carries into each layer's drawing.
+- **Call it near the top of `draw()`.** Layers composite onto whatever is already on the canvas. So draw a `background(_:)`, or a base layer, first.
+- **A transform applies once.** As with `withTarget`, a transform or a [`symmetry`](../Drawing/Drawing.md#symmetry) in force carries into each layer's drawing. The finished layer is then laid at the canvas's own origin. So a block under `translate` or `rotate` puts its marks where the same calls would without `compose`.
 - See the `Effects/Layers` example for the same stack written with `compose { }` and by hand.
 
 <a id="aside"></a>
@@ -1411,7 +1451,7 @@ They interleave with `.post(_:)` in call order. An aside can carry filters of it
 - **It is GPU-resident, by design.** Layers are Metal render targets, and filter inputs are texture samples. So a layer is never copied back to the CPU. The other approach is combining `createGraphics`-style buffers on the CPU, which forces a full-frame upload every frame.
 - **Linear light, premultiplied.** Layers composite in the same [linear-float](../Drawing/HDR.md) space as the canvas. So blur and bloom are physically correct, blurring in linear light rather than gamma. Tone-mapping and dithering still happen once, at present, so a layer holds raw linear color.
 - **Layers take 2D and 3D alike.** A `withTarget` block is a full drawing surface. 2D marks, meshes, point clouds, and GPU particles all render into it and composite back. A target a 3D scene is drawn into also captures depth, which is what [`depth`](#depth) reads.
-- **A filtered layer can be drawn inside another layer.** A `withTarget` block may draw the `image` of a layer filtered or combined the same frame: the layer that draws it is filled after that filter runs, and every other layer keeps its usual place. Two kinds of layer are still filled before the frame's filters, so an image made the same frame reads empty in them: a simulation field's seed and a feedback layer. Draw a filtered result into those on the next frame, or composite it on the canvas.
+- **Any layer can be drawn inside another.** A block may draw the `image` of a layer drawn, filtered, or combined the same frame, wherever that layer's own block sits in `draw()`. Each layer is filled after the layers it reads. [`withTarget`](#withtarget) has the rule and its one exception, two layers that draw each other. A feedback layer's block and a simulation field's seed follow it too. So last frame blurred and drawn back is three steps: `previous` drawn into a layer, that layer filtered, and the result drawn in the feedback block.
 - **Pair bloom with `.add`.** Bloom output is self-contained, holding the sharp image plus its glow. Compositing it with [`blendMode(.add)`](../Drawing/Drawing.md#blendMode) over a scene reads as added light rather than a covering layer.
 - See the `Effects/Layers` example for a blurred backdrop behind a bloomed foreground.
 

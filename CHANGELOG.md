@@ -25,6 +25,10 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ### Changed
 
+- **A layer can draw a layer opened after it.** Layers are filled in the order they read each other, so a block can draw another layer's image, a feedback layer's, or an accumulator's mean, and show this frame's picture wherever that block sits. A sketch that leaned on the old one-frame lag can read a feedback layer's `previous`. [Layers](Docs/Drawing/Effects.md#withtarget)
+- **`background` inside a layer clears the whole layer.** In a layer's second block it also takes what the first block drew, and it leaves a second layer drawn inside the block alone. Its color holds through a later block. To keep earlier marks, call it only in the layer's first block. [Layers](Docs/Drawing/Effects.md#withtarget)
+- **A layer is empty on a frame that draws nothing into it.** A layer kept from `setup()` showed an older picture, or another layer's, on a frame that left it alone, and kept its last `background` color. To keep a picture across frames, use `makeFeedback()`. [Layers](Docs/Drawing/Effects.md#withtarget)
+- **`compose` under a transform draws where the calls would.** A `compose` block under `translate`, `rotate`, `scale`, or `symmetry` applied it twice: to each layer's drawing and to the finished layer. It now applies once. [compose](Docs/Drawing/Effects.md#compose)
 - **The Recreations are grouped by how the work was made.** The index sorts its 35 artists into ten wings, such as Chance, Instructions, and Color, with a line about each artist under their picture. Every artist's page now reads the same way: a life, the work, the sketches that rebuild it, and where to read more. [Recreations](Examples/Recreations/)
 - **The website reads as one site across its sections.** Every page opens on the same title size, and every trail starts at Ollin. The examples menu follows the index's order, the project pages go by short names, and a white picture has a thin edge. The reference's pages say "Reference" where they said "Documentation". [The reference offline](Docs/Tools/Reference.md#in-a-browser)
 - **The website's side menus follow where you are.** The menu opens on the page you are reading, and the list of sections marks the one on screen. On a phone the section's tab opens the menu, and the list folds under the title. A chapter ends on two cards, previous and next. [The reference offline](Docs/Tools/Reference.md#in-a-browser)
@@ -55,6 +59,11 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ### Fixed
 
+- **`Accumulator.reset()` means the same anywhere in `draw()`.** The frame it is called in starts the fresh mean, whether the block comes after the call or came before it. Called after the block, the mean read a tenth of the pass, then twice it. [Accumulator](Docs/Drawing/Accumulation.md#accumulator)
+- **A combine with a layer nothing drew into is no longer empty.** The combine reads an empty layer, so `.mix(amount: 0)` returns the base where it returned nothing. A filter over such a layer runs too. [Combine](Docs/Drawing/Effects.md#combined)
+- **`Feedback.previous` on a frame with no block is the last block's picture.** It was the picture from one block earlier. [Feedback](Docs/Drawing/Effects.md#feedback)
+- **On a web page, a layer that draws a feedback layer's last frame shows it.** A plain layer that drew `previous` came out empty on the page while the Mac showed the frame before. [A sketch as a web page](Docs/Output/Web.md)
+- **Drawing into a filter's result says so.** `withTarget` on a filter's or a combine's result, a generated pattern, or a layer's `depth` dropped the drawing without a word. It now skips the block and prints a note once, with the way to draw over a result. [Layers](Docs/Drawing/Effects.md#withtarget)
 - **The website's search button is called what it shows.** On a wide screen the button shows its keys beside the magnifier, and its spoken name was only "Search". The name now holds the keys, so voice control and a screen reader meet the same button.
 - **The website's menu on a phone takes the focus when you asked for less motion.** With Reduce Motion on, opening the menu left the keyboard focus on its button, so a screen reader stayed where it was. The menu now opens at once and takes the focus.
 - **With scripts off, the website shows no button that does nothing.** The search button in the bar, and the one on the page for a wrong address, showed with scripts off and did nothing. Each now stays hidden until its script is there to answer it.

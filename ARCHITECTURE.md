@@ -891,13 +891,14 @@ The `Drawer` stays a pure recorder. `withTarget(_:)` redirects drawing by
 tagging each recorded `GeometryBatch` with its `target: RenderTarget?` (forcing
 a fresh batch at each boundary), and the drawer records the frame's
 `renderTargets`, `filterOps`, and `frameFilters` lists. `MetalRenderer` resolves
-that graph at `render()`/`image(of:)` time, in order: each geometry target's
-tagged batches render into their own MSAA-resolve pass; the filter and combine
-ops run (MPS or fragment passes) into pooled textures; the main pass runs and
-samples the results (`target.image` composites through the textured-quad path,
-`Image(renderTarget:)`); and `postProcess` filters run on the resolved frame
-before present. The no-targets path is gated on those three lists being empty
-and is byte-identical to a direct render.
+that graph at `render()`/`image(of:)` time: each layer is filled after the
+layers it reads (the next section), a drawn layer's tagged batches into their
+own MSAA-resolve pass and a filter or a combine (MPS or fragment passes) into a
+pooled texture; the main pass runs and samples the results (`target.image`
+composites through the textured-quad path, `Image(renderTarget:)`); and
+`postProcess` filters run on the resolved frame before present. The no-targets
+path is gated on the frame having no layer to fill or to read and no frame
+filter, and is byte-identical to a direct render.
 
 Everything stays GPU-resident: layers are render-pass attachments and filter
 inputs are sampler binds, never a CPU round-trip (the layer-as-uniform upload
@@ -920,6 +921,80 @@ batch of that kind. The image/glyph/particle/depthScene begins once omitted
 `meshStart`, which was harmless until a 3D mesh in a render target was followed
 by `drawImage`/`drawCaption` (the `SceneDefocus` case); all begins now snapshot
 every offset.
+
+### The order layers are filled in
+
+`Drawer.layerSchedule()` (`Effects/LayerSchedule.swift`) is a pure function of
+the recorded frame, and both the renderer and the web recorder fill layers in
+the order it returns. A layer waits on what it reads: a drawn layer (plain,
+feedback, accumulator, a field's seed) on the layers its runs read as pictures
+(`GeometryBatch.layerPictures`: an image, a depth image, a mesh's picture,
+matcap, and maps), a filter on its input, a combine on both of its layers. The
+order the sketch opened its blocks in settles ties and nothing else.
+
+**Ties go by kind, then by record order**: generated patterns, ocean fields,
+plain layers, feedback layers, accumulators, fields, then the filters and
+combines. That is the fixed sequence the renderer ran before there was a
+schedule, kept on purpose. A frame in which no layer reads a later one is
+filled exactly as it was (the same passes in the same order, each layer taking
+the same slot of the texture pool), and the one arrangement with no valid order
+is settled where it always was. Two layers that read each other are that
+arrangement: the lowest of them by the same rule goes first, before what it
+reads is ready, and the schedule lists it in `early`, which the renderer turns
+into one note. A plain layer and a feedback layer that draw each other, the loop
+sketches already wrote, keep the plain layer first and so keep their picture.
+What the early layer reads is the other's texture as the frame before left it,
+which is intact because the layer pools are per frame-ring slot (and fresh per
+frame headless); a handle made this frame has no texture yet and draws nothing.
+
+**A carrier stands for the layer it belongs to.** A layer's `depth` and normals,
+an accumulator's mean and sum, and a feedback layer's `previous` are plain
+`RenderTarget`s the renderer points at a texture (`isCarrier`). Reading the
+first four waits on their owner. `previous` waits on nothing: it is last
+frame's picture, so `resolveFeedbackFronts()` points every carrier at the front
+of its pair at the top of the encode, before the early-out for a frame with no
+layers. That one call is also what fixed `previous` on a frame with no block,
+where the carrier still named the texture the last block had itself read, two
+frames old. On a second encode of one frame it names what the first encode
+read (`FeedbackSlot.writtenIn` against `statefulEncodeSerial`).
+
+**A field waits on no filter.** A kernel's extra `inputs` and the modulation
+map join the order when they are drawn layers. A filter's result among them
+stays a frame late (`delayedInputs`), since the filter a field is handed is
+most often one of the field's own picture, which would be a cycle every frame.
+
+**A plain layer the frame reads and never opened is filled empty.** Measured
+before the rule: a layer kept from `setup()` and left alone for a frame showed
+its last picture in a sequence export, nothing in a single-frame export (the
+frames before are not rendered), and in the window its last picture for two
+frames and then whatever another layer of its size drew, when the ring came
+round to the slot. The schedule adds such a layer to the order (`unopened`) and
+its pass clears it and draws nothing, so every reader sees the same empty
+layer. A frame with no layer at all never walks its runs to look for one:
+`Drawer.readsLayerPictures` is set where a run that reads a layer is recorded.
+A filter's result kept across frames is not covered and is filed in
+`DESIGN-NOTES.md`.
+
+**A wipe hands runs to a surface no pass draws.** `background` inside a layer's
+block clears the whole layer, earlier blocks included, and leaves a second
+layer drawn inside the block. When nothing but the layer has drawn since the
+block opened, the block's runs are the end of every list and are cut off, as
+before. Runs that cannot be cut are retagged to `Drawer.wipedRuns` in place
+rather than taken out: a run's extent in each shared list is "up to the next
+run's start", and the mover ranges index the mesh lists, so removing from the
+middle would mean rebuilding every list and re-basing every index, which is
+what the canvas's wipe does (`keepOnlyLayerRuns`) and what a layer's wipe had
+no need to. Every pass matches runs by the identity of its own target, so no
+pass draws them, and the schedule skips them when it gathers reads.
+
+Three smaller rules live beside the order. A layer's clear color is reset
+where a frame first opens it, never per block, so a `background` holds through
+a later block and a kept handle starts clear. `filterChainFormat` is set for
+the length of one op, since a layer's pass or a field's step can now follow an
+op. And `Accumulator.reset()` keeps the passes recorded in the frame it is
+called in (`Drawer.frameSerial` and `isFrameOpen` say whether the block and the
+reset fell in one `draw()`), because the renderer clears the sum and then adds
+that frame's pass whichever came first in the code.
 
 ### Filters and generators
 
@@ -1343,7 +1418,10 @@ counterfactual, and byte-exact replay.
 surface over the substrate: it makes a `renderTarget` per `layer`, draws into it
 via `withTarget`, chains the `.post` filters, and composites bottom-to-top in
 declared order under each layer's `.blend`. It is pure sugar (a user can
-hand-write the same `renderTarget`/`withTarget`/`filtered`/`drawImage`);
+hand-write the same `renderTarget`/`withTarget`/`filtered`/`drawImage`), with
+one difference from the calls written out: the finished layer is laid at the
+canvas's own origin (`Drawer.placeAtCanvasOrigin`), since the transform and the
+symmetry in force already placed the marks inside it;
 `ComposeLayer` is the public value type and `@ComposeBuilder` the result
 builder, so `if`/`for` build layers. One load-bearing detail: `layer(_:)`'s draw
 closure is `@escaping @_implicitSelfCapture` (it runs synchronously inside
@@ -1356,7 +1434,7 @@ attribute propagates across module boundaries to example and test targets.
 cannot. It is a `Sendable` value descriptor like `Filter`, but it cannot hold
 the reference-type `RenderTarget`, so the aux is carried alongside it and the op
 records a `RenderTarget.Origin.combine(base:aux:op:)` case resolved in the same
-`filterOps` list as filters; record order guarantees both inputs fill first (the
+`filterOps` list as filters; the fill order runs it after both inputs (the
 wiring is detailed under *Shared substrate* in the next section). Six ops:
 `.mask` multiplies base by aux luminance/alpha with optional invert
 (premultiplied luma, so coverage is honored); `.displace` offsets the base UV by

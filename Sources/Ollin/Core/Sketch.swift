@@ -4271,7 +4271,20 @@ open class Sketch {
     /// Redirect everything drawn in `body` into `target` instead of the canvas.
     /// Scoped like `withState { }`: drawing state and transforms carry in, and the
     /// target holds the result for `target.image` / `target.filtered(_:)`.
-    /// Call `background(_:)` inside to clear the layer (it clears only this layer).
+    /// Call `background(_:)` inside to clear the layer: it clears only this
+    /// layer, and all of it, whatever an earlier block of the frame drew there.
+    ///
+    /// The order of a frame's blocks decides nothing: a layer is filled after
+    /// the layers it reads, so a block can draw the `image` of a layer whose own
+    /// block comes later and show this frame's picture. Two layers that draw
+    /// each other have no such order; one is drawn first and shows the other as
+    /// it stood before this frame, and a note says which, once.
+    ///
+    /// `target` is a layer made with `makeRenderTarget`. A filter's or a
+    /// combine's result, a generated pattern, and a layer's `depth` are made by
+    /// the renderer from something else: a block on one of them is skipped, and
+    /// a note says so once. To draw over a result, draw its image into a layer
+    /// of your own first.
     public func withTarget(_ target: RenderTarget, _ body: () -> Void) {
         drawer.withTarget(target, body)
     }

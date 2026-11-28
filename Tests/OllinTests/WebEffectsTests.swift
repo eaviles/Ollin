@@ -200,6 +200,47 @@ import OllinWebGate
         }
     }
 
+    /// Layers in an order of their own: a layer opened first that draws one
+    /// opened after it, a feedback layer that draws its last frame back
+    /// blurred (the frame before in a layer, that layer filtered, the result
+    /// in the feedback's block), and a kept layer left alone on odd frames,
+    /// where it is empty.
+    final class Ordered: Sketch {
+        override var canvasSize: CanvasSize { .square(120) }
+        var trail: Feedback!
+        var kept: RenderTarget!
+        override func setup() {
+            trail = makeFeedback()
+            kept = makeRenderTarget()
+        }
+        override func draw() {
+            background(Color(hex: 0x15171C))
+            let card = makeRenderTarget(), stamp = makeRenderTarget(), last = makeRenderTarget()
+            withTarget(card) {
+                background(Color(hex: 0x24304A))
+                drawImage(stamp.image, 0, 0)
+            }
+            withTarget(stamp) {
+                noStroke(); fill(Color(hex: 0xE8B04A))
+                drawCircle(24 + Double(frameCount % 4) * 22, 30, 12)
+            }
+            withTarget(last) { drawImage(trail.previous, 0, 0) }
+            withFeedback(trail) { _ in
+                tint(Color(white: 1, alpha: 0.9))
+                drawImage(last.filtered(.gaussianBlur(radius: 2)).image, 0, 0)
+                noTint()
+                noStroke(); fill(Color(hex: 0x5AC8C8))
+                drawCircle(60 + cos(Double(frameCount)) * 30, 90, 6)
+            }
+            if frameCount % 2 == 0 {
+                withTarget(kept) { noStroke(); fill(.white); drawRect(90, 50, 20, 20) }
+            }
+            drawImage(card.image, 0, 0, 60, 60)
+            drawImage(trail.image, 0, 0)
+            drawImage(kept.image, 0, 0)
+        }
+    }
+
     /// The declarative stack: a half-size layer with a filter, a layer added
     /// as light, a layer screened.
     final class Composed: Sketch {
@@ -1038,6 +1079,7 @@ import OllinWebGate
             ("UserCombine", { UserCombine() }, 4, 1),
             ("Chained", { Chained() }, 4, 2),
             ("Composed", { Composed() }, 6, 4),
+            ("Ordered", { Ordered() }, 6, 5),
             ("Remembering", { Remembering() }, 12, 11),
             ("Living", { Living() }, 16, 15),
             ("Wired", { Wired() }, 30, 28),

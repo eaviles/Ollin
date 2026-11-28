@@ -58,7 +58,9 @@ public final class Accumulator {
 
     /// How many passes the running sum holds so far: what `image` divides by. It
     /// counts at record time, so a sketch can read it in the same `draw()` that
-    /// added a pass. Zero after `reset()` and before the first block.
+    /// added a pass. Zero before the first block, and zero after a `reset()`
+    /// called ahead of the frame's block; a `reset()` called after the block
+    /// leaves the passes that block added, since they are the fresh mean's first.
     public private(set) var passes: Int = 0
 
     /// The drawer that owns the recording. Weak: the drawer outlives per-frame
@@ -98,6 +100,12 @@ public final class Accumulator {
     /// grab) divides by the same count.
     var passesAtRecord: Int = 0
 
+    /// The frame the most recent block was recorded in (`Drawer.frameSerial`),
+    /// and the passes that frame's blocks have added: what a `reset()` later in
+    /// the same `draw()` keeps.
+    private var recordedFrame = -1
+    private var passesThisFrame = 0
+
     /// Pixel dimensions of the backing textures (logical size × `scale`, ≥ 1).
     var pixelWidth: Int { max(1, Int((Double(width) * scale).rounded())) }
     var pixelHeight: Int { max(1, Int((Double(height) * scale).rounded())) }
@@ -115,6 +123,8 @@ public final class Accumulator {
                                       scale: self.scale, drawer: drawer)
         self.sumLayer = RenderTarget(width: self.width, height: self.height,
                                      scale: self.scale, drawer: drawer, precision: .float32)
+        self.meanLayer.isCarrier = true
+        self.sumLayer.isCarrier = true
         self.writeLayer.origin = .accumulate(.init(self))
     }
 
@@ -147,17 +157,30 @@ public final class Accumulator {
         meanLayer.filtered(.develop(exposure: exposure, ground: ground))
     }
 
-    /// Start the average over: the next pass begins a fresh sum, and `passes`
-    /// returns to zero. Call it when the scene, the camera, or the lens moved,
-    /// since the samples drawn before no longer describe the picture.
+    /// Start the average over: the frame it is called in begins a fresh sum.
+    /// Call it when the scene, the camera, or the lens moved, since the samples
+    /// drawn before no longer describe the picture. It means the same wherever
+    /// in `draw()` it is called: this frame's block is the fresh mean's first
+    /// pass whether the block comes after the call or came before it. Called
+    /// between frames (from an input hook), the next block is the first.
     public func reset() {
         needsClear = true
-        passes = 0
+        // The renderer clears the sum and then adds this frame's pass, so a
+        // block already recorded in this `draw()` is counted, and nothing else.
+        let alreadyDrawn = drawer.map { $0.isFrameOpen && $0.frameSerial == recordedFrame } ?? false
+        passes = alreadyDrawn ? passesThisFrame : 0
+        passesAtRecord = passes
     }
 
-    /// Record one visit to the block: `count` passes join the sum. Called by the
-    /// drawer as the block opens, so `passes` reads right inside it.
-    func notePasses(_ count: Int) {
+    /// Record one visit to the block in the frame numbered `frame`: `count`
+    /// passes join the sum. Called by the drawer as the block opens, so `passes`
+    /// reads right inside it.
+    func notePasses(_ count: Int, frame: Int) {
+        if frame != recordedFrame {
+            recordedFrame = frame
+            passesThisFrame = 0
+        }
+        passesThisFrame += max(0, count)
         passes += max(0, count)
         passesAtRecord = passes
     }

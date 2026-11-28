@@ -46,6 +46,9 @@ public enum LayerPrecision: Sendable, Equatable {
 ///
 /// Create a target inside `draw()`: it's a per-frame handle, recorded fresh each
 /// frame, and the renderer reuses its GPU texture across frames behind the scenes.
+/// A layer holds what this frame drew into it: one kept in a property starts
+/// clear every frame, and is empty on a frame that draws nothing into it. A
+/// picture that should last across frames belongs in a `Feedback`.
 /// A reference type: it names a GPU resource, and `filtered(_:)` records work
 /// against the drawer that made it.
 public final class RenderTarget {
@@ -132,10 +135,42 @@ public final class RenderTarget {
     /// op. Weak: the drawer outlives per-frame targets and owns the recording.
     weak var drawer: Drawer?
 
-    /// The clear color for a `.geometry` target, set by `background(_:)` inside the
-    /// `withTarget` block. Transparent by default, so an unwritten layer composites
-    /// as nothing.
+    /// The clear color for a drawn layer, set by `background(_:)` inside one of
+    /// its blocks. Transparent at the start of every frame (the drawer resets it
+    /// where the frame first opens the layer), so a layer holds what this frame
+    /// drew into it and nothing a frame before set.
     var clearColor: Color = .clear
+
+    /// Whether the renderer fills this layer on behalf of another: a layer's
+    /// depth or normals, a feedback layer's last frame, an accumulator's mean or
+    /// sum. Such a layer is never drawn into and is no entry of its own in the
+    /// frame's fill order; it is ready when the layer it belongs to is.
+    var isCarrier = false
+
+    /// The layer whose depth or normals this carrier holds. Weak: the layer
+    /// owns its carriers.
+    weak var carrierOf: RenderTarget?
+
+    /// Whether a block can draw into this layer: one a sketch made with
+    /// `makeRenderTarget`, or the write surface of a feedback layer, a
+    /// simulation field, or an accumulator. A filter's or a combine's result, a
+    /// generated pattern, an ocean field, and a carrier are each made by the
+    /// renderer from something else, and a block's drawing has nowhere to land.
+    var takesDrawing: Bool {
+        if isCarrier { return false }
+        switch origin {
+        case .geometry, .feedback, .simField, .accumulate: return true
+        case .generator, .filter, .combine, .ocean: return false
+        }
+    }
+
+    /// Whether this is a layer a sketch draws into for one frame: made by
+    /// `makeRenderTarget`, with no storage the renderer carries across frames.
+    /// On a frame that draws nothing into it, it is empty.
+    var isPlainLayer: Bool {
+        if case .geometry = origin { return !isCarrier }
+        return false
+    }
 
     /// The GPU texture the renderer fills for this target this frame, then later
     /// draws sample. Set during the render pass; `nil` before the frame renders.
@@ -221,6 +256,8 @@ public final class RenderTarget {
     public var depth: RenderTarget {
         if let depthLayer { return depthLayer }
         let layer = RenderTarget(width: width, height: height, scale: scale, drawer: drawer)
+        layer.isCarrier = true
+        layer.carrierOf = self
         depthLayer = layer
         return layer
     }
@@ -233,6 +270,8 @@ public final class RenderTarget {
     var normals: RenderTarget {
         if let normalLayer { return normalLayer }
         let layer = RenderTarget(width: width, height: height, scale: scale, drawer: drawer)
+        layer.isCarrier = true
+        layer.carrierOf = self
         normalLayer = layer
         return layer
     }

@@ -1728,6 +1728,10 @@ final class MetalRenderer {
         /// frame rather than fixed to a place. The renderer's own frame index
         /// cycles with the in-flight ring, so it cannot serve.
         var age = 0
+        /// The stateful encode (`statefulEncodeSerial`) that last drew a feedback
+        /// layer's block into this pair, so a second encode of the same frame
+        /// knows the pair has already flipped for it.
+        var writtenIn = -1
         weak var owner: AnyObject?
         init(a: MTLTexture, b: MTLTexture, w: Int, h: Int, format: MTLPixelFormat, owner: AnyObject) {
             self.a = a; self.b = b; self.w = w; self.h = h; self.format = format; self.owner = owner
@@ -2262,6 +2266,10 @@ final class MetalRenderer {
     /// Whether the encode in progress is such a same-frame repeat (set at the top of
     /// `encodeEffectTargets`, read by the stateful blocks and `applyCombine`).
     var statefulEncodeIsRepeat = false
+    /// How many stateful encodes have advanced the persistent layers: one per
+    /// frame, a same-frame repeat not counted. What a feedback pair is stamped
+    /// with when a block is drawn into it.
+    var statefulEncodeSerial = 0
 
     /// Baked image-based-lighting maps, cached by environment source so the bake (a few
     /// fullscreen passes) runs once, not per frame. Bounded: entries carry their GPU

@@ -1439,8 +1439,25 @@ final class Drawer {
     /// skip the overlay pass when nothing was drawn there.
     private(set) var hasOverlay = false
     /// Geometry targets drawn into this frame, in first-use order; the renderer
-    /// fills each before the main pass that samples it.
+    /// fills each before the main pass that samples it, after the layers it
+    /// reads (`layerSchedule()`).
     private(set) var renderTargets: [RenderTarget] = []
+    /// Where a layer's runs go when a `background` inside one of its blocks
+    /// wipes it and they cannot simply be cut off the end of the lists (an
+    /// earlier block's runs, or runs with another layer's between them): a
+    /// surface no pass draws. The runs keep their place, so every other run's
+    /// extent in the shared lists holds.
+    let wipedRuns = RenderTarget(width: 1, height: 1, scale: 1, drawer: nil)
+    /// Whether a run recorded this frame reads a layer as a picture (its image,
+    /// or a mesh's map or matcap). Together with the frame's own layers and
+    /// ops it says whether there is a fill order to work out at all, so a frame
+    /// with no layer in it never walks its runs to find that out.
+    private(set) var readsLayerPictures = false
+    /// How many frames this drawer has begun, and whether one is being drawn
+    /// (between `beginFrame()` and `endFrame()`): what tells an accumulator
+    /// whether its block and a `reset()` fell in the same `draw()`.
+    private(set) var frameSerial = 0
+    private(set) var isFrameOpen = false
     /// The feedback, simulation, and accumulator layers this frame's targets
     /// write for, held until the frame is rendered: a target only names its
     /// layer weakly (see `RenderTarget.Owner`), and a layer made and dropped
@@ -1941,6 +1958,7 @@ final class Drawer {
     /// `nearest` whether the draw reads its enlarged pixels as hard squares
     /// (`GeometryBatch.imageSamplesNearest`).
     func beginImageBatch(_ image: Image, bounds: SIMD4<Float>? = nil, nearest: Bool = false) {
+        if image.isLayer { readsLayerPictures = true }
         currentKind = .image
         currentBatchBlend = currentBlend
         currentBatchDepth = currentDepth
@@ -1968,6 +1986,7 @@ final class Drawer {
                                 wireframe: Bool = false, matcap: Image? = nil,
                                 grid: Bool = false, gridParams: OllinGridParams = OllinGridParams(),
                                 closed: Bool = true) {
+        if matcap?.isLayer == true || material?.readsLayerPictures == true { readsLayerPictures = true }
         currentBatchLightSet = resolveLightSet()
         batches.append(GeometryBatch(kind: .mesh3D, vertexStart: vertices.count,
                                      instanceStart: sdfInstances.count,
@@ -2031,6 +2050,7 @@ final class Drawer {
     /// tiles is one draw. A change of picture, blend, depth, or clip opens a
     /// fresh run.
     private func ensureFlatMeshBatch(picture: Image?, closed: Bool) {
+        if picture?.isLayer == true { readsLayerPictures = true }
         let occluder = picture == nil
         if currentKind == .mesh3D, currentBatchBlend == currentBlend,
            currentBatchDepth == currentDepth, currentBatchClip == activeClipLevel,
@@ -2178,7 +2198,18 @@ final class Drawer {
             noteBatchRecording("withTarget/withFeedback/withField inside makeBatch { } is not recorded (the block is skipped); draw into layers where the batch is drawn instead.")
             return
         }
+        // A filter's result, a generated pattern, a layer's depth: each is made
+        // by the renderer from something else, and no pass draws a block's runs
+        // into it.
+        guard target.takesDrawing else {
+            noteOnce("withTarget on a layer the renderer makes from something else (a filter's or a combine's result, a generated pattern, a layer's depth) draws nothing, and its block is skipped. To draw over such a layer, draw its image into a layer of your own first: withTarget(mine) { drawImage(result.image, 0, 0) }.")
+            return
+        }
         if !renderTargets.contains(where: { $0 === target }) {
+            // The frame's first block on this layer. It starts clear, whatever a
+            // frame before cleared a kept handle to; a `background` in this block
+            // or a later one sets the color for the frame.
+            target.clearColor = .clear
             renderTargets.append(target)
             if let owner = target.owningLayer { layerOwners.append(owner) }
         }
@@ -2266,7 +2297,6 @@ final class Drawer {
     /// `prev`. Records exactly like `withTarget(_:)`, just with the previous-frame
     /// image passed in.
     func withFeedback(_ feedback: Feedback, _ body: (Image) -> Void) {
-        feedback.writeLayer.clearColor = .clear
         withTarget(feedback.writeLayer) { body(feedback.previous) }
     }
 
@@ -2274,7 +2304,6 @@ final class Drawer {
     /// reading last frame by name via `feedback.previous` inside. Same recording as
     /// `withFeedback`; the closure parameter is the only difference.
     func withTarget(_ feedback: Feedback, _ body: () -> Void) {
-        feedback.writeLayer.clearColor = .clear
         withTarget(feedback.writeLayer, body)
     }
 
@@ -2288,8 +2317,7 @@ final class Drawer {
             noteBatchRecording("withAccumulator inside makeBatch { } is not recorded (the block is skipped); accumulate where the batch is drawn instead.")
             return
         }
-        accumulator.writeLayer.clearColor = .clear
-        accumulator.notePasses(passes)
+        accumulator.notePasses(passes, frame: frameSerial)
         withTarget(accumulator.writeLayer, body)
     }
 
@@ -2298,7 +2326,6 @@ final class Drawer {
     /// evolves one frame by the field's `Sim`. Records exactly like `withTarget(_:)`;
     /// the field carries its own state across frames (no `previous` to read).
     func withField(_ field: SimField, force: Vector2 = .zero, _ body: () -> Void) {
-        field.writeLayer.clearColor = .clear
         field.seedForce = force
         withTarget(field.writeLayer, body)
     }
@@ -2727,12 +2754,22 @@ final class Drawer {
             noteBatchRecording("background(_:) inside makeBatch { } is not recorded; set the background where the batch is drawn.")
             return
         }
-        // Inside a `withTarget` block, background clears *that target* (its clear
-        // color + its geometry so far), leaving the main canvas and global clear
-        // color untouched.
+        // Inside a `withTarget` block, background clears *that layer*: its clear
+        // color, and everything the frame has drawn into it so far, in this
+        // block or an earlier one. The canvas and every other layer keep theirs,
+        // a layer drawn inside this block among them.
         if let frame = targetStack.last {
-            frame.target.clearColor = color
-            truncate(to: frame.snapshot)
+            let target = frame.target
+            target.clearColor = color
+            // When nothing but this layer has drawn since the block opened, what
+            // the block recorded is the end of every list and is cut off. Runs
+            // that cannot be cut (an earlier block's, or this block's with
+            // another layer's between them) are handed to a surface no pass
+            // draws, in place.
+            let opened = min(frame.snapshot.batches, batches.count)
+            if batches[opened...].allSatisfy({ $0.target === target }) { truncate(to: frame.snapshot) }
+            for i in batches.indices where batches[i].target === target { batches[i].target = wipedRuns }
+            volumeDraws.removeAll { $0.target === target }
             currentKind = nil
             currentBatchDepth = nil
             // Clip pushes recorded inside this target were truncated too; re-record
@@ -2977,6 +3014,15 @@ final class Drawer {
 
     /// Stop replicating; back to drawing each call once (the default).
     func noSymmetry() { symmetryFolds = nil }
+
+    /// Put the 2D transform back to the canvas's own and stop replicating: the
+    /// state a finished layer is laid down under, since whatever transform and
+    /// symmetry were in force already placed the marks inside it.
+    func placeAtCanvasOrigin() {
+        transform = matrix_identity_float3x3
+        transformIsIdentity = true
+        symmetryFolds = nil
+    }
 
     /// Tint subsequent `drawImage` calls: every texel is multiplied by `color`,
     /// so its RGB recolors the image and its alpha fades it. The default (no tint)
@@ -5458,6 +5504,7 @@ final class Drawer {
     /// renders as it always did. Nothing was drawn on that canvas through it:
     /// while `draw()` ran the canvas had no camera, and its 3D calls drew nothing.
     func endFrame() {
+        isFrameOpen = false
         if layerCameraScopes.isEmpty, camera3D == nil, let borrowed = firstLayerCamera {
             camera3D = borrowed
         }
@@ -5591,6 +5638,9 @@ final class Drawer {
         // recorded geometry/filters reset here with everything else.
         targetStack.removeAll(keepingCapacity: true)
         renderTargets.removeAll(keepingCapacity: true)
+        readsLayerPictures = false
+        frameSerial &+= 1
+        isFrameOpen = true
         layerOwners.removeAll(keepingCapacity: true)
         filterOps.removeAll(keepingCapacity: true)
         frameFilters.removeAll(keepingCapacity: true)

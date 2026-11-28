@@ -74,38 +74,36 @@ extension MetalRenderer {
         let stamp = (drawer: drawer.serial, frame: drawer.computeUniforms.frameCount)
         statefulEncodeIsRepeat = lastStatefulEncode?.drawer == stamp.drawer
             && lastStatefulEncode?.frame == stamp.frame
-        if !statefulEncodeIsRepeat { lastStatefulEncode = stamp }
+        if !statefulEncodeIsRepeat {
+            lastStatefulEncode = stamp
+            statefulEncodeSerial &+= 1
+        }
     }
 
     func encodeEffectTargets(_ drawer: Drawer, into cb: MTLCommandBuffer,
                                      buffers: GeometryBuffers, pooled: Bool,
                                      gi: GIResolved? = nil) {
-        guard !drawer.renderTargets.isEmpty || !drawer.filterOps.isEmpty
-            || !drawer.frameFilters.isEmpty else { return }
-        // Generators read no input, so fill them first (a filter may sample one),
-        // each a single fullscreen fragment pass into a sampleable filter texture.
-        for target in drawer.renderTargets {
-            guard case let .generator(generator) = target.origin else { continue }
+        // A feedback layer's last frame is ready before the frame starts, so it
+        // is resolved here, ahead of every pass and on a frame with no layer to
+        // fill: a frame that leaves the layer alone reads the last block's
+        // picture, where the carrier would otherwise still name the texture the
+        // last block itself read.
+        resolveFeedbackFronts()
+        // Every layer the frame fills, each after the layers it reads (the order
+        // and its rules are `LayerSchedule`'s).
+        let schedule = drawer.layerSchedule()
+        guard !schedule.isEmpty || !drawer.frameFilters.isEmpty else { return }
+        if let note = schedule.earlyNote { drawer.noteOnce(note) }
+        // A generator reads no input: a single fullscreen fragment pass into a
+        // sampleable filter texture.
+        func fillGenerator(_ target: RenderTarget, _ generator: Generator) {
             guard let out = acquireFilterTexture(width: target.pixelWidth,
-                                                 height: target.pixelHeight, pooled: pooled) else { continue }
+                                                 height: target.pixelHeight, pooled: pooled) else { return }
             encodeGenerator(generator, output: out,
                             width: target.pixelWidth, height: target.pixelHeight,
                             scale: target.scale, into: cb)
             target.texture = out
         }
-        // Ocean fields: like a generator, a source layer nothing else has to be
-        // filled first for, but three stages rather than one (the spectrum, the
-        // inverse transform of it, and the resolve into world units). Filled
-        // before the geometry, because the draw that reads the field is
-        // geometry and a filter may read it too.
-        for target in drawer.renderTargets {
-            guard case let .ocean(request) = target.origin else { continue }
-            target.texture = encodeOceanField(request, into: cb, pooled: pooled)
-        }
-        // A geometry layer that draws the image of a filter or a combine (or of a
-        // layer that waits on one) is drawn after that op runs, below; every
-        // other layer is drawn here, before the ops, as it always was.
-        let waiting = layersWaitingOnOps(drawer)
         // A layer that set a camera of its own this frame is drawn through it:
         // for the length of its pass the drawer answers every camera question
         // (the view and projection, the lighting's eye, the fog's framing, the
@@ -186,21 +184,15 @@ extension MetalRenderer {
                                                            width: pw, height: ph, pooled: pooled)
             }
                 }
-        for target in drawer.renderTargets {
-            guard case .geometry = target.origin,
-                  !waiting.contains(ObjectIdentifier(target)) else { continue }
-            encodeGeometry(target)
-        }
-        // Feedback layers: like a geometry target, but rendered into persistent
+        // A feedback layer: like a geometry target, but rendered into persistent
         // ping-pong storage. The block reads the *front* (last frame, exposed as
         // `previous`) while drawing into the *back*; the pair flips after the frame.
-        for target in drawer.renderTargets {
-            guard case let .feedback(owner) = target.origin, let fb = owner.layer else { continue }
+        func fillFeedback(_ target: RenderTarget, _ fb: Feedback) {
             let pw = target.pixelWidth, ph = target.pixelHeight
             let storage = attachmentStorage(for: drawer, target: target)
             guard let slot = feedbackSlot(for: fb, width: pw, height: ph, format: target.pixelFormat, into: cb),
                   let msaa = makeFloatMSAA(width: pw, height: ph, storage: storage,
-                                           format: target.pixelFormat) else { continue }
+                                           format: target.pixelFormat) else { return }
             let front = slot.flipped ? slot.b : slot.a
             let back  = slot.flipped ? slot.a : slot.b
             if statefulEncodeIsRepeat {
@@ -210,9 +202,10 @@ extension MetalRenderer {
                 // textures instead, with no second flip.
                 fb.previousLayer.texture = back  // what the first encode read
                 target.texture = front           // what the first encode produced
-                continue
+                return
             }
             fb.previousLayer.texture = front     // `previous` resolves to last frame
+            slot.writtenIn = statefulEncodeSerial
             let pass = MTLRenderPassDescriptor()
             pass.colorAttachments[0].texture = msaa
             pass.colorAttachments[0].resolveTexture = back
@@ -221,7 +214,7 @@ extension MetalRenderer {
             pass.colorAttachments[0].storeAction = .multisampleResolve
             let passHasStencil = attachClipStencil(to: pass, active: target.needsStencil,
                                                    width: pw, height: ph, storage: storage)
-            guard let enc = countedEncoder(cb, pass) else { continue }
+            guard let enc = countedEncoder(cb, pass) else { return }
             drawer.withPassCamera(for: target) {
                 encode(drawer, viewport: SIMD2(Float(target.width), Float(target.height)), into: enc,
                        triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf, imageBuffer: buffers.image,
@@ -236,21 +229,20 @@ extension MetalRenderer {
             target.texture = back                // `image` resolves to this frame
             feedbackUsedThisFrame.insert(ObjectIdentifier(fb))
         }
-        // Accumulators: this frame's pass renders like a geometry target into a
+        // An accumulator: this frame's pass renders like a geometry target into a
         // transient layer, and a compute pass then adds it into the persistent
         // single-precision sum and writes the mean beside it. A reset replaces the
         // sum instead of adding to it, and the divide uses the pass count the
         // drawer noted when the block was recorded.
-        for target in drawer.renderTargets {
-            guard case let .accumulate(owner) = target.origin, let acc = owner.layer else { continue }
+        func fillAccumulator(_ target: RenderTarget, _ acc: Accumulator) {
             let pw = target.pixelWidth, ph = target.pixelHeight
-            guard let slot = accumulatorSlot(for: acc, width: pw, height: ph) else { continue }
+            guard let slot = accumulatorSlot(for: acc, width: pw, height: ph) else { return }
             if statefulEncodeIsRepeat {
                 // The first encode of this frame already added the pass; adding it
                 // again would count it twice. Serve what it left.
                 acc.meanLayer.texture = slot.mean
                 acc.sumLayer.texture = slot.sum
-                continue
+                return
             }
             // A pass of light particles alone needs no multisampling (their
             // coverage is their own) and draws straight into a single-sample
@@ -274,7 +266,7 @@ extension MetalRenderer {
             pass.colorAttachments[0].clearColor = target.clearColor.mtlClearColor
             if lightOnly {
                 guard let tex = acquireFilterTexture(width: pw, height: ph, pooled: pooled,
-                                                     format: .rgba32Float) else { continue }
+                                                     format: .rgba32Float) else { return }
                 pass.colorAttachments[0].texture = tex
                 pass.colorAttachments[0].storeAction = .store
                 passHasStencil = false
@@ -282,7 +274,7 @@ extension MetalRenderer {
             } else {
                 let storage = attachmentStorage(for: drawer, target: target)
                 guard let tex = acquireTargetTextures(width: pw, height: ph, pooled: pooled,
-                                                      format: passFormat, storage: storage) else { continue }
+                                                      format: passFormat, storage: storage) else { return }
                 pass.colorAttachments[0].texture = tex.msaa
                 pass.colorAttachments[0].resolveTexture = tex.resolve
                 pass.colorAttachments[0].storeAction = .multisampleResolve
@@ -290,7 +282,7 @@ extension MetalRenderer {
                                                    width: pw, height: ph, storage: storage)
                 frameTexture = tex.resolve
             }
-            guard let enc = countedEncoder(cb, pass) else { continue }
+            guard let enc = countedEncoder(cb, pass) else { return }
             drawer.withPassCamera(for: target) {
                 encode(drawer, viewport: SIMD2(Float(target.width), Float(target.height)), into: enc,
                        triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf, imageBuffer: buffers.image,
@@ -308,12 +300,11 @@ extension MetalRenderer {
             acc.meanLayer.texture = slot.mean
             acc.sumLayer.texture = slot.sum
         }
-        // Simulation fields: a persistent ping-pong like feedback, but the renderer
+        // A simulation field: a persistent ping-pong like feedback, but the renderer
         // evolves the state itself. Render this frame's drawn seeds into a transient
         // texture, then run the field's `Sim` (inject the seeds onto the front state,
         // step it N times) writing the result into the back buffer.
-        for target in drawer.renderTargets {
-            guard case let .simField(owner) = target.origin, let sf = owner.layer else { continue }
+        func fillField(_ target: RenderTarget, _ sf: SimField) {
             let pw = target.pixelWidth, ph = target.pixelHeight
             if statefulEncodeIsRepeat {
                 // The sim already stepped (and flipped) for this frame; re-stepping
@@ -336,7 +327,7 @@ extension MetalRenderer {
                                                   format: target.pixelFormat, into: cb) {
                     target.texture = slot.flipped ? slot.b : slot.a
                 }
-                continue
+                return
             }
             // The seed pair follows the field's precision: the geometry pipelines the
             // marks draw through are built for the target's format, and an attachment
@@ -346,7 +337,7 @@ extension MetalRenderer {
             guard let msaa = makeFloatMSAA(width: pw, height: ph, storage: storage,
                                            format: target.pixelFormat),
                   let seed = acquireFilterTexture(width: pw, height: ph, pooled: pooled,
-                                                  format: target.pixelFormat) else { continue }
+                                                  format: target.pixelFormat) else { return }
             // Render this frame's drawn seed marks into `seed` (cleared transparent so
             // an empty block seeds nothing and the field just evolves). Shared by both
             // the single-field sims and the fluid.
@@ -376,7 +367,7 @@ extension MetalRenderer {
                 // paper and the dried-glaze stack, evolved by the dedicated wash
                 // pipeline. `image` resolves to the rendered painting.
                 guard let slot = watercolorSlot(for: sf, config: config,
-                                                width: pw, height: ph, into: cb) else { continue }
+                                                width: pw, height: ph, into: cb) else { return }
                 runWatercolor(config, field: sf as? WatercolorField, seed: seed, slot: slot,
                               width: pw, height: ph, into: cb, pooled: pooled)
                 target.texture = slot.display
@@ -385,7 +376,7 @@ extension MetalRenderer {
                 // Self-warp: its own persistent source / motion / history state, evolved
                 // by the dedicated motion-feedback chain. `image` resolves to the freshly
                 // warped history.
-                guard let slot = selfWarpSlot(for: sf, width: pw, height: ph, into: cb) else { continue }
+                guard let slot = selfWarpSlot(for: sf, width: pw, height: ph, into: cb) else { return }
                 runSelfWarp(config, seed: seed, slot: slot,
                             width: pw, height: ph, into: cb, pooled: pooled)
                 target.texture = slot.flipped ? slot.histA : slot.histB
@@ -393,7 +384,7 @@ extension MetalRenderer {
             } else if let config = sf.sim.datamoshConfig {
                 // Datamosh: the self-warp's state and motion fit, with blocks that
                 // refresh or hold. `image` resolves to the freshly decoded picture.
-                guard let slot = selfWarpSlot(for: sf, width: pw, height: ph, into: cb) else { continue }
+                guard let slot = selfWarpSlot(for: sf, width: pw, height: ph, into: cb) else { return }
                 runDatamosh(config, seed: seed, slot: slot,
                             width: pw, height: ph, into: cb, pooled: pooled)
                 target.texture = slot.flipped ? slot.histA : slot.histB
@@ -401,7 +392,7 @@ extension MetalRenderer {
             } else if let config = sf.sim.fluidConfig {
                 // Multi-field fluid: its own persistent velocity + dye pairs, evolved by
                 // the dedicated solver. `image` resolves to the freshly advected dye.
-                guard let slot = fluidSlot(for: sf, width: pw, height: ph, into: cb) else { continue }
+                guard let slot = fluidSlot(for: sf, width: pw, height: ph, into: cb) else { return }
                 let velFront = slot.flipped ? slot.velB : slot.velA
                 let velBack  = slot.flipped ? slot.velA : slot.velB
                 let dyeFront = slot.flipped ? slot.dyeB : slot.dyeA
@@ -423,7 +414,7 @@ extension MetalRenderer {
                                               restState: MTLClearColor(red: Double(rest.x), green: Double(rest.y),
                                                                        blue: Double(rest.z), alpha: Double(rest.w)),
                                               fill: initialNoiseFill(sf.sim, format: format, into: cb),
-                                              format: format, into: cb) else { continue }
+                                              format: format, into: cb) else { return }
                 let front = slot.flipped ? slot.b : slot.a
                 let back  = slot.flipped ? slot.a : slot.b
                 // The field can be read back from here on: the reader blits the
@@ -435,16 +426,17 @@ extension MetalRenderer {
                                         width: pw, height: ph, into: cb, pooled: pooled)
                 } else {
                     // The modulation map, when the field has one and it was drawn (or
-                    // generated) this frame. Those layers resolve in the passes above,
-                    // before any sim steps, so the texture is this frame's content; a
-                    // map absent from this frame's targets is skipped rather than
+                    // generated) this frame. The fill order puts those layers ahead
+                    // of the field, so the texture is this frame's content; a map
+                    // absent from this frame's targets is skipped rather than
                     // sampled stale, and the field falls back to the plain step.
                     let modulation = sf.modulation.flatMap { map in
                         drawer.renderTargets.contains(where: { $0 === map }) ? map.texture : nil
                     }
                     // A kernel's extra layers: the ones drawn this frame; a filtered or
                     // combined layer as it resolved at the end of the frame before
-                    // (filters resolve after the sims); a blank for the rest, so
+                    // (a field waits on no filter, since a filter of the field's own
+                    // picture is the usual one); a blank for the rest, so
                     // `input(info, i)` always reads something defined.
                     let inputs: [MTLTexture] = sf.sim.userKernel == nil ? [] :
                         sf.inputs.prefix(SimField.maxInputs).enumerated().map { index, layer in
@@ -471,14 +463,14 @@ extension MetalRenderer {
                 feedbackUsedThisFrame.insert(ObjectIdentifier(sf))
             }
         }
-        // Filter and combine ops share one list, resolved in record order so an op's
-        // inputs (filled earlier in this loop, or by the geometry/generator passes
-        // above) are ready before it runs.
-        defer { filterChainFormat = nil }
+        // A filter or a combine, run once what it reads is filled.
         func runOp(_ output: RenderTarget) {
             // Every pass of this op works in its output's precision, which follows
             // the layer it reads (a `.float32` source keeps float32 to the end).
+            // Set for the length of the op alone: a layer's pass or a field's step
+            // that comes after it in the order asks for its own formats.
             filterChainFormat = output.pixelFormat == linearFormat ? nil : output.pixelFormat
+            defer { filterChainFormat = nil }
             switch output.origin {
             case let .filter(input, filter):
                 guard let src = input.texture else { return }
@@ -497,39 +489,28 @@ extension MetalRenderer {
             default:
                 return
             }
-                }
-        if waiting.isEmpty {
-            for output in drawer.filterOps { runOp(output) }
-        } else {
-            // Ops and the layers waiting on them, each as soon as everything it
-            // reads this frame is ready, in record order among the ready ones.
-            var pendingOps = drawer.filterOps
-            var pendingLayers = drawer.renderTargets.filter { waiting.contains(ObjectIdentifier($0)) }
-            var unready = Set(pendingOps.map(ObjectIdentifier.init)).union(waiting)
-            while !pendingOps.isEmpty || !pendingLayers.isEmpty {
-                var progressed = false
-                pendingOps.removeAll { output in
-                    guard output.opInputs.allSatisfy({ !unready.contains(ObjectIdentifier($0)) }) else { return false }
-                    runOp(output)
-                    unready.remove(ObjectIdentifier(output))
-                    progressed = true
-                    return true
-                }
-                pendingLayers.removeAll { target in
-                    guard layerSources(of: target, in: drawer).allSatisfy({ !unready.contains(ObjectIdentifier($0)) })
-                    else { return false }
-                    encodeGeometry(target)
-                    unready.remove(ObjectIdentifier(target))
-                    progressed = true
-                    return true
-                }
-                if !progressed {
-                    // A layer that reads itself through an op: draw what is left in
-                    // record order, each reading whatever its inputs hold.
-                    pendingOps.forEach(runOp)
-                    pendingLayers.forEach(encodeGeometry)
-                    break
-                }
+        }
+        for layer in schedule.order {
+            switch layer.origin {
+            case let .generator(generator):
+                fillGenerator(layer, generator)
+            case let .ocean(request):
+                // An ocean field: three stages rather than a generator's one (the
+                // spectrum, the inverse transform of it, and the resolve into
+                // world units).
+                layer.texture = encodeOceanField(request, into: cb, pooled: pooled)
+            case .geometry:
+                // A plain layer the frame reads and never opened is among these:
+                // no run is tagged for it, so its pass clears it and draws nothing.
+                encodeGeometry(layer)
+            case let .feedback(owner):
+                if let feedback = owner.layer { fillFeedback(layer, feedback) }
+            case let .accumulate(owner):
+                if let accumulator = owner.layer { fillAccumulator(layer, accumulator) }
+            case let .simField(owner):
+                if let field = owner.layer { fillField(layer, field) }
+            case .filter, .combine:
+                runOp(layer)
             }
         }
         keepDelayedInputs(into: cb)
@@ -1033,36 +1014,18 @@ extension MetalRenderer {
         }
     }
 
-    /// The layers a geometry layer draws the image of this frame: the sources of
-    /// its image batches that are layers.
-    func layerSources(of target: RenderTarget, in drawer: Drawer) -> [RenderTarget] {
-        drawer.batches.compactMap { batch in
-            batch.target === target && batch.kind == .image ? batch.image?.layerTarget : nil
+    /// Point every feedback layer's `previous` at what its last block drew: the
+    /// front of its pair, or on a second encode of one frame the texture the
+    /// first encode read, when that encode drew the layer's block and flipped
+    /// the pair.
+    func resolveFeedbackFronts() {
+        for slot in feedbackSlots.values {
+            guard let feedback = slot.owner as? Feedback else { continue }
+            let front = slot.flipped ? slot.b : slot.a
+            let back = slot.flipped ? slot.a : slot.b
+            let drawnThisFrame = statefulEncodeIsRepeat && slot.writtenIn == statefulEncodeSerial
+            feedback.previousLayer.texture = drawnThisFrame ? back : front
         }
-    }
-
-    /// The geometry layers that draw the image of a filter or a combine this
-    /// frame, or of another layer in this set, so they must wait for those ops
-    /// to run. Empty for every frame that draws an op only onto the canvas,
-    /// which keeps those frames in the order they always had.
-    func layersWaitingOnOps(_ drawer: Drawer) -> Set<ObjectIdentifier> {
-        guard !drawer.filterOps.isEmpty else { return [] }
-        let geometry = drawer.renderTargets.filter { if case .geometry = $0.origin { return true }; return false }
-        guard !geometry.isEmpty else { return [] }
-        var later = Set(drawer.filterOps.map(ObjectIdentifier.init))
-        var waiting: Set<ObjectIdentifier> = []
-        var grew = true
-        while grew {
-            grew = false
-            for target in geometry where !waiting.contains(ObjectIdentifier(target)) {
-                if layerSources(of: target, in: drawer).contains(where: { later.contains(ObjectIdentifier($0)) }) {
-                    waiting.insert(ObjectIdentifier(target))
-                    later.insert(ObjectIdentifier(target))
-                    grew = true
-                }
-            }
-        }
-        return waiting
     }
 
     /// Build a summed-area table of `input`: every texel holding the sum of everything

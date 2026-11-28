@@ -1390,6 +1390,16 @@ enum SiteHero {
         var kf = index + fraction;
         var results = [], previous = [];
         releaseAll();
+        // A feedback layer's last frame is ready before the frame starts, so it
+        // is resolved ahead of every layer, as the Mac resolves it: a layer
+        // earlier in the order may draw `previous`, and one that draws the
+        // layer's image before this frame fills it gets what the frame before left.
+        for (var fi = 0; fi < g.layers.length; fi++) {
+          if (g.layers[fi].t !== 'fb') continue;
+          var fs = slot(g.layers[fi].k, g.layers[fi].pw, g.layers[fi].ph, [0, 0, 0, 0], null);
+          previous[fi] = (fs.flipped ? fs.b : fs.a).tex;
+          results[fi] = previous[fi];
+        }
         for (var li = 0; li < g.layers.length; li++) {
           var layer = g.layers[li];
           var out;

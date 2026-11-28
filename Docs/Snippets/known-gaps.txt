@@ -307,20 +307,21 @@ b19cb6e95c72  Docs/Drawing/Drawing.md:873  expected ',' separator
 1f3d372da7f1  Docs/Drawing/Drawing.md:940  expected ',' separator
 b774992b6378  Docs/Drawing/Drawing.md:960  expected ',' separator
 1545ca2f9764  Docs/Drawing/Drawing.md:980  expected ',' separator
-09c8e57cb7b7  Docs/Drawing/Effects.md:107  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'image'
-b75c82ed9f5c  Docs/Drawing/Effects.md:1382  cannot find 'photo' in scope
-f9dd3d125f11  Docs/Drawing/Effects.md:141  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-8528c8e05574  Docs/Drawing/Effects.md:167  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-de01af674fc3  Docs/Drawing/Effects.md:178  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-287a7fa55e41  Docs/Drawing/Effects.md:205  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-5aa234bd9c13  Docs/Drawing/Effects.md:268  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-cfebd0c142fa  Docs/Drawing/Effects.md:287  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-664b1351cb25  Docs/Drawing/Effects.md:429  cannot find 'scene' in scope
-0cf1d8be56d4  Docs/Drawing/Effects.md:452  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-69cf570bc684  Docs/Drawing/Effects.md:625  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
-314af6ac5659  Docs/Drawing/Effects.md:924  cannot find 'horizon' in scope
-1c1c7cea776b  Docs/Drawing/Effects.md:946  cannot find 'glow' in scope
-a8f0d552b0f0  Docs/Drawing/Effects.md:974  cannot find 'marks' in scope
+a8f0d552b0f0  Docs/Drawing/Effects.md:1013  cannot find 'marks' in scope
+09c8e57cb7b7  Docs/Drawing/Effects.md:131  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'image'
+b75c82ed9f5c  Docs/Drawing/Effects.md:1422  cannot find 'photo' in scope
+f9dd3d125f11  Docs/Drawing/Effects.md:165  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+8528c8e05574  Docs/Drawing/Effects.md:191  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+de01af674fc3  Docs/Drawing/Effects.md:202  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+287a7fa55e41  Docs/Drawing/Effects.md:229  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+5aa234bd9c13  Docs/Drawing/Effects.md:292  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+cfebd0c142fa  Docs/Drawing/Effects.md:311  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+664b1351cb25  Docs/Drawing/Effects.md:453  cannot find 'scene' in scope
+0cf1d8be56d4  Docs/Drawing/Effects.md:476  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+69cf570bc684  Docs/Drawing/Effects.md:649  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
+314af6ac5659  Docs/Drawing/Effects.md:948  cannot find 'horizon' in scope
+1c1c7cea776b  Docs/Drawing/Effects.md:970  cannot find 'glow' in scope
+e4e4b523e2b8  Docs/Drawing/Effects.md:982  cannot find 'solved' in scope
 eb9d4c173b18  Docs/Drawing/Envelopes.md:105  expected ',' separator
 3ba94f2cae8b  Docs/Drawing/Envelopes.md:112  cannot find 'shore' in scope
 6959c47ac423  Docs/Drawing/Envelopes.md:41  expected ',' separator

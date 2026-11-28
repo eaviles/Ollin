@@ -298,10 +298,19 @@ public extension Sketch {
     /// This is the declarative form of the per-call substrate it's built on: the
     /// same `renderTarget` / `withTarget` / `filtered` / `drawImage` it would take
     /// to do by hand, gathered into one readable block.
+    ///
+    /// A transform or a `symmetry` in force applies to what each layer draws, as
+    /// it does to drawing on the canvas, so a block under `translate` or `rotate`
+    /// puts its marks where the same calls would without it.
     func compose(@ComposeBuilder _ build: () -> [ComposeLayer]) {
         for composeLayer in build() {
             let result = resolveComposeLayer(composeLayer)
             withState {
+                // The transform and the symmetry in force carried into the
+                // layer's drawing, so its marks already sit where they belong on
+                // a canvas-sized layer. The finished layer is laid at the canvas's
+                // own origin, once: under either it would be moved a second time.
+                drawer.placeAtCanvasOrigin()
                 blendMode(composeLayer.blend)
                 drawImage(result.image, 0, 0)
             }

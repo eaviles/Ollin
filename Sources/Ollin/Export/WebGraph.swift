@@ -638,18 +638,14 @@ final class WebGraphRecorder {
         var sources: [Float] = []
         var params: [Float] = []
 
-        // The layers, in the order the renderer fills them: generators, drawn
-        // targets, feedback, fields, then the filter and combine outputs in
-        // record order. Every target gets its index first, so an item drawn
-        // into one layer can name another wherever it sits.
-        var ordered: [RenderTarget] = []
-        for target in drawer.renderTargets { if case .generator = target.origin { ordered.append(target) } }
+        // The layers, in the order the renderer fills them: each after the
+        // layers it reads, a plain layer the frame reads and never opened among
+        // them, filled empty (`LayerSchedule`). Every target gets its index
+        // first, so an item drawn into one layer can name another wherever it
+        // sits.
         for target in drawer.renderTargets { if case .ocean = target.origin { throw refuse("an ocean field") } }
         for target in drawer.renderTargets { if case .accumulate = target.origin { throw refuse("an accumulator (a running mean of light)") } }
-        for target in drawer.renderTargets { if case .geometry = target.origin { ordered.append(target) } }
-        for target in drawer.renderTargets { if case .feedback = target.origin { ordered.append(target) } }
-        for target in drawer.renderTargets { if case .simField = target.origin { ordered.append(target) } }
-        for output in drawer.filterOps { ordered.append(output) }
+        let ordered = drawer.layerSchedule().order
         var index: [ObjectIdentifier: Int] = [:]
         var previousOf: [ObjectIdentifier: Int] = [:]
         for (i, target) in ordered.enumerated() {
@@ -670,7 +666,7 @@ final class WebGraphRecorder {
             if let target = image.layerTarget {
                 if let li = index[ObjectIdentifier(target)] { return .layer(li) }
                 if let pi = previousOf[ObjectIdentifier(target)] { return .previous(pi) }
-                throw refuse("drawImage of a layer the frame did not fill (a depth or normal layer)")
+                throw refuse("drawImage of a layer the frame did not fill (a layer's depth, or a filter's result kept from an earlier frame)")
             }
             return .picture(try pictureIndex(image, frame: frame))
         }

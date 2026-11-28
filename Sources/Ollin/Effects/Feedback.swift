@@ -80,6 +80,7 @@ public final class Feedback {
                                        scale: self.scale, drawer: drawer, precision: precision)
         self.previousLayer = RenderTarget(width: self.width, height: self.height,
                                           scale: self.scale, drawer: drawer, precision: precision)
+        self.previousLayer.isCarrier = true
         // Stamp the write layer now that `self` exists, so the renderer can recover
         // this `Feedback` (and its persistent textures) from the recorded target.
         self.writeLayer.origin = .feedback(.init(self))
@@ -87,11 +88,15 @@ public final class Feedback {
 
     /// Last frame's content, as a drawable/transformable `Image`. The image you read,
     /// fade, and move inside the block; also what `withFeedback` hands in as `prev`.
-    /// Resolves the renderer's front texture lazily at draw time.
+    /// Resolves the renderer's front texture lazily at draw time. On a frame that
+    /// opens no block on the layer, it is what the last block drew. Reading it
+    /// waits on nothing, so another layer can draw it whatever the order of the
+    /// frame's blocks.
     public var previous: Image { previousLayer.image }
 
     /// This frame's written content, as an `Image`, to composite onto the canvas
     /// with `drawImage`. Resolves the renderer's back texture lazily at draw time.
+    /// On a frame that opens no block on the layer, it is what the last block drew.
     public var image: Image { writeLayer.image }
 
     /// This frame's written content through a `Filter`, returning a new layer to
