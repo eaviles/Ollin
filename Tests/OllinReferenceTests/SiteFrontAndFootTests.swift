@@ -427,7 +427,9 @@ struct SiteFrontAndFootTests {
           lines.push('hero ' + beside('words', 'ring'));
           lines.push('foot ' + beside('lead', 'nav') + ' ' + beside('g1', 'g2') + ' ' + beside('g2', 'g3') + ' ' + (box('note').top >= box('nav').bottom ? 1 : 0));
           lines.push('names ' + getComputedStyle(document.getElementById('bar-name')).display + ' ' + getComputedStyle(document.getElementById('foot-name')).display);
-          lines.push('wide ' + document.documentElement.scrollWidth);
+          // What the page needs across, beside what it has: a window that
+          // shows its scroll bar has that bar's width less than the frame.
+          lines.push('wide ' + document.documentElement.scrollWidth + ' ' + document.documentElement.clientWidth);
           parent.document.getElementById('r0').textContent = lines.join('|');
         })();
         </script></body></html>
@@ -440,8 +442,12 @@ struct SiteFrontAndFootTests {
         """
     }
 
-    static func frontReport(width: Int) async throws -> (read: [String: [String]], text: String) {
+    /// The probe's report in a frame `width` wide. `scrollBarShown` asks for
+    /// a scroll bar that takes room beside the page, as on a Mac with a mouse
+    /// and no trackpad, in place of one drawn over it.
+    static func frontReport(width: Int, scrollBarShown: Bool = false) async throws -> (read: [String: [String]], text: String) {
         let flags = HeadlessBrowser.baseFlags + ["--window-size=1280,1000"]
+            + (scrollBarShown ? ["--disable-features=OverlayScrollbar"] : [])
         let dom = try await HeadlessBrowser.dom(of: Self.frontProbe(width: width), flags: flags, timeout: 90)
         let report = try #require(HeadlessBrowser.text(of: "r0", in: dom))
         try #require(report != "PENDING", "the probe did not run")
@@ -483,7 +489,7 @@ struct SiteFrontAndFootTests {
         // the closing sentence under them.
         #expect(read["foot"] == ["1", "1", "1", "1"], "\(report)")
         #expect(read["names"] == ["block", "block"], "a name beside the mark is hidden on a wide page: \(report)")
-        #expect(read["wide"] == read["width"], "the page is wider than its window: \(report)")
+        #expect(read["wide"]?.first == read["wide"]?.last && read["wide"]?.count == 2, "the page is wider than its window: \(report)")
     }
 
     @Test("At a thousand pixels the facts go under the opening as a sheet, while a section still flows and splits",
@@ -495,7 +501,7 @@ struct SiteFrontAndFootTests {
         #expect(read["flow"] == ["1", "1"], "\(report)")
         #expect(read["split"] == ["1", "1", "1"], "\(report)")
         #expect(read["hero"] == ["2"] || read["hero"] == ["1"], "\(report)")
-        #expect(read["wide"] == read["width"], "the page is wider than its window: \(report)")
+        #expect(read["wide"]?.first == read["wide"]?.last && read["wide"]?.count == 2, "the page is wider than its window: \(report)")
     }
 
     @Test("On a phone everything stacks, the words come before the ring, and a fact's name goes over what it says",
@@ -516,6 +522,17 @@ struct SiteFrontAndFootTests {
         // A phone's bar has no room for the name beside the mark; the foot
         // has, and keeps it.
         #expect(read["names"] == ["none", "block"], "\(report)")
-        #expect(read["wide"] == read["width"], "the page is wider than a phone: \(report)")
+        #expect(read["wide"]?.first == read["wide"]?.last && read["wide"]?.count == 2, "the page is wider than a phone: \(report)")
+    }
+
+    @Test("A window that shows its scroll bar beside the page leaves the page inside what is left",
+          .enabled("a browser is needed") { HeadlessBrowser.isInstalled }, arguments: [1440, 1000, 390])
+    func theFrontPageBesideAScrollBar(width: Int) async throws {
+        let (read, report) = try await Self.frontReport(width: width, scrollBarShown: true)
+        let wide = try #require(read["wide"], "\(report)")
+        try #require(wide.count == 2, "\(report)")
+        // The bar took its room, or this run proved nothing a plain one did not.
+        #expect((Int(wide[1]) ?? width) < width, "the window showed no scroll bar beside the page: \(report)")
+        #expect(wide[0] == wide[1], "the page is wider than the room beside the scroll bar: \(report)")
     }
 }
